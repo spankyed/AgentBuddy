@@ -5078,3 +5078,47 @@ manual-build/drive freshness, native/editor lifecycle, entity navigation, fronte
 three Phase 6 workstreams remain required. Finish the reconciled original-requirement/phase audit and
 final committed-source strict `--all` before completion. This checkpoint closes neither discovery nor
 the goal; no unfinished work is archived.
+
+
+### Complete backend facet declarations — checkpoint 3C
+
+Source `8ec5285ed` declares build/trigger data and callable membership explicitly. One SDK projection
+feeds module-target validation, entry generation and host admission. Each callback is checked as an
+exported function; generated entries check its signature. Relation fields, trigger tracking, persistence
+and query fields are discoverable without source imports. Flow helpers no longer scan implementation
+text. Trigger registration remains lazy/backend-only; execution retains accepted runtime lifetimes.
+Native fixtures, authored packs, scaffolds, CLI inspection, schema, API reports and public docs agree.
+Graph edge policy and relation updates use declarations even when execution providers are unavailable.
+
+Evidence and corrections:
+
+- Focused generation/module checks pass 124 cases; backend admission/binding checks pass 67. Three
+  deliberate guard mutations catch changed metadata, missing/extra callable slots and non-function
+  exports; restored source passes. Logs: `/private/tmp/apack-backend-mutation-{data,callbacks,export-kind}.log`.
+- Source-free CLI inspection and trigger-helper checks pass 12 cases. Actual external authoring,
+  compiler isolation and dependent flow-helper typing pass 23 integration cases, including a hyphenated
+  step name with its declared camelCase track field. JSON editor completion/descriptions pass 11 cases.
+- Removed aggregate-export test imports and an incomplete native trigger fixture were corrected before
+  acceptance. Repository checks pass 17 cases, including unavailable-provider relation edits/edge policy.
+  The full host pool passes 403 files/4,818 tests; pack pool passes 851 tests with two skips.
+- The full integration pool passes 58 files/741 tests in 318.6s. Its previous 300s aggregate limit
+  interrupted passing tests. At the user's request, the shared suite deadline is now 600s in both parent
+  and pool runner; individual test deadlines are unchanged. All 179 focused timeout/boundary/mutation
+  checks pass. No separate timeout override or new timeout class was introduced.
+- Strict `npm run chain -- --strict --cores 1` passes all 30 steps in 613.7s (18 cached), run
+  `2026-10-15T18-57-47Z-64986`, `/private/tmp/apack-backend-declarations-passing.log`. External app,
+  smoke and packaged authoring pass. All seven EARS/content baseline files remain byte-identical;
+  generated facade and reviewed schema/API reports pass their checks.
+- Committed-source strict passes again in 1.1s (29 cached), run `2026-10-15T19-08-15Z-93064`,
+  `/private/tmp/apack-backend-declarations-committed.log`. Unrelated staged issue and research docs
+  remain outside this checkpoint.
+
+Next required checkpoint: review and fix node-update validation/identity at the write boundary before
+expanding discovery readers. A trigger's declared validator must not be silently skipped when its
+provider is unavailable, and replacement during validation must prevent writes. Preserve ordinary
+metadata/relation edits that require no callback; audit node-type changes explicitly.
+
+Remaining contribution/content/asset discovery, compiler identity/input closure/frozen publication,
+manual-build/drive freshness, native/editor lifecycle, entity navigation, frontend boundaries and all
+three Phase 6 workstreams remain required. Complete the reconciled original-requirement/phase audit
+and final strict `--all` on committed source before completion. Nothing is archived by this checkpoint.

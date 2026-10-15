@@ -2864,6 +2864,14 @@ Checkpoint 3C reader audit: graph edge classification and relation-field selecti
 editing policy, so they read catalog data even when a provider is unavailable. Brain trigger queries,
 flow persistence/completion and callback dispatch describe or execute a running flow; retain their
 accepted active facets rather than substituting current catalog revisions into an execution lifetime.
-Node updates still require the final write-boundary review: creation is guarded, while updates currently
-read active validation separately. Account for that behavior in the goal's final bug/completeness audit;
-do not mistake discovery data for permission to execute or silently skip required validation.
+Node updates are the next required write-boundary checkpoint before expanding discovery readers: creation
+is guarded, while updates currently read active validation separately. Require an eligible, unchanged
+binding when a declared validator must run; preserve data-only edits without callbacks and audit node-type
+changes. Do not mistake discovery data for permission to execute or silently skip required validation.
+
+
+Checkpoint 3C lands in `8ec5285ed`; the owning goal records focused, mutation, full strict and
+committed-source evidence. Backend callback membership and data now use the declaration projection;
+flow track helpers read metadata directly. Authored/native admission, scaffolds and offline inspection
+are migrated. All seven EARS/content baselines are unchanged. Node-update write eligibility is next;
+remaining kinds, compiler/freshness contracts and later goal phases remain required.
