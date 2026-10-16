@@ -64,10 +64,10 @@ so completed implementation is not repeatedly scheduled as new work.
 | Manifest consolidation M1–M6 | Implemented and checkpoint-validated through `0994ae787`; own-key preservation `29f0cc556` | Preserve all 17 reconciled decisions, both naming outcomes and generated EARS/content behavior in final acceptance; do not restart consolidation. |
 | Settings/help/info/reference/step/command discovery (Phase 3) | Implemented reader migrations: `2169d29f8`, `6c876c9ba`, `20ab75efe`, `c776d1c5d`, `76df2f0e5`, `71fad4013`, `8ec5285ed`, `f7d63434c`, command catalog `ff48438cd` | Final all-kind acceptance, including source-free inspection, inactive owners and checked runtime eligibility. |
 | Live editor composition (Phase 3) | Implemented: `8863043a6` | Complete cold-document/provider readiness and real typing/replacement acceptance; fix demonstrated omissions without restarting composition. |
-| Remaining discovery consumers (Phase 3) | Partial; viewer readers `a278d4116` and shell default/dispatch `69860e4be` implemented | Navigation inventories/order/visibility implemented in `cfcbb53f9`; complete final window/loader acceptance; DSL producer/readers are implemented in `8ed188046` / `39e48e66e` and await final worker acceptance. Complete compiled-content flow/action edges and rename/missing-reference diagnostics. Audit services, repositories, events, native fields and static assets; migrate each actual gap and remove superseded discovery stores. |
+| Remaining discovery consumers (Phase 3) | Partial; viewer readers `a278d4116` and shell default/dispatch `69860e4be` implemented | Navigation inventories/order/visibility implemented in `cfcbb53f9`; complete final window/loader acceptance; DSL producer/readers are implemented in `8ed188046` / `39e48e66e` and await final worker acceptance. Flow reference/rename/missing-target inspection is implemented in `7196d61d3`; complete its final external acceptance. Audit services, repositories, events, native fields and static assets; migrate each actual gap and remove superseded discovery stores. |
 | Build input/publication and freshness (Phase 3) | Partial; finite checkpoints B1–B6 below | Finish the common producer contract and four passive consumer migrations; installed discovery must remain source-free and activation-free. |
 | Entity navigation (Phase 4) | Reference identity prerequisites implemented; destination migration unfinished | Implement declared destinations, eligibility/readiness, short-code round trips and caller migration under open-entity.md. |
-| Frontend boundaries (Phase 5) | Planned implementation | Isolate throwing canvas/panel/form contributions, preserve host settings and other panes, and reject retries for retired revisions. |
+| Frontend boundaries (Phase 5) | Implemented and locally accepted: `713a6c1fd`, including the real external-pack window | Preserve pane/form containment, attributed nonfatal diagnostics and retired-instance refusal through final committed-source strict acceptance. |
 | Consumed APIs (Phase 6) | Inventory/prototype requirements documented; implementation outstanding | Settle declarations and granularity, generate matching runtime/type facades, mediate administration and dependency APIs, and migrate real consumers. |
 | Dependency provenance (Phase 6) | Cache/admission `ff4358588`, inspection and verified-build checkpoints below implemented; overall closure partial | Verify exact origin/version/content through reuse and inspection, integrate remaining freshness dependencies, and close the linked acceptance matrix. Do not restart cache/provenance storage. Frozen resolution remains conditional on a distribution requirement. |
 | Shipped-pack replacement (Phase 6) | Substantially implemented: ownership/suppression `03745e1dc`, replace/restore `85a7e955b`, subsequent live-control/source-update checkpoints below | Reconcile and close remaining restart/reload, overrides and failure acceptance against landed implementation; implement only identified gaps. Do not restart replacement. |
@@ -97,152 +97,17 @@ publication repair as outstanding implementation without new evidence.
 
 ### Execution order and change control
 
-Current discovery checkpoint: catalog-driven Monaco consumers and lifetime cleanup in `39e48e66e`
-plus explicit-selection correction `eb7d0995b`,
-following producer/catalog `8ed188046`. SDK DSL readers select static owned declarations without
-consulting executable frontends. Monaco shares module/global libraries per instance, language and DSL,
-follows catalog text changes and disposes handles/subscriptions when their last consumer leaves.
-UnifiedMonacoEditor owns its active file's release function; direct consumers receive one from
-`setupMonacoForFile`. Explicit DSL selection works without a prefix; path inference uses the unique
-longest nonempty prefix among declared Monaco targets. Disabled packs retain static assistance;
-unbuilt or ambiguous owners cannot supply compiled completions.
+Last closed checkpoint: Phase 5 frontend boundaries, `713a6c1fd`. Focused Vue/lifetime checks and the
+real external-pack Electron case pass: failed panes/forms preserve other panes, host settings and
+defaults; retired frontend retry is refused. The staged source and built runtime matched that proof.
+Final whole-goal strict acceptance remains open.
 
-Removed the frontend DSL registration/type/lookup/store and capture/checking branches, generated raw
-import module, and Vite staged-definition resolver/option. The removed resolver's isolated test described
-a contract that no longer exists; producer completeness/publication and snapshot tests own that data
-boundary. The five-build publication case retains its coverage, with frontend assertions updated to
-require type text remain outside frontend code. Schema assistance and public/reference/package docs
-now describe the data contract and cleanup ownership. SDK reports remove runtime fields and add the
-four data readers; UI report adds explicit DSL selection and the setup release return type.
-
-Evidence: 128 focused SDK/host/UI/renderer cases pass; generation/library checks pass (5 cases), as do boundary,
-export and import-side-effect checks (14 cases). A real TypeScript
-language service proves catalog text changes completions, unavailable text removes them, and one of
-two consumers closing does not dispose the other's libraries. Final prefix review includes targetless
-and empty/ambiguous/longest-prefix cases. Public setup API review caught an untitled-file wiring gap:
-`eb7d0995b` makes explicit DSL selection take precedence in language inference, preserves a caller's
-explicit language, and verifies completions and release through that public function (3 library cases). Two full real builds pass (36.89s), preserving compiled text
-and revision through reuse and source-free disabled installed discovery without activation. The full
-shipped pack rebuild passes, removes the obsolete generated DSL file and retains three snapshot type
-bundles without embedding action definitions in its frontend. Fifteen real pack consumer cases pass.
-Host/SDK/UI/CLI, renderer app/test and default-setup types, schema, 28 SDK / 102 UI API reports,
-import rules, lint and tiers pass. The final inference fixes are covered by focused prefix/public-setup cases and the UI package is
-refreshed; they do not change the checked public signatures.
-`/private/tmp/apack-dsl-readers-{focused,generation,boundaries,prefix-review,explicit-selection,full-build,default-build,pack-tests,host-types,sdk-types,ui-types,cli-types,renderer-types,renderer-test-types,pack-types,schema-check,sdk-api-check,ui-api-check,specifiers,lint,final-lint,tiers}.log`.
-
-Flow-reference inspection is implemented in `7196d61d3`: step declarations name reference fields;
-build-only definitions project literal/computed targets and nested branches into the verified content
-index. Offline CLI inspection reports indexed/not-indexed/dynamic targets, and SDK helpers find known
-incoming references for rename/removal review. Compiled records and hashes are unchanged.
-
-Navigation metadata is implemented in `cfcbb53f9`, and complete CLI declaration inspection in
-`a13c4c6e4`. Native API ownership/admission is implemented in `506582b94`. Next finish system/event and other
-native/static-asset coverage and loader ownership. The required static
-flow-to-action edges are published; arbitrary JavaScript body analysis is not required by this plan.
-Pack-defined service calls must not become hardcoded SDK dependency rules. Unsupported analyzers
-remain explicitly unavailable, and compiled inventory is not user data. Navigation menu ordering/visibility, remaining
-native/service/repository/event/static-asset coverage and all-kind discovery acceptance still remain.
-The DSL implementation needs final real Monaco worker/cold-document/window acceptance; the focused
-language-service proof does not replace it. Keep the existing five-build 60-second timeout evidence at
-B6; no broad diagnostic rerun or deadline relaxation was made here. B1–B6, entity navigation, frontend
-boundaries, all three Phase 6 streams and final committed-source strict `--all` stay required.
-
-Earlier producer checkpoint: compiled DSL publication/catalog in `8ed188046`.
-The builder copies every declared Monaco target's staged definition text into `snapshot.dslDefinitions`,
-including targets without globals and cached definition phases. Snapshot/dependency readers and native
-composition require the exact declared target set through one validator. Host and window project the
-same immutable DSL metadata/text, with owner, enablement and available declaration/build identity.
-Unbuilt sources expose metadata without claiming compiled text. Snapshot format/version stamps and
-release metadata are unchanged. Public build docs and the two SDK API reports match this contract.
-
-Evidence: 96 focused snapshot/native/generator/window cases pass; 20 installed catalog cases include a
-sealed disabled pack with poisoned runtimes and absent authored modules. Frontend admission/binding
-checks also passed with explicit native compiled data. The two-real-build backend-only proof passes
-(41.59s): a target without globals publishes text, a source-free disabled installed copy exposes it
-without activation, and cache reuse preserves both text and build revision. Full default-setup build
-passes and its snapshot contains action, prompt and database definitions. SDK/host/CLI, renderer test
-and default-setup typechecks, schema assistance, all 28 SDK API reports, lint/import rules and tiers
-pass. Reviewed reports add only the new snapshot/native field and DSL catalog types/accessor.
-`/private/tmp/apack-dsl-catalog-{converged,installed,focused,snapshot-build,default-build,sdk-types,host-types,cli-types,renderer-types,pack-types,schema,api-check,lint,specifiers,tiers}.log`.
-
-Required acceptance still open: the existing five-build `staged-dsl.integration.spec.ts` reached its
-unchanged 60-second case limit during the fourth (reuse) build. Its initial publication, intentional
-runtime-failure retention and repaired publication completed, including the new snapshot assertions;
-full frontend reuse/removal did not finish. Preserve `/private/tmp/apack-dsl-catalog-build.log` and the
-case at B6. The focused backend-only proof does not replace this case or establish full acceptance.
-The original case's deadline, assertions and coverage were not relaxed. No broad diagnostic rerun
-was made.
-
-The producer checkpoint's consumer migration is implemented by `39e48e66e`; its broad acceptance
-limits and recorded staged-build failure remain as stated above.
-
-Earlier shell checkpoint: shell default selection and new-request dispatch in `69860e4be`.
-The host and window share plugin metadata projection, including build identity. The window receives
-local native host declarations before backend connection. Accepted frontend plugin bindings carry
-captured declaration/build/runtime identity; the obsolete first-registered-default table and SDK
-lookup are removed. Default claims are selected before imports: enabled native owners first, then
-installed owners, ordered by fully qualified ref in English lexical order. Saved/popout/explicit
-selection takes precedence. Defaults render only after their actors are admitted.
-
-Unknown destinations refuse as soon as declarations are ready; disabled/source/unavailable owners
-have specific refusals. Known providers may wait for real actors. Catalog changes reconcile frontends
-that arrived ahead of their frame without a duplicate pending inventory; stale load completions and
-new requests targeting an incumbent actor after binding replacement are refused. Request correlation
-and sender diagnostics remain intact, and shell stop releases the catalog subscription. Host Settings
-remains reachable during loading/disconnection through its native declaration and binding.
-
-Evidence: the affected combined host/renderer run passed 154 cases; the final shell/catalog/registry
-rerun passed 115 cases after the additional replacement-gap case and final startup selection changes.
-Two real pack harness/navigation cases pass. Host, SDK, testing, renderer app/test and default-setup
-typechecks, all 28 SDK API reports, lint/import rules and test tiers pass. The report removes only the
-obsolete default lookup. Test fixtures now supply declaration authority and accepted bindings instead
-of injecting an unadmitted loaded plugin. The first API report attempt correctly refused stale dependent
-packages after a shell edit; refreshing packages then generating/checking reports passed.
-`/private/tmp/apack-shell-catalog-{final-tests,converged,final-shell,navigation,pack-tests,types,sdk-types,testing-types,renderer-types,renderer-test-types,pack-types,api-check,lint,specifiers,tiers}.log`.
-
-The shell checkpoint leaves navigation menu inventory, ordering/visibility and loader coordination
-cleanup in Phase 3. Its remaining-work statement is historical; the current next action is above.
-
-Earlier viewer checkpoint: block/artifact readers and checked frontend bindings in `a278d4116`,
-following metadata publication in `3e4e10c8f`. Accepted bindings carry owner, declaration, build and
-runtime identity. Shared selection and eligibility checks reject ambiguous, disabled, source-only,
-disconnected or mismatched providers. Native bindings have no fabricated installed identity stamps.
-Artifact icons and block input-kind now come from declarations; viewer/input components come from
-matching accepted bindings. Scoped readers follow both publication streams and release subscriptions.
-Already-mounted views follow replacement and disablement. Backend transcript callbacks retain their
-execution lifetime. Public extension docs and the two affected SDK API reports describe the new readers.
-
-Evidence: 99 focused host/SDK cases pass across viewer readers, frontend admission/declaration binding,
-registered lookups and step readers. Forty-five affected real pack cases pass, including two new mounted
-artifact/block cases and existing step/reference consumers. SDK, host, testing, renderer application/test
-and default-setup typechecks pass; all 28 SDK API reports, lint, import rules and test tiers pass.
-The package typecheck also caught four pack test catalog fixtures omitted from the preceding publication
-checkpoint; this checkpoint supplies their required artifact/block accessors.
-`/private/tmp/apack-viewer-readers-{focused,new,ui,ui-final,host-types,sdk-types,pack-types,testing-types,renderer-types,renderer-test-types,api-check,lint,test-lint,specifiers,tiers}.log`.
-The first new test attempts exposed fixture errors (a non-exported test cleanup import and an unaddressed
-saved response), corrected before the passing runs. No product response routing was changed.
-
-The viewer checkpoint leaves active low-level runtime lookup lifetimes intact. Its remaining
-backend/native-field and superseded-reader audit belongs to Phase 3; it does not complete B1–B6 or
-later phases.
-
-Slash-command discovery is checkpointed in `ff48438cd`. The common catalog owns metadata and stable
-admission order; the execution picker requires enabled declarations matching accepted runtime identities,
-including build revisions. Native commands use the shared schema and checked binding. The runtime
-command store and its superseded store tests are removed; active-claim collision validation remains
-transactional. Chat owns a catalog subscription through its callback actor, while library-document
-notifications and user.command flow dispatch retain their existing paths.
-
-Evidence: all 628 host pack cases are accounted for (624 passed in the normal run; four OS-uptime EPERM
-failures passed with their two suites outside the sandbox, 17 cases total). The real default-pack command
-suite passes all 19 cases, including catalog-only refresh without SEND_STATE and stopping updates after
-actor stop. Native/authored/source metadata, poisoned source-free installed inspection, inactive/stale
-picker exclusion, returned-data ownership, stable replacement order and collisions are covered.
-Host/SDK/default-pack typechecks, schema, 28 SDK API reports, facade check, lint, import rules and test tiers
-pass. Generated report diffs contain only native command schema/type additions and the service's updated
-catalog-order documentation. Logs: `/private/tmp/apack-command-catalog-{all-packs,os-cases,pack,final-types,schema,api-check,facade-check,specifiers,tiers}.log`.
-This independent reader migration does not claim a new passing broad/strict gate or close B1–B6;
-preserved build/watch/frontend/teardown acceptance and final committed-source strict --all remain open.
+Next checkpoint: Phase 4 entity destinations under `open-entity.md`. Materialize the contract's `opens`
+claims during codegen; use the catalog to resolve one eligible destination, retain actual actor readiness,
+and migrate the named callers to `openEntity(id)`. Preserve canonical stored IDs and typed EARS.
+Acceptance is the plan's claim-conflict/disabled/missing/retired routing cases, typed destination guard,
+converted feature handlers/callers and one stored-reference Electron case. Implement in coherent source
+checkpoints; do not reopen completed reference wire identity or require unrelated compiler work first.
 
 1. The scoped launch/authored-input slice is checkpointed through `bbf05ec00`; exact claims and
    focused evidence are below. It does not complete B1 or B1–B6. Continue independent discovery slices
@@ -6652,3 +6517,174 @@ The mutation driver's extra wording assertion was too specific; the preserved Vi
 failure at the expected missing-service assertion and the source restoration was verified.
 All-kind, real-window and final committed-source strict acceptance remain open. Continue the live
 ledger's system/event/native/static-asset and loader work, then the unchanged later phases.
+
+
+### Historical discovery checkpoint evidence
+
+Current discovery checkpoint: catalog-driven Monaco consumers and lifetime cleanup in `39e48e66e`
+plus explicit-selection correction `eb7d0995b`,
+following producer/catalog `8ed188046`. SDK DSL readers select static owned declarations without
+consulting executable frontends. Monaco shares module/global libraries per instance, language and DSL,
+follows catalog text changes and disposes handles/subscriptions when their last consumer leaves.
+UnifiedMonacoEditor owns its active file's release function; direct consumers receive one from
+`setupMonacoForFile`. Explicit DSL selection works without a prefix; path inference uses the unique
+longest nonempty prefix among declared Monaco targets. Disabled packs retain static assistance;
+unbuilt or ambiguous owners cannot supply compiled completions.
+
+Removed the frontend DSL registration/type/lookup/store and capture/checking branches, generated raw
+import module, and Vite staged-definition resolver/option. The removed resolver's isolated test described
+a contract that no longer exists; producer completeness/publication and snapshot tests own that data
+boundary. The five-build publication case retains its coverage, with frontend assertions updated to
+require type text remain outside frontend code. Schema assistance and public/reference/package docs
+now describe the data contract and cleanup ownership. SDK reports remove runtime fields and add the
+four data readers; UI report adds explicit DSL selection and the setup release return type.
+
+Evidence: 128 focused SDK/host/UI/renderer cases pass; generation/library checks pass (5 cases), as do boundary,
+export and import-side-effect checks (14 cases). A real TypeScript
+language service proves catalog text changes completions, unavailable text removes them, and one of
+two consumers closing does not dispose the other's libraries. Final prefix review includes targetless
+and empty/ambiguous/longest-prefix cases. Public setup API review caught an untitled-file wiring gap:
+`eb7d0995b` makes explicit DSL selection take precedence in language inference, preserves a caller's
+explicit language, and verifies completions and release through that public function (3 library cases). Two full real builds pass (36.89s), preserving compiled text
+and revision through reuse and source-free disabled installed discovery without activation. The full
+shipped pack rebuild passes, removes the obsolete generated DSL file and retains three snapshot type
+bundles without embedding action definitions in its frontend. Fifteen real pack consumer cases pass.
+Host/SDK/UI/CLI, renderer app/test and default-setup types, schema, 28 SDK / 102 UI API reports,
+import rules, lint and tiers pass. The final inference fixes are covered by focused prefix/public-setup cases and the UI package is
+refreshed; they do not change the checked public signatures.
+`/private/tmp/apack-dsl-readers-{focused,generation,boundaries,prefix-review,explicit-selection,full-build,default-build,pack-tests,host-types,sdk-types,ui-types,cli-types,renderer-types,renderer-test-types,pack-types,schema-check,sdk-api-check,ui-api-check,specifiers,lint,final-lint,tiers}.log`.
+
+Flow-reference inspection is implemented in `7196d61d3`: step declarations name reference fields;
+build-only definitions project literal/computed targets and nested branches into the verified content
+index. Offline CLI inspection reports indexed/not-indexed/dynamic targets, and SDK helpers find known
+incoming references for rename/removal review. Compiled records and hashes are unchanged.
+
+Navigation metadata is implemented in `cfcbb53f9`, and complete CLI declaration inspection in
+`a13c4c6e4`. Native API ownership/admission is implemented in `506582b94`. Next finish system/event and other
+native/static-asset coverage and loader ownership. The required static
+flow-to-action edges are published; arbitrary JavaScript body analysis is not required by this plan.
+Pack-defined service calls must not become hardcoded SDK dependency rules. Unsupported analyzers
+remain explicitly unavailable, and compiled inventory is not user data. Navigation menu ordering/visibility, remaining
+native/service/repository/event/static-asset coverage and all-kind discovery acceptance still remain.
+The DSL implementation needs final real Monaco worker/cold-document/window acceptance; the focused
+language-service proof does not replace it. Keep the existing five-build 60-second timeout evidence at
+B6; no broad diagnostic rerun or deadline relaxation was made here. B1–B6, entity navigation, frontend
+boundaries, all three Phase 6 streams and final committed-source strict `--all` stay required.
+
+Earlier producer checkpoint: compiled DSL publication/catalog in `8ed188046`.
+The builder copies every declared Monaco target's staged definition text into `snapshot.dslDefinitions`,
+including targets without globals and cached definition phases. Snapshot/dependency readers and native
+composition require the exact declared target set through one validator. Host and window project the
+same immutable DSL metadata/text, with owner, enablement and available declaration/build identity.
+Unbuilt sources expose metadata without claiming compiled text. Snapshot format/version stamps and
+release metadata are unchanged. Public build docs and the two SDK API reports match this contract.
+
+Evidence: 96 focused snapshot/native/generator/window cases pass; 20 installed catalog cases include a
+sealed disabled pack with poisoned runtimes and absent authored modules. Frontend admission/binding
+checks also passed with explicit native compiled data. The two-real-build backend-only proof passes
+(41.59s): a target without globals publishes text, a source-free disabled installed copy exposes it
+without activation, and cache reuse preserves both text and build revision. Full default-setup build
+passes and its snapshot contains action, prompt and database definitions. SDK/host/CLI, renderer test
+and default-setup typechecks, schema assistance, all 28 SDK API reports, lint/import rules and tiers
+pass. Reviewed reports add only the new snapshot/native field and DSL catalog types/accessor.
+`/private/tmp/apack-dsl-catalog-{converged,installed,focused,snapshot-build,default-build,sdk-types,host-types,cli-types,renderer-types,pack-types,schema,api-check,lint,specifiers,tiers}.log`.
+
+Required acceptance still open: the existing five-build `staged-dsl.integration.spec.ts` reached its
+unchanged 60-second case limit during the fourth (reuse) build. Its initial publication, intentional
+runtime-failure retention and repaired publication completed, including the new snapshot assertions;
+full frontend reuse/removal did not finish. Preserve `/private/tmp/apack-dsl-catalog-build.log` and the
+case at B6. The focused backend-only proof does not replace this case or establish full acceptance.
+The original case's deadline, assertions and coverage were not relaxed. No broad diagnostic rerun
+was made.
+
+The producer checkpoint's consumer migration is implemented by `39e48e66e`; its broad acceptance
+limits and recorded staged-build failure remain as stated above.
+
+Earlier shell checkpoint: shell default selection and new-request dispatch in `69860e4be`.
+The host and window share plugin metadata projection, including build identity. The window receives
+local native host declarations before backend connection. Accepted frontend plugin bindings carry
+captured declaration/build/runtime identity; the obsolete first-registered-default table and SDK
+lookup are removed. Default claims are selected before imports: enabled native owners first, then
+installed owners, ordered by fully qualified ref in English lexical order. Saved/popout/explicit
+selection takes precedence. Defaults render only after their actors are admitted.
+
+Unknown destinations refuse as soon as declarations are ready; disabled/source/unavailable owners
+have specific refusals. Known providers may wait for real actors. Catalog changes reconcile frontends
+that arrived ahead of their frame without a duplicate pending inventory; stale load completions and
+new requests targeting an incumbent actor after binding replacement are refused. Request correlation
+and sender diagnostics remain intact, and shell stop releases the catalog subscription. Host Settings
+remains reachable during loading/disconnection through its native declaration and binding.
+
+Evidence: the affected combined host/renderer run passed 154 cases; the final shell/catalog/registry
+rerun passed 115 cases after the additional replacement-gap case and final startup selection changes.
+Two real pack harness/navigation cases pass. Host, SDK, testing, renderer app/test and default-setup
+typechecks, all 28 SDK API reports, lint/import rules and test tiers pass. The report removes only the
+obsolete default lookup. Test fixtures now supply declaration authority and accepted bindings instead
+of injecting an unadmitted loaded plugin. The first API report attempt correctly refused stale dependent
+packages after a shell edit; refreshing packages then generating/checking reports passed.
+`/private/tmp/apack-shell-catalog-{final-tests,converged,final-shell,navigation,pack-tests,types,sdk-types,testing-types,renderer-types,renderer-test-types,pack-types,api-check,lint,specifiers,tiers}.log`.
+
+The shell checkpoint leaves navigation menu inventory, ordering/visibility and loader coordination
+cleanup in Phase 3. Its remaining-work statement is historical; the current next action is above.
+
+Earlier viewer checkpoint: block/artifact readers and checked frontend bindings in `a278d4116`,
+following metadata publication in `3e4e10c8f`. Accepted bindings carry owner, declaration, build and
+runtime identity. Shared selection and eligibility checks reject ambiguous, disabled, source-only,
+disconnected or mismatched providers. Native bindings have no fabricated installed identity stamps.
+Artifact icons and block input-kind now come from declarations; viewer/input components come from
+matching accepted bindings. Scoped readers follow both publication streams and release subscriptions.
+Already-mounted views follow replacement and disablement. Backend transcript callbacks retain their
+execution lifetime. Public extension docs and the two affected SDK API reports describe the new readers.
+
+Evidence: 99 focused host/SDK cases pass across viewer readers, frontend admission/declaration binding,
+registered lookups and step readers. Forty-five affected real pack cases pass, including two new mounted
+artifact/block cases and existing step/reference consumers. SDK, host, testing, renderer application/test
+and default-setup typechecks pass; all 28 SDK API reports, lint, import rules and test tiers pass.
+The package typecheck also caught four pack test catalog fixtures omitted from the preceding publication
+checkpoint; this checkpoint supplies their required artifact/block accessors.
+`/private/tmp/apack-viewer-readers-{focused,new,ui,ui-final,host-types,sdk-types,pack-types,testing-types,renderer-types,renderer-test-types,api-check,lint,test-lint,specifiers,tiers}.log`.
+The first new test attempts exposed fixture errors (a non-exported test cleanup import and an unaddressed
+saved response), corrected before the passing runs. No product response routing was changed.
+
+The viewer checkpoint leaves active low-level runtime lookup lifetimes intact. Its remaining
+backend/native-field and superseded-reader audit belongs to Phase 3; it does not complete B1–B6 or
+later phases.
+
+Slash-command discovery is checkpointed in `ff48438cd`. The common catalog owns metadata and stable
+admission order; the execution picker requires enabled declarations matching accepted runtime identities,
+including build revisions. Native commands use the shared schema and checked binding. The runtime
+command store and its superseded store tests are removed; active-claim collision validation remains
+transactional. Chat owns a catalog subscription through its callback actor, while library-document
+notifications and user.command flow dispatch retain their existing paths.
+
+Evidence: all 628 host pack cases are accounted for (624 passed in the normal run; four OS-uptime EPERM
+failures passed with their two suites outside the sandbox, 17 cases total). The real default-pack command
+suite passes all 19 cases, including catalog-only refresh without SEND_STATE and stopping updates after
+actor stop. Native/authored/source metadata, poisoned source-free installed inspection, inactive/stale
+picker exclusion, returned-data ownership, stable replacement order and collisions are covered.
+Host/SDK/default-pack typechecks, schema, 28 SDK API reports, facade check, lint, import rules and test tiers
+pass. Generated report diffs contain only native command schema/type additions and the service's updated
+catalog-order documentation. Logs: `/private/tmp/apack-command-catalog-{all-packs,os-cases,pack,final-types,schema,api-check,facade-check,specifiers,tiers}.log`.
+This independent reader migration does not claim a new passing broad/strict gate or close B1–B6;
+preserved build/watch/frontend/teardown acceptance and final committed-source strict --all remain open.
+
+
+### Frontend failure boundaries (2026-10-16)
+
+Source `713a6c1fd` scopes contributed canvas/panel/chat/form Vue errors to their pane in both main and
+popout windows. Host settings state and controls remain outside custom forms. Accepted frontend
+instance identity changes on replacement, including reused components; failed candidates retain the
+incumbent identity. Retry checks current catalog/build/instance and view ownership directly, including
+retirement before notification. Native host failures retain the host handler. Attributed nonfatal error
+reports no longer become fatal merely because their log level is error. Removed the superseded custom
+form revision subscription. The fixture manifest was written with the canonical writer.
+
+Evidence: 32 focused Vue/host/error/lifetime checks pass (2.78s). Twenty-six settings/layout/resource
+regressions passed; the three form cases needed native owner metadata in their test catalog, then pass
+(2.53s). Host/main/renderer app/test and fixture types, lint/import/tier checks pass. The real app and
+fixture builds pass. One external-pack Electron case passes (6.2s), proving canvas and panel containment,
+canvas retry, form failure, usable host settings and unchanged feature defaults in Settings JSON.
+Disabling the retired-instance retry guard fails its targeted assertion; exact source restored.
+Logs: `/private/tmp/apack-pane-boundaries-{focused,settings-regressions,settings-forms,host-types,main-types,renderer,renderer-tests,fixture-types,lint,specifiers,tiers,runtime-build,fixture-build,electron,mutation}.log`.
+Phase 5 implementation/local acceptance is closed; whole-goal committed-source strict acceptance is
+still required. The live handoff above owns the next action.
