@@ -1,3 +1,4 @@
+import type { ClaudeMcpForm } from '#features/code/shared/mcp-elicitation-form.ts';
 /**
  * Helpers for reading/writing `thread.context.claudeCode` and toggling
  * the `claude-code` tag.
@@ -60,7 +61,9 @@ export interface PendingMcpElicitation {
   requestId: string;
   approvalMessageId: string;
   serverName: string;
-  mode: 'url';
+  mode: 'url' | 'form';
+  form?: ClaudeMcpForm;
+  message?: string;
 }
 
 export interface ClaudeCodeThreadState {

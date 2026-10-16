@@ -274,3 +274,14 @@ describe('shared permission and MCP interaction ownership', () => {
   f.push(result(1,id)); await vi.waitFor(() => expect(owner.busy).toBe(false)); await owner.close();
  });
 });
+
+
+it('validates accepted MCP content against the original pending schema before releasing ownership',async()=>{
+ const f=fixture();let turn:ClaudeConversationTurn;
+ const owner=createClaudeConversation(f.native,async()=>{});const id=owner.start('input',async value=>{turn=value;for await(const _line of value.handle.events){/* drain */}owner.release(value.handle)});
+ f.push(started(id));f.push({type:'control_request',request_id:'form',request:{subtype:'elicitation',mode:'form',requested_schema:{type:'object',properties:{choice:{type:'string',enum:['Alpha','Beta']}},required:['choice']}}});
+ await vi.waitFor(()=>expect(owner.hasPendingElicitation('form')).toBe(true));
+ expect(()=>turn!.handle.respondElicitation('form',{action:'accept',content:{choice:'Gamma'}})).toThrow('invalid MCP elicitation content');expect(f.native.respondElicitation).not.toHaveBeenCalled();expect(owner.hasPendingElicitation('form')).toBe(true);
+ turn!.handle.respondElicitation('form',{action:'accept',content:{choice:'Beta'}});expect(f.native.respondElicitation).toHaveBeenCalledWith('form',{action:'accept',content:{choice:'Beta'}});expect(owner.hasPendingElicitation('form')).toBe(false);
+ f.push(result(1,id));await vi.waitFor(()=>expect(owner.busy).toBe(false));await owner.close();
+});

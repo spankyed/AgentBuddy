@@ -403,9 +403,26 @@ export async function consumeStream(
         const requestId = (line as any).request_id ?? '';
 
         if (req.subtype === 'elicitation') {
+          const requestMessage = [typeof req.title === 'string' ? req.title : '',
+            `MCP server ${String(req.mcp_server_name)}${typeof req.display_name === 'string' ? ` (${req.display_name})` : ''} requests input: ${String(req.message ?? '')}`,
+            typeof req.description === 'string' ? req.description : '',
+          ].filter(Boolean).join('\n');
           if (req.mode !== 'url') {
-            handle.respondElicitation(requestId, { action: 'cancel' });
-            services.chat.sendBlockMessage({ threadId, text: `MCP server ${String(req.mcp_server_name ?? 'unknown')} requested a form. Form input is not supported yet; the request was cancelled.`, blocks: [], forkable: false });
+            let form;
+            try { form = services.cli.claudeCode.parseMcpElicitationForm(req.requested_schema, req.property_order); }
+            catch {
+              handle.respondElicitation(requestId, { action: 'cancel' });
+              services.chat.sendBlockMessage({ threadId, text: `MCP server ${String(req.mcp_server_name ?? 'unknown')} requested an unsupported form schema; the request was cancelled.`, blocks: [], forkable: false });
+              continue;
+            }
+            const message = requestMessage;
+            const prompt = services.chat.sendBlockMessage({ threadId, text: message,
+              blocks: [{ type: 'mcp-elicitation', props: { form } }], forkable: false, autoHide: true, asUser: true,
+            });
+            ownedElicitations.add(requestId);
+            persistClaudeState(services, threadId, { pendingElicitation: { requestId, approvalMessageId: prompt.messageId, serverName: String(req.mcp_server_name), mode: 'form', form, message } });
+            setRunning(services, threadId, false); splitOnNextMessageStart = true;
+            services.emitter.sendToSystem({ role: 'brain' }, { type: 'TRIGGER_BRAIN_EVENT', eventType: 'cc.stream.paused', payload: { threadId, toolName: 'MCP input' } });
             continue;
           }
           const url = mcpElicitationUrl(req.url);
@@ -415,7 +432,7 @@ export async function consumeStream(
             continue;
           }
           const prompt = services.chat.sendBlockMessage({ threadId,
-            text: `MCP server ${String(req.mcp_server_name)} requests input: ${String(req.message ?? '')}`,
+            text: requestMessage,
             blocks: [
               { type: 'prompt', props: { content: `Open ${url} to complete the request, then confirm. Nothing opens automatically.` } },
               { type: 'link', props: { links: [{ label: url, icon: 'external-link', event: { target: 'external', data: { url } } }] } },

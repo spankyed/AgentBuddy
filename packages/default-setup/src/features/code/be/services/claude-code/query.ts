@@ -1,3 +1,4 @@
+import type { ClaudeMcpElicitationAnswer } from '../../../shared/mcp-elicitation-form.ts'
 import { randomUUID } from 'node:crypto'
 import { createClaudeUiControls, type ClaudeUiControls } from './ui-controls.ts'
 import { createBackgroundTaskTracker } from './background-tasks.ts'
@@ -93,7 +94,7 @@ export interface QueryHandle {
    */
   respond(requestId: string, response: { behavior: 'allow' | 'deny'; message?: string; updatedInput?: unknown }): void
   /** Answer a native MCP elicitation, independently of tool permission. */
-  respondElicitation(requestId: string, response: { action: 'accept' | 'decline' | 'cancel'; content?: Record<string, unknown> }): void
+  respondElicitation(requestId: string, response: ClaudeMcpElicitationAnswer): void
   /** Cancel the current turn and await its native acknowledgement; optionally cancel queued inputs. */
   interrupt(options?: { cancelQueued?: boolean }): Promise<ClaudeInterruptReceipt>
   /** Rename the native session; an explicit ID protects against renaming a different session. */
@@ -274,7 +275,7 @@ export async function query(opts: QueryOptions): Promise<QueryHandle> {
 
     respondElicitation(requestId, response): void {
       const id = z.string().min(1).parse(requestId)
-      const valid = z.object({ action: z.enum(['accept', 'decline', 'cancel']), content: z.record(z.unknown()).optional() }).strict().parse(response)
+      const valid = z.object({ action: z.enum(['accept', 'decline', 'cancel']), content: z.record(z.union([z.string(), z.number().finite(), z.boolean(), z.array(z.string())])).optional() }).strict().parse(response)
       if (valid.action !== 'accept' && valid.content !== undefined) throw new ClaudeProtocolError('only accepted MCP elicitation can contain content')
       if (!stream.write({ type: 'control_response', response: { subtype: 'success', request_id: id, response: valid } })) throw new ClaudeProtocolError('could not send elicitation response: stdin is closed')
     },

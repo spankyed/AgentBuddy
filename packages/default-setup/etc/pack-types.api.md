@@ -7,6 +7,7 @@ import * as _apackdev_ears from '@apackdev/ears';
 import * as _apackdev_sdk from '@apackdev/sdk';
 import { ActionEntity, ActionParameter, EARS as EARS$1, FlowEntity, NodeBase, PromptEntity, SdkEntityShapes, TNodeEntity as TNodeEntity$1, TemplateInput } from '@apackdev/sdk';
 import { ArtifactItem } from '@apackdev/sdk/artifacts';
+import { ButtonGroupResponse } from '@apackdev/sdk/blocks';
 import * as _apackdev_sdk_build from '@apackdev/sdk/build';
 import { HostPluginEvents, HostSystemEvents, IncomingEventsOf, OutgoingEventsOf, PluginInboxOf, PublicPluginInboxOf, Qualified, Reply, TypedSendToPlugin, TypedSendToSystem, TypedSendToWindow } from '@apackdev/sdk/events';
 import { HotkeysMap, NavHistory, PluginInbox, PluginStateOf, TabGroup } from '@apackdev/sdk/fe';
@@ -369,8 +370,14 @@ type BlockMessageOptions = BlockMessageBase & AutoHideOptions;
  * the union, because every emit matches one of its arms.
  */
 type BlockResponse = 
+/** Button groups and native MCP forms emit explicit choices, not tool approval flags. */
+ButtonGroupResponse | ClaudeMcpElicitationResponse
+/** A rejected form attempt is retired before the same native request is re-presented. */
+ | {
+    validationFailed: true;
+}
 /** Approval buttons: InteractionContainer `handleApprove`/`handleDeny`. */
-{
+ | {
     approved: boolean;
     reason?: string;
 }
@@ -790,6 +797,7 @@ interface ClaudeConversation {
     start(input: string | UserInputMessage, consume: ClaudeTurnConsumer): string;
     release(handle: QueryHandle): boolean;
     ownsTurn(handle: QueryHandle): boolean;
+    hasPendingElicitation(requestId: string): boolean;
     subscribe(listener: (event: StreamLine) => void): () => void;
     close(): Promise<void>;
     kill(): void;
@@ -950,6 +958,48 @@ declare const ClaudeInterruptReceiptSchema: z.ZodObject<{
     still_queued: z.ZodArray<z.ZodString, "many">;
     cancelled: z.ZodOptional<z.ZodArray<z.ZodString, "many">>;
 }, z.ZodTypeAny, "passthrough">>;
+
+interface ClaudeMcpElicitationAnswer {
+    action: 'accept' | 'cancel' | 'decline';
+    content?: Record<string, ClaudeMcpFormValue>;
+}
+
+interface ClaudeMcpElicitationResponse {
+    buttonId: 'accept' | 'cancel' | 'decline';
+    content?: Record<string, ClaudeMcpFormValue>;
+}
+
+interface ClaudeMcpForm {
+    fields: ClaudeMcpFormField[];
+}
+
+interface ClaudeMcpFormField {
+    name: string;
+    type: 'array' | 'boolean' | 'integer' | 'number' | 'string';
+    title: string;
+    description?: string;
+    required: boolean;
+    options?: Array<{
+        value: string;
+        label: string;
+    }>;
+    minLength?: number;
+    maxLength?: number;
+    format?: 'date' | 'date-time' | 'email' | 'uri';
+    minimum?: number;
+    maximum?: number;
+    minItems?: number;
+    maxItems?: number;
+    default?: ClaudeMcpFormValue;
+}
+
+interface ClaudeMcpFormValidation {
+    valid: boolean;
+    errors: Record<string, string>;
+    content?: Record<string, ClaudeMcpFormValue>;
+}
+
+type ClaudeMcpFormValue = string | number | boolean | string[];
 
 type ClaudeMcpStatus = z.infer<typeof ClaudeMcpStatusSchema>;
 
@@ -2638,6 +2688,8 @@ interface CliServiceType {
         getMemoryDialog(opts?: {
             cwd?: string;
         }): Promise<ClaudeMemoryDialog>;
+        parseMcpElicitationForm(schema: unknown, propertyOrder?: string[]): ClaudeMcpForm;
+        validateMcpElicitationForm(form: ClaudeMcpForm, content: unknown): ClaudeMcpFormValidation;
         getPermissionRules(opts?: {
             cwd?: string;
         }): Promise<ClaudePermissionRules>;
@@ -6378,14 +6430,14 @@ declare const PermissionEditSchema: z.ZodDiscriminatedUnion<"op", [z.ZodObject<{
     behavior: z.ZodEnum<["allow", "deny", "ask"]>;
     destination: z.ZodEnum<["userSettings", "projectSettings", "localSettings"]>;
 }, "strict", z.ZodTypeAny, {
-    op: "add";
     rules: string[];
     behavior: "allow" | "ask" | "deny";
+    op: "add";
     destination: "localSettings" | "projectSettings" | "userSettings";
 }, {
-    op: "add";
     rules: string[];
     behavior: "allow" | "ask" | "deny";
+    op: "add";
     destination: "localSettings" | "projectSettings" | "userSettings";
 }>, z.ZodObject<{
     op: z.ZodLiteral<"remove">;
@@ -6393,15 +6445,15 @@ declare const PermissionEditSchema: z.ZodDiscriminatedUnion<"op", [z.ZodObject<{
     behavior: z.ZodEnum<["allow", "deny", "ask"]>;
     source: z.ZodEnum<["userSettings", "projectSettings", "localSettings"]>;
 }, "strict", z.ZodTypeAny, {
-    op: "remove";
+    source: "localSettings" | "projectSettings" | "userSettings";
     behavior: "allow" | "ask" | "deny";
     rule: string;
-    source: "localSettings" | "projectSettings" | "userSettings";
+    op: "remove";
 }, {
-    op: "remove";
+    source: "localSettings" | "projectSettings" | "userSettings";
     behavior: "allow" | "ask" | "deny";
     rule: string;
-    source: "localSettings" | "projectSettings" | "userSettings";
+    op: "remove";
 }>]>;
 
 /** Caller hook: decide a tool permission request. */
@@ -6593,10 +6645,7 @@ interface QueryHandle {
         updatedInput?: unknown;
     }): void;
     /** Answer a native MCP elicitation, independently of tool permission. */
-    respondElicitation(requestId: string, response: {
-        action: 'accept' | 'cancel' | 'decline';
-        content?: Record<string, unknown>;
-    }): void;
+    respondElicitation(requestId: string, response: ClaudeMcpElicitationAnswer): void;
     /** Cancel the current turn and await its native acknowledgement; optionally cancel queued inputs. */
     interrupt(options?: {
         cancelQueued?: boolean;

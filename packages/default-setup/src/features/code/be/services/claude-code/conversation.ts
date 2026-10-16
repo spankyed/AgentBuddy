@@ -1,3 +1,4 @@
+import { parseMcpElicitationForm, validateMcpElicitationForm } from '../../../shared/mcp-elicitation-form.ts'
 import { createClaudeNestedActivity, type ClaudeNestedActivity } from './nested-activity.ts'
 import { ClaudeProtocolError, ClaudeResultError } from './errors.ts'
 import { normaliseResult, type QueryHandle } from './query.ts'
@@ -23,6 +24,7 @@ export interface ClaudeConversation {
   start(input: string | UserInputMessage, consume: ClaudeTurnConsumer): string
   release(handle: QueryHandle): boolean
   ownsTurn(handle: QueryHandle): boolean
+  hasPendingElicitation(requestId: string): boolean
   subscribe(listener: (event: StreamLine) => void): () => void
   close(): Promise<void>
   kill(): void
@@ -109,6 +111,12 @@ export function createClaudeConversation(native: QueryHandle, consumeAutonomous:
     }
   }, respondElicitation(requestId, response) {
     if (settledInteractions.has(requestId) || interactionRequests.get(requestId)?.subtype !== 'elicitation') throw new ClaudeProtocolError('MCP elicitation is no longer pending')
+    const pending = interactionRequests.get(requestId)!.line
+    const parsed = ControlRequestLineSchema.parse(pending).request
+    if (parsed.mode !== 'url' && response.action === 'accept') {
+      const form = parseMcpElicitationForm(parsed.requested_schema, parsed.property_order as string[] | undefined)
+      if (!validateMcpElicitationForm(form, response.content).valid) throw new ClaudeProtocolError('invalid MCP elicitation content')
+    }
     native.respondElicitation(requestId, response)
     retireInteraction(requestId)
     try { showNextInteraction() } catch (error) {
@@ -237,6 +245,7 @@ export function createClaudeConversation(native: QueryHandle, consumeAutonomous:
   return {
     handle: processHandle,
     get busy() { return active !== undefined || pending !== undefined || interactionRequests.size > 0 },
+    hasPendingElicitation(requestId) { return !closing && !exited && interactionRequests.get(requestId)?.subtype === 'elicitation' },
     get closing() { return closing || exited },
     get sessionId() { return sessionId },
     get sessionCwd() { return sessionCwd },

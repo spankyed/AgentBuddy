@@ -1061,6 +1061,8 @@ describe('independent MCP elicitation responses', () => {
   expect(mock.writes.at(-1)).toEqual({ type: 'control_response', response: { subtype: 'success', request_id: 'mcp-choice', response: { action: 'accept', content: { choice: 'Alpha' } } } });
   const before = mock.writes.length;
   expect(() => handle.respondElicitation('mcp-choice', { action: 'cancel', content: {} })).toThrow('only accepted');
+  expect(() => handle.respondElicitation('mcp-choice', { action: 'accept', content: { invalid: Infinity } })).toThrow();
+  expect(() => handle.respondElicitation('mcp-choice', { action: 'accept', content: { nested: {} } } as never)).toThrow();
   expect(mock.writes).toHaveLength(before);
   vi.spyOn(mock.handle, 'write').mockReturnValue(false);
   expect(() => handle.respondElicitation('mcp-choice', { action: 'cancel' })).toThrow('stdin is closed');

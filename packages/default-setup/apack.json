@@ -2276,6 +2276,10 @@
         "kind": "input",
         "fe": "src/extensions/blocks/input/QuestionInput.vue"
       },
+      "mcp-elicitation": {
+        "kind": "input",
+        "fe": "src/extensions/blocks/input/McpElicitationInput.vue"
+      },
       "project-select": {
         "kind": "input",
         "fe": "src/extensions/blocks/input/ProjectSelectInput.vue"

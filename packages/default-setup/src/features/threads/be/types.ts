@@ -1,3 +1,5 @@
+import type { ClaudeMcpElicitationResponse } from '#features/code/shared/mcp-elicitation-form.ts';
+import type { ButtonGroupResponse } from '@apackdev/sdk/blocks';
 import type { ClaudeUiMountState } from '#features/code/be/services/claude-code/ui-presentation.ts';
 export type * from './export-types.ts';
 import { type BaseEntity, EARS } from '#generated/ears.ts';
@@ -115,6 +117,11 @@ export interface MessageReferences {
  * the union, because every emit matches one of its arms.
  */
 export type BlockResponse =
+  /** Button groups and native MCP forms emit explicit choices, not tool approval flags. */
+  | ButtonGroupResponse
+  | ClaudeMcpElicitationResponse
+  /** A rejected form attempt is retired before the same native request is re-presented. */
+  | { validationFailed: true }
   /** Approval buttons: InteractionContainer `handleApprove`/`handleDeny`. */
   | { approved: boolean; reason?: string }
   /** Cancel path: InteractionContainer `handleCancel`. */
