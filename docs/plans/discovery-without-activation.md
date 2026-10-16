@@ -74,7 +74,8 @@ Archive creation, prebuilt tests, default-pack fork preparation and drive are **
 consumers**, not additional discovery UIs. Their common input/publication contract and migration remain
 required under [content-based source freshness](#required-content-based-source-freshness-correction-2026-10-15).
 Shared authored inputs landed in `882d2a50b`; compiler capture/session reuse landed in `aba660aed`
-after strict checkpoint validation. Frozen pack/external inputs, whole-build input/output association and the
+after strict checkpoint validation. Captured TypeScript query views and retained read-set validation land
+in `e171b3acf`, with full checkpoint evidence below. Frozen pack/external inputs, whole-build input/output association and the
 passive freshness authority remain unfinished. Installed/offline discovery must continue to need
 neither authored source files nor compiler activation.
 
@@ -136,6 +137,103 @@ reaches the worker while `captureCompilationInputs` records only its export cond
 actual loader/preload code, its resolution and options in the owned compiler execution view; a new
 hash alone does not freeze that execution. Preserve the full pack/external-input, frontend lifetime,
 atomic receipt and passive freshness scope rather than substituting an ambient-options-only fix.
+
+### Resolution namespace identity checkpoint
+
+Current audit: `readCompilerModuleInputs` forwards missing-file, directory and directory-entry probes
+to subscriptions, but only loaded text enters its hash. A missing external resolution directory becoming
+an empty directory, or a dangling external link changing targets, therefore leaves the old identity
+unchanged. Both cases reproduce with private filesystem fixtures before this change.
+
+Record these observations in the same reader, normalizing physical paths through existing compiler
+origin mappings, and include them in its fingerprint. Preserve authored/generated exclusions, relocation
+and timestamp independence. Refuse differing observations of one namespace within the scan. This is a
+namespace-identity prerequisite, not frozen execution: supported pack/external bytes, ambient loaders,
+long-lived frontend execution, atomic receipt publication and all passive consumers remain required.
+Do not switch the mtime readers on this narrower evidence.
+
+Acceptance: missing-directory and dangling-link changes invalidate identity and exact restoration
+restores it; a link changing during discovery refuses; generated-output creation does not invalidate;
+existing private-capture, relocation, type/Vue and external-package coverage stays green. A real content compiler creating a missing external resolution directory must refuse publication,
+retain the incumbent output and clean staging. Exercise a successful public pack build through the
+required strict checkpoint gate before committing.
+
+Focused acceptance passes: 32 module/compiler/builder cases, three compilation/publication cases,
+CLI typechecking and lint. Removing namespace hashing fails the three new identity cases; the real
+publication case also fails because the mutated build incorrectly succeeds. Exact source is restored.
+The final publication fixture resolves its SDK dependencies and reports no unrelated build errors.
+Logs: `/private/tmp/apack-module-namespace-{before,restored,publication,mutation,publication-mutation,typecheck,lint}.log`.
+The first strict gate fails one existing watcher assertion: run `2026-10-16T04-30-36Z-35063`,
+849.3s, 749/750 integration cases pass. The external-types watcher does not observe publication or
+reported failure within its unchanged 20-second bound. The same case passes alone; the cause is not
+proved. Evidence: `/private/tmp/apack-module-namespace-{strict,watch-focus}.log`. No external-pack app
+check ran, so that coverage remains outstanding.
+
+The original recorder redundantly sampled filesystem operations after TypeScript had already returned
+their outcomes. A private-fixture probe measures 4,940 stat / 8,172 realpath calls versus the committed
+reader's 2,290 / 187. Record actual query results and reuse only logical parent normalization; physical
+targets remain freshly observed. The same probe now measures 2,292 / 5,088 calls. These single-probe
+measurements establish avoidable work, not the watcher timeout's cause. A new ancestor-retarget case
+checks that logical normalization cannot hide a changing physical target. Thirty focused namespace/watch
+cases pass. Exercise the watcher with its relevant peer suites before the required converged gate;
+no broader rerun as diagnosis and no deadline or assertion changes.
+
+The equivalent committed-reader peer baseline passes all 15 cases (external-types: 54.423s). The
+candidate's next focused peer run still reaches the 60-second total limit (14/15 pass), despite avoiding
+failed realpath calls for absent leaves while resolving their parents freshly. Evidence:
+`/private/tmp/apack-module-namespace-{base-peers,query-peers,cost-query-final}.log`. Do not claim a proven
+timeout cause from these comparisons. Stop rerunning validation or making small probe optimizations.
+Keep the acceptance above and integrate namespace recording with the coherent captured input-read
+view already required by this plan. Actual compiler queries should consume captured data/bytes rather
+than adding repeated live reads. The candidate is not accepted or committed; full input/publication
+ownership and all discovery/goal phases remain required.
+
+#### Captured TypeScript read view
+
+The private probe observes 2,650 queries but 638 distinct path/query pairs. The next implementation
+owns one filesystem view per TypeScript input scan. Configuration parsing, Vue script extraction and
+the compiler host consume its captured metadata, file bytes, directory results and physical bindings.
+Repeated queries return those owned values; they do not resample live files to construct a fingerprint.
+Use one projection for its fingerprint and check the captured inputs once after the program finishes.
+Changed/missing inputs, link targets and directory membership refuse; exact restoration remains valid.
+Retain byte identity and TypeScript's supported BOM decoding, physical/source-origin normalization,
+generated-output exclusions and duplicate-origin refusal. Returned arrays must not mutate the view.
+
+The view is a TypeScript-query boundary. Authored root membership continues through the shared walker
+and must be checked before accepting that scan. This does not freeze Node imports, esbuild/Vite reads,
+content compilers, dependencies or long-lived frontend execution; all remain in the full input-frame
+work. It is not the successful whole-build receipt or permission to switch mtime-based consumers.
+Return the captured scan's validator with its identity. `captureCompilationInputs` must validate that
+owned read-set and root membership rather than instantiate a fresh TypeScript program at every
+assertion. Keep full npm graph, compiler implementation and execution-option checks; newly winning
+resolution candidates are refused through their captured negative/namespace inputs. This is per-build
+ownership, not a timestamp/global cache. Poison rediscovery after capture and prove unchanged checks
+still pass while changed authored bytes and new roots refuse.
+Acceptance adds actual captured-byte/negative-query reuse and changed-input refusal, keeping all saved
+namespace and real-publication regressions. Re-run the targeted peer workload only after the changed
+ownership is implemented and focused checks pass; broader validation still needs a converged candidate.
+
+The implementation retains the scan's data validator in `captureCompilationInputs`; a poisoned
+rediscovery path proves unchanged assertions avoid reconstructing the program while changed authored
+bytes and new roots refuse. Fifty-eight focused cases and four real compilation/publication cases
+pass; CLI typechecking and lint pass. The `outDir` relocation regression is fixed by canonicalizing
+inferred absolute glob exclusions. Captured mappings/arguments/results cannot mutate the fingerprint.
+Five guard mutations are caught and restored; the goal records their logs. The four-file watcher
+workload passes all 15 cases in 65.66s, at four-worker width with unchanged limits; external-types takes
+56.935s. `/private/tmp/apack-compiler-file-view-watch-peers.log`. The older recorder is preserved in
+stash `5443490ae`.
+
+Implemented in `e171b3acf`. The converged gate passes: run `2026-10-16T05-29-27Z-83403`,
+`npm run chain -- --strict --cores 4 --no-classify`, exit 0, 823.5s, 29 executed and one cached,
+including all 751 integration cases in 58 files and the external-pack app check. All seven EARS/content
+baselines match byte for byte. `/private/tmp/apack-compiler-file-view-strict.log`. Source stayed fixed;
+no validation process remains active. No further broad run is needed for recording this result.
+The existing output-change warning still belongs to complete publication/freshness ownership.
+
+Next reproduce the private phase-cache/output association risk recorded under atomic publication,
+then complete the full frozen execution frame and receipt. This checkpoint owns TypeScript discovery
+queries and validation of their read-set; it does not freeze all pack/dependency/compiler execution,
+complete the receipt, migrate freshness consumers or finish the remaining discovery and goal phases.
 
 ## Historical foundation audits and checkpoint evidence
 
@@ -3055,6 +3153,12 @@ Fold this correction into the required compiler/input-closure and publication wo
 2. Publish the successful build's input identity with its owned output, atomically after all validation.
    Decide the common data contract and layer placement from the existing producer/consumer graph;
    the host must not import CLI internals. Failed builds retain the incumbent input/output association.
+   Current `build.ts:finish` writes private phase stamps before `replaceDir`, while `readStamps` has no
+   association with the verified incumbent output. Before designing the final publication receipt,
+   reproduce a failed replacement followed by a retry: cache metadata from the unpublished candidate
+   must never authorize reuse of incumbent files. This is an inspected ordering risk, not yet a reproduced
+   failure. Fix its ownership as part of atomic publication; do not promote the phase cache into the
+   missing whole-build freshness authority.
 3. Replace `staleBuildOutput`'s mtime gate and the pack side of drive-preflight's mtime guidance with
    that common current-input/output authority. Audit archive, prebuilt testing, default-fork preparation,
    direct/manual builds, watch and drive. Define which supplied compilation context each source consumer

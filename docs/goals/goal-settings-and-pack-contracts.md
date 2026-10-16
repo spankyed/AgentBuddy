@@ -186,6 +186,86 @@ ownership. This finding is not a completed design or permission to drop other in
 The source-freshness acceptance and every later goal phase remain required. These cancellation
 checkpoints are neither the whole input contract nor the final committed-source strict `--all` gate.
 
+The next input-closure candidate records TypeScript resolution namespaces in the existing module-input
+reader: missing targets, physical origins and directory membership. The missing-directory and dangling
+link cases both failed before the change. Focused module/compiler/builder checks pass; removing namespace
+hashing fails all three new namespace-identity cases, and source is restored exactly. A real build whose
+content compiler creates a missing external directory refuses publication and retains incumbent output.
+CLI typechecking and lint pass. This is a prerequisite, not a frozen-input receipt or reader migration.
+Strict run `2026-10-16T04-30-36Z-35063` is terminal (exit 1, 849.3s). All but one integration case
+pass (749/750); `watch-external-types.integration.spec.ts:50` observes neither publication nor a reported
+error within its existing 20-second bound. No external-pack app check ran. Preserve
+`/private/tmp/apack-module-namespace-strict.log` and its run evidence. The failing watcher case passes
+alone with the same bound; that does not establish the broad failure's cause.
+
+A targeted filesystem probe finds duplicate namespace sampling: 4,940 stat / 8,172 realpath calls versus
+2,290 / 187 for the committed reader on the same private fixture. Record actual TypeScript query results,
+normalize logical lookup parents once and keep physical targets fresh. The candidate now uses 2,292 /
+5,088 calls in that probe; this is not a claim that the timeout's cause is proved. Focused namespace/watch
+checks pass; run the failing watcher with its relevant peer suites before the required converged gate.
+The focused peer run (`71594`) is terminal: 14/15 cases pass, but the external-types watcher reaches
+its unchanged 60-second total test limit. Its final repair publication appears in the log. Do not infer
+that duplicated probes explain either timeout. Broad reruns are stopped pending this diagnosis.
+
+The same-width, same-four-file committed-reader baseline (`74190`) passes all 15 cases in 67.43s;
+the external-types case takes 54.423s. Exact candidate source restoration was verified. Baseline log:
+`/private/tmp/apack-module-namespace-base-peers.log`. This supports investigating candidate overhead;
+a single comparison is not proof of causation.
+
+The candidate now also avoids an expected failed-realpath call for absent leaves: it checks whether
+the leaf exists, follows any link, and otherwise resolves the parent afresh. Positive targets and
+missing-path parents remain freshly resolved. Thirty namespace/watch cases pass. The same probe
+records 2,292 stat / 3,503 realpath calls (398ms; a single sample). The CLI is refreshed for this source.
+
+The changed candidate's peer check (`31438`) is terminal (exit 1): 14/15 cases pass, and the same
+watcher hits its unchanged 60-second total limit. Log:
+`/private/tmp/apack-module-namespace-query-peers.log`. No validation process remains active. The
+completed baseline script's restore trap is no longer active; do not restore its older backup over
+the current candidate. The private CLI currently matches the improved candidate.
+
+The naive namespace candidate is preserved as stash `5443490ae6edcabbd6759e9f6330c5325a5eac76`;
+it was stored without clearing the working tree. Do not pop it over the newer implementation.
+
+The replacement owns one TypeScript file view per scan. Configuration, Vue extraction and the compiler
+host consume captured metadata/bytes/physical bindings and directory/glob results. Source membership
+uses the shared walker. The scan returns its read-set validator; `captureCompilationInputs` retains
+that validator instead of reconstructing a TypeScript program for every assertion. Package/tool and
+recorded-option checks remain. Origin mappings, glob arguments and returned arrays are owned values.
+
+Focused acceptance: 58 module/view/configuration/watch/compiler/builder cases pass, four real
+compilation/publication cases pass, CLI typechecking and lint pass. A relocation case with `outDir`
+first exposed absolute inferred glob exclusions in the fingerprint; normalizing those query parameters
+fixes it. Mutations removing byte reuse, namespace validation, retained-read-set validation or root
+membership validation each fail their corresponding cases; injecting program rediscovery fails the
+poisoned-rediscovery case. Source is restored after every mutation. Logs:
+`/private/tmp/apack-compiler-file-view-{restored,publication,typecheck,lint,mutation-bytes,mutation-namespace,mutation-validation,mutation-rediscovery,mutation-membership}.log`.
+An initial view probe observes 1,278 stat / 1,290 realpath calls versus the naive recorder's 4,940 / 8,172;
+this is scope evidence, not a proof of the broad timeout's cause or a final benchmark.
+
+The refreshed distributable CLI's focused four-file watcher workload passes all 15 cases in 65.66s,
+with the same four-worker width and unchanged limits. The external-types case takes 56.935s.
+`/private/tmp/apack-compiler-file-view-watch-peers.log`. Session `23982` is terminal. This closes the
+focused reproducer; it does not establish the earlier broad timeout's complete cause.
+
+The converged strict gate passes: `npm run chain -- --strict --cores 4 --no-classify`, run
+`2026-10-16T05-29-27Z-83403`, exit 0, 823.5s, 29 checks executed and one cached. All 751 integration
+cases in 58 files pass, as does the previously missing external-pack app check. All seven EARS/content
+baselines match byte for byte after validation. Source stayed fixed; `e171b3acf` commits that source.
+Log: `/private/tmp/apack-compiler-file-view-strict.log`. Session `9280` is terminal. No validation job
+remains active, and no further broad run is needed to record this evidence. The older recorder stash
+is preserved. The existing default-setup output-change warning remains unresolved under the broader
+publication/freshness work; this checkpoint does not establish its cause.
+
+Next: reproduce the inspected private phase-stamp ordering risk (failed `replaceDir` followed by a
+retry), then complete the coherent pack/external execution frame and atomic publication contract.
+Keep the cache-association bug, the output-change warning and the missing whole-build input receipt
+distinct. Private phase stamps must not become the source-freshness authority.
+
+This owns TypeScript discovery queries, not the complete frozen pack/external execution frame.
+Node imports, esbuild/Vite/content execution, ambient preloads, long-lived frontend lifetime, atomic
+input/output publication and passive freshness consumers remain required. Do not switch mtime readers,
+claim source freshness complete or waive any later phase on this narrower checkpoint.
+
 ## Design review before further implementation (2026-10-12)
 
 The user requested a design review after the assistant draft introduced an unjustified feature, actor,
