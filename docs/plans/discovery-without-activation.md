@@ -103,6 +103,62 @@ catalog/binding contracts. Complete the freshness workstream and all-kind accept
 closure. Pane/form containment is locally accepted in `713a6c1fd`; retain its final checks. All three
 Phase 6 workstreams remain required.
 
+### Remaining registration audit (2026-10-16)
+
+This inventory follows `PackRegistration`, `PackFeature`, `PackFERegistration` and `PackFEFeature`
+as implemented now, not the original survey. Existing declarations are retained; a runtime lookup is
+not a discovery defect when its caller needs an executing implementation.
+
+| Registration field | Static authority / binding boundary | Current finding |
+|---|---|---|
+| `id`, `declarationRevision` | Accepted snapshot/native owner; installed runtime revision checks in `declaration-binding.ts` | Implemented. Native composition has no installed revision. |
+| `name`, `dependencies` | Authored manifest; native declaration has dependencies | Native display name is not represented. Audit actual display readers before deciding whether to add native metadata or remove redundant binding data. |
+| `features` membership | Manifest/native keyed features; backend and frontend admission | Both admit against declarations; native backend nested checks remain incomplete below. |
+| `features.*.designation` | Feature declaration; runtime designation lookup is execution | Authored backend and shared frontend compare it. Native backend does not; its test fixture also drops it. Required repair: refuse changed/added/omitted claims atomically and preserve declaration data after unload. |
+| `features.*.system.machine` | Authored `system.entry`; executable machine remains activation | Native feature declarations omit system presence entirely. Required native metadata and binding checks must preserve the host's actual composition rather than invent a frontend pane. |
+| `features.*.system.receives`, `features.*.plugin.receives` | Generated contract event names; backend validation maps consume running bindings | Generated entries contain event names, but the snapshot has no compiled event inventory. Native declarations have neither. Required: materialize checked endpoint contracts and inspect them without importing modules. Keep native shell inboxes distinct from contributed UI plugins. |
+| `features.*.services`, top-level `services`, `repositories` | Manifest/native named targets; `apiBindingProblem` checks ownership and membership | Implemented names/owners; constructing objects and calling methods remain execution. Phase 6 owns consumed API enforcement. Verify source-free inspection and collision acceptance rather than replace their runtime stores. |
+| `settings`, `features.*.settings` | Inline schema/defaults; shared catalog projection and binding equality | Implemented. Retain disabled/failed-owner definitions and current policy semantics in final acceptance. |
+| `bindSettings` (both registrations) | Generated caller authority setup/disposal | Executable resource acquisition, not a discoverable contribution. Keep its rollback and retirement. |
+| `ears.entities`, `ears.relKinds` | Shared normalized `data`/feature entities and `data.relations` | Implemented typed/untyped wire projection; runtime registration checks authored/native equality. Runtime EARS registration remains execution. |
+| `lifecycle` | Explicit hook targets, checked callable bindings | Implemented authored/native metadata and membership checks. Running hooks is execution. |
+| `migrations` | Authored line/target/description/`up` declarations; checked backend bindings | Authored implemented. Native declaration omits migrations while native backend registration accepts them unchecked. Reconcile native support, then check it without running `up`. |
+| `steps` (both registrations) | Snapshot/native step declarations and catalog projections | Implemented metadata and checked facets. Keep handlers, compilers, live labels/layout and trigger resources executable; include native and external paths in final acceptance. |
+| `artifacts`, `blocks` (both registrations) | Snapshot/native declarations; frontend checked components; backend authored membership/kind/facet checks | Native backend does not run the authored artifact/block checks. Required parity for declared identities and backend facet membership, preserving runtime callbacks. |
+| `contentWriters`, `appliers` | Authored `content.writers` and `content.sources`; compiled content index | Authored bindings checked. Native registration accepts these without matching native declarations. Resolve this alongside native migration support, retaining real content execution and runtime teardown. |
+| `commands` | Native/authored keyed metadata and catalog order; runtime selection checks accepted identity | Implemented; preserve document-command precedence and global dispatch behavior. |
+| `features.*.plugin` (frontend) | Plugin declaration plus compiled destination claims; checked binding/catalog eligibility | Implemented. Backend inbox metadata is a separate transport concern; the host application actor has an inbox without a contributed sidebar pane. |
+| `features.*.references` | Declared type/category metadata and checked provider/icon bindings | Implemented; no navigation callbacks. Provider results remain executable. |
+| `features.*.settingsForm`, `settingsForms` | Declared custom-form targets and owner settings | Implemented checked components and scoped failure boundaries. |
+| `features.*.designation`, `features.*.default` (frontend) | Feature designation and plugin default annotation | Implemented shared native/authored comparison; do not restore runtime discovery tables. |
+| `tiptapPlugins` | Named group/member targets and catalog metadata | Implemented checked extension names, popup membership and predicate presence; running editor extensions remains execution. |
+| `appExtensions` | Named targets and checked components | Implemented metadata; shared slot selection retains existing composition policy. |
+
+Other authored/static surfaces remain part of the same audit: help's built documents, DSL's compiled
+definitions, compiled-content indexes/flow edges, public type facades, source formats, plugin component
+targets, frontend entry/CSS and lazy chunks. Snapshots carry declarations/compiled data; the installed
+asset receipt verifies shipped files. Do not treat module target strings alone as proof that a required
+asset is present, or an unavailable source-only projection as an empty compiled inventory. Existing
+`readPackBuild`, help/DSL validation and content-index readers are the owners to extend where a
+specific missing asset or reader is demonstrated.
+
+Execute the identified gaps in this order:
+
+1. Repair native designation comparison without expanding its contract. Prove refusal and rollback
+   before proceeding; migrate the native test fixture's declaration projection with it.
+2. Settle one compiled endpoint-contract projection for authored and native contributions. Reuse the
+   generator's existing contract reader; compare bound event memberships at admission. Static inventory
+   does not authorize a sender or activate an actor. Preserve the native shell inbox/UI distinction.
+3. Close native backend contribution parity for migrations, content writers/appliers and artifact/block
+   facets. Reuse shared binding checks instead of growing a second native validator. Any unsupported
+   native slot must be explicitly absent from the supported contract and refused, not silently ignored.
+4. Finish native name/static-asset and remaining consumer checks, then all-kind source-free/external
+   acceptance. Record which asset classes and entry kinds the checks actually exercise. Keep B1–B6 and
+   Phase 6 enforcement in their existing execution slots; this inventory does not reopen them.
+
+No completion is claimed from this table. It identifies inspected implementation, concrete omissions
+and the bounded checks needed to close them. Historical checkpoint evidence is not a second backlog.
+
 ## Architecture
 
 ```text
