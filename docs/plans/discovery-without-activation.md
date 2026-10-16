@@ -113,11 +113,29 @@ This completes the cancellation slice. Coherent frozen inputs, ambient runtime o
 frontend compilation, whole-build receipt publication and passive freshness consumers remain required
 before a freshness-reader migration. Source commits and focused passes do not complete those contracts.
 
-The caller audit still identifies release verification: `commands/release.ts:verify` calls
-`runPackBuild` without a lifetime signal. Build-command/dev coverage does not prove that caller's
-interruption behavior. Reconcile cancellation with the release workflow's cleanup/rollback before
-changing it; a signal wrapper only around verification could exit before its caller cleans up.
-Keep this in the required build-session audit, using disposable local fixtures and no real publication.
+The caller audit also identified release verification. Implemented in `bc6464a9c`: its current
+contract intentionally retains bumped version files when verification fails and reports recovery,
+with no automatic rollback. Signal ownership covers only the compiler build and runs that recovery
+report before restoring signal exit. Synchronous typecheck/test runners and subsequent release phases
+retain their existing signal behavior. No real publication or repository version metadata changed.
+
+All 30 local release cases, CLI typechecking and lint pass. Two recovery-before-exit cases fail if the
+interruption callback moves after `process.kill`; restored source passes. A normal verification case
+proves build signal ownership ends before synchronous runners. All four real public cancellation
+phases pass, including release dry-run: worker/compiler removed, SIGTERM preserved, no archive published.
+Focused evidence: `/private/tmp/apack-release-build-lifetime-{focus,mutation,restored,process,typecheck,lint}.log`.
+
+The strict checkpoint passes: run `2026-10-16T04-08-31Z-96133`,
+`npm run chain -- --strict --cores 4 --no-classify`, exit 0, 841.0s, 29 checks executed and one cached,
+including all 749 integration cases in 58 files. All seven EARS/content baselines match byte for byte.
+Log: `/private/tmp/apack-release-build-lifetime-strict.log`. Source stayed fixed through validation;
+`bc6464a9c` commits it. No further broad run is needed to record this evidence.
+
+Next is the complete input/publication contract above. In particular, inherited `NODE_OPTIONS` still
+reaches the worker while `captureCompilationInputs` records only its export conditions. Account for
+actual loader/preload code, its resolution and options in the owned compiler execution view; a new
+hash alone does not freeze that execution. Preserve the full pack/external-input, frontend lifetime,
+atomic receipt and passive freshness scope rather than substituting an ambient-options-only fix.
 
 ## Historical foundation audits and checkpoint evidence
 

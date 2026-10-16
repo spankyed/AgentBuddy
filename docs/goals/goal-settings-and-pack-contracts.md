@@ -165,11 +165,26 @@ The converged strict gate passes: `npm run chain -- --strict --cores 4 --no-clas
 `6641b2c99` commits that tested source. `/private/tmp/apack-build-cancellation-converged-strict.log`.
 No validation process remains active, and no further broad run is needed for recording this result.
 
-Next: finish the remaining release-verification caller's cancellation/cleanup audit (it still supplies
-no lifetime signal), then complete the coherent pack/external/compiler input frame, ambient execution options, long-lived
+Release verification's build-only signal ownership is committed as `bc6464a9c`. It drains the
+compiler and reports the existing recovery state before signal exit. Synchronous verification runners
+and later release phases retain their signal behavior. All 30 local release cases and four real public
+cancellation phases pass; the discovery plan records the mutation evidence.
+
+The strict checkpoint passes: `npm run chain -- --strict --cores 4 --no-classify`, run
+`2026-10-16T04-08-31Z-96133`, exit 0, 841.0s, 29 checks executed and one cached. All 749 integration
+cases in 58 files pass. All seven EARS/content baselines match byte for byte after the run. Source was
+fixed throughout; `bc6464a9c` commits the tested source. Log:
+`/private/tmp/apack-release-build-lifetime-strict.log`. Session `30588` is terminal. No further broad
+run is needed for this documentation update. No real publication or repository version metadata changed.
+The existing default-setup output-change warning remains part of the required publication/freshness work.
+
+Next: complete the coherent pack/external/compiler input frame, ambient execution options, long-lived
 frontend compilation, atomic whole-build input/output association and passive freshness consumers.
-The source-freshness acceptance and every later goal phase remain required; this cancellation slice
-is neither the whole build-session/input contract nor the final committed-source strict `--all` gate.
+The audit confirms `build-process.ts` forwards inherited `NODE_OPTIONS`, while `compilation-inputs.ts`
+only identities export conditions; loader/preload execution therefore still needs explicit input
+ownership. This finding is not a completed design or permission to drop other input requirements.
+The source-freshness acceptance and every later goal phase remain required. These cancellation
+checkpoints are neither the whole input contract nor the final committed-source strict `--all` gate.
 
 ## Design review before further implementation (2026-10-12)
 
