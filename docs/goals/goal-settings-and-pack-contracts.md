@@ -120,7 +120,7 @@ naming branch is not an automatic source of future changes.
 
 ### Current handoff — compiler checkpoint (2026-10-16)
 
-Latest source is `5cc9edc78` (CommonJS checkpoint below). Preceding ESM source `f67c8d066`:
+Latest source is `be5dd38e9` (CommonJS alias checkpoint below). Preceding ESM source `f67c8d066`:
 ESM execution now has logical source URLs and filenames while native
 resolution and source reads use the owned tree. A private loader below tsx only projects bytes; it
 makes no main-thread RPC. The input owner and loader share one storage mapping. Native entrypoint
@@ -145,6 +145,25 @@ bridge extraction (35.47s). The final packaged JSX/metadata worker passes in 36.
 packaging cases (9), CLI typecheck and lint pass. The bridge also runs on Electron's Node 22.17.1.
 Logs: `/private/tmp/apack-module-metadata-{before,focused,jsx-before,entry-final,native-entry,
 worker-native-entry,tree,packaging,types-complete,lint-complete}.log`. No broad gate repeated.
+
+CommonJS alias checkpoint `be5dd38e9` uses the same captured, projected tsconfig and get-tsconfig
+path matcher as the ESM compiler path. Alias candidates are admitted through the existing input owner
+and resolved through the native/tsx resolver, retaining fallback targets and native package-import
+resolution. Builtins bypass aliases; imports from `node_modules` do not inherit the pack's aliases.
+Only this tree's resolver handles these requests. Its own tsx namespace suffix is normalized when Node
+encodes it into a file URL pathname, so it cannot become a fictitious authored filename.
+
+Evidence: the strengthened CommonJS case first fails to resolve its wildcard alias, then passes with
+changed source/config/alias bytes while consuming the captured JSX factory, alias and payload. It also
+proves a missing first alias target falls through, native `#imports` work and a dependency under
+`node_modules` cannot use the pack alias. Final alias and concurrent-isolation cases pass in 8.97s and
+17.98s respectively (`/private/tmp/apack-commonjs-alias-final.log`). That run's ESM case fails because
+an overly broad test edit accidentally added dependency files after capture; that accidental block is
+restored verbatim. The unchanged ESM/query/transitive case then passes in 10.68s
+(`/private/tmp/apack-commonjs-alias-esm-final.log`). Final CLI typecheck and scoped lint pass;
+`/private/tmp/apack-commonjs-alias-types-final.log`. No broad gate repeated. This does not establish
+complete CommonJS metadata, runtime/launch closure, deterministic output, final input receipts,
+frontend generations or passive freshness. Those and every later goal phase remain required.
 
 CommonJS checkpoint `5cc9edc78` fixes a reproduced compiler failure: a CommonJS `.tsx` entry
 with a custom JSX factory failed with `Unexpected token '<'`. tsx's CommonJS registration accepts no
