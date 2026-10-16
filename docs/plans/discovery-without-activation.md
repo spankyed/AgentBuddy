@@ -334,10 +334,31 @@ lifetimes before switching production execution or freshness readers. Test immut
 separately from a live authoring/HMR view owned by a compiler generation; neither silently replaces the
 other's contract. No final production design or exception is established by the proof.
 
+The read-adapter follow-up now closes the demonstrated absolute-alias and direct-file escapes in
+the controlled fixture, even with its original external directory removed. It uses actual compiler
+paths and retains original frontend observation paths. Its simple configuration projection, selected
+Node read interception and broad fixture-parent scope remain prototype limits, not product exclusions.
+The evaluation records the successful report and the native-esbuild ESM handoff diagnosis.
+
+Source prerequisite `de5adeb66` normalizes a captured pack's root through the same origin
+projection as its files. Physical reads/validation remain unchanged; discovered packages keep logical
+source-root ordering. Three behavior regressions and 47 focused checks pass, along with CLI type/lint;
+a mutation of the sort base is caught. This does not switch production builds to snapshots or complete
+the full input contract. Strict run `2026-10-16T07-01-20Z-71395` fails one 60s
+`watch-external-types` case; 752 other integration cases and all other steps pass. Session `3650`
+is terminal, exit 1; `/private/tmp/apack-snapshot-root-strict.log`. Its unchanged isolated timing
+case passes in 42.64s with cleanup under one second. The test is restored exactly. This does not
+establish strict acceptance or the timeout cause. The four-file peer workload passes all 15 cases
+at the same four-worker width in 69.55s, including the watcher in 58.244s. Its limits and assertions
+are unchanged; all seven EARS/content baselines match. Source `de5adeb66` records the failed strict
+gate as an open acceptance condition. All own sessions are terminal; do not repeat broad runs to seek
+a pass. The next converged source/final strict gate still has to close acceptance. The goal owns the
+logs, next snapshot work and complete later-phase scope.
+
 The unfinished Node option parser patch is preserved in stash
 `c42116fb46a385b5f6065a4fb9cd9e68e2625b80`. All experiment children, private captures and Vite servers
-have closed. Repository source is unchanged from `74890676d`; no new broad validation is needed for
-recording these findings. All remaining execution/publication and goal requirements stay in scope.
+have closed. The initial proof left repository source unchanged from `74890676d`; its documentation
+needed no broad validation. The separate root-identity source candidate and gate failure are recorded above. All remaining execution/publication and goal requirements stay in scope.
 
 ## Historical foundation audits and checkpoint evidence
 

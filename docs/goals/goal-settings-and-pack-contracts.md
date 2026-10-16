@@ -120,6 +120,18 @@ naming branch is not an automatic source of future changes.
 
 ### Current handoff — compiler checkpoint (2026-10-16)
 
+Latest source is `de5adeb66` (captured-root identity); the snapshot-led execution design remains
+under proof. Forty-seven focused checks, CLI type/lint, the isolated watcher and the four-file peer
+workload pass. The required strict run fails one 60s watcher case; all other steps and 752 integration
+cases pass. This is a usable source checkpoint with **open strict acceptance**, not a green full gate.
+The detailed evidence below and snapshot evaluation preserve that distinction. No validation job from
+this session remains active. Do not restart a broad run without a diagnosed/new converged source
+change or the required final gate. Next complete the snapshot prototype's inherited configuration,
+read/namespace coverage and dev ownership, then the whole-build receipt and passive consumers.
+All Phases 0–7 and all three Phase 6 workstreams remain required. Preserve the unrelated issue draft.
+
+#### Earlier compiler-installation evidence
+
 - Source checkpoint: `aba660aed` captures compiler installations and owns their build sessions. Preserve the unrelated
   `docs/issues/ISSUE-plan-consolidation-scope-loss.md` and the other agent's independent worktree.
 - Checkpoint claim: selected compiler bytes remain owned for worker execution; failed builds preserve
@@ -301,9 +313,38 @@ updates. Existing conflict guards and origin-mapped compiler observations remain
 bounded hybrid prototype before choosing the production ownership/remapping and dev-lifetime design;
 do not claim these defects, whole-build receipts or any later scope complete.
 
+The next adapter proof succeeds through the real build with original external files removed:
+TypeScript, esbuild and absolute content-file reads consume owned bytes, while frontend observations
+retain original source paths. This closes the demonstrated escapes only within the controlled fixture;
+complete configuration/loader/I/O coverage, external discovery and dev lifetime remain required.
+
+Source checkpoint `de5adeb66`: `compiler-file-view.ts` normalizes the root as well as file origins;
+`compiler-module-inputs.ts` uses that source root for discovered-package ordering. Physical reads and
+validation remain owned. Three regressions cover equal identity, original disappearance, owned-byte
+mutation and dependency order. Forty-seven focused cases, CLI typecheck and lint pass. The two initial
+regressions fail on baseline; the physical-sort mutation fails and exact source is restored. Evidence:
+`/private/tmp/apack-snapshot-root-{regressions-before,focused,mutation-order,typecheck,lint}.log`.
+The converged strict gate is terminal and failed: run `2026-10-16T07-01-20Z-71395`,
+911.0s, 752/753 integration cases pass; `watch-external-types` hits its existing 60s test bound.
+All other gate steps pass. Session `3650` exited 1; `/private/tmp/apack-snapshot-root-strict.log`.
+Do not restart the broad gate. A focused timing run passes the unchanged case in 42.64s: ready
+at 14.08s, first publication at 25.04s, missing-input refusal at 30.97s, recovery at 41.69s,
+compiler cleanup at 42.63s. The exact test is restored; no deadline/assertion change.
+`/private/tmp/apack-snapshot-root-watch-timing.log`. The timeout cause is not established and
+this focused pass does not establish strict acceptance. The previously accepted four-file peer
+workload passes all 15 cases at the same four-worker width in 69.55s; this case takes 58.244s with
+unchanged limits. `/private/tmp/apack-snapshot-root-watch-peers.log`. All seven EARS/content
+baselines match after these runs. The exact instrumented test is restored; sessions `3650`, `47270`
+and `83599` are terminal. Source `de5adeb66` records the focused validation and failed strict gate
+explicitly; full checkpoint/goal strict acceptance remains open. Do not repeat the broad gate to
+seek a pass or weaken deadlines/assertions. Continue the bounded snapshot work and carry this
+required acceptance forward; a later converged source checkpoint/final gate must close it.
+Every whole-build snapshot/publication and later requirement stays required.
+
 The two-file unfinished parser patch is preserved in stash
-`c42116fb46a385b5f6065a4fb9cd9e68e2625b80`. No experiment process/server remains active. Repository
-source stays at the strictly validated phase-cache checkpoint; these are documentation/evidence edits.
+`c42116fb46a385b5f6065a4fb9cd9e68e2625b80`. All disposable experiment processes/servers are closed. The initial evaluation left repository
+source at the strictly validated phase-cache checkpoint; the root-identity candidate and its current
+validation state are recorded above.
 
 Keep this reproduced association defect, the separate output-change warning and the missing input
 receipt distinct. Private phase stamps must not become the source-freshness authority. Optional

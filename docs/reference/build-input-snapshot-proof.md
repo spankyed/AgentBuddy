@@ -69,6 +69,54 @@ Final alias/direct-file/dev proof: `/private/tmp/apack-snapshot-edges-pD6RU1/rep
 These results do not explain the chain's default-pack output-change warning, close ambient preload
 ownership, or prove full snapshots, publication, watch refresh, external authoring or passive freshness.
 
+### Read-adapter follow-up
+
+A focused follow-up removes the original external directory before the real worker starts. With a
+Node read adapter and an owned esbuild configuration projection, the actual build succeeds using the
+captured string shape, backend value, relative content import and absolute content-file data. Frontend
+observations still name original source files and contain no private capture paths. Evidence:
+`/private/tmp/apack-snapshot-adapters-JAVsmo/report.json`, `build.log` and
+`/private/tmp/apack-adapter-full.trace`.
+
+The disposable scripts are `/private/tmp/apack-snapshot-adapters.mts`,
+`/private/tmp/apack-snapshot-adapter.cjs`, `/private/tmp/apack-esbuild-hook.mjs` and
+`/private/tmp/apack-esbuild-adapter.mjs`. A first fixture attempt removed files before finishing setup,
+so no compiler ran. The subsequent run reached the actual native resolver and refused the absolute
+alias: changing CommonJS cache exports had not changed the esbuild named ESM imports. A minimal native
+build isolates that handoff; a supported ESM hook then applies the configuration projection correctly.
+That evidence informs an explicit compiler adapter, not a production CommonJS-cache patch.
+
+This is still a bounded prototype. It covers simple config data, not inheritance; its explicit
+prototype refusal of `extends` is not a proposed product restriction. It intercepts selected Node read
+APIs and does not establish every callback/promise/stream/native-addon or loader read path. The source
+scope remains the controlled fixture parent. Preserve existing inherited configuration, supported
+launches and source semantics when replacing this scaffolding with owned production interfaces.
+
+### Captured-root identity prerequisite
+
+An independent small probe isolates one identity defect: paths are mapped to source origins but the
+relative base is the physical captured root. Identical file-view and module inputs at different
+depths therefore hash differently. `/private/tmp/apack-snapshot-root-before.log` records both
+inequalities; `/private/tmp/apack-snapshot-root-after.log` records equality after normalizing the root
+through the same projection. This explains a concrete component of the identity problem; it does
+not prove that every live/snapshot whole-build cache-key difference has been resolved.
+
+Source `de5adeb66` normalizes the fingerprint base and discovered-package ordering, retaining
+physical reads and validation. Three regressions cover equal hashes, owned reads with original files
+removed, refusal after owned bytes change, and pack-local/parent-installed dependency order. The first
+two fail before the change. Restoring the physical sort base fails the ordering assertion; the exact
+source is restored afterward. The ordering fixture needs explicit package boundaries so TypeScript
+does not legitimately search unrelated ancestors outside the copied context; its full hash equality
+assertion remains intact. Forty-seven focused checks, CLI typechecking and lint pass. Strict run
+`2026-10-16T07-01-20Z-71395` fails one existing 60s watcher case; 752 other integration cases and all
+other steps pass. Its unchanged isolated timing run passes in 42.64s (ready 14.08s, first publication
+25.04s, refusal 30.97s, recovery 41.69s, cleanup complete 42.63s). The four-file peer workload passes
+15/15 at four workers in 69.55s; the watcher takes 58.244s. This does not establish the timeout cause
+or a green strict gate. The exact instrumented spec is restored and all seven EARS/content baselines
+match. Source is checkpointed with this validation limitation explicit; full strict acceptance remains
+required. Do not use repeated broad runs to diagnose the recurring timing boundary.
+Additional logs: `/private/tmp/apack-snapshot-root-{strict,watch-timing,watch-peers}.log`. Focused logs: `/private/tmp/apack-snapshot-root-{regressions-before,focused,mutation-order,typecheck,lint}.log`.
+
 ## Alternatives and boundaries
 
 | Approach | Benefit | Remaining problem |
