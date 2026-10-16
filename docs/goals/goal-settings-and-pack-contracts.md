@@ -147,6 +147,30 @@ The compiler checkpoint is now committed. No further broad rerun is needed for i
 commit operation. Design and implement the next coherent input/publication checkpoint with focused
 acceptance first, following the bounded workflow above.
 
+The [cancellation checkpoint](../plans/discovery-without-activation.md#build-cancellation-ownership)
+is committed as `6641b2c99`, on top of authoring repair `f40158544`. Public one-shot/watch commands own
+signals before startup; development drains initial-build and watcher-startup cleanup before removing
+its profile or exiting. Focused checks and mutation evidence are recorded in the plan.
+
+The first strict run (`2026-10-16T03-35-20Z-41306`) fails only two obsolete source-text assertions
+requiring refresh directly in `buildCommand`; 3,291 other host tests pass. It stops before the remaining
+pool/app checks. `/private/tmp/apack-build-cancellation-strict.log`. Those assertions are replaced by
+real-worker refresh-before-capture and failed-refresh refusal coverage. Moving refresh after capture
+fails the new behavior check; restored source and all 852 CLI unit cases pass. No production change
+was needed after that gate failure.
+
+The converged strict gate passes: `npm run chain -- --strict --cores 4 --no-classify`, run
+`2026-10-16T03-43-08Z-54352`, 702.7s, 11 checks executed and 19 cached. All 745 integration tests in
+58 files pass. All seven EARS/content baselines match byte for byte afterward. Source stayed fixed;
+`6641b2c99` commits that tested source. `/private/tmp/apack-build-cancellation-converged-strict.log`.
+No validation process remains active, and no further broad run is needed for recording this result.
+
+Next: finish the remaining release-verification caller's cancellation/cleanup audit (it still supplies
+no lifetime signal), then complete the coherent pack/external/compiler input frame, ambient execution options, long-lived
+frontend compilation, atomic whole-build input/output association and passive freshness consumers.
+The source-freshness acceptance and every later goal phase remain required; this cancellation slice
+is neither the whole build-session/input contract nor the final committed-source strict `--all` gate.
+
 ## Design review before further implementation (2026-10-12)
 
 The user requested a design review after the assistant draft introduced an unjustified feature, actor,

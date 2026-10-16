@@ -82,26 +82,42 @@ Finish that prerequisite, then the partial/unimplemented discovery rows and the 
 audit. Entity navigation, pane/form failure boundaries and the three Phase 6 workstreams retain their
 separate requirements in the execution goal. None is removed by this status consolidation.
 
-### Next checkpoint: build cancellation ownership
+### Build cancellation ownership
 
-Audit after `aba660aed` identifies two remaining caller-ownership gaps. Public one-shot `buildCommand`
-calls `runPackBuild` without owning process signals. In `commands/dev.ts`, aborting the startup build
-is followed by `hold.release()` and process exit, but the hold does not await that build's disposal.
-The development watcher is handed to the hold only after startup returns and receives no lifetime
-signal. These are inspected gaps, not yet reproduced leak claims.
+Implemented in `6641b2c99`. `withBuildSignals` owns public one-shot/watch signals before startup,
+drains owned build work, then restores the original signal exit. `runPackBuild` remains caller-controlled
+for development and release verification. Development hands initial-build and watcher-startup promises
+to its existing hold before awaiting them, aborts them on release, and drains cleanup before profile
+removal or process exit. App/profile selection and frontend compilation behavior are unchanged.
 
-Use one process-signal owner for public one-shot/watch builds; keep `runPackBuild` caller-controlled
-for development and release verification. Development must own the initial build and watcher-startup
-promises before awaiting them, abort them on release, and await cleanup before profile removal or exit.
-Reuse the existing hold's cleanup callback instead of adding a second resource registry. Preserve exit
-semantics and avoid changing app/profile selection or frontend build behavior.
+Refresh remains in the shared builder, before compiler capture. A real captured-worker case proves
+both checkout refreshes affect the executed compiler and a failed refresh prevents reuse. Moving
+refresh after capture fails the case. The obsolete assertions placing refresh directly in
+`buildCommand` are replaced by this behavior check; the goal records the failed strict run and correction.
 
-Focused acceptance: interrupt a public one-shot build while compiling and prove worker exit, private
-compiler removal and no publication. Exercise development shutdown during initial build and watcher
-startup, proving cleanup precedes exit/profile removal. Retain existing ready/compiling public-watch
-checks and normal build/dev behavior. Use existing deadlines; diagnose any failure in these checks
-before broader validation. This checkpoint does not complete frozen inputs or authorize freshness-reader
-migration. Its source and evidence must land before expanding implementation.
+Acceptance evidence:
+
+- Ten hold/dev checks pass. Removing drain waits fails both startup cases when cleanup is held across
+  an event-loop turn, detecting premature exit/profile removal. Restored source passes.
+- Nine real worker/dev cases pass. The three public stop phases preserve SIGTERM exit and remove their
+  worker and private compiler; interruption during compilation publishes no build. Existing deadlines remain.
+- All 852 CLI unit cases, CLI typechecking and lint pass. The converged strict checkpoint passes all
+  30 checks (11 executed, 19 cached), including all 745 integration cases. Seven EARS/content baselines match.
+
+Evidence: `/private/tmp/apack-build-cancellation-{restored,mutation,process,signals,typecheck,lint}.log`,
+`/private/tmp/apack-build-cancellation-refresh-{focus,mutation}.log`,
+`/private/tmp/apack-build-cancellation-cli-unit.log`, and
+`/private/tmp/apack-build-cancellation-converged-strict.log` (run `2026-10-16T03-43-08Z-54352`).
+
+This completes the cancellation slice. Coherent frozen inputs, ambient runtime options, long-lived
+frontend compilation, whole-build receipt publication and passive freshness consumers remain required
+before a freshness-reader migration. Source commits and focused passes do not complete those contracts.
+
+The caller audit still identifies release verification: `commands/release.ts:verify` calls
+`runPackBuild` without a lifetime signal. Build-command/dev coverage does not prove that caller's
+interruption behavior. Reconcile cancellation with the release workflow's cleanup/rollback before
+changing it; a signal wrapper only around verification could exit before its caller cleans up.
+Keep this in the required build-session audit, using disposable local fixtures and no real publication.
 
 ## Historical foundation audits and checkpoint evidence
 
