@@ -9,6 +9,7 @@ name: Claude Code commands
 **cc-context**: Show context window usage breakdown
 **cc-status**: Show version and auth info
 **cc-workflows**: List local workflows observed in this conversation; `stop <task id>` requests a specific task stop and reports native status.
+**cc-thinking**: Request a live budget (`<integer>` or `default`) and optional display (`summarized`, `omitted`, `highlights`, `default`), or use `display <value>` alone. Requires the matching idle conversation. Adaptive models may ignore a zero budget; display refusal can still apply the accompanying budget. Changes are process-local.
 **cc-models**: Show the matching live conversation's native model catalog, effort levels and reported capabilities. Use `start` to explicitly permit a temporary native process and its session hooks. The catalog does not identify the selected model or exhaust custom model IDs.
 **cc-model**: Select this thread's model; updates an idle conversation or stages the next launch. With no argument, shows requested and last reported models. Custom model validation may make an API request.
 **cc-hooks**: Read hooks from a matching live conversation. start opens a temporary native process and can run configured session-start/end hooks. apply <native JSON edit> delegates add/replace/remove; use original editable matcher/config targets. An open conversation must be idle and match the project; saving closes it and can run its session-end hooks. Reading the new catalog requires an explicit start.

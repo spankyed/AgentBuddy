@@ -64,6 +64,7 @@ const handlers: Record<string, Handler> = {
   status: handleStats,
   model: handleModel,
   models: handleModels,
+  thinking: handleThinking,
   workflows: handleWorkflows,
   memory: handleMemory,
   hooks: handleHooks,
@@ -219,6 +220,42 @@ async function handleWorkflows(args: string[], services: Services, threadId?: st
   return { text: current && current.status !== 'running'
     ? `${task.name}: ${current.status}.`
     : `Stop request acknowledged for ${task.name} (${task.taskId}). Waiting for native task status.` };
+}
+
+async function handleThinking(args: string[], services: Services, threadId?: string): Promise<{ text: string }> {
+  const usage = 'Usage: cc-thinking <integer budget|default> [summarized|omitted|highlights|default], or cc-thinking display <summarized|omitted|highlights|default>';
+  const change: { budgetTokens?: number | null; display?: 'summarized' | 'omitted' | 'highlights' | null } = {};
+  if (!args.length || args.length > 2) return { text: usage };
+  if (args[0] !== 'display') {
+    if (args[0] === 'default') change.budgetTokens = null;
+    else if (/^-?\d+$/.test(args[0]!) && Number.isSafeInteger(Number(args[0]))) change.budgetTokens = Number(args[0]);
+    else return { text: usage };
+  } else if (args.length !== 2) return { text: usage };
+  if (args.length === 2) {
+    const display = args[1];
+    if (display === 'default') change.display = null;
+    else if (display === 'summarized' || display === 'omitted' || display === 'highlights') change.display = display;
+    else return { text: usage };
+  }
+  if (!threadId) return { text: 'Select a thread with a running Claude conversation before changing thinking.' };
+  const conversation = services.cli.claudeCode.getConversation(threadId);
+  if (!conversation || conversation.owner.closing) return { text: 'Start a Claude conversation in this project before changing thinking.' };
+  if (conversation.owner.busy) return { text: 'Wait for the Claude conversation to become idle before changing thinking.' };
+  const prior = getClaudeState(services, threadId);
+  const cwd = prior?.cwdOverride || prior?.cwd || services.cli.claudeCode.getWorkingDir();
+  if (conversation.owner.sessionCwd !== cwd) return { text: 'The native conversation directory does not match this project.' };
+  try {
+    await conversation.owner.handle.setThinking(change);
+    if (services.cli.claudeCode.getConversation(threadId) !== conversation || conversation.owner.closing) return { text: 'The native conversation closed or changed while applying thinking settings; its effective state is unknown.' };
+    return { text: 'Thinking request acknowledged for this running conversation. Effective behavior depends on the model; a zero budget may leave adaptive thinking enabled. This does not change future launches or saved settings.' };
+  } catch (error: any) {
+    return { text: `Native thinking request failed: ${error?.message || 'Unknown error'}. A refused display change may still apply its accompanying budget.` };
+  } finally {
+    if (services.cli.claudeCode.getConversation(threadId) === conversation && !conversation.owner.busy && !conversation.owner.closing) {
+      const queued = dequeueMessage(services, threadId);
+      if (queued) await replayQueuedMessage(services, threadId as EntityId, queued, services.logger);
+    }
+  }
 }
 
 async function handleModels(args: string[], services: Services, threadId?: string): Promise<{ text: string }> {

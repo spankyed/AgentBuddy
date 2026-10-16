@@ -2,6 +2,13 @@ import { randomUUID } from 'node:crypto'
 import { z } from 'zod'
 import { ClaudeProtocolError } from './errors.ts'
 
+/** Requested live settings; native acknowledgement does not describe effective model behavior. */
+export const ClaudeThinkingChangeSchema = z.object({
+  budgetTokens: z.number().int().safe().nullable().optional(),
+  display: z.enum(['summarized', 'omitted', 'highlights']).nullable().optional(),
+}).strict().refine(value => value.budgetTokens !== undefined || value.display !== undefined, 'Provide a budget or display change')
+export type ClaudeThinkingChange = z.infer<typeof ClaudeThinkingChangeSchema>
+
 /** Native catalog entries describe availability; custom model IDs may be absent. */
 export const ClaudeModelInfoSchema = z.object({
   value: z.string(), displayName: z.string(), resolvedModel: z.string().optional(),

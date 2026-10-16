@@ -78,7 +78,7 @@ export function createClaudeConversation(native: QueryHandle, consumeAutonomous:
   let stopped = false
   let sessionId: string | undefined
   let sessionCwd: string | undefined
-  let changingModel = false
+  let changingControl = false
   let modelSelection: string | undefined
   let cumulativeCost = 0
   let consumerFailure: unknown
@@ -106,13 +106,21 @@ export function createClaudeConversation(native: QueryHandle, consumeAutonomous:
   }
   const processHandle: QueryHandle = { ...native, async setModel(model) {
     if (closing || exited) throw new ClaudeProtocolError('conversation is closed')
-    if (changingModel || active || pending || interactionRequests.size) throw new ClaudeProtocolError('conversation must be idle before changing model')
-    changingModel = true
+    if (changingControl || active || pending || interactionRequests.size) throw new ClaudeProtocolError('conversation must be idle before changing model')
+    changingControl = true
     try {
       await native.setModel(model)
       if (closing || exited) throw new ClaudeProtocolError('conversation closed while changing model')
       modelSelection = model
-    } finally { changingModel = false }
+    } finally { changingControl = false }
+  }, async setThinking(change) {
+    if (closing || exited) throw new ClaudeProtocolError('conversation is closed')
+    if (changingControl || active || pending || interactionRequests.size) throw new ClaudeProtocolError('conversation must be idle before changing thinking')
+    changingControl = true
+    try {
+      await native.setThinking(change)
+      if (closing || exited) throw new ClaudeProtocolError('conversation closed while changing thinking')
+    } finally { changingControl = false }
   }, respond(requestId, response) {
     if (settledInteractions.has(requestId)) throw new ClaudeProtocolError('native permission request has already settled')
     if (interactionRequests.get(requestId)?.subtype === 'elicitation') throw new ClaudeProtocolError('MCP elicitation requires its own response type')
@@ -268,7 +276,7 @@ export function createClaudeConversation(native: QueryHandle, consumeAutonomous:
 
   return {
     handle: processHandle,
-    get busy() { return changingModel || active !== undefined || pending !== undefined || interactionRequests.size > 0 },
+    get busy() { return changingControl || active !== undefined || pending !== undefined || interactionRequests.size > 0 },
     listWorkflows() { return activity.workflows.list() },
     hasPendingElicitation(requestId) { return !closing && !exited && interactionRequests.get(requestId)?.subtype === 'elicitation' },
     get closing() { return closing || exited },
@@ -278,7 +286,7 @@ export function createClaudeConversation(native: QueryHandle, consumeAutonomous:
     done,
     start(input, consume) {
       if (closing || exited) throw new ClaudeProtocolError('conversation is closed')
-      if (changingModel || active || pending || interactionRequests.size) throw new ClaudeProtocolError('conversation already has an active input or permission request')
+      if (changingControl || active || pending || interactionRequests.size) throw new ClaudeProtocolError('conversation already has an active input or permission request')
       const inputId = native.send(input)
       pending = { consume, inputId }
       return inputId

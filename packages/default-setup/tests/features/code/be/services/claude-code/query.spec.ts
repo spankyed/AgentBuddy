@@ -1155,3 +1155,17 @@ it('requests and validates native catalog metadata without dropping unknown capa
   mock.pushEvent({type:'control_response',response:{subtype:'success',request_id:next.request_id,response:{models:[{value:'missing-name'}]}}});
   await rejected; await handle.close();
 });
+
+it('validates and maps thinking changes while preserving native partial-refusal details', async () => {
+ const mock=makeMockStream();vi.spyOn(runner,'spawnStream').mockResolvedValue(mock.handle);
+ const handle=await query({}),init=mock.writes[0] as {request_id:string};
+ mock.pushEvent({type:'control_response',response:{subtype:'success',request_id:init.request_id,response:{commands:[],agents:[],models:[]}}});await handle.initialized;
+ for(const invalid of [{},{budgetTokens:1.2},{display:'invalid'},{budgetTokens:1,extra:true}]) await expect(handle.setThinking(invalid as never)).rejects.toThrow();
+ expect(mock.writes).toHaveLength(1);
+ const request=handle.setThinking({budgetTokens:4096,display:'highlights'}),refused=expect(request).rejects.toThrow('budget was applied');await Promise.resolve();
+ const wire=mock.writes[1] as {request_id:string;request:unknown};expect(wire.request).toEqual({subtype:'set_max_thinking_tokens',max_thinking_tokens:4096,thinking_display:'highlights'});
+ mock.pushEvent({type:'control_response',response:{subtype:'error',request_id:wire.request_id,error:'display refused; budget was applied'}});await refused;
+ const display=handle.setThinking({display:null});await Promise.resolve();const next=mock.writes[2] as {request_id:string;request:unknown};
+ expect(next.request).toEqual({subtype:'set_max_thinking_tokens',thinking_display:null});mock.pushEvent({type:'control_response',response:{subtype:'success',request_id:next.request_id}});await display;
+ await handle.close();
+});

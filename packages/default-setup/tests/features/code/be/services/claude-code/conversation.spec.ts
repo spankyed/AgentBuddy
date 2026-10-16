@@ -13,6 +13,7 @@ function fixture() {
     respondElicitation: vi.fn(),
     cancelUserDialog: vi.fn(),
     setModel: vi.fn().mockResolvedValue(undefined),
+    setThinking: vi.fn().mockResolvedValue(undefined),
     close: vi.fn(async () => { events.end() }),
     kill: vi.fn(() => { events.end() }),
     hasPendingBackgroundTasks: vi.fn(() => false),
@@ -376,3 +377,18 @@ describe('owned native model changes', () => {
     await owner.done
   })
 })
+
+it('serializes thinking with model changes and foreground input even when a native refusal follows mutation',async()=>{
+ const f=fixture(),owner=createClaudeConversation(f.native,async()=>{});let reject!: (error:Error)=>void;
+ vi.mocked(f.native.setThinking).mockImplementationOnce(()=>new Promise<void>((_resolve,fail)=>{reject=fail}));
+ const change=owner.handle.setThinking({budgetTokens:4096,display:'highlights'}),failed=expect(change).rejects.toThrow('budget applied');
+ expect(owner.busy).toBe(true);expect(()=>owner.start('overlap',async()=>{})).toThrow('active input');
+ await expect(owner.handle.setModel('sonnet')).rejects.toThrow('idle');await expect(owner.handle.setThinking({budgetTokens:0})).rejects.toThrow('idle');
+ reject(new Error('display refused; budget applied'));await failed;expect(owner.busy).toBe(false);await owner.close();
+});
+it('does not report a thinking acknowledgement after owner teardown',async()=>{
+ const f=fixture(),owner=createClaudeConversation(f.native,async()=>{});let resolve!:()=>void;
+ vi.mocked(f.native.setThinking).mockImplementationOnce(()=>new Promise<void>(done=>{resolve=done}));
+ const change=owner.handle.setThinking({budgetTokens:2048}),failed=expect(change).rejects.toThrow('closed');
+ await owner.close();resolve();await failed;
+});
