@@ -322,10 +322,20 @@ repeat-build identity are preserved. Keep normal native resolution for ordinary 
 `build.resolve()` round-trip discards internal per-file configuration context. The owning goal records
 focused evidence and the exact retry; no new broad acceptance is claimed.
 
-Remaining native acceptance includes complete namespace admission before esbuild caches directories,
-runtime-only dependency closure, glob imports, late absolute references and metadata semantics. Do
-not infer complete closure from the demonstrated package-main case. Direct Node reads, frontend
-resources/generation, launch ownership, whole-build receipts and passive freshness remain unfinished.
+Source `6b384ff1c` fixes a demonstrated external-glob omission: a successful native bundle could
+throw a missing-module error at runtime. A shared syntax observer identifies conservative namespaces
+under relative dynamic import/require prefixes. The initial TypeScript scan captures their files and
+membership; native-only modules admit them before expansion. Native esbuild still selects matches
+according to its [glob import semantics](https://esbuild.github.io/api/#glob-style-imports). The real
+external glob case preserves original bytes through a transient live edit; nested runtime dependency
+precedence hidden by a declaration entrypoint also matches the native baseline without another
+resolver redesign. The owning goal records focused validation.
+
+Remaining native acceptance includes complete namespace/metadata behavior and late absolute
+references with per-file configuration. Do not infer complete closure from these demonstrated cases.
+Direct Node reads, frontend resources/generation, launch ownership, whole-build receipts and passive
+freshness remain unfinished. Glob capture currently owns a conservative subtree beneath its static
+prefix rather than duplicating esbuild's exact matcher.
 
 
 The user's suggested snapshot-led hybrid is now exercised in disposable proofs, before selecting a

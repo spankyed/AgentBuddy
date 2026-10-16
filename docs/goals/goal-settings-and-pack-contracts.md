@@ -120,31 +120,36 @@ naming branch is not an automatic source of future changes.
 
 ### Current handoff — compiler checkpoint (2026-10-16)
 
-Latest source is `00a6e3db5`. Native bundles now resolve against the same owned tree as declarations.
-The tree admits captured lookup namespaces and dependencies, projects absolute compiler metadata
-references, and keeps authored module/data values unchanged. Native source maps and recorded reads
-map back to original paths. Ordinary imports retain esbuild's default resolver: delegating every
-lookup through the plugin API lost implicit per-file TypeScript configuration, which the new
-parent-config regression exposed and the default path fixes.
+Latest source is `6b384ff1c`, following native-resolution checkpoint `00a6e3db5`. Native bundles
+and declarations use the shared owned tree; native source maps/read records map back to originals.
+Ordinary imports stay on esbuild's default resolver because a plugin `build.resolve()` round-trip
+lost implicit per-file TypeScript configuration. The external-glob regression exposed a build that
+succeeded but failed at runtime with a missing module. Glob namespaces are now captured during the
+initial source scan and before expansion of native-only modules, using one shared syntax observer;
+esbuild still selects the matches. The initial scan reuses TypeScript's parsed source files.
 
-Focused evidence: 61 affected unit cases pass; the final namespace/tree pair passes again (15 cases)
-after the lint cleanup. All 12 compiler-configuration integration cases pass across the affected run
-and its one exact retry. The first configuration-publication case refused a concurrent source edit;
-the frozen-source retry passes in 13.55s. The real captured worker passes repeat-build/cache identity
-and workspace cleanup in 48.39s. Its first attempt could not create tsx's IPC socket in the sandbox;
-the same focused case passes with the required local socket access. CLI typecheck and focused lint
-pass. Logs: `/private/tmp/apack-native-checkpoint-{unit,tree-final,integration,config-final,worker,
-types,lint}.log`. No broad gate was repeated. All own validation processes are terminal.
+Focused evidence for `6b384ff1c`: native nested-package precedence hidden behind a declaration
+entrypoint matches the native baseline. The external glob require matches the baseline even when its
+live matching file changes during bundling and is restored before validation. Both cases pass;
+after the AST reuse refactor, the glob case passes again in 9.56s. All 46 affected unit cases, CLI
+typecheck and focused lint pass. Logs: `/private/tmp/apack-native-{hidden,glob-final,glob-ast-final,
+glob-unit-final,glob-types-final,glob-lint-final}.log`; the original missing-module failure is
+`/private/tmp/apack-native-glob.log`. All own processes are terminal. No broad gate was repeated.
+Previous `00a6e3db5` evidence: 61 unit cases; all 12 config integration cases across the affected run
+and exact frozen-source retry; real worker repeat-build/cache identity and cleanup in 48.39s;
+typecheck/lint. Logs: `/private/tmp/apack-native-checkpoint-*.log`. The sandbox initially refused the
+worker's tsx socket; the focused retry with local IPC access passes. One publication refusal correctly
+caught an edit made during that earlier run; its frozen-source retry passes.
 
-This is an incremental native-resolution checkpoint, not acceptance of the full execution contract.
-Next close native namespace admission before resolver directory caches are populated, including
-runtime-only dependencies hidden by declaration entrypoints, glob imports, and late absolute imports
-with per-file configuration. Preserve native lookup/metadata semantics; do not turn this observer
-into a second resolver. Avoid treating unrelated global temporary-directory membership as a build
-input. Then extend ownership to direct content filesystem reads, launch/preload inputs and the
-frontend compiler generation/lifetime, and complete whole-build receipts/passive freshness. Existing
-source-path diagnostics, discovery, later phases and the final committed-source strict `--all`
-acceptance remain required. Do not use these focused results as that final gate.
+Next complete native namespace/metadata semantics, including late absolute references with per-file
+configuration. The nested-package and relative-glob examples now have evidence; do not infer full
+closure from them or redesign the resolver based only on hypothetical directory-cache failures.
+Retain the whole scope: direct content filesystem reads, launch/preload ownership, frontend resources
+and retained compiler generation/lifetime, whole-build receipts/passive freshness, remaining discovery,
+navigation/frontend boundaries and all Phase 6 workstreams. Source-path diagnostic stream acceptance
+and integrated/final committed-source strict `--all` gates remain required. Focused results are not
+that final acceptance. The observer currently captures a conservative subtree under each glob's static
+prefix; exact matching remains native. Avoid expanding unrelated global temp membership into inputs.
 
 #### Previous owned-declaration checkpoint
 
