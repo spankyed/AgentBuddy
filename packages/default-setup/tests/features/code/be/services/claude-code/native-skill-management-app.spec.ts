@@ -1,0 +1,50 @@
+import { readFileSync } from 'node:fs';
+import { mkdir, readFile, writeFile } from 'node:fs/promises';
+import { join, resolve } from 'node:path';
+import { importCompiledContent } from '@apackdev/sdk/utils';
+import { importFlows, startApp } from '@apackdev/testing/harness';
+import { services } from '#generated/services.ts';
+import { repository } from '#generated/repository.ts';
+import * as runner from '#features/code/be/services/claude-code/runner.ts';
+const executable = process.env.CLAUDE_RESEARCH_EXECUTABLE, workspace = process.env.CLAUDE_RESEARCH_WORKSPACE;
+
+it.skipIf(!executable || !workspace)('routes native Skill listing and edits through the compiled app command flow without model input', async () => {
+ expect(process.env.HOME).toBe(workspace);
+ for (const key of ['ANTHROPIC_API_KEY', 'ANTHROPIC_AUTH_TOKEN', 'CLAUDE_CODE_OAUTH_TOKEN']) expect(process.env[key]).toBeUndefined();
+ const cwd = join(workspace!, 'project');
+ for (const [name, extra] of [['editable-fixture', ''], ['locked-fixture', 'disable-model-invocation: true\n']]) {
+  const dir = join(cwd, '.claude', 'skills', name); await mkdir(dir, { recursive: true });
+  await writeFile(join(dir, 'SKILL.md'), `---\nname: ${name}\ndescription: Private compiled command fixture\n${extra}---\nSynthetic fixture body.\n`);
+ }
+ services.settings.set({ kind: 'feature', featureRef: 'default-setup/code' }, ['cliPaths', 'claude-code'], executable!);
+ const streams = vi.spyOn(runner, 'spawnStream'), commands = vi.spyOn(runner, 'execOnce');
+ const compiledDir = resolve(import.meta.dirname, '../../../../../../dist/runtime/content');
+ importCompiledContent({ compiledDir, include: { flows: new Set(), library: new Set(), notes: new Set(), settings: new Set() } });
+ const flows = JSON.parse(readFileSync(join(compiledDir, 'flows.content.json'), 'utf8'));
+ importFlows({ 'Claude Code': { ...flows['Claude Code'], root: true } });
+ const app = await startApp({ systems: ['brain'] }); await app.runFlow('Claude Code');
+ const { id } = repository.threadCommands.create({ topic: 'Native Skill commands', instructions: '', tags: [] });
+ repository.threadCommands.update(id, { context: { claudeCode: { cwd } } });
+ const texts = () => (repository.chatQueries.threadData(id)?.messages ?? []).map(message => message.text ?? '');
+ const send = async (text: string) => {
+  const before = texts().length;
+  await app.runFlow('Claude Code', { event: 'user.command', data: { command: 'cc-skills', text, threadId: id } });
+  await vi.waitFor(() => expect(texts().length).toBeGreaterThan(before), { timeout: 15000 });
+  return texts().at(-1)!;
+ };
+ expect(await send('')).toContain('editable-fixture [project] — on');
+ expect(texts().at(-1)).toContain('locked by author');
+ const settings = join(cwd, '.claude', 'settings.local.json');
+ expect(await send('set editable-fixture off')).toContain('Updated editable-fixture.');
+ expect(JSON.parse(await readFile(settings, 'utf8')).skillOverrides['editable-fixture']).toBe('off');
+ expect(texts().at(-1)).toContain('hidden from command suggestions');
+ const before = await readFile(settings);
+ expect(await send('set locked-fixture on')).toContain('its state cannot be changed here');
+ expect(await readFile(settings)).toEqual(before);
+ expect(await send('set editable-fixture on')).toContain('Updated editable-fixture.');
+ expect(JSON.parse(await readFile(settings, 'utf8')).skillOverrides?.['editable-fixture']).toBeUndefined();
+ expect(streams).toHaveBeenCalledTimes(6); expect(commands).toHaveBeenCalledTimes(3);
+ for (const [args] of streams.mock.calls) expect(args).toContain('--no-session-persistence');
+ for (const [args] of commands.mock.calls) expect(args).toEqual(['edit-skill-overrides', '--json']);
+ await writeFile(join(workspace!, 'skill-management-app-evidence.json'), JSON.stringify({ compiledFlow: true, productionLaunchService: true, nativeListing: true, nativeEdit: true, authorLockRejected: true, rejectedEditUnchanged: true, redundantOverrideRemoved: true, threadProjectScope: true, commandReplies: 4, nativeStreamingProcesses: streams.mock.calls.length, nativeWriterProcesses: commands.mock.calls.length, modelPrompts: 0 }, null, 2));
+}, 45000);
