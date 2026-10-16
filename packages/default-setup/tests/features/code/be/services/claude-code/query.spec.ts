@@ -1051,3 +1051,19 @@ describe('native result input identity', () => {
     expect(ResultLineSchema.safeParse({ ...result, user_message_uuid: 42 }).success).toBe(false)
   })
 })
+
+
+describe('independent MCP elicitation responses', () => {
+ it('writes action/content rather than tool behavior, and rejects content on non-accept decisions', async () => {
+  const mock = makeMockStream(); vi.spyOn(runner, 'spawnStream').mockResolvedValue(mock.handle);
+  const handle = await query({ surfaceControlRequests: true });
+  handle.respondElicitation('mcp-choice', { action: 'accept', content: { choice: 'Alpha' } });
+  expect(mock.writes.at(-1)).toEqual({ type: 'control_response', response: { subtype: 'success', request_id: 'mcp-choice', response: { action: 'accept', content: { choice: 'Alpha' } } } });
+  const before = mock.writes.length;
+  expect(() => handle.respondElicitation('mcp-choice', { action: 'cancel', content: {} })).toThrow('only accepted');
+  expect(mock.writes).toHaveLength(before);
+  vi.spyOn(mock.handle, 'write').mockReturnValue(false);
+  expect(() => handle.respondElicitation('mcp-choice', { action: 'cancel' })).toThrow('stdin is closed');
+  await handle.close();
+ });
+});

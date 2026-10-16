@@ -92,6 +92,8 @@ export interface QueryHandle {
    * tool-activity row having never run. That happened once and took a while to find.
    */
   respond(requestId: string, response: { behavior: 'allow' | 'deny'; message?: string; updatedInput?: unknown }): void
+  /** Answer a native MCP elicitation, independently of tool permission. */
+  respondElicitation(requestId: string, response: { action: 'accept' | 'decline' | 'cancel'; content?: Record<string, unknown> }): void
   /** Cancel the current turn and await its native acknowledgement; optionally cancel queued inputs. */
   interrupt(options?: { cancelQueued?: boolean }): Promise<ClaudeInterruptReceipt>
   /** Rename the native session; an explicit ID protects against renaming a different session. */
@@ -268,6 +270,13 @@ export async function query(opts: QueryOptions): Promise<QueryHandle> {
         type: 'control_response',
         response: { subtype: 'success', request_id: requestId, response },
       })) throw new ClaudeProtocolError('could not send control response: stdin is closed')
+    },
+
+    respondElicitation(requestId, response): void {
+      const id = z.string().min(1).parse(requestId)
+      const valid = z.object({ action: z.enum(['accept', 'decline', 'cancel']), content: z.record(z.unknown()).optional() }).strict().parse(response)
+      if (valid.action !== 'accept' && valid.content !== undefined) throw new ClaudeProtocolError('only accepted MCP elicitation can contain content')
+      if (!stream.write({ type: 'control_response', response: { subtype: 'success', request_id: id, response: valid } })) throw new ClaudeProtocolError('could not send elicitation response: stdin is closed')
     },
 
     async interrupt(options: { cancelQueued?: boolean } = {}): Promise<ClaudeInterruptReceipt> {

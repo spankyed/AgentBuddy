@@ -1,3 +1,4 @@
+import { mcpElicitationUrl } from './mcp-elicitation.ts';
 import type { ClaudeNestedActivity } from '#features/code/be/services/claude-code/nested-activity.ts';
 import type { ClaudeConversationTurn } from '#features/code/be/services/claude-code/conversation.ts';
 /**
@@ -141,6 +142,7 @@ export async function consumeStream(
   // Set by the control_request handler after a user-interactive flow.
   // The next `message_start` will split into a new message.
   let splitOnNextMessageStart = false;
+  const ownedElicitations = new Set<string>();
 
   // Track file-mutation paths across all messages for the diff artifact.
   const mutatedPathsSet = new Set<string>();
@@ -399,6 +401,33 @@ export async function consumeStream(
       if (line.type === 'control_request') {
         const req = (line as any).request ?? {};
         const requestId = (line as any).request_id ?? '';
+
+        if (req.subtype === 'elicitation') {
+          if (req.mode !== 'url') {
+            handle.respondElicitation(requestId, { action: 'cancel' });
+            services.chat.sendBlockMessage({ threadId, text: `MCP server ${String(req.mcp_server_name ?? 'unknown')} requested a form. Form input is not supported yet; the request was cancelled.`, blocks: [], forkable: false });
+            continue;
+          }
+          const url = mcpElicitationUrl(req.url);
+          if (!url) {
+            handle.respondElicitation(requestId, { action: 'cancel' });
+            services.chat.sendBlockMessage({ threadId, text: 'The MCP input request contained an unsupported URL and was cancelled.', blocks: [], forkable: false });
+            continue;
+          }
+          const prompt = services.chat.sendBlockMessage({ threadId,
+            text: `MCP server ${String(req.mcp_server_name)} requests input: ${String(req.message ?? '')}`,
+            blocks: [
+              { type: 'prompt', props: { content: `Open ${url} to complete the request, then confirm. Nothing opens automatically.` } },
+              { type: 'link', props: { links: [{ label: url, icon: 'external-link', event: { target: 'external', data: { url } } }] } },
+              { type: 'button-group', props: { buttons: [{ id: 'accept', label: 'Completed', variant: 'primary' }, { id: 'decline', label: 'Decline', variant: 'secondary' }, { id: 'cancel', label: 'Cancel', variant: 'secondary' }] } },
+            ], forkable: false, autoHide: true, asUser: true,
+          });
+          ownedElicitations.add(requestId);
+          persistClaudeState(services, threadId, { pendingElicitation: { requestId, approvalMessageId: prompt.messageId, serverName: String(req.mcp_server_name), mode: 'url' } });
+          setRunning(services, threadId, false); splitOnNextMessageStart = true;
+          services.emitter.sendToSystem({ role: 'brain' }, { type: 'TRIGGER_BRAIN_EVENT', eventType: 'cc.stream.paused', payload: { threadId, toolName: 'MCP input' } });
+          continue;
+        }
 
         // Reject malformed requests missing a tool name.
         if (!req.tool_name) {
@@ -726,6 +755,7 @@ export async function consumeStream(
     }
 
   } catch (err: any) {
+    for (const requestId of ownedElicitations) cancelPendingControlRequest(services, threadId, requestId);
     const message = err?.message || 'Claude Code request failed';
 
     // If the handle has been cleared by another operation (revert,

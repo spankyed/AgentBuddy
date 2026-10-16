@@ -10,6 +10,7 @@ function fixture() {
     events: events as AsyncIterable<StreamLine>,
     send: vi.fn(() => `input-${++sequence}`),
     respond: vi.fn(),
+    respondElicitation: vi.fn(),
     close: vi.fn(async () => { events.end() }),
     kill: vi.fn(() => { events.end() }),
     hasPendingBackgroundTasks: vi.fn(() => false),
@@ -239,3 +240,37 @@ describe('persistent Claude conversation owner', () => {
   })
 
 })
+
+
+describe('shared permission and MCP interaction ownership', () => {
+ it('serializes tool permission and elicitation, rejects the wrong answer channel and retires cancellation', async () => {
+  const f = fixture(), received: StreamLine[] = []; let turn: ClaudeConversationTurn;
+  const owner = createClaudeConversation(f.native, async () => {});
+  const id = owner.start('input', async value => { turn = value; for await (const line of value.handle.events) received.push(line); owner.release(value.handle); });
+  f.push(started(id));
+  f.push({ type: 'control_request', request_id: 'tool-first', request: { subtype: 'can_use_tool', tool_name: 'Bash', tool_use_id: 'tool-fixture', input: {} } });
+  f.push({ type: 'control_request', request_id: 'url-second', request: { subtype: 'elicitation', mode: 'url', mcp_server_name: 'fixture', message: 'fixture', url: 'https://example.invalid' } });
+  await vi.waitFor(() => expect(received.filter(line => line.type === 'control_request')).toHaveLength(1));
+  turn!.handle.respond('tool-first', { behavior: 'allow', updatedInput: {} });
+  await vi.waitFor(() => expect(received.filter(line => line.type === 'control_request')).toHaveLength(2));
+  expect(() => turn!.handle.respond('url-second', { behavior: 'allow' })).toThrow('own response type');
+  expect(f.native.respond).toHaveBeenCalledTimes(1);
+  f.push({ type: 'control_cancel_request', request_id: 'url-second' });
+  await vi.waitFor(() => expect(received.some(line => line.type === 'control_cancel_request')).toBe(true));
+  expect(() => turn!.handle.respondElicitation('url-second', { action: 'accept' })).toThrow('no longer pending');
+  expect(f.native.respondElicitation).not.toHaveBeenCalled();
+  f.push(result(1,id)); await vi.waitFor(() => expect(owner.busy).toBe(false)); await owner.close();
+ });
+ it('retains elicitation ownership after a failed write and only releases on a successful answer', async () => {
+  const f = fixture(); let turn: ClaudeConversationTurn;
+  const owner = createClaudeConversation(f.native, async () => {});
+  const id = owner.start('input', async value => { turn = value; for await (const _line of value.handle.events) { /* drain */ } owner.release(value.handle); });
+  f.push(started(id)); f.push({ type: 'control_request', request_id: 'url', request: { subtype: 'elicitation', mode: 'url' } });
+  await vi.waitFor(() => expect(turn!).toBeDefined());
+  vi.mocked(f.native.respondElicitation).mockImplementationOnce(() => { throw new Error('write failed'); });
+  expect(() => turn!.handle.respondElicitation('url', { action: 'cancel' })).toThrow('write failed'); expect(owner.busy).toBe(true);
+  turn!.handle.respondElicitation('url', { action: 'decline' });
+  expect(() => turn!.handle.respondElicitation('url', { action: 'accept' })).toThrow('no longer pending');
+  f.push(result(1,id)); await vi.waitFor(() => expect(owner.busy).toBe(false)); await owner.close();
+ });
+});

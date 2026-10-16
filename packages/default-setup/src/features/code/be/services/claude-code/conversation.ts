@@ -75,36 +75,44 @@ export function createClaudeConversation(native: QueryHandle, consumeAutonomous:
   let cumulativeCost = 0
   let consumerFailure: unknown
   const listeners = new Set<(event: StreamLine) => void>()
-  // Native workers can ask concurrently; the app presents one approval while retaining every request.
-  const permissionRequests = new Map<string, StreamLine>()
-  const settledPermissions = new Set<string>()
-  let presentedPermission: string | undefined
-  function retirePermission(requestId: string): void {
-    permissionRequests.delete(requestId)
-    if (presentedPermission === requestId) presentedPermission = undefined
-    settledPermissions.add(requestId)
-    if (settledPermissions.size > 4096) settledPermissions.delete(settledPermissions.values().next().value!)
+  // Native workers can ask concurrently; the app presents one permission or elicitation while retaining every request.
+  const interactionRequests = new Map<string, { line: StreamLine; subtype: string }>()
+  const settledInteractions = new Set<string>()
+  let presentedInteraction: string | undefined
+  function retireInteraction(requestId: string): void {
+    interactionRequests.delete(requestId)
+    if (presentedInteraction === requestId) presentedInteraction = undefined
+    settledInteractions.add(requestId)
+    if (settledInteractions.size > 4096) settledInteractions.delete(settledInteractions.values().next().value!)
   }
-  function clearPermissions(): void {
-    permissionRequests.clear(); settledPermissions.clear(); presentedPermission = undefined
+  function clearInteractions(): void {
+    interactionRequests.clear(); settledInteractions.clear(); presentedInteraction = undefined
   }
-  function showNextPermission(): void {
-    if (presentedPermission || closing || exited || active?.terminal) return
-    const next = permissionRequests.entries().next().value
+  function showNextInteraction(): void {
+    if (presentedInteraction || closing || exited || active?.terminal) return
+    const next = interactionRequests.entries().next().value
     if (!next) return
-    presentedPermission = next[0]
+    presentedInteraction = next[0]
     const current = active ?? activate(consumeAutonomous)
-    current.queue.push(next[1])
+    current.queue.push(next[1].line)
   }
   const processHandle: QueryHandle = { ...native, respond(requestId, response) {
-    if (settledPermissions.has(requestId)) throw new ClaudeProtocolError('native permission request has already settled')
+    if (settledInteractions.has(requestId)) throw new ClaudeProtocolError('native permission request has already settled')
+    if (interactionRequests.get(requestId)?.subtype === 'elicitation') throw new ClaudeProtocolError('MCP elicitation requires its own response type')
     native.respond(requestId, response)
-    if (permissionRequests.has(requestId)) {
-      retirePermission(requestId)
-      try { showNextPermission() } catch (error) {
-        closing = true; activity.close(); clearPermissions(); native.kill()
+    if (interactionRequests.has(requestId)) {
+      retireInteraction(requestId)
+      try { showNextInteraction() } catch (error) {
+        closing = true; activity.close(); clearInteractions(); native.kill()
         throw error
       }
+    }
+  }, respondElicitation(requestId, response) {
+    if (settledInteractions.has(requestId) || interactionRequests.get(requestId)?.subtype !== 'elicitation') throw new ClaudeProtocolError('MCP elicitation is no longer pending')
+    native.respondElicitation(requestId, response)
+    retireInteraction(requestId)
+    try { showNextInteraction() } catch (error) {
+      closing = true; activity.close(); clearInteractions(); native.kill(); throw error
     }
   } }
 
@@ -162,24 +170,24 @@ export function createClaudeConversation(native: QueryHandle, consumeAutonomous:
           const parsed = ControlRequestLineSchema.safeParse(event)
           if (!parsed.success) throw new ClaudeProtocolError('malformed native control request')
           const request = parsed.data
-          if (request.request.subtype === 'can_use_tool') {
+          if (request.request.subtype === 'can_use_tool' || request.request.subtype === 'elicitation') {
             const id = request.request_id
             if (!id) throw new ClaudeProtocolError('native permission request has no identity')
-            if (settledPermissions.has(id) || permissionRequests.has(id)) continue
-            if (permissionRequests.size >= 4096) throw new ClaudeProtocolError('native permission queue exceeded its limit')
-            permissionRequests.set(id, request)
-            showNextPermission()
+            if (settledInteractions.has(id) || interactionRequests.has(id)) continue
+            if (interactionRequests.size >= 4096) throw new ClaudeProtocolError('native permission queue exceeded its limit')
+            interactionRequests.set(id, { line: request, subtype: request.request.subtype })
+            showNextInteraction()
             continue
           }
         }
         if (line.type === 'control_cancel_request') {
           const id = line.request_id
           if (typeof id !== 'string' || !id) throw new ClaudeProtocolError('native permission cancellation has no identity')
-          if (permissionRequests.has(id)) {
-            const wasPresented = presentedPermission === id
-            retirePermission(id)
+          if (interactionRequests.has(id)) {
+            const wasPresented = presentedInteraction === id
+            retireInteraction(id)
             if (wasPresented) (active ?? activate(consumeAutonomous)).queue.push(event)
-            showNextPermission()
+            showNextInteraction()
             continue
           }
         }
@@ -201,7 +209,7 @@ export function createClaudeConversation(native: QueryHandle, consumeAutonomous:
         current.queue.close()
         await current.consumed
         if (active === current) active = undefined
-        showNextPermission()
+        showNextInteraction()
       }
     } catch (error) { failure = error; native.kill() }
     finally {
@@ -219,7 +227,7 @@ export function createClaudeConversation(native: QueryHandle, consumeAutonomous:
         if (active === current) active = undefined
       }
       activity.close()
-      clearPermissions()
+      clearInteractions()
       listeners.clear()
     }
     if (failure) throw failure
@@ -228,14 +236,14 @@ export function createClaudeConversation(native: QueryHandle, consumeAutonomous:
 
   return {
     handle: processHandle,
-    get busy() { return active !== undefined || pending !== undefined || permissionRequests.size > 0 },
+    get busy() { return active !== undefined || pending !== undefined || interactionRequests.size > 0 },
     get closing() { return closing || exited },
     get sessionId() { return sessionId },
     get sessionCwd() { return sessionCwd },
     done,
     start(input, consume) {
       if (closing || exited) throw new ClaudeProtocolError('conversation is closed')
-      if (active || pending || permissionRequests.size) throw new ClaudeProtocolError('conversation already has an active input or permission request')
+      if (active || pending || interactionRequests.size) throw new ClaudeProtocolError('conversation already has an active input or permission request')
       const inputId = native.send(input)
       pending = { consume, inputId }
       return inputId
@@ -251,7 +259,7 @@ export function createClaudeConversation(native: QueryHandle, consumeAutonomous:
         active.reject(error)
         active.queue.close(error)
         activity.close()
-        clearPermissions()
+        clearInteractions()
         native.kill()
       } else active.queue.close()
       active = undefined
@@ -263,6 +271,6 @@ export function createClaudeConversation(native: QueryHandle, consumeAutonomous:
       await native.close()
       await done
     },
-    kill() { activity.close(); clearPermissions(); stopped = true; if (active) active.turn.stopped = true; closing = true; native.kill() },
+    kill() { activity.close(); clearInteractions(); stopped = true; if (active) active.turn.stopped = true; closing = true; native.kill() },
   }
 }

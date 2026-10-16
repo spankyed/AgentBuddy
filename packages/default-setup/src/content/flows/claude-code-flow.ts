@@ -62,6 +62,14 @@ export default {
         }),
         branch([
           {
+            if: "$.lastStep.result.elicitation == true",
+            steps: [action("CC: Answer MCP Elicitation", { label: "answer-elicitation", map: {
+              threadId: "$.steps[label=route-response].result.threadId",
+              requestId: "$.steps[label=route-response].result.requestId",
+              response: "$.steps[label=route-response].result.response",
+            } })],
+          },
+          {
             if: "$.lastStep.result.directorySelect == true",
             steps: [
               action("CC: Handle Directory Select", {

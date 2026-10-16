@@ -56,6 +56,13 @@ export interface PendingControlRequest {
   originalInput?: Record<string, unknown>;
 }
 
+export interface PendingMcpElicitation {
+  requestId: string;
+  approvalMessageId: string;
+  serverName: string;
+  mode: 'url';
+}
+
 export interface ClaudeCodeThreadState {
   sessionId?: string;
   /** History of previous sessionIds (oldest first), populated when compaction/fork/revert replaces the active session. */
@@ -108,6 +115,7 @@ export interface ClaudeCodeThreadState {
    * is routed.
    */
   pendingControlRequest?: PendingControlRequest;
+  pendingElicitation?: PendingMcpElicitation;
   /**
    * Set when the chat action detects no CWD is configured and sends a
    * directory-picker block. Stores the original message params so the
@@ -387,7 +395,14 @@ export function dequeueMessage(services: Services, threadId: string): QueuedMess
 
 /** Retire only the approval named by a native cancellation; other requests may still be live. */
 export function cancelPendingControlRequest(services: Services, threadId: string, requestId: string): boolean {
-  const pending = getClaudeState(services, threadId)?.pendingControlRequest;
+  const state = getClaudeState(services, threadId);
+  const elicitation = state?.pendingElicitation;
+  if (elicitation?.requestId === requestId) {
+    services.chat.updateMessageState(elicitation.approvalMessageId as EntityId, { responseTimestamp: Date.now(), blockResponse: { cancelled: true } });
+    persistClaudeState(services, threadId, { pendingElicitation: undefined });
+    return true;
+  }
+  const pending = state?.pendingControlRequest;
   if (!pending || pending.requestId !== requestId) return false;
   services.chat.updateMessageState(pending.approvalMessageId as any, {
     responseTimestamp: Date.now(), blockResponse: { cancelled: true },
@@ -449,6 +464,8 @@ export function killTurn(services: Services, threadId: string): void {
       blockResponse: { cancelled: true },
     } as any);
   }
+
+  if (prior?.pendingElicitation) cancelPendingControlRequest(services, threadId, prior.pendingElicitation.requestId);
 
   // Invalidate queued message so the user knows to resend.
   const queued = dequeueMessage(services, threadId);
