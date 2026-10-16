@@ -1,4 +1,4 @@
-import { getSkillsDialog } from './claude-code/skills.ts'
+import { editSkillOverride, type ClaudeSkillEdit, getSkillsDialog } from './claude-code/skills.ts'
 import type { ClaudeSkillsDialog } from './claude-code/host-controls.ts'
 import type { ClaudeConversation, ClaudeTurnConsumer } from './claude-code/conversation.ts'
 import { getSessionPlan, type ClaudeSessionPlanOptions } from './claude-code/plan.ts'
@@ -97,6 +97,7 @@ export interface CliServiceType {
     writeSettings(settings: Record<string, any>): Promise<void>
     /** Read native Skill states, provenance and author/policy locks. */
     listSkills(opts?: { cwd?: string }): Promise<ClaudeSkillsDialog['skills']>
+    editSkill(edit: ClaudeSkillEdit, opts?: { cwd?: string }): Promise<{ changed: boolean }>
     /** List memory/CLAUDE.md files from known locations. */
     listMemoryFiles(): Promise<Array<{ name: string; scope: string; path: string }>>
     /** Rename a Claude Code session through the native process. */
@@ -266,6 +267,9 @@ function createCliService(): CliServiceType {
           }
           throw err
         }
+      },
+      editSkill(edit, opts) {
+        return editSkillOverride(edit, { cwd: opts?.cwd ?? resolveCwd() })
       },
       async listSkills(opts) {
         return (await getSkillsDialog({ cwd: opts?.cwd ?? resolveCwd() })).skills

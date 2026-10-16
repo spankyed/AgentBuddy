@@ -220,20 +220,52 @@ async function handleMemory(
 }
 
 async function handleSkills(
-  _args: string[],
+  args: string[],
   services: Services,
   threadId?: string,
 ): Promise<{ text: string; data?: any }> {
   const prior = threadId ? getClaudeState(services, threadId) : undefined;
   const cwd = prior?.cwdOverride || prior?.cwd;
-  const skills = await services.cli.claudeCode.listSkills(cwd ? { cwd } : undefined);
+  const options = cwd ? { cwd } : undefined;
+  const editing = args.length > 0;
+  if (editing && (args.length !== 3 || args[0] !== 'set')) {
+    return { text: 'Usage: cc-skills set <name> <on|name-only|user-invocable-only|off>' };
+  }
+  if (editing && threadId && services.cli.claudeCode.isConversationBusy(threadId)) {
+    return { text: 'Wait for the Claude conversation to become idle before changing Skill state.' };
+  }
+  let handle = threadId ? services.cli.claudeCode.getHandle(threadId) : undefined;
+  if (handle && threadId) {
+    const processCwd = services.cli.claudeCode.getConversation(threadId)?.owner.sessionCwd;
+    const selectedCwd = cwd || services.cli.claudeCode.getWorkingDir();
+    if (processCwd !== selectedCwd) {
+      if (editing) return { text: 'The native conversation directory does not match this project. Start a conversation in this project before editing its Skills.' };
+      handle = undefined;
+    }
+  }
+  let skills = handle ? (await handle.getSkillsDialog()).skills : await services.cli.claudeCode.listSkills(options);
+  let notice = '';
+  if (editing) {
+    const name = args[1]!;
+    const matches = skills.filter(skill => skill.name === name);
+    if (matches.length !== 1) return { text: `Skill name must identify exactly one native entry: ${name}` };
+    const skill = matches[0]!;
+    const result = await services.cli.claudeCode.editSkill({ name, state: args[2]!, handles: skill.handles }, options);
+    notice = result.changed ? `Updated ${name}.\n` : `No change to ${name}.\n`;
+    try {
+      if (handle) await handle.reloadSkills();
+      skills = handle ? (await handle.getSkillsDialog()).skills : await services.cli.claudeCode.listSkills(options);
+    } catch (error: any) {
+      return { text: `${notice}Saved Skill state, but native refresh failed: ${error?.message || 'Unknown error'}` };
+    }
+  }
   if (!skills.length) return { text: 'No skills installed.' };
   const lines = skills.map(s => {
     const lock = s.locked_by ? `; locked by ${s.locked_by}` : '';
     const invocation = s.advertised ? '' : '; hidden from command suggestions';
     return `${s.display_name} [${s.source}] — ${s.state}${lock}${invocation}`;
   });
-  return { text: lines.join('\n'), data: skills };
+  return { text: notice + lines.join('\n'), data: skills };
 }
 
 async function handleStats(

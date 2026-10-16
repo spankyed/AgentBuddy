@@ -98,6 +98,8 @@ export interface QueryHandle {
   renameSession(title: string, sessionId?: string): Promise<void>
   /** Read native Skill states, provenance and locks without a model turn. */
   getSkillsDialog(): Promise<ClaudeSkillsDialog>
+  /** Refresh native Skill discovery after an idle configuration edit. */
+  reloadSkills(): Promise<void>
   /** Read the current native plan without a model turn. */
   getPlan(): Promise<ClaudePlan>
   /** Read live MCP server and tool status without a model turn. */
@@ -283,6 +285,11 @@ export async function query(opts: QueryOptions): Promise<QueryHandle> {
       const valid = z.object({ dryRun: z.boolean() }).strict().parse(options)
       await initialized
       return ClaudeFileRewindSchema.parse(await hostControls.request({subtype: 'rewind_files', user_message_id: id, dry_run: valid.dryRun}))
+    },
+
+    async reloadSkills(): Promise<void> {
+      await initialized
+      z.object({ skills: z.array(z.object({ name: z.string() }).passthrough()) }).parse(await hostControls.request({ subtype: 'reload_skills' }))
     },
 
     async getSkillsDialog(): Promise<ClaudeSkillsDialog> {

@@ -1,8 +1,9 @@
+import { query } from '#features/code/be/services/claude-code/query.ts';
 import { afterEach, describe, expect, it } from 'vitest';
 import { mkdtemp, writeFile, readFile, rm, mkdir } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { getSkillsDialog } from '#features/code/be/services/claude-code/skills.ts';
+import { editSkillOverride, getSkillsDialog } from '#features/code/be/services/claude-code/skills.ts';
 const directories: string[] = [];
 afterEach(async () => { await Promise.all(directories.splice(0).map(path => rm(path, { recursive: true, force: true }))); });
 const skill = { name: 'fixture', display_name: 'Fixture', description: 'Synthetic', source: 'project', tokens: 2, state: 'user-invocable-only', locked_by: 'author', advertised: true, handles: {} };
@@ -43,4 +44,31 @@ describe('native Skill discovery', () => {
   const result = await getSkillsDialog({ cwd, cliPath: process.env.CLAUDE_SKILL_TEST_BINARY, env: { PATH: process.env.PATH, HOME: home, CLAUDE_CONFIG_DIR: join(home, '.claude'), DISABLE_AUTOUPDATER: '1', CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC: '1' } });
   expect(result.skills).toContainEqual(expect.objectContaining({ name: 'native-fixture', state: 'user-invocable-only', locked_by: 'author', source: 'project' }));
  }, 20000);
+ it('validates edit state before launching a process', async () => {
+  const options = await fixture();
+  await expect(editSkillOverride({ name: 'fixture', state: 'invalid' }, options)).rejects.toThrow();
+  await expect(readFile(join(options.cwd, 'capture.json'))).rejects.toMatchObject({ code: 'ENOENT' });
+ });
+ it.skipIf(!process.env.CLAUDE_SKILL_TEST_BINARY)('persists edits through the pinned native writer and preserves author locks', async () => {
+  const cwd = await mkdtemp(join(tmpdir(), 'claude-native-edit-')); directories.push(cwd);
+  const home = join(cwd, 'home'); await mkdir(join(home, '.claude'), { recursive: true });
+  for (const [name, extra] of [['editable', ''], ['locked', 'disable-model-invocation: true\n']]) {
+   const dir = join(cwd, '.claude', 'skills', name); await mkdir(dir, { recursive: true });
+   await writeFile(join(dir, 'SKILL.md'), `---\nname: ${name}\ndescription: Native edit fixture\n${extra}---\nSynthetic body.\n`);
+  }
+  const options = { cwd, cliPath: process.env.CLAUDE_SKILL_TEST_BINARY, env: { PATH: process.env.PATH, HOME: home, CLAUDE_CONFIG_DIR: join(home, '.claude'), DISABLE_AUTOUPDATER: '1', CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC: '1' } };
+  const handle = await query({ ...options, keepStdinOpen: true, noSessionPersistence: true });
+  try {
+  expect((await handle.getSkillsDialog()).skills).toContainEqual(expect.objectContaining({ name: 'editable', state: 'on' }));
+  await expect(editSkillOverride({ name: 'editable', state: 'off' }, options)).resolves.toEqual({ changed: true });
+  await handle.reloadSkills();
+  expect((await handle.getSkillsDialog()).skills).toContainEqual(expect.objectContaining({ name: 'editable', state: 'off', advertised: false }));
+  const settings = join(cwd, '.claude', 'settings.local.json');
+  expect(JSON.parse(await readFile(settings, 'utf8')).skillOverrides.editable).toBe('off');
+  const before = await readFile(settings);
+  await expect(editSkillOverride({ name: 'locked', state: 'on' }, options)).rejects.toThrow();
+  expect(await readFile(settings)).toEqual(before);
+  } finally { await handle.close(); }
+ }, 20000);
+
 });
