@@ -46,6 +46,7 @@ it.skipIf(!executable || !workspace || !endpoint)('actual native Workflow phases
     await vi.waitFor(() => expect(events.some(event => event.type === 'system' && event.subtype === 'task_notification' && event.status === terminal)).toBe(true), { timeout: 10000 });
     await vi.waitFor(() => expect(events.filter(event => event.type === 'result')).toHaveLength(2), { timeout: 10000 });
     await vi.waitFor(() => expect(owner.busy).toBe(false));
+    expect(events.every(event => event.type !== 'result' || (event.subtype === 'success' && event.is_error !== true))).toBe(true);
     const rowUpdates = updates.mock.calls.flatMap(([messageId, patch]) => (patch.blocks ?? []).filter((block: any) => block.type === 'tool-activity').flatMap((block: any) => block.props.entries.filter((entry: any) => entry.tool === 'Workflow').map((entry: any) => ({ messageId, entry, blockState: block.props.state }))));
     const final = rowUpdates.at(-1)!;
     expect(final.entry).toMatchObject({ status: failed ? 'error' : 'ok', outputSummary: expect.stringContaining(`${terminal} — Fixture`) });
@@ -58,6 +59,6 @@ it.skipIf(!executable || !workspace || !endpoint)('actual native Workflow phases
     expect(events.some(event => event.type === 'system' && event.subtype === 'task_progress' && Array.isArray(event.workflow_progress))).toBe(true);
     expect(store.getConversation(id)?.owner).toBe(owner);
     await owner.close();
-    await writeFile(join(workspace!, 'workflow-app-evidence.json'), JSON.stringify({ sourceConsumer: true, nativeOwner: true, nativeApproval: true, sameOriginalRow: true, phasePresented: true, completionPresented: true, taskStatus: terminal, failedTaskAccountedOnce: failed, nativeFailureMarkerRetained: failed, originalInputRetained: true, nativeLaunchOutputRetained: true, closed: true, qualification: 'Actual query/owner/source consumer and approval action; compiled flow and mounted UI remain separate.' }, null, 2));
+    await writeFile(join(workspace!, 'workflow-app-evidence.json'), JSON.stringify({ sourceConsumer: true, nativeOwner: true, nativeApproval: true, sameOriginalRow: true, phasePresented: true, completionPresented: true, taskStatus: terminal, successfulModelResults: true, failedTaskAccountedOnce: failed, nativeFailureMarkerRetained: failed, originalInputRetained: true, nativeLaunchOutputRetained: true, closed: true, qualification: 'Actual query/owner/source consumer and approval action; compiled flow and mounted UI remain separate.' }, null, 2));
   } finally { store.killAllHandles(); }
 }, 35000);
