@@ -1,16 +1,18 @@
 import path from 'node:path';
-import { createRequire } from 'node:module';
+import { createRequire, isBuiltin } from 'node:module';
+import { createPathsMatcher, parseTsconfig } from 'get-tsconfig';
 import { transformSync, type Loader } from 'esbuild';
 import type { CompilationInputs } from './compilation-inputs.ts';
 import { esbuildTsconfig } from './compiler-configuration.ts';
 import { withoutCompilerFileReads } from './compiler-file-reads.ts';
 
 /** tsx's CommonJS API has no per-registration config. Transform only this build's owned modules. */
-export function registerCompilerCommonJS(compilation: CompilationInputs, directory: string): () => void {
+export function registerCompilerCommonJS(compilation: CompilationInputs, directory: string, tsconfig?: string): () => void {
   const require = createRequire(import.meta.url);
   const extensions = require.extensions;
   const module = require('node:module') as { _resolveFilename(request: string, parent: NodeJS.Module | undefined, ...args: unknown[]): string };
   const nativeResolve = module._resolveFilename;
+  const aliases = tsconfig ? createPathsMatcher({ path: tsconfig, config: parseTsconfig(tsconfig) }) : null;
   const owns = (file: string | undefined) => {
     if (!file || !path.isAbsolute(file)) return false;
     const relative = path.relative(directory, file.split('?')[0]!);
@@ -22,7 +24,23 @@ export function registerCompilerCommonJS(compilation: CompilationInputs, directo
   let enabled = true;
   // Native lookup must retain owned filenames; source-path projection belongs to compiler code.
   const resolve: typeof nativeResolve = function(this: typeof module, request, parent, ...args) {
-    const run = () => nativeResolve.call(this, request, parent, ...args);
+    const run = () => {
+      const filename = parent?.filename;
+      if (inputs && aliases && filename && owns(filename) && !filename.includes(`${path.sep}node_modules${path.sep}`)) {
+        const separator = request.indexOf('?');
+        const specifier = separator < 0 ? request : request.slice(0, separator);
+        const query = separator < 0 ? '' : request.slice(separator);
+        const targets = isBuiltin(specifier) ? [] : aliases(specifier);
+        if (targets.length) inputs.prepareNative(specifier, path.dirname(inputs.sourcePath(filename.split('?')[0]!)));
+        for (const target of targets) {
+          try { return nativeResolve.call(this, target + query, parent, ...args); }
+          catch (error) {
+            if (!['MODULE_NOT_FOUND', 'ERR_MODULE_NOT_FOUND'].includes((error as NodeJS.ErrnoException).code ?? '')) throw error;
+          }
+        }
+      }
+      return nativeResolve.call(this, request, parent, ...args);
+    };
     return enabled && (owns(request) || owns(parent?.filename)) ? withoutCompilerFileReads(run) : run();
   };
   module._resolveFilename = resolve;

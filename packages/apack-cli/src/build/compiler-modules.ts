@@ -28,7 +28,14 @@ export function createCompilerModuleLoader(compilation: CompilationInputs) {
     const root = pathToFileURL(`${tree.directory}${path.sep}`).href;
     const readURL = (value: string) => {
       const url = new URL(value);
-      const owned = pathToFileURL(tree.path(compilation.sourcePath(fileURLToPath(url))));
+      let file = fileURLToPath(url);
+      const separator = file.indexOf('?');
+      if (separator >= 0 && new URLSearchParams(file.slice(separator + 1)).get('namespace') === namespace) {
+        // Node may encode tsx's CommonJS scope suffix into the URL pathname.
+        url.search = '?' + [url.search.slice(1), file.slice(separator + 1)].filter(Boolean).join('&');
+        file = file.slice(0, separator);
+      }
+      const owned = pathToFileURL(tree.path(compilation.sourcePath(file)));
       owned.search = url.search;
       owned.hash = url.hash;
       return owned;
@@ -43,8 +50,10 @@ export function createCompilerModuleLoader(compilation: CompilationInputs) {
         return withoutCompilerFileReads(() => {
           if (!path.isAbsolute(specifier) && /^[a-z][\w+.-]*:/i.test(specifier) && !specifier.startsWith('file:')) return next(specifier, context);
           const require = Array.from(context.conditions).includes('require');
+          // tsx carries its CommonJS scope in a path suffix; it is not part of the filename.
+          const commonjsScope = require && new URLSearchParams(specifier.slice(specifier.indexOf('?') + 1)).get('namespace') === namespace;
           const url = specifier.startsWith('file:') ? new URL(specifier)
-            : path.isAbsolute(specifier) && !require ? new URL(specifier, context.parentURL) : undefined;
+            : path.isAbsolute(specifier) && (!require || commonjsScope) ? new URL(specifier, context.parentURL) : undefined;
           const target = url ? fileURLToPath(url) : specifier;
           const source = path.isAbsolute(target) ? compilation.sourcePath(target) : target;
           const parent = context.parentURL?.startsWith('file:') ? fileURLToPath(context.parentURL) : source;
@@ -74,7 +83,7 @@ export function createCompilerModuleLoader(compilation: CompilationInputs) {
     const tsconfig = writeCompilerModuleConfiguration(compilation.configuration ?? compilation.declarationConfiguration, tree);
     const importCompilerSource = createRequire(import.meta.url)(path.join(cliPackageDirectory(), 'bin/compiler-import.cjs')) as (url: string) => Promise<Record<string, unknown>>;
     const commonjs = cjs.register({ namespace });
-    const unregisterCommonJS = registerCompilerCommonJS(compilation, tree.directory);
+    const unregisterCommonJS = registerCompilerCommonJS(compilation, tree.directory, tsconfig);
     try {
       const modules = esm.register({ namespace, tsconfig });
       return { modules, commonjs, unregisterCommonJS, importCompilerSource };
