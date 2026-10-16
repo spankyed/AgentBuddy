@@ -22,7 +22,19 @@ export interface NativePackDeclaration extends PackDataDeclarations, FrontendDec
   dslDefinitions?: Record<string, string>;
   dependencies?: Record<string, string>;
   settings?: Record<string, SettingsDefinition>;
-  features?: Record<string, { description: string; entities?: Record<string, string | null>; designation?: string; settings?: SettingsDefinition; plugin?: PluginDeclaration; references?: ReferenceDeclarations }>;
+  /** Native APIs without a feature owner; values identify their composition bindings. */
+  services?: Record<string, string>;
+  repositories?: Record<string, string>;
+  features?: Record<string, {
+    description: string;
+    entities?: Record<string, string | null>;
+    designation?: string;
+    settings?: SettingsDefinition;
+    plugin?: PluginDeclaration;
+    references?: ReferenceDeclarations;
+    services?: Record<string, string>;
+    repositories?: Record<string, string>;
+  }>;
 }
 
 /** Observe committed declaration changes, independently of executable pack activation. */

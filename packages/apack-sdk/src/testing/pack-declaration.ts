@@ -4,6 +4,9 @@ import type { PackRegistration } from '../framework/pack-registration.ts';
 
 /** Compose declaration data from an authored test fixture, before registering its runtime stand-ins. */
 export function nativePackDeclarationFixture(fixture: PackRegistration): NativePackDeclaration {
+  const featureServices = new Set(Object.values(fixture.features ?? {}).flatMap(feature => feature.services ?? []));
+  const target = (kind: string, names: readonly string[]) => Object.fromEntries(names.map(name =>
+    [name, `fixtures/${kind}.ts#${name}`]));
   return {
     id: fixture.id,
     ...(fixture.commands !== undefined && { commands: Object.fromEntries(fixture.commands.map(({ name, placeholder }) => [name, { placeholder }])) }),
@@ -43,7 +46,10 @@ export function nativePackDeclarationFixture(fixture: PackRegistration): NativeP
     })) }),
     ...(fixture.dependencies !== undefined && { dependencies: fixture.dependencies }),
     ...(fixture.settings !== undefined && { settings: fixture.settings }),
+    ...(fixture.services !== undefined && { services: target('services', Object.keys(fixture.services).filter(name => !featureServices.has(name))) }),
+    ...(fixture.repositories !== undefined && { repositories: target('repositories', Object.keys(fixture.repositories)) }),
     features: Object.fromEntries(Object.entries(fixture.features ?? {}).map(([id, feature]) => [id,
-      { description: `Test fixture for ${id}.`, ...(feature.settings !== undefined && { settings: feature.settings }) }])),
+      { description: `Test fixture for ${id}.`, ...(feature.settings !== undefined && { settings: feature.settings }),
+        ...(feature.services !== undefined && { services: target('services', feature.services) }) }])),
   };
 }

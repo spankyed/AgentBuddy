@@ -134,6 +134,8 @@ export const _NativePackDeclarationSchema = z.preprocess(checkDeclaredNames, z.o
   id: z.string().regex(PACK_ID_PATTERN),
   dependencies: declarationRecord(z.string().regex(PACK_ID_PATTERN), PackRangeSchema).optional(),
   settings: declarationRecord(z.string().regex(FEATURE_ID_PATTERN), SettingsDefinitionSchema).optional(),
+  services: z.lazy(() => ServicesSchema).optional(),
+  repositories: z.lazy(() => ServicesSchema).optional(),
   data: DataSchema.optional(),
   lifecycle: z.lazy(() => LifecycleConfigSchema).optional(),
   steps: z.lazy(() => ExtensionsSchema.shape.steps),
@@ -145,7 +147,7 @@ export const _NativePackDeclarationSchema = z.preprocess(checkDeclaredNames, z.o
   tiptapPlugins: z.lazy(() => FrontendConfigSchema.shape.tiptapPlugins),
   appExtensions: z.lazy(() => FrontendConfigSchema.shape.appExtensions),
   features: declarationRecord(z.string().regex(FEATURE_ID_PATTERN), z.lazy(() => FeatureEntrySchema.pick({
-    description: true, entities: true, designation: true, settings: true, plugin: true, references: true,
+    description: true, entities: true, designation: true, settings: true, plugin: true, references: true, services: true, repositories: true,
   }))).optional(),
 }).strict().superRefine((declaration, ctx) => {
   const dslProblem = dslDefinitionsProblem(declaration.dsl, declaration.dslDefinitions);
@@ -153,7 +155,28 @@ export const _NativePackDeclarationSchema = z.preprocess(checkDeclaredNames, z.o
   checkFrontendClaims(declaration, ctx, []);
   checkReferenceClaims(declaration.features, ctx);
   checkDefaultPluginClaims(declaration.features, ctx);
+  checkApiClaims(declaration.features, declaration.services, declaration.repositories, ctx);
 }));
+
+/** API names share one namespace within a pack, even when their declarations have different feature owners. */
+function checkApiClaims(features: Record<string, { services?: Record<string, string>; repositories?: Record<string, string> }> | undefined,
+  services: Record<string, string> | undefined, repositories: Record<string, string> | undefined, ctx: z.RefinementCtx,
+  servicePath = ['services']): void {
+  for (const kind of ['services', 'repositories'] as const) {
+    const root = kind === 'services' ? services : repositories;
+    const path = kind === 'services' ? servicePath : ['repositories'];
+    const owners = new Map(Object.keys(root ?? {}).map(name => [name, path.join('.')]));
+    for (const [id, feature] of Object.entries(features ?? {})) {
+      for (const name of Object.keys(feature[kind] ?? {})) {
+        const owner = `features.${id}.${kind}`;
+        const previous = owners.get(name);
+        if (previous !== undefined) ctx.addIssue({ code: 'custom', path: ['features', id, kind, name],
+          message: `${kind === 'services' ? 'Service' : 'Repository'} "${name}" is declared by both "${previous}" and "${owner}"` });
+        else owners.set(name, owner);
+      }
+    }
+  }
+}
 
 export const StepDSLMetaSchema = z.object({
   references: declarationRecord(z.string().regex(/^[A-Za-z_$][\w$]*$/, 'Must name a DSL field'), z.string().min(1))
@@ -731,6 +754,7 @@ export const ManifestSchema = z.preprocess(checkDeclaredNames, z.object({
 }).strict().superRefine((manifest, ctx) => {
   checkFrontendClaims(manifest.extensions, ctx, ['extensions']);
   checkReferenceClaims(manifest.features, ctx);
+  checkApiClaims(manifest.features, manifest.extensions?.services, undefined, ctx, ['extensions', 'services']);
   checkDefaultPluginClaims(manifest.features, ctx);
 
   // Both kinds of entry name a format, and both are checked against the same two places

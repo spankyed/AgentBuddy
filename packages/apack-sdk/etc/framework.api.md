@@ -267,11 +267,16 @@ export interface NativePackDeclaration extends PackDataDeclarations, FrontendDec
         settings?: SettingsDefinition;
         plugin?: PluginDeclaration;
         references?: ReferenceDeclarations;
+        services?: Record<string, string>;
+        repositories?: Record<string, string>;
     }>;
     // (undocumented)
     id: string;
     // (undocumented)
     lifecycle?: PackLifecycleDeclaration;
+    // (undocumented)
+    repositories?: Record<string, string>;
+    services?: Record<string, string>;
     // (undocumented)
     settings?: Record<string, SettingsDefinition>;
     // (undocumented)

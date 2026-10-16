@@ -6,6 +6,28 @@ import { isPlainObject } from '@apackdev/sdk/utils/pure';
 import { namedBindings, sameKeys, sameNames } from './binding-shape.ts';
 import { isDeepStrictEqual } from 'node:util';
 
+interface ApiOwnerDeclaration {
+  readonly services?: Readonly<Record<string, string>>;
+  readonly repositories?: Readonly<Record<string, string>>;
+}
+
+/** Declared ownership is independent of constructing services or calling repository methods. */
+export function apiBindingProblem(features: Readonly<Record<string, ApiOwnerDeclaration>> | undefined,
+  pack: ApiOwnerDeclaration, registration: unknown): string | undefined {
+  if (!isPlainObject(registration)) return 'registration';
+  const runtimeFeatures = registration.features === undefined ? {} : registration.features;
+  if (!isPlainObject(runtimeFeatures)) return 'features';
+  for (const [id, feature] of Object.entries(features ?? {})) {
+    const runtime = runtimeFeatures[id];
+    if (!isPlainObject(runtime)) return `features.${id}`;
+    if (!sameNames(runtime.services === undefined ? [] : runtime.services, Object.keys(feature.services ?? {}))) return `features.${id}.services`;
+  }
+  for (const kind of ['services', 'repositories'] as const) {
+    const names = [...Object.keys(pack[kind] ?? {}), ...Object.values(features ?? {}).flatMap(feature => Object.keys(feature[kind] ?? {}))];
+    if (!sameKeys(registration[kind] === undefined ? {} : registration[kind], names)) return kind;
+  }
+}
+
 export function commandBindingProblem(declarations: Readonly<Record<string, { readonly placeholder: string }>> | undefined, bindings: unknown): string | undefined {
   const commands = namedBindings(bindings, 'name', Object.keys(declarations ?? {}));
   if (!commands) return 'commands';
@@ -47,13 +69,9 @@ export function backendBindingProblem(manifest: PackManifest, registration: unkn
       if ((feature[kind] !== undefined) !== (declaration[kind] !== undefined)) return problem(`features.${id}.${kind}`);
       if (declaration[kind] && !isPlainObject(feature[kind])) return problem(`features.${id}.${kind}`);
     }
-    if (!sameNames(feature.services === undefined ? [] : feature.services, Object.keys(declaration.services ?? {}))) return problem(`features.${id}.services`);
   }
-  const services = [...Object.keys(manifest.extensions?.services ?? {}),
-    ...Object.values(declared).flatMap(feature => Object.keys(feature.services ?? {}))];
-  if (!sameKeys(registration.services === undefined ? {} : registration.services, services)) return problem('services');
-  const repositories = Object.values(declared).flatMap(feature => Object.keys(feature.repositories ?? {}));
-  if (!sameKeys(registration.repositories === undefined ? {} : registration.repositories, repositories)) return problem('repositories');
+  const apiProblem = apiBindingProblem(declared, { services: manifest.extensions?.services }, registration);
+  if (apiProblem) return problem(apiProblem);
 
   const ears = registration.ears === undefined ? {} : registration.ears;
   if (!isPlainObject(ears)) return problem('ears');

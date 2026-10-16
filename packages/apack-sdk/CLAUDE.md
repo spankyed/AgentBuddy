@@ -167,7 +167,11 @@ This is the in-memory runtime that `@apackdev/testing/harness` drives (see `pack
 
 `nativePackDeclarationFixture(registration)` extracts declaration data from an authored native test
 fixture before its runtime stand-ins register, including explicit step node data and executable slot targets.
-A step fixture supplies its node declaration; the helper does not invent missing defaults. It is a test
+A step fixture supplies its node declaration; the helper does not invent missing defaults. Native APIs use keyed `services` and `repositories` targets at their
+feature owner, or at pack scope when no feature owns them. These are composition references, never
+discovery-time imports. Native and authored registration share API-name/feature-service ownership
+checks. The test helper records names before binding; direct registry fixtures must supply their own
+API declarations and update them when a replacement changes the contributed names. It is a test
 composition helper, never a production
 discovery path. Host composition admits independent declarations before constructing runtime bindings.
 

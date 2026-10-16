@@ -5,7 +5,7 @@ import type { StepEntry } from '@apackdev/sdk/build';
 import { captureStepBinding, captureStepDeclaration } from './step-bindings.ts';
 import { lifecycleBindingProblem } from './lifecycle-binding.ts';
 import { _packEntityTypes, _packRelationTypes } from '@apackdev/sdk/framework';
-import { backendBindingProblem, backendStepBindingProblem, commandBindingProblem, contentBindingProblem } from './declaration-binding.ts';
+import { apiBindingProblem, backendBindingProblem, backendStepBindingProblem, commandBindingProblem, contentBindingProblem } from './declaration-binding.ts';
 /**
  * Pack Registration
  *
@@ -543,6 +543,8 @@ export function createPackRegistry({ installedPacksDir, appPackSourcesDir, setti
     if (!origin) {
       const declaration = catalog.getSnapshot().native.find(pack => pack.id === registration.id);
       if (!declaration) throw new Error(`Native pack "${registration.id}" must declare its data before binding`);
+      const apiProblem = apiBindingProblem(declaration.features, declaration, registration);
+      if (apiProblem) throw new Error(`Native pack "${registration.id}" runtime ${apiProblem} does not match its admitted declarations`);
       if (!isDeepStrictEqual(registration.ears?.relKinds ?? {}, _packRelationTypes(declaration))) {
         throw new Error(`Native pack "${registration.id}" runtime ears.relKinds does not match its admitted declarations`);
       }
