@@ -120,7 +120,17 @@ naming branch is not an automatic source of future changes.
 
 ### Current handoff — compiler checkpoint (2026-10-16)
 
-Latest source is `37890aa9b` (native compiler startup capture). The private worker now installs a
+Latest source is `65a189cb7` (ordered execution identity), following `c85fc178a` (no-op alias
+projection removal). Compilation keys now include ordered effective `NODE_OPTIONS`, native argument
+vectors and the full runtime version map, alongside platform/architecture and owned input facts.
+Changing preload order or a native execution flag refuses the existing frame and changes a new frame
+hash, even with identical files. Both regressions fail before the source change; all nine affected
+compiler-input integration cases pass afterward (50.23s), as do CLI typechecking, lint and diff checks.
+`/private/tmp/apack-execution-identity-{before,after,types}.log`. This records options actually present in
+the worker; it does not complete parent launch-option forwarding or immutable executable/native-runtime
+ownership. The private bootstrap path is removed from user options before compilation as recorded below.
+
+Source `37890aa9b` (native compiler startup capture): the private worker installs a
 native CommonJS preload before user initialization, owns its early file view, and hands the same view
 into compilation. Existing primary-loader threads return serialized observations through a private
 barrier; final validation merges their facts and checks originals before publication. The bootstrap
@@ -177,10 +187,11 @@ cases in the affected suite; `/private/tmp/apack-read-tree-alias-retarget.log`. 
 and the other preserved watch/frontend/teardown failures remain unresolved; the focused pass does not
 prove those fixed. Do not restart the broad chain to diagnose them.
 
-Next: complete execution identity and remaining frame/receipt ownership in coherent checkpoints;
+Next: complete executable/runtime ownership and the launch-option forwarding contract, then remaining
+frame/receipt ownership in coherent checkpoints;
 resolve the named affected failures from their preserved evidence before the required converged gate.
 
-Remaining implementation still includes the complete ordered execution-options/runtime identity,
+Remaining implementation still includes executable/native runtime ownership, launch-option forwarding,
 pre-startup source/dependency ownership, native/resource and one-shot/dev lifetime, persisted completed
 receipts/passive freshness, actual frontend HMR generation ownership, and every later goal phase.
 Startup observations are not yet a persisted receipt or passive freshness authority. The full goal is
