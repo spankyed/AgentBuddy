@@ -1,12 +1,13 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import * as crypto from 'crypto';
-import { pathToFileURL } from 'url';
+import { importPackModule } from '../module-loader.ts';
+import type { PackModuleLoader } from '../types.ts';
 import type { ValidationResult } from '../content-compiler.ts';
 import { isFlowConfig, type FlowConfig, type FlowDSL } from './flow-types.ts';
 import { validate } from './flow-dsl-validator.ts';
 
-export async function loadFlowsFromDir(flowsDir: string): Promise<{
+export async function loadFlowsFromDir(flowsDir: string, importModule: PackModuleLoader = importPackModule): Promise<{
   merged: FlowDSL;
   rootFlowName: string | null;
   loaded: number;
@@ -25,7 +26,7 @@ export async function loadFlowsFromDir(flowsDir: string): Promise<{
 
   for (const file of tsFiles) {
     const filePath = path.join(flowsDir, file);
-    const mod = await import(pathToFileURL(filePath).href);
+    const mod = await importModule(filePath);
 
     if (!mod.default) continue;
 

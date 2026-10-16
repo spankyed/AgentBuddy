@@ -3,13 +3,14 @@ import os from 'node:os';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { promisify } from 'node:util';
-import { afterEach, expect, it } from 'vitest';
+import { afterEach, expect, it, vi } from 'vitest';
 import { compilePack, buildPackConfigFromManifest, ManifestSchema } from '@apackdev/sdk/build';
 import { captureCompilationInputs } from '../../src/build/compilation-inputs.ts';
 import { withCompilerFileReads } from '../../src/build/compiler-file-reads.ts';
+import { importCompilerModule } from '../../src/build/compiler-modules.ts';
 
 const roots: string[] = [];
-afterEach(() => { for (const root of roots.splice(0)) fs.rmSync(root, { recursive: true, force: true }); });
+afterEach(() => { vi.unstubAllEnvs(); for (const root of roots.splice(0)) fs.rmSync(root, { recursive: true, force: true }); });
 
 it('executes content reads through files, streams and descriptors while writable handles stay native', async () => {
   const root = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'apack-content-reads-')));
@@ -267,6 +268,51 @@ it('serves captured opendir membership through all native handle entry points', 
       expect(() => compilation.assertCurrent()).toThrow('Compiler or installed package inputs changed');
       fs.unlinkSync(late);
     });
+    compilation.assertCurrent();
+  } finally { compilation.dispose(); }
+});
+
+it('executes owned TypeScript compiler modules and transitive imports through temporary source edits', async () => {
+  vi.stubEnv('TSX_DISABLE_CACHE', '1');
+  const root = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'apack-content-module-')));
+  roots.push(root);
+  fs.mkdirSync(path.join(root, 'src'));
+  fs.writeFileSync(path.join(root, 'package.json'), '{"type":"module"}');
+  fs.writeFileSync(path.join(root, 'tsconfig.json'), JSON.stringify({ compilerOptions: {
+    paths: { '#value': [path.join(root, 'src/value.ts')] },
+  } }));
+  const compiler = path.join(root, 'src/compiler.ts');
+  const value = path.join(root, 'src/value.ts');
+  const original = `import { value } from '#value'; export default () => [{ entity: 'Row', name: value }];`;
+  fs.writeFileSync(compiler, original);
+  fs.writeFileSync(value, "export const value: string = 'CAPTURED';");
+  fs.writeFileSync(path.join(root, 'src/data.txt'), 'DATA');
+  const steps = path.join(root, 'src/steps.mjs');
+  const flow = path.join(root, 'src/flows/empty.ts');
+  fs.mkdirSync(path.dirname(flow));
+  fs.writeFileSync(steps, 'export const steps = [];');
+  fs.writeFileSync(flow, 'export default {};');
+  const manifest = ManifestSchema.parse({ id: 'owned-module', name: 'Owned module', version: '1.0.0',
+    content: { formats: { rows: { compiler: 'src/compiler.ts', entity: 'Row', identity: ['name'] } },
+      sources: { rows: { path: 'src/data.txt', format: 'rows' }, flows: { path: 'src/flows' } } } });
+  const compilation = captureCompilationInputs(root);
+  const outputDirectory = path.join(root, 'dist');
+  try {
+    fs.writeFileSync(compiler, "throw new Error('Executed live compiler');");
+    fs.writeFileSync(value, "export const value: string = 'LIVE';");
+    fs.writeFileSync(steps, "throw new Error('Executed live steps');");
+    fs.writeFileSync(flow, "throw new Error('Executed live flow');");
+    await withCompilerFileReads({ compilation, outputDirectory }, async () => {
+      await compilePack({ packDir: root, outputDir: outputDirectory,
+        packConfig: await buildPackConfigFromManifest(manifest, root, { dependencyStepModules: [steps] }),
+        importModule: file => importCompilerModule(file, compilation) });
+    });
+    const output = JSON.parse(fs.readFileSync(path.join(outputDirectory, 'rows.content.json'), 'utf8'));
+    expect(output.records[0].name).toBe('CAPTURED');
+    fs.writeFileSync(steps, 'export const steps = [];');
+    fs.writeFileSync(flow, 'export default {};');
+    fs.writeFileSync(compiler, original);
+    fs.writeFileSync(value, "export const value: string = 'CAPTURED';");
     compilation.assertCurrent();
   } finally { compilation.dispose(); }
 });

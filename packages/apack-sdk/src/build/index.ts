@@ -2,7 +2,7 @@ export { _parseModuleReference } from '../framework/module-reference.ts';
 export { findSourceModule, SCRIPT_MODULE_EXTENSIONS, TYPE_MODULE_EXTENSIONS } from './source-module.ts';
 export { compileHelp } from './help.ts';
 // Types
-export type { PackConfig, PackBuildDefinitions, CompilePackOptions, CompilePackResult } from './types.ts';
+export type { PackConfig, PackBuildDefinitions, CompilePackOptions, CompilePackResult, PackModuleLoader } from './types.ts';
 
 // Content compiler framework
 export { _clearCompiledContent, compilePack, CONTENT_INDEX_FILE } from './content-compiler.ts';

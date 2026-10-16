@@ -33,16 +33,11 @@ import { bundlePackFlowHelpers } from '../build/flow-helpers-bundler';
 import { PACK_LAYOUT, sealPackBuild } from '@apackdev/host/packs';
 import { replaceDir } from '@apackdev/host/replace-dir';
 import { withCompilerFileReads } from '../build/compiler-file-reads.ts';
+import { importCompilerModule } from '../build/compiler-modules.ts';
 import { holdPackBuildLock } from '../build/build-lock.ts';
 import { dependencyTypes, resolveDependencyFiles } from './generate';
 import { assertGeneratedCurrent, generateEntries, warnStaleDepTypes } from './generate-entries';
 import { findPackRoot, readValidManifest, sdkVersion } from '../utils';
-
-/** Loads a pack's content compiler module, which may be TypeScript */
-async function importPackModule(file: string): Promise<Record<string, unknown>> {
-  const { tsImport } = await import('tsx/esm/api');
-  return tsImport(file, import.meta.url) as Promise<Record<string, unknown>>;
-}
 
 /**
  * Where a build writes before it is a build: the whole of `dist/` is assembled here and renamed into place at
@@ -172,7 +167,7 @@ async function buildIntoStaging(args: string[], root: string) {
         packDir,
         outputDir: contentOutputDir,
         packConfig,
-        importModule: importPackModule,
+        importModule: file => importCompilerModule(file, compilation),
       };
 
       result = await withCompilerFileReads({ compilation, outputDirectory: outputDir }, () => compilePack(options));

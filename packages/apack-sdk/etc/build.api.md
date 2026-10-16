@@ -131,7 +131,7 @@ export function compilePack(options: CompilePackOptions): Promise<CompilePackRes
 // @public (undocumented)
 export interface CompilePackOptions {
     definitions?: PackBuildDefinitions;
-    importModule?: (file: string) => Promise<Record<string, unknown>>;
+    importModule?: PackModuleLoader;
     log?: (message: string) => void;
     // (undocumented)
     outputDir: string;
@@ -626,7 +626,7 @@ export const LifecycleConfigSchema: z.ZodObject<{
 }>;
 
 // @public (undocumented)
-export function loadFlowsFromDir(flowsDir: string): Promise<{
+export function loadFlowsFromDir(flowsDir: string, importModule?: PackModuleLoader): Promise<{
     merged: FlowDSL;
     rootFlowName: string | null;
     loaded: number;
@@ -2810,7 +2810,7 @@ export const PackChecksSchema: z.ZodObject<{
 
 // @public
 export interface PackConfig {
-    loadDefinitions?: () => Promise<PackBuildDefinitions>;
+    loadDefinitions?: (importModule?: PackModuleLoader) => Promise<PackBuildDefinitions>;
     // (undocumented)
     name: string;
     sources: Record<string, ResolvedContentSource>;
@@ -2922,6 +2922,9 @@ export type PackManifest = z.infer<typeof ManifestSchema>;
 
 // @public (undocumented)
 export type PackMigrationDeclaration = z.infer<typeof MigrationDeclarationSchema>;
+
+// @public
+export type PackModuleLoader = (file: string) => Promise<Record<string, unknown>>;
 
 // @public (undocumented)
 export type PackPermission = z.infer<typeof PackPermissionSchema>;
@@ -3121,6 +3124,7 @@ export const SPECIALTY_COMPILERS: Record<string, SpecialtyCompiler>;
 
 // @public (undocumented)
 export interface SpecialtyCompileContext {
+    importModule: PackModuleLoader;
     // (undocumented)
     packDir: string;
 }

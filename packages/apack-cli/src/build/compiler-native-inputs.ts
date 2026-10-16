@@ -15,7 +15,8 @@ export function createNativeInputReader(view: NativeInputView, initialPackages: 
   const directories = new Set<string>();
   const packages = new Set(initialPackages.nodes.map(node => node.directory));
   const configurations = new Map<string, ts.CompilerOptions>();
-  const configFiles = new Set<string>();
+  const configFiles = new Set([...(view.configuration?.files.keys() ?? []), ...(view.declarationConfiguration?.files.keys() ?? [])]
+    .filter(file => path.basename(file) !== 'package.json').map(sourcePath));
   const packageTargets = new Set<string>();
   const scopes = new Map<string, { options: ts.CompilerOptions; packageRoot?: string; imports?: Record<string, unknown> }>();
   let pending: PendingInputs;

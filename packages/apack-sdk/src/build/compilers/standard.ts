@@ -59,8 +59,8 @@ export const promptsCompiler: SpecialtyCompiler<DslCompiled> = {
 };
 
 export const flowsCompiler: SpecialtyCompiler<FlowDSL> = {
-  async compile(dir) {
-    return (await loadFlowsFromDir(dir)).merged;
+  async compile(dir, { importModule }) {
+    return (await loadFlowsFromDir(dir, importModule)).merged;
   },
 
   validate(flows: FlowDSL, context: CompilationContext): ValidationResult {
