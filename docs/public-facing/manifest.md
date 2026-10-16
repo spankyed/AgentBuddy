@@ -653,9 +653,11 @@ The SDK defines the entity types `Relation`, `Flow`, `Node`, `TNode`, `Action` a
 |---|---|---|
 | `entry` | `string` | Module whose types are bundled into the definitions |
 | `targets` | `["monaco"]` | Editors that get the definitions |
-| `prefix` | `string` | Editor models whose path starts with it get these definitions (e.g. `action:`). Omission uses an empty prefix, matching all model paths |
+| `prefix` | `string` | Editor models whose path starts with it get these definitions (e.g. `action:`). Omission or an empty value disables path inference; an editor can select the DSL explicitly |
 | `inline` | `string[]` | Packages whose declarations are bundled into the definitions besides your own modules and `@apackdev/*`. The editor loads no `node_modules`, so a type it needs from another package belongs here; everything else stays an import |
-| `globals` | `Record<string, string>` | Globals in scope and their types. With `globals`, the generated FE entry's registration carries the definitions from `dist/defs/monaco/<name>-defs.d.ts` in its `dslTypes` |
+| `globals` | `Record<string, string>` | Globals in scope and their types. The catalog carries these declarations with the compiled definition text; Monaco follows updates without activating a frontend |
+
+Path inference uses the unique longest matching nonempty prefix; equal-length matches from different DSLs are ambiguous. DSL files default to TypeScript unless the editor explicitly selects another language.
 
 For each entry with a `monaco` target, `apack pack build` writes `dist/defs/monaco/<name>-defs.d.ts`: the entry's types bundled into one declaration file, wrapped as `declare module "@app/defs/<name>"`.
 

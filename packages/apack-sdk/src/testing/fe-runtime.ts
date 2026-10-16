@@ -22,7 +22,6 @@ const noFrontends: FePackRegistryView = {
   referenceTypes: () => new Map(),
   referenceCategories: () => new Map(),
   appExtension: () => undefined,
-  dslTypes: () => new Map(),
 };
 
 /**

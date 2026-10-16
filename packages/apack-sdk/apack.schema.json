@@ -1304,7 +1304,7 @@
               },
               "prefix": {
                 "type": "string",
-                "description": "Namespace prefix for DSL symbols."
+                "description": "Editor model path prefix selecting this DSL. Omit or use an empty value to require explicit selection."
               },
               "globals": {
                 "type": "object",

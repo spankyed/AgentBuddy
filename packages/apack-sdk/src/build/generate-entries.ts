@@ -1133,11 +1133,6 @@ ${contractCheck}`;
     if (artifacts.literal) regProps.push(`  artifacts: ${artifacts.literal},`);
     if (blocks.literal) regProps.push(`  blocks: ${blocks.literal},`);
 
-    if (monacoDslEntries().length > 0) {
-      extraImports.push(`import { dslTypes } from './dsl-types-fe.ts';`);
-      regProps.push(`  dslTypes,`);
-    }
-
     return `${HEADER}
 import type { PackFERegistration${pluginFeatures.length ? ', PluginDefinition' : ''} } from '@apackdev/sdk/fe';
 import { bindSettings } from './settings-fe.ts';
@@ -2095,39 +2090,6 @@ export type { ImportMode } from '@apackdev/sdk/utils';
     return `${HEADER}\n${reExports.join('\n')}\n`;
   }
 
-  // ── DSL defs ───────────────────────────────────────────────────
-
-  /** The `dsl` entries the host's code editors get: a `monaco` target with globals */
-  function monacoDslEntries() {
-    return Object.entries(manifest.extensions?.dsl ?? {}).filter(([, def]) => def.targets.includes('monaco') && def.globals);
-  }
-
-  function generateDslTypesFe(): string {
-    const monacoEntries = monacoDslEntries();
-    if (monacoEntries.length === 0) return '';
-
-    const imports = monacoEntries.map(([name]) =>
-      `import ${name}Schema from '../../dist/defs/monaco/${name}-defs.d.ts?raw';`
-    );
-
-    const entries = monacoEntries.map(([name, def]) => {
-      const globalsObj = Object.entries(def.globals!)
-        .map(([k, v]) => `      ${propertyKey(k)}: ${dataLiteral(v)},`)
-        .join('\n');
-      return `  ${propertyKey(name, name)}: {\n    prefix: ${dataLiteral(def.prefix ?? "")},\n    schema: ${name}Schema,\n    globals: {\n${globalsObj}\n    },\n  },`;
-    });
-
-    return `${HEADER}
-import type { DslTypeConfig } from '@apackdev/sdk/fe';
-${imports.join('\n')}
-
-/** The pack's DSL types for the host's code editors, which its frontend registration carries */
-export const dslTypes: Record<string, DslTypeConfig> = {
-${entries.join('\n')}
-};
-`;
-  }
-
   // ── Assemble ────────────────────────────────────────────────────
 
   const files: [string, string][] = ([
@@ -2169,7 +2131,6 @@ export const runtimeServices = _createPackServices();
     ['src/__generated__/flow-helpers.ts', generateFlowHelpers()],
     ['src/__generated__/step-types.ts', generateStepTypes()],
     [STEPS_BUILD_MODULE, generateStepsBuild()],
-    ['src/__generated__/dsl-types-fe.ts', generateDslTypesFe()],
   ] as [string, string][]).filter(([, content]) => content);
 
   return Object.fromEntries(files);

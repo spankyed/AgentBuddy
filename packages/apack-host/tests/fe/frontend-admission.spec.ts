@@ -59,7 +59,6 @@ it('captures every metadata container while retaining machines, components and c
     settingsForms: { extra: component }, appExtensions: { welcome: component },
     artifacts: [{ type: 'card', fe: { icon: component, component } }],
     blocks: [{ type: 'answer', fe: { component } }],
-    dslTypes: { items: { prefix: 'items', schema: 'initial', globals: { item: 'Item' } } },
     steps: [{ type: 'memo', node: { label: 'Memo' } }],
   } satisfies PackFERegistration;
   const preference = { schema: { type: 'object' }, defaults: {}, form: 'native/form.vue' };
@@ -83,7 +82,6 @@ it('captures every metadata container while retaining machines, components and c
   registration.features.view.settingsForm = replacement;
   registration.settingsForms.extra = replacement; registration.appExtensions.welcome = replacement;
   registration.artifacts[0].fe.component = replacement; registration.blocks[0].fe.component = replacement;
-  registration.dslTypes.items.schema = 'changed'; registration.dslTypes.items.globals.item = 'Changed';
   registration.steps[0].node.label = 'Changed'; declaration.steps!.memo.node.label = 'Changed';
   prepared.commit(); prepared.dispose();
   const accepted = registry.getRegisteredPlugins()[0];
@@ -97,7 +95,6 @@ it('captures every metadata container while retaining machines, components and c
   expect(registry.appExtension('welcome')).toBe(component);
   expect(registry.artifact('card')?.fe?.component).toBe(component);
   expect(registry.block('answer')?.fe?.component).toBe(component);
-  expect(registry.dslTypes().get('items')).toEqual({ prefix: 'items', schema: 'initial', globals: { item: 'Item' } });
   const row = registry.stepBindings().get('memo')!;
   expect(row).toMatchObject({ packId: 'owner', declaration: { node: { label: 'Memo' } }, binding: { node: { label: 'Memo' } } });
   expect(row.runtimeRevision).toBeUndefined(); expect(row.buildRevision).toBeUndefined(); expect(row.declarationRevision).toBeUndefined();
@@ -172,17 +169,7 @@ it.each(['artifacts', 'blocks'] as const)('captures %s facet getters once', fiel
   expect(read).toHaveBeenCalledOnce();
 });
 
-it('captures DSL globals getters once', () => {
-  const read = vi.fn(() => ({ item: 'Item' }));
-  const registry = createFePackRegistry();
-  const declaration: NativePackDeclaration = { id: 'owner', dslDefinitions: { items: '' }, dsl: { items: {
-    entry: 'native/types.ts', targets: ['monaco'], globals: { item: 'Item' },
-  } } };
-  registry.registerPackFE({ kind: 'native', declaration }, { id: 'owner', dslTypes: { items: {
-    prefix: '', schema: '', get globals() { return read(); },
-  } } });
-  expect(read).toHaveBeenCalledOnce();
-});
+
 
 it('blocks registry reentry from binding getters and retires both provisional resources', () => {
   const registry = createFePackRegistry();

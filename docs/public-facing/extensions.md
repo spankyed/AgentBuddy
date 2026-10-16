@@ -715,8 +715,18 @@ The generated FE entry (`__generated__/pack-entry-fe.ts`) default-exports a `Pac
 | `steps` / `artifacts` / `blocks` | each entry's `fe` facet, imported into the generated frontend entry (an artifact's `icon` with it) |
 | `tiptapPlugins` | `extensions.tiptapPlugins` |
 | `appExtensions` | `extensions.appExtensions` |
-| `dslTypes` | `extensions.dsl` entries with a `monaco` target (`__generated__/dsl-types-fe.ts`) |
 
 The renderer registers it for your pack; nothing in your frontend registers anything itself.
 
 `features.<id>.references` declares reference identities and presentation for any pack. Catalog metadata is independent of activation; item providers and navigation bind when the frontend is accepted.
+
+## DSL editor assistance
+
+DSL editor assistance is static catalog data. `getDslDeclarations()` / `getDslDeclaration(type)` from
+`@apackdev/sdk/fe` expose declarations and available compiled definition text, including disabled packs.
+`useDslDeclarations()` observes catalog updates in a Vue effect scope; `onDslDeclarationsChanged()`
+returns an explicit unsubscribe function. Ambiguous owners are unavailable. Unbuilt source entries may
+lack compiled definitions. Monaco replaces or removes libraries and globals when catalog data changes,
+sharing them until the last editor releases them. `setupMonacoForFile()` returns that release function;
+call it when a direct consumer changes files or disposes its editor. `UnifiedMonacoEditor` owns this
+lifecycle automatically. These data reads import no pack or compiler modules.

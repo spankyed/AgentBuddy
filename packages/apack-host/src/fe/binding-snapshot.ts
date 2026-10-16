@@ -12,12 +12,6 @@ export function captureFrontendBindings(registration: PackFERegistration, declar
   }
   if (Array.isArray(captured.artifacts)) captured.artifacts = captured.artifacts.map(captureFacet);
   if (Array.isArray(captured.blocks)) captured.blocks = captured.blocks.map(captureFacet);
-  if (isPlainObject(captured.dslTypes)) captured.dslTypes = Object.fromEntries(Object.entries(captured.dslTypes).map(([id, value]) => {
-    if (!isPlainObject(value)) return [id, value];
-    const copy = { ...value };
-    if (isPlainObject(copy.globals)) copy.globals = Object.freeze({ ...copy.globals });
-    return [id, Object.freeze(copy)];
-  }));
   if (Array.isArray(captured.steps)) captured.steps = captured.steps.map(captureStepBinding);
   if (isPlainObject(captured.tiptapPlugins)) captured.tiptapPlugins = Object.fromEntries(Object.entries(captured.tiptapPlugins).map(([id, plugin]) => {
     if (!isPlainObject(plugin)) return [id, plugin];

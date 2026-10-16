@@ -27,7 +27,7 @@ There is no barrel: every public module is its own export subpath.
 
 `scripts/exports.ts` derives the public surface from `src/`:
 
-- **Public** = every `.ts` file under `src/` except `*.spec.ts`, `*.test.ts`, `*.d.ts` and anything under an `internal/` directory (`isPublicModule`). No `internal/` directory exists yet.
+- **Public** = every `.ts` file under `src/` except `*.spec.ts`, `*.test.ts`, `*.d.ts` and anything under an `internal/` directory (`isPublicModule`). Private helpers under `internal/` are bundled through their public importers.
 - **An SFC is public only through a `.ts` entry next to it** with exactly this content (see `design/button.ts`):
   ```ts
   export { default } from './button.vue';
@@ -85,7 +85,7 @@ Contracts and host-shared state that packs need even without `@apackdev/ui` live
 
 - `useShell` (`KeyboardShortcutInput.vue`)
 - menu state: `onMenuOpenChange` (`TrackedContextMenuRoot.vue`), `useTrackedMenuOpen` (`ContextMenuPopup.vue`, `composables/useContextMenu.ts`)
-- registries of what pack frontends registered, which read the renderer's bound registry (`bindFeHost({ packs })`): `tiptapPluginRegistry` (`TiptapEditor.vue`) and `getDslTypes` (`monaco-config.ts`; packs' frontend registrations carry them as `dslTypes`); and `EXTRA_BLOCK_ITEMS_KEY` (`TiptapBlockMenu.vue`)
+- registries of what pack frontends registered, which read the renderer's bound registry (`bindFeHost({ packs })`): `tiptapPluginRegistry` (`TiptapEditor.vue`); and `EXTRA_BLOCK_ITEMS_KEY` (`TiptapBlockMenu.vue`). DSL readers use static catalog data; `internal/dsl-libraries.ts` shares owned Monaco libraries and follows declaration updates
 - `openLink` (`tiptap/composables/createEditorClickHandler.ts`)
 
 UI modules also read `stepRegistry` from `@apackdev/sdk/steps` (`node-styles.ts`, `node-dimensions.ts`) and types from `@apackdev/sdk/steps` (`TNodeListItem.vue`) and `@apackdev/sdk/types` (`KeyboardShortcutInput.vue`). The dependency goes one way only: `@apackdev/sdk` must not import `@apackdev/ui`, and the SDK's `package.json` doesn't declare it. `@apackdev/sdk` is a peer (`>=0.1.0 <1.0.0`; the range has to span the 0.x line — Changesets majors a peer dependent whose range excludes the version its peer moves to, and the fixed release group carries that major to all five packages, so `~0.1.0` or `^0.1.0` would turn the next minor into a 1.0.0 release: `apack-cli/tests/build/release-plan.spec.ts`), as are `vue`, `xstate`, `@xstate/vue`, `reka-ui`, `lucide-vue-next`, `@vue-flow/core`, the tiptap core packages, `monaco-editor` and `elkjs`. Tiptap extensions, `highlight.js`, `lowlight`, `tiptap-markdown` and `@guolao/vue-monaco-editor` are regular dependencies.

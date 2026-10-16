@@ -59,7 +59,6 @@ function backendFirst(frontend: FePackRegistryView, backend: PackExtensionsView)
     referenceTypes: () => frontend.referenceTypes(),
     referenceCategories: () => frontend.referenceCategories(),
     appExtension: (slot) => frontend.appExtension(slot),
-    dslTypes: () => frontend.dslTypes(),
     designation: (role) => backend.designation(role) ?? frontend.designation(role),
     artifact: (type) => backend.artifact(type) ?? frontend.artifact(type),
     artifacts: () => byType(backend.artifacts(), frontend.artifacts()),

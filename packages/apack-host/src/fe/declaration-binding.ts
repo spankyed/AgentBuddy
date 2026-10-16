@@ -8,7 +8,7 @@ import { isEqual } from '../features/settings/document.ts';
 
 const REGISTRATION_KEYS = {
   id: true, declarationRevision: true, bindSettings: true, features: true, settingsForms: true,
-  steps: true, artifacts: true, blocks: true, appExtensions: true, dslTypes: true, tiptapPlugins: true,
+  steps: true, artifacts: true, blocks: true, appExtensions: true, tiptapPlugins: true,
 } satisfies Record<keyof PackFERegistration, true>;
 
 const FEATURE_KEYS = { plugin: true, settingsForm: true, designation: true, default: true, references: true } satisfies Record<keyof PackFEFeature, true>;
@@ -168,16 +168,6 @@ export function frontendBindingProblem(manifest: DeclarationData<Pick<PackManife
   }
   if (!optionalKeys(registration.appExtensions, Object.keys(extensions?.appExtensions ?? {}))) return problem('appExtensions');
   if (registration.appExtensions !== undefined && Object.values(registration.appExtensions as Record<string, unknown>).some(component => !isComponent(component))) return problem('appExtensions');
-  const dsl = Object.fromEntries(Object.entries(extensions?.dsl ?? {}).filter(([, entry]) => entry.targets.includes('monaco') && entry.globals));
-  if (!optionalKeys(registration.dslTypes, Object.keys(dsl))) return problem('dslTypes');
-  for (const [id, entry] of Object.entries(dsl)) {
-    const binding = (registration.dslTypes as Record<string, unknown>)[id];
-    if (!isPlainObject(binding) || binding.prefix !== (entry.prefix ?? '') || typeof binding.schema !== 'string'
-      || !sameKeys(binding.globals, Object.keys(entry.globals!))) return problem(`dslTypes.${id}`);
-    for (const [key, value] of Object.entries(entry.globals!)) {
-      if ((binding.globals as Record<string, unknown>)[key] !== value) return problem(`dslTypes.${id}.globals.${key}`);
-    }
-  }
   const declaredEditors = extensions?.tiptapPlugins ?? {};
   if (!optionalKeys(registration.tiptapPlugins, Object.keys(declaredEditors))) return problem('tiptapPlugins');
   for (const [id, declaration] of Object.entries(declaredEditors)) {

@@ -234,7 +234,7 @@ export const StepEntrySchema = z.object({
 export const DslEntrySchema = z.object({
   entry: ModulePathSchema.describe('Path to the DSL type definition module.'),
   targets: z.array(z.enum(['monaco'])).describe('Editor targets for intellisense integration.'),
-  prefix: z.string().describe('Namespace prefix for DSL symbols.').optional(),
+  prefix: z.string().describe('Editor model path prefix selecting this DSL. Omit or use an empty value to require explicit selection.').optional(),
   globals: declarationRecord(z.string(), z.string()).describe('Global type mappings injected into the DSL scope.').optional(),
   inline: z.array(z.string()).describe('Packages whose declarations are bundled into the editor definitions, besides @apackdev/* and the pack\'s own modules. The editor loads no node_modules, so a type it needs from another package belongs here.').optional(),
 }).strict();

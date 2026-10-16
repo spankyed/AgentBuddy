@@ -158,7 +158,6 @@ export default {
   appExtensions?: Record<string, Component>;
   artifacts?: ArtifactDefinition[];
   blocks?: BlockDefinition[];
-  dslTypes?: Record<string, DslTypeConfig>;
 } satisfies PackFERegistration;
 ```
 
@@ -331,7 +330,6 @@ The policy is `appPartitionPolicy()` (`@apackdev/host/database`), a constant ove
 | `content-runtime.ts` | The pack's content runtime (entity types, relation kinds, repositories, content writers). The pack's tests import it; `apack pack build` bundles it into `dist/build/content-runtime.mjs` for dependents' tests |
 | `flow-helpers.ts` | Typed DSL helpers for each step definition, with dependencies' |
 | `step-types.ts` | Re-exports DSL/compiled node types from step definitions |
-| `dsl-types-fe.ts` | `dslTypes` for the Monaco editor, from the definitions `apack pack build` writes to `dist/defs/monaco/`, which `pack-entry-fe.ts` puts in the frontend registration |
 
 ## FE build pipeline
 

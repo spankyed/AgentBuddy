@@ -1,10 +1,10 @@
-// @slow: two real backend-only builds prove compiled editor data publication and cached reuse.
+// @slow: two real builds prove compiled editor data publication and cached reuse.
 import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { afterEach, expect, it, vi } from 'vitest';
 import { packFixture } from '@apackdev/sdk/testing/pack-fixture';
-import { readInstalledContributionCatalog, readPackBuild } from '@apackdev/host/packs';
+import { PACK_LAYOUT, readInstalledContributionCatalog, readPackBuild } from '@apackdev/host/packs';
 import { packagesBuiltOrRefuse, REPO_ROOT } from '@apackdev/host/build/packages-built';
 import { build } from '../../src/commands/build.ts';
 
@@ -23,10 +23,11 @@ it('publishes and reuses editor definitions without globals or frontend activati
   }, nodeModules: path.join(REPO_ROOT, 'node_modules') });
   const cwd = process.cwd(); process.chdir(author);
   try {
-    await build(['--skip-fe']);
+    await build([]);
     const first = readPackBuild(path.join(author, 'dist'));
     expect(first.snapshot.dslDefinitions?.rows).toContain('interface Row');
     expect(first.snapshot.dslDefinitions?.rows).toContain('id: string');
+    expect(fs.readFileSync(path.join(author, 'dist', PACK_LAYOUT.feEntry), 'utf8')).not.toContain('interface Row');
     const installedRoot = path.join(root, 'packs');
     fs.cpSync(path.join(author, 'dist'), path.join(installedRoot, 'editor-data'), { recursive: true });
     const catalog = readInstalledContributionCatalog(installedRoot, new Set(['editor-data']));
@@ -35,7 +36,7 @@ it('publishes and reuses editor definitions without globals or frontend activati
     expect(fs.existsSync(path.join(installedRoot, 'editor-data/src'))).toBe(false);
     const log = vi.spyOn(console, 'log');
     try {
-      await build(['--skip-fe', '--skip-generate']);
+      await build(['--skip-generate']);
       expect(log.mock.calls.flat().join('\n')).toContain('dsl defs: unchanged, reused');
     } finally { log.mockRestore(); }
     const repeated = readPackBuild(path.join(author, 'dist'));

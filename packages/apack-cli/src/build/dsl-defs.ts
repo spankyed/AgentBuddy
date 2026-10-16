@@ -35,7 +35,7 @@ export function withoutRenameSuffixes(code: string): string {
 }
 
 /** The build output holding the DSL editors' definitions, dist-relative */
-export const DEFS_DIR = 'defs';
+const DEFS_DIR = 'defs';
 
 /** The Monaco declarations of one DSL type, relative to the build output directory. */
 export function monacoDefsFile(name: string): string {

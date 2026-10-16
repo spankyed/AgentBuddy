@@ -4,7 +4,8 @@
  */
 
 import type { editor, IDisposable } from 'monaco-editor'
-import { getDslTypes } from '@apackdev/sdk/fe'
+import { getDslDeclarations } from '@apackdev/sdk/fe'
+import { acquireDslLibraries, disposeDslLibraries, registeredDslLibraries } from './internal/dsl-libraries.ts'
 
 type Monaco = typeof import('monaco-editor')
 type Language = 'javascript' | 'typescript' | 'json' | 'html' | 'css' | 'plaintext'
@@ -207,7 +208,6 @@ export const editorPresets: Record<EditorPreset, Readonly<editor.IStandaloneEdit
 // ============================================================================
 
 let monacoInitialized = false
-const registeredDslLibs = new Set<string>()
 const initializedLanguages = new Set<string>()
 // Keyed by language alone (not dslType) — the no-op formatter body below is
 // identical across DSL types, so one registration per language suffices.
@@ -221,12 +221,7 @@ const registeredFormatters = new Set<string>()
  * Get language ID from file path
  */
 export function getLanguageFromPath(filePath: string): string {
-  // Check for registered DSL types
-  for (const config of getDslTypes().values()) {
-    if (filePath.startsWith(config.prefix)) {
-      return config.language || 'typescript'
-    }
-  }
+  if (getDslTypeFromPath(filePath)) return 'typescript'
 
   // Handle diff file paths (e.g., "diff:path/to/file.ts:staged")
   if (filePath.startsWith('diff:')) {
@@ -247,10 +242,10 @@ export function getLanguageFromPath(filePath: string): string {
  * Get DSL type from file path
  */
 export function getDslTypeFromPath(filePath: string): DslType | null {
-  for (const [name, config] of getDslTypes()) {
-    if (filePath.startsWith(config.prefix)) return name
-  }
-  return null
+  const matches = getDslDeclarations().filter(entry => entry.declaration.targets.includes('monaco') && entry.declaration.prefix && filePath.startsWith(entry.declaration.prefix))
+    .sort((a, b) => b.declaration.prefix!.length - a.declaration.prefix!.length)
+  if (!matches.length || (matches[1] && matches[0].declaration.prefix!.length === matches[1].declaration.prefix!.length)) return null
+  return matches[0].type
 }
 
 /**
@@ -267,66 +262,6 @@ export function getEditorPresetForFile(filePath: string, readOnly = false): Edit
   if (readOnly) return 'readonly'
   if (isDslFile(filePath)) return 'dsl'
   return 'codeEditor'
-}
-
-// ============================================================================
-// DSL SETUP
-// ============================================================================
-
-/**
- * Setup DSL modules for Monaco Editor
- */
-function setupDslModules(monaco: Monaco, dslType: DslType, language: Language = 'typescript'): void {
-  const libKey = `${language}-${dslType}-module`
-
-  if (registeredDslLibs.has(libKey)) {
-    return // Already registered
-  }
-
-  const config = getDslTypes().get(dslType)
-  if (!config) return
-
-  const langDefaults = language === 'typescript'
-    ? monaco.typescript.typescriptDefaults
-    : monaco.typescript.javascriptDefaults
-
-  // Add the module as a virtual file
-  const moduleUri = `inmemory:///node_modules/@app/defs/${dslType}/index.d.ts`
-  langDefaults.addExtraLib(config.schema, moduleUri)
-
-  registeredDslLibs.add(libKey)
-}
-
-/**
- * Setup global DSL declarations for function body mode
- */
-function setupDslGlobals(monaco: Monaco, dslType: DslType, language: Language = 'typescript'): void {
-  const libKey = `${language}-${dslType}-globals`
-
-  if (registeredDslLibs.has(libKey)) {
-    return // Already registered
-  }
-
-  const config = getDslTypes().get(dslType)
-  if (!config || Object.keys(config.globals).length === 0) return
-
-  const langDefaults = language === 'typescript'
-    ? monaco.typescript.typescriptDefaults
-    : monaco.typescript.javascriptDefaults
-
-  const declarations = Object.entries(config.globals)
-    .map(([name, type]) => `const ${name}: ${type};`)
-    .join('\n      ')
-
-  const wrapperContent = `
-    import * as _dsl from '@app/defs/${dslType}';
-    declare global {
-      ${declarations}
-    }
-  `
-
-  langDefaults.addExtraLib(wrapperContent, `inmemory:///dsl-wrapper-${dslType}.d.ts`)
-  registeredDslLibs.add(libKey)
 }
 
 // ============================================================================
@@ -548,18 +483,20 @@ export interface SetupFileOptions {
   filePath: string
   language?: string
   isDsl?: boolean
+  dslType?: string
   enableTypeChecking?: boolean
   enableSuggestions?: boolean
 }
 
+/** Configure a file and retain its DSL libraries; release them when changing files or disposing the editor. */
 export function setupMonacoForFile(
   monaco: Monaco,
   options: SetupFileOptions
-): void {
+): () => void {
   const {
     filePath,
     language = getLanguageFromPath(filePath),
-    isDsl = isDslFile(filePath),
+    isDsl = options.dslType !== undefined || isDslFile(filePath),
     enableTypeChecking = isDsl,
     enableSuggestions = isDsl
   } = options
@@ -572,11 +509,13 @@ export function setupMonacoForFile(
     })
   }
   
+  let release = () => {}
   // Setup DSL if needed
   if (isDsl) {
-    const dslType = getDslTypeFromPath(filePath)
+    const dslType = options.dslType ?? getDslTypeFromPath(filePath)
     if (dslType && (language === 'typescript' || language === 'javascript')) {
-      setupFunctionBodyMode(monaco, language as 'typescript' | 'javascript', dslType)
+      setupFunctionBodyMode(monaco, language as 'typescript' | 'javascript')
+      release = acquireDslLibraries(monaco, dslType, language)
     }
   }
   
@@ -592,6 +531,7 @@ export function setupMonacoForFile(
       initializedLanguages.add(langKey)
     }
   }
+  return release
 }
 
 /**
@@ -599,8 +539,7 @@ export function setupMonacoForFile(
  */
 function setupFunctionBodyMode(
   monaco: Monaco,
-  language: 'typescript' | 'javascript' = 'typescript',
-  dslType: DslType
+  language: 'typescript' | 'javascript' = 'typescript'
 ): void {
   // Setup TypeScript for function body mode
   setupTypeScriptDefaults(monaco, {
@@ -609,10 +548,6 @@ function setupFunctionBodyMode(
     functionBodyMode: true
   })
   
-  // Setup DSL modules and globals
-  setupDslModules(monaco, dslType, language)
-  setupDslGlobals(monaco, dslType, language)
-
   // Register generic params fallback (will be overridden by updateDslParamsType)
   clearDslParamsType(monaco, language)
 
@@ -760,7 +695,7 @@ function convertKeybindingToMonaco(
  */
 export function resetMonacoState(): void {
   monacoInitialized = false
-  registeredDslLibs.clear()
+  disposeDslLibraries()
   initializedLanguages.clear()
 }
 
@@ -774,7 +709,7 @@ export function getMonacoState(): {
 } {
   return {
     initialized: monacoInitialized,
-    registeredDsls: Array.from(registeredDslLibs),
+    registeredDsls: registeredDslLibraries(),
     initializedLanguages: Array.from(initializedLanguages)
   }
 }

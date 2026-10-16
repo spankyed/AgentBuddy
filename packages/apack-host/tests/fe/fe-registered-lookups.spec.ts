@@ -6,7 +6,7 @@ import { createNativeFrontendTestRegistry } from '@apackdev/host/fe/testing';
 // lookup sees the pack once it registers and loses it when it unregisters.
 import { afterEach, describe, expect, it } from 'vitest';
 import type { Plugin, PluginDefinition, PackFERegistration, TiptapPlugin } from '@apackdev/sdk/fe';
-import { getDslTypes, tiptapPluginRegistry, getStepFrontendBindings } from '@apackdev/sdk/fe';
+import { tiptapPluginRegistry, getStepFrontendBindings } from '@apackdev/sdk/fe';
 import { bindFeHost } from '@apackdev/sdk/runtime';
 import { type StepDefinition } from '@apackdev/sdk/steps';
 import { artifactRegistry } from '@apackdev/sdk/artifacts';
@@ -52,7 +52,6 @@ const cardView = { type: 'card-view', fe: { icon: {}, component: CardView } };
 const choice = { type: 'choice', fe: { component: Choice } };
 const mentions: TiptapPlugin = { extensions: {} };
 const Welcome = { name: 'Welcome' };
-const memoDsl = { prefix: 'memo:', schema: 'declare const memo: string', globals: {} };
 
 describe("a pack's frontend", () => {
   it('is found once it registers, and gone once it unregisters', () => {
@@ -63,7 +62,6 @@ describe("a pack's frontend", () => {
       blocks: [choice],
       tiptapPlugins: { mentions },
       appExtensions: { welcome: Welcome },
-      dslTypes: { memo: memoDsl },
     });
 
     // Registered at the feature's address, which also answers the role
@@ -81,7 +79,6 @@ describe("a pack's frontend", () => {
     expect(blockRegistry.getComponent('choice')).toBe(Choice);
     expect(tiptapPluginRegistry.getAll()).toContainEqual({ packId: 'notebook-pack', groupId: 'mentions', binding: mentions });
     expect(appExtension('welcome')).toBe(Welcome);
-    expect(getDslTypes().get('memo')).toEqual(memoDsl);
 
     expect(remove('notebook-pack')).toMatchObject([{ label: 'Notebook', id: 'notebook-pack/notebookMain' }]);
     expect(plugins()).toEqual([]);
@@ -93,7 +90,6 @@ describe("a pack's frontend", () => {
     expect(blockRegistry.has('choice')).toBe(false);
     expect(tiptapPluginRegistry.getAll()).not.toContainEqual({ packId: 'notebook-pack', groupId: 'mentions', binding: mentions });
     expect(appExtension('welcome')).toBeUndefined();
-    expect(getDslTypes().has('memo')).toBe(false);
   });
 
   it('refuses another pack supplying a facet of the same step wire', () => {
@@ -109,18 +105,17 @@ describe("a pack's frontend", () => {
     expect(getStepFrontendBindings().get('note')?.binding.fe).toBeDefined();
   });
 
-  it('keeps unrelated slot and DSL contributions when another step owner unregisters', () => {
+  it('keeps unrelated slot contributions when another step owner unregisters', () => {
     const first: StepDefinition = { type: 'first', node: { label: 'First' } };
     const otherWelcome = { name: 'OtherWelcome' };
-    add('first-pack', { steps: [first], appExtensions: { welcome: Welcome }, dslTypes: { memo: memoDsl } });
-    add('notebook-pack', { steps: [noteStepFE], appExtensions: { welcome: otherWelcome }, dslTypes: { memo: { prefix: 'other:', schema: 'declare const other: string', globals: {} } } });
+    add('first-pack', { steps: [first], appExtensions: { welcome: Welcome } });
+    add('notebook-pack', { steps: [noteStepFE], appExtensions: { welcome: otherWelcome } });
     expect(getStepFrontendBindings().get('note')?.binding?.fe).toBeDefined();
     expect(appExtension('welcome')).toBe(otherWelcome);
     remove('notebook-pack');
     expect(getStepFrontendBindings().get('first')?.binding?.node?.label).toBe('First');
     expect(getStepFrontendBindings().get('note')?.binding).toBeUndefined();
     expect(appExtension('welcome')).toBe(Welcome);
-    expect(getDslTypes().get('memo')).toEqual(memoDsl);
   });
 
   // Two packs with a `notes` feature each get a plugin, because a plugin is addressed by its pack. Only

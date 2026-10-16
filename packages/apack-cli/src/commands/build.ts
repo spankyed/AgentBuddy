@@ -25,7 +25,7 @@ import { packInputsHash } from '@apackdev/host/build/pack-inputs';
 import { captureCompilationInputs } from '../build/compilation-inputs.ts';
 import { runPackBuild } from '../build/build-process.ts';
 import { withBuildSignals } from '../build/build-signals.ts';
-import { bundleDslDefs, monacoDefsFile, DEFS_DIR } from '../build/dsl-defs';
+import { bundleDslDefs, monacoDefsFile } from '../build/dsl-defs';
 import { bundlePackTypes } from '../build/types-bundler';
 import { facadeProblems } from '../build/facade-gate';
 import { compareFacadeReport, facadeReportFile, facadeReportText } from '../build/facade-report';
@@ -356,8 +356,7 @@ async function buildIntoStaging(args: string[], root: string) {
     const feEntry = args.includes('--skip-fe') ? null : findFEEntry(root);
     if (feEntry) {
       const feOutputDir = path.join(outputDir, PACK_LAYOUT.runtimeDir);
-      const definitionsDir = path.join(outputDir, DEFS_DIR);
-      const feResult = await bundlePackFE({ packDir: root, outputDir: feOutputDir, entryPoint: feEntry, definitionsDir, release,
+      const feResult = await bundlePackFE({ packDir: root, outputDir: feOutputDir, entryPoint: feEntry, release,
         recordReads: reads?.forPhase('fe'), onInputs: process.env[BUILD_INPUTS_IPC_ENV] === '1' ? reportBuildWatchInputs : undefined });
       if (feResult.success) {
         console.log(`  fe: dist/${PACK_LAYOUT.feEntry}`);

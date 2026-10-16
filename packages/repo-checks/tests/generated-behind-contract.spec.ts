@@ -20,7 +20,7 @@ import { GENERATED_BEHIND_A_CONTRACT } from '../../../scripts/check-import-speci
  * assert nothing.
  */
 const GENERATED_MODULES = [
-  'appliers', 'content-runtime', 'dsl-types-fe', 'ears', 'events', 'fe', 'flow-helpers', 'pack-entry', 'pack-entry-fe', 'pack-types',
+  'appliers', 'content-runtime', 'ears', 'events', 'fe', 'flow-helpers', 'pack-entry', 'pack-entry-fe', 'pack-types',
   'paths', 'ref', 'references', 'repositories', 'repository', 'runtime-services', 'services', 'settings', 'settings-fe',
   'step-types', 'steps-build', 'system-specs', 'types',
 ];
@@ -43,8 +43,8 @@ const ENTRIES = ['src/features/memos/be/system.ts', 'src/features/memos/fe/plugi
 
 /**
  * A pack that makes codegen emit **all** of `GENERATED_MODULES`. A minimal one-feature manifest emits fifteen, and
- * a module the fixture does not emit is a module this check never looks at — so the four conditional ones are
- * bought deliberately: `repositories` by a declared repository, `step-types` by a step with a declared types module, `steps-build` by any declared step, `dsl-types-fe` by a `monaco` DSL target with globals.
+ * a module the fixture does not emit is a module this check never looks at — so the three conditional ones are
+ * bought deliberately: `repositories` by a declared repository, `step-types` by a step with a declared types module, `steps-build` by any declared step.
  *
  * The contracts are plain declared types with no imports, which is all codegen reads them as — the temp dir has no
  * `node_modules` for an import to resolve against.

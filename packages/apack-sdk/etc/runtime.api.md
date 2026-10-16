@@ -66,7 +66,6 @@ export interface FePackRegistryView extends PackExtensionsView {
     artifactBindings(): ReadonlyMap<string, ArtifactFrontendBinding>;
     // (undocumented)
     blockBindings(): ReadonlyMap<string, BlockFrontendBinding>;
-    dslTypes(): ReadonlyMap<string, DslTypeConfig>;
     onChanged(listener: (packId: string) => void): () => void;
     plugins(): Plugin_2[];
     // (undocumented)

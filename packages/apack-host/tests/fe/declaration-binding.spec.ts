@@ -31,7 +31,6 @@ function fixture() {
     artifacts: [{ type: 'text', fe: { icon: component, component } }], blocks: [{ type: 'note', kind: 'input', fe: { component } }],
     appExtensions: { toolbar: component }, tiptapPlugins: { tools: { extensions: { example: editorExtension },
       popups: { suggestions: component }, isSuggestionActive } },
-    dslTypes: { notes: { prefix: 'n', schema: 'declare interface Foo {}', globals: { foo: 'Foo' } } },
   } satisfies PackFERegistration;
   return { manifest, registration, component, getHeight, bindSettings, configure, isSuggestionActive };
 }
@@ -71,8 +70,6 @@ describe('frontend declaration binding', () => {
     ['changed block kind', (r: Record<string, unknown>) => { r.blocks = [{ type: 'note', kind: 'display' }]; }, 'blocks.note.kind'],
     ['missing block component', (r: Record<string, unknown>) => { r.blocks = [{ type: 'note', kind: 'input', fe: {} }]; }, 'blocks.note.fe'],
     ['foreign slot', (r: Record<string, unknown>) => { r.appExtensions = { other: {} }; }, 'appExtensions'],
-    ['foreign DSL', (r: Record<string, unknown>) => { r.dslTypes = {}; }, 'dslTypes'],
-    ['changed DSL globals', (r: Record<string, unknown>) => { r.dslTypes = { notes: { prefix: 'n', schema: '', globals: { foo: 'Wrong' } } }; }, 'globals.foo'],
     ['missing editor binding', (r: Record<string, unknown>) => { r.tiptapPlugins = undefined; }, 'tiptapPlugins'],
     ['foreign editor group', (r: Record<string, unknown>) => { r.tiptapPlugins = { other: {} }; }, 'tiptapPlugins'],
     ['missing editor extension', (r: Record<string, unknown>) => { (r.tiptapPlugins as Record<string, Record<string, unknown>>).tools.extensions = {}; }, 'tiptapPlugins.tools.extensions'],
@@ -88,10 +85,9 @@ describe('frontend declaration binding', () => {
     expect(frontendBindingProblem(manifest, registration)).toContain(expected);
   });
 
-  it('accepts the omitted DSL prefix as an empty global prefix', () => {
+  it('does not require a frontend binding for static DSL declarations', () => {
     const { manifest, registration } = fixture();
     delete manifest.extensions!.dsl!.notes.prefix;
-    registration.dslTypes.notes.prefix = '';
     expect(frontendBindingProblem(manifest, registration)).toBeUndefined();
   });
 
@@ -236,24 +232,20 @@ it('checks admitted native steps and owns their data while preserving executable
   expect(getHeight).not.toHaveBeenCalled();
 });
 
-it('admits declared native artifacts, blocks, DSL globals and feature designations', () => {
+it('admits declared native artifacts, blocks and feature designations', () => {
   const { manifest, registration, component } = fixture();
   const packs = createNativeFrontendTestRegistry([{
     id: manifest.id,
     features: { notes: manifest.features!.notes, form: manifest.features!.form },
     ...manifest.extensions,
-    dslDefinitions: { notes: registration.dslTypes.notes.schema },
+    dslDefinitions: { notes: 'declare interface Foo {}' },
   }]);
   const bindings = { ...registration, bindSettings: undefined };
   packs.registerFixture(bindings);
   expect(packs.designation('notes')).toBe('notes-pack/notes');
   expect(packs.artifact('text')?.fe?.component).toBe(component);
   expect(packs.block('note')?.fe?.component).toBe(component);
-  expect(packs.dslTypes().get('notes')?.globals).toEqual({ foo: 'Foo' });
-  expect(() => packs.replaceFixture({ ...bindings, dslTypes: { notes: {
-    prefix: 'n', schema: '', globals: { foo: 'Wrong' },
-  } } })).toThrow('dslTypes.notes.globals.foo');
-  expect(packs.dslTypes().get('notes')?.globals).toEqual({ foo: 'Foo' });
+
 });
 
 it('checks native declaration data before copying it or reading declarative accessors', () => {

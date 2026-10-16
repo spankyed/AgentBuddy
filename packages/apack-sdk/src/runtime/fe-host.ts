@@ -10,7 +10,6 @@ import type { Component } from 'vue';
 import type { Plugin } from '../fe/plugin.ts';
 import type { HostShell } from '../fe/shell.ts';
 import type { TiptapPluginBinding } from '../fe/tiptap-plugins.ts';
-import type { DslTypeConfig } from '../fe/dsl-types.ts';
 import type { PackExtensionsView } from './packs-view.ts';
 
 /**
@@ -38,8 +37,6 @@ export interface FePackRegistryView extends PackExtensionsView {
   referenceCategories(): ReadonlyMap<string, ReferenceBinding<ReferenceBindings['categories'][string]>>;
   /** The component a pack registered for an app extension slot */
   appExtension(slot: string): Component | undefined;
-  /** The DSL types packs registered for the code editors, by name */
-  dslTypes(): ReadonlyMap<string, DslTypeConfig>;
 }
 
 /** The running app, as the SDK reaches it in the renderer */

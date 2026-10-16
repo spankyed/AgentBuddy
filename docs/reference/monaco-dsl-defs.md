@@ -1,6 +1,6 @@
 # Monaco DSL Definitions
 
-Monaco editor intellisense for the action, prompt and database DSLs comes from one declaration file per DSL, built by `apack pack build` and carried by the pack's frontend registration.
+Monaco editor intellisense for the action, prompt and database DSLs comes from one declaration file per DSL, built by `apack pack build` and carried as static snapshot/catalog data.
 
 ## Pipeline
 
@@ -9,9 +9,9 @@ src/defs/{action,prompt,database}.ts            (1) Hand-authored type source
         ↓  apack pack build (bundleDslDefs)
 dist/defs/monaco/{action,prompt,database}-defs.d.ts  (2) Bundled declarations
         ↓
-src/__generated__/dsl-types-fe.ts               (3) Generated `dslTypes`, imports (2) as ?raw strings
-        ↓  pack-entry-fe.ts registration's `dslTypes`, which the renderer registers
-getDslTypes() → Monaco TypeScript worker        (4) The renderer's registered DSL types
+dist/types/snapshot.json: dslDefinitions        (3) Verified built data
+        ↓  shared host/window catalog
+getDslDeclaration() → Monaco TypeScript worker  (4) Owned live libraries, independent of activation
 ```
 
 | Stage | File | Produced by | Purpose |
@@ -20,7 +20,8 @@ getDslTypes() → Monaco TypeScript worker        (4) The renderer's registered 
 | 1 | `src/defs/prompt.ts` | Hand-authored | Prompt DSL types (`usePrompt`, params, `PromptEntity`) |
 | 1 | `src/defs/database.ts` | Hand-authored | EARS DSL types (`qx`, `tx`, `bp`, `spawn`, entity helpers) |
 | 2 | `dist/defs/monaco/*-defs.d.ts` | `apack pack build` | Each entry's types bundled into one declaration file, wrapped as `declare module "@app/defs/<name>"` |
-| 3 | `src/__generated__/dsl-types-fe.ts` | `apack pack generate-entries` | Imports (2) as `?raw` and exports `dslTypes` (one `DslTypeConfig` per DSL), which `pack-entry-fe.ts` puts in the frontend registration; nothing registers on import |
+| 3 | `dist/types/snapshot.json` | `apack pack build` | Records each Monaco target's compiled text, including targets without globals; snapshot/native validation requires exact declared coverage |
+| 4 | Common catalog / `dsl-reader.ts` | Host/window projections | Returns metadata and compiled text without loading modules; source previews may have metadata only |
 
 Every pack gets this: `apack pack build` bundles each `apack.json` `extensions.dsl` entry whose `targets` include `monaco` (`packages/apack-cli/src/build/dsl-defs.ts`, covered by `packages/apack-cli/tests/build/dsl-defs.integration.spec.ts`).
 
@@ -42,7 +43,13 @@ Anything that builds the pack rebuilds them, because they are part of `apack pac
 
 The declaration files are generated output: never edit them, and edit `src/defs/*.ts` instead.
 
-Builds assemble these definitions in `.apack/build/defs` alongside the other output. The frontend library
-bundle resolves its generated raw imports from that staged tree, and reuse hashes those same bytes.
-A successful build publishes all output as `dist`; a failed build retains the previous definitions and
-frontend together. The development server reads the published `dist/defs` files.
+Builds assemble these definitions in `.apack/build/defs` alongside the other output, then copy their
+text into the candidate snapshot. Cached phases copy the same staged bytes into that snapshot. A
+successful build publishes the complete sealed output; a failed build retains the incumbent. Archives
+retain `dslDefinitions` while omitting standalone definition files and authored modules.
+
+Monaco consumers acquire shared libraries per Monaco instance, language and DSL. Catalog updates replace
+changed module/global text and remove unavailable definitions. The last editor releasing a library
+disposes its handles; the last library releases the catalog subscription. Prefix inference chooses a
+unique longest nonempty prefix. Explicit DSL selection works without a prefix. Disabled packs' type
+data remains useful for editing saved content; an unbuilt or ambiguous owner cannot supply completions.

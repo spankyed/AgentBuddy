@@ -19,7 +19,7 @@ import { blockRegistry } from '../../src/blocks/registry.ts';
 import { _contentWriterRegistry } from '../../src/content/writers.ts';
 import { getPackCommands, getSettingsCatalog, onPackCatalogChanged } from '../../src/framework/index.ts';
 import { importCompiledContent, registeredContentKeys } from '../../src/utils/apply.ts';
-import { getDslTypes } from '../../src/fe/dsl-types.ts';
+import { getDslDeclarations } from '../../src/fe/dsl-reader.ts';
 import { tiptapPluginRegistry } from '../../src/fe/tiptap-plugins.ts';
 import { testPacksView } from '../../src/testing/packs.ts';
 
@@ -104,7 +104,7 @@ describe('with no app bound', () => {
       ['getPackCommands', () => getPackCommands()],
     ];
     for (const [name, use] of backendLookups) expect(use, name).toThrow('bindHost(runtime)');
-    for (const [name, use] of [['getDslTypes', () => getDslTypes()], ['tiptapPluginRegistry.getAll', () => tiptapPluginRegistry.getAll()]] as const) {
+    for (const [name, use] of [['getDslDeclarations', () => getDslDeclarations()], ['tiptapPluginRegistry.getAll', () => tiptapPluginRegistry.getAll()]] as const) {
       expect(use, name).toThrow('bindFeHost(runtime)');
     }
   });

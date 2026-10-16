@@ -37,8 +37,8 @@ catalog exposes metadata and compiled text without importing DSL or runtime modu
 entries expose their declaration without claiming compiled text. The snapshot retains these definitions
 in archives and installations, independently of frontend activation.
 
-Generated frontend code currently also imports the standalone files as raw text. Staging
-does not ship the standalone `defs/` directory. `dist/phase-cache.json` is private reuse metadata,
+Frontend registration carries no DSL type text. Monaco reads the catalog and observes replacement
+without activating frontend modules. Staging does not ship the standalone `defs/` directory. `dist/phase-cache.json` is private reuse metadata,
 sealed and published with its source build but omitted from archives and installations.
 `.apack/reads.json` is a diagnostic build record, not an installed declaration. Facade declarations and DSL editor definitions serve
 different consumers even though both contain TypeScript declarations. Snapshot `facades` and the

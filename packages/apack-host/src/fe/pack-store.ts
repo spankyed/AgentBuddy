@@ -2,7 +2,7 @@
 // face for the SDK's frontend lookups (`bindFeHost({ packs })`). It holds the only writes to it.
 import type { DeclarationData, PluginDeclaration } from '@apackdev/sdk/framework';
 import type { ReferenceTypeConfig, ReferenceBindings, ReferenceBinding } from '@apackdev/sdk/fe/references';
-import type { Plugin, PackFERegistration, TiptapPlugin, TiptapPluginBinding, DslTypeConfig, SettingsPort, StepFrontendBinding, ArtifactFrontendBinding, BlockFrontendBinding } from '@apackdev/sdk/fe';
+import type { Plugin, PackFERegistration, TiptapPlugin, TiptapPluginBinding, SettingsPort, StepFrontendBinding, ArtifactFrontendBinding, BlockFrontendBinding } from '@apackdev/sdk/fe';
 import type { FePackRegistryView } from '@apackdev/sdk/runtime';
 import { createDesignationStore, createOwnedStore, createOwnedStepStore } from '../packs/extensions.ts';
 import { resolveName, type FeatureRef } from '@apackdev/sdk/ids';
@@ -109,7 +109,6 @@ interface FrontendContributions {
   blocks: Array<DefinitionEntry<BlockFrontendBinding>>;
   tiptapPlugins: Array<[string, TiptapPlugin]>;
   appExtensions: Array<readonly [string, SettingsForm]>;
-  dslTypes: Array<readonly [string, DslTypeConfig]>;
   references: OwnedReferenceBindings[];
   bindSettings: PackFERegistration['bindSettings'];
 }
@@ -156,7 +155,7 @@ function capture(registration: PackFERegistration, identity: AcceptedFrontendAdm
     blocks: (reg.blocks ?? []).map(value => [value.type, Object.freeze({ packId: reg.id, ...revisions,
       declaration: identity.declarations.extensions!.blocks![value.type]!, binding: value })]),
     tiptapPlugins: Object.entries(reg.tiptapPlugins ?? {}),
-    appExtensions: Object.entries(reg.appExtensions ?? {}), dslTypes: Object.entries(reg.dslTypes ?? {}),
+    appExtensions: Object.entries(reg.appExtensions ?? {}),
   };
 }
 
@@ -168,7 +167,6 @@ function buildTables(packs: Iterable<FrontendContributions>) {
   const artifacts = createOwnedStore<ArtifactFrontendBinding>();
   const blocks = createOwnedStore<BlockFrontendBinding>();
   const appExtensions = createOwnedStore<SettingsForm>();
-  const dslTypes = createOwnedStore<DslTypeConfig>();
   const forms = new Map<string, SettingsForm>();
   const tiptapPlugins: TiptapPluginBinding[] = [];
   const editorOwners = new Map<string, string>();
@@ -199,7 +197,6 @@ function buildTables(packs: Iterable<FrontendContributions>) {
     for (const [key, value] of pack.artifacts) artifacts.set(key, value, pack.id);
     for (const [key, value] of pack.blocks) blocks.set(key, value, pack.id);
     for (const [key, value] of pack.appExtensions) appExtensions.set(key, value, pack.id);
-    for (const [key, value] of pack.dslTypes) dslTypes.set(key, value, pack.id);
     for (const [id, plugin] of pack.tiptapPlugins) {
       const owner = `${pack.id}/${id}`;
       for (const name of Object.keys(plugin.extensions ?? {})) {
@@ -210,7 +207,7 @@ function buildTables(packs: Iterable<FrontendContributions>) {
       tiptapPlugins.push(Object.freeze({ packId: pack.id, groupId: id, binding: plugin }));
     }
   }
-  return { plugins, pluginBindings, designations, steps, artifacts, blocks, appExtensions, dslTypes, forms, tiptapPlugins, referenceTypes, referenceCategories };
+  return { plugins, pluginBindings, designations, steps, artifacts, blocks, appExtensions, forms, tiptapPlugins, referenceTypes, referenceCategories };
 }
 
 /** Published lookup data and executable resource lifetime have separate commit/retirement paths. */
@@ -335,6 +332,6 @@ export function createFePackRegistry(): FePackRegistry {
     tiptapPlugins: () => [...tables.tiptapPlugins],
     referenceTypes: () => new Map(tables.referenceTypes),
     referenceCategories: () => new Map(tables.referenceCategories),
-    appExtension: key => tables.appExtensions.get(key), dslTypes: () => new Map(tables.dslTypes.entries()),
+    appExtension: key => tables.appExtensions.get(key),
   };
 }

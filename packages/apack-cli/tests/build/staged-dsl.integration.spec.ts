@@ -31,7 +31,7 @@ describe('staged DSL definitions', () => {
       const original = fs.readFileSync(definitions, 'utf8');
       expect(original).toContain('before: true');
       expect(first.snapshot.dslDefinitions).toEqual({ rows: original });
-      expect(fs.readFileSync(path.join(dir, PACK_LAYOUT.feEntry), 'utf8')).toContain('before: true');
+      expect(fs.readFileSync(path.join(dir, PACK_LAYOUT.feEntry), 'utf8')).not.toContain('before: true');
       const reads = fs.readFileSync(path.join(root, '.apack/reads.json'), 'utf8');
       const cache = fs.readFileSync(path.join(dir, 'phase-cache.json'), 'utf8');
       fs.writeFileSync(path.join(root, 'src/rows.ts'), 'export interface Row { after: true }');
@@ -50,7 +50,7 @@ describe('staged DSL definitions', () => {
       expect(current.snapshot.dslDefinitions?.rows).toContain('after: true');
       expect(fs.readFileSync(definitions, 'utf8')).toContain('after: true');
       const frontend = fs.readFileSync(path.join(dir, PACK_LAYOUT.feEntry), 'utf8');
-      expect(frontend).toContain('after: true');
+      expect(frontend).not.toContain('after: true');
       expect(frontend).not.toContain('before: true');
       const log = vi.spyOn(console, 'log');
       try {
