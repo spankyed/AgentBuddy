@@ -73,6 +73,38 @@ it('compiles content through the captured worker without redirecting tool reads 
   expect(output.records[0].name).toBe('OWNED');
 });
 
+it('terminates pack-created background work before accepting its candidate', async () => {
+  const root = fixture({
+    'src/compiler.ts': `setInterval(() => {}, 1000);
+      export default () => [{entity: 'Relation', name: 'COMPLETE'}];`,
+    'src/value.txt': 'DATA',
+  }, { formats: { rows: { compiler: 'src/compiler.ts', entity: 'Relation', identity: ['name'] } },
+    sources: { rows: { path: 'src/value.txt', format: 'rows' } } });
+  await runPackBuild(root, { args: ['--skip-fe'] });
+  const output = JSON.parse(fs.readFileSync(path.join(root, 'dist/runtime/content/rows.content.json'), 'utf8'));
+  expect(output.records[0].name).toBe('COMPLETE');
+});
+
+it('refuses candidate output changed by a compiler exit handler and retains the incumbent', async () => {
+  const root = fixture({
+    'src/compiler.ts': `import fs from 'node:fs';
+      process.on('exit', () => {
+        fs.writeFileSync('.apack/exit-state', fs.existsSync('.apack/build/integrity.json') ? 'SEALED' : 'UNSEALED');
+        fs.writeFileSync('.apack/build/runtime/content/rows.content.json', 'LATE EXIT WRITE');
+      });
+      export default () => [{entity: 'Relation', name: 'COMPLETE'}];`,
+    'src/value.txt': 'DATA',
+  }, { formats: { rows: { compiler: 'src/compiler.ts', entity: 'Relation', identity: ['name'] } },
+    sources: { rows: { path: 'src/value.txt', format: 'rows' } } });
+  fs.mkdirSync(path.join(root, 'dist'));
+  fs.writeFileSync(path.join(root, 'dist/incumbent.txt'), 'ACCEPTED');
+  await expect(runPackBuild(root, { args: ['--skip-fe'] })).rejects.toThrow();
+  expect(fs.readFileSync(path.join(root, '.apack/exit-state'), 'utf8')).toBe('SEALED');
+  expect(fs.readFileSync(path.join(root, 'dist/incumbent.txt'), 'utf8')).toBe('ACCEPTED');
+  expect(fs.readdirSync(path.join(root, 'dist'))).toEqual(['incumbent.txt']);
+  expect(fs.existsSync(path.join(root, '.apack/build'))).toBe(false);
+});
+
 it('reports frontend inputs that remain available after its compiler installation is removed', async () => {
   const root = fixture({
     'src/pack-entry-fe.ts': 'import "./Panel.vue"; export { default } from "./__generated__/pack-entry-fe.ts";',

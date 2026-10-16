@@ -77,6 +77,13 @@ A changed compiler or damaged copy is replaced. `runPackBuild` closes this scope
 a watcher retains it until close. Closing aborts active work, drains the worker and input observers,
 then removes the private installation.
 
+The parent holds the pack build lock through worker closure and publication. Workers only prepare and
+seal a candidate, report its authored-input hash and sealed revision, drain diagnostics, and exit.
+The parent waits for process closure, verifies the exact sealed output and authored hash, then replaces
+dist. Exit-handler writes therefore cannot silently change an accepted candidate; aborts and refusals
+clean staging while preserving the incumbent. This handoff is not the complete source/compiler input
+receipt and must not authorize passive source freshness.
+
 `withBuildSignals` owns public one-shot/watch cancellation before startup and restores the original
 signal exit after cleanup. Development supplies its own build-lifetime signal and hands initial-build
 and watcher-startup promises to its hold before awaiting them; profile removal and exit wait for both.

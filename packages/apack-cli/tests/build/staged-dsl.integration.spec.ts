@@ -1,10 +1,11 @@
+import { buildStagingDir } from '../../src/build/build-publication.ts';
 // @slow: five real builds verify staged DSL publication, failure retention, reuse and removal.
 import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { packFixture } from '@apackdev/sdk/testing/pack-fixture';
-import { build, buildStagingDir } from '../../src/commands/build';
+import { build } from '../../src/commands/build';
 import { PACK_LAYOUT, readPackBuild } from '@apackdev/host/packs';
 import { packagesBuiltOrRefuse, REPO_ROOT } from '@apackdev/host/build/packages-built';
 

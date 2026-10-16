@@ -30,31 +30,14 @@ import { bundlePackTypes } from '../build/types-bundler';
 import { facadeProblems } from '../build/facade-gate';
 import { compareFacadeReport, facadeReportFile, facadeReportText } from '../build/facade-report';
 import { bundlePackFlowHelpers } from '../build/flow-helpers-bundler';
-import { PACK_LAYOUT, sealPackBuild } from '@apackdev/host/packs';
-import { replaceDir } from '@apackdev/host/replace-dir';
+import { PACK_LAYOUT, sealPackBuild, readPackBuild } from '@apackdev/host/packs';
+import { buildStagingDir, publishPackBuild, type PackBuildCandidate } from '../build/build-publication.ts';
 import { withCompilerFileReads } from '../build/compiler-file-reads.ts';
 import { createCompilerModuleLoader } from '../build/compiler-modules.ts';
 import { holdPackBuildLock } from '../build/build-lock.ts';
 import { dependencyTypes, resolveDependencyFiles } from './generate';
 import { assertGeneratedCurrent, generateEntries, warnStaleDepTypes } from './generate-entries';
 import { findPackRoot, readValidManifest, sdkVersion } from '../utils';
-
-/**
- * Where a build writes before it is a build: the whole of `dist/` is assembled here and renamed into place at
- * the end, so `dist` holds the previous build whole or this one whole and never neither.
- *
- * **What that replaced is removing `dist` first**, which every reader of a pack's output reads as *not built* —
- * so a build published ~20s in which that was the answer, and the fixture-pack race in `1e19b40d9` was it. The
- * tree still goes whole, which is what stops `apack pack archive` and the test fixtures shipping a dropped output: it
- * goes whole by being a different tree, rather than by being deleted.
- *
- * Inside the pack, so the rename cannot cross a filesystem, and under `.apack/` because every pack already
- * ignores that directory — a staging tree `git` reports is a directory that appears and vanishes inside the
- * population this repo's own checks derive from.
- */
-export function buildStagingDir(root: string): string {
-  return path.join(root, '.apack', 'build');
-}
 
 /**
  * Public builds refresh linked packages before a fresh worker loads compiler modules.
@@ -86,7 +69,7 @@ export async function build(args: string[], root = findPackRoot(process.cwd())) 
     onWait: (holder) => console.log(`Waiting for ${holder} to finish...`),
   });
   try {
-    await buildIntoStaging(args, root);
+    publishPackBuild(root, await preparePackBuild(args, root));
   } catch (err) {
     // Whatever failed and wherever, the pack is left with the build it had. Out here rather than beside each
     // `throw` because a phase that fails before the gates are even reached — an invalid manifest, a feature's
@@ -95,6 +78,15 @@ export async function build(args: string[], root = findPackRoot(process.cwd())) 
     throw err;
   } finally {
     lock.release();
+  }
+}
+
+/** Prepare only; the worker's parent owns the lock and publication through process termination. */
+export async function preparePackBuild(args: string[], root: string): Promise<PackBuildCandidate> {
+  try { return await buildIntoStaging(args, root); }
+  catch (error) {
+    fs.rmSync(buildStagingDir(root), { recursive: true, force: true });
+    throw error;
   }
 }
 
@@ -282,13 +274,10 @@ async function buildIntoStaging(args: string[], root: string) {
       // Cleanup can fail too; finish it before replacing the accepted build.
       modules.dispose();
       compilation.dispose();
-      // Every phase has succeeded and the snapshot advertises them, so this is the moment the staged tree
-      // becomes the pack's output — one rename, rather than the ~20s of absent `dist` that clearing it first cost
-      replaceDir(outputDir, distDir);
-      console.log(`\nOutput: ${path.relative(process.cwd(), distDir)}/`);
+      return { inputHash: inputsHash, revision: readPackBuild(outputDir).revision };
     };
 
-    console.log(`\nBuild complete:`);
+    console.log(`\nBuild output:`);
     if (result) {
       for (const [type, count] of Object.entries(result.counts)) {
         if (count > 0) console.log(`  ${type}: ${count}`);
@@ -375,7 +364,7 @@ async function buildIntoStaging(args: string[], root: string) {
       }
     }
 
-    finish();
+    return finish();
   } finally {
     modules.dispose();
     compilation.dispose();
