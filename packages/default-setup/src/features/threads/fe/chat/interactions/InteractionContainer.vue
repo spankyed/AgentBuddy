@@ -14,10 +14,9 @@
 </template>
 
 <script setup lang="ts">
-import { usePlugin } from '@apackdev/sdk/fe'
+import { usePlugin, getBlockBinding, useBlockDeclarations } from '@apackdev/sdk/fe'
 
 import type { BlockConfig } from '#generated/types.ts'
-import { blockRegistry } from '@apackdev/sdk/blocks'
 import { ref, computed } from 'vue'
 import type { ThreadsState } from '../../state.ts'
 
@@ -35,11 +34,15 @@ const props = withDefaults(defineProps<Props>(), {
 const threadsActor: ThreadsState = usePlugin()
 
 // ─── Block component resolution ─────────────────────────────────────
-const getBlockComponent = (type: string) => blockRegistry.getComponent(type)
+const declarations = useBlockDeclarations()
+const getBlockComponent = (type: string) => {
+  declarations.value
+  return getBlockBinding(type)?.binding.fe?.component
+}
 
 const blockBindings = (block: BlockConfig) => {
   const base = { ...block.props }
-  if (blockRegistry.get(block.type)?.kind === 'input') {
+  if (declarations.value.find(entry => entry.type === block.type)?.declaration.kind === 'input') {
     base.disabled = props.isDisabled
     base.response = responseForBlock(block.type)
   }

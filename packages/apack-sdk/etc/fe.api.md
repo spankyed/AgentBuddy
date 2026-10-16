@@ -35,6 +35,12 @@ import { z } from 'zod';
 export const ALL_COLORS: readonly ["blue", "orange", "purple", "green", "red", "teal", "yellow", "pink", "gray"];
 
 // @public (undocumented)
+export type ArtifactFrontendBinding = ViewerFrontendBinding<ArtifactDeclaration, ArtifactDefinition>;
+
+// @public (undocumented)
+export type BlockFrontendBinding = ViewerFrontendBinding<BlockDeclaration, BlockDefinition>;
+
+// @public (undocumented)
 export interface BlockItem {
     // (undocumented)
     command: (e: Editor) => void;
@@ -193,6 +199,24 @@ export interface FeSettingsHandle<T> extends ReadonlyFeSettingsHandle<T> {
     // (undocumented)
     set(update: SettingUpdate<T>): Promise<SettingsWriteResult>;
 }
+
+// @public
+export function getArtifactBinding(type: string): ArtifactFrontendBinding | undefined;
+
+// @public (undocumented)
+export function getArtifactDeclaration(type: string): ArtifactCatalogEntry | undefined;
+
+// @public
+export function getArtifactDeclarations(): readonly ArtifactCatalogEntry[];
+
+// @public
+export function getBlockBinding(type: string): BlockFrontendBinding | undefined;
+
+// @public (undocumented)
+export function getBlockDeclaration(type: string): BlockCatalogEntry | undefined;
+
+// @public
+export function getBlockDeclarations(): readonly BlockCatalogEntry[];
 
 // @public (undocumented)
 export function getDesignated(role: string): FeatureRef;
@@ -915,6 +939,12 @@ export function untypedOpenPlugin(ref: string, event?: PluginEvent | PluginEvent
 
 // @public
 export function useAppSettings(): Readonly<Ref<AppSettings | undefined>>;
+
+// @public
+export function useArtifactDeclarations(): ComputedRef<readonly ArtifactCatalogEntry[]>;
+
+// @public
+export function useBlockDeclarations(): ComputedRef<readonly BlockCatalogEntry[]>;
 
 // @public (undocumented)
 export function useFeatureSettings<T = unknown>(feature: FeatureRef): Readonly<Ref<T | undefined>>;

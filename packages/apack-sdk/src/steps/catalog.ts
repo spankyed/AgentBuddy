@@ -1,6 +1,6 @@
 import { boundHost } from '../runtime/host-runtime.ts';
 import { declarationJson } from '../framework/declaration-data.ts';
-import { selectStepDeclaration, selectStepDeclarations } from '../framework/step-catalog.ts';
+import { selectCatalogDeclaration, selectCatalogDeclarations } from '../framework/catalog-selection.ts';
 import type { DeclarationData, StepCatalogEntry } from '../framework/catalog-view.ts';
 import type { StepEntry } from '../build/manifest.ts';
 import type { StepDefinition } from './types.ts';
@@ -17,11 +17,11 @@ export interface StepBackendBinding {
 
 /** Selected backend declarations; reads never consult or activate executable providers. */
 export function getStepDeclarations(): readonly StepCatalogEntry[] {
-  return selectStepDeclarations(boundHost().packs.stepDeclarations());
+  return selectCatalogDeclarations(boundHost().packs.stepDeclarations());
 }
 
 export function getStepDeclaration(type: string): StepCatalogEntry | undefined {
-  return selectStepDeclaration(type, boundHost().packs.stepDeclarations());
+  return selectCatalogDeclaration(type, boundHost().packs.stepDeclarations());
 }
 
 /** Eligibility for new work; active runtime lookups retain their separate retirement lifetime. */

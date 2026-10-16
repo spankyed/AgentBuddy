@@ -22,7 +22,7 @@ function fixture() {
   const declarations = new Set<() => void>(); const accepted = new Set<() => void>();
   const state = { entries: [entry], ready: true };
   startFeTestRuntime({ application: {} as never, settings: {} as never, secrets: {} as never, client: {} as never,
-    catalog: { frontend: () => [], steps: () => [], status: () => state.ready ? 'ready' : 'disconnected', problem: () => undefined, references: () => state.entries,
+    catalog: { frontend: () => [], artifacts: () => [], blocks: () => [], steps: () => [], status: () => state.ready ? 'ready' : 'disconnected', problem: () => undefined, references: () => state.entries,
       subscribe(listener) { declarations.add(listener); return () => { declarations.delete(listener); }; } },
     packs: { referenceTypes: () => types, referenceCategories: () => categories,
       onChanged(listener: () => void) { accepted.add(listener); return () => { accepted.delete(listener); }; } } as never });

@@ -389,6 +389,13 @@ An artifact is a typed content item (code, image, markdown, …) shown in a thre
 | `icon` | yes | The icon shown in the artifact list |
 | `component` | no | The viewer. Without one, the host shows the text viewer |
 
+Frontend code reads `getArtifactDeclaration(type)` or `getArtifactDeclarations()` from
+`@apackdev/sdk/fe` for declared icon names and viewer paths without loading the pack. Use
+`getArtifactBinding(type)` for an executable viewer: it is available only while the current enabled
+owner and accepted declaration/build agree. `useArtifactDeclarations()` observes both metadata and
+binding readiness inside a Vue effect scope, so mounted lists and viewers follow pack changes.
+Unavailable viewers display the text fallback; declared icons remain available independently.
+
 ### Scaffolding
 
 ```bash
@@ -466,6 +473,13 @@ A block is an inline UI widget inside a chat message. A `BlockDefinition` (`@apa
 
 - **Display blocks** (`kind` omitted or `'display'`) render data (markdown, code, tool activity).
 - **Input blocks** (`kind: 'input'`) collect a response (text, choices, approvals).
+
+Frontend code reads `getBlockDeclaration(type)` or `getBlockDeclarations()` from
+`@apackdev/sdk/fe` for input/display kind and declared facet paths. `getBlockBinding(type)` supplies
+only a frontend matching the current enabled owner and accepted declaration/build.
+`useBlockDeclarations()` observes independent metadata and binding updates within a Vue effect scope.
+The thread UI does not render missing, disabled or stale components. Backend transcript callbacks
+remain execution-facing lookups with their runtime lifetime.
 
 ### Scaffolding
 

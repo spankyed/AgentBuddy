@@ -1,10 +1,8 @@
 // The packs whose frontends the renderer registered, as an instance: the renderer creates one and binds its read
 // face for the SDK's frontend lookups (`bindFeHost({ packs })`). It holds the only writes to it.
 import type { ReferenceTypeConfig, ReferenceBindings, ReferenceBinding } from '@apackdev/sdk/fe/references';
-import type { Plugin, PackFERegistration, TiptapPlugin, TiptapPluginBinding, DslTypeConfig, SettingsPort, StepFrontendBinding } from '@apackdev/sdk/fe';
+import type { Plugin, PackFERegistration, TiptapPlugin, TiptapPluginBinding, DslTypeConfig, SettingsPort, StepFrontendBinding, ArtifactFrontendBinding, BlockFrontendBinding } from '@apackdev/sdk/fe';
 import type { FePackRegistryView } from '@apackdev/sdk/runtime';
-import type { ArtifactDefinition } from '@apackdev/sdk/artifacts';
-import type { BlockDefinition } from '@apackdev/sdk/blocks';
 import { createDesignationStore, createOwnedStore, createOwnedStepStore } from '../packs/extensions.ts';
 import { resolveName, type FeatureRef } from '@apackdev/sdk/ids';
 import { createFrontendSettingsBinding } from './settings-binding.ts';
@@ -94,8 +92,8 @@ interface FrontendContributions {
   roles: Record<string, FeatureRef>;
   forms: Array<readonly [string, SettingsForm]>;
   steps: Array<DefinitionEntry<StepFrontendBinding>>;
-  artifacts: Array<DefinitionEntry<ArtifactDefinition>>;
-  blocks: Array<DefinitionEntry<BlockDefinition>>;
+  artifacts: Array<DefinitionEntry<ArtifactFrontendBinding>>;
+  blocks: Array<DefinitionEntry<BlockFrontendBinding>>;
   tiptapPlugins: Array<[string, TiptapPlugin]>;
   appExtensions: Array<readonly [string, SettingsForm]>;
   dslTypes: Array<readonly [string, DslTypeConfig]>;
@@ -138,8 +136,10 @@ function capture(registration: PackFERegistration, identity: AcceptedFrontendAdm
     }),
     steps: (reg.steps ?? []).map(value => [value.type, Object.freeze({ packId: reg.id, ...revisions,
       declaration: identity.declarations.extensions!.steps![value.type]!, binding: value })]),
-    artifacts: (reg.artifacts ?? []).map(value => [value.type, value]),
-    blocks: (reg.blocks ?? []).map(value => [value.type, value]),
+    artifacts: (reg.artifacts ?? []).map(value => [value.type, Object.freeze({ packId: reg.id, ...revisions,
+      declaration: identity.declarations.extensions!.artifacts![value.type]!, binding: value })]),
+    blocks: (reg.blocks ?? []).map(value => [value.type, Object.freeze({ packId: reg.id, ...revisions,
+      declaration: identity.declarations.extensions!.blocks![value.type]!, binding: value })]),
     tiptapPlugins: Object.entries(reg.tiptapPlugins ?? {}),
     appExtensions: Object.entries(reg.appExtensions ?? {}), dslTypes: Object.entries(reg.dslTypes ?? {}),
   };
@@ -150,8 +150,8 @@ function buildTables(packs: Iterable<FrontendContributions>) {
   let defaultPlugin: Plugin | undefined;
   const designations = createDesignationStore();
   const steps = createOwnedStepStore<StepFrontendBinding>();
-  const artifacts = createOwnedStore<ArtifactDefinition>();
-  const blocks = createOwnedStore<BlockDefinition>();
+  const artifacts = createOwnedStore<ArtifactFrontendBinding>();
+  const blocks = createOwnedStore<BlockFrontendBinding>();
   const appExtensions = createOwnedStore<SettingsForm>();
   const dslTypes = createOwnedStore<DslTypeConfig>();
   const forms = new Map<string, SettingsForm>();
@@ -311,8 +311,10 @@ export function createFePackRegistry(): FePackRegistry {
     onChanged(listener) { listeners.add(listener); return () => { listeners.delete(listener); }; },
     designation: key => tables.designations.get(key),
     stepBindings: () => new Map(tables.steps.entries()),
-    artifact: key => tables.artifacts.get(key), artifacts: () => tables.artifacts.all(),
-    block: key => tables.blocks.get(key), blocks: () => tables.blocks.all(),
+    artifactBindings: () => new Map(tables.artifacts.entries()),
+    artifact: key => tables.artifacts.get(key)?.binding, artifacts: () => tables.artifacts.all().map(entry => entry.binding),
+    blockBindings: () => new Map(tables.blocks.entries()),
+    block: key => tables.blocks.get(key)?.binding, blocks: () => tables.blocks.all().map(entry => entry.binding),
     plugins: () => [...tables.plugins], defaultPlugin: () => tables.defaultPlugin,
     tiptapPlugins: () => [...tables.tiptapPlugins],
     referenceTypes: () => new Map(tables.referenceTypes),

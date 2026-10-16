@@ -1,4 +1,5 @@
 import type { StepFrontendBinding } from '../fe/step-bindings.ts';
+import type { ArtifactFrontendBinding, BlockFrontendBinding } from '../fe/viewer-bindings.ts';
 import type { PackCatalogView } from '../framework/catalog-view.ts';
 // The frontend's port: what the SDK's frontend code reaches in the renderer, bound once per window
 import type { ReferenceTypeConfig, ReferenceBindings, ReferenceBinding } from '../fe/reference-types.ts';
@@ -32,6 +33,8 @@ export interface FePackRegistryView extends PackExtensionsView {
   tiptapPlugins(): TiptapPluginBinding[];
   /** Accepted step bindings; catalog declarations can outlive their implementations. */
   stepBindings(): ReadonlyMap<string, StepFrontendBinding>;
+  artifactBindings(): ReadonlyMap<string, ArtifactFrontendBinding>;
+  blockBindings(): ReadonlyMap<string, BlockFrontendBinding>;
   /** Accepted executable reference bindings; declarations have a separate catalog lifetime. */
   referenceTypes(): ReadonlyMap<string, ReferenceBinding<ReferenceTypeConfig>>;
   referenceCategories(): ReadonlyMap<string, ReferenceBinding<ReferenceBindings['categories'][string]>>;

@@ -60,3 +60,7 @@ export { defineHandlers, type Handlers } from '../framework/define-system.ts'
 
 export { getStepFrontendBindings, type StepFrontendBinding } from './step-bindings.ts';
 export { getStepDeclarations, getStepDeclaration, getStepBinding, onStepsChanged, useStepDeclarations } from './step-reader.ts';
+
+export type { ArtifactFrontendBinding, BlockFrontendBinding } from './viewer-bindings.ts';
+export { getArtifactDeclarations, getArtifactDeclaration, getArtifactBinding, useArtifactDeclarations } from './artifact-reader.ts';
+export { getBlockDeclarations, getBlockDeclaration, getBlockBinding, useBlockDeclarations } from './block-reader.ts';

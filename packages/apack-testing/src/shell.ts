@@ -55,6 +55,8 @@ function backendFirst(frontend: FePackRegistryView, backend: PackExtensionsView)
     defaultPlugin: () => frontend.defaultPlugin(),
     tiptapPlugins: () => frontend.tiptapPlugins(),
     stepBindings: () => frontend.stepBindings(),
+    artifactBindings: () => frontend.artifactBindings(),
+    blockBindings: () => frontend.blockBindings(),
     referenceTypes: () => frontend.referenceTypes(),
     referenceCategories: () => frontend.referenceCategories(),
     appExtension: (slot) => frontend.appExtension(slot),
