@@ -18,6 +18,7 @@ function projectCli() {
 }
 
 const worker = process.env.APACK_BUILD_WORKER === '1';
+if (worker) globalThis[Symbol.for('apack.compiler.startup')]?.stopReads();
 if (worker && (!process.send || !process.connected)) throw new Error('Pack build worker requires its parent IPC channel');
 // The supervisor already selected and captured this compiler; project hand-off would escape it.
 const handoff = worker ? null : projectCli();

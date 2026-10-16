@@ -4,7 +4,7 @@ import { buildToolHash, cliPackageDirectory } from './tool-identity.ts';
 import { readPackageInputs } from '@apackdev/host/build/package-inputs';
 import { parseNodeOptions, SOURCE_CONDITION } from '@apackdev/host/build/source-resolution';
 import { readCompilerModuleInputs } from './compiler-module-inputs.ts';
-import { readCompilerInstallationInputs } from './compiler-installation.ts';
+import { readCompilerInstallationInputs } from './compiler-installation-inputs.ts';
 import type { PackCompilerConfiguration } from './compiler-configuration.ts';
 import fs from 'node:fs';
 import path from 'node:path';
@@ -15,8 +15,11 @@ import type { CompilerDirectoryCursor } from './compiler-directories.ts';
 import type { CompilerDirectoryResult } from './compiler-file-view.ts';
 import { compilerDiagnostic, compilerSourcePath } from './compiler-paths.ts';
 import { createNativeInputReader } from './compiler-native-inputs.ts';
-import { createCompilerReadTree, type CompilerReadTree } from './compiler-read-tree.ts';
+import { BUILD_INPUTS_DIRECTORY_ENV, createCompilerReadTree, type CompilerReadTree } from './compiler-read-tree.ts';
 import type { PackCompilerInputView } from './compiler-input-view.ts';
+import { compilerStartupInputs } from './compiler-startup-inputs.ts';
+import { createCompilerInputObservations, hashCompilerInputObservations, type CompilerInputObservations } from './compiler-observations.ts';
+import { assertNativeCompilerObservations } from './compiler-observation-validation.ts';
 
 /** Export selectors passed to the worker; executable preloads need their own captured input closure. */
 export function compilationConditions(args = process.execArgv, nodeOptions = process.env.NODE_OPTIONS ?? ''): string[] {
@@ -33,6 +36,7 @@ export function compilationConditions(args = process.execArgv, nodeOptions = pro
 }
 
 export interface CompilationInputs {
+  isInput(file: string): boolean;
   readonly hash: string;
   /** Explicit pack config; absence preserves native per-file config discovery. */
   readonly configuration: PackCompilerConfiguration | undefined;
@@ -49,17 +53,26 @@ export interface CompilationInputs {
   diagnostic(message: string): string;
   prepareNative(specifier: string, importer: string): void;
   prepareNativeSource(file: string, contents: Buffer): void;
+  requireParent(file: string): string;
+  finishStartup(): Promise<void>;
   dispose(): void;
   assertCurrent(): void;
 }
 
 /** Own one module read-set per build; recheck its data and package/tool inputs without rerunning TypeScript. */
 export function captureCompilationInputs(packRoot: string, view?: PackCompilerInputView): CompilationInputs {
+  const startup = compilerStartupInputs();
+  if (startup && (startup.root !== fs.realpathSync(packRoot) || (view && view !== startup.view))) {
+    throw new Error('Compiler startup inputs belong to another compilation');
+  }
+  view ??= startup?.view;
+  if (startup && !startup.initial) throw new Error('Compiler startup observations must be captured before compilation');
   const cliRoot = cliPackageDirectory();
   const compiler = readCompilerInstallationInputs();
   if (compiler && !compiler.packages.includes(cliRoot)) throw new Error('Captured compiler inputs do not belong to this CLI');
   const capturedPackages = new Set(compiler?.packages);
   const modules = readCompilerModuleInputs(packRoot, undefined, view);
+  let startupObservations: CompilerInputObservations[] = [];
   let tree: CompilerReadTree | undefined;
   let disposed = false;
   const assertOpen = () => { if (disposed) throw new Error('Compiler input operation outlived its build'); };
@@ -72,12 +85,13 @@ export function captureCompilationInputs(packRoot: string, view?: PackCompilerIn
     });
     const hash = createHash('sha256').update(compiler?.hash ?? buildToolHash()).update(inputs.hash).update(modules.hash)
       .update(JSON.stringify([process.versions.node, process.platform, process.arch, compilationConditions()]))
+      .update(JSON.stringify(startup?.initial?.map(hashCompilerInputObservations) ?? []))
       .digest('hex');
     return { hash, packages: inputs };
   };
   const { hash, packages } = current(true);
   const sourcePath = (file: string): string => tree?.sourcePath(file) ?? compilerSourcePath(file, compiler?.paths ?? []);
-  const readTree = (): CompilerReadTree => {
+  const readTree = (): CompilerReadTree => withoutCompilerFileReads(() => {
     assertOpen();
     if (!tree) {
       const links = packages.nodes.flatMap(node => [
@@ -95,23 +109,35 @@ export function captureCompilationInputs(packRoot: string, view?: PackCompilerIn
       tree = createCompilerReadTree({ ...snapshot, locations, links }, compiler?.paths ?? [], (file, bytes, readPath) => native.projectMetadata(file, bytes, readPath));
     }
     return tree;
-  };
+  });
   const ownsToolPath = (file: string) => compiler?.paths.some(({ captured }) => {
     const relative = path.relative(captured, file);
     return relative !== '..' && !relative.startsWith(`..${path.sep}`) && !path.isAbsolute(relative);
   });
   const native = createNativeInputReader(modules, packages, sourcePath, snapshot => readTree().include(snapshot));
+  const workspace = process.env[BUILD_INPUTS_DIRECTORY_ENV];
   return {
+    isInput(file) {
+      if (ownsToolPath(file)) return false;
+      const internal = [workspace, tree?.directory].some(directory => {
+        if (!directory) return false;
+        const relative = path.relative(directory, file);
+        return relative === '' || (relative !== '..' && !relative.startsWith(`..${path.sep}`) && !path.isAbsolute(relative));
+      });
+      return !internal || sourcePath(file) !== file;
+    },
     hash,
     configuration: modules.configuration,
     declarationConfiguration: modules.declarationConfiguration,
     readFile(file) {
-      assertOpen();
-      const bytes = modules.readBytes(file);
-      if (tree && bytes !== undefined) tree.include({
-        files: [modules.captureFile(file, bytes)], locations: [modules.captureLocation(file, 'file')!], links: [],
+      return withoutCompilerFileReads(() => {
+        assertOpen();
+        const bytes = modules.readBytes(file);
+        if (tree && bytes !== undefined) tree.include({
+          files: [modules.captureFile(file, bytes)], locations: [modules.captureLocation(file, 'file')!], links: [],
+        });
+        return bytes;
       });
-      return bytes;
     },
     readDataPath(file) {
       assertOpen();
@@ -153,8 +179,15 @@ export function captureCompilationInputs(packRoot: string, view?: PackCompilerIn
     readTree,
     sourcePath,
     diagnostic(message) { return compilerDiagnostic(tree?.diagnostic(message) ?? message, compiler?.paths ?? []); },
-    prepareNative(specifier, importer) { readTree(); native.prepare(specifier, sourcePath(importer)); },
-    prepareNativeSource(file, contents) { assertOpen(); native.prepareSource(sourcePath(file), contents); },
+    prepareNative(specifier, importer) { withoutCompilerFileReads(() => { readTree(); native.prepare(specifier, sourcePath(importer)); }); },
+    requireParent(file) { return withoutCompilerFileReads(() => { readTree(); native.prepare(file, path.dirname(sourcePath(file))); return readTree().path(file); }); },
+    async finishStartup() {
+      assertOpen();
+      if (!startup) return;
+      startupObservations = await startup.finish();
+      createCompilerInputObservations(modules.observations().root, [modules.observations(), ...startupObservations]);
+    },
+    prepareNativeSource(file, contents) { assertOpen(); withoutCompilerFileReads(() => native.prepareSource(sourcePath(file), contents)); },
     dispose() {
       if (disposed) return;
       disposed = true;
@@ -166,6 +199,7 @@ export function captureCompilationInputs(packRoot: string, view?: PackCompilerIn
         try {
           tree?.assertCurrent();
           modules.assertCurrent();
+          for (const observations of startupObservations) assertNativeCompilerObservations(observations);
           if (current().hash !== hash) throw new Error('Implementation, package or execution options differ');
         } catch (cause) {
           throw new Error(`Compiler or installed package inputs changed; retry before publishing: ${errorMessage(cause)}`, { cause });

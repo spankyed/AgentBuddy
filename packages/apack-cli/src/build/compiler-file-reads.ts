@@ -6,24 +6,48 @@ import { fileURLToPath } from 'node:url';
 import { openCapturedDirectory } from './compiler-directories.ts';
 import { capturedDescriptor, descriptorStats, releaseDescriptor, instrumentFileHandle, rememberDescriptor } from './compiler-descriptors.ts';
 import { compilerMetadataOperations, type CompilerMetadataKind } from './compiler-metadata.ts';
-import type { CompilationInputs } from './compilation-inputs.ts';
+import type { CompilerDirectoryCursor } from './compiler-directories.ts';
+import type { CompilerDirectoryResult } from './compiler-file-view.ts';
 
-/** Native interception depends on reads and resolution, not compiler configuration or build hashes. */
-export type CompilerFileReadInputs = Pick<CompilationInputs,
-  'readDataPath' | 'readMetadata' | 'readDirectory' | 'openDirectory' | 'sourcePath' | 'diagnostic' | 'prepareNative' | 'readTree'>;
+/** Filesystem interception is usable before compiler configuration or module activation. */
+export interface CompilerFileReadInputs {
+  isInput(file: string): boolean;
+  readDataPath(file: string): string;
+  readMetadata(kind: CompilerMetadataKind, file: string, args: readonly unknown[]): unknown;
+  readDirectory(file: string, options: unknown): CompilerDirectoryResult;
+  openDirectory(file: string, options: unknown): CompilerDirectoryCursor;
+  sourcePath(file: string): string;
+  diagnostic(message: string): string;
+  requireParent(file: string): string;
+}
 
 interface CompilerFileReadScope {
   compilation: CompilerFileReadInputs;
   outputDirectory: string;
 }
 
-const scopes = new AsyncLocalStorage<CompilerFileReadScope>();
-let installed = false;
+interface CompilerReadState {
+  readonly scopes: AsyncLocalStorage<CompilerFileReadScope | null>;
+  startup?: CompilerFileReadScope;
+  installed: boolean;
+}
+// The native bootstrap and ESM compiler bundle must share interception, including cached preload APIs.
+const READS = Symbol.for('apack.compiler.file-reads');
+const state: CompilerReadState = Reflect.get(globalThis, READS) ?? {
+  scopes: new AsyncLocalStorage<CompilerFileReadScope | null>(), installed: false,
+};
+if (!Reflect.has(globalThis, READS)) Object.defineProperty(globalThis, READS, { value: state });
+const scopes = state.scopes;
+const currentScope = () => {
+  const scope = scopes.getStore();
+  return scope === undefined ? state.startup : scope ?? undefined;
+};
 
 function readScope(file: fs.PathOrFileDescriptor) {
-  const scope = scopes.getStore();
+  const scope = currentScope();
   if (!scope || (typeof file !== 'string' && !(file instanceof URL) && !Buffer.isBuffer(file))) return;
   const absolute = path.resolve(file instanceof URL ? fileURLToPath(file) : file.toString());
+  if (!scope.compilation.isInput(absolute)) return;
   const relative = path.relative(scope.outputDirectory, absolute);
   if (relative === '' || (!relative.startsWith(`..${path.sep}`) && relative !== '..' && !path.isAbsolute(relative))) return;
   return { scope, absolute };
@@ -32,12 +56,12 @@ function readScope(file: fs.PathOrFileDescriptor) {
 function readPath(file: fs.PathOrFileDescriptor): fs.PathOrFileDescriptor {
   const input = readScope(file);
   // Capture itself reads the original filesystem; those internal reads must not re-enter the adapter.
-  return input ? scopes.exit(() => input.scope.compilation.readDataPath(input.absolute)) : file;
+  return input ? withoutCompilerFileReads(() => input.scope.compilation.readDataPath(input.absolute)) : file;
 }
 
 function sourceError(error: unknown): unknown {
   if (!(error instanceof Error)) return error;
-  const scope = scopes.getStore();
+  const scope = currentScope();
   if (!scope) return error;
   error.message = scope.compilation.diagnostic(error.message);
   if ('path' in error && typeof error.path === 'string') {
@@ -75,7 +99,7 @@ function callbackRead<T extends (...args: never[]) => unknown>(operation: T,
 function metadataRead(kind: CompilerMetadataKind, file: fs.PathLike, args: readonly unknown[]) {
   const input = readScope(file);
   return input
-    ? scopes.exit(() => input.scope.compilation.readMetadata(kind, input.absolute, args))
+    ? withoutCompilerFileReads(() => input.scope.compilation.readMetadata(kind, input.absolute, args))
     : Reflect.apply(compilerMetadataOperations[kind].sync, fs, [file, ...args]);
 }
 
@@ -89,7 +113,7 @@ function metadataSync(kind: CompilerMetadataKind) {
 function metadataCallback(kind: CompilerMetadataKind) {
   return (file: fs.PathLike, ...args: unknown[]) => {
     const callback = args.pop();
-    if (!scopes.getStore() || typeof callback !== 'function') {
+    if (!currentScope() || typeof callback !== 'function') {
       return Reflect.apply(compilerMetadataOperations[kind].callback!, fs, [file, ...args, callback]);
     }
     try {
@@ -102,21 +126,21 @@ function metadataCallback(kind: CompilerMetadataKind) {
 function descriptorInput(file: fs.PathLike, flags: unknown) {
   const input = readOnly(flags) ? readScope(file) : undefined;
   return input && { readStats: (args: readonly unknown[]) =>
-    scopes.exit(() => input.scope.compilation.readMetadata('stat', input.absolute, args)) };
+    withoutCompilerFileReads(() => input.scope.compilation.readMetadata('stat', input.absolute, args)) };
 }
 
 function capturedDirectory(file: fs.PathLike, options: unknown) {
   const input = readScope(file);
   if (!input) return;
-  return scopes.exit(() => {
+  return withoutCompilerFileReads(() => {
     const cursor = input.scope.compilation.openDirectory(input.absolute, options);
-    return openCapturedDirectory(input.scope.compilation.readDataPath(input.absolute), input.absolute, file, options, index => scopes.exit(() => cursor.read(index)));
+    return openCapturedDirectory(input.scope.compilation.readDataPath(input.absolute), input.absolute, file, options, index => withoutCompilerFileReads(() => cursor.read(index)));
   });
 }
 
 function install() {
-  if (installed) return;
-  installed = true;
+  if (state.installed) return;
+  state.installed = true;
   const readSync = fs.readFileSync, read = fs.readFile, readPromise = fs.promises.readFile;
   fs.readFileSync = ((file: fs.PathOrFileDescriptor, ...args: unknown[]) => {
     try { return Reflect.apply(readSync, fs, [readPath(file), ...args]); }
@@ -182,7 +206,7 @@ function install() {
   fs.readdirSync = ((file: fs.PathLike, options: unknown) => {
     const input = readScope(file);
     if (!input) return Reflect.apply(readdirSync, fs, [file, options]);
-    try { return scopes.exit(() => input.scope.compilation.readDirectory(input.absolute, options)); }
+    try { return withoutCompilerFileReads(() => input.scope.compilation.readDirectory(input.absolute, options)); }
     catch (error) { throw sourceError(error); }
   }) as typeof fs.readdirSync;
   fs.readdir = ((file: fs.PathLike, ...args: unknown[]) => {
@@ -190,14 +214,14 @@ function install() {
     const input = readScope(file);
     if (!input || typeof callback !== 'function') return Reflect.apply(readdir, fs, [file, ...args, callback]);
     try {
-      const result = scopes.exit(() => input.scope.compilation.readDirectory(input.absolute, args[0]));
+      const result = withoutCompilerFileReads(() => input.scope.compilation.readDirectory(input.absolute, args[0]));
       queueMicrotask(() => callback(null, result));
     } catch (error) { queueMicrotask(() => callback(sourceError(error))); }
   }) as typeof fs.readdir;
   fs.promises.readdir = (async (file, options) => {
     const input = readScope(file);
     if (!input) return Reflect.apply(readdirPromise, fs.promises, [file, options]);
-    try { return scopes.exit(() => input.scope.compilation.readDirectory(input.absolute, options)); }
+    try { return withoutCompilerFileReads(() => input.scope.compilation.readDirectory(input.absolute, options)); }
     catch (error) { throw sourceError(error); }
   }) as typeof fs.promises.readdir;
   const opendirSync = fs.opendirSync, opendir = fs.opendir, opendirPromise = fs.promises.opendir;
@@ -207,7 +231,7 @@ function install() {
   }) as typeof fs.opendirSync;
   fs.opendir = ((file: fs.PathLike, ...args: unknown[]) => {
     const callback = args.pop();
-    if (!scopes.getStore() || typeof callback !== 'function') return Reflect.apply(opendir, fs, [file, ...args, callback]);
+    if (!currentScope() || typeof callback !== 'function') return Reflect.apply(opendir, fs, [file, ...args, callback]);
     try {
       const directory = capturedDirectory(file, args[0]);
       if (!directory) return Reflect.apply(opendir, fs, [file, ...args, callback]);
@@ -224,7 +248,7 @@ function install() {
     builtins[`${kind}Sync`] = metadataSync(kind);
     builtins[kind] = metadataCallback(kind);
     promises[kind] = async (file: fs.PathLike, ...args: unknown[]) => {
-      if (!scopes.getStore()) return Reflect.apply(compilerMetadataOperations[kind].promise!, fs.promises, [file, ...args]);
+      if (!currentScope()) return Reflect.apply(compilerMetadataOperations[kind].promise!, fs.promises, [file, ...args]);
       try { return metadataRead(kind, file, args); }
       catch (error) { throw sourceError(error); }
     };
@@ -241,7 +265,7 @@ function install() {
   }) as typeof fs.existsSync;
   const existsCallback = fs.exists;
   const capturedExists = ((file: fs.PathLike, callback: (exists: boolean) => void) => {
-    if (!scopes.getStore() || typeof callback !== 'function') return existsCallback(file, callback);
+    if (!currentScope() || typeof callback !== 'function') return existsCallback(file, callback);
     const value = fs.existsSync(file);
     queueMicrotask(() => callback(value));
   }) as typeof fs.exists;
@@ -251,19 +275,18 @@ function install() {
   fs.exists = capturedExists;
   const createRequire = module.createRequire;
   module.createRequire = (filename => {
-    const scope = scopes.getStore();
+    const scope = currentScope();
     if (!scope) return createRequire(filename);
     const url = filename instanceof URL ? filename : typeof filename === 'string' && filename.startsWith('file:') ? new URL(filename) : undefined;
     if (url ? url.protocol !== 'file:' : typeof filename !== 'string' || !path.isAbsolute(filename)) return createRequire(filename);
     const file = url ? fileURLToPath(url) : filename as string;
-    return scopes.exit(() => {
+    return withoutCompilerFileReads(() => {
       // Existing owned module/compiler paths already have their correct native resolution context.
       if (scope.compilation.sourcePath(file) !== file) return createRequire(filename);
       // Match Node's directory-parent convention without admitting the directory above it.
       const parent = file.endsWith('/') || (process.platform === 'win32' && file.endsWith('\\'))
         ? path.join(file, 'noop.js') : file;
-      scope.compilation.prepareNative(parent, path.dirname(parent));
-      return createRequire(scope.compilation.readTree().path(parent));
+      return createRequire(scope.compilation.requireParent(parent));
     });
   }) as typeof module.createRequire;
   syncBuiltinESMExports();
@@ -277,5 +300,13 @@ export function withCompilerFileReads<T>(scope: CompilerFileReadScope, operation
 
 /** Input validation must inspect the live filesystem, even when invoked from captured execution. */
 export function withoutCompilerFileReads<T>(operation: () => T): T {
-  return scopes.exit(operation);
+  return scopes.run(null, operation);
+}
+
+/** Startup runs outside an application-owned async context; explicit scopes still take precedence. */
+export function beginCompilerStartupReads(scope: CompilerFileReadScope): () => void {
+  if (state.startup) throw new Error('Compiler startup reads already have an owner');
+  install();
+  state.startup = scope;
+  return () => { if (state.startup === scope) state.startup = undefined; };
 }

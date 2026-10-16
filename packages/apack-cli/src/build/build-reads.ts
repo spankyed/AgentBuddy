@@ -29,7 +29,7 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { PACK_READS_FILE } from '@apackdev/host/build/pack-workdir';
 import { compilerSourcePath } from './compiler-paths.ts';
-import { readCompilerInstallationInputs } from './compiler-installation.ts';
+import { readCompilerInstallationInputs } from './compiler-installation-inputs.ts';
 
 /**
  * The one way to turn the record off, and it is environmental: a read-only filesystem, or a sandbox that

@@ -4,11 +4,26 @@ import path from 'node:path';
 import { fork } from 'node:child_process';
 import { afterEach, expect, it } from 'vitest';
 import { cliBin } from '../../src/utils.ts';
-import { COMPILER_INPUTS_ENV } from '../../src/build/compiler-installation.ts';
+import { COMPILER_INPUTS_ENV } from '../../src/build/compiler-installation-inputs.ts';
 import { _byDeadline } from '@apackdev/sdk/testing/waiting';
+import { compilerStartupOptions } from '../../src/build/compiler-startup-options.ts';
+import { parseNodeOptions } from '@apackdev/host/build/source-resolution';
 
 const roots: string[] = [];
 afterEach(() => roots.splice(0).forEach(root => fs.rmSync(root, { recursive: true, force: true })));
+
+it('keeps private startup options separate from child options and preserves user loader flags', () => {
+  const bin = path.resolve('compiler/bin/apack.mjs');
+  const normal = compilerStartupOptions(bin, '--import="/pre load.mjs"');
+  expect(parseNodeOptions(normal.worker)).toEqual(['--require', path.resolve('compiler/dist/compiler-startup.cjs'), '--import=/pre load.mjs']);
+  expect(parseNodeOptions(normal.user)).toEqual(['--import=/pre load.mjs']);
+  for (const flag of ['--loader', '--experimental-loader']) {
+    const options = compilerStartupOptions(bin, `${flag}="/custom loader.mjs" --conditions=@apackdev/source`);
+    expect(parseNodeOptions(options.worker)).toEqual(['--require', path.resolve('compiler/dist/compiler-startup.cjs'),
+      `${flag}=/custom loader.mjs`]);
+    expect(parseNodeOptions(options.user)).toEqual([`${flag}=/custom loader.mjs`]);
+  }
+});
 
 it.each([false, true])('refuses an uncaptured worker with parent IPC (unrelated metadata: %s)', async unrelated => {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'apack-worker-inputs-'));

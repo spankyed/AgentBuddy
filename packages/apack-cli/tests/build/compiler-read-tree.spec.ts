@@ -87,6 +87,26 @@ it('refuses conflicting captured/source origins and removes the incomplete tree'
 });
 
 
+it('reuses materialized directories independently for code and data reads', () => {
+  const root = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'apack-read-tree-reuse-')));
+  roots.push(root);
+  const file = path.join(root, 'value.ts');
+  fs.writeFileSync(file, 'export const value = 7;');
+  const view = createCompilerFileView(root);
+  view.readBytes(file);
+  const snapshot = { ...view.snapshot(), links: [] };
+  const tree = createCompilerReadTree(snapshot, []);
+  trees.push(tree);
+  tree.includeData(snapshot);
+  const chmod = vi.spyOn(fs, 'chmodSync');
+  tree.include(snapshot);
+  tree.includeData(snapshot);
+  expect(chmod).not.toHaveBeenCalled();
+  expect(fs.readFileSync(tree.path(file), 'utf8')).toContain('value = 7');
+  expect(fs.readFileSync(tree.dataPath(file), 'utf8')).toContain('value = 7');
+  tree.assertCurrent();
+});
+
 it('refuses retained admissions after disposal while preserving diagnostic paths', () => {
   const tree = createCompilerReadTree({ files: [], locations: [], links: [] }, []);
   trees.push(tree);

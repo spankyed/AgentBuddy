@@ -9,7 +9,7 @@ import { codeBlocks } from './pack-sources.ts';
 import { compilerSourcePath } from './compiler-paths.ts';
 import { compilerGlobDirectories } from './compiler-source-globs.ts';
 import type { createCompilerFileView, CompilerFileSystem } from './compiler-file-view.ts';
-import { readCompilerInstallationInputs } from './compiler-installation.ts';
+import { readCompilerInstallationInputs } from './compiler-installation-inputs.ts';
 import { createPackCompilerInputView, type PackCompilerInputView } from './compiler-input-view.ts';
 
 /** Resolve script/type inputs afresh, including Vue scripts, outside imports and undeclared npm packages. */
@@ -21,6 +21,7 @@ export function readCompilerModuleInputs(root: string, observe?: BuildInputObser
   readBytes(file: string): Buffer | undefined;
   captureFile: ReturnType<typeof createCompilerFileView>['captureFile'];
   captureLocation: ReturnType<typeof createCompilerFileView>['captureLocation'];
+  captureDataLocation: ReturnType<typeof createCompilerFileView>['captureDataLocation'];
   readDirectoryData: ReturnType<typeof createCompilerFileView>['readDirectoryData'];
   readDataBytes: ReturnType<typeof createCompilerFileView>['readDataBytes'];
   readMetadata: ReturnType<typeof createCompilerFileView>['readMetadata'];
@@ -30,6 +31,7 @@ export function readCompilerModuleInputs(root: string, observe?: BuildInputObser
   fileSystem: CompilerFileSystem;
   ancestors: ReturnType<typeof createCompilerFileView>['ancestors'];
   snapshot: ReturnType<typeof createCompilerFileView>['snapshot'];
+  observations: ReturnType<typeof createCompilerFileView>['observations'];
   assertCurrent(): void;
 } {
   const realRoot = fs.realpathSync(root);
@@ -131,6 +133,7 @@ export function readCompilerModuleInputs(root: string, observe?: BuildInputObser
   assertCurrent();
   return { hash: hash.digest('hex'), configuration, declarationConfiguration, readBytes: view.readBytes, captureFile: view.captureFile,
     captureLocation: view.captureLocation, readDirectoryData: view.readDirectoryData, readDataBytes: view.readDataBytes, readMetadata: view.readMetadata, openDirectoryData: view.openDirectoryData, dispose: view.dispose, resolutionDirectory: view.resolutionDirectory, ancestors: view.ancestors, fileSystem, snapshot: view.snapshot,
+    observations: view.observations, captureDataLocation: view.captureDataLocation,
     packageDirectories: [...packages].sort((a, b) => relative(a) < relative(b) ? -1 : relative(a) > relative(b) ? 1 : 0), assertCurrent };
 
 }

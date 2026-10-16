@@ -5,7 +5,7 @@ import * as path from 'node:path';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { PACK_READS_FILE } from '@apackdev/host/build/pack-workdir';
 import { buildReads } from '../../src/build/build-reads';
-import { COMPILER_INPUTS_ENV } from '../../src/build/compiler-installation.ts';
+import { COMPILER_INPUTS_ENV } from '../../src/build/compiler-installation-inputs.ts';
 
 const roots: string[] = [];
 afterEach(() => {

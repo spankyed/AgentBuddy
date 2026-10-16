@@ -87,6 +87,24 @@ it('formats diagnostics without materializing or reading the owned tree', () => 
   compilation.dispose();
 });
 
+it('keeps compiler operations native inside captured callbacks and excludes owned scratch reads', async () => {
+  const { root, file } = pack();
+  const compilation = captureCompilationInputs(root);
+  try {
+    const tree = compilation.readTree();
+    await withCompilerFileReads({ compilation, outputDirectory: path.join(root, '.apack/build') }, async () => {
+      compilation.prepareNative(file, path.dirname(file));
+      compilation.prepareNativeSource(file, Buffer.from('export type Value = string;'));
+      expect(compilation.readFile(file)?.toString()).toBe('export type Value = string;');
+      const scratch = path.join(tree.workDirectory, 'compiler.code');
+      fs.writeFileSync(scratch, 'SCRATCH');
+      expect(fs.readFileSync(scratch, 'utf8')).toBe('SCRATCH');
+      fs.unlinkSync(scratch);
+    });
+    expect(() => compilation.assertCurrent()).not.toThrow();
+  } finally { compilation.dispose(); }
+});
+
 
 it('refuses retained async reads after disposal without recreating input storage', async () => {
   const { root, file } = pack();

@@ -1,13 +1,14 @@
+import { COMPILER_INPUTS_ENV } from '../../src/build/compiler-installation-inputs.ts';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { execFileSync, fork, spawn, type ChildProcess } from 'node:child_process';
-import { afterEach, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { packFixture } from '@apackdev/sdk/testing/pack-fixture';
 import { REPO_ROOT } from '@apackdev/host/build/packages-built';
 import { readPackBuild } from '@apackdev/host/packs';
-import { withoutSourceCondition } from '@apackdev/host/build/source-resolution';
+import { formatNodeOptions, parseNodeOptions } from '@apackdev/host/build/source-resolution';
 import { cliBin } from '../../src/utils.ts';
 import { _byDeadline } from '@apackdev/sdk/testing/waiting';
 
@@ -17,16 +18,18 @@ vi.mock('../../src/build/be-bundler', async importOriginal => ({
 }));
 import { bundlePackRuntime } from '../../src/build/be-bundler';
 import { buildCommand } from '../../src/commands/build.ts';
-import { runPackBuild } from '../../src/build/build-process.ts';
+import { createPackBuilder, runPackBuild, type PackBuilder } from '../../src/build/build-process.ts';
+import { compilerStartupOptions, COMPILER_NODE_OPTIONS_ENV } from '../../src/build/compiler-startup-options.ts';
 import type { BuildWatchInputs } from '../../src/build/build-watch-inputs.ts';
 import { readStamps } from '../../src/build/phase-cache.ts';
 import { ensureCheckoutPackages } from '../../src/build/checkout-packages.ts';
 import { BUILD_INPUTS_DIRECTORY_ENV, removeCompilerReadTree } from '../../src/build/compiler-read-tree.ts';
-import { COMPILER_PROCESS_GROUP_ENV } from '../../src/build/compiler-process-group.ts';
-import { captureCompilerInstallation, COMPILER_INPUTS_ENV, type CompilerInstallation } from '../../src/build/compiler-installation.ts';
+import { COMPILER_PROCESS_GROUP_ENV, stopCompilerProcessGroup } from '../../src/build/compiler-process-group.ts';
+import { captureCompilerInstallation, type CompilerInstallation } from '../../src/build/compiler-installation.ts';
 
 const roots: string[] = [];
 const compilers: CompilerInstallation[] = [];
+const builders: PackBuilder[] = [];
 afterEach(async () => {
   vi.restoreAllMocks();
   vi.unstubAllEnvs();
@@ -37,6 +40,7 @@ afterEach(async () => {
       catch (error) { if ((error as NodeJS.ErrnoException).code !== 'ESRCH') throw error; }
     }
   }
+  await Promise.all(builders.splice(0).map(builder => builder.close()));
   await Promise.all(compilers.splice(0).map(compiler => compiler.dispose()));
   roots.splice(0).forEach(root => fs.rmSync(root, { recursive: true, force: true }));
 });
@@ -80,23 +84,103 @@ it('uses the captured compiler and retains unchanged build/cache identity on rep
   for (const workspace of workspaces) expect(fs.existsSync(workspace)).toBe(false);
 });
 
-it('compiles content through the captured worker without redirecting tool reads to the checkout', async () => {
+describe('native compiler startup', () => {
+  let root: string, preload: string, imported: string, payload: string, trace: string, builder: PackBuilder;
+  beforeEach(async () => {
+    root = fixture({
+      'tsconfig.json': JSON.stringify({ compilerOptions: { module: 'esnext', moduleResolution: 'bundler', jsx: 'react', jsxFactory: 'h', skipLibCheck: true }, include: ['src/**/*'] }),
+      'src/compiler.tsx': `import fs from 'node:fs'; const h = () => 'JSX';
+        export default ({path}: {path: string}) => {
+          const payload = Reflect.get(globalThis, 'apackPayloadPath') as string;
+          const original = Reflect.get(globalThis, 'apackPayload') as string;
+          const cachedRead = Reflect.get(globalThis, 'apackCachedRead') as typeof fs.readFileSync;
+          fs.writeFileSync(payload, 'TRANSIENT');
+          let value;
+          try { value = cachedRead(payload, 'utf8'); } finally { fs.writeFileSync(payload, original); }
+          if (value !== original) throw new Error('Cached preload read escaped its compiler frame');
+          return [{entity: 'Relation', name: [fs.readFileSync(path, 'utf8'), <marker />, Reflect.get(globalThis, 'apackPreloadProbe'), Reflect.get(globalThis, 'apackImportProbe'), Reflect.get(globalThis, 'apackLoaderProbe')].join(':'), source: import.meta.filename, origin: import.meta.url, requireSource: Reflect.get(globalThis, 'apackRequireSource'), importSource: Reflect.get(globalThis, 'apackImportSource')}];
+        }`,
+      'src/value.txt': 'OWNED',
+    }, { formats: { rows: { compiler: 'src/compiler.tsx', entity: 'Relation', identity: ['name'] } },
+      sources: { rows: { path: 'src/value.txt', format: 'rows' } } });
+    preload = path.join(root, '.apack/pre load  file.cjs');
+    imported = path.join(root, '.apack/preload.mjs');
+    const loader = path.join(root, '.apack/loader.mjs');
+    const outside = fs.mkdtempSync(path.join(os.tmpdir(), 'apack-worker-preload-'));
+    roots.push(outside);
+    payload = path.join(outside, 'payload.txt');
+    fs.writeFileSync(payload, 'LOADED');
+    fs.mkdirSync(path.dirname(preload), { recursive: true });
+    trace = path.join(root, '.apack/preload-order.jsonl');
+    fs.writeFileSync(trace, '');
+    fs.writeFileSync(preload, `if (process.env.APACK_BUILD_WORKER === '1') {
+      if (!globalThis[Symbol.for('apack.compiler.startup')]) throw new Error('Preload has no input owner');
+      if (Object.keys(require.cache).some(file => /typescript[\\/]lib/.test(file))) throw new Error('Compiler activated before preload');
+    }
+    if (globalThis[Symbol.for('apack.compiler.startup')]) require('node:fs').appendFileSync(${JSON.stringify(trace)}, 'require:' + require('node:worker_threads').threadId + '\\n');
+    globalThis.apackCachedRead = require('node:fs').readFileSync;
+    globalThis.apackPayloadPath = ${JSON.stringify(payload)}; globalThis.apackPayload = globalThis.apackCachedRead(globalThis.apackPayloadPath, 'utf8');
+    globalThis.apackPreloadProbe = 'PRELOADED'; globalThis.apackRequireSource = __filename;`);
+    fs.writeFileSync(path.join(root, '.apack/preload-child.mjs'), `export default 'IMPORTED';`);
+    fs.writeFileSync(imported, `import value from './preload-child.mjs'; if (!globalThis.apackPreloadProbe) throw new Error('Preload order changed');
+      if (globalThis[Symbol.for('apack.compiler.startup')]) (await import('node:fs')).appendFileSync(${JSON.stringify(trace)}, 'import:0\\n');
+      globalThis.apackImportProbe = value; globalThis.apackImportSource = import.meta.url;`);
+    fs.writeFileSync(loader, `import fs from 'node:fs'; const marker = fs.readFileSync(${JSON.stringify(payload)}, 'utf8');
+      if (globalThis[Symbol.for('apack.compiler.startup')]) fs.appendFileSync(${JSON.stringify(trace)}, 'loader:1\\n');
+      export async function load(url, context, next) {
+        const result = await next(url, context);
+        return url === ${JSON.stringify(pathToFileURL(fs.realpathSync(imported)).href)}
+          ? {...result, source: 'globalThis.apackLoaderProbe = ' + JSON.stringify(marker) + ';\\n' + result.source} : result;
+      }`);
+    vi.stubEnv('NODE_OPTIONS', formatNodeOptions([...parseNodeOptions(process.env.NODE_OPTIONS), '--require', preload, '--import', imported, '--experimental-loader', loader]));
+    builder = createPackBuilder(root);
+    builders.push(builder);
+    await builder.build({ args: ['--skip-fe'] });
+  });
+
+  it('compiles content through the captured worker and invalidates changed loader inputs', async () => {
+    const output = JSON.parse(fs.readFileSync(path.join(root, 'dist/runtime/content/rows.content.json'), 'utf8'));
+    expect(output.records[0].name).toBe('OWNED:JSX:PRELOADED:IMPORTED:LOADED');
+    expect(output.records[0].requireSource).toBe(fs.realpathSync(preload));
+    expect(output.records[0].importSource).toBe(pathToFileURL(fs.realpathSync(imported)).href);
+    expect(output.records[0].source).toBe(path.join(fs.realpathSync(root), 'src/compiler.tsx'));
+    expect(output.records[0].origin).toBe(pathToFileURL(path.join(fs.realpathSync(root), 'src/compiler.tsx')).href + '?tsx-namespace=apack-build-1');
+    expect(fs.readFileSync(trace, 'utf8').trim().split('\n')).toEqual(['require:0', 'require:1', 'loader:1', 'import:0']);
+    const revision = readPackBuild(path.join(root, 'dist')).revision;
+    fs.writeFileSync(payload, 'UPDATED');
+    await builder.build({ args: ['--skip-fe'] });
+    const rebuilt = JSON.parse(fs.readFileSync(path.join(root, 'dist/runtime/content/rows.content.json'), 'utf8'));
+    expect(rebuilt.records[0].name).toBe('OWNED:JSX:PRELOADED:IMPORTED:UPDATED');
+    expect(readPackBuild(path.join(root, 'dist')).revision).not.toBe(revision);
+  });
+});
+
+it('refuses publication when a loader-only external input changes during compilation', async () => {
+  const outside = fs.mkdtempSync(path.join(os.tmpdir(), 'apack-loader-input-'));
+  roots.push(outside);
+  const payload = path.join(outside, 'payload.txt');
+  fs.writeFileSync(payload, 'ORIGINAL');
   const root = fixture({
-    'tsconfig.json': JSON.stringify({ compilerOptions: { module: 'esnext', moduleResolution: 'bundler', jsx: 'react', jsxFactory: 'h', skipLibCheck: true }, include: ['src/**/*'] }),
-    'src/compiler.tsx': `import fs from 'node:fs'; const h = () => 'JSX';
-      export default ({path}: {path: string}) => [{entity: 'Relation', name: [fs.readFileSync(path, 'utf8'), <marker />, Reflect.get(globalThis, 'apackPreloadProbe')].join(':'), source: import.meta.filename, origin: import.meta.url}];`,
-    'src/value.txt': 'OWNED',
-  }, { formats: { rows: { compiler: 'src/compiler.tsx', entity: 'Relation', identity: ['name'] } },
+    'src/compiler.cjs': `const fs = require('node:fs'); module.exports = () => {
+      fs.writeFileSync(${JSON.stringify(payload)}, 'CHANGED'); return [{entity: 'Relation', name: 'Changed'}];
+    };`,
+    'src/value.txt': 'DATA',
+  }, { formats: { rows: { compiler: 'src/compiler.cjs', entity: 'Relation', identity: ['name'] } },
     sources: { rows: { path: 'src/value.txt', format: 'rows' } } });
-  const preload = path.join(root, '.apack/pre load  file.cjs');
-  fs.mkdirSync(path.dirname(preload), { recursive: true });
-  fs.writeFileSync(preload, 'globalThis.apackPreloadProbe = "PRELOADED";');
-  vi.stubEnv('NODE_OPTIONS', `${process.env.NODE_OPTIONS ?? ''} --require=${JSON.stringify(preload)}`);
-  await runPackBuild(root, { args: ['--skip-fe'] });
-  const output = JSON.parse(fs.readFileSync(path.join(root, 'dist/runtime/content/rows.content.json'), 'utf8'));
-  expect(output.records[0].name).toBe('OWNED:JSX:PRELOADED');
-  expect(output.records[0].source).toBe(path.join(fs.realpathSync(root), 'src/compiler.tsx'));
-  expect(output.records[0].origin).toBe(pathToFileURL(path.join(fs.realpathSync(root), 'src/compiler.tsx')).href + '?tsx-namespace=apack-build-1');
+  const loader = path.join(outside, 'loader.mjs');
+  fs.writeFileSync(loader, `import fs from 'node:fs'; fs.readFileSync(${JSON.stringify(payload)}, 'utf8');
+    export async function load(url, context, next) { return next(url, context); }`);
+  const child = spawn(process.execPath, [cliBin(), 'pack', 'build', '--skip-fe'], { cwd: root,
+    env: { ...process.env, NODE_OPTIONS: formatNodeOptions([...parseNodeOptions(process.env.NODE_OPTIONS), '--experimental-loader', loader]) }, stdio: ['ignore', 'pipe', 'pipe'] });
+  let output = '';
+  child.stdout.on('data', chunk => { output += chunk; });
+  child.stderr.on('data', chunk => { output += chunk; });
+  try {
+    expect(await finished(child), output).toBe(1);
+    expect(output).toContain(`Compiler resolution namespace changed during discovery: ${fs.realpathSync(payload)}`);
+    expect(fs.readFileSync(payload, 'utf8')).toBe('CHANGED');
+    expect(fs.existsSync(path.join(root, 'dist'))).toBe(false);
+  } finally { if (child.exitCode === null && child.signalCode === null) child.kill('SIGKILL'); }
 });
 
 it('terminates pack-created background work before accepting its candidate', async () => {
@@ -167,6 +251,24 @@ function finished(child: ChildProcess, event: 'exit' | 'close' = 'close'): Promi
   return new Promise((resolve, reject) => { child.once('error', reject); child.once(event, resolve); });
 }
 
+it.skipIf(process.platform === 'win32')('confirms natural group shutdown when signaling is denied during exit', async () => {
+  const child = spawn(process.execPath, ['-e', 'process.stdout.write("READY"); setTimeout(() => {}, 100);'], {
+    detached: true, stdio: ['ignore', 'pipe', 'ignore'],
+  });
+  const closed = finished(child);
+  const originalKill = process.kill;
+  try {
+    await new Promise<void>((resolve, reject) => { child.once('error', reject); child.stdout.once('data', () => resolve()); });
+    const kill = vi.spyOn(process, 'kill').mockImplementation((pid, signal) => {
+      if (pid === -child.pid!) throw Object.assign(new Error('signal denied'), { code: 'EPERM' });
+      return originalKill(pid, signal);
+    });
+    await stopCompilerProcessGroup(child.pid!);
+    expect(await closed).toBe(0);
+    expect(kill).toHaveBeenCalledWith(-child.pid!, 'SIGKILL');
+  } finally { if (child.exitCode === null && child.signalCode === null) child.kill('SIGKILL'); await closed; }
+});
+
 it('terminates a compiling worker when its parent IPC disconnects without publishing', async () => {
   const root = fixture({
     'src/compiler.ts': `import fs from 'node:fs'; import {spawn} from 'node:child_process';
@@ -185,8 +287,10 @@ it('terminates a compiling worker when its parent IPC disconnects without publis
   const inputs = path.join(root, '.apack/compiler-inputs');
   fs.mkdirSync(inputs, { recursive: true });
   const grouped = process.platform !== 'win32';
+  const nodeOptions = compilerStartupOptions(compiler.bin, process.env.NODE_OPTIONS);
   const child = fork(compiler.bin, ['pack', 'build', '--skip-fe'], { cwd: root, detached: grouped, execArgv: [], stdio: ['ignore', 'pipe', 'pipe', 'ipc'],
-    env: { ...process.env, [BUILD_INPUTS_DIRECTORY_ENV]: inputs, [COMPILER_PROCESS_GROUP_ENV]: grouped ? '1' : undefined, APACK_BUILD_WORKER: '1', [COMPILER_INPUTS_ENV]: compiler.inputsFile, NODE_OPTIONS: withoutSourceCondition(process.env.NODE_OPTIONS) } });
+    env: { ...process.env, [BUILD_INPUTS_DIRECTORY_ENV]: inputs, [COMPILER_PROCESS_GROUP_ENV]: grouped ? '1' : undefined, APACK_BUILD_WORKER: '1', [COMPILER_INPUTS_ENV]: compiler.inputsFile,
+      [COMPILER_NODE_OPTIONS_ENV]: nodeOptions.user, NODE_OPTIONS: nodeOptions.worker } });
   // Node can omit close after a parent-initiated IPC disconnect; assert exit and drained streams.
   const stopped = finished(child, 'exit');
   let output = '';

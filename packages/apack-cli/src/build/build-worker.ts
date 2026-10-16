@@ -1,8 +1,9 @@
 import { COMPILER_PROCESS_GROUP_ENV } from './compiler-process-group.ts';
 import { errorMessage } from '@apackdev/sdk/utils/pure';
-import { readCompilerInstallationInputs } from './compiler-installation.ts';
+import { readCompilerInstallationInputs } from './compiler-installation-inputs.ts';
 import { cliPackageDirectory } from './tool-identity.ts';
 import { reportPackBuildCandidate } from './build-publication.ts';
+import { compilerStartupInputs } from './compiler-startup-inputs.ts';
 
 if (process.env.APACK_BUILD_WORKER !== '1' || !process.send || !process.connected) {
   throw new Error('Pack build worker requires its parent IPC channel');
@@ -22,6 +23,9 @@ process.once('disconnect', disconnected);
 try {
   const compiler = readCompilerInstallationInputs();
   if (!compiler?.packages.includes(cliPackageDirectory())) throw new Error('Pack build worker requires captured compiler inputs');
+  const startup = compilerStartupInputs();
+  if (!startup) throw new Error('Pack build worker requires native startup inputs');
+  await startup.capture();
   const { preparePackBuild } = await import('../commands/build.ts');
   const candidate = await preparePackBuild(process.argv.slice(4), process.cwd());
   await reportPackBuildCandidate(candidate);

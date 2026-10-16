@@ -258,6 +258,7 @@ async function buildIntoStaging(args: string[], root: string) {
     const finish = async () => {
       // Finish asynchronous loader teardown before validating and sealing the final read-set.
       await modules.dispose();
+      await compilation.finishStartup();
       try { assertGeneratedCurrent(root, manifest, resolvedDependencies, compilation); }
       catch (error) { failures.push(error instanceof Error ? error.message : String(error)); }
       if (packInputsHash(root) !== inputsHash) failures.push('Pack inputs changed during the build; retry before publishing');

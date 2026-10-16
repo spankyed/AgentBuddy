@@ -3,7 +3,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { afterEach, expect, it, vi } from 'vitest';
 import { readCompilerModuleInputs } from '../../src/build/compiler-module-inputs.ts';
-import { COMPILER_INPUTS_ENV } from '../../src/build/compiler-installation.ts';
+import { COMPILER_INPUTS_ENV } from '../../src/build/compiler-installation-inputs.ts';
 
 const roots: string[] = [];
 afterEach(() => {

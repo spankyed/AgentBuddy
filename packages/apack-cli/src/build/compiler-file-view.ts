@@ -91,6 +91,7 @@ export function createCompilerFileView(root: string, options: {
       value = { file, ...state(file, physical), slot: path.join(physicalWatchPath(path.dirname(file), physical), path.basename(file)) };
       inputs.set(file, value);
     }
+    if (included.has(file)) included.add(value.physical);
     return value;
   }
 
@@ -292,6 +293,12 @@ export function createCompilerFileView(root: string, options: {
     },
     captureLocation(file: string, kind: BuildInputKind) {
       if (kind === 'entries') listing(file);
+      const value = input(file, kind);
+      return value && { ...value };
+    },
+    captureDataLocation(file: string, kind: BuildInputKind) {
+      assertOpen();
+      included.add(path.resolve(file));
       const value = input(file, kind);
       return value && { ...value };
     },

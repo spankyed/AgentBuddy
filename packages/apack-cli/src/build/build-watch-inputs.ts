@@ -1,6 +1,6 @@
 import path from 'node:path';
 import { compilerSourcePath } from './compiler-paths.ts';
-import { readCompilerInstallationInputs } from './compiler-installation.ts';
+import { readCompilerInstallationInputs } from './compiler-installation-inputs.ts';
 
 /** Current compiler observations; a failed build extends subscriptions without replacing the incumbent. */
 export interface BuildWatchInputs {

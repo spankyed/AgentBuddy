@@ -27,14 +27,17 @@ export async function stopCompilerProcessGroup(pid: number): Promise<void> {
   for (;;) {
     // Orphaned zombies cannot execute or write output, and some container init processes don't reap them.
     const remaining = Math.ceil(deadline - performance.now());
-    if (remaining <= 0) throw new Error(`Compiler process group ${pid} did not stop; refusing publication`);
+    if (remaining <= 0) {
+      if (signalError) throw new Error(`Could not stop live compiler process group ${pid}: ${String(signalError)}`, { cause: signalError });
+      throw new Error(`Compiler process group ${pid} did not stop; refusing publication`);
+    }
     const { stdout } = await execute('/bin/ps', ['-axo', 'pgid=,stat='], { timeout: remaining });
     const running = stdout.trim().split('\n').some(line => {
       const [group, state] = line.trim().split(/\s+/);
       return Number(group) === pid && state && !state.startsWith('Z');
     });
     if (!running) return;
-    if (signalError) throw new Error(`Could not stop live compiler process group ${pid}`, { cause: signalError });
+    // A denied signal can race natural shutdown; require terminal state within the same fixed budget.
     if (!kill()) return;
     await delay(10);
   }

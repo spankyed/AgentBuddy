@@ -86,6 +86,18 @@ it('owns the origin mappings used by its fingerprint', () => {
   expect(view.hash()).toBe(hash);
 });
 
+it('admits an explicitly captured generated file through its canonical path too', () => {
+  const { root, file } = fixture();
+  const alias = path.join(root, 'generated-alias.ts');
+  fs.symlinkSync(file, alias);
+  const view = createCompilerFileView(root, { excluded: file => file.endsWith('.ts') });
+  const bytes = fs.readFileSync(file);
+  expect(view.readBytes(file)).toBeUndefined();
+  view.captureFile(alias, bytes);
+  expect(view.readBytes(file)).toEqual(bytes);
+  expect(() => view.assertCurrent()).not.toThrow();
+});
+
 it('identifies a captured root by its source while reading and validating the captured files', () => {
   const { root, file } = fixture();
   const temporary = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'apack-owned-view-')));

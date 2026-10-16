@@ -12,6 +12,26 @@ import { createCompilerModuleLoader } from '../../src/build/compiler-modules.ts'
 const roots: string[] = [];
 afterEach(() => { vi.unstubAllEnvs(); for (const root of roots.splice(0)) fs.rmSync(root, { recursive: true, force: true }); });
 
+it('captures explicitly imported dependency code and relative modules outside authored discovery', async () => {
+  const root = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'apack-dependency-modules-')));
+  roots.push(root);
+  const directory = path.join(root, '.apack/deps/dependency/build');
+  fs.mkdirSync(directory, { recursive: true });
+  fs.writeFileSync(path.join(root, 'package.json'), JSON.stringify({ name: 'dependency-consumer', type: 'module' }));
+  fs.writeFileSync(path.join(root, 'tsconfig.json'), JSON.stringify({ compilerOptions: { noLib: true, types: [] } }));
+  const entry = path.join(directory, 'steps.build.mjs');
+  fs.writeFileSync(entry, `export {default} from './child.mjs';`);
+  fs.writeFileSync(path.join(directory, 'child.mjs'), `export default { value: 'DEPENDENCY', origin: import.meta.url };`);
+  const compilation = captureCompilationInputs(root);
+  const modules = createCompilerModuleLoader(compilation);
+  try {
+    const loaded = await withCompilerFileReads({ compilation, outputDirectory: path.join(root, '.apack/build') }, () => modules.importModule(entry));
+    expect(loaded.default).toEqual({ value: 'DEPENDENCY', origin: expect.stringContaining(pathToFileURL(path.join(directory, 'child.mjs')).href) });
+    await modules.dispose();
+    expect(() => compilation.assertCurrent()).not.toThrow();
+  } finally { try { await modules.dispose(); } finally { compilation.dispose(); } }
+});
+
 it('executes content reads through files, streams and descriptors while writable handles stay native', async () => {
   const root = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'apack-content-reads-')));
   roots.push(root);

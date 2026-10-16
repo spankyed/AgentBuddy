@@ -133,7 +133,7 @@ export function createCompilerReadTree(snapshot: CompilerReadSnapshot, paths: re
         const previous = locations.get(file);
         if (previous && (previous.physical !== physical || previous.kind !== location.kind)) changed('namespace', file);
         locations.set(file, { ...location, file, physical });
-        if (location.kind === 'directory') mkdir(readPath(physical));
+        if (location.kind === 'directory' && !entries.has(readPath(physical))) mkdir(readPath(physical));
         if (location.kind !== 'missing' || location.slot !== location.physical) link(file, physical);
       }
       for (const binding of next.links) link(binding.file, binding.target);
