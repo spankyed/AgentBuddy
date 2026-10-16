@@ -315,6 +315,19 @@ checkpoint. All other source/external-input, receipt, discovery and later-phase 
 
 ### Snapshot-led hybrid evaluation (2026-10-16)
 
+Production increment `00a6e3db5` routes native module resolution and declaration compilation through
+the shared owned input tree. Captured package entry metadata survives transient live edits, implicit
+absolute config inheritance works with original configs absent, and original source-map paths and
+repeat-build identity are preserved. Keep normal native resolution for ordinary imports: a plugin
+`build.resolve()` round-trip discards internal per-file configuration context. The owning goal records
+focused evidence and the exact retry; no new broad acceptance is claimed.
+
+Remaining native acceptance includes complete namespace admission before esbuild caches directories,
+runtime-only dependency closure, glob imports, late absolute references and metadata semantics. Do
+not infer complete closure from the demonstrated package-main case. Direct Node reads, frontend
+resources/generation, launch ownership, whole-build receipts and passive freshness remain unfinished.
+
+
 The user's suggested snapshot-led hybrid is now exercised in disposable proofs, before selecting a
 production design. [The evaluation](../reference/build-input-snapshot-proof.md) owns the actual matrix,
 reports, alternatives and next acceptance. Real TypeScript, esbuild, executable content and Vite

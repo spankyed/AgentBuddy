@@ -120,7 +120,35 @@ naming branch is not an automatic source of future changes.
 
 ### Current handoff — compiler checkpoint (2026-10-16)
 
-Latest source checkpoint is `5e3530cad`: facade, flow-helper and DSL declaration bundles use one
+Latest source is `00a6e3db5`. Native bundles now resolve against the same owned tree as declarations.
+The tree admits captured lookup namespaces and dependencies, projects absolute compiler metadata
+references, and keeps authored module/data values unchanged. Native source maps and recorded reads
+map back to original paths. Ordinary imports retain esbuild's default resolver: delegating every
+lookup through the plugin API lost implicit per-file TypeScript configuration, which the new
+parent-config regression exposed and the default path fixes.
+
+Focused evidence: 61 affected unit cases pass; the final namespace/tree pair passes again (15 cases)
+after the lint cleanup. All 12 compiler-configuration integration cases pass across the affected run
+and its one exact retry. The first configuration-publication case refused a concurrent source edit;
+the frozen-source retry passes in 13.55s. The real captured worker passes repeat-build/cache identity
+and workspace cleanup in 48.39s. Its first attempt could not create tsx's IPC socket in the sandbox;
+the same focused case passes with the required local socket access. CLI typecheck and focused lint
+pass. Logs: `/private/tmp/apack-native-checkpoint-{unit,tree-final,integration,config-final,worker,
+types,lint}.log`. No broad gate was repeated. All own validation processes are terminal.
+
+This is an incremental native-resolution checkpoint, not acceptance of the full execution contract.
+Next close native namespace admission before resolver directory caches are populated, including
+runtime-only dependencies hidden by declaration entrypoints, glob imports, and late absolute imports
+with per-file configuration. Preserve native lookup/metadata semantics; do not turn this observer
+into a second resolver. Avoid treating unrelated global temporary-directory membership as a build
+input. Then extend ownership to direct content filesystem reads, launch/preload inputs and the
+frontend compiler generation/lifetime, and complete whole-build receipts/passive freshness. Existing
+source-path diagnostics, discovery, later phases and the final committed-source strict `--all`
+acceptance remain required. Do not use these focused results as that final gate.
+
+#### Previous owned-declaration checkpoint
+
+Previous source checkpoint `5e3530cad`: facade, flow-helper and DSL declaration bundles use one
 lazy owned filesystem tree per build. It materializes captured bytes, namespace queries and package
 bindings without an ancestor sweep. Inputs are read-only and verified; derived configuration uses
 separate writable storage. TypeScript path projection belongs to compiler configuration. Declaration
