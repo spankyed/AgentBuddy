@@ -2,6 +2,7 @@ import path from 'node:path';
 import fs from 'node:fs';
 import os from 'node:os';
 import { spawn } from 'node:child_process';
+import { COMPILER_PROCESS_GROUP_ENV, stopCompilerProcessGroup } from './compiler-process-group.ts';
 import { checkoutFor, ensureCheckoutPackages } from './checkout-packages.ts';
 import { captureCompilerInstallation, compilerInstallationHash, compilerPackageDirectory, COMPILER_INPUTS_ENV, type CompilerInstallation } from './compiler-installation.ts';
 import { cliPackageDirectory } from './tool-identity.ts';
@@ -12,6 +13,9 @@ import { holdPackBuildLock } from './build-lock.ts';
 import { readValidManifest } from '../utils.ts';
 import { buildStagingDir, publishPackBuild, readPackBuildCandidate, type PackBuildCandidate } from './build-publication.ts';
 import { BUILD_INPUTS_DIRECTORY_ENV, removeCompilerReadTree } from './compiler-read-tree.ts';
+
+// Give worker SIGTERM handlers a short cleanup phase before forced termination.
+const STOP_GRACE_MS = 2_000;
 
 export interface PackBuildOptions {
   readonly args?: readonly string[];
@@ -86,16 +90,30 @@ async function buildWithCompiler(root: string, compiler: CompilerInstallation, {
       let observationError: Error | undefined;
       let candidate: PackBuildCandidate | undefined;
       let observing = Promise.resolve();
+      let stopping: Promise<void> | undefined;
+      let escalation: ReturnType<typeof setTimeout> | undefined;
+      const grouped = process.platform !== 'win32';
       const child = spawn(process.execPath, [
         ...compilationConditions().map(condition => `--conditions=${condition}`),
         compiler.bin, 'pack', 'build', ...args,
       ], {
-        cwd: root, stdio: ['ignore', 'inherit', 'inherit', 'ipc'], signal,
+        cwd: root, stdio: ['ignore', 'inherit', 'inherit', 'ipc'], signal, detached: grouped,
         // Transform with this captured compiler, rather than reuse another installation's tsx cache.
-        env: { ...process.env, TSX_DISABLE_CACHE: '1', APACK_BUILD_WORKER: '1', [COMPILER_INPUTS_ENV]: compiler.inputsFile,
+        env: { ...process.env, [COMPILER_PROCESS_GROUP_ENV]: grouped ? '1' : undefined, TSX_DISABLE_CACHE: '1', APACK_BUILD_WORKER: '1', [COMPILER_INPUTS_ENV]: compiler.inputsFile,
           [BUILD_INPUTS_DIRECTORY_ENV]: inputsDirectory,
           [BUILD_INPUTS_IPC_ENV]: onInputs ? '1' : '0', NODE_OPTIONS: withoutSourceCondition(process.env.NODE_OPTIONS), ELECTRON_RUN_AS_NODE: '1' },
       });
+      const stop = () => {
+        if (stopping) return;
+        stopping = grouped && child.pid ? stopCompilerProcessGroup(child.pid)
+          : Promise.resolve().then(() => { child.kill('SIGKILL'); });
+        // close awaits this result; observe rejection even if inherited pipes delay close.
+        void stopping.catch(() => {});
+      };
+      const abort = () => { escalation = setTimeout(stop, STOP_GRACE_MS); };
+      const clearStop = () => { clearTimeout(escalation); signal?.removeEventListener('abort', abort); };
+      signal?.addEventListener('abort', abort, { once: true });
+      if (signal?.aborted) abort();
       child.on('message', message => {
         try {
           const reported = readPackBuildCandidate(message);
@@ -112,7 +130,10 @@ async function buildWithCompiler(root: string, compiler: CompilerInstallation, {
         }
       });
       child.once('error', error => { processError = error; });
+      child.once('exit', () => { clearStop(); if (grouped) stop(); });
       child.once('close', async (code, exitSignal) => {
+        clearStop();
+        try { await stopping; } catch (error) { reject(error); return; }
         await observing;
         if (processError || observationError) reject(processError ?? observationError);
         else if (code === 0 && candidate) resolve(candidate);

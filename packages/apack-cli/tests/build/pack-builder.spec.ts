@@ -2,6 +2,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { execFileSync } from 'node:child_process';
 import { afterEach, expect, it, vi } from 'vitest';
 import * as installation from '../../src/build/compiler-installation.ts';
 import * as checkout from '../../src/build/checkout-packages.ts';
@@ -9,6 +10,11 @@ import { _declarationRevision, PACK_SNAPSHOT_FORMAT } from '@apackdev/sdk/build'
 import { PACK_LAYOUT, readPackBuild, sealPackBuild } from '@apackdev/host/packs';
 import { packInputsHash } from '@apackdev/host/build/pack-inputs';
 import { createPackBuilder, type PackBuilder } from '../../src/build/build-process.ts';
+
+function stopDescendant(pid: number) {
+  try { process.kill(pid, 'SIGKILL'); }
+  catch (error) { if ((error as NodeJS.ErrnoException).code !== 'ESRCH') throw error; }
+}
 
 const roots: string[] = [];
 const builders: PackBuilder[] = [];
@@ -40,10 +46,16 @@ function fixture() {
   fs.writeFileSync(path.join(compiler, 'bin/apack.mjs'), `
     import fs from 'node:fs';
     import {fileURLToPath} from 'node:url';
-    fs.writeFileSync('.apack/built.json', JSON.stringify({pid:process.pid, bin:import.meta.url, label:fs.readFileSync(new URL('../label.txt',import.meta.url),'utf8')}));
+    import {spawn} from 'node:child_process';
+    if (process.argv.includes('--descendant')) {
+      const child = spawn(process.execPath, ['-e', 'setInterval(() => {}, 1000)'], {stdio: 'ignore'});
+      fs.writeFileSync('.apack/descendant.json', JSON.stringify({pid:child.pid}));
+      child.unref();
+    }
     if (process.argv.includes('--wait')) {
       process.on('message', () => {});
       process.on('SIGTERM', () => {
+        if (process.argv.includes('--ignore-term')) return;
         fs.writeFileSync('.apack/stopped.json', JSON.stringify({compilerExists:fs.existsSync(fileURLToPath(import.meta.url))}));
         process.exit(0);
       });
@@ -59,6 +71,7 @@ function fixture() {
       writable('.apack/build');
       process.send(${JSON.stringify(handoff)}, () => process.disconnect());
     }
+    fs.writeFileSync('.apack/built.json', JSON.stringify({pid:process.pid, bin:import.meta.url, label:fs.readFileSync(new URL('../label.txt',import.meta.url),'utf8')}));
   `);
   vi.spyOn(installation, 'compilerPackageDirectory').mockReturnValue(compiler);
   vi.spyOn(checkout, 'ensureCheckoutPackages').mockImplementation(() => {});
@@ -120,4 +133,38 @@ it('captures both checkouts after refresh and refuses reuse if refresh fails', a
   vi.mocked(checkout.ensureCheckoutPackages).mockImplementation(() => { throw new Error('Checkout refresh failed'); });
   await expect(builder.build()).rejects.toThrow('Checkout refresh failed');
   expect(report()).toEqual(refreshed);
+});
+
+
+it.skipIf(process.platform === 'win32')('stops remaining compiler group members before accepting output', async () => {
+  const { pack, builder } = fixture();
+  let pid: number | undefined;
+  try {
+    await builder.build({ args: ['--descendant'] });
+    pid = JSON.parse(fs.readFileSync(path.join(pack, '.apack/descendant.json'), 'utf8')).pid;
+    let state = '';
+    try { state = execFileSync('ps', ['-p', String(pid), '-o', 'stat='], { encoding: 'utf8' }).trim(); }
+    catch (error) { if ((error as { status?: number }).status !== 1) throw error; }
+    expect(state === '' || state.startsWith('Z'), `Compiler descendant ${pid} is still ${state}`).toBe(true);
+    expect(readPackBuild(path.join(pack, 'dist')).snapshot.manifest.id).toBe('builder');
+  } finally {
+    // Read the owned PID even if a refusal happened before build returned.
+    const record = path.join(pack, '.apack/descendant.json');
+    if (!pid && fs.existsSync(record)) pid = JSON.parse(fs.readFileSync(record, 'utf8')).pid;
+    if (pid) stopDescendant(pid);
+  }
+});
+
+
+it('force-stops a compiler that ignores cancellation before releasing its inputs', async () => {
+  const { pack, builder, report } = fixture();
+  const running = builder.build({ args: ['--wait', '--ignore-term'] });
+  await vi.waitFor(() => expect(fs.existsSync(path.join(pack, '.apack/built.json'))).toBe(true));
+  const active = report();
+  const stopped = expect(running).rejects.toMatchObject({ name: 'AbortError' });
+  await builder.close();
+  await stopped;
+  expect(() => process.kill(active.pid, 0)).toThrow();
+  expect(fs.existsSync(fileURLToPath(active.bin))).toBe(false);
+  expect(fs.existsSync(path.join(pack, 'dist'))).toBe(false);
 });

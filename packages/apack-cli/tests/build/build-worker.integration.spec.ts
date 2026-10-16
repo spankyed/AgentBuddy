@@ -2,7 +2,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { fork, spawn, type ChildProcess } from 'node:child_process';
+import { execFileSync, fork, spawn, type ChildProcess } from 'node:child_process';
 import { afterEach, expect, it, vi } from 'vitest';
 import { packFixture } from '@apackdev/sdk/testing/pack-fixture';
 import { REPO_ROOT } from '@apackdev/host/build/packages-built';
@@ -20,12 +20,22 @@ import { buildCommand } from '../../src/commands/build.ts';
 import { runPackBuild } from '../../src/build/build-process.ts';
 import type { BuildWatchInputs } from '../../src/build/build-watch-inputs.ts';
 import { readStamps } from '../../src/build/phase-cache.ts';
+import { ensureCheckoutPackages } from '../../src/build/checkout-packages.ts';
+import { BUILD_INPUTS_DIRECTORY_ENV, removeCompilerReadTree } from '../../src/build/compiler-read-tree.ts';
+import { COMPILER_PROCESS_GROUP_ENV } from '../../src/build/compiler-process-group.ts';
 import { captureCompilerInstallation, COMPILER_INPUTS_ENV, type CompilerInstallation } from '../../src/build/compiler-installation.ts';
 
 const roots: string[] = [];
 const compilers: CompilerInstallation[] = [];
 afterEach(async () => {
   vi.restoreAllMocks();
+  for (const root of roots) {
+    const record = path.join(root, '.apack/compiler-child-pid');
+    if (fs.existsSync(record)) {
+      try { process.kill(Number(fs.readFileSync(record, 'utf8')), 'SIGKILL'); }
+      catch (error) { if ((error as NodeJS.ErrnoException).code !== 'ESRCH') throw error; }
+    }
+  }
   await Promise.all(compilers.splice(0).map(compiler => compiler.dispose()));
   roots.splice(0).forEach(root => fs.rmSync(root, { recursive: true, force: true }));
 });
@@ -86,7 +96,13 @@ it('compiles content through the captured worker without redirecting tool reads 
 
 it('terminates pack-created background work before accepting its candidate', async () => {
   const root = fixture({
-    'src/compiler.ts': `setInterval(() => {}, 1000);
+    'src/compiler.ts': `import fs from 'node:fs'; import {spawn} from 'node:child_process';
+      if (process.platform !== 'win32') {
+        const child = spawn(process.execPath, ['-e', 'setInterval(() => {}, 1000)'], {stdio: 'ignore'});
+        fs.writeFileSync('.apack/compiler-child-pid', String(child.pid));
+        child.unref();
+      }
+      setInterval(() => {}, 1000);
       export default () => [{entity: 'Relation', name: 'COMPLETE'}];`,
     'src/value.txt': 'DATA',
   }, { formats: { rows: { compiler: 'src/compiler.ts', entity: 'Relation', identity: ['name'] } },
@@ -94,6 +110,13 @@ it('terminates pack-created background work before accepting its candidate', asy
   await runPackBuild(root, { args: ['--skip-fe'] });
   const output = JSON.parse(fs.readFileSync(path.join(root, 'dist/runtime/content/rows.content.json'), 'utf8'));
   expect(output.records[0].name).toBe('COMPLETE');
+  if (process.platform !== 'win32') {
+    const pid = Number(fs.readFileSync(path.join(root, '.apack/compiler-child-pid'), 'utf8'));
+    let state = '';
+    try { state = execFileSync('/bin/ps', ['-p', String(pid), '-o', 'stat='], { encoding: 'utf8' }).trim(); }
+    catch (error) { if ((error as { status?: number }).status !== 1) throw error; }
+    expect(state === '' || state.startsWith('Z'), `Compiler subprocess ${pid} is still ${state}`).toBe(true);
+  }
 });
 
 it('refuses candidate output changed by a compiler exit handler and retains the incumbent', async () => {
@@ -141,13 +164,24 @@ function finished(child: ChildProcess, event: 'exit' | 'close' = 'close'): Promi
 
 it('terminates a compiling worker when its parent IPC disconnects without publishing', async () => {
   const root = fixture({
-    'src/compiler.ts': 'import fs from "node:fs"; export default async function() { fs.writeFileSync("ready", "ready"); await new Promise(() => {}); return []; }',
+    'src/compiler.ts': `import fs from 'node:fs'; import {spawn} from 'node:child_process';
+      export default async function() {
+        if (process.platform !== 'win32') {
+          const child = spawn(process.execPath, ['-e', 'setInterval(() => {}, 1000)'], {stdio: 'ignore'});
+          fs.writeFileSync('.apack/compiler-child-pid', String(child.pid)); child.unref();
+        }
+        fs.writeFileSync('ready', 'ready'); await new Promise(() => {}); return [];
+      }`,
     'src/data.ts': 'export default [];',
   }, { formats: { waiting: { compiler: 'src/compiler.ts', entity: 'Relation' } }, sources: { waiting: { path: 'src/data.ts', format: 'waiting' } } });
+  ensureCheckoutPackages(REPO_ROOT);
   const compiler = await captureCompilerInstallation();
   compilers.push(compiler);
-  const child = fork(compiler.bin, ['pack', 'build', '--skip-fe'], { cwd: root, execArgv: [], stdio: ['ignore', 'pipe', 'pipe', 'ipc'],
-    env: { ...process.env, APACK_BUILD_WORKER: '1', [COMPILER_INPUTS_ENV]: compiler.inputsFile, NODE_OPTIONS: withoutSourceCondition(process.env.NODE_OPTIONS) } });
+  const inputs = path.join(root, '.apack/compiler-inputs');
+  fs.mkdirSync(inputs, { recursive: true });
+  const grouped = process.platform !== 'win32';
+  const child = fork(compiler.bin, ['pack', 'build', '--skip-fe'], { cwd: root, detached: grouped, execArgv: [], stdio: ['ignore', 'pipe', 'pipe', 'ipc'],
+    env: { ...process.env, [BUILD_INPUTS_DIRECTORY_ENV]: inputs, [COMPILER_PROCESS_GROUP_ENV]: grouped ? '1' : undefined, APACK_BUILD_WORKER: '1', [COMPILER_INPUTS_ENV]: compiler.inputsFile, NODE_OPTIONS: withoutSourceCondition(process.env.NODE_OPTIONS) } });
   // Node can omit close after a parent-initiated IPC disconnect; assert exit and drained streams.
   const stopped = finished(child, 'exit');
   let output = '';
@@ -156,13 +190,23 @@ it('terminates a compiling worker when its parent IPC disconnects without publis
   try {
     await vi.waitFor(() => expect(fs.existsSync(path.join(root, 'ready')), output).toBe(true), { timeout: 20_000 });
     child.disconnect();
-    expect(await _byDeadline(stopped, 'worker exit after parent loss', 2_000)).toBe(1);
+    expect(await _byDeadline(stopped, 'worker exit after parent loss', 2_000)).toBe(grouped ? null : 1);
+    if (grouped) {
+      expect(child.signalCode).toBe('SIGKILL');
+      const pid = Number(fs.readFileSync(path.join(root, '.apack/compiler-child-pid'), 'utf8'));
+      await vi.waitFor(() => {
+        let state = '';
+        try { state = execFileSync('/bin/ps', ['-p', String(pid), '-o', 'stat='], { encoding: 'utf8' }).trim(); }
+        catch (error) { if ((error as { status?: number }).status !== 1) throw error; }
+        expect(state === '' || state.startsWith('Z')).toBe(true);
+      }, { timeout: 2_000 });
+    }
     await vi.waitFor(() => expect(child.stdout?.readableEnded && child.stderr?.readableEnded).toBe(true), { timeout: 2_000 });
     expect(fs.existsSync(path.join(root, 'dist'))).toBe(false);
   } finally {
     if (child.exitCode === null && child.signalCode === null) child.kill();
     try { await _byDeadline(stopped, 'worker cleanup', 2_000); }
-    finally { child.stdout?.destroy(); child.stderr?.destroy(); }
+    finally { child.stdout?.destroy(); child.stderr?.destroy(); removeCompilerReadTree(inputs); }
   }
 });
 
@@ -215,7 +259,7 @@ it.each([
     expect(fs.existsSync(inputs)).toBe(true);
     child.kill('SIGTERM');
     await _byDeadline(closed, 'public watcher shutdown', cleanupDeadlineMs);
-    expect(child.signalCode).toBe('SIGTERM');
+    expect(child.signalCode, output).toBe('SIGTERM');
     expect(fs.existsSync(inputs), inputs).toBe(false);
     expect(() => process.kill(worker, 0)).toThrow();
     if (phase === 'compiling') expect(fs.existsSync(path.join(root, 'dist'))).toBe(false);

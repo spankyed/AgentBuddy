@@ -1,3 +1,4 @@
+import { COMPILER_PROCESS_GROUP_ENV } from './compiler-process-group.ts';
 import { errorMessage } from '@apackdev/sdk/utils/pure';
 import { readCompilerInstallationInputs } from './compiler-installation.ts';
 import { cliPackageDirectory } from './tool-identity.ts';
@@ -7,7 +8,16 @@ if (process.env.APACK_BUILD_WORKER !== '1' || !process.send || !process.connecte
   throw new Error('Pack build worker requires its parent IPC channel');
 }
 delete process.env.APACK_BUILD_WORKER;
-const disconnected = () => process.exit(1);
+const grouped = process.env[COMPILER_PROCESS_GROUP_ENV] === '1';
+delete process.env[COMPILER_PROCESS_GROUP_ENV];
+const disconnected = () => {
+  // With no parent left to reap the group, stop inherited subprocesses along with this worker.
+  if (grouped) {
+    try { process.kill(-process.pid, 'SIGKILL'); }
+    catch (error) { if ((error as NodeJS.ErrnoException).code !== 'ESRCH') console.error(errorMessage(error)); }
+  }
+  process.exit(1);
+};
 process.once('disconnect', disconnected);
 try {
   const compiler = readCompilerInstallationInputs();
@@ -18,13 +28,11 @@ try {
 } catch (error) {
   console.error(errorMessage(error));
   process.exitCode = 1;
-} finally {
-  process.removeListener('disconnect', disconnected);
-  if (process.connected) process.disconnect();
 }
 
 // End pack-created timers/tasks before the parent verifies and publishes the candidate. Drain diagnostics
 // first; natural event-loop shutdown would let arbitrary background tasks retain this compiler forever.
 await new Promise<void>(resolve => process.stdout.write('', () => resolve()));
 await new Promise<void>(resolve => process.stderr.write('', () => resolve()));
+process.removeListener('disconnect', disconnected);
 process.exit(process.exitCode ?? 0);

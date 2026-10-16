@@ -80,7 +80,9 @@ then removes the private installation.
 The parent holds the pack build lock through worker closure and publication. Workers only prepare and
 seal a candidate, report its authored-input hash and sealed revision, drain diagnostics, and exit.
 The parent waits for process closure, verifies the exact sealed output and authored hash, then replaces
-dist. Exit-handler writes therefore cannot silently change an accepted candidate; aborts and refusals
+dist. POSIX workers own a process group: inherited subprocesses must be terminal before publication.
+Cancellation permits two seconds for worker SIGTERM cleanup before forced termination; loss of parent
+IPC stops the owned group, and that listener stays active through final diagnostics. Exit-handler writes therefore cannot silently change an accepted candidate; aborts and refusals
 clean staging while preserving the incumbent. This handoff is not the complete source/compiler input
 receipt and must not authorize passive source freshness.
 
