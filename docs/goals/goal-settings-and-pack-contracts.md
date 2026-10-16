@@ -43,6 +43,85 @@ Status: in progress on `session/settings-pack-contracts`; naming conventions are
 [manifest maturity](../plans/manifest-maturity.md), building on the completed naming prerequisite.
 Lazy activation is deferred.
 
+## Live execution ledger (reconciled 2026-10-16)
+
+This ledger owns current execution status and ordering. The phases below retain all completion
+requirements; subsystem plans retain detailed contracts and acceptance cases. Dated checkpoint notes
+are historical evidence, not additional live backlogs. Their old “next,” “remaining” and prerequisite
+statements do not override this ledger. Where a subsystem plan still requires the entire freshness
+workstream before every discovery migration, use the per-deliverable dependencies below instead.
+No requirement is waived by this reconciliation, and no final acceptance is claimed.
+
+“Implemented” means source checkpoints exist; it does not mean final committed-source acceptance is
+complete. “Partial” identifies implementation still required. Final verification is tracked separately
+so completed implementation is not repeatedly scheduled as new work.
+
+| Deliverable | Implementation status and source evidence | Remaining implementation / exit condition |
+|---|---|---|
+| Naming and checkout baseline (Phase 0) | Complete: `3d389b9c8`; promoted checkout recorded below | No naming integration or repeated baseline project. |
+| Shared declaration/catalog foundation (Phase 1) | Implemented foundation; contribution coverage remains partial | Close the remaining field-by-field classification and native/authored coverage with the discovery rows below; do not build another catalog. |
+| Settings (Phase 2) | Implemented: catalog integration `f3416ad2f` and subsequent settings checkpoints below | Final three-owner, policy, reset/import, disabled/failed owner, custom-form and multiple-window acceptance; no new extraction. |
+| Manifest consolidation M1–M6 | Implemented and checkpoint-validated through `0994ae787`; own-key preservation `29f0cc556` | Preserve all 17 reconciled decisions, both naming outcomes and generated EARS/content behavior in final acceptance; do not restart consolidation. |
+| Settings/help/info/reference/step discovery (Phase 3) | Implemented reader migrations: `2169d29f8`, `6c876c9ba`, `20ab75efe`, `c776d1c5d`, `76df2f0e5`, `71fad4013`, `8ec5285ed`, `f7d63434c` | Final all-kind acceptance, including source-free inspection, inactive owners and checked runtime eligibility. |
+| Live editor composition (Phase 3) | Implemented: `8863043a6` | Complete cold-document/provider readiness and real typing/replacement acceptance; fix demonstrated omissions without restarting composition. |
+| Remaining discovery consumers (Phase 3) | Partial; current readers still mix active bindings and static metadata | Migrate shell/default selection, slash commands, block/artifact inventories and DSL assistance. Complete compiled-content flow/action edges and rename/missing-reference diagnostics. Audit services, repositories, events, native fields and static assets; migrate each actual gap and remove superseded discovery stores. |
+| Build input/publication and freshness (Phase 3) | Partial; finite checkpoints B1–B6 below | Finish the common producer contract and four passive consumer migrations; installed discovery must remain source-free and activation-free. |
+| Entity navigation (Phase 4) | Reference identity prerequisites implemented; destination migration unfinished | Implement declared destinations, eligibility/readiness, short-code round trips and caller migration under open-entity.md. |
+| Frontend boundaries (Phase 5) | Planned implementation | Isolate throwing canvas/panel/form contributions, preserve host settings and other panes, and reject retries for retired revisions. |
+| Consumed APIs (Phase 6) | Inventory/prototype requirements documented; implementation outstanding | Settle declarations and granularity, generate matching runtime/type facades, mediate administration and dependency APIs, and migrate real consumers. |
+| Dependency provenance (Phase 6) | Cache/admission `ff4358588`, inspection and verified-build checkpoints below implemented; overall closure partial | Verify exact origin/version/content through reuse and inspection, integrate remaining freshness dependencies, and close the linked acceptance matrix. Do not restart cache/provenance storage. Frozen resolution remains conditional on a distribution requirement. |
+| Shipped-pack replacement (Phase 6) | Substantially implemented: ownership/suppression `03745e1dc`, replace/restore `85a7e955b`, subsequent live-control/source-update checkpoints below | Reconcile and close remaining restart/reload, overrides and failure acceptance against landed implementation; implement only identified gaps. Do not restart replacement. |
+| Final review/acceptance (Phase 7) | Outstanding | Audit every phase and reconciled manifest requirement on committed source, run final strict `--all`, record evidence and archive only completed work. |
+
+### Bounded build-input and freshness checkpoints
+
+Completed prerequisites: captured compiler installation/session reuse (`aba660aed`), shared authored
+scope (`882d2a50b`), public cancellation (`6641b2c99`), startup capture (`37890aa9b`), publication
+alias-processing repair (`c85fc178a`), and ordered effective execution-options/runtime-version hashing
+(`65a189cb7`). These are source evidence, not a claim that the full strict gate passes.
+
+| Checkpoint | Required outcome and acceptance boundary | Dependencies |
+|---|---|---|
+| B1 — Launch and remaining input coverage | Reconcile current capture against actual supported compiler paths. Close remaining parent launch-option forwarding, executable/native-runtime ownership and pre-startup/source/dependency resolution gaps. Enumerate concrete missing inputs before implementing; prove relevant changes invalidate/refuse publication while equivalent runs preserve identity and resolution. Ordered options already landed; do not reimplement them. | Existing captured installation/startup view. |
+| B2 — Frontend compiler generation | Own backend and actual Vite compiler generations coherently; successful compiler refresh cannot leave the frontend using the old compiler. Preserve HMR, useful paths, recovery and awaited retirement. | B1 inputs needed by the frontend handoff, not unrelated discovery consumers. |
+| B3 — Remaining resource lifetime | Audit native/background work and required platform-specific descendant handling against existing cancellation. Close demonstrated ownership gaps so build-owned work cannot outlive final validation/disposal. Retain required one-shot/dev/platform cases; public cancellation is already implemented. | Relevant B1/B2 owners; no security sandbox or general resource-confinement expansion. |
+| B4 — Persist successful input/output association | Publish the completed input record atomically with sealed output. Failed or incoherent builds retain the incumbent; readers can validate the association without executing pack/compiler code. Startup observations alone are not this record. | Complete relevant B1–B3 producer ownership. |
+| B5 — Passive freshness consumers | Migrate archive, prebuilt tests, default-fork preparation and drive to the common record. Preserve manual builds, deterministic reuse, source-free installed inspection and deliberately stale drive behavior. Remove replaced freshness heuristics. | B4. |
+| B6 — Converged acceptance | Resolve affected failures from preserved evidence and focused reproducers, then run the required converged strict checkpoint. The final committed-source strict `--all` remains Phase 7. | Converged B1–B5 source; focused checks accompany each earlier checkpoint. |
+
+The latest recorded strict run failed; focused publication and retarget/refusal/repair cases now pass.
+Other preserved watch/frontend and Electron-teardown failures are unresolved acceptance items, not proof
+of a common cause. Diagnose the smallest failing case before another broad run. Do not reopen the
+publication repair as outstanding implementation without new evidence.
+
+### Execution order and change control
+
+1. Close the current launch/input slice as a named B1 checkpoint with its exact supported-path claims,
+   source commit and focused evidence. Do not turn B1 into completion of all B1–B6.
+2. Finish the named discovery consumers in reviewable slices. Each slice names its actual prerequisite
+   declaration, binding and publication guarantees. Installed catalog metadata migration is not
+   automatically blocked on Vite generation replacement or passive source-freshness consumers.
+3. Complete B1–B6 as the separate freshness workstream. A discovery slice requiring an unfinished
+   producer guarantee records that dependency and waits; independent slices may proceed first. This
+   permits sequential progress on this branch, not additional concurrent editors or broad suites.
+4. Complete entity navigation and frontend boundaries using their relevant accepted catalog/runtime
+   contracts. Neither requires unrelated discovery-reader cleanup merely because phase numbers differ.
+5. Implement consumed APIs and close the actual remaining provenance/replacement gaps. Reuse landed
+   ownership, inspection and replacement behavior rather than replaying historical plans.
+6. Complete Phase 7 across the entire preserved scope.
+
+Before each checkpoint, record its concrete change, acceptance cases and dependency. Close it with
+source/evidence before selecting another. A newly found concern must name the observed defect or
+required acceptance gap, the existing requirement it serves, and a finite exit condition. An existing
+requirement remains required even before a failing reproducer exists; investigating it is not permission
+to implement an unlimited generalization. Proposals expanding the agreed scope require an explicit user
+decision. Keep research hypotheses separate from demonstrated defects and required acceptance checks.
+
+Keep detailed historical logs below for traceability. Update this ledger when a checkpoint closes;
+do not append a new competing live backlog or repeatedly copy all remaining work into every evidence
+entry. No scope is dropped, validation weakened, deferred work revived or implementation certified by
+this documentation change.
+
 ## Background (2026-10-12, at 3d389b9c8 on session/naming-contracts)
 
 The [naming goal](../archive/goals/goal-naming-conventions.md) is complete and archived, with its outcome
@@ -50,10 +129,10 @@ and validation recorded. Commit `3d389b9c8` closes that work. The settings/disco
 are already on its branch; use that completed state or a later integration containing it as the baseline.
 Do not restart naming implementation or require ongoing synchronization with the finished branch.
 
-The settings and discovery designs are reconciled but remain unimplemented. Five work items remain:
+At kickoff, settings and discovery were designed but unimplemented. That historical baseline comprised
 shared foundation, settings, full discovery, navigation/fault boundaries, and API consumption/provenance/
-replacement. The last item contains three distinct deliverables. Audit current paths and interfaces
-against the completed naming result; historical surveys in the linked plans are not current-code claims.
+replacement. The live ledger now distinguishes landed implementation from unfinished work and final
+verification. Historical surveys in the linked plans are not current-code claims.
 
 ## Decisions
 
@@ -118,7 +197,7 @@ Apply settled naming rules to new interfaces as ordinary implementation review. 
 integration work later becomes necessary, follow CLAUDE.md's pinned integration validation; the completed
 naming branch is not an automatic source of future changes.
 
-### Current handoff — compiler checkpoint (2026-10-16)
+### Compiler checkpoint evidence (2026-10-16; historical, see live ledger)
 
 Latest source is `65a189cb7` (ordered execution identity), following `c85fc178a` (no-op alias
 projection removal). Compilation keys now include ordered effective `NODE_OPTIONS`, native argument
@@ -187,15 +266,10 @@ cases in the affected suite; `/private/tmp/apack-read-tree-alias-retarget.log`. 
 and the other preserved watch/frontend/teardown failures remain unresolved; the focused pass does not
 prove those fixed. Do not restart the broad chain to diagnose them.
 
-Next: complete executable/runtime ownership and the launch-option forwarding contract, then remaining
-frame/receipt ownership in coherent checkpoints;
-resolve the named affected failures from their preserved evidence before the required converged gate.
-
-Remaining implementation still includes executable/native runtime ownership, launch-option forwarding,
-pre-startup source/dependency ownership, native/resource and one-shot/dev lifetime, persisted completed
-receipts/passive freshness, actual frontend HMR generation ownership, and every later goal phase.
-Startup observations are not yet a persisted receipt or passive freshness authority. The full goal is
-preserved; the snapshot proposal remains unevaluated, and the separate Claude research stays paused.
+The live ledger assigns remaining launch/input, frontend-generation, lifetime, receipt and freshness
+work to B1–B6. This evidence entry does not impose a second execution order. Startup observations are
+not yet a persisted receipt or passive freshness authority. The separate Claude research stays paused;
+snapshot research below is evidence, not an additional implementation prerequisite by itself.
 
 Preceding source `f684f9b7e` supplied the native startup-view factory and adoption seam. Its native
 preload proof, focused integration and 40 unit cases remain recorded in
@@ -945,8 +1019,9 @@ contract and release metadata remain intact. No compatibility, inferred existenc
 
 ### Phase 3 — Complete discovery and remove obsolete glue
 
-The discovery plan's [current checklist](../plans/discovery-without-activation.md#current-discovery-checklist)
-owns the live consumer status, source checkpoints and remaining acceptance. Historical audits and dated
+The live execution ledger above owns status and execution dependencies; the discovery plan's
+[current checklist](../plans/discovery-without-activation.md#current-discovery-checklist)
+provides detailed consumer contracts, source checkpoints and remaining acceptance. Historical audits and dated
 “next/remaining” notes in this goal are checkpoint evidence, not a second current backlog; later work
 supersedes their status claims without dropping unmet requirements. Keep build-freshness consumers
 separate from discovery consumers, and retain every later phase below.
@@ -989,7 +1064,9 @@ isolation or change the security model here.
 
 ### Phase 6 — Finish the three contract workstreams
 
-Deliver these independently, committing each validated logical checkpoint:
+Complete these independently, committing each validated logical checkpoint. Provenance and shipped
+replacement already have substantial landed implementation; audit their remaining gaps against the
+live ledger and recorded source rather than treating all three workstreams as unimplemented:
 
 | Workstream | Implementation owner | Done when |
 |---|---|---|
@@ -999,8 +1076,9 @@ Deliver these independently, committing each validated logical checkpoint:
 
 These share catalog identities and existing caller/refresh contracts; no new inventory or sandbox is
 introduced. Re-audit old paths, CLI refusals and install records before changing them. Settle the concrete
-consumption declaration/granularity and removal-suppression record through the linked plans' prototypes
-before implementing their dependent behavior; record the selected designs there.
+consumption declaration/granularity through the linked plan's prototype before implementing its
+dependent behavior. The removal-suppression record is already implemented; preserve its selected
+contract and test actual gaps rather than redesigning it from the old proposal.
 
 **Done when:** all three rows and their linked verification pass, with affected external-pack fixtures,
 templates and public contracts updated. No workstream is merely marked “follow up” to close this goal.
