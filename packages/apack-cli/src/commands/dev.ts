@@ -291,9 +291,16 @@ async function session(args: string[], hooks: SessionHooks, target: 'app' | 'pac
       },
     } : {}),
   });
-  const startupBuild = new AbortController();
-  const releaseNow = () => { startupBuild.abort(); hold.releaseNow(); };
-  const release = () => { startupBuild.abort(); return hold.release(); };
+  const buildLifetime = new AbortController();
+  let building: Promise<void> | undefined;
+  let watching: ReturnType<typeof startPackBuildWatcher> | undefined;
+  // Startup failures are reported by the session; release must still drain their cleanup.
+  hold.holdsWatcher(async () => {
+    await building?.catch(() => {});
+    await watching?.then(watcher => watcher.close(), () => {});
+  });
+  const releaseNow = () => { buildLifetime.abort(); hold.releaseNow(); };
+  const release = () => { buildLifetime.abort(); return hold.release(); };
 
   /**
    * Publishes `<dataDir>/session.json`, so something can attach to the app this command holds.
@@ -376,7 +383,9 @@ async function session(args: string[], hooks: SessionHooks, target: 'app' | 'pac
 
   if (pack) {
     console.log('Running initial build...\n');
-    await runPackBuild(pack.root, { signal: startupBuild.signal });
+    building = runPackBuild(pack.root, { signal: buildLifetime.signal });
+    await building;
+    buildLifetime.signal.throwIfAborted();
   }
 
   /**
@@ -452,11 +461,12 @@ async function session(args: string[], hooks: SessionHooks, target: 'app' | 'pac
   console.log(`  ${result.dir}\n`);
 
   const watch = async () => {
-    const watcher = await startPackBuildWatcher(pack.root, {
+    watching = startPackBuildWatcher(pack.root, {
       place,
+      signal: buildLifetime.signal,
       onBuilt: async () => { await installToApp(pack.root, place); },
     });
-    hold.holdsWatcher(watcher.close);
+    await watching;
     await new Promise<never>(() => {});
   };
   const feEntry = findFEEntry(pack.root);

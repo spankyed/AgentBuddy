@@ -1,6 +1,7 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { createPackBuilder } from './build-process.ts';
+import { withBuildSignals } from './build-signals.ts';
 import { readValidManifest } from '../utils.ts';
 import { isPackInputPath, packInputWatchTargets, packInputsHash } from '@apackdev/host/build/pack-inputs';
 import { reloadPack, type AppPlace } from './dev-reload.ts';
@@ -191,34 +192,21 @@ export async function startPackBuildWatcher(root: string, options: WatchOptions 
   }
 }
 
-export async function watchPackBuild(root: string, options: WatchOptions = {}): Promise<never> {
-  const controller = new AbortController();
-  const signal = options.signal ? AbortSignal.any([options.signal, controller.signal]) : controller.signal;
-  let received: 'SIGINT' | 'SIGTERM' | undefined;
-  let notifyStopped!: () => void;
-  const stopped = new Promise<void>(resolve => { notifyStopped = resolve; });
-  signal.addEventListener('abort', notifyStopped, { once: true });
-  if (signal.aborted) notifyStopped();
-  const stop = (value: 'SIGINT' | 'SIGTERM') => { received ??= value; controller.abort(); };
-  const interrupt = () => stop('SIGINT');
-  const terminate = () => stop('SIGTERM');
-  process.on('SIGINT', interrupt);
-  process.on('SIGTERM', terminate);
-  let watcher: Awaited<ReturnType<typeof startPackBuildWatcher>> | undefined;
-  try {
-    watcher = await startPackBuildWatcher(root, { ...options, signal });
-    await stopped;
-  } catch (error) {
-    if (!received || !(error instanceof Error) || error.name !== 'AbortError') throw error;
-  } finally {
-    try { await watcher?.close(); }
-    finally {
+export async function watchPackBuild(root: string, options: WatchOptions = {}): Promise<void> {
+  await withBuildSignals(async stoppedByProcess => {
+    const signal = options.signal ? AbortSignal.any([options.signal, stoppedByProcess]) : stoppedByProcess;
+    let notifyStopped!: () => void;
+    const stopped = new Promise<void>(resolve => { notifyStopped = resolve; });
+    signal.addEventListener('abort', notifyStopped, { once: true });
+    if (signal.aborted) notifyStopped();
+    let watcher: Awaited<ReturnType<typeof startPackBuildWatcher>> | undefined;
+    try {
+      watcher = await startPackBuildWatcher(root, { ...options, signal });
+      await stopped;
+    } finally {
       signal.removeEventListener('abort', notifyStopped);
-      process.removeListener('SIGINT', interrupt);
-      process.removeListener('SIGTERM', terminate);
+      await watcher?.close();
     }
-  }
-  if (received) process.kill(process.pid, received);
-  else signal.throwIfAborted();
-  return new Promise<never>(() => {});
+    signal.throwIfAborted();
+  });
 }

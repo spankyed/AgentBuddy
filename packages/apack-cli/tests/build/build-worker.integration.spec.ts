@@ -112,19 +112,24 @@ it('refuses private worker bootstrap without a parent IPC channel', async () => 
   expect(output).toContain('Pack build worker requires its parent IPC channel');
 });
 
-it.each(['ready', 'compiling'] as const)('removes its compiler when the public watch command is stopped while %s', async phase => {
+it.each([
+  { name: 'watch is ready', watch: true, phase: 'ready' },
+  { name: 'watch is compiling', watch: true, phase: 'compiling' },
+  { name: 'one-shot is compiling', watch: false, phase: 'compiling' },
+] as const)('removes its worker and compiler when the public build command is stopped while $name', async ({ watch, phase }) => {
   // Shutdown removes a complete compiler file tree, unlike the IPC-only exit checks above.
   const cleanupDeadlineMs = 20_000;
   const root = fixture({
     'src/compiler.ts': `import fs from 'node:fs'; export default async function() {
       fs.writeFileSync('.apack/compiler-inputs-path', process.env.${COMPILER_INPUTS_ENV}!);
+      fs.writeFileSync('.apack/compiler-pid', String(process.pid));
       if (fs.existsSync('hold-build')) { console.log('APACK_TEST_COMPILER_STARTED'); await new Promise(() => {}); }
       return [];
     }`,
     'src/data.ts': 'export default [];',
   }, { formats: { tags: { compiler: 'src/compiler.ts', entity: 'Relation' } }, sources: { tags: { path: 'src/data.ts', format: 'tags' } } });
   if (phase === 'compiling') fs.writeFileSync(path.join(root, 'hold-build'), '');
-  const child = fork(cliBin(), ['pack', 'build', '--watch'], { cwd: root, execArgv: [],
+  const child = fork(cliBin(), ['pack', 'build', ...(watch ? ['--watch'] : [])], { cwd: root, execArgv: [],
     env: { ...process.env, APACK_BUILD_WORKER: undefined, [COMPILER_INPUTS_ENV]: undefined }, stdio: ['ignore', 'pipe', 'pipe', 'ipc'] });
   let output = '';
   child.stderr?.on('data', chunk => { output += chunk; });
@@ -140,10 +145,13 @@ it.each(['ready', 'compiling'] as const)('removes its compiler when the public w
   try {
     await _byDeadline(ready, `public watcher startup (${phase})`, 60_000);
     const inputs = fs.readFileSync(path.join(root, '.apack/compiler-inputs-path'), 'utf8');
+    const worker = Number(fs.readFileSync(path.join(root, '.apack/compiler-pid'), 'utf8'));
     expect(fs.existsSync(inputs)).toBe(true);
     child.kill('SIGTERM');
     await _byDeadline(closed, 'public watcher shutdown', cleanupDeadlineMs);
-    expect(fs.existsSync(inputs)).toBe(false);
+    expect(child.signalCode).toBe('SIGTERM');
+    expect(fs.existsSync(inputs), inputs).toBe(false);
+    expect(() => process.kill(worker, 0)).toThrow();
     if (phase === 'compiling') expect(fs.existsSync(path.join(root, 'dist'))).toBe(false);
   } finally {
     if (child.exitCode === null && child.signalCode === null) child.kill();

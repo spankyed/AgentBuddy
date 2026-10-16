@@ -16,7 +16,6 @@ import {
 } from '@apackdev/sdk/build';
 import { findFEEntry, bundlePackFE } from '../build/fe-bundler';
 import { apackScope, dslInputsHash, typesInputsHash, readStamps, reuseProblem, takeForward, writeStamps, type PhaseStamp } from '../build/phase-cache';
-import { ensureCheckoutPackages } from '../build/checkout-packages.ts';
 import { refusePackRuleViolations } from '../build/pack-rules.ts';
 import { bundlePackRuntime, bundlePackContentCompilers, bundlePackContentRuntime, bundlePackStepBuild, CONTENT_RUNTIME_FILE } from '../build/be-bundler';
 import { buildReads } from '../build/build-reads';
@@ -25,6 +24,7 @@ import { generatedDeclarationProblems } from '../build/generated-declarations.ts
 import { packInputsHash } from '@apackdev/host/build/pack-inputs';
 import { captureCompilationInputs } from '../build/compilation-inputs.ts';
 import { runPackBuild } from '../build/build-process.ts';
+import { withBuildSignals } from '../build/build-signals.ts';
 import { bundleDslDefs, DEFS_DIR } from '../build/dsl-defs';
 import { bundlePackTypes } from '../build/types-bundler';
 import { facadeProblems } from '../build/facade-gate';
@@ -70,14 +70,13 @@ export async function buildCommand(args: string[]): Promise<void> {
   const root = findPackRoot(process.cwd());
   if (args.includes('--watch')) {
     if (args.length !== 1) throw new Error('--watch cannot be combined with other build flags');
-    ensureCheckoutPackages(root);
     const { watchPackBuild } = await import('../build/watch.ts');
     // `npm run dev` forks this and boots the API against the runtime it writes, so it waits to be told the
     // first bundle landed. `process.send` is absent for anyone who ran the command themselves
     await watchPackBuild(root, { onFirstBuild: () => process.send?.({ type: 'ready' }) });
     return;
   }
-  await runPackBuild(root, { args });
+  await withBuildSignals(signal => runPackBuild(root, { args, signal }));
 }
 
 export async function build(args: string[], root = findPackRoot(process.cwd())) {

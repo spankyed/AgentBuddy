@@ -77,6 +77,10 @@ A changed compiler or damaged copy is replaced. `runPackBuild` closes this scope
 a watcher retains it until close. Closing aborts active work, drains the worker and input observers,
 then removes the private installation.
 
+`withBuildSignals` owns public one-shot/watch cancellation before startup and restores the original
+signal exit after cleanup. Development supplies its own build-lifetime signal and hands initial-build
+and watcher-startup promises to its hold before awaiting them; profile removal and exit wait for both.
+
 `build/compiler-installation.ts` copies bytes supplied by the host's normalized package-input graph,
 preserves physical module/link resolution and executable bits, verifies the copy and makes its inputs
 read-only. Its private metadata records the compiler fingerprint, captured package directories and

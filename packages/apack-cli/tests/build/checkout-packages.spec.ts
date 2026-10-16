@@ -45,25 +45,14 @@ describe('the checkout a pack\'s @apackdev packages come from', () => {
 });
 
 /**
- * Public build/test commands refresh directly; development orchestration refreshes before starting
- * a fresh build process, so it cannot retain compiler modules from the replaced installation.
+ * Test orchestration refreshes directly; builds refresh through the shared builder before capturing
+ * a compiler. pack-builder.spec.ts exercises that ordering with a real captured worker.
  */
 describe('the commands that refresh a checkout before loading its packages', () => {
   const source = (file: string) => fs.readFileSync(path.join(import.meta.dirname, '..', '..', 'src', file), 'utf-8');
 
-  it.each(['commands/test.ts', 'commands/build.ts', 'build/build-process.ts'])('%s asks the checkout to build', (file) => {
-    expect(source(file)).toContain('ensureCheckoutPackages(');
-  });
-
-  it('keeps checkout refresh at the public build entry rather than in-process compilation', () => {
-    const build = source('commands/build.ts');
-    // Development builds run this command in a fresh process; build() only compiles.
-    const command = build.indexOf('export async function buildCommand');
-    const reusable = build.indexOf('export async function build(');
-    expect(command).toBeGreaterThan(-1);
-    expect(reusable).toBeGreaterThan(command);
-    expect(build.slice(command, reusable)).toContain('ensureCheckoutPackages(');
-    expect(build.slice(reusable)).not.toContain('ensureCheckoutPackages(');
+  it('refreshes the test command’s checkout', () => {
+    expect(source('commands/test.ts')).toContain('ensureCheckoutPackages(');
   });
 
   it('dispatches apack pack build to the command that refreshes, not to the bare build', () => {

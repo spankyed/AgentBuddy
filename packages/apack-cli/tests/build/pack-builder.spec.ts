@@ -80,3 +80,19 @@ it('stops its worker before removing the compiler on close', async () => {
   expect(() => process.kill(active.pid, 0)).toThrow();
   expect(fs.existsSync(fileURLToPath(active.bin))).toBe(false);
 });
+
+it('captures both checkouts after refresh and refuses reuse if refresh fails', async () => {
+  const { compiler, pack, builder, report } = fixture();
+  vi.spyOn(checkout, 'checkoutFor').mockImplementation(directory => directory === pack ? 'pack-checkout' : 'compiler-checkout');
+  vi.mocked(checkout.ensureCheckoutPackages).mockImplementation(directory => {
+    const label = path.join(compiler, 'label.txt');
+    if (directory === pack) fs.writeFileSync(label, 'pack refreshed');
+    else fs.appendFileSync(label, ' and compiler refreshed');
+  });
+  await builder.build();
+  const refreshed = report();
+  expect(refreshed.label).toBe('pack refreshed and compiler refreshed');
+  vi.mocked(checkout.ensureCheckoutPackages).mockImplementation(() => { throw new Error('Checkout refresh failed'); });
+  await expect(builder.build()).rejects.toThrow('Checkout refresh failed');
+  expect(report()).toEqual(refreshed);
+});
