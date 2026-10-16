@@ -28,9 +28,15 @@ navigate. All 99 affected Flows/Library tests and pack types pass. The strict ch
 authoring read of a missing runtime source map during an overlapping default-pack build; the default
 build passed. See the [checkpoint evidence](../evidence/settings-and-pack-contracts.md#feature-navigation-checkpoint-2026-10-16).
 
-Remaining: complete state-specific handler acceptance and a stored-message reference click into another feature. The
-preview/picker check is not that stored-message proof. The execution goal owns checkpoint validation
-and the final committed-source strict gate; this is not complete Phase 4 acceptance.
+Acceptance checkpoint `95ff95ab3` covers all six real handlers, including unrelated entity types,
+nested notes, unlisted threads, superseded replies, abandoned editors and cached selection. Actions
+and Prompts retire pending selection calls on detail exit/deactivation. The shell also cancels on
+breadcrumb/Back/Forward input. All 105 shell and 159 affected feature cases pass. A real Electron case
+imports a thread, reloads its persisted message, clicks the rendered reference and verifies the note's
+title and content in another feature; this closes the stored-message gap left by the preview test.
+See [acceptance evidence](../evidence/settings-and-pack-contracts.md#entity-navigation-acceptance-checkpoint-2026-10-16).
+Implementation and local acceptance are complete; the execution goal retains the failed authoring
+checkpoint and final committed-source strict gate. Do not archive this plan until final validation.
 
 ## Context
 
@@ -155,8 +161,8 @@ missing nodes, startup metadata and stale layout delivery have focused regressio
 - The six `navigate` closures, which are each `openPlugin(<own plugin>, { type: <constant>, <field>: refId })`
   with no branching — six declarations, none of which needed a function.
 
-The original branch survey reported these fields removed. Re-audit the implementation: `navigate`
-exists in the current reference type. Remove obsolete fields only as their callers migrate.
+The historical survey below predates this migration. `navigate` and its runtime binding are removed
+in `cd9c57de6`; the click handler now lives in `apack-ui/src/components/tiptap/reference-node.ts`.
 
 ## Phases
 

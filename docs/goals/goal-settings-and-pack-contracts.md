@@ -66,7 +66,7 @@ so completed implementation is not repeatedly scheduled as new work.
 | Live editor composition (Phase 3) | Implemented: `8863043a6` | Complete cold-document/provider readiness and real typing/replacement acceptance; fix demonstrated omissions without restarting composition. |
 | Remaining discovery consumers (Phase 3) | Partial; viewer readers `a278d4116` and shell default/dispatch `69860e4be` implemented | Navigation inventories/order/visibility implemented in `cfcbb53f9`; complete final window/loader acceptance; DSL producer/readers are implemented in `8ed188046` / `39e48e66e` and await final worker acceptance. Flow reference/rename/missing-target inspection is implemented in `7196d61d3`; complete its final external acceptance. Audit services, repositories, events, native fields and static assets; migrate each actual gap and remove superseded discovery stores. |
 | Build input/publication and freshness (Phase 3) | Partial; finite checkpoints B1–B6 below | Finish the common producer contract and four passive consumer migrations; installed discovery must remain source-free and activation-free. |
-| Entity navigation (Phase 4) | Reference identity, producer `94148c9e0`, catalog/admission `479c75e01`, owned routing/reference migration `cd9c57de6`, and feature navigation repair `831221020` implemented | Close remaining handler/stored-message acceptance under open-entity.md; retain the unresolved authoring gate evidence for B6. |
+| Entity navigation (Phase 4) | Implemented with local handler/runtime acceptance through `95ff95ab3`, following producer `94148c9e0`, catalog/admission `479c75e01`, routing `cd9c57de6` and feature repair `831221020` | Preserve six-handler, cancellation and stored-message acceptance through final strict validation; retain the unresolved authoring gate evidence for B6. No further navigation implementation is currently identified. |
 | Frontend boundaries (Phase 5) | Implemented and locally accepted: `713a6c1fd`, including the real external-pack window | Preserve pane/form containment, attributed nonfatal diagnostics and retired-instance refusal through final committed-source strict acceptance. |
 | Consumed APIs (Phase 6) | Inventory/prototype requirements documented; implementation outstanding | Settle declarations and granularity, generate matching runtime/type facades, mediate administration and dependency APIs, and migrate real consumers. |
 | Dependency provenance (Phase 6) | Cache/admission `ff4358588`, inspection and verified-build checkpoints in the evidence record implemented; overall closure partial | Verify exact origin/version/content through reuse and inspection, integrate remaining freshness dependencies, and close the linked acceptance matrix. Do not restart cache/provenance storage. Frozen resolution remains conditional on a distribution requirement. |
@@ -120,13 +120,21 @@ source map while its build overlapped the authoring step. The disappearance's ex
 established. No broad rerun or tooling change; preserve this for B6. See
 [feature checkpoint evidence](../evidence/settings-and-pack-contracts.md#feature-navigation-checkpoint-2026-10-16).
 
-Next: close the six handlers' remaining state-specific cases and the stored-message reference click
-into another feature. The existing external
-preview click is runtime evidence, not that stored-message proof. Do not restart the implemented
-reference identity, destination catalog, shell lifecycle or unrelated compiler work.
+Acceptance checkpoint `95ff95ab3` closes the six-handler and stored-message gaps. Eight reproduced
+Actions/Prompts failures now pass: leaving detail, deactivation and returning to a cached selection
+retire pending calls. Three reproduced shell failures now pass: breadcrumb/Back/Forward navigation
+cancels pending entity opening. All 105 shell cases and 159 affected feature cases pass, as do host,
+pack and E2E types and lint. The rebuilt runtime passes the real saved-message cross-feature click:
+import a thread, reload its persisted message, click the rendered reference, verify the destination
+note's title and content. See [acceptance evidence](../evidence/settings-and-pack-contracts.md#entity-navigation-acceptance-checkpoint-2026-10-16).
+The preserved authoring gate failure remains open; no passing broad gate is claimed for this source.
 
-1. Finish Phase 4 entity destinations and caller migration. Phase 5 containment is already locally
-   accepted; retain its checks for final verification rather than schedule another implementation.
+Next: complete the remaining discovery inventory against current registration fields, native
+declarations, event contracts and static assets; identify and close actual gaps. Do not restart the
+implemented reference identity, destination catalog, shell lifecycle or unrelated compiler work.
+
+1. Phase 4 entity destinations/caller migration and Phase 5 containment are implemented and locally
+   accepted. Retain their checks for final verification rather than schedule another implementation.
 2. Close the remaining discovery inventory: classify supported registration fields, native declarations,
    events and static assets; identify actual reader/loader gaps and finish those migrations. Each slice
    names the declaration, binding and publication guarantees it consumes. A producer dependency blocks

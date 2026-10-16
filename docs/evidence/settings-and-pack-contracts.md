@@ -6455,3 +6455,41 @@ Evidence:
 The new feature paths have no new real Electron acceptance claim. The prior committed shell's real
 external-reference check remains recorded above. Remaining handler acceptance, the stored-message
 cross-feature click, unreached gate steps and final committed-source strict `--all` remain required.
+
+## Entity navigation acceptance checkpoint (2026-10-16)
+
+Source `95ff95ab3` closes the remaining Phase 4 handler and stored-message acceptance gaps.
+Eight Actions/Prompts cases reproduced abandoned selection replies replacing current intent:
+list/create navigation, plugin deactivation and returning to the already-loaded entity. Detail-state
+exit and deactivation now retire the existing pending call. No additional request object or protocol.
+Three shell cases reproduced breadcrumb/Back/Forward leaving an entity query pending; these inputs
+now use the existing owner cancellation action before forwarding navigation.
+
+All six actual feature handlers refuse unclaimed entity types without transitioning or sending.
+Notes opens a nested canonical target from welcome or another editor. Threads loads an unlisted target,
+ignores older-target data and does not let data replies replay navigation. Existing Flows/Library
+regressions cover graph/node readiness, supersession, document/collection navigation and saving.
+
+Evidence:
+
+- Before repair: eight failures in `/private/tmp/apack-selection-navigation-before.log`, three in
+  `/private/tmp/apack-entity-navigation-boundaries-before.log`. Corrected runs pass 24 Actions/Prompts
+  cases and all 105 shell cases. Final affected six-feature run passes 159 cases across 22 files:
+  `/private/tmp/apack-entity-handlers-affected.log`.
+- Host, pack and E2E TypeScript and full lint pass. Logs:
+  `/private/tmp/apack-entity-navigation-boundaries-types.log`,
+  `/private/tmp/apack-entity-handlers-types-final.log`, `/private/tmp/apack-stored-reference-types.log`,
+  `/private/tmp/apack-entity-acceptance-lint-final.log`.
+- `npm run build:runtime` passes on the final shell source. One real Electron case passes after that
+  rebuild (6.8s including startup): `npm run test:e2e -- tests/e2e/ui/entity-reference.spec.ts`.
+  It creates a real note, imports a saved thread message through the supported import operation,
+  opens/reloads that message, clicks its rendered reference and verifies the destination note's title
+  and body. The label deliberately differs from the title. No inference, injected document/view,
+  replacement navigation handler or new test hook. First setup attempt selected a plugin before its
+  registration; the test now explicitly waits for that plugin before navigating. Logs:
+  `/private/tmp/apack-entity-acceptance-runtime.log`, `/private/tmp/apack-stored-reference-app-final.log`.
+
+The prior strict run's missing-source-map authoring failure remains preserved for B6. It was not
+repeated to diagnose these independent, directly reproduced navigation defects. No passing broad gate
+is claimed for this source. Local Phase 4 implementation/acceptance is closed; final strict validation
+and all remaining goal phases are still required before archival.
