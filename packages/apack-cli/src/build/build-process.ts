@@ -1,29 +1,82 @@
+import path from 'node:path';
 import { spawn } from 'node:child_process';
-import { cliBin } from '../utils.ts';
-import { ensureCheckoutPackages } from './checkout-packages.ts';
+import { checkoutFor, ensureCheckoutPackages } from './checkout-packages.ts';
+import { captureCompilerInstallation, compilerInstallationHash, compilerPackageDirectory, COMPILER_INPUTS_ENV, type CompilerInstallation } from './compiler-installation.ts';
+import { cliPackageDirectory } from './tool-identity.ts';
 import { compilationConditions } from './compilation-inputs.ts';
 import { withoutSourceCondition } from '@apackdev/host/build/source-resolution';
 import { BUILD_INPUTS_IPC_ENV, readBuildWatchInputs, type BuildWatchInputs } from './build-watch-inputs.ts';
 
-/** Development builds get fresh compiler and pack module caches, including transitive imports. */
-export async function runPackBuild(root: string, { args = [], onInputs, signal }: {
-  args?: readonly string[];
-  onInputs?: (inputs: BuildWatchInputs) => void | Promise<void>;
-  signal?: AbortSignal;
-} = {}): Promise<void> {
-  signal?.throwIfAborted();
-  // Bring linked code up to date before the child loads its CLI bundle.
-  ensureCheckoutPackages(root);
-  await new Promise<void>((resolve, reject) => {
+export interface PackBuildOptions {
+  readonly args?: readonly string[];
+  readonly onInputs?: (inputs: BuildWatchInputs) => void | Promise<void>;
+  readonly signal?: AbortSignal;
+}
+
+export interface PackBuilder {
+  build(options?: PackBuildOptions): Promise<void>;
+  close(): Promise<void>;
+}
+
+/** One pack owns its compiler copy; every build gets a fresh process and live input checks. */
+export function createPackBuilder(root: string): PackBuilder {
+  let compiler: CompilerInstallation | undefined;
+  let sourceDirectory: string | undefined;
+  let active = Promise.resolve();
+  let stopping: Promise<void> | undefined;
+  const stopped = new AbortController();
+  return {
+    build({ args = [], onInputs, signal }: PackBuildOptions = {}) {
+      if (stopped.signal.aborted) return Promise.reject(new Error('Pack builder is closed'));
+      const options = { args: [...args], onInputs, signal: signal ? AbortSignal.any([signal, stopped.signal]) : stopped.signal };
+      const result = active.then(async () => {
+        options.signal.throwIfAborted();
+        ensureCheckoutPackages(root);
+        const cli = cliPackageDirectory();
+        if (checkoutFor(cli) !== checkoutFor(root)) ensureCheckoutPackages(cli);
+        const directory = compilerPackageDirectory();
+        if (!compiler || sourceDirectory !== directory || compiler.hash !== compilerInstallationHash(directory)
+          || compiler.hash !== compilerInstallationHash(path.dirname(path.dirname(compiler.bin)))) {
+          const previous = compiler;
+          compiler = await captureCompilerInstallation(directory);
+          sourceDirectory = directory;
+          await previous?.dispose();
+        }
+        options.signal.throwIfAborted();
+        await buildWithCompiler(root, compiler, options);
+      });
+      active = result.catch(() => {});
+      return result;
+    },
+    close() {
+      if (!stopping) {
+        stopped.abort();
+        stopping = active.then(async () => { await compiler?.dispose(); compiler = undefined; });
+      }
+      return stopping;
+    },
+  };
+}
+
+export async function runPackBuild(root: string, options: PackBuildOptions = {}): Promise<void> {
+  const builder = createPackBuilder(root);
+  try { await builder.build(options); }
+  finally { await builder.close(); }
+}
+
+function buildWithCompiler(root: string, compiler: CompilerInstallation, { args = [], onInputs, signal }: PackBuildOptions): Promise<void> {
+  return new Promise<void>((resolve, reject) => {
+    let processError: Error | undefined;
     let observationError: Error | undefined;
     let observing = Promise.resolve();
     const child = spawn(process.execPath, [
       ...compilationConditions().map(condition => `--conditions=${condition}`),
-      cliBin(), 'pack', 'build', ...args,
+      compiler.bin, 'pack', 'build', ...args,
     ], {
-      cwd: root, stdio: ['ignore', 'inherit', 'inherit', 'ipc'],
-      signal,
-      env: { ...process.env, APACK_BUILD_WORKER: '1', [BUILD_INPUTS_IPC_ENV]: onInputs ? '1' : '0', NODE_OPTIONS: withoutSourceCondition(process.env.NODE_OPTIONS), ELECTRON_RUN_AS_NODE: '1' },
+      cwd: root, stdio: ['ignore', 'inherit', 'inherit', 'ipc'], signal,
+      // Transform with this captured compiler, rather than reuse another installation's tsx cache.
+      env: { ...process.env, TSX_DISABLE_CACHE: '1', APACK_BUILD_WORKER: '1', [COMPILER_INPUTS_ENV]: compiler.inputsFile,
+        [BUILD_INPUTS_IPC_ENV]: onInputs ? '1' : '0', NODE_OPTIONS: withoutSourceCondition(process.env.NODE_OPTIONS), ELECTRON_RUN_AS_NODE: '1' },
     });
     child.on('message', message => {
       const inputs = readBuildWatchInputs(message);
@@ -33,10 +86,10 @@ export async function runPackBuild(root: string, { args = [], onInputs, signal }
         });
       }
     });
-    child.once('error', reject);
+    child.once('error', error => { processError = error; });
     child.once('close', async (code, exitSignal) => {
       await observing;
-      if (observationError) reject(observationError);
+      if (processError || observationError) reject(processError ?? observationError);
       else if (code === 0) resolve();
       else reject(new Error(`Pack build process ${exitSignal ? `terminated with ${exitSignal}` : `exited with code ${code}`}`));
     });

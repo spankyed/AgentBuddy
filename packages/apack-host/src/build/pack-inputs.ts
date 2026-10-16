@@ -2,6 +2,9 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { createHash } from 'node:crypto';
 
+export type BuildInputKind = 'file' | 'directory' | 'entries';
+export type BuildInputObserver = (file: string, kind: BuildInputKind) => void;
+
 /** Whether a pack-relative path belongs to authored inputs, shared by builds and watchers. */
 export function isPackInputPath(relative: string, generated = false): boolean {
   const parts = relative.split(/[\\/]/);

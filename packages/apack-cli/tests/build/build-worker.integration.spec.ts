@@ -16,9 +16,18 @@ vi.mock('../../src/build/be-bundler', async importOriginal => ({
 }));
 import { bundlePackRuntime } from '../../src/build/be-bundler';
 import { buildCommand } from '../../src/commands/build.ts';
+import { runPackBuild } from '../../src/build/build-process.ts';
+import type { BuildWatchInputs } from '../../src/build/build-watch-inputs.ts';
+import { readStamps } from '../../src/build/phase-cache.ts';
+import { captureCompilerInstallation, COMPILER_INPUTS_ENV, type CompilerInstallation } from '../../src/build/compiler-installation.ts';
 
 const roots: string[] = [];
-afterEach(() => { vi.restoreAllMocks(); roots.splice(0).forEach(root => fs.rmSync(root, { recursive: true, force: true })); });
+const compilers: CompilerInstallation[] = [];
+afterEach(async () => {
+  vi.restoreAllMocks();
+  await Promise.all(compilers.splice(0).map(compiler => compiler.dispose()));
+  roots.splice(0).forEach(root => fs.rmSync(root, { recursive: true, force: true }));
+});
 
 function fixture(files: Record<string, string> = {}, content = {}) {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'apack-build-worker-'));
@@ -28,13 +37,38 @@ function fixture(files: Record<string, string> = {}, content = {}) {
   return root;
 }
 
-it('compiles public build flags in a fresh worker instead of the supervisor compiler', async () => {
+it('uses the captured compiler and retains unchanged build/cache identity on repeat builds', async () => {
   const root = fixture();
   vi.spyOn(process, 'cwd').mockReturnValue(root);
   await buildCommand(['--skip-fe']);
   expect(bundlePackRuntime).not.toHaveBeenCalled();
   expect(readPackBuild(path.join(root, 'dist')).snapshot.manifest.id).toBe('fresh-worker');
   expect(fs.existsSync(path.join(root, 'dist/runtime/fe.js'))).toBe(false);
+  const stamp = readStamps(root).types;
+  const revision = readPackBuild(path.join(root, 'dist')).revision;
+  expect(stamp).toBeDefined();
+  await buildCommand(['--skip-fe']);
+  expect(readStamps(root).types).toEqual(stamp);
+  expect(readPackBuild(path.join(root, 'dist')).revision).toBe(revision);
+});
+
+it('reports frontend inputs that remain available after its compiler installation is removed', async () => {
+  const root = fixture({
+    'src/pack-entry-fe.ts': 'import "./Panel.vue"; export { default } from "./__generated__/pack-entry-fe.ts";',
+    'src/Panel.vue': '<script setup lang="ts">import { computed } from "vue"; const label = computed(() => "Hello");</script><template><div>{{ label }}</div></template>',
+  });
+  const reports: BuildWatchInputs[] = [];
+  await runPackBuild(root, { onInputs: inputs => { reports.push(inputs); } });
+  expect(reports.some(report => report.successful && report.files.some(file => file.endsWith('Panel.vue')))).toBe(true);
+  for (const report of reports) {
+    expect([...report.files, ...report.directories].some(file => /[\\/]apack-compiler-[^\\/]+[\\/]/.test(file))).toBe(false);
+    for (const file of report.files) expect(fs.existsSync(file), file).toBe(true);
+  }
+  const reads = JSON.parse(fs.readFileSync(path.join(root, '.apack/reads.json'), 'utf8')) as { phases: Record<string, string[]> };
+  for (const file of Object.values(reads.phases).flat()) {
+    expect(file).not.toMatch(/apack-compiler-[^/]+\//);
+    expect(fs.existsSync(path.resolve(fs.realpathSync(root), file)), file).toBe(true);
+  }
 });
 
 function finished(child: ChildProcess, event: 'exit' | 'close' = 'close'): Promise<number | null> {
@@ -46,8 +80,10 @@ it('terminates a compiling worker when its parent IPC disconnects without publis
     'src/compiler.ts': 'import fs from "node:fs"; export default async function() { fs.writeFileSync("ready", "ready"); await new Promise(() => {}); return []; }',
     'src/data.ts': 'export default [];',
   }, { formats: { waiting: { compiler: 'src/compiler.ts', entity: 'Relation' } }, sources: { waiting: { path: 'src/data.ts', format: 'waiting' } } });
-  const child = fork(cliBin(), ['pack', 'build', '--skip-fe'], { cwd: root, execArgv: [], stdio: ['ignore', 'pipe', 'pipe', 'ipc'],
-    env: { ...process.env, APACK_BUILD_WORKER: '1', NODE_OPTIONS: withoutSourceCondition(process.env.NODE_OPTIONS) } });
+  const compiler = await captureCompilerInstallation();
+  compilers.push(compiler);
+  const child = fork(compiler.bin, ['pack', 'build', '--skip-fe'], { cwd: root, execArgv: [], stdio: ['ignore', 'pipe', 'pipe', 'ipc'],
+    env: { ...process.env, APACK_BUILD_WORKER: '1', [COMPILER_INPUTS_ENV]: compiler.inputsFile, NODE_OPTIONS: withoutSourceCondition(process.env.NODE_OPTIONS) } });
   // Node can omit close after a parent-initiated IPC disconnect; assert exit and drained streams.
   const stopped = finished(child, 'exit');
   let output = '';
@@ -74,4 +110,43 @@ it('refuses private worker bootstrap without a parent IPC channel', async () => 
   child.stderr?.on('data', chunk => { output += chunk; });
   expect(await _byDeadline(finished(child), 'private bootstrap refusal', 2_000)).toBe(1);
   expect(output).toContain('Pack build worker requires its parent IPC channel');
+});
+
+it.each(['ready', 'compiling'] as const)('removes its compiler when the public watch command is stopped while %s', async phase => {
+  // Shutdown removes a complete compiler file tree, unlike the IPC-only exit checks above.
+  const cleanupDeadlineMs = 20_000;
+  const root = fixture({
+    'src/compiler.ts': `import fs from 'node:fs'; export default async function() {
+      fs.writeFileSync('.apack/compiler-inputs-path', process.env.${COMPILER_INPUTS_ENV}!);
+      if (fs.existsSync('hold-build')) { console.log('APACK_TEST_COMPILER_STARTED'); await new Promise(() => {}); }
+      return [];
+    }`,
+    'src/data.ts': 'export default [];',
+  }, { formats: { tags: { compiler: 'src/compiler.ts', entity: 'Relation' } }, sources: { tags: { path: 'src/data.ts', format: 'tags' } } });
+  if (phase === 'compiling') fs.writeFileSync(path.join(root, 'hold-build'), '');
+  const child = fork(cliBin(), ['pack', 'build', '--watch'], { cwd: root, execArgv: [],
+    env: { ...process.env, APACK_BUILD_WORKER: undefined, [COMPILER_INPUTS_ENV]: undefined }, stdio: ['ignore', 'pipe', 'pipe', 'ipc'] });
+  let output = '';
+  child.stderr?.on('data', chunk => { output += chunk; });
+  const closed = finished(child);
+  const ready = new Promise<void>((resolve, reject) => {
+    child.stdout?.on('data', chunk => {
+      output += chunk;
+      if (phase === 'compiling' && output.includes('APACK_TEST_COMPILER_STARTED')) resolve();
+    });
+    child.on('message', message => { if (phase === 'ready' && (message as { type?: string }).type === 'ready') resolve(); });
+    child.once('close', () => reject(new Error(`Watch stopped before ready: ${output}`)));
+  });
+  try {
+    await _byDeadline(ready, `public watcher startup (${phase})`, 60_000);
+    const inputs = fs.readFileSync(path.join(root, '.apack/compiler-inputs-path'), 'utf8');
+    expect(fs.existsSync(inputs)).toBe(true);
+    child.kill('SIGTERM');
+    await _byDeadline(closed, 'public watcher shutdown', cleanupDeadlineMs);
+    expect(fs.existsSync(inputs)).toBe(false);
+    if (phase === 'compiling') expect(fs.existsSync(path.join(root, 'dist'))).toBe(false);
+  } finally {
+    if (child.exitCode === null && child.signalCode === null) child.kill();
+    await _byDeadline(closed, 'public watcher cleanup', cleanupDeadlineMs);
+  }
 });

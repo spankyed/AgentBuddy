@@ -48,8 +48,8 @@ const loadedByThePool = (): string[] => reachableFrom(
  * exists to catch, and a file-level list would wave it through.
  */
 const INVENTORY: Record<string, { calls: number; why: string }> = {
-  'packages/apack-cli/tests/build/build-worker.integration.spec.ts': { calls: 2,
-    why: 'private worker IPC lifetime and refusal without IPC require actual Node processes; a mocked channel cannot prove child termination or bootstrap behavior' },
+  'packages/apack-cli/tests/build/build-worker.integration.spec.ts': { calls: 3,
+    why: 'private worker IPC lifetime and refusal need actual Node processes; public watch shutdown sends SIGTERM to its own process and verifies compiler disposal, which cannot run in the test worker' },
   'packages/repo-checks/tests/bounded-spawn.integration.spec.ts': { calls: 1,
     why: 'a separate orchestrator process receives real signals so cancellation proves its whole child tree is reaped without signaling the test worker' },
   'packages/repo-checks/tests/session.integration.spec.ts': { calls: 2,

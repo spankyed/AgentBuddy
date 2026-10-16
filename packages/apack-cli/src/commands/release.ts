@@ -7,7 +7,7 @@ import { Octokit } from '@octokit/rest';
 import { findPackRoot, readManifest } from '../utils';
 import { parseManifest } from '@apackdev/sdk/build';
 import { resolveDeps } from './generate';
-import { build } from './build';
+import { runPackBuild } from '../build/build-process.ts';
 import { buildPackArchive } from './archive';
 import { packArchiveName, readPackIntegrity, verifyPack, extractPackArchive } from '@apackdev/host/packs';
 import { errorMessage } from '@apackdev/sdk/utils/pure';
@@ -232,7 +232,7 @@ function hasScript(root: string, name: string): boolean {
 
 async function verify(root: string, options: { skipTests: boolean; skipE2e: boolean; run: Runner }): Promise<void> {
   console.log('\nBuilding (release)...');
-  await build(['--release']);
+  await runPackBuild(root, { args: ['--release'] });
 
   if (fs.existsSync(path.join(root, 'tsconfig.json'))) {
     console.log('Typechecking...');

@@ -28,6 +28,8 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { PACK_READS_FILE } from '@apackdev/host/build/pack-workdir';
+import { compilerSourcePath } from './compiler-paths.ts';
+import { readCompilerInstallationInputs } from './compiler-installation.ts';
 
 /**
  * The one way to turn the record off, and it is environmental: a read-only filesystem, or a sandbox that
@@ -217,11 +219,12 @@ export function buildReads(packDir: string): BuildReads | undefined {
  */
 function relativeReads(files: Iterable<string>, cwd: string, root: string): string[] {
   const out = new Set<string>();
+  const compilerPaths = readCompilerInstallationInputs()?.paths ?? [];
   for (const file of files) {
     if (file.includes('\0')) continue;
     let real: string;
     try {
-      real = fs.realpathSync(path.resolve(cwd, file));
+      real = compilerSourcePath(fs.realpathSync(path.resolve(cwd, file)), compilerPaths);
     } catch {
       continue;
     }

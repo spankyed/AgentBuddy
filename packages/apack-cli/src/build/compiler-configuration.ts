@@ -1,17 +1,16 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import ts from 'typescript';
+import type { BuildInputObserver } from '@apackdev/host/build/pack-inputs';
 
 export interface PackCompilerConfiguration {
   readonly options: ts.CompilerOptions;
   readonly files: ReadonlyMap<string, string>;
 }
 
-export type CompilerInputKind = 'file' | 'directory' | 'entries';
-export type CompilerInputObserver = (file: string, kind: CompilerInputKind) => void;
 
 /** Resolve current configuration inheritance before compiling or hashing; never infer defaults from errors. */
-export function readPackCompilerConfiguration(root: string, observe?: CompilerInputObserver): PackCompilerConfiguration | undefined {
+export function readPackCompilerConfiguration(root: string, observe?: BuildInputObserver): PackCompilerConfiguration | undefined {
   const config = path.join(root, 'tsconfig.json');
   observe?.(config, 'file');
   if (!fs.existsSync(config)) return undefined;

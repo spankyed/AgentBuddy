@@ -2,14 +2,14 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { createHash } from 'node:crypto';
 import { readCompilerModuleInputs } from './compiler-module-inputs.ts';
-import { packageInputsHash } from './package-inputs.ts';
+import { readPackageInputs } from '@apackdev/host/build/package-inputs';
 import { physicalWatchPath } from './watch-paths.ts';
-import type { CompilerInputKind, CompilerInputObserver } from './compiler-configuration.ts';
+import type { BuildInputKind, BuildInputObserver } from '@apackdev/host/build/pack-inputs';
 
-export type CompilerWatchPaths = ReadonlyMap<string, CompilerInputKind>;
+export type CompilerWatchPaths = ReadonlyMap<string, BuildInputKind>;
 const priority = { directory: 0, file: 1, entries: 2 };
 
-function addPath(paths: Map<string, CompilerInputKind>, file: string, kind: CompilerInputKind): void {
+function addPath(paths: Map<string, BuildInputKind>, file: string, kind: BuildInputKind): void {
   const previous = paths.get(file);
   if (!previous || priority[kind] > priority[previous]) paths.set(file, kind);
 }
@@ -30,12 +30,12 @@ function isDirectory(file: string): boolean {
 
 /** Fresh resolution probes include absent candidates, so creating a previously missing input can recover a build. */
 export function compilerWatchPaths(root: string): { paths: CompilerWatchPaths; complete: boolean; signature: string } {
-  const paths = new Map<string, CompilerInputKind>();
+  const paths = new Map<string, BuildInputKind>();
   const physical = new Map<string, string>();
   const physicalPath = (file: string) => physicalWatchPath(file, physical);
 
   try {
-    const observe: CompilerInputObserver = (file, kind) => {
+    const observe: BuildInputObserver = (file, kind) => {
       const absolute = path.resolve(file);
       const relative = path.relative(root, absolute);
       // The authored root already has a recursive watcher with output exclusions.
@@ -45,7 +45,7 @@ export function compilerWatchPaths(root: string): { paths: CompilerWatchPaths; c
       addPath(paths, physicalPath(absolute), kind);
     };
     const modules = readCompilerModuleInputs(root, observe);
-    const packages = packageInputsHash([{ id: 'pack', directory: root, development: true }], modules.packageDirectories, observe);
+    const packages = readPackageInputs([{ id: 'pack', directory: root, development: true }], { discovered: modules.packageDirectories, observe }).hash;
     return { paths, complete: true, signature: `valid:${modules.hash}:${packages}` };
   } catch {
     // The normal CLI build reports the refusal. Keep partial probes and the previous subscriptions for repair.
@@ -61,7 +61,7 @@ export function compilerWatchPaths(root: string): { paths: CompilerWatchPaths; c
 }
 
 export interface CompilerWatchTarget {
-  paths: Map<string, CompilerInputKind>;
+  paths: Map<string, BuildInputKind>;
   recursive: boolean;
 }
 
@@ -93,11 +93,11 @@ export function compilerWatchTargets(paths: CompilerWatchPaths, authoredRoot?: s
     .sort((a, b) => a.length - b.length);
   const targets = new Map<string, CompilerWatchTarget>();
   const scopeFor = new Map<string, string | undefined>();
-  const add = (directory: string, file: string, kind: CompilerInputKind) => {
+  const add = (directory: string, file: string, kind: BuildInputKind) => {
     if (!scopeFor.has(directory)) scopeFor.set(directory, scopes.find(root => directory === root || directory.startsWith(`${root}${path.sep}`)));
     const scope = scopeFor.get(directory);
     const anchor = scope ?? directory;
-    const target = targets.get(anchor) ?? { paths: new Map<string, CompilerInputKind>(), recursive: scope !== undefined };
+    const target = targets.get(anchor) ?? { paths: new Map<string, BuildInputKind>(), recursive: scope !== undefined };
     addPath(target.paths, file, kind);
     targets.set(anchor, target);
   };

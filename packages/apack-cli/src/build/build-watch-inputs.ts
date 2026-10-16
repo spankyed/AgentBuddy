@@ -1,4 +1,6 @@
 import path from 'node:path';
+import { compilerSourcePath } from './compiler-paths.ts';
+import { readCompilerInstallationInputs } from './compiler-installation.ts';
 
 /** Current compiler observations; a failed build extends subscriptions without replacing the incumbent. */
 export interface BuildWatchInputs {
@@ -12,7 +14,11 @@ export const BUILD_INPUTS_IPC_ENV = 'APACK_BUILD_INPUTS_IPC';
 
 export async function reportBuildWatchInputs(inputs: BuildWatchInputs): Promise<void> {
   if (process.env[BUILD_INPUTS_IPC_ENV] !== '1' || !process.send || !process.connected) return;
-  await new Promise<void>(resolve => process.send!({ type: MESSAGE, ...inputs }, () => resolve()));
+  const mappings = readCompilerInstallationInputs()?.paths ?? [];
+  await new Promise<void>(resolve => process.send!({ type: MESSAGE, ...inputs,
+    files: inputs.files.map(file => compilerSourcePath(file, mappings)),
+    directories: inputs.directories.map(directory => compilerSourcePath(directory, mappings)),
+  }, () => resolve()));
 }
 
 export function readBuildWatchInputs(message: unknown): BuildWatchInputs | undefined {

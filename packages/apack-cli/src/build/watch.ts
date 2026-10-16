@@ -1,6 +1,6 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
-import { runPackBuild } from './build-process.ts';
+import { createPackBuilder } from './build-process.ts';
 import { readValidManifest } from '../utils.ts';
 import { isPackInputPath, packInputWatchTargets, packInputsHash } from '@apackdev/host/build/pack-inputs';
 import { reloadPack, type AppPlace } from './dev-reload.ts';
@@ -12,6 +12,7 @@ import { resolveAppEnvironment } from '@apackdev/sdk/env';
 const DEBOUNCE_MS = 300;
 
 export interface WatchOptions {
+  readonly signal?: AbortSignal;
   readonly place?: AppPlace;
   /** Initial verified publication is ready for an app to boot against. */
   readonly onFirstBuild?: () => void;
@@ -67,7 +68,9 @@ export function coalescingRunner(run: () => Promise<void>, delayMs: number = DEB
 
 /** Every edit publishes the same complete build as a normal build, then requests reload. */
 export async function startPackBuildWatcher(root: string, options: WatchOptions = {}): Promise<{ close: () => Promise<void> }> {
+  options.signal?.throwIfAborted();
   const packId = readValidManifest(root).id;
+  const builder = createPackBuilder(root);
   let closed = false;
   let stopping: Promise<void> | undefined;
   let ready = false;
@@ -91,7 +94,7 @@ export async function startPackBuildWatcher(root: string, options: WatchOptions 
     frontendSignature = beforeFrontend.hash;
     if (readValidManifest(root).id !== packId) throw new Error('Pack identity changed; restart the development session');
     let reported: { inputs: BuildWatchInputs; snapshot: FrontendInputSnapshot } | undefined;
-    await runPackBuild(root, { onInputs: async inputs => { reported = { inputs, snapshot: await frontend.observe(inputs) }; } });
+    await builder.build({ onInputs: async inputs => { reported = { inputs, snapshot: await frontend.observe(inputs) }; } });
     if (closed) return false;
     const accepted = reported?.inputs.successful ? reported.inputs : { files: [], directories: [], successful: true };
     await frontend.accept(accepted);
@@ -116,7 +119,7 @@ export async function startPackBuildWatcher(root: string, options: WatchOptions 
       if (reload.status === 'reloaded') console.log(`[watch] ${changed} — reloaded`);
       else console.warn(`[watch] ${changed} — built, but the app did not reload (${reload.detail})`);
     } catch (error) {
-      console.error(`[watch] Build/reload failed: ${String(error)}`);
+      if (!closed) console.error(`[watch] Build/reload failed: ${String(error)}`);
     }
   });
   const request = (relative: string) => {
@@ -164,13 +167,19 @@ export async function startPackBuildWatcher(root: string, options: WatchOptions 
   }
   const close = () => {
     if (!stopping) {
+      options.signal?.removeEventListener('abort', abort);
       closed = true; watcher.close(); for (const watch of links) watch.close();
-      stopping = Promise.all([frontend.close(), runs.close()]).then(() => {});
+      stopping = Promise.all([frontend.close(), runs.close(), builder.close()]).then(() => {});
     }
     return stopping;
   };
+  // Startup and the returned close promise report cleanup errors to the owner.
+  const abort = () => { void close().catch(() => {}); };
+  options.signal?.addEventListener('abort', abort, { once: true });
   try {
+    options.signal?.throwIfAborted();
     await publish();
+    options.signal?.throwIfAborted();
     options.onFirstBuild?.();
     ready = true;
     if (pending) runs.request();
@@ -183,6 +192,33 @@ export async function startPackBuildWatcher(root: string, options: WatchOptions 
 }
 
 export async function watchPackBuild(root: string, options: WatchOptions = {}): Promise<never> {
-  await startPackBuildWatcher(root, options);
+  const controller = new AbortController();
+  const signal = options.signal ? AbortSignal.any([options.signal, controller.signal]) : controller.signal;
+  let received: 'SIGINT' | 'SIGTERM' | undefined;
+  let notifyStopped!: () => void;
+  const stopped = new Promise<void>(resolve => { notifyStopped = resolve; });
+  signal.addEventListener('abort', notifyStopped, { once: true });
+  if (signal.aborted) notifyStopped();
+  const stop = (value: 'SIGINT' | 'SIGTERM') => { received ??= value; controller.abort(); };
+  const interrupt = () => stop('SIGINT');
+  const terminate = () => stop('SIGTERM');
+  process.on('SIGINT', interrupt);
+  process.on('SIGTERM', terminate);
+  let watcher: Awaited<ReturnType<typeof startPackBuildWatcher>> | undefined;
+  try {
+    watcher = await startPackBuildWatcher(root, { ...options, signal });
+    await stopped;
+  } catch (error) {
+    if (!received || !(error instanceof Error) || error.name !== 'AbortError') throw error;
+  } finally {
+    try { await watcher?.close(); }
+    finally {
+      signal.removeEventListener('abort', notifyStopped);
+      process.removeListener('SIGINT', interrupt);
+      process.removeListener('SIGTERM', terminate);
+    }
+  }
+  if (received) process.kill(process.pid, received);
+  else signal.throwIfAborted();
   return new Promise<never>(() => {});
 }

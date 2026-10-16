@@ -6,6 +6,7 @@ import * as path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { defaultRunner, nextReleaseVersion, preflight, publishRelease, releaseStateReport, runRelease, type Runner } from '../../src/commands/release';
 import { readPackIntegrity, sealPackBuild } from '@apackdev/host/packs';
+import { runPackBuild } from '../../src/build/build-process.ts';
 
 /**
  * runRelease verifies with a release build; these tests use prebuilt packs, so the build is a stand-in.
@@ -17,8 +18,8 @@ import { readPackIntegrity, sealPackBuild } from '@apackdev/host/packs';
  * wrong: a real `apack pack build` writes `dist` here.
  */
 const builtAt = vi.hoisted(() => ({ root: undefined as string | undefined }));
-vi.mock('../../src/commands/build', () => ({
-  build: vi.fn(async () => {
+vi.mock('../../src/build/build-process.ts', () => ({
+  runPackBuild: vi.fn(async () => {
     if (!builtAt.root) return;
     const [{ readFileSync, writeFileSync }, { join }] = await Promise.all([import('node:fs'), import('node:path')]);
     const manifest = JSON.parse(readFileSync(join(builtAt.root, 'apack.json'), 'utf8'));
@@ -291,6 +292,7 @@ describe('runRelease', () => {
     const { root, origin, run } = packRepo();
     const { version } = await runRelease(root, { ...releaseOptions, run, env: {} });
 
+    expect(runPackBuild).toHaveBeenLastCalledWith(root, { args: ['--release'] });
     expect(version).toBe('1.2.4');
     const tagged = git(root, 'rev-parse', 'v1.2.4^{commit}');
     expect(git(root, 'log', '-1', '--format=%s', tagged)).toBe('release: v1.2.4');

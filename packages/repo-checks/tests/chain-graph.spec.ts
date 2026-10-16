@@ -15,6 +15,7 @@ import { reachableText, rootScripts, withoutComments } from '../../../scripts/li
 import { population } from '@apackdev/sdk/testing';
 import { machineText, POOL_WIDTH, thisMachine } from '../../../scripts/lib/core-budget.ts';
 import { ASSUMED_RUNGS, declaredShare, rungForKind, timedOutBecause, TIMEOUT_CLASSES, TIMEOUT_MS, type TimeoutClass } from '../../../scripts/lib/step-timeouts.ts';
+import e2eConfig from '../../../playwright.config.ts';
 
 describe('the chain graph', () => {
   it('orders every step after the steps it depends on', () => {
@@ -75,7 +76,7 @@ describe('the chain graph', () => {
    * A mutex has no direction, so this one is a preference — and it was held by nothing but the order the
    * two happen to sit in the table.
    *
-   * `test:smoke` and `test` both write `tests/results`, which makes them a derived mutex: the scheduler will
+   * `test:smoke` and `test` both write `.apack/tests/results`, which makes them a derived mutex: the scheduler will
    * not overlap them, and either order satisfies it. Running the six-second gate before the twenty-six
    * second harness is what anyone wants, and until this case existed, reordering the table would have
    * silently swapped them. Named here rather than declared on a step, because a preference between two
@@ -88,6 +89,16 @@ describe('the chain graph', () => {
     expect(conflictsOf(smoke), 'the two no longer share a path, so this preference has lost its subject')
       .toContain('test:e2e');
     expect(order.indexOf('test:smoke')).toBeLessThan(order.indexOf('test:e2e'));
+  });
+
+  it('declares and preserves the output directory used by the actual Playwright config', () => {
+    expect(e2eConfig.outputDir).toBeDefined();
+    const output = path.relative(REPO_ROOT, path.resolve(REPO_ROOT, e2eConfig.outputDir!)).split(path.sep).join('/');
+    for (const name of ['test:smoke', 'test:e2e']) {
+      const step = CHAIN_STEPS.find(step => step.name === name)!;
+      expect(step.outputs, name).toContain(output);
+      expect(step.keepsOnFailure, name).toContain(output);
+    }
   });
 
 

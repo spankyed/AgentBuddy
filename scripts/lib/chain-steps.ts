@@ -1157,7 +1157,7 @@ export const CHAIN_STEPS: readonly ChainStep[] = [
   // the whole suite off the chain took that with it, and 3.5s is not a price worth arguing about for the
   // one check that makes a green run mean anything.
   //
-  // `test` depends on it so the two never run at once: both drive Playwright at `tests/results`, which it
+  // `test` depends on it so the two never run at once: both drive Playwright at `.apack/tests/results`, which it
   // wipes at the start of a run, and a full suite is also the faster failure for having gone through this.
   //
   // **Cached, where the suite is not**, and the difference is the subject rather than the mechanism. The
@@ -1167,11 +1167,11 @@ export const CHAIN_STEPS: readonly ChainStep[] = [
   // answered. Uncached it put the warm chain back to 5.6s from 0.9s, which is most of what taking the
   // suite off the gate bought.
   { name: 'test:smoke', timeout: 'suite', seconds: 16,
-    outputs: ['tests/results'],
+    outputs: ['.apack/tests/results'],
     // The fixture writes the app's stdout and stderr here (`app-<workerIndex>.log`), which is the only
     // account of why an app did not start or did not close. Playwright clears the directory on the way in,
     // so the retry would take it
-    keepsOnFailure: ['tests/results'],
+    keepsOnFailure: ['.apack/tests/results'],
     inputs: [...ROOT, 'tests/e2e/smoke', 'playwright.config.ts',
       'scripts/with-source.mjs', ...APP_ENTRY, ...PACKAGE_BUILD_READS, ...APP_OUTPUTS, ...PACK_OUTPUTS] },
   // The rest of the E2E suite. **Opt-in, not a gate** — `npm run chain -- --e2e`.
@@ -1183,8 +1183,8 @@ export const CHAIN_STEPS: readonly ChainStep[] = [
   { name: 'test:e2e', timeout: 'suite', seconds: 26,
     optInBecause: 'it is a harness for driving the app, not a regression gate; nothing has needed it to fail',
     neverCachedBecause: 'it drives real Electron, and a flaky pass cached green hides an intermittent failure',
-    outputs: ['tests/results'],
-    keepsOnFailure: ['tests/results'],
+    outputs: ['.apack/tests/results'],
+    keepsOnFailure: ['.apack/tests/results'],
     // The published trees, because the fixture every spec imports resolves `@apackdev/testing`'s built bundle
     // from one of them — and `packages:check` packs a tarball inside those trees and recreates them, which a
     // reader must not observe. Declaring them is what makes that a mutex instead of a scheduling accident;

@@ -1,11 +1,21 @@
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { afterEach, expect, it } from 'vitest';
+import { afterEach, expect, it, vi } from 'vitest';
 import { readCompilerModuleInputs } from '../../src/build/compiler-module-inputs.ts';
+import { COMPILER_INPUTS_ENV } from '../../src/build/compiler-installation.ts';
 
 const roots: string[] = [];
-afterEach(() => roots.splice(0).forEach(root => fs.rmSync(root, { recursive: true, force: true })));
+afterEach(() => {
+  vi.unstubAllEnvs();
+  roots.splice(0).forEach(root => fs.rmSync(root, { recursive: true, force: true }));
+});
+
+function setCompilerPaths(pack: string, paths: Array<{ captured: string; source: string }>) {
+  const file = path.join(pack, '../compiler-inputs.json');
+  fs.writeFileSync(file, JSON.stringify({ hash: '0'.repeat(64), packages: [], paths }));
+  vi.stubEnv(COMPILER_INPUTS_ENV, file);
+}
 
 function fixture() {
   const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'apack-module-inputs-'));
@@ -85,6 +95,37 @@ it('is independent of checkout location and modification times', () => {
   expect(a.hash()).toBe(b.hash());
   fs.utimesSync(path.join(a.pack, '../contract.d.ts'), new Date(1), new Date(1));
   expect(a.hash()).toBe(b.hash());
+});
+
+it('keeps captured compiler input identity stable across different private directories', () => {
+  const { pack, write, hash } = fixture();
+  write('first/contract.d.ts', 'export type Value = string;');
+  write('second/contract.d.ts', 'export type Value = string;');
+  const capture = (directory: string) => {
+    const captured = fs.realpathSync(path.join(pack, '..', directory));
+    const source = path.join(fs.realpathSync(path.dirname(pack)), 'original');
+    const link = path.join(pack, '../contract.d.ts');
+    fs.rmSync(link, { force: true });
+    fs.symlinkSync(path.join(captured, 'contract.d.ts'), link);
+    setCompilerPaths(pack, [{ captured, source }]);
+    return hash();
+  };
+  const first = capture('first');
+  expect(capture('second')).toBe(first);
+  write('second/contract.d.ts', 'export type Value = number;');
+  expect(capture('second')).not.toBe(first);
+});
+
+it('refuses different captured and live bytes claimed under one source identity', () => {
+  const { pack, write, hash } = fixture();
+  write('captured/contract.d.ts', 'export type Value = string;');
+  write('original/contract.d.ts', 'export type Value = number;');
+  write('pack/src/index.ts', 'import "../../captured/contract.d.ts"; import "../../original/contract.d.ts";');
+  setCompilerPaths(pack, [{
+    captured: fs.realpathSync(path.join(pack, '../captured')),
+    source: fs.realpathSync(path.join(pack, '../original')),
+  }]);
+  expect(hash).toThrow('Compiler input differs between captured and live sources');
 });
 
 it('discovers scoped package owners through workspace links without loading their executable entries', () => {

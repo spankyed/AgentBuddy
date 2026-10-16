@@ -70,11 +70,27 @@ Packaged channels come from `build-manifest.json`, never a release tag or execut
 
 ## Build pipeline (`commands/build.ts`)
 
-Public builds, initial pack development and watched builds use `build/build-process.ts`: refresh linked
-packages, then load the compiler in a fresh child. The existing `bin/apack.mjs` bootstrap selects the
-private `build-worker` entry only with its worker handoff and parent IPC channel. That entry calls
-`build()` directly, avoiding recursive command dispatch; it is shipped beside `cli.js`. Internal compiler
-tests call `build()` in-process; process-boundary tests exercise the real bootstrap and runner.
+Public builds, release verification and development builds use `build/build-process.ts`.
+`createPackBuilder(root)` owns one compiler copy and serializes fresh worker processes. Before reuse it
+refreshes linked packages and verifies both the selected compiler's current inputs and its copied bytes.
+A changed compiler or damaged copy is replaced. `runPackBuild` closes this scope after a single build;
+a watcher retains it until close. Closing aborts active work, drains the worker and input observers,
+then removes the private installation.
+
+`build/compiler-installation.ts` copies bytes supplied by the host's normalized package-input graph,
+preserves physical module/link resolution and executable bits, verifies the copy and makes its inputs
+read-only. Its private metadata records the compiler fingerprint, captured package directories and
+source-path mappings. Workers require this metadata to belong to their actual CLI; they keep the
+selected compiler rather than hand off to the project again. Module identity, diagnostic reads and
+frontend subscriptions use source origins. Pack and outside-module inputs are rechecked before
+publication; the already captured compiler fingerprint is reused within its immutable lifetime.
+
+`bin/apack.mjs` selects `build-worker` only with its private worker handoff and parent IPC channel.
+That entry checks the compiler inputs before importing `build()`, avoiding recursive command dispatch;
+it ships beside `cli.js`. Internal compiler tests call `build()` in-process; process-boundary tests
+exercise the real bootstrap and runner. Compiler capture does not freeze pack sources, external
+frontend compiler reads or ambient Node preloads; the complete input/publication contract remains
+owned by the discovery plan.
 
 1. `parseManifest`; then `buildStagingDir` (`.apack/build/`), where every phase below writes. `dist/` is
    left alone until the end, when the staged tree is renamed over it (`replaceDir`), so a reader finds the previous

@@ -1,8 +1,9 @@
 import { createHash } from 'node:crypto';
 import { buildToolHash, cliPackageDirectory } from './tool-identity.ts';
-import { packageInputsHash } from './package-inputs.ts';
+import { readPackageInputs } from '@apackdev/host/build/package-inputs';
 import { SOURCE_CONDITION } from '@apackdev/host/build/source-resolution';
 import { readCompilerModuleInputs } from './compiler-module-inputs.ts';
+import { readCompilerInstallationInputs } from './compiler-installation.ts';
 
 /** Instrumentation flags do not change compilation. The reserved source mode is in buildToolHash. */
 export function compilationConditions(args = process.execArgv, nodeOptions = process.env.NODE_OPTIONS ?? ''): string[] {
@@ -27,11 +28,16 @@ export interface CompilationInputs {
 /** One live-byte scope per build, shared by phases; recomputed at publication, never cached across builds. */
 export function captureCompilationInputs(packRoot: string): CompilationInputs {
   const cliRoot = cliPackageDirectory();
+  const compiler = readCompilerInstallationInputs();
+  if (compiler && !compiler.packages.includes(cliRoot)) throw new Error('Captured compiler inputs do not belong to this CLI');
+  const capturedPackages = new Set(compiler?.packages);
   const current = () => {
     const modules = readCompilerModuleInputs(packRoot);
-    return createHash('sha256').update(buildToolHash()).update(packageInputsHash([
-      { id: 'cli', directory: cliRoot }, { id: 'pack', directory: packRoot, development: true },
-    ], modules.packageDirectories)).update(modules.hash)
+    const owners = [{ id: 'pack', directory: packRoot, development: true }];
+    if (!compiler) owners.unshift({ id: 'cli', directory: cliRoot, development: false });
+    return createHash('sha256').update(compiler?.hash ?? buildToolHash()).update(readPackageInputs(owners, {
+      discovered: modules.packageDirectories.filter(directory => !capturedPackages.has(directory)),
+    }).hash).update(modules.hash)
       .update(JSON.stringify([process.versions.node, process.platform, process.arch, compilationConditions()]))
       .digest('hex');
   };

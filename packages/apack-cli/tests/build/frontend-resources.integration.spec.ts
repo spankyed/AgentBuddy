@@ -1,6 +1,6 @@
 import fs from 'node:fs';
 import path from 'node:path';
-import { expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi, type MockInstance } from 'vitest';
 import { createFrontendResourceFixture, readFrontendOutput } from '../_support/frontend-resources.ts';
 import { readPackBuild } from '@apackdev/host/packs';
 import { callCli } from '../_support/pack-builds.ts';
@@ -57,20 +57,37 @@ it.each(['css-import', 'css-url', 'template'] as const)('compiles changed extern
   expect(readFrontendOutput(pack, kind === 'css-import' ? '.css' : '.svg')).not.toContain(kind === 'css-import' ? '#123456' : 'BEFORE');
 });
 
-it('watches CSS dependencies and recovers a missing nested stylesheet while retaining the accepted build', async () => {
-  const { pack } = consumer();
-  const stylesheet = path.join(fixture.root, 'outside.css');
-  const leaf = path.join(fixture.root, 'theme.css');
-  fs.writeFileSync(stylesheet, '@import "./theme.css";');
-  fs.writeFileSync(leaf, '.theme { color: #123456; }');
-  fs.appendFileSync(path.join(pack, 'src/canvas.vue'), '<style src="../../outside.css"></style>');
-  const errors = vi.spyOn(console, 'error').mockImplementation(() => {});
-  let watcher: { close(): Promise<void> } | undefined;
-  let publications = 0;
-  const css = () => fs.readFileSync(path.join(pack, 'dist/runtime/fe.css'), 'utf8');
-  try {
-    watcher = await startPackBuildWatcher(pack, { place: { env: 'test', userDataDir: path.join(fixture.root, 'profile') },
+describe('CSS dependency watching', () => {
+  let pack: string;
+  let stylesheet: string;
+  let leaf: string;
+  let publications: number;
+  let errors: MockInstance<typeof console.error>;
+  let starting: ReturnType<typeof startPackBuildWatcher> | undefined;
+
+  beforeEach(async () => {
+    ({ pack } = consumer());
+    stylesheet = path.join(fixture.root, 'outside.css');
+    leaf = path.join(fixture.root, 'theme.css');
+    fs.writeFileSync(stylesheet, '@import "./theme.css";');
+    fs.writeFileSync(leaf, '.theme { color: #123456; }');
+    fs.appendFileSync(path.join(pack, 'src/canvas.vue'), '<style src="../../outside.css"></style>');
+    errors = vi.spyOn(console, 'error').mockImplementation(() => {});
+    publications = 0;
+    starting = startPackBuildWatcher(pack, { place: { env: 'test', userDataDir: path.join(fixture.root, 'profile') },
       onBuilt: async () => { publications++; } });
+    await starting;
+  });
+
+  afterEach(async () => {
+    const pending = starting;
+    starting = undefined;
+    // A failed startup closes its resources and is already reported by beforeEach.
+    await pending?.then(watcher => watcher.close(), () => {});
+  });
+
+  it('recovers a missing nested stylesheet while retaining the accepted build', async () => {
+    const css = () => fs.readFileSync(path.join(pack, 'dist/runtime/fe.css'), 'utf8');
     const replacement = path.join(fixture.root, 'replacement.css');
     fs.writeFileSync(replacement, '.theme { color: #654321; }');
     fs.renameSync(replacement, leaf);
@@ -87,7 +104,7 @@ it('watches CSS dependencies and recovers a missing nested stylesheet while reta
     fs.writeFileSync(path.join(fixture.root, 'future/theme.css'), '.theme { color: #abcdef; }');
     await vi.waitFor(() => expect(publications).toBeGreaterThan(count), { timeout: 20_000 });
     expect(css()).toContain('#abcdef');
-  } finally { await watcher?.close(); }
+  });
 });
 
 it.each(['css-url', 'template'] as const)('watches an external %s asset in a separate directory', async kind => {

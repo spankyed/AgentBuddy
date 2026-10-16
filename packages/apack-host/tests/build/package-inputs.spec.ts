@@ -3,7 +3,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { createRequire } from 'node:module';
 import { afterEach, expect, it } from 'vitest';
-import { packageInputsHash } from '../../src/build/package-inputs.ts';
+import { readPackageInputs } from '../../src/build/package-inputs.ts';
 
 const roots: string[] = [];
 afterEach(() => roots.splice(0).forEach(root => fs.rmSync(root, { recursive: true, force: true })));
@@ -20,14 +20,17 @@ function tree() {
   manifest('node_modules/helper', { name: 'helper', version: '1.0.0' });
   write('node_modules/compiler/index.js', 'throw new Error("Never activate to hash packages");');
   write('node_modules/helper/index.js', 'export const value = 1;');
-  return { root, write, manifest, hash: () => packageInputsHash([{ id: 'pack', directory: root, development: true }]) };
+  return { root, write, manifest, hash: () => readPackageInputs([{ id: 'pack', directory: root, development: true }]).hash };
 }
 
 it('hashes blocked package metadata and transitive helper bytes without loading code', () => {
   const pack = tree();
   expect(() => createRequire(path.join(pack.root, 'package.json')).resolve('compiler/package.json')).toThrow();
   const before = pack.hash();
+  const helper = path.join(pack.root, 'node_modules/helper/index.js');
+  const stat = fs.statSync(helper);
   pack.write('node_modules/helper/index.js', 'export const value = 2;');
+  fs.utimesSync(helper, stat.atime, stat.mtime);
   expect(pack.hash()).not.toBe(before);
 });
 
@@ -101,7 +104,7 @@ it('preserves development dependency coverage for a root first reached through a
   const pack = tree();
   const owner = path.join(pack.root, 'node_modules/compiler');
   pack.manifest('node_modules/compiler', { name: 'compiler', devDependencies: { helper: '*' } });
-  const hash = () => packageInputsHash([{ id: 'pack', directory: pack.root }, { id: 'compiler', directory: owner, development: true }]);
+  const hash = () => readPackageInputs([{ id: 'pack', directory: pack.root }, { id: 'compiler', directory: owner, development: true }]).hash;
   const before = hash();
   pack.write('node_modules/helper/index.js', 'changed root development dependency');
   expect(hash()).not.toBe(before);
@@ -119,7 +122,7 @@ it('includes discovered undeclared packages and their transitive dependencies', 
   const pack = tree();
   pack.manifest('.', { name: 'consumer' });
   const library = path.join(pack.root, 'node_modules/compiler');
-  const hash = () => packageInputsHash([{ id: 'pack', directory: pack.root }], [library]);
+  const hash = () => readPackageInputs([{ id: 'pack', directory: pack.root }], { discovered: [library] }).hash;
   const before = hash();
   pack.write('node_modules/helper/index.js', 'changed undeclared transitive helper');
   expect(hash()).not.toBe(before);
@@ -129,10 +132,104 @@ it('excludes consuming owners nested inside a discovered package scope', () => {
   const pack = tree();
   const consumer = path.join(pack.root, 'consumer');
   pack.manifest('consumer', { name: 'nested-consumer' });
-  const hash = () => packageInputsHash([{ id: 'pack', directory: consumer }], [pack.root]);
+  const hash = () => readPackageInputs([{ id: 'pack', directory: consumer }], { discovered: [pack.root] }).hash;
   const before = hash();
   pack.write('consumer/dist/runtime/index.js', 'new output');
   expect(hash()).toBe(before);
   pack.write('library.js', 'actual library input');
   expect(hash()).not.toBe(before);
+});
+
+it('exposes the resolved graph, copied bytes and blocked exports without activation', () => {
+  const pack = tree();
+  const copies = new Map<string, string>();
+  const inputs = readPackageInputs([{ id: 'compiler', directory: pack.root, contents: true }], {
+    onFile(file, bytes) { copies.set(file.source, bytes.toString()); },
+  });
+  const owner = inputs.nodes[inputs.roots[0]!.node]!;
+  const compiler = inputs.nodes[owner.dependencies.compiler!]!;
+  const helper = inputs.nodes[compiler.dependencies.helper!]!;
+  expect(compiler.directory).toBe(fs.realpathSync(path.join(pack.root, 'node_modules/compiler')));
+  expect(helper.files.map(file => file.path)).toContain('index.js');
+  expect(copies.get(path.join(helper.directory, 'index.js'))).toBe('export const value = 1;');
+});
+
+it('tracks linked targets, executable bits and empty directory membership', () => {
+  const pack = tree();
+  pack.write('node_modules/compiler/first.cjs', 'same bytes');
+  pack.write('node_modules/compiler/second.cjs', 'same bytes');
+  const link = path.join(pack.root, 'node_modules/compiler/linked.cjs');
+  fs.symlinkSync('first.cjs', link);
+  const first = pack.hash();
+  fs.unlinkSync(link);
+  fs.symlinkSync('second.cjs', link);
+  expect(pack.hash()).not.toBe(first);
+  const linked = pack.hash();
+  fs.chmodSync(path.join(pack.root, 'node_modules/compiler/first.cjs'), 0o755);
+  expect(pack.hash()).not.toBe(linked);
+  const executable = pack.hash();
+  fs.mkdirSync(path.join(pack.root, 'node_modules/compiler/empty'));
+  expect(pack.hash()).not.toBe(executable);
+});
+
+it('preserves physical file origins through nested directory and file links', () => {
+  const pack = tree();
+  pack.write('outside/nested/value.cjs', 'module.exports = 1;');
+  pack.write('replacement/nested/value.cjs', 'module.exports = 1;');
+  const source = fs.realpathSync(path.join(pack.root, 'outside/nested/value.cjs'));
+  fs.chmodSync(source, 0o755);
+  fs.chmodSync(path.join(pack.root, 'replacement/nested/value.cjs'), 0o755);
+  fs.symlinkSync('value.cjs', path.join(pack.root, 'outside/nested/alias.cjs'));
+  fs.symlinkSync('value.cjs', path.join(pack.root, 'replacement/nested/alias.cjs'));
+  const link = path.join(pack.root, 'node_modules/compiler/assets');
+  fs.symlinkSync('../../outside', link, 'dir');
+  const copies = new Map<string, string>();
+  const inputs = readPackageInputs([{ id: 'pack', directory: pack.root }], {
+    onFile(file, bytes) { copies.set(file.source, bytes.toString()); },
+  });
+  const compiler = inputs.nodes[inputs.nodes[0]!.dependencies.compiler!]!;
+  for (const name of ['value.cjs', 'alias.cjs']) {
+    expect(compiler.files.find(file => file.path === `assets/nested/${name}`)).toMatchObject({ source, mode: 0o755 });
+  }
+  expect(copies.get(source)).toBe('module.exports = 1;');
+  expect(pack.hash()).toBe(inputs.hash);
+  fs.unlinkSync(link);
+  fs.symlinkSync('../../replacement', link, 'dir');
+  expect(pack.hash()).not.toBe(inputs.hash);
+});
+
+it('includes root contents when any logical owner requests them', () => {
+  const pack = tree();
+  const hash = () => readPackageInputs([
+    { id: 'metadata', directory: pack.root },
+    { id: 'compiler', directory: pack.root, contents: true },
+  ]).hash;
+  const before = hash();
+  pack.write('compiler.js', 'changed compiler implementation');
+  expect(hash()).not.toBe(before);
+});
+
+it('preserves dependency names that collide with Object.prototype', () => {
+  const pack = tree();
+  pack.manifest('.', { dependencies: { ['__proto__']: '*', constructor: '*' } });
+  for (const name of ['__proto__', 'constructor']) {
+    pack.manifest(`node_modules/${name}`, { name });
+    pack.write(`node_modules/${name}/index.js`, name);
+  }
+  const inputs = readPackageInputs([{ id: 'pack', directory: pack.root }]);
+  expect(Object.keys(inputs.nodes[0]!.dependencies)).toEqual(['__proto__', 'constructor']);
+  expect(Object.keys(inputs.nodes[0]!.lookups)).toEqual(['__proto__', 'constructor']);
+  const before = pack.hash();
+  pack.write('node_modules/__proto__/index.js', 'changed dependency');
+  expect(pack.hash()).not.toBe(before);
+});
+
+it('includes dangling link membership and detects when its target appears', () => {
+  const pack = tree();
+  const before = pack.hash();
+  fs.symlinkSync('missing.cjs', path.join(pack.root, 'node_modules/compiler/optional.cjs'));
+  const dangling = pack.hash();
+  expect(dangling).not.toBe(before);
+  pack.write('node_modules/compiler/missing.cjs', 'module.exports = 1;');
+  expect(pack.hash()).not.toBe(dangling);
 });

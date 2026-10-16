@@ -2,13 +2,17 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { createHash } from 'node:crypto';
 import ts from 'typescript';
-import { readPackCompilerConfiguration, type CompilerInputObserver } from './compiler-configuration.ts';
+import { readPackCompilerConfiguration } from './compiler-configuration.ts';
+import type { BuildInputObserver } from '@apackdev/host/build/pack-inputs';
 import { isPackInputPath, packInputFiles } from '@apackdev/host/build/pack-inputs';
 import { codeBlocks } from './pack-sources.ts';
+import { compilerSourcePath } from './compiler-paths.ts';
+import { readCompilerInstallationInputs } from './compiler-installation.ts';
 
 /** Resolve script/type inputs afresh, including Vue scripts, outside imports and undeclared npm packages. */
-export function readCompilerModuleInputs(root: string, observe?: CompilerInputObserver): { hash: string; packageDirectories: string[] } {
+export function readCompilerModuleInputs(root: string, observe?: BuildInputObserver): { hash: string; packageDirectories: string[] } {
   const realRoot = fs.realpathSync(root);
+  const compilerPaths = readCompilerInstallationInputs()?.paths ?? [];
   const authoredRoots = [...new Set([path.resolve(root), realRoot])];
   const configuration = readPackCompilerConfiguration(root, observe);
   const options = {
@@ -95,9 +99,14 @@ export function readCompilerModuleInputs(root: string, observe?: CompilerInputOb
   }
   const hash = createHash('sha256');
   // Logical and physical aliases describe the same input, including /var -> /private/var on macOS.
-  const canonical = new Map([...files].map(([file, text]) =>
-    [path.relative(realRoot, fs.realpathSync.native(file)).split(path.sep).join('/'), text] as const));
+  const canonical = new Map<string, string>();
+  for (const [file, text] of files) {
+    const source = compilerSourcePath(fs.realpathSync.native(file), compilerPaths);
+    const name = path.relative(realRoot, source).split(path.sep).join('/');
+    if (canonical.has(name) && canonical.get(name) !== text) throw new Error(`Compiler input differs between captured and live sources: ${source}`);
+    canonical.set(name, text);
+  }
   for (const [file, text] of [...canonical].sort(([a], [b]) => a < b ? -1 : a > b ? 1 : 0)) hash.update(JSON.stringify([file, text]));
-  const relative = (directory: string) => path.relative(realRoot, directory).split(path.sep).join('/');
+  const relative = (directory: string) => path.relative(realRoot, compilerSourcePath(directory, compilerPaths)).split(path.sep).join('/');
   return { hash: hash.digest('hex'), packageDirectories: [...packages].sort((a, b) => relative(a) < relative(b) ? -1 : relative(a) > relative(b) ? 1 : 0) };
 }

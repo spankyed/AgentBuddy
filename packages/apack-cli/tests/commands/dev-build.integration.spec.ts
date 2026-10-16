@@ -5,8 +5,8 @@ import { expect, it, vi } from 'vitest';
 import { packFixture } from '@apackdev/sdk/testing/pack-fixture';
 import { REPO_ROOT } from '@apackdev/host/build/packages-built';
 import { readPackBuild } from '@apackdev/host/packs';
-import * as utils from '../../src/utils.ts';
 import * as checkout from '../../src/build/checkout-packages.ts';
+import * as compiler from '../../src/build/compiler-installation.ts';
 import { runPackBuild } from '../../src/build/build-process.ts';
 import { BUILD_INPUTS_IPC_ENV } from '../../src/build/build-watch-inputs.ts';
 
@@ -64,17 +64,23 @@ it('cancels its build child and disables inherited input reporting without an ob
   const controller = new AbortController();
   let running: Promise<void> | undefined;
   try {
-    fs.writeFileSync(script, `import fs from 'node:fs'; process.on('message', () => {}); fs.writeFileSync(${JSON.stringify(ready)}, JSON.stringify({ pid: process.pid, reporting: process.env.${BUILD_INPUTS_IPC_ENV} }));`);
-    vi.spyOn(utils, 'cliBin').mockReturnValue(script);
+    fs.writeFileSync(script, `import fs from 'node:fs'; process.on('message', () => {}); fs.writeFileSync(${JSON.stringify(ready)}, JSON.stringify({ pid: process.pid, reporting: process.env.${BUILD_INPUTS_IPC_ENV}, cacheDisabled: process.env.TSX_DISABLE_CACHE }));`);
+    const dispose = vi.fn(async () => {
+      const { pid } = JSON.parse(fs.readFileSync(ready, 'utf8'));
+      expect(() => process.kill(pid, 0)).toThrow();
+    });
+    vi.spyOn(compiler, 'captureCompilerInstallation').mockResolvedValue({ bin: script, hash: '0'.repeat(64), inputsFile: path.join(root, 'compiler-inputs.json'), dispose });
     vi.spyOn(checkout, 'ensureCheckoutPackages').mockImplementation(() => {});
     vi.stubEnv(BUILD_INPUTS_IPC_ENV, '1');
     running = runPackBuild(root, { signal: controller.signal });
     await vi.waitFor(() => expect(fs.existsSync(ready)).toBe(true), { timeout: 2_000 });
-    const { pid, reporting } = JSON.parse(fs.readFileSync(ready, 'utf8'));
+    const { pid, reporting, cacheDisabled } = JSON.parse(fs.readFileSync(ready, 'utf8'));
     expect(reporting).toBe('0');
+    expect(cacheDisabled).toBe('1');
     const stopped = expect(running).rejects.toMatchObject({ name: 'AbortError' });
     controller.abort();
     await stopped;
+    expect(dispose).toHaveBeenCalledOnce();
     await vi.waitFor(() => expect(() => process.kill(pid, 0)).toThrow(), { timeout: 2_000 });
   } finally {
     controller.abort();

@@ -17,7 +17,10 @@ function projectCli() {
   }
 }
 
-const handoff = projectCli();
+const worker = process.env.APACK_BUILD_WORKER === '1';
+if (worker && (!process.send || !process.connected)) throw new Error('Pack build worker requires its parent IPC channel');
+// The supervisor already selected and captured this compiler; project hand-off would escape it.
+const handoff = worker ? null : projectCli();
 if (handoff) {
   await import(pathToFileURL(handoff).href);
 } else {
@@ -26,8 +29,6 @@ if (handoff) {
   const { register } = await import('tsx/esm/api');
   register();
   // The compiler worker shares bootstrap/resolution, but never dispatches another public build.
-  const worker = process.env.APACK_BUILD_WORKER === '1';
-  if (worker && (!process.send || !process.connected)) throw new Error('Pack build worker requires its parent IPC channel');
   const entry = worker ? 'build-worker' : 'cli';
   const bundle = new URL(`../dist/${entry}.js`, import.meta.url);
   const bundled = existsSync(new URL('../dist/cli.js', import.meta.url));
