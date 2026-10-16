@@ -64,7 +64,7 @@ so completed implementation is not repeatedly scheduled as new work.
 | Manifest consolidation M1–M6 | Implemented and checkpoint-validated through `0994ae787`; own-key preservation `29f0cc556` | Preserve all 17 reconciled decisions, both naming outcomes and generated EARS/content behavior in final acceptance; do not restart consolidation. |
 | Settings/help/info/reference/step/command discovery (Phase 3) | Implemented reader migrations: `2169d29f8`, `6c876c9ba`, `20ab75efe`, `c776d1c5d`, `76df2f0e5`, `71fad4013`, `8ec5285ed`, `f7d63434c`, command catalog `ff48438cd` | Final all-kind acceptance, including source-free inspection, inactive owners and checked runtime eligibility. |
 | Live editor composition (Phase 3) | Implemented: `8863043a6` | Complete cold-document/provider readiness and real typing/replacement acceptance; fix demonstrated omissions without restarting composition. |
-| Remaining discovery consumers (Phase 3) | Partial; viewer readers `a278d4116` and shell default/dispatch `69860e4be` implemented | Finish catalog-backed navigation inventories/order/visibility and DSL assistance. Complete compiled-content flow/action edges and rename/missing-reference diagnostics. Audit services, repositories, events, native fields and static assets; migrate each actual gap and remove superseded discovery stores. |
+| Remaining discovery consumers (Phase 3) | Partial; viewer readers `a278d4116` and shell default/dispatch `69860e4be` implemented | Finish catalog-backed navigation inventories/order/visibility and the DSL/Monaco reader migration (producer/catalog `8ed188046`). Complete compiled-content flow/action edges and rename/missing-reference diagnostics. Audit services, repositories, events, native fields and static assets; migrate each actual gap and remove superseded discovery stores. |
 | Build input/publication and freshness (Phase 3) | Partial; finite checkpoints B1–B6 below | Finish the common producer contract and four passive consumer migrations; installed discovery must remain source-free and activation-free. |
 | Entity navigation (Phase 4) | Reference identity prerequisites implemented; destination migration unfinished | Implement declared destinations, eligibility/readiness, short-code round trips and caller migration under open-entity.md. |
 | Frontend boundaries (Phase 5) | Planned implementation | Isolate throwing canvas/panel/form contributions, preserve host settings and other panes, and reject retries for retired revisions. |
@@ -97,7 +97,40 @@ publication repair as outstanding implementation without new evidence.
 
 ### Execution order and change control
 
-Current discovery checkpoint: shell default selection and new-request dispatch in `69860e4be`.
+Current discovery checkpoint: compiled DSL publication/catalog in `8ed188046`.
+The builder copies every declared Monaco target's staged definition text into `snapshot.dslDefinitions`,
+including targets without globals and cached definition phases. Snapshot/dependency readers and native
+composition require the exact declared target set through one validator. Host and window project the
+same immutable DSL metadata/text, with owner, enablement and available declaration/build identity.
+Unbuilt sources expose metadata without claiming compiled text. Snapshot format/version stamps and
+release metadata are unchanged. Public build docs and the two SDK API reports match this contract.
+
+Evidence: 96 focused snapshot/native/generator/window cases pass; 20 installed catalog cases include a
+sealed disabled pack with poisoned runtimes and absent authored modules. Frontend admission/binding
+checks also passed with explicit native compiled data. The two-real-build backend-only proof passes
+(41.59s): a target without globals publishes text, a source-free disabled installed copy exposes it
+without activation, and cache reuse preserves both text and build revision. Full default-setup build
+passes and its snapshot contains action, prompt and database definitions. SDK/host/CLI, renderer test
+and default-setup typechecks, schema assistance, all 28 SDK API reports, lint/import rules and tiers
+pass. Reviewed reports add only the new snapshot/native field and DSL catalog types/accessor.
+`/private/tmp/apack-dsl-catalog-{converged,installed,focused,snapshot-build,default-build,sdk-types,host-types,cli-types,renderer-types,pack-types,schema,api-check,lint,specifiers,tiers}.log`.
+
+Required acceptance still open: the existing five-build `staged-dsl.integration.spec.ts` reached its
+unchanged 60-second case limit during the fourth (reuse) build. Its initial publication, intentional
+runtime-failure retention and repaired publication completed, including the new snapshot assertions;
+full frontend reuse/removal did not finish. Preserve `/private/tmp/apack-dsl-catalog-build.log` and the
+case at B6. The focused backend-only proof does not replace this case or establish full acceptance.
+The original case's deadline, assertions and coverage were not relaxed. No broad diagnostic rerun
+was made.
+
+Next migrate SDK/Monaco consumers to the published data, handling independent catalog updates,
+multiple open editors, library/global replacement and owned disposal. Remove frontend `dslTypes`,
+its runtime store, generated raw-text imports and superseded readers once callers move. Audit prefix
+and language behavior against actual declarations. This producer checkpoint does not close DSL/editor
+assistance, navigation menus, remaining discovery/content audits, B1–B6, entity navigation, boundaries,
+any Phase 6 workstream or final committed-source strict `--all` acceptance.
+
+Earlier shell checkpoint: shell default selection and new-request dispatch in `69860e4be`.
 The host and window share plugin metadata projection, including build identity. The window receives
 local native host declarations before backend connection. Accepted frontend plugin bindings carry
 captured declaration/build/runtime identity; the obsolete first-registered-default table and SDK
@@ -121,13 +154,8 @@ of injecting an unadmitted loaded plugin. The first API report attempt correctly
 packages after a shell edit; refreshing packages then generating/checking reports passed.
 `/private/tmp/apack-shell-catalog-{final-tests,converged,final-shell,navigation,pack-tests,types,sdk-types,testing-types,renderer-types,renderer-test-types,pack-types,api-check,lint,specifiers,tiers}.log`.
 
-Next complete DSL/editor assistance: inspect the actual built definition assets and materialize their
-static data for catalog consumers; remove registered type-data discovery and update mounted Monaco
-libraries/globals with owned disposables. Keep executable compilers separate. Navigation menu inventory,
-ordering/visibility and loader coordination cleanup remain required shell work; this checkpoint does
-not claim the complete shell row. Compiled-content edges, remaining contribution audits, B1–B6,
-navigation, boundaries, all three Phase 6 workstreams and final committed-source strict `--all` remain
-open. No broad diagnostic rerun was made; preserve the recorded integration/teardown failures for B6.
+The shell checkpoint leaves navigation menu inventory, ordering/visibility and loader coordination
+cleanup in Phase 3. Its remaining-work statement is historical; the current next action is above.
 
 Earlier viewer checkpoint: block/artifact readers and checked frontend bindings in `a278d4116`,
 following metadata publication in `3e4e10c8f`. Accepted bindings carry owner, declaration, build and
