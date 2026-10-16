@@ -107,10 +107,6 @@ async function buildIntoStaging(args: string[], root: string) {
   const inputsHash = packInputsHash(root);
   const manifest = readValidManifest(root);
 
-  // What each bundling phase read, for the chain step that builds this pack to be checked against. The
-  // phases with no bundler to ask — codegen, the content compilation, feature settings, the pack rules — are
-  // absent from the record rather than guessed at
-  const reads = buildReads(root);
   // What the last build left reusable, and what this one leaves for the next
   const stamps = readStamps(root);
   const nextStamps: Record<string, PhaseStamp> = {};
@@ -138,6 +134,10 @@ async function buildIntoStaging(args: string[], root: string) {
   const resolvedDependencies = dependencyTypes(dependencyFiles);
   const { depSnapshots } = resolvedDependencies;
   const compilation = captureCompilationInputs(root);
+  // What each bundling phase read, for the chain step that builds this pack to be checked against. The
+  // phases with no bundler to ask — codegen, the content compilation, feature settings, the pack rules — are
+  // absent from the record rather than guessed at
+  const reads = buildReads(root, compilation.sourcePath);
   try {
     if (args.includes('--skip-generate')) assertGeneratedCurrent(root, manifest, resolvedDependencies, compilation);
     else await generateEntries([], root, resolvedDependencies, compilation);

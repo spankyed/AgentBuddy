@@ -1,7 +1,7 @@
 import { createHash } from 'node:crypto';
 import { errorMessage } from '@apackdev/sdk/utils/pure';
 import { buildToolHash, cliPackageDirectory } from './tool-identity.ts';
-import { readPackageInputs, type PackageInputs } from '@apackdev/host/build/package-inputs';
+import { readPackageInputs } from '@apackdev/host/build/package-inputs';
 import { SOURCE_CONDITION } from '@apackdev/host/build/source-resolution';
 import { readCompilerModuleInputs } from './compiler-module-inputs.ts';
 import { readCompilerInstallationInputs } from './compiler-installation.ts';
@@ -9,6 +9,8 @@ import type { PackCompilerConfiguration } from './compiler-configuration.ts';
 import fs from 'node:fs';
 import path from 'node:path';
 import { packInputFiles } from '@apackdev/host/build/pack-inputs';
+import { compilerSourcePath } from './compiler-paths.ts';
+import { createNativeInputReader } from './compiler-native-inputs.ts';
 import { createCompilerReadTree, type CompilerReadTree } from './compiler-read-tree.ts';
 
 /** Instrumentation flags do not change compilation. The reserved source mode is in buildToolHash. */
@@ -35,6 +37,8 @@ export interface CompilationInputs {
   readFile(file: string): Buffer | undefined;
   captureGenerated(): void;
   readTree(): CompilerReadTree;
+  sourcePath(file: string): string;
+  prepareNative(specifier: string, importer: string): void;
   dispose(): void;
   assertCurrent(): void;
 }
@@ -46,7 +50,6 @@ export function captureCompilationInputs(packRoot: string): CompilationInputs {
   if (compiler && !compiler.packages.includes(cliRoot)) throw new Error('Captured compiler inputs do not belong to this CLI');
   const capturedPackages = new Set(compiler?.packages);
   const modules = readCompilerModuleInputs(packRoot);
-  let packages: PackageInputs;
   let tree: CompilerReadTree | undefined;
   const current = (capture = false) => {
     const owners = [{ id: 'pack', directory: packRoot, development: true }];
@@ -55,17 +58,43 @@ export function captureCompilationInputs(packRoot: string): CompilationInputs {
       discovered: modules.packageDirectories.filter(directory => !capturedPackages.has(directory)),
       onFile: capture ? (file, bytes) => modules.captureFile(file.source, bytes) : undefined,
     });
-    if (capture) packages = inputs;
-    return createHash('sha256').update(compiler?.hash ?? buildToolHash()).update(inputs.hash).update(modules.hash)
+    const hash = createHash('sha256').update(compiler?.hash ?? buildToolHash()).update(inputs.hash).update(modules.hash)
       .update(JSON.stringify([process.versions.node, process.platform, process.arch, compilationConditions()]))
       .digest('hex');
+    return { hash, packages: inputs };
   };
-  const hash = current(true);
+  const { hash, packages } = current(true);
+  const sourcePath = (file: string): string => tree?.sourcePath(file) ?? compilerSourcePath(file, compiler?.paths ?? []);
+  const readTree = (): CompilerReadTree => {
+    if (!tree) {
+      const links = packages.nodes.flatMap(node => [
+        ...node.links.map(link => ({ file: path.join(node.directory, link.path), target: link.target })),
+        ...Object.entries(node.dependencies).flatMap(([name, index]) => index === null ? []
+          : [{ file: node.lookups[name]!, target: packages.nodes[index]!.directory }]),
+      ]);
+      for (const link of links) {
+        modules.captureLocation(link.file, 'file');
+        modules.ancestors(link.file);
+      }
+      const snapshot = modules.snapshot();
+      const locations = [...snapshot.locations, ...packages.nodes.flatMap(node => node.directories
+        .map(directory => ({ file: directory.source, physical: directory.source, kind: 'directory' })))];
+      tree = createCompilerReadTree({ ...snapshot, locations, links }, compiler?.paths ?? [], (file, bytes, readPath) => native.projectMetadata(file, bytes, readPath));
+    }
+    return tree;
+  };
+  const native = createNativeInputReader(modules, packages, sourcePath, snapshot => readTree().include(snapshot));
   return {
     hash,
     configuration: modules.configuration,
     declarationConfiguration: modules.declarationConfiguration,
-    readFile: modules.readBytes,
+    readFile(file) {
+      const bytes = modules.readBytes(file);
+      if (tree && bytes !== undefined) tree.include({
+        files: [modules.captureFile(file, bytes)], locations: [modules.captureLocation(file, 'file')!], links: [],
+      });
+      return bytes;
+    },
     captureGenerated() {
       for (const relative of packInputFiles(packRoot, { generated: true })) {
         if (!relative.startsWith('src/__generated__/')) continue;
@@ -73,26 +102,15 @@ export function captureCompilationInputs(packRoot: string): CompilationInputs {
         modules.captureFile(file, fs.readFileSync(file));
       }
     },
-    readTree() {
-      if (!tree) {
-        const snapshot = modules.snapshot();
-        const links = packages.nodes.flatMap(node => [
-          ...node.links.map(link => ({ file: path.join(node.directory, link.path), target: link.target })),
-          ...Object.entries(node.dependencies).flatMap(([name, index]) => index === null ? []
-            : [{ file: node.lookups[name]!, target: packages.nodes[index]!.directory }]),
-        ]);
-        const locations = [...snapshot.locations, ...packages.nodes.flatMap(node => node.directories
-          .map(directory => ({ file: directory.source, physical: directory.source, kind: 'directory' })))];
-        tree = createCompilerReadTree({ ...snapshot, locations, links }, compiler?.paths ?? []);
-      }
-      return tree;
-    },
+    readTree,
+    sourcePath,
+    prepareNative(specifier, importer) { readTree(); native.prepare(specifier, sourcePath(importer)); },
     dispose() { tree?.dispose(); tree = undefined; },
     assertCurrent() {
       try {
         tree?.assertCurrent();
         modules.assertCurrent();
-        if (current() !== hash) throw new Error('Implementation, package or execution options differ');
+        if (current().hash !== hash) throw new Error('Implementation, package or execution options differ');
       } catch (cause) {
         throw new Error(`Compiler or installed package inputs changed; retry before publishing: ${errorMessage(cause)}`, { cause });
       }

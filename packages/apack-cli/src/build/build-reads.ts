@@ -114,7 +114,7 @@ export interface BuildReads {
  * `packDir` is where the file goes and what the paths are relative to — a pack author outside this repo
  * has no repo root, and the reader resolves against the pack directory it found the file in.
  */
-export function buildReads(packDir: string): BuildReads | undefined {
+export function buildReads(packDir: string, sourcePath?: (file: string) => string): BuildReads | undefined {
   if (optedOut()) return undefined;
   // The directory the bundlers resolve their relative paths against, taken once: esbuild's metafile keys
   // are relative to it, and a build does not change directory
@@ -147,7 +147,7 @@ export function buildReads(packDir: string): BuildReads | undefined {
       bundlers: Object.fromEntries([...bundlers].sort(([a], [b]) => a.localeCompare(b))),
       phases: Object.fromEntries(BUILD_PHASES
         .filter((phase) => phases.has(phase))
-        .map((phase) => [phase, relativeReads(phases.get(phase)!, cwd, root)])),
+        .map((phase) => [phase, relativeReads(phases.get(phase)!, cwd, root, sourcePath)])),
     };
     const file = path.join(packDir, PACK_READS_FILE);
     fs.mkdirSync(path.dirname(file), { recursive: true });
@@ -217,14 +217,15 @@ export function buildReads(packDir: string): BuildReads | undefined {
  * way — resolving it follows a symlink out of `node_modules`, and realpath is what puts it back under
  * `packages/`, which is exactly where a declaration has to name it.
  */
-function relativeReads(files: Iterable<string>, cwd: string, root: string): string[] {
+function relativeReads(files: Iterable<string>, cwd: string, root: string, sourcePath?: (file: string) => string): string[] {
   const out = new Set<string>();
   const compilerPaths = readCompilerInstallationInputs()?.paths ?? [];
   for (const file of files) {
     if (file.includes('\0')) continue;
     let real: string;
     try {
-      real = compilerSourcePath(fs.realpathSync(path.resolve(cwd, file)), compilerPaths);
+      const physical = fs.realpathSync(path.resolve(cwd, file));
+      real = sourcePath ? sourcePath(physical) : compilerSourcePath(physical, compilerPaths);
     } catch {
       continue;
     }

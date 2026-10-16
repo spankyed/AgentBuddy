@@ -120,9 +120,44 @@ export function createCompilerFileView(root: string, options: {
 
   input(root, 'directory');
   const changed = (file: string): never => { throw new Error(`Compiler resolution namespace changed during discovery: ${file}`); };
+  const ancestors = (file: string) => {
+    const values: FileInput[] = [];
+    const boundary = paths.find(mapping => {
+      const relative = path.relative(mapping.captured, path.resolve(file));
+      return relative !== '..' && !relative.startsWith(`..${path.sep}`) && !path.isAbsolute(relative);
+    })?.captured;
+    if (boundary === path.resolve(file)) return values;
+    for (let directory = path.dirname(path.resolve(file)); ; directory = path.dirname(directory)) {
+      const value = input(directory, 'directory');
+      if (value) values.push({ ...value });
+      if (directory === boundary || path.dirname(directory) === directory) break;
+    }
+    return values;
+  };
   return {
     fileSystem,
     readBytes,
+    ancestors,
+    captureLocation(file: string, kind: BuildInputKind) {
+      if (kind === 'entries') listing(file);
+      const value = input(file, kind);
+      return value && { ...value };
+    },
+    resolutionDirectory(file: string) {
+      const directory = input(file, 'entries');
+      const locations: FileInput[] = directory ? [{ ...directory }] : [];
+      const files: Array<{ file: string; bytes?: Buffer; mode: number }> = [];
+      for (const entry of listing(file)) {
+        const node = input(path.join(file, entry.name), 'file');
+        if (!node) continue;
+        if (node.kind === 'missing' && entry.kind !== 'link') changed(node.file);
+        locations.push({ ...node });
+        if (node.kind !== 'file') continue;
+        const source = /\.(?:[cm]?[jt]sx?|json)$/.test(node.file);
+        files.push({ file: node.physical, mode: node.mode, bytes: source ? readBytes(node.file) : undefined });
+      }
+      return { files, locations, links: [] };
+    },
     /** Admit bytes already consumed by a producer, without rereading its mutable file. */
     captureFile(file: string, value: Buffer) {
       included.add(path.resolve(file));
@@ -132,6 +167,7 @@ export function createCompilerFileView(root: string, options: {
         throw new Error(`Compiler input changed during capture: ${file}`);
       }
       contents.set(node.physical, Buffer.from(value));
+      return { file: node.physical, bytes: Buffer.from(value), mode: node.mode };
     },
     snapshot() {
       // Materialize every positive query and known directory entry, without inventing an ancestor scan.
@@ -144,6 +180,7 @@ export function createCompilerFileView(root: string, options: {
         const data = readBytes(value.file) ?? changed(value.file);
         files.set(value.physical, { file: value.physical, bytes: data, mode: value.mode });
       }
+      for (const value of inputs.values()) ancestors(value.file);
       return { files: [...files.values()], locations: [...inputs.values()].map(value => ({ ...value })) };
     },
     assertCurrent() {

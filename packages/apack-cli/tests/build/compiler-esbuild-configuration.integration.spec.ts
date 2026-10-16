@@ -40,6 +40,7 @@ function fixture(baseUrl: boolean) {
   write('node_modules/config-base/tsconfig.json', { compilerOptions: { useDefineForClassFields: false, jsx: 'react-jsx', strict: true } });
   write('node_modules/bare/package.json', { name: 'bare', main: 'index.js', types: 'index.d.ts', type: 'module' });
   write('node_modules/bare/index.js', 'export const label = "PACKAGE";');
+  write('node_modules/bare/alternate.js', 'export const label = "WRONG_ENTRY";');
   write('node_modules/bare/index.d.ts', 'export declare const label: string;');
   write('configs/base.json', '// JSONC parent\n' + JSON.stringify({ extends: 'config-base/tsconfig.json', compilerOptions: {
     ...(baseUrl ? { baseUrl: '../external' } : {}), paths: { outside: [baseUrl ? 'value.ts' : '../external/value.ts'] }, target: 'ES2022',
@@ -142,7 +143,7 @@ it('preserves native parent-config discovery when there is no explicit pack conf
   expect(evaluate(fs.readFileSync(path.join(output, 'runtime/index.cjs'), 'utf8'))).toEqual(expected);
 });
 
-it.each(['configuration', 'sources', 'declarations'])('publishes captured %s despite a transient live edit restored during bundling', async change => {
+it.each(['configuration', 'sources', 'declarations', 'resolution'])('publishes captured %s despite a transient live edit restored during bundling', async change => {
   const { root, pack } = fixture(false);
   packFixture({ at: pack, nodeModules: path.join(REPO_ROOT, 'node_modules'), manifest: {
     id: 'captured-config', name: 'Captured config', features: {}, lifecycle: { onInit: 'src/on-init.ts#onInit' },
@@ -161,6 +162,7 @@ it.each(['configuration', 'sources', 'declarations'])('publishes captured %s des
   const transient = vi.spyOn(bundlers, 'bundlePackRuntime').mockImplementation(async (...args) => {
     const replacements = change === 'configuration'
       ? [[config, JSON.stringify({ compilerOptions: { useDefineForClassFields: true, jsx: 'react-jsx', strict: true } })]]
+      : change === 'resolution' ? [[path.join(root, 'node_modules/bare/package.json'), JSON.stringify({ name: 'bare', main: 'alternate.js', types: 'index.d.ts', type: 'module' })]]
       : change === 'declarations' ? [] : [
         [path.join(pack, 'src/input.tsx'), fs.readFileSync(path.join(pack, 'src/input.tsx'), 'utf8').replace('field = 7', 'field = 99')],
         [path.join(root, 'external/value.ts'), 'export const value = "LIVE_ALIAS";'],
@@ -205,4 +207,28 @@ it.each(['configuration', 'sources', 'declarations'])('publishes captured %s des
   if ('problem' in loaded) throw new Error(loaded.problem);
   expect(loaded.registration.lifecycle?.onInit?.())
     .toBe(JSON.stringify({ calls: [7], label: 'PACKAGE', value: 'ALIASED', jsx: 'div' }));
+});
+
+it('keeps implicit absolute configuration inheritance owned while originals are absent', async () => {
+  const { root, pack, write } = fixture(false);
+  fs.unlinkSync(path.join(pack, 'tsconfig.json'));
+  write('tsconfig.json', { extends: path.join(root, 'configs/base.json'), compilerOptions: {
+    jsx: 'react', jsxFactory: 'element', types: [], noLib: true,
+  } });
+  const compilation = captureCompilationInputs(pack);
+  compilation.captureGenerated();
+  const files = ['tsconfig.json', 'configs/base.json'].map(file => path.join(root, file));
+  const originals = files.map(file => fs.readFileSync(file));
+  try {
+    for (const file of files) fs.unlinkSync(file);
+    const output = path.join(pack, 'dist');
+    const result = await bundlePackRuntime(pack, output, { compilation });
+    expect(result.success, result.error).toBe(true);
+    expect(evaluate(fs.readFileSync(path.join(output, 'runtime/index.cjs'), 'utf8')))
+      .toEqual({ calls: [7], label: 'PACKAGE', value: 'ALIASED', jsx: 'div' });
+    expect(fs.readFileSync(path.join(output, 'runtime/index.cjs.map'), 'utf8')).not.toContain('apack-inputs-');
+  } finally {
+    files.forEach((file, index) => fs.writeFileSync(file, originals[index]!));
+    compilation.dispose();
+  }
 });

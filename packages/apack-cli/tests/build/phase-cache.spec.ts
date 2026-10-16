@@ -13,6 +13,8 @@ const compilation = {
   configuration: undefined,
   declarationConfiguration: undefined,
   readTree() { throw new Error('No tree in hash-only fixture'); },
+  sourcePath(file: string) { return file; },
+  prepareNative() {},
   dispose() {},
   readFile() { return undefined; },
   captureGenerated() {},

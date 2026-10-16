@@ -19,124 +19,179 @@ export function removeCompilerReadTree(directory: string): void {
   fs.rmSync(directory, { recursive: true, force: true });
 }
 
+interface CompilerReadLocation {
+  readonly file: string;
+  readonly physical: string;
+  readonly kind: string;
+  readonly slot?: string;
+}
+
 export interface CompilerReadSnapshot {
-  readonly files: ReadonlyArray<{ file: string; bytes: Buffer; mode: number }>;
-  readonly locations: ReadonlyArray<{ file: string; physical: string; kind: string; slot?: string }>;
+  readonly files: ReadonlyArray<{ file: string; bytes?: Buffer; mode: number }>;
+  readonly locations: readonly CompilerReadLocation[];
   readonly links: ReadonlyArray<{ file: string; target: string }>;
 }
 
-/** One build's owned filesystem. Read locations are private; identities remain source paths. */
-export function createCompilerReadTree(snapshot: CompilerReadSnapshot, paths: readonly CompilerPathMapping[]) {
+type ProjectMetadata = (file: string, bytes: Buffer, readPath: (file: string) => string) => Buffer;
+
+/** Owned queries can admit a new namespace; previously captured source bytes cannot change. */
+export function createCompilerReadTree(snapshot: CompilerReadSnapshot, paths: readonly CompilerPathMapping[], projectMetadata?: ProjectMetadata) {
   const parent = process.env[BUILD_INPUTS_DIRECTORY_ENV] ?? os.tmpdir();
   if (!path.isAbsolute(parent)) throw new Error('Compiler input workspace must be absolute');
   const directory = fs.realpathSync(fs.mkdtempSync(path.join(parent, 'apack-inputs-')));
   const roots = new Map<string, string>();
   const directories = new Set([directory]);
-  const mkdir = (file: string) => {
-    fs.mkdirSync(file, { recursive: true });
-    for (let current = file; !directories.has(current); current = path.dirname(current)) directories.add(current);
-  };
+  const entries = new Map<string, string[]>();
+  const files = new Map<string, { sourceHash?: string; hash: string; mode: number }>();
+  const links = new Map<string, string>();
+  const locations = new Map<string, CompilerReadLocation>();
+  const digest = (bytes: Buffer) => createHash('sha256').update(bytes).digest('hex');
   const dispose = () => removeCompilerReadTree(directory);
+  const mappings = () => [...roots].map(([source, captured]) => ({ source, captured }));
+  const sourcePath = (file: string) => compilerSourcePath(compilerSourcePath(file, mappings()), paths);
   const ownedPath = (file: string) => {
-    const source = compilerSourcePath(path.resolve(file), paths);
+    const source = sourcePath(path.resolve(file));
     const root = path.parse(source).root;
     const target = path.join(directory, Buffer.from(root).toString('hex'));
     roots.set(root, target);
     return path.join(target, path.relative(root, source));
   };
-  const sourcePath = (file: string) => compilerSourcePath(file,
-    [...roots].map(([source, captured]) => ({ source, captured })));
-  try {
-    const digest = (bytes: Buffer) => createHash('sha256').update(bytes).digest('hex');
-    const files = new Map<string, { hash: string; mode: number }>();
-    for (const file of snapshot.files) {
-      const target = ownedPath(file.file);
-      const hash = digest(file.bytes);
-      const previous = files.get(target);
-      if (previous) {
-        if (previous.hash !== hash || (previous.mode & 0o111) !== (file.mode & 0o111)) {
-          throw new Error(`Conflicting captured input bytes or mode: ${sourcePath(target)}`);
-        }
-        continue;
+  const names = (file: string) => fs.readdirSync(file).sort();
+  const changed = (kind: string, file: string): never => {
+    throw new Error(`Captured compiler ${kind} changed: ${sourcePath(file)}`);
+  };
+
+  function include(next: CompilerReadSnapshot) {
+    const writable = new Set<string>();
+    const pendingLinks = new Map<string, string>();
+    const mkdir = (file: string): void => {
+      const stat = fs.statSync(file, { throwIfNoEntry: false });
+      if (!stat) {
+        mkdir(path.dirname(file));
+        fs.mkdirSync(file, { mode: 0o700 });
+        directories.add(file);
+        writable.add(file);
+        return;
       }
-      mkdir(path.dirname(target));
-      fs.writeFileSync(target, file.bytes, { flag: 'wx', mode: file.mode & ~0o222 });
-      fs.chmodSync(target, file.mode & ~0o222);
-      files.set(target, { hash, mode: file.mode });
-    }
-    for (const location of snapshot.locations) {
-      if (location.kind === 'directory') mkdir(ownedPath(location.physical));
-    }
-    const links = new Map<string, string>();
+      const real = fs.realpathSync(file);
+      const relative = path.relative(directory, real);
+      if (relative === '..' || relative.startsWith(`..${path.sep}`) || path.isAbsolute(relative)) changed('binding', file);
+      if (writable.has(real)) return;
+      const expected = entries.get(real);
+      if (expected && JSON.stringify(names(real)) !== JSON.stringify(expected)) changed('namespace', file);
+      fs.chmodSync(real, 0o700);
+      directories.add(real);
+      writable.add(real);
+    };
     const link = (file: string, target: string) => {
       const from = ownedPath(file), to = ownedPath(target);
       if (from === to) return;
       const previous = links.get(from);
       if (previous && previous !== to) throw new Error(`Conflicting captured input binding: ${file}`);
+      if (previous) return;
       links.set(from, to);
+      pendingLinks.set(from, to);
     };
-    for (const location of snapshot.locations) {
-      if (location.kind !== 'missing' || location.slot !== location.physical) link(location.file, location.physical);
-    }
-    for (const binding of snapshot.links) link(binding.file, binding.target);
-    for (const [file, target] of [...links].sort(([a], [b]) => a.length - b.length)) {
-      mkdir(path.dirname(file));
-      const existing = fs.lstatSync(file, { throwIfNoEntry: false });
-      if (existing) {
-        if (existing.isSymbolicLink() && path.resolve(path.dirname(file), fs.readlinkSync(file)) === target) continue;
-        if (fs.realpathSync(file) === fs.realpathSync(target)) continue;
-        throw new Error(`Conflicting captured input path: ${sourcePath(file)}`);
+    try {
+      for (const file of next.files) {
+        const target = ownedPath(file.file);
+        const previous = files.get(target);
+        if (file.bytes === undefined && previous) continue;
+        const sourceHash = file.bytes === undefined ? undefined : digest(file.bytes);
+        if (previous && ((previous.sourceHash !== undefined && previous.sourceHash !== sourceHash)
+          || (previous.mode & 0o111) !== (file.mode & 0o111))) {
+          throw new Error(`Conflicting captured input bytes or mode: ${sourcePath(target)}`);
+        }
+        const bytes = file.bytes === undefined ? Buffer.alloc(0) : projectMetadata?.(sourcePath(file.file), file.bytes, ownedPath) ?? file.bytes;
+        const hash = digest(bytes);
+        if (previous?.hash === hash) {
+          if (sourceHash !== undefined) previous.sourceHash = sourceHash;
+          continue;
+        }
+        mkdir(path.dirname(target));
+        if (previous) {
+          if (digest(fs.readFileSync(target)) !== previous.hash) changed('input', target);
+          fs.chmodSync(target, 0o600);
+        }
+        fs.writeFileSync(target, bytes, { flag: previous ? 'w' : 'wx', mode: file.mode & ~0o222 });
+        fs.chmodSync(target, file.mode & ~0o222);
+        files.set(target, { sourceHash, hash, mode: file.mode });
       }
-      fs.symlinkSync(target, file, process.platform === 'win32'
-        ? fs.statSync(target, { throwIfNoEntry: false })?.isDirectory() ? 'junction' : 'file' : undefined);
-    }
-    for (const location of snapshot.locations) {
-      const file = ownedPath(location.file);
-      let stat: fs.Stats | undefined;
-      try { stat = fs.statSync(file, { throwIfNoEntry: false }); }
-      catch (error) { if ((error as NodeJS.ErrnoException).code !== 'ENOTDIR') throw error; }
-      if (location.kind === 'missing' ? !!stat : location.kind === 'file' ? !stat?.isFile() : location.kind === 'directory' ? !stat?.isDirectory() : true) {
-        throw new Error(`Captured input namespace differs: ${location.file}`);
+      for (const location of next.locations) {
+        const file = sourcePath(location.file), physical = sourcePath(location.physical);
+        const previous = locations.get(file);
+        if (previous && (previous.physical !== physical || previous.kind !== location.kind)) changed('namespace', file);
+        locations.set(file, { ...location, file, physical });
+        if (location.kind === 'directory') mkdir(ownedPath(physical));
+        if (location.kind !== 'missing' || location.slot !== location.physical) link(file, physical);
+      }
+      for (const binding of next.links) link(binding.file, binding.target);
+      for (const [file, target] of [...pendingLinks].sort(([a], [b]) => a.length - b.length)) {
+        const existing = fs.lstatSync(file, { throwIfNoEntry: false });
+        if (existing) {
+          if (existing.isSymbolicLink() && path.resolve(path.dirname(file), fs.readlinkSync(file)) === target) continue;
+          if (fs.realpathSync(file) === fs.realpathSync(target)) continue;
+          throw new Error(`Conflicting captured input path: ${sourcePath(file)}`);
+        }
+        mkdir(path.dirname(file));
+        fs.symlinkSync(target, file, process.platform === 'win32'
+          ? fs.statSync(target, { throwIfNoEntry: false })?.isDirectory() ? 'junction' : 'file' : undefined);
+      }
+      for (const location of next.locations) {
+        let stat: fs.Stats | undefined;
+        try { stat = fs.statSync(ownedPath(location.file), { throwIfNoEntry: false }); }
+        catch (error) { if ((error as NodeJS.ErrnoException).code !== 'ENOTDIR') throw error; }
+        if (location.kind === 'missing' ? !!stat : location.kind === 'file' ? !stat?.isFile() : location.kind === 'directory' ? !stat?.isDirectory() : true) {
+          throw new Error(`Captured input namespace differs: ${sourcePath(location.file)}`);
+        }
+      }
+    } finally {
+      for (const file of writable) {
+        fs.chmodSync(file, file === directory ? 0o500 : 0o555);
+        entries.set(file, names(file));
       }
     }
+  }
+
+  const assertCurrent = () => {
+    for (const [file, expected] of files) {
+      const mode = fs.statSync(file).mode;
+      if (digest(fs.readFileSync(file)) !== expected.hash || (mode & 0o111) !== (expected.mode & 0o111) || (mode & 0o222)) changed('input', file);
+    }
+    for (const [file, target] of links) {
+      const stat = fs.lstatSync(file, { throwIfNoEntry: false });
+      if (stat?.isSymbolicLink() && path.resolve(path.dirname(file), fs.readlinkSync(file)) === target) continue;
+      if (stat && fs.realpathSync(file) === fs.realpathSync(target)) continue;
+      changed('binding', file);
+    }
+    for (const [file, expected] of entries) {
+      if ((fs.statSync(file).mode & 0o222) || JSON.stringify(names(file)) !== JSON.stringify(expected)) changed('namespace', file);
+    }
+  };
+  try {
     const workDirectory = path.join(directory, 'work');
     fs.mkdirSync(workDirectory, { mode: 0o700 });
-    for (const file of directories) fs.chmodSync(file, 0o555);
-    const entries = new Map([...directories].map(file => [file, fs.readdirSync(file).sort()]));
-    const assertCurrent = () => {
-      for (const [file, expected] of files) {
-        const mode = fs.statSync(file).mode;
-        if (digest(fs.readFileSync(file)) !== expected.hash || (mode & 0o111) !== (expected.mode & 0o111) || (mode & 0o222)) {
-          throw new Error(`Captured compiler input changed: ${sourcePath(file)}`);
-        }
-      }
-      for (const [file, target] of links) {
-        const stat = fs.lstatSync(file, { throwIfNoEntry: false });
-        if (stat?.isSymbolicLink() && path.resolve(path.dirname(file), fs.readlinkSync(file)) === target) continue;
-        if (stat && fs.realpathSync(file) === fs.realpathSync(target)) continue;
-        throw new Error(`Captured compiler binding changed: ${sourcePath(file)}`);
-      }
-      for (const [file, names] of entries) {
-        if ((fs.statSync(file).mode & 0o222) || JSON.stringify(fs.readdirSync(file).sort()) !== JSON.stringify(names)) {
-          throw new Error(`Captured compiler namespace changed: ${sourcePath(file)}`);
-        }
-      }
-    };
+    // Stop implicit compiler configuration/package scope at the mirrored filesystem boundary.
+    for (const [name, text] of Object.entries({ 'tsconfig.json': '{}', 'package.json': '{"type":"commonjs"}' })) {
+      const file = path.join(directory, name), bytes = Buffer.from(text), hash = digest(bytes);
+      fs.writeFileSync(file, bytes, { flag: 'wx', mode: 0o400 });
+      files.set(file, { sourceHash: hash, hash, mode: 0o400 });
+    }
+    include(snapshot);
+    // Even an empty snapshot retains a private, owner-only container.
+    fs.chmodSync(directory, 0o500);
+    entries.set(directory, names(directory));
     assertCurrent();
     return {
-      directory,
-      workDirectory,
-      path: ownedPath,
-      sourcePath,
-      assertCurrent,
+      directory, workDirectory, path: ownedPath, sourcePath, include, assertCurrent, dispose,
       diagnostic(message: string) {
         for (const [source, captured] of roots) {
-          message = message.split(path.relative(process.cwd(), captured) + path.sep).join(source);
+          const relative = path.relative(process.cwd(), captured);
+          if (relative) message = message.split(relative + path.sep).join(source);
           message = message.split(captured + path.sep).join(source);
         }
         return message;
       },
-      dispose,
     };
   } catch (error) {
     dispose();
