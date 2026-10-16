@@ -62,9 +62,9 @@ so completed implementation is not repeatedly scheduled as new work.
 | Shared declaration/catalog foundation (Phase 1) | Implemented foundation; contribution coverage remains partial | Close the remaining field-by-field classification and native/authored coverage with the discovery rows below; do not build another catalog. |
 | Settings (Phase 2) | Implemented: catalog integration `f3416ad2f` and subsequent settings checkpoints below | Final three-owner, policy, reset/import, disabled/failed owner, custom-form and multiple-window acceptance; no new extraction. |
 | Manifest consolidation M1–M6 | Implemented and checkpoint-validated through `0994ae787`; own-key preservation `29f0cc556` | Preserve all 17 reconciled decisions, both naming outcomes and generated EARS/content behavior in final acceptance; do not restart consolidation. |
-| Settings/help/info/reference/step discovery (Phase 3) | Implemented reader migrations: `2169d29f8`, `6c876c9ba`, `20ab75efe`, `c776d1c5d`, `76df2f0e5`, `71fad4013`, `8ec5285ed`, `f7d63434c` | Final all-kind acceptance, including source-free inspection, inactive owners and checked runtime eligibility. |
+| Settings/help/info/reference/step/command discovery (Phase 3) | Implemented reader migrations: `2169d29f8`, `6c876c9ba`, `20ab75efe`, `c776d1c5d`, `76df2f0e5`, `71fad4013`, `8ec5285ed`, `f7d63434c`, command catalog `ff48438cd` | Final all-kind acceptance, including source-free inspection, inactive owners and checked runtime eligibility. |
 | Live editor composition (Phase 3) | Implemented: `8863043a6` | Complete cold-document/provider readiness and real typing/replacement acceptance; fix demonstrated omissions without restarting composition. |
-| Remaining discovery consumers (Phase 3) | Partial; current readers still mix active bindings and static metadata | Migrate shell/default selection, slash commands, block/artifact inventories and DSL assistance. Complete compiled-content flow/action edges and rename/missing-reference diagnostics. Audit services, repositories, events, native fields and static assets; migrate each actual gap and remove superseded discovery stores. |
+| Remaining discovery consumers (Phase 3) | Partial; current readers still mix active bindings and static metadata | Migrate shell/default selection, block/artifact inventories and DSL assistance. Complete compiled-content flow/action edges and rename/missing-reference diagnostics. Audit services, repositories, events, native fields and static assets; migrate each actual gap and remove superseded discovery stores. |
 | Build input/publication and freshness (Phase 3) | Partial; finite checkpoints B1–B6 below | Finish the common producer contract and four passive consumer migrations; installed discovery must remain source-free and activation-free. |
 | Entity navigation (Phase 4) | Reference identity prerequisites implemented; destination migration unfinished | Implement declared destinations, eligibility/readiness, short-code round trips and caller migration under open-entity.md. |
 | Frontend boundaries (Phase 5) | Planned implementation | Isolate throwing canvas/panel/form contributions, preserve host settings and other panes, and reject retries for retired revisions. |
@@ -96,6 +96,24 @@ of a common cause. Diagnose the smallest failing case before another broad run. 
 publication repair as outstanding implementation without new evidence.
 
 ### Execution order and change control
+
+Slash-command discovery is checkpointed in `ff48438cd`. The common catalog owns metadata and stable
+admission order; the execution picker requires enabled declarations matching accepted runtime identities,
+including build revisions. Native commands use the shared schema and checked binding. The runtime
+command store and its superseded store tests are removed; active-claim collision validation remains
+transactional. Chat owns a catalog subscription through its callback actor, while library-document
+notifications and user.command flow dispatch retain their existing paths.
+
+Evidence: all 628 host pack cases are accounted for (624 passed in the normal run; four OS-uptime EPERM
+failures passed with their two suites outside the sandbox, 17 cases total). The real default-pack command
+suite passes all 19 cases, including catalog-only refresh without SEND_STATE and stopping updates after
+actor stop. Native/authored/source metadata, poisoned source-free installed inspection, inactive/stale
+picker exclusion, returned-data ownership, stable replacement order and collisions are covered.
+Host/SDK/default-pack typechecks, schema, 28 SDK API reports, facade check, lint, import rules and test tiers
+pass. Generated report diffs contain only native command schema/type additions and the service's updated
+catalog-order documentation. Logs: `/private/tmp/apack-command-catalog-{all-packs,os-cases,pack,final-types,schema,api-check,facade-check,specifiers,tiers}.log`.
+This independent reader migration does not claim a new passing broad/strict gate or close B1–B6;
+preserved build/watch/frontend/teardown acceptance and final committed-source strict --all remain open.
 
 1. The scoped launch/authored-input slice is checkpointed through `bbf05ec00`; exact claims and
    focused evidence are below. It does not complete B1 or B1–B6. Continue independent discovery slices
