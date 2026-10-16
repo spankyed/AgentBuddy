@@ -9598,6 +9598,7 @@ declare const chatQueries: {
     readonly paginatedMessages: typeof paginatedMessages;
     readonly refreshThreadsData: () => RecentThreadRefreshData;
     readonly connectedData: () => AgentConnectedData;
+    readonly hasMessageInThread: (messageId: EARS.EntityId, threadId: EARS.EntityId) => boolean;
     readonly messageById: (messageId: EARS.EntityId) => MessageEntity | null;
 };
 
