@@ -252,17 +252,6 @@ export async function spawnStream(
   const stderrChunks: Buffer[] = []
   child.stderr.on('data', c => stderrChunks.push(c))
 
-  // Swallow expected pipe errors that occur when the child is killed mid-write.
-  // Without this listener the error becomes an uncaughtException and crashes the server.
-  child.stdin.on('error', (err: NodeJS.ErrnoException) => {
-    const expected = ['EPIPE', 'ECONNRESET', 'ERR_STREAM_DESTROYED'];
-    if (expected.includes(err.code ?? '')) {
-      logger.warn('stdin write error after child exit (expected during kill)', { code: err.code, pid: child.pid })
-    } else {
-      logger.error('unexpected stdin error', { err, pid: child.pid })
-    }
-  })
-
   let exited = false
   let killTimer: ReturnType<typeof setTimeout> | undefined
   const clearKillTimer = () => {
@@ -281,6 +270,17 @@ export async function spawnStream(
       killTimer.unref()
     }
   }
+  // A broken input pipe makes this bidirectional process unusable even if it keeps
+  // stdout open. Termination lets the query/owner settle pending turns on exit.
+  child.stdin.on('error', (err: NodeJS.ErrnoException) => {
+    if (exited) {
+      logger.warn('stdin write error after child exit', { code: err.code, pid: child.pid })
+      return
+    }
+    logger.error('stdin failed while child was alive; terminating process', { code: err.code, pid: child.pid })
+    terminate()
+  })
+
   const onAbort = () => terminate()
   const cleanup = () => {
     exited = true
