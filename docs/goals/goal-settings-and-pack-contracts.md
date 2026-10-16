@@ -120,7 +120,8 @@ naming branch is not an automatic source of future changes.
 
 ### Current handoff — compiler checkpoint (2026-10-16)
 
-Latest source is `f67c8d066`. ESM execution now has logical source URLs and filenames while native
+Latest source is `5cc9edc78` (CommonJS checkpoint below). Preceding ESM source `f67c8d066`:
+ESM execution now has logical source URLs and filenames while native
 resolution and source reads use the owned tree. A private loader below tsx only projects bytes; it
 makes no main-thread RPC. The input owner and loader share one storage mapping. Native entrypoint
 imports enter the same checked resolver as transitive requests, including package-format metadata;
@@ -144,6 +145,26 @@ bridge extraction (35.47s). The final packaged JSX/metadata worker passes in 36.
 packaging cases (9), CLI typecheck and lint pass. The bridge also runs on Electron's Node 22.17.1.
 Logs: `/private/tmp/apack-module-metadata-{before,focused,jsx-before,entry-final,native-entry,
 worker-native-entry,tree,packaging,types-complete,lint-complete}.log`. No broad gate repeated.
+
+CommonJS checkpoint `5cc9edc78` fixes a reproduced compiler failure: a CommonJS `.tsx` entry
+with a custom JSX factory failed with `Unexpected token '<'`. tsx's CommonJS registration accepts no
+per-registration config; routing its entry through ESM loading can also restore a shared source cache
+key. CommonJS entries now enter its scoped require directly. A tree-scoped CommonJS adapter transforms
+owned modules with captured compiler options and original source maps. Native CommonJS lookup runs
+outside source-read projection so owned filenames remain owned; executing the compiler body retains
+its captured-read scope. Other paths delegate to existing loaders. Teardown disables/removes these
+adapters and releases their compilation reference even if another registration is still layered above.
+
+Evidence: the regression changes the compiler body, config and payload after capture, then proves the
+original JSX factory and captured top-level file read execute, with stale inputs still refusing final
+validation. Existing ESM/transitive loading and concurrent CommonJS/source-parent isolation pass with
+it: three cases in 66.28s total (`/private/tmp/apack-commonjs-checkpoint.log`). After the final teardown
+reference-release refinement, the CommonJS regression and concurrent isolation pass again in 38.61s
+(`/private/tmp/apack-commonjs-checkpoint-disposal.log`). Final CLI typecheck and scoped lint pass;
+`/private/tmp/apack-commonjs-checkpoint-types-final.log`. No broad gate repeated. These are in-process
+checks, not final packaged-worker or committed-source strict acceptance. CommonJS alias resolution,
+logical metadata/diagnostic variants, deterministic output, full runtime/launch closure, complete input
+receipts and later phases remain required. No passive freshness consumer is migrated by this checkpoint.
 
 CommonJS deliberately retains per-tree filenames: a disposable proof found that logical CommonJS
 filenames reuse another generation's transitive cache. Its metadata/configuration semantics remain
