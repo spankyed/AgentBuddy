@@ -222,8 +222,11 @@ async function handleMemory(
 async function handleSkills(
   _args: string[],
   services: Services,
+  threadId?: string,
 ): Promise<{ text: string; data?: any }> {
-  const skills = await services.cli.claudeCode.listSkills();
+  const prior = threadId ? getClaudeState(services, threadId) : undefined;
+  const cwd = prior?.cwdOverride || prior?.cwd;
+  const skills = await services.cli.claudeCode.listSkills(cwd ? { cwd } : undefined);
   if (!skills.length) return { text: 'No skills installed.' };
   const lines = skills.map(s => {
     const lock = s.locked_by ? `; locked by ${s.locked_by}` : '';

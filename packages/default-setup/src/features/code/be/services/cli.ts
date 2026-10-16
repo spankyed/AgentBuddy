@@ -96,7 +96,7 @@ export interface CliServiceType {
     /** Write the CLI's user-scope settings.json (~/.claude/settings.json). */
     writeSettings(settings: Record<string, any>): Promise<void>
     /** Read native Skill states, provenance and author/policy locks. */
-    listSkills(): Promise<ClaudeSkillsDialog['skills']>
+    listSkills(opts?: { cwd?: string }): Promise<ClaudeSkillsDialog['skills']>
     /** List memory/CLAUDE.md files from known locations. */
     listMemoryFiles(): Promise<Array<{ name: string; scope: string; path: string }>>
     /** Rename a Claude Code session through the native process. */
@@ -267,8 +267,8 @@ function createCliService(): CliServiceType {
           throw err
         }
       },
-      async listSkills() {
-        return (await getSkillsDialog({ cwd: resolveCwd() })).skills
+      async listSkills(opts) {
+        return (await getSkillsDialog({ cwd: opts?.cwd ?? resolveCwd() })).skills
       },
       async listMemoryFiles() {
         const cwd = resolveCwd()
