@@ -256,10 +256,38 @@ remains active, and no further broad run is needed to record this evidence. The 
 is preserved. The existing default-setup output-change warning remains unresolved under the broader
 publication/freshness work; this checkpoint does not establish its cause.
 
-Next: reproduce the inspected private phase-stamp ordering risk (failed `replaceDir` followed by a
-retry), then complete the coherent pack/external execution frame and atomic publication contract.
-Keep the cache-association bug, the output-change warning and the missing whole-build input receipt
-distinct. Private phase stamps must not become the source-freshness authority.
+The next publication audit reproduces the phase-stamp defect: after a refused replacement, a retry
+reuses an old string facade against a new number shape. `/private/tmp/apack-phase-cache-placement-before.log`.
+The candidate writes `phase-cache.json` into staged output before sealing; reads verify the incumbent
+and the consumed cache bytes. Cache and output publish together, and installed/archive staging omits
+the private root file. The failure/retry now preserves incumbent cache bytes and publishes the number
+facade. No old-path reads or conversion. All current source/test references are migrated.
+
+Focused acceptance: 12 publication cases, the DSL retention/reuse/removal case, the real worker's
+repeat-build identity case and 23 cache/read unit cases pass. CLI typechecking and lint pass. A DSL
+preflight initially refused stale CLI output before any test ran; `packages:ensure` and the targeted
+DSL/worker run close that prerequisite. Mutations bypassing output verification or writing stamps
+after the seal fail on damaged facade reuse and unsealed layout respectively; exact source is restored.
+The final reader verifies before consuming cache bytes, and both damaged-data cases pass afterward.
+Logs: `/private/tmp/apack-phase-cache-{publication-focused,dsl-worker,unit,mutation-verification,mutation-seal-order,restored,typecheck,lint}.log`.
+
+Source checkpoint `17438889d` publishes the phase cache with its verified output. The single converged
+strict gate passes: `npm run chain -- --strict --cores 4 --no-classify`, run
+`2026-10-16T06-10-32Z-26560`, 865.3s, 29 steps executed and one cached. All 753 integration cases
+in 58 files pass, along with both real packaged-authoring halves and external-pack contract/app checks.
+All seven EARS/content baselines match byte for byte after the gate. Source stayed fixed throughout.
+Log: `/private/tmp/apack-phase-cache-strict.log`; PID `26560` is terminal. No gate remains active.
+No further broad run is needed for this commit or its evidence. The default-pack output-change warning
+remains unresolved and is not explained by this repaired association defect.
+
+Next complete the coherent pack/external execution frame and whole-build input/publication contract.
+The inspected launch boundary still inherits `NODE_OPTIONS`, but `compilationConditions` accounts only
+for export selectors. The dev Vite server is imported and retained in the supervisor outside the captured
+compiler session. Resolve both within complete execution ownership; do not silently strip supported
+options, narrow the input contract or treat a hash-only change as frozen execution.
+Keep this reproduced association defect, the separate output-change warning and the missing input
+receipt distinct. Private phase stamps must not become the source-freshness authority. Optional
+diagnostic reads still need accepted-output association under the full publication contract.
 
 This owns TypeScript discovery queries, not the complete frozen pack/external execution frame.
 Node imports, esbuild/Vite/content execution, ambient preloads, long-lived frontend lifetime, atomic

@@ -230,10 +230,51 @@ baselines match byte for byte. `/private/tmp/apack-compiler-file-view-strict.log
 no validation process remains active. No further broad run is needed for recording this result.
 The existing output-change warning still belongs to complete publication/freshness ownership.
 
-Next reproduce the private phase-cache/output association risk recorded under atomic publication,
-then complete the full frozen execution frame and receipt. This checkpoint owns TypeScript discovery
+The next checkpoint below reproduces and repairs the private phase-cache/output association defect.
+Then complete the full frozen execution frame and receipt. This checkpoint owns TypeScript discovery
 queries and validation of their read-set; it does not freeze all pack/dependency/compiler execution,
 complete the receipt, migrate freshness consumers or finish the remaining discovery and goal phases.
+
+### Publish phase-cache metadata with the output it describes
+
+The inspected ordering risk is reproduced on `e171b3acf`: a real typed pack initially exports a string
+field. After its source changes to number, a refused `replaceDir` retains the incumbent output but
+leaves the candidate's stamps in `.apack/build-cache.json`. Retrying reports facade reuse and seals
+the old string facade against the new source. `/private/tmp/apack-phase-cache-placement-before.log`.
+This proves the cache association defect; it does not explain the separate chain output-change warning.
+
+Write private phase metadata to `phase-cache.json` in the staged build, before sealing it. Read it only
+from the verified incumbent `dist`, checking the consumed bytes against its receipt. The same directory
+replacement then publishes cache and output together; refusal retains both. Staging's existing section
+policy omits this root private file from installed/archive layouts. No second build-revision protocol,
+old-path read, compatibility conversion or new public manifest/format key. Missing/unreadable cache
+means a cold build. Keep the complete integrity check before any reuse.
+
+Acceptance: reproduce a failed replacement and successful retry with the correct new facade; retain
+incumbent cache bytes/revision on refusal; include the source cache in integrity while excluding it
+from verified staged installation; reject edited output/cache for reuse. Preserve valid unchanged
+phase reuse and worker-failure retention. Run focused cache/publication/worker checks and required
+checkpoint validation. This is private phase reuse, not the whole-build input receipt or source-freshness
+authority. Diagnostic reads remain outside the published tree and need accepted-output association
+with the complete input/publication contract; all frozen-execution and later goal scope remains required.
+
+Source `17438889d` passes 12 real publication cases, DSL retention/reuse/removal, real worker repeat-build
+identity and 23 cache/read unit cases. The DSL preflight first refused a stale distributable CLI;
+refreshing packages and the targeted DSL/worker run close that prerequisite. Verification-bypass and
+post-seal-cache mutations both fail and are restored. The reader now verifies before consuming cache
+bytes; final damaged-output/cache cases pass. The goal records exact logs. The converged strict
+checkpoint passes on fixed source: `npm run chain -- --strict --cores 4 --no-classify`,
+run `2026-10-16T06-10-32Z-26560`, 865.3s, 29 steps executed and one cached, all 753 integration
+cases in 58 files and both external-pack halves passing. All seven EARS/content baselines match after
+validation. `/private/tmp/apack-phase-cache-strict.log`; PID `26560` is terminal. No further broad run
+is needed to record this checkpoint. The default-pack output-change warning remains unresolved.
+
+Next finish complete execution ownership and whole-build input/output association before replacing
+freshness readers. In particular, inherited `NODE_OPTIONS` has executable preload/loader effects
+beyond the export selectors currently fingerprinted, and the dev Vite server outlives the captured
+compiler worker in the supervisor. Preserve supported options and live development while closing
+these boundaries; neither a hash-only options patch nor silently stripping options establishes
+coherent execution. All remaining discovery and goal phases stay required.
 
 ## Historical foundation audits and checkpoint evidence
 
@@ -3153,12 +3194,10 @@ Fold this correction into the required compiler/input-closure and publication wo
 2. Publish the successful build's input identity with its owned output, atomically after all validation.
    Decide the common data contract and layer placement from the existing producer/consumer graph;
    the host must not import CLI internals. Failed builds retain the incumbent input/output association.
-   Current `build.ts:finish` writes private phase stamps before `replaceDir`, while `readStamps` has no
-   association with the verified incumbent output. Before designing the final publication receipt,
-   reproduce a failed replacement followed by a retry: cache metadata from the unpublished candidate
-   must never authorize reuse of incumbent files. This is an inspected ordering risk, not yet a reproduced
-   failure. Fix its ownership as part of atomic publication; do not promote the phase cache into the
-   missing whole-build freshness authority.
+   The phase-cache association defect is now reproduced and repaired in the checkpoint below:
+   a failed placement followed by a retry previously reused stale facade types. Cache metadata is
+   staged, sealed and replaced with its output. Keep that verified association when implementing the
+   whole-build receipt; the private phase cache is not the missing source-freshness authority.
 3. Replace `staleBuildOutput`'s mtime gate and the pack side of drive-preflight's mtime guidance with
    that common current-input/output authority. Audit archive, prebuilt testing, default-fork preparation,
    direct/manual builds, watch and drive. Define which supplied compilation context each source consumer
