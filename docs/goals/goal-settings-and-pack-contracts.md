@@ -120,7 +120,25 @@ naming branch is not an automatic source of future changes.
 
 ### Current handoff — compiler checkpoint (2026-10-16)
 
-Latest source is `14aa9fa38`. A per-build synchronous Node resolver hook admits transitive requests
+Latest source is `ed72a0388`. Captured execution now maps source-parent createRequire calls to
+an owned native parent before constructing the require function. Existing captured module/compiler
+parents retain their native context. AsyncLocalStorage chooses the compilation; calls outside captured
+execution stay native. Node's directory-parent convention is preserved without admitting the directory
+above it. No module cache replacement, second resolver or compatibility path is introduced.
+
+Evidence: the strengthened compilation case consumes captured values through an explicit original
+package.json require parent. A concurrent two-generation case captures FIRST and SECOND at the same
+paths, consumes those respective values after a LIVE edit, then proves ordinary out-of-scope require
+still reads LIVE. Both pass in 34.19s together. The real captured worker passes in 25.69s; CLI typecheck
+and scoped lint pass. Logs: `/private/tmp/apack-original-parent-{integration-final,worker,types-final,
+lint-final}.log`. The first run exposed an overbroad directory seed; the repair admits the exact native
+parent context instead of scanning shared temporary-directory entries. No broader gate repeated.
+
+This establishes the tested source-parent and concurrent contexts, not borrowed require functions
+across disposed generations, runtime metadata/diagnostic projection, preloads or pending-task lifetime.
+Whole-build receipts, frontend execution and every later phase remain required.
+
+Preceding source `14aa9fa38`. A per-build synchronous Node resolver hook admits transitive requests
 through the existing native input reader, redirects absolute module/file-URL targets into the owned
 tree and leaves resolution/transform/loading to Node and tsx. ESM queries and fragments are preserved;
 CommonJS absolute requests remain paths. Hook disposal precedes input cleanup on success and failure.
@@ -141,8 +159,8 @@ waited for a callback on the blocked main thread. The synchronous API removes th
 load hook conflicted with tsx in the real worker and was removed: owned namespace admission already
 precedes native loading, so a second source-loader implementation is unnecessary.
 
-Remaining loader acceptance includes createRequire constructed with an original/source parent URL,
-module metadata/diagnostic origin projection and deterministic output, independent concurrent scopes,
+Remaining loader acceptance includes broader parent/entry variants,
+module metadata/diagnostic origin projection and deterministic output,
 external native/package entry variants, loader/preload startup ownership and pending task lifetimes.
 Frontend execution, whole-build receipts and every later goal requirement remain open. The committed
 source checkpoint is focused evidence, not the required final strict --all acceptance.

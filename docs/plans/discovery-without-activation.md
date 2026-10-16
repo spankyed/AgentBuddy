@@ -1242,8 +1242,10 @@ Node resolver hook for transitive ESM/CommonJS requests, including absolute URLs
 imports. Preserve native resolution and tsx transformation; do not add a competing module loader.
 An async loader-thread bridge to the main build owner deadlocks synchronous resolution and is rejected.
 The synchronous hook requires Node 22.15+ or 23.5+; the CLI/checkout engines state this explicitly.
-Original-parent createRequire, runtime metadata/diagnostic origin projection, concurrent scope
-acceptance, startup loader options and full execution/receipt acceptance remain required below.
+`ed72a0388` maps source-parent createRequire into the AsyncLocalStorage-selected input tree and proves
+two independent concurrent captures plus native out-of-scope calls. Borrowed functions across disposed
+generations, runtime metadata/diagnostic origin projection, broader entry variants, startup loader
+options and full execution/receipt acceptance remain required below.
 
 ### Review correction: runtime rollback must preserve incumbent resources (2026-10-13)
 
