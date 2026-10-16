@@ -33,7 +33,7 @@ export async function bundlePackFlowHelpers(
   if (!bundled.success) return bundled;
 
   const typesFile = path.join(typesDir, FLOW_HELPERS_TYPES_FILE);
-  const types = await bundleDeclarations(packDir, path.join(packDir, 'src', '__generated__', 'flow-helpers.ts'), typesFile, { recordReads: options.recordTypeReads });
+  const types = await bundleDeclarations(packDir, path.join(packDir, 'src', '__generated__', 'flow-helpers.ts'), typesFile, { recordReads: options.recordTypeReads, compilation: options.compilation });
   if (!types.success) return types;
   const problems = facadeProblems(packDir, typesFile);
   if (problems.length > 0) {

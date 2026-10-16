@@ -12,6 +12,7 @@ export type CompilerFileSystem = Pick<ts.System,
 interface FileState {
   physical: string;
   kind: 'file' | 'directory' | 'missing' | 'other';
+  mode: number;
 }
 
 interface FileInput extends FileState { file: string; slot: string }
@@ -47,7 +48,7 @@ export function createCompilerFileView(root: string, options: {
     let stat: fs.Stats | undefined;
     try { stat = fs.statSync(target, { throwIfNoEntry: false }); }
     catch (error) { if ((error as NodeJS.ErrnoException).code !== 'ENOTDIR') throw error; }
-    return { physical: target, kind: stat?.isFile() ? 'file' : stat?.isDirectory() ? 'directory' : stat ? 'other' : 'missing' };
+    return { physical: target, kind: stat?.isFile() ? 'file' : stat?.isDirectory() ? 'directory' : stat ? 'other' : 'missing', mode: stat ? stat.mode & 0o777 : 0 };
   }
 
   function input(file: string, kind: BuildInputKind): FileInput | undefined {
@@ -132,11 +133,25 @@ export function createCompilerFileView(root: string, options: {
       }
       contents.set(node.physical, Buffer.from(value));
     },
+    snapshot() {
+      // Materialize every positive query and known directory entry, without inventing an ancestor scan.
+      for (const value of directories.values()) {
+        for (const entry of value.entries) input(path.join(value.file, entry.name), 'file');
+      }
+      const files = new Map<string, { file: string; bytes: Buffer; mode: number }>();
+      for (const value of inputs.values()) {
+        if (value.kind !== 'file') continue;
+        const data = readBytes(value.file) ?? changed(value.file);
+        files.set(value.physical, { file: value.physical, bytes: data, mode: value.mode });
+      }
+      return { files: [...files.values()], locations: [...inputs.values()].map(value => ({ ...value })) };
+    },
     assertCurrent() {
       const current = new Map<string, string>();
       for (const value of inputs.values()) {
         const next = state(value.file, current);
-        if (next.kind !== value.kind || next.physical !== value.physical) changed(value.file);
+        if (next.kind !== value.kind || next.physical !== value.physical
+          || (value.kind === 'file' && (next.mode & 0o111) !== (value.mode & 0o111))) changed(value.file);
       }
       for (const [file, value] of contents) {
         const next = bytes(file);
@@ -167,7 +182,7 @@ export function createCompilerFileView(root: string, options: {
       }
       const namespaces = new Map<string, string>();
       for (const value of inputs.values()) {
-        const key = relative(value.slot), data = JSON.stringify([relative(value.physical), value.kind]);
+        const key = relative(value.slot), data = JSON.stringify([relative(value.physical), value.kind, value.kind === 'file' ? value.mode & 0o111 : 0]);
         if (namespaces.has(key) && namespaces.get(key) !== data) changed(value.file);
         namespaces.set(key, data);
       }

@@ -108,7 +108,18 @@ Authored files and package-graph callback bytes seed the same owned view. After 
 `captureGenerated()` admits its completed bindings separately from authored membership. All five native
 bundle paths, including flow helpers, consume copied bytes from that view through esbuild's `onLoad`;
 callers cannot mutate the owned buffers. Native resolution still uses the original namespace. This
-owns module bytes, not complete filesystem/loader execution, declarations or the frontend compiler.
+owns native module bytes; native resolution still uses the original namespace.
+
+Declaration bundles (facade, flow helpers and DSLs) materialize that view into one lazy
+`compiler-read-tree.ts` tree per build. Captured bytes, package links, positive/missing queries and
+executable file modes define it; source origins remain the record of reads. The input directories are
+read-only and verified before publication. A separate writable directory holds derived declaration
+configuration. Compiler option projection lives in `compiler-configuration.ts`, not in the filesystem.
+Declaration programs capture a nearest parent config when no explicit pack config exists; native
+per-file config discovery keeps its existing semantics. Normal cleanup precedes publication and also
+runs on failures. Each public worker's parent owns its workspace and removes abandoned read-only trees
+after child close without following aliases. Full native namespace, direct content reads, frontend/dev
+ownership and launch/preload inputs remain unfinished execution-frame work.
 Compiler capture does not freeze pack sources, external
 frontend compiler reads or ambient Node preloads; the complete input/publication contract remains
 owned by the discovery plan.

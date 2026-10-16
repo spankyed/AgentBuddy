@@ -1,7 +1,7 @@
 import { createHash } from 'node:crypto';
 import { errorMessage } from '@apackdev/sdk/utils/pure';
 import { buildToolHash, cliPackageDirectory } from './tool-identity.ts';
-import { readPackageInputs } from '@apackdev/host/build/package-inputs';
+import { readPackageInputs, type PackageInputs } from '@apackdev/host/build/package-inputs';
 import { SOURCE_CONDITION } from '@apackdev/host/build/source-resolution';
 import { readCompilerModuleInputs } from './compiler-module-inputs.ts';
 import { readCompilerInstallationInputs } from './compiler-installation.ts';
@@ -9,6 +9,7 @@ import type { PackCompilerConfiguration } from './compiler-configuration.ts';
 import fs from 'node:fs';
 import path from 'node:path';
 import { packInputFiles } from '@apackdev/host/build/pack-inputs';
+import { createCompilerReadTree, type CompilerReadTree } from './compiler-read-tree.ts';
 
 /** Instrumentation flags do not change compilation. The reserved source mode is in buildToolHash. */
 export function compilationConditions(args = process.execArgv, nodeOptions = process.env.NODE_OPTIONS ?? ''): string[] {
@@ -27,9 +28,14 @@ export function compilationConditions(args = process.execArgv, nodeOptions = pro
 
 export interface CompilationInputs {
   readonly hash: string;
+  /** Explicit pack config; absence preserves native per-file config discovery. */
   readonly configuration: PackCompilerConfiguration | undefined;
+  /** Declaration programs also inherit a parent config when the pack has none. */
+  readonly declarationConfiguration: PackCompilerConfiguration | undefined;
   readFile(file: string): Buffer | undefined;
   captureGenerated(): void;
+  readTree(): CompilerReadTree;
+  dispose(): void;
   assertCurrent(): void;
 }
 
@@ -40,13 +46,17 @@ export function captureCompilationInputs(packRoot: string): CompilationInputs {
   if (compiler && !compiler.packages.includes(cliRoot)) throw new Error('Captured compiler inputs do not belong to this CLI');
   const capturedPackages = new Set(compiler?.packages);
   const modules = readCompilerModuleInputs(packRoot);
+  let packages: PackageInputs;
+  let tree: CompilerReadTree | undefined;
   const current = (capture = false) => {
     const owners = [{ id: 'pack', directory: packRoot, development: true }];
     if (!compiler) owners.unshift({ id: 'cli', directory: cliRoot, development: false });
-    return createHash('sha256').update(compiler?.hash ?? buildToolHash()).update(readPackageInputs(owners, {
+    const inputs = readPackageInputs(owners, {
       discovered: modules.packageDirectories.filter(directory => !capturedPackages.has(directory)),
       onFile: capture ? (file, bytes) => modules.captureFile(file.source, bytes) : undefined,
-    }).hash).update(modules.hash)
+    });
+    if (capture) packages = inputs;
+    return createHash('sha256').update(compiler?.hash ?? buildToolHash()).update(inputs.hash).update(modules.hash)
       .update(JSON.stringify([process.versions.node, process.platform, process.arch, compilationConditions()]))
       .digest('hex');
   };
@@ -54,6 +64,7 @@ export function captureCompilationInputs(packRoot: string): CompilationInputs {
   return {
     hash,
     configuration: modules.configuration,
+    declarationConfiguration: modules.declarationConfiguration,
     readFile: modules.readBytes,
     captureGenerated() {
       for (const relative of packInputFiles(packRoot, { generated: true })) {
@@ -62,8 +73,24 @@ export function captureCompilationInputs(packRoot: string): CompilationInputs {
         modules.captureFile(file, fs.readFileSync(file));
       }
     },
+    readTree() {
+      if (!tree) {
+        const snapshot = modules.snapshot();
+        const links = packages.nodes.flatMap(node => [
+          ...node.links.map(link => ({ file: path.join(node.directory, link.path), target: link.target })),
+          ...Object.entries(node.dependencies).flatMap(([name, index]) => index === null ? []
+            : [{ file: node.lookups[name]!, target: packages.nodes[index]!.directory }]),
+        ]);
+        const locations = [...snapshot.locations, ...packages.nodes.flatMap(node => node.directories
+          .map(directory => ({ file: directory.source, physical: directory.source, kind: 'directory' })))];
+        tree = createCompilerReadTree({ ...snapshot, locations, links }, compiler?.paths ?? []);
+      }
+      return tree;
+    },
+    dispose() { tree?.dispose(); tree = undefined; },
     assertCurrent() {
       try {
+        tree?.assertCurrent();
         modules.assertCurrent();
         if (current() !== hash) throw new Error('Implementation, package or execution options differ');
       } catch (cause) {

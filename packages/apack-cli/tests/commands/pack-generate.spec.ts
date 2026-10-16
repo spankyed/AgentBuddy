@@ -10,7 +10,16 @@ import { readDependencyBuild, PACK_LAYOUT } from '@apackdev/host/packs';
 import { assertGeneratedCurrent, generateEntries } from '../../src/commands/generate-entries';
 import { PACK_SNAPSHOT_FORMAT, PACK_TYPES_FACADE, type PackManifest, type PackSnapshot } from '@apackdev/sdk/build';
 
-const compilation = { hash: 'test-compiler', configuration: undefined, readFile() { return undefined; }, captureGenerated() {}, assertCurrent() {} };
+const compilation = {
+  hash: 'test-compiler',
+  configuration: undefined,
+  declarationConfiguration: undefined,
+  readTree() { throw new Error('No tree in hash-only fixture'); },
+  dispose() {},
+  readFile() { return undefined; },
+  captureGenerated() {},
+  assertCurrent() {},
+};
 
 
 let tmpDir: string;

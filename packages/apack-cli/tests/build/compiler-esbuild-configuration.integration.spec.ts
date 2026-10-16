@@ -8,6 +8,7 @@ import { bundlePackRuntime } from '../../src/build/be-bundler.ts';
 import { captureCompilationInputs } from '../../src/build/compilation-inputs.ts';
 import * as configuration from '../../src/build/compiler-configuration.ts';
 import * as bundlers from '../../src/build/be-bundler.ts';
+import * as declarations from '../../src/build/types-bundler.ts';
 import { build } from '../../src/commands/build.ts';
 import { packFixture } from '@apackdev/sdk/testing/pack-fixture';
 import { startTestRuntime } from '@apackdev/sdk/testing';
@@ -141,11 +142,15 @@ it('preserves native parent-config discovery when there is no explicit pack conf
   expect(evaluate(fs.readFileSync(path.join(output, 'runtime/index.cjs'), 'utf8'))).toEqual(expected);
 });
 
-it.each(['configuration', 'sources'])('publishes captured %s despite a transient live edit restored during bundling', async change => {
+it.each(['configuration', 'sources', 'declarations'])('publishes captured %s despite a transient live edit restored during bundling', async change => {
   const { root, pack } = fixture(false);
   packFixture({ at: pack, nodeModules: path.join(REPO_ROOT, 'node_modules'), manifest: {
     id: 'captured-config', name: 'Captured config', features: {}, lifecycle: { onInit: 'src/on-init.ts#onInit' },
-  }, files: { 'src/on-init.ts': 'import {result} from "./input.tsx"; export function onInit() { return JSON.stringify(result); }' } });
+    data: { entities: { Probe: 'src/shape.ts#Probe' } },
+  }, files: {
+    'src/on-init.ts': 'import {result} from "./input.tsx"; export function onInit() { return JSON.stringify(result); }',
+    'src/shape.ts': 'export interface Probe { value: string }',
+  } });
   const leaf = path.join(pack, 'tsconfig.json');
   const options = JSON.parse(fs.readFileSync(leaf, 'utf8'));
   delete options.compilerOptions.noLib;
@@ -156,7 +161,7 @@ it.each(['configuration', 'sources'])('publishes captured %s despite a transient
   const transient = vi.spyOn(bundlers, 'bundlePackRuntime').mockImplementation(async (...args) => {
     const replacements = change === 'configuration'
       ? [[config, JSON.stringify({ compilerOptions: { useDefineForClassFields: true, jsx: 'react-jsx', strict: true } })]]
-      : [
+      : change === 'declarations' ? [] : [
         [path.join(pack, 'src/input.tsx'), fs.readFileSync(path.join(pack, 'src/input.tsx'), 'utf8').replace('field = 7', 'field = 99')],
         [path.join(root, 'external/value.ts'), 'export const value = "LIVE_ALIAS";'],
         [path.join(root, 'node_modules/bare/index.js'), 'export const label = "LIVE_PACKAGE";'],
@@ -169,8 +174,30 @@ it.each(['configuration', 'sources'])('publishes captured %s despite a transient
       for (const [file, bytes] of originals) fs.writeFileSync(file, bytes);
     }
   });
+  const trees: string[] = [];
+  const mkdtemp = fs.mkdtempSync;
+  vi.spyOn(fs, 'mkdtempSync').mockImplementation(prefix => {
+    const directory = mkdtemp(prefix);
+    if (path.basename(String(prefix)).startsWith('apack-inputs-')) trees.push(directory);
+    return directory;
+  });
+  const bundleTypes = declarations.bundlePackTypes;
+  vi.spyOn(declarations, 'bundlePackTypes').mockImplementation(async (...args) => {
+    if (change !== 'declarations') return bundleTypes(...args);
+    const shape = path.join(pack, 'src/shape.ts');
+    const bytes = fs.readFileSync(shape);
+    fs.unlinkSync(shape);
+    fs.unlinkSync(config);
+    try { return await bundleTypes(...args); }
+    finally { fs.writeFileSync(shape, bytes); fs.writeFileSync(config, original); }
+  });
   await build(['--skip-fe'], pack);
   expect(transient).toHaveBeenCalledOnce();
+  expect(trees).toHaveLength(1);
+  for (const tree of trees) expect(fs.existsSync(tree)).toBe(false);
+  const facade = fs.readFileSync(path.join(pack, 'dist/types/pack-types.d.ts'), 'utf8');
+  expect(facade).toContain('value: string');
+  expect(facade).not.toContain('apack-inputs-');
   expect(fs.readFileSync(config)).toEqual(original);
   const installed = path.join(root, 'installed/captured-config');
   stagePack(pack, installed);

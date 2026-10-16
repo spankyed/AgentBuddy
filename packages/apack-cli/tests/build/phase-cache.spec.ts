@@ -8,7 +8,16 @@ import { dslInputsHash, filesUnder, reuseProblem, takeForward, typesInputsHash }
 import { readDependencyBuild, PACK_LAYOUT } from '@apackdev/host/packs';
 import { _declarationRevision } from '@apackdev/sdk/build';
 
-const compilation = { hash: 'test-compiler', configuration: undefined, readFile() { return undefined; }, captureGenerated() {}, assertCurrent() {} };
+const compilation = {
+  hash: 'test-compiler',
+  configuration: undefined,
+  declarationConfiguration: undefined,
+  readTree() { throw new Error('No tree in hash-only fixture'); },
+  dispose() {},
+  readFile() { return undefined; },
+  captureGenerated() {},
+  assertCurrent() {},
+};
 
 
 const dirs: string[] = [];

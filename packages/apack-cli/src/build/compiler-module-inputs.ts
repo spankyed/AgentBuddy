@@ -15,8 +15,10 @@ export function readCompilerModuleInputs(root: string, observe?: BuildInputObser
   hash: string;
   packageDirectories: string[];
   configuration: PackCompilerConfiguration | undefined;
+  declarationConfiguration: PackCompilerConfiguration | undefined;
   readBytes(file: string): Buffer | undefined;
   captureFile(file: string, bytes: Buffer): void;
+  snapshot: ReturnType<typeof createCompilerFileView>['snapshot'];
   assertCurrent(): void;
 } {
   const realRoot = fs.realpathSync(root);
@@ -33,10 +35,13 @@ export function readCompilerModuleInputs(root: string, observe?: BuildInputObser
   const view = createCompilerFileView(root, { paths: compilerPaths, excluded, observe });
   const fileSystem = view.fileSystem;
   const configuration = readPackCompilerConfiguration(root, { ...ts.sys, ...fileSystem });
+  const declarationConfigPath = configuration ? undefined : ts.findConfigFile(root, fileSystem.fileExists);
+  const declarationConfiguration = configuration ?? (declarationConfigPath
+    ? readPackCompilerConfiguration(path.dirname(declarationConfigPath), { ...ts.sys, ...fileSystem }) : undefined);
   const options = {
     target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.ESNext,
     moduleResolution: ts.ModuleResolutionKind.Bundler,
-    ...configuration?.options, allowJs: true, noEmit: true,
+    ...declarationConfiguration?.options, allowJs: true, noEmit: true,
   };
   const scripts = new Map<string, string>();
   const rootNames: string[] = [];
@@ -70,7 +75,7 @@ export function readCompilerModuleInputs(root: string, observe?: BuildInputObser
     packageCandidates.add(directory);
     if (fileSystem.directoryExists(directory)) packages.add(fileSystem.realpath(directory));
   };
-  for (const file of configuration?.files.keys() ?? []) packageOf(file);
+  for (const file of declarationConfiguration?.files.keys() ?? []) packageOf(file);
   const host = ts.createCompilerHost(options);
   const { getSourceFile } = host;
   host.readFile = file => {
@@ -108,7 +113,7 @@ export function readCompilerModuleInputs(root: string, observe?: BuildInputObser
     }
   };
   assertCurrent();
-  return { hash: hash.digest('hex'), configuration, readBytes: view.readBytes, captureFile: view.captureFile,
+  return { hash: hash.digest('hex'), configuration, declarationConfiguration, readBytes: view.readBytes, captureFile: view.captureFile, snapshot: view.snapshot,
     packageDirectories: [...packages].sort((a, b) => relative(a) < relative(b) ? -1 : relative(a) > relative(b) ? 1 : 0), assertCurrent };
 
 }

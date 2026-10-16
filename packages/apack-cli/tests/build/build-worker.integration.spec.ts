@@ -39,6 +39,13 @@ function fixture(files: Record<string, string> = {}, content = {}) {
 
 it('uses the captured compiler and retains unchanged build/cache identity on repeat builds', async () => {
   const root = fixture();
+  const workspaces: string[] = [];
+  const mkdtemp = fs.mkdtempSync;
+  vi.spyOn(fs, 'mkdtempSync').mockImplementation(prefix => {
+    const directory = mkdtemp(prefix);
+    if (String(prefix).includes('apack-build-inputs-')) workspaces.push(directory);
+    return directory;
+  });
   vi.spyOn(process, 'cwd').mockReturnValue(root);
   await buildCommand(['--skip-fe']);
   expect(bundlePackRuntime).not.toHaveBeenCalled();
@@ -50,6 +57,8 @@ it('uses the captured compiler and retains unchanged build/cache identity on rep
   await buildCommand(['--skip-fe']);
   expect(readStamps(root).types).toEqual(stamp);
   expect(readPackBuild(path.join(root, 'dist')).revision).toBe(revision);
+  expect(workspaces).toHaveLength(2);
+  for (const workspace of workspaces) expect(fs.existsSync(workspace)).toBe(false);
 });
 
 it('reports frontend inputs that remain available after its compiler installation is removed', async () => {
