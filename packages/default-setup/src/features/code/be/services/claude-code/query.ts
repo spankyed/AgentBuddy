@@ -1,3 +1,4 @@
+import { ClaudeModelCatalogSchema, type ClaudeModelCatalog } from './host-controls.ts'
 import type { ClaudeMcpElicitationAnswer } from '../../../shared/mcp-elicitation-form.ts'
 import { randomUUID } from 'node:crypto'
 import { createClaudeUiControls, type ClaudeUiControls } from './ui-controls.ts'
@@ -121,6 +122,8 @@ export interface QueryHandle {
   getMcpStatus(): Promise<ClaudeMcpStatus>
   /** Read structured context usage; summary avoids per-category token-count API calls. */
   getContextUsage(): Promise<ClaudeContextUsage>
+  /** Read descriptive native availability, without changing selection or sending a model turn. */
+  getModels(): Promise<ClaudeModelCatalog>
   /** Change native model selection. Custom names may trigger API validation; ack has no effective model. */
   setModel(model: string): Promise<void>
   /** Change the running CLI policy and return its acknowledged permission mode. */
@@ -366,6 +369,11 @@ export async function query(opts: QueryOptions): Promise<QueryHandle> {
     async getContextUsage(): Promise<ClaudeContextUsage> {
       await initialized
       return ClaudeContextUsageSchema.parse(await hostControls.request({ subtype: 'get_context_usage', detail: 'summary' }))
+    },
+
+    async getModels(): Promise<ClaudeModelCatalog> {
+      await initialized
+      return ClaudeModelCatalogSchema.parse(await hostControls.request({ subtype: 'list_models' }))
     },
 
     async setModel(model: string): Promise<void> {
