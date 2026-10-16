@@ -22,7 +22,7 @@ name: Claude Code commands
 **cc-fork**: Fork from last assistant message
 **cc-stats**: Show version, auth, and config info
 **cc-doctor**: Diagnose installation
-**cc-mcp**: Manage MCP servers
+**cc-mcp**: Manage MCP servers. Quote JSON and arguments containing spaces; quotes/escapes group arguments without shell expansion.
 **cc-agents**: List configured agents
 **cc-bypass**: Toggle bypass permissions mode
 **cc-goal**: <condition> | clear | (no args for status)

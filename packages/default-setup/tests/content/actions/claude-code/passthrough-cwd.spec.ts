@@ -19,6 +19,14 @@ it.skipIf(!process.env.CLAUDE_MCP_SCOPE_TEST_BINARY)('writes native project MCP 
  const { id } = repository.threadCommands.create({ topic: 'Selected MCP project', instructions: '', tags: [] }); repository.threadCommands.update(id, { context: { claudeCode: { cwd: fallback, cwdOverride: selected } } });
  mockService<Services, 'chat'>('chat', { sendBlockMessage: vi.fn() });
  mockService<Services, 'cli'>('cli', { claudeCode: { exec: (args: readonly string[], opts?: { cwd?: string }) => execOnce(args, { cwd: opts?.cwd ?? fallback, cliPath: process.env.CLAUDE_MCP_SCOPE_TEST_BINARY, env: { PATH: process.env.PATH, HOME: home, CLAUDE_CONFIG_DIR: join(home, '.claude'), DISABLE_AUTOUPDATER: '1', CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC: '1' }, timeoutMs: 10000 }) } as never });
- const result = await action({ command: 'cc-mcp', text: 'add-json research {"type":"stdio","command":"/usr/bin/true","args":[]} --scope project', threadId: id }, services, {} as never, 'command-flow');
- expect(result.text).not.toContain('failed:'); expect(JSON.parse(await readFile(join(selected, '.mcp.json'), 'utf8')).mcpServers.research.command).toBe('/usr/bin/true'); await expect(readFile(join(fallback, '.mcp.json'))).rejects.toMatchObject({ code: 'ENOENT' });
+ const result = await action({ command: 'cc-mcp', text: `add-json research '${JSON.stringify({type:'stdio',command:'/usr/bin/true',args:['argument with spaces'],env:{RESEARCH_VALUE:'value with spaces'}})}' --scope project`, threadId: id }, services, {} as never, 'command-flow');
+ expect(result.text).not.toContain('failed:'); expect(JSON.parse(await readFile(join(selected, '.mcp.json'), 'utf8')).mcpServers.research).toMatchObject({ command: '/usr/bin/true', args: ['argument with spaces'], env: { RESEARCH_VALUE: 'value with spaces' } }); await expect(readFile(join(fallback, '.mcp.json'))).rejects.toMatchObject({ code: 'ENOENT' });
 }, 15000);
+
+
+it('forwards quoted values and shell syntax literally without expanding or executing them', async () => {
+ const exec = vi.fn().mockResolvedValue({ stdout: 'fixture', stderr: '', exitCode: 0 }); mockService<Services, 'cli'>('cli', { claudeCode: { exec } as never });
+ await action({ command: 'cc-agents', text: '--cwd "/project with spaces" "$HOME" $(fixture) ;' }, services, {} as never, 'command-flow');
+ expect(exec).toHaveBeenCalledWith(['agents', '--cwd', '/project with spaces', '$HOME', '$(fixture)', ';'], undefined);
+ exec.mockClear(); const result = await action({ command: 'cc-mcp', text: "get 'unfinished" }, services, {} as never, 'command-flow'); expect(result.text).toContain('unclosed quote'); expect(exec).not.toHaveBeenCalled();
+});

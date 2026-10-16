@@ -10,6 +10,7 @@ import type { ActionMeta } from '@apackdev/sdk/build';
 import type { Services, Z } from '#generated/services.ts';
 import { getClaudeState, persistClaudeState, updateChatState } from './_helpers/thread-context.ts';
 import { DONT_BYPASS } from './_helpers/auto-approve.ts';
+import { parseCommandArguments } from './_helpers/command-arguments.ts';
 
 export const meta: ActionMeta = {
   label: 'CC: Run Command',
@@ -43,10 +44,11 @@ const PASSTHROUGH: Record<string, { cmd: string; defaultArgs?: string[] }> = {
 };
 
 function makePassthroughHandler(spec: { cmd: string; defaultArgs?: string[] }): Handler {
-  return async (args, services, threadId) => {
+  return async (args, services, threadId, rawText) => {
     const prior = threadId ? getClaudeState(services, threadId) : undefined;
     const cwd = prior?.cwdOverride || prior?.cwd;
-    const fullArgs = [spec.cmd, ...(args.length > 0 ? args : spec.defaultArgs ?? [])];
+    const argv = rawText === undefined ? args : parseCommandArguments(rawText);
+    const fullArgs = [spec.cmd, ...(argv.length > 0 ? argv : spec.defaultArgs ?? [])];
     const result = await services.cli.claudeCode.exec(fullArgs, cwd ? { cwd } : undefined);
     const output = (result.stdout + result.stderr).trim();
     return { text: output || `(no output from cc-${spec.cmd})` };
