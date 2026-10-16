@@ -963,7 +963,7 @@ ${items.join('\n')}
       const parts: string[] = [];
       if (f.designation) parts.push(`      designation: '${f.designation}'`);
       if (f.system) parts.push(`      system: ${systemExpr(f)}`);
-      if (f.plugin) parts.push(`      plugin: { receives: [${receivedEventTypes(f).map((type) => `'${type}'`).join(', ')}]${f.plugin.defaultVisible !== undefined ? `, defaultVisible: ${f.plugin.defaultVisible}` : ''} }`);
+      if (f.plugin) parts.push(`      plugin: { receives: [${receivedEventTypes(f).map((type) => `'${type}'`).join(', ')}] }`);
       parts.push(`      services: [${Object.keys(f.services ?? {}).map(s => `'${s}'`).join(', ')}]`);
       // JSON.parse preserves own __proto__ keys, which an object literal would treat as a prototype setter.
       if (f.settings) parts.push(`      settings: JSON.parse(${dataLiteral(JSON.stringify(f.settings))})`);

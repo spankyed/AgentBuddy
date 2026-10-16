@@ -369,7 +369,6 @@ export interface PackFeature {
 
 // @public
 export interface PackFeaturePlugin {
-    defaultVisible?: boolean;
     receives: readonly string[];
 }
 

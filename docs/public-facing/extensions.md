@@ -730,3 +730,16 @@ lack compiled definitions. Monaco replaces or removes libraries and globals when
 sharing them until the last editor releases them. `setupMonacoForFile()` returns that release function;
 call it when a direct consumer changes files or disposes its editor. `UnifiedMonacoEditor` owns this
 lifecycle automatically. These data reads import no pack or compiler modules.
+
+### Navigation discovery
+
+The shell lists enabled plugins from their declarations before loading their frontend. Labels, pinning,
+visibility defaults and order come from the catalog; source-only previews are not app destinations.
+Native host tabs follow pack tabs within each pinned/unpinned group. Frontend delivery order cannot
+reorder tabs. User visibility choices override `features.<id>.plugin.defaultVisible` (which defaults
+to visible). Hidden destinations remain in the toolbar visibility menu.
+
+Accepted frontend bindings supply icons and executable behavior. Until an icon is available, the shell
+shows its own placeholder. Opening a declared destination still uses the shell's checked loading and
+readiness path; listing a tab does not activate its pack. Disabled packs retain discoverable metadata
+in the pack catalog but are omitted from app navigation.

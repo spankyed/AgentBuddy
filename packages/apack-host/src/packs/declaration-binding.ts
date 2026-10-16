@@ -47,9 +47,6 @@ export function backendBindingProblem(manifest: PackManifest, registration: unkn
       if ((feature[kind] !== undefined) !== (declaration[kind] !== undefined)) return problem(`features.${id}.${kind}`);
       if (declaration[kind] && !isPlainObject(feature[kind])) return problem(`features.${id}.${kind}`);
     }
-    if (declaration.plugin && (feature.plugin as Record<string, unknown>).defaultVisible !== declaration.plugin.defaultVisible) {
-      return problem(`features.${id}.plugin.defaultVisible`);
-    }
     if (!sameNames(feature.services === undefined ? [] : feature.services, Object.keys(declaration.services ?? {}))) return problem(`features.${id}.services`);
   }
   const services = [...Object.keys(manifest.extensions?.services ?? {}),

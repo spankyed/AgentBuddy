@@ -18,7 +18,7 @@ const manifest = ManifestSchema.parse({
 
 function binding() {
   return { features: {
-    notes: { designation: 'notes', system: { machine: {} }, plugin: { defaultVisible: false }, services: ['notes'] },
+    notes: { designation: 'notes', system: { machine: {} }, plugin: {}, services: ['notes'] },
     preferences: {},
   }, services: { notes: {}, shared: {} }, repositories: { noteQueries: {} } };
 }
@@ -35,7 +35,6 @@ it.each([
   ['role', (value: ReturnType<typeof binding>) => { value.features.notes.designation = 'other'; }, 'features.notes.designation'],
   ['system', (value: ReturnType<typeof binding>) => Reflect.deleteProperty(value.features.notes, 'system'), 'features.notes.system'],
   ['plugin', (value: ReturnType<typeof binding>) => Reflect.deleteProperty(value.features.notes, 'plugin'), 'features.notes.plugin'],
-  ['visibility', (value: ReturnType<typeof binding>) => { value.features.notes.plugin.defaultVisible = true; }, 'features.notes.plugin.defaultVisible'],
   ['feature service', (value: ReturnType<typeof binding>) => { value.features.notes.services = ['shared']; }, 'features.notes.services'],
   ['duplicate feature service', (value: ReturnType<typeof binding>) => { value.features.notes.services = ['notes', 'notes']; }, 'features.notes.services'],
   ['extra service', (value: ReturnType<typeof binding>) => Object.assign(value.services, { ghost: {} }), 'services'],

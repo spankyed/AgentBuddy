@@ -356,7 +356,7 @@ describe('pack-loader: bundled runtime (runtime/index.cjs)', () => {
     const { _contentWriterRegistry } = await import('@apackdev/sdk/content');
     makeBundledPack('settings-pack', registration('settings-pack', `
       contentWriters: { Widget: { find() { return undefined; } } },
-      features: { widget: { system: { machine, receives: ['PING'] }, plugin: { receives: [], defaultVisible: false }, settings: { defaults: { size: 3 }, schema: { type: 'object' } } } },
+      features: { widget: { system: { machine, receives: ['PING'] }, plugin: { receives: [] }, settings: { defaults: { size: 3 }, schema: { type: 'object' } } } },
     `), { features: { widget: { description: 'Exercise the widget system.', system: { entry: 'system.ts' }, plugin: { label: 'Fixture', state: 'plugin.ts', defaultVisible: false }, settings: { defaults: { size: 3 }, schema: { type: 'object' } } } }, content: { writers: { Widget: 'writer.ts#writer' } } });
 
     registry.refreshCatalog(path.join(_appDirOf(tmpDir), 'packs'));

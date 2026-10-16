@@ -16,6 +16,7 @@ import {
 } from './layout.ts';
 import { announcePackClientReady, PACK_FRONTEND_LOADER_ID, packFrontendLoader } from './pack-frontends.ts';
 import { historyAfter, neighbourOf, spawnPluginActor, withHostLast } from './plugins.ts';
+import { pluginNavigationItems } from '../../../fe/plugin-navigation.ts';
 import { notifyPluginActor, sendToPluginActor } from '../../../fe/plugin-delivery.ts';
 import { computeCrumbs, pluginTrailer } from './trail.ts';
 import type { PluginRequest, ShellContext, ShellEvent, ShellOptions, ShellParams } from './types.ts';
@@ -492,7 +493,8 @@ export function createShellMachine({ packs, catalog, client, packFrontends, stor
       },
 
       switchPluginByDirection: ({ context, event, self }) => {
-        const next = neighbourOf(context, event.type === 'SWITCH_PLUGIN_UP' ? 'up' : 'down');
+        const next = neighbourOf(pluginNavigationItems(catalog, packs.pluginBindings(), context.pluginVisibility)
+          .filter(plugin => plugin.visible), context.activePlugin.id, event.type === 'SWITCH_PLUGIN_UP' ? 'up' : 'down');
         if (next) self.send({ type: 'SELECT_PLUGIN', plugin: next.id });
       },
 
@@ -597,7 +599,7 @@ export function createShellMachine({ packs, catalog, client, packFrontends, stor
       const initialActivePlugin = initialPlugin ?? claimedDefault ?? plugins[0];
       return {
         plugins,
-        pluginVisibility: Object.fromEntries(plugins.map((plugin) => [plugin.id, true])),
+        pluginVisibility: {},
         activePlugin: initialActivePlugin,
         defaultPlugin: claimedDefault,
         // Nothing specific was asked for and no pack has claimed a default yet, so open it when one does

@@ -786,9 +786,9 @@ export function createPackRegistry({ installedPacksDir, appPackSourcesDir, setti
     appliers: key => tables.appliers.get(key),
     settingsCatalog: catalog.settings,
     onCatalogChanged: catalog.onChanged,
-    pluginDefaults: derived(() => Object.fromEntries([...registrations.values()].flatMap(reg =>
-      featuresOf(reg).filter(({ feature }) => feature.plugin?.defaultVisible !== undefined)
-        .map(({ ref, feature }) => [ref, feature.plugin!.defaultVisible!])))),
+    pluginDefaults: () => Object.fromEntries(catalog.plugins()
+      .filter(plugin => plugin.origin !== 'source' && plugin.enabled === true && plugin.declaration.defaultVisible !== undefined)
+      .map(plugin => [plugin.featureRef, plugin.declaration.defaultVisible!])),
     commands: () => catalog.commands().filter(command => {
       if (command.enabled === false || !admitted.has(command.packId)) return false;
       if (command.origin === 'native') {

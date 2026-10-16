@@ -56,8 +56,6 @@ export interface PackFeatureSystem {
 
 /** What the backend knows of a feature's plugin: the event types it receives, which the app checks a send against */
 export interface PackFeaturePlugin {
-  /** Default navigation visibility before a user override. */
-  defaultVisible?: boolean;
   /**
    * Generated from its own feature's system's outgoing events and every audience of the inbox the plugin's
    * `Contract` declares. One flat list: a passing check means the event's shape was accepted, not that this sender

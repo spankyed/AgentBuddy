@@ -94,12 +94,13 @@ import { useSelector } from '@xstate/vue'
 import type { ActorRefFrom, AnyStateMachine } from 'xstate'
 import { CircleHelp, Settings as SettingsIcon, ExternalLink, PanelRight, PanelTop, Terminal } from 'lucide-vue-next'
 import Toolbar from '@/views/layout/Toolbar.vue'
+import { usePluginNavigation } from '@/views/layout/plugin-navigation';
 import CanvasArea from '@/views/layout/CanvasArea.vue'
 import ChatArea from '@/views/layout/ChatArea.vue'
 import InspectionPanel from '@/views/layout/InspectionPanel.vue'
 import PanelResizer from '@apackdev/ui/layout/panel-resizer'
 import { applicationState } from '@/main'
-import { HOST, notifyPluginActor, visiblePluginsOf } from '@apackdev/host/fe'
+import { HOST, notifyPluginActor } from '@apackdev/host/fe'
 import { untypedOpenPlugin, PluginScope } from '@apackdev/sdk/fe'
 import Router from '@/views/layout/PluginRouter.vue'
 import { useContextualHelp } from '@/views/settings/contextual-help';
@@ -117,7 +118,7 @@ onUnmounted(() => registerGlobalToast(null))
 const activePlugin = useSelector(applicationState, (state) => state.context.activePlugin)
 const defaultPlugin = useSelector(applicationState, (state) => state.context.defaultPlugin)
 const toggles = useSelector(applicationState, (state) => state.context.defaultToggles)
-const plugins = useSelector(applicationState, (state) => visiblePluginsOf(state.context))
+const plugins = usePluginNavigation()
 const breadcrumbs = useSelector(applicationState, (state) => state.context.breadcrumbs)
 const contextMenuItems = useSelector(applicationState, (state) => state.context.contextMenuItems)
 const targetView = useSelector(applicationState, (state) => state.context.targetView)

@@ -234,7 +234,7 @@ describe('registerPack entities', () => {
 });
 
 describe('registerPack feature settings', () => {
-  const memos = { plugin: { receives: [], defaultVisible: false }, settings: { defaults: { sort: 'newest' }, schema: { type: 'object' } } };
+  const memos = { plugin: { receives: [] }, settings: { defaults: { sort: 'newest' }, schema: { type: 'object' } } };
 
   it("rejects invalid feature defaults, registering none of the pack", () => {
     const hooks = { ears: { entities: { Memo: 'Memo' }, relKinds: {} }, contentWriters: { Memo: {} } };

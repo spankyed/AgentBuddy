@@ -403,7 +403,7 @@ describe('the snapshot format', () => {
     designation: true, system: true, plugin: true, services: true, settings: true,
   };
   const REGISTRATION_SYSTEM_FIELDS: Record<keyof PackFeatureSystem, true> = { machine: true, receives: true };
-  const REGISTRATION_PLUGIN_FIELDS: Record<keyof PackFeaturePlugin, true> = { defaultVisible: true, receives: true };
+  const REGISTRATION_PLUGIN_FIELDS: Record<keyof PackFeaturePlugin, true> = { receives: true };
 
   /** Every name generated code imports from a dependency's facade, with a send to one of its plugins */
   async function facadeImports(): Promise<string[]> {
@@ -454,7 +454,7 @@ describe('the snapshot format', () => {
         fields: ['appliers', 'artifacts', 'bindSettings', 'blocks', 'commands', 'contentWriters', 'declarationRevision', 'dependencies', 'ears', 'features', 'id', 'lifecycle', 'migrations', 'name', 'repositories', 'services', 'settings', 'steps'],
         feature: ['designation', 'plugin', 'services', 'settings', 'system'],
         system: ['machine', 'receives'],
-        plugin: ['defaultVisible', 'receives'],
+        plugin: ['receives'],
       },
       provenanceKinds: ['commands', 'entities', 'plugins', 'referenceCategories', 'referenceTypes', 'relKinds', 'tiptapExtensions'],
       facadeImports: ['PackEntityShapes', 'PackFeatureSettings', 'PackGroupSettings', 'PackPluginEvents', 'PackPluginState', 'PackStepNodes', 'PackSystemEvents', 'Repositories', 'Services'],
