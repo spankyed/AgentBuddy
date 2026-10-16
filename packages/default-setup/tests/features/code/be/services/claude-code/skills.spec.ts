@@ -68,6 +68,8 @@ describe('native Skill discovery', () => {
   const before = await readFile(settings);
   await expect(editSkillOverride({ name: 'locked', state: 'on' }, options)).rejects.toThrow();
   expect(await readFile(settings)).toEqual(before);
+  await expect(editSkillOverride({ name: 'editable', state: 'on' }, { ...options, env: { ...options.env, CLAUDE_CODE_CHILD_SESSION: '1' } })).rejects.toThrow('inside a Claude Code session');
+  expect(await readFile(settings)).toEqual(before);
   } finally { await handle.close(); }
  }, 20000);
 

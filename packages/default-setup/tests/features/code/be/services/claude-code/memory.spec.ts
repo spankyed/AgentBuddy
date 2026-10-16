@@ -58,6 +58,9 @@ describe('native memory dialog', () => {
    await setAutoMemory(false, options); expect((await handle.getMemoryDialog()).auto_memory.enabled).toBe(false);
    await setAutoMemory(true, options); expect((await handle.getMemoryDialog()).auto_memory.enabled).toBe(true);
    expect(JSON.parse(await readFile(join(config, 'settings.json'), 'utf8'))).toMatchObject({ language: 'research-preserve', autoMemoryEnabled: true });
+   const beforeRefusal = await readFile(join(config, 'settings.json'));
+   await expect(setAutoMemory(false, { ...options, env: { ...options.env, CLAUDE_CODE_CHILD_SESSION: '1' } })).rejects.toThrow('inside a Claude Code session');
+   expect(await readFile(join(config, 'settings.json'))).toEqual(beforeRefusal);
   } finally { await handle.close(); }
  }, 20000);
 
