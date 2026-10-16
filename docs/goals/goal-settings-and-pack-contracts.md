@@ -97,6 +97,24 @@ publication repair as outstanding implementation without new evidence.
 
 ### Execution order and change control
 
+Current discovery slice: block/artifact checked bindings and reader migration. Catalog publication is
+checkpointed in `3e4e10c8f`: common host/window accessors expose native/installed/source declarations,
+including icon/input-kind/module metadata, owner, enablement and available declaration/build identity.
+The wire still carries one accepted snapshot; projections update together and cached entries remain
+immutable. Disconnect preserves accepted metadata; reconnect clears the previous projection.
+
+Evidence: 79 focused catalog/reference/step cases pass (1.96s), including disabled source-free sealed
+builds with poisoned runtimes and absent authored modules. Nine real renderer editor cases pass
+(4.37s); host/SDK and renderer app/test typechecks, the generated SDK API report check, lint and import
+rules pass. The reviewed report adds only the declaration/entry types and catalog accessors.
+`/private/tmp/apack-viewer-catalog-{focused,editor,types,renderer-types,renderer-app-types,api-check,specifiers}.log`.
+
+Next carry accepted owner/build/runtime identities with block/artifact viewer/input bindings, then
+switch icon, input-kind and component readers together. Do not combine new metadata with a stale
+executable component. Keep backend summary callbacks as execution, not discovery. Rendering remains
+unchanged in this publication checkpoint; it does not close the consumer row or any unfinished B1–B6
+scope. Final all-kind and committed-source strict --all acceptance remain required.
+
 Slash-command discovery is checkpointed in `ff48438cd`. The common catalog owns metadata and stable
 admission order; the execution picker requires enabled declarations matching accepted runtime identities,
 including build revisions. Native commands use the shared schema and checked binding. The runtime
