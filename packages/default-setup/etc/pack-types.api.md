@@ -1142,6 +1142,272 @@ declare const ClaudeMcpStatusSchema: z.ZodObject<{
     }, z.ZodTypeAny, "passthrough">>, "many">;
 }, z.ZodTypeAny, "passthrough">>;
 
+type ClaudeMemoryDialog = z.infer<typeof ClaudeMemoryDialogSchema>;
+
+/** Native instruction files and automatic-memory availability are separate from context usage. */
+declare const ClaudeMemoryDialogSchema: z.ZodObject<{
+    files: z.ZodArray<z.ZodObject<{
+        kind: z.ZodString;
+        path: z.ZodString;
+        label: z.ZodString;
+        description: z.ZodString;
+        exists: z.ZodBoolean;
+    }, "passthrough", z.ZodTypeAny, z.objectOutputType<{
+        kind: z.ZodString;
+        path: z.ZodString;
+        label: z.ZodString;
+        description: z.ZodString;
+        exists: z.ZodBoolean;
+    }, z.ZodTypeAny, "passthrough">, z.objectInputType<{
+        kind: z.ZodString;
+        path: z.ZodString;
+        label: z.ZodString;
+        description: z.ZodString;
+        exists: z.ZodBoolean;
+    }, z.ZodTypeAny, "passthrough">>, "many">;
+    folders: z.ZodArray<z.ZodObject<{
+        kind: z.ZodString;
+        path: z.ZodString;
+        label: z.ZodString;
+        description: z.ZodString;
+    }, "passthrough", z.ZodTypeAny, z.objectOutputType<{
+        kind: z.ZodString;
+        path: z.ZodString;
+        label: z.ZodString;
+        description: z.ZodString;
+    }, z.ZodTypeAny, "passthrough">, z.objectInputType<{
+        kind: z.ZodString;
+        path: z.ZodString;
+        label: z.ZodString;
+        description: z.ZodString;
+    }, z.ZodTypeAny, "passthrough">>, "many">;
+    memories: z.ZodOptional<z.ZodArray<z.ZodObject<{
+        name: z.ZodString;
+        path: z.ZodString;
+        description: z.ZodNullable<z.ZodString>;
+        type: z.ZodNullable<z.ZodEnum<["user", "feedback", "project", "reference"]>>;
+        modified_ms: z.ZodNumber;
+    }, "passthrough", z.ZodTypeAny, z.objectOutputType<{
+        name: z.ZodString;
+        path: z.ZodString;
+        description: z.ZodNullable<z.ZodString>;
+        type: z.ZodNullable<z.ZodEnum<["user", "feedback", "project", "reference"]>>;
+        modified_ms: z.ZodNumber;
+    }, z.ZodTypeAny, "passthrough">, z.objectInputType<{
+        name: z.ZodString;
+        path: z.ZodString;
+        description: z.ZodNullable<z.ZodString>;
+        type: z.ZodNullable<z.ZodEnum<["user", "feedback", "project", "reference"]>>;
+        modified_ms: z.ZodNumber;
+    }, z.ZodTypeAny, "passthrough">>, "many">>;
+    auto_memory: z.ZodObject<{
+        enabled: z.ZodBoolean;
+        toggleable: z.ZodBoolean;
+        status: z.ZodString;
+    }, "passthrough", z.ZodTypeAny, z.objectOutputType<{
+        enabled: z.ZodBoolean;
+        toggleable: z.ZodBoolean;
+        status: z.ZodString;
+    }, z.ZodTypeAny, "passthrough">, z.objectInputType<{
+        enabled: z.ZodBoolean;
+        toggleable: z.ZodBoolean;
+        status: z.ZodString;
+    }, z.ZodTypeAny, "passthrough">>;
+    auto_dream: z.ZodObject<{
+        shown: z.ZodBoolean;
+        enabled: z.ZodBoolean;
+        toggleable: z.ZodBoolean;
+        status: z.ZodString;
+        detail: z.ZodString;
+    }, "passthrough", z.ZodTypeAny, z.objectOutputType<{
+        shown: z.ZodBoolean;
+        enabled: z.ZodBoolean;
+        toggleable: z.ZodBoolean;
+        status: z.ZodString;
+        detail: z.ZodString;
+    }, z.ZodTypeAny, "passthrough">, z.objectInputType<{
+        shown: z.ZodBoolean;
+        enabled: z.ZodBoolean;
+        toggleable: z.ZodBoolean;
+        status: z.ZodString;
+        detail: z.ZodString;
+    }, z.ZodTypeAny, "passthrough">>;
+}, "passthrough", z.ZodTypeAny, z.objectOutputType<{
+    files: z.ZodArray<z.ZodObject<{
+        kind: z.ZodString;
+        path: z.ZodString;
+        label: z.ZodString;
+        description: z.ZodString;
+        exists: z.ZodBoolean;
+    }, "passthrough", z.ZodTypeAny, z.objectOutputType<{
+        kind: z.ZodString;
+        path: z.ZodString;
+        label: z.ZodString;
+        description: z.ZodString;
+        exists: z.ZodBoolean;
+    }, z.ZodTypeAny, "passthrough">, z.objectInputType<{
+        kind: z.ZodString;
+        path: z.ZodString;
+        label: z.ZodString;
+        description: z.ZodString;
+        exists: z.ZodBoolean;
+    }, z.ZodTypeAny, "passthrough">>, "many">;
+    folders: z.ZodArray<z.ZodObject<{
+        kind: z.ZodString;
+        path: z.ZodString;
+        label: z.ZodString;
+        description: z.ZodString;
+    }, "passthrough", z.ZodTypeAny, z.objectOutputType<{
+        kind: z.ZodString;
+        path: z.ZodString;
+        label: z.ZodString;
+        description: z.ZodString;
+    }, z.ZodTypeAny, "passthrough">, z.objectInputType<{
+        kind: z.ZodString;
+        path: z.ZodString;
+        label: z.ZodString;
+        description: z.ZodString;
+    }, z.ZodTypeAny, "passthrough">>, "many">;
+    memories: z.ZodOptional<z.ZodArray<z.ZodObject<{
+        name: z.ZodString;
+        path: z.ZodString;
+        description: z.ZodNullable<z.ZodString>;
+        type: z.ZodNullable<z.ZodEnum<["user", "feedback", "project", "reference"]>>;
+        modified_ms: z.ZodNumber;
+    }, "passthrough", z.ZodTypeAny, z.objectOutputType<{
+        name: z.ZodString;
+        path: z.ZodString;
+        description: z.ZodNullable<z.ZodString>;
+        type: z.ZodNullable<z.ZodEnum<["user", "feedback", "project", "reference"]>>;
+        modified_ms: z.ZodNumber;
+    }, z.ZodTypeAny, "passthrough">, z.objectInputType<{
+        name: z.ZodString;
+        path: z.ZodString;
+        description: z.ZodNullable<z.ZodString>;
+        type: z.ZodNullable<z.ZodEnum<["user", "feedback", "project", "reference"]>>;
+        modified_ms: z.ZodNumber;
+    }, z.ZodTypeAny, "passthrough">>, "many">>;
+    auto_memory: z.ZodObject<{
+        enabled: z.ZodBoolean;
+        toggleable: z.ZodBoolean;
+        status: z.ZodString;
+    }, "passthrough", z.ZodTypeAny, z.objectOutputType<{
+        enabled: z.ZodBoolean;
+        toggleable: z.ZodBoolean;
+        status: z.ZodString;
+    }, z.ZodTypeAny, "passthrough">, z.objectInputType<{
+        enabled: z.ZodBoolean;
+        toggleable: z.ZodBoolean;
+        status: z.ZodString;
+    }, z.ZodTypeAny, "passthrough">>;
+    auto_dream: z.ZodObject<{
+        shown: z.ZodBoolean;
+        enabled: z.ZodBoolean;
+        toggleable: z.ZodBoolean;
+        status: z.ZodString;
+        detail: z.ZodString;
+    }, "passthrough", z.ZodTypeAny, z.objectOutputType<{
+        shown: z.ZodBoolean;
+        enabled: z.ZodBoolean;
+        toggleable: z.ZodBoolean;
+        status: z.ZodString;
+        detail: z.ZodString;
+    }, z.ZodTypeAny, "passthrough">, z.objectInputType<{
+        shown: z.ZodBoolean;
+        enabled: z.ZodBoolean;
+        toggleable: z.ZodBoolean;
+        status: z.ZodString;
+        detail: z.ZodString;
+    }, z.ZodTypeAny, "passthrough">>;
+}, z.ZodTypeAny, "passthrough">, z.objectInputType<{
+    files: z.ZodArray<z.ZodObject<{
+        kind: z.ZodString;
+        path: z.ZodString;
+        label: z.ZodString;
+        description: z.ZodString;
+        exists: z.ZodBoolean;
+    }, "passthrough", z.ZodTypeAny, z.objectOutputType<{
+        kind: z.ZodString;
+        path: z.ZodString;
+        label: z.ZodString;
+        description: z.ZodString;
+        exists: z.ZodBoolean;
+    }, z.ZodTypeAny, "passthrough">, z.objectInputType<{
+        kind: z.ZodString;
+        path: z.ZodString;
+        label: z.ZodString;
+        description: z.ZodString;
+        exists: z.ZodBoolean;
+    }, z.ZodTypeAny, "passthrough">>, "many">;
+    folders: z.ZodArray<z.ZodObject<{
+        kind: z.ZodString;
+        path: z.ZodString;
+        label: z.ZodString;
+        description: z.ZodString;
+    }, "passthrough", z.ZodTypeAny, z.objectOutputType<{
+        kind: z.ZodString;
+        path: z.ZodString;
+        label: z.ZodString;
+        description: z.ZodString;
+    }, z.ZodTypeAny, "passthrough">, z.objectInputType<{
+        kind: z.ZodString;
+        path: z.ZodString;
+        label: z.ZodString;
+        description: z.ZodString;
+    }, z.ZodTypeAny, "passthrough">>, "many">;
+    memories: z.ZodOptional<z.ZodArray<z.ZodObject<{
+        name: z.ZodString;
+        path: z.ZodString;
+        description: z.ZodNullable<z.ZodString>;
+        type: z.ZodNullable<z.ZodEnum<["user", "feedback", "project", "reference"]>>;
+        modified_ms: z.ZodNumber;
+    }, "passthrough", z.ZodTypeAny, z.objectOutputType<{
+        name: z.ZodString;
+        path: z.ZodString;
+        description: z.ZodNullable<z.ZodString>;
+        type: z.ZodNullable<z.ZodEnum<["user", "feedback", "project", "reference"]>>;
+        modified_ms: z.ZodNumber;
+    }, z.ZodTypeAny, "passthrough">, z.objectInputType<{
+        name: z.ZodString;
+        path: z.ZodString;
+        description: z.ZodNullable<z.ZodString>;
+        type: z.ZodNullable<z.ZodEnum<["user", "feedback", "project", "reference"]>>;
+        modified_ms: z.ZodNumber;
+    }, z.ZodTypeAny, "passthrough">>, "many">>;
+    auto_memory: z.ZodObject<{
+        enabled: z.ZodBoolean;
+        toggleable: z.ZodBoolean;
+        status: z.ZodString;
+    }, "passthrough", z.ZodTypeAny, z.objectOutputType<{
+        enabled: z.ZodBoolean;
+        toggleable: z.ZodBoolean;
+        status: z.ZodString;
+    }, z.ZodTypeAny, "passthrough">, z.objectInputType<{
+        enabled: z.ZodBoolean;
+        toggleable: z.ZodBoolean;
+        status: z.ZodString;
+    }, z.ZodTypeAny, "passthrough">>;
+    auto_dream: z.ZodObject<{
+        shown: z.ZodBoolean;
+        enabled: z.ZodBoolean;
+        toggleable: z.ZodBoolean;
+        status: z.ZodString;
+        detail: z.ZodString;
+    }, "passthrough", z.ZodTypeAny, z.objectOutputType<{
+        shown: z.ZodBoolean;
+        enabled: z.ZodBoolean;
+        toggleable: z.ZodBoolean;
+        status: z.ZodString;
+        detail: z.ZodString;
+    }, z.ZodTypeAny, "passthrough">, z.objectInputType<{
+        shown: z.ZodBoolean;
+        enabled: z.ZodBoolean;
+        toggleable: z.ZodBoolean;
+        status: z.ZodString;
+        detail: z.ZodString;
+    }, z.ZodTypeAny, "passthrough">>;
+}, z.ZodTypeAny, "passthrough">>;
+
 interface ClaudeNestedAccounting {
     toolCallCount: number;
     mutatedPaths: string[];
@@ -1154,6 +1420,780 @@ interface ClaudeNestedActivity {
     /** Drain facts once, at the next native result; output bindings remain registered. */
     takeAccounting(): ClaudeNestedAccounting;
 }
+
+type ClaudePermissionEdit = z.infer<typeof PermissionEditSchema>;
+
+interface ClaudePermissionEditResult {
+    stored: string[];
+    warnings: string[];
+}
+
+type ClaudePermissionRules = z.infer<typeof ClaudePermissionRulesSchema>;
+
+/** Exact native rule spellings/provenance are required by durable removal operations. */
+declare const ClaudePermissionRulesSchema: z.ZodObject<{
+    state: z.ZodObject<{
+        rules: z.ZodArray<z.ZodObject<{
+            behavior: z.ZodEnum<["allow", "deny", "ask"]>;
+            source: z.ZodString;
+            rule: z.ZodString;
+            editability: z.ZodEnum<["persistent", "session", "readonly"]>;
+            notInEffect: z.ZodOptional<z.ZodBoolean>;
+            description: z.ZodOptional<z.ZodObject<{
+                prefix: z.ZodOptional<z.ZodString>;
+                emphasis: z.ZodOptional<z.ZodString>;
+                suffix: z.ZodOptional<z.ZodString>;
+            }, "passthrough", z.ZodTypeAny, z.objectOutputType<{
+                prefix: z.ZodOptional<z.ZodString>;
+                emphasis: z.ZodOptional<z.ZodString>;
+                suffix: z.ZodOptional<z.ZodString>;
+            }, z.ZodTypeAny, "passthrough">, z.objectInputType<{
+                prefix: z.ZodOptional<z.ZodString>;
+                emphasis: z.ZodOptional<z.ZodString>;
+                suffix: z.ZodOptional<z.ZodString>;
+            }, z.ZodTypeAny, "passthrough">>>;
+        }, "passthrough", z.ZodTypeAny, z.objectOutputType<{
+            behavior: z.ZodEnum<["allow", "deny", "ask"]>;
+            source: z.ZodString;
+            rule: z.ZodString;
+            editability: z.ZodEnum<["persistent", "session", "readonly"]>;
+            notInEffect: z.ZodOptional<z.ZodBoolean>;
+            description: z.ZodOptional<z.ZodObject<{
+                prefix: z.ZodOptional<z.ZodString>;
+                emphasis: z.ZodOptional<z.ZodString>;
+                suffix: z.ZodOptional<z.ZodString>;
+            }, "passthrough", z.ZodTypeAny, z.objectOutputType<{
+                prefix: z.ZodOptional<z.ZodString>;
+                emphasis: z.ZodOptional<z.ZodString>;
+                suffix: z.ZodOptional<z.ZodString>;
+            }, z.ZodTypeAny, "passthrough">, z.objectInputType<{
+                prefix: z.ZodOptional<z.ZodString>;
+                emphasis: z.ZodOptional<z.ZodString>;
+                suffix: z.ZodOptional<z.ZodString>;
+            }, z.ZodTypeAny, "passthrough">>>;
+        }, z.ZodTypeAny, "passthrough">, z.objectInputType<{
+            behavior: z.ZodEnum<["allow", "deny", "ask"]>;
+            source: z.ZodString;
+            rule: z.ZodString;
+            editability: z.ZodEnum<["persistent", "session", "readonly"]>;
+            notInEffect: z.ZodOptional<z.ZodBoolean>;
+            description: z.ZodOptional<z.ZodObject<{
+                prefix: z.ZodOptional<z.ZodString>;
+                emphasis: z.ZodOptional<z.ZodString>;
+                suffix: z.ZodOptional<z.ZodString>;
+            }, "passthrough", z.ZodTypeAny, z.objectOutputType<{
+                prefix: z.ZodOptional<z.ZodString>;
+                emphasis: z.ZodOptional<z.ZodString>;
+                suffix: z.ZodOptional<z.ZodString>;
+            }, z.ZodTypeAny, "passthrough">, z.objectInputType<{
+                prefix: z.ZodOptional<z.ZodString>;
+                emphasis: z.ZodOptional<z.ZodString>;
+                suffix: z.ZodOptional<z.ZodString>;
+            }, z.ZodTypeAny, "passthrough">>>;
+        }, z.ZodTypeAny, "passthrough">>, "many">;
+        workspaceDirectories: z.ZodArray<z.ZodObject<{
+            path: z.ZodString;
+            source: z.ZodOptional<z.ZodString>;
+        }, "passthrough", z.ZodTypeAny, z.objectOutputType<{
+            path: z.ZodString;
+            source: z.ZodOptional<z.ZodString>;
+        }, z.ZodTypeAny, "passthrough">, z.objectInputType<{
+            path: z.ZodString;
+            source: z.ZodOptional<z.ZodString>;
+        }, z.ZodTypeAny, "passthrough">>, "many">;
+        originalCwd: z.ZodString;
+        managedOnly: z.ZodBoolean;
+        errors: z.ZodOptional<z.ZodArray<z.ZodObject<{
+            file: z.ZodString;
+            path: z.ZodOptional<z.ZodUnknown>;
+            message: z.ZodString;
+        }, "passthrough", z.ZodTypeAny, z.objectOutputType<{
+            file: z.ZodString;
+            path: z.ZodOptional<z.ZodUnknown>;
+            message: z.ZodString;
+        }, z.ZodTypeAny, "passthrough">, z.objectInputType<{
+            file: z.ZodString;
+            path: z.ZodOptional<z.ZodUnknown>;
+            message: z.ZodString;
+        }, z.ZodTypeAny, "passthrough">>, "many">>;
+    }, "passthrough", z.ZodTypeAny, z.objectOutputType<{
+        rules: z.ZodArray<z.ZodObject<{
+            behavior: z.ZodEnum<["allow", "deny", "ask"]>;
+            source: z.ZodString;
+            rule: z.ZodString;
+            editability: z.ZodEnum<["persistent", "session", "readonly"]>;
+            notInEffect: z.ZodOptional<z.ZodBoolean>;
+            description: z.ZodOptional<z.ZodObject<{
+                prefix: z.ZodOptional<z.ZodString>;
+                emphasis: z.ZodOptional<z.ZodString>;
+                suffix: z.ZodOptional<z.ZodString>;
+            }, "passthrough", z.ZodTypeAny, z.objectOutputType<{
+                prefix: z.ZodOptional<z.ZodString>;
+                emphasis: z.ZodOptional<z.ZodString>;
+                suffix: z.ZodOptional<z.ZodString>;
+            }, z.ZodTypeAny, "passthrough">, z.objectInputType<{
+                prefix: z.ZodOptional<z.ZodString>;
+                emphasis: z.ZodOptional<z.ZodString>;
+                suffix: z.ZodOptional<z.ZodString>;
+            }, z.ZodTypeAny, "passthrough">>>;
+        }, "passthrough", z.ZodTypeAny, z.objectOutputType<{
+            behavior: z.ZodEnum<["allow", "deny", "ask"]>;
+            source: z.ZodString;
+            rule: z.ZodString;
+            editability: z.ZodEnum<["persistent", "session", "readonly"]>;
+            notInEffect: z.ZodOptional<z.ZodBoolean>;
+            description: z.ZodOptional<z.ZodObject<{
+                prefix: z.ZodOptional<z.ZodString>;
+                emphasis: z.ZodOptional<z.ZodString>;
+                suffix: z.ZodOptional<z.ZodString>;
+            }, "passthrough", z.ZodTypeAny, z.objectOutputType<{
+                prefix: z.ZodOptional<z.ZodString>;
+                emphasis: z.ZodOptional<z.ZodString>;
+                suffix: z.ZodOptional<z.ZodString>;
+            }, z.ZodTypeAny, "passthrough">, z.objectInputType<{
+                prefix: z.ZodOptional<z.ZodString>;
+                emphasis: z.ZodOptional<z.ZodString>;
+                suffix: z.ZodOptional<z.ZodString>;
+            }, z.ZodTypeAny, "passthrough">>>;
+        }, z.ZodTypeAny, "passthrough">, z.objectInputType<{
+            behavior: z.ZodEnum<["allow", "deny", "ask"]>;
+            source: z.ZodString;
+            rule: z.ZodString;
+            editability: z.ZodEnum<["persistent", "session", "readonly"]>;
+            notInEffect: z.ZodOptional<z.ZodBoolean>;
+            description: z.ZodOptional<z.ZodObject<{
+                prefix: z.ZodOptional<z.ZodString>;
+                emphasis: z.ZodOptional<z.ZodString>;
+                suffix: z.ZodOptional<z.ZodString>;
+            }, "passthrough", z.ZodTypeAny, z.objectOutputType<{
+                prefix: z.ZodOptional<z.ZodString>;
+                emphasis: z.ZodOptional<z.ZodString>;
+                suffix: z.ZodOptional<z.ZodString>;
+            }, z.ZodTypeAny, "passthrough">, z.objectInputType<{
+                prefix: z.ZodOptional<z.ZodString>;
+                emphasis: z.ZodOptional<z.ZodString>;
+                suffix: z.ZodOptional<z.ZodString>;
+            }, z.ZodTypeAny, "passthrough">>>;
+        }, z.ZodTypeAny, "passthrough">>, "many">;
+        workspaceDirectories: z.ZodArray<z.ZodObject<{
+            path: z.ZodString;
+            source: z.ZodOptional<z.ZodString>;
+        }, "passthrough", z.ZodTypeAny, z.objectOutputType<{
+            path: z.ZodString;
+            source: z.ZodOptional<z.ZodString>;
+        }, z.ZodTypeAny, "passthrough">, z.objectInputType<{
+            path: z.ZodString;
+            source: z.ZodOptional<z.ZodString>;
+        }, z.ZodTypeAny, "passthrough">>, "many">;
+        originalCwd: z.ZodString;
+        managedOnly: z.ZodBoolean;
+        errors: z.ZodOptional<z.ZodArray<z.ZodObject<{
+            file: z.ZodString;
+            path: z.ZodOptional<z.ZodUnknown>;
+            message: z.ZodString;
+        }, "passthrough", z.ZodTypeAny, z.objectOutputType<{
+            file: z.ZodString;
+            path: z.ZodOptional<z.ZodUnknown>;
+            message: z.ZodString;
+        }, z.ZodTypeAny, "passthrough">, z.objectInputType<{
+            file: z.ZodString;
+            path: z.ZodOptional<z.ZodUnknown>;
+            message: z.ZodString;
+        }, z.ZodTypeAny, "passthrough">>, "many">>;
+    }, z.ZodTypeAny, "passthrough">, z.objectInputType<{
+        rules: z.ZodArray<z.ZodObject<{
+            behavior: z.ZodEnum<["allow", "deny", "ask"]>;
+            source: z.ZodString;
+            rule: z.ZodString;
+            editability: z.ZodEnum<["persistent", "session", "readonly"]>;
+            notInEffect: z.ZodOptional<z.ZodBoolean>;
+            description: z.ZodOptional<z.ZodObject<{
+                prefix: z.ZodOptional<z.ZodString>;
+                emphasis: z.ZodOptional<z.ZodString>;
+                suffix: z.ZodOptional<z.ZodString>;
+            }, "passthrough", z.ZodTypeAny, z.objectOutputType<{
+                prefix: z.ZodOptional<z.ZodString>;
+                emphasis: z.ZodOptional<z.ZodString>;
+                suffix: z.ZodOptional<z.ZodString>;
+            }, z.ZodTypeAny, "passthrough">, z.objectInputType<{
+                prefix: z.ZodOptional<z.ZodString>;
+                emphasis: z.ZodOptional<z.ZodString>;
+                suffix: z.ZodOptional<z.ZodString>;
+            }, z.ZodTypeAny, "passthrough">>>;
+        }, "passthrough", z.ZodTypeAny, z.objectOutputType<{
+            behavior: z.ZodEnum<["allow", "deny", "ask"]>;
+            source: z.ZodString;
+            rule: z.ZodString;
+            editability: z.ZodEnum<["persistent", "session", "readonly"]>;
+            notInEffect: z.ZodOptional<z.ZodBoolean>;
+            description: z.ZodOptional<z.ZodObject<{
+                prefix: z.ZodOptional<z.ZodString>;
+                emphasis: z.ZodOptional<z.ZodString>;
+                suffix: z.ZodOptional<z.ZodString>;
+            }, "passthrough", z.ZodTypeAny, z.objectOutputType<{
+                prefix: z.ZodOptional<z.ZodString>;
+                emphasis: z.ZodOptional<z.ZodString>;
+                suffix: z.ZodOptional<z.ZodString>;
+            }, z.ZodTypeAny, "passthrough">, z.objectInputType<{
+                prefix: z.ZodOptional<z.ZodString>;
+                emphasis: z.ZodOptional<z.ZodString>;
+                suffix: z.ZodOptional<z.ZodString>;
+            }, z.ZodTypeAny, "passthrough">>>;
+        }, z.ZodTypeAny, "passthrough">, z.objectInputType<{
+            behavior: z.ZodEnum<["allow", "deny", "ask"]>;
+            source: z.ZodString;
+            rule: z.ZodString;
+            editability: z.ZodEnum<["persistent", "session", "readonly"]>;
+            notInEffect: z.ZodOptional<z.ZodBoolean>;
+            description: z.ZodOptional<z.ZodObject<{
+                prefix: z.ZodOptional<z.ZodString>;
+                emphasis: z.ZodOptional<z.ZodString>;
+                suffix: z.ZodOptional<z.ZodString>;
+            }, "passthrough", z.ZodTypeAny, z.objectOutputType<{
+                prefix: z.ZodOptional<z.ZodString>;
+                emphasis: z.ZodOptional<z.ZodString>;
+                suffix: z.ZodOptional<z.ZodString>;
+            }, z.ZodTypeAny, "passthrough">, z.objectInputType<{
+                prefix: z.ZodOptional<z.ZodString>;
+                emphasis: z.ZodOptional<z.ZodString>;
+                suffix: z.ZodOptional<z.ZodString>;
+            }, z.ZodTypeAny, "passthrough">>>;
+        }, z.ZodTypeAny, "passthrough">>, "many">;
+        workspaceDirectories: z.ZodArray<z.ZodObject<{
+            path: z.ZodString;
+            source: z.ZodOptional<z.ZodString>;
+        }, "passthrough", z.ZodTypeAny, z.objectOutputType<{
+            path: z.ZodString;
+            source: z.ZodOptional<z.ZodString>;
+        }, z.ZodTypeAny, "passthrough">, z.objectInputType<{
+            path: z.ZodString;
+            source: z.ZodOptional<z.ZodString>;
+        }, z.ZodTypeAny, "passthrough">>, "many">;
+        originalCwd: z.ZodString;
+        managedOnly: z.ZodBoolean;
+        errors: z.ZodOptional<z.ZodArray<z.ZodObject<{
+            file: z.ZodString;
+            path: z.ZodOptional<z.ZodUnknown>;
+            message: z.ZodString;
+        }, "passthrough", z.ZodTypeAny, z.objectOutputType<{
+            file: z.ZodString;
+            path: z.ZodOptional<z.ZodUnknown>;
+            message: z.ZodString;
+        }, z.ZodTypeAny, "passthrough">, z.objectInputType<{
+            file: z.ZodString;
+            path: z.ZodOptional<z.ZodUnknown>;
+            message: z.ZodString;
+        }, z.ZodTypeAny, "passthrough">>, "many">>;
+    }, z.ZodTypeAny, "passthrough">>;
+}, "passthrough", z.ZodTypeAny, z.objectOutputType<{
+    state: z.ZodObject<{
+        rules: z.ZodArray<z.ZodObject<{
+            behavior: z.ZodEnum<["allow", "deny", "ask"]>;
+            source: z.ZodString;
+            rule: z.ZodString;
+            editability: z.ZodEnum<["persistent", "session", "readonly"]>;
+            notInEffect: z.ZodOptional<z.ZodBoolean>;
+            description: z.ZodOptional<z.ZodObject<{
+                prefix: z.ZodOptional<z.ZodString>;
+                emphasis: z.ZodOptional<z.ZodString>;
+                suffix: z.ZodOptional<z.ZodString>;
+            }, "passthrough", z.ZodTypeAny, z.objectOutputType<{
+                prefix: z.ZodOptional<z.ZodString>;
+                emphasis: z.ZodOptional<z.ZodString>;
+                suffix: z.ZodOptional<z.ZodString>;
+            }, z.ZodTypeAny, "passthrough">, z.objectInputType<{
+                prefix: z.ZodOptional<z.ZodString>;
+                emphasis: z.ZodOptional<z.ZodString>;
+                suffix: z.ZodOptional<z.ZodString>;
+            }, z.ZodTypeAny, "passthrough">>>;
+        }, "passthrough", z.ZodTypeAny, z.objectOutputType<{
+            behavior: z.ZodEnum<["allow", "deny", "ask"]>;
+            source: z.ZodString;
+            rule: z.ZodString;
+            editability: z.ZodEnum<["persistent", "session", "readonly"]>;
+            notInEffect: z.ZodOptional<z.ZodBoolean>;
+            description: z.ZodOptional<z.ZodObject<{
+                prefix: z.ZodOptional<z.ZodString>;
+                emphasis: z.ZodOptional<z.ZodString>;
+                suffix: z.ZodOptional<z.ZodString>;
+            }, "passthrough", z.ZodTypeAny, z.objectOutputType<{
+                prefix: z.ZodOptional<z.ZodString>;
+                emphasis: z.ZodOptional<z.ZodString>;
+                suffix: z.ZodOptional<z.ZodString>;
+            }, z.ZodTypeAny, "passthrough">, z.objectInputType<{
+                prefix: z.ZodOptional<z.ZodString>;
+                emphasis: z.ZodOptional<z.ZodString>;
+                suffix: z.ZodOptional<z.ZodString>;
+            }, z.ZodTypeAny, "passthrough">>>;
+        }, z.ZodTypeAny, "passthrough">, z.objectInputType<{
+            behavior: z.ZodEnum<["allow", "deny", "ask"]>;
+            source: z.ZodString;
+            rule: z.ZodString;
+            editability: z.ZodEnum<["persistent", "session", "readonly"]>;
+            notInEffect: z.ZodOptional<z.ZodBoolean>;
+            description: z.ZodOptional<z.ZodObject<{
+                prefix: z.ZodOptional<z.ZodString>;
+                emphasis: z.ZodOptional<z.ZodString>;
+                suffix: z.ZodOptional<z.ZodString>;
+            }, "passthrough", z.ZodTypeAny, z.objectOutputType<{
+                prefix: z.ZodOptional<z.ZodString>;
+                emphasis: z.ZodOptional<z.ZodString>;
+                suffix: z.ZodOptional<z.ZodString>;
+            }, z.ZodTypeAny, "passthrough">, z.objectInputType<{
+                prefix: z.ZodOptional<z.ZodString>;
+                emphasis: z.ZodOptional<z.ZodString>;
+                suffix: z.ZodOptional<z.ZodString>;
+            }, z.ZodTypeAny, "passthrough">>>;
+        }, z.ZodTypeAny, "passthrough">>, "many">;
+        workspaceDirectories: z.ZodArray<z.ZodObject<{
+            path: z.ZodString;
+            source: z.ZodOptional<z.ZodString>;
+        }, "passthrough", z.ZodTypeAny, z.objectOutputType<{
+            path: z.ZodString;
+            source: z.ZodOptional<z.ZodString>;
+        }, z.ZodTypeAny, "passthrough">, z.objectInputType<{
+            path: z.ZodString;
+            source: z.ZodOptional<z.ZodString>;
+        }, z.ZodTypeAny, "passthrough">>, "many">;
+        originalCwd: z.ZodString;
+        managedOnly: z.ZodBoolean;
+        errors: z.ZodOptional<z.ZodArray<z.ZodObject<{
+            file: z.ZodString;
+            path: z.ZodOptional<z.ZodUnknown>;
+            message: z.ZodString;
+        }, "passthrough", z.ZodTypeAny, z.objectOutputType<{
+            file: z.ZodString;
+            path: z.ZodOptional<z.ZodUnknown>;
+            message: z.ZodString;
+        }, z.ZodTypeAny, "passthrough">, z.objectInputType<{
+            file: z.ZodString;
+            path: z.ZodOptional<z.ZodUnknown>;
+            message: z.ZodString;
+        }, z.ZodTypeAny, "passthrough">>, "many">>;
+    }, "passthrough", z.ZodTypeAny, z.objectOutputType<{
+        rules: z.ZodArray<z.ZodObject<{
+            behavior: z.ZodEnum<["allow", "deny", "ask"]>;
+            source: z.ZodString;
+            rule: z.ZodString;
+            editability: z.ZodEnum<["persistent", "session", "readonly"]>;
+            notInEffect: z.ZodOptional<z.ZodBoolean>;
+            description: z.ZodOptional<z.ZodObject<{
+                prefix: z.ZodOptional<z.ZodString>;
+                emphasis: z.ZodOptional<z.ZodString>;
+                suffix: z.ZodOptional<z.ZodString>;
+            }, "passthrough", z.ZodTypeAny, z.objectOutputType<{
+                prefix: z.ZodOptional<z.ZodString>;
+                emphasis: z.ZodOptional<z.ZodString>;
+                suffix: z.ZodOptional<z.ZodString>;
+            }, z.ZodTypeAny, "passthrough">, z.objectInputType<{
+                prefix: z.ZodOptional<z.ZodString>;
+                emphasis: z.ZodOptional<z.ZodString>;
+                suffix: z.ZodOptional<z.ZodString>;
+            }, z.ZodTypeAny, "passthrough">>>;
+        }, "passthrough", z.ZodTypeAny, z.objectOutputType<{
+            behavior: z.ZodEnum<["allow", "deny", "ask"]>;
+            source: z.ZodString;
+            rule: z.ZodString;
+            editability: z.ZodEnum<["persistent", "session", "readonly"]>;
+            notInEffect: z.ZodOptional<z.ZodBoolean>;
+            description: z.ZodOptional<z.ZodObject<{
+                prefix: z.ZodOptional<z.ZodString>;
+                emphasis: z.ZodOptional<z.ZodString>;
+                suffix: z.ZodOptional<z.ZodString>;
+            }, "passthrough", z.ZodTypeAny, z.objectOutputType<{
+                prefix: z.ZodOptional<z.ZodString>;
+                emphasis: z.ZodOptional<z.ZodString>;
+                suffix: z.ZodOptional<z.ZodString>;
+            }, z.ZodTypeAny, "passthrough">, z.objectInputType<{
+                prefix: z.ZodOptional<z.ZodString>;
+                emphasis: z.ZodOptional<z.ZodString>;
+                suffix: z.ZodOptional<z.ZodString>;
+            }, z.ZodTypeAny, "passthrough">>>;
+        }, z.ZodTypeAny, "passthrough">, z.objectInputType<{
+            behavior: z.ZodEnum<["allow", "deny", "ask"]>;
+            source: z.ZodString;
+            rule: z.ZodString;
+            editability: z.ZodEnum<["persistent", "session", "readonly"]>;
+            notInEffect: z.ZodOptional<z.ZodBoolean>;
+            description: z.ZodOptional<z.ZodObject<{
+                prefix: z.ZodOptional<z.ZodString>;
+                emphasis: z.ZodOptional<z.ZodString>;
+                suffix: z.ZodOptional<z.ZodString>;
+            }, "passthrough", z.ZodTypeAny, z.objectOutputType<{
+                prefix: z.ZodOptional<z.ZodString>;
+                emphasis: z.ZodOptional<z.ZodString>;
+                suffix: z.ZodOptional<z.ZodString>;
+            }, z.ZodTypeAny, "passthrough">, z.objectInputType<{
+                prefix: z.ZodOptional<z.ZodString>;
+                emphasis: z.ZodOptional<z.ZodString>;
+                suffix: z.ZodOptional<z.ZodString>;
+            }, z.ZodTypeAny, "passthrough">>>;
+        }, z.ZodTypeAny, "passthrough">>, "many">;
+        workspaceDirectories: z.ZodArray<z.ZodObject<{
+            path: z.ZodString;
+            source: z.ZodOptional<z.ZodString>;
+        }, "passthrough", z.ZodTypeAny, z.objectOutputType<{
+            path: z.ZodString;
+            source: z.ZodOptional<z.ZodString>;
+        }, z.ZodTypeAny, "passthrough">, z.objectInputType<{
+            path: z.ZodString;
+            source: z.ZodOptional<z.ZodString>;
+        }, z.ZodTypeAny, "passthrough">>, "many">;
+        originalCwd: z.ZodString;
+        managedOnly: z.ZodBoolean;
+        errors: z.ZodOptional<z.ZodArray<z.ZodObject<{
+            file: z.ZodString;
+            path: z.ZodOptional<z.ZodUnknown>;
+            message: z.ZodString;
+        }, "passthrough", z.ZodTypeAny, z.objectOutputType<{
+            file: z.ZodString;
+            path: z.ZodOptional<z.ZodUnknown>;
+            message: z.ZodString;
+        }, z.ZodTypeAny, "passthrough">, z.objectInputType<{
+            file: z.ZodString;
+            path: z.ZodOptional<z.ZodUnknown>;
+            message: z.ZodString;
+        }, z.ZodTypeAny, "passthrough">>, "many">>;
+    }, z.ZodTypeAny, "passthrough">, z.objectInputType<{
+        rules: z.ZodArray<z.ZodObject<{
+            behavior: z.ZodEnum<["allow", "deny", "ask"]>;
+            source: z.ZodString;
+            rule: z.ZodString;
+            editability: z.ZodEnum<["persistent", "session", "readonly"]>;
+            notInEffect: z.ZodOptional<z.ZodBoolean>;
+            description: z.ZodOptional<z.ZodObject<{
+                prefix: z.ZodOptional<z.ZodString>;
+                emphasis: z.ZodOptional<z.ZodString>;
+                suffix: z.ZodOptional<z.ZodString>;
+            }, "passthrough", z.ZodTypeAny, z.objectOutputType<{
+                prefix: z.ZodOptional<z.ZodString>;
+                emphasis: z.ZodOptional<z.ZodString>;
+                suffix: z.ZodOptional<z.ZodString>;
+            }, z.ZodTypeAny, "passthrough">, z.objectInputType<{
+                prefix: z.ZodOptional<z.ZodString>;
+                emphasis: z.ZodOptional<z.ZodString>;
+                suffix: z.ZodOptional<z.ZodString>;
+            }, z.ZodTypeAny, "passthrough">>>;
+        }, "passthrough", z.ZodTypeAny, z.objectOutputType<{
+            behavior: z.ZodEnum<["allow", "deny", "ask"]>;
+            source: z.ZodString;
+            rule: z.ZodString;
+            editability: z.ZodEnum<["persistent", "session", "readonly"]>;
+            notInEffect: z.ZodOptional<z.ZodBoolean>;
+            description: z.ZodOptional<z.ZodObject<{
+                prefix: z.ZodOptional<z.ZodString>;
+                emphasis: z.ZodOptional<z.ZodString>;
+                suffix: z.ZodOptional<z.ZodString>;
+            }, "passthrough", z.ZodTypeAny, z.objectOutputType<{
+                prefix: z.ZodOptional<z.ZodString>;
+                emphasis: z.ZodOptional<z.ZodString>;
+                suffix: z.ZodOptional<z.ZodString>;
+            }, z.ZodTypeAny, "passthrough">, z.objectInputType<{
+                prefix: z.ZodOptional<z.ZodString>;
+                emphasis: z.ZodOptional<z.ZodString>;
+                suffix: z.ZodOptional<z.ZodString>;
+            }, z.ZodTypeAny, "passthrough">>>;
+        }, z.ZodTypeAny, "passthrough">, z.objectInputType<{
+            behavior: z.ZodEnum<["allow", "deny", "ask"]>;
+            source: z.ZodString;
+            rule: z.ZodString;
+            editability: z.ZodEnum<["persistent", "session", "readonly"]>;
+            notInEffect: z.ZodOptional<z.ZodBoolean>;
+            description: z.ZodOptional<z.ZodObject<{
+                prefix: z.ZodOptional<z.ZodString>;
+                emphasis: z.ZodOptional<z.ZodString>;
+                suffix: z.ZodOptional<z.ZodString>;
+            }, "passthrough", z.ZodTypeAny, z.objectOutputType<{
+                prefix: z.ZodOptional<z.ZodString>;
+                emphasis: z.ZodOptional<z.ZodString>;
+                suffix: z.ZodOptional<z.ZodString>;
+            }, z.ZodTypeAny, "passthrough">, z.objectInputType<{
+                prefix: z.ZodOptional<z.ZodString>;
+                emphasis: z.ZodOptional<z.ZodString>;
+                suffix: z.ZodOptional<z.ZodString>;
+            }, z.ZodTypeAny, "passthrough">>>;
+        }, z.ZodTypeAny, "passthrough">>, "many">;
+        workspaceDirectories: z.ZodArray<z.ZodObject<{
+            path: z.ZodString;
+            source: z.ZodOptional<z.ZodString>;
+        }, "passthrough", z.ZodTypeAny, z.objectOutputType<{
+            path: z.ZodString;
+            source: z.ZodOptional<z.ZodString>;
+        }, z.ZodTypeAny, "passthrough">, z.objectInputType<{
+            path: z.ZodString;
+            source: z.ZodOptional<z.ZodString>;
+        }, z.ZodTypeAny, "passthrough">>, "many">;
+        originalCwd: z.ZodString;
+        managedOnly: z.ZodBoolean;
+        errors: z.ZodOptional<z.ZodArray<z.ZodObject<{
+            file: z.ZodString;
+            path: z.ZodOptional<z.ZodUnknown>;
+            message: z.ZodString;
+        }, "passthrough", z.ZodTypeAny, z.objectOutputType<{
+            file: z.ZodString;
+            path: z.ZodOptional<z.ZodUnknown>;
+            message: z.ZodString;
+        }, z.ZodTypeAny, "passthrough">, z.objectInputType<{
+            file: z.ZodString;
+            path: z.ZodOptional<z.ZodUnknown>;
+            message: z.ZodString;
+        }, z.ZodTypeAny, "passthrough">>, "many">>;
+    }, z.ZodTypeAny, "passthrough">>;
+}, z.ZodTypeAny, "passthrough">, z.objectInputType<{
+    state: z.ZodObject<{
+        rules: z.ZodArray<z.ZodObject<{
+            behavior: z.ZodEnum<["allow", "deny", "ask"]>;
+            source: z.ZodString;
+            rule: z.ZodString;
+            editability: z.ZodEnum<["persistent", "session", "readonly"]>;
+            notInEffect: z.ZodOptional<z.ZodBoolean>;
+            description: z.ZodOptional<z.ZodObject<{
+                prefix: z.ZodOptional<z.ZodString>;
+                emphasis: z.ZodOptional<z.ZodString>;
+                suffix: z.ZodOptional<z.ZodString>;
+            }, "passthrough", z.ZodTypeAny, z.objectOutputType<{
+                prefix: z.ZodOptional<z.ZodString>;
+                emphasis: z.ZodOptional<z.ZodString>;
+                suffix: z.ZodOptional<z.ZodString>;
+            }, z.ZodTypeAny, "passthrough">, z.objectInputType<{
+                prefix: z.ZodOptional<z.ZodString>;
+                emphasis: z.ZodOptional<z.ZodString>;
+                suffix: z.ZodOptional<z.ZodString>;
+            }, z.ZodTypeAny, "passthrough">>>;
+        }, "passthrough", z.ZodTypeAny, z.objectOutputType<{
+            behavior: z.ZodEnum<["allow", "deny", "ask"]>;
+            source: z.ZodString;
+            rule: z.ZodString;
+            editability: z.ZodEnum<["persistent", "session", "readonly"]>;
+            notInEffect: z.ZodOptional<z.ZodBoolean>;
+            description: z.ZodOptional<z.ZodObject<{
+                prefix: z.ZodOptional<z.ZodString>;
+                emphasis: z.ZodOptional<z.ZodString>;
+                suffix: z.ZodOptional<z.ZodString>;
+            }, "passthrough", z.ZodTypeAny, z.objectOutputType<{
+                prefix: z.ZodOptional<z.ZodString>;
+                emphasis: z.ZodOptional<z.ZodString>;
+                suffix: z.ZodOptional<z.ZodString>;
+            }, z.ZodTypeAny, "passthrough">, z.objectInputType<{
+                prefix: z.ZodOptional<z.ZodString>;
+                emphasis: z.ZodOptional<z.ZodString>;
+                suffix: z.ZodOptional<z.ZodString>;
+            }, z.ZodTypeAny, "passthrough">>>;
+        }, z.ZodTypeAny, "passthrough">, z.objectInputType<{
+            behavior: z.ZodEnum<["allow", "deny", "ask"]>;
+            source: z.ZodString;
+            rule: z.ZodString;
+            editability: z.ZodEnum<["persistent", "session", "readonly"]>;
+            notInEffect: z.ZodOptional<z.ZodBoolean>;
+            description: z.ZodOptional<z.ZodObject<{
+                prefix: z.ZodOptional<z.ZodString>;
+                emphasis: z.ZodOptional<z.ZodString>;
+                suffix: z.ZodOptional<z.ZodString>;
+            }, "passthrough", z.ZodTypeAny, z.objectOutputType<{
+                prefix: z.ZodOptional<z.ZodString>;
+                emphasis: z.ZodOptional<z.ZodString>;
+                suffix: z.ZodOptional<z.ZodString>;
+            }, z.ZodTypeAny, "passthrough">, z.objectInputType<{
+                prefix: z.ZodOptional<z.ZodString>;
+                emphasis: z.ZodOptional<z.ZodString>;
+                suffix: z.ZodOptional<z.ZodString>;
+            }, z.ZodTypeAny, "passthrough">>>;
+        }, z.ZodTypeAny, "passthrough">>, "many">;
+        workspaceDirectories: z.ZodArray<z.ZodObject<{
+            path: z.ZodString;
+            source: z.ZodOptional<z.ZodString>;
+        }, "passthrough", z.ZodTypeAny, z.objectOutputType<{
+            path: z.ZodString;
+            source: z.ZodOptional<z.ZodString>;
+        }, z.ZodTypeAny, "passthrough">, z.objectInputType<{
+            path: z.ZodString;
+            source: z.ZodOptional<z.ZodString>;
+        }, z.ZodTypeAny, "passthrough">>, "many">;
+        originalCwd: z.ZodString;
+        managedOnly: z.ZodBoolean;
+        errors: z.ZodOptional<z.ZodArray<z.ZodObject<{
+            file: z.ZodString;
+            path: z.ZodOptional<z.ZodUnknown>;
+            message: z.ZodString;
+        }, "passthrough", z.ZodTypeAny, z.objectOutputType<{
+            file: z.ZodString;
+            path: z.ZodOptional<z.ZodUnknown>;
+            message: z.ZodString;
+        }, z.ZodTypeAny, "passthrough">, z.objectInputType<{
+            file: z.ZodString;
+            path: z.ZodOptional<z.ZodUnknown>;
+            message: z.ZodString;
+        }, z.ZodTypeAny, "passthrough">>, "many">>;
+    }, "passthrough", z.ZodTypeAny, z.objectOutputType<{
+        rules: z.ZodArray<z.ZodObject<{
+            behavior: z.ZodEnum<["allow", "deny", "ask"]>;
+            source: z.ZodString;
+            rule: z.ZodString;
+            editability: z.ZodEnum<["persistent", "session", "readonly"]>;
+            notInEffect: z.ZodOptional<z.ZodBoolean>;
+            description: z.ZodOptional<z.ZodObject<{
+                prefix: z.ZodOptional<z.ZodString>;
+                emphasis: z.ZodOptional<z.ZodString>;
+                suffix: z.ZodOptional<z.ZodString>;
+            }, "passthrough", z.ZodTypeAny, z.objectOutputType<{
+                prefix: z.ZodOptional<z.ZodString>;
+                emphasis: z.ZodOptional<z.ZodString>;
+                suffix: z.ZodOptional<z.ZodString>;
+            }, z.ZodTypeAny, "passthrough">, z.objectInputType<{
+                prefix: z.ZodOptional<z.ZodString>;
+                emphasis: z.ZodOptional<z.ZodString>;
+                suffix: z.ZodOptional<z.ZodString>;
+            }, z.ZodTypeAny, "passthrough">>>;
+        }, "passthrough", z.ZodTypeAny, z.objectOutputType<{
+            behavior: z.ZodEnum<["allow", "deny", "ask"]>;
+            source: z.ZodString;
+            rule: z.ZodString;
+            editability: z.ZodEnum<["persistent", "session", "readonly"]>;
+            notInEffect: z.ZodOptional<z.ZodBoolean>;
+            description: z.ZodOptional<z.ZodObject<{
+                prefix: z.ZodOptional<z.ZodString>;
+                emphasis: z.ZodOptional<z.ZodString>;
+                suffix: z.ZodOptional<z.ZodString>;
+            }, "passthrough", z.ZodTypeAny, z.objectOutputType<{
+                prefix: z.ZodOptional<z.ZodString>;
+                emphasis: z.ZodOptional<z.ZodString>;
+                suffix: z.ZodOptional<z.ZodString>;
+            }, z.ZodTypeAny, "passthrough">, z.objectInputType<{
+                prefix: z.ZodOptional<z.ZodString>;
+                emphasis: z.ZodOptional<z.ZodString>;
+                suffix: z.ZodOptional<z.ZodString>;
+            }, z.ZodTypeAny, "passthrough">>>;
+        }, z.ZodTypeAny, "passthrough">, z.objectInputType<{
+            behavior: z.ZodEnum<["allow", "deny", "ask"]>;
+            source: z.ZodString;
+            rule: z.ZodString;
+            editability: z.ZodEnum<["persistent", "session", "readonly"]>;
+            notInEffect: z.ZodOptional<z.ZodBoolean>;
+            description: z.ZodOptional<z.ZodObject<{
+                prefix: z.ZodOptional<z.ZodString>;
+                emphasis: z.ZodOptional<z.ZodString>;
+                suffix: z.ZodOptional<z.ZodString>;
+            }, "passthrough", z.ZodTypeAny, z.objectOutputType<{
+                prefix: z.ZodOptional<z.ZodString>;
+                emphasis: z.ZodOptional<z.ZodString>;
+                suffix: z.ZodOptional<z.ZodString>;
+            }, z.ZodTypeAny, "passthrough">, z.objectInputType<{
+                prefix: z.ZodOptional<z.ZodString>;
+                emphasis: z.ZodOptional<z.ZodString>;
+                suffix: z.ZodOptional<z.ZodString>;
+            }, z.ZodTypeAny, "passthrough">>>;
+        }, z.ZodTypeAny, "passthrough">>, "many">;
+        workspaceDirectories: z.ZodArray<z.ZodObject<{
+            path: z.ZodString;
+            source: z.ZodOptional<z.ZodString>;
+        }, "passthrough", z.ZodTypeAny, z.objectOutputType<{
+            path: z.ZodString;
+            source: z.ZodOptional<z.ZodString>;
+        }, z.ZodTypeAny, "passthrough">, z.objectInputType<{
+            path: z.ZodString;
+            source: z.ZodOptional<z.ZodString>;
+        }, z.ZodTypeAny, "passthrough">>, "many">;
+        originalCwd: z.ZodString;
+        managedOnly: z.ZodBoolean;
+        errors: z.ZodOptional<z.ZodArray<z.ZodObject<{
+            file: z.ZodString;
+            path: z.ZodOptional<z.ZodUnknown>;
+            message: z.ZodString;
+        }, "passthrough", z.ZodTypeAny, z.objectOutputType<{
+            file: z.ZodString;
+            path: z.ZodOptional<z.ZodUnknown>;
+            message: z.ZodString;
+        }, z.ZodTypeAny, "passthrough">, z.objectInputType<{
+            file: z.ZodString;
+            path: z.ZodOptional<z.ZodUnknown>;
+            message: z.ZodString;
+        }, z.ZodTypeAny, "passthrough">>, "many">>;
+    }, z.ZodTypeAny, "passthrough">, z.objectInputType<{
+        rules: z.ZodArray<z.ZodObject<{
+            behavior: z.ZodEnum<["allow", "deny", "ask"]>;
+            source: z.ZodString;
+            rule: z.ZodString;
+            editability: z.ZodEnum<["persistent", "session", "readonly"]>;
+            notInEffect: z.ZodOptional<z.ZodBoolean>;
+            description: z.ZodOptional<z.ZodObject<{
+                prefix: z.ZodOptional<z.ZodString>;
+                emphasis: z.ZodOptional<z.ZodString>;
+                suffix: z.ZodOptional<z.ZodString>;
+            }, "passthrough", z.ZodTypeAny, z.objectOutputType<{
+                prefix: z.ZodOptional<z.ZodString>;
+                emphasis: z.ZodOptional<z.ZodString>;
+                suffix: z.ZodOptional<z.ZodString>;
+            }, z.ZodTypeAny, "passthrough">, z.objectInputType<{
+                prefix: z.ZodOptional<z.ZodString>;
+                emphasis: z.ZodOptional<z.ZodString>;
+                suffix: z.ZodOptional<z.ZodString>;
+            }, z.ZodTypeAny, "passthrough">>>;
+        }, "passthrough", z.ZodTypeAny, z.objectOutputType<{
+            behavior: z.ZodEnum<["allow", "deny", "ask"]>;
+            source: z.ZodString;
+            rule: z.ZodString;
+            editability: z.ZodEnum<["persistent", "session", "readonly"]>;
+            notInEffect: z.ZodOptional<z.ZodBoolean>;
+            description: z.ZodOptional<z.ZodObject<{
+                prefix: z.ZodOptional<z.ZodString>;
+                emphasis: z.ZodOptional<z.ZodString>;
+                suffix: z.ZodOptional<z.ZodString>;
+            }, "passthrough", z.ZodTypeAny, z.objectOutputType<{
+                prefix: z.ZodOptional<z.ZodString>;
+                emphasis: z.ZodOptional<z.ZodString>;
+                suffix: z.ZodOptional<z.ZodString>;
+            }, z.ZodTypeAny, "passthrough">, z.objectInputType<{
+                prefix: z.ZodOptional<z.ZodString>;
+                emphasis: z.ZodOptional<z.ZodString>;
+                suffix: z.ZodOptional<z.ZodString>;
+            }, z.ZodTypeAny, "passthrough">>>;
+        }, z.ZodTypeAny, "passthrough">, z.objectInputType<{
+            behavior: z.ZodEnum<["allow", "deny", "ask"]>;
+            source: z.ZodString;
+            rule: z.ZodString;
+            editability: z.ZodEnum<["persistent", "session", "readonly"]>;
+            notInEffect: z.ZodOptional<z.ZodBoolean>;
+            description: z.ZodOptional<z.ZodObject<{
+                prefix: z.ZodOptional<z.ZodString>;
+                emphasis: z.ZodOptional<z.ZodString>;
+                suffix: z.ZodOptional<z.ZodString>;
+            }, "passthrough", z.ZodTypeAny, z.objectOutputType<{
+                prefix: z.ZodOptional<z.ZodString>;
+                emphasis: z.ZodOptional<z.ZodString>;
+                suffix: z.ZodOptional<z.ZodString>;
+            }, z.ZodTypeAny, "passthrough">, z.objectInputType<{
+                prefix: z.ZodOptional<z.ZodString>;
+                emphasis: z.ZodOptional<z.ZodString>;
+                suffix: z.ZodOptional<z.ZodString>;
+            }, z.ZodTypeAny, "passthrough">>>;
+        }, z.ZodTypeAny, "passthrough">>, "many">;
+        workspaceDirectories: z.ZodArray<z.ZodObject<{
+            path: z.ZodString;
+            source: z.ZodOptional<z.ZodString>;
+        }, "passthrough", z.ZodTypeAny, z.objectOutputType<{
+            path: z.ZodString;
+            source: z.ZodOptional<z.ZodString>;
+        }, z.ZodTypeAny, "passthrough">, z.objectInputType<{
+            path: z.ZodString;
+            source: z.ZodOptional<z.ZodString>;
+        }, z.ZodTypeAny, "passthrough">>, "many">;
+        originalCwd: z.ZodString;
+        managedOnly: z.ZodBoolean;
+        errors: z.ZodOptional<z.ZodArray<z.ZodObject<{
+            file: z.ZodString;
+            path: z.ZodOptional<z.ZodUnknown>;
+            message: z.ZodString;
+        }, "passthrough", z.ZodTypeAny, z.objectOutputType<{
+            file: z.ZodString;
+            path: z.ZodOptional<z.ZodUnknown>;
+            message: z.ZodString;
+        }, z.ZodTypeAny, "passthrough">, z.objectInputType<{
+            file: z.ZodString;
+            path: z.ZodOptional<z.ZodUnknown>;
+            message: z.ZodString;
+        }, z.ZodTypeAny, "passthrough">>, "many">>;
+    }, z.ZodTypeAny, "passthrough">>;
+}, z.ZodTypeAny, "passthrough">>;
 
 type ClaudePlan = z.infer<typeof ClaudePlanSchema>;
 
@@ -1199,6 +2239,224 @@ interface ClaudeSessionResumeTargetOptions extends Pick<QueryOptions, 'cliPath' 
     messageUuid: string;
     cwd: string;
 }
+
+interface ClaudeSkillEdit {
+    name: string;
+    state: string;
+    handles?: {
+        unqualified_name?: string;
+        aliases?: string[];
+        bare_name_reserved?: boolean;
+    };
+}
+
+type ClaudeSkillsDialog = z.infer<typeof ClaudeSkillsDialogSchema>;
+
+declare const ClaudeSkillsDialogSchema: z.ZodObject<{
+    skills: z.ZodArray<z.ZodObject<{
+        name: z.ZodString;
+        display_name: z.ZodString;
+        description: z.ZodString;
+        source: z.ZodString;
+        tokens: z.ZodNumber;
+        state: z.ZodEnum<["on", "name-only", "user-invocable-only", "off"]>;
+        advertised: z.ZodBoolean;
+        locked_by: z.ZodOptional<z.ZodEnum<["author", "plugin", "policy", "flag", "reserved-name"]>>;
+        handles: z.ZodObject<{
+            unqualified_name: z.ZodOptional<z.ZodString>;
+            aliases: z.ZodOptional<z.ZodArray<z.ZodString, "many">>;
+            bare_name_reserved: z.ZodOptional<z.ZodBoolean>;
+        }, "passthrough", z.ZodTypeAny, z.objectOutputType<{
+            unqualified_name: z.ZodOptional<z.ZodString>;
+            aliases: z.ZodOptional<z.ZodArray<z.ZodString, "many">>;
+            bare_name_reserved: z.ZodOptional<z.ZodBoolean>;
+        }, z.ZodTypeAny, "passthrough">, z.objectInputType<{
+            unqualified_name: z.ZodOptional<z.ZodString>;
+            aliases: z.ZodOptional<z.ZodArray<z.ZodString, "many">>;
+            bare_name_reserved: z.ZodOptional<z.ZodBoolean>;
+        }, z.ZodTypeAny, "passthrough">>;
+    }, "passthrough", z.ZodTypeAny, z.objectOutputType<{
+        name: z.ZodString;
+        display_name: z.ZodString;
+        description: z.ZodString;
+        source: z.ZodString;
+        tokens: z.ZodNumber;
+        state: z.ZodEnum<["on", "name-only", "user-invocable-only", "off"]>;
+        advertised: z.ZodBoolean;
+        locked_by: z.ZodOptional<z.ZodEnum<["author", "plugin", "policy", "flag", "reserved-name"]>>;
+        handles: z.ZodObject<{
+            unqualified_name: z.ZodOptional<z.ZodString>;
+            aliases: z.ZodOptional<z.ZodArray<z.ZodString, "many">>;
+            bare_name_reserved: z.ZodOptional<z.ZodBoolean>;
+        }, "passthrough", z.ZodTypeAny, z.objectOutputType<{
+            unqualified_name: z.ZodOptional<z.ZodString>;
+            aliases: z.ZodOptional<z.ZodArray<z.ZodString, "many">>;
+            bare_name_reserved: z.ZodOptional<z.ZodBoolean>;
+        }, z.ZodTypeAny, "passthrough">, z.objectInputType<{
+            unqualified_name: z.ZodOptional<z.ZodString>;
+            aliases: z.ZodOptional<z.ZodArray<z.ZodString, "many">>;
+            bare_name_reserved: z.ZodOptional<z.ZodBoolean>;
+        }, z.ZodTypeAny, "passthrough">>;
+    }, z.ZodTypeAny, "passthrough">, z.objectInputType<{
+        name: z.ZodString;
+        display_name: z.ZodString;
+        description: z.ZodString;
+        source: z.ZodString;
+        tokens: z.ZodNumber;
+        state: z.ZodEnum<["on", "name-only", "user-invocable-only", "off"]>;
+        advertised: z.ZodBoolean;
+        locked_by: z.ZodOptional<z.ZodEnum<["author", "plugin", "policy", "flag", "reserved-name"]>>;
+        handles: z.ZodObject<{
+            unqualified_name: z.ZodOptional<z.ZodString>;
+            aliases: z.ZodOptional<z.ZodArray<z.ZodString, "many">>;
+            bare_name_reserved: z.ZodOptional<z.ZodBoolean>;
+        }, "passthrough", z.ZodTypeAny, z.objectOutputType<{
+            unqualified_name: z.ZodOptional<z.ZodString>;
+            aliases: z.ZodOptional<z.ZodArray<z.ZodString, "many">>;
+            bare_name_reserved: z.ZodOptional<z.ZodBoolean>;
+        }, z.ZodTypeAny, "passthrough">, z.objectInputType<{
+            unqualified_name: z.ZodOptional<z.ZodString>;
+            aliases: z.ZodOptional<z.ZodArray<z.ZodString, "many">>;
+            bare_name_reserved: z.ZodOptional<z.ZodBoolean>;
+        }, z.ZodTypeAny, "passthrough">>;
+    }, z.ZodTypeAny, "passthrough">>, "many">;
+}, "passthrough", z.ZodTypeAny, z.objectOutputType<{
+    skills: z.ZodArray<z.ZodObject<{
+        name: z.ZodString;
+        display_name: z.ZodString;
+        description: z.ZodString;
+        source: z.ZodString;
+        tokens: z.ZodNumber;
+        state: z.ZodEnum<["on", "name-only", "user-invocable-only", "off"]>;
+        advertised: z.ZodBoolean;
+        locked_by: z.ZodOptional<z.ZodEnum<["author", "plugin", "policy", "flag", "reserved-name"]>>;
+        handles: z.ZodObject<{
+            unqualified_name: z.ZodOptional<z.ZodString>;
+            aliases: z.ZodOptional<z.ZodArray<z.ZodString, "many">>;
+            bare_name_reserved: z.ZodOptional<z.ZodBoolean>;
+        }, "passthrough", z.ZodTypeAny, z.objectOutputType<{
+            unqualified_name: z.ZodOptional<z.ZodString>;
+            aliases: z.ZodOptional<z.ZodArray<z.ZodString, "many">>;
+            bare_name_reserved: z.ZodOptional<z.ZodBoolean>;
+        }, z.ZodTypeAny, "passthrough">, z.objectInputType<{
+            unqualified_name: z.ZodOptional<z.ZodString>;
+            aliases: z.ZodOptional<z.ZodArray<z.ZodString, "many">>;
+            bare_name_reserved: z.ZodOptional<z.ZodBoolean>;
+        }, z.ZodTypeAny, "passthrough">>;
+    }, "passthrough", z.ZodTypeAny, z.objectOutputType<{
+        name: z.ZodString;
+        display_name: z.ZodString;
+        description: z.ZodString;
+        source: z.ZodString;
+        tokens: z.ZodNumber;
+        state: z.ZodEnum<["on", "name-only", "user-invocable-only", "off"]>;
+        advertised: z.ZodBoolean;
+        locked_by: z.ZodOptional<z.ZodEnum<["author", "plugin", "policy", "flag", "reserved-name"]>>;
+        handles: z.ZodObject<{
+            unqualified_name: z.ZodOptional<z.ZodString>;
+            aliases: z.ZodOptional<z.ZodArray<z.ZodString, "many">>;
+            bare_name_reserved: z.ZodOptional<z.ZodBoolean>;
+        }, "passthrough", z.ZodTypeAny, z.objectOutputType<{
+            unqualified_name: z.ZodOptional<z.ZodString>;
+            aliases: z.ZodOptional<z.ZodArray<z.ZodString, "many">>;
+            bare_name_reserved: z.ZodOptional<z.ZodBoolean>;
+        }, z.ZodTypeAny, "passthrough">, z.objectInputType<{
+            unqualified_name: z.ZodOptional<z.ZodString>;
+            aliases: z.ZodOptional<z.ZodArray<z.ZodString, "many">>;
+            bare_name_reserved: z.ZodOptional<z.ZodBoolean>;
+        }, z.ZodTypeAny, "passthrough">>;
+    }, z.ZodTypeAny, "passthrough">, z.objectInputType<{
+        name: z.ZodString;
+        display_name: z.ZodString;
+        description: z.ZodString;
+        source: z.ZodString;
+        tokens: z.ZodNumber;
+        state: z.ZodEnum<["on", "name-only", "user-invocable-only", "off"]>;
+        advertised: z.ZodBoolean;
+        locked_by: z.ZodOptional<z.ZodEnum<["author", "plugin", "policy", "flag", "reserved-name"]>>;
+        handles: z.ZodObject<{
+            unqualified_name: z.ZodOptional<z.ZodString>;
+            aliases: z.ZodOptional<z.ZodArray<z.ZodString, "many">>;
+            bare_name_reserved: z.ZodOptional<z.ZodBoolean>;
+        }, "passthrough", z.ZodTypeAny, z.objectOutputType<{
+            unqualified_name: z.ZodOptional<z.ZodString>;
+            aliases: z.ZodOptional<z.ZodArray<z.ZodString, "many">>;
+            bare_name_reserved: z.ZodOptional<z.ZodBoolean>;
+        }, z.ZodTypeAny, "passthrough">, z.objectInputType<{
+            unqualified_name: z.ZodOptional<z.ZodString>;
+            aliases: z.ZodOptional<z.ZodArray<z.ZodString, "many">>;
+            bare_name_reserved: z.ZodOptional<z.ZodBoolean>;
+        }, z.ZodTypeAny, "passthrough">>;
+    }, z.ZodTypeAny, "passthrough">>, "many">;
+}, z.ZodTypeAny, "passthrough">, z.objectInputType<{
+    skills: z.ZodArray<z.ZodObject<{
+        name: z.ZodString;
+        display_name: z.ZodString;
+        description: z.ZodString;
+        source: z.ZodString;
+        tokens: z.ZodNumber;
+        state: z.ZodEnum<["on", "name-only", "user-invocable-only", "off"]>;
+        advertised: z.ZodBoolean;
+        locked_by: z.ZodOptional<z.ZodEnum<["author", "plugin", "policy", "flag", "reserved-name"]>>;
+        handles: z.ZodObject<{
+            unqualified_name: z.ZodOptional<z.ZodString>;
+            aliases: z.ZodOptional<z.ZodArray<z.ZodString, "many">>;
+            bare_name_reserved: z.ZodOptional<z.ZodBoolean>;
+        }, "passthrough", z.ZodTypeAny, z.objectOutputType<{
+            unqualified_name: z.ZodOptional<z.ZodString>;
+            aliases: z.ZodOptional<z.ZodArray<z.ZodString, "many">>;
+            bare_name_reserved: z.ZodOptional<z.ZodBoolean>;
+        }, z.ZodTypeAny, "passthrough">, z.objectInputType<{
+            unqualified_name: z.ZodOptional<z.ZodString>;
+            aliases: z.ZodOptional<z.ZodArray<z.ZodString, "many">>;
+            bare_name_reserved: z.ZodOptional<z.ZodBoolean>;
+        }, z.ZodTypeAny, "passthrough">>;
+    }, "passthrough", z.ZodTypeAny, z.objectOutputType<{
+        name: z.ZodString;
+        display_name: z.ZodString;
+        description: z.ZodString;
+        source: z.ZodString;
+        tokens: z.ZodNumber;
+        state: z.ZodEnum<["on", "name-only", "user-invocable-only", "off"]>;
+        advertised: z.ZodBoolean;
+        locked_by: z.ZodOptional<z.ZodEnum<["author", "plugin", "policy", "flag", "reserved-name"]>>;
+        handles: z.ZodObject<{
+            unqualified_name: z.ZodOptional<z.ZodString>;
+            aliases: z.ZodOptional<z.ZodArray<z.ZodString, "many">>;
+            bare_name_reserved: z.ZodOptional<z.ZodBoolean>;
+        }, "passthrough", z.ZodTypeAny, z.objectOutputType<{
+            unqualified_name: z.ZodOptional<z.ZodString>;
+            aliases: z.ZodOptional<z.ZodArray<z.ZodString, "many">>;
+            bare_name_reserved: z.ZodOptional<z.ZodBoolean>;
+        }, z.ZodTypeAny, "passthrough">, z.objectInputType<{
+            unqualified_name: z.ZodOptional<z.ZodString>;
+            aliases: z.ZodOptional<z.ZodArray<z.ZodString, "many">>;
+            bare_name_reserved: z.ZodOptional<z.ZodBoolean>;
+        }, z.ZodTypeAny, "passthrough">>;
+    }, z.ZodTypeAny, "passthrough">, z.objectInputType<{
+        name: z.ZodString;
+        display_name: z.ZodString;
+        description: z.ZodString;
+        source: z.ZodString;
+        tokens: z.ZodNumber;
+        state: z.ZodEnum<["on", "name-only", "user-invocable-only", "off"]>;
+        advertised: z.ZodBoolean;
+        locked_by: z.ZodOptional<z.ZodEnum<["author", "plugin", "policy", "flag", "reserved-name"]>>;
+        handles: z.ZodObject<{
+            unqualified_name: z.ZodOptional<z.ZodString>;
+            aliases: z.ZodOptional<z.ZodArray<z.ZodString, "many">>;
+            bare_name_reserved: z.ZodOptional<z.ZodBoolean>;
+        }, "passthrough", z.ZodTypeAny, z.objectOutputType<{
+            unqualified_name: z.ZodOptional<z.ZodString>;
+            aliases: z.ZodOptional<z.ZodArray<z.ZodString, "many">>;
+            bare_name_reserved: z.ZodOptional<z.ZodBoolean>;
+        }, z.ZodTypeAny, "passthrough">, z.objectInputType<{
+            unqualified_name: z.ZodOptional<z.ZodString>;
+            aliases: z.ZodOptional<z.ZodArray<z.ZodString, "many">>;
+            bare_name_reserved: z.ZodOptional<z.ZodBoolean>;
+        }, z.ZodTypeAny, "passthrough">>;
+    }, z.ZodTypeAny, "passthrough">>, "many">;
+}, z.ZodTypeAny, "passthrough">>;
 
 type ClaudeTurnConsumer = (turn: ClaudeConversationTurn) => Promise<void>;
 
@@ -1367,18 +2625,29 @@ interface CliServiceType {
         readSettings(): Promise<Record<string, any>>;
         /** Write the CLI's user-scope settings.json (~/.claude/settings.json). */
         writeSettings(settings: Record<string, any>): Promise<void>;
-        /** List skill files from user (~/.claude/skills/) and project (.claude/skills/) dirs. */
-        listSkills(): Promise<Array<{
-            name: string;
-            scope: string;
-            path: string;
-        }>>;
-        /** List memory/CLAUDE.md files from known locations. */
-        listMemoryFiles(): Promise<Array<{
-            name: string;
-            scope: string;
-            path: string;
-        }>>;
+        /** Read native Skill states, provenance and author/policy locks. */
+        listSkills(opts?: {
+            cwd?: string;
+        }): Promise<ClaudeSkillsDialog['skills']>;
+        editSkill(edit: ClaudeSkillEdit, opts?: {
+            cwd?: string;
+        }): Promise<{
+            changed: boolean;
+        }>;
+        /** Read native instruction/memory files and availability in the selected project. */
+        getMemoryDialog(opts?: {
+            cwd?: string;
+        }): Promise<ClaudeMemoryDialog>;
+        getPermissionRules(opts?: {
+            cwd?: string;
+        }): Promise<ClaudePermissionRules>;
+        editPermissionRules(edit: ClaudePermissionEdit, opts?: {
+            cwd?: string;
+        }): Promise<ClaudePermissionEditResult>;
+        /** Persist the user auto-memory preference through the native writer. */
+        setAutoMemory(enabled: boolean, opts?: {
+            cwd?: string;
+        }): Promise<void>;
         /** Rename a Claude Code session through the native process. */
         renameSession(id: string, title: string, opts?: {
             cwd?: string;
@@ -5103,6 +6372,38 @@ type PermissionDecision = {
     decisionClassification?: 'user_permanent' | 'user_reject' | 'user_temporary';
 };
 
+declare const PermissionEditSchema: z.ZodDiscriminatedUnion<"op", [z.ZodObject<{
+    op: z.ZodLiteral<"add">;
+    rules: z.ZodArray<z.ZodString, "many">;
+    behavior: z.ZodEnum<["allow", "deny", "ask"]>;
+    destination: z.ZodEnum<["userSettings", "projectSettings", "localSettings"]>;
+}, "strict", z.ZodTypeAny, {
+    rules: string[];
+    behavior: "allow" | "ask" | "deny";
+    op: "add";
+    destination: "localSettings" | "projectSettings" | "userSettings";
+}, {
+    rules: string[];
+    behavior: "allow" | "ask" | "deny";
+    op: "add";
+    destination: "localSettings" | "projectSettings" | "userSettings";
+}>, z.ZodObject<{
+    op: z.ZodLiteral<"remove">;
+    rule: z.ZodString;
+    behavior: z.ZodEnum<["allow", "deny", "ask"]>;
+    source: z.ZodEnum<["userSettings", "projectSettings", "localSettings"]>;
+}, "strict", z.ZodTypeAny, {
+    source: "localSettings" | "projectSettings" | "userSettings";
+    behavior: "allow" | "ask" | "deny";
+    rule: string;
+    op: "remove";
+}, {
+    source: "localSettings" | "projectSettings" | "userSettings";
+    behavior: "allow" | "ask" | "deny";
+    rule: string;
+    op: "remove";
+}>]>;
+
 /** Caller hook: decide a tool permission request. */
 type PermissionHandler = (request: CanUseToolRequest) => PermissionDecision | Promise<PermissionDecision>;
 
@@ -5297,6 +6598,16 @@ interface QueryHandle {
     }): Promise<ClaudeInterruptReceipt>;
     /** Rename the native session; an explicit ID protects against renaming a different session. */
     renameSession(title: string, sessionId?: string): Promise<void>;
+    /** Read native Skill states, provenance and locks without a model turn. */
+    getSkillsDialog(): Promise<ClaudeSkillsDialog>;
+    /** Read native memory files and availability without a model turn. */
+    getMemoryDialog(): Promise<ClaudeMemoryDialog>;
+    /** Read native rule provenance, editability and workspace metadata without a prompt. */
+    getPermissionRules(): Promise<ClaudePermissionRules>;
+    /** Refresh native settings after an idle durable permission edit, preserving existing flags. */
+    refreshPermissionRules(): Promise<ClaudePermissionRules>;
+    /** Refresh native Skill discovery after an idle configuration edit. */
+    reloadSkills(): Promise<void>;
     /** Read the current native plan without a model turn. */
     getPlan(): Promise<ClaudePlan>;
     /** Read live MCP server and tool status without a model turn. */
@@ -7182,16 +8493,16 @@ declare const press: z.ZodObject<{
     key: z.ZodOptional<z.ZodString>;
     href: z.ZodOptional<z.ZodString>;
 }, "strict", z.ZodTypeAny, {
+    plugin: string;
     client_id: string;
     surface: "desktop" | "mobile" | "vscode";
-    plugin: string;
     handle: number;
     key?: string | undefined;
     href?: string | undefined;
 }, {
+    plugin: string;
     client_id: string;
     surface: "desktop" | "mobile" | "vscode";
-    plugin: string;
     handle: number;
     key?: string | undefined;
     href?: string | undefined;

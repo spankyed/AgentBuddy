@@ -1,4 +1,4 @@
-import { getPermissionRules } from './claude-code/permissions.ts'
+import { editPermissionRules, type ClaudePermissionEdit, type ClaudePermissionEditResult, getPermissionRules } from './claude-code/permissions.ts'
 import type { ClaudePermissionRules } from './claude-code/host-controls.ts'
 import { getMemoryDialog, setAutoMemory } from './claude-code/memory.ts'
 import type { ClaudeMemoryDialog } from './claude-code/host-controls.ts'
@@ -105,6 +105,7 @@ export interface CliServiceType {
     /** Read native instruction/memory files and availability in the selected project. */
     getMemoryDialog(opts?: { cwd?: string }): Promise<ClaudeMemoryDialog>
     getPermissionRules(opts?: { cwd?: string }): Promise<ClaudePermissionRules>
+    editPermissionRules(edit: ClaudePermissionEdit, opts?: { cwd?: string }): Promise<ClaudePermissionEditResult>
     /** Persist the user auto-memory preference through the native writer. */
     setAutoMemory(enabled: boolean, opts?: { cwd?: string }): Promise<void>
     /** Rename a Claude Code session through the native process. */
@@ -283,6 +284,9 @@ function createCliService(): CliServiceType {
       },
       setAutoMemory(enabled, opts) {
         return setAutoMemory(enabled, { cwd: opts?.cwd ?? resolveCwd() })
+      },
+      editPermissionRules(edit, opts) {
+        return editPermissionRules(edit, { cwd: opts?.cwd ?? resolveCwd() })
       },
       getPermissionRules(opts) {
         return getPermissionRules({ cwd: opts?.cwd ?? resolveCwd() })

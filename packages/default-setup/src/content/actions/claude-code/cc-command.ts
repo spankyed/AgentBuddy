@@ -27,6 +27,7 @@ type Handler = (
   args: string[],
   services: Services,
   threadId?: string,
+  rawText?: string,
 ) => Promise<{ text: string; data?: any }>;
 
 // ── Passthrough commands ─────────────────────────────────────────────
@@ -87,7 +88,7 @@ export async function action(
 
   if (handler) {
     try {
-      result = await handler(args, services, threadId);
+      result = await handler(args, services, threadId, text);
     } catch (error: any) {
       result = { text: `cc-${name} failed: ${error?.message || 'Unknown error'}` };
     }
@@ -204,23 +205,48 @@ async function handleModel(
   return { text: `Model set to: ${args[0]}` };
 }
 
-async function handlePermissions(args: string[], services: Services, threadId?: string): Promise<{ text: string; data?: any }> {
-  if (args.length) return { text: 'Usage: cc-permissions (list rules and their sources)' };
+async function handlePermissions(args: string[], services: Services, threadId?: string, rawText?: string): Promise<{ text: string; data?: any }> {
+  const editing = args.length > 0;
+  const edit = rawText?.trim().match(/^(add|remove)\s+(allow|deny|ask)\s+(userSettings|projectSettings|localSettings)\s+([\s\S]+)$/);
+  if (editing && !edit) return { text: 'Usage: cc-permissions [add|remove <allow|deny|ask> <userSettings|projectSettings|localSettings> <exact rule>]' };
+  if (editing && threadId && services.cli.claudeCode.isConversationBusy(threadId)) {
+    return { text: 'Wait for the Claude conversation to become idle before editing permission rules.' };
+  }
   const prior = threadId ? getClaudeState(services, threadId) : undefined;
   const cwd = prior?.cwdOverride || prior?.cwd;
   let handle = threadId ? services.cli.claudeCode.getHandle(threadId) : undefined;
   if (handle && threadId) {
     const nativeCwd = services.cli.claudeCode.getConversation(threadId)?.owner.sessionCwd;
-    if (nativeCwd !== (cwd || services.cli.claudeCode.getWorkingDir())) handle = undefined;
+    if (nativeCwd !== (cwd || services.cli.claudeCode.getWorkingDir())) {
+      if (editing) return { text: 'The native conversation directory does not match this project. Start a conversation in this project before editing its permission rules.' };
+      handle = undefined;
+    }
   }
-  const data = handle ? await handle.getPermissionRules() : await services.cli.claudeCode.getPermissionRules(cwd ? { cwd } : undefined);
+  const options = cwd ? { cwd } : undefined;
+  let notice = '';
+  let data;
+  if (edit) {
+    const behavior = edit[2] as 'allow' | 'deny' | 'ask';
+    const source = edit[3] as 'userSettings' | 'projectSettings' | 'localSettings';
+    const rule = edit[4]!;
+    const saved = await services.cli.claudeCode.editPermissionRules(edit[1] === 'add'
+      ? { op: 'add', rules: [rule], behavior, destination: source }
+      : { op: 'remove', rule, behavior, source }, options);
+    notice = `Saved ${source} permission change.\n`;
+    for (const warning of saved.warnings) notice += `Native warning: ${warning}\n`;
+    if (saved.stored.length) notice += `Native stored rules: ${saved.stored.join(', ')}\n`;
+    try { data = handle ? await handle.refreshPermissionRules() : await services.cli.claudeCode.getPermissionRules(options); }
+    catch (error: any) { return { text: `${notice}The change was saved, but native permission refresh failed: ${error?.message || 'Unknown error'}. Running permission state is unverified.` }; }
+  } else {
+    data = handle ? await handle.getPermissionRules() : await services.cli.claudeCode.getPermissionRules(options);
+  }
   const state = data.state;
   const lines = [handle ? 'Running conversation permissions' : 'Project configuration permissions', `Workspace: ${state.originalCwd}`, `Managed-only rules: ${state.managedOnly ? 'yes' : 'no'}`];
   for (const rule of state.rules) lines.push(`${rule.behavior} [${rule.source}; ${rule.editability}${rule.notInEffect ? '; not in effect' : ''}] ${rule.rule}`);
   if (!state.rules.length) lines.push('No permission rules listed.');
   for (const directory of state.workspaceDirectories) lines.push(`Directory${directory.source ? ` [${directory.source}]` : ''}: ${directory.path}`);
   for (const error of state.errors ?? []) lines.push(`Settings error: ${error.file}: ${error.message}`);
-  return { text: lines.join('\n'), data };
+  return { text: notice + lines.join('\n'), data };
 }
 
 async function handleMemory(

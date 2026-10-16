@@ -3,7 +3,7 @@ name: Claude Code commands
 ---
 <!-- section:field -->
 **cc-sessions**: Session ID (optional, lists all if omitted)
-**cc-permissions**: Show native permission rules, exact stored spellings, sources and editability
+**cc-permissions**: Show native permission rules, exact stored spellings, sources and editability. Add/remove with `<add|remove> <allow|deny|ask> <userSettings|projectSettings|localSettings> <exact rule>`; native validation and warnings apply. Refreshes a matching idle conversation after saving; reports refresh failure separately.
 **cc-config**: get|set <key> [value]
 **cc-plan**: Show the current native plan without a model turn
 **cc-context**: Show context window usage breakdown

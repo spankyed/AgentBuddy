@@ -1565,13 +1565,13 @@
         "shortCode": "ACT-61"
       },
       "Collection:commands": {
-        "contentHash": "574723e89fc70643",
+        "contentHash": "6f09ed840e1e52fc",
         "displayOrder": 1000,
         "entityType": "Collection",
         "name": "commands"
       },
       "Collection:internal": {
-        "contentHash": "67cf7a75d60a9d60",
+        "contentHash": "ac69a306b398ae25",
         "displayOrder": 1000,
         "entityType": "Collection",
         "name": "internal"
@@ -1587,7 +1587,7 @@
               },
               {
                 "key": "cc-permissions",
-                "value": "Show native permission rules, exact stored spellings, sources and editability"
+                "value": "Show native permission rules, exact stored spellings, sources and editability. Add/remove with `<add|remove> <allow|deny|ask> <userSettings|projectSettings|localSettings> <exact rule>`; native validation and warnings apply. Refreshes a matching idle conversation after saving; reports refresh failure separately."
               },
               {
                 "key": "cc-config",
@@ -1676,7 +1676,7 @@
             ]
           }
         ],
-        "contentHash": "e9c220a28b5dbdaa",
+        "contentHash": "38e46354220c3766",
         "displayOrder": 1000,
         "entityType": "Document",
         "name": "Claude Code commands",

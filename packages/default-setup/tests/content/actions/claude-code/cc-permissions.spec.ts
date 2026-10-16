@@ -31,3 +31,39 @@ describe('cc-permissions native presentation', () => {
  });
 
 });
+
+
+describe('cc-permissions native editing', () => {
+ it('preserves internal rule whitespace, shows native canonical spellings/warnings and refreshes a matching process', async () => {
+  const write = vi.fn().mockResolvedValue({ stored: ['Bash'], warnings: ['Tool-wide rule'] }), refresh = vi.fn().mockResolvedValue(catalog);
+  mockService<Services, 'cli'>('cli', { claudeCode: { editPermissionRules: write, getHandle: vi.fn(() => ({ refreshPermissionRules: refresh })), getConversation: vi.fn(() => ({ owner: { sessionCwd: '/selected' } })), getWorkingDir: vi.fn(() => '/selected'), isConversationBusy: vi.fn(() => false) } as never }); mockService<Services, 'chat'>('chat', { sendBlockMessage: vi.fn() });
+  const result = await action({ command: 'cc-permissions', text: 'add deny userSettings Bash(echo  fixture)', threadId: 'fixture-thread' }, services, {} as never, 'permission-flow');
+  expect(write).toHaveBeenCalledWith({ op: 'add', rules: ['Bash(echo  fixture)'], behavior: 'deny', destination: 'userSettings' }, undefined); expect(refresh).toHaveBeenCalledOnce(); expect(result.text).toContain('Saved userSettings permission change.'); expect(result.text).toContain('Native stored rules: Bash'); expect(result.text).toContain('Native warning: Tool-wide rule'); expect(result.text).toContain('Running conversation permissions');
+ });
+ it('uses exact removal and fresh project readback when no process exists', async () => {
+  const { id } = repository.threadCommands.create({ topic: 'Permission edit', instructions: '', tags: [] }); repository.threadCommands.update(id, { context: { claudeCode: { cwd: '/saved', cwdOverride: '/selected' } } });
+  const write = vi.fn().mockResolvedValue({ stored: [], warnings: [] }), fresh = vi.fn().mockResolvedValue(catalog);
+  mockService<Services, 'cli'>('cli', { claudeCode: { editPermissionRules: write, getHandle: vi.fn(), getPermissionRules: fresh, isConversationBusy: vi.fn(() => false) } as never }); mockService<Services, 'chat'>('chat', { sendBlockMessage: vi.fn() });
+  const result = await action({ command: 'cc-permissions', text: 'remove ask localSettings Read(./a  b.txt)', threadId: id }, services, {} as never, 'permission-flow');
+  expect(write).toHaveBeenCalledWith({ op: 'remove', rule: 'Read(./a  b.txt)', behavior: 'ask', source: 'localSettings' }, { cwd: '/selected' }); expect(fresh).toHaveBeenCalledWith({ cwd: '/selected' }); expect(result.text).toContain('Project configuration permissions');
+ });
+ it('refuses busy conversations and different-project processes before writing', async () => {
+  const write = vi.fn(); const busy = vi.fn(() => true);
+  mockService<Services, 'cli'>('cli', { claudeCode: { editPermissionRules: write, isConversationBusy: busy, getHandle: vi.fn(() => ({})), getConversation: vi.fn(() => ({ owner: { sessionCwd: '/other' } })), getWorkingDir: vi.fn(() => '/selected') } as never }); mockService<Services, 'chat'>('chat', { sendBlockMessage: vi.fn() });
+  const run = () => action({ command: 'cc-permissions', text: 'add deny userSettings Bash', threadId: 'fixture-thread' }, services, {} as never, 'permission-flow');
+  expect((await run()).text).toContain('become idle'); busy.mockReturnValue(false); expect((await run()).text).toContain('does not match'); expect(write).not.toHaveBeenCalled();
+ });
+ it('reports a saved change separately when native refresh fails', async () => {
+  const write = vi.fn().mockResolvedValue({ stored: ['Bash'], warnings: [] });
+  mockService<Services, 'cli'>('cli', { claudeCode: { editPermissionRules: write, getPermissionRules: vi.fn().mockRejectedValue(new Error('refresh unavailable')) } as never });
+  const result = await action({ command: 'cc-permissions', text: 'add deny userSettings Bash' }, services, {} as never, 'permission-flow');
+  expect(result.text).toContain('Saved userSettings permission change.'); expect(result.text).toContain('refresh unavailable'); expect(result.text).toContain('Running permission state is unverified'); expect(write).toHaveBeenCalledOnce();
+ });
+ it('retains native writer refusals without trying to refresh or write a file directly', async () => {
+  const fresh = vi.fn(); mockService<Services, 'cli'>('cli', { claudeCode: { editPermissionRules: vi.fn().mockRejectedValue(new Error('Native source disabled')), getPermissionRules: fresh } as never });
+  const result = await action({ command: 'cc-permissions', text: 'add allow projectSettings Read' }, services, {} as never, 'permission-flow'); expect(result.text).toBe('cc-permissions failed: Native source disabled'); expect(fresh).not.toHaveBeenCalled();
+ });
+ it('rejects invalid source/behavior syntax before accessing services', async () => {
+  const result = await action({ command: 'cc-permissions', text: 'add deny policySettings Bash' }, services, {} as never, 'permission-flow'); expect(result.text).toContain('Usage:');
+ });
+});

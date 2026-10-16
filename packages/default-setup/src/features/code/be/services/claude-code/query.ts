@@ -102,6 +102,8 @@ export interface QueryHandle {
   getMemoryDialog(): Promise<ClaudeMemoryDialog>
   /** Read native rule provenance, editability and workspace metadata without a prompt. */
   getPermissionRules(): Promise<ClaudePermissionRules>
+  /** Refresh native settings after an idle durable permission edit, preserving existing flags. */
+  refreshPermissionRules(): Promise<ClaudePermissionRules>
   /** Refresh native Skill discovery after an idle configuration edit. */
   reloadSkills(): Promise<void>
   /** Read the current native plan without a model turn. */
@@ -298,6 +300,12 @@ export async function query(opts: QueryOptions): Promise<QueryHandle> {
 
     async getPermissionRules(): Promise<ClaudePermissionRules> {
       await initialized
+      return ClaudePermissionRulesSchema.parse(await hostControls.request({ subtype: 'list_permission_rules' }))
+    },
+
+    async refreshPermissionRules(): Promise<ClaudePermissionRules> {
+      await initialized
+      await hostControls.request({ subtype: 'apply_flag_settings', settings: {} })
       return ClaudePermissionRulesSchema.parse(await hostControls.request({ subtype: 'list_permission_rules' }))
     },
 
