@@ -50,3 +50,17 @@ it('isolates subscriber failure from acceptance and other readers', () => {
   expect(read).toHaveBeenCalledOnce();
   expect(packs.settingsForm(group)).toBe(groupForm);
 });
+
+it('retires frontend instance identity even when a replacement reuses the same components', () => {
+  const packs = createNativeFrontendTestRegistry();
+  packs.registerFixture({ id: 'owner', settingsForms: { shared: groupForm } });
+  const original = packs.frontendIdentity('owner');
+  expect(original).toBeDefined();
+  expect(() => packs.preparePackFE({ kind: 'native', declaration: { id: 'owner' } }, { id: 'other' }, undefined, true)).toThrow();
+  expect(packs.frontendIdentity('owner')).toBe(original);
+  packs.unregisterPackFE('owner');
+  expect(packs.frontendIdentity('owner')).toBeUndefined();
+  packs.registerFixture({ id: 'owner', settingsForms: { shared: groupForm } });
+  expect(packs.settingsForm(group)).toBe(groupForm);
+  expect(packs.frontendIdentity('owner')).not.toBe(original);
+});

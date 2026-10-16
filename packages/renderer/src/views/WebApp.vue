@@ -31,9 +31,7 @@
             :label="`${canvasPlugin.label} Canvas`"
             :header-class="canvasPlugin.options?.headerClass">
             <!-- Each plugin area renders as part of its plugin, which is what usePlugin() returns there -->
-            <PluginScope :plugin="currentPluginId" :key="currentPluginId">
-              <Router :views="canvasPlugin.canvas" :target="targetView" />
-            </PluginScope>
+            <PluginPane :plugin="canvasPlugin" area="canvas" :target="targetView" />
             </CanvasArea>
 
             <!-- Vertical Resizer (hidden during onboarding) -->
@@ -55,9 +53,7 @@
                     : { height: `calc(${100 - panelSizes.canvasHeight}% - 4px)` }"
             >
                 <!-- The chat is the default pack's, so there is none until a pack has claimed the default -->
-                <PluginScope v-if="defaultPlugin" :plugin="defaultPlugin.id" :key="defaultPlugin.id">
-                  <component :is="defaultPlugin.chat" />
-                </PluginScope>
+                <PluginPane v-if="defaultPlugin" :plugin="defaultPlugin" area="chat" />
             </ChatArea>
         </div>
 
@@ -76,12 +72,8 @@
             data-onboarding-id="inspection-panel"
 :style="{ width: `${panelSizes.inspectionWidth}px` }"
             :label="`${activePlugin.panel ? activePlugin.label : fallbackPlugin?.label} Inspection`">
-            <PluginScope v-if="activePlugin.panel" :plugin="activePlugin.id" :key="activePlugin.id">
-              <component :is="activePlugin.panel" />
-            </PluginScope>
-            <PluginScope v-else-if="fallbackShown && fallbackPlugin" :plugin="fallbackPlugin.id" key="fallback-panel">
-              <component :is="fallbackPlugin.panel" />
-            </PluginScope>
+            <PluginPane v-if="activePlugin.panel" :plugin="activePlugin" area="panel" />
+            <PluginPane v-else-if="fallbackShown && fallbackPlugin" :plugin="fallbackPlugin" area="panel" />
         </InspectionPanel>
     </div>
     </div>
@@ -101,8 +93,8 @@ import InspectionPanel from '@/views/layout/InspectionPanel.vue'
 import PanelResizer from '@apackdev/ui/layout/panel-resizer'
 import { applicationState } from '@/main'
 import { HOST, notifyPluginActor } from '@apackdev/host/fe'
-import { untypedOpenPlugin, PluginScope } from '@apackdev/sdk/fe'
-import Router from '@/views/layout/PluginRouter.vue'
+import { untypedOpenPlugin } from '@apackdev/sdk/fe'
+import PluginPane from '@/views/layout/PluginPane.vue'
 import { useContextualHelp } from '@/views/settings/contextual-help';
 const { hasHelp, openFeatureHelp } = useContextualHelp();
 import type { ContextMenuItem } from '@apackdev/sdk/fe'

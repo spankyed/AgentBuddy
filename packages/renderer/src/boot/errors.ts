@@ -23,7 +23,7 @@ export function serializeRendererError(error: unknown): { message: string; stack
 }
 
 /** Reports an error to the main process's renderer log. A log that can't be written is dropped, not thrown. */
-export function reportRendererError(source: string, error: unknown, meta?: unknown): void {
+export function reportRendererError(source: string, error: unknown, meta?: unknown, fatal = true): void {
   if (isRecoverableMonacoError(error)) return;
   const serialized = serializeRendererError(error);
   window.electronAPI?.rendererLog?.write({
@@ -35,7 +35,7 @@ export function reportRendererError(source: string, error: unknown, meta?: unkno
       startupId: window.electronAPI?.startupId,
       detail: meta ?? serialized.meta,
     },
-    fatal: true,
+    fatal,
   }).catch(() => {});
 }
 

@@ -321,7 +321,7 @@ class WindowManager implements AppModule {
         meta: entry.meta,
       };
 
-      if (entry.fatal || level === 'error') {
+      if (entry.fatal ?? (level === 'error')) {
         logRendererFatal(payload.message || 'renderer error', payload);
       } else {
         logRenderer(level, payload);

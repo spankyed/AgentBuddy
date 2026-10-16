@@ -393,3 +393,14 @@ origin and available declaration/build identity. Disabled installed and unbuilt 
 visible; executable component/layout readiness is separate. Active packs cannot share a step wire.
 Native host composition uses the same step declaration grammar. Step defaults and presentation data
 are captured at admission, so changing an authored object later does not mutate the accepted binding.
+
+### Pack view failures
+
+A failing pack canvas, panel, chat view or custom settings form shows an error in its own pane, with
+its owner named. Other panes and host settings remain available. Retry remounts the current accepted
+frontend; an unloaded or superseded version cannot be revived. A replacement resets its own failed
+view, including when it reuses the same component. Settings declarations, defaults and saved values
+remain intact; general settings and its JSON editor remain available after a custom form fails.
+Contained errors are recorded with their pack and area without becoming window-fatal errors. The
+native shell and settings runtime retain their host error handling. This contains Vue component
+failures; it does not isolate arbitrary JavaScript or change pack permissions.

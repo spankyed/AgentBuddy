@@ -44,6 +44,8 @@ export interface FePackRegistry extends FePackRegistryView {
   /** Every registered plugin, in registration order */
   getRegisteredPlugins(): Plugin[];
   pluginBindings(): ReadonlyMap<string, PluginFrontendBinding>;
+  /** Identity of this accepted frontend instance; replacement changes it even when components are reused. */
+  frontendIdentity(packId: string): Readonly<Pick<AcceptedFrontendAdmission, 'declarationRevision' | 'runtimeRevision' | 'buildRevision'>> | undefined;
   getAppExtension(slot: string): ReturnType<FePackRegistryView['appExtension']>;
   /** Lookup of an accepted form; installed declarations remain separate from executable availability. */
   settingsForm(target: SettingsTarget): SettingsForm | undefined;
@@ -100,6 +102,7 @@ export interface PluginFrontendBinding {
 type DefinitionEntry<T> = readonly [string, T];
 interface FrontendContributions {
   id: string;
+  identity: Readonly<Pick<AcceptedFrontendAdmission, 'declarationRevision' | 'runtimeRevision' | 'buildRevision'>>;
   addressed: AddressedRegistration['addressed'];
   pluginBindings: PluginFrontendBinding[];
   roles: Record<string, FeatureRef>;
@@ -129,7 +132,7 @@ function capture(registration: PackFERegistration, identity: AcceptedFrontendAdm
   checkFeatureIds(reg.id, Object.keys(reg.features ?? {}));
   checkFeatureIds(reg.id, Object.keys(reg.settingsForms ?? {}));
   return {
-    id: reg.id, addressed: reg.addressed, roles: reg.roles, bindSettings: reg.bindSettings,
+    id: reg.id, identity: Object.freeze(revisions), addressed: reg.addressed, roles: reg.roles, bindSettings: reg.bindSettings,
     pluginBindings: reg.addressed.map(({ plugin }) => Object.freeze({ packId: reg.id, ...revisions,
       declaration: identity.declarations.features![plugin.id.slice(reg.id.length + 1)]!.plugin!, binding: plugin })),
     forms: [
@@ -328,6 +331,7 @@ export function createFePackRegistry(): FePackRegistry {
     blockBindings: () => new Map(tables.blocks.entries()),
     block: key => tables.blocks.get(key)?.binding, blocks: () => tables.blocks.all().map(entry => entry.binding),
     pluginBindings: () => new Map(tables.pluginBindings),
+    frontendIdentity: packId => accepted.get(packId)?.identity,
     plugins: () => [...tables.plugins],
     tiptapPlugins: () => [...tables.tiptapPlugins],
     referenceTypes: () => new Map(tables.referenceTypes),
