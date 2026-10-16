@@ -1169,3 +1169,13 @@ it('validates and maps thinking changes while preserving native partial-refusal 
  expect(next.request).toEqual({subtype:'set_max_thinking_tokens',thinking_display:null});mock.pushEvent({type:'control_response',response:{subtype:'success',request_id:next.request_id}});await display;
  await handle.close();
 });
+
+it('requests native usage with behavior opt-in and retains experimental metadata',async()=>{
+ const mock=makeMockStream();vi.spyOn(runner,'spawnStream').mockResolvedValue(mock.handle);const handle=await query({}),init=mock.writes[0] as {request_id:string};
+ mock.pushEvent({type:'control_response',response:{subtype:'success',request_id:init.request_id,response:{commands:[],agents:[],models:[]}}});await handle.initialized;
+ const snapshot={session:{total_cost_usd:0,total_api_duration_ms:0,total_duration_ms:1,total_lines_added:0,total_lines_removed:0,model_usage:{},futureSessionField:42},subscription_type:null,rate_limits_available:false,rate_limits:null,behaviors:null,futureField:true};
+ for(const includeBehaviors of [false,true]){
+  const pending=handle.getUsage({includeBehaviors});await Promise.resolve();const request=mock.writes.at(-1) as {request_id:string;request:unknown};expect(request.request).toEqual({subtype:'get_usage',skip_behaviors:!includeBehaviors});mock.pushEvent({type:'control_response',response:{subtype:'success',request_id:request.request_id,response:snapshot}});await expect(pending).resolves.toEqual(snapshot);
+ }
+ await expect(handle.getUsage({includeBehaviors:'invalid'} as never)).rejects.toThrow();expect(mock.writes).toHaveLength(3);await handle.close();
+});

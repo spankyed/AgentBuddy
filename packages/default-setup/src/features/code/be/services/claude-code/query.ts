@@ -1,3 +1,4 @@
+import { ClaudeUsageSchema, ClaudeUsageOptionsSchema, type ClaudeUsage, type ClaudeUsageOptions } from './host-controls.ts'
 import { ClaudeThinkingChangeSchema, type ClaudeThinkingChange } from './host-controls.ts'
 import { ClaudeModelCatalogSchema, type ClaudeModelCatalog } from './host-controls.ts'
 import type { ClaudeMcpElicitationAnswer } from '../../../shared/mcp-elicitation-form.ts'
@@ -125,6 +126,8 @@ export interface QueryHandle {
   getContextUsage(): Promise<ClaudeContextUsage>
   /** Read descriptive native availability, without changing selection or sending a model turn. */
   getModels(): Promise<ClaudeModelCatalog>
+  /** Native account reads may cross the network; behavior aggregates are opt-in. */
+  getUsage(options?: ClaudeUsageOptions): Promise<ClaudeUsage>
   /** Change native model selection. Custom names may trigger API validation; ack has no effective model. */
   setModel(model: string): Promise<void>
   /** Session-local request. A native refusal can follow partial mutation; no effective-state receipt. */
@@ -372,6 +375,12 @@ export async function query(opts: QueryOptions): Promise<QueryHandle> {
     async getContextUsage(): Promise<ClaudeContextUsage> {
       await initialized
       return ClaudeContextUsageSchema.parse(await hostControls.request({ subtype: 'get_context_usage', detail: 'summary' }))
+    },
+
+    async getUsage(options: ClaudeUsageOptions = {}): Promise<ClaudeUsage> {
+      const valid = ClaudeUsageOptionsSchema.parse(options)
+      await initialized
+      return ClaudeUsageSchema.parse(await hostControls.request({ subtype: 'get_usage', skip_behaviors: valid.includeBehaviors !== true }))
     },
 
     async getModels(): Promise<ClaudeModelCatalog> {

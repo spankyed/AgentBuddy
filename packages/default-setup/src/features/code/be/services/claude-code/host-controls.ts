@@ -9,6 +9,19 @@ export const ClaudeThinkingChangeSchema = z.object({
 }).strict().refine(value => value.budgetTokens !== undefined || value.display !== undefined, 'Provide a budget or display change')
 export type ClaudeThinkingChange = z.infer<typeof ClaudeThinkingChangeSchema>
 
+/** Experimental native usage snapshot; unavailable account limits remain null, never zero. */
+export const ClaudeUsageSchema = z.object({
+  session: z.object({
+    total_cost_usd: z.number(), total_api_duration_ms: z.number(), total_duration_ms: z.number(),
+    total_lines_added: z.number(), total_lines_removed: z.number(), model_usage: z.record(z.unknown()),
+  }).passthrough(),
+  subscription_type: z.string().nullable(), rate_limits_available: z.boolean(),
+  rate_limits: z.record(z.unknown()).nullable(), behaviors: z.unknown(),
+}).passthrough()
+export type ClaudeUsage = z.infer<typeof ClaudeUsageSchema>
+export const ClaudeUsageOptionsSchema = z.object({ includeBehaviors: z.boolean().optional() }).strict()
+export type ClaudeUsageOptions = z.infer<typeof ClaudeUsageOptionsSchema>
+
 /** Native catalog entries describe availability; custom model IDs may be absent. */
 export const ClaudeModelInfoSchema = z.object({
   value: z.string(), displayName: z.string(), resolvedModel: z.string().optional(),

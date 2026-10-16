@@ -3639,6 +3639,102 @@ type ClaudeUiViewRequest = {
     actionId: string;
 };
 
+type ClaudeUsage = z.infer<typeof ClaudeUsageSchema>;
+
+type ClaudeUsageOptions = z.infer<typeof ClaudeUsageOptionsSchema>;
+
+declare const ClaudeUsageOptionsSchema: z.ZodObject<{
+    includeBehaviors: z.ZodOptional<z.ZodBoolean>;
+}, "strict", z.ZodTypeAny, {
+    includeBehaviors?: boolean | undefined;
+}, {
+    includeBehaviors?: boolean | undefined;
+}>;
+
+/** Experimental native usage snapshot; unavailable account limits remain null, never zero. */
+declare const ClaudeUsageSchema: z.ZodObject<{
+    session: z.ZodObject<{
+        total_cost_usd: z.ZodNumber;
+        total_api_duration_ms: z.ZodNumber;
+        total_duration_ms: z.ZodNumber;
+        total_lines_added: z.ZodNumber;
+        total_lines_removed: z.ZodNumber;
+        model_usage: z.ZodRecord<z.ZodString, z.ZodUnknown>;
+    }, "passthrough", z.ZodTypeAny, z.objectOutputType<{
+        total_cost_usd: z.ZodNumber;
+        total_api_duration_ms: z.ZodNumber;
+        total_duration_ms: z.ZodNumber;
+        total_lines_added: z.ZodNumber;
+        total_lines_removed: z.ZodNumber;
+        model_usage: z.ZodRecord<z.ZodString, z.ZodUnknown>;
+    }, z.ZodTypeAny, "passthrough">, z.objectInputType<{
+        total_cost_usd: z.ZodNumber;
+        total_api_duration_ms: z.ZodNumber;
+        total_duration_ms: z.ZodNumber;
+        total_lines_added: z.ZodNumber;
+        total_lines_removed: z.ZodNumber;
+        model_usage: z.ZodRecord<z.ZodString, z.ZodUnknown>;
+    }, z.ZodTypeAny, "passthrough">>;
+    subscription_type: z.ZodNullable<z.ZodString>;
+    rate_limits_available: z.ZodBoolean;
+    rate_limits: z.ZodNullable<z.ZodRecord<z.ZodString, z.ZodUnknown>>;
+    behaviors: z.ZodUnknown;
+}, "passthrough", z.ZodTypeAny, z.objectOutputType<{
+    session: z.ZodObject<{
+        total_cost_usd: z.ZodNumber;
+        total_api_duration_ms: z.ZodNumber;
+        total_duration_ms: z.ZodNumber;
+        total_lines_added: z.ZodNumber;
+        total_lines_removed: z.ZodNumber;
+        model_usage: z.ZodRecord<z.ZodString, z.ZodUnknown>;
+    }, "passthrough", z.ZodTypeAny, z.objectOutputType<{
+        total_cost_usd: z.ZodNumber;
+        total_api_duration_ms: z.ZodNumber;
+        total_duration_ms: z.ZodNumber;
+        total_lines_added: z.ZodNumber;
+        total_lines_removed: z.ZodNumber;
+        model_usage: z.ZodRecord<z.ZodString, z.ZodUnknown>;
+    }, z.ZodTypeAny, "passthrough">, z.objectInputType<{
+        total_cost_usd: z.ZodNumber;
+        total_api_duration_ms: z.ZodNumber;
+        total_duration_ms: z.ZodNumber;
+        total_lines_added: z.ZodNumber;
+        total_lines_removed: z.ZodNumber;
+        model_usage: z.ZodRecord<z.ZodString, z.ZodUnknown>;
+    }, z.ZodTypeAny, "passthrough">>;
+    subscription_type: z.ZodNullable<z.ZodString>;
+    rate_limits_available: z.ZodBoolean;
+    rate_limits: z.ZodNullable<z.ZodRecord<z.ZodString, z.ZodUnknown>>;
+    behaviors: z.ZodUnknown;
+}, z.ZodTypeAny, "passthrough">, z.objectInputType<{
+    session: z.ZodObject<{
+        total_cost_usd: z.ZodNumber;
+        total_api_duration_ms: z.ZodNumber;
+        total_duration_ms: z.ZodNumber;
+        total_lines_added: z.ZodNumber;
+        total_lines_removed: z.ZodNumber;
+        model_usage: z.ZodRecord<z.ZodString, z.ZodUnknown>;
+    }, "passthrough", z.ZodTypeAny, z.objectOutputType<{
+        total_cost_usd: z.ZodNumber;
+        total_api_duration_ms: z.ZodNumber;
+        total_duration_ms: z.ZodNumber;
+        total_lines_added: z.ZodNumber;
+        total_lines_removed: z.ZodNumber;
+        model_usage: z.ZodRecord<z.ZodString, z.ZodUnknown>;
+    }, z.ZodTypeAny, "passthrough">, z.objectInputType<{
+        total_cost_usd: z.ZodNumber;
+        total_api_duration_ms: z.ZodNumber;
+        total_duration_ms: z.ZodNumber;
+        total_lines_added: z.ZodNumber;
+        total_lines_removed: z.ZodNumber;
+        model_usage: z.ZodRecord<z.ZodString, z.ZodUnknown>;
+    }, z.ZodTypeAny, "passthrough">>;
+    subscription_type: z.ZodNullable<z.ZodString>;
+    rate_limits_available: z.ZodBoolean;
+    rate_limits: z.ZodNullable<z.ZodRecord<z.ZodString, z.ZodUnknown>>;
+    behaviors: z.ZodUnknown;
+}, z.ZodTypeAny, "passthrough">>;
+
 interface ClaudeWorkflowActivity {
     observe(event: StreamLine): void;
     register(toolUseId: string, receive: (task: ClaudeWorkflowTask) => void): void;
@@ -3769,10 +3865,15 @@ interface CliServiceType {
         readSettings(): Promise<Record<string, any>>;
         /** Write the CLI's user-scope settings.json (~/.claude/settings.json). */
         writeSettings(settings: Record<string, any>): Promise<void>;
-        /** Read native Skill states, provenance and author/policy locks. */
+        /** Read the descriptive native model catalog. Fresh startup can run session hooks. */
         getModels(opts?: {
             cwd?: string;
         }): Promise<ClaudeModelCatalog>;
+        /** Read native session/account usage; behavior aggregates are opt-in. Fresh startup runs session hooks. */
+        getUsage(opts?: {
+            cwd?: string;
+        } & ClaudeUsageOptions): Promise<ClaudeUsage>;
+        /** Read native Skill states, provenance and author/policy locks. */
         listSkills(opts?: {
             cwd?: string;
         }): Promise<ClaudeSkillsDialog['skills']>;
@@ -7973,6 +8074,8 @@ interface QueryHandle {
     getContextUsage(): Promise<ClaudeContextUsage>;
     /** Read descriptive native availability, without changing selection or sending a model turn. */
     getModels(): Promise<ClaudeModelCatalog>;
+    /** Native account reads may cross the network; behavior aggregates are opt-in. */
+    getUsage(options?: ClaudeUsageOptions): Promise<ClaudeUsage>;
     /** Change native model selection. Custom names may trigger API validation; ack has no effective model. */
     setModel(model: string): Promise<void>;
     /** Session-local request. A native refusal can follow partial mutation; no effective-state receipt. */

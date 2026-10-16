@@ -65,6 +65,7 @@ const handlers: Record<string, Handler> = {
   model: handleModel,
   models: handleModels,
   thinking: handleThinking,
+  usage: handleUsage,
   workflows: handleWorkflows,
   memory: handleMemory,
   hooks: handleHooks,
@@ -220,6 +221,24 @@ async function handleWorkflows(args: string[], services: Services, threadId?: st
   return { text: current && current.status !== 'running'
     ? `${task.name}: ${current.status}.`
     : `Stop request acknowledged for ${task.name} (${task.taskId}). Waiting for native task status.` };
+}
+
+async function handleUsage(args: string[], services: Services, threadId?: string): Promise<{ text: string }> {
+  const explicitStart = args[0] === 'start';
+  if (explicitStart) args = args.slice(1);
+  if (args.length > 1 || (args.length === 1 && args[0] !== 'behaviors')) return { text: 'Usage: cc-usage [start] [behaviors]' };
+  const includeBehaviors = args[0] === 'behaviors';
+  const prior = threadId ? getClaudeState(services, threadId) : undefined;
+  const cwd = prior?.cwdOverride || prior?.cwd || services.cli.claudeCode.getWorkingDir();
+  const conversation = threadId ? services.cli.claudeCode.getConversation(threadId) : undefined;
+  const handle = conversation?.owner.sessionCwd === cwd ? conversation.owner.handle : undefined;
+  if (!handle && !explicitStart) return { text: 'No matching native conversation is running. Use cc-usage start [behaviors] for a temporary process. Starting and closing it can run configured session hooks; its session totals describe that temporary process.' };
+  const usage = handle ? await handle.getUsage({ includeBehaviors }) : await services.cli.claudeCode.getUsage({ cwd, includeBehaviors });
+  const session = usage.session;
+  const rows = [`Native session cost: $${session.total_cost_usd}`, `API duration: ${session.total_api_duration_ms} ms; wall duration: ${session.total_duration_ms} ms`, `Lines added: ${session.total_lines_added}; removed: ${session.total_lines_removed}`, `Subscription: ${usage.subscription_type ?? '(unavailable)'}`, `Account rate limits: ${usage.rate_limits_available ? usage.rate_limits === null ? '(not returned)' : JSON.stringify(usage.rate_limits, null, 2) : '(unavailable)'}`, `Native model usage: ${JSON.stringify(session.model_usage, null, 2)}`];
+  if (includeBehaviors) rows.push(`Native behavior aggregates: ${usage.behaviors == null ? '(unavailable)' : JSON.stringify(usage.behaviors, null, 2)}`);
+  if (!handle) rows.unshift('Temporary native process; these are not the saved conversation totals.');
+  return { text: rows.join('\n') };
 }
 
 async function handleThinking(args: string[], services: Services, threadId?: string): Promise<{ text: string }> {
