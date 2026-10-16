@@ -21,7 +21,8 @@ function fixture() {
     onChange(listener) { const notify = () => listener('written'); listeners.add(notify); return () => { listeners.delete(notify); }; },
   };
   const registry = createPackRegistry({
-    nativeDeclarations: [{ id: 'incumbent', features: { widget: { description: 'Feature declaration fixture.',} } }, { id: 'peer', features: {} }],
+    nativeDeclarations: [{ id: 'incumbent', commands: { 'old-command': { placeholder: 'Old' } },
+      features: { widget: { description: 'Feature declaration fixture.',} } }, { id: 'peer', features: {} }],
     settingsForPack: () => service,
   });
   const generated = _createPackServices();
@@ -41,7 +42,6 @@ function fixture() {
     ...registration, bindSettings: fresh.bindSettings,
     features: { widget: { designation: 'after' } },
     repositories: { records: { owner: 'new' } }, services: { value: 'new' },
-    commands: [{ name: 'new-command', placeholder: 'New' }],
   };
   return { registry, handle, heard, listeners, records, registration, fresh, next };
 }
@@ -141,7 +141,7 @@ describe('accepted pack replacement', () => {
     expect(f.registry.getPackRegistration('incumbent')).toBe(f.next);
     expect(f.registry.designation('before')).toBeUndefined();
     expect(f.registry.designation('after')).toBe('incumbent/widget');
-    expect(f.registry.commands().map(command => command.name)).toEqual(['new-command']);
+    expect(f.registry.commands().map(command => command.name)).toEqual(['old-command']);
     expect(f.registry.getRegisteredServices().value).toBe('new');
     expect(engine.query.repository.records).toBe(f.next.repositories!.records);
     expect(() => f.handle.get()).toThrow('revoked');

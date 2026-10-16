@@ -64,7 +64,7 @@ Written entities keep their item's `contentHash` and `contentKey`, and the app r
 
 ## Commands
 
-Slash commands (`/name` in chat) come from two places, merged by `services.library.commands()`: `apack.json` `commands` (this pack declares `pr2md` and `instructions`; every registered pack's are listed first, in registration order) and the documents in `library/internal/commands/` (`claude-code.md`, `codex.md`: a `<!-- section:field -->` block of `**name**: placeholder` lines), which users can edit from the Library. A document repeating a declared name is ignored. To add one:
+Slash commands (`/name` in chat) come from two places, merged by `services.library.commands()`: `apack.json` `extensions.commands` (this pack declares `pr2md` and `instructions`; eligible declarations are listed first, in stable catalog admission order) and the documents in `library/internal/commands/` (`claude-code.md`, `codex.md`: a `<!-- section:field -->` block of `**name**: placeholder` lines), which users can edit from the Library. A document repeating a declared name is ignored. To add one:
 
 1. Create the action (its `category` only groups it in the Actions UI)
 2. Add an `on("user.command", ...)` branch in a flow (`command-listener-flow.ts` for standalone, the Claude Code and Codex flows for `cc-*`/`cdx-*`)

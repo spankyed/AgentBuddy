@@ -2771,8 +2771,8 @@ declare class LibraryService {
     findByName(name: string): Promise<DocumentDTO | undefined>;
     findByPath(collectionPath: string[], name: string): Promise<DocumentDTO | undefined>;
     /**
-     * The chat's slash commands: the ones registered packs declare (apack.json `commands`, in
-     * registration order), then the field sections of every document in the commands folder, in document
+     * The chat's slash commands: eligible pack declarations in catalog order, then the field sections
+     * of every document in the commands folder, in document
      * order (then name). A command defined twice keeps the first, so a document can't shadow a declared one.
      */
     commands(): CommandItem[];

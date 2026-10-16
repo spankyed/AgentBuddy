@@ -1,5 +1,6 @@
 import { captureData } from './captured-data.ts';
 import { stepCatalogEntries } from './catalog-steps.ts';
+import { commandCatalogEntries } from './catalog-commands.ts';
 import { referenceCatalogEntries } from './catalog-references.ts';
 import { frontendCatalogEntries } from './catalog-frontend.ts';
 import type { AppPackSource, AppPackSourceProblem, AppPackSources } from './app-sources.ts';
@@ -90,6 +91,7 @@ export function createContributionCatalog(appSettings: SettingsDefinition) {
   let current: PackCatalogSnapshot = immutable({ revision: 0, appSettings: app, packs: [], problems: [], native: [], sourcePacks: [], appPackSources: [], appPackSourceProblems: [] });
   let byId = new Map<string, PackCatalogEntry>();
   const listeners = new Set<() => void>();
+  const commandOrder = new Map<string, number>();
   const emptySettings: CatalogData<Record<string, SettingsDefinition>> = Object.freeze({});
   let settings: SettingsCatalog = immutable({ revision: 0, app, packs: {}, features: {}, dependencies: {} });
   let help: CatalogData<HelpCatalog> = immutable({ articles: [], problems: [] });
@@ -151,6 +153,9 @@ export function createContributionCatalog(appSettings: SettingsDefinition) {
     const helpProjection = immutable({ articles, problems });
     byId = new Map(next.packs.map(entry => [entry.snapshot.manifest.id, entry]));
     current = next;
+    for (const command of commandCatalogEntries(next)) {
+      if (!commandOrder.has(command.packId)) commandOrder.set(command.packId, commandOrder.size);
+    }
     settings = projection;
     help = helpProjection;
     for (const listener of listeners) {
@@ -177,6 +182,7 @@ export function createContributionCatalog(appSettings: SettingsDefinition) {
     references: () => referenceCatalogEntries(current),
     frontend: () => frontendCatalogEntries(current),
     steps: () => stepCatalogEntries(current),
+    commands: () => Object.freeze([...commandCatalogEntries(current)].sort((a, b) => commandOrder.get(a.packId)! - commandOrder.get(b.packId)!)),
     get: (packId: string): PackCatalogEntry | undefined => byId.get(packId),
     settings: (): SettingsCatalog => settings,
     help: (): HelpCatalog => structuredClone(help) as HelpCatalog,

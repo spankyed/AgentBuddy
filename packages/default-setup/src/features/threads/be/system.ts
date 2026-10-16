@@ -2,9 +2,9 @@ import { featureSettings } from '#generated/settings.ts';
 
 import { sendToSystem, broadcastToPlugin } from '#generated/events.ts';
 import { services } from '#generated/services.ts';
-import { assign, setup } from 'xstate';
+import { assign, setup, fromCallback } from 'xstate';
 import { answer } from './answer.ts';
-import { defineSystem } from '@apackdev/sdk/framework';
+import { defineSystem, onPackCatalogChanged } from '@apackdev/sdk/framework';
 
 import { tx, EARS } from '#generated/ears.ts';
 import { repository } from '#generated/repository.ts';
@@ -50,6 +50,9 @@ function reportThreadOperationError(
 
 export const threadsSystem = setup({
   types: threadsSpec.types,
+  actors: {
+    commandCatalog: fromCallback(({ sendBack }) => onPackCatalogChanged(() => sendBack({ type: 'COMMANDS_CHANGED' }))),
+  },
   actions: threadsSpec.actions({
     // ---- Thread management actions ----
     sendThreadsConnectedData: () => {
@@ -833,6 +836,7 @@ export const threadsSystem = setup({
 }).createMachine(
   {
     id: 'threads',
+    invoke: { src: 'commandCatalog' },
     initial: 'idle',
     context: () => ({}),
     on: {

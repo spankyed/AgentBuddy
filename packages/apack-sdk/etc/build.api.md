@@ -2266,6 +2266,11 @@ export const _NativePackDeclarationSchema: z.ZodEffects<z.ZodEffects<z.ZodObject
         fe?: string | undefined;
         be?: string | undefined;
     }>>>>;
+    commands: z.ZodLazy<z.ZodOptional<z.ZodType<Record<string, {
+        placeholder: string;
+    }>, z.ZodTypeDef, Record<string, {
+        placeholder: string;
+    }>>>>;
     dsl: z.ZodLazy<z.ZodOptional<z.ZodType<Record<string, {
         entry: string;
         targets: "monaco"[];
@@ -2400,6 +2405,9 @@ export const _NativePackDeclarationSchema: z.ZodEffects<z.ZodEffects<z.ZodObject
         fe?: string | undefined;
         be?: string | undefined;
     }> | undefined;
+    commands?: Record<string, {
+        placeholder: string;
+    }> | undefined;
     tiptapPlugins?: Record<string, {
         extensions?: Record<string, string> | undefined;
         popups?: Record<string, string> | undefined;
@@ -2484,6 +2492,9 @@ export const _NativePackDeclarationSchema: z.ZodEffects<z.ZodEffects<z.ZodObject
         kind?: "display" | "input" | undefined;
         fe?: string | undefined;
         be?: string | undefined;
+    }> | undefined;
+    commands?: Record<string, {
+        placeholder: string;
     }> | undefined;
     tiptapPlugins?: Record<string, {
         extensions?: Record<string, string> | undefined;
@@ -2584,6 +2595,9 @@ export const _NativePackDeclarationSchema: z.ZodEffects<z.ZodEffects<z.ZodObject
         fe?: string | undefined;
         be?: string | undefined;
     }> | undefined;
+    commands?: Record<string, {
+        placeholder: string;
+    }> | undefined;
     tiptapPlugins?: Record<string, {
         extensions?: Record<string, string> | undefined;
         popups?: Record<string, string> | undefined;
@@ -2668,6 +2682,9 @@ export const _NativePackDeclarationSchema: z.ZodEffects<z.ZodEffects<z.ZodObject
         kind?: "display" | "input" | undefined;
         fe?: string | undefined;
         be?: string | undefined;
+    }> | undefined;
+    commands?: Record<string, {
+        placeholder: string;
     }> | undefined;
     tiptapPlugins?: Record<string, {
         extensions?: Record<string, string> | undefined;
@@ -2767,6 +2784,9 @@ export const _NativePackDeclarationSchema: z.ZodEffects<z.ZodEffects<z.ZodObject
         kind?: "display" | "input" | undefined;
         fe?: string | undefined;
         be?: string | undefined;
+    }> | undefined;
+    commands?: Record<string, {
+        placeholder: string;
     }> | undefined;
     tiptapPlugins?: Record<string, {
         extensions?: Record<string, string> | undefined;

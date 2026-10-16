@@ -188,6 +188,8 @@ export interface NativePackDeclaration extends PackDataDeclarations, FrontendDec
     // (undocumented)
     blocks?: Record<string, z.infer<typeof BlockEntrySchema>>;
     // (undocumented)
+    commands?: Record<string, z.infer<typeof CommandEntrySchema>>;
+    // (undocumented)
     dependencies?: Record<string, string>;
     // (undocumented)
     dsl?: Record<string, DeclarationData<z.infer<typeof DslEntrySchema>>>;

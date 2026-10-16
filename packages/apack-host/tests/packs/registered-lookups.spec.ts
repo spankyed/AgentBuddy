@@ -209,7 +209,8 @@ describe('appliers', () => {
 describe('captured contribution addresses', () => {
   it('reads a definition address once, captures data and preserves executable identity across removal', async () => {
     const { createPackRegistry } = await import('../../src/packs/registry.ts');
-    const isolated = createPackRegistry({ nativeDeclarations: [{ id: 'captured-address', steps: { stuck: { node: { label: 'Stuck' } } } }] });
+    const isolated = createPackRegistry({ nativeDeclarations: [{ id: 'captured-address', commands: { leaves: { placeholder: 'Cleanly' } },
+      steps: { stuck: { node: { label: 'Stuck' } } } }] });
     const readType = vi.fn(() => {
       if (readType.mock.calls.length > 1) throw new Error('type cannot be read again');
       return 'stuck';

@@ -107,7 +107,7 @@ export interface PackRegistration {
   contentWriters?: Record<string, import('../content/writers.ts').ContentWriter>;
   /** The pack's appliers, one per content key (apack.json `content.sources`), which `importCompiledContent` runs for the pack's compiled content */
   appliers?: import('../utils/apply.ts').ContentApplier[];
-  /** The slash commands this pack adds to the chat (apack.json `commands`) */
+  /** Build-checked command identities from extensions.commands; discovery reads catalog declarations. */
   commands?: import('./pack-commands.ts').PackCommand[];
   /** Display name used for this pack's contributions. */
   name?: string;

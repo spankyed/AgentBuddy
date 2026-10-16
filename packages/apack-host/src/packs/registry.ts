@@ -5,7 +5,7 @@ import type { StepEntry } from '@apackdev/sdk/build';
 import { captureStepBinding, captureStepDeclaration } from './step-bindings.ts';
 import { lifecycleBindingProblem } from './lifecycle-binding.ts';
 import { _packEntityTypes, _packRelationTypes } from '@apackdev/sdk/framework';
-import { backendBindingProblem, backendStepBindingProblem, contentBindingProblem } from './declaration-binding.ts';
+import { backendBindingProblem, backendStepBindingProblem, commandBindingProblem, contentBindingProblem } from './declaration-binding.ts';
 /**
  * Pack Registration
  *
@@ -33,7 +33,7 @@ import { HOST_ENTITY_TYPES } from '../app-state/index.ts';
 import { readInstalledPackBuilds, packContentOrder } from './discovery.ts';
 import type { PackContentTarget } from './runtime/apply.ts';
 import { createOwnedStore, createOwnedStepStore, createDesignationStore } from './extensions.ts';
-import { createCommandStore, createContentWriterStore, createApplierStore, createShutdownHooks } from './backend-extensions.ts';
+import { createContentWriterStore, createApplierStore, createShutdownHooks } from './backend-extensions.ts';
 import { checkFeatureIds } from './feature-ids.ts';
 import { readAppPackSources } from './app-sources.ts';
 import { createContributionCatalog, type ContributionCatalog, type PackCatalogProblem, type PackCatalogSource } from './catalog.ts';
@@ -323,7 +323,8 @@ function admitContributions(registration: PackRegistration, declarations: Declar
 type AdmittedPackContributions = ReturnType<typeof admitContributions>;
 
 /** Candidate indexes contain no executable binding or engine writes. */
-function buildContributionTables(packs: Iterable<AdmittedPackContributions>, commandOrder?: ReadonlyMap<string, number>) {
+function buildContributionTables(packs: Iterable<AdmittedPackContributions>) {
+  const commandOwners = new Map<string, string>();
   const tables = {
     designations: createDesignationStore(),
     steps: createOwnedStepStore<StepBackendBinding>(),
@@ -331,7 +332,6 @@ function buildContributionTables(packs: Iterable<AdmittedPackContributions>, com
     blocks: createOwnedStore<BlockDefinition>(),
     contentWriters: createContentWriterStore(),
     appliers: createApplierStore(),
-    commands: createCommandStore(commandOrder),
     repositories: new Map<string, unknown>(),
   };
   for (const pack of packs) {
@@ -341,7 +341,11 @@ function buildContributionTables(packs: Iterable<AdmittedPackContributions>, com
     for (const [type, value] of pack.blocks) tables.blocks.set(type, value, pack.id);
     for (const [name, value] of pack.contentWriters) tables.contentWriters.register(name, value, pack.id);
     tables.appliers.register(pack.id, pack.appliers);
-    tables.commands.register(pack.id, pack.commands);
+    for (const { name } of pack.commands) {
+      const owner = commandOwners.get(name);
+      if (owner !== undefined && owner !== pack.id) throw new Error(`Command collision: "${name}" — pack "${pack.id}" vs "${owner}"`);
+      commandOwners.set(name, pack.id);
+    }
     for (const [name, value] of pack.repositories) tables.repositories.set(name, value);
   }
   return tables;
@@ -542,6 +546,8 @@ export function createPackRegistry({ installedPacksDir, appPackSourcesDir, setti
       if (!isDeepStrictEqual(registration.ears?.relKinds ?? {}, _packRelationTypes(declaration))) {
         throw new Error(`Native pack "${registration.id}" runtime ears.relKinds does not match its admitted declarations`);
       }
+      const commands = commandBindingProblem(declaration.commands, registration.commands);
+      if (commands) throw new Error(`Native pack "${registration.id}" runtime ${commands} does not match its admitted declarations`);
       const lifecycleProblem = lifecycleBindingProblem(declaration.lifecycle, registration.lifecycle);
       if (lifecycleProblem) throw new Error(`Native pack "${registration.id}" runtime ${lifecycleProblem} does not match its admitted declarations`);
       const stepProblem = backendStepBindingProblem(declaration.steps, stepBindings);
@@ -592,7 +598,7 @@ export function createPackRegistry({ installedPacksDir, appPackSourcesDir, setti
     const declarations = origin ? origin.manifest?.extensions?.steps
       : catalog.getSnapshot().native.find(pack => pack.id === registration.id)?.steps;
     candidate.set(registration.id, admitContributions(checkedRegistration, declarations, origin));
-    const nextTables = buildContributionTables(candidate.values(), tables.commands.order());
+    const nextTables = buildContributionTables(candidate.values());
     let binding: ReturnType<typeof createPackSettingsBinding> | undefined;
     try {
       if (registration.bindSettings) {
@@ -631,7 +637,7 @@ export function createPackRegistry({ installedPacksDir, appPackSourcesDir, setti
       if (!registrations.has(packId)) throw new Error(`Pack "${packId}" is not registered`);
       const candidate = new Map(admitted);
       candidate.delete(packId);
-      const nextTables = buildContributionTables(candidate.values(), tables.commands.order());
+      const nextTables = buildContributionTables(candidate.values());
       publishRepositories(tables.repositories, nextTables.repositories);
       const binding = bindings.get(packId);
       bindings.delete(packId);
@@ -783,7 +789,16 @@ export function createPackRegistry({ installedPacksDir, appPackSourcesDir, setti
     pluginDefaults: derived(() => Object.fromEntries([...registrations.values()].flatMap(reg =>
       featuresOf(reg).filter(({ feature }) => feature.plugin?.defaultVisible !== undefined)
         .map(({ ref, feature }) => [ref, feature.plugin!.defaultVisible!])))),
-    commands: () => tables.commands.all(),
+    commands: () => catalog.commands().filter(command => {
+      if (command.enabled === false || !admitted.has(command.packId)) return false;
+      if (command.origin === 'native') {
+        const declaration = catalog.getSnapshot().native.find(pack => pack.id === command.packId);
+        return !commandBindingProblem(declaration?.commands, admitted.get(command.packId)!.commands);
+      }
+      const origin = origins.get(command.packId);
+      return origin !== undefined && origin.declarationRevision === command.declarationRevision
+        && origin.buildRevision === command.buildRevision;
+    }).map(({ name, placeholder }) => ({ name, placeholder })),
     help: catalog.help,
   };
 }

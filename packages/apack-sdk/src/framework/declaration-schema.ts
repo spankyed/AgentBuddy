@@ -138,6 +138,7 @@ export const _NativePackDeclarationSchema = z.preprocess(checkDeclaredNames, z.o
   steps: z.lazy(() => ExtensionsSchema.shape.steps),
   artifacts: z.lazy(() => ExtensionsSchema.shape.artifacts),
   blocks: z.lazy(() => ExtensionsSchema.shape.blocks),
+  commands: z.lazy(() => ExtensionsSchema.shape.commands),
   dsl: z.lazy(() => ExtensionsSchema.shape.dsl),
   tiptapPlugins: z.lazy(() => FrontendConfigSchema.shape.tiptapPlugins),
   appExtensions: z.lazy(() => FrontendConfigSchema.shape.appExtensions),

@@ -6,6 +6,7 @@ import type { PackRegistration } from '../framework/pack-registration.ts';
 export function nativePackDeclarationFixture(fixture: PackRegistration): NativePackDeclaration {
   return {
     id: fixture.id,
+    ...(fixture.commands !== undefined && { commands: Object.fromEntries(fixture.commands.map(({ name, placeholder }) => [name, { placeholder }])) }),
     ...(fixture.lifecycle && { lifecycle: Object.fromEntries(Object.keys(fixture.lifecycle).map(name =>
       [name, `fixtures/lifecycle.ts#${name}`])) }),
     ...(fixture.ears && { data: {

@@ -6,6 +6,14 @@ import { isPlainObject } from '@apackdev/sdk/utils/pure';
 import { namedBindings, sameKeys, sameNames } from './binding-shape.ts';
 import { isDeepStrictEqual } from 'node:util';
 
+export function commandBindingProblem(declarations: Readonly<Record<string, { readonly placeholder: string }>> | undefined, bindings: unknown): string | undefined {
+  const commands = namedBindings(bindings, 'name', Object.keys(declarations ?? {}));
+  if (!commands) return 'commands';
+  for (const [name, declaration] of Object.entries(declarations ?? {})) {
+    if (commands.get(name)!.placeholder !== declaration.placeholder) return `commands.${name}.placeholder`;
+  }
+}
+
 /** Content bindings provide data operations, independently of backend activation. */
 export function contentBindingProblem(manifest: PackManifest, runtime: unknown, appliers?: unknown): string | undefined {
   const problem = (path: string) => `Pack "${manifest.id}" content runtime ${path} does not match its accepted declarations`;
@@ -58,11 +66,8 @@ export function backendBindingProblem(manifest: PackManifest, registration: unkn
     Object.keys(manifest.content?.writers ?? {}))) return problem('contentWriters');
   if (!namedBindings(registration.appliers, 'key', Object.keys(manifest.content?.sources ?? {}))) return problem('appliers');
 
-  const commands = namedBindings(registration.commands, 'name', Object.keys(manifest.extensions?.commands ?? {}));
-  if (!commands) return problem('commands');
-  for (const [name, declaration] of Object.entries(manifest.extensions?.commands ?? {})) {
-    if (commands.get(name)!.placeholder !== declaration.placeholder) return problem(`commands.${name}.placeholder`);
-  }
+  const commands = commandBindingProblem(manifest.extensions?.commands, registration.commands);
+  if (commands) return problem(commands);
 
   const artifacts = namedBindings(registration.artifacts, 'type', Object.keys(manifest.extensions?.artifacts ?? {}));
   if (!artifacts) return problem('artifacts');
