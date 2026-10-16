@@ -120,7 +120,7 @@ naming branch is not an automatic source of future changes.
 
 ### Current handoff — compiler checkpoint (2026-10-16)
 
-Latest source is `be5dd38e9` (CommonJS alias checkpoint below). Preceding ESM source `f67c8d066`:
+Latest source is `98ba9de5f` (CommonJS source-globals checkpoint below). Preceding ESM source `f67c8d066`:
 ESM execution now has logical source URLs and filenames while native
 resolution and source reads use the owned tree. A private loader below tsx only projects bytes; it
 makes no main-thread RPC. The input owner and loader share one storage mapping. Native entrypoint
@@ -145,6 +145,18 @@ bridge extraction (35.47s). The final packaged JSX/metadata worker passes in 36.
 packaging cases (9), CLI typecheck and lint pass. The bridge also runs on Electron's Node 22.17.1.
 Logs: `/private/tmp/apack-module-metadata-{before,focused,jsx-before,entry-final,native-entry,
 worker-native-entry,tree,packaging,types-complete,lint-complete}.log`. No broad gate repeated.
+
+CommonJS source-globals checkpoint `98ba9de5f` passes the logical source filename to Node's
+`_compile`, retaining the module's owned cache/resolution identity. `__filename` and `__dirname` no
+longer expose temporary capture directories; source-relative reads still consume captured bytes.
+The strengthened regression first reproduces the private filename, then passes alongside concurrent
+CommonJS isolation (35.47s total). A real public-worker repeat-build test now emits these globals into
+content: both builds produce the same sealed revision and phase stamp, with source checkout paths
+(43.51s total). CLI typecheck, scoped lint and diff checks pass. Logs:
+`/private/tmp/apack-commonjs-metadata-{before,focused,worker,types}.log`. No deadline raised or broad
+gate repeated. This proves this CommonJS path and its repeat output, not universal reproducibility or
+complete module-object metadata. Runtime/preload closure, final input receipts, frontend generations,
+passive freshness, all later phases and final committed-source strict --all remain required.
 
 CommonJS alias checkpoint `be5dd38e9` uses the same captured, projected tsconfig and get-tsconfig
 path matcher as the ESM compiler path. Alias candidates are admitted through the existing input owner
