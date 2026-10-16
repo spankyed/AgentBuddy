@@ -102,6 +102,15 @@ test('native composer controls redraw without submitting typed input or starting
   await expect(card.getByRole('button', { name: 'Run fixture', exact: true })).toHaveCount(0);
   await appPage.evaluate(threadId => (window as any).applicationState.system.get('default-setup/threads').send({ type: 'OPEN_THREAD_CHAT', threadId }), first.threadId);
   await expect(strip.getByText('Synthetic apack UI count: 2', { exact: true })).toBeVisible();
+  const beforeUnknown = await snapshot();
+  await editor.fill('Unsent text survives unsupported native output');
+  await strip.getByRole('button', { name: 'Unsupported fixture', exact: true }).click();
+  await expect(strip.getByText('Unsupported Claude component: Link', { exact: true })).toBeVisible();
+  await expect(strip.locator('a[href]')).toHaveCount(0);
+  expect(await readFile(join(workspace!, 'unsupported-trigger.txt'), 'utf8')).toBe('1');
+  await expect(editor).toHaveText('Unsent text survives unsupported native output');
+  expect(await snapshot()).toEqual(beforeUnknown);
+  await appPage.screenshot({ path: testInfo.outputPath('native-composer-unsupported-fallback.png') });
   const beforeOversize = await snapshot();
   await editor.fill('Unsent text survives oversized native output');
   await strip.getByRole('button', { name: 'Oversize fixture', exact: true }).click();
@@ -125,5 +134,5 @@ test('native composer controls redraw without submitting typed input or starting
   await appPage.evaluate(threadId => (window as any).__sendToSystem('default-setup/threads', { type: 'DELETE_THREAD', threadId }), first.threadId);
   await expect(card.getByRole('button', { name: 'Run fixture', exact: true })).toHaveCount(0);
   expect(errors).toEqual([]);
-  await writeFile(join(workspace!, 'ui-app-evidence.json'), JSON.stringify({ renderedNativeTree: true, nativePress: true, invalidationRedraw: true, typedInputPreserved: true, noPhantomMessage: true, narrowOverflowBounded: true, secondHostTurn: true, singleNativeProcess: true, threadSwitchRemount: true, threadDeleteClearsControls: true, staleDrawingRejected: true, foreignThreadRejected: true, foreignMountRejected: true, validPressAfterRejectedActions: true, oversizedTreeFallback: true, oversizedInputPreserved: true, oversizedNoPhantomTurn: true, hostInputs: 2 }, null, 2));
+  await writeFile(join(workspace!, 'ui-app-evidence.json'), JSON.stringify({ renderedNativeTree: true, nativePress: true, invalidationRedraw: true, typedInputPreserved: true, noPhantomMessage: true, narrowOverflowBounded: true, secondHostTurn: true, singleNativeProcess: true, threadSwitchRemount: true, threadDeleteClearsControls: true, staleDrawingRejected: true, foreignThreadRejected: true, foreignMountRejected: true, validPressAfterRejectedActions: true, unknownComponentFallback: true, unknownComponentInert: true, unknownComponentInputPreserved: true, oversizedTreeFallback: true, oversizedInputPreserved: true, oversizedNoPhantomTurn: true, hostInputs: 2 }, null, 2));
 });
