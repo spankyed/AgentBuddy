@@ -10,7 +10,7 @@ import { repository } from '#generated/repository.ts';
 import * as runner from '#features/code/be/services/claude-code/runner.ts';
 const executable = process.env.CLAUDE_RESEARCH_EXECUTABLE, workspace = process.env.CLAUDE_RESEARCH_WORKSPACE;
 
-it.skipIf(!executable || !workspace)('routes native Skill listing and edits through the compiled app command flow without model input', async () => {
+it.skipIf(!executable || !workspace)('routes native Skill management and memory catalogs through the compiled app command flow', async () => {
  expect(process.env.HOME).toBe(workspace);
  for (const key of ['ANTHROPIC_API_KEY', 'ANTHROPIC_AUTH_TOKEN', 'CLAUDE_CODE_OAUTH_TOKEN']) expect(process.env[key]).toBeUndefined();
  const cwd = join(workspace!, 'project');
@@ -18,6 +18,8 @@ it.skipIf(!executable || !workspace)('routes native Skill listing and edits thro
   const dir = join(cwd, '.claude', 'skills', name); await mkdir(dir, { recursive: true });
   await writeFile(join(dir, 'SKILL.md'), `---\nname: ${name}\ndescription: Private compiled command fixture\n${extra}---\nSynthetic fixture body.\n`);
  }
+ const ruleDir = join(cwd, '.claude', 'rules'); await mkdir(ruleDir, { recursive: true });
+ await writeFile(join(ruleDir, 'memory-rule.md'), 'Synthetic memory catalog fixture.\n');
  services.settings.set({ kind: 'feature', featureRef: 'default-setup/code' }, ['cliPaths', 'claude-code'], executable!);
  const streams = vi.spyOn(runner, 'spawnStream'), commands = vi.spyOn(runner, 'execOnce');
  const compiledDir = resolve(import.meta.dirname, '../../../../../../dist/runtime/content');
@@ -38,9 +40,9 @@ it.skipIf(!executable || !workspace)('routes native Skill listing and edits thro
  }
  const owner = store.getConversation(id)?.owner;
  const texts = () => (repository.chatQueries.threadData(id)?.messages ?? []).map(message => message.text ?? '');
- const send = async (text: string) => {
+ const send = async (text: string, command = 'cc-skills') => {
   const before = texts().length;
-  await app.runFlow('Claude Code', { event: 'user.command', data: { command: 'cc-skills', text, threadId: id } });
+  await app.runFlow('Claude Code', { event: 'user.command', data: { command, text, threadId: id } });
   await vi.waitFor(() => expect(texts().length).toBeGreaterThan(before), { timeout: 15000 });
   return texts().at(-1)!;
  };
@@ -55,9 +57,14 @@ it.skipIf(!executable || !workspace)('routes native Skill listing and edits thro
  expect(await readFile(settings)).toEqual(before);
  expect(await send('set editable-fixture on')).toContain('Updated editable-fixture.');
  expect(JSON.parse(await readFile(settings, 'utf8')).skillOverrides?.['editable-fixture']).toBeUndefined();
+ const memoryReply = await send('', 'cc-memory');
+ expect(memoryReply).toContain('.claude/rules/memory-rule.md');
+ expect(memoryReply).toContain('[other]');
+ expect(memoryReply).toContain('Auto-memory: on');
+ expect(memoryReply).not.toContain('Auto-dream');
  if (retained) { expect(store.getConversation(id)?.owner).toBe(owner); expect(await store.closeIdleConversation(id)).toBe(true); }
- expect(streams).toHaveBeenCalledTimes(retained ? 1 : 6); expect(commands).toHaveBeenCalledTimes(3);
+ expect(streams).toHaveBeenCalledTimes(retained ? 1 : 7); expect(commands).toHaveBeenCalledTimes(3);
  if (!retained) for (const [args] of streams.mock.calls) expect(args).toContain('--no-session-persistence');
  for (const [args] of commands.mock.calls) expect(args).toEqual(['edit-skill-overrides', '--json']);
- await writeFile(join(workspace!, 'skill-management-app-evidence.json'), JSON.stringify({ compiledFlow: true, productionLaunchService: true, nativeListing: true, nativeEdit: true, authorLockRejected: true, rejectedEditUnchanged: true, redundantOverrideRemoved: true, threadProjectScope: true, retainedProcess: retained, sameOwner: retained ? store.getConversation(id) === undefined && !!owner : undefined, commandReplies: 4, nativeStreamingProcesses: streams.mock.calls.length, nativeWriterProcesses: commands.mock.calls.length, modelPrompts: retained ? 1 : 0 }, null, 2));
+ await writeFile(join(workspace!, 'skill-management-app-evidence.json'), JSON.stringify({ compiledFlow: true, productionLaunchService: true, nativeListing: true, nativeEdit: true, authorLockRejected: true, rejectedEditUnchanged: true, redundantOverrideRemoved: true, threadProjectScope: true, retainedProcess: retained, sameOwner: retained ? store.getConversation(id) === undefined && !!owner : undefined, nativeMemoryCatalog: true, hiddenDreamOmitted: true, commandReplies: 5, nativeStreamingProcesses: streams.mock.calls.length, nativeWriterProcesses: commands.mock.calls.length, modelPrompts: retained ? 1 : 0 }, null, 2));
 }, 45000);
