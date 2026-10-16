@@ -120,69 +120,46 @@ naming branch is not an automatic source of future changes.
 
 ### Current handoff — compiler checkpoint (2026-10-16)
 
-Latest source is `e7cd3d3d4`, following `477b4fef5` and `6c5c6613d`. Native sync/callback/promise
-`readdir` now records exact query results/options in the shared input view, including recursive native
-results, encoding and Dirent metadata. Callers receive copied arrays, mutable fields and Buffers.
-New representations validate overlapping earlier observations; repeated identical queries consume
-owned results through transient edits. Live verification rechecks membership/types. Explicit data
-reads can admit files excluded from source discovery, including a requested incumbent build file;
-staging-output exclusions remain separate. Tool-installation directories keep their existing owner.
+Latest source is `9421d496e`. The content read scope captures stat/lstat, realpath (including native
+variants), readlink, access and existence queries across their native API families. Metadata comes from
+original inputs rather than readonly materialization, preserving source permissions/inodes. Query
+results/errors are owned copies; negative results and link targets are rechecked before publication.
+Native Stats instances use observed field accessors, so unused timestamps do not invalidate a build.
+Methods, bigint fields, mutable Dates, structured cloning, inspection and native error brands have
+real-filesystem checks. An initial Proxy rejected `structuredClone(stat)`; it was replaced before commit.
+Node's custom promisification hook for `exists` is preserved. Metadata errors construct/map diagnostic
+storage outside captured execution, avoiding recursive filesystem interception.
 
-Validation now explicitly exits captured-read execution. The new regression initially timed out
-because verification could recursively consume its own cached reads; the corrected exact case passes
-in 4.65s without changing any timeout. Final scoped integration: all three cases pass in 42.84s,
-including symlink types, Buffer ownership, original paths and missing/changed input checks. All 61
-affected unit cases, CLI typecheck/lint and the real content worker (29.00s) pass. Logs:
-`/private/tmp/apack-directory-{fixed,final,unit,types-final,lint-final,worker}.log`; the initial failure
-is `apack-directory-integration.log`. All processes are terminal; no broad run was added.
+Focused evidence: 61 related unit cases plus the original three metadata cases pass; the final four
+metadata cases pass after native-value fixes. All four scoped integration cases pass in the affected
+run. The final strengthened metadata case passes in 5.41s, and the captured content worker in 25.93s.
+CLI typecheck and focused lint pass. Logs: `/private/tmp/apack-metadata-{unit-final,
+integration-final,native-values,native-integration,native-worker,native-types,native-lint}.log`.
+All own processes are terminal. No broad gate repeated; this is not full filesystem acceptance.
 
-The preceding file/open implementation remains: Content compilation runs under an asynchronous
-build scope for Node file reads and read-only sync/callback/promise opens. Native read streams use
-those opens and retain their source-facing path; descriptors and promise FileHandles read captured
-bytes. Numeric read-only flags are covered. Writable opens remain native rather than opening the
-read-only copy. Callback dispatch is shared across reads and opens. Each consumes the shared captured
-byte/query view; unrelated tasks and reads under that build's staging output remain native. Raw data
-has a separate projection inside the same owned tree, so native compiler metadata rewrites cannot
-change ordinary JSON/data reads. Compiler-installation files retain their existing captured ownership
-rather than being redirected to the live checkout. Writes are unchanged. Error paths map to originals.
+Preceding source `e7cd3d3d4` captures native directory queries/options and copied Dirents/Buffers;
+new representations validate overlapping earlier observations. Explicit data reads can admit files
+excluded from source discovery, while staging output stays separate. Validation explicitly leaves
+captured execution to check live inputs. Source `477b4fef5` owns read-only opens/streams/descriptors;
+`6c5c6613d` owns sync/callback/promise file reads in isolated asynchronous scopes with raw-data and
+native-metadata projections in one tree. Writable opens and staging reads stay native. Evidence:
+`/private/tmp/apack-directory-*.log`, `apack-content-handles*.log`, `apack-content-reads*.log`.
 
-The real worker also exposed an invented `prepareNative('./', packDir)` lookup for stdin. It enumerated
-the shared temp directory and refused an unrelated Discord socket. Stdin now prepares its actual source
-directory/configuration rather than pretending to import that directory. No foreign temp data was
-modified. The exact worker retry compiles and publishes content plus the bundled compiler successfully
-in 28.89s. Adjacent absolute-import/stdin configuration and repeat-output regression passes in 17.71s.
+Next finish descriptor metadata (`fstat`/FileHandle stats), directory handles (`opendir`), special flags,
+pre-opened resources, native object/reflection and argument-form acceptance. Current Stats field
+instrumentation uses accessors; do not assume every reflective/native consumer is already proved.
+Then complete loader/startup/preload ownership, startup-cached references and pending task lifetimes.
+Retain metadata identity/provenance projection in the whole-build receipt work, frontend resources
+and compiler generations, complete contribution discovery, navigation/frontend boundaries and all
+three Phase 6 workstreams. Native namespace completeness, authored source-map chaining and diagnostic
+stream source paths remain required. All Phases 0–7 and restored manifest deliverables remain active;
+run integrated/final committed-source strict `--all` gates after convergence, not each helper edit.
 
-Focused evidence: two real-filesystem cases execute a real content compiler against captured sync,
-callback and promise bytes despite a live data edit; ordinary package JSON retains its original
-absolute values; output reads remain live; concurrent build views stay separate; missing-file errors
-retain source paths. They pass in 27.90s. All 49 affected unit cases, CLI typecheck and lint pass.
-Logs: `/private/tmp/apack-content-{reads-final,reads-unit,reads-worker-final,stdin-final,
-reads-types-final,reads-lint}.log`; original worker failure: `apack-content-reads-worker.log`.
-All own processes are terminal. No broad gate repeated; this is not whole-filesystem acceptance.
-
-The handle/stream increment passes real compiler execution through all seven read paths (files,
-streams, sync/callback descriptors and promise handles), including numeric `O_RDONLY`. Numeric
-`O_RDWR` reads the live writable file; a promise output handle writes normally. The earlier full scoped
-pair passes; the final strengthened case passes in 15.09s and the actual content worker in 26.24s.
-CLI typecheck/lint pass. Logs: `/private/tmp/apack-content-handles{,-final,-worker,-types,-lint}.log`.
-All processes are terminal; no broad run was added.
-
-Next extend ownership to stat/lstat/access, directory handles (`opendir`) and resolution, and account for
-pre-opened descriptors and special open flags alongside startup ownership. Then finish
-loader/startup/preload ownership, including references cached before adapter installation and pending
-content-task lifetimes. The tested file/open/stream paths do not close those remaining boundaries. Retain frontend resources
-and compiler generations, whole-build receipts/passive freshness, complete contribution discovery,
-navigation/frontend boundaries and all Phase 6 workstreams. Native metadata/glob namespace acceptance,
-authored source-map chaining and diagnostic stream source paths also remain required. Run the
-integrated/final committed-source strict `--all` gates after convergence, not after every helper edit.
-
-Prior source `1a87aa11e` preserves native implicit per-file transforms for absolute module references,
-including generated stdin, without a plugin resolver round-trip. Module-only edits preserve ordinary
-data strings and authored source content in maps; independent captures emit identical JS/maps.
-Logs: `/private/tmp/apack-native-reference-{final,repeat,types-final,lint-final}.log`.
-`6b384ff1c` captures external glob bytes through transient edits and proves declaration-hidden runtime
-package precedence; `00a6e3db5` records the initial native tree consumer and real worker repeat identity.
-Their focused evidence remains in the preceding checkpoint commits and `/private/tmp/apack-native-*.log`.
+Prior `1a87aa11e` preserves native per-file configuration for absolute module references and generated
+stdin without custom resolver round-trips; independent captures emit identical JS/maps. `6b384ff1c`
+owns external glob inputs through transient edits and proves hidden runtime package precedence;
+`00a6e3db5` records initial native tree execution and worker repeat identity. Their evidence remains in
+the preceding checkpoint commits and `/private/tmp/apack-native-*.log`.
 
 #### Previous owned-declaration checkpoint
 

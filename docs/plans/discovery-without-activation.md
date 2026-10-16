@@ -364,8 +364,18 @@ the captured-read scope, avoiding self-validation and recursive reads. Explicit 
 inherit source-discovery exclusions. Scoped integration, 61 unit cases, types/lint and the real content
 worker pass; the owning goal records the initial scope failure, fix and focused evidence.
 
-Stat/lstat/access, directory handles (`opendir`), resolution, pre-opened descriptors, special open
-flags and startup-cached references remain unfinished. This is not a complete Node filesystem adapter or execution receipt. Frontend resources/generation, launch
+Source `9421d496e` adds path metadata/query ownership for stat/lstat, realpath/native realpath,
+readlink, access and existence across native API families. Metadata is captured from source inputs,
+not readonly copies. Stats field accessors record consumed fields for live validation; unused
+volatile timestamps are not dependencies. Real filesystem checks preserve class methods, bigint
+values, Dates, structured cloning, inspection and native errors. The initial Proxy representation
+failed a cloning probe and was replaced before commit. Native custom promisification for `exists`
+is retained. Final metadata execution and the actual captured content worker pass; owning evidence
+is in the goal. This does not establish complete native object/reflection or argument-form fidelity.
+
+Descriptor metadata, directory handles (`opendir`), resolution, pre-opened resources, special open
+flags and startup-cached references remain unfinished. Complete metadata identity/provenance
+projection with the whole-build receipt; do not treat field recording as a published receipt. This is not a complete Node filesystem adapter or execution receipt. Frontend resources/generation, launch
 ownership, whole-build receipts and passive freshness also remain required. Glob capture currently
 owns a conservative subtree beneath its static prefix rather than duplicating esbuild's exact matcher.
 
