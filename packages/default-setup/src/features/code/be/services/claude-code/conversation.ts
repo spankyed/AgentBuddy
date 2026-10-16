@@ -116,6 +116,15 @@ export function createClaudeConversation(native: QueryHandle, consumeAutonomous:
       if (closing || exited) throw new ClaudeProtocolError('conversation closed while changing model')
       modelSelection = model
     } finally { changingControl = false }
+  }, async requestEffortPreference(level) {
+    if (closing || exited) throw new ClaudeProtocolError('conversation is closed')
+    if (changingControl || active || pending || interactionRequests.size) throw new ClaudeProtocolError('conversation must be idle before requesting an effort preference')
+    changingControl = true
+    try {
+      const receipt = await native.requestEffortPreference(level)
+      if (closing || exited) throw new ClaudeProtocolError('conversation closed while requesting effort preference; saved state is unverified')
+      return receipt
+    } finally { changingControl = false }
   }, async setThinking(change) {
     if (closing || exited) throw new ClaudeProtocolError('conversation is closed')
     if (changingControl || active || pending || interactionRequests.size) throw new ClaudeProtocolError('conversation must be idle before changing thinking')

@@ -1186,3 +1186,10 @@ it('correlates native settings read and projects raw configuration before return
  const pending=handle.getConfigurationSummary();await Promise.resolve();const request=mock.writes[1] as {request_id:string;request:unknown};expect(request.request).toEqual({subtype:'get_settings'});
  mock.pushEvent({type:'control_response',response:{subtype:'success',request_id:request.request_id,response:{effective:{env:{TOKEN:'secret-fixture'}},applied:{model:'native',effort:null},errors:[{message:'secret-fixture'}]}}});const summary=await pending;expect(summary.configurationErrorCount).toBe(1);expect(summary.appliedEffort).toBeNull();expect(JSON.stringify(summary)).not.toContain('secret-fixture');await handle.close();
 });
+
+it('requests a native effort preference and preserves acknowledged-write state on readback failure',async()=>{
+ const mock=makeMockStream();vi.spyOn(runner,'spawnStream').mockResolvedValue(mock.handle);const handle=await query({}),init=mock.writes[0] as {request_id:string};mock.pushEvent({type:'control_response',response:{subtype:'success',request_id:init.request_id,response:{commands:[],agents:[],models:[]}}});await handle.initialized;
+ await expect(handle.requestEffortPreference('max' as never)).rejects.toThrow();expect(mock.writes).toHaveLength(1);
+ const pending=handle.requestEffortPreference('xhigh');await Promise.resolve();const update=mock.writes[1] as {request_id:string;request:unknown};expect(update.request).toEqual({subtype:'update_settings',source:'userSettings',settings:{effortLevel:'xhigh'}});mock.pushEvent({type:'control_response',response:{subtype:'success',request_id:update.request_id}});
+ await vi.waitFor(()=>expect(mock.writes).toHaveLength(3));const read=mock.writes[2] as {request_id:string;request:unknown};expect(read.request).toEqual({subtype:'get_settings'});mock.pushEvent({type:'control_response',response:{subtype:'error',request_id:read.request_id,error:'readback unavailable'}});await expect(pending).resolves.toEqual({configuration:null});await handle.close();
+});

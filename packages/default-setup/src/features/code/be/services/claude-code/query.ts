@@ -1,3 +1,4 @@
+import { ClaudePersistedEffortSchema, type ClaudePersistedEffort, type ClaudeEffortPreferenceReceipt } from './effort-preference.ts'
 import { getClaudeConfigurationSummary, type ClaudeConfigurationSummary } from './configuration-summary.ts'
 import { ClaudeUsageSchema, ClaudeUsageOptionsSchema, type ClaudeUsage, type ClaudeUsageOptions } from './host-controls.ts'
 import { ClaudeThinkingChangeSchema, type ClaudeThinkingChange } from './host-controls.ts'
@@ -131,6 +132,8 @@ export interface QueryHandle {
   getUsage(options?: ClaudeUsageOptions): Promise<ClaudeUsage>
   /** Native parsed/applied model summary. Raw settings and diagnostics remain in the backend. */
   getConfigurationSummary(): Promise<ClaudeConfigurationSummary>
+  /** Request a durable native user-model preference. Receipt is not a live-effort override. */
+  requestEffortPreference(level: ClaudePersistedEffort): Promise<ClaudeEffortPreferenceReceipt>
   /** Change native model selection. Custom names may trigger API validation; ack has no effective model. */
   setModel(model: string): Promise<void>
   /** Session-local request. A native refusal can follow partial mutation; no effective-state receipt. */
@@ -378,6 +381,14 @@ export async function query(opts: QueryOptions): Promise<QueryHandle> {
     async getContextUsage(): Promise<ClaudeContextUsage> {
       await initialized
       return ClaudeContextUsageSchema.parse(await hostControls.request({ subtype: 'get_context_usage', detail: 'summary' }))
+    },
+
+    async requestEffortPreference(level: ClaudePersistedEffort): Promise<ClaudeEffortPreferenceReceipt> {
+      const effort = ClaudePersistedEffortSchema.parse(level)
+      await initialized
+      await hostControls.request({ subtype: 'update_settings', source: 'userSettings', settings: { effortLevel: effort } })
+      try { return { configuration: getClaudeConfigurationSummary(await hostControls.request({ subtype: 'get_settings' })) } }
+      catch { return { configuration: null } }
     },
 
     async getConfigurationSummary(): Promise<ClaudeConfigurationSummary> {

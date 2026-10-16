@@ -169,6 +169,31 @@ async function handleSessions(
   };
 }
 
+async function handleSaveEffort(args: string[], services: Services, threadId?: string): Promise<{ text: string }> {
+  const level = args[0];
+  if (args.length !== 1 || (level !== 'low' && level !== 'medium' && level !== 'high' && level !== 'xhigh')) return { text: level === 'max' ? 'The tested native writer acknowledges max without saving it. Persisted preferences accept low, medium, high or xhigh.' : 'Usage: cc-config save-effort <low|medium|high|xhigh>' };
+  if (!threadId) return { text: 'Select a thread with a running Claude conversation before saving its model effort preference.' };
+  const conversation = services.cli.claudeCode.getConversation(threadId), owner = conversation?.owner;
+  if (!owner || owner.closing) return { text: 'Start a native conversation for the model whose user preference you want to save.' };
+  if (owner.busy) return { text: 'Wait for the native conversation to become idle before saving its model effort preference.' };
+  const prior = getClaudeState(services, threadId);
+  if (owner.sessionCwd !== (prior?.cwdOverride || prior?.cwd || services.cli.claudeCode.getWorkingDir())) return { text: 'The native conversation directory does not match this project.' };
+  try {
+    const receipt = await owner.handle.requestEffortPreference(level);
+    if (services.cli.claudeCode.getConversation(threadId)?.owner !== owner || owner.closing) return { text: 'The native conversation changed during the request; saved and applied effort are unverified.' };
+    if (!receipt.configuration) return { text: 'Native user-model preference request acknowledged, but configuration readback failed. Saved and applied effort remain unverified.' };
+    const summary = receipt.configuration;
+    return { text: `Native user-model preference request acknowledged: ${level}.\nNative model: ${summary.appliedModel}\nParsed effort at the applied model key: ${summary.perModelEffort ?? '(not reported)'}\nParsed global effort: ${summary.configuredEffort ?? '(not reported)'}\nRetained process reports applied effort: ${summary.appliedEffort ?? '(unavailable)'}\nSaved user preferences are considered by later launches; session and turn overrides remain separate.` };
+  } catch (error: any) {
+    return { text: `Native effort-preference request failed: ${error?.message || 'Unknown error'}. Saved state may have changed; check native configuration before retrying.` };
+  } finally {
+    if (services.cli.claudeCode.getConversation(threadId)?.owner === owner && !owner.busy && !owner.closing) {
+      const queued = dequeueMessage(services, threadId);
+      if (queued) await replayQueuedMessage(services, threadId as EntityId, queued, services.logger);
+    }
+  }
+}
+
 async function handleConfigurationSummary(args: string[], services: Services, threadId?: string): Promise<{ text: string; data?: any }> {
   if (args.length > 1 || (args.length === 1 && args[0] !== 'start')) return { text: 'Usage: cc-config effective [start]' };
   const prior = threadId ? getClaudeState(services, threadId) : undefined;
@@ -188,9 +213,10 @@ async function handleConfig(
 ): Promise<{ text: string; data?: any }> {
   const [subcommand, key, ...rest] = args;
   if (subcommand === 'effective') return handleConfigurationSummary(args.slice(1), services, threadId);
+  if (subcommand === 'save-effort') return handleSaveEffort(args.slice(1), services, threadId);
 
   if (!subcommand) {
-    return { text: 'Usage: /cc-config get <key> | set <key> <value> | effective [start]' };
+    return { text: 'Usage: /cc-config get <key> | set <key> <value> | effective [start] | save-effort <low|medium|high|xhigh>' };
   }
 
   const settings = await services.cli.claudeCode.readSettings();
@@ -213,7 +239,7 @@ async function handleConfig(
       return { text: `Set ${key} = ${raw}` };
     }
     default:
-      return { text: `Unknown config subcommand: ${subcommand}\nUsage: /cc-config get <key> | set <key> <value> | effective [start]` };
+      return { text: `Unknown config subcommand: ${subcommand}\nUsage: /cc-config get <key> | set <key> <value> | effective [start] | save-effort <low|medium|high|xhigh>` };
   }
 }
 

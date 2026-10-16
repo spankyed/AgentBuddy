@@ -14,6 +14,7 @@ function fixture() {
     cancelUserDialog: vi.fn(),
     setModel: vi.fn().mockResolvedValue(undefined),
     setThinking: vi.fn().mockResolvedValue(undefined),
+    requestEffortPreference: vi.fn().mockResolvedValue({ configuration: null }),
     close: vi.fn(async () => { events.end() }),
     kill: vi.fn(() => { events.end() }),
     hasPendingBackgroundTasks: vi.fn(() => false),
@@ -391,4 +392,11 @@ it('does not report a thinking acknowledgement after owner teardown',async()=>{
  vi.mocked(f.native.setThinking).mockImplementationOnce(()=>new Promise<void>(done=>{resolve=done}));
  const change=owner.handle.setThinking({budgetTokens:2048}),failed=expect(change).rejects.toThrow('closed');
  await owner.close();resolve();await failed;
+});
+
+it('holds the owner through an effort preference write/readback and rejects overlap',async()=>{
+ const f=fixture(),owner=createClaudeConversation(f.native,async()=>{});let resolve!:(value:{configuration:null})=>void;
+ vi.mocked(f.native.requestEffortPreference).mockImplementationOnce(()=>new Promise(done=>{resolve=done}));const pending=owner.handle.requestEffortPreference('low');expect(owner.busy).toBe(true);
+ expect(()=>owner.start('overlap',async()=>{})).toThrow('active input');await expect(owner.handle.setModel('sonnet')).rejects.toThrow('idle');await expect(owner.handle.setThinking({budgetTokens:0})).rejects.toThrow('idle');resolve({configuration:null});await expect(pending).resolves.toEqual({configuration:null});expect(owner.busy).toBe(false);
+ vi.mocked(f.native.requestEffortPreference).mockRejectedValueOnce(new Error('policy refusal'));await expect(owner.handle.requestEffortPreference('xhigh')).rejects.toThrow('policy refusal');expect(owner.busy).toBe(false);await owner.close();
 });

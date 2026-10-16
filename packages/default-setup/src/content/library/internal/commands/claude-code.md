@@ -42,3 +42,5 @@ Use `cc-permissions start add deny userSettings Bash` for a fresh permission edi
 Automatic context refresh only reads a running conversation.
 
 **cc-config effective [start]**: Show a safe native model/effort summary, distinguishing parsed settings from reported applied values. Uses a matching live process; `start` explicitly permits a temporary process and its session hooks. Raw environment, helper commands and error details are excluded.
+
+**cc-config save-effort <low|medium|high|xhigh>**: Request the running model’s native user preference write. Requires its matching idle conversation. Shows parsed/report-applied readback; saving a preference does not imply the retained process or next turn changed effort. Native user preferences can affect later launches in other projects.
