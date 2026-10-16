@@ -79,7 +79,7 @@ proof of a current failure nor proof that the failure was subsequently fixed.
 | Block and artifact metadata | **Consumer checkpoint implemented.** `3e4e10c8f` publishes native/installed/source metadata; `a278d4116` adds checked frontend bindings and scoped catalog readers, migrating thread icons, input kinds and components together. Mounted views follow independent catalog/binding changes and refuse stale implementations. Backend transcript callbacks remain execution. | Finish the all-kind audit, including backend/native fields and superseded metadata readers. Active low-level registries retain runtime lookup lifetimes; do not count them as static discovery. Keep source-free installed inspection and ownership/readiness checks in final acceptance. |
 | DSL/editor assistance | **Implemented, awaiting final acceptance.** `8ed188046` publishes compiled text and `39e48e66e` / `eb7d0995b` migrate SDK/Monaco to static catalog data with shared owned libraries and live replacement/removal. The frontend registration/store, generated raw module and staged-import resolver are removed. `07d544606` supplies offline Monaco. | Complete real worker/cold-document/window acceptance with the all-kind gate. Focused TypeScript completions, shared consumer disposal, prefix policy, two full deterministic builds, source-free disabled installed data and shipped-pack build pass. Preserve the existing five-build timeout for B6; its full frontend reuse/removal acceptance is still required. |
 | Compiled-content inventory and dependencies | **Partially implemented.** `7196d61d3` publishes flow reference fields/targets in the verified content index; build-only codegen, offline inspection and known incoming-edge queries cover nested/custom/computed targets. | Audit every inventory reader and close flow-edge acceptance. Preserve explicit unavailable/non-exhaustive analysis and indexed-target semantics; finish all-kind external/installed acceptance. Distinguish declared content from rows created by appliers; no user-data writes during inspection. |
-| Services, repositories, events and remaining native contributions | **Partially implemented; field-by-field completion audit outstanding.** Shared catalog, generated contracts and native admission exist. | Classify every supported registration field as discoverable data or executable binding, including nested members and static assets. Discover contracts without constructing services. Verify ownership/collision rules and native/authored parity; do not infer completion from schema acceptance. Phase 6 owns consumed-API enforcement. |
+| Services, repositories, events and remaining native contributions | **Partially implemented; field-by-field completion audit outstanding.** `506582b94` adds native service/repository ownership data and common native/authored binding-name validation; shared catalog and generated contracts exist. | Classify every supported registration field as discoverable data or executable binding, including nested members and static assets. Discover contracts without constructing services. Verify ownership/collision rules and native/authored parity; do not infer completion from schema acceptance. Phase 6 owns consumed-API enforcement. |
 | Shared readers and all-kind acceptance | **Partially implemented; final consumer audit outstanding.** Snapshot/catalog admission is shared; individual migrations above have checkpoint coverage. | Recheck lifecycle, offline database schema, CLI inspection and refresh subscriptions for duplicate parsing or active-only inventory. Preserve each consumer's enablement/execution policy. Exercise every supported kind with poisoned executable entries, source files absent, disabled/failed owners, collisions and atomic replacement; remove superseded discovery stores without deleting real runtime machinery. |
 
 The partial rows identify inspected gaps; they are not claims that every caller in that family has
@@ -3842,3 +3842,19 @@ The owning goal records 13 focused offline/poisoned-runtime cases, CLI types and
 own-key/editor integration assertions retain their final real-build execution requirement. Complete
 manifest printing is not native metadata parity, static event-contract extraction or all-kind binding
 acceptance; continue that field-by-field audit and loader ownership, preserving all later goal phases.
+
+
+### Native API declaration parity (2026-10-16)
+
+`506582b94` records native service/repository targets and feature ownership in declaration data, with
+native pack-level maps for APIs without feature owners. Discovery neither constructs the objects nor
+calls methods. Metadata survives runtime unload; native/authored API bindings share name/ownership
+validation. Schema admission rejects competing owners with both paths before activation. Native test
+composition records fixture names before binding, and direct replacement fixtures declare changed
+names explicitly. The goal records focused/source-free/retention/mutation evidence and repaired fixture
+checks, plus types, schema/API, package builds and lint/import/tier checks.
+
+Remaining native system/event contracts must account for the shell's non-toolbar inbox. Do not invent
+a visual plugin or infer executable behavior to fill that gap. Method-contract consumption belongs to
+Phase 6; native content/migration data, static assets, loader coordination and all-kind acceptance
+remain required alongside the full build-input/freshness and later goal scope.

@@ -136,7 +136,8 @@ index. Offline CLI inspection reports indexed/not-indexed/dynamic targets, and S
 incoming references for rename/removal review. Compiled records and hashes are unchanged.
 
 Navigation metadata is implemented in `cfcbb53f9`, and complete CLI declaration inspection in
-`a13c4c6e4`. Next finish native/service/repository/event/static-asset coverage and loader ownership. The required static
+`a13c4c6e4`. Native API ownership/admission is implemented in `506582b94`. Next finish system/event and other
+native/static-asset coverage and loader ownership. The required static
 flow-to-action edges are published; arbitrary JavaScript body analysis is not required by this plan.
 Pack-defined service calls must not become hardcoded SDK dependency rules. Unsupported analyzers
 remain explicitly unavailable, and compiled inventory is not user data. Navigation menu ordering/visibility, remaining
@@ -6626,3 +6627,28 @@ Next: field-by-field native/service/repository/event/static-asset coverage and l
 Do not treat full manifest output as proof that a compiled event contract or native binding has its
 required discoverable data. All original phases, build-input/freshness and final strict acceptance
 remain active.
+
+
+### Native API ownership (2026-10-16)
+
+Source `506582b94` adds keyed service/repository targets to native declarations, at feature ownership
+or native pack scope for unowned APIs. Metadata is admitted before executable registration and survives
+runtime unload. A shared checker validates native/authored API names and feature service membership;
+shared schema validation names competing owners before activation. Native fixture composition records
+these names before binding; direct replacement fixtures explicitly declare their changed API inventory.
+These references identify native composition bindings, not modules discovery may import. This does not
+complete method-contract consumption or system/event discovery. In particular the shell's native
+application inbox must not be modeled as an invented toolbar plugin to satisfy a schema.
+
+Validation: 124 initial host cases pass; SDK native/browser-schema and codegen-shape cases pass;
+all nine native API cases pass, including failed admission retention, unloaded metadata and methods
+that must not execute. Disabling native API admission causes the missing-service assertion to fail;
+source was restored. The host packs sweep passed 619 cases and exposed 14 undeclared replacement
+fixture cases plus four OS-uptime sandbox failures. Migrated replacement tests pass all 14; the two
+OS-dependent files pass all 17 with normal access. No full sweep was repeated for reassurance.
+Host/SDK types, schema, 28 SDK API reports, lint/import/tier checks and package builds pass.
+Logs: `/private/tmp/apack-native-apis-{focused,contracts,guards,mutation,pack-registry,replacement,filesystem,host-types,sdk-types,types,schema,api-check,lint,specifiers,tiers,packages}.log`.
+The mutation driver's extra wording assertion was too specific; the preserved Vitest result proves
+failure at the expected missing-service assertion and the source restoration was verified.
+All-kind, real-window and final committed-source strict acceptance remain open. Continue the live
+ledger's system/event/native/static-asset and loader work, then the unchanged later phases.
