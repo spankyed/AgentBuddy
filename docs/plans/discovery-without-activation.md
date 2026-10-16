@@ -383,7 +383,21 @@ separately typed package runtime bytes are consumed from capture. The existing p
 repeat-build check preserves cache/output identity. Focused types/lint and affected checks pass; the
 goal records logs. No broad gate is repeated for this incremental step. Native resolution namespaces,
 declarations, direct content reads, frontend/dev, launch options and the final receipt are still required.
-Next carry this ownership into the filesystem/namespace frame shared by those consumers.
+That extension now starts in source `5e3530cad`: all three declaration consumers materialize the
+existing byte/query view into one verified, read-only filesystem tree. Captured package links and
+missing/positive bindings are preserved; compiler path projection and derived phase configuration
+have separate owners. The parent owns each public worker's workspace, and cleanup precedes publication.
+Focused real-filesystem checks cover abandoned read-only cleanup without following foreign links.
+A typed build/stage/load succeeds with original shape/config files absent, retaining the captured
+shape and removing its tree; bypassing the consumer fails. All 89 affected unit cases, the real worker's
+repeat-build/workspace checks, CLI types and lint pass. The goal owns exact source evidence.
+
+This is a declaration execution consumer, not completion of the frozen execution frame. Extend the
+same tree/observations to native resolution, direct content reads and frontend resources; finish
+launch/preload and dev compiler lifetime, then receipt/passive consumers. Preserve useful paths for
+streamed upstream diagnostics too: mapping returned errors does not establish that acceptance.
+No broad gate is repeated for this increment. Integrated and final strict checks, the remaining
+contribution discovery and every later goal phase remain required.
 
 The unfinished Node option parser patch is preserved in stash
 `c42116fb46a385b5f6065a4fb9cd9e68e2625b80`. All experiment children, private captures and Vite servers

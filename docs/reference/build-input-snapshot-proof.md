@@ -16,6 +16,11 @@ ordinary resolution and emitted bytes. The negative proofs show why copying dire
 `cwd` is insufficient. Settle the adapters, external-input closure and dev lifetime before switching
 production builds or freshness readers. Do not convert these boundaries into exclusions.
 
+Production follow-through is tracked in the goal: `2e68b3ca7` makes native module bundles consume
+owned bytes; `5e3530cad` gives declaration bundles a verified owned filesystem and parent-owned worker
+workspace. These are partial execution consumers, not proof of complete namespace, content/frontend,
+launch/dev or publication ownership. The disposable adapters below remain experiments.
+
 ## Disposable proof
 
 Scripts retained locally:

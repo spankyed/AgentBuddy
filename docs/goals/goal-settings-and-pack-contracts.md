@@ -120,36 +120,44 @@ naming branch is not an automatic source of future changes.
 
 ### Current handoff — compiler checkpoint (2026-10-16)
 
-Latest source checkpoint is `2e68b3ca7`: all five native module bundles consume owned authored,
-external-module and installed-package bytes from the existing file view. Package-graph callbacks admit
-exact hashed bytes; completed generated bindings are captured after codegen. Flow helpers now receive
-the same compilation context as the other bundles. Source origins/resolution locations stay useful.
+Latest source checkpoint is `5e3530cad`: facade, flow-helper and DSL declaration bundles use one
+lazy owned filesystem tree per build. It materializes captured bytes, namespace queries and package
+bindings without an ancestor sweep. Inputs are read-only and verified; derived configuration uses
+separate writable storage. TypeScript path projection belongs to compiler configuration. Declaration
+programs capture parent configuration where applicable without changing native per-file discovery.
+Normal disposal precedes publication; failure disposal remains guaranteed. The public worker's parent
+owns an exact workspace and can remove abandoned read-only children without following foreign links.
 
-Focused evidence: 81 affected unit cases, the final 12 file-view cases, nine integration cases, CLI
-typecheck and lint pass. A real build/stage/load temporarily changes authored class fields,
-an external alias target and a dependency's JS entry (whose types live separately), restores all three,
-and executes captured values. Removing the owned-read plugin makes that test execute all three live
-values; exact source is restored. The production captured-compiler worker's existing repeat-build
-case passes in 17.87s, retaining cache/output identity. Logs:
-`/private/tmp/apack-owned-source-{unit,view-final,integration,mutation,worker,types-final,lint}.log`.
-All own processes are terminal. No broad run was added for this incremental source-byte step, following
-the user's pacing correction. Integrated execution-frame and final strict acceptance remain required.
+Focused evidence: 89 affected unit cases, final typed build/stage/load and production worker checks,
+CLI typecheck and lint pass. The typed entity facade preserves `value: string` while its original
+shape and inherited configuration files are absent during bundling; private trees are removed and
+emitted types contain no private paths. Bypassing the tree fails that regression; source restored.
+The final real worker passes repeat-build identity and both parent-workspace removal assertions in
+21.73s. File/directory links, dangling links, executable files, conflicting origins, copy tampering
+and foreign-link preservation have real-filesystem checks. The captured-root identity test exposed
+directory permission differences; only file executable bits enter identity, retaining its original
+source/copy equality assertion. Logs: `/private/tmp/apack-owned-tree-{unit-final,declarations-final,
+worker-final,types-final,lint-final,mutation}.log`. The earlier ten-case integration run also passed;
+final focused checks exercise the changed metadata/lifetime wiring. All own processes are terminal.
+No broad gate was repeated for this execution-frame increment; integrated/final strict acceptance is
+still required. Source `2e68b3ca7` remains the owned-byte consumer for all five native module bundles.
 
 Previous source `26f73956b` passed strict run `2026-10-16T08-15-59Z-20777` in 825.8s, 29 executed/
 one cached, 761 integration cases, real authoring and app checks; all seven EARS/content baselines
-matched. That is previous checkpoint evidence, not strict acceptance of the newer source. Native
-resolution still reads the live namespace; declaration/frontend reads, direct content filesystem reads,
-launch/preload code, dev lifetime and complete input/output receipts remain required.
+matched. That is previous checkpoint evidence, not strict acceptance of newer source.
 
-The snapshot-led execution design remains under proof. Inherited-configuration and selected Node
-read probes succeed on Node 23 and Electron's Node 22 with originals absent; no production filesystem/
-loader adapter or engine-floor change is adopted. Next implement the coherent source/dependency
-execution frame, then its receipt/passive consumers, preserving complete read/namespace, source/output
-and dev ownership. The user explicitly corrected the pace: prioritize substantial implementation over
-more proof/test machinery. Use focused checks while implementing; reserve broad gates for integrated
-milestones and final acceptance, rather than every small helper change. Do not weaken coverage or
-restart completed runs. All Phases 0–7 and all three Phase 6 workstreams remain required. Preserve
-unrelated work and saved stashes.
+Next extend the shared frame to native resolution, direct content filesystem reads and frontend
+resources, preserving observations, original paths, deterministic output and live authoring. Complete
+launch/preload ownership before startup and the retained frontend compiler's generation/lifetime,
+then the whole-build receipt and passive freshness consumers. Returned declaration errors/read records
+are projected to source paths; upstream TypeScript diagnostics printed directly by the plugin still
+need source-path acceptance through the complete worker output handoff. Do not mistake returned-error
+mapping for proof about that stream. The generic Node/Vite read adapters remain experimental.
+
+The user explicitly corrected the pace: prioritize substantial implementation over more proof/test
+machinery. Use focused checks while implementing; reserve broad gates for integrated milestones and
+final acceptance, rather than each helper change. All Phases 0–7 and all three Phase 6 workstreams
+remain required. Preserve unrelated work and saved stashes. Stronger isolation/lazy activation stay deferred.
 
 #### Earlier compiler-installation evidence
 
