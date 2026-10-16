@@ -1,7 +1,9 @@
 # Opening an entity is one verb, and no caller names a plugin
 
-Status: planned after complete [discovery without activation](discovery-without-activation.md),
-as ordered by [manifest maturity](manifest-maturity.md). Re-audit the survey against the naming result. The catalog owns declared entity-to-feature destinations; activation binds the
+Status: in progress on the accepted declaration/catalog and actor-readiness contracts. The
+[execution goal](../goals/goal-settings-and-pack-contracts.md#execution-order-and-change-control) owns
+the current order; unrelated compiler/freshness work is not a prerequisite. Re-audit the historical
+survey against current code. The catalog owns declared entity-to-feature destinations; activation binds the
 handler. Keep one `openEntity` verb, but do not implement the old registry lookup as a second inventory.
 The survey below is historical input: current `ReferenceTypeConfig` still has `navigate`, so the claim
 that it was already removed is not a current-code assertion.

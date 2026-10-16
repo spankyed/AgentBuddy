@@ -86,7 +86,7 @@ The partial rows identify inspected gaps; they are not claims that every caller 
 already been audited. Closing a row requires its source commit and acceptance evidence, including deletion
 of superseded discovery projections. A passing producer test alone does not establish consumer migration.
 
-### Build freshness is a separate prerequisite
+### Build freshness has per-consumer dependencies
 
 Archive creation, prebuilt tests, default-pack fork preparation and drive are **build-freshness
 consumers**, not additional discovery UIs. Their common input/publication contract and migration remain
@@ -97,9 +97,11 @@ in `e171b3acf`, with full checkpoint evidence below. Frozen pack/external inputs
 passive freshness authority remain unfinished. Installed/offline discovery must continue to need
 neither authored source files nor compiler activation.
 
-Finish that prerequisite, then the partial/unimplemented discovery rows and the all-kind acceptance
-audit. Entity navigation, pane/form failure boundaries and the three Phase 6 workstreams retain their
-separate requirements in the execution goal. None is removed by this status consolidation.
+The execution goal owns the current order. Only consumers requiring an unfinished producer guarantee
+wait for that guarantee; installed-data readers and entity navigation may proceed on their accepted
+catalog/binding contracts. Complete the freshness workstream and all-kind acceptance before final
+closure. Pane/form containment is locally accepted in `713a6c1fd`; retain its final checks. All three
+Phase 6 workstreams remain required.
 
 ### Build cancellation ownership
 

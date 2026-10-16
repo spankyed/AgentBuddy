@@ -109,20 +109,18 @@ Acceptance is the plan's claim-conflict/disabled/missing/retired routing cases, 
 converted feature handlers/callers and one stored-reference Electron case. Implement in coherent source
 checkpoints; do not reopen completed reference wire identity or require unrelated compiler work first.
 
-1. The scoped launch/authored-input slice is checkpointed through `bbf05ec00`; exact claims and
-   focused evidence are below. It does not complete B1 or B1–B6. Continue independent discovery slices
-   next; remaining producer gaps stay in step 3 rather than becoming a blanket prerequisite.
-2. Finish the named discovery consumers in reviewable slices. Each slice names its actual prerequisite
-   declaration, binding and publication guarantees. Installed catalog metadata migration is not
-   automatically blocked on Vite generation replacement or passive source-freshness consumers.
-3. Complete B1–B6 as the separate freshness workstream. A discovery slice requiring an unfinished
-   producer guarantee records that dependency and waits; independent slices may proceed first. This
-   permits sequential progress on this branch, not additional concurrent editors or broad suites.
-4. Complete entity navigation and frontend boundaries using their relevant accepted catalog/runtime
-   contracts. Neither requires unrelated discovery-reader cleanup merely because phase numbers differ.
-5. Implement consumed APIs and close the actual remaining provenance/replacement gaps. Reuse landed
+1. Finish Phase 4 entity destinations and caller migration. Phase 5 containment is already locally
+   accepted; retain its checks for final verification rather than schedule another implementation.
+2. Close the remaining discovery inventory: classify supported registration fields, native declarations,
+   events and static assets; identify actual reader/loader gaps and finish those migrations. Each slice
+   names the declaration, binding and publication guarantees it consumes. A producer dependency blocks
+   only the affected slice, not all installed-data readers.
+3. Complete B1–B6. Before changing B1 or B3, record a finite matrix of supported paths, existing owners,
+   concrete uncovered requirements and the check that closes each gap. Review existing implementation
+   first; do not treat an audit heading as authorization for another general capture/resource framework.
+4. Implement consumed APIs and close the actual remaining provenance/replacement gaps. Reuse landed
    ownership, inspection and replacement behavior rather than replaying historical plans.
-6. Complete Phase 7 across the entire preserved scope.
+5. Complete Phase 7 across the entire preserved scope using the acceptance register below.
 
 Before each checkpoint, record its concrete change, acceptance cases and dependency. Close it with
 source/evidence before selecting another. A newly found concern must name the observed defect or
@@ -135,6 +133,27 @@ Keep detailed historical logs below for traceability. Update this ledger when a 
 do not append a new competing live backlog or repeatedly copy all remaining work into every evidence
 entry. No scope is dropped, validation weakened, deferred work revived or implementation certified by
 this documentation change.
+
+### Final acceptance register
+
+This is the cross-phase closure checklist. Subsystem plans retain their detailed cases; link existing
+coverage and source evidence here as each row converges, recording missing checks explicitly. A row
+with missing or indirect evidence remains open. Existing local passes need not be rerun separately
+before the final gate unless their inputs or asserted behavior change. This register does not replace
+required checkpoint validation or the final committed-source strict `--all`.
+
+| Scope | Required closure evidence | Current disposition |
+|---|---|---|
+| Foundation and manifest | Complete supported-field classification; all 17 consolidation decisions and both naming outcomes; generated EARS typed/untyped behavior, ownership, canonical writer, schema/API reports and external authoring | Implemented checkpoints exist; final cross-phase audit pending. |
+| Settings | Host, pack and feature ownership; same-name groups, shared/restricted policy, disabled/failed owners, reset/import, custom forms and multiple windows | Existing settings evidence below; reconcile exact coverage before final gate. |
+| Discovery | Every supported kind/native field and static asset; source-free poisoned pack/dependency inspection, inactive owners, collisions, atomic updates and checked bindings; no activation/user-data writes | Partial inventory/loader implementation remains; discovery checklist owns the per-kind cases. |
+| Editor and content | Actual Monaco worker/cold document and typing through replacement; shared-library disposal; static flow edges, rename/missing-target diagnostics and honest dynamic status | Local producer/reader checks exist; real-window and external acceptance remain. |
+| Build ownership/freshness | Finite B1/B3 path matrices, frontend generation replacement/HMR, atomic successful input/output association, four passive consumers, preserved failure retention and deterministic reuse | B1–B6 remain partial; preserve failed run evidence and diagnose exact cases. |
+| Entity navigation | Build-checked destinations, conflicts/disabled/missing/retired delivery, typed guard, complete caller migration and stored-reference Electron case | In progress; canonical reference identity is already implemented. |
+| Frontend containment | Pane/form failures preserve other panes, host settings/defaults; retries reject retired instances in main/popout paths | Locally accepted in `713a6c1fd`; preserve through final gate. |
+| API consumption | Audited declaration granularity, generated/runtime facade agreement, undeclared/unavailable API diagnostics, content/dependency contracts and settings policy | Implementation remains; linked plan owns prototype and acceptance. |
+| Provenance/replacement | Exact origin/version/content through reuse/inspection; explicit linked development; fork restart/reload, managed updates, disable/remove/restore, override retention and failed-publication incumbent | Substantial source exists; reconcile remaining cases against linked plans. |
+| Final committed tree | Requirement-by-requirement audit, reviewed schema/API/docs/templates, required strict `--all` and real authoring/app checks on recorded committed source | Outstanding; archive only after every row is proven. |
 
 ## Background (2026-10-12, at 3d389b9c8 on session/naming-contracts)
 
