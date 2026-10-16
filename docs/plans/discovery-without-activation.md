@@ -380,8 +380,17 @@ late callbacks cannot adopt/erase a newer owner. Native handles retain their rec
 invalid-descriptor errors. Default callback opens capture inputs too. Real path-replacement, writable
 output, borrowed-receiver and stale-owner cases pass; the goal records focused evidence.
 
-Directory handles (`opendir`), resolution, borrowed/pre-opened resources, special open flags and
-startup-cached references remain unfinished. Within-frame descriptor mapping does not establish
+Source `19e28caea` adds native Dir-backed sync/callback/promise opendir capture. Its own native
+traversal order, encoding, buffer size and recursion are recorded rather than borrowing readdir's
+semantics. Projected handle reads retain closure/receiver checks and native locking; queued reads,
+async iteration and caller-facing relative/Buffer paths have real filesystem coverage. Omitted options
+stay omitted, preserving Node defaults. Diagnostic mapping no longer materializes input storage.
+The owning goal records focused unit, integration, type/lint and worker evidence.
+
+This implementation drains a requested traversal before returning the handle. Partial iteration and
+deferred read-error behavior remain required acceptance, to finish with frame resource closure. Do
+not count successful complete traversal as full native Dir fidelity. Resolution, borrowed/pre-opened
+resources, special open flags and startup-cached references also remain unfinished. Within-frame descriptor mapping does not establish
 cross-generation resource transfer or complete frame closure. Complete metadata identity/provenance
 projection with the whole-build receipt; do not treat field recording as a published receipt. This is not a complete Node filesystem adapter or execution receipt. Frontend resources/generation, launch
 ownership, whole-build receipts and passive freshness also remain required. Glob capture currently

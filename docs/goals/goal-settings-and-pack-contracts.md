@@ -120,7 +120,25 @@ naming branch is not an automatic source of future changes.
 
 ### Current handoff — compiler checkpoint (2026-10-16)
 
-Latest source is `7906c217f`. Source numeric/bigint stat snapshots now accompany captured data,
+Latest source is `19e28caea`. Scoped sync/callback/promise `opendir` captures its own native order,
+encoding, buffer size and recursive results. A real native Dir retains receiver/closure/locking
+behavior; projected reads share a per-handle cursor over captured entries. Iteration, queued reads,
+relative and Buffer paths, symlink types and closure have native filesystem checks. Query options
+preserve omission: inserting an absent bufferSize as undefined broke Node defaults and was corrected.
+Diagnostic path projection is now pure; formatting an early I/O error cannot allocate/read the input
+tree or replace that error with a materialization failure.
+
+Evidence: 70 affected unit cases pass; recursive handle capture and allocation-free diagnostics pass.
+After the option-omission refinement, the strengthened opendir case (including empty options) passes
+in 13.81s. Final CLI typecheck/lint pass. The real content worker passes in 27.51s before that focused
+option refinement. Logs: `/private/tmp/apack-opendir-{unit-final,integration-final,default-final,
+worker,types-final,lint-final}.log`. All own processes are terminal; no broad gate repeated.
+
+Directory capture currently drains the requested native traversal before returning a handle. Final
+native acceptance must cover partial iteration and deferred read errors, not just successful complete
+traversal. Finish that alongside resource-frame closure before treating directory handles as complete.
+
+Earlier source `7906c217f`. Source numeric/bigint stat snapshots now accompany captured data,
 so path and descriptor metadata can refer to the same byte generation. Read-only opens record their
 actual descriptor identity; `fstatSync`, callback `fstat` and native FileHandle `stat` project source
 metadata instead of readonly-copy inode/permissions. Native descriptor validation preserves `EBADF`.
@@ -161,7 +179,7 @@ captured execution to check live inputs. Source `477b4fef5` owns read-only opens
 native-metadata projections in one tree. Writable opens and staging reads stay native. Evidence:
 `/private/tmp/apack-directory-*.log`, `apack-content-handles*.log`, `apack-content-reads*.log`.
 
-Next finish directory handles (`opendir`), borrowed/pre-opened descriptor ownership, special flags,
+Next finish partial/deferred-error directory iteration and frame resource closure, borrowed/pre-opened descriptor ownership, special flags,
 native object/reflection and argument-form acceptance. Resource-frame closure and descriptor transfer
 between generations are not established by the within-frame ownership map. Current Stats field
 instrumentation uses accessors; do not assume every reflective/native consumer is already proved.
