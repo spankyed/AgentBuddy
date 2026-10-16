@@ -36,7 +36,9 @@ describe('contribution catalog data', () => {
       const frontend = { tiptapPlugins: { suggestions: { extensions: { mention: 'src/unavailable.ts#Mention' },
         popups: { mention: 'src/unavailable.vue' }, isSuggestionActive: 'src/unavailable.ts#isActive' } } };
       const manifest: PackManifest = { id: 'help-pack', name: 'Help', version: '1.0.0',
-        features: { notes: { description: 'Feature declaration fixture.', plugin: { label: 'Cold Notes', state: 'src/state.ts', canvas: 'src/canvas.vue' } } }, extensions: { commands: { cold: { placeholder: 'Cold command' } }, help: { path: 'help' }, ...frontend } };
+        features: { notes: { description: 'Feature declaration fixture.', plugin: { label: 'Cold Notes', state: 'src/state.ts', canvas: 'src/canvas.vue' } } }, extensions: {
+          commands: { cold: { placeholder: 'Cold command' } }, artifacts: { cold: { icon: 'FileText', fe: 'src/unavailable.vue' } },
+          blocks: { cold: { kind: 'input', fe: 'src/unavailable.vue', be: 'src/unavailable.ts#backend' } }, help: { path: 'help' }, ...frontend } };
       const snapshot = { declarationRevision: _declarationRevision(manifest), format: PACK_SNAPSHOT_FORMAT,
         manifest, types: { entities: {}, relKinds: {} }, facades: {},
         help: [{ id: 'start', title: 'Start', body: 'Available without activation', features: ['notes'] }] };
@@ -62,6 +64,10 @@ describe('contribution catalog data', () => {
         declarationRevision: snapshot.declarationRevision, buildRevision: accepted.revision, declaration: frontend }]);
       expect(catalog.plugins()).toMatchObject([{ featureRef: 'help-pack/notes', origin: 'installed', enabled: false, declaration: { label: 'Cold Notes', canvas: 'src/canvas.vue' } }]);
       expect(catalog.commands()).toMatchObject([{ name: 'cold', placeholder: 'Cold command', packId: 'help-pack', enabled: false }]);
+      expect(catalog.artifacts()).toMatchObject([{ type: 'cold', packId: 'help-pack', enabled: false, buildRevision: accepted.revision,
+        declaration: { icon: 'FileText', fe: 'src/unavailable.vue' } }]);
+      expect(catalog.blocks()).toMatchObject([{ type: 'cold', packId: 'help-pack', enabled: false, buildRevision: accepted.revision,
+        declaration: { kind: 'input', fe: 'src/unavailable.vue', be: 'src/unavailable.ts#backend' } }]);
       expect(fs.existsSync(marker)).toBe(false);
       catalog.help().articles[0].body = 'Mutated reader';
       expect(catalog.help().articles[0].body).toBe('Available without activation');

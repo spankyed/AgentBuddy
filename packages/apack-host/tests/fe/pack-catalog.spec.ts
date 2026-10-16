@@ -34,8 +34,10 @@ describe('window declaration catalog', () => {
     const references = { types: { memo: { category: 'memos', icon: 'NotebookText', svgElements: [], navigate: 'never.ts#open' } },
       categories: { memos: { label: 'Memos', icon: 'NotebookText', useItems: 'never.ts#useItems' } } };
     const frontend = { tiptapPlugins: { suggestions: { extensions: { mention: 'never.ts#Mention' } } } };
-    catalog.setNative([{ id: 'native-pack', ...frontend, features: { memos: { description: 'Feature declaration fixture.', references } } }]);
-    const manifest = { id: 'source-pack', name: 'Source', version: '1.0.0', extensions: { ...frontend }, features: { memos: { description: 'Feature declaration fixture.', references } } };
+    const viewers = { artifacts: { memo: { icon: 'FileText', fe: 'never.vue' } },
+      blocks: { reply: { kind: 'input' as const, fe: 'never.vue', be: 'never.ts#backend' } } };
+    catalog.setNative([{ id: 'native-pack', ...frontend, ...viewers, features: { memos: { description: 'Feature declaration fixture.', references } } }]);
+    const manifest = { id: 'source-pack', name: 'Source', version: '1.0.0', extensions: { ...frontend, ...viewers }, features: { memos: { description: 'Feature declaration fixture.', references } } };
     catalog.setSources([{ dir: '/isolated/source', manifest, declarationRevision: _declarationRevision(manifest) }]);
     const installed = { ...manifest, id: 'installed-pack' };
     catalog.replace([{ dir: '/isolated/installed', enabled: false, snapshot: {
@@ -61,12 +63,47 @@ describe('window declaration catalog', () => {
     ]);
     expect(entries[0]).not.toHaveProperty('buildRevision');
     expect(entries[2]).not.toHaveProperty('enabled');
+    const artifacts = reader.catalog.artifacts(), blocks = reader.catalog.blocks();
+    expect(artifacts.map(entry => [entry.packId, entry.origin, entry.enabled])).toEqual([
+      ['native-pack', 'native', true], ['installed-pack', 'installed', false], ['source-pack', 'source', undefined],
+    ]);
+    expect(artifacts.every(entry => entry.declaration.icon === 'FileText' && entry.declaration.fe === 'never.vue')).toBe(true);
+    expect(blocks.map(entry => entry.origin)).toEqual(['native', 'installed', 'source']);
+    expect(blocks.every(entry => entry.declaration.kind === 'input' && entry.declaration.be === 'never.ts#backend')).toBe(true);
+    expect(reader.catalog.artifacts()).toBe(artifacts);
+    expect(reader.catalog.blocks()).toBe(blocks);
+    expect(Reflect.set(artifacts[0].declaration, 'icon', 'Changed')).toBe(false);
+    expect(Reflect.set(blocks[0].declaration, 'kind', 'display')).toBe(false);
     expect(reader.catalog.references()).toBe(entries);
     reader.disconnect();
     expect(reader.catalog.references()).toBe(entries);
     expect(reader.catalog.status()).toBe('disconnected');
     expect(Reflect.set(entries[0].declaration.categories.memos, 'label', 'changed')).toBe(false);
     reader.dispose();
+  });
+
+  it('replaces block and artifact projections together and drops their cache on reconnect', () => {
+    const { reader, catalog, sessions, wire } = fixture();
+    catalog.setNative([{ id: 'native', artifacts: { preview: { icon: 'FileText' } }, blocks: { reply: { kind: 'input' } } }]);
+    reader.connect(); sessions[0].receive(wire());
+    const first = reader.catalog.artifacts();
+    const observed: unknown[] = [];
+    const stop = reader.catalog.subscribe(() => {
+      if (reader.catalog.status() === 'ready') observed.push([reader.catalog.artifacts()[0].declaration.icon, reader.catalog.blocks()[0].declaration.kind]);
+    });
+    catalog.setNative([{ id: 'native', artifacts: { preview: { icon: 'Notebook' } }, blocks: { reply: { kind: 'display' } } }]);
+    sessions[0].receive(wire());
+    expect(observed).toEqual([['Notebook', 'display']]);
+    expect(reader.catalog.artifacts()).not.toBe(first);
+    expect(first[0].declaration.icon).toBe('FileText');
+    reader.disconnect();
+    expect(reader.catalog.artifacts()[0].declaration.icon).toBe('Notebook');
+    reader.connect();
+    expect(reader.catalog.artifacts()).toEqual([]);
+    expect(reader.catalog.blocks()).toEqual([]);
+    sessions[1].receive(wire('new-run'));
+    expect(reader.catalog.artifacts()[0].declaration.icon).toBe('Notebook');
+    stop(); reader.dispose();
   });
 
   it('does not invoke observers added during the current publication', () => {

@@ -18,6 +18,48 @@ import { z } from 'zod';
 // @public
 export type ArrayChanges = Record<string, DiffResult<DiffItem>>;
 
+// @public (undocumented)
+export interface ArtifactCatalogEntry {
+    // (undocumented)
+    readonly buildRevision?: string;
+    // (undocumented)
+    readonly declaration: DeclarationData<ArtifactDeclaration>;
+    // (undocumented)
+    readonly declarationRevision?: string;
+    // (undocumented)
+    readonly enabled?: boolean;
+    // (undocumented)
+    readonly origin: 'native' | 'installed' | 'source';
+    // (undocumented)
+    readonly packId: string;
+    // (undocumented)
+    readonly type: string;
+}
+
+// @public (undocumented)
+export type ArtifactDeclaration = z.infer<typeof ArtifactEntrySchema>;
+
+// @public (undocumented)
+export interface BlockCatalogEntry {
+    // (undocumented)
+    readonly buildRevision?: string;
+    // (undocumented)
+    readonly declaration: DeclarationData<BlockDeclaration>;
+    // (undocumented)
+    readonly declarationRevision?: string;
+    // (undocumented)
+    readonly enabled?: boolean;
+    // (undocumented)
+    readonly origin: 'native' | 'installed' | 'source';
+    // (undocumented)
+    readonly packId: string;
+    // (undocumented)
+    readonly type: string;
+}
+
+// @public (undocumented)
+export type BlockDeclaration = z.infer<typeof BlockEntrySchema>;
+
 // @internal
 export function _compileSettingsDefinition(definition: SettingsDefinition): SettingsValidator;
 
@@ -220,6 +262,10 @@ export function onPackCatalogChanged(listener: () => void): () => void;
 
 // @public
 export interface PackCatalogView {
+    // (undocumented)
+    artifacts(): readonly ArtifactCatalogEntry[];
+    // (undocumented)
+    blocks(): readonly BlockCatalogEntry[];
     // (undocumented)
     frontend(): readonly FrontendCatalogEntry[];
     // (undocumented)

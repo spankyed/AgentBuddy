@@ -1,6 +1,8 @@
 import { captureData } from './captured-data.ts';
 import { stepCatalogEntries } from './catalog-steps.ts';
 import { commandCatalogEntries } from './catalog-commands.ts';
+import { artifactCatalogEntries } from './catalog-artifacts.ts';
+import { blockCatalogEntries } from './catalog-blocks.ts';
 import { referenceCatalogEntries } from './catalog-references.ts';
 import { frontendCatalogEntries } from './catalog-frontend.ts';
 import type { AppPackSource, AppPackSourceProblem, AppPackSources } from './app-sources.ts';
@@ -182,6 +184,8 @@ export function createContributionCatalog(appSettings: SettingsDefinition) {
     references: () => referenceCatalogEntries(current),
     frontend: () => frontendCatalogEntries(current),
     steps: () => stepCatalogEntries(current),
+    artifacts: () => artifactCatalogEntries(current),
+    blocks: () => blockCatalogEntries(current),
     commands: () => Object.freeze([...commandCatalogEntries(current)].sort((a, b) => commandOrder.get(a.packId)! - commandOrder.get(b.packId)!)),
     get: (packId: string): PackCatalogEntry | undefined => byId.get(packId),
     settings: (): SettingsCatalog => settings,
