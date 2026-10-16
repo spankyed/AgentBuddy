@@ -32,4 +32,23 @@ describe('native task observations',()=>{
   const f=setup();f.call('old','TaskGet',{taskId:'1'});f.observe({type:'result'});f.reply('old',{task});expect(f.tracker.list()).toEqual([]);
   f.call('same','TaskGet',{taskId:'1'});expect(()=>f.call('same','TaskGet',{taskId:'2'})).toThrow('changed identity');
  });
+ it('removes only the correlated task on the verified native deletion receipt',()=>{
+  const f=setup();f.call('list','TaskList');f.reply('list',{tasks:[task,{...task,id:'2'}]});
+  f.call('delete','TaskUpdate',{taskId:'1'});f.reply('delete',{success:true,taskId:'1',updatedFields:['deleted'],statusChange:{from:'pending',to:'deleted'}});
+  expect(f.tracker.list().map(value=>value.id)).toEqual(['2']);
+  f.call('missing','TaskUpdate',{taskId:'1'});f.reply('missing',{success:false,taskId:'1',updatedFields:[],error:'Task not found'});
+  expect(f.tracker.list().map(value=>value.id)).toEqual(['2']);
+ });
+ it('does not remove a task for failed, mismatched or contradictory deletion metadata',()=>{
+  const f=setup();f.call('list','TaskList');f.reply('list',{tasks:[task]});
+  for(const [index,payload] of [
+   {success:false,taskId:'1',updatedFields:['deleted'],statusChange:{from:'pending',to:'deleted'}},
+   {success:true,taskId:'2',updatedFields:['deleted'],statusChange:{from:'pending',to:'deleted'}},
+   {success:true,taskId:'1',updatedFields:['status'],statusChange:{from:'pending',to:'deleted'}},
+   {success:true,taskId:'1',updatedFields:['deleted'],statusChange:{from:'pending',to:'completed'}},
+  ].entries()){
+   f.call('delete'+index,'TaskUpdate',{taskId:'1'});f.reply('delete'+index,payload);expect(f.tracker.list()[0].id).toBe('1');expect(f.tracker.list()[0].status).toBe('pending');
+  }
+ });
+
 });

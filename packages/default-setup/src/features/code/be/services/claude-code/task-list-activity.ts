@@ -74,8 +74,13 @@ export function createClaudeTaskListActivity() {
         if (!parsed.success || new Set(parsed.data.tasks.map(value => value.id)).size !== parsed.data.tasks.length) return
         tasks = new Map(parsed.data.tasks.map(value => [value.id, copy(value)]))
       } else {
-        const parsed = z.object({ success: z.literal(true), taskId: id, updatedFields: z.array(z.string()).max(100), statusChange: z.object({ from: status, to: status }).optional() }).safeParse(payload)
+        const parsed = z.object({ success: z.literal(true), taskId: id, updatedFields: z.array(z.string()).max(100), statusChange: z.object({ from: status, to: z.enum(['pending', 'in_progress', 'completed', 'deleted']) }).optional() }).safeParse(payload)
         if (!parsed.success || parsed.data.taskId !== request.taskId) return
+        if (parsed.data.updatedFields.includes('deleted') && parsed.data.statusChange?.to === 'deleted') {
+          tasks.delete(parsed.data.taskId)
+          return
+        }
+        if (parsed.data.statusChange?.to === 'deleted') return
         const previous = tasks.get(parsed.data.taskId)
         if (!previous) return
         const next = { ...previous }
