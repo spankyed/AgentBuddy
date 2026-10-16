@@ -64,11 +64,9 @@ export const getHeight: NonNullable<StepLayoutDescriptor['getHeight']> = node =>
   fs.rmSync(path.join(root, 'src'), { recursive: true });
   const report = await inspectPack(installed);
   expect(report.build.status).toBe('verified');
-  expect(report.declared.tiptapPlugins).toEqual([
-    { id: 'suggestions', extensions: ['mention'], popups: ['mentions'], isSuggestionActive: true },
-  ]);
-  expect(report.declared.appExtensions).toEqual(['welcome']);
-  expect(report.declared.steps).toEqual([{ type: 'memo', ...extensions.steps.memo }]);
+  expect(report.declared.extensions?.tiptapPlugins).toEqual(extensions.tiptapPlugins);
+  expect(report.declared.extensions?.appExtensions).toEqual(extensions.appExtensions);
+  expect(report.declared.extensions?.steps).toEqual(extensions.steps);
   // Runtime code is tested separately after offline discovery. Only the host supplies shared dependencies.
   fs.symlinkSync(path.join(REPO_ROOT, 'node_modules'), path.join(installed, 'node_modules'), 'dir');
   const { default: registration } = await import(/* @vite-ignore */ pathToFileURL(path.join(installed, 'dist/runtime/fe.js')).href);

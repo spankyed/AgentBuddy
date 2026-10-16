@@ -819,3 +819,17 @@ apack install --channel beta                    # Latest beta, installed separat
 These commands manage `/Applications/apack.app` (or `apack Beta.app` with `--channel beta`) on macOS Apple Silicon. App commands default to production even when invoked from the beta app. Pack installation is `apack pack install <source>`; pack removal is `apack pack uninstall <id>`.
 
 Downloads must have a matching published SHA-256 checksum. An incomplete latest release fails rather than silently installing an older version. The downloaded bundle's identity, executable and version are checked before the existing app is asked to quit. Replacement is staged on the destination filesystem and restores the previous bundle if the swap fails. A concurrent app operation is refused. `install` refuses any existing bundle without `--replace`; `upgrade` requires an existing app and skips a same-version or older release unless `--force` is supplied. `--relaunch` opens the installed app after install or upgrade. Uninstall never deletes databases, packs, profiles or settings.
+
+### Inspecting pack declarations
+
+`apack pack info` lists declared features and their systems, services, repositories and reference
+identities, plus extension kinds, lifecycle hooks, migrations, entities, relations and content keys.
+It reads verified compiled inventory separately and reports unbuilt, stale or invalid output without
+activating pack modules. Feature-owned services appear under their feature; pack services appear under
+extensions.
+
+`apack pack info --json` returns the complete validated manifest in `declared`, retaining its keyed
+maps, ownership, module targets and metadata. It does not replace declarations with a selected list of
+names. `build` describes verified output and compiled content; `dependencies` describes inspection of
+declared dependencies. Authored declarations and verified output may differ in a stale build, which
+is reported explicitly. Neither inspection mode executes pack code or creates user data.

@@ -43,8 +43,8 @@ it('preserves owned names through authoring, compiled snapshots, source-free dis
   fs.rmSync(path.join(root, 'src'), { recursive: true });
   const report = await inspectPack(installed);
   expect(report.build.status).toBe('verified');
-  expect(report.declared.entities).toContainEqual({ name: '__proto__', owner: 'features.notes', shape: 'src/shape.ts#NoteShape' });
-  expect(report.declared.appExtensions).toEqual(['__proto__']);
+  expect(report.declared.features?.notes.entities).toEqual(own('src/shape.ts#NoteShape'));
+  expect(report.declared.extensions?.appExtensions).toEqual(own('src/View.vue'));
   expect((globalThis as Record<string, unknown>).__ownDeclarationsLoaded).toBeUndefined();
   const loaded = loadSingleExternalPack(installed);
   if ('problem' in loaded) throw new Error(loaded.problem);

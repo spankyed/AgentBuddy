@@ -47,18 +47,7 @@ export async function inspectPack(root: string) {
   const manifest = readValidManifest(root);
   const dependencies = await inspectDependencies(root, manifest.dependencies);
   return { root, id: manifest.id, name: manifest.name, version: manifest.version, hostVersion: manifest.hostVersion,
-    declared: {
-      features: Object.entries(manifest.features ?? {}).map(([id, feature]) => ({ id, description: feature.description,
-        ...(feature.plugin && { label: feature.plugin.label }) })),
-      steps: Object.entries(manifest.extensions?.steps ?? {}).map(([type, declaration]) => ({ type, ...declaration })),
-      services: Object.keys(manifest.extensions?.services ?? {}),
-      appExtensions: Object.keys(manifest.extensions?.appExtensions ?? {}),
-      tiptapPlugins: Object.entries(manifest.extensions?.tiptapPlugins ?? {}).map(([id, plugin]) => ({ id,
-        extensions: Object.keys(plugin.extensions ?? {}), popups: Object.keys(plugin.popups ?? {}),
-        isSuggestionActive: plugin.isSuggestionActive !== undefined })),
-      entities: _packEntities(manifest), relations: manifest.data?.relations ?? [],
-      content: { sources: Object.keys(manifest.content?.sources ?? {}), datasets: Object.keys(manifest.content?.datasets ?? {}) },
-    },
+    declared: manifest,
     build: inspectBuild(root, manifest), dependencies: dependencies.entries,
   };
 }
@@ -68,10 +57,31 @@ export async function info(args: string[]) {
   const report = await inspectPack(findPackRoot(process.cwd()));
   if (args.includes('--json')) { console.log(JSON.stringify(report)); return; }
   console.log(`Pack: ${report.id} (${report.name})\nVersion: ${report.version}\nHost: ${report.hostVersion ?? 'unrestricted'}\nRoot: ${report.root}`);
-  console.log(`\nDeclared features (${report.declared.features.length}):`);
-  for (const feature of report.declared.features) console.log(`  ${feature.id}${feature.label ? ` — ${feature.label}` : ''}: ${feature.description}`);
-  console.log(`Declared steps: ${report.declared.steps.map(step => `${step.type} — ${step.node.defaultLabel ?? step.node.label}`).join(', ') || '(none)'}`);
-  console.log(`Declared services: ${report.declared.services.join(', ') || '(none)'}`);
+  const manifest = report.declared;
+  const names = (label: string, entries: object | undefined) => {
+    const keys = Object.keys(entries ?? {});
+    if (keys.length) console.log(`${label}: ${keys.join(', ')}`);
+  };
+  console.log(`\nDeclared features (${Object.keys(manifest.features ?? {}).length}):`);
+  for (const [id, feature] of Object.entries(manifest.features ?? {})) {
+    console.log(`  ${id}${feature.plugin ? ` — ${feature.plugin.label}` : ''}: ${feature.description}`);
+    if (feature.system) console.log(`    System: ${feature.system.entry}`);
+    names('    Services', feature.services);
+    names('    Repositories', feature.repositories);
+    names('    Reference types', feature.references?.types);
+    names('    Reference categories', feature.references?.categories);
+  }
+  for (const [kind, declaration] of Object.entries(manifest.extensions ?? {})) {
+    if (kind === 'help') console.log(`Declared help: ${manifest.extensions!.help!.path}`);
+    else names(`Declared ${kind}`, declaration);
+  }
+  names('Declared lifecycle', manifest.lifecycle);
+  names('Declared app migrations', manifest.migrations?.app);
+  names('Declared pack migrations', manifest.migrations?.pack);
+  const entities = _packEntities(manifest);
+  if (entities.length) console.log(`Declared entities: ${entities.map(entity => `${entity.name} (${entity.owner})`).join(', ')}`);
+  if (manifest.data?.relations?.length) console.log(`Declared relations: ${manifest.data.relations.join(', ')}`);
+  for (const [kind, declaration] of Object.entries(manifest.content ?? {})) names(`Declared content ${kind}`, declaration);
   console.log(`\nBuild: ${report.build.status}${report.build.revision ? `; revision ${report.build.revision}` : ''}`);
   if (report.build.problem) console.log(`  ${report.build.problem}`);
   if (report.build.content) {
