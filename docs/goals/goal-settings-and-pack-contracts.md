@@ -291,6 +291,20 @@ A disposable two-process probe now confirms that changing executed external prel
 `/private/tmp/apack-preload-identity-audit.log`. This is an input-identity defect, not yet a stale-pack-output
 reproduction; it does not explain the output-change warning. The discovery plan owns the launch/session
 audit and acceptance for the next implementation. The probe changes no repository source or output.
+
+The user's snapshot-led suggestion is now tested against actual compiler paths, with positive and
+negative results recorded in [the proof evaluation](../reference/build-input-snapshot-proof.md).
+Two independent owned-source/dependency builds preserve emitted bytes and revision after live inputs
+change; only private phase metadata differs from the live baseline. Absolute aliases and direct content
+file reads can still escape the copy, and a dev server on an immutable copy loses original-source
+updates. Existing conflict guards and origin-mapped compiler observations remain useful. Continue the
+bounded hybrid prototype before choosing the production ownership/remapping and dev-lifetime design;
+do not claim these defects, whole-build receipts or any later scope complete.
+
+The two-file unfinished parser patch is preserved in stash
+`c42116fb46a385b5f6065a4fb9cd9e68e2625b80`. No experiment process/server remains active. Repository
+source stays at the strictly validated phase-cache checkpoint; these are documentation/evidence edits.
+
 Keep this reproduced association defect, the separate output-change warning and the missing input
 receipt distinct. Private phase stamps must not become the source-freshness authority. Optional
 diagnostic reads still need accepted-output association under the full publication contract.

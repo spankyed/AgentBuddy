@@ -312,6 +312,33 @@ and an actual development server cannot keep serving an old compiler after a suc
 Use focused process/filesystem fixtures first; reserve the next broad gate for the converged source
 checkpoint. All other source/external-input, receipt, discovery and later-phase requirements remain.
 
+
+### Snapshot-led hybrid evaluation (2026-10-16)
+
+The user's suggested snapshot-led hybrid is now exercised in disposable proofs, before selecting a
+production design. [The evaluation](../reference/build-input-snapshot-proof.md) owns the actual matrix,
+reports, alternatives and next acceptance. Real TypeScript, esbuild, executable content and Vite
+Vue/CSS/glob/worker builds preserve captured source/dependency bytes after the originals change.
+Two independent captures produce identical output; only private phase-cache metadata differs from
+the live baseline. The fixtures preserve relative external resolution and a linked npm dependency.
+
+The negative cases remain required implementation boundaries: absolute aliases without duplicate
+reads use live type/backend bytes, and absolute `fs.readFileSync` in content code reads live data.
+The existing duplicate-origin guard catches a different mixed-read case and must stay. Actual frontend
+observations map to original paths, but a Vite server simply pointed at the copy watches that copy and
+loses original-source updates. Do not interpret the positive build as closing these negative cases.
+
+Continue the hybrid as the next bounded prototype, retaining compiler capture and shared input graphs.
+Settle origin/read locations, complete external/namespace coverage, generated outputs and dev/compiler
+lifetimes before switching production execution or freshness readers. Test immutable whole-build inputs
+separately from a live authoring/HMR view owned by a compiler generation; neither silently replaces the
+other's contract. No final production design or exception is established by the proof.
+
+The unfinished Node option parser patch is preserved in stash
+`c42116fb46a385b5f6065a4fb9cd9e68e2625b80`. All experiment children, private captures and Vite servers
+have closed. Repository source is unchanged from `74890676d`; no new broad validation is needed for
+recording these findings. All remaining execution/publication and goal requirements stay in scope.
+
 ## Historical foundation audits and checkpoint evidence
 
 Current progress is recorded in the [current discovery checklist](#current-discovery-checklist).
