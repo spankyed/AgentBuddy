@@ -25,7 +25,7 @@ import { readStamps } from '../../src/build/phase-cache.ts';
 import { ensureCheckoutPackages } from '../../src/build/checkout-packages.ts';
 import { BUILD_INPUTS_DIRECTORY_ENV, removeCompilerReadTree } from '../../src/build/compiler-read-tree.ts';
 import { COMPILER_PROCESS_GROUP_ENV, stopCompilerProcessGroup } from '../../src/build/compiler-process-group.ts';
-import { captureCompilerInstallation, type CompilerInstallation } from '../../src/build/compiler-installation.ts';
+import { captureCompilerInstallation, compilerPackageDirectory, type CompilerInstallation } from '../../src/build/compiler-installation.ts';
 
 const roots: string[] = [];
 const compilers: CompilerInstallation[] = [];
@@ -52,6 +52,41 @@ function fixture(files: Record<string, string> = {}, content = {}) {
     manifest: { id: 'fresh-worker', name: 'Fresh worker', features: {}, content }, files });
   return root;
 }
+
+it('retains native launch identity when a user preload rewrites ambient options', async () => {
+  const root = fixture();
+  const workspace = path.join(root, '.apack/native-inputs');
+  fs.mkdirSync(workspace, { recursive: true });
+  const inputsFile = path.join(workspace, 'compiler-inputs.json');
+  fs.writeFileSync(inputsFile, JSON.stringify({ hash: '0'.repeat(64), packages: [root], paths: [] }));
+  const preload = path.join(root, 'preload.cjs');
+  fs.writeFileSync(preload, `process.env.NODE_OPTIONS = ''; process.execArgv.splice(0);`);
+  const entry = path.join(root, 'entry.cjs');
+  fs.writeFileSync(entry, `const startup = globalThis[Symbol.for('apack.compiler.startup')];
+    const identity = startup.executionIdentity;
+    startup.stopReads(); startup.view.dispose();
+    process.send(identity, () => process.exit(0));`);
+  const options = compilerStartupOptions(path.join(compilerPackageDirectory(), 'bin/apack.mjs'), formatNodeOptions(['--require', preload]));
+  const child = fork(entry, [], { cwd: root, execArgv: ['--conditions=launch-probe'], stdio: ['ignore', 'ignore', 'pipe', 'ipc'],
+    env: { ...process.env, APACK_BUILD_WORKER: '1', [COMPILER_INPUTS_ENV]: inputsFile,
+      [BUILD_INPUTS_DIRECTORY_ENV]: workspace, [COMPILER_NODE_OPTIONS_ENV]: options.user, NODE_OPTIONS: options.worker } });
+  let identity: unknown, errors = '';
+  child.on('message', message => { identity = message; });
+  child.stderr!.on('data', chunk => { errors += chunk; });
+  const closed = finished(child);
+  try {
+    expect(await _byDeadline(closed, 'native launch identity', 2_000), errors).toBe(0);
+    expect(typeof identity).toBe('string');
+    const execution = JSON.parse(identity as string);
+    expect(execution[3]).toEqual(['--conditions=launch-probe']);
+    expect(execution[4]).toEqual(['--require', preload]);
+    expect(identity).not.toContain('compiler-startup.cjs');
+  } finally {
+    if (child.exitCode === null && child.signalCode === null) child.kill('SIGKILL');
+    await closed;
+    removeCompilerReadTree(workspace);
+  }
+});
 
 it('uses the captured compiler and retains unchanged build/cache identity on repeat builds', async () => {
   const root = fixture({

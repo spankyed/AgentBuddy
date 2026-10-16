@@ -30,7 +30,7 @@ if ((isMainThread && process.env.APACK_BUILD_WORKER === '1' && process.send && p
   const temporary = path.join(workspace, 'tmp');
   fs.mkdirSync(temporary, { recursive: true });
   for (const key of ['TMPDIR', 'TMP', 'TEMP']) process.env[key] = temporary;
-  const startup = beginCompilerStartupInputs(process.cwd(), workspace, compiler.paths);
+  const startup = beginCompilerStartupInputs(process.cwd(), workspace, compiler.paths, userOptions);
   const ready = new Int32Array(primaryLoader ? inherited.loader : new SharedArrayBuffer(4));
   if (primaryLoader) Atomics.store(ready, 0, 1);
   else {

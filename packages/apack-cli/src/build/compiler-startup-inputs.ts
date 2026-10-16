@@ -5,11 +5,13 @@ import { beginCompilerStartupReads, withoutCompilerFileReads } from './compiler-
 import { createCompilerReadTree, type CompilerReadTree } from './compiler-read-tree.ts';
 import { compilerDiagnostic, compilerSourcePath, type CompilerPathMapping } from './compiler-paths.ts';
 import type { CompilerInputObservations } from './compiler-observations.ts';
+import { parseNodeOptions } from '@apackdev/host/build/source-resolution';
 
 const STARTUP = Symbol.for('apack.compiler.startup');
 
 export interface CompilerStartupInputs {
   readonly root: string;
+  readonly executionIdentity: string;
   readonly view: PackCompilerInputView;
   stopReads(): void;
   finishLocal(): CompilerInputObservations;
@@ -18,14 +20,21 @@ export interface CompilerStartupInputs {
   finish(): Promise<CompilerInputObservations[]>;
 }
 
+/** Capture launch state before user initialization can rewrite the ambient process values. */
+export function compilerExecutionIdentity(nodeOptions = process.env.NODE_OPTIONS): string {
+  return JSON.stringify([Object.entries(process.versions).sort(), process.platform, process.arch,
+    process.execArgv, parseNodeOptions(nodeOptions)]);
+}
+
 export function compilerStartupInputs(): CompilerStartupInputs | undefined {
   return Reflect.get(globalThis, STARTUP) as CompilerStartupInputs | undefined;
 }
 
 /** Native-only owner shared with the later compiler, including the early data-read tree's lifetime. */
-export function beginCompilerStartupInputs(root: string, workspace: string, paths: readonly CompilerPathMapping[]): CompilerStartupInputs {
+export function beginCompilerStartupInputs(root: string, workspace: string, paths: readonly CompilerPathMapping[], nodeOptions = process.env.NODE_OPTIONS): CompilerStartupInputs {
   if (compilerStartupInputs()) throw new Error('Compiler startup inputs already have an owner');
   const canonicalRoot = fs.realpathSync(root);
+  const executionIdentity = compilerExecutionIdentity(nodeOptions);
   const within = (parent: string, file: string) => {
     const relative = path.relative(parent, file);
     return relative === '' || (relative !== '..' && !relative.startsWith(`..${path.sep}`) && !path.isAbsolute(relative));
@@ -60,7 +69,7 @@ export function beginCompilerStartupInputs(root: string, workspace: string, path
     requireParent: file => file,
   } });
   const startup: CompilerStartupInputs = {
-    root: canonicalRoot, view, stopReads,
+    root: canonicalRoot, executionIdentity, view, stopReads,
     finishLocal() {
       return withoutCompilerFileReads(() => {
         view.assertCurrent();

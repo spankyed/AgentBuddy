@@ -17,7 +17,7 @@ import { compilerDiagnostic, compilerSourcePath } from './compiler-paths.ts';
 import { createNativeInputReader } from './compiler-native-inputs.ts';
 import { BUILD_INPUTS_DIRECTORY_ENV, createCompilerReadTree, type CompilerReadTree } from './compiler-read-tree.ts';
 import type { PackCompilerInputView } from './compiler-input-view.ts';
-import { compilerStartupInputs } from './compiler-startup-inputs.ts';
+import { compilerExecutionIdentity, compilerStartupInputs } from './compiler-startup-inputs.ts';
 import { createCompilerInputObservations, hashCompilerInputObservations, type CompilerInputObservations } from './compiler-observations.ts';
 import { assertNativeCompilerObservations } from './compiler-observation-validation.ts';
 
@@ -85,8 +85,7 @@ export function captureCompilationInputs(packRoot: string, view?: PackCompilerIn
     });
     const hash = createHash('sha256').update(compiler?.hash ?? buildToolHash()).update(inputs.hash).update(modules.hash)
       // Preload order and native flags can change behavior while reading identical files.
-      .update(JSON.stringify([Object.entries(process.versions).sort(), process.platform, process.arch,
-        process.execArgv, parseNodeOptions(process.env.NODE_OPTIONS)]))
+      .update(startup?.executionIdentity ?? compilerExecutionIdentity())
       .update(JSON.stringify(startup?.initial?.map(hashCompilerInputObservations) ?? []))
       .digest('hex');
     return { hash, packages: inputs };
