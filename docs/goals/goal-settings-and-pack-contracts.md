@@ -120,7 +120,39 @@ naming branch is not an automatic source of future changes.
 
 ### Current handoff — compiler checkpoint (2026-10-16)
 
-Latest source is `a0c050a16`. Public build parents now hold the pack lock from worker startup
+Latest source is `f67c8d066`. ESM execution now has logical source URLs and filenames while native
+resolution and source reads use the owned tree. A private loader below tsx only projects bytes; it
+makes no main-thread RPC. The input owner and loader share one storage mapping. Native entrypoint
+imports enter the same checked resolver as transitive requests, including package-format metadata;
+tsx's opaque scoped-import shortcut no longer bypasses it. Fresh public workers use the stable first
+scope namespace; in-process captures keep independent identities.
+
+Captured configs are parsed with get-tsconfig (now an explicit CLI dependency). Include/exclude/files
+patterns match logical source paths, while aliases resolve within owned inputs. This retains inherited
+rules and generated-file matching instead of inventing a root-file inventory. JSX tests exposed the
+previous matcher mismatch. The bundled worker also installed an unscoped tsx transformer, which ran
+first with another filename/configuration; that redundant bootstrap is removed only for bundled
+workers. Source CLI and other public-command bootstrap behavior is preserved. Disposal now awaits
+tsx unregistration and closes the input tree even when teardown fails.
+
+Evidence: the original output-swap test reproduced EACCES at an owned import.meta-relative write,
+then passes with the intended source write/input-change refusal (25.80s combined focused run). The
+final entrypoint case passes in 14.62s: it temporarily changes package type and module bodies, proves
+captured values and original ESM metadata, and compiles configured JSX through static/computed imports
+with query/fragment preservation. Two concurrent captures pass before the final tiny native-import
+bridge extraction (35.47s). The final packaged JSX/metadata worker passes in 36.95s. Tree cases (3),
+packaging cases (9), CLI typecheck and lint pass. The bridge also runs on Electron's Node 22.17.1.
+Logs: `/private/tmp/apack-module-metadata-{before,focused,jsx-before,entry-final,native-entry,
+worker-native-entry,tree,packaging,types-complete,lint-complete}.log`. No broad gate repeated.
+
+CommonJS deliberately retains per-tree filenames: a disposable proof found that logical CommonJS
+filenames reuse another generation's transitive cache. Its metadata/configuration semantics remain
+required, not excluded. Complete runtime/launch/preload closure, remaining entry variants and resource
+lifetimes, whole-build input receipts, watcher/publication alignment, frontend generations and every
+later goal phase remain open. Repeat-output and final committed-source strict --all acceptance are
+still required; focused evidence does not establish them.
+
+Preceding source `a0c050a16`. Public build parents now hold the pack lock from worker startup
 through process closure and verified publication. Workers prepare/seal staging, report the candidate's
 authored input hash and sealed output revision, drain diagnostics, then explicitly exit. The parent
 waits for close, checks cancellation, rechecks authored inputs and verifies the exact reported output

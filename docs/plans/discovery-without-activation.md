@@ -1256,6 +1256,14 @@ receipt and must not become passive source-freshness authority. Watcher acceptan
 module metadata/diagnostics and deterministic output, external/late input observations, descendant
 processes and frontend lifetimes remain required alongside the rest of this plan.
 
+`f67c8d066` separates ESM source metadata from read locations. Native scoped resolution selects owned
+inputs; a byte-only loader below tsx preserves logical URLs, filenames and source maps. Entrypoints
+must use that checked resolver too, rather than tsx's protocol shortcut. Configuration matching uses
+logical source patterns parsed from captured config files, with owned alias targets. Bundled workers
+must not add a second unscoped ESM transformer. CommonJS cache isolation still requires its owned
+filenames, so CommonJS metadata/configuration projection remains unfinished. Preserve that explicit
+acceptance item, repeat determinism, complete launch/input ownership and all later work above.
+
 ### Review correction: runtime rollback must preserve incumbent resources (2026-10-13)
 
 `reload.ts` currently unregisters the old registration before trying the new one, then re-registers
