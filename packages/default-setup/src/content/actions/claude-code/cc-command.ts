@@ -169,14 +169,28 @@ async function handleSessions(
   };
 }
 
+async function handleConfigurationSummary(args: string[], services: Services, threadId?: string): Promise<{ text: string; data?: any }> {
+  if (args.length > 1 || (args.length === 1 && args[0] !== 'start')) return { text: 'Usage: cc-config effective [start]' };
+  const prior = threadId ? getClaudeState(services, threadId) : undefined;
+  const cwd = prior?.cwdOverride || prior?.cwd || services.cli.claudeCode.getWorkingDir();
+  const conversation = threadId ? services.cli.claudeCode.getConversation(threadId) : undefined;
+  const handle = conversation && !conversation.owner.closing && conversation.owner.sessionCwd === cwd ? conversation.owner.handle : undefined;
+  if (!handle && args[0] !== 'start') return { text: 'No matching native conversation is running. Use cc-config effective start for a temporary process; startup and close can run configured session hooks. Its applied values describe that temporary process.' };
+  const summary = handle ? await handle.getConfigurationSummary() : await services.cli.claudeCode.getConfigurationSummary({ cwd });
+  const rows = [handle ? 'Native configuration summary:' : 'Temporary native process configuration summary:', `Parsed configured model: ${summary.configuredModel ?? '(not set)'}`, `Parsed global effort: ${summary.configuredEffort ?? '(not set)'}`, `Parsed effort for applied model: ${summary.perModelEffort ?? '(not set)'}`, `Native applied model: ${summary.appliedModel}`, `Native reported applied effort: ${summary.appliedEffort ?? '(unavailable)'}`, `Native configuration errors: ${summary.configurationErrorCount}`];
+  return { text: rows.join('\n'), data: summary };
+}
+
 async function handleConfig(
   args: string[],
   services: Services,
+  threadId?: string,
 ): Promise<{ text: string; data?: any }> {
   const [subcommand, key, ...rest] = args;
+  if (subcommand === 'effective') return handleConfigurationSummary(args.slice(1), services, threadId);
 
   if (!subcommand) {
-    return { text: 'Usage: /cc-config get <key> | set <key> <value>' };
+    return { text: 'Usage: /cc-config get <key> | set <key> <value> | effective [start]' };
   }
 
   const settings = await services.cli.claudeCode.readSettings();
@@ -199,7 +213,7 @@ async function handleConfig(
       return { text: `Set ${key} = ${raw}` };
     }
     default:
-      return { text: `Unknown config subcommand: ${subcommand}\nUsage: /cc-config get <key> | set <key> <value>` };
+      return { text: `Unknown config subcommand: ${subcommand}\nUsage: /cc-config get <key> | set <key> <value> | effective [start]` };
   }
 }
 

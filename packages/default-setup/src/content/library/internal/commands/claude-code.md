@@ -40,3 +40,5 @@ can run configured session hooks. Fresh memory and Skill edits can start separat
 validation and readback: `cc-memory start auto off` or `cc-skills start set <name> off`.
 Use `cc-permissions start add deny userSettings Bash` for a fresh permission edit/readback.
 Automatic context refresh only reads a running conversation.
+
+**cc-config effective [start]**: Show a safe native model/effort summary, distinguishing parsed settings from reported applied values. Uses a matching live process; `start` explicitly permits a temporary process and its session hooks. Raw environment, helper commands and error details are excluded.

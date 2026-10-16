@@ -1,3 +1,4 @@
+import { getClaudeConfigurationSummary, type ClaudeConfigurationSummary } from './configuration-summary.ts'
 import { ClaudeUsageSchema, ClaudeUsageOptionsSchema, type ClaudeUsage, type ClaudeUsageOptions } from './host-controls.ts'
 import { ClaudeThinkingChangeSchema, type ClaudeThinkingChange } from './host-controls.ts'
 import { ClaudeModelCatalogSchema, type ClaudeModelCatalog } from './host-controls.ts'
@@ -128,6 +129,8 @@ export interface QueryHandle {
   getModels(): Promise<ClaudeModelCatalog>
   /** Native account reads may cross the network; behavior aggregates are opt-in. */
   getUsage(options?: ClaudeUsageOptions): Promise<ClaudeUsage>
+  /** Native parsed/applied model summary. Raw settings and diagnostics remain in the backend. */
+  getConfigurationSummary(): Promise<ClaudeConfigurationSummary>
   /** Change native model selection. Custom names may trigger API validation; ack has no effective model. */
   setModel(model: string): Promise<void>
   /** Session-local request. A native refusal can follow partial mutation; no effective-state receipt. */
@@ -375,6 +378,11 @@ export async function query(opts: QueryOptions): Promise<QueryHandle> {
     async getContextUsage(): Promise<ClaudeContextUsage> {
       await initialized
       return ClaudeContextUsageSchema.parse(await hostControls.request({ subtype: 'get_context_usage', detail: 'summary' }))
+    },
+
+    async getConfigurationSummary(): Promise<ClaudeConfigurationSummary> {
+      await initialized
+      return getClaudeConfigurationSummary(await hostControls.request({ subtype: 'get_settings' }))
     },
 
     async getUsage(options: ClaudeUsageOptions = {}): Promise<ClaudeUsage> {

@@ -1,3 +1,5 @@
+import { getConfigurationSummary } from './claude-code/configuration.ts'
+import type { ClaudeConfigurationSummary } from './claude-code/configuration-summary.ts'
 import { getUsage } from './claude-code/usage.ts'
 import type { ClaudeUsage, ClaudeUsageOptions } from './claude-code/host-controls.ts'
 import { getModels } from './claude-code/models.ts'
@@ -110,6 +112,8 @@ export interface CliServiceType {
     getModels(opts?: { cwd?: string }): Promise<ClaudeModelCatalog>
     /** Read native session/account usage; behavior aggregates are opt-in. Fresh startup runs session hooks. */
     getUsage(opts?: { cwd?: string } & ClaudeUsageOptions): Promise<ClaudeUsage>
+    /** Safe native parsed/applied model summary. Fresh startup can run session hooks. */
+    getConfigurationSummary(opts?: { cwd?: string }): Promise<ClaudeConfigurationSummary>
     /** Read native Skill states, provenance and author/policy locks. */
     listSkills(opts?: { cwd?: string }): Promise<ClaudeSkillsDialog['skills']>
     editSkill(edit: ClaudeSkillEdit, opts?: { cwd?: string }): Promise<{ changed: boolean }>
@@ -313,6 +317,9 @@ function createCliService(): CliServiceType {
       },
       getPermissionRules(opts) {
         return getPermissionRules({ cwd: opts?.cwd ?? resolveCwd() })
+      },
+      getConfigurationSummary(opts) {
+        return getConfigurationSummary({ cwd: opts?.cwd ?? resolveCwd() })
       },
       getUsage(opts) {
         return getUsage({ cwd: opts?.cwd ?? resolveCwd(), includeBehaviors: opts?.includeBehaviors })

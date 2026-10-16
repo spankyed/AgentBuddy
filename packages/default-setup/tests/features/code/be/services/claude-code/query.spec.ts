@@ -1179,3 +1179,10 @@ it('requests native usage with behavior opt-in and retains experimental metadata
  }
  await expect(handle.getUsage({includeBehaviors:'invalid'} as never)).rejects.toThrow();expect(mock.writes).toHaveLength(3);await handle.close();
 });
+
+it('correlates native settings read and projects raw configuration before returning it',async()=>{
+ const mock=makeMockStream();vi.spyOn(runner,'spawnStream').mockResolvedValue(mock.handle);const handle=await query({}),init=mock.writes[0] as {request_id:string};
+ mock.pushEvent({type:'control_response',response:{subtype:'success',request_id:init.request_id,response:{commands:[],agents:[],models:[]}}});await handle.initialized;
+ const pending=handle.getConfigurationSummary();await Promise.resolve();const request=mock.writes[1] as {request_id:string;request:unknown};expect(request.request).toEqual({subtype:'get_settings'});
+ mock.pushEvent({type:'control_response',response:{subtype:'success',request_id:request.request_id,response:{effective:{env:{TOKEN:'secret-fixture'}},applied:{model:'native',effort:null},errors:[{message:'secret-fixture'}]}}});const summary=await pending;expect(summary.configurationErrorCount).toBe(1);expect(summary.appliedEffort).toBeNull();expect(JSON.stringify(summary)).not.toContain('secret-fixture');await handle.close();
+});

@@ -561,6 +561,15 @@ interface Category {
 
 type ChatState = 'error' | 'idle' | 'paused' | 'success' | 'working';
 
+interface ClaudeConfigurationSummary {
+    configuredModel?: string;
+    configuredEffort?: string;
+    perModelEffort?: string;
+    appliedModel: string;
+    appliedEffort: string | null;
+    configurationErrorCount: number;
+}
+
 type ClaudeContextUsage = z.infer<typeof ClaudeContextUsageSchema>;
 
 declare const ClaudeContextUsageSchema: z.ZodObject<{
@@ -3885,6 +3894,10 @@ interface CliServiceType {
         getUsage(opts?: {
             cwd?: string;
         } & ClaudeUsageOptions): Promise<ClaudeUsage>;
+        /** Safe native parsed/applied model summary. Fresh startup can run session hooks. */
+        getConfigurationSummary(opts?: {
+            cwd?: string;
+        }): Promise<ClaudeConfigurationSummary>;
         /** Read native Skill states, provenance and author/policy locks. */
         listSkills(opts?: {
             cwd?: string;
@@ -5169,24 +5182,24 @@ declare const HookEditSchema: z.ZodDiscriminatedUnion<"op", [z.ZodObject<{
     event: z.ZodString;
     matcher: z.ZodOptional<z.ZodString>;
 }, "strict", z.ZodTypeAny, {
-    event: string;
-    source: "localSettings" | "projectSettings" | "userSettings";
     op: "add";
     hook: {
         type: string;
     } & {
         [k: string]: unknown;
     };
+    source: "localSettings" | "projectSettings" | "userSettings";
+    event: string;
     matcher?: string | undefined;
 }, {
-    event: string;
-    source: "localSettings" | "projectSettings" | "userSettings";
     op: "add";
     hook: {
         type: string;
     } & {
         [k: string]: unknown;
     };
+    source: "localSettings" | "projectSettings" | "userSettings";
+    event: string;
     matcher?: string | undefined;
 }>, z.ZodObject<{
     op: z.ZodLiteral<"replace">;
@@ -5208,60 +5221,60 @@ declare const HookEditSchema: z.ZodDiscriminatedUnion<"op", [z.ZodObject<{
             type: z.ZodString;
         }, z.ZodTypeAny, "passthrough">>;
     }, "strict", z.ZodTypeAny, {
-        event: string;
         hook: {
             type: string;
         } & {
             [k: string]: unknown;
         };
+        event: string;
         matcher?: string | undefined;
     }, {
-        event: string;
         hook: {
             type: string;
         } & {
             [k: string]: unknown;
         };
+        event: string;
         matcher?: string | undefined;
     }>;
     source: z.ZodEnum<["userSettings", "projectSettings", "localSettings"]>;
     event: z.ZodString;
     matcher: z.ZodOptional<z.ZodString>;
 }, "strict", z.ZodTypeAny, {
-    event: string;
-    source: "localSettings" | "projectSettings" | "userSettings";
     op: "replace";
     hook: {
         type: string;
     } & {
         [k: string]: unknown;
     };
+    source: "localSettings" | "projectSettings" | "userSettings";
+    event: string;
     target: {
-        event: string;
         hook: {
             type: string;
         } & {
             [k: string]: unknown;
         };
+        event: string;
         matcher?: string | undefined;
     };
     matcher?: string | undefined;
 }, {
-    event: string;
-    source: "localSettings" | "projectSettings" | "userSettings";
     op: "replace";
     hook: {
         type: string;
     } & {
         [k: string]: unknown;
     };
+    source: "localSettings" | "projectSettings" | "userSettings";
+    event: string;
     target: {
-        event: string;
         hook: {
             type: string;
         } & {
             [k: string]: unknown;
         };
+        event: string;
         matcher?: string | undefined;
     };
     matcher?: string | undefined;
@@ -5278,50 +5291,50 @@ declare const HookEditSchema: z.ZodDiscriminatedUnion<"op", [z.ZodObject<{
             type: z.ZodString;
         }, z.ZodTypeAny, "passthrough">>;
     }, "strict", z.ZodTypeAny, {
-        event: string;
         hook: {
             type: string;
         } & {
             [k: string]: unknown;
         };
+        event: string;
         matcher?: string | undefined;
     }, {
-        event: string;
         hook: {
             type: string;
         } & {
             [k: string]: unknown;
         };
+        event: string;
         matcher?: string | undefined;
     }>;
     source: z.ZodEnum<["userSettings", "projectSettings", "localSettings"]>;
     event: z.ZodString;
     matcher: z.ZodOptional<z.ZodString>;
 }, "strict", z.ZodTypeAny, {
-    event: string;
-    source: "localSettings" | "projectSettings" | "userSettings";
     op: "remove";
+    source: "localSettings" | "projectSettings" | "userSettings";
+    event: string;
     target: {
-        event: string;
         hook: {
             type: string;
         } & {
             [k: string]: unknown;
         };
+        event: string;
         matcher?: string | undefined;
     };
     matcher?: string | undefined;
 }, {
-    event: string;
-    source: "localSettings" | "projectSettings" | "userSettings";
     op: "remove";
+    source: "localSettings" | "projectSettings" | "userSettings";
+    event: string;
     target: {
-        event: string;
         hook: {
             type: string;
         } & {
             [k: string]: unknown;
         };
+        event: string;
         matcher?: string | undefined;
     };
     matcher?: string | undefined;
@@ -7840,14 +7853,14 @@ declare const PermissionEditSchema: z.ZodDiscriminatedUnion<"op", [z.ZodObject<{
     behavior: z.ZodEnum<["allow", "deny", "ask"]>;
     destination: z.ZodEnum<["userSettings", "projectSettings", "localSettings"]>;
 }, "strict", z.ZodTypeAny, {
+    op: "add";
     rules: string[];
     behavior: "allow" | "ask" | "deny";
-    op: "add";
     destination: "localSettings" | "projectSettings" | "userSettings";
 }, {
+    op: "add";
     rules: string[];
     behavior: "allow" | "ask" | "deny";
-    op: "add";
     destination: "localSettings" | "projectSettings" | "userSettings";
 }>, z.ZodObject<{
     op: z.ZodLiteral<"remove">;
@@ -7855,15 +7868,15 @@ declare const PermissionEditSchema: z.ZodDiscriminatedUnion<"op", [z.ZodObject<{
     behavior: z.ZodEnum<["allow", "deny", "ask"]>;
     source: z.ZodEnum<["userSettings", "projectSettings", "localSettings"]>;
 }, "strict", z.ZodTypeAny, {
+    op: "remove";
     source: "localSettings" | "projectSettings" | "userSettings";
     behavior: "allow" | "ask" | "deny";
     rule: string;
-    op: "remove";
 }, {
+    op: "remove";
     source: "localSettings" | "projectSettings" | "userSettings";
     behavior: "allow" | "ask" | "deny";
     rule: string;
-    op: "remove";
 }>]>;
 
 /** Caller hook: decide a tool permission request. */
@@ -8088,6 +8101,8 @@ interface QueryHandle {
     getModels(): Promise<ClaudeModelCatalog>;
     /** Native account reads may cross the network; behavior aggregates are opt-in. */
     getUsage(options?: ClaudeUsageOptions): Promise<ClaudeUsage>;
+    /** Native parsed/applied model summary. Raw settings and diagnostics remain in the backend. */
+    getConfigurationSummary(): Promise<ClaudeConfigurationSummary>;
     /** Change native model selection. Custom names may trigger API validation; ack has no effective model. */
     setModel(model: string): Promise<void>;
     /** Session-local request. A native refusal can follow partial mutation; no effective-state receipt. */
