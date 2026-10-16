@@ -174,6 +174,48 @@ it('is independent of checkout location and modification times', () => {
   expect(a.hash()).toBe(b.hash());
 });
 
+it('keeps source input identity when the pack root is captured at a different depth', () => {
+  const { pack, write } = fixture();
+  write('pack/tsconfig.json', JSON.stringify({ compilerOptions: { noLib: true, types: [], module: 'ESNext' } }));
+  write('pack/src/index.ts', 'export interface Value { title: string }');
+  const source = readCompilerModuleInputs(pack).hash;
+  const temporary = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'apack-owned-modules-')));
+  roots.push(temporary);
+  const captured = path.join(temporary, 'nested/tree/pack');
+  fs.cpSync(pack, captured, { recursive: true });
+  setCompilerPaths(pack, [{ captured, source: pack }]);
+  expect(readCompilerModuleInputs(captured).hash).toBe(source);
+  fs.unlinkSync(path.join(pack, 'src/index.ts'));
+  expect(readCompilerModuleInputs(captured).hash).toBe(source);
+});
+
+it('keeps discovered package ordering relative to the source root across a capture', () => {
+  const { pack, write } = fixture();
+  write('package.json', '{"name":"parent","type":"module"}');
+  write('pack/package.json', '{"name":"pack","type":"module"}');
+  write('pack/tsconfig.json', JSON.stringify({ compilerOptions: { noLib: true, types: [], moduleResolution: 'Bundler', module: 'ESNext' } }));
+  write('pack/src/index.ts', 'export type { Inside } from "inside"; export type { Outside } from "outside";');
+  for (const [directory, name, type] of [
+    ['pack/node_modules/inside', 'inside', 'Inside'], ['node_modules/outside', 'outside', 'Outside'],
+  ]) {
+    write(`${directory}/package.json`, JSON.stringify({ name, types: 'index.d.ts' }));
+    write(`${directory}/index.d.ts`, `export interface ${type} { title: string }`);
+  }
+  const context = fs.realpathSync(path.dirname(pack)), sourceRoot = path.join(context, 'a-pack');
+  fs.renameSync(pack, sourceRoot);
+  const source = readCompilerModuleInputs(sourceRoot);
+  expect(source.packageDirectories).toEqual([path.join(context, 'node_modules/outside'), path.join(sourceRoot, 'node_modules/inside')]);
+  const temporary = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'apack-owned-package-order-')));
+  roots.push(temporary);
+  const capturedContext = path.join(temporary, 'nested/tree/context');
+  fs.cpSync(context, capturedContext, { recursive: true });
+  setCompilerPaths(sourceRoot, [{ captured: capturedContext, source: context }]);
+  const captured = readCompilerModuleInputs(path.join(capturedContext, 'a-pack'));
+  expect(captured.packageDirectories.map(directory => path.join(context, path.relative(capturedContext, directory))))
+    .toEqual(source.packageDirectories);
+  expect(captured.hash).toBe(source.hash);
+});
+
 it('keeps captured compiler input identity stable across different private directories', () => {
   const { pack, write, hash } = fixture();
   write('first/contract.d.ts', 'export type Value = string;');

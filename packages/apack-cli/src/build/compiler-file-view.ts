@@ -30,9 +30,9 @@ export function createCompilerFileView(root: string, options: {
   excluded?: (file: string) => boolean;
   observe?: BuildInputObserver;
 } = {}) {
-  const origin = fs.realpathSync(root);
   const excluded = options.excluded ?? (() => false);
   const paths = options.paths?.map(mapping => ({ ...mapping })) ?? [];
+  const origin = compilerSourcePath(fs.realpathSync(root), paths);
   const observe = options.observe;
   const relative = (file: string) => path.relative(origin, compilerSourcePath(file, paths)).split(path.sep).join('/');
   const physical = new Map<string, string>();

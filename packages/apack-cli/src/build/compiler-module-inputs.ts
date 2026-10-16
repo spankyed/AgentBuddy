@@ -14,6 +14,7 @@ import { readCompilerInstallationInputs } from './compiler-installation.ts';
 export function readCompilerModuleInputs(root: string, observe?: BuildInputObserver): { hash: string; packageDirectories: string[]; assertCurrent(): void } {
   const realRoot = fs.realpathSync(root);
   const compilerPaths = readCompilerInstallationInputs()?.paths ?? [];
+  const sourceRoot = compilerSourcePath(realRoot, compilerPaths);
   const authoredRoots = [...new Set([path.resolve(root), realRoot])];
   // Generated imports are outputs of this calculation, not inputs to its next invocation.
   const excluded = (file: string) => authoredRoots.some(directory => {
@@ -21,7 +22,7 @@ export function readCompilerModuleInputs(root: string, observe?: BuildInputObser
     return !relative.startsWith(`..${path.sep}`) && !path.isAbsolute(relative)
       && !isPackInputPath(relative, false) && !relative.split(path.sep).includes('node_modules');
   });
-  const relative = (file: string) => path.relative(realRoot, compilerSourcePath(file, compilerPaths)).split(path.sep).join('/');
+  const relative = (file: string) => path.relative(sourceRoot, compilerSourcePath(file, compilerPaths)).split(path.sep).join('/');
   const view = createCompilerFileView(root, { paths: compilerPaths, excluded, observe });
   const fileSystem = view.fileSystem;
   const configuration = readPackCompilerConfiguration(root, { ...ts.sys, ...fileSystem });

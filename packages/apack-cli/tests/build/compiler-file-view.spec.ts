@@ -83,6 +83,28 @@ it('owns the origin mappings used by its fingerprint', () => {
   expect(view.hash()).toBe(hash);
 });
 
+it('identifies a captured root by its source while reading and validating the captured files', () => {
+  const { root, file } = fixture();
+  const temporary = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'apack-owned-view-')));
+  roots.push(temporary);
+  const captured = path.join(temporary, 'nested/tree/pack');
+  fs.mkdirSync(captured, { recursive: true });
+  const copied = path.join(captured, 'source.ts');
+  fs.copyFileSync(file, copied);
+  const source = createCompilerFileView(root);
+  const snapshot = createCompilerFileView(captured, { paths: [{ captured, source: root }] });
+  for (const [view, directory] of [[source, root], [snapshot, captured]] as const) {
+    expect(view.fileSystem.readFile(path.join(directory, 'source.ts'))).toContain('value = 1');
+    view.fileSystem.readDirectory(directory, ['.ts']);
+  }
+  expect(snapshot.hash()).toBe(source.hash());
+  fs.unlinkSync(file);
+  expect(() => snapshot.assertCurrent()).not.toThrow();
+  expect(snapshot.fileSystem.readFile(copied)).toContain('value = 1');
+  fs.writeFileSync(copied, 'export const value = 2;');
+  expect(() => snapshot.assertCurrent()).toThrow('changed during discovery');
+});
+
 it.each(['file', 'parent'] as const)('pins %s link reads and refuses a new physical target', kind => {
   const { root, file, view } = fixture();
   const first = path.join(root, 'first'), second = path.join(root, 'second');

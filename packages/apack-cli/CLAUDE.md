@@ -100,7 +100,9 @@ exercise the real bootstrap and runner.
 TypeScript scan. Configuration, Vue extraction and the compiler host consume that view. Repeated queries
 reuse captured data; a final check refuses changed bytes, missing targets, link changes or membership.
 Origin mappings and returned arrays cannot mutate its fingerprint. Root membership uses the shared
-pack-input walker. `captureCompilationInputs` retains the scan's validator, rechecking its read-set plus
+pack-input walker. A captured pack root uses the same source projection as its files for fingerprints
+and discovered-package ordering; reads and validation still use its owned physical files.
+`captureCompilationInputs` retains the scan's validator, rechecking its read-set plus
 package/tool/options inputs without reconstructing the TypeScript program. It is scoped to one build.
 Compiler capture does not freeze pack sources, external
 frontend compiler reads or ambient Node preloads; the complete input/publication contract remains
