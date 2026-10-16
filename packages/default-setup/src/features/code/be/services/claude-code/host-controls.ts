@@ -125,3 +125,14 @@ export const ClaudeFileRewindSchema = z.object({
   insertions: z.number().optional(), deletions: z.number().optional(), skippedLinks: z.number().optional(),
 }).passthrough()
 export type ClaudeFileRewind = z.infer<typeof ClaudeFileRewindSchema>
+
+/** Native Skill dialog state is distinct from slash-command and model-context catalogs. */
+export const ClaudeSkillStateSchema = z.enum(['on', 'name-only', 'user-invocable-only', 'off'])
+export type ClaudeSkillState = z.infer<typeof ClaudeSkillStateSchema>
+export const ClaudeSkillsDialogSchema = z.object({ skills: z.array(z.object({
+  name: z.string(), display_name: z.string(), description: z.string(), source: z.string(),
+  tokens: z.number().nonnegative(), state: ClaudeSkillStateSchema,
+  advertised: z.boolean(), locked_by: z.enum(['author', 'plugin', 'policy', 'flag', 'reserved-name']).optional(),
+  handles: z.object({ unqualified_name: z.string().optional(), aliases: z.array(z.string()).optional(), bare_name_reserved: z.boolean().optional() }).passthrough(),
+}).passthrough()) }).passthrough()
+export type ClaudeSkillsDialog = z.infer<typeof ClaudeSkillsDialogSchema>

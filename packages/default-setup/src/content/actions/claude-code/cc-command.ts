@@ -225,9 +225,10 @@ async function handleSkills(
 ): Promise<{ text: string; data?: any }> {
   const skills = await services.cli.claudeCode.listSkills();
   if (!skills.length) return { text: 'No skills installed.' };
-  const lines = skills.map((s: any) => {
-    const scope = s.scope ? ` [${s.scope}]` : '';
-    return `${s.name}${scope}`;
+  const lines = skills.map(s => {
+    const lock = s.locked_by ? `; locked by ${s.locked_by}` : '';
+    const invocation = s.advertised ? '' : '; hidden from command suggestions';
+    return `${s.display_name} [${s.source}] — ${s.state}${lock}${invocation}`;
   });
   return { text: lines.join('\n'), data: skills };
 }

@@ -1,3 +1,5 @@
+import { getSkillsDialog } from './claude-code/skills.ts'
+import type { ClaudeSkillsDialog } from './claude-code/host-controls.ts'
 import type { ClaudeConversation, ClaudeTurnConsumer } from './claude-code/conversation.ts'
 import { getSessionPlan, type ClaudeSessionPlanOptions } from './claude-code/plan.ts'
 import type { ClaudePlan } from './claude-code/host-controls.ts'
@@ -93,8 +95,8 @@ export interface CliServiceType {
     readSettings(): Promise<Record<string, any>>
     /** Write the CLI's user-scope settings.json (~/.claude/settings.json). */
     writeSettings(settings: Record<string, any>): Promise<void>
-    /** List skill files from user (~/.claude/skills/) and project (.claude/skills/) dirs. */
-    listSkills(): Promise<Array<{ name: string; scope: string; path: string }>>
+    /** Read native Skill states, provenance and author/policy locks. */
+    listSkills(): Promise<ClaudeSkillsDialog['skills']>
     /** List memory/CLAUDE.md files from known locations. */
     listMemoryFiles(): Promise<Array<{ name: string; scope: string; path: string }>>
     /** Rename a Claude Code session through the native process. */
@@ -266,26 +268,7 @@ function createCliService(): CliServiceType {
         }
       },
       async listSkills() {
-        const results: Array<{ name: string; scope: string; path: string }> = []
-        const dirs = [
-          { dir: path.join(configDir(), 'skills'), scope: 'user' },
-          { dir: path.join(resolveCwd(), '.claude', 'skills'), scope: 'project' },
-        ]
-        for (const { dir, scope } of dirs) {
-          try {
-            const entries = await fs.promises.readdir(dir, { withFileTypes: true })
-            for (const entry of entries) {
-              if (entry.isFile() && entry.name.endsWith('.md')) {
-                results.push({
-                  name: entry.name.replace(/\.md$/, ''),
-                  scope,
-                  path: path.join(dir, entry.name),
-                })
-              }
-            }
-          } catch { /* dir doesn't exist */ }
-        }
-        return results
+        return (await getSkillsDialog({ cwd: resolveCwd() })).skills
       },
       async listMemoryFiles() {
         const cwd = resolveCwd()

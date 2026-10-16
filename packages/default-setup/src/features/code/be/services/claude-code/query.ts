@@ -36,8 +36,8 @@ import { argsFromOptions } from './args.ts'
 import { PermissionModeSchema, type PermissionMode } from './types.ts'
 import { z } from 'zod'
 import { createControlRouter } from './control.ts'
-import { createHostControls, ClaudeInitializationSchema, ClaudeContextUsageSchema, ClaudeInterruptReceiptSchema, ClaudeMcpStatusSchema, ClaudeFileRewindSchema, ClaudePlanSchema } from './host-controls.ts'
-import type { ClaudeInitialization, ClaudeContextUsage, ClaudeInterruptReceipt, ClaudeMcpStatus, ClaudeFileRewind, ClaudePlan } from './host-controls.ts'
+import { ClaudeSkillsDialogSchema, createHostControls, ClaudeInitializationSchema, ClaudeContextUsageSchema, ClaudeInterruptReceiptSchema, ClaudeMcpStatusSchema, ClaudeFileRewindSchema, ClaudePlanSchema } from './host-controls.ts'
+import type { ClaudeSkillsDialog, ClaudeInitialization, ClaudeContextUsage, ClaudeInterruptReceipt, ClaudeMcpStatus, ClaudeFileRewind, ClaudePlan } from './host-controls.ts'
 import {
   ClaudeAbortError,
   type ClaudeCodeError,
@@ -96,6 +96,8 @@ export interface QueryHandle {
   interrupt(options?: { cancelQueued?: boolean }): Promise<ClaudeInterruptReceipt>
   /** Rename the native session; an explicit ID protects against renaming a different session. */
   renameSession(title: string, sessionId?: string): Promise<void>
+  /** Read native Skill states, provenance and locks without a model turn. */
+  getSkillsDialog(): Promise<ClaudeSkillsDialog>
   /** Read the current native plan without a model turn. */
   getPlan(): Promise<ClaudePlan>
   /** Read live MCP server and tool status without a model turn. */
@@ -281,6 +283,11 @@ export async function query(opts: QueryOptions): Promise<QueryHandle> {
       const valid = z.object({ dryRun: z.boolean() }).strict().parse(options)
       await initialized
       return ClaudeFileRewindSchema.parse(await hostControls.request({subtype: 'rewind_files', user_message_id: id, dry_run: valid.dryRun}))
+    },
+
+    async getSkillsDialog(): Promise<ClaudeSkillsDialog> {
+      await initialized
+      return ClaudeSkillsDialogSchema.parse(await hostControls.request({ subtype: 'get_skills_dialog' }))
     },
 
     async getPlan(): Promise<ClaudePlan> {
