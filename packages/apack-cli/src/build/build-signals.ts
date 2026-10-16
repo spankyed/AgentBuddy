@@ -1,5 +1,5 @@
 /** Public commands drain owned build work before restoring the process's signal exit. */
-export async function withBuildSignals(run: (signal: AbortSignal) => Promise<void>): Promise<void> {
+export async function withBuildSignals(run: (signal: AbortSignal) => Promise<void>, onInterrupted?: () => void): Promise<void> {
   const controller = new AbortController();
   let received: 'SIGINT' | 'SIGTERM' | undefined;
   const stop = (signal: 'SIGINT' | 'SIGTERM') => { received ??= signal; controller.abort(); };
@@ -16,6 +16,7 @@ export async function withBuildSignals(run: (signal: AbortSignal) => Promise<voi
     process.removeListener('SIGTERM', terminate);
   }
   if (received) {
+    onInterrupted?.();
     process.kill(process.pid, received);
     await new Promise<never>(() => {});
   }

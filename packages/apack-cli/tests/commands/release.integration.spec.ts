@@ -288,11 +288,69 @@ describe('releaseStateReport', () => {
 });
 
 describe('runRelease', () => {
+  it('releases build signal ownership before running synchronous verification checks', async () => {
+    const root = builtPack();
+    fs.writeFileSync(path.join(root, 'tsconfig.json'), '{}');
+    const interrupt = process.listeners('SIGINT'), terminate = process.listeners('SIGTERM');
+    const gitRun = fakeGit({ 'git rev-parse --abbrev-ref HEAD': 'main' });
+    let checked = false;
+    const run: Runner = (command, args, cwd) => {
+      if (command !== 'npx') return gitRun(command, args, cwd);
+      checked = true;
+      expect(process.listeners('SIGINT')).toEqual(interrupt);
+      expect(process.listeners('SIGTERM')).toEqual(terminate);
+      return '';
+    };
+    await runRelease(root, { ...releaseOptions, dryRun: true, run, env: {} });
+    expect(checked).toBe(true);
+  });
+
+  it.each([false, true])('reports aborted verification before signal exit and stops the release (resuming: %s)', async resuming => {
+    const root = builtPack();
+    const run = fakeGit({
+      'git log -1 --format=%s': resuming ? 'release: v1.2.3' : '',
+      'git rev-parse --abbrev-ref HEAD': 'main',
+    });
+    const errors: string[] = [];
+    let reportedBeforeExit = '';
+    const errorLog = vi.spyOn(console, 'error').mockImplementation(message => { errors.push(String(message)); });
+    let terminate!: () => void;
+    const originalOn = process.on.bind(process);
+    const on = vi.spyOn(process, 'on').mockImplementation((event, listener) => {
+      if (event === 'SIGTERM') { terminate = listener; return process; }
+      if (event === 'SIGINT') return process;
+      return originalOn(event, listener);
+    });
+    const signalExit = new Error('Simulated signal exit');
+    const kill = vi.spyOn(process, 'kill').mockImplementation((pid, signal) => {
+      expect(pid).toBe(process.pid);
+      expect(signal).toBe('SIGTERM');
+      reportedBeforeExit = errors.join('\n');
+      throw signalExit;
+    });
+    vi.mocked(runPackBuild).mockImplementationOnce(async (_root, options) => {
+      if (!options?.signal) throw new Error('Build lifetime missing');
+      terminate();
+      options.signal.throwIfAborted();
+    });
+    try {
+      await expect(runRelease(root, { ...releaseOptions, run, env: {} })).rejects.toBe(signalExit);
+      expect(reportedBeforeExit).toContain(resuming ? 'Release v1.2.3 stopped part-way' : 'version files were bumped to 1.2.4');
+      expect(JSON.parse(fs.readFileSync(path.join(root, 'apack.json'), 'utf8')).version).toBe(resuming ? '1.2.3' : '1.2.4');
+      expect(fs.existsSync(path.join(root, '.apack/release'))).toBe(false);
+      expect(run.calls.filter(call => /^git (?:add |commit |tag -a|push(?: |$))/.test(call))).toEqual([]);
+    } finally {
+      on.mockRestore();
+      kill.mockRestore();
+      errorLog.mockRestore();
+    }
+  });
+
   it('packs after the version commit, so integrity.json records the tagged commit', async () => {
     const { root, origin, run } = packRepo();
     const { version } = await runRelease(root, { ...releaseOptions, run, env: {} });
 
-    expect(runPackBuild).toHaveBeenLastCalledWith(root, { args: ['--release'] });
+    expect(runPackBuild).toHaveBeenLastCalledWith(root, { args: ['--release'], signal: expect.any(AbortSignal) });
     expect(version).toBe('1.2.4');
     const tagged = git(root, 'rev-parse', 'v1.2.4^{commit}');
     expect(git(root, 'log', '-1', '--format=%s', tagged)).toBe('release: v1.2.4');

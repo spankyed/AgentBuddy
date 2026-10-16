@@ -8,6 +8,7 @@ import { findPackRoot, readManifest } from '../utils';
 import { parseManifest } from '@apackdev/sdk/build';
 import { resolveDeps } from './generate';
 import { runPackBuild } from '../build/build-process.ts';
+import { withBuildSignals } from '../build/build-signals.ts';
 import { buildPackArchive } from './archive';
 import { packArchiveName, readPackIntegrity, verifyPack, extractPackArchive } from '@apackdev/host/packs';
 import { errorMessage } from '@apackdev/sdk/utils/pure';
@@ -230,9 +231,9 @@ function hasScript(root: string, name: string): boolean {
   }
 }
 
-async function verify(root: string, options: { skipTests: boolean; skipE2e: boolean; run: Runner }): Promise<void> {
+async function verify(root: string, options: { skipTests: boolean; skipE2e: boolean; run: Runner; onInterrupted: () => void }): Promise<void> {
   console.log('\nBuilding (release)...');
-  await runPackBuild(root, { args: ['--release'] });
+  await withBuildSignals(signal => runPackBuild(root, { args: ['--release'], signal }), options.onInterrupted);
 
   if (fs.existsSync(path.join(root, 'tsconfig.json'))) {
     console.log('Typechecking...');
@@ -369,12 +370,15 @@ export async function runRelease(root: string, options: ReleaseOptions): Promise
   }
 
   const versionFiles = !options.dryRun && !existing.committed ? writeVersion(root, version) : [];
-  try {
-    await verify(root, { skipTests: options.skipTests, skipE2e: options.skipE2e, run });
-  } catch (err) {
-    if (options.dryRun) throw err;
+  const reportVerificationFailure = () => {
+    if (options.dryRun) return;
     if (existing.committed) console.error(releaseStateReport(version, existing));
     else console.error(`Verification failed; version files were bumped to ${version} — revert them before retrying.`);
+  };
+  try {
+    await verify(root, { skipTests: options.skipTests, skipE2e: options.skipE2e, run, onInterrupted: reportVerificationFailure });
+  } catch (err) {
+    reportVerificationFailure();
     throw err;
   }
 

@@ -80,6 +80,8 @@ then removes the private installation.
 `withBuildSignals` owns public one-shot/watch cancellation before startup and restores the original
 signal exit after cleanup. Development supplies its own build-lifetime signal and hands initial-build
 and watcher-startup promises to its hold before awaiting them; profile removal and exit wait for both.
+Release verification uses the same build owner and reports its existing recovery state before
+interrupted exit. Its synchronous test runners and later publishing phases keep their own signal behavior.
 
 `build/compiler-installation.ts` copies bytes supplied by the host's normalized package-input graph,
 preserves physical module/link resolution and executable bits, verifies the copy and makes its inputs

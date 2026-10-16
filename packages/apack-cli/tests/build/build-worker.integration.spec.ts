@@ -113,10 +113,11 @@ it('refuses private worker bootstrap without a parent IPC channel', async () => 
 });
 
 it.each([
-  { name: 'watch is ready', watch: true, phase: 'ready' },
-  { name: 'watch is compiling', watch: true, phase: 'compiling' },
-  { name: 'one-shot is compiling', watch: false, phase: 'compiling' },
-] as const)('removes its worker and compiler when the public build command is stopped while $name', async ({ watch, phase }) => {
+  { name: 'watch is ready', watch: true, phase: 'ready', release: false },
+  { name: 'watch is compiling', watch: true, phase: 'compiling', release: false },
+  { name: 'one-shot is compiling', watch: false, phase: 'compiling', release: false },
+  { name: 'release verification is compiling', watch: false, phase: 'compiling', release: true },
+] as const)('removes its worker and compiler when the public build command is stopped while $name', async ({ watch, phase, release }) => {
   // Shutdown removes a complete compiler file tree, unlike the IPC-only exit checks above.
   const cleanupDeadlineMs = 20_000;
   const root = fixture({
@@ -129,7 +130,8 @@ it.each([
     'src/data.ts': 'export default [];',
   }, { formats: { tags: { compiler: 'src/compiler.ts', entity: 'Relation' } }, sources: { tags: { path: 'src/data.ts', format: 'tags' } } });
   if (phase === 'compiling') fs.writeFileSync(path.join(root, 'hold-build'), '');
-  const child = fork(cliBin(), ['pack', 'build', ...(watch ? ['--watch'] : [])], { cwd: root, execArgv: [],
+  const args = release ? ['pack', 'release', '--dry-run', '--skip-tests', '--skip-e2e'] : ['pack', 'build', ...(watch ? ['--watch'] : [])];
+  const child = fork(cliBin(), args, { cwd: root, execArgv: [],
     env: { ...process.env, APACK_BUILD_WORKER: undefined, [COMPILER_INPUTS_ENV]: undefined }, stdio: ['ignore', 'pipe', 'pipe', 'ipc'] });
   let output = '';
   child.stderr?.on('data', chunk => { output += chunk; });
@@ -153,6 +155,7 @@ it.each([
     expect(fs.existsSync(inputs), inputs).toBe(false);
     expect(() => process.kill(worker, 0)).toThrow();
     if (phase === 'compiling') expect(fs.existsSync(path.join(root, 'dist'))).toBe(false);
+    if (release) expect(fs.existsSync(path.join(root, '.apack/release'))).toBe(false);
   } finally {
     if (child.exitCode === null && child.signalCode === null) child.kill();
     await _byDeadline(closed, 'public watcher cleanup', cleanupDeadlineMs);
