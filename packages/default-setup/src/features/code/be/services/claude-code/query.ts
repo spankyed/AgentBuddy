@@ -530,7 +530,7 @@ export function finaliseNoResult(
     return new ClaudeAbortError(abortSignal.reason)
   }
   if (exitInfo.exitCode !== 0) {
-    return new ClaudeExitError(exitInfo.exitCode, exitInfo.signal, exitInfo.stderr, args)
+    return new ClaudeExitError(exitInfo.exitCode, exitInfo.signal, exitInfo.stderr, '', args)
   }
   // Clean exit but no result line — legitimate CLI behaviour for some
   // control_request paths (e.g. `end_session`), but still an error from the

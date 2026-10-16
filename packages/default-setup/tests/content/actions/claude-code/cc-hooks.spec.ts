@@ -28,3 +28,43 @@ describe('cc-hooks presentation and native scope', () => {
   expect(await action({ command: 'cc-hooks' }, services, {} as never, 'hooks-flow')).toMatchObject({ text: 'cc-hooks failed: native unavailable' });
  });
 });
+
+const editText = 'apply ' + JSON.stringify({ op: 'remove', source: 'userSettings', event: 'PreToolUse', target: { event: 'PreToolUse', matcher: 'Read', hook: { type: 'http', url: 'https://example.invalid/hook', headers: { Authorization: '' } } } });
+it('refuses busy and mismatched-project edits before writing', async () => {
+ const write = vi.fn();
+ mockService<Services, 'chat'>('chat', { sendBlockMessage: vi.fn() });
+ mockService<Services, 'cli'>('cli', { claudeCode: { isConversationBusy: vi.fn(() => true), editHook: write } as never });
+ expect(await action({ command: 'cc-hooks', text: editText, threadId: 'fixture' }, services, {} as never, 'hooks-flow')).toMatchObject({ text: expect.stringContaining('become idle') });
+ mockService<Services, 'cli'>('cli', { claudeCode: { isConversationBusy: vi.fn(() => false), getHandle: vi.fn(() => ({})), getConversation: vi.fn(() => ({ owner: { sessionCwd: '/other' } })), getWorkingDir: vi.fn(() => '/selected'), editHook: write } as never });
+ expect(await action({ command: 'cc-hooks', text: editText, threadId: 'fixture' }, services, {} as never, 'hooks-flow')).toMatchObject({ text: expect.stringContaining('does not match') }); expect(write).not.toHaveBeenCalled();
+});
+it('preserves native refusal codes and does not close the incumbent on a refused edit', async () => {
+ const close = vi.fn(), read = vi.fn();
+ mockService<Services, 'cli'>('cli', { claudeCode: { editHook: vi.fn().mockResolvedValue({ ok: false, code: 'target_ambiguous', error: 'Native target changed' }), getHooksListing: read, closeIdleConversation: close } as never });
+ expect(await action({ command: 'cc-hooks', text: editText }, services, {} as never, 'hooks-flow')).toMatchObject({ text: 'Native hook edit refused [target_ambiguous]: Native target changed' }); expect(close).not.toHaveBeenCalled(); expect(read).not.toHaveBeenCalled();
+});
+it.each(['closed', 'busy', 'read-failed'])('distinguishes saved edits from reload/readback outcomes (%s)', async outcome => {
+ const close = vi.fn().mockResolvedValue(outcome !== 'busy'), fresh = outcome === 'read-failed' ? vi.fn().mockRejectedValue(new Error('catalog unavailable')) : vi.fn().mockResolvedValue(listing);
+ mockService<Services, 'chat'>('chat', { sendBlockMessage: vi.fn() });
+ mockService<Services, 'cli'>('cli', { claudeCode: { isConversationBusy: vi.fn(() => false), getHandle: vi.fn(() => ({ getHooksListing: vi.fn() })), getConversation: vi.fn(() => ({ owner: { sessionCwd: '/selected' } })), getWorkingDir: vi.fn(() => '/selected'), editHook: vi.fn().mockResolvedValue({ ok: true }), closeIdleConversation: close, getHooksListing: fresh } as never });
+ const result = await action({ command: 'cc-hooks', text: editText, threadId: 'fixture' }, services, {} as never, 'hooks-flow'); expect(result.text).toContain('Saved the hook edit.'); expect(close).toHaveBeenCalledWith('fixture');
+ if (outcome === 'busy') { expect(result.text).toContain('could not be closed'); expect(fresh).not.toHaveBeenCalled(); }
+ else if (outcome === 'read-failed') expect(result.text).toContain('reading the new native catalog failed');
+ else expect(result.text).toContain('Closed the idle native process');
+});
+
+it.skipIf(!process.env.CLAUDE_HOOKS_TEST_BINARY)('routes an actual native edit through the source command, closes the idle process and reads fresh configuration', async () => {
+ const { mkdtemp, mkdir, writeFile, readFile, realpath } = await import('node:fs/promises'); const { join } = await import('node:path'); const { tmpdir } = await import('node:os');
+ const { query } = await import('#features/code/be/services/claude-code/query.ts'); const { editHook, getHooksListing } = await import('#features/code/be/services/claude-code/hook-management.ts');
+ const cwd = await realpath(await mkdtemp(join(tmpdir(), 'cc-hooks-native-'))), home = join(cwd, 'home'), config = join(home, '.claude'); await mkdir(config, { recursive: true }); const path = join(config, 'settings.json'); await writeFile(path, JSON.stringify({ language: 'preserve' }));
+ const options = { cwd, cliPath: process.env.CLAUDE_HOOKS_TEST_BINARY, env: { PATH: process.env.PATH, HOME: home, CLAUDE_CONFIG_DIR: config, DISABLE_AUTOUPDATER: '1', CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC: '1' }, signal: AbortSignal.timeout(15000) };
+ const handle = await query({ ...options, tools: [], strictMcpConfig: true, keepStdinOpen: true, noSessionPersistence: true }); await handle.initialized;
+ const close = vi.fn(async () => { await handle.close(); return true; });
+ mockService<Services, 'chat'>('chat', { sendBlockMessage: vi.fn() });
+ mockService<Services, 'cli'>('cli', { claudeCode: { getWorkingDir: () => cwd, getHandle: () => handle, getConversation: () => ({ owner: { sessionCwd: cwd } }), isConversationBusy: () => false, closeIdleConversation: close, editHook: (edit: Parameters<typeof editHook>[0]) => editHook(edit, options), getHooksListing: () => getHooksListing(options) } as never });
+ try {
+  const result = await action({ command: 'cc-hooks', threadId: 'native-hook-thread', text: 'apply ' + JSON.stringify({ op: 'add', source: 'userSettings', event: 'PreToolUse', matcher: 'Read', hook: { type: 'command', command: '/usr/bin/true' } }) }, services, {} as never, 'hooks-flow');
+  expect(result.text).toContain('Saved the hook edit.'); expect(result.text).toContain('Closed the idle native process'); expect(result.text).toContain('new process for selected project'); expect(close).toHaveBeenCalledOnce(); expect(result.data.hooks).toEqual(expect.arrayContaining([expect.objectContaining({ source: 'userSettings', event: 'PreToolUse', matcher: 'Read' })]));
+  expect(JSON.parse(await readFile(path, 'utf8'))).toMatchObject({ language: 'preserve', hooks: { PreToolUse: [{ matcher: 'Read', hooks: [{ type: 'command', command: '/usr/bin/true' }] }] } });
+ } finally { await handle.close(); }
+}, 20000);

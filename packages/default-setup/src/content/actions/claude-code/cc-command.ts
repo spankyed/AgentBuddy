@@ -250,13 +250,35 @@ async function handlePermissions(args: string[], services: Services, threadId?: 
   return { text: notice + lines.join('\n'), data };
 }
 
-async function handleHooks(args: string[], services: Services, threadId?: string): Promise<{ text: string; data?: any }> {
-  if (args.length) return { text: 'Usage: cc-hooks (show native hook inventory)' };
+async function handleHooks(args: string[], services: Services, threadId?: string, rawText?: string): Promise<{ text: string; data?: any }> {
+  const editing = args.length > 0;
+  if (editing && (args[0] !== 'apply' || !rawText?.trim().startsWith('apply '))) return { text: 'Usage: cc-hooks [apply <native JSON edit>]' };
+  if (editing && threadId && services.cli.claudeCode.isConversationBusy(threadId)) return { text: 'Wait for the Claude conversation to become idle before editing hooks.' };
+
   const prior = threadId ? getClaudeState(services, threadId) : undefined;
   const cwd = prior?.cwdOverride || prior?.cwd;
   let handle = threadId ? services.cli.claudeCode.getHandle(threadId) : undefined;
-  if (handle && threadId && services.cli.claudeCode.getConversation(threadId)?.owner.sessionCwd !== (cwd || services.cli.claudeCode.getWorkingDir())) handle = undefined;
-  const data = handle ? await handle.getHooksListing() : await services.cli.claudeCode.getHooksListing(cwd ? { cwd } : undefined);
+  if (handle && threadId && services.cli.claudeCode.getConversation(threadId)?.owner.sessionCwd !== (cwd || services.cli.claudeCode.getWorkingDir())) {
+    if (editing) return { text: 'The native conversation directory does not match this project. Start a conversation in this project before editing hooks.' };
+    handle = undefined;
+  }
+  let notice = '';
+  if (editing) {
+    const edit = JSON.parse(rawText!.trim().slice('apply '.length));
+    const result = await services.cli.claudeCode.editHook(edit, cwd ? { cwd } : undefined);
+    if (!result.ok) return { text: `Native hook edit refused [${result.code}]: ${result.error}`, data: result };
+    notice = 'Saved the hook edit.\n';
+    if (handle && threadId) {
+      try {
+        if (!await services.cli.claudeCode.closeIdleConversation(threadId)) return { text: `${notice}The native conversation could not be closed for reload. Restart it before relying on the new hook configuration.` };
+      } catch (error: any) { return { text: `${notice}Closing the native conversation for reload failed: ${error?.message || 'Unknown error'}` }; }
+      notice += 'Closed the idle native process; the next conversation launch will load its hook configuration.\n';
+      handle = undefined;
+    }
+  }
+  let data;
+  try { data = handle ? await handle.getHooksListing() : await services.cli.claudeCode.getHooksListing(cwd ? { cwd } : undefined); }
+  catch (error: any) { if (!editing) throw error; return { text: `${notice}Saved the edit, but reading the new native catalog failed: ${error?.message || 'Unknown error'}` }; }
   const lines = [`Native hooks (${handle ? 'current conversation' : 'new process for selected project'}).`, `${data.eventCatalog.length} available events; ${data.hooks.length} configured hooks.`];
   if (data.policy.allDisabled) lines.push('Hook execution is disabled in this native configuration.');
   if (data.policy.disabledByPolicy) lines.push('Managed policy disables hooks.');
@@ -269,7 +291,7 @@ async function handleHooks(args: string[], services: Services, threadId?: string
   if (!data.hooks.length) lines.push('No configured hooks in this native scope.');
   lines.push(`Events: ${data.eventCatalog.map(event => `${event.name}${event.supportsMatcher ? ' (matcher)' : ''}`).join(', ')}`);
   for (const error of data.errors ?? []) lines.push(`Settings error: ${error.file} ${error.path}: ${error.message}`);
-  return { text: lines.join('\n'), data };
+  return { text: notice + lines.join('\n'), data };
 }
 
 async function handleMemory(

@@ -839,6 +839,10 @@ declare const ClaudeFileRewindSchema: z.ZodObject<{
     skippedLinks: z.ZodOptional<z.ZodNumber>;
 }, z.ZodTypeAny, "passthrough">>;
 
+type ClaudeHookEdit = z.infer<typeof HookEditSchema>;
+
+type ClaudeHookEditResult = z.infer<typeof HookEditResultSchema>;
+
 interface ClaudeHookRegistration {
     matcher?: string;
     timeout?: number;
@@ -3556,6 +3560,9 @@ interface CliServiceType {
         }): Promise<ClaudeMemoryDialog>;
         parseMcpElicitationForm(schema: unknown, propertyOrder?: string[]): ClaudeMcpForm;
         validateMcpElicitationForm(form: ClaudeMcpForm, content: unknown): ClaudeMcpFormValidation;
+        editHook(edit: ClaudeHookEdit, opts?: {
+            cwd?: string;
+        }): Promise<ClaudeHookEditResult>;
         getHooksListing(opts?: {
             cwd?: string;
         }): Promise<ClaudeHooksListing>;
@@ -4785,6 +4792,200 @@ declare class GitWatcherService {
     stopWatching(): Promise<void>;
     isActive(): boolean;
 }
+
+declare const HookEditResultSchema: z.ZodDiscriminatedUnion<"ok", [z.ZodObject<{
+    ok: z.ZodLiteral<true>;
+}, "passthrough", z.ZodTypeAny, z.objectOutputType<{
+    ok: z.ZodLiteral<true>;
+}, z.ZodTypeAny, "passthrough">, z.objectInputType<{
+    ok: z.ZodLiteral<true>;
+}, z.ZodTypeAny, "passthrough">>, z.ZodObject<{
+    ok: z.ZodLiteral<false>;
+    code: z.ZodString;
+    error: z.ZodString;
+    refusal: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodUnknown>>;
+}, "passthrough", z.ZodTypeAny, z.objectOutputType<{
+    ok: z.ZodLiteral<false>;
+    code: z.ZodString;
+    error: z.ZodString;
+    refusal: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodUnknown>>;
+}, z.ZodTypeAny, "passthrough">, z.objectInputType<{
+    ok: z.ZodLiteral<false>;
+    code: z.ZodString;
+    error: z.ZodString;
+    refusal: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodUnknown>>;
+}, z.ZodTypeAny, "passthrough">>]>;
+
+declare const HookEditSchema: z.ZodDiscriminatedUnion<"op", [z.ZodObject<{
+    op: z.ZodLiteral<"add">;
+    hook: z.ZodObject<{
+        type: z.ZodString;
+    }, "passthrough", z.ZodTypeAny, z.objectOutputType<{
+        type: z.ZodString;
+    }, z.ZodTypeAny, "passthrough">, z.objectInputType<{
+        type: z.ZodString;
+    }, z.ZodTypeAny, "passthrough">>;
+    source: z.ZodEnum<["userSettings", "projectSettings", "localSettings"]>;
+    event: z.ZodString;
+    matcher: z.ZodOptional<z.ZodString>;
+}, "strict", z.ZodTypeAny, {
+    op: "add";
+    hook: {
+        type: string;
+    } & {
+        [k: string]: unknown;
+    };
+    source: "localSettings" | "projectSettings" | "userSettings";
+    event: string;
+    matcher?: string | undefined;
+}, {
+    op: "add";
+    hook: {
+        type: string;
+    } & {
+        [k: string]: unknown;
+    };
+    source: "localSettings" | "projectSettings" | "userSettings";
+    event: string;
+    matcher?: string | undefined;
+}>, z.ZodObject<{
+    op: z.ZodLiteral<"replace">;
+    hook: z.ZodObject<{
+        type: z.ZodString;
+    }, "passthrough", z.ZodTypeAny, z.objectOutputType<{
+        type: z.ZodString;
+    }, z.ZodTypeAny, "passthrough">, z.objectInputType<{
+        type: z.ZodString;
+    }, z.ZodTypeAny, "passthrough">>;
+    target: z.ZodObject<{
+        event: z.ZodString;
+        matcher: z.ZodOptional<z.ZodString>;
+        hook: z.ZodObject<{
+            type: z.ZodString;
+        }, "passthrough", z.ZodTypeAny, z.objectOutputType<{
+            type: z.ZodString;
+        }, z.ZodTypeAny, "passthrough">, z.objectInputType<{
+            type: z.ZodString;
+        }, z.ZodTypeAny, "passthrough">>;
+    }, "strict", z.ZodTypeAny, {
+        hook: {
+            type: string;
+        } & {
+            [k: string]: unknown;
+        };
+        event: string;
+        matcher?: string | undefined;
+    }, {
+        hook: {
+            type: string;
+        } & {
+            [k: string]: unknown;
+        };
+        event: string;
+        matcher?: string | undefined;
+    }>;
+    source: z.ZodEnum<["userSettings", "projectSettings", "localSettings"]>;
+    event: z.ZodString;
+    matcher: z.ZodOptional<z.ZodString>;
+}, "strict", z.ZodTypeAny, {
+    op: "replace";
+    hook: {
+        type: string;
+    } & {
+        [k: string]: unknown;
+    };
+    source: "localSettings" | "projectSettings" | "userSettings";
+    event: string;
+    target: {
+        hook: {
+            type: string;
+        } & {
+            [k: string]: unknown;
+        };
+        event: string;
+        matcher?: string | undefined;
+    };
+    matcher?: string | undefined;
+}, {
+    op: "replace";
+    hook: {
+        type: string;
+    } & {
+        [k: string]: unknown;
+    };
+    source: "localSettings" | "projectSettings" | "userSettings";
+    event: string;
+    target: {
+        hook: {
+            type: string;
+        } & {
+            [k: string]: unknown;
+        };
+        event: string;
+        matcher?: string | undefined;
+    };
+    matcher?: string | undefined;
+}>, z.ZodObject<{
+    op: z.ZodLiteral<"remove">;
+    target: z.ZodObject<{
+        event: z.ZodString;
+        matcher: z.ZodOptional<z.ZodString>;
+        hook: z.ZodObject<{
+            type: z.ZodString;
+        }, "passthrough", z.ZodTypeAny, z.objectOutputType<{
+            type: z.ZodString;
+        }, z.ZodTypeAny, "passthrough">, z.objectInputType<{
+            type: z.ZodString;
+        }, z.ZodTypeAny, "passthrough">>;
+    }, "strict", z.ZodTypeAny, {
+        hook: {
+            type: string;
+        } & {
+            [k: string]: unknown;
+        };
+        event: string;
+        matcher?: string | undefined;
+    }, {
+        hook: {
+            type: string;
+        } & {
+            [k: string]: unknown;
+        };
+        event: string;
+        matcher?: string | undefined;
+    }>;
+    source: z.ZodEnum<["userSettings", "projectSettings", "localSettings"]>;
+    event: z.ZodString;
+    matcher: z.ZodOptional<z.ZodString>;
+}, "strict", z.ZodTypeAny, {
+    op: "remove";
+    source: "localSettings" | "projectSettings" | "userSettings";
+    event: string;
+    target: {
+        hook: {
+            type: string;
+        } & {
+            [k: string]: unknown;
+        };
+        event: string;
+        matcher?: string | undefined;
+    };
+    matcher?: string | undefined;
+}, {
+    op: "remove";
+    source: "localSettings" | "projectSettings" | "userSettings";
+    event: string;
+    target: {
+        hook: {
+            type: string;
+        } & {
+            [k: string]: unknown;
+        };
+        event: string;
+        matcher?: string | undefined;
+    };
+    matcher?: string | undefined;
+}>]>;
 
 interface ImageReference {
     url: string;
@@ -7315,14 +7516,14 @@ declare const PermissionEditSchema: z.ZodDiscriminatedUnion<"op", [z.ZodObject<{
     source: z.ZodEnum<["userSettings", "projectSettings", "localSettings"]>;
 }, "strict", z.ZodTypeAny, {
     op: "remove";
+    source: "localSettings" | "projectSettings" | "userSettings";
     behavior: "allow" | "ask" | "deny";
     rule: string;
-    source: "localSettings" | "projectSettings" | "userSettings";
 }, {
     op: "remove";
+    source: "localSettings" | "projectSettings" | "userSettings";
     behavior: "allow" | "ask" | "deny";
     rule: string;
-    source: "localSettings" | "projectSettings" | "userSettings";
 }>]>;
 
 /** Caller hook: decide a tool permission request. */

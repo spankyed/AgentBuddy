@@ -208,7 +208,7 @@ export async function execOnce(
       if (code === 0) {
         settle(() => resolve({ stdout, stderr, exitCode: 0 }))
       } else {
-        settle(() => reject(new ClaudeExitError(code, signal, stderr, args)))
+        settle(() => reject(new ClaudeExitError(code, signal, stderr, stdout, args)))
       }
     })
 
