@@ -97,23 +97,32 @@ publication repair as outstanding implementation without new evidence.
 
 ### Execution order and change control
 
-Current discovery slice: block/artifact checked bindings and reader migration. Catalog publication is
-checkpointed in `3e4e10c8f`: common host/window accessors expose native/installed/source declarations,
-including icon/input-kind/module metadata, owner, enablement and available declaration/build identity.
-The wire still carries one accepted snapshot; projections update together and cached entries remain
-immutable. Disconnect preserves accepted metadata; reconnect clears the previous projection.
+Current discovery checkpoint: block/artifact readers and checked frontend bindings in `a278d4116`,
+following metadata publication in `3e4e10c8f`. Accepted bindings carry owner, declaration, build and
+runtime identity. Shared selection and eligibility checks reject ambiguous, disabled, source-only,
+disconnected or mismatched providers. Native bindings have no fabricated installed identity stamps.
+Artifact icons and block input-kind now come from declarations; viewer/input components come from
+matching accepted bindings. Scoped readers follow both publication streams and release subscriptions.
+Already-mounted views follow replacement and disablement. Backend transcript callbacks retain their
+execution lifetime. Public extension docs and the two affected SDK API reports describe the new readers.
 
-Evidence: 79 focused catalog/reference/step cases pass (1.96s), including disabled source-free sealed
-builds with poisoned runtimes and absent authored modules. Nine real renderer editor cases pass
-(4.37s); host/SDK and renderer app/test typechecks, the generated SDK API report check, lint and import
-rules pass. The reviewed report adds only the declaration/entry types and catalog accessors.
-`/private/tmp/apack-viewer-catalog-{focused,editor,types,renderer-types,renderer-app-types,api-check,specifiers}.log`.
+Evidence: 99 focused host/SDK cases pass across viewer readers, frontend admission/declaration binding,
+registered lookups and step readers. Forty-five affected real pack cases pass, including two new mounted
+artifact/block cases and existing step/reference consumers. SDK, host, testing, renderer application/test
+and default-setup typechecks pass; all 28 SDK API reports, lint, import rules and test tiers pass.
+The package typecheck also caught four pack test catalog fixtures omitted from the preceding publication
+checkpoint; this checkpoint supplies their required artifact/block accessors.
+`/private/tmp/apack-viewer-readers-{focused,new,ui,ui-final,host-types,sdk-types,pack-types,testing-types,renderer-types,renderer-test-types,api-check,lint,test-lint,specifiers,tiers}.log`.
+The first new test attempts exposed fixture errors (a non-exported test cleanup import and an unaddressed
+saved response), corrected before the passing runs. No product response routing was changed.
 
-Next carry accepted owner/build/runtime identities with block/artifact viewer/input bindings, then
-switch icon, input-kind and component readers together. Do not combine new metadata with a stale
-executable component. Keep backend summary callbacks as execution, not discovery. Rendering remains
-unchanged in this publication checkpoint; it does not close the consumer row or any unfinished B1–B6
-scope. Final all-kind and committed-source strict --all acceptance remain required.
+Next audit shell/default selection and DSL assistance against the common catalog, then complete the
+remaining discovery inventory and compiled-content flow/action edges. The active low-level registries
+retain runtime lookup lifetimes; this checkpoint does not establish that every backend/native field or
+superseded metadata reader is migrated. Keep those in the Phase 3 audit. The recorded integration and
+Electron-teardown failures still require focused diagnosis at B6; no broad diagnostic rerun was made
+for this independent reader checkpoint. The required converged gate and final committed-source strict
+`--all` remain outstanding, together with all unfinished B1–B6 and later goal phases.
 
 Slash-command discovery is checkpointed in `ff48438cd`. The common catalog owns metadata and stable
 admission order; the execution picker requires enabled declarations matching accepted runtime identities,
