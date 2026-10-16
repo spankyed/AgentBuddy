@@ -60,7 +60,7 @@ run remains failed, and this focused result does not establish pooled acceptance
 The goal's live ledger owns current acceptance and next work. Keep all remaining discovery
 and downstream requirements active; no timeout/assertion adjustment or broad diagnostic rerun is implied.
 
-**How to read the history:** dated audits, designs and checkpoint handoffs in [the evidence record](../reference/discovery-without-activation-evidence.md) record what was known
+**How to read the history:** dated audits, designs and checkpoint handoffs in [the evidence record](../evidence/discovery-without-activation.md) record what was known
 at that time. Their “remaining,” “next” and “not yet implemented” statements are superseded for current
 status by this checklist. Preserve their evidence and unresolved acceptance requirements; supersession
 does not waive a requirement. The acceptance section remains normative. An old failure log is neither
@@ -90,7 +90,7 @@ of superseded discovery projections. A passing producer test alone does not esta
 
 Archive creation, prebuilt tests, default-pack fork preparation and drive are **build-freshness
 consumers**, not additional discovery UIs. Their common input/publication contract and migration remain
-required under [content-based source freshness](../reference/discovery-without-activation-evidence.md#required-content-based-source-freshness-correction-2026-10-15).
+required under [content-based source freshness](../evidence/discovery-without-activation.md#required-content-based-source-freshness-correction-2026-10-15).
 Shared authored inputs landed in `882d2a50b`; compiler capture/session reuse landed in `aba660aed`
 after strict checkpoint validation. Captured TypeScript query views and retained read-set validation land
 in `e171b3acf`, with full checkpoint evidence in the evidence record. Frozen pack/external inputs, whole-build input/output association and the
@@ -425,7 +425,7 @@ not become a second coordination layer alongside the old shell actions.
 
 Each implementation checkpoint remains usable with migrated callers. Apply the existing snapshot-format
 rule for contract changes; do not bump package release versions. This work does not require making pack
-execution lazy. Link the resulting catalog boundary into the [deferred lazy activation plan](deferred/lazy-activation.md)
+execution lazy. Link the resulting catalog boundary into the [deferred lazy activation plan](lazy-activation.md)
 without changing migration/content execution order here.
 
 ## Handoff to subsequent plans
@@ -495,7 +495,7 @@ access or prove that executable pack code is confined.
 ## Checkpoint evidence
 
 Build-input investigations, historical foundation surveys and implementation/validation checkpoints
-live in [the discovery evidence record](../reference/discovery-without-activation-evidence.md).
+live in [the discovery evidence record](../evidence/discovery-without-activation.md).
 This plan retains the supported contract, current checklist and acceptance requirements. The
 [execution goal](../goals/goal-settings-and-pack-contracts.md) owns the remaining B1–B6 build work
 and checkpoint order. Unresolved requirements in the evidence remain in scope; history is not a

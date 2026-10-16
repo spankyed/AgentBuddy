@@ -1,12 +1,12 @@
 # Deferred external pack authoring review
 
-Status: deferred; unresolved items retained from the [archived review](../../archive/plans/external-pack-authoring-followups.md).
+Status: deferred; unresolved items retained from the [archived review](../archive/plans/external-pack-authoring-followups.md).
 This is a tracking list, not a new implementation plan. Revalidate the unverified findings before changing code.
 
 ## Work with an existing goal
 
-- Facade/DSL terminology: absorbed into the descriptor checkpoint in [discovery](../discovery-without-activation.md); the original goal is archived.
-- Advisory storage locks: [goal-write-lock-advisory.md](../../goals/deferred/goal-write-lock-advisory.md).
+- Facade/DSL terminology: absorbed into the descriptor checkpoint in [discovery](discovery-without-activation.md); the original goal is archived.
+- Advisory storage locks: [goal-write-lock-advisory.md](../goals/goal-write-lock-advisory.md).
 
 ## Release and platform follow-ups
 

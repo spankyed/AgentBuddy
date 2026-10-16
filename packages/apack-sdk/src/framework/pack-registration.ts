@@ -60,7 +60,7 @@ export interface PackFeaturePlugin {
    * Generated from its own feature's system's outgoing events and every audience of the inbox the plugin's
    * `Contract` declares. One flat list: a passing check means the event's shape was accepted, not that this sender
    * was allowed to send it. `Message.from` is a label the generated sends stamp, not a claim the bus checks —
-   * `docs/goals/wont-do/goal-sender-enforced-audiences.md` says why.
+   * `docs/archive/goals/goal-sender-enforced-audiences.md` says why.
    */
   receives: readonly string[];
 }

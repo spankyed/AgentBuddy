@@ -136,7 +136,7 @@ requirement remains required even before a failing reproducer exists; investigat
 to implement an unlimited generalization. Proposals expanding the agreed scope require an explicit user
 decision. Keep research hypotheses separate from demonstrated defects and required acceptance checks.
 
-Keep detailed historical logs in [the evidence record](../reference/settings-and-pack-contracts-evidence.md) for traceability. Update this ledger when a checkpoint closes;
+Keep detailed historical logs in [the evidence record](../evidence/settings-and-pack-contracts.md) for traceability. Update this ledger when a checkpoint closes;
 do not append a new competing live backlog or repeatedly copy all remaining work into every evidence
 entry. No scope is dropped, validation weakened, deferred work revived or implementation certified by
 this documentation change.
@@ -222,7 +222,7 @@ then incorporate only the tested result. No repeating naming-branch fetch/merge 
 ### Each implementation checkpoint
 
 Run focused checks and the required checkpoint validation, inspect the staged diff, and commit a usable
-logical change before starting the next. Record its commit and validation in [the evidence record](../reference/settings-and-pack-contracts-evidence.md), then update the live ledger. Large phases have
+logical change before starting the next. Record its commit and validation in [the evidence record](../evidence/settings-and-pack-contracts.md), then update the live ledger. Large phases have
 multiple checkpoints; Phase 6's three workstreams each have their own commits and evidence.
 
 Follow [bounded validation](../../CLAUDE.md#keep-validation-bounded). Define the checkpoint's claims
@@ -384,7 +384,7 @@ do not archive unfinished or deferred work as completed. Publishing or PR merge 
 
 ## Deferred
 
-- [Lazy activation](../plans/deferred/lazy-activation.md), including boot-performance implementation.
+- [Lazy activation](../plans/lazy-activation.md), including boot-performance implementation.
 - [Security isolation](goal-pack-security-isolation.md) and out-of-process backend execution.
 - Storage/LMDB, advisory-lock and console-transaction redesign; plugins-to-surfaces, logs extraction
   and distribution work outside the required dependency provenance contract.
@@ -406,7 +406,7 @@ instead of calling it complete.
 
 ## Evidence
 
-Checkpoint history and validation logs live in [the evidence record](../reference/settings-and-pack-contracts-evidence.md).
+Checkpoint history and validation logs live in [the evidence record](../evidence/settings-and-pack-contracts.md).
 The live ledger and acceptance register above own current work and closure. Preserve unresolved
 requirements recorded in that history; moving evidence does not complete or exclude them.
 

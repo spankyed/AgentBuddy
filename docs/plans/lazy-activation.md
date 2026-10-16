@@ -2,7 +2,7 @@
 
 Status: deferred by request. Outside the active roadmap; completing discovery does not automatically
 start this work. Revisit when boot attribution identifies a worthwhile gain, then re-audit against
-[discovery](../discovery-without-activation.md) and the settled API/readiness contracts. Catalog completeness enables lazy loading but does not
+[discovery](discovery-without-activation.md) and the settled API/readiness contracts. Catalog completeness enables lazy loading but does not
 implement it. Derive triggers from existing declarations; preserve migrations/content ordering and
 message readiness. The dated survey below supplies measurement hypotheses; runtime paths and timings need re-audit.
 
@@ -77,7 +77,7 @@ help remain available regardless of activation; custom forms require their front
 
 ## Depends on
 
-[Discovery without activation](../discovery-without-activation.md) provides the complete descriptor and
+[Discovery without activation](discovery-without-activation.md) provides the complete descriptor and
 catalog. Re-measure and redesign activation on that boundary; the archived contribution plan is history.
 
 ## Verification

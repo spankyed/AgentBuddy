@@ -1,3 +1,5 @@
+> **Deferred.** Retained for future prioritization; this move does not schedule or authorize implementation.
+
 > **Written in session** `a201fabb-c391-462c-a3b6-f423acba509a` (Claude Code, 2026-09-17). Resume it with `claude -r a201fabb-c391-462c-a3b6-f423acba509a`.
 
 ```

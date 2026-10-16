@@ -41,7 +41,7 @@ Existing inputs must be reconciled rather than implemented independently:
 
 - [Declared capabilities](../plans/declared-capabilities.md): generated services and ambient access,
   including direct repositories, EARS queries/transactions and content appliers.
-- [Frontend isolation](deferred/goal-pack-frontend-isolation.md): shared renderer/preload access and
+- [Frontend isolation](goal-pack-frontend-isolation.md): shared renderer/preload access and
   component integration. Its paths, commands, trust distinctions and proposed mechanisms need re-audit.
 - [Fault isolation](../plans/pack-fault-isolation.md): crash containment and the synchronous EARS seam.
   A separate Node process alone is not filesystem/network confinement.

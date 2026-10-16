@@ -356,7 +356,7 @@ send it" — Decision 18 says so where it specifies the check.
   default-setup's is already 5273 lines.
 - `tests/fixtures/external-pack` does no cross-pack frontend access today; its plugins use `usePlugin()`
   for their own actor only. The cross-pack half is greenfield.
-- Related but separate: `docs/goals/deferred/goal-pack-frontend-isolation.md` covers keeping a pack's
+- Related but separate: `docs/goals/goal-pack-frontend-isolation.md` covers keeping a pack's
   frontend away from `window.electronAPI`, the host API client and the app DOM. It does not overlap this
   goal's typed-messaging work, but both touch what a pack frontend may reach, so read it before Phase 4.
 - **This goal runs before [`goal-manifest-redesign.md`](goal-manifest-redesign.md)**, which reshapes
@@ -410,7 +410,7 @@ Final.
 
    with no cast and nothing to block, because `system` is the actor's own property rather than something
    the SDK hands out. Deleting `sendsTo` therefore gives up no access control, because it had none to
-   give. Real isolation is `docs/goals/deferred/goal-pack-frontend-isolation.md`'s problem, the same class
+   give. Real isolation is `docs/goals/goal-pack-frontend-isolation.md`'s problem, the same class
    as keeping a pack frontend away from `window.electronAPI`; don't attempt it here.
 
    What this does give up is the coarse audit trail in `apack.json` ("this feature talks to that one").
@@ -870,7 +870,7 @@ the published one, **all 17 now reach every dependent pack's facade**
   EARS rows cached per plugin; the backend solved the equivalent with repositories and the renderer holds no
   EARS data. Out of scope, and not to be approximated by widening the read channel.
 - Pack frontend isolation from `window.electronAPI`, the host API client and the app DOM —
-  `docs/goals/deferred/goal-pack-frontend-isolation.md`.
+  `docs/goals/goal-pack-frontend-isolation.md`.
 - **The system side's two audiences.** `defineSystem<Incoming | Internal, Outgoing>()` puts both in one
   phantom (`_incoming`), so a system's internal events reach every dependent pack's facade: `ADD_LOG`, one of
   `LogsInternalEvents`, is in `tests/fixtures/external-pack/src/__generated__/deps/default-setup.d.ts`.

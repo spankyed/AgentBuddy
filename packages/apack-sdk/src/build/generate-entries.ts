@@ -620,7 +620,7 @@ export async function generatePackFiles(
    *
    * One flat list, deliberately: the audiences are a type-level split, and a passing check here means the event's
    * **shape** was accepted, not that this sender was allowed to send it. `Message.from` is a label the generated
-   * sends stamp, not a claim the bus checks — `docs/goals/wont-do/goal-sender-enforced-audiences.md` says why.
+   * sends stamp, not a claim the bus checks — `docs/archive/goals/goal-sender-enforced-audiences.md` says why.
    */
   /**
    * The blocks a manifest declares, for the backend registration: the type is the map's key and the kind is

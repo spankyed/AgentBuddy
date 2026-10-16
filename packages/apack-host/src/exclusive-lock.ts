@@ -31,7 +31,7 @@ export interface LockFile {
  *
  * What none of them reach is an unconditional end — `SIGKILL`, `taskkill /F`, power loss. There the file stays and
  * the next holder takes it over, or the user removes it; an advisory lock is what would close that
- * (docs/goals/deferred/goal-write-lock-advisory.md).
+ * (docs/goals/goal-write-lock-advisory.md).
  */
 export const INTERRUPTS = ['SIGINT', 'SIGTERM', 'SIGHUP', 'SIGBREAK'] as const satisfies readonly NodeJS.Signals[];
 

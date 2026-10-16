@@ -1,3 +1,5 @@
+> **Deferred.** Retained for future prioritization; this move does not schedule or authorize implementation.
+
 # Goal: a frontend actor is a surface, not a plugin
 
 > **Written in session** `36f122d9-3a1e-40ef-988d-40b2574fc098` (Claude Code, 2026-09-26). Resume it with `claude -r 36f122d9-3a1e-40ef-988d-40b2574fc098`.

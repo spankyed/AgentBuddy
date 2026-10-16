@@ -1,3 +1,5 @@
+> **Deferred.** Retained for future prioritization; this move does not schedule or authorize implementation.
+
 > **Written in session** `b9ed13ae-1ac2-48e4-ae3d-6e96f091dbb1` (Claude Code, 2026-09-17). Resume it with `claude -r b9ed13ae-1ac2-48e4-ae3d-6e96f091dbb1`.
 
 ```

@@ -56,9 +56,9 @@ Publish these packages through the existing package publisher:
 | `@apackdev/testing` | `packages/apack-testing/dist/package` | Pack test harness and fixtures |
 | `@apackdev/cli` | `packages/apack-cli/dist/package` | The `apack` executable |
 
-Review [the package workflow](../../../.github/workflows/publish-packages.yml),
-[the publisher](../../../scripts/publish-packages.ts), and
-[the Changesets configuration](../../../.changeset/config.json) against the current toolchain.
+Review [the package workflow](../../.github/workflows/publish-packages.yml),
+[the publisher](../../scripts/publish-packages.ts), and
+[the Changesets configuration](../../.changeset/config.json) against the current toolchain.
 
 - Confirm supported Node/npm versions and package versions are consistent.
 - Configure publishing credentials. Prefer trusted publishing once configured; verify the first-publish

@@ -557,7 +557,7 @@ The compiler checkpoint is now committed. No further broad rerun is needed for i
 commit operation. Design and implement the next coherent input/publication checkpoint with focused
 acceptance first, following the bounded workflow above.
 
-The [cancellation checkpoint](discovery-without-activation-evidence.md#build-cancellation-ownership)
+The [cancellation checkpoint](discovery-without-activation.md#build-cancellation-ownership)
 is committed as `6641b2c99`, on top of authoring repair `f40158544`. Public one-shot/watch commands own
 signals before startup; development drains initial-build and watcher-startup cleanup before removing
 its profile or exiting. Focused checks and mutation evidence are recorded in the plan.
@@ -2566,7 +2566,7 @@ real composed checks prove replacement without reviving old handles. The missed 
 corrected before the final strict pass: 303.7s, 15 of 30 cached, evidence
 `node_modules/.cache/apack-chain/runs/2026-10-13T15-20-17Z-72081`.
 Detailed contract corrections, mutations and limits are in
-[the discovery checkpoint](discovery-without-activation-evidence.md#reconnect-handoff-and-generated-binding-lifecycle-2026-10-13).
+[the discovery checkpoint](discovery-without-activation.md#reconnect-handoff-and-generated-binding-lifecycle-2026-10-13).
 
 The goal remains active. Live accepted-revision frontend refresh and installed update publication are
 still open, alongside native/all-kind descriptors, static consumers/freshness, navigation, pane boundaries
@@ -2580,7 +2580,7 @@ frontend settings grant issuance/resolution. Identical-byte reload, refused bind
 and real-app reactivation are covered; three guard mutations fail and were restored. Final strict chain
 passes in 182.9s (18 of 30 cached), evidence
 `node_modules/.cache/apack-chain/runs/2026-10-13T15-43-13Z-31425`.
-See [the discovery evidence](discovery-without-activation-evidence.md#accepted-runtime-identity-and-grant-freshness-2026-10-13).
+See [the discovery evidence](discovery-without-activation.md#accepted-runtime-identity-and-grant-freshness-2026-10-13).
 
 Next fix the demonstrated API declaration build prerequisite in the chain, then publish runtime revisions
 and use them for targeted live frontend refresh. Those integrations, installed update publication and
@@ -2593,7 +2593,7 @@ all remaining discovery/navigation/boundary/Phase 6 work remain required. No pla
 alias/build glue. The API suite's newly exposed root metadata cache input is declared; removing either
 that input or the source condition fails its guard. Final strict chain passes in 228.7s (18 of 30 cached),
 evidence `node_modules/.cache/apack-chain/runs/2026-10-13T16-12-12Z-81950`.
-See [the discovery evidence](discovery-without-activation-evidence.md#source-api-contract-freshness-2026-10-13).
+See [the discovery evidence](discovery-without-activation.md#source-api-contract-freshness-2026-10-13).
 
 The API freshness follow-up from the previous checkpoint is resolved. Continue runtime state publication
 and targeted live frontend refresh. Installed update publication and every remaining discovery, navigation,
@@ -2607,7 +2607,7 @@ Standard startup requests wait for frontend acceptance. Real dev reload exposed 
 retaining stopped actors; actor scopes and owner forms now remount for their resource lifetime, preserving
 unrelated content. Eleven guard mutations fail and were restored. Final strict validation passes all 30
 gates in 385.9s, evidence `node_modules/.cache/apack-chain/runs/2026-10-13T17-20-14Z-50190`.
-See [the discovery evidence and limits](discovery-without-activation-evidence.md#live-frontend-refresh-readiness-and-mounted-lifetimes-2026-10-13).
+See [the discovery evidence and limits](discovery-without-activation.md#live-frontend-refresh-readiness-and-mounted-lifetimes-2026-10-13).
 
 Ordinary live refresh is delivered. Coordinated installed updates, complete native/static discovery,
 source/dependency freshness, navigation/stale delivery, pane boundaries and all Phase 6 streams remain
@@ -3203,7 +3203,7 @@ workstream remains required. Final committed-source --all, full acceptance audit
 ### Editor/provider audit checkpoint (2026-10-13)
 
 Plan commit `e86b89978` records the current consumer audit and migration sequence in
-[discovery without activation](discovery-without-activation-evidence.md#editorprovider-consumer-audit-and-migration-sequence-2026-10-13).
+[discovery without activation](discovery-without-activation.md#editorprovider-consumer-audit-and-migration-sequence-2026-10-13).
 The audit confirmed construction-time protocol capture, static category/icon readers, a no-op
 Markdown DOM hook, and providers started eagerly for the entire popup component lifetime. Existing
 SDK plugin-state composables already dispose subscriptions with effect scopes.
@@ -5250,7 +5250,7 @@ provider, navigation, failure-boundary and all three Phase 6 requirements remain
 ### Declarative frontend step checkpoint (2026-10-15)
 
 Source `cda9fa00e` completes step checkpoint **2A** in the
-[discovery plan](discovery-without-activation-evidence.md#frontend-step-declaration-design-2026-10-15).
+[discovery plan](discovery-without-activation.md#frontend-step-declaration-design-2026-10-15).
 Step `fe` now declares presentation, icon/component targets and loading modes, static layout flags and
 named calculated-layout functions. Generated bindings share component grammar with feature plugins;
 frontend admission checks metadata, slot membership and callable layouts without invoking them.
@@ -5300,7 +5300,7 @@ all three Phase 6 workstreams remain required. This is not phase/goal completion
 ### Native step/catalog foundation checkpoint (2026-10-15)
 
 Source `fdd967ec5` completes **2B.1** in the
-[discovery plan](discovery-without-activation-evidence.md#native-stepcatalog-admission-audit-and-execution-order-2026-10-15).
+[discovery plan](discovery-without-activation.md#native-stepcatalog-admission-audit-and-execution-order-2026-10-15).
 Native `steps` use the authored `StepEntry` schema/type. `StepCatalogEntry` and `PackCatalogView.steps()`
 share one native/installed/source projection, retaining disabled and unbuilt declarations without code
 loading or manufactured build identities. Window projections stay stable per committed frame and ignore

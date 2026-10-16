@@ -285,7 +285,7 @@ commands. Both survive, with a fraction of the surface.
 
 ### What it means for the advisory-lock goal
 
-`docs/goals/deferred/goal-write-lock-advisory.md` weighs a native dependency (`fs-native-extensions`)
+`docs/goals/goal-write-lock-advisory.md` weighs a native dependency (`fs-native-extensions`)
 against the lock's correctness. It was surveyed while the lock guards every write. **If this goal lands
 first, that lock guards two commands**, and the case for adding a cross-platform native dependency to an app
 that also ships an npm-installed CLI gets much weaker. Neither goal should be decided on the other's stale

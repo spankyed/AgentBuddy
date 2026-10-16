@@ -12,7 +12,7 @@
 ```
 # Goal: a lock the kernel releases, and liveness questions asked of the thing itself
 
-Implement docs/goals/deferred/goal-write-lock-advisory.md on AS/external-pack-authoring, at or after
+Implement docs/goals/goal-write-lock-advisory.md on AS/external-pack-authoring, at or after
 b1eaa70f4 — the base its Background was surveyed at.
 Before Phase 1, confirm the base: `packages/apack-host/src/database/write-lock.ts` writes a JSON lock
 file and resolves it with `lockIsHeld`, and `packages/apack-host/src/process-liveness.ts` exports
