@@ -120,7 +120,34 @@ naming branch is not an automatic source of future changes.
 
 ### Current handoff — compiler checkpoint (2026-10-16)
 
-Latest source is `ed72a0388`. Captured execution now maps source-parent createRequire calls to
+Latest source is `a0c050a16`. Public build parents now hold the pack lock from worker startup
+through process closure and verified publication. Workers prepare/seal staging, report the candidate's
+authored input hash and sealed output revision, drain diagnostics, then explicitly exit. The parent
+waits for close, checks cancellation, rechecks authored inputs and verifies the exact reported output
+before replacing dist. An exit handler that changes or reseals files cannot renew the candidate's
+reported identity. Refusal/abort removes staging while preserving the incumbent. Internal in-process
+build tests use the same publisher under their own lock; they do not establish process termination.
+Lock waits now accept cancellation because moving that wait into the parent must not defer a stop
+until the old wait deadline. Preparation no longer announces build completion before publication.
+
+Evidence: 15 publication/locking cases pass in 1.04s, covering valid output, late source edits, edited
+output, resealed output and cancellation without disturbing the other holder. Two real workers pass
+in 49.52s together: a referenced timer no longer retains the compiler; an exit handler confirms staging
+is SEALED, changes its content, and is refused while the incumbent remains byte-identical. The existing
+public one-shot cancellation case passes in 12.10s after the abortable-lock refinement. CLI typecheck
+and final scoped lint pass. Logs: `/private/tmp/apack-parent-publication-{unit-final,worker,cancel,
+types-final,lint-final}.log`. No broad gate repeated.
+
+The candidate handoff is deliberately not the complete source/compiler input receipt. External and
+late-read input observations still need final serialization/provenance, coherent association and passive
+consumer migration. Align successful watcher-observation replacement with accepted publication, and
+finish resource ownership beyond the worker's own Node tasks (including descendant processes and
+long-lived frontend compilers). Next inspect authored module metadata: import.meta.url currently names
+owned files, while native writes remain native; the output-swap fixture constructs a write URL this way.
+Resolve source-path semantics and deterministic output before treating executable input ownership as
+complete. Every later phase and final committed-source strict --all acceptance remain required.
+
+Preceding source `ed72a0388`. Captured execution now maps source-parent createRequire calls to
 an owned native parent before constructing the require function. Existing captured module/compiler
 parents retain their native context. AsyncLocalStorage chooses the compilation; calls outside captured
 execution stay native. Node's directory-parent convention is preserved without admitting the directory

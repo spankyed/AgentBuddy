@@ -1247,6 +1247,15 @@ two independent concurrent captures plus native out-of-scope calls. Borrowed fun
 generations, runtime metadata/diagnostic origin projection, broader entry variants, startup loader
 options and full execution/receipt acceptance remain required below.
 
+`a0c050a16` moves public publication behind compiler termination: the parent owns the pack lock,
+workers report a sealed candidate and exit, and the parent verifies that exact revision plus the
+authored input hash after process closure. Exit-handler output changes refuse without replacing the
+incumbent. Parent lock waits are abortable. Reuse the shared output verifier and atomic replacement;
+do not reseal a changed candidate in the parent. The candidate IPC handoff is not the complete input
+receipt and must not become passive source-freshness authority. Watcher acceptance ordering, source
+module metadata/diagnostics and deterministic output, external/late input observations, descendant
+processes and frontend lifetimes remain required alongside the rest of this plan.
+
 ### Review correction: runtime rollback must preserve incumbent resources (2026-10-13)
 
 `reload.ts` currently unregisters the old registration before trying the new one, then re-registers
