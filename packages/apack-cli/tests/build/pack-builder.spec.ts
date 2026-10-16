@@ -29,6 +29,8 @@ function fixture() {
   roots.push(root);
   const compiler = path.join(root, 'compiler'), pack = path.join(root, 'pack');
   fs.mkdirSync(path.join(compiler, 'bin'), { recursive: true });
+  fs.mkdirSync(path.join(compiler, 'dist'));
+  fs.writeFileSync(path.join(compiler, 'dist/compiler-startup.cjs'), '// Fixture worker implements only candidate/process handoff.\n');
   fs.mkdirSync(path.join(pack, '.apack'), { recursive: true });
   const manifest = { id: 'builder', name: 'Builder', version: '1.0.0' };
   fs.writeFileSync(path.join(pack, 'apack.json'), JSON.stringify(manifest));

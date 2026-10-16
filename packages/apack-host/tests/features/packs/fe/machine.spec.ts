@@ -37,7 +37,7 @@ describe('the Packs plugin', () => {
   it("has the shell unload a deactivated pack's frontend, rather than unloading it itself", () => {
     receive({ type: 'PACK_DEACTIVATED', packId: 'memo-pack' });
 
-    expect(shell.options.packFrontends.unload).toHaveBeenCalledWith('memo-pack');
+    expect(shell.packFrontends.unload).toHaveBeenCalledWith('memo-pack');
   });
 
   it('shows the packs the system lists', () => {

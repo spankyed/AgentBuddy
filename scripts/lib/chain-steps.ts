@@ -476,7 +476,7 @@ const PACKAGES = PACKAGE_DIRS;
 export const WORKSPACE_PARTS = [
   // `templates` is the CLI's scaffold: pack code the specifier rules read and the CLI's own suite renders,
   // so a change to one has to invalidate the steps that read the workspace
-  'src', 'tests', 'scripts', 'etc', 'templates', 'index.js',
+  'src', 'tests', 'scripts', 'bin', 'etc', 'templates', 'index.js',
   // `bench` is in `@apackdev/ears`' tsconfig `include`, so its typecheck compiles the benchmark and has to
   // re-run when it moves. Only that workspace has one; the dep-file gate is what noticed
   'bench',
