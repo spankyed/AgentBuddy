@@ -199,15 +199,28 @@ naming branch is not an automatic source of future changes.
 
 ### Compiler checkpoint evidence (2026-10-16; historical, see live ledger)
 
-Latest source is `65a189cb7` (ordered execution identity), following `c85fc178a` (no-op alias
-projection removal). Compilation keys now include ordered effective `NODE_OPTIONS`, native argument
-vectors and the full runtime version map, alongside platform/architecture and owned input facts.
-Changing preload order or a native execution flag refuses the existing frame and changes a new frame
-hash, even with identical files. Both regressions fail before the source change; all nine affected
-compiler-input integration cases pass afterward (50.23s), as do CLI typechecking, lint and diff checks.
-`/private/tmp/apack-execution-identity-{before,after,types}.log`. This records options actually present in
-the worker; it does not complete parent launch-option forwarding or immutable executable/native-runtime
-ownership. The private bootstrap path is removed from user options before compilation as recorded below.
+Latest source is `3929897a3` (launch identity before user initialization), following `65a189cb7`
+(ordered execution identity) and `c85fc178a` (no-op alias projection removal). The native bootstrap
+serializes runtime versions, platform/architecture, ordered native arguments and original user
+`NODE_OPTIONS` before executing preloads. Compilation adopts that owned identity rather than reading
+ambient values a preload may already have changed. Standalone compilation still captures its current
+execution identity and refuses changes, as before.
+
+The real native-prefix regression clears both `NODE_OPTIONS` and `process.execArgv` inside a user
+preload. Its entry still receives the original ordered launch identity, with no private bootstrap path.
+It passes in 72ms (2.70s including collection). Sixteen affected option/refusal/inventory checks,
+CLI typecheck, lint and diff checks pass. `/private/tmp/apack-launch-state-{native,unit,types}.log`.
+The preceding ordered-key change's two regressions fail before that source change and all nine
+compiler-input integration cases pass afterward (50.23s):
+`/private/tmp/apack-execution-identity-{before,after,types}.log`.
+
+Launch-boundary audit: `build-process.ts` deliberately spawns a new entry, inheriting `NODE_OPTIONS`
+and forwarding custom export conditions. Other arguments used to launch the supervisor are not
+implicitly compiler options: copying entry modes such as --eval/--watch or debugger startup would
+change the worker contract. Keep that existing boundary explicit; no new generic argument-forwarding
+feature or unsupported flag parser is required by the original launch-ownership acceptance. Original
+user options and their actual execution still need complete input/resource ownership; this checkpoint
+records launch identity without claiming immutable executable/native-runtime ownership.
 
 Source `37890aa9b` (native compiler startup capture): the private worker installs a
 native CommonJS preload before user initialization, owns its early file view, and hands the same view

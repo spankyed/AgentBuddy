@@ -46,9 +46,10 @@ Source `37890aa9b` now installs native input capture before worker preloads and 
 compilation. It observes existing loader threads through a coordinator without adding source hooks or
 changing measured preload order. Cached filesystem APIs share the same capture owner, and final
 validation includes loader facts. Source `65a189cb7` adds ordered effective execution options and the full runtime version map to the
-compilation key. Immutable executable/native runtime ownership, parent launch-option forwarding,
-source/dependency snapshot ownership, retained frontend lifetimes and persisted receipt/passive
-freshness remain required. Source `c85fc178a` removes repeated identical-path projections during native input materialization;
+compilation key. Source `3929897a3` captures that identity before user preloads can rewrite ambient
+values. The worker inherits `NODE_OPTIONS` and custom export conditions; supervisor entry modes are
+not implicitly worker configuration. Immutable executable/native runtime ownership, source/dependency
+snapshot ownership, retained frontend lifetimes and persisted receipt/passive freshness remain required. Source `c85fc178a` removes repeated identical-path projections during native input materialization;
 the previously failing focused watch publication/refusal/repair scenario passes. The latest strict
 run remains failed, and this focused result does not establish pooled acceptance.
 The goal's current handoff owns evidence and the next narrow diagnostic. Keep all remaining discovery

@@ -151,6 +151,10 @@ does not execute them. Discovery and executable bindings are separate contracts.
 
 Bundle and gate failures are reported and exit with code 1. `--release` minifies and drops source maps.
 
+Compiler workers inherit Node options from `NODE_OPTIONS`, including ordered `--require` and `--import`
+preloads. Node arguments passed directly to the CLI configure its supervisor; custom export conditions
+are also forwarded to the worker. Use `NODE_OPTIONS` when configuring compiler execution.
+
 `apack pack build --watch` watches authored inputs throughout the pack, including `apack.json`,
 modules outside `src/`, JSON schemas, assets and help. The authored watcher excludes generated,
 build, dependency and Git trees. Compiler configuration, resolved TypeScript files and unresolved
