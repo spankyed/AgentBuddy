@@ -19,6 +19,10 @@ export async function action(params: Record<string, any>, services: Services) {
   try {
     if (!handle && !session?.sessionId) {
       text = 'No active Claude Code session — run a Claude Code turn first.';
+    } else if (params.text?.trim() && params.text.trim() !== 'start') {
+      text = 'Usage: cc-plan [start]';
+    } else if (!handle && params.text?.trim() !== 'start') {
+      text = 'No native conversation is running. Use cc-plan start to read the saved plan with a temporary native process. Starting and closing it can run configured session hooks.';
     } else {
       const plan = handle ? await handle.getPlan() : await services.cli.claudeCode.getPlan({
         sessionId: session!.sessionId!, cwd: session?.cwd,

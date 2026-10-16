@@ -26,3 +26,12 @@ name: Claude Code commands
 **cc-agents**: List configured agents
 **cc-bypass**: Toggle bypass permissions mode
 **cc-goal**: <condition> | clear | (no args for status)
+
+
+Memory, Skills, permission, plan and context reads reuse a matching running conversation.
+When none is running, use `cc-memory start`, `cc-skills start`, `cc-permissions start`,
+`cc-plan start` or `cc-context start` to launch a temporary native process. Starting and closing it
+can run configured session hooks. Fresh memory and Skill edits can start separate processes for
+validation and readback: `cc-memory start auto off` or `cc-skills start set <name> off`.
+Use `cc-permissions start add deny userSettings Bash` for a fresh permission edit/readback.
+Automatic context refresh only reads a running conversation.

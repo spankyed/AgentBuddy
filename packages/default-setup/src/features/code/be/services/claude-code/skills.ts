@@ -10,6 +10,7 @@ export interface ClaudeSkillsOptions extends Pick<QueryOptions, 'env' | 'cliPath
 }
 
 /** Native discovery includes directory Skills, legacy commands, effective states and locks. */
+/** Starts/closes a native process and can run configured session lifecycle hooks. */
 export async function getSkillsDialog(options: ClaudeSkillsOptions): Promise<ClaudeSkillsDialog> {
   const allowed = new Set(['cwd', 'env', 'cliPath', 'signal'])
   const unsupported = Object.keys(options).filter(key => !allowed.has(key))

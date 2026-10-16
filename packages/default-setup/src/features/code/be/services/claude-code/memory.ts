@@ -9,6 +9,7 @@ export interface ClaudeMemoryOptions extends Pick<QueryOptions, 'env' | 'cliPath
 }
 
 /** Read the native instruction/memory catalog without sending a model turn. */
+/** Starts/closes a native process and can run configured session lifecycle hooks. */
 export async function getMemoryDialog(options: ClaudeMemoryOptions): Promise<ClaudeMemoryDialog> {
   const allowed = new Set(['cwd', 'env', 'cliPath', 'signal'])
   const unsupported = Object.keys(options).filter(key => !allowed.has(key))

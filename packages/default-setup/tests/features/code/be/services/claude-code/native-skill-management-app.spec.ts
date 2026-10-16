@@ -42,6 +42,7 @@ it.skipIf(!executable || !workspace)('routes native Skill management and memory 
  const owner = store.getConversation(id)?.owner;
  const texts = () => (repository.chatQueries.threadData(id)?.messages ?? []).map(message => message.text ?? '');
  const send = async (text: string, command = 'cc-skills') => {
+  if (!store.getHandle(id)) text = `start ${text}`.trim();
   const before = texts().length;
   await app.runFlow('Claude Code', { event: 'user.command', data: { command, text, threadId: id } });
   await vi.waitFor(() => expect(texts().length).toBeGreaterThan(before), { timeout: 15000 });

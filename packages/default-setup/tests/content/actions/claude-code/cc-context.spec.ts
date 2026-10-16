@@ -14,7 +14,7 @@ function setup(active?: { getContextUsage: ReturnType<typeof vi.fn> }) {
   mockService<Services, 'chat'>('chat', { sendBlockMessage: vi.fn() });
   return { threadId: id, getContextUsage };
 }
-const run = (threadId: string) => action({ threadId }, services, {} as never, 'context-flow');
+const run = (threadId: string, text?: string) => action({ threadId, text }, services, {} as never, 'context-flow');
 
 describe('native context action and refresh', () => {
   it('uses the active process and renders native categories, memory and skill details', async () => {
@@ -36,15 +36,16 @@ describe('native context action and refresh', () => {
 
   it('uses the saved-session service while idle and exposes native failure without a prompt fallback', async () => {
     const { threadId, getContextUsage } = setup();
-    await run(threadId);
+    await run(threadId, 'start');
     expect(getContextUsage).toHaveBeenCalledWith({ sessionId: 'session-1', cwd: '/fixture' });
     getContextUsage.mockRejectedValue(new Error('native context unavailable'));
-    await expect(run(threadId)).resolves.toMatchObject({ success: false, text: 'cc-context failed: native context unavailable' });
+    await expect(run(threadId, 'start')).resolves.toMatchObject({ success: false, text: 'cc-context failed: native context unavailable' });
     expect(services.cli.claudeCode.query).not.toHaveBeenCalled();
   });
 
   it('publishes thresholds once for the current session and drops a summary after a session switch', async () => {
-    const { threadId, getContextUsage } = setup();
+    const getContextUsage = vi.fn().mockResolvedValue(nativeContextUsage);
+    const { threadId } = setup({ getContextUsage });
     await refreshThreadContextUsage(services, threadId, { sessionId: 'session-1', cwd: '/fixture' });
     await refreshThreadContextUsage(services, threadId, { sessionId: 'session-1', cwd: '/fixture' });
     expect(services.chat.sendBlockMessage).toHaveBeenCalledOnce();
@@ -58,4 +59,14 @@ describe('native context action and refresh', () => {
     expect(repository.threadQueries.byId(threadId)?.context?.claudeCode).toEqual({ sessionId: 'session-2' });
     expect(services.chat.sendBlockMessage).toHaveBeenCalledOnce();
   });
+});
+
+
+it('does not restart native lifecycle for default saved context reads or automatic refresh', async () => {
+  const { threadId, getContextUsage } = setup();
+  expect((await run(threadId)).text).toContain('cc-context start');
+  await refreshThreadContextUsage(services, threadId, { sessionId: 'session-1', cwd: '/fixture' });
+  expect(getContextUsage).not.toHaveBeenCalled();
+  expect(services.cli.claudeCode.query).not.toHaveBeenCalled();
+  expect(repository.threadQueries.byId(threadId)?.context?.claudeCode?.contextUsage).toBeUndefined();
 });

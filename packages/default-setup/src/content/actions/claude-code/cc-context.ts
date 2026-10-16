@@ -31,7 +31,8 @@ export async function action(
   let result: { text: string; data?: any; blocks?: any[] };
 
   try {
-    result = await handleContext(services, threadId);
+    if (params.text?.trim() && params.text.trim() !== 'start') result = { text: 'Usage: cc-context [start]' };
+    else result = await handleContext(services, threadId, params.text?.trim() === 'start');
   } catch (error: any) {
     failed = true;
     result = { text: `cc-context failed: ${error?.message || 'Unknown error'}` };
@@ -53,14 +54,17 @@ export async function action(
 async function handleContext(
   services: Services,
   threadId?: string,
+  start = false,
 ): Promise<{ text: string; data?: any; blocks?: any[] }> {
   if (!threadId) return { text: 'No active thread — run a Claude Code turn first.' };
 
   const ccState = getClaudeState(services, threadId);
   const usage = await readThreadContextUsage(services, threadId, {
     sessionId: ccState?.sessionId, cwd: ccState?.cwd,
-  });
-  if (!usage) return { text: 'No active session — run a Claude Code turn first.' };
+  }, { start });
+  if (!usage) return { text: ccState?.sessionId
+    ? 'No native conversation is running. Use cc-context start to read saved context with a temporary native process. Starting and closing it can run configured session hooks.'
+    : 'No active session — run a Claude Code turn first.' };
   return {
     text: 'Context usage',
     blocks: [{ type: 'context-usage', props: { data: usage } }],

@@ -9,6 +9,7 @@ export interface ClaudePermissionRulesOptions extends Pick<QueryOptions, 'env' |
 }
 
 /** Keep native rule strings and source/editability metadata; no configuration reconstruction. */
+/** Starts/closes a native process and can run configured session lifecycle hooks. */
 export async function getPermissionRules(options: ClaudePermissionRulesOptions): Promise<ClaudePermissionRules> {
   const allowed = new Set(['cwd', 'env', 'cliPath', 'signal'])
   const unsupported = Object.keys(options).filter(key => !allowed.has(key))

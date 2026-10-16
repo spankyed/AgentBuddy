@@ -31,10 +31,11 @@ export async function readThreadContextUsage(
   services: Services,
   threadId: string,
   session: { sessionId?: string; cwd?: string },
+  options: { start?: boolean } = {},
 ): Promise<ContextUsageData | undefined> {
   const handle = services.cli.claudeCode.getHandle(threadId);
   if (handle) return toContextUsageData(await handle.getContextUsage());
-  if (!session.sessionId) return undefined;
+  if (!session.sessionId || !options.start) return undefined;
   return toContextUsageData(await services.cli.claudeCode.getContextUsage({
     sessionId: session.sessionId, cwd: session.cwd,
   }));

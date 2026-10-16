@@ -229,9 +229,12 @@ async function handleModel(
 }
 
 async function handlePermissions(args: string[], services: Services, threadId?: string, rawText?: string): Promise<{ text: string; data?: any }> {
+  const explicitStart = args[0] === 'start';
+  if (explicitStart) args = args.slice(1);
+  if (explicitStart) rawText = rawText?.trim().replace(/^start(?:\s+|$)/, '');
   const editing = args.length > 0;
   const edit = rawText?.trim().match(/^(add|remove)\s+(allow|deny|ask)\s+(userSettings|projectSettings|localSettings)\s+([\s\S]+)$/);
-  if (editing && !edit) return { text: 'Usage: cc-permissions [add|remove <allow|deny|ask> <userSettings|projectSettings|localSettings> <exact rule>]' };
+  if (editing && !edit) return { text: 'Usage: cc-permissions [start] [add|remove <allow|deny|ask> <userSettings|projectSettings|localSettings> <exact rule>]' };
   if (editing && threadId && services.cli.claudeCode.isConversationBusy(threadId)) {
     return { text: 'Wait for the Claude conversation to become idle before editing permission rules.' };
   }
@@ -246,6 +249,7 @@ async function handlePermissions(args: string[], services: Services, threadId?: 
     }
   }
   const options = cwd ? { cwd } : undefined;
+  if (!handle && !explicitStart) return { text: 'No matching native conversation is running. Use cc-permissions start [add|remove ...] to read or edit with a temporary native process. Starting and closing it can run configured session hooks.' };
   let notice = '';
   let data;
   if (edit) {
@@ -322,12 +326,14 @@ async function handleMemory(
   services: Services,
   threadId?: string,
 ): Promise<{ text: string; data?: any }> {
+  const explicitStart = args[0] === 'start';
+  if (explicitStart) args = args.slice(1);
   if (args[0] === 'add' || args[0] === 'remove') {
     return { text: `Memory add/remove is only available in the Claude Code terminal. Use /memory ${args[0]} there.` };
   }
   const editing = args.length > 0;
   if (editing && (args.length !== 2 || args[0] !== 'auto' || !['on', 'off'].includes(args[1]!))) {
-    return { text: 'Usage: cc-memory auto <on|off> (user setting)' };
+    return { text: 'Usage: cc-memory [start] auto <on|off> (user setting)' };
   }
   if (editing && threadId && services.cli.claudeCode.isConversationBusy(threadId)) {
     return { text: 'Wait for the Claude conversation to become idle before changing auto-memory.' };
@@ -343,6 +349,7 @@ async function handleMemory(
     }
   }
   const options = cwd ? { cwd } : undefined;
+  if (!handle && !explicitStart) return { text: 'No matching native conversation is running. Use cc-memory start [auto on|off] to read or edit with temporary native processes. Starting and closing them can run configured session hooks.' };
   const read = () => handle ? handle.getMemoryDialog() : services.cli.claudeCode.getMemoryDialog(options);
   let data = await read();
   let notice = '';
@@ -369,12 +376,14 @@ async function handleSkills(
   services: Services,
   threadId?: string,
 ): Promise<{ text: string; data?: any }> {
+  const explicitStart = args[0] === 'start';
+  if (explicitStart) args = args.slice(1);
   const prior = threadId ? getClaudeState(services, threadId) : undefined;
   const cwd = prior?.cwdOverride || prior?.cwd;
   const options = cwd ? { cwd } : undefined;
   const editing = args.length > 0;
   if (editing && (args.length !== 3 || args[0] !== 'set')) {
-    return { text: 'Usage: cc-skills set <name> <on|name-only|user-invocable-only|off>' };
+    return { text: 'Usage: cc-skills [start] set <name> <on|name-only|user-invocable-only|off>' };
   }
   if (editing && threadId && services.cli.claudeCode.isConversationBusy(threadId)) {
     return { text: 'Wait for the Claude conversation to become idle before changing Skill state.' };
@@ -388,6 +397,7 @@ async function handleSkills(
       handle = undefined;
     }
   }
+  if (!handle && !explicitStart) return { text: 'No matching native conversation is running. Use cc-skills start [set <name> <state>] to read or edit with temporary native processes. Starting and closing them can run configured session hooks.' };
   let skills = handle ? (await handle.getSkillsDialog()).skills : await services.cli.claudeCode.listSkills(options);
   let notice = '';
   if (editing) {
