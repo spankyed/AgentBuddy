@@ -95,6 +95,7 @@ export function createCompilerReadTree(snapshot: CompilerReadSnapshot, paths: re
       writable.add(real);
     };
     const link = (file: string, target: string) => {
+      if (file === target) return;
       const from = readPath(file), to = readPath(target);
       if (from === to) return;
       const previous = links.get(from);
@@ -129,7 +130,8 @@ export function createCompilerReadTree(snapshot: CompilerReadSnapshot, paths: re
         files.set(target, { sourceHash, hash, mode: file.mode });
       }
       for (const location of next.locations) {
-        const file = sourcePath(location.file), physical = sourcePath(location.physical);
+        const file = sourcePath(location.file);
+        const physical = location.physical === location.file ? file : sourcePath(location.physical);
         const previous = locations.get(file);
         if (previous && (previous.physical !== physical || previous.kind !== location.kind)) changed('namespace', file);
         locations.set(file, { ...location, file, physical });
