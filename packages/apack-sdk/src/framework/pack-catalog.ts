@@ -18,6 +18,8 @@ export interface NativePackDeclaration extends PackDataDeclarations, FrontendDec
   blocks?: Record<string, z.infer<typeof BlockEntrySchema>>;
   commands?: Record<string, z.infer<typeof CommandEntrySchema>>;
   dsl?: Record<string, DeclarationData<z.infer<typeof DslEntrySchema>>>;
+  /** Compiled type data supplied by native composition, independently of frontend activation. */
+  dslDefinitions?: Record<string, string>;
   dependencies?: Record<string, string>;
   settings?: Record<string, SettingsDefinition>;
   features?: Record<string, { description: string; entities?: Record<string, string | null>; designation?: string; settings?: SettingsDefinition; plugin?: PluginDeclaration; references?: ReferenceDeclarations }>;

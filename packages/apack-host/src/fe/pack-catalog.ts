@@ -1,3 +1,4 @@
+import { dslCatalogEntries } from '../packs/catalog-dsl.ts';
 import { captureData } from '../packs/captured-data.ts';
 import { pluginCatalogEntries, nativePluginCatalogEntries } from '../packs/catalog-plugins.ts';
 import { stepCatalogEntries } from '../packs/catalog-steps.ts';
@@ -75,7 +76,7 @@ export function createWindowPackCatalog(io: WindowPackCatalogIO, native: readonl
 
   const project = (snapshot: PackCatalogSnapshot) => ({ snapshot,
     plugins: pluginCatalogEntries(snapshot), references: referenceCatalogEntries(snapshot), frontend: frontendCatalogEntries(snapshot), steps: stepCatalogEntries(snapshot),
-    artifacts: artifactCatalogEntries(snapshot), blocks: blockCatalogEntries(snapshot),
+    artifacts: artifactCatalogEntries(snapshot), blocks: blockCatalogEntries(snapshot), dsl: dslCatalogEntries(snapshot),
   });
   let projected: ReturnType<typeof project> | undefined;
   const projection = () => {
@@ -90,6 +91,7 @@ export function createWindowPackCatalog(io: WindowPackCatalogIO, native: readonl
     steps: () => projection()?.steps ?? [],
     artifacts: () => projection()?.artifacts ?? [],
     blocks: () => projection()?.blocks ?? [],
+    dsl: () => projection()?.dsl ?? [],
     subscribe(listener) { listeners.add(listener); return () => { listeners.delete(listener); }; },
   };
 

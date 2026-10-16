@@ -1,3 +1,4 @@
+import { dslDefinitionsProblem } from '../framework/dsl-declarations.ts';
 import { declarationRecord } from '../framework/declaration-record.ts';
 import { z } from 'zod';
 import { ManifestSchema } from '../framework/declaration-schema.ts';
@@ -13,6 +14,7 @@ const SnapshotShape = {
   sdkVersion: z.string().optional(),
   manifest: ManifestSchema,
   help: _HelpDocumentsSchema.optional(),
+  dslDefinitions: declarationRecord(z.string()).optional(),
   types: z.object({ entities: declarationRecord(z.string()), relKinds: declarationRecord(z.string()) }).strict(),
   facades: declarationRecord(z.string().regex(/^[a-z][a-z0-9-]*$/, 'Facade names must be lowercase identifiers with hyphens, suitable for cache filenames'), z.string()),
   provenance: declarationRecord(z.enum(Object.keys(PROVENANCE_KINDS) as [ProvenanceKind, ...ProvenanceKind[]]), declarationRecord(z.string())).optional(),
@@ -57,6 +59,10 @@ function parseSnapshotData<T extends PackDependencySnapshot>(raw: unknown, schem
     message: `snapshot.json ${issue.path.join('.') || 'root'}: ${issue.message}`,
   })));
   const snapshot = result.data;
+  const dslProblem = dslDefinitionsProblem(snapshot.manifest.extensions?.dsl, snapshot.dslDefinitions);
+  if (dslProblem) return packValidation([{
+    code: 'snapshot.dslDefinitions', severity: 'error', path: ['dslDefinitions'], source: 'snapshot.json', message: dslProblem,
+  }]);
   if (snapshot.manifest.extensions?.help && snapshot.help === undefined) return packValidation([{
     code: 'snapshot.help.incomplete', severity: 'error', path: ['help'], source: 'snapshot.json',
     message: 'snapshot.json is missing declared help data; rebuild the complete pack',

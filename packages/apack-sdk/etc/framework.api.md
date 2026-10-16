@@ -111,6 +111,29 @@ export type DiffResult<T> = null | {
 };
 
 // @public
+export interface DslCatalogEntry {
+    // (undocumented)
+    readonly buildRevision?: string;
+    // (undocumented)
+    readonly declaration: DeclarationData<DslDeclaration>;
+    // (undocumented)
+    readonly declarationRevision?: string;
+    // (undocumented)
+    readonly definitions?: string;
+    // (undocumented)
+    readonly enabled?: boolean;
+    // (undocumented)
+    readonly origin: 'native' | 'installed' | 'source';
+    // (undocumented)
+    readonly packId: string;
+    // (undocumented)
+    readonly type: string;
+}
+
+// @public (undocumented)
+export type DslDeclaration = z.infer<typeof DslEntrySchema>;
+
+// @public
 export function formatReferenceHref(target: ReferenceTarget): string;
 
 // @public (undocumented)
@@ -235,6 +258,7 @@ export interface NativePackDeclaration extends PackDataDeclarations, FrontendDec
     dependencies?: Record<string, string>;
     // (undocumented)
     dsl?: Record<string, DeclarationData<z.infer<typeof DslEntrySchema>>>;
+    dslDefinitions?: Record<string, string>;
     // (undocumented)
     features?: Record<string, {
         description: string;
@@ -266,6 +290,8 @@ export interface PackCatalogView {
     artifacts(): readonly ArtifactCatalogEntry[];
     // (undocumented)
     blocks(): readonly BlockCatalogEntry[];
+    // (undocumented)
+    dsl(): readonly DslCatalogEntry[];
     // (undocumented)
     frontend(): readonly FrontendCatalogEntry[];
     // (undocumented)

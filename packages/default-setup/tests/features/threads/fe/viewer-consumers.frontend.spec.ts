@@ -21,7 +21,7 @@ function fixture() {
   startFeTestRuntime({
     application: { system: { get: () => actor }, subscribe: () => ({ unsubscribe() {} }) } as never,
     catalog: { status: () => 'ready', problem: () => undefined, references: () => [], frontend: () => [], steps: () => [],
-      artifacts: () => state.artifacts, blocks: () => state.blocks,
+      artifacts: () => state.artifacts, blocks: () => state.blocks, dsl: () => [],
       subscribe(listener) { catalogListeners.add(listener); return () => { catalogListeners.delete(listener); }; } },
     packs: { artifactBindings: () => artifacts, blockBindings: () => blocks,
       onChanged(listener: () => void) { bindingListeners.add(listener); return () => { bindingListeners.delete(listener); }; } } as never,

@@ -25,7 +25,7 @@ import { packInputsHash } from '@apackdev/host/build/pack-inputs';
 import { captureCompilationInputs } from '../build/compilation-inputs.ts';
 import { runPackBuild } from '../build/build-process.ts';
 import { withBuildSignals } from '../build/build-signals.ts';
-import { bundleDslDefs, DEFS_DIR } from '../build/dsl-defs';
+import { bundleDslDefs, monacoDefsFile, DEFS_DIR } from '../build/dsl-defs';
 import { bundlePackTypes } from '../build/types-bundler';
 import { facadeProblems } from '../build/facade-gate';
 import { compareFacadeReport, facadeReportFile, facadeReportText } from '../build/facade-report';
@@ -335,6 +335,9 @@ async function buildIntoStaging(args: string[], root: string) {
         nextStamps.dslDefs = { hash: dslHash, files: defs.files };
       }
       if (defs.success) {
+        const monacoNames = Object.entries(manifest.extensions.dsl).filter(([, entry]) => entry.targets.includes('monaco')).map(([name]) => name);
+        if (monacoNames.length) snapshot.dslDefinitions = Object.fromEntries(monacoNames.map(name => [name,
+          fs.readFileSync(path.join(outputDir, monacoDefsFile(name)), 'utf8')]));
         for (const file of defs.files) console.log(`  dsl defs: dist/${file}`);
       } else {
         fail(`DSL definitions bundle failed: ${defs.error}`);

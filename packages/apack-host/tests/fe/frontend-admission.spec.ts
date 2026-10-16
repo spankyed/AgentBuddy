@@ -72,6 +72,7 @@ it('captures every metadata container while retaining machines, components and c
     settings: { extra: preference }, appExtensions: { welcome: 'native/welcome.vue' },
     artifacts: { card: { icon: 'Box', fe: 'native/card.vue' } }, blocks: { answer: { fe: 'native/answer.vue' } },
     dsl: { items: { entry: 'native/types.ts', targets: ['monaco'], prefix: 'items', globals: { item: 'Item' } } },
+    dslDefinitions: { items: 'initial' },
     steps: { memo: { node: { label: 'Memo' } } },
   };
   const registry = createFePackRegistry();
@@ -174,7 +175,7 @@ it.each(['artifacts', 'blocks'] as const)('captures %s facet getters once', fiel
 it('captures DSL globals getters once', () => {
   const read = vi.fn(() => ({ item: 'Item' }));
   const registry = createFePackRegistry();
-  const declaration: NativePackDeclaration = { id: 'owner', dsl: { items: {
+  const declaration: NativePackDeclaration = { id: 'owner', dslDefinitions: { items: '' }, dsl: { items: {
     entry: 'native/types.ts', targets: ['monaco'], globals: { item: 'Item' },
   } } };
   registry.registerPackFE({ kind: 'native', declaration }, { id: 'owner', dslTypes: { items: {

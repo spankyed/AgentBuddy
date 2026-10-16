@@ -17,6 +17,37 @@ function fixture() {
 }
 
 describe('window declaration catalog', () => {
+  it('projects native and disabled installed DSL definitions without modules, while source metadata stays unbuilt', () => {
+    const { reader, catalog, sessions, wire } = fixture();
+    const dsl = { rows: { entry: 'missing/types.ts', targets: ['monaco' as const], prefix: 'row:' } };
+    const definitions = 'declare module "@app/defs/rows" { export interface Row { id: string } }';
+    catalog.setNative([{ id: 'native-pack', dsl, dslDefinitions: { rows: definitions } }]);
+    const manifest = { id: 'installed-pack', name: 'Installed', version: '1.0.0', extensions: { dsl } };
+    catalog.replace([{ dir: '/no-executable-pack', enabled: false, snapshot: { format: PACK_SNAPSHOT_FORMAT,
+      declarationRevision: _declarationRevision(manifest), manifest, types: { entities: {}, relKinds: {} }, facades: {},
+      dslDefinitions: { rows: definitions } } }]);
+    const source = { ...manifest, id: 'source-pack' };
+    catalog.setSources([{ dir: '/no-authored-modules', manifest: source, declarationRevision: _declarationRevision(source) }]);
+    reader.connect(); sessions[0].receive(wire());
+    expect(reader.catalog.dsl()).toEqual(catalog.dsl());
+    expect(reader.catalog.dsl()).toMatchObject([
+      { type: 'rows', packId: 'native-pack', origin: 'native', enabled: true, definitions },
+      { type: 'rows', packId: 'installed-pack', origin: 'installed', enabled: false, definitions, declarationRevision: _declarationRevision(manifest) },
+      { type: 'rows', packId: 'source-pack', origin: 'source', declaration: { prefix: 'row:' } },
+    ]);
+    expect(reader.catalog.dsl()[2]).not.toHaveProperty('definitions');
+    expect(reader.catalog.dsl()).toBe(reader.catalog.dsl());
+    expect(Reflect.set(reader.catalog.dsl()[0].declaration, 'prefix', 'changed')).toBe(false);
+    const previous = reader.catalog.dsl();
+    catalog.setNative([{ id: 'native-pack', dsl, dslDefinitions: { rows: 'updated type data' } }]);
+    sessions[0].receive(wire());
+    expect(reader.catalog.dsl()).not.toBe(previous);
+    expect(reader.catalog.dsl()[0].definitions).toBe('updated type data');
+    expect(previous[0].definitions).toBe(definitions);
+    reader.disconnect(); expect(reader.catalog.dsl()[1].definitions).toBe(definitions);
+    reader.dispose(); expect(reader.catalog.dsl()).toEqual([]);
+  });
+
   it('exposes local native plugin declarations before connection, without importing their modules', () => {
     const native = { id: 'host', features: { settings: { description: 'Host settings.', plugin: { label: 'Settings', state: 'never.ts' } } } };
     const reader = createWindowPackCatalog({ subscribe: () => () => {} }, [native]);

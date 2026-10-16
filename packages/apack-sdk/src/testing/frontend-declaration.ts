@@ -40,7 +40,8 @@ export function nativeFrontendDeclarationFixture(fixture: PackFERegistration): N
     ...(fixture.blocks && { blocks: Object.fromEntries(fixture.blocks.map(value => [value.type,
       { ...(value.kind !== undefined && { kind: value.kind }), ...(value.fe !== undefined && { fe: 'fixtures/block.vue' }) }])) }),
     ...(fixture.dslTypes && { dsl: Object.fromEntries(Object.entries(fixture.dslTypes).map(([id, value]) => [id,
-      { entry: 'fixtures/types.ts', targets: ['monaco'], globals: value.globals, prefix: value.prefix }])) }),
+      { entry: 'fixtures/types.ts', targets: ['monaco'], globals: value.globals, prefix: value.prefix }])),
+      dslDefinitions: Object.fromEntries(Object.entries(fixture.dslTypes).map(([id, value]) => [id, value.schema])) }),
     ...(fixture.appExtensions && { appExtensions: Object.fromEntries(Object.keys(fixture.appExtensions).map(id => [id, 'fixtures/extension.vue'])) }),
     ...(fixture.tiptapPlugins && { tiptapPlugins: Object.fromEntries(Object.entries(fixture.tiptapPlugins).map(([id, value]) => [id, {
       ...(value.extensions && { extensions: Object.fromEntries(Object.keys(value.extensions).map(name => [name, component])) }),

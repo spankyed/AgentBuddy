@@ -1,3 +1,4 @@
+import { dslCatalogEntries } from './catalog-dsl.ts';
 import { captureData } from './captured-data.ts';
 import { pluginCatalogEntries } from './catalog-plugins.ts';
 import { stepCatalogEntries } from './catalog-steps.ts';
@@ -176,6 +177,7 @@ export function createContributionCatalog(appSettings: SettingsDefinition) {
     steps: () => stepCatalogEntries(current),
     artifacts: () => artifactCatalogEntries(current),
     blocks: () => blockCatalogEntries(current),
+    dsl: () => dslCatalogEntries(current),
     commands: () => Object.freeze([...commandCatalogEntries(current)].sort((a, b) => commandOrder.get(a.packId)! - commandOrder.get(b.packId)!)),
     get: (packId: string): PackCatalogEntry | undefined => byId.get(packId),
     settings: (): SettingsCatalog => settings,

@@ -365,7 +365,7 @@ describe('generated flow helpers', () => {
 describe('the snapshot format', () => {
   // Each typed against its interface, so adding, renaming or removing a field fails the typecheck until it is listed
   const SNAPSHOT_FIELDS: Record<keyof PackSnapshot, true> = {
-    declarationRevision: true,
+    declarationRevision: true, dslDefinitions: true,
     types: true, facades: true, manifest: true, help: true, format: true, sdkVersion: true, provenance: true, flowHelpers: true,
   };
   /** The snapshot's manifest, which a dependent's codegen reads (features, services, content formats, version…) */
@@ -438,7 +438,7 @@ describe('the snapshot format', () => {
       facadeImports: await facadeImports(),
     }).toEqual({
       format: 1,
-      fields: ['declarationRevision', 'facades', 'flowHelpers', 'format', 'help', 'manifest', 'provenance', 'sdkVersion', 'types'],
+      fields: ['declarationRevision', 'dslDefinitions', 'facades', 'flowHelpers', 'format', 'help', 'manifest', 'provenance', 'sdkVersion', 'types'],
       manifest: {
         fields: ['$schema', 'build', 'checks', 'content', 'data', 'dependencies', 'description', 'extensions', 'features', 'hostVersion', 'id', 'license', 'lifecycle', 'migrations', 'name', 'permissions', 'version'],
         extensions: ['appExtensions', 'artifacts', 'blocks', 'commands', 'dsl', 'help', 'services', 'settings', 'steps', 'tiptapPlugins'],

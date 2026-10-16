@@ -24,7 +24,7 @@ function fixture() {
   const declarations = new Set<() => void>(); const bindings = new Set<() => void>();
   const types = new Map([['note', type]]); const categories = new Map([['notes', category]]);
   bindFeHost({ application: {} as never, settings: {} as never, secrets: {} as never, client: {} as never,
-    catalog: { status: () => state.status, problem: () => undefined, frontend: () => [], artifacts: () => [], blocks: () => [], steps: () => [], references: () => state.entries,
+    catalog: { status: () => state.status, problem: () => undefined, frontend: () => [], artifacts: () => [], blocks: () => [], dsl: () => [], steps: () => [], references: () => state.entries,
       subscribe(listener) { declarations.add(listener); return () => { declarations.delete(listener); }; } },
     packs: { referenceTypes: () => types, referenceCategories: () => categories,
       onChanged(listener: () => void) { bindings.add(listener); return () => { bindings.delete(listener); }; } } as never });

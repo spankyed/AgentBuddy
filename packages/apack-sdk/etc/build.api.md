@@ -2284,6 +2284,7 @@ export const _NativePackDeclarationSchema: z.ZodEffects<z.ZodEffects<z.ZodObject
         globals?: Record<string, string> | undefined;
         inline?: string[] | undefined;
     }>>>>;
+    dslDefinitions: z.ZodOptional<z.ZodType<Record<string, string>, z.ZodTypeDef, Record<string, string>>>;
     tiptapPlugins: z.ZodLazy<z.ZodOptional<z.ZodType<Record<string, {
         extensions?: Record<string, string> | undefined;
         popups?: Record<string, string> | undefined;
@@ -2418,6 +2419,7 @@ export const _NativePackDeclarationSchema: z.ZodEffects<z.ZodEffects<z.ZodObject
         onInit?: string | undefined;
         onShutdown?: string | undefined;
     } | undefined;
+    dslDefinitions?: Record<string, string> | undefined;
 }, {
     id: string;
     data?: {
@@ -2506,6 +2508,7 @@ export const _NativePackDeclarationSchema: z.ZodEffects<z.ZodEffects<z.ZodObject
         onInit?: string | undefined;
         onShutdown?: string | undefined;
     } | undefined;
+    dslDefinitions?: Record<string, string> | undefined;
 }>, {
     id: string;
     data?: {
@@ -2608,6 +2611,7 @@ export const _NativePackDeclarationSchema: z.ZodEffects<z.ZodEffects<z.ZodObject
         onInit?: string | undefined;
         onShutdown?: string | undefined;
     } | undefined;
+    dslDefinitions?: Record<string, string> | undefined;
 }, {
     id: string;
     data?: {
@@ -2696,6 +2700,7 @@ export const _NativePackDeclarationSchema: z.ZodEffects<z.ZodEffects<z.ZodObject
         onInit?: string | undefined;
         onShutdown?: string | undefined;
     } | undefined;
+    dslDefinitions?: Record<string, string> | undefined;
 }>, {
     id: string;
     data?: {
@@ -2798,6 +2803,7 @@ export const _NativePackDeclarationSchema: z.ZodEffects<z.ZodEffects<z.ZodObject
         onInit?: string | undefined;
         onShutdown?: string | undefined;
     } | undefined;
+    dslDefinitions?: Record<string, string> | undefined;
 }, unknown>;
 
 // @public (undocumented)
@@ -2964,6 +2970,7 @@ export function _packRelationTypes(declaration: PackDataDeclarations): Record<st
 // @public (undocumented)
 export interface PackSnapshot {
     declarationRevision: string;
+    dslDefinitions?: Record<string, string>;
     facades: Record<string, string>;
     flowHelpers?: PackFlowHelpers;
     format: number;

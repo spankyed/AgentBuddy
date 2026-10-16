@@ -1,3 +1,4 @@
+import { dslDefinitionsProblem } from './dsl-declarations.ts';
 import { declarationRecord } from './declaration-record.ts';
 import type { PackLifecycleDeclaration } from './lifecycle-declaration.ts';
 export { LIFECYCLE_HOOK_NAMES } from './lifecycle-declaration.ts';
@@ -140,12 +141,15 @@ export const _NativePackDeclarationSchema = z.preprocess(checkDeclaredNames, z.o
   blocks: z.lazy(() => ExtensionsSchema.shape.blocks),
   commands: z.lazy(() => ExtensionsSchema.shape.commands),
   dsl: z.lazy(() => ExtensionsSchema.shape.dsl),
+  dslDefinitions: declarationRecord(z.string()).optional(),
   tiptapPlugins: z.lazy(() => FrontendConfigSchema.shape.tiptapPlugins),
   appExtensions: z.lazy(() => FrontendConfigSchema.shape.appExtensions),
   features: declarationRecord(z.string().regex(FEATURE_ID_PATTERN), z.lazy(() => FeatureEntrySchema.pick({
     description: true, entities: true, designation: true, settings: true, plugin: true, references: true,
   }))).optional(),
 }).strict().superRefine((declaration, ctx) => {
+  const dslProblem = dslDefinitionsProblem(declaration.dsl, declaration.dslDefinitions);
+  if (dslProblem) ctx.addIssue({ code: 'custom', path: ['dslDefinitions'], message: dslProblem });
   checkFrontendClaims(declaration, ctx, []);
   checkReferenceClaims(declaration.features, ctx);
   checkDefaultPluginClaims(declaration.features, ctx);

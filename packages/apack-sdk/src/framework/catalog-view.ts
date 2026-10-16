@@ -3,7 +3,9 @@ import type { FeatureRef } from '../ids/refs.ts';
 import type { ReferenceDeclarations } from './reference-declaration.ts';
 import type { FrontendDeclaration } from './frontend-declaration.ts';
 import type { z } from 'zod';
-import type { ArtifactEntrySchema, BlockEntrySchema } from './declaration-schema.ts';
+import type { ArtifactEntrySchema, BlockEntrySchema, DslEntrySchema } from './declaration-schema.ts';
+
+export type DslDeclaration = z.infer<typeof DslEntrySchema>;
 
 export type ArtifactDeclaration = z.infer<typeof ArtifactEntrySchema>;
 export type BlockDeclaration = z.infer<typeof BlockEntrySchema>;
@@ -61,6 +63,18 @@ export interface BlockCatalogEntry {
   readonly enabled?: boolean;
 }
 
+/** Type data can be discovered before activation; source declarations may not have compiled definitions. */
+export interface DslCatalogEntry {
+  readonly type: string;
+  readonly packId: string;
+  readonly origin: 'native' | 'installed' | 'source';
+  readonly declaration: DeclarationData<DslDeclaration>;
+  readonly definitions?: string;
+  readonly declarationRevision?: string;
+  readonly buildRevision?: string;
+  readonly enabled?: boolean;
+}
+
 /** Typed projections of the common declaration inventory; reading never activates a pack. */
 export interface PackCatalogView {
   status(): 'loading' | 'ready' | 'disconnected' | 'error' | 'disposed';
@@ -70,5 +84,6 @@ export interface PackCatalogView {
   steps(): readonly StepCatalogEntry[];
   artifacts(): readonly ArtifactCatalogEntry[];
   blocks(): readonly BlockCatalogEntry[];
+  dsl(): readonly DslCatalogEntry[];
   subscribe(listener: () => void): () => void;
 }

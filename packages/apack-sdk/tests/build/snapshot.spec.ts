@@ -11,6 +11,20 @@ const snapshot = (): PackSnapshot => ({
 });
 
 describe('snapshot data reader', () => {
+  it('requires complete, exclusively declared Monaco definitions without requiring globals', () => {
+    const data = snapshot();
+    data.manifest.extensions = { dsl: { rows: { entry: 'src/rows.ts', targets: ['monaco'] } } };
+    data.declarationRevision = _declarationRevision(data.manifest);
+    expect(parseSnapshot(data).diagnostics).toMatchObject([{ code: 'snapshot.dslDefinitions', message: expect.stringContaining('rows') }]);
+    data.dslDefinitions = { rows: 'declare module "@app/defs/rows" { export interface Row {} }' };
+    expect(parseSnapshot(data).status).toBe('valid');
+    expect(parseDependencySnapshot(data).status).toBe('valid');
+    data.dslDefinitions.foreign = 'export {}';
+    expect(parseSnapshot(data).diagnostics[0].message).toContain('undeclared DSL "foreign"');
+    expect(parseSnapshot({ ...snapshot(), dslDefinitions: {} }).diagnostics[0].message).toContain('no declared Monaco targets');
+    expect(parseSnapshot({ ...data, dslDefinitions: Object.create({ rows: 'inherited' }) }).diagnostics[0].message).toContain('Missing compiled');
+  });
+
   it('requires materialized help only for a declared contribution', () => {
     const data = snapshot();
     data.manifest.extensions = { help: { path: 'help' } };

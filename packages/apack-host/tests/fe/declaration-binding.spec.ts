@@ -242,6 +242,7 @@ it('admits declared native artifacts, blocks, DSL globals and feature designatio
     id: manifest.id,
     features: { notes: manifest.features!.notes, form: manifest.features!.form },
     ...manifest.extensions,
+    dslDefinitions: { notes: registration.dslTypes.notes.schema },
   }]);
   const bindings = { ...registration, bindSettings: undefined };
   packs.registerFixture(bindings);

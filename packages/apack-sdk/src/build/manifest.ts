@@ -72,6 +72,8 @@ export interface PackSnapshot {
   /** Dependent-facing TypeScript declaration bundles, keyed by facade name. */
   facades: Record<string, string>;
   manifest: PackManifest;
+  /** Self-contained Monaco declarations keyed by DSL name; required for every declared Monaco target. */
+  dslDefinitions?: Record<string, string>;
   /** Materialized articles; required when the manifest declares help. */
   help?: import('../framework/pack-help.ts').HelpDocument[];
   /** The `PACK_SNAPSHOT_FORMAT` of the CLI that wrote it; a snapshot without one predates the format */

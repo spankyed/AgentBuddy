@@ -30,6 +30,7 @@ describe('staged DSL definitions', () => {
       const definitions = path.join(dir, 'defs/monaco/rows-defs.d.ts');
       const original = fs.readFileSync(definitions, 'utf8');
       expect(original).toContain('before: true');
+      expect(first.snapshot.dslDefinitions).toEqual({ rows: original });
       expect(fs.readFileSync(path.join(dir, PACK_LAYOUT.feEntry), 'utf8')).toContain('before: true');
       const reads = fs.readFileSync(path.join(root, '.apack/reads.json'), 'utf8');
       const cache = fs.readFileSync(path.join(dir, 'phase-cache.json'), 'utf8');
@@ -46,6 +47,7 @@ describe('staged DSL definitions', () => {
       await build([]);
       const current = readPackBuild(dir);
       expect(current.revision).not.toBe(first.revision);
+      expect(current.snapshot.dslDefinitions?.rows).toContain('after: true');
       expect(fs.readFileSync(definitions, 'utf8')).toContain('after: true');
       const frontend = fs.readFileSync(path.join(dir, PACK_LAYOUT.feEntry), 'utf8');
       expect(frontend).toContain('after: true');
@@ -63,6 +65,7 @@ describe('staged DSL definitions', () => {
       fs.writeFileSync(manifestFile, JSON.stringify(manifest));
       await build([]);
       expect(readPackBuild(dir).snapshot.manifest.extensions?.dsl).toBeUndefined();
+      expect(readPackBuild(dir).snapshot.dslDefinitions).toBeUndefined();
       expect(fs.existsSync(definitions)).toBe(false);
       expect(fs.readFileSync(path.join(dir, PACK_LAYOUT.feEntry), 'utf8')).not.toContain('after: true');
     } finally { process.chdir(cwd); }
