@@ -2,6 +2,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import vm from 'node:vm';
+import { pathToFileURL } from 'node:url';
 import { build as nativeBuild, type BuildOptions } from 'esbuild';
 import { afterEach, expect, it, vi } from 'vitest';
 import { bundlePackRuntime } from '../../src/build/be-bundler.ts';
@@ -276,4 +277,43 @@ it('preserves native glob requires in external source directories', async () => 
     fs.writeFileSync(globFile, original);
     compilation.assertCurrent();
   } finally { fs.writeFileSync(globFile, original); compilation.dispose(); }
+});
+
+it('preserves implicit per-file transforms for absolute module imports and leaves data strings intact', async () => {
+  const { root, pack, entry, write } = fixture(false);
+  fs.unlinkSync(path.join(pack, 'tsconfig.json'));
+  write('tsconfig.json', { extends: ['./configs/base.json', './configs/overrides.json'], compilerOptions: { noLib: true, types: [] } });
+  const external = path.join(root, 'external/absolute.tsx');
+  write('external/absolute.tsx', `const element = () => "ALIASED"; export const value = <div />; export default function compile() { return value; } export const sourcePath = ${JSON.stringify(external)};`);
+  const input = path.join(pack, 'src/input.tsx');
+  fs.writeFileSync(input, fs.readFileSync(input, 'utf8').replace("import {value} from 'outside'", `import {value, sourcePath} from ${JSON.stringify(external)}`).replace("value, jsx:", "value, sourcePath, jsx:"));
+  const baseline = await nativeBuild({ entryPoints: [entry], bundle: true, platform: 'node', format: 'cjs', target: 'node20', write: false });
+  const expected = evaluate(baseline.outputFiles[0]!.text);
+  expect(expected).toMatchObject({ value: 'ALIASED', sourcePath: external });
+  const compilation = captureCompilationInputs(pack);
+  compilation.captureGenerated();
+  try {
+    const output = path.join(pack, 'dist');
+    const result = await bundlePackRuntime(pack, output, { compilation });
+    expect(result.success, result.error).toBe(true);
+    expect(evaluate(fs.readFileSync(path.join(output, 'runtime/index.cjs'), 'utf8'))).toEqual(expected);
+    const compilers = await bundlers.bundlePackContentCompilers(pack, output, { absolute: external }, { compilation });
+    expect(compilers.success, compilers.error).toBe(true);
+    const loaded = await import(pathToFileURL(path.join(output, 'build/content-compilers.mjs')).href);
+    expect(loaded.absolute()).toBe('ALIASED');
+    const map = JSON.parse(fs.readFileSync(path.join(output, 'runtime/index.cjs.map'), 'utf8'));
+    expect(JSON.stringify(map)).not.toContain('apack-inputs-');
+    expect(map.sourcesContent).toContain(fs.readFileSync(input, 'utf8'));
+    expect(map.sourcesContent).toContain(fs.readFileSync(external, 'utf8'));
+    const before = ['index.cjs', 'index.cjs.map'].map(file => fs.readFileSync(path.join(output, 'runtime', file)));
+    const repeated = captureCompilationInputs(pack);
+    repeated.captureGenerated();
+    try {
+      const result = await bundlePackRuntime(pack, output, { compilation: repeated });
+      expect(result.success, result.error).toBe(true);
+      ['index.cjs', 'index.cjs.map'].forEach((file, index) =>
+        expect(fs.readFileSync(path.join(output, 'runtime', file))).toEqual(before[index]));
+    } finally { repeated.dispose(); }
+
+  } finally { compilation.dispose(); }
 });

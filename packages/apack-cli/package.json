@@ -41,7 +41,8 @@
     "tsx": "^4.19.4",
     "typescript": "^5.8.3",
     "vite": "^7.0.6",
-    "vue": "^3.5.18"
+    "vue": "^3.5.18",
+    "magic-string": "^0.30.21"
   },
   "devDependencies": {
     "es-module-lexer": "^1.7.0",

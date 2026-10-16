@@ -7,6 +7,7 @@ import type { RecordReads } from './build-reads';
 import { errorMessage } from '@apackdev/sdk/utils/pure';
 import { esbuildTsconfig, readPackCompilerConfiguration } from './compiler-configuration.ts';
 import type { CompilerReadTree } from './compiler-read-tree.ts';
+import { compilerModuleReferences } from './compiler-module-references.ts';
 import type { CompilationInputs } from './compilation-inputs.ts';
 
 export interface BundleRuntimeOptions {
@@ -45,8 +46,17 @@ async function bundlePackSource<T extends EsbuildOptions>(
 ): Promise<import('esbuild').BuildResult<T>> {
   const esbuild = await import('esbuild');
   const configuration = options.compilation ? options.compilation.configuration : readPackCompilerConfiguration(packDir);
-  const tree = options.compilation?.readTree();
+  const compilation = options.compilation;
+  const tree = compilation?.readTree();
   const workingDir = tree?.path(packDir) ?? process.cwd();
+  let stdin = overrides.stdin;
+  if (stdin && tree && compilation) {
+    const resolveDir = stdin.resolveDir ?? packDir;
+    const contents = typeof stdin.contents === 'string' ? stdin.contents : Buffer.from(stdin.contents ?? []).toString('utf8');
+    stdin = { ...stdin, contents: compilerModuleReferences(
+      tree.path(path.resolve(resolveDir, stdin.sourcefile ?? 'stdin.ts')), contents, tree.path,
+      specifier => compilation.prepareNative(specifier, resolveDir)) };
+  }
   if (options.compilation) {
     const entries = overrides.entryPoints;
     const files = Array.isArray(entries) ? entries.map(entry => typeof entry === 'string' ? entry : entry.in) : Object.values(entries ?? {});
@@ -77,7 +87,7 @@ async function bundlePackSource<T extends EsbuildOptions>(
       entryPoints: Array.isArray(overrides.entryPoints)
         ? overrides.entryPoints.map(entry => typeof entry === 'string' ? tree.path(entry) : { ...entry, in: tree.path(entry.in) })
         : overrides.entryPoints && Object.fromEntries(Object.entries(overrides.entryPoints).map(([name, file]) => [name, tree.path(file)])),
-      stdin: overrides.stdin && { ...overrides.stdin, resolveDir: tree.path(overrides.stdin.resolveDir ?? packDir) },
+      stdin: stdin && { ...stdin, resolveDir: tree.path(stdin.resolveDir ?? packDir) },
       write: false,
     }),
   };
@@ -104,32 +114,25 @@ function capturedSourcesPlugin(compilation: CompilationInputs, workingDir: strin
     '.ts': 'ts', '.mts': 'ts', '.cts': 'ts', '.tsx': 'tsx',
     '.js': 'js', '.mjs': 'js', '.cjs': 'js', '.jsx': 'jsx', '.json': 'json', '.txt': 'text', '.css': 'css', '': 'js',
   };
-  const resolving = Symbol('native-resolution');
   return { name: 'apack-captured-sources', setup(build) {
-    build.onResolve({ filter: /.*/ }, async args => {
-      if (args.pluginData === resolving || (args.namespace && args.namespace !== 'file')) return;
+    build.onResolve({ filter: /.*/ }, args => {
+      if (args.namespace && args.namespace !== 'file') return;
       const source = path.isAbsolute(args.path) ? compilation.sourcePath(args.path) : args.path;
-      const directory = compilation.sourcePath(args.resolveDir || workingDir);
-      compilation.prepareNative(source, directory);
-      const tree = compilation.readTree();
-      // Preserve native per-file configuration by leaving ordinary resolution on its default path.
-      if (!path.isAbsolute(args.path) || tree.path(source) === args.path) return;
-      const result = await build.resolve(tree.path(source), {
-        importer: args.importer, resolveDir: args.resolveDir || workingDir, namespace: args.namespace,
-        kind: args.kind, with: args.with, pluginData: resolving,
-      });
-      if (!result.external && path.isAbsolute(result.path) && tree.path(result.path) !== result.path) {
-        throw new Error(`Native resolution escaped the captured namespace: ${result.path}`);
-      }
-      return { ...result, pluginData: undefined };
+      compilation.prepareNative(source, compilation.sourcePath(args.resolveDir || workingDir));
+      return undefined;
     });
     build.onLoad({ filter: /.*/, namespace: 'file' }, args => {
       const loader = loaders[path.extname(args.path)];
       if (!loader) return;
       const contents = compilation.readFile(compilation.sourcePath(args.path));
       if (contents === undefined) throw new Error(`Missing captured compiler input: ${args.path}`);
-      if (['js', 'jsx', 'ts', 'tsx'].includes(loader)) compilation.prepareNativeSource(args.path, contents);
-      return { contents, loader, resolveDir: path.dirname(args.path) };
+      let projected: string | Buffer = contents;
+      if (['js', 'jsx', 'ts', 'tsx'].includes(loader)) {
+        compilation.prepareNativeSource(args.path, contents);
+        projected = compilerModuleReferences(args.path, contents.toString('utf8'), compilation.readTree().path,
+          specifier => compilation.prepareNative(specifier, compilation.sourcePath(path.dirname(args.path))));
+      }
+      return { contents: projected, loader, resolveDir: path.dirname(args.path) };
     });
   } };
 }
