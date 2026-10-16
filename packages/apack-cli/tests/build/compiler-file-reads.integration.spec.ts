@@ -279,24 +279,27 @@ it('executes owned TypeScript compiler modules and transitive imports through te
   fs.mkdirSync(path.join(root, 'src'));
   fs.writeFileSync(path.join(root, 'package.json'), '{"type":"module"}');
   fs.writeFileSync(path.join(root, 'tsconfig.json'), JSON.stringify({ compilerOptions: {
-    paths: { '#value': [path.join(root, 'src/value.ts')] },
+    paths: { '#value': [path.join(root, 'src/value.ts')] }, jsx: 'react', jsxFactory: 'h',
   } }));
-  const compiler = path.join(root, 'src/compiler.ts');
+  const compiler = path.join(root, 'src/compiler.tsx');
   const value = path.join(root, 'src/value.ts');
   const original = `import { value } from '#value';
-    import { extra } from ${JSON.stringify(path.join(root, 'src/extra.ts') + '?fixture=1#static')};
+    import { extra } from ${JSON.stringify(path.join(root, 'src/extra.tsx') + '?fixture=1#static')};
     import {createRequire} from 'node:module';
-    export default async () => { const target = ${JSON.stringify(pathToFileURL(path.join(root, 'src/dynamic.ts')).href + '?fixture=2#dynamic')};
+    const h = () => 'JSX';
+    export default async () => { const target = ${JSON.stringify(pathToFileURL(path.join(root, 'src/dynamic.tsx')).href + '?fixture=2#dynamic')};
       const dynamic = await import(target);
       const resolved = import.meta.resolve(target);
       const required = createRequire(import.meta.url)(${JSON.stringify(path.join(root, 'src/common.cjs'))});
       const originalParent = createRequire(${JSON.stringify(path.join(root, 'package.json'))})('./src/common.cjs');
-      if (resolved === target || !resolved.includes('?fixture=2#dynamic')) throw new Error('Invalid owned resolution');
-      return [{ entity: 'Row', name: [value, extra, dynamic.default, required, originalParent].join(':') }]; };`;
+      const identity = new URL(resolved);
+      if (identity.searchParams.get('fixture') !== '2' || identity.hash !== '#dynamic') throw new Error('Invalid module resolution: ' + resolved);
+      return [{ entity: 'Row', name: [value, extra, dynamic.default, required, originalParent, <row />].join(':'),
+        source: import.meta.filename, directory: import.meta.dirname, origin: import.meta.url }]; };`;
   fs.writeFileSync(compiler, original);
   fs.writeFileSync(value, "export const value: string = 'CAPTURED';");
-  fs.writeFileSync(path.join(root, 'src/extra.ts'), "export const extra = 'EXTRA';");
-  fs.writeFileSync(path.join(root, 'src/dynamic.ts'), "export default 'DYNAMIC';");
+  fs.writeFileSync(path.join(root, 'src/extra.tsx'), "const h = () => 'EXTRA'; export const extra = <mark />;");
+  fs.writeFileSync(path.join(root, 'src/dynamic.tsx'), "const h = () => 'DYNAMIC'; export default <mark />;");
   fs.writeFileSync(path.join(root, 'src/common.cjs'), "module.exports = 'COMMON';");
   fs.writeFileSync(path.join(root, 'src/data.txt'), 'DATA');
   const steps = path.join(root, 'src/steps.mjs');
@@ -305,16 +308,17 @@ it('executes owned TypeScript compiler modules and transitive imports through te
   fs.writeFileSync(steps, 'export const steps = [];');
   fs.writeFileSync(flow, 'export default {};');
   const manifest = ManifestSchema.parse({ id: 'owned-module', name: 'Owned module', version: '1.0.0',
-    content: { formats: { rows: { compiler: 'src/compiler.ts', entity: 'Row', identity: ['name'] } },
+    content: { formats: { rows: { compiler: 'src/compiler.tsx', entity: 'Row', identity: ['name'] } },
       sources: { rows: { path: 'src/data.txt', format: 'rows' }, flows: { path: 'src/flows' } } } });
   const compilation = captureCompilationInputs(root);
   const modules = createCompilerModuleLoader(compilation);
   const outputDirectory = path.join(root, 'dist');
   try {
+    fs.writeFileSync(path.join(root, 'package.json'), '{"type":"commonjs"}');
     fs.writeFileSync(compiler, "throw new Error('Executed live compiler');");
     fs.writeFileSync(value, "export const value: string = 'LIVE';");
-    fs.writeFileSync(path.join(root, 'src/extra.ts'), "export const extra = 'LIVE';");
-    fs.writeFileSync(path.join(root, 'src/dynamic.ts'), "export default 'LIVE';");
+    fs.writeFileSync(path.join(root, 'src/extra.tsx'), "export const extra = 'LIVE';");
+    fs.writeFileSync(path.join(root, 'src/dynamic.tsx'), "export default 'LIVE';");
     fs.writeFileSync(path.join(root, 'src/common.cjs'), "module.exports = 'LIVE';");
     fs.writeFileSync(steps, "throw new Error('Executed live steps');");
     fs.writeFileSync(flow, "throw new Error('Executed live flow');");
@@ -324,16 +328,20 @@ it('executes owned TypeScript compiler modules and transitive imports through te
         importModule: modules.importModule });
     });
     const output = JSON.parse(fs.readFileSync(path.join(outputDirectory, 'rows.content.json'), 'utf8'));
-    expect(output.records[0].name).toBe('CAPTURED:EXTRA:DYNAMIC:COMMON:COMMON');
+    expect(output.records[0].name).toBe('CAPTURED:EXTRA:DYNAMIC:COMMON:COMMON:JSX');
+    expect(output.records[0].source).toBe(compiler);
+    expect(output.records[0].directory).toBe(path.dirname(compiler));
+    expect(new URL(output.records[0].origin).pathname).toBe(pathToFileURL(compiler).pathname);
     fs.writeFileSync(steps, 'export const steps = [];');
     fs.writeFileSync(flow, 'export default {};');
+    fs.writeFileSync(path.join(root, 'package.json'), '{"type":"module"}');
     fs.writeFileSync(compiler, original);
     fs.writeFileSync(value, "export const value: string = 'CAPTURED';");
-    fs.writeFileSync(path.join(root, 'src/extra.ts'), "export const extra = 'EXTRA';");
-    fs.writeFileSync(path.join(root, 'src/dynamic.ts'), "export default 'DYNAMIC';");
+    fs.writeFileSync(path.join(root, 'src/extra.tsx'), "const h = () => 'EXTRA'; export const extra = <mark />;");
+    fs.writeFileSync(path.join(root, 'src/dynamic.tsx'), "const h = () => 'DYNAMIC'; export default <mark />;");
     fs.writeFileSync(path.join(root, 'src/common.cjs'), "module.exports = 'COMMON';");
     compilation.assertCurrent();
-  } finally { modules.dispose(); compilation.dispose(); }
+  } finally { await modules.dispose(); compilation.dispose(); }
 });
 
 
@@ -364,7 +372,7 @@ it('keeps original-parent require calls isolated across concurrent module scopes
     const { createRequire } = await import('node:module');
     expect(createRequire(path.join(root, 'package.json'))('./value.cjs')).toBe('LIVE');
   } finally {
-    loaders.forEach(loader => loader.dispose());
+    await Promise.all(loaders.map(loader => loader.dispose()));
     compilations.forEach(compilation => compilation.dispose());
   }
 });

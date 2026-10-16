@@ -1,6 +1,7 @@
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
+import { pathToFileURL } from 'node:url';
 import { fork, spawn, type ChildProcess } from 'node:child_process';
 import { afterEach, expect, it, vi } from 'vitest';
 import { packFixture } from '@apackdev/sdk/testing/pack-fixture';
@@ -63,14 +64,17 @@ it('uses the captured compiler and retains unchanged build/cache identity on rep
 
 it('compiles content through the captured worker without redirecting tool reads to the checkout', async () => {
   const root = fixture({
-    'src/compiler.ts': `import fs from 'node:fs';
-      export default ({path}: {path: string}) => [{entity: 'Relation', name: fs.readFileSync(path, 'utf8')}];`,
+    'tsconfig.json': JSON.stringify({ compilerOptions: { module: 'esnext', moduleResolution: 'bundler', jsx: 'react', jsxFactory: 'h', skipLibCheck: true }, include: ['src/**/*'] }),
+    'src/compiler.tsx': `import fs from 'node:fs'; const h = () => 'JSX';
+      export default ({path}: {path: string}) => [{entity: 'Relation', name: fs.readFileSync(path, 'utf8') + ':' + <marker />, source: import.meta.filename, origin: import.meta.url}];`,
     'src/value.txt': 'OWNED',
-  }, { formats: { rows: { compiler: 'src/compiler.ts', entity: 'Relation', identity: ['name'] } },
+  }, { formats: { rows: { compiler: 'src/compiler.tsx', entity: 'Relation', identity: ['name'] } },
     sources: { rows: { path: 'src/value.txt', format: 'rows' } } });
   await runPackBuild(root, { args: ['--skip-fe'] });
   const output = JSON.parse(fs.readFileSync(path.join(root, 'dist/runtime/content/rows.content.json'), 'utf8'));
-  expect(output.records[0].name).toBe('OWNED');
+  expect(output.records[0].name).toBe('OWNED:JSX');
+  expect(output.records[0].source).toBe(path.join(fs.realpathSync(root), 'src/compiler.tsx'));
+  expect(output.records[0].origin).toBe(pathToFileURL(path.join(fs.realpathSync(root), 'src/compiler.tsx')).href + '?tsx-namespace=apack-build-1');
 });
 
 it('terminates pack-created background work before accepting its candidate', async () => {

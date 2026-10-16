@@ -2,6 +2,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { createHash } from 'node:crypto';
+import { compilerReadMapping } from '../../bin/compiler-source-hooks.mjs';
 import { compilerDiagnostic, compilerSourcePath, type CompilerPathMapping } from './compiler-paths.ts';
 
 export const BUILD_INPUTS_DIRECTORY_ENV = 'APACK_BUILD_INPUTS_DIRECTORY';
@@ -52,10 +53,9 @@ export function createCompilerReadTree(snapshot: CompilerReadSnapshot, paths: re
   const sourcePath = (file: string) => compilerSourcePath(compilerSourcePath(file, mappings()), paths);
   const mappedPath = (file: string, roots: Map<string, string>, prefix = directory) => {
     const source = sourcePath(path.resolve(file));
-    const root = path.parse(source).root;
-    const target = path.join(prefix, Buffer.from(root).toString('hex'));
-    roots.set(root, target);
-    return path.join(target, path.relative(root, source));
+    const mapping = compilerReadMapping(prefix, source);
+    roots.set(mapping.sourceRoot, mapping.readRoot);
+    return mapping.readPath;
   };
   const ownedPath = (file: string) => mappedPath(file, roots);
   const dataPath = (file: string) => mappedPath(file, dataRoots, path.join(directory, 'data'));

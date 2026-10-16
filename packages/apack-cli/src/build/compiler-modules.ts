@@ -1,52 +1,107 @@
 import path from 'node:path';
-import { isBuiltin, registerHooks, type ModuleHooks } from 'node:module';
+import { createRequire, isBuiltin, register, registerHooks, type ModuleHooks } from 'node:module';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import type { CompilationInputs } from './compilation-inputs.ts';
 import { withoutCompilerFileReads } from './compiler-file-reads.ts';
+import { cliPackageDirectory } from './tool-identity.ts';
+import { writeCompilerModuleConfiguration } from './compiler-module-configuration.ts';
 
-/** Keep native resolution inside this build's owned module namespace. */
+let sequence = 0;
+
+/** Native resolution uses owned paths; ESM execution retains logical source metadata. */
 export function createCompilerModuleLoader(compilation: CompilationInputs) {
+  // Public builds use a fresh worker, so their single scope has a stable URL namespace. In-process
+  // callers still need separate identities even when two captures contain identical source bytes.
+  const namespace = `apack-build-${++sequence}`;
+  const closed = new Int32Array(new SharedArrayBuffer(4));
   let hooks: ModuleHooks | undefined;
-  let closed = false;
-  function initialize() {
-    if (hooks) return;
+  let pending: ReturnType<typeof initialize> | undefined;
+  let stopping: Promise<void> | undefined;
+  const scoped = (value: string | undefined) => {
+    if (!value?.startsWith('file:')) return false;
+    return new URL(value).searchParams.get('tsx-namespace') === namespace;
+  };
+
+  async function initialize() {
     const tree = compilation.readTree();
     const root = pathToFileURL(`${tree.directory}${path.sep}`).href;
+    const readURL = (value: string) => {
+      const url = new URL(value);
+      const owned = pathToFileURL(tree.path(compilation.sourcePath(fileURLToPath(url))));
+      owned.search = url.search;
+      owned.hash = url.hash;
+      return owned;
+    };
+    register(pathToFileURL(path.join(cliPackageDirectory(), 'bin/compiler-source-hooks.mjs')), {
+      data: { directory: tree.directory, namespace, closed: closed.buffer },
+    });
     hooks = registerHooks({
       resolve(specifier, context, next) {
-        if (isBuiltin(specifier) || (!context.parentURL?.startsWith(root) && !specifier.startsWith(root))) {
-          return next(specifier, context);
-        }
+        if (isBuiltin(specifier) || (!context.parentURL?.startsWith(root) && !specifier.startsWith(root)
+          && !scoped(context.parentURL) && !scoped(specifier))) return next(specifier, context);
         return withoutCompilerFileReads(() => {
           if (!path.isAbsolute(specifier) && /^[a-z][\w+.-]*:/i.test(specifier) && !specifier.startsWith('file:')) return next(specifier, context);
+          const require = Array.from(context.conditions).includes('require');
           const url = specifier.startsWith('file:') ? new URL(specifier)
-            : path.isAbsolute(specifier) && !Array.from(context.conditions).includes('require')
-              ? new URL(specifier, context.parentURL) : undefined;
+            : path.isAbsolute(specifier) && !require ? new URL(specifier, context.parentURL) : undefined;
           const target = url ? fileURLToPath(url) : specifier;
           const source = path.isAbsolute(target) ? compilation.sourcePath(target) : target;
           const parent = context.parentURL?.startsWith('file:') ? fileURLToPath(context.parentURL) : source;
           compilation.prepareNative(source, path.dirname(compilation.sourcePath(parent)));
-          if (!path.isAbsolute(target)) return next(specifier, context);
-          const owned = pathToFileURL(tree.path(source));
-          if (url) { owned.search = url.search; owned.hash = url.hash; }
-          return next(url ? owned.href : fileURLToPath(owned), context);
+          const parentURL = context.parentURL?.startsWith('file:') ? readURL(context.parentURL).href : context.parentURL;
+          const request = url ? readURL(url.href).href : path.isAbsolute(target) ? tree.path(source) : specifier;
+          const result = next(request, { ...context, parentURL });
+          if (!result.url.startsWith('file:')) return result;
+          const owned = readURL(result.url);
+          const file = compilation.sourcePath(fileURLToPath(owned));
+          if (compilation.readFile(file) === undefined) throw new Error(`Missing captured compiler module: ${file}`);
+          // Node's CommonJS cache keys ignore URL queries. Retain its per-tree filenames.
+          if (require || result.format === 'commonjs') return { ...result, url: owned.href };
+          const logical = pathToFileURL(file);
+          logical.search = owned.search;
+          // tsx appends its namespace after a fragment; retain the caller's fragment instead.
+          logical.hash = url?.hash ?? (specifier.startsWith('.') ? new URL(specifier, context.parentURL).hash : owned.hash);
+          // Keep raw query spelling and terminate tsx's namespace before any fragment.
+          const marker = `tsx-namespace=${namespace}`;
+          const query = owned.search.slice(1).split('&').filter(field => field !== marker).join('&');
+          logical.search = `?${marker}${query || logical.hash ? `&${query}` : ''}`;
+          return { ...result, url: logical.href };
         });
       },
     });
+    const [esm, cjs] = await withoutCompilerFileReads(() => Promise.all([import('tsx/esm/api'), import('tsx/cjs/api')]));
+    const tsconfig = writeCompilerModuleConfiguration(compilation.configuration ?? compilation.declarationConfiguration, tree);
+    const importCompilerSource = createRequire(import.meta.url)(path.join(cliPackageDirectory(), 'bin/compiler-import.cjs')) as (url: string) => Promise<Record<string, unknown>>;
+    const commonjs = cjs.register({ namespace });
+    try {
+      const modules = esm.register({ namespace, tsconfig });
+      return { modules, commonjs, importCompilerSource };
+    } catch (error) { commonjs.unregister(); throw error; }
   }
+
   return {
     async importModule(file: string): Promise<Record<string, unknown>> {
-      if (closed) throw new Error('Compiler module load outlived its build');
-      const input = withoutCompilerFileReads(() => {
-        compilation.prepareNative(file, path.dirname(file));
-        initialize();
-        const tree = compilation.readTree();
-        const config = (compilation.configuration ?? compilation.declarationConfiguration)?.options.configFilePath;
-        return { file: tree.path(file), tsconfig: typeof config === 'string' ? tree.path(config) : undefined };
-      });
-      const { tsImport } = await withoutCompilerFileReads(() => import('tsx/esm/api'));
-      return tsImport(input.file, { parentURL: import.meta.url, tsconfig: input.tsconfig }) as Promise<Record<string, unknown>>;
+      if (Atomics.load(closed, 0)) throw new Error('Compiler module load outlived its build');
+      withoutCompilerFileReads(() => compilation.prepareNative(file, path.dirname(file)));
+      pending ??= withoutCompilerFileReads(initialize);
+      const { importCompilerSource } = await pending;
+      if (Atomics.load(closed, 0)) throw new Error('Compiler module load outlived its build');
+      // Enter through the checked native resolver; tsx's scoped import protocol bypasses it.
+      const url = pathToFileURL(file);
+      url.searchParams.set('tsx-namespace', namespace);
+      return importCompilerSource(url.href);
     },
-    dispose() { closed = true; hooks?.deregister(); },
+    dispose(): Promise<void> {
+      stopping ??= (async () => {
+        Atomics.store(closed, 0, 1);
+        hooks?.deregister();
+        const loaded = await pending?.catch(() => undefined);
+        if (loaded) {
+          try { await loaded.modules.unregister(); }
+          finally { loaded.commonjs.unregister(); }
+        }
+      })();
+      return stopping;
+    },
   };
 }
