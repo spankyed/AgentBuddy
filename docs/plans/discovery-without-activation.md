@@ -277,6 +277,54 @@ these boundaries; neither a hash-only options patch nor silently stripping optio
 coherent execution. All remaining discovery and goal phases stay required.
 
 
+### Launch-capture proof and native-view prerequisite (2026-10-16)
+
+The disposable proof runs `--require`, `--import` and a transforming `--experimental-loader` from
+captured copies, after changing and then deleting their original source directory. It exercises the
+actual CLI, TypeScript/JSX content compiler, backend esbuild and Vue frontend bundle. Captured preload
+values reach compiled content; CJS source globals, ESM metadata, loader origin and relative resolution
+retain logical source paths. Relocating the captured copies between two full builds changes none of
+14 output digests. This is evidence for the execution boundary, not a complete input receipt.
+
+One tempting implementation fails before the compiler starts: installing the same synchronous ESM
+hook from an early CJS preload also installs it in Node's loader thread, where the probe fails with
+`resolveSync() method is not implemented`. The successful probe uses CJS resolution/compilation hooks
+in the prefix preload and an earlier asynchronous ESM byte-projection loader. It does not replay user
+preloads after loading the compiler, change their relative order, or require their original modules.
+
+Source `0c038442b` removes TypeScript activation from the native file view. Its compiler adapter now
+supplies glob enumeration; queries retain that provider for validation. A bundled view has only five
+local native modules and loads/reads/disposes without loading TypeScript. That production view also
+runs in the successful prefix-preload probe, in both the main and loader threads.
+
+Keep the working prototype saved, not installed as runtime code: stash
+`989c457c4a543270f395014e28084d58641ebcb3` includes the portable experiment under
+`scripts/launch-capture-proof.mjs`. Its portable packaging is syntax-checked; the executed proof and
+raw results are `/private/tmp/apack-launch-proof-native-view.mjs`,
+`/private/tmp/apack-launch-proof-native-view.log`, and fixture
+`/private/var/folders/4p/krfrhcfn4497f_6_ks06f9dr0000gn/T/apack-launch-proof-dEMOac`.
+
+The next implementation must connect this boundary to the existing owners, rather than add another
+source scanner or treat this prototype's hand-maintained fixture as an input inventory:
+
+1. Define the pre-startup handoff from the selected captured compiler, existing package/input traversal
+   and logical path projection. Preserve effective user options and native preload/loader ordering;
+   identify internal instrumentation by the process that owns it, not by an option-name blacklist.
+2. Give main and loader threads one coherent capture/observation contract. Reuse native file/query
+   semantics, include newly observed external inputs and reject conflicting observations of one source.
+   Avoid synchronous main-thread RPC from loader callbacks; prove `import.meta.resolve` stays live.
+3. Reuse that frame after preloads during actual compilation. Final original-input validation must
+   reject changes/deletions made after capture; the prototype deliberately does not enforce that
+   producer rule. Only then bind the frame to sealed output and enable passive receipt consumers.
+4. Give backend and frontend one compiler-generation owner. Ordinary source edits need fresh build/
+   transform views and live original-path watches, preserving Vue HMR. Compiler/preload changes must
+   replace both consumers through a checked generation handoff. A one-off frontend bundle is not proof
+   of the live development contract; exercise that path before settling the complete session design.
+
+Generic module/data capture, options beyond these probes, native resource/Windows/detached-process
+ownership, coherent cross-thread observations and live HMR remain required. This proof does not justify
+publishing incomplete receipts, activating packs for discovery, or deferring any remaining goal phase.
+
 ### Execution ownership audit after phase-cache publication
 
 Transport prerequisite `58f7f3b47` now uses one bootstrap-safe Node option tokenizer/formatter across

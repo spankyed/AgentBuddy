@@ -120,7 +120,7 @@ naming branch is not an automatic source of future changes.
 
 ### Current handoff — compiler checkpoint (2026-10-16)
 
-Latest source is `58f7f3b47` (Node option transport checkpoint below). Preceding ESM source `f67c8d066`:
+Latest source is `0c038442b` (native-view/bootstrap proof checkpoint below). Preceding ESM source `f67c8d066`:
 ESM execution now has logical source URLs and filenames while native
 resolution and source reads use the owned tree. A private loader below tsx only projects bytes; it
 makes no main-thread RPC. The input owner and loader share one storage mapping. Native entrypoint
@@ -145,6 +145,29 @@ bridge extraction (35.47s). The final packaged JSX/metadata worker passes in 36.
 packaging cases (9), CLI typecheck and lint pass. The bridge also runs on Electron's Node 22.17.1.
 Logs: `/private/tmp/apack-module-metadata-{before,focused,jsx-before,entry-final,native-entry,
 worker-native-entry,tree,packaging,types-complete,lint-complete}.log`. No broad gate repeated.
+
+Native-view/bootstrap proof checkpoint `0c038442b` removes the native input view's runtime
+TypeScript dependency. The active compiler supplies glob enumeration, and the captured query retains
+that reader for live validation. All in-tree callers migrate directly; no optional unconfigured reader,
+second scanner or compatibility surface is introduced. Seventeen view/tree cases pass (0.493s), the
+real stale-byte/new-root/no-program-rebuild case passes (7.60s), and CLI typecheck/lint/diff checks pass.
+Logs: `/private/tmp/apack-native-view-{unit,validation,types}.log`.
+
+A disposable pre-startup snapshot proof exercises actual CLI, TypeScript/JSX, backend and Vue paths.
+It preserves CJS/ESM preload order, transforming-loader effects, source globals and relative module
+resolution after original preload modules are deleted. The production native view initializes first
+without loading TypeScript. Two full builds using different captured-copy directories produce the
+same 14 output digests. The failed all-thread synchronous-hook variant establishes a real loader-thread
+constraint; the successful boundary separates CJS hooks from an earlier asynchronous ESM byte loader.
+The owning discovery plan records the alternatives, exact proof paths and next contract requirements.
+The portable prototype is preserved in stash `989c457c4a543270f395014e28084d58641ebcb3`; existing
+stashes remain untouched. No broad gate repeated or existing deadline changed.
+
+The prototype is not production launch ownership: it has a fixture-only inventory, incomplete query
+coverage and no final original-input refusal/receipt association. Cross-thread observations, the
+pre-startup handoff, complete runtime/native/process ownership, actual HMR generation changes and
+passive freshness remain required, together with every later goal phase and final committed-source
+strict --all acceptance. Do not switch freshness consumers based on this proof.
 
 Node option transport checkpoint `58f7f3b47` adapts the reviewed parser prerequisite from preserved
 stash `c42116fb46a385b5f6065a4fb9cd9e68e2625b80`; the stash is untouched. One plain JavaScript owner
