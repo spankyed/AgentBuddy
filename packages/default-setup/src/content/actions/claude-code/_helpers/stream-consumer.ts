@@ -127,6 +127,10 @@ export async function consumeStream(
   let toolActivity = initialWriters.toolActivity;
   let thinking = initialWriters.thinking;
   let currentMessageHasCliUuid = false;
+  const toolOwners = new Map<string, typeof toolActivity>();
+  const nestedToolRoots = new Map<string, string>();
+  const nestedMessageIds = new Set<string>();
+  let nestedToolErrors = false;
   let priorSegmentToolCount = 0;
   let priorSegmentsHadToolErrors = false;
 
@@ -181,6 +185,41 @@ export async function consumeStream(
 
       if (eventCount <= 5 || eventCount % 20 === 0) {
         log.debug('stream event', { n: eventCount, type: line?.type, line });
+      }
+
+      // Native subagents share this stream but do not own the parent's transcript or rewind UUID.
+      // Keep completed nested activity with the launching tool; partial/thinking deltas stay out of
+      // the parent writer. Permission requests still use the normal correlated approval path below.
+      if (typeof line.parent_tool_use_id === 'string' && line.parent_tool_use_id
+        && (line.type === 'assistant' || line.type === 'user' || line.type === 'stream_event')) {
+        const rootId = nestedToolRoots.get(line.parent_tool_use_id) ?? line.parent_tool_use_id;
+        const target = toolOwners.get(rootId);
+        if (target && line.type !== 'stream_event' && Array.isArray(line.message?.content)) {
+          if (typeof line.uuid === 'string' && nestedMessageIds.has(line.uuid)) continue;
+          if (nestedMessageIds.size < 4096 && typeof line.uuid === 'string') nestedMessageIds.add(line.uuid);
+          const parts: string[] = [];
+          for (const block of line.message.content) {
+            if (block?.type === 'text' && typeof block.text === 'string') parts.push(block.text);
+            else if (block?.type === 'tool_use' && typeof block.name === 'string') {
+              if (typeof block.id === 'string' && nestedToolRoots.size < 4096) nestedToolRoots.set(block.id, rootId);
+              if (FILE_MUTATION_TOOLS.has(block.name) && block.input) {
+                const path = block.input.file_path || block.input.path;
+                if (typeof path === 'string' && !mutatedPathsSet.has(path)) { mutatedPathsSet.add(path); mutatedPaths.push(path); }
+              }
+              parts.push(`${block.name}: ${block.input && typeof block.input === 'object' ? shortenInput(block.input) : ''}`);
+            } else if (block?.type === 'tool_result') {
+              nestedToolErrors ||= block.is_error === true;
+              parts.push(`${block.is_error ? 'Tool error' : 'Tool result'}: ${extractToolResultText(block.content)}`);
+            }
+          }
+          const content = parts.join('\n').trim();
+          if (content) {
+            const previous = target.entries.find(entry => entry.id === rootId)?.details?.output ?? '';
+            const output = `${previous}${previous ? '\n\n' : ''}${content}`;
+            target.update(rootId, { outputSummary: 'Subagent activity', details: { output: output.length > 65536 ? `${output.slice(0, 65536)}\n[Subagent activity truncated]` : output } });
+          }
+        }
+        continue;
       }
 
       // Split into a new message after approval/question answer — but only
@@ -269,13 +308,15 @@ export async function consumeStream(
             thinking.stopDirectWrites();
             writer.flush();
             const summary = block.input ? shortenInput(block.input) : '';
+            const toolId = block.id || `tu-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
             toolActivity.append({
-              id: block.id || `tu-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+              id: toolId,
               tool: block.name,
               summary,
               status: 'running',
               details: { input: block.input },
             });
+            toolOwners.set(toolId, toolActivity);
             if (FILE_MUTATION_TOOLS.has(block.name) && block.input) {
               const p = (block.input as any).file_path || (block.input as any).path;
               if (typeof p === 'string' && !mutatedPathsSet.has(p)) {
@@ -584,7 +625,7 @@ export async function consumeStream(
     // to a permanently un-resumable session.
     const isErrorResult = result.subtype != null && result.subtype !== 'success';
 
-    const hadToolErrors = priorSegmentsHadToolErrors || toolActivity.entries.some(e => e.status === 'error');
+    const hadToolErrors = nestedToolErrors || priorSegmentsHadToolErrors || toolActivity.entries.some(e => e.status === 'error');
 
     if (isErrorResult) {
       const errorText = Array.isArray(result.errors) ? result.errors.join('; ') : `CLI error: ${result.subtype}`;
@@ -668,7 +709,7 @@ export async function consumeStream(
         sessionId: result.sessionId,
         costUsd: result.totalCostUsd,
         durationMs: result.durationMs,
-        toolCallCount: priorSegmentToolCount + toolActivity.entries.length,
+        toolCallCount: priorSegmentToolCount + toolActivity.entries.length + nestedToolRoots.size,
         mutatedFileCount: mutatedPaths.length,
         mutatedPaths,
         hadErrors: !!hadToolErrors || !!isErrorResult,
@@ -738,7 +779,7 @@ export async function consumeStream(
           sessionId: resultFromLine?.sessionId || state?.sessionId || '',
           costUsd: resultFromLine?.totalCostUsd ?? 0,
           durationMs: resultFromLine?.durationMs ?? 0,
-          toolCallCount: priorSegmentToolCount + toolActivity.entries.length,
+          toolCallCount: priorSegmentToolCount + toolActivity.entries.length + nestedToolRoots.size,
           mutatedFileCount: mutatedPaths.length,
           mutatedPaths,
           hadErrors: !!segmentHadErrors,

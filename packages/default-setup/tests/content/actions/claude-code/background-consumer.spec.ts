@@ -37,6 +37,49 @@ describe('background continuation action consumer', () => {
     expect(mapped).toEqual([['app-user', { context: { cliUuid: 'host-input' } }]]);
   });
 
+  it('keeps nested prose, thinking, tools and UUIDs out of the parent while retaining launching-tool details', async () => {
+    const { id } = repository.threadCommands.create({ topic: 'Nested Agent', instructions: '', tags: [] });
+    const update = vi.fn(), emit = vi.fn();
+    mockService<Services, 'chat'>('chat', { updateMessageState: update });
+    mockService<Services, 'logger'>('logger', { debug: vi.fn(), info: vi.fn(), warn: vi.fn(), error: vi.fn() });
+    mockService<Services, 'emitter'>('emitter', { sendToSystem: emit, broadcastToPlugin: vi.fn() });
+    const child = { type: 'assistant', uuid: 'child-uuid', parent_tool_use_id: 'agent-tool', message: { content: [
+      { type: 'text', text: 'Private worker response' }, { type: 'tool_use', id: 'nested-read', name: 'Read', input: { file_path: '/fixture/child.txt' } },
+      { type: 'tool_use', id: 'nested-write', name: 'Write', input: { file_path: '/fixture/changed.txt' } },
+    ] } };
+    const lines = [
+      { type: 'assistant', uuid: 'parent-tool-uuid', message: { content: [{ type: 'tool_use', id: 'agent-tool', name: 'Agent', input: { prompt: 'worker' } }] } },
+      { type: 'user', message: { content: [{ type: 'tool_result', tool_use_id: 'agent-tool', content: 'Launched in background' }] } },
+      { type: 'stream_event', parent_tool_use_id: 'agent-tool', event: { type: 'message_start' } },
+      { type: 'stream_event', parent_tool_use_id: 'agent-tool', event: { type: 'content_block_delta', delta: { type: 'thinking_delta', thinking: 'Worker thinking' } } },
+      { type: 'stream_event', parent_tool_use_id: 'agent-tool', event: { type: 'content_block_delta', delta: { type: 'text_delta', text: 'Worker partial' } } },
+      child, child,
+      { type: 'user', uuid: 'nested-result', parent_tool_use_id: 'agent-tool', message: { content: [{ type: 'tool_result', tool_use_id: 'nested-read', content: 'Worker file result' }] } },
+      { type: 'assistant', uuid: 'grandchild-uuid', parent_tool_use_id: 'nested-read', message: { content: [{ type: 'text', text: 'Nested descendant response' }] } },
+      { type: 'assistant', uuid: 'foreign-child-uuid', parent_tool_use_id: 'foreign-tool', message: { content: [{ type: 'text', text: 'Foreign worker' }] } },
+      { type: 'assistant', uuid: 'parent-reply-uuid', message: { content: [{ type: 'text', text: 'Parent response only' }] } },
+      { type: 'result', subtype: 'success', session_id: 'fixture', result: 'Parent response only' },
+    ];
+    const handle = { events: (async function* () { yield* lines; })(), hasPendingBackgroundTasks: () => false, close: vi.fn(async () => {}) };
+    mockService<Services, 'cli'>('cli', { claudeCode: { getHandle: vi.fn(() => handle), clearHandle: vi.fn() } as never });
+    const messageId = 'nested-parent' as EntityId;
+    const thinking = createThinkingWriter(services, messageId);
+    const tools = createToolActivityWriter(services, messageId, { getThinkingBlock: () => thinking.buildBlock() });
+    const writer = createStreamWriter(services, messageId);
+    await consumeStream(handle, { services, threadId: id, text: 'Host' }, { messageId, thinking, toolActivity: tools, writer });
+    expect(writer.text).toBe('Parent response only');
+    expect(emit).toHaveBeenCalledWith(expect.anything(), expect.objectContaining({ eventType: 'cc.stream.completed', payload: expect.objectContaining({ toolCallCount: 3, mutatedPaths: ['/fixture/changed.txt'] }) }));
+    expect(tools.entries.map(entry => entry.tool)).toEqual(['Agent']);
+    expect(tools.entries[0]?.details?.output).toContain('Launched in background');
+    expect(tools.entries[0]?.details?.output?.match(/Private worker response/g)).toHaveLength(1);
+    expect(tools.entries[0]?.details?.output).toContain('Worker file result');
+    expect(tools.entries[0]?.details?.output).toContain('Nested descendant response');
+    expect(tools.entries[0]?.details?.output).not.toContain('Worker partial');
+    expect(tools.entries[0]?.details?.output).not.toContain('Foreign worker');
+    expect(update.mock.calls.filter(([, patch]) => patch.context?.cliUuid).map(([, patch]) => patch.context.cliUuid)).toEqual(['parent-tool-uuid', 'parent-reply-uuid']);
+    expect(update.mock.calls.some(([, patch]) => JSON.stringify(patch.blocks ?? []).includes('Worker thinking'))).toBe(false);
+  });
+
   it('persists follow-up assistant output and uses the final cumulative usage', async () => {
     const { id } = repository.threadCommands.create({ topic: 'Background', instructions: '', tags: [] });
     repository.threadCommands.update(id, { context: { claudeCode: { isRunning: true } } });
