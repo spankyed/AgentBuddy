@@ -446,6 +446,12 @@ export async function consumeStream(
           continue;
         }
 
+        if (req.subtype === 'request_user_dialog') {
+          handle.cancelUserDialog(requestId);
+          services.chat.sendBlockMessage({ threadId, text: 'Claude Code requested a dialog that this app cannot display. The request was cancelled.', blocks: [], forkable: false });
+          continue;
+        }
+
         // Reject malformed requests missing a tool name.
         if (!req.tool_name) {
           log.warn('control_request missing tool_name, denying', { requestId });

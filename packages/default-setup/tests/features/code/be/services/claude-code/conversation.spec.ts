@@ -11,6 +11,7 @@ function fixture() {
     send: vi.fn(() => `input-${++sequence}`),
     respond: vi.fn(),
     respondElicitation: vi.fn(),
+    cancelUserDialog: vi.fn(),
     close: vi.fn(async () => { events.end() }),
     kill: vi.fn(() => { events.end() }),
     hasPendingBackgroundTasks: vi.fn(() => false),
@@ -284,4 +285,31 @@ it('validates accepted MCP content against the original pending schema before re
  expect(()=>turn!.handle.respondElicitation('form',{action:'accept',content:{choice:'Gamma'}})).toThrow('invalid MCP elicitation content');expect(f.native.respondElicitation).not.toHaveBeenCalled();expect(owner.hasPendingElicitation('form')).toBe(true);
  turn!.handle.respondElicitation('form',{action:'accept',content:{choice:'Beta'}});expect(f.native.respondElicitation).toHaveBeenCalledWith('form',{action:'accept',content:{choice:'Beta'}});expect(owner.hasPendingElicitation('form')).toBe(false);
  f.push(result(1,id));await vi.waitFor(()=>expect(owner.busy).toBe(false));await owner.close();
+});
+
+
+it('serializes generic dialogs with permissions and rejects wrong, withdrawn and duplicate responses', async () => {
+  const f = fixture(); const received: StreamLine[] = [];
+  const owner = createClaudeConversation(f.native, async () => {});
+  const id = owner.start('input', async turn => { for await (const line of turn.handle.events) received.push(line); owner.release(turn.handle); });
+  f.push(started(id));
+  f.push({ type: 'control_request', request_id: 'dialog', request: { subtype: 'request_user_dialog', dialog_kind: 'fixture', payload: {} } });
+  f.push({ type: 'control_request', request_id: 'tool', request: { subtype: 'can_use_tool', tool_name: 'Bash', input: {} } });
+  await vi.waitFor(() => expect(received.filter(line => line.type === 'control_request')).toHaveLength(1));
+  expect(() => owner.handle.respond('dialog', { behavior: 'deny' })).toThrow('own response type');
+  expect(() => owner.handle.cancelUserDialog('tool')).toThrow('no longer pending');
+  vi.mocked(f.native.cancelUserDialog).mockImplementationOnce(() => { throw new Error('write failed'); });
+  expect(() => owner.handle.cancelUserDialog('dialog')).toThrow('write failed');
+  expect(received.filter(line => line.type === 'control_request')).toHaveLength(1);
+  owner.handle.cancelUserDialog('dialog');
+  await vi.waitFor(() => expect(received.filter(line => line.type === 'control_request')).toHaveLength(2));
+  expect(() => owner.handle.cancelUserDialog('dialog')).toThrow('no longer pending');
+  owner.handle.respond('tool', { behavior: 'deny', message: 'Fixture' });
+  f.push({ type: 'control_request', request_id: 'withdrawn', request: { subtype: 'request_user_dialog', dialog_kind: 'fixture', payload: {} } });
+  f.push({ type: 'control_cancel_request', request_id: 'withdrawn' });
+  await vi.waitFor(() => expect(received.some(line => line.type === 'control_cancel_request')).toBe(true));
+  expect(() => owner.handle.cancelUserDialog('withdrawn')).toThrow('no longer pending');
+  expect(f.native.cancelUserDialog).toHaveBeenCalledTimes(2);
+  expect(f.native.respond).toHaveBeenCalledTimes(1);
+  f.push(result(1, id)); await vi.waitFor(() => expect(owner.busy).toBe(false)); await owner.close();
 });

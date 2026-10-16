@@ -6430,14 +6430,14 @@ declare const PermissionEditSchema: z.ZodDiscriminatedUnion<"op", [z.ZodObject<{
     behavior: z.ZodEnum<["allow", "deny", "ask"]>;
     destination: z.ZodEnum<["userSettings", "projectSettings", "localSettings"]>;
 }, "strict", z.ZodTypeAny, {
+    op: "add";
     rules: string[];
     behavior: "allow" | "ask" | "deny";
-    op: "add";
     destination: "localSettings" | "projectSettings" | "userSettings";
 }, {
+    op: "add";
     rules: string[];
     behavior: "allow" | "ask" | "deny";
-    op: "add";
     destination: "localSettings" | "projectSettings" | "userSettings";
 }>, z.ZodObject<{
     op: z.ZodLiteral<"remove">;
@@ -6445,15 +6445,15 @@ declare const PermissionEditSchema: z.ZodDiscriminatedUnion<"op", [z.ZodObject<{
     behavior: z.ZodEnum<["allow", "deny", "ask"]>;
     source: z.ZodEnum<["userSettings", "projectSettings", "localSettings"]>;
 }, "strict", z.ZodTypeAny, {
-    source: "localSettings" | "projectSettings" | "userSettings";
+    op: "remove";
     behavior: "allow" | "ask" | "deny";
     rule: string;
-    op: "remove";
+    source: "localSettings" | "projectSettings" | "userSettings";
 }, {
-    source: "localSettings" | "projectSettings" | "userSettings";
+    op: "remove";
     behavior: "allow" | "ask" | "deny";
     rule: string;
-    op: "remove";
+    source: "localSettings" | "projectSettings" | "userSettings";
 }>]>;
 
 /** Caller hook: decide a tool permission request. */
@@ -6646,6 +6646,8 @@ interface QueryHandle {
     }): void;
     /** Answer a native MCP elicitation, independently of tool permission. */
     respondElicitation(requestId: string, response: ClaudeMcpElicitationAnswer): void;
+    /** Cancel an unsupported generic dialog without consenting or using a tool response. */
+    cancelUserDialog(requestId: string): void;
     /** Cancel the current turn and await its native acknowledgement; optionally cancel queued inputs. */
     interrupt(options?: {
         cancelQueued?: boolean;

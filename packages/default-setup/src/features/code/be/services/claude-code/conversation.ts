@@ -77,7 +77,7 @@ export function createClaudeConversation(native: QueryHandle, consumeAutonomous:
   let cumulativeCost = 0
   let consumerFailure: unknown
   const listeners = new Set<(event: StreamLine) => void>()
-  // Native workers can ask concurrently; the app presents one permission or elicitation while retaining every request.
+  // Native workers can ask concurrently; the app presents one permission, elicitation or generic dialog while retaining every request.
   const interactionRequests = new Map<string, { line: StreamLine; subtype: string }>()
   const settledInteractions = new Set<string>()
   let presentedInteraction: string | undefined
@@ -101,6 +101,7 @@ export function createClaudeConversation(native: QueryHandle, consumeAutonomous:
   const processHandle: QueryHandle = { ...native, respond(requestId, response) {
     if (settledInteractions.has(requestId)) throw new ClaudeProtocolError('native permission request has already settled')
     if (interactionRequests.get(requestId)?.subtype === 'elicitation') throw new ClaudeProtocolError('MCP elicitation requires its own response type')
+    if (interactionRequests.get(requestId)?.subtype === 'request_user_dialog') throw new ClaudeProtocolError('generic dialog requires its own response type')
     native.respond(requestId, response)
     if (interactionRequests.has(requestId)) {
       retireInteraction(requestId)
@@ -118,6 +119,13 @@ export function createClaudeConversation(native: QueryHandle, consumeAutonomous:
       if (!validateMcpElicitationForm(form, response.content).valid) throw new ClaudeProtocolError('invalid MCP elicitation content')
     }
     native.respondElicitation(requestId, response)
+    retireInteraction(requestId)
+    try { showNextInteraction() } catch (error) {
+      closing = true; activity.close(); clearInteractions(); native.kill(); throw error
+    }
+  }, cancelUserDialog(requestId) {
+    if (settledInteractions.has(requestId) || interactionRequests.get(requestId)?.subtype !== 'request_user_dialog') throw new ClaudeProtocolError('generic dialog is no longer pending')
+    native.cancelUserDialog(requestId)
     retireInteraction(requestId)
     try { showNextInteraction() } catch (error) {
       closing = true; activity.close(); clearInteractions(); native.kill(); throw error
@@ -178,7 +186,7 @@ export function createClaudeConversation(native: QueryHandle, consumeAutonomous:
           const parsed = ControlRequestLineSchema.safeParse(event)
           if (!parsed.success) throw new ClaudeProtocolError('malformed native control request')
           const request = parsed.data
-          if (request.request.subtype === 'can_use_tool' || request.request.subtype === 'elicitation') {
+          if (request.request.subtype === 'can_use_tool' || request.request.subtype === 'elicitation' || request.request.subtype === 'request_user_dialog') {
             const id = request.request_id
             if (!id) throw new ClaudeProtocolError('native permission request has no identity')
             if (settledInteractions.has(id) || interactionRequests.has(id)) continue

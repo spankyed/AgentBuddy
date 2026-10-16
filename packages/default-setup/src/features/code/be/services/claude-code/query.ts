@@ -95,6 +95,8 @@ export interface QueryHandle {
   respond(requestId: string, response: { behavior: 'allow' | 'deny'; message?: string; updatedInput?: unknown }): void
   /** Answer a native MCP elicitation, independently of tool permission. */
   respondElicitation(requestId: string, response: ClaudeMcpElicitationAnswer): void
+  /** Cancel an unsupported generic dialog without consenting or using a tool response. */
+  cancelUserDialog(requestId: string): void
   /** Cancel the current turn and await its native acknowledgement; optionally cancel queued inputs. */
   interrupt(options?: { cancelQueued?: boolean }): Promise<ClaudeInterruptReceipt>
   /** Rename the native session; an explicit ID protects against renaming a different session. */
@@ -278,6 +280,11 @@ export async function query(opts: QueryOptions): Promise<QueryHandle> {
       const valid = z.object({ action: z.enum(['accept', 'decline', 'cancel']), content: z.record(z.union([z.string(), z.number().finite(), z.boolean(), z.array(z.string())])).optional() }).strict().parse(response)
       if (valid.action !== 'accept' && valid.content !== undefined) throw new ClaudeProtocolError('only accepted MCP elicitation can contain content')
       if (!stream.write({ type: 'control_response', response: { subtype: 'success', request_id: id, response: valid } })) throw new ClaudeProtocolError('could not send elicitation response: stdin is closed')
+    },
+
+    cancelUserDialog(requestId): void {
+      const id = z.string().min(1).parse(requestId)
+      if (!stream.write({ type: 'control_response', response: { subtype: 'success', request_id: id, response: { behavior: 'cancelled' } } })) throw new ClaudeProtocolError('could not send dialog cancellation: stdin is closed')
     },
 
     async interrupt(options: { cancelQueued?: boolean } = {}): Promise<ClaudeInterruptReceipt> {

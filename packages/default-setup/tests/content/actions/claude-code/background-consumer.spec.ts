@@ -192,3 +192,31 @@ describe('background continuation action consumer', () => {
   });
 
 });
+
+
+it('cancels an unsupported generic dialog without sending tool denial, pausing or opening UI input', async () => {
+  const { id } = repository.threadCommands.create({ topic: 'Unsupported native dialog', instructions: '', tags: [] });
+  const sendBlockMessage = vi.fn(), emit = vi.fn();
+  mockService<Services, 'chat'>('chat', { updateMessageState: vi.fn(), sendBlockMessage });
+  mockService<Services, 'logger'>('logger', { debug: vi.fn(), info: vi.fn(), warn: vi.fn(), error: vi.fn() });
+  mockService<Services, 'emitter'>('emitter', { sendToSystem: emit, broadcastToPlugin: vi.fn() });
+  const cancelUserDialog = vi.fn(), respond = vi.fn();
+  const lines = [
+    { type: 'control_request', request_id: 'native-dialog', request: { subtype: 'request_user_dialog', dialog_kind: 'fable_overage_consent_prompt', payload: { modelName: 'Fixture' } } },
+    { type: 'result', subtype: 'success', session_id: 'fixture', result: 'Done' },
+  ];
+  const handle = { events: (async function* () { yield* lines; })(), cancelUserDialog, respond,
+    hasPendingBackgroundTasks: () => false, close: vi.fn(async () => {}), kill: vi.fn() };
+  mockService<Services, 'cli'>('cli', { claudeCode: { getHandle: vi.fn(() => handle), clearHandle: vi.fn() } as never });
+  const messageId = 'dialog-assistant' as EntityId;
+  const thinking = createThinkingWriter(services, messageId);
+  await consumeStream(handle, { services, activity: createClaudeNestedActivity(), threadId: id, text: 'Fixture' }, {
+    messageId, writer: createStreamWriter(services, messageId), thinking,
+    toolActivity: createToolActivityWriter(services, messageId, { getThinkingBlock: () => thinking.buildBlock() }),
+  });
+  expect(cancelUserDialog).toHaveBeenCalledWith('native-dialog');
+  expect(respond).not.toHaveBeenCalled();
+  expect(sendBlockMessage).toHaveBeenCalledWith(expect.objectContaining({ text: expect.stringContaining('cannot display'), blocks: [] }));
+  expect(emit).not.toHaveBeenCalledWith(expect.anything(), expect.objectContaining({ eventType: 'cc.stream.paused' }));
+  expect(handle.kill).not.toHaveBeenCalled();
+});

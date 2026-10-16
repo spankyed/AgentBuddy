@@ -1069,3 +1069,17 @@ describe('independent MCP elicitation responses', () => {
   await handle.close();
  });
 });
+
+
+it('cancels generic dialogs with their own correlated response, rejects missing identity and failed writes', async () => {
+  const mock = makeMockStream(); vi.spyOn(runner, 'spawnStream').mockResolvedValue(mock.handle);
+  const handle = await query({ surfaceControlRequests: true });
+  handle.cancelUserDialog('dialog-fixture');
+  expect(mock.writes.at(-1)).toEqual({ type: 'control_response', response: { subtype: 'success', request_id: 'dialog-fixture', response: { behavior: 'cancelled' } } });
+  const before = mock.writes.length;
+  expect(() => handle.cancelUserDialog('')).toThrow();
+  expect(mock.writes).toHaveLength(before);
+  vi.spyOn(mock.handle, 'write').mockReturnValue(false);
+  expect(() => handle.cancelUserDialog('dialog-fixture')).toThrow('stdin is closed');
+  await handle.close();
+});
