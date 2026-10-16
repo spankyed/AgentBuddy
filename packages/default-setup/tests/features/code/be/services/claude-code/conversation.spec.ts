@@ -408,3 +408,30 @@ it('can close the process from a consumer after explicitly releasing its termina
  f.push(started(input));f.push(result(1,input));
  await vi.waitFor(()=>expect(completed).toBe(true),{timeout:700});await owner.done;expect(f.native.close).toHaveBeenCalledOnce();
 });
+
+
+it('resets active and future cost baselines when native clears its ledger', async () => {
+  const f = fixture()
+  const charges: number[] = []
+  const consume = async (turn: ClaudeConversationTurn) => {
+    for await (const event of turn.handle.events) {
+      if (event.type === 'result') charges.push(Math.max(0, Number(event.total_cost_usd) - turn.costBaseline))
+    }
+    owner.release(turn.handle)
+  }
+  const owner = createClaudeConversation(f.native, consume)
+  const first = owner.start('first', consume)
+  f.push(started(first)); f.push(result(2, first))
+  await vi.waitFor(() => expect(owner.busy).toBe(false))
+  const clear = owner.start('/clear', consume)
+  f.push(started(clear)); f.push({ type: 'conversation_reset', new_conversation_id: 'conversation-only-id' })
+  f.push({ type: 'system', subtype: 'init', session_id: 'new-session' })
+  f.push({ ...result(0.5, clear), session_id: 'new-session' })
+  await vi.waitFor(() => expect(owner.busy).toBe(false))
+  expect(owner.sessionId).toBe('new-session')
+  const next = owner.start('after clear', consume)
+  f.push(started(next)); f.push({ ...result(1.5, next), session_id: 'new-session' })
+  await vi.waitFor(() => expect(owner.busy).toBe(false))
+  expect(charges).toEqual([2, 0.5, 1])
+  await owner.close()
+})

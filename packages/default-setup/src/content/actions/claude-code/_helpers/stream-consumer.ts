@@ -101,7 +101,7 @@ export async function consumeConversationTurn(turn: ClaudeConversationTurn, ctx:
   services.cli.claudeCode.storeHandle(threadId, turn.handle);
   setRunning(services, threadId, true);
   updateChatState(services, threadId, 'working');
-  await consumeStream(turn.handle, { ...ctx, persistent: true, costBaseline: turn.costBaseline, activity: turn.activity }, writers);
+  await consumeStream(turn.handle, { ...ctx, persistent: true, get costBaseline() { return turn.costBaseline; }, activity: turn.activity }, writers);
 }
 
 /**

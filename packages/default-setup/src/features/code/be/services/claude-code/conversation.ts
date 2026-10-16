@@ -194,6 +194,14 @@ export function createClaudeConversation(native: QueryHandle, consumeAutonomous:
     try {
       for await (const event of native.events) {
         const line = event as Record<string, unknown>
+        if (line.type === 'conversation_reset') {
+          if (typeof line.new_conversation_id !== 'string' || !line.new_conversation_id.trim()) {
+            throw new ClaudeProtocolError('native conversation reset has no identity')
+          }
+          // Native resets its cost ledger independently of the later session/init identity.
+          cumulativeCost = 0
+          if (active) active.turn.costBaseline = 0
+        }
         if (line.type === 'system' && line.subtype === 'init') {
           if (typeof line.session_id === 'string' && line.session_id) sessionId = line.session_id
           if (typeof line.cwd === 'string' && line.cwd) sessionCwd = line.cwd

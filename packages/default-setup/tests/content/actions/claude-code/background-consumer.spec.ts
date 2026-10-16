@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { mockService } from '@apackdev/testing/harness';
 import { services, type Services, type EntityId } from '#generated/services.ts';
 import { repository } from '#generated/repository.ts';
-import { consumeStream } from '../../../../src/content/actions/claude-code/_helpers/stream-consumer.ts';
+import { consumeStream, consumeConversationTurn } from '../../../../src/content/actions/claude-code/_helpers/stream-consumer.ts';
 import { createStreamWriter } from '../../../../src/content/actions/claude-code/_helpers/stream-writer.ts';
 import { createThinkingWriter } from '../../../../src/content/actions/claude-code/_helpers/thinking-writer.ts';
 import { createToolActivityWriter } from '../../../../src/content/actions/claude-code/_helpers/tool-activity-writer.ts';
@@ -277,3 +277,29 @@ it.each(['completed', 'failed', 'stopped', 'unavailable'])('keeps original Workf
   expect(services.chat.sendBlockMessage).not.toHaveBeenCalled();
   activity.close();
 });
+
+
+it('uses the owner baseline updated during a reset when emitting completion cost', async () => {
+  const { id } = repository.threadCommands.create({ topic: 'Reset cost', instructions: '', tags: [] })
+  const emit = vi.fn()
+  mockService<Services, 'chat'>('chat', { updateMessageState: vi.fn() })
+  mockService<Services, 'logger'>('logger', { debug: vi.fn(), info: vi.fn(), warn: vi.fn(), error: vi.fn() })
+  mockService<Services, 'emitter'>('emitter', { sendToSystem: emit, broadcastToPlugin: vi.fn() })
+  mockService<Services, 'cli'>('cli', { claudeCode: { storeHandle: vi.fn(), isCurrentTurn: () => true, clearHandle: vi.fn() } as never })
+  const activity = createClaudeNestedActivity()
+  const turn = { stopped: false, costBaseline: 2, activity, handle: {
+    events: (async function* () {
+      turn.costBaseline = 0
+      yield { type: 'conversation_reset', new_conversation_id: 'conversation-only-id' }
+      yield { type: 'result', subtype: 'success', session_id: 'new-session', total_cost_usd: 0.5 }
+    })(), hasPendingBackgroundTasks: () => false, close: vi.fn(), kill: vi.fn(),
+  } } as unknown as import('../../../../src/features/code/be/services/claude-code/conversation.ts').ClaudeConversationTurn
+  const messageId = 'reset-cost-message' as EntityId
+  const thinking = createThinkingWriter(services, messageId)
+  await consumeConversationTurn(turn, { services, threadId: id, text: '/clear' }, {
+    messageId, thinking, writer: createStreamWriter(services, messageId),
+    toolActivity: createToolActivityWriter(services, messageId, { getThinkingBlock: () => thinking.buildBlock() }),
+  })
+  expect(emit).toHaveBeenCalledWith(expect.anything(), expect.objectContaining({ eventType: 'cc.stream.completed', payload: expect.objectContaining({ sessionId: 'new-session', costUsd: 0.5 }) }))
+  activity.close()
+})
