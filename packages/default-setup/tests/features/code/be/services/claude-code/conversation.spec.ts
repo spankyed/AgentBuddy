@@ -12,6 +12,7 @@ function fixture() {
     respond: vi.fn(),
     respondElicitation: vi.fn(),
     cancelUserDialog: vi.fn(),
+    setModel: vi.fn().mockResolvedValue(undefined),
     close: vi.fn(async () => { events.end() }),
     kill: vi.fn(() => { events.end() }),
     hasPendingBackgroundTasks: vi.fn(() => false),
@@ -328,3 +329,50 @@ it('rejects an owned success subtype marked is_error without losing native resul
   expect(events.find(line => line.type === 'result')).toMatchObject({ total_cost_usd: 0.25, is_error: true });
   await owner.close();
 });
+
+
+describe('owned native model changes', () => {
+  it('serializes a pending acknowledgement against turns and other model mutations', async () => {
+    const f = fixture()
+    let acknowledge!: () => void
+    vi.mocked(f.native.setModel).mockImplementationOnce(() => new Promise<void>(resolve => { acknowledge = resolve }))
+    const owner = createClaudeConversation(f.native, async () => {})
+    const change = owner.handle.setModel('research-custom-model')
+    expect(owner.busy).toBe(true)
+    expect(owner.modelSelection).toBeUndefined()
+    expect(() => owner.start('overlap', async () => {})).toThrow('active input')
+    await expect(owner.handle.setModel('haiku')).rejects.toThrow('idle')
+    acknowledge()
+    await change
+    expect(owner.busy).toBe(false)
+    expect(owner.modelSelection).toBe('research-custom-model')
+    vi.mocked(f.native.setModel).mockRejectedValueOnce(new Error('policy refusal'))
+    await expect(owner.handle.setModel('sonnet')).rejects.toThrow('policy refusal')
+    expect(owner.modelSelection).toBe('research-custom-model')
+    expect(owner.busy).toBe(false)
+    await owner.close()
+  })
+
+  it('does not record selection when close wins the acknowledgement race', async () => {
+    const f = fixture()
+    let acknowledge!: () => void
+    vi.mocked(f.native.setModel).mockImplementationOnce(() => new Promise<void>(resolve => { acknowledge = resolve }))
+    const owner = createClaudeConversation(f.native, async () => {})
+    const change = owner.handle.setModel('haiku')
+    const rejected = expect(change).rejects.toThrow('closed')
+    await owner.close()
+    acknowledge()
+    await rejected
+    expect(owner.modelSelection).toBeUndefined()
+  })
+
+  it('refuses mutation while a host turn is pending', async () => {
+    const f = fixture()
+    const owner = createClaudeConversation(f.native, async () => {})
+    owner.start('pending', async () => {})
+    await expect(owner.handle.setModel('haiku')).rejects.toThrow('idle')
+    expect(f.native.setModel).not.toHaveBeenCalled()
+    owner.kill()
+    await owner.done
+  })
+})

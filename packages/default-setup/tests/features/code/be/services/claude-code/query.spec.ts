@@ -1096,3 +1096,28 @@ it('rejects a native success subtype marked is_error while retaining its streame
   expect(events).toContainEqual(raw);
   await handle.close();
 });
+
+
+it('correlates empty native model acknowledgements and preserves custom names and refusal', async () => {
+  const mock = makeMockStream()
+  vi.spyOn(runner, 'spawnStream').mockResolvedValue(mock.handle)
+  const handle = await query({})
+  const init = mock.writes[0] as { request_id: string }
+  mock.pushEvent({ type: 'control_response', response: { subtype: 'success', request_id: init.request_id, response: { commands: [], agents: [], models: [] } } })
+  await handle.initialized
+  const change = handle.setModel('research-custom-model')
+  await Promise.resolve()
+  const request = mock.writes[1] as { request_id: string; request: unknown }
+  expect(request.request).toEqual({ subtype: 'set_model', model: 'research-custom-model' })
+  mock.pushEvent({ type: 'control_response', response: { subtype: 'success', request_id: request.request_id } })
+  await expect(change).resolves.toBeUndefined()
+  const rejected = handle.setModel('haiku')
+  const assertion = expect(rejected).rejects.toThrow('policy refusal')
+  await Promise.resolve()
+  const denied = mock.writes[2] as { request_id: string }
+  mock.pushEvent({ type: 'control_response', response: { subtype: 'error', request_id: denied.request_id, error: 'policy refusal' } })
+  await assertion
+  await expect(handle.setModel('')).rejects.toThrow()
+  expect(mock.writes).toHaveLength(3)
+  await handle.close()
+})

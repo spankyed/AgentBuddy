@@ -119,6 +119,8 @@ export interface QueryHandle {
   getMcpStatus(): Promise<ClaudeMcpStatus>
   /** Read structured context usage; summary avoids per-category token-count API calls. */
   getContextUsage(): Promise<ClaudeContextUsage>
+  /** Change native model selection. Custom names may trigger API validation; ack has no effective model. */
+  setModel(model: string): Promise<void>
   /** Change the running CLI policy and return its acknowledged permission mode. */
   setPermissionMode(mode: PermissionMode): Promise<PermissionMode>
   /** Close stdin and wait for the child to exit. */
@@ -356,6 +358,12 @@ export async function query(opts: QueryOptions): Promise<QueryHandle> {
     async getContextUsage(): Promise<ClaudeContextUsage> {
       await initialized
       return ClaudeContextUsageSchema.parse(await hostControls.request({ subtype: 'get_context_usage', detail: 'summary' }))
+    },
+
+    async setModel(model: string): Promise<void> {
+      const selection = z.string().min(1).parse(model)
+      await initialized
+      await hostControls.request({ subtype: 'set_model', model: selection })
     },
 
     async setPermissionMode(mode: PermissionMode): Promise<PermissionMode> {
