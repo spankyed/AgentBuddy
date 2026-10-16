@@ -148,9 +148,20 @@ worker-native-entry,tree,packaging,types-complete,lint-complete}.log`. No broad 
 CommonJS deliberately retains per-tree filenames: a disposable proof found that logical CommonJS
 filenames reuse another generation's transitive cache. Its metadata/configuration semantics remain
 required, not excluded. Complete runtime/launch/preload closure, remaining entry variants and resource
-lifetimes, whole-build input receipts, watcher/publication alignment, frontend generations and every
+lifetimes, whole-build input receipts, frontend generations and every
 later goal phase remain open. Repeat-output and final committed-source strict --all acceptance are
 still required; focused evidence does not establish them.
+
+Checkpoint `8e64503cc` repairs the retained-builder fixture for the current worker protocol: a valid
+manifest, sealed output, exact candidate IPC, and diagnostics outside authored inputs. Existing compiler
+reuse, refresh, damaged-copy replacement, cancellation and cleanup assertions remain intact. The fixture
+makes copied staging directories writable because captured compiler inputs are read-only. Seven focused
+builder/publication cases pass (1.83s total); CLI typecheck and scoped lint pass. Logs:
+`/private/tmp/apack-builder-checkpoint-{final,types}.log`. An earlier sandboxed run also included frontend
+watcher cases and failed with native filesystem cleanup/watch errors (`EMFILE`); that is not acceptance
+evidence. No watcher source changed or broad gate repeated. Source inspection confirms the existing
+observe/accept boundary is already aligned with parent-owned verified publication; remove that stale
+implementation task, retaining frontend generation ownership and complete input receipts as required.
 
 Preceding source `a0c050a16`. Public build parents now hold the pack lock from worker startup
 through process closure and verified publication. Workers prepare/seal staging, report the candidate's
@@ -172,8 +183,9 @@ types-final,lint-final}.log`. No broad gate repeated.
 
 The candidate handoff is deliberately not the complete source/compiler input receipt. External and
 late-read input observations still need final serialization/provenance, coherent association and passive
-consumer migration. Align successful watcher-observation replacement with accepted publication, and
-finish resource ownership beyond the worker's own Node tasks (including descendant processes and
+consumer migration. Watcher observation replacement already follows accepted publication: `observe()`
+extends subscriptions during compilation, while `accept()` runs only after the parent builder returns
+from verified publication. No additional watcher mechanism is needed. Finish resource ownership beyond the worker's own Node tasks (including descendant processes and
 long-lived frontend compilers). Next inspect authored module metadata: import.meta.url currently names
 owned files, while native writes remain native; the output-swap fixture constructs a write URL this way.
 Resolve source-path semantics and deterministic output before treating executable input ownership as
