@@ -1,3 +1,5 @@
+import * as store from '#features/code/be/services/claude-code/handle-store.ts';
+import { getClaudeState } from '../../../../../../src/content/actions/claude-code/_helpers/thread-context.ts';
 import { readFileSync } from 'node:fs';
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { join, resolve } from 'node:path';
@@ -25,6 +27,16 @@ it.skipIf(!executable || !workspace)('routes native Skill listing and edits thro
  const app = await startApp({ systems: ['brain'] }); await app.runFlow('Claude Code');
  const { id } = repository.threadCommands.create({ topic: 'Native Skill commands', instructions: '', tags: [] });
  repository.threadCommands.update(id, { context: { claudeCode: { cwd } } });
+ const retained = process.env.CLAUDE_RESEARCH_RETAINED === '1';
+ if (retained) {
+  await writeFile(join(workspace!, '.claude', 'settings.json'), JSON.stringify({ apiKeyHelper: '/usr/bin/printf research-fixture-key' }));
+  const user = repository.chatCommands.addMessage({ threadId: id, sender: 'user', text: 'Reply with the synthetic fixture confirmation.' });
+  await app.runFlow('Claude Code', { event: 'user.message', data: { threadId: id, text: user.text, messageId: user.id, mode: 'Claude Code', phase: 'Edit' } });
+  await vi.waitFor(() => expect(getClaudeState(services, id)?.turns).toBe(1), { timeout: 15000 });
+  await vi.waitFor(() => expect(store.isConversationBusy(id)).toBe(false));
+  expect(store.getConversation(id)?.owner.sessionCwd).toBe(cwd);
+ }
+ const owner = store.getConversation(id)?.owner;
  const texts = () => (repository.chatQueries.threadData(id)?.messages ?? []).map(message => message.text ?? '');
  const send = async (text: string) => {
   const before = texts().length;
@@ -43,8 +55,9 @@ it.skipIf(!executable || !workspace)('routes native Skill listing and edits thro
  expect(await readFile(settings)).toEqual(before);
  expect(await send('set editable-fixture on')).toContain('Updated editable-fixture.');
  expect(JSON.parse(await readFile(settings, 'utf8')).skillOverrides?.['editable-fixture']).toBeUndefined();
- expect(streams).toHaveBeenCalledTimes(6); expect(commands).toHaveBeenCalledTimes(3);
- for (const [args] of streams.mock.calls) expect(args).toContain('--no-session-persistence');
+ if (retained) { expect(store.getConversation(id)?.owner).toBe(owner); expect(await store.closeIdleConversation(id)).toBe(true); }
+ expect(streams).toHaveBeenCalledTimes(retained ? 1 : 6); expect(commands).toHaveBeenCalledTimes(3);
+ if (!retained) for (const [args] of streams.mock.calls) expect(args).toContain('--no-session-persistence');
  for (const [args] of commands.mock.calls) expect(args).toEqual(['edit-skill-overrides', '--json']);
- await writeFile(join(workspace!, 'skill-management-app-evidence.json'), JSON.stringify({ compiledFlow: true, productionLaunchService: true, nativeListing: true, nativeEdit: true, authorLockRejected: true, rejectedEditUnchanged: true, redundantOverrideRemoved: true, threadProjectScope: true, commandReplies: 4, nativeStreamingProcesses: streams.mock.calls.length, nativeWriterProcesses: commands.mock.calls.length, modelPrompts: 0 }, null, 2));
+ await writeFile(join(workspace!, 'skill-management-app-evidence.json'), JSON.stringify({ compiledFlow: true, productionLaunchService: true, nativeListing: true, nativeEdit: true, authorLockRejected: true, rejectedEditUnchanged: true, redundantOverrideRemoved: true, threadProjectScope: true, retainedProcess: retained, sameOwner: retained ? store.getConversation(id) === undefined && !!owner : undefined, commandReplies: 4, nativeStreamingProcesses: streams.mock.calls.length, nativeWriterProcesses: commands.mock.calls.length, modelPrompts: retained ? 1 : 0 }, null, 2));
 }, 45000);
