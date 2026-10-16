@@ -30,15 +30,17 @@ may execute code; their discoverable results must be materialized before install
 Current status audited 2026-10-15. This checklist owns discovery progress; the execution goal owns
 phase ordering and final acceptance. Update these rows as checkpoints land rather than copying a new
 remaining-work list into each checkpoint. Source commits below establish implemented slices, not
-completion of the whole plan. Uncommitted compiler work has no accepted source checkpoint yet.
+completion of the whole plan. Compiler capture/session ownership landed in `aba660aed`; its checkpoint
+strict run passed (29 executed, one cached), including all 744 integration cases. Frozen pack/external
+inputs, complete build-session lifetime and whole-build freshness remain unfinished.
 
 Execution follows the goal's [current handoff](../goals/goal-settings-and-pack-contracts.md#current-handoff--compiler-checkpoint-2026-10-16)
 and [bounded validation](../../CLAUDE.md#keep-validation-bounded). Diagnose a failed assertion with its
 preserved evidence and targeted reproducer; do not restart the broad chain after every local fix.
 Broaden only to close a stated coverage gap or run the required converged gate. Keep checkpoint claims,
 unresolved acceptance and unrelated infrastructure defects distinct. No deadline increase, weakened
-assertion or repeated green focused run substitutes for the required gate. Commit the validated compiler
-checkpoint before expanding this plan's implementation; the full remaining scope stays required.
+assertion or repeated green focused run substitutes for the required gate. The compiler checkpoint is
+committed; complete the input/publication prerequisite below before expanding discovery consumers.
 
 **How to read the history:** dated audits, designs and checkpoint handoffs below record what was known
 at that time. Their “remaining,” “next” and “not yet implemented” statements are superseded for current
@@ -71,8 +73,8 @@ of superseded discovery projections. A passing producer test alone does not esta
 Archive creation, prebuilt tests, default-pack fork preparation and drive are **build-freshness
 consumers**, not additional discovery UIs. Their common input/publication contract and migration remain
 required under [content-based source freshness](#required-content-based-source-freshness-correction-2026-10-15).
-Shared authored inputs landed in `882d2a50b`; compiler capture/session reuse is an uncommitted candidate
-awaiting strict validation. Frozen pack/external inputs, whole-build input/output association and the
+Shared authored inputs landed in `882d2a50b`; compiler capture/session reuse landed in `aba660aed`
+after strict checkpoint validation. Frozen pack/external inputs, whole-build input/output association and the
 passive freshness authority remain unfinished. Installed/offline discovery must continue to need
 neither authored source files nor compiler activation.
 

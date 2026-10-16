@@ -120,26 +120,32 @@ naming branch is not an automatic source of future changes.
 
 ### Current handoff — compiler checkpoint (2026-10-16)
 
-- Source: `e37d6f5a4` plus the uncommitted compiler capture/session changes. Preserve the unrelated
+- Source checkpoint: `aba660aed` captures compiler installations and owns their build sessions. Preserve the unrelated
   `docs/issues/ISSUE-plan-consolidation-scope-loss.md` and the other agent's independent worktree.
 - Checkpoint claim: selected compiler bytes remain owned for worker execution; failed builds preserve
   the incumbent output; public watch startup/readiness shutdown drains workers and removes the compiler.
 - Proven: focused compiler/package-graph checks recorded below; all 18 concurrent diagnostic cases;
   public-watch startup mutation fails on the leak, and restored ready/compiling cases both pass.
-- Active broad validation: `npm run chain -- --strict --cores 4 --no-classify`, session `21360`,
+- Checkpoint validation passed: `npm run chain -- --strict --cores 4 --no-classify`,
   run `2026-10-16T02-58-25Z-98482`, log `/private/tmp/apack-compiler-startup-owned-strict.log`.
-  Confirm live/terminal state before acting; do not start a duplicate run.
-- Next: inspect that result. If green, compare the seven EARS/content baselines, review and commit the
-  owned source checkpoint. If red, identify the exact failing assertion and use a targeted diagnostic;
-  no automatic broad rerun. The earlier publication-refusal deadline failure is not explained by its
-  subsequent focused pass and must remain visible until equivalent coverage passes.
-- After the checkpoint: complete frozen pack/external inputs, ambient compiler options, one-shot/dev
+  Exit 0, 825.1s, 29 checks executed and one cached. Integration: 58 files / 744 tests pass,
+  including publication refusal and both public-watch shutdown phases. All seven EARS/content baselines
+  match byte for byte after the run. Source was unchanged throughout; `aba660aed` commits that source.
+  This is checkpoint acceptance, not the final committed-source strict `--all` gate for the whole goal.
+- The earlier publication deadline failure did not recur under equivalent strict coverage. Preserve
+  its diagnostic evidence without claiming a root cause. The run still warns that default-setup outputs
+  changed after their producer passed; the shared freshness/publication work must resolve that warning.
+- Next: complete frozen pack/external inputs, ambient compiler options, one-shot/dev
   lifetime, atomic whole-build input/output association and passive freshness consumers before expanding
   discovery. All Phases 0–7 and all three Phase 6 workstreams remain in scope.
 
 The repeated broad-run loop consumed over four hours without landing this source checkpoint. That is
 an execution failure, not additional acceptance work. The current handoff above owns the next action;
 chronological evidence below does not authorize reopening every previous investigation.
+
+The compiler checkpoint is now committed. No further broad rerun is needed for its documentation or
+commit operation. Design and implement the next coherent input/publication checkpoint with focused
+acceptance first, following the bounded workflow above.
 
 ## Design review before further implementation (2026-10-12)
 
