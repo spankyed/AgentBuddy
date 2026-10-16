@@ -120,19 +120,26 @@ naming branch is not an automatic source of future changes.
 
 ### Current handoff — compiler checkpoint (2026-10-16)
 
-Latest source checkpoint is `26f73956b`: resolved configuration travels with compilation inputs to
-all four native backend bundles. Eight integration and 74 affected unit cases pass, including a real
-build/stage/load whose transient config edit defeats final-byte equality alone. Removing the captured
-handoff fails that regression; exact source is restored. CLI types and lint pass.
+Latest source checkpoint is `2e68b3ca7`: all five native module bundles consume owned authored,
+external-module and installed-package bytes from the existing file view. Package-graph callbacks admit
+exact hashed bytes; completed generated bindings are captured after codegen. Flow helpers now receive
+the same compilation context as the other bundles. Source origins/resolution locations stay useful.
 
-The single converged strict gate passes: `npm run chain -- --strict --cores 4 --no-classify`, run
-`2026-10-16T08-15-59Z-20777`, 825.8s, 29 steps executed/one cached, 761 integration cases in 59 files.
-The earlier watcher case passes in this gate; its original timeout cause is still unproven. Both real
-authoring halves, external-pack contract/app checks and smoke pass. All seven EARS/content baselines
-match byte for byte. Source stayed fixed; session `91893` is terminal, exit 0.
-`/private/tmp/apack-owned-configuration-strict.log`. This closes checkpoint strict acceptance, not the
-final committed-source `--all` requirement for the whole goal. No validation remains active or needed
-for this checkpoint's evidence-only documentation.
+Focused evidence: 81 affected unit cases, the final 12 file-view cases, nine integration cases, CLI
+typecheck and lint pass. A real build/stage/load temporarily changes authored class fields,
+an external alias target and a dependency's JS entry (whose types live separately), restores all three,
+and executes captured values. Removing the owned-read plugin makes that test execute all three live
+values; exact source is restored. The production captured-compiler worker's existing repeat-build
+case passes in 17.87s, retaining cache/output identity. Logs:
+`/private/tmp/apack-owned-source-{unit,view-final,integration,mutation,worker,types-final,lint}.log`.
+All own processes are terminal. No broad run was added for this incremental source-byte step, following
+the user's pacing correction. Integrated execution-frame and final strict acceptance remain required.
+
+Previous source `26f73956b` passed strict run `2026-10-16T08-15-59Z-20777` in 825.8s, 29 executed/
+one cached, 761 integration cases, real authoring and app checks; all seven EARS/content baselines
+matched. That is previous checkpoint evidence, not strict acceptance of the newer source. Native
+resolution still reads the live namespace; declaration/frontend reads, direct content filesystem reads,
+launch/preload code, dev lifetime and complete input/output receipts remain required.
 
 The snapshot-led execution design remains under proof. Inherited-configuration and selected Node
 read probes succeed on Node 23 and Electron's Node 22 with originals absent; no production filesystem/

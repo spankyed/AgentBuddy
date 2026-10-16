@@ -375,6 +375,16 @@ the earlier root-identity timeout, without diagnosing that timeout or completing
 The goal owns exact evidence and next implementation. Prioritize a coherent execution implementation;
 use focused checks in that work and broad gates at integrated milestones/final acceptance.
 
+Source `2e68b3ca7` connects all five native module bundles to the owned byte view, rather than
+letting esbuild reread live authored/package modules. The same walker captures authored membership;
+package graph callbacks supply exact hashed dependency bytes, and codegen admits completed bindings.
+A real transient-edit build/stage/load and its negative mutation prove authored, external alias and
+separately typed package runtime bytes are consumed from capture. The existing production worker
+repeat-build check preserves cache/output identity. Focused types/lint and affected checks pass; the
+goal records logs. No broad gate is repeated for this incremental step. Native resolution namespaces,
+declarations, direct content reads, frontend/dev, launch options and the final receipt are still required.
+Next carry this ownership into the filesystem/namespace frame shared by those consumers.
+
 The unfinished Node option parser patch is preserved in stash
 `c42116fb46a385b5f6065a4fb9cd9e68e2625b80`. All experiment children, private captures and Vite servers
 have closed. The initial proof left repository source unchanged from `74890676d`; its documentation
