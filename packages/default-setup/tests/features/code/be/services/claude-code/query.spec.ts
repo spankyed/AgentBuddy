@@ -1121,3 +1121,20 @@ it('correlates empty native model acknowledgements and preserves custom names an
   expect(mock.writes).toHaveLength(3)
   await handle.close()
 })
+
+it('correlates task-specific stop acknowledgement without treating it as terminal state', async () => {
+  const mock = makeMockStream(); vi.spyOn(runner, 'spawnStream').mockResolvedValue(mock.handle);
+  const handle = await query({}), init = mock.writes[0] as { request_id: string };
+  mock.pushEvent({ type: 'control_response', response: { subtype: 'success', request_id: init.request_id, response: { commands: [], agents: [], models: [] } } });
+  await handle.initialized;
+  const stop = handle.stopTask('workflow-task'); await Promise.resolve();
+  const request = mock.writes[1] as { request_id: string; request: unknown };
+  expect(request.request).toEqual({ subtype: 'stop_task', task_id: 'workflow-task' });
+  mock.pushEvent({ type: 'control_response', response: { subtype: 'success', request_id: request.request_id, response: {} } });
+  await expect(stop).resolves.toBeUndefined();
+  const refused = handle.stopTask('another-task'), failure = expect(refused).rejects.toThrow('native refusal'); await Promise.resolve();
+  const denied = mock.writes[2] as { request_id: string };
+  mock.pushEvent({ type: 'control_response', response: { subtype: 'error', request_id: denied.request_id, error: 'native refusal' } });
+  await failure; await expect(handle.stopTask('')).rejects.toThrow(); expect(mock.writes).toHaveLength(3);
+  await handle.close(); await expect(handle.stopTask('late')).rejects.toThrow();
+});

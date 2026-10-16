@@ -1,3 +1,4 @@
+import type { ClaudeWorkflowTask } from './workflow-activity.ts'
 import { parseMcpElicitationForm, validateMcpElicitationForm } from '../../../shared/mcp-elicitation-form.ts'
 import { createClaudeNestedActivity, type ClaudeNestedActivity } from './nested-activity.ts'
 import { ClaudeProtocolError, ClaudeResultError } from './errors.ts'
@@ -26,6 +27,7 @@ export interface ClaudeConversation {
   start(input: string | UserInputMessage, consume: ClaudeTurnConsumer): string
   release(handle: QueryHandle): boolean
   ownsTurn(handle: QueryHandle): boolean
+  listWorkflows(): ClaudeWorkflowTask[]
   hasPendingElicitation(requestId: string): boolean
   subscribe(listener: (event: StreamLine) => void): () => void
   close(): Promise<void>
@@ -267,6 +269,7 @@ export function createClaudeConversation(native: QueryHandle, consumeAutonomous:
   return {
     handle: processHandle,
     get busy() { return changingModel || active !== undefined || pending !== undefined || interactionRequests.size > 0 },
+    listWorkflows() { return activity.workflows.list() },
     hasPendingElicitation(requestId) { return !closing && !exited && interactionRequests.get(requestId)?.subtype === 'elicitation' },
     get closing() { return closing || exited },
     get sessionId() { return sessionId },

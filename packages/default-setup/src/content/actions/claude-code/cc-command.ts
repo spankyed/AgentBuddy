@@ -63,6 +63,7 @@ const handlers: Record<string, Handler> = {
   config: handleConfig,
   status: handleStats,
   model: handleModel,
+  workflows: handleWorkflows,
   memory: handleMemory,
   hooks: handleHooks,
   permissions: handlePermissions,
@@ -196,6 +197,27 @@ async function handleConfig(
     default:
       return { text: `Unknown config subcommand: ${subcommand}\nUsage: /cc-config get <key> | set <key> <value>` };
   }
+}
+
+async function handleWorkflows(args: string[], services: Services, threadId?: string): Promise<{ text: string; data?: any }> {
+  if (args.length && (args.length !== 2 || args[0] !== 'stop')) return { text: 'Usage: cc-workflows [stop <task id>]' };
+  if (!threadId) return { text: 'Select a thread to view its native workflows.' };
+  const conversation = services.cli.claudeCode.getConversation(threadId);
+  if (!conversation) return { text: 'No native conversation is running. Workflow status is unavailable.' };
+  const owner = conversation.owner;
+  const tasks = owner.listWorkflows();
+  if (!args.length) return { text: tasks.length
+    ? [`Native workflows${owner.sessionCwd ? ` in ${owner.sessionCwd}` : ''}:`, ...tasks.map(task => `${task.taskId}: ${task.name} — ${task.status}${task.phase ? ` (${task.phase})` : ''}`)].join('\n')
+    : 'No local workflows have been observed in this conversation.', data: tasks };
+  const task = tasks.find(task => task.taskId === args[1]);
+  if (!task) return { text: `No tracked Workflow with task ID: ${args[1]}` };
+  if (task.status !== 'running') return { text: `${task.name} is already ${task.status}.` };
+  await owner.handle.stopTask(task.taskId);
+  if (services.cli.claudeCode.getConversation(threadId)?.owner !== owner || owner.closing) return { text: 'The conversation changed while requesting the stop; Workflow status is unverified.' };
+  const current = owner.listWorkflows().find(value => value.taskId === task.taskId);
+  return { text: current && current.status !== 'running'
+    ? `${task.name}: ${current.status}.`
+    : `Stop request acknowledged for ${task.name} (${task.taskId}). Waiting for native task status.` };
 }
 
 async function handleModel(

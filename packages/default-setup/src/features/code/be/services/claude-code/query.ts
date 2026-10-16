@@ -97,6 +97,8 @@ export interface QueryHandle {
   respondElicitation(requestId: string, response: ClaudeMcpElicitationAnswer): void
   /** Cancel an unsupported generic dialog without consenting or using a tool response. */
   cancelUserDialog(requestId: string): void
+  /** Request a specific native task stop. Empty acknowledgement does not prove task existence or completion. */
+  stopTask(taskId: string): Promise<void>
   /** Cancel the current turn and await its native acknowledgement; optionally cancel queued inputs. */
   interrupt(options?: { cancelQueued?: boolean }): Promise<ClaudeInterruptReceipt>
   /** Rename the native session; an explicit ID protects against renaming a different session. */
@@ -289,6 +291,12 @@ export async function query(opts: QueryOptions): Promise<QueryHandle> {
     cancelUserDialog(requestId): void {
       const id = z.string().min(1).parse(requestId)
       if (!stream.write({ type: 'control_response', response: { subtype: 'success', request_id: id, response: { behavior: 'cancelled' } } })) throw new ClaudeProtocolError('could not send dialog cancellation: stdin is closed')
+    },
+
+    async stopTask(taskId: string): Promise<void> {
+      const id = z.string().min(1).parse(taskId)
+      await initialized
+      await hostControls.request({ subtype: 'stop_task', task_id: id })
     },
 
     async interrupt(options: { cancelQueued?: boolean } = {}): Promise<ClaudeInterruptReceipt> {

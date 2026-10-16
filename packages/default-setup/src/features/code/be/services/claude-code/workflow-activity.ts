@@ -13,6 +13,7 @@ export interface ClaudeWorkflowTask {
 export interface ClaudeWorkflowActivity {
   observe(event: StreamLine): void
   register(toolUseId: string, receive: (task: ClaudeWorkflowTask) => void): void
+  list(): ClaudeWorkflowTask[]
   get(toolUseId: string): ClaudeWorkflowTask | undefined
   takeErrors(): boolean
   close(): void
@@ -77,6 +78,7 @@ export function createClaudeWorkflowActivity(): ClaudeWorkflowActivity {
       const id = roots.get(toolUseId), task = id ? tasks.get(id) : undefined
       if (task) receive({ ...task })
     },
+    list() { return [...tasks.values()].map(task => ({ ...task })) },
     get(toolUseId) { const id = roots.get(toolUseId), task = id ? tasks.get(id) : undefined; return task ? { ...task } : undefined },
     takeErrors() { const value = hadErrors; hadErrors = false; return value },
     close() {

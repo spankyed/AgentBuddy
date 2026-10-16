@@ -9,6 +9,7 @@ import type { ClaudeConversationTurn } from '#features/code/be/services/claude-c
 import type { StreamLine } from '#features/code/be/services/claude-code/types.ts';
 import { consumeConversationTurn } from '../../../../src/content/actions/claude-code/_helpers/stream-consumer.ts';
 import { getClaudeState } from '../../../../src/content/actions/claude-code/_helpers/thread-context.ts';
+import { action as command } from '../../../../src/content/actions/claude-code/cc-command.ts';
 import { action as approve } from '../../../../src/content/actions/claude-code/approve-tool.ts';
 import { chatService } from '#features/threads/be/services/chat.ts';
 vi.mock('../../../../src/content/actions/claude-code/_helpers/context-usage.ts', () => ({ refreshThreadContextUsage: vi.fn(async () => {}) }));
@@ -18,11 +19,12 @@ it.skipIf(!executable || !workspace || !endpoint)('actual native Workflow phases
   expect(process.env.HOME).toBe(workspace); expect(new URL(endpoint!).hostname).toBe('127.0.0.1');
   for (const key of ['ANTHROPIC_API_KEY', 'ANTHROPIC_AUTH_TOKEN', 'CLAUDE_CODE_OAUTH_TOKEN']) expect(process.env[key]).toBeUndefined();
   const failed = process.env.CLAUDE_WORKFLOW_EXPECT_FAILURE === '1';
-  const terminal = failed ? 'failed' : 'completed';
+  const stopped = process.env.CLAUDE_WORKFLOW_EXPECT_STOP === '1';
+  const terminal = stopped ? 'stopped' : failed ? 'failed' : 'completed';
   const cwd = join(workspace!, 'project'), temporary = join(workspace!, 'tmp'); await mkdir(cwd); await mkdir(temporary, { mode: 0o700 });
   const { id } = repository.threadCommands.create({ topic: 'Native Workflow', instructions: '', tags: [] });
   repository.threadCommands.update(id, { context: { claudeCode: { cwd, permissionMode: 'default' } } });
-  mockService<Services, 'cli'>('cli', { claudeCode: { getHandle: store.getHandle, isCurrentTurn: store.isCurrentTurn, storeHandle: store.storeHandle, clearHandle: store.clearHandle } as never });
+  mockService<Services, 'cli'>('cli', { claudeCode: { getConversation: store.getConversation, getHandle: store.getHandle, isCurrentTurn: store.isCurrentTurn, storeHandle: store.storeHandle, clearHandle: store.clearHandle } as never });
   const updates = vi.fn(chatService.updateMessageState);
   mockService<Services, 'chat'>('chat', { ...chatService, updateMessageState: updates });
   mockService<Services, 'logger'>('logger', { debug: vi.fn(), info: vi.fn(), warn: vi.fn(), error: vi.fn() });
@@ -41,24 +43,36 @@ it.skipIf(!executable || !workspace || !endpoint)('actual native Workflow phases
     const pending = getClaudeState(services, id)!.pendingControlRequest!;
     let script = 'export const meta = { name: "research-native-workflow", description: "Fixed arithmetic fixture", phases: [{title:"Fixture"}] };\nphase("Fixture");\nlog("NATIVE_WORKFLOW_FIXTURE");\nreturn {marker:"NATIVE_WORKFLOW_FIXTURE",answer:42};\n';
     if (failed) script = script.replace('return {marker:"NATIVE_WORKFLOW_FIXTURE",answer:42};', 'throw new Error("NATIVE_WORKFLOW_FAILURE");');
+    if (stopped) script = script.replace('return {marker:"NATIVE_WORKFLOW_FIXTURE",answer:42};', 'await new Promise(() => {});');
     expect(pending.originalInput?.script).toBe(script);
     expect(await approve({ threadId: id, requestId: pending.requestId, toolName: 'Workflow', originalInput: pending.originalInput }, services)).toMatchObject({ success: true });
+    if (stopped) {
+      await vi.waitFor(() => expect(events.some(event => event.type === 'system' && event.subtype === 'task_progress')).toBe(true), { timeout: 10000 });
+      const listing = await command({ command: 'cc-workflows', threadId: id }, services, {} as never, 'workflow-control');
+      const task = listing.data.find((task: any) => task.status === 'running'); expect(task).toBeDefined();
+      const stop = await command({ command: 'cc-workflows', threadId: id, text: `stop ${task.taskId}` }, services, {} as never, 'workflow-control');
+      expect(stop.text).toMatch(/Stop request acknowledged|stopped/);
+    }
     await vi.waitFor(() => expect(events.some(event => event.type === 'system' && event.subtype === 'task_notification' && event.status === terminal)).toBe(true), { timeout: 10000 });
-    await vi.waitFor(() => expect(events.filter(event => event.type === 'result')).toHaveLength(2), { timeout: 10000 });
+    if (stopped) {
+      await vi.waitFor(() => expect(owner.busy).toBe(false));
+      const inputId = owner.start('Return only fixed text without tools.', consume);
+      await vi.waitFor(() => expect(events.some(event => event.type === 'result' && event.user_message_uuid === inputId)).toBe(true), { timeout: 10000 });
+    } else await vi.waitFor(() => expect(events.filter(event => event.type === 'result')).toHaveLength(2), { timeout: 10000 });
     await vi.waitFor(() => expect(owner.busy).toBe(false));
     expect(events.every(event => event.type !== 'result' || (event.subtype === 'success' && event.is_error !== true))).toBe(true);
     const rowUpdates = updates.mock.calls.flatMap(([messageId, patch]) => (patch.blocks ?? []).filter((block: any) => block.type === 'tool-activity').flatMap((block: any) => block.props.entries.filter((entry: any) => entry.tool === 'Workflow').map((entry: any) => ({ messageId, entry, blockState: block.props.state }))));
     const final = rowUpdates.at(-1)!;
-    expect(final.entry).toMatchObject({ status: failed ? 'error' : 'ok', outputSummary: expect.stringContaining(`${terminal} — Fixture`) });
+    expect(final.entry).toMatchObject({ status: failed || stopped ? 'error' : 'ok', outputSummary: expect.stringContaining(`${terminal} — Fixture`) });
     expect(final.entry.details.input.script).toBe(pending.originalInput?.script);
     expect(final.entry.details.output).toContain('Workflow launched in background.');
     if (failed) expect(final.entry.details.error).toContain('NATIVE_WORKFLOW_FAILURE');
     const completions = emitted.mock.calls.map(([, event]) => event).filter(event => event.eventType === 'cc.stream.completed');
-    expect(completions.filter(event => event.payload.hadErrors)).toHaveLength(failed ? 1 : 0);
+    expect(completions.filter(event => event.payload.hadErrors)).toHaveLength(failed || stopped ? 1 : 0);
     expect(new Set(rowUpdates.map(row => row.messageId)).size).toBe(1);
     expect(events.some(event => event.type === 'system' && event.subtype === 'task_progress' && Array.isArray(event.workflow_progress))).toBe(true);
     expect(store.getConversation(id)?.owner).toBe(owner);
     await owner.close();
-    await writeFile(join(workspace!, 'workflow-app-evidence.json'), JSON.stringify({ sourceConsumer: true, nativeOwner: true, nativeApproval: true, sameOriginalRow: true, phasePresented: true, completionPresented: true, taskStatus: terminal, successfulModelResults: true, failedTaskAccountedOnce: failed, nativeFailureMarkerRetained: failed, originalInputRetained: true, nativeLaunchOutputRetained: true, closed: true, qualification: 'Actual query/owner/source consumer and approval action; compiled flow and mounted UI remain separate.' }, null, 2));
+    await writeFile(join(workspace!, 'workflow-app-evidence.json'), JSON.stringify({ sourceConsumer: true, nativeOwner: true, nativeApproval: true, sameOriginalRow: true, phasePresented: true, completionPresented: true, taskStatus: terminal, successfulModelResults: true, taskErrorAccountedOnce: failed || stopped, stoppedViaCommand: stopped, sameOwnerFollowup: stopped, nativeFailureMarkerRetained: failed, originalInputRetained: true, nativeLaunchOutputRetained: true, closed: true, qualification: 'Actual query/owner/source consumer and approval action; compiled flow and mounted UI remain separate.' }, null, 2));
   } finally { store.killAllHandles(); }
 }, 35000);
