@@ -350,8 +350,14 @@ content execution, concurrent scopes, source error paths and the actual captured
 The worker exposed and removed a synthetic stdin directory import that enumerated shared temporary
 files; stdin now prepares the real source scope. The owning goal records source and focused evidence.
 
-Streams, descriptors, metadata/resolution and startup-cached references remain unfinished. This is
-not a complete Node filesystem adapter or execution receipt. Frontend resources/generation, launch
+Source `477b4fef5` extends the scope to read-only sync/callback/promise opens. Native read streams,
+opened descriptors and promise FileHandles consume captured bytes; stream paths retain source
+identities. Numeric read-only flags, live writable descriptors and promise output writes have real
+compiler coverage; the captured content worker passes. Shared callback dispatch preserves source
+error mapping. The owning goal records focused evidence.
+
+Metadata/directory reads, resolution, pre-opened descriptors, special open flags and startup-cached
+references remain unfinished. This is not a complete Node filesystem adapter or execution receipt. Frontend resources/generation, launch
 ownership, whole-build receipts and passive freshness also remain required. Glob capture currently
 owns a conservative subtree beneath its static prefix rather than duplicating esbuild's exact matcher.
 
