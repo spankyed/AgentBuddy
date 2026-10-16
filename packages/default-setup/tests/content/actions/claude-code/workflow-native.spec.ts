@@ -17,6 +17,8 @@ const executable = process.env.CLAUDE_RESEARCH_EXECUTABLE, workspace = process.e
 it.skipIf(!executable || !workspace || !endpoint)('actual native Workflow phases and completion update their original source-consumer row', async () => {
   expect(process.env.HOME).toBe(workspace); expect(new URL(endpoint!).hostname).toBe('127.0.0.1');
   for (const key of ['ANTHROPIC_API_KEY', 'ANTHROPIC_AUTH_TOKEN', 'CLAUDE_CODE_OAUTH_TOKEN']) expect(process.env[key]).toBeUndefined();
+  const failed = process.env.CLAUDE_WORKFLOW_EXPECT_FAILURE === '1';
+  const terminal = failed ? 'failed' : 'completed';
   const cwd = join(workspace!, 'project'), temporary = join(workspace!, 'tmp'); await mkdir(cwd); await mkdir(temporary, { mode: 0o700 });
   const { id } = repository.threadCommands.create({ topic: 'Native Workflow', instructions: '', tags: [] });
   repository.threadCommands.update(id, { context: { claudeCode: { cwd, permissionMode: 'default' } } });
@@ -25,7 +27,8 @@ it.skipIf(!executable || !workspace || !endpoint)('actual native Workflow phases
   mockService<Services, 'chat'>('chat', { ...chatService, updateMessageState: updates });
   mockService<Services, 'logger'>('logger', { debug: vi.fn(), info: vi.fn(), warn: vi.fn(), error: vi.fn() });
   mockService<Services, 'threads'>('threads', { updateChatState: vi.fn() });
-  mockService<Services, 'emitter'>('emitter', { sendToSystem: vi.fn(), broadcastToPlugin: vi.fn() });
+  const emitted = vi.fn();
+  mockService<Services, 'emitter'>('emitter', { sendToSystem: emitted, broadcastToPlugin: vi.fn() });
   const consume = (turn: ClaudeConversationTurn) => consumeConversationTurn(turn, { services, threadId: id, text: '', sessionCwd: cwd });
   const native = await query({ cwd, cliPath: executable, env: { HOME: workspace, CLAUDE_CONFIG_DIR: join(workspace!, '.claude'), CLAUDE_CODE_TMPDIR: temporary, ANTHROPIC_BASE_URL: endpoint, DISABLE_AUTOUPDATER: '1', CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC: '1' },
     permissionMode: 'default', settingSources: [], settings: JSON.stringify({ apiKeyHelper: '/usr/bin/printf research-fixture-key' }), model: 'default', strictMcpConfig: true,
@@ -36,21 +39,25 @@ it.skipIf(!executable || !workspace || !endpoint)('actual native Workflow phases
     owner.start('Run only the fixed deterministic local Workflow fixture.', consume);
     await vi.waitFor(() => expect(getClaudeState(services, id)?.pendingControlRequest?.toolName).toBe('Workflow'), { timeout: 10000 });
     const pending = getClaudeState(services, id)!.pendingControlRequest!;
-    const script = 'export const meta = { name: "research-native-workflow", description: "Fixed arithmetic fixture", phases: [{title:"Fixture"}] };\nphase("Fixture");\nlog("NATIVE_WORKFLOW_FIXTURE");\nreturn {marker:"NATIVE_WORKFLOW_FIXTURE",answer:42};\n';
+    let script = 'export const meta = { name: "research-native-workflow", description: "Fixed arithmetic fixture", phases: [{title:"Fixture"}] };\nphase("Fixture");\nlog("NATIVE_WORKFLOW_FIXTURE");\nreturn {marker:"NATIVE_WORKFLOW_FIXTURE",answer:42};\n';
+    if (failed) script = script.replace('return {marker:"NATIVE_WORKFLOW_FIXTURE",answer:42};', 'throw new Error("NATIVE_WORKFLOW_FAILURE");');
     expect(pending.originalInput?.script).toBe(script);
     expect(await approve({ threadId: id, requestId: pending.requestId, toolName: 'Workflow', originalInput: pending.originalInput }, services)).toMatchObject({ success: true });
-    await vi.waitFor(() => expect(events.some(event => event.type === 'system' && event.subtype === 'task_notification' && event.status === 'completed')).toBe(true), { timeout: 10000 });
+    await vi.waitFor(() => expect(events.some(event => event.type === 'system' && event.subtype === 'task_notification' && event.status === terminal)).toBe(true), { timeout: 10000 });
     await vi.waitFor(() => expect(events.filter(event => event.type === 'result')).toHaveLength(2), { timeout: 10000 });
     await vi.waitFor(() => expect(owner.busy).toBe(false));
     const rowUpdates = updates.mock.calls.flatMap(([messageId, patch]) => (patch.blocks ?? []).filter((block: any) => block.type === 'tool-activity').flatMap((block: any) => block.props.entries.filter((entry: any) => entry.tool === 'Workflow').map((entry: any) => ({ messageId, entry, blockState: block.props.state }))));
     const final = rowUpdates.at(-1)!;
-    expect(final.entry).toMatchObject({ status: 'ok', outputSummary: expect.stringContaining('completed — Fixture') });
+    expect(final.entry).toMatchObject({ status: failed ? 'error' : 'ok', outputSummary: expect.stringContaining(`${terminal} — Fixture`) });
     expect(final.entry.details.input.script).toBe(pending.originalInput?.script);
     expect(final.entry.details.output).toContain('Workflow launched in background.');
+    if (failed) expect(final.entry.details.error).toContain('NATIVE_WORKFLOW_FAILURE');
+    const completions = emitted.mock.calls.map(([, event]) => event).filter(event => event.eventType === 'cc.stream.completed');
+    expect(completions.filter(event => event.payload.hadErrors)).toHaveLength(failed ? 1 : 0);
     expect(new Set(rowUpdates.map(row => row.messageId)).size).toBe(1);
     expect(events.some(event => event.type === 'system' && event.subtype === 'task_progress' && Array.isArray(event.workflow_progress))).toBe(true);
     expect(store.getConversation(id)?.owner).toBe(owner);
     await owner.close();
-    await writeFile(join(workspace!, 'workflow-app-evidence.json'), JSON.stringify({ sourceConsumer: true, nativeOwner: true, nativeApproval: true, sameOriginalRow: true, phasePresented: true, completionPresented: true, originalInputRetained: true, nativeLaunchOutputRetained: true, closed: true, qualification: 'Actual query/owner/source consumer and approval action; compiled flow and mounted UI remain separate.' }, null, 2));
+    await writeFile(join(workspace!, 'workflow-app-evidence.json'), JSON.stringify({ sourceConsumer: true, nativeOwner: true, nativeApproval: true, sameOriginalRow: true, phasePresented: true, completionPresented: true, taskStatus: terminal, failedTaskAccountedOnce: failed, nativeFailureMarkerRetained: failed, originalInputRetained: true, nativeLaunchOutputRetained: true, closed: true, qualification: 'Actual query/owner/source consumer and approval action; compiled flow and mounted UI remain separate.' }, null, 2));
   } finally { store.killAllHandles(); }
 }, 35000);
