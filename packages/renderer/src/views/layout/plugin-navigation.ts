@@ -11,7 +11,7 @@ export function usePluginNavigation() {
   onScopeDispose(windowCatalog.subscribe(() => { revision.value++; }));
   const context = useSelector(applicationState, state => state.context);
   return computed(() => {
-    revision.value;
+    void revision.value;
     return pluginNavigationItems(windowCatalog, fePacks.pluginBindings(), context.value.pluginVisibility);
   });
 }

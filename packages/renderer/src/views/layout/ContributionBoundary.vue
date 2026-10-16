@@ -25,7 +25,7 @@ const props = defineProps<{
 const revision = shallowRef(0);
 onScopeDispose(fePacks.onChanged(packId => { if (packId === props.packId) revision.value++; }));
 onScopeDispose(windowCatalog.subscribe(() => { revision.value++; }));
-const identity = computed(() => { revision.value; return currentFrontendIdentity(props.packId); });
+const identity = computed(() => { void revision.value; return currentFrontendIdentity(props.packId); });
 const eligible = computed(() => !!identity.value && props.current());
 const failure = shallowRef<{ message: string; identity: typeof identity.value }>();
 const attempt = ref(0);
