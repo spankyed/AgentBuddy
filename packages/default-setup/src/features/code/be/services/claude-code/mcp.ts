@@ -1,9 +1,9 @@
 /**
  * `claude mcp` — Model Context Protocol server management.
  *
- * Covers the full subcommand surface: list/get/add-json/add-from-claude-desktop
- * /remove/reset-project-choices. Does NOT wrap `claude mcp serve` — that's a
- * long-lived stdio process better driven via `runner.spawnStream` directly.
+ * Typed helpers cover list/get/remove. cc-mcp also forwards explicit native argv;
+ * add/login/logout/desktop import/XAA and long-lived serve have no typed lifecycle here.
+ * Human list/get output is not equivalent to the live mcp_status control.
  */
 
 import { run, runJson, scopeArg, type SubcommandOptions } from './subcommand.ts'

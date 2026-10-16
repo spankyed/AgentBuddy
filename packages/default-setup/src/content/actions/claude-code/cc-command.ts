@@ -43,9 +43,11 @@ const PASSTHROUGH: Record<string, { cmd: string; defaultArgs?: string[] }> = {
 };
 
 function makePassthroughHandler(spec: { cmd: string; defaultArgs?: string[] }): Handler {
-  return async (args, services) => {
+  return async (args, services, threadId) => {
+    const prior = threadId ? getClaudeState(services, threadId) : undefined;
+    const cwd = prior?.cwdOverride || prior?.cwd;
     const fullArgs = [spec.cmd, ...(args.length > 0 ? args : spec.defaultArgs ?? [])];
-    const result = await services.cli.claudeCode.exec(fullArgs);
+    const result = await services.cli.claudeCode.exec(fullArgs, cwd ? { cwd } : undefined);
     const output = (result.stdout + result.stderr).trim();
     return { text: output || `(no output from cc-${spec.cmd})` };
   };
