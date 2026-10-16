@@ -1206,11 +1206,55 @@ type ClaudeUiAttach = z.infer<typeof attach>;
 
 type ClaudeUiControls = ReturnType<typeof createClaudeUiControls>;
 
+type ClaudeUiMountState = {
+    status: 'connecting' | 'disconnected' | 'rendering';
+} | {
+    status: 'live';
+    tree: ClaudeUiNode;
+} | {
+    status: 'error';
+    message: string;
+};
+
+type ClaudeUiNode = {
+    kind: 'text';
+    text: string;
+    plugin?: string;
+} | {
+    kind: 'box';
+    children: ClaudeUiNode[];
+    plugin?: string;
+} | {
+    kind: 'button';
+    label: string;
+    actionId?: string;
+    plugin?: string;
+} | {
+    kind: 'unsupported';
+    component: string;
+    plugin?: string;
+};
+
 type ClaudeUiPress = z.infer<typeof press>;
 
 type ClaudeUiRender = z.infer<typeof render>;
 
 type ClaudeUiRenderResult = z.infer<typeof renderResult>;
+
+type ClaudeUiViewRequest = {
+    type: 'CLAUDE_UI_MOUNT';
+    threadId: string;
+    mountId: string;
+} | {
+    type: 'CLAUDE_UI_UNMOUNT';
+    threadId: string;
+    mountId: string;
+} | {
+    type: 'CLAUDE_UI_PRESS';
+    threadId: string;
+    mountId: string;
+    actionId: string;
+};
 
 interface CliServiceType {
     git: {
@@ -3228,7 +3272,7 @@ type IncomingTerminalEvents = {
     terminalId: string;
 };
 
-type IncomingThreadsEvents = {
+type IncomingThreadsEvents = ClaudeUiViewRequest | {
     type: 'CREATE_THREAD';
     topic: string;
     tags?: string[];
@@ -4770,6 +4814,11 @@ type OutgoingTerminalEvents =
 };
 
 type OutgoingThreadsEvents = {
+    type: 'CLAUDE_UI_STATE';
+    threadId: string;
+    mountId: string;
+    state: ClaudeUiMountState;
+} | {
     type: 'THREAD_CONNECTED';
     data: ThreadConnectedData;
 } | {
@@ -5996,6 +6045,10 @@ interface ThreadsContext {
         filePath: string;
         threadCount: number;
     };
+    nativeUiViews: Record<string, {
+        threadId: string;
+        state: ClaudeUiMountState;
+    }>;
     currentThread: AgentThreadData | null;
     recentThreadIds: string[];
     messageInput: string;
