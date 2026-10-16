@@ -307,6 +307,13 @@ raw results are `/private/tmp/apack-launch-proof-native-view.mjs`,
 The next implementation must connect this boundary to the existing owners, rather than add another
 source scanner or treat this prototype's hand-maintained fixture as an input inventory:
 
+Observation prerequisite `2208be219` supplies serialized native-view facts and a common conflict-checked
+merge/hash projection. Stat fields and cursor positions are separate facts, permitting complementary
+thread reads while rejecting overlapping disagreements. A real Worker proof preserves a conflict after
+the source returns to its original bytes. This does not implement the startup transport, reuse the
+preload frame in compilation, validate originals at publication, or authorize passive freshness.
+See the owning goal's current handoff for focused evidence; the following integration remains required.
+
 1. Define the pre-startup handoff from the selected captured compiler, existing package/input traversal
    and logical path projection. Preserve effective user options and native preload/loader ordering;
    identify internal instrumentation by the process that owns it, not by an option-name blacklist.

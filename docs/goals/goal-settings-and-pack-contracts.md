@@ -120,7 +120,25 @@ naming branch is not an automatic source of future changes.
 
 ### Current handoff — compiler checkpoint (2026-10-16)
 
-Latest source is `0c038442b` (native-view/bootstrap proof checkpoint below). Preceding ESM source `f67c8d066`:
+Latest source is `2208be219` (mergeable compiler observations). The native view now exports owned,
+serialized query/result entries, and its hash uses that same projection. Merging requires one logical
+root and rejects contradictory answers; consumed stat fields and directory cursor positions combine
+independently, so complementary reads do not falsely conflict. Captured paths, realpath results and
+native error paths share source projection. No TypeScript runtime dependency is introduced.
+
+Evidence: 49 focused observation/view/metadata/directory/module-input tests pass (1.40s); the final
+directory representation adjustment passes its eight affected cases (0.227s). CLI typecheck, lint and
+diff checks pass. A real Worker transfers production-view observations: complementary reads merge,
+and conflicting file bytes refuse even after the source is restored. Logs/proof:
+`/private/tmp/apack-observations-{unit,final,types-final,worker-proof}.log` and
+`/private/tmp/apack-observations-worker-proof.mjs`. Broad/final acceptance is not claimed.
+
+Next: wire this observation contract into the pre-startup main/loader handoff and reuse its frame during
+compilation, with final original-input validation before publication. It is not yet a persisted receipt
+or passive freshness authority. All remaining goal work and final committed-source strict --all remain
+required. The snapshot proof and its limitations below still apply.
+
+Preceding native-view source is `0c038442b`. Preceding ESM source `f67c8d066`:
 ESM execution now has logical source URLs and filenames while native
 resolution and source reads use the owned tree. A private loader below tsx only projects bytes; it
 makes no main-thread RPC. The input owner and loader share one storage mapping. Native entrypoint
