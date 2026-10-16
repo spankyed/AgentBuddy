@@ -160,6 +160,23 @@ Execute the identified gaps in this order:
 No completion is claimed from this table. It identifies inspected implementation, concrete omissions
 and the bounded checks needed to close them. Historical checkpoint evidence is not a second backlog.
 
+Endpoint checkpoint contract: compiled `eventContracts` is keyed by local feature ID. A system records
+`{ incoming: string[], outgoing: string[] }`; a plugin records `{ receives: string[] }` (its own system's
+outgoing events plus its declared inbox). Shared SDK lifecycle events remain implicit in the protocol
+and are added when deriving effective receive sets. The producer reads declared TypeScript contracts,
+never pack modules; manifest `system.events.incoming` remains an explicit routing addition. Generated
+`packSystem` receives that declared input list instead of inferring a public inbox from machine handlers.
+Internal child events are not published as incoming events. Keep payload types in the checked facades;
+an event-name inventory is not runtime payload validation or sender authorization.
+
+An installed snapshot declaring an endpoint must contain its compiled contract; omission is a build
+refusal, not an empty inbox. Native composition supplies the same data, independently of bindings, and
+may bind only the systems its environment runs. Every bound native endpoint must match its declaration;
+its inactive declared peers remain discoverable. Native shell inboxes need no UI pane declaration.
+The catalog/CLI expose declarations independently of active event-validation maps. Verify generation,
+malformed/missing contracts, source-free inspection, native partial composition and changed runtime
+membership before the next checkpoint; migrate all readers, fixtures and reports with this contract.
+
 ## Architecture
 
 ```text
