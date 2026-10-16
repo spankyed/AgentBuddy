@@ -6,11 +6,11 @@ import { setupPackFixture, generate, dependency, manifest, write } from './_supp
 setupPackFixture();
 
 const references = {
-  types: { memo: { category: 'memos', icon: 'NotebookText', svgElements: [['path', { d: 'M2 6h4' }]], navigate: 'src/references.ts#openMemo' } },
+  types: { memo: { category: 'memos', icon: 'NotebookText', svgElements: [['path', { d: 'M2 6h4' }]] } },
   categories: { memos: { label: 'Memos', icon: 'NotebookText', useItems: 'src/references.ts#useItems' } },
 };
 const fields = { features: { memos: { description: 'Feature declaration fixture.', references } } };
-const source = () => write('src/references.ts', "throw new Error('Must never execute during generation');\nexport function openMemo(id: string) {}\nexport function useItems() { return []; }\n");
+const source = () => write('src/references.ts', "throw new Error('Must never execute during generation');\nexport function useItems() { return []; }\n");
 
 const parse = (features: unknown) => ManifestSchema.safeParse({ id: 'fixture-pack', name: 'Fixture', version: '1.0.0', features });
 
@@ -24,7 +24,6 @@ describe('declarative references', () => {
     const files = await generate(fields);
     const output = files['src/__generated__/references.ts'];
     expect(output).toContain('"memo": { ...{"category":"memos","svgElements"');
-    expect(output).toContain('import { openMemo as');
     expect(output).toContain('import { useItems as');
     expect(output).toContain('label: "Memos"');
     expect(output).not.toContain('...types');
@@ -52,7 +51,7 @@ describe('declarative references', () => {
   });
 
   it('refuses a non-function item provider', async () => {
-    write('src/references.ts', 'export function openMemo(id: string) {}\nexport const useItems = {};');
+    write('src/references.ts', 'export const useItems = {};');
     await expect(generate(fields)).rejects.toThrow('must export useItems as a function');
   });
 
@@ -73,11 +72,6 @@ describe('declarative references', () => {
     { ...references, types: { memo: { ...references.types.memo, svgElements: [['script', {}]] } } },
   ])('refuses invalid declarations (%j)', declaration => {
     expect(parse({ memos: { references: declaration } }).success).toBe(false);
-  });
-
-  it.each(['export type openMemo = string;', 'export const openMemo = {};'])('refuses non-function navigation exports', async declaration => {
-    write('src/references.ts', `${declaration}\nexport function useItems() { return []; }`);
-    await expect(generate(fields)).rejects.toThrow('must export openMemo as a function');
   });
 
   it('refuses unknown categories', async () => {

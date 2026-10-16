@@ -99,7 +99,7 @@ describe('window declaration catalog', () => {
 
   it('projects native, disabled installed and source declarations with truthful identities and stable entries', () => {
     const { reader, catalog, sessions, wire } = fixture();
-    const references = { types: { memo: { category: 'memos', icon: 'NotebookText', svgElements: [], navigate: 'never.ts#open' } },
+    const references = { types: { memo: { category: 'memos', icon: 'NotebookText', svgElements: [] } },
       categories: { memos: { label: 'Memos', icon: 'NotebookText', useItems: 'never.ts#useItems' } } };
     const frontend = { tiptapPlugins: { suggestions: { extensions: { mention: 'never.ts#Mention' } } } };
     const viewers = { artifacts: { memo: { icon: 'FileText', fe: 'never.vue' } },

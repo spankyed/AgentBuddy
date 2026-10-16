@@ -307,7 +307,7 @@ it('projects native, disabled installed and authoring plugins without activating
 
 it('keeps reference metadata immutable and independent of native, installed and source activation', () => {
   const references = {
-    types: { memo: { category: 'memos', icon: 'NotebookText', svgElements: [], navigate: 'src/references.ts#openMemo' } },
+    types: { memo: { category: 'memos', icon: 'NotebookText', svgElements: [] } },
     categories: { memos: { label: 'Memos', icon: 'NotebookText', useItems: 'src/references.ts#useItems' } },
   };
   const catalog = createContributionCatalog(app);

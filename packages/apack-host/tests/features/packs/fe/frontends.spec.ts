@@ -212,10 +212,10 @@ describe("a pack's frontend", () => {
 
   it('publishes the captured reference metadata checked by the installed loader', async () => {
     const manifest = { id: 'ext', name: 'Ext', version: '1.0.0', features: { refs: { description: 'Feature declaration fixture.', references: {
-      types: { note: { category: 'notes', icon: 'NotebookText', svgElements: [], navigate: 'src/ref.ts#open' } },
+      types: { note: { category: 'notes', icon: 'NotebookText', svgElements: [] } },
       categories: { notes: { label: 'Notes', icon: 'NotebookText', useItems: 'src/ref.ts#useItems' } },
     } } } };
-    const type = { category: 'notes', icon: {}, svgElements: [], navigate: vi.fn() };
+    const type = { category: 'notes', icon: {}, svgElements: [] };
     let reads = 0;
     Object.defineProperty(type, 'category', { enumerable: true, get: () => ++reads === 1 ? 'notes' : 'changed' });
     const registration = { id: 'ext', declarationRevision: 'current', features: { refs: { references: {
@@ -228,7 +228,6 @@ describe("a pack's frontend", () => {
     expect(registry.referenceTypes().get('note')).toMatchObject({ featureRef: 'ext/refs',
       declarationRevision: 'current', runtimeRevision: 'runtime', buildRevision, binding: { category: 'notes' } });
     expect(reads).toBe(1);
-    expect(type.navigate).not.toHaveBeenCalled();
   });
 
   it('registers what its entry exports, and answers with the plugins it added', async () => {

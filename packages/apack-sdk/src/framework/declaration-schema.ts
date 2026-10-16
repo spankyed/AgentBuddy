@@ -458,7 +458,6 @@ const ReferencesSchema: z.ZodType<ReferenceDeclarations> = z.object({
       z.tuple([z.literal('rect'), declarationRecord(z.string())]),
       z.tuple([z.literal('circle'), declarationRecord(z.string())]),
     ])).describe('Static SVG geometry for rendering this reference in serialized editor content.'),
-    navigate: ExportTargetSchema.describe('Named navigation callback export invoked when this reference is opened.'),
   }).strict()).describe('Reference type IDs with static presentation and declared navigation bindings.'),
   categories: declarationRecord(ReferenceNameSchema, z.object({
     label: z.string().min(1).refine(value => value.trim().length > 0, 'Must have a visible label')

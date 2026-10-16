@@ -11,13 +11,13 @@ afterEach(() => { for (const scope of scopes.splice(0)) scope.stop(); stopFeTest
 function fixture() {
   const featureRef = resolveName('notes', 'external');
   const entry: ReferenceCatalogEntry = { packId: 'external', featureRef, origin: 'native', enabled: true, declaration: {
-    types: { memo: { category: 'memos', icon: 'NotebookText', svgElements: [], navigate: 'src/ref.ts#open' } },
+    types: { memo: { category: 'memos', icon: 'NotebookText', svgElements: [] } },
     categories: { memos: { label: 'Memos', icon: 'NotebookText', useItems: 'src/ref.ts#useItems' } },
   } };
   const raw = ref([{ id: 'Memo-one', label: 'First Memo', shortCode: 'M-1', type: 'memo' }]);
   const disposed = vi.fn(); const useItems = vi.fn(() => { onScopeDispose(disposed); return raw; });
   const categoryBinding: ReferenceBinding<ReferenceBindings['categories'][string]> = { featureRef, binding: { label: 'Memos', icon: {}, useItems } };
-  const typeBinding: ReferenceBinding<ReferenceTypeConfig> = { featureRef, binding: { category: 'memos', icon: {}, svgElements: [], navigate: vi.fn() } };
+  const typeBinding: ReferenceBinding<ReferenceTypeConfig> = { featureRef, binding: { category: 'memos', icon: {}, svgElements: [] } };
   const categories = new Map([['memos', categoryBinding]]); const types = new Map([['memo', typeBinding]]);
   const declarations = new Set<() => void>(); const accepted = new Set<() => void>();
   const state = { entries: [entry], ready: true };
@@ -75,7 +75,7 @@ it('drops unknown, inactive and wrong-category items and caps the filtered resul
   expect(f.reader.items.value).toHaveLength(1);
   f.types.clear(); f.publish(); expect(f.reader.items.value).toEqual([]);
   expect(f.useItems).toHaveBeenCalledOnce();
-  f.types.set('memo', { featureRef: resolveName('notes', 'external'), binding: { category: 'memos', icon: {}, svgElements: [], navigate: vi.fn() } });
+  f.types.set('memo', { featureRef: resolveName('notes', 'external'), binding: { category: 'memos', icon: {}, svgElements: [] } });
   f.raw.value = Array.from({ length: 40 }, (_, index) => ({ id: `Memo-${index}`, label: `Memo ${index}`, shortCode: `M-${index}`, type: 'memo' }));
   f.publish(); expect(f.reader.items.value).toHaveLength(25);
   f.state.entries = f.state.entries.map(entry => ({ ...entry, declaration: { ...entry.declaration,

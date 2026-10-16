@@ -560,8 +560,6 @@ export interface ReferenceTypeDeclaration {
     // (undocumented)
     icon: NonNullable<PluginDeclaration['icon']>;
     // (undocumented)
-    navigate: string;
-    // (undocumented)
     svgElements: readonly ReferenceSvgElement[];
 }
 

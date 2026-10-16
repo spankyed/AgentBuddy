@@ -1,7 +1,9 @@
+import { openEntity } from '@apackdev/sdk/fe'
+import type { EARS } from '@apackdev/sdk'
 import { Node, mergeAttributes } from '@tiptap/core'
 import type { Node as ProseMirrorNode } from '@tiptap/pm/model'
 import type { MarkdownSerializerState } from '@tiptap/pm/markdown'
-import { formatReferenceHref, parseReferenceHref, getReferenceTypeDeclaration, getReferenceTypeBinding, onReferenceDeclarationsChanged } from '@apackdev/sdk/fe/references'
+import { formatReferenceHref, parseReferenceHref, getReferenceTypeDeclaration, onReferenceDeclarationsChanged } from '@apackdev/sdk/fe/references'
 
 function createIconSvg(type: string): SVGSVGElement {
   const ns = 'http://www.w3.org/2000/svg'
@@ -92,11 +94,9 @@ export const ReferenceNode = Node.create({
       const onClick = (event: MouseEvent) => {
         if (editor.isEditable && !event.metaKey && !event.ctrlKey) return
 
-        const refType = currentNode.attrs.refType
         const refId = currentNode.attrs.refId as string
-        const cfg = getReferenceTypeBinding(refType)?.binding
 
-        if (cfg && typeof refId === 'string' && refId) cfg.navigate(refId)
+        if (typeof refId === 'string' && refId.includes('-')) openEntity(refId as EARS.EntityId)
       }
       dom.addEventListener('click', onClick)
 

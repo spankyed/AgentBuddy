@@ -627,18 +627,12 @@
                         ]
                       },
                       "description": "Static SVG geometry for rendering this reference in serialized editor content."
-                    },
-                    "navigate": {
-                      "type": "string",
-                      "pattern": "^([^#]+)#([A-Za-z_$][\\w$]*)$",
-                      "description": "Named navigation callback export invoked when this reference is opened."
                     }
                   },
                   "required": [
                     "category",
                     "icon",
-                    "svgElements",
-                    "navigate"
+                    "svgElements"
                   ],
                   "additionalProperties": false
                 },

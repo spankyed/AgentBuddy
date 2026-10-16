@@ -906,6 +906,7 @@ type Contract$2 = {
 };
 
 type Contract$3 = {
+    opens: 'Prompt';
     state: PromptsContext;
     inbox: PluginInbox<{
         pack: PromptsInboxEvent;
@@ -913,6 +914,7 @@ type Contract$3 = {
 };
 
 type Contract$4 = {
+    opens: 'Action';
     state: ActionsContext;
     inbox: PluginInbox<{
         pack: ActionsInboxEvent;
@@ -920,6 +922,7 @@ type Contract$4 = {
 };
 
 type Contract$5 = {
+    opens: 'Flow';
     state: FlowsContext;
     inbox: PluginInbox<{
         pack: FlowsInboxEvent;
@@ -927,6 +930,7 @@ type Contract$5 = {
 };
 
 type Contract$6 = {
+    opens: 'Collection' | 'Document';
     state: LibraryContext;
     inbox: PluginInbox<{
         pack: LibraryInboxEvent;
@@ -941,6 +945,7 @@ type Contract$7 = {
 };
 
 type Contract$8 = {
+    opens: 'Note';
     state: NotesContext;
     inbox: PluginInbox<{
         pack: NotesInboxEvent;
@@ -955,6 +960,7 @@ type Contract$9 = {
 };
 
 type Contract$a = {
+    opens: 'Thread';
     state: ThreadsContext;
     inbox: PluginInbox<{
         pack: ThreadsInboxEvent;

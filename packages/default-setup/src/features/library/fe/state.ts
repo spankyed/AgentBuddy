@@ -1,6 +1,8 @@
+import { entityIs } from '@apackdev/sdk/fe'
+import type { OpenEntity } from '@apackdev/sdk/events'
 import { setup, assign, type ActorRefFrom } from 'xstate'
 import type { DocumentDTO, CollectionDTO, LibraryItem, DocumentItem } from '#generated/types.ts'
-import type { LibraryContext, LibraryInboxEvent } from './contract.ts'
+import type { Contract, LibraryContext, LibraryInboxEvent } from './contract.ts'
 import type { OutgoingLibraryEvents } from '#features/library/be/types.ts'
 import type { SearchIndexFormData } from './types/search-index.ts'
 import { sendToSystem } from '#generated/events.ts'
@@ -53,6 +55,7 @@ import type { ContentSection } from '#features/library/be/types.ts';
 export type LibraryActor = ActorRefFrom<typeof librarySystem>
 
 export type LibraryEvents =
+  | OpenEntity
   | { type: 'PLUGIN_ACTIVATED' }
   | { type: 'TRAIL_CLICK'; trail: string[] }
   | { type: 'VIEW_BROWSER' }
@@ -131,11 +134,16 @@ export const librarySystem = setup({
         folderId: context.currentFolderId,
       })
     },
+    selectFolder: assign(({ event }) => {
+      if (event.type === 'OPEN_ENTITY' || event.type === 'NAVIGATE_TO_FOLDER' || event.type === 'BREADCRUMB_CLICK')
+        return { currentFolderId: event.type === 'OPEN_ENTITY' ? event.id : event.folderId, newItemId: null };
+      return {};
+    }),
     navigateToFolder: ({ event }) => {
-      if (event.type === 'NAVIGATE_TO_FOLDER' || event.type === 'BREADCRUMB_CLICK') {
+      if (event.type === 'OPEN_ENTITY' || event.type === 'NAVIGATE_TO_FOLDER' || event.type === 'BREADCRUMB_CLICK') {
         sendToSystem(id, {
           type: 'NAVIGATE_TO_FOLDER',
-          folderId: event.folderId,
+          folderId: event.type === 'OPEN_ENTITY' ? event.id : event.folderId,
         })
       }
     },
@@ -403,10 +411,11 @@ export const librarySystem = setup({
 
     setEditingDocument: assign({
       editingDocument: ({ context, event }) => {
-        if (event.type === 'EDIT_DOCUMENT') {
+        if (event.type === 'EDIT_DOCUMENT' || event.type === 'OPEN_ENTITY') {
+          const documentId = event.type === 'OPEN_ENTITY' ? event.id : event.documentId;
           // The open folder's items carry the document's content; `requestEditingDocument`
           // fetches it from the backend when the document is somewhere else in the library
-          const item = findItemById(context, event.documentId)
+          const item = findItemById(context, documentId)
           if (item && item.type === 'document') {
             return {
               id: item.id,
@@ -425,12 +434,13 @@ export const librarySystem = setup({
     }),
     /** Fetches the document the edit view needs when the open folder doesn't hold it; DOCUMENT_LOADED fills it in */
     requestEditingDocument: ({ context, event }) => {
-      if (event.type !== 'EDIT_DOCUMENT') return
-      const item = findItemById(context, event.documentId)
+      if (event.type !== 'EDIT_DOCUMENT' && event.type !== 'OPEN_ENTITY') return
+      const documentId = event.type === 'OPEN_ENTITY' ? event.id : event.documentId;
+      const item = findItemById(context, documentId)
       if (item?.type === 'document') return
       sendToSystem(id, {
         type: 'GET_DOCUMENT',
-        id: event.documentId,
+        id: documentId,
       })
     },
     clearEditingDocument: assign({
@@ -737,7 +747,7 @@ export const librarySystem = setup({
       },
     }),
   },
-  guards: {
+  guards: { entityIs: entityIs<Contract['opens']>,
     targetIs,
   },
 }).createMachine({
@@ -796,6 +806,11 @@ export const librarySystem = setup({
     navHistory: createNavHistory<string | null>(null),
   },
   on: {
+    OPEN_ENTITY: [
+      { guard: { type: 'entityIs', params: { entity: 'Document' } }, target: '.edit', actions: ['setEditingDocument', 'requestEditingDocument', 'clearSelection'] },
+      { guard: { type: 'entityIs', params: { entity: 'Collection' } }, target: '.browser', actions: ['navigateToFolder', 'clearSelection', 'selectFolder'] },
+    ],
+    EDIT_DOCUMENT: { target: '.edit', actions: ['setEditingDocument', 'requestEditingDocument', 'clearSelection'] },
     PLUGIN_ACTIVATED: {
       actions: ['requestFolderContents', 'requestIndex'],
     },
@@ -815,16 +830,11 @@ export const librarySystem = setup({
       actions: 'updateNavigation',
     },
     NAVIGATE_TO_FOLDER: {
-      actions: ['navigateToFolder', 'clearSelection', assign({
-        currentFolderId: ({ event }) => event.folderId,
-        newItemId: null,
-      })],
+      target: '.browser',
+      actions: ['navigateToFolder', 'clearSelection', 'selectFolder'],
     },
     BREADCRUMB_CLICK: {
-      actions: ['navigateToFolder', 'clearSelection', assign({
-        currentFolderId: ({ event }) => event.folderId,
-        newItemId: null,
-      })],
+      actions: ['navigateToFolder', 'clearSelection', 'selectFolder'],
     },
     NAVIGATE_BACK: {
       guard: ({ context }) => canGoBack(context.navHistory),
@@ -1014,10 +1024,6 @@ export const librarySystem = setup({
           },
           { target: 'create' },
         ],
-        EDIT_DOCUMENT: {
-          target: 'edit',
-          actions: ['setEditingDocument', 'requestEditingDocument', 'clearSelection'],
-        },
         // [SEARCH_INDEX_FF] Search index transitions — commented out
         // CREATE_SEARCH_INDEX: 'createIndex',
         // EDIT_SEARCH_INDEX: { target: 'editIndex', actions: 'setEditingIndex' },

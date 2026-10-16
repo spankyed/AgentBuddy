@@ -1,9 +1,10 @@
+import { untypedTx } from '@apackdev/ears';
 // The pack's frontend on the app's own shell (startShell): opening its plugin by name, the shell's state as useShell()
 // reads it, and the plugin reaching its system and hearing back over the harness's bus, with no app launched.
 import { effectScope } from 'vue';
 import { expect, it } from 'vitest';
 import { startApp, startShell } from '@apackdev/testing/harness';
-import { useShell } from '@apackdev/sdk/fe';
+import { openEntity, useShell } from '@apackdev/sdk/fe';
 import { openPlugin } from '#generated/fe.ts';
 import { sendToPlugin } from '#generated/events.ts';
 import memosState from '../../../../src/features/memos/fe/state.ts';
@@ -66,4 +67,14 @@ it('refuses a second frontend host in one test, naming what to do', async () => 
   await startShell({ plugins: { memos: { state: memosState } } });
 
   await expect(startShell({ plugins: { memos: { state: memosState } } })).rejects.toThrow('startShell() binds its own');
+});
+
+it('opens an existing entity through compiled destinations and the real shell', async () => {
+  const id = untypedTx('Memo').put('text', 'Opened by canonical ID').id();
+  const shell = await startShell({ plugins: { notes: { state: notesState }, memos: { state: memosState } } });
+  expect(shell.opened()).toBe('e2e-fixture/notes');
+  openEntity(id);
+  await expect.poll(() => shell.plugin('memos').getSnapshot().context.highlighted).toBe(id);
+  expect(shell.opened()).toBe('e2e-fixture/memos');
+  expect(shell.notices).toEqual([]);
 });

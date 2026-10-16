@@ -1,3 +1,5 @@
+import { entityIs } from '@apackdev/sdk/fe'
+import type { OpenEntity } from '@apackdev/sdk/events'
 import { assign, setup, type ActorRefFrom } from 'xstate'
 import breadcrumb, { breadcrumbWithParams } from '@apackdev/sdk/fe'
 import { contextMenuFn } from '@apackdev/sdk/fe'
@@ -12,7 +14,7 @@ import type {
   NodeEntity,
   EdgeEntity,
 } from '#generated/types.ts'
-import type { FlowsContext, FlowsInboxEvent } from './contract.ts'
+import type { Contract, FlowsContext, FlowsInboxEvent } from './contract.ts'
 import type { OutgoingFlowsEvents } from '#features/flows/be/types.ts'
 import { sendToSystem } from '#generated/events.ts'
 import { getNodeConfig, isTriggerNode } from '@apackdev/ui/components/node-styles'
@@ -145,7 +147,7 @@ type UIEvent =
   // Layout events
   | { type: 'LAYOUT_COMPUTED'; positions: Record<string, { x: number; y: number }> }
 
-export type FlowsEvents = UIEvent | SystemEvent | TrailClickEvent
+export type FlowsEvents = OpenEntity | UIEvent | SystemEvent | TrailClickEvent
 const typeOf = safeEvents<FlowsEvents>()
 
 const flowsState = setup({
@@ -196,14 +198,14 @@ const flowsState = setup({
 
     /* ── flow interactions ────────────────────────────── */
     selectFlow: ({ event, context }) => {
-      const ev = typeOf(['FLOW.SELECT', 'FLOW.PREVIEW', 'FLOW_CREATED'], event);
-      if (context.selectedFlowId === ev.flowId) {
+      const flowId = event.type === 'OPEN_ENTITY' ? event.id : typeOf(['FLOW.SELECT', 'FLOW.PREVIEW', 'FLOW_CREATED'], event).flowId;
+      if (context.selectedFlowId === flowId) {
         return
       }
       // Send event to backend to get flow data
       sendToSystem(id, {
         type: 'FLOW_SELECT',
-        flowId: ev.flowId,
+        flowId,
       });
     },
 
@@ -1112,7 +1114,7 @@ const flowsState = setup({
     requestDeleteFlow: assign({ showDeleteFlowDialog: true }),
     closeDialogs: assign({ showEditLabelDialog: false, showDeleteFlowDialog: false }),
   },
-  guards: {
+  guards: { entityIs: entityIs<Contract['opens']>,
     targetIs,
     isDeletedFlowSelected: ({ context, event }) => {
       const ev = typeOf('FLOW_DELETED', event);
@@ -1152,6 +1154,8 @@ const flowsState = setup({
     navHistory: createNavHistory<string | null>(null),
   },
   on: {
+    OPEN_ENTITY: { guard: { type: 'entityIs', params: { entity: 'Flow' } }, target: '.view', actions: 'selectFlow' },
+    'FLOW.SELECT': { target: '.view', actions: 'selectFlow' },
     FLOWS_CONNECTED: {
       actions: 'setPluginData',
       // target: '.view' // Go directly to view since we have the selected flow's data
@@ -1325,10 +1329,6 @@ const flowsState = setup({
         'FLOW.PREVIEW': {
           actions: 'selectFlow',
           // Stay in list state - just load the flow data
-        },
-        'FLOW.SELECT': {
-          actions: 'selectFlow',
-          target: 'view',
         },
         'SELECT_ROOT_FLOW': {
           actions: 'selectRootFlow',

@@ -7,22 +7,21 @@ import { frontendBindingProblem } from '../../src/fe/declaration-binding.ts';
 function fixture(id = 'notes-pack', name = 'note', category = 'notes') {
   const geometry = [['path', { d: 'M2 6h4' }]] as const;
   const references: ReferenceDeclarations = {
-    types: { [name]: { category, icon: 'NotebookText', svgElements: geometry, navigate: 'src/ref.ts#open' } },
+    types: { [name]: { category, icon: 'NotebookText', svgElements: geometry } },
     categories: { [category]: { label: category, icon: 'NotebookText', useItems: 'src/ref.ts#useItems' } },
   };
-  const navigate = vi.fn();
   const useItems = vi.fn();
   const icon = { render: vi.fn() };
   const bindings: ReferenceBindings = {
-    types: { [name]: { category, icon, svgElements: geometry, navigate } },
+    types: { [name]: { category, icon, svgElements: geometry } },
     categories: { [category]: { label: category, icon, useItems } },
   };
   const declaration: NativePackDeclaration = { id, features: { view: { description: 'Feature declaration fixture.', references } } };
-  return { declaration, registration: { id, features: { view: { references: bindings } } }, bindings, navigate, useItems, icon };
+  return { declaration, registration: { id, features: { view: { references: bindings } } }, bindings, useItems, icon };
 }
 
 describe('frontend reference admission', () => {
-  it('accepts complete metadata and bindings without executing providers, navigation or views', () => {
+  it('accepts complete metadata and bindings without executing providers or views', () => {
     const f = fixture();
     expect(frontendBindingProblem(f.declaration, f.registration)).toBeUndefined();
     const packs = createNativeFrontendTestRegistry([f.declaration]);
@@ -30,9 +29,8 @@ describe('frontend reference admission', () => {
     expect(packs.referenceTypes().size).toBe(0);
     pending.commit();
     pending.dispose();
-    expect(packs.referenceTypes().get('note')?.binding.navigate).toBe(f.navigate);
+    expect(packs.referenceTypes().get('note')?.binding.icon).toBe(f.icon);
     expect(packs.referenceCategories().get('notes')?.binding.useItems).toBe(f.useItems);
-    expect(f.navigate).not.toHaveBeenCalled();
     expect(f.useItems).not.toHaveBeenCalled();
     expect(f.icon.render).not.toHaveBeenCalled();
   });
@@ -43,7 +41,7 @@ describe('frontend reference admission', () => {
     ['changed category', (b: ReferenceBindings) => { b.types.note.category = 'other'; }, 'references.types.note'],
     ['changed geometry', (b: ReferenceBindings) => { b.types.note.svgElements = [['path', { d: 'changed' }]]; }, 'svgElements'],
     ['missing geometry', (b: ReferenceBindings) => { b.types.note.svgElements = []; }, 'svgElements'],
-    ['invalid navigation', (b: ReferenceBindings) => { b.types.note.navigate = {} as never; }, 'references.types.note'],
+    ['invalid icon', (b: ReferenceBindings) => { b.types.note.icon = null as never; }, 'references.types.note'],
     ['changed label', (b: ReferenceBindings) => { b.categories.notes.label = 'Other'; }, 'references.categories.notes'],
     ['invalid provider', (b: ReferenceBindings) => { b.categories.notes.useItems = {} as never; }, 'references.categories.notes'],
     ['missing category', (b: ReferenceBindings) => { b.categories = {}; }, 'references.categories'],
@@ -66,7 +64,7 @@ describe('frontend reference admission', () => {
     packs.registerFixture(first.registration);
     expect(() => packs.registerFixture(second.registration)).toThrow(`Reference ${kind}`);
     expect(() => packs.registerFixture(second.registration)).toThrow('"first-pack/view" and "second-pack/view"');
-    expect(packs.referenceTypes().get('note')?.binding.navigate).toBe(first.navigate);
+    expect(packs.referenceTypes().get('note')?.binding.icon).toBe(first.icon);
     expect(packs.hasPackFE('second-pack')).toBe(false);
   });
 
@@ -80,8 +78,8 @@ describe('frontend reference admission', () => {
     const bindSettings = vi.fn();
     expect(() => packs.replaceFixture({ ...candidate.registration, bindSettings })).toThrow('Reference types');
     expect(bindSettings).not.toHaveBeenCalled();
-    expect(packs.referenceTypes().get('other')?.binding.navigate).toBe(second.navigate);
-    expect(packs.referenceTypes().get('note')?.binding.navigate).toBe(first.navigate);
+    expect(packs.referenceTypes().get('other')?.binding.icon).toBe(second.icon);
+    expect(packs.referenceTypes().get('note')?.binding.icon).toBe(first.icon);
   });
 
   it('retires old keys on replacement and releases keys on removal', () => {
@@ -96,7 +94,7 @@ describe('frontend reference admission', () => {
     prepared.dispose();
     expect(packs.referenceTypes().has('note')).toBe(false);
     expect(packs.referenceCategories().has('notes')).toBe(false);
-    expect(packs.referenceTypes().get('other')?.binding.navigate).toBe(replacement.navigate);
+    expect(packs.referenceTypes().get('other')?.binding.icon).toBe(replacement.icon);
     packs.unregisterPackFE('first-pack');
     expect(packs.referenceTypes().size).toBe(0);
     expect(packs.referenceCategories().size).toBe(0);
@@ -129,7 +127,7 @@ describe('frontend reference admission', () => {
     next.commit(); next.dispose();
     expect(packs.referenceTypes().get('note')).not.toBe(type);
     expect(packs.referenceTypes().get('note')?.runtimeRevision).toBe('runtime-two');
-    expect(packs.referenceTypes().get('note')?.binding.navigate).toBe(replacement.navigate);
+    expect(packs.referenceTypes().get('note')?.binding.icon).toBe(replacement.icon);
   });
 
   it('does not manufacture installed identities for native bindings', () => {

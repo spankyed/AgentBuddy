@@ -1,3 +1,5 @@
+import { entityIs } from '@apackdev/sdk/fe'
+import type { OpenEntity } from '@apackdev/sdk/events'
 import { assign, enqueueActions, setup, type ActorRefFrom } from 'xstate'
 import breadcrumb, { breadcrumbWithParams } from '@apackdev/sdk/fe'
 import { safeEvents } from '@apackdev/sdk/fe'
@@ -7,7 +9,7 @@ import {
   type TrailClickEvent,
 } from '@apackdev/sdk/fe'
 import type { ActionsSettings } from '#generated/types.ts'
-import type { ActionsContext, ActionsInboxEvent } from './contract.ts'
+import type { Contract, ActionsContext, ActionsInboxEvent } from './contract.ts'
 import type { OutgoingActionEvents } from '#features/actions/be/types.ts'
 import type { ActionParameter } from '@apackdev/sdk'
 import { sendToSystem } from '#generated/events.ts'
@@ -53,7 +55,7 @@ type UIEvent =
   | { type: 'ACTIONS.EXPORT'; directory: string }
   | { type: 'ACTIONS.RESET_EXPORT_STATUS' }
 
-export type ActionsEvents = UIEvent | SystemEvent | TrailClickEvent
+export type ActionsEvents = OpenEntity | UIEvent | SystemEvent | TrailClickEvent
 const typeOf = safeEvents<ActionsEvents>()
 
 const actionsState = setup({
@@ -82,12 +84,12 @@ const actionsState = setup({
      * never shows; against one that answers in the same turn it always does.
      */
     selectAction: enqueueActions(({ event, context, enqueue }) => {
-      const ev = typeOf('ACTION.SELECT', event);
-      if (context.selectedActionId === ev.actionId) return;
+      const actionId = event.type === 'OPEN_ENTITY' ? event.id : typeOf('ACTION.SELECT', event).actionId;
+      if (context.selectedActionId === actionId) return;
       const call = newCall();
       // Recorded before the ask, so the answer can be told from one for a selection since replaced
       enqueue.assign({ pendingActionCall: call });
-      enqueue(() => sendToSystem(id, { type: 'ACTION_SELECT', actionId: ev.actionId }, { call }));
+      enqueue(() => sendToSystem(id, { type: 'ACTION_SELECT', actionId }, { call }));
     }),
 
     loadActionData: assign(({ event }) => {
@@ -442,7 +444,7 @@ const actionsState = setup({
       actionsExport: { status: 'idle' as const, errors: [], filePath: '', actionCount: 0 },
     }),
   },
-  guards: {
+  guards: { entityIs: entityIs<Contract['opens']>,
     targetIs,
     /** Whether this answer is the one the outstanding ask is waiting for, and false when none is */
     answersPendingAction: ({ context, event }) => answersCall(event, context.pendingActionCall),
@@ -490,6 +492,8 @@ const actionsState = setup({
     },
   },
   on: {
+    OPEN_ENTITY: { guard: { type: 'entityIs', params: { entity: 'Action' } }, target: '.detail', actions: 'selectAction' },
+    'ACTION.SELECT': { target: '.detail', actions: 'selectAction' },
     ACTIONS_LISTED: { actions: 'setPluginData' },
     ACTION_SELECTED: { guard: 'answersPendingAction', actions: 'loadActionData' },
     FEATURE_SETTINGS_UPDATED: { actions: 'handleSettingsUpdate' },
@@ -555,10 +559,6 @@ const actionsState = setup({
       tags: ['list-actions'],
       meta: { ...breadcrumb('list', 'Actions', true) },
       on: {
-        'ACTION.SELECT': {
-          actions: 'selectAction',
-          target: 'detail',
-        },
         'ACTION.CREATE': {
           actions: 'initCreateForm',
           target: 'create',
@@ -598,10 +598,6 @@ const actionsState = setup({
         ]),
       },
       on: {
-        'ACTION.SELECT': {
-          actions: 'selectAction',
-          target: 'detail',
-        },
         'FORM.UPDATE_LABEL': { actions: 'updateFormLabel' },
         'FORM.UPDATE_DESCRIPTION': { actions: 'updateFormDescription' },
         'FORM.UPDATE_PARAMETERS': { actions: 'updateFormParameters' },

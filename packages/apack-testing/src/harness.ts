@@ -21,7 +21,7 @@ import type { PackRegistryView } from '@apackdev/sdk/runtime';
 import { _settingsAdmin, type SettingsAdmin } from '@apackdev/sdk/services';
 import type { FeatureRef } from '@apackdev/sdk/ids';
 import type { PackRegistration } from '@apackdev/sdk/framework';
-import { createPackRegistry, readCachedDependency, type PackOrigin } from '@apackdev/host/packs';
+import { createPackRegistry, readCachedDependency, readPackBuild, type PackOrigin } from '@apackdev/host/packs';
 import { createPacksSystem, createSettingsSystem, hostRegistration, hostDeclaration, packsEvents, settingsEvents } from '@apackdev/host/features';
 import { appState, HOST_ENTITY_TYPES } from '@apackdev/host/app-state';
 import { createSettingsService, createSettingsStore } from '@apackdev/host/settings';
@@ -175,6 +175,7 @@ interface PackContext {
   packDir: string;
   manifest: PackManifest;
   dependencies: Map<string, ContentDependency>;
+  entityDestinations?: PackSnapshot['entityDestinations'];
 }
 
 let context: PackContext | undefined;
@@ -354,7 +355,14 @@ export type { StartShellOptions, TestShell, TestPlugin } from './shell.ts';
  */
 export async function startShell(options: StartShellOptions): Promise<TestShell> {
   if (!context) throw new Error('startShell() runs in a test: call setupPackTests() from a vitest setup file first');
-  return startShellFor(context.manifest.id, options, packsWithMocks);
+  if (!context.entityDestinations) {
+    const { snapshot } = readPackBuild(path.join(context.packDir, 'dist'));
+    if (snapshot.declarationRevision !== _declarationRevision(context.manifest)) {
+      throw new Error('The built declarations differ from the test pack manifest. Run `apack pack build` before starting a shell.');
+    }
+    context.entityDestinations = snapshot.entityDestinations;
+  }
+  return startShellFor(context.manifest.id, options, packsWithMocks, context.entityDestinations);
 }
 
 /** Registers the pack's runtime and its dependencies' (loaded from their cached runtime/index.cjs), as the app does */

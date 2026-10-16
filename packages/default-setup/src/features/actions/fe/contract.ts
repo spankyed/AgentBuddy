@@ -71,6 +71,7 @@ export type ActionsInboxEvent =
   | { type: 'ACTIONS.LOAD_ALL' }
 
 export type Contract = {
+  opens: 'Action'
   state: ActionsContext
   inbox: PluginInbox<{ pack: ActionsInboxEvent }>
 }

@@ -26,7 +26,7 @@ import { createFormatApplier } from '@apackdev/sdk/content';
 import { untypedQx, untypedTx } from '@apackdev/ears';
 
 const referenceDeclarations = {
-  types: { note: { category: 'notes', icon: 'NotebookText', svgElements: [], navigate: 'src/references.ts#openNote' } },
+  types: { note: { category: 'notes', icon: 'NotebookText', svgElements: [] } },
   categories: { notes: { label: 'Notes', icon: 'NotebookText', useItems: 'src/references.ts#useItems' } },
 };
 

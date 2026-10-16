@@ -1,3 +1,4 @@
+import { installedEngine } from '@apackdev/ears';
 // The app shell in a pack's unit tests: the host's own shell machine, run over the in-memory bus the harness's test
 // apps use, with the test pack's plugins registered, so a pack's frontend (navigation, the shell's state, sends to
 // its systems) is tested as the app runs it rather than against a stand-in.
@@ -96,7 +97,7 @@ export function stopRunningShells(): void {
  * Lookups the backend shares with it (roles, artifacts, blocks) read `backend` first. Resolves once the shell
  * is connected and has read the (empty) loaded packs, as a window is once the app is up.
  */
-export async function startShell(packId: string, options: StartShellOptions, backend: PackExtensionsView): Promise<TestShell> {
+export async function startShell(packId: string, options: StartShellOptions, backend: PackExtensionsView, entityDestinations: Readonly<Record<string, string>>): Promise<TestShell> {
   if (_isFeHostBound()) {
     throw new Error(
       'A frontend host is already bound in this test file: startShell() binds its own, so use it in place of '
@@ -117,7 +118,8 @@ export async function startShell(packId: string, options: StartShellOptions, bac
       ...(id === defaultPlugin && { default: true as const }),
     }])),
   };
-  packs.registerPackFE({ kind: 'native', declaration: nativeFrontendDeclarationFixture(registration) }, registration);
+  packs.registerPackFE({ kind: 'native', declaration: { ...nativeFrontendDeclarationFixture(registration),
+    entityDestinations: Object.fromEntries(Object.entries(entityDestinations).filter(([, feature]) => ids.includes(feature))) } }, registration);
 
   const stops: Array<() => void> = [];
   // What the systems send while the shell is starting (a plugin asking for its data as it's spawned is answered at
@@ -143,6 +145,7 @@ export async function startShell(packId: string, options: StartShellOptions, bac
     packClientReady: async (id) => testRootEvents.emitPackClientConnected(id),
     // The test's plugins are registered up front, as a built-in pack's are: no external pack frontends to load
     loadedPacks: async () => [],
+    entityExists: async (id, signal) => { signal.throwIfAborted(); return installedEngine().findById(id) !== undefined; },
     describeConnection: async () => 'A unit test\'s shell: its client is the harness\'s in-memory bus',
   };
 
@@ -150,7 +153,7 @@ export async function startShell(packId: string, options: StartShellOptions, bac
   const actor = createActor(createShellMachine({
     packs,
     catalog: { status: () => 'ready', subscribe: () => () => {}, plugins: () => [...packs.pluginBindings()].map(([featureRef, accepted]) => ({
-      featureRef: featureRef as FeatureRef, packId: accepted.packId, origin: 'native' as const, enabled: true, declaration: accepted.declaration,
+      featureRef: featureRef as FeatureRef, packId: accepted.packId, origin: 'native' as const, enabled: true, declaration: accepted.declaration, opens: accepted.opens,
     })) },
     client,
     packFrontends: { load: async () => null, unload: () => {} },

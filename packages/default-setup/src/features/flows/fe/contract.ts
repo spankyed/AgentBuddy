@@ -67,6 +67,7 @@ export type FlowsInboxEvent =
   | { type: 'NODE.DOUBLE_CLICK'; nodeId: string }
 
 export type Contract = {
+  opens: 'Flow'
   state: FlowsContext
   inbox: PluginInbox<{ pack: FlowsInboxEvent }>
 }

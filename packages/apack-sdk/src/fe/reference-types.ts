@@ -10,13 +10,11 @@ export { formatReferenceHref, parseReferenceHref } from '../framework/reference-
 export type { ReferenceTarget } from '../framework/reference-link.ts'
 export type { ReferenceCategoryMetadata } from './reference-reader.ts'
 
-/** Defines how an entity type appears and navigates when contributed to the UI. */
+/** Defines how a reference appears in the UI. */
 export interface ReferenceTypeConfig {
   category: string
   icon: Component
   svgElements: readonly ReferenceSvgElement[]
-  /** Opens the entity a reference names */
-  navigate: (refId: string) => void
 }
 
 export interface ReferenceItem {
@@ -45,7 +43,7 @@ export interface ReferenceBinding<T> {
   readonly binding: Readonly<T>
 }
 
-/** Metadata remains available without executing navigation, providers or components. */
+/** Metadata remains available without executing providers or components. */
 export function getReferenceDeclarations(): readonly ReferenceCatalogEntry[] {
   return boundFeHost().catalog.references()
 }

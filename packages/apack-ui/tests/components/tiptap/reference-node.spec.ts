@@ -10,26 +10,25 @@ import { resolveName } from '@apackdev/sdk/ids';
 import type { ReferenceCatalogEntry } from '@apackdev/sdk/framework';
 import type { ReferenceBinding, ReferenceTypeConfig } from '@apackdev/sdk/fe/references';
 
-const navigation = { thread: vi.fn(), document: vi.fn() };
+const send = vi.fn();
 const listeners = new Set<() => void>();
 let entries: ReferenceCatalogEntry[];
 let bindings: Map<string, ReferenceBinding<ReferenceTypeConfig>>;
 let ready: boolean;
-function addType(name: string, navigate = vi.fn()) {
+function addType(name: string) {
   const featureRef = resolveName('links', name + '-pack');
   entries.push({ packId: name + '-pack', featureRef, origin: 'native', enabled: true, declaration: {
-    types: { [name]: { category: 'links', icon: 'Link', svgElements: [], navigate: 'src/links.ts#open' } }, categories: {},
+    types: { [name]: { category: 'links', icon: 'Link', svgElements: [] } }, categories: {},
   } });
-  bindings.set(name, { featureRef, binding: { category: 'links', icon: {}, svgElements: [], navigate } });
-  return navigate;
+  bindings.set(name, { featureRef, binding: { category: 'links', icon: {}, svgElements: [] } });
 }
 
 const editors: Editor[] = [];
 let dom: JSDOM;
 beforeEach(() => {
   entries = []; bindings = new Map(); ready = true;
-  addType('thread', navigation.thread); addType('document', navigation.document);
-  startFeTestRuntime({ application: {} as never, settings: {} as never, secrets: {} as never, client: {} as never,
+  addType('thread'); addType('document');
+  startFeTestRuntime({ application: { send } as never, settings: {} as never, secrets: {} as never, client: {} as never,
     catalog: { frontend: () => [], artifacts: () => [], blocks: () => [], dsl: () => [], steps: () => [], status: () => ready ? 'ready' : 'disconnected', problem: () => undefined, references: () => entries,
       subscribe(listener) { listeners.add(listener); return () => { listeners.delete(listener); }; } },
     packs: { referenceTypes: () => bindings } as never });
@@ -65,7 +64,7 @@ it.each([['thread', 'Thread-first', 'T-12'], ['document', 'Document-first', 'DOC
     const restored = editor(markdown(original));
     expect(attrs(restored)).toMatchObject([{ refId: id, label: 'Friendly label' }]);
     restored.view.dom.querySelector('.reference-pill')!.dispatchEvent(new MouseEvent('click', { bubbles: true }));
-    expect(type === 'thread' ? navigation.thread : navigation.document).toHaveBeenCalledWith(id);
+    expect(send).toHaveBeenCalledWith({ type: 'OPEN_ENTITY', id });
   },
 );
 
@@ -86,12 +85,12 @@ it.each(['apack-ref://thread/', 'apack-ref://thread/Thread-%ZZ'])('refuses an em
   expect(attrs(editor(`<p><a href="${href}">Bad reference</a></p>`))).toEqual([]);
 });
 
-it('does not turn unknown types or missing ids into thread links or navigation', () => {
+it('opens canonical entity IDs independently of reference type and ignores missing IDs', () => {
   const original = editor(content(reference('Thread-one', 'unknown'), reference(null)));
   expect(original.getHTML()).toContain('apack-ref://unknown/Thread-one');
   expect(markdown(original)).toContain('apack-ref://unknown/Thread-one');
   for (const node of original.view.dom.querySelectorAll('.reference-pill')) node.dispatchEvent(new MouseEvent('click', { bubbles: true }));
-  expect(navigation.thread).not.toHaveBeenCalled();
+  expect(send).toHaveBeenCalledExactlyOnceWith({ type: 'OPEN_ENTITY', id: 'Thread-one' });
 });
 
 it('delivers the updated target from an existing node view', () => {
@@ -102,21 +101,21 @@ it('delivers the updated target from an existing node view', () => {
   expect(original.view.dom.querySelector('.reference-pill')).toBe(view);
   expect(view.textContent).toBe('Updated label');
   view.dispatchEvent(new MouseEvent('click', { bubbles: true }));
-  expect(navigation.thread).toHaveBeenCalledWith('Thread-two');
+  expect(send).toHaveBeenCalledWith({ type: 'OPEN_ENTITY', id: 'Thread-two' });
 });
 
 it('parses a new external reference in an already-created editor without starting or rebuilding it', () => {
   const opened = editor('<p>Open before contribution</p>');
-  const navigate = addType('memo');
+  addType('memo');
   opened.commands.setContent('<p><a href="apack-ref://memo/Memo-one">Memo</a></p>');
   expect(attrs(opened)).toMatchObject([{ refType: 'memo', refId: 'Memo-one' }]);
   expect(markdown(opened)).toBe('[Memo](apack-ref://memo/Memo-one)');
-  expect(navigate).not.toHaveBeenCalled();
+  expect(send).not.toHaveBeenCalled();
   opened.view.dom.querySelector('.reference-pill')!.dispatchEvent(new MouseEvent('click', { bubbles: true }));
-  expect(navigate).toHaveBeenCalledWith('Memo-one');
+  expect(send).toHaveBeenCalledWith({ type: 'OPEN_ENTITY', id: 'Memo-one' });
 });
 
-it('refreshes an existing node icon and uses current eligible navigation, disposing its listener', () => {
+it('refreshes presentation and requests opening independently of reference bindings', () => {
   const opened = editor(content(reference('Thread-one')));
   const pill = opened.view.dom.querySelector('.reference-pill')!;
   entries = entries.map(entry => entry.packId === 'thread-pack' ? { ...entry, declaration: { ...entry.declaration,
@@ -126,11 +125,11 @@ it('refreshes an existing node icon and uses current eligible navigation, dispos
   expect(pill.querySelector('path')?.getAttribute('d')).toBe('M2 4h8');
   ready = false;
   pill.dispatchEvent(new MouseEvent('click', { bubbles: true }));
-  expect(navigation.thread).not.toHaveBeenCalled();
+  expect(send).toHaveBeenLastCalledWith({ type: 'OPEN_ENTITY', id: 'Thread-one' });
   expect(opened.getHTML()).toContain('apack-ref://thread/Thread-one');
   ready = true; bindings.delete('thread');
   pill.dispatchEvent(new MouseEvent('click', { bubbles: true }));
-  expect(navigation.thread).not.toHaveBeenCalled();
+  expect(send).toHaveBeenCalledTimes(2);
 });
 
 it('retired node views release navigation handlers as well as declaration listeners', () => {
@@ -139,7 +138,7 @@ it('retired node views release navigation handlers as well as declaration listen
   opened.commands.setContent('<p>Reference removed</p>');
   expect(listeners.size).toBe(0);
   retired.dispatchEvent(new MouseEvent('click', { bubbles: true }));
-  expect(navigation.thread).not.toHaveBeenCalled();
+  expect(send).not.toHaveBeenCalled();
 });
 
 it.each(['html', 'markdown'] as const)('preserves a cold %s target and updates presentation without replacing document state', format => {
@@ -150,7 +149,7 @@ it.each(['html', 'markdown'] as const)('preserves a cold %s target and updates p
   expect(markdown(opened)).toBe(`[Saved memo](${href})`);
   const state = opened.state;
   const node = opened.view.dom.querySelector('.reference-pill')!;
-  const navigate = addType('memo');
+  addType('memo');
   entries = entries.map(entry => ({ ...entry, declaration: { ...entry.declaration,
     types: { memo: { ...entry.declaration.types.memo, svgElements: [['path', { d: 'M2 4h8' }]] } } } }));
   const notified = [...listeners]; for (const listener of notified) listener();
@@ -158,10 +157,10 @@ it.each(['html', 'markdown'] as const)('preserves a cold %s target and updates p
   expect(opened.view.dom.querySelector('.reference-pill')).toBe(node);
   expect(node.querySelector('path')?.getAttribute('d')).toBe('M2 4h8');
   node.dispatchEvent(new MouseEvent('click', { bubbles: true }));
-  expect(navigate).not.toHaveBeenCalled();
+  expect(send).toHaveBeenCalledWith({ type: 'OPEN_ENTITY', id: 'Memo-before-catalog' });
   ready = true;
   node.dispatchEvent(new MouseEvent('click', { bubbles: true }));
-  expect(navigate).toHaveBeenCalledWith('Memo-before-catalog');
+  expect(send).toHaveBeenCalledWith({ type: 'OPEN_ENTITY', id: 'Memo-before-catalog' });
   entries = []; bindings.clear();
   expect(markdown(opened)).toBe(`[Saved memo](${href})`);
   expect(opened.getHTML()).toContain(href);

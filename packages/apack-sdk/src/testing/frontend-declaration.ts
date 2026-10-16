@@ -22,7 +22,7 @@ export function nativeFrontendDeclarationFixture(fixture: PackFERegistration): N
         ...(feature.plugin && { plugin: { ...pluginDeclaration(feature.plugin), ...(feature.default && { default: true }) } }),
         ...(references && { references: {
           types: Object.fromEntries(Object.entries(references.types).map(([name, value]) => [name,
-            { category: value.category, icon: 'Box', svgElements: value.svgElements, navigate: 'fixtures/navigation.ts#navigate' }])),
+            { category: value.category, icon: 'Box', svgElements: value.svgElements }])),
           categories: Object.fromEntries(Object.entries(references.categories).map(([name, value]) => [name,
             { label: value.label, icon: 'Box', useItems: 'fixtures/references.ts#useItems' }])),
         } }),

@@ -170,6 +170,16 @@ export function defineHandlers<TContext extends MachineContext, TEvent extends E
     [key: string]: unknown;
 }>(): Handlers<TContext, TEvent, TOut>;
 
+// @public
+export function entityIs<E extends string>(input: {
+    event: {
+        type: string;
+        id?: unknown;
+    };
+}, params: {
+    entity: E;
+}): boolean;
+
 // @public (undocumented)
 export const EXTRA_BLOCK_ITEMS_KEY: InjectionKey<BlockItem[]>;
 
@@ -422,12 +432,8 @@ export interface HostShell {
 }
 
 // @public
-export type HostShellEvent =
-/**
-* Opens the plugin at a ref and hands its actor `events`. The shell waits for a plugin whose pack's frontend is
-* still loading, and reports a ref no pack provides once loading has settled.
-*/
-    {
+export type HostShellEvent = OpenEntity
+| {
     type: 'OPEN_PLUGIN';
     plugin: string;
     events: PluginEvent[];
@@ -552,6 +558,9 @@ export function onMenuOpenChange(open: boolean): void;
 
 // @public
 export function onStepsChanged(listener: () => void): () => void;
+
+// @public
+export function openEntity(id: EARS_2.EntityId): void;
 
 // @public
 export function openHelp(target?: HelpTarget): void;

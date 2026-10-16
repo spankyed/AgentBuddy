@@ -1,3 +1,5 @@
+import type { EntityOpeningActor } from './entity-opening.ts';
+import type { OpenEntity } from '@apackdev/sdk/events';
 // The app shell's state, events and the I/O it's given. Its machine (machine.ts) reads the rest of the app only
 // through these ports, so it runs the same in the renderer, over the API and the window, and in a pack's tests.
 import type { ContextMenuItem, HotkeyEvent, Plugin, PluginEvent, ShellPanelSizes } from '@apackdev/sdk/fe';
@@ -73,6 +75,7 @@ export interface RequestSender extends MessageSender {
 
 /** Asking for a plugin: which one, whether to open it or only hand it its events, and who asked */
 export interface PluginRequest {
+  entityToken?: string;
   plugin: string;
   select: boolean;
   sender: RequestSender;
@@ -93,6 +96,7 @@ export interface PluginRequest {
 }
 
 export interface ShellContext {
+  entityOpening: EntityOpeningActor;
   defaultToggles: {
     canvas: boolean;
   };
@@ -157,13 +161,16 @@ export interface ShellContext {
 }
 
 export type ShellEvent =
+  | OpenEntity
+  | { type: 'ENTITY_OPEN_FINISHED'; token: string }
+  | { type: 'SELECT_OPENED_PLUGIN'; plugin: string }
   | ApplicationPluginEvents
   | { type: 'PLUGIN_DECLARATIONS_CHANGED' }
   | { type: 'SELECT_PLUGIN'; plugin: string; historyIndex?: number }
-  | { type: 'OPEN_PLUGIN'; plugin: string; events: PluginEvent[] }
+  | { type: 'OPEN_PLUGIN'; plugin: string; events: PluginEvent[]; entityToken?: string }
   | ({ type: 'SEND_TO_PLUGIN'; plugin: string; events: PluginEvent[]; answering?: string; call?: string } & RequestSender)
   /** Hands an opened plugin its events, once the shell has selected it */
-  | { type: 'DELIVER_PLUGIN_EVENTS'; plugin: string; events: PluginEvent[]; asker?: RequestSender['asker']; answering?: string; call?: string }
+  | { type: 'DELIVER_PLUGIN_EVENTS'; plugin: string; events: PluginEvent[]; asker?: RequestSender['asker']; answering?: string; call?: string; entityToken?: string }
   | { type: 'DEFAULT_TOGGLE'; area: 'canvas' }
   | { type: 'TRAIL_UPDATE'; crumbs: BreadcrumbItem[]; target?: string; menuItems: ContextMenuItem[] }
   | { type: 'TRAIL_CLICK'; target: string; info?: unknown }

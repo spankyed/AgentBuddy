@@ -69,7 +69,7 @@ describe('_mergeProvenance', () => {
 
       extensions: { commands: { note: { placeholder: 'x' } },  tiptapPlugins: { suggestions: { extensions: { mention: 'src/editor.ts#Mention' } } } },
       features: { memos: { plugin: {}, references: {
-        types: { memo: { category: 'memos', icon: 'NotebookText', svgElements: [], navigate: 'src/ref.ts#openMemo' } },
+        types: { memo: { category: 'memos', icon: 'NotebookText', svgElements: [] } },
         categories: { memos: { label: 'Memos', icon: 'NotebookText', useItems: 'src/ref.ts#useItems' } },
       } }, headless: {} },
     };

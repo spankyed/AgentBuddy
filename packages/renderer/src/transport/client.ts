@@ -116,6 +116,7 @@ export const feClient: ShellClient = {
   packClientReady: (packId, runtimeRevision) => trpc.bus.packClientReady.mutate({ packId, runtimeRevision }),
 
   loadedPacks: () => trpc.packs.loaded.query(),
+  entityExists: (id, signal) => trpc.entities.exists.query({ id }, { signal }),
 
   describeConnection: () => window.electronAPI?.apiStatus?.getStatus()
     .then((status) => [

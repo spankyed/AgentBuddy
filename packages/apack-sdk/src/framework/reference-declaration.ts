@@ -7,7 +7,6 @@ export interface ReferenceTypeDeclaration {
   category: string;
   icon: NonNullable<PluginDeclaration['icon']>;
   svgElements: readonly ReferenceSvgElement[];
-  navigate: string;
 }
 
 export interface ReferenceCategoryDeclaration {
@@ -25,10 +24,8 @@ export interface ReferenceDeclarations {
 /** @internal Module targets used by validation and source freshness. */
 export function _referenceTargets(references: ReferenceDeclarations): [string, string][] {
   return [
-    ...Object.entries(references.types).flatMap(([id, type]): [string, string][] => [
-      [`types.${id}.navigate`, type.navigate],
-      ...(typeof type.icon === 'object' ? [[`types.${id}.icon`, type.icon.entry] as [string, string]] : []),
-    ]),
+    ...Object.entries(references.types).flatMap(([id, type]): [string, string][] =>
+      typeof type.icon === 'object' ? [[`types.${id}.icon`, type.icon.entry]] : []),
     ...Object.entries(references.categories).flatMap(([id, category]): [string, string][] => [
       [`categories.${id}.useItems`, category.useItems],
       ...(typeof category.icon === 'object' ? [[`categories.${id}.icon`, category.icon.entry] as [string, string]] : []),

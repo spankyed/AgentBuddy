@@ -13,12 +13,12 @@ function fixture() {
   const featureRef = resolveName('notes', 'author');
   const entry: ReferenceCatalogEntry = { packId: 'author', featureRef, origin: 'installed', enabled: true,
     declarationRevision: 'declaration-one', buildRevision: 'build-one', declaration: {
-      types: { note: { category: 'notes', icon: 'NotebookText', svgElements: [], navigate: 'src/ref.ts#open' } },
+      types: { note: { category: 'notes', icon: 'NotebookText', svgElements: [] } },
       categories: { notes: { label: 'Notes', icon: 'NotebookText', useItems: 'src/ref.ts#useItems' } },
     } };
-  const icon = { render: vi.fn() }; const navigate = vi.fn(); const useItems = vi.fn(() => shallowRef([]));
+  const icon = { render: vi.fn() }; const useItems = vi.fn(() => shallowRef([]));
   const identity = { featureRef, declarationRevision: entry.declarationRevision, buildRevision: entry.buildRevision, runtimeRevision: 'runtime-one' };
-  const type: ReferenceBinding<ReferenceTypeConfig> = { ...identity, binding: { category: 'notes', svgElements: [], icon, navigate } };
+  const type: ReferenceBinding<ReferenceTypeConfig> = { ...identity, binding: { category: 'notes', svgElements: [], icon } };
   const category: ReferenceBinding<ReferenceBindings['categories'][string]> = { ...identity, binding: { label: 'Notes', icon, useItems } };
   const state: { status: ReturnType<PackCatalogView['status']>; entries: ReferenceCatalogEntry[] } = { status: 'ready', entries: [entry] };
   const declarations = new Set<() => void>(); const bindings = new Set<() => void>();
@@ -28,7 +28,7 @@ function fixture() {
       subscribe(listener) { declarations.add(listener); return () => { declarations.delete(listener); }; } },
     packs: { referenceTypes: () => types, referenceCategories: () => categories,
       onChanged(listener: () => void) { bindings.add(listener); return () => { bindings.delete(listener); }; } } as never });
-  return { entry, type, category, state, types, categories, navigate, useItems, icon, declarations, bindings };
+  return { entry, type, category, state, types, categories, useItems, icon, declarations, bindings };
 }
 
 it('returns stable accepted entries without calling navigation, providers or icons', () => {
@@ -38,7 +38,7 @@ it('returns stable accepted entries without calling navigation, providers or ico
   expect(getReferenceTypeBinding('note')).toBe(f.type);
   expect(getReferenceCategoryBinding('notes')).toBe(f.category);
   expect(getReferenceTypeBinding('note')).toBe(f.type);
-  expect(f.navigate).not.toHaveBeenCalled(); expect(f.useItems).not.toHaveBeenCalled(); expect(f.icon.render).not.toHaveBeenCalled();
+  expect(f.useItems).not.toHaveBeenCalled(); expect(f.icon.render).not.toHaveBeenCalled();
 });
 
 it.each(['loading', 'disconnected', 'error', 'disposed'] as const)('refuses execution while %s, retaining metadata', status => {

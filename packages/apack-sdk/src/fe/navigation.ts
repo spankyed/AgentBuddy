@@ -1,3 +1,5 @@
+import { entityTypeOf, type EARS } from '@apackdev/ears';
+import type { OpenEntity } from '../events/index.ts';
 import { boundFeHost } from '../runtime/fe-host.ts';
 import { getDesignated, hasDesignation } from '../designations/index.ts';
 import type { HostShell, PluginEvent } from './shell.ts';
@@ -46,4 +48,15 @@ export function openHelp(target: import('../framework/pack-help.ts').HelpTarget 
   if (target.articleId && !target.packId) throw new Error('Opening an article requires its packId.');
   if (target.featureId && !target.packId) throw new Error('Filtering help by feature requires its packId.');
   untypedOpenPlugin('host/settings', { type: 'HELP.OPEN', target });
+}
+
+/** Open the declared destination for an entity in this window. */
+export function openEntity(id: EARS.EntityId): void {
+  getApp().send({ type: 'OPEN_ENTITY', id });
+}
+
+/** A destination guard; bind E to the plugin contract's `opens` union. */
+export function entityIs<E extends string>({ event }: { event: { type: string; id?: unknown } }, params: { entity: E }): boolean {
+  return event.type === 'OPEN_ENTITY' && 'id' in event && typeof event.id === 'string' && event.id.includes('-')
+    && entityTypeOf(event.id as OpenEntity['id']) === params.entity;
 }

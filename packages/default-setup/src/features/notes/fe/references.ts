@@ -1,11 +1,6 @@
-import { openPlugin, usePluginState } from '#generated/fe.ts'
+import { usePluginState } from '#generated/fe.ts'
 import { NOTE_TYPE_TO_REFERENCE_TYPE } from '../reference-types.ts'
-import { id as notes } from './state.ts'
 import type { ReferenceItem } from '@apackdev/sdk/fe/references'
-
-export function openNote(refId: string) {
-  openPlugin(notes, { type: 'NOTE.OPEN', noteId: refId })
-}
 
 export const useItems = () => usePluginState('notes', (state): ReferenceItem[] => {
   const allNotes = state.notes

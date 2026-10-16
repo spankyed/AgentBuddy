@@ -13,7 +13,7 @@ function inspectBuild(root: string, manifest: ReturnType<typeof readValidManifes
   problem?: string;
   revision?: string;
   metadata?: { declarationRevision: string; format: number; sdkVersion?: string;
-    entities: ReturnType<typeof _packEntities>; relations: PackBuild['snapshot']['types']['relKinds']; facades: string[] };
+    entities: ReturnType<typeof _packEntities>; relations: PackBuild['snapshot']['types']['relKinds']; entityDestinations: PackBuild['snapshot']['entityDestinations']; facades: string[] };
   content?: ContentIndex;
 } {
   const directory = fs.existsSync(path.join(root, PACK_LAYOUT.integrity)) ? root : path.join(root, 'dist');
@@ -34,7 +34,7 @@ function inspectBuild(root: string, manifest: ReturnType<typeof readValidManifes
     return { status: stale ? 'stale' : 'verified', directory, revision: build.revision,
       metadata: { declarationRevision: build.snapshot.declarationRevision, format: build.snapshot.format,
         sdkVersion: build.snapshot.sdkVersion, entities: _packEntities(build.snapshot.manifest),
-        relations: build.snapshot.types.relKinds, facades: Object.keys(build.snapshot.facades) },
+        relations: build.snapshot.types.relKinds, entityDestinations: build.snapshot.entityDestinations, facades: Object.keys(build.snapshot.facades) },
       ...(content && { content }), ...(stale && { problem: 'Built declarations differ from the current manifest; rebuild the pack.' }),
     };
   } catch (error) {
@@ -84,6 +84,10 @@ export async function info(args: string[]) {
   for (const [kind, declaration] of Object.entries(manifest.content ?? {})) names(`Declared content ${kind}`, declaration);
   console.log(`\nBuild: ${report.build.status}${report.build.revision ? `; revision ${report.build.revision}` : ''}`);
   if (report.build.problem) console.log(`  ${report.build.problem}`);
+  if (report.build.metadata) {
+    const destinations = Object.entries(report.build.metadata.entityDestinations);
+    console.log(`Entity destinations: ${destinations.length ? destinations.map(([entity, feature]) => `${entity} → ${report.id}/${feature}`).join(', ') : 'none'}`);
+  } else console.log('Entity destinations: unavailable (requires a verified build)');
   if (report.build.content) {
     console.log('Compiled content:');
     for (const entry of report.build.content.entries) {

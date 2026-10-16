@@ -76,7 +76,7 @@ function stepFrontendProblem(declaration: StepFrontendDeclaration, actual: unkno
   }
 }
 
-/** Validate the complete reference facet without calling navigation, providers or components. */
+/** Validate the complete reference facet without calling providers or components. */
 function referenceBindingProblem(declaration: ReferenceDeclarations, actual: unknown): string | undefined {
   if (!sameKeys(actual, ['types', 'categories'])) return 'references';
   const bindings = actual as Record<string, unknown>;
@@ -85,10 +85,10 @@ function referenceBindingProblem(declaration: ReferenceDeclarations, actual: unk
   for (const [id, expected] of Object.entries(declaration.types)) {
     const value = (bindings.types as Record<string, unknown>)[id];
     const path = `references.types.${id}`;
-    if (!sameKeys(value, ['category', 'icon', 'svgElements', 'navigate'])) return path;
+    if (!sameKeys(value, ['category', 'icon', 'svgElements'])) return path;
     const type = value as Record<string, unknown>;
     if (type.category !== expected.category
-      || !isComponent(type.icon) || typeof type.navigate !== 'function') return path;
+      || !isComponent(type.icon)) return path;
     if (!Array.isArray(type.svgElements) || type.svgElements.length !== expected.svgElements.length) return `${path}.svgElements`;
     for (const [index, [tag, attrs]] of expected.svgElements.entries()) {
       const element = type.svgElements[index];

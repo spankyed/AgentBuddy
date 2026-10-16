@@ -247,10 +247,19 @@ rejects unknown entities and competing destination features within a pack, and m
 Omit `opens` for a plugin with no entity destination; present declarations must be nonempty literal
 unions. This build metadata does not itself make a runtime handler ready.
 
+Call `openEntity(id)` from `@apackdev/sdk/fe` to open an existing entity. The shell checks existence,
+selects its enabled declared destination and waits for the accepted frontend. Missing, disabled or
+replaced destinations produce a useful refusal; callers do not choose a plugin or send its private events.
+The destination handles the shared `OpenEntity` event from `@apackdev/sdk/events`. Bind the SDK guard
+as `entityIs: entityIs<Contract['opens']>` in the machine's `guards` and handle `OPEN_ENTITY` with
+`guard: { type: 'entityIs', params: { entity: 'Memo' } }`. The event carries only `id`.
+
+
 ### Reference declarations
 
-A feature declares reference identities and presentation as data. Navigation and item enumeration are
-named function exports; build tooling checks those exports without executing the module.
+A feature declares reference identities and presentation as data. Item enumeration uses a named
+function export, checked at build time without executing the module. Reference clicks pass the canonical
+entity ID to `openEntity`; the destination comes from `Contract.opens`, independently of reference types.
 
 ```json
 "references": {
@@ -258,8 +267,7 @@ named function exports; build tooling checks those exports without executing the
     "memo": {
       "category": "memos",
       "icon": "NotebookText",
-      "svgElements": [["path", { "d": "M2 6h4" }]],
-      "navigate": "src/features/memos/fe/references.ts#openMemo"
+      "svgElements": [["path", { "d": "M2 6h4" }]]
     }
   },
   "categories": {
@@ -278,7 +286,7 @@ retains its actual owner. A type may use a category declared by its pack or a de
 owns one provider. Icons name Lucide exports or use `{ "entry": "src/icon.vue", "load": "lazy" }` for a
 custom component. SVG geometry supports path, rect and circle tuples.
 
-`navigate(id)` receives a canonical entity ID. `useItems()` is a Vue composable returning a reactive
+`useItems()` is a Vue composable returning a reactive
 reference-item list. Providers must work in an owned effect scope and release subscriptions with
 Vue's `onScopeDispose`; they cannot depend on component lifecycle hooks or a particular component instance.
 Generated frontend entries register these bindings under their owning feature. The host checks

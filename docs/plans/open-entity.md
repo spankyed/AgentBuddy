@@ -119,6 +119,19 @@ second intent in this tree. If one arrives it is `OPEN_ENTITY { id, intent? }`, 
 own internal event; what changes is that nothing outside sends them. Dropping them from the published
 `Contract.inbox` is a follow-on once every external sender is converted, not part of this.
 
+### Blueprint node revealing
+
+Opening a flow entity and revealing a particular node within it are separate operations. The Brain's
+blueprint link must retain both the flow and node target. Keep this as an explicit Flows operation;
+addressing that feature for node revealing is intentional, rather than a generic entity-opening caller.
+Do not force the coordinates into `OpenEntity`, invent a node destination, or discard the node reveal.
+
+Replace the caller's timer with feature-owned coordination: load the requested flow, match the response
+to the current request, and reveal its node only once that graph is available. A newer navigation cancels
+the pending reveal; late responses cannot reveal a node in another graph or another window. An already
+loaded matching graph can reveal immediately. Cover delayed loading, supersession and the loaded case.
+This remains required caller-migration work after the shell lifecycle refactor.
+
 ## What this deletes
 
 - `ReferenceTypeConfig.plugin` and `ReferenceTypeConfig.navigate` — a feature publishing how to open its

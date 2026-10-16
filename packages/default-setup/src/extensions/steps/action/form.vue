@@ -194,6 +194,7 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
 import { Check, ChevronDown, Code, ExternalLink, Plus } from 'lucide-vue-next'
+import { openEntity } from '@apackdev/sdk/fe'
 import { openPlugin } from '#generated/fe.ts'
 import {
   ComboboxAnchor,
@@ -353,7 +354,7 @@ const createAction = () => {
 
 const viewAction = () => {
   if (selectedAction.value) {
-    openPlugin('actions', { type: 'ACTION.SELECT', actionId: selectedAction.value.id });
+    openEntity(selectedAction.value.id);
   }
 }
 </script>

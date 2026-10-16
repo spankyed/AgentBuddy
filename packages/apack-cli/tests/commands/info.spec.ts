@@ -26,14 +26,14 @@ afterEach(() => {
   fs.rmSync(root, { recursive: true, force: true });
 });
 
-function writeBuild(directory: string, declared = manifest, index?: object): string {
+function writeBuild(directory: string, declared = manifest, index?: object, entityDestinations: Record<string, string> = {}): string {
   const output = path.join(directory, 'dist');
   fs.mkdirSync(path.join(output, 'types'), { recursive: true });
   fs.mkdirSync(path.join(output, 'runtime'), { recursive: true });
   fs.writeFileSync(path.join(output, PACK_LAYOUT.runtimeEntry), 'throw new Error("Inspection imported executable code");');
   fs.writeFileSync(path.join(output, PACK_LAYOUT.snapshot), JSON.stringify({
     manifest: declared, declarationRevision: _declarationRevision(declared), format: PACK_SNAPSHOT_FORMAT,
-    types: { entities: _packEntityTypes(declared), relKinds: {} }, entityDestinations: {}, facades: {},
+    types: { entities: _packEntityTypes(declared), relKinds: {} }, entityDestinations, facades: {},
   }));
   if (index) {
     fs.mkdirSync(path.join(output, PACK_LAYOUT.contentDir));
@@ -88,6 +88,20 @@ describe('read-only pack inspection', () => {
     expect(report.declared.features?.memos.entities).toEqual({ Memo: null });
     expect(fs.readdirSync(root)).toEqual(before);
     expect(fetch).not.toHaveBeenCalled();
+  });
+
+  it('reports compiled entity destinations without source modules or runtime activation', async () => {
+    const declared: PackManifest = { ...manifest, features: { memos: { ...manifest.features!.memos,
+      plugin: { label: 'Memos', state: 'src/missing-state.ts', canvas: 'src/missing-canvas.vue' },
+    } } };
+    fs.writeFileSync(path.join(root, 'apack.json'), JSON.stringify(declared));
+    writeBuild(root, declared, index, { Memo: 'memos' });
+    expect((await inspectPack(root)).build.metadata?.entityDestinations).toEqual({ Memo: 'memos' });
+    vi.spyOn(process, 'cwd').mockReturnValue(root);
+    const output = vi.spyOn(console, 'log').mockImplementation(() => {});
+    await info([]);
+    expect(output.mock.calls.flat().join('\n')).toContain('Memo → inspection-pack/memos');
+    expect(fs.existsSync(path.join(root, 'src'))).toBe(false);
   });
 
   it('inspects dependency targets from verified output without source or activation', async () => {

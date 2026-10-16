@@ -69,6 +69,7 @@ export type PromptsInboxEvent =
   | { type: 'PROMPT.SELECT'; promptId: EARS.EntityId }
 
 export type Contract = {
+  opens: 'Prompt'
   state: PromptsContext
   inbox: PluginInbox<{ pack: PromptsInboxEvent }>
 }

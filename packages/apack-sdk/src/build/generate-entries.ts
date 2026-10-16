@@ -1851,8 +1851,8 @@ export type { PackFeatureSettings, PackGroupSettings } from './settings.ts';
       const categories: string[] = [];
       for (const [name, type] of Object.entries(references.types)) {
         const label = `features.${feature.id}.references.types.${name}`;
-        const { icon: declaredIcon, navigate, ...data } = type;
-        types.push(`  ${propertyKey(name)}: { ...${dataLiteral(data)}, icon: ${icon(`${label}.icon`, declaredIcon)}, navigate: ${bind(`${label}.navigate`, navigate, true)} },`);
+        const { icon: declaredIcon, ...data } = type;
+        types.push(`  ${propertyKey(name)}: { ...${dataLiteral(data)}, icon: ${icon(`${label}.icon`, declaredIcon)} },`);
       }
       for (const [name, category] of Object.entries(references.categories)) {
         const label = `features.${feature.id}.references.categories.${name}`;

@@ -37,6 +37,7 @@ export {
 
 export {
   untypedOpenPlugin,
+  openEntity, entityIs,
   openLink,
   openHelp,
   type PluginEvent,

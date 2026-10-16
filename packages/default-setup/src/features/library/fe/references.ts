@@ -1,14 +1,5 @@
-import { openPlugin, usePluginState } from '#generated/fe.ts'
-import { id as library } from './state.ts'
+import { usePluginState } from '#generated/fe.ts'
 import type { ReferenceItem } from '@apackdev/sdk/fe/references'
-
-export function openDocument(refId: string) {
-  openPlugin(library, { type: 'EDIT_DOCUMENT', documentId: refId })
-}
-
-export function openFolder(refId: string) {
-  openPlugin(library, { type: 'NAVIGATE_TO_FOLDER', folderId: refId })
-}
 
 export const useItems = () => usePluginState('library', (state): ReferenceItem[] => {
   const index = state.index

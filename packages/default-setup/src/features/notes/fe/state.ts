@@ -1,3 +1,5 @@
+import { entityIs } from '@apackdev/sdk/fe'
+import type { OpenEntity } from '@apackdev/sdk/events'
 import { assign, setup, type ActorRefFrom } from 'xstate'
 import breadcrumb, { breadcrumbList } from '@apackdev/sdk/fe'
 import { safeEvents } from '@apackdev/sdk/fe'
@@ -8,7 +10,7 @@ import {
 import type {
   NoteDTO,
 } from '#generated/types.ts'
-import type { NotesContext, NotesInboxEvent } from './contract.ts'
+import type { Contract, NotesContext, NotesInboxEvent } from './contract.ts'
 import type { OutgoingNotesEvents } from '#features/notes/be/types.ts'
 import { sendToSystem } from '#generated/events.ts'
 import { Trash2 } from 'lucide-vue-next'
@@ -72,7 +74,7 @@ type UIEvent =
 type SettingsEvent =
   | { type: 'FEATURE_SETTINGS_UPDATED'; settings: { tasklistPanelPosition: 'left' | 'right'; showCollapseIcon: boolean } }
 
-export type NotesEvents = UIEvent | SystemEvent | TrailClickEvent | SettingsEvent
+export type NotesEvents = OpenEntity | UIEvent | SystemEvent | TrailClickEvent | SettingsEvent
 const typeOf = safeEvents<NotesEvents>()
 
 function findNearestTaskList(notes: NoteDTO[], noteId: string): NoteDTO | null {
@@ -122,7 +124,7 @@ const notesState = setup({
     }),
 
     selectNote: assign(({ event, context }) => {
-      const noteId = (event as { noteId: string }).noteId
+      const noteId = event.type === 'OPEN_ENTITY' ? event.id : typeOf('NOTE.OPEN', event).noteId
       const note = context.notes.find(n => n.id === noteId) || null
       const isHistoryNav = '_historyNav' in event
 
@@ -162,7 +164,7 @@ const notesState = setup({
     }),
 
     openNote: assign(({ event, context }) => {
-      const noteId = (event as { noteId: string }).noteId
+      const noteId = event.type === 'OPEN_ENTITY' ? event.id : typeOf('NOTE.OPEN', event).noteId
       const note = context.notes.find(n => n.id === noteId) || null
       const ancestorIds = getAncestorChain(context.notes, noteId).map(n => n.id)
       return {
@@ -750,7 +752,7 @@ const notesState = setup({
       panelSearchActive: !context.panelSearchActive,
     })),
   },
-  guards: { targetIs },
+  guards: { entityIs: entityIs<Contract['opens']>, targetIs },
 }).createMachine({
   id,
   initial: 'welcome',
@@ -777,6 +779,7 @@ const notesState = setup({
     viewedNoteId: null,
   },
   on: {
+    OPEN_ENTITY: { guard: { type: 'entityIs', params: { entity: 'Note' } }, target: '.editor', actions: ['openNote', 'sendViewNote'] },
     NOTES_CONNECTED: { actions: 'setPluginData' },
     FEATURE_SETTINGS_UPDATED: { actions: 'handleSettingsUpdate' },
     NOTE_UPDATED: { actions: 'updateNoteInList' },

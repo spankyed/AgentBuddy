@@ -10,6 +10,7 @@ vi.mock('@/transport/client', () => ({
     subscribe: () => () => {},
     packClientReady: () => Promise.resolve(),
     loadedPacks: () => Promise.resolve([]),
+    entityExists: () => Promise.resolve(true),
     describeConnection: () => Promise.resolve(''),
   },
 }));

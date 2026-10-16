@@ -100,7 +100,6 @@ export interface ReferenceTypeConfig {
     category: string;
     // (undocumented)
     icon: Component;
-    navigate: (refId: string) => void;
     // (undocumented)
     svgElements: readonly ReferenceSvgElement[];
 }

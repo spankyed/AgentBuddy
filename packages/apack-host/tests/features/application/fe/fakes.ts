@@ -22,6 +22,7 @@ export function fakeClient() {
     return connection;
   };
   const mocks = {
+    entityExists: vi.fn<ShellClient['entityExists']>(() => Promise.resolve(true)),
     send: vi.fn<(message: Message) => void>(),
     packClientReady: vi.fn<(packId: string, runtimeRevision: string) => Promise<void>>(() => Promise.resolve()),
     // A test gives only the fields of a loaded pack the shell reads
@@ -73,7 +74,7 @@ export function fakeShell(start: { plugins: Plugin[]; defaultPlugin?: Plugin; de
       declaration: { label: value.label, state: 'native/state.ts',
         ...(value.id === (start.defaultPlugin ?? start.plugins[0])?.id && { default: true }) } };
     if (!declarations.has(value.id)) declarations.set(value.id, entry);
-    bindings.set(value.id, { packId: entry.packId, declaration: declarations.get(value.id)!.declaration, binding: value });
+    bindings.set(value.id, { packId: entry.packId, declaration: declarations.get(value.id)!.declaration, opens: declarations.get(value.id)!.opens, binding: value });
   };
   start.plugins.forEach(accept);
   const catalogListeners = new Set<() => void>();

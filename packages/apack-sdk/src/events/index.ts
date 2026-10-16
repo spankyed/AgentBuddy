@@ -283,8 +283,11 @@ export type PluginEvents = { [plugin: string]: { type: string } };
  */
 export type FeatureSettingsUpdated = { type: 'FEATURE_SETTINGS_UPDATED'; settings: unknown };
 
-/** The event types every plugin receives from the app, beside those its pack's systems declare */
-export const PLUGIN_EVENT_TYPES = eventTypes<FeatureSettingsUpdated>()('FEATURE_SETTINGS_UPDATED');
+/** Open a canonical entity ID at this plugin's declared destination. */
+export type OpenEntity = { type: 'OPEN_ENTITY'; id: import('@apackdev/ears').EARS.EntityId };
+
+/** The event types every plugin receives from the app, beside those its pack's systems declare. */
+export const PLUGIN_EVENT_TYPES = eventTypes<FeatureSettingsUpdated | OpenEntity>()('FEATURE_SETTINGS_UPDATED', 'OPEN_ENTITY');
 
 /** `M` keyed `<PackId>/<key>`: a pack's features by their refs */
 export type Qualified<PackId extends string, M> = { [K in keyof M & string as `${PackId}/${K}`]: M[K] };

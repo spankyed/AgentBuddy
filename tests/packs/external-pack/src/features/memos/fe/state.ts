@@ -1,6 +1,7 @@
-import type { MemosContext, MemosInbox } from './contract.ts';
+import type { OpenEntity } from '@apackdev/sdk/events';
+import type { Contract, MemosContext, MemosInbox } from './contract.ts';
 import { setup, assign, type ActorRefFrom } from 'xstate';
-import { safeEvents } from '@apackdev/sdk/fe';
+import { entityIs, safeEvents } from '@apackdev/sdk/fe';
 import { sendToSystem } from '#generated/events.ts';
 import type { OutgoingMemosEvents } from '../be/types.ts';
 
@@ -9,7 +10,7 @@ export const id = 'memos' as const;
 type UIEvents = { type: 'MEMOS.ADD'; text: string } | { type: 'MEMOS.ADD_NOTE'; text: string };
 /** What another feature may send this plugin, which `fe/plugin.ts` declares as its inbox */
 export type { MemosInbox } from './contract.ts';
-export type MemosEvents = UIEvents | MemosInbox | OutgoingMemosEvents;
+export type MemosEvents = OpenEntity | UIEvents | MemosInbox | OutgoingMemosEvents;
 
 const typeOf = safeEvents<MemosEvents>();
 
@@ -18,6 +19,7 @@ const memosState = setup({
     context: {} as MemosContext,
     events: {} as MemosEvents,
   },
+  guards: { entityIs: entityIs<Contract['opens']> },
   actions: {
     setMemos: assign({
       memos: ({ event }) => typeOf('MEMOS_CONNECTED', event).memos,
@@ -48,6 +50,7 @@ const memosState = setup({
   id,
   context: { memos: [], notes: [], highlighted: null },
   on: {
+    OPEN_ENTITY: { guard: { type: 'entityIs', params: { entity: 'Memo' } }, actions: assign({ highlighted: ({ event }) => event.id }) },
     MEMOS_CONNECTED: { actions: 'setMemos' },
     MEMO_ADDED: { actions: 'addMemo' },
     'MEMOS.ADD': { actions: 'sendAdd' },
