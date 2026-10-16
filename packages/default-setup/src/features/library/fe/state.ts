@@ -409,39 +409,17 @@ export const librarySystem = setup({
       }
     },
 
-    setEditingDocument: assign({
-      editingDocument: ({ context, event }) => {
-        if (event.type === 'EDIT_DOCUMENT' || event.type === 'OPEN_ENTITY') {
-          const documentId = event.type === 'OPEN_ENTITY' ? event.id : event.documentId;
-          // The open folder's items carry the document's content; `requestEditingDocument`
-          // fetches it from the backend when the document is somewhere else in the library
-          const item = findItemById(context, documentId)
-          if (item && item.type === 'document') {
-            return {
-              id: item.id,
-              name: item.name,
-              content: item.content,
-              shortCode: item.shortCode,
-              tags: item.tags,
-              collectionId: item.parentId,
-              createdAt: item.createdAt,
-              updatedAt: item.updatedAt,
-            } as DocumentDTO
-          }
-        }
-        return undefined
-      },
-    }),
-    /** Fetches the document the edit view needs when the open folder doesn't hold it; DOCUMENT_LOADED fills it in */
-    requestEditingDocument: ({ context, event }) => {
-      if (event.type !== 'EDIT_DOCUMENT' && event.type !== 'OPEN_ENTITY') return
+    setEditingDocument: assign(({ context, event }) => {
+      if (event.type !== 'EDIT_DOCUMENT' && event.type !== 'OPEN_ENTITY') return {};
       const documentId = event.type === 'OPEN_ENTITY' ? event.id : event.documentId;
-      const item = findItemById(context, documentId)
-      if (item?.type === 'document') return
-      sendToSystem(id, {
-        type: 'GET_DOCUMENT',
-        id: documentId,
-      })
+      const item = findItemById(context, documentId);
+      return { editingDocumentId: documentId,
+        editingDocument: item?.type === 'document' ? documentItemToDTO(item) : undefined };
+    }),
+    /** Fill the current editor from the backend only when its document is not already cached. */
+    requestEditingDocument: ({ context }) => {
+      if (context.editingDocumentId && !context.editingDocument)
+        sendToSystem(id, { type: 'GET_DOCUMENT', id: context.editingDocumentId });
     },
     clearEditingDocument: assign({
       editingDocument: undefined,
@@ -940,13 +918,6 @@ export const librarySystem = setup({
     },
 
     // Document/collection response events
-    DOCUMENT_LOADED: {
-      target: '.edit',
-      actions: assign({
-        editingDocument: ({ event }) =>
-          event.type === 'DOCUMENT_LOADED' ? event.data.document : undefined,
-      }),
-    },
     DOCUMENT_CREATED: {
       actions: ['requestFolderContents', 'requestIndex', 'invalidateTreeCache', 'refetchExpandedFolders'],
     },
@@ -1043,6 +1014,7 @@ export const librarySystem = setup({
     },
     edit: {
       entry: assign({ currentView: 'edit' }),
+      exit: assign({ editingDocumentId: undefined }),
       meta: {
         ...breadcrumbWithParams<LibraryContext>({
           target: 'edit',
@@ -1056,6 +1028,10 @@ export const librarySystem = setup({
         }),
       },
       on: {
+        DOCUMENT_LOADED: {
+          guard: ({ context, event }) => context.editingDocumentId === event.data.document.id,
+          actions: assign({ editingDocument: ({ event }) => event.data.document }),
+        },
         SAVE_DOCUMENT: {
           target: 'browser',
           actions: ['updateDocument', 'clearEditingDocument'],

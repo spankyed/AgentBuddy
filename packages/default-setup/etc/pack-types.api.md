@@ -1520,6 +1520,12 @@ interface FlowsConnectedData {
 }
 
 interface FlowsContext {
+    pendingFlow?: {
+        call: string;
+        flowId: EARS.EntityId;
+        nodeId?: string;
+        recordHistory: boolean;
+    };
     selectedNodeId?: EARS.EntityId;
     editingNodeId?: EARS.EntityId;
     selectedFlowId?: EARS.EntityId;
@@ -1579,6 +1585,10 @@ type FlowsInboxEvent = {
     flowId: EARS.EntityId;
 } | {
     type: 'NODE.DOUBLE_CLICK';
+    nodeId: string;
+} | {
+    type: 'NODE.REVEAL';
+    flowId: EARS.EntityId;
     nodeId: string;
 };
 
@@ -2700,6 +2710,7 @@ declare const LOCAL_EMBEDDING_MODELS: {
 interface LibraryContext {
     currentView: 'browser' | 'create' | 'create-index' | 'edit' | 'edit-index' | 'test-index';
     editingDocument?: DocumentDTO;
+    editingDocumentId?: string;
     items: LibraryItem[];
     currentFolderId: string | null;
     currentPath: string[];
@@ -3483,10 +3494,11 @@ type OutgoingFlowsEvents = {
 } | {
     type: 'FLOW_SELECTED';
     flowId: EARS.EntityId;
-    data: {
-        nodes: any[];
-        edges: any[];
-    };
+    data: FlowExtendedData;
+} | {
+    type: 'FLOW_REFRESHED';
+    flowId: EARS.EntityId;
+    data: FlowExtendedData;
 }
 /** A flow exists — news for every window, so every list grows. It opens nothing: see `FLOW_OPENED` */
  | {

@@ -10,6 +10,7 @@ export interface LibraryContext {
   // Core view state
   currentView: 'browser' | 'create' | 'edit' | 'create-index' | 'edit-index' | 'test-index'
   editingDocument?: DocumentDTO
+  editingDocumentId?: string
 
   // File browser fields
   items: LibraryItem[]

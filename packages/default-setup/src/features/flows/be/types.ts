@@ -71,7 +71,8 @@ export type IncomingFlowsEvents =
 
 export type OutgoingFlowsEvents =
   | { type: 'FLOWS_CONNECTED'; data: FlowsConnectedData }
-  | { type: 'FLOW_SELECTED'; flowId: EARS.EntityId; data: { nodes: any[]; edges: any[] } }
+  | { type: 'FLOW_SELECTED'; flowId: EARS.EntityId; data: FlowExtendedData }
+  | { type: 'FLOW_REFRESHED'; flowId: EARS.EntityId; data: FlowExtendedData }
   /** A flow exists — news for every window, so every list grows. It opens nothing: see `FLOW_OPENED` */
   | { type: 'FLOW_CREATED'; flow: FlowEntity; flowId: EARS.EntityId; data: { nodes: any[]; edges: any[] } }
   /**

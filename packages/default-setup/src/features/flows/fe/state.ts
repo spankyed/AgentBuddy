@@ -1,6 +1,7 @@
+import { answersCall, newCall } from '@apackdev/sdk/events'
 import { entityIs } from '@apackdev/sdk/fe'
 import type { OpenEntity } from '@apackdev/sdk/events'
-import { assign, setup, type ActorRefFrom } from 'xstate'
+import { assign, enqueueActions, setup, type ActorRefFrom } from 'xstate'
 import breadcrumb, { breadcrumbWithParams } from '@apackdev/sdk/fe'
 import { contextMenuFn } from '@apackdev/sdk/fe'
 import { Edit, Trash2 } from 'lucide-vue-next'
@@ -145,10 +146,20 @@ type UIEvent =
   // Canvas error
   | { type: 'CANVAS.CLEAR_ERROR' }
   // Layout events
-  | { type: 'LAYOUT_COMPUTED'; positions: Record<string, { x: number; y: number }> }
+  | { type: 'PLUGIN_DEACTIVATED' }
+  | { type: 'LAYOUT_COMPUTED'; graph: FlowsContext['graph']; positions: Record<string, { x: number; y: number }> }
 
 export type FlowsEvents = OpenEntity | UIEvent | SystemEvent | TrailClickEvent
 const typeOf = safeEvents<FlowsEvents>()
+
+/** A layout result belongs to the exact graph that requested it. */
+function layoutGraph(data: Pick<FlowsContext['graph'], 'nodes' | 'edges'>, positions: FlowsContext['graph']['positions'],
+  send: (event: Extract<FlowsEvents, { type: 'LAYOUT_COMPUTED' }>) => void): FlowsContext['graph'] {
+  const needsLayout = data.nodes.length > 0 && !allNodesHavePositions(data.nodes, positions);
+  const graph = { ...data, positions: needsLayout ? {} : positions };
+  if (needsLayout) void calculateLayoutAsync(data).then(positions => send({ type: 'LAYOUT_COMPUTED', graph, positions }));
+  return graph;
+}
 
 const flowsState = setup({
   types: {
@@ -160,30 +171,14 @@ const flowsState = setup({
     setPluginData: assign(({ context, event, self }) => {
       const ev = typeOf('FLOWS_CONNECTED', event);
 
-      const existingPositions = context.graph?.positions || {};
-      const graphNodes = ev.data.graph?.nodes || [];
-      const graphEdges = ev.data.graph?.edges || [];
-      const needsLayout = graphNodes.length > 0 && !allNodesHavePositions(graphNodes, existingPositions);
-
-      // Trigger async layout calculation if needed
-      if (needsLayout) {
-        calculateLayoutAsync({ nodes: graphNodes, edges: graphEdges })
-          .then((positions) => {
-            self.send({ type: 'LAYOUT_COMPUTED', positions })
-          })
-      }
-
+      const keepGraph = !!context.selectedFlowId || !!context.pendingFlow;
       return {
         flows: (ev.data.flows || []) as FlowEntity[],
         prompts: ev.data.prompts || [],
         models: ev.data.models || [],
         actions: ev.data.actions || [],
-        selectedFlowId: ev.data.selectedFlowId,
-        graph: {
-          nodes: graphNodes,
-          edges: graphEdges,
-          positions: needsLayout ? {} : existingPositions,
-        },
+        selectedFlowId: keepGraph ? context.selectedFlowId : ev.data.selectedFlowId,
+        graph: keepGraph ? context.graph : layoutGraph(ev.data.graph, {}, event => self.send(event)),
         rootFlowId: ev.data.rootFlow?.id,
         settings: ev.data.settings || {},
       }
@@ -197,57 +192,41 @@ const flowsState = setup({
     }),
 
     /* ── flow interactions ────────────────────────────── */
-    selectFlow: ({ event, context }) => {
-      const flowId = event.type === 'OPEN_ENTITY' ? event.id : typeOf(['FLOW.SELECT', 'FLOW.PREVIEW', 'FLOW_CREATED'], event).flowId;
-      if (context.selectedFlowId === flowId) {
-        return
-      }
-      // Send event to backend to get flow data
-      sendToSystem(id, {
-        type: 'FLOW_SELECT',
-        flowId,
-      });
-    },
-
-    selectRootFlow: ({ context }) => {
-      const rootFlowId = context.rootFlowId;
-      if (!rootFlowId) {
-        console.warn('No root flow configured');
+    cancelFlowSelection: assign({ pendingFlow: undefined }),
+    selectFlow: enqueueActions(({ event, context, enqueue }) => {
+      const flowId = event.type === 'OPEN_ENTITY' ? event.id
+        : event.type === 'SELECT_ROOT_FLOW' ? context.rootFlowId
+        : event.type === 'NAVIGATE_BACK' || event.type === 'NAVIGATE_FORWARD' ? context.navHistory.stack[context.navHistory.index]
+        : typeOf(['FLOW.SELECT', 'FLOW.PREVIEW', 'NODE.REVEAL'], event).flowId;
+      if (!flowId) return;
+      const nodeId = event.type === 'NODE.REVEAL' ? event.nodeId : undefined;
+      const recordHistory = event.type !== 'FLOW.PREVIEW' && event.type !== 'NAVIGATE_BACK' && event.type !== 'NAVIGATE_FORWARD';
+      if (context.selectedFlowId === flowId && (!nodeId || context.graph.nodes.some(node => node.id === nodeId))) {
+        enqueue.assign({ pendingFlow: undefined,
+          ...(nodeId && { selectedNodeId: nodeId as EARS.EntityId,
+            editingNodeId: nodeId as EARS.EntityId, canvasError: undefined }),
+          ...(recordHistory && { navHistory: pushNavHistory(context.navHistory, flowId) }),
+        });
         return;
       }
-      if (context.selectedFlowId === rootFlowId) {
-        return;
-      }
-      // Send event to backend to get root flow data
-      sendToSystem(id, {
-        type: 'FLOW_SELECT',
-        flowId: rootFlowId,
-      });
-    },
+      const call = newCall();
+      enqueue.assign({ pendingFlow: { call, flowId: flowId as EARS.EntityId, nodeId, recordHistory }, canvasError: undefined });
+      enqueue(() => sendToSystem(id, { type: 'FLOW_SELECT', flowId }, { call }));
+    }),
 
     loadFlowData: assign(({ context, event, self }) => {
-      const ev = typeOf('FLOW_SELECTED', event);
-
-      const existingPositions = context.graph?.positions || {};
-      const needsLayout = !allNodesHavePositions(ev.data.nodes, existingPositions);
-
-      // Trigger async layout calculation if needed
-      if (needsLayout) {
-        calculateLayoutAsync({ nodes: ev.data.nodes, edges: ev.data.edges })
-          .then((positions) => {
-            self.send({ type: 'LAYOUT_COMPUTED', positions })
-          })
-      }
-
+      const ev = typeOf(['FLOW_SELECTED', 'FLOW_REFRESHED'], event);
+      const request = event.type === 'FLOW_SELECTED' ? context.pendingFlow : undefined;
+      const nodeId = request?.nodeId;
+      const found = nodeId && ev.data.nodes.some(node => node.id === nodeId);
       return {
+        pendingFlow: undefined,
         selectedFlowId: ev.flowId,
-        selectedNodeId: undefined,
-        graph: {
-          nodes: ev.data.nodes,
-          edges: ev.data.edges,
-          positions: needsLayout ? {} : existingPositions,
-        },
-        navHistory: pushNavHistory(context.navHistory, ev.flowId as string),
+        selectedNodeId: ev.type === 'FLOW_REFRESHED' ? context.selectedNodeId : found ? nodeId as EARS.EntityId : undefined,
+        editingNodeId: ev.type === 'FLOW_REFRESHED' ? context.editingNodeId : found ? nodeId as EARS.EntityId : undefined,
+        canvasError: ev.type === 'FLOW_REFRESHED' ? context.canvasError : nodeId && !found ? `Node "${nodeId}" is no longer in flow "${ev.flowId}".` : undefined,
+        graph: layoutGraph(ev.data, context.selectedFlowId === ev.flowId ? context.graph.positions : {}, event => self.send(event)),
+        navHistory: request?.recordHistory ? pushNavHistory(context.navHistory, ev.flowId) : context.navHistory,
       };
     }),
 
@@ -291,21 +270,12 @@ const flowsState = setup({
     openCreatedFlow: assign(({ event, self }) => {
       const ev = typeOf('FLOW_OPENED', event);
 
-      // Trigger async layout calculation for new flow
-      calculateLayoutAsync({
-        nodes: ev.data.nodes,
-        edges: ev.data.edges,
-      }).then((positions) => {
-        self.send({ type: 'LAYOUT_COMPUTED', positions })
-      })
-
       return {
+        pendingFlow: undefined,
         selectedFlowId: ev.flowId,
-        graph: {
-          nodes: ev.data.nodes,
-          edges: ev.data.edges,
-          positions: {},
-        },
+        selectedNodeId: undefined,
+        editingNodeId: undefined,
+        graph: layoutGraph(ev.data, {}, event => self.send(event)),
       };
     }),
 
@@ -330,6 +300,8 @@ const flowsState = setup({
 
       return {
         flows: updatedFlows,
+        pendingFlow: context.pendingFlow?.flowId === ev.flowId ? undefined : context.pendingFlow,
+        canvasError: context.pendingFlow?.flowId === ev.flowId ? `Flow "${ev.flowId}" was deleted before it could be opened.` : context.canvasError,
         selectedFlowId: wasSelected ? undefined : context.selectedFlowId,
         graph: wasSelected ? { nodes: [], edges: [], positions: {} } : context.graph,
       };
@@ -1116,6 +1088,8 @@ const flowsState = setup({
   },
   guards: { entityIs: entityIs<Contract['opens']>,
     targetIs,
+    answersFlowSelection: ({ context, event }) => event.type === 'FLOW_SELECTED'
+      && context.pendingFlow?.flowId === event.flowId && answersCall(event, context.pendingFlow.call),
     isDeletedFlowSelected: ({ context, event }) => {
       const ev = typeOf('FLOW_DELETED', event);
       return context.selectedFlowId === ev.flowId;
@@ -1156,6 +1130,8 @@ const flowsState = setup({
   on: {
     OPEN_ENTITY: { guard: { type: 'entityIs', params: { entity: 'Flow' } }, target: '.view', actions: 'selectFlow' },
     'FLOW.SELECT': { target: '.view', actions: 'selectFlow' },
+    'NODE.REVEAL': { target: '.view', actions: 'selectFlow' },
+    PLUGIN_DEACTIVATED: { actions: 'cancelFlowSelection' },
     FLOWS_CONNECTED: {
       actions: 'setPluginData',
       // target: '.view' // Go directly to view since we have the selected flow's data
@@ -1166,10 +1142,12 @@ const flowsState = setup({
     'ROOT_FLOW.SET': {
       actions: ({ event }) => sendToSystem(id, { type: 'SET_ROOT_FLOW', flowId: typeOf('ROOT_FLOW.SET', event).flowId }),
     },
-    FLOW_SELECTED: { actions: 'loadFlowData' },
+    FLOW_SELECTED: { guard: 'answersFlowSelection', actions: 'loadFlowData' },
+    FLOW_REFRESHED: { guard: ({ context, event }) => !context.pendingFlow && context.selectedFlowId === event.flowId, actions: 'loadFlowData' },
     LAYOUT_COMPUTED: {
+      guard: ({ context, event }) => context.graph === event.graph,
       actions: assign(({ context, event }) => {
-        const ev = event as { type: 'LAYOUT_COMPUTED'; positions: Record<string, { x: number; y: number }> }
+        const ev = typeOf('LAYOUT_COMPUTED', event)
         return {
           graph: {
             ...context.graph,
@@ -1212,7 +1190,7 @@ const flowsState = setup({
     EDGE_UPDATED: {
       // Backend confirmation - edge already moved locally
     },
-    // A refused move: the stored flow comes back as FLOW_SELECTED, then the reason
+    // A refused move: the stored flow comes back as FLOW_REFRESHED, then the reason
     EDGE_UPDATE_FAILED: {
       actions: 'surfaceEdgeError',
     },
@@ -1276,11 +1254,7 @@ const flowsState = setup({
           return target !== null && context.flows.some(f => f.id === target);
         },
         target: '.view',
-        actions: assign(({ context }) => {
-          const result = goBack(context.navHistory)!;
-          sendToSystem(id, { type: 'FLOW_SELECT', flowId: result.entry as string });
-          return { navHistory: result.history };
-        }),
+        actions: [assign(({ context }) => ({ navHistory: goBack(context.navHistory)!.history })), 'selectFlow'],
       },
     ],
     NAVIGATE_FORWARD: [
@@ -1302,11 +1276,7 @@ const flowsState = setup({
           return target !== null && context.flows.some(f => f.id === target);
         },
         target: '.view',
-        actions: assign(({ context }) => {
-          const result = goForward(context.navHistory)!;
-          sendToSystem(id, { type: 'FLOW_SELECT', flowId: result.entry as string });
-          return { navHistory: result.history };
-        }),
+        actions: [assign(({ context }) => ({ navHistory: goForward(context.navHistory)!.history })), 'selectFlow'],
       },
     ],
     TRAIL_CLICK: [
@@ -1323,6 +1293,7 @@ const flowsState = setup({
   },
   states: {
     list: {
+      entry: 'cancelFlowSelection',
       tags: ['list-flows'],
       meta: { ...breadcrumb('list', 'Flows', true) },
       on: {
@@ -1331,7 +1302,7 @@ const flowsState = setup({
           // Stay in list state - just load the flow data
         },
         'SELECT_ROOT_FLOW': {
-          actions: 'selectRootFlow',
+          actions: 'selectFlow',
           target: 'view',
         },
         'FLOW.CREATE': {
@@ -1346,7 +1317,7 @@ const flowsState = setup({
       }
     },
     view: {
-      exit: ['deselectNode', 'deselectHandle'],
+      exit: ['cancelFlowSelection', 'deselectNode', 'deselectHandle'],
       tags: ['view-flow'],
       meta: {
         ...breadcrumbWithParams<FlowsContext>({
@@ -1378,7 +1349,7 @@ const flowsState = setup({
       },
       on: {
         'FLOW.SELECT': { actions: 'selectFlow'},
-        'SELECT_ROOT_FLOW': { actions: 'selectRootFlow' },
+        'SELECT_ROOT_FLOW': { actions: 'selectFlow' },
         'SELECT_AND_EDIT_FIRST_NODE': { actions: 'selectAndEditFirstNode' },
         'NODE.CLICK': [
           // If handle is selected, connect to clicked node
@@ -1392,7 +1363,7 @@ const flowsState = setup({
           },
         ],
         'NODE.SELECTION_CHANGE': { actions: 'handleSelectionChange' },
-        'NODE.DOUBLE_CLICK': { actions: 'editNode' },
+        'NODE.DOUBLE_CLICK': { actions: ['cancelFlowSelection', 'editNode'] },
         'NODE.EDITOR.CLOSE': { actions: 'closeNodeEditor' },
         'HANDLE.SELECT': { actions: 'selectHandle' },
         'HANDLE.DESELECT': { actions: 'deselectHandle' },

@@ -118,8 +118,9 @@ The worked examples here:
 **Two limits, worth knowing before reaching for a key.** Where the slot is also the view's *membership
 list* — a list of open tabs, say — a write **creates** the row, so a reply for something the user has
 closed can bring it back; a key decides which row, not whether there should be one. And where the reply
-drives navigation, a key fixes which data lands but not that the user is moved: `DOCUMENT_LOADED` carries
-`target: '.edit'` (`features/library/fe/state.ts`). Both want an in-flight check as well as a key.
+drives navigation, a key fixes which data lands but not that the user is moved. Library handles
+`DOCUMENT_LOADED` only in its current editor, matching `editingDocumentId`; the reply fills that view
+without opening it. Both cases need a current view intent as well as a key.
 
 **Where the answer is "everything", there is no key — publish instead of replying.** A whole-list replace
 is correct as written, and the better move is to delete the request: let the plugin that owns the list hold
