@@ -4,7 +4,6 @@ import { createHash } from 'node:crypto';
 import ts from 'typescript';
 import { readPackCompilerConfiguration, type PackCompilerConfiguration } from './compiler-configuration.ts';
 import type { BuildInputObserver } from '@apackdev/host/build/pack-inputs';
-import { packInputFiles } from '@apackdev/host/build/pack-inputs';
 import { codeBlocks } from './pack-sources.ts';
 import { compilerSourcePath } from './compiler-paths.ts';
 import { compilerGlobDirectories } from './compiler-source-globs.ts';
@@ -54,7 +53,7 @@ export function readCompilerModuleInputs(root: string, observe?: BuildInputObser
   };
   const scripts = new Map<string, string>();
   const rootNames: string[] = [];
-  const rootFiles = packInputFiles(root);
+  const rootFiles = view.authoredFiles;
   for (const relative of rootFiles) {
     const file = path.join(root, relative);
     view.readBytes(file);
@@ -124,12 +123,7 @@ export function readCompilerModuleInputs(root: string, observe?: BuildInputObser
     for (const directory of compilerGlobDirectories(source)) captureGlobDirectory(directory);
   }
   const hash = createHash('sha256').update(JSON.stringify(rootFiles)).update(view.hash());
-  const assertCurrent = () => {
-    view.assertCurrent();
-    if (JSON.stringify(packInputFiles(root)) !== JSON.stringify(rootFiles)) {
-      throw new Error('Compiler source membership changed during discovery');
-    }
-  };
+  const assertCurrent = view.assertCurrent;
   assertCurrent();
   return { hash: hash.digest('hex'), configuration, declarationConfiguration, readBytes: view.readBytes, captureFile: view.captureFile,
     captureLocation: view.captureLocation, readDirectoryData: view.readDirectoryData, readDataBytes: view.readDataBytes, readMetadata: view.readMetadata, openDirectoryData: view.openDirectoryData, dispose: view.dispose, resolutionDirectory: view.resolutionDirectory, ancestors: view.ancestors, fileSystem, snapshot: view.snapshot,

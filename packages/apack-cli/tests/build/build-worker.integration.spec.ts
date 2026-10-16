@@ -53,31 +53,42 @@ function fixture(files: Record<string, string> = {}, content = {}) {
   return root;
 }
 
-it('retains native launch identity when a user preload rewrites ambient options', async () => {
+it('captures native launch identity and authored bytes before user preload changes', async () => {
   const root = fixture();
   const workspace = path.join(root, '.apack/native-inputs');
   fs.mkdirSync(workspace, { recursive: true });
   const inputsFile = path.join(workspace, 'compiler-inputs.json');
   fs.writeFileSync(inputsFile, JSON.stringify({ hash: '0'.repeat(64), packages: [root], paths: [] }));
+  const valueFile = path.join(root, 'value.txt');
+  fs.writeFileSync(valueFile, 'ORIGINAL');
   const preload = path.join(root, 'preload.cjs');
-  fs.writeFileSync(preload, `process.env.NODE_OPTIONS = ''; process.execArgv.splice(0);`);
+  fs.writeFileSync(preload, `process.env.NODE_OPTIONS = ''; process.execArgv.splice(0);
+    if (Object.keys(require.cache).some(file => /typescript[\\/]lib/.test(file))) throw new Error('Compiler activated before preload');
+    require('node:fs').writeFileSync(${JSON.stringify(valueFile)}, 'CHANGED');`);
   const entry = path.join(root, 'entry.cjs');
   fs.writeFileSync(entry, `const startup = globalThis[Symbol.for('apack.compiler.startup')];
     const identity = startup.executionIdentity;
+    const fs = require('node:fs');
+    const value = fs.readFileSync(${JSON.stringify(valueFile)}, 'utf8');
+    let refusal;
+    try { startup.view.assertCurrent(); } catch (error) { refusal = error.message; }
+    fs.writeFileSync(${JSON.stringify(valueFile)}, 'ORIGINAL');
+    startup.view.assertCurrent();
     startup.stopReads(); startup.view.dispose();
-    process.send(identity, () => process.exit(0));`);
+    process.send({ identity, value, refusal }, () => process.exit(0));`);
   const options = compilerStartupOptions(path.join(compilerPackageDirectory(), 'bin/apack.mjs'), formatNodeOptions(['--require', preload]));
   const child = fork(entry, [], { cwd: root, execArgv: ['--conditions=launch-probe'], stdio: ['ignore', 'ignore', 'pipe', 'ipc'],
     env: { ...process.env, APACK_BUILD_WORKER: '1', [COMPILER_INPUTS_ENV]: inputsFile,
       [BUILD_INPUTS_DIRECTORY_ENV]: workspace, [COMPILER_NODE_OPTIONS_ENV]: options.user, NODE_OPTIONS: options.worker } });
-  let identity: unknown, errors = '';
-  child.on('message', message => { identity = message; });
+  let result: unknown, errors = '';
+  child.on('message', message => { result = message; });
   child.stderr!.on('data', chunk => { errors += chunk; });
   const closed = finished(child);
   try {
     expect(await _byDeadline(closed, 'native launch identity', 2_000), errors).toBe(0);
-    expect(typeof identity).toBe('string');
-    const execution = JSON.parse(identity as string);
+    expect(result).toMatchObject({ value: 'ORIGINAL', refusal: expect.stringContaining('Compiler resolution namespace changed') });
+    const identity = (result as { identity: string }).identity;
+    const execution = JSON.parse(identity);
     expect(execution[3]).toEqual(['--conditions=launch-probe']);
     expect(execution[4]).toEqual(['--require', preload]);
     expect(identity).not.toContain('compiler-startup.cjs');
