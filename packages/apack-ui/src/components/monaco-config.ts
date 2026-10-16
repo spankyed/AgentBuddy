@@ -495,7 +495,7 @@ export function setupMonacoForFile(
 ): () => void {
   const {
     filePath,
-    language = getLanguageFromPath(filePath),
+    language = options.dslType ? 'typescript' : getLanguageFromPath(filePath),
     isDsl = options.dslType !== undefined || isDslFile(filePath),
     enableTypeChecking = isDsl,
     enableSuggestions = isDsl
@@ -695,6 +695,7 @@ function convertKeybindingToMonaco(
  */
 export function resetMonacoState(): void {
   monacoInitialized = false
+  paramsTypeDisposable?.dispose(); paramsTypeDisposable = null
   disposeDslLibraries()
   initializedLanguages.clear()
 }

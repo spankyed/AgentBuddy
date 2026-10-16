@@ -1,11 +1,11 @@
-import { afterEach, expect, it } from 'vitest';
+import { afterEach, expect, it, vi } from 'vitest';
 import ts from 'typescript';
 import { startFeTestRuntime, stopFeTestRuntime } from '@apackdev/sdk/testing';
 import type { DslCatalogEntry } from '@apackdev/sdk/framework';
 import { acquireDslLibraries, disposeDslLibraries } from '../../src/components/internal/dsl-libraries.ts';
-import { getDslTypeFromPath, getLanguageFromPath } from '../../src/components/monaco-config.ts';
+import { getDslTypeFromPath, getLanguageFromPath, initializeMonaco, setupMonacoForFile, resetMonacoState } from '../../src/components/monaco-config.ts';
 
-afterEach(() => { disposeDslLibraries(); stopFeTestRuntime(); });
+afterEach(() => { resetMonacoState(); disposeDslLibraries(); stopFeTestRuntime(); vi.unstubAllGlobals(); });
 function fixture() {
   const declaration = { entry: 'missing/types.ts', targets: ['monaco' as const], prefix: 'memo:', globals: { item: '_dsl.Item' } };
   const entry: DslCatalogEntry = { type: 'memo', packId: 'author', origin: 'installed', enabled: false, declaration,
@@ -15,11 +15,13 @@ function fixture() {
     dsl: () => state.entries, subscribe(listener) { listeners.add(listener); return () => { listeners.delete(listener); }; },
   } });
   const files = new Map<string, string>(); let revision = 0;
-  const defaults = { addExtraLib(text: string, uri: string) {
+  const defaults = { setDiagnosticsOptions() {}, setCompilerOptions() {}, addExtraLib(text: string, uri: string) {
     const file = uri.replace('inmemory://', ''); files.set(file, text); revision++;
     return { dispose() { files.delete(file); revision++; } };
   } };
-  const monaco = { typescript: { typescriptDefaults: defaults, javascriptDefaults: defaults } } as never;
+  const monaco = { typescript: { typescriptDefaults: defaults, javascriptDefaults: defaults,
+    ScriptTarget: { Latest: 99 }, ModuleResolutionKind: { NodeJs: 2 }, ModuleKind: { ESNext: 99, CommonJS: 1 }, JsxEmit: { React: 2 } },
+    languages: { registerDocumentFormattingEditProvider: () => ({ dispose() {} }) } } as never;
   const source = 'item.';
   const host: ts.LanguageServiceHost = {
     getCompilationSettings: () => ({ noLib: true, skipLibCheck: true, target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.ESNext, moduleResolution: ts.ModuleResolutionKind.Bundler }),
@@ -59,4 +61,14 @@ it('ignores empty prefixes, selects the unique longest prefix, and refuses ambig
     expect(getDslTypeFromPath('memo:deep:one')).toBe('specific');
     f.state.entries.push({ ...f.entry, type: 'other' }); expect(getDslTypeFromPath('memo:one')).toBeNull();
   } finally { f.language.dispose(); }
+});
+
+it('loads explicit DSL libraries for an untitled file through the public setup API and releases them', () => {
+  const f = fixture();
+  vi.stubGlobal('window', { monaco: f.monaco }); initializeMonaco({ setupLanguages: false });
+  const release = setupMonacoForFile(f.monaco, { filePath: 'untitled', dslType: 'memo' });
+  try { expect(f.completions()).toContain('before'); }
+  finally { release(); }
+  expect(f.completions()).not.toContain('before'); expect(f.listeners.size).toBe(0);
+  f.language.dispose();
 });

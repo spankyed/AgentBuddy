@@ -142,15 +142,15 @@ const configureFile = (filePath = props.filePath || '') => {
   const dslType = props.dslType ?? getDslTypeFromPath(filePath) ?? undefined
   const isDsl = props.functionBody || dslType !== undefined
   releaseDslLibraries = setupMonacoForFile(monaco, { filePath, dslType,
-    language: props.language || getLanguageFromPath(filePath), isDsl,
+    language: props.language || (props.dslType ? 'typescript' : getLanguageFromPath(filePath)), isDsl,
     enableTypeChecking: isDsl, enableSuggestions: isDsl })
 }
 
 // Computed properties
 const resolvedLanguage = computed(() => {
   if (props.language) return props.language
-  if (props.filePath) { dslDeclarations.value; return getLanguageFromPath(props.filePath) }
   if (props.dslType) return 'typescript'
+  if (props.filePath) { dslDeclarations.value; return getLanguageFromPath(props.filePath) }
   return 'typescript'
 })
 
