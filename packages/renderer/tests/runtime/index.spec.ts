@@ -17,7 +17,7 @@ const logWrite = vi.hoisted(() => vi.fn(() => Promise.resolve()));
 const { bindRendererHost } = await import('@/runtime');
 const { fePacks } = await import('@/runtime/packs');
 const { resolveName } = await import('@apackdev/sdk/ids');
-const { secretsClient, untypedOpenPlugin, getStepFrontendBindings, getDslTypes, getDesignated, tiptapPluginRegistry } = await import('@apackdev/sdk/fe');
+const { secretsClient, untypedOpenPlugin, getStepFrontendBindings, getDesignated, tiptapPluginRegistry } = await import('@apackdev/sdk/fe');
 const { untypedSendToSystem } = await import('@apackdev/sdk/events');
 const { unbindFeHost } = await import('@apackdev/sdk/runtime/internals');
 
@@ -40,7 +40,6 @@ const settingsAddress = resolveName('default-setup/settings');
 
 it("gives the SDK's frontend lookups the window's registered pack frontends", () => {
   const mentions = { extensions: {} };
-  const memoDsl = { prefix: 'memo:', schema: 'declare const memo: string', globals: {} };
   const icon = vi.fn();
   const note = { type: 'note', node: { label: 'Note' }, fe: { nodeConfig: { icon, category: 'data', connectionRules: { inputs: 1, outputs: 1 } } } } satisfies StepDefinition;
   const registration = {
@@ -48,12 +47,10 @@ it("gives the SDK's frontend lookups the window's registered pack frontends", ()
     features: { notebookMain: { plugin: { label: 'Notebook', state: createMachine({}) }, designation: 'notebook' } },
     steps: [note],
     tiptapPlugins: { mentions },
-    dslTypes: { memo: memoDsl },
   };
   fePacks.registerPackFE({ kind: 'native', declaration: nativeFrontendDeclarationFixture(registration) }, registration);
   try {
     bindRendererHost(() => application as never);
-    expect(getDslTypes().get('memo')).toEqual(memoDsl);
     expect(tiptapPluginRegistry.getAll()).toEqual([{ packId: 'fe-host-pack', groupId: 'mentions', binding: mentions }]);
     expect(getStepFrontendBindings().get('note')?.binding).toEqual(note);
     expect(getStepFrontendBindings().get('note')?.binding.fe?.nodeConfig.icon).toBe(icon);
@@ -64,7 +61,6 @@ it("gives the SDK's frontend lookups the window's registered pack frontends", ()
   } finally {
     fePacks.unregisterPackFE('fe-host-pack');
   }
-  expect(getDslTypes().has('memo')).toBe(false);
 });
 
 it('binds before the application actor exists, naming it when SDK code reaches the actor too early', () => {

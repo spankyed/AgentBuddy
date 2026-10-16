@@ -2,10 +2,19 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { execFileSync } from 'node:child_process';
 import { afterEach, expect, it, vi } from 'vitest';
 import * as installation from '../../src/build/compiler-installation.ts';
 import * as checkout from '../../src/build/checkout-packages.ts';
+import { _declarationRevision, PACK_SNAPSHOT_FORMAT } from '@apackdev/sdk/build';
+import { PACK_LAYOUT, readPackBuild, sealPackBuild } from '@apackdev/host/packs';
+import { packInputsHash } from '@apackdev/host/build/pack-inputs';
 import { createPackBuilder, type PackBuilder } from '../../src/build/build-process.ts';
+
+function stopDescendant(pid: number) {
+  try { process.kill(pid, 'SIGKILL'); }
+  catch (error) { if ((error as NodeJS.ErrnoException).code !== 'ESRCH') throw error; }
+}
 
 const roots: string[] = [];
 const builders: PackBuilder[] = [];
@@ -20,26 +29,57 @@ function fixture() {
   roots.push(root);
   const compiler = path.join(root, 'compiler'), pack = path.join(root, 'pack');
   fs.mkdirSync(path.join(compiler, 'bin'), { recursive: true });
-  fs.mkdirSync(pack);
+  fs.mkdirSync(path.join(compiler, 'dist'));
+  fs.writeFileSync(path.join(compiler, 'dist/compiler-startup.cjs'), '// Fixture worker implements only candidate/process handoff.\n');
+  fs.mkdirSync(path.join(pack, '.apack'), { recursive: true });
+  const manifest = { id: 'builder', name: 'Builder', version: '1.0.0' };
+  fs.writeFileSync(path.join(pack, 'apack.json'), JSON.stringify(manifest));
+  const candidate = path.join(compiler, 'candidate');
+  fs.mkdirSync(path.join(candidate, PACK_LAYOUT.runtimeDir), { recursive: true });
+  fs.writeFileSync(path.join(candidate, PACK_LAYOUT.runtimeEntry), 'module.exports = {};');
+  fs.mkdirSync(path.dirname(path.join(candidate, PACK_LAYOUT.snapshot)), { recursive: true });
+  fs.writeFileSync(path.join(candidate, PACK_LAYOUT.snapshot), JSON.stringify({ manifest,
+    format: PACK_SNAPSHOT_FORMAT, declarationRevision: _declarationRevision(manifest),
+    types: { entities: {}, relKinds: {} }, entityDestinations: {}, facades: {} }));
+  sealPackBuild(candidate, manifest);
+  const handoff = { type: 'apack:build-candidate', inputHash: packInputsHash(pack), revision: readPackBuild(candidate).revision };
   fs.writeFileSync(path.join(compiler, 'package.json'), '{"name":"fixture-compiler","type":"module"}');
   fs.writeFileSync(path.join(compiler, 'label.txt'), 'first');
   fs.writeFileSync(path.join(compiler, 'bin/apack.mjs'), `
     import fs from 'node:fs';
     import {fileURLToPath} from 'node:url';
-    fs.writeFileSync('built.json', JSON.stringify({pid:process.pid, bin:import.meta.url, label:fs.readFileSync(new URL('../label.txt',import.meta.url),'utf8')}));
+    import {spawn} from 'node:child_process';
+    if (process.argv.includes('--descendant')) {
+      const child = spawn(process.execPath, ['-e', 'setInterval(() => {}, 1000)'], {stdio: 'ignore'});
+      fs.writeFileSync('.apack/descendant.json', JSON.stringify({pid:child.pid}));
+      child.unref();
+    }
     if (process.argv.includes('--wait')) {
       process.on('message', () => {});
       process.on('SIGTERM', () => {
-        fs.writeFileSync('stopped.json', JSON.stringify({compilerExists:fs.existsSync(fileURLToPath(import.meta.url))}));
+        if (process.argv.includes('--ignore-term')) return;
+        fs.writeFileSync('.apack/stopped.json', JSON.stringify({compilerExists:fs.existsSync(fileURLToPath(import.meta.url))}));
         process.exit(0);
       });
-    } else { process.disconnect(); }
+    } else {
+      fs.cpSync(new URL('../candidate', import.meta.url), '.apack/build', { recursive: true });
+      // Compiler inputs are read-only; staged output must be removable by the parent.
+      const writable = directory => {
+        fs.chmodSync(directory, 0o755);
+        for (const entry of fs.readdirSync(directory, { withFileTypes: true })) {
+          if (entry.isDirectory()) writable(directory + '/' + entry.name);
+        }
+      };
+      writable('.apack/build');
+      process.send(${JSON.stringify(handoff)}, () => process.disconnect());
+    }
+    fs.writeFileSync('.apack/built.json', JSON.stringify({pid:process.pid, bin:import.meta.url, label:fs.readFileSync(new URL('../label.txt',import.meta.url),'utf8')}));
   `);
   vi.spyOn(installation, 'compilerPackageDirectory').mockReturnValue(compiler);
   vi.spyOn(checkout, 'ensureCheckoutPackages').mockImplementation(() => {});
   const builder = createPackBuilder(pack);
   builders.push(builder);
-  const report = () => JSON.parse(fs.readFileSync(path.join(pack, 'built.json'), 'utf8')) as { pid: number; bin: string; label: string };
+  const report = () => JSON.parse(fs.readFileSync(path.join(pack, '.apack/built.json'), 'utf8')) as { pid: number; bin: string; label: string };
   return { compiler, pack, builder, report };
 }
 
@@ -71,12 +111,12 @@ it('reuses a verified compiler, refreshes changed or damaged copies, and release
 it('stops its worker before removing the compiler on close', async () => {
   const { pack, builder, report } = fixture();
   const running = builder.build({ args: ['--wait'] });
-  await vi.waitFor(() => expect(fs.existsSync(path.join(pack, 'built.json'))).toBe(true));
+  await vi.waitFor(() => expect(fs.existsSync(path.join(pack, '.apack/built.json'))).toBe(true));
   const active = report();
   const stopped = expect(running).rejects.toMatchObject({ name: 'AbortError' });
   await builder.close();
   await stopped;
-  expect(JSON.parse(fs.readFileSync(path.join(pack, 'stopped.json'), 'utf8')).compilerExists).toBe(true);
+  expect(JSON.parse(fs.readFileSync(path.join(pack, '.apack/stopped.json'), 'utf8')).compilerExists).toBe(true);
   expect(() => process.kill(active.pid, 0)).toThrow();
   expect(fs.existsSync(fileURLToPath(active.bin))).toBe(false);
 });
@@ -95,4 +135,38 @@ it('captures both checkouts after refresh and refuses reuse if refresh fails', a
   vi.mocked(checkout.ensureCheckoutPackages).mockImplementation(() => { throw new Error('Checkout refresh failed'); });
   await expect(builder.build()).rejects.toThrow('Checkout refresh failed');
   expect(report()).toEqual(refreshed);
+});
+
+
+it.skipIf(process.platform === 'win32')('stops remaining compiler group members before accepting output', async () => {
+  const { pack, builder } = fixture();
+  let pid: number | undefined;
+  try {
+    await builder.build({ args: ['--descendant'] });
+    pid = JSON.parse(fs.readFileSync(path.join(pack, '.apack/descendant.json'), 'utf8')).pid;
+    let state = '';
+    try { state = execFileSync('ps', ['-p', String(pid), '-o', 'stat='], { encoding: 'utf8' }).trim(); }
+    catch (error) { if ((error as { status?: number }).status !== 1) throw error; }
+    expect(state === '' || state.startsWith('Z'), `Compiler descendant ${pid} is still ${state}`).toBe(true);
+    expect(readPackBuild(path.join(pack, 'dist')).snapshot.manifest.id).toBe('builder');
+  } finally {
+    // Read the owned PID even if a refusal happened before build returned.
+    const record = path.join(pack, '.apack/descendant.json');
+    if (!pid && fs.existsSync(record)) pid = JSON.parse(fs.readFileSync(record, 'utf8')).pid;
+    if (pid) stopDescendant(pid);
+  }
+});
+
+
+it('force-stops a compiler that ignores cancellation before releasing its inputs', async () => {
+  const { pack, builder, report } = fixture();
+  const running = builder.build({ args: ['--wait', '--ignore-term'] });
+  await vi.waitFor(() => expect(fs.existsSync(path.join(pack, '.apack/built.json'))).toBe(true));
+  const active = report();
+  const stopped = expect(running).rejects.toMatchObject({ name: 'AbortError' });
+  await builder.close();
+  await stopped;
+  expect(() => process.kill(active.pid, 0)).toThrow();
+  expect(fs.existsSync(fileURLToPath(active.bin))).toBe(false);
+  expect(fs.existsSync(path.join(pack, 'dist'))).toBe(false);
 });

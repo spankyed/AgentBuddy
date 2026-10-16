@@ -53,7 +53,7 @@ function writeBuild(packDir: string, id: string, featuresSource = '{}', extraFil
   };
   write('runtime/index.cjs', (`module.exports = { registration: { id: ${JSON.stringify(id)}, features: ${featuresSource} } };`) + `
 if (module.exports.registration) module.exports.registration.declarationRevision = '${_declarationRevision(JSON.parse(fs.readFileSync(path.join(packDir, 'apack.json'), 'utf-8')))}';`);
-  write(PACK_LAYOUT.snapshot, JSON.stringify({ declarationRevision: _declarationRevision(JSON.parse(fs.readFileSync(path.join(packDir, 'apack.json'), 'utf-8'))), format: PACK_SNAPSHOT_FORMAT, manifest: JSON.parse(fs.readFileSync(path.join(packDir, 'apack.json'), 'utf-8')), types: { entities: {}, relKinds: {} }, facades: {} }));
+  write(PACK_LAYOUT.snapshot, JSON.stringify({ declarationRevision: _declarationRevision(JSON.parse(fs.readFileSync(path.join(packDir, 'apack.json'), 'utf-8'))), format: PACK_SNAPSHOT_FORMAT, manifest: JSON.parse(fs.readFileSync(path.join(packDir, 'apack.json'), 'utf-8')), types: { entities: {}, relKinds: {} }, entityDestinations: {}, facades: {} }));
   for (const [rel, content] of Object.entries(extraFiles)) write(rel, content);
   sealBuild(packDir);
 }
@@ -73,7 +73,7 @@ describe('installed runtime acceptance', () => {
     writeManifest(source, { id, name: id, version: '1.0.0', features: feature('old') });
     writeBuild(source, id, runtime('old'));
     const installed = await installPackFromLocal(source, packsDir());
-    const loaded = loadSingleExternalPack(installed.dir);
+    const loaded = loadSingleExternalPack(registry, installed.dir);
     if ('problem' in loaded) throw new Error(loaded.problem);
     const isolated = createNativePackTestRegistry();
     isolated.registerPack(loaded.registration, loaded.origin);
@@ -115,7 +115,7 @@ describe('installed runtime acceptance', () => {
     writeBuild(source, id);
     const installed = await installPackFromLocal(source, packsDir());
     const previousBuild = readPackBuild(installed.dir);
-    const loaded = loadSingleExternalPack(installed.dir);
+    const loaded = loadSingleExternalPack(registry, installed.dir);
     if ('problem' in loaded) throw new Error(loaded.problem);
     const listeners = new Set<() => void>();
     const settings: SettingsService = {
@@ -143,7 +143,7 @@ describe('installed runtime acceptance', () => {
         acceptInstalledPack(isolated, candidate.id, bus as never);
       } })).rejects.toThrow('late binding refused');
       expect(readPackBuild(installed.dir)).toEqual(previousBuild);
-      const restored = loadSingleExternalPack(installed.dir);
+      const restored = loadSingleExternalPack(registry, installed.dir);
       expect(restored).not.toHaveProperty('problem');
       if ('problem' in restored) throw new Error(restored.problem);
       expect(restored.origin.version).toBe('1.0.0');
@@ -204,7 +204,7 @@ describe('pack full lifecycle: install → discover', () => {
     }
 
     const { loadExternalPacks } = await import('../../../src/packs/runtime/loader.ts');
-    const packs = loadExternalPacks();
+    const packs = loadExternalPacks(registry);
     const ids = packs.map(p => p.origin.id).sort();
     expect(ids).toEqual(['pack-alpha', 'pack-beta', 'pack-gamma']);
   });

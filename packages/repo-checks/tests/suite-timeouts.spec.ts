@@ -26,7 +26,10 @@ import { overrideKey, sizeOf, specFilesUnder, timeoutOverrides, type TimeoutOver
  * once 5s and nobody revisited it, which is what the other overrides turned out to be. The check below
  * fails on an entry whose override has gone, so the list shrinks when the reason does.
  */
-const TIMEOUT_EXCEPTIONS: Record<string, string> = {};
+const TIMEOUT_EXCEPTIONS: Record<string, string> = {
+  'packages/default-setup/tests/features/code/be/services/claude-code/native-app-owner.spec.ts > compiled app owns native approval, idle scheduling and the next host input': 'Opt-in original native process: a real cron tick can wait up to one minute, followed by autonomous completion and another host input; the fixture bounds this at 150 seconds.',
+  'packages/default-setup/tests/features/code/be/services/claude-code/native-elicitation-app.spec.ts > routes native URL elicitation choices through compiled app interactions independently of tool approval': 'Opt-in native MCP matrix: eight separate CLI lifecycles plus native MCP configuration and form retry; the whole matrix is bounded at 120 seconds.',
+};
 
 /** Every override in the repo's spec files, with the size it has to fit inside */
 function overrides(): (TimeoutOverride & { size: Size; budget: number })[] {

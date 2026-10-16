@@ -4,18 +4,20 @@ import type { PackManifest } from '@apackdev/sdk/build';
 import type { RecordReads } from './build-reads';
 import { bundleDeclarations, isPackageSpecifier } from './types-bundler';
 import { readPackCompilerConfiguration } from './compiler-configuration.ts';
+import type { CompilationInputs } from './compilation-inputs.ts';
+import type ts from 'typescript';
 
 /**
  * The pack's own compiler options, with its path aliases resolved. Its tsconfig's `include` covers the
  * whole pack (components and tests included), which a definitions bundle neither needs nor can afford:
  * these options let the bundler follow the entry's imports alone.
  */
-function packCompilerOptions(packDir: string): Record<string, unknown> {
-  const options = readPackCompilerConfiguration(packDir)?.options ?? {};
+function packCompilerOptions(packDir: string, compilation?: CompilationInputs): ts.CompilerOptions {
+  const options = (compilation ? compilation.declarationConfiguration : readPackCompilerConfiguration(packDir))?.options ?? {};
   // Module resolution decides whether a package import resolves at all, and the path aliases whether the
   // pack's own modules do; everything else is the compiler's business, not the bundle's.
-  const { paths, baseUrl, module, moduleResolution, target, jsx } = options;
-  return { paths, baseUrl, module, moduleResolution, target, jsx };
+  const { paths, baseUrl, pathsBasePath, module, moduleResolution, target, jsx } = options;
+  return { paths, baseUrl, pathsBasePath, module, moduleResolution, target, jsx };
 }
 
 /**
@@ -33,7 +35,7 @@ export function withoutRenameSuffixes(code: string): string {
 }
 
 /** The build output holding the DSL editors' definitions, dist-relative */
-export const DEFS_DIR = 'defs';
+const DEFS_DIR = 'defs';
 
 /** The Monaco declarations of one DSL type, relative to the build output directory. */
 export function monacoDefsFile(name: string): string {
@@ -53,10 +55,11 @@ export async function bundleDslDefs(
   outputDir: string,
   manifest: PackManifest,
   recordReads?: RecordReads,
+  compilation?: CompilationInputs,
 ): Promise<{ success: true; files: string[] } | { success: false; error: string }> {
   const entries = Object.entries(manifest.extensions?.dsl ?? {}).filter(([, def]) => def.targets.includes('monaco'));
   if (entries.length === 0) return { success: true, files: [] };
-  const compilerOptions = packCompilerOptions(packDir);
+  const compilerOptions = packCompilerOptions(packDir, compilation);
   const files: string[] = [];
 
   for (const [name, def] of entries) {
@@ -72,6 +75,7 @@ export async function bundleDslDefs(
       renderChunk: withoutRenameSuffixes,
       compilerOptions,
       recordReads,
+      compilation,
     });
     if (!result.success) return { success: false, error: `${name}: ${result.error}` };
     files.push(monacoDefsFile(name));

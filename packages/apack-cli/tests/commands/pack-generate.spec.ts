@@ -10,7 +10,27 @@ import { readDependencyBuild, PACK_LAYOUT } from '@apackdev/host/packs';
 import { assertGeneratedCurrent, generateEntries } from '../../src/commands/generate-entries';
 import { PACK_SNAPSHOT_FORMAT, PACK_TYPES_FACADE, type PackManifest, type PackSnapshot } from '@apackdev/sdk/build';
 
-const compilation = { hash: 'test-compiler', assertCurrent() {} };
+const compilation = {
+  hash: 'test-compiler',
+  configuration: undefined,
+  declarationConfiguration: undefined,
+  readTree() { throw new Error('No tree in hash-only fixture'); },
+  sourcePath(file: string) { return file; },
+  diagnostic(message: string) { return message; },
+  isInput() { return true; },
+  prepareNative() {},
+  requireParent() { throw new Error('No module loading in hash-only fixture'); },
+  async finishStartup() {},
+  prepareNativeSource() {},
+  readMetadata(): never { throw new Error('Unexpected metadata read'); },
+  openDirectory(): never { throw new Error('Unexpected directory open'); },
+  readDirectory(): never { throw new Error('Unexpected directory read'); },
+  readDataPath(): never { throw new Error('Unexpected data read'); },
+  dispose() {},
+  readFile() { return undefined; },
+  captureGenerated() {},
+  assertCurrent() {},
+};
 
 
 let tmpDir: string;
@@ -145,7 +165,7 @@ describe('apack pack generate-entries', () => {
         entities: { DepWidget: 'DepWidget' },
         relKinds: { DEP_REL: 'dep_rel' },
       },
-      facades: {},
+      entityDestinations: {}, facades: {},
       manifest: depManifest,
     };
 

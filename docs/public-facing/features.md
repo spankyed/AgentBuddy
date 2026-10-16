@@ -298,6 +298,7 @@ Each feature declares a JSON Schema and explicit defaults in `apack.json`; forms
 }
 ```
 
+- `plugin.default: true` claims the initial default. At most one feature per pack may claim it. Across packs, enabled native claims precede installed claims, then fully qualified feature refs sort in English lexical order. Selection uses declarations, so a faster frontend import cannot take another pack's default. A saved destination, popout target or explicit navigation takes precedence; the host remains usable while the selected frontend loads.
 - `plugin.defaultVisible` controls whether the sidebar tab shows by default (it shows when omitted). What the user shows or hides is the app's own state, kept by the host (`host/application`), and wins over it.
 - The host stores overrides under `features.<packId>/<featureId>`; the declaration does not repeat that ID.
 - Settings use JSON Schema draft-07 and required explicit `defaults`. Invalid declarations fail the build and registration; invalid changed values are refused at the shared store. Validation does not coerce, populate defaults or transform values. See [Feature settings](manifest.md#feature-settings).

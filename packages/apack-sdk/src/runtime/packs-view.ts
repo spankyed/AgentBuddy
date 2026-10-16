@@ -54,7 +54,7 @@ export interface PackRegistryView extends PackExtensionsView {
   onCatalogChanged(listener: () => void): () => void;
   /** Navigation policy is separate from preference definitions. */
   pluginDefaults(): Record<string, boolean>;
-  /** Every registered pack's declared commands, in the order the packs were first registered */
+  /** Enabled command declarations matching accepted active runtimes, in catalog admission order. */
   commands(): PackCommand[];
   /** Every registered pack's help entries, for the Settings view's Help list */
   help(): HelpCatalog;

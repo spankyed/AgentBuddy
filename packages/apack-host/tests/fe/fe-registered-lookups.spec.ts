@@ -1,10 +1,12 @@
 import { createMachine } from 'xstate';
+import { selectDefaultPluginDeclaration, getEligiblePlugin } from '../../src/fe/plugin-selection.ts';
+import type { FeatureRef } from '@apackdev/sdk/ids';
 import { createNativeFrontendTestRegistry } from '@apackdev/host/fe/testing';
 // What a pack's frontend registration contributes, read the way the renderer and pack frontends read it: each
 // lookup sees the pack once it registers and loses it when it unregisters.
 import { afterEach, describe, expect, it } from 'vitest';
 import type { Plugin, PluginDefinition, PackFERegistration, TiptapPlugin } from '@apackdev/sdk/fe';
-import { getDslTypes, tiptapPluginRegistry, getStepFrontendBindings } from '@apackdev/sdk/fe';
+import { tiptapPluginRegistry, getStepFrontendBindings } from '@apackdev/sdk/fe';
 import { bindFeHost } from '@apackdev/sdk/runtime';
 import { type StepDefinition } from '@apackdev/sdk/steps';
 import { artifactRegistry } from '@apackdev/sdk/artifacts';
@@ -17,7 +19,13 @@ bindFeHost({ catalog: {} as never, application: {} as never, secrets: {} as neve
 const register = (packId: string, registration: Omit<PackFERegistration, 'id'>) => registry.registerFixture({ id: packId, ...registration });
 const unregister = (packId: string) => registry.unregisterPackFE(packId);
 const plugins = () => registry.getRegisteredPlugins();
-const defaultPlugin = () => registry.defaultPlugin();
+const defaultPlugin = () => {
+  const catalog = { status: () => 'ready' as const, subscribe: () => () => {}, plugins: () => [...registry.pluginBindings()].map(([featureRef, accepted]) => ({
+    featureRef: featureRef as FeatureRef, packId: accepted.packId, origin: 'native' as const, enabled: true, declaration: accepted.declaration,
+  })) };
+  const owner = selectDefaultPluginDeclaration(catalog);
+  return owner && getEligiblePlugin(catalog, registry.pluginBindings(), owner.featureRef);
+};
 const appExtension = (slot: string) => registry.getAppExtension(slot);
 
 const packs: string[] = [];
@@ -44,7 +52,6 @@ const cardView = { type: 'card-view', fe: { icon: {}, component: CardView } };
 const choice = { type: 'choice', fe: { component: Choice } };
 const mentions: TiptapPlugin = { extensions: {} };
 const Welcome = { name: 'Welcome' };
-const memoDsl = { prefix: 'memo:', schema: 'declare const memo: string', globals: {} };
 
 describe("a pack's frontend", () => {
   it('is found once it registers, and gone once it unregisters', () => {
@@ -55,7 +62,6 @@ describe("a pack's frontend", () => {
       blocks: [choice],
       tiptapPlugins: { mentions },
       appExtensions: { welcome: Welcome },
-      dslTypes: { memo: memoDsl },
     });
 
     // Registered at the feature's address, which also answers the role
@@ -73,7 +79,6 @@ describe("a pack's frontend", () => {
     expect(blockRegistry.getComponent('choice')).toBe(Choice);
     expect(tiptapPluginRegistry.getAll()).toContainEqual({ packId: 'notebook-pack', groupId: 'mentions', binding: mentions });
     expect(appExtension('welcome')).toBe(Welcome);
-    expect(getDslTypes().get('memo')).toEqual(memoDsl);
 
     expect(remove('notebook-pack')).toMatchObject([{ label: 'Notebook', id: 'notebook-pack/notebookMain' }]);
     expect(plugins()).toEqual([]);
@@ -85,7 +90,6 @@ describe("a pack's frontend", () => {
     expect(blockRegistry.has('choice')).toBe(false);
     expect(tiptapPluginRegistry.getAll()).not.toContainEqual({ packId: 'notebook-pack', groupId: 'mentions', binding: mentions });
     expect(appExtension('welcome')).toBeUndefined();
-    expect(getDslTypes().has('memo')).toBe(false);
   });
 
   it('refuses another pack supplying a facet of the same step wire', () => {
@@ -101,23 +105,22 @@ describe("a pack's frontend", () => {
     expect(getStepFrontendBindings().get('note')?.binding.fe).toBeDefined();
   });
 
-  it('keeps unrelated slot and DSL contributions when another step owner unregisters', () => {
+  it('keeps unrelated slot contributions when another step owner unregisters', () => {
     const first: StepDefinition = { type: 'first', node: { label: 'First' } };
     const otherWelcome = { name: 'OtherWelcome' };
-    add('first-pack', { steps: [first], appExtensions: { welcome: Welcome }, dslTypes: { memo: memoDsl } });
-    add('notebook-pack', { steps: [noteStepFE], appExtensions: { welcome: otherWelcome }, dslTypes: { memo: { prefix: 'other:', schema: 'declare const other: string', globals: {} } } });
+    add('first-pack', { steps: [first], appExtensions: { welcome: Welcome } });
+    add('notebook-pack', { steps: [noteStepFE], appExtensions: { welcome: otherWelcome } });
     expect(getStepFrontendBindings().get('note')?.binding?.fe).toBeDefined();
     expect(appExtension('welcome')).toBe(otherWelcome);
     remove('notebook-pack');
     expect(getStepFrontendBindings().get('first')?.binding?.node?.label).toBe('First');
     expect(getStepFrontendBindings().get('note')?.binding).toBeUndefined();
     expect(appExtension('welcome')).toBe(Welcome);
-    expect(getDslTypes().get('memo')).toEqual(memoDsl);
   });
 
   // Two packs with a `notes` feature each get a plugin, because a plugin is addressed by its pack. Only
-  // the default is a single slot, and the first registration keeps it.
-  it("gives each pack its own plugin, and keeps the first default plugin", () => {
+  // the default follows declaration order, independently of registration order.
+  it("gives each pack its own plugin, and selects its default by declaration identity", () => {
     add('first-pack', { features: { notes: { plugin: plugin('First notes'), default: true } } });
     add('second-pack', { features: { notes: { plugin: plugin('Second notes') }, cards: { plugin: plugin('Cards'), default: true } } });
     expect(plugins().map((p) => p.id)).toEqual(['first-pack/notes', 'second-pack/notes', 'second-pack/cards']);
@@ -135,7 +138,7 @@ describe("a pack's frontend", () => {
     remove('first-pack');
     expect(defaultPlugin()?.id).toBe('second-pack/main');
     add('first-pack', { features: { main: { plugin: plugin('Returned'), default: true } } });
-    expect(defaultPlugin()?.id).toBe('second-pack/main');
+    expect(defaultPlugin()?.id).toBe('first-pack/main');
     remove('second-pack');
     expect(defaultPlugin()?.id).toBe('first-pack/main');
   });

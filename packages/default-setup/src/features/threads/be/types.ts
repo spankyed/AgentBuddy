@@ -1,3 +1,6 @@
+import type { ClaudeMcpElicitationResponse } from '#features/code/shared/mcp-elicitation-form.ts';
+import type { ButtonGroupResponse } from '@apackdev/sdk/blocks';
+import type { ClaudeUiMountState } from '#features/code/be/services/claude-code/ui-presentation.ts';
 export type * from './export-types.ts';
 import { type BaseEntity, EARS } from '#generated/ears.ts';
 type Simplify<T> = { [K in keyof T]: T[K] } & {};
@@ -114,6 +117,11 @@ export interface MessageReferences {
  * the union, because every emit matches one of its arms.
  */
 export type BlockResponse =
+  /** Button groups and native MCP forms emit explicit choices, not tool approval flags. */
+  | ButtonGroupResponse
+  | ClaudeMcpElicitationResponse
+  /** A rejected form attempt is retired before the same native request is re-presented. */
+  | { validationFailed: true }
   /** Approval buttons: InteractionContainer `handleApprove`/`handleDeny`. */
   | { approved: boolean; reason?: string }
   /** Cancel path: InteractionContainer `handleCancel`. */
@@ -466,7 +474,13 @@ export type AgentSettings = ThreadsSettings['chat'];
 
 // System-private entity type
 
+export type ClaudeUiViewRequest =
+  | { type: 'CLAUDE_UI_MOUNT'; threadId: string; mountId: string }
+  | { type: 'CLAUDE_UI_UNMOUNT'; threadId: string; mountId: string }
+  | { type: 'CLAUDE_UI_PRESS'; threadId: string; mountId: string; actionId: string };
+
 export type IncomingThreadsEvents =
+  | ClaudeUiViewRequest
   // Thread management events
   | { type: 'CREATE_THREAD'; topic: string; tags?: string[]; instructions: string; linkedThreads?: { id: string; relation: 'parent_of' | 'blocks' | 'blocked_by' | 'duplicates' }[]; parentThreadId?: string }
   | { type: 'VIEW_THREAD'; threadId: string }
@@ -499,6 +513,7 @@ export type IncomingThreadsEvents =
   | { type: 'COMMANDS_CHANGED' }
 
 export type OutgoingThreadsEvents =
+  | { type: 'CLAUDE_UI_STATE'; threadId: string; mountId: string; state: ClaudeUiMountState }
   // Thread management events
   | { type: 'THREAD_CONNECTED'; data: ThreadConnectedData }
   | { type: 'SET_VIEW_DATA', id: EARS.EntityId, data: ThreadExtendedData }

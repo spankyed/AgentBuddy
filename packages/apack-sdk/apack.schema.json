@@ -1164,6 +1164,17 @@
               "dsl": {
                 "type": "object",
                 "properties": {
+                  "references": {
+                    "type": "object",
+                    "additionalProperties": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "propertyNames": {
+                      "pattern": "^[A-Za-z_$][\\w$]*$"
+                    },
+                    "description": "DSL field to compiled content key, for static dependency and rename inspection. Computed targets are recorded as dynamic."
+                  },
                   "primaryField": {
                     "type": "string",
                     "pattern": "^[A-Za-z_$][\\w$]*$",
@@ -1304,7 +1315,7 @@
               },
               "prefix": {
                 "type": "string",
-                "description": "Namespace prefix for DSL symbols."
+                "description": "Editor model path prefix selecting this DSL. Omit or use an empty value to require explicit selection."
               },
               "globals": {
                 "type": "object",

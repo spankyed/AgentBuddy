@@ -119,31 +119,8 @@ export function buildChildEnv(override?: NodeJS.ProcessEnv): NodeJS.ProcessEnv {
   delete env.ANTHROPIC_API_KEY
   delete env.NODE_ENV
 
-  // Disable the CLI's tool-search / deferred-tool feature. Claude Code's
-  // tool-search mode ships enabled by default — see leaked source at
-  //   packages/claude-code/src/utils/toolSearch.ts:197
-  //     `return 'tst' // default: always defer MCP and shouldDefer tools`
-  // — and it hides every tool tagged `shouldDefer: true` from Claude's
-  // initial tool list until ToolSearchTool has already emitted a prior
-  // `tool_reference` block discovering it. On the first turn of a fresh
-  // plan-mode session no such prior discoveries exist, so `ExitPlanMode`
-  // (which has `shouldDefer: true` at
-  //   packages/claude-code/src/tools/ExitPlanModeTool/ExitPlanModeV2Tool.ts:166
-  // ) never appears in Claude's tools list. Claude reads the plan-mode
-  // system reminder telling it to call ExitPlanMode but can't, falls
-  // back to prose — "Would you like me to proceed with the
-  // implementation?" — and bypasses our plan-approval flow in chat.ts's
-  // onPermissionRequest closure entirely.
-  //
-  // apack doesn't have the monster MCP tool counts tool search was
-  // designed to optimise, so the feature is pure downside for us.
-  // Setting `ENABLE_TOOL_SEARCH=0` hits the `isEnvDefinedFalsy` branch
-  // at `toolSearch.ts:196` → forces mode to `'standard'` → makes
-  // `useToolSearch = false` at `claude.ts:1120` → the `!useToolSearch`
-  // path at `claude.ts:1168-1171` includes every tool (ExitPlanMode,
-  // NotebookEdit, LSPTool, …) in Claude's effective tools list from
-  // turn 1. Plan approval flow then works on the first try.
-  env.ENABLE_TOOL_SEARCH = '0'
+  // Let the CLI and explicit caller environment own deferred tool discovery.
+  // Current native ToolSearch can load ExitPlanMode before its approval request.
 
   // Enable Claude Code's file-history checkpointing in SDK / non-interactive
   // mode. Without this, `fileHistoryEnabled()` in
@@ -231,7 +208,7 @@ export async function execOnce(
       if (code === 0) {
         settle(() => resolve({ stdout, stderr, exitCode: 0 }))
       } else {
-        settle(() => reject(new ClaudeExitError(code, signal, stderr, args)))
+        settle(() => reject(new ClaudeExitError(code, signal, stderr, stdout, args)))
       }
     })
 
@@ -248,7 +225,8 @@ export async function execOnce(
  *
  * The caller drives the lifecycle: write stdin turns, iterate `lines`, then
  * call `endInput()` and `await done()`. If `signal` aborts, the child is
- * SIGTERM'd and `done()` rejects with `ClaudeAbortError`.
+ * sent SIGTERM, with SIGKILL after one second if it has not exited. `done()`
+ * reports the observed exit so the query layer can classify cancellation.
  */
 export async function spawnStream(
   args: readonly string[],
@@ -274,23 +252,50 @@ export async function spawnStream(
   const stderrChunks: Buffer[] = []
   child.stderr.on('data', c => stderrChunks.push(c))
 
-  // Swallow expected pipe errors that occur when the child is killed mid-write.
-  // Without this listener the error becomes an uncaughtException and crashes the server.
-  child.stdin.on('error', (err: NodeJS.ErrnoException) => {
-    const expected = ['EPIPE', 'ECONNRESET', 'ERR_STREAM_DESTROYED'];
-    if (expected.includes(err.code ?? '')) {
-      logger.warn('stdin write error after child exit (expected during kill)', { code: err.code, pid: child.pid })
-    } else {
-      logger.error('unexpected stdin error', { err, pid: child.pid })
+  let exited = false
+  let killTimer: ReturnType<typeof setTimeout> | undefined
+  const clearKillTimer = () => {
+    if (killTimer) clearTimeout(killTimer)
+    killTimer = undefined
+  }
+  const terminate = (signal: NodeJS.Signals = 'SIGTERM') => {
+    if (exited) return
+    child.kill(signal)
+    // A successful signal send does not prove that the child exited.
+    if (signal !== 'SIGKILL' && !killTimer) {
+      killTimer = setTimeout(() => {
+        killTimer = undefined
+        if (!exited) child.kill('SIGKILL')
+      }, 1000)
+      killTimer.unref()
     }
+  }
+  // A broken input pipe makes this bidirectional process unusable even if it keeps
+  // stdout open. Termination lets the query/owner settle pending turns on exit.
+  child.stdin.on('error', (err: NodeJS.ErrnoException) => {
+    if (exited) {
+      logger.warn('stdin write error after child exit', { code: err.code, pid: child.pid })
+      return
+    }
+    logger.error('stdin failed while child was alive; terminating process', { code: err.code, pid: child.pid })
+    terminate()
   })
+
+  const onAbort = () => terminate()
+  const cleanup = () => {
+    exited = true
+    clearKillTimer()
+    opts.signal?.removeEventListener('abort', onAbort)
+  }
+  child.once('exit', cleanup)
 
   // One-shot promise that resolves on exit. Cached so multiple `done()`
   // calls are idempotent.
   const exitPromise = new Promise<{ exitCode: number; signal: NodeJS.Signals | null; stderr: string }>(
     (resolve, reject) => {
-      child.once('error', err => reject(wrapSpawnError(err, cliPath)))
+      child.once('error', err => { cleanup(); reject(wrapSpawnError(err, cliPath)) })
       child.once('close', (code, sig) => {
+        cleanup()
         resolve({
           exitCode: code ?? -1,
           signal: sig,
@@ -300,14 +305,14 @@ export async function spawnStream(
     },
   )
 
-  // Honour external abort by SIGTERM'ing the child. The exit handler above
+  // Honour external abort with bounded termination. The exit handler above
   // turns that into a normal resolve with a non-zero exit code; callers of
   // `done()` can classify it themselves.
   if (opts.signal) {
     if (opts.signal.aborted) {
-      child.kill('SIGTERM')
+      onAbort()
     } else {
-      opts.signal.addEventListener('abort', () => child.kill('SIGTERM'), { once: true })
+      opts.signal.addEventListener('abort', onAbort, { once: true })
     }
   }
 
@@ -329,7 +334,7 @@ export async function spawnStream(
       return exitPromise
     },
     kill(signal: NodeJS.Signals = 'SIGTERM'): void {
-      child.kill(signal)
+      terminate(signal)
     },
   }
 }

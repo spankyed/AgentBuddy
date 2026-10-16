@@ -6,6 +6,36 @@ import { isPlainObject } from '@apackdev/sdk/utils/pure';
 import { namedBindings, sameKeys, sameNames } from './binding-shape.ts';
 import { isDeepStrictEqual } from 'node:util';
 
+interface ApiOwnerDeclaration {
+  readonly services?: Readonly<Record<string, string>>;
+  readonly repositories?: Readonly<Record<string, string>>;
+}
+
+/** Declared ownership is independent of constructing services or calling repository methods. */
+export function apiBindingProblem(features: Readonly<Record<string, ApiOwnerDeclaration>> | undefined,
+  pack: ApiOwnerDeclaration, registration: unknown): string | undefined {
+  if (!isPlainObject(registration)) return 'registration';
+  const runtimeFeatures = registration.features === undefined ? {} : registration.features;
+  if (!isPlainObject(runtimeFeatures)) return 'features';
+  for (const [id, feature] of Object.entries(features ?? {})) {
+    const runtime = runtimeFeatures[id];
+    if (!isPlainObject(runtime)) return `features.${id}`;
+    if (!sameNames(runtime.services === undefined ? [] : runtime.services, Object.keys(feature.services ?? {}))) return `features.${id}.services`;
+  }
+  for (const kind of ['services', 'repositories'] as const) {
+    const names = [...Object.keys(pack[kind] ?? {}), ...Object.values(features ?? {}).flatMap(feature => Object.keys(feature[kind] ?? {}))];
+    if (!sameKeys(registration[kind] === undefined ? {} : registration[kind], names)) return kind;
+  }
+}
+
+export function commandBindingProblem(declarations: Readonly<Record<string, { readonly placeholder: string }>> | undefined, bindings: unknown): string | undefined {
+  const commands = namedBindings(bindings, 'name', Object.keys(declarations ?? {}));
+  if (!commands) return 'commands';
+  for (const [name, declaration] of Object.entries(declarations ?? {})) {
+    if (commands.get(name)!.placeholder !== declaration.placeholder) return `commands.${name}.placeholder`;
+  }
+}
+
 /** Content bindings provide data operations, independently of backend activation. */
 export function contentBindingProblem(manifest: PackManifest, runtime: unknown, appliers?: unknown): string | undefined {
   const problem = (path: string) => `Pack "${manifest.id}" content runtime ${path} does not match its accepted declarations`;
@@ -39,16 +69,9 @@ export function backendBindingProblem(manifest: PackManifest, registration: unkn
       if ((feature[kind] !== undefined) !== (declaration[kind] !== undefined)) return problem(`features.${id}.${kind}`);
       if (declaration[kind] && !isPlainObject(feature[kind])) return problem(`features.${id}.${kind}`);
     }
-    if (declaration.plugin && (feature.plugin as Record<string, unknown>).defaultVisible !== declaration.plugin.defaultVisible) {
-      return problem(`features.${id}.plugin.defaultVisible`);
-    }
-    if (!sameNames(feature.services === undefined ? [] : feature.services, Object.keys(declaration.services ?? {}))) return problem(`features.${id}.services`);
   }
-  const services = [...Object.keys(manifest.extensions?.services ?? {}),
-    ...Object.values(declared).flatMap(feature => Object.keys(feature.services ?? {}))];
-  if (!sameKeys(registration.services === undefined ? {} : registration.services, services)) return problem('services');
-  const repositories = Object.values(declared).flatMap(feature => Object.keys(feature.repositories ?? {}));
-  if (!sameKeys(registration.repositories === undefined ? {} : registration.repositories, repositories)) return problem('repositories');
+  const apiProblem = apiBindingProblem(declared, { services: manifest.extensions?.services }, registration);
+  if (apiProblem) return problem(apiProblem);
 
   const ears = registration.ears === undefined ? {} : registration.ears;
   if (!isPlainObject(ears)) return problem('ears');
@@ -58,11 +81,8 @@ export function backendBindingProblem(manifest: PackManifest, registration: unkn
     Object.keys(manifest.content?.writers ?? {}))) return problem('contentWriters');
   if (!namedBindings(registration.appliers, 'key', Object.keys(manifest.content?.sources ?? {}))) return problem('appliers');
 
-  const commands = namedBindings(registration.commands, 'name', Object.keys(manifest.extensions?.commands ?? {}));
-  if (!commands) return problem('commands');
-  for (const [name, declaration] of Object.entries(manifest.extensions?.commands ?? {})) {
-    if (commands.get(name)!.placeholder !== declaration.placeholder) return problem(`commands.${name}.placeholder`);
-  }
+  const commands = commandBindingProblem(manifest.extensions?.commands, registration.commands);
+  if (commands) return problem(commands);
 
   const artifacts = namedBindings(registration.artifacts, 'type', Object.keys(manifest.extensions?.artifacts ?? {}));
   if (!artifacts) return problem('artifacts');

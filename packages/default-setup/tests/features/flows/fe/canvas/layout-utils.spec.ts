@@ -77,7 +77,7 @@ beforeAll(() => {
     packId: declaration.id, declaration: entry.declaration, binding: steps.get(entry.type)!,
   }]))
   startFeTestRuntime({
-    catalog: { status: () => 'ready', problem: () => undefined, steps: () => entries, references: () => [], frontend: () => [], subscribe: () => () => {} },
+    catalog: { status: () => 'ready', problem: () => undefined, steps: () => entries, references: () => [], frontend: () => [], artifacts: () => [], blocks: () => [], dsl: () => [], subscribe: () => () => {} },
     packs: { stepBindings: () => bindings } as never,
   })
 });

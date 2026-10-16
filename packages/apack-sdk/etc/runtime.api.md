@@ -62,8 +62,10 @@ export interface FeHostRuntime {
 // @public
 export interface FePackRegistryView extends PackExtensionsView {
     appExtension(slot: string): Component | undefined;
-    defaultPlugin(): Plugin_2 | undefined;
-    dslTypes(): ReadonlyMap<string, DslTypeConfig>;
+    // (undocumented)
+    artifactBindings(): ReadonlyMap<string, ArtifactFrontendBinding>;
+    // (undocumented)
+    blockBindings(): ReadonlyMap<string, BlockFrontendBinding>;
     onChanged(listener: (packId: string) => void): () => void;
     plugins(): Plugin_2[];
     // (undocumented)

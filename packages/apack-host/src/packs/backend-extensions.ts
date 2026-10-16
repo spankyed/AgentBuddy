@@ -1,7 +1,6 @@
 // The lookups only the backend's registry (createPackRegistry) keeps of what registered packs contributed
 import type { ContentWriter } from '@apackdev/sdk/content';
 import type { ContentApplier } from '@apackdev/sdk/utils';
-import { type PackCommand } from '@apackdev/sdk/framework';
 
 /** Content writers per entity type, each type's owned by the pack that registered it */
 export function createContentWriterStore() {
@@ -39,39 +38,6 @@ export function createApplierStore() {
       byPack.delete(packId);
     },
     get: (packId: string): readonly ContentApplier[] => byPack.get(packId) ?? [],
-  };
-}
-
-/** Each pack's declared slash commands, listed in the order the packs first registered */
-export function createCommandStore(order: ReadonlyMap<string, number> = new Map()) {
-  const byPack = new Map<string, PackCommand[]>();
-  // Kept when a pack unregisters, so a reload or update registers it again where it was
-  const rank = new Map(order);
-  return {
-    /** Throws when another pack already declares one of the commands, so nothing of this pack is registered */
-    register(packId: string, commands: readonly PackCommand[]): void {
-      for (const [otherId, theirs] of byPack) {
-        if (otherId === packId) continue;
-        for (const { name } of commands) {
-          if (theirs.some((command) => command.name === name)) {
-            throw new Error(`Command collision: "${name}" — pack "${packId}" vs "${otherId}"`);
-          }
-        }
-      }
-      if (commands.length === 0) {
-        byPack.delete(packId);
-        return;
-      }
-      if (!rank.has(packId)) rank.set(packId, rank.size);
-      byPack.set(packId, commands.map((command) => ({ ...command })));
-    },
-    unregister(packId: string): void {
-      byPack.delete(packId);
-    },
-    order: (): ReadonlyMap<string, number> => new Map(rank),
-    all: (): PackCommand[] => [...byPack]
-      .sort(([a], [b]) => rank.get(a)! - rank.get(b)!)
-      .flatMap(([, commands]) => commands.map((command) => ({ ...command }))),
   };
 }
 

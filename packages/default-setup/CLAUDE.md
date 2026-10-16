@@ -26,7 +26,6 @@ src/
     content-runtime.ts        # contentRuntime: entity types, relation kinds, repositories, content writers (unit tests; bundled to dist/build/content-runtime.mjs)
     step-types.ts          # Step type augmentation
     flow-helpers.ts        # Typed flow DSL helpers (entry, on, one per step with a dsl node)
-    dsl-types-fe.ts        # `dslTypes` for pack-entry-fe.ts, importing dist/defs/monaco/<name>-defs.d.ts
   defs/                    # DSL type definitions (action.ts, prompt.ts, database.ts)
   features/                # 11 features (each has be/ and fe/ dirs)
   extensions/              # Cross-cutting concerns

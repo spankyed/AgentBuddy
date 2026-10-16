@@ -16,7 +16,7 @@ export { PluginScope, usePlugin } from './actor-system.ts'
 export { pluginIsRunning, readUntypedPluginState, useUntypedPluginState } from './plugin-state.ts'
 export { useShell, type Shell, type HostShell, type HostShellEvent, type HostShellSnapshot, type HostShellState, type ShellPanelSizes } from './shell.ts'
 export { isAnyMenuOpen, onMenuOpenChange, useTrackedMenuOpen } from './menu-state.ts'
-export { getDslTypes, type DslTypeConfig } from './dsl-types.ts'
+export { getDslDeclaration, getDslDeclarations, onDslDeclarationsChanged, useDslDeclarations } from './dsl-reader.ts'
 export { EXTRA_BLOCK_ITEMS_KEY, tiptapPluginRegistry, type BlockItem, type TiptapPlugin, type TiptapPluginBinding } from './tiptap-plugins.ts'
 
 export { default, default as breadcrumb, breadcrumbWithParams, breadcrumbList, staticBreadcrumbList } from './breadcrumb.ts'
@@ -60,3 +60,7 @@ export { defineHandlers, type Handlers } from '../framework/define-system.ts'
 
 export { getStepFrontendBindings, type StepFrontendBinding } from './step-bindings.ts';
 export { getStepDeclarations, getStepDeclaration, getStepBinding, onStepsChanged, useStepDeclarations } from './step-reader.ts';
+
+export type { ArtifactFrontendBinding, BlockFrontendBinding } from './viewer-bindings.ts';
+export { getArtifactDeclarations, getArtifactDeclaration, getArtifactBinding, useArtifactDeclarations } from './artifact-reader.ts';
+export { getBlockDeclarations, getBlockDeclaration, getBlockBinding, useBlockDeclarations } from './block-reader.ts';

@@ -51,6 +51,8 @@ export interface ToolActivityWriter {
   append(entry: ToolActivityEntry): void;
   /** Patch an existing entry (by id). Triggers a throttled write. */
   update(id: string, patch: Partial<ToolActivityEntry>): void;
+  /** Retain an asynchronous task row after its launching turn finishes. */
+  setTaskRunning(id: string, running: boolean): void;
   /** Flush any pending write immediately (e.g. before a permission prompt). */
   flush(): void;
   /** Freeze the block to its final state. Writes immediately. */
@@ -77,6 +79,7 @@ export function createToolActivityWriter(
 ): ToolActivityWriter {
   const intervalMs = opts.intervalMs ?? 250;
   const entries: ToolActivityEntry[] = [];
+  const runningTasks = new Set<string>();
   const startedAt = Date.now();
 
   let state: 'streaming' | 'done' | 'error' = 'streaming';
@@ -90,8 +93,8 @@ export function createToolActivityWriter(
   const buildBlockProps = (): ToolActivityBlockProps => ({
     // Fresh array copy so frontend reactivity sees a new reference on every write.
     entries: entries.map(e => ({ ...e })),
-    label: computeLabel(entries, state, opts.phase),
-    state,
+    label: computeLabel(entries, runningTasks.size ? 'streaming' : state, opts.phase),
+    state: runningTasks.size ? 'streaming' : state,
     defaultOpen: false,
     ...(opts.phase && { phase: opts.phase }),
     ...(artifactRef && { artifactRef }),
@@ -144,7 +147,13 @@ export function createToolActivityWriter(
       const idx = entries.findIndex(e => e.id === id);
       if (idx === -1) return;
       entries[idx] = { ...entries[idx], ...patch, details: { ...entries[idx].details, ...patch.details } };
+      if (state !== 'streaming' && patch.status === 'error') state = 'error';
       schedule();
+    },
+
+    setTaskRunning(id, running) {
+      if (!entries.some(entry => entry.id === id)) return;
+      if (running) runningTasks.add(id); else runningTasks.delete(id);
     },
 
     flush(): void {
@@ -173,13 +182,14 @@ export function createToolActivityWriter(
         }
         return;
       }
-      // Any entry still marked 'running' at finalise time is stranded —
+      // Native tasks can outlive their launching turn; their owner updates these rows later.
+      // Any other entry still marked 'running' at finalise time is stranded —
       // mark it 'ok' so the group doesn't visually lie. `'error'` (set by
       // chat.ts's `user`/tool_result handler) and `'denied'` (set by the
       // permission flow) are preserved intentionally — they're meaningful
       // terminal states and must NOT be overwritten by this finaliser.
       for (const e of entries) {
-        if (e.status === 'running') e.status = 'ok';
+        if (e.status === 'running' && !runningTasks.has(e.id)) e.status = 'ok';
       }
       writeNow();
     },

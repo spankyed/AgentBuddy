@@ -133,7 +133,7 @@ describe('apack pack validate', () => {
     const dependency = path.join(tmp, 'malformed-pack');
     fs.mkdirSync(path.join(dependency, 'dist', 'types'), { recursive: true });
     fs.writeFileSync(path.join(dependency, 'dist', PACK_LAYOUT.snapshot), JSON.stringify({
-      types: { entities: {}, relKinds: {} }, facades: {}, manifest: { id: 'malformed-pack', version: '1.0.0' },
+      types: { entities: {}, relKinds: {} }, entityDestinations: {}, facades: {}, manifest: { id: 'malformed-pack', version: '1.0.0' },
     }));
     const manifest = readManifest();
     manifest.dependencies = { 'malformed-pack': `file:${dependency}` };

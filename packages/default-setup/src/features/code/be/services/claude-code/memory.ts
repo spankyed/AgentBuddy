@@ -1,44 +1,30 @@
-/**
- * `claude memory` — list/add/remove memory files (CLAUDE.md fragments).
- */
+import { z } from 'zod'
+import { execOnce } from './runner.ts'
+import { query } from './query.ts'
+import type { QueryOptions } from './types.ts'
+import type { ClaudeMemoryDialog } from './host-controls.ts'
 
-import { run, runJson, type SubcommandOptions } from './subcommand.ts'
-
-type Scope = 'user' | 'project' | 'local'
-
-export interface MemoryFile {
-  name: string
-  scope?: Scope
-  path?: string
-  size?: number
-  [key: string]: unknown
+export interface ClaudeMemoryOptions extends Pick<QueryOptions, 'env' | 'cliPath' | 'signal'> {
+  cwd: string
 }
 
-export async function list(
-  opts: { scope?: Scope; dir?: string } & SubcommandOptions = {},
-): Promise<MemoryFile[]> {
-  const args = ['memory', 'list', '--json']
-  if (opts.scope) args.push('--scope', opts.scope)
-  if (opts.dir) args.push('--dir', opts.dir)
-  return runJson<MemoryFile[]>(args, opts)
+/** Read the native instruction/memory catalog without sending a model turn. */
+/** Starts/closes a native process and can run configured session lifecycle hooks. */
+export async function getMemoryDialog(options: ClaudeMemoryOptions): Promise<ClaudeMemoryDialog> {
+  const allowed = new Set(['cwd', 'env', 'cliPath', 'signal'])
+  const unsupported = Object.keys(options).filter(key => !allowed.has(key))
+  if (unsupported.length) throw new Error(`unsupported memory discovery options: ${unsupported.join(', ')}`)
+  const handle = await query({ ...options, keepStdinOpen: true, noSessionPersistence: true })
+  try { return await handle.getMemoryDialog() } finally { await handle.close() }
 }
 
-export async function add(
-  name: string,
-  opts: { scope?: Scope; dir?: string } & SubcommandOptions = {},
-): Promise<string> {
-  const args = ['memory', 'add', name]
-  if (opts.scope) args.push('--scope', opts.scope)
-  if (opts.dir) args.push('--dir', opts.dir)
-  return run(args, opts)
-}
-
-export async function remove(
-  name: string,
-  opts: { scope?: Scope; dir?: string } & SubcommandOptions = {},
-): Promise<string> {
-  const args = ['memory', 'remove', name]
-  if (opts.scope) args.push('--scope', opts.scope)
-  if (opts.dir) args.push('--dir', opts.dir)
-  return run(args, opts)
+/** The native writer owns user-scope persistence; the returned dialog owns effective availability. */
+export async function setAutoMemory(enabled: boolean, options: ClaudeMemoryOptions): Promise<void> {
+  const valid = z.boolean().parse(enabled)
+  const { cwd, env, cliPath, signal } = options
+  const result = await execOnce(['edit-memory-settings', '--json'], {
+    cwd, env, cliPath, signal, input: JSON.stringify({ autoMemoryEnabled: valid }) + '\n', timeoutMs: 15000,
+  })
+  const response = z.object({ ok: z.literal(true), written: z.object({ autoMemoryEnabled: z.boolean() }).passthrough() }).parse(JSON.parse(result.stdout))
+  if (response.written.autoMemoryEnabled !== valid) throw new Error('Native auto-memory acknowledgement does not match the request')
 }

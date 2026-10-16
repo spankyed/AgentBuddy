@@ -229,6 +229,24 @@ Pack-wide preferences use the same definition under `extensions.settings.<groupI
 to the host. Pack and feature declarations remain visible in Settings when their executable form
 is unavailable; the JSON editor remains available. There is no pack-owned assembly of app settings.
 
+### Entity destination declarations
+
+A plugin's TypeScript contract may declare the literal entity types it opens:
+
+```ts
+export type Contract = {
+  opens: 'Note' | 'Action'
+  // state and inbox declarations belong here too
+}
+```
+
+These are existing entity wire names, including SDK and dependency entities; declaring a destination
+creates no entity type or ownership claim. The build reads exported types without executing the module,
+rejects unknown entities and competing destination features within a pack, and materializes the map in
+`snapshot.json` as `entityDestinations`. Installed inspection reads that data without authored sources.
+Omit `opens` for a plugin with no entity destination; present declarations must be nonempty literal
+unions. This build metadata does not itself make a runtime handler ready.
+
 ### Reference declarations
 
 A feature declares reference identities and presentation as data. Navigation and item enumeration are
@@ -653,9 +671,11 @@ The SDK defines the entity types `Relation`, `Flow`, `Node`, `TNode`, `Action` a
 |---|---|---|
 | `entry` | `string` | Module whose types are bundled into the definitions |
 | `targets` | `["monaco"]` | Editors that get the definitions |
-| `prefix` | `string` | Editor models whose path starts with it get these definitions (e.g. `action:`). Omission uses an empty prefix, matching all model paths |
+| `prefix` | `string` | Editor models whose path starts with it get these definitions (e.g. `action:`). Omission or an empty value disables path inference; an editor can select the DSL explicitly |
 | `inline` | `string[]` | Packages whose declarations are bundled into the definitions besides your own modules and `@apackdev/*`. The editor loads no `node_modules`, so a type it needs from another package belongs here; everything else stays an import |
-| `globals` | `Record<string, string>` | Globals in scope and their types. With `globals`, the generated FE entry's registration carries the definitions from `dist/defs/monaco/<name>-defs.d.ts` in its `dslTypes` |
+| `globals` | `Record<string, string>` | Globals in scope and their types. The catalog carries these declarations with the compiled definition text; Monaco follows updates without activating a frontend |
+
+Path inference uses the unique longest matching nonempty prefix; equal-length matches from different DSLs are ambiguous. DSL files default to TypeScript unless the editor explicitly selects another language.
 
 For each entry with a `monaco` target, `apack pack build` writes `dist/defs/monaco/<name>-defs.d.ts`: the entry's types bundled into one declaration file, wrapped as `declare module "@app/defs/<name>"`.
 

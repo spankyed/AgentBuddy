@@ -131,7 +131,7 @@ export function compilePack(options: CompilePackOptions): Promise<CompilePackRes
 // @public (undocumented)
 export interface CompilePackOptions {
     definitions?: PackBuildDefinitions;
-    importModule?: (file: string) => Promise<Record<string, unknown>>;
+    importModule?: PackModuleLoader;
     log?: (message: string) => void;
     // (undocumented)
     outputDir: string;
@@ -329,6 +329,7 @@ export interface ContentIndexEntry {
     items: PackContentPreviewItem[];
     // (undocumented)
     key: string;
+    references?: ContentReference[];
     written: boolean;
 }
 
@@ -345,7 +346,44 @@ export interface ContentItem {
 }
 
 // @public (undocumented)
+export interface ContentItemIdentity {
+    // (undocumented)
+    item: string;
+    // (undocumented)
+    key: string;
+}
+
+// @public (undocumented)
 export function contentPath(compiledDir: string, name: string): string;
+
+// @public
+export type ContentReference = {
+    item: string;
+    path: string;
+} & ({
+    kind: 'static';
+    target: ContentItemIdentity;
+} | {
+    kind: 'dynamic';
+    target: {
+        key: string;
+    };
+});
+
+// @public (undocumented)
+export interface ContentReferenceInspection {
+    // (undocumented)
+    path: string;
+    // (undocumented)
+    source: ContentItemIdentity;
+    // (undocumented)
+    status: 'indexed' | 'not-indexed' | 'dynamic';
+    // (undocumented)
+    target: {
+        key: string;
+        item?: string;
+    };
+}
 
 // @public (undocumented)
 export type ContentSourceConfig = z.infer<typeof ContentSourceSchema>;
@@ -521,6 +559,7 @@ export const FeatureEntrySchema: z.ZodObject<{
     description: string;
     entities?: Record<string, string | null> | undefined;
     types?: string | undefined;
+    references?: ReferenceDeclarations | undefined;
     services?: Record<string, string> | undefined;
     designation?: string | undefined;
     settings?: {
@@ -540,11 +579,11 @@ export const FeatureEntrySchema: z.ZodObject<{
     } | undefined;
     plugin?: PluginDeclaration | undefined;
     repositories?: Record<string, string> | undefined;
-    references?: ReferenceDeclarations | undefined;
 }, {
     description: string;
     entities?: Record<string, string | null> | undefined;
     types?: string | undefined;
+    references?: ReferenceDeclarations | undefined;
     services?: Record<string, string> | undefined;
     designation?: string | undefined;
     settings?: unknown;
@@ -557,8 +596,10 @@ export const FeatureEntrySchema: z.ZodObject<{
     } | undefined;
     plugin?: PluginDeclaration | undefined;
     repositories?: Record<string, string> | undefined;
-    references?: ReferenceDeclarations | undefined;
 }>;
+
+// @public
+export function findContentDependents(index: ContentIndex, target: ContentItemIdentity): ContentReferenceInspection[];
 
 // @public
 export function findSourceModule(root: string, target: string, extensions: readonly string[], label: string): string | undefined;
@@ -582,6 +623,9 @@ export const flowsCompiler: SpecialtyCompiler<FlowDSL>;
 // @public
 export function formatEntities(format: ContentFormatConfig): string[];
 
+// @public
+export const GENERATED_ENTITY_DESTINATIONS_FILE = "src/__generated__/entity-destinations.json";
+
 // @public (undocumented)
 export interface GenerateEntriesOptions {
     // (undocumented)
@@ -603,6 +647,9 @@ export function hashFlows(merged: FlowDSL): Record<string, object>;
 
 // @internal
 export function _helpDataProblem(value: unknown, features: readonly string[]): string | undefined;
+
+// @public
+export function inspectContentReferences(index: ContentIndex): ContentReferenceInspection[];
 
 // @public (undocumented)
 export function isFlowConfig(value: Track[] | FlowConfig): value is FlowConfig;
@@ -626,7 +673,7 @@ export const LifecycleConfigSchema: z.ZodObject<{
 }>;
 
 // @public (undocumented)
-export function loadFlowsFromDir(flowsDir: string): Promise<{
+export function loadFlowsFromDir(flowsDir: string, importModule?: PackModuleLoader): Promise<{
     merged: FlowDSL;
     rootFlowName: string | null;
     loaded: number;
@@ -657,6 +704,7 @@ export const ManifestSchema: z.ZodEffects<z.ZodEffects<z.ZodObject<{
         description: string;
         entities?: Record<string, string | null> | undefined;
         types?: string | undefined;
+        references?: ReferenceDeclarations | undefined;
         services?: Record<string, string> | undefined;
         designation?: string | undefined;
         settings?: {
@@ -676,11 +724,11 @@ export const ManifestSchema: z.ZodEffects<z.ZodEffects<z.ZodObject<{
         } | undefined;
         plugin?: PluginDeclaration | undefined;
         repositories?: Record<string, string> | undefined;
-        references?: ReferenceDeclarations | undefined;
     }>, z.ZodTypeDef, Record<string, {
         description: string;
         entities?: Record<string, string | null> | undefined;
         types?: string | undefined;
+        references?: ReferenceDeclarations | undefined;
         services?: Record<string, string> | undefined;
         designation?: string | undefined;
         settings?: unknown;
@@ -693,7 +741,6 @@ export const ManifestSchema: z.ZodEffects<z.ZodEffects<z.ZodObject<{
         } | undefined;
         plugin?: PluginDeclaration | undefined;
         repositories?: Record<string, string> | undefined;
-        references?: ReferenceDeclarations | undefined;
     }>>>;
     extensions: z.ZodOptional<z.ZodObject<{
         tiptapPlugins: z.ZodOptional<z.ZodType<Record<string, {
@@ -760,6 +807,7 @@ export const ManifestSchema: z.ZodEffects<z.ZodEffects<z.ZodObject<{
             } | undefined;
             dsl?: {
                 defaultLabel?: string | undefined;
+                references?: Record<string, string> | undefined;
                 primaryField?: string | undefined;
                 helpers?: string | undefined;
             } | undefined;
@@ -802,6 +850,7 @@ export const ManifestSchema: z.ZodEffects<z.ZodEffects<z.ZodObject<{
             } | undefined;
             dsl?: {
                 defaultLabel?: string | undefined;
+                references?: Record<string, string> | undefined;
                 primaryField?: string | undefined;
                 helpers?: string | undefined;
             } | undefined;
@@ -900,6 +949,7 @@ export const ManifestSchema: z.ZodEffects<z.ZodEffects<z.ZodObject<{
             } | undefined;
             dsl?: {
                 defaultLabel?: string | undefined;
+                references?: Record<string, string> | undefined;
                 primaryField?: string | undefined;
                 helpers?: string | undefined;
             } | undefined;
@@ -974,6 +1024,7 @@ export const ManifestSchema: z.ZodEffects<z.ZodEffects<z.ZodObject<{
             } | undefined;
             dsl?: {
                 defaultLabel?: string | undefined;
+                references?: Record<string, string> | undefined;
                 primaryField?: string | undefined;
                 helpers?: string | undefined;
             } | undefined;
@@ -1220,6 +1271,7 @@ export const ManifestSchema: z.ZodEffects<z.ZodEffects<z.ZodObject<{
         description: string;
         entities?: Record<string, string | null> | undefined;
         types?: string | undefined;
+        references?: ReferenceDeclarations | undefined;
         services?: Record<string, string> | undefined;
         designation?: string | undefined;
         settings?: {
@@ -1239,7 +1291,6 @@ export const ManifestSchema: z.ZodEffects<z.ZodEffects<z.ZodObject<{
         } | undefined;
         plugin?: PluginDeclaration | undefined;
         repositories?: Record<string, string> | undefined;
-        references?: ReferenceDeclarations | undefined;
     }> | undefined;
     extensions?: {
         dsl?: Record<string, {
@@ -1300,6 +1351,7 @@ export const ManifestSchema: z.ZodEffects<z.ZodEffects<z.ZodObject<{
             } | undefined;
             dsl?: {
                 defaultLabel?: string | undefined;
+                references?: Record<string, string> | undefined;
                 primaryField?: string | undefined;
                 helpers?: string | undefined;
             } | undefined;
@@ -1394,6 +1446,7 @@ export const ManifestSchema: z.ZodEffects<z.ZodEffects<z.ZodObject<{
         description: string;
         entities?: Record<string, string | null> | undefined;
         types?: string | undefined;
+        references?: ReferenceDeclarations | undefined;
         services?: Record<string, string> | undefined;
         designation?: string | undefined;
         settings?: unknown;
@@ -1406,7 +1459,6 @@ export const ManifestSchema: z.ZodEffects<z.ZodEffects<z.ZodObject<{
         } | undefined;
         plugin?: PluginDeclaration | undefined;
         repositories?: Record<string, string> | undefined;
-        references?: ReferenceDeclarations | undefined;
     }> | undefined;
     extensions?: {
         dsl?: Record<string, {
@@ -1460,6 +1512,7 @@ export const ManifestSchema: z.ZodEffects<z.ZodEffects<z.ZodObject<{
             } | undefined;
             dsl?: {
                 defaultLabel?: string | undefined;
+                references?: Record<string, string> | undefined;
                 primaryField?: string | undefined;
                 helpers?: string | undefined;
             } | undefined;
@@ -1554,6 +1607,7 @@ export const ManifestSchema: z.ZodEffects<z.ZodEffects<z.ZodObject<{
         description: string;
         entities?: Record<string, string | null> | undefined;
         types?: string | undefined;
+        references?: ReferenceDeclarations | undefined;
         services?: Record<string, string> | undefined;
         designation?: string | undefined;
         settings?: {
@@ -1573,7 +1627,6 @@ export const ManifestSchema: z.ZodEffects<z.ZodEffects<z.ZodObject<{
         } | undefined;
         plugin?: PluginDeclaration | undefined;
         repositories?: Record<string, string> | undefined;
-        references?: ReferenceDeclarations | undefined;
     }> | undefined;
     extensions?: {
         dsl?: Record<string, {
@@ -1634,6 +1687,7 @@ export const ManifestSchema: z.ZodEffects<z.ZodEffects<z.ZodObject<{
             } | undefined;
             dsl?: {
                 defaultLabel?: string | undefined;
+                references?: Record<string, string> | undefined;
                 primaryField?: string | undefined;
                 helpers?: string | undefined;
             } | undefined;
@@ -1728,6 +1782,7 @@ export const ManifestSchema: z.ZodEffects<z.ZodEffects<z.ZodObject<{
         description: string;
         entities?: Record<string, string | null> | undefined;
         types?: string | undefined;
+        references?: ReferenceDeclarations | undefined;
         services?: Record<string, string> | undefined;
         designation?: string | undefined;
         settings?: unknown;
@@ -1740,7 +1795,6 @@ export const ManifestSchema: z.ZodEffects<z.ZodEffects<z.ZodObject<{
         } | undefined;
         plugin?: PluginDeclaration | undefined;
         repositories?: Record<string, string> | undefined;
-        references?: ReferenceDeclarations | undefined;
     }> | undefined;
     extensions?: {
         dsl?: Record<string, {
@@ -1794,6 +1848,7 @@ export const ManifestSchema: z.ZodEffects<z.ZodEffects<z.ZodObject<{
             } | undefined;
             dsl?: {
                 defaultLabel?: string | undefined;
+                references?: Record<string, string> | undefined;
                 primaryField?: string | undefined;
                 helpers?: string | undefined;
             } | undefined;
@@ -1888,6 +1943,7 @@ export const ManifestSchema: z.ZodEffects<z.ZodEffects<z.ZodObject<{
         description: string;
         entities?: Record<string, string | null> | undefined;
         types?: string | undefined;
+        references?: ReferenceDeclarations | undefined;
         services?: Record<string, string> | undefined;
         designation?: string | undefined;
         settings?: {
@@ -1907,7 +1963,6 @@ export const ManifestSchema: z.ZodEffects<z.ZodEffects<z.ZodObject<{
         } | undefined;
         plugin?: PluginDeclaration | undefined;
         repositories?: Record<string, string> | undefined;
-        references?: ReferenceDeclarations | undefined;
     }> | undefined;
     extensions?: {
         dsl?: Record<string, {
@@ -1968,6 +2023,7 @@ export const ManifestSchema: z.ZodEffects<z.ZodEffects<z.ZodObject<{
             } | undefined;
             dsl?: {
                 defaultLabel?: string | undefined;
+                references?: Record<string, string> | undefined;
                 primaryField?: string | undefined;
                 helpers?: string | undefined;
             } | undefined;
@@ -2145,6 +2201,8 @@ export const _NativePackDeclarationSchema: z.ZodEffects<z.ZodEffects<z.ZodObject
         title?: string | undefined;
         access?: "owner" | "shared" | undefined;
     }>, z.ZodTypeDef, Record<string, unknown>>>;
+    services: z.ZodOptional<z.ZodLazy<z.ZodType<Record<string, string>, z.ZodTypeDef, Record<string, string>>>>;
+    repositories: z.ZodOptional<z.ZodLazy<z.ZodType<Record<string, string>, z.ZodTypeDef, Record<string, string>>>>;
     data: z.ZodOptional<z.ZodObject<{
         entities: z.ZodOptional<z.ZodType<Record<string, string | null>, z.ZodTypeDef, Record<string, string | null>>>;
         relations: z.ZodOptional<z.ZodEffects<z.ZodArray<z.ZodString, "many">, string[], string[]>>;
@@ -2204,6 +2262,7 @@ export const _NativePackDeclarationSchema: z.ZodEffects<z.ZodEffects<z.ZodObject
         } | undefined;
         dsl?: {
             defaultLabel?: string | undefined;
+            references?: Record<string, string> | undefined;
             primaryField?: string | undefined;
             helpers?: string | undefined;
         } | undefined;
@@ -2246,6 +2305,7 @@ export const _NativePackDeclarationSchema: z.ZodEffects<z.ZodEffects<z.ZodObject
         } | undefined;
         dsl?: {
             defaultLabel?: string | undefined;
+            references?: Record<string, string> | undefined;
             primaryField?: string | undefined;
             helpers?: string | undefined;
         } | undefined;
@@ -2266,6 +2326,11 @@ export const _NativePackDeclarationSchema: z.ZodEffects<z.ZodEffects<z.ZodObject
         fe?: string | undefined;
         be?: string | undefined;
     }>>>>;
+    commands: z.ZodLazy<z.ZodOptional<z.ZodType<Record<string, {
+        placeholder: string;
+    }>, z.ZodTypeDef, Record<string, {
+        placeholder: string;
+    }>>>>;
     dsl: z.ZodLazy<z.ZodOptional<z.ZodType<Record<string, {
         entry: string;
         targets: "monaco"[];
@@ -2279,6 +2344,8 @@ export const _NativePackDeclarationSchema: z.ZodEffects<z.ZodEffects<z.ZodObject
         globals?: Record<string, string> | undefined;
         inline?: string[] | undefined;
     }>>>>;
+    dslDefinitions: z.ZodOptional<z.ZodType<Record<string, string>, z.ZodTypeDef, Record<string, string>>>;
+    entityDestinations: z.ZodOptional<z.ZodType<Record<string, string>, z.ZodTypeDef, Record<string, string>>>;
     tiptapPlugins: z.ZodLazy<z.ZodOptional<z.ZodType<Record<string, {
         extensions?: Record<string, string> | undefined;
         popups?: Record<string, string> | undefined;
@@ -2292,6 +2359,8 @@ export const _NativePackDeclarationSchema: z.ZodEffects<z.ZodEffects<z.ZodObject
     features: z.ZodOptional<z.ZodType<Record<string, {
         description: string;
         entities?: Record<string, string | null> | undefined;
+        references?: ReferenceDeclarations | undefined;
+        services?: Record<string, string> | undefined;
         designation?: string | undefined;
         settings?: {
             defaults: Record<string, unknown>;
@@ -2302,14 +2371,16 @@ export const _NativePackDeclarationSchema: z.ZodEffects<z.ZodEffects<z.ZodObject
             access?: "owner" | "shared" | undefined;
         } | undefined;
         plugin?: PluginDeclaration | undefined;
-        references?: ReferenceDeclarations | undefined;
+        repositories?: Record<string, string> | undefined;
     }>, z.ZodTypeDef, Record<string, {
         description: string;
         entities?: Record<string, string | null> | undefined;
+        references?: ReferenceDeclarations | undefined;
+        services?: Record<string, string> | undefined;
         designation?: string | undefined;
         settings?: unknown;
         plugin?: PluginDeclaration | undefined;
-        references?: ReferenceDeclarations | undefined;
+        repositories?: Record<string, string> | undefined;
     }>>>;
 }, "strict", z.ZodTypeAny, {
     id: string;
@@ -2324,6 +2395,7 @@ export const _NativePackDeclarationSchema: z.ZodEffects<z.ZodEffects<z.ZodObject
         globals?: Record<string, string> | undefined;
         inline?: string[] | undefined;
     }> | undefined;
+    services?: Record<string, string> | undefined;
     dependencies?: Record<string, string> | undefined;
     settings?: Record<string, {
         defaults: Record<string, unknown>;
@@ -2333,9 +2405,12 @@ export const _NativePackDeclarationSchema: z.ZodEffects<z.ZodEffects<z.ZodObject
         title?: string | undefined;
         access?: "owner" | "shared" | undefined;
     }> | undefined;
+    repositories?: Record<string, string> | undefined;
     features?: Record<string, {
         description: string;
         entities?: Record<string, string | null> | undefined;
+        references?: ReferenceDeclarations | undefined;
+        services?: Record<string, string> | undefined;
         designation?: string | undefined;
         settings?: {
             defaults: Record<string, unknown>;
@@ -2346,7 +2421,7 @@ export const _NativePackDeclarationSchema: z.ZodEffects<z.ZodEffects<z.ZodObject
             access?: "owner" | "shared" | undefined;
         } | undefined;
         plugin?: PluginDeclaration | undefined;
-        references?: ReferenceDeclarations | undefined;
+        repositories?: Record<string, string> | undefined;
     }> | undefined;
     steps?: Record<string, {
         node: {
@@ -2387,6 +2462,7 @@ export const _NativePackDeclarationSchema: z.ZodEffects<z.ZodEffects<z.ZodObject
         } | undefined;
         dsl?: {
             defaultLabel?: string | undefined;
+            references?: Record<string, string> | undefined;
             primaryField?: string | undefined;
             helpers?: string | undefined;
         } | undefined;
@@ -2400,6 +2476,9 @@ export const _NativePackDeclarationSchema: z.ZodEffects<z.ZodEffects<z.ZodObject
         fe?: string | undefined;
         be?: string | undefined;
     }> | undefined;
+    commands?: Record<string, {
+        placeholder: string;
+    }> | undefined;
     tiptapPlugins?: Record<string, {
         extensions?: Record<string, string> | undefined;
         popups?: Record<string, string> | undefined;
@@ -2410,6 +2489,8 @@ export const _NativePackDeclarationSchema: z.ZodEffects<z.ZodEffects<z.ZodObject
         onInit?: string | undefined;
         onShutdown?: string | undefined;
     } | undefined;
+    entityDestinations?: Record<string, string> | undefined;
+    dslDefinitions?: Record<string, string> | undefined;
 }, {
     id: string;
     data?: {
@@ -2423,15 +2504,19 @@ export const _NativePackDeclarationSchema: z.ZodEffects<z.ZodEffects<z.ZodObject
         globals?: Record<string, string> | undefined;
         inline?: string[] | undefined;
     }> | undefined;
+    services?: Record<string, string> | undefined;
     dependencies?: Record<string, string> | undefined;
     settings?: Record<string, unknown> | undefined;
+    repositories?: Record<string, string> | undefined;
     features?: Record<string, {
         description: string;
         entities?: Record<string, string | null> | undefined;
+        references?: ReferenceDeclarations | undefined;
+        services?: Record<string, string> | undefined;
         designation?: string | undefined;
         settings?: unknown;
         plugin?: PluginDeclaration | undefined;
-        references?: ReferenceDeclarations | undefined;
+        repositories?: Record<string, string> | undefined;
     }> | undefined;
     steps?: Record<string, {
         node: {
@@ -2472,6 +2557,7 @@ export const _NativePackDeclarationSchema: z.ZodEffects<z.ZodEffects<z.ZodObject
         } | undefined;
         dsl?: {
             defaultLabel?: string | undefined;
+            references?: Record<string, string> | undefined;
             primaryField?: string | undefined;
             helpers?: string | undefined;
         } | undefined;
@@ -2485,6 +2571,9 @@ export const _NativePackDeclarationSchema: z.ZodEffects<z.ZodEffects<z.ZodObject
         fe?: string | undefined;
         be?: string | undefined;
     }> | undefined;
+    commands?: Record<string, {
+        placeholder: string;
+    }> | undefined;
     tiptapPlugins?: Record<string, {
         extensions?: Record<string, string> | undefined;
         popups?: Record<string, string> | undefined;
@@ -2495,6 +2584,8 @@ export const _NativePackDeclarationSchema: z.ZodEffects<z.ZodEffects<z.ZodObject
         onInit?: string | undefined;
         onShutdown?: string | undefined;
     } | undefined;
+    entityDestinations?: Record<string, string> | undefined;
+    dslDefinitions?: Record<string, string> | undefined;
 }>, {
     id: string;
     data?: {
@@ -2508,6 +2599,7 @@ export const _NativePackDeclarationSchema: z.ZodEffects<z.ZodEffects<z.ZodObject
         globals?: Record<string, string> | undefined;
         inline?: string[] | undefined;
     }> | undefined;
+    services?: Record<string, string> | undefined;
     dependencies?: Record<string, string> | undefined;
     settings?: Record<string, {
         defaults: Record<string, unknown>;
@@ -2517,9 +2609,12 @@ export const _NativePackDeclarationSchema: z.ZodEffects<z.ZodEffects<z.ZodObject
         title?: string | undefined;
         access?: "owner" | "shared" | undefined;
     }> | undefined;
+    repositories?: Record<string, string> | undefined;
     features?: Record<string, {
         description: string;
         entities?: Record<string, string | null> | undefined;
+        references?: ReferenceDeclarations | undefined;
+        services?: Record<string, string> | undefined;
         designation?: string | undefined;
         settings?: {
             defaults: Record<string, unknown>;
@@ -2530,7 +2625,7 @@ export const _NativePackDeclarationSchema: z.ZodEffects<z.ZodEffects<z.ZodObject
             access?: "owner" | "shared" | undefined;
         } | undefined;
         plugin?: PluginDeclaration | undefined;
-        references?: ReferenceDeclarations | undefined;
+        repositories?: Record<string, string> | undefined;
     }> | undefined;
     steps?: Record<string, {
         node: {
@@ -2571,6 +2666,7 @@ export const _NativePackDeclarationSchema: z.ZodEffects<z.ZodEffects<z.ZodObject
         } | undefined;
         dsl?: {
             defaultLabel?: string | undefined;
+            references?: Record<string, string> | undefined;
             primaryField?: string | undefined;
             helpers?: string | undefined;
         } | undefined;
@@ -2584,6 +2680,9 @@ export const _NativePackDeclarationSchema: z.ZodEffects<z.ZodEffects<z.ZodObject
         fe?: string | undefined;
         be?: string | undefined;
     }> | undefined;
+    commands?: Record<string, {
+        placeholder: string;
+    }> | undefined;
     tiptapPlugins?: Record<string, {
         extensions?: Record<string, string> | undefined;
         popups?: Record<string, string> | undefined;
@@ -2594,6 +2693,8 @@ export const _NativePackDeclarationSchema: z.ZodEffects<z.ZodEffects<z.ZodObject
         onInit?: string | undefined;
         onShutdown?: string | undefined;
     } | undefined;
+    entityDestinations?: Record<string, string> | undefined;
+    dslDefinitions?: Record<string, string> | undefined;
 }, {
     id: string;
     data?: {
@@ -2607,15 +2708,19 @@ export const _NativePackDeclarationSchema: z.ZodEffects<z.ZodEffects<z.ZodObject
         globals?: Record<string, string> | undefined;
         inline?: string[] | undefined;
     }> | undefined;
+    services?: Record<string, string> | undefined;
     dependencies?: Record<string, string> | undefined;
     settings?: Record<string, unknown> | undefined;
+    repositories?: Record<string, string> | undefined;
     features?: Record<string, {
         description: string;
         entities?: Record<string, string | null> | undefined;
+        references?: ReferenceDeclarations | undefined;
+        services?: Record<string, string> | undefined;
         designation?: string | undefined;
         settings?: unknown;
         plugin?: PluginDeclaration | undefined;
-        references?: ReferenceDeclarations | undefined;
+        repositories?: Record<string, string> | undefined;
     }> | undefined;
     steps?: Record<string, {
         node: {
@@ -2656,6 +2761,7 @@ export const _NativePackDeclarationSchema: z.ZodEffects<z.ZodEffects<z.ZodObject
         } | undefined;
         dsl?: {
             defaultLabel?: string | undefined;
+            references?: Record<string, string> | undefined;
             primaryField?: string | undefined;
             helpers?: string | undefined;
         } | undefined;
@@ -2669,6 +2775,9 @@ export const _NativePackDeclarationSchema: z.ZodEffects<z.ZodEffects<z.ZodObject
         fe?: string | undefined;
         be?: string | undefined;
     }> | undefined;
+    commands?: Record<string, {
+        placeholder: string;
+    }> | undefined;
     tiptapPlugins?: Record<string, {
         extensions?: Record<string, string> | undefined;
         popups?: Record<string, string> | undefined;
@@ -2679,6 +2788,8 @@ export const _NativePackDeclarationSchema: z.ZodEffects<z.ZodEffects<z.ZodObject
         onInit?: string | undefined;
         onShutdown?: string | undefined;
     } | undefined;
+    entityDestinations?: Record<string, string> | undefined;
+    dslDefinitions?: Record<string, string> | undefined;
 }>, {
     id: string;
     data?: {
@@ -2692,6 +2803,7 @@ export const _NativePackDeclarationSchema: z.ZodEffects<z.ZodEffects<z.ZodObject
         globals?: Record<string, string> | undefined;
         inline?: string[] | undefined;
     }> | undefined;
+    services?: Record<string, string> | undefined;
     dependencies?: Record<string, string> | undefined;
     settings?: Record<string, {
         defaults: Record<string, unknown>;
@@ -2701,9 +2813,12 @@ export const _NativePackDeclarationSchema: z.ZodEffects<z.ZodEffects<z.ZodObject
         title?: string | undefined;
         access?: "owner" | "shared" | undefined;
     }> | undefined;
+    repositories?: Record<string, string> | undefined;
     features?: Record<string, {
         description: string;
         entities?: Record<string, string | null> | undefined;
+        references?: ReferenceDeclarations | undefined;
+        services?: Record<string, string> | undefined;
         designation?: string | undefined;
         settings?: {
             defaults: Record<string, unknown>;
@@ -2714,7 +2829,7 @@ export const _NativePackDeclarationSchema: z.ZodEffects<z.ZodEffects<z.ZodObject
             access?: "owner" | "shared" | undefined;
         } | undefined;
         plugin?: PluginDeclaration | undefined;
-        references?: ReferenceDeclarations | undefined;
+        repositories?: Record<string, string> | undefined;
     }> | undefined;
     steps?: Record<string, {
         node: {
@@ -2755,6 +2870,7 @@ export const _NativePackDeclarationSchema: z.ZodEffects<z.ZodEffects<z.ZodObject
         } | undefined;
         dsl?: {
             defaultLabel?: string | undefined;
+            references?: Record<string, string> | undefined;
             primaryField?: string | undefined;
             helpers?: string | undefined;
         } | undefined;
@@ -2768,6 +2884,9 @@ export const _NativePackDeclarationSchema: z.ZodEffects<z.ZodEffects<z.ZodObject
         fe?: string | undefined;
         be?: string | undefined;
     }> | undefined;
+    commands?: Record<string, {
+        placeholder: string;
+    }> | undefined;
     tiptapPlugins?: Record<string, {
         extensions?: Record<string, string> | undefined;
         popups?: Record<string, string> | undefined;
@@ -2778,6 +2897,8 @@ export const _NativePackDeclarationSchema: z.ZodEffects<z.ZodEffects<z.ZodObject
         onInit?: string | undefined;
         onShutdown?: string | undefined;
     } | undefined;
+    entityDestinations?: Record<string, string> | undefined;
+    dslDefinitions?: Record<string, string> | undefined;
 }, unknown>;
 
 // @public (undocumented)
@@ -2810,7 +2931,7 @@ export const PackChecksSchema: z.ZodObject<{
 
 // @public
 export interface PackConfig {
-    loadDefinitions?: () => Promise<PackBuildDefinitions>;
+    loadDefinitions?: (importModule?: PackModuleLoader) => Promise<PackBuildDefinitions>;
     // (undocumented)
     name: string;
     sources: Record<string, ResolvedContentSource>;
@@ -2923,6 +3044,9 @@ export type PackManifest = z.infer<typeof ManifestSchema>;
 // @public (undocumented)
 export type PackMigrationDeclaration = z.infer<typeof MigrationDeclarationSchema>;
 
+// @public
+export type PackModuleLoader = (file: string) => Promise<Record<string, unknown>>;
+
 // @public (undocumented)
 export type PackPermission = z.infer<typeof PackPermissionSchema>;
 
@@ -2941,6 +3065,8 @@ export function _packRelationTypes(declaration: PackDataDeclarations): Record<st
 // @public (undocumented)
 export interface PackSnapshot {
     declarationRevision: string;
+    dslDefinitions?: Record<string, string>;
+    entityDestinations: Record<string, string>;
     facades: Record<string, string>;
     flowHelpers?: PackFlowHelpers;
     format: number;
@@ -3121,6 +3247,7 @@ export const SPECIALTY_COMPILERS: Record<string, SpecialtyCompiler>;
 
 // @public (undocumented)
 export interface SpecialtyCompileContext {
+    importModule: PackModuleLoader;
     // (undocumented)
     packDir: string;
 }
@@ -3133,6 +3260,7 @@ export interface SpecialtyCompiler<T = unknown> {
     count(data: T): number;
     items(data: T): PackContentPreviewItem[];
     output?(data: T): unknown;
+    references?(data: T, context: CompilationContext): ContentReference[];
     // (undocumented)
     validate?(data: T, context: CompilationContext): ValidationResult;
 }
@@ -3142,15 +3270,18 @@ export type StepDSLMeta = z.infer<typeof StepDSLMetaSchema>;
 
 // @public (undocumented)
 export const StepDSLMetaSchema: z.ZodObject<{
+    references: z.ZodOptional<z.ZodType<Record<string, string>, z.ZodTypeDef, Record<string, string>>>;
     primaryField: z.ZodOptional<z.ZodString>;
     defaultLabel: z.ZodOptional<z.ZodString>;
     helpers: z.ZodOptional<z.ZodString>;
 }, "strict", z.ZodTypeAny, {
     defaultLabel?: string | undefined;
+    references?: Record<string, string> | undefined;
     primaryField?: string | undefined;
     helpers?: string | undefined;
 }, {
     defaultLabel?: string | undefined;
+    references?: Record<string, string> | undefined;
     primaryField?: string | undefined;
     helpers?: string | undefined;
 }>;
@@ -3273,15 +3404,18 @@ export const StepEntrySchema: z.ZodEffects<z.ZodObject<{
         spawnsSubflow?: true | undefined;
     }>>;
     dsl: z.ZodOptional<z.ZodObject<{
+        references: z.ZodOptional<z.ZodType<Record<string, string>, z.ZodTypeDef, Record<string, string>>>;
         primaryField: z.ZodOptional<z.ZodString>;
         defaultLabel: z.ZodOptional<z.ZodString>;
         helpers: z.ZodOptional<z.ZodString>;
     }, "strict", z.ZodTypeAny, {
         defaultLabel?: string | undefined;
+        references?: Record<string, string> | undefined;
         primaryField?: string | undefined;
         helpers?: string | undefined;
     }, {
         defaultLabel?: string | undefined;
+        references?: Record<string, string> | undefined;
         primaryField?: string | undefined;
         helpers?: string | undefined;
     }>>;
@@ -3324,6 +3458,7 @@ export const StepEntrySchema: z.ZodEffects<z.ZodObject<{
     } | undefined;
     dsl?: {
         defaultLabel?: string | undefined;
+        references?: Record<string, string> | undefined;
         primaryField?: string | undefined;
         helpers?: string | undefined;
     } | undefined;
@@ -3366,6 +3501,7 @@ export const StepEntrySchema: z.ZodEffects<z.ZodObject<{
     } | undefined;
     dsl?: {
         defaultLabel?: string | undefined;
+        references?: Record<string, string> | undefined;
         primaryField?: string | undefined;
         helpers?: string | undefined;
     } | undefined;
@@ -3408,6 +3544,7 @@ export const StepEntrySchema: z.ZodEffects<z.ZodObject<{
     } | undefined;
     dsl?: {
         defaultLabel?: string | undefined;
+        references?: Record<string, string> | undefined;
         primaryField?: string | undefined;
         helpers?: string | undefined;
     } | undefined;
@@ -3450,6 +3587,7 @@ export const StepEntrySchema: z.ZodEffects<z.ZodObject<{
     } | undefined;
     dsl?: {
         defaultLabel?: string | undefined;
+        references?: Record<string, string> | undefined;
         primaryField?: string | undefined;
         helpers?: string | undefined;
     } | undefined;

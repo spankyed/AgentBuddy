@@ -22,3 +22,14 @@ export function compilerSourcePath(file: string, mappings: readonly CompilerPath
   }
   return file;
 }
+
+/** Project diagnostic locations without reading files or allocating a compiler tree. */
+export function compilerDiagnostic(message: string, mappings: readonly CompilerPathMapping[]): string {
+  for (const { source, captured } of mappings) {
+    const target = path.join(source, path.sep);
+    const relative = path.relative(process.cwd(), captured);
+    if (relative) message = message.split(relative + path.sep).join(target);
+    message = message.split(captured + path.sep).join(target);
+  }
+  return message;
+}

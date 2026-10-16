@@ -32,7 +32,7 @@ function fixture() {
   const bindings = new Map([['memo', accepted]]);
   const catalogListeners = new Set<() => void>(); const bindingListeners = new Set<() => void>();
   startFeTestRuntime({
-    catalog: { status: () => state.status, problem: () => undefined, references: () => [], frontend: () => [], steps: () => state.entries,
+    catalog: { status: () => state.status, problem: () => undefined, references: () => [], frontend: () => [], artifacts: () => [], blocks: () => [], dsl: () => [], steps: () => state.entries,
       subscribe(listener) { catalogListeners.add(listener); return () => { catalogListeners.delete(listener); }; } },
     packs: { stepBindings: () => bindings,
       onChanged(listener: () => void) { bindingListeners.add(listener); return () => { bindingListeners.delete(listener); }; } } as never });

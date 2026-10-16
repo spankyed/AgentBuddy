@@ -1,0 +1,210 @@
+import { randomUUID } from 'node:crypto'
+import { z } from 'zod'
+import { ClaudeProtocolError } from './errors.ts'
+
+/** Requested live settings; native acknowledgement does not describe effective model behavior. */
+export const ClaudeThinkingChangeSchema = z.object({
+  budgetTokens: z.number().int().safe().nullable().optional(),
+  display: z.enum(['summarized', 'omitted', 'highlights']).nullable().optional(),
+}).strict().refine(value => value.budgetTokens !== undefined || value.display !== undefined, 'Provide a budget or display change')
+export type ClaudeThinkingChange = z.infer<typeof ClaudeThinkingChangeSchema>
+
+/** Experimental native usage snapshot; unavailable account limits remain null, never zero. */
+export const ClaudeUsageSchema = z.object({
+  session: z.object({
+    total_cost_usd: z.number(), total_api_duration_ms: z.number(), total_duration_ms: z.number(),
+    total_lines_added: z.number(), total_lines_removed: z.number(), model_usage: z.record(z.unknown()),
+  }).passthrough(),
+  subscription_type: z.string().nullable(), rate_limits_available: z.boolean(),
+  rate_limits: z.record(z.unknown()).nullable(), behaviors: z.unknown(),
+}).passthrough()
+export type ClaudeUsage = z.infer<typeof ClaudeUsageSchema>
+export const ClaudeUsageOptionsSchema = z.object({ includeBehaviors: z.boolean().optional() }).strict()
+export type ClaudeUsageOptions = z.infer<typeof ClaudeUsageOptionsSchema>
+
+/** Native catalog entries describe availability; custom model IDs may be absent. */
+export const ClaudeModelInfoSchema = z.object({
+  value: z.string(), displayName: z.string(), resolvedModel: z.string().optional(),
+  description: z.string().optional(), supportsEffort: z.boolean().optional(),
+  supportedEffortLevels: z.array(z.string()).optional(),
+  supportsAdaptiveThinking: z.boolean().optional(), supportsFastMode: z.boolean().optional(),
+  supportsAutoMode: z.boolean().optional(), supportsThinkingOff: z.boolean().optional(),
+}).passthrough()
+export const ClaudeModelCatalogSchema = z.object({ models: z.array(ClaudeModelInfoSchema) }).passthrough()
+export type ClaudeModelCatalog = z.infer<typeof ClaudeModelCatalogSchema>
+
+/** Metadata returned by the initialize exchange in Claude Code 2.1.299–2.1.301. */
+export const ClaudeInitializationSchema = z.object({
+  commands: z.array(z.object({ name: z.string(), description: z.string().optional() }).passthrough()),
+  agents: z.array(z.object({ name: z.string() }).passthrough()),
+  models: z.array(ClaudeModelInfoSchema),
+  claude_code_version: z.string().optional(),
+  current_permission_mode: z.string().optional(),
+  capabilities: z.array(z.string()).optional(),
+}).passthrough()
+export type ClaudeInitialization = z.infer<typeof ClaudeInitializationSchema>
+
+export const ClaudeContextUsageSchema = z.object({
+  model: z.string(),
+  totalTokens: z.number().nonnegative(),
+  maxTokens: z.number().positive(),
+  percentage: z.number().nonnegative(),
+  memoryFiles: z.array(z.object({
+    path: z.string(), type: z.string(), tokens: z.number().nonnegative(),
+  }).passthrough()),
+  skills: z.object({ skillFrontmatter: z.array(z.object({
+    name: z.string(), source: z.string(), tokens: z.number().nonnegative(),
+  }).passthrough()) }).passthrough().optional(),
+  categories: z.array(z.object({
+    name: z.string(),
+    tokens: z.number().nonnegative(),
+    kind: z.string().optional(),
+  }).passthrough()),
+}).passthrough()
+export type ClaudeContextUsage = z.infer<typeof ClaudeContextUsageSchema>
+
+/** Native acknowledgement distinguishes cancelled inputs from inputs still queued. */
+export const ClaudeInterruptReceiptSchema = z.object({
+  still_queued: z.array(z.string()),
+  cancelled: z.array(z.string()).optional(),
+}).passthrough()
+export type ClaudeInterruptReceipt = z.infer<typeof ClaudeInterruptReceiptSchema>
+
+/** Live MCP server state; preserve future status/configuration fields. */
+export const ClaudeMcpStatusSchema = z.object({
+  mcpServers: z.array(z.object({
+    name: z.string(), status: z.string(),
+    serverInfo: z.object({ name: z.string(), version: z.string() }).passthrough().optional(),
+    tools: z.array(z.object({ name: z.string() }).passthrough()).optional(),
+  }).passthrough()),
+}).passthrough()
+export type ClaudeMcpStatus = z.infer<typeof ClaudeMcpStatusSchema>
+
+/** Native lookup does not create a plan; paths can be omitted by the native access mode. */
+export const ClaudePlanSchema = z.discriminatedUnion('exists', [
+  z.object({ exists: z.literal(false) }).passthrough(),
+  z.object({ exists: z.literal(true), content: z.string(), path: z.string().optional() }).passthrough(),
+])
+export type ClaudePlan = z.infer<typeof ClaudePlanSchema>
+
+interface PendingControl {
+  resolve(value: unknown): void
+  reject(error: Error): void
+  timer: ReturnType<typeof setTimeout>
+}
+
+/** Host-to-CLI requests are independent of CLI-to-host tool permission requests. */
+export function createHostControls(write: (value: unknown) => boolean) {
+  const pending = new Map<string, PendingControl>()
+  let closed: Error | undefined
+
+  function finish(id: string, response: { value: unknown } | { error: Error }): void {
+    const waiter = pending.get(id)
+    if (!waiter) return
+    pending.delete(id)
+    clearTimeout(waiter.timer)
+    if ('error' in response) waiter.reject(response.error)
+    else waiter.resolve(response.value)
+  }
+
+  return {
+    request(request: Record<string, unknown> & { subtype: string }, timeoutMs = 10_000): Promise<unknown> {
+      if (closed) return Promise.reject(closed)
+      if (!Number.isSafeInteger(timeoutMs) || timeoutMs <= 0) {
+        return Promise.reject(new ClaudeProtocolError('control timeout must be a positive integer'))
+      }
+      if (pending.size >= 128) return Promise.reject(new ClaudeProtocolError('too many pending control requests'))
+      const id = randomUUID()
+      return new Promise((resolve, reject) => {
+        const timer = setTimeout(() => finish(id, {
+          error: new ClaudeProtocolError(`control request ${request.subtype} timed out after ${timeoutMs}ms`),
+        }), timeoutMs)
+        timer.unref()
+        pending.set(id, { resolve, reject, timer })
+        try {
+          if (!write({ type: 'control_request', request_id: id, request })) {
+            finish(id, { error: new ClaudeProtocolError(`could not send control request ${request.subtype}`) })
+          }
+        } catch (error) {
+          finish(id, { error: error instanceof Error ? error : new Error(String(error)) })
+        }
+      })
+    },
+
+    receive(value: unknown): void {
+      const parsed = z.object({ response: z.object({
+        request_id: z.string(), subtype: z.enum(['success', 'error']),
+        response: z.unknown().optional(), error: z.string().optional(),
+      }) }).safeParse(value)
+      if (!parsed.success) return
+      const response = parsed.data.response
+      finish(response.request_id, response.subtype === 'error'
+        ? { error: new ClaudeProtocolError(response.error ?? 'control request rejected') }
+        : { value: response.response })
+    },
+
+    close(error: Error = new ClaudeProtocolError('control channel closed')): void {
+      closed ??= error
+      for (const id of pending.keys()) finish(id, { error: closed })
+    },
+  }
+}
+
+/** Native rewind verdict; a successful control response may still reject the checkpoint. */
+export const ClaudeFileRewindSchema = z.object({
+  canRewind: z.boolean(), error: z.string().optional(), filesChanged: z.array(z.string()).optional(),
+  insertions: z.number().optional(), deletions: z.number().optional(), skippedLinks: z.number().optional(),
+}).passthrough()
+export type ClaudeFileRewind = z.infer<typeof ClaudeFileRewindSchema>
+
+/** Native Skill dialog state is distinct from slash-command and model-context catalogs. */
+export const ClaudeSkillStateSchema = z.enum(['on', 'name-only', 'user-invocable-only', 'off'])
+export type ClaudeSkillState = z.infer<typeof ClaudeSkillStateSchema>
+export const ClaudeSkillsDialogSchema = z.object({ skills: z.array(z.object({
+  name: z.string(), display_name: z.string(), description: z.string(), source: z.string(),
+  tokens: z.number().nonnegative(), state: ClaudeSkillStateSchema,
+  advertised: z.boolean(), locked_by: z.enum(['author', 'plugin', 'policy', 'flag', 'reserved-name']).optional(),
+  handles: z.object({ unqualified_name: z.string().optional(), aliases: z.array(z.string()).optional(), bare_name_reserved: z.boolean().optional() }).passthrough(),
+}).passthrough()) }).passthrough()
+export type ClaudeSkillsDialog = z.infer<typeof ClaudeSkillsDialogSchema>
+
+/** Native instruction files and automatic-memory availability are separate from context usage. */
+export const ClaudeMemoryDialogSchema = z.object({
+  files: z.array(z.object({ kind: z.string(), path: z.string(), label: z.string(), description: z.string(), exists: z.boolean() }).passthrough()),
+  folders: z.array(z.object({ kind: z.string(), path: z.string(), label: z.string(), description: z.string() }).passthrough()),
+  memories: z.array(z.object({ name: z.string(), path: z.string(), description: z.string().nullable(), type: z.enum(['user', 'feedback', 'project', 'reference']).nullable(), modified_ms: z.number() }).passthrough()).optional(),
+  auto_memory: z.object({ enabled: z.boolean(), toggleable: z.boolean(), status: z.string() }).passthrough(),
+  auto_dream: z.object({ shown: z.boolean(), enabled: z.boolean(), toggleable: z.boolean(), status: z.string(), detail: z.string() }).passthrough(),
+}).passthrough()
+export type ClaudeMemoryDialog = z.infer<typeof ClaudeMemoryDialogSchema>
+
+/** Exact native rule spellings/provenance are required by durable removal operations. */
+export const ClaudePermissionRulesSchema = z.object({ state: z.object({
+  rules: z.array(z.object({ behavior: z.enum(['allow', 'deny', 'ask']), source: z.string(), rule: z.string(),
+    editability: z.enum(['persistent', 'session', 'readonly']), notInEffect: z.boolean().optional(),
+    description: z.object({ prefix: z.string().optional(), emphasis: z.string().optional(), suffix: z.string().optional() }).passthrough().optional(),
+  }).passthrough()),
+  workspaceDirectories: z.array(z.object({ path: z.string(), source: z.string().optional() }).passthrough()),
+  originalCwd: z.string(), managedOnly: z.boolean(),
+  errors: z.array(z.object({ file: z.string(), path: z.unknown().optional(), message: z.string() }).passthrough()).optional(),
+}).passthrough() }).passthrough()
+export type ClaudePermissionRules = z.infer<typeof ClaudePermissionRulesSchema>
+
+
+/** Native hook inventory separates installed definitions, runtime enablement and file edit targets. */
+export const ClaudeHooksListingSchema = z.object({
+  events: z.array(z.object({ name: z.string(), summary: z.string(), supportsMatcher: z.boolean(), hookCount: z.number().int().nonnegative() }).passthrough()),
+  eventCatalog: z.array(z.object({ name: z.string(), summary: z.string(), supportsMatcher: z.boolean() }).passthrough()),
+  hooks: z.array(z.object({
+    event: z.string(), matcher: z.string(), source: z.string(), sourceLabel: z.string(), type: z.string(),
+    displayText: z.string(), commandText: z.string(), contentLabel: z.string(), disabled: z.boolean().optional(),
+    editable: z.object({ matcher: z.string(), config: z.object({ type: z.string(), headers: z.record(z.string()).optional() }).passthrough().superRefine((config, ctx) => {
+      if (config.type === 'http' && Object.values(config.headers ?? {}).some(value => value !== '')) ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'Native hook catalog contains an unredacted HTTP header' });
+    }), headersRedacted: z.boolean().optional() }).passthrough().optional(),
+  }).passthrough()),
+  policy: z.object({ disabledByPolicy: z.boolean(), managedOnly: z.boolean(), pluginOnly: z.boolean(), allDisabled: z.boolean(), policyHookCount: z.number().int().nonnegative(), policyUnreadable: z.boolean().optional() }).passthrough(),
+  safeMode: z.object({ managedHooksStillApply: z.boolean(), exitHint: z.string() }).passthrough().optional(),
+  bareMode: z.object({ exitHint: z.string() }).passthrough().optional(),
+  errors: z.array(z.object({ file: z.string(), path: z.unknown().optional(), message: z.string() }).passthrough()).optional(),
+}).passthrough()
+export type ClaudeHooksListing = z.infer<typeof ClaudeHooksListingSchema>

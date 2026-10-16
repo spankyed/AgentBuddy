@@ -34,7 +34,7 @@ function installDeclaringPack(received: string[]) {
     features: { memos: { description: 'Feature declaration fixture.', plugin: { label: 'Fixture', state: 'fe/plugin.ts' } } },
   }));
   fs.mkdirSync(path.join(packDir, 'types'), { recursive: true });
-  fs.writeFileSync(path.join(packDir, PACK_LAYOUT.snapshot), JSON.stringify({ declarationRevision: _declarationRevision(JSON.parse(fs.readFileSync(path.join(packDir, 'apack.json'), 'utf-8'))), format: PACK_SNAPSHOT_FORMAT, manifest: JSON.parse(fs.readFileSync(path.join(packDir, 'apack.json'), 'utf-8')), types: { entities: {}, relKinds: {} }, facades: {} }));
+  fs.writeFileSync(path.join(packDir, PACK_LAYOUT.snapshot), JSON.stringify({ declarationRevision: _declarationRevision(JSON.parse(fs.readFileSync(path.join(packDir, 'apack.json'), 'utf-8'))), format: PACK_SNAPSHOT_FORMAT, manifest: JSON.parse(fs.readFileSync(path.join(packDir, 'apack.json'), 'utf-8')), types: { entities: {}, relKinds: {} }, entityDestinations: {}, facades: {} }));
   fs.writeFileSync(path.join(packDir, 'runtime', 'index.cjs'), (`module.exports = { registration: ${JSON.stringify({
     id: PACK_ID,
     features: { memos: { plugin: { receives: received } } },
@@ -66,7 +66,7 @@ describe('where the registry says a pack came from', () => {
   it('records an external pack\'s manifest and directory, and drops them when it unregisters', () => {
     installDeclaringPack(RECEIVED);
 
-    expect(registerExternalPacks(registry, loadExternalPacks())).toHaveLength(1);
+    expect(registerExternalPacks(registry, loadExternalPacks(registry))).toHaveLength(1);
 
     const origin = registry.packOrigin(PACK_ID);
     expect(origin).toMatchObject({ id: PACK_ID, name: 'Declaring Pack', version: '1.0.0' });
@@ -85,7 +85,7 @@ describe('the event types an external pack declares for its plugins', () => {
   it('reach the validation map the bus checks sends against', () => {
     installDeclaringPack(RECEIVED);
 
-    expect(registerExternalPacks(registry, loadExternalPacks())).toHaveLength(1);
+    expect(registerExternalPacks(registry, loadExternalPacks(registry))).toHaveLength(1);
 
     expect(registry.getPluginEventValidationMap().get(`${PACK_ID}/memos`)).toEqual(receives(...RECEIVED));
   });

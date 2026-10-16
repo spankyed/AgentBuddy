@@ -5,7 +5,7 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { handleVueError, installGlobalErrorHandling } from '@/boot/errors';
+import { handleVueError, installGlobalErrorHandling, reportRendererError } from '@/boot/errors';
 
 const write = vi.fn().mockResolvedValue(undefined);
 
@@ -110,4 +110,11 @@ describe('the renderer\'s global error handling', () => {
     expect(source).toContain("from '@apackdev/ui/components/monaco-error-filters'");
     expect(source).not.toContain('endLineNumberExclusive');
   });
+});
+
+it('reports an attributed contribution failure without classifying it as fatal', () => {
+  reportRendererError('pack.component', new Error('Broken form'), { packId: 'fixture', area: 'settings form' }, false);
+  expect(write).toHaveBeenCalledWith(expect.objectContaining({ source: 'pack.component', fatal: false,
+    meta: expect.objectContaining({ detail: { packId: 'fixture', area: 'settings form' } }),
+  }));
 });

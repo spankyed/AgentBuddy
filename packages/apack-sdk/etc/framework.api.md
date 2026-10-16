@@ -18,6 +18,48 @@ import { z } from 'zod';
 // @public
 export type ArrayChanges = Record<string, DiffResult<DiffItem>>;
 
+// @public (undocumented)
+export interface ArtifactCatalogEntry {
+    // (undocumented)
+    readonly buildRevision?: string;
+    // (undocumented)
+    readonly declaration: DeclarationData<ArtifactDeclaration>;
+    // (undocumented)
+    readonly declarationRevision?: string;
+    // (undocumented)
+    readonly enabled?: boolean;
+    // (undocumented)
+    readonly origin: 'native' | 'installed' | 'source';
+    // (undocumented)
+    readonly packId: string;
+    // (undocumented)
+    readonly type: string;
+}
+
+// @public (undocumented)
+export type ArtifactDeclaration = z.infer<typeof ArtifactEntrySchema>;
+
+// @public (undocumented)
+export interface BlockCatalogEntry {
+    // (undocumented)
+    readonly buildRevision?: string;
+    // (undocumented)
+    readonly declaration: DeclarationData<BlockDeclaration>;
+    // (undocumented)
+    readonly declarationRevision?: string;
+    // (undocumented)
+    readonly enabled?: boolean;
+    // (undocumented)
+    readonly origin: 'native' | 'installed' | 'source';
+    // (undocumented)
+    readonly packId: string;
+    // (undocumented)
+    readonly type: string;
+}
+
+// @public (undocumented)
+export type BlockDeclaration = z.infer<typeof BlockEntrySchema>;
+
 // @internal
 export function _compileSettingsDefinition(definition: SettingsDefinition): SettingsValidator;
 
@@ -67,6 +109,34 @@ export type DiffResult<T> = null | {
     added: T[];
     removed: T[];
 };
+
+// @public
+export interface DslCatalogEntry {
+    // (undocumented)
+    readonly buildRevision?: string;
+    // (undocumented)
+    readonly declaration: DeclarationData<DslDeclaration>;
+    // (undocumented)
+    readonly declarationRevision?: string;
+    // (undocumented)
+    readonly definitions?: string;
+    // (undocumented)
+    readonly enabled?: boolean;
+    // (undocumented)
+    readonly origin: 'native' | 'installed' | 'source';
+    // (undocumented)
+    readonly packId: string;
+    // (undocumented)
+    readonly type: string;
+}
+
+// @public (undocumented)
+export type DslDeclaration = z.infer<typeof DslEntrySchema>;
+
+// @internal
+export function _entityDestinationsProblem(destinations: Readonly<Record<string, string>>, features: Readonly<Record<string, {
+    readonly plugin?: unknown;
+}>> | undefined, entities?: ReadonlySet<string>): string | undefined;
 
 // @public
 export function formatReferenceHref(target: ReferenceTarget): string;
@@ -188,9 +258,13 @@ export interface NativePackDeclaration extends PackDataDeclarations, FrontendDec
     // (undocumented)
     blocks?: Record<string, z.infer<typeof BlockEntrySchema>>;
     // (undocumented)
+    commands?: Record<string, z.infer<typeof CommandEntrySchema>>;
+    // (undocumented)
     dependencies?: Record<string, string>;
     // (undocumented)
     dsl?: Record<string, DeclarationData<z.infer<typeof DslEntrySchema>>>;
+    dslDefinitions?: Record<string, string>;
+    entityDestinations?: Record<string, string>;
     // (undocumented)
     features?: Record<string, {
         description: string;
@@ -199,11 +273,16 @@ export interface NativePackDeclaration extends PackDataDeclarations, FrontendDec
         settings?: SettingsDefinition;
         plugin?: PluginDeclaration;
         references?: ReferenceDeclarations;
+        services?: Record<string, string>;
+        repositories?: Record<string, string>;
     }>;
     // (undocumented)
     id: string;
     // (undocumented)
     lifecycle?: PackLifecycleDeclaration;
+    // (undocumented)
+    repositories?: Record<string, string>;
+    services?: Record<string, string>;
     // (undocumented)
     settings?: Record<string, SettingsDefinition>;
     // (undocumented)
@@ -218,6 +297,12 @@ export function onPackCatalogChanged(listener: () => void): () => void;
 
 // @public
 export interface PackCatalogView {
+    // (undocumented)
+    artifacts(): readonly ArtifactCatalogEntry[];
+    // (undocumented)
+    blocks(): readonly BlockCatalogEntry[];
+    // (undocumented)
+    dsl(): readonly DslCatalogEntry[];
     // (undocumented)
     frontend(): readonly FrontendCatalogEntry[];
     // (undocumented)
@@ -295,7 +380,6 @@ export interface PackFeature {
 
 // @public
 export interface PackFeaturePlugin {
-    defaultVisible?: boolean;
     receives: readonly string[];
 }
 

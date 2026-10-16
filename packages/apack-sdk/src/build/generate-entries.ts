@@ -26,6 +26,9 @@ import type { ComponentTarget } from '../framework/plugin-declaration.ts';
 const HEADER = `// @generated from apack.json — do not edit by hand
 // Regenerate: apack pack generate-entries\n`;
 
+/** Generated data read by the build, never an executable pack module. */
+export const GENERATED_ENTITY_DESTINATIONS_FILE = 'src/__generated__/entity-destinations.json';
+
 // ── EARS emitter ─────────────────────────────────────────────────
 
 interface RegistryEntry { value: string; source: string }
@@ -248,8 +251,8 @@ interface StepDeclaration {
 }
 
 /**
- * The facets a *registration* can carry. `kind` rides on every literal and `dsl` drives the flow helpers
- * rather than any registration, so neither is one of these.
+ * The facets a *registration* can carry. `kind` rides on every literal and `dsl` drives flow helpers and build-only reference inspection
+ * rather than runtime registrations, so neither is one of these.
  */
 const STEP_FACETS = ['node', 'build', 'trigger', 'runtime', 'fe'] as const satisfies readonly (keyof StepDefinition)[];
 type StepFacetName = (typeof STEP_FACETS)[number];
@@ -574,8 +577,8 @@ export async function generatePackFiles(
     }));
   }
 
-  /** The event types a contract declares, with the feature named on anything the reader throws */
-  function contractEventTypes(feature: PackFeature, kind: 'system' | 'plugin', read: (file: string, name: string) => string[]): string[] {
+  /** Read contract metadata without execution, attributing failures to its feature. */
+  function contractTypes(feature: PackFeature, kind: 'system' | 'plugin', read: (file: string, name: string) => string[]): string[] {
     const contract = contractTarget(feature, kind);
     if (!contract) return [];
     try {
@@ -588,12 +591,27 @@ export async function generatePackFiles(
 
   /** The event types a feature's system sends, read from its contract */
   function sentEventTypes(feature: PackFeature): string[] {
-    return contractEventTypes(feature, 'system', outgoingEventTypesOf);
+    return contractTypes(feature, 'system', outgoingEventTypesOf);
   }
 
   /** The event types a plugin's contract declares that any other plugin or system may send it */
   function acceptedEventTypes(feature: PackFeature): string[] {
-    return contractEventTypes(feature, 'plugin', inboxEventTypesOf);
+    return contractTypes(feature, 'plugin', inboxEventTypesOf);
+  }
+
+  function entityDestinations(): Record<string, string> {
+    const known = new Set([...Object.values(SDK_ENTITIES), ...Object.keys(_packEntityTypes(manifest)),
+      ...[...depSnapshots.values()].flatMap(snapshot => Object.keys(snapshot.types.entities))]);
+    const claims = new Map<string, string>();
+    for (const feature of packFeatures(manifest)) {
+      for (const entity of contractTypes(feature, 'plugin', (file, name) => moduleReader().openedEntityTypesOf(file, name))) {
+        if (!known.has(entity)) throw new Error(`Feature "${feature.id}": Contract.opens names unknown entity "${entity}"`);
+        const owner = claims.get(entity);
+        if (owner !== undefined) throw new Error(`Entity destination "${entity}" claimed by both features "${owner}" and "${feature.id}"`);
+        claims.set(entity, feature.id);
+      }
+    }
+    return Object.fromEntries([...claims].sort(([a], [b]) => a.localeCompare(b, 'en')));
   }
 
   /**
@@ -804,6 +822,7 @@ export async function generatePackFiles(
     for (const step of stepDefinitions) {
       const parts = [`type: '${step.type}'`];
       if (step.kind) parts.push(`kind: '${step.kind}'`);
+      if (target === 'buildModule' && step.dsl?.references) parts.push(`dsl: ${dataLiteral({ references: step.dsl.references })}`);
       for (const facet of FACET_TARGETS[target]) {
         const emitted = FACET_EMITTERS[facet](step, target);
         if (!emitted) continue;
@@ -962,7 +981,7 @@ ${items.join('\n')}
       const parts: string[] = [];
       if (f.designation) parts.push(`      designation: '${f.designation}'`);
       if (f.system) parts.push(`      system: ${systemExpr(f)}`);
-      if (f.plugin) parts.push(`      plugin: { receives: [${receivedEventTypes(f).map((type) => `'${type}'`).join(', ')}]${f.plugin.defaultVisible !== undefined ? `, defaultVisible: ${f.plugin.defaultVisible}` : ''} }`);
+      if (f.plugin) parts.push(`      plugin: { receives: [${receivedEventTypes(f).map((type) => `'${type}'`).join(', ')}] }`);
       parts.push(`      services: [${Object.keys(f.services ?? {}).map(s => `'${s}'`).join(', ')}]`);
       // JSON.parse preserves own __proto__ keys, which an object literal would treat as a prototype setter.
       if (f.settings) parts.push(`      settings: JSON.parse(${dataLiteral(JSON.stringify(f.settings))})`);
@@ -1132,11 +1151,6 @@ ${contractCheck}`;
     }
     if (artifacts.literal) regProps.push(`  artifacts: ${artifacts.literal},`);
     if (blocks.literal) regProps.push(`  blocks: ${blocks.literal},`);
-
-    if (monacoDslEntries().length > 0) {
-      extraImports.push(`import { dslTypes } from './dsl-types-fe.ts';`);
-      regProps.push(`  dslTypes,`);
-    }
 
     return `${HEADER}
 import type { PackFERegistration${pluginFeatures.length ? ', PluginDefinition' : ''} } from '@apackdev/sdk/fe';
@@ -2095,42 +2109,10 @@ export type { ImportMode } from '@apackdev/sdk/utils';
     return `${HEADER}\n${reExports.join('\n')}\n`;
   }
 
-  // ── DSL defs ───────────────────────────────────────────────────
-
-  /** The `dsl` entries the host's code editors get: a `monaco` target with globals */
-  function monacoDslEntries() {
-    return Object.entries(manifest.extensions?.dsl ?? {}).filter(([, def]) => def.targets.includes('monaco') && def.globals);
-  }
-
-  function generateDslTypesFe(): string {
-    const monacoEntries = monacoDslEntries();
-    if (monacoEntries.length === 0) return '';
-
-    const imports = monacoEntries.map(([name]) =>
-      `import ${name}Schema from '../../dist/defs/monaco/${name}-defs.d.ts?raw';`
-    );
-
-    const entries = monacoEntries.map(([name, def]) => {
-      const globalsObj = Object.entries(def.globals!)
-        .map(([k, v]) => `      ${propertyKey(k)}: ${dataLiteral(v)},`)
-        .join('\n');
-      return `  ${propertyKey(name, name)}: {\n    prefix: ${dataLiteral(def.prefix ?? "")},\n    schema: ${name}Schema,\n    globals: {\n${globalsObj}\n    },\n  },`;
-    });
-
-    return `${HEADER}
-import type { DslTypeConfig } from '@apackdev/sdk/fe';
-${imports.join('\n')}
-
-/** The pack's DSL types for the host's code editors, which its frontend registration carries */
-export const dslTypes: Record<string, DslTypeConfig> = {
-${entries.join('\n')}
-};
-`;
-  }
-
   // ── Assemble ────────────────────────────────────────────────────
 
   const files: [string, string][] = ([
+    [GENERATED_ENTITY_DESTINATIONS_FILE, JSON.stringify(entityDestinations(), null, 2) + '\n'],
     ['src/__generated__/pack-entry.ts', generateBackendEntry()],
     ['src/__generated__/pack-entry-fe.ts', generateFrontendEntry()],
     ['src/__generated__/ears.ts', generateEars()],
@@ -2169,7 +2151,6 @@ export const runtimeServices = _createPackServices();
     ['src/__generated__/flow-helpers.ts', generateFlowHelpers()],
     ['src/__generated__/step-types.ts', generateStepTypes()],
     [STEPS_BUILD_MODULE, generateStepsBuild()],
-    ['src/__generated__/dsl-types-fe.ts', generateDslTypesFe()],
   ] as [string, string][]).filter(([, content]) => content);
 
   return Object.fromEntries(files);

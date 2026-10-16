@@ -50,7 +50,7 @@ export interface PackFrontendIO {
  * a build failure rather than a warning that stops firing.
  */
 const REGISTRATION_KEYS = [
-  'features', 'settingsForms', 'steps', 'artifacts', 'blocks', 'tiptapPlugins', 'appExtensions', 'dslTypes',
+  'features', 'settingsForms', 'steps', 'artifacts', 'blocks', 'tiptapPlugins', 'appExtensions',
 ] as const satisfies readonly (keyof PackFERegistration)[];
 
 /** A revision belongs in the base URL so relative imports retain it too. */

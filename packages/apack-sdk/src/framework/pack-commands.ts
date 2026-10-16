@@ -1,8 +1,7 @@
 /**
- * The slash commands registered packs declare (apack.json `commands`). The chat lists them beside the
+ * Eligible declared slash commands (apack.json `extensions.commands`). The chat lists them beside the
  * commands its library documents give, and sending one fires a `user.command` event the declaring
- * pack's flows handle. The host tells running systems when the list may have changed with the bus's
- * `PACK_CHANGED`, once a pack's activation, reload or teardown is complete.
+ * pack's flows handle. Catalog changes and runtime lifecycle notifications refresh the picker.
  */
 import { boundHost } from '../runtime/host-runtime.ts';
 
@@ -12,7 +11,7 @@ export interface PackCommand {
   placeholder: string;
 }
 
-/** Every registered pack's declared commands, in the order the packs were first registered */
+/** Enabled declarations matching active runtimes, in stable catalog admission order. */
 export function getPackCommands(): PackCommand[] {
   return boundHost().packs.commands();
 }

@@ -4,9 +4,19 @@
   "name": "E2E Fixture",
   "version": "0.1.0",
   "hostVersion": ">=0.3.0",
+  "dependencies": {
+    "default-setup": "*"
+  },
+  "permissions": [],
+  "data": {
+    "relations": []
+  },
   "features": {
     "memos": {
       "description": "Write memos and run reminder flows.",
+      "entities": {
+        "Memo": "src/features/memos/be/types.ts#MemoEntity"
+      },
       "settings": {
         "schema": {
           "type": "object",
@@ -27,6 +37,7 @@
         "title": "Memos",
         "form": "src/features/memos/fe/settings.vue"
       },
+      "types": "src/features/memos/be/types.ts",
       "system": {
         "entry": "src/features/memos/be/system.ts",
         "contract": "src/features/memos/be/contract.ts#Contract"
@@ -74,11 +85,7 @@
             "useItems": "src/features/memos/fe/references.ts#useItems"
           }
         }
-      },
-      "entities": {
-        "Memo": "src/features/memos/be/types.ts#MemoEntity"
-      },
-      "types": "src/features/memos/be/types.ts"
+      }
     },
     "notes": {
       "description": "Write, organize and export notes.",
@@ -107,6 +114,36 @@
         "canvas": "src/features/notes/fe/canvas/list.vue"
       },
       "services": {}
+    },
+    "faults": {
+      "description": "Exercise host containment of failing pack panes and forms.",
+      "settings": {
+        "schema": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "message": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "message"
+          ]
+        },
+        "defaults": {
+          "message": "Still here"
+        },
+        "title": "Fault fixture",
+        "form": "src/features/faults/form.vue"
+      },
+      "plugin": {
+        "label": "Fault fixture",
+        "icon": "TriangleAlert",
+        "defaultVisible": false,
+        "state": "src/features/faults/state.ts",
+        "canvas": "src/features/faults/Pane.vue",
+        "panel": "src/features/faults/Pane.vue"
+      }
     }
   },
   "extensions": {
@@ -218,10 +255,10 @@
       }
     }
   },
-  "dependencies": {
-    "default-setup": "*"
+  "lifecycle": {
+    "onInit": "src/features/hooks.ts#onInit",
+    "onShutdown": "src/features/hooks.ts#onShutdown"
   },
-  "permissions": [],
   "content": {
     "sources": {
       "actions": "src/content/actions",
@@ -265,12 +302,5 @@
         ]
       }
     }
-  },
-  "data": {
-    "relations": []
-  },
-  "lifecycle": {
-    "onInit": "src/features/hooks.ts#onInit",
-    "onShutdown": "src/features/hooks.ts#onShutdown"
   }
 }

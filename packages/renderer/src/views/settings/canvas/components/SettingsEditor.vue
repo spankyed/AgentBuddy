@@ -8,12 +8,13 @@
       </button>
     </div>
     <p v-if="description" class="mb-6 text-sm text-neutral-400">{{ description }}</p>
-    <template v-if="form">
+    <ContributionBoundary v-if="form && formOwner" :pack-id="formOwner" :owner="formRef" area="settings form"
+      :current="isCurrentForm">
       <PluginScope v-if="plugin" :plugin="plugin">
-        <component :is="form" :key="formRevision" :settings="value" @update-setting="update" />
+        <component :is="form" :settings="value" @update-setting="update" />
       </PluginScope>
-      <component v-else :is="form" :key="formRevision" :settings="value" @update-setting="update" />
-    </template>
+      <component v-else :is="form" :settings="value" @update-setting="update" />
+    </ContributionBoundary>
     <div v-else class="text-sm text-neutral-400">
       <p>A custom form is unavailable for these preferences.</p>
       <button @click="openJson" class="mt-3 underline">Edit in JSON</button>
@@ -30,7 +31,8 @@
 </template>
 
 <script setup lang="ts">
-import { onScopeDispose, ref, type Component } from 'vue';
+import { computed, ref, type Component } from 'vue';
+import ContributionBoundary from '@/views/layout/ContributionBoundary.vue';
 import { PluginScope, usePlugin } from '@apackdev/sdk/fe';
 import type { SettingUpdate, SettingsTarget } from '@apackdev/sdk/types';
 import { splitRef, type FeatureRef } from '@apackdev/sdk/ids';
@@ -44,13 +46,12 @@ const props = defineProps<{
   target: SettingsTarget; title: string; description?: string;
   form?: Component; value: unknown; plugin?: FeatureRef;
 }>();
+const formOwner = computed(() => props.target.kind === 'pack' ? props.target.packId
+  : props.target.kind === 'feature' ? splitRef(props.target.featureRef)?.packId : undefined);
+const formRef = computed(() => props.target.kind === 'feature' ? props.target.featureRef
+  : props.target.kind === 'pack' ? `${props.target.packId}/${props.target.groupId}` : 'host/app');
+const isCurrentForm = () => fePacks.settingsForm(props.target) === props.form;
 const actor: SettingsState = usePlugin();
-const formRevision = ref(0);
-onScopeDispose(fePacks.onChanged(packId => {
-  const target = props.target;
-  const owner = target.kind === 'pack' ? target.packId : target.kind === 'feature' ? splitRef(target.featureRef)?.packId : undefined;
-  if (owner === packId) formRevision.value++;
-}));
 const confirmReset = ref(false);
 const { saveStatus, problems, updateSettings, resetSettings } = useSettingsSaveStatus();
 const update = (event: SettingUpdate) => updateSettings({

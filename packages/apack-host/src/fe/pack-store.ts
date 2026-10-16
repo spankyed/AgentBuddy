@@ -1,10 +1,9 @@
 // The packs whose frontends the renderer registered, as an instance: the renderer creates one and binds its read
 // face for the SDK's frontend lookups (`bindFeHost({ packs })`). It holds the only writes to it.
+import type { DeclarationData, PluginDeclaration } from '@apackdev/sdk/framework';
 import type { ReferenceTypeConfig, ReferenceBindings, ReferenceBinding } from '@apackdev/sdk/fe/references';
-import type { Plugin, PackFERegistration, TiptapPlugin, TiptapPluginBinding, DslTypeConfig, SettingsPort, StepFrontendBinding } from '@apackdev/sdk/fe';
+import type { Plugin, PackFERegistration, TiptapPlugin, TiptapPluginBinding, SettingsPort, StepFrontendBinding, ArtifactFrontendBinding, BlockFrontendBinding } from '@apackdev/sdk/fe';
 import type { FePackRegistryView } from '@apackdev/sdk/runtime';
-import type { ArtifactDefinition } from '@apackdev/sdk/artifacts';
-import type { BlockDefinition } from '@apackdev/sdk/blocks';
 import { createDesignationStore, createOwnedStore, createOwnedStepStore } from '../packs/extensions.ts';
 import { resolveName, type FeatureRef } from '@apackdev/sdk/ids';
 import { createFrontendSettingsBinding } from './settings-binding.ts';
@@ -44,6 +43,9 @@ export interface FePackRegistry extends FePackRegistryView {
   unregisterPackFE(packId: string): Plugin[];
   /** Every registered plugin, in registration order */
   getRegisteredPlugins(): Plugin[];
+  pluginBindings(): ReadonlyMap<string, PluginFrontendBinding>;
+  /** Identity of this accepted frontend instance; replacement changes it even when components are reused. */
+  frontendIdentity(packId: string): Readonly<Pick<AcceptedFrontendAdmission, 'declarationRevision' | 'runtimeRevision' | 'buildRevision'>> | undefined;
   getAppExtension(slot: string): ReturnType<FePackRegistryView['appExtension']>;
   /** Lookup of an accepted form; installed declarations remain separate from executable availability. */
   settingsForm(target: SettingsTarget): SettingsForm | undefined;
@@ -87,18 +89,30 @@ export interface PreparedFrontend {
   dispose(): void;
 }
 
+/** A plugin implementation admitted against a captured declaration and backend generation. */
+export interface PluginFrontendBinding {
+  readonly opens?: readonly string[];
+  readonly packId: string;
+  readonly declaration: DeclarationData<PluginDeclaration>;
+  readonly declarationRevision?: string;
+  readonly runtimeRevision?: string;
+  readonly buildRevision?: string;
+  readonly binding: Plugin;
+}
+
 type DefinitionEntry<T> = readonly [string, T];
 interface FrontendContributions {
   id: string;
+  identity: Readonly<Pick<AcceptedFrontendAdmission, 'declarationRevision' | 'runtimeRevision' | 'buildRevision'>>;
   addressed: AddressedRegistration['addressed'];
+  pluginBindings: PluginFrontendBinding[];
   roles: Record<string, FeatureRef>;
   forms: Array<readonly [string, SettingsForm]>;
   steps: Array<DefinitionEntry<StepFrontendBinding>>;
-  artifacts: Array<DefinitionEntry<ArtifactDefinition>>;
-  blocks: Array<DefinitionEntry<BlockDefinition>>;
+  artifacts: Array<DefinitionEntry<ArtifactFrontendBinding>>;
+  blocks: Array<DefinitionEntry<BlockFrontendBinding>>;
   tiptapPlugins: Array<[string, TiptapPlugin]>;
   appExtensions: Array<readonly [string, SettingsForm]>;
-  dslTypes: Array<readonly [string, DslTypeConfig]>;
   references: OwnedReferenceBindings[];
   bindSettings: PackFERegistration['bindSettings'];
 }
@@ -119,7 +133,11 @@ function capture(registration: PackFERegistration, identity: AcceptedFrontendAdm
   checkFeatureIds(reg.id, Object.keys(reg.features ?? {}));
   checkFeatureIds(reg.id, Object.keys(reg.settingsForms ?? {}));
   return {
-    id: reg.id, addressed: reg.addressed, roles: reg.roles, bindSettings: reg.bindSettings,
+    id: reg.id, identity: Object.freeze(revisions), addressed: reg.addressed, roles: reg.roles, bindSettings: reg.bindSettings,
+    pluginBindings: reg.addressed.map(({ plugin }) => Object.freeze({ packId: reg.id, ...revisions,
+      ...(identity.entityDestinations && { opens: Object.freeze(Object.keys(identity.entityDestinations)
+        .filter(entity => identity.entityDestinations![entity] === plugin.id.slice(reg.id.length + 1)).sort()) }),
+      declaration: identity.declarations.features![plugin.id.slice(reg.id.length + 1)]!.plugin!, binding: plugin })),
     forms: [
       ...Object.entries(reg.features ?? {}).flatMap(([id, feature]) => feature.settingsForm
         ? [[formKey({ kind: 'feature', featureRef: resolveName(id, reg.id) }), feature.settingsForm] as const] : []),
@@ -138,22 +156,23 @@ function capture(registration: PackFERegistration, identity: AcceptedFrontendAdm
     }),
     steps: (reg.steps ?? []).map(value => [value.type, Object.freeze({ packId: reg.id, ...revisions,
       declaration: identity.declarations.extensions!.steps![value.type]!, binding: value })]),
-    artifacts: (reg.artifacts ?? []).map(value => [value.type, value]),
-    blocks: (reg.blocks ?? []).map(value => [value.type, value]),
+    artifacts: (reg.artifacts ?? []).map(value => [value.type, Object.freeze({ packId: reg.id, ...revisions,
+      declaration: identity.declarations.extensions!.artifacts![value.type]!, binding: value })]),
+    blocks: (reg.blocks ?? []).map(value => [value.type, Object.freeze({ packId: reg.id, ...revisions,
+      declaration: identity.declarations.extensions!.blocks![value.type]!, binding: value })]),
     tiptapPlugins: Object.entries(reg.tiptapPlugins ?? {}),
-    appExtensions: Object.entries(reg.appExtensions ?? {}), dslTypes: Object.entries(reg.dslTypes ?? {}),
+    appExtensions: Object.entries(reg.appExtensions ?? {}),
   };
 }
 
 function buildTables(packs: Iterable<FrontendContributions>) {
   const plugins: Plugin[] = [];
-  let defaultPlugin: Plugin | undefined;
+  const pluginBindings = new Map<string, PluginFrontendBinding>();
   const designations = createDesignationStore();
   const steps = createOwnedStepStore<StepFrontendBinding>();
-  const artifacts = createOwnedStore<ArtifactDefinition>();
-  const blocks = createOwnedStore<BlockDefinition>();
+  const artifacts = createOwnedStore<ArtifactFrontendBinding>();
+  const blocks = createOwnedStore<BlockFrontendBinding>();
   const appExtensions = createOwnedStore<SettingsForm>();
-  const dslTypes = createOwnedStore<DslTypeConfig>();
   const forms = new Map<string, SettingsForm>();
   const tiptapPlugins: TiptapPluginBinding[] = [];
   const editorOwners = new Map<string, string>();
@@ -178,13 +197,12 @@ function buildTables(packs: Iterable<FrontendContributions>) {
     }
     designations.register(pack.roles);
     plugins.push(...pack.addressed.map(({ plugin }) => plugin));
-    defaultPlugin ??= pack.addressed.find(feature => feature.default)?.plugin;
+    for (const binding of pack.pluginBindings) pluginBindings.set(binding.binding.id, binding);
     for (const [key, value] of pack.forms) forms.set(key, value);
     for (const [key, value] of pack.steps) { steps.set(key, value, pack.id); }
     for (const [key, value] of pack.artifacts) artifacts.set(key, value, pack.id);
     for (const [key, value] of pack.blocks) blocks.set(key, value, pack.id);
     for (const [key, value] of pack.appExtensions) appExtensions.set(key, value, pack.id);
-    for (const [key, value] of pack.dslTypes) dslTypes.set(key, value, pack.id);
     for (const [id, plugin] of pack.tiptapPlugins) {
       const owner = `${pack.id}/${id}`;
       for (const name of Object.keys(plugin.extensions ?? {})) {
@@ -195,7 +213,7 @@ function buildTables(packs: Iterable<FrontendContributions>) {
       tiptapPlugins.push(Object.freeze({ packId: pack.id, groupId: id, binding: plugin }));
     }
   }
-  return { plugins, defaultPlugin, designations, steps, artifacts, blocks, appExtensions, dslTypes, forms, tiptapPlugins, referenceTypes, referenceCategories };
+  return { plugins, pluginBindings, designations, steps, artifacts, blocks, appExtensions, forms, tiptapPlugins, referenceTypes, referenceCategories };
 }
 
 /** Published lookup data and executable resource lifetime have separate commit/retirement paths. */
@@ -311,12 +329,16 @@ export function createFePackRegistry(): FePackRegistry {
     onChanged(listener) { listeners.add(listener); return () => { listeners.delete(listener); }; },
     designation: key => tables.designations.get(key),
     stepBindings: () => new Map(tables.steps.entries()),
-    artifact: key => tables.artifacts.get(key), artifacts: () => tables.artifacts.all(),
-    block: key => tables.blocks.get(key), blocks: () => tables.blocks.all(),
-    plugins: () => [...tables.plugins], defaultPlugin: () => tables.defaultPlugin,
+    artifactBindings: () => new Map(tables.artifacts.entries()),
+    artifact: key => tables.artifacts.get(key)?.binding, artifacts: () => tables.artifacts.all().map(entry => entry.binding),
+    blockBindings: () => new Map(tables.blocks.entries()),
+    block: key => tables.blocks.get(key)?.binding, blocks: () => tables.blocks.all().map(entry => entry.binding),
+    pluginBindings: () => new Map(tables.pluginBindings),
+    frontendIdentity: packId => accepted.get(packId)?.identity,
+    plugins: () => [...tables.plugins],
     tiptapPlugins: () => [...tables.tiptapPlugins],
     referenceTypes: () => new Map(tables.referenceTypes),
     referenceCategories: () => new Map(tables.referenceCategories),
-    appExtension: key => tables.appExtensions.get(key), dslTypes: () => new Map(tables.dslTypes.entries()),
+    appExtension: key => tables.appExtensions.get(key),
   };
 }

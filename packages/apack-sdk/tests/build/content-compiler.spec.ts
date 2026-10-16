@@ -55,6 +55,27 @@ const memosFormat = {
 };
 
 describe('compilePack', () => {
+  it('publishes flow references without changing compiled flow records or their hashes', async () => {
+    write('content/flows/demo.ts', 'export default {}');
+    const flow = { Demo: [{ event: 'manual', initial: 'Greeting', exits: [[]] }] };
+    const step = { type: 'start', kind: 'trigger' as const,
+      trigger: { trackField: 'event', compile: () => ({}), decompile: () => ({}) },
+    };
+    const options: CompilePackOptions = {
+      packDir: root, outputDir: out,
+      packConfig: { name: 'demo', sources: { flows: { kind: 'specialty', path: 'content/flows' } } },
+      importModule: async () => ({ default: flow }),
+      definitions: { steps: [step], artifacts: [], blocks: [] },
+    };
+    await compilePack(options);
+    const before = fs.readFileSync(path.join(out, 'flows.content.json'), 'utf8');
+    await compilePack({ ...options, definitions: { steps: [{ ...step, dsl: { references: { initial: 'prompts' } } }], artifacts: [], blocks: [] } });
+    expect(fs.readFileSync(path.join(out, 'flows.content.json'), 'utf8')).toBe(before);
+    expect(read(CONTENT_INDEX_FILE).entries[0].references).toEqual([
+      { item: 'Demo', path: 'Demo[0].initial', kind: 'static', target: { key: 'prompts', item: 'Greeting' } },
+    ]);
+  });
+
   it("compiles an entry with its format's settings, copies media and indexes it", async () => {
     write('content/memos/first.md', '---\ntitle: 2024\npinned: true\n---\nHello ![pic](media/pic.png)\n');
     write('content/memos/group/index.md', '---\ntitle: Group\n---\nGroup body\n');

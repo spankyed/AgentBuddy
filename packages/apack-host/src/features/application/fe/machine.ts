@@ -1,12 +1,13 @@
 // The app shell: the host `application` feature's plugin, which runs every plugin's actor, holds which one is open,
 // lays out the panels and loads every pack's frontend. Its I/O arrives as options (types.ts); the renderer
 // composes it with the API client and the window, a pack's tests with fakes.
-import { assign, enqueueActions, setup, spawnChild } from 'xstate';
+import { assign, enqueueActions, fromCallback, setup, spawnChild } from 'xstate';
 import { processHotkeys, safeEvents } from '@apackdev/sdk/fe';
 import { splitRef } from '@apackdev/sdk/ids';
 import { senderSuffix } from '@apackdev/sdk/events';
 import { isPlainObject } from '@apackdev/sdk/utils/pure';
-import type { HostShellEvent, HostShellState, PluginEvent, ShellPanelSizes } from '@apackdev/sdk/fe';
+import type { HostShellEvent, HostShellState, PluginEvent, ShellPanelSizes, Plugin } from '@apackdev/sdk/fe';
+import { selectDefaultPluginDeclaration, getEligiblePlugin, selectPluginDeclaration } from '../../../fe/plugin-selection.ts';
 import { HOST } from '../../../refs.ts';
 import { connectionListener } from './connection.ts';
 import { hotkeyListener, mouseListener } from './input.ts';
@@ -15,6 +16,7 @@ import {
 } from './layout.ts';
 import { announcePackClientReady, PACK_FRONTEND_LOADER_ID, packFrontendLoader } from './pack-frontends.ts';
 import { historyAfter, neighbourOf, spawnPluginActor, withHostLast } from './plugins.ts';
+import { pluginNavigationItems } from '../../../fe/plugin-navigation.ts';
 import { notifyPluginActor, sendToPluginActor } from '../../../fe/plugin-delivery.ts';
 import { computeCrumbs, pluginTrailer } from './trail.ts';
 import type { PluginRequest, ShellContext, ShellEvent, ShellOptions, ShellParams } from './types.ts';
@@ -46,9 +48,9 @@ function packFrontendsPending(context: ShellContext): boolean {
  * Not every refusal has a user to tell, so `refuse` picks the audience and this writes only that audience's
  * words. An answer gets the other wording, for the reason given there.
  */
-function refusal({ plugin, select, sender }: PluginRequest): [string, string] {
+function refusal({ plugin, select, sender }: PluginRequest, detail?: string): [string, string] {
   const suffix = senderSuffix(sender);
-  return [`Couldn't ${select ? 'open' : 'reach'} ${plugin}`, `No plugin is registered at "${plugin}".${suffix && ` Sent${suffix}.`}`];
+  return [`Couldn't ${select ? 'open' : 'reach'} ${plugin}`, `${detail ?? `No plugin is declared at "${plugin}".`}${suffix && ` Sent${suffix}.`}`];
 }
 
 /** The part of `enqueueActions`' `enqueue` that `readyFor` needs, so it can be a function rather than a third action */
@@ -58,7 +60,25 @@ type Enqueue = {
 };
 
 /** The app shell over `options`, the I/O it's given */
-export function createShellMachine({ packs, client, packFrontends, storage, notify, target }: ShellOptions) {
+export function createShellMachine({ packs, catalog, client, packFrontends, storage, notify, target }: ShellOptions) {
+  const selectedDefaultPlugin = (plugins: readonly Plugin[]) => {
+    const declaration = selectDefaultPluginDeclaration(catalog);
+    const accepted = declaration ? getEligiblePlugin(catalog, packs.pluginBindings(), declaration.featureRef) : undefined;
+    return accepted && plugins.includes(accepted) ? accepted : undefined;
+  };
+  const currentPlugin = (context: ShellContext, ref: string) => {
+    const accepted = getEligiblePlugin(catalog, packs.pluginBindings(), ref);
+    return accepted && context.plugins.includes(accepted) ? accepted : undefined;
+  };
+  const unavailable = (ref: string): string | undefined => {
+    const declaration = selectPluginDeclaration(catalog, ref);
+    if (declaration?.origin === 'native') return declaration.enabled === true ? undefined : `The pack providing "${ref}" is disabled.`;
+    if (catalog.status() !== 'ready') return catalog.status() === 'loading' ? undefined : 'Plugin declarations are unavailable.';
+    if (!declaration) return `No plugin is declared at "${ref}".`;
+    if (declaration.origin === 'source') return `The pack providing "${ref}" is not installed.`;
+    if (declaration.enabled !== true) return `The pack providing "${ref}" is disabled.`;
+  };
+
   /** Sizes the user chose, which the next window opens with; sizes set for the moment are assigned without it */
   const saved = (sizes: ShellPanelSizes): ShellPanelSizes => {
     storage.savePanelSizes(sizes);
@@ -77,9 +97,10 @@ export function createShellMachine({ packs, client, packFrontends, storage, noti
    * The case it fires in is a race, not a bug: a plugin asks, its answer is built, and the answering pack
    * unloads before the answer lands. Nothing holds the asker open.
    */
-  const refuse = (request: PluginRequest): void => {
+  const refuse = (request: PluginRequest, detail?: string): void => {
     if (!request.answering) {
-      notify.error(...refusal(request));
+      notify.error(...refusal(request, detail ?? unavailable(request.plugin)
+        ?? (selectPluginDeclaration(catalog, request.plugin) ? `The plugin "${request.plugin}" could not be loaded.` : undefined)));
       return;
     }
     const suffix = senderSuffix(request.sender);
@@ -92,8 +113,10 @@ export function createShellMachine({ packs, client, packFrontends, storage, noti
    * the same question and answer it the same way, so `false` means the caller has nothing left to do but return.
    */
   const readyFor = (context: ShellContext, request: PluginRequest & { events: PluginEvent[] }, enqueue: Enqueue): boolean => {
-    if (context.plugins.some((p) => p.id === request.plugin)) return true;
-    if (packFrontendsPending(context)) enqueue.assign({ awaitingPlugin: [...context.awaitingPlugin, request] });
+    const reason = unavailable(request.plugin);
+    if (reason) { enqueue(() => refuse(request, reason)); return false; }
+    if (currentPlugin(context, request.plugin)) return true;
+    if (catalog.status() === 'loading' || packFrontendsPending(context)) enqueue.assign({ awaitingPlugin: [...context.awaitingPlugin, request] });
     else enqueue(() => refuse(request));
     return false;
   };
@@ -105,6 +128,7 @@ export function createShellMachine({ packs, client, packFrontends, storage, noti
       input: {} as ShellParams,
     },
     actors: {
+      pluginCatalogListener: fromCallback(({ sendBack }) => catalog.subscribe(() => sendBack({ type: 'PLUGIN_DECLARATIONS_CHANGED' }))),
       hotkeyListener: hotkeyListener(target),
       mouseListener: mouseListener(target),
       connectionListener: connectionListener(client),
@@ -115,6 +139,38 @@ export function createShellMachine({ packs, client, packFrontends, storage, noti
     // trigger name collides with whatever does the triggering, and it can't survive a second caller — several of
     // these serve more than one transition, so there is no single event to name them after.
     actions: {
+      refreshPluginDeclarations: enqueueActions(({ context, enqueue }) => {
+        const claimed = selectedDefaultPlugin(context.plugins) ?? null;
+        enqueue.assign({ defaultPlugin: claimed });
+        if (context.wantsDefaultPlugin && !context.pendingPluginId && claimed) enqueue.raise({ type: 'SELECT_PLUGIN', plugin: claimed.id });
+        // A frontend may be admitted before its declaration frame reaches this window. Reconcile
+        // from accepted bindings when that frame arrives, without keeping a second pending inventory.
+        const bindings = packs.pluginBindings();
+        const changedOwners = new Set([...bindings].filter(([ref, accepted]) => accepted.runtimeRevision
+          && getEligiblePlugin(catalog, bindings, ref) && !context.plugins.includes(accepted.binding)).map(([, accepted]) => accepted.packId));
+        const pending = new Set<string>();
+        for (const packId of changedOwners) {
+          const accepted = [...bindings.values()].filter(binding => binding.packId === packId);
+          if (!accepted.every(binding => getEligiblePlugin(catalog, bindings, binding.binding.id))) continue;
+          pending.add(packId);
+          enqueue.raise({ type: 'PACK_FRONTEND_LOADED', packId, runtimeRevision: accepted[0]!.runtimeRevision!, plugins: accepted.map(binding => binding.binding) });
+        }
+        const waiting = [];
+        for (const request of context.awaitingPlugin) {
+          if (currentPlugin(context, request.plugin)) {
+            enqueue.raise(request.select ? { type: 'OPEN_PLUGIN', plugin: request.plugin, events: request.events }
+              : { type: 'SEND_TO_PLUGIN', plugin: request.plugin, events: request.events, ...request.sender, answering: request.answering, call: request.call });
+          } else if (unavailable(request.plugin) || (catalog.status() === 'ready' && !packFrontendsPending(context) && !pending.has(splitRef(request.plugin)?.packId ?? ''))) {
+            enqueue(() => refuse(request));
+          } else waiting.push(request);
+        }
+        enqueue.assign({ awaitingPlugin: waiting });
+        if (context.pendingPluginId) {
+          if (unavailable(context.pendingPluginId)) enqueue.assign({ pendingPluginId: null });
+          else if (currentPlugin(context, context.pendingPluginId)) enqueue.raise({ type: 'SELECT_PLUGIN', plugin: context.pendingPluginId });
+        }
+      }),
+
       updateHotkeys: assign(({ event }) => ({ hotkeys: typeOf('APPLICATION_HOTKEYS', event).hotkeys })),
 
       mergePackPlugins: enqueueActions(({ event, context, system, enqueue }) => {
@@ -128,6 +184,12 @@ export function createShellMachine({ packs, client, packFrontends, storage, noti
           return;
         }
 
+        if (packPlugins?.some(plugin => {
+          const accepted = packs.pluginBindings().get(plugin.id);
+          return getEligiblePlugin(catalog, packs.pluginBindings(), plugin.id) !== plugin
+            || (accepted?.runtimeRevision !== undefined && accepted.runtimeRevision !== runtimeRevision);
+        })) return;
+
         const acceptedPackRuntimes = { ...context.acceptedPackRuntimes, [packId]: runtimeRevision };
 
         // Only an accepted load reaches this action. Replace this owner's actors and view together;
@@ -138,7 +200,7 @@ export function createShellMachine({ packs, client, packFrontends, storage, noti
         const firstPrevious = context.plugins.findIndex(plugin => plugin.id.startsWith(`${packId}/`));
         const position = firstPrevious < 0 ? retained.length : firstPrevious;
         const plugins = withHostLast([...retained.slice(0, position), ...newPlugins, ...retained.slice(position)]);
-        const defaultPlugin = packs.defaultPlugin() ?? null;
+        const defaultPlugin = selectedDefaultPlugin(plugins) ?? null;
         const replacingActive = previous.some(plugin => plugin.id === context.activePlugin.id);
         const activePlugin = replacingActive
           ? (newPlugins.find(plugin => plugin.id === context.activePlugin.id) ?? plugins[0])
@@ -159,7 +221,7 @@ export function createShellMachine({ packs, client, packFrontends, storage, noti
           // A pack claiming the app's default is how this window learns what it is. It opens it only while
           // nothing else has decided what is shown, so a window the user has navigated, or one the host told
           // which plugin was last open, is left alone
-          const claimed = packs.defaultPlugin();
+          const claimed = selectedDefaultPlugin(plugins);
           if (claimed && added.has(claimed.id)) {
             enqueue.assign({ defaultPlugin: claimed, wantsDefaultPlugin: false });
             if (context.wantsDefaultPlugin && !context.pendingPluginId) {
@@ -232,7 +294,7 @@ export function createShellMachine({ packs, client, packFrontends, storage, noti
         } else {
           enqueue.assign({ packLoadRunning: false });
           // Loading has settled: a plugin still asked for is one no loaded pack provides
-          if (context.awaitingPlugin.length > 0) {
+          if (context.awaitingPlugin.length > 0 && catalog.status() !== 'loading') {
             // `assign` replaces the array rather than mutating it, so the reference stays valid in the deferred enqueue
             const refused = context.awaitingPlugin;
             enqueue.assign({ awaitingPlugin: [] });
@@ -305,7 +367,7 @@ export function createShellMachine({ packs, client, packFrontends, storage, noti
         for (const id of pluginIds) delete pluginVisibility[id];
 
         const needsNavigate = removeSet.has(context.activePlugin.id);
-        const defaultPlugin = packs.defaultPlugin() ?? null;
+        const defaultPlugin = selectedDefaultPlugin(remaining) ?? null;
         const activePlugin = needsNavigate ? (remaining[0] ?? context.activePlugin) : context.activePlugin;
 
         // Plugin children are spawned by system id only, so stop them by reference
@@ -385,8 +447,12 @@ export function createShellMachine({ packs, client, packFrontends, storage, noti
         enqueue.raise({ type: 'OPEN_PLUGIN' as const, plugin, events: events as PluginEvent[] });
       }),
 
-      deliverPluginEvents: ({ event, system }) => {
+      deliverPluginEvents: ({ event, context, system }) => {
         const { plugin, events, asker, answering, call } = typeOf('DELIVER_PLUGIN_EVENTS', event);
+        if (!currentPlugin(context, plugin)) {
+          refuse({ plugin, select: false, sender: { asker }, answering, call }, `The plugin "${plugin}" is no longer ready.`);
+          return;
+        }
         // A registered plugin's actor is running: the shell spawns it in the same step that registers the plugin
         const actor = system.get(plugin);
         if (!actor) return;
@@ -427,7 +493,8 @@ export function createShellMachine({ packs, client, packFrontends, storage, noti
       },
 
       switchPluginByDirection: ({ context, event, self }) => {
-        const next = neighbourOf(context, event.type === 'SWITCH_PLUGIN_UP' ? 'up' : 'down');
+        const next = neighbourOf(pluginNavigationItems(catalog, packs.pluginBindings(), context.pluginVisibility)
+          .filter(plugin => plugin.visible), context.activePlugin.id, event.type === 'SWITCH_PLUGIN_UP' ? 'up' : 'down');
         if (next) self.send({ type: 'SELECT_PLUGIN', plugin: next.id });
       },
 
@@ -457,7 +524,8 @@ export function createShellMachine({ packs, client, packFrontends, storage, noti
 
       setActivePlugin: enqueueActions(({ context, event, enqueue, system }) => {
         const { plugin, historyIndex } = typeOf('SELECT_PLUGIN', event);
-        const newPlugin = context.plugins.find(p => p.id === plugin) || context.activePlugin;
+        const newPlugin = currentPlugin(context, plugin);
+        if (!newPlugin) return;
         // Opening a plugin settles which one this window shows
         if (context.pendingPluginId) enqueue.assign({ pendingPluginId: null });
         if (context.wantsDefaultPlugin) enqueue.assign({ wantsDefaultPlugin: false });
@@ -527,11 +595,11 @@ export function createShellMachine({ packs, client, packFrontends, storage, noti
       // A popout opens on its plugin (once its pack's frontend adds it); a main window on the
       // first, until the host says which was last open
       const initialPlugin = plugins.find((p) => p.id === input.initialPluginId);
-      const initialActivePlugin = initialPlugin ?? plugins[0];
-      const claimedDefault = packs.defaultPlugin() ?? null;
+      const claimedDefault = selectedDefaultPlugin(plugins) ?? null;
+      const initialActivePlugin = initialPlugin ?? claimedDefault ?? plugins[0];
       return {
         plugins,
-        pluginVisibility: Object.fromEntries(plugins.map((plugin) => [plugin.id, true])),
+        pluginVisibility: {},
         activePlugin: initialActivePlugin,
         defaultPlugin: claimedDefault,
         // Nothing specific was asked for and no pack has claimed a default yet, so open it when one does
@@ -569,6 +637,7 @@ export function createShellMachine({ packs, client, packFrontends, storage, noti
       spawnChild('hotkeyListener', { id: 'hotkeyListener' }),
       spawnChild('mouseListener', { id: 'mouseListener' }),
       spawnChild('connectionListener', { id: 'connectionListener' }),
+      spawnChild('pluginCatalogListener', { id: 'pluginCatalogListener' }),
     ],
     states: {
       'onboarding': {
@@ -638,6 +707,7 @@ export function createShellMachine({ packs, client, packFrontends, storage, noti
       'error': {},
     },
     on: {
+      PLUGIN_DECLARATIONS_CHANGED: { actions: 'refreshPluginDeclarations' },
       APPLICATION_HOTKEYS: { actions: 'updateHotkeys' },
       // In every state: onboarding and the error page keep pack systems' startup data flowing too. The loader runs on
       // every establishment of the subscription, so packs a failed read left unloaded are picked up by the next one.

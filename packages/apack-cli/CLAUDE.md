@@ -77,6 +77,15 @@ A changed compiler or damaged copy is replaced. `runPackBuild` closes this scope
 a watcher retains it until close. Closing aborts active work, drains the worker and input observers,
 then removes the private installation.
 
+The parent holds the pack build lock through worker closure and publication. Workers only prepare and
+seal a candidate, report its authored-input hash and sealed revision, drain diagnostics, and exit.
+The parent waits for process closure, verifies the exact sealed output and authored hash, then replaces
+dist. POSIX workers own a process group: inherited subprocesses must be terminal before publication.
+Cancellation permits two seconds for worker SIGTERM cleanup before forced termination; loss of parent
+IPC stops the owned group, and that listener stays active through final diagnostics. Exit-handler writes therefore cannot silently change an accepted candidate; aborts and refusals
+clean staging while preserving the incumbent. This handoff is not the complete source/compiler input
+receipt and must not authorize passive source freshness.
+
 `withBuildSignals` owns public one-shot/watch cancellation before startup and restores the original
 signal exit after cleanup. Development supplies its own build-lifetime signal and hands initial-build
 and watcher-startup promises to its hold before awaiting them; profile removal and exit wait for both.
@@ -97,11 +106,30 @@ it ships beside `cli.js`. Internal compiler tests call `build()` in-process; pro
 exercise the real bootstrap and runner.
 
 `build/compiler-file-view.ts` owns metadata, bytes, physical bindings and directory/glob results for one
-TypeScript scan. Configuration, Vue extraction and the compiler host consume that view. Repeated queries
+compiler frame. `build/compiler-input-view.ts` captures authored bytes and membership before user
+preloads; configuration, Vue extraction and the compiler host reuse that inventory and view. Repeated queries
 reuse captured data; a final check refuses changed bytes, missing targets, link changes or membership.
 Origin mappings and returned arrays cannot mutate its fingerprint. Root membership uses the shared
-pack-input walker. `captureCompilationInputs` retains the scan's validator, rechecking its read-set plus
+pack-input walker. A captured pack root uses the same source projection as its files for fingerprints
+and discovered-package ordering; reads and validation still use its owned physical files.
+`captureCompilationInputs` retains the scan's validator, rechecking its read-set plus
 package/tool/options inputs without reconstructing the TypeScript program. It is scoped to one build.
+Authored files and package-graph callback bytes seed the same owned view. After codegen,
+`captureGenerated()` admits its completed bindings separately from authored membership. All five native
+bundle paths, including flow helpers, consume copied bytes from that view through esbuild's `onLoad`;
+callers cannot mutate the owned buffers. Native resolution still uses the original namespace. This
+owns native module bytes; native resolution still uses the original namespace.
+
+Declaration bundles (facade, flow helpers and DSLs) materialize that view into one lazy
+`compiler-read-tree.ts` tree per build. Captured bytes, package links, positive/missing queries and
+executable file modes define it; source origins remain the record of reads. The input directories are
+read-only and verified before publication. A separate writable directory holds derived declaration
+configuration. Compiler option projection lives in `compiler-configuration.ts`, not in the filesystem.
+Declaration programs capture a nearest parent config when no explicit pack config exists; native
+per-file config discovery keeps its existing semantics. Normal cleanup precedes publication and also
+runs on failures. Each public worker's parent owns its workspace and removes abandoned read-only trees
+after child close without following aliases. Full native namespace, direct content reads, frontend/dev
+ownership and launch/preload inputs remain unfinished execution-frame work.
 Compiler capture does not freeze pack sources, external
 frontend compiler reads or ambient Node preloads; the complete input/publication contract remains
 owned by the discovery plan.
@@ -113,7 +141,7 @@ owned by the discovery plan.
    removes the staged tree and leaves the previous build in place.
 2. Unless `--skip-generate`: `resolveDeps` → `generateEntries`. `@apackdev/host/build/pack-inputs` supplies the shared authored-file scope; facade/DSL cache keys include generated entries and all asset extensions. The build captures authored inputs before reading the manifest and refuses publication if their content identity changed by completion.
 3. Feature schemas and explicit defaults are validated by the common compiler during manifest decoding; no settings modules execute.
-4. Dependencies' `steps.build.mjs` and manifests feed `buildPackConfigFromManifest`; its `loadDefinitions()` go into a registry of this build's own (`createPackRegistry()`, so a registry the process has bound is never touched: `tests/build/build-registry.integration.spec.ts`), whose steps, artifacts and blocks `compilePack` compiles `content.sources` with (pack TypeScript loaded with tsx's `tsImport`), then `bundlePackContentCompilers` (`content.formats[].compiler`).
+4. Dependencies' `steps.build.mjs` and manifests feed `buildPackConfigFromManifest`. `compilePack` loads step definitions, flow modules and custom content compilers through the same `createCompilerModuleLoader` scope: Node resolves against owned paths while tsx transforms captured ESM bytes under logical source URLs, preserving import.meta paths. A private loader below tsx supplies those bytes using the same storage projection as the input tree. CommonJS retains per-tree filenames for cache isolation; its metadata projection remains unfinished. Scope disposal awaits tsx unregistration before input cleanup. `bundlePackContentCompilers` then builds the declared `content.formats[].compiler` exports for dependents.
 5. Facade types: `bundlePackTypes` (`build/types-bundler.ts`, rollup-plugin-dts) → `dist/types/pack-types.d.ts`, then the facade gate (below), then a **warning** when a committed `etc/pack-types.api.md` no longer matches the bundle in hand (`build/facade-report.ts`; nothing when the pack has no report). Then `bundlePackFlowHelpers` (`build/flow-helpers-bundler.ts`); the snapshot is written last, once every step succeeded.
 6. `bundlePackStepBuild` (`src/__generated__/steps-build.ts`, which codegen writes from the manifest's `steps`), `bundlePackContentRuntime` + `checkContentRuntimeLoads`, `bundleDslDefs` (`build/dsl-defs.ts`, manifest `dsl`).
 7. `bundlePackRuntime` → `dist/runtime/index.cjs`, then `bundlePackFE` (`build/fe-bundler.ts`, Vite library build) for `findFEEntry()` unless `--skip-fe`. Every pack, whoever ships it: the app loads a backend runtime and fetches a frontend bundle from the pack's own directory.
@@ -129,7 +157,7 @@ The verified output and cache publish together; a refused replacement keeps both
 Cache reads check the consumed bytes against the verified receipt. Installation/archive staging omits
 this root build-only file. Missing or damaged cache/output causes a cold rebuild, never reuse.
 
-- **`build/be-bundler.ts`**: `bundlePackSource` is the shared esbuild setup (pack tsconfig, path aliases, `package.json` `imports`, `rejectHostImportsPlugin`, which fails an import of `@apackdev/host` or of an export only the app loads (`APP_ONLY_EXPORTS`, `@apackdev/ears/lmdb`; `tests/build/host-import-guard.spec.ts`), `stubFrontendAssetsPlugin`). `HOST_EXTERNALS` = `SHARED_DEPS` + the `SHARED_INSTANCE_PACKAGES` (`@apackdev/sdk`, `@apackdev/ears`) and their subpaths (`sharedInstanceExternals()`). The content runtime keeps only the shared-instance packages external.
+- **`build/be-bundler.ts`**: `bundlePackSource` is the shared esbuild setup (captured pack tsconfig, path aliases, `package.json` `imports`, `rejectHostImportsPlugin`, which fails an import of `@apackdev/host` or of an export only the app loads (`APP_ONLY_EXPORTS`, `@apackdev/ears/lmdb`; `tests/build/host-import-guard.spec.ts`), `stubFrontendAssetsPlugin`). `HOST_EXTERNALS` = `SHARED_DEPS` + the `SHARED_INSTANCE_PACKAGES` (`@apackdev/sdk`, `@apackdev/ears`) and their subpaths (`sharedInstanceExternals()`). The content runtime keeps only the shared-instance packages external.
 - **`build/build-reads.ts`**: bundler-observed inputs by phase in `.apack/reads.json` (esbuild inputs, Rollup watch files and Vite watch files). Bundlers receive `RecordReads`; `BUILD_PHASES` defines `BuildPhase`. The build carries rows for reused phases, and chain checks (`scripts/lib/build-reads.ts`, `repo-checks`' `dep-files.integration.spec.ts`) compare observed inputs with declared coverage. Rows describe a validated candidate; placement failure can leave them ahead of accepted output. They do not authorize reuse or source freshness. `APACK_NO_BUILD_READS=1` disables this optional diagnostic record.
 - **`build/content-runtime-check.ts`**: loads `dist/build/content-runtime.mjs` in a fresh Node process with the SDK's optional peers blocked by a resolve hook, as a dependent's harness would load it.
 - **`build/fe-bundler.ts`**: `packExternalsPlugin` leaves host-shared imports (`getSharedFeDeps`, `getSdkFeModules`, and every `@apackdev/ui` export from `getUiFeModules` unless `build.bundleUi`) **external**, so the bundle emits the bare specifier and the app's document resolves it through its import map to the host's module. `keepExternalsBarePlugin` holds the same for `apack pack dev`'s dev server, where `vite:import-analysis` would otherwise rewrite an external to `/@id/<specifier>` — a URL only that server could answer, and it has nothing to answer with. It fails the build when an inlined SDK module reaches the SDK's host bindings (`runtime/host-runtime`, `runtime/fe-host`: an inlined copy has no app bound) and rejects `@apackdev/host`. Tailwind: the pack's `tailwind.config.{ts,js}` or a generated one over `src/**`, plus `@apackdev/ui`'s files with `build.bundleUi`; `tailwindInjectPlugin` prepends `@tailwind utilities` to the entry. `opaqueVendorPlugin` resolves each `build.opaqueDeps` package with rollup's `moduleSideEffects: 'no-treeshake'`, so a prebuilt dependency is included as published rather than walked — the include pass is most of this phase's cost and removes almost nothing from such a module (`tests/build/fe-bundler-opaque-deps.integration.spec.ts`; the measurement is in the plugin's header).
@@ -236,9 +264,11 @@ that reason. `_support/` is the prefix that says a directory claims to mirror no
 
 ### How a pack's own module paths are resolved
 
-**One mechanism: `#` subpath imports from the pack's own `package.json`.** A pack's
-`compilerOptions.paths` is TypeScript's business and no build here reads it — `tsconfig-aliases.ts` and
-`makeAliasPlugin` were deleted with the `@/` aliases they served
+**One mechanism: `#` subpath imports from the pack's own `package.json`.** Native esbuild phases reuse the resolved compiler configuration captured by the build input view;
+`esbuildTsconfig` projects its supported options and inherited alias targets without inventing a
+`baseUrl`. Standalone bundler calls resolve their own configuration. This owns explicit configuration,
+not all source reads or implicit ancestor-config discovery. There is no custom alias resolver:
+`tsconfig-aliases.ts` and `makeAliasPlugin` were deleted with the `@/` aliases they served
 ([`goal-one-way-to-name-your-own-modules.md`](../../docs/archive/goals/goal-one-way-to-name-your-own-modules.md)),
 because four separate bundler configs each had to re-implement a mapping no runtime reads. What follows is
 what the audit of 2026-09-26 cost to establish, so it needn't be established again.

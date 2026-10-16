@@ -34,6 +34,7 @@ import { installMonacoErrorFilters } from './monaco-error-filters.ts'
 </template>
 
 <script setup lang="ts">
+import { useDslDeclarations } from '@apackdev/sdk/fe'
 import { computed, ref, watch, shallowRef, onBeforeUnmount, onUnmounted } from 'vue'
 import { VueMonacoEditor, VueMonacoDiffEditor } from '@guolao/vue-monaco-editor'
 import type { editor, IDisposable } from 'monaco-editor'
@@ -41,7 +42,6 @@ import {
   editorPresets,
   getLanguageFromPath,
   getDslTypeFromPath,
-  isDslFile,
   getEditorPresetForFile,
   initializeMonaco,
   setupMonacoForFile,
@@ -133,17 +133,30 @@ const disposeEditorDisposables = () => {
   editorDisposables = []
 }
 
+let releaseDslLibraries = () => {}
+const dslDeclarations = useDslDeclarations()
+const configureFile = (filePath = props.filePath || '') => {
+  releaseDslLibraries(); releaseDslLibraries = () => {}
+  const monaco = (window as any).monaco
+  if (!monaco || !editorInstance.value) return
+  const dslType = props.dslType ?? getDslTypeFromPath(filePath) ?? undefined
+  const isDsl = props.functionBody || dslType !== undefined
+  releaseDslLibraries = setupMonacoForFile(monaco, { filePath, dslType,
+    language: props.language || (props.dslType ? 'typescript' : getLanguageFromPath(filePath)), isDsl,
+    enableTypeChecking: isDsl, enableSuggestions: isDsl })
+}
+
 // Computed properties
 const resolvedLanguage = computed(() => {
   if (props.language) return props.language
-  if (props.filePath) return getLanguageFromPath(props.filePath)
   if (props.dslType) return 'typescript'
+  if (props.filePath) { dslDeclarations.value; return getLanguageFromPath(props.filePath) }
   return 'typescript'
 })
 
 const resolvedDslType = computed(() => {
   if (props.dslType) return props.dslType
-  if (props.filePath) return getDslTypeFromPath(props.filePath)
+  if (props.filePath) { dslDeclarations.value; return getDslTypeFromPath(props.filePath) }
   return null
 })
 
@@ -179,6 +192,8 @@ const switchToFile = (filePath: string, content: string) => {
   const monaco = (window as any).monaco
   if (!monaco) return
   
+  configureFile(filePath)
+
   // Save current view state
   const currentModel = editorInstance.value.getModel()
   if (currentModel && !currentModel.isDisposed() && props.preserveViewState) {
@@ -207,15 +222,6 @@ const switchToFile = (filePath: string, content: string) => {
     }
     if (!model) return
     models.set(filePath, model)
-    
-    // Setup Monaco for this specific file
-    setupMonacoForFile(monaco, {
-      filePath,
-      language: resolvedLanguage.value,
-      isDsl: isDslFile(filePath),
-      enableTypeChecking: isDslMode.value,
-      enableSuggestions: isDslMode.value
-    })
     
     // Listen for changes (track disposable so it's cleaned up with the editor)
     editorDisposables.push(model.onDidChangeContent(() => {
@@ -278,17 +284,8 @@ const handleMount = (editor: editor.IStandaloneCodeEditor) => {
   }
   initializeMonaco(initOptions)
   
-  // Setup for specific file if provided
-  if (props.filePath || props.dslType) {
-    setupMonacoForFile(monaco, {
-      filePath: props.filePath || `${props.dslType}:temp`,
-      language: resolvedLanguage.value,
-      isDsl: isDslMode.value,
-      enableTypeChecking: isDslMode.value,
-      enableSuggestions: isDslMode.value
-    })
-  }
-  
+  configureFile()
+
   // Add editor actions if requested
   if (props.actions && props.actions.length > 0) {
     const actions = createEditorActions(monaco, props.actions, {
@@ -452,6 +449,7 @@ watch(() => props.mode, (newMode, oldMode) => {
     // disposes the editor itself, but Monaco's listener tracker can trip
     // before that runs, so we dispose explicitly here.
     disposeEditorDisposables()
+    releaseDslLibraries(); releaseDslLibraries = () => {}
     editorInstance.value = undefined
   }
 })
@@ -481,6 +479,8 @@ watch(() => props.filePath, (newPath, oldPath) => {
   }
 }, { flush: 'sync' })
 
+watch([resolvedDslType, resolvedLanguage], () => configureFile())
+
 // Watch for dslParams changes
 watch(() => props.dslParams, (newParams) => {
   const monaco = (window as any).monaco
@@ -496,6 +496,7 @@ watch(() => props.dslParams, (newParams) => {
 
 // Cleanup
 onBeforeUnmount(() => {
+  releaseDslLibraries()
   diffUpdateDisposable?.dispose()
   diffUpdateDisposable = null
   disposeEditorDisposables()

@@ -53,7 +53,7 @@ describe('a frontend registration that throws partway', () => {
     const registry = createNativeFrontendTestRegistry();
     expect(() => registry.registerFixture(registration('default-pack', { features: { first: { plugin: plugin('first'), default: true, designation: 'duplicate' }, second: { designation: 'duplicate' } }, steps: [step('boom')] }))).toThrow();
 
-    expect(registry.defaultPlugin(), 'it kept the default plugin slot').toBeUndefined();
+    expect(registry.pluginBindings().size, 'it kept a provisional plugin binding').toBe(0);
   });
 });
 

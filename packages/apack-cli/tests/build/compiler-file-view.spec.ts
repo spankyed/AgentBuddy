@@ -24,6 +24,9 @@ it('serves one captured byte value through aliases and rejects changed live byte
   fs.symlinkSync(file, alias);
   const read = vi.spyOn(fs, 'readFileSync');
   const original = view.fileSystem.readFile(file);
+  view.readBytes(file)!.fill(0);
+  expect(view.fileSystem.readFile(file)).toBe(original);
+  expect(() => view.captureFile(file, Buffer.from('different producer bytes'))).toThrow('changed during capture');
   expect(view.fileSystem.readFile(alias)).toBe(original);
   const hash = view.hash();
   fs.writeFileSync(file, 'export const value = 2;');
@@ -53,20 +56,20 @@ it('owns directory and glob results, including negative membership', () => {
   const { root, view } = fixture();
   fs.mkdirSync(path.join(root, 'first'));
   const dirs = view.fileSystem.getDirectories(root);
-  const files = view.fileSystem.readDirectory(root, ['.ts']);
+  const files = view.readGlob(ts.sys.readDirectory, root, ['.ts']);
   dirs.push('injected');
   files.push(path.join(root, 'injected.ts'));
   fs.mkdirSync(path.join(root, 'second'));
   fs.writeFileSync(path.join(root, 'added.ts'), 'export {};');
   expect(view.fileSystem.getDirectories(root)).toEqual(['first']);
-  expect(view.fileSystem.readDirectory(root, ['.ts'])).toEqual([path.join(root, 'source.ts')]);
+  expect(view.readGlob(ts.sys.readDirectory, root, ['.ts'])).toEqual([path.join(root, 'source.ts')]);
   expect(() => view.assertCurrent()).toThrow('changed during discovery');
 });
 
 it('owns glob arguments as well as the returned list', () => {
   const { root, view } = fixture();
   const extensions = ['.ts'];
-  expect(view.fileSystem.readDirectory(root, extensions)).toHaveLength(1);
+  expect(view.readGlob(ts.sys.readDirectory, root, extensions)).toHaveLength(1);
   const hash = view.hash();
   extensions[0] = '.js';
   expect(view.hash()).toBe(hash);
@@ -81,6 +84,40 @@ it('owns the origin mappings used by its fingerprint', () => {
   const hash = view.hash();
   mapping.source = path.join(root, 'changed');
   expect(view.hash()).toBe(hash);
+});
+
+it('admits an explicitly captured generated file through its canonical path too', () => {
+  const { root, file } = fixture();
+  const alias = path.join(root, 'generated-alias.ts');
+  fs.symlinkSync(file, alias);
+  const view = createCompilerFileView(root, { excluded: file => file.endsWith('.ts') });
+  const bytes = fs.readFileSync(file);
+  expect(view.readBytes(file)).toBeUndefined();
+  view.captureFile(alias, bytes);
+  expect(view.readBytes(file)).toEqual(bytes);
+  expect(() => view.assertCurrent()).not.toThrow();
+});
+
+it('identifies a captured root by its source while reading and validating the captured files', () => {
+  const { root, file } = fixture();
+  const temporary = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'apack-owned-view-')));
+  roots.push(temporary);
+  const captured = path.join(temporary, 'nested/tree/pack');
+  fs.mkdirSync(captured, { recursive: true });
+  const copied = path.join(captured, 'source.ts');
+  fs.copyFileSync(file, copied);
+  const source = createCompilerFileView(root);
+  const snapshot = createCompilerFileView(captured, { paths: [{ captured, source: root }] });
+  for (const [view, directory] of [[source, root], [snapshot, captured]] as const) {
+    expect(view.fileSystem.readFile(path.join(directory, 'source.ts'))).toContain('value = 1');
+    view.readGlob(ts.sys.readDirectory, directory, ['.ts']);
+  }
+  expect(snapshot.hash()).toBe(source.hash());
+  fs.unlinkSync(file);
+  expect(() => snapshot.assertCurrent()).not.toThrow();
+  expect(snapshot.fileSystem.readFile(copied)).toContain('value = 1');
+  fs.writeFileSync(copied, 'export const value = 2;');
+  expect(() => snapshot.assertCurrent()).toThrow('changed during discovery');
 });
 
 it.each(['file', 'parent'] as const)('pins %s link reads and refuses a new physical target', kind => {
@@ -119,4 +156,16 @@ it.each(['utf8', 'utf8-bom', 'utf16le', 'utf16be'] as const)('matches TypeScript
   const next = createCompilerFileView(root);
   expect(next.fileSystem.readFile(file)).toBe(text);
   expect(next.hash()).not.toBe(hash);
+});
+
+it('makes disposal terminal for captured inputs and query identities', () => {
+  const { file, view } = fixture();
+  expect(view.readBytes(file)).toBeDefined();
+  view.dispose();
+  view.dispose();
+  expect(() => view.readBytes(file)).toThrow(/outlived/);
+  expect(() => view.readMetadata('exists', file, [])).toThrow(/outlived/);
+  expect(() => view.snapshot()).toThrow(/outlived/);
+  expect(() => view.hash()).toThrow(/outlived/);
+  expect(() => view.assertCurrent()).toThrow(/outlived/);
 });

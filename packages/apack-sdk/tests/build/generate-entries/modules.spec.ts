@@ -32,7 +32,7 @@ setupPackFixture();
 describe('a diamond dependency', () => {
   const surfacing = (id: string, owner: string) => ({ declarationRevision: _declarationRevision(manifest({ id })),
     types: { entities: { Memo: 'Memo' }, relKinds: {} },
-    facades: facade(),
+    entityDestinations: {}, facades: facade(),
     provenance: { entities: { Memo: owner } },
     manifest: manifest({ id }),
     format: PACK_SNAPSHOT_FORMAT,
@@ -75,7 +75,7 @@ describe('a diamond dependency', () => {
   it("accepts an ancestor's entity named __proto__ arriving through both sides", async () => {
     const side = (id: string) => ({ declarationRevision: _declarationRevision(manifest({ id })),
       types: { entities: { ['__proto__']: '__proto__' }, relKinds: {} },
-      facades: facade(),
+      entityDestinations: {}, facades: facade(),
         provenance: JSON.parse(JSON.stringify(_buildProvenance(
         [['deep-pack', { manifest: { data: { entities: { ['__proto__']: null } } } }] as const],
         { id, manifest: {} },
@@ -365,8 +365,8 @@ describe('generated flow helpers', () => {
 describe('the snapshot format', () => {
   // Each typed against its interface, so adding, renaming or removing a field fails the typecheck until it is listed
   const SNAPSHOT_FIELDS: Record<keyof PackSnapshot, true> = {
-    declarationRevision: true,
-    types: true, facades: true, manifest: true, help: true, format: true, sdkVersion: true, provenance: true, flowHelpers: true,
+    declarationRevision: true, dslDefinitions: true,
+    types: true, facades: true, entityDestinations: true, manifest: true, help: true, format: true, sdkVersion: true, provenance: true, flowHelpers: true,
   };
   /** The snapshot's manifest, which a dependent's codegen reads (features, services, content formats, version…) */
   const MANIFEST_FIELDS: Record<keyof PackManifest, true> = {
@@ -403,7 +403,7 @@ describe('the snapshot format', () => {
     designation: true, system: true, plugin: true, services: true, settings: true,
   };
   const REGISTRATION_SYSTEM_FIELDS: Record<keyof PackFeatureSystem, true> = { machine: true, receives: true };
-  const REGISTRATION_PLUGIN_FIELDS: Record<keyof PackFeaturePlugin, true> = { defaultVisible: true, receives: true };
+  const REGISTRATION_PLUGIN_FIELDS: Record<keyof PackFeaturePlugin, true> = { receives: true };
 
   /** Every name generated code imports from a dependency's facade, with a send to one of its plugins */
   async function facadeImports(): Promise<string[]> {
@@ -438,7 +438,7 @@ describe('the snapshot format', () => {
       facadeImports: await facadeImports(),
     }).toEqual({
       format: 1,
-      fields: ['declarationRevision', 'facades', 'flowHelpers', 'format', 'help', 'manifest', 'provenance', 'sdkVersion', 'types'],
+      fields: ['declarationRevision', 'dslDefinitions', 'entityDestinations', 'facades', 'flowHelpers', 'format', 'help', 'manifest', 'provenance', 'sdkVersion', 'types'],
       manifest: {
         fields: ['$schema', 'build', 'checks', 'content', 'data', 'dependencies', 'description', 'extensions', 'features', 'hostVersion', 'id', 'license', 'lifecycle', 'migrations', 'name', 'permissions', 'version'],
         extensions: ['appExtensions', 'artifacts', 'blocks', 'commands', 'dsl', 'help', 'services', 'settings', 'steps', 'tiptapPlugins'],
@@ -454,7 +454,7 @@ describe('the snapshot format', () => {
         fields: ['appliers', 'artifacts', 'bindSettings', 'blocks', 'commands', 'contentWriters', 'declarationRevision', 'dependencies', 'ears', 'features', 'id', 'lifecycle', 'migrations', 'name', 'repositories', 'services', 'settings', 'steps'],
         feature: ['designation', 'plugin', 'services', 'settings', 'system'],
         system: ['machine', 'receives'],
-        plugin: ['defaultVisible', 'receives'],
+        plugin: ['receives'],
       },
       provenanceKinds: ['commands', 'entities', 'plugins', 'referenceCategories', 'referenceTypes', 'relKinds', 'tiptapExtensions'],
       facadeImports: ['PackEntityShapes', 'PackFeatureSettings', 'PackGroupSettings', 'PackPluginEvents', 'PackPluginState', 'PackStepNodes', 'PackSystemEvents', 'Repositories', 'Services'],

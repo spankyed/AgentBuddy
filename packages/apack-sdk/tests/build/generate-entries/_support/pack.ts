@@ -135,7 +135,7 @@ export function withPluginState(facades: Record<string, string>, plugins: readon
 }
 
 export function dependency(fields: Record<string, unknown>, facades: Record<string, string> = facade()): PackSnapshot {
-  return { declarationRevision: _declarationRevision(manifest({ id: 'base-pack', ...fields })), types: { entities: {}, relKinds: {} }, facades, manifest: manifest({ id: 'base-pack', ...fields }), format: PACK_SNAPSHOT_FORMAT };
+  return { declarationRevision: _declarationRevision(manifest({ id: 'base-pack', ...fields })), types: { entities: {}, relKinds: {} }, entityDestinations: {}, facades, manifest: manifest({ id: 'base-pack', ...fields }), format: PACK_SNAPSHOT_FORMAT };
 }
 
 export async function generate(fields: Record<string, unknown>, deps: Record<string, PackSnapshot> = {}): Promise<Record<string, string>> {

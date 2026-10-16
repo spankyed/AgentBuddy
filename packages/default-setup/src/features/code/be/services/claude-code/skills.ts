@@ -1,68 +1,46 @@
-/**
- * `claude skill` — install/uninstall/enable/disable skills + validate + publish.
- */
+import { z } from 'zod'
+import { execOnce } from './runner.ts'
+import { ClaudeSkillStateSchema } from './host-controls.ts'
+import { query } from './query.ts'
+import type { QueryOptions } from './types.ts'
+import type { ClaudeSkillsDialog } from './host-controls.ts'
 
-import { run, runJson, scopeArg, type SubcommandOptions } from './subcommand.ts'
+export interface ClaudeSkillsOptions extends Pick<QueryOptions, 'env' | 'cliPath' | 'signal'> {
+  cwd: string
+}
 
-type Scope = 'user' | 'project' | 'local' | 'builtin'
+/** Native discovery includes directory Skills, legacy commands, effective states and locks. */
+/** Starts/closes a native process and can run configured session lifecycle hooks. */
+export async function getSkillsDialog(options: ClaudeSkillsOptions): Promise<ClaudeSkillsDialog> {
+  const allowed = new Set(['cwd', 'env', 'cliPath', 'signal'])
+  const unsupported = Object.keys(options).filter(key => !allowed.has(key))
+  if (unsupported.length) throw new Error(`unsupported Skill discovery options: ${unsupported.join(', ')}`)
+  const handle = await query({ ...options, keepStdinOpen: true, noSessionPersistence: true })
+  try {
+    return await handle.getSkillsDialog()
+  } finally {
+    await handle.close()
+  }
+}
 
-export interface SkillInfo {
+const SkillEditSchema = z.object({
+  name: z.string().min(1).max(500), state: ClaudeSkillStateSchema,
+  handles: z.object({ unqualified_name: z.string().max(500).optional(), aliases: z.array(z.string().max(500)).max(20).optional(), bare_name_reserved: z.boolean().optional() }).optional(),
+}).strict()
+export interface ClaudeSkillEdit {
   name: string
-  enabled?: boolean
-  scope?: Scope
-  path?: string
-  description?: string
-  [key: string]: unknown
+  state: string
+  handles?: { unqualified_name?: string; aliases?: string[]; bare_name_reserved?: boolean }
 }
 
-export async function list(
-  opts: { available?: boolean; scope?: Scope } & SubcommandOptions = {},
-): Promise<SkillInfo[]> {
-  const args = ['skill', 'list', '--json']
-  if (opts.available) args.push('--available')
-  if (opts.scope) args.push('--scope', opts.scope)
-  return runJson<SkillInfo[]>(args, opts)
-}
-
-export async function validate(path: string, opts?: SubcommandOptions): Promise<string> {
-  return run(['skill', 'validate', path], opts)
-}
-
-export async function install(
-  path: string,
-  opts: { scope?: Exclude<Scope, 'builtin'> } & SubcommandOptions = {},
-): Promise<string> {
-  return run(['skill', 'install', path, ...scopeArg(opts.scope)], opts)
-}
-
-export async function uninstall(
-  skill: string,
-  opts: { scope?: Exclude<Scope, 'builtin'> } & SubcommandOptions = {},
-): Promise<string> {
-  return run(['skill', 'uninstall', skill, ...scopeArg(opts.scope)], opts)
-}
-
-export async function publish(path: string, opts?: SubcommandOptions): Promise<string> {
-  return run(['skill', 'publish', path], opts)
-}
-
-export async function upgrade(
-  skill: string,
-  opts: { scope?: Exclude<Scope, 'builtin'> } & SubcommandOptions = {},
-): Promise<string> {
-  return run(['skill', 'update', skill, ...scopeArg(opts.scope)], opts)
-}
-
-export async function enable(
-  skill: string,
-  opts: { scope?: Exclude<Scope, 'builtin'> } & SubcommandOptions = {},
-): Promise<string> {
-  return run(['skill', 'enable', skill, ...scopeArg(opts.scope)], opts)
-}
-
-export async function disable(
-  skill: string,
-  opts: { scope?: Exclude<Scope, 'builtin'> } & SubcommandOptions = {},
-): Promise<string> {
-  return run(['skill', 'disable', skill, ...scopeArg(opts.scope)], opts)
+/** The native extension-facing writer owns lock checks and local override persistence. */
+export async function editSkillOverride(edit: ClaudeSkillEdit, options: ClaudeSkillsOptions): Promise<{ changed: boolean }> {
+  const valid = SkillEditSchema.parse(edit)
+  const input = JSON.stringify(valid) + '\n'
+  if (Buffer.byteLength(input) > 4096) throw new Error('Skill edit exceeds native stdin limit')
+  const { cwd, env, cliPath, signal } = options
+  const result = await execOnce(['edit-skill-overrides', '--json'], { cwd, env, cliPath, signal, input, timeoutMs: 15000 })
+  const response = z.object({ ok: z.literal(true), changed: z.boolean(), written: SkillEditSchema }).parse(JSON.parse(result.stdout))
+  if (response.written.name !== valid.name || response.written.state !== valid.state) throw new Error('Native Skill edit acknowledgement does not match the request')
+  return { changed: response.changed }
 }

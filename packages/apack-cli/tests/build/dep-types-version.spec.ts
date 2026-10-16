@@ -31,7 +31,7 @@ async function generateDepTypes(version: string): Promise<void> {
   const bundled = await bundlePackTypes(baseRoot, path.join(baseRoot, 'pack-types.d.ts'));
   if (!bundled.success) throw new Error(bundled.error);
   const snapshot: PackSnapshot = { declarationRevision: _declarationRevision(baseManifest),
-    types: { entities: {}, relKinds: {} }, facades: { [PACK_TYPES_FACADE]: bundled.content }, manifest: baseManifest, format: PACK_SNAPSHOT_FORMAT };
+    types: { entities: {}, relKinds: {} }, entityDestinations: {}, facades: { [PACK_TYPES_FACADE]: bundled.content }, manifest: baseManifest, format: PACK_SNAPSHOT_FORMAT };
   for (const [file, content] of Object.entries(await generatePackFiles(manifest, { packRoot: root, depSnapshots: new Map([['base-pack', snapshot]]) }))) {
     fs.mkdirSync(path.dirname(path.join(root, file)), { recursive: true });
     fs.writeFileSync(path.join(root, file), content);

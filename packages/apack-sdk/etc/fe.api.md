@@ -35,6 +35,12 @@ import { z } from 'zod';
 export const ALL_COLORS: readonly ["blue", "orange", "purple", "green", "red", "teal", "yellow", "pink", "gray"];
 
 // @public (undocumented)
+export type ArtifactFrontendBinding = ViewerFrontendBinding<ArtifactDeclaration, ArtifactDefinition>;
+
+// @public (undocumented)
+export type BlockFrontendBinding = ViewerFrontendBinding<BlockDeclaration, BlockDefinition>;
+
+// @public (undocumented)
 export interface BlockItem {
     // (undocumented)
     command: (e: Editor) => void;
@@ -165,18 +171,6 @@ export function defineHandlers<TContext extends MachineContext, TEvent extends E
 }>(): Handlers<TContext, TEvent, TOut>;
 
 // @public (undocumented)
-export interface DslTypeConfig {
-    // (undocumented)
-    globals: Record<string, string>;
-    // (undocumented)
-    language?: 'javascript' | 'typescript' | 'json' | 'html' | 'css' | 'plaintext';
-    // (undocumented)
-    prefix: string;
-    // (undocumented)
-    schema: string;
-}
-
-// @public (undocumented)
 export const EXTRA_BLOCK_ITEMS_KEY: InjectionKey<BlockItem[]>;
 
 // @public (undocumented)
@@ -194,11 +188,32 @@ export interface FeSettingsHandle<T> extends ReadonlyFeSettingsHandle<T> {
     set(update: SettingUpdate<T>): Promise<SettingsWriteResult>;
 }
 
+// @public
+export function getArtifactBinding(type: string): ArtifactFrontendBinding | undefined;
+
+// @public (undocumented)
+export function getArtifactDeclaration(type: string): ArtifactCatalogEntry | undefined;
+
+// @public
+export function getArtifactDeclarations(): readonly ArtifactCatalogEntry[];
+
+// @public
+export function getBlockBinding(type: string): BlockFrontendBinding | undefined;
+
+// @public (undocumented)
+export function getBlockDeclaration(type: string): BlockCatalogEntry | undefined;
+
+// @public
+export function getBlockDeclarations(): readonly BlockCatalogEntry[];
+
 // @public (undocumented)
 export function getDesignated(role: string): FeatureRef;
 
-// @public (undocumented)
-export function getDslTypes(): ReadonlyMap<string, DslTypeConfig>;
+// @public
+export function getDslDeclaration(type: string): DslCatalogEntry | undefined;
+
+// @public
+export function getDslDeclarations(): readonly DslCatalogEntry[];
 
 // @public (undocumented)
 export function getNextAvailableColor(tabGroups: TabGroup[], isPinned?: boolean): TabGroupColor;
@@ -529,6 +544,9 @@ export interface NavHistory<T> {
     stack: T[];
 }
 
+// @public
+export function onDslDeclarationsChanged(listener: () => void): () => void;
+
 // @public (undocumented)
 export function onMenuOpenChange(open: boolean): void;
 
@@ -564,7 +582,6 @@ export interface PackFERegistration {
     // (undocumented)
     blocks?: BlockDefinition[];
     declarationRevision?: string;
-    dslTypes?: Record<string, DslTypeConfig>;
     features?: Record<string, PackFEFeature>;
     id: string;
     settingsForms?: Record<string, Component>;
@@ -915,6 +932,15 @@ export function untypedOpenPlugin(ref: string, event?: PluginEvent | PluginEvent
 
 // @public
 export function useAppSettings(): Readonly<Ref<AppSettings | undefined>>;
+
+// @public
+export function useArtifactDeclarations(): ComputedRef<readonly ArtifactCatalogEntry[]>;
+
+// @public
+export function useBlockDeclarations(): ComputedRef<readonly BlockCatalogEntry[]>;
+
+// @public (undocumented)
+export function useDslDeclarations(): ComputedRef<readonly DslCatalogEntry[]>;
 
 // @public (undocumented)
 export function useFeatureSettings<T = unknown>(feature: FeatureRef): Readonly<Ref<T | undefined>>;

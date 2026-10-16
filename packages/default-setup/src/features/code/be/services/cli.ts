@@ -1,12 +1,34 @@
+import { getConfigurationSummary } from './claude-code/configuration.ts'
+import type { ClaudeConfigurationSummary } from './claude-code/configuration-summary.ts'
+import { getUsage } from './claude-code/usage.ts'
+import type { ClaudeUsage, ClaudeUsageOptions } from './claude-code/host-controls.ts'
+import { getModels } from './claude-code/models.ts'
+import type { ClaudeModelCatalog } from './claude-code/host-controls.ts'
+import { getHooksListing, editHook, type ClaudeHookEdit, type ClaudeHookEditResult } from './claude-code/hook-management.ts'
+import type { ClaudeHooksListing } from './claude-code/host-controls.ts'
+import { parseMcpElicitationForm, validateMcpElicitationForm, type ClaudeMcpForm, type ClaudeMcpFormValidation } from '../../shared/mcp-elicitation-form.ts'
+import { editPermissionRules, type ClaudePermissionEdit, type ClaudePermissionEditResult, getPermissionRules } from './claude-code/permissions.ts'
+import type { ClaudePermissionRules } from './claude-code/host-controls.ts'
+import { getMemoryDialog, setAutoMemory } from './claude-code/memory.ts'
+import type { ClaudeMemoryDialog } from './claude-code/host-controls.ts'
+import { editSkillOverride, type ClaudeSkillEdit, getSkillsDialog } from './claude-code/skills.ts'
+import type { ClaudeSkillsDialog } from './claude-code/host-controls.ts'
+import type { ClaudeConversation, ClaudeTurnConsumer } from './claude-code/conversation.ts'
+import { getSessionPlan, type ClaudeSessionPlanOptions } from './claude-code/plan.ts'
+import type { ClaudePlan } from './claude-code/host-controls.ts'
+import './thread-history.ts'
+import { renameSession, validateSessionResumeTarget, getSessionFileRewindPreview, rewindSessionFiles, type ClaudeSessionFileRewindOptions, type ClaudeSessionResumeTargetOptions } from './claude-code/session-controls.ts'
 import { featureSettings } from '#generated/settings.ts';
 
 import { GitRepository } from '#features/code/be/services/git.ts'
 import * as ghCli from '#features/code/be/services/gh-cli.ts'
 import type { GitStatusFile, GhPullRequest, GhPRComment, GhReviewThread } from '#features/code/be/types.ts'
+import { getSessionContextUsage, type ClaudeSessionContextOptions } from './claude-code/context.ts'
+import type { ClaudeFileRewind, ClaudeContextUsage } from './claude-code/host-controls.ts'
 import { claudeCode } from './claude-code/index.ts'
 import type { QueryOptions, QueryHandle, AuthStatus, SessionInfo, SessionListOptions, SessionTranscriptEntry, SessionViewOptions } from './claude-code/index.ts'
 import type { ExecOnceOptions, ExecOnceResult } from './claude-code/runner.ts'
-import { storeHandle, getHandle, clearHandle } from './claude-code/handle-store.ts'
+import { storeHandle, getHandle, clearHandle, openConversation, getConversation, isConversationBusy, closeIdleConversation, isCurrentTurn } from './claude-code/handle-store.ts'
 import { codexExec } from './codex/runner.ts'
 import type { CodexExecOptions, CodexExecResult } from './codex/runner.ts'
 import { testCli, isCliName } from '../utils/resolve-cli.ts'
@@ -36,13 +58,25 @@ export interface CliServiceType {
   }
   /**
    * Claude Code wrapper. Highlights only — the full surface (sessions, mcp,
-   * plugins, skills, …) is available via `import { claudeCode } from
-   * '#features/code/be/services/claude-code/index.ts'`.
+   * plugins, skills, …) is available from '#features/code/be/services/claude-code/index.ts'.
    */
   /** Clear-cache resolve + exec test — same path as the Settings test button. */
   testCli(provider: string): Promise<{ success: true; resolvedPath: string } | { success: false; error: string }>
   claudeCode: {
     query(opts: Omit<QueryOptions, 'cwd'> & { cwd?: string }): Promise<QueryHandle>
+    openConversation(key: string, launchKey: string, opts: Omit<QueryOptions, 'cwd' | 'prompt'> & { cwd?: string }, consumeAutonomous: ClaudeTurnConsumer): Promise<ClaudeConversation>
+    getConversation(key: string): { owner: ClaudeConversation; launchKey: string } | undefined
+    isConversationBusy(key: string): boolean
+    isCurrentTurn(key: string, handle: QueryHandle): boolean
+    closeIdleConversation(key: string): Promise<boolean>
+    /** Read a saved session's native plan without a prompt or transcript writes. */
+    getPlan(opts: Omit<ClaudeSessionPlanOptions, 'cwd'> & { cwd?: string }): Promise<ClaudePlan>
+    /** Read a saved session's native context summary without a prompt or transcript writes. */
+    getContextUsage(opts: Omit<ClaudeSessionContextOptions, 'cwd'> & { cwd?: string }): Promise<ClaudeContextUsage>
+    /** Validate native fork/resume membership without a prompt or persisted fork. */
+    validateResumeTarget(opts: Omit<ClaudeSessionResumeTargetOptions, 'cwd'> & { cwd?: string }): Promise<void>
+    getFileRewindPreview(opts: Omit<ClaudeSessionFileRewindOptions, 'cwd'> & {cwd?: string}): Promise<ClaudeFileRewind>
+    rewindFiles(opts: Omit<ClaudeSessionFileRewindOptions, 'cwd'> & {cwd?: string}): Promise<ClaudeFileRewind>
     version(): Promise<string>
     authStatus(): Promise<AuthStatus>
     listSessions(opts?: SessionListOptions): Promise<SessionInfo[]>
@@ -62,7 +96,7 @@ export interface CliServiceType {
     storeHandle(key: string, handle: QueryHandle): void
     /** Retrieve a stored query handle by key (typically threadId). */
     getHandle(key: string): QueryHandle | undefined
-    /** Clear a stored handle (call on query end to avoid leaking references). */
+    /** Release an owned turn; idle process controls remain available until close/teardown. */
     clearHandle(key: string): void
     /**
      * Low-level one-shot CLI invocation. Used by `CC: Handle Revert` to run
@@ -74,11 +108,26 @@ export interface CliServiceType {
     readSettings(): Promise<Record<string, any>>
     /** Write the CLI's user-scope settings.json (~/.claude/settings.json). */
     writeSettings(settings: Record<string, any>): Promise<void>
-    /** List skill files from user (~/.claude/skills/) and project (.claude/skills/) dirs. */
-    listSkills(): Promise<Array<{ name: string; scope: string; path: string }>>
-    /** List memory/CLAUDE.md files from known locations. */
-    listMemoryFiles(): Promise<Array<{ name: string; scope: string; path: string }>>
-    /** Rename a Claude Code session by appending a metadata entry to its JSONL file. */
+    /** Read the descriptive native model catalog. Fresh startup can run session hooks. */
+    getModels(opts?: { cwd?: string }): Promise<ClaudeModelCatalog>
+    /** Read native session/account usage; behavior aggregates are opt-in. Fresh startup runs session hooks. */
+    getUsage(opts?: { cwd?: string } & ClaudeUsageOptions): Promise<ClaudeUsage>
+    /** Safe native parsed/applied model summary. Fresh startup can run session hooks. */
+    getConfigurationSummary(opts?: { cwd?: string }): Promise<ClaudeConfigurationSummary>
+    /** Read native Skill states, provenance and author/policy locks. */
+    listSkills(opts?: { cwd?: string }): Promise<ClaudeSkillsDialog['skills']>
+    editSkill(edit: ClaudeSkillEdit, opts?: { cwd?: string }): Promise<{ changed: boolean }>
+    /** Read native instruction/memory files and availability in the selected project. */
+    getMemoryDialog(opts?: { cwd?: string }): Promise<ClaudeMemoryDialog>
+    parseMcpElicitationForm(schema: unknown, propertyOrder?: string[]): ClaudeMcpForm
+    validateMcpElicitationForm(form: ClaudeMcpForm, content: unknown): ClaudeMcpFormValidation
+    editHook(edit: ClaudeHookEdit, opts?: { cwd?: string }): Promise<ClaudeHookEditResult>
+    getHooksListing(opts?: { cwd?: string }): Promise<ClaudeHooksListing>
+    getPermissionRules(opts?: { cwd?: string }): Promise<ClaudePermissionRules>
+    editPermissionRules(edit: ClaudePermissionEdit, opts?: { cwd?: string }): Promise<ClaudePermissionEditResult>
+    /** Persist the user auto-memory preference through the native writer. */
+    setAutoMemory(enabled: boolean, opts?: { cwd?: string }): Promise<void>
+    /** Rename a Claude Code session through the native process. */
     renameSession(id: string, title: string, opts?: { cwd?: string }): Promise<void>
     /** Check whether a session JSONL file exists under the given (or default) project directory. */
     sessionExists(id: string, opts?: { cwd?: string }): Promise<boolean>
@@ -177,6 +226,25 @@ function createCliService(): CliServiceType {
         // `replayUserMessages: false` explicitly (spread order honors it).
         return claudeCode.query({ replayUserMessages: true, ...opts, cwd })
       },
+      openConversation(key, launchKey, opts, consumeAutonomous) {
+        return openConversation(key, launchKey, () => claudeCode.query({ ...opts, cwd: opts.cwd ?? resolveCwd(),
+          prompt: undefined, keepStdinOpen: true, surfaceControlRequests: true, replayUserMessages: true }), consumeAutonomous)
+      },
+      getConversation,
+      isConversationBusy,
+      isCurrentTurn,
+      closeIdleConversation,
+      getPlan(opts) {
+        return getSessionPlan({ ...opts, cwd: opts.cwd ?? resolveCwd() })
+      },
+      getContextUsage(opts) {
+        return getSessionContextUsage({ ...opts, cwd: opts.cwd ?? resolveCwd() })
+      },
+      validateResumeTarget(opts) {
+        return validateSessionResumeTarget({ ...opts, cwd: opts.cwd ?? resolveCwd() })
+      },
+      getFileRewindPreview(opts) { return getSessionFileRewindPreview({...opts, cwd: opts.cwd ?? resolveCwd()}) },
+      rewindFiles(opts) { return rewindSessionFiles({...opts, cwd: opts.cwd ?? resolveCwd()}) },
       version() {
         return claudeCode.system.version()
       },
@@ -209,12 +277,20 @@ function createCliService(): CliServiceType {
       },
       async readSettings() {
         const settingsPath = path.join(configDir(), 'settings.json')
+        let raw: string
         try {
-          const raw = await fs.promises.readFile(settingsPath, 'utf-8')
-          return JSON.parse(raw)
-        } catch {
-          return {}
+          raw = await fs.promises.readFile(settingsPath, 'utf-8')
+        } catch (error) {
+          if ((error as NodeJS.ErrnoException).code === 'ENOENT') return {}
+          throw error
         }
+        let settings: unknown
+        try { settings = JSON.parse(raw) }
+        catch { throw new Error('Claude Code settings.json is not valid JSON; repair it before editing.') }
+        if (settings === null || typeof settings !== 'object' || Array.isArray(settings)) {
+          throw new Error('Claude Code settings.json must contain an object; repair it before editing.')
+        }
+        return settings as Record<string, any>
       },
       async writeSettings(settings) {
         const settingsPath = path.join(configDir(), 'settings.json')
@@ -227,66 +303,44 @@ function createCliService(): CliServiceType {
           throw err
         }
       },
-      async listSkills() {
-        const results: Array<{ name: string; scope: string; path: string }> = []
-        const dirs = [
-          { dir: path.join(configDir(), 'skills'), scope: 'user' },
-          { dir: path.join(resolveCwd(), '.claude', 'skills'), scope: 'project' },
-        ]
-        for (const { dir, scope } of dirs) {
-          try {
-            const entries = await fs.promises.readdir(dir, { withFileTypes: true })
-            for (const entry of entries) {
-              if (entry.isFile() && entry.name.endsWith('.md')) {
-                results.push({
-                  name: entry.name.replace(/\.md$/, ''),
-                  scope,
-                  path: path.join(dir, entry.name),
-                })
-              }
-            }
-          } catch { /* dir doesn't exist */ }
-        }
-        return results
+      editSkill(edit, opts) {
+        return editSkillOverride(edit, { cwd: opts?.cwd ?? resolveCwd() })
       },
-      async listMemoryFiles() {
-        const cwd = resolveCwd()
-        const results: Array<{ name: string; scope: string; path: string }> = []
-        const candidates = [
-          { filePath: path.join(os.homedir(), '.claude', 'CLAUDE.md'), name: 'CLAUDE.md', scope: 'user' },
-          { filePath: path.join(cwd, 'CLAUDE.md'), name: 'CLAUDE.md', scope: 'project' },
-          { filePath: path.join(cwd, 'CLAUDE.local.md'), name: 'CLAUDE.local.md', scope: 'local' },
-        ]
-        for (const { filePath, name, scope } of candidates) {
-          try {
-            await fs.promises.access(filePath)
-            results.push({ name, scope, path: filePath })
-          } catch { /* doesn't exist */ }
-        }
-        // Scan rules directories
-        const rulesDirs = [
-          { dir: path.join(os.homedir(), '.claude', 'rules'), scope: 'user' },
-          { dir: path.join(cwd, '.claude', 'rules'), scope: 'project' },
-        ]
-        for (const { dir, scope } of rulesDirs) {
-          try {
-            const entries = await fs.promises.readdir(dir, { withFileTypes: true })
-            for (const entry of entries) {
-              if (entry.isFile() && entry.name.endsWith('.md')) {
-                results.push({
-                  name: `rules/${entry.name}`,
-                  scope,
-                  path: path.join(dir, entry.name),
-                })
-              }
-            }
-          } catch { /* dir doesn't exist */ }
-        }
-        return results
+      async listSkills(opts) {
+        return (await getSkillsDialog({ cwd: opts?.cwd ?? resolveCwd() })).skills
+      },
+      setAutoMemory(enabled, opts) {
+        return setAutoMemory(enabled, { cwd: opts?.cwd ?? resolveCwd() })
+      },
+      editPermissionRules(edit, opts) {
+        return editPermissionRules(edit, { cwd: opts?.cwd ?? resolveCwd() })
+      },
+      parseMcpElicitationForm,
+      validateMcpElicitationForm,
+      editHook(edit, opts) {
+        return editHook(edit, { cwd: opts?.cwd ?? resolveCwd() })
+      },
+      getHooksListing(opts) {
+        return getHooksListing({ cwd: opts?.cwd ?? resolveCwd() })
+      },
+      getPermissionRules(opts) {
+        return getPermissionRules({ cwd: opts?.cwd ?? resolveCwd() })
+      },
+      getConfigurationSummary(opts) {
+        return getConfigurationSummary({ cwd: opts?.cwd ?? resolveCwd() })
+      },
+      getUsage(opts) {
+        return getUsage({ cwd: opts?.cwd ?? resolveCwd(), includeBehaviors: opts?.includeBehaviors })
+      },
+      getModels(opts) {
+        return getModels({ cwd: opts?.cwd ?? resolveCwd() })
+      },
+      getMemoryDialog(opts) {
+        return getMemoryDialog({ cwd: opts?.cwd ?? resolveCwd() })
       },
       async renameSession(id, title, opts) {
         const cwd = opts?.cwd ?? resolveCwd()
-        await claudeCode.sessions._experimental_rename(id, title, { cwd })
+        await renameSession({ sessionId: id, title, cwd })
       },
       async sessionExists(id, opts) {
         const cwd = opts?.cwd ?? resolveCwd()

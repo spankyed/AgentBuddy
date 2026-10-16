@@ -2,6 +2,12 @@ import { z } from 'zod';
 import { PACK_ID_PATTERN } from '../ids/refs.ts';
 import type { ContentIndex } from './content-compiler.ts';
 
+const target = z.object({ key: z.string().min(1), item: z.string() }).strict();
+const reference = z.discriminatedUnion('kind', [
+  z.object({ item: z.string(), path: z.string().min(1), kind: z.literal('static'), target }).strict(),
+  z.object({ item: z.string(), path: z.string().min(1), kind: z.literal('dynamic'), target: target.omit({ item: true }) }).strict(),
+]);
+
 const ContentIndexSchema: z.ZodType<ContentIndex> = z.object({
   version: z.literal(1).describe('The compiled content index format.'),
   packId: z.string().regex(PACK_ID_PATTERN).describe('The pack that compiled this content.'),
@@ -10,6 +16,7 @@ const ContentIndexSchema: z.ZodType<ContentIndex> = z.object({
     written: z.boolean().describe('Whether this entry is applied to the database.'),
     identity: z.array(z.string()).optional(),
     count: z.number().int().nonnegative().describe('The compiler-reported item count.'),
+    references: z.array(reference).describe('Static-only reference analysis; omission means unavailable, an empty array means no known references.').optional(),
     items: z.array(z.object({
       key: z.string(), description: z.string().optional(), childCount: z.number().int().nonnegative().optional(),
     }).strict()).describe('Compiled item identities and descriptions, independent of registered providers.'),
@@ -19,6 +26,11 @@ const ContentIndexSchema: z.ZodType<ContentIndex> = z.object({
   for (const [position, entry] of index.entries.entries()) {
     if (names.has(entry.key)) context.addIssue({ code: 'custom', path: ['entries', position, 'key'], message: `Content key "${entry.key}" is declared twice in the index` });
     names.add(entry.key);
+    const items = new Set(entry.items.map(item => item.key));
+    for (const [index, reference] of (entry.references ?? []).entries()) {
+      if (!items.has(reference.item)) context.addIssue({ code: 'custom', path: ['entries', position, 'references', index, 'item'],
+        message: `Reference source "${reference.item}" is not an indexed item of "${entry.key}"` });
+    }
   }
 });
 

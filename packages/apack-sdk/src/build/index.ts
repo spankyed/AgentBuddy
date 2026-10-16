@@ -2,7 +2,7 @@ export { _parseModuleReference } from '../framework/module-reference.ts';
 export { findSourceModule, SCRIPT_MODULE_EXTENSIONS, TYPE_MODULE_EXTENSIONS } from './source-module.ts';
 export { compileHelp } from './help.ts';
 // Types
-export type { PackConfig, PackBuildDefinitions, CompilePackOptions, CompilePackResult } from './types.ts';
+export type { PackConfig, PackBuildDefinitions, CompilePackOptions, CompilePackResult, PackModuleLoader } from './types.ts';
 
 // Content compiler framework
 export { _clearCompiledContent, compilePack, CONTENT_INDEX_FILE } from './content-compiler.ts';
@@ -15,6 +15,7 @@ export {
 export { resolveContentSources, type ResolvedContentSource, type ContentDependency, type ContentCompilerModuleRef } from './content/resolve.ts';
 export type { SpecialtyCompiler, SpecialtyCompileContext, CompilationContext, ValidationError, ValidationResult, ContentIndex, ContentIndexEntry } from './content-compiler.ts';
 export { parseContentIndex } from './content-index.ts';
+export { inspectContentReferences, findContentDependents, type ContentReference, type ContentItemIdentity, type ContentReferenceInspection } from './content-references.ts';
 
 // Compile utilities
 export { compileSourceDir, bundleFile, contentHash } from './compile-utils.ts';
@@ -58,7 +59,7 @@ export type { ActionMeta, PromptMeta } from './content-types.ts';
 
 // Entry codegen
 export {
-  generatePackFiles, emitEARS, mergeRegistries, entitiesWithoutShapes, PACK_TYPES_FACADE, STEPS_BUILD_MODULE,
+  generatePackFiles, GENERATED_ENTITY_DESTINATIONS_FILE, emitEARS, mergeRegistries, entitiesWithoutShapes, PACK_TYPES_FACADE, STEPS_BUILD_MODULE,
   _depTypesFile, _depTypesVersion,
 } from './generate-entries.ts';
 export type { GenerateEntriesOptions } from './generate-entries.ts';

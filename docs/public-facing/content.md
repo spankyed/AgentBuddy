@@ -729,7 +729,7 @@ A slash command is a `/name` the chat composer recognizes. The composer's list i
 1. **The manifest**: `"commands": { "standup": { "placeholder": "Topic" } }` under `extensions` in `apack.json`, keyed by the name. They come with the pack: installing or enabling it adds them, disabling or uninstalling it takes them away. A name another registered pack declares is refused, and with it the whole pack, so `apack pack build` fails for a name one of your dependencies declares. Names are `^[a-z][a-z0-9-]*$` and unique across the app.
 2. **The library**: every document in the `internal/commands` folder, each with a field section of `**name**: placeholder` lines. Users edit those from the Library, so a pack content there what it wants them to change; default-setup content `Claude Code commands` and `Codex commands` from `src/content/library/internal/commands/`, and declares its own `pr2md` and `instructions` in the manifest.
 
-Declared commands come first, in the order their packs were first registered (a pack rebuilt or updated keeps its place); a document repeating a declared name is ignored, and a name two documents define keeps the first. The threads system sends the list whenever it is asked to publish, and only when it has changed since — so a pack changing while the app runs (installed, updated, enabled, disabled, uninstalled or rebuilt, or its content imported from Settings; the bus's `PACK_CHANGED`) or a library change alters it (a document in the folder, or the folder, created, edited, moved, renamed or deleted).
+Declared commands come first, in stable catalog admission order (a pack rebuilt or updated keeps its place). Inspection lists commands without activating their packs; the composer offers only enabled declarations matching accepted active runtimes. In the composer, a document repeating a declared name is ignored, and a name two documents define keeps the first. The threads system refreshes on catalog changes and when it is asked to publish, sending only changed lists. A pack changing while the app runs (installed, updated, enabled, disabled, uninstalled or rebuilt, or its content imported from Settings; the bus's `PACK_CHANGED`) or a library change alters it (a document in the folder, or the folder, created, edited, moved, renamed or deleted).
 
 Uninstalling a pack removes its declared commands but not the documents it wrote: they're the user's library now, so their commands stay listed, with no flow handling them, until the user deletes them.
 
@@ -740,3 +740,21 @@ Sending `/name args` fires a `user.command` event (`$.event.data.payload.command
 3. List it: add it to `extensions.commands` in `apack.json`, or add `**name**: placeholder` to a document in `internal/commands` (in default-setup, one of the files under `src/content/library/internal/commands/`).
 
 A command listed without a handler does nothing, and a handled command that isn't listed is sent as a plain message.
+
+### Inspecting compiled references
+
+`apack pack info` reads verified compiled content without activating a pack or importing authored
+modules. Its JSON output includes each collection's `references` when its compiler supports analysis.
+Flow analysis uses step declarations: `extensions.steps.<type>.dsl.references` maps a DSL field to a
+compiled content key, for example `"references": { "prompt": "prompts" }`. This also works for custom
+steps and nested branches exposed by their build facet.
+
+The index records literal targets and marks computed targets as dynamic. Human-readable inspection
+reports whether a literal target is indexed. A target missing from this index may still exist in user
+data or be created by an applier. Analysis is static and non-exhaustive; an omitted `references` field
+means analysis is unavailable, while an empty list means no known references were found. Action and
+prompt JavaScript bodies are not analyzed yet.
+
+Build tooling can use `inspectContentReferences` and `findContentDependents` from `@apackdev/sdk/build`
+for missing-target and rename/removal review. These operate on index data only and never execute a
+pack. Known incoming references do not rule out additional computed or runtime dependencies.

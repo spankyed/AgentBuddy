@@ -1,5 +1,10 @@
+import { dslCatalogEntries } from './catalog-dsl.ts';
 import { captureData } from './captured-data.ts';
+import { assertEntityDestinationClaims, pluginCatalogEntries } from './catalog-plugins.ts';
 import { stepCatalogEntries } from './catalog-steps.ts';
+import { commandCatalogEntries } from './catalog-commands.ts';
+import { artifactCatalogEntries } from './catalog-artifacts.ts';
+import { blockCatalogEntries } from './catalog-blocks.ts';
 import { referenceCatalogEntries } from './catalog-references.ts';
 import { frontendCatalogEntries } from './catalog-frontend.ts';
 import type { AppPackSource, AppPackSourceProblem, AppPackSources } from './app-sources.ts';
@@ -46,8 +51,11 @@ export interface PluginCatalogEntry {
   readonly packId: string;
   readonly origin: 'native' | 'installed' | 'source';
   readonly declaration: CatalogData<PluginDeclaration>;
+  /** Compiled claims; absent on authoring-source previews that have no built contracts. */
+  readonly opens?: readonly string[];
   readonly declarationRevision?: string;
   readonly enabled?: boolean;
+  readonly buildRevision?: string;
 }
 
 export type { ReferenceCatalogEntry } from '@apackdev/sdk/framework';
@@ -90,6 +98,7 @@ export function createContributionCatalog(appSettings: SettingsDefinition) {
   let current: PackCatalogSnapshot = immutable({ revision: 0, appSettings: app, packs: [], problems: [], native: [], sourcePacks: [], appPackSources: [], appPackSourceProblems: [] });
   let byId = new Map<string, PackCatalogEntry>();
   const listeners = new Set<() => void>();
+  const commandOrder = new Map<string, number>();
   const emptySettings: CatalogData<Record<string, SettingsDefinition>> = Object.freeze({});
   let settings: SettingsCatalog = immutable({ revision: 0, app, packs: {}, features: {}, dependencies: {} });
   let help: CatalogData<HelpCatalog> = immutable({ articles: [], problems: [] });
@@ -129,6 +138,7 @@ export function createContributionCatalog(appSettings: SettingsDefinition) {
       }
     }
     const next = immutable({ revision: current.revision + 1, appSettings: app, packs, problems: catalogProblems, native, sourcePacks, appPackSources, appPackSourceProblems });
+    assertEntityDestinationClaims(next);
     // Diagnostics and source offers leave accepted settings definitions and their identity intact.
     const projection = declarationsChanged ? immutable({ revision: next.revision, app, packs: groups, features, dependencies }) : settings;
     const helpOwners = [
@@ -151,6 +161,9 @@ export function createContributionCatalog(appSettings: SettingsDefinition) {
     const helpProjection = immutable({ articles, problems });
     byId = new Map(next.packs.map(entry => [entry.snapshot.manifest.id, entry]));
     current = next;
+    for (const command of commandCatalogEntries(next)) {
+      if (!commandOrder.has(command.packId)) commandOrder.set(command.packId, commandOrder.size);
+    }
     settings = projection;
     help = helpProjection;
     for (const listener of listeners) {
@@ -161,22 +174,14 @@ export function createContributionCatalog(appSettings: SettingsDefinition) {
 
   return {
     getSnapshot: (): PackCatalogSnapshot => current,
-    plugins(): readonly PluginCatalogEntry[] {
-      const collect = (packId: string, features: Record<string, { plugin?: CatalogData<PluginDeclaration> }> | undefined,
-        origin: PluginCatalogEntry['origin'], identity: Pick<PluginCatalogEntry, 'enabled' | 'declarationRevision'> = {}) =>
-        Object.entries(features ?? {}).flatMap(([id, feature]) => feature.plugin
-          ? [Object.freeze({ featureRef: resolveName(id, packId), packId, origin, declaration: feature.plugin, ...identity })] : []);
-      return Object.freeze([
-        ...current.native.flatMap(pack => collect(pack.id, pack.features, 'native', { enabled: true })),
-        ...current.packs.flatMap(pack => collect(pack.snapshot.manifest.id, pack.snapshot.manifest.features, 'installed',
-          { enabled: pack.enabled, declarationRevision: pack.snapshot.declarationRevision })),
-        ...current.sourcePacks.flatMap(pack => collect(pack.manifest.id, pack.manifest.features, 'source',
-          { declarationRevision: pack.declarationRevision })),
-      ]);
-    },
+    plugins: () => pluginCatalogEntries(current),
     references: () => referenceCatalogEntries(current),
     frontend: () => frontendCatalogEntries(current),
     steps: () => stepCatalogEntries(current),
+    artifacts: () => artifactCatalogEntries(current),
+    blocks: () => blockCatalogEntries(current),
+    dsl: () => dslCatalogEntries(current),
+    commands: () => Object.freeze([...commandCatalogEntries(current)].sort((a, b) => commandOrder.get(a.packId)! - commandOrder.get(b.packId)!)),
     get: (packId: string): PackCatalogEntry | undefined => byId.get(packId),
     settings: (): SettingsCatalog => settings,
     help: (): HelpCatalog => structuredClone(help) as HelpCatalog,
@@ -219,6 +224,19 @@ export function createContributionCatalog(appSettings: SettingsDefinition) {
 
     featureSettings: (ref: FeatureRef): CatalogData<SettingsDefinition> | undefined =>
       hasOwn(settings.features, ref) ? settings.features[ref] : undefined,
+
+    /** Check a verified executable candidate before importing it or replacing incumbent bindings. */
+    assertPackDestinations(candidate: Pick<PackCatalogEntry, 'dir' | 'snapshot'>): void {
+      const packs = current.packs.filter(pack => pack.snapshot.manifest.id !== candidate.snapshot.manifest.id);
+      assertEntityDestinationClaims({ ...current, packs: [...packs, { ...candidate, enabled: true }] });
+    },
+
+    /** Check enablement before persisting it or constructing an executable provider. */
+    assertPackEnabled(packId: string, enabled: boolean): void {
+      if (!byId.has(packId)) throw new Error(`No accepted installed declarations for pack "${packId}"`);
+      assertEntityDestinationClaims({ ...current, packs: current.packs.map(pack =>
+        pack.snapshot.manifest.id === packId ? { ...pack, enabled } : pack) });
+    },
 
     /** Validate the whole candidate before publication; a refusal leaves the previous revision intact. */
     replace(sources: readonly PackCatalogSource[], problems: readonly PackCatalogProblem[] = []): void {

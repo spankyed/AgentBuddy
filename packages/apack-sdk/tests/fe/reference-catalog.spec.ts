@@ -14,7 +14,7 @@ describe('frontend reference declaration access', () => {
         types: { note: { category: 'notes', icon: 'NotebookText', svgElements: [], navigate: 'never-execute.ts#open' } },
         categories: { notes: { label: 'Cold Notes', icon: 'NotebookText', useItems: 'never-execute.ts#useItems' } },
       } }];
-    const catalog: PackCatalogView = { status: () => 'ready', problem: () => undefined, frontend: () => [], steps: () => [], references: () => declarations, subscribe: () => () => {} };
+    const catalog: PackCatalogView = { status: () => 'ready', problem: () => undefined, frontend: () => [], artifacts: () => [], blocks: () => [], dsl: () => [], steps: () => [], references: () => declarations, subscribe: () => () => {} };
     const forbidden = new Proxy({}, { get() { throw new Error('Do not activate or read executable registrations'); } });
     bindFeHost({ catalog, packs: forbidden as never, application: forbidden as never, client: forbidden as never, secrets: forbidden as never, settings: forbidden as never });
     expect(getReferenceDeclarations()).toBe(declarations);
@@ -25,7 +25,7 @@ describe('frontend reference declaration access', () => {
 
   it('subscribes to window declaration changes and exposes unavailable status independently of retained data', () => {
     const listeners = new Set<() => void>();
-    const catalog: PackCatalogView = { status: () => 'disconnected', problem: () => undefined, frontend: () => [], steps: () => [], references: () => [],
+    const catalog: PackCatalogView = { status: () => 'disconnected', problem: () => undefined, frontend: () => [], artifacts: () => [], blocks: () => [], dsl: () => [], steps: () => [], references: () => [],
       subscribe(listener) { listeners.add(listener); return () => { listeners.delete(listener); }; } };
     bindFeHost({ catalog, packs: {} as never, application: {} as never, client: {} as never, secrets: {} as never, settings: {} as never });
     const changed = vi.fn(); const stop = onReferenceDeclarationsChanged(changed);

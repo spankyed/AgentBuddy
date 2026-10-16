@@ -5,8 +5,14 @@ import { CONTENT_COMPILERS_FILE, STEPS_BUILD_MODULE } from '@apackdev/sdk/build'
 import { checkContentRuntimeLoads } from './content-runtime-check';
 import type { RecordReads } from './build-reads';
 import { errorMessage } from '@apackdev/sdk/utils/pure';
+import { esbuildTsconfig, readPackCompilerConfiguration } from './compiler-configuration.ts';
+import type { CompilerReadTree } from './compiler-read-tree.ts';
+import { compilerModuleReferences } from './compiler-module-references.ts';
+import type { CompilationInputs } from './compilation-inputs.ts';
 
 export interface BundleRuntimeOptions {
+  /** A build reuses its captured config; standalone bundler calls resolve their own. */
+  compilation?: CompilationInputs;
   /** Minify for release bundles; dev builds keep readable output with source maps. */
   release?: boolean;
   /**
@@ -39,8 +45,28 @@ async function bundlePackSource<T extends EsbuildOptions>(
   overrides: T,
 ): Promise<import('esbuild').BuildResult<T>> {
   const esbuild = await import('esbuild');
-  const tsconfigPath = path.join(packDir, 'tsconfig.json');
+  const configuration = options.compilation ? options.compilation.configuration : readPackCompilerConfiguration(packDir);
+  const compilation = options.compilation;
+  const tree = compilation?.readTree();
+  const workingDir = tree?.path(packDir) ?? process.cwd();
+  let stdin = overrides.stdin;
+  if (stdin && tree && compilation) {
+    const resolveDir = stdin.resolveDir ?? packDir;
+    const contents = typeof stdin.contents === 'string' ? stdin.contents : Buffer.from(stdin.contents ?? []).toString('utf8');
+    stdin = { ...stdin, contents: compilerModuleReferences(
+      tree.path(path.resolve(resolveDir, stdin.sourcefile ?? 'stdin.ts')), contents, tree.path,
+      specifier => compilation.prepareNative(specifier, resolveDir)) };
+  }
+  if (options.compilation) {
+    const entries = overrides.entryPoints;
+    const files = Array.isArray(entries) ? entries.map(entry => typeof entry === 'string' ? entry : entry.in) : Object.values(entries ?? {});
+    for (const file of files) options.compilation.prepareNative(file, packDir);
+    if (stdin) options.compilation.prepareNativeSource(
+      path.resolve(stdin.resolveDir ?? packDir, stdin.sourcefile ?? 'stdin.ts'),
+      Buffer.from(stdin.contents ?? ''));
+  }
   const plugins: import('esbuild').Plugin[] = [rejectHostImportsPlugin(), stubFrontendAssetsPlugin()];
+  if (options.compilation) plugins.push(capturedSourcesPlugin(options.compilation, workingDir));
 
   const merged: EsbuildOptions = {
     bundle: true,
@@ -48,7 +74,7 @@ async function bundlePackSource<T extends EsbuildOptions>(
     platform: 'node',
     target: 'node20',
     external: [...HOST_EXTERNALS, ...HOST_RESOLVED_BINARIES],
-    tsconfig: fs.existsSync(tsconfigPath) ? tsconfigPath : undefined,
+    tsconfigRaw: configuration && esbuildTsconfig(configuration, tree?.path),
     plugins,
     minify: options.release ?? false,
     logLevel: 'silent',
@@ -56,14 +82,77 @@ async function bundlePackSource<T extends EsbuildOptions>(
     // caller asking for the record never has to remember the flag, and one that is not pays nothing
     ...(options.recordReads && { metafile: true }),
     ...overrides,
+    ...(tree && {
+      absWorkingDir: workingDir,
+      outfile: overrides.outfile && path.resolve(overrides.outfile),
+      outdir: overrides.outdir && path.resolve(overrides.outdir),
+      entryPoints: Array.isArray(overrides.entryPoints)
+        ? overrides.entryPoints.map(entry => typeof entry === 'string' ? tree.path(entry) : { ...entry, in: tree.path(entry.in) })
+        : overrides.entryPoints && Object.fromEntries(Object.entries(overrides.entryPoints).map(([name, file]) => [name, tree.path(file)])),
+      stdin: stdin && { ...stdin, resolveDir: tree.path(stdin.resolveDir ?? packDir) },
+      write: false,
+    }),
   };
-  const result = await esbuild.build(merged);
+  let result: import('esbuild').BuildResult;
+  try { result = await esbuild.build(merged); }
+  catch (error) { throw new Error(tree?.diagnostic(errorMessage(error)) ?? errorMessage(error), { cause: error }); }
+  if (tree && overrides.write !== false) {
+    for (const file of result.outputFiles ?? []) {
+      fs.mkdirSync(path.dirname(file.path), { recursive: true });
+      fs.writeFileSync(file.path, file.path.endsWith('.map') ? sourceMapOrigins(file.text, file.path, tree) : file.contents);
+    }
+  }
   if (options.recordReads && result.metafile) {
-    options.recordReads({ bundler: 'esbuild', version: esbuild.version, files: Object.keys(result.metafile.inputs) });
+    options.recordReads({ bundler: 'esbuild', version: esbuild.version, files: Object.keys(result.metafile.inputs).map(file => tree ? path.resolve(workingDir, file) : file) });
   }
   // esbuild keys `outputFiles`/`metafile` off the literal options it was called with; merging hides
   // the caller's `write: false` / `metafile: true` from it, so restate them on the result.
   return result as unknown as import('esbuild').BuildResult<T>;
+}
+
+/** Populate owned lookup inputs before native resolution; module bodies use the same captured bytes. */
+function capturedSourcesPlugin(compilation: CompilationInputs, workingDir: string): import('esbuild').Plugin {
+  const loaders: Record<string, import('esbuild').Loader> = {
+    '.ts': 'ts', '.mts': 'ts', '.cts': 'ts', '.tsx': 'tsx',
+    '.js': 'js', '.mjs': 'js', '.cjs': 'js', '.jsx': 'jsx', '.json': 'json', '.txt': 'text', '.css': 'css', '': 'js',
+  };
+  return { name: 'apack-captured-sources', setup(build) {
+    build.onResolve({ filter: /.*/ }, args => {
+      if (args.namespace && args.namespace !== 'file') return;
+      const source = path.isAbsolute(args.path) ? compilation.sourcePath(args.path) : args.path;
+      compilation.prepareNative(source, compilation.sourcePath(args.resolveDir || workingDir));
+      return undefined;
+    });
+    build.onLoad({ filter: /.*/, namespace: 'file' }, args => {
+      const loader = loaders[path.extname(args.path)];
+      if (!loader) return;
+      const contents = compilation.readFile(compilation.sourcePath(args.path));
+      if (contents === undefined) throw new Error(`Missing captured compiler input: ${args.path}`);
+      let projected: string | Buffer = contents;
+      if (['js', 'jsx', 'ts', 'tsx'].includes(loader)) {
+        compilation.prepareNativeSource(args.path, contents);
+        projected = compilerModuleReferences(args.path, contents.toString('utf8'), compilation.readTree().path,
+          specifier => compilation.prepareNative(specifier, compilation.sourcePath(path.dirname(args.path))));
+      }
+      return { contents: projected, loader, resolveDir: path.dirname(args.path) };
+    });
+  } };
+}
+
+/** Only source-map metadata is projected; authored source text and its embedded values stay intact. */
+function sourceMapOrigins(text: string, file: string, tree: CompilerReadTree): string {
+  const map = JSON.parse(text);
+  map.sources = map.sources.map((source: string) => {
+    if (/^[a-z][\w+.-]*:/i.test(source) && !path.isAbsolute(source)) return source;
+    const readPath = path.resolve(path.dirname(file), map.sourceRoot ?? '', source);
+    const original = tree.sourcePath(readPath);
+    return original === readPath ? source : path.relative(path.dirname(file), original).split(path.sep).join('/');
+  });
+  return JSON.stringify(map);
+}
+
+function sourceExists(file: string, compilation?: CompilationInputs): boolean {
+  return compilation ? compilation.readFile(file) !== undefined : fs.existsSync(file);
 }
 
 function bundleError(err: unknown): { success: false; error: string } {
@@ -83,7 +172,7 @@ export async function bundlePackRuntime(
   options: BundleRuntimeOptions = {},
 ): Promise<{ success: boolean; error?: string }> {
   const entryPath = path.join(packDir, 'src', '__generated__', 'pack-entry.ts');
-  if (!fs.existsSync(entryPath)) {
+  if (!sourceExists(entryPath, options.compilation)) {
     return { success: false, error: 'No src/__generated__/pack-entry.ts. Run "apack pack generate-entries" first.' };
   }
 
@@ -115,7 +204,7 @@ export async function bundlePackStepBuild(
   options: BundleRuntimeOptions = {},
 ): Promise<{ success: boolean; error?: string }> {
   const entryPath = path.resolve(packDir, STEPS_BUILD_MODULE);
-  if (!fs.existsSync(entryPath)) {
+  if (!sourceExists(entryPath, options.compilation)) {
     return { success: false, error: `No ${STEPS_BUILD_MODULE}. Run "apack pack generate-entries" first.` };
   }
   try {
@@ -141,7 +230,7 @@ export async function bundlePackContentCompilers(
   options: BundleRuntimeOptions = {},
 ): Promise<{ success: boolean; error?: string }> {
   for (const [name, modulePath] of Object.entries(compilers)) {
-    if (!fs.existsSync(path.resolve(packDir, modulePath))) {
+    if (!sourceExists(path.resolve(packDir, modulePath), options.compilation)) {
       return { success: false, error: `content format "${name}": compiler module not found: ${modulePath}` };
     }
   }
@@ -170,7 +259,7 @@ export async function bundlePackFlowHelpersModule(
   options: BundleRuntimeOptions = {},
 ): Promise<{ success: true; module: string; exports: string[] } | { success: false; error: string }> {
   const entryPath = path.join(packDir, 'src', '__generated__', 'flow-helpers.ts');
-  if (!fs.existsSync(entryPath)) {
+  if (!sourceExists(entryPath, options.compilation)) {
     return { success: false, error: 'No src/__generated__/flow-helpers.ts. Run "apack pack generate-entries" first.' };
   }
   try {
@@ -203,7 +292,7 @@ export async function bundlePackContentRuntime(
   options: BundleRuntimeOptions = {},
 ): Promise<{ success: boolean; error?: string }> {
   const entryPath = path.join(packDir, 'src', '__generated__', 'content-runtime.ts');
-  if (!fs.existsSync(entryPath)) {
+  if (!sourceExists(entryPath, options.compilation)) {
     return { success: false, error: 'No src/__generated__/content-runtime.ts. Run "apack pack generate-entries" first.' };
   }
   const outfile = path.join(outputDir, 'build', CONTENT_RUNTIME_FILE);

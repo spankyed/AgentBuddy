@@ -48,7 +48,7 @@ it('tells the user about a plugin no pack provides, once loading has settled', a
 
   expect(shell.opened()).toBe('e2e-fixture/memos');
   // One function writes every refusal the shell makes, so a pack sees the same sentence whichever branch refused
-  expect(shell.notices).toEqual([{ title: "Couldn't open default-setup/logs", detail: 'No plugin is registered at "default-setup/logs".' }]);
+  expect(shell.notices).toEqual([{ title: "Couldn't open default-setup/logs", detail: 'No plugin is declared at "default-setup/logs".' }]);
 });
 
 it("reaches its system and hears back over the harness's bus", async () => {

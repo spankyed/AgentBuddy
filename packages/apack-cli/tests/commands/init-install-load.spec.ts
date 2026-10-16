@@ -6,7 +6,7 @@ import * as os from 'node:os';
 import * as path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { startTestRuntime } from '@apackdev/sdk/testing';
-import { installPackFromLocal } from '@apackdev/host/packs';
+import { createPackRegistry, installPackFromLocal } from '@apackdev/host/packs';
 import { loadExternalPacks } from '@apackdev/host/packs/runtime';
 import { init } from '../../src/commands/init';
 import { PACK_SNAPSHOT_FORMAT } from '@apackdev/sdk/build';
@@ -44,7 +44,7 @@ function writeBuild(packDir: string, id: string, featuresSource: string) {
   const appliers = Object.keys(manifest.content?.sources ?? {}).map(key => `{ key: ${JSON.stringify(key)}, apply: () => ({ created: 0, updated: 0, skipped: 0 }) }`).join(', ');
   write('runtime/index.cjs', (`module.exports = { registration: { id: ${JSON.stringify(id)}, features: ${featuresSource}, ears: ${JSON.stringify({ entities: _packEntityTypes(manifest), relKinds: _packRelationTypes(manifest) })}, appliers: [${appliers}] } };`) + `
 if (module.exports.registration) module.exports.registration.declarationRevision = '${_declarationRevision(JSON.parse(fs.readFileSync(path.join(packDir, 'apack.json'), 'utf-8')))}';`);
-  write(PACK_LAYOUT.snapshot, JSON.stringify({ declarationRevision: _declarationRevision(JSON.parse(fs.readFileSync(path.join(packDir, 'apack.json'), 'utf-8'))), format: PACK_SNAPSHOT_FORMAT, manifest: JSON.parse(fs.readFileSync(path.join(packDir, 'apack.json'), 'utf-8')), types: { entities: {}, relKinds: {} }, facades: {} }));
+  write(PACK_LAYOUT.snapshot, JSON.stringify({ declarationRevision: _declarationRevision(JSON.parse(fs.readFileSync(path.join(packDir, 'apack.json'), 'utf-8'))), format: PACK_SNAPSHOT_FORMAT, manifest: JSON.parse(fs.readFileSync(path.join(packDir, 'apack.json'), 'utf-8')), types: { entities: {}, relKinds: {} }, entityDestinations: {}, facades: {} }));
   sealPackBuild(path.join(packDir, 'dist'), JSON.parse(fs.readFileSync(path.join(packDir, 'apack.json'), 'utf8')));
 }
 
@@ -78,7 +78,7 @@ describe('pack full lifecycle: init → install → load', () => {
     expect(fs.existsSync(path.join(installedDir, 'runtime', 'index.cjs'))).toBe(true);
 
     // The loader finds it under APACK_USER_DATA_DIR
-    const packs = loadExternalPacks();
+    const packs = loadExternalPacks(createPackRegistry());
     expect(packs).toHaveLength(1);
     expect(packs[0].origin.id).toBe('my-test-pack');
     expect(packs[0].origin.name).toBe('My Test Pack');

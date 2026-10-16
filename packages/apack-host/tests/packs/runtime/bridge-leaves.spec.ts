@@ -1,7 +1,7 @@
 import { sealPack } from './build-fixture.ts';
 import { _declarationRevision } from '@apackdev/sdk/build';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import './test-host.ts';
+import { registry } from './test-host.ts';
 import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
@@ -28,7 +28,7 @@ describe('external pack runtime', () => {
   it('requires @apackdev/sdk/cron and @apackdev/sdk/utils/compare-versions through the bridge', async () => {
     fs.writeFileSync(path.join(packDir, 'apack.json'), JSON.stringify({ id: 'bridge-leaves', name: 'Bridge', version: '1.0.0', extensions: { services: { leaves: 'leaves.ts#leaves' } } }));
     fs.mkdirSync(path.join(packDir, 'types'), { recursive: true });
-    fs.writeFileSync(path.join(packDir, PACK_LAYOUT.snapshot), JSON.stringify({ declarationRevision: _declarationRevision(JSON.parse(fs.readFileSync(path.join(packDir, 'apack.json'), 'utf-8'))), format: PACK_SNAPSHOT_FORMAT, manifest: JSON.parse(fs.readFileSync(path.join(packDir, 'apack.json'), 'utf-8')), types: { entities: {}, relKinds: {} }, facades: {} }));
+    fs.writeFileSync(path.join(packDir, PACK_LAYOUT.snapshot), JSON.stringify({ declarationRevision: _declarationRevision(JSON.parse(fs.readFileSync(path.join(packDir, 'apack.json'), 'utf-8'))), format: PACK_SNAPSHOT_FORMAT, manifest: JSON.parse(fs.readFileSync(path.join(packDir, 'apack.json'), 'utf-8')), types: { entities: {}, relKinds: {} }, entityDestinations: {}, facades: {} }));
     fs.mkdirSync(path.join(packDir, 'runtime'));
     fs.writeFileSync(path.join(packDir, 'runtime', 'index.cjs'), (`
       const { cronToHuman } = require('@apackdev/sdk/cron');
@@ -39,7 +39,7 @@ if (module.exports.registration) module.exports.registration.declarationRevision
     sealPack(packDir);
     const { loadSingleExternalPack } = await import('../../../src/packs/runtime/loader.ts');
 
-    const pack = loadSingleExternalPack(packDir);
+    const pack = loadSingleExternalPack(registry, packDir);
 
     if ('problem' in pack) throw new Error(pack.problem);
     expect(pack.registration.services).toEqual({ leaves: { cron: expect.any(String), newer: 1 } });
@@ -57,7 +57,7 @@ if (module.exports.registration) module.exports.registration.declarationRevision
   it('requires one lazily, after the load that produced it has returned', async () => {
     fs.writeFileSync(path.join(packDir, 'apack.json'), JSON.stringify({ id: 'bridge-leaves', name: 'Lazy', version: '1.0.0', extensions: { services: { step: 'step.ts#step' } } }));
     fs.mkdirSync(path.join(packDir, 'types'), { recursive: true });
-    fs.writeFileSync(path.join(packDir, PACK_LAYOUT.snapshot), JSON.stringify({ declarationRevision: _declarationRevision(JSON.parse(fs.readFileSync(path.join(packDir, 'apack.json'), 'utf-8'))), format: PACK_SNAPSHOT_FORMAT, manifest: JSON.parse(fs.readFileSync(path.join(packDir, 'apack.json'), 'utf-8')), types: { entities: {}, relKinds: {} }, facades: {} }));
+    fs.writeFileSync(path.join(packDir, PACK_LAYOUT.snapshot), JSON.stringify({ declarationRevision: _declarationRevision(JSON.parse(fs.readFileSync(path.join(packDir, 'apack.json'), 'utf-8'))), format: PACK_SNAPSHOT_FORMAT, manifest: JSON.parse(fs.readFileSync(path.join(packDir, 'apack.json'), 'utf-8')), types: { entities: {}, relKinds: {} }, entityDestinations: {}, facades: {} }));
     fs.mkdirSync(path.join(packDir, 'runtime'));
     fs.writeFileSync(path.join(packDir, 'runtime', 'index.cjs'), (`
       exports.registration = { id: 'bridge-leaves', services: { step: { run: () => typeof require('@apackdev/sdk/logger').createLogger } } };
@@ -66,7 +66,7 @@ if (module.exports.registration) module.exports.registration.declarationRevision
     sealPack(packDir);
     const { loadSingleExternalPack } = await import('../../../src/packs/runtime/loader.ts');
 
-    const pack = loadSingleExternalPack(packDir);
+    const pack = loadSingleExternalPack(registry, packDir);
 
     if ('problem' in pack) throw new Error(pack.problem);
     const step = (pack.registration.services as { step: { run: () => string } }).step;

@@ -62,7 +62,7 @@ function packSource(version: string, { failsImport = false, id = PACK_ID, runtim
   fs.writeFileSync(path.join(dir, 'apack.json'), JSON.stringify({ id, name: 'Reinstall Pack', version, ...manifest }));
   fs.writeFileSync(path.join(dir, 'dist', 'runtime', 'index.cjs'), (`module.exports = { registration: { id: ${JSON.stringify(id)} } };\n${runtime}`) + `
 if (module.exports.registration) module.exports.registration.declarationRevision = '${_declarationRevision(JSON.parse(fs.readFileSync(path.join(dir, 'apack.json'), 'utf-8')))}';`);
-  fs.writeFileSync(path.join(dir, 'dist', PACK_LAYOUT.snapshot), JSON.stringify({ declarationRevision: _declarationRevision(JSON.parse(fs.readFileSync(path.join(dir, 'apack.json'), 'utf-8'))), format: PACK_SNAPSHOT_FORMAT, manifest: JSON.parse(fs.readFileSync(path.join(dir, 'apack.json'), 'utf-8')), types: { entities: {}, relKinds: {} }, facades: {} }));
+  fs.writeFileSync(path.join(dir, 'dist', PACK_LAYOUT.snapshot), JSON.stringify({ declarationRevision: _declarationRevision(JSON.parse(fs.readFileSync(path.join(dir, 'apack.json'), 'utf-8'))), format: PACK_SNAPSHOT_FORMAT, manifest: JSON.parse(fs.readFileSync(path.join(dir, 'apack.json'), 'utf-8')), types: { entities: {}, relKinds: {} }, entityDestinations: {}, facades: {} }));
   if (failsImport) {
     // Compiled data with no content.json: the applier can't tell whose records these are, so applying fails
     fs.mkdirSync(path.join(dir, 'dist', 'runtime', 'content'), { recursive: true });
@@ -347,7 +347,7 @@ describe('pack information without activation', () => {
     fs.mkdirSync(path.join(dir, 'types'));
     fs.writeFileSync(path.join(dir, PACK_LAYOUT.manifest), JSON.stringify(manifest));
     fs.writeFileSync(path.join(dir, PACK_LAYOUT.snapshot), JSON.stringify({ format: PACK_SNAPSHOT_FORMAT,
-      declarationRevision: _declarationRevision(manifest), manifest, types: { entities: {}, relKinds: {} }, facades: {} }));
+      declarationRevision: _declarationRevision(manifest), manifest, types: { entities: {}, relKinds: {} }, entityDestinations: {}, facades: {} }));
     const marker = path.join(tmpDir, 'executed');
     fs.writeFileSync(path.join(dir, PACK_LAYOUT.runtimeEntry), `require('node:fs').writeFileSync(${JSON.stringify(marker)}, 'yes'); throw new Error('Do not activate');`);
     sealPack(dir);
@@ -442,7 +442,7 @@ describe('an installed pack the app could not load', () => {
         loadProblem: `its declarations were refused: its snapshot is format ${PACK_SNAPSHOT_FORMAT + 1}, written by a newer apack CLI; this apack reads format ${PACK_SNAPSHOT_FORMAT}. Update apack to use it`,
       });
 
-      fs.writeFileSync(snapshotFile(), JSON.stringify({ declarationRevision: _declarationRevision(JSON.parse(fs.readFileSync(path.join(resolveAppEnvironment().packsDir, PACK_ID, 'apack.json'), 'utf-8'))), format: PACK_SNAPSHOT_FORMAT, manifest: JSON.parse(fs.readFileSync(path.join(resolveAppEnvironment().packsDir, PACK_ID, 'apack.json'), 'utf-8')), types: { entities: {}, relKinds: {} }, facades: {} }));
+      fs.writeFileSync(snapshotFile(), JSON.stringify({ declarationRevision: _declarationRevision(JSON.parse(fs.readFileSync(path.join(resolveAppEnvironment().packsDir, PACK_ID, 'apack.json'), 'utf-8'))), format: PACK_SNAPSHOT_FORMAT, manifest: JSON.parse(fs.readFileSync(path.join(resolveAppEnvironment().packsDir, PACK_ID, 'apack.json'), 'utf-8')), types: { entities: {}, relKinds: {} }, entityDestinations: {}, facades: {} }));
       await reloadPackById(registry, PACK_ID, { send: () => {} } as never);
 
       expect(registry.getPackRegistration(PACK_ID)).not.toBeNull();
@@ -1182,4 +1182,33 @@ describe('a user answering for one of a pack’s content items', () => {
       system.stop();
     }
   });
+});
+
+
+it('refuses a conflicting destination before saving enablement or importing its runtime', async () => {
+  const feature = { description: 'Open actions', plugin: { label: 'Actions', state: 'missing.ts' } };
+  const marker = path.join(tmpDir, 'conflicting-runtime-imported');
+  for (const id of ['incumbent', PACK_ID]) {
+    const source = packSource('1.0.0', { id, manifest: { features: { view: feature } },
+      runtime: `require('node:fs').writeFileSync(${JSON.stringify(marker)}, 'executed');` });
+    const file = path.join(source, 'dist', PACK_LAYOUT.snapshot);
+    const snapshot = JSON.parse(fs.readFileSync(file, 'utf8'));
+    snapshot.entityDestinations = { Action: 'view' };
+    fs.writeFileSync(file, JSON.stringify(snapshot)); sealBuild(source);
+    await installPackFromLocal(source);
+  }
+  setPackEnabled(PACK_ID, false);
+  const system = runPacksSystem();
+  try {
+    registry.refreshCatalog(resolveAppEnvironment().packsDir);
+    const before = registry.catalog.getSnapshot();
+    takeSystemErrors();
+    system.send({ type: 'TOGGLE_PACK_ENABLED', packId: PACK_ID });
+    expect(readInstalledPacks().find(entry => entry.id === PACK_ID)?.enabled).toBe(false);
+    expect(registry.catalog.getSnapshot()).toBe(before);
+    expect(registry.getPackRegistration(PACK_ID)).toBeNull();
+    expect(fs.existsSync(marker)).toBe(false);
+    expect(takeSystemErrors().map(error => error.message).join(' ')).toMatch(/Action.*incumbent\/view.*reinstall-pack\/view/);
+    expect(emitted(system.sent).find(event => event.type === 'PACK_ENABLED_CHANGED')).toMatchObject({ enabled: false });
+  } finally { system.stop(); }
 });

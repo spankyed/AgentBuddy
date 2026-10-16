@@ -40,6 +40,8 @@ export interface ModuleExports {
    * through the generated events module this feeds.
    */
   inboxEventTypesOf(file: string, name: string): string[];
+  /** Literal entity names in a plugin contract's optional `opens` field; never evaluates its module. */
+  openedEntityTypesOf(file: string, name: string): string[];
 
 }
 
@@ -229,6 +231,19 @@ export function createModuleExports(packRoot: string, files: string[], sources: 
       return { value: callable ? 'function' : 'object', type };
     },
 
+    openedEntityTypesOf(file, name) {
+      const contract = declaredTypeOf(file, name);
+      if (!contract) throw new Error(`${path.basename(file)}: it declares no type "${name}"`);
+      const opens = propertyType(contract, 'opens');
+      if (!opens) return [];
+      checkResolved(opens, file, `${name}'s opens`);
+      const members = opens.isUnion() ? opens.types : [opens];
+      if (contract.getProperty('opens')!.flags & ts.SymbolFlags.Optional
+        || members.some(member => !member.isStringLiteral() || !member.value.trim())) {
+        throw new Error(`${path.basename(file)}: ${name}.opens must name one or more literal entity types`);
+      }
+      return [...new Set(members.flatMap(member => member.isStringLiteral() ? [member.value] : []))].sort();
+    },
     outgoingEventTypesOf(file, name) {
       const contract = declaredTypeOf(file, name);
       if (!contract) {

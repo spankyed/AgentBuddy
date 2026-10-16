@@ -33,6 +33,7 @@ export class ClaudeExitError extends ClaudeCodeError {
     readonly exitCode: number | null,
     readonly signal: NodeJS.Signals | null,
     readonly stderr: string,
+    readonly stdout: string,
     readonly args: readonly string[],
   ) {
     super(
@@ -42,7 +43,7 @@ export class ClaudeExitError extends ClaudeCodeError {
   }
 }
 
-/** A `type:'result'` line arrived with an error subtype. */
+/** A native result has an error subtype or is_error=true, including subtype=success refusals. */
 export class ClaudeResultError extends ClaudeCodeError {
   readonly code = 'RESULT_ERROR'
   constructor(

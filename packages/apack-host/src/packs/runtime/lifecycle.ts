@@ -86,7 +86,7 @@ export function activatePack(
 
   if (!fs.existsSync(packDir)) return failed(`pack directory not found: ${packDir}`);
 
-  const pack = loadSingleExternalPack(packDir);
+  const pack = loadSingleExternalPack(registry, packDir);
   if ('problem' in pack) return failed(pack.problem);
 
   // A refused registration is recorded as the load problem by registerExternalPacks
@@ -115,7 +115,7 @@ export function acceptInstalledPack(
   let pack: LoadedPack;
   let cleanupProblems: string[] = [];
   try {
-    const candidate = loadSingleExternalPack(packDir);
+    const candidate = loadSingleExternalPack(registry, packDir);
     if ('problem' in candidate) throw new Error(`Failed to load pack ${packId}: ${candidate.problem}`);
     pack = candidate;
     if (previous) {

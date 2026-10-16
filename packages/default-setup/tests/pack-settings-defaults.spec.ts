@@ -6,7 +6,7 @@ import { getSettingsCatalog } from '@apackdev/sdk/framework';
 import { getTestSettings, registerPack, resetTestData, unregisterPack } from '@apackdev/testing/harness';
 
 /** A feature with a plugin and the given settings */
-const feature = (id: string, settings: SettingsDefinition, defaultVisible?: boolean) => [id, { plugin: { receives: [], defaultVisible }, settings }] as const;
+const feature = (id: string, settings: SettingsDefinition) => [id, { plugin: { receives: [] }, settings }] as const;
 const registered: string[] = [];
 /** Another pack, registered as the app registers an installed one */
 function register(id: string, features: ReturnType<typeof feature>[]): void {
@@ -20,7 +20,7 @@ afterEach(() => {
 
 describe("packs' feature settings as defaults", () => {
   it("adds a registered pack's feature definitions and effective defaults, and drops them when it unregisters", () => {
-    register('memo-pack', [feature('memos', { defaults: { sort: 'newest' }, schema: {"type":"object","properties":{"sort":{"type":"string"}},"required":["sort"],"additionalProperties":false,"$schema":"http://json-schema.org/draft-07/schema#"} }, false)]);
+    register('memo-pack', [feature('memos', { defaults: { sort: 'newest' }, schema: {"type":"object","properties":{"sort":{"type":"string"}},"required":["sort"],"additionalProperties":false,"$schema":"http://json-schema.org/draft-07/schema#"} })]);
     expect(getSettingsCatalog().features['memo-pack/memos']?.defaults).toEqual({ sort: 'newest' });
     expect(getTestSettings().forPack('memo-pack').get({ kind: 'feature', featureRef: 'memo-pack/memos' })).toEqual({ sort: 'newest' });
     expect(getTestSettings().getSnapshot().values.features['memo-pack/memos']).toEqual({ sort: 'newest' });
@@ -48,7 +48,7 @@ describe("packs' feature settings as defaults", () => {
   it("gives a pack naming a feature after this pack's its own settings identity", () => {
     const appCode = getSettingsCatalog().features['default-setup/code'];
 
-    register('shadow-pack', [feature('code', { defaults: { shadowed: true }, schema: {"type":"object","properties":{"shadowed":{"type":"boolean"}},"required":["shadowed"],"additionalProperties":false,"$schema":"http://json-schema.org/draft-07/schema#"} }, false)]);
+    register('shadow-pack', [feature('code', { defaults: { shadowed: true }, schema: {"type":"object","properties":{"shadowed":{"type":"boolean"}},"required":["shadowed"],"additionalProperties":false,"$schema":"http://json-schema.org/draft-07/schema#"} })]);
 
     expect(getSettingsCatalog().features['default-setup/code']).toEqual(appCode);
     // The other pack's `code` plugin is its own, with its own settings

@@ -26,12 +26,19 @@ Optional files exist only when the build produces that contribution.
 | `build/steps.build.mjs` | Step build facets used to validate dependent flows. |
 | `build/content-runtime.mjs` | Entity/repository/content-writer bindings used by dependent tests. |
 | `build/content-compilers.mjs` | Declared content compilers used by dependent builds. |
-| `types/snapshot.json` | Validated manifest, declaration revision, entity/relation types, facade declarations, flow helpers, contribution provenance, compiled help and snapshot/SDK version information. |
+| `types/snapshot.json` | Validated manifest, declaration revision, entity/relation types, facade declarations, flow helpers, contribution provenance, compiled help, compiled Monaco definitions and snapshot/SDK version information. |
 | `types/pack-types.d.ts` | Standalone facade declarations for dependent TypeScript code. |
 
 The source build also produces `dist/defs/monaco/<name>-defs.d.ts` for declared Monaco DSL targets.
-Generated frontend code imports these as raw text, embedding them in the frontend bundle. Staging
-does not ship the standalone `defs/` directory. `dist/phase-cache.json` is private reuse metadata,
+The snapshot records their text under `dslDefinitions.<name>`, including targets without globals.
+Snapshot validation requires complete coverage of declared Monaco targets and rejects undeclared
+names. Native composition supplies the same definition data alongside its DSL declarations. The common
+catalog exposes metadata and compiled text without importing DSL or runtime modules; unbuilt source
+entries expose their declaration without claiming compiled text. The snapshot retains these definitions
+in archives and installations, independently of frontend activation.
+
+Frontend registration carries no DSL type text. Monaco reads the catalog and observes replacement
+without activating frontend modules. Staging does not ship the standalone `defs/` directory. `dist/phase-cache.json` is private reuse metadata,
 sealed and published with its source build but omitted from archives and installations.
 `.apack/reads.json` is a diagnostic build record, not an installed declaration. Facade declarations and DSL editor definitions serve
 different consumers even though both contain TypeScript declarations. Snapshot `facades` and the

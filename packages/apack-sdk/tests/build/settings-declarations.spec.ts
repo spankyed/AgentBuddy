@@ -45,7 +45,7 @@ describe('declarative pack settings', () => {
       schema: { type: 'object', additionalProperties: { type: 'string' } },
       defaults,
     } });
-    const snapshot = { format: PACK_SNAPSHOT_FORMAT, manifest: data, declarationRevision: _declarationRevision(data), types: { entities: {}, relKinds: {} }, facades: {} };
+    const snapshot = { format: PACK_SNAPSHOT_FORMAT, manifest: data, declarationRevision: _declarationRevision(data), types: { entities: {}, relKinds: {} }, entityDestinations: {}, facades: {} };
     const result = parseSnapshot(snapshot);
     expect(result.status).toBe('valid');
     expect(Object.keys(result.snapshot!.manifest.extensions!.settings!.assistant.defaults)).toEqual(['__proto__', 'constructor']);

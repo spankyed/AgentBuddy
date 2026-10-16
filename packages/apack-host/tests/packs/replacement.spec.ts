@@ -21,7 +21,9 @@ function fixture() {
     onChange(listener) { const notify = () => listener('written'); listeners.add(notify); return () => { listeners.delete(notify); }; },
   };
   const registry = createPackRegistry({
-    nativeDeclarations: [{ id: 'incumbent', features: { widget: { description: 'Feature declaration fixture.',} } }, { id: 'peer', features: {} }],
+    nativeDeclarations: [{ id: 'incumbent', services: { value: 'fixtures/services.ts#value' },
+      repositories: { records: 'fixtures/repositories.ts#records' }, commands: { 'old-command': { placeholder: 'Old' } },
+      features: { widget: { description: 'Feature declaration fixture.',} } }, { id: 'peer', features: {} }],
     settingsForPack: () => service,
   });
   const generated = _createPackServices();
@@ -41,9 +43,14 @@ function fixture() {
     ...registration, bindSettings: fresh.bindSettings,
     features: { widget: { designation: 'after' } },
     repositories: { records: { owner: 'new' } }, services: { value: 'new' },
-    commands: [{ name: 'new-command', placeholder: 'New' }],
   };
   return { registry, handle, heard, listeners, records, registration, fresh, next };
+}
+
+function declareRepositories(registry: ReturnType<typeof createPackRegistry>, names: string[]) {
+  registry.catalog.setNative(registry.catalog.getSnapshot().native.map(pack => pack.id !== 'incumbent' ? pack : {
+    ...pack, repositories: Object.fromEntries(names.map(name => [name, `fixtures/repositories.ts#${name}`])),
+  }));
 }
 
 function assertIncumbent(f: ReturnType<typeof fixture>) {
@@ -77,6 +84,7 @@ describe('accepted pack replacement', () => {
   it.each(['__proto__', 'constructor', 'toString'])('publishes, replaces and removes the exact repository key %s', name => {
     const f = fixture();
     f.next.repositories = { [name]: { owner: 'candidate' } };
+    declareRepositories(f.registry, [name]);
     f.registry.replacePack(f.next);
     expect(engine.query.repository[name]).toBe(f.next.repositories[name]);
     expect(Object.hasOwn(engine.admin.repositories(), name)).toBe(true);
@@ -122,6 +130,7 @@ describe('accepted pack replacement', () => {
     const f = fixture();
     const provisional = f.fresh.settingsHandle(target);
     f.next.repositories = { ...f.next.repositories, added: {} };
+    declareRepositories(f.registry, ['records', 'added']);
     const publish = engine.query.registerRepository;
     const register = vi.spyOn(engine.query, 'registerRepository').mockImplementation((name, value) => {
       if (name === 'added') throw new Error('publication refused');
@@ -141,7 +150,7 @@ describe('accepted pack replacement', () => {
     expect(f.registry.getPackRegistration('incumbent')).toBe(f.next);
     expect(f.registry.designation('before')).toBeUndefined();
     expect(f.registry.designation('after')).toBe('incumbent/widget');
-    expect(f.registry.commands().map(command => command.name)).toEqual(['new-command']);
+    expect(f.registry.commands().map(command => command.name)).toEqual(['old-command']);
     expect(f.registry.getRegisteredServices().value).toBe('new');
     expect(engine.query.repository.records).toBe(f.next.repositories!.records);
     expect(() => f.handle.get()).toThrow('revoked');

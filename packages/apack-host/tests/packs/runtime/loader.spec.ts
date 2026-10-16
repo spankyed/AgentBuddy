@@ -39,7 +39,7 @@ function makePack(
   fs.mkdirSync(path.join(packDir, 'runtime'), { recursive: true });
   fs.writeFileSync(path.join(packDir, 'apack.json'), JSON.stringify(manifest));
   fs.mkdirSync(path.join(packDir, 'types'), { recursive: true });
-  fs.writeFileSync(path.join(packDir, PACK_LAYOUT.snapshot), JSON.stringify({ declarationRevision, format: PACK_SNAPSHOT_FORMAT, manifest, types: { entities: {}, relKinds: {} }, facades: {} }));
+  fs.writeFileSync(path.join(packDir, PACK_LAYOUT.snapshot), JSON.stringify({ declarationRevision, format: PACK_SNAPSHOT_FORMAT, manifest, types: { entities: {}, relKinds: {} }, entityDestinations: {}, facades: {} }));
   fs.writeFileSync(path.join(packDir, 'runtime', 'index.cjs'), `module.exports = { registration: { id: ${JSON.stringify(manifest.id)}, declarationRevision: '${declarationRevision}', features: ${featuresSource} } };`);
   sealPack(packDir);
   return packDir;
@@ -66,13 +66,13 @@ describe('pack-loader', () => {
   describe('loadExternalPacks', () => {
     it('returns empty array when packs dir does not exist', () => {
       process.env.APACK_USER_DATA_DIR = path.join(tmpDir, 'nonexistent');
-      const result = loadExternalPacks();
+      const result = loadExternalPacks(registry);
       expect(result).toEqual([]);
     });
 
     it('returns empty array when packs dir is empty', () => {
       fs.mkdirSync(path.join(_appDirOf(tmpDir), 'packs'), { recursive: true });
-      const result = loadExternalPacks();
+      const result = loadExternalPacks(registry);
       expect(result).toEqual([]);
     });
 
@@ -86,7 +86,7 @@ describe('pack-loader', () => {
         if (event.level === 'warn' && event.source === 'pack-loader') warnings.push(event.message);
       });
       try {
-        expect(loadExternalPacks()).toEqual([]);
+        expect(loadExternalPacks(registry)).toEqual([]);
         expect(warnings.some(message => message.includes('snapshot.json manifest.name'))).toBe(true);
         expect(fs.existsSync(marker)).toBe(false);
       } finally { unsubscribe(); }
@@ -98,7 +98,7 @@ describe('pack-loader', () => {
       fs.writeFileSync(path.join(dir, PACK_LAYOUT.runtimeEntry), `require('node:fs').writeFileSync(${JSON.stringify(marker)}, 'yes');`);
       sealPack(dir);
       const recordLoadProblem = vi.fn();
-      expect(loadExternalPacks({ recordLoadProblem })).toEqual([]);
+      expect(loadExternalPacks({ ...registry, recordLoadProblem })).toEqual([]);
       expect(recordLoadProblem).toHaveBeenCalledWith('local-pack', 'Installed directory "local-pack" contains pack "other-pack"');
       expect(fs.existsSync(marker)).toBe(false);
     });
@@ -112,10 +112,10 @@ describe('pack-loader', () => {
       recordInstalled('removed-pack', 'owner/removed-pack');
       fs.writeFileSync(path.join(dir, PACK_LAYOUT.manifest), '{');
       const problems = vi.fn();
-      expect(loadExternalPacks({ recordLoadProblem: problems })).toEqual([]);
+      expect(loadExternalPacks({ ...registry, recordLoadProblem: problems })).toEqual([]);
       expect(readInstalledPacks()).toEqual([expect.objectContaining({ id: manifest.id, enabled: false, installedFrom: 'owner/kept-pack' })]);
       makePack(packsDir, manifest.id, manifest);
-      expect(loadExternalPacks()).toEqual([]);
+      expect(loadExternalPacks(registry)).toEqual([]);
       expect(readInstalledPacks()[0].enabled).toBe(false);
     });
 
@@ -130,7 +130,7 @@ describe('pack-loader', () => {
         },
       }, "{ myFeature: { system: { machine: { id: 'test-system' }, receives: ['DO_THING'] } } }");
 
-      const result = loadExternalPacks();
+      const result = loadExternalPacks(registry);
 
       expect(result).toHaveLength(1);
       expect(result[0].origin.id).toBe('test-pack');
@@ -144,7 +144,7 @@ describe('pack-loader', () => {
       }, '{ ghost: {} }');
       fs.appendFileSync(path.join(dir, PACK_LAYOUT.runtimeEntry), `\nmodule.exports.setCompiledDir = () => require('node:fs').writeFileSync(${JSON.stringify(marker)}, 'initialized');`);
       sealPack(dir);
-      expect(loadExternalPacks()).toEqual([]);
+      expect(loadExternalPacks(registry)).toEqual([]);
       expect(fs.existsSync(marker)).toBe(false);
     });
 
@@ -156,7 +156,7 @@ describe('pack-loader', () => {
         if (event.level === 'warn' && event.source === 'pack-loader') warnings.push(event.message);
       });
       try {
-        expect(loadExternalPacks()).toEqual([]);
+        expect(loadExternalPacks(registry)).toEqual([]);
         expect(warnings).toEqual([expect.stringMatching(/^Skipping unbundled: Not a pack layout: no integrity\.json in .*; rebuild the complete pack$/)]);
       } finally {
         unsubscribe();
@@ -166,12 +166,12 @@ describe('pack-loader', () => {
     it('skips a pack without runtime/index.cjs', () => {
       const packDir = makePack(path.join(_appDirOf(tmpDir), 'packs'), 'no-runtime', { id: 'no-runtime', name: 'No Runtime', version: '1.0.0' });
       fs.rmSync(path.join(packDir, 'runtime', 'index.cjs'));
-      expect(loadExternalPacks()).toEqual([]);
+      expect(loadExternalPacks(registry)).toEqual([]);
     });
 
     it('skips packs without apack.json', () => {
       fs.mkdirSync(path.join(_appDirOf(tmpDir), 'packs', 'no-manifest'), { recursive: true });
-      const result = loadExternalPacks();
+      const result = loadExternalPacks(registry);
       expect(result).toEqual([]);
     });
 
@@ -180,7 +180,7 @@ describe('pack-loader', () => {
         name: 'Bad',
         version: '1.0.0',
       });
-      const result = loadExternalPacks();
+      const result = loadExternalPacks(registry);
       expect(result).toEqual([]);
     });
 
@@ -191,7 +191,7 @@ describe('pack-loader', () => {
         version: '1.0.0',
         hostVersion: '>=99.0.0',
       });
-      const result = loadExternalPacks();
+      const result = loadExternalPacks(registry);
       expect(result).toEqual([]);
     });
 
@@ -202,7 +202,7 @@ describe('pack-loader', () => {
         version: '1.0.0',
         hostVersion: '>=0.0.1 <0.0.2',
       });
-      expect(loadExternalPacks()).toEqual([]);
+      expect(loadExternalPacks(registry)).toEqual([]);
     });
 
     it('loads packs whose hostVersion is satisfied', () => {
@@ -212,7 +212,7 @@ describe('pack-loader', () => {
         version: '1.0.0',
         hostVersion: '>=0.1.0',
       });
-      const result = loadExternalPacks();
+      const result = loadExternalPacks(registry);
       expect(result).toHaveLength(1);
     });
 
@@ -230,7 +230,7 @@ describe('pack-loader', () => {
         "  machine: typeof createMachine, guard: typeof and };",
       ].join('\n'));
       sealPack(packDir);
-      const [pack] = loadExternalPacks();
+      const [pack] = loadExternalPacks(registry);
       expect(pack?.origin.id).toBe('zod-pack');
 
       // The modules the runtime got are the host's own, not a second copy
@@ -245,7 +245,7 @@ describe('pack-loader', () => {
         name: 'Data Only',
         version: '1.0.0',
       });
-      const result = loadExternalPacks();
+      const result = loadExternalPacks(registry);
       expect(result).toHaveLength(1);
       expect(systemFeatures(result[0])).toEqual([]);
     });
@@ -299,7 +299,7 @@ describe('pack-loader: bundled runtime (runtime/index.cjs)', () => {
     const manifest = { id, name: id, version: '1.0.0', data: { entities: { Widget: null } }, lifecycle: { onInit: 'hooks.ts#onInit' }, features: { widget: { description: 'Feature declaration fixture.', system: { entry: 'system.ts' } } }, extensions: { services: { hello: 'hello.ts#hello' } }, ...manifestExtra };
     fs.writeFileSync(path.join(packDir, 'apack.json'), JSON.stringify(manifest));
     const declarationRevision = _declarationRevision(manifest);
-    fs.writeFileSync(path.join(packDir, PACK_LAYOUT.snapshot), JSON.stringify({ declarationRevision, format: PACK_SNAPSHOT_FORMAT, manifest, types: { entities: {}, relKinds: {} }, facades: {} }));
+    fs.writeFileSync(path.join(packDir, PACK_LAYOUT.snapshot), JSON.stringify({ declarationRevision, format: PACK_SNAPSHOT_FORMAT, manifest, types: { entities: {}, relKinds: {} }, entityDestinations: {}, facades: {} }));
     fs.writeFileSync(path.join(packDir, 'runtime', 'index.cjs'), `${registrationSource}\nif (module.exports.registration) module.exports.registration.declarationRevision = '${declarationRevision}';`);
     sealPack(packDir);
     return packDir;
@@ -331,7 +331,7 @@ describe('pack-loader: bundled runtime (runtime/index.cjs)', () => {
       features: { widget: { description: 'Exercise the widget system.', system: { entry: 'src/x.ts', events: { incoming: ['EXTRA'] } } } },
     });
 
-    const [pack] = loadExternalPacks();
+    const [pack] = loadExternalPacks(registry);
     expect(pack.origin.id).toBe('bundled-pack');
     expect(systemFeatures(pack)).toEqual(['widget']);
     expect(Object.keys(pack.registration.services ?? {})).toEqual(['hello']);
@@ -346,7 +346,7 @@ describe('pack-loader: bundled runtime (runtime/index.cjs)', () => {
   it('refuses omitted EARS bindings instead of filling them from the manifest', () => {
     makeBundledPack('missing-ears', registration('missing-ears', 'ears: undefined,'));
     const problems = { recordLoadProblem: vi.fn() };
-    expect(loadExternalPacks(problems)).toEqual([]);
+    expect(loadExternalPacks({ ...registry, ...problems })).toEqual([]);
     expect(problems.recordLoadProblem).toHaveBeenCalledWith('missing-ears', expect.stringContaining('ears.entities'));
   });
 
@@ -356,11 +356,11 @@ describe('pack-loader: bundled runtime (runtime/index.cjs)', () => {
     const { _contentWriterRegistry } = await import('@apackdev/sdk/content');
     makeBundledPack('settings-pack', registration('settings-pack', `
       contentWriters: { Widget: { find() { return undefined; } } },
-      features: { widget: { system: { machine, receives: ['PING'] }, plugin: { receives: [], defaultVisible: false }, settings: { defaults: { size: 3 }, schema: { type: 'object' } } } },
+      features: { widget: { system: { machine, receives: ['PING'] }, plugin: { receives: [] }, settings: { defaults: { size: 3 }, schema: { type: 'object' } } } },
     `), { features: { widget: { description: 'Exercise the widget system.', system: { entry: 'system.ts' }, plugin: { label: 'Fixture', state: 'plugin.ts', defaultVisible: false }, settings: { defaults: { size: 3 }, schema: { type: 'object' } } } }, content: { writers: { Widget: 'writer.ts#writer' } } });
 
     registry.refreshCatalog(path.join(_appDirOf(tmpDir), 'packs'));
-    const [pack] = loadExternalPacks();
+    const [pack] = loadExternalPacks(registry);
     expect(registerExternalPacks(registry, [pack])).toEqual([pack]);
     try {
       expect(_contentWriterRegistry.get('Widget')).toEqual({ find: expect.any(Function) });
@@ -376,7 +376,7 @@ describe('pack-loader: bundled runtime (runtime/index.cjs)', () => {
   it("keeps the pack's registration as the pack wrote it", () => {
     const dir = makeBundledPack('intact-pack', registration('intact-pack'));
 
-    const [pack] = loadExternalPacks();
+    const [pack] = loadExternalPacks(registry);
     expect(pack.registration.lifecycle?.onInit).toBeDefined();
 
     const exported = (require(path.join(dir, 'runtime', 'index.cjs')) as { registration: PackRegistration }).registration;
@@ -389,7 +389,7 @@ describe('pack-loader: bundled runtime (runtime/index.cjs)', () => {
       'onInit() {}, apply() { module.exports.bootApplyCalls = 1; },',
     ));
     const problems = { recordLoadProblem: vi.fn() };
-    expect(loadExternalPacks(problems)).toEqual([]);
+    expect(loadExternalPacks({ ...registry, ...problems })).toEqual([]);
     expect(problems.recordLoadProblem).toHaveBeenCalledWith('smuggle-pack', expect.stringContaining('lifecycle'));
     expect(registry.getPackRegistration('smuggle-pack')).toBeNull();
     expect(require(path.join(dir, 'runtime', 'index.cjs')).bootApplyCalls).toBeUndefined();
@@ -403,7 +403,7 @@ describe('pack-loader: bundled runtime (runtime/index.cjs)', () => {
       makeBundledPack('stale-pack', `require('@apackdev/sdk/rpc');\n${registration('stale-pack')}`);
       makeBundledPack('current-pack', registration('current-pack'));
 
-      expect(loadExternalPacks().map(p => p.origin.id)).toEqual(['current-pack']);
+      expect(loadExternalPacks(registry).map(p => p.origin.id)).toEqual(['current-pack']);
       expect(errors).toEqual([expect.stringContaining("@apackdev/sdk/rpc isn't provided by this apack: rebuild the pack with the current @apackdev/cli")]);
     } finally {
       stop();
@@ -412,14 +412,14 @@ describe('pack-loader: bundled runtime (runtime/index.cjs)', () => {
 
   it('refuses a runtime whose registration id does not match the manifest', () => {
     makeBundledPack('real-id', registration('other-id'));
-    expect(loadExternalPacks()).toEqual([]);
+    expect(loadExternalPacks(registry)).toEqual([]);
   });
 
   it('refuses stale bindings before passing the compiled directory to the runtime', () => {
     const dir = makeBundledPack('stale-pack', registration('stale-pack'));
     fs.appendFileSync(path.join(dir, 'runtime', 'index.cjs'), '\nmodule.exports.registration.declarationRevision = "previous";');
     sealPack(dir);
-    expect(loadExternalPacks()).toEqual([]);
+    expect(loadExternalPacks(registry)).toEqual([]);
     expect(require(path.join(dir, 'runtime', 'index.cjs')).compiledDirSeen).toBeUndefined();
   });
 
@@ -442,7 +442,7 @@ describe('pack-loader: bundled runtime (runtime/index.cjs)', () => {
     const dir = makeBundledPack('changed-pack', 'throw new Error("runtime must not execute")');
     fs.writeFileSync(path.join(dir, 'apack.json'), JSON.stringify({ id: 'changed-pack', name: 'Changed', version: '1.0.0' }));
     const problems = new Map<string, string>();
-    expect(loadExternalPacks({ recordLoadProblem: (id, problem) => problems.set(id, problem) })).toEqual([]);
+    expect(loadExternalPacks({ ...registry, recordLoadProblem: (id, problem) => problems.set(id, problem) })).toEqual([]);
     expect(problems.get('changed-pack')).toContain('manifest does not match');
   });
 
@@ -454,7 +454,7 @@ describe('pack-loader: bundled runtime (runtime/index.cjs)', () => {
     sealPack(dir);
     fs.writeFileSync(target, 'globalThis.apackBuildExecuted = true;');
     const problems = new Map<string, string>();
-    expect(loadExternalPacks({ recordLoadProblem: (id, problem) => problems.set(id, problem) })).toEqual([]);
+    expect(loadExternalPacks({ ...registry, recordLoadProblem: (id, problem) => problems.set(id, problem) })).toEqual([]);
     expect(problems.get('changed-bytes')).toContain(`checksum mismatch ${file}`);
     expect(Reflect.get(globalThis, 'apackBuildExecuted')).toBeUndefined();
   });
@@ -462,7 +462,7 @@ describe('pack-loader: bundled runtime (runtime/index.cjs)', () => {
   it('refuses a layout version this host does not support', () => {
     const dir = makeBundledPack('future-format', registration('future-format'));
     fs.writeFileSync(path.join(dir, PACK_LAYOUT.integrity), JSON.stringify({ formatVersion: PACK_LAYOUT_VERSION + 1, id: 'future-format', version: '1.0.0', files: {} }));
-    expect(loadExternalPacks()).toEqual([]);
+    expect(loadExternalPacks(registry)).toEqual([]);
   });
 
   // The layout's format is written by whoever staged the pack; the snapshot's by the CLI that built its runtime, whose
@@ -476,7 +476,7 @@ describe('pack-loader: bundled runtime (runtime/index.cjs)', () => {
     const warnings: string[] = [];
     const unsubscribe = rootEvents.onLog((event) => { if (event.level === 'warn') warnings.push(event.message); });
     try {
-      expect(loadExternalPacks()).toEqual([]);
+      expect(loadExternalPacks(registry)).toEqual([]);
       expect(warnings).toContain(`Skipping other-build: ${reason}`);
     } finally {
       unsubscribe();
@@ -1041,7 +1041,7 @@ describe('contentRevision', () => {
     fs.writeFileSync(path.join(source, 'dist', 'runtime', 'index.cjs'), 'module.exports = {};');
     fs.mkdirSync(path.join(source, 'dist', 'types'), { recursive: true });
     const manifest = JSON.parse(fs.readFileSync(path.join(source, 'apack.json'), 'utf8'));
-    fs.writeFileSync(path.join(source, 'dist', PACK_LAYOUT.snapshot), JSON.stringify({ format: PACK_SNAPSHOT_FORMAT, manifest, declarationRevision: _declarationRevision(manifest), types: { entities: {}, relKinds: {} }, facades: {} }));
+    fs.writeFileSync(path.join(source, 'dist', PACK_LAYOUT.snapshot), JSON.stringify({ format: PACK_SNAPSHOT_FORMAT, manifest, declarationRevision: _declarationRevision(manifest), types: { entities: {}, relKinds: {} }, entityDestinations: {}, facades: {} }));
     fs.writeFileSync(path.join(source, 'dist', 'runtime', 'content', contentFile('actions')), '[{"label":"same"}]');
 
     sealBuild(source);
@@ -1103,7 +1103,7 @@ describe('loaded packs: accepted frontend assets', () => {
     const dir = makePack(path.join(_appDirOf(tmpDir), 'packs'), 'identity', { id: 'identity', name: 'Identity', version: '1.0.0' });
     fs.writeFileSync(path.join(dir, PACK_LAYOUT.feEntry), 'export default {};');
     sealPack(dir);
-    const [accepted] = loadExternalPacks();
+    const [accepted] = loadExternalPacks(registry);
     expect(accepted.origin.buildRevision).toMatch(/^[a-f0-9]{64}$/);
     expect(accepted.origin.buildFiles?.[PACK_LAYOUT.feEntry]).toMatch(/^[a-f0-9]{64}$/);
     expect(getLoadedPackEntries({ loadedPacks: () => [accepted.origin], getPackRuntime: () => ({ origin: accepted.origin, runtimeRevision: 'runtime' }) })[0]).toMatchObject({
@@ -1141,14 +1141,14 @@ describe('loaded packs: accepted frontend assets', () => {
     const dir = makePack(path.join(_appDirOf(tmpDir), 'packs'), 'identity', { id: 'identity', name: 'Identity', version: '1.0.0' });
     fs.writeFileSync(path.join(dir, PACK_LAYOUT.feEntry), 'export default {};');
     sealPack(dir);
-    const [accepted] = loadExternalPacks();
+    const [accepted] = loadExternalPacks(registry);
     const loaded = { loadedPacks: () => [accepted.origin], getPackRuntime: () => ({ origin: accepted.origin, runtimeRevision: 'runtime' }) };
     const previous = getLoadedPackEntries(loaded);
     fs.writeFileSync(path.join(dir, PACK_LAYOUT.feEntry), 'export default { changed: true };');
     fs.writeFileSync(path.join(dir, PACK_LAYOUT.feStyles), 'body {}');
     expect(getLoadedPackEntries(loaded)).toEqual(previous);
     sealPack(dir);
-    const [replacement] = loadExternalPacks();
+    const [replacement] = loadExternalPacks(registry);
     expect(replacement.origin.buildRevision).not.toBe(accepted.origin.buildRevision);
     expect(getLoadedPackEntries({ loadedPacks: () => [replacement.origin], getPackRuntime: () => ({ origin: replacement.origin, runtimeRevision: 'replacement' }) })[0].feStyles).toBe(PACK_LAYOUT.feStyles);
     fs.rmSync(path.join(dir, PACK_LAYOUT.feEntry));

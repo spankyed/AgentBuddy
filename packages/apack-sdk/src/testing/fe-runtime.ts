@@ -15,13 +15,13 @@ const noFrontends: FePackRegistryView = {
   block: () => undefined,
   blocks: () => [],
   plugins: () => [],
-  defaultPlugin: () => undefined,
   tiptapPlugins: () => [],
   stepBindings: () => new Map(),
+  artifactBindings: () => new Map(),
+  blockBindings: () => new Map(),
   referenceTypes: () => new Map(),
   referenceCategories: () => new Map(),
   appExtension: () => undefined,
-  dslTypes: () => new Map(),
 };
 
 /**

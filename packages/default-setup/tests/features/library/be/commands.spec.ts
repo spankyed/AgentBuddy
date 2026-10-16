@@ -210,6 +210,17 @@ describe('slash commands from the library commands folder', () => {
     expect(afterUnregister).toContain('pr2md')
   })
 
+  it('refreshes after catalog removal without a runtime publication request and stops emitting after stop', async () => {
+    reregisterTeamNotes([{ name: 'team-standup', placeholder: 'Topic' }])
+    const app = await appliedApp()
+    reregisterTeamNotes()
+    expect(commandNames(await app.nextEmit('threads', 'COMMANDS_UPDATED'))).not.toContain('team-standup')
+    app.stop()
+    const before = app.emitted('threads').length
+    reregisterTeamNotes([{ name: 'team-standup', placeholder: 'Topic' }])
+    expect(app.emitted('threads')).toHaveLength(before)
+  })
+
   // The bus asks every system to publish when a pack is installed, updated or rebuilt while the app runs
   it('sends the chat the commands a pack written while the app runs brings', async () => {
     const app = await appliedApp()

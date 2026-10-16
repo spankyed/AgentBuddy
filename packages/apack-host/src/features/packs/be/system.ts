@@ -594,6 +594,17 @@ export function createPacksSystem(registry: PackRegistry) {
 
         const newEnabled = !entry.enabled;
 
+        try {
+          if (newEnabled) {
+            registry.refreshCatalog(resolveAppEnvironment().packsDir);
+            registry.catalog.assertPackEnabled(packId, true);
+          }
+        } catch (error) {
+          reportError({ source: 'packs', operation: 'setPackEnabled', severity: 'error', error: new Error(errorMessage(error)) });
+          broadcastToPlugin('packs', { type: 'PACK_ENABLED_CHANGED' as const, packId, enabled: entry.enabled });
+          return;
+        }
+
         if (!setPackEnabled(packId, newEnabled)) {
           reportError({ source: 'packs', operation: 'setPackEnabled', severity: 'error',
             error: new Error(`Couldn't save that ${packId} is ${newEnabled ? 'enabled' : 'disabled'}; the current state is unchanged.`),

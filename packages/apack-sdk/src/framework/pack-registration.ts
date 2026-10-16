@@ -56,8 +56,6 @@ export interface PackFeatureSystem {
 
 /** What the backend knows of a feature's plugin: the event types it receives, which the app checks a send against */
 export interface PackFeaturePlugin {
-  /** Default navigation visibility before a user override. */
-  defaultVisible?: boolean;
   /**
    * Generated from its own feature's system's outgoing events and every audience of the inbox the plugin's
    * `Contract` declares. One flat list: a passing check means the event's shape was accepted, not that this sender
@@ -107,7 +105,7 @@ export interface PackRegistration {
   contentWriters?: Record<string, import('../content/writers.ts').ContentWriter>;
   /** The pack's appliers, one per content key (apack.json `content.sources`), which `importCompiledContent` runs for the pack's compiled content */
   appliers?: import('../utils/apply.ts').ContentApplier[];
-  /** The slash commands this pack adds to the chat (apack.json `commands`) */
+  /** Build-checked command identities from extensions.commands; discovery reads catalog declarations. */
   commands?: import('./pack-commands.ts').PackCommand[];
   /** Display name used for this pack's contributions. */
   name?: string;

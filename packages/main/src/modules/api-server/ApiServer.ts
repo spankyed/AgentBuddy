@@ -27,6 +27,7 @@ export class ApiServer implements AppModule {
   private shutdown?: Promise<void>;
   private restartAttempts = 0;
   private serverReady: Promise<void>;
+  private readinessSettled = false;
   private serverReadyResolve?: () => void;
   private serverReadyReject?: (error: Error) => void;
   private actualPort?: number;
@@ -57,9 +58,10 @@ export class ApiServer implements AppModule {
   }
 
   private createReadyPromise(): Promise<void> {
+    this.readinessSettled = false;
     return new Promise<void>((resolve, reject) => {
-      this.serverReadyResolve = resolve;
-      this.serverReadyReject = reject;
+      this.serverReadyResolve = () => { this.readinessSettled = true; resolve(); };
+      this.serverReadyReject = error => { this.readinessSettled = true; reject(error); };
     });
   }
 
@@ -129,7 +131,8 @@ export class ApiServer implements AppModule {
     if (this.isShuttingDown || this.processManager.isRunning()) return;
 
     this.lastError = undefined; // Clear stale error so getStatus() doesn't report old crashes during restart
-    this.serverReady = this.createReadyPromise(); // Reset promise so waitForReady() works across restarts
+    // Retries before readiness must settle the promise existing window callers hold.
+    if (this.readinessSettled) this.serverReady = this.createReadyPromise();
     logInfo('[MAIN] Starting API server...');
     broadcastEvent(API_EVENTS.STARTING);
 
@@ -258,6 +261,7 @@ export class ApiServer implements AppModule {
   }
 
   private handleProcessExit(code: number | null, signal: NodeJS.Signals | null): void {
+    if (this.readinessSettled) this.serverReady = this.createReadyPromise();
     logError(`[MAIN] API server exited with code ${code} and signal ${signal}`);
     const errors = this.processManager.getFatalErrors();
     const stderr = this.processManager.getLastStderr();
@@ -318,11 +322,7 @@ export class ApiServer implements AppModule {
    * shell's terminal `error` state, and main refusing to start the API again. `ProcessManager.stop()` is
    * what keeps it off that path, and it waits for the exit, which is what makes the next launch correct.
    *
-   * **It does not wait for readiness, deliberately.** `waitForReady` reads `serverReady`, which
-   * `startApiServer` replaces on every launch — so if this launch crashed before it was ready, the crash
-   * path's own restart would orphan the promise this was holding and the wait would run to
-   * `READY_TIMEOUT`, keeping the loop silent for a minute. Nothing needs it either: a rebuild arriving
-   * while the previous API is still booting *should* replace it, because that API is already stale.
+   * A rebuild does not wait for readiness: a newer rebuild may replace an API still booting.
    */
   public reloadApiServer(): Promise<void> {
     this.reloading ??= (async () => {

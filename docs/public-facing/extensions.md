@@ -389,6 +389,13 @@ An artifact is a typed content item (code, image, markdown, …) shown in a thre
 | `icon` | yes | The icon shown in the artifact list |
 | `component` | no | The viewer. Without one, the host shows the text viewer |
 
+Frontend code reads `getArtifactDeclaration(type)` or `getArtifactDeclarations()` from
+`@apackdev/sdk/fe` for declared icon names and viewer paths without loading the pack. Use
+`getArtifactBinding(type)` for an executable viewer: it is available only while the current enabled
+owner and accepted declaration/build agree. `useArtifactDeclarations()` observes both metadata and
+binding readiness inside a Vue effect scope, so mounted lists and viewers follow pack changes.
+Unavailable viewers display the text fallback; declared icons remain available independently.
+
 ### Scaffolding
 
 ```bash
@@ -466,6 +473,13 @@ A block is an inline UI widget inside a chat message. A `BlockDefinition` (`@apa
 
 - **Display blocks** (`kind` omitted or `'display'`) render data (markdown, code, tool activity).
 - **Input blocks** (`kind: 'input'`) collect a response (text, choices, approvals).
+
+Frontend code reads `getBlockDeclaration(type)` or `getBlockDeclarations()` from
+`@apackdev/sdk/fe` for input/display kind and declared facet paths. `getBlockBinding(type)` supplies
+only a frontend matching the current enabled owner and accepted declaration/build.
+`useBlockDeclarations()` observes independent metadata and binding updates within a Vue effect scope.
+The thread UI does not render missing, disabled or stale components. Backend transcript callbacks
+remain execution-facing lookups with their runtime lifetime.
 
 ### Scaffolding
 
@@ -701,8 +715,31 @@ The generated FE entry (`__generated__/pack-entry-fe.ts`) default-exports a `Pac
 | `steps` / `artifacts` / `blocks` | each entry's `fe` facet, imported into the generated frontend entry (an artifact's `icon` with it) |
 | `tiptapPlugins` | `extensions.tiptapPlugins` |
 | `appExtensions` | `extensions.appExtensions` |
-| `dslTypes` | `extensions.dsl` entries with a `monaco` target (`__generated__/dsl-types-fe.ts`) |
 
 The renderer registers it for your pack; nothing in your frontend registers anything itself.
 
 `features.<id>.references` declares reference identities and presentation for any pack. Catalog metadata is independent of activation; item providers and navigation bind when the frontend is accepted.
+
+## DSL editor assistance
+
+DSL editor assistance is static catalog data. `getDslDeclarations()` / `getDslDeclaration(type)` from
+`@apackdev/sdk/fe` expose declarations and available compiled definition text, including disabled packs.
+`useDslDeclarations()` observes catalog updates in a Vue effect scope; `onDslDeclarationsChanged()`
+returns an explicit unsubscribe function. Ambiguous owners are unavailable. Unbuilt source entries may
+lack compiled definitions. Monaco replaces or removes libraries and globals when catalog data changes,
+sharing them until the last editor releases them. `setupMonacoForFile()` returns that release function;
+call it when a direct consumer changes files or disposes its editor. `UnifiedMonacoEditor` owns this
+lifecycle automatically. These data reads import no pack or compiler modules.
+
+### Navigation discovery
+
+The shell lists enabled plugins from their declarations before loading their frontend. Labels, pinning,
+visibility defaults and order come from the catalog; source-only previews are not app destinations.
+Native host tabs follow pack tabs within each pinned/unpinned group. Frontend delivery order cannot
+reorder tabs. User visibility choices override `features.<id>.plugin.defaultVisible` (which defaults
+to visible). Hidden destinations remain in the toolbar visibility menu.
+
+Accepted frontend bindings supply icons and executable behavior. Until an icon is available, the shell
+shows its own placeholder. Opening a declared destination still uses the shell's checked loading and
+readiness path; listing a tab does not activate its pack. Disabled packs retain discoverable metadata
+in the pack catalog but are omitted from app navigation.

@@ -17,6 +17,7 @@ export interface MemosContext {
 export type MemosInbox = { type: 'MEMO.HIGHLIGHT'; memoId: string }
 
 export type Contract = {
+  opens: 'Memo'
   state: MemosContext
   inbox: PluginInbox<{ public: MemosInbox }>
 }

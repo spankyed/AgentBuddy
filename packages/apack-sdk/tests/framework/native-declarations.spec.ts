@@ -9,14 +9,15 @@ const declaration = {
   features: { view: { description: 'Show native items.', designation: 'items' } },
   artifacts: { document: { icon: 'File', fe: 'native/document.vue' } },
   blocks: { answer: { kind: 'input', fe: 'native/answer.vue', be: 'native/block.ts#Answer' } },
+  dslDefinitions: { items: 'export interface Item {}' },
   dsl: { items: { entry: 'native/items.ts', targets: ['monaco'], prefix: 'items', globals: { item: 'Item' } } },
 } satisfies NativePackDeclaration;
 
 describe('native declaration admission', () => {
   it('shares authored contribution grammar without requiring declared modules', () => {
-    const { id, features, ...extensions } = declaration;
+    const { id, features, dslDefinitions, ...extensions } = declaration;
     const authored = ManifestSchema.parse({ id, name: 'Native', version: '1.0.0', features, extensions });
-    expect(_NativePackDeclarationSchema.parse(declaration)).toEqual({ id, features: authored.features, ...authored.extensions });
+    expect(_NativePackDeclarationSchema.parse(declaration)).toEqual({ id, features: authored.features, ...authored.extensions, dslDefinitions });
     expect(_nativePackDeclarationProblem(declaration)).toBeUndefined();
     for (const contributions of [
       { artifacts: { document: { icon: 'invalid-icon' } } },
@@ -26,6 +27,13 @@ describe('native declaration admission', () => {
       expect(_nativePackDeclarationProblem({ id, ...contributions })).toBeTypeOf('string');
       expect(ManifestSchema.safeParse({ id, name: 'Native', version: '1.0.0', extensions: contributions }).success).toBe(false);
     }
+  });
+
+  it('requires compiled native editor data and rejects definitions without a declared target', () => {
+    const { dslDefinitions, ...missing } = declaration;
+    expect(_nativePackDeclarationProblem(missing)).toContain('Missing compiled Monaco');
+    expect(_nativePackDeclarationProblem({ ...declaration, dslDefinitions: { ...dslDefinitions, foreign: '' } })).toContain('undeclared DSL "foreign"');
+    expect(_nativePackDeclarationProblem({ id: 'native', dslDefinitions: {} })).toContain('no declared Monaco');
   });
 
   it('refuses impure declarations before reading accessors or normalizing prototypes', () => {

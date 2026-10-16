@@ -1,10 +1,11 @@
+import type { ContentReference } from './content-references.ts';
 import * as fs from 'fs';
 import * as path from 'path';
-import { pathToFileURL } from 'url';
-import type { PackConfig, CompilePackOptions, CompilePackResult } from './types.ts';
+import type { PackConfig, CompilePackOptions, CompilePackResult, PackModuleLoader } from './types.ts';
 import type { StepDefinition } from '../steps/types.ts';
 import type { PackContentPreviewItem } from './preview.ts';
 import { parseContentIndex } from './content-index.ts';
+import { importPackModule } from './module-loader.ts';
 import { SPECIALTY_COMPILERS } from './compilers/standard.ts';
 import { buildPackConfigFromManifest } from './manifest-bridge.ts';
 import { contentFile } from './manifest.ts';
@@ -37,6 +38,8 @@ export interface ValidationResult {
 
 export interface SpecialtyCompileContext {
   packDir: string;
+  /** The build owner's module loader, shared with formats and step definitions. */
+  importModule: PackModuleLoader;
 }
 
 /** The SDK's compiler for a specialty content key (actions, prompts, flows) */
@@ -54,6 +57,8 @@ export interface SpecialtyCompiler<T = unknown> {
   count(data: T): number;
   /** The items the import dialog lists, named as include sets name them */
   items(data: T): PackContentPreviewItem[];
+  /** Static dependency inspection; absence means analysis is unavailable, never that there are no references. */
+  references?(data: T, context: CompilationContext): ContentReference[];
 }
 
 /** `content.json` in the compiled directory: what each content key holds */
@@ -73,6 +78,8 @@ export interface ContentIndexEntry {
   count: number;
   /** Top-level items, named as include sets name them */
   items: PackContentPreviewItem[];
+  /** Known static/computed references. Omitted for compilers without an analyzer; static analysis is not exhaustive. */
+  references?: ContentReference[];
 }
 
 export { CONTENT_INDEX_FILE };
@@ -80,8 +87,6 @@ export { CONTENT_INDEX_FILE };
 // ============================================================================
 // Orchestrator
 // ============================================================================
-
-const importFileModule = (file: string) => import(pathToFileURL(file).href) as Promise<Record<string, unknown>>;
 
 function countRecords(records: ContentItem[]): number {
   return records.reduce((sum, record) => sum + 1 + countRecords(record.children ?? []), 0);
@@ -133,11 +138,11 @@ function recordShapeProblems(value: unknown, at: string): string[] {
 export async function compilePack(options: CompilePackOptions): Promise<CompilePackResult> {
   const { packDir, outputDir } = options;
   _clearCompiledContent(outputDir);
-  const importModule = options.importModule ?? importFileModule;
+  const importModule = options.importModule ?? importPackModule;
   const log = options.log ?? console.log;
   const packConfig = await loadPackConfig(options);
 
-  const definitions = options.definitions ?? await packConfig.loadDefinitions?.();
+  const definitions = options.definitions ?? await packConfig.loadDefinitions?.(importModule);
 
   log(`Compiling pack: ${packConfig.name}`);
   fs.mkdirSync(outputDir, { recursive: true });
@@ -153,7 +158,7 @@ export async function compilePack(options: CompilePackOptions): Promise<CompileP
     if (source.kind === 'specialty') {
       const specialty = SPECIALTY_COMPILERS[key];
       if (!fs.existsSync(sourcePath)) continue;
-      const data = await specialty.compile(sourcePath, { packDir });
+      const data = await specialty.compile(sourcePath, { packDir, importModule });
       for (const message of specialty.collectErrors?.(data) ?? []) errors.push(`${key}: ${message}`);
       specialtyData.set(key, data);
       compiled.push({
@@ -228,10 +233,12 @@ export async function compilePack(options: CompilePackOptions): Promise<CompileP
     steps: definitions?.steps ?? [],
   };
   for (const [key, data] of specialtyData) {
-    const result = SPECIALTY_COMPILERS[key].validate?.(data, context);
+    const compiler = SPECIALTY_COMPILERS[key];
+    const result = compiler.validate?.(data, context);
     if (result && !result.valid) {
       throw new Error(`${key} validation errors:\n${result.errors.map((e) => `  ${e.path}: ${e.message}`).join('\n')}`);
     }
+    if (compiler.references) compiled.find(entry => entry.key === key)!.index.references = compiler.references(data, context);
   }
 
   const index: ContentIndex = { version: 1, packId: packConfig.name, entries: compiled.map(({ index }) => index) };

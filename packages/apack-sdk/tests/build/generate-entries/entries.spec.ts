@@ -216,20 +216,17 @@ describe('generated backend entry', () => {
 });
 
 describe('generated registrations', () => {
-  // Everything a pack contributes arrives in its registration: no generated module registers anything when imported
-  it('emits an empty omitted DSL prefix and quotes declared strings as data', async () => {
+  it('keeps DSL metadata and compiled type data out of frontend registration', async () => {
     const files = await generate({ dsl: {
-      plain: { entry: 'src/plain.ts', targets: ['monaco'], globals: { 'quotedName': "typeof author['book']" } },
+      plain: { entry: 'src/plain.ts', targets: ['monaco'], globals: { quotedName: "typeof author['book']" } },
       scoped: { entry: 'src/scoped.ts', targets: ['monaco'], prefix: "author's:", globals: { item: 'Item' } },
     } });
-    const code = files['src/__generated__/dsl-types-fe.ts'];
-    expect(code).toContain('prefix: "",');
-    expect(code).toContain(`prefix: ${JSON.stringify("author's:")},`);
-    expect(code).toContain(`${JSON.stringify('quotedName')}: ${JSON.stringify("typeof author['book']")},`);
-    expect(code).not.toContain("prefix: 'undefined'");
+    expect(files).not.toHaveProperty(['src/__generated__/dsl-types-fe.ts']);
+    expect(files['src/__generated__/pack-entry-fe.ts']).not.toContain('dslTypes');
+    expect(Object.values(files).join('\n')).not.toContain('-defs.d.ts?raw');
   });
 
-  it("carry the pack's appliers and DSL types, which their modules only export", async () => {
+  it("carry the pack's appliers, whose module only exports them", async () => {
     const files = await generate({
       features: [{ id: 'memos', plugin: { label: 'Fixture', state: writePluginState('src/features/memos/fe/plugin.ts') } }],
       content: { sources: { actions: 'src/content/actions' } },
@@ -238,16 +235,6 @@ describe('generated registrations', () => {
     expect(files['src/__generated__/pack-entry.ts']).toContain('\n  appliers,\n');
     expect(files['src/__generated__/appliers.ts']).toContain('export const appliers: ContentApplier[] = [');
     expect(files['src/__generated__/appliers.ts']).toContain('createFormatApplier({"key":"actions",');
-    expect(files['src/__generated__/pack-entry-fe.ts']).toContain("import { dslTypes } from './dsl-types-fe.ts';");
-    expect(files['src/__generated__/pack-entry-fe.ts']).toContain('\n  dslTypes,\n');
-    expect(files['src/__generated__/dsl-types-fe.ts']).toContain([
-      'export const dslTypes: Record<string, DslTypeConfig> = {',
-      '  memo: {',
-      '    prefix: "memo:",',
-      '    schema: memoSchema,',
-      '    globals: {',
-      '      "memos": "typeof _dsl.memos",',
-    ].join('\n'));
     for (const [file, content] of Object.entries(files)) {
       expect(content, file).not.toMatch(/^import '[^']+';$/m);
     }
@@ -284,6 +271,17 @@ describe('generated step registrations', () => {
       },
     };
   };
+
+  it('carries declared reference fields into build definitions without runtime imports', async () => {
+    const declaration = stepPack();
+    const files = await generate({ ...declaration, steps: { ...declaration.steps,
+      llm: { ...declaration.steps.llm, dsl: { references: { prompt: 'prompts' } } },
+    } });
+    expect(files['src/__generated__/steps-build.ts']).toContain('references');
+    expect(files['src/__generated__/steps-build.ts']).toContain('prompts');
+    expect(files['src/__generated__/pack-entry.ts']).not.toContain('dsl:');
+    expect(files['src/__generated__/pack-entry-fe.ts']).not.toContain('dsl:');
+  });
 
   // Three places, three subsets: the backend runs a step, a dependent pack validates flows with it, and the
   // editor draws it. None of them is a barrel somebody keeps in step with the other two.

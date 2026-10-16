@@ -33,7 +33,7 @@ function writeBuild(directory: string, declared = manifest, index?: object): str
   fs.writeFileSync(path.join(output, PACK_LAYOUT.runtimeEntry), 'throw new Error("Inspection imported executable code");');
   fs.writeFileSync(path.join(output, PACK_LAYOUT.snapshot), JSON.stringify({
     manifest: declared, declarationRevision: _declarationRevision(declared), format: PACK_SNAPSHOT_FORMAT,
-    types: { entities: _packEntityTypes(declared), relKinds: {} }, facades: {},
+    types: { entities: _packEntityTypes(declared), relKinds: {} }, entityDestinations: {}, facades: {},
   }));
   if (index) {
     fs.mkdirSync(path.join(output, PACK_LAYOUT.contentDir));
@@ -57,7 +57,7 @@ describe('read-only pack inspection', () => {
     fs.writeFileSync(path.join(root, 'apack.json'), JSON.stringify(declaration));
     writeBuild(root, declaration, index);
     const report = await inspectPack(root);
-    expect(report.declared.steps).toEqual([{ type: 'memo', ...steps.memo }, { type: 'pulse', ...steps.pulse }]);
+    expect(report.declared.extensions?.steps).toEqual(steps);
     expect(report.build.status).toBe('verified');
     expect(fs.existsSync(path.join(root, 'src'))).toBe(false);
     expect(fetch).not.toHaveBeenCalled();
@@ -72,9 +72,7 @@ describe('read-only pack inspection', () => {
     fs.writeFileSync(path.join(root, 'apack.json'), JSON.stringify(declaration));
     writeBuild(root, declaration, index);
     const report = await inspectPack(root);
-    expect(report.declared).toMatchObject({ appExtensions: ['welcome'], tiptapPlugins: [
-      { id: 'suggestions', extensions: ['mention'], popups: ['mention'], isSuggestionActive: true },
-    ] });
+    expect(report.declared).toEqual(declaration);
     expect(report.build.status).toBe('verified');
     expect(fs.existsSync(path.join(root, 'src'))).toBe(false);
     expect(fetch).not.toHaveBeenCalled();
@@ -87,8 +85,56 @@ describe('read-only pack inspection', () => {
     const report = await inspectPack(root);
     expect(report.build.status).toBe('verified');
     expect(report.build.content).toEqual(index);
-    expect(report.declared.entities).toEqual([{ name: 'Memo', owner: 'features.memos', shape: null }]);
+    expect(report.declared.features?.memos.entities).toEqual({ Memo: null });
     expect(fs.readdirSync(root)).toEqual(before);
+    expect(fetch).not.toHaveBeenCalled();
+  });
+
+  it('inspects dependency targets from verified output without source or activation', async () => {
+    const content = { ...index, entries: [{ key: 'flows', written: true, count: 1, items: [{ key: 'Demo' }], references: [
+      { item: 'Demo', path: 'Demo.action', kind: 'static', target: { key: 'actions', item: 'Removed' } },
+      { item: 'Demo', path: 'Demo.prompt', kind: 'dynamic', target: { key: 'prompts' } },
+    ] }] };
+    writeBuild(root, manifest, content);
+    expect((await inspectPack(root)).build.content).toEqual(content);
+    const output = vi.spyOn(console, 'log').mockImplementation(() => {});
+    vi.spyOn(process, 'cwd').mockReturnValue(root);
+    await info([]);
+    const text = output.mock.calls.flat().join('\n');
+    expect(text).toContain('actions/Removed [not-indexed]');
+    expect(text).toContain('prompts/(computed) [dynamic]');
+    expect(text).toContain('not user data');
+    expect(fs.existsSync(path.join(root, 'src'))).toBe(false);
+  });
+
+  it('preserves the complete declaration and lists feature-owned services and repositories offline', async () => {
+    const declaration: PackManifest = { ...manifest,
+      lifecycle: { onInit: 'src/unavailable.ts#initialize' },
+      features: { memos: { description: 'Inspect owned contributions.', entities: { Memo: null },
+        system: { entry: 'src/unavailable.ts' },
+        services: { memos: 'src/unavailable.ts#service' },
+        repositories: { memoQueries: 'src/unavailable.ts#queries' },
+      } },
+      extensions: { services: { shared: 'src/unavailable.ts#shared' },
+        artifacts: { memo: { icon: 'File' } }, blocks: { memo: { kind: 'display', fe: 'src/unavailable.vue' } },
+        commands: { memo: { placeholder: 'Write a memo' } },
+      },
+    };
+    fs.writeFileSync(path.join(root, 'apack.json'), JSON.stringify(declaration));
+    writeBuild(root, declaration, index);
+    expect((await inspectPack(root)).declared).toEqual(declaration);
+    vi.spyOn(process, 'cwd').mockReturnValue(root);
+    const output = vi.spyOn(console, 'log').mockImplementation(() => {});
+    await info(['--json']);
+    expect(JSON.parse(String(output.mock.calls[0][0])).declared).toEqual(declaration);
+    output.mockClear();
+    await info([]);
+    const text = output.mock.calls.flat().join('\n');
+    for (const expected of ['Services: memos', 'Repositories: memoQueries', 'Declared services: shared',
+      'Declared artifacts: memo', 'Declared blocks: memo', 'Declared commands: memo', 'Declared lifecycle: onInit']) {
+      expect(text).toContain(expected);
+    }
+    expect(fs.existsSync(path.join(root, 'src'))).toBe(false);
     expect(fetch).not.toHaveBeenCalled();
   });
 

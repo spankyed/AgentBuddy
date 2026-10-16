@@ -1,9 +1,10 @@
+import { buildStagingDir } from '../../src/build/build-publication.ts';
 import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { packFixture } from '@apackdev/sdk/testing/pack-fixture';
-import { build, buildStagingDir } from '../../src/commands/build';
+import { build } from '../../src/commands/build';
 import { PACK_LAYOUT, readPackBuild, stagePack, verifyPack } from '@apackdev/host/packs';
 import { REPO_ROOT } from '@apackdev/host/build/packages-built';
 import { generateEntries } from '../../src/commands/generate-entries';

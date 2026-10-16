@@ -12,7 +12,27 @@ import { dependencyTypes } from '../../src/commands/generate.ts';
 import { assertGeneratedCurrent, generateEntries } from '../../src/commands/generate-entries.ts';
 import { bundlePackTypes } from '../../src/build/types-bundler.ts';
 
-const compilation = { hash: 'test-compiler', assertCurrent() {} };
+const compilation = {
+  hash: 'test-compiler',
+  configuration: undefined,
+  declarationConfiguration: undefined,
+  readTree() { throw new Error('No tree in hash-only fixture'); },
+  sourcePath(file: string) { return file; },
+  diagnostic(message: string) { return message; },
+  isInput() { return true; },
+  prepareNative() {},
+  requireParent() { throw new Error('No module loading in hash-only fixture'); },
+  async finishStartup() {},
+  prepareNativeSource() {},
+  readMetadata(): never { throw new Error('Unexpected metadata read'); },
+  openDirectory(): never { throw new Error('Unexpected directory open'); },
+  readDirectory(): never { throw new Error('Unexpected directory read'); },
+  readDataPath(): never { throw new Error('Unexpected data read'); },
+  dispose() {},
+  readFile() { return undefined; },
+  captureGenerated() {},
+  assertCurrent() {},
+};
 
 
 const roots: string[] = [];
@@ -25,7 +45,7 @@ function producer() {
   fs.mkdirSync(path.join(directory, 'build'));
   fs.writeFileSync(path.join(directory, PACK_LAYOUT.snapshot), JSON.stringify({ manifest,
     declarationRevision: _declarationRevision(manifest), format: PACK_SNAPSHOT_FORMAT,
-    types: { entities: {}, relKinds: {} }, facades: {} }));
+    types: { entities: {}, relKinds: {} }, entityDestinations: {}, facades: {} }));
   fs.writeFileSync(path.join(directory, 'build/helper.js'), 'throw new Error("Do not activate for hashing");');
   sealPackBuild(directory, manifest);
   return { directory, manifest, capture: () => new Map([['dep-pack', readDependencyBuild(directory)]]) };

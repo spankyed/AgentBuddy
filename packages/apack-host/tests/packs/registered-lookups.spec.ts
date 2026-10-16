@@ -209,7 +209,8 @@ describe('appliers', () => {
 describe('captured contribution addresses', () => {
   it('reads a definition address once, captures data and preserves executable identity across removal', async () => {
     const { createPackRegistry } = await import('../../src/packs/registry.ts');
-    const isolated = createPackRegistry({ nativeDeclarations: [{ id: 'captured-address', steps: { stuck: { node: { label: 'Stuck' } } } }] });
+    const isolated = createPackRegistry({ nativeDeclarations: [{ id: 'captured-address', commands: { leaves: { placeholder: 'Cleanly' } },
+      steps: { stuck: { node: { label: 'Stuck' } } } }] });
     const readType = vi.fn(() => {
       if (readType.mock.calls.length > 1) throw new Error('type cannot be read again');
       return 'stuck';
@@ -348,9 +349,22 @@ describe('a pack whose registration is refused', () => {
   });
 });
 
+it('reads declared visibility before runtime registration and follows declaration replacement', () => {
+  const isolated = createNativePackTestRegistry();
+  isolated.catalog.setNative([{ id: 'static-pack', features: { view: {
+    description: 'A declared navigation destination.', plugin: {
+      label: 'View', state: 'unavailable.ts#state', defaultVisible: false,
+    },
+  } } }]);
+  expect(isolated.getPackRegistration('static-pack')).toBeNull();
+  expect(isolated.pluginDefaults()).toEqual({ 'static-pack/view': false });
+  isolated.catalog.setNative([]);
+  expect(isolated.pluginDefaults()).toEqual({});
+});
+
 describe('feature settings defaults', () => {
   const memos = { plugin: { receives: [] }, settings: { defaults: { sort: 'newest' }, schema: { type: 'object' } } };
-  const cards = { plugin: { receives: [], defaultVisible: false } };
+  const cards = { plugin: { receives: [] } };
 
   it('appear and disappear with their pack, each change announced with a new revision', () => {
     const changed = vi.fn();
@@ -359,6 +373,11 @@ describe('feature settings defaults', () => {
 
     add({ id: 'memo-pack', features: { memos } });
     add({ id: 'card-pack', features: { cards } });
+    registry.catalog.setNative(registry.catalog.getSnapshot().native.map(pack => pack.id !== 'card-pack' ? pack : {
+      ...pack, features: { cards: { ...pack.features!.cards!, plugin: {
+        label: 'Cards', state: 'fixtures/cards.ts#state', defaultVisible: false,
+      } } },
+    }));
     expect(getSettingsCatalog().features).toEqual({ 'memo-pack/memos': memos.settings });
     expect(registry.pluginDefaults()).toEqual({ 'card-pack/cards': false });
     expect(getSettingsCatalog().revision).toBeGreaterThan(before);

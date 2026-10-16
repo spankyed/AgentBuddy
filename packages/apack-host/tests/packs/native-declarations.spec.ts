@@ -52,7 +52,10 @@ it.each([
 });
 
 it('retains admitted metadata when a runtime contribution fails registration', () => {
-  const registry = createPackRegistry({ nativeDeclarations: [declaration, { id: 'other' }] });
+  const registry = createPackRegistry({ nativeDeclarations: [
+    { ...declaration, commands: { shared: { placeholder: 'Conflicting' } } },
+    { id: 'other', commands: { shared: { placeholder: 'Existing' } } },
+  ] });
   registry.registerPack({ id: 'other', commands: [{ name: 'shared', placeholder: 'Existing' }] });
   const previous = registry.catalog.getSnapshot();
   expect(() => registry.registerPack({ ...runtime(), commands: [{ name: 'shared', placeholder: 'Conflicting' }] })).toThrow('Command collision');
@@ -66,6 +69,8 @@ it.each([
   { id: 'native', features: null }, { id: 'native', settings: null },
   { id: 'native', features: { notes: null } }, { id: 'native', features: { notes: { settings: null } } },
   { id: 'native', dependencies: { provider: 1 } }, { id: 'native', dependencies: [] },
+  { id: 'native', commands: { Run: { placeholder: 'Invalid name' } } },
+  { id: 'native', commands: { run: { placeholder: '' } } },
   { id: 'native', features: { 'invalid-name': {} } }, { id: 'native', unknown: true },
   { id: 'native', dependencies: JSON.parse('{"__proto__":"*"}') },
   { id: 'native', features: {

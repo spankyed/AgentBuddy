@@ -1,0 +1,123 @@
+import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
+import { afterEach, expect, it, vi } from 'vitest';
+import { createCompilerFileView } from '../../src/build/compiler-file-view.ts';
+import { BUILD_INPUTS_DIRECTORY_ENV, createCompilerReadTree, removeCompilerReadTree, type CompilerReadTree } from '../../src/build/compiler-read-tree.ts';
+
+const roots: string[] = [];
+const trees: CompilerReadTree[] = [];
+afterEach(() => {
+  vi.restoreAllMocks();
+  vi.unstubAllEnvs();
+  for (const tree of trees.splice(0)) tree.dispose();
+  for (const root of roots.splice(0)) fs.rmSync(root, { recursive: true, force: true });
+});
+
+it('lets the parent remove an abandoned read-only workspace without following foreign links', () => {
+  const workspace = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'apack-parent-inputs-')));
+  const foreign = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'apack-foreign-inputs-')));
+  roots.push(workspace, foreign);
+  fs.chmodSync(foreign, 0o755);
+  const file = path.join(foreign, 'source.ts');
+  fs.writeFileSync(file, 'export const untouched = true;');
+  vi.stubEnv(BUILD_INPUTS_DIRECTORY_ENV, workspace);
+  const tree = createCompilerReadTree({
+    files: [{ file, bytes: fs.readFileSync(file), mode: 0o644 }], locations: [], links: [],
+  }, []);
+  trees.push(tree);
+  expect(path.dirname(tree.directory)).toBe(workspace);
+  fs.symlinkSync(foreign, path.join(workspace, 'foreign'), 'dir');
+  removeCompilerReadTree(workspace);
+  expect(fs.existsSync(workspace)).toBe(false);
+  expect(fs.readFileSync(file, 'utf8')).toContain('untouched = true');
+  expect(fs.statSync(foreign).mode & 0o777).toBe(0o755);
+});
+
+it('preserves owned file/directory links, dangling links and executable bits after originals disappear', () => {
+  const root = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'apack-read-tree-source-')));
+  roots.push(root);
+  const pack = path.join(root, 'pack'), shared = path.join(root, 'shared');
+  fs.mkdirSync(pack); fs.mkdirSync(shared);
+  const file = path.join(shared, 'value.ts');
+  fs.writeFileSync(file, 'export const value = 7;');
+  fs.chmodSync(file, 0o755);
+  fs.symlinkSync('../shared', path.join(pack, 'linked'), 'dir');
+  fs.symlinkSync('../shared/value.ts', path.join(pack, 'entry.ts'));
+  fs.symlinkSync('../missing.ts', path.join(pack, 'missing.ts'));
+  const view = createCompilerFileView(pack);
+  expect(view.fileSystem.directoryExists(path.join(pack, 'linked'))).toBe(true);
+  expect(view.fileSystem.readFile(path.join(pack, 'entry.ts'))).toContain('value = 7');
+  expect(view.fileSystem.readFile(path.join(pack, 'linked/value.ts'))).toContain('value = 7');
+  expect(view.fileSystem.fileExists(path.join(pack, 'missing.ts'))).toBe(false);
+  const tree = createCompilerReadTree({ ...view.snapshot(), links: [] }, []);
+  trees.push(tree);
+  fs.rmSync(root, { recursive: true, force: true });
+  expect(fs.readFileSync(tree.path(path.join(pack, 'linked/value.ts')), 'utf8')).toContain('value = 7');
+  expect(tree.sourcePath(fs.realpathSync(tree.path(path.join(pack, 'entry.ts'))))).toBe(file);
+  expect(fs.existsSync(tree.path(path.join(pack, 'missing.ts')))).toBe(false);
+  expect(fs.lstatSync(tree.path(path.join(pack, 'missing.ts'))).isSymbolicLink()).toBe(true);
+  expect(fs.statSync(tree.path(file)).mode & 0o111).toBe(0o111);
+  expect(fs.statSync(tree.path(file)).mode & 0o222).toBe(0);
+  expect(fs.statSync(tree.path(pack)).mode & 0o222).toBe(0);
+  expect(() => tree.assertCurrent()).not.toThrow();
+  fs.chmodSync(tree.path(file), 0o644);
+  fs.writeFileSync(tree.path(file), 'export const value = 99;');
+  expect(() => tree.assertCurrent()).toThrow('Captured compiler input changed');
+  const directory = tree.directory;
+  tree.dispose();
+  expect(fs.existsSync(directory)).toBe(false);
+});
+
+it('refuses conflicting captured/source origins and removes the incomplete tree', () => {
+  const root = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'apack-read-tree-conflict-')));
+  roots.push(root);
+  const source = path.join(root, 'source'), captured = path.join(root, 'captured');
+  const mkdtemp = fs.mkdtempSync;
+  let directory = '';
+  vi.spyOn(fs, 'mkdtempSync').mockImplementation(prefix => directory = mkdtemp(prefix));
+  expect(() => createCompilerReadTree({
+    files: [
+      { file: path.join(source, 'a.ts'), bytes: Buffer.from('original'), mode: 0o644 },
+      { file: path.join(captured, 'a.ts'), bytes: Buffer.from('different'), mode: 0o644 },
+    ], locations: [], links: [],
+  }, [{ source, captured }])).toThrow('Conflicting captured input');
+  expect(directory).not.toBe('');
+  expect(fs.existsSync(directory)).toBe(false);
+});
+
+
+it('reuses materialized directories independently for code and data reads', () => {
+  const root = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'apack-read-tree-reuse-')));
+  roots.push(root);
+  const file = path.join(root, 'value.ts');
+  fs.writeFileSync(file, 'export const value = 7;');
+  const view = createCompilerFileView(root);
+  view.readBytes(file);
+  const snapshot = { ...view.snapshot(), links: [] };
+  const tree = createCompilerReadTree(snapshot, []);
+  trees.push(tree);
+  tree.includeData(snapshot);
+  const chmod = vi.spyOn(fs, 'chmodSync');
+  tree.include(snapshot);
+  tree.includeData(snapshot);
+  expect(chmod).not.toHaveBeenCalled();
+  expect(fs.readFileSync(tree.path(file), 'utf8')).toContain('value = 7');
+  expect(fs.readFileSync(tree.dataPath(file), 'utf8')).toContain('value = 7');
+  tree.assertCurrent();
+});
+
+it('refuses retained admissions after disposal while preserving diagnostic paths', () => {
+  const tree = createCompilerReadTree({ files: [], locations: [], links: [] }, []);
+  trees.push(tree);
+  const file = path.join(os.tmpdir(), 'retained-source.ts');
+  const owned = tree.path(file);
+  const snapshot = { files: [{ file, bytes: Buffer.from('export {};'), mode: 0o644 }], locations: [], links: [] };
+  tree.dispose();
+  tree.dispose();
+  expect(() => tree.include(snapshot)).toThrow(/outlived/);
+  expect(() => tree.includeData(snapshot)).toThrow(/outlived/);
+  expect(() => tree.assertCurrent()).toThrow(/outlived/);
+  expect(tree.diagnostic(owned)).toBe(file);
+  expect(fs.existsSync(tree.directory)).toBe(false);
+});

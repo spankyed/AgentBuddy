@@ -7,9 +7,11 @@
  */
 
 import type { ActionMeta } from '@apackdev/sdk/build';
-import type { Services, Z } from '#generated/services.ts';
-import { getClaudeState, persistClaudeState, updateChatState } from './_helpers/thread-context.ts';
+import type { Services, Z, EntityId } from '#generated/services.ts';
+import { getClaudeState, persistClaudeState, updateChatState, dequeueMessage } from './_helpers/thread-context.ts';
+import { replayQueuedMessage } from './_helpers/stream-consumer.ts';
 import { DONT_BYPASS } from './_helpers/auto-approve.ts';
+import { parseCommandArguments } from './_helpers/command-arguments.ts';
 
 export const meta: ActionMeta = {
   label: 'CC: Run Command',
@@ -27,6 +29,7 @@ type Handler = (
   args: string[],
   services: Services,
   threadId?: string,
+  rawText?: string,
 ) => Promise<{ text: string; data?: any }>;
 
 // ── Passthrough commands ─────────────────────────────────────────────
@@ -42,9 +45,12 @@ const PASSTHROUGH: Record<string, { cmd: string; defaultArgs?: string[] }> = {
 };
 
 function makePassthroughHandler(spec: { cmd: string; defaultArgs?: string[] }): Handler {
-  return async (args, services) => {
-    const fullArgs = [spec.cmd, ...(args.length > 0 ? args : spec.defaultArgs ?? [])];
-    const result = await services.cli.claudeCode.exec(fullArgs);
+  return async (args, services, threadId, rawText) => {
+    const prior = threadId ? getClaudeState(services, threadId) : undefined;
+    const cwd = prior?.cwdOverride || prior?.cwd;
+    const argv = rawText === undefined ? args : parseCommandArguments(rawText);
+    const fullArgs = [spec.cmd, ...(argv.length > 0 ? argv : spec.defaultArgs ?? [])];
+    const result = await services.cli.claudeCode.exec(fullArgs, cwd ? { cwd } : undefined);
     const output = (result.stdout + result.stderr).trim();
     return { text: output || `(no output from cc-${spec.cmd})` };
   };
@@ -57,7 +63,14 @@ const handlers: Record<string, Handler> = {
   config: handleConfig,
   status: handleStats,
   model: handleModel,
+  models: handleModels,
+  thinking: handleThinking,
+  usage: handleUsage,
+  workflows: handleWorkflows,
+  tasks: handleTasks,
   memory: handleMemory,
+  hooks: handleHooks,
+  permissions: handlePermissions,
   skills: handleSkills,
   stats: handleStats,
   rename: handleRename,
@@ -86,7 +99,7 @@ export async function action(
 
   if (handler) {
     try {
-      result = await handler(args, services, threadId);
+      result = await handler(args, services, threadId, text);
     } catch (error: any) {
       result = { text: `cc-${name} failed: ${error?.message || 'Unknown error'}` };
     }
@@ -156,14 +169,54 @@ async function handleSessions(
   };
 }
 
+async function handleSaveEffort(args: string[], services: Services, threadId?: string): Promise<{ text: string }> {
+  const level = args[0];
+  if (args.length !== 1 || (level !== 'low' && level !== 'medium' && level !== 'high' && level !== 'xhigh')) return { text: level === 'max' ? 'The tested native writer acknowledges max without saving it. Persisted preferences accept low, medium, high or xhigh.' : 'Usage: cc-config save-effort <low|medium|high|xhigh>' };
+  if (!threadId) return { text: 'Select a thread with a running Claude conversation before saving its model effort preference.' };
+  const conversation = services.cli.claudeCode.getConversation(threadId), owner = conversation?.owner;
+  if (!owner || owner.closing) return { text: 'Start a native conversation for the model whose user preference you want to save.' };
+  if (owner.busy) return { text: 'Wait for the native conversation to become idle before saving its model effort preference.' };
+  const prior = getClaudeState(services, threadId);
+  if (owner.sessionCwd !== (prior?.cwdOverride || prior?.cwd || services.cli.claudeCode.getWorkingDir())) return { text: 'The native conversation directory does not match this project.' };
+  try {
+    const receipt = await owner.handle.requestEffortPreference(level);
+    if (services.cli.claudeCode.getConversation(threadId)?.owner !== owner || owner.closing) return { text: 'The native conversation changed during the request; saved and applied effort are unverified.' };
+    if (!receipt.configuration) return { text: 'Native user-model preference request acknowledged, but configuration readback failed. Saved and applied effort remain unverified.' };
+    const summary = receipt.configuration;
+    return { text: `Native user-model preference request acknowledged: ${level}.\nNative model: ${summary.appliedModel}\nParsed effort at the applied model key: ${summary.perModelEffort ?? '(not reported)'}\nParsed global effort: ${summary.configuredEffort ?? '(not reported)'}\nRetained process reports applied effort: ${summary.appliedEffort ?? '(unavailable)'}\nSaved user preferences are considered by later launches; session and turn overrides remain separate.` };
+  } catch (error: any) {
+    return { text: `Native effort-preference request failed: ${error?.message || 'Unknown error'}. Saved state may have changed; check native configuration before retrying.` };
+  } finally {
+    if (services.cli.claudeCode.getConversation(threadId)?.owner === owner && !owner.busy && !owner.closing) {
+      const queued = dequeueMessage(services, threadId);
+      if (queued) await replayQueuedMessage(services, threadId as EntityId, queued, services.logger);
+    }
+  }
+}
+
+async function handleConfigurationSummary(args: string[], services: Services, threadId?: string): Promise<{ text: string; data?: any }> {
+  if (args.length > 1 || (args.length === 1 && args[0] !== 'start')) return { text: 'Usage: cc-config effective [start]' };
+  const prior = threadId ? getClaudeState(services, threadId) : undefined;
+  const cwd = prior?.cwdOverride || prior?.cwd || services.cli.claudeCode.getWorkingDir();
+  const conversation = threadId ? services.cli.claudeCode.getConversation(threadId) : undefined;
+  const handle = conversation && !conversation.owner.closing && conversation.owner.sessionCwd === cwd ? conversation.owner.handle : undefined;
+  if (!handle && args[0] !== 'start') return { text: 'No matching native conversation is running. Use cc-config effective start for a temporary process; startup and close can run configured session hooks. Its applied values describe that temporary process.' };
+  const summary = handle ? await handle.getConfigurationSummary() : await services.cli.claudeCode.getConfigurationSummary({ cwd });
+  const rows = [handle ? 'Native configuration summary:' : 'Temporary native process configuration summary:', `Parsed configured model: ${summary.configuredModel ?? '(not set)'}`, `Parsed global effort: ${summary.configuredEffort ?? '(not set)'}`, `Parsed effort for applied model: ${summary.perModelEffort ?? '(not set)'}`, `Native applied model: ${summary.appliedModel}`, `Native reported applied effort: ${summary.appliedEffort ?? '(unavailable)'}`, `Native configuration errors: ${summary.configurationErrorCount}`];
+  return { text: rows.join('\n'), data: summary };
+}
+
 async function handleConfig(
   args: string[],
   services: Services,
+  threadId?: string,
 ): Promise<{ text: string; data?: any }> {
   const [subcommand, key, ...rest] = args;
+  if (subcommand === 'effective') return handleConfigurationSummary(args.slice(1), services, threadId);
+  if (subcommand === 'save-effort') return handleSaveEffort(args.slice(1), services, threadId);
 
   if (!subcommand) {
-    return { text: 'Usage: /cc-config get <key> | set <key> <value>' };
+    return { text: 'Usage: /cc-config get <key> | set <key> <value> | effective [start] | save-effort <low|medium|high|xhigh>' };
   }
 
   const settings = await services.cli.claudeCode.readSettings();
@@ -186,50 +239,339 @@ async function handleConfig(
       return { text: `Set ${key} = ${raw}` };
     }
     default:
-      return { text: `Unknown config subcommand: ${subcommand}\nUsage: /cc-config get <key> | set <key> <value>` };
+      return { text: `Unknown config subcommand: ${subcommand}\nUsage: /cc-config get <key> | set <key> <value> | effective [start] | save-effort <low|medium|high|xhigh>` };
   }
+}
+
+async function handleTasks(args: string[], services: Services, threadId?: string): Promise<{ text: string; data?: any }> {
+  if (args.length) return { text: 'Usage: cc-tasks' };
+  if (!threadId) return { text: 'Select a thread to view its observed native tasks.' };
+  const conversation = services.cli.claudeCode.getConversation(threadId);
+  if (!conversation || conversation.owner.closing) return { text: 'No native conversation is running. Task observations are unavailable.' };
+  const owner = conversation.owner;
+  const tasks = owner.listObservedTasks();
+  return { text: tasks.length
+    ? [`Last observed native tasks${owner.sessionCwd ? ` in ${owner.sessionCwd}` : ''}:`, ...tasks.map(task => `${task.id}: ${task.subject} — ${task.status ?? 'status not yet reported'}${task.owner ? ` (owner: ${task.owner})` : ''}${task.blockedBy?.length ? `; blocked by ${task.blockedBy.join(', ')}` : ''}${task.needsRefresh ? '; details changed, awaiting native read' : ''}`), 'These are observations from this process, not a fresh read of all persisted task lists.'].join('\n')
+    : 'No native task records have been observed in this process. Task tools may be gated off, or no task metadata has arrived.', data: tasks };
+}
+
+async function handleWorkflows(args: string[], services: Services, threadId?: string): Promise<{ text: string; data?: any }> {
+  if (args.length && (args.length !== 2 || args[0] !== 'stop')) return { text: 'Usage: cc-workflows [stop <task id>]' };
+  if (!threadId) return { text: 'Select a thread to view its native workflows.' };
+  const conversation = services.cli.claudeCode.getConversation(threadId);
+  if (!conversation) return { text: 'No native conversation is running. Workflow status is unavailable.' };
+  const owner = conversation.owner;
+  const tasks = owner.listWorkflows();
+  if (!args.length) return { text: tasks.length
+    ? [`Native workflows${owner.sessionCwd ? ` in ${owner.sessionCwd}` : ''}:`, ...tasks.map(task => `${task.taskId}: ${task.name} — ${task.status}${task.phase ? ` (${task.phase})` : ''}`)].join('\n')
+    : 'No local workflows have been observed in this conversation.', data: tasks };
+  const task = tasks.find(task => task.taskId === args[1]);
+  if (!task) return { text: `No tracked Workflow with task ID: ${args[1]}` };
+  if (task.status !== 'running') return { text: `${task.name} is already ${task.status}.` };
+  await owner.handle.stopTask(task.taskId);
+  if (services.cli.claudeCode.getConversation(threadId)?.owner !== owner || owner.closing) return { text: 'The conversation changed while requesting the stop; Workflow status is unverified.' };
+  const current = owner.listWorkflows().find(value => value.taskId === task.taskId);
+  return { text: current && current.status !== 'running'
+    ? `${task.name}: ${current.status}.`
+    : `Stop request acknowledged for ${task.name} (${task.taskId}). Waiting for native task status.` };
+}
+
+async function handleUsage(args: string[], services: Services, threadId?: string): Promise<{ text: string }> {
+  const explicitStart = args[0] === 'start';
+  if (explicitStart) args = args.slice(1);
+  if (args.length > 1 || (args.length === 1 && args[0] !== 'behaviors')) return { text: 'Usage: cc-usage [start] [behaviors]' };
+  const includeBehaviors = args[0] === 'behaviors';
+  const prior = threadId ? getClaudeState(services, threadId) : undefined;
+  const cwd = prior?.cwdOverride || prior?.cwd || services.cli.claudeCode.getWorkingDir();
+  const conversation = threadId ? services.cli.claudeCode.getConversation(threadId) : undefined;
+  const handle = conversation?.owner.sessionCwd === cwd ? conversation.owner.handle : undefined;
+  if (!handle && !explicitStart) return { text: 'No matching native conversation is running. Use cc-usage start [behaviors] for a temporary process. Starting and closing it can run configured session hooks; its session totals describe that temporary process.' };
+  const usage = handle ? await handle.getUsage({ includeBehaviors }) : await services.cli.claudeCode.getUsage({ cwd, includeBehaviors });
+  const session = usage.session;
+  const rows = [`Native session cost: $${session.total_cost_usd}`, `API duration: ${session.total_api_duration_ms} ms; wall duration: ${session.total_duration_ms} ms`, `Lines added: ${session.total_lines_added}; removed: ${session.total_lines_removed}`, `Subscription: ${usage.subscription_type ?? '(unavailable)'}`, `Account rate limits: ${usage.rate_limits_available ? usage.rate_limits === null ? '(not returned)' : JSON.stringify(usage.rate_limits, null, 2) : '(unavailable)'}`, `Native model usage: ${JSON.stringify(session.model_usage, null, 2)}`];
+  if (includeBehaviors) rows.push(`Native behavior aggregates: ${usage.behaviors == null ? '(unavailable)' : JSON.stringify(usage.behaviors, null, 2)}`);
+  if (!handle) rows.unshift('Temporary native process; these are not the saved conversation totals.');
+  return { text: rows.join('\n') };
+}
+
+async function handleThinking(args: string[], services: Services, threadId?: string): Promise<{ text: string }> {
+  const usage = 'Usage: cc-thinking <integer budget|default> [summarized|omitted|highlights|default], or cc-thinking display <summarized|omitted|highlights|default>';
+  const change: { budgetTokens?: number | null; display?: 'summarized' | 'omitted' | 'highlights' | null } = {};
+  if (!args.length || args.length > 2) return { text: usage };
+  if (args[0] !== 'display') {
+    if (args[0] === 'default') change.budgetTokens = null;
+    else if (/^-?\d+$/.test(args[0]!) && Number.isSafeInteger(Number(args[0]))) change.budgetTokens = Number(args[0]);
+    else return { text: usage };
+  } else if (args.length !== 2) return { text: usage };
+  if (args.length === 2) {
+    const display = args[1];
+    if (display === 'default') change.display = null;
+    else if (display === 'summarized' || display === 'omitted' || display === 'highlights') change.display = display;
+    else return { text: usage };
+  }
+  if (!threadId) return { text: 'Select a thread with a running Claude conversation before changing thinking.' };
+  const conversation = services.cli.claudeCode.getConversation(threadId);
+  if (!conversation || conversation.owner.closing) return { text: 'Start a Claude conversation in this project before changing thinking.' };
+  if (conversation.owner.busy) return { text: 'Wait for the Claude conversation to become idle before changing thinking.' };
+  const prior = getClaudeState(services, threadId);
+  const cwd = prior?.cwdOverride || prior?.cwd || services.cli.claudeCode.getWorkingDir();
+  if (conversation.owner.sessionCwd !== cwd) return { text: 'The native conversation directory does not match this project.' };
+  try {
+    await conversation.owner.handle.setThinking(change);
+    if (services.cli.claudeCode.getConversation(threadId) !== conversation || conversation.owner.closing) return { text: 'The native conversation closed or changed while applying thinking settings; its effective state is unknown.' };
+    return { text: 'Thinking request acknowledged for this running conversation. Effective behavior depends on the model; a zero budget may leave adaptive thinking enabled. This does not change future launches or saved settings.' };
+  } catch (error: any) {
+    return { text: `Native thinking request failed: ${error?.message || 'Unknown error'}. A refused display change may still apply its accompanying budget.` };
+  } finally {
+    if (services.cli.claudeCode.getConversation(threadId) === conversation && !conversation.owner.busy && !conversation.owner.closing) {
+      const queued = dequeueMessage(services, threadId);
+      if (queued) await replayQueuedMessage(services, threadId as EntityId, queued, services.logger);
+    }
+  }
+}
+
+async function handleModels(args: string[], services: Services, threadId?: string): Promise<{ text: string }> {
+  if (args.length > 1 || (args.length === 1 && args[0] !== 'start')) return { text: 'Usage: cc-models [start]' };
+  const prior = threadId ? getClaudeState(services, threadId) : undefined;
+  const cwd = prior?.cwdOverride || prior?.cwd || services.cli.claudeCode.getWorkingDir();
+  const conversation = threadId ? services.cli.claudeCode.getConversation(threadId) : undefined;
+  const handle = conversation?.owner.sessionCwd === cwd ? conversation.owner.handle : undefined;
+  if (!handle && args[0] !== 'start') return { text: 'No matching native conversation is running. Use cc-models start to read with a temporary native process. Starting and closing it can run configured session hooks.' };
+  const catalog = handle ? await handle.getModels() : await services.cli.claudeCode.getModels({ cwd });
+  const rows = catalog.models.map(model => {
+    const capabilities = [
+      ['Effort', model.supportsEffort], ['Adaptive thinking', model.supportsAdaptiveThinking],
+      ['Fast mode', model.supportsFastMode], ['Auto mode', model.supportsAutoMode], ['Thinking off', model.supportsThinkingOff],
+    ].filter(([, value]) => typeof value === 'boolean').map(([label, value]) => `${label}: ${value ? 'yes' : 'no'}`);
+    const details = [model.description, model.supportedEffortLevels ? `Effort levels: ${model.supportedEffortLevels.join(', ') || '(none)'}` : undefined, ...capabilities];
+    return `${model.value}: ${model.displayName}${model.resolvedModel ? ` (${model.resolvedModel})` : ''}${details.filter(Boolean).map(detail => `\n  ${detail}`).join('')}`;
+  });
+  return { text: `${rows.join('\n') || 'Native catalog is empty.'}\n\nUse cc-model <alias or model id> to select. This catalog is not an exhaustive list of custom model IDs and does not identify the active selection.` };
 }
 
 async function handleModel(
   args: string[],
   services: Services,
+  threadId?: string,
 ): Promise<{ text: string; data?: any }> {
-  const settings = await services.cli.claudeCode.readSettings();
-  if (args.length === 0) {
-    return { text: settings.model || '(using default model)' };
+  if (!threadId) return { text: 'Select a thread before choosing its Claude model.' };
+  const prior = getClaudeState(services, threadId);
+  if (args.length === 0) return { text: `Selected: ${prior?.modelOverride || 'default'}\nLast reported: ${prior?.model || '(not yet reported)'}` };
+  if (args.length !== 1) return { text: 'Usage: cc-model <alias or model id>' };
+  const selection = args[0]!;
+  const conversation = services.cli.claudeCode.getConversation(threadId);
+  if (conversation) {
+    if (conversation.owner.busy) return { text: 'Wait for the Claude conversation to become idle before changing model.' };
+    const cwd = prior?.cwdOverride || prior?.cwd || services.cli.claudeCode.getWorkingDir();
+    if (conversation.owner.sessionCwd !== cwd) return { text: 'The native conversation directory does not match this project. Start a conversation in this project before changing its model.' };
+    try {
+      await conversation.owner.handle.setModel(selection);
+      persistClaudeState(services, threadId, { modelOverride: selection });
+      return { text: `Model selection accepted: ${selection}. The next turn will report the effective model.` };
+    } finally {
+      if (!conversation.owner.busy && !conversation.owner.closing) {
+        const queued = dequeueMessage(services, threadId);
+        if (queued) await replayQueuedMessage(services, threadId as EntityId, queued, services.logger);
+      }
+    }
   }
-  settings.model = args[0];
-  await services.cli.claudeCode.writeSettings(settings);
-  return { text: `Model set to: ${args[0]}` };
+  persistClaudeState(services, threadId, { modelOverride: selection });
+  return { text: `Model selected for the next launch: ${selection}. Claude will validate it when starting.` };
+}
+
+async function handlePermissions(args: string[], services: Services, threadId?: string, rawText?: string): Promise<{ text: string; data?: any }> {
+  const explicitStart = args[0] === 'start';
+  if (explicitStart) args = args.slice(1);
+  if (explicitStart) rawText = rawText?.trim().replace(/^start(?:\s+|$)/, '');
+  const editing = args.length > 0;
+  const edit = rawText?.trim().match(/^(add|remove)\s+(allow|deny|ask)\s+(userSettings|projectSettings|localSettings)\s+([\s\S]+)$/);
+  if (editing && !edit) return { text: 'Usage: cc-permissions [start] [add|remove <allow|deny|ask> <userSettings|projectSettings|localSettings> <exact rule>]' };
+  if (editing && threadId && services.cli.claudeCode.isConversationBusy(threadId)) {
+    return { text: 'Wait for the Claude conversation to become idle before editing permission rules.' };
+  }
+  const prior = threadId ? getClaudeState(services, threadId) : undefined;
+  const cwd = prior?.cwdOverride || prior?.cwd;
+  let handle = threadId ? services.cli.claudeCode.getHandle(threadId) : undefined;
+  if (handle && threadId) {
+    const nativeCwd = services.cli.claudeCode.getConversation(threadId)?.owner.sessionCwd;
+    if (nativeCwd !== (cwd || services.cli.claudeCode.getWorkingDir())) {
+      if (editing) return { text: 'The native conversation directory does not match this project. Start a conversation in this project before editing its permission rules.' };
+      handle = undefined;
+    }
+  }
+  const options = cwd ? { cwd } : undefined;
+  if (!handle && !explicitStart) return { text: 'No matching native conversation is running. Use cc-permissions start [add|remove ...] to read or edit with a temporary native process. Starting and closing it can run configured session hooks.' };
+  let notice = '';
+  let data;
+  if (edit) {
+    const behavior = edit[2] as 'allow' | 'deny' | 'ask';
+    const source = edit[3] as 'userSettings' | 'projectSettings' | 'localSettings';
+    const rule = edit[4]!;
+    const saved = await services.cli.claudeCode.editPermissionRules(edit[1] === 'add'
+      ? { op: 'add', rules: [rule], behavior, destination: source }
+      : { op: 'remove', rule, behavior, source }, options);
+    notice = `Saved ${source} permission change.\n`;
+    for (const warning of saved.warnings) notice += `Native warning: ${warning}\n`;
+    if (saved.stored.length) notice += `Native stored rules: ${saved.stored.join(', ')}\n`;
+    try { data = handle ? await handle.refreshPermissionRules() : await services.cli.claudeCode.getPermissionRules(options); }
+    catch (error: any) { return { text: `${notice}The change was saved, but native permission refresh failed: ${error?.message || 'Unknown error'}. Running permission state is unverified.` }; }
+  } else {
+    data = handle ? await handle.getPermissionRules() : await services.cli.claudeCode.getPermissionRules(options);
+  }
+  const state = data.state;
+  const lines = [handle ? 'Running conversation permissions' : 'Project configuration permissions', `Workspace: ${state.originalCwd}`, `Managed-only rules: ${state.managedOnly ? 'yes' : 'no'}`];
+  for (const rule of state.rules) lines.push(`${rule.behavior} [${rule.source}; ${rule.editability}${rule.notInEffect ? '; not in effect' : ''}] ${rule.rule}`);
+  if (!state.rules.length) lines.push('No permission rules listed.');
+  for (const directory of state.workspaceDirectories) lines.push(`Directory${directory.source ? ` [${directory.source}]` : ''}: ${directory.path}`);
+  for (const error of state.errors ?? []) lines.push(`Settings error: ${error.file}: ${error.message}`);
+  return { text: notice + lines.join('\n'), data };
+}
+
+async function handleHooks(args: string[], services: Services, threadId?: string, rawText?: string): Promise<{ text: string; data?: any }> {
+  const explicitStart = args.length === 1 && args[0] === 'start';
+  const editing = args[0] === 'apply';
+  if ((args.length && !editing && !explicitStart) || (editing && !rawText?.trim().startsWith('apply '))) return { text: 'Usage: cc-hooks [start | apply <native JSON edit>]' };
+  if (editing && threadId && services.cli.claudeCode.isConversationBusy(threadId)) return { text: 'Wait for the Claude conversation to become idle before editing hooks.' };
+
+  const prior = threadId ? getClaudeState(services, threadId) : undefined;
+  const cwd = prior?.cwdOverride || prior?.cwd;
+  let handle = threadId ? services.cli.claudeCode.getHandle(threadId) : undefined;
+  if (handle && threadId && services.cli.claudeCode.getConversation(threadId)?.owner.sessionCwd !== (cwd || services.cli.claudeCode.getWorkingDir())) {
+    if (editing) return { text: 'The native conversation directory does not match this project. Start a conversation in this project before editing hooks.' };
+    handle = undefined;
+  }
+  let notice = '';
+  if (editing) {
+    const edit = JSON.parse(rawText!.trim().slice('apply '.length));
+    const result = await services.cli.claudeCode.editHook(edit, cwd ? { cwd } : undefined);
+    if (!result.ok) return { text: `Native hook edit refused [${result.code}]: ${result.error}`, data: result };
+    notice = 'Saved the hook edit.\n';
+    if (handle && threadId) {
+      try {
+        if (!await services.cli.claudeCode.closeIdleConversation(threadId)) return { text: `${notice}The native conversation could not be closed for reload. Restart it before relying on the new hook configuration.` };
+      } catch (error: any) { return { text: `${notice}Closing the native conversation for reload failed: ${error?.message || 'Unknown error'}` }; }
+      notice += 'Closed the idle native process; the next conversation launch will load its hook configuration.\n';
+      handle = undefined;
+    }
+    return { text: `${notice}Use cc-hooks start to read a fresh catalog; starting it can run configured session hooks.`, data: result };
+  }
+  if (!handle && !explicitStart) return { text: 'No matching native conversation is running. Use cc-hooks start to open a temporary native process and read its catalog. Starting and closing it can run configured session hooks.' };
+  const data = handle ? await handle.getHooksListing() : await services.cli.claudeCode.getHooksListing(cwd ? { cwd } : undefined);
+  const lines = [`Native hooks (${handle ? 'current conversation' : 'new process for selected project'}).`, `${data.eventCatalog.length} available events; ${data.hooks.length} configured hooks.`];
+  if (data.policy.allDisabled) lines.push('Hook execution is disabled in this native configuration.');
+  if (data.policy.disabledByPolicy) lines.push('Managed policy disables hooks.');
+  if (data.policy.managedOnly) lines.push('Managed policy permits managed hooks only.');
+  if (data.policy.pluginOnly) lines.push('Managed policy restricts hooks to plugin sources.');
+  if (data.policy.policyUnreadable) lines.push('Managed policy could not be read.');
+  if (data.bareMode) lines.push(`Bare mode: ${data.bareMode.exitHint}`);
+  if (data.safeMode) lines.push(`Safe mode: ${data.safeMode.exitHint}${data.safeMode.managedHooksStillApply ? '; managed hooks still apply' : ''}`);
+  for (const hook of data.hooks) lines.push(`${hook.event}${hook.matcher ? ` (${hook.matcher})` : ''} [${hook.source}; ${hook.disabled ? 'disabled' : 'enabled'}; ${hook.editable ? 'file-editable' : 'read-only'}] ${hook.displayText}${hook.editable?.headersRedacted ? ' (HTTP header values hidden)' : ''}`);
+  if (!data.hooks.length) lines.push('No configured hooks in this native scope.');
+  lines.push(`Events: ${data.eventCatalog.map(event => `${event.name}${event.supportsMatcher ? ' (matcher)' : ''}`).join(', ')}`);
+  for (const error of data.errors ?? []) lines.push(`Settings error: ${error.file} ${error.path}: ${error.message}`);
+  return { text: notice + lines.join('\n'), data };
 }
 
 async function handleMemory(
   args: string[],
   services: Services,
+  threadId?: string,
 ): Promise<{ text: string; data?: any }> {
+  const explicitStart = args[0] === 'start';
+  if (explicitStart) args = args.slice(1);
   if (args[0] === 'add' || args[0] === 'remove') {
     return { text: `Memory add/remove is only available in the Claude Code terminal. Use /memory ${args[0]} there.` };
   }
-  const files = await services.cli.claudeCode.listMemoryFiles();
-  if (!files.length) return { text: 'No memory files found.' };
-  const lines = files.map((f: any) => {
-    const scope = f.scope ? ` [${f.scope}]` : '';
-    return `${f.name}${scope}  ${f.path}`;
-  });
-  return { text: lines.join('\n'), data: files };
+  const editing = args.length > 0;
+  if (editing && (args.length !== 2 || args[0] !== 'auto' || !['on', 'off'].includes(args[1]!))) {
+    return { text: 'Usage: cc-memory [start] auto <on|off> (user setting)' };
+  }
+  if (editing && threadId && services.cli.claudeCode.isConversationBusy(threadId)) {
+    return { text: 'Wait for the Claude conversation to become idle before changing auto-memory.' };
+  }
+  const prior = threadId ? getClaudeState(services, threadId) : undefined;
+  const cwd = prior?.cwdOverride || prior?.cwd;
+  let handle = threadId ? services.cli.claudeCode.getHandle(threadId) : undefined;
+  if (handle && threadId) {
+    const nativeCwd = services.cli.claudeCode.getConversation(threadId)?.owner.sessionCwd;
+    if (nativeCwd !== (cwd || services.cli.claudeCode.getWorkingDir())) {
+      if (editing) return { text: 'The native conversation directory does not match this project. Start a conversation in this project before changing auto-memory.' };
+      handle = undefined;
+    }
+  }
+  const options = cwd ? { cwd } : undefined;
+  if (!handle && !explicitStart) return { text: 'No matching native conversation is running. Use cc-memory start [auto on|off] to read or edit with temporary native processes. Starting and closing them can run configured session hooks.' };
+  const read = () => handle ? handle.getMemoryDialog() : services.cli.claudeCode.getMemoryDialog(options);
+  let data = await read();
+  let notice = '';
+  if (editing) {
+    if (!data.auto_memory.toggleable) return { text: `Auto-memory cannot be changed in this native session: ${data.auto_memory.status}` };
+    const enabled = args[1] === 'on';
+    await services.cli.claudeCode.setAutoMemory(enabled, options);
+    notice = `Saved user auto-memory setting: ${enabled ? 'on' : 'off'}.\n`;
+    try { data = await read(); } catch (error: any) {
+      return { text: `${notice}Saved the setting, but reading native status failed: ${error?.message || 'Unknown error'}` };
+    }
+    if (data.auto_memory.enabled !== enabled) notice += `Native session status remains ${data.auto_memory.status}.\n`;
+  }
+  const lines = data.files.map(file => `${file.label} [${file.kind}]${file.exists ? '' : ' (missing)'}  ${file.path}`);
+  for (const folder of data.folders) lines.push(`${folder.label}  ${folder.path}`);
+  for (const memory of data.memories ?? []) lines.push(`${memory.name}${memory.type ? ` [${memory.type}]` : ''}  ${memory.path}`);
+  lines.push(`Auto-memory: ${data.auto_memory.status}${data.auto_memory.toggleable ? '' : ' (unavailable)'}`);
+  if (data.auto_dream.shown) lines.push(`Auto-dream: ${data.auto_dream.status}${data.auto_dream.detail ? ` — ${data.auto_dream.detail}` : ''}${data.auto_dream.toggleable ? '' : ' (unavailable)'}`);
+  return { text: notice + lines.join('\n'), data };
 }
 
 async function handleSkills(
-  _args: string[],
+  args: string[],
   services: Services,
+  threadId?: string,
 ): Promise<{ text: string; data?: any }> {
-  const skills = await services.cli.claudeCode.listSkills();
+  const explicitStart = args[0] === 'start';
+  if (explicitStart) args = args.slice(1);
+  const prior = threadId ? getClaudeState(services, threadId) : undefined;
+  const cwd = prior?.cwdOverride || prior?.cwd;
+  const options = cwd ? { cwd } : undefined;
+  const editing = args.length > 0;
+  if (editing && (args.length !== 3 || args[0] !== 'set')) {
+    return { text: 'Usage: cc-skills [start] set <name> <on|name-only|user-invocable-only|off>' };
+  }
+  if (editing && threadId && services.cli.claudeCode.isConversationBusy(threadId)) {
+    return { text: 'Wait for the Claude conversation to become idle before changing Skill state.' };
+  }
+  let handle = threadId ? services.cli.claudeCode.getHandle(threadId) : undefined;
+  if (handle && threadId) {
+    const processCwd = services.cli.claudeCode.getConversation(threadId)?.owner.sessionCwd;
+    const selectedCwd = cwd || services.cli.claudeCode.getWorkingDir();
+    if (processCwd !== selectedCwd) {
+      if (editing) return { text: 'The native conversation directory does not match this project. Start a conversation in this project before editing its Skills.' };
+      handle = undefined;
+    }
+  }
+  if (!handle && !explicitStart) return { text: 'No matching native conversation is running. Use cc-skills start [set <name> <state>] to read or edit with temporary native processes. Starting and closing them can run configured session hooks.' };
+  let skills = handle ? (await handle.getSkillsDialog()).skills : await services.cli.claudeCode.listSkills(options);
+  let notice = '';
+  if (editing) {
+    const name = args[1]!;
+    const matches = skills.filter(skill => skill.name === name);
+    if (matches.length !== 1) return { text: `Skill name must identify exactly one native entry: ${name}` };
+    const skill = matches[0]!;
+    const result = await services.cli.claudeCode.editSkill({ name, state: args[2]!, handles: skill.handles }, options);
+    notice = result.changed ? `Updated ${name}.\n` : `No change to ${name}.\n`;
+    try {
+      if (handle) await handle.reloadSkills();
+      skills = handle ? (await handle.getSkillsDialog()).skills : await services.cli.claudeCode.listSkills(options);
+    } catch (error: any) {
+      return { text: `${notice}Saved Skill state, but native refresh failed: ${error?.message || 'Unknown error'}` };
+    }
+  }
   if (!skills.length) return { text: 'No skills installed.' };
-  const lines = skills.map((s: any) => {
-    const scope = s.scope ? ` [${s.scope}]` : '';
-    return `${s.name}${scope}`;
+  const lines = skills.map(s => {
+    const lock = s.locked_by ? `; locked by ${s.locked_by}` : '';
+    const invocation = s.advertised ? '' : '; hidden from command suggestions';
+    return `${s.display_name} [${s.source}] — ${s.state}${lock}${invocation}`;
   });
-  return { text: lines.join('\n'), data: skills };
+  return { text: notice + lines.join('\n'), data: skills };
 }
 
 async function handleStats(

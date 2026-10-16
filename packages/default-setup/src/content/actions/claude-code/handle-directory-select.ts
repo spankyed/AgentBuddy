@@ -35,6 +35,7 @@ export async function action(
       allowedTools?: string[];
       disallowedTools?: string[];
       systemPrompt?: string;
+      jsonSchema?: unknown;
       messageId?: string;
       references?: any;
     };
@@ -77,6 +78,7 @@ export async function action(
     allowedTools: pendingDirectorySelect.allowedTools,
     disallowedTools: pendingDirectorySelect.disallowedTools,
     systemPrompt: pendingDirectorySelect.systemPrompt,
+    jsonSchema: pendingDirectorySelect.jsonSchema,
     messageId: pendingDirectorySelect.messageId,
     references: pendingDirectorySelect.references,
   });

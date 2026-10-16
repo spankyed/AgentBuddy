@@ -1,9 +1,14 @@
+import { dslCatalogEntries } from '../packs/catalog-dsl.ts';
+import { captureData } from '../packs/captured-data.ts';
+import { assertEntityDestinationClaims, pluginCatalogEntries, nativePluginCatalogEntries } from '../packs/catalog-plugins.ts';
 import { stepCatalogEntries } from '../packs/catalog-steps.ts';
 import type { PackCatalogFrame, PackCatalogSnapshot } from '../packs/catalog.ts';
-import type { PackCatalogView, ReferenceCatalogEntry, FrontendCatalogEntry, StepCatalogEntry } from '@apackdev/sdk/framework';
+import type { NativePackDeclaration, PackCatalogView } from '@apackdev/sdk/framework';
 import { referenceCatalogEntries } from '../packs/catalog-references.ts';
 import { frontendCatalogEntries } from '../packs/catalog-frontend.ts';
-import { _settingsJsonProblems } from '@apackdev/sdk/framework';
+import { artifactCatalogEntries } from '../packs/catalog-artifacts.ts';
+import { blockCatalogEntries } from '../packs/catalog-blocks.ts';
+import { _nativePackDeclarationProblem, _settingsJsonProblems } from '@apackdev/sdk/framework';
 import { isPlainObject } from '@apackdev/sdk/utils/pure';
 import { createLogger } from '@apackdev/sdk/logger';
 import { isEqual } from '../features/settings/document.ts';
@@ -17,7 +22,12 @@ const SNAPSHOT_FIELDS = { revision: true, appSettings: true, packs: true, proble
   sourcePacks: true, appPackSources: true, appPackSourceProblems: true } satisfies Record<keyof PackCatalogSnapshot, true>;
 
 /** Immutable declaration data; the active frontend registry has a separate lifetime. */
-export function createWindowPackCatalog(io: WindowPackCatalogIO) {
+export function createWindowPackCatalog(io: WindowPackCatalogIO, native: readonly NativePackDeclaration[] = []) {
+  for (const declaration of native) {
+    const problem = _nativePackDeclarationProblem(declaration);
+    if (problem) throw new Error(`Invalid native declarations: ${problem}`);
+  }
+  const localPlugins = nativePluginCatalogEntries(captureData(native));
   let generation = 0;
   let stop: (() => void) | undefined;
   let frame: PackCatalogFrame | undefined;
@@ -50,19 +60,14 @@ export function createWindowPackCatalog(io: WindowPackCatalogIO) {
       || ['packs', 'problems', 'native', 'sourcePacks', 'appPackSources', 'appPackSourceProblems'].some(key => !Array.isArray(snapshot[key]))) {
       throw new Error('Invalid declaration catalog frame');
     }
-    const next = structuredClone(value) as unknown as PackCatalogFrame;
+    const next = captureData(value) as unknown as PackCatalogFrame;
     if (frame && frame.runId !== next.runId) throw new Error('Declaration catalog backend changed within one connection');
     if (frame && next.snapshot.revision < frame.snapshot.revision) return;
     if (frame && next.snapshot.revision === frame.snapshot.revision) {
       if (!isEqual(frame.snapshot, next.snapshot)) throw new Error('Declarations changed without a catalog revision');
       return;
     }
-    function freeze(data: unknown): void {
-      if (!data || typeof data !== 'object') return;
-      Object.values(data).forEach(freeze);
-      Object.freeze(data);
-    }
-    freeze(next);
+    assertEntityDestinationClaims(next.snapshot);
     clearTimeout(timer); timer = undefined;
     frame = next;
     status = 'ready';
@@ -70,22 +75,30 @@ export function createWindowPackCatalog(io: WindowPackCatalogIO) {
     tell();
   }
 
-  let projected: { snapshot: PackCatalogSnapshot; references: readonly ReferenceCatalogEntry[]; frontend: readonly FrontendCatalogEntry[]; steps: readonly StepCatalogEntry[] } | undefined;
+  const project = (snapshot: PackCatalogSnapshot) => ({ snapshot,
+    plugins: pluginCatalogEntries(snapshot), references: referenceCatalogEntries(snapshot), frontend: frontendCatalogEntries(snapshot), steps: stepCatalogEntries(snapshot),
+    artifacts: artifactCatalogEntries(snapshot), blocks: blockCatalogEntries(snapshot), dsl: dslCatalogEntries(snapshot),
+  });
+  let projected: ReturnType<typeof project> | undefined;
   const projection = () => {
     const snapshot = frame?.snapshot;
     if (!snapshot) return undefined;
-    if (projected?.snapshot !== snapshot) projected = { snapshot, references: referenceCatalogEntries(snapshot), frontend: frontendCatalogEntries(snapshot), steps: stepCatalogEntries(snapshot) };
+    if (projected?.snapshot !== snapshot) projected = project(snapshot);
     return projected;
   };
   const catalog: PackCatalogView = {
     status: () => status, problem: () => problem,
     references: () => projection()?.references ?? [], frontend: () => projection()?.frontend ?? [],
     steps: () => projection()?.steps ?? [],
+    artifacts: () => projection()?.artifacts ?? [],
+    blocks: () => projection()?.blocks ?? [],
+    dsl: () => projection()?.dsl ?? [],
     subscribe(listener) { listeners.add(listener); return () => { listeners.delete(listener); }; },
   };
 
   return {
     catalog,
+    plugins: () => status === 'disposed' ? [] : projection()?.plugins ?? localPlugins,
     getSnapshot: (): PackCatalogSnapshot | undefined => frame?.snapshot,
     status: () => status,
     problem: () => problem,

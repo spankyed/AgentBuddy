@@ -18,20 +18,22 @@ function projectCli() {
 }
 
 const worker = process.env.APACK_BUILD_WORKER === '1';
+if (worker) globalThis[Symbol.for('apack.compiler.startup')]?.stopReads();
 if (worker && (!process.send || !process.connected)) throw new Error('Pack build worker requires its parent IPC channel');
 // The supervisor already selected and captured this compiler; project hand-off would escape it.
 const handoff = worker ? null : projectCli();
 if (handoff) {
   await import(pathToFileURL(handoff).href);
 } else {
-  // The CLI loads pack TypeScript (content, step build code), and in the monorepo is TypeScript
-  // source itself: register the CLI's own tsx instead of relying on a `tsx` binary on PATH.
-  const { register } = await import('tsx/esm/api');
-  register();
-  // The compiler worker shares bootstrap/resolution, but never dispatches another public build.
   const entry = worker ? 'build-worker' : 'cli';
   const bundle = new URL(`../dist/${entry}.js`, import.meta.url);
   const bundled = existsSync(new URL('../dist/cli.js', import.meta.url));
+  // Bundled workers load pack TypeScript through their owned scopes. A second, unscoped tsx loader
+  // would transform those inputs first using another configuration. Source CLI boot still needs tsx.
+  if (!worker || !bundled) {
+    const { register } = await import('tsx/esm/api');
+    register();
+  }
   if (!bundled) {
     // In a checkout, workspace @apackdev/* packages resolve to their source. Registered after tsx,
     // so it runs first and tsx resolves with the added condition. Only this process, and only the

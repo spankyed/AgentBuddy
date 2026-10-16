@@ -26,11 +26,14 @@ describe.skipIf(!PACKAGES_BUILT)('@apackdev/ui dist', () => {
   });
 
   it('defines a module several entries import in exactly one file', () => {
-    // monaco-config's module state, used by SimpleMonacoEditor, UnifiedMonacoEditor and its own export
+    // Follow the public entry to its state owner; shared chunks may have content-derived filenames.
     const definitions = walk(UI_DIST)
       .filter((file) => file.endsWith('.js'))
-      .filter((file) => /\bregisteredDslLibs = \/\* @__PURE__ \*\/ new Set\(|\bregisteredDslLibs = new Set\(/.test(fs.readFileSync(file, 'utf-8')))
+      .filter((file) => /\binitializedLanguages\s*=\s*(?:\/\* @__PURE__ \*\/\s*)?new Set\(/.test(fs.readFileSync(file, 'utf-8')))
       .map((file) => path.relative(UI_DIST, file));
-    expect(definitions).toEqual(['components/monaco-config.js']);
+    const entry = path.join(UI_DIST, 'components/monaco-config.js');
+    const target = fs.readFileSync(entry, 'utf8').match(/from ["']([^"']+)["']/)?.[1];
+    expect(target).toBeDefined();
+    expect(definitions).toEqual([path.relative(UI_DIST, path.resolve(path.dirname(entry), target!))]);
   });
 });

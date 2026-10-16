@@ -12,6 +12,10 @@ vi.mock('@/views/settings/save', () => ({ useSettingsSaveStatus: () => ({
   saveStatus: ref('idle'), problems: ref([]), updateSettings: update, resetSettings: reset,
 }) }));
 vi.mock('@/runtime/settings', () => ({ useWindowSettingsSnapshot: () => snapshot }));
+vi.mock('@/runtime/catalog', () => ({ windowCatalog: {
+  getSnapshot: () => ({ native: [{ id: 'first' }, { id: 'second' }], packs: [] }),
+  status: () => 'ready', subscribe: () => () => {},
+} }));
 import { fePacks } from '@/runtime/packs';
 import { _createFeSettings } from '@apackdev/sdk/fe';
 import { fakeSettings } from '@apackdev/sdk/testing';

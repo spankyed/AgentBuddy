@@ -158,7 +158,6 @@ export default {
   appExtensions?: Record<string, Component>;
   artifacts?: ArtifactDefinition[];
   blocks?: BlockDefinition[];
-  dslTypes?: Record<string, DslTypeConfig>;
 } satisfies PackFERegistration;
 ```
 
@@ -331,7 +330,6 @@ The policy is `appPartitionPolicy()` (`@apackdev/host/database`), a constant ove
 | `content-runtime.ts` | The pack's content runtime (entity types, relation kinds, repositories, content writers). The pack's tests import it; `apack pack build` bundles it into `dist/build/content-runtime.mjs` for dependents' tests |
 | `flow-helpers.ts` | Typed DSL helpers for each step definition, with dependencies' |
 | `step-types.ts` | Re-exports DSL/compiled node types from step definitions |
-| `dsl-types-fe.ts` | `dslTypes` for the Monaco editor, from the definitions `apack pack build` writes to `dist/defs/monaco/`, which `pack-entry-fe.ts` puts in the frontend registration |
 
 ## FE build pipeline
 
@@ -382,7 +380,18 @@ compilation and the test runtime refuse incompatible dependency execution before
 A dependency found on this machine or on GitHub is cached under `.apack/deps/<id>/`
 (`snapshot.json`, `facades/`, and eligible `build/`/`runtime/` files).
 
-A `PackSnapshot` contains `format` (the snapshot format the writing CLI used), `types` (entity and relKind maps), `facades` (dependent-facing `.d.ts` contents, including the bundled `pack-types` facade), `manifest`, `sdkVersion`, `provenance` (which pack in its tree declares each name) and `flowHelpers` (the pack's bundled flow helpers module and declarations). Runtime/install readers use `PackSnapshot` with an exact execution stamp. Type-data readers use `PackDependencySnapshot`, retaining an optional recorded stamp and validating the same current fields; they do not read or convert another grammar.
+A `PackSnapshot` contains `format` (the snapshot format the writing CLI used), `types` (entity and relKind maps), `facades` (dependent-facing `.d.ts` contents, including the bundled `pack-types` facade), `entityDestinations` (entity wire name to local destination feature, compiled from plugin `Contract.opens`), `manifest`, `sdkVersion`, `provenance` (which pack in its tree declares each name) and `flowHelpers` (the pack's bundled flow helpers module and declarations). Runtime/install readers use `PackSnapshot` with an exact execution stamp. Type-data readers use `PackDependencySnapshot`, retaining an optional recorded stamp and validating the same current fields; they do not read or convert another grammar.
+
+Plugin catalog entries project compiled destination claims as `opens`; unbuilt authoring previews do
+not claim compiled destinations. Enabled native/installed claims must be unique per entity type, while
+disabled claims remain visible. Native composition supplies `entityDestinations` as data and its accepted
+frontend retains those claims; installed frontend eligibility uses the matching sealed build revision.
+Catalog candidate validation runs before executable imports, enablement persistence and publication.
+
+The common host/window catalog also exposes artifact and block declarations, including their owner,
+origin, enablement and available declaration/build revisions. Artifact icons, block input kinds and
+module references remain data when a pack is disabled or its implementation is unavailable. Reading
+these declarations imports no viewer or backend module; executable registrations have a separate lifetime.
 
 
 Step discovery reads `PackCatalogView.steps()`, whose entries carry the declaring pack, wire type,
@@ -390,3 +399,14 @@ origin and available declaration/build identity. Disabled installed and unbuilt 
 visible; executable component/layout readiness is separate. Active packs cannot share a step wire.
 Native host composition uses the same step declaration grammar. Step defaults and presentation data
 are captured at admission, so changing an authored object later does not mutate the accepted binding.
+
+### Pack view failures
+
+A failing pack canvas, panel, chat view or custom settings form shows an error in its own pane, with
+its owner named. Other panes and host settings remain available. Retry remounts the current accepted
+frontend; an unloaded or superseded version cannot be revived. A replacement resets its own failed
+view, including when it reuses the same component. Settings declarations, defaults and saved values
+remain intact; general settings and its JSON editor remain available after a custom form fails.
+Contained errors are recorded with their pack and area without becoming window-fatal errors. The
+native shell and settings runtime retain their host error handling. This contains Vue component
+failures; it does not isolate arbitrary JavaScript or change pack permissions.

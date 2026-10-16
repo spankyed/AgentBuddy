@@ -1,3 +1,4 @@
+import { dslDefinitionsProblem } from './dsl-declarations.ts';
 import { declarationRecord } from './declaration-record.ts';
 import type { PackLifecycleDeclaration } from './lifecycle-declaration.ts';
 export { LIFECYCLE_HOOK_NAMES } from './lifecycle-declaration.ts';
@@ -14,7 +15,7 @@ import { _compileSettingsDefinition, _SettingsDefaultsError, _settingsJsonProble
 import type { SettingsDefinition } from './settings-definition.ts';
 import type { PackMigrations } from './pack-registration.ts';
 import type { ReferenceDeclarations } from './reference-declaration.ts';
-import type { PluginDeclaration } from './plugin-declaration.ts';
+import { _entityDestinationsProblem, type PluginDeclaration } from './plugin-declaration.ts';
 import type { FrontendDeclaration, TiptapPluginDeclaration } from './frontend-declaration.ts';
 import type { StepFrontendDeclaration, StepLayoutDeclaration } from './step-frontend-declaration.ts';
 
@@ -133,24 +134,56 @@ export const _NativePackDeclarationSchema = z.preprocess(checkDeclaredNames, z.o
   id: z.string().regex(PACK_ID_PATTERN),
   dependencies: declarationRecord(z.string().regex(PACK_ID_PATTERN), PackRangeSchema).optional(),
   settings: declarationRecord(z.string().regex(FEATURE_ID_PATTERN), SettingsDefinitionSchema).optional(),
+  services: z.lazy(() => ServicesSchema).optional(),
+  repositories: z.lazy(() => ServicesSchema).optional(),
   data: DataSchema.optional(),
   lifecycle: z.lazy(() => LifecycleConfigSchema).optional(),
   steps: z.lazy(() => ExtensionsSchema.shape.steps),
   artifacts: z.lazy(() => ExtensionsSchema.shape.artifacts),
   blocks: z.lazy(() => ExtensionsSchema.shape.blocks),
+  commands: z.lazy(() => ExtensionsSchema.shape.commands),
   dsl: z.lazy(() => ExtensionsSchema.shape.dsl),
+  dslDefinitions: declarationRecord(z.string()).optional(),
+  entityDestinations: declarationRecord(z.string().min(1), z.string().min(1)).optional(),
   tiptapPlugins: z.lazy(() => FrontendConfigSchema.shape.tiptapPlugins),
   appExtensions: z.lazy(() => FrontendConfigSchema.shape.appExtensions),
   features: declarationRecord(z.string().regex(FEATURE_ID_PATTERN), z.lazy(() => FeatureEntrySchema.pick({
-    description: true, entities: true, designation: true, settings: true, plugin: true, references: true,
+    description: true, entities: true, designation: true, settings: true, plugin: true, references: true, services: true, repositories: true,
   }))).optional(),
 }).strict().superRefine((declaration, ctx) => {
+  const destinationProblem = _entityDestinationsProblem(declaration.entityDestinations ?? {}, declaration.features);
+  if (destinationProblem) ctx.addIssue({ code: 'custom', path: ['entityDestinations'], message: destinationProblem });
+  const dslProblem = dslDefinitionsProblem(declaration.dsl, declaration.dslDefinitions);
+  if (dslProblem) ctx.addIssue({ code: 'custom', path: ['dslDefinitions'], message: dslProblem });
   checkFrontendClaims(declaration, ctx, []);
   checkReferenceClaims(declaration.features, ctx);
   checkDefaultPluginClaims(declaration.features, ctx);
+  checkApiClaims(declaration.features, declaration.services, declaration.repositories, ctx);
 }));
 
+/** API names share one namespace within a pack, even when their declarations have different feature owners. */
+function checkApiClaims(features: Record<string, { services?: Record<string, string>; repositories?: Record<string, string> }> | undefined,
+  services: Record<string, string> | undefined, repositories: Record<string, string> | undefined, ctx: z.RefinementCtx,
+  servicePath = ['services']): void {
+  for (const kind of ['services', 'repositories'] as const) {
+    const root = kind === 'services' ? services : repositories;
+    const path = kind === 'services' ? servicePath : ['repositories'];
+    const owners = new Map(Object.keys(root ?? {}).map(name => [name, path.join('.')]));
+    for (const [id, feature] of Object.entries(features ?? {})) {
+      for (const name of Object.keys(feature[kind] ?? {})) {
+        const owner = `features.${id}.${kind}`;
+        const previous = owners.get(name);
+        if (previous !== undefined) ctx.addIssue({ code: 'custom', path: ['features', id, kind, name],
+          message: `${kind === 'services' ? 'Service' : 'Repository'} "${name}" is declared by both "${previous}" and "${owner}"` });
+        else owners.set(name, owner);
+      }
+    }
+  }
+}
+
 export const StepDSLMetaSchema = z.object({
+  references: declarationRecord(z.string().regex(/^[A-Za-z_$][\w$]*$/, 'Must name a DSL field'), z.string().min(1))
+    .describe('DSL field to compiled content key, for static dependency and rename inspection. Computed targets are recorded as dynamic.').optional(),
   primaryField: z.string().regex(/^[A-Za-z_$][\w$]*$/, 'Must be a field identifier').describe('The field whose value becomes the step label in the flow editor.').optional(),
   defaultLabel: z.string().describe('Default label argument for the generated label-only helper.').optional(),
   helpers: ModulePathSchema.describe('Pack-root-relative module whose custom flow helpers are re-exported.').optional(),
@@ -229,7 +262,7 @@ export const StepEntrySchema = z.object({
 export const DslEntrySchema = z.object({
   entry: ModulePathSchema.describe('Path to the DSL type definition module.'),
   targets: z.array(z.enum(['monaco'])).describe('Editor targets for intellisense integration.'),
-  prefix: z.string().describe('Namespace prefix for DSL symbols.').optional(),
+  prefix: z.string().describe('Editor model path prefix selecting this DSL. Omit or use an empty value to require explicit selection.').optional(),
   globals: declarationRecord(z.string(), z.string()).describe('Global type mappings injected into the DSL scope.').optional(),
   inline: z.array(z.string()).describe('Packages whose declarations are bundled into the editor definitions, besides @apackdev/* and the pack\'s own modules. The editor loads no node_modules, so a type it needs from another package belongs here.').optional(),
 }).strict();
@@ -724,6 +757,7 @@ export const ManifestSchema = z.preprocess(checkDeclaredNames, z.object({
 }).strict().superRefine((manifest, ctx) => {
   checkFrontendClaims(manifest.extensions, ctx, ['extensions']);
   checkReferenceClaims(manifest.features, ctx);
+  checkApiClaims(manifest.features, manifest.extensions?.services, undefined, ctx, ['extensions', 'services']);
   checkDefaultPluginClaims(manifest.features, ctx);
 
   // Both kinds of entry name a format, and both are checked against the same two places

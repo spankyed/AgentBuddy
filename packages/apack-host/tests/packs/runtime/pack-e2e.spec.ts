@@ -10,7 +10,7 @@ import { _declarationRevision } from '@apackdev/sdk/build';
  * Cleans up after itself.
  */
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import './test-host.ts';
+import { registry } from './test-host.ts';
 import * as fs from 'fs';
 import * as path from 'path';
 import * as os from 'os';
@@ -51,7 +51,7 @@ function installTestPack() {
   }, null, 2));
 
   fs.mkdirSync(path.join(TEST_PACK_DIR, 'types'), { recursive: true });
-  fs.writeFileSync(path.join(TEST_PACK_DIR, PACK_LAYOUT.snapshot), JSON.stringify({ declarationRevision: _declarationRevision(JSON.parse(fs.readFileSync(path.join(TEST_PACK_DIR, 'apack.json'), 'utf-8'))), format: PACK_SNAPSHOT_FORMAT, manifest: JSON.parse(fs.readFileSync(path.join(TEST_PACK_DIR, 'apack.json'), 'utf-8')), types: { entities: {}, relKinds: {} }, facades: {} }));
+  fs.writeFileSync(path.join(TEST_PACK_DIR, PACK_LAYOUT.snapshot), JSON.stringify({ declarationRevision: _declarationRevision(JSON.parse(fs.readFileSync(path.join(TEST_PACK_DIR, 'apack.json'), 'utf-8'))), format: PACK_SNAPSHOT_FORMAT, manifest: JSON.parse(fs.readFileSync(path.join(TEST_PACK_DIR, 'apack.json'), 'utf-8')), types: { entities: {}, relKinds: {} }, entityDestinations: {}, facades: {} }));
 
   // The pack's frontend, which the renderer loads from the installed pack
   fs.writeFileSync(path.join(TEST_PACK_DIR, 'runtime', 'fe.js'), 'export default { plugins: [] };');
@@ -125,7 +125,7 @@ describe('E2E: pack loading pipeline', () => {
   let packs: LoadedPack[];
 
   it('discovers the test pack from the resolved packs directory', () => {
-    packs = loadExternalPacks();
+    packs = loadExternalPacks(registry);
     const testPack = packs.find(p => p.origin.id === TEST_PACK_ID);
     expect(testPack).toBeDefined();
     expect(testPack!.origin.name).toBe('E2E Test Pack');

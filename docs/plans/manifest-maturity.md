@@ -16,7 +16,9 @@ Completed prerequisite: [naming contracts](../archive/goals/goal-naming-conventi
 `3d389b9c8`. Build on that result; no ongoing naming synchronization is required.
 The [execution goal](../goals/goal-settings-and-pack-contracts.md) owns checkpoints and completion.
 
-Deliver the remaining work in this order:
+The list below records architectural dependencies, not a serial execution barrier. The execution
+goal’s live ledger owns current status and order, including independent entity navigation before
+remaining compiler work. Preserve each consumer’s actual prerequisites.
 
 1. Close the contribution inventory and establish the common descriptor/catalog foundation, using
    [settings architecture](settings-architecture.md) as the first consumer. Include shared validation, diagnostics, checked binding and build freshness for each migrated kind. Do not create a temporary settings-only catalog.
@@ -38,7 +40,7 @@ roadmap; the linked plans hold subsystem design. Do not implement all of them as
 
 ## Checkpoint handoffs
 
-| Checkpoint | Required result before the next work starts |
+| Checkpoint | Required result for dependent work |
 |---|---|
 | Naming — complete | Use the completed contracts as the starting baseline; do not repeat their refactors |
 | Shared foundation | Contribution inventory, common descriptor reader/validator and catalog; settings definitions are the first projection. Migrated kinds have checked bindings and coherent build publication |
@@ -55,7 +57,8 @@ contract and coverage fixture. Discovery completeness is about supported declara
 
 ## Plan ownership and supersession
 
-This document owns ordering and remaining manifest decisions. Settings and discovery own their detailed
+This document owns architectural dependencies and remaining manifest decisions; the execution goal
+owns the current checkpoint order. Settings and discovery own their detailed
 contracts. The following older designs are archived as absorbed/superseded, not marked implemented:
 
 | Historical document | Current owner / disposition |

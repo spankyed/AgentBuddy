@@ -16,6 +16,7 @@
 
 import type { ActionMeta } from '@apackdev/sdk/build';
 import type { Services } from '#generated/services.ts';
+import { cancelPendingControlRequest } from './_helpers/thread-context.ts';
 
 export const meta: ActionMeta = {
   label: 'CC: Reconcile State',
@@ -32,8 +33,14 @@ export async function action(_params: Record<string, any>, services: Services) {
   for (const thread of threads) {
     const cc = thread.context?.claudeCode;
     const isPaused = thread.chatState === 'paused';
+    const elicitation = cc?.pendingElicitation;
+    const owner = elicitation && services.cli.claudeCode.getConversation(thread.id)?.owner;
+    const staleElicitation = elicitation && !(owner
+      ? owner.hasPendingElicitation(elicitation.requestId)
+      : services.cli.claudeCode.getHandle(thread.id));
 
     const needsContextRepair = cc && (
+      staleElicitation ||
       cc.isRunning === true ||
       cc.autoAcceptEdits !== undefined ||
       cc.queuedMessage !== undefined ||
@@ -45,6 +52,8 @@ export async function action(_params: Record<string, any>, services: Services) {
 
     const updates: Record<string, any> = {};
 
+    if (staleElicitation) cancelPendingControlRequest(services, thread.id, elicitation.requestId);
+
     if (needsContextRepair) {
       const nextCc = {
         ...cc,
@@ -52,11 +61,12 @@ export async function action(_params: Record<string, any>, services: Services) {
         autoAcceptEdits: undefined,
         queuedMessage: undefined,
         ...(!isPaused && { pendingControlRequest: undefined }),
+        ...(staleElicitation && { pendingElicitation: undefined }),
       };
       updates.context = { ...thread.context, claudeCode: nextCc };
     }
 
-    if (staleChatState) {
+    if (staleChatState || (staleElicitation && isPaused && !cc.pendingControlRequest)) {
       updates.chatState = 'idle';
     }
 

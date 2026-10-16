@@ -17,7 +17,7 @@ function producer(name = 'producer', executable = true): string {
   fs.mkdirSync(path.join(directory, 'types'), { recursive: true });
   fs.writeFileSync(path.join(directory, PACK_LAYOUT.snapshot), JSON.stringify({
     format: PACK_SNAPSHOT_FORMAT, declarationRevision: _declarationRevision(manifest),
-    manifest, types: { entities: {}, relKinds: {} }, facades: {},
+    manifest, types: { entities: {}, relKinds: {} }, entityDestinations: {}, facades: {},
   }));
   if (executable) {
     fs.mkdirSync(path.join(directory, 'runtime'));

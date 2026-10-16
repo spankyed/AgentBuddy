@@ -21,6 +21,7 @@
 // work: serialised they are both correct, the second simply builds the sources as they are when it starts. So
 // the default is to queue, and the bound is for a holder that is wedged rather than working.
 import * as path from 'node:path';
+import { setTimeout as delay } from 'node:timers/promises';
 import { findLockHolder, holdExclusiveLockWaiting, type ExclusiveLock } from '@apackdev/host/exclusive-lock';
 
 /**
@@ -59,11 +60,12 @@ export class PackBuildLockHeld extends Error {
  * refused at once rather than waited for, which `holdExclusiveLockWaiting` does: nothing nests today, and
  * waiting for yourself spends the bound to say what a refusal says immediately.
  */
-export function holdPackBuildLock(
+export async function holdPackBuildLock(
   packRoot: string,
-  { packId, what, waitMs = PACK_BUILD_WAIT_MS, onWait, now, pause }: {
+  { packId, what, waitMs = PACK_BUILD_WAIT_MS, onWait, now, pause, signal }: {
     packId: string;
     what: string;
+    signal?: AbortSignal;
     waitMs?: number;
     onWait?: (holder: string) => void;
     /**
@@ -74,6 +76,7 @@ export function holdPackBuildLock(
     pause?: (ms: number) => Promise<void>;
   },
 ): Promise<ExclusiveLock> {
+  signal?.throwIfAborted();
   const file = packBuildLock(packRoot);
   return holdExclusiveLockWaiting({
     file,
@@ -82,7 +85,12 @@ export function holdPackBuildLock(
     refuse: (holder) => new PackBuildLockHeld(holder, packId, file),
     ...(onWait && { onWait }),
     ...(now && { now }),
-    ...(pause && { pause }),
+    pause: async ms => {
+      signal?.throwIfAborted();
+      if (pause) await pause(ms);
+      else await delay(ms, undefined, { signal });
+      signal?.throwIfAborted();
+    },
   });
 }
 

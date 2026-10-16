@@ -15,9 +15,7 @@
           @menu-action="handleMenuAction"
         />
         <div class="min-h-0 flex-1 overflow-y-auto">
-          <PluginScope :plugin="activePlugin.id" :key="activePlugin.id">
-            <Router :views="activePlugin.canvas" :target="targetView" />
-          </PluginScope>
+          <PluginPane :plugin="activePlugin" area="canvas" :target="targetView" />
         </div>
       </div>
 
@@ -34,9 +32,7 @@
         :style="{ width: `${panelSizes.inspectionWidth}px` }"
         :label="`${activePlugin.label} Inspection`"
       >
-        <PluginScope :plugin="activePlugin.id" :key="activePlugin.id">
-          <component :is="activePlugin.panel" />
-        </PluginScope>
+        <PluginPane :plugin="activePlugin" area="panel" />
       </InspectionPanel>
     </div>
   </div>
@@ -50,10 +46,10 @@ import { applicationState } from '@/main'
 import InspectionPanel from '@/views/layout/InspectionPanel.vue'
 import PanelResizer from '@apackdev/ui/layout/panel-resizer'
 import PopoutTitlebar from '@/views/layout/PopoutTitlebar.vue'
-import Router from '@/views/layout/PluginRouter.vue'
+import PluginPane from '@/views/layout/PluginPane.vue'
 import ToastNotification from '@apackdev/ui/design/ToastNotification'
 import { registerGlobalToast } from '@/adapters/toast'
-import { PluginScope, type ContextMenuItem } from '@apackdev/sdk/fe'
+import { type ContextMenuItem } from '@apackdev/sdk/fe'
 import { notifyPluginActor } from '@apackdev/host/fe'
 
 const send = applicationState.send

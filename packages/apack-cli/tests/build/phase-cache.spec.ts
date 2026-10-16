@@ -8,7 +8,27 @@ import { dslInputsHash, filesUnder, reuseProblem, takeForward, typesInputsHash }
 import { readDependencyBuild, PACK_LAYOUT } from '@apackdev/host/packs';
 import { _declarationRevision } from '@apackdev/sdk/build';
 
-const compilation = { hash: 'test-compiler', assertCurrent() {} };
+const compilation = {
+  hash: 'test-compiler',
+  configuration: undefined,
+  declarationConfiguration: undefined,
+  readTree() { throw new Error('No tree in hash-only fixture'); },
+  sourcePath(file: string) { return file; },
+  diagnostic(message: string) { return message; },
+  isInput() { return true; },
+  prepareNative() {},
+  requireParent() { throw new Error('No module loading in hash-only fixture'); },
+  async finishStartup() {},
+  prepareNativeSource() {},
+  readMetadata(): never { throw new Error('Unexpected metadata read'); },
+  openDirectory(): never { throw new Error('Unexpected directory open'); },
+  readDirectory(): never { throw new Error('Unexpected directory read'); },
+  readDataPath(): never { throw new Error('Unexpected data read'); },
+  dispose() {},
+  readFile() { return undefined; },
+  captureGenerated() {},
+  assertCurrent() {},
+};
 
 
 const dirs: string[] = [];
@@ -26,7 +46,7 @@ function tmp(files: Record<string, string> = {}): string {
 function dependency(version: string) {
   const manifest = { id: 'dep', name: 'Dep', version };
   const dir = tmp({ [PACK_LAYOUT.snapshot]: JSON.stringify({ manifest, declarationRevision: _declarationRevision(manifest),
-    types: { entities: {}, relKinds: {} }, facades: {} }) });
+    types: { entities: {}, relKinds: {} }, entityDestinations: {}, facades: {} }) });
   return new Map([['dep', readDependencyBuild(dir)]]);
 }
 

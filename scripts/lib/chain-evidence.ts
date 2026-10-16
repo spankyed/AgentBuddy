@@ -162,7 +162,8 @@ export function openRunEvidence(options: { startedAt: Date; pid: number; root?: 
       for (const target of paths) {
         const from = path.join(REPO_ROOT, target);
         if (!fs.existsSync(from)) continue;
-        const into = path.join(dir, `${flatStepName(label)}.files`, path.basename(target));
+        // Fixture packs often share output basenames; retain each repository-relative path.
+        const into = path.join(dir, `${flatStepName(label)}.files`, target);
         fs.mkdirSync(path.dirname(into), { recursive: true });
         fs.cpSync(from, into, { recursive: true });
         taken.push(target);

@@ -5,7 +5,7 @@
 
 import type { ActionMeta } from '@apackdev/sdk/build';
 import type { Services, EntityId } from '#generated/services.ts';
-import { persistClaudeState, setRunning, updateChatState } from './_helpers/thread-context.ts';
+import { expirePendingControlRequest, getClaudeState, persistClaudeState, setRunning, updateChatState } from './_helpers/thread-context.ts';
 
 export const meta: ActionMeta = {
   label: 'CC: Answer Question',
@@ -32,21 +32,16 @@ export async function action(
 
   if (!threadId || !requestId) return { success: false, reason: 'missing threadId or requestId' };
 
+  const pending = getClaudeState(services, threadId)?.pendingControlRequest;
+  if (pending?.requestId !== requestId || pending.toolName !== 'AskUserQuestion') {
+    return { success: false, reason: 'question is no longer pending' };
+  }
+
   const handle = (services.cli as any).claudeCode.getHandle(threadId);
 
-  // Post-restart fallback: CLI process is gone but the user answered the
-  // pending question. Resume the session with the answer as prompt text.
   if (!handle) {
-    persistClaudeState(services, threadId, { pendingControlRequest: undefined });
-    const answerText = typeof response === 'string' ? response
-      : Array.isArray(response) ? response.join(', ')
-      : typeof response === 'object' ? Object.values(response).join(', ')
-      : String(response ?? '');
-    await services.action.executeIfFound('Claude Code Chat', {
-      threadId,
-      text: answerText || 'continue',
-    });
-    return { success: true, resumed: true };
+    expirePendingControlRequest(services, threadId, requestId);
+    return { success: false, reason: 'Claude Code request expired' };
   }
 
   // Build the answers Record from the response.
@@ -66,7 +61,12 @@ export async function action(
   }
 
   const updatedInput = { ...originalInput, answers };
-  handle.respond(requestId, { behavior: 'allow', updatedInput });
+  try {
+    handle.respond(requestId, { behavior: 'allow', updatedInput });
+  } catch {
+    expirePendingControlRequest(services, threadId, requestId);
+    return { success: false, reason: 'Claude Code response could not be sent' };
+  }
 
   persistClaudeState(services, threadId, { pendingControlRequest: undefined });
   setRunning(services, threadId, true);
