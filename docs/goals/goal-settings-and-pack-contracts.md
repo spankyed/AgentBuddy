@@ -285,6 +285,12 @@ The inspected launch boundary still inherits `NODE_OPTIONS`, but `compilationCon
 for export selectors. The dev Vite server is imported and retained in the supervisor outside the captured
 compiler session. Resolve both within complete execution ownership; do not silently strip supported
 options, narrow the input contract or treat a hash-only change as frozen execution.
+
+A disposable two-process probe now confirms that changing executed external preload bytes leaves
+`captureCompilationInputs()`/`assertCurrent()` with the same hash. Evidence:
+`/private/tmp/apack-preload-identity-audit.log`. This is an input-identity defect, not yet a stale-pack-output
+reproduction; it does not explain the output-change warning. The discovery plan owns the launch/session
+audit and acceptance for the next implementation. The probe changes no repository source or output.
 Keep this reproduced association defect, the separate output-change warning and the missing input
 receipt distinct. Private phase stamps must not become the source-freshness authority. Optional
 diagnostic reads still need accepted-output association under the full publication contract.

@@ -276,6 +276,42 @@ compiler worker in the supervisor. Preserve supported options and live developme
 these boundaries; neither a hash-only options patch nor silently stripping options establishes
 coherent execution. All remaining discovery and goal phases stay required.
 
+
+### Execution ownership audit after phase-cache publication
+
+A disposable two-process probe confirms the inherited-preload identity gap on `17438889d`.
+Both processes use the same minimal pack, compiler, Node arguments and `NODE_OPTIONS=--require=<file>`.
+The external preload's bytes change between launches and set different observable global values;
+`captureCompilationInputs()` followed by `assertCurrent()` succeeds with the identical hash in both.
+Evidence: `/private/tmp/apack-preload-identity-audit.log`, retained fixture
+`/private/tmp/apack-preload-identity-64w_dms1`. This proves executed code is absent from the input
+identity. It does not reproduce stale emitted pack output or establish the output-change warning's cause.
+No repository source, build output or production data changed during the probe.
+
+Current consumers require one execution contract, not an independent options hash:
+
+- `build-process.ts` forwards ambient `NODE_OPTIONS` into the owned worker, while
+  `compilationConditions()` records only custom export selectors. Account for executable preloads,
+  loaders, their resolution context and reachable inputs before startup, with the code the worker
+  actually executes bound to that capture. Preserve supported launch options; do not strip them to
+  make the input set easier to describe. Distinguish supervisor instrumentation from compiler inputs
+  by actual ownership, rather than assuming every `--require` or `--import` is instrumentation.
+- `dev.ts` imports Vite and creates its server in the supervisor; `watch.ts` separately owns a builder
+  that can replace its captured compiler. A fresh backend worker therefore does not refresh the HMR
+  compiler. Define one session owner and checked handoff for both consumers. Preserve frontend HMR,
+  rebuild/reinstall ordering, marker identity, failure recovery and awaited shutdown; a worker's ready
+  message must describe the compiler generation it actually holds.
+- These changes must fit the full pack/external read frame and successful input/output publication.
+  A freshly computed hash over mutable paths is not frozen execution. Do not switch freshness readers
+  until the producer owns that association and passive readers can verify it without activating code.
+
+Before implementation, settle the launch representation and session ownership against the current
+bootstrap, captured-installation paths and watcher cleanup. Prove real preload/loader effects are
+accounted for, equivalent launches remain stable, changes during compilation refuse publication,
+and an actual development server cannot keep serving an old compiler after a successful refresh.
+Use focused process/filesystem fixtures first; reserve the next broad gate for the converged source
+checkpoint. All other source/external-input, receipt, discovery and later-phase requirements remain.
+
 ## Historical foundation audits and checkpoint evidence
 
 Current progress is recorded in the [current discovery checklist](#current-discovery-checklist).
