@@ -64,7 +64,7 @@ so completed implementation is not repeatedly scheduled as new work.
 | Manifest consolidation M1–M6 | Implemented and checkpoint-validated through `0994ae787`; own-key preservation `29f0cc556` | Preserve all 17 reconciled decisions, both naming outcomes and generated EARS/content behavior in final acceptance; do not restart consolidation. |
 | Settings/help/info/reference/step/command discovery (Phase 3) | Implemented reader migrations: `2169d29f8`, `6c876c9ba`, `20ab75efe`, `c776d1c5d`, `76df2f0e5`, `71fad4013`, `8ec5285ed`, `f7d63434c`, command catalog `ff48438cd` | Final all-kind acceptance, including source-free inspection, inactive owners and checked runtime eligibility. |
 | Live editor composition (Phase 3) | Implemented: `8863043a6` | Complete cold-document/provider readiness and real typing/replacement acceptance; fix demonstrated omissions without restarting composition. |
-| Remaining discovery consumers (Phase 3) | Partial; current readers still mix active bindings and static metadata | Migrate shell/default selection, block/artifact inventories and DSL assistance. Complete compiled-content flow/action edges and rename/missing-reference diagnostics. Audit services, repositories, events, native fields and static assets; migrate each actual gap and remove superseded discovery stores. |
+| Remaining discovery consumers (Phase 3) | Partial; viewer readers `a278d4116` and shell default/dispatch `69860e4be` implemented | Finish catalog-backed navigation inventories/order/visibility and DSL assistance. Complete compiled-content flow/action edges and rename/missing-reference diagnostics. Audit services, repositories, events, native fields and static assets; migrate each actual gap and remove superseded discovery stores. |
 | Build input/publication and freshness (Phase 3) | Partial; finite checkpoints B1–B6 below | Finish the common producer contract and four passive consumer migrations; installed discovery must remain source-free and activation-free. |
 | Entity navigation (Phase 4) | Reference identity prerequisites implemented; destination migration unfinished | Implement declared destinations, eligibility/readiness, short-code round trips and caller migration under open-entity.md. |
 | Frontend boundaries (Phase 5) | Planned implementation | Isolate throwing canvas/panel/form contributions, preserve host settings and other panes, and reject retries for retired revisions. |
@@ -97,7 +97,39 @@ publication repair as outstanding implementation without new evidence.
 
 ### Execution order and change control
 
-Current discovery checkpoint: block/artifact readers and checked frontend bindings in `a278d4116`,
+Current discovery checkpoint: shell default selection and new-request dispatch in `69860e4be`.
+The host and window share plugin metadata projection, including build identity. The window receives
+local native host declarations before backend connection. Accepted frontend plugin bindings carry
+captured declaration/build/runtime identity; the obsolete first-registered-default table and SDK
+lookup are removed. Default claims are selected before imports: enabled native owners first, then
+installed owners, ordered by fully qualified ref in English lexical order. Saved/popout/explicit
+selection takes precedence. Defaults render only after their actors are admitted.
+
+Unknown destinations refuse as soon as declarations are ready; disabled/source/unavailable owners
+have specific refusals. Known providers may wait for real actors. Catalog changes reconcile frontends
+that arrived ahead of their frame without a duplicate pending inventory; stale load completions and
+new requests targeting an incumbent actor after binding replacement are refused. Request correlation
+and sender diagnostics remain intact, and shell stop releases the catalog subscription. Host Settings
+remains reachable during loading/disconnection through its native declaration and binding.
+
+Evidence: the affected combined host/renderer run passed 154 cases; the final shell/catalog/registry
+rerun passed 115 cases after the additional replacement-gap case and final startup selection changes.
+Two real pack harness/navigation cases pass. Host, SDK, testing, renderer app/test and default-setup
+typechecks, all 28 SDK API reports, lint/import rules and test tiers pass. The report removes only the
+obsolete default lookup. Test fixtures now supply declaration authority and accepted bindings instead
+of injecting an unadmitted loaded plugin. The first API report attempt correctly refused stale dependent
+packages after a shell edit; refreshing packages then generating/checking reports passed.
+`/private/tmp/apack-shell-catalog-{final-tests,converged,final-shell,navigation,pack-tests,types,sdk-types,testing-types,renderer-types,renderer-test-types,pack-types,api-check,lint,specifiers,tiers}.log`.
+
+Next complete DSL/editor assistance: inspect the actual built definition assets and materialize their
+static data for catalog consumers; remove registered type-data discovery and update mounted Monaco
+libraries/globals with owned disposables. Keep executable compilers separate. Navigation menu inventory,
+ordering/visibility and loader coordination cleanup remain required shell work; this checkpoint does
+not claim the complete shell row. Compiled-content edges, remaining contribution audits, B1–B6,
+navigation, boundaries, all three Phase 6 workstreams and final committed-source strict `--all` remain
+open. No broad diagnostic rerun was made; preserve the recorded integration/teardown failures for B6.
+
+Earlier viewer checkpoint: block/artifact readers and checked frontend bindings in `a278d4116`,
 following metadata publication in `3e4e10c8f`. Accepted bindings carry owner, declaration, build and
 runtime identity. Shared selection and eligibility checks reject ambiguous, disabled, source-only,
 disconnected or mismatched providers. Native bindings have no fabricated installed identity stamps.
@@ -116,13 +148,9 @@ checkpoint; this checkpoint supplies their required artifact/block accessors.
 The first new test attempts exposed fixture errors (a non-exported test cleanup import and an unaddressed
 saved response), corrected before the passing runs. No product response routing was changed.
 
-Next audit shell/default selection and DSL assistance against the common catalog, then complete the
-remaining discovery inventory and compiled-content flow/action edges. The active low-level registries
-retain runtime lookup lifetimes; this checkpoint does not establish that every backend/native field or
-superseded metadata reader is migrated. Keep those in the Phase 3 audit. The recorded integration and
-Electron-teardown failures still require focused diagnosis at B6; no broad diagnostic rerun was made
-for this independent reader checkpoint. The required converged gate and final committed-source strict
-`--all` remain outstanding, together with all unfinished B1–B6 and later goal phases.
+The viewer checkpoint leaves active low-level runtime lookup lifetimes intact. Its remaining
+backend/native-field and superseded-reader audit belongs to Phase 3; it does not complete B1–B6 or
+later phases.
 
 Slash-command discovery is checkpointed in `ff48438cd`. The common catalog owns metadata and stable
 admission order; the execution picker requires enabled declarations matching accepted runtime identities,

@@ -74,7 +74,7 @@ proof of a current failure nor proof that the failure was subsequently fixed.
 | Reference metadata, parsing and picker categories | **Implemented, awaiting final acceptance.** `20ab75efe` migrates editor consumers/provider scopes; `c776d1c5d` preserves wire identity without metadata. | Reconfirm delayed/missing catalog delivery and source-free discovery; categories must start no providers. Actual queries/navigation still require eligible bindings and disposed provider scopes. Entity destination redesign belongs to Phase 4. |
 | Live editor contribution composition | **Implemented, awaiting final acceptance.** `8863043a6` adds accepted-change subscriptions and generation-checked replacement. | Complete cold-document/provider readiness checks and real typing during contribution replacement; preserve pending content, selection and lifecycle cleanup. This does not complete DSL assistance below. |
 | Step palettes, styles, defaults, layout and backend metadata | **Implemented, awaiting final acceptance.** `76df2f0e5` migrates frontend readers; `71fad4013` backend defaults; `8ec5285ed` trigger/build declarations; `f7d63434c` update eligibility. | Include authored and native steps, inactive metadata, external runtime paths and stale binding refusal in final acceptance. Keep actual flow execution bound to its accepted runtime lifetime. |
-| Shell navigation/default selection | **Partially implemented.** Plugin declarations and checked frontend admission exist; `features/application/fe/machine.ts` still learns plugins through `mergePackPlugins`, with `wantsDefaultPlugin` and `pendingPluginId`. | Select known destinations/defaults from catalog data with explicit ordering and saved-selection precedence. Distinguish unknown/disabled/loading/failed, preserving real actor-event readiness and rejecting stale completion. Remove superseded inventory/waiting only after migration. |
+| Shell navigation/default selection | **Default/dispatch checkpoint implemented.** `69860e4be` selects defaults from declarations, uses checked owner/build/runtime plugin bindings for new navigation/delivery, preserves native host availability and reconciles frontend-before-frame ordering. The runtime default selector is removed. | Finish declared navigation menu inventories/order/visibility and loader coordination cleanup. Preserve saved/popout/explicit precedence, unknown/disabled/loading/failed distinctions, actor-event readiness and stale completion refusal. `wantsDefaultPlugin` still records user intent; `pendingPluginId` and request queues retain actual readiness work. |
 | Declared slash-command listing | **Implemented, awaiting final acceptance.** `ff48438cd` projects native/installed/source commands through the common catalog in stable admission order. SDK execution selection matches enabled declarations to accepted runtime identities; the old command store is removed. Chat subscribes to catalog changes and retains user-content/runtime notifications. | Include this metadata/eligibility split in final all-kind acceptance. Focused checks cover poisoned source-free inspection, inactive/stale/build-replaced owners, collisions, ordering, real pack refresh and actor stop. User-document precedence and user.command flow dispatch remain unchanged. |
 | Block and artifact metadata | **Consumer checkpoint implemented.** `3e4e10c8f` publishes native/installed/source metadata; `a278d4116` adds checked frontend bindings and scoped catalog readers, migrating thread icons, input kinds and components together. Mounted views follow independent catalog/binding changes and refuse stale implementations. Backend transcript callbacks remain execution. | Finish the all-kind audit, including backend/native fields and superseded metadata readers. Active low-level registries retain runtime lookup lifetimes; do not count them as static discovery. Keep source-free installed inspection and ownership/readiness checks in final acceptance. |
 | DSL/editor assistance | **Partially implemented.** `07d544606` supplies offline Monaco; frontend `pack-store.ts` still holds registered `dslTypes`. | Audit completion/type/global/asset consumers and move static reads to built declarations/assets without provider activation. Keep executable compiler/query responsibilities explicit; prove source-free installed assistance. |
@@ -1107,26 +1107,32 @@ its use as the source of discoverable metadata.
 
 ### Shell: separate known navigation from frontend readiness
 
-`features/application/fe/machine.ts` learns plugins and the default claim in `mergePackPlugins`, after
-an import. `fe/pack-store.ts` selects a default from executable plugin objects, and the shell uses
-`wantsDefaultPlugin`, `pendingPluginId` and `packFrontendsPending()` to postpone decisions while the
-global loader might still reveal a destination. Move plugin identities, navigation order, labels,
-visibility defaults and default claims into the catalog. Resolve default selection from a documented,
-stable catalog order, preserving explicit navigation and saved-selection precedence. The present
-first-registered default behavior is an ordering policy to replace deliberately, not accidentally.
+Checkpoint `69860e4be` moves default selection and destination eligibility to the catalog. The host
+and window share plugin projection; local native host declarations are available before a connection.
+Checked plugin bindings retain the captured declaration and accepted backend build/runtime identity.
+The first-registered default table and its SDK lookup are removed. Enabled native default claims
+precede installed claims, then fully qualified feature refs sort in English lexical order, independent
+of frontend delivery. A saved selection, popout target or explicit navigation wins over the default.
+A default is rendered only after its actor exists.
 
-Remove waiting whose only purpose is learning whether a plugin exists. Reject an unknown destination
-once the catalog is ready; distinguish a known disabled, loading or failed destination. Retain waiting
-needed to deliver events to a real actor, preserving `call`, `answering` and sender correlation. Remove
-`wantsDefaultPlugin` only after its selection responsibility has moved; do not delete all pending work
-merely because identities are now known.
+Unknown destinations refuse once the catalog is ready. Disabled, source-only, unavailable and failed
+providers have distinct refusal paths. Known providers retain actual actor-readiness waiting and
+request correlation. A catalog frame can reconcile an already-admitted frontend; stale completion and
+replacement-gap dispatch cannot replace or reach an incumbent actor. Scoped catalog subscriptions
+are released on shell stop. Native host Settings remains accessible while external declarations load
+or disconnect. These are checked implementation claims; final goal acceptance remains outstanding.
 
-`features/application/fe/pack-frontends.ts` currently reports failed imports as
-`PACK_FRONTEND_LOADED` with `plugins: []`, suppressing further attempts as though the load succeeded.
-Replace that overloaded result with explicit activation outcomes. Extract frontend load/retry/unload
-coordination from navigation state into one window-owned coordinator, retaining cancellation and stale
-result protection during replacement. The shell consumes catalog data plus binding readiness; it must
-not maintain another contribution inventory in its context.
+Remaining: move sidebar/menu inventories, labels, declared visibility and navigation order to metadata,
+joining readiness for actual rendering. `context.plugins` remains the active implementation/actor
+inventory. Keep `wantsDefaultPlugin` while it records unresolved initial user intent, and pending work
+while it waits for an actor; remove only superseded discovery responsibilities.
+
+Inspection correction: `features/application/fe/pack-frontends.ts` already emits explicit
+`PACK_FRONTENDS_SETTLED.failedPacks`, uses cancellation, and preserves incumbents after failed candidate
+loads. It does not report failed imports as a successful empty plugin array. Preserve that behavior;
+do not reimplement the nonexistent overloaded-result defect. Audit remaining load/retry/unload
+coordination for extraction from navigation state, retaining revision, cancellation and readiness
+ownership. The shell must not maintain another contribution metadata inventory.
 
 `packages/api/src/transport/packs.ts`, `fe/client.ts` and `packs/layout.ts` currently expose
 `packs.loaded` / `LoadedPackEntry` as both an inventory and instructions for loading frontend files.
