@@ -16,6 +16,7 @@ const compilation = {
   sourcePath(file: string) { return file; },
   prepareNative() {},
   prepareNativeSource() {},
+  readDirectory(): never { throw new Error('Unexpected directory read'); },
   readDataPath(): never { throw new Error('Unexpected data read'); },
   dispose() {},
   readFile() { return undefined; },

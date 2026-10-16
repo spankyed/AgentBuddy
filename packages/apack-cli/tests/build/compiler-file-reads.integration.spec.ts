@@ -96,3 +96,46 @@ it('keeps concurrent build views isolated and reports missing input paths withou
     expect(fs.readFileSync(source, 'utf8')).toBe('LIVE');
   } finally { first.dispose(); second.dispose(); }
 });
+
+it('owns native directory results across sync, callback and promise reads without exposing mutable Dirents', async () => {
+  const root = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'apack-directory-reads-')));
+  roots.push(root);
+  fs.writeFileSync(path.join(root, 'package.json'), '{}');
+  const directory = path.join(root, 'content');
+  fs.mkdirSync(directory);
+  fs.writeFileSync(path.join(directory, 'original.txt'), 'ORIGINAL');
+  fs.symlinkSync('original.txt', path.join(directory, 'linked.txt'));
+  const incumbent = path.join(root, 'dist/previous.txt');
+  fs.mkdirSync(path.dirname(incumbent));
+  fs.writeFileSync(incumbent, 'PREVIOUS');
+  const baseline = fs.readdirSync(directory, { withFileTypes: true });
+  const compilation = captureCompilationInputs(root);
+  const options = { withFileTypes: true } as const;
+  try {
+    await withCompilerFileReads({ compilation, outputDirectory: path.join(root, '.apack/staging') }, async () => {
+      expect(fs.readFileSync(incumbent, 'utf8')).toBe('PREVIOUS');
+      const first = fs.readdirSync(directory, options);
+      const names = baseline.map(entry => entry.name);
+      expect(first.map(entry => entry.name)).toEqual(names);
+      first[0]!.name = 'MUTATED';
+      first.pop();
+      const late = path.join(directory, 'late.txt');
+      fs.writeFileSync(late, 'LATE');
+      const promise = await fs.promises.readdir(directory, options);
+      const callback = await new Promise<fs.Dirent[]>((resolve, reject) =>
+        fs.readdir(directory, options, (error, entries) => error ? reject(error) : resolve(entries)));
+      for (const entries of [promise, callback]) {
+        expect(entries.map(entry => entry.name)).toEqual(names);
+        expect(entries.find(entry => entry.name === 'linked.txt')?.isSymbolicLink()).toBe(true);
+        expect(entries.every(entry => entry.parentPath === directory)).toBe(true);
+      }
+      expect(() => compilation.assertCurrent()).toThrow('Compiler or installed package inputs changed');
+      fs.unlinkSync(late);
+      const buffers = fs.readdirSync(directory, { encoding: 'buffer' });
+      expect(buffers.map(entry => entry.toString())).toEqual(names);
+      buffers[0]!.fill(0);
+      expect(fs.readdirSync(directory, { encoding: 'buffer' }).map(entry => entry.toString())).toEqual(names);
+    });
+    compilation.assertCurrent();
+  } finally { compilation.dispose(); }
+});

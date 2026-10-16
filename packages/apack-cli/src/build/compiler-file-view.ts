@@ -16,6 +16,27 @@ interface FileState {
 }
 
 interface FileInput extends FileState { file: string; slot: string }
+export type CompilerDirectoryResult = Array<string | Buffer | fs.Dirent<string> | fs.Dirent<Buffer>>;
+
+/** Keep mutable names, arrays and Dirent fields outside the captured query authority. */
+function copyDirectoryResult(result: CompilerDirectoryResult): CompilerDirectoryResult {
+  return result.map(entry => {
+    if (typeof entry === 'string') return entry;
+    if (Buffer.isBuffer(entry)) return Buffer.from(entry);
+    const copy = Object.create(Object.getPrototypeOf(entry), Object.getOwnPropertyDescriptors(entry));
+    for (const key of Reflect.ownKeys(copy)) if (Buffer.isBuffer(copy[key])) copy[key] = Buffer.from(copy[key]);
+    return copy;
+  });
+}
+
+function directoryResultKey(result: CompilerDirectoryResult, parentPath: (file: string) => string = file => file): string {
+  return JSON.stringify(result.map(entry => typeof entry === 'string' || Buffer.isBuffer(entry) ? entry : {
+    name: entry.name, parentPath: parentPath(entry.parentPath),
+    kind: [entry.isFile(), entry.isDirectory(), entry.isSymbolicLink(), entry.isBlockDevice(),
+      entry.isCharacterDevice(), entry.isFIFO(), entry.isSocket()],
+  }));
+}
+
 interface DirectoryEntry { name: string; kind: string }
 
 /** Match TypeScript's BOM handling while keeping the original bytes as an input. */
@@ -42,6 +63,7 @@ export function createCompilerFileView(root: string, options: {
   const directories = new Map<string, { file: string; entries: DirectoryEntry[] }>();
   const globs = new Map<string, { args: Parameters<ts.System['readDirectory']>; files: string[] }>();
   const included = new Set<string>();
+  const directoryQueries = new Map<string, { file: string; physical: string; options: unknown; result: CompilerDirectoryResult; key: string }>();
 
   function state(file: string, paths: Map<string, string>): FileState {
     const target = physicalWatchPath(file, paths);
@@ -137,7 +159,45 @@ export function createCompilerFileView(root: string, options: {
   return {
     fileSystem,
     readBytes,
+    readDataBytes(file: string) {
+      included.add(path.resolve(file));
+      return readBytes(file);
+    },
     ancestors,
+    readDirectoryData(file: string, options: unknown) {
+      file = path.resolve(file);
+      included.add(file);
+      const node = input(file, 'entries');
+      const queryOptions = options && typeof options === 'object'
+        ? Object.fromEntries(['encoding', 'withFileTypes', 'recursive'].map(key => [key, (options as Record<string, unknown>)[key]])) : options;
+      const key = JSON.stringify([file, queryOptions]);
+      let query = directoryQueries.get(key);
+      if (!query) {
+        // A new representation must agree with earlier observations before joining this view.
+        // Cached identical queries still serve their owned result through transient live edits.
+        const contains = (parent: string, child: string) => {
+          const relative = path.relative(parent, child);
+          return relative !== '..' && !relative.startsWith(`..${path.sep}`) && !path.isAbsolute(relative);
+        };
+        const recursive = (options: unknown) => options && typeof options === 'object' && 'recursive' in options && options.recursive === true;
+        for (const previous of directoryQueries.values()) {
+          const physical = node?.physical ?? file;
+          if (previous.physical !== physical
+            && !(recursive(previous.options) && contains(previous.physical, physical))
+            && !(recursive(queryOptions) && contains(physical, previous.physical))) continue;
+          const current = Reflect.apply(fs.readdirSync, fs, [previous.file, previous.options]) as CompilerDirectoryResult;
+          if (directoryResultKey(current) !== previous.key) changed(previous.file);
+        }
+        if (node) {
+          const previous = directories.get(node.physical);
+          if (previous && JSON.stringify(entries(previous.file, node.physical)) !== JSON.stringify(previous.entries)) changed(file);
+        }
+        const result = Reflect.apply(fs.readdirSync, fs, [file, queryOptions]) as CompilerDirectoryResult;
+        query = { file, physical: node?.physical ?? file, options: queryOptions, result: copyDirectoryResult(result), key: directoryResultKey(result) };
+        directoryQueries.set(key, query);
+      }
+      return copyDirectoryResult(query.result);
+    },
     captureLocation(file: string, kind: BuildInputKind) {
       if (kind === 'entries') listing(file);
       const value = input(file, kind);
@@ -197,6 +257,10 @@ export function createCompilerFileView(root: string, options: {
       for (const [directory, value] of directories) {
         if (JSON.stringify(entries(value.file, directory)) !== JSON.stringify(value.entries)) changed(value.file);
       }
+      for (const query of directoryQueries.values()) {
+        const result = Reflect.apply(fs.readdirSync, fs, [query.file, query.options]) as CompilerDirectoryResult;
+        if (directoryResultKey(result) !== query.key) changed(query.file);
+      }
       for (const value of globs.values()) {
         if (JSON.stringify(ts.sys.readDirectory(...value.args).filter(file => !excluded(file)).sort()) !== JSON.stringify(value.files)) changed(value.args[0]);
       }
@@ -241,6 +305,9 @@ export function createCompilerFileView(root: string, options: {
         searches.set(key, data);
       }
       for (const entry of [...searches].sort(([a], [b]) => a < b ? -1 : a > b ? 1 : 0)) hash.update(JSON.stringify(['glob', ...entry]));
+      for (const query of [...directoryQueries.values()].sort((a, b) => a.file.localeCompare(b.file) || (JSON.stringify(a.options) ?? '').localeCompare(JSON.stringify(b.options) ?? ''))) {
+        hash.update(JSON.stringify(['node-directory', relative(query.file), query.options, directoryResultKey(query.result, relative)]));
+      }
       return hash.digest('hex');
     },
   };

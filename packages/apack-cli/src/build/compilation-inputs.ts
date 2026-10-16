@@ -9,6 +9,8 @@ import type { PackCompilerConfiguration } from './compiler-configuration.ts';
 import fs from 'node:fs';
 import path from 'node:path';
 import { packInputFiles } from '@apackdev/host/build/pack-inputs';
+import { withoutCompilerFileReads } from './compiler-file-reads.ts';
+import type { CompilerDirectoryResult } from './compiler-file-view.ts';
 import { compilerSourcePath } from './compiler-paths.ts';
 import { createNativeInputReader } from './compiler-native-inputs.ts';
 import { createCompilerReadTree, type CompilerReadTree } from './compiler-read-tree.ts';
@@ -36,6 +38,7 @@ export interface CompilationInputs {
   readonly declarationConfiguration: PackCompilerConfiguration | undefined;
   readFile(file: string): Buffer | undefined;
   readDataPath(file: string): string;
+  readDirectory(file: string, options: unknown): CompilerDirectoryResult;
   captureGenerated(): void;
   readTree(): CompilerReadTree;
   sourcePath(file: string): string;
@@ -85,6 +88,10 @@ export function captureCompilationInputs(packRoot: string): CompilationInputs {
     }
     return tree;
   };
+  const ownsToolPath = (file: string) => compiler?.paths.some(({ captured }) => {
+    const relative = path.relative(captured, file);
+    return relative !== '..' && !relative.startsWith(`..${path.sep}`) && !path.isAbsolute(relative);
+  });
   const native = createNativeInputReader(modules, packages, sourcePath, snapshot => readTree().include(snapshot));
   return {
     hash,
@@ -100,17 +107,19 @@ export function captureCompilationInputs(packRoot: string): CompilationInputs {
     readDataPath(file) {
       file = path.resolve(file);
       // The parent already owns and verifies these tool bytes. Do not redirect them to the checkout.
-      if (compiler?.paths.some(({ captured }) => {
-        const relative = path.relative(captured, file);
-        return relative !== '..' && !relative.startsWith(`..${path.sep}`) && !path.isAbsolute(relative);
-      })) return file;
+      if (ownsToolPath(file)) return file;
       file = sourcePath(file);
-      const bytes = modules.readBytes(file);
+      const bytes = modules.readDataBytes(file);
       const location = modules.captureLocation(file, 'file');
       const owned = readTree();
       owned.includeData({ files: bytes === undefined ? [] : [modules.captureFile(file, bytes)],
         locations: [...(location ? [location] : []), ...modules.ancestors(file)], links: [] });
       return owned.dataPath(file);
+    },
+    readDirectory(file, options) {
+      file = path.resolve(file);
+      if (ownsToolPath(file)) return Reflect.apply(fs.readdirSync, fs, [file, options]) as CompilerDirectoryResult;
+      return modules.readDirectoryData(sourcePath(file), options);
     },
     captureGenerated() {
       for (const relative of packInputFiles(packRoot, { generated: true })) {
@@ -125,13 +134,15 @@ export function captureCompilationInputs(packRoot: string): CompilationInputs {
     prepareNativeSource(file, contents) { native.prepareSource(sourcePath(file), contents); },
     dispose() { tree?.dispose(); tree = undefined; },
     assertCurrent() {
-      try {
-        tree?.assertCurrent();
-        modules.assertCurrent();
-        if (current().hash !== hash) throw new Error('Implementation, package or execution options differ');
-      } catch (cause) {
-        throw new Error(`Compiler or installed package inputs changed; retry before publishing: ${errorMessage(cause)}`, { cause });
-      }
+      withoutCompilerFileReads(() => {
+        try {
+          tree?.assertCurrent();
+          modules.assertCurrent();
+          if (current().hash !== hash) throw new Error('Implementation, package or execution options differ');
+        } catch (cause) {
+          throw new Error(`Compiler or installed package inputs changed; retry before publishing: ${errorMessage(cause)}`, { cause });
+        }
+      });
     },
   };
 }

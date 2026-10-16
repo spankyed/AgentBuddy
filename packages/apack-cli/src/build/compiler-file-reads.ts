@@ -13,15 +13,19 @@ interface CompilerFileReadScope {
 const scopes = new AsyncLocalStorage<CompilerFileReadScope>();
 let installed = false;
 
-function readPath(file: fs.PathOrFileDescriptor): fs.PathOrFileDescriptor {
+function readScope(file: fs.PathOrFileDescriptor) {
   const scope = scopes.getStore();
-  if (!scope || typeof file === 'number') return file;
-  const source = file instanceof URL ? fileURLToPath(file) : file.toString();
-  const absolute = path.resolve(source);
+  if (!scope || (typeof file !== 'string' && !(file instanceof URL) && !Buffer.isBuffer(file))) return;
+  const absolute = path.resolve(file instanceof URL ? fileURLToPath(file) : file.toString());
   const relative = path.relative(scope.outputDirectory, absolute);
-  if (relative === '' || (!relative.startsWith(`..${path.sep}`) && relative !== '..' && !path.isAbsolute(relative))) return file;
+  if (relative === '' || (!relative.startsWith(`..${path.sep}`) && relative !== '..' && !path.isAbsolute(relative))) return;
+  return { scope, absolute };
+}
+
+function readPath(file: fs.PathOrFileDescriptor): fs.PathOrFileDescriptor {
+  const input = readScope(file);
   // Capture itself reads the original filesystem; those internal reads must not re-enter the adapter.
-  return scopes.exit(() => scope.compilation.readDataPath(absolute));
+  return input ? scopes.exit(() => input.scope.compilation.readDataPath(input.absolute)) : file;
 }
 
 function sourceError(error: unknown): unknown {
@@ -76,6 +80,28 @@ function install() {
     try { return await Reflect.apply(openPromise, fs.promises, [readOnly(flags) ? readPath(file) : file, flags, ...args]); }
     catch (error) { throw sourceError(error); }
   }) as typeof fs.promises.open;
+  const readdirSync = fs.readdirSync, readdir = fs.readdir, readdirPromise = fs.promises.readdir;
+  fs.readdirSync = ((file: fs.PathLike, options: unknown) => {
+    const input = readScope(file);
+    if (!input) return Reflect.apply(readdirSync, fs, [file, options]);
+    try { return scopes.exit(() => input.scope.compilation.readDirectory(input.absolute, options)); }
+    catch (error) { throw sourceError(error); }
+  }) as typeof fs.readdirSync;
+  fs.readdir = ((file: fs.PathLike, ...args: unknown[]) => {
+    const callback = args.pop();
+    const input = readScope(file);
+    if (!input || typeof callback !== 'function') return Reflect.apply(readdir, fs, [file, ...args, callback]);
+    try {
+      const result = scopes.exit(() => input.scope.compilation.readDirectory(input.absolute, args[0]));
+      queueMicrotask(() => callback(null, result));
+    } catch (error) { queueMicrotask(() => callback(sourceError(error))); }
+  }) as typeof fs.readdir;
+  fs.promises.readdir = (async (file, options) => {
+    const input = readScope(file);
+    if (!input) return Reflect.apply(readdirPromise, fs.promises, [file, options]);
+    try { return scopes.exit(() => input.scope.compilation.readDirectory(input.absolute, options)); }
+    catch (error) { throw sourceError(error); }
+  }) as typeof fs.promises.readdir;
   syncBuiltinESMExports();
 }
 
@@ -83,4 +109,9 @@ function install() {
 export function withCompilerFileReads<T>(scope: CompilerFileReadScope, operation: () => Promise<T>): Promise<T> {
   install();
   return scopes.run(scope, operation);
+}
+
+/** Input validation must inspect the live filesystem, even when invoked from captured execution. */
+export function withoutCompilerFileReads<T>(operation: () => T): T {
+  return scopes.exit(operation);
 }
