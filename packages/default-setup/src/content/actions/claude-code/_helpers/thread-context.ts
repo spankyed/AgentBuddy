@@ -44,6 +44,8 @@ export interface QueuedMessage {
   messageId?: string;
   /** Attached references (images, files, context) — preserved so they survive queuing. */
   references?: any;
+  /** Native structured response schema to retain when this message is replayed. */
+  jsonSchema?: unknown;
 }
 
 export interface PendingControlRequest {
@@ -135,6 +137,7 @@ export interface ClaudeCodeThreadState {
     allowedTools?: string[];
     disallowedTools?: string[];
     systemPrompt?: string;
+    jsonSchema?: unknown;
     messageId?: string;
     references?: any;
   };

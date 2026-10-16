@@ -36,6 +36,7 @@ export const meta: ActionMeta = {
     model: { type: 'string', description: 'Override Claude model (alias or full id)', required: false },
     allowedTools: { type: 'array', description: 'Tools allowed without prompting', required: false },
     disallowedTools: { type: 'array', description: 'Tools always denied', required: false },
+    jsonSchema: { type: 'object', description: 'JSON Schema for native structured responses. The schema applies to the retained native process; omitting or changing it starts a fresh process.', required: false },
     systemPrompt: { type: 'string', description: 'Extra system prompt to append', required: false },
     messageId: { type: 'string', description: 'User message entity ID (for queued-state UI)', required: false },
   },
@@ -109,6 +110,11 @@ export async function action(
     return { success: false, error: 'threadId and text are required' };
   }
 
+  let jsonSchema: unknown;
+  try {
+    if (params.jsonSchema !== undefined) jsonSchema = JSON.parse(JSON.stringify(params.jsonSchema));
+  } catch { return { success: false, error: 'jsonSchema must be JSON serializable' }; }
+
   // Resume any prior conversation parked on this thread.
   const prior = getClaudeState(services, threadId);
   const model = requestedModel ?? prior?.modelOverride;
@@ -136,7 +142,7 @@ export async function action(
   // Queue the message until CC: Handle Fork finishes persisting state.
   if (prior?.forkPending) {
     log.debug('fork in progress — queuing message', { threadId });
-    enqueueMessage(services, threadId, { text, mode: params.mode as string, phase, messageId: userMessageId, references });
+    enqueueMessage(services, threadId, { text, mode: params.mode as string, phase, messageId: userMessageId, references, jsonSchema });
     if (userMessageId) {
       services.chat.updateMessageState(userMessageId as any, { status: 'queued' } as any);
     }
@@ -152,7 +158,7 @@ export async function action(
   });
 
   if (services.cli.claudeCode.isConversationBusy(threadId) && !prior?.pendingControlRequest && !prior?.isRunning) {
-    enqueueMessage(services, threadId, { text, mode: params.mode as string, phase, messageId: userMessageId, references });
+    enqueueMessage(services, threadId, { text, mode: params.mode as string, phase, messageId: userMessageId, references, jsonSchema });
     if (userMessageId) services.chat.updateMessageState(userMessageId as any, { status: 'queued' } as any);
     return { success: true, queued: true };
   }
@@ -162,7 +168,7 @@ export async function action(
     const handleExists = services.cli.claudeCode.isConversationBusy(threadId);
     if (handleExists) {
       log.debug('action already running — queuing message', { threadId });
-      enqueueMessage(services, threadId, { text, mode: params.mode as string, phase, messageId: userMessageId, references });
+      enqueueMessage(services, threadId, { text, mode: params.mode as string, phase, messageId: userMessageId, references, jsonSchema });
       if (userMessageId) {
         services.chat.updateMessageState(userMessageId as any, { status: 'queued' } as any);
       }
@@ -247,6 +253,7 @@ export async function action(
         allowedTools,
         disallowedTools,
         systemPrompt,
+        jsonSchema,
         messageId: userMessageId,
         references,
       },
@@ -442,6 +449,7 @@ export async function action(
       allowDangerouslySkipPermissions: true,
       allowedTools: allowedTools ?? DEFAULT_ALLOWED_TOOLS,
       disallowedTools,
+      jsonSchema,
       appendSystemPrompt: composedSystemPrompt,
       surfaceControlRequests: true,
       ...(useWorktree && { worktree: true as const }),
@@ -453,13 +461,14 @@ export async function action(
       ...(forkFrom?.cliUuid && { resumeSessionAt: forkFrom.cliUuid }),
     };
     const launchKey = JSON.stringify({ cwd: sessionCwd, model, allowedTools: options.allowedTools,
-      disallowedTools, appendSystemPrompt: composedSystemPrompt, worktree: useWorktree, addDir: addDirs });
+      disallowedTools, jsonSchema, appendSystemPrompt: composedSystemPrompt, worktree: useWorktree, addDir: addDirs });
     let conversation = services.cli.claudeCode.getConversation(threadId);
     const previousLaunch = conversation ? JSON.parse(conversation.launchKey) : undefined;
     const existingKey = previousLaunch ? JSON.stringify({
       cwd: conversation!.owner.sessionCwd ?? previousLaunch.cwd,
       model: conversation!.owner.modelSelection ?? previousLaunch.model,
       allowedTools: previousLaunch.allowedTools, disallowedTools: previousLaunch.disallowedTools,
+      jsonSchema: previousLaunch.jsonSchema,
       appendSystemPrompt: previousLaunch.appendSystemPrompt, worktree: previousLaunch.worktree,
       addDir: previousLaunch.addDir,
     }) : undefined;
@@ -474,7 +483,7 @@ export async function action(
         phase: getClaudeState(services, threadId)?.permissionMode === 'plan' ? 'Plan' : undefined }));
     if (conversation) await owner.handle.setPermissionMode(effectivePermissionMode as any);
     if (owner.busy) {
-      enqueueMessage(services, threadId, { text, mode: params.mode as string, phase, messageId: userMessageId, references });
+      enqueueMessage(services, threadId, { text, mode: params.mode as string, phase, messageId: userMessageId, references, jsonSchema });
       if (userMessageId) services.chat.updateMessageState(userMessageId as any, { status: 'queued' } as any);
       thinking.finalise();
       toolActivity.finalise('done');

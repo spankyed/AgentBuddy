@@ -400,3 +400,11 @@ it('holds the owner through an effort preference write/readback and rejects over
  expect(()=>owner.start('overlap',async()=>{})).toThrow('active input');await expect(owner.handle.setModel('sonnet')).rejects.toThrow('idle');await expect(owner.handle.setThinking({budgetTokens:0})).rejects.toThrow('idle');resolve({configuration:null});await expect(pending).resolves.toEqual({configuration:null});expect(owner.busy).toBe(false);
  vi.mocked(f.native.requestEffortPreference).mockRejectedValueOnce(new Error('policy refusal'));await expect(owner.handle.requestEffortPreference('xhigh')).rejects.toThrow('policy refusal');expect(owner.busy).toBe(false);await owner.close();
 });
+
+it('can close the process from a consumer after explicitly releasing its terminal turn',async()=>{
+ const f=fixture();let completed=false;
+ const consume=async(turn:ClaudeConversationTurn)=>{for await(const _event of turn.handle.events){}expect(owner.release(turn.handle)).toBe(true);await owner.close();completed=true;};
+ const owner=createClaudeConversation(f.native,consume),input=owner.start('fixture',consume);
+ f.push(started(input));f.push(result(1,input));
+ await vi.waitFor(()=>expect(completed).toBe(true),{timeout:700});await owner.done;expect(f.native.close).toHaveBeenCalledOnce();
+});

@@ -31,7 +31,7 @@ import { createThinkingWriter } from './thinking-writer.ts';
 import { createPlanDraft } from './plan-artifact.ts';
 import { parseExitPlanModeInput, buildPlanApprovalContext } from './plan-approval.ts';
 import { parseAskUserQuestionInput } from './ask-user-question.ts';
-import { getClaudeState, persistClaudeState, cancelPendingControlRequest, setRunning, dequeueMessage, updateClaudeState, updateChatState, extractStaleSessionId, markSessionBroken } from './thread-context.ts';
+import { getClaudeState, persistClaudeState, cancelPendingControlRequest, setRunning, dequeueMessage, updateClaudeState, updateChatState, extractStaleSessionId, markSessionBroken, type QueuedMessage } from './thread-context.ts';
 import { refreshThreadContextUsage } from './context-usage.ts';
 
 /** Tools whose execution mutates files and should roll up into a diff artifact. */
@@ -937,7 +937,7 @@ export function finalizeSessionError(
 export async function replayQueuedMessage(
   services: Services,
   threadId: EntityId,
-  queued: { text: string; mode?: string; phase?: string; messageId?: string; references?: any },
+  queued: QueuedMessage,
   log: any,
 ): Promise<void> {
   log.debug('draining queued message', { threadId, textLen: queued.text?.length });
@@ -953,6 +953,7 @@ export async function replayQueuedMessage(
       phase: queued.phase,
       messageId: queued.messageId,
       references: queued.references,
+      jsonSchema: queued.jsonSchema,
     });
   } catch (drainErr: any) {
     // If the replayed chat action threw *before* its own try/catch (lines

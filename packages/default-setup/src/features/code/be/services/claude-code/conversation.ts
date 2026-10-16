@@ -71,7 +71,7 @@ class ConversationQueue<T> implements AsyncIterable<T> {
 
 /** One reader for the process lifetime; an ordinary result ends only its turn. */
 export function createClaudeConversation(native: QueryHandle, consumeAutonomous: ClaudeTurnConsumer): ClaudeConversation {
-  type ActiveTurn = { turn: ClaudeConversationTurn; queue: ConversationQueue<StreamLine>; consumed: Promise<void>; terminal: boolean; resolve(result: QueryResult): void; reject(error: unknown): void }
+  type ActiveTurn = { turn: ClaudeConversationTurn; queue: ConversationQueue<StreamLine>; consumed: Promise<void>; released: Promise<void>; resolveRelease(): void; terminal: boolean; resolve(result: QueryResult): void; reject(error: unknown): void }
   const activity = createClaudeNestedActivity()
   const taskList = createClaudeTaskListActivity()
   let active: ActiveTurn | undefined
@@ -175,7 +175,9 @@ export function createClaudeConversation(native: QueryHandle, consumeAutonomous:
     const result = new Promise<QueryResult>((yes, no) => { resolve = yes; reject = no })
     result.catch(() => {})
     const turn = { handle: { ...processHandle, events: queue, result }, inputId, stopped, costBaseline: cumulativeCost, activity }
-    const current: ActiveTurn = { turn, queue, resolve, reject, terminal: false, consumed: Promise.resolve() }
+    let resolveRelease!: () => void
+    const released = new Promise<void>(resolve => { resolveRelease = resolve })
+    const current: ActiveTurn = { turn, queue, resolve, reject, released, resolveRelease, terminal: false, consumed: Promise.resolve() }
     active = current
     current.consumed = Promise.resolve().then(() => consume(turn)).catch(error => {
       consumerFailure = error
@@ -260,7 +262,9 @@ export function createClaudeConversation(native: QueryHandle, consumeAutonomous:
         else current.reject(new ClaudeResultError(raw.subtype, raw.errors?.length ? raw.errors : raw.result ? [raw.result] : [], raw.session_id))
         current.terminal = true
         current.queue.close()
-        await current.consumed
+        // A released terminal consumer may close this process while replaying a queued input.
+        // Waiting for that consumer here would make close wait on itself.
+        await Promise.race([current.consumed, current.released])
         if (active === current) active = undefined
         showNextInteraction()
       }
@@ -320,7 +324,7 @@ export function createClaudeConversation(native: QueryHandle, consumeAutonomous:
         taskList.close()
         clearInteractions()
         native.kill()
-      } else active.queue.close()
+      } else { active.queue.close(); active.resolveRelease() }
       active = undefined
       return true
     },
