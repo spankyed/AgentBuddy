@@ -362,6 +362,7 @@ data dir, the pack loader: things no harness test can reach.
 |------|---------|
 | `ui/fallback-panel.spec.ts` | A plugin offering its panel for plugins without one (`fallbackPanel`), and saying itself when it shows: the brain's inspect mode |
 | `ui/navigation.spec.ts` | Opens every plugin and every plugin's settings without a renderer error — a component reaching for a plugin it isn't rendered in fails here |
+| `ui/entity-reference.spec.ts` | Imports a saved thread message, reloads it, and clicks its rendered reference to open the correct note and content in another feature |
 | `ui/popout.spec.ts` | A plugin popped out into its own window: main accepts the plugin's ref as its id and the popout renders its canvas as part of that plugin |
 | `ui/settings-help.spec.ts` | Settings Help: bundled pack articles, search, contextual settings navigation and unavailable targets |
 

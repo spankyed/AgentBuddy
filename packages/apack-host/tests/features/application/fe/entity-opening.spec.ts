@@ -78,7 +78,7 @@ it('aborts superseded checks and ignores late completions', async () => {
   expect(shell.received).toHaveBeenCalledExactlyOnceWith({ type: 'OPEN_ENTITY', id: 'Note-second' });
 });
 
-it.each(['replace', 'disable', 'unload', 'disconnect', 'navigate', 'stop'] as const)('retires pending navigation on %s', async reason => {
+it.each(['replace', 'disable', 'unload', 'disconnect', 'navigate', 'breadcrumb', 'back', 'forward', 'stop'] as const)('retires pending navigation on %s', async reason => {
   const shell = await fixture();
   let finish!: (exists: boolean) => void;
   shell.client.entityExists.mockImplementation(() => new Promise(resolve => { finish = resolve; }));
@@ -90,6 +90,9 @@ it.each(['replace', 'disable', 'unload', 'disconnect', 'navigate', 'stop'] as co
     case 'unload': shell.app.send({ type: 'PACK_PLUGINS_UNLOADED', packId: 'notes' }); break;
     case 'disconnect': shell.client.dropConnection(); break;
     case 'navigate': shell.app.send({ type: 'OPEN_PLUGIN', plugin: 'host/home', events: [] }); break;
+    case 'breadcrumb': shell.app.send({ type: 'TRAIL_CLICK', target: 'home' }); break;
+    case 'back': shell.app.send({ type: 'NAVIGATE_BACK' }); break;
+    case 'forward': shell.app.send({ type: 'NAVIGATE_FORWARD' }); break;
     case 'stop': shell.app.stop(); break;
   }
   expect(signal.aborted).toBe(true);

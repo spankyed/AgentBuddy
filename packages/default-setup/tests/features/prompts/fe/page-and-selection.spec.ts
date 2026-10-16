@@ -160,3 +160,45 @@ it('refuses an uncorrelated answer once an ask has settled', () => {
 
   expect(actor.getSnapshot().context.selectedPromptId, 'the settled answer still stands').toBe('Prompt-p1');
 });
+
+
+it('opening the cached prompt abandons a newer outstanding selection', () => {
+  const actor = connected();
+  try {
+    actor.send({ type: 'OPEN_ENTITY', id: 'Prompt-p1' });
+    actor.send(answerTo(selectCall(0), { type: 'PROMPT_SELECTED', promptId: 'Prompt-p1', data: aPrompt('Prompt-p1') }));
+    actor.send({ type: 'OPEN_ENTITY', id: 'Prompt-p2' });
+    const abandoned = selectCall(1);
+    actor.send({ type: 'OPEN_ENTITY', id: 'Prompt-p1' });
+    actor.send(answerTo(abandoned, { type: 'PROMPT_SELECTED', promptId: 'Prompt-p2', data: aPrompt('Prompt-p2') }));
+    expect(actor.getSnapshot().context.selectedPromptId).toBe('Prompt-p1');
+    expect(actor.getSnapshot().context.pendingPromptCall).toBeNull();
+  } finally { actor.stop(); }
+});
+
+it.each(['list', 'create', 'deactivate'] as const)('retires an entity selection on %s', destination => {
+  const actor = connected();
+  try {
+    actor.send({ type: 'OPEN_ENTITY', id: 'Prompt-p1' });
+    const abandoned = selectCall(0);
+    if (destination === 'deactivate') actor.send({ type: 'PLUGIN_DEACTIVATED' });
+    else actor.send({ type: 'TRAIL_CLICK', target: destination });
+    actor.send(answerTo(abandoned, { type: 'PROMPT_SELECTED', promptId: 'Prompt-p1', data: aPrompt('Prompt-p1') }));
+    expect(actor.getSnapshot().context.selectedPromptId).toBeUndefined();
+    expect(actor.getSnapshot().context.pendingPromptCall).toBeNull();
+  } finally { actor.stop(); }
+});
+
+it('opens its entity from the create view and refuses unrelated entity types', () => {
+  const actor = connected();
+  try {
+    actor.send({ type: 'PROMPT.CREATE' });
+    actor.send({ type: 'OPEN_ENTITY', id: 'Note-unrelated' });
+    expect(actor.getSnapshot().matches('create')).toBe(true);
+    expect(sentTypes()).not.toContain('PROMPT_SELECT');
+    actor.send({ type: 'OPEN_ENTITY', id: 'Prompt-p1' });
+    actor.send(answerTo(selectCall(0), { type: 'PROMPT_SELECTED', promptId: 'Prompt-p1', data: aPrompt('Prompt-p1') }));
+    expect(actor.getSnapshot().matches('detail')).toBe(true);
+    expect(actor.getSnapshot().context.selectedPromptId).toBe('Prompt-p1');
+  } finally { actor.stop(); }
+});

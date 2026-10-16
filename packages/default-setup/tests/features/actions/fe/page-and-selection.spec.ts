@@ -167,3 +167,45 @@ it('refuses an uncorrelated answer once an ask has settled', () => {
 
   expect(actor.getSnapshot().context.selectedActionId, 'the settled answer still stands').toBe('Action-a1');
 });
+
+
+it('opening the cached action abandons a newer outstanding selection', () => {
+  const actor = listed();
+  try {
+    actor.send({ type: 'OPEN_ENTITY', id: 'Action-a1' });
+    actor.send(answerTo(selectCall(0), { type: 'ACTION_SELECTED', actionId: 'Action-a1', data: anAction('Action-a1') }));
+    actor.send({ type: 'OPEN_ENTITY', id: 'Action-a2' });
+    const abandoned = selectCall(1);
+    actor.send({ type: 'OPEN_ENTITY', id: 'Action-a1' });
+    actor.send(answerTo(abandoned, { type: 'ACTION_SELECTED', actionId: 'Action-a2', data: anAction('Action-a2') }));
+    expect(actor.getSnapshot().context.selectedActionId).toBe('Action-a1');
+    expect(actor.getSnapshot().context.pendingActionCall).toBeNull();
+  } finally { actor.stop(); }
+});
+
+it.each(['list', 'create', 'deactivate'] as const)('retires an entity selection on %s', destination => {
+  const actor = listed();
+  try {
+    actor.send({ type: 'OPEN_ENTITY', id: 'Action-a1' });
+    const abandoned = selectCall(0);
+    if (destination === 'deactivate') actor.send({ type: 'PLUGIN_DEACTIVATED' });
+    else actor.send({ type: 'TRAIL_CLICK', target: destination });
+    actor.send(answerTo(abandoned, { type: 'ACTION_SELECTED', actionId: 'Action-a1', data: anAction('Action-a1') }));
+    expect(actor.getSnapshot().context.selectedActionId).toBeUndefined();
+    expect(actor.getSnapshot().context.pendingActionCall).toBeNull();
+  } finally { actor.stop(); }
+});
+
+it('opens its entity from the create view and refuses unrelated entity types', () => {
+  const actor = listed();
+  try {
+    actor.send({ type: 'ACTION.CREATE' });
+    actor.send({ type: 'OPEN_ENTITY', id: 'Note-unrelated' });
+    expect(actor.getSnapshot().matches('create')).toBe(true);
+    expect(sentTypes()).not.toContain('ACTION_SELECT');
+    actor.send({ type: 'OPEN_ENTITY', id: 'Action-a1' });
+    actor.send(answerTo(selectCall(0), { type: 'ACTION_SELECTED', actionId: 'Action-a1', data: anAction('Action-a1') }));
+    expect(actor.getSnapshot().matches('detail')).toBe(true);
+    expect(actor.getSnapshot().context.selectedActionId).toBe('Action-a1');
+  } finally { actor.stop(); }
+});
