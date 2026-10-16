@@ -64,7 +64,7 @@ so completed implementation is not repeatedly scheduled as new work.
 | Manifest consolidation M1–M6 | Implemented and checkpoint-validated through `0994ae787`; own-key preservation `29f0cc556` | Preserve all 17 reconciled decisions, both naming outcomes and generated EARS/content behavior in final acceptance; do not restart consolidation. |
 | Settings/help/info/reference/step/command discovery (Phase 3) | Implemented reader migrations: `2169d29f8`, `6c876c9ba`, `20ab75efe`, `c776d1c5d`, `76df2f0e5`, `71fad4013`, `8ec5285ed`, `f7d63434c`, command catalog `ff48438cd` | Final all-kind acceptance, including source-free inspection, inactive owners and checked runtime eligibility. |
 | Live editor composition (Phase 3) | Implemented: `8863043a6` | Complete cold-document/provider readiness and real typing/replacement acceptance; fix demonstrated omissions without restarting composition. |
-| Remaining discovery consumers (Phase 3) | Partial; viewer readers `a278d4116` and shell default/dispatch `69860e4be` implemented | Finish catalog-backed navigation inventories/order/visibility; DSL producer/readers are implemented in `8ed188046` / `39e48e66e` and await final worker acceptance. Complete compiled-content flow/action edges and rename/missing-reference diagnostics. Audit services, repositories, events, native fields and static assets; migrate each actual gap and remove superseded discovery stores. |
+| Remaining discovery consumers (Phase 3) | Partial; viewer readers `a278d4116` and shell default/dispatch `69860e4be` implemented | Navigation inventories/order/visibility implemented in `cfcbb53f9`; complete final window/loader acceptance; DSL producer/readers are implemented in `8ed188046` / `39e48e66e` and await final worker acceptance. Complete compiled-content flow/action edges and rename/missing-reference diagnostics. Audit services, repositories, events, native fields and static assets; migrate each actual gap and remove superseded discovery stores. |
 | Build input/publication and freshness (Phase 3) | Partial; finite checkpoints B1–B6 below | Finish the common producer contract and four passive consumer migrations; installed discovery must remain source-free and activation-free. |
 | Entity navigation (Phase 4) | Reference identity prerequisites implemented; destination migration unfinished | Implement declared destinations, eligibility/readiness, short-code round trips and caller migration under open-entity.md. |
 | Frontend boundaries (Phase 5) | Planned implementation | Isolate throwing canvas/panel/form contributions, preserve host settings and other panes, and reject retries for retired revisions. |
@@ -135,9 +135,10 @@ build-only definitions project literal/computed targets and nested branches into
 index. Offline CLI inspection reports indexed/not-indexed/dynamic targets, and SDK helpers find known
 incoming references for rename/removal review. Compiled records and hashes are unchanged.
 
-Next complete action/prompt JavaScript reference analysis and the remaining content inventory reader
-audit. Do not present arbitrary JavaScript analysis as exhaustive, or compiled inventory as user data;
-unsupported analyzers remain explicitly unavailable. Navigation menu ordering/visibility, remaining
+Next audit remaining content inventory readers and navigation ordering/visibility. The required static
+flow-to-action edges are published; arbitrary JavaScript body analysis is not required by this plan.
+Pack-defined service calls must not become hardcoded SDK dependency rules. Unsupported analyzers
+remain explicitly unavailable, and compiled inventory is not user data. Navigation menu ordering/visibility, remaining
 native/service/repository/event/static-asset coverage and all-kind discovery acceptance still remain.
 The DSL implementation needs final real Monaco worker/cold-document/window acceptance; the focused
 language-service proof does not replace it. Keep the existing five-build 60-second timeout evidence at
@@ -6560,6 +6561,43 @@ for existing feature references; no feature-reference contract changed. A real s
 passes; verified output contains 76 flow references, all indexed. Logs:
 `/private/tmp/apack-content-references-{final-focused,compiler,types,cli-types,lint,specifiers,schema,api-check,default-build,published}.log`.
 
-No broad diagnostic suite was run for this independent slice. Action/prompt body analysis, generic
-inventory/readers, all-kind discovery acceptance, B1–B6 and the final committed-source strict `--all`
+No broad diagnostic suite was run for this independent slice. Generic inventory/readers, all-kind discovery acceptance, B1–B6 and the final committed-source strict `--all`
 gate remain required. This checkpoint closes none of those outstanding acceptance items.
+
+
+### Catalog navigation checkpoint and scope correction (2026-10-16)
+
+Source: `cfcbb53f9`. The toolbar, its visibility menu and directional keyboard selection now project
+metadata from the common catalog, independent of frontend delivery. Labels, pinning, default visibility
+and order are declarative; user choices override defaults, native host tabs follow pack tabs within
+pinned/unpinned groups, and source/disabled owners are omitted from app destinations. Only current
+accepted bindings supply icons; the shell supplies a placeholder beforehand. Active components,
+actors, request queues and readiness remain execution responsibilities. The renderer subscribes to
+catalog changes with scope-owned cleanup rather than storing another plugin inventory.
+
+Backend visibility defaults now also read the catalog before runtime registration. The duplicate
+`PackFeaturePlugin.defaultVisible`, generated backend copy, binding comparison and active-only visible
+plugin selector are removed. Schema authors still declare `features.<id>.plugin.defaultVisible` once.
+The SDK framework API report and in-tree native/installed/pack tests match the contract.
+
+Evidence: 111 focused host/SDK cases (5.53s), 167 additional host/SDK cases including installed loader
+and real generated TypeScript compilation (18.19s), final pinned-order projection check, and five
+real shipped-pack settings consumer cases (2.91s) pass. Host/SDK and renderer app/test typechecks,
+lint/import/tier checks and the SDK API report pass. The actual shipped pack rebuild passes.
+Logs: `/private/tmp/apack-plugin-navigation-{focused,final-focused,pinning,pack-consumer,host-types,sdk-types,renderer-types,renderer-tests-types,lint,specifiers,tiers,api,default-build}.log`.
+The shared shell-state fake is now fresh per test; the prior file retained another test's declared pack.
+Final real-window, all-kind and strict acceptance remain outstanding; no broad diagnostic gate rerun.
+
+The previous handoff added arbitrary action/prompt JavaScript-body analysis without a requirement.
+The original restored scope requires static **flow-to-action** relationships (discovery plan,
+“Restored manifest requirements and handoff”), which `7196d61d3` publishes. Service calls inside
+bodies use pack-owned APIs; hardcoding those into the SDK would violate their ownership. The live
+handoff is corrected, not treated as a new user exclusion. Static analysis remains explicitly
+non-exhaustive and unavailable for unsupported compilers. Every original phase requirement remains.
+
+Inventory audit: `apack pack info` reads the verified content index offline. `previewPackContent`
+checks registered appliers because its specific job is showing what an actual import can write; it is
+not the discovery inventory and its eligibility check stays. Unwritten datasets have counts without
+invented database item identities. Next audit service/repository/event/native/static-asset metadata
+and actual CLI inspection gaps before final all-kind acceptance. Loader extraction, B1–B6, entity
+navigation, boundaries, all Phase 6 streams and final committed-source strict `--all` remain required.
