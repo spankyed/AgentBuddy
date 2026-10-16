@@ -130,8 +130,14 @@ import rules, lint and tiers pass. The final inference fixes are covered by focu
 refreshed; they do not change the checked public signatures.
 `/private/tmp/apack-dsl-readers-{focused,generation,boundaries,prefix-review,explicit-selection,full-build,default-build,pack-tests,host-types,sdk-types,ui-types,cli-types,renderer-types,renderer-test-types,pack-types,schema-check,sdk-api-check,ui-api-check,specifiers,lint,final-lint,tiers}.log`.
 
-Next audit compiled-content inventory and static flow/action dependency edges, including rename,
-missing-reference and dynamic-reference diagnostics. Navigation menu ordering/visibility, remaining
+Flow-reference inspection is implemented in `7196d61d3`: step declarations name reference fields;
+build-only definitions project literal/computed targets and nested branches into the verified content
+index. Offline CLI inspection reports indexed/not-indexed/dynamic targets, and SDK helpers find known
+incoming references for rename/removal review. Compiled records and hashes are unchanged.
+
+Next complete action/prompt JavaScript reference analysis and the remaining content inventory reader
+audit. Do not present arbitrary JavaScript analysis as exhaustive, or compiled inventory as user data;
+unsupported analyzers remain explicitly unavailable. Navigation menu ordering/visibility, remaining
 native/service/repository/event/static-asset coverage and all-kind discovery acceptance still remain.
 The DSL implementation needs final real Monaco worker/cold-document/window acceptance; the focused
 language-service proof does not replace it. Keep the existing five-build 60-second timeout evidence at
@@ -6534,3 +6540,26 @@ assertion is unchanged and full strict acceptance remains required.
 `/private/tmp/apack-watch-publication-events-focus.log` and
 `/private/tmp/apack-watch-publication-events.log`. The other agent may run in its independent worktree;
 no exclusive validation window is assumed. The complete goal and remaining build-session scope stay open.
+
+
+### Flow-reference discovery checkpoint (2026-10-16)
+
+Source: `7196d61d3`. `extensions.steps.<type>.dsl.references` maps fields to content keys. Codegen
+carries it into build definitions, not executable frontend/backend registrations. Flow compilation
+projects trigger fields, nested branch fields and computed targets without evaluating target values.
+The verified index rejects unknown reference sources and malformed identities. `apack pack info`
+inspects it without importing authored modules; `findContentDependents` supports known incoming-edge
+review after a rename/removal. Missing indexed targets remain inspection findings, not a claim that a
+runtime database record is absent. Existing flow validation is unchanged.
+
+Evidence: 86 focused SDK/CLI cases passed in 5.72s, covering actual content compilation, unchanged
+compiled records/hashes, custom/nested/computed references, renamed targets, invalid indexes,
+build-only codegen, and source-free offline inspection. SDK/CLI typechecks, lint, import checks,
+generated schema and all 28 SDK API reports pass. The report also normalizes generated field ordering
+for existing feature references; no feature-reference contract changed. A real shipped-pack build
+passes; verified output contains 76 flow references, all indexed. Logs:
+`/private/tmp/apack-content-references-{final-focused,compiler,types,cli-types,lint,specifiers,schema,api-check,default-build,published}.log`.
+
+No broad diagnostic suite was run for this independent slice. Action/prompt body analysis, generic
+inventory/readers, all-kind discovery acceptance, B1–B6 and the final committed-source strict `--all`
+gate remain required. This checkpoint closes none of those outstanding acceptance items.
