@@ -1,12 +1,12 @@
 <template>
   <div class="question-input space-y-3">
     <!-- Response Display (when disabled/responded) -->
-    <div v-if="disabled && response" class="space-y-2">
+    <div v-if="disabled" class="space-y-2">
       <div class="flex items-center gap-2 text-sm text-neutral-400 mb-2">
         <Check class="w-4 h-4 text-green-500" />
-        <span>Answered</span>
+        <span>{{ response?.cancelled ? 'Cancelled' : response ? 'Answered' : 'Question closed' }}</span>
       </div>
-      <div class="px-3 py-2 bg-primary-600/15 rounded-lg border border-primary-600/30">
+      <div v-if="response && !response.cancelled" class="px-3 py-2 bg-primary-600/15 rounded-lg border border-primary-600/30">
         <span class="text-sm text-primary-400">{{ responseDisplay }}</span>
       </div>
     </div>
