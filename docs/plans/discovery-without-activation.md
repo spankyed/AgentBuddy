@@ -25,7 +25,65 @@ It does not import/require pack or dependency modules, instantiate components or
 execute migrations/content appliers, query a pack's live provider, or write user data. Build-time compilers
 may execute code; their discoverable results must be materialized before installation.
 
-## Existing foundation and gaps
+## Current discovery checklist
+
+Current status audited 2026-10-15. This checklist owns discovery progress; the execution goal owns
+phase ordering and final acceptance. Update these rows as checkpoints land rather than copying a new
+remaining-work list into each checkpoint. Source commits below establish implemented slices, not
+completion of the whole plan. Uncommitted compiler work has no accepted source checkpoint yet.
+
+Execution follows the goal's [current handoff](../goals/goal-settings-and-pack-contracts.md#current-handoff--compiler-checkpoint-2026-10-16)
+and [bounded validation](../../CLAUDE.md#keep-validation-bounded). Diagnose a failed assertion with its
+preserved evidence and targeted reproducer; do not restart the broad chain after every local fix.
+Broaden only to close a stated coverage gap or run the required converged gate. Keep checkpoint claims,
+unresolved acceptance and unrelated infrastructure defects distinct. No deadline increase, weakened
+assertion or repeated green focused run substitutes for the required gate. Commit the validated compiler
+checkpoint before expanding this plan's implementation; the full remaining scope stays required.
+
+**How to read the history:** dated audits, designs and checkpoint handoffs below record what was known
+at that time. Their “remaining,” “next” and “not yet implemented” statements are superseded for current
+status by this checklist. Preserve their evidence and unresolved acceptance requirements; supersession
+does not waive a requirement. The acceptance section remains normative. An old failure log is neither
+proof of a current failure nor proof that the failure was subsequently fixed.
+
+| Consumer / contract | Current status and source evidence | Remaining acceptance |
+|---|---|---|
+| App, pack-group and feature settings | **Implemented, awaiting final acceptance.** `f3416ad2f` connects definitions and runtime settings to the catalog; later settings checkpoints record caller, form and window behavior. | Reconfirm the settings plan's complete three-owner, disabled/failed pack, policy, reset/import and multiple-window checks on final committed source. No new settings extraction is required. |
+| Help listing and articles | **Implemented, awaiting final acceptance.** `2169d29f8` moves help into snapshot/catalog data; the help publication/browser-routing checkpoint below records disabled-pack navigation and publication checks. | Include poisoned executable entries, invalid replacement retention and disabled help navigation in the final all-kind acceptance. Preserve the separately recorded concurrency failures until current evidence resolves them. |
+| Installed-pack information | **Implemented, awaiting final acceptance.** `6c876c9ba` uses accepted declarations plus installation/activation records. | Prove disabled/failed/unreadable installations and refused replacements remain explainable without executable imports. Check offline CLI inspection alongside app information. |
+| Reference metadata, parsing and picker categories | **Implemented, awaiting final acceptance.** `20ab75efe` migrates editor consumers/provider scopes; `c776d1c5d` preserves wire identity without metadata. | Reconfirm delayed/missing catalog delivery and source-free discovery; categories must start no providers. Actual queries/navigation still require eligible bindings and disposed provider scopes. Entity destination redesign belongs to Phase 4. |
+| Live editor contribution composition | **Implemented, awaiting final acceptance.** `8863043a6` adds accepted-change subscriptions and generation-checked replacement. | Complete cold-document/provider readiness checks and real typing during contribution replacement; preserve pending content, selection and lifecycle cleanup. This does not complete DSL assistance below. |
+| Step palettes, styles, defaults, layout and backend metadata | **Implemented, awaiting final acceptance.** `76df2f0e5` migrates frontend readers; `71fad4013` backend defaults; `8ec5285ed` trigger/build declarations; `f7d63434c` update eligibility. | Include authored and native steps, inactive metadata, external runtime paths and stale binding refusal in final acceptance. Keep actual flow execution bound to its accepted runtime lifetime. |
+| Shell navigation/default selection | **Partially implemented.** Plugin declarations and checked frontend admission exist; `features/application/fe/machine.ts` still learns plugins through `mergePackPlugins`, with `wantsDefaultPlugin` and `pendingPluginId`. | Select known destinations/defaults from catalog data with explicit ordering and saved-selection precedence. Distinguish unknown/disabled/loading/failed, preserving real actor-event readiness and rejecting stale completion. Remove superseded inventory/waiting only after migration. |
+| Declared slash-command listing | **Unimplemented consumer migration.** SDK `framework/pack-commands.ts` reads bound runtime commands; `features/library/be/services/library.ts` combines them with user commands; host `packs/backend-extensions.ts` owns the registration store. | Move declared metadata/order and discovery notifications to the catalog. Keep user-content notifications and flow dispatch; execution pickers must enforce eligibility. Remove the superseded static runtime store. |
+| Block and artifact metadata | **Partially implemented.** Declarations/admission exist; SDK `blocks/registry.ts` and `artifacts/registry.ts` still project active definitions. Chat/viewer consumers mix metadata and executable component lookups. | Move type/icon/input-kind inventory to data readers without importing components or backend facets. Preserve separately checked executable bindings, native ownership and disabled metadata. Audit each registry caller before removing APIs. |
+| DSL/editor assistance | **Partially implemented.** `07d544606` supplies offline Monaco; frontend `pack-store.ts` still holds registered `dslTypes`. | Audit completion/type/global/asset consumers and move static reads to built declarations/assets without provider activation. Keep executable compiler/query responsibilities explicit; prove source-free installed assistance. |
+| Compiled-content inventory and dependencies | **Partially implemented.** SDK `build/content-index.ts` exists; help and declared content are already materialized in part. | Audit every inventory reader; finish static flow/action dependency edges, rename/missing-reference diagnostics and explicit dynamic-reference status. Distinguish declared content from rows created by appliers; no user-data writes during inspection. |
+| Services, repositories, events and remaining native contributions | **Partially implemented; field-by-field completion audit outstanding.** Shared catalog, generated contracts and native admission exist. | Classify every supported registration field as discoverable data or executable binding, including nested members and static assets. Discover contracts without constructing services. Verify ownership/collision rules and native/authored parity; do not infer completion from schema acceptance. Phase 6 owns consumed-API enforcement. |
+| Shared readers and all-kind acceptance | **Partially implemented; final consumer audit outstanding.** Snapshot/catalog admission is shared; individual migrations above have checkpoint coverage. | Recheck lifecycle, offline database schema, CLI inspection and refresh subscriptions for duplicate parsing or active-only inventory. Preserve each consumer's enablement/execution policy. Exercise every supported kind with poisoned executable entries, source files absent, disabled/failed owners, collisions and atomic replacement; remove superseded discovery stores without deleting real runtime machinery. |
+
+The partial rows identify inspected gaps; they are not claims that every caller in that family has
+already been audited. Closing a row requires its source commit and acceptance evidence, including deletion
+of superseded discovery projections. A passing producer test alone does not establish consumer migration.
+
+### Build freshness is a separate prerequisite
+
+Archive creation, prebuilt tests, default-pack fork preparation and drive are **build-freshness
+consumers**, not additional discovery UIs. Their common input/publication contract and migration remain
+required under [content-based source freshness](#required-content-based-source-freshness-correction-2026-10-15).
+Shared authored inputs landed in `882d2a50b`; compiler capture/session reuse is an uncommitted candidate
+awaiting strict validation. Frozen pack/external inputs, whole-build input/output association and the
+passive freshness authority remain unfinished. Installed/offline discovery must continue to need
+neither authored source files nor compiler activation.
+
+Finish that prerequisite, then the partial/unimplemented discovery rows and the all-kind acceptance
+audit. Entity navigation, pane/form failure boundaries and the three Phase 6 workstreams retain their
+separate requirements in the execution goal. None is removed by this status consolidation.
+
+## Historical foundation audits and checkpoint evidence
+
+Current progress is recorded in the [current discovery checklist](#current-discovery-checklist).
+The following initial surveys and dated checkpoints preserve design and validation history.
 
 ### Implemented snapshot reader (2026-10-12)
 
@@ -236,7 +294,11 @@ caught. This prototype is not wired into production boot or existing discovery/s
 Feature schemas, static metadata/assets for the remaining kinds, complete build-input freshness, checked form/runtime
 bindings, full build revisions and trusted caller binding remain on the completion inventory.
 
-### Remaining descriptor work
+### Initial descriptor gaps (historical)
+
+This starting inventory predates the settings, reference, editor and step migrations. Its remaining-work
+column is superseded for status by the [current discovery checklist](#current-discovery-checklist);
+retain it as the original coverage inventory, not a list of unimplemented consumers today.
 
 The manifest already names many contributions and implementation references. Codegen produces backend
 and frontend registrations, contracts and snapshots; content is compiled; pack staging records integrity.
@@ -493,6 +555,11 @@ Static UI eligibility may use host-known data. Arbitrary pack predicates stay ex
 not call them. Do not add a general expression language merely to disguise runtime behavior as metadata.
 
 ## Refactor the consumers, not just the manifest
+
+These migration designs retain their behavioral requirements. Their present-tense code descriptions
+were written before subsequent checkpoints; use the [current discovery checklist](#current-discovery-checklist)
+to distinguish landed migrations from outstanding ones. In particular, settings, help, pack information,
+reference/editor readers and step palettes are no longer wholesale pending migrations.
 
 Audit performed against the current checkout on 2026-10-12. The catalog must replace the machinery
 that reconstructs declarations from running code. Adding a catalog alongside that machinery would leave
@@ -2955,7 +3022,7 @@ The testing helpers instead write Playwright results, screenshots and driving re
 input policy: default generated pack-run output belongs under `.apack/tests` and `.apack/drive`, while
 scripts/configuration remain authored. Move helper defaults, CLI driving outputs, scaffolds, fixture
 output declarations and public guidance together; preserve explicit user output overrides. No aliases
-or fallback reads of previous output directories. Root app E2E configuration remains separately owned.
+or fallback reads of previous output directories. The root app E2E config delegates the same helper; chain output/failure-evidence declarations must follow that output path too.
 
 Prove real helper-created output is excluded from `packInputsHash` and actual authored changes still
 invalidate it, including linked sources. Test Playwright configuration and CLI scaffold/drive paths;
@@ -3057,7 +3124,7 @@ app-release code into today's compiler graph, so excluding Octokit merely as “
 an actual current import. Implicit shared-package metadata reads also need coverage before narrowing
 package scopes. The prototype is absent from committed source.
 
-The next implementation checkpoint must deliver the complete source/compiler input and publication
+The next freshness-reader switch must deliver the complete source/compiler input and publication
 contract before changing freshness readers. It must account for capture before compiler loading,
 long-lived compilers, options/dependencies, outside inputs, missing/resolution candidates and namespaces,
 coherent execution, atomic input/output association and passive source consumers. Installed/offline
@@ -3065,8 +3132,127 @@ inspection still verifies output without authored source or executable compiler 
 integrity and private phase caches remain separate proofs; neither is the missing whole-build source
 receipt. Every later contribution kind and goal phase remains required.
 
+Compiler capture below is an independently validated prerequisite checkpoint. Committing it does not
+authorize a partial source receipt or freshness-reader migration.
+
 A local APFS probe (`/private/tmp/apack-filesystem-generation-probe.log`) observed a transient replacement
 read returning different bytes, followed by exact original inode/bytes/mtime restoration; ctime changed
 for both a file and a symlink. This only informs research into active-build guards. It does not establish
 a portable frozen view or justify a timestamp cache or timestamp-based source freshness. Any selected
 coherence design still needs its own actual compiler/publication proof.
+
+#### Compiler installation capture candidate (2026-10-15)
+
+The next input/publication checkpoint now has a concrete compiler boundary under implementation.
+`readPackageInputs` in host owns one normalized graph: raw package metadata, resolved dependency
+edges and lookup paths, file content, executable bits, physical link targets and directory membership.
+Root contents are explicit; source-pack roots retain their separate authored scope. Compiler capture
+copies the bytes supplied by that reader, mirrors physical paths, restores package/file links and
+verifies the private graph before ordinary Node startup. No executable package import is needed for
+capture or verification. Each invocation owns its temporary copy; worktrees share neither this copy
+nor their package builds. Global dependency lookups are rebound to captured copies.
+
+Public builds, initial/watched builds and release verification select this distributable compiler after
+refreshing the relevant checkouts. Owned workers bypass project hand-off: that selection already
+happened before capture. Cleanup follows child close, including abort errors, so an early error does
+not remove compiler files while its child is still exiting. Internal compiler tests remain in-process.
+
+This candidate is not yet a validated source checkpoint or the complete source-freshness contract.
+Focused copy/execution and one real public build pass; strict validation remains to run. The measured
+initial capture is 5.341s for 292 packages / 12,315 files; graph-only capture is 2.822s. Evidence:
+`/private/tmp/apack-compiler-installation-{profile,worker,focused}.log`. Keep these as observations,
+not performance thresholds. Do not replace the conservative closure with the rejected static graph.
+
+Required next work remains: complete frozen pack/external/compiler input execution (including ambient
+Node loader/preload options and long-lived frontend compiler lifetime), atomic whole-build input/output
+association, passive freshness authority and every consumer migration above. Preserve manual builds,
+unchanged deterministic phase caching and deliberate stale-drive behavior. Installed/offline discovery
+continues to require neither source files nor a compiler. A compiler copy alone does not complete any
+of those requirements or authorize the mtime reader switch.
+
+Compiler path identity correction during review: the first strict candidate run was stopped after
+confirming that TypeScript's standard-library input names included the random captured directory.
+Passing type/schema/lint/build legs from that interrupted run are not a full pass. Private worker
+handoff now carries captured-to-source path mappings; module identity/sorting, diagnostic reads and
+frontend subscriptions use source origins while reads still consume captured bytes. Different live
+and captured bytes claiming one origin refuse. Disabling either normalization or that conflict guard
+is caught by its behavior test. A real pair of public builds now keeps its facade cache stamp and
+complete output revision; the second reports actual facade reuse.
+`/private/tmp/apack-compiler-repeat-build.log` and
+`/private/tmp/apack-compiler-mutation-origin-{identity,conflict}.log`.
+
+Persistent tsx transforms are disabled in the private worker so a captured transformer does not reuse
+another installation's transform cache. Ambient execution overrides and the full pack/frontend frame
+remain part of the required input audit above; origin normalization is not that complete contract.
+
+
+#### Compiler session correction after strict feedback (2026-10-15)
+
+The restored strict candidate (`2026-10-15T23-44-12Z-95602`) failed seven watched-rebuild cases in four
+files; 735 integration cases passed. It is not a passing checkpoint. The source stayed fixed during the
+run. Its default-pack output-change warning also remains part of the required common freshness work;
+no mtime-only consumer fix is substituted here.
+
+A worker CPU profile attributes about 4.945s to repeated package scans; separate capture profiling
+shows the cost of repeatedly materializing and deleting the compiler tree. A controlled JavaScript/native
+path-resolution comparison finds no meaningful warm improvement; that experiment is removed.
+Evidence: `/private/tmp/apack-private-worker-profile.log`, its CPU profiles, and
+`/private/tmp/apack-package-input-path-comparison.log`.
+
+The implementation now scopes one compiler installation to `createPackBuilder(root)`. Before reuse it
+checks original inputs and the copied graph against the captured identity. Each build still starts a
+fresh process. Read-only compiler inputs and private metadata bind the worker to the selected CLI;
+its immutable fingerprint replaces redundant live rescans of those copied packages. Live pack and
+outside-module inputs keep their publication checks. A single public build closes its builder, while
+a watcher closes it after aborting/draining active work and observers. No global cache, timestamp cache,
+input-scope reduction, timing-assertion change or compatibility path is introduced.
+
+The two isolated module-watch cases improve from 40.444s / 48.322s to 27.453s / 32.984s, with unchanged
+20s publication and 60s test deadlines. The remaining failing watch scenarios and strict checkpoint
+validation are still pending. These measurements are evidence, not gates.
+
+The scoped-builder candidate passes all 13 watched cases with one and three workers, while retaining
+the existing publication/test deadlines. Real process checks also cover source/private worker refusal,
+changed compiler input refresh, damaged copy repair, shutdown ordering and public watch signal cleanup.
+The worker's private metadata binds its actual CLI to the captured graph before compiler import; only
+that verified, read-only compiler scope uses the captured fingerprint. Live pack/outside scopes are
+still re-read. No optional private worker path bypasses captured input ownership. In-process compiler
+unit paths remain distinct from that public producer. Strict validation and the complete source frame,
+whole-build receipt and consumer migrations remain required.
+
+
+The complete candidate strict gate still fails: run `2026-10-16T00-57-18Z-53171` reaches the external
+contract watch test's 60s limit and the integration pool's 600s aggregate budget. Do not treat earlier
+focused passes as full acceptance. The contract fixture's frontend is necessary to its generated
+contract assertion and remains unchanged. A measured traversal optimization now carries resolved
+directory paths into ordinary file identities, resolving file symlinks explicitly; all normalized
+fields and the hash match the previous scanner across 292 compiler packages. Warm scans improve
+from about 1.0s to 0.67s, without input-scope or deadline changes. Nineteen graph tests and 28 compiler
+capture/module/worker/builder tests pass; warm watch and strict acceptance remain pending. The goal
+records exact evidence, including failed experiments. Whole-build source/compiler coherence, receipt
+publication and every freshness consumer migration above remain required.
+
+
+Compiler disposal is asynchronous and awaited throughout ownership, including failed capture and
+replacement; the factory and all callers use that promise. Focused public/private worker checks pass
+with the existing shutdown/cleanup deadlines. Full strict validation remains required. The required
+build-session audit must also cover cancellation during startup and one-shot commands: ready-watch
+signal coverage is not proof of those lifetimes. Complete that ownership with the full input frame and
+publication contract before migrating freshness consumers, rather than claiming every termination
+path is covered by the retained-watcher check. All later goal scope remains active.
+
+
+Watch validation now distinguishes IPC exit from retained-tree cleanup. Signal tracing proves prompt
+receipt and complete deletion before the public process re-raises its signal; that filesystem wait
+uses 20s, while IPC-only waits remain 2s and whole tests remain 60s. CSS startup/teardown are fixture
+hooks, retaining the complete transition/assertion sequence and 20s publication limits. A forced body
+timeout proves compiler cleanup finishes before fixture deletion; normal concurrent checks pass.
+These validation corrections do not establish startup/one-shot signal ownership, complete frozen
+inputs or the whole-build receipt. The goal retains those requirements and exact failed/passing evidence.
+
+
+Public watch cancellation now owns startup as well as readiness: signal handlers precede startup,
+abort closes the initial builder, and shutdown waits for cleanup before re-raising the signal.
+A real-process regression covers both phases; restoring late handler registration leaks the compiler
+and fails that check. This does not cover one-shot/dev startup or close the remaining complete input
+frame/publication/freshness work. The goal records diagnostic passes and the unresolved strict gate.

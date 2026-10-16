@@ -250,6 +250,24 @@ nothing on a runner can produce a number that belongs in it. CI already does the
 that was cost thirteen spec files a silent green (`@apackdev/host/build/packages-built`, on `ALLOW_UNBUILT`).
 The condition is the machine, which is a fact a run can check.
 
+### Keep validation bounded
+
+Before a checkpoint's broad run, state what it must prove and which required checks cover it. Run the
+chain after the focused checks converge. On failure, inspect the preserved evidence and reproduce the
+specific failing case; do not use another broad run to diagnose it. After a fix, run that case and the
+affected suite. Repeat or broaden only for a named coverage gap, such as concurrency that the isolated
+case cannot exercise. State that gap before launching the command.
+
+If a failure recurs without a diagnosis, stop broad reruns and report the blocker, evidence and next
+diagnostic action. Keep unrelated failures separate from the checkpoint's implementation scope; do not
+silently turn validation into a tooling or performance project. Do not change deadlines, assertions or
+input scope merely to obtain a pass. A focused pass does not establish a required broad gate; run the
+required final gate once fixes converge, and retain any unresolved acceptance explicitly.
+
+Commit validated logical checkpoints before expanding implementation. Keep one current handoff in the
+owning goal: source state, proven checks, unresolved failures and the next action. Historical run logs
+are evidence, not instructions to repeat the same runs. See [the validation-loop lesson](docs/reference/pipeline-lessons.md#validation-loops).
+
 Things that waste the most time, in order:
 
 - **Running anything at all after a doc or a CLAUDE.md edit.** Nothing means nothing: not

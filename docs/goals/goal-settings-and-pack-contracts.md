@@ -106,9 +106,40 @@ Run focused checks and the required checkpoint validation, inspect the staged di
 logical change before starting the next. Record its commit and evidence in Progress. Large phases have
 multiple checkpoints; Phase 6's three workstreams each have their own commits and evidence.
 
+Follow [bounded validation](../../CLAUDE.md#keep-validation-bounded). Define the checkpoint's claims
+and checks before its broad run. Diagnose failures from preserved logs and the smallest reproducer;
+after a fix, run the failing case and affected suite. Another broad run needs a stated coverage gap or
+the required converged checkpoint/final gate, not reassurance after each edit. An unexplained recurring
+failure stops broad reruns: report the exact blocker and next diagnostic action. Do not expand the
+implementation into unrelated test infrastructure or performance work without an explicit scope decision.
+Required gates and the final committed-source strict `--all` acceptance remain required.
+
 Apply settled naming rules to new interfaces as ordinary implementation review. If separately authorized
 integration work later becomes necessary, follow CLAUDE.md's pinned integration validation; the completed
 naming branch is not an automatic source of future changes.
+
+### Current handoff — compiler checkpoint (2026-10-16)
+
+- Source: `e37d6f5a4` plus the uncommitted compiler capture/session changes. Preserve the unrelated
+  `docs/issues/ISSUE-plan-consolidation-scope-loss.md` and the other agent's independent worktree.
+- Checkpoint claim: selected compiler bytes remain owned for worker execution; failed builds preserve
+  the incumbent output; public watch startup/readiness shutdown drains workers and removes the compiler.
+- Proven: focused compiler/package-graph checks recorded below; all 18 concurrent diagnostic cases;
+  public-watch startup mutation fails on the leak, and restored ready/compiling cases both pass.
+- Active broad validation: `npm run chain -- --strict --cores 4 --no-classify`, session `21360`,
+  run `2026-10-16T02-58-25Z-98482`, log `/private/tmp/apack-compiler-startup-owned-strict.log`.
+  Confirm live/terminal state before acting; do not start a duplicate run.
+- Next: inspect that result. If green, compare the seven EARS/content baselines, review and commit the
+  owned source checkpoint. If red, identify the exact failing assertion and use a targeted diagnostic;
+  no automatic broad rerun. The earlier publication-refusal deadline failure is not explained by its
+  subsequent focused pass and must remain visible until equivalent coverage passes.
+- After the checkpoint: complete frozen pack/external inputs, ambient compiler options, one-shot/dev
+  lifetime, atomic whole-build input/output association and passive freshness consumers before expanding
+  discovery. All Phases 0–7 and all three Phase 6 workstreams remain in scope.
+
+The repeated broad-run loop consumed over four hours without landing this source checkpoint. That is
+an execution failure, not additional acceptance work. The current handoff above owns the next action;
+chronological evidence below does not authorize reopening every previous investigation.
 
 ## Design review before further implementation (2026-10-12)
 
@@ -216,6 +247,12 @@ have explicit checks. The completed naming baseline, current format constants, e
 contract and release metadata remain intact. No compatibility, inferred existence or volatility addition.
 
 ### Phase 3 — Complete discovery and remove obsolete glue
+
+The discovery plan's [current checklist](../plans/discovery-without-activation.md#current-discovery-checklist)
+owns the live consumer status, source checkpoints and remaining acceptance. Historical audits and dated
+“next/remaining” notes in this goal are checkpoint evidence, not a second current backlog; later work
+supersedes their status claims without dropping unmet requirements. Keep build-freshness consumers
+separate from discovery consumers, and retain every later phase below.
 
 Finish the [discovery plan](../plans/discovery-without-activation.md) on Phase 1's foundation. Extend
 checked binding/freshness per kind before migrating settings/details/help, shell navigation, references,
@@ -1789,6 +1826,13 @@ SDK/AppData administration paths still need the declared-capability audit. Do no
 its owner-only policy as complete, and do not archive its plans.
 
 ### PR review: completeness audit (2026-10-13)
+
+**Historical audit.** Its discovery gaps are superseded for current status by the
+[current discovery checklist](../plans/discovery-without-activation.md#current-discovery-checklist).
+In particular, installed-pack information, reference/editor consumers and step palettes subsequently
+migrated, and hook/migration metadata and frontend membership gained declaration checks. Retain the
+original findings and evidence below; consult current acceptance before treating a finding as unresolved
+or closed. Later-phase requirements remain in their owning plans.
 
 Review base: `988a8ff77`; frontend corrections are committed in `a8ba9d801`. Review follows
 responsibility boundaries and their failure paths, not the historical progress entries as acceptance
@@ -5313,3 +5357,233 @@ stale drive behavior. The local filesystem-generation probe is research evidence
 replacement for frozen/coherent execution. Remaining contribution/content/asset discovery, native/editor
 lifecycle, navigation, frontend boundaries, all three Phase 6 workstreams, reconciled requirement audit
 and final committed-source strict `--all` remain required. Nothing is archived by this checkpoint.
+
+### Captured compiler installation candidate (2026-10-15)
+
+The current uncommitted implementation replaces live compiler execution in public build/dev/watch and
+release verification with a private copy of the selected distributable worker. One host-owned package
+graph supplies hashing, watch probes, byte copying and verification. It records physical file/link
+origins, dependency lookup edges, executable bits and empty/dangling membership without activation;
+root contents are explicit and dependency names retain own keys such as `__proto__`. Copies preserve
+workspace/file/metadata links and cycles. Global Node dependencies bind to captured packages. Workers
+bypass project hand-off, and disposal waits for child close, including abort failures. The source
+checkpoint still requires strict validation and review before commit.
+
+Evidence so far:
+
+- 53 focused cases pass across graph/source traversal, export policy, compiler copies, checkout freshness
+  and public/private handoff. NODE_PATH execution succeeds after deleting the original global dependency.
+  Linked metadata and dangling links have separate restored checks.
+- Disabling copy verification or the worker handoff rule causes its behavior test to fail; both guards
+  are restored. `/private/tmp/apack-compiler-mutation-{copy-verification,worker-handoff}.log`.
+- 32 integration cases pass for build/dev/abort and isolated release verification fixtures.
+  `/private/tmp/apack-compiler-installation-integration.log`. No real publishing/version operation.
+- A real frontend build reports live source inputs after its compiler copy is removed. The fixture's
+  explicit `.ts` import and generated default export were corrected before this pass.
+  `/private/tmp/apack-compiler-watch-inputs-restored.log`. Diagnostic source-path assertions are included
+  in the pending strict run. CLI typecheck passes; seven default-pack baselines remain to recheck there.
+- Initial graph/capture measurements are 2.822s / 5.341s, 292 packages / 12,315 files, before directory
+  creation deduplication. These are observations, not thresholds or a claim that conservative scan cost
+  is fixed. `/private/tmp/apack-compiler-installation-profile.log`.
+
+This prerequisite does not complete frozen pack/external inputs, ambient Node loader/options or the
+long-lived frontend compiler boundary. Whole-build input/output association, the passive receipt and
+archive/prebuilt/default-fork/drive migration remain required before a freshness-reader switch. All
+remaining contribution kinds, navigation, frontend boundaries, three Phase 6 streams, reconciled audit
+and final strict committed-source `--all` remain in this active goal. Nothing is archived.
+
+Candidate review found and fixed a temporary-path cache regression before commit. The first strict run
+was intentionally interrupted (exit 130) after its passing build/type/schema/lint legs: TypeScript
+standard-library names contained the compiler copy's random prefix. No passing full gate is claimed.
+Private captured/source origin mappings now serve module identity, sort order, reads and frontend
+subscription reporting without changing the bytes read. Conflicting live/captured source contents
+refuse. Both new guards have failing mutation evidence and restored focused passes. Two real public
+builds preserve the facade phase stamp and complete output revision; the second actually reuses its
+facade. `/private/tmp/apack-compiler-repeat-build.log`. The interrupted log is preserved at
+`/private/tmp/apack-compiler-installation-strict.log`. Final checkpoint validation remains required.
+
+
+Strict feedback is preserved: run `2026-10-15T23-44-12Z-95602` failed seven watched-build cases in four
+files (735 integration cases passed) after 1064s. The previous compiler candidate is not committed or
+called validated. The source stayed fixed throughout. The build:default-setup output-change warning
+remains required freshness work, not a reason to patch the mtime consumer in isolation.
+
+Measured correction: a private worker spends about 4.945s in package-input scans, and recreating/deleting
+its compiler on every edit adds material work. A native-path experiment has no meaningful warm gain
+and is discarded. One pack builder now owns, verifies and reuses its compiler copy while creating a
+fresh worker process for every build. Immutable compiler inputs carry a checked fingerprint; pack and
+outside inputs retain their publication checks. Watch close aborts/drains before disposal. The two
+isolated module-watch cases improve from 40.444s / 48.322s to 27.453s / 32.984s; the original timing
+assertions and full input scope remain. `/private/tmp/apack-compiler-session-watch.log`. Focused tests
+and CLI typecheck pass; remaining watched scenarios and strict validation remain pending. All larger
+input/publication, discovery and later-phase requirements above are unchanged.
+
+Scoped compiler follow-up evidence: all 13 cases in the four failing watch files pass with one worker
+(290.12s) and with three workers (179.78s). The latter overlaps the separate one-worker protocol run,
+which passes six real build/dev cases in 84.06s; no timing limit or assertion changed. The immutable
+compiler fingerprint now comes from a private input record required by workers before importing the
+compiler, and source inspections remain independent. A raw source worker with IPC, with absent or
+unrelated input metadata, refuses in two real process checks. Two real-process builder cases prove
+same-input reuse, fresh processes, changed-input refresh, damaged-copy repair, close rejection and
+worker-before-disposal ordering. Public `pack build --watch` signal shutdown removes its retained
+compiler (17.835s including initial build); CLI typecheck passes. Evidence:
+`/private/tmp/apack-compiler-session-watch{,-three}.log`,
+`/private/tmp/apack-compiler-session-worker.log`, `/private/tmp/apack-builder-lifecycle.log`,
+`/private/tmp/apack-worker-input-refusals.log`, `/private/tmp/apack-public-watch-shutdown.log`.
+The final strict checkpoint remains pending; source is still uncommitted.
+
+Run `2026-10-16T00-50-42Z-42427` stops on one host-pool inventory check: the public SIGTERM cleanup
+case adds a third necessary subprocess site to build-worker.integration. Its inventory now records
+that process and why an in-process signal test cannot prove the behavior. The 11-case inventory suite
+passes. The run's 3,281 other host cases and package/external authoring checks pass; integration had
+not run, so this remains an incomplete strict gate. `/private/tmp/apack-compiler-session-strict.log` and
+`/private/tmp/apack-compiler-subprocess-inventory.log`. No timing assertion or input scope changed.
+
+
+Run `2026-10-16T00-57-18Z-53171` fails the integration gate: external contract watch hits its
+60s test limit, then the complete pool hits its 600s aggregate budget (602s including cleanup;
+782.3s root run). Fifty-four integration files finish, with one test failure; this is not a passing
+gate. `/private/tmp/apack-compiler-checkpoint-strict.log`. The seven EARS/content baselines remain
+byte-identical. The other worktree's chain was observed during subsequent focused retries, starting
+after this strict run ended; that observation does not explain the original strict failure.
+
+A fixture experiment removing its frontend plugin fails the existing generated-contract assertion;
+the plugin is necessary and the experiment is fully reverted. No test assertion or deadline changed.
+The retained optimization instead reuses resolved directory paths while scanning ordinary files;
+file symlinks still resolve explicitly. Interleaved warm scans preserve the entire normalized graph
+and hash across all 292 compiler packages, improving from 997–1019ms to 663–682ms. The first cold
+comparison is excluded from that claim. `/private/tmp/apack-package-input-directory-path-comparison.log`.
+All 19 package-input cases and 28 compiler-copy/module/worker/builder cases pass. A subsequent watch
+retry includes linked workspace rebuilds and reaches its test limit; warm watch and strict validation
+remain required. Evidence: `/private/tmp/apack-package-directory-path-tests.log`,
+`/private/tmp/apack-compiler-directory-paths-focus.log`,
+`/private/tmp/apack-external-watch-directory-paths.log`. Source remains uncommitted.
+
+
+The warm watch retry also times out: `/private/tmp/apack-external-watch-directory-paths-warm.log`.
+During that retry, process inspection shows the separate `claude-code-research` worktree's chain and
+integration workers active. At approximately 2026-10-16 01:20 UTC the machine reports load average
+105.93 and 21,560.56 MB of swap in use. This establishes contention during the retries, not the cause
+of the earlier strict failure. No other session's process is stopped or output/dependencies changed.
+Do not start another broad gate under that observed load; validate the original watch sequence and
+strict checkpoint when resources settle. Host typechecking passes at
+`/private/tmp/apack-package-directory-path-typecheck.log`. Source remains a candidate, uncommitted;
+no acceptance assertion, timer or input scope was relaxed. All remaining goal scope stays active.
+
+
+Low-cost review under continuing contention adds a physical-origin regression: ordinary files and
+file links beneath an external directory link retain the same actual source, bytes and executable
+bits; retargeting to an otherwise identical tree changes input identity. All 20 graph cases pass.
+Removing explicit file-link resolution fails that new case; the guard is restored and the full file
+passes again. `/private/tmp/apack-package-directory-links-{tests,restored}.log` and
+`/private/tmp/apack-package-directory-link-mutation.log`. No broad retry is launched under the observed
+load. This strengthens the compiler candidate's evidence; strict checkpoint acceptance is still pending.
+
+
+The competing chain and integration workers are confirmed absent before the next focused watch run.
+The original external-contract sequence then passes in 49.604s (51.53s runner), preserving every
+assertion, its frontend and its 60s test/20s publication limits.
+`/private/tmp/apack-external-watch-directory-paths-uncontended.log`. This demonstrates recovery after
+contention clears, not that the earlier strict failure was exclusively environmental. Re-run the full
+strict candidate with four workers to reduce aggregate wall time; deadlines and input scopes stay fixed.
+
+
+Strict run `2026-10-16T01-26-42Z-16895` is terminal: 526.8s, 27 steps (one cached). It passes runtime,
+external-pack contract, external-pack app/replacement and packaged-authoring/app checks, but fails
+smoke worker teardown after all five smoke assertions pass. The existing 60s Electron teardown limit
+expires; this resembles the independently recorded native lifecycle symptom, without proving its cause.
+The host/pack/integration pools had not started before the failure, so no full acceptance is claimed.
+The other worktree starts another chain during this run. The user subsequently pauses it to allow
+uncontended checkpoint validation. `/private/tmp/apack-compiler-directory-paths-strict.log`.
+
+Failure inspection finds a concrete omission from generated-run-output checkpoint 3E: the root
+Playwright config delegates `definePackE2EConfig`, so it also writes `.apack/tests/results`, but the
+chain still declares/preserves `tests/results`. That run therefore preserves stale logs. The chain's
+smoke/full-E2E output and failure declarations, evidence fixture and current E2E guidance now agree
+with the actual config. A new cross-owner check imports that config and compares both declarations;
+restoring the wrong path fails it. All 61 graph/evidence cases pass before and after the restored
+mutation. `/private/tmp/apack-root-e2e-output-{declarations,mutation,restored}.log`. No timeout,
+assertion, shutdown behavior, output-checksum guard or source-input scope is weakened. Strict validation
+is required on the corrected candidate before a source commit.
+
+
+The first corrected strict run is intentionally interrupted with exit 130 before its test pools,
+after review identifies that the evidence spec itself writes its probe into the real Playwright
+output. The process is verified by PID, checkout cwd and both log descriptors before interrupting;
+no other session is signaled. `/private/tmp/apack-compiler-output-paths-strict.log`.
+The spec now creates/removes a unique fixture directory under `.apack`, preserving repo-relative-copy
+coverage without racing or modifying live app output. All 61 graph/evidence checks pass on that
+correction. `/private/tmp/apack-root-e2e-isolated-evidence.log`. The user has paused the other agent;
+notify them as soon as the next strict validation run ends so that work can resume.
+
+
+Run `2026-10-16T01-40-36Z-60262` finishes all 30 gates and fails only integration: 674.8s root,
+404.76s integration, 57 files / 742 tests pass and one public-watch shutdown case exceeds its 2s
+bound. Host and pack pools, smoke (including teardown), external app and all reached contract checks
+pass. The user is told the app gates are finished and the other agent may resume; no further exclusive
+validation window is assumed. `/private/tmp/apack-compiler-isolated-evidence-strict.log`.
+
+The compiler owner previously unlocked and recursively removed its whole read-only tree synchronously.
+Disposal is now asynchronous filesystem work, awaited by capture failure, replacement and close; the
+factory and every caller/fixture use its promise directly. One local observation is 1.132s synchronous
+versus 0.791s asynchronous disposal, not a performance guarantee. Ten focused lifecycle/copy cases and
+CLI typechecking pass. Removing the await from builder close fails both real-process lifecycle cases;
+restored source passes. The seven real public/private/dev worker cases pass in 65.45s, including the
+unchanged 2s public shutdown guard (13.439s including startup). No deadline, assertion or input scope
+changed. Evidence: `/private/tmp/apack-compiler-{sync-disposal,async-disposal-profile}.log`,
+`/private/tmp/apack-compiler-async-disposal-{focus,restored,typecheck,worker}.log`,
+`/private/tmp/apack-compiler-await-disposal-mutation.log`.
+
+The remaining producer-lifetime audit must include signals during startup and one-shot commands, not
+only the retained watcher's ready state exercised here: its public signal handlers currently install
+after startup returns. Keep that acceptance in the required complete build-session/input-publication
+work before source-freshness consumer migration. Ambient runtime options, long-lived development
+frontend compilation, frozen pack/external inputs, the whole-build source receipt and all later phases
+remain required; this compiler checkpoint completes none of those by implication.
+
+
+Run `2026-10-16T02-02-32Z-93764` fails integration in 443.72s (754.7s root): 56 files / 741 tests
+pass, public watch cleanup exceeds 2s and CSS recovery exceeds the combined test's 60s budget.
+`/private/tmp/apack-compiler-async-disposal-strict.log`. The asynchronous change's isolated pass did
+not prove full-pool acceptance. No passing strict gate is claimed from that run.
+
+Diagnostic tracing then passes all 17 selected concurrent watch/worker cases. The public process
+receives SIGTERM immediately, spends 206ms unlocking directories and 1.201s deleting its complete
+compiler tree, then re-raises SIGTERM after deletion. This is ordinary filesystem work with limited
+headroom in a 2s IPC waiter, not evidence of a missed signal or a cleanup hang. The new public-watch
+shutdown/cleanup waits now use the existing 20s filesystem-operation budget; IPC-only exit guards
+remain 2s and the whole test remains 60s. This corrects the candidate test's timing assumption; it is
+not a claim of a product shutdown latency guarantee. No cleanup/leak assertion is removed.
+`/private/tmp/apack-watch-stop-traced-focus.log` and `/private/tmp/apack-watch-stop-trace.log`.
+
+CSS watcher startup and teardown now belong to beforeEach/afterEach. The startup promise remains
+owned even before it returns a handle, and teardown completes before the outer fixture deletes data.
+Its transition/assertion body is preserved verbatim, all 20s publication waits and 60s test/hook limits
+remain; startup now has its fixture-hook allowance rather than sharing the scenario's test clock.
+This is a lifecycle/budget correction, not a build-speed claim. All 17 uninstrumented concurrent cases
+pass in 117.08s; CLI typechecking passes. Forcing only the CSS body to time out at 1ms produces the
+expected failing test while tracing proves compiler removal ends before fixture deletion begins.
+`/private/tmp/apack-watch-fixture-{concurrent,typecheck,forced-timeout}.log` and
+`/private/tmp/apack-watch-fixture-timeout-trace.log`. Full strict validation is still required before
+committing. Full build-session lifetime/input/publication and all later goal phases remain required.
+
+
+Run `2026-10-16T02-28-45Z-34610` fails integration (602.9s root, 382.77s integration):
+741 tests pass and two fail. The public-watch case observes a leaked compiler after process exit;
+the publication refusal case sees no error within its 20s limit. Neither is accepted as a passing gate.
+`/private/tmp/apack-compiler-reviewed-strict.log`.
+
+The public watcher now owns SIGINT/SIGTERM before startup begins. Its abort signal reaches initial
+compilation and the returned watcher; shutdown awaits worker exit and compiler disposal before
+re-raising the signal. Both ready and compiling phases have real public-process coverage. Moving
+signal-handler registration back after startup makes the compiling case fail on the leaked compiler;
+restored source passes both cases. `/private/tmp/apack-watch-startup-signal-{mutation,restored}.log`.
+This covers public watch startup, not one-shot/dev startup or the remaining full build-session work.
+
+The diagnostic concurrent run passes all 18 worker/publication/frontend cases in 129.29s. Its trace
+records the invalid lifecycle edit arriving at the watcher, worker startup about 5s later and refusal
+about 2s after that. It does not reproduce or explain the earlier missing-error deadline; the 20s
+assertion is unchanged and full strict acceptance remains required.
+`/private/tmp/apack-watch-publication-events-focus.log` and
+`/private/tmp/apack-watch-publication-events.log`. The other agent may run in its independent worktree;
+no exclusive validation window is assumed. The complete goal and remaining build-session scope stay open.
