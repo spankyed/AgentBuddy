@@ -1,7 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { createHash } from 'node:crypto';
-import ts from 'typescript';
+import type ts from 'typescript';
 import type { BuildInputKind, BuildInputObserver } from '@apackdev/host/build/pack-inputs';
 import { compilerSourcePath, type CompilerPathMapping } from './compiler-paths.ts';
 import { captureNativeDirectory, type CompilerDirectoryCursor } from './compiler-directories.ts';
@@ -66,7 +66,7 @@ export function createCompilerFileView(root: string, options: {
   const contents = new Map<string, Buffer | undefined>();
   const dataStats = new Map<string, { normal: fs.Stats; bigint: fs.BigIntStats }>();
   const directories = new Map<string, { file: string; entries: DirectoryEntry[] }>();
-  const globs = new Map<string, { args: Parameters<ts.System['readDirectory']>; files: string[] }>();
+  const globs = new Map<string, { args: Parameters<ts.System['readDirectory']>; files: string[]; read: ts.System['readDirectory'] }>();
   const included = new Set<string>();
   const metadata = new Map<string, { file: string; kind: CompilerMetadataKind; args: readonly unknown[]; query: ReturnType<typeof captureCompilerMetadata> }>();
   const directoryQueries = new Map<string, { file: string; physical: string; options: unknown; result: CompilerDirectoryResult; key: string }>();
@@ -136,7 +136,7 @@ export function createCompilerFileView(root: string, options: {
     return value.entries;
   }
 
-  const fileSystem: CompilerFileSystem = {
+  const fileSystem: Omit<CompilerFileSystem, 'readDirectory'> = {
     readFile(file) {
       const value = readBytes(file);
       return value === undefined ? undefined : sourceText(value);
@@ -148,18 +148,6 @@ export function createCompilerFileView(root: string, options: {
         || (entry.kind === 'link' && fileSystem.directoryExists(path.join(file, entry.name)))).map(entry => entry.name);
     },
     realpath: file => input(file, 'file')?.physical ?? path.resolve(file),
-    readDirectory(...args) {
-      if (input(args[0], 'entries')?.kind !== 'directory') return [];
-      const query: Parameters<ts.System['readDirectory']> = [path.resolve(args[0]),
-        args[1] && [...args[1]], args[2] && [...args[2]], args[3] && [...args[3]], args[4]];
-      const key = JSON.stringify(query);
-      let value = globs.get(key);
-      if (!value) {
-        value = { args: query, files: ts.sys.readDirectory(...query).filter(file => !excluded(file)).sort() };
-        globs.set(key, value);
-      }
-      return [...value.files];
-    },
   };
 
   input(root, 'directory');
@@ -181,6 +169,19 @@ export function createCompilerFileView(root: string, options: {
   };
   return {
     fileSystem,
+    // Keep native capture usable before compiler activation; the compiler owns glob semantics.
+    readGlob(read: ts.System['readDirectory'], ...args: Parameters<ts.System['readDirectory']>) {
+      if (input(args[0], 'entries')?.kind !== 'directory') return [];
+      const query: Parameters<ts.System['readDirectory']> = [path.resolve(args[0]),
+        args[1] && [...args[1]], args[2] && [...args[2]], args[3] && [...args[3]], args[4]];
+      const key = JSON.stringify(query);
+      let value = globs.get(key);
+      if (!value) {
+        value = { args: query, files: read(...query).filter(file => !excluded(file)).sort(), read };
+        globs.set(key, value);
+      }
+      return [...value.files];
+    },
     readBytes,
     readDataBytes(file: string) {
       assertOpen();
@@ -341,7 +342,7 @@ export function createCompilerFileView(root: string, options: {
         if (directoryResultKey(result) !== query.key) changed(query.file);
       }
       for (const value of globs.values()) {
-        if (JSON.stringify(ts.sys.readDirectory(...value.args).filter(file => !excluded(file)).sort()) !== JSON.stringify(value.files)) changed(value.args[0]);
+        if (JSON.stringify(value.read(...value.args).filter(file => !excluded(file)).sort()) !== JSON.stringify(value.files)) changed(value.args[0]);
       }
     },
     hash() {

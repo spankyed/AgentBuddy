@@ -56,20 +56,20 @@ it('owns directory and glob results, including negative membership', () => {
   const { root, view } = fixture();
   fs.mkdirSync(path.join(root, 'first'));
   const dirs = view.fileSystem.getDirectories(root);
-  const files = view.fileSystem.readDirectory(root, ['.ts']);
+  const files = view.readGlob(ts.sys.readDirectory, root, ['.ts']);
   dirs.push('injected');
   files.push(path.join(root, 'injected.ts'));
   fs.mkdirSync(path.join(root, 'second'));
   fs.writeFileSync(path.join(root, 'added.ts'), 'export {};');
   expect(view.fileSystem.getDirectories(root)).toEqual(['first']);
-  expect(view.fileSystem.readDirectory(root, ['.ts'])).toEqual([path.join(root, 'source.ts')]);
+  expect(view.readGlob(ts.sys.readDirectory, root, ['.ts'])).toEqual([path.join(root, 'source.ts')]);
   expect(() => view.assertCurrent()).toThrow('changed during discovery');
 });
 
 it('owns glob arguments as well as the returned list', () => {
   const { root, view } = fixture();
   const extensions = ['.ts'];
-  expect(view.fileSystem.readDirectory(root, extensions)).toHaveLength(1);
+  expect(view.readGlob(ts.sys.readDirectory, root, extensions)).toHaveLength(1);
   const hash = view.hash();
   extensions[0] = '.js';
   expect(view.hash()).toBe(hash);
@@ -98,7 +98,7 @@ it('identifies a captured root by its source while reading and validating the ca
   const snapshot = createCompilerFileView(captured, { paths: [{ captured, source: root }] });
   for (const [view, directory] of [[source, root], [snapshot, captured]] as const) {
     expect(view.fileSystem.readFile(path.join(directory, 'source.ts'))).toContain('value = 1');
-    view.fileSystem.readDirectory(directory, ['.ts']);
+    view.readGlob(ts.sys.readDirectory, directory, ['.ts']);
   }
   expect(snapshot.hash()).toBe(source.hash());
   fs.unlinkSync(file);

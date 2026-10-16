@@ -8,7 +8,7 @@ import { isPackInputPath, packInputFiles } from '@apackdev/host/build/pack-input
 import { codeBlocks } from './pack-sources.ts';
 import { compilerSourcePath } from './compiler-paths.ts';
 import { compilerGlobDirectories } from './compiler-source-globs.ts';
-import { createCompilerFileView } from './compiler-file-view.ts';
+import { createCompilerFileView, type CompilerFileSystem } from './compiler-file-view.ts';
 import { readCompilerInstallationInputs } from './compiler-installation.ts';
 
 /** Resolve script/type inputs afresh, including Vue scripts, outside imports and undeclared npm packages. */
@@ -26,7 +26,7 @@ export function readCompilerModuleInputs(root: string, observe?: BuildInputObser
   openDirectoryData: ReturnType<typeof createCompilerFileView>['openDirectoryData'];
   dispose(): void;
   resolutionDirectory: ReturnType<typeof createCompilerFileView>['resolutionDirectory'];
-  fileSystem: ReturnType<typeof createCompilerFileView>['fileSystem'];
+  fileSystem: CompilerFileSystem;
   ancestors: ReturnType<typeof createCompilerFileView>['ancestors'];
   snapshot: ReturnType<typeof createCompilerFileView>['snapshot'];
   assertCurrent(): void;
@@ -43,7 +43,8 @@ export function readCompilerModuleInputs(root: string, observe?: BuildInputObser
   });
   const relative = (file: string) => path.relative(sourceRoot, compilerSourcePath(file, compilerPaths)).split(path.sep).join('/');
   const view = createCompilerFileView(root, { paths: compilerPaths, excluded, observe });
-  const fileSystem = view.fileSystem;
+  const readDirectory: ts.System['readDirectory'] = (...args) => ts.sys.readDirectory(...args);
+  const fileSystem: CompilerFileSystem = { ...view.fileSystem, readDirectory: (...args) => view.readGlob(readDirectory, ...args) };
   const configuration = readPackCompilerConfiguration(root, { ...ts.sys, ...fileSystem });
   const declarationConfigPath = configuration ? undefined : ts.findConfigFile(root, fileSystem.fileExists);
   const declarationConfiguration = configuration ?? (declarationConfigPath
