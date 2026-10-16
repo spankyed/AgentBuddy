@@ -66,7 +66,7 @@ so completed implementation is not repeatedly scheduled as new work.
 | Live editor composition (Phase 3) | Implemented: `8863043a6` | Complete cold-document/provider readiness and real typing/replacement acceptance; fix demonstrated omissions without restarting composition. |
 | Remaining discovery consumers (Phase 3) | Partial; viewer readers `a278d4116` and shell default/dispatch `69860e4be` implemented | Navigation inventories/order/visibility implemented in `cfcbb53f9`; complete final window/loader acceptance; DSL producer/readers are implemented in `8ed188046` / `39e48e66e` and await final worker acceptance. Flow reference/rename/missing-target inspection is implemented in `7196d61d3`; complete its final external acceptance. Audit services, repositories, events, native fields and static assets; migrate each actual gap and remove superseded discovery stores. |
 | Build input/publication and freshness (Phase 3) | Partial; finite checkpoints B1–B6 below | Finish the common producer contract and four passive consumer migrations; installed discovery must remain source-free and activation-free. |
-| Entity navigation (Phase 4) | Reference identity and destination producer `94148c9e0` implemented; runtime/caller migration unfinished | Project compiled claims through native/installed catalog and checked bindings; implement eligibility/readiness, preserve reference round trips and migrate callers under open-entity.md. |
+| Entity navigation (Phase 4) | Reference identity, producer `94148c9e0` and catalog/admission `479c75e01` implemented; event delivery/caller migration unfinished | Implement `openEntity`, typed destination guards and revision-safe readiness delivery; migrate handlers/callers and expose compiled destinations in offline inspection under open-entity.md. |
 | Frontend boundaries (Phase 5) | Implemented and locally accepted: `713a6c1fd`, including the real external-pack window | Preserve pane/form containment, attributed nonfatal diagnostics and retired-instance refusal through final committed-source strict acceptance. |
 | Consumed APIs (Phase 6) | Inventory/prototype requirements documented; implementation outstanding | Settle declarations and granularity, generate matching runtime/type facades, mediate administration and dependency APIs, and migrate real consumers. |
 | Dependency provenance (Phase 6) | Cache/admission `ff4358588`, inspection and verified-build checkpoints below implemented; overall closure partial | Verify exact origin/version/content through reuse and inspection, integrate remaining freshness dependencies, and close the linked acceptance matrix. Do not restart cache/provenance storage. Frozen resolution remains conditional on a distribution requirement. |
@@ -102,17 +102,19 @@ real external-pack Electron case pass: failed panes/forms preserve other panes, 
 defaults; retired frontend retry is refused. The staged source and built runtime matched that proof.
 Final whole-goal strict acceptance remains open.
 
-Current Phase 4 source checkpoint: destination production `94148c9e0`. Codegen reads `Contract.opens`
-without execution and the build publishes a required data-only map; source-free catalog preservation,
-real shipped/external builds and packaged authoring pass. The strict checkpoint run failed on earlier
-lint/refusal-expectation defects, corrected in `876a285b0` with full lint and focused behavior checks.
-It is not a passing strict gate; exact evidence is recorded below.
+Current Phase 4 source checkpoint: catalog/admission `479c75e01`, following producer `94148c9e0`.
+Native and installed claims project through the same catalog; enabled conflicts refuse before imports,
+enablement writes or publication. Native frontend eligibility retains accepted claims; installed
+eligibility uses sealed build identity. Window frames refuse invalid destination maps instead of
+silently dropping them. Focused behavior/static checks pass. Strict run `2026-10-16T21-34-16Z-38082`
+failed nine unit cases, repaired with focused evidence in `149502836`; no passing broad gate is claimed.
 
-Next: expose the compiled claims through the catalog, include native composition and checked frontend
-binding identity, then implement `openEntity(id)` over existing actor readiness and migrate handlers and
-callers. Remaining acceptance: claim-conflict/disabled/missing/retired routing, typed destination guard
-and one stored-reference Electron case. Preserve canonical stored IDs and typed EARS; do not restart
-wire identity or require unrelated compiler work first.
+Next: implement `openEntity(id)`, its typed event/guard and correlated readiness delivery; convert the
+named feature handlers and callers, remove their reference navigation callbacks, and expose compiled
+destination identities in offline inspection. Distinguish missing entities from missing/disabled
+providers and reject retired delivery. Preserve canonical stored IDs and typed EARS. Close with the
+plan's routing cases and one stored-reference Electron proof; do not restart reference identity,
+catalog construction or unrelated compiler work.
 
 1. Finish Phase 4 entity destinations and caller migration. Phase 5 containment is already locally
    accepted; retain its checks for final verification rather than schedule another implementation.
@@ -6738,3 +6740,36 @@ all five external shell cases pass. Logs: `/private/tmp/apack-entity-producer-{c
 No broad rerun was used to diagnose those failures. Steps not reached by the failed chain and final
 committed-source strict `--all` remain unverified. The chain also reports shipped-build output changing
 after its step; preserve that publication/cache observation for B6 rather than claiming it repaired.
+
+
+### Entity destination catalog and admission (2026-10-16)
+
+Source `479c75e01` projects native/installed compiled claims into immutable plugin entries, leaving
+unbuilt previews without compiled claims. One validator checks target feature identity and entity
+vocabulary. Enabled conflicts name both owners and refuse the candidate atomically; disabled claims
+remain readable. Enablement preflight precedes persistence and activation. Both single-candidate loading
+and complete boot loading require the catalog-owning registry before executable imports. Native
+bindings retain their accepted destination data; changing claims retires eligibility even with the
+same machine object. Installed bindings retain their existing sealed-build checks.
+
+A disposable read-only reproducer showed the window accepting an invalid target with `status: ready`
+and `opens: []`. The shared validator now refuses it and preserves the preceding accepted frame.
+Catalog/window/native admission and runtime suites account for 208 passing cases in the initial
+209-case run; its invalid installed-directory fixture was corrected. All 111 affected catalog/schema
+cases then pass; the subsequent admission subset passes 132 cases. Seven new projection/selection
+cases pass. Removing collision, native-identity or complete-boot guards causes their behavioral
+assertions to fail; exact source bytes were restored. Relevant SDK/host/CLI/API/script types, full lint,
+schema, API reports, import and tier checks pass. Logs: `/private/tmp/apack-entity-catalog-{focused,corrected,admission,guards,mutation-claims,mutation-native,mutation-boot,final-host-types,final-cli-types,final-api-types,final-scripts-types,final-lint}.log`.
+
+Strict checkpoint `2026-10-16T21-34-16Z-38082` ran once, failing nine unit cases in 486.1s (5,120 unit
+cases passed). Builds, static checks, both packaged-authoring halves, app smoke and external contract
+checks pass. `149502836` repairs the diagnosed synthetic compiler bootstrap, missing native service
+fixture declaration, unload-spy target, obsolete Monaco state/layout expectation and missing `bin`
+suite inputs. Targeted repairs plus affected suites pass 172 cases; publication passes three cases
+separately after refreshing stale CLI/testing builds. The API's three cases pass outside the sandbox;
+default-sandbox retries lost their worker before collection with `ERR_IPC_CHANNEL_CLOSED`. This
+context difference is evidence, not a proven explanation of the worker exit. Logs:
+`/private/tmp/apack-entity-catalog-{chain,review-fixes,ui-final,bound-outside-sandbox}.log`.
+The broad run precedes the final malformed-frame correction and registry-first signature cleanup;
+the focused repair suites and final types cover those changes. Unreached integration/app checks and
+final committed-source strict `--all` remain required. No broad diagnostic rerun or deadline change.
