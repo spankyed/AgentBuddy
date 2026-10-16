@@ -559,13 +559,13 @@ function handleResult(raw: ResultLine, resultPromise: Deferred<QueryResult>): vo
     return
   }
 
-  if (raw.subtype === 'success') {
+  if (raw.subtype === 'success' && raw.is_error !== true) {
     resultPromise.resolve(normaliseResult(raw))
     return
   }
 
   resultPromise.reject(
-    new ClaudeResultError(raw.subtype, raw.errors ?? [], raw.session_id),
+    new ClaudeResultError(raw.subtype, raw.errors?.length ? raw.errors : raw.result ? [raw.result] : [], raw.session_id),
   )
 }
 

@@ -219,8 +219,8 @@ export function createClaudeConversation(native: QueryHandle, consumeAutonomous:
         current.queue.push(event)
         const normalized = normaliseResult(raw)
         cumulativeCost = Math.max(cumulativeCost, normalized.totalCostUsd)
-        if (raw.subtype === 'success') current.resolve(normalized)
-        else current.reject(new ClaudeResultError(raw.subtype, raw.errors ?? [], raw.session_id))
+        if (raw.subtype === 'success' && raw.is_error !== true) current.resolve(normalized)
+        else current.reject(new ClaudeResultError(raw.subtype, raw.errors?.length ? raw.errors : raw.result ? [raw.result] : [], raw.session_id))
         current.terminal = true
         current.queue.close()
         await current.consumed

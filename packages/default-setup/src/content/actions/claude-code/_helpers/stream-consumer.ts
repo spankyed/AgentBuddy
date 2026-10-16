@@ -164,7 +164,7 @@ export async function consumeStream(
 
   // Extracted from the `result` line directly — survives even if handle.result
   // rejects (error subtypes like error_during_execution).
-  let resultFromLine: { sessionId: string; text: string; totalCostUsd: number; durationMs: number; subtype?: string; errors?: string[] } | undefined;
+  let resultFromLine: { sessionId: string; text: string; totalCostUsd: number; durationMs: number; subtype?: string; isError?: boolean; errors?: string[] } | undefined;
 
   /** Finalize the current message and create a new "Thinking…" placeholder. */
   function splitMessage() {
@@ -635,10 +635,11 @@ export async function consumeStream(
           totalCostUsd: Math.max(0, ((line as any).total_cost_usd || sumModelUsageCost((line as any).modelUsage)) - (ctx.costBaseline ?? 0)),
           durationMs: (line as any).duration_ms ?? 0,
           subtype: (line as any).subtype,
+          isError: (line as any).is_error === true,
           errors: (line as any).errors,
         };
         // Native background completion can trigger another assistant turn after this result.
-        if (!ctx.persistent && (line as any).subtype === 'success' && handle.hasPendingBackgroundTasks(line)) {
+        if (!ctx.persistent && (line as any).subtype === 'success' && (line as any).is_error !== true && handle.hasPendingBackgroundTasks(line)) {
           splitOnNextMessageStart = true;
           continue;
         }
@@ -673,13 +674,13 @@ export async function consumeStream(
     // subtypes) when it fails to load/resume a session. Without this guard,
     // the broken sessionId gets re-persisted at line ~540, locking the thread
     // to a permanently un-resumable session.
-    const isErrorResult = result.subtype != null && result.subtype !== 'success';
+    const isErrorResult = result.isError === true || (result.subtype != null && result.subtype !== 'success');
 
     collectNestedAccounting();
     const hadToolErrors = nestedToolErrors || priorSegmentsHadToolErrors || toolActivity.entries.some(e => e.status === 'error');
 
     if (isErrorResult) {
-      const errorText = Array.isArray(result.errors) ? result.errors.join('; ') : `CLI error: ${result.subtype}`;
+      const errorText = result.errors?.length ? result.errors.join('; ') : result.text || `CLI error: ${result.subtype}`;
       log.error('CLI returned error result', {
         subtype: result.subtype,
         errors: result.errors,

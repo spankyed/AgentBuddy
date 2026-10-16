@@ -220,3 +220,27 @@ it('cancels an unsupported generic dialog without sending tool denial, pausing o
   expect(emit).not.toHaveBeenCalledWith(expect.anything(), expect.objectContaining({ eventType: 'cc.stream.paused' }));
   expect(handle.kill).not.toHaveBeenCalled();
 });
+
+
+it('marks a success/is_error result as failed while preserving refusal detail and turn cost', async () => {
+  const { id } = repository.threadCommands.create({ topic: 'Native refusal result', instructions: '', tags: [] });
+  const update = vi.fn(), emit = vi.fn();
+  mockService<Services, 'chat'>('chat', { updateMessageState: update, sendBlockMessage: vi.fn() });
+  mockService<Services, 'threads'>('threads', { updateChatState: vi.fn() });
+  mockService<Services, 'logger'>('logger', { debug: vi.fn(), info: vi.fn(), warn: vi.fn(), error: vi.fn() });
+  mockService<Services, 'emitter'>('emitter', { sendToSystem: emit, broadcastToPlugin: vi.fn() });
+  const raw = { type: 'result', subtype: 'success', is_error: true, terminal_reason: 'api_error', session_id: 'refusal-session', result: 'API Error: fixed native refusal', total_cost_usd: 0.25, duration_ms: 42, errors: [] };
+  const handle = { events: (async function* () { yield raw; })(), hasPendingBackgroundTasks: vi.fn(() => true), close: vi.fn(async () => {}), kill: vi.fn() };
+  mockService<Services, 'cli'>('cli', { claudeCode: { getHandle: vi.fn(() => handle), clearHandle: vi.fn() } as never });
+  const messageId = 'refusal-assistant' as EntityId;
+  const thinking = createThinkingWriter(services, messageId);
+  const writer = createStreamWriter(services, messageId);
+  await consumeStream(handle, { services, activity: createClaudeNestedActivity(), threadId: id, text: 'Fixture' }, {
+    messageId, writer, thinking,
+    toolActivity: createToolActivityWriter(services, messageId, { getThinkingBlock: () => thinking.buildBlock() }),
+  });
+  expect(writer.text).toContain('API Error: fixed native refusal');
+  expect(repository.threadQueries.byId(id)?.context?.claudeCode?.sessionId).toBeUndefined();
+  expect(handle.hasPendingBackgroundTasks).not.toHaveBeenCalled();
+  expect(emit).toHaveBeenCalledWith(expect.anything(), expect.objectContaining({ eventType: 'cc.stream.completed', payload: expect.objectContaining({ hadErrors: true, costUsd: 0.25, durationMs: 42 }) }));
+});

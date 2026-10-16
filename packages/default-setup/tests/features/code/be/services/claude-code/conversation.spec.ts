@@ -313,3 +313,18 @@ it('serializes generic dialogs with permissions and rejects wrong, withdrawn and
   expect(f.native.respond).toHaveBeenCalledTimes(1);
   f.push(result(1, id)); await vi.waitFor(() => expect(owner.busy).toBe(false)); await owner.close();
 });
+
+
+it('rejects an owned success subtype marked is_error without losing native result accounting', async () => {
+  const f = fixture(), events: StreamLine[] = []; let rejection: Promise<unknown>;
+  const owner = createClaudeConversation(f.native, async () => {});
+  const id = owner.start('fixture', async turn => {
+    rejection = expect(turn.handle.result).rejects.toThrow('fixed native refusal');
+    for await (const line of turn.handle.events) events.push(line);
+    await rejection; owner.release(turn.handle);
+  });
+  f.push(started(id)); f.push({ ...result(0.25, id), is_error: true, terminal_reason: 'api_error', result: 'fixed native refusal' });
+  await vi.waitFor(() => expect(owner.busy).toBe(false));
+  expect(events.find(line => line.type === 'result')).toMatchObject({ total_cost_usd: 0.25, is_error: true });
+  await owner.close();
+});
