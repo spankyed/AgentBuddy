@@ -6415,3 +6415,43 @@ build/authoring durations. These are preserved B6 observations, not evidence of 
 reason to expand this routing checkpoint into pipeline work. Unreached checkpoint steps, all later
 goal work and final committed-source strict `--all` remain required. The active handoff owns the next
 navigation work; this evidence is neither full Phase 4 acceptance nor a second execution backlog.
+
+## Feature navigation checkpoint (2026-10-16)
+
+Source `831221020` replaces the Brain blueprint caller's timer with one explicit Flows
+`NODE.REVEAL { flowId, nodeId }` operation. Flows records the current selection call before sending,
+accepts only its matching reply, and cancels on supersession, deactivation or leaving the view.
+Cached matching nodes reveal immediately; missing cached nodes trigger a refresh before refusal.
+Bootstrap metadata cannot replace an outstanding target. Async layout results belong to the exact
+graph that requested them. `FLOW_SELECTED` replies to the asking window; `FLOW_REFRESHED` preserves
+the current graph's notification semantics without navigating other windows.
+
+Library's three navigation regressions were reproduced before repair: unsolicited document replies
+opened an editor, an older reply replaced a newer target, and an abandoned reply reopened an editor
+after collection navigation. The handler now exists only in the edit state and matches its current
+document target; it fills data without navigating. Cached opening uses the existing DTO converter,
+and leaving the editor retires the target while preserving data until the save action consumes it.
+
+Evidence:
+
+- The blueprint baseline failed both initial behavioral cases; the Library baseline failed all three
+  navigation assertions. Logs: `/private/tmp/apack-blueprint-before.log` and
+  `/private/tmp/apack-library-navigation-before.log`.
+- All 16 new regressions pass, followed by all 99 affected cases across 12 Flows/Library files.
+  Logs: `/private/tmp/apack-feature-navigation-focused-final.log` and
+  `/private/tmp/apack-feature-navigation-affected.log`.
+- Pack Vue/TypeScript, full lint, import boundaries and the regenerated/reviewed facade check pass.
+  An invalid test-only breadcrumb field was corrected before the final passing typecheck.
+  Logs: `/private/tmp/apack-feature-navigation-{types-final,lint,specifiers,facade-check}.log`.
+- One strict checkpoint ran: `npm run chain -- --strict --cores 4 --no-classify`, run
+  `2026-10-16T23-05-19Z-85766`, failed in 270.1s (15 steps; one cached). Default-pack build passed,
+  as did reached host/API/renderer/SDK/EARS/UI/CLI/main/preload types, schema, exports and package checks.
+  Packaged authoring failed at `lstat` of
+  `packages/default-setup/dist/runtime/vidstack-BEi14iNw2-Cihp7Omm.js.map` while the default-pack build
+  overlapped it. This demonstrates a missing output during overlapping work, not which operation
+  removed it. Log: `/private/tmp/apack-feature-navigation-chain.log`; per-step logs remain in the run
+  directory. This is preserved B6 evidence; no pipeline fix, deadline change or broad diagnostic rerun.
+
+The new feature paths have no new real Electron acceptance claim. The prior committed shell's real
+external-reference check remains recorded above. Remaining handler acceptance, the stored-message
+cross-feature click, unreached gate steps and final committed-source strict `--all` remain required.

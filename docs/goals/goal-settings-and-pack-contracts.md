@@ -66,7 +66,7 @@ so completed implementation is not repeatedly scheduled as new work.
 | Live editor composition (Phase 3) | Implemented: `8863043a6` | Complete cold-document/provider readiness and real typing/replacement acceptance; fix demonstrated omissions without restarting composition. |
 | Remaining discovery consumers (Phase 3) | Partial; viewer readers `a278d4116` and shell default/dispatch `69860e4be` implemented | Navigation inventories/order/visibility implemented in `cfcbb53f9`; complete final window/loader acceptance; DSL producer/readers are implemented in `8ed188046` / `39e48e66e` and await final worker acceptance. Flow reference/rename/missing-target inspection is implemented in `7196d61d3`; complete its final external acceptance. Audit services, repositories, events, native fields and static assets; migrate each actual gap and remove superseded discovery stores. |
 | Build input/publication and freshness (Phase 3) | Partial; finite checkpoints B1–B6 below | Finish the common producer contract and four passive consumer migrations; installed discovery must remain source-free and activation-free. |
-| Entity navigation (Phase 4) | Reference identity, producer `94148c9e0`, catalog/admission `479c75e01` and owned routing/reference migration `cd9c57de6` implemented | Finish blueprint node revealing without its timer, address abandoned Library document loads, and close handler/stored-message acceptance under open-entity.md. |
+| Entity navigation (Phase 4) | Reference identity, producer `94148c9e0`, catalog/admission `479c75e01`, owned routing/reference migration `cd9c57de6`, and feature navigation repair `831221020` implemented | Close remaining handler/stored-message acceptance under open-entity.md; retain the unresolved authoring gate evidence for B6. |
 | Frontend boundaries (Phase 5) | Implemented and locally accepted: `713a6c1fd`, including the real external-pack window | Preserve pane/form containment, attributed nonfatal diagnostics and retired-instance refusal through final committed-source strict acceptance. |
 | Consumed APIs (Phase 6) | Inventory/prototype requirements documented; implementation outstanding | Settle declarations and granularity, generate matching runtime/type facades, mediate administration and dependency APIs, and migrate real consumers. |
 | Dependency provenance (Phase 6) | Cache/admission `ff4358588`, inspection and verified-build checkpoints in the evidence record implemented; overall closure partial | Verify exact origin/version/content through reuse and inspection, integrate remaining freshness dependencies, and close the linked acceptance matrix. Do not restart cache/provenance storage. Frozen resolution remains conditional on a distribution requirement. |
@@ -111,10 +111,17 @@ Strict run `2026-10-16T22-31-16Z-68388` failed the import boundary and facade re
 and individually verified. Its authoring and external contract steps pass. Later gate steps and final
 committed-source strict `--all` remain unproven; no passing broad gate is claimed.
 
-Next: preserve blueprint node revealing as a separate Flows operation and replace its caller timer
-with feature-owned load/reveal coordination. Reproduce and fix Library's unconditional
-`DOCUMENT_LOADED` navigation so an abandoned request cannot reopen an editor. Close the six handlers'
-state-specific cases and the stored-message reference click into another feature. The existing external
+Feature checkpoint `831221020` replaces the blueprint timer with `NODE.REVEAL`, a matching reply and
+feature-owned cancellation; layout results belong to their requesting graph. Library document replies
+fill only the current editor target and cannot navigate. All 99 affected Flows/Library tests, pack
+types, lint, import boundaries, facade check and real default-pack build pass. Strict run
+`2026-10-16T23-05-19Z-85766` stopped at packaged authoring: `lstat` could not find a default-pack runtime
+source map while its build overlapped the authoring step. The disappearance's exact cause is not
+established. No broad rerun or tooling change; preserve this for B6. See
+[feature checkpoint evidence](../evidence/settings-and-pack-contracts.md#feature-navigation-checkpoint-2026-10-16).
+
+Next: close the six handlers' remaining state-specific cases and the stored-message reference click
+into another feature. The existing external
 preview click is runtime evidence, not that stored-message proof. Do not restart the implemented
 reference identity, destination catalog, shell lifecycle or unrelated compiler work.
 

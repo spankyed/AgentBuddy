@@ -21,8 +21,14 @@ carries only a token. All six feature adapters handle the event directly; refere
 The harness captures verified destinations once per file, and CLI inspection exposes the compiled map.
 Sixty shell checks, including missing-actor refusal, and the real external reference click pass.
 
-Remaining: coordinated blueprint node revealing, abandoned Library document-load handling, complete
-state-specific handler acceptance and a stored-message reference click into another feature. The
+Feature checkpoint `831221020` uses the explicit `NODE.REVEAL { flowId, nodeId }` operation. Flows owns its
+matching reply and retires it on supersession or navigation; graph identity also guards async layout
+delivery. Library accepts document data only in the editor for its current target; replies do not
+navigate. All 99 affected Flows/Library tests and pack types pass. The strict checkpoint stopped at an
+authoring read of a missing runtime source map during an overlapping default-pack build; the default
+build passed. See the [checkpoint evidence](../evidence/settings-and-pack-contracts.md#feature-navigation-checkpoint-2026-10-16).
+
+Remaining: complete state-specific handler acceptance and a stored-message reference click into another feature. The
 preview/picker check is not that stored-message proof. The execution goal owns checkpoint validation
 and the final committed-source strict gate; this is not complete Phase 4 acceptance.
 
@@ -136,7 +142,10 @@ Replace the caller's timer with feature-owned coordination: load the requested f
 to the current request, and reveal its node only once that graph is available. A newer navigation cancels
 the pending reveal; late responses cannot reveal a node in another graph or another window. An already
 loaded matching graph can reveal immediately. Cover delayed loading, supersession and the loaded case.
-This remains required caller-migration work after the shell lifecycle refactor.
+Implemented by `NODE.REVEAL` and the feature-owned pending flow request. `FLOW_SELECTED` replies only
+to the asking window; `FLOW_REFRESHED` remains a notification for the current graph. The Brain caller
+no longer sequences navigation with a timer. Delayed loading, supersession, deactivation, cached graphs,
+missing nodes, startup metadata and stale layout delivery have focused regression coverage.
 
 ## What this deletes
 
