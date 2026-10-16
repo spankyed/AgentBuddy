@@ -1,0 +1,62 @@
+import { readFileSync } from 'node:fs';
+import { mkdir, readFile, writeFile } from 'node:fs/promises';
+import { execFileSync } from 'node:child_process';
+import { join, resolve } from 'node:path';
+import { importCompiledContent } from '@apackdev/sdk/utils';
+import { importFlows, startApp } from '@apackdev/testing/harness';
+import { services } from '#generated/services.ts';
+import { repository } from '#generated/repository.ts';
+import { claudeCode } from '#features/code/be/services/claude-code/index.ts';
+import * as runner from '#features/code/be/services/claude-code/runner.ts';
+import * as store from '#features/code/be/services/claude-code/handle-store.ts';
+import { getClaudeState } from '../../../../../../src/content/actions/claude-code/_helpers/thread-context.ts';
+const executable = process.env.CLAUDE_RESEARCH_EXECUTABLE, workspace = process.env.CLAUDE_RESEARCH_WORKSPACE, endpoint = process.env.CLAUDE_RESEARCH_MODEL_URL;
+
+it.skipIf(!executable || !workspace || !endpoint)('native skill once hooks survive app turns and are scoped independently of file hooks', async () => {
+  expect(process.env.HOME).toBe(workspace); expect(new URL(endpoint!).hostname).toBe('127.0.0.1');
+  for (const key of ['ANTHROPIC_API_KEY', 'ANTHROPIC_AUTH_TOKEN', 'CLAUDE_CODE_OAUTH_TOKEN']) expect(process.env[key]).toBeUndefined();
+  vi.stubEnv('ANTHROPIC_BASE_URL', endpoint!); vi.stubEnv('CLAUDE_CODE_SIMPLE', undefined); vi.stubEnv('CLAUDE_CODE_COORDINATOR_MODE', undefined);
+  execFileSync('/usr/bin/git', ['init', '-q', workspace!]);
+  const skillDir = join(workspace!, '.claude', 'skills', 'hook-once-fixture'); await mkdir(skillDir, { recursive: true });
+  const script = join(workspace!, 'record-once-hook.mjs');
+  await writeFile(script, `import {appendFile} from 'node:fs/promises';let text='';for await(const chunk of process.stdin)text+=chunk;await appendFile(new URL('./'+process.argv[2]+'.jsonl',import.meta.url),JSON.stringify(JSON.parse(text))+'\\n');process.stdout.write('{}');`);
+  const command = (label: string, once: boolean) => ({ type: 'command', command: process.execPath, args: [script, label], once, timeout: 5 });
+  const settings = JSON.stringify({ apiKeyHelper: '/usr/bin/printf research-fixture-key', permissions: { allow: ['Skill', 'Bash'] }, hooks: { PreToolUse: [{ matcher: 'Bash', hooks: [command('file-once', true), command('file-every', false)] }] } });
+  const skillText = `---\nname: hook-once-fixture\ndescription: Disposable native once-hook fixture\ndisable-model-invocation: false\nhooks: ${JSON.stringify({ PreToolUse: [{ matcher: 'Bash', hooks: [command('skill-once', true)] }] })}\n---\nUse only the fixed fixture marker commands supplied by the local model.\n`;
+  await writeFile(join(workspace!, '.claude', 'settings.json'), settings); await writeFile(join(skillDir, 'SKILL.md'), skillText);
+  const records = async (label: string) => (await readFile(join(workspace!, label + '.jsonl'), 'utf8')).trim().split('\n').filter(Boolean).map(line => JSON.parse(line) as { session_id: string; hook_event_name: string; tool_use_id: string });
+  services.settings.set({ kind: 'feature', featureRef: 'default-setup/code' }, ['cliPaths', 'claude-code'], executable!);
+  const spawning = vi.spyOn(runner, 'spawnStream'), originalQuery = claudeCode.query.bind(claudeCode);
+  vi.spyOn(claudeCode, 'query').mockImplementation(options => originalQuery({ ...options, signal: AbortSignal.timeout(30000) }));
+  const compiledDir = resolve(import.meta.dirname, '../../../../../../dist/runtime/content');
+  importCompiledContent({ compiledDir, include: { flows: new Set(), library: new Set(), notes: new Set(), settings: new Set() } });
+  const flows = JSON.parse(readFileSync(join(compiledDir, 'flows.content.json'), 'utf8')); importFlows({ 'Claude Code': { ...flows['Claude Code'], root: true } });
+  const app = await startApp({ systems: ['brain'] }); await app.runFlow('Claude Code');
+  const thread = () => { const { id } = repository.threadCommands.create({ topic: 'Native once hook', instructions: '', tags: [] }); repository.threadCommands.update(id, { context: { claudeCode: { cwd: workspace! } } }); return id; };
+  const send = async (id: ReturnType<typeof thread>, text: string, turns: number) => {
+    const user = repository.chatCommands.addMessage({ threadId: id, sender: 'user', text });
+    await app.runFlow('Claude Code', { event: 'user.message', data: { threadId: id, text, messageId: user.id, mode: 'Claude Code', phase: 'Edit' } });
+    await vi.waitFor(() => expect(getClaudeState(services, id)?.turns).toBe(turns), { timeout: 18000 });
+    await vi.waitFor(() => expect(store.isConversationBusy(id)).toBe(false));
+  };
+  try {
+    const first = thread(); await send(first, 'Activate the hook-once-fixture skill and run the first marker.', 1);
+    const owner = store.getConversation(first)!.owner;
+    expect(await readFile(join(workspace!, 'once-tool-first.txt'), 'utf8')).toBe('first');
+    expect(await records('skill-once')).toHaveLength(1); expect(await records('file-every')).toHaveLength(1);
+    const fileCounts = [(await records('file-once')).length];
+    await send(first, 'SECOND_ONCE_FIXTURE_INPUT: run the second marker without reactivating the skill.', 2);
+    expect(store.getConversation(first)?.owner).toBe(owner); expect(spawning).toHaveBeenCalledOnce();
+    expect(await readFile(join(workspace!, 'once-tool-second.txt'), 'utf8')).toBe('second');
+    expect(await records('skill-once')).toHaveLength(1); expect(await records('file-every')).toHaveLength(2); fileCounts.push((await records('file-once')).length);
+    expect(await store.closeIdleConversation(first)).toBe(true);
+    const second = thread(); await send(second, 'Activate the hook-once-fixture skill in a fresh session and run the first marker.', 1);
+    expect(await records('skill-once')).toHaveLength(2); expect(await records('file-every')).toHaveLength(3); fileCounts.push((await records('file-once')).length);
+    expect(fileCounts).toEqual([1, 2, 3]);
+    const once = await records('skill-once'), every = await records('file-every');
+    expect(every[0]?.session_id).toBe(every[1]?.session_id); expect(once[0]?.session_id).toBe(every[0]?.session_id); expect(once[1]?.session_id).toBe(every[2]?.session_id); expect(once[0]?.session_id).not.toBe(once[1]?.session_id);
+    expect(await readFile(join(workspace!, '.claude', 'settings.json'), 'utf8')).toBe(settings); expect(await readFile(join(skillDir, 'SKILL.md'), 'utf8')).toBe(skillText);
+    expect(spawning).toHaveBeenCalledTimes(2); expect(await store.closeIdleConversation(second)).toBe(true);
+    await writeFile(join(workspace!, 'skill-once-app-evidence.json'), JSON.stringify({ compiledFlow: true, productionLaunchService: true, skillInvoked: true, sameProcessAcrossInputs: true, freshSessionReactivates: true, skillOnceCounts: [1, 1, 2], ordinaryFileCounts: [1, 2, 3], fileOnceCounts: fileCounts, configUnchanged: true, skillFileUnchanged: true, nativeProcesses: 2, hostInputs: 3, closed: true }, null, 2));
+  } finally { store.killAllHandles(); }
+}, 60000);
