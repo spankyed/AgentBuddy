@@ -1647,7 +1647,10 @@
           "isAsync": true
         },
         "dsl": {
-          "helpers": "src/extensions/steps/action/helpers.ts"
+          "helpers": "src/extensions/steps/action/helpers.ts",
+          "references": {
+            "action": "actions"
+          }
         },
         "types": "src/extensions/steps/action/types.ts"
       },
@@ -1694,7 +1697,10 @@
           "isAsync": true
         },
         "dsl": {
-          "primaryField": "prompt"
+          "primaryField": "prompt",
+          "references": {
+            "prompt": "prompts"
+          }
         },
         "types": "src/extensions/steps/llm/types.ts"
       },
@@ -1778,7 +1784,10 @@
           "spawnsSubflow": true
         },
         "dsl": {
-          "primaryField": "flow"
+          "primaryField": "flow",
+          "references": {
+            "flow": "flows"
+          }
         },
         "types": "src/extensions/steps/subflow/types.ts"
       },

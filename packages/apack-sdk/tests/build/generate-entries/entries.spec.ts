@@ -272,6 +272,17 @@ describe('generated step registrations', () => {
     };
   };
 
+  it('carries declared reference fields into build definitions without runtime imports', async () => {
+    const declaration = stepPack();
+    const files = await generate({ ...declaration, steps: { ...declaration.steps,
+      llm: { ...declaration.steps.llm, dsl: { references: { prompt: 'prompts' } } },
+    } });
+    expect(files['src/__generated__/steps-build.ts']).toContain('references');
+    expect(files['src/__generated__/steps-build.ts']).toContain('prompts');
+    expect(files['src/__generated__/pack-entry.ts']).not.toContain('dsl:');
+    expect(files['src/__generated__/pack-entry-fe.ts']).not.toContain('dsl:');
+  });
+
   // Three places, three subsets: the backend runs a step, a dependent pack validates flows with it, and the
   // editor draws it. None of them is a barrel somebody keeps in step with the other two.
   it("send each facet where it is used: build and runtime to the backend, build alone to the module dependents load, fe to the frontend", async () => {

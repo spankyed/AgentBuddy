@@ -248,8 +248,8 @@ interface StepDeclaration {
 }
 
 /**
- * The facets a *registration* can carry. `kind` rides on every literal and `dsl` drives the flow helpers
- * rather than any registration, so neither is one of these.
+ * The facets a *registration* can carry. `kind` rides on every literal and `dsl` drives flow helpers and build-only reference inspection
+ * rather than runtime registrations, so neither is one of these.
  */
 const STEP_FACETS = ['node', 'build', 'trigger', 'runtime', 'fe'] as const satisfies readonly (keyof StepDefinition)[];
 type StepFacetName = (typeof STEP_FACETS)[number];
@@ -804,6 +804,7 @@ export async function generatePackFiles(
     for (const step of stepDefinitions) {
       const parts = [`type: '${step.type}'`];
       if (step.kind) parts.push(`kind: '${step.kind}'`);
+      if (target === 'buildModule' && step.dsl?.references) parts.push(`dsl: ${dataLiteral({ references: step.dsl.references })}`);
       for (const facet of FACET_TARGETS[target]) {
         const emitted = FACET_EMITTERS[facet](step, target);
         if (!emitted) continue;

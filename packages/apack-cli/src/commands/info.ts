@@ -1,7 +1,7 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { isDeepStrictEqual } from 'node:util';
-import { _packEntities, parseContentIndex, CONTENT_INDEX_FILE, type ContentIndex } from '@apackdev/sdk/build';
+import { _packEntities, inspectContentReferences, parseContentIndex, CONTENT_INDEX_FILE, type ContentIndex } from '@apackdev/sdk/build';
 import { PACK_LAYOUT, readPackBuild, readPackAsset, type PackBuild } from '@apackdev/host/packs';
 import { errorMessage } from '@apackdev/sdk/utils/pure';
 import { findPackRoot, readValidManifest } from '../utils';
@@ -79,7 +79,12 @@ export async function info(args: string[]) {
     for (const entry of report.build.content.entries) {
       console.log(`  ${entry.key}: ${entry.count} item(s)${entry.written ? '' : ' (dataset)'}`);
       for (const item of entry.items) console.log(`    ${item.key}${item.description ? ` — ${item.description}` : ''}`);
+      console.log(`    Reference analysis: ${entry.references ? 'static only; computed targets may remain unknown' : 'unavailable'}`);
     }
+    for (const reference of inspectContentReferences(report.build.content)) {
+      console.log(`  ${reference.source.key}/${reference.source.item} (${reference.path}) → ${reference.target.key}/${reference.target.item ?? '(computed)'} [${reference.status}]`);
+    }
+    console.log('  Reference targets are checked against compiled inventory, not user data.');
   } else console.log(`Compiled content: ${report.build.status === 'verified' ? 'none' : 'unavailable'}`);
   if (report.dependencies.length) {
     console.log('\nDependencies:');

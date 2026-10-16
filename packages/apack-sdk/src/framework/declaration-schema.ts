@@ -156,6 +156,8 @@ export const _NativePackDeclarationSchema = z.preprocess(checkDeclaredNames, z.o
 }));
 
 export const StepDSLMetaSchema = z.object({
+  references: declarationRecord(z.string().regex(/^[A-Za-z_$][\w$]*$/, 'Must name a DSL field'), z.string().min(1))
+    .describe('DSL field to compiled content key, for static dependency and rename inspection. Computed targets are recorded as dynamic.').optional(),
   primaryField: z.string().regex(/^[A-Za-z_$][\w$]*$/, 'Must be a field identifier').describe('The field whose value becomes the step label in the flow editor.').optional(),
   defaultLabel: z.string().describe('Default label argument for the generated label-only helper.').optional(),
   helpers: ModulePathSchema.describe('Pack-root-relative module whose custom flow helpers are re-exported.').optional(),

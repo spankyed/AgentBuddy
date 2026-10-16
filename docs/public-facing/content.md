@@ -740,3 +740,21 @@ Sending `/name args` fires a `user.command` event (`$.event.data.payload.command
 3. List it: add it to `extensions.commands` in `apack.json`, or add `**name**: placeholder` to a document in `internal/commands` (in default-setup, one of the files under `src/content/library/internal/commands/`).
 
 A command listed without a handler does nothing, and a handled command that isn't listed is sent as a plain message.
+
+### Inspecting compiled references
+
+`apack pack info` reads verified compiled content without activating a pack or importing authored
+modules. Its JSON output includes each collection's `references` when its compiler supports analysis.
+Flow analysis uses step declarations: `extensions.steps.<type>.dsl.references` maps a DSL field to a
+compiled content key, for example `"references": { "prompt": "prompts" }`. This also works for custom
+steps and nested branches exposed by their build facet.
+
+The index records literal targets and marks computed targets as dynamic. Human-readable inspection
+reports whether a literal target is indexed. A target missing from this index may still exist in user
+data or be created by an applier. Analysis is static and non-exhaustive; an omitted `references` field
+means analysis is unavailable, while an empty list means no known references were found. Action and
+prompt JavaScript bodies are not analyzed yet.
+
+Build tooling can use `inspectContentReferences` and `findContentDependents` from `@apackdev/sdk/build`
+for missing-target and rename/removal review. These operate on index data only and never execute a
+pack. Known incoming references do not rule out additional computed or runtime dependencies.

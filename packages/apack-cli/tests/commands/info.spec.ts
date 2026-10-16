@@ -92,6 +92,23 @@ describe('read-only pack inspection', () => {
     expect(fetch).not.toHaveBeenCalled();
   });
 
+  it('inspects dependency targets from verified output without source or activation', async () => {
+    const content = { ...index, entries: [{ key: 'flows', written: true, count: 1, items: [{ key: 'Demo' }], references: [
+      { item: 'Demo', path: 'Demo.action', kind: 'static', target: { key: 'actions', item: 'Removed' } },
+      { item: 'Demo', path: 'Demo.prompt', kind: 'dynamic', target: { key: 'prompts' } },
+    ] }] };
+    writeBuild(root, manifest, content);
+    expect((await inspectPack(root)).build.content).toEqual(content);
+    const output = vi.spyOn(console, 'log').mockImplementation(() => {});
+    vi.spyOn(process, 'cwd').mockReturnValue(root);
+    await info([]);
+    const text = output.mock.calls.flat().join('\n');
+    expect(text).toContain('actions/Removed [not-indexed]');
+    expect(text).toContain('prompts/(computed) [dynamic]');
+    expect(text).toContain('not user data');
+    expect(fs.existsSync(path.join(root, 'src'))).toBe(false);
+  });
+
   it('distinguishes unbuilt source from an invalid build directory instead of inventing content counts', async () => {
     expect((await inspectPack(root)).build).toMatchObject({ status: 'unbuilt' });
     fs.mkdirSync(path.join(root, 'dist'));

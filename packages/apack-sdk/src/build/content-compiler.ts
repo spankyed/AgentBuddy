@@ -1,3 +1,4 @@
+import type { ContentReference } from './content-references.ts';
 import * as fs from 'fs';
 import * as path from 'path';
 import type { PackConfig, CompilePackOptions, CompilePackResult, PackModuleLoader } from './types.ts';
@@ -56,6 +57,8 @@ export interface SpecialtyCompiler<T = unknown> {
   count(data: T): number;
   /** The items the import dialog lists, named as include sets name them */
   items(data: T): PackContentPreviewItem[];
+  /** Static dependency inspection; absence means analysis is unavailable, never that there are no references. */
+  references?(data: T, context: CompilationContext): ContentReference[];
 }
 
 /** `content.json` in the compiled directory: what each content key holds */
@@ -75,6 +78,8 @@ export interface ContentIndexEntry {
   count: number;
   /** Top-level items, named as include sets name them */
   items: PackContentPreviewItem[];
+  /** Known static/computed references. Omitted for compilers without an analyzer; static analysis is not exhaustive. */
+  references?: ContentReference[];
 }
 
 export { CONTENT_INDEX_FILE };
@@ -228,10 +233,12 @@ export async function compilePack(options: CompilePackOptions): Promise<CompileP
     steps: definitions?.steps ?? [],
   };
   for (const [key, data] of specialtyData) {
-    const result = SPECIALTY_COMPILERS[key].validate?.(data, context);
+    const compiler = SPECIALTY_COMPILERS[key];
+    const result = compiler.validate?.(data, context);
     if (result && !result.valid) {
       throw new Error(`${key} validation errors:\n${result.errors.map((e) => `  ${e.path}: ${e.message}`).join('\n')}`);
     }
+    if (compiler.references) compiled.find(entry => entry.key === key)!.index.references = compiler.references(data, context);
   }
 
   const index: ContentIndex = { version: 1, packId: packConfig.name, entries: compiled.map(({ index }) => index) };
