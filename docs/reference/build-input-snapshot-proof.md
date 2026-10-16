@@ -117,6 +117,62 @@ match. Source is checkpointed with this validation limitation explicit; full str
 required. Do not use repeated broad runs to diagnose the recurring timing boundary.
 Additional logs: `/private/tmp/apack-snapshot-root-{strict,watch-timing,watch-peers}.log`. Focused logs: `/private/tmp/apack-snapshot-root-{regressions-before,focused,mutation-order,typecheck,lint}.log`.
 
+## Inherited configuration and Node reads follow-up
+
+The inheritance probe extends the earlier simple-config fixture through relative/package `extends`,
+array precedence, JSONC and an absolute config path whose original disappears. It exercises actual
+TypeScript, native esbuild and Vite config resolution. The reports' copied `scope` string still says
+“simple configs only”; the fixture code and results supersede that stale experimental label.
+
+Reports: `/private/tmp/apack-snapshot-inheritance-yQNFRf/report.json` (Node 23.11.1) and
+`/private/tmp/apack-snapshot-inheritance-pcec6c/report.json` (Electron 37.2.4 as Node 22.17.1,
+without `baseUrl`). Scripts: `/private/tmp/apack-snapshot-inheritance.mts` and
+`/private/tmp/apack-snapshot-inheritance-adapter.cjs`. Both preserve native class-field/JSX behavior,
+package lookup and captured external values after originals disappear. Callback Buffer reads, promise
+URL reads, file handles, streams and named ESM callback reads consume captured data. Frontend
+observations retain original paths and contain no private capture paths. A poisoned configuration
+package entry is never activated. This is selected API coverage, not a complete loader/I/O boundary.
+
+The first inherited-config attempt fails in Vite's `createRequire(from).resolve(extended)`, outside the
+selected filesystem export mapping. A prototype wrapper around the public `createRequire` export,
+with `syncBuiltinESMExports`, resolves this fixture. It does not establish coverage of implicit CommonJS
+loading or native addons. Combining synchronous module hooks with the existing asynchronous tsx hooks
+fails on both runtimes (`resolveSync` not implemented); that approach is rejected. No engine-floor
+change or private Node loader patch is needed for the successful probe.
+
+Native esbuild receives effective supported options from parsed configuration. Inherited path targets
+are resolved against their declaring directory without adding `baseUrl`, which would shadow unrelated
+package imports. The no-base case deliberately includes such a shadow file and still selects the
+package. The source checkpoint below adopts this explicit configuration projection only; filesystem
+and loader adapters remain disposable experiments.
+
+## Captured native compiler configuration checkpoint
+
+Source `26f73956b` retains its resolved configuration in `CompilationInputs` and hands it to all four
+native backend bundle paths: runtime, content runtime, step build and content compilers. The projection
+accounts for every option in esbuild's declared `TsconfigRaw` contract, including inherited paths,
+JSX, strict flags, target defaults and class-field semantics. It leaves authored JSON untouched.
+Standalone bundler calls resolve their own configuration; absent explicit pack configuration retains
+native ancestor discovery. That implicit input is still part of the unfinished whole-build closure.
+
+Eight focused integration cases pass: native parity with/without `baseUrl`, inherited targets/defaults,
+owned alias paths after originals disappear, captured config without reparsing, native ancestor
+fallback, and a real build/stage/load that changes then restores an inherited config during bundling.
+Removing the build's captured-config handoff fails that last case with `calls: []` instead of `[7]`,
+even though final input bytes match; exact source is restored. Seventy-four affected unit cases,
+CLI typechecking and lint pass. Logs: `/private/tmp/apack-owned-configuration-{integration-final,
+unit-final,typecheck-final,lint-final,mutation}.log`.
+
+The one converged strict gate passes in 825.8s: run `2026-10-16T08-15-59Z-20777`, 29 executed
+steps/one cached, 761 integration tests in 59 files. The earlier watcher case passes, as do real
+packaged-authoring halves, external-pack contract/app and smoke. All seven EARS/content baselines
+match byte for byte; source remains fixed. Log: `/private/tmp/apack-owned-configuration-strict.log`.
+No follow-up broad run is needed for this checkpoint. This does not establish the original timeout's
+cause or replace the final committed-source `--all` gate for the whole goal.
+
+This checkpoint does not own native source reads, frontend/dev lifetime, launch/preload code, external
+namespace closure or the complete input/output receipt. These remain required, as do all later phases.
+
 ## Alternatives and boundaries
 
 | Approach | Benefit | Remaining problem |

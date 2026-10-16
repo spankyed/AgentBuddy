@@ -355,6 +355,26 @@ gate as an open acceptance condition. All own sessions are terminal; do not repe
 a pass. The next converged source/final strict gate still has to close acceptance. The goal owns the
 logs, next snapshot work and complete later-phase scope.
 
+The inherited-config follow-up now preserves relative/package/array inheritance, JSONC, absolute
+config references and native transform semantics with original files removed, on Node 23 and Electron's
+Node 22. Selected asynchronous Node reads and public `createRequire` resolution use owned files in
+that fixture. The evaluation records the failed sync-hook approach and remaining loader/I/O boundaries;
+no engine-floor change or production loader adapter is adopted.
+
+Source `26f73956b` retains resolved configuration with `CompilationInputs` and passes it to
+all four native backend bundles. Effective esbuild-supported options and inherited path targets come
+from the captured config, without introducing a `baseUrl` or rereading parents between phases.
+A real build/stage/load regression catches a transient inherited-config edit even after exact
+restoration; eight integration and 74 unit cases, CLI types and lint pass. Standalone calls retain
+configuration resolution and missing pack configs retain native ancestor discovery. Complete owned
+source/dependency reads, implicit discovery, launch options, dev lifetime and input/output receipts
+remain required; this does not replace that scope. Strict run `2026-10-16T08-15-59Z-20777` passes
+all 30 steps (one cached), including 761 integration tests, both real authoring halves and external-pack
+app checks. All seven EARS/content baselines match. This closes checkpoint acceptance carried from
+the earlier root-identity timeout, without diagnosing that timeout or completing the whole goal.
+The goal owns exact evidence and next implementation. Prioritize a coherent execution implementation;
+use focused checks in that work and broad gates at integrated milestones/final acceptance.
+
 The unfinished Node option parser patch is preserved in stash
 `c42116fb46a385b5f6065a4fb9cd9e68e2625b80`. All experiment children, private captures and Vite servers
 have closed. The initial proof left repository source unchanged from `74890676d`; its documentation

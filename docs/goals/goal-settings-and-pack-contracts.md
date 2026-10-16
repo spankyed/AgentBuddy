@@ -120,15 +120,29 @@ naming branch is not an automatic source of future changes.
 
 ### Current handoff — compiler checkpoint (2026-10-16)
 
-Latest source is `de5adeb66` (captured-root identity); the snapshot-led execution design remains
-under proof. Forty-seven focused checks, CLI type/lint, the isolated watcher and the four-file peer
-workload pass. The required strict run fails one 60s watcher case; all other steps and 752 integration
-cases pass. This is a usable source checkpoint with **open strict acceptance**, not a green full gate.
-The detailed evidence below and snapshot evaluation preserve that distinction. No validation job from
-this session remains active. Do not restart a broad run without a diagnosed/new converged source
-change or the required final gate. Next complete the snapshot prototype's inherited configuration,
-read/namespace coverage and dev ownership, then the whole-build receipt and passive consumers.
-All Phases 0–7 and all three Phase 6 workstreams remain required. Preserve the unrelated issue draft.
+Latest source checkpoint is `26f73956b`: resolved configuration travels with compilation inputs to
+all four native backend bundles. Eight integration and 74 affected unit cases pass, including a real
+build/stage/load whose transient config edit defeats final-byte equality alone. Removing the captured
+handoff fails that regression; exact source is restored. CLI types and lint pass.
+
+The single converged strict gate passes: `npm run chain -- --strict --cores 4 --no-classify`, run
+`2026-10-16T08-15-59Z-20777`, 825.8s, 29 steps executed/one cached, 761 integration cases in 59 files.
+The earlier watcher case passes in this gate; its original timeout cause is still unproven. Both real
+authoring halves, external-pack contract/app checks and smoke pass. All seven EARS/content baselines
+match byte for byte. Source stayed fixed; session `91893` is terminal, exit 0.
+`/private/tmp/apack-owned-configuration-strict.log`. This closes checkpoint strict acceptance, not the
+final committed-source `--all` requirement for the whole goal. No validation remains active or needed
+for this checkpoint's evidence-only documentation.
+
+The snapshot-led execution design remains under proof. Inherited-configuration and selected Node
+read probes succeed on Node 23 and Electron's Node 22 with originals absent; no production filesystem/
+loader adapter or engine-floor change is adopted. Next implement the coherent source/dependency
+execution frame, then its receipt/passive consumers, preserving complete read/namespace, source/output
+and dev ownership. The user explicitly corrected the pace: prioritize substantial implementation over
+more proof/test machinery. Use focused checks while implementing; reserve broad gates for integrated
+milestones and final acceptance, rather than every small helper change. Do not weaken coverage or
+restart completed runs. All Phases 0–7 and all three Phase 6 workstreams remain required. Preserve
+unrelated work and saved stashes.
 
 #### Earlier compiler-installation evidence
 
