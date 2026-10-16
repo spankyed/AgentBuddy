@@ -23,7 +23,7 @@ function fixture() {
   const registry = createPackRegistry({
     nativeDeclarations: [{ id: 'incumbent', services: { value: 'fixtures/services.ts#value' },
       repositories: { records: 'fixtures/repositories.ts#records' }, commands: { 'old-command': { placeholder: 'Old' } },
-      features: { widget: { description: 'Feature declaration fixture.',} } }, { id: 'peer', features: {} }],
+      features: { widget: { description: 'Feature declaration fixture.', designation: 'before' } } }, { id: 'peer', features: {} }],
     settingsForPack: () => service,
   });
   const generated = _createPackServices();
@@ -53,6 +53,13 @@ function declareRepositories(registry: ReturnType<typeof createPackRegistry>, na
   }));
 }
 
+/** Native composition admits the new role before its replacement runtime can bind it. */
+function declareCandidateRole(registry: ReturnType<typeof createPackRegistry>) {
+  registry.catalog.setNative(registry.catalog.getSnapshot().native.map(pack => pack.id !== 'incumbent' ? pack : {
+    ...pack, features: { ...pack.features, widget: { ...pack.features!.widget, designation: 'after' } },
+  }));
+}
+
 function assertIncumbent(f: ReturnType<typeof fixture>) {
   expect(f.registry.getPackRegistration('incumbent')).toBe(f.registration);
   expect(f.registry.designation('before')).toBe('incumbent/widget');
@@ -70,6 +77,7 @@ describe('accepted pack replacement', () => {
     const f = fixture();
     let dispose!: () => string[];
     const candidate = f.fresh.settingsHandle(target);
+    declareCandidateRole(f.registry);
     expect(f.registry.replacePack(f.next, undefined, { retireBinding: cleanup => { dispose = cleanup; } })).toEqual([]);
     expect(f.registry.getPackRegistration('incumbent')).toBe(f.next);
     expect(candidate.get()).toEqual({ value: 1 });
@@ -85,6 +93,7 @@ describe('accepted pack replacement', () => {
     const f = fixture();
     f.next.repositories = { [name]: { owner: 'candidate' } };
     declareRepositories(f.registry, [name]);
+    declareCandidateRole(f.registry);
     f.registry.replacePack(f.next);
     expect(engine.query.repository[name]).toBe(f.next.repositories[name]);
     expect(Object.hasOwn(engine.admin.repositories(), name)).toBe(true);
@@ -101,6 +110,7 @@ describe('accepted pack replacement', () => {
       assertIncumbent(f); // Reentrant reads observe accepted state while the candidate is prepared.
       throw new Error('binding refused');
     };
+    declareCandidateRole(f.registry);
     expect(() => f.registry.replacePack(f.next)).toThrow('binding refused');
     assertIncumbent(f);
     expect(f.listeners.size).toBe(1);
@@ -110,6 +120,7 @@ describe('accepted pack replacement', () => {
     const f = fixture();
     const provisional = f.fresh.settingsHandle(target);
     f.next.bindSettings = port => { f.fresh.bindSettings(port); throw new Error('hook refused after capture'); };
+    declareCandidateRole(f.registry);
     expect(() => f.registry.replacePack(f.next)).toThrow('hook refused after capture');
     expect(() => provisional.get()).toThrow('revoked');
     assertIncumbent(f);
@@ -122,6 +133,7 @@ describe('accepted pack replacement', () => {
       expect(() => port.set(target, ['value'], 2)).toThrow('until the host accepts');
       return f.fresh.bindSettings(port);
     };
+    declareCandidateRole(f.registry);
     f.registry.replacePack(f.next);
     expect(f.fresh.settingsHandle(target).get()).toEqual({ value: 1 });
   });
@@ -136,6 +148,7 @@ describe('accepted pack replacement', () => {
       if (name === 'added') throw new Error('publication refused');
       publish(name, value);
     });
+    declareCandidateRole(f.registry);
     expect(() => f.registry.replacePack(f.next)).toThrow('publication refused');
     expect(register).toHaveBeenCalledTimes(3); // First entry, failed second entry, restored first entry.
     expect(engine.admin.repositories()).toEqual({ records: f.records });
@@ -146,6 +159,7 @@ describe('accepted pack replacement', () => {
 
   it('publishes new contributions before retiring the old binding, without removing its repositories', () => {
     const f = fixture();
+    declareCandidateRole(f.registry);
     expect(f.registry.replacePack(f.next)).toEqual([]);
     expect(f.registry.getPackRegistration('incumbent')).toBe(f.next);
     expect(f.registry.designation('before')).toBeUndefined();
@@ -172,6 +186,7 @@ describe('accepted pack replacement', () => {
     };
     f.registry.registerPack(f.registration);
     const old = rebound.settingsHandle(target);
+    declareCandidateRole(f.registry);
     expect(f.registry.replacePack(f.next)).toEqual(['cleanup refused']);
     expect(f.registry.getPackRegistration('incumbent')).toBe(f.next);
     expect(() => old.get()).toThrow('revoked');
@@ -183,6 +198,7 @@ describe('accepted pack replacement', () => {
   it('revokes host-owned authority and subscriptions even when the hook omits generated cleanup', () => {
     const f = fixture();
     f.next.bindSettings = port => { f.fresh.bindSettings(port); return () => {}; };
+    declareCandidateRole(f.registry);
     f.registry.replacePack(f.next);
     const current = f.fresh.settingsHandle(target);
     current.onChange(() => {});
@@ -213,6 +229,7 @@ describe('accepted pack replacement', () => {
       const stop = dispose(port);
       return () => { stop(); throw new Error('unload cleanup refused'); };
     };
+    declareCandidateRole(f.registry);
     f.registry.replacePack(f.next);
     const current = f.fresh.settingsHandle(target);
     expect(() => f.registry.unregisterPack('incumbent')).toThrow('unload cleanup refused');
@@ -230,6 +247,7 @@ describe('accepted pack replacement', () => {
       f.registry.unregisterPack('incumbent');
       return () => {};
     };
+    declareCandidateRole(f.registry);
     expect(() => f.registry.replacePack(f.next)).toThrow('change is already in progress');
     assertIncumbent(f);
   });

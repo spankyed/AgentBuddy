@@ -50,6 +50,7 @@ export function nativePackDeclarationFixture(fixture: PackRegistration): NativeP
     ...(fixture.repositories !== undefined && { repositories: target('repositories', Object.keys(fixture.repositories)) }),
     features: Object.fromEntries(Object.entries(fixture.features ?? {}).map(([id, feature]) => [id,
       { description: `Test fixture for ${id}.`, ...(feature.settings !== undefined && { settings: feature.settings }),
+        ...(feature.designation !== undefined && { designation: feature.designation }),
         ...(feature.services !== undefined && { services: target('services', feature.services) }) }])),
   };
 }

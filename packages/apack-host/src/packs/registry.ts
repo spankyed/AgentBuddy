@@ -566,6 +566,11 @@ export function createPackRegistry({ installedPacksDir, appPackSourcesDir, setti
         || !isDeepStrictEqual(settingsOf(runtimeFeatures), settingsOf(declaration.features))) {
         throw new Error(`Native pack "${registration.id}" runtime does not match its admitted declarations`);
       }
+      for (const [id, feature] of Object.entries(runtimeFeatures)) {
+        if (feature.designation !== declaration.features?.[id]?.designation) {
+          throw new Error(`Native pack "${registration.id}" runtime features.${id}.designation does not match its admitted declarations`);
+        }
+      }
     }
 
 

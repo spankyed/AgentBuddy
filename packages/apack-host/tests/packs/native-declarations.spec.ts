@@ -143,3 +143,36 @@ it('requires native feature purpose before publishing its declaration', () => {
   Reflect.deleteProperty(invalid.features!.notes, 'description');
   expect(() => createPackRegistry({ nativeDeclarations: [invalid] })).toThrow(/description|Required/);
 });
+
+it.each([
+  ['changed', 'notes', 'other'],
+  ['missing', 'notes', undefined],
+  ['undeclared', undefined, 'notes'],
+])('refuses a %s native designation without admitting runtime contributions', (_, declared, actual) => {
+  const registry = createPackRegistry({ nativeDeclarations: [{ id: 'native', features: {
+    notes: { description: 'Own the notes role.', ...(declared !== undefined && { designation: declared }) },
+  } }] });
+  const before = registry.catalog.getSnapshot();
+  const changed = vi.fn();
+  registry.onCatalogChanged(changed);
+  expect(() => registry.registerPack({ id: 'native', features: {
+    notes: { ...(actual !== undefined && { designation: actual }) },
+  } })).toThrow('features.notes.designation does not match its admitted declarations');
+  expect(registry.getPackRegistration('native')).toBeNull();
+  expect(registry.catalog.getSnapshot()).toBe(before);
+  expect(registry.designation(declared ?? actual!)).toBeUndefined();
+  expect(changed).not.toHaveBeenCalled();
+});
+
+it('binds a declared native designation and retains its declaration after unload', () => {
+  const registry = createPackRegistry({ nativeDeclarations: [{ id: 'native', features: {
+    notes: { description: 'Own the notes role.', designation: 'notes' },
+  } }] });
+  const before = registry.catalog.getSnapshot();
+  registry.registerPack({ id: 'native', features: { notes: { designation: 'notes' } } });
+  expect(registry.designation('notes')).toBe('native/notes');
+  registry.unregisterPack('native');
+  expect(registry.designation('notes')).toBeUndefined();
+  expect(registry.catalog.getSnapshot()).toBe(before);
+  expect(before.native[0].features!.notes.designation).toBe('notes');
+});
