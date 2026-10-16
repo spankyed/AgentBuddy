@@ -120,36 +120,42 @@ naming branch is not an automatic source of future changes.
 
 ### Current handoff — compiler checkpoint (2026-10-16)
 
-Latest source is absolute-import projection checkpoint `1a87aa11e`, following
-`6b384ff1c` and `00a6e3db5`. Native bundles/declarations share the owned input tree. Both ordinary
-and absolute references now retain esbuild's default resolver: syntax-aware projection changes only
-absolute executable module references to equivalent relative references inside the tree. No plugin
-`build.resolve()` round-trip remains. The absolute-import regression previously emitted broken JSX
-(`React is not defined`) under implicit parent configuration. It now preserves transforms, authored
-source text in source maps and ordinary path-valued data. Generated stdin content compiler entries
-use the same projection. `magic-string` is an explicit CLI dependency for accurate edit mappings;
-release/version metadata is unchanged.
+Latest source is `6c5c6613d`. Content compilation now runs under an asynchronous build scope for
+Node `readFileSync`, callback `readFile` and promise `readFile`. Each consumes the shared captured
+byte/query view; unrelated tasks and reads under that build's staging output remain native. Raw data
+has a separate projection inside the same owned tree, so native compiler metadata rewrites cannot
+change ordinary JSON/data reads. Compiler-installation files retain their existing captured ownership
+rather than being redirected to the live checkout. Writes are unchanged. Error paths map to originals.
 
-Focused evidence: absolute-module and implicit-config cases pass; adjacent package-entry and glob
-cases pass in the affected run. The final absolute case also executes the generated content compiler
-and compares JavaScript/source-map bytes across two independent captures: identical, 16.63s. CLI
-typecheck/lint pass. Logs: `/private/tmp/apack-native-{absolute,absolute-fixed,reference-final,
-reference-repeat,reference-types-final,reference-lint-final}.log`. The first log is the original failure.
-All own processes are terminal; no broad gate repeated. Prior `6b384ff1c` evidence: captured external
-glob bytes survive a transient live edit; declaration-hidden runtime dependencies retain native
-nested-package precedence; 46 unit cases/types/lint pass (`/private/tmp/apack-native-glob-*.log`).
-Prior `00a6e3db5` evidence: 61 unit cases, 12 configuration cases across the affected run/exact retry,
-real worker repeat-build/cache identity and cleanup, types/lint (`apack-native-checkpoint-*.log`).
+The real worker also exposed an invented `prepareNative('./', packDir)` lookup for stdin. It enumerated
+the shared temp directory and refused an unrelated Discord socket. Stdin now prepares its actual source
+directory/configuration rather than pretending to import that directory. No foreign temp data was
+modified. The exact worker retry compiles and publishes content plus the bundled compiler successfully
+in 28.89s. Adjacent absolute-import/stdin configuration and repeat-output regression passes in 17.71s.
 
-Next extend the execution frame to direct content filesystem reads. Retain full native closure and
-metadata acceptance, including source-map chaining for authored pre-mapped JavaScript and the
-conservative glob-prefix namespace capture. No narrower resolver or filesystem behavior is authorized.
-Then complete launch/preload ownership, frontend resources/retained compiler generation, whole-build
-receipts/passive freshness, remaining discovery, navigation/frontend boundaries and every Phase 6
-workstream. Source-path diagnostic stream acceptance and integrated/final committed-source strict
-`--all` gates remain required. Focused results are not that acceptance. Avoid expanding unrelated
-global temporary-directory membership into build inputs or redesigning resolution based only on
-hypothetical cache failures.
+Focused evidence: two real-filesystem cases execute a real content compiler against captured sync,
+callback and promise bytes despite a live data edit; ordinary package JSON retains its original
+absolute values; output reads remain live; concurrent build views stay separate; missing-file errors
+retain source paths. They pass in 27.90s. All 49 affected unit cases, CLI typecheck and lint pass.
+Logs: `/private/tmp/apack-content-{reads-final,reads-unit,reads-worker-final,stdin-final,
+reads-types-final,reads-lint}.log`; original worker failure: `apack-content-reads-worker.log`.
+All own processes are terminal. No broad gate repeated; this is not whole-filesystem acceptance.
+
+Next extend ownership to streams/open descriptors and filesystem metadata/resolution, then finish
+loader/startup/preload ownership, including references cached before adapter installation and pending
+content-task lifetimes. The three file-reading APIs do not close those paths. Retain frontend resources
+and compiler generations, whole-build receipts/passive freshness, complete contribution discovery,
+navigation/frontend boundaries and all Phase 6 workstreams. Native metadata/glob namespace acceptance,
+authored source-map chaining and diagnostic stream source paths also remain required. Run the
+integrated/final committed-source strict `--all` gates after convergence, not after every helper edit.
+
+Prior source `1a87aa11e` preserves native implicit per-file transforms for absolute module references,
+including generated stdin, without a plugin resolver round-trip. Module-only edits preserve ordinary
+data strings and authored source content in maps; independent captures emit identical JS/maps.
+Logs: `/private/tmp/apack-native-reference-{final,repeat,types-final,lint-final}.log`.
+`6b384ff1c` captures external glob bytes through transient edits and proves declaration-hidden runtime
+package precedence; `00a6e3db5` records the initial native tree consumer and real worker repeat identity.
+Their focused evidence remains in the preceding checkpoint commits and `/private/tmp/apack-native-*.log`.
 
 #### Previous owned-declaration checkpoint
 

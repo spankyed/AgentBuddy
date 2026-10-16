@@ -341,9 +341,19 @@ dependency. The owning goal records source and focused evidence.
 
 Remaining native acceptance includes complete namespace/metadata behavior and source-map chaining
 for authored pre-mapped JavaScript. Do not infer complete closure from these demonstrated cases.
-Direct Node reads, frontend resources/generation, launch ownership, whole-build receipts and passive
-freshness remain unfinished. Glob capture currently owns a conservative subtree beneath its static
-prefix rather than duplicating esbuild's exact matcher.
+Source `6c5c6613d` starts the direct Node boundary: content compilation's sync, callback and promise
+file reads consume the shared input view under an asynchronous build scope. Raw data uses its own
+projection within the same tree, preserving authored JSON values independently of native metadata
+projection. Staging-output reads and writes retain their existing behavior; concurrent scopes do not
+share captured values. Existing compiler-installation reads stay owned by that installation. Real
+content execution, concurrent scopes, source error paths and the actual captured build worker pass.
+The worker exposed and removed a synthetic stdin directory import that enumerated shared temporary
+files; stdin now prepares the real source scope. The owning goal records source and focused evidence.
+
+Streams, descriptors, metadata/resolution and startup-cached references remain unfinished. This is
+not a complete Node filesystem adapter or execution receipt. Frontend resources/generation, launch
+ownership, whole-build receipts and passive freshness also remain required. Glob capture currently
+owns a conservative subtree beneath its static prefix rather than duplicating esbuild's exact matcher.
 
 
 The user's suggested snapshot-led hybrid is now exercised in disposable proofs, before selecting a
