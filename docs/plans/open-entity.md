@@ -200,8 +200,8 @@ copy destination facts into both manifest flags and contract types. Normalize th
 readers; active handlers bind to that account.
 
 **Phase 4 changes reference navigation.** Re-audit existing coverage rather than assume the historical
-survey is current. Prove short-code resolution, stored-reference round trips and catalog/readiness routing
-before converting callers. Remove `navigate` bindings only after every supported caller migrates.
+survey is current. Prove canonical entity-ID round trips and catalog/readiness routing before converting
+callers. Labels and short codes remain presentation; no short-code lookup or old-format fallback is required. Remove `navigate` bindings only after every supported caller migrates.
 
 The resulting navigation API can support lazy activation if that deferred work is resumed: a destination is known before it
 runs, but opening still waits for the current handler to be ready.
