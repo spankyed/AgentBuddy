@@ -66,7 +66,7 @@ so completed implementation is not repeatedly scheduled as new work.
 | Live editor composition (Phase 3) | Implemented: `8863043a6` | Complete cold-document/provider readiness and real typing/replacement acceptance; fix demonstrated omissions without restarting composition. |
 | Remaining discovery consumers (Phase 3) | Partial; viewer readers `a278d4116` and shell default/dispatch `69860e4be` implemented | Navigation inventories/order/visibility implemented in `cfcbb53f9`; complete final window/loader acceptance; DSL producer/readers are implemented in `8ed188046` / `39e48e66e` and await final worker acceptance. Flow reference/rename/missing-target inspection is implemented in `7196d61d3`; complete its final external acceptance. Audit services, repositories, events, native fields and static assets; migrate each actual gap and remove superseded discovery stores. |
 | Build input/publication and freshness (Phase 3) | Partial; finite checkpoints B1–B6 below | Finish the common producer contract and four passive consumer migrations; installed discovery must remain source-free and activation-free. |
-| Entity navigation (Phase 4) | Reference identity prerequisites implemented; destination migration unfinished | Implement declared destinations, eligibility/readiness, short-code round trips and caller migration under open-entity.md. |
+| Entity navigation (Phase 4) | Reference identity and destination producer `94148c9e0` implemented; runtime/caller migration unfinished | Project compiled claims through native/installed catalog and checked bindings; implement eligibility/readiness, preserve reference round trips and migrate callers under open-entity.md. |
 | Frontend boundaries (Phase 5) | Implemented and locally accepted: `713a6c1fd`, including the real external-pack window | Preserve pane/form containment, attributed nonfatal diagnostics and retired-instance refusal through final committed-source strict acceptance. |
 | Consumed APIs (Phase 6) | Inventory/prototype requirements documented; implementation outstanding | Settle declarations and granularity, generate matching runtime/type facades, mediate administration and dependency APIs, and migrate real consumers. |
 | Dependency provenance (Phase 6) | Cache/admission `ff4358588`, inspection and verified-build checkpoints below implemented; overall closure partial | Verify exact origin/version/content through reuse and inspection, integrate remaining freshness dependencies, and close the linked acceptance matrix. Do not restart cache/provenance storage. Frozen resolution remains conditional on a distribution requirement. |
@@ -102,12 +102,17 @@ real external-pack Electron case pass: failed panes/forms preserve other panes, 
 defaults; retired frontend retry is refused. The staged source and built runtime matched that proof.
 Final whole-goal strict acceptance remains open.
 
-Next checkpoint: Phase 4 entity destinations under `open-entity.md`. Materialize the contract's `opens`
-claims during codegen; use the catalog to resolve one eligible destination, retain actual actor readiness,
-and migrate the named callers to `openEntity(id)`. Preserve canonical stored IDs and typed EARS.
-Acceptance is the plan's claim-conflict/disabled/missing/retired routing cases, typed destination guard,
-converted feature handlers/callers and one stored-reference Electron case. Implement in coherent source
-checkpoints; do not reopen completed reference wire identity or require unrelated compiler work first.
+Current Phase 4 source checkpoint: destination production `94148c9e0`. Codegen reads `Contract.opens`
+without execution and the build publishes a required data-only map; source-free catalog preservation,
+real shipped/external builds and packaged authoring pass. The strict checkpoint run failed on earlier
+lint/refusal-expectation defects, corrected in `876a285b0` with full lint and focused behavior checks.
+It is not a passing strict gate; exact evidence is recorded below.
+
+Next: expose the compiled claims through the catalog, include native composition and checked frontend
+binding identity, then implement `openEntity(id)` over existing actor readiness and migrate handlers and
+callers. Remaining acceptance: claim-conflict/disabled/missing/retired routing, typed destination guard
+and one stored-reference Electron case. Preserve canonical stored IDs and typed EARS; do not restart
+wire identity or require unrelated compiler work first.
 
 1. Finish Phase 4 entity destinations and caller migration. Phase 5 containment is already locally
    accepted; retain its checks for final verification rather than schedule another implementation.
@@ -6707,3 +6712,29 @@ Disabling the retired-instance retry guard fails its targeted assertion; exact s
 Logs: `/private/tmp/apack-pane-boundaries-{focused,settings-regressions,settings-forms,host-types,main-types,renderer,renderer-tests,fixture-types,lint,specifiers,tiers,runtime-build,fixture-build,electron,mutation}.log`.
 Phase 5 implementation/local acceptance is closed; whole-goal committed-source strict acceptance is
 still required. The live handoff above owns the next action.
+
+
+### Entity destination producer (2026-10-16)
+
+Source `94148c9e0` reads literal `Contract.opens` types without module execution, refuses unknown
+entities and competing local features, and publishes the generated JSON map through captured build
+inputs into required snapshot data. SDK, own and dependency entities remain distinct from destination
+ownership. All handcrafted snapshots now supply the current map; no fallback or format-stamp change.
+The external fixture claims `Memo`; its real sealed build contains `{ "Memo": "memos" }`. The installed
+catalog fixture retains `Action` destination data while disabled, source-free and runtime-poisoned.
+
+Evidence: the initial generator/reader run passed 253 of 254 cases; its expected snapshot-field inventory
+was updated, and all 105 affected reader/generator cases pass. Catalog/layout/cache/CLI consumer checks
+pass 153 cases; the extended source-free catalog suite passes 20. SDK/CLI/host and external-fixture types,
+schema, all 28 SDK API reports, import/tier checks and real shipped/external builds pass. Removing the
+collision guard makes the specific rejection assertion fail; exact source bytes were restored.
+Logs: `/private/tmp/apack-entity-producer-{focused,corrected,consumers,source-free,mutation,default-build,external-build,api-check}.log`.
+
+Required strict checkpoint `2026-10-16T21-16-01Z-28683` ran once and failed in 259.9s. All reported
+workspace/script/pack typechecks, schema/API/facade/package checks, shipped build and packaged-authoring
+author half pass. It found two earlier renderer ESLint expression errors and one stale external shell
+wording assertion. Source `876a285b0` corrects those: full `npm run lint:check`, eight boundary cases and
+all five external shell cases pass. Logs: `/private/tmp/apack-entity-producer-{chain,lint-corrected,boundary-corrected,shell-corrected}.log`.
+No broad rerun was used to diagnose those failures. Steps not reached by the failed chain and final
+committed-source strict `--all` remain unverified. The chain also reports shipped-build output changing
+after its step; preserve that publication/cache observation for B6 rather than claiming it repaired.

@@ -8,6 +8,13 @@ handler. Keep one `openEntity` verb, but do not implement the old registry looku
 The survey below is historical input: current `ReferenceTypeConfig` still has `navigate`, so the claim
 that it was already removed is not a current-code assertion.
 
+Build producer `94148c9e0` is implemented: codegen materializes exported `Contract.opens` literal
+unions into required snapshot `entityDestinations` data, checking known entities and competing local
+features. Real shipped/external builds and source-free disabled catalog preservation pass. Catalog
+selection, native composition, runtime binding/readiness, typed event/guard and caller migration remain
+unfinished; the owning goal records checkpoint validation and the failed strict run without claiming
+final acceptance.
+
 ## Context
 
 "Show the user this thing" is done **eleven times in six vocabularies**, and every one of them names a
