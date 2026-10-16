@@ -102,9 +102,28 @@ test('native composer controls redraw without submitting typed input or starting
   await expect(card.getByRole('button', { name: 'Run fixture', exact: true })).toHaveCount(0);
   await appPage.evaluate(threadId => (window as any).applicationState.system.get('default-setup/threads').send({ type: 'OPEN_THREAD_CHAT', threadId }), first.threadId);
   await expect(strip.getByText('Synthetic apack UI count: 2', { exact: true })).toBeVisible();
+  const beforeOversize = await snapshot();
+  await editor.fill('Unsent text survives oversized native output');
+  await strip.getByRole('button', { name: 'Oversize fixture', exact: true }).click();
+  const fallback = strip.getByRole('status');
+  await expect(fallback).toHaveText('Claude controls unavailable').catch(async error => {
+    await writeFile(join(workspace!, 'oversize-state.json'), JSON.stringify(await appPage.evaluate(() => {
+      const ctx = (window as any).applicationState.system.get('default-setup/threads').getSnapshot().context;
+      const summary = (node: any): any => node?.kind === 'box' ? { kind: node.kind, children: node.children.map(summary) } : { kind: node?.kind, textLength: node?.text?.length, label: node?.label };
+      return Object.fromEntries(Object.entries(ctx.nativeUiViews).map(([key, value]: any) => [key, { threadId: value.threadId, status: value.state.status, message: value.state.message, tree: summary(value.state.tree) }]));
+    }), null, 2));
+    await appPage.screenshot({ path: testInfo.outputPath('native-composer-oversized-failure.png') });
+    throw error;
+  });
+  await expect(fallback).toHaveAttribute('title', 'Claude stream-json protocol error: native UI tree exceeds node limit');
+  expect(await readFile(join(workspace!, 'oversize-trigger.txt'), 'utf8')).toBe('1');
+  await expect(editor).toHaveText('Unsent text survives oversized native output');
+  expect(await snapshot()).toEqual(beforeOversize);
+  await expect(strip.locator('button[data-native-plugin]')).toHaveCount(0);
+  await appPage.screenshot({ path: testInfo.outputPath('native-composer-oversized-fallback.png') });
   // Deletion runs the backend thread teardown and disconnects any remaining live mount.
   await appPage.evaluate(threadId => (window as any).__sendToSystem('default-setup/threads', { type: 'DELETE_THREAD', threadId }), first.threadId);
   await expect(card.getByRole('button', { name: 'Run fixture', exact: true })).toHaveCount(0);
   expect(errors).toEqual([]);
-  await writeFile(join(workspace!, 'ui-app-evidence.json'), JSON.stringify({ renderedNativeTree: true, nativePress: true, invalidationRedraw: true, typedInputPreserved: true, noPhantomMessage: true, narrowOverflowBounded: true, secondHostTurn: true, singleNativeProcess: true, threadSwitchRemount: true, threadDeleteClearsControls: true, staleDrawingRejected: true, foreignThreadRejected: true, foreignMountRejected: true, validPressAfterRejectedActions: true, hostInputs: 2 }, null, 2));
+  await writeFile(join(workspace!, 'ui-app-evidence.json'), JSON.stringify({ renderedNativeTree: true, nativePress: true, invalidationRedraw: true, typedInputPreserved: true, noPhantomMessage: true, narrowOverflowBounded: true, secondHostTurn: true, singleNativeProcess: true, threadSwitchRemount: true, threadDeleteClearsControls: true, staleDrawingRejected: true, foreignThreadRejected: true, foreignMountRejected: true, validPressAfterRejectedActions: true, oversizedTreeFallback: true, oversizedInputPreserved: true, oversizedNoPhantomTurn: true, hostInputs: 2 }, null, 2));
 });
