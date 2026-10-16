@@ -120,7 +120,23 @@ naming branch is not an automatic source of future changes.
 
 ### Current handoff — compiler checkpoint (2026-10-16)
 
-Latest source is `477b4fef5`, extending `6c5c6613d`. Content compilation runs under an asynchronous
+Latest source is `e7cd3d3d4`, following `477b4fef5` and `6c5c6613d`. Native sync/callback/promise
+`readdir` now records exact query results/options in the shared input view, including recursive native
+results, encoding and Dirent metadata. Callers receive copied arrays, mutable fields and Buffers.
+New representations validate overlapping earlier observations; repeated identical queries consume
+owned results through transient edits. Live verification rechecks membership/types. Explicit data
+reads can admit files excluded from source discovery, including a requested incumbent build file;
+staging-output exclusions remain separate. Tool-installation directories keep their existing owner.
+
+Validation now explicitly exits captured-read execution. The new regression initially timed out
+because verification could recursively consume its own cached reads; the corrected exact case passes
+in 4.65s without changing any timeout. Final scoped integration: all three cases pass in 42.84s,
+including symlink types, Buffer ownership, original paths and missing/changed input checks. All 61
+affected unit cases, CLI typecheck/lint and the real content worker (29.00s) pass. Logs:
+`/private/tmp/apack-directory-{fixed,final,unit,types-final,lint-final,worker}.log`; the initial failure
+is `apack-directory-integration.log`. All processes are terminal; no broad run was added.
+
+The preceding file/open implementation remains: Content compilation runs under an asynchronous
 build scope for Node file reads and read-only sync/callback/promise opens. Native read streams use
 those opens and retain their source-facing path; descriptors and promise FileHandles read captured
 bytes. Numeric read-only flags are covered. Writable opens remain native rather than opening the
@@ -151,7 +167,7 @@ pair passes; the final strengthened case passes in 15.09s and the actual content
 CLI typecheck/lint pass. Logs: `/private/tmp/apack-content-handles{,-final,-worker,-types,-lint}.log`.
 All processes are terminal; no broad run was added.
 
-Next extend ownership to filesystem metadata/directory reads and resolution, and account for
+Next extend ownership to stat/lstat/access, directory handles (`opendir`) and resolution, and account for
 pre-opened descriptors and special open flags alongside startup ownership. Then finish
 loader/startup/preload ownership, including references cached before adapter installation and pending
 content-task lifetimes. The tested file/open/stream paths do not close those remaining boundaries. Retain frontend resources

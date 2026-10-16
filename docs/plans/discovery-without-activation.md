@@ -356,8 +356,16 @@ identities. Numeric read-only flags, live writable descriptors and promise outpu
 compiler coverage; the captured content worker passes. Shared callback dispatch preserves source
 error mapping. The owning goal records focused evidence.
 
-Metadata/directory reads, resolution, pre-opened descriptors, special open flags and startup-cached
-references remain unfinished. This is not a complete Node filesystem adapter or execution receipt. Frontend resources/generation, launch
+Source `e7cd3d3d4` captures native sync/callback/promise directory results, options and Dirent
+metadata in the same input view. Consumer mutations cannot modify captured arrays/Buffers/Dirents.
+New representations validate overlapping prior observations; repeated queries preserve captured
+membership through transient edits. Live validation checks membership/types and explicitly leaves
+the captured-read scope, avoiding self-validation and recursive reads. Explicit data reads no longer
+inherit source-discovery exclusions. Scoped integration, 61 unit cases, types/lint and the real content
+worker pass; the owning goal records the initial scope failure, fix and focused evidence.
+
+Stat/lstat/access, directory handles (`opendir`), resolution, pre-opened descriptors, special open
+flags and startup-cached references remain unfinished. This is not a complete Node filesystem adapter or execution receipt. Frontend resources/generation, launch
 ownership, whole-build receipts and passive freshness also remain required. Glob capture currently
 owns a conservative subtree beneath its static prefix rather than duplicating esbuild's exact matcher.
 
