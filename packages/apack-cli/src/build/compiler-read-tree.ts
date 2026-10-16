@@ -2,7 +2,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { createHash } from 'node:crypto';
-import { compilerSourcePath, type CompilerPathMapping } from './compiler-paths.ts';
+import { compilerDiagnostic, compilerSourcePath, type CompilerPathMapping } from './compiler-paths.ts';
 
 export const BUILD_INPUTS_DIRECTORY_ENV = 'APACK_BUILD_INPUTS_DIRECTORY';
 
@@ -188,13 +188,7 @@ export function createCompilerReadTree(snapshot: CompilerReadSnapshot, paths: re
     return {
       directory, workDirectory, path: ownedPath, sourcePath, include, assertCurrent, dispose,
       dataPath, includeData: (snapshot: CompilerReadSnapshot) => include(snapshot, dataPath, null),
-      diagnostic(message: string) {
-        for (const [source, captured] of [...roots, ...dataRoots]) {
-          const relative = path.relative(process.cwd(), captured);
-          if (relative) message = message.split(relative + path.sep).join(source);
-          message = message.split(captured + path.sep).join(source);
-        }
-        return message;
+      diagnostic(message: string) { return compilerDiagnostic(message, mappings());
       },
     };
   } catch (error) {

@@ -11,8 +11,9 @@ import path from 'node:path';
 import { packInputFiles } from '@apackdev/host/build/pack-inputs';
 import { withoutCompilerFileReads } from './compiler-file-reads.ts';
 import type { CompilerMetadataKind } from './compiler-metadata.ts';
+import { readNativeDirectory, type CompilerDirectoryMethod } from './compiler-directories.ts';
 import type { CompilerDirectoryResult } from './compiler-file-view.ts';
-import { compilerSourcePath } from './compiler-paths.ts';
+import { compilerDiagnostic, compilerSourcePath } from './compiler-paths.ts';
 import { createNativeInputReader } from './compiler-native-inputs.ts';
 import { createCompilerReadTree, type CompilerReadTree } from './compiler-read-tree.ts';
 
@@ -39,11 +40,12 @@ export interface CompilationInputs {
   readonly declarationConfiguration: PackCompilerConfiguration | undefined;
   readFile(file: string): Buffer | undefined;
   readDataPath(file: string): string;
-  readDirectory(file: string, options: unknown): CompilerDirectoryResult;
+  readDirectory(file: string, options: unknown, method?: CompilerDirectoryMethod): CompilerDirectoryResult;
   readMetadata(kind: CompilerMetadataKind, file: string, args: readonly unknown[]): unknown;
   captureGenerated(): void;
   readTree(): CompilerReadTree;
   sourcePath(file: string): string;
+  diagnostic(message: string): string;
   prepareNative(specifier: string, importer: string): void;
   prepareNativeSource(file: string, contents: Buffer): void;
   dispose(): void;
@@ -118,10 +120,11 @@ export function captureCompilationInputs(packRoot: string): CompilationInputs {
         locations: [...(location ? [location] : []), ...modules.ancestors(file)], links: [] });
       return owned.dataPath(file);
     },
-    readDirectory(file, options) {
+    readDirectory(file, options, method = 'readdir') {
       file = path.resolve(file);
-      if (ownsToolPath(file)) return Reflect.apply(fs.readdirSync, fs, [file, options]) as CompilerDirectoryResult;
-      return modules.readDirectoryData(sourcePath(file), options);
+      if (ownsToolPath(file)) return method === 'opendir' ? readNativeDirectory(file, options)
+        : Reflect.apply(fs.readdirSync, fs, [file, options]) as CompilerDirectoryResult;
+      return modules.readDirectoryData(sourcePath(file), options, method);
     },
     readMetadata(kind, file, args) {
       file = path.resolve(file);
@@ -136,6 +139,7 @@ export function captureCompilationInputs(packRoot: string): CompilationInputs {
     },
     readTree,
     sourcePath,
+    diagnostic(message) { return compilerDiagnostic(tree?.diagnostic(message) ?? message, compiler?.paths ?? []); },
     prepareNative(specifier, importer) { readTree(); native.prepare(specifier, sourcePath(importer)); },
     prepareNativeSource(file, contents) { native.prepareSource(sourcePath(file), contents); },
     dispose() { tree?.dispose(); tree = undefined; },

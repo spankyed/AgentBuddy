@@ -226,3 +226,47 @@ it('keeps descriptor metadata with captured bytes through pathname replacement a
     compilation.assertCurrent();
   } finally { compilation.dispose(); }
 });
+
+it('serves captured opendir membership through all native handle entry points', async () => {
+  const root = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'apack-opendir-scope-')));
+  roots.push(root);
+  fs.writeFileSync(path.join(root, 'package.json'), '{}');
+  const source = path.join(root, 'content');
+  fs.mkdirSync(source);
+  fs.writeFileSync(path.join(source, 'original.txt'), 'ORIGINAL');
+  fs.mkdirSync(path.join(source, 'nested'));
+  fs.writeFileSync(path.join(source, 'nested/child.txt'), 'CHILD');
+  const options = { recursive: true, bufferSize: 1 };
+  const baseline = fs.opendirSync(source, options);
+  const expected: string[] = [];
+  try { for (let entry; (entry = baseline.readSync()) !== null;) expected.push(path.join(entry.parentPath, entry.name)); }
+  finally { baseline.closeSync(); }
+  const compilation = captureCompilationInputs(root);
+  try {
+    await withCompilerFileReads({ compilation, outputDirectory: path.join(root, 'dist') }, async () => {
+      const standard = await fs.promises.opendir(source, {});
+      const names: string[] = [];
+      for await (const entry of standard) names.push(entry.name);
+      expect(names.sort()).toEqual(['nested', 'original.txt']);
+      const first = fs.opendirSync(source, options);
+      const late = path.join(source, 'late.txt');
+      fs.writeFileSync(late, 'LATE');
+      const values: string[] = [];
+      try { for (let entry; (entry = first.readSync()) !== null;) values.push(path.join(entry.parentPath, entry.name)); }
+      finally { first.closeSync(); }
+      expect(values).toEqual(expected);
+      const promised = await fs.promises.opendir(source, options);
+      const actual: string[] = [];
+      for await (const entry of promised) actual.push(path.join(entry.parentPath, entry.name));
+      expect(actual).toEqual(expected);
+      const callback = await new Promise<fs.Dir>((resolve, reject) => fs.opendir(source, options, (error, directory) => error ? reject(error) : resolve(directory)));
+      try {
+        const one = await callback.read();
+        expect(path.join(one!.parentPath, one!.name)).toBe(expected[0]);
+      } finally { await callback.close(); }
+      expect(() => compilation.assertCurrent()).toThrow('Compiler or installed package inputs changed');
+      fs.unlinkSync(late);
+    });
+    compilation.assertCurrent();
+  } finally { compilation.dispose(); }
+});

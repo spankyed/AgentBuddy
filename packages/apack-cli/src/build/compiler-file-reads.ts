@@ -3,6 +3,7 @@ import path from 'node:path';
 import { AsyncLocalStorage } from 'node:async_hooks';
 import { syncBuiltinESMExports } from 'node:module';
 import { fileURLToPath } from 'node:url';
+import { openCapturedDirectory } from './compiler-directories.ts';
 import { capturedDescriptor, descriptorStats, releaseDescriptor, instrumentFileHandle, rememberDescriptor } from './compiler-descriptors.ts';
 import { compilerMetadataOperations, type CompilerMetadataKind } from './compiler-metadata.ts';
 import type { CompilationInputs } from './compilation-inputs.ts';
@@ -34,8 +35,12 @@ function sourceError(error: unknown): unknown {
   if (!(error instanceof Error)) return error;
   const scope = scopes.getStore();
   if (!scope) return error;
-  error.message = scopes.exit(() => scope.compilation.readTree().diagnostic(error.message));
-  if ('path' in error && typeof error.path === 'string') Object.assign(error, { path: scope.compilation.sourcePath(error.path) });
+  error.message = scope.compilation.diagnostic(error.message);
+  if ('path' in error && typeof error.path === 'string') {
+    const source = scope.compilation.sourcePath(error.path);
+    error.message = error.message.split(error.path).join(source);
+    Object.assign(error, { path: source });
+  }
   return error;
 }
 
@@ -94,6 +99,15 @@ function descriptorInput(file: fs.PathLike, flags: unknown) {
   const input = readOnly(flags) ? readScope(file) : undefined;
   return input && { readStats: (args: readonly unknown[]) =>
     scopes.exit(() => input.scope.compilation.readMetadata('stat', input.absolute, args)) };
+}
+
+function capturedDirectory(file: fs.PathLike, options: unknown) {
+  const input = readScope(file);
+  if (!input) return;
+  return scopes.exit(() => {
+    const entries = input.scope.compilation.readDirectory(input.absolute, options, 'opendir');
+    return openCapturedDirectory(input.scope.compilation.readDataPath(input.absolute), input.absolute, file, options, entries);
+  });
 }
 
 function install() {
@@ -182,6 +196,24 @@ function install() {
     try { return scopes.exit(() => input.scope.compilation.readDirectory(input.absolute, options)); }
     catch (error) { throw sourceError(error); }
   }) as typeof fs.promises.readdir;
+  const opendirSync = fs.opendirSync, opendir = fs.opendir, opendirPromise = fs.promises.opendir;
+  fs.opendirSync = ((file: fs.PathLike, options: unknown) => {
+    try { return capturedDirectory(file, options) ?? Reflect.apply(opendirSync, fs, [file, options]); }
+    catch (error) { throw sourceError(error); }
+  }) as typeof fs.opendirSync;
+  fs.opendir = ((file: fs.PathLike, ...args: unknown[]) => {
+    const callback = args.pop();
+    if (!scopes.getStore() || typeof callback !== 'function') return Reflect.apply(opendir, fs, [file, ...args, callback]);
+    try {
+      const directory = capturedDirectory(file, args[0]);
+      if (!directory) return Reflect.apply(opendir, fs, [file, ...args, callback]);
+      queueMicrotask(() => callback(null, directory));
+    } catch (error) { queueMicrotask(() => callback(sourceError(error))); }
+  }) as typeof fs.opendir;
+  fs.promises.opendir = (async (file, options) => {
+    try { return capturedDirectory(file, options) ?? await Reflect.apply(opendirPromise, fs.promises, [file, options]); }
+    catch (error) { throw sourceError(error); }
+  }) as typeof fs.promises.opendir;
   const builtins = fs as unknown as Record<string, unknown>;
   const promises = fs.promises as unknown as Record<string, unknown>;
   for (const kind of ['stat', 'lstat', 'realpath', 'readlink', 'access'] as const) {

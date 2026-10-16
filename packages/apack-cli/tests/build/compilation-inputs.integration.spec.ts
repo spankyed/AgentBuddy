@@ -55,3 +55,12 @@ it('validates its captured read-set without rebuilding the TypeScript program, i
   expect(() => captured.assertCurrent()).toThrow('Compiler or installed package inputs changed');
   expect(rediscover).not.toHaveBeenCalled();
 });
+
+it('formats diagnostics without materializing or reading the owned tree', () => {
+  const { root } = pack();
+  const compilation = captureCompilationInputs(root);
+  const allocate = vi.spyOn(fs, 'mkdtempSync').mockImplementation(() => { throw new Error('Diagnostic allocated storage'); });
+  expect(compilation.diagnostic('Missing source input')).toBe('Missing source input');
+  expect(allocate).not.toHaveBeenCalled();
+  compilation.dispose();
+});

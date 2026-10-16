@@ -18,6 +18,7 @@ const compilation = {
   declarationConfiguration: undefined,
   readTree() { throw new Error('No tree in hash-only fixture'); },
   sourcePath(file: string) { return file; },
+  diagnostic(message: string) { return message; },
   prepareNative() {},
   prepareNativeSource() {},
   readMetadata(): never { throw new Error('Unexpected metadata read'); },
