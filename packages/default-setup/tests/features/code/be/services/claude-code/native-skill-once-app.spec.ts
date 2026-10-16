@@ -59,4 +59,4 @@ it.skipIf(!executable || !workspace || !endpoint)('native skill once hooks survi
     expect(spawning).toHaveBeenCalledTimes(2); expect(await store.closeIdleConversation(second)).toBe(true);
     await writeFile(join(workspace!, 'skill-once-app-evidence.json'), JSON.stringify({ compiledFlow: true, productionLaunchService: true, skillInvoked: true, sameProcessAcrossInputs: true, freshSessionReactivates: true, skillOnceCounts: [1, 1, 2], ordinaryFileCounts: [1, 2, 3], fileOnceCounts: fileCounts, configUnchanged: true, skillFileUnchanged: true, nativeProcesses: 2, hostInputs: 3, closed: true }, null, 2));
   } finally { store.killAllHandles(); }
-}, 60000);
+}, 15000);

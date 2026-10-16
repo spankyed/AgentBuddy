@@ -76,5 +76,5 @@ describe.skipIf(!executable || !workspace || !endpoint)('compiled app native chi
       expect(await store.closeIdleConversation(id)).toBe(true);
       await writeFile(join(workspace!, `child-${decision}-evidence.json`), JSON.stringify({ decision, compiledFlow: true, productionLaunchService: true, permissionAfterLaunchingTurn: true, realApprovalBlock: true, sameNativeProcess: true, childToolExecuted: decision === 'allow', noWriteBeforeApproval: true, childDeniedWithoutWrite: decision === 'deny', childOutputRetained: true, childProseSeparated: true, exactCostAccounting: true, toolCallCount: state()?.toolCallCount, nativeResults: results.length, appTurns: state()?.turns, closed: true }, null, 2));
     } finally { await writeFile(join(workspace!, `child-${decision}-events.json`), JSON.stringify(events, null, 2)); store.killAllHandles(); }
-  }, 45000);
+  }, 15000);
 });

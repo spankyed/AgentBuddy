@@ -75,4 +75,4 @@ it.skipIf(!executable || !workspace || !endpoint)('actual native Workflow phases
     await owner.close();
     await writeFile(join(workspace!, 'workflow-app-evidence.json'), JSON.stringify({ sourceConsumer: true, nativeOwner: true, nativeApproval: true, sameOriginalRow: true, phasePresented: true, completionPresented: true, taskStatus: terminal, successfulModelResults: true, taskErrorAccountedOnce: failed || stopped, stoppedViaCommand: stopped, sameOwnerFollowup: stopped, nativeFailureMarkerRetained: failed, originalInputRetained: true, nativeLaunchOutputRetained: true, closed: true, qualification: 'Actual query/owner/source consumer and approval action; compiled flow and mounted UI remain separate.' }, null, 2));
   } finally { store.killAllHandles(); }
-}, 35000);
+}, 15000);

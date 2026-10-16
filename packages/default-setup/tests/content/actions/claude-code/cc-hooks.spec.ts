@@ -72,7 +72,7 @@ it.skipIf(!process.env.CLAUDE_HOOKS_TEST_BINARY)('keeps a newly saved SessionSta
   expect(fresh).toHaveBeenCalledOnce(); await expect(readFile(join(cwd, 'session-start-fired'))).resolves.toBeDefined();
   expect(JSON.parse(await readFile(path, 'utf8'))).toMatchObject({ language: 'preserve', hooks: { SessionStart: [{ hooks: [{ type: 'command', command: '/usr/bin/touch' }] }] } });
  } finally { await handle.close(); }
-}, 20000);
+}, 15000);
 
 
 it('does not start fresh native lifecycle hooks for a default catalog read without a live conversation', async () => {

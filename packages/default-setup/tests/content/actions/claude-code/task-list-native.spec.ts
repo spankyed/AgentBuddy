@@ -56,4 +56,4 @@ it.skipIf(!executable || !workspace || !endpoint)('actual native task metadata r
     await owner.close(); expect(owner.listObservedTasks()).toEqual([]);
     await writeFile(join(workspace!, 'task-list-app-evidence.json'), JSON.stringify({ deletedObserved: deletionReceiptRemoved, sourceConsumer: true, nativeOwner: true, observedFinal: true, commandPresented: true, closed: true, successfulModelResults: true, qualification: 'Actual query/owner/source consumer and cc-tasks; compiled flow, task mutation controls, all native branches and mounted UI remain separate.' }, null, 2));
   } finally { store.killAllHandles(); }
-}, 35000);
+}, 15000);

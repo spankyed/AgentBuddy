@@ -71,4 +71,4 @@ it.skipIf(!executable || !workspace || !endpoint)('compiled permission edits den
   expect(await store.closeIdleConversation(id)).toBe(true);
   await writeFile(join(workspace!, 'permission-enforcement-app-evidence.json'), JSON.stringify({ compiledFlow: true, productionLaunchService: true, sameNativeOwner: true, nativeProcesses: 1, nativeWriters: 2, hostInputs: 3, commandReplies: 2, nativeResults: 3, markerWritten: [true, false, true], toolResultErrors: [false, true, false], hostPermissionRequests: 0, permissionMode: 'default', unrelatedUserSettingsPreserved: true, originalAllowPreserved: true, closed: true }, null, 2));
  } finally { await writeFile(join(workspace!, 'permission-enforcement-app-events.json'), JSON.stringify(events, null, 2)); store.killAllHandles(); }
-}, 60000);
+}, 15000);

@@ -43,7 +43,7 @@ describe('native Skill discovery', () => {
   await writeFile(join(dir, 'SKILL.md'), '---\nname: native-fixture\ndescription: Native fixture\ndisable-model-invocation: true\n---\nSynthetic body.\n');
   const result = await getSkillsDialog({ cwd, cliPath: process.env.CLAUDE_SKILL_TEST_BINARY, env: { PATH: process.env.PATH, HOME: home, CLAUDE_CONFIG_DIR: join(home, '.claude'), DISABLE_AUTOUPDATER: '1', CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC: '1' } });
   expect(result.skills).toContainEqual(expect.objectContaining({ name: 'native-fixture', state: 'user-invocable-only', locked_by: 'author', source: 'project' }));
- }, 20000);
+ }, 15000);
  it('validates edit state before launching a process', async () => {
   const options = await fixture();
   await expect(editSkillOverride({ name: 'fixture', state: 'invalid' }, options)).rejects.toThrow();
@@ -71,6 +71,6 @@ describe('native Skill discovery', () => {
   await expect(editSkillOverride({ name: 'editable', state: 'on' }, { ...options, env: { ...options.env, CLAUDE_CODE_CHILD_SESSION: '1' } })).rejects.toThrow('inside a Claude Code session');
   expect(await readFile(settings)).toEqual(before);
   } finally { await handle.close(); }
- }, 20000);
+ }, 15000);
 
 });

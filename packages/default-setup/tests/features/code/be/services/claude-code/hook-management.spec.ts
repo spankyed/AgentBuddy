@@ -28,7 +28,7 @@ describe('native hook catalog boundary', () => {
   const handle = await query({ ...options, keepStdinOpen: true, tools: [], strictMcpConfig: true, noSessionPersistence: true });
   try { expect(await handle.getHooksListing()).toEqual(fresh); expect(await handle.getHooksListing()).toEqual(fresh); } finally { await handle.close(); }
   expect(await readFile(path, 'utf8')).toBe(bytes);
- }, 20000);
+ }, 15000);
 });
 
 it('rejects oversized hook edits before spawning', async () => {
@@ -56,4 +56,4 @@ it.skipIf(!process.env.CLAUDE_HOOKS_TEST_BINARY)('delegates native edits and pre
   expect(await editHook({ op: 'remove', source: 'userSettings', event: original.event, target }, options)).toMatchObject({ ok: false, code: 'target_missing' });
   expect(await editHook({ op: 'add', source: 'userSettings', event: 'PreToolUse', hook: JSON.parse('{"type":"command","command":"/usr/bin/true","__proto__":{}}') }, options)).toMatchObject({ ok: false, code: 'bad_request' });
   expect(JSON.parse(await readFile(path, 'utf8'))).toEqual({ language: 'preserve' });
-}, 20000);
+}, 15000);

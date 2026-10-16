@@ -90,4 +90,4 @@ it.skipIf(!executable || !workspace || !endpoint || !hookUrl)('compiled app inhe
     expect(spawning).toHaveBeenCalledTimes(3);
     await writeFile(join(workspace!, 'configured-hooks-app-evidence.json'), JSON.stringify({ compiledFlow: true, productionLaunchService: true, inheritedUserSettings: true, directArgumentsPreserved: true, projectPlaceholderExpanded: true, configuredEnvInherited: true, nativeToolCompleted: true, oneProcessPerCase: true, nativeProcesses: 3, conditionSkipped: true, failureCases, argv: record.argv, hookEvent: record.input.hook_event_name, toolName: record.input.tool_name, closed: true }, null, 2));
   } finally { store.killAllHandles(); }
-}, 35000);
+}, 15000);

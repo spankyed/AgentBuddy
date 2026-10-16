@@ -47,4 +47,4 @@ it.skipIf(!executable||!workspace||!endpoint||!mode)('preserves native structure
   await owner.close();
   await writeFile(join(workspace!,'structured-output-app-evidence.json'),JSON.stringify({mode,sourceConsumer:true,nativeOwner:true,terminalMapped:true,presentationVerified:true,closed:true,qualification:'Actual query/owner/source consumer, schema validation and text updates only. Chat action schema configuration, compiled/mounted UI, other schemas/providers and default retry limits remain open.'},null,2));
  }finally{store.killAllHandles();}
-},35000);
+},15000);

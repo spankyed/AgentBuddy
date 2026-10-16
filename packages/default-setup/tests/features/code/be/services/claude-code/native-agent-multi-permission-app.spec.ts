@@ -94,4 +94,4 @@ it.skipIf(!executable || !workspace || !endpoint)('compiled app preserves both s
       expect(Math.abs(state()!.totalCostUsd! - Number(finalResults.at(-1)!.total_cost_usd))).toBeLessThan(1e-12);
       await writeFile(join(workspace!, 'multi-app-evidence.json'), JSON.stringify({ compiledFlow: true, productionLaunchService: true, twoNativePendingRequests: true, serializedApprovals: true, bothDecisionsRouted: true, sameNativeProcess: true, allowedAOnly: true, bothChildOutputsRetained: true, childOutputsCorrelated: true, parentProseSeparated: true, exactCostAccounting: true, toolCallCount: state()?.toolCallCount, nativeResults: finalResults.length, appTurns: state()?.turns, closed: true }, null, 2));
     } finally { await writeFile(join(workspace!, 'multi-app-events.json'), JSON.stringify(events, null, 2)); store.killAllHandles(); }
-  }, 45000);
+  }, 15000);

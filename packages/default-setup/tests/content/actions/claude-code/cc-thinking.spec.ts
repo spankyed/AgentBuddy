@@ -48,4 +48,4 @@ it.skipIf(!process.env.CLAUDE_THINKING_TEST_BINARY)('preserves actual native dis
   expect((await run('display summarized')).text).toContain('acknowledged');await handle.close();handle=undefined;
   expect(requests).toBe(0);expect(await readFile(settings,'utf8')).toBe(before);
  } finally {await handle?.close();await new Promise<void>((resolve,reject)=>server.close(error=>error?reject(error):resolve()));await rm(root,{recursive:true,force:true});}
-},20000);
+},15000);

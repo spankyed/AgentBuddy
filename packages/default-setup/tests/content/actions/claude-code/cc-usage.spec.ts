@@ -44,4 +44,4 @@ it.skipIf(!process.env.CLAUDE_USAGE_TEST_BINARY)('reads actual private native us
   const fresh=await getUsage(options);expect(fresh.session.total_cost_usd).toBe(0);expect(fresh.rate_limits_available).toBe(false);expect(fresh.rate_limits).toBeNull();
   expect(requests).toBe(0);expect(await readFile(settings,'utf8')).toBe(before);
  } finally {await handle?.close();await new Promise<void>((resolve,reject)=>server.close(error=>error?reject(error):resolve()));await rm(root,{recursive:true,force:true});}
-},20000);
+},15000);

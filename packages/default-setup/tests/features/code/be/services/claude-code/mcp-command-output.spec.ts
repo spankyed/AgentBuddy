@@ -16,4 +16,4 @@ it.skipIf(!process.env.CLAUDE_MCP_OUTPUT_TEST_BINARY)('retains native notices an
  const detail = await get('research-project', options); expect(typeof detail).toBe('string'); expect(detail).toContain('Scope: Project config'); expect(detail).toContain('Type: stdio'); expect(detail).toContain('Pending approval');
  await expect(get('research-missing', options)).rejects.toMatchObject({ exitCode: 1, stderr: expect.stringContaining('No MCP server named') });
  expect(await readFile(join(cwd, '.mcp.json'), 'utf8')).toBe(before); await expect(readFile(marker)).rejects.toMatchObject({ code: 'ENOENT' });
-}, 20000);
+}, 15000);

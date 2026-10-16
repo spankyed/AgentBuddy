@@ -47,4 +47,4 @@ it.skipIf(!executable || !workspace || !endpoint)('only explicit fresh metadata 
   for (const read of [memory, skills, permissions]) expect(read).toHaveBeenCalledOnce();
   expect(await readFile(settings, 'utf8')).toBe(before);
   await writeFile(join(workspace!, 'metadata-lifecycle-app-evidence.json'), JSON.stringify({ sourceCommands: true, defaultCommandStarts: 0, automaticRefreshStarts: 0, defaultWriterCalls: 0, explicitCatalogStarts: 3, hookEvents: ['SessionStart', 'SessionEnd', 'SessionStart', 'SessionEnd', 'SessionStart', 'SessionEnd'], settingsUnchanged: true, qualification: 'Actual source commands and native memory/Skill/permission readers; saved-session plan/context explicit starts and compiled/mounted publication remain separate.' }, null, 2));
-}, 35000);
+}, 15000);

@@ -42,7 +42,7 @@ describe('native memory dialog', () => {
   const data = await getMemoryDialog({ cwd, cliPath: process.env.CLAUDE_MEMORY_TEST_BINARY, env: { PATH: process.env.PATH, HOME: home, CLAUDE_CONFIG_DIR: join(home, '.claude'), DISABLE_AUTOUPDATER: '1', CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC: '1' } });
   for (const path of paths) expect(data.files).toContainEqual(expect.objectContaining({ path, exists: true }));
   expect(data.auto_memory.enabled).toBe(true); expect(data.auto_dream.shown).toBe(false);
- }, 20000);
+ }, 15000);
  it('rejects nonboolean preference values before process launch', async () => {
   const options = await fixture(); await expect(setAutoMemory('off' as unknown as boolean, options)).rejects.toThrow();
   await expect(readFile(join(options.cwd, 'capture.json'))).rejects.toMatchObject({ code: 'ENOENT' });
@@ -62,6 +62,6 @@ describe('native memory dialog', () => {
    await expect(setAutoMemory(false, { ...options, env: { ...options.env, CLAUDE_CODE_CHILD_SESSION: '1' } })).rejects.toThrow('inside a Claude Code session');
    expect(await readFile(join(config, 'settings.json'))).toEqual(beforeRefusal);
   } finally { await handle.close(); }
- }, 20000);
+ }, 15000);
 
 });

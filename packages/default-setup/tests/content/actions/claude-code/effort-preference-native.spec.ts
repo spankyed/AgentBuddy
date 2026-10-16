@@ -49,4 +49,4 @@ it.skipIf(!executable || !workspace || !endpoint)('actual native saved effort ch
     const fresh=await getConfigurationSummary({cwd,cliPath:executable,env:environment});expect(fresh.perModelEffort).toBe('xhigh');expect(fresh.appliedEffort).toBe('xhigh');
     await writeFile(join(workspace!,'effort-preference-app-evidence.json'),JSON.stringify({sourceConsumer:true,nativeOwner:true,nativeWriter:true,commandsPresented:true,settingsPreserved:true,closed:true,successfulModelResults:true,retainedReportedEffort:'medium',freshAppliedEffort:'xhigh',maxNotSent:true,qualification:'Actual query/owner/source consumer and native user effort writer; private Sonnet profile only. Compiled/mounted, policy/provider and normalized legacy model-key variants remain open.'},null,2));
   }finally{store.killAllHandles();}
-},35000);
+},15000);

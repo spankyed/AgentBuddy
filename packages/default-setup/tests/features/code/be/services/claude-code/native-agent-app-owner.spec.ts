@@ -85,4 +85,4 @@ it.skipIf(!executable || !workspace || !endpoint)('compiled app preserves native
       completionWithoutHostUuid: true, canonicalHostMappings: true, sameNativeOwner: true, singleNativeProcess: true, hostInputs: 2, appTurns: 3, secondInputBeforeChildCompleted: true, nativeResults: results.length, pendingAtResults,
       exactCostAccounting: true, childOutputSeparated: true, childOutputRetained: true, parentRewindIdentity: true, appTotalCostUsd: state()!.totalCostUsd, nativeCumulativeCosts: results.map(result => result.total_cost_usd), assistantMessages: assistants.map(message => ({ text: message.text })), closed: true }, null, 2));
   } finally { await writeFile(join(workspace!, 'agent-app-events.json'), JSON.stringify(events, null, 2)); store.killAllHandles(); }
-}, 45000);
+}, 15000);

@@ -41,7 +41,7 @@ describe('native permission catalog', () => {
   const data = await getPermissionRules({ cwd, cliPath: process.env.CLAUDE_PERMISSIONS_TEST_BINARY, env: { PATH: process.env.PATH, HOME: home, CLAUDE_CONFIG_DIR: config, DISABLE_AUTOUPDATER: '1', CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC: '1' } });
   expect(data.state.originalCwd).toBe(cwd); expect(data.state.managedOnly).toBe(false);
   for (const [behavior, source, rule] of [['allow', 'userSettings', 'Read(./fixture.txt)'], ['deny', 'projectSettings', 'Bash'], ['ask', 'localSettings', 'Glob']]) expect(data.state.rules).toContainEqual(expect.objectContaining({ behavior, source, rule, editability: 'persistent' }));
- }, 20000);
+ }, 15000);
 });
 
 
@@ -76,5 +76,5 @@ describe('native permission edits and refresh', () => {
   await expect(editPermissionRules({ op: 'remove', rule: 'Bash', behavior: 'deny', source: 'userSettings' }, { ...options, env: { ...options.env, CLAUDE_CODE_CHILD_SESSION: '1' } })).rejects.toThrow(/editor started inside a Claude Code session/); expect(await readFile(path, 'utf8')).toBe(snapshot);
   await editPermissionRules({ op: 'remove', rule: 'Bash', behavior: 'deny', source: 'userSettings' }, options);
   expect(JSON.parse(await readFile(path, 'utf8'))).toMatchObject({ language: 'preserve', permissions: { deny: [] } });
- }, 20000);
+ }, 15000);
 });

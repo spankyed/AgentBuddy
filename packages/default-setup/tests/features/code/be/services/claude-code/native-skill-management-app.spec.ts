@@ -101,4 +101,4 @@ it.skipIf(!executable || !workspace)('routes native Skill management and memory 
  expect(commands.mock.calls.filter(([args]) => args[0] === 'edit-permission-rules')).toHaveLength(3);
  for (const [args] of commands.mock.calls) expect(args[1]).toBe('--json');
  await writeFile(join(workspace!, 'skill-management-app-evidence.json'), JSON.stringify({ compiledFlow: true, productionLaunchService: true, nativeListing: true, nativeEdit: true, authorLockRejected: true, rejectedEditUnchanged: true, redundantOverrideRemoved: true, threadProjectScope: true, retainedProcess: retained, sameOwner: retained ? store.getConversation(id) === undefined && !!owner : undefined, nativeMemoryCatalog: true, hiddenDreamOmitted: true, nativeMemorySettings: true, nativePermissionCatalog: true, nativePermissionEdits: true, rejectedPermissionEditUnchanged: true, permissionCanonicalizationWarning: true, commandReplies: 11, nativeStreamingProcesses: streams.mock.calls.length, nativeWriterProcesses: commands.mock.calls.length, modelPrompts: retained ? 1 : 0 }, null, 2));
-}, 45000);
+}, 15000);
