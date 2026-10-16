@@ -52,6 +52,83 @@ it('tracks outside transitive imports, unresolved targets becoming available and
   expect(hash()).toBe(intermediate);
 });
 
+it('records missing outside resolution directories even before a module becomes available', () => {
+  const { pack, write, hash } = fixture();
+  write('pack/src/index.ts', "import '../../shared/not-there';");
+  const missing = hash();
+  fs.mkdirSync(path.join(pack, '../shared'));
+  expect(hash()).not.toBe(missing);
+  fs.rmdirSync(path.join(pack, '../shared'));
+  expect(hash()).toBe(missing);
+});
+
+it('records a dangling outside resolution link changing targets', () => {
+  const { pack, write, hash } = fixture();
+  write('pack/src/index.ts', "import '../../shared/not-there';");
+  const link = path.join(pack, '../shared');
+  fs.symlinkSync('first-missing', link, 'dir');
+  const first = hash();
+  fs.unlinkSync(link);
+  fs.symlinkSync('second-missing', link, 'dir');
+  expect(hash()).not.toBe(first);
+  fs.unlinkSync(link);
+  fs.symlinkSync('first-missing', link, 'dir');
+  expect(hash()).toBe(first);
+});
+
+it('records membership of an external ambient type directory without loading a module', () => {
+  const { pack, write, hash } = fixture();
+  write('pack/tsconfig.json', JSON.stringify({ compilerOptions: { noLib: true, typeRoots: ['../ambient'] } }));
+  fs.mkdirSync(path.join(pack, '../ambient'));
+  const empty = hash();
+  fs.mkdirSync(path.join(pack, '../ambient/environment'));
+  expect(hash()).not.toBe(empty);
+  fs.rmdirSync(path.join(pack, '../ambient/environment'));
+  expect(hash()).toBe(empty);
+});
+
+it('refuses a resolution link changing during a single discovery', () => {
+  const { pack, write } = fixture();
+  write('first.d.ts', 'export type Value = string;');
+  write('second.d.ts', 'export type Value = string;');
+  const link = path.join(pack, '../contract.d.ts');
+  fs.symlinkSync('first.d.ts', link);
+  let observations = 0;
+  expect(() => readCompilerModuleInputs(pack, file => {
+    if (path.resolve(file) !== link || ++observations !== 2) return;
+    fs.unlinkSync(link);
+    fs.symlinkSync('second.d.ts', link);
+  })).toThrow('Compiler resolution namespace changed during discovery');
+});
+
+it('refuses a lookup parent retargeted during discovery', () => {
+  const { pack, write } = fixture();
+  write('pack/tsconfig.json', JSON.stringify({ compilerOptions: {
+    noLib: true, types: [], baseUrl: '..', paths: { contract: ['shared/contract.d.ts'] },
+  } }));
+  write('first/contract.d.ts', 'export type Value = string;');
+  write('second/contract.d.ts', 'export type Value = string;');
+  const link = path.join(pack, '../shared');
+  fs.symlinkSync('first', link, 'dir');
+  let observations = 0;
+  expect(() => readCompilerModuleInputs(pack, file => {
+    if (path.resolve(file) !== path.join(link, 'contract.d.ts') || ++observations !== 2) return;
+    fs.unlinkSync(link);
+    fs.symlinkSync('second', link, 'dir');
+  })).toThrow('Compiler resolution namespace changed during discovery');
+});
+
+it('refuses authored source membership changing after program roots are selected', () => {
+  const { pack, write } = fixture();
+  fs.unlinkSync(path.join(pack, 'tsconfig.json'));
+  let changed = false;
+  expect(() => readCompilerModuleInputs(pack, file => {
+    if (changed || path.resolve(file) !== path.join(pack, 'src/index.ts')) return;
+    changed = true;
+    write('pack/src/added.ts', 'export const added = true;');
+  })).toThrow('Compiler source membership changed during discovery');
+});
+
 it('tracks undeclared package resolution and its package metadata without executing code', () => {
   const { write, hash } = fixture();
   write('pack/src/index.ts', "export type { Value } from 'undeclared';");

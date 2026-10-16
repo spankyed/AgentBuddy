@@ -1,7 +1,5 @@
-import fs from 'node:fs';
 import path from 'node:path';
 import ts from 'typescript';
-import type { BuildInputObserver } from '@apackdev/host/build/pack-inputs';
 
 export interface PackCompilerConfiguration {
   readonly options: ts.CompilerOptions;
@@ -10,22 +8,18 @@ export interface PackCompilerConfiguration {
 
 
 /** Resolve current configuration inheritance before compiling or hashing; never infer defaults from errors. */
-export function readPackCompilerConfiguration(root: string, observe?: BuildInputObserver): PackCompilerConfiguration | undefined {
+export function readPackCompilerConfiguration(root: string, fileSystem = ts.sys): PackCompilerConfiguration | undefined {
   const config = path.join(root, 'tsconfig.json');
-  observe?.(config, 'file');
-  if (!fs.existsSync(config)) return undefined;
+  if (!fileSystem.fileExists(config)) return undefined;
   const files = new Map<string, string>();
   const diagnostics: ts.Diagnostic[] = [];
   const parsed = ts.getParsedCommandLineOfConfigFile(config, {}, {
-    ...ts.sys,
+    ...fileSystem,
     readFile(file) {
-      observe?.(file, 'file');
-      const text = ts.sys.readFile(file);
+      const text = fileSystem.readFile(file);
       if (text !== undefined) files.set(path.resolve(file), text);
       return text;
     },
-    fileExists(file) { observe?.(file, 'file'); return ts.sys.fileExists(file); },
-    directoryExists(directory) { observe?.(directory, 'directory'); return ts.sys.directoryExists(directory); },
     onUnRecoverableConfigFileDiagnostic: diagnostic => diagnostics.push(diagnostic),
   });
   diagnostics.push(...(parsed?.errors ?? []));

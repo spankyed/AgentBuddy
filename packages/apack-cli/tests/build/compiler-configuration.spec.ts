@@ -61,7 +61,7 @@ it('is independent of checkout location and touches', () => {
   const first = fixture(), second = fixture();
   for (const { write } of [first, second]) {
     write('base.json', { compilerOptions: { target: 'ES2022' } });
-    write('pack/tsconfig.json', { extends: '../base.json' });
+    write('pack/tsconfig.json', { extends: '../base.json', compilerOptions: { outDir: 'dist' } });
   }
   fs.utimesSync(path.join(second.root, 'base.json'), new Date(), new Date(Date.now() + 60_000));
   expect(readCompilerModuleInputs(first.pack).hash).toBe(readCompilerModuleInputs(second.pack).hash);
@@ -70,7 +70,7 @@ it('is independent of checkout location and touches', () => {
 it('reports circular inheritance and invalid options instead of empty defaults', () => {
   const { pack, write } = fixture();
   write('base.json', { extends: './pack/tsconfig.json' });
-  write('pack/tsconfig.json', { extends: '../base.json' });
+  write('pack/tsconfig.json', { extends: '../base.json', compilerOptions: { outDir: 'dist' } });
   expect(() => readPackCompilerConfiguration(pack)).toThrow('Circularity');
   write('pack/tsconfig.json', { compilerOptions: { moduleResolution: 'invalid' } });
   expect(() => readPackCompilerConfiguration(pack)).toThrow('moduleResolution');

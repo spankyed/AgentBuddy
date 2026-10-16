@@ -94,7 +94,15 @@ publication; the already captured compiler fingerprint is reused within its immu
 `bin/apack.mjs` selects `build-worker` only with its private worker handoff and parent IPC channel.
 That entry checks the compiler inputs before importing `build()`, avoiding recursive command dispatch;
 it ships beside `cli.js`. Internal compiler tests call `build()` in-process; process-boundary tests
-exercise the real bootstrap and runner. Compiler capture does not freeze pack sources, external
+exercise the real bootstrap and runner.
+
+`build/compiler-file-view.ts` owns metadata, bytes, physical bindings and directory/glob results for one
+TypeScript scan. Configuration, Vue extraction and the compiler host consume that view. Repeated queries
+reuse captured data; a final check refuses changed bytes, missing targets, link changes or membership.
+Origin mappings and returned arrays cannot mutate its fingerprint. Root membership uses the shared
+pack-input walker. `captureCompilationInputs` retains the scan's validator, rechecking its read-set plus
+package/tool/options inputs without reconstructing the TypeScript program. It is scoped to one build.
+Compiler capture does not freeze pack sources, external
 frontend compiler reads or ambient Node preloads; the complete input/publication contract remains
 owned by the discovery plan.
 

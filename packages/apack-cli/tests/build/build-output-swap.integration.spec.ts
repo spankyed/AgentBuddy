@@ -55,6 +55,27 @@ describe('a build that fails', () => {
     expect(fs.existsSync(buildStagingDir(root))).toBe(false);
   });
 
+  it('retains the previous build when a missing external resolution directory appears during compilation', async () => {
+    const dir = previousBuild(PREVIOUS);
+    const root = path.dirname(dir);
+    const external = fs.mkdtempSync(path.join(os.tmpdir(), 'apack-resolution-namespace-'));
+    const missing = path.join(external, 'missing');
+    try {
+      packFixture({ at: root, nodeModules: path.join(REPO_ROOT, 'node_modules'), manifest: { features: {}, content: {
+        formats: { tags: { compiler: 'src/compiler.ts', entity: 'Relation' } },
+        sources: { tags: { path: 'src/data.ts', format: 'tags' } },
+      } }, files: {
+        'src/consumer.ts': `import ${JSON.stringify(path.join(missing, 'index'))};`,
+        'src/compiler.ts': `import { mkdirSync } from 'node:fs'; mkdirSync(${JSON.stringify(missing)}); export default function compile() { return []; }`,
+        'src/data.ts': 'export default [];',
+      } });
+      await expect(build(['--skip-fe'], root)).rejects.toThrow('Compiler or installed package inputs changed');
+      expect(fs.existsSync(missing)).toBe(true);
+      expect(list(dir)).toEqual([...PREVIOUS].sort());
+      expect(fs.existsSync(buildStagingDir(root))).toBe(false);
+    } finally { fs.rmSync(external, { recursive: true, force: true }); }
+  });
+
   it('refuses stale generated declarations and retains the previous build', async () => {
     const dir = previousBuild(PREVIOUS);
     const root = path.dirname(dir);

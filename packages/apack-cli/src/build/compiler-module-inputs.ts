@@ -7,35 +7,43 @@ import type { BuildInputObserver } from '@apackdev/host/build/pack-inputs';
 import { isPackInputPath, packInputFiles } from '@apackdev/host/build/pack-inputs';
 import { codeBlocks } from './pack-sources.ts';
 import { compilerSourcePath } from './compiler-paths.ts';
+import { createCompilerFileView } from './compiler-file-view.ts';
 import { readCompilerInstallationInputs } from './compiler-installation.ts';
 
 /** Resolve script/type inputs afresh, including Vue scripts, outside imports and undeclared npm packages. */
-export function readCompilerModuleInputs(root: string, observe?: BuildInputObserver): { hash: string; packageDirectories: string[] } {
+export function readCompilerModuleInputs(root: string, observe?: BuildInputObserver): { hash: string; packageDirectories: string[]; assertCurrent(): void } {
   const realRoot = fs.realpathSync(root);
   const compilerPaths = readCompilerInstallationInputs()?.paths ?? [];
   const authoredRoots = [...new Set([path.resolve(root), realRoot])];
-  const configuration = readPackCompilerConfiguration(root, observe);
+  // Generated imports are outputs of this calculation, not inputs to its next invocation.
+  const excluded = (file: string) => authoredRoots.some(directory => {
+    const relative = path.relative(directory, file);
+    return !relative.startsWith(`..${path.sep}`) && !path.isAbsolute(relative)
+      && !isPackInputPath(relative, false) && !relative.split(path.sep).includes('node_modules');
+  });
+  const relative = (file: string) => path.relative(realRoot, compilerSourcePath(file, compilerPaths)).split(path.sep).join('/');
+  const view = createCompilerFileView(root, { paths: compilerPaths, excluded, observe });
+  const fileSystem = view.fileSystem;
+  const configuration = readPackCompilerConfiguration(root, { ...ts.sys, ...fileSystem });
   const options = {
     target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.ESNext,
     moduleResolution: ts.ModuleResolutionKind.Bundler,
     ...configuration?.options, allowJs: true, noEmit: true,
   };
-  const files = new Map(configuration?.files);
   const scripts = new Map<string, string>();
   const rootNames: string[] = [];
-  for (const relative of packInputFiles(root, { modulesOnly: true })) {
+  const rootFiles = packInputFiles(root, { modulesOnly: true });
+  for (const relative of rootFiles) {
     const file = path.join(root, relative);
     if (/\.[cm]?[jt]sx?$/.test(file)) rootNames.push(file);
     if (!file.endsWith('.vue')) continue;
-    observe?.(file, 'file');
-    const component = fs.realpathSync(file);
-    if (component !== file) observe?.(component, 'file');
-    const code = fs.readFileSync(file, 'utf8');
-    files.set(component, code);
+    const code = fileSystem.readFile(file);
+    if (code === undefined) throw new Error(`Compiler source could not be read: ${file}`);
+    const component = fileSystem.realpath(file);
     for (const [index, block] of codeBlocks(file, code).entries()) {
       const extension = block.lang === 'ts' || block.lang === 'tsx' || block.lang === 'jsx' ? block.lang : 'js';
       let virtual = `${component}.__script${index}.${extension}`;
-      while (fs.existsSync(virtual)) virtual += `.${extension}`;
+      while (fileSystem.fileExists(virtual)) virtual += `.${extension}`;
       // A same-directory virtual root lets TypeScript follow imports with the component's resolution
       // context. It is never written to disk and is not a replacement for Vue's component typechecker.
       scripts.set(virtual, block.src ? `import ${JSON.stringify(block.src)};` : block.content);
@@ -51,40 +59,28 @@ export function readCompilerModuleInputs(root: string, observe?: BuildInputObser
     const directory = parts.slice(0, modules + (parts[modules + 1]!.startsWith('@') ? 3 : 2)).join(path.sep);
     if (packageCandidates.has(directory)) return;
     packageCandidates.add(directory);
-    if (fs.statSync(directory, { throwIfNoEntry: false })?.isDirectory()) packages.add(fs.realpathSync(directory));
+    if (fileSystem.directoryExists(directory)) packages.add(fileSystem.realpath(directory));
   };
-  for (const file of files.keys()) packageOf(file);
+  for (const file of configuration?.files.keys() ?? []) packageOf(file);
   const host = ts.createCompilerHost(options);
-  // Generated imports are outputs of this calculation, not inputs to its next invocation.
-  const excluded = (file: string) => authoredRoots.some(directory => {
-    const relative = path.relative(directory, file);
-    return !relative.startsWith(`..${path.sep}`) && !path.isAbsolute(relative)
-      && !isPackInputPath(relative, false) && !relative.split(path.sep).includes('node_modules');
-  });
-  const { readFile, fileExists, getSourceFile, directoryExists, getDirectories } = host;
+  const { getSourceFile } = host;
   host.readFile = file => {
     const script = scripts.get(path.resolve(file));
     if (script !== undefined) return script;
     if (excluded(file)) return undefined;
-    observe?.(file, 'file');
-    const text = readFile(file);
-    if (text !== undefined) { files.set(path.resolve(file), text); packageOf(file); }
+    const text = fileSystem.readFile(file);
+    if (text !== undefined) packageOf(file);
     return text;
   };
   host.fileExists = file => {
     if (scripts.has(path.resolve(file))) return true;
     if (excluded(file)) return false;
-    observe?.(file, 'file');
-    return fileExists(file);
+    return fileSystem.fileExists(file);
   };
-  host.directoryExists = directory => {
-    observe?.(directory, 'directory');
-    return directoryExists?.(directory) ?? false;
-  };
-  host.getDirectories = directory => {
-    observe?.(directory, 'entries');
-    return getDirectories?.(directory) ?? [];
-  };
+  host.directoryExists = fileSystem.directoryExists;
+  host.getDirectories = fileSystem.getDirectories;
+  host.realpath = fileSystem.realpath;
+  host.readDirectory = fileSystem.readDirectory;
   host.getSourceFile = (file, version, onError, fresh) => {
     const script = scripts.get(path.resolve(file));
     if (script !== undefined) return ts.createSourceFile(file, script, version, true);
@@ -93,20 +89,16 @@ export function readCompilerModuleInputs(root: string, observe?: BuildInputObser
   const program = ts.createProgram({ rootNames, options, host });
   for (const source of program.getSourceFiles()) {
     if (scripts.has(path.resolve(source.fileName))) continue;
-    observe?.(source.fileName, 'file');
-    files.set(path.resolve(source.fileName), source.text);
     packageOf(source.fileName);
   }
-  const hash = createHash('sha256');
-  // Logical and physical aliases describe the same input, including /var -> /private/var on macOS.
-  const canonical = new Map<string, string>();
-  for (const [file, text] of files) {
-    const source = compilerSourcePath(fs.realpathSync.native(file), compilerPaths);
-    const name = path.relative(realRoot, source).split(path.sep).join('/');
-    if (canonical.has(name) && canonical.get(name) !== text) throw new Error(`Compiler input differs between captured and live sources: ${source}`);
-    canonical.set(name, text);
-  }
-  for (const [file, text] of [...canonical].sort(([a], [b]) => a < b ? -1 : a > b ? 1 : 0)) hash.update(JSON.stringify([file, text]));
-  const relative = (directory: string) => path.relative(realRoot, compilerSourcePath(directory, compilerPaths)).split(path.sep).join('/');
-  return { hash: hash.digest('hex'), packageDirectories: [...packages].sort((a, b) => relative(a) < relative(b) ? -1 : relative(a) > relative(b) ? 1 : 0) };
+  const hash = createHash('sha256').update(JSON.stringify(rootFiles)).update(view.hash());
+  const assertCurrent = () => {
+    view.assertCurrent();
+    if (JSON.stringify(packInputFiles(root, { modulesOnly: true })) !== JSON.stringify(rootFiles)) {
+      throw new Error('Compiler source membership changed during discovery');
+    }
+  };
+  assertCurrent();
+  return { hash: hash.digest('hex'), packageDirectories: [...packages].sort((a, b) => relative(a) < relative(b) ? -1 : relative(a) > relative(b) ? 1 : 0), assertCurrent };
+
 }
