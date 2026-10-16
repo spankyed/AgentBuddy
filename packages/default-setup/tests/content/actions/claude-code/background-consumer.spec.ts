@@ -6,6 +6,7 @@ import { consumeStream } from '../../../../src/content/actions/claude-code/_help
 import { createStreamWriter } from '../../../../src/content/actions/claude-code/_helpers/stream-writer.ts';
 import { createThinkingWriter } from '../../../../src/content/actions/claude-code/_helpers/thinking-writer.ts';
 import { createToolActivityWriter } from '../../../../src/content/actions/claude-code/_helpers/tool-activity-writer.ts';
+import { createClaudeNestedActivity } from '../../../../src/features/code/be/services/claude-code/nested-activity.ts';
 import { createBackgroundTaskTracker } from '../../../../src/features/code/be/services/claude-code/background-tasks.ts';
 import type { StreamLine } from '../../../../src/features/code/be/services/claude-code/types.ts';
 vi.mock('../../../../src/content/actions/claude-code/_helpers/context-usage.ts', () => ({ refreshThreadContextUsage: vi.fn(async () => {}) }));
@@ -29,7 +30,7 @@ describe('background continuation action consumer', () => {
     mockService<Services, 'cli'>('cli', { claudeCode: { getHandle: vi.fn(() => handle), clearHandle: vi.fn() } as never });
     const messageId = 'replay-assistant' as EntityId;
     const thinking = createThinkingWriter(services, messageId);
-    await consumeStream(handle, { services, threadId: id, text: 'Host prompt', userMessageId: 'app-user' }, {
+    await consumeStream(handle, { services, activity: createClaudeNestedActivity(), threadId: id, text: 'Host prompt', userMessageId: 'app-user' }, {
       messageId, writer: createStreamWriter(services, messageId), thinking,
       toolActivity: createToolActivityWriter(services, messageId, { getThinkingBlock: () => thinking.buildBlock() }),
     });
@@ -43,6 +44,7 @@ describe('background continuation action consumer', () => {
     mockService<Services, 'chat'>('chat', { updateMessageState: update });
     mockService<Services, 'logger'>('logger', { debug: vi.fn(), info: vi.fn(), warn: vi.fn(), error: vi.fn() });
     mockService<Services, 'emitter'>('emitter', { sendToSystem: emit, broadcastToPlugin: vi.fn() });
+    const activity = createClaudeNestedActivity();
     const child = { type: 'assistant', uuid: 'child-uuid', parent_tool_use_id: 'agent-tool', message: { content: [
       { type: 'text', text: 'Private worker response' }, { type: 'tool_use', id: 'nested-read', name: 'Read', input: { file_path: '/fixture/child.txt' } },
       { type: 'tool_use', id: 'nested-write', name: 'Write', input: { file_path: '/fixture/changed.txt' } },
@@ -60,13 +62,13 @@ describe('background continuation action consumer', () => {
       { type: 'assistant', uuid: 'parent-reply-uuid', message: { content: [{ type: 'text', text: 'Parent response only' }] } },
       { type: 'result', subtype: 'success', session_id: 'fixture', result: 'Parent response only' },
     ];
-    const handle = { events: (async function* () { yield* lines; })(), hasPendingBackgroundTasks: () => false, close: vi.fn(async () => {}) };
+    const handle = { events: (async function* () { for (const line of lines) if (!activity.receive(line as StreamLine)) yield line; })(), hasPendingBackgroundTasks: () => false, close: vi.fn(async () => {}) };
     mockService<Services, 'cli'>('cli', { claudeCode: { getHandle: vi.fn(() => handle), clearHandle: vi.fn() } as never });
     const messageId = 'nested-parent' as EntityId;
     const thinking = createThinkingWriter(services, messageId);
     const tools = createToolActivityWriter(services, messageId, { getThinkingBlock: () => thinking.buildBlock() });
     const writer = createStreamWriter(services, messageId);
-    await consumeStream(handle, { services, threadId: id, text: 'Host' }, { messageId, thinking, toolActivity: tools, writer });
+    await consumeStream(handle, { services, activity, threadId: id, text: 'Host' }, { messageId, thinking, toolActivity: tools, writer });
     expect(writer.text).toBe('Parent response only');
     expect(emit).toHaveBeenCalledWith(expect.anything(), expect.objectContaining({ eventType: 'cc.stream.completed', payload: expect.objectContaining({ toolCallCount: 3, mutatedPaths: ['/fixture/changed.txt'] }) }));
     expect(tools.entries.map(entry => entry.tool)).toEqual(['Agent']);
@@ -78,6 +80,52 @@ describe('background continuation action consumer', () => {
     expect(tools.entries[0]?.details?.output).not.toContain('Foreign worker');
     expect(update.mock.calls.filter(([, patch]) => patch.context?.cliUuid).map(([, patch]) => patch.context.cliUuid)).toEqual(['parent-tool-uuid', 'parent-reply-uuid']);
     expect(update.mock.calls.some(([, patch]) => JSON.stringify(patch.blocks ?? []).includes('Worker thinking'))).toBe(false);
+  });
+
+  it('retains late child details on the launching message and accounts changes once in a later result', async () => {
+    const { id } = repository.threadCommands.create({ topic: 'Cross-turn child', instructions: '', tags: [] });
+    const update = vi.fn(), emit = vi.fn();
+    mockService<Services, 'chat'>('chat', { updateMessageState: update });
+    mockService<Services, 'logger'>('logger', { debug: vi.fn(), info: vi.fn(), warn: vi.fn(), error: vi.fn() });
+    mockService<Services, 'emitter'>('emitter', { sendToSystem: emit, broadcastToPlugin: vi.fn() });
+    mockService<Services, 'cli'>('cli', { claudeCode: { isCurrentTurn: vi.fn(() => true), clearHandle: vi.fn() } as never });
+    const activity = createClaudeNestedActivity();
+    const run = async (messageId: EntityId, lines: unknown[], costBaseline: number) => {
+      const thinking = createThinkingWriter(services, messageId);
+      const tools = createToolActivityWriter(services, messageId, { getThinkingBlock: () => thinking.buildBlock() });
+      const writer = createStreamWriter(services, messageId);
+      const handle = { events: (async function* () { yield* lines; })(), hasPendingBackgroundTasks: () => true, close: vi.fn() };
+      await consumeStream(handle, { services, threadId: id, text: 'Host', persistent: true, activity, costBaseline }, { messageId, thinking, toolActivity: tools, writer });
+      expect(handle.close).not.toHaveBeenCalled();
+      return { tools, writer };
+    };
+    const first = await run('launching-message' as EntityId, [
+      { type: 'assistant', message: { content: [{ type: 'tool_use', id: 'agent-root', name: 'Agent', input: {} }] } },
+      { type: 'result', subtype: 'success', total_cost_usd: 1 },
+    ], 0);
+    const child = { type: 'assistant', parent_tool_use_id: 'agent-root', uuid: 'late-child', message: { content: [
+      { type: 'text', text: 'Late worker output' },
+      { type: 'tool_use', id: 'child-edit', name: 'Edit', input: { file_path: '/fixture/changed.ts' } },
+    ] } } as StreamLine;
+    activity.receive(child); activity.receive(child);
+    activity.receive({ type: 'user', parent_tool_use_id: 'agent-root', uuid: 'late-error', message: { content: [{ type: 'tool_result', tool_use_id: 'child-edit', is_error: true, content: 'edit failed' }] } } as StreamLine);
+    expect(first.tools.entries[0]?.details?.output?.match(/Late worker output/g)).toHaveLength(1);
+    expect(first.tools.entries[0]?.details?.output).toContain('edit failed');
+    const second = await run('later-message' as EntityId, [
+      { type: 'assistant', message: { content: [{ type: 'text', text: 'Parent follow-up' }] } },
+      { type: 'result', subtype: 'success', total_cost_usd: 3 },
+    ], 1);
+    expect(second.writer.text).toBe('Parent follow-up');
+    expect(second.tools.entries).toEqual([]);
+    const completed = emit.mock.calls.map(([, event]) => event).filter(event => event.eventType === 'cc.stream.completed');
+    expect(completed.map(event => event.payload)).toEqual([
+      expect.objectContaining({ toolCallCount: 1, costUsd: 1, mutatedPaths: [], hadErrors: false }),
+      expect.objectContaining({ toolCallCount: 1, costUsd: 2, mutatedPaths: ['/fixture/changed.ts'], hadErrors: true }),
+    ]);
+    activity.close();
+    const writes = update.mock.calls.length;
+    activity.receive({ ...child, uuid: 'retired-child' });
+    expect(update).toHaveBeenCalledTimes(writes);
   });
 
   it('persists follow-up assistant output and uses the final cumulative usage', async () => {
@@ -105,7 +153,7 @@ describe('background continuation action consumer', () => {
     mockService<Services, 'cli'>('cli', { claudeCode: { getHandle: vi.fn(() => handle), clearHandle: vi.fn() } as never });
     const messageId = 'initial-message' as EntityId;
     const thinking = createThinkingWriter(services, messageId);
-    await consumeStream(handle, { services, threadId: id, text: 'Fixture' }, {
+    await consumeStream(handle, { services, activity: createClaudeNestedActivity(), threadId: id, text: 'Fixture' }, {
       messageId, writer: createStreamWriter(services, messageId), thinking,
       toolActivity: createToolActivityWriter(services, messageId, { getThinkingBlock: () => thinking.buildBlock() }),
     });
@@ -134,7 +182,7 @@ describe('background continuation action consumer', () => {
     mockService<Services, 'cli'>('cli', { claudeCode: { getHandle: vi.fn(() => current), clearHandle: vi.fn() } as never });
     const messageId = 'superseded-message' as EntityId;
     const thinking = createThinkingWriter(services, messageId);
-    await consumeStream(handle, { services, threadId: id, text: 'Superseded input' }, {
+    await consumeStream(handle, { services, activity: createClaudeNestedActivity(), threadId: id, text: 'Superseded input' }, {
       messageId, thinking, writer: createStreamWriter(services, messageId),
       toolActivity: createToolActivityWriter(services, messageId, { getThinkingBlock: () => thinking.buildBlock() }),
     });

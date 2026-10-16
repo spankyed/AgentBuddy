@@ -134,4 +134,38 @@ describe('persistent Claude conversation owner', () => {
     expect(turn.stopped).toBe(true)
   })
 
+  it('releases pending-background results, accepts another input, and retains child output without phantom turns', async () => {
+    const f = fixture()
+    vi.mocked(f.native.hasPendingBackgroundTasks).mockReturnValue(true)
+    const turns: ClaudeConversationTurn[] = []
+    const childOutput = vi.fn()
+    const consume = async (turn: ClaudeConversationTurn) => {
+      turns.push(turn)
+      for await (const event of turn.handle.events) {
+        if (event.type === 'assistant') turn.activity.register('agent-root', childOutput)
+      }
+      owner.release(turn.handle)
+    }
+    const owner = createClaudeConversation(f.native, consume)
+    const first = owner.start('launch', consume)
+    f.push(started(first))
+    f.push({ type: 'assistant', message: { content: [{ type: 'tool_use', id: 'agent-root', name: 'Agent', input: {} }] } })
+    f.push(result(1, first))
+    await vi.waitFor(() => expect(owner.busy).toBe(false))
+    const second = owner.start('steer while backgrounded', consume)
+    f.push(started(second)); f.push(result(2, second))
+    await vi.waitFor(() => expect(owner.busy).toBe(false))
+    f.push({ type: 'assistant', parent_tool_use_id: 'agent-root', uuid: 'child-uuid', message: { content: [{ type: 'text', text: 'child complete' }] } })
+    await vi.waitFor(() => expect(childOutput).toHaveBeenCalledOnce())
+    expect(owner.busy).toBe(false)
+    expect(turns).toHaveLength(2)
+    f.push({ type: 'assistant', message: { content: [{ type: 'text', text: 'parent follow-up' }] } })
+    f.push(result(3))
+    await vi.waitFor(() => expect(turns).toHaveLength(3))
+    await vi.waitFor(() => expect(owner.busy).toBe(false))
+    expect(turns.map(turn => turn.costBaseline)).toEqual([0, 1, 2])
+    expect(turns.map(turn => turn.inputId)).toEqual([first, second, undefined])
+    await owner.close()
+  })
+
 })

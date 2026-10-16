@@ -802,6 +802,7 @@ interface ClaudeConversationTurn {
     stopped: boolean;
     /** Native process cost already accounted for before this turn. */
     costBaseline: number;
+    activity: ClaudeNestedActivity;
 }
 
 type ClaudeFileRewind = z.infer<typeof ClaudeFileRewindSchema>;
@@ -1140,6 +1141,19 @@ declare const ClaudeMcpStatusSchema: z.ZodObject<{
         }, z.ZodTypeAny, "passthrough">>, "many">>;
     }, z.ZodTypeAny, "passthrough">>, "many">;
 }, z.ZodTypeAny, "passthrough">>;
+
+interface ClaudeNestedAccounting {
+    toolCallCount: number;
+    mutatedPaths: string[];
+    hadErrors: boolean;
+}
+
+interface ClaudeNestedActivity {
+    /** Bind an observed root tool to its existing app activity, for this process lifetime. */
+    register(rootToolId: string, receive: (event: StreamLine) => void): void;
+    /** Drain facts once, at the next native result; output bindings remain registered. */
+    takeAccounting(): ClaudeNestedAccounting;
+}
 
 type ClaudePlan = z.infer<typeof ClaudePlanSchema>;
 

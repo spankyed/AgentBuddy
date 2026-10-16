@@ -1,3 +1,4 @@
+import type { ClaudeNestedActivity } from '#features/code/be/services/claude-code/nested-activity.ts';
 import type { ClaudeConversationTurn } from '#features/code/be/services/claude-code/conversation.ts';
 /**
  * Stream consumer — fire-and-forget async function that owns the `for await`
@@ -68,6 +69,7 @@ export interface ConsumerContext {
   useWorktree?: boolean;
   persistent?: boolean;
   costBaseline?: number;
+  activity?: ClaudeNestedActivity;
 }
 
 export interface ConsumerWriters {
@@ -97,7 +99,7 @@ export async function consumeConversationTurn(turn: ClaudeConversationTurn, ctx:
   services.cli.claudeCode.storeHandle(threadId, turn.handle);
   setRunning(services, threadId, true);
   updateChatState(services, threadId, 'working');
-  await consumeStream(turn.handle, { ...ctx, persistent: true, costBaseline: turn.costBaseline }, writers);
+  await consumeStream(turn.handle, { ...ctx, persistent: true, costBaseline: turn.costBaseline, activity: turn.activity }, writers);
 }
 
 /**
@@ -107,7 +109,7 @@ export async function consumeConversationTurn(turn: ClaudeConversationTurn, ctx:
  */
 export async function consumeStream(
   handle: any,
-  ctx: ConsumerContext,
+  ctx: ConsumerContext & { activity: ClaudeNestedActivity },
   initialWriters: ConsumerWriters,
 ): Promise<void> {
   const { services, threadId, text } = ctx;
@@ -127,9 +129,8 @@ export async function consumeStream(
   let toolActivity = initialWriters.toolActivity;
   let thinking = initialWriters.thinking;
   let currentMessageHasCliUuid = false;
-  const toolOwners = new Map<string, typeof toolActivity>();
-  const nestedToolRoots = new Map<string, string>();
-  const nestedMessageIds = new Set<string>();
+  const activity = ctx.activity;
+  let nestedToolCount = 0;
   let nestedToolErrors = false;
   let priorSegmentToolCount = 0;
   let priorSegmentsHadToolErrors = false;
@@ -144,6 +145,16 @@ export async function consumeStream(
   // Track file-mutation paths across all messages for the diff artifact.
   const mutatedPathsSet = new Set<string>();
   const mutatedPaths: string[] = [];
+
+  function collectNestedAccounting(): void {
+    const nested = activity.takeAccounting();
+    nestedToolCount += nested.toolCallCount;
+    nestedToolErrors ||= nested.hadErrors;
+    for (const path of nested.mutatedPaths) {
+      if (!mutatedPathsSet.has(path)) { mutatedPathsSet.add(path); mutatedPaths.push(path); }
+    }
+  }
+
 
   // Track whether we've captured the CLI's user message UUID for this turn.
   // The first `user` event echoes the prompt with the UUID the CLI assigned.
@@ -185,41 +196,6 @@ export async function consumeStream(
 
       if (eventCount <= 5 || eventCount % 20 === 0) {
         log.debug('stream event', { n: eventCount, type: line?.type, line });
-      }
-
-      // Native subagents share this stream but do not own the parent's transcript or rewind UUID.
-      // Keep completed nested activity with the launching tool; partial/thinking deltas stay out of
-      // the parent writer. Permission requests still use the normal correlated approval path below.
-      if (typeof line.parent_tool_use_id === 'string' && line.parent_tool_use_id
-        && (line.type === 'assistant' || line.type === 'user' || line.type === 'stream_event')) {
-        const rootId = nestedToolRoots.get(line.parent_tool_use_id) ?? line.parent_tool_use_id;
-        const target = toolOwners.get(rootId);
-        if (target && line.type !== 'stream_event' && Array.isArray(line.message?.content)) {
-          if (typeof line.uuid === 'string' && nestedMessageIds.has(line.uuid)) continue;
-          if (nestedMessageIds.size < 4096 && typeof line.uuid === 'string') nestedMessageIds.add(line.uuid);
-          const parts: string[] = [];
-          for (const block of line.message.content) {
-            if (block?.type === 'text' && typeof block.text === 'string') parts.push(block.text);
-            else if (block?.type === 'tool_use' && typeof block.name === 'string') {
-              if (typeof block.id === 'string' && nestedToolRoots.size < 4096) nestedToolRoots.set(block.id, rootId);
-              if (FILE_MUTATION_TOOLS.has(block.name) && block.input) {
-                const path = block.input.file_path || block.input.path;
-                if (typeof path === 'string' && !mutatedPathsSet.has(path)) { mutatedPathsSet.add(path); mutatedPaths.push(path); }
-              }
-              parts.push(`${block.name}: ${block.input && typeof block.input === 'object' ? shortenInput(block.input) : ''}`);
-            } else if (block?.type === 'tool_result') {
-              nestedToolErrors ||= block.is_error === true;
-              parts.push(`${block.is_error ? 'Tool error' : 'Tool result'}: ${extractToolResultText(block.content)}`);
-            }
-          }
-          const content = parts.join('\n').trim();
-          if (content) {
-            const previous = target.entries.find(entry => entry.id === rootId)?.details?.output ?? '';
-            const output = `${previous}${previous ? '\n\n' : ''}${content}`;
-            target.update(rootId, { outputSummary: 'Subagent activity', details: { output: output.length > 65536 ? `${output.slice(0, 65536)}\n[Subagent activity truncated]` : output } });
-          }
-        }
-        continue;
       }
 
       // Split into a new message after approval/question answer — but only
@@ -316,7 +292,29 @@ export async function consumeStream(
               status: 'running',
               details: { input: block.input },
             });
-            toolOwners.set(toolId, toolActivity);
+            {
+              const target = toolActivity;
+              activity.register(toolId, event => {
+                const nested = event as any;
+                if (!Array.isArray(nested.message?.content)) return;
+                const parts: string[] = [];
+                for (const block of nested.message.content) {
+                  if (block?.type === 'text' && typeof block.text === 'string') parts.push(block.text);
+                  else if (block?.type === 'tool_use' && typeof block.name === 'string') {
+                    parts.push(`${block.name}: ${block.input && typeof block.input === 'object' ? shortenInput(block.input) : ''}`);
+                  } else if (block?.type === 'tool_result') {
+                    parts.push(`${block.is_error ? 'Tool error' : 'Tool result'}: ${extractToolResultText(block.content)}`);
+                  }
+                }
+                const content = parts.join('\n').trim();
+                if (!content) return;
+                const previous = target.entries.find(entry => entry.id === toolId)?.details?.output ?? '';
+                const output = `${previous}${previous ? '\n\n' : ''}${content}`;
+                target.update(toolId, { outputSummary: 'Subagent activity', details: { output: output.length > 65536 ? `${output.slice(0, 65536)}\n[Subagent activity truncated]` : output } });
+                // Flush late output now so teardown cannot leave a pending writer timer.
+                target.flush();
+              });
+            }
             if (FILE_MUTATION_TOOLS.has(block.name) && block.input) {
               const p = (block.input as any).file_path || (block.input as any).path;
               if (typeof p === 'string' && !mutatedPathsSet.has(p)) {
@@ -588,7 +586,7 @@ export async function consumeStream(
           errors: (line as any).errors,
         };
         // Native background completion can trigger another assistant turn after this result.
-        if ((line as any).subtype === 'success' && handle.hasPendingBackgroundTasks(line)) {
+        if (!ctx.persistent && (line as any).subtype === 'success' && handle.hasPendingBackgroundTasks(line)) {
           splitOnNextMessageStart = true;
           continue;
         }
@@ -625,6 +623,7 @@ export async function consumeStream(
     // to a permanently un-resumable session.
     const isErrorResult = result.subtype != null && result.subtype !== 'success';
 
+    collectNestedAccounting();
     const hadToolErrors = nestedToolErrors || priorSegmentsHadToolErrors || toolActivity.entries.some(e => e.status === 'error');
 
     if (isErrorResult) {
@@ -709,7 +708,7 @@ export async function consumeStream(
         sessionId: result.sessionId,
         costUsd: result.totalCostUsd,
         durationMs: result.durationMs,
-        toolCallCount: priorSegmentToolCount + toolActivity.entries.length + nestedToolRoots.size,
+        toolCallCount: priorSegmentToolCount + toolActivity.entries.length + nestedToolCount,
         mutatedFileCount: mutatedPaths.length,
         mutatedPaths,
         hadErrors: !!hadToolErrors || !!isErrorResult,
@@ -748,13 +747,15 @@ export async function consumeStream(
       return;
     }
 
+    collectNestedAccounting();
+
     // If pause-turn already ran (isRunning=false), the kill was intentional.
     // Finalize writers cleanly and skip cleanup — pause-turn handled it.
     const state = getClaudeState(services, threadId);
     if (!state?.isRunning) {
       log.debug('stream consumer exiting — turn was paused');
       finaliseThinking();
-      const segmentHadErrors = toolActivity.entries.some(e => e.status === 'error');
+      const segmentHadErrors = nestedToolErrors || toolActivity.entries.some(e => e.status === 'error');
       toolActivity.finalise(segmentHadErrors ? 'error' : 'done');
       if (writer.text) {
         writer.finalize(writer.text);
@@ -779,7 +780,7 @@ export async function consumeStream(
           sessionId: resultFromLine?.sessionId || state?.sessionId || '',
           costUsd: resultFromLine?.totalCostUsd ?? 0,
           durationMs: resultFromLine?.durationMs ?? 0,
-          toolCallCount: priorSegmentToolCount + toolActivity.entries.length + nestedToolRoots.size,
+          toolCallCount: priorSegmentToolCount + toolActivity.entries.length + nestedToolCount,
           mutatedFileCount: mutatedPaths.length,
           mutatedPaths,
           hadErrors: !!segmentHadErrors,

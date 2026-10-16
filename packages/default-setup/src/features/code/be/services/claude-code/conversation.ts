@@ -1,3 +1,4 @@
+import { createClaudeNestedActivity, type ClaudeNestedActivity } from './nested-activity.ts'
 import { ClaudeProtocolError, ClaudeResultError } from './errors.ts'
 import { normaliseResult, type QueryHandle } from './query.ts'
 import type { QueryResult, ResultLine, StreamLine, UserInputMessage } from './types.ts'
@@ -9,6 +10,7 @@ export interface ClaudeConversationTurn {
   stopped: boolean
   /** Native process cost already accounted for before this turn. */
   costBaseline: number
+  activity: ClaudeNestedActivity
 }
 export type ClaudeTurnConsumer = (turn: ClaudeConversationTurn) => Promise<void>
 export interface ClaudeConversation {
@@ -62,6 +64,7 @@ class ConversationQueue<T> implements AsyncIterable<T> {
 /** One reader for the process lifetime; an ordinary result ends only its turn. */
 export function createClaudeConversation(native: QueryHandle, consumeAutonomous: ClaudeTurnConsumer): ClaudeConversation {
   type ActiveTurn = { turn: ClaudeConversationTurn; queue: ConversationQueue<StreamLine>; consumed: Promise<void>; terminal: boolean; resolve(result: QueryResult): void; reject(error: unknown): void }
+  const activity = createClaudeNestedActivity()
   let active: ActiveTurn | undefined
   let pending: { inputId: string; consume: ClaudeTurnConsumer } | undefined
   let closing = false
@@ -79,7 +82,7 @@ export function createClaudeConversation(native: QueryHandle, consumeAutonomous:
     let reject!: (error: unknown) => void
     const result = new Promise<QueryResult>((yes, no) => { resolve = yes; reject = no })
     result.catch(() => {})
-    const turn = { handle: { ...native, events: queue, result }, inputId, stopped, costBaseline: cumulativeCost }
+    const turn = { handle: { ...native, events: queue, result }, inputId, stopped, costBaseline: cumulativeCost, activity }
     const current: ActiveTurn = { turn, queue, resolve, reject, terminal: false, consumed: Promise.resolve() }
     active = current
     current.consumed = Promise.resolve().then(() => consume(turn)).catch(error => {
@@ -119,9 +122,11 @@ export function createClaudeConversation(native: QueryHandle, consumeAutonomous:
           for (const listener of listeners) { try { listener(event) } catch { /* isolate observers */ } }
           continue
         }
-        if (!active && (line.type === 'assistant' || line.type === 'result'
+        const nested = activity.receive(event)
+        if (!nested && !active && (line.type === 'assistant' || line.type === 'result'
           || line.type === 'stream_event' || line.type === 'control_request')) activate(consumeAutonomous)
         for (const listener of listeners) { try { listener(event) } catch { /* an observer cannot stop the conversation */ } }
+        if (nested) continue
         const current = active
         if (!current) continue
         if (line.type !== 'result') { current.queue.push(event); continue }
@@ -134,7 +139,6 @@ export function createClaudeConversation(native: QueryHandle, consumeAutonomous:
         cumulativeCost = Math.max(cumulativeCost, normalized.totalCostUsd)
         if (raw.subtype === 'success') current.resolve(normalized)
         else current.reject(new ClaudeResultError(raw.subtype, raw.errors ?? [], raw.session_id))
-        if (raw.subtype === 'success' && native.hasPendingBackgroundTasks(event)) continue
         current.terminal = true
         current.queue.close()
         await current.consumed
@@ -155,6 +159,7 @@ export function createClaudeConversation(native: QueryHandle, consumeAutonomous:
         await current.consumed.catch(() => {})
         if (active === current) active = undefined
       }
+      activity.close()
       listeners.clear()
     }
     if (failure) throw failure
@@ -185,6 +190,7 @@ export function createClaudeConversation(native: QueryHandle, consumeAutonomous:
         closing = true
         active.reject(error)
         active.queue.close(error)
+        activity.close()
         native.kill()
       } else active.queue.close()
       active = undefined
@@ -196,6 +202,6 @@ export function createClaudeConversation(native: QueryHandle, consumeAutonomous:
       await native.close()
       await done
     },
-    kill() { stopped = true; if (active) active.turn.stopped = true; closing = true; native.kill() },
+    kill() { activity.close(); stopped = true; if (active) active.turn.stopped = true; closing = true; native.kill() },
   }
 }

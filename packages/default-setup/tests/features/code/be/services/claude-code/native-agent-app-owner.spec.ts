@@ -52,19 +52,25 @@ it.skipIf(!executable || !workspace || !endpoint)('compiled app preserves native
     const first = repository.chatCommands.addMessage({ threadId: id, sender: 'user', text: 'NativeSubagentParentFixture: Run the disposable status worker.' });
     await app.runFlow('Claude Code', { event: 'user.message', data: { threadId: id, text: first.text, messageId: first.id, mode: 'Claude Code', phase: 'Edit' } });
     await vi.waitFor(() => expect(results).toHaveLength(1), { timeout: 15000 });
-    expect(pendingAtResults).toEqual([true]); expect(state()?.turns ?? 0).toBe(0);
+    expect(pendingAtResults).toEqual([true]);
     await vi.waitFor(() => expect(state()?.turns).toBe(1), { timeout: 15000 });
     await vi.waitFor(() => expect(store.isConversationBusy(id)).toBe(false));
-    expect(results).toHaveLength(2); expect(results[1]?.user_message_uuid).toBeUndefined();
+    expect(results).toHaveLength(1);
     expect(messages().find(message => message.id === first.id)?.context?.cliUuid).toBe(results[0]?.user_message_uuid);
     const owner = store.getConversation(id)!.owner;
-    const second = repository.chatCommands.addMessage({ threadId: id, sender: 'user', text: 'Synthetic follow-up after native agent completion.' });
+    const second = repository.chatCommands.addMessage({ threadId: id, sender: 'user', text: 'Synthetic second host input while the agent is running.' });
     await app.runFlow('Claude Code', { event: 'user.message', data: { threadId: id, text: second.text, messageId: second.id, mode: 'Claude Code', phase: 'Edit' } });
     await vi.waitFor(() => expect(state()?.turns).toBe(2), { timeout: 15000 });
     await vi.waitFor(() => expect(store.isConversationBusy(id)).toBe(false));
     expect(store.getConversation(id)?.owner).toBe(owner); expect(opened).toHaveBeenCalledOnce(); expect(spawning).toHaveBeenCalledOnce(); expect(sent).toHaveBeenCalledTimes(2);
-    expect(pendingAtResults).toEqual([true, false, false]);
-    expect(messages().find(message => message.id === second.id)?.context?.cliUuid).toBe(results[2]?.user_message_uuid);
+    expect(results).toHaveLength(2);
+    expect(pendingAtResults).toEqual([true, true]);
+    expect(events.some(event => event.type === 'system' && event.subtype === 'task_notification')).toBe(false);
+    await vi.waitFor(() => expect(state()?.turns).toBe(3), { timeout: 15000 });
+    await vi.waitFor(() => expect(store.isConversationBusy(id)).toBe(false));
+    expect(pendingAtResults).toEqual([true, true, false]);
+    expect(results[2]?.user_message_uuid).toBeUndefined();
+    expect(messages().find(message => message.id === second.id)?.context?.cliUuid).toBe(results[1]?.user_message_uuid);
     expect(results.every(result => result.subtype === 'success')).toBe(true);
     expect(Math.abs(state()!.totalCostUsd! - results.at(-1)!.total_cost_usd!)).toBeLessThan(1e-12);
     const assistants = messages().filter(message => message.sender === 'assistant');
@@ -76,7 +82,7 @@ it.skipIf(!executable || !workspace || !endpoint)('compiled app preserves native
     expect(events.some(event => event.type === 'system' && event.subtype === 'task_notification' && event.status === 'completed')).toBe(true);
     expect(await store.closeIdleConversation(id)).toBe(true);
     await writeFile(join(workspace!, 'agent-app-evidence.json'), JSON.stringify({ compiledFlow: true, productionLaunchService: true, privateAgentDefinitionLoaded: true, firstResultPending: true,
-      completionWithoutHostUuid: true, canonicalHostMappings: true, sameNativeOwner: true, singleNativeProcess: true, hostInputs: 2, appTurns: 2, nativeResults: results.length, pendingAtResults,
+      completionWithoutHostUuid: true, canonicalHostMappings: true, sameNativeOwner: true, singleNativeProcess: true, hostInputs: 2, appTurns: 3, secondInputBeforeChildCompleted: true, nativeResults: results.length, pendingAtResults,
       exactCostAccounting: true, childOutputSeparated: true, childOutputRetained: true, parentRewindIdentity: true, appTotalCostUsd: state()!.totalCostUsd, nativeCumulativeCosts: results.map(result => result.total_cost_usd), assistantMessages: assistants.map(message => ({ text: message.text })), closed: true }, null, 2));
   } finally { await writeFile(join(workspace!, 'agent-app-events.json'), JSON.stringify(events, null, 2)); store.killAllHandles(); }
 }, 45000);
