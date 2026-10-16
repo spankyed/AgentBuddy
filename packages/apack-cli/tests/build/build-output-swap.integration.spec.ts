@@ -1,12 +1,14 @@
 import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { packFixture } from '@apackdev/sdk/testing/pack-fixture';
 import { build, buildStagingDir } from '../../src/commands/build';
 import { PACK_LAYOUT, readPackBuild, stagePack, verifyPack } from '@apackdev/host/packs';
 import { REPO_ROOT } from '@apackdev/host/build/packages-built';
 import { generateEntries } from '../../src/commands/generate-entries';
+import { PACK_TYPES_FACADE } from '@apackdev/sdk/build';
+import * as replacement from '@apackdev/host/replace-dir';
 
 /**
  * **`apack pack build` assembles `dist/` elsewhere and renames it into place**, so a reader finds the previous
@@ -20,7 +22,7 @@ import { generateEntries } from '../../src/commands/generate-entries';
  * successful build of a fixture pack to re-establish what one rename already guarantees.
  */
 let dist: string;
-afterEach(() => fs.rmSync(path.dirname(dist), { recursive: true, force: true }));
+afterEach(() => { vi.restoreAllMocks(); fs.rmSync(path.dirname(dist), { recursive: true, force: true }); });
 
 function previousBuild(files: string[]): string {
   dist = path.join(fs.mkdtempSync(path.join(os.tmpdir(), 'apack-clear-output-')), 'dist');
@@ -74,6 +76,34 @@ describe('a build that fails', () => {
       expect(list(dir)).toEqual([...PREVIOUS].sort());
       expect(fs.existsSync(buildStagingDir(root))).toBe(false);
     } finally { fs.rmSync(external, { recursive: true, force: true }); }
+  });
+
+  it('does not reuse facade files from an incumbent with stamps from a refused replacement', async () => {
+    const dir = previousBuild([]);
+    const root = path.dirname(dir);
+    packFixture({ at: root, nodeModules: path.join(REPO_ROOT, 'node_modules'), manifest: {
+      features: { notes: { description: 'Store notes.', entities: { Note: 'src/shape.ts#NoteShape' } } },
+    }, files: { 'src/shape.ts': 'export interface NoteShape { title: string }' } });
+    const facade = () => readPackBuild(dir).snapshot.facades[PACK_TYPES_FACADE];
+    await build(['--skip-fe'], root);
+    expect(facade()).toMatch(/title:\s*string/);
+    const accepted = readPackBuild(dir).revision;
+    const cache = path.join(dir, 'phase-cache.json');
+    const acceptedCache = fs.readFileSync(cache);
+    expect(verifyPack(dir).files['phase-cache.json']).toMatch(/^[a-f0-9]{64}$/);
+    const staged = path.join(root, '.apack', 'installed-layout');
+    stagePack(root, staged);
+    expect(fs.existsSync(path.join(staged, 'phase-cache.json'))).toBe(false);
+    expect(verifyPack(staged).files).not.toHaveProperty('phase-cache.json');
+    fs.writeFileSync(path.join(root, 'src/shape.ts'), 'export interface NoteShape { title: number }');
+    const refuse = vi.spyOn(replacement, 'replaceDir').mockImplementationOnce(() => { throw new Error('Simulated output placement failure'); });
+    await expect(build(['--skip-fe'], root)).rejects.toThrow('Simulated output placement failure');
+    refuse.mockRestore();
+    expect(readPackBuild(dir).revision).toBe(accepted);
+    expect(fs.readFileSync(cache)).toEqual(acceptedCache);
+    expect(facade()).toMatch(/title:\s*string/);
+    await build(['--skip-fe'], root);
+    expect(facade()).toMatch(/title:\s*number/);
   });
 
   it('refuses stale generated declarations and retains the previous build', async () => {
@@ -209,7 +239,7 @@ describe('a pack whose runtime fails to bundle', () => {
 
 
 describe('a completed build', () => {
-  it('publishes verified output and rebuilds damaged reusable files instead of renewing their checksums', async () => {
+  it.each(['facade', 'cache'] as const)('rebuilds damaged %s data instead of renewing its checksums', async damage => {
     const dir = previousBuild([]);
     const root = path.dirname(dir);
     packFixture({ at: root, manifest: { id: 'sealed-build', name: 'Sealed', features: {} }, nodeModules: path.join(REPO_ROOT, 'node_modules') });
@@ -221,8 +251,14 @@ describe('a completed build', () => {
       expect(first.integrity.files[PACK_LAYOUT.runtimeEntry]).toMatch(/^[a-f0-9]{64}$/);
       const reusable = path.join(dir, 'types/pack-types.d.ts');
       const original = fs.readFileSync(reusable, 'utf8');
-      fs.appendFileSync(reusable, '\nexport type Damaged = never;');
-      expect(() => verifyPack(dir)).toThrow('checksum mismatch types/pack-types.d.ts');
+      const damaged = damage === 'facade' ? reusable : path.join(dir, 'phase-cache.json');
+      if (damage === 'facade') fs.appendFileSync(damaged, '\nexport type Damaged = never;');
+      else {
+        const cache = JSON.parse(fs.readFileSync(damaged, 'utf8'));
+        cache.types.unverified = 'must not be carried into a new build';
+        fs.writeFileSync(damaged, JSON.stringify(cache));
+      }
+      expect(() => verifyPack(dir)).toThrow(`checksum mismatch ${path.relative(dir, damaged).split(path.sep).join('/')}`);
       await build(['--skip-fe']);
       expect(fs.readFileSync(reusable, 'utf8')).toBe(original);
       expect(readPackBuild(dir).revision).toBe(first.revision);

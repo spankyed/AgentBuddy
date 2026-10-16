@@ -31,7 +31,7 @@ describe('staged DSL definitions', () => {
       expect(original).toContain('before: true');
       expect(fs.readFileSync(path.join(dir, PACK_LAYOUT.feEntry), 'utf8')).toContain('before: true');
       const reads = fs.readFileSync(path.join(root, '.apack/reads.json'), 'utf8');
-      const cache = fs.readFileSync(path.join(root, '.apack/build-cache.json'), 'utf8');
+      const cache = fs.readFileSync(path.join(dir, 'phase-cache.json'), 'utf8');
       fs.writeFileSync(path.join(root, 'src/rows.ts'), 'export interface Row { after: true }');
       const lifecycle = path.join(root, 'src/lifecycle.ts');
       fs.writeFileSync(lifecycle, 'import "./missing-runtime.ts"; export function apply() {}');
@@ -39,7 +39,7 @@ describe('staged DSL definitions', () => {
       expect(readPackBuild(dir).revision).toBe(first.revision);
       expect(fs.readFileSync(definitions, 'utf8')).toBe(original);
       expect(fs.readFileSync(path.join(root, '.apack/reads.json'), 'utf8')).toBe(reads);
-      expect(fs.readFileSync(path.join(root, '.apack/build-cache.json'), 'utf8')).toBe(cache);
+      expect(fs.readFileSync(path.join(dir, 'phase-cache.json'), 'utf8')).toBe(cache);
       expect(fs.existsSync(buildStagingDir(root))).toBe(false);
       fs.writeFileSync(lifecycle, 'export function apply() {}');
       await build([]);

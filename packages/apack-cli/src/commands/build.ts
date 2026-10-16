@@ -30,7 +30,7 @@ import { bundlePackTypes } from '../build/types-bundler';
 import { facadeProblems } from '../build/facade-gate';
 import { compareFacadeReport, facadeReportFile, facadeReportText } from '../build/facade-report';
 import { bundlePackFlowHelpers } from '../build/flow-helpers-bundler';
-import { PACK_LAYOUT, sealPackBuild, verifyPack } from '@apackdev/host/packs';
+import { PACK_LAYOUT, sealPackBuild } from '@apackdev/host/packs';
 import { replaceDir } from '@apackdev/host/replace-dir';
 import { holdPackBuildLock } from '../build/build-lock.ts';
 import { dependencyTypes, resolveDependencyFiles } from './generate';
@@ -112,9 +112,7 @@ async function buildIntoStaging(args: string[], root: string) {
   // absent from the record rather than guessed at
   const reads = buildReads(root);
   // What the last build left reusable, and what this one leaves for the next
-  let stamps = readStamps(root);
-  try { verifyPack(path.join(root, 'dist')); }
-  catch { stamps = {}; } // A damaged output must be rebuilt, never carried forward and sealed again.
+  const stamps = readStamps(root);
   const nextStamps: Record<string, PhaseStamp> = {};
 
   // `outputDir` is where every phase below writes; `distDir` is what it becomes, once they have all succeeded
@@ -277,12 +275,10 @@ async function buildIntoStaging(args: string[], root: string) {
     }
     fs.mkdirSync(path.dirname(snapshotPath), { recursive: true });
     fs.writeFileSync(snapshotPath, JSON.stringify(snapshot, null, 2));
+    writeStamps(outputDir, nextStamps);
     sealPackBuild(outputDir, manifest, snapshot.sdkVersion);
-    // With the snapshot rather than per phase: both say what this build produced, and a build that failed
-    // produced neither. A phase's reads are kept in memory until here so a half-finished build leaves the
-    // last complete record in place rather than a partial one
+    // Optional diagnostics describe this validated candidate; only the sealed cache authorizes reuse.
     reads?.write();
-    writeStamps(root, nextStamps);
     // Every phase has succeeded and the snapshot advertises them, so this is the moment the staged tree
     // becomes the pack's output — one rename, rather than the ~20s of absent `dist` that clearing it first cost
     replaceDir(outputDir, distDir);

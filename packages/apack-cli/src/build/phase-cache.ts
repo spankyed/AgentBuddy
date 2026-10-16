@@ -14,9 +14,10 @@ import { packInputsHash } from '@apackdev/host/build/pack-inputs';
 import type { CompilationInputs } from './compilation-inputs.ts';
 import { dependencyInputsHash } from './dependency-inputs.ts';
 import type { ResolvedDepFiles } from '../commands/fetch-deps.ts';
+import { verifyPack } from '@apackdev/host/packs';
 
-/** Where the stamps live: beside `reads.json`, in the directory every pack already ignores */
-const CACHE_FILE = path.join('.apack', 'build-cache.json');
+/** Private source-build metadata, sealed and replaced with its output; staging omits root cache files. */
+const CACHE_FILE = 'phase-cache.json';
 
 export interface PhaseStamp {
   /** What the phase read, and the options that change what it writes */
@@ -32,8 +33,12 @@ export type PhaseStamps = Readonly<Record<string, PhaseStamp>>;
 
 export function readStamps(root: string): PhaseStamps {
   try {
-    const parsed: unknown = JSON.parse(fs.readFileSync(path.join(root, CACHE_FILE), 'utf-8'));
-    if (parsed === null || typeof parsed !== 'object') return {};
+    const dir = path.join(root, 'dist');
+    const receipt = verifyPack(dir);
+    const bytes = fs.readFileSync(path.join(dir, CACHE_FILE));
+    if (createHash('sha256').update(bytes).digest('hex') !== receipt.files[CACHE_FILE]) return {};
+    const parsed: unknown = JSON.parse(bytes.toString('utf8'));
+    if (parsed === null || typeof parsed !== 'object' || Array.isArray(parsed)) return {};
     return parsed as PhaseStamps;
   } catch {
     // Absent or unreadable is simply no record, which reads as every phase stale
@@ -41,15 +46,10 @@ export function readStamps(root: string): PhaseStamps {
   }
 }
 
-/**
- * Records the stamps. **Called with the snapshot and never per phase**, for the reason `reads.write()` is:
- * a build that failed produced no output to reuse, so it must leave the last complete record in place
- * rather than a record of the half it managed.
- */
-export function writeStamps(root: string, stamps: PhaseStamps): void {
-  const file = path.join(root, CACHE_FILE);
-  fs.mkdirSync(path.dirname(file), { recursive: true });
-  fs.writeFileSync(file, `${JSON.stringify(stamps, null, 2)}\n`);
+/** Write only to staging; its seal and directory replacement own publication. */
+export function writeStamps(outputDir: string, stamps: PhaseStamps): void {
+  fs.mkdirSync(outputDir, { recursive: true });
+  fs.writeFileSync(path.join(outputDir, CACHE_FILE), `${JSON.stringify(stamps, null, 2)}\n`);
 }
 
 /**

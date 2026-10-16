@@ -102,8 +102,8 @@ export interface BuildReads {
    */
   carry(phase: BuildPhase): boolean;
   /**
-   * Write the record. Called where the build commits its output, so a failed build records nothing — and
-   * it never fails the build itself, however it fails.
+   * Write candidate diagnostics after validation. A placement failure can leave them ahead of dist;
+   * they never authorize output reuse or fail the build themselves.
    */
   write(): void;
 }

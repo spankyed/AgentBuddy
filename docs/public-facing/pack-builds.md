@@ -9,7 +9,7 @@ keeps an entity untyped. See the [manifest reference](manifest.md).
 |---|---|
 | Source checkout | `apack.json` and declared source modules; generated code under `src/__generated__/`. Source edits require rebuilding before installation. Source advertisements are metadata, not accepted runtime bindings. |
 | Completed build | `dist/apack.json`, `dist/types/snapshot.json` and `dist/integrity.json`, alongside built runtime and dependent-facing files. Publication replaces `dist/` after all checks succeed. |
-| Release archive / installed pack | The staged pack layout below, without the `dist/` prefix. Staging verifies producer bytes, omits source maps and build-only standalone editor definitions, and verifies the copied result. Installation requires no source checkout or `node_modules` inside the pack. |
+| Release archive / installed pack | The staged pack layout below, without the `dist/` prefix. Staging verifies producer bytes, omits source maps, private phase-cache metadata and build-only standalone editor definitions, and verifies the copied result. Installation requires no source checkout or `node_modules` inside the pack. |
 | App-shipped pack | The same staged layout. The app installs it into the profile's packs directory before discovery. Installation ownership and deliberate replacement are distinct from native composition. |
 | Native host composition | Host-supplied declaration data and separately checked executable registrations. There is no installed directory, file-integrity receipt or invented build revision. Native dependency declarations use version ranges, rather than authored file/GitHub source locators. |
 
@@ -19,7 +19,7 @@ Optional files exist only when the build produces that contribution.
 | Path | Purpose |
 |---|---|
 | `apack.json` | The declaration used by this accepted build. It must agree with the snapshot's manifest. |
-| `integrity.json` | Exact layout-format stamp, pack/version information, optional provenance and SHA-256 inventory of every shipped file except the receipt itself. |
+| `integrity.json` | Exact layout-format stamp, pack/version information, optional provenance and SHA-256 inventory of every file in that layout except the receipt itself. |
 | `runtime/index.cjs` | Backend registrations and executable bindings, including lifecycle hooks. Loading it activates code; reading declarations does not. |
 | `runtime/fe.js`, `runtime/fe.css` | Bundled frontend bindings and styles. |
 | `runtime/content/` | Compiled content and its index. Source declaration regrouping does not change unchanged content identities. |
@@ -31,8 +31,9 @@ Optional files exist only when the build produces that contribution.
 
 The source build also produces `dist/defs/monaco/<name>-defs.d.ts` for declared Monaco DSL targets.
 Generated frontend code imports these as raw text, embedding them in the frontend bundle. Staging
-does not ship the standalone `defs/` directory. `.apack/reads.json` and phase stamps are development
-build records, not installed declarations. Facade declarations and DSL editor definitions serve
+does not ship the standalone `defs/` directory. `dist/phase-cache.json` is private reuse metadata,
+sealed and published with its source build but omitted from archives and installations.
+`.apack/reads.json` is a diagnostic build record, not an installed declaration. Facade declarations and DSL editor definitions serve
 different consumers even though both contain TypeScript declarations. Snapshot `facades` and the
 dependency cache's `facades/` hold dependent-facing declarations, keyed by lowercase names containing
 letters, digits and hyphens (such as `pack-types`); `defs/monaco/` remains the DSL build
@@ -41,7 +42,7 @@ output. `PACK_TYPES_FACADE` names the `pack-types` entry without changing its ph
 Three identities serve different boundaries:
 
 - **Declaration revision:** identifies the declared contract shared by snapshot and generated bindings.
-- **Build revision:** identifies the verified installed file inventory; copying or replacing bytes must preserve or change this identity accordingly.
+- **Build revision:** identifies the verified file inventory of that layout; copying or replacing bytes must preserve or change this identity accordingly.
 - **Runtime revision:** host-issued identity for a particular accepted runtime. Reloading identical files can create a new runtime revision.
 
 Metadata availability does not imply execution readiness. Disabled or failed packs can retain readable
