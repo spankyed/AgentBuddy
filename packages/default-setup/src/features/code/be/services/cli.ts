@@ -1,4 +1,4 @@
-import { getMemoryDialog } from './claude-code/memory.ts'
+import { getMemoryDialog, setAutoMemory } from './claude-code/memory.ts'
 import type { ClaudeMemoryDialog } from './claude-code/host-controls.ts'
 import { editSkillOverride, type ClaudeSkillEdit, getSkillsDialog } from './claude-code/skills.ts'
 import type { ClaudeSkillsDialog } from './claude-code/host-controls.ts'
@@ -102,6 +102,8 @@ export interface CliServiceType {
     editSkill(edit: ClaudeSkillEdit, opts?: { cwd?: string }): Promise<{ changed: boolean }>
     /** Read native instruction/memory files and availability in the selected project. */
     getMemoryDialog(opts?: { cwd?: string }): Promise<ClaudeMemoryDialog>
+    /** Persist the user auto-memory preference through the native writer. */
+    setAutoMemory(enabled: boolean, opts?: { cwd?: string }): Promise<void>
     /** Rename a Claude Code session through the native process. */
     renameSession(id: string, title: string, opts?: { cwd?: string }): Promise<void>
     /** Check whether a session JSONL file exists under the given (or default) project directory. */
@@ -275,6 +277,9 @@ function createCliService(): CliServiceType {
       },
       async listSkills(opts) {
         return (await getSkillsDialog({ cwd: opts?.cwd ?? resolveCwd() })).skills
+      },
+      setAutoMemory(enabled, opts) {
+        return setAutoMemory(enabled, { cwd: opts?.cwd ?? resolveCwd() })
       },
       getMemoryDialog(opts) {
         return getMemoryDialog({ cwd: opts?.cwd ?? resolveCwd() })

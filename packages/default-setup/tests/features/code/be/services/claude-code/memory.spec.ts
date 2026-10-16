@@ -1,8 +1,9 @@
+import { query } from '#features/code/be/services/claude-code/query.ts';
 import { afterEach, describe, expect, it } from 'vitest';
 import { mkdtemp, mkdir, writeFile, readFile, rm, realpath } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { getMemoryDialog } from '#features/code/be/services/claude-code/memory.ts';
+import { getMemoryDialog, setAutoMemory } from '#features/code/be/services/claude-code/memory.ts';
 const directories: string[] = [];
 afterEach(async () => { await Promise.all(directories.splice(0).map(path => rm(path, { recursive: true, force: true }))); });
 const dialog = { files: [], folders: [], auto_memory: { enabled: false, toggleable: false, status: 'off' }, auto_dream: { shown: false, enabled: false, toggleable: false, status: 'off', detail: '' } };
@@ -42,4 +43,22 @@ describe('native memory dialog', () => {
   for (const path of paths) expect(data.files).toContainEqual(expect.objectContaining({ path, exists: true }));
   expect(data.auto_memory.enabled).toBe(true); expect(data.auto_dream.shown).toBe(false);
  }, 20000);
+ it('rejects nonboolean preference values before process launch', async () => {
+  const options = await fixture(); await expect(setAutoMemory('off' as unknown as boolean, options)).rejects.toThrow();
+  await expect(readFile(join(options.cwd, 'capture.json'))).rejects.toMatchObject({ code: 'ENOENT' });
+ });
+ it.skipIf(!process.env.CLAUDE_MEMORY_TEST_BINARY)('persists user preference through native code and reads the retained state', async () => {
+  const cwd = await realpath(await mkdtemp(join(tmpdir(), 'claude-memory-write-'))); directories.push(cwd);
+  const home = join(cwd, 'home'), config = join(home, '.claude'); await mkdir(config, { recursive: true });
+  await writeFile(join(config, 'settings.json'), JSON.stringify({ language: 'research-preserve' }));
+  const options = { cwd, cliPath: process.env.CLAUDE_MEMORY_TEST_BINARY, env: { PATH: process.env.PATH, HOME: home, CLAUDE_CONFIG_DIR: config, DISABLE_AUTOUPDATER: '1', CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC: '1' } };
+  const handle = await query({ ...options, keepStdinOpen: true, noSessionPersistence: true });
+  try {
+   expect((await handle.getMemoryDialog()).auto_memory.enabled).toBe(true);
+   await setAutoMemory(false, options); expect((await handle.getMemoryDialog()).auto_memory.enabled).toBe(false);
+   await setAutoMemory(true, options); expect((await handle.getMemoryDialog()).auto_memory.enabled).toBe(true);
+   expect(JSON.parse(await readFile(join(config, 'settings.json'), 'utf8'))).toMatchObject({ language: 'research-preserve', autoMemoryEnabled: true });
+  } finally { await handle.close(); }
+ }, 20000);
+
 });

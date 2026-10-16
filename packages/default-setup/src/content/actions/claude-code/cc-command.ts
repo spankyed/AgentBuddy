@@ -211,20 +211,43 @@ async function handleMemory(
   if (args[0] === 'add' || args[0] === 'remove') {
     return { text: `Memory add/remove is only available in the Claude Code terminal. Use /memory ${args[0]} there.` };
   }
+  const editing = args.length > 0;
+  if (editing && (args.length !== 2 || args[0] !== 'auto' || !['on', 'off'].includes(args[1]!))) {
+    return { text: 'Usage: cc-memory auto <on|off> (user setting)' };
+  }
+  if (editing && threadId && services.cli.claudeCode.isConversationBusy(threadId)) {
+    return { text: 'Wait for the Claude conversation to become idle before changing auto-memory.' };
+  }
   const prior = threadId ? getClaudeState(services, threadId) : undefined;
   const cwd = prior?.cwdOverride || prior?.cwd;
   let handle = threadId ? services.cli.claudeCode.getHandle(threadId) : undefined;
   if (handle && threadId) {
     const nativeCwd = services.cli.claudeCode.getConversation(threadId)?.owner.sessionCwd;
-    if (nativeCwd !== (cwd || services.cli.claudeCode.getWorkingDir())) handle = undefined;
+    if (nativeCwd !== (cwd || services.cli.claudeCode.getWorkingDir())) {
+      if (editing) return { text: 'The native conversation directory does not match this project. Start a conversation in this project before changing auto-memory.' };
+      handle = undefined;
+    }
   }
-  const data = handle ? await handle.getMemoryDialog() : await services.cli.claudeCode.getMemoryDialog(cwd ? { cwd } : undefined);
+  const options = cwd ? { cwd } : undefined;
+  const read = () => handle ? handle.getMemoryDialog() : services.cli.claudeCode.getMemoryDialog(options);
+  let data = await read();
+  let notice = '';
+  if (editing) {
+    if (!data.auto_memory.toggleable) return { text: `Auto-memory cannot be changed in this native session: ${data.auto_memory.status}` };
+    const enabled = args[1] === 'on';
+    await services.cli.claudeCode.setAutoMemory(enabled, options);
+    notice = `Saved user auto-memory setting: ${enabled ? 'on' : 'off'}.\n`;
+    try { data = await read(); } catch (error: any) {
+      return { text: `${notice}Saved the setting, but reading native status failed: ${error?.message || 'Unknown error'}` };
+    }
+    if (data.auto_memory.enabled !== enabled) notice += `Native session status remains ${data.auto_memory.status}.\n`;
+  }
   const lines = data.files.map(file => `${file.label} [${file.kind}]${file.exists ? '' : ' (missing)'}  ${file.path}`);
   for (const folder of data.folders) lines.push(`${folder.label}  ${folder.path}`);
   for (const memory of data.memories ?? []) lines.push(`${memory.name}${memory.type ? ` [${memory.type}]` : ''}  ${memory.path}`);
   lines.push(`Auto-memory: ${data.auto_memory.status}${data.auto_memory.toggleable ? '' : ' (unavailable)'}`);
   if (data.auto_dream.shown) lines.push(`Auto-dream: ${data.auto_dream.status}${data.auto_dream.detail ? ` — ${data.auto_dream.detail}` : ''}${data.auto_dream.toggleable ? '' : ' (unavailable)'}`);
-  return { text: lines.join('\n'), data };
+  return { text: notice + lines.join('\n'), data };
 }
 
 async function handleSkills(

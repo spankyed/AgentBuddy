@@ -62,9 +62,19 @@ it.skipIf(!executable || !workspace)('routes native Skill management and memory 
  expect(memoryReply).toContain('[other]');
  expect(memoryReply).toContain('Auto-memory: on');
  expect(memoryReply).not.toContain('Auto-dream');
+ expect(await send('auto off', 'cc-memory')).toContain('Saved user auto-memory setting: off.');
+ expect(texts().at(-1)).toContain('Auto-memory: off');
+ expect(JSON.parse(await readFile(join(workspace!, '.claude', 'settings.json'), 'utf8')).autoMemoryEnabled).toBe(false);
+ expect(await send('auto on', 'cc-memory')).toContain('Saved user auto-memory setting: on.');
+ expect(texts().at(-1)).toContain('Auto-memory: on');
+ const userSettings = JSON.parse(await readFile(join(workspace!, '.claude', 'settings.json'), 'utf8'));
+ expect(userSettings.autoMemoryEnabled).toBe(true);
+ if (retained) expect(userSettings.apiKeyHelper).toBe('/usr/bin/printf research-fixture-key');
  if (retained) { expect(store.getConversation(id)?.owner).toBe(owner); expect(await store.closeIdleConversation(id)).toBe(true); }
- expect(streams).toHaveBeenCalledTimes(retained ? 1 : 7); expect(commands).toHaveBeenCalledTimes(3);
+ expect(streams).toHaveBeenCalledTimes(retained ? 1 : 11); expect(commands).toHaveBeenCalledTimes(5);
  if (!retained) for (const [args] of streams.mock.calls) expect(args).toContain('--no-session-persistence');
- for (const [args] of commands.mock.calls) expect(args).toEqual(['edit-skill-overrides', '--json']);
- await writeFile(join(workspace!, 'skill-management-app-evidence.json'), JSON.stringify({ compiledFlow: true, productionLaunchService: true, nativeListing: true, nativeEdit: true, authorLockRejected: true, rejectedEditUnchanged: true, redundantOverrideRemoved: true, threadProjectScope: true, retainedProcess: retained, sameOwner: retained ? store.getConversation(id) === undefined && !!owner : undefined, nativeMemoryCatalog: true, hiddenDreamOmitted: true, commandReplies: 5, nativeStreamingProcesses: streams.mock.calls.length, nativeWriterProcesses: commands.mock.calls.length, modelPrompts: retained ? 1 : 0 }, null, 2));
+ expect(commands.mock.calls.filter(([args]) => args[0] === 'edit-skill-overrides')).toHaveLength(3);
+ expect(commands.mock.calls.filter(([args]) => args[0] === 'edit-memory-settings')).toHaveLength(2);
+ for (const [args] of commands.mock.calls) expect(args[1]).toBe('--json');
+ await writeFile(join(workspace!, 'skill-management-app-evidence.json'), JSON.stringify({ compiledFlow: true, productionLaunchService: true, nativeListing: true, nativeEdit: true, authorLockRejected: true, rejectedEditUnchanged: true, redundantOverrideRemoved: true, threadProjectScope: true, retainedProcess: retained, sameOwner: retained ? store.getConversation(id) === undefined && !!owner : undefined, nativeMemoryCatalog: true, hiddenDreamOmitted: true, nativeMemorySettings: true, commandReplies: 7, nativeStreamingProcesses: streams.mock.calls.length, nativeWriterProcesses: commands.mock.calls.length, modelPrompts: retained ? 1 : 0 }, null, 2));
 }, 45000);

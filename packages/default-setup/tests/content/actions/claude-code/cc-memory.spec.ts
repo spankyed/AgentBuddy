@@ -38,4 +38,33 @@ describe('cc-memory native presentation', () => {
   expect(read).not.toHaveBeenCalled(); expect(fresh).toHaveBeenCalledWith(undefined);
  });
 
+ it('writes the user preference and reports a differing effective native state', async () => {
+  const available = { ...dialog, auto_memory: { enabled: true, toggleable: true, status: 'on' } };
+  const setAutoMemory = vi.fn().mockResolvedValue(undefined);
+  const read = vi.fn().mockResolvedValueOnce(available).mockResolvedValue({ ...available, auto_memory: { enabled: true, toggleable: false, status: 'on by policy' } });
+  mockService<Services, 'cli'>('cli', { claudeCode: { getMemoryDialog: read, setAutoMemory } as never });
+  const result = await action({ command: 'cc-memory', text: 'auto off' }, services, {} as never, 'memory-flow');
+  expect(setAutoMemory).toHaveBeenCalledWith(false, undefined);
+  expect(result.text).toContain('Saved user auto-memory setting: off.'); expect(result.text).toContain('Native session status remains on by policy.');
+ });
+ it('respects native toggle refusal before persistence', async () => {
+  const write = vi.fn();
+  mockService<Services, 'cli'>('cli', { claudeCode: { getMemoryDialog: vi.fn().mockResolvedValue(dialog), setAutoMemory: write } as never });
+  const result = await action({ command: 'cc-memory', text: 'auto on' }, services, {} as never, 'memory-flow');
+  expect(result.text).toContain('cannot be changed'); expect(write).not.toHaveBeenCalled();
+ });
+ it('refuses busy edits before reading or writing', async () => {
+  const write = vi.fn(), read = vi.fn();
+  mockService<Services, 'cli'>('cli', { claudeCode: { isConversationBusy: vi.fn(() => true), getMemoryDialog: read, setAutoMemory: write } as never });
+  mockService<Services, 'chat'>('chat', { sendBlockMessage: vi.fn() });
+  const result = await action({ command: 'cc-memory', text: 'auto off', threadId: 'fixture-thread' }, services, {} as never, 'memory-flow');
+  expect(result.text).toContain('become idle'); expect(read).not.toHaveBeenCalled(); expect(write).not.toHaveBeenCalled();
+ });
+ it('distinguishes successful persistence from a failed native readback', async () => {
+  const read = vi.fn().mockResolvedValueOnce({ ...dialog, auto_memory: { enabled: true, toggleable: true, status: 'on' } }).mockRejectedValue(new Error('process closed'));
+  mockService<Services, 'cli'>('cli', { claudeCode: { getMemoryDialog: read, setAutoMemory: vi.fn().mockResolvedValue(undefined) } as never });
+  const result = await action({ command: 'cc-memory', text: 'auto off' }, services, {} as never, 'memory-flow');
+  expect(result.text).toContain('Saved user auto-memory setting: off.'); expect(result.text).toContain('reading native status failed: process closed');
+ });
+
 });
