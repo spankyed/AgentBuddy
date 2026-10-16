@@ -1,5 +1,6 @@
 import path from 'node:path';
 import ts from 'typescript';
+import type { TsconfigRaw } from 'esbuild';
 
 export interface PackCompilerConfiguration {
   readonly options: ts.CompilerOptions;
@@ -28,4 +29,44 @@ export function readPackCompilerConfiguration(root: string, fileSystem = ts.sys)
   if (errors.length || !parsed) throw new Error(`tsconfig.json could not be read: ${errors.map(diagnostic =>
     ts.flattenDiagnosticMessageText(diagnostic.messageText, ' ')).join('; ') || 'TypeScript returned no configuration'}`);
   return { options: parsed.options, files };
+}
+
+/** esbuild's supported options from the same resolved configuration the input view consumed. */
+export function esbuildTsconfig({ options }: PackCompilerConfiguration, resolveInputPath: (file: string) => string = file => file): TsconfigRaw {
+  const jsx: Record<number, NonNullable<TsconfigRaw['compilerOptions']>['jsx']> = {
+    [ts.JsxEmit.Preserve]: 'preserve', [ts.JsxEmit.React]: 'react', [ts.JsxEmit.ReactNative]: 'react-native',
+    [ts.JsxEmit.ReactJSX]: 'react-jsx', [ts.JsxEmit.ReactJSXDev]: 'react-jsxdev',
+  };
+  const imports = {
+    [ts.ImportsNotUsedAsValues.Remove]: 'remove', [ts.ImportsNotUsedAsValues.Preserve]: 'preserve',
+    [ts.ImportsNotUsedAsValues.Error]: 'error',
+  } as const;
+  // Keep every option in esbuild's declared contract accounted for when upgrading the compiler.
+  const compilerOptions = {
+    alwaysStrict: options.alwaysStrict,
+    strict: options.strict,
+    experimentalDecorators: options.experimentalDecorators,
+    jsx: options.jsx === undefined ? undefined : jsx[options.jsx],
+    jsxFactory: options.jsxFactory,
+    jsxFragmentFactory: options.jsxFragmentFactory,
+    jsxImportSource: options.jsxImportSource,
+    target: options.target === undefined ? undefined : options.target === ts.ScriptTarget.ESNext ? 'esnext' : ts.ScriptTarget[options.target]?.toLowerCase(),
+    useDefineForClassFields: options.useDefineForClassFields,
+    verbatimModuleSyntax: options.verbatimModuleSyntax,
+    importsNotUsedAsValues: options.importsNotUsedAsValues === undefined ? undefined : imports[options.importsNotUsedAsValues],
+    preserveValueImports: options.preserveValueImports,
+    baseUrl: options.baseUrl === undefined ? undefined : resolveInputPath(options.baseUrl),
+    paths: esbuildPaths(options, resolveInputPath),
+  } satisfies Record<keyof NonNullable<TsconfigRaw['compilerOptions']>, unknown>;
+  return { compilerOptions };
+}
+
+function esbuildPaths(options: ts.CompilerOptions, resolveInputPath: (file: string) => string): Record<string, string[]> | undefined {
+  if (!options.paths) return;
+  // TypeScript records the declaring directory here when paths has no baseUrl. Adding baseUrl would
+  // also change unrelated bare imports, so resolve targets without inventing one.
+  const base = options.baseUrl ?? options.pathsBasePath;
+  if (typeof base !== 'string') throw new Error('Missing declaring directory for tsconfig paths');
+  return Object.fromEntries(Object.entries(options.paths)
+    .map(([name, targets]) => [name, targets.map(target => resolveInputPath(path.resolve(base, target)))]));
 }

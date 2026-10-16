@@ -10,7 +10,7 @@ import { readDependencyBuild, PACK_LAYOUT } from '@apackdev/host/packs';
 import { assertGeneratedCurrent, generateEntries } from '../../src/commands/generate-entries';
 import { PACK_SNAPSHOT_FORMAT, PACK_TYPES_FACADE, type PackManifest, type PackSnapshot } from '@apackdev/sdk/build';
 
-const compilation = { hash: 'test-compiler', assertCurrent() {} };
+const compilation = { hash: 'test-compiler', configuration: undefined, assertCurrent() {} };
 
 
 let tmpDir: string;

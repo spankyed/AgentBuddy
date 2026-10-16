@@ -2,7 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { createHash } from 'node:crypto';
 import ts from 'typescript';
-import { readPackCompilerConfiguration } from './compiler-configuration.ts';
+import { readPackCompilerConfiguration, type PackCompilerConfiguration } from './compiler-configuration.ts';
 import type { BuildInputObserver } from '@apackdev/host/build/pack-inputs';
 import { isPackInputPath, packInputFiles } from '@apackdev/host/build/pack-inputs';
 import { codeBlocks } from './pack-sources.ts';
@@ -11,7 +11,12 @@ import { createCompilerFileView } from './compiler-file-view.ts';
 import { readCompilerInstallationInputs } from './compiler-installation.ts';
 
 /** Resolve script/type inputs afresh, including Vue scripts, outside imports and undeclared npm packages. */
-export function readCompilerModuleInputs(root: string, observe?: BuildInputObserver): { hash: string; packageDirectories: string[]; assertCurrent(): void } {
+export function readCompilerModuleInputs(root: string, observe?: BuildInputObserver): {
+  hash: string;
+  packageDirectories: string[];
+  configuration: PackCompilerConfiguration | undefined;
+  assertCurrent(): void;
+} {
   const realRoot = fs.realpathSync(root);
   const compilerPaths = readCompilerInstallationInputs()?.paths ?? [];
   const sourceRoot = compilerSourcePath(realRoot, compilerPaths);
@@ -100,6 +105,7 @@ export function readCompilerModuleInputs(root: string, observe?: BuildInputObser
     }
   };
   assertCurrent();
-  return { hash: hash.digest('hex'), packageDirectories: [...packages].sort((a, b) => relative(a) < relative(b) ? -1 : relative(a) > relative(b) ? 1 : 0), assertCurrent };
+  return { hash: hash.digest('hex'), configuration,
+    packageDirectories: [...packages].sort((a, b) => relative(a) < relative(b) ? -1 : relative(a) > relative(b) ? 1 : 0), assertCurrent };
 
 }

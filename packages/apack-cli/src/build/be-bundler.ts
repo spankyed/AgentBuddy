@@ -5,8 +5,12 @@ import { CONTENT_COMPILERS_FILE, STEPS_BUILD_MODULE } from '@apackdev/sdk/build'
 import { checkContentRuntimeLoads } from './content-runtime-check';
 import type { RecordReads } from './build-reads';
 import { errorMessage } from '@apackdev/sdk/utils/pure';
+import { esbuildTsconfig, readPackCompilerConfiguration } from './compiler-configuration.ts';
+import type { CompilationInputs } from './compilation-inputs.ts';
 
 export interface BundleRuntimeOptions {
+  /** A build reuses its captured config; standalone bundler calls resolve their own. */
+  compilation?: CompilationInputs;
   /** Minify for release bundles; dev builds keep readable output with source maps. */
   release?: boolean;
   /**
@@ -39,7 +43,7 @@ async function bundlePackSource<T extends EsbuildOptions>(
   overrides: T,
 ): Promise<import('esbuild').BuildResult<T>> {
   const esbuild = await import('esbuild');
-  const tsconfigPath = path.join(packDir, 'tsconfig.json');
+  const configuration = options.compilation ? options.compilation.configuration : readPackCompilerConfiguration(packDir);
   const plugins: import('esbuild').Plugin[] = [rejectHostImportsPlugin(), stubFrontendAssetsPlugin()];
 
   const merged: EsbuildOptions = {
@@ -48,7 +52,7 @@ async function bundlePackSource<T extends EsbuildOptions>(
     platform: 'node',
     target: 'node20',
     external: [...HOST_EXTERNALS, ...HOST_RESOLVED_BINARIES],
-    tsconfig: fs.existsSync(tsconfigPath) ? tsconfigPath : undefined,
+    tsconfigRaw: configuration && esbuildTsconfig(configuration),
     plugins,
     minify: options.release ?? false,
     logLevel: 'silent',

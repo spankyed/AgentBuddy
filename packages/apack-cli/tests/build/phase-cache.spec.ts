@@ -8,7 +8,7 @@ import { dslInputsHash, filesUnder, reuseProblem, takeForward, typesInputsHash }
 import { readDependencyBuild, PACK_LAYOUT } from '@apackdev/host/packs';
 import { _declarationRevision } from '@apackdev/sdk/build';
 
-const compilation = { hash: 'test-compiler', assertCurrent() {} };
+const compilation = { hash: 'test-compiler', configuration: undefined, assertCurrent() {} };
 
 
 const dirs: string[] = [];

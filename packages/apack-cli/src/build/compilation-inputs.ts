@@ -5,6 +5,7 @@ import { readPackageInputs } from '@apackdev/host/build/package-inputs';
 import { SOURCE_CONDITION } from '@apackdev/host/build/source-resolution';
 import { readCompilerModuleInputs } from './compiler-module-inputs.ts';
 import { readCompilerInstallationInputs } from './compiler-installation.ts';
+import type { PackCompilerConfiguration } from './compiler-configuration.ts';
 
 /** Instrumentation flags do not change compilation. The reserved source mode is in buildToolHash. */
 export function compilationConditions(args = process.execArgv, nodeOptions = process.env.NODE_OPTIONS ?? ''): string[] {
@@ -23,6 +24,7 @@ export function compilationConditions(args = process.execArgv, nodeOptions = pro
 
 export interface CompilationInputs {
   readonly hash: string;
+  readonly configuration: PackCompilerConfiguration | undefined;
   assertCurrent(): void;
 }
 
@@ -43,7 +45,7 @@ export function captureCompilationInputs(packRoot: string): CompilationInputs {
       .digest('hex');
   };
   const hash = current();
-  return { hash, assertCurrent() {
+  return { hash, configuration: modules.configuration, assertCurrent() {
     try {
       modules.assertCurrent();
       if (current() !== hash) throw new Error('Implementation, package or execution options differ');

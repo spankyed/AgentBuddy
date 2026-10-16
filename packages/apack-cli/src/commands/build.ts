@@ -184,7 +184,7 @@ async function buildIntoStaging(args: string[], root: string) {
   );
   const contentCompilersBundled = Object.keys(contentCompilers).length > 0;
   if (contentCompilersBundled) {
-    const bundled = await bundlePackContentCompilers(root, outputDir, contentCompilers, { release, recordReads: reads?.forPhase('contentCompilers') });
+    const bundled = await bundlePackContentCompilers(root, outputDir, contentCompilers, { release, compilation, recordReads: reads?.forPhase('contentCompilers') });
     if (!bundled.success) throw new Error(`Content compiler bundle failed: ${bundled.error}`);
   }
 
@@ -307,7 +307,7 @@ async function buildIntoStaging(args: string[], root: string) {
 
   // ── Step build facets (for dependents' flow validation) ─────────────
   if (Object.keys(manifest.extensions?.steps ?? {}).length > 0) {
-    const stepBuild = await bundlePackStepBuild(root, outputDir, { release, recordReads: reads?.forPhase('stepBuild') });
+    const stepBuild = await bundlePackStepBuild(root, outputDir, { release, compilation, recordReads: reads?.forPhase('stepBuild') });
     if (stepBuild.success) {
       console.log(`  step build: dist/${PACK_LAYOUT.stepsBuild}`);
     } else {
@@ -316,7 +316,7 @@ async function buildIntoStaging(args: string[], root: string) {
   }
 
   // ── Content runtime (for dependents' unit tests) ─────────────────────────
-  const contentRuntime = await bundlePackContentRuntime(root, outputDir, { release, recordReads: reads?.forPhase('contentRuntime') });
+  const contentRuntime = await bundlePackContentRuntime(root, outputDir, { release, compilation, recordReads: reads?.forPhase('contentRuntime') });
   if (contentRuntime.success) {
     console.log(`  content runtime: dist/${PACK_LAYOUT.buildDir}/${CONTENT_RUNTIME_FILE}`);
   } else {
@@ -348,7 +348,7 @@ async function buildIntoStaging(args: string[], root: string) {
   }
 
   // ── Backend runtime ──────────────────────────────────────────────────
-  const runtimeResult = await bundlePackRuntime(root, outputDir, { release, recordReads: reads?.forPhase('runtime') });
+  const runtimeResult = await bundlePackRuntime(root, outputDir, { release, compilation, recordReads: reads?.forPhase('runtime') });
   if (runtimeResult.success) {
     console.log(`  runtime: dist/${PACK_LAYOUT.runtimeEntry}`);
   } else {
