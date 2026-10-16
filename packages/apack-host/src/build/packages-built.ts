@@ -131,6 +131,8 @@ function compiled(pkg: string, ...extraInputs: string[]): BuildUnit {
       pkgFile('apack-host', 'src', 'build', 'published-manifest.ts'),
       pkgFile('apack-host', 'src', 'build', 'specifiers.ts'),
       pkgFile('apack-host', 'src', 'build', 'source-resolution.ts'),
+      pkgFile('apack-host', 'src', 'build', 'node-options.js'),
+      pkgFile('apack-host', 'src', 'build', 'node-options.d.ts'),
       // Reached through this module: it is where the list of inlined packages comes from
       pkgFile('apack-host', 'src', 'build', 'shared-deps.ts'),
       // How the built tree is published: assembled under `.temp/` and renamed over `dist`, so it decides where

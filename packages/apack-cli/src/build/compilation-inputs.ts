@@ -2,7 +2,7 @@ import { createHash } from 'node:crypto';
 import { errorMessage } from '@apackdev/sdk/utils/pure';
 import { buildToolHash, cliPackageDirectory } from './tool-identity.ts';
 import { readPackageInputs } from '@apackdev/host/build/package-inputs';
-import { SOURCE_CONDITION } from '@apackdev/host/build/source-resolution';
+import { parseNodeOptions, SOURCE_CONDITION } from '@apackdev/host/build/source-resolution';
 import { readCompilerModuleInputs } from './compiler-module-inputs.ts';
 import { readCompilerInstallationInputs } from './compiler-installation.ts';
 import type { PackCompilerConfiguration } from './compiler-configuration.ts';
@@ -17,10 +17,9 @@ import { compilerDiagnostic, compilerSourcePath } from './compiler-paths.ts';
 import { createNativeInputReader } from './compiler-native-inputs.ts';
 import { createCompilerReadTree, type CompilerReadTree } from './compiler-read-tree.ts';
 
-/** Instrumentation flags do not change compilation. The reserved source mode is in buildToolHash. */
+/** Export selectors passed to the worker; executable preloads need their own captured input closure. */
 export function compilationConditions(args = process.execArgv, nodeOptions = process.env.NODE_OPTIONS ?? ''): string[] {
-  const tokens = nodeOptions.match(/(?:[^\s"'\\]|\\.|"(?:[^"\\]|\\.)*"|'[^']*')+/g) ?? [];
-  const options = [...args, ...tokens.map(token => token.replace(/["']/g, '').replace(/\\(.)/g, '$1'))];
+  const options = [...parseNodeOptions(nodeOptions), ...args];
   const conditions = new Set<string>();
   for (let i = 0; i < options.length; i++) {
     const option = options[i]!;

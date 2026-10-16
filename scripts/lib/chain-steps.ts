@@ -519,7 +519,7 @@ const EVERY_SOURCE = [...ROOT, ...Object.values(CONFIG_BY_HALF), ...EVERY_WORKSP
   // the directory would re-run a typecheck every time someone poked at the app
   'drive/playwright.config.ts',
   'build/prod/verify-node-modules.mjs',
-  'packages/apack-cli/bin/apack.mjs', 'packages/apack-cli/bin/source-hooks.mjs',
+  'packages/apack-cli/bin',
   'packages/apack-ears/bench/ears.bench.ts', 'packages/api/tsup.config.ts',
   'packages/dev-mode.js', 'packages/entry-point.mjs'];
 
@@ -619,8 +619,10 @@ const APP_RUNNER = ['scripts/build-runtime.ts', 'scripts/lib/runtime-build-legs.
  * destination pool's step went stale, the suite's stamp was keyed by directory rather than by pool, and it
  * ran in neither.
  */
+const SOURCE_RUNNER = ['scripts/with-source.mjs', 'packages/apack-host/src/build/node-options.js',
+  'packages/apack-host/src/build/node-options.d.ts'];
 const SUITE_RUNNER = ['scripts/test-unit-pool.ts', 'scripts/lib/unit-pool.ts', 'scripts/lib/unit-suites.ts',
-  'scripts/lib/exit-on-epipe.ts', 'scripts/with-source.mjs', 'scripts/lib/spec-durations.ts',
+  'scripts/lib/exit-on-epipe.ts', ...SOURCE_RUNNER, 'scripts/lib/spec-durations.ts',
   'scripts/lib/spec-durations-reporter.ts',
   'scripts/lib/spec-halves.ts', ...BOUNDED_RUNNER];
 /**
@@ -1041,6 +1043,7 @@ export const CHAIN_STEPS: readonly ChainStep[] = [
       'scripts/packages-check.ts', 'scripts/lib/packages-check-plan.ts', 'scripts/lib/exit-on-epipe.ts',
       'packages/apack-host/src/build/published-manifest.ts',
       'packages/apack-host/src/build/source-resolution.ts',
+      'packages/apack-host/src/build/node-options.js', 'packages/apack-host/src/build/node-options.d.ts',
       'packages/apack-host/src/replace-dir.ts'] },
   // Build the built-in pack before build:runtime reads its outputs.
   { name: 'build:default-setup', timeout: 'suite', seconds: 28, outputs: PACK_OUTPUTS,
@@ -1173,7 +1176,7 @@ export const CHAIN_STEPS: readonly ChainStep[] = [
     // so the retry would take it
     keepsOnFailure: ['.apack/tests/results'],
     inputs: [...ROOT, 'tests/e2e/smoke', 'playwright.config.ts',
-      'scripts/with-source.mjs', ...APP_ENTRY, ...PACKAGE_BUILD_READS, ...APP_OUTPUTS, ...PACK_OUTPUTS] },
+      ...SOURCE_RUNNER, ...APP_ENTRY, ...PACKAGE_BUILD_READS, ...APP_OUTPUTS, ...PACK_OUTPUTS] },
   // The rest of the E2E suite. **Opt-in, not a gate** — `npm run chain -- --e2e`.
   //
   // It was built to be driven: to watch the app while writing a feature, and to let an agent see what it
@@ -1189,7 +1192,7 @@ export const CHAIN_STEPS: readonly ChainStep[] = [
     // from one of them — and `packages:check` packs a tarball inside those trees and recreates them, which a
     // reader must not observe. Declaring them is what makes that a mutex instead of a scheduling accident;
     // the step is never cached, so it buys the ordering and costs no precision
-    inputs: [...ROOT, 'tests/e2e', 'playwright.config.ts', 'scripts/with-source.mjs', ...APP_ENTRY,
+    inputs: [...ROOT, 'tests/e2e', 'playwright.config.ts', ...SOURCE_RUNNER, ...APP_ENTRY,
       ...PACKAGE_BUILD_READS, ...APP_OUTPUTS, ...PACK_OUTPUTS] },
   /**
    * Two steps, split at the app boundary: only the last of the check's nine phases launches one.

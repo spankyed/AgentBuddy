@@ -29,6 +29,7 @@ const roots: string[] = [];
 const compilers: CompilerInstallation[] = [];
 afterEach(async () => {
   vi.restoreAllMocks();
+  vi.unstubAllEnvs();
   for (const root of roots) {
     const record = path.join(root, '.apack/compiler-child-pid');
     if (fs.existsSync(record)) {
@@ -83,13 +84,17 @@ it('compiles content through the captured worker without redirecting tool reads 
   const root = fixture({
     'tsconfig.json': JSON.stringify({ compilerOptions: { module: 'esnext', moduleResolution: 'bundler', jsx: 'react', jsxFactory: 'h', skipLibCheck: true }, include: ['src/**/*'] }),
     'src/compiler.tsx': `import fs from 'node:fs'; const h = () => 'JSX';
-      export default ({path}: {path: string}) => [{entity: 'Relation', name: fs.readFileSync(path, 'utf8') + ':' + <marker />, source: import.meta.filename, origin: import.meta.url}];`,
+      export default ({path}: {path: string}) => [{entity: 'Relation', name: [fs.readFileSync(path, 'utf8'), <marker />, Reflect.get(globalThis, 'apackPreloadProbe')].join(':'), source: import.meta.filename, origin: import.meta.url}];`,
     'src/value.txt': 'OWNED',
   }, { formats: { rows: { compiler: 'src/compiler.tsx', entity: 'Relation', identity: ['name'] } },
     sources: { rows: { path: 'src/value.txt', format: 'rows' } } });
+  const preload = path.join(root, '.apack/pre load  file.cjs');
+  fs.mkdirSync(path.dirname(preload), { recursive: true });
+  fs.writeFileSync(preload, 'globalThis.apackPreloadProbe = "PRELOADED";');
+  vi.stubEnv('NODE_OPTIONS', `${process.env.NODE_OPTIONS ?? ''} --require=${JSON.stringify(preload)}`);
   await runPackBuild(root, { args: ['--skip-fe'] });
   const output = JSON.parse(fs.readFileSync(path.join(root, 'dist/runtime/content/rows.content.json'), 'utf8'));
-  expect(output.records[0].name).toBe('OWNED:JSX');
+  expect(output.records[0].name).toBe('OWNED:JSX:PRELOADED');
   expect(output.records[0].source).toBe(path.join(fs.realpathSync(root), 'src/compiler.tsx'));
   expect(output.records[0].origin).toBe(pathToFileURL(path.join(fs.realpathSync(root), 'src/compiler.tsx')).href + '?tsx-namespace=apack-build-1');
 });

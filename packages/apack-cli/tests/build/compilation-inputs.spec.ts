@@ -7,3 +7,9 @@ it('normalizes equivalent launch paths while retaining custom export selectors',
     .toEqual(['custom', 'custom with space']);
   expect(compilationConditions([], '--conditions=@apackdev/source')).toEqual(compilationConditions([], ''));
 });
+
+
+it('preserves literal single quotes and unquoted backslashes in environment selectors', () => {
+  expect(compilationConditions([], String.raw`--conditions='two words' --conditions=back\slash`))
+    .toEqual(["'two", String.raw`back\slash`]);
+});

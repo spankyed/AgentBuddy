@@ -1,5 +1,7 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
+import { formatNodeOptions, parseNodeOptions } from './node-options.js';
+export { formatNodeOptions, parseNodeOptions } from './node-options.js';
 
 /**
  * The packages whose exports name `src/` under the condition, and so resolve two ways in a checkout.
@@ -23,8 +25,6 @@ export const SOURCE_PACKAGES = ['@apackdev/ears', '@apackdev/sdk', '@apackdev/ui
  */
 export const SOURCE_CONDITION = '@apackdev/source';
 
-const SOURCE_CONDITION_FLAG = `--conditions=${SOURCE_CONDITION}`;
-
 /**
  * NODE_OPTIONS without the source condition, for the processes the CLI starts to run pack code: the
  * Playwright runner, the content-runtime check and the app the fixture launches, each of which resolves the
@@ -32,7 +32,15 @@ const SOURCE_CONDITION_FLAG = `--conditions=${SOURCE_CONDITION}`;
  * gets it from `scripts/with-source.mjs`, which runs before any TypeScript loader and keeps its own copy.
  */
 export function withoutSourceCondition(nodeOptions: string | undefined): string {
-  return (nodeOptions ?? '').split(/\s+/).filter((option) => option && option !== SOURCE_CONDITION_FLAG).join(' ');
+  const args = parseNodeOptions(nodeOptions);
+  const kept: string[] = [];
+  for (let index = 0; index < args.length; index++) {
+    const option = args[index]!;
+    if ((option === '--conditions' || option === '-C') && args[index + 1] === SOURCE_CONDITION) { index++; continue; }
+    if (option === `--conditions=${SOURCE_CONDITION}` || option === `-C=${SOURCE_CONDITION}`) continue;
+    kept.push(option);
+  }
+  return formatNodeOptions(kept);
 }
 
 /** Resolves a specifier the way the checked process does, to a file path */
