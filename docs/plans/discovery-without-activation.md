@@ -373,8 +373,16 @@ failed a cloning probe and was replaced before commit. Native custom promisifica
 is retained. Final metadata execution and the actual captured content worker pass; owning evidence
 is in the goal. This does not establish complete native object/reflection or argument-form fidelity.
 
-Descriptor metadata, directory handles (`opendir`), resolution, pre-opened resources, special open
-flags and startup-cached references remain unfinished. Complete metadata identity/provenance
+Source `7906c217f` records numeric/bigint source stat snapshots with captured bytes and projects
+owned `fstat`/FileHandle stat results through them. Actual descriptor identity is checked before
+projection. Closure and reuse release the operation's exact owner; absent ownership is explicit so
+late callbacks cannot adopt/erase a newer owner. Native handles retain their receivers, disposal and
+invalid-descriptor errors. Default callback opens capture inputs too. Real path-replacement, writable
+output, borrowed-receiver and stale-owner cases pass; the goal records focused evidence.
+
+Directory handles (`opendir`), resolution, borrowed/pre-opened resources, special open flags and
+startup-cached references remain unfinished. Within-frame descriptor mapping does not establish
+cross-generation resource transfer or complete frame closure. Complete metadata identity/provenance
 projection with the whole-build receipt; do not treat field recording as a published receipt. This is not a complete Node filesystem adapter or execution receipt. Frontend resources/generation, launch
 ownership, whole-build receipts and passive freshness also remain required. Glob capture currently
 owns a conservative subtree beneath its static prefix rather than duplicating esbuild's exact matcher.

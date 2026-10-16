@@ -120,7 +120,23 @@ naming branch is not an automatic source of future changes.
 
 ### Current handoff — compiler checkpoint (2026-10-16)
 
-Latest source is `9421d496e`. The content read scope captures stat/lstat, realpath (including native
+Latest source is `7906c217f`. Source numeric/bigint stat snapshots now accompany captured data,
+so path and descriptor metadata can refer to the same byte generation. Read-only opens record their
+actual descriptor identity; `fstatSync`, callback `fstat` and native FileHandle `stat` project source
+metadata instead of readonly-copy inode/permissions. Native descriptor validation preserves `EBADF`.
+Close/reuse releases only the owner observed by that operation, including an explicitly absent owner;
+a delayed unowned close cannot erase a newer owner. Native handle objects, borrowed stat receivers
+and async disposal are retained. Default callback `open(path, callback)` also captures bytes.
+
+Evidence: 67 affected unit cases pass; the final three descriptor cases pass after strengthening the
+borrowed-receiver check and fixing the absent-owner race. The metadata/descriptor integration pair
+passes, and the final descriptor case passes in 13.29s. It proves byte/size/inode/permission agreement
+through pathname replacement, closure errors and native writable-output behavior. The real content
+worker passes in 26.02s before the final default-open/release refinements; those have focused coverage.
+Final CLI typecheck/lint pass. Logs: `/private/tmp/apack-descriptor-{unit,final,worker,race-final,
+release-final,types-final,lint-final}.log`. All own processes are terminal; no broad gate repeated.
+
+Earlier source `9421d496e`. The content read scope captures stat/lstat, realpath (including native
 variants), readlink, access and existence queries across their native API families. Metadata comes from
 original inputs rather than readonly materialization, preserving source permissions/inodes. Query
 results/errors are owned copies; negative results and link targets are rechecked before publication.
@@ -145,8 +161,9 @@ captured execution to check live inputs. Source `477b4fef5` owns read-only opens
 native-metadata projections in one tree. Writable opens and staging reads stay native. Evidence:
 `/private/tmp/apack-directory-*.log`, `apack-content-handles*.log`, `apack-content-reads*.log`.
 
-Next finish descriptor metadata (`fstat`/FileHandle stats), directory handles (`opendir`), special flags,
-pre-opened resources, native object/reflection and argument-form acceptance. Current Stats field
+Next finish directory handles (`opendir`), borrowed/pre-opened descriptor ownership, special flags,
+native object/reflection and argument-form acceptance. Resource-frame closure and descriptor transfer
+between generations are not established by the within-frame ownership map. Current Stats field
 instrumentation uses accessors; do not assume every reflective/native consumer is already proved.
 Then complete loader/startup/preload ownership, startup-cached references and pending task lifetimes.
 Retain metadata identity/provenance projection in the whole-build receipt work, frontend resources
