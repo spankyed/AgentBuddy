@@ -244,7 +244,7 @@ it('refuses different captured and live bytes claimed under one source identity'
     captured: fs.realpathSync(path.join(pack, '../captured')),
     source: fs.realpathSync(path.join(pack, '../original')),
   }]);
-  expect(hash).toThrow('Compiler input differs between captured and live sources');
+  expect(hash).toThrow('Conflicting compiler input observation');
 });
 
 it('discovers scoped package owners through workspace links without loading their executable entries', () => {

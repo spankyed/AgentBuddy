@@ -1,6 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { createHash } from 'node:crypto';
+import { createCompilerInputObservations, hashCompilerInputObservations } from './compiler-observations.ts';
 import type ts from 'typescript';
 import type { BuildInputKind, BuildInputObserver } from '@apackdev/host/build/pack-inputs';
 import { compilerSourcePath, type CompilerPathMapping } from './compiler-paths.ts';
@@ -166,6 +167,22 @@ export function createCompilerFileView(root: string, options: {
       if (directory === boundary || path.dirname(directory) === directory) break;
     }
     return values;
+  };
+  const observations = () => {
+    assertOpen();
+    const result = createCompilerInputObservations(origin);
+    for (const [file, bytes] of contents) result.record(['file', relative(file)], bytes === undefined ? null : createHash('sha256').update(bytes).digest('hex'));
+    for (const value of inputs.values()) result.record(['namespace', relative(value.slot)], [relative(value.physical), value.kind, value.kind === 'file' ? value.mode & 0o111 : 0]);
+    for (const [directory, value] of directories) result.record(['entries', relative(directory)], value.entries);
+    for (const value of globs.values()) {
+      const pattern = (pattern: string) => path.isAbsolute(pattern) ? path.relative(value.args[0], pattern).split(path.sep).join('/') : pattern;
+      const patterns = value.args.slice(1).map(arg => Array.isArray(arg) ? arg.map(pattern) : arg);
+      result.record(['glob', relative(physicalWatchPath(value.args[0], physical)), patterns], value.files.map(file => path.relative(value.args[0], file).split(path.sep).join('/')));
+    }
+    for (const query of directoryQueries.values()) result.record(['node-directory', relative(query.file), query.options], JSON.parse(directoryResultKey(query.result, relative)));
+    for (const entry of metadata.values()) for (const [query, value] of entry.query.facts(relative)) result.record(['node-metadata', entry.kind, relative(entry.file), entry.args, ...query], value);
+    for (const query of directoryCursors.values()) for (const [index, value] of query.cursor.facts(relative)) result.record(['node-opendir', relative(query.file), query.options, index], value);
+    return result.snapshot();
   };
   return {
     fileSystem,
@@ -345,57 +362,7 @@ export function createCompilerFileView(root: string, options: {
         if (JSON.stringify(value.read(...value.args).filter(file => !excluded(file)).sort()) !== JSON.stringify(value.files)) changed(value.args[0]);
       }
     },
-    hash() {
-      assertOpen();
-      const hash = createHash('sha256');
-      const files = new Map<string, Buffer | undefined>();
-      for (const [file, value] of contents) {
-        const name = relative(file);
-        if (files.has(name)) {
-          const previous = files.get(name);
-          if (previous === undefined ? value !== undefined : value === undefined || !previous.equals(value)) {
-            throw new Error(`Compiler input differs between captured and live sources: ${name}`);
-          }
-        }
-        files.set(name, value);
-      }
-      for (const [file, value] of [...files].sort(([a], [b]) => a < b ? -1 : a > b ? 1 : 0)) {
-        hash.update(JSON.stringify(['file', file, value === undefined ? null : createHash('sha256').update(value).digest('hex')]));
-      }
-      const namespaces = new Map<string, string>();
-      for (const value of inputs.values()) {
-        const key = relative(value.slot), data = JSON.stringify([relative(value.physical), value.kind, value.kind === 'file' ? value.mode & 0o111 : 0]);
-        if (namespaces.has(key) && namespaces.get(key) !== data) changed(value.file);
-        namespaces.set(key, data);
-      }
-      for (const entry of [...namespaces].sort(([a], [b]) => a < b ? -1 : a > b ? 1 : 0)) hash.update(JSON.stringify(['namespace', ...entry]));
-      const listings = new Map<string, string>();
-      for (const [directory, value] of directories) {
-        const key = relative(directory), data = JSON.stringify(value.entries);
-        if (listings.has(key) && listings.get(key) !== data) changed(value.file);
-        listings.set(key, data);
-      }
-      for (const entry of [...listings].sort(([a], [b]) => a < b ? -1 : a > b ? 1 : 0)) hash.update(JSON.stringify(['entries', ...entry]));
-      const searches = new Map<string, string>();
-      for (const value of globs.values()) {
-        const relativePattern = (pattern: string) => path.isAbsolute(pattern) ? path.relative(value.args[0], pattern).split(path.sep).join('/') : pattern;
-        const patterns = value.args.slice(1).map(arg => Array.isArray(arg) ? arg.map(relativePattern) : arg);
-        const key = JSON.stringify([relative(physicalWatchPath(value.args[0], physical)), patterns]);
-        const data = JSON.stringify(value.files.map(file => path.relative(value.args[0], file).split(path.sep).join('/')));
-        if (searches.has(key) && searches.get(key) !== data) changed(value.args[0]);
-        searches.set(key, data);
-      }
-      for (const entry of [...searches].sort(([a], [b]) => a < b ? -1 : a > b ? 1 : 0)) hash.update(JSON.stringify(['glob', ...entry]));
-      for (const query of [...directoryQueries.values()].sort((a, b) => a.file.localeCompare(b.file) || (JSON.stringify(a.options) ?? '').localeCompare(JSON.stringify(b.options) ?? ''))) {
-        hash.update(JSON.stringify(['node-directory', relative(query.file), query.options, directoryResultKey(query.result, relative)]));
-      }
-      for (const [, entry] of [...metadata].sort(([a], [b]) => a < b ? -1 : a > b ? 1 : 0)) {
-        hash.update(JSON.stringify(['node-metadata', entry.kind, relative(entry.file), entry.args, entry.query.identity()]));
-      }
-      for (const [, query] of [...directoryCursors].sort(([a], [b]) => a < b ? -1 : a > b ? 1 : 0)) {
-        hash.update(JSON.stringify(['node-opendir', relative(query.file), query.options, query.cursor.identity(relative)]));
-      }
-      return hash.digest('hex');
-    },
+    observations,
+    hash() { return hashCompilerInputObservations(observations()); },
   };
 }

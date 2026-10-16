@@ -1,5 +1,7 @@
 import fs from 'node:fs';
+import path from 'node:path';
 import { inspect } from 'node:util';
+import { encodeCompilerObservation } from './compiler-observations.ts';
 
 export type CompilerMetadataKind = 'stat' | 'lstat' | 'realpath' | 'realpathNative' | 'readlink' | 'access' | 'exists';
 type NativeOperation = (...args: never[]) => unknown;
@@ -32,15 +34,22 @@ export function copyCompilerValue<T>(value: T): T {
   return Object.defineProperties(copy, descriptors);
 }
 
-function valueKey(value: unknown): string {
-  return JSON.stringify(value, (_key, value: unknown) => typeof value === 'bigint' ? { bigint: value.toString() } : value) ?? 'undefined';
+export function compilerErrorValue(error: unknown, project: (file: string) => string = file => file): unknown {
+  if (!(error instanceof Error)) return copyCompilerValue(error);
+  const value = Object.fromEntries(Object.getOwnPropertyNames(error)
+    .filter(key => key !== 'stack').map(key => [key, copyCompilerValue(Reflect.get(error, key))]));
+  for (const key of ['path', 'dest']) {
+    const file = value[key];
+    if (typeof file !== 'string' || !path.isAbsolute(file)) continue;
+    value[key] = project(file);
+    if (typeof value.message === 'string') value.message = value.message.split(file).join(String(value[key]));
+  }
+  return value;
 }
 
+const valueKey = encodeCompilerObservation;
 function outcomeKey(outcome: MetadataOutcome): string {
-  if (outcome.ok) return valueKey(outcome.value);
-  const error = outcome.error;
-  return valueKey(error instanceof Error ? Object.fromEntries(Object.getOwnPropertyNames(error)
-    .filter(key => key !== 'stack').map(key => [key, Reflect.get(error, key)])) : error);
+  return valueKey(outcome.ok ? { ok: true, value: outcome.value } : { ok: false, error: compilerErrorValue(outcome.error) });
 }
 
 /** One native query owns its value; stat validation follows the fields actually consumed. */
@@ -53,9 +62,20 @@ export function captureCompilerMetadata(kind: CompilerMetadataKind, file: string
   const outcome: MetadataOutcome = initial ? { ok: true, value: copyCompilerValue(initial.value) } : read();
   const fields = new Set<PropertyKey>();
   const isStats = outcome.ok && (kind === 'stat' || kind === 'lstat') && outcome.value !== undefined;
-  const identity = () => isStats ? valueKey([...fields].sort((a, b) => String(a) < String(b) ? -1 : String(a) > String(b) ? 1 : 0).map(key => [String(key), Reflect.get(outcome.value as object, key)])) : outcomeKey(outcome);
   return {
-    identity,
+    facts(project: (file: string) => string = file => file): Array<readonly [query: readonly string[], value: unknown]> {
+      if (isStats) return [
+        [['outcome'], { ok: true, stats: true }],
+        ...[...fields].sort((a, b) => String(a) < String(b) ? -1 : String(a) > String(b) ? 1 : 0)
+          .map(key => [['field', String(key)], copyCompilerValue(Reflect.get(outcome.value as object, key))] as const),
+      ];
+      let value = outcome.ok ? copyCompilerValue(outcome.value) : compilerErrorValue(outcome.error, project);
+      if (outcome.ok && ['realpath', 'realpathNative', 'readlink'].includes(kind)) {
+        const file = Buffer.isBuffer(value) ? value.toString() : value;
+        if (typeof file === 'string' && path.isAbsolute(file)) value = Buffer.isBuffer(value) ? Buffer.from(project(file)) : project(file);
+      }
+      return [[['outcome'], { ok: outcome.ok, value }]];
+    },
     value() {
       if (!outcome.ok) throw copyCompilerValue(outcome.error);
       const copy = copyCompilerValue(outcome.value);

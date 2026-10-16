@@ -1,12 +1,13 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { copyCompilerValue } from './compiler-metadata.ts';
+import { compilerErrorValue, copyCompilerValue } from './compiler-metadata.ts';
+import { encodeCompilerObservation } from './compiler-observations.ts';
 
 export interface CompilerDirectoryCursor {
   read(index: number): fs.Dirent | null;
   assertCurrent(): boolean;
-  identity(parentPath?: (file: string) => string): string;
+  facts(parentPath?: (file: string) => string): ReadonlyArray<readonly [index: number, value: unknown]>;
   dispose(): void;
 }
 const open = fs.opendirSync;
@@ -22,10 +23,7 @@ function entryKey(entry: fs.Dirent, parentPath: (file: string) => string = file 
   return [entry.name, parentPath(entry.parentPath), entry.isFile(), entry.isDirectory(), entry.isSymbolicLink(),
     entry.isBlockDevice(), entry.isCharacterDevice(), entry.isFIFO(), entry.isSocket()];
 }
-function errorKey(error: unknown): string {
-  return JSON.stringify(error instanceof Error ? Object.fromEntries(Object.getOwnPropertyNames(error)
-    .filter(key => key !== 'stack').sort().map(key => [key, Reflect.get(error, key)])) : error);
-}
+function errorKey(error: unknown): string { return encodeCompilerObservation(compilerErrorValue(error)); }
 
 /** Own only the native prefix actually consumed, including its observed terminal outcome. */
 export function captureNativeDirectory(file: string, options: unknown): CompilerDirectoryCursor {
@@ -64,9 +62,12 @@ export function captureNativeDirectory(file: string, options: unknown): Compiler
       } catch { return false; }
       finally { if (current) Reflect.apply(nativeCloseSync, current, []); }
     },
-    identity(parentPath = file => file) {
-      return JSON.stringify([entries.map(entry => entryKey(entry, parentPath)), terminal === undefined ? 'prefix'
-        : terminal.ok ? 'end' : ['error', errorKey(terminal.error)]]);
+    facts(parentPath = file => file) {
+      const facts: Array<readonly [number, unknown]> = entries.map((entry, index) =>
+        [index, { kind: 'entry', value: entryKey(entry, parentPath).map(value => copyCompilerValue(value)) }]);
+      if (terminal) facts.push([entries.length, terminal.ok ? { kind: 'end' }
+        : { kind: 'error', value: compilerErrorValue(terminal.error, parentPath) }]);
+      return facts;
     },
     dispose() { disposed = true; close(); },
   };
