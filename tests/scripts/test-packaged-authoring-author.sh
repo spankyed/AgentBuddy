@@ -24,8 +24,8 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
 . "$ROOT/tests/scripts/lib/authoring.sh"
 # This run's work dir survives it: the chain caches a step on its declared `outputs` existing, and the app
-# half reads the archive out of here. Earlier runs' dirs are swept by `newWorkDir`, which can see every one
-# of them rather than only the one a surviving handoff happens to name.
+# half reads the archive out of here. newWorkDir sweeps dead owners in this checkout only;
+# the chain serializes this producer with its app consumer.
 rm -rf "$HANDOFF"
 WORK="$(newWorkDir)"
 echo "Work dir: $WORK"
@@ -356,13 +356,7 @@ node -e '
 # What the app half needs, and nothing it can derive for itself. The archive's digest is in here so that
 # half's cache key moves when the build does: a re-authored pack is a different thing to test.
 step "Hand the archive to the app half"
-mkdir -p "$HANDOFF"
-node -e '
-  const fs = require("fs");
-  const [work, archive, pack, out] = process.argv.slice(1);
-  const sha = require("crypto").createHash("sha256").update(fs.readFileSync(archive)).digest("hex");
-  fs.writeFileSync(`${out}/work.json`, JSON.stringify({ work, archive, pack, sha }, null, 2) + "\n");
-' "$WORK" "$ARCHIVE" "$PACK" "$HANDOFF"
+writeAuthoringHandoff
 
 _step_report
 echo

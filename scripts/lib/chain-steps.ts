@@ -1203,7 +1203,7 @@ export const CHAIN_STEPS: readonly ChainStep[] = [
    * reads as never-built. The author half clears the previous run's at its start.
    */
   { name: 'test:packaged-authoring:author', timeout: 'scenario', seconds: 95,
-    outputs: ['tests/authoring-handoff'],
+    outputs: ['tests/authoring-handoff', 'tests/authoring-handoff/work-ready', 'tests/authoring-handoff/archive'],
     inputs: [...ROOT, ...BOUNDED_RUNNER, 'tests/scripts/test-packaged-authoring-author.sh',
       'tests/scripts/lib', ...PACKAGE_BUILD_READS] },
   { name: 'test:packaged-authoring:app', timeout: 'suite', seconds: 9,
