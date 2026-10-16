@@ -3828,3 +3828,17 @@ must not be hardcoded into an SDK analyzer; unsupported analysis remains explici
 Import preview's applier eligibility is execution planning, not a discovery fallback, and remains.
 Continue service/repository/event/native/static-asset inspection and loader ownership; all later phases
 and build-input/freshness acceptance remain active.
+
+
+### Complete declaration inspection (2026-10-16)
+
+`a13c4c6e4` replaces the CLI's selected inventory with the full validated manifest in JSON `declared`.
+The prior projection silently omitted feature-owned services. Human inspection now includes owner
+context for services, repositories, systems and reference identities, plus extension kinds,
+lifecycle/migrations, entities/relations and content. Compiled output/inventory remains separately
+verified; listing declarations imports no executable modules and requires no authored sources.
+
+The owning goal records 13 focused offline/poisoned-runtime cases, CLI types and lint. Migrated
+own-key/editor integration assertions retain their final real-build execution requirement. Complete
+manifest printing is not native metadata parity, static event-contract extraction or all-kind binding
+acceptance; continue that field-by-field audit and loader ownership, preserving all later goal phases.

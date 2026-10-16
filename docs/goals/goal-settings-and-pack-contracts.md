@@ -135,7 +135,8 @@ build-only definitions project literal/computed targets and nested branches into
 index. Offline CLI inspection reports indexed/not-indexed/dynamic targets, and SDK helpers find known
 incoming references for rename/removal review. Compiled records and hashes are unchanged.
 
-Next audit remaining content inventory readers and navigation ordering/visibility. The required static
+Navigation metadata is implemented in `cfcbb53f9`, and complete CLI declaration inspection in
+`a13c4c6e4`. Next finish native/service/repository/event/static-asset coverage and loader ownership. The required static
 flow-to-action edges are published; arbitrary JavaScript body analysis is not required by this plan.
 Pack-defined service calls must not become hardcoded SDK dependency rules. Unsupported analyzers
 remain explicitly unavailable, and compiled inventory is not user data. Navigation menu ordering/visibility, remaining
@@ -6601,3 +6602,27 @@ not the discovery inventory and its eligibility check stays. Unwritten datasets 
 invented database item identities. Next audit service/repository/event/native/static-asset metadata
 and actual CLI inspection gaps before final all-kind acceptance. Loader extraction, B1–B6, entity
 navigation, boundaries, all Phase 6 streams and final committed-source strict `--all` remain required.
+
+
+### Complete CLI declaration inspection (2026-10-16)
+
+Source: `a13c4c6e4`. Inspection exposed a real omission: the selected service-name list read only
+`extensions.services`, dropping feature-owned services. Rather than maintain another hand-selected
+inventory, `info --json` now returns the full validated manifest under `declared`, preserving its keyed
+maps, ownership, targets, metadata and future declared fields. Human output lists feature-owned
+systems/services/repositories/reference identities, extension kinds, lifecycle/migrations, entity owners,
+relations and content keys. Verified build/content status stays separate from authored declarations.
+There are no aliases or parallel old projections. Public docs and all in-tree typed inspection callers
+use the complete keyed declaration.
+
+Thirteen focused inspection checks pass (1.86s), including full JSON equality, unavailable authored
+modules, poisoned executable runtime, feature-owned service/repository listing, stale/invalid output
+and compiled-reference diagnostics. CLI typecheck and lint pass. Logs:
+`/private/tmp/apack-info-declarations-{focused,types,lint}.log`. The own-key/editor real-build fixtures'
+inspection assertions are migrated and typechecked; those unchanged compiler paths were not rebuilt
+again for this reporting change. Their final all-kind execution remains required.
+
+Next: field-by-field native/service/repository/event/static-asset coverage and loader coordination.
+Do not treat full manifest output as proof that a compiled event contract or native binding has its
+required discoverable data. All original phases, build-input/freshness and final strict acceptance
+remain active.
