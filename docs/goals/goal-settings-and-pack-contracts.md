@@ -132,6 +132,12 @@ The preserved authoring gate failure remains open; no passing broad gate is clai
 Next: complete the remaining discovery inventory against current registration fields, native
 declarations, event contracts and static assets; identify and close actual gaps. Do not restart the
 implemented reference identity, destination catalog, shell lifecycle or unrelated compiler work.
+The [registration inventory](../plans/discovery-without-activation.md#remaining-registration-audit-2026-10-16)
+now records each field's authority and remaining gap. Native designation parity is repaired in
+`b268fac86` (646 pack-registry cases, host/SDK types and lint pass). Next is one compiled endpoint-contract
+projection for authored/native discovery, preserving the host shell inbox versus UI-plugin distinction;
+then native migration/content/viewer parity and the remaining asset/reader acceptance. The source
+checkpoint and previous broad-gate limitation are recorded in the evidence, not treated as a final pass.
 
 1. Phase 4 entity destinations/caller migration and Phase 5 containment are implemented and locally
    accepted. Retain their checks for final verification rather than schedule another implementation.

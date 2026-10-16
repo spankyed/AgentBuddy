@@ -6493,3 +6493,23 @@ The prior strict run's missing-source-map authoring failure remains preserved fo
 repeated to diagnose these independent, directly reproduced navigation defects. No passing broad gate
 is claimed for this source. Local Phase 4 implementation/acceptance is closed; final strict validation
 and all remaining goal phases are still required before archival.
+
+## Native designation admission checkpoint (2026-10-16)
+
+The field-by-field registration inventory is committed in `4ffeba67b`. Its first demonstrated omission
+is repaired in source `b268fac86`: native backend designation claims must equal admitted declarations,
+before runtime contributions are published. Changed, missing and undeclared claims each reproduced
+acceptance before the repair. Matching bindings work; unload removes the runtime role and retains the
+declaration. The native fixture helper now projects its declared designation. Replacement fixtures
+explicitly admit the candidate role before binding it; their role-swap, rollback, authority and cleanup
+assertions remain intact.
+
+Focused admission/registration/replacement checks pass 132 cases. The full affected pack-registry suite
+passes 646 cases across 42 files in 8.47s. Host/SDK types and full lint pass. Logs:
+`/private/tmp/apack-native-designation-{before,final,packs,host-types-final,sdk-types,lint}.log`.
+The first affected run exposed replacement fixtures whose roles had never been declared; those fixtures
+were migrated rather than weakening admission or removing replacement assertions.
+
+No public shape, generated schema or API signature changes. No new broad run was used to replay the
+preserved authoring failure; its convergence and the final committed-source strict `--all` remain due.
+Compiled endpoint contracts and the other inventory omissions remain required next work.

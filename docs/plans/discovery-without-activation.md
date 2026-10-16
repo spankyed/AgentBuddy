@@ -114,7 +114,7 @@ not a discovery defect when its caller needs an executing implementation.
 | `id`, `declarationRevision` | Accepted snapshot/native owner; installed runtime revision checks in `declaration-binding.ts` | Implemented. Native composition has no installed revision. |
 | `name`, `dependencies` | Authored manifest; native declaration has dependencies | Native display name is not represented. Audit actual display readers before deciding whether to add native metadata or remove redundant binding data. |
 | `features` membership | Manifest/native keyed features; backend and frontend admission | Both admit against declarations; native backend nested checks remain incomplete below. |
-| `features.*.designation` | Feature declaration; runtime designation lookup is execution | Authored backend and shared frontend compare it. Native backend does not; its test fixture also drops it. Required repair: refuse changed/added/omitted claims atomically and preserve declaration data after unload. |
+| `features.*.designation` | Feature declaration; runtime designation lookup is execution | Native parity repaired in `b268fac86`: changed/added/omitted claims refuse atomically; fixtures retain declarations, including explicit candidate admission before role replacement. Authored backend and shared frontend already compare it. |
 | `features.*.system.machine` | Authored `system.entry`; executable machine remains activation | Native feature declarations omit system presence entirely. Required native metadata and binding checks must preserve the host's actual composition rather than invent a frontend pane. |
 | `features.*.system.receives`, `features.*.plugin.receives` | Generated contract event names; backend validation maps consume running bindings | Generated entries contain event names, but the snapshot has no compiled event inventory. Native declarations have neither. Required: materialize checked endpoint contracts and inspect them without importing modules. Keep native shell inboxes distinct from contributed UI plugins. |
 | `features.*.services`, top-level `services`, `repositories` | Manifest/native named targets; `apiBindingProblem` checks ownership and membership | Implemented names/owners; constructing objects and calling methods remain execution. Phase 6 owns consumed API enforcement. Verify source-free inspection and collision acceptance rather than replace their runtime stores. |
@@ -144,8 +144,9 @@ specific missing asset or reader is demonstrated.
 
 Execute the identified gaps in this order:
 
-1. Repair native designation comparison without expanding its contract. Prove refusal and rollback
-   before proceeding; migrate the native test fixture's declaration projection with it.
+1. Native designation comparison is repaired in `b268fac86` without expanding its contract. Three
+   refusal regressions, positive bind/unload and all 646 pack-registry cases pass; host/SDK types and lint
+   pass. Preserve this coverage; do not reimplement it. The prior authoring gate remains open for B6.
 2. Settle one compiled endpoint-contract projection for authored and native contributions. Reuse the
    generator's existing contract reader; compare bound event memberships at admission. Static inventory
    does not authorize a sender or activate an actor. Preserve the native shell inbox/UI distinction.
