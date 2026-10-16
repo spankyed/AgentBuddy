@@ -84,7 +84,9 @@ export function captureCompilationInputs(packRoot: string, view?: PackCompilerIn
       onFile: capture ? (file, bytes) => modules.captureFile(file.source, bytes) : undefined,
     });
     const hash = createHash('sha256').update(compiler?.hash ?? buildToolHash()).update(inputs.hash).update(modules.hash)
-      .update(JSON.stringify([process.versions.node, process.platform, process.arch, compilationConditions()]))
+      // Preload order and native flags can change behavior while reading identical files.
+      .update(JSON.stringify([Object.entries(process.versions).sort(), process.platform, process.arch,
+        process.execArgv, parseNodeOptions(process.env.NODE_OPTIONS)]))
       .update(JSON.stringify(startup?.initial?.map(hashCompilerInputObservations) ?? []))
       .digest('hex');
     return { hash, packages: inputs };

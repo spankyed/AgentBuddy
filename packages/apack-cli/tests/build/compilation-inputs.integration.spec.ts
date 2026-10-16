@@ -59,6 +59,34 @@ it('captures runtime export conditions as well as package bytes', () => {
   expect(() => captured.assertCurrent()).toThrow('Compiler or installed package inputs changed');
 });
 
+it('invalidates cached compilation when preload order changes with identical file inputs', () => {
+  const { root } = pack();
+  fs.writeFileSync(path.join(root, 'tsconfig.json'), JSON.stringify({ compilerOptions: { noLib: true, types: [] } }));
+  vi.stubEnv('NODE_OPTIONS', '--require first.cjs --require second.cjs');
+  const captured = captureCompilationInputs(root);
+  try {
+    vi.stubEnv('NODE_OPTIONS', '--require second.cjs --require first.cjs');
+    expect(() => captured.assertCurrent()).toThrow('Compiler or installed package inputs changed');
+    const reordered = captureCompilationInputs(root);
+    try { expect(reordered.hash).not.toBe(captured.hash); }
+    finally { reordered.dispose(); }
+  } finally { captured.dispose(); }
+});
+
+it('invalidates compilation when native execution flags change', () => {
+  const { root } = pack();
+  fs.writeFileSync(path.join(root, 'tsconfig.json'), JSON.stringify({ compilerOptions: { noLib: true, types: [] } }));
+  const captured = captureCompilationInputs(root);
+  const original = process.execArgv;
+  try {
+    process.execArgv = [...original, '--preserve-symlinks'];
+    expect(() => captured.assertCurrent()).toThrow('Compiler or installed package inputs changed');
+    const changed = captureCompilationInputs(root);
+    try { expect(changed.hash).not.toBe(captured.hash); }
+    finally { changed.dispose(); }
+  } finally { process.execArgv = original; captured.dispose(); }
+});
+
 it('validates its captured read-set without rebuilding the TypeScript program, including changed bytes and new roots', () => {
   const { root } = pack();
   fs.mkdirSync(path.join(root, 'src'));
