@@ -4,7 +4,7 @@ import { createHash } from 'node:crypto';
 import ts from 'typescript';
 import type { BuildInputKind, BuildInputObserver } from '@apackdev/host/build/pack-inputs';
 import { compilerSourcePath, type CompilerPathMapping } from './compiler-paths.ts';
-import { readNativeDirectory, type CompilerDirectoryMethod } from './compiler-directories.ts';
+import { captureNativeDirectory, type CompilerDirectoryCursor } from './compiler-directories.ts';
 import { captureCompilerMetadata, compilerMetadataOperations, type CompilerMetadataKind } from './compiler-metadata.ts';
 import { physicalWatchPath } from './watch-paths.ts';
 
@@ -67,7 +67,8 @@ export function createCompilerFileView(root: string, options: {
   const globs = new Map<string, { args: Parameters<ts.System['readDirectory']>; files: string[] }>();
   const included = new Set<string>();
   const metadata = new Map<string, { file: string; kind: CompilerMetadataKind; args: readonly unknown[]; query: ReturnType<typeof captureCompilerMetadata> }>();
-  const directoryQueries = new Map<string, { file: string; physical: string; method: CompilerDirectoryMethod; options: unknown; result: CompilerDirectoryResult; key: string }>();
+  const directoryQueries = new Map<string, { file: string; physical: string; options: unknown; result: CompilerDirectoryResult; key: string }>();
+  const directoryCursors = new Map<string, { file: string; options: unknown; cursor: CompilerDirectoryCursor }>();
 
   function state(file: string, paths: Map<string, string>): FileState {
     const target = physicalWatchPath(file, paths);
@@ -203,15 +204,15 @@ export function createCompilerFileView(root: string, options: {
       }
       return entry.query.value();
     },
-    readDirectoryData(file: string, options: unknown, method: CompilerDirectoryMethod = 'readdir') {
+    readDirectoryData(file: string, options: unknown) {
       file = path.resolve(file);
       included.add(file);
       const node = input(file, 'entries');
       const queryOptions = options && typeof options === 'object'
-        ? Object.fromEntries((method === 'opendir' ? ['encoding', 'recursive', 'bufferSize'] : ['encoding', 'withFileTypes', 'recursive'])
+        ? Object.fromEntries(['encoding', 'withFileTypes', 'recursive']
           .filter(key => Object.prototype.propertyIsEnumerable.call(options, key))
           .map(key => [key, (options as Record<string, unknown>)[key]])) : options;
-      const key = JSON.stringify([method, file, queryOptions]);
+      const key = JSON.stringify([file, queryOptions]);
       let query = directoryQueries.get(key);
       if (!query) {
         // A new representation must agree with earlier observations before joining this view.
@@ -226,20 +227,38 @@ export function createCompilerFileView(root: string, options: {
           if (previous.physical !== physical
             && !(recursive(previous.options) && contains(previous.physical, physical))
             && !(recursive(queryOptions) && contains(physical, previous.physical))) continue;
-          const current = previous.method === 'opendir' ? readNativeDirectory(previous.file, previous.options)
-            : Reflect.apply(fs.readdirSync, fs, [previous.file, previous.options]) as CompilerDirectoryResult;
+          const current = Reflect.apply(fs.readdirSync, fs, [previous.file, previous.options]) as CompilerDirectoryResult;
           if (directoryResultKey(current) !== previous.key) changed(previous.file);
         }
         if (node) {
           const previous = directories.get(node.physical);
           if (previous && JSON.stringify(entries(previous.file, node.physical)) !== JSON.stringify(previous.entries)) changed(file);
         }
-        const result = method === 'opendir' ? readNativeDirectory(file, queryOptions)
-          : Reflect.apply(fs.readdirSync, fs, [file, queryOptions]) as CompilerDirectoryResult;
-        query = { file, physical: node?.physical ?? file, method, options: queryOptions, result: copyDirectoryResult(result), key: directoryResultKey(result) };
+        const result = Reflect.apply(fs.readdirSync, fs, [file, queryOptions]) as CompilerDirectoryResult;
+        query = { file, physical: node?.physical ?? file, options: queryOptions, result: copyDirectoryResult(result), key: directoryResultKey(result) };
         directoryQueries.set(key, query);
       }
       return copyDirectoryResult(query.result);
+    },
+    openDirectoryData(file: string, options: unknown) {
+      file = path.resolve(file);
+      included.add(file);
+      input(file, 'entries');
+      const capturedOptions = options && typeof options === 'object' ? { ...options } : options;
+      const key = JSON.stringify([file, capturedOptions]);
+      let query = directoryCursors.get(key);
+      if (!query) {
+        query = { file, options: capturedOptions, cursor: captureNativeDirectory(file, capturedOptions) };
+        directoryCursors.set(key, query);
+      }
+      return query.cursor;
+    },
+    dispose() {
+      const errors: unknown[] = [];
+      for (const { cursor } of directoryCursors.values()) {
+        try { cursor.dispose(); } catch (error) { errors.push(error); }
+      }
+      if (errors.length) throw new AggregateError(errors, 'Could not close compiler directory cursors');
     },
     captureLocation(file: string, kind: BuildInputKind) {
       if (kind === 'entries') listing(file);
@@ -301,10 +320,10 @@ export function createCompilerFileView(root: string, options: {
       for (const [directory, value] of directories) {
         if (JSON.stringify(entries(value.file, directory)) !== JSON.stringify(value.entries)) changed(value.file);
       }
+      for (const query of directoryCursors.values()) if (!query.cursor.assertCurrent()) changed(query.file);
       for (const entry of metadata.values()) if (!entry.query.assertCurrent()) changed(entry.file);
       for (const query of directoryQueries.values()) {
-        const result = query.method === 'opendir' ? readNativeDirectory(query.file, query.options)
-          : Reflect.apply(fs.readdirSync, fs, [query.file, query.options]) as CompilerDirectoryResult;
+        const result = Reflect.apply(fs.readdirSync, fs, [query.file, query.options]) as CompilerDirectoryResult;
         if (directoryResultKey(result) !== query.key) changed(query.file);
       }
       for (const value of globs.values()) {
@@ -351,11 +370,14 @@ export function createCompilerFileView(root: string, options: {
         searches.set(key, data);
       }
       for (const entry of [...searches].sort(([a], [b]) => a < b ? -1 : a > b ? 1 : 0)) hash.update(JSON.stringify(['glob', ...entry]));
-      for (const query of [...directoryQueries.values()].sort((a, b) => a.file.localeCompare(b.file) || a.method.localeCompare(b.method) || (JSON.stringify(a.options) ?? '').localeCompare(JSON.stringify(b.options) ?? ''))) {
-        hash.update(JSON.stringify(['node-directory', query.method, relative(query.file), query.options, directoryResultKey(query.result, relative)]));
+      for (const query of [...directoryQueries.values()].sort((a, b) => a.file.localeCompare(b.file) || (JSON.stringify(a.options) ?? '').localeCompare(JSON.stringify(b.options) ?? ''))) {
+        hash.update(JSON.stringify(['node-directory', relative(query.file), query.options, directoryResultKey(query.result, relative)]));
       }
       for (const [, entry] of [...metadata].sort(([a], [b]) => a < b ? -1 : a > b ? 1 : 0)) {
         hash.update(JSON.stringify(['node-metadata', entry.kind, relative(entry.file), entry.args, entry.query.identity()]));
+      }
+      for (const [, query] of [...directoryCursors].sort(([a], [b]) => a < b ? -1 : a > b ? 1 : 0)) {
+        hash.update(JSON.stringify(['node-opendir', relative(query.file), query.options, query.cursor.identity(relative)]));
       }
       return hash.digest('hex');
     },

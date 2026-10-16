@@ -105,8 +105,8 @@ function capturedDirectory(file: fs.PathLike, options: unknown) {
   const input = readScope(file);
   if (!input) return;
   return scopes.exit(() => {
-    const entries = input.scope.compilation.readDirectory(input.absolute, options, 'opendir');
-    return openCapturedDirectory(input.scope.compilation.readDataPath(input.absolute), input.absolute, file, options, entries);
+    const cursor = input.scope.compilation.openDirectory(input.absolute, options);
+    return openCapturedDirectory(input.scope.compilation.readDataPath(input.absolute), input.absolute, file, options, index => scopes.exit(() => cursor.read(index)));
   });
 }
 

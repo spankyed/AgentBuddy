@@ -250,11 +250,11 @@ it('serves captured opendir membership through all native handle entry points', 
       expect(names.sort()).toEqual(['nested', 'original.txt']);
       const first = fs.opendirSync(source, options);
       const late = path.join(source, 'late.txt');
-      fs.writeFileSync(late, 'LATE');
       const values: string[] = [];
       try { for (let entry; (entry = first.readSync()) !== null;) values.push(path.join(entry.parentPath, entry.name)); }
       finally { first.closeSync(); }
       expect(values).toEqual(expected);
+      fs.writeFileSync(late, 'LATE');
       const promised = await fs.promises.opendir(source, options);
       const actual: string[] = [];
       for await (const entry of promised) actual.push(path.join(entry.parentPath, entry.name));

@@ -20,6 +20,7 @@ const compilation = {
   prepareNative() {},
   prepareNativeSource() {},
   readMetadata(): never { throw new Error('Unexpected metadata read'); },
+  openDirectory(): never { throw new Error('Unexpected directory open'); },
   readDirectory(): never { throw new Error('Unexpected directory read'); },
   readDataPath(): never { throw new Error('Unexpected data read'); },
   dispose() {},

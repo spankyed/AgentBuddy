@@ -19,12 +19,12 @@ export const compilerMetadataOperations: Record<CompilerMetadataKind, {
 
 type MetadataOutcome = { ok: true; value: unknown } | { ok: false; error: unknown };
 
-function copyValue<T>(value: T): T {
+export function copyCompilerValue<T>(value: T): T {
   if (!value || typeof value !== 'object') return value;
   if (Buffer.isBuffer(value)) return Buffer.from(value) as T;
   if (value instanceof Date) return new Date(value.getTime()) as T;
   const descriptors = Object.getOwnPropertyDescriptors(value);
-  for (const descriptor of Object.values(descriptors)) if ('value' in descriptor) descriptor.value = copyValue(descriptor.value);
+  for (const descriptor of Object.values(descriptors)) if ('value' in descriptor) descriptor.value = copyCompilerValue(descriptor.value);
   const copy = value instanceof Error
     ? value instanceof TypeError ? new TypeError(value.message) : value instanceof RangeError ? new RangeError(value.message) : new Error(value.message)
     : Object.create(Object.getPrototypeOf(value));
@@ -50,15 +50,15 @@ export function captureCompilerMetadata(kind: CompilerMetadataKind, file: string
     try { return { ok: true, value: Reflect.apply(compilerMetadataOperations[kind].sync, fs, [file, ...options]) }; }
     catch (error) { return { ok: false, error }; }
   };
-  const outcome: MetadataOutcome = initial ? { ok: true, value: copyValue(initial.value) } : read();
+  const outcome: MetadataOutcome = initial ? { ok: true, value: copyCompilerValue(initial.value) } : read();
   const fields = new Set<PropertyKey>();
   const isStats = outcome.ok && (kind === 'stat' || kind === 'lstat') && outcome.value !== undefined;
   const identity = () => isStats ? valueKey([...fields].sort((a, b) => String(a) < String(b) ? -1 : String(a) > String(b) ? 1 : 0).map(key => [String(key), Reflect.get(outcome.value as object, key)])) : outcomeKey(outcome);
   return {
     identity,
     value() {
-      if (!outcome.ok) throw copyValue(outcome.error);
-      const copy = copyValue(outcome.value);
+      if (!outcome.ok) throw copyCompilerValue(outcome.error);
+      const copy = copyCompilerValue(outcome.value);
       if (!isStats) return copy;
       const getters = new Map<PropertyKey, () => unknown>();
       for (const key of Reflect.ownKeys(copy as object)) {
