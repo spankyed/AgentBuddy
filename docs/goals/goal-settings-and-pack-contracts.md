@@ -120,7 +120,7 @@ naming branch is not an automatic source of future changes.
 
 ### Current handoff — compiler checkpoint (2026-10-16)
 
-Latest source is `98ba9de5f` (CommonJS source-globals checkpoint below). Preceding ESM source `f67c8d066`:
+Latest source is `3e6809d6c` (terminal input-lifetime checkpoint below). Preceding ESM source `f67c8d066`:
 ESM execution now has logical source URLs and filenames while native
 resolution and source reads use the owned tree. A private loader below tsx only projects bytes; it
 makes no main-thread RPC. The input owner and loader share one storage mapping. Native entrypoint
@@ -145,6 +145,25 @@ bridge extraction (35.47s). The final packaged JSX/metadata worker passes in 36.
 packaging cases (9), CLI typecheck and lint pass. The bridge also runs on Electron's Node 22.17.1.
 Logs: `/private/tmp/apack-module-metadata-{before,focused,jsx-before,entry-final,native-entry,
 worker-native-entry,tree,packaging,types-complete,lint-complete}.log`. No broad gate repeated.
+
+Terminal input-lifetime checkpoint `3e6809d6c` closes a reproduced disposal hole: file views
+continued serving bytes after disposal, and retained scoped tasks could recreate removed input trees.
+Compilation, query view and read-tree owners now reject input operations/admissions after disposal;
+cleanup is idempotent and releases captured data/query state. Pure source-path/diagnostic projection
+remains available. Loader teardown now precedes final synchronous read-set validation and sealing,
+rather than awaiting teardown after the last validation. Cleanup failures still refuse publication.
+
+Evidence: the disposed-view regression fails before the repair. Final file-view, tree and cursor checks
+pass (22 cases, 1.80s); an actual retained async filesystem read is refused without allocating storage,
+while an unscoped native read still works (10.27s). Two public-worker cases pass after the validation
+reorder (78.46s total): repeat-build revision/cache identity and termination of pack-created timers.
+The final lower-level retained-tree admission guard is covered by the 22-case unit run; that worker
+run precedes this last guard. Final CLI typecheck and scoped lint pass. Logs:
+`/private/tmp/apack-input-lifetime-{before,unit-final,integration,worker,types-final}.log`.
+No broad gate repeated or deadline changed. This does not revoke native resources already handed out,
+track descendant processes, or establish frontend/compiler generations or a complete input receipt.
+Those ownership/closure requirements, passive freshness and all later goal phases remain required;
+stronger security isolation remains deferred. Final committed-source strict --all is still owed.
 
 CommonJS source-globals checkpoint `98ba9de5f` passes the logical source filename to Node's
 `_compile`, retaining the module's owned cache/resolution identity. `__filename` and `__dirname` no
