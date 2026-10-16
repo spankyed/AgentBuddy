@@ -53,8 +53,8 @@ export function registerCompilerCommonJS(compilation: CompilationInputs, directo
       const relative = path.relative(directory, file);
       const compilation = inputs;
       if (!compilation || !enabled || relative === '..' || relative.startsWith(`..${path.sep}`) || path.isAbsolute(relative)) return fallback(module, filename);
+      const source = compilation.sourcePath(file);
       const code = withoutCompilerFileReads(() => {
-        const source = compilation.sourcePath(file);
         const bytes = compilation.readFile(source);
         if (!bytes) throw new Error(`Missing captured compiler module: ${source}`);
         const configuration = compilation.configuration ?? compilation.declarationConfiguration;
@@ -63,7 +63,8 @@ export function registerCompilerCommonJS(compilation: CompilationInputs, directo
           ...(configuration && { tsconfigRaw: esbuildTsconfig(configuration, compilation.readTree().path) }) });
         return result.code;
       });
-      (module as NodeJS.Module & { _compile(code: string, filename: string): void })._compile(code, file);
+      // Keep the module's owned identity; this argument supplies source globals and script origins.
+      (module as NodeJS.Module & { _compile(code: string, filename: string): void })._compile(code, source);
     };
     extensions[extension] = load;
     restore.push(() => {

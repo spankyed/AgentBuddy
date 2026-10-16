@@ -39,7 +39,11 @@ function fixture(files: Record<string, string> = {}, content = {}) {
 }
 
 it('uses the captured compiler and retains unchanged build/cache identity on repeat builds', async () => {
-  const root = fixture();
+  const root = fixture({
+    'src/compiler.cjs': `module.exports = () => [{entity: 'Relation', name: 'Paths', source: __filename, directory: __dirname}];`,
+    'src/value.txt': 'OWNED',
+  }, { formats: { rows: { compiler: 'src/compiler.cjs', entity: 'Relation', identity: ['name'] } },
+    sources: { rows: { path: 'src/value.txt', format: 'rows' } } });
   const workspaces: string[] = [];
   const mkdtemp = fs.mkdtempSync;
   vi.spyOn(fs, 'mkdtempSync').mockImplementation(prefix => {
@@ -52,6 +56,9 @@ it('uses the captured compiler and retains unchanged build/cache identity on rep
   expect(bundlePackRuntime).not.toHaveBeenCalled();
   expect(readPackBuild(path.join(root, 'dist')).snapshot.manifest.id).toBe('fresh-worker');
   expect(fs.existsSync(path.join(root, 'dist/runtime/fe.js'))).toBe(false);
+  const content = JSON.parse(fs.readFileSync(path.join(root, 'dist/runtime/content/rows.content.json'), 'utf8'));
+  expect(content.records[0].source).toBe(path.join(fs.realpathSync(root), 'src/compiler.cjs'));
+  expect(content.records[0].directory).toBe(path.join(fs.realpathSync(root), 'src'));
   const stamp = readStamps(root).types;
   const revision = readPackBuild(path.join(root, 'dist')).revision;
   expect(stamp).toBeDefined();

@@ -398,7 +398,9 @@ it('uses captured JSX and alias configuration for CommonJS compiler modules', as
     import {suffix} from '#captured/value';
     const h = () => fs.readFileSync(__dirname + '/value.txt', 'utf8') + suffix + require('#native');
     export const value = <row />;
-    export const dependencyError = (() => { try { return require('dependency'); } catch (error) { return error.code; } })();`;
+    export const dependencyError = (() => { try { return require('dependency'); } catch (error) { return error.code; } })();
+    export const filename = __filename;
+    export const directory = __dirname;`;
   fs.writeFileSync(entry, source);
   fs.writeFileSync(path.join(root, 'value.txt'), 'CAPTURED');
   const compilation = captureCompilationInputs(root);
@@ -412,6 +414,8 @@ it('uses captured JSX and alias configuration for CommonJS compiler modules', as
       () => modules.importModule(entry));
     expect(result.value).toBe('CAPTURED:ALIAS:NATIVE');
     expect(result.dependencyError).toBe('MODULE_NOT_FOUND');
+    expect(result.filename).toBe(entry);
+    expect(result.directory).toBe(root);
     expect(() => compilation.assertCurrent()).toThrow('Compiler or installed package inputs changed');
   } finally { await modules.dispose(); compilation.dispose(); }
 });
