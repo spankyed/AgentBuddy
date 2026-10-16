@@ -139,11 +139,33 @@ describe('where a chain run keeps its evidence', () => {
       const target = path.relative(REPO_ROOT, left);
       fs.writeFileSync(path.join(left, 'kept-probe.log'), 'what the app said');
       expect(run.keepFiles('test:smoke', [target])).toEqual([target]);
-      expect(fs.readFileSync(path.join(run.dir, 'test-smoke.files', path.basename(left), 'kept-probe.log'), 'utf-8'))
+      expect(fs.readFileSync(path.join(run.dir, 'test-smoke.files', target, 'kept-probe.log'), 'utf-8'))
         .toBe('what the app said');
       // A step and its retry do not share one, as their logs do not
       run.keepFiles('test:smoke.retry', [target]);
-      expect(fs.existsSync(path.join(run.dir, 'test-smoke.retry.files', path.basename(left)))).toBe(true);
+      expect(fs.existsSync(path.join(run.dir, 'test-smoke.retry.files', target))).toBe(true);
+    });
+
+    it('preserves same-named logs from different fixture outputs and keeps retry copies separate', () => {
+      const run = opened();
+      const fixture = fs.mkdtempSync(path.join(REPO_ROOT, 'tests', 'kept-evidence-'));
+      const sources = ['first', 'second'].map(name => path.join(fixture, name, 'tests', 'results'));
+      const relative = sources.map(source => path.relative(REPO_ROOT, source));
+      try {
+        sources.forEach((source, index) => {
+          fs.mkdirSync(source, { recursive: true });
+          fs.writeFileSync(path.join(source, 'app-0.log'), `initial ${index}`);
+        });
+        expect(run.keepFiles('test:external-pack:app', relative)).toEqual(relative);
+        sources.forEach((source, index) => fs.writeFileSync(path.join(source, 'app-0.log'), `retry ${index}`));
+        run.keepFiles('test:external-pack:app.retry', relative);
+        relative.forEach((source, index) => {
+          expect(fs.readFileSync(path.join(run.dir, 'test-external-pack-app.files', source, 'app-0.log'), 'utf8')).toBe(`initial ${index}`);
+          expect(fs.readFileSync(path.join(run.dir, 'test-external-pack-app.retry.files', source, 'app-0.log'), 'utf8')).toBe(`retry ${index}`);
+        });
+      } finally {
+        fs.rmSync(fixture, { recursive: true, force: true });
+      }
     });
 
     /** A step can fail before writing anything, which is not a second failure to report */
