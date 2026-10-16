@@ -7,6 +7,7 @@ import type { BuildInputObserver } from '@apackdev/host/build/pack-inputs';
 import { isPackInputPath, packInputFiles } from '@apackdev/host/build/pack-inputs';
 import { codeBlocks } from './pack-sources.ts';
 import { compilerSourcePath } from './compiler-paths.ts';
+import { compilerGlobDirectories } from './compiler-source-globs.ts';
 import { createCompilerFileView } from './compiler-file-view.ts';
 import { readCompilerInstallationInputs } from './compiler-installation.ts';
 
@@ -105,9 +106,18 @@ export function readCompilerModuleInputs(root: string, observe?: BuildInputObser
     return excluded(file) ? undefined : getSourceFile(file, version, onError, fresh);
   };
   const program = ts.createProgram({ rootNames, options, host });
+  const globDirectories = new Set<string>();
+  function captureGlobDirectory(directory: string) {
+    const physical = fileSystem.realpath(directory);
+    if (globDirectories.has(physical)) return;
+    globDirectories.add(physical);
+    view.resolutionDirectory(directory);
+    for (const name of fileSystem.getDirectories(directory)) captureGlobDirectory(path.join(directory, name));
+  }
   for (const source of program.getSourceFiles()) {
     if (scripts.has(path.resolve(source.fileName))) continue;
     packageOf(source.fileName);
+    for (const directory of compilerGlobDirectories(source)) captureGlobDirectory(directory);
   }
   const hash = createHash('sha256').update(JSON.stringify(rootFiles)).update(view.hash());
   const assertCurrent = () => {

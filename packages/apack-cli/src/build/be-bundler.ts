@@ -128,6 +128,7 @@ function capturedSourcesPlugin(compilation: CompilationInputs, workingDir: strin
       if (!loader) return;
       const contents = compilation.readFile(compilation.sourcePath(args.path));
       if (contents === undefined) throw new Error(`Missing captured compiler input: ${args.path}`);
+      if (['js', 'jsx', 'ts', 'tsx'].includes(loader)) compilation.prepareNativeSource(args.path, contents);
       return { contents, loader, resolveDir: path.dirname(args.path) };
     });
   } };

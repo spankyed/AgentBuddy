@@ -39,6 +39,7 @@ export interface CompilationInputs {
   readTree(): CompilerReadTree;
   sourcePath(file: string): string;
   prepareNative(specifier: string, importer: string): void;
+  prepareNativeSource(file: string, contents: Buffer): void;
   dispose(): void;
   assertCurrent(): void;
 }
@@ -105,6 +106,7 @@ export function captureCompilationInputs(packRoot: string): CompilationInputs {
     readTree,
     sourcePath,
     prepareNative(specifier, importer) { readTree(); native.prepare(specifier, sourcePath(importer)); },
+    prepareNativeSource(file, contents) { native.prepareSource(sourcePath(file), contents); },
     dispose() { tree?.dispose(); tree = undefined; },
     assertCurrent() {
       try {

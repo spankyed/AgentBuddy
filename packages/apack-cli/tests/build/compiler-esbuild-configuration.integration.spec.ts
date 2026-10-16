@@ -232,3 +232,48 @@ it('keeps implicit absolute configuration inheritance owned while originals are 
     compilation.dispose();
   }
 });
+
+it('preserves native lookup of runtime dependencies hidden by declaration entrypoints', async () => {
+  const { pack, entry, write } = fixture(false);
+  write('node_modules/bare/index.js', 'export {label} from "hidden";');
+  write('node_modules/hidden/package.json', { name: 'hidden', main: 'index.js', type: 'module' });
+  write('node_modules/hidden/index.js', 'export const label = "NEAREST";');
+  write('node_modules/bare/node_modules/hidden/package.json', { name: 'hidden', main: 'index.js', type: 'module' });
+  write('node_modules/bare/node_modules/hidden/index.js', 'export const label = "NESTED";');
+  const baseline = await nativeBuild({ entryPoints: [entry], bundle: true, platform: 'node', format: 'cjs',
+    target: 'node20', write: false, tsconfig: path.join(pack, 'tsconfig.json') });
+  const expected = evaluate(baseline.outputFiles[0]!.text);
+  expect(expected).toMatchObject({ label: 'NESTED' });
+  const compilation = captureCompilationInputs(pack);
+  compilation.captureGenerated();
+  try {
+    const output = path.join(pack, 'dist');
+    const result = await bundlePackRuntime(pack, output, { compilation });
+    expect(result.success, result.error).toBe(true);
+    expect(evaluate(fs.readFileSync(path.join(output, 'runtime/index.cjs'), 'utf8'))).toEqual(expected);
+    compilation.assertCurrent();
+  } finally { compilation.dispose(); }
+});
+
+it('preserves native glob requires in external source directories', async () => {
+  const { root, pack, entry, write } = fixture(false);
+  write('external/value.ts', 'const name = "one"; export const value = require(`./parts/${name}.cjs`).value;');
+  write('external/parts/one.cjs', 'exports.value = "ALIASED";');
+  const baseline = await nativeBuild({ entryPoints: [entry], bundle: true, platform: 'node', format: 'cjs',
+    target: 'node20', write: false, tsconfig: path.join(pack, 'tsconfig.json') });
+  const expected = evaluate(baseline.outputFiles[0]!.text);
+  expect(expected).toMatchObject({ value: 'ALIASED' });
+  const compilation = captureCompilationInputs(pack);
+  compilation.captureGenerated();
+  const globFile = path.join(root, 'external/parts/one.cjs');
+  const original = fs.readFileSync(globFile);
+  try {
+    fs.writeFileSync(globFile, 'exports.value = "WRONG";');
+    const output = path.join(pack, 'dist');
+    const result = await bundlePackRuntime(pack, output, { compilation });
+    expect(result.success, result.error).toBe(true);
+    expect(evaluate(fs.readFileSync(path.join(output, 'runtime/index.cjs'), 'utf8'))).toEqual(expected);
+    fs.writeFileSync(globFile, original);
+    compilation.assertCurrent();
+  } finally { fs.writeFileSync(globFile, original); compilation.dispose(); }
+});

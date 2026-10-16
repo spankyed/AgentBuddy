@@ -17,6 +17,7 @@ const compilation = {
   readTree() { throw new Error('No tree in hash-only fixture'); },
   sourcePath(file: string) { return file; },
   prepareNative() {},
+  prepareNativeSource() {},
   dispose() {},
   readFile() { return undefined; },
   captureGenerated() {},

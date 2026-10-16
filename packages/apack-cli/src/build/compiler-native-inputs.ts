@@ -1,6 +1,7 @@
 import path from 'node:path';
 import { isBuiltin } from 'node:module';
 import ts from 'typescript';
+import { compilerGlobDirectories } from './compiler-source-globs.ts';
 import { readPackageInputs, type PackageInputs } from '@apackdev/host/build/package-inputs';
 import type { readCompilerModuleInputs } from './compiler-module-inputs.ts';
 import type { CompilerReadSnapshot } from './compiler-read-tree.ts';
@@ -181,7 +182,21 @@ export function createNativeInputReader(view: NativeInputView, initialPackages: 
       if (path.dirname(current) === current) break;
     }
   }
+  function subtree(file: string, seen = new Set<string>()) {
+    const physical = view.fileSystem.realpath(file);
+    if (seen.has(physical)) return;
+    seen.add(physical);
+    directory(file);
+    scope(file);
+    for (const name of view.fileSystem.getDirectories(file)) subtree(path.join(file, name), seen);
+  }
   return {
+    prepareSource(file: string, contents: Buffer) {
+      pending = { files: [], locations: [], links: [] };
+      const source = ts.createSourceFile(file, contents.toString('utf8'), ts.ScriptTarget.Latest, false);
+      for (const directory of compilerGlobDirectories(source)) subtree(directory);
+      include(pending);
+    },
     prepare(specifier: string, importer: string) {
       pending = { files: [], locations: [], links: [] };
       if (!primed) {
