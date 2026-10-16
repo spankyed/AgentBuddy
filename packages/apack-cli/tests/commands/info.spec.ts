@@ -33,7 +33,7 @@ function writeBuild(directory: string, declared = manifest, index?: object): str
   fs.writeFileSync(path.join(output, PACK_LAYOUT.runtimeEntry), 'throw new Error("Inspection imported executable code");');
   fs.writeFileSync(path.join(output, PACK_LAYOUT.snapshot), JSON.stringify({
     manifest: declared, declarationRevision: _declarationRevision(declared), format: PACK_SNAPSHOT_FORMAT,
-    types: { entities: _packEntityTypes(declared), relKinds: {} }, facades: {},
+    types: { entities: _packEntityTypes(declared), relKinds: {} }, entityDestinations: {}, facades: {},
   }));
   if (index) {
     fs.mkdirSync(path.join(output, PACK_LAYOUT.contentDir));

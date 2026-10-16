@@ -165,7 +165,7 @@ describe('apack pack generate-entries', () => {
         entities: { DepWidget: 'DepWidget' },
         relKinds: { DEP_REL: 'dep_rel' },
       },
-      facades: {},
+      entityDestinations: {}, facades: {},
       manifest: depManifest,
     };
 

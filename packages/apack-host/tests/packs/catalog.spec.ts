@@ -15,7 +15,7 @@ const group: SettingsDefinition = { schema: { type: 'object', properties: { name
 
 function source(id: string, enabled = true) {
   const manifest: PackManifest = { id, name: id, version: '1.0.0', extensions: { settings: { assistant: structuredClone(group) } } };
-  return { dir: `/packs/${id}`, enabled, snapshot: { format: PACK_SNAPSHOT_FORMAT, declarationRevision: _declarationRevision(manifest), manifest, types: { entities: {}, relKinds: {} }, facades: {} } };
+  return { dir: `/packs/${id}`, enabled, snapshot: { format: PACK_SNAPSHOT_FORMAT, declarationRevision: _declarationRevision(manifest), manifest, types: { entities: {}, relKinds: {} }, entityDestinations: {}, facades: {} } };
 }
 
 describe('contribution catalog data', () => {
@@ -41,7 +41,7 @@ describe('contribution catalog data', () => {
           commands: { cold: { placeholder: 'Cold command' } }, artifacts: { cold: { icon: 'FileText', fe: 'src/unavailable.vue' } },
           blocks: { cold: { kind: 'input', fe: 'src/unavailable.vue', be: 'src/unavailable.ts#backend' } }, help: { path: 'help' }, ...frontend } };
       const snapshot = { declarationRevision: _declarationRevision(manifest), format: PACK_SNAPSHOT_FORMAT,
-        manifest, types: { entities: {}, relKinds: {} }, facades: {},
+        manifest, types: { entities: {}, relKinds: {} }, entityDestinations: { Action: 'notes' }, facades: {},
         dslDefinitions: { cold: 'declare module "@app/defs/cold" { export interface Cold {} }' },
         help: [{ id: 'start', title: 'Start', body: 'Available without activation', features: ['notes'] }] };
       fs.mkdirSync(path.join(dir, 'runtime'), { recursive: true });
@@ -62,6 +62,7 @@ describe('contribution catalog data', () => {
       }).toThrow();
       expect(catalog.help().articles).toEqual([{ ...snapshot.help[0], packId: 'help-pack', packName: 'Help' }]);
       expect(catalog.get('help-pack')?.enabled).toBe(false);
+      expect(catalog.get('help-pack')?.snapshot.entityDestinations).toEqual({ Action: 'notes' });
       expect(catalog.frontend()).toMatchObject([{ packId: 'help-pack', origin: 'installed', enabled: false,
         declarationRevision: snapshot.declarationRevision, buildRevision: accepted.revision, declaration: frontend }]);
       expect(catalog.plugins()).toMatchObject([{ featureRef: 'help-pack/notes', origin: 'installed', enabled: false, declaration: { label: 'Cold Notes', canvas: 'src/canvas.vue' } }]);
@@ -396,6 +397,6 @@ it('preserves own entity names and declaration identity across native, source an
   expect(Object.keys(catalog.getSnapshot().native[0].data!.entities!)).toEqual(['__proto__']);
   catalog.setNative([]);
   catalog.replace([{ dir: '/installed/owned', enabled: false, snapshot: { format: PACK_SNAPSHOT_FORMAT,
-    declarationRevision: revision, manifest, types: { entities: Object.fromEntries([['__proto__', '__proto__']]), relKinds: {} }, facades: {} } }]);
+    declarationRevision: revision, manifest, types: { entities: Object.fromEntries([['__proto__', '__proto__']]), relKinds: {} }, entityDestinations: {}, facades: {} } }]);
   expect(Object.keys(catalog.get('owned')!.snapshot.manifest.data!.entities!)).toEqual(['__proto__']);
 });

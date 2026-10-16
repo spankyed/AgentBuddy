@@ -14,7 +14,7 @@ import { _appDirOf } from '@apackdev/sdk/env';
 
 function writeSnapshot(file: string, manifest: PackManifest): void {
   fs.writeFileSync(file, JSON.stringify({ format: PACK_SNAPSHOT_FORMAT,
-    declarationRevision: _declarationRevision(manifest), manifest, types: { entities: {}, relKinds: {} }, facades: {} }));
+    declarationRevision: _declarationRevision(manifest), manifest, types: { entities: {}, relKinds: {} }, entityDestinations: {}, facades: {} }));
 }
 
 afterEach(removeTempDirs);

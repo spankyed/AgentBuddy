@@ -20,7 +20,7 @@ function fixture() {
   fs.mkdirSync(path.dirname(path.join(staged, PACK_LAYOUT.snapshot)), { recursive: true });
   fs.writeFileSync(path.join(staged, PACK_LAYOUT.snapshot), JSON.stringify({ manifest,
     format: PACK_SNAPSHOT_FORMAT, declarationRevision: _declarationRevision(manifest),
-    types: { entities: {}, relKinds: {} }, facades: {} }));
+    types: { entities: {}, relKinds: {} }, entityDestinations: {}, facades: {} }));
   sealPackBuild(staged, manifest);
   fs.mkdirSync(path.join(root, 'dist'));
   fs.writeFileSync(path.join(root, 'dist/incumbent'), 'ACCEPTED');

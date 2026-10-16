@@ -623,6 +623,9 @@ export const flowsCompiler: SpecialtyCompiler<FlowDSL>;
 // @public
 export function formatEntities(format: ContentFormatConfig): string[];
 
+// @public
+export const GENERATED_ENTITY_DESTINATIONS_FILE = "src/__generated__/entity-destinations.json";
+
 // @public (undocumented)
 export interface GenerateEntriesOptions {
     // (undocumented)
@@ -3057,6 +3060,7 @@ export function _packRelationTypes(declaration: PackDataDeclarations): Record<st
 export interface PackSnapshot {
     declarationRevision: string;
     dslDefinitions?: Record<string, string>;
+    entityDestinations: Record<string, string>;
     facades: Record<string, string>;
     flowHelpers?: PackFlowHelpers;
     format: number;

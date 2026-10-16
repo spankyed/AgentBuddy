@@ -5,6 +5,7 @@ import {
   compilePack,
   buildPackConfigFromManifest,
   PACK_TYPES_FACADE,
+  GENERATED_ENTITY_DESTINATIONS_FILE,
   PACK_SNAPSHOT_FORMAT,
   entitiesWithoutShapes,
   CONTENT_COMPILERS_FILE,
@@ -250,6 +251,7 @@ async function buildIntoStaging(args: string[], root: string) {
     const provenance = _buildProvenance([...depSnapshots], { id: manifest.id, manifest });
     const snapshot: PackSnapshot = {
       declarationRevision: _declarationRevision(manifest),
+      entityDestinations: JSON.parse(compilation.readFile(path.join(root, GENERATED_ENTITY_DESTINATIONS_FILE))!.toString('utf-8')),
       types, facades, manifest, format: PACK_SNAPSHOT_FORMAT, sdkVersion: sdkVersion(),
       ...(manifest.extensions?.help && { help: compileHelp(root, manifest) }),
       ...(Object.keys(provenance).length > 0 && { provenance }),

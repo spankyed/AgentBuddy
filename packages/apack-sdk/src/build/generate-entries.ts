@@ -26,6 +26,9 @@ import type { ComponentTarget } from '../framework/plugin-declaration.ts';
 const HEADER = `// @generated from apack.json — do not edit by hand
 // Regenerate: apack pack generate-entries\n`;
 
+/** Generated data read by the build, never an executable pack module. */
+export const GENERATED_ENTITY_DESTINATIONS_FILE = 'src/__generated__/entity-destinations.json';
+
 // ── EARS emitter ─────────────────────────────────────────────────
 
 interface RegistryEntry { value: string; source: string }
@@ -574,8 +577,8 @@ export async function generatePackFiles(
     }));
   }
 
-  /** The event types a contract declares, with the feature named on anything the reader throws */
-  function contractEventTypes(feature: PackFeature, kind: 'system' | 'plugin', read: (file: string, name: string) => string[]): string[] {
+  /** Read contract metadata without execution, attributing failures to its feature. */
+  function contractTypes(feature: PackFeature, kind: 'system' | 'plugin', read: (file: string, name: string) => string[]): string[] {
     const contract = contractTarget(feature, kind);
     if (!contract) return [];
     try {
@@ -588,12 +591,27 @@ export async function generatePackFiles(
 
   /** The event types a feature's system sends, read from its contract */
   function sentEventTypes(feature: PackFeature): string[] {
-    return contractEventTypes(feature, 'system', outgoingEventTypesOf);
+    return contractTypes(feature, 'system', outgoingEventTypesOf);
   }
 
   /** The event types a plugin's contract declares that any other plugin or system may send it */
   function acceptedEventTypes(feature: PackFeature): string[] {
-    return contractEventTypes(feature, 'plugin', inboxEventTypesOf);
+    return contractTypes(feature, 'plugin', inboxEventTypesOf);
+  }
+
+  function entityDestinations(): Record<string, string> {
+    const known = new Set([...Object.values(SDK_ENTITIES), ...Object.keys(_packEntityTypes(manifest)),
+      ...[...depSnapshots.values()].flatMap(snapshot => Object.keys(snapshot.types.entities))]);
+    const claims = new Map<string, string>();
+    for (const feature of packFeatures(manifest)) {
+      for (const entity of contractTypes(feature, 'plugin', (file, name) => moduleReader().openedEntityTypesOf(file, name))) {
+        if (!known.has(entity)) throw new Error(`Feature "${feature.id}": Contract.opens names unknown entity "${entity}"`);
+        const owner = claims.get(entity);
+        if (owner !== undefined) throw new Error(`Entity destination "${entity}" claimed by both features "${owner}" and "${feature.id}"`);
+        claims.set(entity, feature.id);
+      }
+    }
+    return Object.fromEntries([...claims].sort(([a], [b]) => a.localeCompare(b, 'en')));
   }
 
   /**
@@ -2094,6 +2112,7 @@ export type { ImportMode } from '@apackdev/sdk/utils';
   // ── Assemble ────────────────────────────────────────────────────
 
   const files: [string, string][] = ([
+    [GENERATED_ENTITY_DESTINATIONS_FILE, JSON.stringify(entityDestinations(), null, 2) + '\n'],
     ['src/__generated__/pack-entry.ts', generateBackendEntry()],
     ['src/__generated__/pack-entry-fe.ts', generateFrontendEntry()],
     ['src/__generated__/ears.ts', generateEars()],

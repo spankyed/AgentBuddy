@@ -380,7 +380,7 @@ compilation and the test runtime refuse incompatible dependency execution before
 A dependency found on this machine or on GitHub is cached under `.apack/deps/<id>/`
 (`snapshot.json`, `facades/`, and eligible `build/`/`runtime/` files).
 
-A `PackSnapshot` contains `format` (the snapshot format the writing CLI used), `types` (entity and relKind maps), `facades` (dependent-facing `.d.ts` contents, including the bundled `pack-types` facade), `manifest`, `sdkVersion`, `provenance` (which pack in its tree declares each name) and `flowHelpers` (the pack's bundled flow helpers module and declarations). Runtime/install readers use `PackSnapshot` with an exact execution stamp. Type-data readers use `PackDependencySnapshot`, retaining an optional recorded stamp and validating the same current fields; they do not read or convert another grammar.
+A `PackSnapshot` contains `format` (the snapshot format the writing CLI used), `types` (entity and relKind maps), `facades` (dependent-facing `.d.ts` contents, including the bundled `pack-types` facade), `entityDestinations` (entity wire name to local destination feature, compiled from plugin `Contract.opens`), `manifest`, `sdkVersion`, `provenance` (which pack in its tree declares each name) and `flowHelpers` (the pack's bundled flow helpers module and declarations). Runtime/install readers use `PackSnapshot` with an exact execution stamp. Type-data readers use `PackDependencySnapshot`, retaining an optional recorded stamp and validating the same current fields; they do not read or convert another grammar.
 
 The common host/window catalog also exposes artifact and block declarations, including their owner,
 origin, enablement and available declaration/build revisions. Artifact icons, block input kinds and

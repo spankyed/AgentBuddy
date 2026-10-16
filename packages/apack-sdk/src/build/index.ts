@@ -59,7 +59,7 @@ export type { ActionMeta, PromptMeta } from './content-types.ts';
 
 // Entry codegen
 export {
-  generatePackFiles, emitEARS, mergeRegistries, entitiesWithoutShapes, PACK_TYPES_FACADE, STEPS_BUILD_MODULE,
+  generatePackFiles, GENERATED_ENTITY_DESTINATIONS_FILE, emitEARS, mergeRegistries, entitiesWithoutShapes, PACK_TYPES_FACADE, STEPS_BUILD_MODULE,
   _depTypesFile, _depTypesVersion,
 } from './generate-entries.ts';
 export type { GenerateEntriesOptions } from './generate-entries.ts';

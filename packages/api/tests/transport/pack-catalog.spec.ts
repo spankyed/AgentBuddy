@@ -32,7 +32,7 @@ it('includes disabled installed declarations while no runtime is registered', as
   } };
   const { _declarationRevision, PACK_SNAPSHOT_FORMAT } = await import('@apackdev/sdk/build');
   catalog.replace([{ dir: '/isolated/disabled-pack', enabled: false, snapshot: {
-    format: PACK_SNAPSHOT_FORMAT, declarationRevision: _declarationRevision(manifest), manifest, types: { entities: {}, relKinds: {} }, facades: {},
+    format: PACK_SNAPSHOT_FORMAT, declarationRevision: _declarationRevision(manifest), manifest, types: { entities: {}, relKinds: {} }, entityDestinations: {}, facades: {},
   } }]);
   const stream = await packsRouter.createCaller({ client: 'disabled-reader', closed: new AbortController().signal }).catalog();
   const received: PackCatalogFrame[] = [];

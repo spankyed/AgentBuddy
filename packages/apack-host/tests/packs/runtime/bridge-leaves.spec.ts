@@ -28,7 +28,7 @@ describe('external pack runtime', () => {
   it('requires @apackdev/sdk/cron and @apackdev/sdk/utils/compare-versions through the bridge', async () => {
     fs.writeFileSync(path.join(packDir, 'apack.json'), JSON.stringify({ id: 'bridge-leaves', name: 'Bridge', version: '1.0.0', extensions: { services: { leaves: 'leaves.ts#leaves' } } }));
     fs.mkdirSync(path.join(packDir, 'types'), { recursive: true });
-    fs.writeFileSync(path.join(packDir, PACK_LAYOUT.snapshot), JSON.stringify({ declarationRevision: _declarationRevision(JSON.parse(fs.readFileSync(path.join(packDir, 'apack.json'), 'utf-8'))), format: PACK_SNAPSHOT_FORMAT, manifest: JSON.parse(fs.readFileSync(path.join(packDir, 'apack.json'), 'utf-8')), types: { entities: {}, relKinds: {} }, facades: {} }));
+    fs.writeFileSync(path.join(packDir, PACK_LAYOUT.snapshot), JSON.stringify({ declarationRevision: _declarationRevision(JSON.parse(fs.readFileSync(path.join(packDir, 'apack.json'), 'utf-8'))), format: PACK_SNAPSHOT_FORMAT, manifest: JSON.parse(fs.readFileSync(path.join(packDir, 'apack.json'), 'utf-8')), types: { entities: {}, relKinds: {} }, entityDestinations: {}, facades: {} }));
     fs.mkdirSync(path.join(packDir, 'runtime'));
     fs.writeFileSync(path.join(packDir, 'runtime', 'index.cjs'), (`
       const { cronToHuman } = require('@apackdev/sdk/cron');
@@ -57,7 +57,7 @@ if (module.exports.registration) module.exports.registration.declarationRevision
   it('requires one lazily, after the load that produced it has returned', async () => {
     fs.writeFileSync(path.join(packDir, 'apack.json'), JSON.stringify({ id: 'bridge-leaves', name: 'Lazy', version: '1.0.0', extensions: { services: { step: 'step.ts#step' } } }));
     fs.mkdirSync(path.join(packDir, 'types'), { recursive: true });
-    fs.writeFileSync(path.join(packDir, PACK_LAYOUT.snapshot), JSON.stringify({ declarationRevision: _declarationRevision(JSON.parse(fs.readFileSync(path.join(packDir, 'apack.json'), 'utf-8'))), format: PACK_SNAPSHOT_FORMAT, manifest: JSON.parse(fs.readFileSync(path.join(packDir, 'apack.json'), 'utf-8')), types: { entities: {}, relKinds: {} }, facades: {} }));
+    fs.writeFileSync(path.join(packDir, PACK_LAYOUT.snapshot), JSON.stringify({ declarationRevision: _declarationRevision(JSON.parse(fs.readFileSync(path.join(packDir, 'apack.json'), 'utf-8'))), format: PACK_SNAPSHOT_FORMAT, manifest: JSON.parse(fs.readFileSync(path.join(packDir, 'apack.json'), 'utf-8')), types: { entities: {}, relKinds: {} }, entityDestinations: {}, facades: {} }));
     fs.mkdirSync(path.join(packDir, 'runtime'));
     fs.writeFileSync(path.join(packDir, 'runtime', 'index.cjs'), (`
       exports.registration = { id: 'bridge-leaves', services: { step: { run: () => typeof require('@apackdev/sdk/logger').createLogger } } };

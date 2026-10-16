@@ -1,3 +1,4 @@
+import { SDK_ENTITIES } from '../types/sdk-entities.ts';
 import { dslDefinitionsProblem } from '../framework/dsl-declarations.ts';
 import { declarationRecord } from '../framework/declaration-record.ts';
 import { z } from 'zod';
@@ -17,6 +18,7 @@ const SnapshotShape = {
   dslDefinitions: declarationRecord(z.string()).optional(),
   types: z.object({ entities: declarationRecord(z.string()), relKinds: declarationRecord(z.string()) }).strict(),
   facades: declarationRecord(z.string().regex(/^[a-z][a-z0-9-]*$/, 'Facade names must be lowercase identifiers with hyphens, suitable for cache filenames'), z.string()),
+  entityDestinations: declarationRecord(z.string().min(1), z.string().min(1)),
   provenance: declarationRecord(z.enum(Object.keys(PROVENANCE_KINDS) as [ProvenanceKind, ...ProvenanceKind[]]), declarationRecord(z.string())).optional(),
   flowHelpers: z.object({ exports: z.array(z.string()), module: z.string(), types: z.string() }).strict().optional(),
 } satisfies Record<keyof PackSnapshot, z.ZodTypeAny>;
@@ -59,6 +61,14 @@ function parseSnapshotData<T extends PackDependencySnapshot>(raw: unknown, schem
     message: `snapshot.json ${issue.path.join('.') || 'root'}: ${issue.message}`,
   })));
   const snapshot = result.data;
+  const sdkEntities = new Set<string>(Object.values(SDK_ENTITIES));
+  for (const [entity, feature] of Object.entries(snapshot.entityDestinations)) {
+    const declaration = Object.hasOwn(snapshot.manifest.features ?? {}, feature) ? snapshot.manifest.features![feature] : undefined;
+    if (!declaration?.plugin || (!Object.hasOwn(snapshot.types.entities, entity) && !sdkEntities.has(entity))) {
+      return packValidation([{ code: 'snapshot.entityDestinations', severity: 'error', path: ['entityDestinations', entity], source: 'snapshot.json',
+        message: `Entity destination "${entity}" must name a known entity and a declared plugin feature; received "${feature}"` }]);
+    }
+  }
   const dslProblem = dslDefinitionsProblem(snapshot.manifest.extensions?.dsl, snapshot.dslDefinitions);
   if (dslProblem) return packValidation([{
     code: 'snapshot.dslDefinitions', severity: 'error', path: ['dslDefinitions'], source: 'snapshot.json', message: dslProblem,

@@ -91,7 +91,7 @@ beforeAll(async () => {
   if (!bundled.success) throw new Error(bundled.error);
   const facade = await bundlePackTypes(base, path.join(base, 'dist', 'types', 'pack-types.d.ts'));
   if (!facade.success) throw new Error(facade.error);
-  snapshot = { declarationRevision: _declarationRevision(baseManifest), types: { entities: {}, relKinds: {} }, facades: { [PACK_TYPES_FACADE]: facade.content }, manifest: baseManifest, format: PACK_SNAPSHOT_FORMAT, flowHelpers: bundled.flowHelpers };
+  snapshot = { declarationRevision: _declarationRevision(baseManifest), types: { entities: {}, relKinds: {} }, entityDestinations: {}, facades: { [PACK_TYPES_FACADE]: facade.content }, manifest: baseManifest, format: PACK_SNAPSHOT_FORMAT, flowHelpers: bundled.flowHelpers };
 
   app = writePack('app-pack', { 'src/consumer.ts': CONSUMER });
   for (const [file, content] of Object.entries(await generatePackFiles(appManifest, { packRoot: app, depSnapshots: new Map([['base-pack', snapshot]]) }))) {

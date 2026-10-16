@@ -45,7 +45,7 @@ function builtPack(dir: string, id = 'default-pack', version = '1.0.0', hostVers
   // Reading, replacing and restoring builds must not activate executable pack code.
   write('dist/runtime/index.cjs', 'throw new Error("pack execution is forbidden in this command fixture");');
   write('dist/types/snapshot.json', JSON.stringify({ format: PACK_SNAPSHOT_FORMAT,
-    declarationRevision: _declarationRevision(manifest), manifest, types: { entities: {}, relKinds: {} }, facades: {},
+    declarationRevision: _declarationRevision(manifest), manifest, types: { entities: {}, relKinds: {} }, entityDestinations: {}, facades: {},
   }));
   sealPackBuild(path.join(dir, 'dist'), manifest);
   return dir;

@@ -71,6 +71,8 @@ export interface PackSnapshot {
   types: PackTypeManifest;
   /** Dependent-facing TypeScript declaration bundles, keyed by facade name. */
   facades: Record<string, string>;
+  /** Entity type to local destination feature, materialized from declared plugin contract types. */
+  entityDestinations: Record<string, string>;
   manifest: PackManifest;
   /** Self-contained Monaco declarations keyed by DSL name; required for every declared Monaco target. */
   dslDefinitions?: Record<string, string>;

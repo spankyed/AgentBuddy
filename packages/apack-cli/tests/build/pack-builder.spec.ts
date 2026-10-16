@@ -38,7 +38,7 @@ function fixture() {
   fs.mkdirSync(path.dirname(path.join(candidate, PACK_LAYOUT.snapshot)), { recursive: true });
   fs.writeFileSync(path.join(candidate, PACK_LAYOUT.snapshot), JSON.stringify({ manifest,
     format: PACK_SNAPSHOT_FORMAT, declarationRevision: _declarationRevision(manifest),
-    types: { entities: {}, relKinds: {} }, facades: {} }));
+    types: { entities: {}, relKinds: {} }, entityDestinations: {}, facades: {} }));
   sealPackBuild(candidate, manifest);
   const handoff = { type: 'apack:build-candidate', inputHash: packInputsHash(pack), revision: readPackBuild(candidate).revision };
   fs.writeFileSync(path.join(compiler, 'package.json'), '{"name":"fixture-compiler","type":"module"}');

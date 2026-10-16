@@ -229,6 +229,24 @@ Pack-wide preferences use the same definition under `extensions.settings.<groupI
 to the host. Pack and feature declarations remain visible in Settings when their executable form
 is unavailable; the JSON editor remains available. There is no pack-owned assembly of app settings.
 
+### Entity destination declarations
+
+A plugin's TypeScript contract may declare the literal entity types it opens:
+
+```ts
+export type Contract = {
+  opens: 'Note' | 'Action'
+  // state and inbox declarations belong here too
+}
+```
+
+These are existing entity wire names, including SDK and dependency entities; declaring a destination
+creates no entity type or ownership claim. The build reads exported types without executing the module,
+rejects unknown entities and competing destination features within a pack, and materializes the map in
+`snapshot.json` as `entityDestinations`. Installed inspection reads that data without authored sources.
+Omit `opens` for a plugin with no entity destination; present declarations must be nonempty literal
+unions. This build metadata does not itself make a runtime handler ready.
+
 ### Reference declarations
 
 A feature declares reference identities and presentation as data. Navigation and item enumeration are

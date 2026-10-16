@@ -45,7 +45,7 @@ function producer() {
   fs.mkdirSync(path.join(directory, 'build'));
   fs.writeFileSync(path.join(directory, PACK_LAYOUT.snapshot), JSON.stringify({ manifest,
     declarationRevision: _declarationRevision(manifest), format: PACK_SNAPSHOT_FORMAT,
-    types: { entities: {}, relKinds: {} }, facades: {} }));
+    types: { entities: {}, relKinds: {} }, entityDestinations: {}, facades: {} }));
   fs.writeFileSync(path.join(directory, 'build/helper.js'), 'throw new Error("Do not activate for hashing");');
   sealPackBuild(directory, manifest);
   return { directory, manifest, capture: () => new Map([['dep-pack', readDependencyBuild(directory)]]) };

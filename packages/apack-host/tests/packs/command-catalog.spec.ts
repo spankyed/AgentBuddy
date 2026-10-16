@@ -5,7 +5,7 @@ import { createPackRegistry } from '../../src/packs/registry.ts';
 function source(id: string, placeholder = 'Topic', enabled = true) {
   const manifest: PackManifest = { id, name: id, version: '1.0.0', extensions: { commands: { [id]: { placeholder } } } };
   return { dir: `/packs/${id}`, enabled, snapshot: { format: PACK_SNAPSHOT_FORMAT,
-    declarationRevision: _declarationRevision(manifest), manifest, types: { entities: {}, relKinds: {} }, facades: {} } };
+    declarationRevision: _declarationRevision(manifest), manifest, types: { entities: {}, relKinds: {} }, entityDestinations: {}, facades: {} } };
 }
 
 it('lists declarations without binding, retains stable declaration order and owns returned metadata', () => {

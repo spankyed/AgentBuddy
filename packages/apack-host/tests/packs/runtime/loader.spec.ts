@@ -39,7 +39,7 @@ function makePack(
   fs.mkdirSync(path.join(packDir, 'runtime'), { recursive: true });
   fs.writeFileSync(path.join(packDir, 'apack.json'), JSON.stringify(manifest));
   fs.mkdirSync(path.join(packDir, 'types'), { recursive: true });
-  fs.writeFileSync(path.join(packDir, PACK_LAYOUT.snapshot), JSON.stringify({ declarationRevision, format: PACK_SNAPSHOT_FORMAT, manifest, types: { entities: {}, relKinds: {} }, facades: {} }));
+  fs.writeFileSync(path.join(packDir, PACK_LAYOUT.snapshot), JSON.stringify({ declarationRevision, format: PACK_SNAPSHOT_FORMAT, manifest, types: { entities: {}, relKinds: {} }, entityDestinations: {}, facades: {} }));
   fs.writeFileSync(path.join(packDir, 'runtime', 'index.cjs'), `module.exports = { registration: { id: ${JSON.stringify(manifest.id)}, declarationRevision: '${declarationRevision}', features: ${featuresSource} } };`);
   sealPack(packDir);
   return packDir;
@@ -299,7 +299,7 @@ describe('pack-loader: bundled runtime (runtime/index.cjs)', () => {
     const manifest = { id, name: id, version: '1.0.0', data: { entities: { Widget: null } }, lifecycle: { onInit: 'hooks.ts#onInit' }, features: { widget: { description: 'Feature declaration fixture.', system: { entry: 'system.ts' } } }, extensions: { services: { hello: 'hello.ts#hello' } }, ...manifestExtra };
     fs.writeFileSync(path.join(packDir, 'apack.json'), JSON.stringify(manifest));
     const declarationRevision = _declarationRevision(manifest);
-    fs.writeFileSync(path.join(packDir, PACK_LAYOUT.snapshot), JSON.stringify({ declarationRevision, format: PACK_SNAPSHOT_FORMAT, manifest, types: { entities: {}, relKinds: {} }, facades: {} }));
+    fs.writeFileSync(path.join(packDir, PACK_LAYOUT.snapshot), JSON.stringify({ declarationRevision, format: PACK_SNAPSHOT_FORMAT, manifest, types: { entities: {}, relKinds: {} }, entityDestinations: {}, facades: {} }));
     fs.writeFileSync(path.join(packDir, 'runtime', 'index.cjs'), `${registrationSource}\nif (module.exports.registration) module.exports.registration.declarationRevision = '${declarationRevision}';`);
     sealPack(packDir);
     return packDir;
@@ -1041,7 +1041,7 @@ describe('contentRevision', () => {
     fs.writeFileSync(path.join(source, 'dist', 'runtime', 'index.cjs'), 'module.exports = {};');
     fs.mkdirSync(path.join(source, 'dist', 'types'), { recursive: true });
     const manifest = JSON.parse(fs.readFileSync(path.join(source, 'apack.json'), 'utf8'));
-    fs.writeFileSync(path.join(source, 'dist', PACK_LAYOUT.snapshot), JSON.stringify({ format: PACK_SNAPSHOT_FORMAT, manifest, declarationRevision: _declarationRevision(manifest), types: { entities: {}, relKinds: {} }, facades: {} }));
+    fs.writeFileSync(path.join(source, 'dist', PACK_LAYOUT.snapshot), JSON.stringify({ format: PACK_SNAPSHOT_FORMAT, manifest, declarationRevision: _declarationRevision(manifest), types: { entities: {}, relKinds: {} }, entityDestinations: {}, facades: {} }));
     fs.writeFileSync(path.join(source, 'dist', 'runtime', 'content', contentFile('actions')), '[{"label":"same"}]');
 
     sealBuild(source);

@@ -24,7 +24,7 @@ describe('window declaration catalog', () => {
     catalog.setNative([{ id: 'native-pack', dsl, dslDefinitions: { rows: definitions } }]);
     const manifest = { id: 'installed-pack', name: 'Installed', version: '1.0.0', extensions: { dsl } };
     catalog.replace([{ dir: '/no-executable-pack', enabled: false, snapshot: { format: PACK_SNAPSHOT_FORMAT,
-      declarationRevision: _declarationRevision(manifest), manifest, types: { entities: {}, relKinds: {} }, facades: {},
+      declarationRevision: _declarationRevision(manifest), manifest, types: { entities: {}, relKinds: {} }, entityDestinations: {}, facades: {},
       dslDefinitions: { rows: definitions } } }]);
     const source = { ...manifest, id: 'source-pack' };
     catalog.setSources([{ dir: '/no-authored-modules', manifest: source, declarationRevision: _declarationRevision(source) }]);
@@ -84,7 +84,7 @@ describe('window declaration catalog', () => {
     const installed = { ...manifest, id: 'installed-pack' };
     catalog.replace([{ dir: '/isolated/installed', enabled: false, snapshot: {
       format: PACK_SNAPSHOT_FORMAT, declarationRevision: _declarationRevision(installed), manifest: installed,
-      types: { entities: {}, relKinds: {} }, facades: {},
+      types: { entities: {}, relKinds: {} }, entityDestinations: {}, facades: {},
     } }]);
     reader.connect(); sessions[0].receive(wire());
     const entries = reader.catalog.references();
@@ -251,7 +251,7 @@ it('uses the common step projection and retains current immutable steps across s
   const manifest = { id: 'installed', name: 'Installed', version: '1.0.0', extensions: { steps: { memo: step } } };
   catalog.replace([{ dir: '/unavailable/installed', enabled: false, snapshot: {
     format: PACK_SNAPSHOT_FORMAT, manifest, declarationRevision: _declarationRevision(manifest),
-    types: { entities: {}, relKinds: {} }, facades: {},
+    types: { entities: {}, relKinds: {} }, entityDestinations: {}, facades: {},
   } }]);
   const source = { ...manifest, id: 'source' };
   catalog.setSources([{ dir: '/unavailable/source', manifest: source, declarationRevision: _declarationRevision(source) }]);
