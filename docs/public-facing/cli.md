@@ -6,6 +6,8 @@ Pack operations cover scaffolding, code generation, building, validation, testin
 
 ## Installing
 
+The npm CLI requires Node 22.15+ on the 22.x line, or Node 23.5+. The app-bundled CLI uses the app's included runtime.
+
 - From the app (macOS): **apack → Install 'apack' command in PATH**. It links `/usr/local/bin/apack` (`apack-beta` for apack Beta) to the CLI bundled with the app, which runs on the app's own Node runtime.
 - `npm i -g @apackdev/cli`
 - Homebrew: `build/homebrew/apack.rb`

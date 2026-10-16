@@ -33,7 +33,7 @@ import { bundlePackFlowHelpers } from '../build/flow-helpers-bundler';
 import { PACK_LAYOUT, sealPackBuild } from '@apackdev/host/packs';
 import { replaceDir } from '@apackdev/host/replace-dir';
 import { withCompilerFileReads } from '../build/compiler-file-reads.ts';
-import { importCompilerModule } from '../build/compiler-modules.ts';
+import { createCompilerModuleLoader } from '../build/compiler-modules.ts';
 import { holdPackBuildLock } from '../build/build-lock.ts';
 import { dependencyTypes, resolveDependencyFiles } from './generate';
 import { assertGeneratedCurrent, generateEntries, warnStaleDepTypes } from './generate-entries';
@@ -130,6 +130,7 @@ async function buildIntoStaging(args: string[], root: string) {
   const resolvedDependencies = dependencyTypes(dependencyFiles);
   const { depSnapshots } = resolvedDependencies;
   const compilation = captureCompilationInputs(root);
+  const modules = createCompilerModuleLoader(compilation);
   // What each bundling phase read, for the chain step that builds this pack to be checked against. The
   // phases with no bundler to ask — codegen, the content compilation, feature settings, the pack rules — are
   // absent from the record rather than guessed at
@@ -167,7 +168,7 @@ async function buildIntoStaging(args: string[], root: string) {
         packDir,
         outputDir: contentOutputDir,
         packConfig,
-        importModule: file => importCompilerModule(file, compilation),
+        importModule: modules.importModule,
       };
 
       result = await withCompilerFileReads({ compilation, outputDirectory: outputDir }, () => compilePack(options));
@@ -279,6 +280,7 @@ async function buildIntoStaging(args: string[], root: string) {
       // Optional diagnostics describe this validated candidate; only the sealed cache authorizes reuse.
       reads?.write();
       // Cleanup can fail too; finish it before replacing the accepted build.
+      modules.dispose();
       compilation.dispose();
       // Every phase has succeeded and the snapshot advertises them, so this is the moment the staged tree
       // becomes the pack's output — one rename, rather than the ~20s of absent `dist` that clearing it first cost
@@ -375,6 +377,7 @@ async function buildIntoStaging(args: string[], root: string) {
 
     finish();
   } finally {
+    modules.dispose();
     compilation.dispose();
   }
 }
