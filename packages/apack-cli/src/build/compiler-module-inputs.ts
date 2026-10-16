@@ -4,15 +4,16 @@ import { createHash } from 'node:crypto';
 import ts from 'typescript';
 import { readPackCompilerConfiguration, type PackCompilerConfiguration } from './compiler-configuration.ts';
 import type { BuildInputObserver } from '@apackdev/host/build/pack-inputs';
-import { isPackInputPath, packInputFiles } from '@apackdev/host/build/pack-inputs';
+import { packInputFiles } from '@apackdev/host/build/pack-inputs';
 import { codeBlocks } from './pack-sources.ts';
 import { compilerSourcePath } from './compiler-paths.ts';
 import { compilerGlobDirectories } from './compiler-source-globs.ts';
-import { createCompilerFileView, type CompilerFileSystem } from './compiler-file-view.ts';
+import type { createCompilerFileView, CompilerFileSystem } from './compiler-file-view.ts';
 import { readCompilerInstallationInputs } from './compiler-installation.ts';
+import { createPackCompilerInputView, type PackCompilerInputView } from './compiler-input-view.ts';
 
 /** Resolve script/type inputs afresh, including Vue scripts, outside imports and undeclared npm packages. */
-export function readCompilerModuleInputs(root: string, observe?: BuildInputObserver): {
+export function readCompilerModuleInputs(root: string, observe?: BuildInputObserver, captured?: PackCompilerInputView): {
   hash: string;
   packageDirectories: string[];
   configuration: PackCompilerConfiguration | undefined;
@@ -34,15 +35,10 @@ export function readCompilerModuleInputs(root: string, observe?: BuildInputObser
   const realRoot = fs.realpathSync(root);
   const compilerPaths = readCompilerInstallationInputs()?.paths ?? [];
   const sourceRoot = compilerSourcePath(realRoot, compilerPaths);
-  const authoredRoots = [...new Set([path.resolve(root), realRoot])];
-  // Generated imports are outputs of this calculation, not inputs to its next invocation.
-  const excluded = (file: string) => authoredRoots.some(directory => {
-    const relative = path.relative(directory, file);
-    return !relative.startsWith(`..${path.sep}`) && !path.isAbsolute(relative)
-      && !isPackInputPath(relative, false) && !relative.split(path.sep).includes('node_modules');
-  });
   const relative = (file: string) => path.relative(sourceRoot, compilerSourcePath(file, compilerPaths)).split(path.sep).join('/');
-  const view = createCompilerFileView(root, { paths: compilerPaths, excluded, observe });
+  const view = captured ?? createPackCompilerInputView(root, { paths: compilerPaths, observe });
+  if (view.observations().root !== sourceRoot) throw new Error('Compiler input view belongs to another pack');
+  const excluded = view.excluded;
   const readDirectory: ts.System['readDirectory'] = (...args) => ts.sys.readDirectory(...args);
   const fileSystem: CompilerFileSystem = { ...view.fileSystem, readDirectory: (...args) => view.readGlob(readDirectory, ...args) };
   const configuration = readPackCompilerConfiguration(root, { ...ts.sys, ...fileSystem });

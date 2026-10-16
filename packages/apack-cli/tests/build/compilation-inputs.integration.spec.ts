@@ -6,6 +6,7 @@ import { afterEach, expect, it, vi } from 'vitest';
 import { captureCompilationInputs } from '../../src/build/compilation-inputs.ts';
 import * as moduleInputs from '../../src/build/compiler-module-inputs.ts';
 import { withCompilerFileReads } from '../../src/build/compiler-file-reads.ts';
+import { createPackCompilerInputView } from '../../src/build/compiler-input-view.ts';
 
 const roots: string[] = [];
 afterEach(() => { vi.restoreAllMocks(); vi.unstubAllEnvs(); roots.splice(0).forEach(root => fs.rmSync(root, { recursive: true, force: true })); });
@@ -20,6 +21,26 @@ function pack() {
   fs.writeFileSync(path.join(library, 'index.d.ts'), 'export type Value = string;');
   return { root, file: path.join(library, 'index.d.ts') };
 }
+
+it('adopts startup reads into compilation without replacing their bytes, validation or lifetime', () => {
+  const { root } = pack();
+  const outside = fs.mkdtempSync(path.join(os.tmpdir(), 'apack-startup-input-'));
+  roots.push(outside);
+  const file = path.join(outside, 'preload.txt');
+  fs.writeFileSync(file, 'STARTUP');
+  const startup = createPackCompilerInputView(root);
+  expect(startup.readDataBytes(file)?.toString()).toBe('STARTUP');
+  expect((startup.readMetadata('stat', file, []) as fs.Stats).size).toBe(7);
+  const compilation = captureCompilationInputs(root, startup);
+  try {
+    fs.writeFileSync(file, 'CHANGED');
+    expect(compilation.readFile(file)?.toString()).toBe('STARTUP');
+    expect(() => compilation.assertCurrent()).toThrow('Compiler or installed package inputs changed');
+    fs.writeFileSync(file, 'STARTUP');
+    expect(() => compilation.assertCurrent()).not.toThrow();
+  } finally { compilation.dispose(); }
+  expect(() => startup.readDataBytes(file)).toThrow(/outlived/);
+});
 
 it('captures once, rejects changed bytes, and accepts exact restoration without a version change', () => {
   const { root, file } = pack(), original = fs.readFileSync(file);

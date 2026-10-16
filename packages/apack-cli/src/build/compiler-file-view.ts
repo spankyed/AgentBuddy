@@ -185,6 +185,7 @@ export function createCompilerFileView(root: string, options: {
     return result.snapshot();
   };
   return {
+    excluded,
     fileSystem,
     // Keep native capture usable before compiler activation; the compiler owns glob semantics.
     readGlob(read: ts.System['readDirectory'], ...args: Parameters<ts.System['readDirectory']>) {

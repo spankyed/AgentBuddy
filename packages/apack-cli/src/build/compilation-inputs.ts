@@ -16,6 +16,7 @@ import type { CompilerDirectoryResult } from './compiler-file-view.ts';
 import { compilerDiagnostic, compilerSourcePath } from './compiler-paths.ts';
 import { createNativeInputReader } from './compiler-native-inputs.ts';
 import { createCompilerReadTree, type CompilerReadTree } from './compiler-read-tree.ts';
+import type { PackCompilerInputView } from './compiler-input-view.ts';
 
 /** Export selectors passed to the worker; executable preloads need their own captured input closure. */
 export function compilationConditions(args = process.execArgv, nodeOptions = process.env.NODE_OPTIONS ?? ''): string[] {
@@ -53,12 +54,12 @@ export interface CompilationInputs {
 }
 
 /** Own one module read-set per build; recheck its data and package/tool inputs without rerunning TypeScript. */
-export function captureCompilationInputs(packRoot: string): CompilationInputs {
+export function captureCompilationInputs(packRoot: string, view?: PackCompilerInputView): CompilationInputs {
   const cliRoot = cliPackageDirectory();
   const compiler = readCompilerInstallationInputs();
   if (compiler && !compiler.packages.includes(cliRoot)) throw new Error('Captured compiler inputs do not belong to this CLI');
   const capturedPackages = new Set(compiler?.packages);
-  const modules = readCompilerModuleInputs(packRoot);
+  const modules = readCompilerModuleInputs(packRoot, undefined, view);
   let tree: CompilerReadTree | undefined;
   let disposed = false;
   const assertOpen = () => { if (disposed) throw new Error('Compiler input operation outlived its build'); };

@@ -8,8 +8,12 @@ import { capturedDescriptor, descriptorStats, releaseDescriptor, instrumentFileH
 import { compilerMetadataOperations, type CompilerMetadataKind } from './compiler-metadata.ts';
 import type { CompilationInputs } from './compilation-inputs.ts';
 
+/** Native interception depends on reads and resolution, not compiler configuration or build hashes. */
+export type CompilerFileReadInputs = Pick<CompilationInputs,
+  'readDataPath' | 'readMetadata' | 'readDirectory' | 'openDirectory' | 'sourcePath' | 'diagnostic' | 'prepareNative' | 'readTree'>;
+
 interface CompilerFileReadScope {
-  compilation: CompilationInputs;
+  compilation: CompilerFileReadInputs;
   outputDirectory: string;
 }
 
