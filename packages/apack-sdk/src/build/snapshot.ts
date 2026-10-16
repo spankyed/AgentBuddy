@@ -1,3 +1,4 @@
+import { _entityDestinationsProblem } from '../framework/plugin-declaration.ts';
 import { SDK_ENTITIES } from '../types/sdk-entities.ts';
 import { dslDefinitionsProblem } from '../framework/dsl-declarations.ts';
 import { declarationRecord } from '../framework/declaration-record.ts';
@@ -61,14 +62,10 @@ function parseSnapshotData<T extends PackDependencySnapshot>(raw: unknown, schem
     message: `snapshot.json ${issue.path.join('.') || 'root'}: ${issue.message}`,
   })));
   const snapshot = result.data;
-  const sdkEntities = new Set<string>(Object.values(SDK_ENTITIES));
-  for (const [entity, feature] of Object.entries(snapshot.entityDestinations)) {
-    const declaration = Object.hasOwn(snapshot.manifest.features ?? {}, feature) ? snapshot.manifest.features![feature] : undefined;
-    if (!declaration?.plugin || (!Object.hasOwn(snapshot.types.entities, entity) && !sdkEntities.has(entity))) {
-      return packValidation([{ code: 'snapshot.entityDestinations', severity: 'error', path: ['entityDestinations', entity], source: 'snapshot.json',
-        message: `Entity destination "${entity}" must name a known entity and a declared plugin feature; received "${feature}"` }]);
-    }
-  }
+  const destinationProblem = _entityDestinationsProblem(snapshot.entityDestinations, snapshot.manifest.features,
+    new Set([...Object.values(SDK_ENTITIES), ...Object.keys(snapshot.types.entities)]));
+  if (destinationProblem) return packValidation([{ code: 'snapshot.entityDestinations', severity: 'error',
+    path: ['entityDestinations'], source: 'snapshot.json', message: destinationProblem }]);
   const dslProblem = dslDefinitionsProblem(snapshot.manifest.extensions?.dsl, snapshot.dslDefinitions);
   if (dslProblem) return packValidation([{
     code: 'snapshot.dslDefinitions', severity: 'error', path: ['dslDefinitions'], source: 'snapshot.json', message: dslProblem,

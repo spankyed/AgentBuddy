@@ -48,6 +48,32 @@ describe('window declaration catalog', () => {
     reader.dispose(); expect(reader.catalog.dsl()).toEqual([]);
   });
 
+  it('preserves compiled entity claims across the window data frame without source modules', () => {
+    const { reader, catalog, sessions, wire } = fixture();
+    const manifest = { id: 'installed', name: 'Installed', version: '1.0.0', features: {
+      view: { description: 'Open actions', plugin: { label: 'View', state: 'missing.ts' } },
+    } };
+    const snapshot = { manifest, declarationRevision: _declarationRevision(manifest), format: PACK_SNAPSHOT_FORMAT,
+      types: { entities: {}, relKinds: {} }, facades: {}, entityDestinations: { Action: 'view' } };
+    catalog.replace([{ dir: '/missing/installed', enabled: false, snapshot }]);
+    reader.connect(); sessions[0].receive(wire());
+    expect(reader.plugins()).toEqual(catalog.plugins());
+    expect(reader.plugins()[0]).toMatchObject({ enabled: false, opens: ['Action'] });
+    expect(Reflect.set(reader.plugins()[0].opens!, 0, 'Prompt')).toBe(false);
+    catalog.replace([{ dir: '/missing/installed', enabled: true, snapshot }]);
+    sessions[0].receive(wire());
+    expect(reader.plugins()[0]).toMatchObject({ enabled: true, opens: ['Action'] });
+    const before = reader.getSnapshot();
+    const invalid = wire();
+    Object.assign(invalid.snapshot, { revision: invalid.snapshot.revision + 1 });
+    Object.assign(invalid.snapshot.packs[0].snapshot, { entityDestinations: { Action: 'missing' } });
+    sessions[0].receive(invalid);
+    expect(reader.status()).toBe('error');
+    expect(reader.problem()).toContain('Entity destination "Action" names feature "missing"');
+    expect(reader.getSnapshot()).toBe(before);
+    reader.dispose();
+  });
+
   it('exposes local native plugin declarations before connection, without importing their modules', () => {
     const native = { id: 'host', features: { settings: { description: 'Host settings.', plugin: { label: 'Settings', state: 'never.ts' } } } };
     const reader = createWindowPackCatalog({ subscribe: () => () => {} }, [native]);

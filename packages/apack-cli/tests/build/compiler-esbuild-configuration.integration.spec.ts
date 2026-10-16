@@ -15,7 +15,7 @@ import { packFixture } from '@apackdev/sdk/testing/pack-fixture';
 import { startTestRuntime } from '@apackdev/sdk/testing';
 import { REPO_ROOT } from '@apackdev/host/build/packages-built';
 import { loadSingleExternalPack } from '@apackdev/host/packs/runtime';
-import { stagePack } from '@apackdev/host/packs';
+import { createPackRegistry, stagePack } from '@apackdev/host/packs';
 
 startTestRuntime({ appVersion: '1.0.0' });
 
@@ -204,7 +204,7 @@ it.each(['configuration', 'sources', 'declarations', 'resolution'])('publishes c
   expect(fs.readFileSync(config)).toEqual(original);
   const installed = path.join(root, 'installed/captured-config');
   stagePack(pack, installed);
-  const loaded = loadSingleExternalPack(installed);
+  const loaded = loadSingleExternalPack(createPackRegistry(), installed);
   if ('problem' in loaded) throw new Error(loaded.problem);
   expect(loaded.registration.lifecycle?.onInit?.())
     .toBe(JSON.stringify({ calls: [7], label: 'PACKAGE', value: 'ALIASED', jsx: 'div' }));

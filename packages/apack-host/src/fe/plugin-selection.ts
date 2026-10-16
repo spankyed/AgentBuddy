@@ -31,9 +31,29 @@ export function getEligiblePlugin(catalog: ShellPluginCatalog, bindings: Readonl
     || (owner.origin !== 'native' && catalog.status() !== 'ready')
     || accepted.packId !== owner.packId || accepted.binding.id !== ref
     || !isEqual(owner.declaration, accepted.declaration)) return undefined;
-  if (owner.origin === 'native') return accepted.declarationRevision === undefined && accepted.buildRevision === undefined
+  if (owner.origin === 'native') return isEqual(owner.opens ?? [], accepted.opens ?? []) && accepted.declarationRevision === undefined && accepted.buildRevision === undefined
     && accepted.runtimeRevision === undefined ? accepted.binding : undefined;
   return owner.declarationRevision && owner.buildRevision && accepted.runtimeRevision
     && owner.declarationRevision === accepted.declarationRevision && owner.buildRevision === accepted.buildRevision
     ? accepted.binding : undefined;
+}
+
+
+export type EntityDestinationSelection =
+  | { status: 'declared'; destination: PluginCatalogEntry }
+  | { status: 'disabled' | 'ambiguous'; destinations: readonly PluginCatalogEntry[] }
+  | { status: 'loading' | 'unavailable' | 'unclaimed' };
+
+/** Resolve declarations first; actor readiness and accepted binding identity remain separate. */
+export function selectEntityDestination(catalog: ShellPluginCatalog, entity: string): EntityDestinationSelection {
+  const claims = catalog.plugins().filter(entry => entry.origin !== 'source' && entry.opens?.includes(entity));
+  const enabled = claims.filter(entry => entry.enabled === true);
+  if (enabled.length > 1) return { status: 'ambiguous', destinations: enabled };
+  const destination = enabled[0];
+  // A native destination is available before backend connection only if no installed declarations
+  // can still arrive and conflict. Wait for complete authority before choosing an entity destination.
+  if (catalog.status() === 'loading') return { status: 'loading' };
+  if (catalog.status() !== 'ready') return { status: 'unavailable' };
+  if (destination) return { status: 'declared', destination };
+  return claims.length ? { status: 'disabled', destinations: claims } : { status: 'unclaimed' };
 }

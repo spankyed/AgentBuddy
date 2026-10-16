@@ -4,7 +4,7 @@ export type { ArrayChanges, DiffResult } from '../utils/change-detection.ts';
 export { packSystem, type SystemEntry } from './system-utils.ts';
 export type { PackRegistration, PackFeature, PackFeatureSystem, PackFeaturePlugin, PackLifecycleHooks, PackEARS, PackMigration } from './pack-registration.ts';
 export type { ContentRuntime } from './content-runtime.ts';
-export { _pluginTargets, type PluginDeclaration, type ComponentTarget } from './plugin-declaration.ts';
+export { _pluginTargets, _entityDestinationsProblem, type PluginDeclaration, type ComponentTarget } from './plugin-declaration.ts';
 export { getPackHelp, type HelpDocument, type HelpArticle, type HelpProblem, type HelpCatalog, type HelpTarget } from './pack-help.ts';
 export { getSettingsCatalog, type SettingsCatalog } from './pack-settings.ts';
 export { getPackCommands, type PackCommand } from './pack-commands.ts';

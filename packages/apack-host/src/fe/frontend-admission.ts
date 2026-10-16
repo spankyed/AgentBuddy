@@ -12,6 +12,8 @@ type FrontendDeclarations = Parameters<typeof frontendBindingProblem>[0];
 
 export interface AcceptedFrontendAdmission {
   declarations: FrontendDeclarations;
+  /** Native claims have no build stamp; bind their accepted data to this frontend instance. */
+  entityDestinations?: DeclarationData<Record<string, string>>;
   declarationRevision?: string;
   runtimeRevision?: string;
   buildRevision?: string;
@@ -24,7 +26,8 @@ export function captureFrontendAdmission(admission: FrontendAdmission): Accepted
     const problem = _nativePackDeclarationProblem(admission.declaration);
     if (problem) throw new Error(`Invalid native declarations: ${problem}`);
     const { id, features, settings, steps, artifacts, blocks, dsl, tiptapPlugins, appExtensions } = admission.declaration;
-    return { declarations: ownData({ id, features, extensions: { settings, steps, artifacts, blocks, dsl, tiptapPlugins, appExtensions } }) };
+    return { entityDestinations: ownData(admission.declaration.entityDestinations ?? {}),
+      declarations: ownData({ id, features, extensions: { settings, steps, artifacts, blocks, dsl, tiptapPlugins, appExtensions } }) };
   }
   if (admission.kind !== 'loaded') throw new Error('Frontend registration requires accepted native or loaded declarations');
   const pack = admission.pack;

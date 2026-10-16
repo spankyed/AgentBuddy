@@ -33,3 +33,15 @@ export function _pluginTargets(plugin: PluginDeclaration): [string, string][] {
     ...(plugin.fallbackPanel ? [['fallbackPanel.isShown', plugin.fallbackPanel.isShown] as [string, string]] : []),
   ];
 }
+
+
+/** @internal Check compiled destination data without importing contracts or machines. */
+export function _entityDestinationsProblem(destinations: Readonly<Record<string, string>>,
+  features: Readonly<Record<string, { readonly plugin?: unknown }>> | undefined, entities?: ReadonlySet<string>): string | undefined {
+  for (const [entity, feature] of Object.entries(destinations)) {
+    if (!Object.hasOwn(features ?? {}, feature) || !features![feature].plugin) {
+      return `Entity destination "${entity}" names feature "${feature}" without a declared plugin`;
+    }
+    if (entities && !entities.has(entity)) return `Entity destination "${entity}" names an unknown entity`;
+  }
+}

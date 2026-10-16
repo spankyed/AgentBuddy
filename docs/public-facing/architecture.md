@@ -382,6 +382,12 @@ A dependency found on this machine or on GitHub is cached under `.apack/deps/<id
 
 A `PackSnapshot` contains `format` (the snapshot format the writing CLI used), `types` (entity and relKind maps), `facades` (dependent-facing `.d.ts` contents, including the bundled `pack-types` facade), `entityDestinations` (entity wire name to local destination feature, compiled from plugin `Contract.opens`), `manifest`, `sdkVersion`, `provenance` (which pack in its tree declares each name) and `flowHelpers` (the pack's bundled flow helpers module and declarations). Runtime/install readers use `PackSnapshot` with an exact execution stamp. Type-data readers use `PackDependencySnapshot`, retaining an optional recorded stamp and validating the same current fields; they do not read or convert another grammar.
 
+Plugin catalog entries project compiled destination claims as `opens`; unbuilt authoring previews do
+not claim compiled destinations. Enabled native/installed claims must be unique per entity type, while
+disabled claims remain visible. Native composition supplies `entityDestinations` as data and its accepted
+frontend retains those claims; installed frontend eligibility uses the matching sealed build revision.
+Catalog candidate validation runs before executable imports, enablement persistence and publication.
+
 The common host/window catalog also exposes artifact and block declarations, including their owner,
 origin, enablement and available declaration/build revisions. Artifact icons, block input kinds and
 module references remain data when a pack is disabled or its implementation is unavailable. Reading

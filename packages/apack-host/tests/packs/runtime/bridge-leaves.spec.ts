@@ -1,7 +1,7 @@
 import { sealPack } from './build-fixture.ts';
 import { _declarationRevision } from '@apackdev/sdk/build';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import './test-host.ts';
+import { registry } from './test-host.ts';
 import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
@@ -39,7 +39,7 @@ if (module.exports.registration) module.exports.registration.declarationRevision
     sealPack(packDir);
     const { loadSingleExternalPack } = await import('../../../src/packs/runtime/loader.ts');
 
-    const pack = loadSingleExternalPack(packDir);
+    const pack = loadSingleExternalPack(registry, packDir);
 
     if ('problem' in pack) throw new Error(pack.problem);
     expect(pack.registration.services).toEqual({ leaves: { cron: expect.any(String), newer: 1 } });
@@ -66,7 +66,7 @@ if (module.exports.registration) module.exports.registration.declarationRevision
     sealPack(packDir);
     const { loadSingleExternalPack } = await import('../../../src/packs/runtime/loader.ts');
 
-    const pack = loadSingleExternalPack(packDir);
+    const pack = loadSingleExternalPack(registry, packDir);
 
     if ('problem' in pack) throw new Error(pack.problem);
     const step = (pack.registration.services as { step: { run: () => string } }).step;

@@ -133,6 +133,11 @@ export interface DslCatalogEntry {
 // @public (undocumented)
 export type DslDeclaration = z.infer<typeof DslEntrySchema>;
 
+// @internal
+export function _entityDestinationsProblem(destinations: Readonly<Record<string, string>>, features: Readonly<Record<string, {
+    readonly plugin?: unknown;
+}>> | undefined, entities?: ReadonlySet<string>): string | undefined;
+
 // @public
 export function formatReferenceHref(target: ReferenceTarget): string;
 
@@ -259,6 +264,7 @@ export interface NativePackDeclaration extends PackDataDeclarations, FrontendDec
     // (undocumented)
     dsl?: Record<string, DeclarationData<z.infer<typeof DslEntrySchema>>>;
     dslDefinitions?: Record<string, string>;
+    entityDestinations?: Record<string, string>;
     // (undocumented)
     features?: Record<string, {
         description: string;

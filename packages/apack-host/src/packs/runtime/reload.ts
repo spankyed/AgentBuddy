@@ -122,7 +122,7 @@ export async function reloadPackById(
   }
 
   await reloadPack(registry, packId, backendActor, () => {
-    const pack = loadSingleExternalPack(packDir);
+    const pack = loadSingleExternalPack(registry, packDir);
     if ('problem' in pack) {
       // A pack still running keeps its previous runtime, so only one that isn't has a load problem to show
       if (!registry.getPackRegistration(packId)) registry.recordLoadProblem(packId, pack.problem);

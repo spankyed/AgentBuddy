@@ -61,6 +61,7 @@ function skipped(id: string, problem: string): PackLoadProblem {
 
 /** Reads an installed pack and its runtime, or says why it can't be loaded */
 export function loadSingleExternalPack(
+  registry: Pick<PackRegistry, 'catalog'>,
   dir: string,
 ): LoadedPack | PackLoadProblem {
   let build;
@@ -68,6 +69,8 @@ export function loadSingleExternalPack(
   catch (error) { return skipped(path.basename(dir), (error as Error).message); }
   const { snapshot, integrity, revision: buildRevision } = build;
   const { manifest, declarationRevision } = snapshot;
+  try { registry.catalog.assertPackDestinations({ dir, snapshot }); }
+  catch (error) { return skipped(manifest.id, (error as Error).message); }
   const buildFiles = Object.freeze({ ...integrity.files });
   const appVersion = getAppVersion();
   if (!isHostCompatible(manifest.hostVersion, appVersion)) {
@@ -128,11 +131,12 @@ export function clearPackRequireCache(packDir: string): void {
 }
 
 /**
- * Reads every enabled installed pack. Why each one it skips was skipped goes to `problems` when given: the app passes
- * its registry, so the Packs view can say why an enabled pack isn't running.
+ * Reads every enabled installed pack against one committed catalog. Validate the complete installed
+ * claim set before importing any candidate; record individual load refusals in the same registry.
  */
-export function loadExternalPacks(problems?: LoadProblemSink): LoadedPack[] {
+export function loadExternalPacks(registry: LoadProblemSink & Pick<PackRegistry, 'catalog' | 'refreshCatalog'>): LoadedPack[] {
   const { packsDir } = resolveAppEnvironment();
+  registry.refreshCatalog(packsDir);
   const discovered = readInstalledPackBuilds(packsDir);
   // Boot is where what is installed is settled, so it is where rows for packs that are gone are dropped
   forgetPacksExcept(new Set(discovered.map(entry => entry.id)));
@@ -147,12 +151,12 @@ export function loadExternalPacks(problems?: LoadProblemSink): LoadedPack[] {
   for (const entry of enabled) {
     if (!entry.build) {
       logger.warn(`Skipping ${entry.id}: ${entry.problem}`);
-      problems?.recordLoadProblem(entry.id, entry.problem);
+      registry.recordLoadProblem(entry.id, entry.problem);
       continue;
     }
     const { dir, build: { snapshot: { manifest } } } = entry;
-    const pack = loadSingleExternalPack(dir);
-    if ('problem' in pack) problems?.recordLoadProblem(manifest.id, pack.problem);
+    const pack = loadSingleExternalPack(registry, dir);
+    if ('problem' in pack) registry.recordLoadProblem(manifest.id, pack.problem);
     else loaded.push(pack);
   }
 
@@ -180,7 +184,6 @@ export function registerExternalPacks(registry: PackRegistry, packs: LoadedPack[
 
 /** Load and register every enabled installed pack; advertisements grant no registration priority. */
 export function loadAppPacks(registry: PackRegistry): { loaded: LoadedPack[] } {
-  registry.refreshCatalog(resolveAppEnvironment().packsDir);
   const loaded = loadExternalPacks(registry);
   return { loaded: loaded.length > 0 ? registerExternalPacks(registry, loaded) : [] };
 }

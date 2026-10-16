@@ -10,7 +10,7 @@ import { _declarationRevision } from '@apackdev/sdk/build';
  * Cleans up after itself.
  */
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import './test-host.ts';
+import { registry } from './test-host.ts';
 import * as fs from 'fs';
 import * as path from 'path';
 import * as os from 'os';
@@ -125,7 +125,7 @@ describe('E2E: pack loading pipeline', () => {
   let packs: LoadedPack[];
 
   it('discovers the test pack from the resolved packs directory', () => {
-    packs = loadExternalPacks();
+    packs = loadExternalPacks(registry);
     const testPack = packs.find(p => p.origin.id === TEST_PACK_ID);
     expect(testPack).toBeDefined();
     expect(testPack!.origin.name).toBe('E2E Test Pack');

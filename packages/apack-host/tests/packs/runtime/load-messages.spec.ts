@@ -59,7 +59,7 @@ describe('what the loader says about a pack', () => {
     fs.writeFileSync(path.join(packDir, PACK_LAYOUT.snapshot), JSON.stringify({ format: PACK_SNAPSHOT_FORMAT + 1 }));
     sealPack(packDir);
 
-    const result = loadSingleExternalPack(packDir);
+    const result = loadSingleExternalPack(registry, packDir);
 
     expect(result).toHaveProperty('problem');
     expect(result).toHaveProperty('problem', expect.stringContaining(`format ${PACK_SNAPSHOT_FORMAT + 1}`));

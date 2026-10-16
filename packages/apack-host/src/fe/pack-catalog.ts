@@ -1,6 +1,6 @@
 import { dslCatalogEntries } from '../packs/catalog-dsl.ts';
 import { captureData } from '../packs/captured-data.ts';
-import { pluginCatalogEntries, nativePluginCatalogEntries } from '../packs/catalog-plugins.ts';
+import { assertEntityDestinationClaims, pluginCatalogEntries, nativePluginCatalogEntries } from '../packs/catalog-plugins.ts';
 import { stepCatalogEntries } from '../packs/catalog-steps.ts';
 import type { PackCatalogFrame, PackCatalogSnapshot } from '../packs/catalog.ts';
 import type { NativePackDeclaration, PackCatalogView } from '@apackdev/sdk/framework';
@@ -67,6 +67,7 @@ export function createWindowPackCatalog(io: WindowPackCatalogIO, native: readonl
       if (!isEqual(frame.snapshot, next.snapshot)) throw new Error('Declarations changed without a catalog revision');
       return;
     }
+    assertEntityDestinationClaims(next.snapshot);
     clearTimeout(timer); timer = undefined;
     frame = next;
     status = 'ready';

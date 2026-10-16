@@ -91,6 +91,7 @@ export interface PreparedFrontend {
 
 /** A plugin implementation admitted against a captured declaration and backend generation. */
 export interface PluginFrontendBinding {
+  readonly opens?: readonly string[];
   readonly packId: string;
   readonly declaration: DeclarationData<PluginDeclaration>;
   readonly declarationRevision?: string;
@@ -134,6 +135,8 @@ function capture(registration: PackFERegistration, identity: AcceptedFrontendAdm
   return {
     id: reg.id, identity: Object.freeze(revisions), addressed: reg.addressed, roles: reg.roles, bindSettings: reg.bindSettings,
     pluginBindings: reg.addressed.map(({ plugin }) => Object.freeze({ packId: reg.id, ...revisions,
+      ...(identity.entityDestinations && { opens: Object.freeze(Object.keys(identity.entityDestinations)
+        .filter(entity => identity.entityDestinations![entity] === plugin.id.slice(reg.id.length + 1)).sort()) }),
       declaration: identity.declarations.features![plugin.id.slice(reg.id.length + 1)]!.plugin!, binding: plugin })),
     forms: [
       ...Object.entries(reg.features ?? {}).flatMap(([id, feature]) => feature.settingsForm

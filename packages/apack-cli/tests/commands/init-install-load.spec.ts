@@ -6,7 +6,7 @@ import * as os from 'node:os';
 import * as path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { startTestRuntime } from '@apackdev/sdk/testing';
-import { installPackFromLocal } from '@apackdev/host/packs';
+import { createPackRegistry, installPackFromLocal } from '@apackdev/host/packs';
 import { loadExternalPacks } from '@apackdev/host/packs/runtime';
 import { init } from '../../src/commands/init';
 import { PACK_SNAPSHOT_FORMAT } from '@apackdev/sdk/build';
@@ -78,7 +78,7 @@ describe('pack full lifecycle: init → install → load', () => {
     expect(fs.existsSync(path.join(installedDir, 'runtime', 'index.cjs'))).toBe(true);
 
     // The loader finds it under APACK_USER_DATA_DIR
-    const packs = loadExternalPacks();
+    const packs = loadExternalPacks(createPackRegistry());
     expect(packs).toHaveLength(1);
     expect(packs[0].origin.id).toBe('my-test-pack');
     expect(packs[0].origin.name).toBe('My Test Pack');

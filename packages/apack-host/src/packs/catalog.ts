@@ -1,6 +1,6 @@
 import { dslCatalogEntries } from './catalog-dsl.ts';
 import { captureData } from './captured-data.ts';
-import { pluginCatalogEntries } from './catalog-plugins.ts';
+import { assertEntityDestinationClaims, pluginCatalogEntries } from './catalog-plugins.ts';
 import { stepCatalogEntries } from './catalog-steps.ts';
 import { commandCatalogEntries } from './catalog-commands.ts';
 import { artifactCatalogEntries } from './catalog-artifacts.ts';
@@ -51,6 +51,8 @@ export interface PluginCatalogEntry {
   readonly packId: string;
   readonly origin: 'native' | 'installed' | 'source';
   readonly declaration: CatalogData<PluginDeclaration>;
+  /** Compiled claims; absent on authoring-source previews that have no built contracts. */
+  readonly opens?: readonly string[];
   readonly declarationRevision?: string;
   readonly enabled?: boolean;
   readonly buildRevision?: string;
@@ -136,6 +138,7 @@ export function createContributionCatalog(appSettings: SettingsDefinition) {
       }
     }
     const next = immutable({ revision: current.revision + 1, appSettings: app, packs, problems: catalogProblems, native, sourcePacks, appPackSources, appPackSourceProblems });
+    assertEntityDestinationClaims(next);
     // Diagnostics and source offers leave accepted settings definitions and their identity intact.
     const projection = declarationsChanged ? immutable({ revision: next.revision, app, packs: groups, features, dependencies }) : settings;
     const helpOwners = [
@@ -221,6 +224,19 @@ export function createContributionCatalog(appSettings: SettingsDefinition) {
 
     featureSettings: (ref: FeatureRef): CatalogData<SettingsDefinition> | undefined =>
       hasOwn(settings.features, ref) ? settings.features[ref] : undefined,
+
+    /** Check a verified executable candidate before importing it or replacing incumbent bindings. */
+    assertPackDestinations(candidate: Pick<PackCatalogEntry, 'dir' | 'snapshot'>): void {
+      const packs = current.packs.filter(pack => pack.snapshot.manifest.id !== candidate.snapshot.manifest.id);
+      assertEntityDestinationClaims({ ...current, packs: [...packs, { ...candidate, enabled: true }] });
+    },
+
+    /** Check enablement before persisting it or constructing an executable provider. */
+    assertPackEnabled(packId: string, enabled: boolean): void {
+      if (!byId.has(packId)) throw new Error(`No accepted installed declarations for pack "${packId}"`);
+      assertEntityDestinationClaims({ ...current, packs: current.packs.map(pack =>
+        pack.snapshot.manifest.id === packId ? { ...pack, enabled } : pack) });
+    },
 
     /** Validate the whole candidate before publication; a refusal leaves the previous revision intact. */
     replace(sources: readonly PackCatalogSource[], problems: readonly PackCatalogProblem[] = []): void {

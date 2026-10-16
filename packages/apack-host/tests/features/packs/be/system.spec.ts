@@ -1183,3 +1183,32 @@ describe('a user answering for one of a pack’s content items', () => {
     }
   });
 });
+
+
+it('refuses a conflicting destination before saving enablement or importing its runtime', async () => {
+  const feature = { description: 'Open actions', plugin: { label: 'Actions', state: 'missing.ts' } };
+  const marker = path.join(tmpDir, 'conflicting-runtime-imported');
+  for (const id of ['incumbent', PACK_ID]) {
+    const source = packSource('1.0.0', { id, manifest: { features: { view: feature } },
+      runtime: `require('node:fs').writeFileSync(${JSON.stringify(marker)}, 'executed');` });
+    const file = path.join(source, 'dist', PACK_LAYOUT.snapshot);
+    const snapshot = JSON.parse(fs.readFileSync(file, 'utf8'));
+    snapshot.entityDestinations = { Action: 'view' };
+    fs.writeFileSync(file, JSON.stringify(snapshot)); sealBuild(source);
+    await installPackFromLocal(source);
+  }
+  setPackEnabled(PACK_ID, false);
+  const system = runPacksSystem();
+  try {
+    registry.refreshCatalog(resolveAppEnvironment().packsDir);
+    const before = registry.catalog.getSnapshot();
+    takeSystemErrors();
+    system.send({ type: 'TOGGLE_PACK_ENABLED', packId: PACK_ID });
+    expect(readInstalledPacks().find(entry => entry.id === PACK_ID)?.enabled).toBe(false);
+    expect(registry.catalog.getSnapshot()).toBe(before);
+    expect(registry.getPackRegistration(PACK_ID)).toBeNull();
+    expect(fs.existsSync(marker)).toBe(false);
+    expect(takeSystemErrors().map(error => error.message).join(' ')).toMatch(/Action.*incumbent\/view.*reinstall-pack\/view/);
+    expect(emitted(system.sent).find(event => event.type === 'PACK_ENABLED_CHANGED')).toMatchObject({ enabled: false });
+  } finally { system.stop(); }
+});

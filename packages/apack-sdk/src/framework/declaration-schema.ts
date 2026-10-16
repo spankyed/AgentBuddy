@@ -15,7 +15,7 @@ import { _compileSettingsDefinition, _SettingsDefaultsError, _settingsJsonProble
 import type { SettingsDefinition } from './settings-definition.ts';
 import type { PackMigrations } from './pack-registration.ts';
 import type { ReferenceDeclarations } from './reference-declaration.ts';
-import type { PluginDeclaration } from './plugin-declaration.ts';
+import { _entityDestinationsProblem, type PluginDeclaration } from './plugin-declaration.ts';
 import type { FrontendDeclaration, TiptapPluginDeclaration } from './frontend-declaration.ts';
 import type { StepFrontendDeclaration, StepLayoutDeclaration } from './step-frontend-declaration.ts';
 
@@ -144,12 +144,15 @@ export const _NativePackDeclarationSchema = z.preprocess(checkDeclaredNames, z.o
   commands: z.lazy(() => ExtensionsSchema.shape.commands),
   dsl: z.lazy(() => ExtensionsSchema.shape.dsl),
   dslDefinitions: declarationRecord(z.string()).optional(),
+  entityDestinations: declarationRecord(z.string().min(1), z.string().min(1)).optional(),
   tiptapPlugins: z.lazy(() => FrontendConfigSchema.shape.tiptapPlugins),
   appExtensions: z.lazy(() => FrontendConfigSchema.shape.appExtensions),
   features: declarationRecord(z.string().regex(FEATURE_ID_PATTERN), z.lazy(() => FeatureEntrySchema.pick({
     description: true, entities: true, designation: true, settings: true, plugin: true, references: true, services: true, repositories: true,
   }))).optional(),
 }).strict().superRefine((declaration, ctx) => {
+  const destinationProblem = _entityDestinationsProblem(declaration.entityDestinations ?? {}, declaration.features);
+  if (destinationProblem) ctx.addIssue({ code: 'custom', path: ['entityDestinations'], message: destinationProblem });
   const dslProblem = dslDefinitionsProblem(declaration.dsl, declaration.dslDefinitions);
   if (dslProblem) ctx.addIssue({ code: 'custom', path: ['dslDefinitions'], message: dslProblem });
   checkFrontendClaims(declaration, ctx, []);
