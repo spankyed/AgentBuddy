@@ -1234,6 +1234,11 @@ host's testing entry for fixture admission/binding/removal. Production compositi
 The build compiler is another distinct consumer: `PackConfig.loadDefinitions` already merges and checks
 the build-only facets. Pass those definitions directly through `compilePack`'s existing contract; do not
 register an executable pack in an otherwise unused host registry merely to retrieve them again.
+`CompilePackOptions.importModule` is the common execution boundary for custom content compilers,
+flow modules and dependency/generated step definitions. Forward it through `loadDefinitions` and
+specialty compilation; no definition loader may silently bypass the build owner's namespace.
+`f9015a07f` wires these consumers to the owned input tree. Arbitrary runtime imports, startup loader
+options and full execution/receipt acceptance remain required by the execution-ownership work below.
 
 ### Review correction: runtime rollback must preserve incumbent resources (2026-10-13)
 

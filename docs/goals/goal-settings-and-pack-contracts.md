@@ -120,7 +120,29 @@ naming branch is not an automatic source of future changes.
 
 ### Current handoff — compiler checkpoint (2026-10-16)
 
-Latest source is `50ae730a9`. Scoped `opendir` now captures the native consumed prefix lazily,
+Latest source is `f9015a07f`. Custom content compiler entrypoints now execute from the owned
+module tree with captured tsx configuration. The SDK forwards one `PackModuleLoader` through custom
+formats, flows, dependency step modules and the pack's generated step module instead of letting the
+last three bypass the build owner's loader. Standalone SDK use retains native import as its default.
+Captured tsconfig projection now includes the configuration files already read by TypeScript, so
+absolute alias targets point into the owned tree. Tool bootstrap exits captured content I/O; authored
+module execution remains within it. Updated the SDK API report and contributor guides.
+
+Evidence: a real SDK compilation replaces the compiler entrypoint, aliased dependency, dependency
+step module and flow module after capture; it consumes their captured values, then passes validation
+after exact source restoration (21.40s). The final real worker build passes (50.09s, including three
+package rebuilds). Eighteen SDK content cases, the step collision case, CLI typecheck and scoped lint
+pass. API report generation passes after package refresh; reviewed changes are the shared loader type
+and its four use sites. Logs: `/private/tmp/apack-content-module-{integration,worker-final,sdk,steps,
+types,lint,api-report}.log`. No broad gate repeated.
+
+This closes the inspected authored entrypoint/flow/step bypasses, not arbitrary Node loader closure.
+Absolute/computed runtime imports, package-native entry selection, runtime diagnostic/source paths,
+loader/preload startup options and pending resource lifetime remain required alongside frontend
+execution and whole-build receipts. The complete goal and final committed-source strict gate remain
+open.
+
+Preceding source `50ae730a9`. Scoped `opendir` now captures the native consumed prefix lazily,
 sharing it across handles for the same query. Validation replays that prefix and checks EOF or a
 read error only when observed. Opening and closing without reading no longer drains the directory
 or surfaces deferred traversal errors. Compilation disposal closes retained source cursors, including
@@ -181,7 +203,7 @@ captured execution to check live inputs. Source `477b4fef5` owns read-only opens
 native-metadata projections in one tree. Writable opens and staging reads stay native. Evidence:
 `/private/tmp/apack-directory-*.log`, `apack-content-handles*.log`, `apack-content-reads*.log`.
 
-Next finish partial/deferred-error directory iteration and frame resource closure, borrowed/pre-opened descriptor ownership, special flags,
+Next finish frame resource closure, borrowed/pre-opened descriptor ownership, special flags,
 native object/reflection and argument-form acceptance. Resource-frame closure and descriptor transfer
 between generations are not established by the within-frame ownership map. Current Stats field
 instrumentation uses accessors; do not assume every reflective/native consumer is already proved.
