@@ -33,6 +33,24 @@ function sourceError(error: unknown): unknown {
   return error;
 }
 
+function readOnly(flags: unknown): boolean {
+  if (flags === undefined) return true;
+  if (typeof flags === 'string') return ['r', 'rs', 'sr'].includes(flags);
+  const mutating = fs.constants.O_WRONLY | fs.constants.O_RDWR | fs.constants.O_CREAT | fs.constants.O_TRUNC | fs.constants.O_APPEND;
+  return typeof flags === 'number' && (flags & mutating) === 0;
+}
+
+function callbackRead<T extends (...args: never[]) => unknown>(operation: T,
+  file: fs.PathOrFileDescriptor, args: unknown[], capture = true): unknown {
+  const callback = args.pop();
+  if (typeof callback !== 'function') return Reflect.apply(operation, fs, [file, ...args, callback]);
+  let captured: fs.PathOrFileDescriptor;
+  try { captured = capture ? readPath(file) : file; }
+  catch (error) { queueMicrotask(() => callback(sourceError(error))); return; }
+  return Reflect.apply(operation, fs, [captured, ...args,
+    (error: unknown, data: unknown) => callback(error ? sourceError(error) : null, data)]);
+}
+
 function install() {
   if (installed) return;
   installed = true;
@@ -41,20 +59,23 @@ function install() {
     try { return Reflect.apply(readSync, fs, [readPath(file), ...args]); }
     catch (error) { throw sourceError(error); }
   }) as typeof fs.readFileSync;
-  fs.readFile = ((file: fs.PathOrFileDescriptor, ...args: unknown[]) => {
-    const callback = args.pop();
-    if (typeof callback !== 'function') return Reflect.apply(read, fs, [file, ...args, callback]);
-    let captured: fs.PathOrFileDescriptor;
-    try { captured = readPath(file); }
-    catch (error) { queueMicrotask(() => callback(sourceError(error))); return; }
-    return Reflect.apply(read, fs, [captured, ...args, (error: unknown, data: unknown) => callback(error ? sourceError(error) : null, data)]);
-  }) as typeof fs.readFile;
+  fs.readFile = ((file: fs.PathOrFileDescriptor, ...args: unknown[]) => callbackRead(read, file, args)) as typeof fs.readFile;
   fs.promises.readFile = (async (file, ...args) => {
     // A FileHandle already owns its descriptor; its lifetime belongs to the opening operation.
     if (typeof file === 'object' && !(file instanceof URL) && !Buffer.isBuffer(file)) return readPromise(file, ...args);
     try { return await Reflect.apply(readPromise, fs.promises, [readPath(file), ...args]); }
     catch (error) { throw sourceError(error); }
   }) as typeof fs.promises.readFile;
+  const openSync = fs.openSync, open = fs.open, openPromise = fs.promises.open;
+  fs.openSync = ((file: fs.PathLike, flags: fs.OpenMode, ...args: unknown[]) => {
+    try { return Reflect.apply(openSync, fs, [readOnly(flags) ? readPath(file) : file, flags, ...args]); }
+    catch (error) { throw sourceError(error); }
+  }) as typeof fs.openSync;
+  fs.open = ((file: fs.PathLike, ...args: unknown[]) => callbackRead(open, file, args, readOnly(args[0]))) as typeof fs.open;
+  fs.promises.open = (async (file, flags, ...args) => {
+    try { return await Reflect.apply(openPromise, fs.promises, [readOnly(flags) ? readPath(file) : file, flags, ...args]); }
+    catch (error) { throw sourceError(error); }
+  }) as typeof fs.promises.open;
   syncBuiltinESMExports();
 }
 

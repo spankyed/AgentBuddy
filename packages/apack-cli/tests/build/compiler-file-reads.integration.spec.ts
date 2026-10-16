@@ -10,7 +10,7 @@ import { withCompilerFileReads } from '../../src/build/compiler-file-reads.ts';
 const roots: string[] = [];
 afterEach(() => { for (const root of roots.splice(0)) fs.rmSync(root, { recursive: true, force: true }); });
 
-it('executes a content compiler with captured sync, callback and promise bytes while output reads stay live', async () => {
+it('executes content reads through files, streams and descriptors while writable handles stay native', async () => {
   const root = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'apack-content-reads-')));
   roots.push(root);
   const source = path.join(root, 'src/payload.txt');
@@ -18,12 +18,26 @@ it('executes a content compiler with captured sync, callback and promise bytes w
   fs.writeFileSync(path.join(root, 'package.json'), JSON.stringify({ type: 'module', main: source }));
   fs.writeFileSync(source, 'CAPTURED');
   fs.writeFileSync(path.join(root, 'src/compiler.mjs'), `import fs from 'node:fs';
-    import {readFile} from 'node:fs/promises';
+    import {readFile, open} from 'node:fs/promises';
     export default async ({path}) => {
       const sync = fs.readFileSync(new URL('file://' + path), 'utf8');
       const callback = await new Promise((resolve, reject) => fs.readFile(Buffer.from(path), 'utf8', (err, value) => err ? reject(err) : resolve(value)));
       const promise = await readFile(path, 'utf8');
-      return [{entity: 'Row', name: [sync, callback, promise].join(':')}];
+      const chunks = [];
+      const stream = fs.createReadStream(path, {encoding: 'utf8'});
+      for await (const chunk of stream) chunks.push(chunk);
+      if (stream.path !== path) throw new Error('Stream exposed a private path');
+      const fd = fs.openSync(path, fs.constants.O_RDONLY);
+      let descriptor;
+      try { descriptor = fs.readFileSync(fd, 'utf8'); } finally { fs.closeSync(fd); }
+      const callbackDescriptor = await new Promise((resolve, reject) => fs.open(path, 'r', (err, fd) => {
+        if (err) { reject(err); return; }
+        try { resolve(fs.readFileSync(fd, 'utf8')); } catch (err) { reject(err); } finally { fs.closeSync(fd); }
+      }));
+      const handle = await open(path, 'r');
+      let handled;
+      try { handled = await handle.readFile('utf8'); } finally { await handle.close(); }
+      return [{entity: 'Row', name: [sync, callback, promise, chunks.join(''), descriptor, callbackDescriptor, handled].join(':')}];
     };`);
   const manifest = ManifestSchema.parse({ id: 'content-reads', name: 'Content reads', version: '1.0.0',
     content: { formats: { rows: { compiler: 'src/compiler.mjs', entity: 'Row', identity: ['name'] } },
@@ -36,12 +50,16 @@ it('executes a content compiler with captured sync, callback and promise bytes w
       await compilePack({ packDir: root, outputDir: outputDirectory,
         packConfig: await buildPackConfigFromManifest(manifest, root),
         importModule: file => import(pathToFileURL(file).href) });
+      const writable = fs.openSync(source, fs.constants.O_RDWR);
+      try { expect(fs.readFileSync(writable, 'utf8')).toBe('LIVE'); }
+      finally { fs.closeSync(writable); }
       expect(JSON.parse(fs.readFileSync(path.join(root, 'package.json'), 'utf8')).main).toBe(source);
       const output = JSON.parse(fs.readFileSync(path.join(outputDirectory, 'rows.content.json'), 'utf8'));
-      expect(output.records[0].name).toBe('CAPTURED:CAPTURED:CAPTURED');
+      expect(output.records[0].name).toBe(Array(7).fill('CAPTURED').join(':'));
       fs.writeFileSync(path.join(outputDirectory, 'live.txt'), 'FIRST');
       expect(fs.readFileSync(path.join(outputDirectory, 'live.txt'), 'utf8')).toBe('FIRST');
-      fs.writeFileSync(path.join(outputDirectory, 'live.txt'), 'SECOND');
+      const handle = await fs.promises.open(path.join(outputDirectory, 'live.txt'), 'w');
+      try { await handle.writeFile('SECOND'); } finally { await handle.close(); }
       expect(fs.readFileSync(path.join(outputDirectory, 'live.txt'), 'utf8')).toBe('SECOND');
     });
     expect(fs.readFileSync(source, 'utf8')).toBe('LIVE');
