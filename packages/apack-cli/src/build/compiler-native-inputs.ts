@@ -193,6 +193,8 @@ export function createNativeInputReader(view: NativeInputView, initialPackages: 
   return {
     prepareSource(file: string, contents: Buffer) {
       pending = { files: [], locations: [], links: [] };
+      directory(path.dirname(file));
+      scope(path.dirname(file));
       const source = ts.createSourceFile(file, contents.toString('utf8'), ts.ScriptTarget.Latest, false);
       for (const directory of compilerGlobDirectories(source)) subtree(directory);
       include(pending);

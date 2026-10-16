@@ -61,7 +61,9 @@ async function bundlePackSource<T extends EsbuildOptions>(
     const entries = overrides.entryPoints;
     const files = Array.isArray(entries) ? entries.map(entry => typeof entry === 'string' ? entry : entry.in) : Object.values(entries ?? {});
     for (const file of files) options.compilation.prepareNative(file, packDir);
-    if (overrides.stdin) options.compilation.prepareNative('./', packDir);
+    if (stdin) options.compilation.prepareNativeSource(
+      path.resolve(stdin.resolveDir ?? packDir, stdin.sourcefile ?? 'stdin.ts'),
+      Buffer.from(stdin.contents ?? ''));
   }
   const plugins: import('esbuild').Plugin[] = [rejectHostImportsPlugin(), stubFrontendAssetsPlugin()];
   if (options.compilation) plugins.push(capturedSourcesPlugin(options.compilation, workingDir));

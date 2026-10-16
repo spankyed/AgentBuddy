@@ -40,6 +40,7 @@ export function createCompilerReadTree(snapshot: CompilerReadSnapshot, paths: re
   if (!path.isAbsolute(parent)) throw new Error('Compiler input workspace must be absolute');
   const directory = fs.realpathSync(fs.mkdtempSync(path.join(parent, 'apack-inputs-')));
   const roots = new Map<string, string>();
+  const dataRoots = new Map<string, string>();
   const directories = new Set([directory]);
   const entries = new Map<string, string[]>();
   const files = new Map<string, { sourceHash?: string; hash: string; mode: number }>();
@@ -47,21 +48,23 @@ export function createCompilerReadTree(snapshot: CompilerReadSnapshot, paths: re
   const locations = new Map<string, CompilerReadLocation>();
   const digest = (bytes: Buffer) => createHash('sha256').update(bytes).digest('hex');
   const dispose = () => removeCompilerReadTree(directory);
-  const mappings = () => [...roots].map(([source, captured]) => ({ source, captured }));
+  const mappings = () => [...roots, ...dataRoots].map(([source, captured]) => ({ source, captured }));
   const sourcePath = (file: string) => compilerSourcePath(compilerSourcePath(file, mappings()), paths);
-  const ownedPath = (file: string) => {
+  const mappedPath = (file: string, roots: Map<string, string>, prefix = directory) => {
     const source = sourcePath(path.resolve(file));
     const root = path.parse(source).root;
-    const target = path.join(directory, Buffer.from(root).toString('hex'));
+    const target = path.join(prefix, Buffer.from(root).toString('hex'));
     roots.set(root, target);
     return path.join(target, path.relative(root, source));
   };
+  const ownedPath = (file: string) => mappedPath(file, roots);
+  const dataPath = (file: string) => mappedPath(file, dataRoots, path.join(directory, 'data'));
   const names = (file: string) => fs.readdirSync(file).sort();
   const changed = (kind: string, file: string): never => {
     throw new Error(`Captured compiler ${kind} changed: ${sourcePath(file)}`);
   };
 
-  function include(next: CompilerReadSnapshot) {
+  function include(next: CompilerReadSnapshot, readPath = ownedPath, project: ProjectMetadata | null = projectMetadata ?? null) {
     const writable = new Set<string>();
     const pendingLinks = new Map<string, string>();
     const mkdir = (file: string): void => {
@@ -84,7 +87,7 @@ export function createCompilerReadTree(snapshot: CompilerReadSnapshot, paths: re
       writable.add(real);
     };
     const link = (file: string, target: string) => {
-      const from = ownedPath(file), to = ownedPath(target);
+      const from = readPath(file), to = readPath(target);
       if (from === to) return;
       const previous = links.get(from);
       if (previous && previous !== to) throw new Error(`Conflicting captured input binding: ${file}`);
@@ -94,7 +97,7 @@ export function createCompilerReadTree(snapshot: CompilerReadSnapshot, paths: re
     };
     try {
       for (const file of next.files) {
-        const target = ownedPath(file.file);
+        const target = readPath(file.file);
         const previous = files.get(target);
         if (file.bytes === undefined && previous) continue;
         const sourceHash = file.bytes === undefined ? undefined : digest(file.bytes);
@@ -102,7 +105,7 @@ export function createCompilerReadTree(snapshot: CompilerReadSnapshot, paths: re
           || (previous.mode & 0o111) !== (file.mode & 0o111))) {
           throw new Error(`Conflicting captured input bytes or mode: ${sourcePath(target)}`);
         }
-        const bytes = file.bytes === undefined ? Buffer.alloc(0) : projectMetadata?.(sourcePath(file.file), file.bytes, ownedPath) ?? file.bytes;
+        const bytes = file.bytes === undefined ? Buffer.alloc(0) : project?.(sourcePath(file.file), file.bytes, readPath) ?? file.bytes;
         const hash = digest(bytes);
         if (previous?.hash === hash) {
           if (sourceHash !== undefined) previous.sourceHash = sourceHash;
@@ -122,7 +125,7 @@ export function createCompilerReadTree(snapshot: CompilerReadSnapshot, paths: re
         const previous = locations.get(file);
         if (previous && (previous.physical !== physical || previous.kind !== location.kind)) changed('namespace', file);
         locations.set(file, { ...location, file, physical });
-        if (location.kind === 'directory') mkdir(ownedPath(physical));
+        if (location.kind === 'directory') mkdir(readPath(physical));
         if (location.kind !== 'missing' || location.slot !== location.physical) link(file, physical);
       }
       for (const binding of next.links) link(binding.file, binding.target);
@@ -139,7 +142,7 @@ export function createCompilerReadTree(snapshot: CompilerReadSnapshot, paths: re
       }
       for (const location of next.locations) {
         let stat: fs.Stats | undefined;
-        try { stat = fs.statSync(ownedPath(location.file), { throwIfNoEntry: false }); }
+        try { stat = fs.statSync(readPath(location.file), { throwIfNoEntry: false }); }
         catch (error) { if ((error as NodeJS.ErrnoException).code !== 'ENOTDIR') throw error; }
         if (location.kind === 'missing' ? !!stat : location.kind === 'file' ? !stat?.isFile() : location.kind === 'directory' ? !stat?.isDirectory() : true) {
           throw new Error(`Captured input namespace differs: ${sourcePath(location.file)}`);
@@ -184,8 +187,9 @@ export function createCompilerReadTree(snapshot: CompilerReadSnapshot, paths: re
     assertCurrent();
     return {
       directory, workDirectory, path: ownedPath, sourcePath, include, assertCurrent, dispose,
+      dataPath, includeData: (snapshot: CompilerReadSnapshot) => include(snapshot, dataPath, null),
       diagnostic(message: string) {
-        for (const [source, captured] of roots) {
+        for (const [source, captured] of [...roots, ...dataRoots]) {
           const relative = path.relative(process.cwd(), captured);
           if (relative) message = message.split(relative + path.sep).join(source);
           message = message.split(captured + path.sep).join(source);

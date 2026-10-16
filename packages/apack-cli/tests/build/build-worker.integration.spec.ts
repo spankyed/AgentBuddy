@@ -61,6 +61,18 @@ it('uses the captured compiler and retains unchanged build/cache identity on rep
   for (const workspace of workspaces) expect(fs.existsSync(workspace)).toBe(false);
 });
 
+it('compiles content through the captured worker without redirecting tool reads to the checkout', async () => {
+  const root = fixture({
+    'src/compiler.ts': `import fs from 'node:fs';
+      export default ({path}: {path: string}) => [{entity: 'Relation', name: fs.readFileSync(path, 'utf8')}];`,
+    'src/value.txt': 'OWNED',
+  }, { formats: { rows: { compiler: 'src/compiler.ts', entity: 'Relation', identity: ['name'] } },
+    sources: { rows: { path: 'src/value.txt', format: 'rows' } } });
+  await runPackBuild(root, { args: ['--skip-fe'] });
+  const output = JSON.parse(fs.readFileSync(path.join(root, 'dist/runtime/content/rows.content.json'), 'utf8'));
+  expect(output.records[0].name).toBe('OWNED');
+});
+
 it('reports frontend inputs that remain available after its compiler installation is removed', async () => {
   const root = fixture({
     'src/pack-entry-fe.ts': 'import "./Panel.vue"; export { default } from "./__generated__/pack-entry-fe.ts";',

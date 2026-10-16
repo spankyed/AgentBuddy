@@ -32,6 +32,7 @@ import { compareFacadeReport, facadeReportFile, facadeReportText } from '../buil
 import { bundlePackFlowHelpers } from '../build/flow-helpers-bundler';
 import { PACK_LAYOUT, sealPackBuild } from '@apackdev/host/packs';
 import { replaceDir } from '@apackdev/host/replace-dir';
+import { withCompilerFileReads } from '../build/compiler-file-reads.ts';
 import { holdPackBuildLock } from '../build/build-lock.ts';
 import { dependencyTypes, resolveDependencyFiles } from './generate';
 import { assertGeneratedCurrent, generateEntries, warnStaleDepTypes } from './generate-entries';
@@ -174,7 +175,7 @@ async function buildIntoStaging(args: string[], root: string) {
         importModule: importPackModule,
       };
 
-      result = await compilePack(options);
+      result = await withCompilerFileReads({ compilation, outputDirectory: outputDir }, () => compilePack(options));
     } else {
       fs.mkdirSync(contentOutputDir, { recursive: true });
     }

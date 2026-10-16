@@ -35,6 +35,7 @@ export interface CompilationInputs {
   /** Declaration programs also inherit a parent config when the pack has none. */
   readonly declarationConfiguration: PackCompilerConfiguration | undefined;
   readFile(file: string): Buffer | undefined;
+  readDataPath(file: string): string;
   captureGenerated(): void;
   readTree(): CompilerReadTree;
   sourcePath(file: string): string;
@@ -95,6 +96,21 @@ export function captureCompilationInputs(packRoot: string): CompilationInputs {
         files: [modules.captureFile(file, bytes)], locations: [modules.captureLocation(file, 'file')!], links: [],
       });
       return bytes;
+    },
+    readDataPath(file) {
+      file = path.resolve(file);
+      // The parent already owns and verifies these tool bytes. Do not redirect them to the checkout.
+      if (compiler?.paths.some(({ captured }) => {
+        const relative = path.relative(captured, file);
+        return relative !== '..' && !relative.startsWith(`..${path.sep}`) && !path.isAbsolute(relative);
+      })) return file;
+      file = sourcePath(file);
+      const bytes = modules.readBytes(file);
+      const location = modules.captureLocation(file, 'file');
+      const owned = readTree();
+      owned.includeData({ files: bytes === undefined ? [] : [modules.captureFile(file, bytes)],
+        locations: [...(location ? [location] : []), ...modules.ancestors(file)], links: [] });
+      return owned.dataPath(file);
     },
     captureGenerated() {
       for (const relative of packInputFiles(packRoot, { generated: true })) {
