@@ -120,7 +120,21 @@ naming branch is not an automatic source of future changes.
 
 ### Current handoff — compiler checkpoint (2026-10-16)
 
-Latest source is `2208be219` (mergeable compiler observations). The native view now exports owned,
+Latest source is `f684f9b7e` (native startup-view adoption). One native factory now owns pack exclusions
+for both early capture and TypeScript discovery. Compilation can adopt that same view, retaining early
+external bytes, metadata validation and disposal ownership. Filesystem interception requires only its
+read/resolution interface, rather than compiler configurations and build hashes.
+
+A real Node --require preload initializes the production factory without activating TypeScript, then
+passes its view into actual compilation. Captured bytes survive a live edit, final validation refuses
+the edit, exact restoration validates, and compilation disposal closes the original view. The focused
+integration case passes (4.84s), 40 affected unit cases pass (1.54s), and CLI typecheck/lint/diff checks
+pass. Proof/logs: `/private/tmp/apack-startup-view-proof.mjs` and
+`/private/tmp/apack-startup-view-{proof,integration,unit,types}.log`. Public worker startup does not yet
+install this view automatically; default preload/loader interception, thread transport and snapshot
+handoff remain the next integration. No broad/final acceptance is claimed by these focused checks.
+
+Preceding source is `2208be219` (mergeable compiler observations). The native view now exports owned,
 serialized query/result entries, and its hash uses that same projection. Merging requires one logical
 root and rejects contradictory answers; consumed stat fields and directory cursor positions combine
 independently, so complementary reads do not falsely conflict. Captured paths, realpath results and

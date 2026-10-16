@@ -314,6 +314,12 @@ the source returns to its original bytes. This does not implement the startup tr
 preload frame in compilation, validate originals at publication, or authorize passive freshness.
 See the owning goal's current handoff for focused evidence; the following integration remains required.
 
+Adoption prerequisite `f684f9b7e` extracts the native authored-input view factory and lets compilation
+retain a preexisting view. A real Node require-preload proof creates it before TypeScript activation;
+later compilation retains the early reads' bytes, validation and lifetime. This supplies the shared
+main-thread owner without introducing another exclusion policy or recapturing its observed inputs.
+It does not yet install automatic preload interception or implement the main/loader transport.
+
 1. Define the pre-startup handoff from the selected captured compiler, existing package/input traversal
    and logical path projection. Preserve effective user options and native preload/loader ordering;
    identify internal instrumentation by the process that owns it, not by an option-name blacklist.
