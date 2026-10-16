@@ -279,6 +279,19 @@ coherent execution. All remaining discovery and goal phases stay required.
 
 ### Execution ownership audit after phase-cache publication
 
+Transport prerequisite `58f7f3b47` now uses one bootstrap-safe Node option tokenizer/formatter across
+source-condition removal, selector capture and the root wrapper. It follows [Node's native tokenizer](https://github.com/nodejs/node/blob/v23.11.1/src/node_options.cc#L1619),
+including literal single quotes and backslashes outside double quotes. Native nested-wrapper and
+captured-worker checks preserve a preload path containing repeated spaces. The owning goal records
+source/build/check evidence; the saved parser stash remains intact.
+
+This does not settle launch ownership. User preloads/loaders run before the current worker creates
+its compilation view. The next launch design must own that pre-startup execution and its reachable
+inputs, preserving loader ordering and resolution; neither replaying options after compiler activation
+nor hashing mutable preload paths meets that requirement. Keep the execution/session and final
+receipt requirements below before migrating passive freshness consumers.
+
+
 A disposable two-process probe confirms the inherited-preload identity gap on `17438889d`.
 Both processes use the same minimal pack, compiler, Node arguments and `NODE_OPTIONS=--require=<file>`.
 The external preload's bytes change between launches and set different observable global values;

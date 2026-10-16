@@ -120,7 +120,7 @@ naming branch is not an automatic source of future changes.
 
 ### Current handoff — compiler checkpoint (2026-10-16)
 
-Latest source is `b32ee23a1` (POSIX process-ownership checkpoint below). Preceding ESM source `f67c8d066`:
+Latest source is `58f7f3b47` (Node option transport checkpoint below). Preceding ESM source `f67c8d066`:
 ESM execution now has logical source URLs and filenames while native
 resolution and source reads use the owned tree. A private loader below tsx only projects bytes; it
 makes no main-thread RPC. The input owner and loader share one storage mapping. Native entrypoint
@@ -145,6 +145,31 @@ bridge extraction (35.47s). The final packaged JSX/metadata worker passes in 36.
 packaging cases (9), CLI typecheck and lint pass. The bridge also runs on Electron's Node 22.17.1.
 Logs: `/private/tmp/apack-module-metadata-{before,focused,jsx-before,entry-final,native-entry,
 worker-native-entry,tree,packaging,types-complete,lint-complete}.log`. No broad gate repeated.
+
+Node option transport checkpoint `58f7f3b47` adapts the reviewed parser prerequisite from preserved
+stash `c42116fb46a385b5f6065a4fb9cd9e68e2625b80`; the stash is untouched. One plain JavaScript owner
+serves the pre-TypeScript bootstrap, host source-condition removal and compiler selector capture.
+Native spaces/double-quote/escape semantics replace the inconsistent whitespace/shell tokenizers.
+Split/equal long/short source selectors are removed without corrupting other option values; literal
+single quotes and unquoted backslashes remain literal. Package/check input declarations include this
+helper and its declaration. CLI bootstrap source is now declared by directory, fixing three omissions
+from earlier compiler checkpoints found by the existing input-coverage guard.
+
+Evidence: 78 source-resolution, selector, nested-bootstrap and graph checks pass in 2.45s. Native Node
+executes a preload whose path contains repeated spaces while selecting built SDK exports after source
+condition removal. A real captured compiler worker executes that preload and emits its observable value
+(27.34s). Required package prerequisites build successfully; host, CLI, scripts and repo-checks typechecks,
+scoped lint, import-specifier and tier checks pass. Initial npm static-check invocations hit the sandbox's
+tsx IPC restriction; the same scripts pass through `node --import tsx`. Logs:
+`/private/tmp/apack-node-options-{focused-final,worker,packages,cli-types-final,host-types,scripts-types,
+repo-types,specifiers-final,tiers-final}.log`. No broad gate repeated or deadline raised.
+
+This is option transport, not captured preload execution or the final launch contract. Preloads/loaders
+still run before the current compilation view exists; adding their option strings to a hash would not
+own their code, resolution or reads. A pre-startup owned execution handoff remains required, together
+with complete launch/runtime inputs, frontend generation ownership, final input/output receipts,
+passive freshness, remaining process/native-resource ownership and all later goal phases. Final
+committed-source strict --all remains owed.
 
 POSIX process-ownership checkpoint `b32ee23a1` launches each compiler worker in its own process
 group. On worker exit the parent terminates inherited group members and confirms no executable member
