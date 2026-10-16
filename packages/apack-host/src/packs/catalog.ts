@@ -1,4 +1,5 @@
 import { captureData } from './captured-data.ts';
+import { pluginCatalogEntries } from './catalog-plugins.ts';
 import { stepCatalogEntries } from './catalog-steps.ts';
 import { commandCatalogEntries } from './catalog-commands.ts';
 import { artifactCatalogEntries } from './catalog-artifacts.ts';
@@ -51,6 +52,7 @@ export interface PluginCatalogEntry {
   readonly declaration: CatalogData<PluginDeclaration>;
   readonly declarationRevision?: string;
   readonly enabled?: boolean;
+  readonly buildRevision?: string;
 }
 
 export type { ReferenceCatalogEntry } from '@apackdev/sdk/framework';
@@ -168,19 +170,7 @@ export function createContributionCatalog(appSettings: SettingsDefinition) {
 
   return {
     getSnapshot: (): PackCatalogSnapshot => current,
-    plugins(): readonly PluginCatalogEntry[] {
-      const collect = (packId: string, features: Record<string, { plugin?: CatalogData<PluginDeclaration> }> | undefined,
-        origin: PluginCatalogEntry['origin'], identity: Pick<PluginCatalogEntry, 'enabled' | 'declarationRevision'> = {}) =>
-        Object.entries(features ?? {}).flatMap(([id, feature]) => feature.plugin
-          ? [Object.freeze({ featureRef: resolveName(id, packId), packId, origin, declaration: feature.plugin, ...identity })] : []);
-      return Object.freeze([
-        ...current.native.flatMap(pack => collect(pack.id, pack.features, 'native', { enabled: true })),
-        ...current.packs.flatMap(pack => collect(pack.snapshot.manifest.id, pack.snapshot.manifest.features, 'installed',
-          { enabled: pack.enabled, declarationRevision: pack.snapshot.declarationRevision })),
-        ...current.sourcePacks.flatMap(pack => collect(pack.manifest.id, pack.manifest.features, 'source',
-          { declarationRevision: pack.declarationRevision })),
-      ]);
-    },
+    plugins: () => pluginCatalogEntries(current),
     references: () => referenceCatalogEntries(current),
     frontend: () => frontendCatalogEntries(current),
     steps: () => stepCatalogEntries(current),

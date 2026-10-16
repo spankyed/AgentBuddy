@@ -1,4 +1,6 @@
 import { createMachine } from 'xstate';
+import { selectDefaultPluginDeclaration, getEligiblePlugin } from '../../src/fe/plugin-selection.ts';
+import type { FeatureRef } from '@apackdev/sdk/ids';
 import { createNativeFrontendTestRegistry } from '@apackdev/host/fe/testing';
 // What a pack's frontend registration contributes, read the way the renderer and pack frontends read it: each
 // lookup sees the pack once it registers and loses it when it unregisters.
@@ -17,7 +19,13 @@ bindFeHost({ catalog: {} as never, application: {} as never, secrets: {} as neve
 const register = (packId: string, registration: Omit<PackFERegistration, 'id'>) => registry.registerFixture({ id: packId, ...registration });
 const unregister = (packId: string) => registry.unregisterPackFE(packId);
 const plugins = () => registry.getRegisteredPlugins();
-const defaultPlugin = () => registry.defaultPlugin();
+const defaultPlugin = () => {
+  const catalog = { status: () => 'ready' as const, subscribe: () => () => {}, plugins: () => [...registry.pluginBindings()].map(([featureRef, accepted]) => ({
+    featureRef: featureRef as FeatureRef, packId: accepted.packId, origin: 'native' as const, enabled: true, declaration: accepted.declaration,
+  })) };
+  const owner = selectDefaultPluginDeclaration(catalog);
+  return owner && getEligiblePlugin(catalog, registry.pluginBindings(), owner.featureRef);
+};
 const appExtension = (slot: string) => registry.getAppExtension(slot);
 
 const packs: string[] = [];
@@ -116,8 +124,8 @@ describe("a pack's frontend", () => {
   });
 
   // Two packs with a `notes` feature each get a plugin, because a plugin is addressed by its pack. Only
-  // the default is a single slot, and the first registration keeps it.
-  it("gives each pack its own plugin, and keeps the first default plugin", () => {
+  // the default follows declaration order, independently of registration order.
+  it("gives each pack its own plugin, and selects its default by declaration identity", () => {
     add('first-pack', { features: { notes: { plugin: plugin('First notes'), default: true } } });
     add('second-pack', { features: { notes: { plugin: plugin('Second notes') }, cards: { plugin: plugin('Cards'), default: true } } });
     expect(plugins().map((p) => p.id)).toEqual(['first-pack/notes', 'second-pack/notes', 'second-pack/cards']);
@@ -135,7 +143,7 @@ describe("a pack's frontend", () => {
     remove('first-pack');
     expect(defaultPlugin()?.id).toBe('second-pack/main');
     add('first-pack', { features: { main: { plugin: plugin('Returned'), default: true } } });
-    expect(defaultPlugin()?.id).toBe('second-pack/main');
+    expect(defaultPlugin()?.id).toBe('first-pack/main');
     remove('second-pack');
     expect(defaultPlugin()?.id).toBe('first-pack/main');
   });

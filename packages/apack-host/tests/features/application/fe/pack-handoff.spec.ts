@@ -1,3 +1,4 @@
+import type { FeatureRef } from '@apackdev/sdk/ids';
 import { createNativeFrontendTestRegistry } from '@apackdev/host/fe/testing';
 import { expect, it, vi } from 'vitest';
 import { createActor } from 'xstate';
@@ -30,6 +31,11 @@ it.each(['reconnect', 'live publication'] as const)('rebinds the real shell, loa
   const entry = { runtimeRevision: 'first', id: 'ext', feEntry: 'runtime/fe.js', buildRevision: 'a'.repeat(64),
     declarationRevision: 'current', manifest: { id: 'ext', name: 'Example', version: '1.0.0',
       features: { own: { description: 'Feature declaration fixture.', plugin: { label: 'ext/own', state: 'src/state.ts', icon: 'Zap', canvas: 'src/canvas.vue' } } } } };
+  shell.catalog.status.mockReturnValue('ready');
+  shell.declarations.set('host/notes', { ...shell.declarations.get('host/notes')!, declaration: packs.pluginBindings().get('host/notes')!.declaration });
+  shell.declarations.set('ext/own', { featureRef: 'ext/own' as FeatureRef,
+    packId: 'ext', origin: 'installed', enabled: true, declarationRevision: entry.declarationRevision,
+    buildRevision: entry.buildRevision, declaration: entry.manifest.features.own.plugin });
   shell.client.loadedPacks.mockResolvedValue([entry]);
   const app = createActor(createShellMachine({ ...shell.options, packs, packFrontends: frontends }), {
     systemId: 'host/application', input: { ownsLastActivePlugin: false },

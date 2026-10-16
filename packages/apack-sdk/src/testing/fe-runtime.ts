@@ -15,7 +15,6 @@ const noFrontends: FePackRegistryView = {
   block: () => undefined,
   blocks: () => [],
   plugins: () => [],
-  defaultPlugin: () => undefined,
   tiptapPlugins: () => [],
   stepBindings: () => new Map(),
   artifactBindings: () => new Map(),

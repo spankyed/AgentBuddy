@@ -4,7 +4,7 @@
 import { createActor, type AnyActorRef, type AnyStateMachine } from 'xstate';
 import { createFePackRegistry, createShellMachine, describeFailure, HOST, type ShellClient, type ShellConnection } from '@apackdev/host/fe';
 import type { Message } from '@apackdev/sdk/events';
-import { resolveName } from '@apackdev/sdk/ids';
+import { resolveName, type FeatureRef } from '@apackdev/sdk/ids';
 import type { HostShell, PluginDefinition, PackFERegistration } from '@apackdev/sdk/fe';
 import { nativeFrontendDeclarationFixture, startFeTestRuntime, testRootEvents } from '@apackdev/sdk/testing';
 import { _isFeHostBound, type FePackRegistryView, type PackExtensionsView } from '@apackdev/sdk/runtime';
@@ -52,7 +52,6 @@ function backendFirst(frontend: FePackRegistryView, backend: PackExtensionsView)
   return {
     onChanged: listener => frontend.onChanged(listener),
     plugins: () => frontend.plugins(),
-    defaultPlugin: () => frontend.defaultPlugin(),
     tiptapPlugins: () => frontend.tiptapPlugins(),
     stepBindings: () => frontend.stepBindings(),
     artifactBindings: () => frontend.artifactBindings(),
@@ -151,6 +150,9 @@ export async function startShell(packId: string, options: StartShellOptions, bac
   const notices: TestShell['notices'] = [];
   const actor = createActor(createShellMachine({
     packs,
+    catalog: { status: () => 'ready', subscribe: () => () => {}, plugins: () => [...packs.pluginBindings()].map(([featureRef, accepted]) => ({
+      featureRef: featureRef as FeatureRef, packId: accepted.packId, origin: 'native' as const, enabled: true, declaration: accepted.declaration,
+    })) },
     client,
     packFrontends: { load: async () => null, unload: () => {} },
     storage: { loadPanelSizes: () => undefined, savePanelSizes: () => {} },

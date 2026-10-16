@@ -28,8 +28,6 @@ export interface FePackRegistryView extends PackExtensionsView {
   onChanged(listener: (packId: string) => void): () => void;
   /** Every registered plugin, in registration order */
   plugins(): Plugin[];
-  /** The first registered default plugin */
-  defaultPlugin(): Plugin | undefined;
   tiptapPlugins(): TiptapPluginBinding[];
   /** Accepted step bindings; catalog declarations can outlive their implementations. */
   stepBindings(): ReadonlyMap<string, StepFrontendBinding>;

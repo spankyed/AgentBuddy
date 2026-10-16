@@ -5,6 +5,7 @@ import type { HostPluginEvents, Message, _Asker } from '@apackdev/sdk/events';
 import type { ApplicationHotkeys } from '@apackdev/sdk/types';
 import type { ShellClient, ShellFailure } from '../../../fe/client.ts';
 import type { ShellPackFrontends } from '../../../fe/pack-frontends.ts';
+import type { ShellPluginCatalog } from '../../../fe/plugin-selection.ts';
 import type { FePackRegistry } from '../../../fe/pack-store.ts';
 import type { ApplicationPluginEvents } from '../events.ts';
 import type { BreadcrumbItem } from './trail.ts';
@@ -26,7 +27,8 @@ export interface ShellNotify {
 /** The I/O the shell is given */
 export interface ShellOptions {
   /** This window's registered pack frontends: the plugins the shell starts with, and its default */
-  packs: Pick<FePackRegistry, 'getRegisteredPlugins' | 'defaultPlugin' | 'designation'>;
+  packs: Pick<FePackRegistry, 'getRegisteredPlugins' | 'pluginBindings' | 'designation'>;
+  catalog: ShellPluginCatalog;
   client: ShellClient;
   packFrontends: ShellPackFrontends;
   storage: ShellStorage;
@@ -156,6 +158,7 @@ export interface ShellContext {
 
 export type ShellEvent =
   | ApplicationPluginEvents
+  | { type: 'PLUGIN_DECLARATIONS_CHANGED' }
   | { type: 'SELECT_PLUGIN'; plugin: string; historyIndex?: number }
   | { type: 'OPEN_PLUGIN'; plugin: string; events: PluginEvent[] }
   | ({ type: 'SEND_TO_PLUGIN'; plugin: string; events: PluginEvent[]; answering?: string; call?: string } & RequestSender)

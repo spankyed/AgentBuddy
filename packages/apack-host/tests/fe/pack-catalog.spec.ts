@@ -17,6 +17,17 @@ function fixture() {
 }
 
 describe('window declaration catalog', () => {
+  it('exposes local native plugin declarations before connection, without importing their modules', () => {
+    const native = { id: 'host', features: { settings: { description: 'Host settings.', plugin: { label: 'Settings', state: 'never.ts' } } } };
+    const reader = createWindowPackCatalog({ subscribe: () => () => {} }, [native]);
+    native.features.settings.plugin.label = 'mutated';
+    expect(reader.status()).toBe('disconnected');
+    expect(reader.plugins()).toMatchObject([{ featureRef: 'host/settings', origin: 'native', enabled: true, declaration: { label: 'Settings' } }]);
+    expect(reader.plugins()).toBe(reader.plugins());
+    expect(Reflect.set(reader.plugins()[0].declaration, 'label', 'changed')).toBe(false);
+    reader.dispose(); expect(reader.plugins()).toEqual([]);
+  });
+
   it('accepts data without executable registration and keeps an immutable owned snapshot', () => {
     const { reader, catalog, sessions, wire } = fixture();
     catalog.setNative([{ id: 'native-pack', features: { view: { description: 'Feature declaration fixture.', plugin: { label: 'Cold', state: 'src/state.ts' } } } }]);
@@ -36,8 +47,8 @@ describe('window declaration catalog', () => {
     const frontend = { tiptapPlugins: { suggestions: { extensions: { mention: 'never.ts#Mention' } } } };
     const viewers = { artifacts: { memo: { icon: 'FileText', fe: 'never.vue' } },
       blocks: { reply: { kind: 'input' as const, fe: 'never.vue', be: 'never.ts#backend' } } };
-    catalog.setNative([{ id: 'native-pack', ...frontend, ...viewers, features: { memos: { description: 'Feature declaration fixture.', references } } }]);
-    const manifest = { id: 'source-pack', name: 'Source', version: '1.0.0', extensions: { ...frontend, ...viewers }, features: { memos: { description: 'Feature declaration fixture.', references } } };
+    catalog.setNative([{ id: 'native-pack', ...frontend, ...viewers, features: { memos: { description: 'Feature declaration fixture.', references, plugin: { label: 'Native memos', state: 'never.ts' } } } }]);
+    const manifest = { id: 'source-pack', name: 'Source', version: '1.0.0', extensions: { ...frontend, ...viewers }, features: { memos: { description: 'Feature declaration fixture.', references, plugin: { label: 'Memos', state: 'never.ts' } } } };
     catalog.setSources([{ dir: '/isolated/source', manifest, declarationRevision: _declarationRevision(manifest) }]);
     const installed = { ...manifest, id: 'installed-pack' };
     catalog.replace([{ dir: '/isolated/installed', enabled: false, snapshot: {
@@ -47,6 +58,12 @@ describe('window declaration catalog', () => {
     reader.connect(); sessions[0].receive(wire());
     const entries = reader.catalog.references();
     const editorEntries = reader.catalog.frontend();
+    expect(reader.plugins()).toMatchObject([
+      { featureRef: 'native-pack/memos', enabled: true, origin: 'native' },
+      { featureRef: 'installed-pack/memos', enabled: false, origin: 'installed', declarationRevision: _declarationRevision(installed) },
+      { featureRef: 'source-pack/memos', origin: 'source' },
+    ]);
+    expect(reader.plugins()).toBe(reader.plugins());
     expect(editorEntries).toMatchObject([
       { packId: 'native-pack', origin: 'native', enabled: true, declaration: frontend },
       { packId: 'installed-pack', origin: 'installed', enabled: false, declarationRevision: _declarationRevision(installed) },
