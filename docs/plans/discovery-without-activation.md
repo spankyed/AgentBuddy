@@ -331,8 +331,16 @@ external glob case preserves original bytes through a transient live edit; neste
 precedence hidden by a declaration entrypoint also matches the native baseline without another
 resolver redesign. The owning goal records focused validation.
 
-Remaining native acceptance includes complete namespace/metadata behavior and late absolute
-references with per-file configuration. Do not infer complete closure from these demonstrated cases.
+Source `1a87aa11e`, the absolute-import projection checkpoint, removes the remaining custom resolver
+round-trip. Absolute executable module references become equivalent relative references within the
+owned tree before native parsing, including generated stdin modules. Ordinary data strings stay
+unchanged, authored source text is retained in source maps, and two independent captures produce
+identical JavaScript/maps. A previously broken implicit-JSX absolute target and the generated content
+compiler now execute correctly. Source-map edit mappings use the explicitly declared `magic-string`
+dependency. The owning goal records source and focused evidence.
+
+Remaining native acceptance includes complete namespace/metadata behavior and source-map chaining
+for authored pre-mapped JavaScript. Do not infer complete closure from these demonstrated cases.
 Direct Node reads, frontend resources/generation, launch ownership, whole-build receipts and passive
 freshness remain unfinished. Glob capture currently owns a conservative subtree beneath its static
 prefix rather than duplicating esbuild's exact matcher.

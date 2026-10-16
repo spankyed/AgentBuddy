@@ -120,36 +120,36 @@ naming branch is not an automatic source of future changes.
 
 ### Current handoff — compiler checkpoint (2026-10-16)
 
-Latest source is `6b384ff1c`, following native-resolution checkpoint `00a6e3db5`. Native bundles
-and declarations use the shared owned tree; native source maps/read records map back to originals.
-Ordinary imports stay on esbuild's default resolver because a plugin `build.resolve()` round-trip
-lost implicit per-file TypeScript configuration. The external-glob regression exposed a build that
-succeeded but failed at runtime with a missing module. Glob namespaces are now captured during the
-initial source scan and before expansion of native-only modules, using one shared syntax observer;
-esbuild still selects the matches. The initial scan reuses TypeScript's parsed source files.
+Latest source is absolute-import projection checkpoint `1a87aa11e`, following
+`6b384ff1c` and `00a6e3db5`. Native bundles/declarations share the owned input tree. Both ordinary
+and absolute references now retain esbuild's default resolver: syntax-aware projection changes only
+absolute executable module references to equivalent relative references inside the tree. No plugin
+`build.resolve()` round-trip remains. The absolute-import regression previously emitted broken JSX
+(`React is not defined`) under implicit parent configuration. It now preserves transforms, authored
+source text in source maps and ordinary path-valued data. Generated stdin content compiler entries
+use the same projection. `magic-string` is an explicit CLI dependency for accurate edit mappings;
+release/version metadata is unchanged.
 
-Focused evidence for `6b384ff1c`: native nested-package precedence hidden behind a declaration
-entrypoint matches the native baseline. The external glob require matches the baseline even when its
-live matching file changes during bundling and is restored before validation. Both cases pass;
-after the AST reuse refactor, the glob case passes again in 9.56s. All 46 affected unit cases, CLI
-typecheck and focused lint pass. Logs: `/private/tmp/apack-native-{hidden,glob-final,glob-ast-final,
-glob-unit-final,glob-types-final,glob-lint-final}.log`; the original missing-module failure is
-`/private/tmp/apack-native-glob.log`. All own processes are terminal. No broad gate was repeated.
-Previous `00a6e3db5` evidence: 61 unit cases; all 12 config integration cases across the affected run
-and exact frozen-source retry; real worker repeat-build/cache identity and cleanup in 48.39s;
-typecheck/lint. Logs: `/private/tmp/apack-native-checkpoint-*.log`. The sandbox initially refused the
-worker's tsx socket; the focused retry with local IPC access passes. One publication refusal correctly
-caught an edit made during that earlier run; its frozen-source retry passes.
+Focused evidence: absolute-module and implicit-config cases pass; adjacent package-entry and glob
+cases pass in the affected run. The final absolute case also executes the generated content compiler
+and compares JavaScript/source-map bytes across two independent captures: identical, 16.63s. CLI
+typecheck/lint pass. Logs: `/private/tmp/apack-native-{absolute,absolute-fixed,reference-final,
+reference-repeat,reference-types-final,reference-lint-final}.log`. The first log is the original failure.
+All own processes are terminal; no broad gate repeated. Prior `6b384ff1c` evidence: captured external
+glob bytes survive a transient live edit; declaration-hidden runtime dependencies retain native
+nested-package precedence; 46 unit cases/types/lint pass (`/private/tmp/apack-native-glob-*.log`).
+Prior `00a6e3db5` evidence: 61 unit cases, 12 configuration cases across the affected run/exact retry,
+real worker repeat-build/cache identity and cleanup, types/lint (`apack-native-checkpoint-*.log`).
 
-Next complete native namespace/metadata semantics, including late absolute references with per-file
-configuration. The nested-package and relative-glob examples now have evidence; do not infer full
-closure from them or redesign the resolver based only on hypothetical directory-cache failures.
-Retain the whole scope: direct content filesystem reads, launch/preload ownership, frontend resources
-and retained compiler generation/lifetime, whole-build receipts/passive freshness, remaining discovery,
-navigation/frontend boundaries and all Phase 6 workstreams. Source-path diagnostic stream acceptance
-and integrated/final committed-source strict `--all` gates remain required. Focused results are not
-that final acceptance. The observer currently captures a conservative subtree under each glob's static
-prefix; exact matching remains native. Avoid expanding unrelated global temp membership into inputs.
+Next extend the execution frame to direct content filesystem reads. Retain full native closure and
+metadata acceptance, including source-map chaining for authored pre-mapped JavaScript and the
+conservative glob-prefix namespace capture. No narrower resolver or filesystem behavior is authorized.
+Then complete launch/preload ownership, frontend resources/retained compiler generation, whole-build
+receipts/passive freshness, remaining discovery, navigation/frontend boundaries and every Phase 6
+workstream. Source-path diagnostic stream acceptance and integrated/final committed-source strict
+`--all` gates remain required. Focused results are not that acceptance. Avoid expanding unrelated
+global temporary-directory membership into build inputs or redesigning resolution based only on
+hypothetical cache failures.
 
 #### Previous owned-declaration checkpoint
 
