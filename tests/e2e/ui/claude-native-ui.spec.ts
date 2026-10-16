@@ -52,6 +52,15 @@ test('native composer controls redraw without submitting typed input or starting
   });
   await expect.poll(async () => (await snapshot()).turns).toBe(1);
   const first = await snapshot();
+  const nativeAction = () => appPage.evaluate(() => {
+    const ctx = (window as any).applicationState.system.get('default-setup/threads').getSnapshot().context;
+    const entry = Object.entries(ctx.nativeUiViews).find(([, value]: any) => value.threadId === ctx.currentThread?.id && value.state.status === 'live');
+    if (!entry) throw new Error('No owned native drawing');
+    const findButton = (node: any): string | undefined => node.kind === 'button' ? node.actionId : node.kind === 'box' ? node.children.map(findButton).find(Boolean) : undefined;
+    return { threadId: ctx.currentThread.id, mountId: entry[0], actionId: findButton((entry[1] as any).state.tree) };
+  });
+  const oldAction = await nativeAction();
+  expect(oldAction.actionId).toBeTruthy();
   await editor.fill('Unsent text stays here');
   await strip.getByRole('button', { name: 'Run fixture', exact: true }).click();
   await expect(strip.getByText('Synthetic apack UI count: 1', { exact: true })).toBeVisible();
@@ -59,6 +68,21 @@ test('native composer controls redraw without submitting typed input or starting
   expect(await snapshot()).toEqual(first);
   expect(await readFile(join(workspace!, 'pressed.txt'), 'utf8')).toBe('1');
   expect(await strip.getByRole('button').evaluateAll(buttons => buttons.every(button => (button as HTMLButtonElement).type === 'button'))).toBe(true);
+  const freshAction = await nativeAction();
+  expect(freshAction.actionId).toBeTruthy();
+  expect(freshAction.actionId).not.toBe(oldAction.actionId);
+  await appPage.evaluate(({ oldAction, freshAction }) => {
+    const send = (window as any).__sendToSystem;
+    send('default-setup/threads', { type: 'CLAUDE_UI_PRESS', ...oldAction });
+    send('default-setup/threads', { type: 'CLAUDE_UI_PRESS', ...freshAction, threadId: 'foreign-research-thread' });
+    send('default-setup/threads', { type: 'CLAUDE_UI_PRESS', ...freshAction, mountId: '00000000-0000-4000-8000-000000000000' });
+  }, { oldAction, freshAction });
+  // A subsequent real press crosses the same delivery channel and supplies an observable barrier.
+  await strip.getByRole('button', { name: 'Run fixture', exact: true }).click();
+  await expect(strip.getByText('Synthetic apack UI count: 2', { exact: true })).toBeVisible();
+  expect(await readFile(join(workspace!, 'pressed.txt'), 'utf8')).toBe('2');
+  await expect(editor).toHaveText('Unsent text stays here');
+  expect(await snapshot()).toEqual(first);
   await appPage.screenshot({ path: testInfo.outputPath('native-composer-wide.png') });
   await appPage.setViewportSize({ width: 680, height: 900 });
   await expect(strip.getByRole('button', { name: 'Run fixture', exact: true })).toBeVisible();
@@ -77,10 +101,10 @@ test('native composer controls redraw without submitting typed input or starting
   await appPage.evaluate(() => (window as any).applicationState.system.get('default-setup/threads').send({ type: 'CLEAR_THREAD' }));
   await expect(card.getByRole('button', { name: 'Run fixture', exact: true })).toHaveCount(0);
   await appPage.evaluate(threadId => (window as any).applicationState.system.get('default-setup/threads').send({ type: 'OPEN_THREAD_CHAT', threadId }), first.threadId);
-  await expect(strip.getByText('Synthetic apack UI count: 1', { exact: true })).toBeVisible();
+  await expect(strip.getByText('Synthetic apack UI count: 2', { exact: true })).toBeVisible();
   // Deletion runs the backend thread teardown and disconnects any remaining live mount.
   await appPage.evaluate(threadId => (window as any).__sendToSystem('default-setup/threads', { type: 'DELETE_THREAD', threadId }), first.threadId);
   await expect(card.getByRole('button', { name: 'Run fixture', exact: true })).toHaveCount(0);
   expect(errors).toEqual([]);
-  await writeFile(join(workspace!, 'ui-app-evidence.json'), JSON.stringify({ renderedNativeTree: true, nativePress: true, invalidationRedraw: true, typedInputPreserved: true, noPhantomMessage: true, narrowOverflowBounded: true, secondHostTurn: true, singleNativeProcess: true, threadSwitchRemount: true, threadDeleteClearsControls: true, hostInputs: 2 }, null, 2));
+  await writeFile(join(workspace!, 'ui-app-evidence.json'), JSON.stringify({ renderedNativeTree: true, nativePress: true, invalidationRedraw: true, typedInputPreserved: true, noPhantomMessage: true, narrowOverflowBounded: true, secondHostTurn: true, singleNativeProcess: true, threadSwitchRemount: true, threadDeleteClearsControls: true, staleDrawingRejected: true, foreignThreadRejected: true, foreignMountRejected: true, validPressAfterRejectedActions: true, hostInputs: 2 }, null, 2));
 });
