@@ -4,7 +4,7 @@ import { createHash } from 'node:crypto';
 import ts from 'typescript';
 import type { BuildInputKind, BuildInputObserver } from '@apackdev/host/build/pack-inputs';
 import { compilerSourcePath, type CompilerPathMapping } from './compiler-paths.ts';
-import { captureCompilerMetadata, type CompilerMetadataKind } from './compiler-metadata.ts';
+import { captureCompilerMetadata, compilerMetadataOperations, type CompilerMetadataKind } from './compiler-metadata.ts';
 import { physicalWatchPath } from './watch-paths.ts';
 
 export type CompilerFileSystem = Pick<ts.System,
@@ -61,6 +61,7 @@ export function createCompilerFileView(root: string, options: {
   const physical = new Map<string, string>();
   const inputs = new Map<string, FileInput>();
   const contents = new Map<string, Buffer | undefined>();
+  const dataStats = new Map<string, { normal: fs.Stats; bigint: fs.BigIntStats }>();
   const directories = new Map<string, { file: string; entries: DirectoryEntry[] }>();
   const globs = new Map<string, { args: Parameters<ts.System['readDirectory']>; files: string[] }>();
   const included = new Set<string>();
@@ -93,10 +94,24 @@ export function createCompilerFileView(root: string, options: {
       if (!['ENOENT', 'ENOTDIR', 'EISDIR'].includes((error as NodeJS.ErrnoException).code ?? '')) throw error;
     }
   };
+  function captureDataStats(file: string, bytes?: Buffer) {
+    if (dataStats.has(file)) return;
+    const normal = Reflect.apply(compilerMetadataOperations.stat.sync, fs, [file]) as fs.Stats;
+    const bigint = Reflect.apply(compilerMetadataOperations.stat.sync, fs, [file, { bigint: true }]) as fs.BigIntStats;
+    if ((bytes && normal.size !== bytes.length)
+      || ['dev', 'ino', 'mode', 'size'].some(key => Reflect.get(normal, key) !== Number(Reflect.get(bigint, key)))) {
+      throw new Error(`Compiler input changed during capture: ${file}`);
+    }
+    dataStats.set(file, { normal, bigint });
+  }
   function readBytes(file: string): Buffer | undefined {
     const node = input(file, 'file');
     if (node?.kind !== 'file') return;
-    if (!contents.has(node.physical)) contents.set(node.physical, bytes(node.physical));
+    if (!contents.has(node.physical)) {
+      const value = bytes(node.physical);
+      if (value !== undefined) captureDataStats(node.physical, value);
+      contents.set(node.physical, value);
+    }
     const value = contents.get(node.physical);
     return value === undefined ? undefined : Buffer.from(value);
   }
@@ -163,7 +178,10 @@ export function createCompilerFileView(root: string, options: {
     readBytes,
     readDataBytes(file: string) {
       included.add(path.resolve(file));
-      return readBytes(file);
+      const value = readBytes(file);
+      const node = input(file, 'file');
+      if (node?.kind === 'directory') captureDataStats(node.physical);
+      return value;
     },
     ancestors,
     readMetadata(kind: CompilerMetadataKind, file: string, args: readonly unknown[]) {
@@ -172,7 +190,14 @@ export function createCompilerFileView(root: string, options: {
       const key = JSON.stringify([kind, file, args]);
       let entry = metadata.get(key);
       if (!entry) {
-        entry = { file, kind, args: args.map(arg => arg && typeof arg === 'object' ? { ...arg } : arg), query: captureCompilerMetadata(kind, file, args) };
+        const node = kind === 'stat' ? inputs.get(file) : undefined;
+        const stats = node && dataStats.get(node.physical);
+        const options = args[0];
+        const validOptions = args.length <= 1 && (options == null || (typeof options === 'object' && !Array.isArray(options)
+          && ['bigint', 'throwIfNoEntry'].every(key => Reflect.get(options, key) === undefined || typeof Reflect.get(options, key) === 'boolean')));
+        const initial = stats && validOptions
+          ? { value: options && typeof options === 'object' && Reflect.get(options, 'bigint') ? stats.bigint : stats.normal } : undefined;
+        entry = { file, kind, args: args.map(arg => arg && typeof arg === 'object' ? { ...arg } : arg), query: captureCompilerMetadata(kind, file, args, initial) };
         metadata.set(key, entry);
       }
       return entry.query.value();
@@ -239,6 +264,7 @@ export function createCompilerFileView(root: string, options: {
       if (node?.kind !== 'file' || (contents.has(node.physical) && (previous === undefined || !previous.equals(value)))) {
         throw new Error(`Compiler input changed during capture: ${file}`);
       }
+      captureDataStats(node.physical, value);
       contents.set(node.physical, Buffer.from(value));
       return { file: node.physical, bytes: Buffer.from(value), mode: node.mode };
     },

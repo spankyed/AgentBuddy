@@ -44,13 +44,13 @@ function outcomeKey(outcome: MetadataOutcome): string {
 }
 
 /** One native query owns its value; stat validation follows the fields actually consumed. */
-export function captureCompilerMetadata(kind: CompilerMetadataKind, file: string, args: readonly unknown[]) {
+export function captureCompilerMetadata(kind: CompilerMetadataKind, file: string, args: readonly unknown[], initial?: { value: unknown }) {
   const options = args.map(arg => arg && typeof arg === 'object' ? { ...arg } : arg);
   const read = (): MetadataOutcome => {
     try { return { ok: true, value: Reflect.apply(compilerMetadataOperations[kind].sync, fs, [file, ...options]) }; }
     catch (error) { return { ok: false, error }; }
   };
-  const outcome = read();
+  const outcome: MetadataOutcome = initial ? { ok: true, value: copyValue(initial.value) } : read();
   const fields = new Set<PropertyKey>();
   const isStats = outcome.ok && (kind === 'stat' || kind === 'lstat') && outcome.value !== undefined;
   const identity = () => isStats ? valueKey([...fields].sort((a, b) => String(a) < String(b) ? -1 : String(a) > String(b) ? 1 : 0).map(key => [String(key), Reflect.get(outcome.value as object, key)])) : outcomeKey(outcome);

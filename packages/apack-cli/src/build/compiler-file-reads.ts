@@ -3,6 +3,7 @@ import path from 'node:path';
 import { AsyncLocalStorage } from 'node:async_hooks';
 import { syncBuiltinESMExports } from 'node:module';
 import { fileURLToPath } from 'node:url';
+import { capturedDescriptor, descriptorStats, releaseDescriptor, instrumentFileHandle, rememberDescriptor } from './compiler-descriptors.ts';
 import { compilerMetadataOperations, type CompilerMetadataKind } from './compiler-metadata.ts';
 import type { CompilationInputs } from './compilation-inputs.ts';
 
@@ -46,14 +47,20 @@ function readOnly(flags: unknown): boolean {
 }
 
 function callbackRead<T extends (...args: never[]) => unknown>(operation: T,
-  file: fs.PathOrFileDescriptor, args: unknown[], capture = true): unknown {
+  file: fs.PathOrFileDescriptor, args: unknown[], capture = true, opened?: (fd: number) => void): unknown {
   const callback = args.pop();
   if (typeof callback !== 'function') return Reflect.apply(operation, fs, [file, ...args, callback]);
   let captured: fs.PathOrFileDescriptor;
   try { captured = capture ? readPath(file) : file; }
   catch (error) { queueMicrotask(() => callback(sourceError(error))); return; }
   return Reflect.apply(operation, fs, [captured, ...args,
-    (error: unknown, data: unknown) => callback(error ? sourceError(error) : null, data)]);
+    (error: unknown, data: unknown) => {
+      if (!error && opened) {
+        try { opened(data as number); }
+        catch (error) { callback(sourceError(error)); return; }
+      }
+      callback(error ? sourceError(error) : null, data);
+    }]);
 }
 
 function metadataRead(kind: CompilerMetadataKind, file: fs.PathLike, args: readonly unknown[]) {
@@ -83,6 +90,12 @@ function metadataCallback(kind: CompilerMetadataKind) {
   };
 }
 
+function descriptorInput(file: fs.PathLike, flags: unknown) {
+  const input = readOnly(flags) ? readScope(file) : undefined;
+  return input && { readStats: (args: readonly unknown[]) =>
+    scopes.exit(() => input.scope.compilation.readMetadata('stat', input.absolute, args)) };
+}
+
 function install() {
   if (installed) return;
   installed = true;
@@ -100,14 +113,53 @@ function install() {
   }) as typeof fs.promises.readFile;
   const openSync = fs.openSync, open = fs.open, openPromise = fs.promises.open;
   fs.openSync = ((file: fs.PathLike, flags: fs.OpenMode, ...args: unknown[]) => {
-    try { return Reflect.apply(openSync, fs, [readOnly(flags) ? readPath(file) : file, flags, ...args]); }
-    catch (error) { throw sourceError(error); }
+    try {
+      const owner = descriptorInput(file, flags);
+      const fd = Reflect.apply(openSync, fs, [readOnly(flags) ? readPath(file) : file, flags, ...args]);
+      rememberDescriptor(fd, owner);
+      return fd;
+    } catch (error) { throw sourceError(error); }
   }) as typeof fs.openSync;
-  fs.open = ((file: fs.PathLike, ...args: unknown[]) => callbackRead(open, file, args, readOnly(args[0]))) as typeof fs.open;
+  fs.open = ((file: fs.PathLike, ...args: unknown[]) => {
+    const flags = typeof args[0] === 'function' ? undefined : args[0];
+    const owner = descriptorInput(file, flags);
+    return callbackRead(open, file, args, readOnly(flags), fd => rememberDescriptor(fd, owner));
+  }) as typeof fs.open;
   fs.promises.open = (async (file, flags, ...args) => {
-    try { return await Reflect.apply(openPromise, fs.promises, [readOnly(flags) ? readPath(file) : file, flags, ...args]); }
-    catch (error) { throw sourceError(error); }
+    try {
+      const owner = descriptorInput(file, flags);
+      const handle = await Reflect.apply(openPromise, fs.promises, [readOnly(flags) ? readPath(file) : file, flags, ...args]);
+      rememberDescriptor(handle.fd, owner);
+      return owner ? instrumentFileHandle(handle) : handle;
+    } catch (error) { throw sourceError(error); }
   }) as typeof fs.promises.open;
+  const fstatSync = fs.fstatSync, fstat = fs.fstat, closeSync = fs.closeSync, close = fs.close;
+  fs.fstatSync = ((fd: number, ...args: unknown[]) => {
+    const captured = capturedDescriptor(fd);
+    try { return descriptorStats(fd, Reflect.apply(fstatSync, fs, [fd, ...args]), args, captured); }
+    catch (error) { if ((error as NodeJS.ErrnoException).code === 'EBADF') releaseDescriptor(fd, captured); throw sourceError(error); }
+  }) as typeof fs.fstatSync;
+  fs.fstat = ((fd: number, ...args: unknown[]) => {
+    const callback = args.pop(), captured = capturedDescriptor(fd);
+    if (typeof callback !== 'function') return Reflect.apply(fstat, fs, [fd, ...args, callback]);
+    return Reflect.apply(fstat, fs, [fd, ...args, (error: NodeJS.ErrnoException | null, actual: fs.Stats | fs.BigIntStats) => {
+      if (error) {
+        if (error.code === 'EBADF') releaseDescriptor(fd, captured);
+        callback(sourceError(error));
+      } else {
+        let value: unknown;
+        try { value = descriptorStats(fd, actual, args, captured); }
+        catch (error) { callback(sourceError(error)); return; }
+        callback(null, value);
+      }
+    }]);
+  }) as typeof fs.fstat;
+  fs.closeSync = (fd => { const captured = capturedDescriptor(fd); closeSync(fd); releaseDescriptor(fd, captured); }) as typeof fs.closeSync;
+  fs.close = ((fd: number, callback: (error: NodeJS.ErrnoException | null) => void) => {
+    const captured = capturedDescriptor(fd);
+    if (typeof callback !== 'function') return close(fd, callback);
+    return close(fd, error => { if (!error || error.code === 'EBADF') releaseDescriptor(fd, captured); callback(error); });
+  }) as typeof fs.close;
   const readdirSync = fs.readdirSync, readdir = fs.readdir, readdirPromise = fs.promises.readdir;
   fs.readdirSync = ((file: fs.PathLike, options: unknown) => {
     const input = readScope(file);

@@ -174,3 +174,55 @@ it('shares captured metadata across native sync, callback and promise APIs', asy
     compilation.assertCurrent();
   } finally { compilation.dispose(); }
 });
+
+it('keeps descriptor metadata with captured bytes through pathname replacement and closure', async () => {
+  const root = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'apack-descriptor-scope-')));
+  roots.push(root);
+  fs.writeFileSync(path.join(root, 'package.json'), '{}');
+  const file = path.join(root, 'value.txt'), held = path.join(root, 'held.txt');
+  fs.writeFileSync(file, 'ORIGINAL');
+  const source = fs.statSync(file, { bigint: true });
+  const compilation = captureCompilationInputs(root);
+  try {
+    fs.writeFileSync(file, 'LIVE');
+    await withCompilerFileReads({ compilation, outputDirectory: path.join(root, 'dist') }, async () => {
+      const defaultFd = await new Promise<number>((resolve, reject) => fs.open(file, (error, fd) => error ? reject(error) : resolve(fd)));
+      try { expect(fs.readFileSync(defaultFd, 'utf8')).toBe('ORIGINAL'); }
+      finally { await new Promise<void>((resolve, reject) => fs.close(defaultFd, error => error ? reject(error) : resolve())); }
+      const fd = fs.openSync(file, 'r');
+      const handle = await fs.promises.open(file, 'r');
+      fs.renameSync(file, held);
+      fs.writeFileSync(file, 'REPLACEMENT');
+      try {
+        expect(fs.readFileSync(fd, 'utf8')).toBe('ORIGINAL');
+        const stat = fs.fstatSync(fd);
+        expect(stat.ino).toBe(Number(source.ino));
+        expect(stat.mode).toBe(Number(source.mode));
+        expect(stat.size).toBe(8);
+        const callback = await new Promise<fs.BigIntStats>((resolve, reject) =>
+          fs.fstat(fd, { bigint: true }, (error, value) => error ? reject(error) : resolve(value)));
+        expect(callback.ino).toBe(source.ino);
+        expect(callback.size).toBe(8n);
+        expect((await handle.stat({ bigint: true })).ino).toBe(source.ino);
+        expect((await handle.stat()).size).toBe(8);
+      } finally {
+        fs.closeSync(fd);
+        await handle.close();
+        fs.unlinkSync(file);
+        fs.renameSync(held, file);
+      }
+      expect(() => fs.fstatSync(fd)).toThrow(/EBADF/);
+      await expect(handle.stat()).rejects.toMatchObject({ code: 'EBADF' });
+      const output = path.join(root, 'dist/output.txt');
+      fs.mkdirSync(path.dirname(output), { recursive: true });
+      const writable = fs.openSync(output, 'w+');
+      try {
+        fs.writeSync(writable, 'OUTPUT');
+        expect(fs.fstatSync(writable).ino).toBe(fs.statSync(output).ino);
+        expect(fs.fstatSync(writable).size).toBe(6);
+      } finally { fs.closeSync(writable); }
+    });
+    fs.writeFileSync(file, 'ORIGINAL');
+    compilation.assertCurrent();
+  } finally { compilation.dispose(); }
+});
