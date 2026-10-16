@@ -1,3 +1,5 @@
+import { getMemoryDialog } from './claude-code/memory.ts'
+import type { ClaudeMemoryDialog } from './claude-code/host-controls.ts'
 import { editSkillOverride, type ClaudeSkillEdit, getSkillsDialog } from './claude-code/skills.ts'
 import type { ClaudeSkillsDialog } from './claude-code/host-controls.ts'
 import type { ClaudeConversation, ClaudeTurnConsumer } from './claude-code/conversation.ts'
@@ -98,8 +100,8 @@ export interface CliServiceType {
     /** Read native Skill states, provenance and author/policy locks. */
     listSkills(opts?: { cwd?: string }): Promise<ClaudeSkillsDialog['skills']>
     editSkill(edit: ClaudeSkillEdit, opts?: { cwd?: string }): Promise<{ changed: boolean }>
-    /** List memory/CLAUDE.md files from known locations. */
-    listMemoryFiles(): Promise<Array<{ name: string; scope: string; path: string }>>
+    /** Read native instruction/memory files and availability in the selected project. */
+    getMemoryDialog(opts?: { cwd?: string }): Promise<ClaudeMemoryDialog>
     /** Rename a Claude Code session through the native process. */
     renameSession(id: string, title: string, opts?: { cwd?: string }): Promise<void>
     /** Check whether a session JSONL file exists under the given (or default) project directory. */
@@ -274,40 +276,8 @@ function createCliService(): CliServiceType {
       async listSkills(opts) {
         return (await getSkillsDialog({ cwd: opts?.cwd ?? resolveCwd() })).skills
       },
-      async listMemoryFiles() {
-        const cwd = resolveCwd()
-        const results: Array<{ name: string; scope: string; path: string }> = []
-        const candidates = [
-          { filePath: path.join(os.homedir(), '.claude', 'CLAUDE.md'), name: 'CLAUDE.md', scope: 'user' },
-          { filePath: path.join(cwd, 'CLAUDE.md'), name: 'CLAUDE.md', scope: 'project' },
-          { filePath: path.join(cwd, 'CLAUDE.local.md'), name: 'CLAUDE.local.md', scope: 'local' },
-        ]
-        for (const { filePath, name, scope } of candidates) {
-          try {
-            await fs.promises.access(filePath)
-            results.push({ name, scope, path: filePath })
-          } catch { /* doesn't exist */ }
-        }
-        // Scan rules directories
-        const rulesDirs = [
-          { dir: path.join(os.homedir(), '.claude', 'rules'), scope: 'user' },
-          { dir: path.join(cwd, '.claude', 'rules'), scope: 'project' },
-        ]
-        for (const { dir, scope } of rulesDirs) {
-          try {
-            const entries = await fs.promises.readdir(dir, { withFileTypes: true })
-            for (const entry of entries) {
-              if (entry.isFile() && entry.name.endsWith('.md')) {
-                results.push({
-                  name: `rules/${entry.name}`,
-                  scope,
-                  path: path.join(dir, entry.name),
-                })
-              }
-            }
-          } catch { /* dir doesn't exist */ }
-        }
-        return results
+      getMemoryDialog(opts) {
+        return getMemoryDialog({ cwd: opts?.cwd ?? resolveCwd() })
       },
       async renameSession(id, title, opts) {
         const cwd = opts?.cwd ?? resolveCwd()

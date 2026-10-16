@@ -136,3 +136,13 @@ export const ClaudeSkillsDialogSchema = z.object({ skills: z.array(z.object({
   handles: z.object({ unqualified_name: z.string().optional(), aliases: z.array(z.string()).optional(), bare_name_reserved: z.boolean().optional() }).passthrough(),
 }).passthrough()) }).passthrough()
 export type ClaudeSkillsDialog = z.infer<typeof ClaudeSkillsDialogSchema>
+
+/** Native instruction files and automatic-memory availability are separate from context usage. */
+export const ClaudeMemoryDialogSchema = z.object({
+  files: z.array(z.object({ kind: z.string(), path: z.string(), label: z.string(), description: z.string(), exists: z.boolean() }).passthrough()),
+  folders: z.array(z.object({ kind: z.string(), path: z.string(), label: z.string(), description: z.string() }).passthrough()),
+  memories: z.array(z.object({ name: z.string(), path: z.string(), description: z.string().nullable(), type: z.enum(['user', 'feedback', 'project', 'reference']).nullable(), modified_ms: z.number() }).passthrough()).optional(),
+  auto_memory: z.object({ enabled: z.boolean(), toggleable: z.boolean(), status: z.string() }).passthrough(),
+  auto_dream: z.object({ shown: z.boolean(), enabled: z.boolean(), toggleable: z.boolean(), status: z.string(), detail: z.string() }).passthrough(),
+}).passthrough()
+export type ClaudeMemoryDialog = z.infer<typeof ClaudeMemoryDialogSchema>

@@ -206,17 +206,25 @@ async function handleModel(
 async function handleMemory(
   args: string[],
   services: Services,
+  threadId?: string,
 ): Promise<{ text: string; data?: any }> {
   if (args[0] === 'add' || args[0] === 'remove') {
     return { text: `Memory add/remove is only available in the Claude Code terminal. Use /memory ${args[0]} there.` };
   }
-  const files = await services.cli.claudeCode.listMemoryFiles();
-  if (!files.length) return { text: 'No memory files found.' };
-  const lines = files.map((f: any) => {
-    const scope = f.scope ? ` [${f.scope}]` : '';
-    return `${f.name}${scope}  ${f.path}`;
-  });
-  return { text: lines.join('\n'), data: files };
+  const prior = threadId ? getClaudeState(services, threadId) : undefined;
+  const cwd = prior?.cwdOverride || prior?.cwd;
+  let handle = threadId ? services.cli.claudeCode.getHandle(threadId) : undefined;
+  if (handle && threadId) {
+    const nativeCwd = services.cli.claudeCode.getConversation(threadId)?.owner.sessionCwd;
+    if (nativeCwd !== (cwd || services.cli.claudeCode.getWorkingDir())) handle = undefined;
+  }
+  const data = handle ? await handle.getMemoryDialog() : await services.cli.claudeCode.getMemoryDialog(cwd ? { cwd } : undefined);
+  const lines = data.files.map(file => `${file.label} [${file.kind}]${file.exists ? '' : ' (missing)'}  ${file.path}`);
+  for (const folder of data.folders) lines.push(`${folder.label}  ${folder.path}`);
+  for (const memory of data.memories ?? []) lines.push(`${memory.name}${memory.type ? ` [${memory.type}]` : ''}  ${memory.path}`);
+  lines.push(`Auto-memory: ${data.auto_memory.status}${data.auto_memory.toggleable ? '' : ' (unavailable)'}`);
+  if (data.auto_dream.shown) lines.push(`Auto-dream: ${data.auto_dream.status}${data.auto_dream.detail ? ` — ${data.auto_dream.detail}` : ''}${data.auto_dream.toggleable ? '' : ' (unavailable)'}`);
+  return { text: lines.join('\n'), data };
 }
 
 async function handleSkills(

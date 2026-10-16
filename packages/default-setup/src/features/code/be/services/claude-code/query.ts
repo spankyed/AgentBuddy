@@ -36,8 +36,8 @@ import { argsFromOptions } from './args.ts'
 import { PermissionModeSchema, type PermissionMode } from './types.ts'
 import { z } from 'zod'
 import { createControlRouter } from './control.ts'
-import { ClaudeSkillsDialogSchema, createHostControls, ClaudeInitializationSchema, ClaudeContextUsageSchema, ClaudeInterruptReceiptSchema, ClaudeMcpStatusSchema, ClaudeFileRewindSchema, ClaudePlanSchema } from './host-controls.ts'
-import type { ClaudeSkillsDialog, ClaudeInitialization, ClaudeContextUsage, ClaudeInterruptReceipt, ClaudeMcpStatus, ClaudeFileRewind, ClaudePlan } from './host-controls.ts'
+import { ClaudeMemoryDialogSchema, ClaudeSkillsDialogSchema, createHostControls, ClaudeInitializationSchema, ClaudeContextUsageSchema, ClaudeInterruptReceiptSchema, ClaudeMcpStatusSchema, ClaudeFileRewindSchema, ClaudePlanSchema } from './host-controls.ts'
+import type { ClaudeMemoryDialog, ClaudeSkillsDialog, ClaudeInitialization, ClaudeContextUsage, ClaudeInterruptReceipt, ClaudeMcpStatus, ClaudeFileRewind, ClaudePlan } from './host-controls.ts'
 import {
   ClaudeAbortError,
   type ClaudeCodeError,
@@ -98,6 +98,8 @@ export interface QueryHandle {
   renameSession(title: string, sessionId?: string): Promise<void>
   /** Read native Skill states, provenance and locks without a model turn. */
   getSkillsDialog(): Promise<ClaudeSkillsDialog>
+  /** Read native memory files and availability without a model turn. */
+  getMemoryDialog(): Promise<ClaudeMemoryDialog>
   /** Refresh native Skill discovery after an idle configuration edit. */
   reloadSkills(): Promise<void>
   /** Read the current native plan without a model turn. */
@@ -290,6 +292,11 @@ export async function query(opts: QueryOptions): Promise<QueryHandle> {
     async reloadSkills(): Promise<void> {
       await initialized
       z.object({ skills: z.array(z.object({ name: z.string() }).passthrough()) }).parse(await hostControls.request({ subtype: 'reload_skills' }))
+    },
+
+    async getMemoryDialog(): Promise<ClaudeMemoryDialog> {
+      await initialized
+      return ClaudeMemoryDialogSchema.parse(await hostControls.request({ subtype: 'get_memory_dialog' }))
     },
 
     async getSkillsDialog(): Promise<ClaudeSkillsDialog> {
