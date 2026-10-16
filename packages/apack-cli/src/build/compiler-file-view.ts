@@ -58,6 +58,8 @@ export function createCompilerFileView(root: string, options: {
   const paths = options.paths?.map(mapping => ({ ...mapping })) ?? [];
   const origin = compilerSourcePath(fs.realpathSync(root), paths);
   const observe = options.observe;
+  let disposed = false;
+  const assertOpen = () => { if (disposed) throw new Error('Compiler input operation outlived its build'); };
   const relative = (file: string) => path.relative(origin, compilerSourcePath(file, paths)).split(path.sep).join('/');
   const physical = new Map<string, string>();
   const inputs = new Map<string, FileInput>();
@@ -79,6 +81,7 @@ export function createCompilerFileView(root: string, options: {
   }
 
   function input(file: string, kind: BuildInputKind): FileInput | undefined {
+    assertOpen();
     file = path.resolve(file);
     observe?.(file, kind);
     if (excluded(file) && !included.has(file)) return;
@@ -162,6 +165,7 @@ export function createCompilerFileView(root: string, options: {
   input(root, 'directory');
   const changed = (file: string): never => { throw new Error(`Compiler resolution namespace changed during discovery: ${file}`); };
   const ancestors = (file: string) => {
+    assertOpen();
     const values: FileInput[] = [];
     const boundary = paths.find(mapping => {
       const relative = path.relative(mapping.captured, path.resolve(file));
@@ -179,6 +183,7 @@ export function createCompilerFileView(root: string, options: {
     fileSystem,
     readBytes,
     readDataBytes(file: string) {
+      assertOpen();
       included.add(path.resolve(file));
       const value = readBytes(file);
       const node = input(file, 'file');
@@ -187,6 +192,7 @@ export function createCompilerFileView(root: string, options: {
     },
     ancestors,
     readMetadata(kind: CompilerMetadataKind, file: string, args: readonly unknown[]) {
+      assertOpen();
       file = path.resolve(file);
       observe?.(file, 'file');
       const key = JSON.stringify([kind, file, args]);
@@ -205,6 +211,7 @@ export function createCompilerFileView(root: string, options: {
       return entry.query.value();
     },
     readDirectoryData(file: string, options: unknown) {
+      assertOpen();
       file = path.resolve(file);
       included.add(file);
       const node = input(file, 'entries');
@@ -241,6 +248,7 @@ export function createCompilerFileView(root: string, options: {
       return copyDirectoryResult(query.result);
     },
     openDirectoryData(file: string, options: unknown) {
+      assertOpen();
       file = path.resolve(file);
       included.add(file);
       input(file, 'entries');
@@ -254,10 +262,13 @@ export function createCompilerFileView(root: string, options: {
       return query.cursor;
     },
     dispose() {
+      if (disposed) return;
+      disposed = true;
       const errors: unknown[] = [];
       for (const { cursor } of directoryCursors.values()) {
         try { cursor.dispose(); } catch (error) { errors.push(error); }
       }
+      for (const state of [physical, inputs, contents, dataStats, directories, globs, included, metadata, directoryQueries, directoryCursors]) state.clear();
       if (errors.length) throw new AggregateError(errors, 'Could not close compiler directory cursors');
     },
     captureLocation(file: string, kind: BuildInputKind) {
@@ -282,6 +293,7 @@ export function createCompilerFileView(root: string, options: {
     },
     /** Admit bytes already consumed by a producer, without rereading its mutable file. */
     captureFile(file: string, value: Buffer) {
+      assertOpen();
       included.add(path.resolve(file));
       const node = input(file, 'file');
       const previous = node && contents.get(node.physical);
@@ -293,6 +305,7 @@ export function createCompilerFileView(root: string, options: {
       return { file: node.physical, bytes: Buffer.from(value), mode: node.mode };
     },
     snapshot() {
+      assertOpen();
       // Materialize every positive query and known directory entry, without inventing an ancestor scan.
       for (const value of directories.values()) {
         for (const entry of value.entries) input(path.join(value.file, entry.name), 'file');
@@ -307,6 +320,7 @@ export function createCompilerFileView(root: string, options: {
       return { files: [...files.values()], locations: [...inputs.values()].map(value => ({ ...value })) };
     },
     assertCurrent() {
+      assertOpen();
       const current = new Map<string, string>();
       for (const value of inputs.values()) {
         const next = state(value.file, current);
@@ -331,6 +345,7 @@ export function createCompilerFileView(root: string, options: {
       }
     },
     hash() {
+      assertOpen();
       const hash = createHash('sha256');
       const files = new Map<string, Buffer | undefined>();
       for (const [file, value] of contents) {

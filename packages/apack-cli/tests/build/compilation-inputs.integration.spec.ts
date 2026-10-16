@@ -5,6 +5,7 @@ import { afterEach, expect, it, vi } from 'vitest';
 // Real TypeScript programs and full installed package graphs are compiler integration work.
 import { captureCompilationInputs } from '../../src/build/compilation-inputs.ts';
 import * as moduleInputs from '../../src/build/compiler-module-inputs.ts';
+import { withCompilerFileReads } from '../../src/build/compiler-file-reads.ts';
 
 const roots: string[] = [];
 afterEach(() => { vi.restoreAllMocks(); vi.unstubAllEnvs(); roots.splice(0).forEach(root => fs.rmSync(root, { recursive: true, force: true })); });
@@ -63,4 +64,31 @@ it('formats diagnostics without materializing or reading the owned tree', () => 
   expect(compilation.diagnostic('Missing source input')).toBe('Missing source input');
   expect(allocate).not.toHaveBeenCalled();
   compilation.dispose();
+});
+
+
+it('refuses retained async reads after disposal without recreating input storage', async () => {
+  const { root, file } = pack();
+  const compilation = captureCompilationInputs(root);
+  const tree = compilation.readTree();
+  const owned = tree.path(file);
+  let resume!: () => void;
+  const ready = new Promise<void>(resolve => { resume = resolve; });
+  const retained = withCompilerFileReads({ compilation, outputDirectory: path.join(root, '.apack/build') }, async () => {
+    await ready;
+    return fs.promises.readFile(file, 'utf8');
+  });
+  compilation.dispose();
+  expect(fs.existsSync(tree.directory)).toBe(false);
+  const allocate = vi.spyOn(fs, 'mkdtempSync').mockImplementation(() => { throw new Error('Retired read allocated storage'); });
+  const refused = expect(retained).rejects.toThrow('Compiler input operation outlived its build');
+  resume();
+  await refused;
+  expect(() => compilation.readTree()).toThrow(/outlived/);
+  expect(() => compilation.prepareNativeSource(file, Buffer.from('export {};'))).toThrow(/outlived/);
+  expect(() => compilation.assertCurrent()).toThrow(/outlived/);
+  expect(compilation.diagnostic(owned)).toBe(file);
+  compilation.dispose();
+  expect(allocate).not.toHaveBeenCalled();
+  expect(fs.readFileSync(file, 'utf8')).toBe('export type Value = string;');
 });

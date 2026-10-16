@@ -61,6 +61,8 @@ export function captureCompilationInputs(packRoot: string): CompilationInputs {
   const capturedPackages = new Set(compiler?.packages);
   const modules = readCompilerModuleInputs(packRoot);
   let tree: CompilerReadTree | undefined;
+  let disposed = false;
+  const assertOpen = () => { if (disposed) throw new Error('Compiler input operation outlived its build'); };
   const current = (capture = false) => {
     const owners = [{ id: 'pack', directory: packRoot, development: true }];
     if (!compiler) owners.unshift({ id: 'cli', directory: cliRoot, development: false });
@@ -76,6 +78,7 @@ export function captureCompilationInputs(packRoot: string): CompilationInputs {
   const { hash, packages } = current(true);
   const sourcePath = (file: string): string => tree?.sourcePath(file) ?? compilerSourcePath(file, compiler?.paths ?? []);
   const readTree = (): CompilerReadTree => {
+    assertOpen();
     if (!tree) {
       const links = packages.nodes.flatMap(node => [
         ...node.links.map(link => ({ file: path.join(node.directory, link.path), target: link.target })),
@@ -103,6 +106,7 @@ export function captureCompilationInputs(packRoot: string): CompilationInputs {
     configuration: modules.configuration,
     declarationConfiguration: modules.declarationConfiguration,
     readFile(file) {
+      assertOpen();
       const bytes = modules.readBytes(file);
       if (tree && bytes !== undefined) tree.include({
         files: [modules.captureFile(file, bytes)], locations: [modules.captureLocation(file, 'file')!], links: [],
@@ -110,6 +114,7 @@ export function captureCompilationInputs(packRoot: string): CompilationInputs {
       return bytes;
     },
     readDataPath(file) {
+      assertOpen();
       file = path.resolve(file);
       // The parent already owns and verifies these tool bytes. Do not redirect them to the checkout.
       if (ownsToolPath(file)) return file;
@@ -122,19 +127,23 @@ export function captureCompilationInputs(packRoot: string): CompilationInputs {
       return owned.dataPath(file);
     },
     readDirectory(file, options) {
+      assertOpen();
       file = path.resolve(file);
       if (ownsToolPath(file)) return Reflect.apply(fs.readdirSync, fs, [file, options]) as CompilerDirectoryResult;
       return modules.readDirectoryData(sourcePath(file), options);
     },
     openDirectory(file, options) {
+      assertOpen();
       file = path.resolve(file);
       return modules.openDirectoryData(ownsToolPath(file) ? file : sourcePath(file), options);
     },
     readMetadata(kind, file, args) {
+      assertOpen();
       file = path.resolve(file);
       return modules.readMetadata(kind, ownsToolPath(file) ? file : sourcePath(file), args);
     },
     captureGenerated() {
+      assertOpen();
       for (const relative of packInputFiles(packRoot, { generated: true })) {
         if (!relative.startsWith('src/__generated__/')) continue;
         const file = path.join(packRoot, relative);
@@ -145,9 +154,14 @@ export function captureCompilationInputs(packRoot: string): CompilationInputs {
     sourcePath,
     diagnostic(message) { return compilerDiagnostic(tree?.diagnostic(message) ?? message, compiler?.paths ?? []); },
     prepareNative(specifier, importer) { readTree(); native.prepare(specifier, sourcePath(importer)); },
-    prepareNativeSource(file, contents) { native.prepareSource(sourcePath(file), contents); },
-    dispose() { try { modules.dispose(); } finally { tree?.dispose(); tree = undefined; } },
+    prepareNativeSource(file, contents) { assertOpen(); native.prepareSource(sourcePath(file), contents); },
+    dispose() {
+      if (disposed) return;
+      disposed = true;
+      withoutCompilerFileReads(() => { try { modules.dispose(); } finally { tree?.dispose(); } });
+    },
     assertCurrent() {
+      assertOpen();
       withoutCompilerFileReads(() => {
         try {
           tree?.assertCurrent();

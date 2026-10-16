@@ -85,3 +85,19 @@ it('refuses conflicting captured/source origins and removes the incomplete tree'
   expect(directory).not.toBe('');
   expect(fs.existsSync(directory)).toBe(false);
 });
+
+
+it('refuses retained admissions after disposal while preserving diagnostic paths', () => {
+  const tree = createCompilerReadTree({ files: [], locations: [], links: [] }, []);
+  trees.push(tree);
+  const file = path.join(os.tmpdir(), 'retained-source.ts');
+  const owned = tree.path(file);
+  const snapshot = { files: [{ file, bytes: Buffer.from('export {};'), mode: 0o644 }], locations: [], links: [] };
+  tree.dispose();
+  tree.dispose();
+  expect(() => tree.include(snapshot)).toThrow(/outlived/);
+  expect(() => tree.includeData(snapshot)).toThrow(/outlived/);
+  expect(() => tree.assertCurrent()).toThrow(/outlived/);
+  expect(tree.diagnostic(owned)).toBe(file);
+  expect(fs.existsSync(tree.directory)).toBe(false);
+});

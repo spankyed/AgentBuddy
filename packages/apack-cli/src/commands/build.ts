@@ -256,6 +256,8 @@ async function buildIntoStaging(args: string[], root: string) {
       ...(flowHelpers.success && { flowHelpers: flowHelpers.flowHelpers }),
     };
     const finish = async () => {
+      // Finish asynchronous loader teardown before validating and sealing the final read-set.
+      await modules.dispose();
       try { assertGeneratedCurrent(root, manifest, resolvedDependencies, compilation); }
       catch (error) { failures.push(error instanceof Error ? error.message : String(error)); }
       if (packInputsHash(root) !== inputsHash) failures.push('Pack inputs changed during the build; retry before publishing');
@@ -272,7 +274,6 @@ async function buildIntoStaging(args: string[], root: string) {
       // Optional diagnostics describe this validated candidate; only the sealed cache authorizes reuse.
       reads?.write();
       // Cleanup can fail too; finish it before replacing the accepted build.
-      await modules.dispose();
       compilation.dispose();
       return { inputHash: inputsHash, revision: readPackBuild(outputDir).revision };
     };

@@ -145,3 +145,15 @@ it.each(['utf8', 'utf8-bom', 'utf16le', 'utf16be'] as const)('matches TypeScript
   expect(next.fileSystem.readFile(file)).toBe(text);
   expect(next.hash()).not.toBe(hash);
 });
+
+it('makes disposal terminal for captured inputs and query identities', () => {
+  const { file, view } = fixture();
+  expect(view.readBytes(file)).toBeDefined();
+  view.dispose();
+  view.dispose();
+  expect(() => view.readBytes(file)).toThrow(/outlived/);
+  expect(() => view.readMetadata('exists', file, [])).toThrow(/outlived/);
+  expect(() => view.snapshot()).toThrow(/outlived/);
+  expect(() => view.hash()).toThrow(/outlived/);
+  expect(() => view.assertCurrent()).toThrow(/outlived/);
+});

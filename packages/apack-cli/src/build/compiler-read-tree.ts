@@ -47,8 +47,15 @@ export function createCompilerReadTree(snapshot: CompilerReadSnapshot, paths: re
   const files = new Map<string, { sourceHash?: string; hash: string; mode: number }>();
   const links = new Map<string, string>();
   const locations = new Map<string, CompilerReadLocation>();
+  let disposed = false;
+  const assertOpen = () => { if (disposed) throw new Error('Compiler input operation outlived its build'); };
   const digest = (bytes: Buffer) => createHash('sha256').update(bytes).digest('hex');
-  const dispose = () => removeCompilerReadTree(directory);
+  const dispose = () => {
+    if (disposed) return;
+    disposed = true;
+    try { removeCompilerReadTree(directory); }
+    finally { for (const state of [directories, entries, files, links, locations]) state.clear(); }
+  };
   const mappings = () => [...roots, ...dataRoots].map(([source, captured]) => ({ source, captured }));
   const sourcePath = (file: string) => compilerSourcePath(compilerSourcePath(file, mappings()), paths);
   const mappedPath = (file: string, roots: Map<string, string>, prefix = directory) => {
@@ -65,6 +72,7 @@ export function createCompilerReadTree(snapshot: CompilerReadSnapshot, paths: re
   };
 
   function include(next: CompilerReadSnapshot, readPath = ownedPath, project: ProjectMetadata | null = projectMetadata ?? null) {
+    assertOpen();
     const writable = new Set<string>();
     const pendingLinks = new Map<string, string>();
     const mkdir = (file: string): void => {
@@ -157,6 +165,7 @@ export function createCompilerReadTree(snapshot: CompilerReadSnapshot, paths: re
   }
 
   const assertCurrent = () => {
+    assertOpen();
     for (const [file, expected] of files) {
       const mode = fs.statSync(file).mode;
       if (digest(fs.readFileSync(file)) !== expected.hash || (mode & 0o111) !== (expected.mode & 0o111) || (mode & 0o222)) changed('input', file);
