@@ -1,3 +1,5 @@
+import { getHooksListing } from './claude-code/hook-management.ts'
+import type { ClaudeHooksListing } from './claude-code/host-controls.ts'
 import { parseMcpElicitationForm, validateMcpElicitationForm, type ClaudeMcpForm, type ClaudeMcpFormValidation } from '../../shared/mcp-elicitation-form.ts'
 import { editPermissionRules, type ClaudePermissionEdit, type ClaudePermissionEditResult, getPermissionRules } from './claude-code/permissions.ts'
 import type { ClaudePermissionRules } from './claude-code/host-controls.ts'
@@ -107,6 +109,7 @@ export interface CliServiceType {
     getMemoryDialog(opts?: { cwd?: string }): Promise<ClaudeMemoryDialog>
     parseMcpElicitationForm(schema: unknown, propertyOrder?: string[]): ClaudeMcpForm
     validateMcpElicitationForm(form: ClaudeMcpForm, content: unknown): ClaudeMcpFormValidation
+    getHooksListing(opts?: { cwd?: string }): Promise<ClaudeHooksListing>
     getPermissionRules(opts?: { cwd?: string }): Promise<ClaudePermissionRules>
     editPermissionRules(edit: ClaudePermissionEdit, opts?: { cwd?: string }): Promise<ClaudePermissionEditResult>
     /** Persist the user auto-memory preference through the native writer. */
@@ -293,6 +296,9 @@ function createCliService(): CliServiceType {
       },
       parseMcpElicitationForm,
       validateMcpElicitationForm,
+      getHooksListing(opts) {
+        return getHooksListing({ cwd: opts?.cwd ?? resolveCwd() })
+      },
       getPermissionRules(opts) {
         return getPermissionRules({ cwd: opts?.cwd ?? resolveCwd() })
       },

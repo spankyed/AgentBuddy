@@ -37,8 +37,8 @@ import { argsFromOptions } from './args.ts'
 import { PermissionModeSchema, type PermissionMode } from './types.ts'
 import { z } from 'zod'
 import { createControlRouter } from './control.ts'
-import { ClaudePermissionRulesSchema, ClaudeMemoryDialogSchema, ClaudeSkillsDialogSchema, createHostControls, ClaudeInitializationSchema, ClaudeContextUsageSchema, ClaudeInterruptReceiptSchema, ClaudeMcpStatusSchema, ClaudeFileRewindSchema, ClaudePlanSchema } from './host-controls.ts'
-import type { ClaudePermissionRules, ClaudeMemoryDialog, ClaudeSkillsDialog, ClaudeInitialization, ClaudeContextUsage, ClaudeInterruptReceipt, ClaudeMcpStatus, ClaudeFileRewind, ClaudePlan } from './host-controls.ts'
+import { ClaudeHooksListingSchema, ClaudePermissionRulesSchema, ClaudeMemoryDialogSchema, ClaudeSkillsDialogSchema, createHostControls, ClaudeInitializationSchema, ClaudeContextUsageSchema, ClaudeInterruptReceiptSchema, ClaudeMcpStatusSchema, ClaudeFileRewindSchema, ClaudePlanSchema } from './host-controls.ts'
+import type { ClaudeHooksListing, ClaudePermissionRules, ClaudeMemoryDialog, ClaudeSkillsDialog, ClaudeInitialization, ClaudeContextUsage, ClaudeInterruptReceipt, ClaudeMcpStatus, ClaudeFileRewind, ClaudePlan } from './host-controls.ts'
 import {
   ClaudeAbortError,
   type ClaudeCodeError,
@@ -105,6 +105,8 @@ export interface QueryHandle {
   getSkillsDialog(): Promise<ClaudeSkillsDialog>
   /** Read native memory files and availability without a model turn. */
   getMemoryDialog(): Promise<ClaudeMemoryDialog>
+  /** Read native hook provenance, disabled state and masked edit targets without executing hooks. */
+  getHooksListing(): Promise<ClaudeHooksListing>
   /** Read native rule provenance, editability and workspace metadata without a prompt. */
   getPermissionRules(): Promise<ClaudePermissionRules>
   /** Refresh native settings after an idle durable permission edit, preserving existing flags. */
@@ -313,6 +315,11 @@ export async function query(opts: QueryOptions): Promise<QueryHandle> {
     async reloadSkills(): Promise<void> {
       await initialized
       z.object({ skills: z.array(z.object({ name: z.string() }).passthrough()) }).parse(await hostControls.request({ subtype: 'reload_skills' }))
+    },
+
+    async getHooksListing(): Promise<ClaudeHooksListing> {
+      await initialized
+      return ClaudeHooksListingSchema.parse(await hostControls.request({ subtype: 'get_hooks_listing' }))
     },
 
     async getPermissionRules(): Promise<ClaudePermissionRules> {

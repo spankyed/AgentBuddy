@@ -59,6 +59,7 @@ const handlers: Record<string, Handler> = {
   status: handleStats,
   model: handleModel,
   memory: handleMemory,
+  hooks: handleHooks,
   permissions: handlePermissions,
   skills: handleSkills,
   stats: handleStats,
@@ -247,6 +248,28 @@ async function handlePermissions(args: string[], services: Services, threadId?: 
   for (const directory of state.workspaceDirectories) lines.push(`Directory${directory.source ? ` [${directory.source}]` : ''}: ${directory.path}`);
   for (const error of state.errors ?? []) lines.push(`Settings error: ${error.file}: ${error.message}`);
   return { text: notice + lines.join('\n'), data };
+}
+
+async function handleHooks(args: string[], services: Services, threadId?: string): Promise<{ text: string; data?: any }> {
+  if (args.length) return { text: 'Usage: cc-hooks (show native hook inventory)' };
+  const prior = threadId ? getClaudeState(services, threadId) : undefined;
+  const cwd = prior?.cwdOverride || prior?.cwd;
+  let handle = threadId ? services.cli.claudeCode.getHandle(threadId) : undefined;
+  if (handle && threadId && services.cli.claudeCode.getConversation(threadId)?.owner.sessionCwd !== (cwd || services.cli.claudeCode.getWorkingDir())) handle = undefined;
+  const data = handle ? await handle.getHooksListing() : await services.cli.claudeCode.getHooksListing(cwd ? { cwd } : undefined);
+  const lines = [`Native hooks (${handle ? 'current conversation' : 'new process for selected project'}).`, `${data.eventCatalog.length} available events; ${data.hooks.length} configured hooks.`];
+  if (data.policy.allDisabled) lines.push('Hook execution is disabled in this native configuration.');
+  if (data.policy.disabledByPolicy) lines.push('Managed policy disables hooks.');
+  if (data.policy.managedOnly) lines.push('Managed policy permits managed hooks only.');
+  if (data.policy.pluginOnly) lines.push('Managed policy restricts hooks to plugin sources.');
+  if (data.policy.policyUnreadable) lines.push('Managed policy could not be read.');
+  if (data.bareMode) lines.push(`Bare mode: ${data.bareMode.exitHint}`);
+  if (data.safeMode) lines.push(`Safe mode: ${data.safeMode.exitHint}${data.safeMode.managedHooksStillApply ? '; managed hooks still apply' : ''}`);
+  for (const hook of data.hooks) lines.push(`${hook.event}${hook.matcher ? ` (${hook.matcher})` : ''} [${hook.source}; ${hook.disabled ? 'disabled' : 'enabled'}; ${hook.editable ? 'file-editable' : 'read-only'}] ${hook.displayText}${hook.editable?.headersRedacted ? ' (HTTP header values hidden)' : ''}`);
+  if (!data.hooks.length) lines.push('No configured hooks in this native scope.');
+  lines.push(`Events: ${data.eventCatalog.map(event => `${event.name}${event.supportsMatcher ? ' (matcher)' : ''}`).join(', ')}`);
+  for (const error of data.errors ?? []) lines.push(`Settings error: ${error.file} ${error.path}: ${error.message}`);
+  return { text: lines.join('\n'), data };
 }
 
 async function handleMemory(

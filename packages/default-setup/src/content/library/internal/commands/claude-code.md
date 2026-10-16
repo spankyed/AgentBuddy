@@ -9,6 +9,7 @@ name: Claude Code commands
 **cc-context**: Show context window usage breakdown
 **cc-status**: Show version and auth info
 **cc-model**: Model name (optional, shows current if omitted)
+**cc-hooks**: Show native hook sources, enabled/disabled state, policy and editability without executing hooks
 **cc-memory**: Show native instruction/memory files and availability; auto on|off sets the user auto-memory preference
 **cc-recap**: Summarize current conversation
 **cc-skills**: Show native Skill sources, states and locks; set <name> <on|name-only|user-invocable-only|off> edits a Skill state

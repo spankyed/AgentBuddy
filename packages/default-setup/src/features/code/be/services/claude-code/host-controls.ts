@@ -158,3 +158,22 @@ export const ClaudePermissionRulesSchema = z.object({ state: z.object({
   errors: z.array(z.object({ file: z.string(), path: z.unknown().optional(), message: z.string() }).passthrough()).optional(),
 }).passthrough() }).passthrough()
 export type ClaudePermissionRules = z.infer<typeof ClaudePermissionRulesSchema>
+
+
+/** Native hook inventory separates installed definitions, runtime enablement and file edit targets. */
+export const ClaudeHooksListingSchema = z.object({
+  events: z.array(z.object({ name: z.string(), summary: z.string(), supportsMatcher: z.boolean(), hookCount: z.number().int().nonnegative() }).passthrough()),
+  eventCatalog: z.array(z.object({ name: z.string(), summary: z.string(), supportsMatcher: z.boolean() }).passthrough()),
+  hooks: z.array(z.object({
+    event: z.string(), matcher: z.string(), source: z.string(), sourceLabel: z.string(), type: z.string(),
+    displayText: z.string(), commandText: z.string(), contentLabel: z.string(), disabled: z.boolean().optional(),
+    editable: z.object({ matcher: z.string(), config: z.object({ type: z.string(), headers: z.record(z.string()).optional() }).passthrough().superRefine((config, ctx) => {
+      if (config.type === 'http' && Object.values(config.headers ?? {}).some(value => value !== '')) ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'Native hook catalog contains an unredacted HTTP header' });
+    }), headersRedacted: z.boolean().optional() }).passthrough().optional(),
+  }).passthrough()),
+  policy: z.object({ disabledByPolicy: z.boolean(), managedOnly: z.boolean(), pluginOnly: z.boolean(), allDisabled: z.boolean(), policyHookCount: z.number().int().nonnegative(), policyUnreadable: z.boolean().optional() }).passthrough(),
+  safeMode: z.object({ managedHooksStillApply: z.boolean(), exitHint: z.string() }).passthrough().optional(),
+  bareMode: z.object({ exitHint: z.string() }).passthrough().optional(),
+  errors: z.array(z.object({ file: z.string(), path: z.unknown().optional(), message: z.string() }).passthrough()).optional(),
+}).passthrough()
+export type ClaudeHooksListing = z.infer<typeof ClaudeHooksListingSchema>

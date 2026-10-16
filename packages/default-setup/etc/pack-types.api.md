@@ -847,6 +847,872 @@ interface ClaudeHookRegistration {
 
 type ClaudeHooks = Record<string, ClaudeHookRegistration[]>;
 
+type ClaudeHooksListing = z.infer<typeof ClaudeHooksListingSchema>;
+
+/** Native hook inventory separates installed definitions, runtime enablement and file edit targets. */
+declare const ClaudeHooksListingSchema: z.ZodObject<{
+    events: z.ZodArray<z.ZodObject<{
+        name: z.ZodString;
+        summary: z.ZodString;
+        supportsMatcher: z.ZodBoolean;
+        hookCount: z.ZodNumber;
+    }, "passthrough", z.ZodTypeAny, z.objectOutputType<{
+        name: z.ZodString;
+        summary: z.ZodString;
+        supportsMatcher: z.ZodBoolean;
+        hookCount: z.ZodNumber;
+    }, z.ZodTypeAny, "passthrough">, z.objectInputType<{
+        name: z.ZodString;
+        summary: z.ZodString;
+        supportsMatcher: z.ZodBoolean;
+        hookCount: z.ZodNumber;
+    }, z.ZodTypeAny, "passthrough">>, "many">;
+    eventCatalog: z.ZodArray<z.ZodObject<{
+        name: z.ZodString;
+        summary: z.ZodString;
+        supportsMatcher: z.ZodBoolean;
+    }, "passthrough", z.ZodTypeAny, z.objectOutputType<{
+        name: z.ZodString;
+        summary: z.ZodString;
+        supportsMatcher: z.ZodBoolean;
+    }, z.ZodTypeAny, "passthrough">, z.objectInputType<{
+        name: z.ZodString;
+        summary: z.ZodString;
+        supportsMatcher: z.ZodBoolean;
+    }, z.ZodTypeAny, "passthrough">>, "many">;
+    hooks: z.ZodArray<z.ZodObject<{
+        event: z.ZodString;
+        matcher: z.ZodString;
+        source: z.ZodString;
+        sourceLabel: z.ZodString;
+        type: z.ZodString;
+        displayText: z.ZodString;
+        commandText: z.ZodString;
+        contentLabel: z.ZodString;
+        disabled: z.ZodOptional<z.ZodBoolean>;
+        editable: z.ZodOptional<z.ZodObject<{
+            matcher: z.ZodString;
+            config: z.ZodEffects<z.ZodObject<{
+                type: z.ZodString;
+                headers: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodString>>;
+            }, "passthrough", z.ZodTypeAny, z.objectOutputType<{
+                type: z.ZodString;
+                headers: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodString>>;
+            }, z.ZodTypeAny, "passthrough">, z.objectInputType<{
+                type: z.ZodString;
+                headers: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodString>>;
+            }, z.ZodTypeAny, "passthrough">>, z.objectOutputType<{
+                type: z.ZodString;
+                headers: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodString>>;
+            }, z.ZodTypeAny, "passthrough">, z.objectInputType<{
+                type: z.ZodString;
+                headers: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodString>>;
+            }, z.ZodTypeAny, "passthrough">>;
+            headersRedacted: z.ZodOptional<z.ZodBoolean>;
+        }, "passthrough", z.ZodTypeAny, z.objectOutputType<{
+            matcher: z.ZodString;
+            config: z.ZodEffects<z.ZodObject<{
+                type: z.ZodString;
+                headers: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodString>>;
+            }, "passthrough", z.ZodTypeAny, z.objectOutputType<{
+                type: z.ZodString;
+                headers: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodString>>;
+            }, z.ZodTypeAny, "passthrough">, z.objectInputType<{
+                type: z.ZodString;
+                headers: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodString>>;
+            }, z.ZodTypeAny, "passthrough">>, z.objectOutputType<{
+                type: z.ZodString;
+                headers: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodString>>;
+            }, z.ZodTypeAny, "passthrough">, z.objectInputType<{
+                type: z.ZodString;
+                headers: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodString>>;
+            }, z.ZodTypeAny, "passthrough">>;
+            headersRedacted: z.ZodOptional<z.ZodBoolean>;
+        }, z.ZodTypeAny, "passthrough">, z.objectInputType<{
+            matcher: z.ZodString;
+            config: z.ZodEffects<z.ZodObject<{
+                type: z.ZodString;
+                headers: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodString>>;
+            }, "passthrough", z.ZodTypeAny, z.objectOutputType<{
+                type: z.ZodString;
+                headers: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodString>>;
+            }, z.ZodTypeAny, "passthrough">, z.objectInputType<{
+                type: z.ZodString;
+                headers: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodString>>;
+            }, z.ZodTypeAny, "passthrough">>, z.objectOutputType<{
+                type: z.ZodString;
+                headers: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodString>>;
+            }, z.ZodTypeAny, "passthrough">, z.objectInputType<{
+                type: z.ZodString;
+                headers: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodString>>;
+            }, z.ZodTypeAny, "passthrough">>;
+            headersRedacted: z.ZodOptional<z.ZodBoolean>;
+        }, z.ZodTypeAny, "passthrough">>>;
+    }, "passthrough", z.ZodTypeAny, z.objectOutputType<{
+        event: z.ZodString;
+        matcher: z.ZodString;
+        source: z.ZodString;
+        sourceLabel: z.ZodString;
+        type: z.ZodString;
+        displayText: z.ZodString;
+        commandText: z.ZodString;
+        contentLabel: z.ZodString;
+        disabled: z.ZodOptional<z.ZodBoolean>;
+        editable: z.ZodOptional<z.ZodObject<{
+            matcher: z.ZodString;
+            config: z.ZodEffects<z.ZodObject<{
+                type: z.ZodString;
+                headers: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodString>>;
+            }, "passthrough", z.ZodTypeAny, z.objectOutputType<{
+                type: z.ZodString;
+                headers: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodString>>;
+            }, z.ZodTypeAny, "passthrough">, z.objectInputType<{
+                type: z.ZodString;
+                headers: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodString>>;
+            }, z.ZodTypeAny, "passthrough">>, z.objectOutputType<{
+                type: z.ZodString;
+                headers: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodString>>;
+            }, z.ZodTypeAny, "passthrough">, z.objectInputType<{
+                type: z.ZodString;
+                headers: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodString>>;
+            }, z.ZodTypeAny, "passthrough">>;
+            headersRedacted: z.ZodOptional<z.ZodBoolean>;
+        }, "passthrough", z.ZodTypeAny, z.objectOutputType<{
+            matcher: z.ZodString;
+            config: z.ZodEffects<z.ZodObject<{
+                type: z.ZodString;
+                headers: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodString>>;
+            }, "passthrough", z.ZodTypeAny, z.objectOutputType<{
+                type: z.ZodString;
+                headers: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodString>>;
+            }, z.ZodTypeAny, "passthrough">, z.objectInputType<{
+                type: z.ZodString;
+                headers: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodString>>;
+            }, z.ZodTypeAny, "passthrough">>, z.objectOutputType<{
+                type: z.ZodString;
+                headers: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodString>>;
+            }, z.ZodTypeAny, "passthrough">, z.objectInputType<{
+                type: z.ZodString;
+                headers: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodString>>;
+            }, z.ZodTypeAny, "passthrough">>;
+            headersRedacted: z.ZodOptional<z.ZodBoolean>;
+        }, z.ZodTypeAny, "passthrough">, z.objectInputType<{
+            matcher: z.ZodString;
+            config: z.ZodEffects<z.ZodObject<{
+                type: z.ZodString;
+                headers: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodString>>;
+            }, "passthrough", z.ZodTypeAny, z.objectOutputType<{
+                type: z.ZodString;
+                headers: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodString>>;
+            }, z.ZodTypeAny, "passthrough">, z.objectInputType<{
+                type: z.ZodString;
+                headers: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodString>>;
+            }, z.ZodTypeAny, "passthrough">>, z.objectOutputType<{
+                type: z.ZodString;
+                headers: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodString>>;
+            }, z.ZodTypeAny, "passthrough">, z.objectInputType<{
+                type: z.ZodString;
+                headers: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodString>>;
+            }, z.ZodTypeAny, "passthrough">>;
+            headersRedacted: z.ZodOptional<z.ZodBoolean>;
+        }, z.ZodTypeAny, "passthrough">>>;
+    }, z.ZodTypeAny, "passthrough">, z.objectInputType<{
+        event: z.ZodString;
+        matcher: z.ZodString;
+        source: z.ZodString;
+        sourceLabel: z.ZodString;
+        type: z.ZodString;
+        displayText: z.ZodString;
+        commandText: z.ZodString;
+        contentLabel: z.ZodString;
+        disabled: z.ZodOptional<z.ZodBoolean>;
+        editable: z.ZodOptional<z.ZodObject<{
+            matcher: z.ZodString;
+            config: z.ZodEffects<z.ZodObject<{
+                type: z.ZodString;
+                headers: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodString>>;
+            }, "passthrough", z.ZodTypeAny, z.objectOutputType<{
+                type: z.ZodString;
+                headers: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodString>>;
+            }, z.ZodTypeAny, "passthrough">, z.objectInputType<{
+                type: z.ZodString;
+                headers: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodString>>;
+            }, z.ZodTypeAny, "passthrough">>, z.objectOutputType<{
+                type: z.ZodString;
+                headers: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodString>>;
+            }, z.ZodTypeAny, "passthrough">, z.objectInputType<{
+                type: z.ZodString;
+                headers: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodString>>;
+            }, z.ZodTypeAny, "passthrough">>;
+            headersRedacted: z.ZodOptional<z.ZodBoolean>;
+        }, "passthrough", z.ZodTypeAny, z.objectOutputType<{
+            matcher: z.ZodString;
+            config: z.ZodEffects<z.ZodObject<{
+                type: z.ZodString;
+                headers: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodString>>;
+            }, "passthrough", z.ZodTypeAny, z.objectOutputType<{
+                type: z.ZodString;
+                headers: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodString>>;
+            }, z.ZodTypeAny, "passthrough">, z.objectInputType<{
+                type: z.ZodString;
+                headers: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodString>>;
+            }, z.ZodTypeAny, "passthrough">>, z.objectOutputType<{
+                type: z.ZodString;
+                headers: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodString>>;
+            }, z.ZodTypeAny, "passthrough">, z.objectInputType<{
+                type: z.ZodString;
+                headers: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodString>>;
+            }, z.ZodTypeAny, "passthrough">>;
+            headersRedacted: z.ZodOptional<z.ZodBoolean>;
+        }, z.ZodTypeAny, "passthrough">, z.objectInputType<{
+            matcher: z.ZodString;
+            config: z.ZodEffects<z.ZodObject<{
+                type: z.ZodString;
+                headers: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodString>>;
+            }, "passthrough", z.ZodTypeAny, z.objectOutputType<{
+                type: z.ZodString;
+                headers: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodString>>;
+            }, z.ZodTypeAny, "passthrough">, z.objectInputType<{
+                type: z.ZodString;
+                headers: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodString>>;
+            }, z.ZodTypeAny, "passthrough">>, z.objectOutputType<{
+                type: z.ZodString;
+                headers: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodString>>;
+            }, z.ZodTypeAny, "passthrough">, z.objectInputType<{
+                type: z.ZodString;
+                headers: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodString>>;
+            }, z.ZodTypeAny, "passthrough">>;
+            headersRedacted: z.ZodOptional<z.ZodBoolean>;
+        }, z.ZodTypeAny, "passthrough">>>;
+    }, z.ZodTypeAny, "passthrough">>, "many">;
+    policy: z.ZodObject<{
+        disabledByPolicy: z.ZodBoolean;
+        managedOnly: z.ZodBoolean;
+        pluginOnly: z.ZodBoolean;
+        allDisabled: z.ZodBoolean;
+        policyHookCount: z.ZodNumber;
+        policyUnreadable: z.ZodOptional<z.ZodBoolean>;
+    }, "passthrough", z.ZodTypeAny, z.objectOutputType<{
+        disabledByPolicy: z.ZodBoolean;
+        managedOnly: z.ZodBoolean;
+        pluginOnly: z.ZodBoolean;
+        allDisabled: z.ZodBoolean;
+        policyHookCount: z.ZodNumber;
+        policyUnreadable: z.ZodOptional<z.ZodBoolean>;
+    }, z.ZodTypeAny, "passthrough">, z.objectInputType<{
+        disabledByPolicy: z.ZodBoolean;
+        managedOnly: z.ZodBoolean;
+        pluginOnly: z.ZodBoolean;
+        allDisabled: z.ZodBoolean;
+        policyHookCount: z.ZodNumber;
+        policyUnreadable: z.ZodOptional<z.ZodBoolean>;
+    }, z.ZodTypeAny, "passthrough">>;
+    safeMode: z.ZodOptional<z.ZodObject<{
+        managedHooksStillApply: z.ZodBoolean;
+        exitHint: z.ZodString;
+    }, "passthrough", z.ZodTypeAny, z.objectOutputType<{
+        managedHooksStillApply: z.ZodBoolean;
+        exitHint: z.ZodString;
+    }, z.ZodTypeAny, "passthrough">, z.objectInputType<{
+        managedHooksStillApply: z.ZodBoolean;
+        exitHint: z.ZodString;
+    }, z.ZodTypeAny, "passthrough">>>;
+    bareMode: z.ZodOptional<z.ZodObject<{
+        exitHint: z.ZodString;
+    }, "passthrough", z.ZodTypeAny, z.objectOutputType<{
+        exitHint: z.ZodString;
+    }, z.ZodTypeAny, "passthrough">, z.objectInputType<{
+        exitHint: z.ZodString;
+    }, z.ZodTypeAny, "passthrough">>>;
+    errors: z.ZodOptional<z.ZodArray<z.ZodObject<{
+        file: z.ZodString;
+        path: z.ZodOptional<z.ZodUnknown>;
+        message: z.ZodString;
+    }, "passthrough", z.ZodTypeAny, z.objectOutputType<{
+        file: z.ZodString;
+        path: z.ZodOptional<z.ZodUnknown>;
+        message: z.ZodString;
+    }, z.ZodTypeAny, "passthrough">, z.objectInputType<{
+        file: z.ZodString;
+        path: z.ZodOptional<z.ZodUnknown>;
+        message: z.ZodString;
+    }, z.ZodTypeAny, "passthrough">>, "many">>;
+}, "passthrough", z.ZodTypeAny, z.objectOutputType<{
+    events: z.ZodArray<z.ZodObject<{
+        name: z.ZodString;
+        summary: z.ZodString;
+        supportsMatcher: z.ZodBoolean;
+        hookCount: z.ZodNumber;
+    }, "passthrough", z.ZodTypeAny, z.objectOutputType<{
+        name: z.ZodString;
+        summary: z.ZodString;
+        supportsMatcher: z.ZodBoolean;
+        hookCount: z.ZodNumber;
+    }, z.ZodTypeAny, "passthrough">, z.objectInputType<{
+        name: z.ZodString;
+        summary: z.ZodString;
+        supportsMatcher: z.ZodBoolean;
+        hookCount: z.ZodNumber;
+    }, z.ZodTypeAny, "passthrough">>, "many">;
+    eventCatalog: z.ZodArray<z.ZodObject<{
+        name: z.ZodString;
+        summary: z.ZodString;
+        supportsMatcher: z.ZodBoolean;
+    }, "passthrough", z.ZodTypeAny, z.objectOutputType<{
+        name: z.ZodString;
+        summary: z.ZodString;
+        supportsMatcher: z.ZodBoolean;
+    }, z.ZodTypeAny, "passthrough">, z.objectInputType<{
+        name: z.ZodString;
+        summary: z.ZodString;
+        supportsMatcher: z.ZodBoolean;
+    }, z.ZodTypeAny, "passthrough">>, "many">;
+    hooks: z.ZodArray<z.ZodObject<{
+        event: z.ZodString;
+        matcher: z.ZodString;
+        source: z.ZodString;
+        sourceLabel: z.ZodString;
+        type: z.ZodString;
+        displayText: z.ZodString;
+        commandText: z.ZodString;
+        contentLabel: z.ZodString;
+        disabled: z.ZodOptional<z.ZodBoolean>;
+        editable: z.ZodOptional<z.ZodObject<{
+            matcher: z.ZodString;
+            config: z.ZodEffects<z.ZodObject<{
+                type: z.ZodString;
+                headers: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodString>>;
+            }, "passthrough", z.ZodTypeAny, z.objectOutputType<{
+                type: z.ZodString;
+                headers: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodString>>;
+            }, z.ZodTypeAny, "passthrough">, z.objectInputType<{
+                type: z.ZodString;
+                headers: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodString>>;
+            }, z.ZodTypeAny, "passthrough">>, z.objectOutputType<{
+                type: z.ZodString;
+                headers: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodString>>;
+            }, z.ZodTypeAny, "passthrough">, z.objectInputType<{
+                type: z.ZodString;
+                headers: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodString>>;
+            }, z.ZodTypeAny, "passthrough">>;
+            headersRedacted: z.ZodOptional<z.ZodBoolean>;
+        }, "passthrough", z.ZodTypeAny, z.objectOutputType<{
+            matcher: z.ZodString;
+            config: z.ZodEffects<z.ZodObject<{
+                type: z.ZodString;
+                headers: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodString>>;
+            }, "passthrough", z.ZodTypeAny, z.objectOutputType<{
+                type: z.ZodString;
+                headers: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodString>>;
+            }, z.ZodTypeAny, "passthrough">, z.objectInputType<{
+                type: z.ZodString;
+                headers: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodString>>;
+            }, z.ZodTypeAny, "passthrough">>, z.objectOutputType<{
+                type: z.ZodString;
+                headers: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodString>>;
+            }, z.ZodTypeAny, "passthrough">, z.objectInputType<{
+                type: z.ZodString;
+                headers: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodString>>;
+            }, z.ZodTypeAny, "passthrough">>;
+            headersRedacted: z.ZodOptional<z.ZodBoolean>;
+        }, z.ZodTypeAny, "passthrough">, z.objectInputType<{
+            matcher: z.ZodString;
+            config: z.ZodEffects<z.ZodObject<{
+                type: z.ZodString;
+                headers: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodString>>;
+            }, "passthrough", z.ZodTypeAny, z.objectOutputType<{
+                type: z.ZodString;
+                headers: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodString>>;
+            }, z.ZodTypeAny, "passthrough">, z.objectInputType<{
+                type: z.ZodString;
+                headers: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodString>>;
+            }, z.ZodTypeAny, "passthrough">>, z.objectOutputType<{
+                type: z.ZodString;
+                headers: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodString>>;
+            }, z.ZodTypeAny, "passthrough">, z.objectInputType<{
+                type: z.ZodString;
+                headers: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodString>>;
+            }, z.ZodTypeAny, "passthrough">>;
+            headersRedacted: z.ZodOptional<z.ZodBoolean>;
+        }, z.ZodTypeAny, "passthrough">>>;
+    }, "passthrough", z.ZodTypeAny, z.objectOutputType<{
+        event: z.ZodString;
+        matcher: z.ZodString;
+        source: z.ZodString;
+        sourceLabel: z.ZodString;
+        type: z.ZodString;
+        displayText: z.ZodString;
+        commandText: z.ZodString;
+        contentLabel: z.ZodString;
+        disabled: z.ZodOptional<z.ZodBoolean>;
+        editable: z.ZodOptional<z.ZodObject<{
+            matcher: z.ZodString;
+            config: z.ZodEffects<z.ZodObject<{
+                type: z.ZodString;
+                headers: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodString>>;
+            }, "passthrough", z.ZodTypeAny, z.objectOutputType<{
+                type: z.ZodString;
+                headers: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodString>>;
+            }, z.ZodTypeAny, "passthrough">, z.objectInputType<{
+                type: z.ZodString;
+                headers: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodString>>;
+            }, z.ZodTypeAny, "passthrough">>, z.objectOutputType<{
+                type: z.ZodString;
+                headers: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodString>>;
+            }, z.ZodTypeAny, "passthrough">, z.objectInputType<{
+                type: z.ZodString;
+                headers: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodString>>;
+            }, z.ZodTypeAny, "passthrough">>;
+            headersRedacted: z.ZodOptional<z.ZodBoolean>;
+        }, "passthrough", z.ZodTypeAny, z.objectOutputType<{
+            matcher: z.ZodString;
+            config: z.ZodEffects<z.ZodObject<{
+                type: z.ZodString;
+                headers: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodString>>;
+            }, "passthrough", z.ZodTypeAny, z.objectOutputType<{
+                type: z.ZodString;
+                headers: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodString>>;
+            }, z.ZodTypeAny, "passthrough">, z.objectInputType<{
+                type: z.ZodString;
+                headers: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodString>>;
+            }, z.ZodTypeAny, "passthrough">>, z.objectOutputType<{
+                type: z.ZodString;
+                headers: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodString>>;
+            }, z.ZodTypeAny, "passthrough">, z.objectInputType<{
+                type: z.ZodString;
+                headers: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodString>>;
+            }, z.ZodTypeAny, "passthrough">>;
+            headersRedacted: z.ZodOptional<z.ZodBoolean>;
+        }, z.ZodTypeAny, "passthrough">, z.objectInputType<{
+            matcher: z.ZodString;
+            config: z.ZodEffects<z.ZodObject<{
+                type: z.ZodString;
+                headers: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodString>>;
+            }, "passthrough", z.ZodTypeAny, z.objectOutputType<{
+                type: z.ZodString;
+                headers: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodString>>;
+            }, z.ZodTypeAny, "passthrough">, z.objectInputType<{
+                type: z.ZodString;
+                headers: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodString>>;
+            }, z.ZodTypeAny, "passthrough">>, z.objectOutputType<{
+                type: z.ZodString;
+                headers: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodString>>;
+            }, z.ZodTypeAny, "passthrough">, z.objectInputType<{
+                type: z.ZodString;
+                headers: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodString>>;
+            }, z.ZodTypeAny, "passthrough">>;
+            headersRedacted: z.ZodOptional<z.ZodBoolean>;
+        }, z.ZodTypeAny, "passthrough">>>;
+    }, z.ZodTypeAny, "passthrough">, z.objectInputType<{
+        event: z.ZodString;
+        matcher: z.ZodString;
+        source: z.ZodString;
+        sourceLabel: z.ZodString;
+        type: z.ZodString;
+        displayText: z.ZodString;
+        commandText: z.ZodString;
+        contentLabel: z.ZodString;
+        disabled: z.ZodOptional<z.ZodBoolean>;
+        editable: z.ZodOptional<z.ZodObject<{
+            matcher: z.ZodString;
+            config: z.ZodEffects<z.ZodObject<{
+                type: z.ZodString;
+                headers: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodString>>;
+            }, "passthrough", z.ZodTypeAny, z.objectOutputType<{
+                type: z.ZodString;
+                headers: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodString>>;
+            }, z.ZodTypeAny, "passthrough">, z.objectInputType<{
+                type: z.ZodString;
+                headers: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodString>>;
+            }, z.ZodTypeAny, "passthrough">>, z.objectOutputType<{
+                type: z.ZodString;
+                headers: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodString>>;
+            }, z.ZodTypeAny, "passthrough">, z.objectInputType<{
+                type: z.ZodString;
+                headers: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodString>>;
+            }, z.ZodTypeAny, "passthrough">>;
+            headersRedacted: z.ZodOptional<z.ZodBoolean>;
+        }, "passthrough", z.ZodTypeAny, z.objectOutputType<{
+            matcher: z.ZodString;
+            config: z.ZodEffects<z.ZodObject<{
+                type: z.ZodString;
+                headers: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodString>>;
+            }, "passthrough", z.ZodTypeAny, z.objectOutputType<{
+                type: z.ZodString;
+                headers: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodString>>;
+            }, z.ZodTypeAny, "passthrough">, z.objectInputType<{
+                type: z.ZodString;
+                headers: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodString>>;
+            }, z.ZodTypeAny, "passthrough">>, z.objectOutputType<{
+                type: z.ZodString;
+                headers: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodString>>;
+            }, z.ZodTypeAny, "passthrough">, z.objectInputType<{
+                type: z.ZodString;
+                headers: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodString>>;
+            }, z.ZodTypeAny, "passthrough">>;
+            headersRedacted: z.ZodOptional<z.ZodBoolean>;
+        }, z.ZodTypeAny, "passthrough">, z.objectInputType<{
+            matcher: z.ZodString;
+            config: z.ZodEffects<z.ZodObject<{
+                type: z.ZodString;
+                headers: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodString>>;
+            }, "passthrough", z.ZodTypeAny, z.objectOutputType<{
+                type: z.ZodString;
+                headers: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodString>>;
+            }, z.ZodTypeAny, "passthrough">, z.objectInputType<{
+                type: z.ZodString;
+                headers: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodString>>;
+            }, z.ZodTypeAny, "passthrough">>, z.objectOutputType<{
+                type: z.ZodString;
+                headers: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodString>>;
+            }, z.ZodTypeAny, "passthrough">, z.objectInputType<{
+                type: z.ZodString;
+                headers: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodString>>;
+            }, z.ZodTypeAny, "passthrough">>;
+            headersRedacted: z.ZodOptional<z.ZodBoolean>;
+        }, z.ZodTypeAny, "passthrough">>>;
+    }, z.ZodTypeAny, "passthrough">>, "many">;
+    policy: z.ZodObject<{
+        disabledByPolicy: z.ZodBoolean;
+        managedOnly: z.ZodBoolean;
+        pluginOnly: z.ZodBoolean;
+        allDisabled: z.ZodBoolean;
+        policyHookCount: z.ZodNumber;
+        policyUnreadable: z.ZodOptional<z.ZodBoolean>;
+    }, "passthrough", z.ZodTypeAny, z.objectOutputType<{
+        disabledByPolicy: z.ZodBoolean;
+        managedOnly: z.ZodBoolean;
+        pluginOnly: z.ZodBoolean;
+        allDisabled: z.ZodBoolean;
+        policyHookCount: z.ZodNumber;
+        policyUnreadable: z.ZodOptional<z.ZodBoolean>;
+    }, z.ZodTypeAny, "passthrough">, z.objectInputType<{
+        disabledByPolicy: z.ZodBoolean;
+        managedOnly: z.ZodBoolean;
+        pluginOnly: z.ZodBoolean;
+        allDisabled: z.ZodBoolean;
+        policyHookCount: z.ZodNumber;
+        policyUnreadable: z.ZodOptional<z.ZodBoolean>;
+    }, z.ZodTypeAny, "passthrough">>;
+    safeMode: z.ZodOptional<z.ZodObject<{
+        managedHooksStillApply: z.ZodBoolean;
+        exitHint: z.ZodString;
+    }, "passthrough", z.ZodTypeAny, z.objectOutputType<{
+        managedHooksStillApply: z.ZodBoolean;
+        exitHint: z.ZodString;
+    }, z.ZodTypeAny, "passthrough">, z.objectInputType<{
+        managedHooksStillApply: z.ZodBoolean;
+        exitHint: z.ZodString;
+    }, z.ZodTypeAny, "passthrough">>>;
+    bareMode: z.ZodOptional<z.ZodObject<{
+        exitHint: z.ZodString;
+    }, "passthrough", z.ZodTypeAny, z.objectOutputType<{
+        exitHint: z.ZodString;
+    }, z.ZodTypeAny, "passthrough">, z.objectInputType<{
+        exitHint: z.ZodString;
+    }, z.ZodTypeAny, "passthrough">>>;
+    errors: z.ZodOptional<z.ZodArray<z.ZodObject<{
+        file: z.ZodString;
+        path: z.ZodOptional<z.ZodUnknown>;
+        message: z.ZodString;
+    }, "passthrough", z.ZodTypeAny, z.objectOutputType<{
+        file: z.ZodString;
+        path: z.ZodOptional<z.ZodUnknown>;
+        message: z.ZodString;
+    }, z.ZodTypeAny, "passthrough">, z.objectInputType<{
+        file: z.ZodString;
+        path: z.ZodOptional<z.ZodUnknown>;
+        message: z.ZodString;
+    }, z.ZodTypeAny, "passthrough">>, "many">>;
+}, z.ZodTypeAny, "passthrough">, z.objectInputType<{
+    events: z.ZodArray<z.ZodObject<{
+        name: z.ZodString;
+        summary: z.ZodString;
+        supportsMatcher: z.ZodBoolean;
+        hookCount: z.ZodNumber;
+    }, "passthrough", z.ZodTypeAny, z.objectOutputType<{
+        name: z.ZodString;
+        summary: z.ZodString;
+        supportsMatcher: z.ZodBoolean;
+        hookCount: z.ZodNumber;
+    }, z.ZodTypeAny, "passthrough">, z.objectInputType<{
+        name: z.ZodString;
+        summary: z.ZodString;
+        supportsMatcher: z.ZodBoolean;
+        hookCount: z.ZodNumber;
+    }, z.ZodTypeAny, "passthrough">>, "many">;
+    eventCatalog: z.ZodArray<z.ZodObject<{
+        name: z.ZodString;
+        summary: z.ZodString;
+        supportsMatcher: z.ZodBoolean;
+    }, "passthrough", z.ZodTypeAny, z.objectOutputType<{
+        name: z.ZodString;
+        summary: z.ZodString;
+        supportsMatcher: z.ZodBoolean;
+    }, z.ZodTypeAny, "passthrough">, z.objectInputType<{
+        name: z.ZodString;
+        summary: z.ZodString;
+        supportsMatcher: z.ZodBoolean;
+    }, z.ZodTypeAny, "passthrough">>, "many">;
+    hooks: z.ZodArray<z.ZodObject<{
+        event: z.ZodString;
+        matcher: z.ZodString;
+        source: z.ZodString;
+        sourceLabel: z.ZodString;
+        type: z.ZodString;
+        displayText: z.ZodString;
+        commandText: z.ZodString;
+        contentLabel: z.ZodString;
+        disabled: z.ZodOptional<z.ZodBoolean>;
+        editable: z.ZodOptional<z.ZodObject<{
+            matcher: z.ZodString;
+            config: z.ZodEffects<z.ZodObject<{
+                type: z.ZodString;
+                headers: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodString>>;
+            }, "passthrough", z.ZodTypeAny, z.objectOutputType<{
+                type: z.ZodString;
+                headers: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodString>>;
+            }, z.ZodTypeAny, "passthrough">, z.objectInputType<{
+                type: z.ZodString;
+                headers: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodString>>;
+            }, z.ZodTypeAny, "passthrough">>, z.objectOutputType<{
+                type: z.ZodString;
+                headers: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodString>>;
+            }, z.ZodTypeAny, "passthrough">, z.objectInputType<{
+                type: z.ZodString;
+                headers: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodString>>;
+            }, z.ZodTypeAny, "passthrough">>;
+            headersRedacted: z.ZodOptional<z.ZodBoolean>;
+        }, "passthrough", z.ZodTypeAny, z.objectOutputType<{
+            matcher: z.ZodString;
+            config: z.ZodEffects<z.ZodObject<{
+                type: z.ZodString;
+                headers: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodString>>;
+            }, "passthrough", z.ZodTypeAny, z.objectOutputType<{
+                type: z.ZodString;
+                headers: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodString>>;
+            }, z.ZodTypeAny, "passthrough">, z.objectInputType<{
+                type: z.ZodString;
+                headers: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodString>>;
+            }, z.ZodTypeAny, "passthrough">>, z.objectOutputType<{
+                type: z.ZodString;
+                headers: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodString>>;
+            }, z.ZodTypeAny, "passthrough">, z.objectInputType<{
+                type: z.ZodString;
+                headers: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodString>>;
+            }, z.ZodTypeAny, "passthrough">>;
+            headersRedacted: z.ZodOptional<z.ZodBoolean>;
+        }, z.ZodTypeAny, "passthrough">, z.objectInputType<{
+            matcher: z.ZodString;
+            config: z.ZodEffects<z.ZodObject<{
+                type: z.ZodString;
+                headers: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodString>>;
+            }, "passthrough", z.ZodTypeAny, z.objectOutputType<{
+                type: z.ZodString;
+                headers: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodString>>;
+            }, z.ZodTypeAny, "passthrough">, z.objectInputType<{
+                type: z.ZodString;
+                headers: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodString>>;
+            }, z.ZodTypeAny, "passthrough">>, z.objectOutputType<{
+                type: z.ZodString;
+                headers: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodString>>;
+            }, z.ZodTypeAny, "passthrough">, z.objectInputType<{
+                type: z.ZodString;
+                headers: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodString>>;
+            }, z.ZodTypeAny, "passthrough">>;
+            headersRedacted: z.ZodOptional<z.ZodBoolean>;
+        }, z.ZodTypeAny, "passthrough">>>;
+    }, "passthrough", z.ZodTypeAny, z.objectOutputType<{
+        event: z.ZodString;
+        matcher: z.ZodString;
+        source: z.ZodString;
+        sourceLabel: z.ZodString;
+        type: z.ZodString;
+        displayText: z.ZodString;
+        commandText: z.ZodString;
+        contentLabel: z.ZodString;
+        disabled: z.ZodOptional<z.ZodBoolean>;
+        editable: z.ZodOptional<z.ZodObject<{
+            matcher: z.ZodString;
+            config: z.ZodEffects<z.ZodObject<{
+                type: z.ZodString;
+                headers: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodString>>;
+            }, "passthrough", z.ZodTypeAny, z.objectOutputType<{
+                type: z.ZodString;
+                headers: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodString>>;
+            }, z.ZodTypeAny, "passthrough">, z.objectInputType<{
+                type: z.ZodString;
+                headers: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodString>>;
+            }, z.ZodTypeAny, "passthrough">>, z.objectOutputType<{
+                type: z.ZodString;
+                headers: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodString>>;
+            }, z.ZodTypeAny, "passthrough">, z.objectInputType<{
+                type: z.ZodString;
+                headers: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodString>>;
+            }, z.ZodTypeAny, "passthrough">>;
+            headersRedacted: z.ZodOptional<z.ZodBoolean>;
+        }, "passthrough", z.ZodTypeAny, z.objectOutputType<{
+            matcher: z.ZodString;
+            config: z.ZodEffects<z.ZodObject<{
+                type: z.ZodString;
+                headers: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodString>>;
+            }, "passthrough", z.ZodTypeAny, z.objectOutputType<{
+                type: z.ZodString;
+                headers: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodString>>;
+            }, z.ZodTypeAny, "passthrough">, z.objectInputType<{
+                type: z.ZodString;
+                headers: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodString>>;
+            }, z.ZodTypeAny, "passthrough">>, z.objectOutputType<{
+                type: z.ZodString;
+                headers: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodString>>;
+            }, z.ZodTypeAny, "passthrough">, z.objectInputType<{
+                type: z.ZodString;
+                headers: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodString>>;
+            }, z.ZodTypeAny, "passthrough">>;
+            headersRedacted: z.ZodOptional<z.ZodBoolean>;
+        }, z.ZodTypeAny, "passthrough">, z.objectInputType<{
+            matcher: z.ZodString;
+            config: z.ZodEffects<z.ZodObject<{
+                type: z.ZodString;
+                headers: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodString>>;
+            }, "passthrough", z.ZodTypeAny, z.objectOutputType<{
+                type: z.ZodString;
+                headers: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodString>>;
+            }, z.ZodTypeAny, "passthrough">, z.objectInputType<{
+                type: z.ZodString;
+                headers: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodString>>;
+            }, z.ZodTypeAny, "passthrough">>, z.objectOutputType<{
+                type: z.ZodString;
+                headers: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodString>>;
+            }, z.ZodTypeAny, "passthrough">, z.objectInputType<{
+                type: z.ZodString;
+                headers: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodString>>;
+            }, z.ZodTypeAny, "passthrough">>;
+            headersRedacted: z.ZodOptional<z.ZodBoolean>;
+        }, z.ZodTypeAny, "passthrough">>>;
+    }, z.ZodTypeAny, "passthrough">, z.objectInputType<{
+        event: z.ZodString;
+        matcher: z.ZodString;
+        source: z.ZodString;
+        sourceLabel: z.ZodString;
+        type: z.ZodString;
+        displayText: z.ZodString;
+        commandText: z.ZodString;
+        contentLabel: z.ZodString;
+        disabled: z.ZodOptional<z.ZodBoolean>;
+        editable: z.ZodOptional<z.ZodObject<{
+            matcher: z.ZodString;
+            config: z.ZodEffects<z.ZodObject<{
+                type: z.ZodString;
+                headers: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodString>>;
+            }, "passthrough", z.ZodTypeAny, z.objectOutputType<{
+                type: z.ZodString;
+                headers: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodString>>;
+            }, z.ZodTypeAny, "passthrough">, z.objectInputType<{
+                type: z.ZodString;
+                headers: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodString>>;
+            }, z.ZodTypeAny, "passthrough">>, z.objectOutputType<{
+                type: z.ZodString;
+                headers: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodString>>;
+            }, z.ZodTypeAny, "passthrough">, z.objectInputType<{
+                type: z.ZodString;
+                headers: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodString>>;
+            }, z.ZodTypeAny, "passthrough">>;
+            headersRedacted: z.ZodOptional<z.ZodBoolean>;
+        }, "passthrough", z.ZodTypeAny, z.objectOutputType<{
+            matcher: z.ZodString;
+            config: z.ZodEffects<z.ZodObject<{
+                type: z.ZodString;
+                headers: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodString>>;
+            }, "passthrough", z.ZodTypeAny, z.objectOutputType<{
+                type: z.ZodString;
+                headers: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodString>>;
+            }, z.ZodTypeAny, "passthrough">, z.objectInputType<{
+                type: z.ZodString;
+                headers: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodString>>;
+            }, z.ZodTypeAny, "passthrough">>, z.objectOutputType<{
+                type: z.ZodString;
+                headers: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodString>>;
+            }, z.ZodTypeAny, "passthrough">, z.objectInputType<{
+                type: z.ZodString;
+                headers: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodString>>;
+            }, z.ZodTypeAny, "passthrough">>;
+            headersRedacted: z.ZodOptional<z.ZodBoolean>;
+        }, z.ZodTypeAny, "passthrough">, z.objectInputType<{
+            matcher: z.ZodString;
+            config: z.ZodEffects<z.ZodObject<{
+                type: z.ZodString;
+                headers: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodString>>;
+            }, "passthrough", z.ZodTypeAny, z.objectOutputType<{
+                type: z.ZodString;
+                headers: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodString>>;
+            }, z.ZodTypeAny, "passthrough">, z.objectInputType<{
+                type: z.ZodString;
+                headers: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodString>>;
+            }, z.ZodTypeAny, "passthrough">>, z.objectOutputType<{
+                type: z.ZodString;
+                headers: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodString>>;
+            }, z.ZodTypeAny, "passthrough">, z.objectInputType<{
+                type: z.ZodString;
+                headers: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodString>>;
+            }, z.ZodTypeAny, "passthrough">>;
+            headersRedacted: z.ZodOptional<z.ZodBoolean>;
+        }, z.ZodTypeAny, "passthrough">>>;
+    }, z.ZodTypeAny, "passthrough">>, "many">;
+    policy: z.ZodObject<{
+        disabledByPolicy: z.ZodBoolean;
+        managedOnly: z.ZodBoolean;
+        pluginOnly: z.ZodBoolean;
+        allDisabled: z.ZodBoolean;
+        policyHookCount: z.ZodNumber;
+        policyUnreadable: z.ZodOptional<z.ZodBoolean>;
+    }, "passthrough", z.ZodTypeAny, z.objectOutputType<{
+        disabledByPolicy: z.ZodBoolean;
+        managedOnly: z.ZodBoolean;
+        pluginOnly: z.ZodBoolean;
+        allDisabled: z.ZodBoolean;
+        policyHookCount: z.ZodNumber;
+        policyUnreadable: z.ZodOptional<z.ZodBoolean>;
+    }, z.ZodTypeAny, "passthrough">, z.objectInputType<{
+        disabledByPolicy: z.ZodBoolean;
+        managedOnly: z.ZodBoolean;
+        pluginOnly: z.ZodBoolean;
+        allDisabled: z.ZodBoolean;
+        policyHookCount: z.ZodNumber;
+        policyUnreadable: z.ZodOptional<z.ZodBoolean>;
+    }, z.ZodTypeAny, "passthrough">>;
+    safeMode: z.ZodOptional<z.ZodObject<{
+        managedHooksStillApply: z.ZodBoolean;
+        exitHint: z.ZodString;
+    }, "passthrough", z.ZodTypeAny, z.objectOutputType<{
+        managedHooksStillApply: z.ZodBoolean;
+        exitHint: z.ZodString;
+    }, z.ZodTypeAny, "passthrough">, z.objectInputType<{
+        managedHooksStillApply: z.ZodBoolean;
+        exitHint: z.ZodString;
+    }, z.ZodTypeAny, "passthrough">>>;
+    bareMode: z.ZodOptional<z.ZodObject<{
+        exitHint: z.ZodString;
+    }, "passthrough", z.ZodTypeAny, z.objectOutputType<{
+        exitHint: z.ZodString;
+    }, z.ZodTypeAny, "passthrough">, z.objectInputType<{
+        exitHint: z.ZodString;
+    }, z.ZodTypeAny, "passthrough">>>;
+    errors: z.ZodOptional<z.ZodArray<z.ZodObject<{
+        file: z.ZodString;
+        path: z.ZodOptional<z.ZodUnknown>;
+        message: z.ZodString;
+    }, "passthrough", z.ZodTypeAny, z.objectOutputType<{
+        file: z.ZodString;
+        path: z.ZodOptional<z.ZodUnknown>;
+        message: z.ZodString;
+    }, z.ZodTypeAny, "passthrough">, z.objectInputType<{
+        file: z.ZodString;
+        path: z.ZodOptional<z.ZodUnknown>;
+        message: z.ZodString;
+    }, z.ZodTypeAny, "passthrough">>, "many">>;
+}, z.ZodTypeAny, "passthrough">>;
+
 type ClaudeInitialization = z.infer<typeof ClaudeInitializationSchema>;
 
 /** Metadata returned by the initialize exchange in Claude Code 2.1.299–2.1.301. */
@@ -2690,6 +3556,9 @@ interface CliServiceType {
         }): Promise<ClaudeMemoryDialog>;
         parseMcpElicitationForm(schema: unknown, propertyOrder?: string[]): ClaudeMcpForm;
         validateMcpElicitationForm(form: ClaudeMcpForm, content: unknown): ClaudeMcpFormValidation;
+        getHooksListing(opts?: {
+            cwd?: string;
+        }): Promise<ClaudeHooksListing>;
         getPermissionRules(opts?: {
             cwd?: string;
         }): Promise<ClaudePermissionRules>;
@@ -6658,6 +7527,8 @@ interface QueryHandle {
     getSkillsDialog(): Promise<ClaudeSkillsDialog>;
     /** Read native memory files and availability without a model turn. */
     getMemoryDialog(): Promise<ClaudeMemoryDialog>;
+    /** Read native hook provenance, disabled state and masked edit targets without executing hooks. */
+    getHooksListing(): Promise<ClaudeHooksListing>;
     /** Read native rule provenance, editability and workspace metadata without a prompt. */
     getPermissionRules(): Promise<ClaudePermissionRules>;
     /** Refresh native settings after an idle durable permission edit, preserving existing flags. */
