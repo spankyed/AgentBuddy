@@ -1,11 +1,11 @@
 import { readFileSync } from 'node:fs';
-import { writeFile } from 'node:fs/promises';
+import { mkdir, writeFile } from 'node:fs/promises';
 import { join, resolve } from 'node:path';
 import { importCompiledContent } from '@apackdev/sdk/utils';
 import { importFlows, mockService, startApp } from '@apackdev/testing/harness';
 import { services, type Services } from '#generated/services.ts';
 import { repository } from '#generated/repository.ts';
-import { query } from '#features/code/be/services/claude-code/query.ts';
+import { claudeCode } from '#features/code/be/services/claude-code/index.ts';
 import * as runner from '#features/code/be/services/claude-code/runner.ts';
 import * as store from '#features/code/be/services/claude-code/handle-store.ts';
 import type { ResultLine, StreamLine } from '#features/code/be/services/claude-code/types.ts';
@@ -26,20 +26,22 @@ it.skipIf(!executable || !workspace || !endpoint)('compiled app owns native appr
   const results: ResultLine[] = [];
   let sent: ReturnType<typeof vi.spyOn> | undefined;
   const spawning = vi.spyOn(runner, 'spawnStream');
+  vi.stubEnv('ANTHROPIC_BASE_URL', endpoint!);
+  vi.stubEnv('CLAUDE_CODE_SIMPLE', undefined);
+  vi.stubEnv('CLAUDE_CODE_COORDINATOR_MODE', undefined);
+  vi.stubEnv('TZ', 'UTC');
+  await mkdir(join(workspace!, '.claude'), { recursive: true });
+  await writeFile(join(workspace!, '.claude', 'settings.json'), JSON.stringify({ apiKeyHelper: '/usr/bin/printf research-fixture-key' }));
+  services.settings.set({ kind: 'feature', featureRef: 'default-setup/code' }, ['cliPaths', 'claude-code'], executable!);
+  const originalQuery = claudeCode.query.bind(claudeCode);
+  vi.spyOn(claudeCode, 'query').mockImplementation(async options => {
+    const handle = await originalQuery({ ...options, signal: AbortSignal.timeout(145000) });
+    sent = vi.spyOn(handle, 'send');
+    return handle;
+  });
   const original = services.cli.claudeCode;
-  const opened = vi.fn<Services['cli']['claudeCode']['openConversation']>((key, launchKey, options, consume) =>
-    store.openConversation(key, launchKey, async () => {
-      const handle = await query({ ...options, cwd: workspace!, cliPath: executable!, model: 'default',
-        env: { HOME: workspace!, CLAUDE_CONFIG_DIR: join(workspace!, '.claude'), CLAUDE_CODE_SIMPLE: undefined,
-          CLAUDE_CODE_COORDINATOR_MODE: undefined, TZ: 'UTC', ANTHROPIC_BASE_URL: endpoint!, ENABLE_TOOL_SEARCH: '0',
-          DISABLE_AUTOUPDATER: '1', CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC: '1' },
-        tools: ['AskUserQuestion', 'CronCreate', 'CronList'], settingSources: [], strictMcpConfig: true,
-        replayUserMessages: true, keepStdinOpen: true, surfaceControlRequests: true,
-        settings: JSON.stringify({ apiKeyHelper: '/usr/bin/printf research-fixture-key' }), signal: AbortSignal.timeout(145000),
-      });
-      sent = vi.spyOn(handle, 'send');
-      return handle;
-    }, consume).then(owner => {
+  const opened = vi.fn<Services['cli']['claudeCode']['openConversation']>((...args) =>
+    original.openConversation(...args).then(owner => {
       owner.subscribe(event => { nativeEvents.push(event); if (event.type === 'result') results.push(event as ResultLine); });
       return owner;
     }));
@@ -80,6 +82,7 @@ it.skipIf(!executable || !workspace || !endpoint)('compiled app owns native appr
     expect(store.getHandle(id)).toBe(owner.handle);
     expect(owner.closing).toBe(false);
     expect(state()?.pendingControlRequest).toBeUndefined();
+    expect(nativeEvents.some(event => event.type === 'assistant' && JSON.stringify(event).includes('"name":"CronCreate"'))).toBe(true);
     expect(messages().find(message => message.id === first.id)?.context?.cliUuid).toBe(results[0]!.user_message_uuid);
     const countBeforeUi = messages().length;
     const client = { client_id: 'research-app-owner', surface: 'desktop' as const };
@@ -97,13 +100,15 @@ it.skipIf(!executable || !workspace || !endpoint)('compiled app owns native appr
     await vi.waitFor(() => expect(state()?.turns).toBe(3), { timeout: 15000 });
     await vi.waitFor(() => expect(store.isConversationBusy(id)).toBe(false));
     expect(opened).toHaveBeenCalledOnce(); expect(spawning).toHaveBeenCalledOnce(); expect(sent).toHaveBeenCalledTimes(2);
+    const args = spawning.mock.calls[0]![0];
+    for (const flag of ['--tools', '--setting-sources', '--strict-mcp-config']) expect(args).not.toContain(flag);
     expect(results).toHaveLength(3); expect(results.every(result => result.subtype === 'success' && result.session_id === session)).toBe(true);
     expect(messages().find(message => message.id === second.id)?.context?.cliUuid).toBe(results[2]!.user_message_uuid);
     expect(Math.abs(state()!.totalCostUsd! - results[2]!.total_cost_usd!)).toBeLessThan(1e-12);
     expect(messages().filter(message => message.sender === 'assistant' && message.text === 'Fixture completed.').length).toBeGreaterThanOrEqual(3);
     await owner.handle.ui.detach(client.client_id);
     expect(await store.closeIdleConversation(id)).toBe(true); expect(store.getHandle(id)).toBeUndefined();
-    await writeFile(join(workspace!, 'app-owner-evidence.json'), JSON.stringify({ compiledFlow: true, questionRoundTrip: true, schedulingApprovals,
+    await writeFile(join(workspace!, 'app-owner-evidence.json'), JSON.stringify({ compiledFlow: true, productionLaunchService: true, defaultToolPool: true, questionRoundTrip: true, schedulingApprovals,
       idleProcessRetained: true, autonomousTurn: true, nextHostInput: true, singleNativeProcess: true, hostInputs: 2, appTurns: 3,
       canonicalUserMappings: true, idleUiDidNotCreateMessage: true, exactCostAccounting: true, nativeCumulativeCosts: results.map(result => result.total_cost_usd),
       appTotalCostUsd: state()!.totalCostUsd, closed: true }, null, 2));
