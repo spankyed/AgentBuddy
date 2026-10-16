@@ -244,3 +244,36 @@ it('marks a success/is_error result as failed while preserving refusal detail an
   expect(handle.hasPendingBackgroundTasks).not.toHaveBeenCalled();
   expect(emit).toHaveBeenCalledWith(expect.anything(), expect.objectContaining({ eventType: 'cc.stream.completed', payload: expect.objectContaining({ hadErrors: true, costUsd: 0.25, durationMs: 42 }) }));
 });
+
+it.each(['completed', 'failed', 'stopped', 'unavailable'])('keeps original Workflow row across turn finalization until %s', async status => {
+  const { id } = repository.threadCommands.create({ topic: 'Workflow phase', instructions: '', tags: [] });
+  repository.threadCommands.update(id, { context: { claudeCode: { isRunning: true } } });
+  const update = vi.fn();
+  mockService<Services, 'chat'>('chat', { updateMessageState: update, sendBlockMessage: vi.fn(() => ({ messageId: 'unexpected' } as never)) });
+  mockService<Services, 'logger'>('logger', { debug: vi.fn(), info: vi.fn(), warn: vi.fn(), error: vi.fn() });
+  mockService<Services, 'emitter'>('emitter', { sendToSystem: vi.fn(), broadcastToPlugin: vi.fn() });
+  const lines = [
+    { type: 'assistant', message: { content: [{ type: 'tool_use', id: 'workflow-tool', name: 'Workflow', input: { script: 'fixed fixture' } }] } },
+    { type: 'system', subtype: 'task_started', task_id: 'workflow-task', tool_use_id: 'workflow-tool', task_type: 'local_workflow', workflow_name: 'Fixture' },
+    { type: 'system', subtype: 'task_progress', task_id: 'workflow-task', tool_use_id: 'workflow-tool', workflow_progress: [{ type: 'workflow_phase', index: 1, title: 'Review' }] },
+    { type: 'user', message: { content: [{ type: 'tool_result', tool_use_id: 'workflow-tool', content: 'Workflow launched in background.' }] } },
+    { type: 'result', subtype: 'success', session_id: 'fixture', result: 'Launch acknowledged.' },
+  ] as StreamLine[];
+  const handle = { events: (async function* () { yield* lines; })(), hasPendingBackgroundTasks: () => true, close: vi.fn(), kill: vi.fn() };
+  mockService<Services, 'cli'>('cli', { claudeCode: { getHandle: () => handle, isCurrentTurn: () => true, clearHandle: vi.fn() } as never });
+  const messageId = 'workflow-original' as EntityId, activity = createClaudeNestedActivity(), thinking = createThinkingWriter(services, messageId);
+  const tools = createToolActivityWriter(services, messageId);
+  await consumeStream(handle, { services, activity, persistent: true, threadId: id, text: 'fixed workflow' }, {
+    messageId, thinking, toolActivity: tools, writer: createStreamWriter(services, messageId),
+  });
+  expect(tools.entries[0]).toMatchObject({ status: 'running', outputSummary: 'Fixture: running — Review', details: { input: { script: 'fixed fixture' }, output: 'Workflow launched in background.' } });
+  const block = () => update.mock.calls.filter(([target, patch]) => target === messageId && patch.blocks?.some((block: any) => block.type === 'tool-activity')).at(-1)?.[1].blocks.find((block: any) => block.type === 'tool-activity');
+  expect(block()?.props.state).toBe('streaming');
+  if (status === 'unavailable') activity.close();
+  else activity.workflows.observe({ type: 'system', subtype: 'task_notification', task_id: 'workflow-task', tool_use_id: 'workflow-tool', status, summary: 'Native terminal summary' } as StreamLine);
+  expect(tools.entries[0].status).toBe(status === 'completed' ? 'ok' : 'error');
+  expect(tools.entries[0].outputSummary).toContain(status);
+  expect(block()?.props.state).toBe(status === 'completed' ? 'done' : 'error');
+  expect(services.chat.sendBlockMessage).not.toHaveBeenCalled();
+  activity.close();
+});

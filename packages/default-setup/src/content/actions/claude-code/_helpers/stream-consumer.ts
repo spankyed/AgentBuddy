@@ -1,3 +1,4 @@
+import type { ClaudeWorkflowTask } from '#features/code/be/services/claude-code/workflow-activity.ts';
 import { mcpElicitationUrl } from './mcp-elicitation.ts';
 import type { ClaudeNestedActivity } from '#features/code/be/services/claude-code/nested-activity.ts';
 import type { ClaudeConversationTurn } from '#features/code/be/services/claude-code/conversation.ts';
@@ -131,6 +132,16 @@ export async function consumeStream(
   let thinking = initialWriters.thinking;
   let currentMessageHasCliUuid = false;
   const activity = ctx.activity;
+  function showWorkflow(target: ConsumerWriters['toolActivity'], toolId: string, task: ClaudeWorkflowTask): void {
+    target.setTaskRunning(toolId, task.status === 'running');
+    const label = task.status === 'unavailable' ? 'Workflow status unavailable (conversation closed)'
+      : `${task.name}: ${task.status}${task.phase ? ` — ${task.phase}` : ''}`;
+    target.update(toolId, { status: task.status === 'running' ? 'running' : task.status === 'completed' ? 'ok' : 'error',
+      outputSummary: label, durationMs: task.durationMs,
+      ...(task.status === 'failed' || task.status === 'stopped' || task.status === 'unavailable' ? { details: { error: task.summary || label } } : {}),
+    });
+    target.flush();
+  }
   let nestedToolCount = 0;
   let nestedToolErrors = false;
   let priorSegmentToolCount = 0;
@@ -209,6 +220,8 @@ export async function consumeStream(
         splitOnNextMessageStart = false;
         ({ currentMessageId, writer, toolActivity, thinking, currentMessageHasCliUuid } = splitMessage());
       }
+
+      activity.workflows.observe(line);
 
       // First `system/init` event carries sessionId/model/cwd.
       if (line.type === 'system' && line.subtype === 'init') {
@@ -294,6 +307,10 @@ export async function consumeStream(
               status: 'running',
               details: { input: block.input },
             });
+            if (block.name === 'Workflow' || block.name === 'RunWorkflow') {
+              const target = toolActivity;
+              activity.workflows.register(toolId, task => showWorkflow(target, toolId, task));
+            }
             {
               const target = toolActivity;
               activity.register(toolId, event => {
@@ -386,6 +403,9 @@ export async function consumeStream(
             outputSummary: outputSummary || undefined,
             details: isError ? { error: displayText } : { output: displayText },
           });
+
+          const workflow = activity.workflows.get(toolUseId);
+          if (workflow && !isError) showWorkflow(toolActivity, toolUseId, workflow);
 
           if (isError) {
             log.warn('tool execution failed', {
@@ -869,6 +889,8 @@ export async function consumeStream(
       eventType: 'cc.stream.completed',
       payload: { threadId, hadErrors: true, error: message },
     });
+  } finally {
+    if (!ctx.persistent) activity.workflows.close();
   }
 }
 

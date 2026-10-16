@@ -192,6 +192,7 @@ export function createClaudeConversation(native: QueryHandle, consumeAutonomous:
           for (const listener of listeners) { try { listener(event) } catch { /* isolate observers */ } }
           continue
         }
+        activity.workflows.observe(event)
         const nested = activity.receive(event)
         for (const listener of listeners) { try { listener(event) } catch { /* isolate raw observers */ } }
         if (nested) continue

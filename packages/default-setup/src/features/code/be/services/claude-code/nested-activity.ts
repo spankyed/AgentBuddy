@@ -1,3 +1,4 @@
+import { createClaudeWorkflowActivity, type ClaudeWorkflowActivity } from './workflow-activity.ts'
 import { ClaudeProtocolError } from './errors.ts'
 import type { StreamLine } from './types.ts'
 
@@ -7,6 +8,7 @@ export interface ClaudeNestedAccounting {
   hadErrors: boolean
 }
 export interface ClaudeNestedActivity {
+  readonly workflows: ClaudeWorkflowActivity
   /** Bind an observed root tool to its existing app activity, for this process lifetime. */
   register(rootToolId: string, receive: (event: StreamLine) => void): void
   /** Drain facts once, at the next native result; output bindings remain registered. */
@@ -21,6 +23,7 @@ function record(value: unknown): Record<string, unknown> | undefined {
 
 /** Process-owned routing. Nested frames never establish a parent transcript turn. */
 export function createClaudeNestedActivity() {
+  const workflows = createClaudeWorkflowActivity()
   const roots = new Map<string, (event: StreamLine) => void>()
   const descendants = new Map<string, string>()
   const messages = new Set<string>()
@@ -76,6 +79,7 @@ export function createClaudeNestedActivity() {
     }
   }
   return {
+    workflows,
     register(rootToolId: string, receive: (event: StreamLine) => void): void {
       if (closed || !rootToolId || roots.has(rootToolId)) return
       bounded(roots.size)
@@ -99,12 +103,14 @@ export function createClaudeNestedActivity() {
       return true
     },
     takeAccounting(): ClaudeNestedAccounting {
-      const result = { toolCallCount, mutatedPaths: [...paths], hadErrors }
+      const workflowErrors = workflows.takeErrors()
+      const result = { toolCallCount, mutatedPaths: [...paths], hadErrors: hadErrors || workflowErrors }
       toolCallCount = 0; paths.clear(); hadErrors = false
       return result
     },
     close(): void {
       closed = true
+      workflows.close()
       roots.clear(); descendants.clear(); messages.clear(); waiting = []; waitingBytes = 0
       toolCallCount = 0; paths.clear(); hadErrors = false
     },
