@@ -120,19 +120,63 @@ naming branch is not an automatic source of future changes.
 
 ### Current handoff — compiler checkpoint (2026-10-16)
 
-Latest source is `f684f9b7e` (native startup-view adoption). One native factory now owns pack exclusions
-for both early capture and TypeScript discovery. Compilation can adopt that same view, retaining early
-external bytes, metadata validation and disposal ownership. Filesystem interception requires only its
-read/resolution interface, rather than compiler configurations and build hashes.
+Latest source is `37890aa9b` (native compiler startup capture). The private worker now installs a
+native CommonJS preload before user initialization, owns its early file view, and hands the same view
+into compilation. Existing primary-loader threads return serialized observations through a private
+barrier; final validation merges their facts and checks originals before publication. The bootstrap
+shares filesystem interception with the later ESM compiler, including cached preload APIs. Captured
+compiler files and owned scratch remain outside authored reads. Explicit native dependency lookup and
+canonical aliases of admitted generated files remain readable. Repeated read-tree admission reuses
+materialized directories rather than unlocking them on every read.
 
-A real Node --require preload initializes the production factory without activating TypeScript, then
-passes its view into actual compilation. Captured bytes survive a live edit, final validation refuses
-the edit, exact restoration validates, and compilation disposal closes the original view. The focused
-integration case passes (4.84s), 40 affected unit cases pass (1.54s), and CLI typecheck/lint/diff checks
-pass. Proof/logs: `/private/tmp/apack-startup-view-proof.mjs` and
-`/private/tmp/apack-startup-view-{proof,integration,unit,types}.log`. Public worker startup does not yet
-install this view automatically; default preload/loader interception, thread transport and snapshot
-handoff remain the next integration. No broad/final acceptance is claimed by these focused checks.
+Native ESM source reads already pass through the filesystem adapter on both Node 23.11 and Electron's
+Node 22.17. Adding a source loader reordered require preloads, so this implementation adds no source
+loader and preserves measured require/loader/import order. The coordinator has no resolve/load hooks.
+The former implementation is preserved in stash `5bf0d873aa61b67f79f2954b178106886d4f950a`;
+all earlier stashes remain intact. This is input coherence, not stronger security isolation.
+
+Evidence:
+
+- Native ordering probes match plain Node on both runtimes; cached preload reads retain owned bytes,
+  custom loaders retain their behavior and logical source paths, and loader-only source mutation refuses
+  publication. Logs: `/private/tmp/apack-startup-order-fs-probe.log` and
+  `/private/tmp/apack-startup-order-fs-electron.log`.
+- Two real worker scenarios pass (77.09s), including changed external loader input producing new
+  content/revision and a mid-build mutation refusing publication.
+  `/private/tmp/apack-startup-fs-only-worker.log`.
+- The previously failing incumbent-facade replacement case passes (48.24s) after canonical admission
+  repair. `/private/tmp/apack-startup-admission-integration.log`.
+- Latest focused checks: 23 view/tree/observation cases and 69 affected CLI/tooling cases pass; CLI
+  typechecking, scoped lint and diff checks pass. Logs:
+  `/private/tmp/apack-startup-final-{unit,affected,typecheck,lint}.log`.
+  A native repeated-read probe drops directory chmod calls from 16 to zero, with code/data projection
+  and final integrity checks preserved. `/private/tmp/apack-data-materialization-probe.mjs`.
+
+Required strict validation is **not passing**. Run `2026-10-16T17-18-40Z-5247` completed with failures
+(774.8s plus an automatic 8.8s app retry). Schema/API/type/lint/specifier/tier/runtime/smoke checks,
+default pack build, external author and external contract passed. Integration exceeded its 600s pool
+budget with watch/frontend failures and the generated-facade defect subsequently repaired above.
+Packaged authoring's tests passed but Electron teardown timed out; the runner's isolated retry passed.
+That retry does not prove pooled acceptance or explain teardown. Preserve the full run at
+`node_modules/.cache/apack-chain/runs/2026-10-16T17-18-40Z-5247/` and
+`/private/tmp/apack-startup-fs-only-strict.log`.
+
+Next diagnostic is narrow: the watch-publication scenario still fails its first 20s publication wait
+on current built source (50.66s total), despite reaching frontend build output. The observation does
+not establish where publication is delayed. `/private/tmp/apack-startup-final-publication.log`.
+Trace worker finish/validation, parent acceptance and watch publication in that case; do not launch
+another broad diagnostic run, weaken the assertion or increase its deadline. Resolve affected failures
+before the next required strict checkpoint, and retain final committed-source strict --all acceptance.
+
+Remaining implementation still includes the complete ordered execution-options/runtime identity,
+pre-startup source/dependency ownership, native/resource and one-shot/dev lifetime, persisted completed
+receipts/passive freshness, actual frontend HMR generation ownership, and every later goal phase.
+Startup observations are not yet a persisted receipt or passive freshness authority. The full goal is
+preserved; the snapshot proposal remains unevaluated, and the separate Claude research stays paused.
+
+Preceding source `f684f9b7e` supplied the native startup-view factory and adoption seam. Its native
+preload proof, focused integration and 40 unit cases remain recorded in
+`/private/tmp/apack-startup-view-{proof,integration,unit,types}.log`.
 
 Preceding source is `2208be219` (mergeable compiler observations). The native view now exports owned,
 serialized query/result entries, and its hash uses that same projection. Merging requires one logical
@@ -146,11 +190,6 @@ diff checks pass. A real Worker transfers production-view observations: compleme
 and conflicting file bytes refuse even after the source is restored. Logs/proof:
 `/private/tmp/apack-observations-{unit,final,types-final,worker-proof}.log` and
 `/private/tmp/apack-observations-worker-proof.mjs`. Broad/final acceptance is not claimed.
-
-Next: wire this observation contract into the pre-startup main/loader handoff and reuse its frame during
-compilation, with final original-input validation before publication. It is not yet a persisted receipt
-or passive freshness authority. All remaining goal work and final committed-source strict --all remain
-required. The snapshot proof and its limitations below still apply.
 
 Preceding native-view source is `0c038442b`. Preceding ESM source `f67c8d066`:
 ESM execution now has logical source URLs and filenames while native
