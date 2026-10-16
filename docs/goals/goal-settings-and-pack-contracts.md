@@ -120,7 +120,7 @@ naming branch is not an automatic source of future changes.
 
 ### Current handoff — compiler checkpoint (2026-10-16)
 
-Latest source is `3e6809d6c` (terminal input-lifetime checkpoint below). Preceding ESM source `f67c8d066`:
+Latest source is `b32ee23a1` (POSIX process-ownership checkpoint below). Preceding ESM source `f67c8d066`:
 ESM execution now has logical source URLs and filenames while native
 resolution and source reads use the owned tree. A private loader below tsx only projects bytes; it
 makes no main-thread RPC. The input owner and loader share one storage mapping. Native entrypoint
@@ -145,6 +145,29 @@ bridge extraction (35.47s). The final packaged JSX/metadata worker passes in 36.
 packaging cases (9), CLI typecheck and lint pass. The bridge also runs on Electron's Node 22.17.1.
 Logs: `/private/tmp/apack-module-metadata-{before,focused,jsx-before,entry-final,native-entry,
 worker-native-entry,tree,packaging,types-complete,lint-complete}.log`. No broad gate repeated.
+
+POSIX process-ownership checkpoint `b32ee23a1` launches each compiler worker in its own process
+group. On worker exit the parent terminates inherited group members and confirms no executable member
+remains before candidate verification/publication. Cancellation allows two seconds for SIGTERM cleanup,
+then forces termination; a compiler ignoring SIGTERM cannot retain the builder indefinitely. A grouped
+worker whose parent IPC disappears signals its own group. The group handoff is removed from its
+environment before pack execution, and the IPC-loss listener remains until synchronous final exit.
+
+Evidence: nine builder/publication checks pass (4.39s), including an unreferenced subprocess and a
+SIGTERM-ignoring compiler (2.09s). Real content-compiler subprocess termination and parent-loss group
+cleanup pass together on final source (34.20s). Public one-shot cancellation initially fails only in
+the sequence after parent-loss testing; the isolated case passes, so isolation alone was not accepted
+as a fix. Repeating that exact sequence with retained output identifies `kill EPERM`. Signalling errors
+now require an OS state check: terminal/absent groups may finish, live or indeterminate groups still
+refuse publication. The corrected parent-loss/public-cancellation sequence passes in 19.01s before the
+final IPC-listener lifetime relocation. Final CLI typecheck, scoped lint and diff checks pass. Logs:
+`/private/tmp/apack-compiler-group-{unit-final,worker-final,cancellation-final,context-diagnostic,
+types-complete}.log`. No broad gate repeated or existing test deadline raised.
+
+This covers inherited POSIX group membership, not children that create another session/group or Windows
+job ownership. Those remain required work, alongside native resource lifetimes, runtime/preload inputs,
+frontend generations, whole-build input receipts, passive freshness and every later goal phase. Stronger
+security isolation remains deferred. Final committed-source strict --all acceptance is still owed.
 
 Terminal input-lifetime checkpoint `3e6809d6c` closes a reproduced disposal hole: file views
 continued serving bytes after disposal, and retained scoped tasks could recreate removed input trees.
