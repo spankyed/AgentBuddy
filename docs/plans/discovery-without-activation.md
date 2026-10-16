@@ -82,6 +82,27 @@ Finish that prerequisite, then the partial/unimplemented discovery rows and the 
 audit. Entity navigation, pane/form failure boundaries and the three Phase 6 workstreams retain their
 separate requirements in the execution goal. None is removed by this status consolidation.
 
+### Next checkpoint: build cancellation ownership
+
+Audit after `aba660aed` identifies two remaining caller-ownership gaps. Public one-shot `buildCommand`
+calls `runPackBuild` without owning process signals. In `commands/dev.ts`, aborting the startup build
+is followed by `hold.release()` and process exit, but the hold does not await that build's disposal.
+The development watcher is handed to the hold only after startup returns and receives no lifetime
+signal. These are inspected gaps, not yet reproduced leak claims.
+
+Use one process-signal owner for public one-shot/watch builds; keep `runPackBuild` caller-controlled
+for development and release verification. Development must own the initial build and watcher-startup
+promises before awaiting them, abort them on release, and await cleanup before profile removal or exit.
+Reuse the existing hold's cleanup callback instead of adding a second resource registry. Preserve exit
+semantics and avoid changing app/profile selection or frontend build behavior.
+
+Focused acceptance: interrupt a public one-shot build while compiling and prove worker exit, private
+compiler removal and no publication. Exercise development shutdown during initial build and watcher
+startup, proving cleanup precedes exit/profile removal. Retain existing ready/compiling public-watch
+checks and normal build/dev behavior. Use existing deadlines; diagnose any failure in these checks
+before broader validation. This checkpoint does not complete frozen inputs or authorize freshness-reader
+migration. Its source and evidence must land before expanding implementation.
+
 ## Historical foundation audits and checkpoint evidence
 
 Current progress is recorded in the [current discovery checklist](#current-discovery-checklist).
