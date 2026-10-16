@@ -1565,13 +1565,13 @@
         "shortCode": "ACT-61"
       },
       "Collection:commands": {
-        "contentHash": "66ec37d1fe3047f5",
+        "contentHash": "574723e89fc70643",
         "displayOrder": 1000,
         "entityType": "Collection",
         "name": "commands"
       },
       "Collection:internal": {
-        "contentHash": "bae4f87aa8fb6123",
+        "contentHash": "67cf7a75d60a9d60",
         "displayOrder": 1000,
         "entityType": "Collection",
         "name": "internal"
@@ -1584,6 +1584,10 @@
               {
                 "key": "cc-sessions",
                 "value": "Session ID (optional, lists all if omitted)"
+              },
+              {
+                "key": "cc-permissions",
+                "value": "Show native permission rules, exact stored spellings, sources and editability"
               },
               {
                 "key": "cc-config",
@@ -1607,7 +1611,7 @@
               },
               {
                 "key": "cc-memory",
-                "value": "File name or add|remove <name>"
+                "value": "Show native instruction/memory files and availability; auto on|off sets the user auto-memory preference"
               },
               {
                 "key": "cc-recap",
@@ -1615,7 +1619,7 @@
               },
               {
                 "key": "cc-skills",
-                "value": "List installed skills"
+                "value": "Show native Skill sources, states and locks; set <name> <on|name-only|user-invocable-only|off> edits a Skill state"
               },
               {
                 "key": "cc-compact",
@@ -1672,7 +1676,7 @@
             ]
           }
         ],
-        "contentHash": "9485e9e97ec7a0cf",
+        "contentHash": "e9c220a28b5dbdaa",
         "displayOrder": 1000,
         "entityType": "Document",
         "name": "Claude Code commands",

@@ -3,14 +3,15 @@ name: Claude Code commands
 ---
 <!-- section:field -->
 **cc-sessions**: Session ID (optional, lists all if omitted)
+**cc-permissions**: Show native permission rules, exact stored spellings, sources and editability
 **cc-config**: get|set <key> [value]
 **cc-plan**: Show the current native plan without a model turn
 **cc-context**: Show context window usage breakdown
 **cc-status**: Show version and auth info
 **cc-model**: Model name (optional, shows current if omitted)
-**cc-memory**: File name or add|remove <name>
+**cc-memory**: Show native instruction/memory files and availability; auto on|off sets the user auto-memory preference
 **cc-recap**: Summarize current conversation
-**cc-skills**: List installed skills
+**cc-skills**: Show native Skill sources, states and locks; set <name> <on|name-only|user-invocable-only|off> edits a Skill state
 **cc-compact**: Custom instructions (optional, summarize context)
 **cc-resume**: Session ID (optional, lists sessions if omitted)
 **cc-import**: [all] [no-limit] (imports up to 50 from current dir by default; "all" imports from all dirs; "no-limit" removes cap)

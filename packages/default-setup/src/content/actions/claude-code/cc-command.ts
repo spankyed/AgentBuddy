@@ -58,6 +58,7 @@ const handlers: Record<string, Handler> = {
   status: handleStats,
   model: handleModel,
   memory: handleMemory,
+  permissions: handlePermissions,
   skills: handleSkills,
   stats: handleStats,
   rename: handleRename,
@@ -201,6 +202,25 @@ async function handleModel(
   settings.model = args[0];
   await services.cli.claudeCode.writeSettings(settings);
   return { text: `Model set to: ${args[0]}` };
+}
+
+async function handlePermissions(args: string[], services: Services, threadId?: string): Promise<{ text: string; data?: any }> {
+  if (args.length) return { text: 'Usage: cc-permissions (list rules and their sources)' };
+  const prior = threadId ? getClaudeState(services, threadId) : undefined;
+  const cwd = prior?.cwdOverride || prior?.cwd;
+  let handle = threadId ? services.cli.claudeCode.getHandle(threadId) : undefined;
+  if (handle && threadId) {
+    const nativeCwd = services.cli.claudeCode.getConversation(threadId)?.owner.sessionCwd;
+    if (nativeCwd !== (cwd || services.cli.claudeCode.getWorkingDir())) handle = undefined;
+  }
+  const data = handle ? await handle.getPermissionRules() : await services.cli.claudeCode.getPermissionRules(cwd ? { cwd } : undefined);
+  const state = data.state;
+  const lines = [handle ? 'Running conversation permissions' : 'Project configuration permissions', `Workspace: ${state.originalCwd}`, `Managed-only rules: ${state.managedOnly ? 'yes' : 'no'}`];
+  for (const rule of state.rules) lines.push(`${rule.behavior} [${rule.source}; ${rule.editability}${rule.notInEffect ? '; not in effect' : ''}] ${rule.rule}`);
+  if (!state.rules.length) lines.push('No permission rules listed.');
+  for (const directory of state.workspaceDirectories) lines.push(`Directory${directory.source ? ` [${directory.source}]` : ''}: ${directory.path}`);
+  for (const error of state.errors ?? []) lines.push(`Settings error: ${error.file}: ${error.message}`);
+  return { text: lines.join('\n'), data };
 }
 
 async function handleMemory(

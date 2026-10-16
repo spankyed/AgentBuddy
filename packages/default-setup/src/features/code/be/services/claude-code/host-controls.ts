@@ -146,3 +146,15 @@ export const ClaudeMemoryDialogSchema = z.object({
   auto_dream: z.object({ shown: z.boolean(), enabled: z.boolean(), toggleable: z.boolean(), status: z.string(), detail: z.string() }).passthrough(),
 }).passthrough()
 export type ClaudeMemoryDialog = z.infer<typeof ClaudeMemoryDialogSchema>
+
+/** Exact native rule spellings/provenance are required by durable removal operations. */
+export const ClaudePermissionRulesSchema = z.object({ state: z.object({
+  rules: z.array(z.object({ behavior: z.enum(['allow', 'deny', 'ask']), source: z.string(), rule: z.string(),
+    editability: z.enum(['persistent', 'session', 'readonly']), notInEffect: z.boolean().optional(),
+    description: z.object({ prefix: z.string().optional(), emphasis: z.string().optional(), suffix: z.string().optional() }).passthrough().optional(),
+  }).passthrough()),
+  workspaceDirectories: z.array(z.object({ path: z.string(), source: z.string().optional() }).passthrough()),
+  originalCwd: z.string(), managedOnly: z.boolean(),
+  errors: z.array(z.object({ file: z.string(), path: z.unknown().optional(), message: z.string() }).passthrough()).optional(),
+}).passthrough() }).passthrough()
+export type ClaudePermissionRules = z.infer<typeof ClaudePermissionRulesSchema>

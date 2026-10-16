@@ -36,8 +36,8 @@ import { argsFromOptions } from './args.ts'
 import { PermissionModeSchema, type PermissionMode } from './types.ts'
 import { z } from 'zod'
 import { createControlRouter } from './control.ts'
-import { ClaudeMemoryDialogSchema, ClaudeSkillsDialogSchema, createHostControls, ClaudeInitializationSchema, ClaudeContextUsageSchema, ClaudeInterruptReceiptSchema, ClaudeMcpStatusSchema, ClaudeFileRewindSchema, ClaudePlanSchema } from './host-controls.ts'
-import type { ClaudeMemoryDialog, ClaudeSkillsDialog, ClaudeInitialization, ClaudeContextUsage, ClaudeInterruptReceipt, ClaudeMcpStatus, ClaudeFileRewind, ClaudePlan } from './host-controls.ts'
+import { ClaudePermissionRulesSchema, ClaudeMemoryDialogSchema, ClaudeSkillsDialogSchema, createHostControls, ClaudeInitializationSchema, ClaudeContextUsageSchema, ClaudeInterruptReceiptSchema, ClaudeMcpStatusSchema, ClaudeFileRewindSchema, ClaudePlanSchema } from './host-controls.ts'
+import type { ClaudePermissionRules, ClaudeMemoryDialog, ClaudeSkillsDialog, ClaudeInitialization, ClaudeContextUsage, ClaudeInterruptReceipt, ClaudeMcpStatus, ClaudeFileRewind, ClaudePlan } from './host-controls.ts'
 import {
   ClaudeAbortError,
   type ClaudeCodeError,
@@ -100,6 +100,8 @@ export interface QueryHandle {
   getSkillsDialog(): Promise<ClaudeSkillsDialog>
   /** Read native memory files and availability without a model turn. */
   getMemoryDialog(): Promise<ClaudeMemoryDialog>
+  /** Read native rule provenance, editability and workspace metadata without a prompt. */
+  getPermissionRules(): Promise<ClaudePermissionRules>
   /** Refresh native Skill discovery after an idle configuration edit. */
   reloadSkills(): Promise<void>
   /** Read the current native plan without a model turn. */
@@ -292,6 +294,11 @@ export async function query(opts: QueryOptions): Promise<QueryHandle> {
     async reloadSkills(): Promise<void> {
       await initialized
       z.object({ skills: z.array(z.object({ name: z.string() }).passthrough()) }).parse(await hostControls.request({ subtype: 'reload_skills' }))
+    },
+
+    async getPermissionRules(): Promise<ClaudePermissionRules> {
+      await initialized
+      return ClaudePermissionRulesSchema.parse(await hostControls.request({ subtype: 'list_permission_rules' }))
     },
 
     async getMemoryDialog(): Promise<ClaudeMemoryDialog> {
