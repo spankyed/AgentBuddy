@@ -40,6 +40,7 @@ export function createCompilerFileView(root: string, options: {
   const contents = new Map<string, Buffer | undefined>();
   const directories = new Map<string, { file: string; entries: DirectoryEntry[] }>();
   const globs = new Map<string, { args: Parameters<ts.System['readDirectory']>; files: string[] }>();
+  const included = new Set<string>();
 
   function state(file: string, paths: Map<string, string>): FileState {
     const target = physicalWatchPath(file, paths);
@@ -52,7 +53,7 @@ export function createCompilerFileView(root: string, options: {
   function input(file: string, kind: BuildInputKind): FileInput | undefined {
     file = path.resolve(file);
     observe?.(file, kind);
-    if (excluded(file)) return;
+    if (excluded(file) && !included.has(file)) return;
     let value = inputs.get(file);
     if (!value) {
       value = { file, ...state(file, physical), slot: path.join(physicalWatchPath(path.dirname(file), physical), path.basename(file)) };
@@ -67,6 +68,13 @@ export function createCompilerFileView(root: string, options: {
       if (!['ENOENT', 'ENOTDIR', 'EISDIR'].includes((error as NodeJS.ErrnoException).code ?? '')) throw error;
     }
   };
+  function readBytes(file: string): Buffer | undefined {
+    const node = input(file, 'file');
+    if (node?.kind !== 'file') return;
+    if (!contents.has(node.physical)) contents.set(node.physical, bytes(node.physical));
+    const value = contents.get(node.physical);
+    return value === undefined ? undefined : Buffer.from(value);
+  }
   function entries(file: string, directory: string): DirectoryEntry[] {
     return fs.readdirSync(directory, { withFileTypes: true }).filter(entry => !excluded(path.join(file, entry.name)))
       .map(entry => ({ name: entry.name, kind: entry.isDirectory() ? 'directory' : entry.isFile() ? 'file' : entry.isSymbolicLink() ? 'link' : 'other' }))
@@ -85,10 +93,7 @@ export function createCompilerFileView(root: string, options: {
 
   const fileSystem: CompilerFileSystem = {
     readFile(file) {
-      const node = input(file, 'file');
-      if (node?.kind !== 'file') return;
-      if (!contents.has(node.physical)) contents.set(node.physical, bytes(node.physical));
-      const value = contents.get(node.physical);
+      const value = readBytes(file);
       return value === undefined ? undefined : sourceText(value);
     },
     fileExists: file => input(file, 'file')?.kind === 'file',
@@ -116,6 +121,17 @@ export function createCompilerFileView(root: string, options: {
   const changed = (file: string): never => { throw new Error(`Compiler resolution namespace changed during discovery: ${file}`); };
   return {
     fileSystem,
+    readBytes,
+    /** Admit bytes already consumed by a producer, without rereading its mutable file. */
+    captureFile(file: string, value: Buffer) {
+      included.add(path.resolve(file));
+      const node = input(file, 'file');
+      const previous = node && contents.get(node.physical);
+      if (node?.kind !== 'file' || (contents.has(node.physical) && (previous === undefined || !previous.equals(value)))) {
+        throw new Error(`Compiler input changed during capture: ${file}`);
+      }
+      contents.set(node.physical, Buffer.from(value));
+    },
     assertCurrent() {
       const current = new Map<string, string>();
       for (const value of inputs.values()) {

@@ -37,8 +37,9 @@ function fixture(baseUrl: boolean) {
   write('node_modules/config-base/package.json', { name: 'config-base', main: 'index.js' });
   write('node_modules/config-base/index.js', 'throw new Error("Configuration discovery activated code");');
   write('node_modules/config-base/tsconfig.json', { compilerOptions: { useDefineForClassFields: false, jsx: 'react-jsx', strict: true } });
-  write('node_modules/bare/package.json', { name: 'bare', main: 'index.js', type: 'module' });
+  write('node_modules/bare/package.json', { name: 'bare', main: 'index.js', types: 'index.d.ts', type: 'module' });
   write('node_modules/bare/index.js', 'export const label = "PACKAGE";');
+  write('node_modules/bare/index.d.ts', 'export declare const label: string;');
   write('configs/base.json', '// JSONC parent\n' + JSON.stringify({ extends: 'config-base/tsconfig.json', compilerOptions: {
     ...(baseUrl ? { baseUrl: '../external' } : {}), paths: { outside: [baseUrl ? 'value.ts' : '../external/value.ts'] }, target: 'ES2022',
   } }));
@@ -80,6 +81,7 @@ it.each([false, true])('preserves native inherited aliases and transform semanti
 it('consumes its captured config without reparsing and refuses changed inputs before publication', async () => {
   const { root, pack } = fixture(false);
   const compilation = captureCompilationInputs(pack);
+  compilation.captureGenerated();
   expect(compilation.configuration).toBeDefined();
   fs.unlinkSync(path.join(root, 'configs/base.json'));
   const reread = vi.spyOn(configuration, 'readPackCompilerConfiguration').mockImplementation(() => { throw new Error('Reparsed live configuration'); });
@@ -139,7 +141,7 @@ it('preserves native parent-config discovery when there is no explicit pack conf
   expect(evaluate(fs.readFileSync(path.join(output, 'runtime/index.cjs'), 'utf8'))).toEqual(expected);
 });
 
-it('publishes from captured options when live inherited config changes and is restored during bundling', async () => {
+it.each(['configuration', 'sources'])('publishes captured %s despite a transient live edit restored during bundling', async change => {
   const { root, pack } = fixture(false);
   packFixture({ at: pack, nodeModules: path.join(REPO_ROOT, 'node_modules'), manifest: {
     id: 'captured-config', name: 'Captured config', features: {}, lifecycle: { onInit: 'src/on-init.ts#onInit' },
@@ -152,9 +154,20 @@ it('publishes from captured options when live inherited config changes and is re
   const original = fs.readFileSync(config);
   const bundle = bundlers.bundlePackRuntime;
   const transient = vi.spyOn(bundlers, 'bundlePackRuntime').mockImplementation(async (...args) => {
-    fs.writeFileSync(config, JSON.stringify({ compilerOptions: { useDefineForClassFields: true, jsx: 'react-jsx', strict: true } }));
-    try { return await bundle(...args); }
-    finally { fs.writeFileSync(config, original); }
+    const replacements = change === 'configuration'
+      ? [[config, JSON.stringify({ compilerOptions: { useDefineForClassFields: true, jsx: 'react-jsx', strict: true } })]]
+      : [
+        [path.join(pack, 'src/input.tsx'), fs.readFileSync(path.join(pack, 'src/input.tsx'), 'utf8').replace('field = 7', 'field = 99')],
+        [path.join(root, 'external/value.ts'), 'export const value = "LIVE_ALIAS";'],
+        [path.join(root, 'node_modules/bare/index.js'), 'export const label = "LIVE_PACKAGE";'],
+      ];
+    const originals = replacements.map(([file]) => [file!, fs.readFileSync(file!)] as const);
+    try {
+      for (const [file, text] of replacements) fs.writeFileSync(file!, text!);
+      return await bundle(...args);
+    } finally {
+      for (const [file, bytes] of originals) fs.writeFileSync(file, bytes);
+    }
   });
   await build(['--skip-fe'], pack);
   expect(transient).toHaveBeenCalledOnce();

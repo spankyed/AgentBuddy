@@ -140,6 +140,7 @@ async function buildIntoStaging(args: string[], root: string) {
   const compilation = captureCompilationInputs(root);
   if (args.includes('--skip-generate')) assertGeneratedCurrent(root, manifest, resolvedDependencies, compilation);
   else await generateEntries([], root, resolvedDependencies, compilation);
+  compilation.captureGenerated();
 
   // Every rule a pack is held to, reported together: an author fixes them in one pass rather than one build
   // each, and the switchable ones say how to allow them (`build/pack-rules.ts`)
@@ -242,6 +243,7 @@ async function buildIntoStaging(args: string[], root: string) {
   // Flow helpers for dependents: their generated flow helpers re-export this pack's
   const flowHelpers = await bundlePackFlowHelpers(root, path.join(outputDir, PACK_LAYOUT.typesDir), {
     release,
+    compilation,
     recordModuleReads: reads?.forPhase('flowHelpersModule'),
     recordTypeReads: reads?.forPhase('flowHelperTypes'),
   });

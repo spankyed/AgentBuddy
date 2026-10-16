@@ -45,6 +45,7 @@ async function bundlePackSource<T extends EsbuildOptions>(
   const esbuild = await import('esbuild');
   const configuration = options.compilation ? options.compilation.configuration : readPackCompilerConfiguration(packDir);
   const plugins: import('esbuild').Plugin[] = [rejectHostImportsPlugin(), stubFrontendAssetsPlugin()];
+  if (options.compilation) plugins.push(capturedSourcesPlugin(options.compilation));
 
   const merged: EsbuildOptions = {
     bundle: true,
@@ -68,6 +69,21 @@ async function bundlePackSource<T extends EsbuildOptions>(
   // esbuild keys `outputFiles`/`metafile` off the literal options it was called with; merging hides
   // the caller's `write: false` / `metafile: true` from it, so restate them on the result.
   return result as unknown as import('esbuild').BuildResult<T>;
+}
+
+/** Native esbuild resolves modules itself, but consumes the build's owned source bytes. */
+function capturedSourcesPlugin(compilation: CompilationInputs): import('esbuild').Plugin {
+  const loaders: Record<string, import('esbuild').Loader> = {
+    '.ts': 'ts', '.mts': 'ts', '.cts': 'ts', '.tsx': 'tsx',
+    '.js': 'js', '.mjs': 'js', '.cjs': 'js', '.jsx': 'jsx', '.json': 'json',
+  };
+  return { name: 'apack-captured-sources', setup(build) {
+    build.onLoad({ filter: /\.(?:[cm]?[jt]s|[jt]sx|json)$/, namespace: 'file' }, args => {
+      const contents = compilation.readFile(args.path);
+      if (contents === undefined) throw new Error(`Missing captured compiler input: ${args.path}`);
+      return { contents, loader: loaders[path.extname(args.path)], resolveDir: path.dirname(args.path) };
+    });
+  } };
 }
 
 function bundleError(err: unknown): { success: false; error: string } {

@@ -6,6 +6,9 @@ import { SOURCE_CONDITION } from '@apackdev/host/build/source-resolution';
 import { readCompilerModuleInputs } from './compiler-module-inputs.ts';
 import { readCompilerInstallationInputs } from './compiler-installation.ts';
 import type { PackCompilerConfiguration } from './compiler-configuration.ts';
+import fs from 'node:fs';
+import path from 'node:path';
+import { packInputFiles } from '@apackdev/host/build/pack-inputs';
 
 /** Instrumentation flags do not change compilation. The reserved source mode is in buildToolHash. */
 export function compilationConditions(args = process.execArgv, nodeOptions = process.env.NODE_OPTIONS ?? ''): string[] {
@@ -25,6 +28,8 @@ export function compilationConditions(args = process.execArgv, nodeOptions = pro
 export interface CompilationInputs {
   readonly hash: string;
   readonly configuration: PackCompilerConfiguration | undefined;
+  readFile(file: string): Buffer | undefined;
+  captureGenerated(): void;
   assertCurrent(): void;
 }
 
@@ -35,22 +40,35 @@ export function captureCompilationInputs(packRoot: string): CompilationInputs {
   if (compiler && !compiler.packages.includes(cliRoot)) throw new Error('Captured compiler inputs do not belong to this CLI');
   const capturedPackages = new Set(compiler?.packages);
   const modules = readCompilerModuleInputs(packRoot);
-  const current = () => {
+  const current = (capture = false) => {
     const owners = [{ id: 'pack', directory: packRoot, development: true }];
     if (!compiler) owners.unshift({ id: 'cli', directory: cliRoot, development: false });
     return createHash('sha256').update(compiler?.hash ?? buildToolHash()).update(readPackageInputs(owners, {
       discovered: modules.packageDirectories.filter(directory => !capturedPackages.has(directory)),
+      onFile: capture ? (file, bytes) => modules.captureFile(file.source, bytes) : undefined,
     }).hash).update(modules.hash)
       .update(JSON.stringify([process.versions.node, process.platform, process.arch, compilationConditions()]))
       .digest('hex');
   };
-  const hash = current();
-  return { hash, configuration: modules.configuration, assertCurrent() {
-    try {
-      modules.assertCurrent();
-      if (current() !== hash) throw new Error('Implementation, package or execution options differ');
-    } catch (cause) {
-      throw new Error(`Compiler or installed package inputs changed; retry before publishing: ${errorMessage(cause)}`, { cause });
-    }
-  } };
+  const hash = current(true);
+  return {
+    hash,
+    configuration: modules.configuration,
+    readFile: modules.readBytes,
+    captureGenerated() {
+      for (const relative of packInputFiles(packRoot, { generated: true })) {
+        if (!relative.startsWith('src/__generated__/')) continue;
+        const file = path.join(packRoot, relative);
+        modules.captureFile(file, fs.readFileSync(file));
+      }
+    },
+    assertCurrent() {
+      try {
+        modules.assertCurrent();
+        if (current() !== hash) throw new Error('Implementation, package or execution options differ');
+      } catch (cause) {
+        throw new Error(`Compiler or installed package inputs changed; retry before publishing: ${errorMessage(cause)}`, { cause });
+      }
+    },
+  };
 }

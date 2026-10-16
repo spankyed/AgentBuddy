@@ -24,6 +24,9 @@ it('serves one captured byte value through aliases and rejects changed live byte
   fs.symlinkSync(file, alias);
   const read = vi.spyOn(fs, 'readFileSync');
   const original = view.fileSystem.readFile(file);
+  view.readBytes(file)!.fill(0);
+  expect(view.fileSystem.readFile(file)).toBe(original);
+  expect(() => view.captureFile(file, Buffer.from('different producer bytes'))).toThrow('changed during capture');
   expect(view.fileSystem.readFile(alias)).toBe(original);
   const hash = view.hash();
   fs.writeFileSync(file, 'export const value = 2;');

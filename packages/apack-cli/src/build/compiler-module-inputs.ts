@@ -15,6 +15,8 @@ export function readCompilerModuleInputs(root: string, observe?: BuildInputObser
   hash: string;
   packageDirectories: string[];
   configuration: PackCompilerConfiguration | undefined;
+  readBytes(file: string): Buffer | undefined;
+  captureFile(file: string, bytes: Buffer): void;
   assertCurrent(): void;
 } {
   const realRoot = fs.realpathSync(root);
@@ -38,9 +40,10 @@ export function readCompilerModuleInputs(root: string, observe?: BuildInputObser
   };
   const scripts = new Map<string, string>();
   const rootNames: string[] = [];
-  const rootFiles = packInputFiles(root, { modulesOnly: true });
+  const rootFiles = packInputFiles(root);
   for (const relative of rootFiles) {
     const file = path.join(root, relative);
+    view.readBytes(file);
     if (/\.[cm]?[jt]sx?$/.test(file)) rootNames.push(file);
     if (!file.endsWith('.vue')) continue;
     const code = fileSystem.readFile(file);
@@ -100,12 +103,12 @@ export function readCompilerModuleInputs(root: string, observe?: BuildInputObser
   const hash = createHash('sha256').update(JSON.stringify(rootFiles)).update(view.hash());
   const assertCurrent = () => {
     view.assertCurrent();
-    if (JSON.stringify(packInputFiles(root, { modulesOnly: true })) !== JSON.stringify(rootFiles)) {
+    if (JSON.stringify(packInputFiles(root)) !== JSON.stringify(rootFiles)) {
       throw new Error('Compiler source membership changed during discovery');
     }
   };
   assertCurrent();
-  return { hash: hash.digest('hex'), configuration,
+  return { hash: hash.digest('hex'), configuration, readBytes: view.readBytes, captureFile: view.captureFile,
     packageDirectories: [...packages].sort((a, b) => relative(a) < relative(b) ? -1 : relative(a) > relative(b) ? 1 : 0), assertCurrent };
 
 }

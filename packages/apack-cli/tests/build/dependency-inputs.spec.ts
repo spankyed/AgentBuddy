@@ -12,7 +12,7 @@ import { dependencyTypes } from '../../src/commands/generate.ts';
 import { assertGeneratedCurrent, generateEntries } from '../../src/commands/generate-entries.ts';
 import { bundlePackTypes } from '../../src/build/types-bundler.ts';
 
-const compilation = { hash: 'test-compiler', configuration: undefined, assertCurrent() {} };
+const compilation = { hash: 'test-compiler', configuration: undefined, readFile() { return undefined; }, captureGenerated() {}, assertCurrent() {} };
 
 
 const roots: string[] = [];

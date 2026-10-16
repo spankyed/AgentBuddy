@@ -104,6 +104,11 @@ pack-input walker. A captured pack root uses the same source projection as its f
 and discovered-package ordering; reads and validation still use its owned physical files.
 `captureCompilationInputs` retains the scan's validator, rechecking its read-set plus
 package/tool/options inputs without reconstructing the TypeScript program. It is scoped to one build.
+Authored files and package-graph callback bytes seed the same owned view. After codegen,
+`captureGenerated()` admits its completed bindings separately from authored membership. All five native
+bundle paths, including flow helpers, consume copied bytes from that view through esbuild's `onLoad`;
+callers cannot mutate the owned buffers. Native resolution still uses the original namespace. This
+owns module bytes, not complete filesystem/loader execution, declarations or the frontend compiler.
 Compiler capture does not freeze pack sources, external
 frontend compiler reads or ambient Node preloads; the complete input/publication contract remains
 owned by the discovery plan.
