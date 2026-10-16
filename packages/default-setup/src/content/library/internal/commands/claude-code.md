@@ -9,7 +9,7 @@ name: Claude Code commands
 **cc-context**: Show context window usage breakdown
 **cc-status**: Show version and auth info
 **cc-model**: Model name (optional, shows current if omitted)
-**cc-hooks**: Show native hook sources, enabled/disabled state, policy and editability. apply <native JSON edit> delegates add/replace/remove to Claude; use original editable matcher/config for targets. When a conversation is open, edits require its matching project and idle state; it is closed after saving so the next launch reloads hooks.
+**cc-hooks**: Read hooks from a matching live conversation. start opens a temporary native process and can run configured session-start/end hooks. apply <native JSON edit> delegates add/replace/remove; use original editable matcher/config targets. An open conversation must be idle and match the project; saving closes it and can run its session-end hooks. Reading the new catalog requires an explicit start.
 **cc-memory**: Show native instruction/memory files and availability; auto on|off sets the user auto-memory preference
 **cc-recap**: Summarize current conversation
 **cc-skills**: Show native Skill sources, states and locks; set <name> <on|name-only|user-invocable-only|off> edits a Skill state

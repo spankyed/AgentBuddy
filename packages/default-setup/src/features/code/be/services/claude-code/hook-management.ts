@@ -7,7 +7,7 @@ import type { ClaudeHooksListing } from './host-controls.ts'
 
 export interface ClaudeHooksOptions extends Pick<QueryOptions, 'env' | 'cliPath' | 'signal'> { cwd: string }
 
-/** Read the native catalog under its selected project/settings scope; never reconstruct settings files. */
+/** Launch native discovery in the selected project. Normal startup/close runs configured session hooks. */
 export async function getHooksListing(options: ClaudeHooksOptions): Promise<ClaudeHooksListing> {
   const allowed = new Set(['cwd', 'env', 'cliPath', 'signal'])
   const unsupported = Object.keys(options).filter(key => !allowed.has(key))

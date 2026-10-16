@@ -251,8 +251,9 @@ async function handlePermissions(args: string[], services: Services, threadId?: 
 }
 
 async function handleHooks(args: string[], services: Services, threadId?: string, rawText?: string): Promise<{ text: string; data?: any }> {
-  const editing = args.length > 0;
-  if (editing && (args[0] !== 'apply' || !rawText?.trim().startsWith('apply '))) return { text: 'Usage: cc-hooks [apply <native JSON edit>]' };
+  const explicitStart = args.length === 1 && args[0] === 'start';
+  const editing = args[0] === 'apply';
+  if ((args.length && !editing && !explicitStart) || (editing && !rawText?.trim().startsWith('apply '))) return { text: 'Usage: cc-hooks [start | apply <native JSON edit>]' };
   if (editing && threadId && services.cli.claudeCode.isConversationBusy(threadId)) return { text: 'Wait for the Claude conversation to become idle before editing hooks.' };
 
   const prior = threadId ? getClaudeState(services, threadId) : undefined;
@@ -275,10 +276,10 @@ async function handleHooks(args: string[], services: Services, threadId?: string
       notice += 'Closed the idle native process; the next conversation launch will load its hook configuration.\n';
       handle = undefined;
     }
+    return { text: `${notice}Use cc-hooks start to read a fresh catalog; starting it can run configured session hooks.`, data: result };
   }
-  let data;
-  try { data = handle ? await handle.getHooksListing() : await services.cli.claudeCode.getHooksListing(cwd ? { cwd } : undefined); }
-  catch (error: any) { if (!editing) throw error; return { text: `${notice}Saved the edit, but reading the new native catalog failed: ${error?.message || 'Unknown error'}` }; }
+  if (!handle && !explicitStart) return { text: 'No matching native conversation is running. Use cc-hooks start to open a temporary native process and read its catalog. Starting and closing it can run configured session hooks.' };
+  const data = handle ? await handle.getHooksListing() : await services.cli.claudeCode.getHooksListing(cwd ? { cwd } : undefined);
   const lines = [`Native hooks (${handle ? 'current conversation' : 'new process for selected project'}).`, `${data.eventCatalog.length} available events; ${data.hooks.length} configured hooks.`];
   if (data.policy.allDisabled) lines.push('Hook execution is disabled in this native configuration.');
   if (data.policy.disabledByPolicy) lines.push('Managed policy disables hooks.');
