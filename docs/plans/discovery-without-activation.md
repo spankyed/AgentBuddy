@@ -34,13 +34,14 @@ completion of the whole plan. Compiler capture/session ownership landed in `aba6
 strict run passed (29 executed, one cached), including all 744 integration cases. Frozen pack/external
 inputs, complete build-session lifetime and whole-build freshness remain unfinished.
 
-Execution follows the goal's [current handoff](../goals/goal-settings-and-pack-contracts.md#current-handoff--compiler-checkpoint-2026-10-16)
+Execution follows the goal's [live ledger](../goals/goal-settings-and-pack-contracts.md#live-execution-ledger-reconciled-2026-10-16)
 and [bounded validation](../../CLAUDE.md#keep-validation-bounded). Diagnose a failed assertion with its
 preserved evidence and targeted reproducer; do not restart the broad chain after every local fix.
 Broaden only to close a stated coverage gap or run the required converged gate. Keep checkpoint claims,
 unresolved acceptance and unrelated infrastructure defects distinct. No deadline increase, weakened
 assertion or repeated green focused run substitutes for the required gate. The compiler checkpoint is
-committed; complete the input/publication prerequisite below before expanding discovery consumers.
+committed. Use the ledger's per-deliverable dependencies: independent installed-data readers may
+advance while the unfinished producer/freshness workstream remains required.
 
 Source `37890aa9b` now installs native input capture before worker preloads and adopts it during
 compilation. It observes existing loader threads through a coordinator without adding source hooks or
@@ -49,10 +50,14 @@ validation includes loader facts. Source `65a189cb7` adds ordered effective exec
 compilation key. Source `3929897a3` captures that identity before user preloads can rewrite ambient
 values. The worker inherits `NODE_OPTIONS` and custom export conditions; supervisor entry modes are
 not implicitly worker configuration. Immutable executable/native runtime ownership, source/dependency
-snapshot ownership, retained frontend lifetimes and persisted receipt/passive freshness remain required. Source `c85fc178a` removes repeated identical-path projections during native input materialization;
+snapshot ownership, retained frontend lifetimes and persisted receipt/passive freshness remain required. Source
+`bbf05ec00` captures authored bytes and file membership before preloads, and discovery reuses that
+inventory. Consumed namespace queries still have their existing owner. Declared dependency capture,
+late external inputs, cross-thread coherence and derived-output ownership remain unfinished; the goal's
+live ledger owns execution order and the checkpoint evidence below records exact claims. Source `c85fc178a` removes repeated identical-path projections during native input materialization;
 the previously failing focused watch publication/refusal/repair scenario passes. The latest strict
 run remains failed, and this focused result does not establish pooled acceptance.
-The goal's current handoff owns evidence and the next narrow diagnostic. Keep all remaining discovery
+The goal's live ledger owns current acceptance and next work. Keep all remaining discovery
 and downstream requirements active; no timeout/assertion adjustment or broad diagnostic rerun is implied.
 
 **How to read the history:** dated audits, designs and checkpoint handoffs below record what was known

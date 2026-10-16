@@ -78,11 +78,12 @@ so completed implementation is not repeatedly scheduled as new work.
 Completed prerequisites: captured compiler installation/session reuse (`aba660aed`), shared authored
 scope (`882d2a50b`), public cancellation (`6641b2c99`), startup capture (`37890aa9b`), publication
 alias-processing repair (`c85fc178a`), and ordered effective execution-options/runtime-version hashing
-(`65a189cb7`). These are source evidence, not a claim that the full strict gate passes.
+(`65a189cb7`), early launch identity (`3929897a3`), and authored bytes/membership before
+preloads (`bbf05ec00`). These are source evidence, not a claim that the full strict gate passes.
 
 | Checkpoint | Required outcome and acceptance boundary | Dependencies |
 |---|---|---|
-| B1 — Launch and remaining input coverage | Reconcile current capture against actual supported compiler paths. Close remaining parent launch-option forwarding, executable/native-runtime ownership and pre-startup/source/dependency resolution gaps. Enumerate concrete missing inputs before implementing; prove relevant changes invalidate/refuse publication while equivalent runs preserve identity and resolution. Ordered options already landed; do not reimplement them. | Existing captured installation/startup view. |
+| B1 — Launch and remaining input coverage | Reconcile current capture against actual supported compiler paths. The launch audit preserves inherited NODE_OPTIONS and forwarded export conditions; supervisor entry modes are not worker configuration. Early launch identity and authored bytes/membership are implemented through `bbf05ec00`. Close remaining executable/native-runtime ownership and pre-startup/dependency/resolution gaps. Enumerate concrete missing inputs before implementing; prove relevant changes invalidate/refuse publication while equivalent runs preserve identity and resolution. Ordered options already landed; do not reimplement them. | Existing captured installation/startup view. |
 | B2 — Frontend compiler generation | Own backend and actual Vite compiler generations coherently; successful compiler refresh cannot leave the frontend using the old compiler. Preserve HMR, useful paths, recovery and awaited retirement. | B1 inputs needed by the frontend handoff, not unrelated discovery consumers. |
 | B3 — Remaining resource lifetime | Audit native/background work and required platform-specific descendant handling against existing cancellation. Close demonstrated ownership gaps so build-owned work cannot outlive final validation/disposal. Retain required one-shot/dev/platform cases; public cancellation is already implemented. | Relevant B1/B2 owners; no security sandbox or general resource-confinement expansion. |
 | B4 — Persist successful input/output association | Publish the completed input record atomically with sealed output. Failed or incoherent builds retain the incumbent; readers can validate the association without executing pack/compiler code. Startup observations alone are not this record. | Complete relevant B1–B3 producer ownership. |
@@ -96,8 +97,9 @@ publication repair as outstanding implementation without new evidence.
 
 ### Execution order and change control
 
-1. Close the current launch/input slice as a named B1 checkpoint with its exact supported-path claims,
-   source commit and focused evidence. Do not turn B1 into completion of all B1–B6.
+1. The scoped launch/authored-input slice is checkpointed through `bbf05ec00`; exact claims and
+   focused evidence are below. It does not complete B1 or B1–B6. Continue independent discovery slices
+   next; remaining producer gaps stay in step 3 rather than becoming a blanket prerequisite.
 2. Finish the named discovery consumers in reviewable slices. Each slice names its actual prerequisite
    declaration, binding and publication guarantees. Installed catalog metadata migration is not
    automatically blocked on Vite generation replacement or passive source-freshness consumers.
@@ -199,7 +201,26 @@ naming branch is not an automatic source of future changes.
 
 ### Compiler checkpoint evidence (2026-10-16; historical, see live ledger)
 
-Latest source is `3929897a3` (launch identity before user initialization), following `65a189cb7`
+Latest source is `bbf05ec00` (authored input ownership before preloads). The native pack input view
+now captures the existing authored-file inventory and every file's bytes before user initialization,
+including linked files and binary assets. TypeScript discovery consumes that frozen inventory instead
+of selecting another live root set. The same owner validates membership and bytes and disposes them;
+no new walker or authored-path policy is introduced. Generated/build/dependency exclusions stay
+unchanged, including creation of a previously absent src parent for generated bindings. Directory
+queries remain separately observed when consumed; this is not a claim of complete namespace closure.
+
+The first-read regression fails on preceding source, returning edited bytes rather than captured bytes.
+Forty affected view/module cases pass; two final lifetime/exclusion cases, CLI typechecking and lint
+pass too. A real native preload edits an unread authored file and clears ambient launch options: the
+entry still reads the original value, refuses changed originals, validates exact restoration and starts
+no TypeScript runtime before the preload. The public worker's real repeat-build/cache case also passes,
+retaining output identity and facade reuse (46.78s for both process cases). Evidence:
+`/private/tmp/apack-authored-capture-{before,unit,lifetime,native,worker,types}.log`.
+
+This closes the scoped authored-input slice of B1. The live ledger owns remaining producer work and
+execution order; this evidence does not add a prerequisite before independent discovery migrations.
+
+Preceding source `3929897a3` (launch identity before user initialization), following `65a189cb7`
 (ordered execution identity) and `c85fc178a` (no-op alias projection removal). The native bootstrap
 serializes runtime versions, platform/architecture, ordered native arguments and original user
 `NODE_OPTIONS` before executing preloads. Compilation adopts that owned identity rather than reading

@@ -106,7 +106,8 @@ it ships beside `cli.js`. Internal compiler tests call `build()` in-process; pro
 exercise the real bootstrap and runner.
 
 `build/compiler-file-view.ts` owns metadata, bytes, physical bindings and directory/glob results for one
-TypeScript scan. Configuration, Vue extraction and the compiler host consume that view. Repeated queries
+compiler frame. `build/compiler-input-view.ts` captures authored bytes and membership before user
+preloads; configuration, Vue extraction and the compiler host reuse that inventory and view. Repeated queries
 reuse captured data; a final check refuses changed bytes, missing targets, link changes or membership.
 Origin mappings and returned arrays cannot mutate its fingerprint. Root membership uses the shared
 pack-input walker. A captured pack root uses the same source projection as its files for fingerprints
