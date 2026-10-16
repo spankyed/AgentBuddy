@@ -1,12 +1,12 @@
-# Opening an entity is one verb, and no caller names a plugin
+# Open entities through declared destinations
 
 Status: in progress on the accepted declaration/catalog and actor-readiness contracts. The
 [execution goal](../goals/goal-settings-and-pack-contracts.md#execution-order-and-change-control) owns
 the current order; unrelated compiler/freshness work is not a prerequisite. Re-audit the historical
 survey against current code. The catalog owns declared entity-to-feature destinations; activation binds the
 handler. Keep one `openEntity` verb, but do not implement the old registry lookup as a second inventory.
-The survey below is historical input: current `ReferenceTypeConfig` still has `navigate`, so the claim
-that it was already removed is not a current-code assertion.
+The context survey below is historical. Source `cd9c57de6` removes reference navigation callbacks and
+migrates generic callers; blueprint node revealing retains its separate purpose and remains below.
 
 Build producer `94148c9e0` and catalog/admission `479c75e01` are implemented. Codegen materializes
 exported `Contract.opens` into snapshot data; native composition supplies the same map explicitly.
@@ -15,10 +15,16 @@ enablement persistence and catalog publication; disabled declarations remain vis
 eligibility compares accepted claims, while installed bindings use their sealed build identity. Window
 frames validate target membership before publication.
 
-Remaining: `openEntity`, typed event/guard, correlated readiness/delivery, missing-entity handling,
-feature/caller migration, removal of navigation callbacks, compiled destination inspection and the
-stored-reference Electron case. The owning goal records focused evidence and the failed strict run;
-this is not complete navigation or final whole-goal acceptance.
+Routing checkpoint `cd9c57de6` implements `openEntity`, typed guards, the host existence query and
+one child actor owning cancellation, final validation and delivery. The existing readiness queue
+carries only a token. All six feature adapters handle the event directly; reference callbacks are gone.
+The harness captures verified destinations once per file, and CLI inspection exposes the compiled map.
+Sixty shell checks, including missing-actor refusal, and the real external reference click pass.
+
+Remaining: coordinated blueprint node revealing, abandoned Library document-load handling, complete
+state-specific handler acceptance and a stored-message reference click into another feature. The
+preview/picker check is not that stored-message proof. The execution goal owns checkpoint validation
+and the final committed-source strict gate; this is not complete Phase 4 acceptance.
 
 ## Context
 

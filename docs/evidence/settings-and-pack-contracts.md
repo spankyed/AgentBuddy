@@ -6372,3 +6372,46 @@ context difference is evidence, not a proven explanation of the worker exit. Log
 The broad run precedes the final malformed-frame correction and registry-first signature cleanup;
 the focused repair suites and final types cover those changes. Unreached integration/app checks and
 final committed-source strict `--all` remain required. No broad diagnostic rerun or deadline change.
+
+## Entity opening lifecycle checkpoint (2026-10-16)
+
+Source `cd9c57de6` implements the generic entity-opening path and its focused lifecycle refactor.
+One child actor holds the canonical ID, frozen destination/binding and request token. Its invoked
+`fromPromise` actor owns query cancellation; completion/refusal clears the operation and removes its
+queued token centrally. Readiness and final delivery independently validate current eligibility.
+Missing destination actors produce an attributed refusal. The shell no longer copies entity requests
+through selection/delivery or maintains `pendingEntityOpen`/`entityCall`.
+
+All six feature adapters handle `OPEN_ENTITY` directly through existing actions; redundant transitions
+are removed while intentional state-specific transitions remain. Reference declarations, generators,
+bindings, fixtures and public docs remove `navigate`. The host/API/renderer query port checks existing,
+non-deleted rows without narrowing the supported entity-ID grammar. The harness lazily captures one
+verified declaration map per test-file setup and refuses missing or mismatched builds. CLI inspection
+reports compiled destinations without importing sources. Blueprint node revealing is deliberately a
+separate operation; its timer replacement remains required in the active plan.
+
+Evidence:
+
+- Focused routing/reference/SDK/API/CLI checks pass 127 cases before the lifecycle refactor; the final
+  owner and shell regression run passes all 60 cases, including abort/supersession, queued readiness,
+  destination replacement and missing-actor delivery. The final run emits no XState action warnings.
+  Logs: `/private/tmp/apack-entity-migration-focused-final.log`, `/private/tmp/apack-entity-owner-final.log`.
+- Host/testing types, pack Vue/TypeScript and full lint pass. Public SDK/EARS reports and schema were
+  regenerated and reviewed. The shipped facade diff contains exactly the six `opens` declarations.
+- `npm run chain -- --strict --cores 4 --no-classify` ran once: failed in 409.5s, 19 steps, evidence
+  `node_modules/.cache/apack-chain/runs/2026-10-16T22-31-16Z-68388`. Pack builds, all typechecks reached,
+  schema/API/package checks, packaged authoring's author half and external contract checks pass.
+  It failed the UI's undeclared direct EARS type import and the unrecorded facade fields. The import now
+  uses the SDK; `check-import-specifiers.ts` and `npm run facade:check -w @app/default-setup` both pass
+  after correction. No broad rerun was used to diagnose or confirm those fixes.
+- `npm run build:runtime` passes on the refactored source. From `tests/packs/external-pack`,
+  `apack pack test --host /Users/spankyed/Develop/Projects/AgentBuddy --prebuilt tests/e2e/memos.spec.ts
+  --grep 'external reference declarations'` passes in real Electron (one case, 6.0s). It exercises
+  the canonical click, API existence query and declared destination through the current lifecycle.
+  Log: `/private/tmp/apack-entity-owner-external-app.log`.
+
+The gate also reported changed default-pack outputs after its successful build step and increased
+build/authoring durations. These are preserved B6 observations, not evidence of a shared cause or a
+reason to expand this routing checkpoint into pipeline work. Unreached checkpoint steps, all later
+goal work and final committed-source strict `--all` remain required. The active handoff owns the next
+navigation work; this evidence is neither full Phase 4 acceptance nor a second execution backlog.

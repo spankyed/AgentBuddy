@@ -66,7 +66,7 @@ so completed implementation is not repeatedly scheduled as new work.
 | Live editor composition (Phase 3) | Implemented: `8863043a6` | Complete cold-document/provider readiness and real typing/replacement acceptance; fix demonstrated omissions without restarting composition. |
 | Remaining discovery consumers (Phase 3) | Partial; viewer readers `a278d4116` and shell default/dispatch `69860e4be` implemented | Navigation inventories/order/visibility implemented in `cfcbb53f9`; complete final window/loader acceptance; DSL producer/readers are implemented in `8ed188046` / `39e48e66e` and await final worker acceptance. Flow reference/rename/missing-target inspection is implemented in `7196d61d3`; complete its final external acceptance. Audit services, repositories, events, native fields and static assets; migrate each actual gap and remove superseded discovery stores. |
 | Build input/publication and freshness (Phase 3) | Partial; finite checkpoints B1–B6 below | Finish the common producer contract and four passive consumer migrations; installed discovery must remain source-free and activation-free. |
-| Entity navigation (Phase 4) | Reference identity, producer `94148c9e0` and catalog/admission `479c75e01` implemented; event delivery/caller migration unfinished | Implement `openEntity`, typed destination guards and revision-safe readiness delivery; migrate handlers/callers and expose compiled destinations in offline inspection under open-entity.md. |
+| Entity navigation (Phase 4) | Reference identity, producer `94148c9e0`, catalog/admission `479c75e01` and owned routing/reference migration `cd9c57de6` implemented | Finish blueprint node revealing without its timer, address abandoned Library document loads, and close handler/stored-message acceptance under open-entity.md. |
 | Frontend boundaries (Phase 5) | Implemented and locally accepted: `713a6c1fd`, including the real external-pack window | Preserve pane/form containment, attributed nonfatal diagnostics and retired-instance refusal through final committed-source strict acceptance. |
 | Consumed APIs (Phase 6) | Inventory/prototype requirements documented; implementation outstanding | Settle declarations and granularity, generate matching runtime/type facades, mediate administration and dependency APIs, and migrate real consumers. |
 | Dependency provenance (Phase 6) | Cache/admission `ff4358588`, inspection and verified-build checkpoints in the evidence record implemented; overall closure partial | Verify exact origin/version/content through reuse and inspection, integrate remaining freshness dependencies, and close the linked acceptance matrix. Do not restart cache/provenance storage. Frozen resolution remains conditional on a distribution requirement. |
@@ -102,19 +102,21 @@ real external-pack Electron case pass: failed panes/forms preserve other panes, 
 defaults; retired frontend retry is refused. The staged source and built runtime matched that proof.
 Final whole-goal strict acceptance remains open.
 
-Current Phase 4 source checkpoint: catalog/admission `479c75e01`, following producer `94148c9e0`.
-Native and installed claims project through the same catalog; enabled conflicts refuse before imports,
-enablement writes or publication. Native frontend eligibility retains accepted claims; installed
-eligibility uses sealed build identity. Window frames refuse invalid destination maps instead of
-silently dropping them. Focused behavior/static checks pass. Strict run `2026-10-16T21-34-16Z-38082`
-failed nine unit cases, repaired with focused evidence in `149502836`; no passing broad gate is claimed.
+Current Phase 4 source checkpoint: `cd9c57de6`, following producer `94148c9e0` and catalog/admission
+`479c75e01`. One child actor owns entity intent, the invoked existence query and final delivery;
+readiness carries a token. Feature handlers are direct, reference callbacks are removed, verified test
+metadata is captured once, and offline inspection shows compiled destinations. Sixty shell checks and
+the real external-pack Electron reference click pass. See [checkpoint evidence](../evidence/settings-and-pack-contracts.md#entity-opening-lifecycle-checkpoint-2026-10-16).
+Strict run `2026-10-16T22-31-16Z-68388` failed the import boundary and facade report; both are corrected
+and individually verified. Its authoring and external contract steps pass. Later gate steps and final
+committed-source strict `--all` remain unproven; no passing broad gate is claimed.
 
-Next: implement `openEntity(id)`, its typed event/guard and correlated readiness delivery; convert the
-named feature handlers and callers, remove their reference navigation callbacks, and expose compiled
-destination identities in offline inspection. Distinguish missing entities from missing/disabled
-providers and reject retired delivery. Preserve canonical stored IDs and typed EARS. Close with the
-plan's routing cases and one stored-reference Electron proof; do not restart reference identity,
-catalog construction or unrelated compiler work.
+Next: preserve blueprint node revealing as a separate Flows operation and replace its caller timer
+with feature-owned load/reveal coordination. Reproduce and fix Library's unconditional
+`DOCUMENT_LOADED` navigation so an abandoned request cannot reopen an editor. Close the six handlers'
+state-specific cases and the stored-message reference click into another feature. The existing external
+preview click is runtime evidence, not that stored-message proof. Do not restart the implemented
+reference identity, destination catalog, shell lifecycle or unrelated compiler work.
 
 1. Finish Phase 4 entity destinations and caller migration. Phase 5 containment is already locally
    accepted; retain its checks for final verification rather than schedule another implementation.
