@@ -1237,8 +1237,13 @@ register an executable pack in an otherwise unused host registry merely to retri
 `CompilePackOptions.importModule` is the common execution boundary for custom content compilers,
 flow modules and dependency/generated step definitions. Forward it through `loadDefinitions` and
 specialty compilation; no definition loader may silently bypass the build owner's namespace.
-`f9015a07f` wires these consumers to the owned input tree. Arbitrary runtime imports, startup loader
-options and full execution/receipt acceptance remain required by the execution-ownership work below.
+`f9015a07f` wires these consumers to the owned input tree. `14aa9fa38` adds a scoped synchronous
+Node resolver hook for transitive ESM/CommonJS requests, including absolute URLs and computed
+imports. Preserve native resolution and tsx transformation; do not add a competing module loader.
+An async loader-thread bridge to the main build owner deadlocks synchronous resolution and is rejected.
+The synchronous hook requires Node 22.15+ or 23.5+; the CLI/checkout engines state this explicitly.
+Original-parent createRequire, runtime metadata/diagnostic origin projection, concurrent scope
+acceptance, startup loader options and full execution/receipt acceptance remain required below.
 
 ### Review correction: runtime rollback must preserve incumbent resources (2026-10-13)
 

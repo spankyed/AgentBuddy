@@ -120,7 +120,34 @@ naming branch is not an automatic source of future changes.
 
 ### Current handoff — compiler checkpoint (2026-10-16)
 
-Latest source is `f9015a07f`. Custom content compiler entrypoints now execute from the owned
+Latest source is `14aa9fa38`. A per-build synchronous Node resolver hook admits transitive requests
+through the existing native input reader, redirects absolute module/file-URL targets into the owned
+tree and leaves resolution/transform/loading to Node and tsx. ESM queries and fragments are preserved;
+CommonJS absolute requests remain paths. Hook disposal precedes input cleanup on success and failure.
+Node engines now state the actual requirement: CLI `^22.15.0 || >=23.5.0`, checkout `>=23.5.0`.
+The installed Electron runtime was checked directly: Node 22.17.1 exposes registerHooks.
+See [Node's synchronous hook contract](https://nodejs.org/download/release/v23.11.1/docs/api/module.html#moduleregisterhooksoptions).
+
+Evidence: the focused compilation consumes captured static absolute, computed dynamic and aliased
+imports plus createRequire values through temporary edits; synchronous import.meta.resolve stays
+inside the owned namespace. The final query/fragment variant passes in 15.01s. The real worker passes
+in 26.93s before that final URL-handling refinement. Scoped lint passes; committed-source CLI
+typecheck is recorded at `/private/tmp/apack-module-hooks-types-committed.log`. Other logs:
+`/private/tmp/apack-module-hooks-{query,worker-final,lint-final}.log`. No broad gate repeated.
+
+A rejected asynchronous MessagePort bridge is preserved in stash `57379e073d36854b9e783dbcc684cc7d5ecf5e87`.
+A disposable two-second native probe demonstrated deadlock when synchronous import.meta.resolve
+waited for a callback on the blocked main thread. The synchronous API removes that bridge. An extra
+load hook conflicted with tsx in the real worker and was removed: owned namespace admission already
+precedes native loading, so a second source-loader implementation is unnecessary.
+
+Remaining loader acceptance includes createRequire constructed with an original/source parent URL,
+module metadata/diagnostic origin projection and deterministic output, independent concurrent scopes,
+external native/package entry variants, loader/preload startup ownership and pending task lifetimes.
+Frontend execution, whole-build receipts and every later goal requirement remain open. The committed
+source checkpoint is focused evidence, not the required final strict --all acceptance.
+
+Preceding source `f9015a07f`. Custom content compiler entrypoints now execute from the owned
 module tree with captured tsx configuration. The SDK forwards one `PackModuleLoader` through custom
 formats, flows, dependency step modules and the pack's generated step module instead of letting the
 last three bypass the build owner's loader. Standalone SDK use retains native import as its default.
