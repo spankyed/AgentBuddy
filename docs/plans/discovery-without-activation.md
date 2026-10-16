@@ -46,8 +46,9 @@ Source `37890aa9b` now installs native input capture before worker preloads and 
 compilation. It observes existing loader threads through a coordinator without adding source hooks or
 changing measured preload order. Cached filesystem APIs share the same capture owner, and final
 validation includes loader facts. This does not complete execution identity, source/dependency
-snapshot ownership, retained frontend lifetimes or persisted receipt/passive freshness. The latest
-strict run failed; the focused watch-publication case still misses its first 20s publication wait.
+snapshot ownership, retained frontend lifetimes or persisted receipt/passive freshness. Source `c85fc178a` removes repeated identical-path projections during native input materialization;
+the previously failing focused watch publication/refusal/repair scenario passes. The latest strict
+run remains failed, and this focused result does not establish pooled acceptance.
 The goal's current handoff owns evidence and the next narrow diagnostic. Keep all remaining discovery
 and downstream requirements active; no timeout/assertion adjustment or broad diagnostic rerun is implied.
 

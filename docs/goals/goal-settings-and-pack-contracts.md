@@ -161,12 +161,24 @@ That retry does not prove pooled acceptance or explain teardown. Preserve the fu
 `node_modules/.cache/apack-chain/runs/2026-10-16T17-18-40Z-5247/` and
 `/private/tmp/apack-startup-fs-only-strict.log`.
 
-Next diagnostic is narrow: the watch-publication scenario still fails its first 20s publication wait
-on current built source (50.66s total), despite reaching frontend build output. The observation does
-not establish where publication is delayed. `/private/tmp/apack-startup-final-publication.log`.
-Trace worker finish/validation, parent acceptance and watch publication in that case; do not launch
-another broad diagnostic run, weaken the assertion or increase its deadline. Resolve affected failures
-before the next required strict checkpoint, and retain final committed-source strict --all acceptance.
+Source `c85fc178a` removes no-op alias projections during native input materialization. A worker CPU
+profile located 7.94s inside read-tree admission, including repeated path projection for identical
+logical/physical paths. The implementation now skips those identical-path projections; real aliases and
+final integrity checks are unchanged. Temporary timing/CPU probes were removed before committing.
+The previously failing publication/refusal/repair scenario passes on the uninstrumented build (65.04s
+including fixture setup/cleanup); all 20s publication waits and test/hook deadlines are unchanged.
+Eleven tree/path cases, CLI typecheck and scoped lint pass. Logs:
+`/private/tmp/apack-read-tree-alias-{publication,unit,types}.log`.
+Timing/profile evidence: `/private/tmp/apack-publication-complete-trace.log` and
+`/private/tmp/apack-publication-cpu/`. The measured worker rebuild and watch refresh both contribute
+latency; this small fix does not establish pooled timing acceptance or complete passive freshness.
+The companion manifest-link retargeting/refusal/repair scenario also passes (60.70s), completing both
+cases in the affected suite; `/private/tmp/apack-read-tree-alias-retarget.log`. Required strict acceptance
+and the other preserved watch/frontend/teardown failures remain unresolved; the focused pass does not
+prove those fixed. Do not restart the broad chain to diagnose them.
+
+Next: complete execution identity and remaining frame/receipt ownership in coherent checkpoints;
+resolve the named affected failures from their preserved evidence before the required converged gate.
 
 Remaining implementation still includes the complete ordered execution-options/runtime identity,
 pre-startup source/dependency ownership, native/resource and one-shot/dev lifetime, persisted completed
