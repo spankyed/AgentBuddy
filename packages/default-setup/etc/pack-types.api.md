@@ -800,6 +800,7 @@ interface ClaudeConversation {
     release(handle: QueryHandle): boolean;
     ownsTurn(handle: QueryHandle): boolean;
     listWorkflows(): ClaudeWorkflowTask[];
+    listObservedTasks(): ClaudeTaskObservation[];
     hasPendingElicitation(requestId: string): boolean;
     subscribe(listener: (event: StreamLine) => void): () => void;
     close(): Promise<void>;
@@ -3562,6 +3563,17 @@ declare const ClaudeSkillsDialogSchema: z.ZodObject<{
         }, z.ZodTypeAny, "passthrough">>;
     }, z.ZodTypeAny, "passthrough">>, "many">;
 }, z.ZodTypeAny, "passthrough">>;
+
+interface ClaudeTaskObservation {
+    id: string;
+    subject: string;
+    status?: 'completed' | 'in_progress' | 'pending';
+    description?: string;
+    owner?: string;
+    blocks?: string[];
+    blockedBy?: string[];
+    needsRefresh?: boolean;
+}
 
 type ClaudeThinkingChange = z.infer<typeof ClaudeThinkingChangeSchema>;
 

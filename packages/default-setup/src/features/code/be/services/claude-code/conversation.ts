@@ -1,3 +1,4 @@
+import { createClaudeTaskListActivity, type ClaudeTaskObservation } from './task-list-activity.ts'
 import type { ClaudeWorkflowTask } from './workflow-activity.ts'
 import { parseMcpElicitationForm, validateMcpElicitationForm } from '../../../shared/mcp-elicitation-form.ts'
 import { createClaudeNestedActivity, type ClaudeNestedActivity } from './nested-activity.ts'
@@ -28,6 +29,7 @@ export interface ClaudeConversation {
   release(handle: QueryHandle): boolean
   ownsTurn(handle: QueryHandle): boolean
   listWorkflows(): ClaudeWorkflowTask[]
+  listObservedTasks(): ClaudeTaskObservation[]
   hasPendingElicitation(requestId: string): boolean
   subscribe(listener: (event: StreamLine) => void): () => void
   close(): Promise<void>
@@ -71,6 +73,7 @@ class ConversationQueue<T> implements AsyncIterable<T> {
 export function createClaudeConversation(native: QueryHandle, consumeAutonomous: ClaudeTurnConsumer): ClaudeConversation {
   type ActiveTurn = { turn: ClaudeConversationTurn; queue: ConversationQueue<StreamLine>; consumed: Promise<void>; terminal: boolean; resolve(result: QueryResult): void; reject(error: unknown): void }
   const activity = createClaudeNestedActivity()
+  const taskList = createClaudeTaskListActivity()
   let active: ActiveTurn | undefined
   let pending: { inputId: string; consume: ClaudeTurnConsumer } | undefined
   let closing = false
@@ -129,7 +132,7 @@ export function createClaudeConversation(native: QueryHandle, consumeAutonomous:
     if (interactionRequests.has(requestId)) {
       retireInteraction(requestId)
       try { showNextInteraction() } catch (error) {
-        closing = true; activity.close(); clearInteractions(); native.kill()
+        closing = true; activity.close(); taskList.close(); clearInteractions(); native.kill()
         throw error
       }
     }
@@ -144,14 +147,14 @@ export function createClaudeConversation(native: QueryHandle, consumeAutonomous:
     native.respondElicitation(requestId, response)
     retireInteraction(requestId)
     try { showNextInteraction() } catch (error) {
-      closing = true; activity.close(); clearInteractions(); native.kill(); throw error
+      closing = true; activity.close(); taskList.close(); clearInteractions(); native.kill(); throw error
     }
   }, cancelUserDialog(requestId) {
     if (settledInteractions.has(requestId) || interactionRequests.get(requestId)?.subtype !== 'request_user_dialog') throw new ClaudeProtocolError('generic dialog is no longer pending')
     native.cancelUserDialog(requestId)
     retireInteraction(requestId)
     try { showNextInteraction() } catch (error) {
-      closing = true; activity.close(); clearInteractions(); native.kill(); throw error
+      closing = true; activity.close(); taskList.close(); clearInteractions(); native.kill(); throw error
     }
   } }
 
@@ -202,6 +205,7 @@ export function createClaudeConversation(native: QueryHandle, consumeAutonomous:
           for (const listener of listeners) { try { listener(event) } catch { /* isolate observers */ } }
           continue
         }
+        taskList.observe(event)
         activity.workflows.observe(event)
         const nested = activity.receive(event)
         for (const listener of listeners) { try { listener(event) } catch { /* isolate raw observers */ } }
@@ -267,6 +271,7 @@ export function createClaudeConversation(native: QueryHandle, consumeAutonomous:
         if (active === current) active = undefined
       }
       activity.close()
+      taskList.close()
       clearInteractions()
       listeners.clear()
     }
@@ -278,6 +283,7 @@ export function createClaudeConversation(native: QueryHandle, consumeAutonomous:
     handle: processHandle,
     get busy() { return changingControl || active !== undefined || pending !== undefined || interactionRequests.size > 0 },
     listWorkflows() { return activity.workflows.list() },
+    listObservedTasks() { return taskList.list() },
     hasPendingElicitation(requestId) { return !closing && !exited && interactionRequests.get(requestId)?.subtype === 'elicitation' },
     get closing() { return closing || exited },
     get sessionId() { return sessionId },
@@ -302,6 +308,7 @@ export function createClaudeConversation(native: QueryHandle, consumeAutonomous:
         active.reject(error)
         active.queue.close(error)
         activity.close()
+        taskList.close()
         clearInteractions()
         native.kill()
       } else active.queue.close()
@@ -310,10 +317,11 @@ export function createClaudeConversation(native: QueryHandle, consumeAutonomous:
     },
     subscribe(listener) { listeners.add(listener); return () => { listeners.delete(listener) } },
     async close() {
+      taskList.close()
       closing = true
       await native.close()
       await done
     },
-    kill() { activity.close(); clearInteractions(); stopped = true; if (active) active.turn.stopped = true; closing = true; native.kill() },
+    kill() { activity.close(); taskList.close(); clearInteractions(); stopped = true; if (active) active.turn.stopped = true; closing = true; native.kill() },
   }
 }

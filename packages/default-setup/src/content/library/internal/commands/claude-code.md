@@ -8,6 +8,7 @@ name: Claude Code commands
 **cc-plan**: Show the current native plan without a model turn
 **cc-context**: Show context window usage breakdown
 **cc-status**: Show version and auth info
+**cc-tasks**: Show last-observed structured native task records from the current process. Does not start a process or model turn, read saved task files, or merge native tasks into app tasks.
 **cc-workflows**: List local workflows observed in this conversation; `stop <task id>` requests a specific task stop and reports native status.
 **cc-usage**: Show native session totals and account-limit availability. Add `behaviors` for native behavior aggregates. Uses a matching running conversation; `start` permits a temporary process and its session hooks, whose totals are separate. Native account reads may use the network.
 **cc-thinking**: Request a live budget (`<integer>` or `default`) and optional display (`summarized`, `omitted`, `highlights`, `default`), or use `display <value>` alone. Requires the matching idle conversation. Adaptive models may ignore a zero budget; display refusal can still apply the accompanying budget. Changes are process-local.

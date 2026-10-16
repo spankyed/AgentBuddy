@@ -67,6 +67,7 @@ const handlers: Record<string, Handler> = {
   thinking: handleThinking,
   usage: handleUsage,
   workflows: handleWorkflows,
+  tasks: handleTasks,
   memory: handleMemory,
   hooks: handleHooks,
   permissions: handlePermissions,
@@ -200,6 +201,18 @@ async function handleConfig(
     default:
       return { text: `Unknown config subcommand: ${subcommand}\nUsage: /cc-config get <key> | set <key> <value>` };
   }
+}
+
+async function handleTasks(args: string[], services: Services, threadId?: string): Promise<{ text: string; data?: any }> {
+  if (args.length) return { text: 'Usage: cc-tasks' };
+  if (!threadId) return { text: 'Select a thread to view its observed native tasks.' };
+  const conversation = services.cli.claudeCode.getConversation(threadId);
+  if (!conversation || conversation.owner.closing) return { text: 'No native conversation is running. Task observations are unavailable.' };
+  const owner = conversation.owner;
+  const tasks = owner.listObservedTasks();
+  return { text: tasks.length
+    ? [`Last observed native tasks${owner.sessionCwd ? ` in ${owner.sessionCwd}` : ''}:`, ...tasks.map(task => `${task.id}: ${task.subject} — ${task.status ?? 'status not yet reported'}${task.owner ? ` (owner: ${task.owner})` : ''}${task.blockedBy?.length ? `; blocked by ${task.blockedBy.join(', ')}` : ''}${task.needsRefresh ? '; details changed, awaiting native read' : ''}`), 'These are observations from this process, not a fresh read of all persisted task lists.'].join('\n')
+    : 'No native task records have been observed in this process. Task tools may be gated off, or no task metadata has arrived.', data: tasks };
 }
 
 async function handleWorkflows(args: string[], services: Services, threadId?: string): Promise<{ text: string; data?: any }> {
