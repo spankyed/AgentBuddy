@@ -22,6 +22,7 @@ export function readCompilerModuleInputs(root: string, observe?: BuildInputObser
   captureLocation: ReturnType<typeof createCompilerFileView>['captureLocation'];
   readDirectoryData: ReturnType<typeof createCompilerFileView>['readDirectoryData'];
   readDataBytes: ReturnType<typeof createCompilerFileView>['readDataBytes'];
+  readMetadata: ReturnType<typeof createCompilerFileView>['readMetadata'];
   resolutionDirectory: ReturnType<typeof createCompilerFileView>['resolutionDirectory'];
   fileSystem: ReturnType<typeof createCompilerFileView>['fileSystem'];
   ancestors: ReturnType<typeof createCompilerFileView>['ancestors'];
@@ -130,7 +131,7 @@ export function readCompilerModuleInputs(root: string, observe?: BuildInputObser
   };
   assertCurrent();
   return { hash: hash.digest('hex'), configuration, declarationConfiguration, readBytes: view.readBytes, captureFile: view.captureFile,
-    captureLocation: view.captureLocation, readDirectoryData: view.readDirectoryData, readDataBytes: view.readDataBytes, resolutionDirectory: view.resolutionDirectory, ancestors: view.ancestors, fileSystem, snapshot: view.snapshot,
+    captureLocation: view.captureLocation, readDirectoryData: view.readDirectoryData, readDataBytes: view.readDataBytes, readMetadata: view.readMetadata, resolutionDirectory: view.resolutionDirectory, ancestors: view.ancestors, fileSystem, snapshot: view.snapshot,
     packageDirectories: [...packages].sort((a, b) => relative(a) < relative(b) ? -1 : relative(a) > relative(b) ? 1 : 0), assertCurrent };
 
 }

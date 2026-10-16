@@ -10,6 +10,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { packInputFiles } from '@apackdev/host/build/pack-inputs';
 import { withoutCompilerFileReads } from './compiler-file-reads.ts';
+import type { CompilerMetadataKind } from './compiler-metadata.ts';
 import type { CompilerDirectoryResult } from './compiler-file-view.ts';
 import { compilerSourcePath } from './compiler-paths.ts';
 import { createNativeInputReader } from './compiler-native-inputs.ts';
@@ -39,6 +40,7 @@ export interface CompilationInputs {
   readFile(file: string): Buffer | undefined;
   readDataPath(file: string): string;
   readDirectory(file: string, options: unknown): CompilerDirectoryResult;
+  readMetadata(kind: CompilerMetadataKind, file: string, args: readonly unknown[]): unknown;
   captureGenerated(): void;
   readTree(): CompilerReadTree;
   sourcePath(file: string): string;
@@ -120,6 +122,10 @@ export function captureCompilationInputs(packRoot: string): CompilationInputs {
       file = path.resolve(file);
       if (ownsToolPath(file)) return Reflect.apply(fs.readdirSync, fs, [file, options]) as CompilerDirectoryResult;
       return modules.readDirectoryData(sourcePath(file), options);
+    },
+    readMetadata(kind, file, args) {
+      file = path.resolve(file);
+      return modules.readMetadata(kind, ownsToolPath(file) ? file : sourcePath(file), args);
     },
     captureGenerated() {
       for (const relative of packInputFiles(packRoot, { generated: true })) {

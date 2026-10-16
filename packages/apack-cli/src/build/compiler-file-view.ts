@@ -4,6 +4,7 @@ import { createHash } from 'node:crypto';
 import ts from 'typescript';
 import type { BuildInputKind, BuildInputObserver } from '@apackdev/host/build/pack-inputs';
 import { compilerSourcePath, type CompilerPathMapping } from './compiler-paths.ts';
+import { captureCompilerMetadata, type CompilerMetadataKind } from './compiler-metadata.ts';
 import { physicalWatchPath } from './watch-paths.ts';
 
 export type CompilerFileSystem = Pick<ts.System,
@@ -63,6 +64,7 @@ export function createCompilerFileView(root: string, options: {
   const directories = new Map<string, { file: string; entries: DirectoryEntry[] }>();
   const globs = new Map<string, { args: Parameters<ts.System['readDirectory']>; files: string[] }>();
   const included = new Set<string>();
+  const metadata = new Map<string, { file: string; kind: CompilerMetadataKind; args: readonly unknown[]; query: ReturnType<typeof captureCompilerMetadata> }>();
   const directoryQueries = new Map<string, { file: string; physical: string; options: unknown; result: CompilerDirectoryResult; key: string }>();
 
   function state(file: string, paths: Map<string, string>): FileState {
@@ -164,6 +166,17 @@ export function createCompilerFileView(root: string, options: {
       return readBytes(file);
     },
     ancestors,
+    readMetadata(kind: CompilerMetadataKind, file: string, args: readonly unknown[]) {
+      file = path.resolve(file);
+      observe?.(file, 'file');
+      const key = JSON.stringify([kind, file, args]);
+      let entry = metadata.get(key);
+      if (!entry) {
+        entry = { file, kind, args: args.map(arg => arg && typeof arg === 'object' ? { ...arg } : arg), query: captureCompilerMetadata(kind, file, args) };
+        metadata.set(key, entry);
+      }
+      return entry.query.value();
+    },
     readDirectoryData(file: string, options: unknown) {
       file = path.resolve(file);
       included.add(file);
@@ -257,6 +270,7 @@ export function createCompilerFileView(root: string, options: {
       for (const [directory, value] of directories) {
         if (JSON.stringify(entries(value.file, directory)) !== JSON.stringify(value.entries)) changed(value.file);
       }
+      for (const entry of metadata.values()) if (!entry.query.assertCurrent()) changed(entry.file);
       for (const query of directoryQueries.values()) {
         const result = Reflect.apply(fs.readdirSync, fs, [query.file, query.options]) as CompilerDirectoryResult;
         if (directoryResultKey(result) !== query.key) changed(query.file);
@@ -307,6 +321,9 @@ export function createCompilerFileView(root: string, options: {
       for (const entry of [...searches].sort(([a], [b]) => a < b ? -1 : a > b ? 1 : 0)) hash.update(JSON.stringify(['glob', ...entry]));
       for (const query of [...directoryQueries.values()].sort((a, b) => a.file.localeCompare(b.file) || (JSON.stringify(a.options) ?? '').localeCompare(JSON.stringify(b.options) ?? ''))) {
         hash.update(JSON.stringify(['node-directory', relative(query.file), query.options, directoryResultKey(query.result, relative)]));
+      }
+      for (const [, entry] of [...metadata].sort(([a], [b]) => a < b ? -1 : a > b ? 1 : 0)) {
+        hash.update(JSON.stringify(['node-metadata', entry.kind, relative(entry.file), entry.args, entry.query.identity()]));
       }
       return hash.digest('hex');
     },

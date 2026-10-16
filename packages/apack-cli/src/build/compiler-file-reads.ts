@@ -3,6 +3,7 @@ import path from 'node:path';
 import { AsyncLocalStorage } from 'node:async_hooks';
 import { syncBuiltinESMExports } from 'node:module';
 import { fileURLToPath } from 'node:url';
+import { compilerMetadataOperations, type CompilerMetadataKind } from './compiler-metadata.ts';
 import type { CompilationInputs } from './compilation-inputs.ts';
 
 interface CompilerFileReadScope {
@@ -32,7 +33,7 @@ function sourceError(error: unknown): unknown {
   if (!(error instanceof Error)) return error;
   const scope = scopes.getStore();
   if (!scope) return error;
-  error.message = scope.compilation.readTree().diagnostic(error.message);
+  error.message = scopes.exit(() => scope.compilation.readTree().diagnostic(error.message));
   if ('path' in error && typeof error.path === 'string') Object.assign(error, { path: scope.compilation.sourcePath(error.path) });
   return error;
 }
@@ -53,6 +54,33 @@ function callbackRead<T extends (...args: never[]) => unknown>(operation: T,
   catch (error) { queueMicrotask(() => callback(sourceError(error))); return; }
   return Reflect.apply(operation, fs, [captured, ...args,
     (error: unknown, data: unknown) => callback(error ? sourceError(error) : null, data)]);
+}
+
+function metadataRead(kind: CompilerMetadataKind, file: fs.PathLike, args: readonly unknown[]) {
+  const input = readScope(file);
+  return input
+    ? scopes.exit(() => input.scope.compilation.readMetadata(kind, input.absolute, args))
+    : Reflect.apply(compilerMetadataOperations[kind].sync, fs, [file, ...args]);
+}
+
+function metadataSync(kind: CompilerMetadataKind) {
+  return (file: fs.PathLike, ...args: unknown[]) => {
+    try { return metadataRead(kind, file, args); }
+    catch (error) { throw sourceError(error); }
+  };
+}
+
+function metadataCallback(kind: CompilerMetadataKind) {
+  return (file: fs.PathLike, ...args: unknown[]) => {
+    const callback = args.pop();
+    if (!scopes.getStore() || typeof callback !== 'function') {
+      return Reflect.apply(compilerMetadataOperations[kind].callback!, fs, [file, ...args, callback]);
+    }
+    try {
+      const value = metadataRead(kind, file, args);
+      queueMicrotask(() => callback(null, value));
+    } catch (error) { queueMicrotask(() => callback(sourceError(error))); }
+  };
 }
 
 function install() {
@@ -102,6 +130,37 @@ function install() {
     try { return scopes.exit(() => input.scope.compilation.readDirectory(input.absolute, options)); }
     catch (error) { throw sourceError(error); }
   }) as typeof fs.promises.readdir;
+  const builtins = fs as unknown as Record<string, unknown>;
+  const promises = fs.promises as unknown as Record<string, unknown>;
+  for (const kind of ['stat', 'lstat', 'realpath', 'readlink', 'access'] as const) {
+    builtins[`${kind}Sync`] = metadataSync(kind);
+    builtins[kind] = metadataCallback(kind);
+    promises[kind] = async (file: fs.PathLike, ...args: unknown[]) => {
+      if (!scopes.getStore()) return Reflect.apply(compilerMetadataOperations[kind].promise!, fs.promises, [file, ...args]);
+      try { return metadataRead(kind, file, args); }
+      catch (error) { throw sourceError(error); }
+    };
+  }
+  fs.realpathSync.native = metadataSync('realpathNative') as typeof fs.realpathSync.native;
+  fs.realpath.native = metadataCallback('realpathNative') as typeof fs.realpath.native;
+  const exists = compilerMetadataOperations.exists.sync;
+  fs.existsSync = ((file: fs.PathLike) => {
+    try { return metadataRead('exists', file, []); }
+    catch (error) {
+      if (error instanceof TypeError) return Reflect.apply(exists, fs, [file]);
+      throw sourceError(error);
+    }
+  }) as typeof fs.existsSync;
+  const existsCallback = fs.exists;
+  const capturedExists = ((file: fs.PathLike, callback: (exists: boolean) => void) => {
+    if (!scopes.getStore() || typeof callback !== 'function') return existsCallback(file, callback);
+    const value = fs.existsSync(file);
+    queueMicrotask(() => callback(value));
+  }) as typeof fs.exists;
+  for (const key of Object.getOwnPropertySymbols(existsCallback)) {
+    Object.defineProperty(capturedExists, key, Object.getOwnPropertyDescriptor(existsCallback, key)!);
+  }
+  fs.exists = capturedExists;
   syncBuiltinESMExports();
 }
 

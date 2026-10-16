@@ -2,6 +2,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
+import { promisify } from 'node:util';
 import { afterEach, expect, it } from 'vitest';
 import { compilePack, buildPackConfigFromManifest, ManifestSchema } from '@apackdev/sdk/build';
 import { captureCompilationInputs } from '../../src/build/compilation-inputs.ts';
@@ -135,6 +136,40 @@ it('owns native directory results across sync, callback and promise reads withou
       expect(buffers.map(entry => entry.toString())).toEqual(names);
       buffers[0]!.fill(0);
       expect(fs.readdirSync(directory, { encoding: 'buffer' }).map(entry => entry.toString())).toEqual(names);
+    });
+    compilation.assertCurrent();
+  } finally { compilation.dispose(); }
+});
+
+it('shares captured metadata across native sync, callback and promise APIs', async () => {
+  const root = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'apack-metadata-scope-')));
+  roots.push(root);
+  fs.writeFileSync(path.join(root, 'package.json'), '{}');
+  const file = path.join(root, 'value.txt');
+  const link = path.join(root, 'linked.txt');
+  const missing = path.join(root, 'missing.txt');
+  fs.writeFileSync(file, 'ONE');
+  fs.symlinkSync('value.txt', link);
+  const compilation = captureCompilationInputs(root);
+  try {
+    await withCompilerFileReads({ compilation, outputDirectory: path.join(root, 'dist') }, async () => {
+      expect(fs.statSync(file).size).toBe(3);
+      expect(fs.statSync(file, { bigint: true }).size).toBe(3n);
+      expect(fs.lstatSync(link).isSymbolicLink()).toBe(true);
+      expect(fs.realpathSync.native(link)).toBe(file);
+      expect(await fs.promises.readlink(link)).toBe('value.txt');
+      expect(fs.existsSync(missing)).toBe(false);
+      await fs.promises.access(file, fs.constants.R_OK);
+      fs.writeFileSync(file, 'DIFFERENT');
+      fs.writeFileSync(missing, 'NEW');
+      expect((await fs.promises.stat(file)).size).toBe(3);
+      const stat = await new Promise<fs.Stats>((resolve, reject) => fs.stat(file, (error, value) => error ? reject(error) : resolve(value)));
+      expect(stat.size).toBe(3);
+      expect(await new Promise(resolve => fs.exists(missing, resolve))).toBe(false);
+      expect(await promisify(fs.exists)(missing)).toBe(false);
+      expect(() => compilation.assertCurrent()).toThrow('Compiler or installed package inputs changed');
+      fs.writeFileSync(file, 'ONE');
+      fs.unlinkSync(missing);
     });
     compilation.assertCurrent();
   } finally { compilation.dispose(); }
