@@ -376,3 +376,26 @@ it('keeps original-parent require calls isolated across concurrent module scopes
     compilations.forEach(compilation => compilation.dispose());
   }
 });
+
+it('uses captured JSX configuration for CommonJS compiler modules', async () => {
+  const root = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'apack-commonjs-config-')));
+  roots.push(root);
+  fs.writeFileSync(path.join(root, 'package.json'), '{"type":"commonjs"}');
+  const config = path.join(root, 'tsconfig.json');
+  fs.writeFileSync(config, JSON.stringify({ compilerOptions: { jsx: 'react', jsxFactory: 'h' } }));
+  const entry = path.join(root, 'compiler.tsx');
+  const source = "import fs from 'node:fs'; const h = () => fs.readFileSync(__dirname + '/value.txt', 'utf8'); export const value = <row />;";
+  fs.writeFileSync(entry, source);
+  fs.writeFileSync(path.join(root, 'value.txt'), 'CAPTURED');
+  const compilation = captureCompilationInputs(root);
+  const modules = createCompilerModuleLoader(compilation);
+  try {
+    fs.writeFileSync(config, JSON.stringify({ compilerOptions: { jsx: 'react', jsxFactory: 'live' } }));
+    fs.writeFileSync(entry, "throw new Error('Executed live CommonJS compiler');");
+    fs.writeFileSync(path.join(root, 'value.txt'), 'LIVE');
+    const result = await withCompilerFileReads({ compilation, outputDirectory: path.join(root, 'dist') },
+      () => modules.importModule(entry));
+    expect(result.value).toBe('CAPTURED');
+    expect(() => compilation.assertCurrent()).toThrow('Compiler or installed package inputs changed');
+  } finally { await modules.dispose(); compilation.dispose(); }
+});

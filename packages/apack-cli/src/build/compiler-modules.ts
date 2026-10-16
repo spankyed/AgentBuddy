@@ -1,5 +1,6 @@
 import path from 'node:path';
-import { createRequire, isBuiltin, register, registerHooks, type ModuleHooks } from 'node:module';
+import { registerCompilerCommonJS } from './compiler-commonjs.ts';
+import { createRequire, findPackageJSON, isBuiltin, register, registerHooks, type ModuleHooks } from 'node:module';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import type { CompilationInputs } from './compilation-inputs.ts';
 import { withoutCompilerFileReads } from './compiler-file-reads.ts';
@@ -56,7 +57,7 @@ export function createCompilerModuleLoader(compilation: CompilationInputs) {
           const file = compilation.sourcePath(fileURLToPath(owned));
           if (compilation.readFile(file) === undefined) throw new Error(`Missing captured compiler module: ${file}`);
           // Node's CommonJS cache keys ignore URL queries. Retain its per-tree filenames.
-          if (require || result.format === 'commonjs') return { ...result, url: owned.href };
+          if (require || result.format?.startsWith('commonjs')) return { ...result, url: owned.href };
           const logical = pathToFileURL(file);
           logical.search = owned.search;
           // tsx appends its namespace after a fragment; retain the caller's fragment instead.
@@ -73,10 +74,11 @@ export function createCompilerModuleLoader(compilation: CompilationInputs) {
     const tsconfig = writeCompilerModuleConfiguration(compilation.configuration ?? compilation.declarationConfiguration, tree);
     const importCompilerSource = createRequire(import.meta.url)(path.join(cliPackageDirectory(), 'bin/compiler-import.cjs')) as (url: string) => Promise<Record<string, unknown>>;
     const commonjs = cjs.register({ namespace });
+    const unregisterCommonJS = registerCompilerCommonJS(compilation, tree.directory);
     try {
       const modules = esm.register({ namespace, tsconfig });
-      return { modules, commonjs, importCompilerSource };
-    } catch (error) { commonjs.unregister(); throw error; }
+      return { modules, commonjs, unregisterCommonJS, importCompilerSource };
+    } catch (error) { unregisterCommonJS(); commonjs.unregister(); throw error; }
   }
 
   return {
@@ -84,8 +86,21 @@ export function createCompilerModuleLoader(compilation: CompilationInputs) {
       if (Atomics.load(closed, 0)) throw new Error('Compiler module load outlived its build');
       withoutCompilerFileReads(() => compilation.prepareNative(file, path.dirname(file)));
       pending ??= withoutCompilerFileReads(initialize);
-      const { importCompilerSource } = await pending;
+      const { importCompilerSource, commonjs } = await pending;
       if (Atomics.load(closed, 0)) throw new Error('Compiler module load outlived its build');
+      const tree = compilation.readTree();
+      const owned = tree.path(file);
+      const extension = path.extname(file);
+      const packageFile = findPackageJSON(pathToFileURL(owned));
+      const metadata = packageFile && compilation.readFile(compilation.sourcePath(packageFile));
+      const cjs = extension === '.cjs' || extension === '.cts'
+        || (!['.mjs', '.mts'].includes(extension) && (!metadata || JSON.parse(metadata.toString('utf8')).type !== 'module'));
+      if (cjs) {
+        // Avoid ESM loaders rewriting CommonJS response URLs back to shared source cache keys.
+        const value = commonjs.require(owned, import.meta.url) as unknown;
+        const exports = value && (typeof value === 'object' || typeof value === 'function') ? value as Record<string, unknown> : {};
+        return { ...exports, default: exports.__esModule ? exports.default : value };
+      }
       // Enter through the checked native resolver; tsx's scoped import protocol bypasses it.
       const url = pathToFileURL(file);
       url.searchParams.set('tsx-namespace', namespace);
@@ -98,7 +113,7 @@ export function createCompilerModuleLoader(compilation: CompilationInputs) {
         const loaded = await pending?.catch(() => undefined);
         if (loaded) {
           try { await loaded.modules.unregister(); }
-          finally { loaded.commonjs.unregister(); }
+          finally { loaded.unregisterCommonJS(); loaded.commonjs.unregister(); }
         }
       })();
       return stopping;
