@@ -290,8 +290,9 @@ it('executes owned TypeScript compiler modules and transitive imports through te
       const dynamic = await import(target);
       const resolved = import.meta.resolve(target);
       const required = createRequire(import.meta.url)(${JSON.stringify(path.join(root, 'src/common.cjs'))});
+      const originalParent = createRequire(${JSON.stringify(path.join(root, 'package.json'))})('./src/common.cjs');
       if (resolved === target || !resolved.includes('?fixture=2#dynamic')) throw new Error('Invalid owned resolution');
-      return [{ entity: 'Row', name: [value, extra, dynamic.default, required].join(':') }]; };`;
+      return [{ entity: 'Row', name: [value, extra, dynamic.default, required, originalParent].join(':') }]; };`;
   fs.writeFileSync(compiler, original);
   fs.writeFileSync(value, "export const value: string = 'CAPTURED';");
   fs.writeFileSync(path.join(root, 'src/extra.ts'), "export const extra = 'EXTRA';");
@@ -323,7 +324,7 @@ it('executes owned TypeScript compiler modules and transitive imports through te
         importModule: modules.importModule });
     });
     const output = JSON.parse(fs.readFileSync(path.join(outputDirectory, 'rows.content.json'), 'utf8'));
-    expect(output.records[0].name).toBe('CAPTURED:EXTRA:DYNAMIC:COMMON');
+    expect(output.records[0].name).toBe('CAPTURED:EXTRA:DYNAMIC:COMMON:COMMON');
     fs.writeFileSync(steps, 'export const steps = [];');
     fs.writeFileSync(flow, 'export default {};');
     fs.writeFileSync(compiler, original);
@@ -333,4 +334,37 @@ it('executes owned TypeScript compiler modules and transitive imports through te
     fs.writeFileSync(path.join(root, 'src/common.cjs'), "module.exports = 'COMMON';");
     compilation.assertCurrent();
   } finally { modules.dispose(); compilation.dispose(); }
+});
+
+
+it('keeps original-parent require calls isolated across concurrent module scopes', async () => {
+  vi.stubEnv('TSX_DISABLE_CACHE', '1');
+  const root = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'apack-module-generations-')));
+  roots.push(root);
+  fs.writeFileSync(path.join(root, 'package.json'), '{"type":"module"}');
+  const entry = path.join(root, 'compiler.mjs'), value = path.join(root, 'value.cjs');
+  fs.writeFileSync(entry, `import {createRequire} from 'node:module';
+    export const read = () => createRequire(${JSON.stringify(path.join(root, 'package.json'))})('./value.cjs');`);
+  fs.writeFileSync(value, "module.exports = 'FIRST';");
+  const first = captureCompilationInputs(root);
+  fs.writeFileSync(value, "module.exports = 'SECOND';");
+  const second = captureCompilationInputs(root);
+  fs.writeFileSync(value, "module.exports = 'LIVE';");
+  const compilations = [first, second];
+  const loaders = compilations.map(createCompilerModuleLoader);
+  try {
+    const results = await Promise.all(compilations.map((compilation, index) =>
+      withCompilerFileReads({ compilation, outputDirectory: path.join(root, 'dist') }, async () => {
+        const loaded = await loaders[index]!.importModule(entry);
+        await new Promise(resolve => setImmediate(resolve));
+        return (loaded.read as () => string)();
+      })));
+    expect(results).toEqual(['FIRST', 'SECOND']);
+    // Captured execution must not redirect ordinary require calls after either scope finishes.
+    const { createRequire } = await import('node:module');
+    expect(createRequire(path.join(root, 'package.json'))('./value.cjs')).toBe('LIVE');
+  } finally {
+    loaders.forEach(loader => loader.dispose());
+    compilations.forEach(compilation => compilation.dispose());
+  }
 });

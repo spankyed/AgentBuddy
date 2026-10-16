@@ -1,7 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { AsyncLocalStorage } from 'node:async_hooks';
-import { syncBuiltinESMExports } from 'node:module';
+import module, { syncBuiltinESMExports } from 'node:module';
 import { fileURLToPath } from 'node:url';
 import { openCapturedDirectory } from './compiler-directories.ts';
 import { capturedDescriptor, descriptorStats, releaseDescriptor, instrumentFileHandle, rememberDescriptor } from './compiler-descriptors.ts';
@@ -245,6 +245,23 @@ function install() {
     Object.defineProperty(capturedExists, key, Object.getOwnPropertyDescriptor(existsCallback, key)!);
   }
   fs.exists = capturedExists;
+  const createRequire = module.createRequire;
+  module.createRequire = (filename => {
+    const scope = scopes.getStore();
+    if (!scope) return createRequire(filename);
+    const url = filename instanceof URL ? filename : typeof filename === 'string' && filename.startsWith('file:') ? new URL(filename) : undefined;
+    if (url ? url.protocol !== 'file:' : typeof filename !== 'string' || !path.isAbsolute(filename)) return createRequire(filename);
+    const file = url ? fileURLToPath(url) : filename as string;
+    return scopes.exit(() => {
+      // Existing owned module/compiler paths already have their correct native resolution context.
+      if (scope.compilation.sourcePath(file) !== file) return createRequire(filename);
+      // Match Node's directory-parent convention without admitting the directory above it.
+      const parent = file.endsWith('/') || (process.platform === 'win32' && file.endsWith('\\'))
+        ? path.join(file, 'noop.js') : file;
+      scope.compilation.prepareNative(parent, path.dirname(parent));
+      return createRequire(scope.compilation.readTree().path(parent));
+    });
+  }) as typeof module.createRequire;
   syncBuiltinESMExports();
 }
 
