@@ -64,7 +64,7 @@ so completed implementation is not repeatedly scheduled as new work.
 | Manifest consolidation M1–M6 | Implemented and checkpoint-validated through `0994ae787`; own-key preservation `29f0cc556` | Preserve all 17 reconciled decisions, both naming outcomes and generated EARS/content behavior in final acceptance; do not restart consolidation. |
 | Settings/help/info/reference/step/command discovery (Phase 3) | Implemented reader migrations: `2169d29f8`, `6c876c9ba`, `20ab75efe`, `c776d1c5d`, `76df2f0e5`, `71fad4013`, `8ec5285ed`, `f7d63434c`, command catalog `ff48438cd` | Final all-kind acceptance, including source-free inspection, inactive owners and checked runtime eligibility. |
 | Live editor composition (Phase 3) | Implemented: `8863043a6` | Complete cold-document/provider readiness and real typing/replacement acceptance; fix demonstrated omissions without restarting composition. |
-| Remaining discovery consumers (Phase 3) | Partial; viewer readers `a278d4116` and shell default/dispatch `69860e4be` implemented | Finish catalog-backed navigation inventories/order/visibility and the DSL/Monaco reader migration (producer/catalog `8ed188046`). Complete compiled-content flow/action edges and rename/missing-reference diagnostics. Audit services, repositories, events, native fields and static assets; migrate each actual gap and remove superseded discovery stores. |
+| Remaining discovery consumers (Phase 3) | Partial; viewer readers `a278d4116` and shell default/dispatch `69860e4be` implemented | Finish catalog-backed navigation inventories/order/visibility; DSL producer/readers are implemented in `8ed188046` / `39e48e66e` and await final worker acceptance. Complete compiled-content flow/action edges and rename/missing-reference diagnostics. Audit services, repositories, events, native fields and static assets; migrate each actual gap and remove superseded discovery stores. |
 | Build input/publication and freshness (Phase 3) | Partial; finite checkpoints B1–B6 below | Finish the common producer contract and four passive consumer migrations; installed discovery must remain source-free and activation-free. |
 | Entity navigation (Phase 4) | Reference identity prerequisites implemented; destination migration unfinished | Implement declared destinations, eligibility/readiness, short-code round trips and caller migration under open-entity.md. |
 | Frontend boundaries (Phase 5) | Planned implementation | Isolate throwing canvas/panel/form contributions, preserve host settings and other panes, and reject retries for retired revisions. |
@@ -97,7 +97,48 @@ publication repair as outstanding implementation without new evidence.
 
 ### Execution order and change control
 
-Current discovery checkpoint: compiled DSL publication/catalog in `8ed188046`.
+Current discovery checkpoint: catalog-driven Monaco consumers and lifetime cleanup in `39e48e66e`
+plus explicit-selection correction `eb7d0995b`,
+following producer/catalog `8ed188046`. SDK DSL readers select static owned declarations without
+consulting executable frontends. Monaco shares module/global libraries per instance, language and DSL,
+follows catalog text changes and disposes handles/subscriptions when their last consumer leaves.
+UnifiedMonacoEditor owns its active file's release function; direct consumers receive one from
+`setupMonacoForFile`. Explicit DSL selection works without a prefix; path inference uses the unique
+longest nonempty prefix among declared Monaco targets. Disabled packs retain static assistance;
+unbuilt or ambiguous owners cannot supply compiled completions.
+
+Removed the frontend DSL registration/type/lookup/store and capture/checking branches, generated raw
+import module, and Vite staged-definition resolver/option. The removed resolver's isolated test described
+a contract that no longer exists; producer completeness/publication and snapshot tests own that data
+boundary. The five-build publication case retains its coverage, with frontend assertions updated to
+require type text remain outside frontend code. Schema assistance and public/reference/package docs
+now describe the data contract and cleanup ownership. SDK reports remove runtime fields and add the
+four data readers; UI report adds explicit DSL selection and the setup release return type.
+
+Evidence: 128 focused SDK/host/UI/renderer cases pass; generation/library checks pass (5 cases), as do boundary,
+export and import-side-effect checks (14 cases). A real TypeScript
+language service proves catalog text changes completions, unavailable text removes them, and one of
+two consumers closing does not dispose the other's libraries. Final prefix review includes targetless
+and empty/ambiguous/longest-prefix cases. Public setup API review caught an untitled-file wiring gap:
+`eb7d0995b` makes explicit DSL selection take precedence in language inference, preserves a caller's
+explicit language, and verifies completions and release through that public function (3 library cases). Two full real builds pass (36.89s), preserving compiled text
+and revision through reuse and source-free disabled installed discovery without activation. The full
+shipped pack rebuild passes, removes the obsolete generated DSL file and retains three snapshot type
+bundles without embedding action definitions in its frontend. Fifteen real pack consumer cases pass.
+Host/SDK/UI/CLI, renderer app/test and default-setup types, schema, 28 SDK / 102 UI API reports,
+import rules, lint and tiers pass. The final inference fixes are covered by focused prefix/public-setup cases and the UI package is
+refreshed; they do not change the checked public signatures.
+`/private/tmp/apack-dsl-readers-{focused,generation,boundaries,prefix-review,explicit-selection,full-build,default-build,pack-tests,host-types,sdk-types,ui-types,cli-types,renderer-types,renderer-test-types,pack-types,schema-check,sdk-api-check,ui-api-check,specifiers,lint,final-lint,tiers}.log`.
+
+Next audit compiled-content inventory and static flow/action dependency edges, including rename,
+missing-reference and dynamic-reference diagnostics. Navigation menu ordering/visibility, remaining
+native/service/repository/event/static-asset coverage and all-kind discovery acceptance still remain.
+The DSL implementation needs final real Monaco worker/cold-document/window acceptance; the focused
+language-service proof does not replace it. Keep the existing five-build 60-second timeout evidence at
+B6; no broad diagnostic rerun or deadline relaxation was made here. B1–B6, entity navigation, frontend
+boundaries, all three Phase 6 streams and final committed-source strict `--all` stay required.
+
+Earlier producer checkpoint: compiled DSL publication/catalog in `8ed188046`.
 The builder copies every declared Monaco target's staged definition text into `snapshot.dslDefinitions`,
 including targets without globals and cached definition phases. Snapshot/dependency readers and native
 composition require the exact declared target set through one validator. Host and window project the
@@ -123,12 +164,8 @@ case at B6. The focused backend-only proof does not replace this case or establi
 The original case's deadline, assertions and coverage were not relaxed. No broad diagnostic rerun
 was made.
 
-Next migrate SDK/Monaco consumers to the published data, handling independent catalog updates,
-multiple open editors, library/global replacement and owned disposal. Remove frontend `dslTypes`,
-its runtime store, generated raw-text imports and superseded readers once callers move. Audit prefix
-and language behavior against actual declarations. This producer checkpoint does not close DSL/editor
-assistance, navigation menus, remaining discovery/content audits, B1–B6, entity navigation, boundaries,
-any Phase 6 workstream or final committed-source strict `--all` acceptance.
+The producer checkpoint's consumer migration is implemented by `39e48e66e`; its broad acceptance
+limits and recorded staged-build failure remain as stated above.
 
 Earlier shell checkpoint: shell default selection and new-request dispatch in `69860e4be`.
 The host and window share plugin metadata projection, including build identity. The window receives
