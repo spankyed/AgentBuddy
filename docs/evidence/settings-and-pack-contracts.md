@@ -7082,3 +7082,27 @@ captured inputs, so affected default/fork and other fixture builds need their no
 claiming current prebuilt acceptance. Preserve the earlier accepted authoring evidence as dated
 proof rather than silently treating it as post-fix source. All active goal requirements remain open
 where their final evidence is absent; no broad run has been repeated to diagnose this bug.
+
+
+## API composition test migration (2026-10-17)
+
+Source checkpoint: `5f5970e6e`. The strict two-core checkpoint exits 1 at `typecheck:api` after 24.7s.
+Four API composition test files still dynamically imported the removed ambient SDK `services` value;
+this was an incomplete consumer migration, not a runtime or typechecker defect.
+Evidence: `/private/tmp/apack-service-teardown-checkpoint-chain.log` and
+`node_modules/.cache/apack-chain/runs/2026-10-17T11-21-23Z-75198/` (six completed step logs).
+No producer/app/integration acceptance is claimed from this early stop.
+
+The tests now use the actual runtime's host ports, engine and registered-pack view. Baseline sends use
+`createActionEmitter`; no ambient export or production accessor is restored. The same engine,
+registered service, sender, reset/restore/onboarding and secret metadata/change assertions remain.
+
+All 30 affected cases across four files pass in 4.49s:
+`/private/tmp/apack-api-service-tests-focused.log`. All three API projects pass through
+`npm run typecheck:api`: `/private/tmp/apack-api-service-tests-types.log`. Four-file correctness lint
+and `git diff --check` pass. A repository search for same-line named/dynamic imports finds no remaining
+ambient SDK value imports; this search does not substitute for the unexecuted cross-workspace gate.
+
+Resume the cached strict checkpoint to reach its remaining checks. The early stop and focused repair
+are not a broad pass; all remaining B1/B3, cross-phase and final committed-source `--all` obligations
+remain in the active goal. No timeout, assertion, source-input scope or compatibility handling changed.

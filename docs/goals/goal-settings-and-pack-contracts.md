@@ -470,7 +470,13 @@ The app run then passed 26 cases, including fork reload, and exposed premature c
 when disabling default-setup. `3769e930f` fixes that owner mismatch; 64 focused cases and the actual
 formerly failing disable/remove/replace/restore window pass. See
 [teardown evidence](../evidence/settings-and-pack-contracts.md#disabled-caller-retirement-2026-10-17).
-Next: run the required converged checkpoint on committed source with two cores. The host source fix
+The two-core checkpoint stopped at `typecheck:api` after 24.7s: four API composition test files still
+used dynamic imports of the removed ambient SDK service value. `5f5970e6e` migrates those tests to
+bound host ports/engine/registry and the baseline emitter. All 30 affected cases, all three API typecheck
+projects and focused lint pass. See
+[API test migration evidence](../evidence/settings-and-pack-contracts.md#api-composition-test-migration-2026-10-17).
+Next: resume the cache-aware strict checkpoint on committed source with two cores to reach checks
+that the API gate prevented from running. The host source fix
 changed captured inputs: refresh affected builds through their normal owners before asserting current
 prebuilt/fork acceptance. Do not repeat unaffected source/design prototypes. The prior 26 app passes
 plus focused repair are not a single converged app pass; bundled UI app and normal fork restart/
