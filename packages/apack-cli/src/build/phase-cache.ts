@@ -15,6 +15,7 @@ import type { CompilationInputs } from './compilation-inputs.ts';
 import { dependencyInputsHash } from './dependency-inputs.ts';
 import type { ResolvedDepFiles } from '../commands/fetch-deps.ts';
 import { verifyPack } from '@apackdev/host/packs';
+import { readPackBuildInputs, assertPackBuildInputsCurrent, type PackBuildInputs } from '@apackdev/host/build/pack-build-inputs';
 
 /** Private source-build metadata, sealed and replaced with its output; staging omits root cache files. */
 const CACHE_FILE = 'phase-cache.json';
@@ -31,18 +32,20 @@ export interface PhaseStamp {
 
 export type PhaseStamps = Readonly<Record<string, PhaseStamp>>;
 
-export function readStamps(root: string): PhaseStamps {
+export function readPhaseCache(root: string): { stamps: PhaseStamps; inputs?: PackBuildInputs } {
   try {
     const dir = path.join(root, 'dist');
     const receipt = verifyPack(dir);
+    const inputs = readPackBuildInputs(dir, receipt);
+    assertPackBuildInputsCurrent(root, inputs);
     const bytes = fs.readFileSync(path.join(dir, CACHE_FILE));
-    if (createHash('sha256').update(bytes).digest('hex') !== receipt.files[CACHE_FILE]) return {};
+    if (createHash('sha256').update(bytes).digest('hex') !== receipt.files[CACHE_FILE]) return { stamps: {} };
     const parsed: unknown = JSON.parse(bytes.toString('utf8'));
-    if (parsed === null || typeof parsed !== 'object' || Array.isArray(parsed)) return {};
-    return parsed as PhaseStamps;
+    if (parsed === null || typeof parsed !== 'object' || Array.isArray(parsed)) return { stamps: {} };
+    return { stamps: parsed as PhaseStamps, inputs };
   } catch {
-    // Absent or unreadable is simply no record, which reads as every phase stale
-    return {};
+    // Missing, damaged or stale input/output records require a cold rebuild.
+    return { stamps: {} };
   }
 }
 

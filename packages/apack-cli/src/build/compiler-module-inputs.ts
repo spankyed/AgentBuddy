@@ -5,11 +5,10 @@ import ts from 'typescript';
 import { readPackCompilerConfiguration, type PackCompilerConfiguration } from './compiler-configuration.ts';
 import type { BuildInputObserver } from '@apackdev/host/build/pack-inputs';
 import { codeBlocks } from './pack-sources.ts';
-import { compilerSourcePath, type createCompilerFileView, type CompilerFileSystem } from '@apackdev/host/build/compiler-inputs';
+import { compilerSourcePath, createPackCompilerInputView, type PackCompilerInputView, type createCompilerFileView, type CompilerFileSystem } from '@apackdev/host/build/compiler-inputs';
 import { compilerGlobDirectories } from './compiler-source-globs.ts';
 
 import { readCompilerInstallationInputs } from './compiler-installation-inputs.ts';
-import { createPackCompilerInputView, type PackCompilerInputView } from './compiler-input-view.ts';
 
 /** Resolve script/type inputs afresh, including Vue scripts, outside imports and undeclared npm packages. */
 export function readCompilerModuleInputs(root: string, observe?: BuildInputObserver, captured?: PackCompilerInputView): {

@@ -1,3 +1,4 @@
+import { writePackBuildInputs } from '@apackdev/host/build/pack-build-inputs';
 import { _packEntityTypes, _packRelationTypes } from '@apackdev/sdk/framework';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
@@ -17,7 +18,7 @@ import {
   type CompilePackOptions, type PackConfig, type PackSnapshot, type PackTypeManifest, type ContentDependency,
 } from '@apackdev/sdk/build';
 import { findFEEntry, bundlePackFE } from '../build/fe-bundler';
-import { apackScope, dslInputsHash, typesInputsHash, readStamps, reuseProblem, takeForward, writeStamps, type PhaseStamp } from '../build/phase-cache';
+import { apackScope, dslInputsHash, typesInputsHash, readPhaseCache, reuseProblem, takeForward, writeStamps, type PhaseStamp } from '../build/phase-cache';
 import { refusePackRuleViolations } from '../build/pack-rules.ts';
 import { bundlePackRuntime, bundlePackContentCompilers, bundlePackContentRuntime, bundlePackStepBuild, CONTENT_RUNTIME_FILE } from '../build/be-bundler';
 import { buildReads } from '../build/build-reads';
@@ -98,7 +99,7 @@ async function buildIntoStaging(args: string[], root: string) {
   const manifest = readValidManifest(root);
 
   // What the last build left reusable, and what this one leaves for the next
-  const stamps = readStamps(root);
+  const { stamps, inputs: cachedInputs } = readPhaseCache(root);
   const nextStamps: Record<string, PhaseStamp> = {};
 
   // `outputDir` is where every phase below writes; `distDir` is what it becomes, once they have all succeeded
@@ -125,6 +126,13 @@ async function buildIntoStaging(args: string[], root: string) {
   const { depSnapshots } = resolvedDependencies;
   const compilation = captureCompilationInputs(root);
   const modules = createCompilerModuleLoader(compilation);
+  const reusePhase = (name: string) => {
+    const stamp = stamps[name];
+    if (!stamp || !cachedInputs) throw new Error(`Cannot reuse ${name} without completed build inputs`);
+    compilation.retainInputs(cachedInputs);
+    takeForward(distDir, outputDir, stamp.files);
+    nextStamps[name] = stamp;
+  };
   // What each bundling phase read, for the chain step that builds this pack to be checked against. The
   // phases with no bundler to ask — codegen, the content compilation, feature settings, the pack rules — are
   // absent from the record rather than guessed at
@@ -206,8 +214,7 @@ async function buildIntoStaging(args: string[], root: string) {
     const typesStale = reuseProblem(stamps.types, distDir, typesHash)
       ?? (reads && !reads.carry('types') ? 'no reads recorded to carry' : null);
     const packTypes = typesStale === null
-      ? (takeForward(distDir, outputDir, stamps.types!.files),
-         nextStamps.types = stamps.types!,
+      ? (reusePhase('types'),
          console.log('  facade types: unchanged, reused'),
          { success: true as const, content: fs.readFileSync(packTypesFile, 'utf-8') })
       : await bundlePackTypes(root, packTypesFile, reads?.forPhase('types'), compilation);
@@ -262,7 +269,6 @@ async function buildIntoStaging(args: string[], root: string) {
     const finish = async () => {
       // Finish asynchronous loader teardown before validating and sealing the final read-set.
       await modules.dispose();
-      await compilation.finishStartup();
       try { assertGeneratedCurrent(root, manifest, resolvedDependencies, compilation); }
       catch (error) { failures.push(error instanceof Error ? error.message : String(error)); }
       if (packInputsHash(root) !== inputsHash) failures.push('Pack inputs changed during the build; retry before publishing');
@@ -275,6 +281,7 @@ async function buildIntoStaging(args: string[], root: string) {
       fs.mkdirSync(path.dirname(snapshotPath), { recursive: true });
       fs.writeFileSync(snapshotPath, JSON.stringify(snapshot, null, 2));
       writeStamps(outputDir, nextStamps);
+      writePackBuildInputs(outputDir, await compilation.finish(args));
       sealPackBuild(outputDir, manifest, snapshot.sdkVersion);
       // Optional diagnostics describe this validated candidate; only the sealed cache authorizes reuse.
       reads?.write();
@@ -330,8 +337,7 @@ async function buildIntoStaging(args: string[], root: string) {
       const dslStale = dslHash === null ? 'scope incomplete'
         : reuseProblem(stamps.dslDefs, distDir, dslHash) ?? (reads && !reads.carry('dslDefs') ? 'no reads recorded to carry' : null);
       const defs = dslStale === null
-        ? (takeForward(distDir, outputDir, stamps.dslDefs!.files),
-           nextStamps.dslDefs = stamps.dslDefs!,
+        ? (reusePhase('dslDefs'),
            console.log('  dsl defs: unchanged, reused'),
            { success: true as const, files: [] as string[] })
         : await bundleDslDefs(root, outputDir, manifest, reads?.forPhase('dslDefs'), compilation);

@@ -300,10 +300,18 @@ Completed-frame replay repair `2d7dd140c` now honors explicitly consumed generat
 expanding authored membership. Its regression failed on unchanged input before the fix; 52 affected
 cases, passive replay and host/CLI types pass. See
 [generated-input evidence](../evidence/build-input-snapshot-proof.md#explicit-generated-input-replay-checkpoint).
-B4's next producer work is the completed frame and its association with sealed output, including
-inputs needed by reused phases; the relocation/replay repairs alone do not satisfy that contract.
-Next: reconcile the finite native/platform lifetime boundary against supported compiler operations,
-then settle B4's common successful input/output association. Preserve required external-library and
+B4 now publishes completed input observations and recorded package/compiler/execution context in
+`dist/build-inputs.json`, sealed by the existing output receipt. Reused phases retain their prior input
+facts; passive replay uses common native ownership and installed staging omits source metadata. Real
+repeat publication preserves phase reuse, sealed revision and cleanup (50.00s); 100 affected cases,
+110 layout/receipt cases and host/CLI types pass. See
+[completed-record evidence](../evidence/build-input-snapshot-proof.md#completed-source-inputoutput-association-checkpoint).
+This closes the record/association slice, not all B4: expected emitted/copied output membership and
+bytes (media/public/CSS/lazy/worker) remain required. B5's four consumer policies and compiler/options
+comparison contexts remain unimplemented. No converged strict or final `--all` pass is claimed.
+Next: finish B4's producer output expectations using the actual compiler graphs and copy operations,
+then migrate B5 consumers. Reconcile the finite native/platform lifetime boundary against supported
+compiler operations before closing B1/B3. Preserve required external-library and
 platform/thread-lifetime acceptance;
 preserve the now-accepted namespace cases without starting another resolver or observation framework. Preserve
 B2's accepted owner and browser proof; do not schedule another frontend generation implementation.

@@ -88,21 +88,10 @@ export function createNativeInputReader(view: NativeInputView, initialPackages: 
     if (directories.has(file)) return;
     directories.add(file);
     // Native lookup may explicitly enter generated/dependency directories excluded from authored discovery.
-    const directory = view.captureDataLocation(file, 'directory');
-    if (directory) pending.locations.push(directory);
-    pending.locations.push(...view.ancestors(file));
-    if (directory?.kind !== 'directory') return;
-    const entries = view.readDirectoryData(file, { withFileTypes: true });
-    for (const entry of entries) {
-      if (typeof entry === 'string' || Buffer.isBuffer(entry)) throw new Error('Native lookup requires directory entry types');
-      const child = path.join(file, entry.name.toString());
-      const node = view.captureDataLocation(child, 'file');
-      if (!node) continue;
-      pending.locations.push(node);
-      if (node.kind !== 'file') continue;
-      const bytes = /\.(?:[cm]?[jt]sx?|json)$/.test(child) ? view.readDataBytes(child) : undefined;
-      pending.files.push({ file: node.physical, mode: node.mode, bytes });
-    }
+    view.captureDataLocation(file, 'directory');
+    const snapshot = view.resolutionDirectory(file);
+    pending.locations.push(...snapshot.locations, ...view.ancestors(file));
+    pending.files.push(...snapshot.files);
   }
   function packageInputs(file: string) {
     const physical = view.fileSystem.realpath(file);

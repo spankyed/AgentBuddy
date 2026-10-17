@@ -140,8 +140,8 @@ That entry checks the compiler inputs before importing `build()`, avoiding recur
 it ships beside `cli.js`. Internal compiler tests call `build()` in-process; process-boundary tests
 exercise the real bootstrap and runner.
 
-`build/compiler-file-view.ts` owns metadata, bytes, physical bindings and directory/glob results for one
-compiler frame. `build/compiler-input-view.ts` captures authored and declared npm dependency bytes,
+`@apackdev/host/build/compiler-inputs` owns metadata, bytes, physical bindings and directory/glob results
+for one compiler frame. Its `createPackCompilerInputView` captures authored and declared npm dependency bytes,
 filtered membership and missing lookups before user preloads; configuration, Vue extraction and the
 compiler host reuse that inventory and view. Repeated queries
 reuse captured data; a final check refuses changed bytes, missing targets, link changes or membership.
@@ -154,7 +154,7 @@ Authored files and package-graph callback bytes seed the same owned view. After 
 `captureGenerated()` admits its completed bindings separately from authored membership. All five native
 bundle paths, including flow helpers, consume copied bytes from that view through esbuild's `onLoad`;
 callers cannot mutate the owned buffers. Native resolution still uses the original namespace. This
-owns native module bytes; native resolution still uses the original namespace.
+owns native module bytes.
 
 Declaration bundles (facade, flow helpers and DSLs) materialize that view into one lazy
 `compiler-read-tree.ts` tree per build. Captured bytes, package links, positive/missing queries and
@@ -164,11 +164,10 @@ configuration. Compiler option projection lives in `compiler-configuration.ts`, 
 Declaration programs capture a nearest parent config when no explicit pack config exists; native
 per-file config discovery keeps its existing semantics. Normal cleanup precedes publication and also
 runs on failures. Each public worker's parent owns its workspace and removes abandoned read-only trees
-after child close without following aliases. Full native namespace, direct content reads, frontend/dev
-ownership and launch/preload inputs remain unfinished execution-frame work.
-Compiler capture does not freeze pack sources, external
-frontend compiler reads or ambient Node preloads; the complete input/publication contract remains
-owned by the discovery plan.
+after child close without following aliases. Startup/preload, content and frontend reads now share
+captured input ownership. External native-library/platform lifetime acceptance, expected emitted/copied
+output completeness and passive-consumer policies remain in the discovery goal; the completed record
+alone does not close those requirements.
 
 1. `parseManifest`; then `buildStagingDir` (`.apack/build/`), where every phase below writes. `dist/` is
    left alone until the end, when the staged tree is renamed over it (`replaceDir`), so a reader finds the previous
@@ -188,10 +187,19 @@ styles/assets and compiler-driven inputs are resolved by Vite rather than an inc
 The development server reads published `dist/defs` after the completed build. No DSL phase writes
 into live output before publication, and a missing staged definition never falls back to the old copy. The apply-compiler bundle fails the build immediately. `PACK_LAYOUT` (`@apackdev/host/packs`) names the shared layout paths.
 
-Private phase stamps live in `dist/phase-cache.json`, written into staging before the integrity seal.
-The verified output and cache publish together; a refused replacement keeps both incumbent versions.
-Cache reads check the consumed bytes against the verified receipt. Installation/archive staging omits
-this root build-only file. Missing or damaged cache/output causes a cold rebuild, never reuse.
+`dist/build-inputs.json` records completed source/dependency observations, package graph scope, the
+selected compiler/runtime digest, initial execution-context digest and normalized build flags. It is
+written after loader/thread settlement and final input validation, then sealed with the output by the
+existing integrity receipt. Raw environment values and private compiler paths are not persisted.
+Compiler-installation facts stay under the installation identity; source facts replay against originals
+without importing compiler or pack code. Comparing another command's ambient environment is not replay.
+
+Private phase stamps live in `dist/phase-cache.json`, published with that completed record and output.
+Cache reads verify the receipt and current source/dependency inputs before considering phase keys.
+A reused phase retains its prior observations for final validation and the next completed record;
+skipping its execution cannot erase its external inputs. A refused replacement keeps the incumbent
+pair. Installation/archive staging omits both root build-only files. Missing, damaged or stale records
+cause a cold rebuild. Archive/test/drive freshness policy migration remains owned by B5 in the goal.
 
 - **`build/be-bundler.ts`**: `bundlePackSource` is the shared esbuild setup (captured pack tsconfig, path aliases, `package.json` `imports`, `rejectHostImportsPlugin`, which fails an import of `@apackdev/host` or of an export only the app loads (`APP_ONLY_EXPORTS`, `@apackdev/ears/lmdb`; `tests/build/host-import-guard.spec.ts`), `stubFrontendAssetsPlugin`). `HOST_EXTERNALS` = `SHARED_DEPS` + the `SHARED_INSTANCE_PACKAGES` (`@apackdev/sdk`, `@apackdev/ears`) and their subpaths (`sharedInstanceExternals()`). The content runtime keeps only the shared-instance packages external.
 - **`build/build-reads.ts`**: bundler-observed inputs by phase in `.apack/reads.json` (esbuild inputs, Rollup watch files and Vite watch files). Bundlers receive `RecordReads`; `BUILD_PHASES` defines `BuildPhase`. The build carries rows for reused phases, and chain checks (`scripts/lib/build-reads.ts`, `repo-checks`' `dep-files.integration.spec.ts`) compare observed inputs with declared coverage. Rows describe a validated candidate; placement failure can leave them ahead of accepted output. They do not authorize reuse or source freshness. `APACK_NO_BUILD_READS=1` disables this optional diagnostic record.

@@ -1063,3 +1063,61 @@ The user reports another external-types 60s aggregate timeout after the repaired
 aggregate cost, not an assumption that every integration timeout is slow compilation. The prior
 unchanged-assertion two-worker pass remains behavioral evidence; the larger limit is not a new pass
 or a claim that individual rebuild stalls are fixed.
+
+
+### Completed source input/output association checkpoint
+
+`dist/build-inputs.json` is source-only metadata, sealed by the existing integrity receipt alongside
+all output. No layout stamp, snapshot format, installed asset manifest or revision algorithm changes.
+Existing staging filters omit this root metadata just as they omit `phase-cache.json`. The common host
+reader checks the record against the verified receipt and replays current source/package facts without
+compiler or pack activation. The initial execution context is a digest, never raw environment values;
+a different inspecting command's ambient environment is not the recorded build context.
+
+The producer settles loader teardown and startup threads, performs final input validation, merges
+completed observations and writes the record before sealing. Its package graph scope is root-relative,
+flags are sorted/unique and observations use the existing deterministic encoder. Early phase hashes
+remain private keys, not substitutes for the completed frame. Cache reads require a verified/current
+record; reused phases retain the prior facts into final validation and the replacement record. A
+changed external input therefore cannot disappear merely because its phase was skipped. Failure
+continues to discard the candidate and retain the incumbent pair.
+
+Actual publication exposed two representation defects, repaired here rather than hidden by a timeout:
+
+- A private compiler runtime's absent `lib` path projected onto a present original directory, causing
+  immediate false staleness. Frame completion excludes installation-owned facts before projection;
+  their captured/read-only installation and identity remain their owner. Build-time full validation
+  remains intact. Generic capture/projection tests retain their original complete frames.
+- Native resolver preparation enumerated raw root siblings, accidentally making publication-created
+  `dist` an input. It now uses the existing filtered resolution inventory instead of duplicating its
+  enumeration. Explicit entry into a generated directory still admits and verifies that directory's
+  files/membership; ordinary authored membership remains unchanged. Raw pack-code directory reads
+  retain their original native semantics.
+
+The fresh-process passive test also caught an indirect TypeScript import through layout's SDK build
+barrel. Existing byte/receipt verification and its walker now live in the native `packs/assets.ts`
+module, shared with layout and the record reader. There is one verifier, with unchanged format,
+checksum, membership and identity rules. The full existing 110-case layout/installation suite passes.
+The complete authored/dependency input-view constructor also moved to the common host owner; CLI
+imports it rather than retaining a second implementation or compatibility wrapper.
+
+Evidence:
+
+- 100 cases across ten affected files pass in 5.65s, including a fresh process that blocks compiler
+  imports and checks filesystem functions remain unintercepted. Log:
+  `/private/tmp/apack-build-record-focused-final.log`.
+- 110 existing layout/receipt/staging/installation cases pass in 3.57s:
+  `/private/tmp/apack-build-record-layout.log`.
+- Real captured worker, two builds: source-frame currentness, prior phase reuse, identical sealed
+  revision and both input-tree removals pass (50.00s case, 51.68s runner):
+  `/private/tmp/apack-build-record-worker-final.log`. This used a command-local 120s diagnostic budget
+  for the previously measured 64s scenario; no default budget changed and this is not a strict-gate
+  result. The later native-verifier relocation is behavior-preserving and covered by its 110 cases.
+- Host/CLI typechecks pass; logs `/private/tmp/apack-build-record-{host,cli}-types-final.log`.
+  Changed-file lint is recorded in `/private/tmp/apack-build-record-lint.log`.
+
+This closes B4's completed-frame/receipt association slice. Expected producer output membership and
+bytes (media/public/CSS/lazy/worker), remaining B1/B3 external-library/platform lifetime acceptance,
+B5's archive/prebuilt/default-fork/drive policies and expected compiler/options contexts, B6, all
+Phase 6 streams and final committed-source strict `--all` remain required. No broad gate was repeated
+to diagnose these two reproduced failures, and no whole-goal completion is claimed.

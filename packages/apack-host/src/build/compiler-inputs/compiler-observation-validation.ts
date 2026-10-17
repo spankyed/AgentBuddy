@@ -18,8 +18,11 @@ export function assertNativeCompilerObservations(observations: CompilerInputObse
       if (kind === 'authored-files') continue; // The view already owns the current authored inventory.
       if (kind === 'file') view.readDataBytes(path.resolve(observations.root, query[0]));
       else if (kind === 'namespace') view.captureDataLocation(path.resolve(observations.root, query[0]), 'file');
-      else if (kind === 'entries') view.captureLocation(path.resolve(observations.root, query[0]), 'entries');
-      else if (kind === 'node-directory') view.readDirectoryData(path.resolve(observations.root, query[0]), query[1]);
+      else if (kind === 'entries') {
+        const directory = path.resolve(observations.root, query[0]);
+        view.captureDataLocation(directory, 'directory');
+        view.captureLocation(directory, 'entries');
+      } else if (kind === 'node-directory') view.readDirectoryData(path.resolve(observations.root, query[0]), query[1]);
       else if (kind === 'package-entries') packages.record([kind, ...query],
         readPackageDirectoryEntries(path.resolve(observations.root, query[0])).map(entry => entry.name));
       else if (kind === 'node-opendir') {

@@ -4,8 +4,12 @@ import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { dslInputsHash, filesUnder, reuseProblem, takeForward, typesInputsHash } from '../../src/build/phase-cache';
-import { readDependencyBuild, PACK_LAYOUT } from '@apackdev/host/packs';
+import { dslInputsHash, filesUnder, reuseProblem, takeForward, typesInputsHash, readPhaseCache, writeStamps } from '../../src/build/phase-cache';
+import { readDependencyBuild, sealPackBuild, PACK_LAYOUT } from '@apackdev/host/packs';
+import { createPackCompilerInputView } from '@apackdev/host/build/compiler-inputs';
+import { writePackBuildInputs } from '@apackdev/host/build/pack-build-inputs';
+import { readPackageInputs } from '@apackdev/host/build/package-inputs';
+
 import { _declarationRevision } from '@apackdev/sdk/build';
 
 const compilation = {
@@ -18,7 +22,8 @@ const compilation = {
   isInput() { return true; },
   prepareNative() {},
   requireParent() { throw new Error('No module loading in hash-only fixture'); },
-  async finishStartup() {},
+  retainInputs() {},
+  async finish(): Promise<never> { throw new Error('No completion in hash-only fixture'); },
   prepareNativeSource() {},
   readMetadata(): never { throw new Error('Unexpected metadata read'); },
   openDirectory(): never { throw new Error('Unexpected directory open'); },
@@ -182,4 +187,28 @@ describe('phase identities and dependencies', () => {
     const root = pack();
     expect(new Set([typesInputsHash(root, new Map(), compilation), dslInputsHash(root, [], new Map(), compilation)]).size).toBe(2);
   });
+});
+
+it('refuses phase reuse when a previously consumed external input changes without an authored edit', () => {
+  const root = tmp({ 'apack.json': '{"id":"cache-inputs","name":"Cache inputs","version":"1.0.0"}' });
+  const external = tmp({ 'data.txt': 'FIRST' });
+  const file = path.join(external, 'data.txt');
+  const view = createPackCompilerInputView(root);
+  view.readDataBytes(file);
+  const observations = view.observations().entries;
+  view.dispose();
+  const dist = path.join(root, 'dist');
+  const stamps = { types: { hash: 'phase', files: ['types/facade.d.ts'] } };
+  fs.mkdirSync(path.join(dist, 'types'), { recursive: true });
+  fs.writeFileSync(path.join(dist, 'types/facade.d.ts'), 'export {};');
+  writeStamps(dist, stamps);
+  writePackBuildInputs(dist, { compiler: 'a'.repeat(64), execution: 'b'.repeat(64), options: [],
+    packages: { hash: readPackageInputs([{ id: 'pack', directory: root }]).hash,
+      owners: [{ id: 'pack', directory: '' }], discovered: [] }, observations });
+  sealPackBuild(dist, { id: 'cache-inputs', name: 'Cache inputs', version: '1.0.0' });
+  expect(readPhaseCache(root).stamps).toEqual(stamps);
+  fs.writeFileSync(file, 'OTHER');
+  expect(readPhaseCache(root).stamps).toEqual({});
+  fs.writeFileSync(file, 'FIRST');
+  expect(readPhaseCache(root).stamps).toEqual(stamps);
 });

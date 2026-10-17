@@ -145,7 +145,8 @@ export function createCompilerFileView(root: string, options: {
     return value === undefined ? undefined : Buffer.from(value);
   }
   function entries(file: string, directory: string): DirectoryEntry[] {
-    return fs.readdirSync(directory, { withFileTypes: true }).filter(entry => !excluded(path.join(file, entry.name)))
+    return fs.readdirSync(directory, { withFileTypes: true }).filter(entry =>
+      (excluded(file) && included.has(path.resolve(file))) || !excluded(path.join(file, entry.name)))
       .map(entry => ({ name: entry.name, kind: entry.isDirectory() ? 'directory' : entry.isFile() ? 'file' : entry.isSymbolicLink() ? 'link' : 'other' }))
       .sort((a, b) => a.name < b.name ? -1 : a.name > b.name ? 1 : 0);
   }
@@ -191,16 +192,17 @@ export function createCompilerFileView(root: string, options: {
     }
     return values;
   };
-  const observations = () => {
+  // A caller can retain another owner's facts under its identity instead of replaying private copies as sources.
+  const observations = (exclude: (file: string) => boolean = () => false) => {
     assertOpen();
     const result = createCompilerInputObservations(origin);
     if (authoredFiles) result.record(['authored-files'], authoredFiles);
-    for (const [file, bytes] of contents) result.record(['file', relative(file)], bytes === undefined ? null : createHash('sha256').update(bytes).digest('hex'));
-    for (const value of inputs.values()) result.record(['namespace', relative(value.slot)], [relative(value.physical), value.kind, value.kind === 'file' ? value.mode & 0o111 : 0]);
-    for (const [directory, value] of directories) result.record(['entries', relative(directory)], value.entries);
-    for (const query of directoryQueries.values()) result.record(['node-directory', relative(query.file), query.options], JSON.parse(directoryResultKey(query.result, relative)));
-    for (const entry of metadata.values()) for (const [query, value] of entry.query.facts(relative)) result.record(['node-metadata', entry.kind, relative(entry.file), entry.args, ...query], value);
-    for (const query of directoryCursors.values()) for (const [index, value] of query.cursor.facts(relative)) result.record(['node-opendir', relative(query.file), query.options, index], value);
+    for (const [file, bytes] of contents) if (!exclude(file)) result.record(['file', relative(file)], bytes === undefined ? null : createHash('sha256').update(bytes).digest('hex'));
+    for (const value of inputs.values()) if (!exclude(value.file)) result.record(['namespace', relative(value.slot)], [relative(value.physical), value.kind, value.kind === 'file' ? value.mode & 0o111 : 0]);
+    for (const [directory, value] of directories) if (!exclude(value.file)) result.record(['entries', relative(directory)], value.entries);
+    for (const query of directoryQueries.values()) if (!exclude(query.file)) result.record(['node-directory', relative(query.file), query.options], JSON.parse(directoryResultKey(query.result, relative)));
+    for (const entry of metadata.values()) if (!exclude(entry.file)) for (const [query, value] of entry.query.facts(relative)) result.record(['node-metadata', entry.kind, relative(entry.file), entry.args, ...query], value);
+    for (const query of directoryCursors.values()) if (!exclude(query.file)) for (const [index, value] of query.cursor.facts(relative)) result.record(['node-opendir', relative(query.file), query.options, index], value);
     return result.snapshot();
   };
   const view = {
@@ -335,7 +337,9 @@ export function createCompilerFileView(root: string, options: {
       const locations: FileInput[] = directory ? [{ ...directory }] : [];
       const files: Array<{ file: string; bytes?: Buffer; mode: number }> = [];
       for (const entry of listing(file)) {
-        const node = input(path.join(file, entry.name), 'file');
+        const child = path.join(file, entry.name);
+        if (excluded(file) && included.has(path.resolve(file))) included.add(path.resolve(child));
+        const node = input(child, 'file');
         if (!node) continue;
         if (node.kind === 'missing' && entry.kind !== 'link') changed(node.file);
         locations.push({ ...node });

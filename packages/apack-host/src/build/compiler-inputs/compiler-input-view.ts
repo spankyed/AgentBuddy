@@ -1,14 +1,9 @@
 import path from 'node:path';
-import { packInputFiles, type BuildInputObserver } from '@apackdev/host/build/pack-inputs';
-import {
-  createCompilerFileView,
-  compilerSourcePath,
-  type CompilerPathMapping,
-  createCompilerInputObservations,
-  hashCompilerInputObservations,
-} from '@apackdev/host/build/compiler-inputs';
-
-import { readPackageInputs, readPackageDirectoryEntries } from '@apackdev/host/build/package-inputs';
+import { readPackageInputs, readPackageDirectoryEntries } from '../package-inputs.ts';
+import { packInputFiles, type BuildInputObserver } from '../pack-inputs.ts';
+import { createCompilerFileView } from './compiler-file-view.ts';
+import { compilerSourcePath, type CompilerPathMapping } from './compiler-paths.ts';
+import { createCompilerInputObservations, hashCompilerInputObservations } from './compiler-observations.ts';
 
 /** Native startup and compilation share authored/dependency bytes and their namespace history. */
 export function createPackCompilerInputView(root: string, options: {
@@ -24,14 +19,11 @@ export function createPackCompilerInputView(root: string, options: {
     }
     const observationRoot = view.observations().root;
     const packageEntries = new Map<string, readonly string[]>();
-    const packageObservations = createCompilerInputObservations(observationRoot);
     readPackageInputs([{ id: 'pack', directory: root, development: true }], {
       observe: (file, kind) => { view.captureDataLocation(file, kind); },
       onFile: (file, bytes) => { view.captureFile(file.source, bytes); },
       onDirectory(directory, names) {
         packageEntries.set(directory, Object.freeze([...names]));
-        const source = compilerSourcePath(directory, options.paths ?? []);
-        packageObservations.record(['package-entries', path.relative(observationRoot, source).split(path.sep).join('/')], names);
       },
     });
     const assertCurrent = () => {
@@ -46,8 +38,14 @@ export function createPackCompilerInputView(root: string, options: {
       }
     };
     assertCurrent();
-    const observations = () => {
-      const observed = view.observations();
+    const observations = (exclude: (file: string) => boolean = () => false) => {
+      const observed = view.observations(exclude);
+      const packageObservations = createCompilerInputObservations(observationRoot);
+      for (const [directory, names] of packageEntries) {
+        if (exclude(directory)) continue;
+        const source = compilerSourcePath(directory, options.paths ?? []);
+        packageObservations.record(['package-entries', path.relative(observationRoot, source).split(path.sep).join('/')], names);
+      }
       return createCompilerInputObservations(observed.root, [observed, packageObservations.snapshot()]).snapshot();
     };
     return { ...view, authoredFiles, assertCurrent, observations, hash: () => hashCompilerInputObservations(observations()) };

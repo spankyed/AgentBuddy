@@ -2,7 +2,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { afterEach, expect, it } from 'vitest';
-import { createPackCompilerInputView, type PackCompilerInputView } from '../../src/build/compiler-input-view.ts';
+import { createPackCompilerInputView, type PackCompilerInputView } from '@apackdev/host/build/compiler-inputs';
 import { assertNativeCompilerObservations, hashCompilerInputObservations } from '@apackdev/host/build/compiler-inputs';
 
 const roots: string[] = [];

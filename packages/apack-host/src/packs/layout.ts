@@ -23,10 +23,10 @@ import { replaceDir } from '../replace-dir.ts';
 import { parseSnapshot, parseContentIndex, contentFile, CONTENT_INDEX_FILE, _snapshotFormatMismatch, PACK_SNAPSHOT_FORMAT, type ContentIndex, type PackManifest, type PackSnapshot, type SnapshotFormatMismatch } from '@apackdev/sdk/build';
 import type { PackRegistry } from './registry.ts';
 import { PACK_LAYOUT, PACK_LAYOUT_VERSION, type PackIntegrity } from './layout-paths.ts';
-import { readPackIntegrity, packBuildRevision } from './assets.ts';
+import { readPackIntegrity, packBuildRevision, verifyPack, sha256File, packFileHashes, listPackFiles } from './assets.ts';
 
 export { PACK_LAYOUT, PACK_LAYOUT_VERSION, type PackIntegrity } from './layout-paths.ts';
-export { readPackIntegrity, packBuildRevision, readPackAsset } from './assets.ts';
+export { readPackIntegrity, packBuildRevision, readPackAsset, verifyPack, sha256File, packFileHashes } from './assets.ts';
 
 /** Sections `apack pack build` writes into dist/ and staging copies into the staged pack. */
 const SECTIONS = [PACK_LAYOUT.runtimeDir, PACK_LAYOUT.buildDir, PACK_LAYOUT.typesDir] as const;
@@ -41,29 +41,8 @@ export interface PackBuild {
   revision: string;
 }
 
-export function sha256File(filePath: string): string {
-  return sha256(fs.readFileSync(filePath));
-}
-
 function sha256(content: string | Buffer): string {
   return crypto.createHash('sha256').update(content).digest('hex');
-}
-
-function listFiles(dir: string, base = dir, rejectLinks = false): string[] {
-  const out: string[] = [];
-  for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
-    const full = path.join(dir, entry.name);
-    if (entry.isSymbolicLink()) {
-      if (rejectLinks) throw new Error(`Pack contains a symbolic link: ${path.relative(base, full)}`);
-      continue;
-    }
-    if (entry.isDirectory()) out.push(...listFiles(full, base, rejectLinks));
-    else {
-      if (rejectLinks && !entry.isFile()) throw new Error(`Pack contains a nonregular file: ${path.relative(base, full)}`);
-      out.push(path.relative(base, full).split(path.sep).join('/'));
-    }
-  }
-  return out.sort();
 }
 
 export function isPackLayout(dir: string): boolean {
@@ -138,15 +117,6 @@ export function getLoadedPackEntries(registry: Pick<PackRegistry, 'loadedPacks' 
  */
 export function getPacksWithClientLoadedFrontends(registry: Pick<PackRegistry, 'loadedPacks' | 'getPackRuntime'>): string[] {
   return getLoadedPackEntries(registry).filter(pack => pack.feEntry).map(pack => pack.id);
-}
-
-/**
- * The files a pack layout holds and their hashes, which is what `integrity.json` records — and so is
- * excluded from it.
- */
-export function packFileHashes(layoutDir: string): Record<string, string> {
-  return Object.fromEntries(listFiles(layoutDir).filter(rel => rel !== PACK_LAYOUT.integrity)
-    .map(rel => [rel, sha256File(path.join(layoutDir, rel))]));
 }
 
 /** Seal completed build output before publishing it as dist. Staging must never renew this receipt. */
@@ -351,52 +321,6 @@ export function packBuildProblem(dir: string, appFormat: number = PACK_SNAPSHOT_
   catch (error) { return { kind: 'unreadable', message: (error as Error).message }; }
 }
 
-/** Check format version and that the files on disk are exactly the ones recorded. */
-export function verifyPack(dir: string): PackIntegrity {
-  const receipt = fs.lstatSync(path.join(dir, PACK_LAYOUT.integrity), { throwIfNoEntry: false });
-  if (!receipt) throw new Error(`Not a pack layout: no ${PACK_LAYOUT.integrity} in ${dir}; rebuild the complete pack`);
-  if (receipt.isSymbolicLink()) throw new Error('integrity.json must be a file, not a symbolic link');
-  if (!receipt.isFile()) throw new Error('integrity.json must be a regular file');
-  const integrity = readPackIntegrity(dir);
-  if (!integrity || typeof integrity !== 'object' || Array.isArray(integrity)
-    || typeof integrity.id !== 'string' || !integrity.id
-    || typeof integrity.version !== 'string' || !integrity.version
-    || typeof integrity.formatVersion !== 'number' || !Number.isFinite(integrity.formatVersion)
-    || !integrity.files || typeof integrity.files !== 'object' || Array.isArray(integrity.files)) {
-    throw new Error('Invalid integrity.json: expected layout version, pack id/version and file checksums');
-  }
-  if (integrity.formatVersion !== PACK_LAYOUT_VERSION) {
-    throw new Error(`Pack ${integrity.id} uses format ${integrity.formatVersion}; this host supports format ${PACK_LAYOUT_VERSION}. Update apack or rebuild the pack.`);
-  }
-  const problems: string[] = [];
-  let manifestBytes: Buffer | undefined;
-  const onDisk = new Set(listFiles(dir, dir, true).filter(f => f !== PACK_LAYOUT.integrity));
-  for (const [rel, expected] of Object.entries(integrity.files)) {
-    if (!rel || rel.includes('\\') || rel.split('/').some(part => !part || part === '.' || part === '..')
-      || rel === PACK_LAYOUT.integrity || typeof expected !== 'string' || !/^[a-f0-9]{64}$/.test(expected)) {
-      problems.push(`invalid checksum entry ${rel}`);
-      continue;
-    }
-    if (!onDisk.has(rel)) problems.push(`missing ${rel}`);
-    else {
-      const bytes = fs.readFileSync(path.join(dir, rel));
-      if (sha256(bytes) !== expected) problems.push(`checksum mismatch ${rel}`);
-      if (rel === PACK_LAYOUT.manifest) manifestBytes = bytes;
-    }
-    onDisk.delete(rel);
-  }
-  for (const extra of onDisk) problems.push(`unexpected ${extra}`);
-  if (problems.length > 0) {
-    throw new Error(`Pack ${integrity.id}@${integrity.version} failed verification:\n${problems.map(p => `  - ${p}`).join('\n')}`);
-  }
-  if (!manifestBytes) throw new Error(`Pack is missing ${PACK_LAYOUT.manifest}`);
-  const manifest = JSON.parse(manifestBytes.toString('utf8'));
-  if (integrity.id !== manifest?.id || integrity.version !== manifest?.version) {
-    throw new Error('integrity.json identity does not match its manifest; rebuild and install the complete pack');
-  }
-  return integrity;
-}
-
 export function packArchiveName(id: string, version: string): string {
   return `${id}-${version}.tgz`;
 }
@@ -434,7 +358,7 @@ export async function extractPackArchive(archive: string, destDir: string, expec
 
 /** A pack's compiled content files, relative to the content directory holding them */
 export function packContentFiles(contentDir: string): string[] {
-  return fs.existsSync(contentDir) ? listFiles(contentDir).sort() : [];
+  return fs.existsSync(contentDir) ? listPackFiles(contentDir).sort() : [];
 }
 
 /**

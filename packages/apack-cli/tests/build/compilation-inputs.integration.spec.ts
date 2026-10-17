@@ -6,7 +6,7 @@ import { afterEach, expect, it, vi } from 'vitest';
 import { captureCompilationInputs } from '../../src/build/compilation-inputs.ts';
 import * as moduleInputs from '../../src/build/compiler-module-inputs.ts';
 import { withCompilerFileReads } from '@apackdev/host/build/compiler-inputs';
-import { createPackCompilerInputView } from '../../src/build/compiler-input-view.ts';
+import { createPackCompilerInputView } from '@apackdev/host/build/compiler-inputs';
 
 const roots: string[] = [];
 afterEach(() => { vi.restoreAllMocks(); vi.unstubAllEnvs(); roots.splice(0).forEach(root => fs.rmSync(root, { recursive: true, force: true })); });

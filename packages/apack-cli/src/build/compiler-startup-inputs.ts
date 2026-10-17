@@ -1,7 +1,8 @@
 import fs from 'node:fs';
 import path from 'node:path';
-import { createPackCompilerInputView, type PackCompilerInputView } from './compiler-input-view.ts';
 import {
+  createPackCompilerInputView,
+  type PackCompilerInputView,
   beginCompilerStartupReads,
   withoutCompilerFileReads,
   compilerDiagnostic,
@@ -80,7 +81,7 @@ export function beginCompilerStartupInputs(root: string, workspace: string, path
     finishLocal() {
       return withoutCompilerFileReads(() => {
         view.assertCurrent();
-        return original.observations();
+        return original.observations(file => !includes(file));
       });
     },
     async capture() { throw new Error('Compiler startup has no thread coordinator'); },

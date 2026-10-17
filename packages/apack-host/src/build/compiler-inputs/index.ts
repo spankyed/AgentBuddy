@@ -7,3 +7,4 @@ export * from './compiler-file-reads.ts';
 export * from './compiler-file-view.ts';
 export * from './compiler-observation-validation.ts';
 export * from './watch-paths.ts';
+export * from './compiler-input-view.ts';

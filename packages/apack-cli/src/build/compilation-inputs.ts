@@ -1,3 +1,4 @@
+import type { PackBuildInputs } from '@apackdev/host/build/pack-build-inputs';
 import { createHash } from 'node:crypto';
 import { errorMessage } from '@apackdev/sdk/utils/pure';
 import { buildToolHash, cliPackageDirectory } from './tool-identity.ts';
@@ -20,11 +21,11 @@ import {
   hashCompilerInputObservations,
   type CompilerInputObservations,
   assertNativeCompilerObservations,
+  type PackCompilerInputView,
 } from '@apackdev/host/build/compiler-inputs';
 
 import { createNativeInputReader } from './compiler-native-inputs.ts';
 import { BUILD_INPUTS_DIRECTORY_ENV, createCompilerReadTree, type CompilerReadTree } from './compiler-read-tree.ts';
-import type { PackCompilerInputView } from './compiler-input-view.ts';
 import { compilerExecutionIdentity, compilerStartupInputs } from './compiler-startup-inputs.ts';
 
 /** Export selectors passed to the worker; executable preloads need their own captured input closure. */
@@ -60,7 +61,8 @@ export interface CompilationInputs {
   prepareNative(specifier: string, importer: string): void;
   prepareNativeSource(file: string, contents: Buffer): void;
   requireParent(file: string): string;
-  finishStartup(): Promise<void>;
+  retainInputs(inputs: PackBuildInputs): void;
+  finish(options: readonly string[]): Promise<PackBuildInputs>;
   dispose(): void;
   assertCurrent(): void;
 }
@@ -80,24 +82,28 @@ export function captureCompilationInputs(packRoot: string, view?: PackCompilerIn
   const capturedPackages = new Set(compiler?.packages);
   const modules = readCompilerModuleInputs(packRoot, undefined, view);
   let startupObservations: CompilerInputObservations[] = [];
+  const retained = new Set<PackBuildInputs>();
+  const observationRoot = compilerSourcePath(fs.realpathSync(packRoot), compiler?.paths ?? []);
   let tree: CompilerReadTree | undefined;
   let disposed = false;
   const assertOpen = () => { if (disposed) throw new Error('Compiler input operation outlived its build'); };
+  const owners = [{ id: 'pack', directory: packRoot, development: true }];
+  if (!compiler) owners.unshift({ id: 'cli', directory: cliRoot, development: false });
+  const discovered = modules.packageDirectories.filter(directory => !capturedPackages.has(directory));
   const current = (capture = false) => {
-    const owners = [{ id: 'pack', directory: packRoot, development: true }];
-    if (!compiler) owners.unshift({ id: 'cli', directory: cliRoot, development: false });
     const inputs = readPackageInputs(owners, {
-      discovered: modules.packageDirectories.filter(directory => !capturedPackages.has(directory)),
+      discovered,
       onFile: capture ? (file, bytes) => modules.captureFile(file.source, bytes) : undefined,
     });
-    const hash = createHash('sha256').update(compiler?.hash ?? buildToolHash()).update(inputs.hash).update(modules.hash)
+    const compilerIdentity = compiler?.hash ?? buildToolHash();
+    const hash = createHash('sha256').update(compilerIdentity).update(inputs.hash).update(modules.hash)
       // Preload order and native flags can change behavior while reading identical files.
       .update(executionIdentity)
       .update(JSON.stringify(startup?.initial?.map(hashCompilerInputObservations) ?? []))
       .digest('hex');
-    return { hash, packages: inputs };
+    return { hash, packages: inputs, compilerIdentity };
   };
-  const { hash, packages } = current(true);
+  const { hash, packages, compilerIdentity } = current(true);
   const sourcePath = (file: string): string => tree?.sourcePath(file) ?? compilerSourcePath(file, compiler?.paths ?? []);
   const readTree = (): CompilerReadTree => withoutCompilerFileReads(() => {
     assertOpen();
@@ -118,12 +124,26 @@ export function captureCompilationInputs(packRoot: string, view?: PackCompilerIn
     }
     return tree;
   });
-  const ownsToolPath = (file: string) => compiler?.paths.some(({ captured }) => {
+  const ownsToolPath = (file: string) => !!compiler?.paths.some(({ captured }) => {
     const relative = path.relative(captured, file);
     return relative !== '..' && !relative.startsWith(`..${path.sep}`) && !path.isAbsolute(relative);
   });
   const native = createNativeInputReader(modules, packages, sourcePath, snapshot => readTree().include(snapshot));
   const workspace = process.env[BUILD_INPUTS_DIRECTORY_ENV];
+  const assertCurrent = () => {
+    assertOpen();
+    withoutCompilerFileReads(() => {
+      try {
+        tree?.assertCurrent();
+        modules.assertCurrent();
+        for (const observations of startupObservations) assertNativeCompilerObservations(observations);
+        for (const inputs of retained) assertNativeCompilerObservations({ root: observationRoot, entries: inputs.observations });
+        if (current().hash !== hash) throw new Error('Implementation, package or execution options differ');
+      } catch (cause) {
+        throw new Error(`Compiler or installed package inputs changed; retry before publishing: ${errorMessage(cause)}`, { cause });
+      }
+    });
+  };
   return {
     isInput(file) {
       if (ownsToolPath(file)) return false;
@@ -189,11 +209,32 @@ export function captureCompilationInputs(packRoot: string, view?: PackCompilerIn
     diagnostic(message) { return compilerDiagnostic(tree?.diagnostic(message) ?? message, compiler?.paths ?? []); },
     prepareNative(specifier, importer) { withoutCompilerFileReads(() => { readTree(); native.prepare(specifier, sourcePath(importer)); }); },
     requireParent(file) { return withoutCompilerFileReads(() => { readTree(); native.prepare(file, path.dirname(sourcePath(file))); return readTree().path(file); }); },
-    async finishStartup() {
+    retainInputs(inputs) {
       assertOpen();
-      if (!startup) return;
-      startupObservations = await startup.finish();
-      createCompilerInputObservations(modules.observations().root, [modules.observations(), ...startupObservations]);
+      retained.add(inputs);
+    },
+    async finish(options) {
+      assertOpen();
+      if (startup) startupObservations = await startup.finish();
+      assertCurrent();
+      // The immutable installation owns its namespace, including paths absent from the copy.
+      // Projecting those absences back onto the original machine would misidentify source changes.
+      const observed = modules.observations(ownsToolPath);
+      const observations = createCompilerInputObservations(observed.root,
+        [observed, ...startupObservations, ...[...retained].map(inputs => ({
+          root: observationRoot, entries: inputs.observations,
+        }))]).snapshot();
+      const relative = (directory: string) => path.relative(observations.root,
+        compilerSourcePath(directory, compiler?.paths ?? [])).split(path.sep).join('/');
+      return {
+        compiler: compilerIdentity,
+        execution: createHash('sha256').update(executionIdentity).digest('hex'),
+        options: [...new Set(options)].sort(),
+        packages: { hash: packages.hash, owners: owners.map(owner => ({ ...owner,
+          directory: relative(owner.directory),
+        })), discovered: discovered.map(relative) },
+        observations: observations.entries,
+      };
     },
     prepareNativeSource(file, contents) { assertOpen(); withoutCompilerFileReads(() => native.prepareSource(sourcePath(file), contents)); },
     dispose() {
@@ -201,18 +242,6 @@ export function captureCompilationInputs(packRoot: string, view?: PackCompilerIn
       disposed = true;
       withoutCompilerFileReads(() => { try { modules.dispose(); } finally { tree?.dispose(); } });
     },
-    assertCurrent() {
-      assertOpen();
-      withoutCompilerFileReads(() => {
-        try {
-          tree?.assertCurrent();
-          modules.assertCurrent();
-          for (const observations of startupObservations) assertNativeCompilerObservations(observations);
-          if (current().hash !== hash) throw new Error('Implementation, package or execution options differ');
-        } catch (cause) {
-          throw new Error(`Compiler or installed package inputs changed; retry before publishing: ${errorMessage(cause)}`, { cause });
-        }
-      });
-    },
+    assertCurrent,
   };
 }

@@ -5,12 +5,11 @@ import { afterEach, expect, it } from 'vitest';
 import ts from 'typescript';
 import {
   createCompilerFileView,
+  createPackCompilerInputView,
   createCompilerInputObservations,
   hashCompilerInputObservations,
   assertNativeCompilerObservations,
 } from '@apackdev/host/build/compiler-inputs';
-
-import { createPackCompilerInputView } from '../../src/build/compiler-input-view.ts';
 
 const roots: string[] = [];
 afterEach(() => { for (const root of roots.splice(0)) fs.rmSync(root, { recursive: true, force: true }); });
@@ -113,5 +112,41 @@ it('replays buffered directory results, long cursor prefixes, bigint fields and 
     expect((view.readMetadata('stat', file, [{ bigint: true }]) as fs.BigIntStats).size).toBe(3n);
     expect(() => view.readMetadata('stat', path.join(root, 'missing'), [])).toThrow();
     expect(() => assertNativeCompilerObservations(view.observations())).not.toThrow();
+  } finally { view.dispose(); }
+});
+
+
+it('keeps a captured installation namespace under its own owner when completing a source frame', () => {
+  const { root } = fixture();
+  const pack = path.join(root, 'pack'), source = path.join(root, 'runtime'), captured = path.join(root, 'compiler');
+  fs.mkdirSync(pack);
+  fs.mkdirSync(path.join(source, 'lib'), { recursive: true });
+  fs.mkdirSync(captured);
+  const view = createPackCompilerInputView(pack, { paths: [{ source, captured }] });
+  try {
+    expect(view.fileSystem.directoryExists(path.join(captured, 'lib'))).toBe(false);
+    expect(() => assertNativeCompilerObservations(view.observations())).toThrow(/input changed/);
+    const completed = view.observations(file => file === captured || file.startsWith(captured + path.sep));
+    expect(() => assertNativeCompilerObservations(completed)).not.toThrow();
+    expect(completed.entries).toContainEqual(['["authored-files"]', '[]']);
+    expect(view.observations().entries.length).toBeGreaterThan(completed.entries.length);
+  } finally { view.dispose(); }
+});
+
+
+it('replays explicitly entered generated resolution directories without expanding authored membership', () => {
+  const { root } = fixture();
+  const directory = path.join(root, 'src/__generated__');
+  fs.mkdirSync(directory, { recursive: true });
+  const file = path.join(directory, 'entry.ts');
+  fs.writeFileSync(file, 'export {};');
+  const view = createPackCompilerInputView(root);
+  try {
+    view.captureDataLocation(directory, 'directory');
+    expect(view.resolutionDirectory(directory).files.map(value => value.file)).toEqual([file]);
+    const observations = view.observations();
+    expect(() => assertNativeCompilerObservations(observations)).not.toThrow();
+    fs.writeFileSync(path.join(directory, 'added.ts'), 'export {};');
+    expect(() => assertNativeCompilerObservations(observations)).toThrow(/input changed/);
   } finally { view.dispose(); }
 });

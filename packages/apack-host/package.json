@@ -17,6 +17,7 @@
     "./build/compiler-inputs": "./src/build/compiler-inputs/index.ts",
     "./build/discover": "./src/build/discover.ts",
     "./build/package-inputs": "./src/build/package-inputs.ts",
+    "./build/pack-build-inputs": "./src/build/pack-build-inputs.ts",
     "./build/pack-inputs": "./src/build/pack-inputs.ts",
     "./build/pack-workdir": "./src/build/pack-workdir.ts",
     "./build/own-module-specifiers": "./src/build/own-module-specifiers.ts",

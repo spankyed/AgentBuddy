@@ -168,6 +168,17 @@ regressions, installation/refusal and real shipped/external output checks pass; 
 evidence](../evidence/discovery-without-activation.md#compiled-content-admission-2026-10-17). Media files still need producer evidence;
 declared media directories alone cannot identify the files required by compiled records.
 
+The common source-build association is now `dist/build-inputs.json`, written only after loader/thread
+settlement and final validation, and sealed by the existing output receipt. It records completed native
+observations, the package scope, compiler/runtime digest, hashed initial execution context and build
+flags. Reused phases retain their prior observations. Native verification/replay lives in the host
+build layer; it does not import the CLI, TypeScript or Vite. Compiler-copy namespace facts remain under
+the installation identity rather than being replayed against originals. Staging omits the source-only
+record; installed/offline inspection remains source-free. See
+[checkpoint evidence](../evidence/build-input-snapshot-proof.md#completed-source-inputoutput-association-checkpoint).
+Expected emitted/copied output bytes and B5 consumer policies remain required; the presence of this
+record alone does not establish those guarantees.
+
 The [asset producer audit](../evidence/build-input-snapshot-proof.md#asset-producer-audit-and-bounded-follow-through-2026-10-17)
 now enumerates the remaining concrete paths. Vite's output graph includes CSS/lazy/worker emissions
 but omits copied public files; media `fs.cpSync` bypasses the injected captured-byte view in a focused
