@@ -8,11 +8,15 @@ interface NativeLibraryCommands {
 
 export interface MachOLibraryEnvironment {
   readonly libraryPaths: readonly string[];
+  readonly fallbackLibraryPaths: readonly string[];
 }
 
 /** dyld reads these settings at process launch, before user preloads can change process.env. */
 export function captureMachOLibraryEnvironment(env: NodeJS.ProcessEnv = process.env): MachOLibraryEnvironment {
-  return Object.freeze({ libraryPaths: Object.freeze(env.DYLD_LIBRARY_PATH ? env.DYLD_LIBRARY_PATH.split(':') : []) });
+  return Object.freeze({
+    libraryPaths: Object.freeze(env.DYLD_LIBRARY_PATH ? env.DYLD_LIBRARY_PATH.split(':') : []),
+    fallbackLibraryPaths: Object.freeze(env.DYLD_FALLBACK_LIBRARY_PATH ? env.DYLD_FALLBACK_LIBRARY_PATH.split(':') : []),
+  });
 }
 
 const systemLibrary = (file: string) => file.startsWith('/usr/lib/') || file.startsWith('/System/Library/');
@@ -97,14 +101,14 @@ export function assertCapturedMachOLibraries(entry: string, packageRoot: string,
     return relative === '' || (relative !== '..' && !relative.startsWith(`..${path.sep}`) && !path.isAbsolute(relative));
   };
   const environment = input.environment ?? captureMachOLibraryEnvironment();
-  const overridden = (reference: string, requester: string) => {
+  const search = (reference: string, requester: string, directories: readonly string[], variable: string) => {
     // Framework overrides use DYLD_FRAMEWORK_PATH, not the dylib basename search.
     if (/([^/]+)\.framework\/(?:Versions\/[^/]+\/)?\1$/.test(reference)) return false;
-    for (const directory of environment.libraryPaths) {
+    for (const directory of directories) {
       const candidate = path.resolve(`${directory}/${path.basename(reference)}`);
       if (input.read(candidate) === undefined) continue;
       if (systemLibrary(candidate) && systemLibrary(input.realpath(candidate))) return true;
-      throw new Error(`Native compiler image "${requester}" selects "${candidate}" through DYLD_LIBRARY_PATH outside its captured package. Use package-relative native libraries or operating-system libraries.`);
+      throw new Error(`Native compiler image "${requester}" selects "${candidate}" through ${variable} outside its captured package. Use package-relative native libraries or operating-system libraries.`);
     }
     return false;
   };
@@ -130,24 +134,27 @@ export function assertCapturedMachOLibraries(entry: string, packageRoot: string,
       return expanded ? [{ reference, expanded }] : [];
     }), ...inherited];
     for (const reference of commands.dependencies) {
-      if (overridden(reference, file)) continue;
+      if (search(reference, file, environment.libraryPaths, 'DYLD_LIBRARY_PATH')) continue;
       if (path.isAbsolute(reference)) {
         if (!systemLibrary(path.resolve(reference))) refuse(reference);
         continue;
       }
       if (!reference.startsWith('@') && reference.includes('/')) refuse(reference);
+      const bare = !reference.startsWith('@');
       const candidates = reference.startsWith('@rpath/')
         ? rpaths.map(({ reference: search, expanded }) => ({ file: path.resolve(expanded, reference.slice(7)), search }))
-        : [{ file: expand(reference), search: undefined }];
+        : [{ file: bare ? path.resolve(reference) : expand(reference), search: undefined }];
+      let found = false;
       for (const { file: candidate, search } of candidates) {
-        if (!candidate) continue;
-        if (systemLibrary(candidate)) break;
+        if (!candidate || (bare && input.read(candidate) === undefined)) continue;
+        if (systemLibrary(candidate)) { found = true; break; }
         if (search && path.isAbsolute(search)) refuse(search);
         if (!within(candidate) || !within(input.realpath(candidate), input.realpath(packageRoot))) refuse(reference);
-        if (inspect(candidate, rpaths)) break;
+        if (inspect(candidate, rpaths)) { found = true; break; }
       }
+      if (!found) search(reference, file, environment.fallbackLibraryPaths, 'DYLD_FALLBACK_LIBRARY_PATH');
     }
     return true;
   }
-  if (!overridden(entry, entry)) inspect(entry, []);
+  if (!search(entry, entry, environment.libraryPaths, 'DYLD_LIBRARY_PATH')) inspect(entry, []);
 }

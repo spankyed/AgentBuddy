@@ -93,13 +93,20 @@ preloads (`bbf05ec00`). These are source evidence, not a claim that the full str
 #### Current compiler checkpoint (2026-10-17)
 
 Source `525350813` applies native canonical path identity consistently, preserving authored metadata
-query semantics and root-link observations. Windows run `39062528890` passes package preparation and
-148 checks; three remaining fixture assertions compare short and native path spellings. Those fixture
-origins are corrected, with eight affected local checks passing. Rerun the focused Windows workflow to
-reach its real-worker baseline. See [checkpoint evidence](../evidence/build-input-snapshot-proof.md#windows-native-path-fixture-correction-2026-10-17).
-The next demonstrated macOS gap is a bare library dependency selected through
-`DYLD_FALLBACK_LIBRARY_PATH`; a disposable native prototype loads the external library after current
-admission accepts it. Native/platform lifetime and final acceptance remain open.
+query semantics and root-link observations. Fixture correction `672645cf4` passes all 151 focused
+Windows checks (eight platform skips) in run `39062755440`. Its real worker builds successfully, then
+fails on a logical-source path spelling assertion; `329cfbd89` compares native filesystem identities
+while retaining private-path, repeated-output and cache checks. The next Windows run must prove the
+remaining real-worker cases; descendant lifetime remains separately unimplemented.
+
+The demonstrated macOS explicit fallback gap is repaired: launch-time `DYLD_FALLBACK_LIBRARY_PATH`
+survives preload mutation, selected external fallback libraries refuse before native initialization,
+and the incumbent survives. Current-directory lookup precedes fallback lookup; a successfully resolved
+package-relative library does not consult unused fallback paths. Twenty-seven unit cases, four real
+native/compiler cases, CLI types and correctness lint pass. See
+[checkpoint evidence](../evidence/build-input-snapshot-proof.md#explicit-native-fallback-admission-2026-10-17).
+Other dyld controls/default fallbacks, retained frontend native initialization, ELF/PE, platform lifetime
+and converged/final acceptance remain open. Do not treat this focused repair as full B1/B3 closure.
 
 #### Execution boundaries and closure
 

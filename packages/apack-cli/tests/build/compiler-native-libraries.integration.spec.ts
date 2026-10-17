@@ -15,7 +15,7 @@ import { withCompilerFileReads } from '@apackdev/host/build/compiler-inputs';
 import { captureCompilerInstallation, compilerPackageDirectory, type CompilerInstallation } from '../../src/build/compiler-installation.ts';
 import { startPackFrontend } from '../../src/build/frontend-process.ts';
 
-function nativeFixture(mode: 'relative' | 'absolute' | 'transitive') {
+function nativeFixture(mode: 'relative' | 'absolute' | 'transitive' | 'fallback') {
   const root = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'apack-native-libraries-')));
   try {
     const pack = path.join(root, 'pack');
@@ -38,7 +38,7 @@ function nativeFixture(mode: 'relative' | 'absolute' | 'transitive') {
     buildLibrary(library, mode === 'transitive'
       ? 'extern int outside_value(void); int native_value(void) { return outside_value(); }'
       : 'int native_value(void) { return 11; }',
-    mode === 'absolute' ? library : '@loader_path/../lib/libvalue.dylib', mode === 'transitive' ? [outside] : []);
+    mode === 'absolute' ? library : mode === 'fallback' ? 'libvalue.dylib' : '@loader_path/../lib/libvalue.dylib', mode === 'transitive' ? [outside] : []);
     const addonSource = path.join(native, 'binding/addon.c');
     fs.writeFileSync(addonSource, `#include <node_api.h>
 #include <stdio.h>
@@ -56,7 +56,7 @@ NAPI_MODULE_INIT() {
       '-o', path.join(native, 'binding/addon.node')]);
     fs.writeFileSync(path.join(pack, 'package.json'), '{"type":"commonjs"}');
     fs.writeFileSync(path.join(pack, 'tsconfig.json'), '{"compilerOptions":{"noLib":true,"types":[]}}');
-    if (mode !== 'relative') {
+    if (mode === 'absolute' || mode === 'transitive') {
       fs.writeFileSync(path.join(native, 'package.json'), JSON.stringify({ name: 'native-fixture', version: '1.0.0', main: 'binding/addon.node', exports: './fallback.cjs' }));
       fs.writeFileSync(path.join(native, 'fallback.cjs'), 'module.exports = "JS_FALLBACK";');
       fs.mkdirSync(path.join(pack, 'node_modules'));
@@ -252,6 +252,46 @@ __attribute__((constructor)) static void initialize(void) {
     else process.env.DYLD_INSERT_LIBRARIES = previous;
     await builder.close();
     await compiler?.dispose();
+    fs.rmSync(fixture.root, { recursive: true, force: true });
+  }
+});
+
+it.runIf(process.platform === 'darwin')('refuses an external native fallback before initialization after a preload clears its launch setting', async () => {
+  const fixture = nativeFixture('fallback');
+  const builder = createPackBuilder(fixture.pack);
+  const previousOptions = process.env.NODE_OPTIONS;
+  const previousFallback = process.env.DYLD_FALLBACK_LIBRARY_PATH;
+  const preload = path.join(fixture.pack, 'clear-fallback.cjs');
+  const attempted = path.join(fixture.root, 'owned-attempt');
+  try {
+    // First prove dyld really selects the external bytes in a fresh process.
+    expect(execFileSync(process.execPath, ['-e', `console.log(require(${JSON.stringify(path.join(fixture.native, 'binding/addon.node'))}).read())`], {
+      encoding: 'utf8', env: { ...process.env, DYLD_FALLBACK_LIBRARY_PATH: path.dirname(fixture.library) },
+    }).trim()).toBe('11');
+    expect(fs.existsSync(fixture.marker)).toBe(true);
+    fs.rmSync(fixture.marker);
+    packFixture({ at: fixture.pack, nodeModules: path.join(REPO_ROOT, 'node_modules'), manifest: { features: {} },
+      files: { 'tsconfig.json': JSON.stringify({ compilerOptions: { module: 'esnext', moduleResolution: 'bundler', skipLibCheck: true } }) } });
+    await builder.build({ args: ['--skip-fe'] });
+    const output = path.join(fixture.pack, 'dist');
+    const revision = readPackBuild(output).revision;
+    fs.writeFileSync(preload, `if (globalThis[Symbol.for('apack.compiler.startup')]) {
+      delete process.env.DYLD_FALLBACK_LIBRARY_PATH;
+      require('node:fs').writeFileSync(${JSON.stringify(attempted)}, 'owned');
+      require(${JSON.stringify(path.join(fixture.native, 'binding/addon.node'))});
+    }`);
+    process.env.DYLD_FALLBACK_LIBRARY_PATH = path.dirname(fixture.library);
+    process.env.NODE_OPTIONS = formatNodeOptions([...parseNodeOptions(previousOptions), '--require', preload]);
+    await expect(builder.build({ args: ['--skip-fe'] })).rejects.toThrow();
+    expect(fs.readFileSync(attempted, 'utf8')).toBe('owned');
+    expect(fs.existsSync(fixture.marker)).toBe(false);
+    expect(readPackBuild(output).revision).toBe(revision);
+  } finally {
+    if (previousOptions === undefined) delete process.env.NODE_OPTIONS;
+    else process.env.NODE_OPTIONS = previousOptions;
+    if (previousFallback === undefined) delete process.env.DYLD_FALLBACK_LIBRARY_PATH;
+    else process.env.DYLD_FALLBACK_LIBRARY_PATH = previousFallback;
+    await builder.close();
     fs.rmSync(fixture.root, { recursive: true, force: true });
   }
 });

@@ -91,18 +91,21 @@ it('preserves search order when a captured library precedes an unused outside fa
 });
 
 it('retains launch-time library paths after preload environment changes', () => {
-  const env = { DYLD_LIBRARY_PATH: '/first:/second' };
+  const env = { DYLD_LIBRARY_PATH: '/first:/second', DYLD_FALLBACK_LIBRARY_PATH: '/fallback' };
   const captured = captureMachOLibraryEnvironment(env);
   delete (env as NodeJS.ProcessEnv).DYLD_LIBRARY_PATH;
+  delete (env as NodeJS.ProcessEnv).DYLD_FALLBACK_LIBRARY_PATH;
   expect(captured.libraryPaths).toEqual(['/first', '/second']);
   expect(Object.isFrozen(captured.libraryPaths)).toBe(true);
+  expect(captured.fallbackLibraryPaths).toEqual(['/fallback']);
+  expect(Object.isFrozen(captured.fallbackLibraryPaths)).toBe(true);
 });
 
 it.each(['value.dylib', 'addon.node', 'libSystem.B.dylib'])('refuses a selected outside search override: %s', name => {
   const outside = `/outside/${name}`;
   const files = new Map([[entry, image([[0xc, '@loader_path/../lib/value.dylib'], [0xc, '/usr/lib/libSystem.B.dylib']])], [outside, image([])]]);
   expect(() => assertCapturedMachOLibraries(entry, root, { arch: 'arm64', read: file => files.get(file), realpath: file => file,
-    environment: { libraryPaths: ['/missing', '/outside'] } })).toThrow(`selects "${outside}" through DYLD_LIBRARY_PATH`);
+    environment: { libraryPaths: ['/missing', '/outside'], fallbackLibraryPaths: [] } })).toThrow(`selects "${outside}" through DYLD_LIBRARY_PATH`);
 });
 
 it('observes missing override candidates while preserving captured relative loading', () => {
@@ -110,7 +113,7 @@ it('observes missing override candidates while preserving captured relative load
   const files = new Map([[entry, image([[0xc, '@loader_path/../lib/value.dylib']])], [library, image([])]]);
   const reads: string[] = [];
   expect(() => assertCapturedMachOLibraries(entry, root, { arch: 'arm64', read(file) { reads.push(file); return files.get(file); },
-    realpath: file => file, environment: { libraryPaths: ['/unused'] } })).not.toThrow();
+    realpath: file => file, environment: { libraryPaths: ['/unused'], fallbackLibraryPaths: [] } })).not.toThrow();
   expect(reads).toContain('/unused/value.dylib');
   expect(reads).toContain(library);
 });
@@ -119,7 +122,7 @@ it('stops at an existing operating-system override before an unused outside cand
   const files = new Map([[entry, image([[0xc, '@loader_path/../lib/value.dylib']])],
     ['/usr/lib/value.dylib', image([])], ['/unused/value.dylib', image([])]]);
   expect(() => assertCapturedMachOLibraries(entry, root, { arch: 'arm64', read: file => files.get(file), realpath: file => file,
-    environment: { libraryPaths: ['/usr/lib', '/unused'] } })).not.toThrow();
+    environment: { libraryPaths: ['/usr/lib', '/unused'], fallbackLibraryPaths: [] } })).not.toThrow();
 });
 
 it('does not apply dylib basename overrides to framework references', () => {
@@ -127,7 +130,7 @@ it('does not apply dylib basename overrides to framework references', () => {
   const files = new Map([[entry, image([[0xc, '@loader_path/../Foo.framework/Versions/A/Foo']])],
     [framework, image([])], ['/unused/Foo', image([])]]);
   expect(() => assertCapturedMachOLibraries(entry, root, { arch: 'arm64', read: file => files.get(file), realpath: file => file,
-    environment: { libraryPaths: ['/unused'] } })).not.toThrow();
+    environment: { libraryPaths: ['/unused'], fallbackLibraryPaths: [] } })).not.toThrow();
 });
 
 it.runIf(process.platform === 'darwin').each(['/outside/init.dylib', '/usr/lib/../../outside/init.dylib', 'init.dylib'])(
@@ -140,4 +143,30 @@ it.runIf(process.platform === 'darwin')('permits empty insertion and normal oper
   expect(() => assertCompilerLibraryInsertion({})).not.toThrow();
   expect(() => assertCompilerLibraryInsertion({ DYLD_INSERT_LIBRARIES: '' })).not.toThrow();
   expect(() => assertCompilerLibraryInsertion({ DYLD_INSERT_LIBRARIES: '/usr/lib/libSystem.B.dylib' })).not.toThrow();
+});
+
+it('refuses an external explicit fallback for a bare library dependency', () => {
+  const outside = '/outside/value.dylib';
+  const files = new Map([[entry, image([[0xc, 'value.dylib']])], [outside, image([])]]);
+  expect(() => assertCapturedMachOLibraries(entry, root, { arch: 'arm64', read: file => files.get(file), realpath: file => file,
+    environment: { libraryPaths: [], fallbackLibraryPaths: ['/missing', '/outside'] } })).toThrow(`selects "${outside}" through DYLD_FALLBACK_LIBRARY_PATH`);
+});
+
+it('does not inspect an unused fallback after resolving a package-relative library', () => {
+  const library = path.join(root, 'lib/value.dylib');
+  const files = new Map([[entry, image([[0xc, '@loader_path/../lib/value.dylib']])], [library, image([])], ['/outside/value.dylib', image([])]]);
+  const reads: string[] = [];
+  expect(() => assertCapturedMachOLibraries(entry, root, { arch: 'arm64', read(file) { reads.push(file); return files.get(file); }, realpath: file => file,
+    environment: { libraryPaths: [], fallbackLibraryPaths: ['/outside'] } })).not.toThrow();
+  expect(reads).not.toContain('/outside/value.dylib');
+});
+
+it('checks a bare library in the working directory before explicit fallbacks', () => {
+  const local = path.resolve('value.dylib');
+  const files = new Map([[entry, image([[0xc, 'value.dylib']])], [local, image([])], ['/outside/value.dylib', image([])]]);
+  const reads: string[] = [];
+  expect(() => assertCapturedMachOLibraries(entry, root, { arch: 'arm64', read(file) { reads.push(file); return files.get(file); }, realpath: file => file,
+    environment: { libraryPaths: [], fallbackLibraryPaths: ['/outside'] } })).toThrow('references "value.dylib"');
+  expect(reads).toContain(local);
+  expect(reads).not.toContain('/outside/value.dylib');
 });

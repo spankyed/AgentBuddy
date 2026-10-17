@@ -2213,3 +2213,35 @@ compares them with the original source locations. A private compiler copy still 
 repeat-build revision/cache equality and receipt no-private-path checks remain. No production mapping
 changes. Full log: `/private/tmp/apack-windows-39062755440.log`. Repeat-build completion and subsequent
 worker cases remain unverified on Windows.
+
+### Explicit native fallback admission (2026-10-17)
+
+The disposable native prototype above proves current admission omitted explicit dyld fallback lookup.
+Capture `DYLD_FALLBACK_LIBRARY_PATH` with the existing launch-time native environment and carry it
+through the existing startup/thread ownership. Reuse the ordered search check for overrides and
+fallbacks. Inspect current-directory candidates for bare names first; only consult fallback paths when
+normal resolution did not select a library. Missing candidates remain observed inputs. A captured
+relative library does not consult an unused external fallback. No library relocation, environment
+scrubbing, compatibility handling or new owner is introduced.
+
+Acceptance on macOS ARM64 / Node 23.11.1:
+
+- All 27 native-library unit cases pass (0.315s runner), including frozen fallback settings after
+  environment mutation, selected outside fallback refusal, current-directory precedence and unused
+  fallback preservation: `/private/tmp/apack-native-fallback-unit.log`.
+- Four actual native/compiler cases pass (67.77s runner; no deadline changes): relative captured
+  loading, direct outside refusal, transitive outside refusal, and the new public-build fallback case.
+  `/private/tmp/apack-native-fallback-worker-final.log`.
+- The new case first loads the actual external library in a fresh Node child. It then publishes a
+  valid incumbent and attempts loading from an owned compiler preload after clearing the setting.
+  An owned-attempt marker proves the compiler reached admission, the addon initialization marker
+  remains absent, the diagnostic names `DYLD_FALLBACK_LIBRARY_PATH`, and the incumbent revision stays
+  unchanged. The earlier version could pass on an unrelated runtime-probe failure; its fixture was
+  corrected before acceptance. A fixture setup collision and sandbox IPC refusal were also corrected;
+  neither is product failure evidence.
+- CLI typecheck, focused correctness lint and whitespace checks pass:
+  `/private/tmp/apack-native-fallback-types.log`.
+
+This closes explicit fallback admission for the exercised path. Default fallback policy for older
+images, framework/versioned/suffix/shared-cache controls, retained frontend native initialization,
+ELF/PE and native platform/descendant acceptance remain open. B6/final strict acceptance is not claimed.
