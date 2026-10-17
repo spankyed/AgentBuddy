@@ -6773,3 +6773,55 @@ and provider lifetime binding. Existing generated Services and runtime access re
 checkpoint. Preserve harness mocks, actual action attribution, settings policy and EARS behavior.
 Finish A4/A5 migration, external acceptance, the outstanding B1/B3/B6 and other phase requirements,
 then the final committed-source strict --all. No broad chain or default-pack rebuild was repeated here.
+
+
+## Consumed service admission (2026-10-17)
+
+Source checkpoint: `558b42220` (on top of native-boundary planning `b010b6495`, preserved).
+The SDK's one selection function now checks dependency versions as well as direct service ownership.
+The host projects native, installed and source contracts from one catalog snapshot and validates them
+before runtime import, dependency auto-loading in the harness, and registration binding. Provider
+requirements are traversed without executing modules; prospective candidates close declaration cycles.
+Disabled/invalid installed providers cannot be hidden by source previews. Authoring-only declarations
+can satisfy another source consumer, never an installed/native one. Direct replacement refusal leaves
+the incumbent installed and invokes no new binding callbacks.
+
+CLI validation checks available requested-provider declarations independently of source validation
+and codegen, even if an unrelated dependency is unavailable. Missing requested declarations leave an
+explicit incomplete check; wrong direct ownership is invalid. Human info lists qualified requests and
+JSON inspection retains the authored declaration. This is declaration availability, not executable
+readiness or runtime filtering; A3 still owns accepted implementations and lifetime/type projections.
+
+Focused verification:
+
+- Five service/loader/registration/CLI files: 163 passing cases in
+  `/private/tmp/apack-service-admission-tests-final.log`. The sixth file's replacement assertion used
+  the registration API initially; corrected to `replacePack`, all six requirement cases pass in
+  `/private/tmp/apack-service-admission-replacement.log`. The corrected source is committed.
+- Eight real code-generation files, 190 cases: `/private/tmp/apack-service-admission-generators.log`.
+- SDK, host, CLI and testing types: `/private/tmp/apack-service-admission-types.log`.
+- Lint: `/private/tmp/apack-service-admission-lint.log`.
+- Published package refresh: `/private/tmp/apack-service-admission-packages.log`.
+- SDK API extraction/update: `/private/tmp/apack-service-admission-api.log`; reviewed report diff is
+  only the optional provider version and attributed callback ref. Schema remains unchanged and the
+  strict run's API/schema/export checks pass.
+
+Required checkpoint command, run once with frozen source:
+`npm run chain -- --strict --cores 2 --no-classify`.
+It exited 1 after 666.3s, not a strict pass. Log:
+`/private/tmp/apack-service-admission-chain.log`; retained step evidence:
+`node_modules/.cache/apack-chain/runs/2026-10-17T09-39-29Z-40982/`.
+Twenty-two steps reported success before `test:external-pack:contract` failed. The real authoring half
+passed in 290.1s, including release dry-run, checksum and isolated archive installation; its app half
+was not reached. Default-setup built, facade/type/import/lint checks passed, and the external pack's
+38 cases passed. Preparing the shipped-pack fork then refused:
+`Compiler startup input changed: ["file","src/__generated__/.inputs-hash"]`.
+The strict post-run audit also found default-setup's outputs changed, invalidating that build stamp.
+The producer of the changed marker is not established by this log alone. Do not blame another
+session or infer a deletion. Preserve the handoff and investigate this exact writer/reader path before
+another broad run; do not increase deadlines or weaken freshness checks. Unit pools, integrations and
+real app halves remain unverified by this run, as does final committed-source strict `--all`.
+
+Continue A3 implementation independently of that bounded B4/B6 repair. Preserve the whole active
+goal, remaining native/platform evidence, provenance and shipped-replacement workstreams. No stash,
+research worktree, production data or release metadata was changed.
