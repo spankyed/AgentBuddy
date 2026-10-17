@@ -162,6 +162,9 @@ preloads. Node arguments passed directly to the CLI configure its supervisor; cu
 are also forwarded to the worker. Use `NODE_OPTIONS` when configuring compiler execution.
 The separate published-content runtime check omits those options so compiler initialization cannot
 hide missing runtime dependencies or provide globals that dependent packs will not have.
+On macOS, native addon admission checks library dependencies and matching `DYLD_LIBRARY_PATH`
+candidates. A library selected outside the captured package or normal OS libraries is refused before
+addon initialization; an unused search directory is allowed.
 
 `apack pack build --watch` watches authored inputs throughout the pack, including `apack.json`,
 modules outside `src/`, JSON schemas, assets and help. The authored watcher excludes generated,

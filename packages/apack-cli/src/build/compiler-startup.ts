@@ -10,10 +10,12 @@ import { type CompilerInputObservations } from '@apackdev/host/build/compiler-in
 import { COMPILER_NODE_OPTIONS_ENV } from './compiler-startup-options.ts';
 import { compilerThreadHandoff, ownCompilerThreads, serveCompilerThread } from './compiler-threads.ts';
 import { BUILD_INPUTS_IPC_ENV } from './build-watch-inputs.ts';
+import type { MachOLibraryEnvironment } from './compiler-native-libraries.ts';
 
 interface CompilerThreadLineage {
   readonly pid: number;
   readonly loader: SharedArrayBuffer;
+  readonly nativeEnvironment: MachOLibraryEnvironment;
 }
 const LINEAGE = 'apack.compiler.thread';
 const inherited = getEnvironmentData(LINEAGE) as CompilerThreadLineage | undefined;
@@ -31,11 +33,12 @@ if ((isMainThread && process.env.APACK_BUILD_WORKER === '1' && process.send && p
   const temporary = path.join(workspace, 'tmp');
   fs.mkdirSync(temporary, { recursive: true });
   for (const key of ['TMPDIR', 'TMP', 'TEMP']) process.env[key] = temporary;
-  const startup = beginCompilerStartupInputs(process.cwd(), workspace, compiler.paths, userOptions);
+  const startup = beginCompilerStartupInputs(process.cwd(), workspace, compiler.paths, userOptions,
+    inherited?.pid === process.pid ? inherited.nativeEnvironment : undefined);
   const ready = new Int32Array(primaryLoader ? inherited.loader : new SharedArrayBuffer(4));
   if (primaryLoader) Atomics.store(ready, 0, 1);
   else {
-    setEnvironmentData(LINEAGE, { pid: process.pid, loader: ready.buffer });
+    setEnvironmentData(LINEAGE, { pid: process.pid, loader: ready.buffer, nativeEnvironment: startup.nativeEnvironment });
     const collectThreads = ownCompilerThreads(__filename, workspace, {
       [COMPILER_INPUTS_ENV]: process.env[COMPILER_INPUTS_ENV]!,
       [BUILD_INPUTS_DIRECTORY_ENV]: workspace,

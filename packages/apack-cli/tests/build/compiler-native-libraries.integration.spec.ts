@@ -68,6 +68,23 @@ NAPI_MODULE_INIT() {
   } catch (error) { fs.rmSync(root, { recursive: true, force: true }); throw error; }
 }
 
+function nativeLoad(fixture: ReturnType<typeof nativeFixture>, proof: string) {
+  return `const addon = require(${JSON.stringify(path.join(fixture.native, 'binding/addon.node'))});
+require('node:fs').appendFileSync(${JSON.stringify(proof)}, JSON.stringify({ thread: require('node:worker_threads').threadId, value: addon.read(), libraries: process.report.getReport().sharedObjects }) + '\\n');`;
+}
+
+function nativeWorkerCompiler(load: string) {
+  return `import { Worker } from 'node:worker_threads';
+export default () => new Promise((resolve, reject) => {
+  const worker = new Worker(${JSON.stringify(`if (!globalThis[Symbol.for('apack.compiler.startup')]) throw new Error('Native worker has no input owner');
+${load}
+require('node:worker_threads').parentPort.postMessage('NATIVE');`)}, { eval: true });
+  worker.once('message', name => resolve([{ entity: 'Relation', name }]));
+  worker.once('error', reject);
+  worker.once('exit', code => { if (code) reject(new Error('Native compiler worker exited with code ' + code)); });
+});`;
+}
+
 it.runIf(process.platform === 'darwin').each(['relative', 'absolute', 'transitive'] as const)('checks %s native libraries before addon initialization', async mode => {
   const { root, pack, library, marker, outside, entry } = nativeFixture(mode);
   let compilation: ReturnType<typeof captureCompilationInputs> | undefined;
@@ -113,18 +130,9 @@ it.runIf(process.platform === 'darwin').each(['preload', 'thread'] as const)('ca
   const preload = path.join(supported.pack, 'native-preload.cjs');
   const proof = path.join(supported.root, 'preload-proof.json');
   const writeLoader = (fixture: ReturnType<typeof nativeFixture>) => {
-    const load = `const addon = require(${JSON.stringify(path.join(fixture.native, 'binding/addon.node'))});
-require('node:fs').appendFileSync(${JSON.stringify(proof)}, JSON.stringify({ thread: require('node:worker_threads').threadId, value: addon.read(), libraries: process.report.getReport().sharedObjects }) + '\\n');`;
+    const load = nativeLoad(fixture, proof);
     if (site === 'preload') fs.writeFileSync(preload, `if (globalThis[Symbol.for('apack.compiler.startup')]) { ${load} }`);
-    else fs.writeFileSync(path.join(supported.pack, 'src/compiler.ts'), `import { Worker } from 'node:worker_threads';
-export default () => new Promise((resolve, reject) => {
-  const worker = new Worker(${JSON.stringify(`if (!globalThis[Symbol.for('apack.compiler.startup')]) throw new Error('Native worker has no input owner');
-${load}
-require('node:worker_threads').parentPort.postMessage('NATIVE');`)}, { eval: true });
-  worker.once('message', name => resolve([{ entity: 'Relation', name }]));
-  worker.once('error', reject);
-  worker.once('exit', code => { if (code) reject(new Error('Native compiler worker exited with code ' + code)); });
-});`);
+    else fs.writeFileSync(path.join(supported.pack, 'src/compiler.ts'), nativeWorkerCompiler(load));
   };
   try {
     packFixture({ at: supported.pack, nodeModules: path.join(REPO_ROOT, 'node_modules'), manifest: { features: {},
@@ -162,5 +170,51 @@ require('node:worker_threads').parentPort.postMessage('NATIVE');`)}, { eval: tru
     else process.env.NODE_OPTIONS = previous;
     await builder.close();
     for (const fixture of [supported, ...refused]) fs.rmSync(fixture.root, { recursive: true, force: true });
+  }
+});
+
+it.runIf(process.platform === 'darwin')('retains launch-time native search paths across preload changes and compiler workers', async () => {
+  const fixture = nativeFixture('relative');
+  const builder = createPackBuilder(fixture.pack);
+  const previousOptions = process.env.NODE_OPTIONS;
+  const previousSearch = process.env.DYLD_LIBRARY_PATH;
+  const search = path.join(fixture.root, 'search');
+  const proof = path.join(fixture.root, 'worker-proof.json');
+  const preload = path.join(fixture.pack, 'clear-loader-env.cjs');
+  try {
+    fs.mkdirSync(search);
+    packFixture({ at: fixture.pack, nodeModules: path.join(REPO_ROOT, 'node_modules'), manifest: { features: {},
+      content: { formats: { rows: { compiler: 'src/compiler.ts', entity: 'Relation', identity: ['name'] } },
+        sources: { rows: { path: 'src/value.txt', format: 'rows' } } } },
+      files: { 'src/compiler.ts': nativeWorkerCompiler(nativeLoad(fixture, proof)), 'src/value.txt': 'input',
+        'tsconfig.json': JSON.stringify({ compilerOptions: { module: 'esnext', moduleResolution: 'bundler', skipLibCheck: true } }) } });
+    fs.writeFileSync(preload, `delete process.env.DYLD_LIBRARY_PATH;`);
+    process.env.NODE_OPTIONS = formatNodeOptions([...parseNodeOptions(previousOptions), '--require', preload]);
+    process.env.DYLD_LIBRARY_PATH = search;
+    await builder.build({ args: ['--skip-fe'] });
+    const loaded = JSON.parse(fs.readFileSync(proof, 'utf8')) as { value: number; thread: number; libraries: string[] };
+    expect(loaded.thread).toBeGreaterThan(0);
+    expect(loaded.value).toBe(11);
+    expect(loaded.libraries).not.toContain(fixture.library);
+    const output = path.join(fixture.pack, 'dist');
+    const revision = readPackBuild(output).revision;
+    const inputs = readPackBuildInputs(output);
+    assertPackBuildInputsCurrent(fixture.pack, inputs);
+    fs.rmSync(fixture.marker);
+    fs.rmSync(proof);
+    // An unused directory was harmless; this new matching library would now override the owned copy.
+    fs.copyFileSync(fixture.library, path.join(search, path.basename(fixture.library)));
+    expect(() => assertPackBuildInputsCurrent(fixture.pack, inputs)).toThrow();
+    await expect(builder.build({ args: ['--skip-fe'] })).rejects.toThrow();
+    expect(fs.existsSync(fixture.marker)).toBe(false);
+    expect(fs.existsSync(proof)).toBe(false);
+    expect(readPackBuild(output).revision).toBe(revision);
+  } finally {
+    if (previousOptions === undefined) delete process.env.NODE_OPTIONS;
+    else process.env.NODE_OPTIONS = previousOptions;
+    if (previousSearch === undefined) delete process.env.DYLD_LIBRARY_PATH;
+    else process.env.DYLD_LIBRARY_PATH = previousSearch;
+    await builder.close();
+    fs.rmSync(fixture.root, { recursive: true, force: true });
   }
 });

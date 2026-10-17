@@ -5,6 +5,15 @@ interface NativeLibraryCommands {
   rpaths: string[];
 }
 
+export interface MachOLibraryEnvironment {
+  readonly libraryPaths: readonly string[];
+}
+
+/** dyld reads these settings at process launch, before user preloads can change process.env. */
+export function captureMachOLibraryEnvironment(env: NodeJS.ProcessEnv = process.env): MachOLibraryEnvironment {
+  return Object.freeze({ libraryPaths: Object.freeze(env.DYLD_LIBRARY_PATH ? env.DYLD_LIBRARY_PATH.split(':') : []) });
+}
+
 /** Inspect dependency commands, never LC_ID_DYLIB or executable code. */
 export function parseMachOLibraryCommands(bytes: Buffer, arch: string): NativeLibraryCommands {
   const invalid = () => new Error('Invalid Mach-O native library commands');
@@ -64,12 +73,25 @@ export function assertCapturedMachOLibraries(entry: string, packageRoot: string,
   read(file: string): Buffer | undefined;
   realpath(file: string): string;
   arch: string;
+  environment?: MachOLibraryEnvironment;
 }) {
   const within = (file: string, root = packageRoot) => {
     const relative = path.relative(root, file);
     return relative === '' || (relative !== '..' && !relative.startsWith(`..${path.sep}`) && !path.isAbsolute(relative));
   };
   const system = (file: string) => file.startsWith('/usr/lib/') || file.startsWith('/System/Library/');
+  const environment = input.environment ?? captureMachOLibraryEnvironment();
+  const overridden = (reference: string, requester: string) => {
+    // Framework overrides use DYLD_FRAMEWORK_PATH, not the dylib basename search.
+    if (/([^/]+)\.framework\/(?:Versions\/[^/]+\/)?\1$/.test(reference)) return false;
+    for (const directory of environment.libraryPaths) {
+      const candidate = path.resolve(`${directory}/${path.basename(reference)}`);
+      if (input.read(candidate) === undefined) continue;
+      if (system(candidate) && system(input.realpath(candidate))) return true;
+      throw new Error(`Native compiler image "${requester}" selects "${candidate}" through DYLD_LIBRARY_PATH outside its captured package. Use package-relative native libraries or operating-system libraries.`);
+    }
+    return false;
+  };
   const visited = new Set<string>();
   function inspect(file: string, inherited: readonly { reference: string; expanded: string }[]) {
     if (visited.has(file)) return true;
@@ -92,6 +114,7 @@ export function assertCapturedMachOLibraries(entry: string, packageRoot: string,
       return expanded ? [{ reference, expanded }] : [];
     }), ...inherited];
     for (const reference of commands.dependencies) {
+      if (overridden(reference, file)) continue;
       if (path.isAbsolute(reference)) {
         if (!system(path.resolve(reference))) refuse(reference);
         continue;
@@ -110,5 +133,5 @@ export function assertCapturedMachOLibraries(entry: string, packageRoot: string,
     }
     return true;
   }
-  inspect(entry, []);
+  if (!overridden(entry, entry)) inspect(entry, []);
 }

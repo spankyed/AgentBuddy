@@ -1,7 +1,7 @@
 import path from 'node:path';
 import { isBuiltin } from 'node:module';
 import ts from 'typescript';
-import { assertCapturedMachOLibraries } from './compiler-native-libraries.ts';
+import { assertCapturedMachOLibraries, captureMachOLibraryEnvironment, type MachOLibraryEnvironment } from './compiler-native-libraries.ts';
 import { compilerGlobDirectories } from './compiler-source-globs.ts';
 import type { PackageInputs } from '@apackdev/host/build/package-inputs';
 import { captureCompilerPackage } from './compiler-package-inputs.ts';
@@ -13,7 +13,8 @@ type PendingInputs = { files: Array<CompilerReadSnapshot['files'][number]>; loca
 
 /** Admit lookup namespaces, not a second resolver: esbuild still selects files and package exports. */
 export function createNativeInputReader(view: NativeInputView, initialPackages: PackageInputs,
-  sourcePath: (file: string) => string, include: (snapshot: CompilerReadSnapshot) => void) {
+  sourcePath: (file: string) => string, include: (snapshot: CompilerReadSnapshot) => void,
+  environment: MachOLibraryEnvironment = captureMachOLibraryEnvironment()) {
   const directories = new Set<string>();
   const packages = new Set(initialPackages.nodes.map(node => node.directory));
   const configurations = new Map<string, ts.CompilerOptions>();
@@ -218,7 +219,7 @@ export function createNativeInputReader(view: NativeInputView, initialPackages: 
         // including repeated loads whose resolution namespace is already admitted.
         if (process.platform === 'darwin' && path.isAbsolute(specifier) && specifier.endsWith('.node')) {
           assertCapturedMachOLibraries(specifier, scope(path.dirname(specifier)).packageRoot ?? path.dirname(specifier), {
-            arch: process.arch,
+            arch: process.arch, environment,
             realpath: file => view.fileSystem.realpath(file),
             read(file) {
               const bytes = view.readBytes(file);

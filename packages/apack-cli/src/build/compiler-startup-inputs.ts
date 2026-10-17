@@ -12,7 +12,7 @@ import {
   type CompilerInputObservations,
 } from '@apackdev/host/build/compiler-inputs';
 import { captureCompilerPackage } from './compiler-package-inputs.ts';
-import { assertCapturedMachOLibraries } from './compiler-native-libraries.ts';
+import { assertCapturedMachOLibraries, captureMachOLibraryEnvironment, type MachOLibraryEnvironment } from './compiler-native-libraries.ts';
 import { createCompilerReadTree, type CompilerReadTree } from './compiler-read-tree.ts';
 
 import { parseNodeOptions } from '@apackdev/host/build/source-resolution';
@@ -25,6 +25,7 @@ export interface CompilerStartupInputs {
   readonly root: string;
   readonly executionIdentity: string;
   readonly view: PackCompilerInputView;
+  readonly nativeEnvironment: MachOLibraryEnvironment;
   stopReads(): void;
   nativeModule(file: string): string;
   finishLocal(): CompilerInputObservations;
@@ -44,7 +45,8 @@ export function compilerStartupInputs(): CompilerStartupInputs | undefined {
 }
 
 /** Native-only owner shared with the later compiler, including the early data-read tree's lifetime. */
-export function beginCompilerStartupInputs(root: string, workspace: string, paths: readonly CompilerPathMapping[], nodeOptions = process.env.NODE_OPTIONS): CompilerStartupInputs {
+export function beginCompilerStartupInputs(root: string, workspace: string, paths: readonly CompilerPathMapping[], nodeOptions = process.env.NODE_OPTIONS,
+  nativeEnvironment = captureMachOLibraryEnvironment()): CompilerStartupInputs {
   if (compilerStartupInputs()) throw new Error('Compiler startup inputs already have an owner');
   const canonicalRoot = fs.realpathSync(root);
   const executionIdentity = compilerExecutionIdentity(nodeOptions, paths);
@@ -91,9 +93,10 @@ export function beginCompilerStartupInputs(root: string, workspace: string, path
     // actual images without recording ephemeral private paths as new source inputs.
     if (!includes(file) || sourcePath(file) !== file) {
       assertCapturedMachOLibraries(file, packageRoot(file, fs.existsSync), {
-        arch: process.arch,
+        arch: process.arch, environment: nativeEnvironment,
         realpath: file => fs.realpathSync(file),
-        read: file => fs.statSync(file, { throwIfNoEntry: false })?.isFile() ? fs.readFileSync(file) : undefined,
+        read: file => includes(file) && sourcePath(file) === file ? original.readDataBytes(file)
+          : fs.statSync(file, { throwIfNoEntry: false })?.isFile() ? fs.readFileSync(file) : undefined,
       });
       return file;
     }
@@ -106,7 +109,7 @@ export function beginCompilerStartupInputs(root: string, workspace: string, path
       nativePackages.add(owner);
     }
     assertCapturedMachOLibraries(file, owner, {
-      arch: process.arch, read: original.readDataBytes, realpath: original.fileSystem.realpath,
+      arch: process.arch, environment: nativeEnvironment, read: original.readDataBytes, realpath: original.fileSystem.realpath,
     });
     return readDataPath(file);
   };
@@ -130,7 +133,7 @@ export function beginCompilerStartupInputs(root: string, workspace: string, path
     requireParent: file => file,
   } });
   const startup: CompilerStartupInputs = {
-    root: canonicalRoot, executionIdentity, view, stopReads, nativeModule,
+    root: canonicalRoot, executionIdentity, view, nativeEnvironment, stopReads, nativeModule,
     finishLocal() {
       return withoutCompilerFileReads(() => {
         view.assertCurrent();

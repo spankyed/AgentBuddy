@@ -129,7 +129,7 @@ export function captureCompilationInputs(packRoot: string, view?: PackCompilerIn
     const relative = path.relative(captured, file);
     return relative !== '..' && !relative.startsWith(`..${path.sep}`) && !path.isAbsolute(relative);
   });
-  const native = createNativeInputReader(modules, packages, sourcePath, snapshot => readTree().include(snapshot));
+  const native = createNativeInputReader(modules, packages, sourcePath, snapshot => readTree().include(snapshot), startup?.nativeEnvironment);
   const workspace = process.env[BUILD_INPUTS_DIRECTORY_ENV];
   const assertCurrent = () => {
     assertOpen();
