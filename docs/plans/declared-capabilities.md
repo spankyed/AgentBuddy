@@ -1,7 +1,7 @@
 # Declare the APIs a pack consumes
 
 Status: A1 selection and A2 declaration, pre-import/admission and read-only diagnostics are implemented.
-A3 runtime/type filtering and lifetime binding are next. Remaining discovery/build ownership work stays active in the [owning goal](../goals/goal-settings-and-pack-contracts.md); it blocks only
+A3 is in progress: retained root retirement is fixed; runtime/type filtering and provider lifetimes remain. Remaining discovery/build ownership work stays active in the [owning goal](../goals/goal-settings-and-pack-contracts.md); it blocks only
 the slices that consume its missing guarantees. This is an API dependency contract, not a security sandbox.
 
 ## Problem
@@ -195,6 +195,15 @@ A3 must bind the accepted service implementations and handle provider failure/re
 retirement. Implement lifetime/filtering and generated types together before migrating all consumers
 and completing external runtime/docs acceptance. Do not add a runtime `consumes` inventory when the
 host already holds the accepted declaration.
+
+A3 root retirement checkpoint `3ccd27614` fixes a concrete rebind hole: the old generated root
+previously followed the factory's current settings binding. Each root now retains its construction
+frame; generated `services` is a live export refreshed after disposal, including failed cleanup.
+Actual generated-module execution proves old roots cannot reacquire settings after later binds.
+This does not close A3: non-settings members still delegate to the ambient union, and previously
+retained service objects/methods still need caller/provider generation checks. Complete host-accepted
+selection, matching type/runtime filtering, host/provider lifetimes and inference resource adapters
+before declaring A3 done. Preserve this regression while replacing the settings-only backend hook.
 
 Rechecked the service proxy, `_createPackServices`, SDK `generateServices` and Database consumer on
 2026-10-16. The ambient runtime union, generated dependency intersections and settings-only binding

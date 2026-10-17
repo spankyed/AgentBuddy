@@ -442,8 +442,13 @@ A2's pre-import/admission and read-only validation/inspection checkpoint is comm
 Missing/disabled/invalid providers, direct ownership, dependency versions and nested requirements are
 checked from catalog data; poisoned consumer modules remain unexecuted. See
 [admission evidence](../evidence/settings-and-pack-contracts.md#consumed-service-admission-2026-10-17).
-Next: implement A3's matching filtered runtime/types and caller/provider lifetime binding; generated
-Services and runtime access are still broad. Preserve harness mocks and actual action attribution.
+A3 root retirement is implemented in `3ccd27614`: retained generated roots cannot regain settings
+authority after rebind, and cleanup failure still refreshes the exported root. See
+[root lifetime evidence](../evidence/settings-and-pack-contracts.md#generated-service-root-retirement-2026-10-17).
+Next: complete A3's host-accepted selection, matching filtered runtime/types, caller/provider/host
+generation checks and inference resource adapters. Non-settings members and generated types are still
+broad; retained non-settings objects/methods remain unguarded. Preserve harness mocks and actual
+action attribution. Do not mistake the root fix for A3 closure or repeat A1's settled syntax prototype.
 The single two-core strict run failed preparing the default-pack fork: the build observation for
 `src/__generated__/.inputs-hash` no longer matched, and the chain also invalidated default-setup's
 output stamp. The external fixture's 38 checks and real packaged-authoring author half passed first;

@@ -6825,3 +6825,39 @@ real app halves remain unverified by this run, as does final committed-source st
 Continue A3 implementation independently of that bounded B4/B6 repair. Preserve the whole active
 goal, remaining native/platform evidence, provenance and shipped-replacement workstreams. No stash,
 research worktree, production data or release metadata was changed.
+
+
+## Generated service root retirement (2026-10-17)
+
+Source checkpoint: `3ccd27614`. While starting A3, inspection found that `_createPackServices` gave
+all generated roots a getter over the factory's changing binding. A retained root regained settings
+authority on a later bind even though retained settings handles stayed revoked.
+
+The root now belongs to its construction frame. Factory disposal installs a fresh frame before
+revoking the old one; generated `services` is a live export refreshed in `finally`, so cleanup errors
+do not leave the current export pointing at a retired root. A later bind accepts the fresh frame;
+retained roots remain revoked. The settings-only hook remains until the full service binding replaces
+it; no compatibility alias was introduced.
+
+Proof:
+
+- `npx vitest run --project @apackdev/host --project @apackdev/sdk
+  packages/apack-host/tests/packs/registration.spec.ts
+  packages/apack-sdk/tests/build/generate-entries/compiles.spec.ts
+  packages/apack-sdk/tests/build/generate-entries/shapes.spec.ts --maxWorkers 2`:
+  105 cases pass in 18.94s; `/private/tmp/apack-root-lifetime-tests.log`.
+  This includes real generated TypeScript typechecking, bundling and subprocess execution over
+  disposal, rebind, throwing subscription cleanup and a third successful bind. Actual host
+  unregister/register also proves retained-root refusal and fresh-root access.
+- SDK/host types pass: `/private/tmp/apack-root-lifetime-types.log`.
+- Lint passes: `/private/tmp/apack-root-lifetime-lint.log`.
+- Package refresh for executable acceptance: `/private/tmp/apack-root-lifetime-packages.log`.
+- API extraction passes: `/private/tmp/apack-root-lifetime-api.log`. Reviewed report change is only
+  the factory's readonly current-root getter.
+
+A3 is incomplete. Non-settings members still use the ambient union; retained nested objects/methods,
+provider generations, host replacement, matching selective types/runtime and inference resources
+remain required. Preserve mocks and action attribution while replacing the backend settings-only
+binding with full host-accepted service authority. Do not repeat the A1 design prototype.
+The previous strict run's `.inputs-hash` refusal remains open under B4/B6. No broad run was repeated;
+final committed-source strict `--all` and the entire active goal remain outstanding.
