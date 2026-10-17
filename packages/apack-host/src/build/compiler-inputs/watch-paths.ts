@@ -5,7 +5,8 @@ export function physicalWatchPath(file: string, cache = new Map<string, string>(
   const known = cache.get(file);
   if (known) return known;
   let resolved: string;
-  try { resolved = fs.realpathSync.native(file); }
+  // Match compiler roots: native realpath expands Windows short names differently from realpathSync.
+  try { resolved = fs.realpathSync(file); }
   catch (error) {
     if (!['ENOENT', 'ENOTDIR'].includes((error as NodeJS.ErrnoException).code ?? '')) throw error;
     const parent = path.dirname(file);

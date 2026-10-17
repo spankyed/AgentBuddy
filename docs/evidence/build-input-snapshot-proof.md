@@ -2037,3 +2037,24 @@ do not guess at path aliases, file timestamps or resolution semantics from two o
 All 24 local module-input cases pass (1.06s runner), with focused lint and whitespace checks:
 `/private/tmp/apack-windows-module-observations.log`. The Windows compiler and descendant-lifetime
 checkpoints remain open.
+
+
+### Windows observation diff identifies inconsistent realpath policy
+
+Diagnostic source `8fb57ac5e`, [run 39058844360](https://github.com/spankyed/AgentBuddy/actions/runs/39058844360),
+shows matching file hashes but different relative query paths containing
+`../../../../../../runneradmin/AppData/Local/Temp/apack-module-inputs-<random>/...`.
+The namespace resolver uses `fs.realpathSync.native`, which expands Windows short names differently
+from `fs.realpathSync`, used by compiler observation roots and captured-installation roots. Comparing
+those spellings treats the same checkout as an unrelated path.
+
+Align `physicalWatchPath()` with the existing `fs.realpathSync()` root policy. Keep explicit native
+metadata queries intact; preserve symlink and missing-parent resolution. No per-reader conversion,
+root-name stripping or weakened hash assertion.
+
+58 focused module/view/watch cases pass locally across five files (1.01s and 4.11s runners), including
+namespace retarget refusal, copied-source identity and actual watcher events. Host types, focused lint
+and whitespace checks pass. Logs: `/private/tmp/apack-windows-path-identity-unit.log`,
+`/private/tmp/apack-windows-path-watch-unit.log`, `/private/tmp/apack-windows-path-types.log`.
+The native Windows rerun must establish whether this closes the observed discrepancy; compiler
+platform and descendant-lifetime completion are not claimed by these local checks.

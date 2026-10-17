@@ -582,8 +582,10 @@ the focused workflow. `d7dc7f224` repairs the launcher: [run 39058353468](https:
 built and staged EARS/SDK successfully, then exposed native separators leaking into UI export targets.
 `6a8a514cf` normalizes those specifiers and their ordering. [Run 39058623655](https://github.com/spankyed/AgentBuddy/actions/runs/39058623655)
 passes complete package preparation and all 15 packaging cases, then fails the existing equivalent-
-checkout module identity assertion. Compare its recorded entries before their hashes to expose the
-precise Windows input difference. Compiler completion and descendant-lifetime acceptance remain open.
+checkout module identity assertion. Diagnostic `8fb57ac5e` / [run 39058844360](https://github.com/spankyed/AgentBuddy/actions/runs/39058844360)
+shows that namespace native-realpath expansion and ordinary-realpath roots disagree on Windows
+short names. Align the namespace resolver with the existing root policy and verify on Windows.
+Compiler completion and descendant-lifetime acceptance remain open.
 The local two-core integration run against that checkpoint reached its unchanged 600s deadline after
 eight files / 474 cases passed, including all seven native-library cases; the pool remains incomplete.
 See [launcher and pool evidence](../evidence/build-input-snapshot-proof.md#windows-package-launcher-and-local-integration-checkpoint-2026-10-17).
