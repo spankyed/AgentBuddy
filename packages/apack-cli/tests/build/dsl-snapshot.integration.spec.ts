@@ -4,7 +4,8 @@ import * as os from 'node:os';
 import * as path from 'node:path';
 import { afterEach, expect, it, vi } from 'vitest';
 import { packFixture } from '@apackdev/sdk/testing/pack-fixture';
-import { PACK_LAYOUT, readInstalledContributionCatalog, readPackBuild } from '@apackdev/host/packs';
+import { PACK_LAYOUT, readInstalledContributionCatalog, readPackBuild, stagedFileHashes } from '@apackdev/host/packs';
+import { readPackBuildInputs } from '@apackdev/host/build/pack-build-inputs';
 import { packagesBuiltOrRefuse, REPO_ROOT } from '@apackdev/host/build/packages-built';
 import { build } from '../../src/commands/build.ts';
 
@@ -25,6 +26,7 @@ it('publishes and reuses editor definitions without globals or frontend activati
   try {
     await build([]);
     const first = readPackBuild(path.join(author, 'dist'));
+    expect(readPackBuildInputs(path.join(author, 'dist'), first.integrity).options).toEqual([]);
     expect(first.snapshot.dslDefinitions?.rows).toContain('interface Row');
     expect(first.snapshot.dslDefinitions?.rows).toContain('id: string');
     expect(fs.readFileSync(path.join(author, 'dist', PACK_LAYOUT.feEntry), 'utf8')).not.toContain('interface Row');
@@ -41,6 +43,7 @@ it('publishes and reuses editor definitions without globals or frontend activati
     } finally { log.mockRestore(); }
     const repeated = readPackBuild(path.join(author, 'dist'));
     expect(repeated.snapshot.dslDefinitions).toEqual(first.snapshot.dslDefinitions);
-    expect(repeated.revision).toBe(first.revision);
+    expect(stagedFileHashes(repeated.integrity)).toEqual(stagedFileHashes(first.integrity));
+    expect(readPackBuildInputs(path.join(author, 'dist'), repeated.integrity).options).toEqual(['--skip-generate']);
   } finally { process.chdir(cwd); }
 });

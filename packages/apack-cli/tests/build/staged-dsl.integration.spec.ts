@@ -6,7 +6,8 @@ import * as path from 'node:path';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { packFixture } from '@apackdev/sdk/testing/pack-fixture';
 import { build } from '../../src/commands/build';
-import { PACK_LAYOUT, readPackBuild } from '@apackdev/host/packs';
+import { PACK_LAYOUT, readPackBuild, stagedFileHashes } from '@apackdev/host/packs';
+import { readPackBuildInputs } from '@apackdev/host/build/pack-build-inputs';
 import { packagesBuiltOrRefuse, REPO_ROOT } from '@apackdev/host/build/packages-built';
 
 packagesBuiltOrRefuse('npm run packages:ensure');
@@ -46,6 +47,7 @@ describe('staged DSL definitions', () => {
       fs.writeFileSync(lifecycle, 'export function apply() {}');
       await build([]);
       const current = readPackBuild(dir);
+      expect(readPackBuildInputs(dir, current.integrity).options).toEqual([]);
       expect(current.revision).not.toBe(first.revision);
       expect(current.snapshot.dslDefinitions?.rows).toContain('after: true');
       expect(fs.readFileSync(definitions, 'utf8')).toContain('after: true');
@@ -58,7 +60,9 @@ describe('staged DSL definitions', () => {
         expect(log.mock.calls.flat().join('\n')).toContain('dsl defs: unchanged, reused');
         expect(log.mock.calls.flat().join('\n')).toContain('fe: dist/runtime/fe.js');
       } finally { log.mockRestore(); }
-      expect(readPackBuild(dir).revision).toBe(current.revision);
+      const reused = readPackBuild(dir);
+      expect(stagedFileHashes(reused.integrity)).toEqual(stagedFileHashes(current.integrity));
+      expect(readPackBuildInputs(dir, reused.integrity).options).toEqual(['--skip-generate']);
       const manifestFile = path.join(root, 'apack.json');
       const manifest = JSON.parse(fs.readFileSync(manifestFile, 'utf8'));
       delete manifest.extensions.dsl;
@@ -69,5 +73,5 @@ describe('staged DSL definitions', () => {
       expect(fs.existsSync(definitions)).toBe(false);
       expect(fs.readFileSync(path.join(dir, PACK_LAYOUT.feEntry), 'utf8')).not.toContain('after: true');
     } finally { process.chdir(cwd); }
-  });
+  }, 120_000);
 });
