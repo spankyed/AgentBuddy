@@ -155,6 +155,17 @@ Execute the identified gaps in this order:
 3. Close native backend contribution parity for migrations, content writers/appliers and artifact/block
    facets. Reuse shared binding checks instead of growing a second native validator. Any unsupported
    native slot must be explicitly absent from the supported contract and refused, not silently ignored.
+   First checkpoint: share authored artifact/block backend binding checks with native admission.
+   Native declarations already describe these contributions; do not add another inventory or validator.
+   Match declared identities, block kind and backend-facet presence; refuse frontend facets in backend
+   registrations. Check before granting settings authority or publishing contributions. Retain callbacks
+   as execution and retain declarations after unload. Migrate mixed backend/frontend test fixtures to
+   their actual runtime boundary; existing frontend lookup coverage must remain.
+
+   Content and migrations are a subsequent checkpoint, not waived: native appliers are used through
+   explicit `importCompiledContent` calls in registered-lookups tests, while automatic content/migration
+   targets currently come only from installed origins. Resolve that distinction before adding metadata
+   that a runner cannot execute or removing a supported explicit operation.
 4. Finish native name/static-asset and remaining consumer checks, then all-kind source-free/external
    acceptance. Record which asset classes and entry kinds the checks actually exercise. Keep B1–B6 and
    Phase 6 enforcement in their existing execution slots; this inventory does not reopen them.
