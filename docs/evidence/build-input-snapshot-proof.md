@@ -2637,3 +2637,64 @@ launch-identity case and real two-build/cache/archive baseline pass locally in 4
 The CLI guide now records the two phases. Windows acceptance of the repaired backend baseline is
 pending; the passing Vite/job-owner cases do not replace it. Live watch delivery and all other named
 compiler/platform gaps remain open.
+
+
+### Live frontend native watch and shared copies (2026-10-17)
+
+Source: `ccaa809a8`. The builder exposes its frontend input subscription and currentness check to its
+watch owner. Failed frontend candidates retain their discovered missing-input probes; successful
+replacement drops retired subscriptions. No alternate freshness record or runtime compatibility path
+is introduced.
+
+The real reproducer exposed a second defect: esbuild's late worker replayed the native preload against
+the changed, broken original library. The retained frontend then blocked its synchronous transform.
+Per-thread atomic native receipts now share already admitted copies; copies survive their creating
+worker and are deleted when the frontend process owner settles. Snapshot checks verify both original
+inputs and immutable copied bytes/modes. Read-tree file modes are recorded from the actual created file,
+including platform normalization. Frontend freshness IPC refuses after five seconds when unresponsive;
+cancellation and process retirement remain separate operations.
+
+Validation on macOS ARM64 / Node 23.11.1:
+
+- Real live-watch case: unchanged timestamp does not publish; a changed graph with a missing helper
+  refuses before native initialization; the incumbent still serves Vue; adding only that external
+  helper triggers publication, loads value 22 instead of 11, and retires the old frontend. Pass in
+  72.758 seconds, repair published 28.483 seconds after helper creation.
+  `/private/tmp/apack-vite-watch-recovery-final.log`.
+- Four existing actual backend/Vite native preload and explicit-worker cases pass in 75.91 seconds:
+  `/private/tmp/apack-vite-watch-native-regressions.log`.
+- Forty focused builder/watch/read-tree checks pass:
+  `/private/tmp/apack-vite-watch-unit.log`. Six read-tree checks pass again after actual captured-mode
+  normalization: `/private/tmp/apack-vite-watch-read-tree-final.log`.
+- CLI types, scripts types and changed-source lint pass:
+  `/private/tmp/apack-vite-watch-types-final.log`, `/private/tmp/apack-vite-watch-scripts-types.log`,
+  `/private/tmp/apack-vite-watch-lint-final.log`.
+- The new full native watch scenario needs initial publication, refusal and real repair sequentially.
+  An earlier measured run reached repair at 55.13 seconds and exceeded its 20-second repair wait while
+  compilation continued. This single scenario has a recorded 120-second budget and 40-second repair
+  deadline. The passing run completed repair in 28.483 seconds. Assertions are unchanged; no suite-wide
+  deadline was raised. Timeout policy checks pass.
+
+Required checkpoint command: `npm run chain -- --strict --cores 2 --no-classify`.
+It failed after 938.3 seconds at the host pool, with 5,381 checks passed and three bookkeeping failures:
+Windows proof source missing from declared lint inputs (two guards), and the new native replacement
+compile missing from subprocess inventory. Both declarations are corrected in `ccaa809a8`; the focused
+111 cases and complete affected repository suite (951 checks / 47 files) pass. Logs:
+`/private/tmp/apack-vite-watch-checkpoint-chain.log`,
+`/private/tmp/apack-vite-watch-repo-repair.log`, `/private/tmp/apack-vite-watch-repo-suite.log`.
+The gate had already passed packaged authoring (267.5 seconds), external-pack contracts including fork
+preparation (328.4 seconds), default-pack build, facade/schema/import checks, lint and typechecks.
+Pack-unit/integration pools and app checks were not reached. This is a usable focused source checkpoint,
+not a converged strict pass; preserve the stopped run and diagnose specific later failures rather than
+repeating broad runs for reassurance.
+
+Windows run `39069845156` on `d8a1c02dc` is terminal success: complete native helper lifetime matrix,
+package build, 169 unit checks (eight platform skips), both descendant/cancellation cases, independent
+Vite owners/replacement/descendants, startup and repeated-build/cache/archive identity. Full log:
+`/private/tmp/apack-windows-39069845156.log`; baseline runner duration 167.24 seconds.
+That result closes the restored `stopReads` boundary acceptance on Windows; newer live-watch source
+still needs applicable platform acceptance.
+
+Remaining: frontend preload JavaScript contents/resolution, named loader/late-load paths, versioned/
+shared-cache/restricted-runtime native controls, ELF/PE and remaining platform acceptance, B6 and final
+committed-source strict `--all`. Arbitrary native I/O remains outside the user-approved bounded contract.

@@ -7554,3 +7554,14 @@ correctness lint and whitespace checks pass. Logs: `/private/tmp/apack-timeout-d
 `/private/tmp/apack-timeout-diagnostic-types.log`, `/private/tmp/apack-timeout-diagnostic-lint.log`.
 No broad run follows. The goal's native/platform, aggregate acceptance and final strict requirements
 remain unchanged and open.
+
+
+### Live frontend native watch checkpoint (2026-10-17)
+
+Source `ccaa809a8` connects retained frontend input discoveries and failed-candidate repair probes to
+the existing watcher. Process-owned native copies are shared with late workers, and freshness IPC has
+a bounded refusal. The real recovery case and four backend/Vite native regressions pass, along with
+focused checks, CLI/scripts types and lint. The required strict checkpoint stopped at three repository
+input/inventory omissions; those are corrected and the complete affected 951-check repository suite
+passes. External authoring and external-pack contract checks passed before the stop. No complete strict
+or final acceptance is claimed. [Detailed evidence and remaining scope](build-input-snapshot-proof.md#live-frontend-native-watch-and-shared-copies-2026-10-17).

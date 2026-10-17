@@ -92,6 +92,22 @@ preloads (`bbf05ec00`). These are source evidence, not a claim that the full str
 
 #### Current compiler checkpoint (2026-10-17)
 
+**Current handoff:** source `ccaa809a8` delivers retained frontend native discoveries into live watch
+subscriptions and retains failed-candidate probes for repair. Native copies and receipts belong to the
+whole frontend process, so late workers reuse admitted bytes after the original library changes.
+Unresponsive frontend freshness requests now refuse within five seconds instead of holding the builder
+queue indefinitely. The real unchanged-touch/refusal/incumbent/recovery/retirement case passes in
+72.76 seconds; four existing backend/Vite preload/worker cases pass. Forty focused checks, copied-file
+mode/integrity checks, CLI/scripts types and lint pass. The strict two-core checkpoint stopped at three
+repository bookkeeping failures after passing external packaged authoring, external-pack contracts,
+default-pack build, facade/schema/import checks and typechecks. The input/subprocess declarations are
+corrected in this source; all 951 checks in the affected repository suite pass. This is not a complete
+strict-gate pass. Do not rerun the broad gate to rediscover those corrected bookkeeping failures.
+Windows run `39069845156` is fully green on `d8a1c02dc`, including Vite owners and repeat-build/cache/
+archive identity; it does not certify the newer live-watch source. Next: frontend preload JavaScript
+ownership and the remaining named loader/native-platform cases, then B6 and final committed-source
+strict `--all`. Preserve the full scope below. See [checkpoint evidence](../evidence/build-input-snapshot-proof.md#live-frontend-native-watch-and-shared-copies-2026-10-17).
+
 Source `525350813` applies native canonical path identity consistently, preserving authored metadata
 query semantics and root-link observations. Corrections `672645cf4` / `329cfbd89` preserve fixture and
 logical-source filesystem identities. Windows run `39063657523` on `0c259a570` passes all 157 focused
