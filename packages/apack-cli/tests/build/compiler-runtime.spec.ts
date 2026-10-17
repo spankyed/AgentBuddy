@@ -16,7 +16,7 @@ function fixture() {
   return { root, executable };
 }
 
-it('identifies runtime bytes and executable permissions independently of the capture location', () => {
+it('identifies runtime bytes independently of the capture location', () => {
   const first = fixture(), second = fixture();
   const captured = new Map<string, Buffer>();
   const read = readCompilerRuntimeInputs(first.executable, false, (file, bytes) => captured.set(file.source, bytes));
@@ -25,8 +25,14 @@ it('identifies runtime bytes and executable permissions independently of the cap
   fs.writeFileSync(first.executable, 'replacement');
   expect(readCompilerRuntimeInputs(first.executable, false).hash).not.toBe(read.hash);
   fs.writeFileSync(first.executable, 'runtime');
-  fs.chmodSync(first.executable, 0o644);
-  expect(readCompilerRuntimeInputs(first.executable, false).hash).not.toBe(read.hash);
+  expect(readCompilerRuntimeInputs(first.executable, false).hash).toBe(read.hash);
+});
+
+it.skipIf(process.platform === 'win32')('tracks changes to POSIX runtime executable permissions', () => {
+  const { executable } = fixture();
+  const initial = readCompilerRuntimeInputs(executable, false).hash;
+  fs.chmodSync(executable, 0o644);
+  expect(readCompilerRuntimeInputs(executable, false).hash).not.toBe(initial);
 });
 
 it.skipIf(process.platform !== 'darwin')('includes Electron framework bytes, links and empty directory membership', () => {

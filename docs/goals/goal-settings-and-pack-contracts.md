@@ -587,7 +587,10 @@ shows that namespace native-realpath expansion and ordinary-realpath roots disag
 short names. `707b17837` aligns the namespace resolver with the existing root policy;
 [run 39059173727](https://github.com/spankyed/AgentBuddy/actions/runs/39059173727) passes all 24
 module-input cases on Windows. The next failure is a POSIX-only cleanup-fixture permission assumption.
-Assert unchanged foreign permissions and no foreign chmod, preserving supported file read-only checks.
+`caf9a29c0` asserts unchanged foreign permissions and no foreign chmod;
+[run 39059442652](https://github.com/spankyed/AgentBuddy/actions/runs/39059442652) passes all five
+read-tree cases on Windows. Its next failure is runtime identity assuming POSIX execute bits.
+Keep byte identity everywhere and isolate that POSIX assertion; preserve supported captured file modes.
 Compiler completion and descendant-lifetime acceptance remain open.
 The local two-core integration run against that checkpoint reached its unchanged 600s deadline after
 eight files / 474 cases passed, including all seven native-library cases; the pool remains incomplete.

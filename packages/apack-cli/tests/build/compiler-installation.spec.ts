@@ -192,11 +192,12 @@ it('preserves workspace links, file-link module resolution, cycles and executabl
   fs.renameSync(path.join(compiler.root, 'package.json'), path.join(compiler.root, 'metadata.json'));
   fs.symlinkSync('metadata.json', path.join(compiler.root, 'package.json'));
   fs.chmodSync(path.join(compiler.root, 'workspace/actual/index.cjs'), 0o755);
+  const executable = fs.statSync(path.join(compiler.root, 'workspace/actual/index.cjs')).mode & 0o111;
   const installation = await compiler.capture();
   fs.rmSync(compiler.root, { recursive: true, force: true });
   expect(execFileSync(process.execPath, [installation.bin], { encoding: 'utf8' }).trim()).toBe('linked');
   const helper = fs.realpathSync(path.join(path.dirname(path.dirname(installation.bin)), 'node_modules/helper'));
-  expect(fs.statSync(path.join(helper, 'entry.cjs')).mode & 0o111).toBe(0o111);
+  expect(fs.statSync(path.join(helper, 'entry.cjs')).mode & 0o111).toBe(executable);
   expect(fs.statSync(path.join(helper, 'entry.cjs')).mode & 0o222).toBe(0);
 });
 

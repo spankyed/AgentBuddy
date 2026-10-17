@@ -2074,3 +2074,19 @@ bits. Keep file read-only assertions on all platforms; directory POSIX write-bit
 only where chmod supports them. This does not claim Windows ACL confinement or change production
 cleanup. All five local read-tree cases and focused lint pass:
 `/private/tmp/apack-windows-read-tree-permissions.log`.
+
+
+### Windows cleanup accepted; isolate POSIX executable-bit assertions
+
+Source `caf9a29c0`, [run 39059442652](https://github.com/spankyed/AgentBuddy/actions/runs/39059442652),
+passes all five read-tree cases on Windows and all six other files reached before fail-fast.
+It stops at runtime identity's POSIX chmod assertion: Windows has no executable bits to remove.
+69 cases pass, six platform cases skip, one fails. Log:
+`/private/tmp/apack-windows-39059442652-failed.log`.
+
+Keep runtime byte/capture-location identity and restored-byte equality on every platform. Split
+POSIX execute-bit invalidation into its own POSIX-only case. Audit the selected suites' chmod
+assertions and compare the workspace-link installation's captured execute bits against the actual
+source bits, keeping its file read-only assertion on every platform. No production hash changes.
+All 17 local runtime/installation cases pass (12.25s runner), with focused lint and whitespace:
+`/private/tmp/apack-windows-runtime-permissions.log`.
