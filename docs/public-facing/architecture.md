@@ -181,6 +181,13 @@ composition does not declare source paths/formats or datasets to compile, and au
 continues to target installed builds. Both native and built backend bindings must match declared writer
 and applier names before receiving runtime authority.
 
+Native composition may also declare the same `migrations.app` and `migrations.pack` maps as authored
+packs. App-line changes use the app version. Pack-line changes require the native owner's `version`;
+it is never inferred from the app version. Checked migration targets, descriptions and callbacks are
+captured at admission. Native and installed owners share migration targeting and dependency ordering,
+while discovery reads only declaration data. No installed directory or manifest is invented for native
+migrations.
+
 ### Collision detection
 
 The host refuses conflicting active ownership before publishing registry lookups:

@@ -3,7 +3,6 @@
 import { getAppVersion, resolveAppEnvironment } from '@apackdev/sdk/env';
 import { compareVersions } from '@apackdev/sdk/utils';
 import type { PackMigration } from '@apackdev/sdk/framework';
-import type { PackManifest } from '@apackdev/sdk/build';
 import { appState } from '../app-state/index.ts';
 import type { PackRegistry } from '../packs/registry.ts';
 
@@ -67,30 +66,32 @@ export function runAppMigrations(registry: PackRegistry): boolean {
   return true;
 }
 
+/** An admitted owner's app-line callbacks; the app supplies their version cap. */
+export interface AppMigrationTarget {
+  readonly packId: string;
+  readonly migrations?: readonly PackMigration[];
+}
+
+/** An admitted owner's pack-line callbacks and its independently declared version cap. */
+export interface PackMigrationTarget extends AppMigrationTarget {
+  readonly version: string;
+}
+
 /**
- * Packs' `pack`-line migrations, each pack's run when `stored pack version < target <= manifest version`,
+ * Packs' `pack`-line migrations, each pack's run when `stored pack version < target <= declared pack version`,
  * recording the pack's version in AppState `packVersions` once they all ran. Run after `runAppMigrations`,
  * which records the app version. A pack that is not loaded (disabled) keeps its recorded version.
  */
-/**
- * What running a pack's migrations needs: which pack, at which version, and the migrations.
- * The manifest fields are `Pick`ed from `PackManifest` so this can't drift from what a manifest holds.
- */
-export interface PackMigrationTarget {
-  manifest: Pick<PackManifest, 'id' | 'version'>;
-  migrations?: PackMigration[];
-}
-
 export function runPackMigrations(packs: Iterable<PackMigrationTarget>): void {
   const packVersions = { ...appState.get().packVersions };
   let changed = false;
 
-  for (const { manifest, migrations } of packs) {
+  for (const { packId, version, migrations } of packs) {
     if (!migrations?.length) continue;
-    const stored = packVersions[manifest.id] || '0.0.0';
-    if (compareVersions(stored, manifest.version) >= 0) continue;
-    if (!runPending(migrations, stored, manifest.version, `:${manifest.id}`)) continue;
-    packVersions[manifest.id] = manifest.version;
+    const stored = Object.hasOwn(packVersions, packId) ? packVersions[packId] : '0.0.0';
+    if (compareVersions(stored, version) >= 0) continue;
+    if (!runPending(migrations, stored, version, `:${packId}`)) continue;
+    packVersions[packId] = version;
     changed = true;
   }
 

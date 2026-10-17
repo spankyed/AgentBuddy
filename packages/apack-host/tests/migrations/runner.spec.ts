@@ -57,7 +57,7 @@ describe('boot migrations', () => {
       migrations: { app: [{ target: TEST_APP_VERSION, description: 'built-in', up: () => { runs.shipped++; } }] },
     };
     // Registered straight into the registry: the subject is the runner, not how a pack's module is loaded.
-    // **With a `manifest`, which is what makes "once" checkable here.** `packMigrationTargets` reads the
+    // **With a `manifest`, which is what makes "once" checkable here.** admission captures the
     // origin's manifest, and the loader builds every origin with one — so a fixture without it is a shipped
     // pack the second runner cannot see, and this case passed while a real one ran its migrations twice.
     const shippedManifest = { id: 'migrations-built-in', name: 'Built-in', version: TEST_APP_VERSION, migrations: { app: { [TEST_APP_VERSION]: { description: 'built-in', up: 'migration.ts#up' } } } };
@@ -70,11 +70,11 @@ describe('boot migrations', () => {
       origin: { declarationRevision: 'fixture-revision', ...manifest, dir: builtInDir, manifest: manifest },
     } satisfies LoadedPack;
     expect(registerExternalPacks(registry, [external])).toHaveLength(1);
-    // What the boot passes on: the registry joins each registered pack's origin with the migrations it declared
+    // What the boot passes on: the registry returns each owner's admitted identity and migration bindings
     // on the line asked for. Each pack is answered for by the line it chose, not by who shipped it
     const installedPacks = registry.packMigrationTargets('pack');
     const declaring = (line: 'app' | 'pack') => registry.packMigrationTargets(line)
-      .filter(({ migrations }) => migrations?.length).map((t) => t.manifest.id);
+      .filter(({ migrations }) => migrations?.length).map((t) => t.packId);
     expect(declaring('pack'), 'only the pack that declared a `pack` migration').toEqual(['migrations-external']);
     expect(declaring('app'), 'and only the one that declared an `app` migration').toEqual(['migrations-built-in']);
 
@@ -104,7 +104,7 @@ describe('boot migrations', () => {
     );
     try {
       const targets = registry.packMigrationTargets('pack');
-      expect(targets.filter(({ migrations }) => migrations?.length).map((t) => t.manifest.id),
+      expect(targets.filter(({ migrations }) => migrations?.length).map((t) => t.packId),
         'a shipped pack is a `pack`-line target like any other').toContain(manifest.id);
 
       runPackMigrations(targets);
@@ -125,7 +125,7 @@ describe('boot migrations', () => {
     const ran: string[] = [];
     let failing: string | undefined = '1.1.0';
     const pack = {
-      manifest: { id: 'failing-pack', version: '1.2.0' },
+      packId: 'failing-pack', version: '1.2.0',
       migrations: ['1.1.0', '1.2.0'].map((target) => ({
         target,
         description: target,

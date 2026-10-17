@@ -9,7 +9,8 @@ export function createNativePackTestRegistry(options?: PackRegistryOptions): Ret
     registerPack: ((registration, origin) => {
       if (origin) return registry.registerPack(registration, origin);
       const before = registry.catalog.getSnapshot().native;
-      const declaration = nativePackDeclarationFixture(registration);
+      const version = before.find(pack => pack.id === registration.id)?.version;
+      const declaration = nativePackDeclarationFixture(registration, version === undefined ? {} : { version });
       registry.catalog.setNative([...before.filter(pack => pack.id !== declaration.id), declaration]);
       try { registry.registerPack(registration); }
       catch (error) { registry.catalog.setNative(before); throw error; }

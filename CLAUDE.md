@@ -977,8 +977,9 @@ Codegen assembles the `PackMigration { target, … }` the
 runners take from the manifest key, so a version is written in exactly one place and the line in exactly
 one. There is no `src/migrations/index.ts` — the manifest is the list.
 
-Migrations live with their pack and are declared in its manifest. The host and default-setup currently
-declare none.
+Migrations live with their pack and are declared in its manifest or native composition data. Native app-line
+migrations use the app version; native pack-line migrations require the pack's own declared version.
+The host and default-setup currently declare none.
 `@apackdev/host/migrations` supplies runners used at boot, reset and backup import. Historical settings
 conversion is removed; the current settings contract applies throughout normal runtime behavior.
 

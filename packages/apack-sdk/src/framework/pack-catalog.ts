@@ -1,5 +1,5 @@
 import type { z } from 'zod';
-import type { ArtifactEntrySchema, BlockEntrySchema, CommandEntrySchema, DslEntrySchema, StepEntrySchema } from './declaration-schema.ts';
+import type { ArtifactEntrySchema, BlockEntrySchema, CommandEntrySchema, DslEntrySchema, StepEntrySchema, MigrationsSchema } from './declaration-schema.ts';
 import type { PackLifecycleDeclaration } from './lifecycle-declaration.ts';
 import type { PackDataDeclarations } from './data-declaration.ts';
 import { boundHost } from '../runtime/host-runtime.ts';
@@ -12,6 +12,10 @@ import type { FrontendDeclaration } from './frontend-declaration.ts';
 /** Native composition data, admitted independently of its executable bindings. */
 export interface NativePackDeclaration extends PackDataDeclarations, FrontendDeclaration {
   id: string;
+  /** This native pack's own version; required for pack-line migrations, independent of the app version. */
+  version?: string;
+  /** Versioned changes declared independently of their executable bindings. */
+  migrations?: z.infer<typeof MigrationsSchema>;
   lifecycle?: PackLifecycleDeclaration;
   /** Native writers and explicitly applied content; compilation and automatic application belong to installed builds. */
   content?: {

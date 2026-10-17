@@ -131,6 +131,7 @@ function checkFrontendClaims(frontend: FrontendDeclaration | undefined, ctx: z.R
 }
 
 /** @internal Host composition admits shared declaration data independently of executable bindings. */
+const PackVersionSchema = z.string().regex(_PACK_VERSION_PATTERN, 'Must be a complete SemVer version').refine(_validPackVersion, 'Must be a complete SemVer version');
 const EventNamesSchema = z.array(z.string().min(1)).refine(names => new Set(names).size === names.length, 'Event names must be unique');
 export const _EventContractsSchema = declarationRecord(z.string().regex(FEATURE_ID_PATTERN), z.object({
   system: z.object({ incoming: EventNamesSchema, outgoing: EventNamesSchema }).strict().optional(),
@@ -139,6 +140,8 @@ export const _EventContractsSchema = declarationRecord(z.string().regex(FEATURE_
 
 export const _NativePackDeclarationSchema = z.preprocess(checkDeclaredNames, z.object({
   id: z.string().regex(PACK_ID_PATTERN),
+  version: PackVersionSchema.optional(),
+  migrations: z.lazy(() => MigrationsSchema).optional(),
   dependencies: declarationRecord(z.string().regex(PACK_ID_PATTERN), PackRangeSchema).optional(),
   settings: declarationRecord(z.string().regex(FEATURE_ID_PATTERN), SettingsDefinitionSchema).optional(),
   services: z.lazy(() => ServicesSchema).optional(),
@@ -160,6 +163,9 @@ export const _NativePackDeclarationSchema = z.preprocess(checkDeclaredNames, z.o
     description: true, entities: true, designation: true, settings: true, plugin: true, references: true, services: true, repositories: true,
   }))).optional(),
 }).strict().superRefine((declaration, ctx) => {
+  if (Object.keys(declaration.migrations?.pack ?? {}).length && declaration.version === undefined) {
+    ctx.addIssue({ code: 'custom', path: ['version'], message: "Native pack-line migrations require the pack's declared version" });
+  }
   const eventsProblem = _eventContractsProblem(declaration.eventContracts, declaration.features, true);
   if (eventsProblem) ctx.addIssue({ code: 'custom', path: ['eventContracts'], message: eventsProblem });
   const destinationProblem = _entityDestinationsProblem(declaration.entityDestinations ?? {}, declaration.features);
@@ -765,7 +771,7 @@ export const ManifestSchema = z.preprocess(checkDeclaredNames, z.object({
     .refine((id) => id !== HOST_PACK_ID, { message: `"${HOST_PACK_ID}" is the app's own pack id: pick another` })
     .describe('Unique pack identifier. Lowercase, alphanumeric with hyphens.'),
   name: z.string().min(1).describe('Human-readable pack name.'),
-  version: z.string().regex(_PACK_VERSION_PATTERN, 'Must be a complete SemVer version').refine(_validPackVersion, 'Must be a complete SemVer version')
+  version: PackVersionSchema
     .describe('Complete SemVer 2.0 version (major.minor.patch), optionally with prerelease and build metadata.'),
   description: z.string().describe('Short description of the pack\'s purpose.').optional(),
   hostVersion: PackRangeSchema.describe('Nonempty npm semver range for compatible host versions (e.g. ">=0.3.0").').optional(),

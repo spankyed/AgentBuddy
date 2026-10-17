@@ -1,5 +1,6 @@
 export function compareVersions(a: string, b: string): number {
-  const parse = (v: string) => {
+  const parse = (version: string) => {
+    const v = version.split('+', 1)[0];
     const idx = v.indexOf('-');
     const core = (idx === -1 ? v : v.slice(0, idx)).split('.').map(Number);
     const pre = idx === -1 ? null : v.slice(idx + 1);

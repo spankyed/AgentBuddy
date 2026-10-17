@@ -2195,6 +2195,41 @@ export const MigrationsSchema: z.ZodObject<{
 // @public (undocumented)
 export const _NativePackDeclarationSchema: z.ZodEffects<z.ZodEffects<z.ZodObject<{
     id: z.ZodString;
+    version: z.ZodOptional<z.ZodEffects<z.ZodString, string, string>>;
+    migrations: z.ZodOptional<z.ZodLazy<z.ZodObject<{
+        app: z.ZodOptional<z.ZodType<Record<string, {
+            description: string;
+            up: string;
+        }>, z.ZodTypeDef, Record<string, {
+            description: string;
+            up: string;
+        }>>>;
+        pack: z.ZodOptional<z.ZodType<Record<string, {
+            description: string;
+            up: string;
+        }>, z.ZodTypeDef, Record<string, {
+            description: string;
+            up: string;
+        }>>>;
+    }, "strict", z.ZodTypeAny, {
+        app?: Record<string, {
+            description: string;
+            up: string;
+        }> | undefined;
+        pack?: Record<string, {
+            description: string;
+            up: string;
+        }> | undefined;
+    }, {
+        app?: Record<string, {
+            description: string;
+            up: string;
+        }> | undefined;
+        pack?: Record<string, {
+            description: string;
+            up: string;
+        }> | undefined;
+    }>>>;
     dependencies: z.ZodOptional<z.ZodType<Record<string, string>, z.ZodTypeDef, Record<string, string>>>;
     settings: z.ZodOptional<z.ZodType<Record<string, {
         defaults: Record<string, unknown>;
@@ -2434,6 +2469,7 @@ export const _NativePackDeclarationSchema: z.ZodEffects<z.ZodEffects<z.ZodObject
         inline?: string[] | undefined;
     }> | undefined;
     services?: Record<string, string> | undefined;
+    version?: string | undefined;
     dependencies?: Record<string, string> | undefined;
     settings?: Record<string, {
         defaults: Record<string, unknown>;
@@ -2533,6 +2569,16 @@ export const _NativePackDeclarationSchema: z.ZodEffects<z.ZodEffects<z.ZodObject
         }> | undefined;
         writers?: Record<string, string> | undefined;
     } | undefined;
+    migrations?: {
+        app?: Record<string, {
+            description: string;
+            up: string;
+        }> | undefined;
+        pack?: Record<string, {
+            description: string;
+            up: string;
+        }> | undefined;
+    } | undefined;
     entityDestinations?: Record<string, string> | undefined;
     eventContracts?: Record<string, {
         system?: {
@@ -2558,6 +2604,7 @@ export const _NativePackDeclarationSchema: z.ZodEffects<z.ZodEffects<z.ZodObject
         inline?: string[] | undefined;
     }> | undefined;
     services?: Record<string, string> | undefined;
+    version?: string | undefined;
     dependencies?: Record<string, string> | undefined;
     settings?: Record<string, unknown> | undefined;
     repositories?: Record<string, string> | undefined;
@@ -2643,6 +2690,16 @@ export const _NativePackDeclarationSchema: z.ZodEffects<z.ZodEffects<z.ZodObject
         }> | undefined;
         writers?: Record<string, string> | undefined;
     } | undefined;
+    migrations?: {
+        app?: Record<string, {
+            description: string;
+            up: string;
+        }> | undefined;
+        pack?: Record<string, {
+            description: string;
+            up: string;
+        }> | undefined;
+    } | undefined;
     entityDestinations?: Record<string, string> | undefined;
     eventContracts?: Record<string, {
         system?: {
@@ -2668,6 +2725,7 @@ export const _NativePackDeclarationSchema: z.ZodEffects<z.ZodEffects<z.ZodObject
         inline?: string[] | undefined;
     }> | undefined;
     services?: Record<string, string> | undefined;
+    version?: string | undefined;
     dependencies?: Record<string, string> | undefined;
     settings?: Record<string, {
         defaults: Record<string, unknown>;
@@ -2767,6 +2825,16 @@ export const _NativePackDeclarationSchema: z.ZodEffects<z.ZodEffects<z.ZodObject
         }> | undefined;
         writers?: Record<string, string> | undefined;
     } | undefined;
+    migrations?: {
+        app?: Record<string, {
+            description: string;
+            up: string;
+        }> | undefined;
+        pack?: Record<string, {
+            description: string;
+            up: string;
+        }> | undefined;
+    } | undefined;
     entityDestinations?: Record<string, string> | undefined;
     eventContracts?: Record<string, {
         system?: {
@@ -2792,6 +2860,7 @@ export const _NativePackDeclarationSchema: z.ZodEffects<z.ZodEffects<z.ZodObject
         inline?: string[] | undefined;
     }> | undefined;
     services?: Record<string, string> | undefined;
+    version?: string | undefined;
     dependencies?: Record<string, string> | undefined;
     settings?: Record<string, unknown> | undefined;
     repositories?: Record<string, string> | undefined;
@@ -2877,6 +2946,16 @@ export const _NativePackDeclarationSchema: z.ZodEffects<z.ZodEffects<z.ZodObject
         }> | undefined;
         writers?: Record<string, string> | undefined;
     } | undefined;
+    migrations?: {
+        app?: Record<string, {
+            description: string;
+            up: string;
+        }> | undefined;
+        pack?: Record<string, {
+            description: string;
+            up: string;
+        }> | undefined;
+    } | undefined;
     entityDestinations?: Record<string, string> | undefined;
     eventContracts?: Record<string, {
         system?: {
@@ -2902,6 +2981,7 @@ export const _NativePackDeclarationSchema: z.ZodEffects<z.ZodEffects<z.ZodObject
         inline?: string[] | undefined;
     }> | undefined;
     services?: Record<string, string> | undefined;
+    version?: string | undefined;
     dependencies?: Record<string, string> | undefined;
     settings?: Record<string, {
         defaults: Record<string, unknown>;
@@ -3000,6 +3080,16 @@ export const _NativePackDeclarationSchema: z.ZodEffects<z.ZodEffects<z.ZodObject
             applier: string;
         }> | undefined;
         writers?: Record<string, string> | undefined;
+    } | undefined;
+    migrations?: {
+        app?: Record<string, {
+            description: string;
+            up: string;
+        }> | undefined;
+        pack?: Record<string, {
+            description: string;
+            up: string;
+        }> | undefined;
     } | undefined;
     entityDestinations?: Record<string, string> | undefined;
     eventContracts?: Record<string, {

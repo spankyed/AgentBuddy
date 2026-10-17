@@ -320,6 +320,7 @@ export interface NativePackDeclaration extends PackDataDeclarations, FrontendDec
     id: string;
     // (undocumented)
     lifecycle?: PackLifecycleDeclaration;
+    migrations?: z.infer<typeof MigrationsSchema>;
     // (undocumented)
     repositories?: Record<string, string>;
     services?: Record<string, string>;
@@ -327,6 +328,7 @@ export interface NativePackDeclaration extends PackDataDeclarations, FrontendDec
     settings?: Record<string, SettingsDefinition>;
     // (undocumented)
     steps?: Record<string, z.infer<typeof StepEntrySchema>>;
+    version?: string;
 }
 
 // @internal

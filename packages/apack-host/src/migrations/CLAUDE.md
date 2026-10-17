@@ -13,18 +13,25 @@ The API boot, app-data reset and backup import run `runAppMigrations(registry)` 
 | Runner | Target version | Recorded version |
 | --- | --- | --- |
 | `runAppMigrations` | Registered packs' `migrations.app` targets at the host app version | `AppState.version` |
-| `runPackMigrations` | Each pack's manifest version and `migrations.pack` targets | `AppState.packVersions[packId]` |
+| `runPackMigrations` | Each pack's declared version and `migrations.pack` targets | `AppState.packVersions[packId]` |
 
-A pack declares the version line; provenance does not select it. Either a shipped or external pack may
-use either line. The manifest key owns its target, and the value owns `description` and an `up` function export
+A pack declares the version line; provenance does not select it. Native, shipped and external packs may use either line. The manifest key owns its target, and the value owns `description` and an `up` function export
 reference. Modules export behavior only; codegen checks the export and assembles `PackMigration`.
+
+Native composition declares the same keyed migrations in `NativePackDeclaration`. App-line migrations
+need no native pack version; nonempty pack-line declarations require `NativePackDeclaration.version`.
+Admission checks targets, descriptions and callable `up` bindings, then captures callback membership,
+owner version and dependencies. Discovery imports no migration modules. Runtime target queries return
+`packId` and callbacks, plus `version` for the pack line; they never manufacture an installed manifest or
+directory. Native and installed owners share dependency ordering before a caller subset is selected.
+Synthetic installed origins without accepted manifests cannot bind migration functions.
 
 The host and default-setup currently declare no migrations. Add one only for a concrete supported data change, not hypothetical
 old installations. The frontend runner (`src/fe/migrations`) operates separately on window storage.
 
 App migrations run when `stored < target <= app version`. A prerelease uses its release as the cap;
 development runs pending targets without a cap. No recorded app version means new data at the current
-version. Pack migrations compare the per-pack stored version with the pack's manifest version.
+version. Pack migrations compare the per-pack stored version with the pack's declared version. SemVer build metadata does not change precedence; the recorded value retains the full declared version.
 
 A failure stops subsequent migrations and does not record success. `startPacks()` skips pack migrations
 and content after an app migration failure; the next boot retries. Pack failures retain that pack's

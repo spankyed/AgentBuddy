@@ -21,13 +21,13 @@ const order = vi.hoisted((): string[] => []);
 const appMigrations = vi.hoisted(() => ({ succeed: true }));
 vi.mock('../../src/migrations/index.ts', () => ({
   runAppMigrations: () => { order.push('migrations'); return appMigrations.succeed; },
-  runPackMigrations: (packs: Array<{ manifest: { id: string } }>) => { order.push(`pack migrations (${packs.map((p) => p.manifest.id)})`); },
+  runPackMigrations: ((packs) => { order.push(`pack migrations (${Array.from(packs, p => p.packId)})`); }) satisfies typeof import('../../src/migrations/index.ts').runPackMigrations,
 }));
 vi.mock('../../src/packs/runtime/apply.ts', async (importOriginal) => ({
   ...await importOriginal<typeof import('../../src/packs/runtime/apply.ts')>(),
   // Sorted: which packs are in the one call is this file's claim, where their order among themselves is
   // `packContentOrder`'s and is held by the registry's own spec
-  applyPacks: (packs: Array<{ manifest: { id: string } }>) => { order.push(`pack content (${packs.map((p) => p.manifest.id).sort()})`); return []; },
+  applyPacks: ((packs) => { order.push(`pack content (${Array.from(packs, p => p.manifest.id).sort()})`); return []; }) satisfies typeof import('../../src/packs/runtime/apply.ts').applyPacks,
 }));
 
 const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'host-runtime-'));

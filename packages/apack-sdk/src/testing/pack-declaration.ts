@@ -2,13 +2,23 @@ import type { StepEntry } from '../build/manifest.ts';
 import type { NativePackDeclaration } from '../framework/pack-catalog.ts';
 import type { PackRegistration } from '../framework/pack-registration.ts';
 
-/** Compose declaration data from an authored test fixture, before registering its runtime stand-ins. */
-export function nativePackDeclarationFixture(fixture: PackRegistration): NativePackDeclaration {
+/**
+ * Compose declaration data before registering runtime stand-ins. Supply the native version as metadata
+ * for pack-line migrations; executable registration does not own that version.
+ */
+export function nativePackDeclarationFixture(fixture: PackRegistration, metadata: Pick<NativePackDeclaration, 'version'> = {}): NativePackDeclaration {
   const featureServices = new Set(Object.values(fixture.features ?? {}).flatMap(feature => feature.services ?? []));
   const target = (kind: string, names: readonly string[]) => Object.fromEntries(names.map(name =>
     [name, `fixtures/${kind}.ts#${name}`]));
   return {
     id: fixture.id,
+    ...(metadata.version !== undefined && { version: metadata.version }),
+    ...(fixture.migrations !== undefined && { migrations: Object.fromEntries((['app', 'pack'] as const).flatMap(line => {
+      const entries = fixture.migrations?.[line];
+      return entries === undefined ? [] : [[line, Object.fromEntries(entries.map(({ target, description }) => [target, {
+        description, up: `fixtures/migrations/${line}.ts#up_${target.replace(/[^A-Za-z0-9_$]/g, '_')}`,
+      }]))]];
+    })) }),
     eventContracts: Object.fromEntries(Object.entries(fixture.features ?? {})
       .filter(([, feature]) => feature.system || feature.plugin).map(([id, feature]) => [id, {
         ...(feature.system && { system: { incoming: [...feature.system.receives], outgoing: [] } }),

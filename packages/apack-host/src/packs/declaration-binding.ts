@@ -93,15 +93,8 @@ export function backendBindingProblem(manifest: PackManifest, registration: unkn
   const stepProblem = backendStepBindingProblem(manifest.extensions?.steps, registration.steps);
   if (stepProblem) return problem(stepProblem);
 
-  const migrations = registration.migrations === undefined ? {} : registration.migrations;
-  if (!isPlainObject(migrations) || Object.keys(migrations).some(line => line !== 'app' && line !== 'pack')) return problem('migrations');
-  for (const line of ['app', 'pack'] as const) {
-    const entries = namedBindings(migrations[line], 'target', Object.keys(manifest.migrations?.[line] ?? {}));
-    if (!entries) return problem(`migrations.${line}`);
-    for (const [target, entry] of entries) {
-      if (typeof entry.up !== 'function' || entry.description !== manifest.migrations![line]![target].description) return problem(`migrations.${line}.${target}`);
-    }
-  }
+  const migrationProblem = migrationBindingProblem(manifest.migrations, registration.migrations);
+  if (migrationProblem) return problem(migrationProblem);
   const lifecycleProblem = lifecycleBindingProblem(manifest.lifecycle, registration.lifecycle);
   if (lifecycleProblem) return problem(lifecycleProblem);
 }
@@ -172,4 +165,17 @@ export function backendContentBindingProblem(content: Pick<NonNullable<PackManif
   if (!sameKeys(registration.contentWriters === undefined ? {} : registration.contentWriters,
     Object.keys(content?.writers ?? {}))) return 'contentWriters';
   if (!namedBindings(registration.appliers, 'key', Object.keys(content?.sources ?? {}))) return 'appliers';
+}
+
+/** Match version-line targets, descriptions and callable bindings without executing migrations. */
+export function migrationBindingProblem(declarations: DeclarationData<PackManifest['migrations']>, actual: unknown): string | undefined {
+  const migrations = actual === undefined ? {} : actual;
+  if (!isPlainObject(migrations) || Object.keys(migrations).some(line => line !== 'app' && line !== 'pack')) return 'migrations';
+  for (const line of ['app', 'pack'] as const) {
+    const entries = namedBindings(migrations[line], 'target', Object.keys(declarations?.[line] ?? {}));
+    if (!entries) return `migrations.${line}`;
+    for (const [target, entry] of entries) {
+      if (typeof entry.up !== 'function' || entry.description !== declarations![line]![target].description) return `migrations.${line}.${target}`;
+    }
+  }
 }

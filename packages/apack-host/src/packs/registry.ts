@@ -1,3 +1,4 @@
+import type { AppMigrationTarget, PackMigrationTarget } from '../migrations/index.ts';
 import { captureData } from './captured-data.ts';
 import type { StepBackendBinding } from '@apackdev/sdk/steps';
 import type { DeclarationData } from '@apackdev/sdk/framework';
@@ -5,7 +6,7 @@ import type { StepEntry } from '@apackdev/sdk/build';
 import { captureStepBinding, captureStepDeclaration } from './step-bindings.ts';
 import { lifecycleBindingProblem } from './lifecycle-binding.ts';
 import { _packEntityTypes, _packRelationTypes } from '@apackdev/sdk/framework';
-import { apiBindingProblem, backendBindingProblem, backendContentBindingProblem, backendViewerBindingProblem, backendStepBindingProblem, commandBindingProblem, contentBindingProblem } from './declaration-binding.ts';
+import { apiBindingProblem, backendBindingProblem, backendContentBindingProblem, backendViewerBindingProblem, backendStepBindingProblem, commandBindingProblem, contentBindingProblem, migrationBindingProblem } from './declaration-binding.ts';
 import { eventBindingProblem } from './event-binding.ts';
 import { SYSTEM_EVENT_TYPES, type PackEventContracts } from '@apackdev/sdk/framework';
 /**
@@ -254,33 +255,16 @@ export interface PackRegistry extends PackRegistryView {
   /** The packs this app loaded, in registration order */
   loadedPacks(): PackOrigin[];
   /**
-   * Every registered pack's migrations on one version line, as the runners take them: the pack's manifest
-   * and the migrations it declared under that line. With `packIds`, only those — activation and reload
-   * migrate the one pack they handled.
-   *
-   * **The line is the caller's to name, and a pack the app ships is in either answer like any other.**
-   * Which line a migration is on is what its pack declared (`apack.json`'s `migrations.app` /
-   * `migrations.pack`), so this asks nothing about where a pack came from: `app` for the migrations run
-   * against `AppState.version`, `pack` for those run against the pack's own. Filtering on `shipped` here is
-   * the trap — it routes by provenance, which makes one `0.4.0` mean the app's release in a pack the app
-   * ships and the pack's own version in every other, so a user's build installed at a shipped pack's id has
-   * its migrations compared against the wrong thing.
-   *
-   * **A pack declaring both gets both**, run at the two moments the runners run, which is the one thing a
-   * caller splitting a change across lines should know (`src/migrations/CLAUDE.md`).
-   *
-   * In dependency order (`packContentOrder`), so a pack's migrations run after those of the packs it depends
-   * on. Registration order, which decides who wins a designation or a plugin id, is a different order and
-   * is not this. That order is read from the packs' manifests, so **a registered pack whose origin carries
-   * no manifest is in neither answer** — the loader gives every origin one, and a fixture without one is a
-   * pack whose migrations nothing runs.
-   *
-   * **The order survives for the `pack` line only**, where each pack is migrated against its own recorded
-   * version, so the packs stay distinguishable. `runAppMigrations` flattens the `app` line into one list
-   * and sorts it by target, because the app's line is one version for every pack — so on that line the
-   * order here buys nothing, and a pack cannot rely on being migrated after one it depends on.
+   * Admitted native and installed migrations on the requested version line. Pack-line results include
+   * the owner's declared version; app-line migrations use the bound app version instead.
+   * Dependency order is computed before filtering a caller subset. The app runner sorts globally by
+   * target, so its execution order does not promise dependency ordering between packs.
+   * Unversioned native owners can declare app-line migrations only. Installed origins without accepted
+   * manifests cannot bind migrations or participate in targeting.
    */
-  packMigrationTargets(line: MigrationLine, packIds?: Iterable<string>): Array<{ manifest: PackManifest; migrations?: PackMigration[] }>;
+  packMigrationTargets(line: 'app', packIds?: Iterable<string>): AppMigrationTarget[];
+  packMigrationTargets(line: 'pack', packIds?: Iterable<string>): PackMigrationTarget[];
+  packMigrationTargets(line: MigrationLine, packIds?: Iterable<string>): Array<AppMigrationTarget | PackMigrationTarget>;
   /**
    * Every registered pack as `applyPacks` takes it, in dependency order: where its content are and what it
    * depends on. With `packIds`, only those — activation and reload apply the one pack they handled.
@@ -300,9 +284,14 @@ export interface PackRegistry extends PackRegistryView {
 }
 
 /** Capture ownership and collection membership once; executable values retain their identity. */
-function admitContributions(registration: PackRegistration, declarations: DeclarationData<Record<string, StepEntry>> | undefined,
-  eventContracts: Readonly<PackEventContracts> | undefined, origin?: PackOrigin) {
+function admitContributions(registration: PackRegistration, { steps: declarations, eventContracts, migrationOwner }: {
+  steps?: DeclarationData<Record<string, StepEntry>>;
+  eventContracts?: Readonly<PackEventContracts>;
+  migrationOwner?: { version?: string; dependencies?: Readonly<Record<string, string>> };
+}, origin?: PackOrigin) {
   const runtimeRevision = randomUUID();
+  const migrations = (line: MigrationLine) => registration.migrations?.[line]?.map(({ target, description, up }) =>
+    Object.freeze({ target, description, up }));
   const steps = (registration.steps ?? []).map(binding => {
     if (!declarations || !Object.hasOwn(declarations, binding.type)) throw new Error(`Pack "${registration.id}" needs accepted declarations for step "${binding.type}"`);
     return [binding.type, Object.freeze({ packId: registration.id, runtimeRevision,
@@ -313,6 +302,8 @@ function admitContributions(registration: PackRegistration, declarations: Declar
   return {
     id: registration.id,
     runtimeRevision,
+    migrationOwner: migrationOwner && { id: registration.id, version: migrationOwner.version,
+      dependencies: migrationOwner.dependencies, migrations: { app: migrations('app'), pack: migrations('pack') } },
     steps,
     systems: new Map(featuresOf(registration).flatMap(({ featureId, ref, feature }) => feature.system
       ? [[ref, { machine: feature.system.machine, receives: [...eventContracts![featureId].system!.incoming, ...SYSTEM_EVENT_TYPES] }] as const] : [])),
@@ -485,22 +476,20 @@ export function createPackRegistry({ installedPacksDir, appPackSourcesDir, setti
     }
   }
 
-  /**
-   * Every installed external pack in dependency order, computed once per pack set.
-   *
-   * Ordered over all of them and narrowed afterwards, so a subset's order agrees with the whole and a
-   * dependency outside the subset is one the caller isn't acting on anyway. Cached because the sort
-   * reports a dependency cycle: computing it per call had activating or reloading any pack re-logging a
-   * cycle between two others.
-   */
-  const orderedPacks = derived((): PackOrigin[] =>
-    packContentOrder(
-      [...origins.values()]
-        .filter((o) => o.manifest)
-        // The dependencies are the manifest's, not the origin's own: spreading the origin would leave every
-        // pack looking dependency-free, and `dependencies` being optional means nothing would say so
-        .map((o) => ({ id: o.id, dependencies: o.manifest!.dependencies, origin: o })),
-    ).map(({ origin }) => origin));
+  /** Order admitted owners once per registration set, before narrowing either line or caller subset. */
+  const orderedMigrationOwners = derived(() => packContentOrder([...admitted.values()]
+    .flatMap(pack => pack.migrationOwner ? [pack.migrationOwner] : [])));
+
+  function packMigrationTargets(line: 'app', packIds?: Iterable<string>): AppMigrationTarget[];
+  function packMigrationTargets(line: 'pack', packIds?: Iterable<string>): PackMigrationTarget[];
+  function packMigrationTargets(line: MigrationLine, packIds?: Iterable<string>): Array<AppMigrationTarget | PackMigrationTarget>;
+  function packMigrationTargets(line: MigrationLine, packIds?: Iterable<string>): Array<AppMigrationTarget | PackMigrationTarget> {
+    const wanted = packIds && new Set(packIds);
+    const owners = orderedMigrationOwners().filter(owner => !wanted || wanted.has(owner.id));
+    if (line === 'app') return owners.map(owner => ({ packId: owner.id, migrations: owner.migrations.app }));
+    return owners.flatMap(owner => owner.version === undefined ? []
+      : [{ packId: owner.id, version: owner.version, migrations: owner.migrations.pack }]);
+  }
 
   /** The first of `keys` a registered pack already holds in what `held` reads off it, and that pack */
   function firstTaken(keys: readonly string[], held: (reg: AdmittedPackContributions) => ReadonlyMap<string, unknown>, replacing?: string): { key: string; holder: string } | undefined {
@@ -565,6 +554,8 @@ export function createPackRegistry({ installedPacksDir, appPackSourcesDir, setti
       }
       const commands = commandBindingProblem(declaration.commands, registration.commands);
       if (commands) throw new Error(`Native pack "${registration.id}" runtime ${commands} does not match its admitted declarations`);
+      const migrationProblem = migrationBindingProblem(declaration.migrations, registration.migrations);
+      if (migrationProblem) throw new Error(`Native pack "${registration.id}" runtime ${migrationProblem} does not match its admitted declarations`);
       const lifecycleProblem = lifecycleBindingProblem(declaration.lifecycle, registration.lifecycle);
       if (lifecycleProblem) throw new Error(`Native pack "${registration.id}" runtime ${lifecycleProblem} does not match its admitted declarations`);
       const stepProblem = backendStepBindingProblem(declaration.steps, stepBindings);
@@ -610,6 +601,8 @@ export function createPackRegistry({ installedPacksDir, appPackSourcesDir, setti
       if (problem) throw new Error(problem);
     }
     if (origin && !origin.manifest && checkBinding === backendBindingProblem) {
+      const migrationProblem = migrationBindingProblem(undefined, registration.migrations);
+      if (migrationProblem) throw new Error(`Pack "${registration.id}" runtime ${migrationProblem} has no accepted migration declarations`);
       const problem = eventBindingProblem(origin.eventContracts, registration.features ?? {});
       if (problem) throw new Error(`Pack "${registration.id}" runtime ${problem} has no matching admitted event contract`);
     }
@@ -625,10 +618,12 @@ export function createPackRegistry({ installedPacksDir, appPackSourcesDir, setti
     if (repository) throw new Error(`Repository collision: "${repository.key}" — pack "${registration.id}" vs "${repository.holder}"`);
 
     const candidate = new Map(admitted);
-    const declarations = origin ? origin.manifest?.extensions?.steps
-      : catalog.getSnapshot().native.find(pack => pack.id === registration.id)?.steps;
-    const eventContracts = origin ? origin.eventContracts : catalog.getSnapshot().native.find(pack => pack.id === registration.id)?.eventContracts;
-    candidate.set(registration.id, admitContributions(checkedRegistration, declarations, eventContracts, origin));
+    const native = origin ? undefined : catalog.getSnapshot().native.find(pack => pack.id === registration.id);
+    candidate.set(registration.id, admitContributions(checkedRegistration, {
+      steps: origin ? origin.manifest?.extensions?.steps : native?.steps,
+      eventContracts: origin ? origin.eventContracts : native?.eventContracts,
+      migrationOwner: origin ? origin.manifest : native,
+    }, origin));
     const nextTables = buildContributionTables(candidate.values());
     let binding: ReturnType<typeof createPackSettingsBinding> | undefined;
     try {
@@ -754,12 +749,7 @@ export function createPackRegistry({ installedPacksDir, appPackSourcesDir, setti
       return origin && contribution ? { origin, runtimeRevision: contribution.runtimeRevision } : null;
     },
     loadedPacks: () => [...origins.values()],
-    packMigrationTargets: (line, packIds) => {
-      const wanted = packIds && new Set(packIds);
-      return orderedPacks()
-        .filter((o) => !wanted || wanted.has(o.id))
-        .map((o) => ({ manifest: o.manifest!, migrations: registrations.get(o.id)?.migrations?.[line] }));
-    },
+    packMigrationTargets,
 
     // Both maps are keyed by the registered features' refs, the host's included
     systemIds: () => [...eventValidationMap().keys()] as FeatureRef[],
