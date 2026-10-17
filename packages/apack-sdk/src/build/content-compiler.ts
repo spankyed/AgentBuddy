@@ -93,15 +93,15 @@ function countRecords(records: ContentItem[]): number {
 }
 
 /** Ordinary media bytes use the same scoped reads as records; native copying bypasses captured inputs. */
-function copyMedia(source: string, destination: string): void {
+function copyMedia(source: string, destination: string, writeFile: (file: string, bytes: Uint8Array) => void): void {
   const stat = fs.lstatSync(source);
   if (stat.isDirectory()) {
     fs.mkdirSync(destination, { recursive: true });
-    for (const name of fs.readdirSync(source)) copyMedia(path.join(source, name), path.join(destination, name));
+    for (const name of fs.readdirSync(source)) copyMedia(path.join(source, name), path.join(destination, name), writeFile);
     fs.chmodSync(destination, stat.mode);
   } else if (stat.isFile()) {
     fs.mkdirSync(path.dirname(destination), { recursive: true });
-    fs.writeFileSync(destination, fs.readFileSync(source));
+    writeFile(destination, fs.readFileSync(source));
     fs.chmodSync(destination, stat.mode);
   } else {
     // Preserve native link/special-file behavior; installed builds still enforce their regular-file layout.
@@ -154,6 +154,10 @@ function recordShapeProblems(value: unknown, at: string): string[] {
  */
 export async function compilePack(options: CompilePackOptions): Promise<CompilePackResult> {
   const { packDir, outputDir } = options;
+  const writeFile = (file: string, bytes: string | Uint8Array) => {
+    fs.writeFileSync(file, bytes);
+    options.recordOutput?.(path.resolve(file), bytes);
+  };
   _clearCompiledContent(outputDir);
   const importModule = options.importModule ?? importPackModule;
   const log = options.log ?? console.log;
@@ -262,11 +266,11 @@ export async function compilePack(options: CompilePackOptions): Promise<CompileP
   parseContentIndex(index);
   const mediaRoot = path.join(outputDir, 'media');
   for (const { key, media, output, index } of compiled) {
-    fs.writeFileSync(path.join(outputDir, contentFile(key)), `${JSON.stringify(output, null, 2)}\n`);
-    if (media && fs.existsSync(media)) copyMedia(media, path.join(mediaRoot, key));
+    writeFile(path.join(outputDir, contentFile(key)), `${JSON.stringify(output, null, 2)}\n`);
+    if (media && fs.existsSync(media)) copyMedia(media, path.join(mediaRoot, key), writeFile);
     log(`  ${key}: ${index.count}`);
   }
-  fs.writeFileSync(path.join(outputDir, CONTENT_INDEX_FILE), `${JSON.stringify(index, null, 2)}\n`);
+  writeFile(path.join(outputDir, CONTENT_INDEX_FILE), `${JSON.stringify(index, null, 2)}\n`);
 
   return { counts: Object.fromEntries(compiled.map(({ key, index }) => [key, index.count])), warnings: [] };
 }

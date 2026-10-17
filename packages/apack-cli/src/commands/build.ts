@@ -173,6 +173,7 @@ async function buildIntoStaging(args: string[], root: string) {
         outputDir: contentOutputDir,
         packConfig,
         importModule: modules.importModule,
+        recordOutput: outputs.record,
       };
 
       result = await withCompilerFileReads({ compilation, outputDirectory: outputDir }, () => compilePack(options));

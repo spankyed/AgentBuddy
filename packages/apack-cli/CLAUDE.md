@@ -198,7 +198,8 @@ without importing compiler or pack code. Comparing another command's ambient env
 from Vite's actual emitted graph and the existing public-file walk, including CSS, lazy/worker files,
 maps and copied public files. Final validation refuses missing/changed expected output before creating
 the receipt. Ordered emissions may replace public placeholders. This is an in-memory producer check,
-not another published manifest; media and the other writers remain tracked by B4 in the goal.
+not another published manifest. `compilePack.recordOutput` feeds compiled JSON, the content index and
+regular media into the same check. Remaining bundle/declaration writers stay tracked by B4 in the goal.
 
 Private phase stamps live in `dist/phase-cache.json`, published with that completed record and output.
 Cache reads verify the receipt and current source/dependency inputs before considering phase keys.

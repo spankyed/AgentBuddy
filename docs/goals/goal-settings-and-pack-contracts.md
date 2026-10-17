@@ -313,10 +313,14 @@ Frontend output checkpoint `0e84bd67c` retains actual Vite emissions and public 
 sealing, including CSS/lazy/worker/maps and placeholder replacement. Missing required output refuses
 the real candidate and retains its incumbent directory. See
 [frontend output evidence](../evidence/build-input-snapshot-proof.md#frontend-output-expectations-checkpoint).
-This closes the record/association and frontend-expectation slices, not all B4: expected media,
-backend/content/helper and declaration/reused-phase writer bytes remain required. B5's four consumer policies and compiler/options
+Content compilation now feeds compiled JSON, the index and regular media bytes into that same
+expectation owner. The real post-compilation media-deletion case refuses publication and retains its
+incumbent; SDK/CLI types, 23 focused checks and all 28 SDK API reports pass. See
+[content output evidence](../evidence/build-input-snapshot-proof.md#content-and-media-output-expectations-checkpoint).
+This closes the record/association, frontend and ordinary content/media expectation slices, not all
+B4: backend/content/helper bundles and declaration/reused-phase writer bytes remain required. B5's four consumer policies and compiler/options
 comparison contexts remain unimplemented. No converged strict or final `--all` pass is claimed.
-Next: extend B4's same in-memory output check to media and remaining bundle/declaration writers,
+Next: extend B4's same in-memory output check to remaining bundle/declaration and reused-phase writers,
 then migrate B5 consumers. Reconcile the finite native/platform lifetime boundary against supported
 compiler operations before closing B1/B3. Preserve required external-library and
 platform/thread-lifetime acceptance;

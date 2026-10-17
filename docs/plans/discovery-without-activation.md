@@ -183,8 +183,10 @@ Frontend producer output expectations now use Vite's returned emitted bytes plus
 from the existing walk, retained in memory until final sealing. Missing or changed expected output
 refuses publication; ordered bundle emissions preserve public-placeholder replacement. CSS, lazy/worker
 files and maps are included. See [frontend output evidence](../evidence/build-input-snapshot-proof.md#frontend-output-expectations-checkpoint).
-Media and the remaining bundle/declaration writers still need the same final expectation check; this
-does not close all B4 output completeness or B5 freshness policy.
+Compiled JSON/index and ordinary media now feed the same final expectation check through
+`CompilePackOptions.recordOutput`; deletion after actual media compilation refuses publication.
+Remaining bundle/declaration/reused-phase writers still need that check; this does not close all B4
+output completeness or B5 freshness policy.
 
 The [asset producer audit](../evidence/build-input-snapshot-proof.md#asset-producer-audit-and-bounded-follow-through-2026-10-17)
 now enumerates the remaining concrete paths. Vite's output graph includes CSS/lazy/worker emissions

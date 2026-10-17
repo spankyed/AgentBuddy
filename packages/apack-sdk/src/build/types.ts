@@ -25,6 +25,8 @@ export interface PackConfig {
 export interface CompilePackOptions {
   packDir: string;
   outputDir: string;
+  /** Expected content/media bytes at absolute output paths, retained by the caller until sealing. */
+  recordOutput?: (file: string, bytes: string | Uint8Array) => void;
   packConfig?: PackConfig;
   /** The definitions to compile with; the pack config's (`loadDefinitions`) by default, none without one */
   definitions?: PackBuildDefinitions;

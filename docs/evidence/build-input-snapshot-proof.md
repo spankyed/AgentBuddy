@@ -1177,3 +1177,33 @@ results. Extend this same short-lived expectation owner from their actual copy/w
 invent a new receipt or infer dependencies from generated JavaScript. B1/B3 lifetime acceptance, B5
 consumer policies, B6, all Phase 6 streams and final committed-source strict `--all` remain required.
 No broad or final acceptance is claimed by these focused checks.
+
+
+### Content and media output expectations checkpoint
+
+`CompilePackOptions.recordOutput` reports the actual writer bytes at absolute output paths. The CLI
+passes its existing in-memory output owner. All compiled source/dataset JSON, the content index and
+ordinary media-file copies report through the same write path. The callback observes bytes already
+consumed from the accepted input view; it does not rescan live source or reconstruct output from
+content links. Native link/special-file copying and the installed regular-file policy are unchanged.
+
+Acceptance:
+
+- All 22 content-compiler cases plus the output owner pass (2.49s runner). The existing markdown/media
+  case now proves exact callback membership and bytes for content, index and media:
+  `/private/tmp/apack-content-output-unit.log`.
+- The real external-pack build compiles media, then the test removes its copied file before completion.
+  Final output validation refuses publication, preserves the incumbent directory inventory and removes
+  staging (24.10s case, 28.20s runner): `/private/tmp/apack-content-output-publication-final.log`.
+  An initial fixture inherited the helper's default memos feature; declaring `features: {}` fixes the
+  fixture without changing the exercised compiler or acceptance assertion.
+- SDK and CLI typechecks and five-file lint pass. Type logs:
+  `/private/tmp/apack-content-output-{sdk,cli}-types.log`.
+- Packages refresh succeeds before report generation. The first report update refused stale published
+  packages as designed; after refreshing, the generated contract adds only the callback. Existing LF
+  report endings are preserved. All 28 SDK reports check current:
+  `/private/tmp/apack-content-output-api-check.log`.
+
+Remaining B4 writer coverage is native backend/content/helper bundles and declaration/reused-phase
+outputs. Existing receipt/format and installed source-free behavior remain unchanged; B1/B3 acceptance,
+B5 consumer policies, B6, all Phase 6 streams and final strict committed-source `--all` remain required.

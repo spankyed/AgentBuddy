@@ -139,6 +139,7 @@ export interface CompilePackOptions {
     packConfig?: PackConfig;
     // (undocumented)
     packDir: string;
+    recordOutput?: (file: string, bytes: string | Uint8Array) => void;
 }
 
 // @public (undocumented)

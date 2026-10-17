@@ -1,3 +1,4 @@
+import * as content from '@apackdev/sdk/build';
 import * as frontend from '../../src/build/fe-bundler.ts';
 import { buildStagingDir } from '../../src/build/build-publication.ts';
 import * as fs from 'node:fs';
@@ -56,6 +57,26 @@ describe('a build that fails', () => {
       return { success: true };
     });
     await expect(build([], root)).rejects.toThrow('Required build output is missing or changed: runtime/required.css');
+    expect(list(dir)).toEqual([...PREVIOUS].sort());
+    expect(fs.existsSync(buildStagingDir(root))).toBe(false);
+  });
+
+  it('refuses copied media removed after compilation and retains the incumbent', async () => {
+    const dir = previousBuild(PREVIOUS);
+    const root = path.dirname(dir);
+    packFixture({ at: root, nodeModules: path.join(REPO_ROOT, 'node_modules'), manifest: {
+      id: 'incomplete-media', name: 'Incomplete media', features: {}, content: {
+        formats: { rows: { compiler: 'src/compiler.ts', entity: 'Relation', media: 'media' } },
+        sources: { rows: { path: 'content/rows', format: 'rows' } },
+      },
+    }, files: { 'src/compiler.ts': 'export default () => [];', 'content/rows/media/proof.txt': 'MEDIA' } });
+    const compile = content.compilePack;
+    vi.spyOn(content, 'compilePack').mockImplementation(async options => {
+      const result = await compile(options);
+      fs.unlinkSync(path.join(options.outputDir, 'media/rows/proof.txt'));
+      return result;
+    });
+    await expect(build(['--skip-fe'], root)).rejects.toThrow('Required build output is missing or changed: runtime/content/media/rows/proof.txt');
     expect(list(dir)).toEqual([...PREVIOUS].sort());
     expect(fs.existsSync(buildStagingDir(root))).toBe(false);
   });

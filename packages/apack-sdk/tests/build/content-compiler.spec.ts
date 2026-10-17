@@ -36,13 +36,14 @@ it.each(['actions', 'prompts', 'flows'])('refuses a declared %s source that is m
 async function compile(
   formats: Record<string, unknown>,
   sources: Record<string, unknown>,
-  options: { dependencies?: ReadonlyMap<string, ContentDependency>; importModule?: CompilePackOptions['importModule']; manifest?: Record<string, unknown>; asDatasets?: boolean } = {},
+  options: { recordOutput?: CompilePackOptions['recordOutput']; dependencies?: ReadonlyMap<string, ContentDependency>; importModule?: CompilePackOptions['importModule']; manifest?: Record<string, unknown>; asDatasets?: boolean } = {},
 ) {
   const manifest = { id: 'demo', name: 'Demo', version: '1.0.0', content: { formats, ...(options.asDatasets ? { datasets: sources } : { sources }) }, ...options.manifest } as unknown as PackManifest;
   return compilePack({
     packDir: root,
     outputDir: out,
     importModule: options.importModule,
+    recordOutput: options.recordOutput,
     packConfig: await buildPackConfigFromManifest(manifest, root, { dependencies: options.dependencies }),
   });
 }
@@ -86,7 +87,12 @@ describe('compilePack', () => {
     write('content/memos/group/index.md', '---\ntitle: Group\n---\nGroup body\n');
     write('content/memos/group/child-memo.md', 'Child body\n');
     write('content/memos/media/pic.png', 'PNG');
-    const result = await compile({ memos: memosFormat }, { memos: { path: 'content/memos', format: 'memos' } });
+    const expected = new Map<string, Buffer>();
+    const result = await compile({ memos: memosFormat }, { memos: { path: 'content/memos', format: 'memos' } }, {
+      recordOutput(file, bytes) { expected.set(path.relative(out, file), Buffer.from(bytes)); },
+    });
+    expect([...expected.keys()].sort()).toEqual(['content.json', 'media/memos/pic.png', 'memos.content.json']);
+    for (const [file, bytes] of expected) expect(fs.readFileSync(path.join(out, file))).toEqual(bytes);
 
     const { records } = read('memos.content.json');
     expect(records.map((r: { title: string }) => r.title)).toEqual(['2024', 'Group']);
