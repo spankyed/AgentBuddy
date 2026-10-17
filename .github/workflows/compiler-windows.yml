@@ -36,8 +36,10 @@ jobs:
       - name: Build matching packages
         run: npm run packages:ensure
       - name: Compiler input and installation checks
+        env:
+          NODE_OPTIONS: --conditions=@apackdev/source
         run: >-
-          node scripts/with-source.mjs npx vitest run --project @apackdev/cli --project @apackdev/host --project @apackdev/ui
+          node node_modules/vitest/vitest.mjs run --project @apackdev/cli --project @apackdev/host --project @apackdev/ui
           packages/apack-host/tests/build/published-manifest.spec.ts
           packages/apack-host/tests/build/compiler-inputs.spec.ts
           packages/apack-host/tests/build/package-inputs.spec.ts
@@ -54,16 +56,18 @@ jobs:
           packages/apack-cli/tests/build/compiler-native-libraries.spec.ts
           --poolOptions.threads.maxThreads=2 --poolOptions.threads.minThreads=1
       - name: Compiler publication waits for descendants
+        env:
+          NODE_OPTIONS: --conditions=@apackdev/source
         run: >-
-          node scripts/with-source.mjs npx vitest run --project @apackdev/cli
+          node node_modules/vitest/vitest.mjs run --project @apackdev/cli
           packages/apack-cli/tests/build/pack-builder.spec.ts
           --testNamePattern='stops remaining compiler descendants'
           --bail=1 --poolOptions.threads.maxThreads=2 --poolOptions.threads.minThreads=1
-      # Native job proof and publication are bounded checkpoints; parent-loss/replacement remain open.
+      # The job proof covers parent loss and replacement; actual build/frontend acceptance remains required.
       # Establish startup/repeated-build identity first. Expand native lifetime cases with their Windows owner.
       - name: Build worker platform baseline
         run: >-
-          npx vitest run --config vitest.integration.config.ts --project @apackdev/cli
+          node node_modules/vitest/vitest.mjs run --config vitest.integration.config.ts --project @apackdev/cli
           packages/apack-cli/tests/build/build-worker.integration.spec.ts
           --testNamePattern='captures native launch identity|uses the captured compiler'
           --bail=1 --poolOptions.threads.maxThreads=2 --poolOptions.threads.minThreads=1

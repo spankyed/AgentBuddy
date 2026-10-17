@@ -102,21 +102,23 @@ Windows two-build/archive case 240 seconds, retaining 120 seconds locally and ev
 focused Windows diagnostic selects startup and repeat-build baseline cases; broader platform/native
 lifetime acceptance remains required with its implementation. See
 [timing evidence](../evidence/build-input-snapshot-proof.md#windows-repeated-build-forward-progress-2026-10-17).
-The native Job Object prototype passes on Windows in run `39064447097` (`62f6a03b8`): normal and
-nonzero exit plus forced launcher cancellation stop actual root/descendant processes while preserving
-JSON IPC, stdio, args, cwd and environment. That run later fails a separate copied-runtime probe's
-5-second subprocess deadline (161 other unit checks pass), before the repeat-build baseline.
-Only this Windows cold executable probe now permits 10 seconds; its content/alias/refusal assertions
-and other deadlines remain intact.
+Source `b1c1c87c6` integrates the shared Windows build/Vite job owner. Run `39065375155` passes the
+actual production launch helper's success/failure/cancellation/Unicode proof and all 162 focused unit
+cases (eight platform skips). The publication step never reaches its intended case: a Windows shell
+hop splits the quoted name filter and runs unrelated tests instead. The workflow now invokes Vitest's
+JavaScript entry directly, retaining the source condition through its environment and preserving argv.
+No assertion is weakened to hide the unintended SIGTERM-handler failure.
 
-Build and Vite workers now use a common spawn helper with the shipped Windows launcher; POSIX keeps
-its process groups. The native proof calls that actual production helper and includes Unicode input.
-Normal Windows completion waits for zero job processes before returning; parent loss/forced owner
-termination closes the kill-on-close job. Frontend readiness reports the actual worker PID. Nine local
-owner/replacement/cancellation checks, the real descendant-publication regression, 153 cache/tooling
-checks, types, lint and CLI asset packaging pass. Native execution of this integration, parent-loss and
-replacement acceptance remain open. See
-[integration evidence](../evidence/build-input-snapshot-proof.md#windows-job-owner-integration-checkpoint-2026-10-17).
+The native proof now also checks that retiring one compiler leaves its replacement alive, and forcibly
+kills an independent controller to verify parent-loss cleanup. The original 30-second proof budget
+and two-second parent-loss settlement bound remain. Review also identifies a launcher input defect:
+PowerShell modifies its own environment, which must not reach Node. The requested Node environment
+now travels over a private memory channel directly into `CreateProcessW`, including correct IPC vars;
+it is absent from launch files. The native proof checks policy/module-path/Unicode/absent-variable
+preservation. These additions need native execution before closing Windows acceptance; see
+[handoff evidence](../evidence/build-input-snapshot-proof.md#windows-environment-and-final-lifetime-cases-2026-10-17).
+Local types, CLI packaging, POSIX descendant publication, syntax/lint and 53 tooling cases pass.
+Actual repeated-build baseline, build/frontend integration and final strict acceptance remain open.
 
 Source `59b890dcb` repairs the macOS explicit fallback gap: launch-time `DYLD_FALLBACK_LIBRARY_PATH`
 survives preload mutation, selected external fallback libraries refuse before native initialization,

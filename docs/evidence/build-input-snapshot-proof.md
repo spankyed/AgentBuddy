@@ -2460,3 +2460,51 @@ This source checkpoint requires native execution of the integrated helper, publi
 real repeated compiler. Windows parent-loss/replacement, the remaining B1 native-input/platform cases,
 B6 and final strict `--all` remain open. The focused workflow now waits rather than cancelling older
 native diagnostics; no new dispatch is made until the preceding run is terminal.
+
+### Windows environment and final lifetime cases (2026-10-17)
+
+[Run 39065375155](https://github.com/spankyed/AgentBuddy/actions/runs/39065375155) on `b1c1c87c6`
+passes the production helper's three native launch cases, including Unicode, and all 162 focused unit
+cases (eight platform skips). Its publication command runs 17 files rather than the requested one:
+`with-source.mjs` uses `shell: true` on Windows, splitting the quoted multiword filter. An unintended
+SIGTERM-handler test fails, and the descendant-publication case is never reached. This is not evidence
+against the job's publication boundary. Preserve the log:
+`/private/tmp/apack-windows-39065375155.log`. Use direct `node node_modules/vitest/vitest.mjs` in the
+focused workflow and put the same source condition in the step environment; remove the extra shell
+hops for both unit and baseline commands. No test assertions or deadlines change for this correction.
+
+Extend the native proof using its existing start/stop lifecycle: concurrently start two job owners,
+retire the previous one, prove the replacement and its descendant are still live, then retire it.
+For parent loss, a separate Node controller starts the actual production helper and reports its owner,
+worker and descendant IDs. Kill that controller with SIGKILL, without application cleanup, and require
+all three processes to stop within the existing two-second settlement bound. The entire proof retains
+its 30-second limit. These cases remain pending native execution, not accepted by local syntax checks.
+
+Environment review identifies a separate introduced assumption: `CreateProcessW` with a null environment
+inherits PowerShell startup's modifications. Microsoft documents
+[PSModulePath reconstruction](https://learn.microsoft.com/en-us/powershell/module/microsoft.powershell.core/about/about_psmodulepath)
+and [process-scope execution-policy environment](https://learn.microsoft.com/en-us/powershell/module/microsoft.powershell.core/about/about_execution_policies).
+Keep the launcher environment separate from the requested compiler environment. Send the latter in a
+length-prefixed UTF-16 block over one private inherited memory pipe. The launcher reads exactly that
+block, excludes the pipe from the worker's stdio table/handle inheritance, sorts the Windows environment
+and supplies it directly to `CreateProcessW`. Only original stdio and Node IPC reach the worker. Node's
+case-insensitive key selection and serialization channel settings are preserved. Environment values
+never enter the on-disk launch configuration; no encoded environment variable or credential file is
+introduced. Launcher temporary files remain in the existing job workspace.
+
+The native proof now checks original module-path and policy values, Unicode/newline environment data,
+undefined-variable absence, and omission of environment keys from the launch file, in addition to its
+existing argv/IPC/stdio/lifetime checks. These are native acceptance requirements for the new handoff;
+no claim of their execution is made yet. Local checks pass:
+
+- CLI types: `/private/tmp/apack-windows-job-environment-types.log`.
+- CLI package build: `/private/tmp/apack-windows-job-environment-package.log`.
+- 53 deadline/subprocess tooling cases (1.71s runner):
+  `/private/tmp/apack-windows-job-environment-tooling.log`.
+- Actual POSIX descendant-publication preservation (1.48s case / 3.00s runner):
+  `/private/tmp/apack-windows-job-environment-posix.log`.
+- Native proof syntax, focused correctness lint and whitespace checks.
+
+The preceding Windows run is terminal. The next focused run must first pass the production helper
+proof, then the exact descendant-publication case and actual repeated-build baseline. Other native
+input/platform cases, B6 and the final full strict gate remain open.

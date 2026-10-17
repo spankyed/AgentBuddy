@@ -6,6 +6,8 @@ Add-Type -TypeDefinition @'
 using System;
 using System.ComponentModel;
 using System.Diagnostics;
+using System.IO;
+using Microsoft.Win32.SafeHandles;
 using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading;
@@ -70,12 +72,14 @@ public static class CompilerJobLauncher {
     static extern bool TerminateProcess(IntPtr process, uint code);
     [DllImport("kernel32.dll")]
     static extern bool CloseHandle(IntPtr handle);
+    [DllImport("kernel32.dll", SetLastError=true)]
+    static extern bool SetHandleInformation(IntPtr handle, uint mask, uint flags);
 
     static void Check(bool success, string operation) {
         if (!success) throw new Win32Exception(Marshal.GetLastWin32Error(), operation);
     }
     public static int Run(string executable, string command, string directory, uint parentPid) {
-        IntPtr job = IntPtr.Zero, parent = IntPtr.Zero;
+        IntPtr job = IntPtr.Zero, parent = IntPtr.Zero, environment = IntPtr.Zero, workerStdio = IntPtr.Zero;
         ProcessInfo child = new ProcessInfo();
         try {
             parent = OpenProcess(0x00100000, false, parentPid); // SYNCHRONIZE
@@ -93,11 +97,38 @@ public static class CompilerJobLauncher {
 
             Startup startup;
             GetStartupInfoW(out startup);
-            if (startup.ReservedBytes == 0 || startup.ReservedTable == IntPtr.Zero)
-                throw new Exception("Launcher did not inherit libuv's stdio table");
+            if (startup.ReservedTable == IntPtr.Zero || startup.ReservedBytes < 4 ||
+                Marshal.ReadInt32(startup.ReservedTable) != 5 || startup.ReservedBytes < 9 + 5 * IntPtr.Size)
+                throw new Exception("Launcher requires inherited stdio, IPC and environment channels");
+            IntPtr input = Marshal.ReadIntPtr(startup.ReservedTable, 9 + 4 * IntPtr.Size);
+            Check(SetHandleInformation(input, 1, 0), "Keep environment channel private");
+            using (var handle = new SafeFileHandle(input, false))
+            using (var stream = new FileStream(handle, FileAccess.Read))
+            using (var reader = new BinaryReader(stream)) {
+                int length = reader.ReadInt32();
+                if (length < 4 || (length % 2) != 0) throw new Exception("Invalid compiler environment length");
+                byte[] bytes = reader.ReadBytes(length);
+                if (bytes.Length != length) throw new Exception("Compiler environment transfer ended early");
+                string block = new UnicodeEncoding(false, false, true).GetString(bytes);
+                if (!block.EndsWith("\0\0")) throw new Exception("Invalid compiler environment block");
+                string[] entries = block.Split(new char[] { '\0' }, StringSplitOptions.RemoveEmptyEntries);
+                Array.Sort(entries, StringComparer.OrdinalIgnoreCase);
+                environment = Marshal.StringToHGlobalUni(String.Join("\0", entries) + "\0\0");
+            }
+            // Only stdio/IPC reach Node. The environment pipe remains owned by this launcher.
+            workerStdio = Marshal.AllocHGlobal(8 + 4 * IntPtr.Size);
+            Marshal.WriteInt32(workerStdio, 4);
+            for (int i = 0; i < 4; i++) {
+                Marshal.WriteByte(workerStdio, 4 + i, Marshal.ReadByte(startup.ReservedTable, 4 + i));
+                Marshal.WriteIntPtr(workerStdio, 8 + i * IntPtr.Size,
+                    Marshal.ReadIntPtr(startup.ReservedTable, 9 + i * IntPtr.Size));
+            }
+            startup.ReservedBytes = (ushort)(8 + 4 * IntPtr.Size);
+            startup.ReservedTable = workerStdio;
             startup.Size = (uint)Marshal.SizeOf(typeof(Startup));
+            // Suspended, Unicode environment, and no console window.
             Check(CreateProcessW(executable, new StringBuilder(command), IntPtr.Zero, IntPtr.Zero, true,
-                0x00000004, IntPtr.Zero, directory, ref startup, out child), "Create suspended compiler");
+                0x08000404, environment, directory, ref startup, out child), "Create suspended compiler");
             Check(AssignProcessToJobObject(job, child.Process), "Assign suspended compiler job");
             Check(ResumeThread(child.Thread) != UInt32.MaxValue, "Resume compiler");
             uint ended = WaitForMultipleObjects(2, new IntPtr[] { child.Process, parent }, false, UInt32.MaxValue);
@@ -120,6 +151,8 @@ public static class CompilerJobLauncher {
             if (child.Thread != IntPtr.Zero) CloseHandle(child.Thread);
             if (job != IntPtr.Zero) CloseHandle(job);
             if (parent != IntPtr.Zero) CloseHandle(parent);
+            if (environment != IntPtr.Zero) Marshal.FreeHGlobal(environment);
+            if (workerStdio != IntPtr.Zero) Marshal.FreeHGlobal(workerStdio);
         }
     }
 }

@@ -103,7 +103,8 @@ The parent waits for process closure, verifies the exact sealed output and autho
 dist. POSIX workers own a process group: inherited subprocesses must be terminal before publication.
 Both build and Vite workers launch through `spawnCompilerWorker`. Windows uses the captured
 `bin/compiler-windows.ps1`: create the worker suspended, assign its private kill-on-close Job Object,
-then resume it with inherited Node IPC/stdio. Normal completion terminates remaining descendants and
+then resume it with inherited Node IPC/stdio. Pass the requested Node environment in memory to
+`CreateProcessW`; PowerShell startup must not change compiler inputs or persist environment values. Normal completion terminates remaining descendants and
 waits for an empty job before the launcher exits; parent loss or forced launcher termination closes the
 job handle. Keep launcher/configuration temp files inside the existing worker workspace. Frontend
 readiness reports the actual Vite worker PID, independently of the platform lifetime owner.
