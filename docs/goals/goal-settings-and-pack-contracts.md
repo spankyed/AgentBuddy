@@ -560,11 +560,16 @@ captured relative loading, changed-library freshness, direct/transitive pre-init
 incumbent retention pass in 38.18s. The shared preload regression also passes in 27.77s, with 53 tooling
 checks, CLI types and lint. See [native-worker evidence](../evidence/build-input-snapshot-proof.md#native-worker-library-acceptance-2026-10-17).
 A separate 0.84s native-loader experiment demonstrates that inherited `DYLD_LIBRARY_PATH` can replace
-a captured loader-relative library with an outside copy. Next, close that demonstrated environment
-bypass through the current loading owners: retain startup loader configuration before user hooks can
-mutate `process.env`, account for selected search candidates, and preserve benign unused paths rather
-than banning every loader setting. Account separately for pre-initialization library insertion, which
-requires admission before process launch. Then finish the retained-frontend boundary without freezing HMR.
+a captured loader-relative library with an outside copy. `70480baeb` closes that demonstrated case:
+launch settings survive preload environment changes and worker creation; matching outside overrides
+refuse before addon initialization, while an unused directory is allowed and its later matching file
+invalidates freshness. The real worker/public-build case passes in 31.03s with incumbent retention;
+52 focused cases, 53 tooling cases, CLI types, lint and a targeted mutation check pass. See the
+[search-path checkpoint](../evidence/build-input-snapshot-proof.md#native-search-override-admission-2026-10-17).
+This does not close every loader control: account next for pre-initialization library insertion at its
+pre-launch owner and inspect the applicable framework/versioned/fallback/suffix controls before claiming
+the macOS environment boundary complete. Then finish retained-frontend initialization without freezing
+HMR. ELF/PE, Windows descendant lifetime/native execution and the converged/final strict gates remain open.
 Windows push approval is still pending.
 
 The single two-core strict run failed preparing the default-pack fork: the build observation for

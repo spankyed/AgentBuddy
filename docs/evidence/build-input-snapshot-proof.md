@@ -1883,3 +1883,48 @@ itself an outside dependency, so a blanket ban is not the intended solution. Lib
 occurs before JavaScript startup needs its pre-launch owner considered separately. This is a concrete
 remaining bounded-contract defect, not evidence for universal native-I/O confinement or permission to
 expand into a general sandbox. Retained Vite initialization and ELF/PE/platform acceptance stay open.
+
+## Native search override admission (2026-10-17)
+
+Source `70480baeb` closes the preceding `DYLD_LIBRARY_PATH` counterexample through the existing native
+load owners. The bootstrap captures that launch-time list before user preloads and carries it through
+same-process loader/worker lineage. Compilation admission uses the same retained settings. This is
+necessary because dyld consumes its settings at process launch; deleting the variable later does not
+change the loader. [Apple's implementation](https://github.com/apple-oss-distributions/dyld/blob/main/dyld/DyldProcessConfig.cpp)
+records that behavior in `PathOverrides::addEnvVar` and applies library overrides in `forEachPathVariant`.
+
+Admission checks matching dylib basename candidates, including the native entry itself, before calling
+the OS loader. A matching outside image refuses with its native requester, candidate path and variable
+name. Missing candidates remain observed inputs; their later appearance invalidates the completed
+build. Existing OS-file candidates stop the search before later unused directories. Framework
+references are not incorrectly processed as dylib basenames; their distinct loader controls remain
+unimplemented. Already owned compiler/read-tree bytes keep their existing owner, while outside lookup
+probes join the source observation view rather than leaking private copy paths into the build record.
+
+Evidence on macOS ARM64 / Node 23.11.1:
+
+- A real public build launches with an empty override directory. A preload deletes the variable, then
+  the actual content compiler creates a worker that loads the addon from captured bytes. Adding a
+  matching outside library invalidates freshness; the next candidate refuses before addon initialization
+  and retains the incumbent revision. 31.03s case / 32.53s runner:
+  `/private/tmp/apack-native-search-real.log`.
+- 20 binary/policy and 24 existing module-input cases pass in 0.94s runner:
+  `/private/tmp/apack-native-search-focused.log`. Seven added cases cover immutable launch settings,
+  addon/dependency/OS-reference overrides, harmless missing candidates, search order and the framework
+  distinction. Eight startup environment/worker ownership cases also pass in 2.49s:
+  `/private/tmp/apack-native-search-startup-unit.log`.
+- A private Vitest mock disables only search-path observation while retaining the dependency checker.
+  All three targeted override-refusal cases then fail. Repository source is unchanged by this mutation
+  probe: `/private/tmp/apack-native-search-mutation.log`; its retained setup is named by
+  `/private/tmp/apack-native-search-mutation-config.txt`.
+- All 53 subprocess inventory/timeout cases, CLI types, correctness lint and whitespace checks pass:
+  `/private/tmp/apack-native-search-tooling.log`, `/private/tmp/apack-native-search-types.log`,
+  `/private/tmp/apack-native-search-lint.log`. Matching package build:
+  `/private/tmp/apack-native-search-packages.log`.
+
+This is not a full dyld resolver or pre-launch library-admission implementation. Framework/versioned/
+fallback/suffix controls, shared-cache-specific override precedence and library insertion before JS
+startup require their own applicable-path audit and acceptance. Retained Vite initialization, ELF/PE,
+other-platform evidence, Windows descendant ownership and the converged/final strict gates remain open.
+No timeout changed, no blanket ban on loader environment was added, and no broad suite rerun was used
+as diagnosis.
