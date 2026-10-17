@@ -1450,26 +1450,6 @@ interface ClaudeSessionResumeTargetOptions extends Pick<QueryOptions, 'cliPath' 
 
 type ClaudeTurnConsumer = (turn: ClaudeConversationTurn) => Promise<void>;
 
-interface ClaudeUiAssistantFrame extends ClaudeUiAssistantRow {
-    displayText: string;
-    body: {
-        status: 'error' | 'rendering';
-    } | {
-        status: 'live';
-        tree: ClaudeUiNode;
-    };
-}
-
-interface ClaudeUiAssistantRow {
-    messageId: string;
-    uuid: string;
-    sessionId: string;
-    text: string;
-    start: number;
-    end: number;
-    isFirstOfReply: boolean;
-}
-
 type ClaudeUiAttach = z.infer<typeof attach>;
 
 interface ClaudeUiBoxLayout {
@@ -1568,7 +1548,7 @@ type ClaudeUiMountState = ({
     panes?: ClaudeUiPanePresentation;
     scroll?: ClaudeUiScrollState;
     notices?: ClaudeUiNotices;
-    assistantMessages?: ClaudeUiAssistantFrame[];
+    transcriptMessages?: ClaudeUiTranscriptFrame[];
 };
 
 type ClaudeUiNode = {
@@ -1765,6 +1745,36 @@ interface ClaudeUiTextStyle {
     inverse?: boolean;
 }
 
+type ClaudeUiTranscriptFrame = ClaudeUiTranscriptRow & {
+    displayText: string;
+    body: {
+        status: 'error' | 'rendering';
+    } | {
+        status: 'live';
+        tree: ClaudeUiNode;
+    };
+};
+
+type ClaudeUiTranscriptRow = ClaudeUiTranscriptRowSource & ({
+    component: 'AssistantMessage';
+    isFirstOfReply: boolean;
+} | {
+    component: 'UserMessage';
+    origin: {
+        kind: 'unclassified';
+    };
+    isExpanded: boolean;
+});
+
+interface ClaudeUiTranscriptRowSource {
+    messageId: string;
+    uuid: string;
+    sessionId: string;
+    text: string;
+    start: number;
+    end: number;
+}
+
 type ClaudeUiViewRequest = ({
     type: 'CLAUDE_PROMPT_HOST_RESPONSE';
     threadId: string;
@@ -1798,6 +1808,7 @@ type ClaudeUiViewRequest = ({
     threadId: string;
     mountId: string;
     messageIds?: string[];
+    userExpansion?: Record<string, boolean>;
 } | {
     type: 'CLAUDE_UI_UNMOUNT';
     threadId: string;
