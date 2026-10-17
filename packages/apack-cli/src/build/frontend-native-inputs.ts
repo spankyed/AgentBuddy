@@ -1,7 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { threadId } from 'node:worker_threads';
-import { assertNativeCompilerObservations, createCompilerFileView, withoutCompilerFileReads, type CompilerInputObservations,
+import { assertNativeCompilerObservations, beginCompilerStartupReads, createCompilerFileView, withoutCompilerFileReads, type CompilerInputObservations,
   type CompilerPathMapping } from '@apackdev/host/build/compiler-inputs';
 import { captureMachOLibraryEnvironment, type MachOLibraryEnvironment } from './compiler-native-libraries.ts';
 import { createCompilerNativeInputs, type CapturedNativeModule } from './compiler-native-input-owner.ts';
@@ -19,6 +19,7 @@ interface NativeInputsReport {
 export interface FrontendNativeInputs {
   readonly nativeEnvironment: MachOLibraryEnvironment;
   finishLocal(): CompilerInputObservations;
+  stopReads(): void;
   disposeLocal(): void;
   snapshot(): Promise<CompilerInputObservations[]>;
   close(): Promise<void>;
@@ -77,16 +78,28 @@ export function beginFrontendNativeInputs(root: string, workspace: string, paths
       }
     },
   });
+  const stopReads = beginCompilerStartupReads({ outputDirectory: workspace, compilation: {
+    isInput: native.includes, readDataPath: native.readDataPath, sourcePath: native.sourcePath,
+    diagnostic: native.diagnostic,
+    readMetadata: (kind, file, args) => view.readMetadata(kind, native.sourcePath(file), args),
+    readDirectory: (file, options) => view.readDirectoryData(native.sourcePath(file), options),
+    openDirectory: (file, options) => view.openDirectoryData(native.sourcePath(file), options),
+    requireParent: file => file,
+  } });
   const inputs: FrontendNativeInputs = {
-    nativeEnvironment, disposeLocal: native.dispose,
+    nativeEnvironment,
+    stopReads() { stopReads(); save(); },
+    disposeLocal() { stopReads(); native.dispose(); },
     finishLocal() {
       return withoutCompilerFileReads(() => {
+        save();
         native.assertCurrent();
         return view.observations(file => !native.includes(file));
       });
     },
     async snapshot() {
       return withoutCompilerFileReads(() => {
+        save();
         native.assertCurrent();
         return reports().flatMap(context => context.copies ? [context.source, context.copies] : [context.source]);
       });

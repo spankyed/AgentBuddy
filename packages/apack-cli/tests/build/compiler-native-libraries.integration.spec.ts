@@ -265,6 +265,11 @@ it.runIf(process.platform === 'darwin').each(['preload', 'thread'] as const)(
       expect(loaded.libraries).not.toContain(native.library);
       expect(loaded.libraries.some(file => file.includes('apack-vite-') && file.endsWith('/lib/libvalue.dylib'))).toBe(true);
       expect(await frontend.isCurrent(signal)).toBe(true);
+      const initializedPreload = fs.readFileSync(preload, 'utf8');
+      fs.appendFileSync(preload, '\n// changed preload bytes');
+      expect(await frontend.isCurrent(signal)).toBe(false);
+      fs.writeFileSync(preload, initializedPreload);
+      expect(await frontend.isCurrent(signal)).toBe(true);
       const view = `http://localhost:${frontend.address.port}/src/View.vue`;
       expect(await (await fetch(view)).text()).toContain('VITE_NATIVE_BEFORE');
       fs.writeFileSync(path.join(fixture.pack, 'src/View.vue'), '<template>VITE_NATIVE_AFTER</template>');

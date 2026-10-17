@@ -87,6 +87,8 @@ if ((isMainThread && (process.env.APACK_BUILD_WORKER === '1' || process.env.APAC
       buildInputs.finish = () => finished ??= collect(true);
     }
     if (frontendInputs) {
+      const snapshot = frontendInputs.snapshot;
+      frontendInputs.snapshot = async () => [...await collect(false), ...await snapshot()];
       frontendInputs.close = async () => {
         try { await collect(true); }
         finally { startup.disposeLocal(); }
