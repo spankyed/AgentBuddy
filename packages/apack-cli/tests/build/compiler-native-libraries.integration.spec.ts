@@ -105,26 +105,38 @@ it.runIf(process.platform === 'darwin').each(['relative', 'absolute', 'transitiv
   }
 });
 
-it.runIf(process.platform === 'darwin')('captures native preload libraries and retains the incumbent after outside-library refusal', async () => {
+it.runIf(process.platform === 'darwin').each(['preload', 'thread'] as const)('captures native %s libraries and retains the incumbent after outside-library refusal', async site => {
   const supported = nativeFixture('relative');
   const refused = [nativeFixture('absolute'), nativeFixture('transitive')];
   const builder = createPackBuilder(supported.pack);
   const previous = process.env.NODE_OPTIONS;
   const preload = path.join(supported.pack, 'native-preload.cjs');
   const proof = path.join(supported.root, 'preload-proof.json');
-  const writePreload = (fixture: ReturnType<typeof nativeFixture>) => fs.writeFileSync(preload,
-    `if (globalThis[Symbol.for('apack.compiler.startup')]) {
-const addon = require(${JSON.stringify(path.join(fixture.native, 'binding/addon.node'))});
-require('node:fs').appendFileSync(${JSON.stringify(proof)}, JSON.stringify({ value: addon.read(), libraries: process.report.getReport().sharedObjects }) + '\\n');
-}`);
+  const writeLoader = (fixture: ReturnType<typeof nativeFixture>) => {
+    const load = `const addon = require(${JSON.stringify(path.join(fixture.native, 'binding/addon.node'))});
+require('node:fs').appendFileSync(${JSON.stringify(proof)}, JSON.stringify({ thread: require('node:worker_threads').threadId, value: addon.read(), libraries: process.report.getReport().sharedObjects }) + '\\n');`;
+    if (site === 'preload') fs.writeFileSync(preload, `if (globalThis[Symbol.for('apack.compiler.startup')]) { ${load} }`);
+    else fs.writeFileSync(path.join(supported.pack, 'src/compiler.ts'), `import { Worker } from 'node:worker_threads';
+export default () => new Promise((resolve, reject) => {
+  const worker = new Worker(${JSON.stringify(`if (!globalThis[Symbol.for('apack.compiler.startup')]) throw new Error('Native worker has no input owner');
+${load}
+require('node:worker_threads').parentPort.postMessage('NATIVE');`)}, { eval: true });
+  worker.once('message', name => resolve([{ entity: 'Relation', name }]));
+  worker.once('error', reject);
+  worker.once('exit', code => { if (code) reject(new Error('Native compiler worker exited with code ' + code)); });
+});`);
+  };
   try {
-    packFixture({ at: supported.pack, nodeModules: path.join(REPO_ROOT, 'node_modules'), manifest: { features: {} },
-      files: { 'tsconfig.json': JSON.stringify({ compilerOptions: { module: 'esnext', moduleResolution: 'bundler', skipLibCheck: true } }) } });
-    writePreload(supported);
-    process.env.NODE_OPTIONS = formatNodeOptions([...parseNodeOptions(previous), '--require', preload]);
+    packFixture({ at: supported.pack, nodeModules: path.join(REPO_ROOT, 'node_modules'), manifest: { features: {},
+      ...(site === 'thread' ? { content: { formats: { rows: { compiler: 'src/compiler.ts', entity: 'Relation', identity: ['name'] } },
+        sources: { rows: { path: 'src/value.txt', format: 'rows' } } } } : {}) },
+      files: { 'src/value.txt': 'input', 'tsconfig.json': JSON.stringify({ compilerOptions: { module: 'esnext', moduleResolution: 'bundler', skipLibCheck: true } }) } });
+    writeLoader(supported);
+    if (site === 'preload') process.env.NODE_OPTIONS = formatNodeOptions([...parseNodeOptions(previous), '--require', preload]);
     await builder.build({ args: ['--skip-fe'] });
-    const results = fs.readFileSync(proof, 'utf8').trim().split('\n').map(line => JSON.parse(line)) as { value: number; libraries: string[] }[];
+    const results = fs.readFileSync(proof, 'utf8').trim().split('\n').map(line => JSON.parse(line)) as { thread: number; value: number; libraries: string[] }[];
     for (const result of results) {
+      if (site === 'thread') expect(result.thread).toBeGreaterThan(0);
       expect(result.value).toBe(11);
       expect(result.libraries).not.toContain(supported.library);
       expect(result.libraries.some(file => file.includes('apack-inputs-') && file.endsWith('/lib/libvalue.dylib'))).toBe(true);
@@ -139,7 +151,7 @@ require('node:fs').appendFileSync(${JSON.stringify(proof)}, JSON.stringify({ val
     const revision = readPackBuild(path.join(supported.pack, 'dist')).revision;
     for (const fixture of refused) {
       fs.rmSync(proof, { force: true });
-      writePreload(fixture);
+      writeLoader(fixture);
       await expect(builder.build({ args: ['--skip-fe'] })).rejects.toThrow();
       expect(fs.existsSync(fixture.marker)).toBe(false);
       expect(fs.existsSync(proof)).toBe(false);
