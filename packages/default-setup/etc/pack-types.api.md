@@ -1325,6 +1325,26 @@ declare const ClaudeModelCatalogSchema: z.ZodObject<{
     }, z.ZodTypeAny, "passthrough">>, "many">;
 }, z.ZodTypeAny, "passthrough">>;
 
+interface ClaudeNativeJournalEntry {
+    sessionId: string;
+    row: Record<string, unknown>;
+}
+
+interface ClaudeNativeSessionMetadata {
+    cwd: string;
+    model: string;
+    turns: number;
+    startedAt: number;
+    totalCostUsd?: number;
+    permissionMode?: PermissionMode;
+}
+
+interface ClaudeNativeSubmissionReceipt {
+    sessionId: string;
+    uuid: string;
+    text: string;
+}
+
 type ClaudeNativeTerminalHandoffOptions = Pick<ClaudeNativeTerminalOptions, 'cliPath' | 'columns' | 'env' | 'rows'>;
 
 interface ClaudeNativeTerminalOptions {
@@ -1341,6 +1361,7 @@ interface ClaudeNativeTerminalOptions {
     disallowedTools?: string[];
     appendSystemPrompt?: string;
     addDir?: string[];
+    pluginDir?: string[];
     signal?: AbortSignal;
 }
 
@@ -1353,12 +1374,33 @@ interface ClaudeNativeTerminalOwner {
         sequence: number;
         text: string;
     }[];
+    readJournal(): Promise<ClaudeNativeJournalEntry[]>;
+    readonly records: readonly {
+        sequence: number;
+        record: ClaudeNativeTerminalRecord;
+    }[];
     subscribe(listener: () => void): () => void;
     input(ownerId: string, text: string): boolean;
     resize(ownerId: string, columns: number, rows: number): boolean;
-    submit(text: string): Promise<void>;
+    submit(text: string): Promise<ClaudeNativeSubmissionReceipt>;
     close(): Promise<void>;
     kill(): void;
+}
+
+interface ClaudeNativeTerminalRecord {
+    sessionId: string;
+    uuid: string;
+    door: string;
+    origin: Record<string, unknown>;
+    message: {
+        type: 'assistant' | 'attachment' | 'system' | 'user';
+        role?: 'assistant' | 'user';
+        isMeta?: true;
+        content: {
+            type: string;
+            [key: string]: unknown;
+        }[];
+    };
 }
 
 interface ClaudeNativeTerminalState {
@@ -1368,6 +1410,12 @@ interface ClaudeNativeTerminalState {
     status: 'error' | 'exited' | 'live' | 'starting';
     pid?: number;
     exitCode?: number;
+    busy: boolean;
+    lastTurn?: {
+        id: string;
+        reason: 'aborted' | 'answer' | 'error' | 'refusal';
+    };
+    session?: ClaudeNativeSessionMetadata;
     mainStatus?: string;
     tasks: ClaudeNativeTerminalTask[];
     problem?: string;
@@ -1906,7 +1954,7 @@ type ClaudeUiTranscriptRow = ClaudeUiTranscriptRowSource & ({
 } | {
     component: 'UserMessage';
     origin: {
-        kind: 'unclassified';
+        kind: 'composer' | 'unclassified';
     };
     isExpanded: boolean;
 });
