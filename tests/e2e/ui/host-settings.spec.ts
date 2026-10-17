@@ -4,10 +4,12 @@ import * as path from 'node:path';
 import { resolveAppEnvironment } from '@apackdev/sdk/env';
 import type { Component } from 'vue';
 import type { Editor } from '@tiptap/core';
+import { _declarationRevision, PACK_SNAPSHOT_FORMAT, type PackManifest } from '@apackdev/sdk/build';
+import { PACK_LAYOUT, sealPackBuild } from '@apackdev/host/packs';
 import { test as base, expect } from '@apackdev/testing';
 
 // A separate worker boots with a real disabled-pack record. No runtime facade, form or setting is mocked.
-const test = base.extend<{}, { hostOnlyData: void }>({
+const test = base.extend<{}, { hostOnlyData: string }>({
   // oxlint-disable-next-line no-empty-pattern -- Playwright requires destructured fixture dependencies.
   hostOnlyData: [async ({}, use) => {
     const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'apack-host-settings-'));
@@ -16,7 +18,7 @@ const test = base.extend<{}, { hostOnlyData: void }>({
     fs.mkdirSync(path.dirname(installedPacksFile), { recursive: true });
     fs.writeFileSync(installedPacksFile, JSON.stringify({ packs: [{ id: 'default-setup', enabled: false }] }));
     process.env.E2E_DATA_DIR = directory;
-    try { await use(); }
+    try { await use(directory); }
     finally {
       if (previous === undefined) delete process.env.E2E_DATA_DIR;
       else process.env.E2E_DATA_DIR = previous;
@@ -161,5 +163,96 @@ test('shortcut drafts follow another window and preserve the global flag', async
     })).toEqual({ key: 'F7', modifiers: [], global: true });
   } finally {
     await second.close();
+  }
+});
+
+
+test('cold Monaco documents follow source-free declarations and share worker libraries', async ({ appPage, hostOnlyData }) => {
+  const { packsDir, installedPacksFile } = resolveAppEnvironment({ env: 'test', userDataDir: hostOnlyData });
+  const directory = path.join(packsDir, 'cold-editor');
+  const manifest: PackManifest = { id: 'cold-editor', name: 'Cold editor', version: '1.0.0',
+    extensions: { dsl: { cold: { entry: 'src/defs/cold.ts', prefix: 'cold:', targets: ['monaco'], globals: { lateMemo: '_dsl.Item' } } } },
+  };
+  const publish = (field?: string) => {
+    fs.rmSync(directory, { recursive: true, force: true });
+    const packs = [{ id: 'default-setup', enabled: false }];
+    if (field) {
+      fs.mkdirSync(path.join(directory, 'types'), { recursive: true });
+      fs.mkdirSync(path.join(directory, 'runtime'), { recursive: true });
+      fs.writeFileSync(path.join(directory, PACK_LAYOUT.runtimeEntry), 'throw new Error("Disabled DSL discovery activated runtime");');
+      fs.writeFileSync(path.join(directory, PACK_LAYOUT.snapshot), JSON.stringify({ manifest,
+        declarationRevision: _declarationRevision(manifest), format: PACK_SNAPSHOT_FORMAT,
+        types: { entities: {}, relKinds: {} }, entityDestinations: {}, eventContracts: {}, facades: {},
+        dslDefinitions: { cold: `declare module "@app/defs/cold" { export interface Item { ${field} } }` },
+      }));
+      sealPackBuild(directory, manifest);
+      packs.push({ id: manifest.id, enabled: false });
+    }
+    fs.writeFileSync(installedPacksFile, JSON.stringify({ packs }));
+  };
+  const refresh = () => appPage.evaluate(async () => {
+    const { untypedSendToSystem } = await import('@apackdev/sdk/events');
+    untypedSendToSystem('host/packs', { type: 'GET_INSTALLED_PACKS' });
+  });
+  const mounted = await appPage.evaluateHandle(async () => {
+    const { createApp, h, ref } = await import('vue');
+    const componentPath = '@apackdev/ui/components/UnifiedMonacoEditor';
+    const { default: MonacoEditor }: { default: Component } = await import(componentPath);
+    const editors = [0, 1].map(index => {
+      const root = document.createElement('div'); root.id = `cold-monaco-${index}`;
+      root.style.cssText = 'height: 200px; width: 700px'; document.body.appendChild(root);
+      const view = ref(); const value = ref('lateMemo.before;\nlateMemo.'); const updates: string[] = [];
+      const component = createApp({ render: () => h(MonacoEditor, { ref: view, modelValue: value.value,
+        mode: 'multi-file', filePath: `cold:${index}.ts`, language: 'typescript',
+        'onUpdate:modelValue': (text: string) => { value.value = text; updates.push(text); } }) });
+      component.mount(root);
+      return { root, component, view, value, updates, model: undefined as unknown };
+    });
+    return { editors,
+      async completions(index = 0) {
+        const model = editors[index].view.value.getEditor().getModel();
+        const monaco = (window as any).monaco;
+        const worker = await (await monaco.typescript.getTypeScriptWorker())(model.uri);
+        return (await worker.getCompletionsAtPosition(model.uri.toString(), model.getValueLength()))?.entries.map((entry: { name: string }) => entry.name) ?? [];
+      },
+      async diagnostics(index = 0) {
+        const model = editors[index].view.value.getEditor().getModel();
+        const worker = await (await (window as any).monaco.typescript.getTypeScriptWorker())(model.uri);
+        return (await worker.getSemanticDiagnostics(model.uri.toString())).map((diagnostic: { code: number }) => diagnostic.code);
+      },
+      state(index = 0) {
+        const entry = editors[index]; const editor = entry.view.value.getEditor();
+        return { value: editor.getValue(), uri: editor.getModel().uri.toString(), selection: editor.getSelection(),
+          updates: entry.updates.length, sameModel: editor.getModel() === entry.model };
+      },
+    };
+  });
+  try {
+    await expect.poll(() => mounted.evaluate(({ editors }) => editors.every(entry => !!entry.view.value?.getEditor()))).toBe(true);
+    await mounted.evaluate(({ editors }) => { for (const entry of editors) entry.model = entry.view.value.getEditor().getModel(); });
+    expect(await mounted.evaluate(value => value.completions())).not.toContain('before');
+    await expect.poll(() => mounted.evaluate(value => value.diagnostics())).toContain(2304);
+    publish('before: string'); await refresh();
+    await expect.poll(() => mounted.evaluate(value => value.completions())).toContain('before');
+    expect(fs.existsSync(path.join(directory, 'src'))).toBe(false);
+    await mounted.evaluate(({ editors }) => {
+      const editor = editors[0].view.value.getEditor(); editor.setPosition({ lineNumber: 1, column: 1 }); editor.focus();
+    });
+    await appPage.keyboard.type('// draft\n');
+    const draft = await mounted.evaluate(value => value.state());
+    expect(draft.value).toContain('// draft'); expect(draft.updates).toBeGreaterThan(0);
+    publish('after: number'); await refresh();
+    await expect.poll(() => mounted.evaluate(value => value.completions())).toContain('after');
+    expect(await mounted.evaluate(value => value.completions())).not.toContain('before');
+    await expect.poll(() => mounted.evaluate(value => value.diagnostics())).toContain(2339);
+    expect(await mounted.evaluate(value => value.state())).toEqual(draft);
+    await mounted.evaluate(({ editors }) => { editors[0].component.unmount(); editors[0].root.remove(); });
+    await expect.poll(() => mounted.evaluate(value => value.completions(1))).toContain('after');
+    publish(); await refresh();
+    await expect.poll(() => mounted.evaluate(value => value.diagnostics(1))).toContain(2304);
+    expect(await mounted.evaluate(value => value.completions(1))).not.toContain('after');
+  } finally {
+    await mounted.evaluate(({ editors }) => { for (const entry of editors) { if (entry.root.isConnected) entry.component.unmount(); entry.root.remove(); } });
+    await mounted.dispose(); publish(); await refresh();
   }
 });
