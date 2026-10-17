@@ -82,6 +82,11 @@ export async function startPackBuildWatcher(root: string, options: WatchOptions 
   let compilerSignature: string | undefined;
   let authoredSignature: string | undefined;
   let frontendSignature: string | undefined;
+  const invalidateInputs = () => {
+    compilerSignature = undefined;
+    authoredSignature = undefined;
+    frontendSignature = undefined;
+  };
   const dataDirectory = options.place?.userDataDir ?? (options.place ? resolveAppEnvironment(options.place).userDataDir : undefined);
   const frontend = createFrontendWatcher(root, dataDirectory,
     file => request(path.relative(root, file)));
@@ -118,8 +123,13 @@ export async function startPackBuildWatcher(root: string, options: WatchOptions 
       if (closed) return;
       const reload = await reloadPack(packId, options.place);
       if (reload.status === 'reloaded') console.log(`[watch] ${changed} — reloaded`);
-      else console.warn(`[watch] ${changed} — built, but the app did not reload (${reload.detail})`);
+      else {
+        if (reload.status === 'failed' || reload.status === 'unreachable') invalidateInputs();
+        console.warn(`[watch] ${changed} — built, but the app did not reload (${reload.detail})`);
+      }
     } catch (error) {
+      // A failed build/install/reload must not suppress a later save with identical inputs.
+      invalidateInputs();
       if (!closed) console.error(`[watch] Build/reload failed: ${String(error)}`);
     }
   });
