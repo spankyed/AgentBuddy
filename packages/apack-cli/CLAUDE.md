@@ -82,6 +82,9 @@ then removes the private installation.
 and a private writable Vite/temp workspace. A ready replacement publishes its marker before the old
 frontend is retired; worker closure and its POSIX group precede compiler disposal. The watcher accepts
 the session's build operation and owns only its subscriptions; the session closes the shared builder.
+Pack/npm and shared SDK/UI metadata, module inventory and entry selection also identify the frontend
+configuration. Changes replace its generation after a successful build; ordinary source edits keep
+Vite's live graph. Metadata lookup reuses `findPackageDirectory`, avoiding Node's cached link resolution.
 
 The parent holds the pack build lock through worker closure and publication. Workers only prepare and
 seal a candidate, report its authored-input hash and sealed revision, drain diagnostics, and exit.

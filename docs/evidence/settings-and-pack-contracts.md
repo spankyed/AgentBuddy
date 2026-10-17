@@ -6585,3 +6585,13 @@ startup cancellation, affected lifecycle cases, CLI/scripts types, lint and pack
 [generation evidence](build-input-snapshot-proof.md#retained-frontend-compiler-ownership-checkpoint-2026-10-17).
 Close B2's configuration invalidation and browser HMR acceptance next. Remaining B1/B3, B4–B6 and all
 other active goal requirements remain open; no new broad gate is claimed.
+
+### Frontend configuration and browser HMR (2026-10-17)
+
+`d3833f788` replaces frontend generations when pack/shared metadata changes and fixes cached UI-link
+resolution through the common package lookup. All 39 focused builder/package/shared cases, CLI/host
+types, lint and package refresh pass. A real browser loads generated external-pack registration and
+preserves component state/document during Vite HMR, with no page errors. See
+[configuration/browser evidence](build-input-snapshot-proof.md#frontend-configuration-and-browser-hmr-checkpoint-2026-10-17).
+B2 now has implementation and local acceptance; preserve final whole-goal validation. Remaining B1/B3,
+B4–B6 and every other active phase remain required. No broad or cross-platform gate is claimed.

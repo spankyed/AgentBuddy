@@ -665,3 +665,53 @@ absence, while these configuration inputs are read when the server starts. Settl
 invalidation boundary and prove browser/module-graph HMR with a real external dev session before
 closing B2. Do not restart the now accepted compiler-generation owner. Remaining B1/B3 native/runtime
 cases, B4–B6, all-kind discovery, all three Phase 6 workstreams and final strict `--all` remain open.
+
+## Frontend configuration and browser HMR checkpoint (2026-10-17)
+
+Source `d3833f788` closes the identified B2 configuration boundary. Startup inputs comprise the selected
+entry, pack/npm metadata, resolved SDK/UI metadata and the shared-module inventory. A changed key gets
+a replacement through the existing generation owner, even when compiler bytes/hash are unchanged.
+This deliberately recaptures the same compiler for infrequent configuration changes, keeping ownership
+simple; ordinary Vue/source edits retain the current server. Configuration is checked again after
+startup and before reusing a live server. A refused `serveFrontend` request cannot replace the working
+notification callback.
+
+A disposable link-retargeting proof exposed a real omission in the first reader: Node's cached
+`require.resolve` returned the former UI package after its link changed (`same: true`,
+`afterHasTwo: false`). The repair promotes the existing package-input graph's fresh directory lookup
+as `findPackageDirectory` and reuses it in frontend configuration and UI module discovery. There is no
+second resolver or executable metadata import. The regression changes exports, retargets a live UI link
+and proves both replacement and the new inventory while a declared module would throw if executed.
+
+Evidence:
+
+- All seven builder cases pass (5.04s), including unchanged reuse, configuration-only replacement,
+  incumbent liveness during notification, refused-listener preservation, export changes and UI link
+  retargeting: `/private/tmp/apack-frontend-config-link-unit.log`.
+- All twenty package-input and twelve shared-dependency cases pass (0.113s test time):
+  `/private/tmp/apack-frontend-config-host.log`.
+- CLI/host types, lint and distributable refresh pass:
+  `/private/tmp/apack-frontend-config-{types-final,lint-final,packages-final}.log`.
+- A real headless Chrome session loads an external pack's **generated frontend registration**, mounts
+  its declared app extension and connects the captured worker's actual Vite WebSocket. A template edit
+  changes `FIRST 1` to `SECOND 1`, preserving component state and the existing document; no page errors
+  occur. Script `/private/tmp/apack-browser-hmr-proof.mts`, final log
+  `/private/tmp/apack-browser-hmr-proof-final.log`:
+
+  ```json
+  {"dom":"SECOND 1","documentPreserved":true,"generatedEntryReached":true,"websocketConnected":true,"errors":[]}
+  ```
+
+The browser proof supplies host Vue/SDK modules through an import map, as the pack dev configuration
+requires, using the actual Vue runtime and compiled SDK frontend implementation. It uses a private
+browser profile, pack, writable caches and compiler copy, then awaits all cleanup. It is browser HMR
+acceptance through the generated pack entry, not a new full Electron/API/install acceptance run. The
+server's optimistic bare-import pre-transform warnings coexist with the working host import map;
+they were not suppressed. The first proof invocation had a wrong schema import and failed before
+setup; fixing that proof path required no product fallback. After the pause, missing process handles
+and an authoritative process check established termination before further work; no live run was restarted.
+
+B2's generation/configuration implementation and local browser acceptance are now established with
+`a595246f2` and this checkpoint. Preserve these results for final whole-goal validation. Remaining B1/B3
+runtime/native/namespace and subscription acceptance, B4–B6, all-kind discovery and all Phase 6
+requirements stay open. No broad gate or cross-platform runtime acceptance is claimed.

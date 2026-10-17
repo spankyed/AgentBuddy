@@ -84,7 +84,7 @@ preloads (`bbf05ec00`). These are source evidence, not a claim that the full str
 | Checkpoint | Required outcome and acceptance boundary | Dependencies |
 |---|---|---|
 | B1 — Launch and remaining input coverage | Reconcile current capture against actual supported compiler paths. The launch audit preserves inherited NODE_OPTIONS and forwarded export conditions; supervisor entry modes are not worker configuration. Early launch identity and authored bytes/membership are implemented through `bbf05ec00`. Close remaining executable/native-runtime ownership and pre-startup/dependency/resolution gaps. Enumerate concrete missing inputs before implementing; prove relevant changes invalidate/refuse publication while equivalent runs preserve identity and resolution. Ordered options already landed; do not reimplement them. | Existing captured installation/startup view. |
-| B2 — Frontend compiler generation | Matching-generation owner implemented in `a595246f2`: actual backend/Vite handoff, failed startup retention, private caches, interrupted startup and awaited retirement pass. Close pack-derived configuration invalidation and external browser/module-graph HMR acceptance; preserve useful paths and recovery. | B1 inputs needed by the frontend handoff, not unrelated discovery consumers. |
+| B2 — Frontend compiler generation | Implemented and locally accepted in `a595246f2` / `d3833f788`: matching backend/Vite generations, configuration replacement, fresh metadata/link resolution, private caches, failure retention, interrupted startup and awaited retirement pass. Real browser HMR through a generated external-pack entry preserves state/document. Retain these checks for final committed-source acceptance; B1/B3 still own remaining input/subscription and platform/runtime cases. | Relevant B1 inputs are implemented; preserve remaining cross-phase producer acceptance. |
 | B3 — Remaining resource lifetime | Audit native/background work and required platform-specific descendant handling against existing cancellation. Close demonstrated ownership gaps so build-owned work cannot outlive final validation/disposal. Retain required one-shot/dev/platform cases; public cancellation is already implemented. | Relevant B1/B2 owners; no security sandbox or general resource-confinement expansion. |
 | B4 — Persist successful input/output association | Publish the completed input record atomically with sealed output. Failed or incoherent builds retain the incumbent; readers can validate the association without executing pack/compiler code. Startup observations alone are not this record. | Complete relevant B1–B3 producer ownership. |
 | B5 — Passive freshness consumers | Migrate archive, prebuilt tests, default-fork preparation and drive to the common record. Preserve manual builds, deterministic reuse, source-free installed inspection and deliberately stale drive behavior. Remove replaced freshness heuristics. | B4. |
@@ -260,9 +260,13 @@ Frontend ownership checkpoint `a595246f2` now retains one builder for initial/de
 Vite workers. Actual A/B publication/HTTP source watching, failure retention, watcher/session ownership
 and complete process/copy/cache retirement pass, alongside affected lifecycle tests, CLI/scripts types,
 lint and package builds. See [frontend generation evidence](../evidence/build-input-snapshot-proof.md#retained-frontend-compiler-ownership-checkpoint-2026-10-17).
-Next: close B2's pack-derived configuration invalidation boundary and external browser HMR acceptance.
-Do not recreate its generation owner. Keep remaining runtime/native/transient B1/B3 matrix cases
-open, then complete B4–B6 and all-kind acceptance. Asset input/output completeness remains required under B1/B4,
+Configuration checkpoint `d3833f788` refreshes on pack/shared metadata changes through the same owner;
+fresh lookup fixes a reproduced UI link-cache omission. All 39 focused builder/package/shared cases,
+CLI/host types, lint and package refresh pass. Real browser HMR through generated registration preserves
+component state and document with no page errors; see [configuration/browser evidence](../evidence/build-input-snapshot-proof.md#frontend-configuration-and-browser-hmr-checkpoint-2026-10-17).
+Next: close the finite B1/B3 runtime/native and remaining namespace/subscription matrix cases. Preserve
+B2's accepted owner and browser proof; do not schedule another frontend generation implementation.
+Then complete B4–B6 and all-kind acceptance. Asset input/output completeness remains required under B1/B4,
 not a deferred follow-up or another discovery store. All three Phase 6 workstreams remain required. Do not restart implemented endpoint
 or navigation work, or rerun a broad gate to investigate the preserved integration failures.
 

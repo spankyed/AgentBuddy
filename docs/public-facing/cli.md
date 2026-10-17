@@ -218,6 +218,8 @@ build. Closing `dev` closes the app it started. It then:
 Backend builds and Vite use the same captured compiler generation. A compiler refresh starts a ready
 replacement server, updates its marker and retires the old server; a failed replacement startup keeps
 the incumbent. Each server owns its writable cache. Packs without an FE entry use the same build watcher.
+Development configuration changes replace the server with the next successful build; ordinary source
+edits continue through HMR.
 
 #### `apack pack drive [script | --eval <body>] [--host <path>] [profile flags]`
 
