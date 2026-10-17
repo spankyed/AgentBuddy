@@ -32,6 +32,13 @@ native libraries and native file I/O is outside this contract; do not claim univ
 An absolute reference back to a live original package is not captured loading, even if that original
 library sits beside its addon. Supported package-relative loading must actually use the owned copy.
 
+Versioned macOS override directories select original filesystem paths at launch, before JavaScript
+admission. Accept these directories only within normal OS library locations, verifying their physical
+targets; refuse other configured directories before either build or frontend launch. This is an
+environment admission policy, including unused outside directories, rather than a claim to reproduce
+dyld's global install-name/version selection. Package libraries continue to use captured package-relative
+loading. The real outside-versioned reproducer and this policy's acceptance are recorded in the evidence.
+
 Static inspection alone cannot establish complete capture: dynamic library loading and native file
 reads may bypass JavaScript observation. Neither an input declaration nor a scanner establishes
 that execution used captured bytes. Do not claim complete capture from those mechanisms alone.

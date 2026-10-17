@@ -2902,3 +2902,25 @@ search. Shared-cache and restricted-runtime policy remain separate open cases.
 The proof reuses the existing native fixture and cleanup ownership. Its fresh Node selection call is
 declared in the subprocess inventory. CLI types, focused lint and diff checks pass; native behavior
 and any implementation correction await this focused hosted run. No native test was executed locally.
+
+### Versioned override reproducer and launch admission (2026-10-17)
+
+Run `39079991483` on `99c910914` confirms the library-path omission in 22.13 seconds: ordinary Node
+loads the private override's value 22 and exact path, then the captured frontend unexpectedly starts
+instead of refusing. Framework execution is not reached because the run is fail-fast. Log:
+`/private/tmp/apack-hosted-versioned-39079991483.log`.
+
+Use environment admission rather than a second dyld resolver. Versioned search directories must be
+existing absolute directories under `/usr/lib` or `/System/Library`, with physical targets in those OS
+locations. Other configured directories, including unused, missing and relative directories, refuse
+before build or frontend launch. Empty variables are allowed; empty components in a nonempty search
+list are refused. This deliberately conservative configuration policy keeps package libraries on the
+existing captured package-relative path; it does not claim to reproduce install-name/version selection.
+Public CLI docs and the native-boundary ADR state that policy explicitly.
+
+The common prelaunch guard is now named `assertCompilerLibraryEnvironment`, with all build/frontend
+callers migrated outright. It retains insertion checks and adds no process, loader or native parser.
+All 44 parser/environment cases, CLI TypeScript and changed-file correctness lint pass. Those local
+checks do not execute captured runtimes or native fixtures. Both real versioned cases still require
+hosted acceptance of the correction. Shared-cache and restricted-runtime acceptance, ELF/PE and
+converged/final gates remain open.

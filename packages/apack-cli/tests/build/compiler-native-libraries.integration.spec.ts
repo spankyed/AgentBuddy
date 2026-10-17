@@ -618,7 +618,7 @@ it.runIf(process.platform === 'darwin').each(['DYLD_VERSIONED_LIBRARY_PATH', 'DY
       process.env[variable] = directory;
       process.env.NODE_OPTIONS = formatNodeOptions([...parseNodeOptions(previousOptions), '--require', preload]);
       await expect(startPackFrontend(fixture.pack, compiler, new AbortController().signal)
-        .then(value => { frontend = value; })).rejects.toThrow();
+        .then(value => { frontend = value; })).rejects.toThrow(`${variable} references directory "${directory}"`);
       expect(fs.existsSync(fixture.marker)).toBe(false);
     } finally {
       if (previousOptions === undefined) delete process.env.NODE_OPTIONS;

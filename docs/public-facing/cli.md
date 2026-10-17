@@ -167,6 +167,10 @@ candidates. A library selected outside the captured package or normal OS librari
 addon initialization; an unused search directory is allowed.
 `DYLD_INSERT_LIBRARIES` executes before that module-loading boundary and accepts normal OS libraries.
 Load package libraries through captured compiler modules rather than inserting live package paths.
+`DYLD_VERSIONED_LIBRARY_PATH` and `DYLD_VERSIONED_FRAMEWORK_PATH` accept only absolute operating-system
+directories under `/usr/lib` or `/System/Library`, including their physical targets. Other configured
+directories are refused before worker launch, even if their entries might be unused. Unset these
+variables and use captured package-relative dependencies for package libraries.
 
 `apack pack build --watch` watches authored inputs throughout the pack, including `apack.json`,
 modules outside `src/`, JSON schemas, assets and help. The authored watcher excludes generated,

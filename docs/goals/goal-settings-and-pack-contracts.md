@@ -109,8 +109,13 @@ transitive module bytes invalidate, but package export metadata changes do not. 
 startup data owner now observes enclosing package declarations through the existing file view; no
 resolver or loader is added (`6d482e79f`). Run `39079716622` passes the exact reproducer in 17.90 seconds,
 including restored-byte reuse and live Vue edits. This closes the demonstrated metadata omission.
-Versioned-loader proof `99c910914` is running as hosted macOS run `39079991483`, selecting only the
-two versioned environment cases. Follow this run; it has not yet established a defect or acceptance.
+Versioned-loader proof `99c910914`, run `39079991483`, confirms an external library override bypass:
+ordinary Node selects the override, and captured frontend startup unexpectedly succeeds. The common
+launch guard now permits versioned directories only in physical OS library locations; other configured
+directories refuse before execution, including unused ones. Public docs and the ADR state this
+configuration policy rather than claiming a dyld resolver. All 44 parser/environment cases, CLI types
+and lint pass; both real versioned cases still need hosted correction acceptance. Shared-cache and
+restricted-runtime policy remain separate open cases.
 Source `e6ce60a78` awaits each detected watch build directly, retaining missing-event bounds and all
 behavior assertions. Its isolated hosted run `39079492068` passes in 98.76 seconds, including refusal,
 repair, incumbent preservation and retirement. Restore the original 120-second scenario budget; the

@@ -6,7 +6,7 @@ import { compilationConditions } from './compilation-inputs.ts';
 import { COMPILER_INPUTS_ENV } from './compiler-installation-inputs.ts';
 import { COMPILER_PROCESS_GROUP_ENV, stopCompilerProcessGroup } from './compiler-process-group.ts';
 import type { CompilerInstallation } from './compiler-installation.ts';
-import { assertCompilerLibraryInsertion } from './compiler-native-libraries.ts';
+import { assertCompilerLibraryEnvironment } from './compiler-native-libraries.ts';
 import { compilerStartupOptions, COMPILER_NODE_OPTIONS_ENV } from './compiler-startup-options.ts';
 import { BUILD_INPUTS_DIRECTORY_ENV, removeCompilerReadTree } from './compiler-read-tree.ts';
 import { BUILD_INPUTS_IPC_ENV, readCompilerWatchReports } from './build-watch-inputs.ts';
@@ -30,7 +30,7 @@ export interface PackFrontend {
 export async function startPackFrontend(root: string, compiler: CompilerInstallation, signal: AbortSignal,
   onInputs?: (inputs: FrontendInputUpdate) => void): Promise<PackFrontend> {
   signal.throwIfAborted();
-  assertCompilerLibraryInsertion();
+  assertCompilerLibraryEnvironment();
   const grouped = process.platform !== 'win32';
   const directory = fs.realpathSync.native(fs.mkdtempSync(path.join(os.tmpdir(), 'apack-vite-')));
   const nodeOptions = compilerStartupOptions(compiler.bin, process.env.NODE_OPTIONS);

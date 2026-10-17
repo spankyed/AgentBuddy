@@ -1,6 +1,6 @@
 import { posix as path } from 'node:path';
 import { expect, it } from 'vitest';
-import { assertCapturedMachOLibraries, assertCompilerLibraryInsertion, captureMachOLibraryEnvironment, parseMachOLibraryCommands } from '../../src/build/compiler-native-libraries.ts';
+import { assertCapturedMachOLibraries, assertCompilerLibraryEnvironment, captureMachOLibraryEnvironment, parseMachOLibraryCommands } from '../../src/build/compiler-native-libraries.ts';
 
 function image(commands: [number, string][], little = true, sdk?: number) {
   const write = (buffer: Buffer, value: number, at: number) => little ? buffer.writeUInt32LE(value, at) : buffer.writeUInt32BE(value, at);
@@ -189,15 +189,26 @@ it('does not apply dylib basename overrides to framework references', () => {
 
 it.runIf(process.platform === 'darwin').each(['/outside/init.dylib', '/usr/lib/../../outside/init.dylib', 'init.dylib'])(
   'refuses live library insertion before worker launch: %s', library => {
-    expect(() => assertCompilerLibraryInsertion({ DYLD_INSERT_LIBRARIES: library })).toThrow(`DYLD_INSERT_LIBRARIES references "${library}"`);
+    expect(() => assertCompilerLibraryEnvironment({ DYLD_INSERT_LIBRARIES: library })).toThrow(`DYLD_INSERT_LIBRARIES references "${library}"`);
   },
 );
 
 it.runIf(process.platform === 'darwin')('permits empty insertion and normal operating-system libraries', () => {
-  expect(() => assertCompilerLibraryInsertion({})).not.toThrow();
-  expect(() => assertCompilerLibraryInsertion({ DYLD_INSERT_LIBRARIES: '' })).not.toThrow();
-  expect(() => assertCompilerLibraryInsertion({ DYLD_INSERT_LIBRARIES: '/usr/lib/libSystem.B.dylib' })).not.toThrow();
+  expect(() => assertCompilerLibraryEnvironment({})).not.toThrow();
+  expect(() => assertCompilerLibraryEnvironment({ DYLD_INSERT_LIBRARIES: '' })).not.toThrow();
+  expect(() => assertCompilerLibraryEnvironment({ DYLD_INSERT_LIBRARIES: '/usr/lib/libSystem.B.dylib' })).not.toThrow();
 });
+
+it.runIf(process.platform === 'darwin').each(['DYLD_VERSIONED_LIBRARY_PATH', 'DYLD_VERSIONED_FRAMEWORK_PATH'] as const)(
+  'limits %s to operating-system directories before launch', variable => {
+    for (const directory of ['/outside', '/usr/lib/../../outside', '/usr/lib/apack-nonexistent-directory', 'relative', ':', '/usr/lib:']) {
+      expect(() => assertCompilerLibraryEnvironment({ [variable]: directory })).toThrow(`${variable} references directory`);
+    }
+    for (const directory of ['', '/usr/lib', '/System/Library/Frameworks', '/usr/lib:/System/Library']) {
+      expect(() => assertCompilerLibraryEnvironment({ [variable]: directory })).not.toThrow();
+    }
+  },
+);
 
 it('refuses an external explicit fallback for a bare library dependency', () => {
   const outside = '/outside/value.dylib';

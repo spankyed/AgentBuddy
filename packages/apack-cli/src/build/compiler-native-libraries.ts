@@ -29,9 +29,19 @@ export function captureMachOLibraryEnvironment(env: NodeJS.ProcessEnv = process.
 
 const systemLibrary = (file: string) => file.startsWith('/usr/lib/') || file.startsWith('/System/Library/');
 
-/** Inserted libraries execute before JS admission; live package paths cannot select captured bytes. */
-export function assertCompilerLibraryInsertion(env: NodeJS.ProcessEnv = process.env): void {
+/** Launch-time overrides run outside JS admission; non-OS libraries must use captured package paths. */
+export function assertCompilerLibraryEnvironment(env: NodeJS.ProcessEnv = process.env): void {
   if (process.platform !== 'darwin') return;
+  for (const variable of ['DYLD_VERSIONED_LIBRARY_PATH', 'DYLD_VERSIONED_FRAMEWORK_PATH'] as const) {
+    const value = env[variable];
+    for (const directory of value ? value.split(':') : []) {
+      const normalized = path.resolve(directory);
+      const physical = fs.statSync(normalized, { throwIfNoEntry: false })?.isDirectory() ? fs.realpathSync(normalized) : undefined;
+      if (!path.isAbsolute(directory) || !systemLibrary(normalized + '/') || !physical || !systemLibrary(physical + '/')) {
+        throw new Error(`Cannot launch captured compiler: ${variable} references directory "${directory}" outside operating-system libraries. Versioned overrides are selected before compiler startup; use captured package-relative libraries instead.`);
+      }
+    }
+  }
   for (const library of env.DYLD_INSERT_LIBRARIES?.split(':').filter(Boolean) ?? []) {
     if (!path.isAbsolute(library) || !systemLibrary(path.normalize(library))) {
       throw new Error(`Cannot launch captured compiler: DYLD_INSERT_LIBRARIES references "${library}" outside its captured installation. Use operating-system libraries or load package libraries through captured compiler modules.`);
