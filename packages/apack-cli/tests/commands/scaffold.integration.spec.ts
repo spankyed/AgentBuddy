@@ -323,6 +323,10 @@ describe('apack pack init → add feature → build → tsc → pack', () => {
     // process: the exit code and the message are the assertion
     const packed = run('node', [CLI, 'pack', 'archive', '--out', path.join(tmp, 'stale-out')], pack);
     expect(packed.code).not.toBe(0);
-    expect(packed.output).toMatch(/input changed.*apack\.json/);
+    // Either the authored inventory or the manifest bytes may be the first differing observation.
+    expect([
+      'Compiler startup input changed: ["authored-files"]',
+      'Compiler startup input changed: ["file","apack.json"]',
+    ]).toContain(packed.output.trim());
   });
 });
