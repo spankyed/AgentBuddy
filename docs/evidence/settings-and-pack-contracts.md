@@ -7534,3 +7534,23 @@ No broad rerun follows this repair. Aggregate integration capacity remains unres
 message's historical healthy-cost estimate does not establish a deadlock. A further full run needs a
 resolved aggregate execution/budget decision, not another diagnostic repeat. Native input/platform
 requirements, the converged checkpoint and final committed-source strict `--all` remain open.
+
+## Evidence-only timeout and retry diagnostics (2026-10-17)
+
+Source `b366ae4d5` removes the unsupported conclusion that exceeding a generous deadline on the
+recorded machine proves a stall. The real progressing integration run contradicts that inference.
+Timeout reports retain the enforced class/bound, termination and optional recorded-cost/machine
+context, then request inspection of the retained output. They no longer infer machine-speed factors
+or instruct recording a killed run as a completed measurement. Isolated retry reports likewise do not
+infer absence of outside contention or rule out nondeterministic code from a passing retry.
+
+This is a diagnostic correction, not a timeout or execution-policy change. All class deadlines,
+process cleanup, failed exit statuses and stamp/verdict rules are unchanged. Removed helpers and
+tests encoded the invalid inference; focused checks now cover known/unknown recorded costs, both
+machine contexts, neutral timeout reporting and retention of the original failure after a passing retry.
+
+All 185 affected graph/output/mutation cases pass in 0.88s runner time. Scripts/repo/publish/E2E types,
+correctness lint and whitespace checks pass. Logs: `/private/tmp/apack-timeout-diagnostic-checks.log`,
+`/private/tmp/apack-timeout-diagnostic-types.log`, `/private/tmp/apack-timeout-diagnostic-lint.log`.
+No broad run follows. The goal's native/platform, aggregate acceptance and final strict requirements
+remain unchanged and open.

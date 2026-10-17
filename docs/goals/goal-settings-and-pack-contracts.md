@@ -514,8 +514,10 @@ pool CLI because root configuration was not inherited by independent projects. A
 and 62 pool checks pass; the real separate-project/control proof and types/lint pass. See
 [repair evidence](../evidence/settings-and-pack-contracts.md#project-fail-fast-and-publication-test-isolation-2026-10-17).
 The broad run remains incomplete. Do not repeat it for diagnosis: aggregate execution/budget must be
-resolved before another whole-pool attempt. The historical healthy-cost diagnostic is not a deadlock
-finding. Next: resolve native/platform and aggregate validation boundaries, then finish converged
+resolved before another whole-pool attempt. `b366ae4d5` also corrects the historical healthy-cost diagnostic and isolated retry reports: neither
+elapsed time nor a passing retry identifies the original cause. All 185 affected checks and types/lint
+pass; [diagnostic evidence](../evidence/settings-and-pack-contracts.md#evidence-only-timeout-and-retry-diagnostics-2026-10-17).
+No budget is changed and no broad rerun follows. Next: resolve native/platform and aggregate validation boundaries, then finish converged
 acceptance, the final requirement audit and strict gate. Do not
 repeat the accepted tarball producer just to restate its status. No whole-gate pass is claimed from the focused repairs.
 After the captured pack-test edits, refreshed default-setup, both external fixtures and the fork through
