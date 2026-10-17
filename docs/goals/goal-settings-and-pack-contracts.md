@@ -92,18 +92,13 @@ preloads (`bbf05ec00`). These are source evidence, not a claim that the full str
 
 #### Current compiler checkpoint (2026-10-17)
 
-**Operational hold — local builds/native tests (2026-10-17):** the user reported system-wide app
-launch failures. Local runs were already terminal; no new local build/native runs are allowed until
-the machine is usable. Original Slack, ChatGPT and Activity Monitor tasks remain stopped at startup;
-a single fresh built-in Activity Monitor launch also stopped and was removed with targeted TERM.
-Fixture/native-runtime policy assessments and online failures are confirmed; causation of the global
-launch failure is unproven. Evidence is preserved in `/private/tmp/apack-launch-policy-visllvke`.
-Admin diagnostics require a password; no security settings/databases or installed applications were
-changed, and no daemon restart was performed. Recommend a targeted admin restart of
-`system/com.apple.security.syspolicy` before considering a whole-machine restart. Do not resume local
-expensive validation from this handoff automatically. GitHub runs must continue: run `39075394015`
-was mistakenly cancelled and restored as attempt 2 on the same `4b4d820fa` source. Remote CI does not
-establish local recovery. See [incident evidence](../evidence/build-input-snapshot-proof.md#macos-launch-policy-investigation-2026-10-17).
+**Machine recovery and execution boundary (2026-10-17):** the user confirmed recovery after a
+restart, reporting a roughly ten-minute restart and unusual initial app loading. Cause remains
+unproven; do not describe this as M1 capacity exhaustion or a confirmed daemon deadlock. Sustained
+native, captured-runtime and startup/cancellation batches stay off the daily-use Mac. Use the focused
+`compiler_macos=true` / `compiler_windows=true` GitHub dispatch routes; the new macOS route awaits its
+first run. Preserve required acceptance rather than silently skipping it. No security settings or
+system databases were changed by this session. See [incident evidence](../evidence/build-input-snapshot-proof.md#macos-launch-policy-investigation-2026-10-17).
 
 **Current handoff:** source `ccaa809a8` delivers retained frontend native discoveries into live watch
 subscriptions and retains failed-candidate probes for repair. Native copies and receipts belong to the
@@ -116,8 +111,10 @@ repository bookkeeping failures after passing external packaged authoring, exter
 default-pack build, facade/schema/import checks and typechecks. The input/subprocess declarations are
 corrected in this source; all 951 checks in the affected repository suite pass. This is not a complete
 strict-gate pass. Do not rerun the broad gate to rediscover those corrected bookkeeping failures.
-Windows run `39069845156` is fully green on `d8a1c02dc`, including Vite owners and repeat-build/cache/
-archive identity; it does not certify the newer live-watch source. Follow-up `c85f3fd95` captures
+Windows run `39075394015`, attempt 2, is fully green on `4b4d820fa`: native job lifetime, 170 unit
+checks (eight platform skips), descendant/cancellation, independent Vite owners and startup/repeated
+build/cache/archive identity. This accepts those paths on the live-watch/preload source; it does not
+close native PE admission or the full strict gate. Follow-up `c85f3fd95` captures
 frontend startup reads before the actual CLI entry releases ordinary authored-source reads. The real
 CommonJS preload-byte change/restoration cases pass for both direct and explicit-worker native loading,
 Vue remains live, and the complete native watch recovery still passes. Worker startup observations join

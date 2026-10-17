@@ -2785,3 +2785,34 @@ contract or begin an open-ended compiler redesign from this correlation.
 Remote CI clarification: cancellation was submitted before the user's follow-up arrived. Run
 `39075394015` was restored with `gh run rerun` as attempt 2 on the same `4b4d820fa` source. Do not cancel
 GitHub runs as part of this local-machine investigation.
+
+
+### Recovery, Windows acceptance and isolated macOS execution (2026-10-17)
+
+The user confirmed that a machine restart restored usability, and reported that the restart took
+roughly ten minutes and apps initially loaded unusually. This does not identify a causal service or
+prove that native tests caused the incident. A stalled initial-launch handoff is a working hypothesis,
+not a diagnosis; CPU capacity, daemon deadlock and descriptor exhaustion were not established.
+Do not repeat sustained native/captured-runtime/startup-cancellation testing on this daily-use Mac.
+
+Windows run `39075394015`, attempt 2, is terminal **success** on `4b4d820fa`. It passes the complete
+native launcher ownership matrix, matching package build, 170 selected unit cases (eight platform
+skips), both descendant/cancellation cases, independent retained Vite owners, startup identity and
+repeated-build/cache/archive acceptance. The final baseline runner duration is 161.96 seconds.
+Log: `/private/tmp/apack-windows-39075394015-attempt2.log`. This does not establish native PE admission
+or final strict acceptance. Attempt 1 was cancelled before the user clarified that remote jobs must
+continue; attempt 2 preserves the same source.
+
+A focused macOS dispatch is added to the existing CI workflow (`compiler_macos=true`). It selects
+only `.github/workflows/compiler-macos.yml`, on a disposable `macos-26` runner with Node 23.11.1.
+The job records actual OS/architecture/source and checks native fixture headers. It runs selected
+compiler ownership cases and the existing native admission/preload/watch file, with explicit worker
+bounds, fail-fast and no automatic cancellation. No new native test was executed locally to validate
+this routing change. Static YAML parsing, job-selection review and diff checks pass; actual hosted
+workflow acceptance remains required.
+
+The runner label is explicit rather than `latest`; its actual image is recorded by the run.
+[GitHub's runner inventory](https://github.com/actions/runner-images) and
+[hosted-runner reference](https://docs.github.com/en/actions/reference/runners/github-hosted-runners)
+describe the macOS labels and disposable hosted environments. Isolation is an operational precaution,
+not evidence for an M1 hardware limitation or a substitute for diagnosing the incident.

@@ -1,0 +1,54 @@
+name: Compiler macOS
+
+on:
+  workflow_dispatch:
+  workflow_call:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: compiler-macos-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  compiler:
+    runs-on: macos-26
+    timeout-minutes: 20
+    env:
+      APACK_CHAIN_CORES: 2
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 23.11.1
+          cache: npm
+      - name: Record platform and source
+        run: |
+          git rev-parse HEAD
+          sw_vers
+          node -p 'JSON.stringify({platform:process.platform,arch:process.arch,versions:process.versions})'
+          test -f "$(dirname "$(command -v node)")/../include/node/node_api.h"
+          clang --version
+      - name: Install dependencies
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: npm ci
+      - name: Build matching packages
+        run: npm run packages:ensure
+      - name: Captured compiler and process ownership
+        env:
+          NODE_OPTIONS: --conditions=@apackdev/source
+        run: >-
+          node node_modules/vitest/vitest.mjs run --project @apackdev/cli
+          packages/apack-cli/tests/build/compiler-installation.spec.ts
+          packages/apack-cli/tests/build/compiler-runtime.spec.ts
+          packages/apack-cli/tests/build/compiler-native-libraries.spec.ts
+          packages/apack-cli/tests/build/compiler-read-tree.spec.ts
+          packages/apack-cli/tests/build/pack-builder.spec.ts
+          --bail=1 --poolOptions.threads.maxThreads=2 --poolOptions.threads.minThreads=1 --no-file-parallelism
+      - name: Native admission, preloads and watch recovery
+        run: >-
+          node node_modules/vitest/vitest.mjs run --config vitest.integration.config.ts --project @apackdev/cli
+          packages/apack-cli/tests/build/compiler-native-libraries.integration.spec.ts
+          --bail=1 --poolOptions.threads.maxThreads=1 --poolOptions.threads.minThreads=1 --no-file-parallelism
