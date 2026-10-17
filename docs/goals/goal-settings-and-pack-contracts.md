@@ -68,7 +68,7 @@ so completed implementation is not repeatedly scheduled as new work.
 | Build input/publication and freshness (Phase 3) | B2, B4 and B5 implemented and locally accepted; B1/B3 closure and B6 outstanding | Close remaining native/platform/thread ownership acceptance and converged checks; preserve the common record and four migrated passive consumers. Installed discovery must remain source-free and activation-free. |
 | Entity navigation (Phase 4) | Implemented with local handler/runtime acceptance through `95ff95ab3`, following producer `94148c9e0`, catalog/admission `479c75e01`, routing `cd9c57de6` and feature repair `831221020` | Preserve six-handler, cancellation and stored-message acceptance through final strict validation; retain build/publication and strict-gate acceptance for B6. No further navigation implementation is currently identified. |
 | Frontend boundaries (Phase 5) | Implemented and locally accepted: `713a6c1fd`, including the real external-pack window | Preserve pane/form containment, attributed nonfatal diagnostics and retired-instance refusal through final committed-source strict acceptance. |
-| Consumed APIs (Phase 6) | A1 started; onboarding/admin interface separation implemented in `b39c189b8`; combined prototype and enforcement outstanding | Close [A1–A5](../plans/declared-capabilities.md#bounded-implementation-checkpoints): finite route inventory/prototype, common metadata, matching caller-bound runtime/type facades, real consumer/content migration and external acceptance. Preserve settings policy and documented EARS behavior. |
+| Consumed APIs (Phase 6) | A1 inventory/prototype and selection recorded; onboarding/admin split implemented in `b39c189b8`; production metadata/enforcement outstanding | Close [A2–A5](../plans/declared-capabilities.md#bounded-implementation-checkpoints): common metadata, matching caller-bound runtime/type facades, real consumer/content migration and external acceptance. Preserve A1's selected contract, settings policy and documented EARS behavior. |
 | Dependency provenance (Phase 6) | Cache/admission `ff4358588`, inspection and verified-build checkpoints in the evidence record implemented; overall closure partial | Verify exact origin/version/content through reuse and inspection, integrate remaining freshness dependencies, and close the linked acceptance matrix. Do not restart cache/provenance storage. Frozen resolution remains conditional on a distribution requirement. |
 | Shipped-pack replacement (Phase 6) | Substantially implemented: ownership/suppression `03745e1dc`, replace/restore `85a7e955b`, subsequent live-control/source-update checkpoints in the evidence record | Reconcile and close remaining restart/reload, overrides and failure acceptance against landed implementation; implement only identified gaps. Do not restart replacement. |
 | Final review/acceptance (Phase 7) | Outstanding | Audit every phase and reconciled manifest requirement on committed source, run final strict `--all`, record evidence and archive only completed work. |
@@ -390,8 +390,11 @@ Its exact evidence and terminal cleanup are recorded at the link above. A1's fir
 committed as `b39c189b8`: host onboarding is separate from appData administration, with owning-engine,
 actual reset/restore, published-pack action and type/report acceptance. See
 [onboarding evidence](../evidence/settings-and-pack-contracts.md#onboarding-api-separation-2026-10-17).
-Next: finish A1's combined codegen/host-binding/provider/lifetime/action prototype before settling the
-consumption declaration. Retain the explicit B1/B3 gaps and incomplete gate. Finish affected integration acceptance on two cores before
+A1's combined codegen/host-binding/provider/lifetime/action prototype now passes; see
+[prototype evidence](../evidence/settings-and-pack-contracts.md#consumed-service-prototype-2026-10-17).
+Next: implement A2's common `consumes.services` metadata, canonical host baseline, provider projection
+and validation/schema assistance, then A3's matching runtime/types. Retain the explicit B1/B3 gaps
+and incomplete gate. Finish affected integration acceptance on two cores before
 repeating a broad gate. Do not rebuild
 the accepted default/fork handoff again unless its inputs change or a named coverage gap requires it.
 Reconcile

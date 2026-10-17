@@ -6689,3 +6689,37 @@ Only then settle the consumption declaration and complete A2–A5. B1/B3 externa
 B6, remaining discovery/provenance/replacement acceptance and final strict `--all` remain required.
 No broad chain was repeated for this slice; the previous deliberately interrupted gate is still
 incomplete. The successful default build and focused suites do not substitute for that gate.
+
+### Consumed service prototype (2026-10-17)
+
+A1's bounded prototype completed against source `85c555e6d`, with no repository implementation edits.
+Script: `/private/tmp/apack-consumed-services-prototype.mts`;
+SHA-256 `98e70dee41ffeed56cb2bd82b52600211bd6cf3c8b78c8c9a5fe7919d0d9e5e1`.
+Result: `/private/tmp/apack-consumed-services-prototype.log`. Its final retained work directory is
+`/private/var/folders/4p/krfrhcfn4497f_6_ks06f9dr0000gn/T/apack-services-prototype-F06BeE`.
+
+The script runs actual SDK codegen, applies the proposed type projection to its temporary emitted
+files, and connects a prototype facade to actual host registration/replacement through the current
+settings admission hook. These are experimental adapters, not production consumption enforcement.
+It proves onboarding without appData; a selected dependency without unrelated installed services;
+two real TypeScript missing-property diagnostics; destructured private-field methods; provider
+replacement, including the same object reused in a new registration; retained caller root/method
+refusal across rebind; and host replacement refusal. Reacquiring a live provider obtains its current
+instance. It runs the existing action executor and asserts `from`/`via` sender labels. The actual
+Database reset handler, bundled with the already accepted generated service module retained rather
+than duplicated, invokes the selected appData implementation and emits RESET_DATABASE_SUCCESS.
+Its flow query is the existing SDK implementation, registered normally. No production data is touched.
+
+The final proof passes. Earlier prototype failures identified a disposable root lacking ESM metadata,
+an accidentally bundled second unaccepted facade, and an unregistered flow query; the experimental
+composition was corrected without changing product validation or running broad suites.
+
+The route matrix and selected contract are recorded in
+[A1 decisions](../plans/declared-capabilities.md#a1-prototype-decisions-2026-10-17): qualified refs under
+`consumes.services`, four intentional baseline APIs, direct provider ownership, host-accepted facades,
+generation-specific retained handles and explicit started-operation/returned-resource boundaries.
+The runtime selection prototype used a provider-keyed map; qualified authored refs normalize to that
+same selection rather than introducing another runtime policy. No public manifest syntax was changed
+just to run the experiment. A2 must implement it in the common declaration pipeline; A3/A4 must carry
+it through production bindings, generated types, action consumers, subscriptions and inference handles.
+The prototype does not close those acceptance cases, B1/B3/B6 or final strict validation.
