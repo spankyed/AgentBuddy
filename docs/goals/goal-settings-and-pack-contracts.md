@@ -309,7 +309,7 @@ repeat publication preserves phase reuse, sealed revision and cleanup (50.00s); 
 The frontend metadata reader now derives shared SDK owners from `getSdkFeModules()` and retains UI's
 dynamic exports; it does not adopt backend EARS sharing. The six shared-package rule cases and eight
 builder cases pass, alongside CLI types/lint; see the same evidence record.
-Frontend expected-output validation now retains actual Vite emissions and public copies through final
+Frontend output checkpoint `0e84bd67c` retains actual Vite emissions and public copies through final
 sealing, including CSS/lazy/worker/maps and placeholder replacement. Missing required output refuses
 the real candidate and retains its incumbent directory. See
 [frontend output evidence](../evidence/build-input-snapshot-proof.md#frontend-output-expectations-checkpoint).

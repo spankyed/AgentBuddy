@@ -1145,6 +1145,8 @@ recorded hardcoded-list failure; it does not convert the interrupted broad integ
 
 ### Frontend output expectations checkpoint
 
+Source checkpoint: `0e84bd67c`.
+
 The producer now retains final writer byte hashes in `build/build-outputs.ts`, scoped to its candidate.
 Frontend bundling records Vite's actual returned chunk/asset bytes and copied public bytes from the
 existing public-file walk. The build checks these expectations after loader/thread settlement and
