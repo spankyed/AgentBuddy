@@ -30,7 +30,7 @@ try {
   const candidate = await preparePackBuild(process.argv.slice(4), process.cwd());
   await reportPackBuildCandidate(candidate);
 } catch (error) {
-  console.error(errorMessage(error));
+  console.error(error);
   process.exitCode = 1;
 }
 

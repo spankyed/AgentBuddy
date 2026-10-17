@@ -2102,3 +2102,18 @@ Use `path.join()` for the fault-injection suffix; the focused local corruption c
 (`/private/tmp/apack-windows-installation-mutation.log`). Production refusal remains unchanged.
 Collect all failures in this small isolated unit step instead of stopping at the first; retain
 fail-fast for the expensive real worker baseline. No test selection or deadline changes.
+
+
+### Windows focused units accepted; real worker drive-root failure
+
+Source `22739f676`, [run 39059985521](https://github.com/spankyed/AgentBuddy/actions/runs/39059985521),
+passes all seven focused files: 81 cases pass, seven platform-specific cases skip. Preparation and
+the native startup probe pass. The real repeated-build case then fails while compiling content:
+`EISDIR: illegal operation on a directory, lstat 'C:'`. Its 93.46s result is a failure, not a timeout.
+Log: `/private/tmp/apack-windows-39059985521.log`.
+
+The worker catch logs only `errorMessage(error)`, discarding the stack needed to attribute that
+drive-root query. Log the Error itself in this private worker, retaining the existing failure exit
+and publication behavior. The next focused run must identify the failing call before changing path
+semantics. Focused lint and whitespace checks pass. This diagnostic source change does not close
+real Windows compilation or descendant-lifetime acceptance.

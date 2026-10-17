@@ -593,8 +593,12 @@ read-tree cases on Windows. Its next failure is runtime identity assuming POSIX 
 `75be5b00b` keeps byte identity everywhere and isolates that POSIX assertion;
 [run 39059751459](https://github.com/spankyed/AgentBuddy/actions/runs/39059751459) passes the other six
 selected files. Its remaining installation-test fault injection uses a POSIX-only path suffix. Fix
-that suffix and collect all isolated unit failures in one run; retain worker-baseline fail-fast.
-Compiler completion and descendant-lifetime acceptance remain open.
+`22739f676` fixes that suffix and collects all isolated unit failures.
+[Run 39059985521](https://github.com/spankyed/AgentBuddy/actions/runs/39059985521) passes all seven
+files (81 passed, seven platform skips). The real worker startup probe passes, then compilation
+fails at `lstat C:`. Preserve the worker error stack to identify the exact drive-root query before
+changing resolution. Worker-baseline fail-fast stays enabled. Compiler completion and
+descendant-lifetime acceptance remain open.
 The local two-core integration run against that checkpoint reached its unchanged 600s deadline after
 eight files / 474 cases passed, including all seven native-library cases; the pool remains incomplete.
 See [launcher and pool evidence](../evidence/build-input-snapshot-proof.md#windows-package-launcher-and-local-integration-checkpoint-2026-10-17).
