@@ -122,7 +122,9 @@ B4 must settle the common successful-build record before migrating consumers. It
 
 Reuse captured inputs and existing output verification rather than introducing another source scanner
 or reading private phase caches as public authority. Specify record ownership, deterministic encoding,
-and verification at a common layer; the host must not import CLI internals. Publish the record with its
+and verification at a common layer. State the expected execution/environment comparison context;
+do not blindly compare a different authoring command's ambient environment or persist raw credentials
+for replay; the host must not import CLI internals. Publish the record with its
 output only after input validation and build-owned work settle; failure retains the incumbent pair.
 Startup observations alone do not establish this completed association. Installed verification must
 not need authored sources, machine-local temporary paths or executable compiler/pack modules.
@@ -278,8 +280,14 @@ types/lint/package refresh and a real distributable inventory check pass; see
 Namespace/native checkpoint `701928e9f` proves actual outside-addon execution uses the owned tree;
 existing implementation suffices. Thirty-three view/namespace/observation cases and actual early
 startup pass; see [bounded reconciliation](../evidence/build-input-snapshot-proof.md#native-module-and-namespacethread-acceptance-2026-10-17).
-Next: audit effective environment inputs in actual frontend/content compilation against execution
-identity before B4. Close externally linked runtime/native and required platform/thread-lifetime cases;
+Environment checkpoint `84f473549` repairs a reproduced Vite output/identity mismatch, using a shared
+initial-environment digest and private-path normalization. Twenty-five focused cases, actual startup
+capture, CLI types/lint/package refresh pass. Repeat-build revision/cache assertions pass in a 64.02s
+diagnostic run; its original 60s aggregate-budget failure remains a B6/final-gate item. See
+[environment evidence](../evidence/build-input-snapshot-proof.md#initial-environment-identity-checkpoint).
+Next: reconcile the finite native/platform lifetime boundary against supported compiler operations,
+then settle B4's common successful input/output association. Preserve required external-library and
+platform/thread-lifetime acceptance;
 preserve the now-accepted namespace cases without starting another resolver or observation framework. Preserve
 B2's accepted owner and browser proof; do not schedule another frontend generation implementation.
 Then complete B4–B6 and all-kind acceptance. Asset input/output completeness remains required under B1/B4,

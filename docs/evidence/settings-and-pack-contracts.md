@@ -6634,3 +6634,14 @@ native startup, CLI types and focused lint pass. See
 [native and namespace evidence](build-input-snapshot-proof.md#native-module-and-namespacethread-acceptance-2026-10-17).
 Effective environment, linked native libraries and platform/thread lifetimes remain B1/B3 acceptance;
 all subsequent goal work remains required. No new runtime machinery or broad gate is claimed.
+
+
+### Initial environment identity (2026-10-17)
+
+`84f473549` records an initial environment digest in execution/frontend/watch identities, normalizing
+private paths and excluding explicit infrastructure controls. Actual Vite output now has a matching
+changed identity; 25 focused cases, real pre-preload capture, CLI types/lint/package refresh pass.
+The repeat-build assertions pass in a 64.02s diagnostic run; its default 60s aggregate-budget failure
+remains explicitly unresolved for B6/final validation. See
+[environment evidence](build-input-snapshot-proof.md#initial-environment-identity-checkpoint).
+Native/platform/lifetime acceptance, B4–B6 and all other active phases remain required.

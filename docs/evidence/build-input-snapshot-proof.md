@@ -884,3 +884,67 @@ Next reconcile effective environment inputs used by actual frontend/content comp
 execution identity before B4; do not infer coverage from NODE_OPTIONS alone. External linked native
 libraries and required platform/thread lifetimes remain in B1/B3. B4–B6, all-kind discovery, all three
 Phase 6 streams and final strict committed-source `--all` remain required.
+
+
+## Initial environment identity audit (2026-10-17)
+
+The real frontend bundler emits different `import.meta.env.VITE_APACK_PROBE` values for two otherwise
+identical inputs, while `compilerExecutionIdentity()` remains identical. Disposable proof:
+`/private/tmp/apack-compiler-environment-proof.mts`, terminal log
+`/private/tmp/apack-compiler-environment-proof.log` (`outputsDiffer`, both environment-use assertions
+true; `identitiesDiffer` false). No production data or installed binaries are changed.
+
+The bounded correction is a digest of the initial inherited environment, shared by execution identity,
+frontend configuration identity and watch signatures. Include arbitrary content/compiler environment
+keys rather than an allowlist that misses author-defined reads. Exclude explicit private transport,
+cache/diagnostic and owned-temporary-directory fields; normalize captured compiler paths back to their
+source origins. Persist only a digest, not raw values. Capture execution context once before user
+initialization/compilation, matching the existing startup semantics: deterministic compiler/preload
+mutations are execution, not external changes to launch inputs. Do not proxy process.env or change the
+environment's runtime behavior. Prove ordinary value/membership changes, private-field/path stability,
+redaction, actual frontend output and retained-generation replacement. This is B1 input coverage and
+B2 configuration coherence, not a new environment service or completion of B4's successful receipt.
+
+
+### Initial environment identity checkpoint
+
+Source `84f473549` adds a shared initial-environment digest to native execution identity, frontend
+configuration and watcher signatures. Arbitrary author/compiler keys participate, avoiding a VITE-only
+allowlist. Explicit transport/temp/cache/diagnostic fields are excluded; owned compiler path prefixes
+normalize to source origins without conflating unrelated same-prefix paths. Raw environment maps are
+not recorded. Existing ordered NODE_OPTIONS remains separate. In-process compilation now captures its
+initial execution context once, consistently with native startup; no process.env proxy or mutation of
+the runtime environment was introduced.
+
+Evidence:
+
+- The original frontend proof now reports different emitted environment-dependent output **and**
+  different identities. `/private/tmp/apack-compiler-environment-fixed.log`.
+- All 25 environment/condition/watcher/builder cases pass in 33.05s. This includes value/presence and
+  ordering checks, private-path/transport stability, digest redaction and retained frontend generation
+  replacement when an inherited VITE key changes. `/private/tmp/apack-environment-focused.log`.
+- The refreshed bundled native startup captures the original environment before a user preload
+  changes a normal key, alongside the existing options/data checks. One case passes (95ms body,
+  3.00s runner total), `/private/tmp/apack-environment-startup.log`.
+- CLI types, eight-file correctness lint, package refresh and whitespace checks pass.
+  `/private/tmp/apack-environment-types-final.log`, `/private/tmp/apack-environment-packages.log`.
+
+The fake builder's mutable input-hash handoff moved from an environment variable to its existing
+private `.apack` fixture directory. This preserves its protocol without a test-only exclusion in the
+production environment contract.
+
+A required repeat-build check hit its unchanged 60s aggregate budget during the second build, after
+reporting facade reuse: `/private/tmp/apack-environment-repeat-build.log`. Owned processes stopped;
+subsequent authoritative process inspection found another worktree running integration jobs, which
+does not establish the timeout's cause. One diagnostic run with a command-local 120s observation
+allowance completes both builds in 64.02s and passes unchanged assertions for the sealed revision,
+cache stamp and workspace cleanup: `/private/tmp/apack-environment-repeat-build-diagnostic.log`.
+This proves normalization across real private compiler/runtime/esbuild copies. No committed test or
+product deadline changed. The default-budget failure remains a B6/final-gate validation item; the
+longer diagnostic pass is not a strict-gate pass. Do not repeat a broad run to investigate it.
+
+The environment identity is deliberately conservative: included keys invalidate even when a given
+compiler does not read them. B4/B5 must state the expected build context, rather than treating the
+ambient environment of a different authoring command as equivalent or persisting raw credentials for
+replay. This checkpoint closes the demonstrated initial-environment omission; native external-library
+and platform/lifetime acceptance, B4–B6 and all other goal phases remain required.
