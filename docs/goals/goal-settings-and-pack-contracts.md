@@ -490,14 +490,38 @@ required checkpoint validation or the final committed-source strict `--all`.
 |---|---|---|
 | Foundation and manifest | Complete supported-field classification; all 17 consolidation decisions and both naming outcomes; generated EARS typed/untyped behavior, ownership, canonical writer, schema/API reports and external authoring | Implemented checkpoints exist; final cross-phase audit pending. |
 | Settings | Host, pack and feature ownership; same-name groups, shared/restricted policy, disabled/failed owners, reset/import, custom forms and multiple windows | Existing settings evidence in the evidence record; reconcile exact coverage before final gate. |
-| Discovery | Every supported kind/native field and static asset; source-free poisoned pack/dependency inspection, inactive owners, collisions, atomic updates and checked bindings; no activation/user-data writes | Partial inventory/loader implementation remains; discovery checklist owns the per-kind cases. |
-| Editor and content | Actual Monaco worker/cold document and typing through replacement; shared-library disposal; static flow edges, rename/missing-target diagnostics and honest dynamic status | Local producer/reader checks exist; real-window and external acceptance remain. |
+| Discovery | Every supported kind/native field and static asset; source-free poisoned pack/dependency inspection, inactive owners, collisions, atomic updates and checked bindings; no activation/user-data writes | Reconcile remaining readers/fields and all-kind evidence through the closure checklist below; do not infer a defect from an old partial label. |
+| Editor and content | Actual Monaco worker/cold document and typing through replacement; shared-library disposal; static flow edges, rename/missing-target diagnostics and honest dynamic status | Local producer/reader checks exist; close the named real-window, worker and flow-reference cases below. |
 | Build ownership/freshness | Finite B1/B3 path matrices, frontend generation replacement/HMR, atomic successful input/output association, four passive consumers, preserved failure retention and deterministic reuse | B1–B6 remain partial; preserve failed run evidence and diagnose exact cases. |
 | Entity navigation | Build-checked destinations, conflicts/disabled/missing/retired delivery, typed guard, complete caller migration and stored-reference Electron case | In progress; canonical reference identity is already implemented. |
 | Frontend containment | Pane/form failures preserve other panes, host settings/defaults; retries reject retired instances in main/popout paths | Locally accepted in `713a6c1fd`; preserve through final gate. |
 | API consumption | Audited declaration granularity, generated/runtime facade agreement, undeclared/unavailable API diagnostics, content/dependency contracts and settings policy | Implementation remains; linked plan owns prototype and acceptance. |
-| Provenance/replacement | Exact origin/version/content through reuse/inspection; explicit linked development; fork restart/reload, managed updates, disable/remove/restore, override retention and failed-publication incumbent | Substantial source exists; reconcile remaining cases against linked plans. |
+| Provenance/replacement | Exact origin/version/content through reuse/inspection; explicit linked development; fork restart/reload, managed updates, disable/remove/restore, override retention and failed-publication incumbent | Substantial source exists; reconcile exact origin, reuse and replacement cases through the closure checklist below and linked plans. |
 | Final committed tree | Requirement-by-requirement audit, reviewed schema/API/docs/templates, required strict `--all` and real authoring/app checks on recorded committed source | Outstanding; archive only after every row is proven. |
+
+### Discovery, editor and provenance closure
+
+Use this checklist to reconcile the register above against current code before scheduling repairs.
+For each row, record the implementation path/source commit, existing test/evidence links, exact missing
+work (or none), and result in the existing subsystem evidence record. Distinguish a demonstrated defect
+from unverified acceptance. An old “partial” label is not evidence that implementation is still missing.
+
+| Closure item | Existing implementation to reconcile | Pass condition / missing evidence to resolve |
+|---|---|---|
+| Discovery readers and fields | Common catalog and reader migrations listed in the live ledger; field inventory in the discovery plan | Identify each remaining reader/contribution, including nested metadata and assets, and name its missing guarantee. Lifecycle, offline database schema, CLI and UI inventories use accepted declarations for discovery; activation eligibility remains separately checked. Remove only demonstrated duplicate parsing or superseded active-only inventories. |
+| Installed discovery and replacement | Verified build admission, checked bindings and catalog publication | Every supported kind remains inspectable with authored sources absent and throwing executable entries unimported. Disabled/failed owners remain explainable; collisions name owners; invalid replacements retain accepted metadata/bindings. Inspection writes no user data. Reuse existing per-kind proof and add only uncovered cases. |
+| Compiled flow references | Static index/reader checkpoint `7196d61d3` | Actual external/installed inspection reports indexed incoming edges and renamed/missing targets correctly. Dynamic or unavailable analysis is explicitly non-exhaustive, not an empty authoritative result. Audit remaining inventory readers without treating applier-created rows as declared content. |
+| Cold editor and worker readiness | Catalog-driven composition `8863043a6`; compiled DSL readers and offline Monaco in the discovery checklist | In a real window, open a document before catalog/providers arrive; it becomes usable without reopening. The actual Monaco worker supplies expected completions/diagnostics once declarations arrive. Missing providers have defined behavior. |
+| Editor replacement and shared-library lifetime | Generation-checked composition and owned DSL libraries | Type across an accepted contribution replacement without losing text, selection or pending document state. Removal/disable retires the affected contribution; stale work cannot overwrite current state. Disposing one editor/consumer does not remove libraries still owned by another. Close the recorded frontend reuse/removal case; do not rebuild composition. |
+| Dependency origin and inspection | Immutable cache/admission `ff4358588` and later verified dependency checkpoints | Cache reuse retains the original resolution route/source, exact version and content identity. Inspection distinguishes the requested range, resolved version, delivery cache and actual origin, and explains differing resolutions. Explicit linked development remains intentional and identifiable. |
+| Dependency/replacement consistency | Existing receipt admission, common freshness record and shipped-pack replacement checkpoints | A consumer cannot mix declarations and executable bytes from different accepted builds. Failed publication preserves the incumbent; captured paths remain coherent across replacement. Reconcile restart/reload, overrides and disable/remove/restore against existing real handoff evidence before adding cases. |
+
+Close each row by linking sufficient evidence or fixing its named omission, then update the owning
+register disposition. Preserve the complete per-kind and cross-phase requirements in linked plans;
+this checklist neither replaces them nor starts a parallel backlog. Reuse accepted evidence unless
+inputs or assertions changed. Run focused checks for repairs and the required converged/final gates
+after convergence. Do not restart implemented subsystems or add frozen resolution without a concrete
+distribution requirement. API-consumption implementation continues independently where dependencies allow.
 
 ## Background (2026-10-12, at 3d389b9c8 on session/naming-contracts)
 
