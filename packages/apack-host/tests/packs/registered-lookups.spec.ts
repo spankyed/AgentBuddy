@@ -98,17 +98,18 @@ describe('steps', () => {
 });
 
 describe('artifacts and blocks', () => {
-  const cardView = { type: 'card-view', fe: { icon: 'card', component: 'CardView' } };
-  const choice = { type: 'choice', kind: 'input' as const, fe: { component: 'Choice' } };
+  const cardView = { type: 'card-view' };
+  const choice = { type: 'choice', kind: 'input' as const, be: { generateAsideText: () => 'Choice' } };
 
   it('are found once their pack registers, and gone once it unregisters', () => {
     add({ id: 'card-pack', artifacts: [cardView], blocks: [choice] });
     expect(artifactRegistry.get('card-view')).toBe(cardView);
-    expect(artifactRegistry.getComponent('card-view')).toBe('CardView');
-    expect(artifactRegistry.getIcon('card-view')).toBe('card');
+    expect(artifactRegistry.getComponent('card-view')).toBeUndefined();
+    expect(artifactRegistry.getIcon('card-view')).toBeUndefined();
     expect(artifactRegistry.all()).toEqual([cardView]);
     expect(blockRegistry.get('choice')).toBe(choice);
-    expect(blockRegistry.getComponent('choice')).toBe('Choice');
+    expect(blockRegistry.getComponent('choice')).toBeUndefined();
+    expect(blockRegistry.get('choice')?.be).toBe(choice.be);
     expect(blockRegistry.has('choice')).toBe(true);
     expect(blockRegistry.all()).toEqual([choice]);
 

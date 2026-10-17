@@ -1,4 +1,4 @@
-import { type DeclarationData, _stepBackendParts } from '@apackdev/sdk/framework';
+import { type DeclarationData, type NativePackDeclaration, _stepBackendParts } from '@apackdev/sdk/framework';
 import { _packEntityTypes, _packRelationTypes } from '@apackdev/sdk/framework';
 import { lifecycleBindingProblem } from './lifecycle-binding.ts';
 import type { PackManifest, StepEntry } from '@apackdev/sdk/build';
@@ -88,19 +88,8 @@ export function backendBindingProblem(manifest: PackManifest, registration: unkn
   const commands = commandBindingProblem(manifest.extensions?.commands, registration.commands);
   if (commands) return problem(commands);
 
-  const artifacts = namedBindings(registration.artifacts, 'type', Object.keys(manifest.extensions?.artifacts ?? {}));
-  if (!artifacts) return problem('artifacts');
-  for (const [type, artifact] of artifacts) if (artifact.fe !== undefined) return problem(`artifacts.${type}.fe`);
-
-  const blocks = namedBindings(registration.blocks, 'type', Object.keys(manifest.extensions?.blocks ?? {}));
-  if (!blocks) return problem('blocks');
-  for (const [type, declaration] of Object.entries(manifest.extensions?.blocks ?? {})) {
-    const block = blocks.get(type)!;
-    if ((block.kind === undefined ? 'display' : block.kind) !== (declaration.kind ?? 'display')) return problem(`blocks.${type}.kind`);
-    if (block.fe !== undefined) return problem(`blocks.${type}.fe`);
-    if ((block.be !== undefined) !== (declaration.be !== undefined)) return problem(`blocks.${type}.be`);
-    if (block.be !== undefined && (!block.be || typeof block.be !== 'object' || Array.isArray(block.be))) return problem(`blocks.${type}.be`);
-  }
+  const viewerProblem = backendViewerBindingProblem(manifest.extensions ?? {}, registration);
+  if (viewerProblem) return problem(viewerProblem);
 
   const stepProblem = backendStepBindingProblem(manifest.extensions?.steps, registration.steps);
   if (stepProblem) return problem(stepProblem);
@@ -155,5 +144,24 @@ export function backendStepBindingProblem(declarations: DeclarationData<Record<s
         if ((step.runtime[flag] === undefined ? false : step.runtime[flag]) !== (runtime?.[flag] ?? false)) return `steps.${type}.runtime.${flag}`;
       }
     }
+  }
+}
+
+/** Backend viewers share declared identities and facets across native and built packs. */
+export function backendViewerBindingProblem(declarations: DeclarationData<Pick<NativePackDeclaration, 'artifacts' | 'blocks'>>,
+  registration: unknown): string | undefined {
+  if (!isPlainObject(registration)) return 'registration';
+  const artifacts = namedBindings(registration.artifacts, 'type', Object.keys(declarations.artifacts ?? {}));
+  if (!artifacts) return 'artifacts';
+  for (const [type, artifact] of artifacts) if (artifact.fe !== undefined) return `artifacts.${type}.fe`;
+
+  const blocks = namedBindings(registration.blocks, 'type', Object.keys(declarations.blocks ?? {}));
+  if (!blocks) return 'blocks';
+  for (const [type, declaration] of Object.entries(declarations.blocks ?? {})) {
+    const block = blocks.get(type)!;
+    if ((block.kind === undefined ? 'display' : block.kind) !== (declaration.kind ?? 'display')) return `blocks.${type}.kind`;
+    if (block.fe !== undefined) return `blocks.${type}.fe`;
+    if ((block.be !== undefined) !== (declaration.be !== undefined)) return `blocks.${type}.be`;
+    if (block.be !== undefined && (!block.be || typeof block.be !== 'object' || Array.isArray(block.be))) return `blocks.${type}.be`;
   }
 }
