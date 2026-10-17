@@ -285,6 +285,13 @@ initial-environment digest and private-path normalization. Twenty-five focused c
 capture, CLI types/lint/package refresh pass. Repeat-build revision/cache assertions pass in a 64.02s
 diagnostic run; its original 60s aggregate-budget failure remains a B6/final-gate item. See
 [environment evidence](../evidence/build-input-snapshot-proof.md#initial-environment-identity-checkpoint).
+Passive glob replay is implemented in `6c7198474`: actual TypeScript directory selection records
+native filesystem facts, with complete authored membership supplied by its existing owner. Fifty focused
+cases and real early startup pass; see [replay evidence](../evidence/build-input-snapshot-proof.md#passive-glob-replay-checkpoint).
+The subsequent watch repair eliminates redundant tooling discovery while preserving build-time byte
+verification. All 24 affected integration cases pass with two workers; no timeout changed. The
+external-types budget remains tight and no broad/strict pass is claimed; see
+[watch repair evidence](../evidence/build-input-snapshot-proof.md#compilerwatch-integration-repair-2026-10-17).
 Next: reconcile the finite native/platform lifetime boundary against supported compiler operations,
 then settle B4's common successful input/output association. Preserve required external-library and
 platform/thread-lifetime acceptance;

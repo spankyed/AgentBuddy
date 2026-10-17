@@ -5,7 +5,7 @@ import { withBuildSignals } from './build-signals.ts';
 import { readValidManifest } from '../utils.ts';
 import { isPackInputPath, packInputWatchTargets, packInputsHash } from '@apackdev/host/build/pack-inputs';
 import { reloadPack, type AppPlace } from './dev-reload.ts';
-import { compilerWatchPaths, compilerWatchTargets, createCompilerWatchMatcher, mergeCompilerWatchPaths, type CompilerWatchPaths } from './compiler-watch.ts';
+import { compilerWatchPaths, createCompilerWatchTools, compilerWatchTargets, createCompilerWatchMatcher, mergeCompilerWatchPaths, type CompilerWatchPaths } from './compiler-watch.ts';
 import { createFrontendWatcher, type FrontendInputSnapshot } from './frontend-watch.ts';
 import type { BuildWatchInputs } from './build-watch-inputs.ts';
 import { resolveAppEnvironment } from '@apackdev/sdk/env';
@@ -80,6 +80,7 @@ export async function startPackBuildWatcher(root: string, options: WatchOptions 
   let ready = false;
   let pending = false;
   let lastChange = '';
+  const tools = createCompilerWatchTools(root);
   let compilerPaths: CompilerWatchPaths = new Map();
   let matchesCompilerInput = createCompilerWatchMatcher(compilerPaths);
   let compilerSignature: string | undefined;
@@ -110,6 +111,8 @@ export async function startPackBuildWatcher(root: string, options: WatchOptions 
     if (closed) return false;
     const frontendChanged = !beforeFrontend.current() || (reported && !reported.snapshot.current());
     frontendSignature = frontendChanged ? beforeFrontend.hash : reported?.snapshot.hash ?? frontend.snapshot().hash;
+    // Close the discovery/subscription window before retaining the initial tooling inventory.
+    if (!ready) tools.changed(undefined, 'rename');
     const after = refreshInputs(true);
     if (frontendChanged || after.signature !== compiler.signature || packInputsHash(root) + JSON.stringify(after.authored) !== authored) {
       request('inputs changed during the build');
@@ -144,13 +147,14 @@ export async function startPackBuildWatcher(root: string, options: WatchOptions 
   };
   // Keep the root subscribed while replacing link watches, including during failed builds.
   const watcher = fs.watch(root, { recursive: true }, (event, filename) => {
+    tools.changed(filename ? path.resolve(root, filename) : undefined, event);
     if (!filename || isPackInputPath(filename)) request(filename ?? 'authored inputs');
     else if (matchesCompilerInput(path.resolve(root, filename), event)) request(filename);
   });
   let links: fs.FSWatcher[] = [];
   function refreshInputs(replace = false) {
     const next: fs.FSWatcher[] = [];
-    const compiler = compilerWatchPaths(root);
+    const compiler = compilerWatchPaths(root, tools);
     const paths = replace && compiler.complete ? compiler.paths : mergeCompilerWatchPaths(compilerPaths, compiler.paths);
     const authored = packInputWatchTargets(root);
     try {
@@ -165,6 +169,7 @@ export async function startPackBuildWatcher(root: string, options: WatchOptions 
         const matches = createCompilerWatchMatcher(target.paths);
         next.push(fs.watch(directory, { recursive: target.recursive }, (event, filename) => {
           if (!filename || matches(path.resolve(directory, filename), event)) {
+            tools.changed(filename ? path.resolve(directory, filename) : undefined, event);
             request(path.relative(root, path.resolve(directory, filename ?? '')));
           }
         }));

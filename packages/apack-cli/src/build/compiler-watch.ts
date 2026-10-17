@@ -31,8 +31,60 @@ function isDirectory(file: string): boolean {
   }
 }
 
+interface CompilerWatchTools {
+  read(observe: BuildInputObserver): { paths: CompilerWatchPaths; signature: string };
+  changed(file: string | undefined, event: string): void;
+}
+
+function readCompilerWatchTools(root: string, observer?: BuildInputObserver) {
+  const paths = new Map<string, BuildInputKind>();
+  const observe: BuildInputObserver = (file, kind) => {
+    addPath(paths, path.resolve(file), kind);
+    observer?.(file, kind);
+  };
+  const tools = readPackageInputs([{ id: 'compiler', directory: compilerPackageDirectory(), contents: true }], { observe }).hash;
+  observe(process.execPath, 'file');
+  const runtime = readCompilerRuntimeInputs(process.execPath, !!process.versions.electron, file => observe(file.source, 'file'));
+  for (const directory of runtime.directories) observe(directory, 'entries');
+  for (const { source, target } of runtime.links) { observe(source, 'file'); observe(target, 'file'); }
+  const override = readEsbuildOverride({ cwd: root });
+  const tooling = createHash('sha256').update(tools).update(runtime.hash).update(compilerEnvironmentIdentity());
+  if (override) {
+    observe(override.file, 'file');
+    tooling.update(JSON.stringify([override.file, override.kind]));
+    if (override.kind === 'file') {
+      observe(override.source, 'file');
+      tooling.update(JSON.stringify([override.source, override.mode & 0o111])).update(override.bytes);
+    }
+  }
+  return { paths, signature: tooling.digest('hex') };
+}
+
+/** Subscription discovery is reusable until a tooling event; builds independently verify compiler bytes. */
+export function createCompilerWatchTools(root: string): CompilerWatchTools {
+  let cached: ReturnType<typeof readCompilerWatchTools> | undefined;
+  let matches = createCompilerWatchMatcher(new Map());
+  let environment: string | undefined;
+  return {
+    read(observe) {
+      const current = compilerEnvironmentIdentity();
+      if (!cached || environment !== current) {
+        cached = readCompilerWatchTools(root, observe);
+        const physical = new Map<string, string>();
+        for (const [file, kind] of cached.paths) addPath(cached.paths, physicalWatchPath(file, physical), kind);
+        matches = createCompilerWatchMatcher(cached.paths);
+        environment = current;
+      }
+      return cached;
+    },
+    changed(file, event) {
+      if (file === undefined || matches(path.resolve(file), event)) cached = undefined;
+    },
+  };
+}
+
 /** Fresh resolution probes include absent candidates, so creating a previously missing input can recover a build. */
-export function compilerWatchPaths(root: string): { paths: CompilerWatchPaths; complete: boolean; signature: string } {
+export function compilerWatchPaths(root: string, tools?: CompilerWatchTools): { paths: CompilerWatchPaths; complete: boolean; signature: string } {
   const paths = new Map<string, BuildInputKind>();
   const physical = new Map<string, string>();
   const physicalPath = (file: string) => physicalWatchPath(file, physical);
@@ -47,25 +99,13 @@ export function compilerWatchPaths(root: string): { paths: CompilerWatchPaths; c
       addPath(paths, absolute, kind);
       addPath(paths, physicalPath(absolute), kind);
     };
-    // Keep tooling repair subscriptions even when pack discovery refuses its configuration.
-    const tools = readPackageInputs([{ id: 'compiler', directory: compilerPackageDirectory(), contents: true }], { observe }).hash;
-    observe(process.execPath, 'file');
-    const runtime = readCompilerRuntimeInputs(process.execPath, !!process.versions.electron, file => observe(file.source, 'file'));
-    for (const directory of runtime.directories) observe(directory, 'entries');
-    for (const { source, target } of runtime.links) { observe(source, 'file'); observe(target, 'file'); }
-    const override = readEsbuildOverride({ cwd: root });
-    const tooling = createHash('sha256').update(tools).update(runtime.hash).update(compilerEnvironmentIdentity());
-    if (override) {
-      observe(override.file, 'file');
-      tooling.update(JSON.stringify([override.file, override.kind]));
-      if (override.kind === 'file') {
-        observe(override.source, 'file');
-        tooling.update(JSON.stringify([override.source, override.mode & 0o111])).update(override.bytes);
-      }
-    }
+    const tooling = tools?.read(observe) ?? readCompilerWatchTools(root, observe);
+    for (const [file, kind] of tooling.paths) addPath(paths, file, kind);
     const modules = readCompilerModuleInputs(root, observe);
-    const packages = readPackageInputs([{ id: 'pack', directory: root, development: true }], { discovered: modules.packageDirectories, observe }).hash;
-    return { paths, complete: true, signature: `valid:${modules.hash}:${packages}:${tooling.digest('hex')}` };
+    try {
+      const packages = readPackageInputs([{ id: 'pack', directory: root, development: true }], { discovered: modules.packageDirectories, observe }).hash;
+      return { paths, complete: true, signature: `valid:${modules.hash}:${packages}:${tooling.signature}` };
+    } finally { modules.dispose(); }
   } catch {
     // The normal CLI build reports the refusal. Keep partial probes and the previous subscriptions for repair.
     const hash = createHash('sha256');

@@ -948,3 +948,57 @@ compiler does not read them. B4/B5 must state the expected build context, rather
 ambient environment of a different authoring command as equivalent or persisting raw credentials for
 replay. This checkpoint closes the demonstrated initial-environment omission; native external-library
 and platform/lifetime acceptance, B4–B6 and all other goal phases remain required.
+
+
+## Passive glob observation audit (2026-10-17)
+
+B4 inspection found a concrete serialization gap: `compiler-file-view` records a TypeScript `glob`
+query, but native observation replay correctly refuses that compiler-specific operation. A new
+private regression fails before implementation with `Unsupported native compiler observation: glob`:
+`/private/tmp/apack-glob-observation-repro.log`. Its include pattern reaches an initially empty nested
+directory outside the pack, so replay must also detect a deep later addition.
+
+Reuse the existing filesystem read scope while the actual TypeScript directory operation executes.
+Record its directory and consumed metadata facts, rather than persisting a glob operation that would
+require TypeScript in passive readers. Keep TypeScript as the resolver/selector; no second glob
+implementation or recursive source scanner. Preserve the local captured result/argument cache and
+live compiler-side final validation. Native replay must accept unchanged facts, refuse a deep added
+match, and accept exact restoration. This is a prerequisite for persisting the completed frame,
+not completion of B4 or a replacement for the existing output receipt.
+
+
+### Passive glob replay checkpoint
+
+Source `6c7198474` records the native directory/metadata facts consumed by TypeScript's actual glob
+operation, keeping its selector and local result cache. The authored owner supplies its complete file
+inventory; passive replay does not activate TypeScript. Unchanged inputs and exact restoration pass;
+a deep outside addition refuses replay. Generated authored outputs stay excluded, including physical
+path aliases. Fifty view/module/observation cases, CLI types/lint/package refresh and real early native
+startup pass. Evidence: `/private/tmp/apack-glob-normalized-final.log`,
+`/private/tmp/apack-glob-normalized-types-final.log`, `/private/tmp/apack-glob-native-startup.log`.
+This closes the demonstrated frame-serialization gap; B4 persistence remains outstanding.
+
+### Compiler/watch integration repair (2026-10-17)
+
+The preserved rebase log reported eight failures across four watch integration files. Stash
+`aa4d761c` changes diagnostic deadlines only and remains intact. An unchanged external-types
+reproduction triggers and publishes its external edit but exceeds its total test budget. Its CPU
+profile attributes about 16s to repeated watcher discovery and about 7s separately to retained compiler
+verification; this demonstrates redundant work, not a missing event or the cause of every historical
+failure. Profile: `/private/tmp/apack-watch-profile`; baseline: `/private/tmp/apack-watch-external-baseline.log`.
+
+The repair retains tooling discovery per watch session until a relevant tooling/environment change,
+preserving physical aliases, partial repair probes, missing members and unnamed-event invalidation.
+Initial post-build discovery closes the subscription window. Build-time compiler byte verification
+remains independent. Temporary module-discovery views are disposed after each scan. No timeout,
+assertion, fixture input or compiler verification was weakened.
+
+All 24 cases in the four affected integration files pass with two workers, including all eight reported
+failures: `/private/tmp/apack-watch-affected-two-cores.log` (316.16s). Eighteen focused watcher cases,
+CLI typecheck and three-file lint pass: `/private/tmp/apack-watch-focused-final.log` and
+`/private/tmp/apack-watch-types-final.log`. The external-types case remains close to its unchanged
+60s budget (59.58s); this is not robust timing headroom. The broader pool was interrupted to target the
+affected cases, after 12 compiler-filesystem cases passed; it separately found an existing shared-package
+list refusal at `fe-bundler.ts:376`. `/private/tmp/apack-watch-integration-two-cores.log` is not a
+completed broad gate. The original repeat-build budget failure, B4–B6 and final strict acceptance remain
+open. No work in the Claude research worktree was changed.
