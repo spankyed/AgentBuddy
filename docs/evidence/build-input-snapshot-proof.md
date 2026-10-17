@@ -308,3 +308,33 @@ API. Preserve file/directory modes and native behavior for links/special entries
 still has its existing symlink refusal. Prove this using actual `captureCompilationInputs`,
 `withCompilerFileReads` and `compilePack`, alongside the ordinary content compiler media checks.
 This closes one identified execution consumer, not Vite or all B1/B3 cells.
+
+## Captured media execution checkpoint (2026-10-17)
+
+Source `129b541de` closes the ordinary media-copy input consumer identified above. The media producer
+uses a small private traversal: directory/metadata queries and ordinary file bytes flow through the
+existing scoped reads. File and directory permission modes are preserved explicitly after writes,
+including modes the process umask would otherwise narrow. Links/special entries keep native copy
+behavior; the installed layout's existing regular-file/symlink policy is unchanged. No author-facing
+filesystem API, global interceptor or additional receipt is introduced.
+
+The new integration case uses actual `captureCompilationInputs`, `withCompilerFileReads` and
+`compilePack`. It captures authored Markdown/media, changes the live media file, and compiles through
+that owner. Before repair, the record uses captured text while the copied media contains `LIVE`.
+After repair, both use captured bytes, output permissions are preserved, and final input validation
+still refuses the changed live source. This proves owned consumption and retained guards, not a
+claim that the old implementation was observed publishing an invalid build.
+
+- Failing reproduction: `/private/tmp/apack-media-owned-before.log` (expected `CAPTURED`, got `LIVE`).
+- Final integration case passes in 9.54s: `/private/tmp/apack-media-owned-final.log`.
+- All 22 ordinary content compiler cases pass in 1.50s, including media copying/indexing, source
+  cleanup and media-directory treatment: `/private/tmp/apack-media-copy-content.log`.
+- SDK/CLI TypeScript, lint and refreshed SDK/testing/CLI package builds pass:
+  `/private/tmp/apack-media-copy-{types,lint,packages}.log`.
+
+The bounded B1/B3 matrix is committed in `5e9d478e3`; its source baseline is historical. This checkpoint
+closes its ordinary media-consumption gap, not native/dependency or full frontend execution, retained
+Vite generation, platform/resource acceptance or B4 expected output association. The exit-handler
+case's isolated pass is recorded above; remaining preserved failures are not assigned a common cause.
+Continue the matrix's open paths, B2/B3, B4–B6, all-kind discovery acceptance and all three Phase 6
+workstreams. Final committed-source strict `--all` remains required; no broad gate was rerun here.

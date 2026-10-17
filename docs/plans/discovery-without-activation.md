@@ -175,7 +175,12 @@ compiler proof. Neither observation alone proves an invalid build can publish. C
 under B1 and expected emitted/copied bytes under the existing B4 input/output association. Preserve
 public-directory copying and explicit media-import behavior; do not add another asset manifest,
 JavaScript reference scanner or a second installed-reader authority. `e6ce3f1e4` removes the unused
-declaration-only `readPackSnapshot`; current installed readers use `readPackBuild`.
+declaration-only `readPackSnapshot`; current installed readers use `readPackBuild`. The subsequent
+[B1/B3 matrix](../evidence/build-input-snapshot-proof.md#b1b3-current-compiler-path-matrix-2026-10-17)
+locates current owners rather than treating every unverified path as new implementation. Source
+`129b541de` closes ordinary media-byte consumption through the existing captured reads and preserves
+copy modes/link behavior. Vite/public copying, remaining native/dependency paths and expected copied
+outputs under B4 remain open; the media source checkpoint does not certify full producer coverage.
 
 Execute the identified gaps in this order:
 

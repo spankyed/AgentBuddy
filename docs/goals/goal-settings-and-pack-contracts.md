@@ -226,8 +226,14 @@ Reader cleanup `e6ce3f1e4` removes the unused declaration-only reader; all 110 l
 and lint pass. The [asset producer audit](../evidence/build-input-snapshot-proof.md#asset-producer-audit-and-bounded-follow-through-2026-10-17)
 classifies remaining media, CSS, lazy/worker chunks and public-file copying. Proofs show returned Vite
 graphs omit public copies and media copying bypasses an injected captured-byte view; neither alone
-proves a publication failure. Next: finish the finite B1/B3 path matrix with these concrete paths,
-then close B1–B6 and all-kind acceptance. Asset input/output completeness remains required under B1/B4,
+proves a publication failure. The [B1/B3 path matrix](../evidence/build-input-snapshot-proof.md#b1b3-current-compiler-path-matrix-2026-10-17)
+is now recorded against current owners. Media execution checkpoint `129b541de` copies ordinary files
+through captured byte/directory/metadata reads, preserving permissions and native link/special-file
+behavior. The real input-view regression passes after reproducing live-byte copying; 22 compiler cases,
+SDK/CLI types, lint and package builds pass. The preserved exit-handler case passes unchanged in an
+isolated run; its earlier failure cause remains unclassified. See [media evidence](../evidence/build-input-snapshot-proof.md#captured-media-execution-checkpoint-2026-10-17).
+Next: close the matrix's remaining native/dependency/frontend input paths and B2/B3 lifetimes,
+then B4–B6 and all-kind acceptance. Asset input/output completeness remains required under B1/B4,
 not a deferred follow-up or another discovery store. All three Phase 6 workstreams remain required. Do not restart implemented endpoint
 or navigation work, or rerun a broad gate to investigate the preserved integration failures.
 
