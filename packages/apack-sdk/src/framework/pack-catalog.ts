@@ -1,4 +1,5 @@
 import type { z } from 'zod';
+import type { PackConsumption } from './service-consumption.ts';
 import type { ArtifactEntrySchema, BlockEntrySchema, CommandEntrySchema, DslEntrySchema, StepEntrySchema, MigrationsSchema } from './declaration-schema.ts';
 import type { PackLifecycleDeclaration } from './lifecycle-declaration.ts';
 import type { PackDataDeclarations } from './data-declaration.ts';
@@ -34,6 +35,8 @@ export interface NativePackDeclaration extends PackDataDeclarations, FrontendDec
   /** Static transport contracts, including native inboxes without contributed UI panes. */
   eventContracts?: import('./event-contracts.ts').PackEventContracts;
   dependencies?: Record<string, string>;
+  /** Required service refs in addition to the implicit SDK baseline and own services. */
+  consumes?: PackConsumption;
   settings?: Record<string, SettingsDefinition>;
   /** Native APIs without a feature owner; values identify their composition bindings. */
   services?: Record<string, string>;

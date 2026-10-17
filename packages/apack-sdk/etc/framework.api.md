@@ -39,6 +39,9 @@ export interface ArtifactCatalogEntry {
 // @public (undocumented)
 export type ArtifactDeclaration = z.infer<typeof ArtifactEntrySchema>;
 
+// @internal
+export const _BASELINE_HOST_SERVICE_NAMES: readonly ["logger", "emitter", "repository", "settings"];
+
 // @public (undocumented)
 export interface BlockCatalogEntry {
     // (undocumented)
@@ -276,6 +279,9 @@ export interface HelpTarget {
     packId?: string;
 }
 
+// @internal
+export const _HOST_SERVICE_NAMES: readonly ["logger", "emitter", "repository", "settings", "onboarding", "appData", "traceStore", "inference", "secrets", "filesystem"];
+
 // @public
 export const LIFECYCLE_HOOK_NAMES: readonly ["onInit", "onShutdown"];
 
@@ -292,6 +298,7 @@ export interface NativePackDeclaration extends PackDataDeclarations, FrontendDec
     blocks?: Record<string, z.infer<typeof BlockEntrySchema>>;
     // (undocumented)
     commands?: Record<string, z.infer<typeof CommandEntrySchema>>;
+    consumes?: PackConsumption;
     content?: {
         writers?: Record<string, string>;
         sources?: Record<string, {
@@ -366,6 +373,11 @@ export interface PackCommand {
     name: string;
     // (undocumented)
     placeholder: string;
+}
+
+// @public
+export interface PackConsumption {
+    readonly services: readonly string[];
 }
 
 // @public
@@ -489,6 +501,46 @@ export interface PackRegistration {
 // @internal
 export function _packRelationTypes(declaration: PackDataDeclarations): Record<string, string>;
 
+// @internal
+export interface _PackServiceDeclaration {
+    // (undocumented)
+    readonly featureId?: string;
+    // (undocumented)
+    readonly name: string;
+    // (undocumented)
+    readonly packId: string;
+    // (undocumented)
+    readonly ref: string;
+    // (undocumented)
+    readonly target: string;
+}
+
+// @internal
+export interface _PackServiceDeclarations {
+    // (undocumented)
+    readonly consumes?: PackConsumption;
+    // (undocumented)
+    readonly dependencies?: Readonly<Record<string, unknown>>;
+    // (undocumented)
+    readonly features?: Readonly<Record<string, {
+        readonly services?: Readonly<Record<string, string>>;
+    }>>;
+    // (undocumented)
+    readonly id: string;
+    // (undocumented)
+    readonly services?: Readonly<Record<string, string>>;
+}
+
+// @internal
+export function _packServiceDeclarations(pack: _PackServiceDeclarations): readonly _PackServiceDeclaration[];
+
+// @internal
+export function _packServiceSelection(pack: _PackServiceDeclarations, provider: (packId: string) => _PackServiceDeclarations | undefined): readonly {
+    readonly ref: string;
+    readonly packId: string;
+    readonly name: string;
+}[];
+
 // @public
 export function packSystem(entry: SystemEntry, options: {
     incoming: readonly string[];
@@ -499,6 +551,12 @@ export function _parseEventContracts(data: unknown, features: Parameters<typeof 
 
 // @public
 export function parseReferenceHref(href: string): ReferenceTarget | undefined;
+
+// @internal
+export function _parseServiceReference(ref: string): {
+    packId: string;
+    name: string;
+};
 
 // @public
 export interface PluginDeclaration {
@@ -610,6 +668,9 @@ export interface ReferenceTypeDeclaration {
     // (undocumented)
     svgElements: readonly ReferenceSvgElement[];
 }
+
+// @internal
+export function _serviceProviderProblem(pack: Pick<_PackServiceDeclarations, 'id' | 'dependencies'>, ref: string): string | undefined;
 
 // @public
 export interface SettingsCatalog {

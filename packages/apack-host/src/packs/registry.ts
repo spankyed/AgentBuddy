@@ -24,7 +24,8 @@ import type { PackRegistration, PackLifecycleHooks, PackEARS, PackMigration, Pac
 import { _packDeclarationProblem, type ContentRuntime } from '@apackdev/sdk/framework';
 import type { MigrationLine, PackManifest } from '@apackdev/sdk/build';
 import type { PackRegistryView } from '@apackdev/sdk/runtime';
-import type { HostServices, SettingsService } from '@apackdev/sdk/services';
+import type { SettingsService } from '@apackdev/sdk/services';
+import { _HOST_SERVICE_NAMES } from '@apackdev/sdk/framework';
 import type { ContentOffer, ContentApplier } from '@apackdev/sdk/utils';
 import type { ArtifactDefinition } from '@apackdev/sdk/artifacts';
 import type { BlockDefinition } from '@apackdev/sdk/blocks';
@@ -45,12 +46,6 @@ import { appSettingsDefinition } from '../features/settings/be/app-definition.ts
 import { createPackSettingsBinding } from '../services/settings.ts';
 
 export type { PackRegistration, PackLifecycleHooks, PackEARS, PackMigration };
-
-/** Services the host supplies itself; a pack service with one of these names would replace it */
-const HOST_SERVICE_NAMES = ['logger', 'emitter', 'repository', 'onboarding', 'appData', 'traceStore', 'inference', 'secrets', 'filesystem', 'settings'] as const satisfies readonly (keyof HostServices)[];
-// Fails to compile when HostServices gains a service this list doesn't name
-const _allHostServicesNamed: Exclude<keyof HostServices, (typeof HOST_SERVICE_NAMES)[number]> extends never ? true : never = true;
-void _allHostServicesNamed;
 
 /** Entity types no pack may declare: the SDK's and the host's */
 const RESERVED_ENTITIES: readonly string[] = [...Object.values(SDK_ENTITIES), ...HOST_ENTITY_TYPES] as const;
@@ -610,7 +605,7 @@ export function createPackRegistry({ installedPacksDir, appPackSourcesDir, setti
     checkEARS(registration, replacing ? registration.id : undefined);
 
     const services = Object.keys(registration.services ?? {});
-    const hostService = services.find((key) => (HOST_SERVICE_NAMES as readonly string[]).includes(key));
+    const hostService = services.find((key) => (_HOST_SERVICE_NAMES as readonly string[]).includes(key));
     if (hostService) throw new Error(`Service collision: key "${hostService}" — pack "${registration.id}" vs the host's own "${hostService}" service`);
     const service = firstTaken(services, (reg) => reg.services, replacing ? registration.id : undefined);
     if (service) throw new Error(`Service collision: key "${service.key}" — pack "${registration.id}" vs "${service.holder}"`);

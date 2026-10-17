@@ -42,6 +42,44 @@
       },
       "description": "Other packs this pack depends on. Keys are pack IDs, values are nonempty semver ranges, file:<path> or github:<owner>/<repo> [range]."
     },
+    "consumes": {
+      "type": "object",
+      "properties": {
+        "services": {
+          "type": "array",
+          "items": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "host/logger",
+                  "host/emitter",
+                  "host/repository",
+                  "host/settings",
+                  "host/onboarding",
+                  "host/appData",
+                  "host/traceStore",
+                  "host/inference",
+                  "host/secrets",
+                  "host/filesystem"
+                ]
+              },
+              {
+                "type": "string",
+                "pattern": "^(?!host\\/)[a-z][a-z0-9-]*\\/[A-Za-z_$][\\w$]*$"
+              }
+            ]
+          },
+          "description": "Required service refs (provider-pack/service). Use the listed host refs for host APIs. Other providers must be this pack or direct dependencies, and must directly declare the service.",
+          "uniqueItems": true
+        }
+      },
+      "required": [
+        "services"
+      ],
+      "additionalProperties": false,
+      "description": "Supported API dependencies. Logger, emitter, repository, caller-bound settings and this pack's own services are implicit. This is not a resource permission or security sandbox."
+    },
     "permissions": {
       "type": "array",
       "items": {

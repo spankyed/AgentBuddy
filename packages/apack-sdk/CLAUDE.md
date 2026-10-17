@@ -139,6 +139,12 @@ entries first, which is why it is the one pack authors call. The code:
 - **Content writers** (`writers.ts`): `ContentWriter` (`find`/`create`/`update`/`remove`) are keyed by entity type. ContentAppliers read them with the `@internal` `_contentWriterRegistry.get` (the registered packs'); the host’s registry refuses writers for a type another pack owns.
 - **`previewPackContent(dir)`** (`preview.ts`) reads `content.json` for the import dialog and lists only written keys.
 
+Pack service consumption is declared as qualified refs in `consumes.services`.
+`framework/service-consumption.ts` owns the host baseline/name inventory, direct provided-service
+projection and selection validation used by codegen. Provider declarations are read without loading
+source targets. Production runtime filtering and matching type projection are the next A3 slice;
+this metadata foundation does not yet replace the ambient runtime union.
+
 ## Registered packs
 
 What packs registered isn't SDK state: the app that registers them owns it, an instance per app (`createPackRegistry()` and `createFePackRegistry()` in `@apackdev/host`; `tests/packs/registry-state.spec.ts` there fails if one of the lookup modules below keeps module-level state). The SDK defines the read-only views (`runtime/packs-view.ts`, `runtime/fe-host.ts`), the app binds them (`HostRuntime.packs`, `FeHostRuntime.packs`), and the SDK's lookups read the bound one on every call, so packs call the same functions whatever registered them. There are no write functions: everything a pack contributes arrives in its `PackRegistration` or `PackFERegistration`. A process still loads exactly one SDK instance (and one `@apackdev/ears`: `SHARED_INSTANCE_PACKAGES` in `@apackdev/host/build/shared-deps`), since the binding lives in it: the API's pack loader and the test harness map every `@apackdev/sdk` subpath to one copy through `withModuleBridge` in `@apackdev/host/packs`.

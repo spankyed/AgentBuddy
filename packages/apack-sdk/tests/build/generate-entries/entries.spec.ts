@@ -20,6 +20,15 @@ import { setupPackFixture, dependency, generate, system, facade, withPluginState
 
 setupPackFixture();
 
+it('checks consumption against direct provider declarations rather than intersected facade members', async () => {
+  const provider = dependency({ id: 'provider', services: { declared: 'missing.ts#declared' } },
+    facade({ Services: '{ declared: {}; transitive: {} }' }));
+  await expect(generate({ dependencies: { provider: '*' }, consumes: { services: ['provider/transitive'] } }, { provider }))
+    .rejects.toThrow('Pack "demo-pack" consumes "provider/transitive", but provider "provider" does not declare service "transitive"');
+  const valid = await generate({ dependencies: { provider: '*' }, consumes: { services: ['provider/declared', 'host/onboarding'] } }, { provider });
+  expect(valid['src/__generated__/pack-entry.ts']).toContain('declarationRevision');
+});
+
 describe('generated ref', () => {
   // A FeatureRef is accepted wherever a send takes one, so the names ref() takes are what keep a misspelling out
   it("takes this pack's features, its dependencies' and the host's, and nothing else", async () => {

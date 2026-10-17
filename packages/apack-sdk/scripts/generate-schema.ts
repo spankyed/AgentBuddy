@@ -15,6 +15,8 @@ const jsonSchema = zodToJsonSchema(ManifestSchema, {
 
 // The schema's refinements aren't JSON Schema: state the SDK's reserved names here, so editors flag them too
 const properties = (jsonSchema as { properties: Record<string, Record<string, unknown>> }).properties;
+const consumes = properties.consumes.properties as { services: Record<string, unknown> };
+Object.assign(consumes.services, { uniqueItems: true });
 // Editors validate the inline value schema with the same draft the runtime compiler accepts.
 const extensions = properties.extensions.properties as Record<string, Record<string, unknown>>;
 const settingsDefinition = extensions.settings.additionalProperties as { properties: { schema: Record<string, unknown>; defaults: Record<string, unknown> } };

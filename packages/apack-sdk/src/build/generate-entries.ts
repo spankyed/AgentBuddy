@@ -1,3 +1,4 @@
+import { _packServiceDeclarations, _packServiceSelection } from '../framework/service-consumption.ts';
 import { _stepBackendParts } from '../framework/step-backend-declaration.ts';
 import { dataLiteral, propertyKey } from './code-literals.ts';
 import { findSourceModule, SCRIPT_MODULE_EXTENSIONS, TYPE_MODULE_EXTENSIONS } from './source-module.ts';
@@ -476,10 +477,9 @@ export async function generatePackFiles(
    * commands and repositories are already reported.
    */
   function checkServiceNames(): void {
-    const serviceNames = (m: PackManifest): string[] => [
-      ...Object.keys(m.extensions?.services ?? {}),
-      ...packFeatures(m).flatMap((f) => Object.keys(f.services ?? {})),
-    ];
+    const serviceNames = (m: PackManifest): string[] => _packServiceDeclarations({
+      id: m.id, features: m.features, services: m.extensions?.services,
+    }).map(entry => entry.name);
     const taken = new Map<string, string>();
     for (const [depId, snap] of depSnapshots) {
       for (const name of serviceNames(snap.manifest)) {
@@ -498,6 +498,10 @@ export async function generatePackFiles(
     }
   }
   checkServiceNames();
+  _packServiceSelection({ ...manifest, services: manifest.extensions?.services }, id => {
+    const dependency = depSnapshots.get(id)?.manifest;
+    return dependency && { ...dependency, services: dependency.extensions?.services };
+  });
 
   // ── Manifest export targets ────────────────────────────────────
 
@@ -1645,8 +1649,7 @@ ${nodeEntity}`;
   }
 
   function generateServices(): string {
-    const features = packFeatures(manifest);
-    const packServices = manifest.extensions?.services ?? {};
+    const provided = _packServiceDeclarations({ id: manifest.id, features: manifest.features, services: manifest.extensions?.services });
     const imports: string[] = [];
     const entries: string[] = [];
 
@@ -1658,15 +1661,7 @@ ${nodeEntity}`;
       entries.push(`  ${propertyKey(key, key)}: ${local},`);
     }
 
-    for (const f of features) {
-      for (const [key, svcPath] of Object.entries(f.services ?? {})) {
-        addService(key, svcPath);
-      }
-    }
-
-    for (const [key, svcPath] of Object.entries(packServices)) {
-      addService(key, svcPath);
-    }
+    for (const { name, target } of provided) addService(name, target);
 
     const deps = depTypeImports('Services');
 

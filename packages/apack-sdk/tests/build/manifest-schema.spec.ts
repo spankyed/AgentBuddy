@@ -4,8 +4,16 @@ import { resolve } from 'path';
 import { FeatureEntrySchema, _NativePackDeclarationSchema } from '../../src/framework/declaration-schema.ts';
 import { parseManifest } from '../../src/build/validate.ts';
 import { ALLOWABLE_PACK_CHECKS } from '../../src/framework/pack-checks.ts';
+import { _HOST_SERVICE_NAMES } from '../../src/framework/service-consumption.ts';
 
 describe('parseManifest', () => {
+  it('offers known host service refs and duplicate diagnostics in the generated editor schema', () => {
+    const schema = JSON.parse(readFileSync(resolve(__dirname, '../../apack.schema.json'), 'utf8'));
+    const services = schema.properties.consumes.properties.services;
+    expect(services.uniqueItems).toBe(true);
+    expect(services.items.anyOf[0].enum).toEqual(_HOST_SERVICE_NAMES.map(name => `host/${name}`));
+    expect(services.description).toContain('directly declare the service');
+  });
   it('validates inline node labels and JSON defaults without a code target', () => {
     const pack = { id: 'nodes', name: 'Nodes', version: '1.0.0' };
     const parse = (node: unknown) => parseManifest({ ...pack, extensions: { steps: { memo: { node } } } });

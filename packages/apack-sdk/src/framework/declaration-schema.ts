@@ -1,3 +1,4 @@
+import { PackConsumptionSchema, _serviceProviderProblem, _SERVICE_NAME_PATTERN } from './service-consumption.ts';
 import { dslDefinitionsProblem } from './dsl-declarations.ts';
 import { declarationRecord } from './declaration-record.ts';
 import { _eventContractsProblem } from './event-contracts.ts';
@@ -143,6 +144,7 @@ export const _NativePackDeclarationSchema = z.preprocess(checkDeclaredNames, z.o
   version: PackVersionSchema.optional(),
   migrations: z.lazy(() => MigrationsSchema).optional(),
   dependencies: declarationRecord(z.string().regex(PACK_ID_PATTERN), PackRangeSchema).optional(),
+  consumes: PackConsumptionSchema.optional(),
   settings: declarationRecord(z.string().regex(FEATURE_ID_PATTERN), SettingsDefinitionSchema).optional(),
   services: z.lazy(() => ServicesSchema).optional(),
   repositories: z.lazy(() => ServicesSchema).optional(),
@@ -177,7 +179,18 @@ export const _NativePackDeclarationSchema = z.preprocess(checkDeclaredNames, z.o
   checkReferenceClaims(declaration.features, ctx);
   checkDefaultPluginClaims(declaration.features, ctx);
   checkApiClaims(declaration.features, declaration.services, declaration.repositories, ctx);
+  checkServiceProviders(declaration, ctx);
 }));
+
+/** Validate provider membership before a build needs to resolve its declaration. */
+function checkServiceProviders(pack: { id: string; dependencies?: Readonly<Record<string, unknown>>; consumes?: { services: readonly string[] } }, ctx: z.RefinementCtx): void {
+  // Zod may run parent refinements after a child's regex fails; syntax errors already have a path.
+  if (!pack.consumes || !PackConsumptionSchema.safeParse(pack.consumes).success) return;
+  pack.consumes.services.forEach((ref, index) => {
+    const message = _serviceProviderProblem(pack, ref);
+    if (message) ctx.addIssue({ code: 'custom', path: ['consumes', 'services', index], message });
+  });
+}
 
 /** API names share one namespace within a pack, even when their declarations have different feature owners. */
 function checkApiClaims(features: Record<string, { services?: Record<string, string>; repositories?: Record<string, string> }> | undefined,
@@ -593,7 +606,7 @@ export const LifecycleConfigSchema = z.object({
 } satisfies Record<keyof PackLifecycleDeclaration, z.ZodTypeAny>).strict().describe('Explicit lifecycle function targets, discoverable without loading their modules.');
 
 
-const ServicesSchema = declarationRecord(IdentifierSchema, ExportTargetSchema);
+const ServicesSchema = declarationRecord(z.string().regex(_SERVICE_NAME_PATTERN, 'Must be an identifier'), ExportTargetSchema);
 
 /**
  * A command's name, which is its key: what the user types after the `/`. Stricter than a contributed
@@ -778,6 +791,7 @@ export const ManifestSchema = z.preprocess(checkDeclaredNames, z.object({
   license: z.string().describe('SPDX license identifier.').optional(),
   dependencies: declarationRecord(z.string().regex(PACK_ID_PATTERN), PackDependencySchema)
     .describe('Other packs this pack depends on. Keys are pack IDs, values are nonempty semver ranges, file:<path> or github:<owner>/<repo> [range].').optional(),
+  consumes: PackConsumptionSchema.optional(),
   permissions: z.array(PackPermissionSchema).describe('Capabilities this pack requires from the host.').optional(),
   data: DataSchema.optional(),
   features: declarationRecord(FEATURE_ID_SCHEMA, FeatureEntrySchema)
@@ -793,6 +807,7 @@ export const ManifestSchema = z.preprocess(checkDeclaredNames, z.object({
   checkReferenceClaims(manifest.features, ctx);
   checkApiClaims(manifest.features, manifest.extensions?.services, undefined, ctx, ['extensions', 'services']);
   checkDefaultPluginClaims(manifest.features, ctx);
+  checkServiceProviders(manifest, ctx);
 
   // Both kinds of entry name a format, and both are checked against the same two places
   for (const section of ['sources', 'datasets'] as const) {

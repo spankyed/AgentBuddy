@@ -20,6 +20,20 @@ function source(id: string, enabled = true) {
 }
 
 describe('contribution catalog data', () => {
+  it('retains native and source consumption metadata and rejects a stale source identity', () => {
+    const catalog = createContributionCatalog(app);
+    const consumes = { services: ['host/onboarding'] };
+    catalog.setNative([{ id: 'native-consumer', consumes }]);
+    const manifest: PackManifest = { id: 'source-consumer', name: 'Source', version: '1.0.0', consumes };
+    const declaration = { manifest, dir: '/unavailable/source-consumer', declarationRevision: _declarationRevision(manifest) };
+    catalog.setSources([declaration]);
+    expect(catalog.getSnapshot().native[0].consumes).toEqual(consumes);
+    expect(catalog.getSnapshot().sourcePacks[0].manifest.consumes).toEqual(consumes);
+    expect(() => catalog.setSources([{ ...declaration, manifest: { ...manifest, consumes: { services: ['host/appData'] } } }]))
+      .toThrow('stale declaration identity');
+    expect(catalog.getSnapshot().sourcePacks[0].manifest.consumes).toEqual(consumes);
+  });
+
   it('discovers the native reference node without loading a UI implementation', () => {
     const catalog = createContributionCatalog(app);
     catalog.setNative([hostDeclaration]);
@@ -36,7 +50,7 @@ describe('contribution catalog data', () => {
     try {
       const frontend = { tiptapPlugins: { suggestions: { extensions: { mention: 'src/unavailable.ts#Mention' },
         popups: { mention: 'src/unavailable.vue' }, isSuggestionActive: 'src/unavailable.ts#isActive' } } };
-      const manifest: PackManifest = { id: 'help-pack', name: 'Help', version: '1.0.0',
+      const manifest: PackManifest = { id: 'help-pack', name: 'Help', version: '1.0.0', consumes: { services: ['host/onboarding'] },
         features: { notes: { description: 'Feature declaration fixture.', plugin: { label: 'Cold Notes', state: 'src/state.ts', canvas: 'src/canvas.vue' } } }, extensions: {
           dsl: { cold: { entry: 'src/unavailable.ts', targets: ['monaco'], prefix: 'cold:' } },
           commands: { cold: { placeholder: 'Cold command' } }, artifacts: { cold: { icon: 'FileText', fe: 'src/unavailable.vue' } },
@@ -54,6 +68,7 @@ describe('contribution catalog data', () => {
       fs.writeFileSync(path.join(dir, PACK_LAYOUT.feEntry), `throw new Error('Do not activate frontend');`);
       sealPack(dir);
       const catalog = readInstalledContributionCatalog(packsDir, new Set(['help-pack']));
+      expect(catalog.get('help-pack')?.snapshot.manifest.consumes).toEqual(manifest.consumes);
       const accepted = readPackBuild(dir);
       expect(catalog.get('help-pack')?.buildRevision).toBe(accepted.revision);
       expect(catalog.get('help-pack')?.integrity?.files).toEqual(accepted.integrity.files);
