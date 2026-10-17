@@ -7472,3 +7472,23 @@ suites were run for prose. Existing runtime evidence is not claimed rerun on thi
 Native external-library capture, Windows descendant ownership/native runner, Linux acceptance,
 integration convergence and final committed strict acceptance remain open. This audit closes the
 identified documentation mismatches, not the full goal or its final acceptance register.
+
+## A5 schema and API agreement (2026-10-17)
+
+On committed source `b62da5c72`, the focused public-contract checks pass:
+
+- `npm run api:check`: all 132 API reports current (2 EARS, 28 SDK, 102 UI).
+- `npm run schema:check`: generated `apack.schema.json` current.
+- `npm run exports:check`: UI export map and component entry modules current.
+
+Logs: `/private/tmp/apack-final-contract-api.log`,
+`/private/tmp/apack-final-contract-schema.log`, `/private/tmp/apack-final-contract-exports.log`.
+The action template uses generated `Services`; service and migration templates match their current
+object-export and behavior-only contracts. Public docs were corrected in `b62da5c72` against inspected
+implementation. The consumption plan now incorporates the already recorded complete external app/fork
+acceptance instead of leaving it labelled unexecuted.
+
+This closes the named schema/API/export agreement check for A5 on this source, not converged strict
+acceptance. Native external-input and Windows lifetime decisions/implementation, Linux evidence,
+integration convergence and the final committed-source strict gate remain open. No broad suite,
+producer rebuild or additional platform support claim is made by this checkpoint.

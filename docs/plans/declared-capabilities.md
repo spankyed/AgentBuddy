@@ -2,7 +2,7 @@
 
 Status: A1 selection and A2 declaration, pre-import/admission and read-only diagnostics are implemented.
 A3 core selection, runtime/type filtering and lifetimes are implemented in `cccc12d5d`;
-A4 service/action routes are implemented in `bb6df4a45`; existing content-target validation is retained. Current-build authoring/harness acceptance passes; app and converged acceptance remain. Remaining discovery/build ownership work stays active in the [owning goal](../goals/goal-settings-and-pack-contracts.md); it blocks only
+A4 service/action routes are implemented in `bb6df4a45`; existing content-target validation is retained. Current-build authoring/harness and complete external app/fork acceptance pass; schema/API/export agreement is checked. Converged strict acceptance remains. Remaining discovery/build ownership work stays active in the [owning goal](../goals/goal-settings-and-pack-contracts.md); it blocks only
 the slices that consume its missing guarantees. This is an API dependency contract, not a security sandbox.
 
 ## Problem
@@ -242,7 +242,13 @@ provider-typed scheduler doubles without widening consumer APIs (`1fbc1e223`), t
 public testing guidance now explains selected APIs and provider-owned doubles. See
 [current authoring evidence](../evidence/settings-and-pack-contracts.md#current-build-service-authoring-acceptance-2026-10-17).
 The real default build remains current after facade generation, and fork preparation passes after
-`caf57cb0e`. Actual app/restart/restoration acceptance and the converged strict gate remain required.
+`caf57cb0e`. The refreshed complete external app command passes all 27 fixture cases, the bundled-UI case and
+four normal fork launch/restart/removal/restoration cases; see the owning goal's
+[app evidence](../evidence/settings-and-pack-contracts.md#refreshed-external-app-and-normal-fork-acceptance-2026-10-17).
+The subsequent public-guide audit and current schema/API/export checks establish contract agreement;
+see [A5 agreement evidence](../evidence/settings-and-pack-contracts.md#a5-schema-and-api-agreement-2026-10-17).
+The later compiler change still belongs to final producer/app convergence. The required strict gate
+remains open; these local results do not certify the full goal.
 
 | Checkpoint | Concrete output | Closure evidence |
 |---|---|---|
