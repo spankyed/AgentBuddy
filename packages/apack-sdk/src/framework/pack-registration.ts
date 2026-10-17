@@ -107,9 +107,7 @@ export interface PackRegistration {
   appliers?: import('../utils/apply.ts').ContentApplier[];
   /** Build-checked command identities from extensions.commands; discovery reads catalog declarations. */
   commands?: import('./pack-commands.ts').PackCommand[];
-  /** Display name used for this pack's contributions. */
-  name?: string;
-  /** Pack-owned preference groups declared inline in extensions.settings. */
   dependencies?: Record<string, string>;
+  /** Pack-owned preference groups declared inline in extensions.settings. */
   settings?: Record<string, import('./settings-definition.ts').SettingsDefinition>;
 }

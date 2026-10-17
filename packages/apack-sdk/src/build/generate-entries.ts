@@ -1061,7 +1061,6 @@ ${writerEntries.length > 0 ? `  contentWriters: { ${writerEntries.map(([entity],
   appliers,
 ${commands.length ? `  commands: ${dataLiteral(commands)},` : ''}
 ${manifest.extensions?.settings ? `  settings: ${dataLiteral(manifest.extensions.settings)},` : ''}
-  name: ${dataLiteral(manifest.name)},
   ears: {
     // Only this pack's own: EARS also names its dependencies' and the SDK's, which they register
     entities: ${dataLiteral(_packEntityTypes(manifest))},

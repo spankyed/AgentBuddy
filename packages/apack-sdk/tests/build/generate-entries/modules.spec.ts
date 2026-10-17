@@ -396,7 +396,7 @@ describe('the snapshot format', () => {
   /** The registration the runtime bundle exports, which the app loads */
   const REGISTRATION_FIELDS: Record<keyof PackRegistration, true> = {
     declarationRevision: true,
-    id: true, name: true, features: true, services: true, bindSettings: true, ears: true, repositories: true, lifecycle: true, migrations: true, steps: true,
+    id: true, features: true, services: true, bindSettings: true, ears: true, repositories: true, lifecycle: true, migrations: true, steps: true,
     artifacts: true, blocks: true, contentWriters: true, appliers: true, commands: true, settings: true, dependencies: true,
   };
   const REGISTRATION_FEATURE_FIELDS: Record<keyof PackFeature, true> = {
@@ -451,7 +451,7 @@ describe('the snapshot format', () => {
         contentField: ['default', 'from', 'type'],
       },
       registration: {
-        fields: ['appliers', 'artifacts', 'bindSettings', 'blocks', 'commands', 'contentWriters', 'declarationRevision', 'dependencies', 'ears', 'features', 'id', 'lifecycle', 'migrations', 'name', 'repositories', 'services', 'settings', 'steps'],
+        fields: ['appliers', 'artifacts', 'bindSettings', 'blocks', 'commands', 'contentWriters', 'declarationRevision', 'dependencies', 'ears', 'features', 'id', 'lifecycle', 'migrations', 'repositories', 'services', 'settings', 'steps'],
         feature: ['designation', 'plugin', 'services', 'settings', 'system'],
         system: ['machine', 'receives'],
         plugin: ['receives'],

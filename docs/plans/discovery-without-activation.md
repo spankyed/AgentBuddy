@@ -112,7 +112,7 @@ not a discovery defect when its caller needs an executing implementation.
 | Registration field | Static authority / binding boundary | Current finding |
 |---|---|---|
 | `id`, `declarationRevision` | Accepted snapshot/native owner; installed runtime revision checks in `declaration-binding.ts` | Implemented. Native composition has no installed revision. |
-| `name`, `version`, `dependencies` | Authored manifest; native declarations have dependencies and optional own version | Native version is implemented for pack-line migration caps in `f72cb8756`. Native display name is not represented. Audit actual display readers before deciding whether to add native metadata or remove redundant binding data. |
+| `name`, `version`, `dependencies` | Authored manifest; native declarations have dependencies and optional own version | Native version is implemented for pack-line migration caps in `f72cb8756`. Display readers use manifest/origin names or feature labels; none reads `PackRegistration.name`. Remove that redundant registration field and generated assignment; native name metadata has no demonstrated consumer. |
 | `features` membership | Manifest/native keyed features; backend and frontend admission | Both admit against declarations; native backend nested checks remain incomplete below. |
 | `features.*.designation` | Feature declaration; runtime designation lookup is execution | Native parity repaired in `b268fac86`: changed/added/omitted claims refuse atomically; fixtures retain declarations, including explicit candidate admission before role replacement. Authored backend and shared frontend already compare it. |
 | `features.*.system.machine` | Authored `system.entry`; executable machine remains activation | Implemented in `774b0844c`: compiled event contracts declare endpoint presence independently of machine bindings. Native composition may bind only the systems it runs; every bound endpoint must match. No UI pane is invented for the shell inbox. |
@@ -141,6 +141,20 @@ asset receipt verifies shipped files. Do not treat module target strings alone a
 asset is present, or an unavailable source-only projection as an empty compiled inventory. Existing
 `readPackBuild`, help/DSL validation and content-index readers are the owners to extend where a
 specific missing asset or reader is demonstrated.
+
+The current asset audit distinguishes inline snapshot data from physical outputs. Facade type text,
+flow-helper module/type text, help documents and DSL definitions are materialized in the snapshot;
+installed discovery must not require their authored modules or duplicate generated files. Runtime
+entries, frontend CSS/chunks and compiled content are physical outputs. `verifyPack` proves equality
+with the producer's file receipt, but `sealPackBuild` hashes whichever files exist: a file omitted
+before sealing is not caught by that proof. Required-entry validation belongs at the current-format
+build-reading/admission boundary, including source staging and installation. Backend-only builds must
+remain valid; declared frontend contributions must not silently become frontless. First reproduce
+missing backend/frontend entry acceptance in isolated filesystem fixtures, then enforce entry
+requirements derived from actual generated bindings. Audit content indexes and bundler output graphs
+separately for missing media, CSS and lazy chunks; do not substitute authored-source existence or
+JavaScript text scanning for compiler output evidence. The latter producer requirements remain part
+of B1–B4 and final all-kind acceptance, not an exemption from completeness.
 
 Execute the identified gaps in this order:
 

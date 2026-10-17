@@ -468,6 +468,7 @@ export interface PackRegistration {
     commands?: PackCommand[];
     contentWriters?: Record<string, ContentWriter>;
     declarationRevision?: string;
+    // (undocumented)
     dependencies?: Record<string, string>;
     // (undocumented)
     ears?: PackEARS;
@@ -477,11 +478,9 @@ export interface PackRegistration {
     // (undocumented)
     lifecycle?: PackLifecycleHooks;
     migrations?: PackMigrations;
-    name?: string;
     repositories?: Record<string, unknown>;
     // (undocumented)
     services?: Record<string, unknown>;
-    // (undocumented)
     settings?: Record<string, SettingsDefinition>;
     // (undocumented)
     steps?: StepDefinition[];
