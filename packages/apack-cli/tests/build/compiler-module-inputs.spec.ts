@@ -169,7 +169,9 @@ it('is independent of checkout location and modification times', () => {
   const a = fixture(), b = fixture();
   a.write('contract.d.ts', 'export type Value = string;');
   b.write('contract.d.ts', 'export type Value = string;');
-  expect(a.hash()).toBe(b.hash());
+  const first = readCompilerModuleInputs(a.pack), second = readCompilerModuleInputs(b.pack);
+  expect(first.observations().entries).toEqual(second.observations().entries);
+  expect(first.hash).toBe(second.hash);
   fs.utimesSync(path.join(a.pack, '../contract.d.ts'), new Date(1), new Date(1));
   expect(a.hash()).toBe(b.hash());
 });

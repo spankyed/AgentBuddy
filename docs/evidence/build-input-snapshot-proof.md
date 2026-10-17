@@ -2019,3 +2019,21 @@ All three local export tests pass (0.235s runner), UI types and focused lint pas
 The first local `exports:check` attempt hit sandbox-only tsx IPC denial; the unchanged check passes
 with IPC access: `/private/tmp/apack-windows-ui-exports-check.log`. Native Windows/compiler and
 full-pool acceptance remain open.
+
+
+### Windows package preparation passes; module identity diagnostic
+
+[Run 39058623655](https://github.com/spankyed/AgentBuddy/actions/runs/39058623655), source
+`6a8a514cf`, passes complete package preparation. All 15 real packaging tests pass on Windows,
+including the source/destination metacharacter case. Compiler tests then stop at the pre-existing
+checkout-location identity assertion in `compiler-module-inputs.spec.ts`: two equivalent fixture
+locations produce different hashes. 25 cases pass before fail-fast; this is an actual Windows
+identity failure, with no evidence yet identifying the differing input.
+Log: `/private/tmp/apack-windows-39058623655-failed.log`.
+
+Add a direct comparison of the existing observation entries before their hashes in that regression.
+This preserves its assertion and makes the next native run expose the exact query/value difference;
+do not guess at path aliases, file timestamps or resolution semantics from two opaque hashes.
+All 24 local module-input cases pass (1.06s runner), with focused lint and whitespace checks:
+`/private/tmp/apack-windows-module-observations.log`. The Windows compiler and descendant-lifetime
+checkpoints remain open.
