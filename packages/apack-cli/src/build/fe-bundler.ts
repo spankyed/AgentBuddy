@@ -9,6 +9,7 @@ import { errorMessage } from '@apackdev/sdk/utils/pure';
 import type { BuildWatchInputs } from './build-watch-inputs.ts';
 import { globWatchPlugin } from './glob-watch.ts';
 import type { CompilationInputs } from './compilation-inputs.ts';
+import { withCompilerFileReads } from './compiler-file-reads.ts';
 
 /**
  * The package names the pack declares opaque to the bundler (`build.opaqueDeps`). Unreadable is an error
@@ -374,7 +375,7 @@ export interface BundleFEOptions {
   packDir: string;
   outputDir: string;
   entryPoint: string;
-  /** Uses the build's captured authored public files when supplied. */
+  /** Use the build's captured file and namespace reads. */
   compilation?: CompilationInputs;
   /** Minified, no source maps (release bundles). */
   release?: boolean;
@@ -517,6 +518,13 @@ async function tailwindPostcssPlugins(packDir: string): Promise<any[]> {
 }
 
 export async function bundlePackFE(options: BundleFEOptions): Promise<{ success: boolean; error?: string }> {
+  const bundle = () => bundleFrontend(options);
+  return options.compilation
+    ? withCompilerFileReads({ compilation: options.compilation, outputDirectory: options.outputDir }, bundle)
+    : bundle();
+}
+
+async function bundleFrontend(options: BundleFEOptions): Promise<{ success: boolean; error?: string }> {
   const { packDir, outputDir, entryPoint, release = false, recordReads, compilation } = options;
 
   const vite = await import('vite');

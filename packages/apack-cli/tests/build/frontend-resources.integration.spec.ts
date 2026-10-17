@@ -1,6 +1,8 @@
 import fs from 'node:fs';
+import os from 'node:os';
 import path from 'node:path';
-import { afterEach, beforeEach, describe, expect, it, vi, type MockInstance } from 'vitest';
+import { createRequire } from 'node:module';
+import { afterAll, afterEach, beforeEach, describe, expect, it, vi, type MockInstance } from 'vitest';
 import { createFrontendResourceFixture, readFrontendOutput } from '../_support/frontend-resources.ts';
 import { readPackBuild } from '@apackdev/host/packs';
 import { callCli } from '../_support/pack-builds.ts';
@@ -10,6 +12,67 @@ import { captureCompilationInputs } from '../../src/build/compilation-inputs.ts'
 
 const fixture = createFrontendResourceFixture();
 const { consumer } = fixture;
+let inputWorkspace: string | undefined;
+afterAll(() => { if (inputWorkspace) fs.rmSync(inputWorkspace, { recursive: true, force: true }); });
+
+it.each(['unchanged', 'edited'] as const)('uses one input view across frontend compiler paths with %s originals', async mode => {
+  const { pack, helper } = consumer();
+  const require = createRequire(import.meta.url);
+  const vite = createRequire(require.resolve('vite/package.json'));
+  fs.symlinkSync(path.dirname(vite.resolve('sass')), path.join(fixture.root, 'node_modules/sass'), 'dir');
+  const files: Record<string, string> = {
+    'src/frontend-entry.ts': `export {default} from './canvas.vue';`,
+    'src/canvas.vue': `<script setup lang="ts">
+      import {marker} from 'borrowed';
+      const source = 'SOURCE_CAPTURED';
+      const lazy = () => import('./lazy.ts');
+      const worker = () => new Worker(new URL('./worker.ts', import.meta.url), {type: 'module'});
+      const gathered = import.meta.glob('./items/*.ts', {eager: true});
+      </script><template><div class="text-proof" @click="lazy">{{marker}}{{source}}{{gathered}}
+      <button @click="worker">Launch</button><img src="./image.svg?no-inline" /></div></template>
+      <style src="./style.css"></style><style lang="scss">@use './values.scss'; .sass-proof {content: values.$label;}</style>`,
+    'src/lazy.ts': `export const marker = 'LAZY_CAPTURED';`,
+    'src/worker.ts': `self.postMessage('WORKER_CAPTURED');`,
+    'src/items/first.ts': `export const marker = 'GLOB_CAPTURED';`,
+    'src/image.svg': '<svg xmlns="http://www.w3.org/2000/svg"><text>SVG_CAPTURED</text></svg>',
+    'src/style.css': `@import './leaf.css'; .proof {background: url('./image.svg?no-inline');}`,
+    'src/leaf.css': `.proof::after {content: 'STYLE_CAPTURED';}`,
+    'src/values.scss': `$label: 'SASS_CAPTURED';`,
+    'tailwind.config.ts': `import colors from './config-origin.cjs'; export default {content: [${JSON.stringify(path.join(pack, 'src/**/*.vue'))}], theme: {extend: {colors: {proof: colors.value}}}};`,
+    'config-origin.cjs': `if (__dirname !== ${JSON.stringify(fs.realpathSync(pack))}) throw new Error('Expected original config source directory: ' + __dirname); module.exports = {value: '#123456'};`,
+  };
+  const write = (file: string, body: string) => {
+    fs.mkdirSync(path.dirname(path.join(pack, file)), { recursive: true });
+    fs.writeFileSync(path.join(pack, file), body);
+  };
+  for (const [file, body] of Object.entries(files)) write(file, body);
+  fs.writeFileSync(helper, `export const marker = 'DEPENDENCY_CAPTURED';`);
+  const outputDir = path.join(pack, 'dist/runtime');
+  // Tailwind retains its jiti cache directory for the process lifetime, across these builds.
+  const workspace = inputWorkspace ??= fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'apack-frontend-inputs-')));
+  fs.mkdirSync(outputDir, { recursive: true });
+  fs.mkdirSync(path.join(workspace, 'tmp'), { recursive: true });
+  vi.stubEnv('APACK_BUILD_INPUTS_DIRECTORY', workspace);
+  vi.stubEnv('TMPDIR', path.join(workspace, 'tmp'));
+  const compilation = captureCompilationInputs(pack);
+  try {
+    if (mode === 'edited') {
+      for (const [file, body] of Object.entries(files)) write(file, body.replaceAll('_CAPTURED', '_LIVE').replace('#123456', '#654321'));
+      fs.writeFileSync(helper, `export const marker = 'DEPENDENCY_LIVE';`);
+    }
+    const result = await bundlePackFE({ packDir: pack, outputDir, entryPoint: path.join(pack, 'src/frontend-entry.ts'), compilation });
+    expect(result.success, result.error).toBe(true);
+    const output = ['.js', '.css', '.svg'].map(extension => readFrontendOutput(pack, extension)).join('\n');
+    for (const marker of ['SOURCE', 'DEPENDENCY', 'STYLE', 'SVG', 'LAZY', 'WORKER', 'GLOB', 'SASS']) {
+      expect(output, marker).toContain(`${marker}_CAPTURED`);
+      expect(output, marker).not.toContain(`${marker}_LIVE`);
+    }
+    expect(readFrontendOutput(pack, '.css')).toContain('18 52 86');
+    expect(output).not.toContain('apack-inputs-');
+    if (mode === 'unchanged') expect(() => compilation.assertCurrent()).not.toThrow();
+    else expect(() => compilation.assertCurrent()).toThrow('Compiler or installed package inputs changed');
+  } finally { compilation.dispose(); }
+});
 
 it('copies public assets from the accepted input view instead of changed live files', async () => {
   const { pack } = consumer();
