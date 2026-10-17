@@ -474,7 +474,7 @@ export interface PackRegistration {
     appliers?: ContentApplier[];
     // (undocumented)
     artifacts?: ArtifactDefinition[];
-    bindServices?: (services: Readonly<Record<string, unknown>>) => () => void;
+    bindServices?: (access: PackServiceAccess) => () => void;
     // (undocumented)
     blocks?: BlockDefinition[];
     commands?: PackCommand[];

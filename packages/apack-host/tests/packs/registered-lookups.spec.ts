@@ -6,7 +6,7 @@ import * as os from 'node:os';
 import * as path from 'node:path';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { startTestRuntime } from '@apackdev/sdk/testing';
-import { services } from '@apackdev/sdk/services';
+import { _createPackServices } from '@apackdev/sdk/services';
 import { getDesignated, hasDesignation } from '@apackdev/sdk/designations';
 import { stepRegistry, type StepDefinition } from '@apackdev/sdk/steps';
 import { artifactRegistry } from '@apackdev/sdk/artifacts';
@@ -20,7 +20,7 @@ import { PLUGIN_EVENT_TYPES } from '@apackdev/sdk/events';
 const receives = (...types: string[]) => new Set([...types, ...PLUGIN_EVENT_TYPES]);
 
 // How this spec registers and unregisters packs: a registry it creates, bound for the SDK's lookups
-const registry = createNativePackTestRegistry();
+const registry = createNativePackTestRegistry({ settingsForPack: () => ({ get: <T>() => ({} as T), set() {}, reset() {}, onChange: () => () => {} }) });
 startTestRuntime({ packs: registry });
 const register = (pack: PackRegistration) => registry.registerPack(pack);
 const unregister = (packId: string) => registry.unregisterPack(packId);
@@ -131,18 +131,22 @@ describe('artifacts and blocks', () => {
 describe('services', () => {
   it("are reachable through services while their pack is registered", () => {
     const memos = { list: () => [] };
-    add({ id: 'memo-pack', services: { memos } });
-    expect(services.memos).toBe(memos);
-    expect(Object.keys(services)).toContain('memos');
+    const generated = _createPackServices();
+    add({ id: 'memo-pack', services: { memos }, bindServices: generated.bindServices });
+    expect((generated.services.memos as typeof memos).list()).toEqual([]);
+    expect(Object.keys(generated.services)).toContain('memos');
 
     remove('memo-pack');
-    expect(services.memos).toBeUndefined();
+    expect(() => generated.services.memos).toThrow('until the host accepts');
+    expect(registry.getRegisteredServices().memos).toBeUndefined();
   });
 
   it("aren't reachable when their pack collides with another's", () => {
     add({ id: 'first-pack', services: { memos: {} } });
-    expect(() => add({ id: 'second-pack', services: { memos: {}, cards: {} } })).toThrow('Service collision: key "memos"');
-    expect(services.cards).toBeUndefined();
+    const generated = _createPackServices();
+    expect(() => add({ id: 'second-pack', services: { memos: {}, cards: {} }, bindServices: generated.bindServices })).toThrow('Service collision: key "memos"');
+    expect(() => generated.services.cards).toThrow('until the host accepts');
+    expect(registry.getRegisteredServices().cards).toBeUndefined();
   });
 });
 
@@ -353,7 +357,7 @@ describe('a pack whose registration is refused', () => {
 });
 
 it('reads declared visibility before runtime registration and follows declaration replacement', () => {
-  const isolated = createNativePackTestRegistry();
+  const isolated = createNativePackTestRegistry({ settingsForPack: () => ({ get: <T>() => ({} as T), set() {}, reset() {}, onChange: () => () => {} }) });
   isolated.catalog.setNative([{ id: 'static-pack', features: { view: {
     description: 'A declared navigation destination.', plugin: {
       label: 'View', state: 'unavailable.ts#state', defaultVisible: false,

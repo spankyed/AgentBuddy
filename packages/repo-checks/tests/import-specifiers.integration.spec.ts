@@ -177,7 +177,7 @@ describe('findRawPackHelpers', () => {
   it.each([
     ["import { untypedBroadcastToPlugin as toPlugin } from '@apackdev/sdk/events';", 'untypedBroadcastToPlugin from @apackdev/sdk/events'],
     ["import onConnected, { untypedSendToSystem } from '@apackdev/sdk/events';", 'untypedSendToSystem from @apackdev/sdk/events'],
-    ["import { untypedBroadcastToPlugin, services } from '@apackdev/sdk/services';", 'untypedBroadcastToPlugin from @apackdev/sdk/services'],
+    ["import { untypedBroadcastToPlugin, createActionEmitter } from '@apackdev/sdk/services';", 'untypedBroadcastToPlugin from @apackdev/sdk/services'],
     ["import { registerRepository, untypedTx } from '@apackdev/ears';", 'registerRepository from @apackdev/ears'],
     ["import { unregisterRepository } from '@apackdev/ears';", 'unregisterRepository from @apackdev/ears'],
     ["export type { untypedBroadcastToPlugin } from '@apackdev/sdk/events';", 'untypedBroadcastToPlugin from @apackdev/sdk/events'],
@@ -321,7 +321,7 @@ describe('findUpwardImports', () => {
       'src/index.ts': "import { untypedTx } from '@apackdev/ears';\nexport type { Q } from '@apackdev/ears/lmdb';\nexport * from '@apackdev/sdk/events';\n",
     });
     layer('layers/host', { dependencies: { '@apackdev/ears': '*', '@apackdev/sdk': '*' } }, {
-      'src/index.ts': "import { services } from '@apackdev/sdk/services';\nimport { untypedQx } from '@apackdev/ears';\nimport { x } from '../x.ts';\n",
+      'src/index.ts': "import { createActionEmitter } from '@apackdev/sdk/services';\nimport { untypedQx } from '@apackdev/ears';\nimport { x } from '../x.ts';\n",
       'tests/a.spec.ts': "vi.mock('@apackdev/ears');\n",
     });
     layer('layers/api', { devDependencies: { '@apackdev/ears': '*', '@apackdev/host': '*', '@apackdev/sdk': '*' } }, {
@@ -662,7 +662,7 @@ const FIRES: Record<ImportRuleId, () => string[]> = {
     const layers = LAYERS.filter((l) => modelled.includes(path.basename(l.dir)))
       .map((l) => ({ ...l, dir: `layers/${path.basename(l.dir).replace(/^apack-/, '')}` }));
     // Every layer has to be there, since the rule walks all of them; only the lowest one imports upward
-    const upward = { 'src/index.ts': "import { services } from '@apackdev/sdk/services';\n" };
+    const upward = { 'src/index.ts': "import { createActionEmitter } from '@apackdev/sdk/services';\n" };
     for (const { dir } of layers) layer(dir, {}, dir === 'layers/ears' ? upward : {});
     return findUpwardImports(layers, root);
   },

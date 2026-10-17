@@ -3,14 +3,14 @@
 import { describe, expect, it } from 'vitest';
 import { mockInference } from '@apackdev/testing/harness';
 import type { ExecutionContext, TNodeEntity } from '@apackdev/sdk/steps';
-import { services } from '#generated/services.ts';
+import { servicesForAction } from '#generated/services.ts';
 import { handler } from '#extensions/steps/action/runtime.ts';
 
 /** Runs inline action code on the action step, as a flow node in code mode does */
 async function runAction(actionFn: string) {
   const sent: Array<{ type: string; result?: unknown; error?: { message?: string } }> = [];
   const node = { id: 'Node-action', label: 'Classify', nodeType: 'action', mode: 'code', actionFn };
-  const ctx = { event: { type: 'issue.opened' }, steps: {}, runtime: { getAppServices: () => services } } as unknown as ExecutionContext;
+  const ctx = { event: { type: 'issue.opened' }, steps: {}, runtime: { servicesForAction } } as unknown as ExecutionContext;
   await handler({ id: 'TNode-action', nodeAttributes: {} } as unknown as TNodeEntity, node, ctx, { send: (event: (typeof sent)[number]) => sent.push(event) });
   return sent;
 }

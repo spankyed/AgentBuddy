@@ -150,7 +150,7 @@ export interface StepRun {
 
 export interface RuntimeServices {
   getFlowActor: (flowTNodeId: EARS.EntityId) => AnyActorRef | undefined;
-  getAppServices: () => unknown;
+  servicesForAction: import('../services/index.ts').PackServiceAccess['servicesForAction'];
 }
 
 export interface ExecutionContext {

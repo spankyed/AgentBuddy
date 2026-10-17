@@ -1668,7 +1668,7 @@ ${nodeEntity}`;
     return `${HEADER}
 import type { z } from 'zod';
 import type { EARS } from '@apackdev/ears';
-import type { HostServices } from '@apackdev/sdk/services';
+import type { HostServices, PackServiceAccess } from '@apackdev/sdk/services';
 import { runtimeServices } from './runtime-services.ts';
 import type { TypedSendToPlugin, TypedSendToWindow, TypedSendToSystem } from '@apackdev/sdk/events';
 import type { Repositories } from './repository.ts';
@@ -1704,14 +1704,19 @@ export type Services = typeof featureServices & Pick<HostServices, ${hostKeys}> 
 
 /** The host's services proxy, typed with this pack's feature services. */
 export let services = runtimeServices.services as unknown as Services;
+export let servicesForAction = runtimeServices.servicesForAction as (label: string) => Services;
 
 /** Rebinding publishes a fresh facade; retained roots keep their retired lifetime. */
-export function bindServices(source: Readonly<Record<string, unknown>>): () => void {
+export function bindServices(source: PackServiceAccess): () => void {
   const dispose = runtimeServices.bindServices(source);
   services = runtimeServices.services as unknown as Services;
+  servicesForAction = runtimeServices.servicesForAction as (label: string) => Services;
   return () => {
     try { dispose(); }
-    finally { services = runtimeServices.services as unknown as Services; }
+    finally {
+      services = runtimeServices.services as unknown as Services;
+      servicesForAction = runtimeServices.servicesForAction as (label: string) => Services;
+    }
   };
 }
 export type Z = typeof z;

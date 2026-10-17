@@ -1,6 +1,6 @@
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { _createPackServices, type InferenceService } from '@apackdev/sdk/services';
-import { startTestRuntime, fakeInference } from '@apackdev/sdk/testing';
+import { startTestRuntime, fakeInference, testRootEvents } from '@apackdev/sdk/testing';
 import { bindHost } from '@apackdev/sdk/runtime';
 import { boundHost, unbindHost } from '@apackdev/sdk/runtime/internals';
 import type { NativePackDeclaration, PackRegistration } from '@apackdev/sdk/framework';
@@ -24,6 +24,7 @@ function caller(id = 'consumer', services = ['provider/search']) {
 }
 afterEach(() => {
   for (const id of declared.keys()) if (packs.getPackRegistration(id)) packs.unregisterPack(id);
+  vi.restoreAllMocks();
   declared.clear(); packs.catalog.setNative([]); mocks.clear();
   if (boundHost() !== host) { unbindHost(); bindHost(host); }
 });
@@ -146,6 +147,34 @@ describe('accepted service bindings', () => {
     expect((await generate({ prompt: 'Hello' })).text).toBe('original response');
     packs.unregisterPack('consumer');
     expect(() => generate({ prompt: 'Again' })).toThrow('revoked');
+  });
+
+  it('keeps named action logging and sends inside the accepted selection and lifetime', () => {
+    vi.spyOn(console, 'info').mockImplementation(() => {});
+    register({ id: 'receiver', features: { destination: { description: 'Attribute sends to the declared role.', designation: 'brain' } } },
+      { id: 'receiver', features: { destination: { designation: 'brain' } } });
+    const generated = caller('consumer', ['host/onboarding']);
+    const factory = generated.servicesForAction;
+    const action = factory('Example');
+    expect(Object.keys(action)).toEqual(Object.keys(generated.services));
+    expect(action.appData).toBeUndefined();
+    const log = (action.logger as { info(message: string): void }).info;
+    const send = (action.emitter as { sendToSystem(to: { role: string }, event: { type: string }): void }).sendToSystem;
+    const messages: unknown[] = [];
+    const logs: unknown[] = [];
+    const stops = [testRootEvents.onIncoming(message => messages.push(message)), testRootEvents.onLog(event => logs.push(event))];
+    try {
+      log('Hello'); send({ role: 'brain' }, { type: 'RUN' });
+      expect(logs).toContainEqual(expect.objectContaining({ source: 'action:Example', message: 'Hello' }));
+      expect(messages).toContainEqual(expect.objectContaining({ from: 'consumer', via: 'action:Example', event: { type: 'RUN' } }));
+      packs.unregisterPack('consumer');
+      expect(() => log('Late')).toThrow('revoked');
+      expect(() => send({ role: 'brain' }, { type: 'LATE' })).toThrow('revoked');
+      const replacement = caller('consumer', ['host/onboarding']);
+      expect(() => factory('Late')).toThrow('revoked');
+      expect(replacement.servicesForAction('Fresh').appData).toBeUndefined();
+      expect(messages).toHaveLength(1);
+    } finally { stops.forEach(stop => stop()); }
   });
 
   it('guards inference agents returned after caller retirement', async () => {

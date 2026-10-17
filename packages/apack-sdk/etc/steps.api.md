@@ -84,9 +84,9 @@ export function _mergeStepDefinitions(existing: StepDefinition, def: StepDefinit
 // @public (undocumented)
 export interface RuntimeServices {
     // (undocumented)
-    getAppServices: () => unknown;
-    // (undocumented)
     getFlowActor: (flowTNodeId: EARS.EntityId) => AnyActorRef | undefined;
+    // (undocumented)
+    servicesForAction: PackServiceAccess['servicesForAction'];
 }
 
 // @public

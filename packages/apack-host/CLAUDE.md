@@ -111,7 +111,9 @@ All paths come from `resolveAppEnvironment()` (`@apackdev/sdk/env`). The context
   owns caller retirement after actor cleanup; failed scheduling revokes immediately. Host binding
   generations change even when the same host object is rebound. Inference agent methods are new calls;
   already-started calls/streams can settle on their original implementation. Ordinary results are not
-  wrapped. Harness mocks overlay this selection, never expand it. Frontend `bindSettings` remains the
+  wrapped. `PackServiceAccess.servicesForAction(label)` supplies the same selection with guarded
+  action logger/emitter attribution. Host identity comes from admission; flows retain the factory.
+  Harness mocks overlay this selection, never expand it. Frontend `bindSettings` remains the
   separate settings-port contract.
 - `unregisterPack` removes captured contribution keys and disposes its binding; it never re-reads authored getters to discover what to remove. `getDesignated(role)` resolves the accepted feature ref, `<packId>/<featureId>`. Reentrant registration changes are refused while admission or retirement is in progress. Initialization, migrations, content effects and actor restart remain the runtime caller's responsibility.
 - Every pack's systems and plugins are addressed `<packId>/<featureId>`, built-in packs included, so two packs can each have a `notes` feature. The host is the pack `host`, and registers like one (`hostRegistration` in `features/registration.ts`: the `application`, `packs` and `settings` features, their plugins always and their systems where the caller runs them); its refs are `HOST` (`refs.ts`: `bus`, `application`, `packs`, `settings`), and no other pack may take its id. That makes plugin ownership structural rather than checked: a registration names its own features and whoever reads one resolves it (`resolveName`, `@apackdev/sdk/ids`), pack ids are unique and neither id may hold a `/`, so no pack can produce a ref in another's namespace and there is no shadowing left to refuse.

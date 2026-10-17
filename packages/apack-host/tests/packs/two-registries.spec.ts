@@ -4,7 +4,7 @@ import { createNativePackTestRegistry } from '@apackdev/host/testing';
 // to sit at module scope beside the registry, where a second registry in the process saw the first's.
 import { describe, expect, it } from 'vitest';
 import { startTestRuntime } from '@apackdev/sdk/testing';
-import { services } from '@apackdev/sdk/services';
+import { _createPackServices } from '@apackdev/sdk/services';
 import { getDesignated, hasDesignation } from '@apackdev/sdk/designations';
 import { stepRegistry } from '@apackdev/sdk/steps';
 import { getSettingsCatalog, type PackRegistration } from '@apackdev/sdk/framework';
@@ -25,10 +25,11 @@ const pack = (id: string, role: string, step: string, service: string, featureId
 });
 
 describe('two registries in one process', () => {
-  const bound = createNativePackTestRegistry();
-  const other = createNativePackTestRegistry();
+  const bound = createNativePackTestRegistry({ settingsForPack: () => ({ get: <T>() => ({} as T), set() {}, reset() {}, onChange: () => () => {} }) });
+  const other = createNativePackTestRegistry({ settingsForPack: () => ({ get: <T>() => ({} as T), set() {}, reset() {}, onChange: () => () => {} }) });
   startTestRuntime({ packs: bound });
-  bound.registerPack(pack('memo-pack', 'memos', 'memo_step', 'memoService', 'memos'));
+  const generated = _createPackServices();
+  bound.registerPack({ ...pack('memo-pack', 'memos', 'memo_step', 'memoService', 'memos'), bindServices: generated.bindServices });
   other.registerPack(pack('card-pack', 'cards', 'card_step', 'cardService', 'cards'));
 
   it("keep their own packs' designations, steps, services and settings defaults", () => {
@@ -52,8 +53,8 @@ describe('two registries in one process', () => {
     expect(hasDesignation('cards')).toBe(false);
     expect(stepRegistry.has('memo_step')).toBe(true);
     expect(stepRegistry.has('card_step')).toBe(false);
-    expect(services.memoService).toEqual({ from: 'memo-pack' });
-    expect(services.cardService).toBeUndefined();
+    expect(generated.services.memoService).toEqual({ from: 'memo-pack' });
+    expect(generated.services.cardService).toBeUndefined();
     expect(getSettingsCatalog().features).toEqual(bound.settingsCatalog().features);
   });
 

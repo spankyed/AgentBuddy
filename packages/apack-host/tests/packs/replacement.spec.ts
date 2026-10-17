@@ -132,8 +132,8 @@ describe('accepted pack replacement', () => {
   it('does not grant candidate operations until publication accepts its runtime', () => {
     const f = fixture();
     f.next.bindServices = port => {
-      expect(() => (port.settings as SettingsService).get(target)).toThrow('until the host accepts');
-      expect(() => (port.settings as SettingsService).set(target, ['value'], 2)).toThrow('until the host accepts');
+      expect(() => (port.services.settings as SettingsService).get(target)).toThrow('until the host accepts');
+      expect(() => (port.services.settings as SettingsService).set(target, ['value'], 2)).toThrow('until the host accepts');
       return f.fresh.bindServices(port);
     };
     declareCandidateRole(f.registry);

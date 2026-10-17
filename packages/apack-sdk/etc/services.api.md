@@ -68,6 +68,14 @@ export interface BackupSummary {
 // @internal
 export function _captureHostServices(): {
     current: () => boolean;
+    forAction(sender: ActionSender): {
+        logger: Logger;
+        emitter: {
+            broadcastToPlugin: typeof untypedBroadcastToPlugin;
+            sendToWindow: typeof untypedSendToWindow;
+            sendToSystem: typeof untypedSendToSystem;
+        };
+    };
     get(name: string): unknown;
 };
 
@@ -83,7 +91,8 @@ export function _createPackServices(): {
     readonly services: Readonly<Record<string, unknown>> & {
         readonly settings: SettingsService;
     };
-    bindServices(services: Readonly<Record<string, unknown>>): () => void;
+    readonly servicesForAction: (label: string) => Readonly<Record<string, unknown>>;
+    bindServices(services: PackServiceAccess): () => void;
 };
 
 // @public
@@ -195,6 +204,14 @@ export type OutputSpec = {
 } & OutputNaming);
 
 // @public
+export interface PackServiceAccess {
+    // (undocumented)
+    readonly services: Readonly<Record<string, unknown>>;
+    // (undocumented)
+    readonly servicesForAction: (label: string) => Readonly<Record<string, unknown>>;
+}
+
+// @public
 export type ProviderName = 'google' | 'anthropic' | 'openai' | 'groq' | 'mistral' | 'cohere';
 
 // @internal
@@ -259,9 +276,6 @@ export interface SecretsStatus {
     // (undocumented)
     protection: SecretsProtection;
 }
-
-// @public
-export const services: HostServices & Record<string, unknown>;
 
 // @public
 export interface SettingsAdmin extends SettingsService {

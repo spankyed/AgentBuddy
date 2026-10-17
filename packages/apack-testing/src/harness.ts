@@ -92,10 +92,9 @@ function declareFeatures(manifest: Pick<PackManifest, 'id' | 'features'>): void 
   }
 }
 
-/** The registered packs the harness binds, with the current test's mocked services over the registered ones */
-const packsWithMocks: PackRegistryView = {
+/** The runtime also recognizes declared refs before their actors start. */
+const runtimePacks: PackRegistryView = {
   ...registry,
-  getRegisteredServices: () => ({ ...registry.getRegisteredServices(), ...Object.fromEntries(serviceMocks) }),
   systemIds: () => [...new Set([...registry.systemIds(), ...declaredRefs.systems])] as FeatureRef[],
   pluginIds: () => [...new Set([...registry.pluginIds(), ...declaredRefs.plugins])] as FeatureRef[],
 };
@@ -294,7 +293,8 @@ export async function setupPackTests(options: PackTestOptions): Promise<void> {
   startTestRuntime({
     // The host's entity types (AppState) too: the app's state lives in the database, as in the app
     entityTypes: [...HOST_ENTITY_TYPES, ...[...dependencies.values()].flatMap(({ snapshot }) => Object.values(snapshot.types.entities))],
-    packs: packsWithMocks,
+    packs: runtimePacks,
+    serviceOverrides: serviceMocks,
     onboarding: {
       isComplete: () => appState.get().hasOnboarded,
       complete: () => appState.update({ hasOnboarded: true }),
@@ -369,7 +369,7 @@ export async function startShell(options: StartShellOptions): Promise<TestShell>
     }
     context.entityDestinations = snapshot.entityDestinations;
   }
-  return startShellFor(context.manifest.id, options, packsWithMocks, context.entityDestinations);
+  return startShellFor(context.manifest.id, options, runtimePacks, context.entityDestinations);
 }
 
 /** Registers the pack's runtime and its dependencies' (loaded from their cached runtime/index.cjs), as the app does */

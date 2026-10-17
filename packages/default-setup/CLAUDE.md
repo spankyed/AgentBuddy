@@ -18,7 +18,7 @@ src/
     events.ts              # SendablePluginEvents/PackSystemEvents + typed broadcastToPlugin/sendToPlugin/sendToSystem
     system-specs.ts        # Type-only: the events each system receives and sends, read by events.ts and types.ts
     types.ts               # Type barrel (per-feature types; a plugin imports its system's events from be/contract.ts)
-    services.ts            # Service aggregation (featureServices object) and the typed services proxy
+    services.ts            # Selected services, types and the lifetime-bound servicesForAction factory
     repository.ts          # repository, typed with the repositories declared in apack.json
     repositories.ts        # Those repositories by name, carried by pack-entry.ts's registration
     pack-types.ts          # Facade types apack pack build bundles into dist/types/pack-types.d.ts

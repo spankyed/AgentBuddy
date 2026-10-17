@@ -405,7 +405,7 @@ it('keeps retained backend service roots retired across rebind and failed cleanu
   const files = await generatePackFiles(manifest({}), { packRoot: root });
   write('src/probe.ts', `
     import type { SettingsService } from '@apackdev/sdk/services';
-    import { services, bindServices } from './__generated__/services.ts';
+    import { services, servicesForAction, bindServices } from './__generated__/services.ts';
     let cleanupFails = false;
     const settings: SettingsService = {
       get: <T,>() => ({ count: 10 } as T), set() {}, reset() {},
@@ -417,14 +417,18 @@ it('keeps retained backend service roots retired across rebind and failed cleanu
       throw new Error('Retained root was revived');
     }
     const first = services;
-    const dispose = bindServices({ settings });
+    const firstFactory = servicesForAction;
+    const dispose = bindServices({ services: { settings }, servicesForAction: () => ({ settings }) });
     if (first !== services) throw new Error('Initial binding lost its constructed frame');
     if (services.settings.get<{ count: number }>({ kind: 'app' }).count !== 10) throw new Error('Missing bound settings');
     dispose();
     if (first === services) throw new Error('Disposal retained the old root');
     retired(first);
+    let refusedFactory = false;
+    try { firstFactory('retired'); } catch (error) { refusedFactory = String(error).includes('revoked'); }
+    if (!refusedFactory) throw new Error('Retained action factory was revived');
     const second = services;
-    const disposeSecond = bindServices({ settings });
+    const disposeSecond = bindServices({ services: { settings }, servicesForAction: () => ({ settings }) });
     retired(first);
     services.settings.onChange(() => {});
     cleanupFails = true;
@@ -434,7 +438,7 @@ it('keeps retained backend service roots retired across rebind and failed cleanu
     if (second === services) throw new Error('Failed cleanup retained the old export');
     retired(second);
     cleanupFails = false;
-    const disposeThird = bindServices({ settings });
+    const disposeThird = bindServices({ services: { settings }, servicesForAction: () => ({ settings }) });
     retired(first);
     retired(second);
     if (services.settings.get<{ count: number }>({ kind: 'app' }).count !== 10) throw new Error('Rebind did not publish a fresh root');

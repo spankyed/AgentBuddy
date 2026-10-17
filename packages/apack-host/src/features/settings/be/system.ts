@@ -4,13 +4,18 @@ import { broadcastToPlugin, sendToSystem } from '../../../events.ts';
 import { assign, setup, fromCallback, fromPromise, type ErrorActorEvent } from 'xstate';
 import { defineSystem } from '@apackdev/sdk/framework';
 import { detectAllArrayChanges, errorMessage } from '@apackdev/sdk/utils/pure';
-import { services, _settingsAdmin as preferences } from '@apackdev/sdk/services';
+import { _captureHostServices, _settingsAdmin as preferences } from '@apackdev/sdk/services';
+import type { HostRuntimeServices } from '@apackdev/sdk/runtime';
 import { createLogger, reportError } from '@apackdev/sdk/logger';
 import { splitRef, type FeatureRef } from '@apackdev/sdk/ids';
 import { SettingsRefusedError } from '../document.ts';
 import { settingsRequestAccess, settingsRequestAdmin } from './access.ts';
 import { answerSettings, type SettingsAnswer } from './answer.ts';
 import type { SettingsDocument } from './store.ts';
+
+/** Host administration reads its own ports; it is not a pack's selected service facade. */
+const hostService = <K extends 'appData' | 'secrets'>(name: K): HostRuntimeServices[K] =>
+  _captureHostServices().get(name) as HostRuntimeServices[K];
 
 /** Host app preferences supply shell hotkeys without a contributing pack. */
 const appHotkeys = (document: SettingsDocument): ApplicationHotkeys =>
@@ -68,7 +73,7 @@ function broadcastSettings(type: 'SETTINGS_LOADED' | 'SETTINGS_UPDATED' | 'SETTI
 /** CLI path overrides, in the code plugin's settings */
 /** Sends the settings plugin the stored API keys (no values) and how they're protected */
 function sendSecrets(): void {
-  broadcastToPlugin('settings', { type: 'SECRETS_UPDATED', secrets: services.secrets.list(), status: services.secrets.status() });
+  broadcastToPlugin('settings', { type: 'SECRETS_UPDATED', secrets: hostService('secrets').list(), status: hostService('secrets').status() });
 }
 
 export const settingsSystem = setup({
@@ -81,7 +86,7 @@ export const settingsSystem = setup({
       return preferences().onChange(tell);
     }),
     // The host resets the whole app: stores, each pack's onInit and boot apply, migrations
-    resetAppActor: fromPromise(() => services.appData.reset()),
+    resetAppActor: fromPromise(() => hostService('appData').reset()),
   },
   guards: {
     canResetApp: ({ event }) => {

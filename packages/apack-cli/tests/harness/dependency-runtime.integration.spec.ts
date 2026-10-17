@@ -113,7 +113,7 @@ describe.skipIf(!built)("a dependent pack's unit tests on the harness runtime ti
     const root = dependentPack(`
 import { expect, it } from 'vitest';
 import { repository } from '@apackdev/ears';
-import { services } from '@apackdev/sdk/services';
+import { services } from '#generated/services.ts';
 import { startApp } from '@apackdev/testing/harness';
 it("connects to default-setup's notes and the app's settings", async () => {
   const app = await startApp({ systems: ['default-setup/notes', 'host/settings'] });
@@ -129,7 +129,7 @@ it("connects to default-setup's notes and the app's settings", async () => {
   expect(loaded.snapshot).toMatchObject({ values: { features: { 'dependent-pack/widgets': { size: 3 } } } });
   const noteQueries = Reflect.get(repository, 'noteQueries');
   expect(noteQueries).toBeDefined();
-  expect(Reflect.get(services.repository, 'noteQueries')).toBe(noteQueries);
+  expect(services.repository.noteQueries.all()).toEqual(noteQueries.all());
 });`);
     const result = vitest(root);
     expect(result.stdout + result.stderr, 'the dependent pack test run').toMatch(/Tests\s+1 passed/);

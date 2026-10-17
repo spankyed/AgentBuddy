@@ -82,8 +82,9 @@ Generated types and runtime access expose that selection. A declared provider mu
 accepted runtime before its service can be used; calls do not activate it. Retained service objects
 and methods refuse after provider retirement instead of redirecting to a replacement. Caller authority
 retires after its actors finish stopping. Calls and streams already started may finish on their original
-implementation; inference agents cannot start new calls after retirement. Use `#generated/services`;
-remaining direct ambient imports are being migrated.
+implementation; inference agents cannot start new calls after retirement. Import access from
+`#generated/services`; the SDK services module exports contracts and helpers, not an ambient service
+object.
 
 ### Generated aggregation
 
@@ -102,7 +103,11 @@ services.search.find('term');          // a declared dependency service
 services.repository.bookmarkQueries;    // repositories (see below)
 ```
 
-Actions access services via the `services` parameter. Service names are global across installed packs: the host refuses to register a pack whose service name another pack or the host already uses.
+Code runners obtain `servicesForAction(label)` from `#generated/services` and pass its result to
+user-authored code. It preserves the accepted API selection and lifetime while naming logs and sends
+`action:<label>`; the host supplies the executing pack's identity. Flow execution retains this factory
+in `executionContext.runtime.servicesForAction`. Retained factories, loggers and emitters cannot regain
+authority after rebind. Actions access the resulting view via their `services` parameter. Service names are global across installed packs: the host refuses to register a pack whose service name another pack or the host already uses.
 
 ### Host services
 

@@ -4,7 +4,10 @@ import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } 
 import type { ExecutionContext, TNodeEntity } from '@apackdev/sdk/steps';
 import type { LogEvent } from '@apackdev/sdk/logger';
 import type { ActionEntity } from '@apackdev/sdk';
-import { services } from '@apackdev/sdk/services';
+import { servicesForAction } from '#generated/services.ts';
+import type { PackServiceAccess } from '@apackdev/sdk/services';
+import { registerPack, unregisterPack } from '@apackdev/testing/harness';
+import { runActionCode } from '#extensions/steps/action/sandbox.ts';
 import { repository } from '#generated/repository.ts';
 import { testRootEvents } from '@apackdev/sdk/testing';
 import { packId } from '#generated/ref.ts';
@@ -46,7 +49,7 @@ describe('the action sandbox', () => {
   it("runs a flow's inline action with z, the flow id and a logger named after the step", async () => {
     const sent: Array<{ type: string; result?: unknown }> = [];
     const tNode = { id: 'TNode-action', nodeAttributes: {} } as unknown as TNodeEntity;
-    const ctx = { flowTNodeId: 'TNode-flow', event: { type: 'go', name: 'from-event' }, runtime: { getAppServices: () => services } } as unknown as ExecutionContext;
+    const ctx = { flowTNodeId: 'TNode-flow', event: { type: 'go', name: 'from-event' }, runtime: { servicesForAction } } as unknown as ExecutionContext;
 
     await handler(tNode, { id: 'Node-1', label: 'Greet', nodeType: 'action', mode: 'code', actionFn: ACTION.replace('params.name', 'params.event.name') }, ctx, { send: (event: { type: string }) => sent.push(event) });
 
@@ -87,6 +90,25 @@ describe('the action sandbox', () => {
       from: packId,
       via: 'action:Summarise Thread',
     }]);
+  });
+
+  it('refuses escaped user-code logging and sends after the executing pack retires', async () => {
+    let access!: PackServiceAccess;
+    registerPack({ id: 'action-lifetime', bindServices(value) { access = value; return () => {}; } });
+    try {
+      const escaped = await runActionCode(`return {
+        log: services.logger.info,
+        send: () => services.emitter.broadcastToPlugin('default-setup/threads', { type: 'SET_PHASE', phase: 'Edit' })
+      };`, { label: 'Escaped', params: {}, servicesForAction: access.servicesForAction }) as { log(message: string): void; send(): void };
+      escaped.log('accepted');
+      expect(logs).toContainEqual(expect.objectContaining({ message: 'accepted', source: 'action:Escaped' }));
+      unregisterPack('action-lifetime');
+      expect(() => escaped.log('retired')).toThrow('revoked');
+      expect(() => escaped.send()).toThrow('revoked');
+      expect(() => access.servicesForAction('retired')).toThrow('revoked');
+    } finally {
+      try { unregisterPack('action-lifetime'); } catch { /* already retired */ }
+    }
   });
 
   it('runs code that declares its own z and flowId', async () => {

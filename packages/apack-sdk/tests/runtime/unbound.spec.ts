@@ -5,11 +5,13 @@ import * as os from 'node:os';
 import * as path from 'node:path';
 import { afterEach, describe, expect, it, onTestFinished, vi } from 'vitest';
 import { createEarsEngine, untypedQx, untypedTx } from '@apackdev/ears';
-import { bindHost, unbindHost, type HostRuntime } from '../../src/runtime/host-runtime.ts';
+import { bindHost, unbindHost, boundHost, type HostRuntime } from '../../src/runtime/host-runtime.ts';
 import { _rootEvents } from '../../src/runtime/root-events.ts';
 import { onConnected, onIncoming, untypedBroadcastToPlugin, untypedSendToSystem } from '../../src/events/index.ts';
 import { createLogger, onLog, reportError } from '../../src/logger/index.ts';
-import { services, _createPackServices, _settingsHandle } from '../../src/services/index.ts';
+import { _createPackServices, _settingsHandle } from '../../src/services/index.ts';
+import * as serviceModule from '../../src/services/index.ts';
+import type { PackServiceAccess } from '../../src/services/index.ts';
 import type { SettingsService } from '../../src/services/settings.ts';
 import { getAppVersion } from '../../src/env/index.ts';
 import { getDesignated, hasDesignation } from '../../src/designations/index.ts';
@@ -22,6 +24,8 @@ import { importCompiledContent, registeredContentKeys } from '../../src/utils/ap
 import { getDslDeclarations } from '../../src/fe/dsl-reader.ts';
 import { tiptapPluginRegistry } from '../../src/fe/tiptap-plugins.ts';
 import { testPacksView } from '../../src/testing/packs.ts';
+
+const serviceAccess = (settings: SettingsService): PackServiceAccess => ({ services: { settings }, servicesForAction: () => ({ settings }) });
 
 const unused = () => { throw new Error('unused'); };
 const engine = createEarsEngine({ isEntityType: (name) => name === 'Memo' });
@@ -65,13 +69,13 @@ describe('with no app bound', () => {
       ['reportError', () => reportError({ error: new Error('boom'), source: 'memos' })],
       ['_rootEvents', () => _rootEvents.emitLog({ level: 'info', message: 'x' })],
       ['getAppVersion', () => getAppVersion()],
-      ['services.inference', () => services.inference.generateText({ model: 'openai:gpt-5', prompt: 'hi' })],
-      ['services.appData', () => services.appData.reset()],
-      ['services.onboarding', () => services.onboarding.isComplete()],
-      ['services.traceStore', () => services.traceStore.entities()],
-      ['services.secrets', () => services.secrets.list()],
-      ['services.filesystem', () => services.filesystem.readFile('/tmp/x')],
-      ['services.repository', () => services.repository],
+      ['services.inference', () => boundHost().services.inference.generateText({ model: 'openai:gpt-5', prompt: 'hi' })],
+      ['services.appData', () => boundHost().services.appData.reset()],
+      ['services.onboarding', () => boundHost().services.onboarding.isComplete()],
+      ['services.traceStore', () => boundHost().services.traceStore.entities()],
+      ['services.secrets', () => boundHost().services.secrets.list()],
+      ['services.filesystem', () => boundHost().services.filesystem.readFile('/tmp/x')],
+      ['services.repository', () => boundHost().ears.repository],
     ];
     for (const [name, use] of [['qx', () => untypedQx('Memo')], ['untypedTx', () => untypedTx('Memo')]] as const) {
       expect(use, name).toThrow('No EARS engine is installed');
@@ -131,12 +135,12 @@ describe('bindHost', () => {
     const target = { kind: 'pack', packId: 'memo-pack', groupId: 'assistant' } as const;
     const condition = { runId: 'backend-run', expected: { exists: true, value: 'Ada' } };
     const generated = _createPackServices();
-    const revoke = generated.bindServices({ settings: preferences });
+    const revoke = generated.bindServices(serviceAccess(preferences));
     generated.services.settings.set(target, ['name'], 'Grace', condition);
     revoke();
     expect(() => generated.services.settings.reset(target)).toThrow('until the host accepts');
     expect(preferences.set).toHaveBeenCalledWith(target, ['name'], 'Grace', condition);
-    expect(() => services.settings.set(target, ['name'], 'Grace')).toThrow('pack identity is required');
+    expect(Object.hasOwn(serviceModule, 'services')).toBe(false);
   });
 
   it('binds once: binding again throws', () => {
@@ -156,8 +160,8 @@ describe('bindHost', () => {
 
   it("reads the bound app's services on each call", () => {
     bindHost(runtime);
-    expect(services.repository).toBe(engine.query.repository);
-    expect(() => services.secrets.list()).toThrow('unused');
+    expect(boundHost().ears.repository).toBe(engine.query.repository);
+    expect(() => boundHost().services.secrets.list()).toThrow('unused');
   });
 });
 
@@ -176,12 +180,12 @@ describe('generated settings authority', () => {
       expect(operation).toThrow('until the host accepts');
     }
     const first = preferences();
-    const revoke = generated.bindServices({ settings: first });
+    const revoke = generated.bindServices(serviceAccess(first));
     handle.reset();
     expect(first.reset).toHaveBeenCalledOnce();
     revoke();
     const next = preferences();
-    generated.bindServices({ settings: next });
+    generated.bindServices(serviceAccess(next));
     for (const operation of [() => handle.get(), () => handle.set({ path: [], value: {} }),
       () => handle.reset(), () => handle.onChange(() => {})]) {
       expect(operation).toThrow('revoked');
@@ -194,15 +198,15 @@ describe('generated settings authority', () => {
     const generated = _createPackServices();
     expect(() => generated.services.settings).toThrow('until the host accepts');
     const first = preferences();
-    const revoke = generated.bindServices({ settings: first });
+    const revoke = generated.bindServices(serviceAccess(first));
     const retained = generated.services.settings;
     const handle = _settingsHandle(target, retained);
-    expect(() => generated.bindServices({ settings: first })).toThrow('already bound');
+    expect(() => generated.bindServices(serviceAccess(first))).toThrow('already bound');
     handle.reset();
     expect(first.reset).toHaveBeenCalledOnce();
     revoke();
     const next = preferences();
-    const revokeNext = generated.bindServices({ settings: next });
+    const revokeNext = generated.bindServices(serviceAccess(next));
     revoke();
     for (const call of [() => retained.get(target), () => retained.set(target, [], {}),
       () => retained.reset(target), () => retained.onChange(() => {}),
@@ -221,7 +225,7 @@ describe('generated settings authority', () => {
     const callbacks: Array<Parameters<SettingsService['onChange']>[0]> = [];
     const first = preferences();
     first.onChange = listener => { callbacks.push(listener); return callbacks.length === 1 ? stopFirst : stopSecond; };
-    const revoke = generated.bindServices({ settings: first });
+    const revoke = generated.bindServices(serviceAccess(first));
     const listener = vi.fn();
     const stop = generated.services.settings.onChange(listener);
     generated.services.settings.onChange(listener);
@@ -235,6 +239,6 @@ describe('generated settings authority', () => {
     callbacks[0]('written'); callbacks[1]('written');
     expect(listener).toHaveBeenCalledOnce();
     expect(() => generated.services.settings).toThrow('until the host accepts');
-    generated.bindServices({ settings: preferences() })();
+    generated.bindServices(serviceAccess(preferences()))();
   });
 });

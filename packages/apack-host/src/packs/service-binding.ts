@@ -1,4 +1,4 @@
-import { _captureHostServices, type SettingsService } from '@apackdev/sdk/services';
+import { _captureHostServices, type SettingsService, type PackServiceAccess } from '@apackdev/sdk/services';
 import { errorMessage } from '@apackdev/sdk/utils/pure';
 import type { SettingsTarget } from '@apackdev/sdk/types';
 import type { _packServiceSelection } from '@apackdev/sdk/framework';
@@ -17,7 +17,7 @@ export function createPackServiceBinding({ caller, selection, settings, current,
   overrides?: ReadonlyMap<string, unknown>;
   current: () => boolean;
   provider: (packId: string, name: string) => ProviderService | undefined;
-  bind: (services: Readonly<Record<string, unknown>>) => () => void;
+  bind: (access: PackServiceAccess) => () => void;
 }) {
   const host = _captureHostServices();
   let status: 'pending' | 'active' | 'revoked' = 'pending';
@@ -75,32 +75,35 @@ export function createPackServiceBinding({ caller, selection, settings, current,
     cache.set(value, facade);
     return facade;
   };
-  const resolve = (packId: string, name: string): ProviderService | undefined => {
-    const source = packId === 'host' ? { generation: host, value: host.get(name) } : provider(packId, name);
-    return source && { generation: source.generation, value: overrides?.has(name) ? overrides.get(name) : source.value };
-  };
-  const supplied = Object.create(null) as Record<string, unknown>;
-  const handles = new Map<string, { generation: object; value: unknown; facade: unknown }>();
-  for (const { packId, name, ref } of selection) {
-    Object.defineProperty(supplied, name, { enumerable: true, get() {
-      assertCaller();
-      if (packId === 'host' && name === 'settings') return scopedSettings;
-      const source = resolve(packId, name);
-      if (!source || source.value === undefined) throw new Error(`Pack "${caller}" consumes "${ref}", but provider "${packId}" is not ready`);
-      const cached = handles.get(ref);
-      if (cached?.generation === source.generation && cached.value === source.value) return cached.facade;
-      const check = () => {
+  const createServices = (attributed?: ReturnType<typeof host.forAction>) => {
+    const resolve = (packId: string, name: string): ProviderService | undefined => {
+      const source = packId === 'host' ? { generation: host, value: attributed && Object.hasOwn(attributed, name) ? Reflect.get(attributed, name) : host.get(name) } : provider(packId, name);
+      return source && { generation: source.generation, value: overrides?.has(name) ? overrides.get(name) : source.value };
+    };
+    const supplied = Object.create(null) as Record<string, unknown>;
+    const handles = new Map<string, { generation: object; value: unknown; facade: unknown }>();
+    for (const { packId, name, ref } of selection) {
+      Object.defineProperty(supplied, name, { enumerable: true, get() {
         assertCaller();
-        const next = resolve(packId, name);
-        if (!next || next.generation !== source.generation || next.value !== source.value) {
-          throw new Error(`Pack "${caller}" service "${ref}" belongs to a retired provider runtime`);
-        }
-      };
-      const facade = guard(source.value, check, ref === 'host/inference');
-      handles.set(ref, { ...source, facade });
-      return facade;
-    } });
-  }
+        if (packId === 'host' && name === 'settings') return scopedSettings;
+        const source = resolve(packId, name);
+        if (!source || source.value === undefined) throw new Error(`Pack "${caller}" consumes "${ref}", but provider "${packId}" is not ready`);
+        const cached = handles.get(ref);
+        if (cached?.generation === source.generation && cached.value === source.value) return cached.facade;
+        const check = () => {
+          assertCaller();
+          const next = resolve(packId, name);
+          if (!next || next.generation !== source.generation || next.value !== source.value) {
+            throw new Error(`Pack "${caller}" service "${ref}" belongs to a retired provider runtime`);
+          }
+        };
+        const facade = guard(source.value, check, ref === 'host/inference');
+        handles.set(ref, { ...source, facade });
+        return facade;
+      } });
+    }
+    return Object.freeze(supplied);
+  };
   const revoke = (): string[] => {
     status = 'revoked';
     const failures: string[] = [];
@@ -111,7 +114,10 @@ export function createPackServiceBinding({ caller, selection, settings, current,
   };
   let cleanup: () => void;
   try {
-    cleanup = bind(Object.freeze(supplied));
+    cleanup = bind(Object.freeze({ services: createServices(), servicesForAction(label: string) {
+      assertCaller();
+      return createServices(host.forAction({ from: caller, via: `action:${label}` }));
+    } }));
     if (typeof cleanup !== 'function') throw new Error('Pack service binding must return cleanup');
   } catch (error) { revoke(); throw error; }
   return {

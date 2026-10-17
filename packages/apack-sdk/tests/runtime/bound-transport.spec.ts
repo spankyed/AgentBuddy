@@ -7,7 +7,7 @@ import { resolveName } from '../../src/ids/index.ts';
 import { onIncoming, untypedBroadcastToPlugin, untypedSendToSystem } from '../../src/events/index.ts';
 import { bindFeHost, unbindFeHost } from '../../src/runtime/fe-host.ts';
 import { createLogger, onLog, type LogEvent } from '../../src/logger/index.ts';
-import { services } from '../../src/services/index.ts';
+import { createActionEmitter } from '../../src/services/index.ts';
 import type { Message } from '../../src/events/index.ts';
 
 process.env.APACK_ENV ??= 'test';
@@ -45,7 +45,7 @@ describe('on the bound bus', () => {
     const sent = onBus(() => {
       // The untyped send takes the id a plugin runs under; the emitter takes the name an action writes
       untypedBroadcastToPlugin('memo-pack/memos', { type: 'MEMO_ADDED' });
-      services.emitter.broadcastToPlugin('memo-pack/memos', { type: 'MEMO_REMOVED' });
+      createActionEmitter().broadcastToPlugin('memo-pack/memos', { type: 'MEMO_REMOVED' });
     });
     expect(sent.toPlugins).toEqual([
       { to: 'memo-pack/memos', call: expect.any(String), event: { type: 'MEMO_ADDED' } },

@@ -44,10 +44,12 @@ export interface TestRuntimeStartOptions {
    * app does); without one, reading or writing settings says to run on the harness. First call only
    */
   settings?: SettingsAdmin;
+  /** Per-test replacements for native host ports, read from this runtime's map. First call only. */
+  serviceOverrides?: ReadonlyMap<string, unknown>;
 }
 
 const entityTypes = new Set<string>(Object.values(SDK_ENTITIES));
-let started: Pick<TestRuntimeStartOptions, 'packs' | 'appVersion' | 'onboarding' | 'settings'> | undefined;
+let started: Pick<TestRuntimeStartOptions, 'packs' | 'appVersion' | 'onboarding' | 'settings' | 'serviceOverrides'> | undefined;
 let engine: EarsEngine | undefined;
 
 /** A new in-memory engine checking entity types against the test runtime's, and installed */
@@ -76,7 +78,7 @@ function testEngine(): EarsEngine {
 export function startTestRuntime(options: TestRuntimeStartOptions = {}): void {
   for (const type of options.entityTypes ?? []) entityTypes.add(type);
   if (started) {
-    for (const key of ['packs', 'appVersion', 'onboarding'] as const) {
+    for (const key of ['packs', 'appVersion', 'onboarding', 'serviceOverrides'] as const) {
       if (options[key] !== undefined && options[key] !== started[key]) {
         throw new Error(`startTestRuntime already bound the test app without this ${key}: pass ${key} on its first call`);
       }
@@ -84,7 +86,7 @@ export function startTestRuntime(options: TestRuntimeStartOptions = {}): void {
     // Still bound: nothing to start. Unbound since (a test unbound the host): bound again, as first started
     if (_isHostBound()) return;
   } else {
-    started = { packs: options.packs, appVersion: options.appVersion, onboarding: options.onboarding, settings: options.settings };
+    started = { packs: options.packs, appVersion: options.appVersion, onboarding: options.onboarding, settings: options.settings, serviceOverrides: options.serviceOverrides };
   }
   installFreshEngine();
   bindTestRuntime({ engine: testEngine, resetData: resetTestData, ...started });

@@ -4,7 +4,6 @@ import * as os from 'node:os';
 import { describe, expect, it, vi } from 'vitest';
 import { entityIds, dropAttribute, resetTestData, startTestRuntime, takeSystemErrors, testRootEvents } from '../../src/testing/index.ts';
 import { untypedBroadcastToPlugin, untypedSendToSystem } from '../../src/events/index.ts';
-import { services } from '../../src/services/index.ts';
 import { testPacks, testPacksView } from '../../src/testing/packs.ts';
 import { getAppVersion } from '../../src/env/index.ts';
 import { createLogger, reportError } from '../../src/logger/index.ts';
@@ -57,22 +56,22 @@ describe('the test host', () => {
 
   it('has a test version, the engine, an appData that resets the database, and a trace store over it', async () => {
     expect(getAppVersion()).toBe('0.0.0-test');
-    expect(services.repository).toBe(ears().repository);
+    expect(boundHost().ears.repository).toBe(ears().repository);
     registerRepository('memoQueries', { all: () => [] });
     const id = untypedTx('Memo').put('text', 'hello').id();
-    expect(services.traceStore.getAttr('text', id)).toBe('hello');
+    expect(boundHost().services.traceStore.getAttr('text', id)).toBe('hello');
     expect(entityIds()).toContain(id);
     dropAttribute(id, 'text');
     expect(ears().getAttr(id, 'text')).toBeNull();
     const before = ears();
-    await services.appData.reset();
+    await boundHost().services.appData.reset();
     expect(entityIds()).toEqual([]);
     // A reset replaces the engine, keeping the registered repositories
     expect(ears()).not.toBe(before);
-    expect(services.repository).toBe(ears().repository);
+    expect(boundHost().ears.repository).toBe(ears().repository);
     expect(repository.memoQueries).toBe(before.repository.memoQueries);
     expect(before.getAllEntities()).toContain(id);
-    await expect(services.appData.exportBackup('/tmp')).rejects.toThrow("isn't supported in unit tests");
+    await expect(boundHost().services.appData.exportBackup('/tmp')).rejects.toThrow("isn't supported in unit tests");
     resetTestData();
   });
 
@@ -100,10 +99,10 @@ describe('the test host', () => {
   });
 
   it('keeps whether the user onboarded in memory by default, until the database is emptied', () => {
-    expect(services.onboarding.isComplete()).toBe(false);
-    services.onboarding.complete();
-    expect(services.onboarding.isComplete()).toBe(true);
+    expect(boundHost().services.onboarding.isComplete()).toBe(false);
+    boundHost().services.onboarding.complete();
+    expect(boundHost().services.onboarding.isComplete()).toBe(true);
     resetTestData();
-    expect(services.onboarding.isComplete()).toBe(false);
+    expect(boundHost().services.onboarding.isComplete()).toBe(false);
   });
 });

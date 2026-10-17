@@ -109,7 +109,7 @@ const unmockedFilesystem = () => Promise.reject(new Error(
 const unmockedSettings = () => {
   throw new Error(
     "The app's settings aren't available on the SDK's test runtime: run the test on @apackdev/testing/harness, which " +
-    "binds the host's settings store, or mock it with mockService('settings', { ... })",
+    "binds the host's settings store; the harness exposes getTestSettings() for test setup",
   );
 };
 
@@ -157,13 +157,15 @@ export interface TestRuntimeOptions {
   onboarding?: OnboardingService;
   /** Backs `services.settings`; without one, reading or writing settings says to run on the harness */
   settings?: SettingsAdmin;
+  /** Host-port doubles owned by this test runtime; settings administration remains canonical. */
+  serviceOverrides?: ReadonlyMap<string, unknown>;
 }
 
 /**
  * Binds the in-memory app: `testRootEvents` as its bus, the in-memory engine, `testPacks` over `packs`, and the app's
  * services in memory.
  */
-export function bindTestRuntime({ engine, resetData, packs, appVersion = '0.0.0-test', onboarding = memoryOnboarding, settings = memorylessSettings }: TestRuntimeOptions): HostRuntime {
+export function bindTestRuntime({ engine, resetData, packs, appVersion = '0.0.0-test', onboarding = memoryOnboarding, settings = memorylessSettings, serviceOverrides }: TestRuntimeOptions): HostRuntime {
   const runtime: HostRuntime = {
     transport: { rootEvents: testRootEvents },
     // The current engine: a reset replaces it
@@ -194,6 +196,12 @@ export function bindTestRuntime({ engine, resetData, packs, appVersion = '0.0.0-
       settings,
     },
   };
+  if (serviceOverrides) runtime.services = new Proxy(runtime.services, {
+    get(target, key, receiver) {
+      return key !== 'settings' && typeof key === 'string' && Object.hasOwn(target, key) && serviceOverrides.has(key)
+        ? serviceOverrides.get(key) : Reflect.get(target, key, receiver);
+    },
+  });
   bindHost(runtime);
   return runtime;
 }

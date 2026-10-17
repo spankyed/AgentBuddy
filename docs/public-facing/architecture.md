@@ -334,7 +334,7 @@ The policy is `appPartitionPolicy()` (`@apackdev/host/database`), a constant ove
 | `system-specs.ts` | Type-only: `specs`, the events each system receives and sends, keyed by feature id, read from its entry's spec. `events.ts` imports it; only packs with systems get it |
 | `events.ts` | `SendablePluginEvents` (plugin ID -> the events it receives: its own feature's system's, plus the inbox that plugin's `Contract` declares), `PackSystemEvents`, and the typed `broadcastToPlugin` (backend, every window), `sendToPlugin` (renderer, this window) and `sendToSystem` |
 | `types.ts` | Type barrel: each feature's `types` and step node types |
-| `services.ts` | Service aggregation: imports each service object its manifest entry names (`"path#exportName"`), exports `Services`/`Z`/`EntityId` and the typed `services` proxy (with dependencies' services). `Services` types `services.emitter` as `PackEmitter`, with this pack's plugin and system events |
+| `services.ts` | Service aggregation: imports each service object its manifest entry names (`"path#exportName"`), exports `Services`/`Z`/`EntityId` and the host-selected `services` facade and `servicesForAction(label)` factory. `Services` types `services.emitter` as `PackEmitter`, with this pack's plugin and system events |
 | `repository.ts` | `repository`, typed with the repositories declared in `features.<id>.repositories` and dependencies' |
 | `repositories.ts` | This pack's repositories by name, which `pack-entry.ts` puts in the registration (the host registers them with the app's engine) |
 | `pack-types.ts` | The facade types `apack pack build` bundles into `dist/types/pack-types.d.ts` for dependents |

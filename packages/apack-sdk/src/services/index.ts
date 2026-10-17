@@ -93,8 +93,7 @@ export interface ActionSender {
 
 /**
  * The emitter an action runs with: the sends of `HostServices`, stamped with the pack running the action and the
- * action itself. A pack that runs user-authored code builds one per run — default-setup's `runActionCode` does —
- * so the last sender that could not say who it was now can.
+ * action itself. The host creates one for each named action view, retaining the accepted pack's lifetime.
  *
  * Without a `sender` it is `services.emitter`: the sends any pack code reaches through `services`, stamping
  * nothing, since only the pack that ran the action knows which action it was.
@@ -114,106 +113,17 @@ export function createActionEmitter(sender?: ActionSender): HostServices['emitte
 
 const emitter: HostServices['emitter'] = createActionEmitter();
 
-/** The bound app's implementation of a service; each call reads the binding */
-const app = <K extends keyof HostRuntimeServices>(name: K): HostRuntimeServices[K] => boundHost().services[name];
-
-const onboarding: OnboardingService = {
-  isComplete: () => app('onboarding').isComplete(),
-  complete: () => app('onboarding').complete(),
-};
-
-const appData: AppDataService = {
-  reset: () => app('appData').reset(),
-  exportBackup: (targetPath, name, databases) => app('appData').exportBackup(targetPath, name, databases),
-  importBackup: (backupPath, options) => app('appData').importBackup(backupPath, options),
-  readBackupSummary: (backupPath) => app('appData').readBackupSummary(backupPath),
-};
-
-const traceStore: TraceStore = {
-  entities: () => app('traceStore').entities(),
-  getEntityMeta: (id) => app('traceStore').getEntityMeta(id),
-  getAttr: (kind, id) => app('traceStore').getAttr(kind, id),
-  relations: (filter) => app('traceStore').relations(filter),
-};
-
-const inference: InferenceService = {
-  generateText: (options) => app('inference').generateText(options),
-  streamText: (options) => app('inference').streamText(options),
-  createAgent: (settings) => app('inference').createAgent(settings),
-  embed: (options) => app('inference').embed(options),
-  embedMany: (options) => app('inference').embedMany(options),
-  generateImage: (options) => app('inference').generateImage(options),
-  generateSpeech: (options) => app('inference').generateSpeech(options),
-  transcribe: (options) => app('inference').transcribe(options),
-  rerank: (options) => app('inference').rerank(options),
-};
-
-const secrets: SecretsService = {
-  status: () => app('secrets').status(),
-  list: () => app('secrets').list(),
-  select: (id) => app('secrets').select(id),
-  rename: (id, label) => app('secrets').rename(id, label),
-  delete: (id) => app('secrets').delete(id),
-};
-
-const filesystem: FilesystemService = {
-  writeFile: (filePath, content) => app('filesystem').writeFile(filePath, content),
-  readFile: (filePath) => app('filesystem').readFile(filePath),
-  exists: (filePath) => app('filesystem').exists(filePath),
-  mkdir: (dirPath) => app('filesystem').mkdir(dirPath),
-  readDir: (dirPath) => app('filesystem').readDir(dirPath),
-  remove: (targetPath) => app('filesystem').remove(targetPath),
-  rename: (oldPath, newPath) => app('filesystem').rename(oldPath, newPath),
-  stat: (filePath) => app('filesystem').stat(filePath),
-};
-
-// An unbound import cannot borrow host settings authority. Generated services bind pack identity.
-const settings: SettingsService = {
-  get: () => { throw new Error('Use settings through #generated/services: pack identity is required'); },
-  set: () => { throw new Error('Use settings through #generated/services: pack identity is required'); },
-  reset: () => { throw new Error('Use settings through #generated/services: pack identity is required'); },
-  onChange: (listener) => app('settings').onChange(listener),
-};
-
-/**
- * The services the SDK builds (logger, emitter, repository from the bound engine), the app's implementations, and every
- * registered pack's. Reading them needs a bound app; the app's services are delegates that read it on each call.
- */
-function resolveServices(): HostServices & Record<string, unknown> {
-  const runtime = boundHost();
-  return {
-    logger,
-    emitter,
-    repository: runtime.ears.repository,
-    appData,
-    onboarding,
-    traceStore,
-    inference,
-    secrets,
-    filesystem,
-    settings,
-    ...runtime.packs.getRegisteredServices(),
-  };
-}
-
-/**
- * Host services plus every registered pack service. Untyped beyond HostServices: a pack's
- * `#generated/services` exports `services` typed with its own and its dependencies' services.
- */
-export const services: HostServices & Record<string, unknown> = new Proxy({} as HostServices & Record<string, unknown>, {
-  get(_, prop: string) { return resolveServices()[prop]; },
-  ownKeys() { return Reflect.ownKeys(resolveServices()); },
-  getOwnPropertyDescriptor(_, prop) {
-    const s = resolveServices();
-    if (prop in s) return { configurable: true, enumerable: true, value: s[prop as string] };
-  },
-});
-
 export { _settingsHandle } from './settings-handle.ts';
 
 /** @internal Host administration over the shared SDK instance, including the published test harness. */
 export function _settingsAdmin(): SettingsAdmin {
-  return app('settings');
+  return boundHost().services.settings;
+}
+
+/** Host-selected APIs and attributed action views sharing one accepted runtime lifetime. */
+export interface PackServiceAccess {
+  readonly services: Readonly<Record<string, unknown>>;
+  readonly servicesForAction: (label: string) => Readonly<Record<string, unknown>>;
 }
 
 /** @internal Capture the host behind an accepted service binding, without ambient redirection. */
@@ -222,6 +132,9 @@ export function _captureHostServices() {
   const generation = _boundHostGeneration();
   return {
     current: () => _boundHostGeneration() === generation,
+    forAction(sender: ActionSender) {
+      return { logger: createLogger(sender.via), emitter: createActionEmitter(sender) };
+    },
     get(name: string): unknown {
       if (name === 'logger') return logger;
       if (name === 'emitter') return emitter;
@@ -234,7 +147,7 @@ export function _captureHostServices() {
 /** @internal Generated runtimes receive the host-selected facade only after acceptance. */
 export function _createPackServices() {
   const createBinding = () => {
-    let source: Readonly<Record<string, unknown>> | undefined;
+    let source: PackServiceAccess | undefined;
     let revoked = false;
     const subscriptions = new Set<() => void>();
     const accepted = () => {
@@ -242,7 +155,7 @@ export function _createPackServices() {
       if (!source) throw new Error('Pack services are unavailable until the host accepts this runtime');
       return source;
     };
-    const settings = (): SettingsService => accepted().settings as SettingsService;
+    const settings = (): SettingsService => accepted().services.settings as SettingsService;
     const service: SettingsService = {
       get: target => settings().get(target),
       set: (target, path, value, condition) => settings().set(target, path, value, condition),
@@ -255,18 +168,19 @@ export function _createPackServices() {
       },
     };
     const facade = new Proxy({} as Readonly<Record<string, unknown>> & { readonly settings: SettingsService }, {
-      get(_, key) { const current = accepted(); return key === 'settings' ? service : Reflect.get(current, key); },
-      ownKeys: () => Reflect.ownKeys(accepted()),
-      has: (_, key) => Object.hasOwn(accepted(), key),
+      get(_, key) { const current = accepted().services; return key === 'settings' ? service : Reflect.get(current, key); },
+      ownKeys: () => Reflect.ownKeys(accepted().services),
+      has: (_, key) => Object.hasOwn(accepted().services, key),
       getOwnPropertyDescriptor(_, key) {
-        const current = accepted();
+        const current = accepted().services;
         if (!Object.hasOwn(current, key)) return;
         return { configurable: true, enumerable: true, value: key === 'settings' ? service : Reflect.get(current, key) };
       },
     });
     return {
       service, facade,
-      bind(services: Readonly<Record<string, unknown>>) {
+      servicesForAction: (label: string) => accepted().servicesForAction(label),
+      bind(services: PackServiceAccess) {
         if (source) throw new Error('Pack services are already bound');
         source = services;
       },
@@ -285,7 +199,8 @@ export function _createPackServices() {
     // Handles and root views retain their construction frame.
     settingsHandle: <T>(target: SettingsTarget) => _settingsHandle<T>(target, binding.service),
     get services() { return binding.facade; },
-    bindServices(services: Readonly<Record<string, unknown>>): () => void {
+    get servicesForAction() { return binding.servicesForAction; },
+    bindServices(services: PackServiceAccess): () => void {
       const accepted = binding;
       accepted.bind(services);
       let active = true;
