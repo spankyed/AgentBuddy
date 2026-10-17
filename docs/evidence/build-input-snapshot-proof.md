@@ -2184,3 +2184,22 @@ locations. No broad pool was restarted. Windows/native lifetime, remaining loade
 retained frontend initialization and converged/final strict acceptance remain open. The installed
 Apple dyld manual was inspected for the remaining control audit; its text is retained at
 `/private/tmp/apack-dyld-native-controls.txt`, not treated as proof of runtime acceptance.
+
+### Windows native-path fixture correction (2026-10-17)
+
+Source `525350813` passes matching package preparation and 148 focused Windows checks in
+[run 39062528890](https://github.com/spankyed/AgentBuddy/actions/runs/39062528890).
+Three assertions fail because two fixture factories still use ordinary realpath: their expected
+`RUNNER~1` paths differ from native canonical `runneradmin` paths. The runtime callback correctly
+reports the canonical source; its map lookup uses the other spelling. Correct those fixture origins
+and the copied-tree realpath query to native realpath. No production behavior, guards or deadlines
+change. Eight affected local checks pass (0.317s runner), as do focused correctness lint and whitespace
+checks: `/private/tmp/apack-windows-native-fixture-check.log`. Windows real-worker acceptance remains
+pending because the preceding unit step prevented it from running. Full run log:
+`/private/tmp/apack-windows-39062528890.log`.
+
+An independent, disposable macOS prototype confirms the next loader gap: a native addon with a bare
+`libapackproof.dylib` dependency passes current admission, while a fresh Node child with
+`DYLD_FALLBACK_LIBRARY_PATH` selects an external library and returns its value 37. Prototype script:
+`/private/tmp/apack-native-fallback-proof.cjs`. This establishes a concrete missing input/admission
+case; it does not establish a repair or justify treating every dyld control as equivalent.

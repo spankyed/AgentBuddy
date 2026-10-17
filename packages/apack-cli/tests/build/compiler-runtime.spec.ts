@@ -8,7 +8,7 @@ const roots: string[] = [];
 afterEach(() => roots.splice(0).forEach(root => fs.rmSync(root, { recursive: true, force: true })));
 
 function fixture() {
-  const root = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'apack-runtime-inputs-')));
+  const root = fs.realpathSync.native(fs.mkdtempSync(path.join(os.tmpdir(), 'apack-runtime-inputs-')));
   roots.push(root);
   const executable = path.join(root, 'MacOS/runtime');
   fs.mkdirSync(path.dirname(executable), { recursive: true });

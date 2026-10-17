@@ -90,6 +90,17 @@ preloads (`bbf05ec00`). These are source evidence, not a claim that the full str
 | B5 — Passive freshness consumers | Migrate archive, prebuilt tests, default-fork preparation and drive to the common record. Preserve manual builds, deterministic reuse, source-free installed inspection and deliberately stale drive behavior. Remove replaced freshness heuristics. | B4. |
 | B6 — Converged acceptance | Resolve affected failures from preserved evidence and focused reproducers, then run the required converged strict checkpoint. The final committed-source strict `--all` remains Phase 7. | Converged B1–B5 source; focused checks accompany each earlier checkpoint. |
 
+#### Current compiler checkpoint (2026-10-17)
+
+Source `525350813` applies native canonical path identity consistently, preserving authored metadata
+query semantics and root-link observations. Windows run `39062528890` passes package preparation and
+148 checks; three remaining fixture assertions compare short and native path spellings. Those fixture
+origins are corrected, with eight affected local checks passing. Rerun the focused Windows workflow to
+reach its real-worker baseline. See [checkpoint evidence](../evidence/build-input-snapshot-proof.md#windows-native-path-fixture-correction-2026-10-17).
+The next demonstrated macOS gap is a bare library dependency selected through
+`DYLD_FALLBACK_LIBRARY_PATH`; a disposable native prototype loads the external library after current
+admission accepts it. Native/platform lifetime and final acceptance remain open.
+
 #### Execution boundaries and closure
 
 The contract is: each published build has one coherent input/output association; source consumers can

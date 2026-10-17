@@ -15,8 +15,8 @@ afterEach(() => {
 });
 
 it('lets the parent remove an abandoned read-only workspace without following foreign links', () => {
-  const workspace = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'apack-parent-inputs-')));
-  const foreign = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'apack-foreign-inputs-')));
+  const workspace = fs.realpathSync.native(fs.mkdtempSync(path.join(os.tmpdir(), 'apack-parent-inputs-')));
+  const foreign = fs.realpathSync.native(fs.mkdtempSync(path.join(os.tmpdir(), 'apack-foreign-inputs-')));
   roots.push(workspace, foreign);
   fs.chmodSync(foreign, 0o755);
   const foreignMode = fs.statSync(foreign).mode;
@@ -40,7 +40,7 @@ it('lets the parent remove an abandoned read-only workspace without following fo
 });
 
 it('preserves owned file/directory links, dangling links and executable bits after originals disappear', () => {
-  const root = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'apack-read-tree-source-')));
+  const root = fs.realpathSync.native(fs.mkdtempSync(path.join(os.tmpdir(), 'apack-read-tree-source-')));
   roots.push(root);
   const pack = path.join(root, 'pack'), shared = path.join(root, 'shared');
   fs.mkdirSync(pack); fs.mkdirSync(shared);
@@ -60,7 +60,7 @@ it('preserves owned file/directory links, dangling links and executable bits aft
   trees.push(tree);
   fs.rmSync(root, { recursive: true, force: true });
   expect(fs.readFileSync(tree.path(path.join(pack, 'linked/value.ts')), 'utf8')).toContain('value = 7');
-  expect(tree.sourcePath(fs.realpathSync(tree.path(path.join(pack, 'entry.ts'))))).toBe(file);
+  expect(tree.sourcePath(fs.realpathSync.native(tree.path(path.join(pack, 'entry.ts'))))).toBe(file);
   expect(fs.existsSync(tree.path(path.join(pack, 'missing.ts')))).toBe(false);
   expect(fs.lstatSync(tree.path(path.join(pack, 'missing.ts'))).isSymbolicLink()).toBe(true);
   expect(fs.statSync(tree.path(file)).mode & 0o111).toBe(executable);
@@ -77,7 +77,7 @@ it('preserves owned file/directory links, dangling links and executable bits aft
 });
 
 it('refuses conflicting captured/source origins and removes the incomplete tree', () => {
-  const root = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'apack-read-tree-conflict-')));
+  const root = fs.realpathSync.native(fs.mkdtempSync(path.join(os.tmpdir(), 'apack-read-tree-conflict-')));
   roots.push(root);
   const source = path.join(root, 'source'), captured = path.join(root, 'captured');
   const mkdtemp = fs.mkdtempSync;
@@ -94,7 +94,7 @@ it('refuses conflicting captured/source origins and removes the incomplete tree'
 });
 
 it('reuses materialized directories independently for code and data reads', () => {
-  const root = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'apack-read-tree-reuse-')));
+  const root = fs.realpathSync.native(fs.mkdtempSync(path.join(os.tmpdir(), 'apack-read-tree-reuse-')));
   roots.push(root);
   const file = path.join(root, 'value.ts');
   fs.writeFileSync(file, 'export const value = 7;');
