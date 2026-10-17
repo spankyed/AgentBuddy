@@ -84,7 +84,7 @@ preloads (`bbf05ec00`). These are source evidence, not a claim that the full str
 | Checkpoint | Required outcome and acceptance boundary | Dependencies |
 |---|---|---|
 | B1 — Launch and remaining input coverage | Reconcile current capture against actual supported compiler paths. The launch audit preserves inherited NODE_OPTIONS and forwarded export conditions; supervisor entry modes are not worker configuration. Early launch identity and authored bytes/membership are implemented through `bbf05ec00`. Close remaining executable/native-runtime ownership and pre-startup/dependency/resolution gaps. Enumerate concrete missing inputs before implementing; prove relevant changes invalidate/refuse publication while equivalent runs preserve identity and resolution. Ordered options already landed; do not reimplement them. | Existing captured installation/startup view. |
-| B2 — Frontend compiler generation | Own backend and actual Vite compiler generations coherently; successful compiler refresh cannot leave the frontend using the old compiler. Preserve HMR, useful paths, recovery and awaited retirement. | B1 inputs needed by the frontend handoff, not unrelated discovery consumers. |
+| B2 — Frontend compiler generation | Matching-generation owner implemented in `a595246f2`: actual backend/Vite handoff, failed startup retention, private caches, interrupted startup and awaited retirement pass. Close pack-derived configuration invalidation and external browser/module-graph HMR acceptance; preserve useful paths and recovery. | B1 inputs needed by the frontend handoff, not unrelated discovery consumers. |
 | B3 — Remaining resource lifetime | Audit native/background work and required platform-specific descendant handling against existing cancellation. Close demonstrated ownership gaps so build-owned work cannot outlive final validation/disposal. Retain required one-shot/dev/platform cases; public cancellation is already implemented. | Relevant B1/B2 owners; no security sandbox or general resource-confinement expansion. |
 | B4 — Persist successful input/output association | Publish the completed input record atomically with sealed output. Failed or incoherent builds retain the incumbent; readers can validate the association without executing pack/compiler code. Startup observations alone are not this record. | Complete relevant B1–B3 producer ownership. |
 | B5 — Passive freshness consumers | Migrate archive, prebuilt tests, default-fork preparation and drive to the common record. Preserve manual builds, deterministic reuse, source-free installed inspection and deliberately stale drive behavior. Remove replaced freshness heuristics. | B4. |
@@ -256,8 +256,12 @@ identity. Source `5c5f733fb` repairs that configured selection through the exist
 including its reuse checks, worker environment and cleanup. Twelve installation cases, real override
 build/repeat identity, corrected cancellation fixture, CLI types/lint and package refresh pass; see
 [executable checkpoint evidence](../evidence/build-input-snapshot-proof.md#captured-external-esbuild-executable-checkpoint-2026-10-17).
-Next: inspect and implement the retained frontend generation handoff (B2), whose package/input owner
-now has the relevant capture primitives. Keep remaining runtime/native/transient B1/B3 matrix cases
+Frontend ownership checkpoint `a595246f2` now retains one builder for initial/dev/watch compilation and
+Vite workers. Actual A/B publication/HTTP source watching, failure retention, watcher/session ownership
+and complete process/copy/cache retirement pass, alongside affected lifecycle tests, CLI/scripts types,
+lint and package builds. See [frontend generation evidence](../evidence/build-input-snapshot-proof.md#retained-frontend-compiler-ownership-checkpoint-2026-10-17).
+Next: close B2's pack-derived configuration invalidation boundary and external browser HMR acceptance.
+Do not recreate its generation owner. Keep remaining runtime/native/transient B1/B3 matrix cases
 open, then complete B4–B6 and all-kind acceptance. Asset input/output completeness remains required under B1/B4,
 not a deferred follow-up or another discovery store. All three Phase 6 workstreams remain required. Do not restart implemented endpoint
 or navigation work, or rerun a broad gate to investigate the preserved integration failures.

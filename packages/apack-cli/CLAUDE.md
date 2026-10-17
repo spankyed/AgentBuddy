@@ -77,6 +77,12 @@ A changed compiler or damaged copy is replaced. `runPackBuild` closes this scope
 a watcher retains it until close. Closing aborts active work, drains the worker and input observers,
 then removes the private installation.
 
+`pack dev` retains that builder across its initial build and watcher. `serveFrontend` runs the existing
+`packDevServerConfig` in `frontend-worker`, from the same captured compiler, with live authored sources
+and a private writable Vite/temp workspace. A ready replacement publishes its marker before the old
+frontend is retired; worker closure and its POSIX group precede compiler disposal. The watcher accepts
+the session's build operation and owns only its subscriptions; the session closes the shared builder.
+
 The parent holds the pack build lock through worker closure and publication. Workers only prepare and
 seal a candidate, report its authored-input hash and sealed revision, drain diagnostics, and exit.
 The parent waits for process closure, verifies the exact sealed output and authored hash, then replaces

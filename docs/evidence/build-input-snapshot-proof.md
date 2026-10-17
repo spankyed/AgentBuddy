@@ -623,3 +623,45 @@ server may use a new port; the existing marker and successful-build app reload c
 Prove actual A/B transforms and backend builds from matching generations, live source/HMR behavior,
 failed-refresh recovery, retained reuse, marker handoff, awaited retirement and cleanup. Preserve source
 paths, one-shot builds and existing cancellation. Keep remaining B1/B3 and B4–B6 requirements open.
+
+## Retained frontend compiler ownership checkpoint (2026-10-17)
+
+Source `a595246f2` implements the matching-generation handoff. The pack builder owns its captured
+installation and optional Vite worker. `pack dev` retains this builder from initial publication through
+watching; the watcher receives its build operation and closes its subscriptions without disposing the
+session's compiler. The new private worker loads the existing dev configuration from the captured CLI,
+keeps the authored root live and reports checked compiler identity/readiness. Markers name its actual
+PID/port. Each server has a private writable cache/temp directory; replacement does not share optimizer
+output with the incumbent. Server/process-group retirement is awaited before installation disposal.
+The unawaited server slot is removed from `createDevHold`; its existing awaited owner cleanup closes
+the builder. No public command, manifest field or SDK API is added.
+
+Evidence:
+
+- Actual pack publication, live Vue source invalidation, failed candidate retention, and backend/Vite
+  A→B through the real watcher pass (50.14s including initial-build setup):
+  `/private/tmp/apack-frontend-generation-acceptance.log`. The old process and compiler copy disappear
+  after handoff; closing the watcher preserves the session-owned frontend; closing the builder removes
+  all captured installations and all three server workspaces.
+- All 27 initially affected builder/watch/dev-hold/cancellation/host-ownership cases pass (8.04s):
+  `/private/tmp/apack-frontend-generation-unit.log`. The final six builder cases include native interrupted
+  frontend startup, with its process and workspace terminal before inputs disappear (4.62s):
+  `/private/tmp/apack-frontend-generation-startup.log`.
+- CLI and scripts types, lint and the final distributable build pass:
+  `/private/tmp/apack-frontend-generation-{types-final,scripts-types,lint-final,packages-final}.log`.
+
+Two earlier integration attempts are failures, not acceptance: the first combined initial publication,
+refresh and interrupted startup under one test's 60-second limit; the second reached successful A/B
+handoff but its startup-ready poll also included full compiler capture. Initial publication is now
+fixture setup, and startup cancellation is independently checked using the existing small real-process
+fixture. Lifecycle assertions were retained across the two checks; no production deadline or global
+test deadline was increased. Fixture compiler transforms intentionally omit maps; the run also reports
+existing bare-host-import pre-transform, Browserslist and empty Tailwind warnings. HTTP/source-watch
+acceptance is not a browser HMR acceptance claim.
+
+B2 is still partial. Next audit pack-derived dev configuration (`build.bundleUi`, shared module/export
+lists and entry changes): the retained server currently refreshes on compiler generation change or
+absence, while these configuration inputs are read when the server starts. Settle their actual
+invalidation boundary and prove browser/module-graph HMR with a real external dev session before
+closing B2. Do not restart the now accepted compiler-generation owner. Remaining B1/B3 native/runtime
+cases, B4–B6, all-kind discovery, all three Phase 6 workstreams and final strict `--all` remain open.

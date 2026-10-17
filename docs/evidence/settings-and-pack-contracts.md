@@ -6575,3 +6575,13 @@ checks, CLI types/lint and package refresh pass; the stale cancellation mock was
 changing production behavior. See [executable evidence](build-input-snapshot-proof.md#captured-external-esbuild-executable-checkpoint-2026-10-17).
 Continue B2's retained frontend generation audit; other B1/B3 and all subsequent goal requirements
 remain open. No passing broad gate is claimed.
+
+### Retained frontend compiler ownership (2026-10-17)
+
+`a595246f2` gives initial/dev/watch builds and the Vite worker one captured compiler-generation owner,
+with private server caches and awaited retirement. Actual backend/Vite A/B handoff, source watching,
+failed replacement retention, watcher/session ownership and process/copy/cache cleanup pass; focused
+startup cancellation, affected lifecycle cases, CLI/scripts types, lint and package builds pass. See
+[generation evidence](build-input-snapshot-proof.md#retained-frontend-compiler-ownership-checkpoint-2026-10-17).
+Close B2's configuration invalidation and browser HMR acceptance next. Remaining B1/B3, B4–B6 and all
+other active goal requirements remain open; no new broad gate is claimed.

@@ -188,8 +188,13 @@ to declared npm bytes, filtered package membership and missing optional lookups 
 reader and observation protocol; native-preload and unchanged repeat-build acceptance pass. Source
 `5c5f733fb` captures configured external esbuild executables in the same compiler installation and
 verifies identity/reuse, missing fallback and the real worker handoff. Remaining runtime/native and transient dependency/namespace
-acceptance, retained frontend generation and expected copied outputs under B4
+acceptance, remaining frontend configuration/browser acceptance and expected copied outputs under B4
 remain open; these source checkpoints do not certify full producer coverage.
+
+`a595246f2` supplies matching captured backend/Vite generations, private server caches, failed-refresh
+retention and awaited retirement through the real watcher. Preserve that implementation; the execution
+goal still owns B2's configuration-derived invalidation and external browser HMR checks, remaining
+B1/B3 cases and the successful B4 input/output association.
 
 Execute the identified gaps in this order:
 

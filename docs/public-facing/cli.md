@@ -208,13 +208,16 @@ A profile is self-contained — its data, packs, logs and secrets are all inside
 
 A profile is a data dir and nothing else: the environment, the app's identity and the URL scheme are untouched, so `--host beta` and a local checkout can both run the same profile. **The word is `profile` rather than `instance` because an instance of an app is a running process** — which is what Electron's single-instance lock is about — where this is storage, and a named, disposable data dir that leaves the app's identity alone is what a browser calls a profile.
 
-An app already running on that data dir is used as it is; otherwise `dev` starts one, and closing `dev` closes the app it started. It then builds, installs the pack into that app's data dir, and:
+`dev` first builds the pack, then starts or reuses the app on that data dir and installs the verified
+build. Closing `dev` closes the app it started. It then:
 
 - serves the FE entry from a Vite dev server (port 5199, or the next free one) with HMR, recording its port in `pack-dev-servers/<id>.json` in the app's data dir so the app's `pack://` requests go to it. The marker sits outside the installed pack, which stays exactly the verified files, and is removed when `apack pack dev` exits
 - on `apack.json` changes, regenerates `src/__generated__/`
-- on `.ts` changes under `src/`, rebuilds, reinstalls and asks the running app to reload the pack's backend
+- on authored input changes, rebuilds, reinstalls and asks the running app to reload the verified pack
 
-Without an FE entry it rebuilds, reinstalls and reloads on any change instead.
+Backend builds and Vite use the same captured compiler generation. A compiler refresh starts a ready
+replacement server, updates its marker and retires the old server; a failed replacement startup keeps
+the incumbent. Each server owns its writable cache. Packs without an FE entry use the same build watcher.
 
 #### `apack pack drive [script | --eval <body>] [--host <path>] [profile flags]`
 
