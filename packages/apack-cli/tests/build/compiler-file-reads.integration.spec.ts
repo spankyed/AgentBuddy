@@ -12,6 +12,35 @@ import { createCompilerModuleLoader } from '../../src/build/compiler-modules.ts'
 const roots: string[] = [];
 afterEach(() => { vi.unstubAllEnvs(); for (const root of roots.splice(0)) fs.rmSync(root, { recursive: true, force: true }); });
 
+it('compiles content records and copied media from the same captured input view', async () => {
+  const root = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'apack-media-reads-')));
+  roots.push(root);
+  fs.writeFileSync(path.join(root, 'package.json'), '{"type":"module"}');
+  const media = path.join(root, 'content/media/pic.png');
+  fs.mkdirSync(path.dirname(media), { recursive: true });
+  fs.writeFileSync(media, 'CAPTURED');
+  fs.chmodSync(media, 0o666);
+  fs.writeFileSync(path.join(root, 'content/first.md'), 'CAPTURED body ![pic](media/pic.png)');
+  const compilation = captureCompilationInputs(root);
+  const outputDirectory = path.join(root, 'dist');
+  try {
+    fs.writeFileSync(media, 'LIVE');
+    await withCompilerFileReads({ compilation, outputDirectory }, () => compilePack({
+      packDir: root, outputDir: outputDirectory,
+      packConfig: { name: 'media-proof', sources: { memos: { kind: 'format', path: 'content', formatRef: 'memos',
+        format: { format: 'markdown-tree', entity: 'Memo', identity: ['title'], media: 'media',
+          fields: { title: { from: 'frontmatter.title', default: 'filename' }, body: { from: 'body' } } },
+      } } },
+    }));
+    const records = JSON.parse(fs.readFileSync(path.join(outputDirectory, 'memos.content.json'), 'utf8')).records;
+    expect(records[0].body).toContain('CAPTURED body');
+    const copied = path.join(outputDirectory, 'media/memos/pic.png');
+    expect(fs.readFileSync(copied, 'utf8')).toBe('CAPTURED');
+    if (process.platform !== 'win32') expect(fs.statSync(copied).mode & 0o777).toBe(0o666);
+    expect(() => compilation.assertCurrent()).toThrow('Compiler or installed package inputs changed');
+  } finally { compilation.dispose(); }
+});
+
 it('captures explicitly imported dependency code and relative modules outside authored discovery', async () => {
   const root = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'apack-dependency-modules-')));
   roots.push(root);

@@ -92,6 +92,23 @@ function countRecords(records: ContentItem[]): number {
   return records.reduce((sum, record) => sum + 1 + countRecords(record.children ?? []), 0);
 }
 
+/** Ordinary media bytes use the same scoped reads as records; native copying bypasses captured inputs. */
+function copyMedia(source: string, destination: string): void {
+  const stat = fs.lstatSync(source);
+  if (stat.isDirectory()) {
+    fs.mkdirSync(destination, { recursive: true });
+    for (const name of fs.readdirSync(source)) copyMedia(path.join(source, name), path.join(destination, name));
+    fs.chmodSync(destination, stat.mode);
+  } else if (stat.isFile()) {
+    fs.mkdirSync(path.dirname(destination), { recursive: true });
+    fs.writeFileSync(destination, fs.readFileSync(source));
+    fs.chmodSync(destination, stat.mode);
+  } else {
+    // Preserve native link/special-file behavior; installed builds still enforce their regular-file layout.
+    fs.cpSync(source, destination, { recursive: true });
+  }
+}
+
 async function loadPackConfig(options: CompilePackOptions): Promise<PackConfig> {
   if (options.packConfig) return options.packConfig;
   const manifestPath = path.join(options.packDir, 'apack.json');
@@ -246,7 +263,7 @@ export async function compilePack(options: CompilePackOptions): Promise<CompileP
   const mediaRoot = path.join(outputDir, 'media');
   for (const { key, media, output, index } of compiled) {
     fs.writeFileSync(path.join(outputDir, contentFile(key)), `${JSON.stringify(output, null, 2)}\n`);
-    if (media && fs.existsSync(media)) fs.cpSync(media, path.join(mediaRoot, key), { recursive: true });
+    if (media && fs.existsSync(media)) copyMedia(media, path.join(mediaRoot, key));
     log(`  ${key}: ${index.count}`);
   }
   fs.writeFileSync(path.join(outputDir, CONTENT_INDEX_FILE), `${JSON.stringify(index, null, 2)}\n`);
