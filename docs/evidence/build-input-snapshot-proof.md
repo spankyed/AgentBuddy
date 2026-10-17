@@ -1361,6 +1361,55 @@ to be run against this final wiring. Do not count the earlier real prebuilt pass
 B1/B3 lifetime closure, B6 convergence, all Phase 6 streams and final committed-source strict `--all`
 remain required. Available disk before these runs is 83GiB; no broad suite was launched here.
 
+## Worker watch continuity and repair
+
+Source checkpoint: `77e4bffc5`.
+
+An actual worker-backed content compiler publishes correctly but ignores an external edit under watch:
+`/private/tmp/apack-watch-worker-before.log`. Capture already exposes typed input probes, so startup
+now retains newly observed external probes in per-thread, append-only reports under the existing
+build workspace. The parent reads them after compiler exit, including failed builds. These are
+subscription hints, not another source scanner, cache or output authority. Newline framing preserves
+completed hints across interrupted writes; initial capture and authored/output exclusions remain intact.
+
+The existing compiler watcher owns nonrecursive namespaces, missing-path guards and physical aliases.
+Successful builds replace runtime probes; failures retain previous and newly discovered repair probes.
+Freshness uses the sealed build's captured facts: static fingerprints retain ordinary source/package
+ownership, while native queries and additional runtime reads use the common passive replayer. Keeping
+static paths distinct prevents a runtime input from losing freshness checks after its first rebuild.
+Recursive native listings and consumed cursor entries report nested directories without a new walk.
+
+Review also fixed cancellation recreating subscriptions after close, preserved native termination
+exit-status behavior while retaining build-owner refusals, and excluded owned compiler metadata reads
+from authored capture. The latter had leaked `compiler-inputs.json` into disposable watch paths.
+
+Evidence:
+
+- Real initial publication, failed external retarget, incumbent preservation and missing-file repair
+  pass in 68.27s; repair publication takes 26.57s:
+  `/private/tmp/apack-watch-worker-recovery-measured.log`. The new scenario uses 120s overall and the
+  existing 60s integration budget per build wait, rather than a deadline fitted to that measurement.
+  Existing scenarios and global budgets are unchanged.
+  The composed scenario passes again on committed source `77e4bffc5` in 76.06s, using its declared
+  budgets without command-line overrides: `/private/tmp/apack-watch-committed-recovery.log`.
+- Startup/builder/frontend/protocol coverage: 106 checks across nine files pass in 26.88s;
+  `/private/tmp/apack-watch-worker-final-fast.log`. Final metadata, recursive directory, native probe,
+  retry/close and policy coverage: 73 checks across six files pass in 5.28s;
+  `/private/tmp/apack-watch-final-checks.log`. Another 22 existing captured-view/replay checks pass:
+  `/private/tmp/apack-watch-final-input-views.log`.
+- The recursive probe case fails before the producer fix and passes afterward:
+  `/private/tmp/apack-watch-recursive-before.log`, `/private/tmp/apack-watch-recursive-after.log`.
+- Actual blocked-worker termination still refuses publication and retains its incumbent (35.27s):
+  `/private/tmp/apack-watch-final-termination.log`. Actual frontend/probe reports contain no private
+  compiler paths after disposal (30.46s): `/private/tmp/apack-watch-source-path-fixed.log`.
+- CLI, host and repo-checks types and changed-file correctness lint pass:
+  `/private/tmp/apack-watch-final-{cli,host,repo}-types.log`, `/private/tmp/apack-watch-final-lint.log`.
+
+The initial growing-list recorder and duplicate full-record replay caused avoidable overhead; both
+were removed before this checkpoint. Native addon/external-library and platform lifetime closure,
+converged integration/B6, all remaining Phase 6 work and final strict committed-source acceptance
+remain required. This is not a broad pass.
+
 ## Compiler-created worker input ownership
 
 Source checkpoint: `c7d5603c5`.
@@ -1403,9 +1452,8 @@ Evidence:
 - CLI types and correctness lint pass:
   `/private/tmp/apack-worker-input-final-types.log`, `/private/tmp/apack-worker-input-final-lint.log`.
 
-Remaining: watch mode's current inventories do not yet project these dynamic worker observations into
-subscriptions. Feed the accepted facts into the existing subscription owner and prove external edits
-rebuild without an authored edit; do not invent another scanner. Native addons/external libraries and
+Follow-up `77e4bffc5` implements the previously missing watch subscriptions and recovery; see
+[watch continuity](#worker-watch-continuity-and-repair). Native addons/external libraries and
 platform-specific lifetime acceptance remain open, as do B6 and the whole-goal final strict gate.
 No B1/B3 completion or broad pass is claimed.
 

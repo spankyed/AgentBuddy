@@ -176,6 +176,13 @@ build layer; it does not import the CLI, TypeScript or Vite. Compiler-copy names
 the installation identity rather than being replayed against originals. Staging omits the source-only
 record; installed/offline inspection remains source-free. See
 [checkpoint evidence](../evidence/build-input-snapshot-proof.md#completed-source-inputoutput-association-checkpoint).
+Compiler-created worker reads now join that common record. Their watch probes use the existing
+subscription owner, including missing-input recovery after failed builds and nested recursive
+directories. Probe transport stays in the build workspace and never certifies output. Static
+fingerprints and additional captured native facts retain distinct ownership; private compiler
+bookkeeping is excluded from authored reads. See
+[worker/watch evidence](../evidence/build-input-snapshot-proof.md#worker-watch-continuity-and-repair).
+Native-library/platform lifetime and converged acceptance remain open under B1/B3/B6.
 Expected emitted/copied output bytes and B5 consumer policies remain required; the presence of this
 record alone does not establish those guarantees.
 

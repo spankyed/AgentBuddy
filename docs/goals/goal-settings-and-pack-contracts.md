@@ -370,8 +370,14 @@ did not track; the regression now passes for explicit termination, natural exit 
 nested workers and a background worker. A CPU-blocked worker refuses publication and preserves the
 incumbent. Existing native preload/loader and builder cancellation checks pass. See
 [worker ownership evidence](../evidence/build-input-snapshot-proof.md#compiler-created-worker-input-ownership).
-Next: project these dynamic observations into existing watch subscriptions and prove an external edit
-rebuilds without an authored edit. Then finish affected integration acceptance on two cores before
+Watch continuity and repair are implemented in `77e4bffc5`: typed capture probes feed existing
+subscriptions after successful and failed compilers; the common record supplies additional native
+freshness checks. A real external retarget fails without replacing the incumbent, then creating its
+missing file publishes the repair without authored edits. Recursive directory probes, original source
+paths, close cancellation and native termination semantics are covered. See
+[watch evidence](../evidence/build-input-snapshot-proof.md#worker-watch-continuity-and-repair).
+Next: close the finite native-addon/external-library and platform lifetime audit, then finish affected
+integration acceptance on two cores before
 repeating a broad gate. Do not rebuild
 the accepted default/fork handoff again unless its inputs change or a named coverage gap requires it.
 Reconcile
