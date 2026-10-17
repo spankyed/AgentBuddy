@@ -3,11 +3,12 @@ import path from 'node:path';
 import { createHash } from 'node:crypto';
 import { createCompilerInputObservations, hashCompilerInputObservations } from './compiler-observations.ts';
 import type ts from 'typescript';
-import type { BuildInputKind, BuildInputObserver } from '@apackdev/host/build/pack-inputs';
+import { isPackInputPath, type BuildInputKind, type BuildInputObserver } from '@apackdev/host/build/pack-inputs';
 import { compilerSourcePath, type CompilerPathMapping } from './compiler-paths.ts';
 import { captureNativeDirectory, type CompilerDirectoryCursor } from './compiler-directories.ts';
 import { captureCompilerMetadata, compilerMetadataOperations, type CompilerMetadataKind } from './compiler-metadata.ts';
 import { physicalWatchPath } from './watch-paths.ts';
+import { withCompilerFileReads } from './compiler-file-reads.ts';
 
 export type CompilerFileSystem = Pick<ts.System,
   'readFile' | 'fileExists' | 'directoryExists' | 'getDirectories' | 'readDirectory'> & { realpath(file: string): string };
@@ -52,11 +53,26 @@ function sourceText(bytes: Buffer): string {
 /** One scan consumes owned query results and bytes; validation never changes that view. */
 export function createCompilerFileView(root: string, options: {
   paths?: readonly CompilerPathMapping[];
+  /** The caller owns complete authored membership; dependency and outside glob reads remain observed. */
+  authoredFiles?: readonly string[];
   excluded?: (file: string) => boolean;
   observe?: BuildInputObserver;
 } = {}) {
-  const excluded = options.excluded ?? (() => false);
   const paths = options.paths?.map(mapping => ({ ...mapping })) ?? [];
+  const authoredFiles = options.authoredFiles && [...options.authoredFiles];
+  const roots = [...new Set([path.resolve(root), fs.realpathSync(root)])];
+  const authoredPath = (file: string) => {
+    if (!authoredFiles) return;
+    for (const root of roots) {
+      const relative = path.relative(root, file);
+      if (relative !== '..' && !relative.startsWith(`..${path.sep}`) && !path.isAbsolute(relative)
+        && !relative.split(path.sep).includes('node_modules')) return relative;
+    }
+  };
+  const excluded = options.excluded ?? (file => {
+    const relative = authoredPath(file);
+    return relative !== undefined && !isPackInputPath(relative, false);
+  });
   const origin = compilerSourcePath(fs.realpathSync(root), paths);
   const observe = options.observe;
   let disposed = false;
@@ -172,31 +188,37 @@ export function createCompilerFileView(root: string, options: {
   const observations = () => {
     assertOpen();
     const result = createCompilerInputObservations(origin);
+    if (authoredFiles) result.record(['authored-files'], authoredFiles);
     for (const [file, bytes] of contents) result.record(['file', relative(file)], bytes === undefined ? null : createHash('sha256').update(bytes).digest('hex'));
     for (const value of inputs.values()) result.record(['namespace', relative(value.slot)], [relative(value.physical), value.kind, value.kind === 'file' ? value.mode & 0o111 : 0]);
     for (const [directory, value] of directories) result.record(['entries', relative(directory)], value.entries);
-    for (const value of globs.values()) {
-      const pattern = (pattern: string) => path.isAbsolute(pattern) ? path.relative(value.args[0], pattern).split(path.sep).join('/') : pattern;
-      const patterns = value.args.slice(1).map(arg => Array.isArray(arg) ? arg.map(pattern) : arg);
-      result.record(['glob', relative(physicalWatchPath(value.args[0], physical)), patterns], value.files.map(file => path.relative(value.args[0], file).split(path.sep).join('/')));
-    }
     for (const query of directoryQueries.values()) result.record(['node-directory', relative(query.file), query.options], JSON.parse(directoryResultKey(query.result, relative)));
     for (const entry of metadata.values()) for (const [query, value] of entry.query.facts(relative)) result.record(['node-metadata', entry.kind, relative(entry.file), entry.args, ...query], value);
     for (const query of directoryCursors.values()) for (const [index, value] of query.cursor.facts(relative)) result.record(['node-opendir', relative(query.file), query.options, index], value);
     return result.snapshot();
   };
-  return {
+  const view = {
     excluded,
     fileSystem,
     // Keep native capture usable before compiler activation; the compiler owns glob semantics.
-    readGlob(read: ts.System['readDirectory'], ...args: Parameters<ts.System['readDirectory']>) {
+    readGlob(read: ts.System['readDirectory'], ...args: Parameters<ts.System['readDirectory']>): string[] {
       if (input(args[0], 'entries')?.kind !== 'directory') return [];
       const query: Parameters<ts.System['readDirectory']> = [path.resolve(args[0]),
         args[1] && [...args[1]], args[2] && [...args[2]], args[3] && [...args[3]], args[4]];
       const key = JSON.stringify(query);
       let value = globs.get(key);
       if (!value) {
-        value = { args: query, files: read(...query).filter(file => !excluded(file)).sort(), read };
+        const files = withCompilerFileReads({ compilation: {
+          isInput: file => !excluded(file) && authoredPath(file) === undefined,
+          readDataPath: file => file,
+          readMetadata: (kind, file, args) => view.readMetadata(kind, file, args),
+          readDirectory: (file, options) => view.readDirectoryData(file, options),
+          openDirectory: (file, options) => view.openDirectoryData(file, options),
+          sourcePath: file => compilerSourcePath(file, paths),
+          diagnostic: message => message,
+          requireParent: file => file,
+        } }, () => read(...query));
+        value = { args: query, files: files.filter(file => !excluded(file)).sort(), read };
         globs.set(key, value);
       }
       return [...value.files];
@@ -373,4 +395,5 @@ export function createCompilerFileView(root: string, options: {
     observations,
     hash() { return hashCompilerInputObservations(observations()); },
   };
+  return view;
 }

@@ -3,15 +3,19 @@ import { createCompilerFileView } from './compiler-file-view.ts';
 import { createCompilerInputObservations, type CompilerInputObservations } from './compiler-observations.ts';
 import type { CompilerMetadataKind } from './compiler-metadata.ts';
 import { readPackageDirectoryEntries } from '@apackdev/host/build/package-inputs';
+import { packInputFiles } from '@apackdev/host/build/pack-inputs';
 
 /** Replay native thread facts against originals immediately before synchronous publication checks. */
 export function assertNativeCompilerObservations(observations: CompilerInputObservations): void {
-  const view = createCompilerFileView(observations.root);
+  const authoredFiles = observations.entries.some(([query]) => JSON.parse(query)[0] === 'authored-files')
+    ? packInputFiles(observations.root) : undefined;
+  const view = createCompilerFileView(observations.root, { authoredFiles });
   const cursors = new Map<string, { file: string; options: unknown; index: number }>();
   const packages = createCompilerInputObservations(observations.root);
   try {
     for (const [encoded] of observations.entries) {
       const [kind, ...query] = JSON.parse(encoded);
+      if (kind === 'authored-files') continue; // The view already owns the current authored inventory.
       if (kind === 'file') view.readBytes(path.resolve(observations.root, query[0]));
       else if (kind === 'namespace') view.captureLocation(path.resolve(observations.root, query[0]), 'file');
       else if (kind === 'entries') view.captureLocation(path.resolve(observations.root, query[0]), 'entries');

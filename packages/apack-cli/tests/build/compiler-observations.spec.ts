@@ -2,9 +2,11 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { afterEach, expect, it } from 'vitest';
+import ts from 'typescript';
 import { createCompilerFileView } from '../../src/build/compiler-file-view.ts';
 import { createCompilerInputObservations, hashCompilerInputObservations } from '../../src/build/compiler-observations.ts';
 import { assertNativeCompilerObservations } from '../../src/build/compiler-observation-validation.ts';
+import { createPackCompilerInputView } from '../../src/build/compiler-input-view.ts';
 
 const roots: string[] = [];
 afterEach(() => { for (const root of roots.splice(0)) fs.rmSync(root, { recursive: true, force: true }); });
@@ -15,6 +17,23 @@ function fixture() {
   fs.writeFileSync(file, 'ONE');
   return { root, file };
 }
+
+it.each([false, true])('replays glob facts and detects deep outside additions (authored owner: %s)', authored => {
+  const { root } = fixture();
+  const pack = path.join(root, 'pack'), outside = path.join(root, 'outside/nested');
+  fs.mkdirSync(pack);
+  fs.mkdirSync(outside, { recursive: true });
+  const view = authored ? createPackCompilerInputView(pack) : createCompilerFileView(pack);
+  try {
+    expect(view.readGlob(ts.sys.readDirectory, pack, ['.ts'], undefined, ['../outside/**/*.ts'])).toEqual([]);
+    const observations = view.observations();
+    expect(() => assertNativeCompilerObservations(observations)).not.toThrow();
+    fs.writeFileSync(path.join(outside, 'added.ts'), 'export {};');
+    expect(() => assertNativeCompilerObservations(observations)).toThrow(/startup input changed/);
+    fs.rmSync(path.join(outside, 'added.ts'));
+    expect(() => assertNativeCompilerObservations(observations)).not.toThrow();
+  } finally { view.dispose(); }
+});
 
 it('combines consumed stat fields and rejects conflicting reads after the source is restored', () => {
   const { root, file } = fixture();

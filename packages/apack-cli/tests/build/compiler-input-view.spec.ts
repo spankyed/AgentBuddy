@@ -95,21 +95,38 @@ it('owns authored bytes before their first compiler read, including linked files
   expect(() => view.assertCurrent()).toThrow(/outlived/);
 });
 
+it('replays authored directory facts while generated outputs are present', () => {
+  const { pack } = fixture();
+  const view = createPackCompilerInputView(pack);
+  views.push(view);
+  view.fileSystem.getDirectories(path.join(pack, 'src'));
+  const observations = view.observations();
+  fs.mkdirSync(path.join(pack, 'src/__generated__'));
+  fs.writeFileSync(path.join(pack, 'src/__generated__/types.ts'), 'export {};');
+  expect(() => view.assertCurrent()).not.toThrow();
+  expect(() => assertNativeCompilerObservations(observations)).not.toThrow();
+});
+
 it('retains authored membership and consumed directory queries while ignoring generated output', () => {
   const { pack } = fixture();
   fs.rmdirSync(path.join(pack, 'src'));
   const view = createPackCompilerInputView(pack);
   views.push(view);
+  const authored = view.observations();
   for (const directory of ['dist', '.apack', 'src/__generated__']) {
     fs.mkdirSync(path.join(pack, directory), { recursive: true });
     fs.writeFileSync(path.join(pack, directory, 'output.ts'), 'export {};');
   }
   expect(() => view.assertCurrent()).not.toThrow();
+  expect(() => assertNativeCompilerObservations(authored)).not.toThrow();
   view.fileSystem.getDirectories(path.join(pack, 'empty'));
+  const consumed = view.observations();
   fs.mkdirSync(path.join(pack, 'empty/new-directory'));
   expect(() => view.assertCurrent()).toThrow('namespace changed');
+  expect(() => assertNativeCompilerObservations(consumed)).toThrow('Compiler startup input changed');
   fs.rmdirSync(path.join(pack, 'empty/new-directory'));
   fs.writeFileSync(path.join(pack, 'new.ts'), 'export {};');
   expect(view.authoredFiles).toEqual(['value.ts']);
   expect(() => view.assertCurrent()).toThrow('source membership changed');
+  expect(() => assertNativeCompilerObservations(consumed)).toThrow('Compiler startup input changed');
 });

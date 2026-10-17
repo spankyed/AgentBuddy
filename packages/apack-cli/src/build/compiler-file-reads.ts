@@ -23,7 +23,7 @@ export interface CompilerFileReadInputs {
 
 interface CompilerFileReadScope {
   compilation: CompilerFileReadInputs;
-  outputDirectory: string;
+  outputDirectory?: string;
 }
 
 interface CompilerReadState {
@@ -48,8 +48,10 @@ function readScope(file: fs.PathOrFileDescriptor) {
   if (!scope || (typeof file !== 'string' && !(file instanceof URL) && !Buffer.isBuffer(file))) return;
   const absolute = path.resolve(file instanceof URL ? fileURLToPath(file) : file.toString());
   if (!scope.compilation.isInput(absolute)) return;
-  const relative = path.relative(scope.outputDirectory, absolute);
-  if (relative === '' || (!relative.startsWith(`..${path.sep}`) && relative !== '..' && !path.isAbsolute(relative))) return;
+  if (scope.outputDirectory) {
+    const relative = path.relative(scope.outputDirectory, absolute);
+    if (relative === '' || (!relative.startsWith(`..${path.sep}`) && relative !== '..' && !path.isAbsolute(relative))) return;
+  }
   return { scope, absolute };
 }
 
@@ -293,7 +295,7 @@ function install() {
 }
 
 /** Content code owns file bytes through its build scope; unrelated tasks and output reads stay native. */
-export function withCompilerFileReads<T>(scope: CompilerFileReadScope, operation: () => Promise<T>): Promise<T> {
+export function withCompilerFileReads<T>(scope: CompilerFileReadScope, operation: () => T): T {
   install();
   return scopes.run(scope, operation);
 }

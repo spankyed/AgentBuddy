@@ -1,6 +1,5 @@
-import fs from 'node:fs';
 import path from 'node:path';
-import { isPackInputPath, packInputFiles, type BuildInputObserver } from '@apackdev/host/build/pack-inputs';
+import { packInputFiles, type BuildInputObserver } from '@apackdev/host/build/pack-inputs';
 import { createCompilerFileView } from './compiler-file-view.ts';
 import { compilerSourcePath, type CompilerPathMapping } from './compiler-paths.ts';
 import { readPackageInputs, readPackageDirectoryEntries } from '@apackdev/host/build/package-inputs';
@@ -11,18 +10,9 @@ export function createPackCompilerInputView(root: string, options: {
   paths?: readonly CompilerPathMapping[];
   observe?: BuildInputObserver;
 } = {}) {
-  const authoredRoots = [...new Set([path.resolve(root), fs.realpathSync(root)])];
-  const view = createCompilerFileView(root, {
-    ...options,
-    // Generated imports are outputs of discovery, not inputs to its next invocation.
-    excluded: file => authoredRoots.some(directory => {
-      const relative = path.relative(directory, file);
-      return !relative.startsWith(`..${path.sep}`) && !path.isAbsolute(relative)
-        && !isPackInputPath(relative, false) && !relative.split(path.sep).includes('node_modules');
-    }),
-  });
+  const authoredFiles = Object.freeze(packInputFiles(root));
+  const view = createCompilerFileView(root, { ...options, authoredFiles });
   try {
-    const authoredFiles = Object.freeze(packInputFiles(root));
     for (const relative of authoredFiles) {
       const file = path.join(root, relative);
       if (view.readBytes(file) === undefined) throw new Error(`Compiler source could not be captured: ${file}`);

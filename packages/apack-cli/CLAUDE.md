@@ -123,6 +123,11 @@ maps are not recorded; private transport/temp/cache fields are excluded and owne
 origins. NODE_OPTIONS keeps its separate ordered-options contract. The same environment digest
 participates in frontend configuration and watcher signatures, including custom content/VITE keys.
 This is conservative: an included variable changes identity even if a particular compiler ignores it.
+Glob selection stays in TypeScript, but its serialized facts use the existing filesystem read scope:
+complete authored membership covers the source root, while outside/dependency enumeration records
+native directory/metadata observations. Native replay uses the same authored-output exclusions; it
+requires no TypeScript execution or second glob implementation. Local captured glob results and final
+live compiler-side validation remain in place.
 Pack and outside-module inputs are rechecked before publication; the already captured compiler fingerprint is reused within its immutable lifetime.
 
 Configured `ESBUILD_BINARY_PATH` executables belong to that installation too. Relative overrides resolve
