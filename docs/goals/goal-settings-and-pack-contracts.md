@@ -124,6 +124,21 @@ the native helper pass does not certify the pending integrations. See
 Local types, CLI packaging, POSIX descendant publication, syntax/lint and 53 tooling cases pass.
 Actual repeated-build baseline, build/frontend integration and final strict acceptance remain open.
 
+Follow-up Windows run `39067640431` on `1dacb59ec` is terminal and fully passes: authenticated
+installation, matching package build, 162 focused checks (eight platform skips), the exact real
+descendant-publication case, startup identity and repeated-build/archive identity. The repeated-build
+case takes 164.325 seconds under its existing 240-second Windows budget. This closes the previously
+unexecuted Windows baseline/publication acceptance, not the remaining Vite/native-input paths or
+the converged/final gates. See [Windows acceptance evidence](../evidence/build-input-snapshot-proof.md#windows-producer-baseline-acceptance-2026-10-17).
+
+Source `6fd1a5050` implements SDK-dependent standard macOS native fallbacks and distinguishes absent
+fallback settings from explicitly empty lists. Forty-two unit cases, four real loader cases covering
+SDK 13/14 dylib/framework searches and empty-list suppression, the real explicit-fallback
+refusal/incumbent-retention case, CLI types and lint pass. The real loader proof uses macOS 26.3.1 /
+Node 23.11.1 and private fixtures; no system directory writes. Restricted/hardened-runtime fallback
+policy still needs acceptance; versioned/shared-cache controls, retained Vite native initialization,
+ELF/PE and converged/final acceptance remain open. See [standard fallback evidence](../evidence/build-input-snapshot-proof.md#sdk-dependent-standard-native-fallbacks-2026-10-17).
+
 Source `59b890dcb` repairs the macOS explicit fallback gap: launch-time `DYLD_FALLBACK_LIBRARY_PATH`
 survives preload mutation, selected external fallback libraries refuse before native initialization,
 and the incumbent survives. Current-directory lookup precedes fallback lookup; a successfully resolved

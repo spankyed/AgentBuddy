@@ -2521,3 +2521,58 @@ The focused workflow now supplies `GITHUB_TOKEN` to `npm ci`, matching the main 
 GitHub API authorization. This addresses the missing authentication; the response alone does not
 establish why GitHub refused the unauthenticated request. No dependency, retry or timeout changes.
 This closes the helper's native cases, not the complete Windows producer/frontend or whole-goal gates.
+
+### Windows producer baseline acceptance (2026-10-17)
+
+[Run 39067640431](https://github.com/spankyed/AgentBuddy/actions/runs/39067640431) on committed source
+`1dacb59ec` completes successfully on Windows x64 / Node 23.11.1, using two test workers. Full log:
+`/private/tmp/apack-windows-39067640431.log`.
+
+- The complete production job-owner proof passes again, including environment/IPC, nonzero exit,
+  cancellation, independent-controller loss and isolated replacement.
+- `npm ci` succeeds with the installer's supported GitHub authentication; matching packages build.
+- Fourteen focused files pass: 162 checks, eight platform skips, 13.25 seconds runner duration.
+- The exact real descendant-publication case passes (1.22 seconds test time); unrelated cases are
+  deliberately unselected, not additional acceptance.
+- Both actual build-worker baseline cases pass: launch identity and repeated build/cache/archive
+  identity. The latter takes 164.325 seconds within the existing Windows-only 240-second budget;
+  runner duration is 167.34 seconds. No new timeout adjustment.
+
+This closes the pending Windows baseline and actual descendant-publication checks. It does not prove
+retained frontend native admission, all other native input/platform cases, B6 or final strict acceptance.
+The subsequent macOS fallback source checkpoint is not part of this run.
+
+### SDK-dependent standard native fallbacks (2026-10-17)
+
+Source `6fd1a5050` closes the missing standard-fallback observations for the locally exercised macOS
+compiler runtime. The reader extracts the selected image's macOS SDK from `LC_BUILD_VERSION` or
+`LC_VERSION_MIN_MACOSX`. Standard dylib/framework fallbacks apply below SDK 14; modern SDK images
+must not acquire those searches. An absent explicit fallback variable selects standard paths, while
+an explicitly empty variable disables them. Existing package-relative dependencies still resolve
+before fallback directories are consulted. Diagnostics attribute standard fallback selections without
+claiming an unset environment variable selected them.
+
+This follows Apple's [fallback search implementation](https://github.com/apple-oss-distributions/dyld/blob/main/dyld/DyldProcessConfig.cpp)
+and [SDK policy](https://github.com/apple-oss-distributions/dyld/blob/main/common/MachOFile.cpp), verified
+against actual loader behavior on macOS 26.3.1 / ARM64 / Node 23.11.1. The proof builds private native
+fixtures with SDK 13 and 14 metadata and removes their dependency; native failure diagnostics reveal
+which fallback paths dyld searched. The inspector's probes agree for dylibs and frameworks, both with
+absent and explicitly empty fallback settings. It never creates or removes a file in system directories.
+
+Evidence:
+
+- Forty-two focused unit cases pass, including standard outside-library refusal, SDK cutoff,
+  both version-command encodings/endian orders, empty-list suppression and package-first framework
+  resolution: `/private/tmp/apack-native-default-fallback-unit.log`.
+- Four native SDK/framework/dylib loader cases pass in 2.90 seconds runner time:
+  `/private/tmp/apack-native-default-fallback-loader.log`.
+- The existing public-build explicit-fallback refusal and incumbent-retention case passes, together
+  with the first two loader cases, in 31.99 seconds runner time:
+  `/private/tmp/apack-native-default-fallback-integration.log`. Initial sandbox execution was stopped
+  by `tsx` IPC `EPERM` during package preparation; the same selection passes with local IPC permission.
+- CLI typechecking and correctness lint pass; no schema/API exports or timeout changes.
+
+This proves the ordinary locally exercised runtime's standard fallback policy. AMFI restricted/hardened
+runtime policy is not established by this proof and remains open, alongside versioned/shared-cache
+controls, retained frontend native initialization, ELF/PE and converged/final acceptance. This is not
+universal dyld emulation, native-I/O confinement or completion of B1/B3.
