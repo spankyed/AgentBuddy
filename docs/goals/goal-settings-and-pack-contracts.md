@@ -264,7 +264,11 @@ Configuration checkpoint `d3833f788` refreshes on pack/shared metadata changes t
 fresh lookup fixes a reproduced UI link-cache omission. All 39 focused builder/package/shared cases,
 CLI/host types, lint and package refresh pass. Real browser HMR through generated registration preserves
 component state and document with no page errors; see [configuration/browser evidence](../evidence/build-input-snapshot-proof.md#frontend-configuration-and-browser-hmr-checkpoint-2026-10-17).
-Next: close the finite B1/B3 runtime/native and remaining namespace/subscription matrix cases. Preserve
+Cleanup `a67edefc1` centralizes generation sequencing; 29 affected lifecycle cases, CLI types and lint
+pass. The [runtime-copy proof](../evidence/build-input-snapshot-proof.md#generation-cleanup-and-runtime-copy-feasibility-2026-10-17)
+shows owned Node and Electron execution is feasible locally; Electron needs adjacent frameworks.
+Next: integrate selected runtime ownership into the existing captured installation and both worker
+launches, then close supported platform/native and remaining namespace/subscription cases. Preserve
 B2's accepted owner and browser proof; do not schedule another frontend generation implementation.
 Then complete B4–B6 and all-kind acceptance. Asset input/output completeness remains required under B1/B4,
 not a deferred follow-up or another discovery store. All three Phase 6 workstreams remain required. Do not restart implemented endpoint

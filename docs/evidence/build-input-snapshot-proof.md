@@ -715,3 +715,43 @@ B2's generation/configuration implementation and local browser acceptance are no
 `a595246f2` and this checkpoint. Preserve these results for final whole-goal validation. Remaining B1/B3
 runtime/native/namespace and subscription acceptance, B4–B6, all-kind discovery and all Phase 6
 requirements stay open. No broad gate or cross-platform runtime acceptance is claimed.
+
+
+## Generation cleanup and runtime-copy feasibility (2026-10-17)
+
+Source `a67edefc1` centralizes builder operation sequencing and closed-state checks, names frontend
+readiness explicitly and separates absent, live and replacement server paths. Existing generation,
+configuration, failure retention and shutdown ownership remain intact. All 29 affected builder,
+watch/retry, session-hold and dev-cancellation/host-ownership tests pass in 7.49s; CLI typecheck,
+focused correctness lint and diff whitespace checks pass. The first sandboxed run could not spawn
+`/bin/ps` for two process-group cases; the same six-file run passes with process inspection permitted.
+Log: `/private/tmp/apack-generation-cleanup-tests.log`. No broad gate is claimed.
+
+The next B1 runtime audit inspected current `build-process.ts` and `frontend-process.ts`: both launch
+`process.execPath`; installation capture owns compiler packages and an explicit esbuild override,
+but not that runtime. Startup identity records versions/options, which does not own executable bytes.
+
+A disposable plain-Node copy executes successfully on this darwin/arm64 checkout: 113,936,544 bytes,
+matching copied bytes and version map, running from its owned executable path. Its inspected direct
+loader dependencies are protected system libraries. This is a local feasibility result, not evidence
+for every Node distribution or dynamically loaded dependency.
+
+The Electron launcher has an `@executable_path/../Frameworks` lookup. Its framework also references
+Squirrel, ReactiveObjC, Mantle and libffmpeg, so copying just the launcher is insufficient. A private
+`Contents/MacOS/Electron` plus `Contents/Frameworks` copy preserves relative links and executes with
+`ELECTRON_RUN_AS_NODE=1`. Final proof: 89 ordinary files, 263,592,589 bytes, 210ms copy time on this
+machine/filesystem with clone-capable copying; matching version map and canonical owned executable
+path; zero escaping symlinks. The executed runtime's diagnostic report lists the launcher and all
+five non-system libraries inside the private copy. Protected system libraries remain outside it.
+Proof and terminal log: `/private/tmp/apack-runtime-copy-proof.mjs` and
+`/private/tmp/apack-runtime-copy-proof.log`; all private copied directories are removed in `finally`.
+The proof uses no production profile or app startup. Initial path comparisons were corrected to
+canonical paths (`/var` versus `/private/var`); library output is filtered before printing to avoid
+Electron's truncated large `-p` output. Neither correction changes product code.
+
+Next implementation must retain the selected runtime under the existing compiler-installation
+lifetime, use it for both backend and frontend workers, and bind original/captured runtime inputs into
+identity and reuse checks. Preserve compiler source-path mappings, launch options and dev/HMR behavior.
+Check actual supported platform layouts and externally linked runtime libraries before claiming
+portable closure; this local proof does not authorize ignoring them or a generic native-I/O sandbox.
+Remaining namespace/subscription acceptance, B3 lifetimes, B4–B6 and all other goal phases stay open.

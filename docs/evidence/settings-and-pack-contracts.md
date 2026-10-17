@@ -6595,3 +6595,12 @@ preserves component state/document during Vite HMR, with no page errors. See
 [configuration/browser evidence](build-input-snapshot-proof.md#frontend-configuration-and-browser-hmr-checkpoint-2026-10-17).
 B2 now has implementation and local acceptance; preserve final whole-goal validation. Remaining B1/B3,
 B4–B6 and every other active phase remain required. No broad or cross-platform gate is claimed.
+
+
+### Generation cleanup and runtime feasibility (2026-10-17)
+
+`a67edefc1` simplifies generation operation sequencing and frontend readiness; all 29 affected lifecycle
+cases, CLI types and focused lint pass. Disposable Node/Electron runtime copies demonstrate local
+owned execution; Electron requires its framework neighbors. See
+[runtime feasibility evidence](build-input-snapshot-proof.md#generation-cleanup-and-runtime-copy-feasibility-2026-10-17).
+Runtime integration and cross-platform acceptance remain required under B1/B3. No broad gate is claimed.
