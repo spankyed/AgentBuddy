@@ -92,6 +92,19 @@ preloads (`bbf05ec00`). These are source evidence, not a claim that the full str
 
 #### Current compiler checkpoint (2026-10-17)
 
+**Operational hold — local builds/native tests (2026-10-17):** the user reported system-wide app
+launch failures. Local runs were already terminal; no new local build/native runs are allowed until
+the machine is usable. Original Slack, ChatGPT and Activity Monitor tasks remain stopped at startup;
+a single fresh built-in Activity Monitor launch also stopped and was removed with targeted TERM.
+Fixture/native-runtime policy assessments and online failures are confirmed; causation of the global
+launch failure is unproven. Evidence is preserved in `/private/tmp/apack-launch-policy-visllvke`.
+Admin diagnostics require a password; no security settings/databases or installed applications were
+changed, and no daemon restart was performed. Recommend a targeted admin restart of
+`system/com.apple.security.syspolicy` before considering a whole-machine restart. Do not resume local
+expensive validation from this handoff automatically. GitHub runs must continue: run `39075394015`
+was mistakenly cancelled and restored as attempt 2 on the same `4b4d820fa` source. Remote CI does not
+establish local recovery. See [incident evidence](../evidence/build-input-snapshot-proof.md#macos-launch-policy-investigation-2026-10-17).
+
 **Current handoff:** source `ccaa809a8` delivers retained frontend native discoveries into live watch
 subscriptions and retains failed-candidate probes for repair. Native copies and receipts belong to the
 whole frontend process, so late workers reuse admitted bytes after the original library changes.

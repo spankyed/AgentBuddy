@@ -2729,3 +2729,59 @@ This focused checkpoint does not close all loader/module-resolution or platform 
 strict checkpoint and its corrected repository bookkeeping failures remain recorded above; no new
 broad diagnostic run was launched. Custom-loader/ESM and transitive-resolution cases, named native
 platform controls, B6 and final committed-source strict `--all` remain open.
+
+
+### macOS launch-policy investigation (2026-10-17)
+
+User priority: pause local build/native-test runs, preserve work, investigate system-wide launch
+failures, and keep remote GitHub runs going. No implementation changes or expensive local tests were
+made during this investigation. The tree was clean at `4b4d820fa`.
+
+Preserved evidence: `/private/tmp/apack-launch-policy-visllvke` (owner-only directory). It contains
+copies of `/tmp/apack-launch-hang.txt` and `/tmp/apack-syspolicyd-hang.txt`, before/after process
+snapshots, bounded policy logs and CPU capture, a fresh Activity Monitor sample, service metadata and
+controlled-launch/cleanup records. Full machine process logs stay outside the repository.
+
+Confirmed:
+
+- Slack PID 15518, ChatGPT PID 17469 and Activity Monitor PID 17615 were stopped (`T`) at initial
+  inspection. The fresh Activity Monitor sample still shows only `_dyld_start` and a 96 KB footprint.
+- No current owned build/test/Vite process was running. The historical orphan PID 84238 was preserved
+  according to prior instructions; it was idle and no signal was sent to it. Other sessions and
+  language servers were untouched.
+- The ten-minute policy capture contains seven Node assessments at seven distinct path hashes,
+  seven addon assessments at five paths and seven `libvalue.dylib` assessments at five paths.
+  It also contains 93 notarization-daemon error rows and eight network receive-timeout rows.
+  The prior daemon sample shows active YARA/signature work, not proof of a deadlock.
+- CPU capture was 66.62% idle, with about 74 GiB disk available. At a later snapshot syspolicyd used
+  0% CPU while the three apps remained stopped. These observations do not establish resource
+  exhaustion or daemon health.
+- One controlled fresh launch of the unmodified built-in Activity Monitor exited `open` successfully
+  but produced another stopped pre-startup task (PID 35753). Local testing had already ended.
+  Targeted TERM removed only that extra diagnostic instance; the original app tasks were untouched.
+- The original Node executable has no extended attributes. This does not rule out provenance or
+  first-use policy assessments of newly materialized files.
+- Current privileged daemon sampling/descriptor inspection is unavailable to this session;
+  noninteractive sudo reports that a password is required. Service identity is verified from its
+  installed plist and `launchctl print`: `system/com.apple.security.syspolicy`, PID 514, running.
+
+Interpretation: our fixture/native runtime launches generated real launch-policy work. Repeated new
+executable/library paths could contribute to policy churn, especially alongside observed online
+failures. They are not proven to have caused the unrelated apps' stopped launches. Quieting local
+runs did not restore launch behavior, and no OS daemon deadlock or descriptor exhaustion is proven.
+The code audit found no SIGSTOP/SIGTSTP/SIGCONT use in the compiler/build/test paths inspected.
+
+Smallest next recovery action: an admin-controlled targeted TERM of the verified syspolicy service,
+then one ordinary app-launch check. It has not been performed by this session. Preserve security
+settings/databases and app bundles. If that does not restore normal launches, save work before a normal
+machine restart. Do not inject SIGCONT into app tasks to bypass the unresolved launch check.
+
+Prevention pending diagnosis: keep expensive local native/captured-executable runs stopped until
+ordinary launches work; avoid repeating broad suites; prefer an isolated macOS runner for sustained
+native acceptance. Consider reuse of identical immutable runtime copies only as a bounded follow-up
+if measurements establish that new copies are driving assessments; do not replace the input-coherence
+contract or begin an open-ended compiler redesign from this correlation.
+
+Remote CI clarification: cancellation was submitted before the user's follow-up arrived. Run
+`39075394015` was restored with `gh run rerun` as attempt 2 on the same `4b4d820fa` source. Do not cancel
+GitHub runs as part of this local-machine investigation.
