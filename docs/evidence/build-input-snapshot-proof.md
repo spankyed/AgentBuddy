@@ -226,3 +226,45 @@ inherit HMR automatically. Neither choice is settled by the initial server probe
 Start with focused process/filesystem proofs, then implement coherent source checkpoints with required
 validation. All remaining discovery, navigation, frontend boundaries and three Phase 6 workstreams
 remain required by the active goal. Stronger security isolation and lazy activation remain deferred.
+
+## Asset producer audit and bounded follow-through (2026-10-17)
+
+Baseline `3119205be`, followed by reader cleanup `e6ce3f1e4`. This finishes classification of the asset
+classes raised by the discovery inventory; it does not certify their producer/input completeness.
+B1 and B4 below remain required implementation/acceptance in the active goal, not deferred work.
+Installed consumers must stay source-free and must not import compilers or pack modules.
+
+| Supported path | Current producer/reader evidence | Remaining requirement and closing check |
+|---|---|---|
+| Inline facade/helper/help/DSL data | Snapshot validation and generated inline text; facade/helper duplicate files are not discovery authority | Preserve existing source-free declaration checks. Do not add authored-module or duplicate-file prerequisites. |
+| Backend/frontend entry files | `layout.ts::assertRequiredEntries`, checkpoint `b916d0e5e` | Required presence is implemented. Preserve backend-only builds and declared frontend membership through final all-kind acceptance. |
+| Compiled content index/data files | `layout.ts::readCompiledContent`, checkpoint `3119205be` | Owner, entry membership, written policy and required data file presence are implemented. Keep explicit native imports separate. Media is the distinct copy path below. |
+| Frontend CSS, lazy chunks, worker files and maps | `fe-bundler.ts::bundlePackFE` awaits `vite.build` but drops its result. Actual Vite output includes these emitted files | B4: retain expected emitted files/bytes through final validation and bind them to the existing output receipt. Prove omission/change before sealing refuses publication and preserves the incumbent. Do not infer output references by scanning generated JavaScript. Maps remain intentionally excluded when staging. |
+| Vite public directory | The current config leaves Vite's `publicDir`/copy behavior enabled. Proof copies `public/static.txt` to output but does not report it in the returned output graph | B1: inspect current authored-scope coverage and own copied input bytes/membership. B4: include copied public files in producer output evidence as well as Rollup emissions. Preserve supported copying; disabling the feature or trusting the returned graph alone does not close this path. |
+| Backend/content/helper bundles | `be-bundler.ts::packEsbuild` writes owned `outputFiles` when using a compiler read tree; source maps are rewritten through `sourceMapOrigins`. Other bundle paths use their actual writer results | B4: associate the final emitted bytes after transformations with the existing receipt. Audit non-tree calls and reused phase outputs before claiming complete coverage; do not create another parallel receipt. |
+| Compiled media | `content-compiler.ts::compilePack` copies an existing declared media directory with `fs.cpSync`. `format-applier.ts::restoreMedia` rewrites existing linked files and leaves missing links alone | B1: copied bytes/membership must come from the accepted compiler input view. B4: preserve expected copied output through sealing. A format's media-directory name cannot identify all files by itself. Do not invent a stricter link-validity policy or change explicit imports merely to make this check easier. |
+| Declaration/helper text writers | Types, Monaco definitions and helpers already have concrete producer outputs; snapshot text remains discovery authority | B4 must cover their written bytes and actual phase reuse alongside runtime output. No additional discovery store or source import is needed. |
+
+Two disposable proofs refine the design:
+
+1. `/private/tmp/apack-vite-output-audit.mjs` runs the installed Vite build with the production library
+   output choices (ES module, ES2022, source maps, combined CSS), a module package, CSS, a dynamic import,
+   a worker and a public file. The graph reports the main chunk/map, lazy chunk/map, CSS and worker/map.
+   The directory additionally contains `static.txt`; the returned graph omits it. Result:
+   `/private/tmp/apack-vite-output-audit.log`. This tests Vite's emission boundary, not the full pack
+   build's capture or publication contract. It shows why graph-only recording would be incomplete.
+2. `/private/tmp/apack-media-read-audit.mts` runs the actual content compiler through the production
+   `withCompilerFileReads` adapter with an injected owned file view. The authored Markdown and media
+   are changed after creating the captured view. The compiled record contains `CAPTURED body`, while
+   its copied file contains `LIVE media`: `/private/tmp/apack-media-read-audit.log`. Ordinary reads use
+   the view; `fs.cpSync` bypasses that byte projection. This isolates the copy path, **not** a proven
+   publication failure: the proof supplies a controlled view and does not run the complete build's
+   final input assertion. An initial fixture omitted a field selector and failed before copying; that
+   fixture was corrected before drawing this conclusion.
+
+Next, finish the B1/B3 finite path matrix against current launch, compiler, dependency and resource
+owners, incorporating these concrete copy paths. Prove the chosen execution approach across the
+actual paths before changing production ownership. Retain captured installation, useful paths,
+resolution, deterministic outputs and dev/watch behavior. Then complete B2/B3 and the single B4
+input/output association before passive B5 consumers and B6 convergence. These observations do not
+justify a general filesystem interceptor expansion, a new asset manifest or a security sandbox.

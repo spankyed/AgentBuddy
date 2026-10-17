@@ -222,8 +222,13 @@ by staging and installer admission; CLI inspection drops its independent checks.
 wrong owners/policies and missing compiled data files refuse; missing specialty source paths fail the
 compiler. Focused cases, types/lint and real shipped/external output reads pass; final layout acceptance
 passes 110 cases including installation and capture races. See [content evidence](../evidence/discovery-without-activation.md#compiled-content-admission-2026-10-17).
-Next: finish media, CSS/lazy-chunk completeness and remaining-reader checks, then all-kind
-acceptance. B1–B6 and all three Phase 6 workstreams remain required. Do not restart implemented endpoint
+Reader cleanup `e6ce3f1e4` removes the unused declaration-only reader; all 110 layout cases, host types
+and lint pass. The [asset producer audit](../evidence/build-input-snapshot-proof.md#asset-producer-audit-and-bounded-follow-through-2026-10-17)
+classifies remaining media, CSS, lazy/worker chunks and public-file copying. Proofs show returned Vite
+graphs omit public copies and media copying bypasses an injected captured-byte view; neither alone
+proves a publication failure. Next: finish the finite B1/B3 path matrix with these concrete paths,
+then close B1–B6 and all-kind acceptance. Asset input/output completeness remains required under B1/B4,
+not a deferred follow-up or another discovery store. All three Phase 6 workstreams remain required. Do not restart implemented endpoint
 or navigation work, or rerun a broad gate to investigate the preserved integration failures.
 
 1. Phase 4 entity destinations/caller migration and Phase 5 containment are implemented and locally

@@ -168,6 +168,15 @@ regressions, installation/refusal and real shipped/external output checks pass; 
 evidence](../evidence/discovery-without-activation.md#compiled-content-admission-2026-10-17). Media files still need producer evidence;
 declared media directories alone cannot identify the files required by compiled records.
 
+The [asset producer audit](../evidence/build-input-snapshot-proof.md#asset-producer-audit-and-bounded-follow-through-2026-10-17)
+now enumerates the remaining concrete paths. Vite's output graph includes CSS/lazy/worker emissions
+but omits copied public files; media `fs.cpSync` bypasses the injected captured-byte view in a focused
+compiler proof. Neither observation alone proves an invalid build can publish. Close input ownership
+under B1 and expected emitted/copied bytes under the existing B4 input/output association. Preserve
+public-directory copying and explicit media-import behavior; do not add another asset manifest,
+JavaScript reference scanner or a second installed-reader authority. `e6ce3f1e4` removes the unused
+declaration-only `readPackSnapshot`; current installed readers use `readPackBuild`.
+
 Execute the identified gaps in this order:
 
 1. Native designation comparison is repaired in `b268fac86` without expanding its contract. Three
@@ -194,8 +203,9 @@ Execute the identified gaps in this order:
    schema/API generation pass. Preserve app/pack version separation and captured accepted bindings. See [content evidence](../evidence/discovery-without-activation.md#native-content-declarations-2026-10-17).
 4. Display-name cleanup `123efbd6f` and required-entry admission `b916d0e5e` are implemented; preserve
    their [evidence](../evidence/discovery-without-activation.md#required-build-entries-and-display-metadata-2026-10-17).
-   Compiled index/data admission is implemented in `3119205be`. Finish media, CSS/chunk completeness
-   and remaining consumer checks, then all-kind source-free/external
+   Compiled index/data admission is implemented in `3119205be`; reader cleanup in `e6ce3f1e4` removes
+   the unused weaker reader. Asset classes are classified in the linked producer audit; complete its
+   concrete B1/B4 requirements and remaining consumer checks, then all-kind source-free/external
    acceptance. Record which asset classes and entry kinds the checks actually exercise. Keep B1–B6 and
    Phase 6 enforcement in their existing execution slots; this inventory does not reopen them.
 
