@@ -7253,3 +7253,33 @@ The subsequent real external app command refused its preflight because default-s
 Log: `/private/tmp/apack-service-external-app-converged.log`. No app cases started. Refresh the affected
 producer/fork before retrying; do not bypass its freshness check. The failed documentation write in
 `0fd4bd9af` is repaired by restoring all prior evidence from its parent and appending this entry.
+
+## Dependency provenance closure audit (2026-10-17)
+
+Current source still uses `dependency-cache.ts`'s captured producer receipt, immutable build directory
+and atomically replaced resolution record. `readCachedDependency` checks pack ID, exact version and
+content revision before exposing a coherent build. `fetch-deps.ts` retains the original structured
+origin on reuse, distinguishes explicit links from cached delivery and refuses reuse for a changed
+GitHub repository. `dependency-inspection.ts` presents declared spec, resolved version, origin,
+revision, delivery and executable availability from one read-only resolution frame. Info and doctor
+share that frame; neither constructs services or imports executable pack modules.
+
+The current host-pool evidence already passes all 14 dependency-cache cases, 27 installed dependency
+resolution cases and 16 info cases (`/private/tmp/apack-service-host-unit-pool.log`). Inspected
+assertions cover same-version/different-content publication retaining prior paths, source swaps,
+changed/missing/extra files, publication failure, original origin after source removal, changed remote
+origins, explicit linked selection, unchanged cache bytes and no fetch during inspection.
+The separate host-pool failures repaired in `1f5db11c6` do not invalidate those individual file results.
+
+The real producer/consumer/source-removal case is already implemented in
+`packages/apack-cli/tests/commands/info.integration.spec.ts` and passed in the `d6fa2c6dc` checkpoint
+(`/private/tmp/apack-inspection-external.log` and its recorded strict run). That case builds both packs,
+removes producer sources and then the producer directory, and proves info/doctor retain authentic
+compiled IDs and cache provenance without executing the poisoned lifecycle or changing the resolution
+record. The cache checkpoint also has recorded receipt/origin/publication/source-swap mutations.
+Current code inspection identifies no replacement implementation needed for this provenance contract.
+
+This closes local origin/version/content/inspection acceptance using existing concrete evidence;
+it does not claim a new integration pass. Compiler generation/input/output ownership remains under
+B1–B6, and final committed-source strict acceptance remains required. No frozen-resolution mode,
+cache redesign or additional package-manager scope is introduced.
