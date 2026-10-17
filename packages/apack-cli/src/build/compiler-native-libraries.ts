@@ -11,6 +11,7 @@ export interface MachOLibraryEnvironment {
   readonly fallbackLibraryPaths: readonly string[];
   readonly frameworkPaths: readonly string[];
   readonly fallbackFrameworkPaths: readonly string[];
+  readonly imageSuffixes: readonly string[];
 }
 
 /** dyld reads these settings at process launch, before user preloads can change process.env. */
@@ -21,6 +22,7 @@ export function captureMachOLibraryEnvironment(env: NodeJS.ProcessEnv = process.
     fallbackLibraryPaths: paths('DYLD_FALLBACK_LIBRARY_PATH'),
     frameworkPaths: paths('DYLD_FRAMEWORK_PATH'),
     fallbackFrameworkPaths: paths('DYLD_FALLBACK_FRAMEWORK_PATH'),
+    imageSuffixes: paths('DYLD_IMAGE_SUFFIX'),
   });
 }
 
@@ -106,6 +108,12 @@ export function assertCapturedMachOLibraries(entry: string, packageRoot: string,
     return relative === '' || (relative !== '..' && !relative.startsWith(`..${path.sep}`) && !path.isAbsolute(relative));
   };
   const environment = input.environment ?? captureMachOLibraryEnvironment();
+  // dyld inserts each suffix before the leaf's last dot, then tries the unsuffixed path.
+  const variants = (file: string) => {
+    const dot = file.lastIndexOf('.');
+    const at = dot > file.lastIndexOf('/') ? dot : file.length;
+    return [...environment.imageSuffixes.map(suffix => file.slice(0, at) + suffix + file.slice(at)), file];
+  };
   const search = (reference: string, requester: string, fallback = false) => {
     const framework = reference.match(/(?:^|\/)(([^/]+)\.framework\/(?:Versions\/[^/]+\/)?\2)$/)?.[1];
     const directories = framework
@@ -114,8 +122,9 @@ export function assertCapturedMachOLibraries(entry: string, packageRoot: string,
     const variable = framework
       ? fallback ? 'DYLD_FALLBACK_FRAMEWORK_PATH' : 'DYLD_FRAMEWORK_PATH'
       : fallback ? 'DYLD_FALLBACK_LIBRARY_PATH' : 'DYLD_LIBRARY_PATH';
-    for (const directory of directories) {
-      const candidate = path.resolve(`${directory}/${framework ?? path.basename(reference)}`);
+    const candidates = directories.flatMap(directory => variants(path.resolve(`${directory}/${framework ?? path.basename(reference)}`)));
+    for (const file of candidates) {
+      const candidate = path.normalize(file);
       if (input.read(candidate) === undefined) continue;
       if (systemLibrary(candidate) && systemLibrary(input.realpath(candidate))) return true;
       throw new Error(`Native compiler image "${requester}" selects "${candidate}" through ${variable} outside its captured package. Use package-relative native libraries or operating-system libraries.`);
@@ -151,20 +160,31 @@ export function assertCapturedMachOLibraries(entry: string, packageRoot: string,
       }
       if (!reference.startsWith('@') && reference.includes('/')) refuse(reference);
       const bare = !reference.startsWith('@');
-      const candidates = reference.startsWith('@rpath/')
-        ? rpaths.map(({ reference: search, expanded }) => ({ file: path.resolve(expanded, reference.slice(7)), search }))
-        : [{ file: bare ? path.resolve(reference) : expand(reference), search: undefined }];
+      const candidates = variants(reference).flatMap<{ file: string | undefined; search: string | undefined }>(variant => variant.startsWith('@rpath/')
+        ? rpaths.map(({ reference: search, expanded }) => ({ file: path.resolve(expanded, variant.slice(7)), search }))
+        : [{ file: bare ? path.resolve(variant) : expand(variant), search: undefined }]);
       let found = false;
       for (const { file: candidate, search } of candidates) {
         if (!candidate || (bare && input.read(candidate) === undefined)) continue;
         if (systemLibrary(candidate)) { found = true; break; }
         if (search && path.isAbsolute(search)) refuse(search);
-        if (!within(candidate) || !within(input.realpath(candidate), input.realpath(packageRoot))) refuse(reference);
+        if (!within(candidate)) refuse(reference);
+        if (input.read(candidate) === undefined) continue;
+        if (!within(input.realpath(candidate), input.realpath(packageRoot))) refuse(reference);
         if (inspect(candidate, rpaths)) { found = true; break; }
       }
       if (!found) search(reference, file, true);
     }
     return true;
   }
-  if (!search(entry, entry)) inspect(entry, []);
+  if (!search(entry, entry)) {
+    for (const candidate of variants(entry).map(file => path.normalize(file))) {
+      if (input.read(candidate) === undefined) continue;
+      if (!systemLibrary(candidate) && (!within(candidate) || !within(input.realpath(candidate), input.realpath(packageRoot)))) {
+        throw new Error(`Native compiler image "${entry}" selects "${candidate}" outside its captured package. Use package-relative native libraries or operating-system libraries.`);
+      }
+      inspect(candidate, []);
+      break;
+    }
+  }
 }

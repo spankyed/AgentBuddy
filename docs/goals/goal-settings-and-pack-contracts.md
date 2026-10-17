@@ -112,12 +112,17 @@ Source `c1abbd9c2` implements framework override/fallback admission using the sa
 paths and the retained launch environment. Thirty unit cases and three real compiler-preload cases
 pass, including preserved dylib fallback behavior; see
 [framework evidence](../evidence/build-input-snapshot-proof.md#native-framework-search-admission-2026-10-17).
-Versioned/suffix/shared-cache controls and default fallbacks, retained frontend native initialization,
+Versioned/shared-cache controls and default fallbacks, retained frontend native initialization,
 ELF/PE, platform lifetime and converged/final acceptance remain open. Do not treat these focused repairs as full B1/B3 closure.
-A native prototype now demonstrates the next concrete input gap: `DYLD_IMAGE_SUFFIX` selects a
-package-contained variant whose outside dependency is missed when admission inspects the nominal
-image. Audit variant ordering and check the selected bytes through the existing owner; preserve
-supported suffix resolution rather than blanket-refusing the setting.
+The demonstrated `DYLD_IMAGE_SUFFIX` gap is now repaired: capture launch-time ordered suffixes and
+inspect selected addon/library variants, preserving suffix-before-rpath and directory-before-suffix
+ordering. Missing variants are observed; nonexistent owned candidates are not realpathed. A real build
+executes captured suffixed bytes, detects their change, and refuses a later transitive outside
+dependency before initialization while retaining the incumbent. Thirty-five native unit cases,
+subprocess inventory, CLI types and lint pass; see
+[suffix evidence](../evidence/build-input-snapshot-proof.md#selected-native-image-suffix-admission-2026-10-17).
+Versioned overrides/shared-cache controls/default fallbacks, retained frontend native initialization,
+ELF/PE, platform lifetime and final gates still require closure.
 
 #### Execution boundaries and closure
 

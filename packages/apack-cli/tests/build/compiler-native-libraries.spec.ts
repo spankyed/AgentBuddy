@@ -91,12 +91,15 @@ it('preserves search order when a captured library precedes an unused outside fa
 });
 
 it('retains launch-time native search paths after preload environment changes', () => {
-  const env = { DYLD_LIBRARY_PATH: '/first:/second', DYLD_FALLBACK_LIBRARY_PATH: '/fallback', DYLD_FRAMEWORK_PATH: '/frameworks', DYLD_FALLBACK_FRAMEWORK_PATH: '/fallback-frameworks' };
+  const env = { DYLD_LIBRARY_PATH: '/first:/second', DYLD_FALLBACK_LIBRARY_PATH: '/fallback', DYLD_FRAMEWORK_PATH: '/frameworks', DYLD_FALLBACK_FRAMEWORK_PATH: '/fallback-frameworks', DYLD_IMAGE_SUFFIX: '_first:_second' };
   const captured = captureMachOLibraryEnvironment(env);
+  delete (env as NodeJS.ProcessEnv).DYLD_IMAGE_SUFFIX;
   delete (env as NodeJS.ProcessEnv).DYLD_FRAMEWORK_PATH;
   delete (env as NodeJS.ProcessEnv).DYLD_FALLBACK_FRAMEWORK_PATH;
   delete (env as NodeJS.ProcessEnv).DYLD_LIBRARY_PATH;
   delete (env as NodeJS.ProcessEnv).DYLD_FALLBACK_LIBRARY_PATH;
+  expect(captured.imageSuffixes).toEqual(['_first', '_second']);
+  expect(Object.isFrozen(captured.imageSuffixes)).toBe(true);
   expect(captured.frameworkPaths).toEqual(['/frameworks']);
   expect(captured.fallbackFrameworkPaths).toEqual(['/fallback-frameworks']);
   expect(Object.isFrozen(captured.frameworkPaths)).toBe(true);
@@ -197,4 +200,54 @@ it('observes missing framework overrides and only checks fallbacks for unresolve
   expect(reads).not.toContain(outside);
   files.delete(library);
   expect(inspect).toThrow(`selects "${outside}" through DYLD_FALLBACK_FRAMEWORK_PATH`);
+});
+
+it('inspects selected suffixed libraries and ignores an unused nominal dependency', () => {
+  const library = path.join(root, 'lib/value_debug.dylib');
+  const files = new Map([[entry, image([[0xc, '@loader_path/../lib/value.dylib']])],
+    [path.join(root, 'lib/value.dylib'), image([[0xc, '/unused/outside.dylib']])], [library, image([])]]);
+  const inspect = () => assertCapturedMachOLibraries(entry, root, { arch: 'arm64', read: file => files.get(file), realpath: file => file,
+    environment: captureMachOLibraryEnvironment({ DYLD_IMAGE_SUFFIX: '_debug' }) });
+  expect(inspect).not.toThrow();
+  files.set(library, image([[0xc, '/selected/outside.dylib']]));
+  expect(inspect).toThrow('references "/selected/outside.dylib"');
+});
+
+it('applies suffix order before rpath order and observes missing candidates without realpathing them', () => {
+  const files = new Map([[entry, image([[0x8000001c, '@loader_path/../first'], [0x8000001c, '@loader_path/../second'], [0xc, '@rpath/value.dylib']])],
+    [path.join(root, 'first/value.dylib'), image([[0xc, '/unused/outside.dylib']])], [path.join(root, 'second/value_debug.dylib'), image([])]]);
+  const reads: string[] = [];
+  const inspect = () => assertCapturedMachOLibraries(entry, root, { arch: 'arm64', read(file) { reads.push(file); return files.get(file); },
+    realpath(file) { if (file !== root && !files.has(file)) throw new Error('Missing realpath: ' + file); return file; },
+    environment: captureMachOLibraryEnvironment({ DYLD_IMAGE_SUFFIX: '_missing:_debug' }) });
+  expect(inspect).not.toThrow();
+  expect(reads).toContain(path.join(root, 'first/value_missing.dylib'));
+  expect(reads).toContain(path.join(root, 'second/value_missing.dylib'));
+  expect(reads).not.toContain(path.join(root, 'first/value.dylib'));
+  files.set(path.join(root, 'first/value_missing.dylib'), image([[0xc, '/selected/outside.dylib']]));
+  expect(inspect).toThrow('references "/selected/outside.dylib"');
+});
+
+it('inspects a suffixed Node addon before its ordinary image', () => {
+  const selected = path.join(root, 'binding/addon_debug.node');
+  const files = new Map([[entry, image([])], [selected, image([[0xc, '/outside/dependency.dylib']])]]);
+  expect(() => assertCapturedMachOLibraries(entry, root, { arch: 'arm64', read: file => files.get(file), realpath: file => file,
+    environment: captureMachOLibraryEnvironment({ DYLD_IMAGE_SUFFIX: '_debug' }) })).toThrow('references "/outside/dependency.dylib"');
+});
+
+it('applies suffixes inside each override directory before moving to the next one', () => {
+  const files = new Map([[entry, image([[0xc, '@loader_path/../lib/value.dylib']])],
+    ['/usr/lib/value.dylib', image([])], ['/outside/value_debug.dylib', image([])]]);
+  const reads: string[] = [];
+  expect(() => assertCapturedMachOLibraries(entry, root, { arch: 'arm64', read(file) { reads.push(file); return files.get(file); }, realpath: file => file,
+    environment: captureMachOLibraryEnvironment({ DYLD_LIBRARY_PATH: '/usr/lib:/outside', DYLD_IMAGE_SUFFIX: '_debug' }) })).not.toThrow();
+  expect(reads).toContain('/usr/lib/value_debug.dylib');
+  expect(reads).not.toContain('/outside/value_debug.dylib');
+});
+
+it('checks the suffixed full framework override path', () => {
+  const outside = '/outside/Foo.framework/Versions/A/Foo_debug';
+  const files = new Map([[entry, image([[0xc, '@loader_path/../Foo.framework/Versions/A/Foo']])], [outside, image([])]]);
+  expect(() => assertCapturedMachOLibraries(entry, root, { arch: 'arm64', read: file => files.get(file), realpath: file => file,
+    environment: captureMachOLibraryEnvironment({ DYLD_FRAMEWORK_PATH: '/outside', DYLD_IMAGE_SUFFIX: '_debug' }) })).toThrow(`selects "${outside}" through DYLD_FRAMEWORK_PATH`);
 });

@@ -307,3 +307,60 @@ it.runIf(process.platform === 'darwin').each(['DYLD_FALLBACK_LIBRARY_PATH', 'DYL
     }
   },
 );
+
+it.runIf(process.platform === 'darwin')('captures the selected native image suffix and refuses its later transitive escape', async () => {
+  const fixture = nativeFixture('relative');
+  const builder = createPackBuilder(fixture.pack);
+  const previousOptions = process.env.NODE_OPTIONS;
+  const previousSuffix = process.env.DYLD_IMAGE_SUFFIX;
+  const selected = fixture.library.replace(/\.dylib$/, '_apack.dylib');
+  const reference = '@loader_path/../lib/libvalue.dylib';
+  const preload = path.join(fixture.pack, 'suffix-preload.cjs');
+  const proof = path.join(fixture.root, 'selected.json');
+  const attempted = path.join(fixture.root, 'owned-attempt');
+  try {
+    fixture.buildLibrary(selected, 'int native_value(void) { return 37; }', reference);
+    const loaded = JSON.parse(execFileSync(process.execPath, ['-e', `const addon = require(${JSON.stringify(path.join(fixture.native, 'binding/addon.node'))}); console.log(JSON.stringify({ value: addon.read(), libraries: process.report.getReport().sharedObjects }));`], {
+      encoding: 'utf8', env: { ...process.env, DYLD_IMAGE_SUFFIX: '_apack' },
+    })) as { value: number; libraries: string[] };
+    expect(loaded.value).toBe(37);
+    expect(loaded.libraries).toContain(selected);
+    fs.rmSync(fixture.marker);
+    packFixture({ at: fixture.pack, nodeModules: path.join(REPO_ROOT, 'node_modules'), manifest: { features: {} },
+      files: { 'tsconfig.json': JSON.stringify({ compilerOptions: { module: 'esnext', moduleResolution: 'bundler', skipLibCheck: true } }) } });
+    fs.writeFileSync(preload, `if (globalThis[Symbol.for('apack.compiler.startup')]) {
+      delete process.env.DYLD_IMAGE_SUFFIX;
+      require('node:fs').writeFileSync(${JSON.stringify(attempted)}, 'owned');
+      ${nativeLoad(fixture, proof)}
+    }`);
+    process.env.DYLD_IMAGE_SUFFIX = '_apack';
+    process.env.NODE_OPTIONS = formatNodeOptions([...parseNodeOptions(previousOptions), '--require', preload]);
+    await builder.build({ args: ['--skip-fe'] });
+    const accepted = JSON.parse(fs.readFileSync(proof, 'utf8')) as { value: number; libraries: string[] };
+    expect(accepted.value).toBe(37);
+    expect(accepted.libraries).not.toContain(selected);
+    expect(accepted.libraries.some(file => file.includes('apack-inputs-') && file.endsWith('/lib/libvalue_apack.dylib'))).toBe(true);
+    const output = path.join(fixture.pack, 'dist');
+    const revision = readPackBuild(output).revision;
+    const inputs = readPackBuildInputs(output);
+    assertPackBuildInputsCurrent(fixture.pack, inputs);
+    fs.rmSync(fixture.marker);
+    fs.rmSync(proof);
+    fs.rmSync(attempted);
+    fixture.buildLibrary(fixture.outside, 'int outside_value(void) { return 37; }', fixture.outside);
+    fixture.buildLibrary(selected, 'extern int outside_value(void); int native_value(void) { return outside_value(); }', reference, [fixture.outside]);
+    expect(() => assertPackBuildInputsCurrent(fixture.pack, inputs)).toThrow();
+    await expect(builder.build({ args: ['--skip-fe'] })).rejects.toThrow();
+    expect(fs.readFileSync(attempted, 'utf8')).toBe('owned');
+    expect(fs.existsSync(fixture.marker)).toBe(false);
+    expect(fs.existsSync(proof)).toBe(false);
+    expect(readPackBuild(output).revision).toBe(revision);
+  } finally {
+    if (previousOptions === undefined) delete process.env.NODE_OPTIONS;
+    else process.env.NODE_OPTIONS = previousOptions;
+    if (previousSuffix === undefined) delete process.env.DYLD_IMAGE_SUFFIX;
+    else process.env.DYLD_IMAGE_SUFFIX = previousSuffix;
+    await builder.close();
+    fs.rmSync(fixture.root, { recursive: true, force: true });
+  }
+});

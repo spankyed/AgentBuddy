@@ -2315,3 +2315,40 @@ variant, including its transitive dependencies and missing-candidate observation
 `/private/tmp/apack-native-suffix-proof.json`. Apple's
 [dyld configuration source](https://github.com/apple-oss-distributions/dyld/blob/main/dyld/DyldProcessConfig.cpp)
 was located for the next suffix-order audit; no implementation is inferred merely from that search.
+
+### Selected native image suffix admission (2026-10-17)
+
+Extend the existing frozen launch environment and native admission owner with ordered image suffixes.
+The earlier actual counterexample is repaired by inspecting selected variants, including transitive
+commands, rather than nominal bytes. Missing variants remain observations. A missing owned candidate
+is checked before realpath, preserving ordinary fallback without querying a nonexistent copied file.
+Suffixes apply before rpath expansion; override directories retain their outer search order.
+
+Apple's [configuration implementation](https://github.com/apple-oss-distributions/dyld/blob/main/dyld/DyldProcessConfig.cpp)
+(`addSuffix`, `forEachImageSuffix`, `forEachPathVariant`) supplies the selection-order reference.
+Unlike the abbreviated installed manual description, that implementation inserts suffixes before the
+leaf's last dot, including `.node`. A fresh native process confirms actual selection of both
+`addon_apack.node` and `libvalue_apack.dylib` with `_missing:_apack`; the loaded-image report also names
+the outside dependency in the original counterexample. The existing private prototype paths above
+retain those files. This is loader-selection evidence, not universal native I/O confinement.
+
+macOS ARM64 / Node 23.11.1 evidence:
+
+- 35 native unit cases and 11 subprocess-inventory cases pass (1.16s runner):
+  `/private/tmp/apack-native-suffix-unit.log`. New cases cover transitive selected versus unused nominal
+  dependencies, suffix/rpath ordering, missing variant observations without nonexistent realpath,
+  addon suffixes, override-directory order and full framework suffix paths. Launch settings remain
+  frozen after preload mutation.
+- The actual public-build suffix case passes (25.54s case / 27.06s runner):
+  `/private/tmp/apack-native-suffix-worker.log`. A fresh child first proves native selection. The owned
+  preload then clears the setting and still executes value 37 from the captured suffixed library;
+  its loaded-image report excludes original bytes. The recorded inputs are current, then refuse
+  after the selected variant changes. A subsequent attempted build reaches owned admission and names
+  the suffixed image's new outside dependency, without initializing the addon or replacing the incumbent.
+- CLI types, focused correctness lint and whitespace checks pass:
+  `/private/tmp/apack-native-suffix-types.log`. The subprocess inventory records the real native child;
+  no general launcher or new resource owner is introduced.
+
+Versioned overrides, shared-cache controls, default fallback policy, retained frontend native
+initialization, ELF/PE and platform/descendant acceptance remain open. B6/final strict acceptance is
+not claimed. Windows timing run `39063657523` continues against its pinned `0c259a570` checkpoint.
