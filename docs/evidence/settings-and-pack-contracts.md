@@ -7325,3 +7325,37 @@ This closes the supported registration-field classification against current code
 historical producer checks into a final all-kind pass. Required assets, compiler lifetime/input
 ownership, frontend reuse/removal, actual external app/fork acceptance and final strict validation
 remain owned by the goal. No additional discovery store or runtime-only contribution was introduced.
+
+## Refreshed external app and normal fork acceptance (2026-10-17)
+
+The initial app preflight correctly refused the default pack after captured pack-test edits. Refreshed
+only the affected producer chain, leaving captured sources unchanged throughout each build:
+
+- `npm run build:default-setup` passes (`/private/tmp/apack-editor-checkpoint-default-build.log`).
+- `APACK_CHAIN_CORES=2 npm run test:external-pack:contract` passes: both actual fixture builds/types,
+  all 38 external harness cases and real default-fork build/archive/checksum preparation
+  (`/private/tmp/apack-editor-checkpoint-external-contract.log`).
+- `npm run test:external-pack:app` passes completely
+  (`/private/tmp/apack-editor-checkpoint-external-app.log`): all 27 external fixture cases, one
+  bundled-UI editor case, and four additional normal fork launch/lifecycle cases.
+
+The external suite exercises explicit default disable/remove/restore with usable host settings,
+two-window fork replacement and actual dev reload, frontend pane/form failures, inactive help,
+offline JSON schema assistance, canonical references, frontend loading readiness, settings import,
+independent same-named assistant groups, custom forms and cross-window edits. The real dependency
+credential case proves shared mutation, owner-only refusal, generated read-only types and retired
+runtime credentials after reload. The normal fork runner preserves the selected fork across a new
+process, deliberately removes default-setup and its required consumer, proves absence across boot,
+then restores the app-owned default and proves another normal boot. Its data directory is explicitly
+test-owned and removed after completion; production data is untouched.
+
+These app checks ran on source `031e3a521` plus goal-only ledger updates; no production code changed
+throughout the producer/app sequence. Final editor review then added an explicit true assertion for
+the original Monaco model before comparing its replacement snapshot (`c221a2437`). That focused
+actual worker/window case passes again in 6.4s:
+`/private/tmp/apack-cold-monaco-model-identity.log`. Focused lint and whitespace checks pass.
+
+Current local app/fork acceptance is now converged; the earlier 26-pass/one-failure app result is
+historical evidence rather than the current verdict. B1/B3 native/platform guarantees, integration
+concurrency/suite-budget acceptance, the five-build frontend reuse/removal case, final full-scope
+audit and committed-source strict `--all` remain open. No final gate pass or goal completion is claimed.
