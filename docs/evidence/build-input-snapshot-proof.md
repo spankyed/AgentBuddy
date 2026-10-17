@@ -2698,3 +2698,34 @@ still needs applicable platform acceptance.
 Remaining: frontend preload JavaScript contents/resolution, named loader/late-load paths, versioned/
 shared-cache/restricted-runtime native controls, ELF/PE and remaining platform acceptance, B6 and final
 committed-source strict `--all`. Arbitrary native I/O remains outside the user-approved bounded contract.
+
+
+### Retained frontend preload JavaScript ownership (2026-10-17)
+
+Source `c85f3fd95`. A small extension to the actual native-preload case reproduced a separate gap:
+appending bytes to the initialized CommonJS preload still returned `true` from frontend currentness.
+The failing proof is `/private/tmp/apack-frontend-preload-js-proof.log` (7.80 seconds).
+
+The existing startup filesystem capture now also owns frontend initialization. The actual CLI entry
+ends that read scope for its selected frontend/build owner before importing the compiler bundle;
+ordinary authored Vue reads stay live. Native admission retains its independent process lifetime.
+Frontend freshness also collects active worker/loader startup observations through the existing
+coordinator. Atomic native receipts still retain exited-worker copies and source observations; the
+existing five-second frontend currentness bound covers an unresponsive collection request.
+
+Validation:
+
+- Actual Vite direct-preload and explicit-worker cases both pass with added assertions that changed
+  preload bytes refuse currentness and restoring the initialized bytes restores it. Existing Vue edit,
+  native input change, pre-initialization refusal and incumbent-serving assertions remain. Two cases,
+  15.99 seconds: `/private/tmp/apack-frontend-preload-js-acceptance.log`.
+- Actual watch unchanged-touch/refusal/external-helper-only recovery/retirement still passes after
+  worker collection is included: 73.97 seconds, `/private/tmp/apack-frontend-preload-js-watch-recovery.log`.
+- CLI types, package build, changed-source lint, CLI bin syntax and diff checks pass. Logs:
+  `/private/tmp/apack-frontend-preload-js-types.log`,
+  `/private/tmp/apack-frontend-preload-js-packages.log`.
+
+This focused checkpoint does not close all loader/module-resolution or platform acceptance. The prior
+strict checkpoint and its corrected repository bookkeeping failures remain recorded above; no new
+broad diagnostic run was launched. Custom-loader/ESM and transitive-resolution cases, named native
+platform controls, B6 and final committed-source strict `--all` remain open.

@@ -104,9 +104,13 @@ default-pack build, facade/schema/import checks and typechecks. The input/subpro
 corrected in this source; all 951 checks in the affected repository suite pass. This is not a complete
 strict-gate pass. Do not rerun the broad gate to rediscover those corrected bookkeeping failures.
 Windows run `39069845156` is fully green on `d8a1c02dc`, including Vite owners and repeat-build/cache/
-archive identity; it does not certify the newer live-watch source. Next: frontend preload JavaScript
-ownership and the remaining named loader/native-platform cases, then B6 and final committed-source
-strict `--all`. Preserve the full scope below. See [checkpoint evidence](../evidence/build-input-snapshot-proof.md#live-frontend-native-watch-and-shared-copies-2026-10-17).
+archive identity; it does not certify the newer live-watch source. Follow-up `c85f3fd95` captures
+frontend startup reads before the actual CLI entry releases ordinary authored-source reads. The real
+CommonJS preload-byte change/restoration cases pass for both direct and explicit-worker native loading,
+Vue remains live, and the complete native watch recovery still passes. Worker startup observations join
+frontend freshness through the existing coordinator, retaining bounded refusal for unresponsive checks.
+Next: custom-loader/ESM and transitive-resolution acceptance and the remaining named native-platform
+cases, then B6 and final committed-source strict `--all`. Preserve the full scope below. See [checkpoint evidence](../evidence/build-input-snapshot-proof.md#live-frontend-native-watch-and-shared-copies-2026-10-17).
 
 Source `525350813` applies native canonical path identity consistently, preserving authored metadata
 query semantics and root-link observations. Corrections `672645cf4` / `329cfbd89` preserve fixture and
