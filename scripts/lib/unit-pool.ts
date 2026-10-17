@@ -196,8 +196,9 @@ export const POOLS = {
     half: 'integration' as Half,
     suites: () => INTEGRATION_SUITES,
     // The root integration config declares the condition itself, and carries the worker cap that makes this
-    // pool faster at half the cores than at all of them
-    run: (stale: readonly UnitSuite[], workers?: number) => [{ suites: stale, command: 'npx', args: ['vitest', 'run', '--config', CONFIG_BY_HALF.integration, ...projectArgs(stale), ...workerArgs(workers), ...reporterArgs()] }],
+    // pool faster at half the cores than at all of them. Bail is a CLI option so Vitest forwards it to
+    // each project; a root-only test.bail setting is not inherited by project configs.
+    run: (stale: readonly UnitSuite[], workers?: number) => [{ suites: stale, command: 'npx', args: ['vitest', 'run', '--bail=1', '--config', CONFIG_BY_HALF.integration, ...projectArgs(stale), ...workerArgs(workers), ...reporterArgs()] }],
   },
 } as const;
 

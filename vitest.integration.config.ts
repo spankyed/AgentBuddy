@@ -11,7 +11,6 @@ export default defineConfig({
   resolve: { conditions },
   ssr: { resolve: { conditions } },
   test: {
-    bail: 1,
     /**
      * The expensive halves as one vitest run, so they share one job pool and one worker budget.
      *

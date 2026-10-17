@@ -135,6 +135,11 @@ describe('a pass under the chain and a pass alone are different records', () => 
   });
 });
 
+it('forwards integration fail-fast to project configs through the CLI', () => {
+  const [{ args }] = POOLS.integration.run(POOLS.integration.suites(), 2);
+  expect(args).toContain('--bail=1');
+});
+
 /**
  * Every way this repo runs a unit suite carries the durations reporter.
  *

@@ -88,11 +88,7 @@ describe('a build that fails', () => {
       'src/compiler.ts': "import { writeFileSync } from 'node:fs'; writeFileSync(new URL('../changed.json', import.meta.url), '{}'); export default function compile() { return []; }",
       'src/data.ts': 'export default [];',
     } });
-    const cwd = process.cwd();
-    process.chdir(root);
-    try {
-      await expect(build(['--skip-fe'])).rejects.toThrow('Pack inputs changed during the build');
-    } finally { process.chdir(cwd); }
+    await expect(build(['--skip-fe'], root)).rejects.toThrow('Pack inputs changed during the build');
     expect(fs.existsSync(path.join(root, 'changed.json'))).toBe(true);
     expect(list(dir)).toEqual([...PREVIOUS].sort());
     expect(fs.existsSync(buildStagingDir(root))).toBe(false);
@@ -155,11 +151,7 @@ describe('a build that fails', () => {
     const manifest = JSON.parse(fs.readFileSync(manifestFile, 'utf8'));
     await generateEntries([], root);
     fs.writeFileSync(manifestFile, JSON.stringify({ ...manifest, name: 'After' }));
-    const cwd = process.cwd();
-    process.chdir(root);
-    try {
-      await expect(build(['--skip-generate', '--skip-fe'])).rejects.toThrow('Generated pack files are stale: inputs changed');
-    } finally { process.chdir(cwd); }
+    await expect(build(['--skip-generate', '--skip-fe'], root)).rejects.toThrow('Generated pack files are stale: inputs changed');
     expect(list(dir)).toEqual([...PREVIOUS].sort());
     expect(fs.existsSync(buildStagingDir(root))).toBe(false);
   });
@@ -177,11 +169,7 @@ describe('a build that fails', () => {
     const entry = path.join(root, 'src/__generated__/pack-entry.ts');
     if (change === 'missing') fs.rmSync(entry);
     else fs.appendFileSync(entry, '\nthrow new Error("edited entry executed");\n');
-    const cwd = process.cwd();
-    process.chdir(root);
-    try {
-      await expect(build(['--skip-generate', '--skip-fe'])).rejects.toThrow(`${change} src/__generated__/pack-entry.ts`);
-    } finally { process.chdir(cwd); }
+    await expect(build(['--skip-generate', '--skip-fe'], root)).rejects.toThrow(`${change} src/__generated__/pack-entry.ts`);
     expect(fs.existsSync(path.join(root, 'compiler-executed'))).toBe(false);
     expect(list(dir)).toEqual([...PREVIOUS].sort());
     expect(fs.existsSync(buildStagingDir(root))).toBe(false);
@@ -194,20 +182,16 @@ describe('a build that fails', () => {
       features: {}, extensions: { help: { path: 'docs/help' } },
     }, files: { 'docs/help/start.md': '# Start\nFirst article' } });
     const file = path.join(root, 'docs/help/start.md');
-    const cwd = process.cwd();
-    process.chdir(root);
-    try {
-      await build([]);
-      expect(readPackBuild(dir).snapshot.help).toEqual([{ id: 'start', title: 'Start', body: 'First article' }]);
-      fs.writeFileSync(file, '# Updated\nChanged article');
-      await build([]);
-      expect(readPackBuild(dir).snapshot.help![0]).toMatchObject({ title: 'Updated', body: expect.stringContaining('Changed article') });
-      const accepted = fs.readFileSync(path.join(dir, PACK_LAYOUT.snapshot), 'utf8');
-      fs.writeFileSync(file, 'Missing title');
-      await expect(build([])).rejects.toThrow('first H1');
-      expect(fs.readFileSync(path.join(dir, PACK_LAYOUT.snapshot), 'utf8')).toBe(accepted);
-      expect(readPackBuild(dir).snapshot.help![0].title).toBe('Updated');
-    } finally { process.chdir(cwd); }
+    await build(['--skip-fe'], root);
+    expect(readPackBuild(dir).snapshot.help).toEqual([{ id: 'start', title: 'Start', body: 'First article' }]);
+    fs.writeFileSync(file, '# Updated\nChanged article');
+    await build(['--skip-fe'], root);
+    expect(readPackBuild(dir).snapshot.help![0]).toMatchObject({ title: 'Updated', body: expect.stringContaining('Changed article') });
+    const accepted = fs.readFileSync(path.join(dir, PACK_LAYOUT.snapshot), 'utf8');
+    fs.writeFileSync(file, 'Missing title');
+    await expect(build(['--skip-fe'], root)).rejects.toThrow('first H1');
+    expect(fs.readFileSync(path.join(dir, PACK_LAYOUT.snapshot), 'utf8')).toBe(accepted);
+    expect(readPackBuild(dir).snapshot.help![0].title).toBe('Updated');
   });
 
   it('leaves the whole of the previous build in place, and no staging tree', async () => {
@@ -218,14 +202,8 @@ describe('a build that fails', () => {
       features: { memos: { description: 'Feature declaration fixture.', settings: { schema: { type: 'object', required: ['name'], properties: { name: { type: 'string' } } }, defaults: {} } } },
       content: { sources: { flows: 'src/content/flows' } },
     } });
-    const cwd = process.cwd();
-    process.chdir(root);
-    try {
-      // Invalid declared defaults fail before content compilation.
-      await expect(build(['--skip-generate'])).rejects.toThrow('features.memos.settings.defaults.name');
-    } finally {
-      process.chdir(cwd);
-    }
+    // Invalid declared defaults fail before content compilation.
+    await expect(build(['--skip-generate'], root)).rejects.toThrow('features.memos.settings.defaults.name');
     expect(list(dir)).toEqual([...PREVIOUS].sort());
     expect(fs.existsSync(buildStagingDir(root)), 'the staged tree goes with the failure').toBe(false);
   });
@@ -244,13 +222,10 @@ describe('a pack whose content compiler modules fail to bundle', () => {
         content: { formats: { tags: { compiler: 'src/tags.ts', entity: 'Relation' } } },
       },
     });
-    const cwd = process.cwd();
     const exitCode = process.exitCode;
-    process.chdir(root);
     try {
-      await expect(build([])).rejects.toThrow(/Content compiler bundle failed/);
+      await expect(build([], root)).rejects.toThrow(/Content compiler bundle failed/);
     } finally {
-      process.chdir(cwd);
       process.exitCode = exitCode;
     }
     expect(list(dir), 'the previous build is what a reader still finds').toEqual(['snapshot.json']);
@@ -266,13 +241,7 @@ describe('a pack whose runtime fails to bundle', () => {
       files: { 'src/lifecycle.ts': 'import "./missing-runtime.ts"; export function apply() {}' },
       manifest: { id: 'broken-runtime', name: 'Broken', features: {}, lifecycle: { onInit: 'src/lifecycle.ts#apply' } },
     });
-    const cwd = process.cwd();
-    process.chdir(root);
-    try {
-      await expect(build(['--skip-fe'])).rejects.toThrow(/Build failed, so no snapshot was written:\n[\s\S]*Runtime bundle failed/);
-    } finally {
-      process.chdir(cwd);
-    }
+    await expect(build(['--skip-fe'], root)).rejects.toThrow(/Build failed, so no snapshot was written:\n[\s\S]*Runtime bundle failed/);
     expect(list(dist)).not.toContain(PACK_LAYOUT.snapshot);
     expect(fs.existsSync(buildStagingDir(root))).toBe(false);
   });
@@ -284,28 +253,24 @@ describe('a completed build', () => {
     const dir = previousBuild([]);
     const root = path.dirname(dir);
     packFixture({ at: root, manifest: { id: 'sealed-build', name: 'Sealed', features: {} }, nodeModules: path.join(REPO_ROOT, 'node_modules') });
-    const cwd = process.cwd();
-    process.chdir(root);
-    try {
-      await build(['--skip-fe']);
-      const first = readPackBuild(dir);
-      expect(first.integrity.files[PACK_LAYOUT.runtimeEntry]).toMatch(/^[a-f0-9]{64}$/);
-      const reusable = path.join(dir, 'types/pack-types.d.ts');
-      const original = fs.readFileSync(reusable, 'utf8');
-      const damaged = damage === 'facade' ? reusable : path.join(dir, 'phase-cache.json');
-      if (damage === 'facade') fs.appendFileSync(damaged, '\nexport type Damaged = never;');
-      else {
-        const cache = JSON.parse(fs.readFileSync(damaged, 'utf8'));
-        cache.types.unverified = 'must not be carried into a new build';
-        fs.writeFileSync(damaged, JSON.stringify(cache));
-      }
-      expect(() => verifyPack(dir)).toThrow(`checksum mismatch ${path.relative(dir, damaged).split(path.sep).join('/')}`);
-      await build(['--skip-fe']);
-      expect(fs.readFileSync(reusable, 'utf8')).toBe(original);
-      expect(readPackBuild(dir).revision).toBe(first.revision);
-      const stage = path.join(root, 'stage');
-      stagePack(root, stage);
-      expect(verifyPack(stage).id).toBe('sealed-build');
-    } finally { process.chdir(cwd); }
+    await build(['--skip-fe'], root);
+    const first = readPackBuild(dir);
+    expect(first.integrity.files[PACK_LAYOUT.runtimeEntry]).toMatch(/^[a-f0-9]{64}$/);
+    const reusable = path.join(dir, 'types/pack-types.d.ts');
+    const original = fs.readFileSync(reusable, 'utf8');
+    const damaged = damage === 'facade' ? reusable : path.join(dir, 'phase-cache.json');
+    if (damage === 'facade') fs.appendFileSync(damaged, '\nexport type Damaged = never;');
+    else {
+      const cache = JSON.parse(fs.readFileSync(damaged, 'utf8'));
+      cache.types.unverified = 'must not be carried into a new build';
+      fs.writeFileSync(damaged, JSON.stringify(cache));
+    }
+    expect(() => verifyPack(dir)).toThrow(`checksum mismatch ${path.relative(dir, damaged).split(path.sep).join('/')}`);
+    await build(['--skip-fe'], root);
+    expect(fs.readFileSync(reusable, 'utf8')).toBe(original);
+    expect(readPackBuild(dir).revision).toBe(first.revision);
+    const stage = path.join(root, 'stage');
+    stagePack(root, stage);
+    expect(verifyPack(stage).id).toBe('sealed-build');
   });
 });
