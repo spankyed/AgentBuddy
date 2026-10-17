@@ -131,7 +131,7 @@ describe('bindHost', () => {
     const target = { kind: 'pack', packId: 'memo-pack', groupId: 'assistant' } as const;
     const condition = { runId: 'backend-run', expected: { exists: true, value: 'Ada' } };
     const generated = _createPackServices();
-    const revoke = generated.bindSettings(preferences);
+    const revoke = generated.bindServices({ settings: preferences });
     generated.services.settings.set(target, ['name'], 'Grace', condition);
     revoke();
     expect(() => generated.services.settings.reset(target)).toThrow('until the host accepts');
@@ -176,12 +176,12 @@ describe('generated settings authority', () => {
       expect(operation).toThrow('until the host accepts');
     }
     const first = preferences();
-    const revoke = generated.bindSettings(first);
+    const revoke = generated.bindServices({ settings: first });
     handle.reset();
     expect(first.reset).toHaveBeenCalledOnce();
     revoke();
     const next = preferences();
-    generated.bindSettings(next);
+    generated.bindServices({ settings: next });
     for (const operation of [() => handle.get(), () => handle.set({ path: [], value: {} }),
       () => handle.reset(), () => handle.onChange(() => {})]) {
       expect(operation).toThrow('revoked');
@@ -194,15 +194,15 @@ describe('generated settings authority', () => {
     const generated = _createPackServices();
     expect(() => generated.services.settings).toThrow('until the host accepts');
     const first = preferences();
-    const revoke = generated.bindSettings(first);
+    const revoke = generated.bindServices({ settings: first });
     const retained = generated.services.settings;
     const handle = _settingsHandle(target, retained);
-    expect(() => generated.bindSettings(first)).toThrow('already bound');
+    expect(() => generated.bindServices({ settings: first })).toThrow('already bound');
     handle.reset();
     expect(first.reset).toHaveBeenCalledOnce();
     revoke();
     const next = preferences();
-    const revokeNext = generated.bindSettings(next);
+    const revokeNext = generated.bindServices({ settings: next });
     revoke();
     for (const call of [() => retained.get(target), () => retained.set(target, [], {}),
       () => retained.reset(target), () => retained.onChange(() => {}),
@@ -221,7 +221,7 @@ describe('generated settings authority', () => {
     const callbacks: Array<Parameters<SettingsService['onChange']>[0]> = [];
     const first = preferences();
     first.onChange = listener => { callbacks.push(listener); return callbacks.length === 1 ? stopFirst : stopSecond; };
-    const revoke = generated.bindSettings(first);
+    const revoke = generated.bindServices({ settings: first });
     const listener = vi.fn();
     const stop = generated.services.settings.onChange(listener);
     generated.services.settings.onChange(listener);
@@ -235,6 +235,6 @@ describe('generated settings authority', () => {
     callbacks[0]('written'); callbacks[1]('written');
     expect(listener).toHaveBeenCalledOnce();
     expect(() => generated.services.settings).toThrow('until the host accepts');
-    generated.bindSettings(preferences())();
+    generated.bindServices({ settings: preferences() })();
   });
 });

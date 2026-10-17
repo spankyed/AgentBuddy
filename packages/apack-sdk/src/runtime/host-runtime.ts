@@ -59,11 +59,16 @@ export interface HostRuntime {
 }
 
 let bound: HostRuntime | undefined;
+let generation = 0;
+
+/** @internal A successful bind or unbind starts a distinct host lifetime, even with the same object. */
+export const _boundHostGeneration = (): number => generation;
 
 /** Binds the running app, and installs its engine (`installEngine(runtime.ears)`); once per process */
 export function bindHost(runtime: HostRuntime): void {
   if (bound) throw new Error('A host is already bound in this process: bindHost runs once, at boot');
   bound = runtime;
+  generation++;
   installEngine(runtime.ears);
   setSecretValueMatcher(runtime.redaction && ((text, from, to) => runtime.redaction!.matchesSecret(text, from, to)));
 }
@@ -71,6 +76,7 @@ export function bindHost(runtime: HostRuntime): void {
 /** @internal Tests only: forgets the bound app and uninstalls its engine, so a test can bind another */
 export function unbindHost(): void {
   bound = undefined;
+  generation++;
   installEngine(undefined);
   setSecretValueMatcher(undefined);
 }

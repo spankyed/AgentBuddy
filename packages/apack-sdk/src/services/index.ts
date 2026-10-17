@@ -1,5 +1,5 @@
 import type { repository } from '@apackdev/ears';
-import { boundHost, type HostRuntimeServices } from '../runtime/host-runtime.ts';
+import { boundHost, _boundHostGeneration, type HostRuntimeServices } from '../runtime/host-runtime.ts';
 import { createSends, untypedBroadcastToPlugin, untypedSendToWindow, untypedSendToSystem } from '../events/index.ts';
 import { resolveRegistered } from '../ids/refs.ts';
 import { createLogger, type Logger } from '../logger/logger.ts';
@@ -28,10 +28,8 @@ export type { ModelId, ProviderName } from './models.ts';
 const logger = createLogger('log-service');
 
 /**
- * Ambient services the host supplies to every action, alongside the services a
- * pack registers itself. Packs generate their `Services` type as
- * `typeof featureServices & HostServices`, so this stays the single definition
- * of what is injected.
+ * Supported host APIs. Generated Services selects the baseline and explicitly consumed members;
+ * this inventory does not imply that every pack receives every API.
  */
 export interface HostServices {
   logger: Logger;
@@ -218,53 +216,59 @@ export function _settingsAdmin(): SettingsAdmin {
   return app('settings');
 }
 
-/** @internal Generated runtimes receive scoped settings only after the host accepts their registration. */
+/** @internal Capture the host behind an accepted service binding, without ambient redirection. */
+export function _captureHostServices() {
+  const runtime = boundHost();
+  const generation = _boundHostGeneration();
+  return {
+    current: () => _boundHostGeneration() === generation,
+    get(name: string): unknown {
+      if (name === 'logger') return logger;
+      if (name === 'emitter') return emitter;
+      if (name === 'repository') return runtime.ears.repository;
+      return runtime.services[name as keyof HostRuntimeServices];
+    },
+  };
+}
+
+/** @internal Generated runtimes receive the host-selected facade only after acceptance. */
 export function _createPackServices() {
   const createBinding = () => {
-    let source: SettingsService | undefined;
+    let source: Readonly<Record<string, unknown>> | undefined;
     let revoked = false;
     const subscriptions = new Set<() => void>();
-    const assertLive = () => {
-      if (revoked) throw new Error('Pack settings binding has been revoked');
-    };
-    const accepted = (): SettingsService => {
-      assertLive();
-      if (!source) throw new Error('Pack settings are unavailable until the host accepts this runtime');
+    const accepted = () => {
+      if (revoked) throw new Error('Pack service binding has been revoked');
+      if (!source) throw new Error('Pack services are unavailable until the host accepts this runtime');
       return source;
     };
+    const settings = (): SettingsService => accepted().settings as SettingsService;
     const service: SettingsService = {
-      get: target => accepted().get(target),
-      set: (target, path, value, condition) => accepted().set(target, path, value, condition),
-      reset: target => accepted().reset(target),
+      get: target => settings().get(target),
+      set: (target, path, value, condition) => settings().set(target, path, value, condition),
+      reset: target => settings().reset(target),
       onChange: listener => {
-        const stop = accepted().onChange(change => { if (!revoked) listener(change); });
+        const stop = settings().onChange(change => { if (!revoked) listener(change); });
         const unsubscribe = () => { if (subscriptions.delete(unsubscribe)) stop(); };
         subscriptions.add(unsubscribe);
         return unsubscribe;
       },
     };
-    const facade = new Proxy({} as HostServices & Record<string, unknown>, {
-      get(_, key) {
-        assertLive();
-        if (key !== 'settings') return Reflect.get(services, key);
-        accepted();
-        return service;
-      },
-      ownKeys() { assertLive(); return Reflect.ownKeys(services); },
-      has(_, key) { assertLive(); return key === 'settings' || Reflect.getOwnPropertyDescriptor(services, key) !== undefined; },
+    const facade = new Proxy({} as Readonly<Record<string, unknown>> & { readonly settings: SettingsService }, {
+      get(_, key) { const current = accepted(); return key === 'settings' ? service : Reflect.get(current, key); },
+      ownKeys: () => Reflect.ownKeys(accepted()),
+      has: (_, key) => Object.hasOwn(accepted(), key),
       getOwnPropertyDescriptor(_, key) {
-        assertLive();
-        if (key !== 'settings') return Reflect.getOwnPropertyDescriptor(services, key);
-        accepted();
-        return { configurable: true, enumerable: true, value: service };
+        const current = accepted();
+        if (!Object.hasOwn(current, key)) return;
+        return { configurable: true, enumerable: true, value: key === 'settings' ? service : Reflect.get(current, key) };
       },
     });
     return {
-      service,
-      facade,
-      bind(settings: SettingsService) {
-        if (source) throw new Error('Pack settings are already bound');
-        source = settings;
+      service, facade,
+      bind(services: Readonly<Record<string, unknown>>) {
+        if (source) throw new Error('Pack services are already bound');
+        source = services;
       },
       revoke() {
         revoked = true;
@@ -278,12 +282,12 @@ export function _createPackServices() {
   };
   let binding = createBinding();
   return {
-    // Handles and root views retain the binding frame in which they were constructed.
+    // Handles and root views retain their construction frame.
     settingsHandle: <T>(target: SettingsTarget) => _settingsHandle<T>(target, binding.service),
     get services() { return binding.facade; },
-    bindSettings(settings: SettingsService): () => void {
+    bindServices(services: Readonly<Record<string, unknown>>): () => void {
       const accepted = binding;
-      accepted.bind(settings);
+      accepted.bind(services);
       let active = true;
       return () => {
         if (!active) return;

@@ -78,8 +78,12 @@ version and availability from declaration data before importing the consumer. An
 use an authoring-only preview as a provider. `apack pack validate` checks local declarations without
 activating providers; missing local dependency data makes validation incomplete. `apack pack info`
 lists the requests. These declarations describe API dependencies, not a JavaScript security sandbox.
-Runtime/type filtering is still being implemented; declaration checks do not yet restrict the ambient
-SDK service object.
+Generated types and runtime access expose that selection. A declared provider must also have an
+accepted runtime before its service can be used; calls do not activate it. Retained service objects
+and methods refuse after provider retirement instead of redirecting to a replacement. Caller authority
+retires after its actors finish stopping. Calls and streams already started may finish on their original
+implementation; inference agents cannot start new calls after retirement. Use `#generated/services`;
+remaining direct ambient imports are being migrated.
 
 ### Generated aggregation
 
@@ -87,14 +91,14 @@ SDK service object.
 
 1. Imports each feature and pack-level service export
 2. Exports a `featureServices` object aggregating them (`Services` is typed from it)
-3. Exports `Services`: this pack's services, its dependencies' services and the host's (`logger`, `emitter`, `appData`, `onboarding`, `settings`, `traceStore`, `inference`, `secrets`, `filesystem`, and `repository` typed with your repositories)
-4. Exports `services`, the host's services proxy typed as `Services`
+3. Exports `Services`: own services, the baseline and explicitly consumed host/dependency services; `repository` and `emitter` retain the pack's generated types
+4. Exports the current host-bound `services` facade. A rebind publishes a fresh root; retained roots stay retired.
 
 ```typescript
 import { services } from '#generated/services.ts';
 
 services.cache.get('key');              // this pack's service
-services.brain.listen(/* … */);         // a dependency's service
+services.search.find('term');          // a declared dependency service
 services.repository.bookmarkQueries;    // repositories (see below)
 ```
 

@@ -15,7 +15,7 @@ export interface PackServiceContract extends _PackServiceDeclarations {
   readonly buildRevision?: string;
 }
 
-function declarations(owner: PackServiceOwner): _PackServiceDeclarations {
+export function packServiceDeclaration(owner: PackServiceOwner): _PackServiceDeclarations {
   const { id, version, features, consumes, dependencies } = owner.declaration;
   const services = owner.origin === 'native' ? owner.declaration.services : owner.declaration.extensions?.services;
   return { id, version, features, services, consumes, dependencies };
@@ -24,25 +24,25 @@ function declarations(owner: PackServiceOwner): _PackServiceDeclarations {
 /** A projection of one committed catalog, never a second inventory or a runtime lookup. */
 export function packServiceContracts(snapshot: PackCatalogSnapshot): readonly PackServiceContract[] {
   return [
-    ...snapshot.native.map(declaration => ({ ...declarations({ origin: 'native', declaration }), origin: 'native' as const, enabled: true })),
-    ...snapshot.packs.map(entry => ({ ...declarations({ origin: 'installed', declaration: entry.snapshot.manifest }),
+    ...snapshot.native.map(declaration => ({ ...packServiceDeclaration({ origin: 'native', declaration }), origin: 'native' as const, enabled: true })),
+    ...snapshot.packs.map(entry => ({ ...packServiceDeclaration({ origin: 'installed', declaration: entry.snapshot.manifest }),
       origin: 'installed' as const, enabled: entry.enabled,
       declarationRevision: entry.snapshot.declarationRevision, buildRevision: entry.buildRevision })),
-    ...snapshot.sourcePacks.map(entry => ({ ...declarations({ origin: 'source', declaration: entry.manifest }),
+    ...snapshot.sourcePacks.map(entry => ({ ...packServiceDeclaration({ origin: 'source', declaration: entry.manifest }),
       origin: 'source' as const, declarationRevision: entry.declarationRevision })),
   ];
 }
 
 /** Validate required declarations before importing a candidate and again before granting its bindings. */
-export function assertPackServiceRequirements(snapshot: PackCatalogSnapshot, owner: PackServiceOwner): void {
+export function assertPackServiceRequirements(snapshot: PackCatalogSnapshot, owner: PackServiceOwner) {
   // The candidate can repair an incumbent's declaration; cycles must see its prospective contract.
-  const candidate: PackServiceContract = { ...declarations(owner), origin: owner.origin };
+  const candidate: PackServiceContract = { ...packServiceDeclaration(owner), origin: owner.origin };
   const contracts = packServiceContracts(snapshot);
   const checked = new Set<PackServiceContract>();
-  const check = (consumer: PackServiceContract): void => {
-    if (checked.has(consumer)) return;
+  const check = (consumer: PackServiceContract): ReturnType<typeof _packServiceSelection> => {
+    if (checked.has(consumer)) return [];
     checked.add(consumer);
-    _packServiceSelection(consumer, (id, ref) => {
+    return _packServiceSelection(consumer, (id, ref) => {
       const refuse = (reason: string): never => {
         throw new Error(`Pack "${consumer.id}" consumes "${ref}", but provider "${id}" ${reason}`);
       };
@@ -62,5 +62,5 @@ export function assertPackServiceRequirements(snapshot: PackCatalogSnapshot, own
       return provider;
     });
   };
-  check(candidate);
+  return check(candidate);
 }

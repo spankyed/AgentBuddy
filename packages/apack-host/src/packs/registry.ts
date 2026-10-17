@@ -25,8 +25,8 @@ import { _packDeclarationProblem, type ContentRuntime } from '@apackdev/sdk/fram
 import type { MigrationLine, PackManifest } from '@apackdev/sdk/build';
 import type { PackRegistryView } from '@apackdev/sdk/runtime';
 import type { SettingsService } from '@apackdev/sdk/services';
-import { _HOST_SERVICE_NAMES } from '@apackdev/sdk/framework';
-import { assertPackServiceRequirements } from './service-requirements.ts';
+import { _HOST_SERVICE_NAMES, _packServiceSelection } from '@apackdev/sdk/framework';
+import { assertPackServiceRequirements, packServiceDeclaration, type PackServiceOwner } from './service-requirements.ts';
 import type { ContentOffer, ContentApplier } from '@apackdev/sdk/utils';
 import type { ArtifactDefinition } from '@apackdev/sdk/artifacts';
 import type { BlockDefinition } from '@apackdev/sdk/blocks';
@@ -44,7 +44,7 @@ import { readAppPackSources } from './app-sources.ts';
 import { createContributionCatalog, type ContributionCatalog, type PackCatalogProblem, type PackCatalogSource } from './catalog.ts';
 import { disabledPackIds } from './installed.ts';
 import { appSettingsDefinition } from '../features/settings/be/app-definition.ts';
-import { createPackSettingsBinding } from '../services/settings.ts';
+import { createPackServiceBinding } from './service-binding.ts';
 
 export type { PackRegistration, PackLifecycleHooks, PackEARS, PackMigration };
 
@@ -280,7 +280,8 @@ export interface PackRegistry extends PackRegistryView {
 }
 
 /** Capture ownership and collection membership once; executable values retain their identity. */
-function admitContributions(registration: PackRegistration, { steps: declarations, eventContracts, migrationOwner }: {
+function admitContributions(registration: PackRegistration, { steps: declarations, eventContracts, migrationOwner, serviceOwner }: {
+  serviceOwner?: PackServiceOwner;
   steps?: DeclarationData<Record<string, StepEntry>>;
   eventContracts?: Readonly<PackEventContracts>;
   migrationOwner?: { version?: string; dependencies?: Readonly<Record<string, string>> };
@@ -298,6 +299,7 @@ function admitContributions(registration: PackRegistration, { steps: declaration
   return {
     id: registration.id,
     runtimeRevision,
+    serviceOwner,
     migrationOwner: migrationOwner && { id: registration.id, version: migrationOwner.version,
       dependencies: migrationOwner.dependencies, migrations: { app: migrations('app'), pack: migrations('pack') } },
     steps,
@@ -382,9 +384,11 @@ export interface PackRegistryOptions {
   appPackSourcesDir?: () => string | undefined;
   /** Composition supplies scoped authority; registrations cannot choose a caller identity. */
   settingsForPack?: (packId: string) => SettingsService;
+  /** Host-owned test doubles replace selected implementations, never declaration ownership or settings policy. */
+  serviceOverrides?: ReadonlyMap<string, unknown>;
 }
 
-export function createPackRegistry({ installedPacksDir, appPackSourcesDir, settingsForPack, nativeDeclarations = [] }: PackRegistryOptions = {}): PackRegistry {
+export function createPackRegistry({ installedPacksDir, appPackSourcesDir, settingsForPack, serviceOverrides, nativeDeclarations = [] }: PackRegistryOptions = {}): PackRegistry {
   let registrations = new Map<string, PackRegistration>();
   /** Where each registered pack came from. Same keys as `registrations`, so it comes and goes with them */
   let origins = new Map<string, PackOrigin>();
@@ -392,7 +396,7 @@ export function createPackRegistry({ installedPacksDir, appPackSourcesDir, setti
   const loadProblems = new Map<string, string>();
   let admitted = new Map<string, AdmittedPackContributions>();
   let tables = buildContributionTables(admitted.values());
-  const bindings = new Map<string, ReturnType<typeof createPackSettingsBinding>>();
+  const bindings = new Map<string, ReturnType<typeof createPackServiceBinding>>();
   const catalog = createContributionCatalog(appSettingsDefinition);
   catalog.setNative(nativeDeclarations);
   let changing = false;
@@ -518,6 +522,14 @@ export function createPackRegistry({ installedPacksDir, appPackSourcesDir, setti
     }, origin, manifest => contentBindingProblem(manifest, runtime, appliers)));
   }
 
+  function serviceEnabled(owner: PackServiceOwner): boolean {
+    if (owner.origin !== 'installed') return true;
+    const snapshot = catalog.getSnapshot();
+    const id = owner.declaration.id;
+    return snapshot.packs.find(pack => pack.snapshot.manifest.id === id)?.enabled !== false
+      && snapshot.problems.find(pack => pack.id === id)?.enabled !== false;
+  }
+
   function registerContributions(registration: PackRegistration, origin: PackOrigin | undefined,
     checkBinding: typeof backendBindingProblem, replacing = false, replacement?: PackReplacementOptions): string[] {
     if (origin) origin = Object.freeze({ ...origin,
@@ -605,32 +617,49 @@ export function createPackRegistry({ installedPacksDir, appPackSourcesDir, setti
 
     checkEARS(registration, replacing ? registration.id : undefined);
 
-    const services = Object.keys(registration.services ?? {});
-    const hostService = services.find((key) => (_HOST_SERVICE_NAMES as readonly string[]).includes(key));
+    const providedServices = Object.keys(registration.services ?? {});
+    const hostService = providedServices.find((key) => (_HOST_SERVICE_NAMES as readonly string[]).includes(key));
     if (hostService) throw new Error(`Service collision: key "${hostService}" — pack "${registration.id}" vs the host's own "${hostService}" service`);
-    const service = firstTaken(services, (reg) => reg.services, replacing ? registration.id : undefined);
+    const service = firstTaken(providedServices, (reg) => reg.services, replacing ? registration.id : undefined);
     if (service) throw new Error(`Service collision: key "${service.key}" — pack "${registration.id}" vs "${service.holder}"`);
     const repository = firstTaken(Object.keys(registration.repositories ?? {}), (reg) => reg.repositories, replacing ? registration.id : undefined);
     if (repository) throw new Error(`Repository collision: "${repository.key}" — pack "${registration.id}" vs "${repository.holder}"`);
 
     const candidate = new Map(admitted);
     const native = origin ? undefined : catalog.getSnapshot().native.find(pack => pack.id === registration.id);
-    if (origin?.manifest) {
-      assertPackServiceRequirements(catalog.getSnapshot(), { origin: source ? 'source' : 'installed', declaration: origin.manifest });
-    } else if (native) {
-      assertPackServiceRequirements(catalog.getSnapshot(), { origin: 'native', declaration: native });
-    }
+    const serviceOwner: PackServiceOwner | undefined = origin?.manifest
+      ? { origin: source ? 'source' : 'installed', declaration: origin.manifest }
+      : native ? { origin: 'native', declaration: native } : undefined;
+    const selection = serviceOwner && assertPackServiceRequirements(catalog.getSnapshot(), serviceOwner);
     candidate.set(registration.id, admitContributions(checkedRegistration, {
       steps: origin ? origin.manifest?.extensions?.steps : native?.steps,
       eventContracts: origin ? origin.eventContracts : native?.eventContracts,
       migrationOwner: origin ? origin.manifest : native,
+      serviceOwner,
     }, origin));
     const nextTables = buildContributionTables(candidate.values());
-    let binding: ReturnType<typeof createPackSettingsBinding> | undefined;
+    let binding: ReturnType<typeof createPackServiceBinding> | undefined;
     try {
-      if (registration.bindSettings) {
+      if (registration.bindServices) {
         if (!settingsForPack) throw new Error(`Pack "${registration.id}" needs a host settings service binding`);
-        binding = createPackSettingsBinding(settingsForPack(registration.id), registration.bindSettings);
+        if (!selection || !serviceOwner) throw new Error(`Pack "${registration.id}" needs accepted service declarations`);
+        const accepted = candidate.get(registration.id)!;
+        binding = createPackServiceBinding({ caller: registration.id, selection,
+          settings: settingsForPack(registration.id), overrides: serviceOverrides, bind: registration.bindServices,
+          // The coordinator owns caller retirement after its actors stop.
+          current: () => serviceEnabled(serviceOwner),
+          provider: (id, name) => {
+            const owner = id === registration.id ? accepted : admitted.get(id);
+            if (!owner?.serviceOwner || !serviceEnabled(owner.serviceOwner) || !owner.services.has(name)) return;
+            // Validate the requested API against its accepted provider, not a prospective replacement.
+            _packServiceSelection({ ...packServiceDeclaration(serviceOwner), consumes: { services: [`${id}/${name}`] } },
+              providerId => {
+                const active = admitted.get(providerId)?.serviceOwner;
+                return active && serviceEnabled(active) ? packServiceDeclaration(active) : undefined;
+              });
+            return { generation: owner, value: owner.services.get(name) };
+          },
+        });
       }
       publishRepositories(tables.repositories, nextTables.repositories);
     } catch (error) {
@@ -655,7 +684,8 @@ export function createPackRegistry({ installedPacksDir, appPackSourcesDir, setti
       replacement.retireBinding(() => previousBinding.dispose());
       return [];
     } catch (error) {
-      return [`Pack "${registration.id}" committed, but binding retirement could not be scheduled: ${String(error)}`];
+      return [`Pack "${registration.id}" committed, but binding retirement could not be scheduled: ${String(error)}`,
+        ...previousBinding.dispose()];
     }
   }
 

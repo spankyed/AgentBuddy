@@ -405,7 +405,7 @@ it('keeps retained backend service roots retired across rebind and failed cleanu
   const files = await generatePackFiles(manifest({}), { packRoot: root });
   write('src/probe.ts', `
     import type { SettingsService } from '@apackdev/sdk/services';
-    import { services, bindSettings } from './__generated__/services.ts';
+    import { services, bindServices } from './__generated__/services.ts';
     let cleanupFails = false;
     const settings: SettingsService = {
       get: <T,>() => ({ count: 10 } as T), set() {}, reset() {},
@@ -417,14 +417,14 @@ it('keeps retained backend service roots retired across rebind and failed cleanu
       throw new Error('Retained root was revived');
     }
     const first = services;
-    const dispose = bindSettings(settings);
+    const dispose = bindServices({ settings });
     if (first !== services) throw new Error('Initial binding lost its constructed frame');
     if (services.settings.get<{ count: number }>({ kind: 'app' }).count !== 10) throw new Error('Missing bound settings');
     dispose();
     if (first === services) throw new Error('Disposal retained the old root');
     retired(first);
     const second = services;
-    const disposeSecond = bindSettings(settings);
+    const disposeSecond = bindServices({ settings });
     retired(first);
     services.settings.onChange(() => {});
     cleanupFails = true;
@@ -434,7 +434,7 @@ it('keeps retained backend service roots retired across rebind and failed cleanu
     if (second === services) throw new Error('Failed cleanup retained the old export');
     retired(second);
     cleanupFails = false;
-    const disposeThird = bindSettings(settings);
+    const disposeThird = bindServices({ settings });
     retired(first);
     retired(second);
     if (services.settings.get<{ count: number }>({ kind: 'app' }).count !== 10) throw new Error('Rebind did not publish a fresh root');
@@ -445,4 +445,20 @@ it('keeps retained backend service roots retired across rebind and failed cleanu
   buildSync({ entryPoints: [path.join(root, 'src/probe.ts')], outfile,
     bundle: true, platform: 'node', format: 'esm', external: ['@apackdev/sdk/*'] });
   expect(() => execFileSync(process.execPath, ['--import', 'tsx', outfile], { stdio: 'pipe' })).not.toThrow();
+});
+
+it('typechecks only consumed host APIs and directly owned dependency service members', async () => {
+  const snapshot = dependency({ services: { search: 'unavailable.ts#search', hidden: 'unavailable.ts#hidden' } },
+    facade({ Services: '{ search: { read(): string }; hidden: { read(): string } }' }));
+  const files = await generatePackFiles(manifest({ dependencies: { 'base-pack': '*' },
+    consumes: { services: ['host/onboarding', 'base-pack/search'] },
+  }), { packRoot: root, depSnapshots: new Map([['base-pack', snapshot]]) });
+  write('src/probe.ts', `import { services } from './__generated__/services.ts';
+    services.onboarding.isComplete(); services.search.read();
+    services.appData.reset(); services.hidden.read();`);
+  const diagnostics = typecheck(files, ['src/probe.ts']);
+  expect(diagnostics).toHaveLength(2);
+  expect(diagnostics.every(diagnostic => diagnostic.includes('src/probe.ts'))).toBe(true);
+  expect(diagnostics.join('\n')).toContain("Property 'appData' does not exist");
+  expect(diagnostics.join('\n')).toContain("Property 'hidden' does not exist");
 });

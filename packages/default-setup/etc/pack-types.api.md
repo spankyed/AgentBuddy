@@ -4883,11 +4883,10 @@ interface SegmentRule {
 type ServerStatus = 'error' | 'ready' | 'starting' | 'stopped';
 
 /**
- * What an action actually receives: this pack's feature services, its dependencies' services
- * and the ambient ones the host injects (logger, emitter, repository).
+ * The declared service selection: own services, the SDK baseline and explicitly consumed APIs.
  * The featureServices value itself stays feature-only.
  */
-type Services = typeof featureServices & Omit<HostServices, 'emitter' | 'repository'> & {
+type Services = typeof featureServices & Pick<HostServices, "appData" | "filesystem" | "inference" | "logger" | "onboarding" | "secrets" | "settings" | "traceStore"> & {
     repository: Repositories;
     emitter: PackEmitter;
 };

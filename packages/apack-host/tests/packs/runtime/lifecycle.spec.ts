@@ -131,7 +131,7 @@ describe('installed runtime acceptance', () => {
     const isolated = createNativePackTestRegistry({ settingsForPack: () => settings });
     const generated = _createPackServices();
     const handle = generated.settingsHandle({ kind: 'app' });
-    const registration = { ...loaded.registration, bindSettings: generated.bindSettings };
+    const registration = { ...loaded.registration, bindServices: generated.bindServices };
     isolated.registerPack(registration, loaded.origin);
     const previousRuntime = isolated.getPackRuntime(id);
     const changed = vi.fn();
@@ -139,7 +139,7 @@ describe('installed runtime acceptance', () => {
     const bus = { send: vi.fn() };
     try {
       writeManifest(source, { id, name: id, version: '2.0.0' });
-      writeBuild(source, id, '{}, bindSettings() { throw new Error("late binding refused"); }');
+      writeBuild(source, id, '{}, bindServices() { throw new Error("late binding refused"); }');
       await expect(installPackFromLocal(source, packsDir(), { accept: candidate => {
         acceptInstalledPack(isolated, candidate.id, bus as never);
       } })).rejects.toThrow('late binding refused');

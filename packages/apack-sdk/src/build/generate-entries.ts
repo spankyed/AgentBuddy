@@ -467,14 +467,8 @@ export async function generatePackFiles(
   checkRepositoryNames();
 
   /**
-   * The same rule for service names, in both directions.
-   *
-   * A pack's generated `Services` is the intersection of its dependencies' (`_S0 & _S1 & …`), and an
-   * intersection is silent about a collision: two dependencies both providing `db` give
-   * `db: A['db'] & B['db']`, a type that is usually unusable and sometimes `never`, with no error
-   * anywhere. The app's registry does refuse the second pack at registration, so the collision
-   * surfaces — at app start, far from the pack that caused it. This reports it at build time, where
-   * commands and repositories are already reported.
+   * Providers share the host's flat service namespace even when consumers select qualified refs.
+   * Report collisions here rather than waiting for runtime registration; filtering is not ownership.
    */
   function checkServiceNames(): void {
     const serviceNames = (m: PackManifest): string[] => _packServiceDeclarations({
@@ -498,7 +492,7 @@ export async function generatePackFiles(
     }
   }
   checkServiceNames();
-  _packServiceSelection({ ...manifest, services: manifest.extensions?.services }, id => {
+  const selectedServices = _packServiceSelection({ ...manifest, services: manifest.extensions?.services }, id => {
     const dependency = depSnapshots.get(id)?.manifest;
     return dependency && { ...dependency, services: dependency.extensions?.services };
   });
@@ -1039,7 +1033,7 @@ ${contracted.map(f => `  '${f.id}': __ContractMatches<MachineMatchesContract<typ
 import type { PackRegistration } from '@apackdev/sdk/framework';
 ${contracted.length ? "import type { MachineMatchesContract } from '@apackdev/sdk/framework';\nimport type { SystemContracts as __SystemContracts } from './system-specs.ts';\n" : ''}${systemFeatures.length ? "import { packSystem } from '@apackdev/sdk/framework';\n" : ''}${hasRepositories() ? "import { repositories } from './repositories.ts';\n" : ''}
 ${systemImports}
-import { featureServices, bindSettings } from './services.ts';
+import { featureServices, bindServices } from './services.ts';
 ${hooksImport}
 ${writerEntries.map(([, path, exportName], i) => `import { ${exportName} as __contentWriter_${i} } from '${path}';`).join('\n')}
 ${migrations.imports.join('\n')}
@@ -1056,7 +1050,7 @@ export const registration: PackRegistration = {
   declarationRevision: '${_declarationRevision(manifest)}',
   features: {${featuresLiteral ? `\n${featuresLiteral},\n  ` : ''}},
   services: featureServices,
-  bindSettings,
+  bindServices,
 ${hasRepositories() ? '  repositories,' : ''}
 ${steps.literal ? `  steps: ${steps.literal},` : ''}
 ${artifacts ? `  artifacts: ${artifacts},` : ''}
@@ -1664,6 +1658,12 @@ ${nodeEntity}`;
     for (const { name, target } of provided) addService(name, target);
 
     const deps = depTypeImports('Services');
+    const hostKeys = selectedServices.filter(entry => entry.packId === 'host' && !['repository', 'emitter'].includes(entry.name))
+      .map(entry => JSON.stringify(entry.name)).join(' | ');
+    const selectedDependencies = depIds.flatMap((id, index) => {
+      const keys = selectedServices.filter(entry => entry.packId === id).map(entry => JSON.stringify(entry.name));
+      return keys.length ? [`Pick<${deps.aliases[index]}, ${keys.join(' | ')}>`] : [];
+    });
 
     return `${HEADER}
 import type { z } from 'zod';
@@ -1674,7 +1674,7 @@ import type { TypedSendToPlugin, TypedSendToWindow, TypedSendToSystem } from '@a
 import type { Repositories } from './repository.ts';
 import type { QualifiedPluginEvents, QualifiedSystemEvents } from './events.ts';
 ${imports.join('\n')}
-${deps.imports.join('\n')}
+${deps.imports.filter((_, index) => selectedServices.some(entry => entry.packId === depIds[index])).join('\n')}
 
 export const featureServices = {
 ${entries.join('\n')}
@@ -1697,18 +1697,17 @@ export type PackEmitter = Omit<HostServices['emitter'], 'broadcastToPlugin' | 's
 };
 
 /**
- * What an action actually receives: this pack's feature services, its dependencies' services
- * and the ambient ones the host injects (logger, emitter, repository).
+ * The declared service selection: own services, the SDK baseline and explicitly consumed APIs.
  * The featureServices value itself stays feature-only.
  */
-export type Services = typeof featureServices & Omit<HostServices, 'repository' | 'emitter'> & { repository: Repositories; emitter: PackEmitter }${deps.aliases.map(a => ` & Omit<${a}, 'repository' | 'emitter'>`).join('')};
+export type Services = typeof featureServices & Pick<HostServices, ${hostKeys}> & { repository: Repositories; emitter: PackEmitter }${selectedDependencies.map(type => ` & ${type}`).join('')};
 
 /** The host's services proxy, typed with this pack's feature services. */
 export let services = runtimeServices.services as unknown as Services;
 
 /** Rebinding publishes a fresh facade; retained roots keep their retired lifetime. */
-export function bindSettings(settings: HostServices['settings']): () => void {
-  const dispose = runtimeServices.bindSettings(settings);
+export function bindServices(source: Readonly<Record<string, unknown>>): () => void {
+  const dispose = runtimeServices.bindServices(source);
   services = runtimeServices.services as unknown as Services;
   return () => {
     try { dispose(); }

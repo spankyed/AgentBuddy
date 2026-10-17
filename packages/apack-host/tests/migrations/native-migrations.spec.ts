@@ -70,10 +70,10 @@ it.each([
   ['migrations.pack', { app: [entry()], pack: [entry(), entry()] }],
 ] as const)('refuses mismatched native %s before granting authority', (field, migrations) => {
   const registry = createPackRegistry({ nativeDeclarations: [declaration] });
-  const before = registry.catalog.getSnapshot(); const bindSettings = vi.fn();
-  expect(() => registry.registerPack({ id: declaration.id, migrations, bindSettings } as never))
+  const before = registry.catalog.getSnapshot(); const bindServices = vi.fn();
+  expect(() => registry.registerPack({ id: declaration.id, migrations, bindServices } as never))
     .toThrow(`Native pack "${declaration.id}" runtime ${field} does not match its admitted declarations`);
-  expect(bindSettings).not.toHaveBeenCalled();
+  expect(bindServices).not.toHaveBeenCalled();
   expect(registry.getPackRegistration(declaration.id)).toBeNull();
   expect(registry.packMigrationTargets('app')).toEqual([]);
   expect(registry.catalog.getSnapshot()).toBe(before);
@@ -145,11 +145,11 @@ it('uses explicitly supplied native fixture metadata for a migration version', (
 });
 
 it('refuses installed migration bindings without accepted manifest declarations instead of ignoring them', () => {
-  const registry = createPackRegistry(); const bindSettings = vi.fn();
-  expect(() => registry.registerPack({ id: 'unaccepted-installed', migrations: { app: [entry()] }, bindSettings } as never,
+  const registry = createPackRegistry(); const bindServices = vi.fn();
+  expect(() => registry.registerPack({ id: 'unaccepted-installed', migrations: { app: [entry()] }, bindServices } as never,
     { id: 'unaccepted-installed', name: 'Unaccepted', version: '1.0.0', dir: '/absent', declarationRevision: 'fixture' }))
     .toThrow('runtime migrations.app has no accepted migration declarations');
-  expect(bindSettings).not.toHaveBeenCalled();
+  expect(bindServices).not.toHaveBeenCalled();
   expect(registry.getPackRegistration('unaccepted-installed')).toBeNull();
 });
 

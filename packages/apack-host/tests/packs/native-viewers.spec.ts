@@ -49,10 +49,10 @@ it.each([
 ] as const)('refuses mismatched native %s before granting authority or publishing bindings', (path, changes) => {
   const registry = createPackRegistry({ nativeDeclarations: [declaration] });
   const before = registry.catalog.getSnapshot();
-  const bindSettings = vi.fn();
-  expect(() => registry.registerPack({ ...binding(), ...changes, bindSettings } as never))
+  const bindServices = vi.fn();
+  expect(() => registry.registerPack({ ...binding(), ...changes, bindServices } as never))
     .toThrow(`Native pack "${declaration.id}" runtime ${path} does not match its admitted declarations`);
-  expect(bindSettings).not.toHaveBeenCalled();
+  expect(bindServices).not.toHaveBeenCalled();
   expect(registry.getPackRegistration(declaration.id)).toBeNull();
   expect(registry.artifact('card')).toBeUndefined();
   expect(registry.block('answer')).toBeUndefined();

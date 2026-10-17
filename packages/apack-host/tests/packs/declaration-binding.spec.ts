@@ -62,7 +62,7 @@ it('refuses undeclared services before registration, catalog publication or auth
   const catalog = registry.settingsCatalog();
   let bound = false;
   const empty = ManifestSchema.parse({ id: 'undeclared', name: 'Undeclared', version: '1.0.0' });
-  expect(() => registry.registerPack({ id: empty.id, services: { ghost: {} }, bindSettings: () => { bound = true; return () => {}; } }, {
+  expect(() => registry.registerPack({ id: empty.id, services: { ghost: {} }, bindServices: () => { bound = true; return () => {}; } }, {
     id: empty.id, name: empty.name, version: empty.version, dir: '/packs/undeclared',
     declarationRevision: 'accepted', manifest: empty,
   })).toThrow('runtime services does not match');
@@ -76,7 +76,7 @@ it('checks native step data and runtime slots before granting settings or invoki
   const { createPackRegistry } = await import('../../src/packs/registry.ts');
   const { vi } = await import('vitest');
   const handler = vi.fn();
-  const bindSettings = vi.fn();
+  const bindServices = vi.fn();
   const registry = createPackRegistry({ nativeDeclarations: [{ id: 'native', steps: {
     memo: { node: { label: 'Memo', defaults: { tags: ['draft'] } }, runtime: { handler: 'native.ts#run', waits: true } },
   } }] });
@@ -89,10 +89,10 @@ it('checks native step data and runtime slots before granting settings or invoki
     { steps: [{ ...step, runtime: { waits: true as const } }] },
   ];
   for (const candidate of candidates) {
-    expect(() => registry.registerPack({ id: 'native', ...candidate, bindSettings })).toThrow('does not match its admitted declarations');
+    expect(() => registry.registerPack({ id: 'native', ...candidate, bindServices })).toThrow('does not match its admitted declarations');
     expect(registry.step('memo')).toBeUndefined();
   }
-  expect(bindSettings).not.toHaveBeenCalled();
+  expect(bindServices).not.toHaveBeenCalled();
   expect(handler).not.toHaveBeenCalled();
   registry.registerPack({ id: 'native', steps: [step] });
   const accepted = registry.step('memo')!;

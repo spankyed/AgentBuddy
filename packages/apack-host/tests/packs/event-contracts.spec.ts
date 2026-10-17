@@ -45,11 +45,11 @@ it.each([['system', ['PRIVATE']], ['plugin', ['SHOW']], ['system', null]] as con
       features: { shell: { description: 'Coordinate the shell.' } }, eventContracts: { shell: events },
     }] });
     const before = registry.catalog.getSnapshot();
-    const bindSettings = vi.fn();
-    expect(() => registry.registerPack({ id: 'native', bindSettings,
+    const bindServices = vi.fn();
+    expect(() => registry.registerPack({ id: 'native', bindServices,
       features: { shell: { [kind]: { machine, receives } } },
     } as never)).toThrow(`features.shell.${kind}.receives`);
-    expect(bindSettings).not.toHaveBeenCalled();
+    expect(bindServices).not.toHaveBeenCalled();
     expect(registry.getPackRegistration('native')).toBeNull();
     expect(registry.catalog.getSnapshot()).toBe(before);
   },

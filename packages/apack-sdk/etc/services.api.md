@@ -65,6 +65,12 @@ export interface BackupSummary {
     timestamp: number;
 }
 
+// @internal
+export function _captureHostServices(): {
+    current: () => boolean;
+    get(name: string): unknown;
+};
+
 // @public
 export function createActionEmitter(sender?: ActionSender): HostServices['emitter'];
 
@@ -74,8 +80,10 @@ export function _createInferenceService(resolveModel: _ResolveModel): InferenceS
 // @internal
 export function _createPackServices(): {
     settingsHandle: <T>(target: SettingsTarget) => SettingsHandle<T>;
-    readonly services: HostServices & Record<string, unknown>;
-    bindSettings(settings: SettingsService): () => void;
+    readonly services: Readonly<Record<string, unknown>> & {
+        readonly settings: SettingsService;
+    };
+    bindServices(services: Readonly<Record<string, unknown>>): () => void;
 };
 
 // @public

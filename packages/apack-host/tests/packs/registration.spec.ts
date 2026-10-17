@@ -409,7 +409,7 @@ describe('registered settings authority', () => {
     const admin = createSettingsService(createSettingsStore({ ears: installedEngine, catalog: packs.settingsCatalog }));
     const generated = _createPackServices();
     const target = { kind: 'feature', featureRef: 'caller-pack/widget' } as const;
-    packs.registerPack({ id: 'caller-pack', bindSettings: generated.bindSettings,
+    packs.registerPack({ id: 'caller-pack', bindServices: generated.bindServices,
       features: { widget: { settings: { defaults: { count: 1 }, schema: { type: 'object' } } } } });
 
     const retained = generated.services;
@@ -422,7 +422,7 @@ describe('registered settings authority', () => {
     expect(() => generated.services.settings.set(target, ['count'], 3)).toThrow('until the host accepts');
     expect(admin.getOverrides()).toEqual({ features: { 'caller-pack/widget': { count: 2 } } });
     expect(() => retained.settings.get(target)).toThrow('revoked');
-    packs.registerPack({ id: 'caller-pack', bindSettings: generated.bindSettings,
+    packs.registerPack({ id: 'caller-pack', bindServices: generated.bindServices,
       features: { widget: { settings: { defaults: { count: 1 }, schema: { type: 'object' } } } } });
     expect(generated.services === retained).toBe(false);
     expect(generated.services.settings.get(target)).toEqual({ count: 2 });
@@ -440,7 +440,7 @@ describe('registered settings authority', () => {
       shared: definition,
       private: { ...definition, access: 'owner' },
     } });
-    packs.registerPack({ id: 'consumer-pack', dependencies: { 'owner-pack': '*' }, bindSettings: generated.bindSettings });
+    packs.registerPack({ id: 'consumer-pack', dependencies: { 'owner-pack': '*' }, bindServices: generated.bindServices });
     const shared = { kind: 'pack', packId: 'owner-pack', groupId: 'shared' } as const;
     const restricted = { kind: 'pack', packId: 'owner-pack', groupId: 'private' } as const;
 
@@ -456,19 +456,19 @@ describe('registered settings authority', () => {
 
   it('does not supply authority to a refused registration', () => {
     const scoped = vi.fn();
-    const bindSettings = vi.fn();
+    const bindServices = vi.fn();
     const packs = createNativePackTestRegistry({ settingsForPack: scoped });
-    expect(() => packs.registerPack({ id: 'refused-pack', services: { settings: {} }, bindSettings }))
+    expect(() => packs.registerPack({ id: 'refused-pack', services: { settings: {} }, bindServices }))
       .toThrow('Service collision');
     expect(scoped).not.toHaveBeenCalled();
-    expect(bindSettings).not.toHaveBeenCalled();
+    expect(bindServices).not.toHaveBeenCalled();
   });
 
   it('revokes injected authority if catalog publication refuses the declaration', () => {
     const packs = createNativePackTestRegistry({ settingsForPack: id => admin.forPack(id) });
     const admin = createSettingsService(createSettingsStore({ ears: installedEngine, catalog: packs.settingsCatalog }));
     const generated = _createPackServices();
-    expect(() => packs.registerPack({ id: 'invalid-pack', bindSettings: generated.bindSettings,
+    expect(() => packs.registerPack({ id: 'invalid-pack', bindServices: generated.bindServices,
       features: { widget: { settings: { defaults: { count: 'bad' }, schema: { type: 'object', properties: { count: { type: 'number' } } } } } } }))
       .toThrow();
     expect(() => generated.services.settings.get({ kind: 'app' })).toThrow('until the host accepts');

@@ -258,7 +258,7 @@ describe('generated services', () => {
     expect(services).toContain("import { servicesService as __service_services } from '../services.ts';");
     expect(services).toContain('  services: __service_services,');
     expect(services).toContain("import { runtimeServices } from './runtime-services.ts'");
-    expect(services).toContain("export function bindSettings(settings: HostServices['settings'])");
+    expect(services).toContain("export function bindServices(source: Readonly<Record<string, unknown>>)");
   });
 
   it('imports pack-level services the same way', async () => {
@@ -302,9 +302,10 @@ describe('generated services', () => {
     await expect(service('src/memo.ts#MemoService')).rejects.toThrow('Service "memo": "MemoService" in src/memo.ts is a class; export an instance of it');
   });
 
-  it("intersects dependencies' services and types repository with the pack's repositories", async () => {
+  it("exposes only the baseline when dependency services are not consumed", async () => {
     const services = (await generate({}, { 'base-pack': dependency({}) }))['src/__generated__/services.ts'];
-    expect(services).toContain("Omit<HostServices, 'repository' | 'emitter'> & { repository: Repositories; emitter: PackEmitter } & Omit<__dep_base_pack_Services, 'repository' | 'emitter'>");
+    expect(services).toContain('Pick<HostServices, "logger" | "settings"> & { repository: Repositories; emitter: PackEmitter }');
+    expect(services).not.toContain(' & Omit<__dep_base_pack_Services');
   });
 
   it("types the emitter with the pack's events, naming every system <pack>/<feature>", async () => {

@@ -1,22 +1,25 @@
 // Service mocks last one test: the harness restores services after each, and inference fails until a test mocks it.
 // A test app's waits and calls end when it stops, and its systems get events before a client connects, while their sends to plugins wait for one.
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { mockInference, mockService, startApp } from '@apackdev/testing/harness';
 import { services } from '#generated/services.ts';
 import { sendToSystem } from '#generated/events.ts';
 
-const scripted = { debug: () => {}, info: () => {}, warn: () => {}, error: () => {} };
+const scripted = { debug: vi.fn(), info: vi.fn(), warn: vi.fn(), error: vi.fn() };
 
 describe('harness isolation between tests', () => {
   it('mocks a service and inference for this test', async () => {
     mockService('logger', scripted);
     mockInference('scripted');
-    expect(services.logger).toBe(scripted);
+    services.logger.info('scripted logger');
+    expect(scripted.info).toHaveBeenCalledWith('scripted logger');
     expect((await services.inference.generateText({ model: 'openai:gpt-5', prompt: 'hi' })).text).toBe('scripted');
   });
 
   it('has the real logger, and inference that fails naming the fix, in the next test', async () => {
-    expect(services.logger).not.toBe(scripted);
+    const before = scripted.info.mock.calls.length;
+    services.logger.info('real logger');
+    expect(scripted.info.mock.calls.length).toBe(before);
     await expect(services.inference.generateText({ model: 'openai:gpt-5', prompt: 'hi' })).rejects.toThrow('mock inference with mockInference(reply)');
   });
 });

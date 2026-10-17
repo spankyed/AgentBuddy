@@ -332,8 +332,12 @@ describe('reloading a pack', () => {
     const isolated = createNativePackTestRegistry({ settingsForPack: () => source });
     const generated = _createPackServices();
     const handle = generated.settingsHandle({ kind: 'app' });
-    const old = { ...running, bindSettings: generated.bindSettings };
-    const origin = { eventContracts, id: PACK_ID, name: PACK_ID, version: '1.0.0', declarationRevision: 'fixture-revision',
+    const manifest = { id: PACK_ID, name: PACK_ID, version: '1.0.0', features: {
+      widget: { description: 'Reload authority fixture.', system: { entry: 'system.ts', events: { incoming: ['PING'] } } },
+    } };
+    const declarationRevision = _declarationRevision(manifest);
+    const old = { ...running, declarationRevision, bindServices: generated.bindServices };
+    const origin = { eventContracts, manifest, id: PACK_ID, name: PACK_ID, version: '1.0.0', declarationRevision,
       dir: path.join(resolveAppEnvironment().packsDir, PACK_ID) };
     isolated.registerPack(old, origin);
     const acceptedOrigin = isolated.packOrigin(PACK_ID);
@@ -341,7 +345,7 @@ describe('reloading a pack', () => {
     const heard = vi.fn();
     handle.onChange(heard);
     try {
-      writeRebuild(runtime("bindSettings() { throw new Error('late binding refused'); },"));
+      writeRebuild(runtime("bindServices() { throw new Error('late binding refused'); },"));
       await expect(reloadPackById(isolated, PACK_ID, bus as never)).rejects.toThrow(`Failed to register pack ${PACK_ID}`);
       expect(isolated.getPackRegistration(PACK_ID)).toBe(old);
       expect(isolated.packOrigin(PACK_ID)).toBe(acceptedOrigin);

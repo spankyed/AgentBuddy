@@ -3,6 +3,16 @@
   "id": "default-setup",
   "name": "Default Setup",
   "version": "0.1.0",
+  "consumes": {
+    "services": [
+      "host/onboarding",
+      "host/appData",
+      "host/traceStore",
+      "host/inference",
+      "host/secrets",
+      "host/filesystem"
+    ]
+  },
   "description": "The official apack starter pack. Provides core entity types, backend systems, services, frontend plugins, artifacts, content data, message blocks, and default settings.",
   "hostVersion": ">=0.3.0",
   "license": "MIT",

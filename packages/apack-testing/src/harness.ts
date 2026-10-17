@@ -67,7 +67,7 @@ const serviceMocks = new Map<string, unknown>();
 let inTest = false;
 
 /** The test file's registered packs: the pack under test and its dependencies, and any other pack a test registers */
-const registry = createPackRegistry({ nativeDeclarations: [hostDeclaration], settingsForPack: (packId) => _settingsAdmin().forPack(packId) });
+const registry = createPackRegistry({ nativeDeclarations: [hostDeclaration], serviceOverrides: serviceMocks, settingsForPack: (packId) => _settingsAdmin().forPack(packId) });
 // The app's own plugins (the shell, the Packs tab, Settings), which a pack's systems may send to. The harness runs
 // two of the host's systems: settings, because a feature's own settings are the app's to store and hand back and a
 // pack's code reads them in almost every test, and packs, which owns content import and preview — a pack's tests write

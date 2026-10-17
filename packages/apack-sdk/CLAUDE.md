@@ -143,8 +143,10 @@ Pack service consumption is declared as qualified refs in `consumes.services`.
 `framework/service-consumption.ts` owns the host baseline/name inventory, direct provided-service
 projection and selection validation used by codegen. Provider declarations are read without loading
 source targets. The host checks the common catalog before importing a runtime and again at
-registration; CLI validation checks locally available provider declarations without codegen. A3 owns
-production runtime filtering and matching type projection; the ambient runtime union still exists.
+registration; CLI validation checks locally available provider declarations without codegen. Generated
+`Services` and backend `bindServices` use that selection. `packs/service-binding.ts` in the host owns
+caller retirement, provider generations and scoped settings subscriptions. Existing supported ambient
+imports still need the A4 migration; they are not part of the generated facade.
 
 ## Registered packs
 

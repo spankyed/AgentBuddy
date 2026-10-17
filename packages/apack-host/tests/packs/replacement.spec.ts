@@ -1,8 +1,11 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createEarsEngine, installEngine } from '@apackdev/ears';
 import { _createPackServices, type SettingsService } from '@apackdev/sdk/services';
+import { startTestRuntime } from '@apackdev/sdk/testing';
 import type { PackRegistration } from '@apackdev/sdk/framework';
 import { createPackRegistry } from '../../src/packs/registry.ts';
+
+startTestRuntime();
 
 const target = { kind: 'app' } as const;
 let previousEngine: ReturnType<typeof installEngine>;
@@ -30,7 +33,7 @@ function fixture() {
   const handle = generated.settingsHandle(target);
   const records = { owner: 'old' };
   const registration: PackRegistration = {
-    id: 'incumbent', bindSettings: generated.bindSettings,
+    id: 'incumbent', bindServices: generated.bindServices,
     features: { widget: { designation: 'before' } },
     repositories: { records }, services: { value: 'old' },
     commands: [{ name: 'old-command', placeholder: 'Old' }],
@@ -40,7 +43,7 @@ function fixture() {
   handle.onChange(heard);
   const fresh = _createPackServices();
   const next: PackRegistration = {
-    ...registration, bindSettings: fresh.bindSettings,
+    ...registration, bindServices: fresh.bindServices,
     features: { widget: { designation: 'after' } },
     repositories: { records: { owner: 'new' } }, services: { value: 'new' },
   };
@@ -106,7 +109,7 @@ describe('accepted pack replacement', () => {
 
   it('retains the same incumbent handle and subscription when candidate binding refuses', () => {
     const f = fixture();
-    f.next.bindSettings = () => {
+    f.next.bindServices = () => {
       assertIncumbent(f); // Reentrant reads observe accepted state while the candidate is prepared.
       throw new Error('binding refused');
     };
@@ -119,7 +122,7 @@ describe('accepted pack replacement', () => {
   it('revokes a port captured by a hook that binds and then throws before returning cleanup', () => {
     const f = fixture();
     const provisional = f.fresh.settingsHandle(target);
-    f.next.bindSettings = port => { f.fresh.bindSettings(port); throw new Error('hook refused after capture'); };
+    f.next.bindServices = port => { f.fresh.bindServices(port); throw new Error('hook refused after capture'); };
     declareCandidateRole(f.registry);
     expect(() => f.registry.replacePack(f.next)).toThrow('hook refused after capture');
     expect(() => provisional.get()).toThrow('revoked');
@@ -128,10 +131,10 @@ describe('accepted pack replacement', () => {
 
   it('does not grant candidate operations until publication accepts its runtime', () => {
     const f = fixture();
-    f.next.bindSettings = port => {
-      expect(() => port.get(target)).toThrow('until the host accepts');
-      expect(() => port.set(target, ['value'], 2)).toThrow('until the host accepts');
-      return f.fresh.bindSettings(port);
+    f.next.bindServices = port => {
+      expect(() => (port.settings as SettingsService).get(target)).toThrow('until the host accepts');
+      expect(() => (port.settings as SettingsService).set(target, ['value'], 2)).toThrow('until the host accepts');
+      return f.fresh.bindServices(port);
     };
     declareCandidateRole(f.registry);
     f.registry.replacePack(f.next);
@@ -180,8 +183,8 @@ describe('accepted pack replacement', () => {
     f.registry.unregisterPack('incumbent');
     const rebound = _createPackServices();
     const cleanup = vi.fn(() => { throw new Error('cleanup refused'); });
-    f.registration.bindSettings = port => {
-      const dispose = rebound.bindSettings(port);
+    f.registration.bindServices = port => {
+      const dispose = rebound.bindServices(port);
       return () => { dispose(); cleanup(); };
     };
     f.registry.registerPack(f.registration);
@@ -197,7 +200,7 @@ describe('accepted pack replacement', () => {
 
   it('revokes host-owned authority and subscriptions even when the hook omits generated cleanup', () => {
     const f = fixture();
-    f.next.bindSettings = port => { f.fresh.bindSettings(port); return () => {}; };
+    f.next.bindServices = port => { f.fresh.bindServices(port); return () => {}; };
     declareCandidateRole(f.registry);
     f.registry.replacePack(f.next);
     const current = f.fresh.settingsHandle(target);
@@ -224,8 +227,8 @@ describe('accepted pack replacement', () => {
 
   it('retires all accepted state on unload even when binding cleanup throws', () => {
     const f = fixture();
-    const dispose = f.fresh.bindSettings;
-    f.next.bindSettings = port => {
+    const dispose = f.fresh.bindServices;
+    f.next.bindServices = port => {
       const stop = dispose(port);
       return () => { stop(); throw new Error('unload cleanup refused'); };
     };
@@ -240,9 +243,19 @@ describe('accepted pack replacement', () => {
     expect(() => current.get()).toThrow('revoked');
   });
 
+  it('retires incumbent authority if coordinated cleanup cannot be scheduled', () => {
+    const f = fixture();
+    declareCandidateRole(f.registry);
+    const errors = f.registry.replacePack(f.next, undefined, { retireBinding() { throw new Error('coordinator refused'); } });
+    expect(errors).toEqual([expect.stringContaining('retirement could not be scheduled')]);
+    expect(() => f.handle.get()).toThrow('revoked');
+    expect(f.fresh.settingsHandle(target).get()).toEqual({ value: 1 });
+    expect(f.listeners.size).toBe(0);
+  });
+
   it('refuses reentrant mutation while letting the candidate inspect accepted state', () => {
     const f = fixture();
-    f.next.bindSettings = () => {
+    f.next.bindServices = () => {
       assertIncumbent(f);
       f.registry.unregisterPack('incumbent');
       return () => {};

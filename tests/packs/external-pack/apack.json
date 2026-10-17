@@ -3,6 +3,11 @@
   "id": "e2e-fixture",
   "name": "E2E Fixture",
   "version": "0.1.0",
+  "consumes": {
+    "services": [
+      "host/inference"
+    ]
+  },
   "hostVersion": ">=0.3.0",
   "dependencies": {
     "default-setup": "*"

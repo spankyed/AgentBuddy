@@ -564,7 +564,7 @@ describe('a pack that is gone', () => {
 describe('installing over a pack that is already running', () => {
   it.each([
     ['runtime import', 'throw new Error("candidate import refused");'],
-    ['runtime binding', 'module.exports.registration.bindSettings = () => { throw new Error("candidate binding refused"); };'],
+    ['runtime binding', 'module.exports.registration.bindServices = () => { throw new Error("candidate binding refused"); };'],
   ])('preserves the incumbent and build after refused %s', async (_kind, runtime) => {
     const installed = await installPackFromLocal(packSource('1.0.0'));
     expect(activatePack(registry, PACK_ID, { send: () => {} } as never)).toBe(true);

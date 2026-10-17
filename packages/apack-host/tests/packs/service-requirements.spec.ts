@@ -58,10 +58,10 @@ describe('service requirement admission', () => {
     const incumbent = { id: 'consumer' };
     packs.registerPack(incumbent);
     packs.catalog.setNative([{ id: 'consumer', dependencies: { provider: '*' }, consumes: { services: ['provider/search'] } }]);
-    const bindSettings = vi.fn();
-    expect(() => packs.replacePack({ id: 'consumer', dependencies: { provider: '*' }, bindSettings }))
+    const bindServices = vi.fn();
+    expect(() => packs.replacePack({ id: 'consumer', dependencies: { provider: '*' }, bindServices }))
       .toThrow('has no available declaration');
-    expect(bindSettings).not.toHaveBeenCalled();
+    expect(bindServices).not.toHaveBeenCalled();
     expect(packs.getPackRegistration('consumer')).toBe(incumbent);
   });
 
