@@ -1743,3 +1743,45 @@ only. This avoids relying on registration of a new dispatch workflow on the defa
 [GitHub's manual workflow rules](https://docs.github.com/en/actions/how-tos/manage-workflow-runs/manually-run-a-workflow).
 YAML and dispatch-routing assertions pass locally. Push permission is pending; no run is claimed.
 Existing Windows test skips do not establish the still-missing descendant-lifetime owner.
+
+## Native startup admission checkpoint (2026-10-17)
+
+Source `e6dd35d52` installs one native-load admission port in the existing compiler interception
+owner. Startup native admission remains active after startup filesystem interception stops; executable
+compilation scopes supply their own native-image owner. Already captured installation/read-tree
+images are inspected in place rather than copied again and recorded as ephemeral source inputs.
+Startup captures source native packages into its existing data read tree. The shared package-graph
+adapter replaces duplicated graph-to-snapshot assembly; no new input inventory is introduced.
+
+On macOS ARM64 / Node 23.11.1, all four real addon cases pass in 51.76s (53.24s runner): the three
+selected-module cases plus a public builder case. The latter verifies actual compiler-preload library
+paths, changed-library freshness, direct and transitive pre-initialization refusal, and preservation
+of the incumbent revision after both failed candidates. Its own duration is 29.08s, within the existing
+60s case budget. Log: `/private/tmp/apack-native-startup-real-final.log`.
+
+Other focused evidence:
+
+- 79 affected host/CLI input, read-tree, cache and generation cases pass across six files in 3.68s:
+  `/private/tmp/apack-native-startup-focused.log`.
+- 53 subprocess inventory/timeout checks pass in 1.74s:
+  `/private/tmp/apack-native-startup-tooling.log`.
+- Host and CLI typechecks and repository correctness lint pass:
+  `/private/tmp/apack-native-startup-types-final.log`, `/private/tmp/apack-native-startup-lint.log`.
+- Matching CLI/testing packages built successfully:
+  `/private/tmp/apack-native-startup-packages.log`.
+
+The initial public fixture incorrectly retained a loader-only TypeScript configuration (`noLib` and
+old module resolution). Correcting the fixture exposed a separate attribution issue: one proof file
+was overwritten by multiple processes inheriting `NODE_OPTIONS`. A diagnostic append-only trace
+identified the actual compiler loading its captured library, while checkout npm setup and the content
+runtime checker loaded the original. Log: `/private/tmp/apack-native-startup-public-diagnostic.log`.
+The final regression deliberately executes its native probe only in owned compiler startup, matching
+the existing startup fixtures. It does **not** prove capture for those other processes. Their inherited
+preload execution is a demonstrated open path requiring reconciliation with their existing owners;
+do not erase that finding or claim universal preload admission from this test.
+
+No broad chain rerun was used to diagnose these focused failures. B6 convergence and the final
+committed-source strict `--all` remain outstanding. Thread/Vite acceptance, ELF/PE native policy and
+runtime proof, inherited loader environment, computed/native name searches and Windows descendant
+ownership remain open within the approved support boundary. Windows workflow dispatch still awaits
+permission to push the committed branch; no remote run has occurred.

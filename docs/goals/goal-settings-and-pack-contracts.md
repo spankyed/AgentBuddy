@@ -535,6 +535,17 @@ refusal. See [native checkpoint evidence](../evidence/build-input-snapshot-proof
 Startup/thread/Vite, ELF/PE and public-build acceptance remain required within that approved boundary.
 Windows validation is prepared through the existing manual CI dispatch (`6fb4d9bcb`); pushing this
 branch is still awaiting permission. No Windows execution or descendant-lifetime acceptance is claimed.
+Native startup checkpoint `e6dd35d52` keeps native admission active independently of startup filesystem
+interception, reuses the package/read-tree owners, and verifies captured relative preload loading,
+changed-library freshness and incumbent retention after direct/transitive refusal. Four real addon
+cases, 79 affected unit cases, 53 tooling cases, host/CLI types and lint pass. See the
+[startup evidence](../evidence/build-input-snapshot-proof.md#native-startup-admission-checkpoint-2026-10-17).
+This is a focused source checkpoint, not the converged B6 or final strict gate. A diagnostic run also
+demonstrated inherited preloads executing without capture in checkout setup and the separate content
+runtime checker. Reconcile those process owners next; do not interpret compiler-startup acceptance as
+child-process coverage. Thread/Vite native acceptance, ELF/PE, loader-environment semantics, Windows
+lifetime ownership and the converged/final gates remain open. Windows push approval is still pending.
+
 The single two-core strict run failed preparing the default-pack fork: the build observation for
 `src/__generated__/.inputs-hash` no longer matched, and the chain also invalidated default-setup's
 output stamp. The external fixture's 38 checks and real packaged-authoring author half passed first;
