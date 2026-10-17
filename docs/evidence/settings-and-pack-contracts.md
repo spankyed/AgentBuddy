@@ -6645,3 +6645,47 @@ The repeat-build assertions pass in a 64.02s diagnostic run; its default 60s agg
 remains explicitly unresolved for B6/final validation. See
 [environment evidence](build-input-snapshot-proof.md#initial-environment-identity-checkpoint).
 Native/platform/lifetime acceptance, B4–B6 and all other active phases remain required.
+
+### Onboarding API separation (2026-10-17)
+
+Source checkpoint: `b39c189b8`.
+
+The API-route audit identified three onboarding action sources using completion state and Database
+using reset/export/import/backup inspection. Onboarding now has its own host service:
+`services.onboarding.isComplete()` / `.complete()`. AppDataService contains only the four administration
+methods. The old methods and redundant TestOnboarding type are removed; the test runtime and harness
+use OnboardingService. Authored actions, tests, three generated API reports and guides are migrated.
+
+`createAppState(ears)` shares the existing row/default/write implementation with the default host
+instance. The new onboarding service captures its owning engine. Actual two-engine coverage proves
+completion does not follow a subsequently installed engine; reset/restore still uses the existing
+AppState wire identity. No settings entity, schema, migration or storage conversion is introduced.
+
+Acceptance:
+
+- SDK/runtime, host service/boundary and registration suites: 80 cases pass;
+  `/private/tmp/apack-onboarding-focused.log`, `/private/tmp/apack-onboarding-registration.log`.
+- Actual API whole-app reset/backup restoration: 13 cases pass;
+  `/private/tmp/apack-onboarding-api-runtime.log`.
+- Published-pack onboarding lifecycle, preferences-reset isolation and compiled action/prompt body
+  checks: 17 cases pass; `/private/tmp/apack-onboarding-pack-runtime.log`.
+- SDK, host, test harness, API test types and the default pack's Vue-aware typecheck pass;
+  `/private/tmp/apack-onboarding-{sdk,host,testing,api-test,pack-vue}-types.log`.
+- Correctness lint passes for all changed code; `/private/tmp/apack-onboarding-lint.log`.
+- Changed published packages refresh and the actual default pack builds successfully;
+  `/private/tmp/apack-onboarding-packages.log`, `/private/tmp/apack-onboarding-default-build-final.log`.
+  The earlier build correctly refused a pack-local guide edit during capture;
+  `/private/tmp/apack-onboarding-default-build.log`. Its incumbent remained intact. The retry froze all
+  inputs. Root guidance now states explicitly that pack-local guides are captured build inputs.
+- SDK API reports were regenerated and their three intended diffs reviewed;
+  `/private/tmp/apack-onboarding-api-update.log`. No public aliases remain.
+
+This is the first interface slice for consumed APIs, not completion of A1 or an access-control claim.
+Generated services still include all host services; runtime dependency visibility and non-settings
+lifetime binding are unchanged. Next complete A1's combined codegen/host-binding prototype: select
+onboarding without administration, include Database administration explicitly, distinguish declared
+from unrelated installed providers, retire retained handles, and pass the accepted facade into actions.
+Only then settle the consumption declaration and complete A2–A5. B1/B3 external/native/platform gaps,
+B6, remaining discovery/provenance/replacement acceptance and final strict `--all` remain required.
+No broad chain was repeated for this slice; the previous deliberately interrupted gate is still
+incomplete. The successful default build and focused suites do not substitute for that gate.
