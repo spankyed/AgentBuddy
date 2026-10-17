@@ -1181,6 +1181,8 @@ No broad or final acceptance is claimed by these focused checks.
 
 ### Content and media output expectations checkpoint
 
+Source checkpoint: `72435c778`.
+
 `CompilePackOptions.recordOutput` reports the actual writer bytes at absolute output paths. The CLI
 passes its existing in-memory output owner. All compiled source/dataset JSON, the content index and
 ordinary media-file copies report through the same write path. The callback observes bytes already

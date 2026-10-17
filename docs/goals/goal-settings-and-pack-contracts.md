@@ -313,7 +313,7 @@ Frontend output checkpoint `0e84bd67c` retains actual Vite emissions and public 
 sealing, including CSS/lazy/worker/maps and placeholder replacement. Missing required output refuses
 the real candidate and retains its incumbent directory. See
 [frontend output evidence](../evidence/build-input-snapshot-proof.md#frontend-output-expectations-checkpoint).
-Content compilation now feeds compiled JSON, the index and regular media bytes into that same
+Content-output checkpoint `72435c778` feeds compiled JSON, the index and regular media bytes into that same
 expectation owner. The real post-compilation media-deletion case refuses publication and retains its
 incumbent; SDK/CLI types, 23 focused checks and all 28 SDK API reports pass. See
 [content output evidence](../evidence/build-input-snapshot-proof.md#content-and-media-output-expectations-checkpoint).
