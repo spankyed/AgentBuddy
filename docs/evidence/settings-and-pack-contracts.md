@@ -7106,3 +7106,38 @@ ambient SDK value imports; this search does not substitute for the unexecuted cr
 Resume the cached strict checkpoint to reach its remaining checks. The early stop and focused repair
 are not a broad pass; all remaining B1/B3, cross-phase and final committed-source `--all` obligations
 remain in the active goal. No timeout, assertion, source-input scope or compatibility handling changed.
+
+
+## Packaged inference declaration (2026-10-17)
+
+Source checkpoint: `a0911a017`. The resumed strict checkpoint on two cores exits 1 after 491.1s at
+packaged authoring. Before that failure, default-setup builds (179.6s), facade checking (29.6s), all
+reached type/schema/export/specifier/tier/lint checks and external authoring/fork preparation (309.7s)
+pass. Evidence: `/private/tmp/apack-service-api-checkpoint-chain.log` and
+`node_modules/.cache/apack-chain/runs/2026-10-17T11-24-03Z-77139/`.
+Unit pools, integration and app halves were not accepted by this run.
+
+The tarball-authored fixture creates a digest service that calls inference, but its authored manifest
+omitted `host/inference`. The selected view correctly excludes that API. Six harness cases pass,
+including the dependency's llm flow; the demo's own digest case fails on its missing member.
+The script now declares the consumed host API explicitly and runs its existing authored-pack typecheck
+before the unit tests, so unsupported member access is reported before execution. The host selection
+and harness override rules are unchanged.
+
+The failed retained workspace was adapted with that one declaration and regenerated using its own
+installed CLI. Its original manifest was preserved outside its authored pack while diagnosing it.
+Authored types pass; all seven existing harness cases pass in 3.05s:
+`/private/tmp/apack-packaged-consumption-{generate,types,tests}.log`.
+Shell syntax, whitespace and tier checks pass (`/private/tmp/apack-packaged-consumption-tiers.log`).
+The complete author half then passes in 263s:
+`/private/tmp/apack-packaged-consumption-author-full.log`. It proves fresh scaffolding, normal build,
+authored types, seven harness cases, published testing declarations, release dry-run, verified archive
+installation and handoff publication. Its app half passes in 21s:
+`/private/tmp/apack-packaged-consumption-app.log` (two browser cases, offline database export and no
+symlinks into the monorepo). No producer rebuild was needed for that app consumer. Normal owned-work cleanup may replace the temporary
+fixture; diagnostic logs and the committed source repair are retained independently.
+
+The public content guide now uses caller-bound settings targets, separates onboarding from app-data
+administration, removes nonexistent browser/textStream services, and distinguishes the default action
+runner's accepted view from a pack's generated source facade. No compatibility accessors or new grants
+were added. Final source/consumer/schema/doc and app acceptance still belong to the active goal.

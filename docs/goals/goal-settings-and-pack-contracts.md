@@ -475,12 +475,22 @@ used dynamic imports of the removed ambient SDK service value. `5f5970e6e` migra
 bound host ports/engine/registry and the baseline emitter. All 30 affected cases, all three API typecheck
 projects and focused lint pass. See
 [API test migration evidence](../evidence/settings-and-pack-contracts.md#api-composition-test-migration-2026-10-17).
-Next: resume the cache-aware strict checkpoint on committed source with two cores to reach checks
-that the API gate prevented from running. The host source fix
-changed captured inputs: refresh affected builds through their normal owners before asserting current
-prebuilt/fork acceptance. Do not repeat unaffected source/design prototypes. The prior 26 app passes
-plus focused repair are not a single converged app pass; bundled UI app and normal fork restart/
-restoration still need their planned acceptance.
+The resumed two-core checkpoint then passed the current default build, facade, all reached type/schema/
+export/specifier/tier/lint checks and external contract/fork preparation, but failed packaged authoring:
+the generated demo service called inference without declaring it. `a0911a017` adds `host/inference`
+to that fixture and checks authored types before running its unit tests. Its retained tarball-installed
+workspace passes types and all seven harness cases. See
+[packaged fixture evidence](../evidence/settings-and-pack-contracts.md#packaged-inference-declaration-2026-10-17).
+The corrected complete author half passes in 263s and its app half in 21s, including both browser
+cases, offline database export and no workspace symlinks. Logs:
+`/private/tmp/apack-packaged-consumption-author-full.log` and
+`/private/tmp/apack-packaged-consumption-app.log`. Next: run the previously unexecuted unit pools and
+integration checks on two workers, then complete remaining app/fork and converged acceptance. Do not
+repeat the accepted tarball producer just to restate its status. No whole-gate pass is claimed from the focused repairs.
+The prior 26 app passes plus focused teardown repair are not a single converged app pass; bundled UI
+app and normal fork restart/restoration retain their planned acceptance. Keep B1/B3 native/platform
+requirements and the final committed-source strict `--all` open. The proposed native boundary remains
+unapproved; a pending user question does not change the full capture requirement.
 The single two-core strict run failed preparing the default-pack fork: the build observation for
 `src/__generated__/.inputs-hash` no longer matched, and the chain also invalidated default-setup's
 output stamp. The external fixture's 38 checks and real packaged-authoring author half passed first;

@@ -1620,3 +1620,18 @@ repair does not close external linked-runtime libraries, arbitrary native I/O, o
 acceptance, B6 or the final committed-source strict gate. No exclusion is approved. Continue independent
 required work while deciding the external loader boundary; do not start a general binary relocation or
 resource-confinement project as an incidental extension of this repair.
+
+
+## Installed native library declarations (2026-10-17)
+
+A read-only `otool -arch arm64 -l` inspection of this checkout's Rollup, LMDB, msgpackr-extract and
+fsevents native objects records only `/usr/lib` or `/System/Library/Frameworks` load commands.
+Evidence: `/private/tmp/apack-native-load-command-audit.log`. Rollup also has an absolute build-machine
+`LC_ID_DYLIB` name; it is distinct from its `LC_LOAD_DYLIB` entries. An unqualified list of dylib-looking
+paths must not be treated as a dependency inventory.
+
+This inspects installed object declarations, not the actual load set of every compiler operation.
+It neither proves dynamic loading/native I/O is captured nor closes the existing absolute external-
+library reproducer, platform acceptance or thread lifetime requirements. No loader/scanner policy or
+scope exclusion is implemented. The native boundary ADR remains proposed and requires explicit
+approval for a reduced guarantee; a pending question is not approval.
