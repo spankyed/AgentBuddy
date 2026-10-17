@@ -2117,3 +2117,26 @@ drive-root query. Log the Error itself in this private worker, retaining the exi
 and publication behavior. The next focused run must identify the failing call before changing path
 semantics. Focused lint and whitespace checks pass. This diagnostic source change does not close
 real Windows compilation or descendant-lifetime acceptance.
+
+
+### Native-path policy correction and checkout setup prerequisite
+
+Source `71e862359`, [run 39060486872](https://github.com/spankyed/AgentBuddy/actions/runs/39060486872),
+passes focused units and preserves the real failure stack. `physicalWatchPath()` calls ordinary
+`fs.realpathSync()`, which fails while probing a namespaced Windows drive root. This matches
+[Node's documented realpath defect](https://github.com/nodejs/node/pull/65378). The earlier ordinary-
+realpath alignment fixed one identity test but is insufficient. Use native realpath consistently
+for compiler roots, namespace, package inputs, captured trees and passive freshness; preserve authored
+metadata-query semantics. That coherent policy change is in progress, not accepted by this entry.
+Log: `/private/tmp/apack-windows-39060486872.log`.
+
+A local real-worker attempt stopped earlier: the pack's selected esbuild 0.25.12 binary leaked into
+checkout setup, whose tsx uses esbuild 0.27.7. Log: `/private/tmp/apack-native-path-policy-worker.log`.
+Clear only `ESBUILD_BINARY_PATH` in checkout setup's subprocess environment. Keep it in the caller
+and later compiler capture. A disposable checkout executes its actual npm setup script and records
+that unrelated environment survives while the compiler override is absent. All eight checkout tests
+and focused lint pass (0.521s runner): `/private/tmp/apack-checkout-compiler-environment.log`.
+A private mutation restores inherited environment; the real subprocess case then fails showing
+`binary: selected-pack-binary`, proving fault detection without touching production source:
+`/private/tmp/apack-checkout-env-mutation.log`, configuration recorded in
+`/private/tmp/apack-checkout-env-mutation-config.txt`.

@@ -54,7 +54,11 @@ export function ensureCheckoutPackages(packDir: string, stdio: StdioOptions = 'i
   if (!checkout) return;
   // npm is a shell script on Windows, which spawn cannot launch without one
   const windows = process.platform === 'win32';
-  const result = spawnSync(windows ? 'npm.cmd' : 'npm', ['run', 'packages:ensure'], { cwd: checkout, stdio, shell: windows });
+  const result = spawnSync(windows ? 'npm.cmd' : 'npm', ['run', 'packages:ensure'], {
+    cwd: checkout, stdio, shell: windows,
+    // The selected pack compiler's binary need not match checkout tools' own esbuild versions.
+    env: { ...process.env, ESBUILD_BINARY_PATH: undefined },
+  });
   if (result.status === 0) return;
   // A spawn that never ran has no status and a reason of its own; a build that failed printed its own
   const why = result.error ? `: ${result.error.message}` : '';

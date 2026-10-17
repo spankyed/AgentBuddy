@@ -596,8 +596,12 @@ selected files. Its remaining installation-test fault injection uses a POSIX-onl
 `22739f676` fixes that suffix and collects all isolated unit failures.
 [Run 39059985521](https://github.com/spankyed/AgentBuddy/actions/runs/39059985521) passes all seven
 files (81 passed, seven platform skips). The real worker startup probe passes, then compilation
-fails at `lstat C:`. Preserve the worker error stack to identify the exact drive-root query before
-changing resolution. Worker-baseline fail-fast stays enabled. Compiler completion and
+fails at `lstat C:`. `71e862359` preserves the worker stack;
+[run 39060486872](https://github.com/spankyed/AgentBuddy/actions/runs/39060486872) locates ordinary
+realpath failing on a Windows namespaced drive root. Replace the partial ordinary-realpath fix with
+consistent native identity across compiler roots, package inputs, captured trees and passive checks.
+A local producer check also exposed a pack esbuild override leaking into checkout setup; isolate
+that setup environment before accepting the native-path checkpoint. Worker-baseline fail-fast stays enabled. Compiler completion and
 descendant-lifetime acceptance remain open.
 The local two-core integration run against that checkpoint reached its unchanged 600s deadline after
 eight files / 474 cases passed, including all seven native-library cases; the pool remains incomplete.
