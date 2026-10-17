@@ -65,7 +65,7 @@ so completed implementation is not repeatedly scheduled as new work.
 | Settings/help/info/reference/step/command discovery (Phase 3) | Implemented reader migrations: `2169d29f8`, `6c876c9ba`, `20ab75efe`, `c776d1c5d`, `76df2f0e5`, `71fad4013`, `8ec5285ed`, `f7d63434c`, command catalog `ff48438cd` | Final all-kind acceptance, including source-free inspection, inactive owners and checked runtime eligibility. |
 | Live editor composition (Phase 3) | Implemented: `8863043a6` | Complete cold-document/provider readiness and real typing/replacement acceptance; fix demonstrated omissions without restarting composition. |
 | Remaining discovery consumers (Phase 3) | Partial; viewer readers `a278d4116`, shell default/dispatch `69860e4be`, static endpoint contracts `774b0844c`, native backend viewer parity `be5a9344b`, native content `2e1701fad` and native migrations `f72cb8756` implemented | Navigation inventories/order/visibility implemented in `cfcbb53f9`; complete final window/loader acceptance; DSL producer/readers are implemented in `8ed188046` / `39e48e66e` and await final worker acceptance. Flow reference/rename/missing-target inspection is implemented in `7196d61d3`; complete its final external acceptance. Native API ownership and endpoint contracts are implemented; Display-name cleanup `123efbd6f` and required-entry admission `b916d0e5e` are implemented; Compiled index/data admission `3119205be` is implemented; finish media/CSS/chunk completeness, remaining readers and all-kind acceptance. Remove only superseded discovery stores. |
-| Build input/publication and freshness (Phase 3) | B2, B4 and B5 implemented and locally accepted; B1/B3 closure and B6 outstanding | Close remaining native/platform/thread ownership acceptance and converged checks; preserve the common record and four migrated passive consumers. Installed discovery must remain source-free and activation-free. |
+| Build input/publication and freshness (Phase 3) | B2, B4 and B5 implemented and locally accepted; generation-cache ownership repaired in `caf57cb0e`; B1/B3 closure and B6 outstanding | Close remaining native/platform/thread ownership acceptance and converged checks; preserve the common record and four migrated passive consumers. Installed discovery must remain source-free and activation-free. |
 | Entity navigation (Phase 4) | Implemented with local handler/runtime acceptance through `95ff95ab3`, following producer `94148c9e0`, catalog/admission `479c75e01`, routing `cd9c57de6` and feature repair `831221020` | Preserve six-handler, cancellation and stored-message acceptance through final strict validation; retain build/publication and strict-gate acceptance for B6. No further navigation implementation is currently identified. |
 | Frontend boundaries (Phase 5) | Implemented and locally accepted: `713a6c1fd`, including the real external-pack window | Preserve pane/form containment, attributed nonfatal diagnostics and retired-instance refusal through final committed-source strict acceptance. |
 | Consumed APIs (Phase 6) | A1 selection `71f76a41b`; onboarding/admin split `b39c189b8`; A2 foundation/admission `1a0de64fb` / `558b42220`; A3 core binding/filtering/lifetimes `cccc12d5d`; A4 service/action routes `bb6df4a45` implemented | Complete [A4–A5](../plans/declared-capabilities.md#bounded-implementation-checkpoints): validate content targets and prove external runtime/template acceptance. Preserve A1's contract, settings policy and EARS behavior. Declaration availability is not executable readiness. Strict checkpoint acceptance remains incomplete as recorded below. |
@@ -457,18 +457,21 @@ selection, lifetime and sender labels. Root flows capture the action factory onc
 it. Scoped settings and registry-owned harness overrides retain their contracts. Actual shipped-pack
 action, inference, onboarding and reset cases pass; see
 [action access evidence](../evidence/settings-and-pack-contracts.md#bound-action-access-and-ambient-route-removal-2026-10-17).
-Next: reproduce the named B4/B6 marker mutation below before another broad run; audit A4 content-target
-validation against normalized declarations/dependencies, then build the current default pack once and
-complete A5 external runtime/template acceptance. Migrated CLI harness integration paths have not yet
+The named B4/B6 marker mutation is reproduced and repaired in `caf57cb0e`; see
+[generation cache evidence](../evidence/settings-and-pack-contracts.md#generation-cache-ownership-2026-10-17).
+A4 content-target validation already uses the normalized entity registry; retain its checks rather than
+reimplementing it. Next: build the current default pack once, exercise the migrated external harness
+paths, and complete A5 external runtime/template acceptance. Migrated CLI harness integration paths have not yet
 run against this checkpoint. Do not repeat the settled A1 prototype or passing focused checks merely
 to restate their status.
 The single two-core strict run failed preparing the default-pack fork: the build observation for
 `src/__generated__/.inputs-hash` no longer matched, and the chain also invalidated default-setup's
 output stamp. The external fixture's 38 checks and real packaged-authoring author half passed first;
 app halves, unit pools and integrations did not complete in that run. This is a named B4/B6 freshness
-acceptance gap, not permission to weaken strict validation. Reproduce the marker mutation through its
-actual writer and fork-preparation path before any further broad run; do not rebuild everything to
-investigate it. Retain the explicit B1/B3 gaps and incomplete gate. Finish affected integration
+acceptance gap, not permission to weaken strict validation. The focused reproduction now proves the actual writer: standalone generation changes only its
+compiler-specific stamp, which previously lived among consumed generated modules. The stamp now lives
+in `.apack/generate-entries.json`; generated-byte changes still invalidate builds. The real default/fork
+path and strict convergence still need acceptance on the repaired committed source. Retain the explicit B1/B3 gaps and incomplete gate. Finish affected integration
 acceptance on two cores before repeating a broad gate. Do not rebuild
 the accepted default/fork handoff again unless its inputs change or a named coverage gap requires it.
 Reconcile

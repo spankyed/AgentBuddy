@@ -2,7 +2,7 @@
 
 Status: A1 selection and A2 declaration, pre-import/admission and read-only diagnostics are implemented.
 A3 core selection, runtime/type filtering and lifetimes are implemented in `cccc12d5d`;
-A4 service/action routes are implemented in `bb6df4a45`; content-target validation and external acceptance remain. Remaining discovery/build ownership work stays active in the [owning goal](../goals/goal-settings-and-pack-contracts.md); it blocks only
+A4 service/action routes are implemented in `bb6df4a45`; existing content-target validation is retained. External acceptance remains. Remaining discovery/build ownership work stays active in the [owning goal](../goals/goal-settings-and-pack-contracts.md); it blocks only
 the slices that consume its missing guarantees. This is an API dependency contract, not a security sandbox.
 
 ## Problem
@@ -225,9 +225,16 @@ children inherit it. Retained factories and escaped callbacks refuse after retir
 Harness overrides remain explicit on the registry/test-host owners, with canonical settings policy.
 Actual action/inference/onboarding/reset cases pass; see the
 [action access evidence](../evidence/settings-and-pack-contracts.md#bound-action-access-and-ambient-route-removal-2026-10-17).
-A4 content-target validation and A5 external runtime/template acceptance remain. Migrated CLI harness
-integration paths need a current default build before execution. The recorded B4/B6 marker mutation
-must be reproduced through its writer before another broad run; no passing strict gate is claimed.
+A4's content-target audit finds the required implementation already present: `generateAppliers()`
+checks own formats (even unused ones) and resolved dependency formats against `packRegistry()`'s
+normalized own/dependency/SDK entity projection. Both ordinary and tree branch targets are checked;
+null/untyped declarations remain legitimate entities. Existing modules/shapes/compilation cases cover
+these contracts, and CLI validation reports undeclared format targets. Do not add service grants to
+content appliers or duplicate entity ownership checks.
+A5 external runtime/template acceptance remains. Migrated CLI harness integration paths need a current
+default build before execution. The B4/B6 marker mutation is reproduced and repaired in `caf57cb0e`;
+its actual default/fork convergence and strict gate remain unproven. See the
+[generation cache evidence](../evidence/settings-and-pack-contracts.md#generation-cache-ownership-2026-10-17).
 
 | Checkpoint | Concrete output | Closure evidence |
 |---|---|---|
