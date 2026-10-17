@@ -1,6 +1,6 @@
 # Native compiler input boundary
 
-Status: Proposed — support boundary not yet approved.
+Status: Accepted — bounded native support approved by the user on 2026-10-17; implementation and acceptance remain open.
 Date: 2026-10-17.
 
 ## Context and evidence
@@ -19,16 +19,18 @@ Platform packaging and release configuration are not proof of native compiler co
 records configured targets, missing evidence and required decisions. Unverified behavior is not a
 reproduced defect.
 
-## Proposed direction
+## Decision
 
 Keep captured compiler/dependency inputs and the existing publication owner. Audit the native
 dependencies actually executed by supported compiler paths before selecting additional machinery.
 Preserve package-contained loading and normal platform-library resolution.
 
-Prefer a bounded, explicit native dependency contract. A candidate boundary supports captured
-package-contained dependencies and rejects identifiable unsupported external dependencies with
-an attributed diagnostic. This remains a proposal: it narrows the current requirement and requires
-explicit approval. Until then, external-library support remains open in the goal.
+Support captured package-contained libraries and normal operating-system libraries. Refuse
+identifiable outside-library dependencies with a diagnostic naming the native image and dependency.
+The user explicitly approved this boundary on 2026-10-17. Universal capture of arbitrary external
+native libraries and native file I/O is outside this contract; do not claim universal detection.
+An absolute reference back to a live original package is not captured loading, even if that original
+library sits beside its addon. Supported package-relative loading must actually use the owned copy.
 
 Static inspection alone cannot establish complete capture: dynamic library loading and native file
 reads may bypass JavaScript observation. Neither an input declaration nor a scanner establishes
@@ -51,16 +53,32 @@ A real macOS ARM64 / Node 23.11.1 prototype shows that `DYLD_LIBRARY_PATH` can r
 library to captured bytes, but collapses two distinct absolute libraries sharing a basename: expected
 `[11, 22]` becomes `[11, 11]`. A search-path override alone therefore fails the resolution-preservation
 criterion. See [prototype evidence](../../evidence/build-input-snapshot-proof.md#external-native-library-search-path-prototype-2026-10-17).
-This rules out that shortcut, not every possible exact-identity capture design. No support exclusion
-or implementation is approved by the result.
+This rules out that shortcut, not every possible exact-identity capture design. The separate user
+approval above selects bounded support; the prototype itself does not authorize implementation changes.
 
 ## Acceptance and decision process
 
-Before accepting this ADR, record the chosen boundary, approval, guarantees and limitations. Prove it
-against the existing external-library reproducer and relevant transitive/dynamic loading behavior.
-Preserve loading semantics, changed-input detection for supported inputs, incumbent retention on
-refusal, and cancellation/watch cleanup. Define exact platform/runtime cases and reuse existing proof.
-An unsupported case needs an explicit decision; a missing test does not make it unsupported.
+Implement in bounded checkpoints:
+
+1. Inspect native image dependency declarations without executing the image. Cover macOS load commands,
+   distinguishing dependency commands from image IDs; identify package-relative, OS and outside paths.
+   Check transitive package libraries while preserving actual resolution. Refuse the existing absolute
+   outside-library reproducer before native initialization; retain actual package-relative acceptance.
+2. Route the check through the existing captured module owner, then audit early preloads, worker threads,
+   compiler dependencies and Vite so a later load path cannot silently bypass the bounded contract.
+   Extend inspection to supported ELF/PE paths without introducing executable inspection tools as end-user
+   requirements. Native I/O and computed runtime loading remain explicit detection limits.
+3. Prove attributed refusal and incumbent retention through the public build path, changed-input tracking
+   for supported copies, transitive loading, cancellation and watch recovery. Reuse existing fixtures.
+   Record native platform acceptance separately; synthetic headers are parser checks, not OS acceptance.
+
+Windows CI is the selected native verification target following the user's request to decide the runner
+approach. Prepare implementation and targeted CI coverage locally; the prohibition on pushing or triggering
+release workflows remains. Windows execution is unverified until that runner executes the committed source.
+Do not replace the missing descendant-lifetime owner with a PID-only tree-kill command.
+
+The contract approval does not close these implementation or validation checkpoints. Linux support and
+all required final gates remain owned by the goal.
 
 The goal owns implementation order and completion; the evidence record owns results. This ADR owns
 reasoning and the eventual decision, not another task backlog. Independent API work continues.
