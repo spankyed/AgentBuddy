@@ -1,9 +1,11 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
+import { pathToFileURL } from 'node:url';
 import { afterEach, describe, expect, it } from 'vitest';
 import { packFixture } from '@apackdev/sdk/testing/pack-fixture';
 import { bundlePackContentRuntime } from '../../src/build/be-bundler';
 import { REPO_ROOT } from '@apackdev/host/build/packages-built';
+import { formatNodeOptions, parseNodeOptions } from '@apackdev/host/build/source-resolution';
 
 /** A content runtime that bundles but can't load where dependents' unit tests load it fails `apack pack build` */
 const tmpDirs: string[] = [];
@@ -60,6 +62,25 @@ describe('apack pack build loads the content runtime it bundles', () => {
     const result = await bundlePackContentRuntime(dir, path.join(dir, 'dist'));
     expect(result.success).toBe(false);
     expect(result.error).toMatch(/Cannot find module '.*memo_index\.node'/);
+  });
+
+  it('refuses a runtime that needs compiler initialization instead of replaying compiler hooks', async () => {
+    const dir = pack("if (!globalThis.apackHost) throw new Error('requires compiler initialization');\nexport const memoQueries = {};\n");
+    const marker = path.join(dir, 'replayed');
+    const preload = path.join(dir, 'compiler-init.cjs');
+    fs.writeFileSync(preload, `globalThis.apackHost = {}; require('node:fs').writeFileSync(${JSON.stringify(marker)}, 'require');`);
+    const imported = path.join(dir, 'compiler-init.mjs');
+    fs.writeFileSync(imported, `import fs from 'node:fs'; globalThis.apackHost = {}; fs.writeFileSync(${JSON.stringify(marker)}, 'import');`);
+    const before = process.env.NODE_OPTIONS;
+    process.env.NODE_OPTIONS = formatNodeOptions([...parseNodeOptions(before), '--require', preload, '--import', pathToFileURL(imported).href]);
+    try {
+      const result = await bundlePackContentRuntime(dir, path.join(dir, 'dist'));
+      expect(result.success).toBe(false);
+      expect(result.error).toContain('requires compiler initialization');
+      expect(fs.existsSync(marker)).toBe(false);
+    } finally {
+      if (before === undefined) delete process.env.NODE_OPTIONS; else process.env.NODE_OPTIONS = before;
+    }
   });
 
   it('fails one that throws while loading', async () => {

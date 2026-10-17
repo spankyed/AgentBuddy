@@ -160,6 +160,8 @@ Files under `public/` are copied into the frontend output from the build's captu
 Compiler workers inherit Node options from `NODE_OPTIONS`, including ordered `--require` and `--import`
 preloads. Node arguments passed directly to the CLI configure its supervisor; custom export conditions
 are also forwarded to the worker. Use `NODE_OPTIONS` when configuring compiler execution.
+The separate published-content runtime check omits those options so compiler initialization cannot
+hide missing runtime dependencies or provide globals that dependent packs will not have.
 
 `apack pack build --watch` watches authored inputs throughout the pack, including `apack.json`,
 modules outside `src/`, JSON schemas, assets and help. The authored watcher excludes generated,

@@ -39,8 +39,8 @@ if (handoff) {
     // In a checkout, workspace @apackdev/* packages resolve to their source. Registered after tsx,
     // so it runs first and tsx resolves with the added condition. Only this process, and only the
     // CLI's own code: a pack is compiled and run against those packages' dist, so the children this
-    // CLI starts for pack code (the Playwright runner, the content-runtime check, the app) have the
-    // condition stripped from NODE_OPTIONS rather than added.
+    // CLI starts for pack code (the Playwright runner, the app) have the condition stripped from
+    // NODE_OPTIONS. The content-runtime check starts without compiler launch options altogether.
     const { register: registerHooks } = await import('node:module');
     registerHooks(new URL('./source-hooks.mjs', import.meta.url), {
       data: { checkout: new URL('../../../', import.meta.url).href },

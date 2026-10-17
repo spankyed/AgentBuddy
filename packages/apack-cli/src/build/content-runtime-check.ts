@@ -1,4 +1,3 @@
-import { withoutSourceCondition } from '@apackdev/host/build/source-resolution';
 import { spawn } from 'node:child_process';
 import * as fs from 'node:fs';
 import { createRequire } from 'node:module';
@@ -84,12 +83,11 @@ export async function checkContentRuntimeLoads(
     const { code, output } = await new Promise<{ code: number | null; output: string }>((resolve, reject) => {
       const child = spawn(process.execPath, args, {
         cwd: packDir,
-        // Without the caller's source condition: the bundle loads the packages' published dist, as a
-        // dependent's tests do, and a run that carries the condition (npm test, PACK_DIR=…) would
-        // otherwise make this child resolve TypeScript source with no loader to read it
+        // Test the published runtime independently of compiler initialization. Replaying compiler
+        // hooks can supply globals or loaders a dependent does not have and falsely accept the bundle.
         env: {
           ...process.env,
-          NODE_OPTIONS: withoutSourceCondition(process.env.NODE_OPTIONS),
+          NODE_OPTIONS: undefined,
           APACK_ENV: 'test',
           APACK_USER_DATA_DIR: dataDir,
           APACK_CONTENT_RUNTIME_CHECK: check,
