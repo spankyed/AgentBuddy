@@ -6566,3 +6566,12 @@ acceptance are next; B1–B6, Phase 6 and final committed-source strict `--all` 
 the existing input owner. Focused cases, native startup, unchanged real repeat builds, CLI/host types,
 lint and CLI package refresh pass. See [dependency-input evidence](build-input-snapshot-proof.md#early-declared-dependency-capture-checkpoint-2026-10-17).
 Remaining native/runtime and transient resolution acceptance, B2–B6 and all other goal phases remain open.
+
+### External compiler executable selection (2026-10-17)
+
+`5c5f733fb` owns configured external esbuild executable bytes/selection through the captured installation,
+its reuse checks and worker environment. Native installation, actual repeat-build and cancellation
+checks, CLI types/lint and package refresh pass; the stale cancellation mock was corrected without
+changing production behavior. See [executable evidence](build-input-snapshot-proof.md#captured-external-esbuild-executable-checkpoint-2026-10-17).
+Continue B2's retained frontend generation audit; other B1/B3 and all subsequent goal requirements
+remain open. No passing broad gate is claimed.

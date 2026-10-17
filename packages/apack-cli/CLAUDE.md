@@ -100,6 +100,11 @@ selected compiler rather than hand off to the project again. Module identity, di
 frontend subscriptions use source origins. Pack and outside-module inputs are rechecked before
 publication; the already captured compiler fingerprint is reused within its immutable lifetime.
 
+Configured `ESBUILD_BINARY_PATH` executables belong to that installation too. Relative overrides resolve
+against the worker checkout; the worker receives the private copy. Missing overrides keep esbuild's
+package fallback. The installation's `isCurrent` checks selection, original/captured bytes and package
+graphs before reuse; its existing disposal removes the executable with the compiler.
+
 `bin/apack.mjs` selects `build-worker` only with its private worker handoff and parent IPC channel.
 That entry checks the compiler inputs before importing `build()`, avoiding recursive command dispatch;
 it ships beside `cli.js`. Internal compiler tests call `build()` in-process; process-boundary tests

@@ -252,9 +252,13 @@ package-reader cases also pass. See [dependency evidence](../evidence/build-inpu
 This closes the demonstrated early declared-input gap, not external executable/runtime ownership or
 all transient resolution paths. The next [executable-selection proof](../evidence/build-input-snapshot-proof.md#external-esbuild-executable-selection-proof-2026-10-17)
 demonstrates that a changed external `ESBUILD_BINARY_PATH` executes under unchanged captured compiler
-identity. Repair that specific selection through the existing compiler owner next, then close the
-remaining matrix cases, plus B2/B3 lifetimes,
-then B4–B6 and all-kind acceptance. Asset input/output completeness remains required under B1/B4,
+identity. Source `5c5f733fb` repairs that configured selection through the existing installation owner,
+including its reuse checks, worker environment and cleanup. Twelve installation cases, real override
+build/repeat identity, corrected cancellation fixture, CLI types/lint and package refresh pass; see
+[executable checkpoint evidence](../evidence/build-input-snapshot-proof.md#captured-external-esbuild-executable-checkpoint-2026-10-17).
+Next: inspect and implement the retained frontend generation handoff (B2), whose package/input owner
+now has the relevant capture primitives. Keep remaining runtime/native/transient B1/B3 matrix cases
+open, then complete B4–B6 and all-kind acceptance. Asset input/output completeness remains required under B1/B4,
 not a deferred follow-up or another discovery store. All three Phase 6 workstreams remain required. Do not restart implemented endpoint
 or navigation work, or rerun a broad gate to investigate the preserved integration failures.
 

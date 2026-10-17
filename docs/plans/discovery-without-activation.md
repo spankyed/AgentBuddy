@@ -185,7 +185,9 @@ preserving file permissions and emitted-bundle replacement. Native package execu
 operation to existing captured reads; ordinary Vue, dependency, CSS/SVG, lazy/worker/glob, Sass/Tailwind
 and config-global paths plus real pack publication pass. Source `9ecf788fb` extends early startup capture
 to declared npm bytes, filtered package membership and missing optional lookups using the same package
-reader and observation protocol; native-preload and unchanged repeat-build acceptance pass. Remaining native/runtime and transient dependency/namespace
+reader and observation protocol; native-preload and unchanged repeat-build acceptance pass. Source
+`5c5f733fb` captures configured external esbuild executables in the same compiler installation and
+verifies identity/reuse, missing fallback and the real worker handoff. Remaining runtime/native and transient dependency/namespace
 acceptance, retained frontend generation and expected copied outputs under B4
 remain open; these source checkpoints do not certify full producer coverage.
 

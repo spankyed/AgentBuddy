@@ -550,3 +550,40 @@ Acceptance must exercise the real esbuild API after the external original change
 unchanged deterministic identity and changed selection/bytes, plus the actual build handoff. Preserve
 default package-native selection. Node/Electron executable ownership and platform/background lifetime
 remain separate B1/B3 requirements; this proof does not close them.
+
+## Captured external esbuild executable checkpoint (2026-10-17)
+
+Source `5c5f733fb` makes preconfigured `ESBUILD_BINARY_PATH` selection part of the existing captured
+compiler installation. Relative selections resolve against the actual worker checkout. The owner
+copies selected bytes/mode through its existing copy function and projection, includes selection and
+content in compiler identity, and supplies the private executable path in the worker environment.
+Default package-native selection remains unchanged. A missing override retains esbuild's package
+fallback and configuration warning; later materialization invalidates reuse rather than changing the
+already captured worker's selection.
+
+The installation now owns `isCurrent`: it checks original selection/content, the captured executable
+(including symlink substitution), and the original/copied package graphs. The builder uses that one
+operation instead of keeping another source-directory/hash comparison. Existing awaited disposal owns
+the executable too. No new public API, manifest field, interception layer or record format is added.
+
+Evidence:
+
+- All twelve installation tests pass (2.13s): `/private/tmp/apack-external-executable-unit-final.log`.
+  Actual esbuild transforms succeed after the external original changes or disappears; independent
+  captures agree, changed bytes/selection invalidate identity/reuse, copy damage and symlink substitution
+  refuse reuse, and a late invalid override cannot replace a captured missing-path fallback.
+- Actual worker builds receive an owned read-only native executable and preserve source globals,
+  output revision and type-cache identity across two publications (39.91s):
+  `/private/tmp/apack-external-executable-build.log`. That combined run passed the real build case but
+  failed a stale cancellation mock, so it is not recorded as an entirely passing run.
+- The mock cancellation fixture is migrated to the current manifest/bootstrap layout; no production
+  cancellation behavior or deadline changed. Its focused rerun passes (61ms):
+  `/private/tmp/apack-external-executable-cancel-final.log`.
+- CLI types, lint and the final distributable refresh pass:
+  `/private/tmp/apack-external-executable-{types-final,lint-final,packages-final}.log`.
+
+This closes the reproduced configured esbuild override defect. It does not certify arbitrary native
+I/O or executable-wrapper dependencies, transient user-code changes to environment selection,
+Node/Electron runtime ownership, retained frontend generation or other platforms. Retained generation
+handoff is the next bounded implementation audit (B2); the remaining B1/B3 matrix and B4–B6, final
+all-kind discovery and all Phase 6 requirements stay open. No broad gate was repeated.
