@@ -547,14 +547,24 @@ compiler launch options, preventing compiler hooks from hiding unusable publishe
 regression fails on the prior implementation; six runtime cases and the real ordered-preload,
 changed-loader rebuild case pass. Checkout setup precedes compiler capture; it is not an unowned
 compilation phase. See the [boundary evidence](../evidence/build-input-snapshot-proof.md#published-runtime-initialization-boundary-2026-10-17).
-Do not interpret compiler-startup acceptance as arbitrary child-process coverage. Thread/Vite native
-acceptance, ELF/PE, loader-environment semantics, Windows lifetime ownership and the converged/final
+Do not interpret compiler-startup acceptance as arbitrary child-process coverage. Retained frontend
+and other-platform native acceptance, ELF/PE, loader-environment semantics, Windows lifetime ownership and the converged/final
 gates remain open. Next, reconcile native initialization with retained frontend generations while
 preserving live authored HMR and checking the existing generation owner before adding machinery.
 `abdcb7c95` fixes one inspected frontend identity omission: the reuse signature now includes effective
 ordered Node options with the same source-condition filtering as launch. Its regression fails before
 the fix; nine builder lifecycle/identity checks, CLI types and focused lint pass. This closes changed
 launch-option reuse, not native preload dependency capture or all frontend initialization inputs.
+`c3b27fda7` closes the real macOS native-worker acceptance case through the existing thread owner:
+captured relative loading, changed-library freshness, direct/transitive pre-initialization refusal and
+incumbent retention pass in 38.18s. The shared preload regression also passes in 27.77s, with 53 tooling
+checks, CLI types and lint. See [native-worker evidence](../evidence/build-input-snapshot-proof.md#native-worker-library-acceptance-2026-10-17).
+A separate 0.84s native-loader experiment demonstrates that inherited `DYLD_LIBRARY_PATH` can replace
+a captured loader-relative library with an outside copy. Next, close that demonstrated environment
+bypass through the current loading owners: retain startup loader configuration before user hooks can
+mutate `process.env`, account for selected search candidates, and preserve benign unused paths rather
+than banning every loader setting. Account separately for pre-initialization library insertion, which
+requires admission before process launch. Then finish the retained-frontend boundary without freezing HMR.
 Windows push approval is still pending.
 
 The single two-core strict run failed preparing the default-pack fork: the build observation for

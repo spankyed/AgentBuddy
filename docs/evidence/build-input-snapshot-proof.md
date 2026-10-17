@@ -1840,3 +1840,46 @@ This accepts launch-option identity, not capture of arbitrary preload modules/da
 frontend initialization. The retained frontend still needs its bounded native-path audit and relevant
 acceptance without freezing the authored source graph used for HMR. Windows lifetime implementation,
 remote execution and the converged/final strict gates remain open.
+
+## Native worker library acceptance (2026-10-17)
+
+Source `c3b27fda7` extends the existing real-addon fixture to execute through a compiler-created worker.
+The actual content compiler awaits a normal Node worker; the existing startup/thread owner supplies
+capture and settlement. No additional thread protocol, resource owner or platform implementation is
+introduced. The test checks the reported native thread ID, actual loaded library paths, input freshness
+when the original library changes, direct and transitive outside-library refusal before initialization,
+and preservation of the published incumbent revision after both failed candidates.
+
+On macOS ARM64 / Node 23.11.1 the worker case passes in 38.18s (39.68s runner):
+`/private/tmp/apack-native-thread-real.log`. The refactored shared preload case passes independently
+in 27.77s (29.22s runner): `/private/tmp/apack-native-thread-preload-regression.log`.
+All 53 subprocess inventory/timeout checks pass (1.81s runner), CLI typecheck and focused correctness
+lint pass: `/private/tmp/apack-native-thread-tooling.log`, `/private/tmp/apack-native-thread-types.log`.
+The matching CLI package built before these real runs: `/private/tmp/apack-native-thread-packages.log`.
+No budgets changed and no unrelated broad suite ran. This closes these local native-thread cases;
+other OS/runtime evidence, retained frontend coverage and converged/final strict gates remain open.
+
+## Inherited native search-path counterexample (2026-10-17)
+
+A private 0.84s experiment uses a real Node addon with a loader-relative dependency. With default
+resolution it loads the library beside the addon and returns 11. Launching the identical addon with
+`DYLD_LIBRARY_PATH` pointing to a second directory instead loads that directory's library and returns
+91. The paths in `process.report.sharedObjects` distinguish the actual loaded files. All compile and
+child invocations have finite 15s deadlines; no production files or source modules are modified.
+
+Reproducer: `/private/tmp/apack-relative-library-override-proof.py`.
+Result and retained fixture root: `/private/tmp/apack-relative-library-override-proof.json`.
+This extends the earlier absolute-library search-path prototype: loader-relative dependency commands
+alone do not prove captured loading when inherited loader overrides select a different image.
+[Apple's current loader implementation](https://github.com/apple-oss-distributions/dyld/blob/main/dyld/DyldProcessConfig.cpp)
+models search-path overrides separately from image dependency declarations; its
+[dynamic-library guidelines](https://developer.apple.com/library/archive/documentation/DeveloperTools/Conceptual/DynamicLibraries/100-Articles/DynamicLibraryUsageGuidelines.html)
+describe environment-dependent library search.
+
+The next implementation must preserve the startup loader environment before user initialization can
+rewrite `process.env`, inspect the candidates actually selected by configured search paths, and refuse
+identifiable outside-image selection before native initialization. An unused search directory is not
+itself an outside dependency, so a blanket ban is not the intended solution. Library insertion that
+occurs before JavaScript startup needs its pre-launch owner considered separately. This is a concrete
+remaining bounded-contract defect, not evidence for universal native-I/O confinement or permission to
+expand into a general sandbox. Retained Vite initialization and ELF/PE/platform acceptance stay open.
