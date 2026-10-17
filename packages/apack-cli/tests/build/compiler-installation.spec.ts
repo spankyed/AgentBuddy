@@ -1,6 +1,7 @@
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
+import { createRequire } from 'node:module';
 import { execFileSync, fork } from 'node:child_process';
 import { afterEach, expect, it, vi } from 'vitest';
 import { captureCompilerInstallation, type CompilerInstallation } from '../../src/build/compiler-installation.ts';
@@ -44,6 +45,33 @@ it('executes captured nested dependencies after their original files are removed
   expect(execFileSync(process.execPath, [installation.bin], { encoding: 'utf8' }).trim()).toBe('captured');
   await installation.dispose();
   expect(fs.existsSync(installation.bin)).toBe(false);
+});
+
+it.each(['executable', 'addon'] as const)('executes a captured platform %s after its source package is removed', async kind => {
+  const require = createRequire(import.meta.url);
+  const compiler = fixture();
+  let source: string;
+  let expected: string;
+  let file: string;
+  if (kind === 'executable') {
+    const esbuild = createRequire(require.resolve('esbuild/package.json'));
+    source = esbuild.resolve(`@esbuild/${process.platform}-${process.arch}/${process.platform === 'win32' ? 'esbuild.exe' : 'bin/esbuild'}`);
+    expected = require('esbuild/package.json').version;
+    file = process.platform === 'win32' ? 'native.exe' : 'native';
+    compiler.write('node_modules/helper/index.cjs', `module.exports = require('node:child_process').execFileSync(require('node:path').join(__dirname, '${file}'), ['--version'], {encoding: 'utf8'}).trim();`);
+  } else {
+    require('rollup/parseAst');
+    const addon = Object.keys(require.cache).find(file => file.endsWith('.node') && path.basename(file).startsWith('rollup.'));
+    if (!addon) throw new Error('Rollup did not load its platform addon');
+    source = addon;
+    expected = 'function';
+    file = 'native.node';
+    compiler.write('node_modules/helper/index.cjs', `module.exports = typeof require('./native.node').parse;`);
+  }
+  fs.copyFileSync(source, path.join(compiler.root, 'node_modules/helper', file));
+  const installation = await compiler.capture();
+  fs.rmSync(compiler.root, { recursive: true, force: true });
+  expect(execFileSync(process.execPath, [installation.bin], { encoding: 'utf8' }).trim()).toBe(expected);
 });
 
 it('preserves workspace links, file-link module resolution, cycles and executable permissions', async () => {
