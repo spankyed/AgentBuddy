@@ -87,7 +87,6 @@ if ((isMainThread && (process.env.APACK_BUILD_WORKER === '1' || process.env.APAC
       buildInputs.finish = () => finished ??= collect(true);
     }
     if (frontendInputs) {
-      frontendInputs.snapshot = async () => [...await collect(false), startup.finishLocal()];
       frontendInputs.close = async () => {
         try { await collect(true); }
         finally { startup.disposeLocal(); }

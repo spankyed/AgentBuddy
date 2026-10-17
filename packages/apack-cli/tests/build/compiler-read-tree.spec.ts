@@ -2,7 +2,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { afterEach, expect, it, vi } from 'vitest';
-import { createCompilerFileView } from '@apackdev/host/build/compiler-inputs';
+import { assertNativeCompilerObservations, createCompilerFileView } from '@apackdev/host/build/compiler-inputs';
 import { BUILD_INPUTS_DIRECTORY_ENV, createCompilerReadTree, removeCompilerReadTree, type CompilerReadTree } from '../../src/build/compiler-read-tree.ts';
 
 const roots: string[] = [];
@@ -12,6 +12,26 @@ afterEach(() => {
   vi.unstubAllEnvs();
   for (const tree of trees.splice(0)) tree.dispose();
   for (const root of roots.splice(0)) fs.rmSync(root, { recursive: true, force: true });
+});
+
+it('replays retained copy integrity after the source disappears and refuses writable or changed bytes', () => {
+  const root = fs.realpathSync.native(fs.mkdtempSync(path.join(os.tmpdir(), 'apack-retained-copy-')));
+  roots.push(root);
+  const file = path.join(root, 'module.node');
+  fs.writeFileSync(file, 'OWNED');
+  fs.chmodSync(file, 0o755);
+  const mode = fs.statSync(file).mode & 0o777;
+  const tree = createCompilerReadTree({ files: [{ file, bytes: Buffer.from('OWNED'), mode }], locations: [], links: [] }, []);
+  trees.push(tree);
+  const observed = tree.observations();
+  fs.rmSync(file);
+  expect(() => assertNativeCompilerObservations(observed)).not.toThrow();
+  const copy = tree.path(file);
+  fs.chmodSync(copy, mode | 0o222);
+  expect(() => assertNativeCompilerObservations(observed)).toThrow(/changed/);
+  fs.writeFileSync(copy, 'CHANGED');
+  fs.chmodSync(copy, mode & ~0o222);
+  expect(() => assertNativeCompilerObservations(observed)).toThrow(/changed/);
 });
 
 it('lets the parent remove an abandoned read-only workspace without following foreign links', () => {

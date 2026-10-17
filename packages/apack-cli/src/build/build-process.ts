@@ -14,9 +14,10 @@ import { holdPackBuildLock } from './build-lock.ts';
 import { readValidManifest } from '../utils.ts';
 import { buildStagingDir, publishPackBuild, readPackBuildCandidate, type PackBuildCandidate } from './build-publication.ts';
 import { BUILD_INPUTS_DIRECTORY_ENV, removeCompilerReadTree } from './compiler-read-tree.ts';
-import { startPackFrontend, type PackFrontend, type PackFrontendAddress } from './frontend-process.ts';
+import { startPackFrontend, type PackFrontend, type PackFrontendAddress, type FrontendInputUpdate } from './frontend-process.ts';
 import { findFEEntry, readPackDevServerInputs } from './fe-bundler.ts';
 import { assertCompilerLibraryInsertion } from './compiler-native-libraries.ts';
+import { mergeCompilerWatchPaths, type CompilerWatchPaths } from './compiler-watch.ts';
 
 // Give worker SIGTERM handlers a short cleanup phase before forced termination.
 const STOP_GRACE_MS = 2_000;
@@ -30,14 +31,24 @@ export interface PackBuildOptions {
 export interface PackBuilder {
   build(options?: PackBuildOptions): Promise<void>;
   serveFrontend(changed: (address: PackFrontendAddress | undefined) => void): Promise<PackFrontendAddress | undefined>;
+  subscribeFrontendInputs(listener: (inputs: FrontendInputUpdate) => void): () => void;
+  isFrontendCurrent(signal?: AbortSignal): Promise<boolean>;
   close(): Promise<void>;
 }
 
 /** A pack retains its accepted compiler and frontend until a replacement is ready. */
 export function createPackBuilder(root: string): PackBuilder {
-  interface Generation { compiler: CompilerInstallation; frontend?: PackFrontend; configuration?: string }
+  interface Generation { compiler: CompilerInstallation; frontend?: PackFrontend; configuration?: string; inputs?: CompilerWatchPaths }
   let current: Generation | undefined;
   const owned = new Set<Generation>();
+  const inputListeners = new Set<(inputs: FrontendInputUpdate) => void>();
+  let failedInputs: CompilerWatchPaths = new Map();
+  const frontendInputs = () => [...owned].reduce((paths, generation) =>
+    mergeCompilerWatchPaths(paths, generation.inputs ?? new Map()), failedInputs);
+  const publishInputs = (changed = false) => {
+    const paths = frontendInputs();
+    for (const listener of inputListeners) listener({ paths, changed });
+  };
   let frontendChanged: ((address: PackFrontendAddress | undefined) => void) | undefined;
   let active = Promise.resolve();
   let stopping: Promise<void> | undefined;
@@ -53,9 +64,11 @@ export function createPackBuilder(root: string): PackBuilder {
     return result;
   };
   const dispose = async (generation: Generation) => {
-    await generation.frontend?.close();
-    await generation.compiler.dispose();
-    owned.delete(generation);
+    try { await generation.frontend?.close(); }
+    finally {
+      try { await generation.compiler.dispose(); }
+      finally { owned.delete(generation); }
+    }
   };
   const ensureFrontend = async (generation: Generation, signal: AbortSignal) => {
     const entry = findFEEntry(root);
@@ -63,6 +76,8 @@ export function createPackBuilder(root: string): PackBuilder {
     if (!entry) {
       await generation.frontend?.close();
       generation.frontend = undefined;
+      generation.inputs = undefined;
+      publishInputs();
       return;
     }
     if (generation.frontend?.alive()) {
@@ -70,12 +85,16 @@ export function createPackBuilder(root: string): PackBuilder {
         throw new Error('Pack frontend configuration changed; build the pack before serving it again');
       }
       if (!await generation.frontend.isCurrent(signal)) {
-        throw new Error('Pack frontend native inputs changed; build the pack before serving it again');
+        throw new Error('Pack frontend inputs could not be verified; build the pack before serving it again');
       }
       return generation.frontend.address;
     }
     await generation.frontend?.close();
-    generation.frontend = await startPackFrontend(root, generation.compiler, signal);
+    generation.frontend = await startPackFrontend(root, generation.compiler, signal, inputs => {
+      if (!owned.has(generation)) return;
+      generation.inputs = mergeCompilerWatchPaths(generation.inputs ?? new Map(), inputs.paths);
+      publishInputs(inputs.changed && generation === current);
+    });
     if (readPackDevServerInputs(root) !== configuration) {
       await generation.frontend.close();
       generation.frontend = undefined;
@@ -118,8 +137,16 @@ export function createPackBuilder(root: string): PackBuilder {
           const previous = current;
           current = candidate;
           if (previous && previous !== candidate) await dispose(previous);
+          failedInputs = new Map();
+          publishInputs();
         } catch (error) {
-          if (candidate !== current) await dispose(candidate);
+          if (candidate !== current) {
+            try { await dispose(candidate); }
+            finally {
+              failedInputs = mergeCompilerWatchPaths(failedInputs, candidate.inputs ?? new Map());
+              publishInputs();
+            }
+          }
           throw error;
         }
       });
@@ -133,9 +160,20 @@ export function createPackBuilder(root: string): PackBuilder {
         return address;
       });
     },
+    subscribeFrontendInputs(listener) {
+      stopped.signal.throwIfAborted();
+      inputListeners.add(listener);
+      try { listener({ paths: frontendInputs(), changed: false }); }
+      catch (error) { inputListeners.delete(listener); throw error; }
+      return () => { inputListeners.delete(listener); };
+    },
+    isFrontendCurrent(signal) {
+      return enqueue(() => current?.frontend?.isCurrent(signal ? AbortSignal.any([signal, stopped.signal]) : stopped.signal) ?? Promise.resolve(true));
+    },
     close() {
       if (!stopping) {
         stopped.abort();
+        inputListeners.clear();
         stopping = active.then(async () => { await Promise.all([...owned].map(dispose)); current = undefined; });
       }
       return stopping;

@@ -22,7 +22,8 @@ export interface WatchOptions {
   /** Install an external pack's verified output before asking its host to reload it. */
   readonly onBuilt?: () => Promise<void>;
   /** A dev session owns its shared compiler; standalone watchers own their builder. */
-  readonly build?: PackBuilder['build'];
+  readonly builder?: Pick<PackBuilder, 'build' | 'subscribeFrontendInputs' | 'isFrontendCurrent'>;
+  readonly buildArgs?: readonly string[];
 }
 
 /**
@@ -75,8 +76,8 @@ export function coalescingRunner(run: () => Promise<void>, delayMs: number = DEB
 export async function startPackBuildWatcher(root: string, options: WatchOptions = {}): Promise<{ close: () => Promise<void> }> {
   options.signal?.throwIfAborted();
   const packId = readValidManifest(root).id;
-  const builder = options.build ? undefined : createPackBuilder(root);
-  const build = options.build ?? builder!.build;
+  const ownedBuilder = options.builder ? undefined : createPackBuilder(root);
+  const builder = options.builder ?? ownedBuilder!;
   let closed = false;
   let stopping: Promise<void> | undefined;
   let ready = false;
@@ -85,6 +86,8 @@ export async function startPackBuildWatcher(root: string, options: WatchOptions 
   const tools = createCompilerWatchTools(root);
   let compilerPaths: CompilerWatchPaths = new Map();
   let observedPaths: CompilerWatchPaths = new Map();
+  let frontendPaths: CompilerWatchPaths = new Map();
+  let unsubscribe: (() => void) | undefined;
   let acceptedObservations: CompilerInputObservations | undefined;
   const observedInputsCurrent = () => {
     if (!acceptedObservations) return true;
@@ -107,7 +110,8 @@ export async function startPackBuildWatcher(root: string, options: WatchOptions 
     const compiler = refreshInputs();
     const authored = packInputsHash(root) + JSON.stringify(compiler.authored);
     const beforeFrontend = frontend.snapshot();
-    if (compiler.signature === compilerSignature && authored === authoredSignature && beforeFrontend.hash === frontendSignature && observedInputsCurrent()) return false;
+    if (compiler.signature === compilerSignature && authored === authoredSignature && beforeFrontend.hash === frontendSignature
+      && observedInputsCurrent() && await builder.isFrontendCurrent(options.signal)) return false;
     compilerSignature = compiler.signature;
     authoredSignature = authored;
     frontendSignature = beforeFrontend.hash;
@@ -116,7 +120,7 @@ export async function startPackBuildWatcher(root: string, options: WatchOptions 
     let observed: CompilerWatchPaths = new Map();
     let nativeReported = false;
     try {
-      await build({ signal: options.signal, onInputs: async inputs => {
+      await builder.build({ args: options.buildArgs, signal: options.signal, onInputs: async inputs => {
         if (inputs.probes) { nativeReported = true; observed = mergeCompilerWatchPaths(observed, new Map(inputs.probes)); return; }
         reported = { inputs, snapshot: await frontend.observe(inputs) };
       } });
@@ -182,7 +186,7 @@ export async function startPackBuildWatcher(root: string, options: WatchOptions 
   let links: fs.FSWatcher[] = [];
   function refreshInputs(replace = false) {
     const next: fs.FSWatcher[] = [];
-    const compiler = compilerWatchPaths(root, tools, observedPaths);
+    const compiler = compilerWatchPaths(root, tools, mergeCompilerWatchPaths(observedPaths, frontendPaths));
     const paths = replace && compiler.complete ? compiler.paths : mergeCompilerWatchPaths(compilerPaths, compiler.paths);
     const authored = packInputWatchTargets(root);
     try {
@@ -216,7 +220,8 @@ export async function startPackBuildWatcher(root: string, options: WatchOptions 
     if (!stopping) {
       options.signal?.removeEventListener('abort', abort);
       closed = true; watcher.close(); for (const watch of links) watch.close();
-      stopping = Promise.all([frontend.close(), runs.close(), builder?.close()]).then(() => {});
+      unsubscribe?.();
+      stopping = Promise.all([frontend.close(), runs.close(), ownedBuilder?.close()]).then(() => {});
     }
     return stopping;
   };
@@ -225,6 +230,14 @@ export async function startPackBuildWatcher(root: string, options: WatchOptions 
   options.signal?.addEventListener('abort', abort, { once: true });
   try {
     options.signal?.throwIfAborted();
+    unsubscribe = builder.subscribeFrontendInputs(({ paths, changed }) => {
+      if (closed) return;
+      if (paths.size !== frontendPaths.size || [...paths].some(([file, kind]) => frontendPaths.get(file) !== kind)) {
+        frontendPaths = paths;
+        refreshInputs(true);
+      }
+      if (changed) request('frontend compiler inputs discovered');
+    });
     await publish();
     options.signal?.throwIfAborted();
     options.onFirstBuild?.();

@@ -3,7 +3,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { createHash } from 'node:crypto';
 import { compilerReadMapping } from '../../bin/compiler-source-hooks.mjs';
-import { compilerDiagnostic, compilerSourcePath, type CompilerPathMapping } from '@apackdev/host/build/compiler-inputs';
+import { compilerDiagnostic, compilerSourcePath, createCompilerInputObservations, type CompilerPathMapping } from '@apackdev/host/build/compiler-inputs';
 
 export const BUILD_INPUTS_DIRECTORY_ENV = 'APACK_BUILD_INPUTS_DIRECTORY';
 
@@ -44,7 +44,7 @@ export function createCompilerReadTree(snapshot: CompilerReadSnapshot, paths: re
   const dataRoots = new Map<string, string>();
   const directories = new Set([directory]);
   const entries = new Map<string, string[]>();
-  const files = new Map<string, { sourceHash?: string; hash: string; mode: number }>();
+  const files = new Map<string, { sourceHash?: string; hash: string; mode: number; capturedMode: number }>();
   const links = new Map<string, string>();
   const locations = new Map<string, CompilerReadLocation>();
   let disposed = false;
@@ -127,7 +127,7 @@ export function createCompilerReadTree(snapshot: CompilerReadSnapshot, paths: re
         }
         fs.writeFileSync(target, bytes, { flag: previous ? 'w' : 'wx', mode: file.mode & ~0o222 });
         fs.chmodSync(target, file.mode & ~0o222);
-        files.set(target, { sourceHash, hash, mode: file.mode });
+        files.set(target, { sourceHash, hash, mode: file.mode, capturedMode: fs.statSync(target).mode });
       }
       for (const location of next.locations) {
         const file = sourcePath(location.file);
@@ -189,7 +189,7 @@ export function createCompilerReadTree(snapshot: CompilerReadSnapshot, paths: re
     for (const [name, text] of Object.entries({ 'tsconfig.json': '{}', 'package.json': '{"type":"commonjs"}' })) {
       const file = path.join(directory, name), bytes = Buffer.from(text), hash = digest(bytes);
       fs.writeFileSync(file, bytes, { flag: 'wx', mode: 0o400 });
-      files.set(file, { sourceHash: hash, hash, mode: 0o400 });
+      files.set(file, { sourceHash: hash, hash, mode: 0o400, capturedMode: fs.statSync(file).mode });
     }
     include(snapshot);
     // Even an empty snapshot retains a private, owner-only container.
@@ -199,6 +199,16 @@ export function createCompilerReadTree(snapshot: CompilerReadSnapshot, paths: re
     return {
       directory, workDirectory, path: ownedPath, sourcePath, include, assertCurrent, dispose,
       dataPath, includeData: (snapshot: CompilerReadSnapshot) => include(snapshot, dataPath, null),
+      observations() {
+        const result = createCompilerInputObservations(directory);
+        for (const [file, expected] of files) {
+          const relative = path.relative(directory, file).split(path.sep).join('/');
+          result.record(['file', relative], expected.hash);
+          result.record(['namespace', relative], [relative, 'file', expected.mode & 0o111]);
+          result.record(['node-metadata', 'stat', relative, [], 'field', 'mode'], expected.capturedMode);
+        }
+        return result.snapshot();
+      },
       diagnostic(message: string) { return compilerDiagnostic(message, mappings());
       },
     };

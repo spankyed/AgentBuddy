@@ -6,9 +6,17 @@ import { captureCompilerPackage } from './compiler-package-inputs.ts';
 import { assertCapturedMachOLibraries, type MachOLibraryEnvironment } from './compiler-native-libraries.ts';
 import { createCompilerReadTree, type CompilerReadTree } from './compiler-read-tree.ts';
 
+export interface CapturedNativeModule { readonly source: string; readonly captured: string; readonly packageRoot: string }
+
 /** Owned native bytes; Vite captures selected images so authored sources remain live. */
 export function createCompilerNativeInputs(original: ReturnType<typeof createCompilerFileView>, workspace: string,
-  paths: readonly CompilerPathMapping[], nativeEnvironment: MachOLibraryEnvironment, capture: 'package' | 'images') {
+  paths: readonly CompilerPathMapping[], nativeEnvironment: MachOLibraryEnvironment, options: {
+    capture: 'package' | 'images';
+    retainTree?: boolean;
+    findModule?(file: string): CapturedNativeModule | undefined;
+    onCapture?(): void;
+  }) {
+  const modules = new Map<string, CapturedNativeModule>();
   const within = (parent: string, file: string) => {
     const relative = path.relative(parent, file);
     return relative === '' || (relative !== '..' && !relative.startsWith(`..${path.sep}`) && !path.isAbsolute(relative));
@@ -35,6 +43,14 @@ export function createCompilerNativeInputs(original: ReturnType<typeof createCom
   };
   const nativeModule = (file: string): string => {
     if (process.platform !== 'darwin') return file;
+    const known = options.findModule?.(file);
+    if (known) {
+      assertCapturedMachOLibraries(known.captured, known.packageRoot, {
+        arch: process.arch, environment: nativeEnvironment, realpath: file => fs.realpathSync.native(file),
+        read: file => fs.statSync(file, { throwIfNoEntry: false })?.isFile() ? fs.readFileSync(file) : undefined,
+      });
+      return known.captured;
+    }
     // Compiler-installation and earlier read-tree copies already have an input owner. Inspect their
     // actual images without recording ephemeral private paths as new source inputs.
     if (!includes(file) || sourcePath(file) !== file) {
@@ -47,7 +63,7 @@ export function createCompilerNativeInputs(original: ReturnType<typeof createCom
       return file;
     }
     const owner = packageRoot(file, original.fileSystem.fileExists);
-    if (capture === 'package' && !nativePackages.has(owner)) {
+    if (options.capture === 'package' && !nativePackages.has(owner)) {
       const { snapshot } = captureCompilerPackage(owner, original.captureDataLocation, (file, bytes) =>
         original.captureFile(file.source, original.readDataBytes(file.source) ?? bytes));
       tree ??= createCompilerReadTree({ files: [], locations: [], links: [] }, paths);
@@ -58,21 +74,28 @@ export function createCompilerNativeInputs(original: ReturnType<typeof createCom
       arch: process.arch, environment: nativeEnvironment, realpath: original.fileSystem.realpath,
       read(candidate) {
         const bytes = original.readDataBytes(candidate);
-        if (capture === 'images' && bytes && within(owner, candidate)) readDataPath(candidate);
+        if (options.capture === 'images' && bytes && within(owner, candidate)) readDataPath(candidate);
         return bytes;
       },
     });
-    return readDataPath(file);
+    const captured = readDataPath(file);
+    modules.set(file, { source: file, captured, packageRoot: tree!.dataPath(owner) });
+    return captured;
   };
-  const stopNativeModules = beginCompilerNativeModules(nativeModule);
+  const admit = (file: string) => {
+    try { return nativeModule(file); }
+    finally { options.onCapture?.(); }
+  };
+  const stopNativeModules = beginCompilerNativeModules(admit);
   return {
-    includes, sourcePath, readDataPath, nativeModule,
+    includes, sourcePath, readDataPath, nativeModule: admit,
+    modules: () => [...modules.values()], copies: () => tree?.observations(),
     diagnostic: (message: string) => compilerDiagnostic(tree?.diagnostic(message) ?? message, paths),
     assertCurrent() { withoutCompilerFileReads(() => { original.assertCurrent(); tree?.assertCurrent(); }); },
     dispose() {
       withoutCompilerFileReads(() => {
         stopNativeModules();
-        try { original.dispose(); } finally { tree?.dispose(); }
+        try { original.dispose(); } finally { if (!options.retainTree) tree?.dispose(); }
       });
     },
   };

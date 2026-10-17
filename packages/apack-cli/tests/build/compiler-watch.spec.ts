@@ -110,7 +110,9 @@ it('rebuilds an idle session on actual tooling filesystem events', async () => {
   fs.writeFileSync(path.join(pack, 'apack.json'), JSON.stringify({ id: 'watch-tooling', name: 'Watch tooling', version: '1.0.0' }));
   vi.spyOn(reload, 'reloadPack').mockResolvedValue({ status: 'not-running', detail: 'fixture has no app' });
   let builds = 0;
-  const watcher = await startPackBuildWatcher(pack, { build: async () => { builds++; } });
+  const watcher = await startPackBuildWatcher(pack, { builder: {
+    build: async () => { builds++; }, subscribeFrontendInputs: () => () => {}, isFrontendCurrent: async () => true,
+  } });
   try {
     expect(builds).toBe(1);
     for (const [index, file] of [entry, executable, override].entries()) {

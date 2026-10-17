@@ -66,7 +66,7 @@ export function beginCompilerStartupInputs(root: string, workspace: string, path
     recordWatchInput(compilerSourcePath(file, paths), kind);
   }) });
   initializing = false;
-  const native = createCompilerNativeInputs(original, workspace, paths, nativeEnvironment, 'package');
+  const native = createCompilerNativeInputs(original, workspace, paths, nativeEnvironment, { capture: 'package' });
   const { sourcePath, readDataPath, nativeModule } = native;
   const view: PackCompilerInputView = { ...original, dispose: native.dispose, assertCurrent: native.assertCurrent };
   const stopReads = beginCompilerStartupReads({ outputDirectory: workspace, compilation: {

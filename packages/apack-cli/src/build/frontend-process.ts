@@ -9,8 +9,15 @@ import type { CompilerInstallation } from './compiler-installation.ts';
 import { assertCompilerLibraryInsertion } from './compiler-native-libraries.ts';
 import { compilerStartupOptions, COMPILER_NODE_OPTIONS_ENV } from './compiler-startup-options.ts';
 import { BUILD_INPUTS_DIRECTORY_ENV, removeCompilerReadTree } from './compiler-read-tree.ts';
+import { BUILD_INPUTS_IPC_ENV, readCompilerWatchReports } from './build-watch-inputs.ts';
+import { mergeCompilerWatchPaths, type CompilerWatchPaths } from './compiler-watch.ts';
+import { FRONTEND_NATIVE_REPORT } from './frontend-native-inputs.ts';
 
 export interface PackFrontendAddress { readonly port: number; readonly pid: number }
+export interface FrontendInputUpdate { readonly paths: CompilerWatchPaths; readonly changed: boolean }
+
+// A blocked dev process must not hold the builder's replacement queue indefinitely.
+const INPUT_CHECK_TIMEOUT_MS = 5_000;
 
 export interface PackFrontend {
   readonly address: PackFrontendAddress;
@@ -20,7 +27,8 @@ export interface PackFrontend {
 }
 
 /** A generation's Vite modules are private; authored sources stay live for HMR. */
-export async function startPackFrontend(root: string, compiler: CompilerInstallation, signal: AbortSignal): Promise<PackFrontend> {
+export async function startPackFrontend(root: string, compiler: CompilerInstallation, signal: AbortSignal,
+  onInputs?: (inputs: FrontendInputUpdate) => void): Promise<PackFrontend> {
   signal.throwIfAborted();
   assertCompilerLibraryInsertion();
   const grouped = process.platform !== 'win32';
@@ -34,6 +42,7 @@ export async function startPackFrontend(root: string, compiler: CompilerInstalla
         [COMPILER_INPUTS_ENV]: compiler.inputsFile, [COMPILER_PROCESS_GROUP_ENV]: grouped ? '1' : undefined,
         APACK_FRONTEND_DIRECTORY: directory,
         [BUILD_INPUTS_DIRECTORY_ENV]: directory, [COMPILER_NODE_OPTIONS_ENV]: nodeOptions.user,
+        [BUILD_INPUTS_IPC_ENV]: onInputs ? '1' : '0',
         NODE_OPTIONS: nodeOptions.worker, ELECTRON_RUN_AS_NODE: '1', TSX_DISABLE_CACHE: '1' },
     }, directory);
   } catch (error) {
@@ -46,14 +55,23 @@ export async function startPackFrontend(root: string, compiler: CompilerInstalla
     child.once('close', () => resolve());
   });
   let closing: Promise<void> | undefined;
+  let inputWatch: fs.FSWatcher | undefined;
+  const deliverInputs = (changed = false) => {
+    if (!onInputs) return;
+    const paths = readCompilerWatchReports(directory).reduce((paths, inputs) =>
+      mergeCompilerWatchPaths(paths, new Map(inputs.probes)), new Map() as CompilerWatchPaths);
+    onInputs({ paths, changed });
+  };
   const close = () => closing ??= (async () => {
+    inputWatch?.close();
     const timer = setTimeout(() => child.kill('SIGKILL'), 2_000);
     try {
       if (child.connected) child.send('frontend-close', () => {});
       else child.kill('SIGKILL');
       await closed;
       if (grouped && child.pid) await stopCompilerProcessGroup(child.pid);
-      removeCompilerReadTree(directory);
+      try { deliverInputs(); }
+      finally { removeCompilerReadTree(directory); }
     } finally { clearTimeout(timer); }
   })();
   const abort = () => { void close().catch(() => {}); };
@@ -64,6 +82,7 @@ export async function startPackFrontend(root: string, compiler: CompilerInstalla
     if (!child.connected || child.exitCode !== null || child.signalCode !== null) { resolve(false); return; }
     const id = ++sequence;
     const finish = (current: boolean, error?: unknown) => {
+      clearTimeout(timer);
       signal.removeEventListener('abort', aborted);
       child.removeListener('message', response);
       child.removeListener('close', exited);
@@ -71,6 +90,7 @@ export async function startPackFrontend(root: string, compiler: CompilerInstalla
     };
     const aborted = () => finish(false, signal.reason);
     const exited = () => finish(false);
+    const timer = setTimeout(() => finish(false), INPUT_CHECK_TIMEOUT_MS);
     const response = (message: unknown) => {
       if (!message || typeof message !== 'object' || !('type' in message) || message.type !== 'frontend-inputs'
         || !('id' in message) || message.id !== id) return;
@@ -82,6 +102,17 @@ export async function startPackFrontend(root: string, compiler: CompilerInstalla
     child.send({ type: 'frontend-inputs', id }, error => { if (error) finish(false, error); });
   });
   try {
+    if (onInputs) {
+      const refused = (error: unknown) => {
+        failure = error instanceof Error ? error : new Error(String(error));
+        child.kill('SIGKILL');
+      };
+      inputWatch = fs.watch(directory, (_event, name) => {
+        if (name && !/^watch-\d+\.jsonl$/.test(name) && !FRONTEND_NATIVE_REPORT.test(name)) return;
+        try { deliverInputs(true); } catch (error) { refused(error); }
+      });
+      inputWatch.on('error', refused);
+    }
     const address = await new Promise<PackFrontendAddress>((resolve, reject) => {
       child.on('message', message => {
         if (!message || typeof message !== 'object' || !('type' in message) || message.type !== 'frontend-ready') return;
@@ -94,6 +125,7 @@ export async function startPackFrontend(root: string, compiler: CompilerInstalla
       });
       void closed.then(() => reject(failure ?? new Error(`Pack frontend exited before readiness (${child.exitCode ?? child.signalCode})`)));
     });
+    deliverInputs();
     signal.throwIfAborted();
     return { address, alive: () => child.exitCode === null && child.signalCode === null, isCurrent, close };
   } catch (error) {

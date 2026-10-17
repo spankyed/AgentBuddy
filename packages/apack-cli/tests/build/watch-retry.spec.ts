@@ -19,7 +19,8 @@ vi.mock('node:fs', async importOriginal => ({
   }),
 }));
 vi.mock('../../src/build/build-process.ts', () => ({
-  createPackBuilder: () => ({ build: fixture.build, close: fixture.close }),
+  createPackBuilder: () => ({ build: fixture.build, close: fixture.close,
+    subscribeFrontendInputs: () => () => {}, isFrontendCurrent: async () => true }),
 }));
 vi.mock('../../src/utils.ts', () => ({ readValidManifest: () => ({ id: 'fixture' }) }));
 vi.mock('@apackdev/host/build/pack-inputs', () => ({

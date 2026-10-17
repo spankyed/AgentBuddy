@@ -36,7 +36,7 @@ it('rebuilds for worker inputs and repairs missing external reads without author
     const output = () => JSON.parse(fs.readFileSync(path.join(root, 'dist/runtime/content/rows.content.json'), 'utf8')).records[0].name;
     builder = createPackBuilder(root);
     watcher = await startPackBuildWatcher(root, {
-      build: options => builder!.build({ ...options, args: ['--skip-fe'] }),
+      builder: builder!, buildArgs: ['--skip-fe'],
       place: { env: 'test', userDataDir: path.join(temporary, 'profile') },
       onBuilt: async () => { publications++; },
     });

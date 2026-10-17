@@ -465,7 +465,7 @@ async function session(args: string[], hooks: SessionHooks, target: 'app' | 'pac
     watching = startPackBuildWatcher(pack.root, {
       place,
       signal: buildLifetime.signal,
-      build: builder!.build,
+      builder: builder!,
       onBuilt: async () => { await installToApp(pack.root, place); },
     });
     await watching;

@@ -100,7 +100,7 @@ it('refreshes backend and live frontend together, retains failed incumbents and 
   expect(await response(first)).toContain('GENERATION_A');
 
   generation('GENERATION_B');
-  watcher = await startPackBuildWatcher(root, { build: builder!.build });
+  watcher = await startPackBuildWatcher(root, { builder: builder! });
   const second = addresses.at(-1)!;
   expect(second.pid).not.toBe(first.pid);
   expect(await response(second)).toContain('GENERATION_B');

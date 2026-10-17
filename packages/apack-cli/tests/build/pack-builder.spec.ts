@@ -174,6 +174,19 @@ it('cancels a frontend input check before retiring its compiler and workspace', 
   expect(fs.existsSync(fileURLToPath(accepted.bin))).toBe(false);
 });
 
+it('refuses an unresponsive frontend freshness check and allows its later recovery', async () => {
+  const { pack, builder } = fixture();
+  await builder.build();
+  fs.mkdirSync(path.join(pack, 'src'));
+  fs.writeFileSync(path.join(pack, 'src/pack-entry-fe.ts'), 'export {};');
+  await builder.serveFrontend(() => {});
+  const hang = path.join(pack, '.apack/frontend-input-hang');
+  fs.writeFileSync(hang, '');
+  expect(await builder.isFrontendCurrent()).toBe(false);
+  fs.rmSync(hang);
+  expect(await builder.isFrontendCurrent()).toBe(true);
+});
+
 it('replaces a server for pack configuration changes while reusing unchanged source/configuration', async () => {
   const capture = vi.spyOn(installation, 'captureCompilerInstallation');
   const { pack, builder, report } = fixture();

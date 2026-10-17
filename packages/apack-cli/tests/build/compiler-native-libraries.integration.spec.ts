@@ -15,6 +15,7 @@ import { withCompilerFileReads } from '@apackdev/host/build/compiler-inputs';
 import { captureCompilerInstallation, compilerPackageDirectory, type CompilerInstallation } from '../../src/build/compiler-installation.ts';
 import { startPackFrontend, type PackFrontend } from '../../src/build/frontend-process.ts';
 import { assertCapturedMachOLibraries, captureMachOLibraryEnvironment } from '../../src/build/compiler-native-libraries.ts';
+import { startPackBuildWatcher } from '../../src/build/watch.ts';
 
 function nativeFixture(mode: 'relative' | 'absolute' | 'transitive' | 'fallback' | 'framework', sdk?: string) {
   const root = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'apack-native-libraries-')));
@@ -158,6 +159,79 @@ it('retains independent captured Vite owners through replacement and close', asy
     finally { await compiler?.dispose(); fs.rmSync(root, { recursive: true, force: true }); }
   }
 });
+
+it.runIf(process.platform === 'darwin')('watches external Vite native changes and repairs a failed generation through newly discovered inputs', async () => {
+  const fixture = nativeFixture('relative');
+  const builder = createPackBuilder(fixture.pack);
+  const previous = process.env.NODE_OPTIONS;
+  let watcher: Awaited<ReturnType<typeof startPackBuildWatcher>> | undefined;
+  const errors = vi.spyOn(console, 'error').mockImplementation(() => {});
+  const addresses: { port: number; pid: number }[] = [];
+  const publications = vi.fn(async () => {});
+  const current = vi.spyOn(builder, 'isFrontendCurrent');
+  const proof = path.join(fixture.root, 'watch-native-proof.jsonl');
+  const preload = path.join(fixture.root, 'vite-preload.cjs');
+  const started = performance.now();
+  const checkpoint = (phase: string) => console.info(`Native watch: ${phase} (${Math.round(performance.now() - started)}ms)`);
+  try {
+    packFixture({ at: fixture.pack, nodeModules: path.join(REPO_ROOT, 'node_modules'), manifest: { features: {} },
+      files: { 'src/pack-entry-fe.ts': "export { default } from './View.vue';", 'src/View.vue': '<template>NATIVE_WATCH</template>',
+        'tsconfig.json': JSON.stringify({ compilerOptions: { module: 'esnext', moduleResolution: 'bundler', skipLibCheck: true } }) } });
+    fs.writeFileSync(preload, `if (globalThis[Symbol.for('apack.compiler.frontend')]) { ${nativeLoad(fixture, proof)} }`);
+    process.env.NODE_OPTIONS = formatNodeOptions([...parseNodeOptions(previous), '--require', preload]);
+    watcher = await startPackBuildWatcher(fixture.pack, { builder, buildArgs: ['--skip-fe'], onBuilt: publications,
+      place: { env: 'test', userDataDir: path.join(fixture.root, 'profile') } });
+    checkpoint('watch ready');
+    await builder.serveFrontend(address => { if (address) addresses.push(address); });
+    checkpoint('frontend ready');
+    const view = `http://localhost:${addresses[0]!.port}/src/View.vue`;
+    expect(await (await fetch(view, { signal: AbortSignal.timeout(2_000) })).text()).toContain('NATIVE_WATCH');
+    await vi.waitFor(() => expect(current).toHaveBeenCalled(), { timeout: 2_000 });
+    await current.mock.results.at(-1)!.value;
+    current.mockClear();
+    const touched = new Date(Date.now() + 2_000);
+    fs.utimesSync(fixture.library, touched, touched);
+    await vi.waitFor(() => expect(current).toHaveBeenCalled(), { timeout: 2_000 });
+    expect(await current.mock.results.at(-1)!.value).toBe(true);
+    expect(publications).not.toHaveBeenCalled();
+    checkpoint('unchanged touch checked');
+
+    const staging = path.join(fixture.root, 'replacement');
+    const helper = path.join(staging, 'libhelper.dylib');
+    const replacement = path.join(staging, 'libvalue.dylib');
+    fixture.buildLibrary(helper, 'int helper_value(void) { return 22; }', '@loader_path/new/libhelper.dylib');
+    fixture.buildLibrary(replacement, 'extern int helper_value(void); int native_value(void) { return helper_value(); }',
+      '@loader_path/../lib/libvalue.dylib', [helper]);
+    fs.rmSync(fixture.marker);
+    fs.renameSync(replacement, fixture.library);
+    await vi.waitFor(() => expect(errors).toHaveBeenCalledWith(expect.stringContaining('Build/reload failed')), { timeout: 20_000 });
+    checkpoint('missing dependency refused');
+    expect(fs.existsSync(fixture.marker)).toBe(false);
+    expect(addresses).toHaveLength(1);
+    expect(await (await fetch(view, { signal: AbortSignal.timeout(2_000) })).text()).toContain('NATIVE_WATCH');
+
+    // Repair only the new dependency, outside the authored pack and the incumbent's inputs.
+    const repaired = path.join(fixture.native, 'lib/new/libhelper.dylib');
+    fs.mkdirSync(path.dirname(repaired), { recursive: true });
+    fs.copyFileSync(helper, repaired);
+    checkpoint('new dependency repaired');
+    await vi.waitFor(() => expect(publications).toHaveBeenCalledTimes(1), { timeout: 40_000 });
+    checkpoint('repair published');
+    expect(addresses).toHaveLength(2);
+    expect(() => process.kill(addresses[0]!.pid, 0)).toThrow();
+    const results = fs.readFileSync(proof, 'utf8').trim().split('\n').map(line => JSON.parse(line))
+      .filter(row => row.thread === 0).map(row => row.value);
+    expect(results).toEqual([11, 22]);
+  } catch (error) {
+    console.info('Native watch refusals:', errors.mock.calls);
+    throw error;
+  } finally {
+    if (previous === undefined) delete process.env.NODE_OPTIONS;
+    else process.env.NODE_OPTIONS = previous;
+    try { await watcher?.close(); await builder.close(); }
+    finally { errors.mockRestore(); fs.rmSync(fixture.root, { recursive: true, force: true }); }
+  }
+}, 120_000);
 
 it.runIf(process.platform === 'darwin').each(['preload', 'thread'] as const)(
   'owns retained Vite native %s inputs while authored Vue sources stay live', async site => {

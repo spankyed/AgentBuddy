@@ -34,7 +34,7 @@ export function createCompilerWatchRecorder(directory: string): BuildInputObserv
   };
 }
 
-/** The parent reads only its owned transport directory, after every compiler thread has stopped. */
+/** Live readers ignore incomplete rows; final readers run after every compiler thread has stopped. */
 export function readCompilerWatchReports(directory: string): BuildWatchInputs[] {
   return fs.readdirSync(directory).filter(name => /^watch-\d+\.jsonl$/.test(name)).map(name => {
     const contents = fs.readFileSync(path.join(directory, name), 'utf8');
