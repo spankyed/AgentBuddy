@@ -149,6 +149,14 @@ failure probes into live watch subscriptions, account for frontend preload JS in
 loader/late-load paths. Versioned/shared-cache/restricted-runtime controls, ELF/PE, remaining platform
 coverage and converged/final gates remain required. See [retained Vite evidence](../evidence/build-input-snapshot-proof.md#retained-vite-native-input-ownership-2026-10-17).
 
+Windows run `39069433335` on `0ac839c94` passes native job ownership, 169 focused checks, both
+publication/cancellation cases and actual Vite replacement/descendant ownership. Its baseline then
+fails because the final cleanup removed `stopReads`, still required by the JavaScript CLI entry and
+embedded launch fixture. Source `482ee0598` restores that distinct preload/compilation phase boundary;
+real local launch identity and repeated build/cache/archive checks pass (48.36 seconds), as do CLI
+types and lint. Windows baseline acceptance on the repaired source remains pending. Live frontend
+subscription delivery is next; no watch implementation is claimed by this repair.
+
 Source `59b890dcb` repairs the macOS explicit fallback gap: launch-time `DYLD_FALLBACK_LIBRARY_PATH`
 survives preload mutation, selected external fallback libraries refuse before native initialization,
 and the incumbent survives. Current-directory lookup precedes fallback lookup; a successfully resolved

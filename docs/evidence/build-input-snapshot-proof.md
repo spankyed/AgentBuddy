@@ -2601,9 +2601,10 @@ Local macOS ARM64 / Node 23.11.1 evidence:
 - Actual simultaneous Vite owners survive independent replacement and close; each descendant stops
   with its own owner. The final packaged-bootstrap check passes in 8.38 seconds:
   `/private/tmp/apack-frontend-native-owners.log`.
-- CLI typechecking, correctness lint, coordinator syntax and package build pass. Final cleanup removes
-  the unused exposed `stopReads` field and distinguishes native-input refusal from configuration
-  refusal. No timeout changes or public SDK/schema changes.
+- CLI typechecking, correctness lint, coordinator syntax and package build pass. Final cleanup
+  distinguishes native-input refusal from configuration refusal. Its removal of the exposed
+  `stopReads` field was incorrect; the Windows run below exposes the missed callers and the next
+  checkpoint restores the required phase boundary. No timeout changes or public SDK/schema changes.
 
 The Windows workflow adds the actual Vite owner case and pending-check cancellation to its focused
 selection. Its execution on this source remains pending; the earlier green Windows producer baseline
@@ -2615,3 +2616,24 @@ custom-loader and late-load acceptance. Do not treat checking freshness when a b
 automatic external-change detection. Existing versioned/shared-cache/restricted-runtime policy,
 ELF/PE, platform coverage and converged/final gates remain open. Native I/O and arbitrary computed
 loading retain the user-approved bounded contract; this checkpoint is not security isolation.
+
+### Compiler preload boundary correction (2026-10-17)
+
+[Windows run 39069433335](https://github.com/spankyed/AgentBuddy/actions/runs/39069433335) on
+`0ac839c94` passes the full native job-owner proof, 169 focused checks (eight platform skips), both
+real descendant-publication/pending-check-cancellation cases, and actual Vite replacement with
+independent descendant cleanup (21.485 seconds test time). Log:
+`/private/tmp/apack-windows-39069433335.log`.
+
+The baseline then fails immediately: `startup.stopReads is not a function`. Removing that method was
+an incorrect cleanup, not a platform limitation. A source-only search missed `bin/apack.mjs` and the
+embedded JavaScript launch fixture. The CLI entry must stop generic preload reads before loading its
+worker bundle while retaining captured inputs and native admission for compilation. Full disposal is
+a different operation. Native Vite has its separate lazy owner and does not require this phase call.
+
+Source `482ee0598` restores the method without changing those semantics or adding an alias. The exact
+launch-identity case and real two-build/cache/archive baseline pass locally in 48.36 seconds:
+`/private/tmp/apack-startup-read-boundary-baseline.log`. Package build, CLI typechecking and lint pass.
+The CLI guide now records the two phases. Windows acceptance of the repaired backend baseline is
+pending; the passing Vite/job-owner cases do not replace it. Live watch delivery and all other named
+compiler/platform gaps remain open.
