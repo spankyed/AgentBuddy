@@ -6918,3 +6918,41 @@ refusal remains a bounded B4/B6 investigation before another broad run. Final st
 `--all`, native/platform evidence, provenance, shipped replacement and the full phase audit remain
 required. No legacy fallback, release/version change, production-data operation or stash/worktree
 change was introduced.
+
+
+## Bound action access and ambient route removal (2026-10-17)
+
+Source checkpoint: `bb6df4a45`. Removed the public ambient SDK `services` value and migrated
+ActionService/LLM to generated bindings. `PackServiceAccess` explicitly carries the accepted facade
+and host-owned action factory. Action views preserve selected APIs, lifetime and logger/emitter
+`from`/`via`. Generated roots and factories retain their construction frame across rebind/disposal,
+including failed cleanup. Root flows capture the factory once and pass it to children. Actual escaped
+user-code callbacks refuse after retirement. Test doubles remain explicit on their owning registry
+and test host; settings administration/policy remains canonical.
+
+Focused evidence:
+
+- SDK/host/codegen: 17 files, 297 cases pass, two workers, 24.21s;
+  `/private/tmp/apack-action-access-converged.log`. Includes actual generated execution, action sender
+  identity, provider/caller retirement, replacement and registry isolation.
+- Import boundaries: 302 cases pass, 10.26s;
+  `/private/tmp/apack-action-access-specifiers.log`.
+- Actual shipped-pack action/inference/settings/onboarding/reset: 44 cases pass, 19.88s;
+  `/private/tmp/apack-action-access-default-runtime.log`. The sandbox's five cases then pass with the
+  additional escaped-callback regression (`/private/tmp/apack-action-access-escaped.log`): 45 unique
+  cases across these runs. Eight onboarding cases pass after the final flow capture change:
+  `/private/tmp/apack-action-access-flow-capture.log`.
+- SDK, host, CLI, testing and default-setup types pass:
+  `/private/tmp/apack-action-access-types-final.log`.
+- All 28 SDK API reports match: `/private/tmp/apack-action-access-api-check.log`.
+  Four changed reports describe the explicit binding protocol, removed ambient export, action runtime
+  factory and test-host override input. Lint passes: `/private/tmp/apack-action-access-lint-final.log`.
+- SDK/testing/CLI builds pass: `/private/tmp/apack-action-access-packages-final.log`.
+  Default declaration/facade generation passes with unchanged facade report:
+  `/private/tmp/apack-action-access-default-facade.log`.
+
+This closes the service/action route implementation, not all of A4/A5 or the goal. Content-target
+validation still needs its current-code audit. Migrated CLI harness integration cases have not run
+against a current default build. No broad chain was repeated; the recorded `.inputs-hash` mutation
+remains open under B4/B6. External runtime/template acceptance, native/platform closure, provenance,
+shipped replacement, all-kind audit and final committed-source strict `--all` remain required.

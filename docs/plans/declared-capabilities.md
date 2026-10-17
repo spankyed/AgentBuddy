@@ -2,7 +2,7 @@
 
 Status: A1 selection and A2 declaration, pre-import/admission and read-only diagnostics are implemented.
 A3 core selection, runtime/type filtering and lifetimes are implemented in `cccc12d5d`;
-ambient-route/action migration and external acceptance remain. Remaining discovery/build ownership work stays active in the [owning goal](../goals/goal-settings-and-pack-contracts.md); it blocks only
+A4 service/action routes are implemented in `bb6df4a45`; content-target validation and external acceptance remain. Remaining discovery/build ownership work stays active in the [owning goal](../goals/goal-settings-and-pack-contracts.md); it blocks only
 the slices that consume its missing guarantees. This is an API dependency contract, not a security sandbox.
 
 ## Problem
@@ -171,11 +171,11 @@ checks. Preserve current shared-settings policy and the documented query model.
 | Scoped settings | `_createPackServices`, generated settings handles, host `createPackServiceBinding` | Baseline; preserve accepted pack identity, target policy and subscription cleanup. |
 | Host I/O and lifecycle services | Onboarding actions, Database, query/LLM steps, library embeddings; contracts in SDK `services/` | Six explicit groups: onboarding, appData, traceStore, inference, secrets, filesystem. Default-setup's user-authored action surface intentionally supports all six, including APIs without a shipped action call site. |
 | Pack-provided services | `generateServices` and registry API ownership; default-setup provides chat/artifact/threads/cli/codex/library/action/prompt/brain/scheduler/database | Own services implicit; selected services of direct providers explicit. Preserve classes/private receivers and validate ownership from declarations, not a dependency's intersected facade. |
-| Ambient SDK services import | `extensions/steps/llm/runtime.ts` and `features/actions/be/services/action.ts` in default-setup | Migrate to the generated facade and remove the supported ambient bypass in A3/A4; host/test composition gets an internal accessor where needed. |
-| User-authored actions | `runActionCode`, ActionService and brain's `getAppServices` | Brain already passes generated services; ActionService still passes the ambient union. Both must use the executing pack's accepted facade with attributed logger/emitter. |
+| Ambient SDK services import | Removed in `bb6df4a45`; LLM and ActionService use generated bindings | Host administration uses its existing internal captured-host bridge; SDK tests use their owning runtime. No public ambient service value remains. |
+| User-authored actions | `runActionCode`, ActionService and brain's `servicesForAction` | Host creates attributed views within the accepted selection/lifetime. Root flows capture the factory once; children inherit it. Escaped callbacks and factories refuse after retirement. |
 | EARS/repositories and database console | Generated `ears.ts`/`repository.ts`, SDK repositories, Database query/transaction helpers | Existing engine/declared repository ownership remains. No new entity grants or confinement claims. |
 | Content appliers/writers | Generated content runtime and SDK `content/writers.ts`, host apply/registry | Existing entity/writer ownership remains. A4 validates targets through normalized declarations/dependencies; applier execution is not a service grant. |
-| Fixtures, scaffolds and install paths | External-pack repository actions use the baseline; its harness-isolation spec needs host/inference, and shared-engine.spec.ts still imports ambient services. CLI action/service templates use generated Services or provide their own object. Local/URL/GitHub installs converge on verified build/staging before runtime loading. | Migrate those fixtures, preserve mockService behavior through the accepted selection, keep baseline-only scaffolds minimal, and apply the same pre-import host checks regardless of origin. |
+| Fixtures, scaffolds and install paths | External-pack repository actions use the baseline; its harness-isolation spec needs host/inference, and shared-engine.spec.ts now uses the generated facade. CLI action/service templates use generated Services or provide their own object. Local/URL/GitHub installs converge on verified build/staging before runtime loading. | Migrate those fixtures, preserve mockService behavior through the accepted selection, keep baseline-only scaffolds minimal, and apply the same pre-import host checks regardless of origin. |
 | Frontend ports | SDK `fe/settings.ts`, `fe/secrets-client.ts` over the bound window host | Preserve their existing owner/policy and window lifetime. Backend service refs do not expose a new frontend transport. |
 | Direct Node/package access | Default-setup code/library services and external authored JavaScript | Outside this API facade's mediation; security isolation remains separate. |
 
@@ -217,15 +217,17 @@ If retirement cannot be scheduled, the host revokes immediately. Scoped settings
 their owner and policy. Registry-local `serviceOverrides` supplies harness doubles after selection;
 ambient registries cannot supply another registry's service or expand its API set.
 
-A3 route closure still requires A4's removal of supported ambient imports and lifetime-safe action
-logger/emitter attribution, followed by A5's real external runtime acceptance. The default pack now
-explicitly requests all six selected host groups, and the external harness fixture requests inference;
-its mock and shared-engine assertions exercise behavior through the generated facade. The ordinary
-SDK ambient export and actual default-setup ActionService/LLM imports still exist: migrate/remove
-those routes rather than claiming generated filtering closes all supported access. Do not restart the
-A1 syntax or granularity prototype. No real app/external-package run has validated this core checkpoint.
-Use the active goal's execution order and existing catalog/runtime owners. These checkpoints partition
-this workstream; they do not introduce another goal or require a new dependency container.
+A4 service/action checkpoint `bb6df4a45` removes the public ambient SDK service value and migrates
+ActionService/LLM to generated bindings. `PackServiceAccess` carries the selected facade and its
+host-created `servicesForAction` factory through the same binding frame. Attributed logger/emitter
+views preserve selection, caller/provider/host lifetime and `from`/`via`. Root flows capture one factory;
+children inherit it. Retained factories and escaped callbacks refuse after retirement or rebind.
+Harness overrides remain explicit on the registry/test-host owners, with canonical settings policy.
+Actual action/inference/onboarding/reset cases pass; see the
+[action access evidence](../evidence/settings-and-pack-contracts.md#bound-action-access-and-ambient-route-removal-2026-10-17).
+A4 content-target validation and A5 external runtime/template acceptance remain. Migrated CLI harness
+integration paths need a current default build before execution. The recorded B4/B6 marker mutation
+must be reproduced through its writer before another broad run; no passing strict gate is claimed.
 
 | Checkpoint | Concrete output | Closure evidence |
 |---|---|---|

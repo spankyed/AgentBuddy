@@ -68,7 +68,7 @@ so completed implementation is not repeatedly scheduled as new work.
 | Build input/publication and freshness (Phase 3) | B2, B4 and B5 implemented and locally accepted; B1/B3 closure and B6 outstanding | Close remaining native/platform/thread ownership acceptance and converged checks; preserve the common record and four migrated passive consumers. Installed discovery must remain source-free and activation-free. |
 | Entity navigation (Phase 4) | Implemented with local handler/runtime acceptance through `95ff95ab3`, following producer `94148c9e0`, catalog/admission `479c75e01`, routing `cd9c57de6` and feature repair `831221020` | Preserve six-handler, cancellation and stored-message acceptance through final strict validation; retain build/publication and strict-gate acceptance for B6. No further navigation implementation is currently identified. |
 | Frontend boundaries (Phase 5) | Implemented and locally accepted: `713a6c1fd`, including the real external-pack window | Preserve pane/form containment, attributed nonfatal diagnostics and retired-instance refusal through final committed-source strict acceptance. |
-| Consumed APIs (Phase 6) | A1 selection `71f76a41b`; onboarding/admin split `b39c189b8`; A2 foundation/admission `1a0de64fb` / `558b42220`; A3 core binding/filtering/lifetimes `cccc12d5d` implemented | Complete [A3–A5](../plans/declared-capabilities.md#bounded-implementation-checkpoints): close ambient/action routes, migrate real consumers/content, and prove external runtime/template acceptance. Preserve A1's contract, settings policy and EARS behavior. Declaration availability is not executable readiness. Strict checkpoint acceptance remains incomplete as recorded below. |
+| Consumed APIs (Phase 6) | A1 selection `71f76a41b`; onboarding/admin split `b39c189b8`; A2 foundation/admission `1a0de64fb` / `558b42220`; A3 core binding/filtering/lifetimes `cccc12d5d`; A4 service/action routes `bb6df4a45` implemented | Complete [A4–A5](../plans/declared-capabilities.md#bounded-implementation-checkpoints): validate content targets and prove external runtime/template acceptance. Preserve A1's contract, settings policy and EARS behavior. Declaration availability is not executable readiness. Strict checkpoint acceptance remains incomplete as recorded below. |
 | Dependency provenance (Phase 6) | Cache/admission `ff4358588`, inspection and verified-build checkpoints in the evidence record implemented; overall closure partial | Verify exact origin/version/content through reuse and inspection, integrate remaining freshness dependencies, and close the linked acceptance matrix. Do not restart cache/provenance storage. Frozen resolution remains conditional on a distribution requirement. |
 | Shipped-pack replacement (Phase 6) | Substantially implemented: ownership/suppression `03745e1dc`, replace/restore `85a7e955b`, subsequent live-control/source-update checkpoints in the evidence record | Reconcile and close remaining restart/reload, overrides and failure acceptance against landed implementation; implement only identified gaps. Do not restart replacement. |
 | Final review/acceptance (Phase 7) | Outstanding | Audit every phase and reconciled manifest requirement on committed source, run final strict `--all`, record evidence and archive only completed work. |
@@ -451,12 +451,17 @@ retained methods and nested objects, and inference agent methods retain their li
 mock overrides cannot expand the selection or cross registries. The coordinator still owns caller
 retirement after actor cleanup; scheduling failure revokes immediately. See
 [core binding evidence](../evidence/settings-and-pack-contracts.md#selected-service-bindings-2026-10-17).
-Next: close A3's supported-route gap through A4's real consumer migration. Remove remaining ambient
-service imports/exports, pass the accepted facade into ActionService and LLM calls, and preserve action
-logger/emitter labels with the same lifetime guard. Keep Database/admin and onboarding behavior,
-settings policy, harness overrides and EARS semantics. The external fixture is migrated but not yet
-rebuilt/run against this checkpoint. Then complete A5's external runtime/docs/template agreement.
-Do not repeat A1's settled prototype or the 452 passing focused cases merely to restate their status.
+A4 service/action routes are implemented in `bb6df4a45`: the public ambient SDK service value is
+removed, ActionService/LLM use generated bindings, and action logger/emitter views preserve accepted
+selection, lifetime and sender labels. Root flows capture the action factory once; child flows inherit
+it. Scoped settings and registry-owned harness overrides retain their contracts. Actual shipped-pack
+action, inference, onboarding and reset cases pass; see
+[action access evidence](../evidence/settings-and-pack-contracts.md#bound-action-access-and-ambient-route-removal-2026-10-17).
+Next: reproduce the named B4/B6 marker mutation below before another broad run; audit A4 content-target
+validation against normalized declarations/dependencies, then build the current default pack once and
+complete A5 external runtime/template acceptance. Migrated CLI harness integration paths have not yet
+run against this checkpoint. Do not repeat the settled A1 prototype or passing focused checks merely
+to restate their status.
 The single two-core strict run failed preparing the default-pack fork: the build observation for
 `src/__generated__/.inputs-hash` no longer matched, and the chain also invalidated default-setup's
 output stamp. The external fixture's 38 checks and real packaged-authoring author half passed first;
