@@ -32,6 +32,8 @@ jobs:
       - name: Windows compiler job ownership
         run: node .github/scripts/compiler-job-proof.cjs
       - name: Install dependencies
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
         run: npm ci
       - name: Build matching packages
         run: npm run packages:ensure

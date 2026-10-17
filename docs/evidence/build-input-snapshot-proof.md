@@ -2513,7 +2513,11 @@ Native result update: [run 39066744863](https://github.com/spankyed/AgentBuddy/a
 on committed source `519ac2a16` passes the complete `Windows compiler job ownership` step on Windows
 x64 / Node 23.11.1. The source proof runs success, nonzero exit, forced owner cancellation, two live
 replacement owners and forced independent-controller loss; environment/module-policy/Unicode/absence,
-argv/stdio/IPC and no-environment-in-config assertions all pass. The job remains live in dependency
-installation at observation time. Publication and real repeated-build acceptance are not yet proven;
-retrieve full logs after the job is terminal. This closes the helper's native cases, not the complete
-Windows producer/frontend or whole-goal gates.
+argv/stdio/IPC and no-environment-in-config assertions all pass. The job subsequently failed during
+dependency installation: ripgrep's GitHub release API request returned HTTP 403. Full log:
+`/private/tmp/apack-windows-39066744863.log`. Publication and real repeated-build acceptance did not run.
+The focused workflow now supplies `GITHUB_TOKEN` to `npm ci`, matching the main CI. The installed
+`@vscode/ripgrep/lib/postinstall.js` explicitly reads that variable and its downloader supplies it as
+GitHub API authorization. This addresses the missing authentication; the response alone does not
+establish why GitHub refused the unauthenticated request. No dependency, retry or timeout changes.
+This closes the helper's native cases, not the complete Windows producer/frontend or whole-goal gates.

@@ -117,7 +117,9 @@ now travels over a private memory channel directly into `CreateProcessW`, includ
 it is absent from launch files. The native proof checks policy/module-path/Unicode/absent-variable
 preservation. Run `39066744863` on `519ac2a16` now passes that complete native helper proof,
 including forced parent loss and isolated replacement. Its package/publication/repeated-build steps
-are still in progress; the native helper pass does not certify those integrations. See
+did not run: dependency installation failed with a GitHub API 403 downloading ripgrep.
+The focused workflow now supplies the installer's supported `GITHUB_TOKEN`, matching the main CI;
+the native helper pass does not certify the pending integrations. See
 [handoff evidence](../evidence/build-input-snapshot-proof.md#windows-environment-and-final-lifetime-cases-2026-10-17).
 Local types, CLI packaging, POSIX descendant publication, syntax/lint and 53 tooling cases pass.
 Actual repeated-build baseline, build/frontend integration and final strict acceptance remain open.
