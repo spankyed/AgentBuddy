@@ -12,7 +12,8 @@ const { openAppStore } = await import('../../src/runtime/index.ts');
 const { store, engine, packs } = openAppStore();
 const { boundHost } = await import('@apackdev/sdk/runtime/internals');
 const { getAppVersion } = await import('@apackdev/sdk/env');
-const { services } = await import('@apackdev/sdk/services');
+const { createActionEmitter } = await import('@apackdev/sdk/services');
+const { services } = boundHost();
 const { untypedSendToSystem } = await import('@apackdev/sdk/events');
 const { installedEngine, repository } = await import('@apackdev/ears');
 const { registerPack, unregisterPack } = packs;
@@ -32,7 +33,7 @@ describe('the bound app', () => {
     expect(boundHost().ears).toBe(engine.query);
     expect(boundHost().packs).toBe(packs);
     expect(installedEngine()).toBe(engine.query);
-    expect(services.repository).toBe(engine.query.repository);
+    expect(boundHost().ears.repository).toBe(engine.query.repository);
     engine.query.registerRepository('boundQueries', { all: () => [] });
     expect(repository.boundQueries).toBe(engine.query.repository.boundQueries);
   });
@@ -52,8 +53,8 @@ describe('the bound app', () => {
     const incoming: unknown[] = [];
     const stop = rootEvents.onIncoming((event) => { incoming.push(event); });
     try {
-      expect(services.memoService).toBe(memoService);
-      services.emitter.sendToSystem('bound-pack/memos', { type: 'PING' });
+      expect(boundHost().packs.getRegisteredServices().memoService).toBe(memoService);
+      createActionEmitter().sendToSystem('bound-pack/memos', { type: 'PING' });
       untypedSendToSystem('bound-pack/memos', { type: 'PING' });
     } finally {
       stop();

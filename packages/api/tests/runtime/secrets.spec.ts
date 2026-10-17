@@ -42,7 +42,8 @@ const { rootEvents } = await import('../../src/transport/emitter.ts');
 const { createLogger, reportError } = await import('@apackdev/sdk/logger');
 const { originalConsole, initializeLogCapture, restoreConsole } = await import('../../src/adapters/logging.ts');
 const { secretsStore, forwardSecretsChanges } = await import('@apackdev/host/secrets');
-const { services } = await import('@apackdev/sdk/services');
+const { boundHost } = await import('@apackdev/sdk/runtime/internals');
+const { services } = boundHost();
 const { _getSecretsFilePath } = await import('@apackdev/sdk/utils');
 const { setup } = await import('xstate');
 
