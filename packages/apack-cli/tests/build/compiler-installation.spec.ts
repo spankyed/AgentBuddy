@@ -37,6 +37,69 @@ function fixture() {
   } };
 }
 
+function esbuildFixture() {
+  const compiler = fixture();
+  const require = createRequire(import.meta.url);
+  const dependency = path.dirname(require.resolve('esbuild/package.json'));
+  const executable = createRequire(path.join(dependency, 'package.json')).resolve(`@esbuild/${process.platform}-${process.arch}/${process.platform === 'win32' ? 'esbuild.exe' : 'bin/esbuild'}`);
+  const outside = fs.mkdtempSync(path.join(os.tmpdir(), 'apack-external-esbuild-'));
+  roots.push(outside);
+  const file = path.join(outside, path.basename(executable));
+  const bytes = fs.readFileSync(executable);
+  compiler.write('package.json', JSON.stringify({ type: 'module', dependencies: { esbuild: '*' } }));
+  fs.symlinkSync(dependency, path.join(compiler.root, 'node_modules/esbuild'), 'dir');
+  compiler.write('bin/apack.mjs', `import {transformSync} from 'esbuild'; console.log(transformSync('let value = 1', {minify:true}).code.trim());`);
+  const options = { cwd: compiler.root, env: { ESBUILD_BINARY_PATH: path.relative(compiler.root, file) } };
+  const run = (installation: CompilerInstallation) => execFileSync(process.execPath, [installation.bin], {
+    cwd: compiler.root, encoding: 'utf8', timeout: 2_000, env: { ...process.env, ...installation.environment },
+  }).trim();
+  const capture = async () => {
+    const installation = await captureCompilerInstallation(compiler.root, options);
+    installations.push(installation);
+    return installation;
+  };
+  return { ...compiler, options, file, bytes, capture, run };
+}
+
+it('owns a relative external esbuild executable and detects changed selection, bytes and copy damage', async () => {
+  const compiler = esbuildFixture();
+  fs.writeFileSync(compiler.file, compiler.bytes, { mode: 0o755 });
+  const first = await compiler.capture();
+  const same = await compiler.capture();
+  expect(first.hash).toBe(same.hash);
+  expect(first.isCurrent(compiler.root, compiler.options)).toBe(true);
+  expect(compiler.run(first)).toBe('let value=1;');
+  fs.writeFileSync(compiler.file, 'CHANGED');
+  expect(first.isCurrent(compiler.root, compiler.options)).toBe(false);
+  const changed = await compiler.capture();
+  expect(changed.hash).not.toBe(first.hash);
+  expect(compiler.run(first)).toBe('let value=1;');
+  fs.rmSync(compiler.file);
+  expect(compiler.run(first)).toBe('let value=1;');
+  fs.writeFileSync(compiler.file, compiler.bytes, { mode: 0o755 });
+  expect(first.isCurrent(compiler.root, { ...compiler.options, env: {} })).toBe(false);
+  expect(first.isCurrent(compiler.root, compiler.options)).toBe(true);
+  const captured = first.environment.ESBUILD_BINARY_PATH!;
+  fs.chmodSync(captured, 0o755);
+  fs.writeFileSync(captured, 'DAMAGED');
+  expect(first.isCurrent(compiler.root, compiler.options)).toBe(false);
+  fs.chmodSync(path.dirname(captured), 0o755);
+  fs.rmSync(captured);
+  fs.symlinkSync(compiler.file, captured, 'file');
+  expect(first.isCurrent(compiler.root, compiler.options)).toBe(false);
+});
+
+it('keeps the package-native fallback when a missing external override appears after capture', async () => {
+  const compiler = esbuildFixture();
+  const warning = vi.spyOn(console, 'warn').mockImplementation(() => {});
+  const installation = await compiler.capture();
+  expect(warning).toHaveBeenCalledWith(expect.stringContaining('Ignoring bad configuration: ESBUILD_BINARY_PATH='));
+  expect(installation.isCurrent(compiler.root, compiler.options)).toBe(true);
+  fs.writeFileSync(compiler.file, 'LATE INVALID EXECUTABLE', { mode: 0o755 });
+  expect(compiler.run(installation)).toBe('let value=1;');
+  expect(installation.isCurrent(compiler.root, compiler.options)).toBe(false);
+});
+
 it('executes captured nested dependencies after their original files are removed', async () => {
   const compiler = fixture();
   const installation = await compiler.capture();

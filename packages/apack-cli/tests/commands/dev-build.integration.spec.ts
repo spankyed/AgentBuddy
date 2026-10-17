@@ -60,19 +60,25 @@ it('builds with a fresh compiler before attempting to reuse the host', async () 
 it('cancels its build child and disables inherited input reporting without an observer', async () => {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'apack-dev-cancel-'));
   const ready = path.join(root, 'ready.json');
-  const script = path.join(root, 'waiting.mjs');
+  const script = path.join(root, 'bin/waiting.mjs');
   const controller = new AbortController();
   let running: Promise<void> | undefined;
   try {
+    packFixture({ at: root, manifest: { id: 'cancel-build', name: 'Cancel build', features: {} }, files: {} });
+    fs.mkdirSync(path.join(root, 'bin'));
+    fs.mkdirSync(path.join(root, 'dist'));
+    // This fake compiler exercises parent cancellation; real bootstrap admission has its own checks.
+    fs.writeFileSync(path.join(root, 'dist/compiler-startup.cjs'), '');
     fs.writeFileSync(script, `import fs from 'node:fs'; process.on('message', () => {}); fs.writeFileSync(${JSON.stringify(ready)}, JSON.stringify({ pid: process.pid, reporting: process.env.${BUILD_INPUTS_IPC_ENV}, cacheDisabled: process.env.TSX_DISABLE_CACHE }));`);
     const dispose = vi.fn(async () => {
       const { pid } = JSON.parse(fs.readFileSync(ready, 'utf8'));
       expect(() => process.kill(pid, 0)).toThrow();
     });
-    vi.spyOn(compiler, 'captureCompilerInstallation').mockResolvedValue({ bin: script, hash: '0'.repeat(64), inputsFile: path.join(root, 'compiler-inputs.json'), dispose });
+    vi.spyOn(compiler, 'captureCompilerInstallation').mockResolvedValue({ bin: script, hash: '0'.repeat(64), inputsFile: path.join(root, 'compiler-inputs.json'), environment: { ESBUILD_BINARY_PATH: undefined }, isCurrent: () => true, dispose });
     vi.spyOn(checkout, 'ensureCheckoutPackages').mockImplementation(() => {});
     vi.stubEnv(BUILD_INPUTS_IPC_ENV, '1');
     running = runPackBuild(root, { signal: controller.signal });
+    void running.catch(() => {});
     await vi.waitFor(() => expect(fs.existsSync(ready)).toBe(true), { timeout: 2_000 });
     const { pid, reporting, cacheDisabled } = JSON.parse(fs.readFileSync(ready, 'utf8'));
     expect(reporting).toBe('0');

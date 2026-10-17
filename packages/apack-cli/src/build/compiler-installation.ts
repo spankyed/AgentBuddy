@@ -2,6 +2,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { createRequire } from 'node:module';
+import { createHash } from 'node:crypto';
 import { readPackageInputs } from '@apackdev/host/build/package-inputs';
 import { cliPackageDirectory } from './tool-identity.ts';
 
@@ -9,11 +10,40 @@ export interface CompilerInstallation {
   readonly bin: string;
   readonly hash: string;
   readonly inputsFile: string;
+  readonly environment: Readonly<Pick<NodeJS.ProcessEnv, 'ESBUILD_BINARY_PATH'>>;
+  isCurrent(directory: string, options?: CompilerInstallationOptions): boolean;
   dispose(): Promise<void>;
 }
 
-export function compilerInstallationHash(directory: string): string {
+interface CompilerInstallationOptions {
+  cwd?: string;
+  env?: NodeJS.ProcessEnv;
+}
+
+function compilerPackagesHash(directory: string): string {
   return readPackageInputs([{ id: 'compiler', directory, contents: true }]).hash;
+}
+
+function readEsbuildExecutable({ cwd = process.cwd(), env = process.env }: CompilerInstallationOptions) {
+  const value = env.ESBUILD_BINARY_PATH;
+  // esbuild deliberately ignores this system path, even when it exists.
+  if (!value || value === '/usr/bin/esbuild') return;
+  const file = path.resolve(cwd, value);
+  try {
+    const source = fs.realpathSync(file);
+    const stat = fs.statSync(source);
+    if (!stat.isFile()) throw new Error(`esbuild executable is not a file: ${file}`);
+    return { kind: 'file' as const, file, source, mode: stat.mode & 0o777, bytes: fs.readFileSync(source) };
+  } catch (error) {
+    if (!['ENOENT', 'ENOTDIR'].includes((error as NodeJS.ErrnoException).code ?? '')) throw error;
+    return { kind: 'missing' as const, file };
+  }
+}
+
+function executableIdentity(root: string, executable: ReturnType<typeof readEsbuildExecutable>) {
+  if (!executable) return null;
+  return [path.relative(root, executable.file), executable.kind === 'missing' ? null
+    : [path.relative(root, executable.source), executable.mode & 0o111, createHash('sha256').update(executable.bytes).digest('hex')]];
 }
 
 /** A checkout builds the same distributable worker that an installed CLI runs. */
@@ -26,7 +56,8 @@ export function compilerPackageDirectory(root = cliPackageDirectory()): string {
 }
 
 /** Capture before startup: normal Node loading reads private copies, never mutable compiler originals. */
-export async function captureCompilerInstallation(directory = compilerPackageDirectory()): Promise<CompilerInstallation> {
+export async function captureCompilerInstallation(directory = compilerPackageDirectory(), options: CompilerInstallationOptions = {}): Promise<CompilerInstallation> {
+  directory = fs.realpathSync(directory);
   const temporary = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'apack-compiler-')));
   const paths = new Map<string, string>();
   const capturedPath = (source: string) => {
@@ -53,21 +84,29 @@ export async function captureCompilerInstallation(directory = compilerPackageDir
     }
   };
   try {
-    const inputs = readPackageInputs([{ id: 'compiler', directory, contents: true }], {
-      onFile({ source, mode, hash }, bytes) {
-        const identity = `${mode}:${hash}`;
-        const previous = copied.get(source);
-        if (previous !== undefined) {
-          if (previous !== identity) throw new Error(`Compiler input changed during capture: ${source}`);
-          return;
-        }
-        const target = capturedPath(source);
-        mkdir(path.dirname(target));
-        fs.writeFileSync(target, bytes, { flag: 'wx', mode: mode & ~0o222 });
-        fs.chmodSync(target, mode & ~0o222);
-        copied.set(source, identity);
-      },
-    });
+    const copy = ({ source, mode, hash }: { source: string; mode: number; hash: string }, bytes: Buffer) => {
+      const identity = `${mode}:${hash}`;
+      const previous = copied.get(source);
+      if (previous !== undefined) {
+        if (previous !== identity) throw new Error(`Compiler input changed during capture: ${source}`);
+        return;
+      }
+      const target = capturedPath(source);
+      mkdir(path.dirname(target));
+      fs.writeFileSync(target, bytes, { flag: 'wx', mode: mode & ~0o222 });
+      fs.chmodSync(target, mode & ~0o222);
+      copied.set(source, identity);
+    };
+    const inputs = readPackageInputs([{ id: 'compiler', directory, contents: true }], { onFile: copy });
+    const executable = readEsbuildExecutable(options);
+    const executableId = JSON.stringify(executableIdentity(directory, executable));
+    if (executable?.kind === 'file') {
+      copy({ source: executable.source, mode: executable.mode,
+        hash: createHash('sha256').update(executable.bytes).digest('hex') }, executable.bytes);
+    } else if (executable) {
+      console.warn(`[esbuild] Ignoring bad configuration: ESBUILD_BINARY_PATH=${(options.env ?? process.env).ESBUILD_BINARY_PATH}`);
+    }
+    const environment = Object.freeze({ ESBUILD_BINARY_PATH: executable?.kind === 'file' ? capturedPath(executable.source) : undefined });
     const links = new Map<string, string>();
     const addLink = (source: string, target: string) => {
       if (source === target) return;
@@ -108,13 +147,29 @@ export async function captureCompilerInstallation(directory = compilerPackageDir
     if (verified.hash !== inputs.hash || verified.nodes.some(node => !node.directory.startsWith(`${temporary}${path.sep}`))) {
       throw new Error('Captured compiler installation differs from its inputs');
     }
+    const hash = createHash('sha256').update(JSON.stringify([inputs.hash, executableId])).digest('hex');
     const inputsFile = path.join(temporary, 'compiler-inputs.json');
-    fs.writeFileSync(inputsFile, JSON.stringify({ hash: inputs.hash,
+    fs.writeFileSync(inputsFile, JSON.stringify({ hash,
       packages: inputs.nodes.map(node => capturedPath(node.directory)),
       paths: [...paths].map(([captured, source]) => ({ captured, source })),
     }), { flag: 'wx', mode: 0o400 });
     for (const directory of directories) fs.chmodSync(directory, directory === temporary ? 0o500 : 0o555);
-    return { bin: path.join(root, 'bin/apack.mjs'), hash: inputs.hash, inputsFile, dispose };
+    const executableCurrent = () => {
+      if (executable?.kind !== 'file') return true;
+      const file = environment.ESBUILD_BINARY_PATH!;
+      const stat = fs.lstatSync(file, { throwIfNoEntry: false });
+      return !!stat?.isFile() && (stat.mode & 0o111) === (executable.mode & 0o111)
+        && fs.readFileSync(file).equals(executable.bytes);
+    };
+    if (!executableCurrent()) throw new Error('Captured esbuild executable differs from its input');
+    return { bin: path.join(root, 'bin/apack.mjs'), hash, inputsFile, environment, dispose,
+      isCurrent(source, options = {}) {
+        return fs.realpathSync(source) === directory
+          && executableId === JSON.stringify(executableIdentity(directory, readEsbuildExecutable(options)))
+          && executableCurrent() && fs.existsSync(root)
+          && compilerPackagesHash(source) === inputs.hash && compilerPackagesHash(root) === inputs.hash;
+      },
+    };
   } catch (error) {
     await dispose();
     throw error;

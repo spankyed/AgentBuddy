@@ -5,7 +5,7 @@ import os from 'node:os';
 import { spawn } from 'node:child_process';
 import { COMPILER_PROCESS_GROUP_ENV, stopCompilerProcessGroup } from './compiler-process-group.ts';
 import { checkoutFor, ensureCheckoutPackages } from './checkout-packages.ts';
-import { captureCompilerInstallation, compilerInstallationHash, compilerPackageDirectory, type CompilerInstallation } from './compiler-installation.ts';
+import { captureCompilerInstallation, compilerPackageDirectory, type CompilerInstallation } from './compiler-installation.ts';
 import { cliPackageDirectory } from './tool-identity.ts';
 import { compilationConditions } from './compilation-inputs.ts';
 import { compilerStartupOptions, COMPILER_NODE_OPTIONS_ENV } from './compiler-startup-options.ts';
@@ -32,7 +32,6 @@ export interface PackBuilder {
 /** One pack owns its compiler copy; every build gets a fresh process and live input checks. */
 export function createPackBuilder(root: string): PackBuilder {
   let compiler: CompilerInstallation | undefined;
-  let sourceDirectory: string | undefined;
   let active = Promise.resolve();
   let stopping: Promise<void> | undefined;
   const stopped = new AbortController();
@@ -46,11 +45,9 @@ export function createPackBuilder(root: string): PackBuilder {
         const cli = cliPackageDirectory();
         if (checkoutFor(cli) !== checkoutFor(root)) ensureCheckoutPackages(cli);
         const directory = compilerPackageDirectory();
-        if (!compiler || sourceDirectory !== directory || compiler.hash !== compilerInstallationHash(directory)
-          || compiler.hash !== compilerInstallationHash(path.dirname(path.dirname(compiler.bin)))) {
+        if (!compiler?.isCurrent(directory, { cwd: root })) {
           const previous = compiler;
-          compiler = await captureCompilerInstallation(directory);
-          sourceDirectory = directory;
+          compiler = await captureCompilerInstallation(directory, { cwd: root });
           await previous?.dispose();
         }
         options.signal.throwIfAborted();
@@ -101,7 +98,7 @@ async function buildWithCompiler(root: string, compiler: CompilerInstallation, {
       ], {
         cwd: root, stdio: ['ignore', 'inherit', 'inherit', 'ipc'], signal, detached: grouped,
         // Transform with this captured compiler, rather than reuse another installation's tsx cache.
-        env: { ...process.env, [COMPILER_PROCESS_GROUP_ENV]: grouped ? '1' : undefined, TSX_DISABLE_CACHE: '1', APACK_BUILD_WORKER: '1', [COMPILER_INPUTS_ENV]: compiler.inputsFile,
+        env: { ...process.env, ...compiler.environment, [COMPILER_PROCESS_GROUP_ENV]: grouped ? '1' : undefined, TSX_DISABLE_CACHE: '1', APACK_BUILD_WORKER: '1', [COMPILER_INPUTS_ENV]: compiler.inputsFile,
           [BUILD_INPUTS_DIRECTORY_ENV]: inputsDirectory,
           [BUILD_INPUTS_IPC_ENV]: onInputs ? '1' : '0', [COMPILER_NODE_OPTIONS_ENV]: nodeOptions.user,
           NODE_OPTIONS: nodeOptions.worker, ELECTRON_RUN_AS_NODE: '1' },

@@ -4,6 +4,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { execFileSync, fork, spawn, type ChildProcess } from 'node:child_process';
+import { createRequire } from 'node:module';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { packFixture } from '@apackdev/sdk/testing/pack-fixture';
 import { REPO_ROOT } from '@apackdev/host/build/packages-built';
@@ -113,8 +114,22 @@ it('captures native launch identity and authored/dependency bytes before user pr
 });
 
 it('uses the captured compiler and retains unchanged build/cache identity on repeat builds', async () => {
+  const require = createRequire(import.meta.url);
+  const esbuild = createRequire(require.resolve('esbuild/package.json'));
+  const binary = esbuild.resolve(`@esbuild/${process.platform}-${process.arch}/${process.platform === 'win32' ? 'esbuild.exe' : 'bin/esbuild'}`);
+  const outside = fs.mkdtempSync(path.join(os.tmpdir(), 'apack-worker-executable-'));
+  roots.push(outside);
+  const executable = path.join(outside, path.basename(binary));
+  fs.copyFileSync(binary, executable);
+  vi.stubEnv('ESBUILD_BINARY_PATH', executable);
   const root = fixture({
-    'src/compiler.cjs': `module.exports = () => [{entity: 'Relation', name: 'Paths', source: __filename, directory: __dirname}];`,
+    'src/compiler.cjs': `module.exports = () => {
+      const fs = require('node:fs');
+      const executable = process.env.ESBUILD_BINARY_PATH;
+      if (!executable || executable === ${JSON.stringify(executable)} || !fs.existsSync(executable)
+        || (fs.statSync(executable).mode & 0o222)) throw new Error('Compiler did not receive its owned executable');
+      return [{entity: 'Relation', name: 'Paths', source: __filename, directory: __dirname}];
+    };`,
     'src/value.txt': 'OWNED',
   }, { formats: { rows: { compiler: 'src/compiler.cjs', entity: 'Relation', identity: ['name'] } },
     sources: { rows: { path: 'src/value.txt', format: 'rows' } } });
