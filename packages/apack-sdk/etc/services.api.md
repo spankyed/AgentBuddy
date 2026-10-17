@@ -74,7 +74,7 @@ export function _createInferenceService(resolveModel: _ResolveModel): InferenceS
 // @internal
 export function _createPackServices(): {
     settingsHandle: <T>(target: SettingsTarget) => SettingsHandle<T>;
-    services: HostServices & Record<string, unknown>;
+    readonly services: HostServices & Record<string, unknown>;
     bindSettings(settings: SettingsService): () => void;
 };
 

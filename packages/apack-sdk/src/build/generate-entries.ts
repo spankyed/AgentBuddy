@@ -1704,8 +1704,17 @@ export type PackEmitter = Omit<HostServices['emitter'], 'broadcastToPlugin' | 's
 export type Services = typeof featureServices & Omit<HostServices, 'repository' | 'emitter'> & { repository: Repositories; emitter: PackEmitter }${deps.aliases.map(a => ` & Omit<${a}, 'repository' | 'emitter'>`).join('')};
 
 /** The host's services proxy, typed with this pack's feature services. */
-export const bindSettings = runtimeServices.bindSettings;
-export const services = runtimeServices.services as unknown as Services;
+export let services = runtimeServices.services as unknown as Services;
+
+/** Rebinding publishes a fresh facade; retained roots keep their retired lifetime. */
+export function bindSettings(settings: HostServices['settings']): () => void {
+  const dispose = runtimeServices.bindSettings(settings);
+  services = runtimeServices.services as unknown as Services;
+  return () => {
+    try { dispose(); }
+    finally { services = runtimeServices.services as unknown as Services; }
+  };
+}
 export type Z = typeof z;
 export type EntityId = EARS.EntityId;
 `;

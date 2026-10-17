@@ -412,6 +412,7 @@ describe('registered settings authority', () => {
     packs.registerPack({ id: 'caller-pack', bindSettings: generated.bindSettings,
       features: { widget: { settings: { defaults: { count: 1 }, schema: { type: 'object' } } } } });
 
+    const retained = generated.services;
     expect(scoped).toHaveBeenCalledWith('caller-pack');
     expect(generated.services.settings.get(target)).toEqual({ count: 1 });
     generated.services.settings.set(target, ['count'], 2);
@@ -420,6 +421,14 @@ describe('registered settings authority', () => {
 
     expect(() => generated.services.settings.set(target, ['count'], 3)).toThrow('until the host accepts');
     expect(admin.getOverrides()).toEqual({ features: { 'caller-pack/widget': { count: 2 } } });
+    expect(() => retained.settings.get(target)).toThrow('revoked');
+    packs.registerPack({ id: 'caller-pack', bindSettings: generated.bindSettings,
+      features: { widget: { settings: { defaults: { count: 1 }, schema: { type: 'object' } } } } });
+    expect(generated.services === retained).toBe(false);
+    expect(generated.services.settings.get(target)).toEqual({ count: 2 });
+    expect(() => retained.settings.set(target, ['count'], 3)).toThrow('revoked');
+    expect(() => Reflect.has(retained, 'settings')).toThrow('revoked');
+    packs.unregisterPack('caller-pack');
   });
 
   it('enforces dependency and owner policies through the injected runtime service', () => {

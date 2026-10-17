@@ -400,3 +400,49 @@ it('preserves prototype-like entity wires in generated registrations and typed/u
     bundle: true, platform: 'node', format: 'esm', external: ['@apackdev/sdk/*', '@apackdev/ears'] });
   expect(() => execFileSync(process.execPath, ['--import', 'tsx', outfile], { stdio: 'pipe' })).not.toThrow();
 });
+
+it('keeps retained backend service roots retired across rebind and failed cleanup', async () => {
+  const files = await generatePackFiles(manifest({}), { packRoot: root });
+  write('src/probe.ts', `
+    import type { SettingsService } from '@apackdev/sdk/services';
+    import { services, bindSettings } from './__generated__/services.ts';
+    let cleanupFails = false;
+    const settings: SettingsService = {
+      get: <T,>() => ({ count: 10 } as T), set() {}, reset() {},
+      onChange: () => () => { if (cleanupFails) throw new Error('Cleanup failed'); },
+    };
+    function retired(root: typeof services) {
+      try { root.settings.get({ kind: 'app' }); }
+      catch (error) { if (String(error).includes('revoked')) return; throw error; }
+      throw new Error('Retained root was revived');
+    }
+    const first = services;
+    const dispose = bindSettings(settings);
+    if (first !== services) throw new Error('Initial binding lost its constructed frame');
+    if (services.settings.get<{ count: number }>({ kind: 'app' }).count !== 10) throw new Error('Missing bound settings');
+    dispose();
+    if (first === services) throw new Error('Disposal retained the old root');
+    retired(first);
+    const second = services;
+    const disposeSecond = bindSettings(settings);
+    retired(first);
+    services.settings.onChange(() => {});
+    cleanupFails = true;
+    let failed = false;
+    try { disposeSecond(); } catch { failed = true; }
+    if (!failed) throw new Error('Cleanup error was swallowed');
+    if (second === services) throw new Error('Failed cleanup retained the old export');
+    retired(second);
+    cleanupFails = false;
+    const disposeThird = bindSettings(settings);
+    retired(first);
+    retired(second);
+    if (services.settings.get<{ count: number }>({ kind: 'app' }).count !== 10) throw new Error('Rebind did not publish a fresh root');
+    disposeThird();
+  `);
+  expect(typecheck(files, ['src/probe.ts'])).toEqual([]);
+  const outfile = path.join(root, 'probe.mjs');
+  buildSync({ entryPoints: [path.join(root, 'src/probe.ts')], outfile,
+    bundle: true, platform: 'node', format: 'esm', external: ['@apackdev/sdk/*'] });
+  expect(() => execFileSync(process.execPath, ['--import', 'tsx', outfile], { stdio: 'pipe' })).not.toThrow();
+});

@@ -224,8 +224,11 @@ export function _createPackServices() {
     let source: SettingsService | undefined;
     let revoked = false;
     const subscriptions = new Set<() => void>();
-    const accepted = (): SettingsService => {
+    const assertLive = () => {
       if (revoked) throw new Error('Pack settings binding has been revoked');
+    };
+    const accepted = (): SettingsService => {
+      assertLive();
       if (!source) throw new Error('Pack settings are unavailable until the host accepts this runtime');
       return source;
     };
@@ -240,9 +243,25 @@ export function _createPackServices() {
         return unsubscribe;
       },
     };
+    const facade = new Proxy({} as HostServices & Record<string, unknown>, {
+      get(_, key) {
+        assertLive();
+        if (key !== 'settings') return Reflect.get(services, key);
+        accepted();
+        return service;
+      },
+      ownKeys() { assertLive(); return Reflect.ownKeys(services); },
+      has(_, key) { assertLive(); return key === 'settings' || Reflect.getOwnPropertyDescriptor(services, key) !== undefined; },
+      getOwnPropertyDescriptor(_, key) {
+        assertLive();
+        if (key !== 'settings') return Reflect.getOwnPropertyDescriptor(services, key);
+        accepted();
+        return { configurable: true, enumerable: true, value: service };
+      },
+    });
     return {
       service,
-      accepted,
+      facade,
       bind(settings: SettingsService) {
         if (source) throw new Error('Pack settings are already bound');
         source = settings;
@@ -258,20 +277,10 @@ export function _createPackServices() {
     };
   };
   let binding = createBinding();
-  const current = (): SettingsService => {
-    binding.accepted();
-    return binding.service;
-  };
   return {
-    // Construction can precede acceptance; every operation belongs to this one binding lifetime.
+    // Handles and root views retain the binding frame in which they were constructed.
     settingsHandle: <T>(target: SettingsTarget) => _settingsHandle<T>(target, binding.service),
-    services: new Proxy({} as HostServices & Record<string, unknown>, {
-      get(_, key) { return key === 'settings' ? current() : Reflect.get(services, key); },
-      ownKeys: () => Reflect.ownKeys(services),
-      getOwnPropertyDescriptor(_, key) {
-        return key === 'settings' ? { configurable: true, enumerable: true, value: current() } : Reflect.getOwnPropertyDescriptor(services, key);
-      },
-    }),
+    get services() { return binding.facade; },
     bindSettings(settings: SettingsService): () => void {
       const accepted = binding;
       accepted.bind(settings);

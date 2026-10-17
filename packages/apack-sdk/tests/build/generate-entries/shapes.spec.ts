@@ -258,7 +258,7 @@ describe('generated services', () => {
     expect(services).toContain("import { servicesService as __service_services } from '../services.ts';");
     expect(services).toContain('  services: __service_services,');
     expect(services).toContain("import { runtimeServices } from './runtime-services.ts'");
-    expect(services).toContain('export const bindSettings = runtimeServices.bindSettings');
+    expect(services).toContain("export function bindSettings(settings: HostServices['settings'])");
   });
 
   it('imports pack-level services the same way', async () => {
