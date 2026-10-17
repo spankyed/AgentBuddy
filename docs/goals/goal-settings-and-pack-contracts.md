@@ -119,7 +119,7 @@ arbitrary external native capture and native I/O are excluded by that explicit a
 
 | Item | Current evidence | Required closure |
 |---|---|---|
-| Absolute external-library loading | A real addon executes the original external library; changing it does not invalidate freshness. Package-relative capture in `6710e3026` does not fix this. The [search-path prototype](../evidence/build-input-snapshot-proof.md#external-native-library-search-path-prototype-2026-10-17) rejects a tempting shortcut: two distinct absolute libraries with the same basename collapse to one captured library. Exact identity must remain preserved. | Implement the approved bounded contract through the existing compiler owners. Refuse identifiable outside-library dependencies; preserve captured package-relative and OS loading. Prove the known counterexample refuses before native initialization, public-build incumbent retention, transitive cases and startup/thread/Vite path coverage. Static inspection is not universal native-I/O detection. |
+| Absolute external-library loading | A real addon executes the original external library; changing it does not invalidate freshness. Package-relative capture in `6710e3026` does not fix this. The [search-path prototype](../evidence/build-input-snapshot-proof.md#external-native-library-search-path-prototype-2026-10-17) rejects a tempting shortcut: two distinct absolute libraries with the same basename collapse to one captured library. Exact identity must remain preserved. `cc186a0d0` implements selected macOS module admission with direct/transitive pre-initialization refusal and captured relative-loading proof. | Implement the approved bounded contract through the existing compiler owners. Refuse identifiable outside-library dependencies; preserve captured package-relative and OS loading. Prove the known counterexample refuses before native initialization, public-build incumbent retention, transitive cases and startup/thread/Vite path coverage. Static inspection is not universal native-I/O detection. |
 | Native/background lifetime | The [finite resource audit](../evidence/build-input-snapshot-proof.md#remaining-resource-lifetime-audit-2026-10-17) reconciles local loader, JS worker, process-group, Vite and installation ownership with existing proof. Windows build/frontend branches have no descendant-lifetime owner; their background-child acceptance is skipped. | Preserve accepted macOS cases. Prototype and implement Windows lifetime ownership, then prove success/failure/cancellation/parent-loss/replacement on Windows CI, selected after the user delegated the runner decision. Prepare targeted CI coverage locally; do not push or trigger release workflows. Native execution remains unverified until CI runs the committed source. Linux runtime acceptance remains unverified. Do not substitute PID-only termination, mocked calls or a new general resource framework for this missing platform guarantee. |
 | Platform coverage | Release/build configuration establishes targets, not acceptance of compiler capture or cleanup guarantees. | Record exact OS/architecture/runtime combinations, relevant cases and results. Mark missing evidence as unverified, not broken or implicitly unsupported. |
 
@@ -528,8 +528,13 @@ bundled-UI editor case and all four normal fork launch/restart/removal/restorati
 `/private/tmp/apack-editor-checkpoint-external-app.log`. See
 [current app evidence](../evidence/settings-and-pack-contracts.md#refreshed-external-app-and-normal-fork-acceptance-2026-10-17).
 This is current local app convergence, not a whole strict-gate pass. Keep B1/B3 native/platform
-requirements and the final committed-source strict `--all` open. The proposed native boundary remains
-unapproved; a pending user question does not change the full capture requirement.
+requirements and the final committed-source strict `--all` open. The user subsequently approved bounded
+native support in `711565757`. `cc186a0d0` enforces declared outside-library refusal for selected macOS
+compiler modules, preserving real captured relative loading, JavaScript exports fallback and repeated
+refusal. See [native checkpoint evidence](../evidence/build-input-snapshot-proof.md#bounded-macos-module-library-admission-2026-10-17).
+Startup/thread/Vite, ELF/PE and public-build acceptance remain required within that approved boundary.
+Windows validation is prepared through the existing manual CI dispatch (`6fb4d9bcb`); pushing this
+branch is still awaiting permission. No Windows execution or descendant-lifetime acceptance is claimed.
 The single two-core strict run failed preparing the default-pack fork: the build observation for
 `src/__generated__/.inputs-hash` no longer matched, and the chain also invalidated default-setup's
 output stamp. The external fixture's 38 checks and real packaged-authoring author half passed first;

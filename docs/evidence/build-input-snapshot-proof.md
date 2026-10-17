@@ -1694,3 +1694,52 @@ It does not prove exact per-image rebinding impossible or establish capture of t
 loads or native file I/O. Those would require their own demonstrated design, not a broad claim from
 this prototype. Full external-library capture remains open; the proposed bounded support policy is
 still unapproved. No product loader interception, scanner, binary rewriting or new dependency is added.
+
+## Bounded macOS module-library admission (2026-10-17)
+
+The user approved captured package-contained and OS library support with refusal of identifiable
+outside dependencies (`711565757`). Source `cc186a0d0` adds dependency-free Mach-O inspection to
+selected absolute native images in the existing `CompilationInputs.prepareNative` path. It reads
+captured bytes, distinguishes dependency commands from `LC_ID_DYLIB`, selects the current architecture
+from universal images, and checks transitive loader-relative libraries and ordered rpaths. Absolute
+references back to live original-package libraries are unsupported too; package containment alone
+cannot turn that original path into captured loading. No binary rewriting or loader search override
+is introduced, and developer `clang`/headers remain test requirements only.
+
+Namespace preparation must not reject an unused native main when package exports select JavaScript.
+The policy therefore runs for selected images, outside the lookup-cache short circuit. Failed loads
+retain observed inputs in the same read owner; repeated attempts cannot bypass refusal. Tests cover
+an actual JavaScript exports fallback followed by two refused loads of the native entry.
+
+Focused evidence:
+
+- Three real macOS ARM64 / Node 23.11.1 addon cases pass in 26.73s: captured relative loading retains
+  value 11 after the original library changes; direct and transitive outside references refuse before
+  addon initialization or OS loading. `/private/tmp/apack-native-boundary-real.log`.
+- 29 existing captured module/read-tree checks and 12 initial binary/policy cases pass together.
+  The final ordered-rpath refinement adds a thirteenth policy case; all 13 pass separately. The real
+  fixture uses literal loader-relative paths; the added rpath ordering branch is covered by this final
+  policy run. Logs: `/private/tmp/apack-native-boundary-unit.log`,
+  `/private/tmp/apack-native-boundary-unit-final.log`.
+- An isolated Vitest module mock disables only the new checker. The real absolute-reference case then
+  fails because the native import resolves instead of refusing. Production source is never mutated.
+  `/private/tmp/apack-native-boundary-mutation.log` and the retained config path in
+  `/private/tmp/apack-native-mutation-config.txt`.
+- All 53 subprocess-inventory/timeout checks pass; CLI and scripts/repo/publish/E2E types, correctness
+  lint and whitespace checks pass. Logs: `/private/tmp/apack-native-boundary-tooling.log`,
+  `/private/tmp/apack-native-boundary-types.log`, `/private/tmp/apack-native-boundary-tooling-types.log`,
+  `/private/tmp/apack-native-boundary-lint.log`.
+
+This accepts the selected-module slice, not every native path. Early preloads, thread and Vite/compiler
+initialization, inherited loader environment, unresolved name searches and computed native loading
+still need the bounded-contract audit. ELF/PE implementation/native acceptance, public-build incumbent
+retention and the final strict gate remain open. Static declarations cannot establish confinement of
+arbitrary native I/O. The owning goal retains those requirements within the approved boundary.
+
+Windows CI preparation: `26832d633` adds a manual tests-only Windows baseline; `6fb4d9bcb` exposes it
+as `ci.yml`'s `compiler_windows` dispatch input using a same-commit reusable workflow. Full manual CI
+remains the default, automatic triggers remain disabled, and Windows repository permissions are read
+only. This avoids relying on registration of a new dispatch workflow on the default branch; see
+[GitHub's manual workflow rules](https://docs.github.com/en/actions/how-tos/manage-workflow-runs/manually-run-a-workflow).
+YAML and dispatch-routing assertions pass locally. Push permission is pending; no run is claimed.
+Existing Windows test skips do not establish the still-missing descendant-lifetime owner.

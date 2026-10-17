@@ -41,8 +41,11 @@ default-fork preparation and drive use the common record; see the
 `caf57cb0e` repairs compiler-specific generation-cache ownership without weakening generated-byte
 validation. These implemented owners must not be scheduled again as new designs.
 
-B1/B3 absolute external-library and platform/resource-lifetime requirements remain open, as does
-converged B6/final acceptance. The [live ledger](../goals/goal-settings-and-pack-contracts.md#live-execution-ledger-reconciled-2026-10-16)
+The user approved B1's bounded native contract on 2026-10-17: captured package-contained and OS
+libraries, with refusal of identifiable outside dependencies. `cc186a0d0` implements selected macOS
+module admission; [native checkpoint evidence](../evidence/build-input-snapshot-proof.md#bounded-macos-module-library-admission-2026-10-17)
+records its actual addon/refusal proof and remaining startup/thread/Vite, ELF/PE and public-build cases.
+B1/B3 completion and platform/resource-lifetime requirements remain open, as does converged B6/final acceptance. The [live ledger](../goals/goal-settings-and-pack-contracts.md#live-execution-ledger-reconciled-2026-10-16)
 owns their finite closure register and next actions. Installed/offline discovery continues to require
 neither authored sources nor compiler activation. Independent readers may advance without dropping
 unfinished producer requirements.
