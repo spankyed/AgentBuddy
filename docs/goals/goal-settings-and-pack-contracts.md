@@ -102,6 +102,11 @@ jobs skipped. Follow this run rather than dispatching a duplicate. Preserve requ
 than silently skipping it. No security settings or
 system databases were changed by this session. See [incident evidence](../evidence/build-input-snapshot-proof.md#macos-launch-policy-investigation-2026-10-17).
 
+Source `0275df801` adds the real retained Vite ESM preload/custom-loader/transitive-resolution case.
+CLI types, focused lint and workflow checks pass; runtime acceptance is queued as run `39079253353`
+behind the existing macOS batch. It selects only that new case, leaving the prior run intact. Do not
+claim the loader gap closed until this execution passes; no production capture change is assumed.
+
 **Current handoff:** source `ccaa809a8` delivers retained frontend native discoveries into live watch
 subscriptions and retains failed-candidate probes for repair. Native copies and receipts belong to the
 whole frontend process, so late workers reuse admitted bytes after the original library changes.

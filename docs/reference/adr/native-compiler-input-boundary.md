@@ -72,11 +72,14 @@ Implement in bounded checkpoints:
    for supported copies, transitive loading, cancellation and watch recovery. Reuse existing fixtures.
    Record native platform acceptance separately; synthetic headers are parser checks, not OS acceptance.
 
-Windows CI is the selected native verification target following the user's request to decide the runner
-approach. On 2026-10-17 the user authorized branch pushes and focused Windows CI, and pushed the
-checkpoint. Release workflows remain prohibited. The first run failed during package preparation before
-tests; Windows acceptance still requires a passing run of the committed source.
-Do not replace the missing descendant-lifetime owner with a PID-only tree-kill command.
+The user authorized branch pushes and focused Windows CI on 2026-10-17. Windows run `39075394015`,
+attempt 2, passes on `4b4d820fa`, including the shared build/frontend Job Object owner, native launcher
+lifetime matrix, descendant cancellation/replacement and repeated-build acceptance. This establishes
+process ownership on that source, not PE library admission. macOS compiler/native batches now use a
+disposable hosted runner following the daily-use machine's launch incident; causation remains unproven.
+See the [current acceptance evidence](../../evidence/build-input-snapshot-proof.md#recovery-windows-acceptance-and-isolated-macos-execution-2026-10-17).
+Release workflows remain prohibited. Preserve the common process owner rather than replacing it with
+PID-only termination.
 
 The contract approval does not close these implementation or validation checkpoints. Linux support and
 all required final gates remain owned by the goal.
