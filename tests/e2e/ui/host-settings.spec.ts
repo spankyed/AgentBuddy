@@ -170,6 +170,7 @@ test('shortcut drafts follow another window and preserve the global flag', async
 test('cold Monaco documents follow source-free declarations and share worker libraries', async ({ appPage, hostOnlyData }) => {
   const { packsDir, installedPacksFile } = resolveAppEnvironment({ env: 'test', userDataDir: hostOnlyData });
   const directory = path.join(packsDir, 'cold-editor');
+  const activationMarker = path.join(hostOnlyData, 'cold-editor-activated');
   const manifest: PackManifest = { id: 'cold-editor', name: 'Cold editor', version: '1.0.0',
     extensions: { dsl: { cold: { entry: 'src/defs/cold.ts', prefix: 'cold:', targets: ['monaco'], globals: { lateMemo: '_dsl.Item' } } } },
   };
@@ -179,7 +180,8 @@ test('cold Monaco documents follow source-free declarations and share worker lib
     if (field) {
       fs.mkdirSync(path.join(directory, 'types'), { recursive: true });
       fs.mkdirSync(path.join(directory, 'runtime'), { recursive: true });
-      fs.writeFileSync(path.join(directory, PACK_LAYOUT.runtimeEntry), 'throw new Error("Disabled DSL discovery activated runtime");');
+      fs.writeFileSync(path.join(directory, PACK_LAYOUT.runtimeEntry),
+        `require('node:fs').writeFileSync(${JSON.stringify(activationMarker)}, 'activated'); throw new Error("Disabled DSL discovery activated runtime");`);
       fs.writeFileSync(path.join(directory, PACK_LAYOUT.snapshot), JSON.stringify({ manifest,
         declarationRevision: _declarationRevision(manifest), format: PACK_SNAPSHOT_FORMAT,
         types: { entities: {}, relKinds: {} }, entityDestinations: {}, eventContracts: {}, facades: {},
@@ -251,6 +253,7 @@ test('cold Monaco documents follow source-free declarations and share worker lib
     publish(); await refresh();
     await expect.poll(() => mounted.evaluate(value => value.diagnostics(1))).toContain(2304);
     expect(await mounted.evaluate(value => value.completions(1))).not.toContain('after');
+    expect(fs.existsSync(activationMarker)).toBe(false);
   } finally {
     await mounted.evaluate(({ editors }) => { for (const entry of editors) { if (entry.root.isConnected) entry.component.unmount(); entry.root.remove(); } });
     await mounted.dispose(); publish(); await refresh();
