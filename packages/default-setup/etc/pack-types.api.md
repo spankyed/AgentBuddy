@@ -1382,6 +1382,7 @@ type ClaudePromptEdit = Omit<ClaudeUiPromptEdit, 'client_id' | 'surface'> & {
 interface ClaudePromptHost {
     read(signal: AbortSignal, expiresAt: number): Promise<ClaudePromptHostBox | undefined>;
     fill(input: ClaudePromptHostFill, signal: AbortSignal, expiresAt: number): Promise<boolean>;
+    suggest?(text: string, signal: AbortSignal, expiresAt: number): Promise<boolean>;
 }
 
 type ClaudePromptHostBox = z.infer<typeof box>;
@@ -1397,6 +1398,9 @@ type ClaudePromptHostRequest = {
 } | {
     kind: 'fill';
     input: ClaudePromptHostFill;
+} | {
+    kind: 'suggest';
+    text: string;
 });
 
 type ClaudePromptHostResponse = {
@@ -1407,6 +1411,9 @@ type ClaudePromptHostResponse = {
 } | {
     kind: 'fill';
     filled: boolean;
+} | {
+    kind: 'suggest';
+    shown: boolean;
 });
 
 type ClaudePromptReply = {
@@ -7340,7 +7347,7 @@ declare function createAndNotify(options: CreateArtifactOptions): {
 /** Process-local reverse UI requests. These never enter a conversation turn or permission queue. */
 declare function createClaudePromptHosts(write: (value: unknown) => boolean): {
     register(client: string, host: ClaudePromptHost): () => void;
-    has: (client: string) => boolean;
+    answers(client: string): string[];
     detach: (client: string) => void;
     receive(line: ControlRequestLine): boolean;
     cancel(id: string): boolean;
