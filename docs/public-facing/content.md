@@ -118,7 +118,9 @@ The compiled body of `action` runs in one sandbox, whether a flow's action step 
 
 ### Available services
 
-Actions receive a `services` object: default-setup's feature services (each is the object its `apack.json` entry names, `path#<key>Service`), the host's services, and the pack's repositories. A pack depending on default-setup gets the same object, typed by `Services` from its generated facade.
+Actions receive the accepted service view supplied by their executing pack, with an attributed logger and emitter. The default-setup action runner supplies its own declared services and selected host APIs. The tables below describe that runner.
+
+Ordinary pack source imports its own `services` and `Services` from `#generated/services.ts`: own services and the SDK baseline are implicit, while host/dependency APIs require `consumes.services`. Depending on default-setup alone does not grant its services. See [service selection](services-and-data.md#services).
 
 **default-setup's services**
 
@@ -133,11 +135,8 @@ Actions receive a `services` object: default-setup's feature services (each is t
 | `services.brain` | Ad-hoc brain event listeners (`listen`, `unlisten`) |
 | `services.scheduler` | Cron schedules for flow triggers (`registerSchedule`, `unregisterByPrefix`, `clearAllSchedules`) |
 | `services.database` | Live-data schema and topology context for AI query generation (`buildQueryContext`) |
-| `services.settings` | Settings read and write: `getAll` and `getStored`, `getSection`/`setInSection` for host app preferences (`app`) or a registered pack section, and `forFeature`/`setForFeature`, which take a feature's ref (`'default-setup/code'`) |
 | `services.cli` | CLI tools: `git`, `gh`, `claudeCode`, `codex`, plus `testCli` |
 | `services.codex` | The Codex app-server (threads, turns, approvals, sessions) |
-| `services.browser` | Browser automation sessions (`createBrowser`) |
-| `services.textStream` | Chunked text streaming for simulated typing (`streamText`, `streamTextByChars`) |
 
 **Host services**
 
@@ -145,9 +144,11 @@ Actions receive a `services` object: default-setup's feature services (each is t
 |---|---|
 | `services.inference` | Model calls (`generateText`, `streamText`, `createAgent`, `embed`/`embedMany`, `generateImage`, `generateSpeech`, `transcribe`, `rerank`) with the user's provider keys; see [Inference](services-and-data.md#inference) |
 | `services.repository` | The pack's declared repositories (queries and commands); actions read and write data through them |
+| `services.settings` | Caller-bound preferences: `get(target)`, `set(target, path, value, condition?)`, `reset(target)` and `onChange(listener)`. Targets identify host app, pack-group or feature preferences; target mutation policy still applies |
 | `services.logger` | Structured logging, named `action:<label>` |
 | `services.emitter` | Typed sends to plugins and systems (`broadcastToPlugin`, and `sendToSystem` naming a system `<pack>/<feature>`, such as `'my-pack/bookmarks'`, or a role, `{ role: 'brain' }`) |
-| `services.appData` | Reset, back up and restore the app's data; whether the user finished onboarding (`hasOnboarded`, `completeOnboarding`) |
+| `services.appData` | Reset, export and import app data, and inspect backup metadata |
+| `services.onboarding` | Read and complete onboarding (`isComplete`, `complete`) without granting whole-data administration |
 | `services.traceStore` | Read flow execution records |
 | `services.secrets` | The user's API keys as metadata (`list`, `select`, `rename`, `delete`, `status`); never values |
 | `services.filesystem` | Files and folders on disk, as UTF-8 text (`readFile`, `writeFile`, `readDir`, `mkdir`, `stat`, `exists`, `rename`, `remove`) |

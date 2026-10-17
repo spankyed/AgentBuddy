@@ -195,6 +195,7 @@ TS
 node -e '
   const fs = require("fs");
   const m = JSON.parse(fs.readFileSync("apack.json", "utf8"));
+  m.consumes = { services: ["host/inference"] };
   m.content.sources = { prompts: "src/content/prompts", ...m.content.sources };
   fs.writeFileSync("apack.json", JSON.stringify(m, null, 2) + "\n");
 '
@@ -281,7 +282,8 @@ describe('notes summary flow', () => {
   });
 });
 TS
-# Uncoloured, so the summary line below matches whatever FORCE_COLOR the caller set
+# Check authored types before execution; keep the unit summary uncoloured for the check below.
+node_modules/.bin/tsc --noEmit
 NO_COLOR=1 FORCE_COLOR=0 node_modules/.bin/vitest run 2>&1 | tee "$WORK/unit.log"
 # The scaffold's content test (2), the feature's system test, default-setup notes and library, the service and the flow
 grep -qE "Tests +7 passed" "$WORK/unit.log" || fail "unit tests through the harness failed"
@@ -291,7 +293,6 @@ node -e '
   const flow = flows["Notes Heartbeat"];
   if (!flow || !JSON.stringify(flow).includes("keep_alive")) throw new Error("the keepAlive flow was not compiled: " + JSON.stringify(flows));
 ' || fail "the keepAlive flow was not compiled"
-node_modules/.bin/tsc --noEmit
 
 step "5. @apackdev/testing's published types stand alone"
 # Its declarations may import only what a pack installs: an unpublished import (@apackdev/host) fails with lib checking
