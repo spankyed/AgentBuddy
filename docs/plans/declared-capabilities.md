@@ -253,6 +253,13 @@ onboarding from administration does not isolate two features of a pack that cons
 packs that only need onboarding a smaller supported interface. Do not describe that as per-feature
 privilege isolation or invent an assistant feature to obtain it.
 
+Flow and action execution receives the executing pack's accepted service selection. Providing a
+runner does not grant all host or installed-pack services. Default-setup intentionally selects all six
+optional host groups; a replacement may select fewer and therefore support fewer actions. Replacement
+does not promise action compatibility: an action requiring an unavailable API must fail clearly,
+without falling back to ambient access. Per-action grants and advance compatibility diagnostics are
+not introduced by this contract.
+
 Keep four questions separate:
 
 - What API does this pack consume, including any intentional baseline and access to its own services?
