@@ -90,6 +90,23 @@ Data/resource confinement belongs to the separate
 read/write grants nor silently removes documented EARS affordances. Do not block supported API contracts
 on a speculative sandbox, or claim they close direct Node or ambient runtime access.
 
+## Handoff to security isolation
+
+This plan supplies the [security goal](../goals/goal-pack-security-isolation.md) with supported API and
+provider identities, generated/runtime facade agreement, accepted caller identity, runtime retirement
+and revocation, and the onboarding versus database-administration separation. Repositories, EARS,
+content appliers and user-authored action execution must be accounted for alongside services.
+
+Security isolation owns confinement of ambient bypasses, authenticated broker connections,
+resource/action grants, delegation and platform enforcement. An API dependency declaration is not a
+resource grant. Naming/addressability and declared event membership are not caller authentication or
+operation authorization. Keep requests, grants, provider availability and runtime readiness distinct.
+
+The security audit and boundary prototypes may proceed in parallel with this work. Before production
+integration, agree serializable operations, identity, administration, unavailable-provider errors and
+retained-handle/in-flight revocation behavior. Prototype seams may be provisional; do not create a second
+manifest/catalog or imply that filtering supported APIs confines arbitrary JavaScript.
+
 ## Verification and handoff
 
 A declared API works through generated and host-bound access; an undeclared API is absent through both
