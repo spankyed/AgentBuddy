@@ -356,7 +356,7 @@ The FE bundler uses Vite with `@vitejs/plugin-vue`:
 - **Minification:** off, on with `--release`
 - **Entry:** `src/pack-entry-fe.ts` (or `.js`) if present, otherwise `src/__generated__/pack-entry-fe.ts`
 - **Output:** `dist/runtime/fe.js` + `dist/runtime/fe.css`
-- `--skip-fe` skips it
+- `--skip-fe` skips it for packs without declared frontend bindings; a pack that declares them cannot publish a build without `runtime/fe.js`.
 
 Vue SFCs (`.vue` files) are compiled automatically — no extra build step needed.
 

@@ -38,5 +38,6 @@ export function writeInstalledPackFixture(dir: string, manifest: PackManifest): 
     eventContracts: eventContractsFixture(manifest),
   }));
   fs.writeFileSync(path.join(dir, PACK_LAYOUT.runtimeEntry), 'throw new Error("Data discovery must not activate this fixture");');
+  fs.writeFileSync(path.join(dir, PACK_LAYOUT.feEntry), 'throw new Error("Data discovery must not activate this fixture frontend");');
   sealPack(dir);
 }

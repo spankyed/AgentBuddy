@@ -199,8 +199,9 @@ function readBuiltPackIntegrity(packRoot: string, packFormat?: number): PackInte
     const mismatch = _snapshotFormatMismatch(data, packFormat);
     if (mismatch) throw new Error(snapshotFormatProblem(mismatch, packFormat));
   }
-  if (!_snapshotFormatMismatch(data)) checkedSnapshot(data, manifest);
+  const snapshot = !_snapshotFormatMismatch(data) ? checkedSnapshot(data, manifest) : undefined;
   const integrity = verifyPack(dist);
+  if (snapshot) assertRequiredEntries(snapshot.manifest, integrity);
   if (sha256(bytes) !== integrity.files[PACK_LAYOUT.snapshot]
     || sha256(JSON.stringify(manifest, null, 2) + '\n') !== integrity.files[PACK_LAYOUT.manifest]) {
     throw new Error('Source declarations do not match the sealed build; rebuild the complete pack');
@@ -254,11 +255,27 @@ export function readPackBuild(dir: string): PackBuild {
   const manifestBytes = fs.readFileSync(path.join(dir, PACK_LAYOUT.manifest));
   const snapshot = checkedSnapshot(data, JSON.parse(manifestBytes.toString('utf8')));
   const integrity = verifyPack(dir);
+  assertRequiredEntries(snapshot.manifest, integrity);
   for (const [file, bytes] of [[PACK_LAYOUT.snapshot, snapshotBytes], [PACK_LAYOUT.manifest, manifestBytes]] as const) {
     if (sha256(bytes) !== integrity.files[file]) throw new Error('Captured declarations do not match the verified build; retry with the complete pack');
   }
   const revision = packBuildRevision(integrity);
   return { snapshot, integrity, revision };
+}
+
+/** Required bindings are not optional just because an incomplete producer omitted them from its receipt. */
+function assertRequiredEntries(manifest: PackManifest, integrity: PackIntegrity): void {
+  // Match the contributions emitted by generateFrontendEntry; inline data alone needs no frontend.
+  const frontend = Object.values(manifest.features ?? {}).some(feature =>
+    feature.plugin || feature.designation || feature.settings?.form || feature.references)
+    || Object.values(manifest.extensions?.settings ?? {}).some(definition => definition.form)
+    || (['steps', 'artifacts', 'blocks', 'tiptapPlugins', 'appExtensions'] as const)
+      .some(kind => Object.keys(manifest.extensions?.[kind] ?? {}).length > 0);
+  for (const file of [PACK_LAYOUT.runtimeEntry, ...(frontend ? [PACK_LAYOUT.feEntry] : [])]) {
+    if (!Object.hasOwn(integrity.files, file)) {
+      throw new Error(`Pack "${manifest.id}" is missing required ${file}; rebuild the complete pack${file === PACK_LAYOUT.feEntry ? ' without --skip-fe' : ''}`);
+    }
+  }
 }
 
 function checkedSnapshot(raw: unknown, manifest: unknown): PackSnapshot {
@@ -296,7 +313,8 @@ export function packBuildProblem(dir: string, appFormat: number = PACK_SNAPSHOT_
     // A matching foreign format is opaque to this CLI; its app interprets the grammar.
     if (appFormat !== PACK_SNAPSHOT_FORMAT) return undefined;
     try {
-      checkedSnapshot(raw, JSON.parse(fs.readFileSync(path.join(dir, PACK_LAYOUT.manifest), 'utf-8')));
+      const snapshot = checkedSnapshot(raw, JSON.parse(fs.readFileSync(path.join(dir, PACK_LAYOUT.manifest), 'utf-8')));
+      assertRequiredEntries(snapshot.manifest, readPackIntegrity(dir));
       return undefined;
     } catch (error) { return { kind: 'declarations', message: (error as Error).message }; }
   }

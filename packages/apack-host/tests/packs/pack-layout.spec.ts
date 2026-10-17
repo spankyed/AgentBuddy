@@ -1,4 +1,4 @@
-import { sealBuild } from './runtime/build-fixture.ts';
+import { eventContractsFixture, sealBuild } from './runtime/build-fixture.ts';
 import { _declarationRevision } from '@apackdev/sdk/build';
 import fs from 'node:fs';
 import { syncBuiltinESMExports } from 'node:module';
@@ -52,7 +52,8 @@ function builtPack(overrides: Record<string, unknown> = {}): string {
   write('dist/runtime/index.cjs.map', '{}');
   write('dist/runtime/fe.js', 'export default {};');
   write('dist/runtime/content/actions.content.json', '[]');
-  write('dist/types/snapshot.json', JSON.stringify({ declarationRevision: _declarationRevision(JSON.parse(fs.readFileSync(path.join(root, 'apack.json'), 'utf-8'))), types: { entities: {}, relKinds: {} }, entityDestinations: {}, facades: {}, manifest: JSON.parse(fs.readFileSync(path.join(root, 'apack.json'), 'utf-8')), format: PACK_SNAPSHOT_FORMAT }));
+  const manifest = JSON.parse(fs.readFileSync(path.join(root, 'apack.json'), 'utf8'));
+  write('dist/types/snapshot.json', JSON.stringify({ declarationRevision: _declarationRevision(manifest), types: { entities: {}, relKinds: {} }, entityDestinations: {}, facades: {}, manifest, eventContracts: eventContractsFixture(manifest), format: PACK_SNAPSHOT_FORMAT }));
   write('src/ignored.ts', 'not part of the pack');
   sealBuild(root);
   return root;
@@ -219,6 +220,56 @@ describe('verifyPack', () => {
 });
 
 describe('installed build reader', () => {
+  it('refuses a backend entry omitted before sealing, including at installation', async () => {
+    const root = builtPack();
+    fs.rmSync(path.join(root, 'dist/runtime/index.cjs'));
+    sealBuild(root);
+    const dist = path.join(root, 'dist');
+    expect(() => readPackBuild(dist)).toThrow('missing required runtime/index.cjs');
+    expect(packBuildProblem(dist)).toMatchObject({ kind: 'declarations', message: expect.stringContaining('missing required runtime/index.cjs') });
+    const beforePlace = vi.fn();
+    await expect(installPackFromLocal(dist, path.join(tmp, 'packs'), { beforePlace })).rejects.toThrow('missing required runtime/index.cjs');
+    expect(beforePlace).not.toHaveBeenCalled();
+  });
+
+  const feature = (entry: Record<string, unknown>) => ({ features: { view: { description: 'Present a fixture contribution.', ...entry } } });
+  it.each([
+    ['plugin', feature({ plugin: { label: 'View', state: 'src/state.ts' } })],
+    ['designation', feature({ designation: 'home' })],
+    ['feature form', feature({ settings: { schema: { type: 'object' }, defaults: {}, form: 'src/Form.vue' } })],
+    ['references', feature({ references: { types: {}, categories: {} } })],
+    ['group form', { extensions: { settings: { extra: { schema: { type: 'object' }, defaults: {}, form: 'src/Form.vue' } } } }],
+    ['step', { extensions: { steps: { demo: { node: { label: 'Demo' } } } } }],
+    ['block', { extensions: { blocks: { demo: {} } } }],
+    ['artifact', { extensions: { artifacts: { demo: { icon: 'File' } } } }],
+    ['editor', { extensions: { tiptapPlugins: { demo: {} } } }],
+    ['app extension', { extensions: { appExtensions: { demo: 'src/Demo.vue' } } }],
+  ])('requires the frontend entry for a declared %s without reading authored modules', (_label, declaration) => {
+    const root = builtPack(declaration);
+    const dist = path.join(root, 'dist');
+    fs.writeFileSync(path.join(dist, 'runtime/index.cjs'), 'throw new Error("Do not activate during discovery");');
+    sealBuild(root);
+    expect(readPackBuild(dist).snapshot.manifest.id).toBe('demo-pack');
+    const stage = path.join(tmp, 'stage');
+    stagePack(root, stage);
+    const before = packFileHashes(stage);
+    fs.rmSync(path.join(dist, 'runtime/fe.js'));
+    sealBuild(root);
+    expect(() => readPackBuild(dist)).toThrow('missing required runtime/fe.js');
+    expect(packBuildProblem(dist)).toMatchObject({ kind: 'declarations', message: expect.stringContaining('missing required runtime/fe.js') });
+    expect(() => stagePack(root, stage)).toThrow('missing required runtime/fe.js');
+    expect(packFileHashes(stage)).toEqual(before);
+  });
+
+  it('accepts backend-only declarations without a frontend entry or authored modules', () => {
+    const root = builtPack({ extensions: { commands: { hello: { placeholder: 'Say hello' } }, settings: { extra: { schema: { type: 'object' }, defaults: {} } }, steps: {}, blocks: {}, artifacts: {}, tiptapPlugins: {}, appExtensions: {} } });
+    fs.rmSync(path.join(root, 'dist/runtime/fe.js'));
+    sealBuild(root);
+    const stage = path.join(tmp, 'stage');
+    stagePack(root, stage);
+    expect(readPackBuild(stage).snapshot.manifest.extensions?.commands).toHaveProperty('hello');
+  });
+
   it('reads declarations and a content identity without executing a runtime', () => {
     const stage = path.join(tmp, 'stage');
     const root = builtPack();

@@ -40,6 +40,7 @@ function installDeclaringPack(received: string[]) {
     features: { memos: { plugin: { receives: received } } },
   })} };`) + `
 if (module.exports.registration) module.exports.registration.declarationRevision = '${_declarationRevision(JSON.parse(fs.readFileSync(path.join(packDir, 'apack.json'), 'utf-8')))}';`);
+  fs.writeFileSync(path.join(packDir, 'runtime', 'fe.js'), 'export default {};');
   sealPack(packDir);
 }
 

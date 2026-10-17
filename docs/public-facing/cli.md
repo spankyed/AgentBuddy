@@ -141,7 +141,7 @@ The build:
 4. Compiles `content.sources` into `runtime/content/`, validating flows against dependency step build code, and bundles declared content compilers for dependents.
 5. Bundles and checks the standalone `types/pack-types.d.ts` facade. Its imports must resolve through `@apackdev/*`, SDK peers or Node built-ins; a committed facade report mismatch produces a warning (`apack pack facade-report`).
 6. Bundles flow helpers, step build facets and the content runtime used by dependents. Checks that the content runtime can load in a fresh Node process with the supported SDK dependencies.
-7. Builds declared Monaco DSL definitions, the backend runtime, and the frontend unless `--skip-fe`. The frontend entry is `src/pack-entry-fe.ts` (or `.js`) when present, otherwise the generated entry.
+7. Builds declared Monaco DSL definitions, the backend runtime, and the frontend unless `--skip-fe`. The frontend entry is `src/pack-entry-fe.ts` (or `.js`) when present, otherwise the generated entry. `--skip-fe` is valid only for packs with no declared frontend bindings: plugins, designations, reference providers, custom settings forms, steps, artifacts, blocks, editor plugins or app extensions require the frontend entry. An incomplete build refuses publication and retains the existing `dist/`.
 8. Validates the snapshot and generated declaration identities, refuses inputs changed during the build, writes the manifest and integrity receipt, verifies the completed layout, and publishes staging as `dist/`.
 
 The snapshot includes declaration data, entity/relation types, facade declarations, compiled help,

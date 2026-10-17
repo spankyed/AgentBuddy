@@ -58,7 +58,7 @@ async function compiledContent(root: string): Promise<string> {
   process.chdir(root);
   const log = vi.spyOn(console, 'log').mockImplementation(() => {});
   try {
-    await build(['--skip-fe']);
+    await build([]);
     return log.mock.calls.flat().join('\n');
   } finally {
     process.chdir(cwd);
@@ -75,6 +75,9 @@ describe('a build', () => {
     expect(stepRegistry.all()).toEqual([]);
 
     expect(fs.existsSync(path.join(root, 'dist', PACK_LAYOUT.contentDir, 'flows.content.json'))).toBe(true);
+    const receipt = fs.readFileSync(path.join(root, 'dist', PACK_LAYOUT.integrity), 'utf8');
+    await expect(build(['--skip-fe'], root)).rejects.toThrow('missing required runtime/fe.js');
+    expect(fs.readFileSync(path.join(root, 'dist', PACK_LAYOUT.integrity), 'utf8')).toBe(receipt);
   });
 
   it('refuses a flow that names an undeclared step', async () => {

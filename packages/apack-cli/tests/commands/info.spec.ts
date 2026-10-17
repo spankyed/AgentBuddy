@@ -36,6 +36,7 @@ function writeBuild(directory: string, declared = manifest, index?: object, enti
   fs.mkdirSync(path.join(output, 'types'), { recursive: true });
   fs.mkdirSync(path.join(output, 'runtime'), { recursive: true });
   fs.writeFileSync(path.join(output, PACK_LAYOUT.runtimeEntry), 'throw new Error("Inspection imported executable code");');
+  fs.writeFileSync(path.join(output, PACK_LAYOUT.feEntry), 'throw new Error("Inspection imported executable frontend code");');
   fs.writeFileSync(path.join(output, PACK_LAYOUT.snapshot), JSON.stringify({
     manifest: declared, declarationRevision: _declarationRevision(declared), format: PACK_SNAPSHOT_FORMAT,
     types: { entities: _packEntityTypes(declared), relKinds: {} }, entityDestinations, eventContracts, facades: {},
