@@ -120,7 +120,7 @@ arbitrary external native capture and native I/O are excluded by that explicit a
 | Item | Current evidence | Required closure |
 |---|---|---|
 | Absolute external-library loading | A real addon executes the original external library; changing it does not invalidate freshness. Package-relative capture in `6710e3026` does not fix this. The [search-path prototype](../evidence/build-input-snapshot-proof.md#external-native-library-search-path-prototype-2026-10-17) rejects a tempting shortcut: two distinct absolute libraries with the same basename collapse to one captured library. Exact identity must remain preserved. `cc186a0d0` implements selected macOS module admission with direct/transitive pre-initialization refusal and captured relative-loading proof. | Implement the approved bounded contract through the existing compiler owners. Refuse identifiable outside-library dependencies; preserve captured package-relative and OS loading. Prove the known counterexample refuses before native initialization, public-build incumbent retention, transitive cases and startup/thread/Vite path coverage. Static inspection is not universal native-I/O detection. |
-| Native/background lifetime | The [finite resource audit](../evidence/build-input-snapshot-proof.md#remaining-resource-lifetime-audit-2026-10-17) reconciles local loader, JS worker, process-group, Vite and installation ownership with existing proof. Windows build/frontend branches have no descendant-lifetime owner; their background-child acceptance is skipped. | Preserve accepted macOS cases. Prototype and implement Windows lifetime ownership, then prove success/failure/cancellation/parent-loss/replacement on Windows CI, selected after the user delegated the runner decision. Prepare targeted CI coverage locally; do not push or trigger release workflows. Native execution remains unverified until CI runs the committed source. Linux runtime acceptance remains unverified. Do not substitute PID-only termination, mocked calls or a new general resource framework for this missing platform guarantee. |
+| Native/background lifetime | The [finite resource audit](../evidence/build-input-snapshot-proof.md#remaining-resource-lifetime-audit-2026-10-17) reconciles local loader, JS worker, process-group, Vite and installation ownership with existing proof. Windows build/frontend branches have no descendant-lifetime owner; their background-child acceptance is skipped. | Preserve accepted macOS cases. Prototype and implement Windows lifetime ownership, then prove success/failure/cancellation/parent-loss/replacement on Windows CI, selected after the user delegated the runner decision. The user authorized branch pushes and focused Windows CI on 2026-10-17; release workflows remain prohibited. Native acceptance requires passing execution of the committed source. Linux runtime acceptance remains unverified. Do not substitute PID-only termination, mocked calls or a new general resource framework for this missing platform guarantee. |
 | Platform coverage | Release/build configuration establishes targets, not acceptance of compiler capture or cleanup guarantees. | Record exact OS/architecture/runtime combinations, relevant cases and results. Mark missing evidence as unverified, not broken or implicitly unsupported. |
 
 Configured targets, inspected 2026-10-17:
@@ -533,8 +533,8 @@ native support in `711565757`. `cc186a0d0` enforces declared outside-library ref
 compiler modules, preserving real captured relative loading, JavaScript exports fallback and repeated
 refusal. See [native checkpoint evidence](../evidence/build-input-snapshot-proof.md#bounded-macos-module-library-admission-2026-10-17).
 Startup/thread/Vite, ELF/PE and public-build acceptance remain required within that approved boundary.
-Windows validation is prepared through the existing manual CI dispatch (`6fb4d9bcb`); pushing this
-branch is still awaiting permission. No Windows execution or descendant-lifetime acceptance is claimed.
+Windows validation uses the existing manual CI dispatch (`6fb4d9bcb`). The user authorized branch
+pushes and focused Windows CI on 2026-10-17. No descendant-lifetime acceptance is claimed.
 Native startup checkpoint `e6dd35d52` keeps native admission active independently of startup filesystem
 interception, reuses the package/read-tree owners, and verifies captured relative preload loading,
 changed-library freshness and incumbent retention after direct/transitive refusal. Four real addon
@@ -575,7 +575,14 @@ This does not close every loader control: inspect applicable framework/versioned
 controls and shared-cache-specific precedence before claiming the macOS environment boundary complete.
 Then finish retained-frontend initialization without freezing HMR. ELF/PE, Windows descendant
 lifetime/native execution and the converged/final strict gates remain open.
-Windows push approval is still pending.
+The user pushed `e8940bb6d`; authorized Windows CI run [39057355477](https://github.com/spankyed/AgentBuddy/actions/runs/39057355477)
+installed dependencies successfully but failed in package preparation (`spawnSync npm ENOENT` in
+`published-manifest.ts`), before tests. Fix that demonstrated cross-platform launch defect and rerun
+the focused workflow. This run does not establish Windows compiler or descendant-lifetime acceptance.
+The local two-core integration run against that checkpoint reached its unchanged 600s deadline after
+eight files / 474 cases passed, including all seven native-library cases; the pool remains incomplete.
+See [launcher and pool evidence](../evidence/build-input-snapshot-proof.md#windows-package-launcher-and-local-integration-checkpoint-2026-10-17).
+Do not repeat this broad run to diagnose the Windows launcher or count it as B6/final acceptance.
 
 The single two-core strict run failed preparing the default-pack fork: the build observation for
 `src/__generated__/.inputs-hash` no longer matched, and the chain also invalidated default-setup's

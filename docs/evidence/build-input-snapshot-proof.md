@@ -1966,3 +1966,34 @@ No release workflow, remote push or production data was used. No timeout changed
 rerun for diagnosis. Framework/versioned/fallback/suffix controls, shared-cache precedence, retained
 frontend initialization beyond this pre-launch boundary, ELF/PE, Windows lifetime/native execution
 and the converged/final strict gates remain open in the owning goal.
+
+
+## Windows package launcher and local integration checkpoint (2026-10-17)
+
+The user authorized branch pushes and focused Windows CI and pushed `e8940bb6d`.
+[Run 39057355477](https://github.com/spankyed/AgentBuddy/actions/runs/39057355477)
+on Windows x64 / Node 23.11.1 installed dependencies successfully, then failed before tests:
+`spawnSync npm ENOENT`, from `published-manifest.ts` during the EARS package build.
+The package-list/archive helper invoked npm without the Windows command-wrapper handling present
+in its sibling checkout/package-build launchers. This is a demonstrated tool-launch defect, not
+evidence of a compiler-capture failure.
+
+The repair invokes npm's JavaScript entry with Node on Windows, using npm's lifecycle entry when
+available and the standard adjacent Windows installation otherwise. Arguments remain separate;
+no shell interprets package or destination paths. The existing archive test now uses spaces and `&`
+in both paths. The focused Windows job includes that real staging suite and records Node/npm entry
+information. The sibling launchers already handle Windows wrappers; they are unchanged.
+
+Local checks: all 15 published-manifest tests pass (2.56s runner), all 53 subprocess/deadline
+inventory checks pass (2.16s runner), and host typecheck and focused correctness lint pass.
+Tooling log: `/private/tmp/apack-windows-npm-tooling.log`. Logs: `/private/tmp/apack-windows-npm-unit.log`,
+`/private/tmp/apack-windows-npm-types.log`. Native Windows acceptance remains pending the repaired run.
+
+The already-running two-core integration pool against `e8940bb6d` expired at its unchanged 600s
+deadline, without an assertion failure reported before termination. Eight complete files reported
+474 passing cases, including all 14 build-output cases, 11 scaffold cases, 15 compiler-configuration
+cases and all seven native-library cases. The run was still progressing through compiler file reads
+when terminated. This is incomplete pool acceptance, not a pass or evidence of a deadlock.
+Log: `/private/tmp/apack-native-checkpoint-integration.log`. The default-pack rebuild passed first:
+`/private/tmp/apack-native-checkpoint-default.log`. Do not repeat the broad run for Windows-launch
+diagnosis or silently widen its deadline. B6 and final strict acceptance remain open.

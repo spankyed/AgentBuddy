@@ -176,7 +176,15 @@ export function packTree(dir: string, destDir: string): string {
  * npm reads a relative one as a git shorthand and fails in `git ls-remote`.
  */
 function npmPack<T>(dir: string, args: readonly string[]): [T] {
-  const out = execFileSync('npm', ['pack', '--json', '--ignore-scripts', ...args, path.resolve(dir)],
+  const packArgs = ['pack', '--json', '--ignore-scripts', ...args, path.resolve(dir)];
+  const windows = process.platform === 'win32';
+  if (windows) {
+    // Launch the JS entry directly: npm.cmd requires a shell, which would reinterpret package paths.
+    const entry = process.env.npm_execpath;
+    packArgs.unshift(entry && path.basename(entry) === 'npm-cli.js'
+      ? entry : path.join(path.dirname(process.execPath), 'node_modules', 'npm', 'bin', 'npm-cli.js'));
+  }
+  const out = execFileSync(windows ? process.execPath : 'npm', packArgs,
     { stdio: ['ignore', 'pipe', 'ignore'] }).toString();
   if (!out.trimStart().startsWith('[')) {
     throw new Error(`npm pack printed something other than JSON for ${dir}:\n${out}`);

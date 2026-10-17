@@ -73,8 +73,9 @@ Implement in bounded checkpoints:
    Record native platform acceptance separately; synthetic headers are parser checks, not OS acceptance.
 
 Windows CI is the selected native verification target following the user's request to decide the runner
-approach. Prepare implementation and targeted CI coverage locally; the prohibition on pushing or triggering
-release workflows remains. Windows execution is unverified until that runner executes the committed source.
+approach. On 2026-10-17 the user authorized branch pushes and focused Windows CI, and pushed the
+checkpoint. Release workflows remain prohibited. The first run failed during package preparation before
+tests; Windows acceptance still requires a passing run of the committed source.
 Do not replace the missing descendant-lifetime owner with a PID-only tree-kill command.
 
 The contract approval does not close these implementation or validation checkpoints. Linux support and
