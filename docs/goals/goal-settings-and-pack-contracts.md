@@ -376,8 +376,18 @@ freshness checks. A real external retarget fails without replacing the incumbent
 missing file publishes the repair without authored edits. Recursive directory probes, original source
 paths, close cancellation and native termination semantics are covered. See
 [watch evidence](../evidence/build-input-snapshot-proof.md#worker-watch-continuity-and-repair).
-Next: close the finite native-addon/external-library and platform lifetime audit, then finish affected
-integration acceptance on two cores before
+Native package-relative library ownership has source checkpoint `6710e3026`: extensionless file-path imports
+capture the selected addon's owning package through the existing native input reader. An actual macOS
+addon/library test and public build prove copied-byte execution and passive changed-input refusal;
+see [native-library evidence](../evidence/build-input-snapshot-proof.md#package-relative-native-library-ownership).
+Absolute external-library loading remains a demonstrated gap; other-platform lifetime acceptance also
+remains required. Neither has an approved exclusion. Do not grow this repair into an incidental binary
+relocation framework or make all independent work wait on that design decision. A1's API-route
+inventory/prototype can proceed using the already implemented catalog and caller binding.
+Focused tests, types/lint and the actual public build pass. One strict chain was deliberately stopped
+during external authoring after its completed package/report/type checks passed; it is not a strict pass.
+Its exact evidence and terminal cleanup are recorded at the link above. Next: begin A1 while retaining
+the explicit B1/B3 gaps and incomplete gate. Finish affected integration acceptance on two cores before
 repeating a broad gate. Do not rebuild
 the accepted default/fork handoff again unless its inputs change or a named coverage gap requires it.
 Reconcile

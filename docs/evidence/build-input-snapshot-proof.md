@@ -1572,3 +1572,51 @@ all Phase 6 streams and final committed-source strict `--all` open. Next rebuild
 pack, then exercise normal preparation/cache verification and the app half without another broad
 diagnostic loop. The failed preparation's own temporary directory was removed by its existing finally;
 the prior prepared fork cache and unrelated work remain intact.
+
+## Package-relative native library ownership
+
+Source checkpoint: `6710e3026`.
+
+The B1/B3 audit distinguishes three actual loader paths:
+
+| Path | Existing owner | Finding and disposition |
+|---|---|---|
+| A native addon selected by package import | Compiler native package capture and private read tree | Preserve the existing package inventory and OS-relative layout. |
+| A native addon selected by extensionless file path | Common module resolver and native input reader | Reproduced missing adjacent library in the private tree. Resolve the selected `.node` through `prepareNative` and capture its owning package with the existing `packageInputs` owner. |
+| An addon linked to an absolute external library | OS loader; no corresponding captured-library owner | Reproduced execution of the live original library and no changed-input refusal. Still required and open; copying package-relative assets does not close it. |
+
+The file-path repair adds no resolver, binary rewriter, observation format or CLI runtime tool dependency.
+The macOS regression compiles a real N-API addon and dylib with a loader-relative install name. It proves
+extensionless resolution loads the copied library, replacement of the original leaves execution on
+captured bytes, and source freshness refuses that replacement. Its `clang`/Node headers are developer
+test requirements, documented in the CLI guide. Other-platform acceptance remains open.
+
+Focused evidence:
+
+- New real native-library regression: one pass, 14.42s;
+  `/private/tmp/apack-native-package-regression.log`.
+- Existing loose outside-native-addon regression: one pass, 14.27s;
+  `/private/tmp/apack-native-package-existing.log`.
+- Subprocess inventory and timeout policy: 53 passes in 2.19s;
+  `/private/tmp/apack-native-package-tooling-final.log`.
+- CLI/repo-checks types and correctness lint pass:
+  `/private/tmp/apack-native-package-{types,repo-types,lint}.log`.
+- Actual public `runPackBuild` compiles content using the copied addon/library, seals its inputs,
+  then completes compiler disposal. Passive replay detects original-library replacement and accepts
+  exact restoration. Result: `value=11`, `ownedLibrary=true`, `changedLibraryRefused=true`,
+  `exactRestorationCurrent=true`; `/private/tmp/apack-native-public-build.log`.
+- Absolute external-library counterexample: `/private/tmp/apack-native-link-before.log`.
+  Package-relative before/after diagnostics: `/private/tmp/apack-native-package-{before,after}.log`.
+
+The strict checkpoint chain was started once on two cores and deliberately stopped with SIGINT
+(exit 130) during external authoring release verification, after roughly six minutes. Package checks,
+API/schema/export reports and the completed renderer/API/ears/SDK/host/UI/CLI/main/preload typechecks
+passed. The run is incomplete, not a strict pass; no test failure or timeout was observed before the
+stop. Its owned processes were confirmed terminal. Evidence: `/private/tmp/apack-native-checkpoint-chain.log`
+and `node_modules/.cache/apack-chain/runs/2026-10-17T08-24-20Z-19202/`. Continue from the focused source
+checkpoint instead of repeating that broad run as a prerequisite to independent implementation.
+The required converged B6 and final committed-source checks remain outstanding. This local
+repair does not close external linked-runtime libraries, arbitrary native I/O, other-platform lifetime
+acceptance, B6 or the final committed-source strict gate. No exclusion is approved. Continue independent
+required work while deciding the external loader boundary; do not start a general binary relocation or
+resource-confinement project as an incidental extension of this repair.
