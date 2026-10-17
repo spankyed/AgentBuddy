@@ -1035,3 +1035,21 @@ imports and checks unchanged native read/stat functions. Actual bundled early st
 39-file lint and package refresh pass. No broad suite was rerun. This is shared ownership, not completed
 B4 persistence or final acceptance. Next expose and validate the completed frame, including explicit
 generated reads and retained inputs from reused phases, before binding it to sealed output.
+
+
+### Explicit generated-input replay checkpoint
+
+Source `2d7dd140c` repairs a demonstrated completed-frame gap: a compiler explicitly captures generated
+bytes, but replay applies authored-discovery exclusions to those recorded reads and rejects unchanged
+input. The regression fails before the repair at `file/src/__generated__/types.ts`:
+`/private/tmp/apack-completed-frame-generated-repro.log`. Replay now honors explicit file/location facts;
+it does not add all generated files to authored membership. Unchanged input, an unrelated generated
+addition and exact restoration pass; changed consumed bytes refuse. Fifty-two affected cases, including
+fresh-process passive replay, pass in 2.28s: `/private/tmp/apack-completed-frame-generated-focused.log`.
+Host/CLI types, two-file lint and whitespace checks pass. No broad suite was rerun.
+
+Next producer work remains B4's completed successful record, common integrity association and expected
+output inventory, followed by B5 consumers. In that design, distinguish captured timestamps consumed by
+author code from incidental file touches, and retain external inputs of reused phases. These are
+acceptance requirements to inspect, not authorization for another scanner/cache framework. Native
+external-library/platform lifetime cases and the final committed-source strict gate remain open.
