@@ -305,7 +305,7 @@ it.runIf(process.platform === 'darwin')('watches external Vite native changes an
     try { await watcher?.close(); await builder.close(); }
     finally { errors.mockRestore(); fs.rmSync(fixture.root, { recursive: true, force: true }); }
   }
-}, 180_000);
+}, 120_000);
 
 it.runIf(process.platform === 'darwin').each(['preload', 'thread'] as const)(
   'owns retained Vite native %s inputs while authored Vue sources stay live', async site => {

@@ -107,11 +107,14 @@ Source `0275df801` adds the real retained Vite ESM preload/custom-loader/transit
 CLI types, focused lint and workflow checks pass. Run `39079253353` fails in 12.39 seconds: loader and
 transitive module bytes invalidate, but package export metadata changes do not. The shared native
 startup data owner now observes enclosing package declarations through the existing file view; no
-resolver or loader is added. Hosted execution of that correction remains required before closing the gap.
+resolver or loader is added (`6d482e79f`). Run `39079716622` queues that correction's exact reproducer;
+hosted acceptance remains required before closing the gap.
 Source `e6ce60a78` awaits each detected watch build directly, retaining missing-event bounds and all
-behavior assertions under one measured scenario budget. Its isolated hosted acceptance is queued as
-run `39079492068`. CLI types, lint and 42 timeout-policy checks pass; watch recovery remains unverified
-on hosted macOS until this run finishes. See [failure and correction evidence](../evidence/build-input-snapshot-proof.md#first-hosted-macos-result-and-watch-completion-boundary-2026-10-17).
+behavior assertions. Its isolated hosted run `39079492068` passes in 98.76 seconds, including refusal,
+repair, incumbent preservation and retirement. Restore the original 120-second scenario budget; the
+provisional 180-second allowance is unnecessary. CLI types, lint and 42 timeout-policy checks pass.
+This accepts watch on that source, not the subsequent metadata correction or full B6/final gates.
+See [failure and correction evidence](../evidence/build-input-snapshot-proof.md#first-hosted-macos-result-and-watch-completion-boundary-2026-10-17).
 
 **Current handoff:** source `ccaa809a8` delivers retained frontend native discoveries into live watch
 subscriptions and retains failed-candidate probes for repair. Native copies and receipts belong to the

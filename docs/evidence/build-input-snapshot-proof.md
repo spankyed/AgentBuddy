@@ -2867,3 +2867,17 @@ filesystem wrappers. This uses the existing file view and watch recorder for bot
 startup; it adds no resolver, loader or rewrite, and capture still stops at the existing frontend phase
 boundary. Compiler-owned paths remain excluded. CLI TypeScript, focused lint and diff checks pass;
 the same real frontend reproducer still requires hosted acceptance on this correction.
+
+### Hosted watch acceptance and retained scenario budget (2026-10-17)
+
+Run `39079492068` passes the isolated real watch case on `e6ce60a78` in 98.76 seconds (runner 101.34
+seconds): frontend ready at 40.01 seconds, timestamp-only check at 43.95, missing-helper refusal at
+60.97, repaired input created at 61.02 and replacement published at 97.46. Every incumbent, value,
+publication and retirement assertion passes. Log: `/private/tmp/apack-hosted-watch-39079492068.log`.
+
+The measured pass fits the original 120-second scenario budget. Restore that budget instead of keeping
+the provisional 180-second allowance; the substantive correction remains awaiting actual build
+completion rather than console timing. No repeat native run is needed solely to show that 98.76 is
+less than 120. This accepts watch behavior on `e6ce60a78`, not the subsequent metadata correction.
+Run `39079716622` queues the exact ESM/loader reproducer on metadata repair `6d482e79f`; do not restart
+that run or claim acceptance before it completes.
