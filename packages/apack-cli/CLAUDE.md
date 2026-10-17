@@ -92,6 +92,10 @@ the session's build operation and owns only its subscriptions; the session close
 Pack/npm and shared SDK/UI metadata, module inventory and entry selection also identify the frontend
 configuration. Changes replace its generation after a successful build; ordinary source edits keep
 Vite's live graph. Metadata lookup reuses `findPackageDirectory`, avoiding Node's cached link resolution.
+The compiler watcher also fingerprints/subscribes to the selected distributable compiler graph,
+runtime inventory and configured esbuild override, including an absent override. These probes run
+before pack discovery so broken configuration retains tooling repair subscriptions. Existing physical
+link guards, signatures and coalescing handle those events; no pack edit is needed to trigger refresh.
 
 The parent holds the pack build lock through worker closure and publication. Workers only prepare and
 seal a candidate, report its authored-input hash and sealed revision, drain diagnostics, and exit.

@@ -4,6 +4,8 @@ import { createHash } from 'node:crypto';
 import { readCompilerModuleInputs } from './compiler-module-inputs.ts';
 import { readPackageInputs } from '@apackdev/host/build/package-inputs';
 import { physicalWatchPath } from './watch-paths.ts';
+import { compilerPackageDirectory, readEsbuildOverride } from './compiler-installation.ts';
+import { readCompilerRuntimeInputs } from './compiler-runtime.ts';
 import type { BuildInputKind, BuildInputObserver } from '@apackdev/host/build/pack-inputs';
 
 export type CompilerWatchPaths = ReadonlyMap<string, BuildInputKind>;
@@ -44,9 +46,25 @@ export function compilerWatchPaths(root: string): { paths: CompilerWatchPaths; c
       addPath(paths, absolute, kind);
       addPath(paths, physicalPath(absolute), kind);
     };
+    // Keep tooling repair subscriptions even when pack discovery refuses its configuration.
+    const tools = readPackageInputs([{ id: 'compiler', directory: compilerPackageDirectory(), contents: true }], { observe }).hash;
+    observe(process.execPath, 'file');
+    const runtime = readCompilerRuntimeInputs(process.execPath, !!process.versions.electron, file => observe(file.source, 'file'));
+    for (const directory of runtime.directories) observe(directory, 'entries');
+    for (const { source, target } of runtime.links) { observe(source, 'file'); observe(target, 'file'); }
+    const override = readEsbuildOverride({ cwd: root });
+    const tooling = createHash('sha256').update(tools).update(runtime.hash);
+    if (override) {
+      observe(override.file, 'file');
+      tooling.update(JSON.stringify([override.file, override.kind]));
+      if (override.kind === 'file') {
+        observe(override.source, 'file');
+        tooling.update(JSON.stringify([override.source, override.mode & 0o111])).update(override.bytes);
+      }
+    }
     const modules = readCompilerModuleInputs(root, observe);
     const packages = readPackageInputs([{ id: 'pack', directory: root, development: true }], { discovered: modules.packageDirectories, observe }).hash;
-    return { paths, complete: true, signature: `valid:${modules.hash}:${packages}` };
+    return { paths, complete: true, signature: `valid:${modules.hash}:${packages}:${tooling.digest('hex')}` };
   } catch {
     // The normal CLI build reports the refusal. Keep partial probes and the previous subscriptions for repair.
     const hash = createHash('sha256');

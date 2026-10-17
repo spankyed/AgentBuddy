@@ -26,7 +26,7 @@ function compilerPackagesHash(directory: string): string {
   return readPackageInputs([{ id: 'compiler', directory, contents: true }]).hash;
 }
 
-function readEsbuildExecutable({ cwd = process.cwd(), env = process.env }: CompilerInstallationOptions) {
+export function readEsbuildOverride({ cwd = process.cwd(), env = process.env }: CompilerInstallationOptions) {
   const value = env.ESBUILD_BINARY_PATH;
   // esbuild deliberately ignores this system path, even when it exists.
   if (!value || value === '/usr/bin/esbuild') return;
@@ -42,7 +42,7 @@ function readEsbuildExecutable({ cwd = process.cwd(), env = process.env }: Compi
   }
 }
 
-function executableIdentity(root: string, executable: ReturnType<typeof readEsbuildExecutable>) {
+function executableIdentity(root: string, executable: ReturnType<typeof readEsbuildOverride>) {
   if (!executable) return null;
   return [path.relative(root, executable.file), executable.kind === 'missing' ? null
     : [path.relative(root, executable.source), executable.mode & 0o111, createHash('sha256').update(executable.bytes).digest('hex')]];
@@ -103,7 +103,7 @@ export async function captureCompilerInstallation(directory = compilerPackageDir
     const inputs = readPackageInputs([{ id: 'compiler', directory, contents: true }], { onFile: copy });
     const runtime = readCompilerRuntimeInputs(process.execPath, !!process.versions.electron, (file, bytes) => copy(file, bytes, true));
     for (const directory of runtime.directories) mkdir(capturedPath(directory));
-    const executable = readEsbuildExecutable(options);
+    const executable = readEsbuildOverride(options);
     const executableId = JSON.stringify(executableIdentity(directory, executable));
     if (executable?.kind === 'file') {
       copy({ source: executable.source, mode: executable.mode,
@@ -175,7 +175,7 @@ export async function captureCompilerInstallation(directory = compilerPackageDir
     return { bin: path.join(root, 'bin/apack.mjs'), executable: capturedPath(runtime.executable), hash, inputsFile, environment, dispose,
       isCurrent(source, options = {}) {
         return fs.realpathSync(source) === directory
-          && executableId === JSON.stringify(executableIdentity(directory, readEsbuildExecutable(options)))
+          && executableId === JSON.stringify(executableIdentity(directory, readEsbuildOverride(options)))
           && executableCurrent() && fs.existsSync(root) && capturedRuntimeCurrent()
           && readCompilerRuntimeInputs(process.execPath).hash === runtime.hash
           && compilerPackagesHash(source) === inputs.hash && compilerPackagesHash(root) === inputs.hash;
