@@ -36,8 +36,9 @@ export function assertCompilerLibraryEnvironment(env: NodeJS.ProcessEnv = proces
     const value = env[variable];
     for (const directory of value ? value.split(':') : []) {
       const normalized = path.resolve(directory);
-      const physical = fs.statSync(normalized, { throwIfNoEntry: false })?.isDirectory() ? fs.realpathSync(normalized) : undefined;
-      if (!path.isAbsolute(directory) || !systemLibrary(normalized + '/') || !physical || !systemLibrary(physical + '/')) {
+      const physical = path.isAbsolute(directory) && systemLibrary(normalized + '/')
+        && fs.statSync(normalized, { throwIfNoEntry: false })?.isDirectory() ? fs.realpathSync(normalized) : undefined;
+      if (!physical || !systemLibrary(physical + '/')) {
         throw new Error(`Cannot launch captured compiler: ${variable} references directory "${directory}" outside operating-system libraries. Versioned overrides are selected before compiler startup; use captured package-relative libraries instead.`);
       }
     }

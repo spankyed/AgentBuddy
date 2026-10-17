@@ -1,5 +1,6 @@
 import { posix as path } from 'node:path';
-import { expect, it } from 'vitest';
+import fs from 'node:fs';
+import { expect, it, vi } from 'vitest';
 import { assertCapturedMachOLibraries, assertCompilerLibraryEnvironment, captureMachOLibraryEnvironment, parseMachOLibraryCommands } from '../../src/build/compiler-native-libraries.ts';
 
 function image(commands: [number, string][], little = true, sdk?: number) {
@@ -207,6 +208,14 @@ it.runIf(process.platform === 'darwin').each(['DYLD_VERSIONED_LIBRARY_PATH', 'DY
     for (const directory of ['', '/usr/lib', '/System/Library/Frameworks', '/usr/lib:/System/Library']) {
       expect(() => assertCompilerLibraryEnvironment({ [variable]: directory })).not.toThrow();
     }
+  },
+);
+
+it.runIf(process.platform === 'darwin').each(['DYLD_VERSIONED_LIBRARY_PATH', 'DYLD_VERSIONED_FRAMEWORK_PATH'] as const)(
+  'refuses outside %s directories without filesystem probes', variable => {
+    const stat = vi.spyOn(fs, 'statSync').mockImplementation(() => { throw new Error('Outside path was probed'); });
+    try { expect(() => assertCompilerLibraryEnvironment({ [variable]: '/outside' })).toThrow(`${variable} references directory`); }
+    finally { stat.mockRestore(); }
   },
 );
 
