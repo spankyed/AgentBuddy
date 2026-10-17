@@ -1360,3 +1360,53 @@ Real combined default/fork preparation, cached app acceptance and the real-defau
 to be run against this final wiring. Do not count the earlier real prebuilt pass as proving those paths.
 B1/B3 lifetime closure, B6 convergence, all Phase 6 streams and final committed-source strict `--all`
 remain required. Available disk before these runs is 83GiB; no broad suite was launched here.
+
+## Fresh publication directory namespace repair
+
+Consumer source checkpoint: `8058fd1a2`.
+
+The real default pack builds successfully from that checkpoint:
+`/private/tmp/apack-b5-committed-default-build.log`. Its real archive case exceeds the fast suite's
+15s budget, then passes unchanged in integration in 19.39s (21.22s runner):
+`/private/tmp/apack-b5-real-default-archive.log`,
+`/private/tmp/apack-b5-real-default-archive-integration.log`. The case is moved to the existing
+integration config; no global deadline or assertion is changed.
+
+The existing external contract command builds both fixture packs and passes all 38 contract cases.
+It also builds the full default fork, but archiving that fresh build refuses this observation:
+`["node-directory","",{"withFileTypes":true}]`.
+`/private/tmp/apack-b5-external-contract.log` records the exact failure. The initial source namespace
+had no dist; publication added it. This is a producer observation inconsistency, not evidence about
+which process deleted a directory in any earlier run. No app half was started.
+
+The common file view's native readdir and directory cursors now share module resolution's authored
+namespace exclusion policy. Returned results and their later validation both apply it; filtering only
+the replay would discard a fact the compiler actually consumed. Explicit reads inside an excluded
+output directory still expose and validate that directory's contents. Outside namespaces, native order,
+entry types, mutable copies, prefix/terminal behavior and refusal semantics remain owned as before.
+No observation format, compatibility read or additional scanner is introduced.
+
+Evidence:
+
+- A small real-filesystem regression fails before the change when outputs are published, then passes
+  afterward. It covers readdir/recursive results, cursor enumeration, passive replay, explicit output
+  reads and refusal of new source inputs. Two host cases pass in 668ms:
+  `/private/tmp/apack-fresh-directory-before.log`, `/private/tmp/apack-fresh-directory-after.log`.
+- All 29 existing file/input-view and observation cases pass in 1.23s:
+  `/private/tmp/apack-fresh-directory-views.log`.
+- Both actual native directory/cursor cases pass in 28.06s, preserving callback, promise, recursive,
+  mutable Dirent and native handle behavior: `/private/tmp/apack-fresh-directory-native.log`.
+- The existing actual two-build worker case now deliberately enumerates the source root and archives
+  its first fresh publication. Fresh acceptance, input replay, archive creation, unchanged revision,
+  phase reuse and cleanup all pass in 61.51s (63.45s runner), within its existing 120s scenario budget:
+  `/private/tmp/apack-fresh-directory-worker.log`. No third build or new expensive fixture is added.
+- Host/CLI types, five-file correctness lint and published-package refresh pass:
+  `/private/tmp/apack-fresh-directory-{host,cli}-types.log`,
+  `/private/tmp/apack-fresh-directory-lint.log`, `/private/tmp/apack-fresh-directory-packages.log`.
+
+The full default/fork preparation and app acceptance still need completion against this correction;
+the 61.51s producer proof is not their substitute. Keep B1/B3 native/platform lifetime gaps, B6,
+all Phase 6 streams and final committed-source strict `--all` open. Next rebuild the selected default
+pack, then exercise normal preparation/cache verification and the app half without another broad
+diagnostic loop. The failed preparation's own temporary directory was removed by its existing finally;
+the prior prepared fork cache and unrelated work remain intact.

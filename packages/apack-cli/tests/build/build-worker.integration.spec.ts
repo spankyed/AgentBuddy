@@ -1,5 +1,6 @@
 import { readPackBuildInputs, assertPackBuildInputsCurrent, PACK_BUILD_INPUTS_FILE } from '@apackdev/host/build/pack-build-inputs';
 import { COMPILER_INPUTS_ENV } from '../../src/build/compiler-installation-inputs.ts';
+import { buildPackArchive } from '../../src/commands/archive.ts';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
@@ -130,6 +131,7 @@ it('uses the captured compiler and retains unchanged build/cache identity on rep
   const root = fixture({
     'src/compiler.cjs': `module.exports = () => {
       const fs = require('node:fs');
+      fs.readdirSync(process.cwd(), { withFileTypes: true });
       const executable = process.env.ESBUILD_BINARY_PATH;
       if (!executable || executable === ${JSON.stringify(executable)} || !fs.existsSync(executable)
         || (fs.statSync(executable).mode & 0o222)) throw new Error('Compiler did not receive its owned executable');
@@ -158,6 +160,8 @@ it('uses the captured compiler and retains unchanged build/cache identity on rep
   expect(inputs.observations.length).toBeGreaterThan(0);
   expect(fs.readFileSync(path.join(root, 'dist', PACK_BUILD_INPUTS_FILE), 'utf8')).not.toContain(workspaces[0]);
   assertPackBuildInputsCurrent(root, inputs);
+  const archived = await buildPackArchive(root);
+  expect(fs.existsSync(archived.checksumFile)).toBe(true);
   const stamp = readPhaseCache(root).stamps.types;
   const revision = readPackBuild(path.join(root, 'dist')).revision;
   expect(stamp).toBeDefined();

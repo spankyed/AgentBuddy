@@ -26,20 +26,26 @@ function entryKey(entry: fs.Dirent, parentPath: (file: string) => string = file 
 function errorKey(error: unknown): string { return encodeCompilerObservation(compilerErrorValue(error)); }
 
 /** Own only the native prefix actually consumed, including its observed terminal outcome. */
-export function captureNativeDirectory(file: string, options: unknown): CompilerDirectoryCursor {
+export function captureNativeDirectory(file: string, options: unknown, include: (entry: fs.Dirent) => boolean = () => true): CompilerDirectoryCursor {
   const capturedOptions = options && typeof options === 'object' ? { ...options } : options;
   let source: fs.Dir | undefined = Reflect.apply(open, fs, [file, capturedOptions]);
   const entries: fs.Dirent[] = [];
   let terminal: { ok: true } | { ok: false; error: unknown } | undefined;
   let disposed = false;
   const close = () => { const current = source; source = undefined; if (current) Reflect.apply(nativeCloseSync, current, []); };
+  const next = (directory: fs.Dir): fs.Dirent | null => {
+    for (;;) {
+      const entry = Reflect.apply(nativeReadSync, directory, []) as fs.Dirent | null;
+      if (!entry || include(entry)) return entry;
+    }
+  };
   return {
     read(index) {
       if (disposed) throw new Error(`Compiler directory read outlived its compilation: ${file}`);
       if (index < entries.length) return copyCompilerValue(entries[index]!);
       if (!terminal) {
         try {
-          const entry = Reflect.apply(nativeReadSync, source!, []) as fs.Dirent | null;
+          const entry = next(source!);
           if (entry) { entries.push(copyCompilerValue(entry)); return copyCompilerValue(entry); }
           terminal = { ok: true };
         } catch (error) { terminal = { ok: false, error: copyCompilerValue(error) }; }
@@ -53,11 +59,11 @@ export function captureNativeDirectory(file: string, options: unknown): Compiler
       try {
         current = Reflect.apply(open, fs, [file, capturedOptions]);
         for (const expected of entries) {
-          const entry = current!.readSync();
+          const entry = next(current!);
           if (!entry || JSON.stringify(entryKey(entry)) !== JSON.stringify(entryKey(expected))) return false;
         }
         if (!terminal) return true;
-        try { const entry = current!.readSync(); return terminal.ok && entry === null; }
+        try { const entry = next(current!); return terminal.ok && entry === null; }
         catch (error) { return !terminal.ok && errorKey(error) === errorKey(terminal.error); }
       } catch { return false; }
       finally { if (current) Reflect.apply(nativeCloseSync, current, []); }

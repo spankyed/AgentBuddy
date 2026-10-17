@@ -3,7 +3,34 @@ import os from 'node:os';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { expect, it } from 'vitest';
-import { createCompilerFileView } from '../../src/build/compiler-inputs/index.ts';
+import { createCompilerFileView, assertNativeCompilerObservations } from '../../src/build/compiler-inputs/index.ts';
+
+it('keeps source directory observations current when a fresh build publishes output', () => {
+  const root = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'apack-source-directory-')));
+  fs.mkdirSync(path.join(root, 'src'));
+  fs.writeFileSync(path.join(root, 'src/value.txt'), 'VALUE');
+  const view = createCompilerFileView(root, { authoredFiles: ['src/value.txt'] });
+  try {
+    view.readDirectoryData(root, { withFileTypes: true });
+    view.readDirectoryData(root, { recursive: true });
+    const cursor = view.openDirectoryData(root, {});
+    for (let index = 0; cursor.read(index); index++) { /* consume the source namespace */ }
+    const observations = view.observations();
+    for (const directory of ['dist', '.apack', '.git', 'src/__generated__']) {
+      fs.mkdirSync(path.join(root, directory), { recursive: true });
+      fs.writeFileSync(path.join(root, directory, 'output.txt'), 'OUTPUT');
+    }
+    expect(() => view.assertCurrent()).not.toThrow();
+    expect(() => assertNativeCompilerObservations(observations)).not.toThrow();
+    const names = view.readDirectoryData(path.join(root, '.apack'), undefined);
+    expect(names).toEqual(['output.txt']);
+    fs.writeFileSync(path.join(root, '.apack/late.txt'), 'LATE');
+    expect(() => view.assertCurrent()).toThrow(/namespace changed/);
+    expect(() => assertNativeCompilerObservations(observations)).not.toThrow();
+    fs.writeFileSync(path.join(root, 'src/added.txt'), 'ADDED');
+    expect(() => assertNativeCompilerObservations(observations)).toThrow(/input changed/);
+  } finally { view.dispose(); fs.rmSync(root, { recursive: true, force: true }); }
+});
 
 it('replays pack input facts without activating a compiler or installing filesystem interception', () => {
   const temporary = fs.mkdtempSync(path.join(os.tmpdir(), 'apack-passive-inputs-'));

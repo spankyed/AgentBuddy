@@ -331,7 +331,7 @@ build now publishes that record and passes prebuilt acceptance; a release invoca
 development output. Default-fork checkpoint `6a4f68602` checks the selected shipped build's completed inputs
 and pins its prepared archive digest and checksum bytes. Its context is that selected build's recorded
 compiler/options; preparation still builds the fork normally. Full preparation/cache/app acceptance
-remains open. Archive now verifies the completed record under its build lock and replays inputs again
+remains open. Archive checkpoint `8058fd1a2` verifies the completed record under its build lock and replays inputs again
 after creating a temporary archive, before replacing published files. Its default output is
 `.apack/archives`, outside authored inventory; custom output should remain under `.apack/` or outside the
 pack. The comparison context is the selected build's recorded compiler/options, not the archiving process.
@@ -342,9 +342,16 @@ Drive verifies the default pack's output/record and warns without preventing del
 The app-runtime timestamp nudge remains separate; it is not a pack freshness authority. The obsolete
 pack timestamp checker and archive mtime comparison are removed. Focused acceptance, types and lint
 are recorded in the evidence; no converged strict or final `--all` pass is claimed.
-Next: exercise the combined cached preparation/app path, including the default fork, against these
-consumers. Measure the existing real-default archive case under its declared test budget instead of
-assuming the larger record is free. Reconcile
+The real default build and archive pass; archive takes 19.39s and its unchanged assertions now live in
+the integration suite rather than exceeding the fast suite's 15s budget. External preparation builds
+both fixtures and passes 38 contract cases, but the fresh fork's archive exposed a source namespace
+defect: native root-directory observations included the not-yet-published dist entry. Native directory
+and cursor reads now apply the same source exclusions as module resolution; explicit output-directory
+reads retain their full observations. A small case fails before the fix and passes afterward. The actual
+worker now proves fresh publication, archive acceptance and unchanged repeat-build reuse in 61.51s.
+See [fresh directory evidence](../evidence/build-input-snapshot-proof.md#fresh-publication-directory-namespace-repair).
+Next: rebuild against this producer correction and finish the combined cached preparation/app path,
+including the default fork. Do not rerun a broad chain to diagnose the fixed namespace case. Reconcile
 the finite native/platform lifetime boundary against supported compiler operations before closing B1/B3. Preserve required external-library and
 platform/thread-lifetime acceptance;
 preserve the now-accepted namespace cases without starting another resolver or observation framework. Preserve

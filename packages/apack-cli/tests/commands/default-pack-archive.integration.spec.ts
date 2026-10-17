@@ -6,6 +6,7 @@ import { expect, it } from 'vitest';
 import { buildPackArchive } from '../../src/commands/archive';
 import { extractPackArchive, verifyPack } from '@apackdev/host/packs';
 
+// Exercises the real built pack's complete input replay, staging and compressed archive.
 it('archives the real default-setup build as a verified pack without a manifest privilege', async () => {
   const root = fileURLToPath(new URL('../../../default-setup/', import.meta.url));
   const output = fs.mkdtempSync(path.join(os.tmpdir(), 'apack-default-archive-'));
