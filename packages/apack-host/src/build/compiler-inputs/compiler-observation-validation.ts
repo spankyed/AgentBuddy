@@ -5,7 +5,7 @@ import type { CompilerMetadataKind } from './compiler-metadata.ts';
 import { readPackageDirectoryEntries } from '../package-inputs.ts';
 import { packInputFiles } from '../pack-inputs.ts';
 
-/** Replay native thread facts against originals immediately before synchronous publication checks. */
+/** Replay captured filesystem facts against originals without activating a compiler. */
 export function assertNativeCompilerObservations(observations: CompilerInputObservations): void {
   const authoredFiles = observations.entries.some(([query]) => JSON.parse(query)[0] === 'authored-files')
     ? packInputFiles(observations.root) : undefined;
@@ -16,8 +16,8 @@ export function assertNativeCompilerObservations(observations: CompilerInputObse
     for (const [encoded] of observations.entries) {
       const [kind, ...query] = JSON.parse(encoded);
       if (kind === 'authored-files') continue; // The view already owns the current authored inventory.
-      if (kind === 'file') view.readBytes(path.resolve(observations.root, query[0]));
-      else if (kind === 'namespace') view.captureLocation(path.resolve(observations.root, query[0]), 'file');
+      if (kind === 'file') view.readDataBytes(path.resolve(observations.root, query[0]));
+      else if (kind === 'namespace') view.captureDataLocation(path.resolve(observations.root, query[0]), 'file');
       else if (kind === 'entries') view.captureLocation(path.resolve(observations.root, query[0]), 'entries');
       else if (kind === 'node-directory') view.readDirectoryData(path.resolve(observations.root, query[0]), query[1]);
       else if (kind === 'package-entries') packages.record([kind, ...query],
