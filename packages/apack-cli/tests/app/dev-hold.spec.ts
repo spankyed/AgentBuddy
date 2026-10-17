@@ -23,17 +23,16 @@ function held(options: { app?: boolean; profile?: boolean } = {}) {
   });
   hold.holdsMarker('memos');
   hold.holdsSession(() => order.push('session.unpublish'));
-  hold.holdsServer({ close: () => order.push('server.close') });
   if (app) hold.holdsApp(fakeApp);
   return { hold, order };
 }
 
 describe('what a dev session holds', () => {
-  it('lets go of the records, then the server, then the app, and only then the data dir', async () => {
+  it('lets go of the records, then the app, and only then the data dir', async () => {
     const { hold, order } = held();
     await hold.release();
     expect(order).toEqual([
-      'marker.remove:memos', 'session.unpublish', 'server.close', 'app.kill', 'app.exited', 'profile.remove',
+      'marker.remove:memos', 'session.unpublish', 'app.kill', 'app.exited', 'profile.remove',
     ]);
   });
 
@@ -41,7 +40,7 @@ describe('what a dev session holds', () => {
     const { hold, order } = held();
     hold.releaseNow();
     // The app is asked to go; nothing waits for it and nothing is removed from under it
-    expect(order).toEqual(['marker.remove:memos', 'session.unpublish', 'server.close', 'app.kill']);
+    expect(order).toEqual(['marker.remove:memos', 'session.unpublish', 'app.kill']);
   });
 
   // `release` ends by exiting the process, which fires the `exit` handler that calls `releaseNow`
@@ -66,7 +65,7 @@ describe('what a dev session holds', () => {
   it('releases only what it was given', async () => {
     const { hold, order } = held({ app: false, profile: false });
     await hold.release();
-    expect(order).toEqual(['marker.remove:memos', 'session.unpublish', 'server.close']);
+    expect(order).toEqual(['marker.remove:memos', 'session.unpublish']);
   });
 });
 

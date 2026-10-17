@@ -14,6 +14,8 @@ import { holdPackBuildLock } from './build-lock.ts';
 import { readValidManifest } from '../utils.ts';
 import { buildStagingDir, publishPackBuild, readPackBuildCandidate, type PackBuildCandidate } from './build-publication.ts';
 import { BUILD_INPUTS_DIRECTORY_ENV, removeCompilerReadTree } from './compiler-read-tree.ts';
+import { startPackFrontend, type PackFrontend, type PackFrontendAddress } from './frontend-process.ts';
+import { findFEEntry } from './fe-bundler.ts';
 
 // Give worker SIGTERM handlers a short cleanup phase before forced termination.
 const STOP_GRACE_MS = 2_000;
@@ -26,15 +28,35 @@ export interface PackBuildOptions {
 
 export interface PackBuilder {
   build(options?: PackBuildOptions): Promise<void>;
+  serveFrontend(changed: (address: PackFrontendAddress | undefined) => void): Promise<PackFrontendAddress | undefined>;
   close(): Promise<void>;
 }
 
 /** One pack owns its compiler copy; every build gets a fresh process and live input checks. */
 export function createPackBuilder(root: string): PackBuilder {
-  let compiler: CompilerInstallation | undefined;
+  interface Generation { compiler: CompilerInstallation; frontend?: PackFrontend }
+  let current: Generation | undefined;
+  const owned = new Set<Generation>();
+  let frontendChanged: ((address: PackFrontendAddress | undefined) => void) | undefined;
   let active = Promise.resolve();
   let stopping: Promise<void> | undefined;
   const stopped = new AbortController();
+  const dispose = async (generation: Generation) => {
+    await generation.frontend?.close();
+    await generation.compiler.dispose();
+    owned.delete(generation);
+  };
+  const frontend = async (generation: Generation, signal: AbortSignal) => {
+    const entry = findFEEntry(root);
+    if (!entry) {
+      await generation.frontend?.close();
+      generation.frontend = undefined;
+    } else if (!generation.frontend?.alive()) {
+      await generation.frontend?.close();
+      generation.frontend = await startPackFrontend(root, generation.compiler, signal);
+    }
+    return generation.frontend?.address;
+  };
   return {
     build({ args = [], onInputs, signal }: PackBuildOptions = {}) {
       if (stopped.signal.aborted) return Promise.reject(new Error('Pack builder is closed'));
@@ -45,29 +67,52 @@ export function createPackBuilder(root: string): PackBuilder {
         const cli = cliPackageDirectory();
         if (checkoutFor(cli) !== checkoutFor(root)) ensureCheckoutPackages(cli);
         const directory = compilerPackageDirectory();
-        if (!compiler?.isCurrent(directory, { cwd: root })) {
-          const previous = compiler;
-          compiler = await captureCompilerInstallation(directory, { cwd: root });
-          await previous?.dispose();
-        }
-        options.signal.throwIfAborted();
-        const lock = await holdPackBuildLock(root, {
-          packId: readValidManifest(root).id, what: ['apack pack build', ...args].join(' '), signal: options.signal,
-          onWait: holder => console.log(`Waiting for ${holder} to finish...`),
-        });
+        const candidate: Generation = current?.compiler.isCurrent(directory, { cwd: root }) ? current
+          : { compiler: await captureCompilerInstallation(directory, { cwd: root }) };
+        owned.add(candidate);
         try {
           options.signal.throwIfAborted();
-          await buildWithCompiler(root, compiler, options);
+          // A replacement must be ready before its backend can replace the accepted build.
+          if (frontendChanged && candidate !== current && current?.frontend) await frontend(candidate, options.signal);
+          const lock = await holdPackBuildLock(root, {
+            packId: readValidManifest(root).id, what: ['apack pack build', ...args].join(' '), signal: options.signal,
+            onWait: holder => console.log(`Waiting for ${holder} to finish...`),
+          });
+          try { await buildWithCompiler(root, candidate.compiler, options); }
+          finally { lock.release(); }
+          if (frontendChanged) {
+            const before = current?.frontend?.address;
+            const address = await frontend(candidate, options.signal);
+            if (address !== before) frontendChanged(address);
+          }
+          const previous = current;
+          current = candidate;
+          if (previous && previous !== candidate) await dispose(previous);
+        } catch (error) {
+          if (candidate !== current) await dispose(candidate);
+          throw error;
         }
-        finally { lock.release(); }
       });
       active = result.catch(() => {});
+      return result;
+    },
+    serveFrontend(changed) {
+      if (stopped.signal.aborted) return Promise.reject(new Error('Pack builder is closed'));
+      const result = active.then(async () => {
+        stopped.signal.throwIfAborted();
+        if (!current) throw new Error('Build the pack before starting its frontend');
+        frontendChanged = changed;
+        const address = await frontend(current, stopped.signal);
+        changed(address);
+        return address;
+      });
+      active = result.then(() => {}, () => {});
       return result;
     },
     close() {
       if (!stopping) {
         stopped.abort();
-        stopping = active.then(async () => { await compiler?.dispose(); compiler = undefined; });
+        stopping = active.then(async () => { await Promise.all([...owned].map(dispose)); current = undefined; });
       }
       return stopping;
     },
@@ -98,7 +143,7 @@ async function buildWithCompiler(root: string, compiler: CompilerInstallation, {
       ], {
         cwd: root, stdio: ['ignore', 'inherit', 'inherit', 'ipc'], signal, detached: grouped,
         // Transform with this captured compiler, rather than reuse another installation's tsx cache.
-        env: { ...process.env, ...compiler.environment, [COMPILER_PROCESS_GROUP_ENV]: grouped ? '1' : undefined, TSX_DISABLE_CACHE: '1', APACK_BUILD_WORKER: '1', [COMPILER_INPUTS_ENV]: compiler.inputsFile,
+        env: { ...process.env, ...compiler.environment, APACK_FRONTEND_WORKER: undefined, [COMPILER_PROCESS_GROUP_ENV]: grouped ? '1' : undefined, TSX_DISABLE_CACHE: '1', APACK_BUILD_WORKER: '1', [COMPILER_INPUTS_ENV]: compiler.inputsFile,
           [BUILD_INPUTS_DIRECTORY_ENV]: inputsDirectory,
           [BUILD_INPUTS_IPC_ENV]: onInputs ? '1' : '0', [COMPILER_NODE_OPTIONS_ENV]: nodeOptions.user,
           NODE_OPTIONS: nodeOptions.worker, ELECTRON_RUN_AS_NODE: '1' },

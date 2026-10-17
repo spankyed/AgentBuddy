@@ -1,6 +1,6 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
-import { createPackBuilder } from './build-process.ts';
+import { createPackBuilder, type PackBuilder } from './build-process.ts';
 import { withBuildSignals } from './build-signals.ts';
 import { readValidManifest } from '../utils.ts';
 import { isPackInputPath, packInputWatchTargets, packInputsHash } from '@apackdev/host/build/pack-inputs';
@@ -19,6 +19,8 @@ export interface WatchOptions {
   readonly onFirstBuild?: () => void;
   /** Install an external pack's verified output before asking its host to reload it. */
   readonly onBuilt?: () => Promise<void>;
+  /** A dev session owns its shared compiler; standalone watchers own their builder. */
+  readonly build?: PackBuilder['build'];
 }
 
 /**
@@ -71,7 +73,8 @@ export function coalescingRunner(run: () => Promise<void>, delayMs: number = DEB
 export async function startPackBuildWatcher(root: string, options: WatchOptions = {}): Promise<{ close: () => Promise<void> }> {
   options.signal?.throwIfAborted();
   const packId = readValidManifest(root).id;
-  const builder = createPackBuilder(root);
+  const builder = options.build ? undefined : createPackBuilder(root);
+  const build = options.build ?? builder!.build;
   let closed = false;
   let stopping: Promise<void> | undefined;
   let ready = false;
@@ -100,7 +103,7 @@ export async function startPackBuildWatcher(root: string, options: WatchOptions 
     frontendSignature = beforeFrontend.hash;
     if (readValidManifest(root).id !== packId) throw new Error('Pack identity changed; restart the development session');
     let reported: { inputs: BuildWatchInputs; snapshot: FrontendInputSnapshot } | undefined;
-    await builder.build({ onInputs: async inputs => { reported = { inputs, snapshot: await frontend.observe(inputs) }; } });
+    await build({ signal: options.signal, onInputs: async inputs => { reported = { inputs, snapshot: await frontend.observe(inputs) }; } });
     if (closed) return false;
     const accepted = reported?.inputs.successful ? reported.inputs : { files: [], directories: [], successful: true };
     await frontend.accept(accepted);
@@ -180,7 +183,7 @@ export async function startPackBuildWatcher(root: string, options: WatchOptions 
     if (!stopping) {
       options.signal?.removeEventListener('abort', abort);
       closed = true; watcher.close(); for (const watch of links) watch.close();
-      stopping = Promise.all([frontend.close(), runs.close(), builder.close()]).then(() => {});
+      stopping = Promise.all([frontend.close(), runs.close(), builder?.close()]).then(() => {});
     }
     return stopping;
   };

@@ -18,13 +18,15 @@ function pending(signal: AbortSignal): Promise<never> {
 }
 
 vi.mock('../../src/build/build-process.ts', () => ({
-  runPackBuild: vi.fn((_root: string, { signal }: { signal: AbortSignal }) =>
-    state.stage === 'build' ? pending(signal) : Promise.resolve()),
+  createPackBuilder: () => ({
+    build: vi.fn(({ signal }: { signal: AbortSignal }) => state.stage === 'build' ? pending(signal) : Promise.resolve()),
+    serveFrontend: async () => undefined,
+    close: async () => {},
+  }),
 }));
 vi.mock('../../src/build/watch.ts', () => ({
   startPackBuildWatcher: vi.fn((_root: string, { signal }: { signal: AbortSignal }) => pending(signal)),
 }));
-vi.mock('../../src/build/fe-bundler', () => ({ findFEEntry: () => undefined }));
 vi.mock('../../src/app/pack-host', async importOriginal => ({
   ...await importOriginal<typeof import('../../src/app/pack-host')>(),
   cliDirs: () => ({ cache: path.join(state.root, 'cache'), data: path.join(state.root, 'data') }),

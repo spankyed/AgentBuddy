@@ -38,7 +38,7 @@ interface BundleConfig {
 
 const CONFIGS: Record<string, BundleConfig> = {
   '@apackdev/cli': {
-    entries: { cli: 'src/index.ts', 'build-worker': 'src/build/build-worker.ts' },
+    entries: { cli: 'src/index.ts', 'build-worker': 'src/build/build-worker.ts', 'frontend-worker': 'src/build/frontend-worker.ts' },
     commonjsEntries: { 'compiler-startup': 'src/build/compiler-startup.ts' },
     copy: ['bin/apack.mjs', 'bin/compiler-source-hooks.mjs', 'bin/compiler-startup-coordinator.mjs', 'bin/compiler-import.cjs', 'templates'],
     manifest: { bin: { apack: 'bin/apack.mjs' } },

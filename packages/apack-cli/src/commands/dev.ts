@@ -2,13 +2,12 @@ import { recordCliInstall } from '../app/installed-packs';
 import * as path from 'node:path';
 import { spawn, type ChildProcess } from 'node:child_process';
 import { createRequire } from 'node:module';
-import { runPackBuild } from '../build/build-process.ts';
+import { createPackBuilder } from '../build/build-process.ts';
 import { findPackRoot, readManifest } from '../utils';
 import {
   debugPortArgsFor, lastAttachedAt, publishSession, readDevToolsPort, readSession, startedByFromEnv,
   type DevSession,
 } from '@apackdev/host/dev-session';
-import { findFEEntry, packDevServerConfig } from '../build/fe-bundler';
 import type { AppPlace } from '../build/dev-reload.ts';
 import { startPackBuildWatcher } from '../build/watch.ts';
 import { cliDirs, parseHostFlags, resolvePackHost, resolveRepositoryHost, packagedHostChannel, hostLabel, setHostHandoff, type PackHost } from '../app/pack-host';
@@ -292,12 +291,14 @@ async function session(args: string[], hooks: SessionHooks, target: 'app' | 'pac
     } : {}),
   });
   const buildLifetime = new AbortController();
+  const builder = pack ? createPackBuilder(pack.root) : undefined;
   let building: Promise<void> | undefined;
   let watching: ReturnType<typeof startPackBuildWatcher> | undefined;
   // Startup failures are reported by the session; release must still drain their cleanup.
   hold.holdsWatcher(async () => {
     await building?.catch(() => {});
     await watching?.then(watcher => watcher.close(), () => {});
+    await builder?.close();
   });
   const releaseNow = () => { buildLifetime.abort(); hold.releaseNow(); };
   const release = () => { buildLifetime.abort(); return hold.release(); };
@@ -383,7 +384,7 @@ async function session(args: string[], hooks: SessionHooks, target: 'app' | 'pac
 
   if (pack) {
     console.log('Running initial build...\n');
-    building = runPackBuild(pack.root, { signal: buildLifetime.signal });
+    building = builder!.build({ signal: buildLifetime.signal });
     await building;
     buildLifetime.signal.throwIfAborted();
   }
@@ -464,33 +465,19 @@ async function session(args: string[], hooks: SessionHooks, target: 'app' | 'pac
     watching = startPackBuildWatcher(pack.root, {
       place,
       signal: buildLifetime.signal,
+      build: builder!.build,
       onBuilt: async () => { await installToApp(pack.root, place); },
     });
     await watching;
     await new Promise<never>(() => {});
   };
-  const feEntry = findFEEntry(pack.root);
-  if (!feEntry) {
-    await watch();
-    return;
-  }
-
-  const vite = await import('vite');
-  const devServer = await vite.createServer(await packDevServerConfig(pack.root, feEntry));
-  hold.holdsServer(devServer);
-  await devServer.listen();
-  const address = devServer.httpServer?.address();
-  const port = typeof address === 'object' && address ? address.port : 0;
-
-  if (!port) {
-    throw new Error('Vite dev server failed to bind a port');
-  }
-
-  // Outside the installed pack: its directory is the verified pack, replaced by every install below
-  writeDevServerMarker(userDataDir, pack.manifest.id, { port, pid: process.pid });
-  hold.holdsMarker(pack.manifest.id);
-
-  console.log(`\nDev server running at http://localhost:${port}`);
+  const address = await builder!.serveFrontend(address => {
+    if (address) {
+      writeDevServerMarker(userDataDir, pack.manifest.id, address);
+      hold.holdsMarker(pack.manifest.id);
+    } else removeDevServerMarker(userDataDir, pack.manifest.id);
+  });
+  if (address) console.log(`\nDev server running at http://localhost:${address.port}`);
   console.log('Frontend changes reload through Vite; authored inputs rebuild, reinstall and reload the verified pack.');
   console.log('Press Ctrl+C to stop.\n');
   await watch();

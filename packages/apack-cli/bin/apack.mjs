@@ -17,15 +17,16 @@ function projectCli() {
   }
 }
 
-const worker = process.env.APACK_BUILD_WORKER === '1';
+const frontend = process.env.APACK_FRONTEND_WORKER === '1';
+const worker = process.env.APACK_BUILD_WORKER === '1' || frontend;
 if (worker) globalThis[Symbol.for('apack.compiler.startup')]?.stopReads();
-if (worker && (!process.send || !process.connected)) throw new Error('Pack build worker requires its parent IPC channel');
+if (worker && (!process.send || !process.connected)) throw new Error(`Pack ${frontend ? 'frontend' : 'build'} worker requires its parent IPC channel`);
 // The supervisor already selected and captured this compiler; project hand-off would escape it.
 const handoff = worker ? null : projectCli();
 if (handoff) {
   await import(pathToFileURL(handoff).href);
 } else {
-  const entry = worker ? 'build-worker' : 'cli';
+  const entry = frontend ? 'frontend-worker' : worker ? 'build-worker' : 'cli';
   const bundle = new URL(`../dist/${entry}.js`, import.meta.url);
   const bundled = existsSync(new URL('../dist/cli.js', import.meta.url));
   // Bundled workers load pack TypeScript through their owned scopes. A second, unscoped tsx loader
@@ -47,5 +48,5 @@ if (handoff) {
     const { assertSourceResolution } = await import('@apackdev/host/build/source-resolution');
     assertSourceResolution((specifier) => fileURLToPath(import.meta.resolve(specifier)), 'The apack CLI');
   }
-  await import(bundled ? bundle.href : worker ? '../src/build/build-worker.ts' : '../src/index.ts');
+  await import(bundled ? bundle.href : worker ? `../src/build/${entry}.ts` : '../src/index.ts');
 }

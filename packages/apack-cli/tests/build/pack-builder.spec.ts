@@ -49,6 +49,11 @@ function fixture() {
     import fs from 'node:fs';
     import {fileURLToPath} from 'node:url';
     import {spawn} from 'node:child_process';
+    if (process.env.APACK_FRONTEND_WORKER === '1') {
+      process.on('message', () => {});
+      fs.writeFileSync('.apack/frontend-starting.json', JSON.stringify({pid:process.pid, directory:process.env.APACK_FRONTEND_DIRECTORY}));
+      await new Promise(() => {});
+    }
     if (process.argv.includes('--descendant')) {
       const child = spawn(process.execPath, ['-e', 'setInterval(() => {}, 1000)'], {stdio: 'ignore'});
       fs.writeFileSync('.apack/descendant.json', JSON.stringify({pid:child.pid}));
@@ -106,6 +111,25 @@ it('reuses a verified compiler, refreshes changed or damaged copies, and release
   await builder.close();
   expect(fs.existsSync(fileURLToPath(repaired.bin))).toBe(false);
   await expect(builder.build()).rejects.toThrow('Pack builder is closed');
+});
+
+it('drains an interrupted frontend startup before removing its compiler and writable workspace', async () => {
+  const { pack, builder, report } = fixture();
+  await builder.build();
+  const accepted = report();
+  fs.mkdirSync(path.join(pack, 'src'));
+  fs.writeFileSync(path.join(pack, 'src/pack-entry-fe.ts'), 'export {};');
+  const refused = expect(builder.serveFrontend(() => {})).rejects.toMatchObject({ name: 'AbortError' });
+  const record = path.join(pack, '.apack/frontend-starting.json');
+  await vi.waitFor(() => expect(fs.existsSync(record)).toBe(true));
+  const { pid, directory } = JSON.parse(fs.readFileSync(record, 'utf8'));
+  expect(fs.existsSync(directory)).toBe(true);
+  expect(fs.existsSync(fileURLToPath(accepted.bin))).toBe(true);
+  await builder.close();
+  await refused;
+  expect(() => process.kill(pid, 0)).toThrow();
+  expect(fs.existsSync(directory)).toBe(false);
+  expect(fs.existsSync(fileURLToPath(accepted.bin))).toBe(false);
 });
 
 it('stops its worker before removing the compiler on close', async () => {
