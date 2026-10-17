@@ -5,7 +5,6 @@ import * as path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { firstChange, REPO_ROOT } from '@apackdev/host/build/packages-built';
 import { CHAIN_STEPS, orderedSteps } from '../../../scripts/lib/chain-steps.ts';
-import { machineText, thisMachine } from '../../../scripts/lib/core-budget.ts';
 import { briefly, classifyLine, criticalPathLine, pathSavingsLine, outgrownReport, declaredAt, dim, driftReport, DRY_REASON_COLUMN, howLong, identicalRewrites, marker, movedWhileItRan, oneLine, REASON_COLUMN, shouldClassify, staleLines, STEP_NAME_WIDTH, TIME_COLUMN, voidedLine, whenChanged, wrapAt, writerOf } from '../../../scripts/lib/chain-output.ts';
 
 describe('wrapAt', () => {
@@ -755,44 +754,35 @@ describe('outgrownReport', () => {
 });
 
 describe('classifyLine', () => {
-  const HERE = thisMachine();
-  const SMALLER = { cpu: 'Some Smaller CPU', cores: 4 };
-
   /**
    * The dangerous output. A reader skimming a failing run must not take this for the chain being fine, so the
    * sentence says the chain fails; the exit code stays 1, and the retry writes no stamp, in chain.ts.
    */
   it('says the chain still fails when the step passed alone', () => {
-    const line = classifyLine({ code: 0, ms: 47_200 }, HERE);
+    const line = classifyLine({ code: 0, ms: 47_200 });
 
     expect(line).toContain('passed in 47.2s');
     expect(line).toContain('The chain still fails.');
   });
 
-  /**
-   * The conclusion it used to draw, and the reason it could not. Running alone rules the *code* out — the same
-   * command over the same tree — and rules nothing else out, so "contention or a flake" picked between two
-   * possibilities over a variable the message had never identified. It cost two wrong hypotheses on 2026-10-07.
-   *
-   * The same `.not.toContain(<the conclusion>)` + `.toContain(<the hedge>)` pair the timeout arm below uses.
-   */
-  it('claims no cause, naming what it ruled out and what it did not', () => {
-    const line = classifyLine({ code: 0, ms: 47_200 }, HERE, ['test:unit:host']);
+  it('leaves the original cause unresolved when a retry passes', () => {
+    const line = classifyLine({ code: 0, ms: 47_200 }, ['test:unit:host']);
 
     expect(line, 'the verdict it has no evidence for').not.toContain('contention or a flake');
-    expect(line, 'the half the re-run did establish').toContain('the code is ruled out, and nothing else is');
+    expect(line).toContain('the original failure remains unresolved');
+    expect(line).not.toContain('the code is ruled out');
     expect(line, 'and that it cannot choose between what is left').toContain('neither does this message');
   });
 
   // What the schedule recorded, rather than what the budget permitted — which is why this was a guess before
   it('names the steps that actually ran beside it', () => {
-    const line = classifyLine({ code: 0, ms: 1_000 }, HERE, ['lint:check', 'typecheck:renderer']);
+    const line = classifyLine({ code: 0, ms: 1_000 }, ['lint:check', 'typecheck:renderer']);
 
     expect(line).toContain('It ran beside lint:check, typecheck:renderer the first time.');
   });
 
   it('counts the rest rather than listing a whole schedule', () => {
-    const line = classifyLine({ code: 0, ms: 1_000 }, HERE, ['a', 'b', 'c', 'd', 'e']);
+    const line = classifyLine({ code: 0, ms: 1_000 }, ['a', 'b', 'c', 'd', 'e']);
 
     expect(line).toContain('beside a, b, c and 2 others the first time');
   });
@@ -802,35 +792,22 @@ describe('classifyLine', () => {
    * the harness's case rather than the chain's — and it must still read as a sentence rather than trailing off.
    */
   it('says so when nothing ran beside it', () => {
-    const line = classifyLine({ code: 0, ms: 1_000 }, HERE, []);
+    const line = classifyLine({ code: 0, ms: 1_000 }, []);
 
     expect(line).toContain('nothing here was beside it');
     expect(line, 'and still refuses the verdict').toContain('neither does this message');
   });
 
   it('says the failure is real when it failed alone too', () => {
-    expect(classifyLine({ code: 1, ms: 48_100 }, HERE)).toContain('failed again (exit 1) in 48.1s — the failure is real.');
+    expect(classifyLine({ code: 1, ms: 48_100 })).toContain('failed again (exit 1) in 48.1s — the failure is real.');
   });
 
-  it('distinguishes a step that was wedged from one that was crowded', () => {
-    expect(classifyLine({ code: 1, ms: 240_000, timedOut: true }, HERE)).toContain('wedged, not crowded');
-  });
-
-  /**
-   * And off that machine it claims only the half the re-run established.
-   *
-   * Running alone rules out contention wherever it runs; "wedged" needs the deadline to be generous here, and
-   * a deadline is a class sized for a machine this one may be smaller than. The flat version was the last
-   * ungated timeout verdict in the repo after `timedOutBecause` gated its arms — two of three at first, and
-   * the third once the machine stopped being bundled with a cost that an arm might not have.
-   */
-  it('claims only "not crowded" on a machine the deadline was not sized for', () => {
-    const line = classifyLine({ code: 1, ms: 240_000, timedOut: true }, SMALLER);
-
-    expect(line, 'the conclusion the retry cannot reach here').not.toContain('wedged, not crowded');
-    expect(line).toContain('not crowded, which is all this says');
-    expect(line, 'both machines, so the reader can see why').toContain(machineText(SMALLER));
-    expect(line).toContain(machineText(HERE));
+  it('reports a timeout alone without inferring stalled work or absence of outside contention', () => {
+    const line = classifyLine({ code: 1, ms: 240_000, timedOut: true });
+    expect(line).toContain('timed out after 240.0s');
+    expect(line).toContain('No other chain step overlapped this retry');
+    expect(line).toContain('slow progress and stalled work remain possible');
+    expect(line).not.toMatch(/wedged|not crowded/);
   });
 });
 

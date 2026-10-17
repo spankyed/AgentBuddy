@@ -590,7 +590,7 @@ async function main(): Promise<void> {
       // The retry's own, beside the first attempt's rather than over them — a re-run that passed and one
       // that failed wrote different files, and which it was is the question being asked
       evidence?.keepFiles(`${step.name}.retry`, step.keepsOnFailure ?? []);
-      console.log(classifyLine(retry, MEASURED_ON, beside));
+      console.log(classifyLine(retry, beside));
     }
   }
 

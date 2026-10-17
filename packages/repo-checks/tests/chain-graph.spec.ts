@@ -14,7 +14,7 @@ import { declaredAt } from '../../../scripts/lib/chain-output.ts';
 import { reachableText, rootScripts, withoutComments } from '../../../scripts/lib/npm-scripts.ts';
 import { population } from '@apackdev/sdk/testing';
 import { machineText, POOL_WIDTH, thisMachine } from '../../../scripts/lib/core-budget.ts';
-import { ASSUMED_RUNGS, declaredShare, rungForKind, timedOutBecause, TIMEOUT_CLASSES, TIMEOUT_MS, type TimeoutClass } from '../../../scripts/lib/step-timeouts.ts';
+import { declaredShare, rungForKind, timedOutBecause, TIMEOUT_CLASSES, TIMEOUT_MS } from '../../../scripts/lib/step-timeouts.ts';
 import e2eConfig from '../../../playwright.config.ts';
 
 describe('the chain graph', () => {
@@ -229,17 +229,6 @@ describe('every spawn an orchestrator makes is bounded', () => {
   const boundedIn = (scripts: Record<string, string>): { name: string; className: string }[] =>
     Object.entries(scripts).flatMap(([name, command]) =>
       [...command.matchAll(/scripts\/bounded\.ts\s+(\S+)/g)].map((hit) => ({ name, className: hit[1]! })));
-
-  /**
-   * The rungs whose stretch factor is a borrow, asserted non-empty where a case indexes it.
-   *
-   * `population` rather than a length check of its own, which is how `chain-table.spec.ts` reads the same
-   * list: the claim is that the cases below are not asking about an empty set, and it belongs at the point
-   * of use rather than in the provenance case, whose subject is the pairing of `measured` and `until`. Held
-   * there it read as a third job that case does not have, and promised to survive an edit that empties the
-   * list. An all-measured ladder is that edit, and it retires this and `rungTerms`' assumed branch together.
-   */
-  const assumedRungs = (): readonly TimeoutClass[] => population('the assumed rungs', ASSUMED_RUNGS);
 
   // An unbounded run cannot fail — it waits until a person notices and kills it by pid, which is how this
   // repo collected an orphaned build at 99% CPU for a day. `boundedSpawn` bounds the wall clock and kills
@@ -506,150 +495,26 @@ describe('every spawn an orchestrator makes is bounded', () => {
     }
   });
 
-  /**
-   * What a step says when its class killed it — the one report in the repo whose subject is a deadline.
-   *
-   * **A kill truncates the measurement**, so the figure with information in it is the *rope*: the deadline
-   * over what the step costs healthy. Elapsed time is the deadline plus the grace period by construction
-   * (`bounded-spawn.ts`) and carries nothing, which is why none of these cases asks for it.
-   *
-   * **And the interpretation is machine-dependent.** "So it is wedged" is true where the costs were measured
-   * and an assertion the program cannot make anywhere else: on a smaller box a step can exceed its deadline
-   * by being slow, and that is exactly the evidence the assumed rungs are waiting for. The message used to
-   * state the conclusion flatly and then add *"overrunning one is not a stale number"* — the sentence that
-   * would stop a reader suspecting the rung's factor, which off the measured machine is the thing to suspect.
-   */
   describe('what a timed-out step reports', () => {
     const HERE = thisMachine();
     const SMALLER = { cpu: 'Some Smaller CPU', cores: 4 };
 
-    it('states the rope it got, which is its deadline over what it costs healthy', () => {
-      // 600s for a 13s step is 46x, and that is the number a kill proves a lower bound on
-      expect(timedOutBecause({ what: 'build:default-setup', timeout: 'suite', seconds: 13, measuredOn: HERE }))
-        .toContain('That is 46x the 13s it costs healthy here');
-    });
-
-    it('calls it wedged on the machine the costs were measured on', () => {
-      const why = timedOutBecause({ what: 'build:default-setup', timeout: 'suite', seconds: 13, measuredOn: HERE });
-      expect(why).toContain('so it is wedged rather than slow');
-      expect(why, 'the deadline and its class, so a reader need not look the rung up').toContain('600s (suite)');
-    });
-
-    /**
-     * The arm the whole change is for: off the measured machine the rope is evidence about the rung, and the
-     * message has to name the rung's factor rather than draw the conclusion that forecloses it.
-     */
-    it('names the rung and its factor on any other machine, and calls the rope the finding', () => {
-      const assumed = assumedRungs()[0]!;
-      const why = timedOutBecause({
-        what: 'typecheck:renderer', timeout: assumed, seconds: 10, measuredOn: HERE, machine: SMALLER,
-      });
-      expect(why, 'never the flat conclusion, which here is the half of the answer that is not knowable')
-        .not.toContain('so it is wedged rather than slow');
-      expect(why).toContain(`or ${assumed} stretches by more than`);
-      expect(why).toContain(`which its row assumes is ${TIMEOUT_MS[assumed].stretches}x and has never measured`);
-      expect(why, 'both machines, since the reader has to know which is which').toContain(machineText(SMALLER));
+    it.each([HERE, SMALLER])('reports the bound without diagnosing stalled work on %j', machine => {
+      const why = timedOutBecause({ what: 'test:integration', timeout: 'suite', seconds: 60, measuredOn: HERE, machine });
+      expect(why).toContain('600s (suite)');
+      expect(why).toContain('Recorded cost: 60s');
       expect(why).toContain(machineText(HERE));
+      expect(why).toContain(machineText(machine));
+      expect(why).toContain('does not distinguish slow progress from stalled work');
+      expect(why).not.toMatch(/wedged|deadlock|not a stale number|put the number on/);
     });
 
-    it('says a measured rung was measured, and by what', () => {
-      // `suite` is the one rung with a figure of its own, so off-machine it reports a recorded factor rather
-      // than an assumption — the same arm, a different claim, and getting those two the same way round is the
-      // point of carrying the provenance on the rung
-      const why = timedOutBecause({
-        what: 'test:unit:host', timeout: 'suite', seconds: 60, measuredOn: HERE, machine: SMALLER,
-      });
-      expect(why).toContain('where its row records');
-      expect(why, 'the provenance itself, not a copy of it').toContain(TIMEOUT_MS.suite.measured);
-    });
-
-    /**
-     * And the arm `scripts/bounded.ts` takes, which is the one that matters: that path has a class and an
-     * argv and no step record at all, so a rope is not a number it can compute. It says so rather than
-     * reaching for a `?` or a zero — the same refusal `priceSpecs` makes about an unrecorded spec.
-     *
-     * **It is gated on the machine like the other two, which the argument shape has to allow.** With the cost
-     * and the machine in one optional bundle, the arm with no cost has no machine either, so it cannot be gated
-     * and hands down a verdict on any box — in the arm four of the five call sites reach, and in the path most
-     * likely to be running on someone else's machine.
-     */
-    it('computes no rope where this run carries no recorded cost', () => {
-      const why = timedOutBecause({ what: 'bash tests/scripts/x.sh', timeout: 'scenario', measuredOn: HERE });
+    it.each([undefined, 0])('does not invent a recorded cost for %s', seconds => {
+      const why = timedOutBecause({ what: 'bash tests/scripts/x.sh', timeout: 'scenario', seconds, measuredOn: HERE });
       expect(why).toContain('900s (scenario)');
       expect(why).toContain('This run carries no recorded cost');
-      expect(why, 'no rope, and no invented operand to compute one from')
-        .not.toMatch(/That is \d+(?:\.\d+)?x/);
-    });
-
-    it('still calls an overrun wedged with no cost, on the machine the ladder is sized against', () => {
-      const why = timedOutBecause({ what: 'bash tests/scripts/x.sh', timeout: 'scenario', measuredOn: HERE });
-      expect(why).toContain('wedged rather than slow');
-      // **And it names what that rests on**, which is `declaredShare` holding every *declared* cost inside
-      // its rung. Without the premise the sentence denied a cost in one clause and reasoned from one in the
-      // next; with it, a reader whose run has no declared cost anywhere can see they are outside the
-      // guarantee rather than having to derive which callers it covers
-      expect(why, 'the premise, not the bare verdict').toContain('every step the chain declares');
-    });
-
-    it('draws no conclusion with no cost on any other machine, where being slow is the other answer', () => {
-      const why = timedOutBecause({
-        what: 'bash tests/scripts/x.sh', timeout: 'scenario', measuredOn: HERE, machine: SMALLER,
-      });
-      expect(why, 'the verdict this change exists to stop it making').not.toContain('wedged rather than slow');
-      expect(why).toContain('So it is wedged, or scenario work stretches more here than its row assumes');
-      expect(why, 'both machines, so the reader knows which is which').toContain(machineText(SMALLER));
-      expect(why).toContain(machineText(HERE));
-    });
-
-    /**
-     * The two things this arm must not do — and the case above was worded to permit both until 2026-10-04,
-     * while being named for the opposite.
-     *
-     * With no cost there is no rope, so the only figure available to quote is the rung's own `stretches`.
-     * That made "stretches by more than 4x" circular — it exceeded 4x, where 4x is what the row declares —
-     * and it gave `rungTerms`' edit a referent that was the assumption itself, so the message read as an
-     * instruction to record 4 as *measured* and flip `until` on the strength of a run that computed
-     * nothing. The provenance case accepts that edit, being well formed, so what it would delete is the
-     * only marker saying the factor is a guess.
-     */
-    it('quotes no stretch factor and asks for no edit where nothing records a cost', () => {
-      const why = timedOutBecause({
-        what: 'bash tests/scripts/x.sh', timeout: assumedRungs()[0]!, measuredOn: HERE, machine: SMALLER,
-      });
-      expect(why, 'no figure at all, since the only one available is the assumption being asked about')
-        .not.toMatch(/\d+(?:\.\d+)?x/);
-      expect(why, 'and no instruction to record it as measured').not.toContain('put the number on');
-      expect(why).not.toContain('this run is the evidence it waits for');
-    });
-
-    /**
-     * What an assumed rung tells the reader to do, which is to record the run rather than to make it.
-     *
-     * **It must not quote `until`, which the second assertion pins.** `until` names a run that reaches the
-     * rung; this arm prints only off the measured machine, so its reader is always on a box that can supply the
-     * evidence, and the message exists because a run just reached that rung — so quoting it would always name
-     * the run the reader had just made. The edit named instead is the one the provenance case polices as
-     * exactly one of `measured` and `until`, so the two cases cannot drift apart about what settling a rung
-     * means.
-     */
-    it('tells an assumed rung\'s reader to record this run, and names the edit that does', () => {
-      const assumed = assumedRungs()[0]!;
-      const why = timedOutBecause({
-        what: 'typecheck:renderer', timeout: assumed, seconds: 10, measuredOn: HERE, machine: SMALLER,
-      });
-      expect(why).toContain('so this run is the evidence it waits for');
-      expect(why, 'the edit, so the terms and the invariant say the same thing')
-        .toContain(`put the number on ${assumed}'s \`stretches\` and move its \`until\` to \`measured\``);
-      expect(why, '`until` names the run this reader has just made, so quoting it says "do what you just did"')
-        .not.toContain(TIMEOUT_MS[assumed].until);
-    });
-
-    it('asks a measured rung\'s reader to record nothing, having nothing outstanding', () => {
-      const why = timedOutBecause({
-        what: 'test:unit:host', timeout: 'suite', seconds: 60, measuredOn: HERE, machine: SMALLER,
-      });
-      expect(why).not.toContain('this run is the evidence');
-      expect(why, 'the finding, and no edit to make').toContain('That number is the finding.');
+      expect(why).not.toContain('Recorded cost:');
+      expect(why).not.toMatch(/wedged|deadlock|put the number on/);
     });
   });
 
