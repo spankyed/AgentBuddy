@@ -15,7 +15,7 @@ import { readValidManifest } from '../utils.ts';
 import { buildStagingDir, publishPackBuild, readPackBuildCandidate, type PackBuildCandidate } from './build-publication.ts';
 import { BUILD_INPUTS_DIRECTORY_ENV, removeCompilerReadTree } from './compiler-read-tree.ts';
 import { startPackFrontend, type PackFrontend, type PackFrontendAddress } from './frontend-process.ts';
-import { findFEEntry } from './fe-bundler.ts';
+import { findFEEntry, readPackDevServerInputs } from './fe-bundler.ts';
 
 // Give worker SIGTERM handlers a short cleanup phase before forced termination.
 const STOP_GRACE_MS = 2_000;
@@ -34,7 +34,7 @@ export interface PackBuilder {
 
 /** One pack owns its compiler copy; every build gets a fresh process and live input checks. */
 export function createPackBuilder(root: string): PackBuilder {
-  interface Generation { compiler: CompilerInstallation; frontend?: PackFrontend }
+  interface Generation { compiler: CompilerInstallation; frontend?: PackFrontend; configuration?: string }
   let current: Generation | undefined;
   const owned = new Set<Generation>();
   let frontendChanged: ((address: PackFrontendAddress | undefined) => void) | undefined;
@@ -48,12 +48,21 @@ export function createPackBuilder(root: string): PackBuilder {
   };
   const frontend = async (generation: Generation, signal: AbortSignal) => {
     const entry = findFEEntry(root);
+    const configuration = readPackDevServerInputs(root);
     if (!entry) {
       await generation.frontend?.close();
       generation.frontend = undefined;
     } else if (!generation.frontend?.alive()) {
       await generation.frontend?.close();
       generation.frontend = await startPackFrontend(root, generation.compiler, signal);
+      if (readPackDevServerInputs(root) !== configuration) {
+        await generation.frontend.close();
+        generation.frontend = undefined;
+        throw new Error('Pack frontend configuration changed during startup; build the pack again');
+      }
+      generation.configuration = configuration;
+    } else if (generation.configuration !== configuration) {
+      throw new Error('Pack frontend configuration changed; build the pack before serving it again');
     }
     return generation.frontend?.address;
   };
@@ -67,7 +76,10 @@ export function createPackBuilder(root: string): PackBuilder {
         const cli = cliPackageDirectory();
         if (checkoutFor(cli) !== checkoutFor(root)) ensureCheckoutPackages(cli);
         const directory = compilerPackageDirectory();
-        const candidate: Generation = current?.compiler.isCurrent(directory, { cwd: root }) ? current
+        const configuration = frontendChanged ? readPackDevServerInputs(root) : undefined;
+        const reusable = current?.compiler.isCurrent(directory, { cwd: root })
+          && (!current.frontend || current.configuration === configuration);
+        const candidate: Generation = reusable ? current!
           : { compiler: await captureCompilerInstallation(directory, { cwd: root }) };
         owned.add(candidate);
         try {
@@ -101,9 +113,9 @@ export function createPackBuilder(root: string): PackBuilder {
       const result = active.then(async () => {
         stopped.signal.throwIfAborted();
         if (!current) throw new Error('Build the pack before starting its frontend');
-        frontendChanged = changed;
         const address = await frontend(current, stopped.signal);
         changed(address);
+        frontendChanged = changed;
         return address;
       });
       active = result.then(() => {}, () => {});

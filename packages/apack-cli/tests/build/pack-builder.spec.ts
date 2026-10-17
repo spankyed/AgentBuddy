@@ -10,6 +10,7 @@ import { _declarationRevision, PACK_SNAPSHOT_FORMAT } from '@apackdev/sdk/build'
 import { PACK_LAYOUT, readPackBuild, sealPackBuild } from '@apackdev/host/packs';
 import { packInputsHash } from '@apackdev/host/build/pack-inputs';
 import { createPackBuilder, type PackBuilder } from '../../src/build/build-process.ts';
+import { readPackDevServerInputs } from '../../src/build/fe-bundler.ts';
 
 function stopDescendant(pid: number) {
   try { process.kill(pid, 'SIGKILL'); }
@@ -21,6 +22,7 @@ const builders: PackBuilder[] = [];
 afterEach(async () => {
   await Promise.all(builders.splice(0).map(builder => builder.close()));
   vi.restoreAllMocks();
+  vi.unstubAllEnvs();
   roots.splice(0).forEach(root => fs.rmSync(root, { recursive: true, force: true }));
 });
 
@@ -50,8 +52,10 @@ function fixture() {
     import {fileURLToPath} from 'node:url';
     import {spawn} from 'node:child_process';
     if (process.env.APACK_FRONTEND_WORKER === '1') {
-      process.on('message', () => {});
+      const hanging = fs.existsSync('.apack/frontend-hang');
+      process.on('message', message => { if (message === 'frontend-close' && !hanging) process.exit(0); });
       fs.writeFileSync('.apack/frontend-starting.json', JSON.stringify({pid:process.pid, directory:process.env.APACK_FRONTEND_DIRECTORY}));
+      if (!hanging) process.send({type:'frontend-ready', port:12345, hash:JSON.parse(fs.readFileSync(process.env.APACK_COMPILER_INPUTS,'utf8')).hash});
       await new Promise(() => {});
     }
     if (process.argv.includes('--descendant')) {
@@ -76,7 +80,7 @@ function fixture() {
         }
       };
       writable('.apack/build');
-      process.send(${JSON.stringify(handoff)}, () => process.disconnect());
+      process.send({...${JSON.stringify(handoff)}, inputHash:process.env.APACK_FIXTURE_INPUT_HASH ?? ${JSON.stringify(handoff.inputHash)}}, () => process.disconnect());
     }
     fs.writeFileSync('.apack/built.json', JSON.stringify({pid:process.pid, bin:import.meta.url, label:fs.readFileSync(new URL('../label.txt',import.meta.url),'utf8')}));
   `);
@@ -119,6 +123,7 @@ it('drains an interrupted frontend startup before removing its compiler and writ
   const accepted = report();
   fs.mkdirSync(path.join(pack, 'src'));
   fs.writeFileSync(path.join(pack, 'src/pack-entry-fe.ts'), 'export {};');
+  fs.writeFileSync(path.join(pack, '.apack/frontend-hang'), '');
   const refused = expect(builder.serveFrontend(() => {})).rejects.toMatchObject({ name: 'AbortError' });
   const record = path.join(pack, '.apack/frontend-starting.json');
   await vi.waitFor(() => expect(fs.existsSync(record)).toBe(true));
@@ -130,6 +135,58 @@ it('drains an interrupted frontend startup before removing its compiler and writ
   expect(() => process.kill(pid, 0)).toThrow();
   expect(fs.existsSync(directory)).toBe(false);
   expect(fs.existsSync(fileURLToPath(accepted.bin))).toBe(false);
+});
+
+it('replaces a server for pack configuration changes while reusing unchanged source/configuration', async () => {
+  const capture = vi.spyOn(installation, 'captureCompilerInstallation');
+  const { pack, builder, report } = fixture();
+  await builder.build();
+  fs.mkdirSync(path.join(pack, 'src'));
+  fs.writeFileSync(path.join(pack, 'src/pack-entry-fe.ts'), 'export {};');
+  const addresses: { pid: number }[] = [];
+  await builder.serveFrontend(address => {
+    if (!address) return;
+    if (addresses.length) expect(() => process.kill(addresses.at(-1)!.pid, 0)).not.toThrow();
+    addresses.push(address);
+  });
+  const first = report();
+  vi.stubEnv('APACK_FIXTURE_INPUT_HASH', packInputsHash(pack));
+  await builder.build();
+  expect(report().bin).toBe(first.bin);
+  expect(addresses).toHaveLength(1);
+  fs.writeFileSync(path.join(pack, 'package.json'), '{"type":"module"}');
+  await expect(builder.serveFrontend(() => {})).rejects.toThrow('configuration changed');
+  vi.stubEnv('APACK_FIXTURE_INPUT_HASH', packInputsHash(pack));
+  await builder.build();
+  expect(addresses).toHaveLength(2);
+  expect(report().bin).not.toBe(first.bin);
+  expect(() => process.kill(addresses[0]!.pid, 0)).toThrow();
+  expect((await capture.mock.results[1]!.value).hash).toBe((await capture.mock.results[0]!.value).hash);
+  expect(fs.existsSync(fileURLToPath(first.bin))).toBe(false);
+  const ui = path.join(pack, '.apack/ui-one');
+  fs.mkdirSync(ui, { recursive: true });
+  const lookup = path.join(pack, 'node_modules/@apackdev/ui');
+  fs.mkdirSync(path.dirname(lookup), { recursive: true });
+  fs.symlinkSync(ui, lookup, 'dir');
+  const metadata = { name: '@apackdev/ui', exports: { './package.json': './package.json', './one': './one.js' } };
+  fs.writeFileSync(path.join(ui, 'package.json'), JSON.stringify(metadata));
+  fs.writeFileSync(path.join(ui, 'one.js'), 'throw new Error("Metadata must not activate this module");');
+  await builder.build();
+  expect(addresses).toHaveLength(3);
+  metadata.exports['./one'] = './two.js';
+  fs.writeFileSync(path.join(ui, 'package.json'), JSON.stringify(metadata));
+  await builder.build();
+  expect(addresses).toHaveLength(4);
+  const other = path.join(pack, '.apack/ui-two');
+  fs.mkdirSync(other);
+  fs.writeFileSync(path.join(other, 'package.json'), JSON.stringify({ name: '@apackdev/ui', exports: {
+    './package.json': './package.json', './two': './two.js',
+  } }));
+  fs.unlinkSync(lookup);
+  fs.symlinkSync(other, lookup, 'dir');
+  await builder.build();
+  expect(addresses).toHaveLength(5);
+  expect(readPackDevServerInputs(pack)).toContain('@apackdev/ui/two');
 });
 
 it('stops its worker before removing the compiler on close', async () => {

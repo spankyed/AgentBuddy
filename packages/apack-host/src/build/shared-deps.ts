@@ -1,6 +1,7 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { createRequire } from 'node:module';
+import { findPackageDirectory } from './package-inputs.ts';
 import { SOURCE_CONDITION } from './source-resolution.ts';
 
 /**
@@ -217,12 +218,9 @@ export function getSdkFeModules(): Record<string, SdkFeModule> {
  * `fromDir` resolves (the host's own, or a pack's).
  */
 export function getUiFeModules(fromDir: string): Record<string, SdkFeModule> {
-  let manifestPath: string;
-  try {
-    manifestPath = createRequire(path.join(fromDir, 'package.json')).resolve('@apackdev/ui/package.json');
-  } catch {
-    return {};
-  }
+  const directory = findPackageDirectory(fromDir, '@apackdev/ui')?.directory;
+  if (!directory) return {};
+  const manifestPath = path.join(directory, 'package.json');
   const { exports } = JSON.parse(fs.readFileSync(manifestPath, 'utf-8')) as { exports: Record<string, unknown> };
   return Object.fromEntries(
     Object.keys(exports)

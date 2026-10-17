@@ -10,6 +10,7 @@ import type { BuildWatchInputs } from './build-watch-inputs.ts';
 import { globWatchPlugin } from './glob-watch.ts';
 import type { CompilationInputs } from './compilation-inputs.ts';
 import { withCompilerFileReads } from './compiler-file-reads.ts';
+import { findPackageDirectory } from '@apackdev/host/build/package-inputs';
 
 /**
  * The package names the pack declares opaque to the bundler (`build.opaqueDeps`). Unreadable is an error
@@ -109,11 +110,7 @@ function uiTailwindContent(packDir: string): string[] {
 
 /** A pack's @apackdev/ui, which is what depends on tiptap and may hold its own nested copy */
 function uiPackageDir(packDir: string): string | undefined {
-  try {
-    return path.dirname(fs.realpathSync(createRequire(path.join(packDir, 'package.json')).resolve('@apackdev/ui/package.json')));
-  } catch {
-    return undefined;
-  }
+  return findPackageDirectory(packDir, '@apackdev/ui')?.directory;
 }
 
 /**
@@ -369,6 +366,19 @@ export async function packDevServerConfig(root: string, feEntry: string): Promis
     logLevel: 'info',
     optimizeDeps: { exclude: packSharedSpecifiers(root) },
   };
+}
+
+/** Startup configuration only: ordinary source edits stay in Vite's live module graph. */
+export function readPackDevServerInputs(root: string): string {
+  const manifest = fs.readFileSync(path.join(root, 'apack.json'), 'utf8');
+  const metadata = [path.join(root, 'package.json')];
+  for (const name of ['@apackdev/sdk', '@apackdev/ui']) {
+    const directory = findPackageDirectory(root, name)?.directory;
+    if (directory) metadata.push(path.join(directory, 'package.json'));
+  }
+  const directories = sharedResolveDirs(root);
+  return JSON.stringify([manifest, findFEEntry(root), directories, sharedFeModules(...directories),
+    metadata.map(file => [file, fs.existsSync(file) ? fs.readFileSync(file, 'utf8') : null])]);
 }
 
 export interface BundleFEOptions {

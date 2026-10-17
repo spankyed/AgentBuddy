@@ -59,7 +59,7 @@ export function readPackageDirectoryEntries(directory: string): fs.Dirent[] {
 }
 
 /** Resolve package ownership without executing an entry or requiring package.json to be exported. */
-function dependencyDirectory(owner: string, name: string, observe?: BuildInputObserver): { directory: string; lookup: string } | undefined {
+export function findPackageDirectory(owner: string, name: string, observe?: BuildInputObserver): { directory: string; lookup: string } | undefined {
   if (!/^(?:@[a-z0-9._-]+\/)?[a-z0-9._-]+$/i.test(name) || name.split('/').some(part => part === '.' || part === '..')) {
     throw new Error(`Invalid npm dependency name: ${name}`);
   }
@@ -184,7 +184,7 @@ export function readPackageInputs(owners: readonly PackageInputOwner[], options:
     const names = Object.keys({ ...manifest.dependencies, ...manifest.peerDependencies,
       ...manifest.optionalDependencies, ...(development && manifest.devDependencies) }).sort();
     for (const name of names) {
-      const dependency = dependencyDirectory(node.directory, name, observe);
+      const dependency = findPackageDirectory(node.directory, name, observe);
       if (!dependency) { node.dependencies[name] = null; continue; }
       const child = register(dependency.directory, true);
       node.dependencies[name] = child;
