@@ -65,7 +65,7 @@ it('executes its owned runtime and refuses a damaged, aliased or missing copy', 
   const compiler = fixture();
   const installation = await compiler.capture();
   expect(installation.executable).not.toBe(fs.realpathSync(process.execPath));
-  expect(execFileSync(installation.executable, [installation.bin], { encoding: 'utf8', timeout: 5_000 }).trim()).toBe('captured');
+  expect(execFileSync(installation.executable, [installation.bin], { encoding: 'utf8', timeout: process.platform === 'win32' ? 10_000 : 5_000 }).trim()).toBe('captured');
   expect(installation.isCurrent(compiler.root)).toBe(true);
   fs.chmodSync(installation.executable, 0o755);
   fs.writeFileSync(installation.executable, 'damaged runtime');

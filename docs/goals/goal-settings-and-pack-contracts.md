@@ -102,11 +102,21 @@ Windows two-build/archive case 240 seconds, retaining 120 seconds locally and ev
 focused Windows diagnostic selects startup and repeat-build baseline cases; broader platform/native
 lifetime acceptance remains required with its implementation. See
 [timing evidence](../evidence/build-input-snapshot-proof.md#windows-repeated-build-forward-progress-2026-10-17).
-Descendant lifetime remains separately unimplemented. A Windows-only Job Object prototype now
-checks suspended launch before assignment/resume, inherited Node JSON IPC/stdio, cwd/argument/env
-preservation and actual descendant termination on success, failure and launcher cancellation. It runs
-before dependency installation in the focused workflow; no production compiler path uses it. Native
-proof must pass before selecting production integration, parent-loss and replacement handling.
+The native Job Object prototype passes on Windows in run `39064447097` (`62f6a03b8`): normal and
+nonzero exit plus forced launcher cancellation stop actual root/descendant processes while preserving
+JSON IPC, stdio, args, cwd and environment. That run later fails a separate copied-runtime probe's
+5-second subprocess deadline (161 other unit checks pass), before the repeat-build baseline.
+Only this Windows cold executable probe now permits 10 seconds; its content/alias/refusal assertions
+and other deadlines remain intact.
+
+Build and Vite workers now use a common spawn helper with the shipped Windows launcher; POSIX keeps
+its process groups. The native proof calls that actual production helper and includes Unicode input.
+Normal Windows completion waits for zero job processes before returning; parent loss/forced owner
+termination closes the kill-on-close job. Frontend readiness reports the actual worker PID. Nine local
+owner/replacement/cancellation checks, the real descendant-publication regression, 153 cache/tooling
+checks, types, lint and CLI asset packaging pass. Native execution of this integration, parent-loss and
+replacement acceptance remain open. See
+[integration evidence](../evidence/build-input-snapshot-proof.md#windows-job-owner-integration-checkpoint-2026-10-17).
 
 Source `59b890dcb` repairs the macOS explicit fallback gap: launch-time `DYLD_FALLBACK_LIBRARY_PATH`
 survives preload mutation, selected external fallback libraries refuse before native initialization,
@@ -160,7 +170,7 @@ arbitrary external native capture and native I/O are excluded by that explicit a
 | Item | Current evidence | Required closure |
 |---|---|---|
 | Absolute external-library loading | A real addon executes the original external library; changing it does not invalidate freshness. Package-relative capture in `6710e3026` does not fix this. The [search-path prototype](../evidence/build-input-snapshot-proof.md#external-native-library-search-path-prototype-2026-10-17) rejects a tempting shortcut: two distinct absolute libraries with the same basename collapse to one captured library. Exact identity must remain preserved. `cc186a0d0` implements selected macOS module admission with direct/transitive pre-initialization refusal and captured relative-loading proof. | Implement the approved bounded contract through the existing compiler owners. Refuse identifiable outside-library dependencies; preserve captured package-relative and OS loading. Prove the known counterexample refuses before native initialization, public-build incumbent retention, transitive cases and startup/thread/Vite path coverage. Static inspection is not universal native-I/O detection. |
-| Native/background lifetime | The [finite resource audit](../evidence/build-input-snapshot-proof.md#remaining-resource-lifetime-audit-2026-10-17) reconciles local loader, JS worker, process-group, Vite and installation ownership with existing proof. Windows build/frontend branches have no descendant-lifetime owner; their background-child acceptance is skipped. | Preserve accepted macOS cases. Prototype and implement Windows lifetime ownership, then prove success/failure/cancellation/parent-loss/replacement on Windows CI, selected after the user delegated the runner decision. The user authorized branch pushes and focused Windows CI on 2026-10-17; release workflows remain prohibited. Native acceptance requires passing execution of the committed source. Linux runtime acceptance remains unverified. Do not substitute PID-only termination, mocked calls or a new general resource framework for this missing platform guarantee. |
+| Native/background lifetime | The [finite resource audit](../evidence/build-input-snapshot-proof.md#remaining-resource-lifetime-audit-2026-10-17) reconciles local loader, JS worker, process-group, Vite and installation ownership with existing proof. The common build/frontend launcher now implements a Windows Job Object owner after the native prototype passed (`62f6a03b8`); the descendant-publication check is enabled for Windows. Native acceptance of production integration, parent loss and replacement remains open. | Preserve accepted macOS cases. Accept the integrated Windows owner through native build/frontend execution and success/failure/cancellation/parent-loss/replacement checks, following the passed suspended-launch/IPC prototype. The user authorized branch pushes and focused Windows CI on 2026-10-17; release workflows remain prohibited. Native acceptance requires passing execution of the committed source. Linux runtime acceptance remains unverified. Do not substitute PID-only termination, mocked calls or a new general resource framework for this missing platform guarantee. |
 | Platform coverage | Release/build configuration establishes targets, not acceptance of compiler capture or cleanup guarantees. | Record exact OS/architecture/runtime combinations, relevant cases and results. Mark missing evidence as unverified, not broken or implicitly unsupported. |
 
 Configured targets, inspected 2026-10-17:

@@ -43,7 +43,7 @@ try {
   await server.listen();
   const address = server.httpServer?.address();
   if (!address || typeof address !== 'object') throw new Error('Vite dev server failed to bind a port');
-  process.send({ type: 'frontend-ready', hash: compiler.hash, port: address.port });
+  process.send({ type: 'frontend-ready', hash: compiler.hash, port: address.port, pid: process.pid });
 } catch (error) {
   console.error(errorMessage(error));
   process.exit(1);

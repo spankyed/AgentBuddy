@@ -2405,3 +2405,58 @@ Windows workflow's noncancelling policy. Restrict outer cancellation to full CI;
 queue so an explicitly running diagnostic can finish. Do not dispatch another run while one is active
 merely to observe newer source; wait for terminal evidence. Run `39064447097` remains live against
 `62f6a03b8`, with the native Job Object proof before package installation.
+
+### Windows Job owner integration checkpoint (2026-10-17)
+
+[Run 39064447097](https://github.com/spankyed/AgentBuddy/actions/runs/39064447097) on `62f6a03b8`
+passes all three actual native Job Object scenarios: exit 0, exit 7 and forced launcher cancellation.
+Both root/descendant processes are stopped; exit codes, JSON IPC, stdout/stderr, cwd, environment and
+quoted arguments are preserved. The proof takes about two seconds across the three scenarios.
+Full log: `/private/tmp/apack-windows-39064447097.log`. Its later unit step passes 161 cases and fails
+one existing copied-runtime `execFileSync` at its 5s timeout, preventing the build baseline. The same
+probe passed earlier native runs; this is not evidence of a compiler deadlock. Give only its Windows
+execution 10s, retaining local 5s and all damaged/aliased/missing-runtime assertions.
+
+Production integration:
+
+- `spawnCompilerWorker` routes build and Vite starts to the same captured Windows launcher asset.
+  It passes the selected executable, correctly quoted argv and cwd via owned JSON; environment and
+  libuv IPC/stdio remain inherited. PowerShell does not interpret worker arguments. Its compiler,
+  configuration and .NET temporary files stay in the existing worker-owned workspace.
+- The launcher moves from prototype storage to `bin/compiler-windows.ps1`, shipped by the existing CLI
+  writer and inventoried by compiler capture. The native proof imports the actual spawn helper before
+  dependency installation, rather than maintaining a second launch implementation. UTF-8 JSON reading
+  and Unicode path/argument cases address Windows PowerShell's default decoding difference.
+- Job assignment precedes resume. Normal root exit terminates descendants and waits for zero active
+  job processes before returning the root exit code; parent loss or forced launcher death closes its
+  noninheritable kill-on-close job handle. Native parent-loss/replacement acceptance remains open.
+- Frontend readiness carries the actual Vite PID rather than conflating it with a platform lifetime
+  owner. Synchronous launch setup failure removes the frontend workspace. The real descendant-publication
+  test no longer skips Windows and uses the platform-appropriate terminal-process check.
+
+Local macOS evidence:
+
+- All nine build/frontend owner cases pass (26.40s runner), covering verified reuse, replacement,
+  interrupted startup, scope retirement, cancellation and real descendants:
+  `/private/tmp/apack-windows-job-local-owner.log`.
+- The final descendant-publication case passes again (1.38s / 3.15s runner):
+  `/private/tmp/apack-windows-job-publication-local.log`.
+- CLI types and focused correctness lint pass:
+  `/private/tmp/apack-windows-job-integration-types.log`.
+- The CLI package builds successfully and its copied launcher matches source byte-for-byte:
+  `/private/tmp/apack-windows-job-package.log`.
+
+Asset ownership review also exposes a cache omission: bundled CLI outputs listed only `package.json`
+and `dist/`, so deleting copied bin/template output leaves a recorded package current. Two disposable
+filesystem cases using the real CLI output declaration fail before the correction:
+`/private/tmp/apack-windows-launcher-output-before.log`. Declare copied directory inputs/outputs
+through `bundled()` once, covering CLI `bin` and `templates`. Deletion/changed bytes now invalidate
+reuse; restored bytes recover it. All 100 freshness and 53 tooling cases pass (1.86s runner):
+`/private/tmp/apack-windows-job-integration-freshness.log`. An initial sandbox-only run could not query
+OS uptime in six preexisting lock cases; rerunning with the required OS access passes, without changes
+to those assertions.
+
+This source checkpoint requires native execution of the integrated helper, publication boundary and
+real repeated compiler. Windows parent-loss/replacement, the remaining B1 native-input/platform cases,
+B6 and final strict `--all` remain open. The focused workflow now waits rather than cancelling older
+native diagnostics; no new dispatch is made until the preceding run is terminal.

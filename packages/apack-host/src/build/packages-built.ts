@@ -166,14 +166,15 @@ const INLINED_SOURCE_DIRS = SHARED_INSTANCE_PACKAGES.map((name) => name.replace(
  * that emitted it. `chain-inputs.spec.ts` walks a build script's own imports, which these are not: the
  * bundler reaches them through the package being bundled.
  */
-function bundled(pkg: string, ...extraInputs: string[]): BuildUnit {
+function bundled(pkg: string, ...copiedPaths: string[]): BuildUnit {
   return {
     inputs: [...SHARED_INPUTS, repoFile('scripts', 'bundle-package.ts'),
-      repoFile('scripts', 'lib', 'published-imports.ts'), ...extraInputs,
+      repoFile('scripts', 'lib', 'published-imports.ts'), ...copiedPaths.map(file => pkgFile(pkg, file)),
       pkgFile(pkg, 'src'), pkgFile(pkg, 'package.json'), pkgFile(pkg, 'tsconfig.json'),
       pkgFile('apack-host', 'src'), pkgFile('apack-host', 'package.json'),
       ...INLINED_SOURCE_DIRS.flatMap((dir) => [pkgFile(dir, 'src'), pkgFile(dir, 'package.json')])],
-    outputs: [pkgFile(pkg, 'dist', 'package', 'package.json'), pkgFile(pkg, 'dist', 'package', 'dist')],
+    outputs: [pkgFile(pkg, 'dist', 'package', 'package.json'), pkgFile(pkg, 'dist', 'package', 'dist'),
+      ...copiedPaths.map(file => pkgFile(pkg, 'dist', 'package', file))],
   };
 }
 
@@ -184,7 +185,7 @@ export const BUILD_UNITS: Record<string, BuildUnit> = {
   '@apackdev/ui': compiled('apack-ui', pkgFile('apack-ui', 'tsdown.config.ts'), repoFile('scripts', 'build-ui-package.ts'),
     pkgFile('apack-ui', 'scripts', 'exports.ts')),
   '@apackdev/testing': bundled('apack-testing'),
-  '@apackdev/cli': bundled('apack-cli', pkgFile('apack-cli', 'bin')),
+  '@apackdev/cli': bundled('apack-cli', 'bin', 'templates'),
 };
 
 /**

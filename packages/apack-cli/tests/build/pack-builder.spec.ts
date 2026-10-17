@@ -32,6 +32,7 @@ function fixture() {
   const compiler = path.join(root, 'compiler'), pack = path.join(root, 'pack');
   fs.mkdirSync(path.join(compiler, 'bin'), { recursive: true });
   fs.mkdirSync(path.join(compiler, 'dist'));
+  fs.copyFileSync(fileURLToPath(new URL('../../bin/compiler-windows.ps1', import.meta.url)), path.join(compiler, 'bin/compiler-windows.ps1'));
   fs.writeFileSync(path.join(compiler, 'dist/compiler-startup.cjs'), '// Fixture worker implements only candidate/process handoff.\n');
   fs.mkdirSync(path.join(pack, '.apack'), { recursive: true });
   const manifest = { id: 'builder', name: 'Builder', version: '1.0.0' };
@@ -55,7 +56,7 @@ function fixture() {
       const hanging = fs.existsSync('.apack/frontend-hang');
       process.on('message', message => { if (message === 'frontend-close' && !hanging) process.exit(0); });
       fs.writeFileSync('.apack/frontend-starting.json', JSON.stringify({pid:process.pid, directory:process.env.APACK_FRONTEND_DIRECTORY}));
-      if (!hanging) process.send({type:'frontend-ready', port:12345, hash:JSON.parse(fs.readFileSync(process.env.APACK_COMPILER_INPUTS,'utf8')).hash});
+      if (!hanging) process.send({type:'frontend-ready', port:12345, pid:process.pid, hash:JSON.parse(fs.readFileSync(process.env.APACK_COMPILER_INPUTS,'utf8')).hash});
       await new Promise(() => {});
     }
     if (process.argv.includes('--descendant')) {
@@ -265,16 +266,20 @@ it('captures both checkouts after refresh and refuses reuse if refresh fails', a
 });
 
 
-it.skipIf(process.platform === 'win32')('stops remaining compiler group members before accepting output', async () => {
+it('stops remaining compiler descendants before accepting output', async () => {
   const { pack, builder } = fixture();
   let pid: number | undefined;
   try {
     await builder.build({ args: ['--descendant'] });
     pid = JSON.parse(fs.readFileSync(path.join(pack, '.apack/descendant.json'), 'utf8')).pid;
-    let state = '';
-    try { state = execFileSync('ps', ['-p', String(pid), '-o', 'stat='], { encoding: 'utf8' }).trim(); }
-    catch (error) { if ((error as { status?: number }).status !== 1) throw error; }
-    expect(state === '' || state.startsWith('Z'), `Compiler descendant ${pid} is still ${state}`).toBe(true);
+    if (process.platform === 'win32') {
+      expect(() => process.kill(pid!, 0)).toThrow();
+    } else {
+      let state = '';
+      try { state = execFileSync('ps', ['-p', String(pid), '-o', 'stat='], { encoding: 'utf8' }).trim(); }
+      catch (error) { if ((error as { status?: number }).status !== 1) throw error; }
+      expect(state === '' || state.startsWith('Z'), `Compiler descendant ${pid} is still ${state}`).toBe(true);
+    }
     expect(readPackBuild(path.join(pack, 'dist')).snapshot.manifest.id).toBe('builder');
   } finally {
     // Read the owned PID even if a refusal happened before build returned.

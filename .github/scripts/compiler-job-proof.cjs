@@ -1,15 +1,15 @@
-// Windows-native prototype; no production compiler path uses this launcher yet.
+// Native acceptance for the production compiler launcher, before dependency installation.
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
-const { spawn } = require('node:child_process');
 const { once } = require('node:events');
 
 if (process.platform !== 'win32') throw new Error('This proof requires Windows');
 const root = fs.mkdtempSync(path.join(os.tmpdir(), 'apack-job-proof-'));
-const script = path.join(__dirname, 'compiler-job-proof.ps1');
-const worker = path.join(root, 'worker with spaces.cjs');
+const { spawnCompilerWorker } = require('../../packages/apack-cli/src/build/compiler-process.ts');
+const compiler = { executable: process.execPath, bin: path.resolve(__dirname, '../../packages/apack-cli/bin/apack.mjs') };
+const worker = path.join(root, 'worker with spaces 雪.cjs');
 fs.writeFileSync(worker, `
 const {spawn} = require('node:child_process');
 const child = spawn(process.execPath, ['-e', 'process.send(process.pid); setInterval(() => {}, 1000);'], {stdio: ['ignore','ignore','ignore','ipc']});
@@ -17,20 +17,17 @@ child.once('message', childPid => process.send({pid:process.pid, childPid, args:
 process.once('message', code => process.exit(code));
 console.log('inherited-stdout'); console.error('inherited-stderr');
 `);
-const quote = value => '"' + value.replace(/(\\*)"/g, (_, slashes) => slashes.repeat(2) + '\\"').replace(/(\\+)$/, '$1$1') + '"';
 const gone = pid => {
   try { process.kill(pid, 0); return false; }
   catch (error) { if (error.code === 'ESRCH') return true; throw error; }
 };
 const launchers = new Set();
 async function scenario(code) {
-  const args = ['space and & literal', 'quoted"value\\'];
-  const configuration = path.join(root, `launch-${code}.json`);
-  fs.writeFileSync(configuration, JSON.stringify({ executable: process.execPath,
-    commandLine: [process.execPath, worker, ...args].map(quote).join(' '), cwd: root, parentPid: process.pid }));
-  const launcher = spawn('powershell.exe', ['-NoProfile', '-NonInteractive', '-ExecutionPolicy', 'Bypass', '-File', script, '-Configuration', configuration], {
-    cwd: root, stdio: ['ignore', 'pipe', 'pipe', 'ipc'], env: { ...process.env, APACK_JOB_PROOF: 'preserved', TMP: root, TEMP: root },
-  });
+  const args = ['space and & literal', 'quoted"value\\', 'Grüße 雪🧩'];
+  const workspace = path.join(root, 'launch-' + code);
+  const launcher = spawnCompilerWorker(compiler, [worker, ...args], {
+    cwd: root, stdio: ['ignore', 'pipe', 'pipe', 'ipc'], env: { ...process.env, APACK_JOB_PROOF: 'preserved' },
+  }, workspace);
   launchers.add(launcher);
   let stdout = '', stderr = '';
   launcher.stdout.on('data', bytes => stdout += bytes);

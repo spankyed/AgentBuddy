@@ -1262,3 +1262,26 @@ describe('ensurePackagesBuilt, where the caller says the packages are already bu
     }
   });
 });
+
+
+it.each(['bin/compiler-windows.ps1', 'templates/pack.json'])('refuses deleted or changed copied CLI output: %s', target => {
+  const f = fixture();
+  const cliRoot = path.join(REPO_ROOT, 'packages/apack-cli');
+  const output = path.join(f.root, 'dist/package');
+  const unit: BuildUnit = { inputs: [f.src], outputs: BUILD_UNITS['@apackdev/cli'].outputs.map(file => path.join(f.root, path.relative(cliRoot, file))) };
+  for (const [file, bytes] of [['package.json', '{}'], ['dist/cli.js', 'export {};'], ['bin/compiler-windows.ps1', 'launcher'], ['templates/pack.json', '{}']]) {
+    const destination = path.join(output, file);
+    fs.mkdirSync(path.dirname(destination), { recursive: true });
+    fs.writeFileSync(destination, bytes);
+  }
+  const stamp = stampFor({ ...f, unit });
+  expect(unitStaleReason(unit, stamp)).toBeNull();
+  const file = path.join(output, target);
+  const original = fs.readFileSync(file);
+  fs.rmSync(file);
+  expect(unitStaleReason(unit, stamp)).toMatch(/outputs changed/);
+  fs.writeFileSync(file, original);
+  expect(unitStaleReason(unit, stamp)).toBeNull();
+  fs.writeFileSync(file, 'changed');
+  expect(unitStaleReason(unit, stamp)).toMatch(/outputs changed/);
+});

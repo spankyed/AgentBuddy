@@ -101,6 +101,12 @@ The parent holds the pack build lock through worker closure and publication. Wor
 seal a candidate, report its authored-input hash and sealed revision, drain diagnostics, and exit.
 The parent waits for process closure, verifies the exact sealed output and authored hash, then replaces
 dist. POSIX workers own a process group: inherited subprocesses must be terminal before publication.
+Both build and Vite workers launch through `spawnCompilerWorker`. Windows uses the captured
+`bin/compiler-windows.ps1`: create the worker suspended, assign its private kill-on-close Job Object,
+then resume it with inherited Node IPC/stdio. Normal completion terminates remaining descendants and
+waits for an empty job before the launcher exits; parent loss or forced launcher termination closes the
+job handle. Keep launcher/configuration temp files inside the existing worker workspace. Frontend
+readiness reports the actual Vite worker PID, independently of the platform lifetime owner.
 Cancellation permits two seconds for worker SIGTERM cleanup before forced termination; loss of parent
 IPC stops the owned group, and that listener stays active through final diagnostics. Exit-handler writes therefore cannot silently change an accepted candidate; aborts and refusals
 clean staging while preserving the incumbent. This handoff is not the complete source/compiler input

@@ -2,7 +2,7 @@ import { COMPILER_INPUTS_ENV } from './compiler-installation-inputs.ts';
 import path from 'node:path';
 import fs from 'node:fs';
 import os from 'node:os';
-import { spawn } from 'node:child_process';
+import { spawnCompilerWorker } from './compiler-process.ts';
 import { COMPILER_PROCESS_GROUP_ENV, stopCompilerProcessGroup } from './compiler-process-group.ts';
 import { checkoutFor, ensureCheckoutPackages } from './checkout-packages.ts';
 import { captureCompilerInstallation, compilerPackageDirectory, type CompilerInstallation } from './compiler-installation.ts';
@@ -159,7 +159,7 @@ async function buildWithCompiler(root: string, compiler: CompilerInstallation, {
       let escalation: ReturnType<typeof setTimeout> | undefined;
       const grouped = process.platform !== 'win32';
       const nodeOptions = compilerStartupOptions(compiler.bin, process.env.NODE_OPTIONS);
-      const child = spawn(compiler.executable, [
+      const child = spawnCompilerWorker(compiler, [
         ...compilationConditions().map(condition => `--conditions=${condition}`),
         compiler.bin, 'pack', 'build', ...args,
       ], {
@@ -169,7 +169,7 @@ async function buildWithCompiler(root: string, compiler: CompilerInstallation, {
           [BUILD_INPUTS_DIRECTORY_ENV]: inputsDirectory,
           [BUILD_INPUTS_IPC_ENV]: onInputs ? '1' : '0', [COMPILER_NODE_OPTIONS_ENV]: nodeOptions.user,
           NODE_OPTIONS: nodeOptions.worker, ELECTRON_RUN_AS_NODE: '1' },
-      });
+      }, inputsDirectory);
       const stop = () => {
         if (stopping) return;
         stopping = grouped && child.pid ? stopCompilerProcessGroup(child.pid)

@@ -95,7 +95,10 @@ required under [content-based source freshness](../evidence/discovery-without-ac
 Shared authored inputs landed in `882d2a50b`; compiler capture/session reuse landed in `aba660aed`
 after strict checkpoint validation. Captured TypeScript query views and retained read-set validation land
 in `e171b3acf`, with full checkpoint evidence in the evidence record. Whole-build input/output association and passive consumers are implemented as recorded above;
-B1/B3 native/platform closure and B6 remain open. Installed/offline discovery must continue to need
+B1/B3 native/platform closure and B6 remain open. The Windows build/frontend lifetime owner now uses
+a shared suspended-launch Job Object after a successful native IPC/descendant prototype; production
+integration, parent-loss/replacement and remaining platform acceptance are still owned by the goal.
+Installed/offline discovery must continue to need
 neither authored source files nor compiler activation.
 
 The execution goal owns the current order. Only consumers requiring an unfinished producer guarantee

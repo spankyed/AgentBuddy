@@ -1,7 +1,7 @@
 param([Parameter(Mandatory=$true)][string]$Configuration)
 $ErrorActionPreference = 'Stop'
 
-# Proof only: forward libuv's inherited stdio table to a suspended Node child in a private job.
+# Preserve libuv IPC/stdio while assigning the suspended compiler to its own lifetime job.
 Add-Type -TypeDefinition @'
 using System;
 using System.ComponentModel;
@@ -10,7 +10,7 @@ using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading;
 
-public static class CompilerJobProof {
+public static class CompilerJobLauncher {
     [StructLayout(LayoutKind.Sequential)] struct Startup {
         public uint Size;
         public IntPtr Reserved, Desktop, Title;
@@ -125,8 +125,8 @@ public static class CompilerJobProof {
 }
 '@
 try {
-    $launch = Get-Content -LiteralPath $Configuration -Raw | ConvertFrom-Json
-    exit ([CompilerJobProof]::Run($launch.executable, $launch.commandLine, $launch.cwd, $launch.parentPid))
+    $launch = Get-Content -LiteralPath $Configuration -Raw -Encoding UTF8 | ConvertFrom-Json
+    exit ([CompilerJobLauncher]::Run($launch.executable, $launch.commandLine, $launch.cwd, $launch.parentPid))
 } catch {
     [Console]::Error.WriteLine($_.Exception.ToString())
     exit 1

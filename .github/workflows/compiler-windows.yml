@@ -29,7 +29,7 @@ jobs:
           node -p "JSON.stringify({platform:process.platform,arch:process.arch,versions:process.versions})"
           node -e "const path=require('node:path'); const npm=path.join(path.dirname(process.execPath),'node_modules/npm/bin/npm-cli.js'); console.log(JSON.stringify({node:process.execPath,npm,exists:require('node:fs').existsSync(npm)}))"
           npm --version
-      - name: Prototype Windows compiler job ownership
+      - name: Windows compiler job ownership
         run: node .github/scripts/compiler-job-proof.cjs
       - name: Install dependencies
         run: npm ci
@@ -53,8 +53,13 @@ jobs:
           packages/apack-cli/tests/build/compiler-runtime.spec.ts
           packages/apack-cli/tests/build/compiler-native-libraries.spec.ts
           --poolOptions.threads.maxThreads=2 --poolOptions.threads.minThreads=1
-      # Existing Windows skips do not establish descendant-lifetime acceptance. Keep that gap explicit
-      # until a Windows lifetime owner and its native success/failure/cancellation cases are implemented.
+      - name: Compiler publication waits for descendants
+        run: >-
+          node scripts/with-source.mjs npx vitest run --project @apackdev/cli
+          packages/apack-cli/tests/build/pack-builder.spec.ts
+          --testNamePattern='stops remaining compiler descendants'
+          --bail=1 --poolOptions.threads.maxThreads=2 --poolOptions.threads.minThreads=1
+      # Native job proof and publication are bounded checkpoints; parent-loss/replacement remain open.
       # Establish startup/repeated-build identity first. Expand native lifetime cases with their Windows owner.
       - name: Build worker platform baseline
         run: >-
