@@ -2924,3 +2924,8 @@ All 44 parser/environment cases, CLI TypeScript and changed-file correctness lin
 checks do not execute captured runtimes or native fixtures. Both real versioned cases still require
 hosted acceptance of the correction. Shared-cache and restricted-runtime acceptance, ELF/PE and
 converged/final gates remain open.
+
+Versioned admission source: `0f0f6a43c`. Follow-up `b7385c0bb` rejects non-OS roots before stat/realpath,
+avoiding probes of arbitrary configured paths. Two focused regressions enforce that ordering; all 46
+parser/environment checks, CLI types and lint pass. Hosted run `39080454772` is queued on `b7385c0bb`
+for both real versioned cases. Preserve this exact run rather than dispatching a duplicate.

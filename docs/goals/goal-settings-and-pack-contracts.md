@@ -113,9 +113,10 @@ Versioned-loader proof `99c910914`, run `39079991483`, confirms an external libr
 ordinary Node selects the override, and captured frontend startup unexpectedly succeeds. The common
 launch guard now permits versioned directories only in physical OS library locations; other configured
 directories refuse before execution, including unused ones. Public docs and the ADR state this
-configuration policy rather than claiming a dyld resolver. All 44 parser/environment cases, CLI types
-and lint pass; both real versioned cases still need hosted correction acceptance. Shared-cache and
-restricted-runtime policy remain separate open cases.
+configuration policy rather than claiming a dyld resolver (`0f0f6a43c`). Refinement `b7385c0bb` refuses
+outside roots before filesystem probes; all 46 parser/environment cases, CLI types and lint pass.
+Hosted run `39080454772` is queued on that source for both real versioned cases; follow it before
+claiming correction acceptance. Shared-cache and restricted-runtime policy remain separate open cases.
 Source `e6ce60a78` awaits each detected watch build directly, retaining missing-event bounds and all
 behavior assertions. Its isolated hosted run `39079492068` passes in 98.76 seconds, including refusal,
 repair, incumbent preservation and retirement. Restore the original 120-second scenario budget; the
