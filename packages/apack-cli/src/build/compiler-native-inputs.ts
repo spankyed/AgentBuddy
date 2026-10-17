@@ -115,7 +115,9 @@ export function createNativeInputReader(view: NativeInputView, initialPackages: 
   }
   function candidate(file: string) {
     directory(path.dirname(file));
-    scope(path.dirname(file));
+    const owner = scope(path.dirname(file));
+    // Native loaders read linked package assets without passing through Node's filesystem APIs.
+    if (file.endsWith('.node') && owner.packageRoot) packageInputs(owner.packageRoot);
     if (view.fileSystem.directoryExists(file)) {
       directory(file);
       scope(file);

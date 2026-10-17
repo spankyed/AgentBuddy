@@ -64,6 +64,7 @@ export function createCompilerModuleLoader(compilation: CompilationInputs) {
           if (!result.url.startsWith('file:')) return result;
           const owned = readURL(result.url);
           const file = compilation.sourcePath(fileURLToPath(owned));
+          if (file.endsWith('.node')) compilation.prepareNative(file, path.dirname(file));
           if (compilation.readFile(file) === undefined) throw new Error(`Missing captured compiler module: ${file}`);
           // Node's CommonJS cache keys ignore URL queries. Retain its per-tree filenames.
           if (require || result.format?.startsWith('commonjs')) return { ...result, url: owned.href };

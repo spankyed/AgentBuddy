@@ -140,6 +140,10 @@ That entry checks the compiler inputs before importing `build()`, avoiding recur
 it ships beside `cli.js`. Internal compiler tests call `build()` in-process; process-boundary tests
 exercise the real bootstrap and runner.
 
+The macOS native-library regression compiles a small addon with `clang` and the selected Node
+installation's `include/node` headers. These are developer test requirements, not CLI runtime
+dependencies. It verifies package-relative linked libraries through the actual OS loader.
+
 `@apackdev/host/build/compiler-inputs` owns metadata, bytes, physical bindings and directory/glob results
 for one compiler frame. Its `createPackCompilerInputView` captures authored and declared npm dependency bytes,
 filtered membership and missing lookups before user preloads; configuration, Vue extraction and the

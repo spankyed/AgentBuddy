@@ -48,6 +48,8 @@ const loadedByThePool = (): string[] => reachableFrom(
  * exists to catch, and a file-level list would wave it through.
  */
 const INVENTORY: Record<string, { calls: number; why: string }> = {
+  'packages/apack-cli/tests/build/compiler-native-libraries.integration.spec.ts': { calls: 2,
+    why: 'clang produces one real linked library and one Node addon; JavaScript fixtures cannot exercise the operating system loader or prove that it loads captured library bytes' },
   'packages/apack-cli/tests/build/build-worker.integration.spec.ts': { calls: 8,
     why: 'private worker IPC lifetime and refusal, public shutdown, native preload identity, loader-startup refusal and natural shutdown under signal refusal require their own processes; two OS process-state queries verify inherited subprocess termination' },
   'packages/repo-checks/tests/bounded-spawn.integration.spec.ts': { calls: 1,
