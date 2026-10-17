@@ -584,7 +584,10 @@ built and staged EARS/SDK successfully, then exposed native separators leaking i
 passes complete package preparation and all 15 packaging cases, then fails the existing equivalent-
 checkout module identity assertion. Diagnostic `8fb57ac5e` / [run 39058844360](https://github.com/spankyed/AgentBuddy/actions/runs/39058844360)
 shows that namespace native-realpath expansion and ordinary-realpath roots disagree on Windows
-short names. Align the namespace resolver with the existing root policy and verify on Windows.
+short names. `707b17837` aligns the namespace resolver with the existing root policy;
+[run 39059173727](https://github.com/spankyed/AgentBuddy/actions/runs/39059173727) passes all 24
+module-input cases on Windows. The next failure is a POSIX-only cleanup-fixture permission assumption.
+Assert unchanged foreign permissions and no foreign chmod, preserving supported file read-only checks.
 Compiler completion and descendant-lifetime acceptance remain open.
 The local two-core integration run against that checkpoint reached its unchanged 600s deadline after
 eight files / 474 cases passed, including all seven native-library cases; the pool remains incomplete.

@@ -19,6 +19,7 @@ it('lets the parent remove an abandoned read-only workspace without following fo
   const foreign = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'apack-foreign-inputs-')));
   roots.push(workspace, foreign);
   fs.chmodSync(foreign, 0o755);
+  const foreignMode = fs.statSync(foreign).mode;
   const file = path.join(foreign, 'source.ts');
   fs.writeFileSync(file, 'export const untouched = true;');
   vi.stubEnv(BUILD_INPUTS_DIRECTORY_ENV, workspace);
@@ -27,11 +28,15 @@ it('lets the parent remove an abandoned read-only workspace without following fo
   }, []);
   trees.push(tree);
   expect(path.dirname(tree.directory)).toBe(workspace);
-  fs.symlinkSync(foreign, path.join(workspace, 'foreign'), 'dir');
+  const link = path.join(workspace, 'foreign');
+  fs.symlinkSync(foreign, link, 'dir');
+  const chmod = vi.spyOn(fs, 'chmodSync');
   removeCompilerReadTree(workspace);
   expect(fs.existsSync(workspace)).toBe(false);
   expect(fs.readFileSync(file, 'utf8')).toContain('untouched = true');
-  expect(fs.statSync(foreign).mode & 0o777).toBe(0o755);
+  expect(fs.statSync(foreign).mode).toBe(foreignMode);
+  expect(chmod.mock.calls.map(([file]) => file)).not.toContain(foreign);
+  expect(chmod.mock.calls.map(([file]) => file)).not.toContain(link);
 });
 
 it('preserves owned file/directory links, dangling links and executable bits after originals disappear', () => {
@@ -42,6 +47,7 @@ it('preserves owned file/directory links, dangling links and executable bits aft
   const file = path.join(shared, 'value.ts');
   fs.writeFileSync(file, 'export const value = 7;');
   fs.chmodSync(file, 0o755);
+  const executable = fs.statSync(file).mode & 0o111;
   fs.symlinkSync('../shared', path.join(pack, 'linked'), 'dir');
   fs.symlinkSync('../shared/value.ts', path.join(pack, 'entry.ts'));
   fs.symlinkSync('../missing.ts', path.join(pack, 'missing.ts'));
@@ -57,9 +63,10 @@ it('preserves owned file/directory links, dangling links and executable bits aft
   expect(tree.sourcePath(fs.realpathSync(tree.path(path.join(pack, 'entry.ts'))))).toBe(file);
   expect(fs.existsSync(tree.path(path.join(pack, 'missing.ts')))).toBe(false);
   expect(fs.lstatSync(tree.path(path.join(pack, 'missing.ts'))).isSymbolicLink()).toBe(true);
-  expect(fs.statSync(tree.path(file)).mode & 0o111).toBe(0o111);
+  expect(fs.statSync(tree.path(file)).mode & 0o111).toBe(executable);
   expect(fs.statSync(tree.path(file)).mode & 0o222).toBe(0);
-  expect(fs.statSync(tree.path(pack)).mode & 0o222).toBe(0);
+  // Windows chmod controls file read-only attributes, not directory permissions.
+  if (process.platform !== 'win32') expect(fs.statSync(tree.path(pack)).mode & 0o222).toBe(0);
   expect(() => tree.assertCurrent()).not.toThrow();
   fs.chmodSync(tree.path(file), 0o644);
   fs.writeFileSync(tree.path(file), 'export const value = 99;');

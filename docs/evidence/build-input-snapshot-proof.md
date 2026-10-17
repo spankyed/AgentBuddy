@@ -2058,3 +2058,19 @@ and whitespace checks pass. Logs: `/private/tmp/apack-windows-path-identity-unit
 `/private/tmp/apack-windows-path-watch-unit.log`, `/private/tmp/apack-windows-path-types.log`.
 The native Windows rerun must establish whether this closes the observed discrepancy; compiler
 platform and descendant-lifetime completion are not claimed by these local checks.
+
+
+### Windows path identity accepted; portable cleanup permissions
+
+Source `707b17837`, [run 39059173727](https://github.com/spankyed/AgentBuddy/actions/runs/39059173727),
+passes all 24 module-input cases on Windows, including equivalent-checkout identity and captured
+source identity. Preparation continues to pass. The next failure is the read-tree cleanup fixture's
+POSIX-only `0755` directory assertion: Windows reports `0666` after chmod. Sixty cases pass before
+fail-fast; log `/private/tmp/apack-windows-39059173727-failed.log`.
+
+Correct the fixture to compare actual pre/post foreign mode and explicitly forbid chmod of both
+the foreign directory and its symlink. Compare executable bits against the source's actual supported
+bits. Keep file read-only assertions on all platforms; directory POSIX write-bit assertions apply
+only where chmod supports them. This does not claim Windows ACL confinement or change production
+cleanup. All five local read-tree cases and focused lint pass:
+`/private/tmp/apack-windows-read-tree-permissions.log`.
