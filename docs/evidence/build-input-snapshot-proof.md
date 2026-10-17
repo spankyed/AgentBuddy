@@ -1397,6 +1397,36 @@ The earlier log's repeat-worker 60s failure predates its existing 120s override.
 performance improvement or strict final gate is claimed. Finish remaining affected integration checks
 on two cores before broad convergence; do not diagnose this again by repeating the full chain.
 
+## Real default-fork handoff acceptance
+
+Verified on committed source `895143b7b`, following the generic acceptance repair and native directory
+namespace fix. This closes the previously failing fresh-fork archive/handoff path without changing
+source, assertions or deadlines:
+
+- `npm run build:default-setup` passes:
+  `/private/tmp/apack-b5-current-default-build.log`.
+- `prepare-default-pack-fork.ts` completes the actual fork build and archive, then its `--check`
+  accepts the cached handoff, including the shipped input record, archive digest and checksum:
+  `/private/tmp/apack-b5-current-fork-preparation.log`,
+  `/private/tmp/apack-b5-current-fork-check.log`.
+- Refreshed all four app bundles with `npm run build:runtime -- --cores 2`; API 13.3s, main 1.4s,
+  preload 0.8s and renderer 33.1s:
+  `/private/tmp/apack-b5-current-runtime-build.log`. Existing bundles predated an inlined host change;
+  their presence was insufficient evidence of current runtime coverage.
+- The first lifecycle attempt refuses the old external fixture before app startup because its recorded
+  compiler-directory source changed. This is the intended prebuilt freshness check, not an app failure:
+  `/private/tmp/apack-b5-current-fork-app.log`. Rebuilt only that stale fixture:
+  `/private/tmp/apack-b5-current-external-build.log`.
+- The unchanged `test-default-pack-fork.ts` then completes all four app launches. Actual replacement
+  updates two windows and survives dev reload (14.5s); normal boot retains the fork (8.8s), respects
+  removal (2.4s), and accepts explicit restoration (2.9s). Host preferences persist through this flow.
+  `/private/tmp/apack-b5-current-fork-app-rebuilt.log`. The runner owns and removes its temporary data;
+  production storage is untouched.
+
+This is B5/default-fork and replacement lifecycle evidence, not an aggregate integration, all-kind
+discovery or final strict pass. B1/B3 native/platform/thread closure, B6 and all remaining Phase 6 and
+Phase 7 requirements remain active. Reuse these builds and evidence unless relevant inputs change.
+
 ## Fresh publication directory namespace repair
 
 Consumer source checkpoint: `8058fd1a2`.

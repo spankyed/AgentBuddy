@@ -65,7 +65,7 @@ so completed implementation is not repeatedly scheduled as new work.
 | Settings/help/info/reference/step/command discovery (Phase 3) | Implemented reader migrations: `2169d29f8`, `6c876c9ba`, `20ab75efe`, `c776d1c5d`, `76df2f0e5`, `71fad4013`, `8ec5285ed`, `f7d63434c`, command catalog `ff48438cd` | Final all-kind acceptance, including source-free inspection, inactive owners and checked runtime eligibility. |
 | Live editor composition (Phase 3) | Implemented: `8863043a6` | Complete cold-document/provider readiness and real typing/replacement acceptance; fix demonstrated omissions without restarting composition. |
 | Remaining discovery consumers (Phase 3) | Partial; viewer readers `a278d4116`, shell default/dispatch `69860e4be`, static endpoint contracts `774b0844c`, native backend viewer parity `be5a9344b`, native content `2e1701fad` and native migrations `f72cb8756` implemented | Navigation inventories/order/visibility implemented in `cfcbb53f9`; complete final window/loader acceptance; DSL producer/readers are implemented in `8ed188046` / `39e48e66e` and await final worker acceptance. Flow reference/rename/missing-target inspection is implemented in `7196d61d3`; complete its final external acceptance. Native API ownership and endpoint contracts are implemented; Display-name cleanup `123efbd6f` and required-entry admission `b916d0e5e` are implemented; Compiled index/data admission `3119205be` is implemented; finish media/CSS/chunk completeness, remaining readers and all-kind acceptance. Remove only superseded discovery stores. |
-| Build input/publication and freshness (Phase 3) | Partial; finite checkpoints B1–B6 below | Finish the common producer contract and four passive consumer migrations; installed discovery must remain source-free and activation-free. |
+| Build input/publication and freshness (Phase 3) | B2, B4 and B5 implemented and locally accepted; B1/B3 closure and B6 outstanding | Close remaining native/platform/thread ownership acceptance and converged checks; preserve the common record and four migrated passive consumers. Installed discovery must remain source-free and activation-free. |
 | Entity navigation (Phase 4) | Implemented with local handler/runtime acceptance through `95ff95ab3`, following producer `94148c9e0`, catalog/admission `479c75e01`, routing `cd9c57de6` and feature repair `831221020` | Preserve six-handler, cancellation and stored-message acceptance through final strict validation; retain build/publication and strict-gate acceptance for B6. No further navigation implementation is currently identified. |
 | Frontend boundaries (Phase 5) | Implemented and locally accepted: `713a6c1fd`, including the real external-pack window | Preserve pane/form containment, attributed nonfatal diagnostics and retired-instance refusal through final committed-source strict acceptance. |
 | Consumed APIs (Phase 6) | Inventory/prototype requirements documented; implementation outstanding | Close [A1–A5](../plans/declared-capabilities.md#bounded-implementation-checkpoints): finite route inventory/prototype, common metadata, matching caller-bound runtime/type facades, real consumer/content migration and external acceptance. Preserve settings policy and documented EARS behavior. |
@@ -358,9 +358,15 @@ The three-build replacement/cache case passes its assertions in 59.27s alone and
 focused checks; it now has a named 120s exception, alongside the two existing 120s scenarios. This does
 not resolve compiler cost or the earlier aggregate integration deadline. See
 [generic acceptance evidence](../evidence/build-input-snapshot-proof.md#generic-acceptance-repair).
-Next: finish affected integration acceptance on two cores before repeating a broad gate; then rebuild
-against this producer correction and finish the combined cached preparation/app path,
-including the default fork. Do not rerun a broad chain to diagnose the fixed namespace case. Reconcile
+B5 real handoff acceptance now passes on source `895143b7b`: default build, fresh fork build/archive,
+cached preparation verification and all four isolated app launches (two-window replacement/dev reload,
+fork restart, removed-pack boot and restored-pack boot). The old external fixture correctly refused
+before startup for stale compiler observations; rebuilding that fixture allowed the complete lifecycle
+to pass. App bundles were refreshed because they inline changed host code. See
+[real handoff evidence](../evidence/build-input-snapshot-proof.md#real-default-fork-handoff-acceptance).
+Next: finish affected integration acceptance on two cores before repeating a broad gate. Do not rebuild
+the accepted default/fork handoff again unless its inputs change or a named coverage gap requires it.
+Reconcile
 the finite native/platform lifetime boundary against supported compiler operations before closing B1/B3. Preserve required external-library and
 platform/thread-lifetime acceptance;
 preserve the now-accepted namespace cases without starting another resolver or observation framework. Preserve
