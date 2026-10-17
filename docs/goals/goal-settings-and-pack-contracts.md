@@ -499,6 +499,10 @@ three selected cases pass in 108.70s, including the feature-build prerequisite. 
 and 65.45s. `1ad1c8c12` also accepts both exact valid stale-archive diagnostics. Local concurrency is
 accepted, but the aggregate 600s suite timeout and remaining integration files are unresolved. Do not repeat the broad pool for
 diagnosis or treat the generic timeout message's historical 60s estimate as evidence of a deadlock.
+The bounded cost diagnostic is complete: `858120200` removes duplicate namespace-admission work;
+actual captured-resolution cases pass, but whole-build/aggregate capacity is not claimed improved.
+`ac964c348` makes pool output live and integration fail at its first failure, retaining verdict and
+coverage rules. See [cost and failure evidence](../evidence/settings-and-pack-contracts.md#bounded-compiler-cost-and-early-failure-checkpoint-2026-10-17).
 Next: close remaining compiler native/platform and integration acceptance, then the final requirement audit and strict gate. Do not
 repeat the accepted tarball producer just to restate its status. No whole-gate pass is claimed from the focused repairs.
 After the captured pack-test edits, refreshed default-setup, both external fixtures and the fork through

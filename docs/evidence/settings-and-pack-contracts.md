@@ -7414,3 +7414,37 @@ file time across two workers; it does not prove a deadlock. Aggregate integratio
 open B6 issue. Do not start another broad run to diagnose it or raise every suite's budget. A bounded
 profile of one ordinary compiler build is the next diagnostic before selecting a cost repair or a
 specific aggregate-budget change. Keep native/platform work and the final strict gate open.
+
+## Bounded compiler-cost and early-failure checkpoint (2026-10-17)
+
+Source `858120200` removes exact duplicate namespace facts from each native admission batch before
+snapshot materialization. Complete serialized facts are keys; differing bindings/kinds/metadata
+remain present. Observation ownership, byte capture and final source/copy validation are unchanged.
+No persistent cache or resource framework was added.
+
+One synthetic public build was profiled before/after on the same authored pack. Logs retain the owned
+profile directories: `/private/tmp/apack-compiler-cost-profile.log` and
+`/private/tmp/apack-compiler-cost-after.log`. Profiled native preparation is 5.708s/3.372s; snapshot
+inclusion is 5.284s/2.536s; worker elapsed is 15.217s/14.850s. Whole commands take 22.245s/24.079s;
+the latter also rebuilds the edited CLI package. These single observations show a reduced hotspot,
+not an end-to-end benchmark or aggregate capacity fix. The synthetic pack/profiles remain retained
+outside user data.
+
+All 29 module-input/read-tree cases and 15 actual captured-resolution cases pass, including inherited
+aliases, absent originals, hidden package entries, outside globs and transient restored edits.
+CLI types, lint and whitespace checks pass. Logs: `/private/tmp/apack-native-admission-focused.log`,
+`/private/tmp/apack-native-admission-resolution.log`, `/private/tmp/apack-native-admission-types.log`.
+
+Source `ac964c348` uses existing inherited stdio for live pool output and sets root integration
+`bail: 1`. Failed/partial runs still record no passing verdict; deadlines, reporters, project coverage
+and cache provenance are unchanged. Successful acceptance still requires the full population.
+All 61 pool checks and four bounded-process cases pass. An isolated two-test fixture inherits the
+actual integration config: intentional first failure exits 1 and never creates the later-work marker.
+Scripts types and lint pass. Logs: `/private/tmp/apack-live-pool-checks.log`,
+`/private/tmp/apack-live-pool-process-checks.log`, `/private/tmp/apack-live-pool-types.log`,
+`/private/tmp/apack-integration-failfast-proof.log`.
+
+The bounded cost diagnostic is finished; no further profiling loop or broad diagnostic rerun started.
+Native external-library support, Windows ownership/runner access, Linux acceptance, aggregate
+integration convergence and final strict acceptance remain open. The later compiler source change
+also belongs to final producer/app convergence.
