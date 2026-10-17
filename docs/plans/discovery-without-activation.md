@@ -112,7 +112,7 @@ not a discovery defect when its caller needs an executing implementation.
 | Registration field | Static authority / binding boundary | Current finding |
 |---|---|---|
 | `id`, `declarationRevision` | Accepted snapshot/native owner; installed runtime revision checks in `declaration-binding.ts` | Implemented. Native composition has no installed revision. |
-| `name`, `version`, `dependencies` | Authored manifest; native declarations have dependencies and optional own version | Native version is implemented for pack-line migration caps in `f72cb8756`. Display readers use manifest/origin names or feature labels; none reads `PackRegistration.name`. Remove that redundant registration field and generated assignment; native name metadata has no demonstrated consumer. |
+| `name`, `version`, `dependencies` | Authored manifest; native declarations have dependencies and optional own version | Native version is implemented for pack-line migration caps in `f72cb8756`. Display readers use manifest/origin names or feature labels; none reads `PackRegistration.name`. `123efbd6f` removes that redundant registration field and generated assignment; native name metadata has no demonstrated consumer. |
 | `features` membership | Manifest/native keyed features; backend and frontend admission | Both admit against declarations; native backend nested checks remain incomplete below. |
 | `features.*.designation` | Feature declaration; runtime designation lookup is execution | Native parity repaired in `b268fac86`: changed/added/omitted claims refuse atomically; fixtures retain declarations, including explicit candidate admission before role replacement. Authored backend and shared frontend already compare it. |
 | `features.*.system.machine` | Authored `system.entry`; executable machine remains activation | Implemented in `774b0844c`: compiled event contracts declare endpoint presence independently of machine bindings. Native composition may bind only the systems it runs; every bound endpoint must match. No UI pane is invented for the shell inbox. |
@@ -148,10 +148,11 @@ installed discovery must not require their authored modules or duplicate generat
 entries, frontend CSS/chunks and compiled content are physical outputs. `verifyPack` proves equality
 with the producer's file receipt, but `sealPackBuild` hashes whichever files exist: a file omitted
 before sealing is not caught by that proof. Required-entry validation belongs at the current-format
-build-reading/admission boundary, including source staging and installation. Backend-only builds must
-remain valid; declared frontend contributions must not silently become frontless. First reproduce
-missing backend/frontend entry acceptance in isolated filesystem fixtures, then enforce entry
-requirements derived from actual generated bindings. Audit content indexes and bundler output graphs
+build-reading/admission boundary, including source staging and installation. `b916d0e5e` enforces the
+backend entry and the frontend entry when generated bindings require it. Backend-only builds remain
+valid; declared frontend contributions cannot silently become frontless. Isolated filesystem cases
+prove missing-before-seal refusal, source-free inspection and retention of the incumbent stage; real
+builds prove `--skip-fe` refusal retains the incumbent output. Audit content indexes and bundler output graphs
 separately for missing media, CSS and lazy chunks; do not substitute authored-source existence or
 JavaScript text scanning for compiler output evidence. The latter producer requirements remain part
 of B1–B4 and final all-kind acceptance, not an exemption from completeness.
@@ -180,7 +181,9 @@ Execute the identified gaps in this order:
    and schema/API generation pass. Migration checkpoint `f72cb8756` adds checked native declarations
    and real targeting through the existing runners; 840 affected cases, types, lint, package builds and
    schema/API generation pass. Preserve app/pack version separation and captured accepted bindings. See [content evidence](../evidence/discovery-without-activation.md#native-content-declarations-2026-10-17).
-4. Finish native name/static-asset and remaining consumer checks, then all-kind source-free/external
+4. Display-name cleanup `123efbd6f` and required-entry admission `b916d0e5e` are implemented; preserve
+   their [evidence](../evidence/discovery-without-activation.md#required-build-entries-and-display-metadata-2026-10-17).
+   Finish compiled-content, CSS/chunk completeness and remaining consumer checks, then all-kind source-free/external
    acceptance. Record which asset classes and entry kinds the checks actually exercise. Keep B1–B6 and
    Phase 6 enforcement in their existing execution slots; this inventory does not reopen them.
 

@@ -3518,3 +3518,50 @@ Next: static-asset and remaining-reader audit, including whether native display 
 consumer, then all-kind acceptance. The app-line record remains global; disabled-owner catch-up is the
 existing Phase 6 requirement, not solved by native targeting. B1–B6, all three Phase 6 workstreams and
 final committed-source strict `--all` remain required.
+
+## Required build entries and display metadata (2026-10-17)
+
+Source `123efbd6f` removes `PackRegistration.name` and its generated assignment. No runtime reader
+uses it: loaded-pack entries use `PackOrigin.name`, Packs UI uses manifest names and native panes use
+feature labels. No native display-name field is introduced. The exact registration-field inventory,
+SDK API report and misplaced adjacent settings comment are updated. All 36 generator cases, SDK
+TypeScript, lint, local package builds and reviewed API generation pass:
+`/private/tmp/apack-registration-name-{tests,types,lint,packages,api}.log`.
+Default-setup entries regenerate and its Vue/TypeScript check passes:
+`/private/tmp/apack-registration-name-default-{generate,types}.log`.
+
+Source `b916d0e5e` closes a distinct output-completeness gap. `verifyPack` proves byte equality with the
+producer's receipt, but sealing an already-incomplete file set previously accepted a missing backend
+entry and missing frontend entries for declared contributions. The isolated filesystem regression run
+reproduces ten such acceptances (backend and nine frontend cases); its initial reference fixture was
+invalid and was corrected rather than counted as proof. Final coverage includes references too:
+`/private/tmp/apack-required-entries-before.log`, `/private/tmp/apack-required-entries-after.log`.
+
+Current-format build reading, source staging and installer admission now require `runtime/index.cjs`
+and require `runtime/fe.js` for generated frontend memberships: feature plugins/designations/forms/
+references, group forms, steps, artifacts, blocks, editor groups and app extensions. Empty maps and
+inline command/settings data do not require frontend code. Discovery reads declarations and receipt
+membership without importing either poisoned runtime or missing authored files. Synthetic successful
+build fixtures now supply frontend files; sealing helpers do not repair missing output automatically.
+The foreign-format forwarding boundary remains opaque to the current CLI.
+
+Acceptance:
+
+- All 705 affected pack and CLI cases pass across 46 files (11.75s), including all 101 layout cases,
+  missing-before-seal refusals, incumbent stage retention, source-free inspection and backend-only
+  builds. Four initial sandbox-denied `os.uptime()` cases pass with access; nine other failures were
+  incomplete synthetic fixtures, now corrected. Logs:
+  `/private/tmp/apack-required-entries-consumers{,-final}.log`.
+- Two actual compiler/build integration cases pass (51.61s). A declared step pack builds normally;
+  a subsequent `--skip-fe` build refuses and preserves the incumbent integrity receipt. Undeclared
+  flow-step refusal also passes: `/private/tmp/apack-required-entries-build.log`.
+- Host and CLI TypeScript, final lint and refreshed local package builds pass:
+  `/private/tmp/apack-required-entries-{types,cli-types,lint-final,packages}.log`.
+
+This establishes required entry presence, not the completeness of every produced file. Compiled-content
+index/data/media and bundler CSS/lazy-chunk output graphs still require audit and acceptance. Facade
+text, flow-helper text, help and DSL data already live inline in snapshots; their duplicate files or
+authored sources are not installed discovery prerequisites. Keep producer/input association in B1–B4;
+no new receipt inventory or executable inspection was introduced. The preserved strict integration
+failures, all-kind acceptance, all three Phase 6 workstreams and final committed-source strict `--all`
+remain open. Concurrent documentation commits `71e854172` and `70547b7f9` are preserved.
