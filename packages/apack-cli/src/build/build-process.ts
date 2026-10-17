@@ -69,6 +69,9 @@ export function createPackBuilder(root: string): PackBuilder {
       if (generation.configuration !== configuration) {
         throw new Error('Pack frontend configuration changed; build the pack before serving it again');
       }
+      if (!await generation.frontend.isCurrent(signal)) {
+        throw new Error('Pack frontend native inputs changed; build the pack before serving it again');
+      }
       return generation.frontend.address;
     }
     await generation.frontend?.close();
@@ -93,7 +96,7 @@ export function createPackBuilder(root: string): PackBuilder {
         const directory = compilerPackageDirectory();
         const configuration = frontendChanged ? readPackDevServerInputs(root) : undefined;
         const reusable = current?.compiler.isCurrent(directory, { cwd: root })
-          && (!current.frontend || current.configuration === configuration);
+          && (!current.frontend || (current.configuration === configuration && await current.frontend.isCurrent(options.signal)));
         const candidate: Generation = current && reusable ? current
           : { compiler: await captureCompilerInstallation(directory, { cwd: root }) };
         owned.add(candidate);

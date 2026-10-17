@@ -2,7 +2,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { execFileSync } from 'node:child_process';
-import { expect, it } from 'vitest';
+import { expect, it, vi } from 'vitest';
 import { captureCompilationInputs } from '../../src/build/compilation-inputs.ts';
 import { createCompilerModuleLoader } from '../../src/build/compiler-modules.ts';
 import { packFixture } from '@apackdev/sdk/testing/pack-fixture';
@@ -13,7 +13,7 @@ import { createPackBuilder } from '../../src/build/build-process.ts';
 import { formatNodeOptions, parseNodeOptions } from '@apackdev/host/build/source-resolution';
 import { withCompilerFileReads } from '@apackdev/host/build/compiler-inputs';
 import { captureCompilerInstallation, compilerPackageDirectory, type CompilerInstallation } from '../../src/build/compiler-installation.ts';
-import { startPackFrontend } from '../../src/build/frontend-process.ts';
+import { startPackFrontend, type PackFrontend } from '../../src/build/frontend-process.ts';
 import { assertCapturedMachOLibraries, captureMachOLibraryEnvironment } from '../../src/build/compiler-native-libraries.ts';
 
 function nativeFixture(mode: 'relative' | 'absolute' | 'transitive' | 'fallback' | 'framework', sdk?: string) {
@@ -119,6 +119,102 @@ require('node:worker_threads').parentPort.postMessage('NATIVE');`)}, { eval: tru
   worker.once('exit', code => { if (code) reject(new Error('Native compiler worker exited with code ' + code)); });
 });`;
 }
+
+it('retains independent captured Vite owners through replacement and close', async () => {
+  const root = fs.realpathSync.native(fs.mkdtempSync(path.join(os.tmpdir(), 'apack-vite-owners-')));
+  const pack = path.join(root, 'pack');
+  const proof = path.join(root, 'children.jsonl');
+  const previous = process.env.NODE_OPTIONS;
+  let compiler: CompilerInstallation | undefined;
+  const frontends: PackFrontend[] = [];
+  const signal = new AbortController().signal;
+  try {
+    packFixture({ at: pack, nodeModules: path.join(REPO_ROOT, 'node_modules'), manifest: { features: {} },
+      files: { 'src/pack-entry-fe.ts': "export { default } from './View.vue';", 'src/View.vue': '<template>VITE_OWNED</template>' } });
+    const preload = path.join(pack, 'descendant.cjs');
+    fs.writeFileSync(preload, `if (globalThis[Symbol.for('apack.compiler.frontend')] && require('node:worker_threads').isMainThread) {
+      const child = require('node:child_process').spawn(process.execPath, ['-e', 'setInterval(() => {}, 1000)'], {stdio:'ignore'});
+      child.unref();
+      require('node:fs').appendFileSync(${JSON.stringify(proof)}, JSON.stringify({root:process.pid, child:child.pid})+'\\n');
+    }`);
+    compiler = await captureCompilerInstallation(compilerPackageDirectory(), { cwd: pack });
+    process.env.NODE_OPTIONS = formatNodeOptions([...parseNodeOptions(previous), '--require', preload]);
+    frontends.push(await startPackFrontend(pack, compiler, signal));
+    frontends.push(await startPackFrontend(pack, compiler, signal));
+    const children = fs.readFileSync(proof, 'utf8').trim().split('\n').map(line => JSON.parse(line)) as { root: number; child: number }[];
+    expect(children.map(child => child.root)).toEqual(frontends.map(frontend => frontend.address.pid));
+    await frontends[0]!.close();
+    await vi.waitFor(() => expect(() => process.kill(children[0]!.child, 0)).toThrow(), { timeout: 2_000 });
+    expect(frontends[1]!.alive()).toBe(true);
+    expect(() => process.kill(children[1]!.child, 0)).not.toThrow();
+    expect(await frontends[1]!.isCurrent(signal)).toBe(true);
+    expect(await (await fetch(`http://localhost:${frontends[1]!.address.port}/src/View.vue`)).text()).toContain('VITE_OWNED');
+    await frontends[1]!.close();
+    await vi.waitFor(() => expect(() => process.kill(children[1]!.child, 0)).toThrow(), { timeout: 2_000 });
+  } finally {
+    if (previous === undefined) delete process.env.NODE_OPTIONS;
+    else process.env.NODE_OPTIONS = previous;
+    try { await Promise.all(frontends.map(frontend => frontend.close())); }
+    finally { await compiler?.dispose(); fs.rmSync(root, { recursive: true, force: true }); }
+  }
+});
+
+it.runIf(process.platform === 'darwin').each(['preload', 'thread'] as const)(
+  'owns retained Vite native %s inputs while authored Vue sources stay live', async site => {
+    const fixture = nativeFixture('relative');
+    const refused = nativeFixture('absolute');
+    const previous = process.env.NODE_OPTIONS;
+    let compiler: CompilerInstallation | undefined;
+    let frontend: PackFrontend | undefined;
+    const signal = new AbortController().signal;
+    try {
+      // Put the addon inside the authored pack itself: capturing its whole package would freeze Vue.
+      fs.cpSync(fixture.native, fixture.pack, { recursive: true });
+      const native = { ...fixture, native: fixture.pack, library: path.join(fixture.pack, 'lib/libvalue.dylib') };
+      packFixture({ at: fixture.pack, nodeModules: path.join(REPO_ROOT, 'node_modules'), manifest: { features: {} },
+        files: { 'src/pack-entry-fe.ts': "export { default } from './View.vue';", 'src/View.vue': '<template>VITE_NATIVE_BEFORE</template>' } });
+      const proof = path.join(fixture.root, 'vite-native-proof.jsonl');
+      const preload = path.join(fixture.pack, 'vite-native.cjs');
+      const load = nativeLoad(native, proof);
+      const writePreload = (load: string) => fs.writeFileSync(preload, `if (globalThis[Symbol.for('apack.compiler.frontend')] && require('node:worker_threads').isMainThread) {
+        ${site === 'preload' ? load : `const worker = new (require('node:worker_threads').Worker)(${JSON.stringify(load + ';setInterval(() => {}, 1000);')}, { eval: true, execArgv: [] });
+        worker.on('error', error => { console.error(error); process.exit(1); });`}
+      }`);
+      writePreload(load);
+      compiler = await captureCompilerInstallation(compilerPackageDirectory(), { cwd: fixture.pack });
+      process.env.NODE_OPTIONS = formatNodeOptions([...parseNodeOptions(previous), '--require', preload]);
+      frontend = await startPackFrontend(fixture.pack, compiler, signal);
+      await vi.waitFor(() => expect(fs.existsSync(proof)).toBe(true), { timeout: 2_000 });
+      const loaded = JSON.parse(fs.readFileSync(proof, 'utf8').trim()) as { value: number; thread: number; libraries: string[] };
+      expect(loaded.value).toBe(11);
+      expect(loaded.thread > 0).toBe(site === 'thread');
+      expect(loaded.libraries).not.toContain(native.library);
+      expect(loaded.libraries.some(file => file.includes('apack-vite-') && file.endsWith('/lib/libvalue.dylib'))).toBe(true);
+      expect(await frontend.isCurrent(signal)).toBe(true);
+      const view = `http://localhost:${frontend.address.port}/src/View.vue`;
+      expect(await (await fetch(view)).text()).toContain('VITE_NATIVE_BEFORE');
+      fs.writeFileSync(path.join(fixture.pack, 'src/View.vue'), '<template>VITE_NATIVE_AFTER</template>');
+      await vi.waitFor(async () => expect(await (await fetch(view)).text()).toContain('VITE_NATIVE_AFTER'), { timeout: 2_000 });
+      expect(await frontend.isCurrent(signal)).toBe(true);
+      fs.writeFileSync(native.library, 'CHANGED');
+      expect(await frontend.isCurrent(signal)).toBe(false);
+      expect(frontend.alive()).toBe(true);
+      writePreload(nativeLoad(refused, path.join(refused.root, 'refused-proof.jsonl')));
+      await expect(startPackFrontend(fixture.pack, compiler, signal)).rejects.toThrow('Pack frontend exited before readiness');
+      expect(fs.existsSync(refused.marker)).toBe(false);
+      expect(frontend.alive()).toBe(true);
+      expect(await (await fetch(view)).text()).toContain('VITE_NATIVE_AFTER');
+    } finally {
+      if (previous === undefined) delete process.env.NODE_OPTIONS;
+      else process.env.NODE_OPTIONS = previous;
+      try { await frontend?.close(); }
+      finally {
+        await compiler?.dispose();
+        for (const { root } of [fixture, refused]) fs.rmSync(root, { recursive: true, force: true });
+      }
+    }
+  },
+);
 
 it.runIf(process.platform === 'darwin').each(['relative', 'absolute', 'transitive'] as const)('checks %s native libraries before addon initialization', async mode => {
   const { root, pack, library, marker, outside, entry } = nativeFixture(mode);

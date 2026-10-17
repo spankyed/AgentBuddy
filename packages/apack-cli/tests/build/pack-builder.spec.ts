@@ -54,7 +54,13 @@ function fixture() {
     import {spawn} from 'node:child_process';
     if (process.env.APACK_FRONTEND_WORKER === '1') {
       const hanging = fs.existsSync('.apack/frontend-hang');
-      process.on('message', message => { if (message === 'frontend-close' && !hanging) process.exit(0); });
+      process.on('message', message => {
+        if (message === 'frontend-close' && !hanging) process.exit(0);
+        if (message?.type === 'frontend-inputs') {
+          fs.writeFileSync('.apack/frontend-input-requested', 'requested');
+          if (!fs.existsSync('.apack/frontend-input-hang')) process.send({ type: 'frontend-inputs', id: message.id, current: true });
+        }
+      });
       fs.writeFileSync('.apack/frontend-starting.json', JSON.stringify({pid:process.pid, directory:process.env.APACK_FRONTEND_DIRECTORY}));
       if (!hanging) process.send({type:'frontend-ready', port:12345, pid:process.pid, hash:JSON.parse(fs.readFileSync(process.env.APACK_COMPILER_INPUTS,'utf8')).hash});
       await new Promise(() => {});
@@ -143,6 +149,24 @@ it('drains an interrupted frontend startup before removing its compiler and writ
   const { pid, directory } = JSON.parse(fs.readFileSync(record, 'utf8'));
   expect(fs.existsSync(directory)).toBe(true);
   expect(fs.existsSync(fileURLToPath(accepted.bin))).toBe(true);
+  await builder.close();
+  await refused;
+  expect(() => process.kill(pid, 0)).toThrow();
+  expect(fs.existsSync(directory)).toBe(false);
+  expect(fs.existsSync(fileURLToPath(accepted.bin))).toBe(false);
+});
+
+it('cancels a frontend input check before retiring its compiler and workspace', async () => {
+  const { pack, builder, report } = fixture();
+  await builder.build();
+  const accepted = report();
+  fs.mkdirSync(path.join(pack, 'src'));
+  fs.writeFileSync(path.join(pack, 'src/pack-entry-fe.ts'), 'export {};');
+  await builder.serveFrontend(() => {});
+  fs.writeFileSync(path.join(pack, '.apack/frontend-input-hang'), '');
+  const refused = expect(builder.build()).rejects.toMatchObject({ name: 'AbortError' });
+  await vi.waitFor(() => expect(fs.existsSync(path.join(pack, '.apack/frontend-input-requested'))).toBe(true));
+  const { pid, directory } = JSON.parse(fs.readFileSync(path.join(pack, '.apack/frontend-starting.json'), 'utf8'));
   await builder.close();
   await refused;
   expect(() => process.kill(pid, 0)).toThrow();

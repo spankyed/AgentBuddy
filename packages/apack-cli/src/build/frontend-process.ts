@@ -3,17 +3,19 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { compilationConditions } from './compilation-inputs.ts';
-import { withoutSourceCondition } from '@apackdev/host/build/source-resolution';
 import { COMPILER_INPUTS_ENV } from './compiler-installation-inputs.ts';
 import { COMPILER_PROCESS_GROUP_ENV, stopCompilerProcessGroup } from './compiler-process-group.ts';
 import type { CompilerInstallation } from './compiler-installation.ts';
 import { assertCompilerLibraryInsertion } from './compiler-native-libraries.ts';
+import { compilerStartupOptions, COMPILER_NODE_OPTIONS_ENV } from './compiler-startup-options.ts';
+import { BUILD_INPUTS_DIRECTORY_ENV, removeCompilerReadTree } from './compiler-read-tree.ts';
 
 export interface PackFrontendAddress { readonly port: number; readonly pid: number }
 
 export interface PackFrontend {
   readonly address: PackFrontendAddress;
   alive(): boolean;
+  isCurrent(signal: AbortSignal): Promise<boolean>;
   close(): Promise<void>;
 }
 
@@ -23,6 +25,7 @@ export async function startPackFrontend(root: string, compiler: CompilerInstalla
   assertCompilerLibraryInsertion();
   const grouped = process.platform !== 'win32';
   const directory = fs.realpathSync.native(fs.mkdtempSync(path.join(os.tmpdir(), 'apack-vite-')));
+  const nodeOptions = compilerStartupOptions(compiler.bin, process.env.NODE_OPTIONS);
   let child: ReturnType<typeof spawnCompilerWorker>;
   try {
     child = spawnCompilerWorker(compiler, [...compilationConditions().map(value => `--conditions=${value}`), compiler.bin], {
@@ -30,7 +33,8 @@ export async function startPackFrontend(root: string, compiler: CompilerInstalla
       env: { ...process.env, ...compiler.environment, APACK_FRONTEND_WORKER: '1', APACK_BUILD_WORKER: undefined,
         [COMPILER_INPUTS_ENV]: compiler.inputsFile, [COMPILER_PROCESS_GROUP_ENV]: grouped ? '1' : undefined,
         APACK_FRONTEND_DIRECTORY: directory,
-        NODE_OPTIONS: withoutSourceCondition(process.env.NODE_OPTIONS), ELECTRON_RUN_AS_NODE: '1', TSX_DISABLE_CACHE: '1' },
+        [BUILD_INPUTS_DIRECTORY_ENV]: directory, [COMPILER_NODE_OPTIONS_ENV]: nodeOptions.user,
+        NODE_OPTIONS: nodeOptions.worker, ELECTRON_RUN_AS_NODE: '1', TSX_DISABLE_CACHE: '1' },
     }, directory);
   } catch (error) {
     await fs.promises.rm(directory, { recursive: true, force: true });
@@ -49,11 +53,34 @@ export async function startPackFrontend(root: string, compiler: CompilerInstalla
       else child.kill('SIGKILL');
       await closed;
       if (grouped && child.pid) await stopCompilerProcessGroup(child.pid);
-      await fs.promises.rm(directory, { recursive: true, force: true });
+      removeCompilerReadTree(directory);
     } finally { clearTimeout(timer); }
   })();
   const abort = () => { void close().catch(() => {}); };
   signal.addEventListener('abort', abort, { once: true });
+  let sequence = 0;
+  const isCurrent = (signal: AbortSignal) => new Promise<boolean>((resolve, reject) => {
+    signal.throwIfAborted();
+    if (!child.connected || child.exitCode !== null || child.signalCode !== null) { resolve(false); return; }
+    const id = ++sequence;
+    const finish = (current: boolean, error?: unknown) => {
+      signal.removeEventListener('abort', aborted);
+      child.removeListener('message', response);
+      child.removeListener('close', exited);
+      error !== undefined ? reject(error) : resolve(current);
+    };
+    const aborted = () => finish(false, signal.reason);
+    const exited = () => finish(false);
+    const response = (message: unknown) => {
+      if (!message || typeof message !== 'object' || !('type' in message) || message.type !== 'frontend-inputs'
+        || !('id' in message) || message.id !== id) return;
+      finish('current' in message && message.current === true);
+    };
+    signal.addEventListener('abort', aborted, { once: true });
+    child.on('message', response);
+    child.once('close', exited);
+    child.send({ type: 'frontend-inputs', id }, error => { if (error) finish(false, error); });
+  });
   try {
     const address = await new Promise<PackFrontendAddress>((resolve, reject) => {
       child.on('message', message => {
@@ -68,7 +95,7 @@ export async function startPackFrontend(root: string, compiler: CompilerInstalla
       void closed.then(() => reject(failure ?? new Error(`Pack frontend exited before readiness (${child.exitCode ?? child.signalCode})`)));
     });
     signal.throwIfAborted();
-    return { address, alive: () => child.exitCode === null && child.signalCode === null, close };
+    return { address, alive: () => child.exitCode === null && child.signalCode === null, isCurrent, close };
   } catch (error) {
     await close();
     signal.throwIfAborted();

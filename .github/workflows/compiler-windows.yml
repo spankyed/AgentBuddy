@@ -63,10 +63,15 @@ jobs:
         run: >-
           node node_modules/vitest/vitest.mjs run --project @apackdev/cli
           packages/apack-cli/tests/build/pack-builder.spec.ts
-          --testNamePattern='stops remaining compiler descendants'
+          --testNamePattern='stops remaining compiler descendants|cancels a frontend input check'
           --bail=1 --poolOptions.threads.maxThreads=2 --poolOptions.threads.minThreads=1
-      # The job proof covers parent loss and replacement; actual build/frontend acceptance remains required.
-      # Establish startup/repeated-build identity first. Expand native lifetime cases with their Windows owner.
+      - name: Retained Vite process ownership
+        run: >-
+          node node_modules/vitest/vitest.mjs run --config vitest.integration.config.ts --project @apackdev/cli
+          packages/apack-cli/tests/build/compiler-native-libraries.integration.spec.ts
+          --testNamePattern='retains independent captured Vite owners'
+          --bail=1 --poolOptions.threads.maxThreads=2 --poolOptions.threads.minThreads=1
+      # These establish process ownership and baseline identity; native input admission remains separate.
       - name: Build worker platform baseline
         run: >-
           node node_modules/vitest/vitest.mjs run --config vitest.integration.config.ts --project @apackdev/cli

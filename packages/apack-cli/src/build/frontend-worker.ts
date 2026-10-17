@@ -4,6 +4,8 @@ import { COMPILER_PROCESS_GROUP_ENV } from './compiler-process-group.ts';
 import { errorMessage } from '@apackdev/sdk/utils/pure';
 import fs from 'node:fs';
 import path from 'node:path';
+import { frontendNativeInputs } from './frontend-native-inputs.ts';
+import { assertNativeCompilerObservations } from '@apackdev/host/build/compiler-inputs';
 
 if (process.env.APACK_FRONTEND_WORKER !== '1' || !process.send || !process.connected) {
   throw new Error('Pack frontend worker requires its parent IPC channel');
@@ -22,6 +24,16 @@ process.once('disconnect', () => {
 try {
   const compiler = readCompilerInstallationInputs();
   if (!compiler?.packages.includes(cliPackageDirectory())) throw new Error('Pack frontend worker requires captured compiler inputs');
+  const inputs = frontendNativeInputs();
+  if (!inputs) throw new Error('Pack frontend worker requires native input ownership');
+  let checking = Promise.resolve();
+  const assertCurrent = () => {
+    const checked = checking.then(async () => {
+      for (const observations of await inputs.snapshot()) assertNativeCompilerObservations(observations);
+    });
+    checking = checked.catch(() => {});
+    return checked;
+  };
   const directory = process.env.APACK_FRONTEND_DIRECTORY;
   if (!directory || !path.isAbsolute(directory)) throw new Error('Pack frontend worker requires its private workspace');
   const temporary = path.join(directory, 'tmp');
@@ -36,13 +48,22 @@ try {
   configuration.cacheDir = path.join(directory, 'vite');
   const server = await createServer(configuration);
   process.on('message', async message => {
+    if (message && typeof message === 'object' && 'type' in message && message.type === 'frontend-inputs' && 'id' in message) {
+      try { await assertCurrent(); process.send?.({ type: 'frontend-inputs', id: message.id, current: true }); }
+      catch { process.send?.({ type: 'frontend-inputs', id: message.id, current: false }); }
+      return;
+    }
     if (message !== 'frontend-close') return;
-    try { await server.close(); }
-    finally { process.exit(0); }
+    try { await checking; await server.close(); }
+    finally {
+      try { await inputs.close(); }
+      finally { process.exit(0); }
+    }
   });
   await server.listen();
   const address = server.httpServer?.address();
   if (!address || typeof address !== 'object') throw new Error('Vite dev server failed to bind a port');
+  await assertCurrent();
   process.send({ type: 'frontend-ready', hash: compiler.hash, port: address.port, pid: process.pid });
 } catch (error) {
   console.error(errorMessage(error));

@@ -4,16 +4,13 @@ import {
   createPackCompilerInputView,
   type PackCompilerInputView,
   beginCompilerStartupReads,
-  beginCompilerNativeModules,
   withoutCompilerFileReads,
-  compilerDiagnostic,
   compilerSourcePath,
   type CompilerPathMapping,
   type CompilerInputObservations,
 } from '@apackdev/host/build/compiler-inputs';
-import { captureCompilerPackage } from './compiler-package-inputs.ts';
-import { assertCapturedMachOLibraries, captureMachOLibraryEnvironment, type MachOLibraryEnvironment } from './compiler-native-libraries.ts';
-import { createCompilerReadTree, type CompilerReadTree } from './compiler-read-tree.ts';
+import { captureMachOLibraryEnvironment, type MachOLibraryEnvironment } from './compiler-native-libraries.ts';
+import { createCompilerNativeInputs } from './compiler-native-input-owner.ts';
 
 import { parseNodeOptions } from '@apackdev/host/build/source-resolution';
 import { compilerEnvironmentIdentity } from './compiler-environment.ts';
@@ -26,7 +23,7 @@ export interface CompilerStartupInputs {
   readonly executionIdentity: string;
   readonly view: PackCompilerInputView;
   readonly nativeEnvironment: MachOLibraryEnvironment;
-  stopReads(): void;
+  disposeLocal(): void;
   nativeModule(file: string): string;
   finishLocal(): CompilerInputObservations;
   initial?: CompilerInputObservations[];
@@ -68,64 +65,13 @@ export function beginCompilerStartupInputs(root: string, workspace: string, path
     recordWatchInput(compilerSourcePath(file, paths), kind);
   }) });
   initializing = false;
-  let tree: CompilerReadTree | undefined;
-  const sourcePath = (file: string) => tree?.sourcePath(file) ?? compilerSourcePath(file, paths);
-  const readDataPath = (file: string) => withoutCompilerFileReads(() => {
-    if (!includes(file)) return file;
-    file = sourcePath(file);
-    const bytes = original.readDataBytes(file);
-    const location = original.captureLocation(file, 'file');
-    tree ??= createCompilerReadTree({ files: [], locations: [], links: [] }, paths);
-    tree.includeData({ files: bytes === undefined ? [] : [original.captureFile(file, bytes)],
-      locations: [...(location ? [location] : []), ...original.ancestors(file)], links: [] });
-    return tree.dataPath(file);
-  });
-  const nativePackages = new Set<string>();
-  const packageRoot = (file: string, exists: (file: string) => boolean) => {
-    for (let directory = path.dirname(file); ; directory = path.dirname(directory)) {
-      if (exists(path.join(directory, 'package.json'))) return directory;
-      if (path.dirname(directory) === directory) return path.dirname(file);
-    }
-  };
-  const nativeModule = (file: string): string => {
-    if (process.platform !== 'darwin') return file;
-    // Compiler-installation and earlier read-tree copies already have an input owner. Inspect their
-    // actual images without recording ephemeral private paths as new source inputs.
-    if (!includes(file) || sourcePath(file) !== file) {
-      assertCapturedMachOLibraries(file, packageRoot(file, fs.existsSync), {
-        arch: process.arch, environment: nativeEnvironment,
-        realpath: file => fs.realpathSync.native(file),
-        read: file => includes(file) && sourcePath(file) === file ? original.readDataBytes(file)
-          : fs.statSync(file, { throwIfNoEntry: false })?.isFile() ? fs.readFileSync(file) : undefined,
-      });
-      return file;
-    }
-    const owner = packageRoot(file, original.fileSystem.fileExists);
-    if (!nativePackages.has(owner)) {
-      const { snapshot } = captureCompilerPackage(owner, original.captureDataLocation, (file, bytes) =>
-        original.captureFile(file.source, original.readDataBytes(file.source) ?? bytes));
-      tree ??= createCompilerReadTree({ files: [], locations: [], links: [] }, paths);
-      tree.includeData(snapshot);
-      nativePackages.add(owner);
-    }
-    assertCapturedMachOLibraries(file, owner, {
-      arch: process.arch, environment: nativeEnvironment, read: original.readDataBytes, realpath: original.fileSystem.realpath,
-    });
-    return readDataPath(file);
-  };
-  const stopNativeModules = beginCompilerNativeModules(nativeModule);
-  const view: PackCompilerInputView = { ...original, dispose() {
-    withoutCompilerFileReads(() => {
-      stopNativeModules();
-      try { original.dispose(); } finally { tree?.dispose(); }
-    });
-  }, assertCurrent() {
-    withoutCompilerFileReads(() => { original.assertCurrent(); tree?.assertCurrent(); });
-  } };
+  const native = createCompilerNativeInputs(original, workspace, paths, nativeEnvironment, 'package');
+  const { sourcePath, readDataPath, nativeModule } = native;
+  const view: PackCompilerInputView = { ...original, dispose: native.dispose, assertCurrent: native.assertCurrent };
   const stopReads = beginCompilerStartupReads({ outputDirectory: workspace, compilation: {
     isInput: includes,
     readDataPath, sourcePath,
-    diagnostic: message => compilerDiagnostic(tree?.diagnostic(message) ?? message, paths),
+    diagnostic: native.diagnostic,
     readMetadata: (kind, file, args) => original.readMetadata(kind, sourcePath(file), args),
     readDirectory: (file, options) => original.readDirectoryData(sourcePath(file), options),
     openDirectory: (file, options) => original.openDirectoryData(sourcePath(file), options),
@@ -133,7 +79,8 @@ export function beginCompilerStartupInputs(root: string, workspace: string, path
     requireParent: file => file,
   } });
   const startup: CompilerStartupInputs = {
-    root: canonicalRoot, executionIdentity, view, nativeEnvironment, stopReads, nativeModule,
+    root: canonicalRoot, executionIdentity, view, nativeEnvironment, nativeModule,
+    disposeLocal() { stopReads(); view.dispose(); },
     finishLocal() {
       return withoutCompilerFileReads(() => {
         view.assertCurrent();
