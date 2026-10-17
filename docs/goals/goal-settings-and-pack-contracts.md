@@ -566,10 +566,15 @@ refuse before addon initialization, while an unused directory is allowed and its
 invalidates freshness. The real worker/public-build case passes in 31.03s with incumbent retention;
 52 focused cases, 53 tooling cases, CLI types, lint and a targeted mutation check pass. See the
 [search-path checkpoint](../evidence/build-input-snapshot-proof.md#native-search-override-admission-2026-10-17).
-This does not close every loader control: account next for pre-initialization library insertion at its
-pre-launch owner and inspect the applicable framework/versioned/fallback/suffix controls before claiming
-the macOS environment boundary complete. Then finish retained-frontend initialization without freezing
-HMR. ELF/PE, Windows descendant lifetime/native execution and the converged/final strict gates remain open.
+`99ca1c6af` closes direct pre-initialization insertion through build preparation and both worker launch
+owners: normal OS insertion succeeds; live outside and original-package paths refuse before launch,
+without running a real library constructor or replacing the accepted build. The real case passes in
+25.70s with 24 policy cases, 53 tooling cases, CLI types, lint and a targeted mutation check. See the
+[insertion checkpoint](../evidence/build-input-snapshot-proof.md#pre-launch-library-insertion-admission-2026-10-17).
+This does not close every loader control: inspect applicable framework/versioned/fallback/suffix
+controls and shared-cache-specific precedence before claiming the macOS environment boundary complete.
+Then finish retained-frontend initialization without freezing HMR. ELF/PE, Windows descendant
+lifetime/native execution and the converged/final strict gates remain open.
 Windows push approval is still pending.
 
 The single two-core strict run failed preparing the default-pack fork: the build observation for

@@ -1928,3 +1928,41 @@ startup require their own applicable-path audit and acceptance. Retained Vite in
 other-platform evidence, Windows descendant ownership and the converged/final strict gates remain open.
 No timeout changed, no blanket ban on loader environment was added, and no broad suite rerun was used
 as diagnosis.
+
+## Pre-launch library insertion admission (2026-10-17)
+
+Source `99ca1c6af` places `DYLD_INSERT_LIBRARIES` admission before compiler preparation (including
+checkout subprocesses) and immediately before build/frontend worker launch. JavaScript native-module
+interception is too late for these libraries: their constructors execute while the OS starts the
+process. The policy permits normal absolute OS-library paths and refuses live package/outside paths,
+including relative names and normalized paths escaping an OS prefix. This applies the same existing
+bounded rule as absolute native dependency references: an absolute path back to an original package
+is not captured loading. Package libraries continue to use captured compiler module loading; there
+is no insertion-path rewriting or separate external-library capture mechanism.
+
+The common Mach-O policy also checks applicable `DYLD_LIBRARY_PATH` overrides of inserted OS-library
+references before launch. OS shared-cache paths need not exist as standalone files to be allowed.
+This checkpoint does not claim a complete shared-cache/alternate-loader resolver.
+
+Evidence on macOS ARM64 / Node 23.11.1:
+
+- The actual public builder succeeds with `/usr/lib/libSystem.B.dylib` insertion. A compiled external
+  dylib has a real constructor writing an owned marker. Both builder and retained-frontend launch
+  reject its insertion, and reject a live original-package library path, without creating the marker
+  or changing the published incumbent revision. The case passes in 25.70s (27.14s runner):
+  `/private/tmp/apack-native-insertion-real.log`.
+- All 24 native binary/policy cases pass (0.25s runner), including insertion absence, OS insertion,
+  outside/relative selection and prefix traversal:
+  `/private/tmp/apack-native-insertion-unit.log`.
+- A private setup replaces only insertion admission with a no-op; the three refusal cases then fail.
+  Production source is unchanged by the probe: `/private/tmp/apack-native-insertion-mutation.log`;
+  `/private/tmp/apack-native-insertion-mutation-config.txt` names its retained setup.
+- All 53 subprocess inventory/timeout cases, CLI types, focused correctness lint and whitespace
+  checks pass: `/private/tmp/apack-native-insertion-tooling.log`,
+  `/private/tmp/apack-native-insertion-types.log`, `/private/tmp/apack-native-insertion-lint.log`.
+  Matching package build: `/private/tmp/apack-native-insertion-packages.log`.
+
+No release workflow, remote push or production data was used. No timeout changed or broad pool was
+rerun for diagnosis. Framework/versioned/fallback/suffix controls, shared-cache precedence, retained
+frontend initialization beyond this pre-launch boundary, ELF/PE, Windows lifetime/native execution
+and the converged/final strict gates remain open in the owning goal.
