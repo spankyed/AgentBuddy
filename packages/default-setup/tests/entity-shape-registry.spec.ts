@@ -26,7 +26,7 @@ describe('PackShapes', () => {
   });
 
   it('has no key for an undeclared entity', () => {
-    // @ts-expect-error not declared in apack.json entityShapes
+    // @ts-expect-error not declared in apack.json entity declarations
     expectTypeOf<OwnEntityShapes['SomeFutureEntity']>().toBeNever();
   });
 });

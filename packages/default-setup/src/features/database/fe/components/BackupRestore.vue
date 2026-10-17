@@ -373,7 +373,7 @@ watch(storedBackupInfo, (newInfo) => {
   }
 });
 
-// Report each finished export or import; a successful import reloads the window to reload client state
+// The host publishes restored state to live consumers; presentation reports the operation's result.
 watch(backupResult, (result) => {
   if (!result) return;
   const operation = result.operation === 'export' ? 'Export' : 'Import';
@@ -384,8 +384,7 @@ watch(backupResult, (result) => {
   } else if (result.operation === 'export') {
     toast.value?.success('Backup exported successfully!');
   } else {
-    toast.value?.success('Backup imported successfully!', 'Page will refresh in 2 seconds...');
-    setTimeout(() => window.location.reload(), 1500);
+    toast.value?.success('Backup imported successfully!', result.message);
   }
 });
 

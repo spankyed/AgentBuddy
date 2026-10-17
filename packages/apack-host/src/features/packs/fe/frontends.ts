@@ -2,15 +2,25 @@
 // unloading takes back. The two things only a window can do — import a module and add a stylesheet — arrive as
 // `PackFrontendIO`, so the rules hold wherever this runs and the browser's part stays the renderer's.
 import type { PackFERegistration, Plugin } from '@apackdev/sdk/fe';
+import { captureFrontendBindings } from '../../../fe/binding-snapshot.ts';
+import { frontendBindingProblem } from '../../../fe/declaration-binding.ts';
+import { _packDeclarationProblem, _settingsJsonProblems } from '@apackdev/sdk/framework';
 import type { LoadedPackEntry } from '../../../packs/layout.ts';
-import type { FePackRegistry } from '../../../fe/pack-store.ts';
+import type { FePackRegistry, FrontendSettingsBinding, PreparedFrontend } from '../../../fe/pack-store.ts';
 import type { ShellPackFrontends } from '../../../fe/pack-frontends.ts';
 
-/** A window's stylesheets for a pack: added once per href, and taken out together when the pack goes */
+/** One attempt owns its prepared stylesheet; another attempt cannot dispose it. */
+export interface PackFrontendStyle {
+  ready: Promise<void>;
+  /** Applies loaded styles; the previous accepted owner remains until its own disposal. */
+  commit(): void;
+  dispose(): void;
+}
+
 export interface PackFrontendStyles {
-  /** Adds the stylesheet at `href` for `packId`, unless it is already there. Resolves when it has loaded or failed. */
-  add(packId: string, href: string): Promise<void>;
-  /** Removes every stylesheet added for `packId` */
+  /** Fetch without applying; readiness and cancellation belong to this lease. */
+  prepare(packId: string, href: string): PackFrontendStyle;
+  /** Explicit pack unload disposes accepted and pending styles. */
   remove(packId: string): void;
 }
 
@@ -31,6 +41,8 @@ export interface PackFrontendIO {
   styles: PackFrontendStyles;
   /** The packs this window serves from source, preferred over `pack://`; none in a built app */
   devFrontends?: DevPackFrontends;
+  /** Supplies authority for the accepted backend declarations/build, never a claimed sender label. */
+  settingsForPack?: (pack: LoadedPackEntry) => Promise<FrontendSettingsBinding>;
 }
 
 /**
@@ -38,12 +50,12 @@ export interface PackFrontendIO {
  * a build failure rather than a warning that stops firing.
  */
 const REGISTRATION_KEYS = [
-  'features', 'steps', 'artifacts', 'blocks', 'tiptapPlugins', 'appExtensions', 'dslTypes',
+  'features', 'settingsForms', 'steps', 'artifacts', 'blocks', 'tiptapPlugins', 'appExtensions',
 ] as const satisfies readonly (keyof PackFERegistration)[];
 
-/** A pack file's URL, carrying the frontend's revision: a browser caches a module or stylesheet by its URL */
-function packFileUrl(packBaseUrl: string, file: string, revision?: string): string {
-  return `${packBaseUrl}/${file}${revision ? `?v=${revision}` : ''}`;
+/** A revision belongs in the base URL so relative imports retain it too. */
+function packFileUrl(packBaseUrl: string, file: string): string {
+  return `${packBaseUrl}/${file}`;
 }
 
 /**
@@ -56,13 +68,12 @@ export async function loadPackFEEntry(
   io: PackFrontendIO,
   entry: string,
   packBaseUrl: string,
-  revision?: string,
   source?: () => Promise<{ default?: unknown }>,
 ): Promise<PackFERegistration | null> {
-  const url = source ? `${packBaseUrl} (from source)` : packFileUrl(packBaseUrl, entry, revision);
+  const url = source ? `${packBaseUrl} (from source)` : packFileUrl(packBaseUrl, entry);
   let mod: { default?: unknown };
   try {
-    mod = source ? await source() : await io.importModule(packFileUrl(packBaseUrl, entry, revision));
+    mod = source ? await source() : await io.importModule(url);
   } catch (err) {
     // The pack:// URL names the pack; the E2E fixture matches on it
     console.error(`[pack-loader] Failed to load FE entry ${url}:`, err);
@@ -89,24 +100,95 @@ export async function loadPackFEEntry(
  * has told already); `unload` undoes both, for a pack deactivated and for a load that finished after it was.
  */
 export function createPackFrontends(io: PackFrontendIO, packs: FePackRegistry): ShellPackFrontends {
+  const attempts = new Map<string, object>();
+  const acceptedStyles = new Map<string, PackFrontendStyle>();
   return {
-    async load(pack: LoadedPackEntry): Promise<Plugin[] | null> {
-      const packBaseUrl = `pack://${pack.id}`;
-      // Served from source, the pack's styles come through its own module graph with the rest of it
-      const source = io.devFrontends?.[pack.id];
-      if (pack.feStyles && !source) await io.styles.add(pack.id, packFileUrl(packBaseUrl, pack.feStyles, pack.feRevision));
-      // A pack served from source has a frontend whatever its built manifest says, since the map holds only
-      // packs whose codegen wrote one
-      if (!pack.feEntry && !source) return null;
+    async load(input: LoadedPackEntry, signal?: AbortSignal): Promise<Plugin[] | null> {
+      const pack = { ...input };
+      const attempt = {};
+      let style: PackFrontendStyle | undefined;
+      let prepared: PreparedFrontend | undefined;
+      attempts.set(pack.id, attempt);
+      const checkCurrent = () => {
+        if (signal?.aborted || attempts.get(pack.id) !== attempt) {
+          throw new Error(`Pack "${pack.id}" frontend load was cancelled`);
+        }
+      };
+      const cancel = () => {
+        if (attempts.get(pack.id) === attempt) {
+          attempts.delete(pack.id);
+        }
+        prepared?.dispose();
+        style?.dispose();
+      };
+      signal?.addEventListener('abort', cancel, { once: true });
+      try {
+        checkCurrent();
+        if (pack.manifest) {
+          if (_settingsJsonProblems(pack.manifest).length) throw new Error(`Pack "${pack.id}" declarations must contain JSON data properties`);
+          pack.manifest = structuredClone(pack.manifest);
+        }
+        // Served from source, the pack's styles come through its own module graph with the rest of it
+        const source = io.devFrontends?.[pack.id];
+        const fromSource = !!source || !!pack.developmentBaseUrl;
+        if (!fromSource && (pack.feEntry || pack.feStyles) && !/^[a-f0-9]{64}$/.test(pack.buildRevision ?? '')) {
+          throw new Error(`Pack "${pack.id}" frontend has no accepted build identity`);
+        }
+        const packBaseUrl = pack.developmentBaseUrl ?? `pack://${pack.id}/builds/${pack.buildRevision}`;
+        const loadStyles = async () => {
+          if (pack.feStyles && !fromSource) {
+            style = io.styles.prepare(pack.id, packFileUrl(packBaseUrl, pack.feStyles));
+            await style.ready;
+          }
+        };
+        const commitStyles = () => {
+          style?.commit();
+          const previous = acceptedStyles.get(pack.id);
+          if (style) acceptedStyles.set(pack.id, style);
+          else acceptedStyles.delete(pack.id);
+          previous?.dispose();
+        };
+        // A pack served from source has a frontend whatever its built manifest says, since the map holds only
+        // packs whose codegen wrote one
+        if (!pack.feEntry && !source) {
+          await loadStyles();
+          checkCurrent();
+          if (packs.hasPackFE(pack.id)) {
+            prepared = packs.prepareUnregisterPackFE(pack.id);
+            prepared.commit(() => { checkCurrent(); commitStyles(); });
+          } else commitStyles();
+          return null;
+        }
 
-      const registration = await loadPackFEEntry(io, pack.feEntry ?? '', packBaseUrl, pack.feRevision, source);
-      if (!registration) return [];
-      return packs.registerPackFE(registration);
+        if (!pack.manifest || pack.manifest.id !== pack.id) throw new Error(`Pack "${pack.id}" frontend has no matching accepted declarations`);
+        const entry = await loadPackFEEntry(io, pack.feEntry ?? '', packBaseUrl, source);
+        checkCurrent();
+        if (!entry) throw new Error(`Pack "${pack.id}" has no frontend registration`);
+        const registration = captureFrontendBindings(entry, pack.manifest);
+        const problem = _packDeclarationProblem(pack, registration) ?? frontendBindingProblem(pack.manifest, registration);
+        if (problem) throw new Error(problem);
+        if (registration.bindSettings && !io.settingsForPack) throw new Error(`Pack "${pack.id}" frontend requires host-bound settings access`);
+        await loadStyles();
+        checkCurrent();
+        const settings = registration.bindSettings ? await io.settingsForPack!(pack) : undefined;
+        try { checkCurrent(); }
+        catch (error) { settings?.dispose(); throw error; }
+        // The prepared registry owns provisional authority; publication and CSS share one host commit.
+        prepared = packs.preparePackFE({ kind: 'loaded', pack }, registration, settings, packs.hasPackFE(pack.id));
+        checkCurrent();
+        return prepared.commit(() => { checkCurrent(); commitStyles(); });
+      } catch (error) {
+        cancel();
+        throw error;
+      } finally {
+        signal?.removeEventListener('abort', cancel);
+      }
     },
 
     unload(packId: string): void {
-      packs.unregisterPackFE(packId);
-      io.styles.remove(packId);
+      attempts.delete(packId);
+      try { packs.unregisterPackFE(packId); }
+      finally { acceptedStyles.delete(packId); io.styles.remove(packId); }
     },
   };
 }

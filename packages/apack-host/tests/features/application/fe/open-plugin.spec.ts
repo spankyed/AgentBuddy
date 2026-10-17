@@ -85,7 +85,7 @@ it('refuses a plugin no pack provides once loading settles, naming it', async ()
   await settle();
 
   expect(opened()).toBe('default-setup/notes');
-  expect(shell.notify.error).toHaveBeenCalledWith("Couldn't open memo-pack/memoz", 'No plugin is registered at "memo-pack/memoz".');
+  expect(shell.notify.error).toHaveBeenCalledWith("Couldn't open memo-pack/memoz", 'No plugin is declared at "memo-pack/memoz".');
 });
 
 it('refuses at once a plugin no pack provides when no pack frontend is loading', async () => {
@@ -94,7 +94,7 @@ it('refuses at once a plugin no pack provides when no pack frontend is loading',
 
   app.send({ type: 'OPEN_PLUGIN', plugin: 'memo-pack/memos', events: [] });
 
-  expect(shell.notify.error).toHaveBeenCalledWith("Couldn't open memo-pack/memos", 'No plugin is registered at "memo-pack/memos".');
+  expect(shell.notify.error).toHaveBeenCalledWith("Couldn't open memo-pack/memos", 'No plugin is declared at "memo-pack/memos".');
 });
 
 it('drops a request whose pack is unloaded while it waits', async () => {
@@ -179,7 +179,7 @@ it('reports a send to a plugin no pack provides once loading settles, naming who
 
   expect(shell.notify.error).toHaveBeenCalledWith(
     "Couldn't reach memo-pack/memoz",
-    'No plugin is registered at "memo-pack/memoz". Sent by "other-pack" (action:Add Memo).',
+    'No plugin is declared at "memo-pack/memoz". Sent by "other-pack" (action:Add Memo).',
   );
 });
 
@@ -244,7 +244,7 @@ it('still toasts for an ordinary send that carries an asker', async () => {
 
   expect(shell.notify.error).toHaveBeenCalledWith(
     "Couldn't reach memo-pack/memoz",
-    'No plugin is registered at "memo-pack/memoz". Sent by "memo-pack".',
+    'No plugin is declared at "memo-pack/memoz". Sent by "memo-pack".',
   );
 });
 

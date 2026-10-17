@@ -3,8 +3,8 @@ import * as os from 'node:os';
 import * as path from 'node:path';
 import { expect, it, vi } from 'vitest';
 import { resolveAppEnvironment } from '@apackdev/sdk/env';
-import { recordHostCompatibility, readInstalledPacks } from '@apackdev/host/packs';
-import { recordCliInstall, forgetCliInstall } from '../../src/app/installed-packs';
+import { recordHostCompatibility, readInstalledPacks, uninstallPack } from '@apackdev/host/packs';
+import { recordCliInstall } from '../../src/app/installed-packs';
 import { packUpdates } from '../../src/app/pack-updates';
 
 it('checks recorded sources against the explicit host and leaves records untouched', async () => {
@@ -25,8 +25,8 @@ it('checks recorded sources against the explicit host and leaves records untouch
     expect(fs.readFileSync(context.installedPacksFile, 'utf8')).toBe(before);
     find.mockRejectedValue(new Error('rate limited'));
     expect((await packUpdates(context, find))[1]).toMatchObject({ status: 'error', reason: 'rate limited' });
-    forgetCliInstall(context.installedPacksFile, 'remote');
-    expect(readInstalledPacks(context.installedPacksFile, { strict: true })).toEqual([]);
+    await uninstallPack('remote', context.packsDir, { installedPacksFile: context.installedPacksFile });
+    expect(readInstalledPacks(context.installedPacksFile, { strict: true })).toEqual([{ id: 'remote', enabled: true, suppressAppInstall: true }]);
     fs.writeFileSync(context.installedPacksFile, JSON.stringify({ packs: [
       { id: 'remote', enabled: true }, { id: 'remote', enabled: false },
     ] }));
@@ -36,4 +36,21 @@ it('checks recorded sources against the explicit host and leaves records untouch
     fs.writeFileSync(context.installedPacksFile, '{broken');
     expect(() => readInstalledPacks(context.installedPacksFile, { strict: true })).toThrow('Cannot read');
   } finally { fs.rmSync(root, { recursive: true, force: true }); }
+});
+
+
+it('uses installation ownership to choose GitHub updates independently of the pack name', async () => {
+  const { packUpdate } = await import('../../src/app/pack-updates');
+  const find = vi.fn().mockResolvedValue({ version: '1.1.0', tag: 'v1.1.0' });
+  const manifest = { id: 'default-setup', name: 'Default setup fork', version: '1.0.0' };
+  const record = { id: manifest.id, enabled: true, installedFrom: 'owner/default-fork', updatesWith: 'user' as const };
+  const pack = { manifest, record, dir: '/unused' };
+  expect(await packUpdate(pack, { hostVersion: '0.4.0', includePrerelease: false }, find))
+    .toMatchObject({ status: 'outdated' });
+  expect(find).toHaveBeenCalledOnce();
+  find.mockClear();
+  expect(await packUpdate({ ...pack, record: { ...record, updatesWith: 'app' } },
+    { hostVersion: '0.4.0', includePrerelease: false }, find))
+    .toMatchObject({ status: 'unmanaged', reason: 'updates with the app' });
+  expect(find).not.toHaveBeenCalled();
 });

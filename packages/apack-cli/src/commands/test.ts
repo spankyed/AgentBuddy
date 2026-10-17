@@ -17,10 +17,10 @@ Runs the pack's Playwright tests in isolated test data. --host selects a checkou
 from hostVersion. No checkout is implicitly derived for tests.
 
 --prebuilt installs the build already in dist/ instead of making a new one, for a caller that built the
-pack in an earlier step. The build is still held to being no older than the sources, so a stale one fails
-rather than being tested quietly.
+pack in an earlier step. Its sealed output and recorded source/dependency inputs must still match.
+Combined with --release, it requires a build made with --release.
 
---release builds the pack the way a release does, so the tests run the artifact that ships.
+--release builds the pack the way a release does, so the tests run the build that ships.
 \`apack pack release\` passes it; on its own the default build is the faster one to debug.
 
 --contract runs the pack's vitest instead, and starts no app: the checks that read compiled

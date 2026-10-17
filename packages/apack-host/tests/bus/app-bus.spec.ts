@@ -1,3 +1,4 @@
+import { createNativePackTestRegistry } from '@apackdev/host/testing';
 // The app's bus on the SDK's bound root event bus (the test host's here): a connecting client reaches the
 // registered systems, except those of a loaded pack with frontend code, which wait for the client to load it.
 import * as fs from 'node:fs';
@@ -9,10 +10,9 @@ import { startTestRuntime, testRootEvents } from '@apackdev/sdk/testing';
 import type { Message } from '@apackdev/sdk/events';
 import { createAppBus } from '../../src/bus/index.ts';
 import { appState, HOST_ENTITY_TYPES } from '../../src/app-state/index.ts';
-import { createPackRegistry } from '../../src/packs/registry.ts';
 import { hostRegistration } from '../../src/features/registration.ts';
 
-const registry = createPackRegistry();
+const registry = createNativePackTestRegistry();
 const { registerPack, unregisterPack } = registry;
 startTestRuntime({ entityTypes: HOST_ENTITY_TYPES, packs: registry });
 // The app's state, which the application plugin's CLIENT_CONNECTED reports
@@ -44,14 +44,15 @@ beforeEach(() => {
   // The app's own plugins, as the API registers them: the application plugin gets the shell's state
   registerPack(hostRegistration());
   registerRecorderPack('local-pack');
-  registerRecorderPack('fe-pack');
   // fe-pack is a loaded external pack whose bundle has frontend code
   packDir = fs.mkdtempSync(path.join(os.tmpdir(), 'app-bus-'));
   fs.mkdirSync(path.join(packDir, 'runtime'));
   fs.writeFileSync(path.join(packDir, 'runtime', 'fe.js'), '');
-  registry.registerPack({ id: 'fe-pack-fe' }, {
-    id: 'fe-pack', name: 'fe-pack', version: '1.0.0', dir: packDir, shipped: false,
-    manifest: { id: 'fe-pack', name: 'fe-pack', version: '1.0.0' },
+  registry.registerPack({ id: 'fe-pack', features: { feature: { system: { machine: recorder('fe-pack'), receives: ['CLIENT_CONNECTED'] } } } }, { declarationRevision: 'fixture-revision',
+    buildRevision: 'a'.repeat(64), buildFiles: { 'runtime/fe.js': 'b'.repeat(64) },
+    eventContracts: { feature: { system: { incoming: [], outgoing: [] } } },
+    id: 'fe-pack', name: 'fe-pack', version: '1.0.0', dir: packDir,
+    manifest: { id: 'fe-pack', name: 'fe-pack', version: '1.0.0', features: { feature: { description: 'Feature declaration fixture.', system: { entry: 'system.ts' } } } },
   });
   bus = createActor(createAppBus(registry), { systemId: 'host/bus' }).start();
 });
@@ -60,7 +61,6 @@ afterEach(() => {
   bus.stop();
   stopOutgoing();
   for (const id of ['local-pack', 'fe-pack']) unregisterPack(id);
-  unregisterPack('fe-pack-fe');
   unregisterPack('host');
   fs.rmSync(packDir, { recursive: true, force: true });
 });

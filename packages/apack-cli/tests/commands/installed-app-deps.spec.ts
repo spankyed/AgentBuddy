@@ -1,3 +1,5 @@
+import { sealPackBuild } from '@apackdev/host/packs';
+import { _declarationRevision } from '@apackdev/sdk/build';
 import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
@@ -26,7 +28,7 @@ afterEach(() => {
   fs.rmSync(tmp, { recursive: true, force: true });
 });
 
-function builtInPack(snapshot: object = { types: { entities: {}, relKinds: {} }, defs: {}, manifest: { id: 'base-pack', version: '1.0.0' }, format: PACK_SNAPSHOT_FORMAT }) {
+function builtInPack(snapshot: object = { declarationRevision: _declarationRevision({ id: 'base-pack', name: 'Base Pack', version: '1.0.0' }), types: { entities: {}, relKinds: {} }, entityDestinations: {}, facades: {}, manifest: { id: 'base-pack', name: 'Base Pack', version: '1.0.0' }, format: PACK_SNAPSHOT_FORMAT }) {
   // Deliberately not a sibling/workspace path of the author pack, so only the installed-app source can find it
   const dir = path.join(tmp, 'app-bundle', 'resources', 'default-pack-source');
   fs.mkdirSync(path.join(dir, 'dist', 'build'), { recursive: true });
@@ -42,11 +44,12 @@ function builtInPack(snapshot: object = { types: { entities: {}, relKinds: {} },
   // Compiled content, where `apack pack build` writes them for every pack
   fs.mkdirSync(path.join(dir, 'dist', PACK_LAYOUT.contentDir), { recursive: true });
   fs.writeFileSync(path.join(dir, 'dist', PACK_LAYOUT.contentDir, 'settings.content.json'), '{"theme":"dark"}');
-  fs.writeFileSync(path.join(dir, 'dist', PACK_LAYOUT.contentDir, 'content.json'), '{"version":1,"content":[]}');
+  fs.writeFileSync(path.join(dir, 'dist', PACK_LAYOUT.contentDir, 'content.json'), JSON.stringify({ version: 1, packId: 'base-pack', entries: [] }));
   fs.mkdirSync(path.join(dir, 'dist', PACK_LAYOUT.contentDir, 'media', 'library'), { recursive: true });
   fs.writeFileSync(path.join(dir, 'dist', PACK_LAYOUT.contentDir, 'media', 'library', 'pic.png'), 'PNG');
   fs.mkdirSync(path.join(dir, 'dist', 'defs'), { recursive: true });
   fs.writeFileSync(path.join(dir, 'dist', 'defs', 'actions.d.ts'), '');
+  sealPackBuild(path.join(dir, 'dist'), JSON.parse(fs.readFileSync(path.join(dir, 'apack.json'), 'utf8')));
   return dir;
 }
 
@@ -58,34 +61,80 @@ describe('dependency resolution from an installed app', () => {
     return dir;
   };
 
+  it('inspects an installed dependency without executing its runtime, downloading or populating the author cache', async () => {
+    const source = builtInPack();
+    fs.writeFileSync(path.join(source, 'dist', 'runtime', 'index.cjs'), 'throw new Error("Runtime must not execute");');
+    sealPackBuild(path.join(source, 'dist'), JSON.parse(fs.readFileSync(path.join(source, 'apack.json'), 'utf8')));
+    await installPackFromLocal(source, packsDir());
+    const packRoot = path.join(tmp, 'author-pack');
+    fs.mkdirSync(packRoot);
+    const fetch = vi.spyOn(globalThis, 'fetch').mockRejectedValue(new Error('Network must not run'));
+    try {
+      const found = await resolveDepFiles(packRoot, 'base-pack', '*', { readOnly: true });
+      expect(found?.snapshot.manifest.id).toBe('base-pack');
+      expect(found?.resolvedFrom).toMatch(/^installed app/);
+      expect(fs.readdirSync(packRoot)).toEqual([]);
+      expect(await resolveDepFiles(packRoot, 'missing-pack', 'github:acme/missing-pack', { readOnly: true })).toBeNull();
+      expect(fetch).not.toHaveBeenCalled();
+      expect(fs.readdirSync(packRoot)).toEqual([]);
+    } finally {
+      fetch.mockRestore();
+    }
+  });
+
   it('resolves a shipped dependency (snapshot, step build code, runtime) from the installed app, and caches it in the pack', async () => {
     await installPackFromLocal(builtInPack(), packsDir());
 
     const packRoot = path.join(tmp, 'author-pack');
     fs.mkdirSync(packRoot, { recursive: true });
 
-    const artifacts = await resolveDepFiles(packRoot, 'base-pack', '*');
-    expect(artifacts?.snapshot.manifest.id).toBe('base-pack');
-    expect(artifacts?.buildDir).toBe(path.join(packRoot, '.apack', 'deps', 'base-pack', 'build'));
-    expect(fs.existsSync(path.join(artifacts!.buildDir!, 'steps.build.mjs'))).toBe(true);
-    expect(artifacts?.runtimeEntry).toBe(path.join(packRoot, '.apack', 'deps', 'base-pack', 'runtime', 'index.cjs'));
-    expect(fs.readFileSync(artifacts!.runtimeEntry!, 'utf-8')).toContain('registration');
-    expect(artifacts?.contentDir).toBe(path.join(packRoot, '.apack', 'deps', 'base-pack', 'runtime', 'content'));
-    expect(fs.readdirSync(artifacts!.contentDir!).sort()).toEqual(['content.json', 'media', 'settings.content.json']);
+    const files = await resolveDepFiles(packRoot, 'base-pack', '*');
+    expect(files?.snapshot.manifest.id).toBe('base-pack');
+    expect(files?.buildDir).toBe(path.join(files!.directory, 'build'));
+    expect(fs.existsSync(path.join(files!.buildDir!, 'steps.build.mjs'))).toBe(true);
+    expect(files?.runtimeEntry).toBe(path.join(files!.directory, 'runtime', 'index.cjs'));
+    expect(fs.readFileSync(files!.runtimeEntry!, 'utf-8')).toContain('registration');
+    expect(files?.contentDir).toBe(path.join(files!.directory, 'runtime', 'content'));
+    expect(fs.readdirSync(files!.contentDir!).sort()).toEqual(['content.json', 'media', 'settings.content.json']);
   });
 
-  it('reports where the dependency resolved from, and reports nothing for a later cache hit', async () => {
+  it('refuses a file dependency whose build belongs to a different pack', async () => {
+    const source = builtInPack();
+    const root = path.join(tmp, 'author-pack');
+    fs.mkdirSync(root);
+    await expect(resolveDepFiles(root, 'wrong-pack', `file:${source}`, { readOnly: true }))
+      .rejects.toThrow('Dependency "wrong-pack" resolved to pack "base-pack"');
+    expect(fs.existsSync(path.join(root, '.apack'))).toBe(false);
+  });
+
+  it('refuses a valid cached build renamed under another dependency id', async () => {
+    await installPackFromLocal(builtInPack(), packsDir());
+    const root = path.join(tmp, 'author-pack');
+    fs.mkdirSync(root);
+    await resolveDepFiles(root, 'base-pack', '*');
+    fs.rmSync(path.join(packsDir(), 'base-pack'), { recursive: true });
+    fs.renameSync(path.join(root, '.apack/deps/base-pack'), path.join(root, '.apack/deps/wrong-pack'));
+    await expect(resolveDepFiles(root, 'wrong-pack', '*', { readOnly: true }))
+      .rejects.toThrow('Dependency "wrong-pack" resolution declares "base-pack"');
+  });
+
+  it('retains dependency origin and content identity across cache reuse', async () => {
     await installPackFromLocal(builtInPack(), packsDir());
     const packRoot = path.join(tmp, 'author-pack');
     fs.mkdirSync(packRoot, { recursive: true });
 
-    expect((await resolveDepFiles(packRoot, 'base-pack', '*'))?.resolvedFrom).toMatch(/^installed app \(/);
+    const first = await resolveDepFiles(packRoot, 'base-pack', '*');
+    expect(first?.resolvedFrom).toMatch(/^installed app \(/);
 
-    // Once the app's copy is gone the cache stands in, and it records no provenance
+    // The cached build preserves the original resolution after its source disappears.
     fs.rmSync(path.join(packsDir(), 'base-pack'), { recursive: true });
-    const cached = await resolveDepFiles(packRoot, 'base-pack', '*');
+    const record = path.join(packRoot, '.apack/deps/base-pack/resolution.json');
+    const recorded = fs.readFileSync(record);
+    const cached = await resolveDepFiles(packRoot, 'base-pack', '*', { readOnly: true });
     expect(cached?.snapshot.manifest.id).toBe('base-pack');
-    expect(cached?.resolvedFrom).toBeUndefined();
+    expect(cached?.resolution).toEqual(first?.resolution);
+    expect(cached?.resolvedFrom).toBe(first?.resolvedFrom);
+    expect(fs.readFileSync(record)).toEqual(recorded);
   });
 
   it("drops a cached runtime when the dependency stops shipping one", async () => {
@@ -93,14 +142,18 @@ describe('dependency resolution from an installed app', () => {
     await installPackFromLocal(src, packsDir());
     const packRoot = path.join(tmp, 'author-pack');
     fs.mkdirSync(packRoot, { recursive: true });
-    expect((await resolveDepFiles(packRoot, 'base-pack', '*'))?.runtimeEntry).toBeDefined();
+    const first = await resolveDepFiles(packRoot, 'base-pack', '*');
+    expect(first?.runtimeEntry).toBeDefined();
 
     // The installed copy loses its runtime — an install cannot produce a pack without one, so this is the
     // state an update to a pack that dropped its backend leaves, read from the app rather than written by it
-    fs.rmSync(path.join(packsDir(), 'base-pack', 'runtime'), { recursive: true });
-    const artifacts = await resolveDepFiles(packRoot, 'base-pack', '*');
-    expect(artifacts?.runtimeEntry).toBeUndefined();
-    expect(fs.existsSync(path.join(packRoot, '.apack', 'deps', 'base-pack', 'runtime'))).toBe(false);
+    const installed = path.join(packsDir(), 'base-pack');
+    fs.rmSync(path.join(installed, 'runtime'), { recursive: true });
+    sealPackBuild(installed, JSON.parse(fs.readFileSync(path.join(installed, 'apack.json'), 'utf8')));
+    const files = await resolveDepFiles(packRoot, 'base-pack', '*');
+    expect(files?.runtimeEntry).toBeUndefined();
+    expect(fs.existsSync(path.join(files!.directory, 'runtime'))).toBe(false);
+    expect(fs.existsSync(first!.runtimeEntry!)).toBe(true);
   });
 
   it('resolves a shipped dependency from the app configured for apack pack test, before the app has run', async () => {
@@ -112,16 +165,16 @@ describe('dependency resolution from an installed app', () => {
     const packRoot = path.join(tmp, 'author-pack');
     fs.mkdirSync(packRoot, { recursive: true });
 
-    const artifacts = await resolveDepFiles(packRoot, 'base-pack', '*');
-    expect(artifacts?.snapshot.manifest.id).toBe('base-pack');
-    expect(fs.existsSync(path.join(artifacts!.buildDir!, 'steps.build.mjs'))).toBe(true);
+    const files = await resolveDepFiles(packRoot, 'base-pack', '*');
+    expect(files?.snapshot.manifest.id).toBe('base-pack');
+    expect(fs.existsSync(path.join(files!.buildDir!, 'steps.build.mjs'))).toBe(true);
     // A checkout's shipped pack: dist/runtime/index.cjs, as default-setup's build writes it
-    expect(fs.readFileSync(artifacts!.runtimeEntry!, 'utf-8')).toContain('registration');
+    expect(fs.readFileSync(files!.runtimeEntry!, 'utf-8')).toContain('registration');
   });
 
   /** A shipped pack's snapshot; `fields` overrides any of it, `format: undefined` included */
   const snapshotOf = (version: string, fields: object = {}) =>
-    ({ types: { entities: {}, relKinds: {} }, defs: {}, manifest: { id: 'base-pack', version }, format: PACK_SNAPSHOT_FORMAT, ...fields });
+    ({ declarationRevision: _declarationRevision({ id: 'base-pack', name: 'Base Pack', version }), types: { entities: {}, relKinds: {} }, entityDestinations: {}, facades: {}, manifest: { id: 'base-pack', name: 'Base Pack', version }, format: PACK_SNAPSHOT_FORMAT, ...fields });
 
   /** The pack installed in an app's data dir, as the app's boot leaves it */
   async function publishInstalled(version: string, steps = 'export const steps = [];', fields: object = {}) {
@@ -129,6 +182,7 @@ describe('dependency resolution from an installed app', () => {
     fs.writeFileSync(path.join(src, 'dist', 'build', 'steps.build.mjs'), steps);
     const dir = path.join(_appDirOf(path.join(tmp, 'userdata')), 'packs');
     fs.mkdirSync(dir, { recursive: true });
+    sealPackBuild(path.join(src, 'dist'), JSON.parse(fs.readFileSync(path.join(src, 'apack.json'), 'utf8')));
     await installPackFromLocal(src, dir);
   }
 
@@ -144,9 +198,9 @@ describe('dependency resolution from an installed app', () => {
     expect((await resolveDepFiles(packRoot, 'base-pack', '*'))?.snapshot.manifest.version).toBe('1.0.0');
 
     await publishInstalled('2.0.0', 'export const steps = ["v2"];');
-    const artifacts = await resolveDepFiles(packRoot, 'base-pack', '*');
-    expect(artifacts?.snapshot.manifest.version).toBe('2.0.0');
-    expect(fs.readFileSync(path.join(artifacts!.buildDir!, 'steps.build.mjs'), 'utf-8')).toContain('v2');
+    const files = await resolveDepFiles(packRoot, 'base-pack', '*');
+    expect(files?.snapshot.manifest.version).toBe('2.0.0');
+    expect(fs.readFileSync(path.join(files!.buildDir!, 'steps.build.mjs'), 'utf-8')).toContain('v2');
   });
 
   it('only accepts a dependency version that satisfies the declared range, cached or not', async () => {
@@ -186,54 +240,56 @@ describe('dependency resolution from an installed app', () => {
     expect((await resolveDepFiles(fixture, 'base-pack', '*'))?.snapshot.manifest.version).toBe('4.0.0');
   });
 
-  /**
-   * A snapshot in another format is misread rather than refused by whatever reads it, so the format is
-   * checked where a build is chosen, beside the version range.
-   */
-  describe('the snapshot format', () => {
-    it('refuses an explicitly selected host in another snapshot format', async () => {
+  describe('type data and execution stamps', () => {
+    it('reads an explicitly selected host without substituting another source', async () => {
       await publishInstalled('1.0.0');
       const checkout = path.join(tmp, 'apack');
       fs.mkdirSync(path.join(checkout, 'packages'), { recursive: true });
       fs.renameSync(builtInPack(snapshotOf('3.0.0', { format: undefined })), path.join(checkout, 'packages', 'base-pack'));
       process.env.APACK_HOST = checkout;
-
-      await expect(resolveDepFiles(authorPack(), 'base-pack', '*')).rejects.toThrow(/its snapshot is format/);
+      const found = await resolveDepFiles(authorPack(), 'base-pack', '*');
+      expect(found?.snapshot.manifest.version).toBe('3.0.0');
+      expect(found?.snapshot.format).toBeUndefined();
+      expect(found?.executionProblem).toContain('format (none)');
+      expect(found?.runtimeEntry).toBeUndefined();
+      expect(found?.buildDir).toBeUndefined();
     });
 
-    it('refuses a dependency found only in another format, naming where and which side is older', async () => {
-      await publishInstalled('1.0.0', undefined, { format: undefined, sdkVersion: '0.3.14' });
-      await expect(resolveDepFiles(authorPack(), 'base-pack', '*')).rejects.toThrow(
-        `Dependency "base-pack" has no build this CLI can use:\n  - installed app (production): its snapshot is format (none), written by an older apack CLI (SDK 0.3.14); this CLI reads format ${PACK_SNAPSHOT_FORMAT}`,
-      );
-
-      await publishInstalled('1.0.0', undefined, { format: PACK_SNAPSHOT_FORMAT + 1 });
-      await expect(resolveDepFiles(authorPack(), 'base-pack', '*')).rejects.toThrow(
-        `its snapshot is format ${PACK_SNAPSHOT_FORMAT + 1}, written by a newer apack CLI; this CLI reads format ${PACK_SNAPSHOT_FORMAT}`,
-      );
+    it.each([undefined, PACK_SNAPSHOT_FORMAT + 1])('reads installed type data without exposing executable files: %s', async format => {
+      await publishInstalled('1.0.0', undefined, { format, sdkVersion: '0.3.14' });
+      const found = await resolveDepFiles(authorPack(), 'base-pack', '*');
+      expect(found?.snapshot.format).toBe(format);
+      expect(found?.snapshot.sdkVersion).toBe('0.3.14');
+      expect(found?.executionProblem).toContain('its snapshot is format');
+      expect(found?.runtimeEntry).toBeUndefined();
+      expect(found?.buildDir).toBeUndefined();
     });
 
-    it('never serves a cached snapshot in another format', async () => {
+    it('retains stamp context and execution refusal after cache reuse', async () => {
       const packRoot = authorPack();
-      await publishInstalled('1.0.0');
-      expect(await resolveDepFiles(packRoot, 'base-pack', '*')).not.toBeNull(); // now cached
+      await publishInstalled('1.0.0', undefined, { format: undefined });
+      expect(await resolveDepFiles(packRoot, 'base-pack', '*')).not.toBeNull();
       fs.rmSync(path.join(_appDirOf(path.join(tmp, 'userdata')), 'packs', 'base-pack'), { recursive: true });
-      fs.writeFileSync(path.join(packRoot, '.apack', 'deps', 'base-pack', 'snapshot.json'), JSON.stringify(snapshotOf('1.0.0', { format: undefined })));
-
-      await expect(resolveDepFiles(packRoot, 'base-pack', '*')).rejects.toThrow('the .apack/deps cache: its snapshot is format (none)');
+      const found = await resolveDepFiles(packRoot, 'base-pack', '*');
+      expect(found?.snapshot.format).toBeUndefined();
+      expect(found?.executionProblem).toContain('format (none)');
+      expect(found?.runtimeEntry).toBeUndefined();
+      expect(found?.buildDir).toBeUndefined();
     });
   });
 
   /** An archived release of dep-pack in snapshot `format`, and its checksum, as `apack pack release` publishes them */
-  async function publishedRelease(version: string, format: number | undefined) {
+  async function publishedRelease(version: string, format: number | undefined, snapshotIdentity: { id?: string; version?: string } = {}) {
     const src = path.join(tmp, `dep-pack-${version}`);
     fs.mkdirSync(path.join(src, 'dist', 'types'), { recursive: true });
     fs.mkdirSync(path.join(src, 'dist', 'runtime'), { recursive: true });
     const manifest = { id: 'dep-pack', name: 'Dep', version };
     fs.writeFileSync(path.join(src, 'apack.json'), JSON.stringify(manifest));
     fs.writeFileSync(path.join(src, 'dist', 'runtime', 'index.cjs'), 'exports.registration = { id: "dep-pack" };');
-    fs.writeFileSync(path.join(src, 'dist', PACK_LAYOUT.snapshot), JSON.stringify({ types: { entities: {}, relKinds: {} }, defs: {}, manifest, format }));
+    const snapshotManifest = { ...manifest, ...snapshotIdentity };
+    fs.writeFileSync(path.join(src, 'dist', PACK_LAYOUT.snapshot), JSON.stringify({ declarationRevision: _declarationRevision(snapshotManifest), types: { entities: {}, relKinds: {} }, entityDestinations: {}, facades: {}, manifest: snapshotManifest, format }));
     const stage = path.join(tmp, `stage-${version}`);
+    sealPackBuild(path.join(src, 'dist'), manifest);
     stagePack(src, stage);
     const archive = await createPackArchive(stage, path.join(tmp, 'releases'));
     return {
@@ -256,28 +312,62 @@ describe('dependency resolution from an installed app', () => {
     return downloaded;
   }
 
-  // A GitHub dependency picks among releases as the local sources pick among builds: a newer release this CLI can't
-  // read gives way to an older one in range that it can
-  it('falls back to an older GitHub release in range when a newer CLI wrote the newest', async () => {
+  it('fetches the newly declared GitHub origin instead of reusing another repository’s cache', async () => {
+    const downloaded = serveReleases([await publishedRelease('1.4.0', PACK_SNAPSHOT_FORMAT)]);
+    const root = authorPack();
+    const first = await resolveDepFiles(root, 'dep-pack', 'github:acme/dep-pack ^1.0.0');
+    expect(first?.resolution?.origin).toMatchObject({ kind: 'github', repository: 'acme/dep-pack', tag: 'v1.4.0' });
+    expect(await resolveDepFiles(root, 'dep-pack', 'github:other/dep-pack ^1.0.0', { readOnly: true })).toBeNull();
+    const second = await resolveDepFiles(root, 'dep-pack', 'github:other/dep-pack ^1.0.0');
+    expect(second?.resolution?.origin).toMatchObject({ kind: 'github', repository: 'other/dep-pack', tag: 'v1.4.0' });
+    expect(second?.resolution?.spec).toBe('github:other/dep-pack ^1.0.0');
+    expect(downloaded).toHaveLength(2);
+  });
+
+  it('reuses remote cache for builds but refreshes it for explicit fetching', async () => {
+    const downloaded = serveReleases([await publishedRelease('1.4.0', PACK_SNAPSHOT_FORMAT)]);
+    const root = authorPack();
+    const spec = 'github:acme/dep-pack ^1.0.0';
+    await resolveDepFiles(root, 'dep-pack', spec);
+    await resolveDepFiles(root, 'dep-pack', spec);
+    expect(downloaded).toHaveLength(1);
+    await resolveDepFiles(root, 'dep-pack', spec, { refresh: true });
+    expect(downloaded).toHaveLength(2);
+  });
+
+  it.each([{ id: 'other-pack' }, { version: '1.5.0' }])('refuses mismatched release snapshot identity before caching: %j', async identity => {
+    serveReleases([await publishedRelease('1.4.0', PACK_SNAPSHOT_FORMAT + 1, identity)]);
+    const root = authorPack();
+    await expect(resolveDepFiles(root, 'dep-pack', 'github:acme/dep-pack ^1.0.0'))
+      .rejects.toThrow(identity.id ? 'other-pack@1.4.0' : 'dep-pack@1.5.0');
+    expect(fs.existsSync(path.join(root, '.apack/deps/dep-pack'))).toBe(false);
+  });
+
+  it('selects current type data from the newest release without granting execution', async () => {
     const releases = [await publishedRelease('1.4.0', PACK_SNAPSHOT_FORMAT + 1), await publishedRelease('1.3.0', PACK_SNAPSHOT_FORMAT)];
     const downloaded = serveReleases(releases);
     try {
       const found = await resolveDepFiles(authorPack(), 'dep-pack', 'github:acme/dep-pack ^1.0.0');
-      expect(found?.snapshot.manifest.version).toBe('1.3.0');
-      expect(found?.resolvedFrom).toBe('github:acme/dep-pack@1.3.0');
-      expect(downloaded).toEqual(['dep-pack-1.4.0.tgz', 'dep-pack-1.3.0.tgz']);
+      expect(found?.snapshot.manifest.version).toBe('1.4.0');
+      expect(found?.resolvedFrom).toBe('github:acme/dep-pack@1.4.0');
+      expect(found?.executionProblem).toContain('its snapshot is format');
+      expect(found?.runtimeEntry).toBeUndefined();
+      expect(found?.buildDir).toBeUndefined();
+      expect(downloaded).toEqual(['dep-pack-1.4.0.tgz']);
     } finally {
       vi.unstubAllGlobals();
     }
   });
 
-  // Every release below one an older CLI wrote is older still: trying them would only spend downloads and rate limit
-  it('stops at the newest GitHub release in range when an older CLI wrote it', async () => {
+  it('retains unstamped release data as metadata without executing it', async () => {
     const releases = [await publishedRelease('1.4.0', undefined), await publishedRelease('1.3.0', undefined)];
     const downloaded = serveReleases(releases);
     try {
-      await expect(resolveDepFiles(authorPack(), 'dep-pack', 'github:acme/dep-pack ^1.0.0'))
-        .rejects.toThrow(/github release 1\.4\.0: its snapshot is format \(none\), written by an older apack CLI/);
+      const found = await resolveDepFiles(authorPack(), 'dep-pack', 'github:acme/dep-pack ^1.0.0');
+      expect(found?.snapshot.manifest.version).toBe('1.4.0');
+      expect(found?.snapshot.format).toBeUndefined();
+      expect(found?.executionProblem).toContain('format (none)');
+      expect(found?.runtimeEntry).toBeUndefined();
       expect(downloaded).toEqual(['dep-pack-1.4.0.tgz']);
     } finally {
       vi.unstubAllGlobals();
@@ -326,7 +416,10 @@ describe('resolved host dependency ownership', () => {
     for (const [root, version] of [[workspace, '2.0.0'], [selected, '1.0.0']]) {
       const dependency = path.join(root, 'packages', 'base-pack');
       fs.cpSync(source, dependency, { recursive: true });
-      fs.writeFileSync(path.join(dependency, 'dist', PACK_LAYOUT.snapshot), JSON.stringify({ types: { entities: {}, relKinds: {} }, defs: {}, manifest: { id: 'base-pack', version }, format: PACK_SNAPSHOT_FORMAT }));
+      fs.writeFileSync(path.join(dependency, 'dist', PACK_LAYOUT.snapshot), JSON.stringify({ declarationRevision: _declarationRevision({ id: 'base-pack', name: 'Base Pack', version }), types: { entities: {}, relKinds: {} }, entityDestinations: {}, facades: {}, manifest: { id: 'base-pack', name: 'Base Pack', version }, format: PACK_SNAPSHOT_FORMAT }));
+      const manifest = { id: 'base-pack', name: 'Base Pack', version };
+      fs.writeFileSync(path.join(dependency, 'apack.json'), JSON.stringify(manifest));
+      sealPackBuild(path.join(dependency, 'dist'), manifest);
     }
     vi.stubEnv('APACK_HOST_ROOT', selected);
     return { selected, workspace, pack };

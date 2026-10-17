@@ -11,8 +11,7 @@ afterAll(startFeTestRuntime({ client: { send() {} } }))
 afterEach(() => vi.restoreAllMocks())
 
 function readySettingsPlugin() {
-  const actor = createActor(createSettingsMachine({ restart: () => {}, report: () => {} })).start()
-  actor.send({ type: 'SETTINGS_LOADED', data: { general: {}, features: {}, assistant: {} } })
+  const actor = createActor(createSettingsMachine({ reset: async () => {}, restart: () => {}, report: () => {} })).start()
   return actor
 }
 

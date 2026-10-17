@@ -73,9 +73,10 @@ npm run chain            # Before a merge: every check in dependency order, cold
                          #             median 202.8s and a ten-core budget 169.4s with half the spread.
                          #             `--cores 1` is serial, which is what `--lanes 1` was for. It caps
                          #             what to spend of *this* box rather than describing a box of N: the
-                         #             widths stay machine-sized, so a value above the box is deliberate
-                         #             oversubscription and one below it is a cap a wide step cannot fit
-                         #             inside, where it runs alone
+                         #             declared widths stay machine-sized. Vitest pools additionally cap
+                         #             their actual workers at N, including minimum-worker overrides;
+                         #             both cache layers record the actual worker configuration. A value
+                         #             above the box does not raise an individual pool's configured width
                          #   --e2e     run the E2E suite with the chain, ordered after test:smoke
                          #   --no-classify  a step failing while the machine is busy is re-run alone, to
                          #             rule the code out — a pass there rules out nothing else, so the line
@@ -215,7 +216,7 @@ npm run spec -- <target> # You don't say what the target is; it works that out:
 ## Test commands
 
 - `npm test` builds the default pack and app runtime, then runs all unit tests, all integration tests, app E2E, external-pack checks and packaged-authoring checks. It stops at the first failure and does not use test-result caches.
-- `npm run test:e2e -- <filter>` runs app E2E against existing app artifacts. The full suite already includes smoke tests.
+- `npm run test:e2e -- <filter>` runs app E2E against existing app builds. The full suite already includes smoke tests.
 - `npm run chain` validates changed inputs with caching, builds, static checks and selected tests. `--e2e` adds the full app E2E suite.
 - `npm run spec -- <target>` runs focused tests during development.
 

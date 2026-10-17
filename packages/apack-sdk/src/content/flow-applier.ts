@@ -8,7 +8,7 @@ import { validate } from '../build/compilers/flow-dsl-validator.ts';
 import { isFlowConfig, type FlowDSL } from '../build/compilers/flow-types.ts';
 import { EARS } from '../types/entities.ts';
 import type { ActionEntity, FlowEntity } from '../types/sdk-entities.ts';
-import type { ContentEditPolicy } from '../build/manifest-schema.ts';
+import type { ContentEditPolicy } from '../framework/declaration-schema.ts';
 import { childContentKey, defineKey, hashValues, recordApplied, CONTENT_KEY, contentKeyPrefix, CONTENT_HASH } from './format-applier.ts';
 import { resolve, resolveRemoval, type LiveEntity } from './merge.ts';
 import { contentPackId } from '../utils/apply.ts';
@@ -102,7 +102,7 @@ export function createFlowApplier(options: FlowApplierOptions = {}): ContentAppl
       const counts: ApplyResult = { created: 0, updated: 0, skipped: 0 };
       const flowsDSL: any = loadJSON(contentPath(ctx.compiledDir, 'flows'));
       if (!flowsDSL) {
-        ctx.log('  flows artifact not found, skipping flows');
+        ctx.log('  compiled flows not found, skipping flows');
         return counts;
       }
 

@@ -1,7 +1,7 @@
 import pkg from './package.json' with {type: 'json'};
 import path from 'node:path';
 import {execFileSync} from 'node:child_process';
-import {APP_WORKSPACES, readBuildManifest, verifyBuildArtifacts, verifyPackagedBuild} from './build/build-metadata.ts';
+import {APP_WORKSPACES, readBuildManifest, verifyBuildOutputs, verifyPackagedBuild} from './build/build-metadata.ts';
 
 /**
  * Electron Builder Configuration
@@ -13,14 +13,14 @@ import {APP_WORKSPACES, readBuildManifest, verifyBuildArtifacts, verifyPackagedB
 
 const buildRoot = process.env.APACK_BUILD_ROOT;
 if (!buildRoot) throw new Error('Packaging requires a completed staging build. Use build:production or build:preview.');
-verifyBuildArtifacts(buildRoot);
+verifyBuildOutputs(buildRoot);
 const metadata = readBuildManifest(buildRoot);
 const isBeta = metadata.channel === 'beta';
 const isPreview = metadata.channel === 'preview';
 const {appId, productName, urlScheme} = metadata;
 // File names without spaces: GitHub rewrites spaces in release asset names, and
 // `apack pack test --channel beta` looks for apack-Beta-<version>-mac-arm64.zip
-export const artifactPrefix = productName.replace(/ /g, '-');
+export const releasePrefix = productName.replace(/ /g, '-');
 
 // Exclude prebuilds for platforms we're not targeting
 const excludePrebuilds = {
@@ -54,7 +54,7 @@ export default /** @type import('electron-builder').Configuration */
   icon: 'build/resources/icon',
   
   // Build options
-  artifactName: `${artifactPrefix}-\${version}-\${os}-\${arch}.\${ext}`,
+  artifactName: `${releasePrefix}-\${version}-\${os}-\${arch}.\${ext}`,
   generateUpdatesFilesForAllChannels: false,
   
   // Platform targets
@@ -179,7 +179,7 @@ export default /** @type import('electron-builder').Configuration */
     'packages/api/node_modules/**/*',
     // Exclude platform-specific prebuilds not needed for current target
     ...excludePrebuilds,
-    // Exclude dev tool artifacts
+    // Exclude dev tool output
     '!**/node_modules/.bin',
     '!**/node_modules/@types/**',
     '!**/node_modules/**/docs/**',

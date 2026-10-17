@@ -34,9 +34,9 @@ const CONTRACT = (extra = '') => [
  */
 const manifest = (...entities: string[]) => JSON.stringify({
   id: ID, name: ID, version: '1.0.0',
-  entities: Object.fromEntries(entities.map((name) => [name, name])),
-  entityShapes: Object.fromEntries(entities.map((name) => [name, { source: 'src/types.ts', type: `${name}Entity` }])),
-  features: { notifier: { system: { entry: 'src/system.ts', contract: 'src/system.contract.ts#Contract' } } },
+  data: { entities: Object.fromEntries(entities.map(name => [name, `src/types.ts#${name}Entity`])) },
+
+  features: { notifier: { description: 'Feature declaration fixture.', system: { entry: 'src/system.ts', contract: 'src/system.contract.ts#Contract' } } },
 });
 
 let parent: string;
@@ -88,6 +88,20 @@ describe.skipIf(!PACKAGES_BUILT)('apack pack facade-report', () => {
     const { code, output } = await callCli(pack, 'facade-report');
     expect(code, output).toBe(0);
     expect(output).toContain('is up to date');
+  });
+
+  it('refuses edited generated files on the skip path without updating the report', async () => {
+    const entry = path.join(pack, 'src/__generated__/pack-types.ts');
+    const original = fs.readFileSync(entry, 'utf8');
+    const report = readReport();
+    fs.appendFileSync(entry, '\n// edited facade\n');
+    try {
+      const { code, output } = await callCli(pack, 'facade-report', ['--skip-generate', '--update']);
+      expect(code).toBe(1);
+      expect(output).toContain('modified src/__generated__/pack-types.ts');
+      expect(readReport()).toBe(report);
+    } finally { fs.writeFileSync(entry, original); }
+    expect((await callCli(pack, 'facade-report', ['--skip-generate'])).code).toBe(0);
   });
 
   /** Up to date writes nothing, asserted on the bytes: the message would say so either way */
@@ -150,7 +164,7 @@ describe.skipIf(!PACKAGES_BUILT)('apack pack facade-report', () => {
  * The build holds the report to the bundle it has just produced — the one moment nothing can be stale about
  * it — and **warns**. It does not fail, because a report that has not caught up is not output a dependent
  * cannot use, and because failing would mean no pack author could start their app until they had rewritten a
- * reviewed artifact mid-change. `facade:check` is the gate that says so once: its own chain step, and CI.
+ * reviewed report mid-change. `facade:check` is the gate that says so once: its own chain step, and CI.
  */
 describe.skipIf(!PACKAGES_BUILT)('apack pack build', () => {
   it('warns about a report that has gone stale, and still succeeds', async () => {

@@ -1,3 +1,14 @@
+import type { AppMigrationTarget, PackMigrationTarget } from '../migrations/index.ts';
+import { captureData } from './captured-data.ts';
+import type { StepBackendBinding } from '@apackdev/sdk/steps';
+import type { DeclarationData } from '@apackdev/sdk/framework';
+import type { StepEntry } from '@apackdev/sdk/build';
+import { captureStepBinding, captureStepDeclaration } from './step-bindings.ts';
+import { lifecycleBindingProblem } from './lifecycle-binding.ts';
+import { _packEntityTypes, _packRelationTypes } from '@apackdev/sdk/framework';
+import { apiBindingProblem, backendBindingProblem, backendContentBindingProblem, backendViewerBindingProblem, backendStepBindingProblem, commandBindingProblem, contentBindingProblem, migrationBindingProblem } from './declaration-binding.ts';
+import { eventBindingProblem } from './event-binding.ts';
+import { SYSTEM_EVENT_TYPES, type PackEventContracts } from '@apackdev/sdk/framework';
 /**
  * Pack Registration
  *
@@ -6,33 +17,36 @@
  * view the SDK's lookups read once it's bound (`HostRuntime.packs`).
  */
 
-import * as fs from 'node:fs';
+import { isDeepStrictEqual } from 'node:util';
+import { randomUUID } from 'node:crypto';
 import type { AnyStateMachine } from 'xstate';
-import type { PackRegistration, PackBootHooks, PackEARS, PackMigration, PackFeature, PackFeatureSystem } from '@apackdev/sdk/framework';
-import { MIGRATION_LINES, type MigrationLine, type PackManifest } from '@apackdev/sdk/build';
+import type { PackRegistration, PackLifecycleHooks, PackEARS, PackMigration, PackFeature, PackFeatureSystem } from '@apackdev/sdk/framework';
+import { _packDeclarationProblem, type ContentRuntime } from '@apackdev/sdk/framework';
+import type { MigrationLine, PackManifest } from '@apackdev/sdk/build';
 import type { PackRegistryView } from '@apackdev/sdk/runtime';
-import type { HostServices } from '@apackdev/sdk/services';
-import type { ContentOffer } from '@apackdev/sdk/utils';
+import type { SettingsService } from '@apackdev/sdk/services';
+import { _HOST_SERVICE_NAMES, _packServiceSelection } from '@apackdev/sdk/framework';
+import { assertPackServiceRequirements, packServiceDeclaration, type PackServiceOwner } from './service-requirements.ts';
+import type { ContentOffer, ContentApplier } from '@apackdev/sdk/utils';
 import type { ArtifactDefinition } from '@apackdev/sdk/artifacts';
 import type { BlockDefinition } from '@apackdev/sdk/blocks';
 import { SDK_ENTITIES, SDK_REL_KINDS, _reservedEntries } from '@apackdev/sdk/types';
 import { HOST_SYSTEM_EVENT_TYPES, PLUGIN_EVENT_TYPES } from '@apackdev/sdk/events';
-import { HOST_PACK_ID, resolveName, splitRef, type FeatureRef } from '@apackdev/sdk/ids';
-import { registerRepository, unregisterRepository } from '@apackdev/ears';
+import { HOST_PACK_ID, resolveName, type FeatureRef } from '@apackdev/sdk/ids';
+import { installedEngine } from '@apackdev/ears';
 import { HOST_ENTITY_TYPES } from '../app-state/index.ts';
-import { discoverPacks, packContentOrder } from './discovery.ts';
+import { readInstalledPackBuilds, packContentOrder } from './discovery.ts';
 import type { PackContentTarget } from './runtime/apply.ts';
-import { addContributions, createDefinitionStore, createDesignationStore, createStepStore, definitions, type Contribution, type UndoLog } from './extensions.ts';
-import { createCommandStore, createHelpStore, createContentWriterStore, createApplierStore, createSettingsDefaultsStore, createShutdownHooks } from './backend-extensions.ts';
+import { createOwnedStore, createOwnedStepStore, createDesignationStore } from './extensions.ts';
+import { createContentWriterStore, createApplierStore, createShutdownHooks } from './backend-extensions.ts';
 import { checkFeatureIds } from './feature-ids.ts';
+import { readAppPackSources } from './app-sources.ts';
+import { createContributionCatalog, type ContributionCatalog, type PackCatalogProblem, type PackCatalogSource } from './catalog.ts';
+import { disabledPackIds } from './installed.ts';
+import { appSettingsDefinition } from '../features/settings/be/app-definition.ts';
+import { createPackServiceBinding } from './service-binding.ts';
 
-export type { PackRegistration, PackBootHooks, PackEARS, PackMigration };
-
-/** Services the host supplies itself; a pack service with one of these names would replace it */
-const HOST_SERVICE_NAMES = ['logger', 'emitter', 'repository', 'appData', 'traceStore', 'inference', 'secrets', 'filesystem', 'settings'] as const satisfies readonly (keyof HostServices)[];
-// Fails to compile when HostServices gains a service this list doesn't name
-const _allHostServicesNamed: Exclude<keyof HostServices, (typeof HOST_SERVICE_NAMES)[number]> extends never ? true : never = true;
-void _allHostServicesNamed;
+export type { PackRegistration, PackLifecycleHooks, PackEARS, PackMigration };
 
 /** Entity types no pack may declare: the SDK's and the host's */
 const RESERVED_ENTITIES: readonly string[] = [...Object.values(SDK_ENTITIES), ...HOST_ENTITY_TYPES] as const;
@@ -65,20 +79,12 @@ function designationsOf(reg: PackRegistration): Record<string, FeatureRef> {
 /** What the app lists of a pack's feature (the Packs plugin shows it) */
 export interface PackFeatureSummary {
   id: string;
+  description: string;
   designation?: string;
   hasSystem: boolean;
-  hasPlugin: boolean;
+  plugin?: import('@apackdev/sdk/framework').PluginDeclaration;
+  references?: import('@apackdev/sdk/framework').ReferenceDeclarations;
   services: readonly string[];
-}
-
-function featureSummaries(reg: PackRegistration): PackFeatureSummary[] {
-  return featuresOf(reg).map(({ featureId, feature }) => ({
-    id: featureId,
-    ...(feature.designation ? { designation: feature.designation } : {}),
-    hasSystem: !!feature.system,
-    hasPlugin: !!feature.plugin,
-    services: feature.services ?? [],
-  }));
 }
 
 export interface PackExtensions {
@@ -89,21 +95,26 @@ export interface PackExtensions {
   blocks: string[];
   relKinds: Record<string, string>;
   migrationCount: number;
-  bootHooks: string[];
+  lifecycleHooks: string[];
   features: PackFeatureSummary[];
+}
+
+/** An available app default; neither an installed build nor an active owner. */
+export interface AppPackSourceSummary {
+  id: string;
+  name: string;
+  version: string;
+  sourceRevision: string;
 }
 
 export interface InstalledPackSummary extends PackExtensions {
   id: string;
   name: string;
-  version: string;
+  /** Absent when this installed build has no accepted declarations. */
+  version?: string;
   enabled: boolean;
-  /**
-   * Whether the app offers to uninstall it. False for whatever this app ships, which it needs to run — the
-   * Packs view hides the button rather than refusing the click. A pack property, so making a shipped pack
-   * uninstallable is one decision in one place.
-   */
-  canUninstall: boolean;
+  /** Installation ownership determines automatic updates; advertisement never grants privileges. */
+  updatesWith: 'app' | 'user';
   entityCount: number;
   /** Whether the pack has frontend code: its `runtime/fe.js` */
   hasFrontend: boolean;
@@ -116,6 +127,9 @@ export interface InstalledPackSummary extends PackExtensions {
   installedAt?: string;
   installedFrom?: string;
   availableVersion?: string;
+  /** A selected app-managed source update; independent of remote release checks. */
+  appUpdate?: AppPackSourceSummary;
+  appSourceProblem?: string;
   /** Why the last update check couldn't finish or confirm compatibility */
   updateCheckError?: string;
   /** Why this installed pack isn't running although it is enabled: the app skipped it or failed to load it */
@@ -164,40 +178,37 @@ export type PluginEventTypes = Set<string>;
  */
 export interface PackOrigin {
   id: string;
+  /** The declarations validated for this active runtime, retained across filesystem changes. */
+  declarationRevision: string;
+  /** Verified installed file identity; absent only for native registrations supplied by the host. */
+  buildRevision?: string;
+  /** File membership/checksums admitted with this runtime, never reconstructed from changed disk bytes. */
+  buildFiles?: Readonly<Record<string, string>>;
+  eventContracts?: Readonly<PackEventContracts>;
   name: string;
   version: string;
   /** Where the pack's files are: `packs/<id>`, for every pack */
   dir: string;
-  /**
-   * Whether this app shipped this pack's copy — the one thing left of "built-in", and a fact about where
-   * the installed copy came from rather than about the pack. Two things read it, both genuinely about
-   * shipping: the installer updates shipped copies with the app, and the app will not offer to uninstall
-   * what it needs to run (`InstalledPackSummary.canUninstall`). Migration lines are declared by each pack.
-   *
-   * `manifest.builtIn` decides none of this, and nothing else decides anything by it.
-   */
-  shipped: boolean;
   /** The pack's `apack.json`, which its loader read to find the pack at all */
   manifest?: PackManifest;
 }
 
 /** The registered packs, the host's own (`hostRegistration`) among them, and their shutdown hooks */
+/** Runtime coordinators retain incumbent bindings until their actors finish stopping. */
+export interface PackReplacementOptions {
+  retireBinding(dispose: () => string[]): void;
+}
+
 export interface PackRegistry extends PackRegistryView {
+  readonly catalog: ContributionCatalog;
+  refreshCatalog(packsDir?: string, disabled?: ReadonlySet<string>): void;
   /** Registers a pack; throws on a collision, registering none of it */
   registerPack(pack: PackRegistration, origin?: PackOrigin): void;
+  /** Replace an accepted runtime atomically; returns retirement errors after a successful commit. */
+  replacePack(pack: PackRegistration, origin?: PackOrigin, options?: PackReplacementOptions): string[];
+  /** Bind data operations without activating backend systems or services. */
+  registerContentRuntime(runtime: ContentRuntime, origin: PackOrigin, appliers?: ContentApplier[]): void;
   unregisterPack(packId: string): void;
-  /**
-   * Notes that a pack is being replaced, so the plugins it owns are expected to be missing until its
-   * replacement registers. Cleared when the pack registers again, or is torn down for good.
-   */
-  markPackReplacing(packId: string): void;
-  /**
-   * Whether a plugin's pack is mid-replacement. A send to it is still dropped — its systems are
-   * stopped and there is nothing to receive — but it is an expected drop, not a mistake to report.
-   */
-  isPluginReplacing(pluginId: string): boolean;
-  /** Ends a replacement window, whether or not anything took the pack's place */
-  clearPackReplacing(packId: string): void;
   /**
    * Notes why an installed pack isn't running: the loader skipped it, or its registration was refused. The Packs
    * view shows it in place of the pack's enabled state. Cleared when the pack registers or is torn down.
@@ -230,43 +241,26 @@ export interface PackRegistry extends PackRegistryView {
    * is opened with, and each call reads the policy of the packs registered then (cached until a pack
    * registers or unregisters).
    */
-  getBootHooks(): PackBootHooks[];
+  getLifecycleHooks(): PackLifecycleHooks[];
   /** A registered pack's registration, as it was registered */
   getPackRegistration(packId: string): PackRegistration | null;
   /** Where a registered pack came from, or `null` for one registered without an origin (a test's) */
   packOrigin(packId: string): PackOrigin | null;
-  /** The packs whose installed copy this app shipped, in registration order */
-  shippedPacks(): PackOrigin[];
+  /** Accepted installed runtime identity; replacement changes it even when build bytes do not. */
+  getPackRuntime(packId: string): { origin: PackOrigin; runtimeRevision: string } | null;
   /** The packs this app loaded, in registration order */
   loadedPacks(): PackOrigin[];
   /**
-   * Every registered pack's migrations on one version line, as the runners take them: the pack's manifest
-   * and the migrations it declared under that line. With `packIds`, only those — activation and reload
-   * migrate the one pack they handled.
-   *
-   * **The line is the caller's to name, and a pack the app ships is in either answer like any other.**
-   * Which line a migration is on is what its pack declared (`apack.json`'s `migrations.app` /
-   * `migrations.pack`), so this asks nothing about where a pack came from: `app` for the migrations run
-   * against `AppState.version`, `pack` for those run against the pack's own. Filtering on `shipped` here is
-   * the trap — it routes by provenance, which makes one `0.4.0` mean the app's release in a pack the app
-   * ships and the pack's own version in every other, so a user's build installed at a shipped pack's id has
-   * its migrations compared against the wrong thing.
-   *
-   * **A pack declaring both gets both**, run at the two moments the runners run, which is the one thing a
-   * caller splitting a change across lines should know (`src/migrations/CLAUDE.md`).
-   *
-   * In dependency order (`packContentOrder`), so a pack's migrations run after those of the packs it depends
-   * on. Registration order, which decides who wins a designation or a plugin id, is a different order and
-   * is not this. That order is read from the packs' manifests, so **a registered pack whose origin carries
-   * no manifest is in neither answer** — the loader gives every origin one, and a fixture without one is a
-   * pack whose migrations nothing runs.
-   *
-   * **The order survives for the `pack` line only**, where each pack is migrated against its own recorded
-   * version, so the packs stay distinguishable. `runAppMigrations` flattens the `app` line into one list
-   * and sorts it by target, because the app's line is one version for every pack — so on that line the
-   * order here buys nothing, and a pack cannot rely on being migrated after one it depends on.
+   * Admitted native and installed migrations on the requested version line. Pack-line results include
+   * the owner's declared version; app-line migrations use the bound app version instead.
+   * Dependency order is computed before filtering a caller subset. The app runner sorts globally by
+   * target, so its execution order does not promise dependency ordering between packs.
+   * Unversioned native owners can declare app-line migrations only. Installed origins without accepted
+   * manifests cannot bind migrations or participate in targeting.
    */
-  packMigrationTargets(line: MigrationLine, packIds?: Iterable<string>): Array<{ manifest: PackManifest; migrations?: PackMigration[] }>;
+  packMigrationTargets(line: 'app', packIds?: Iterable<string>): AppMigrationTarget[];
+  packMigrationTargets(line: 'pack', packIds?: Iterable<string>): PackMigrationTarget[];
+  packMigrationTargets(line: MigrationLine, packIds?: Iterable<string>): Array<AppMigrationTarget | PackMigrationTarget>;
   /**
    * Every registered pack as `applyPacks` takes it, in dependency order: where its content are and what it
    * depends on. With `packIds`, only those — activation and reload apply the one pack they handled.
@@ -275,7 +269,6 @@ export interface PackRegistry extends PackRegistryView {
    * policy mechanism.
    */
   packContentTargets(packIds?: Iterable<string>): PackContentTarget[];
-  getPackExtensions(packId: string): PackExtensions | null;
   /** Registers a hook run when the pack `key` stops, or, without a key, when the app exits */
   registerShutdownHook(hook: () => void, key?: string): void;
   /** Runs every registered shutdown hook (the app exiting) */
@@ -286,59 +279,161 @@ export interface PackRegistry extends PackRegistryView {
   removeShutdownHooksForKey(key: string): void;
 }
 
+/** Capture ownership and collection membership once; executable values retain their identity. */
+function admitContributions(registration: PackRegistration, { steps: declarations, eventContracts, migrationOwner, serviceOwner }: {
+  serviceOwner?: PackServiceOwner;
+  steps?: DeclarationData<Record<string, StepEntry>>;
+  eventContracts?: Readonly<PackEventContracts>;
+  migrationOwner?: { version?: string; dependencies?: Readonly<Record<string, string>> };
+}, origin?: PackOrigin) {
+  const runtimeRevision = randomUUID();
+  const migrations = (line: MigrationLine) => registration.migrations?.[line]?.map(({ target, description, up }) =>
+    Object.freeze({ target, description, up }));
+  const steps = (registration.steps ?? []).map(binding => {
+    if (!declarations || !Object.hasOwn(declarations, binding.type)) throw new Error(`Pack "${registration.id}" needs accepted declarations for step "${binding.type}"`);
+    return [binding.type, Object.freeze({ packId: registration.id, runtimeRevision,
+      declaration: captureStepDeclaration(declarations[binding.type]), binding,
+      ...(origin && { declarationRevision: origin.declarationRevision, buildRevision: origin.buildRevision }),
+    })] as const;
+  });
+  return {
+    id: registration.id,
+    runtimeRevision,
+    serviceOwner,
+    migrationOwner: migrationOwner && { id: registration.id, version: migrationOwner.version,
+      dependencies: migrationOwner.dependencies, migrations: { app: migrations('app'), pack: migrations('pack') } },
+    steps,
+    systems: new Map(featuresOf(registration).flatMap(({ featureId, ref, feature }) => feature.system
+      ? [[ref, { machine: feature.system.machine, receives: [...eventContracts![featureId].system!.incoming, ...SYSTEM_EVENT_TYPES] }] as const] : [])),
+    pluginEvents: new Map(featuresOf(registration).flatMap(({ featureId, ref, feature }) => feature.plugin
+      ? [[ref, [...eventContracts![featureId].plugin!.receives, ...PLUGIN_EVENT_TYPES]] as const] : [])),
+    designations: designationsOf(registration),
+    repositories: new Map(Object.entries(registration.repositories ?? {})),
+    services: new Map(Object.entries(registration.services ?? {})),
+    artifacts: (registration.artifacts ?? []).map(value => [value.type, value] as const),
+    blocks: (registration.blocks ?? []).map(value => [value.type, value] as const),
+    contentWriters: Object.entries(registration.contentWriters ?? {}),
+    appliers: [...(registration.appliers ?? [])],
+    commands: (registration.commands ?? []).map(value => ({ ...value })),
+  };
+}
+type AdmittedPackContributions = ReturnType<typeof admitContributions>;
+
+/** Candidate indexes contain no executable binding or engine writes. */
+function buildContributionTables(packs: Iterable<AdmittedPackContributions>) {
+  const commandOwners = new Map<string, string>();
+  const tables = {
+    designations: createDesignationStore(),
+    steps: createOwnedStepStore<StepBackendBinding>(),
+    artifacts: createOwnedStore<ArtifactDefinition>(),
+    blocks: createOwnedStore<BlockDefinition>(),
+    contentWriters: createContentWriterStore(),
+    appliers: createApplierStore(),
+    repositories: new Map<string, unknown>(),
+  };
+  for (const pack of packs) {
+    tables.designations.register(pack.designations);
+    for (const [type, value] of pack.steps) tables.steps.set(type, value, pack.id);
+    for (const [type, value] of pack.artifacts) tables.artifacts.set(type, value, pack.id);
+    for (const [type, value] of pack.blocks) tables.blocks.set(type, value, pack.id);
+    for (const [name, value] of pack.contentWriters) tables.contentWriters.register(name, value, pack.id);
+    tables.appliers.register(pack.id, pack.appliers);
+    for (const { name } of pack.commands) {
+      const owner = commandOwners.get(name);
+      if (owner !== undefined && owner !== pack.id) throw new Error(`Command collision: "${name}" — pack "${pack.id}" vs "${owner}"`);
+      commandOwners.set(name, pack.id);
+    }
+    for (const [name, value] of pack.repositories) tables.repositories.set(name, value);
+  }
+  return tables;
+}
+
+/** Repository publication never runs an incumbent's disposal callback. */
+function publishRepositories(before: ReadonlyMap<string, unknown>, next: ReadonlyMap<string, unknown>): void {
+  const names = [...new Set([...before.keys(), ...next.keys()])]
+    .filter(name => before.has(name) !== next.has(name) || before.get(name) !== next.get(name));
+  if (!names.length) return;
+  const engine = installedEngine();
+  const write = (values: ReadonlyMap<string, unknown>, name: string) => values.has(name)
+    ? engine.registerRepository(name, values.get(name)) : engine.unregisterRepository(name);
+  const attempted: string[] = [];
+  try {
+    for (const name of names) { attempted.push(name); write(next, name); }
+  } catch (error) {
+    const failures: unknown[] = [];
+    for (const name of attempted.reverse()) {
+      try { write(before, name); }
+      catch (failure) { failures.push(failure); }
+    }
+    if (failures.length) throw new AggregateError([error, ...failures], 'Repository publication and rollback failed');
+    throw error;
+  }
+}
+
 /** A new, empty registry */
 export interface PackRegistryOptions {
+  /** Native data is admitted before executable registration and survives runtime unload. */
+  nativeDeclarations?: readonly import('@apackdev/sdk/framework').NativePackDeclaration[];
   /**
    * The app's packs dir: the installed packs, running or not. A pack there that isn't registered (disabled, or one that
    * didn't load) keeps its settings, so its features count among the features with settings. None when omitted (a
    * build, a test).
    */
   installedPacksDir?: () => string;
+  /** Available app defaults remain separate from installed/active contributions. */
+  appPackSourcesDir?: () => string | undefined;
+  /** Composition supplies scoped authority; registrations cannot choose a caller identity. */
+  settingsForPack?: (packId: string) => SettingsService;
+  /** Host-owned test doubles replace selected implementations, never declaration ownership or settings policy. */
+  serviceOverrides?: ReadonlyMap<string, unknown>;
 }
 
-/**
- * The refs of an installed manifest's features that can have settings; a malformed manifest has none.
- *
- * Read as data, not trusted as a manifest: `features` is a map keyed by feature id, and `splitRef` is what
- * refuses a key that isn't one. An array is the malformed shape here — nothing writes one — and reading it
- * as none rather than throwing is the same rule `declaredFeatureRefs` follows in the 0.4.0 migration.
- */
-function manifestSettingsRefs({ id, features }: { id?: unknown; features?: unknown }): FeatureRef[] {
-  if (typeof id !== 'string' || typeof features !== 'object' || features === null || Array.isArray(features)) return [];
-  return Object.entries(features as Record<string, { settings?: unknown; plugin?: unknown } | null>)
-    .flatMap(([featureId, feature]) => {
-      const ref = feature && feature.settings ? `${id}/${featureId}` : undefined;
-      return ref && splitRef(ref) ? [ref as FeatureRef] : [];
-    });
-}
-
-/** When the packs dir's entries last changed: an install, update or uninstall renames an entry in or out */
-function packsDirStamp(dir: string): number {
-  try {
-    return fs.statSync(dir).mtimeMs;
-  } catch {
-    return -1;
-  }
-}
-
-export function createPackRegistry({ installedPacksDir }: PackRegistryOptions = {}): PackRegistry {
-  const registrations = new Map<string, PackRegistration>();
+export function createPackRegistry({ installedPacksDir, appPackSourcesDir, settingsForPack, serviceOverrides, nativeDeclarations = [] }: PackRegistryOptions = {}): PackRegistry {
+  let registrations = new Map<string, PackRegistration>();
   /** Where each registered pack came from. Same keys as `registrations`, so it comes and goes with them */
-  const origins = new Map<string, PackOrigin>();
-  /** Pack id → the plugins it owned when it was torn down to be replaced (an update's download window) */
-  const replacingPacks = new Map<string, Set<string>>();
+  let origins = new Map<string, PackOrigin>();
   /** Pack id → why it failed to load. Only for packs not in `registrations`: registering one removes its entry */
   const loadProblems = new Map<string, string>();
-  const designations = createDesignationStore();
-  const steps = createStepStore();
-  const artifacts = createDefinitionStore<ArtifactDefinition>();
-  const blocks = createDefinitionStore<BlockDefinition>();
-  const contentWriters = createContentWriterStore();
-  const appliers = createApplierStore();
-  const settingsDefaults = createSettingsDefaultsStore();
-  const help = createHelpStore();
-  const commands = createCommandStore();
+  let admitted = new Map<string, AdmittedPackContributions>();
+  let tables = buildContributionTables(admitted.values());
+  const bindings = new Map<string, ReturnType<typeof createPackServiceBinding>>();
+  const catalog = createContributionCatalog(appSettingsDefinition);
+  catalog.setNative(nativeDeclarations);
+  let changing = false;
+  function mutate<T>(operation: () => T): T {
+    if (changing) throw new Error('A pack registration change is already in progress');
+    changing = true;
+    try { return operation(); }
+    finally { changing = false; }
+  }
   const shutdownHooks = createShutdownHooks();
+
+  let catalogDir: string | undefined;
+
+  function refreshCatalog(packsDir = installedPacksDir?.() ?? catalogDir, disabled?: ReadonlySet<string>): void {
+    const appSources = appPackSourcesDir?.();
+    if (appPackSourcesDir) catalog.setAppPackSources(appSources === undefined
+      ? { sources: [], problems: [] } : readAppPackSources(appSources));
+    if (!packsDir) return;
+    disabled ??= disabledPackIds();
+    const sources: PackCatalogSource[] = [];
+    const problems: PackCatalogProblem[] = [];
+    const previousByDir = new Map(catalog.getSnapshot().packs.map(entry => [entry.dir, entry]));
+    for (const entry of readInstalledPackBuilds(packsDir)) {
+      const { id, dir } = entry;
+      if (entry.build) {
+        const { snapshot, integrity } = entry.build;
+        sources.push({ snapshot, integrity, dir, enabled: !disabled.has(id) });
+      } else {
+        const previous = previousByDir.get(dir);
+        problems.push({ id, dir, enabled: !disabled.has(id), message: `its declarations were refused: ${entry.problem}` });
+        if (previous) sources.push({ snapshot: previous.snapshot, integrity: previous.integrity, dir, enabled: !disabled.has(id) });
+      }
+    }
+    catalog.replace(sources, problems);
+    catalogDir = packsDir;
+  }
+
 
   /** Bumped by every write, so whatever is derived from the registrations is rebuilt on its next read */
   let revision = 0;
@@ -363,7 +458,7 @@ export function createPackRegistry({ installedPacksDir }: PackRegistryOptions = 
    * Throws when a pack's EARS entry uses a name (key or value) the app or another registered pack declares:
    * the rule the manifest schema and the code generator apply
    */
-  function checkEARS(registration: PackRegistration): void {
+  function checkEARS(registration: PackRegistration, replacing?: string): void {
     if (!registration.ears) return;
     const kinds = [
       ['entity type', (ears: PackEARS) => ears.entities],
@@ -374,158 +469,256 @@ export function createPackRegistry({ installedPacksDir }: PackRegistryOptions = 
       const [reserved] = _reservedEntries(declared, namesOf(appEARS()));
       if (reserved) throw new Error(`EARS collision: ${kind} ${reserved} — pack "${registration.id}" vs the app's own`);
       for (const [existingId, existing] of registrations) {
+        if (existingId === replacing) continue;
         const [taken] = existing.ears ? _reservedEntries(declared, namesOf(existing.ears)) : [];
         if (taken) throw new Error(`EARS collision: ${kind} ${taken} — pack "${registration.id}" vs "${existingId}"`);
       }
     }
   }
 
-  /**
-   * Every installed external pack in dependency order, computed once per pack set.
-   *
-   * Ordered over all of them and narrowed afterwards, so a subset's order agrees with the whole and a
-   * dependency outside the subset is one the caller isn't acting on anyway. Cached because the sort
-   * reports a dependency cycle: computing it per call had activating or reloading any pack re-logging a
-   * cycle between two others.
-   */
-  const orderedPacks = derived((): PackOrigin[] =>
-    packContentOrder(
-      [...origins.values()]
-        .filter((o) => o.manifest)
-        // The dependencies are the manifest's, not the origin's own: spreading the origin would leave every
-        // pack looking dependency-free, and `dependencies` being optional means nothing would say so
-        .map((o) => ({ id: o.id, dependencies: o.manifest!.dependencies, origin: o })),
-    ).map(({ origin }) => origin));
+  /** Order admitted owners once per registration set, before narrowing either line or caller subset. */
+  const orderedMigrationOwners = derived(() => packContentOrder([...admitted.values()]
+    .flatMap(pack => pack.migrationOwner ? [pack.migrationOwner] : [])));
 
-  /** Each pack's undos, as its registration produced them */
-  const packUndos = new Map<string, UndoLog>();
-
-  /**
-   * Everything a registration contributes, and how to take exactly that back out.
-   *
-   * Each entry registers its own kind and hands `undo` the way to remove what it just did. Both paths that
-   * remove a pack run those undos — the rollback when a later entry throws, and `unregisterPack` — so a new
-   * kind of contribution is one entry here rather than one line in each of three lists that nothing checks
-   * agree.
-   *
-   * The undos are recorded as the work happens, not returned at the end, because an entry can throw partway
-   * through its own items: the content writers of one pack are refused one entity at a time. And they undo what
-   * the `add` did rather than re-reading the registration, because a pack refused for a step collision must
-   * not unregister the step it collided with.
-   */
-  const contributions: ReadonlyArray<Contribution<PackRegistration>> = [
-    // First, so a role another pack plays refuses the pack before any contribution a running system observes
-    (reg, undo) => {
-      const roles = designationsOf(reg);
-      designations.register(roles);
-      undo(() => designations.unregister(roles));
-    },
-    // Into the installed engine (the app's), before anything that may use them
-    (reg, undo) => {
-      for (const [name, repo] of Object.entries(reg.repositories ?? {})) {
-        registerRepository(name, repo);
-        undo(() => unregisterRepository(name));
-      }
-    },
-    definitions(steps, (reg) => reg.steps),
-    definitions(artifacts, (reg) => reg.artifacts),
-    definitions(blocks, (reg) => reg.blocks),
-    (reg, undo) => {
-      // Registered one entity at a time and refused the same way, so the undo is in place before the first
-      undo(() => contentWriters.unregisterAll(reg.id));
-      for (const [entity, hooks] of Object.entries(reg.contentWriters ?? {})) contentWriters.register(entity, hooks, reg.id);
-    },
-    (reg, undo) => { undo(() => appliers.unregister(reg.id)); appliers.register(reg.id, reg.appliers ?? []); },
-    (reg, undo) => { undo(() => commands.unregister(reg.id)); commands.register(reg.id, reg.commands ?? []); },
-    (reg, undo) => {
-      undo(() => help.unregister(reg.id));
-      help.register(reg.id, reg.help, reg.name);
-      undo(() => settingsDefaults.unregister(reg.id));
-      settingsDefaults.register(reg.id, featuresOf(reg).map(({ featureId, feature }) => ({ id: featureId, settings: feature.settings })), reg.settingsSections);
-    },
-  ];
+  function packMigrationTargets(line: 'app', packIds?: Iterable<string>): AppMigrationTarget[];
+  function packMigrationTargets(line: 'pack', packIds?: Iterable<string>): PackMigrationTarget[];
+  function packMigrationTargets(line: MigrationLine, packIds?: Iterable<string>): Array<AppMigrationTarget | PackMigrationTarget>;
+  function packMigrationTargets(line: MigrationLine, packIds?: Iterable<string>): Array<AppMigrationTarget | PackMigrationTarget> {
+    const wanted = packIds && new Set(packIds);
+    const owners = orderedMigrationOwners().filter(owner => !wanted || wanted.has(owner.id));
+    if (line === 'app') return owners.map(owner => ({ packId: owner.id, migrations: owner.migrations.app }));
+    return owners.flatMap(owner => owner.version === undefined ? []
+      : [{ packId: owner.id, version: owner.version, migrations: owner.migrations.pack }]);
+  }
 
   /** The first of `keys` a registered pack already holds in what `held` reads off it, and that pack */
-  function firstTaken(keys: readonly string[], held: (reg: PackRegistration) => object | undefined): { key: string; holder: string } | undefined {
-    for (const [holder, existing] of registrations) {
-      const holds = held(existing) ?? {};
-      const key = keys.find((k) => k in holds);
+  function firstTaken(keys: readonly string[], held: (reg: AdmittedPackContributions) => ReadonlyMap<string, unknown>, replacing?: string): { key: string; holder: string } | undefined {
+    for (const [holder, existing] of admitted) {
+      if (holder === replacing) continue;
+      const holds = held(existing);
+      const key = keys.find((k) => holds.has(k));
       if (key) return { key, holder };
     }
     return undefined;
   }
 
   function registerPack(registration: PackRegistration, origin?: PackOrigin): void {
-    if (registrations.has(registration.id)) {
+    mutate(() => registerContributions(registration, origin, backendBindingProblem));
+  }
+
+  /** Register the content facet without claiming backend actors, roles or services. */
+  function registerContentRuntime(runtime: ContentRuntime, origin: PackOrigin, appliers?: ContentApplier[]): void {
+    const manifest = origin.manifest;
+    if (!manifest) throw new Error(`Pack "${origin.id}" content runtime needs accepted manifest declarations`);
+    const problem = _packDeclarationProblem(origin, runtime);
+    if (problem) throw new Error(problem);
+    mutate(() => registerContributions({
+      id: runtime.id, declarationRevision: runtime.declarationRevision,
+      settings: manifest.extensions?.settings,
+      features: Object.fromEntries(Object.entries(manifest.features ?? {})
+        .filter(([, feature]) => feature.settings !== undefined).map(([id, feature]) => [id, { settings: feature.settings }])),
+      ears: { entities: runtime.entities, relKinds: runtime.relKinds },
+      repositories: runtime.repositories, contentWriters: runtime.contentWriters, appliers,
+    }, origin, manifest => contentBindingProblem(manifest, runtime, appliers)));
+  }
+
+  function serviceEnabled(owner: PackServiceOwner): boolean {
+    if (owner.origin !== 'installed') return true;
+    const snapshot = catalog.getSnapshot();
+    const id = owner.declaration.id;
+    return snapshot.packs.find(pack => pack.snapshot.manifest.id === id)?.enabled !== false
+      && snapshot.problems.find(pack => pack.id === id)?.enabled !== false;
+  }
+
+  function registerContributions(registration: PackRegistration, origin: PackOrigin | undefined,
+    checkBinding: typeof backendBindingProblem, replacing = false, replacement?: PackReplacementOptions): string[] {
+    if (origin) origin = Object.freeze({ ...origin,
+      ...(origin.manifest && { manifest: captureData(origin.manifest) }),
+      ...(origin.buildFiles && { buildFiles: Object.freeze({ ...origin.buildFiles }) }),
+      ...(origin.eventContracts && { eventContracts: captureData(origin.eventContracts) }),
+    });
+    if (registrations.has(registration.id) && !replacing) {
       throw new Error(`Pack "${registration.id}" is already registered`);
     }
+    if (origin && (origin.id !== registration.id || (origin.manifest && origin.manifest.id !== registration.id))) {
+      throw new Error(`Pack "${registration.id}" runtime identity does not match its accepted origin "${origin.id}"`);
+    }
+    const stepBindings = Array.isArray(registration.steps) ? registration.steps.map(captureStepBinding) : registration.steps;
+    const checkedRegistration = { ...registration, steps: stepBindings };
     checkFeatureIds(registration.id, Object.keys(registration.features ?? {}));
+    if (!origin) {
+      const declaration = catalog.getSnapshot().native.find(pack => pack.id === registration.id);
+      if (!declaration) throw new Error(`Native pack "${registration.id}" must declare its data before binding`);
+      const eventsProblem = eventBindingProblem(declaration.eventContracts, registration.features ?? {}, true);
+      if (eventsProblem) throw new Error(`Native pack "${registration.id}" runtime ${eventsProblem} does not match its admitted declarations`);
+      const contentProblem = backendContentBindingProblem(declaration.content, registration);
+      if (contentProblem) throw new Error(`Native pack "${registration.id}" runtime ${contentProblem} does not match its admitted declarations`);
+      const viewerProblem = backendViewerBindingProblem(declaration, registration);
+      if (viewerProblem) throw new Error(`Native pack "${registration.id}" runtime ${viewerProblem} does not match its admitted declarations`);
+      const apiProblem = apiBindingProblem(declaration.features, declaration, registration);
+      if (apiProblem) throw new Error(`Native pack "${registration.id}" runtime ${apiProblem} does not match its admitted declarations`);
+      if (!isDeepStrictEqual(registration.ears?.relKinds ?? {}, _packRelationTypes(declaration))) {
+        throw new Error(`Native pack "${registration.id}" runtime ears.relKinds does not match its admitted declarations`);
+      }
+      const commands = commandBindingProblem(declaration.commands, registration.commands);
+      if (commands) throw new Error(`Native pack "${registration.id}" runtime ${commands} does not match its admitted declarations`);
+      const migrationProblem = migrationBindingProblem(declaration.migrations, registration.migrations);
+      if (migrationProblem) throw new Error(`Native pack "${registration.id}" runtime ${migrationProblem} does not match its admitted declarations`);
+      const lifecycleProblem = lifecycleBindingProblem(declaration.lifecycle, registration.lifecycle);
+      if (lifecycleProblem) throw new Error(`Native pack "${registration.id}" runtime ${lifecycleProblem} does not match its admitted declarations`);
+      const stepProblem = backendStepBindingProblem(declaration.steps, stepBindings);
+      if (stepProblem) throw new Error(`Native pack "${registration.id}" runtime ${stepProblem} does not match its admitted declarations`);
+      const runtimeFeatures = registration.features === undefined ? {} : registration.features;
+      const settingsOf = (features: Record<string, { settings?: unknown }> = {}) => Object.fromEntries(
+        Object.entries(features).filter(([, feature]) => feature.settings !== undefined).map(([id, feature]) => [id, feature.settings]));
+      if (!runtimeFeatures || typeof runtimeFeatures !== 'object' || Array.isArray(runtimeFeatures)
+        || Object.values(runtimeFeatures).some(feature => !feature || typeof feature !== 'object' || Array.isArray(feature))
+        || !isDeepStrictEqual(Object.keys(runtimeFeatures).sort(), Object.keys(declaration.features ?? {}).sort())
+        || !isDeepStrictEqual(registration.ears?.entities ?? {}, _packEntityTypes(declaration))
+        || !isDeepStrictEqual(registration.dependencies === undefined ? {} : registration.dependencies, declaration.dependencies ?? {})
+        || !isDeepStrictEqual(registration.settings === undefined ? {} : registration.settings, declaration.settings ?? {})
+        || !isDeepStrictEqual(settingsOf(runtimeFeatures), settingsOf(declaration.features))) {
+        throw new Error(`Native pack "${registration.id}" runtime does not match its admitted declarations`);
+      }
+      for (const [id, feature] of Object.entries(runtimeFeatures)) {
+        if (feature.designation !== declaration.features?.[id]?.designation) {
+          throw new Error(`Native pack "${registration.id}" runtime features.${id}.designation does not match its admitted declarations`);
+        }
+      }
+    }
 
-    checkEARS(registration);
 
-    const services = Object.keys(registration.services ?? {});
-    const hostService = services.find((key) => (HOST_SERVICE_NAMES as readonly string[]).includes(key));
+    const source = catalog.getSnapshot().sourcePacks.find(pack => pack.manifest.id === registration.id);
+    if (source && (registration.declarationRevision !== source.declarationRevision || origin?.declarationRevision !== source.declarationRevision)) {
+      throw new Error(`Pack "${registration.id}" runtime does not match its accepted source declarations`);
+    }
+    if (source?.eventContracts && checkBinding === backendBindingProblem
+      && !isDeepStrictEqual(source.eventContracts, origin?.eventContracts)) {
+      throw new Error(`Pack "${registration.id}" runtime event contracts do not match its accepted source declarations`);
+    }
+
+    if (origin?.manifest) {
+      const definitions = (features: Record<string, { settings?: unknown }> = {}) => Object.fromEntries(
+        Object.entries(features).filter(([, feature]) => feature.settings !== undefined).map(([id, feature]) => [id, feature.settings]),
+      );
+      if (!isDeepStrictEqual(definitions(registration.features), definitions(origin.manifest.features))
+        || !isDeepStrictEqual(registration.settings === undefined ? {} : registration.settings, origin.manifest.extensions?.settings ?? {})) {
+        throw new Error(`Pack "${registration.id}" runtime settings do not match its accepted declarations`);
+      }
+      const problem = checkBinding(origin.manifest, checkedRegistration, origin.eventContracts);
+      if (problem) throw new Error(problem);
+    }
+    if (origin && !origin.manifest && checkBinding === backendBindingProblem) {
+      const migrationProblem = migrationBindingProblem(undefined, registration.migrations);
+      if (migrationProblem) throw new Error(`Pack "${registration.id}" runtime ${migrationProblem} has no accepted migration declarations`);
+      const problem = eventBindingProblem(origin.eventContracts, registration.features ?? {});
+      if (problem) throw new Error(`Pack "${registration.id}" runtime ${problem} has no matching admitted event contract`);
+    }
+
+    checkEARS(registration, replacing ? registration.id : undefined);
+
+    const providedServices = Object.keys(registration.services ?? {});
+    const hostService = providedServices.find((key) => (_HOST_SERVICE_NAMES as readonly string[]).includes(key));
     if (hostService) throw new Error(`Service collision: key "${hostService}" — pack "${registration.id}" vs the host's own "${hostService}" service`);
-    const service = firstTaken(services, (reg) => reg.services);
+    const service = firstTaken(providedServices, (reg) => reg.services, replacing ? registration.id : undefined);
     if (service) throw new Error(`Service collision: key "${service.key}" — pack "${registration.id}" vs "${service.holder}"`);
-    const repository = firstTaken(Object.keys(registration.repositories ?? {}), (reg) => reg.repositories);
+    const repository = firstTaken(Object.keys(registration.repositories ?? {}), (reg) => reg.repositories, replacing ? registration.id : undefined);
     if (repository) throw new Error(`Repository collision: "${repository.key}" — pack "${registration.id}" vs "${repository.holder}"`);
 
-    /**
-     * Listed before its extensions are registered, because registering them is observable: a running system
-     * that reacts (the settings system, to new feature settings) sends inside this call, and the bus checks
-     * that send against the registry synchronously. Listed after, the send would belong to no registered
-     * pack and be dropped.
-     */
-    registrations.set(registration.id, registration);
-    if (origin) origins.set(registration.id, origin);
-    replacingPacks.delete(registration.id);
-    changed();
-
-    let undos: UndoLog;
+    const candidate = new Map(admitted);
+    const native = origin ? undefined : catalog.getSnapshot().native.find(pack => pack.id === registration.id);
+    const serviceOwner: PackServiceOwner | undefined = origin?.manifest
+      ? { origin: source ? 'source' : 'installed', declaration: origin.manifest }
+      : native ? { origin: 'native', declaration: native } : undefined;
+    const selection = serviceOwner && assertPackServiceRequirements(catalog.getSnapshot(), serviceOwner);
+    candidate.set(registration.id, admitContributions(checkedRegistration, {
+      steps: origin ? origin.manifest?.extensions?.steps : native?.steps,
+      eventContracts: origin ? origin.eventContracts : native?.eventContracts,
+      migrationOwner: origin ? origin.manifest : native,
+      serviceOwner,
+    }, origin));
+    const nextTables = buildContributionTables(candidate.values());
+    let binding: ReturnType<typeof createPackServiceBinding> | undefined;
     try {
-      // Only what this call registered comes back out: a pack refused for a step collision must not unregister the
-      // step it collided with
-      undos = addContributions(registration, contributions);
-    } catch (err) {
-      // A refused pack leaves nothing of itself behind, its origin included — one left here would name a pack the
-      // app never registered as one it loaded
-      registrations.delete(registration.id);
-      origins.delete(registration.id);
-      changed();
-      throw err;
+      if (registration.bindServices) {
+        if (!settingsForPack) throw new Error(`Pack "${registration.id}" needs a host settings service binding`);
+        if (!selection || !serviceOwner) throw new Error(`Pack "${registration.id}" needs accepted service declarations`);
+        const accepted = candidate.get(registration.id)!;
+        binding = createPackServiceBinding({ caller: registration.id, selection,
+          settings: settingsForPack(registration.id), overrides: serviceOverrides, bind: registration.bindServices,
+          provider: (id, name) => {
+            // Own actors drain on their accepted services until the coordinator disposes the binding.
+            if (id === registration.id) return accepted.services.has(name)
+              ? { generation: accepted, value: accepted.services.get(name) } : undefined;
+            const owner = admitted.get(id);
+            if (!owner?.serviceOwner || !serviceEnabled(owner.serviceOwner) || !owner.services.has(name)) return;
+            // Validate the requested API against its accepted provider, not a prospective replacement.
+            _packServiceSelection({ ...packServiceDeclaration(serviceOwner), consumes: { services: [`${id}/${name}`] } },
+              providerId => {
+                const active = admitted.get(providerId)?.serviceOwner;
+                return active && serviceEnabled(active) ? packServiceDeclaration(active) : undefined;
+              });
+            return { generation: owner, value: owner.services.get(name) };
+          },
+        });
+      }
+      publishRepositories(tables.repositories, nextTables.repositories);
+    } catch (error) {
+      const failures = binding?.dispose() ?? [];
+      if (failures.length) throw new AggregateError([error, ...failures.map(message => new Error(message))], 'Pack admission and provisional cleanup failed');
+      throw error;
     }
-    packUndos.set(registration.id, undos);
+    const previousBinding = bindings.get(registration.id);
+    registrations = new Map(registrations).set(registration.id, registration);
+    origins = new Map(origins);
+    if (origin) origins.set(registration.id, origin);
+    else origins.delete(registration.id);
+    admitted = candidate;
+    tables = nextTables;
+    if (binding) { bindings.set(registration.id, binding); binding.activate(); }
+    else bindings.delete(registration.id);
     loadProblems.delete(registration.id);
     changed();
+    if (!previousBinding) return [];
+    if (!replacement) return previousBinding.dispose();
+    try {
+      replacement.retireBinding(() => previousBinding.dispose());
+      return [];
+    } catch (error) {
+      return [`Pack "${registration.id}" committed, but binding retirement could not be scheduled: ${String(error)}`,
+        ...previousBinding.dispose()];
+    }
   }
 
   function unregisterPack(packId: string): void {
-    if (!registrations.has(packId)) throw new Error(`Pack "${packId}" is not registered`);
-
-    // The undos its registration produced, not a second reading of the registration: what comes out is
-    // exactly what went in
-    const failures = packUndos.get(packId)?.undoAll() ?? [];
-    packUndos.delete(packId);
-
-    registrations.delete(packId);
-    origins.delete(packId);
-    changed();
-
-    if (failures.length > 0) {
-      throw new Error(`Pack "${packId}" is unregistered, but ${failures.length} of its contributions could not be taken back out: ${failures.join('; ')}`);
-    }
+    mutate(() => {
+      if (!registrations.has(packId)) throw new Error(`Pack "${packId}" is not registered`);
+      const candidate = new Map(admitted);
+      candidate.delete(packId);
+      const nextTables = buildContributionTables(candidate.values());
+      publishRepositories(tables.repositories, nextTables.repositories);
+      const binding = bindings.get(packId);
+      bindings.delete(packId);
+      registrations = new Map(registrations);
+      registrations.delete(packId);
+      origins = new Map(origins);
+      origins.delete(packId);
+      admitted = candidate;
+      tables = nextTables;
+      changed();
+      const failures = binding?.dispose() ?? [];
+      if (failures.length) throw new Error(`Pack "${packId}" is unregistered, but its binding cleanup failed: ${failures.join('; ')}`);
+    });
   }
 
   function getRegisteredPackSystemIds(packId: string): string[] {
-    const reg = registrations.get(packId);
-    return reg ? packSystemIds(reg) : [];
+    return [...(admitted.get(packId)?.systems.keys() ?? [])];
   }
 
   function buildEventValidationMap(): Map<string, Set<string>> {
     const map = new Map<string, Set<string>>();
-    for (const reg of registrations.values()) {
-      for (const { ref, system } of systemsOf(reg)) map.set(ref, new Set(system.receives));
+    for (const pack of admitted.values()) {
+      for (const [ref, system] of pack.systems) map.set(ref, new Set(system.receives));
     }
     // The bus isn't a feature's system, but pack code sends it events (HostSystemEvents): from a frontend too, so the
     // client path checks them as the backend's does. It runs where the host is registered.
@@ -535,37 +728,15 @@ export function createPackRegistry({ installedPacksDir }: PackRegistryOptions = 
     return map;
   }
 
-  function ownedPluginIds(reg: PackRegistration): string[] {
-    return featuresOf(reg).filter(({ feature }) => feature.plugin).map(({ ref }) => ref);
-  }
-
   function buildPluginEventValidationMap(): Map<string, PluginEventTypes> {
     const map = new Map<string, PluginEventTypes>();
     // Each pack's plugins are under its own refs, the host's included, so no pack reaches another's entry
-    for (const reg of registrations.values()) {
-      for (const { ref, feature } of featuresOf(reg)) {
-        if (feature.plugin) map.set(ref, new Set([...feature.plugin.receives, ...PLUGIN_EVENT_TYPES]));
-      }
+    for (const pack of admitted.values()) {
+      for (const [ref, receives] of pack.pluginEvents) map.set(ref, new Set(receives));
     }
     return map;
   }
 
-  /** The refs of the registered features that can have settings: those declaring settings */
-  const registeredSettingsRefs = derived(() =>
-    [...registrations.values()].flatMap((reg) => featuresOf(reg).filter(({ feature }) => feature.settings).map(({ ref }) => ref)));
-  /** The same of every pack in the packs dir, from its manifest: read again only when the dir's entries change */
-  const installedSettingsRefs = derived(
-    () => {
-      const dir = installedPacksDir?.();
-      return dir ? discoverPacks(dir).flatMap(({ manifest }) => manifestSettingsRefs(manifest)) : [];
-    },
-    () => {
-      const dir = installedPacksDir?.();
-      return dir ? packsDirStamp(dir) : -1;
-    },
-  );
-  /** Every installed feature that can have settings: a registered pack's, and one in the packs dir that isn't running */
-  const featuresWithSettings = (): readonly FeatureRef[] => [...new Set([...registeredSettingsRefs(), ...installedSettingsRefs()])];
   const eventValidationMap = derived(buildEventValidationMap);
   const pluginEventValidationMap = derived(buildPluginEventValidationMap);
   const entityTypes = derived((): ReadonlySet<string> => new Set<string>([
@@ -573,52 +744,44 @@ export function createPackRegistry({ installedPacksDir }: PackRegistryOptions = 
     ...[...registrations.values()].flatMap((reg) => Object.values(reg.ears?.entities ?? {})),
   ]));
   const services = derived((): Record<string, unknown> =>
-    Object.assign({}, ...[...registrations.values()].map((reg) => reg.services ?? {})));
+    Object.fromEntries([...admitted.values()].flatMap(pack => [...pack.services])));
 
   return {
+    catalog,
+    refreshCatalog,
     registerPack,
+    replacePack: (registration, origin, options) => mutate(() => {
+      if (!registrations.has(registration.id)) throw new Error(`Pack "${registration.id}" is not registered`);
+      return registerContributions(registration, origin, backendBindingProblem, true, options);
+    }),
+    registerContentRuntime,
     unregisterPack,
-
-    markPackReplacing(packId) {
-      const reg = registrations.get(packId);
-      if (reg) replacingPacks.set(packId, new Set(ownedPluginIds(reg)));
-    },
-
-    isPluginReplacing(pluginId) {
-      for (const plugins of replacingPacks.values()) if (plugins.has(pluginId)) return true;
-      return false;
-    },
-
-    clearPackReplacing(packId) {
-      replacingPacks.delete(packId);
-    },
 
     recordLoadProblem(packId, problem) {
       loadProblems.set(packId, problem);
     },
-    loadProblem: (packId) => loadProblems.get(packId),
+    loadProblem: (packId) => catalog.getSnapshot().problems.find(problem => problem.id === packId)?.message ?? loadProblems.get(packId),
     clearLoadProblem(packId) {
       loadProblems.delete(packId);
     },
 
     getRegisteredSystems() {
       const systems = new Map<string, AnyStateMachine>();
-      for (const reg of registrations.values()) {
-        for (const { ref, system } of systemsOf(reg)) systems.set(ref, system.machine);
+      for (const pack of admitted.values()) {
+        for (const [ref, system] of pack.systems) systems.set(ref, system.machine);
       }
       return systems;
     },
 
     getRegisteredPackSystemIds,
     packOrigin: (packId) => origins.get(packId) ?? null,
-    shippedPacks: () => [...origins.values()].filter((o) => o.shipped),
-    loadedPacks: () => [...origins.values()],
-    packMigrationTargets: (line, packIds) => {
-      const wanted = packIds && new Set(packIds);
-      return orderedPacks()
-        .filter((o) => !wanted || wanted.has(o.id))
-        .map((o) => ({ manifest: o.manifest!, migrations: registrations.get(o.id)?.migrations?.[line] }));
+    getPackRuntime(packId) {
+      const origin = origins.get(packId);
+      const contribution = admitted.get(packId);
+      return origin && contribution ? { origin, runtimeRevision: contribution.runtimeRevision } : null;
     },
+    loadedPacks: () => [...origins.values()],
+    packMigrationTargets,
 
     // Both maps are keyed by the registered features' refs, the host's included
     systemIds: () => [...eventValidationMap().keys()] as FeatureRef[],
@@ -640,7 +803,7 @@ export function createPackRegistry({ installedPacksDir }: PackRegistryOptions = 
     getRegisteredEntityTypes: entityTypes,
     getRegisteredServices: services,
 
-    getBootHooks: () => [...registrations.values()].flatMap((reg) => (reg.boot ? [reg.boot] : [])),
+    getLifecycleHooks: () => [...registrations.values()].flatMap((reg) => (reg.lifecycle ? [reg.lifecycle] : [])),
     getPackRegistration: (packId) => registrations.get(packId) ?? null,
 
     packContentTargets(packIds) {
@@ -657,44 +820,35 @@ export function createPackRegistry({ installedPacksDir }: PackRegistryOptions = 
       }));
     },
 
-    getPackExtensions(packId) {
-      const reg = registrations.get(packId);
-      if (!reg) return null;
-
-      const bootHooks: string[] = [];
-      if (reg.boot?.onInit) bootHooks.push('onInit');
-      if (reg.boot?.onShutdown) bootHooks.push('onShutdown');
-
-      return {
-        systems: systemsOf(reg).map(({ ref }) => ref),
-        services: reg.services ? Object.keys(reg.services) : [],
-        steps: (reg.steps ?? []).map(s => s.type),
-        artifacts: (reg.artifacts ?? []).map(a => a.type),
-        blocks: (reg.blocks ?? []).map(b => b.type),
-        relKinds: reg.ears?.relKinds ?? {},
-        // Both lines: the view counts what the pack declares, not what one runner will reach
-        migrationCount: MIGRATION_LINES.reduce((n, line) => n + (reg.migrations?.[line]?.length ?? 0), 0),
-        bootHooks,
-        features: featureSummaries(reg),
-      };
-    },
-
     ...shutdownHooks,
 
     // The SDK's lookups (PackRegistryView)
-    designation: designations.get,
-    step: steps.get,
-    steps: steps.all,
-    artifact: artifacts.get,
-    artifacts: artifacts.all,
-    block: blocks.get,
-    blocks: blocks.all,
-    contentWriters: contentWriters.get,
-    appliers: appliers.get,
-    settingsDefaults: settingsDefaults.get,
-    onSettingsDefaultsChanged: settingsDefaults.onChanged,
-    featuresWithSettings,
-    commands: commands.all,
-    help: help.all,
+    designation: key => tables.designations.get(key),
+    stepDeclarations: catalog.steps,
+    stepBindings: () => new Map(tables.steps.entries()),
+    step: key => tables.steps.get(key)?.binding,
+    steps: () => tables.steps.all().map(row => row.binding),
+    artifact: key => tables.artifacts.get(key),
+    artifacts: () => tables.artifacts.all(),
+    block: key => tables.blocks.get(key),
+    blocks: () => tables.blocks.all(),
+    contentWriters: key => tables.contentWriters.get(key),
+    appliers: key => tables.appliers.get(key),
+    settingsCatalog: catalog.settings,
+    onCatalogChanged: catalog.onChanged,
+    pluginDefaults: () => Object.fromEntries(catalog.plugins()
+      .filter(plugin => plugin.origin !== 'source' && plugin.enabled === true && plugin.declaration.defaultVisible !== undefined)
+      .map(plugin => [plugin.featureRef, plugin.declaration.defaultVisible!])),
+    commands: () => catalog.commands().filter(command => {
+      if (command.enabled === false || !admitted.has(command.packId)) return false;
+      if (command.origin === 'native') {
+        const declaration = catalog.getSnapshot().native.find(pack => pack.id === command.packId);
+        return !commandBindingProblem(declaration?.commands, admitted.get(command.packId)!.commands);
+      }
+      const origin = origins.get(command.packId);
+      return origin !== undefined && origin.declarationRevision === command.declarationRevision
+        && origin.buildRevision === command.buildRevision;
+    }).map(({ name, placeholder }) => ({ name, placeholder })),
+    help: catalog.help,
   };
 }

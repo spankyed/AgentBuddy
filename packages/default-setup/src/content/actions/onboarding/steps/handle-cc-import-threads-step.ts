@@ -1,4 +1,4 @@
-import type { GeneralSettings } from '#app-settings/types.ts';
+import type { AppSettings } from '@apackdev/sdk/types';
 import type { ActionMeta } from '@apackdev/sdk/build';
 import type { EntityId, Services } from '#generated/services.ts';
 import { getOnboardingState, persistOnboardingState, showChooseModeOrFinish, flashState, getRecentImportedThreads } from '../onboarding-helpers.ts';
@@ -69,7 +69,7 @@ export async function action(
 
 async function importSelectedSessions(services: Services, providers: { cc: boolean; codex: boolean }) {
   try {
-    const projects = services.settings.getSection<GeneralSettings>('general').projects ?? [];
+    const projects = services.settings.get<AppSettings>({ kind: 'app' }).projects ?? [];
     const selectedDirs = new Set((projects as any[]).flatMap((p: any) => p.directories ?? []));
 
     // Build dedup sets from existing threads

@@ -1,7 +1,7 @@
 // Putting a built directory in place of the one before it, without a moment where neither is there.
 //
 // The mechanism, not the policy: where a caller stages its work and what it calls the staging directory are
-// the caller's. `placePack` is one (an installed pack replaced by a newly staged one), the package builds are
+// the caller's. installer publication is one (an installed pack replaced by a newly staged one), the package builds are
 // another (`dist` and the staged publish tree), and `apack pack build` a third (a pack's own `dist`).
 //
 // **Why anything needs this.** A tree that is cleared and refilled does not exist for the length of the
@@ -32,7 +32,10 @@ export function stagingDirName(id: string, kind: StagingKind): string {
 }
 
 /**
- * Moves `staged` to `dest`, keeping whatever is at `dest` until the move has succeeded.
+ * Moves `staged` to `dest`, keeping the prior tree until synchronous acceptance succeeds.
+ * `accept` sees the candidate at its final path and may refuse it by throwing. It must return only
+ * after its own acceptance decision; filesystem restoration does not undo arbitrary callback effects.
+ * Promise-returning acceptance is excluded by the signature.
  *
  * **It never renames onto an existing directory**, because that is not a portable operation: `fs.renameSync`
  * onto a directory "either throws or replaces depending on the platform and whether it is empty, and neither
@@ -48,24 +51,39 @@ export function stagingDirName(id: string, kind: StagingKind): string {
  * for a pack's — whereas the directory holding `dest` is usually tracked, and a `.dist.previous-*` appearing
  * there for the length of two renames is a directory that `git ls-files -co` reports: the population eight of
  * this repo's specs derive from. Beside `staged` it is on the same filesystem by the same argument as above
- * and ignored by the one the caller already made. For `placePack` the two are the same directory anyway.
+ * and ignored by the one the caller already made. For installer publication the two are the same directory anyway.
  *
  * Throws with `staged` removed and `dest` untouched, so a failed build leaves the previous one in place —
  * which is the half that makes this worth doing rather than merely tidier.
  */
-export function replaceDir(staged: string, dest: string): void {
+export function replaceDir(staged: string, dest: string, accept?: () => undefined): void {
   const parent = path.dirname(staged);
   try {
     // Named for what it is and whose it is: `recoverStagingDirs` reads the pid to decide whether a leftover
     // belongs to a process that is gone, and the random suffix is what stops a recycled pid colliding with it
     const previous = fs.existsSync(dest) ? path.join(parent, stagingDirName(path.basename(dest), 'previous')) : null;
+    const candidate = fs.lstatSync(staged);
     if (previous) fs.renameSync(dest, previous);
+    let placed = false;
     try {
       fs.renameSync(staged, dest);
+      placed = true;
+      accept?.();
     } catch (err) {
       // Put the old tree back rather than leaving nothing there. Guarded, because a racer that took `dest`
       // between the two renames owns it now, and overwriting it would be the failure this exists to prevent
-      if (previous && !fs.existsSync(dest)) fs.renameSync(previous, dest);
+      try {
+        if (placed && fs.existsSync(dest)) {
+          const current = fs.lstatSync(dest);
+          if (current.dev !== candidate.dev || current.ino !== candidate.ino) {
+            throw new Error(`Replacement destination changed before rollback: ${dest}`);
+          }
+          fs.rmSync(dest, { recursive: true, force: true });
+        }
+        if (previous && !fs.existsSync(dest)) fs.renameSync(previous, dest);
+      } catch (rollback) {
+        throw new AggregateError([err, rollback], 'Directory replacement was refused and rollback failed');
+      }
       throw err;
     }
     // Outside the guarded region, and best-effort: by here the swap has happened, so a failure to remove the

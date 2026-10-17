@@ -2,6 +2,9 @@
 // change unless given --force
 import * as fs from 'node:fs';
 import * as path from 'node:path';
+import { resolveAppEnvironment } from '@apackdev/sdk/env';
+import { readInstalledContributionCatalog, disabledPackIds } from '@apackdev/host/packs';
+import { createSettingsBackupValidator } from '@apackdev/host/settings';
 import type { EARS } from '@apackdev/ears';
 import { importDatabase, readBackup, type BackupLog } from '@apackdev/host/backup';
 import type { AppDatabase } from '@apackdev/host/database';
@@ -181,7 +184,10 @@ export async function dbImport(args: string[], io: DbIo): Promise<void> {
   const db = await openTarget(target, { write: force, command: 'import' }, io);
   const done = await withDatabase(db, async () => {
     // The backup is checked before anything changes
-    const backup = readBackup(backupDir, db.schema.getRegisteredEntityTypes());
+    const environment = resolveAppEnvironment({ env: target.env, userDataDir: db.userDataDir });
+    const catalog = readInstalledContributionCatalog(environment.packsDir, disabledPackIds(environment.installedPacksFile));
+    const validate = createSettingsBackupValidator(catalog.settings());
+    const backup = readBackup(backupDir, db.schema.getRegisteredEntityTypes(), validate);
     const skipUnknown = values['skip-unknown'] as boolean;
     if (backup.unknownDatabases.length > 0 && !skipUnknown) {
       throw new Error(
@@ -206,10 +212,9 @@ export async function dbImport(args: string[], io: DbIo): Promise<void> {
       io.out(`\n${DRY_RUN}`);
       return null;
     }
-    db.admin.clear();
     // Its progress lines go to stderr with everything else that isn't the result, so `apack db import > file` holds
     // only what the command was asked for
-    await importDatabase(db.store, backupDir, db.paths.media, { skipUnknownDatabases: skipUnknown, log: backupLog(io) });
+    await importDatabase(db.store, backupDir, db.paths.media, { skipUnknownDatabases: skipUnknown, log: backupLog(io), validate });
     return '\nImported.';
   });
   if (done) io.out(done);

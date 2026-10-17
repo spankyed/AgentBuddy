@@ -63,14 +63,21 @@ async function runValidate(): Promise<{ exitCode: number | undefined; output: st
 }
 
 describe('apack pack add feature', () => {
+  it.each([{ options: [] }, { options: ['--description', ''] }, { options: ['--description', '--icon', 'Box'] }])
+    ('requires a purpose before writing feature files ($options)', async ({ options }) => {
+      await expect(addFeature(['memos', ...options], pack)).rejects.toThrow('--description <purpose>');
+      expect(fs.existsSync(path.join(pack, 'src', 'features', 'memos'))).toBe(false);
+      expect(JSON.parse(fs.readFileSync(path.join(pack, 'apack.json'), 'utf8')).features).toEqual({});
+    });
   // Pack code names features and the host addresses them, so what the scaffold writes never holds an address
   it('writes a feature whose code names it and never holds its address', async () => {
-    await addFeature(['memos'], pack);
+    await addFeature(['memos', '--description', 'Manage memos.'], pack);
     const feature = path.join(pack, 'src', 'features', 'memos');
-    const sources = ['fe/state.ts', 'fe/plugin.ts', 'be/system.ts'].map((file) => fs.readFileSync(path.join(feature, file), 'utf-8')).join('\n');
+    const sources = ['fe/state.ts', 'be/system.ts'].map((file) => fs.readFileSync(path.join(feature, file), 'utf-8')).join('\n');
     expect(sources).not.toMatch(/busId|system-ids|demo-pack\./);
     expect(fs.readFileSync(path.join(feature, 'fe', 'state.ts'), 'utf-8')).toContain("export const id = 'memos';");
-    expect(fs.readFileSync(path.join(feature, 'fe', 'plugin.ts'), 'utf-8')).toMatch(/= definePlugin\(\{\n  label:/);
+    expect(fs.existsSync(path.join(feature, 'fe', 'plugin.ts'))).toBe(false);
+    expect(JSON.parse(fs.readFileSync(path.join(pack, 'apack.json'), 'utf8')).features.memos.plugin).toMatchObject({ label: 'Memos', state: 'src/features/memos/fe/state.ts', canvas: 'src/features/memos/fe/canvas/list.vue' });
   });
 
   // A plugin's contract declares its inbox with `PluginInbox`, so reading one takes the pack's @apackdev/sdk. Without
@@ -78,7 +85,7 @@ describe('apack pack add feature', () => {
   // and generate a pack whose plugin silently received none of what it declares. It stops and says so now, and
   // `init` puts `npm install` before `apack pack add feature` for exactly this reason.
   it("keeps the scaffold of a pack whose dependencies aren't installed, and says npm install regenerates", async () => {
-    await addFeature(['memos'], pack);
+    await addFeature(['memos', '--description', 'Manage memos.'], pack);
 
     expect(fs.existsSync(path.join(pack, 'src', 'features', 'memos', 'be', 'system.ts'))).toBe(true);
     const output = vi.mocked(console.log).mock.calls.map((args) => args.join(' ')).join('\n');
@@ -88,7 +95,7 @@ describe('apack pack add feature', () => {
 
   it('writes --designation into apack.json', async () => {
     installDependencies();
-    await addFeature(['memos', '--designation', 'memos'], pack);
+    await addFeature(['memos', '--description', 'Manage memos.', '--designation', 'memos'], pack);
 
     expect(readManifest().features).toEqual({ memos: expect.objectContaining({ designation: 'memos' }) });
     expect((await runValidate()).exitCode).toBeUndefined();
@@ -98,7 +105,7 @@ describe('apack pack add feature', () => {
   // `validate` has always accepted and the manifest schema has always allowed.
   it('writes a designation that differs from the feature name', async () => {
     installDependencies();
-    await addFeature(['memos', '--designation', 'inbox'], pack);
+    await addFeature(['memos', '--description', 'Manage memos.', '--designation', 'inbox'], pack);
 
     expect(readManifest().features).toEqual({ memos: expect.objectContaining({ designation: 'inbox' }) });
     expect((await runValidate()).exitCode).toBeUndefined();
@@ -106,35 +113,40 @@ describe('apack pack add feature', () => {
 });
 
 describe('apack pack validate', () => {
-  it("reports a feature's missing settings file, and accepts a designation that is not its id", async () => {
-    await addFeature(['memos'], pack);
+  it("reports a feature's invalid settings default, and accepts a designation that is not its id", async () => {
+    await addFeature(['memos', '--description', 'Manage memos.'], pack);
     const manifest = readManifest();
     // A role that is not the feature's id, which is the half of this case's title that the fixture has to show
     manifest.features.memos.designation = 'inbox';
     fs.writeFileSync(path.join(pack, 'apack.json'), JSON.stringify(manifest, null, 2));
-    fs.rmSync(path.join(pack, 'src', 'features', 'memos', 'settings.ts'));
+    manifest.features.memos.settings.defaults = { unexpected: true };
+    fs.writeFileSync(path.join(pack, 'apack.json'), JSON.stringify(manifest, null, 2));
 
     const { exitCode, output } = await runValidate();
 
     expect(exitCode).toBe(1);
-    expect(output).toContain('Feature "memos": settings file "src/features/memos/settings.ts" not found');
+    expect(output).toContain('features.memos.settings.defaults.unexpected');
     expect(output).not.toContain('designation');
   });
 
-  // A dependency found only in a build this CLI can't read is a warning, like one that isn't found: the rest still runs
-  it('warns about a dependency built in another snapshot format, and still runs its other checks', async () => {
-    const old = path.join(tmp, 'old-pack');
-    fs.mkdirSync(path.join(old, 'dist', 'types'), { recursive: true });
-    fs.writeFileSync(path.join(old, 'dist', PACK_LAYOUT.snapshot), JSON.stringify({ types: { entities: {}, relKinds: {} }, defs: {}, manifest: { id: 'old-pack', version: '1.0.0' } }));
+  it('reports malformed dependency data as incomplete validation', async () => {
+    const dependency = path.join(tmp, 'malformed-pack');
+    fs.mkdirSync(path.join(dependency, 'dist', 'types'), { recursive: true });
+    fs.writeFileSync(path.join(dependency, 'dist', PACK_LAYOUT.snapshot), JSON.stringify({
+      types: { entities: {}, relKinds: {} }, entityDestinations: {}, facades: {}, manifest: { id: 'malformed-pack', version: '1.0.0' },
+    }));
     const manifest = readManifest();
-    manifest.dependencies = { 'old-pack': `file:${old}` };
+    manifest.dependencies = { 'malformed-pack': `file:${dependency}` };
     fs.writeFileSync(path.join(pack, 'apack.json'), JSON.stringify(manifest, null, 2));
 
-    const { output } = await runValidate();
+    const { exitCode, output } = await runValidate();
 
     expect(output).toContain('Warnings:');
-    expect(output).toContain('Dependency "old-pack" has no build this CLI can use');
-    expect(output).toContain('its snapshot is format (none), written by an older apack CLI');
+    expect(output).toContain('snapshot.json declarationRevision: Required');
+    expect(output).toContain('snapshot.json manifest.name: Required');
+    expect(exitCode).toBe(2);
+    expect(output).toContain('Validation incomplete');
+    expect(output).not.toContain('Pack is valid');
   });
 
   describe('content sources (the checks code generation makes)', () => {
@@ -172,7 +184,7 @@ describe('apack pack validate', () => {
       fs.mkdirSync(path.join(pack, 'src', 'content'), { recursive: true });
       fs.writeFileSync(path.join(pack, 'src', 'content', 'writers.ts'), 'export const otherWriter = {};\n');
       editManifest((manifest) => {
-        manifest.entities = { ...manifest.entities, Memo: 'Memo' };
+        manifest.data = { ...manifest.data, entities: { ...manifest.data?.entities, Memo: null } };
         manifest.content = { ...manifest.content, writers: { Memo: 'src/content/writers.ts#memoWriter' } };
       });
 

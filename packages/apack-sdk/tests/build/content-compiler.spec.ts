@@ -27,17 +27,23 @@ function write(file: string, content: string): void {
 
 const read = (file: string) => JSON.parse(fs.readFileSync(path.join(out, file), 'utf-8'));
 
+it.each(['actions', 'prompts', 'flows'])('refuses a declared %s source that is missing instead of indexing nothing', async key => {
+  await expect(compile({}, { [key]: 'missing' })).rejects.toThrow(`Content "${key}": source path does not exist`);
+  expect(fs.existsSync(path.join(out, CONTENT_INDEX_FILE))).toBe(false);
+});
+
 /** Compiles a pack whose apack.json has these content.formats and content.sources, as apack pack build does */
 async function compile(
   formats: Record<string, unknown>,
   sources: Record<string, unknown>,
-  options: { dependencies?: ReadonlyMap<string, ContentDependency>; importModule?: CompilePackOptions['importModule']; manifest?: Record<string, unknown>; asDatasets?: boolean } = {},
+  options: { recordOutput?: CompilePackOptions['recordOutput']; dependencies?: ReadonlyMap<string, ContentDependency>; importModule?: CompilePackOptions['importModule']; manifest?: Record<string, unknown>; asDatasets?: boolean } = {},
 ) {
   const manifest = { id: 'demo', name: 'Demo', version: '1.0.0', content: { formats, ...(options.asDatasets ? { datasets: sources } : { sources }) }, ...options.manifest } as unknown as PackManifest;
   return compilePack({
     packDir: root,
     outputDir: out,
     importModule: options.importModule,
+    recordOutput: options.recordOutput,
     packConfig: await buildPackConfigFromManifest(manifest, root, { dependencies: options.dependencies }),
   });
 }
@@ -55,12 +61,38 @@ const memosFormat = {
 };
 
 describe('compilePack', () => {
+  it('publishes flow references without changing compiled flow records or their hashes', async () => {
+    write('content/flows/demo.ts', 'export default {}');
+    const flow = { Demo: [{ event: 'manual', initial: 'Greeting', exits: [[]] }] };
+    const step = { type: 'start', kind: 'trigger' as const,
+      trigger: { trackField: 'event', compile: () => ({}), decompile: () => ({}) },
+    };
+    const options: CompilePackOptions = {
+      packDir: root, outputDir: out,
+      packConfig: { name: 'demo', sources: { flows: { kind: 'specialty', path: 'content/flows' } } },
+      importModule: async () => ({ default: flow }),
+      definitions: { steps: [step], artifacts: [], blocks: [] },
+    };
+    await compilePack(options);
+    const before = fs.readFileSync(path.join(out, 'flows.content.json'), 'utf8');
+    await compilePack({ ...options, definitions: { steps: [{ ...step, dsl: { references: { initial: 'prompts' } } }], artifacts: [], blocks: [] } });
+    expect(fs.readFileSync(path.join(out, 'flows.content.json'), 'utf8')).toBe(before);
+    expect(read(CONTENT_INDEX_FILE).entries[0].references).toEqual([
+      { item: 'Demo', path: 'Demo[0].initial', kind: 'static', target: { key: 'prompts', item: 'Greeting' } },
+    ]);
+  });
+
   it("compiles an entry with its format's settings, copies media and indexes it", async () => {
     write('content/memos/first.md', '---\ntitle: 2024\npinned: true\n---\nHello ![pic](media/pic.png)\n');
     write('content/memos/group/index.md', '---\ntitle: Group\n---\nGroup body\n');
     write('content/memos/group/child-memo.md', 'Child body\n');
     write('content/memos/media/pic.png', 'PNG');
-    const result = await compile({ memos: memosFormat }, { memos: { path: 'content/memos', format: 'memos' } });
+    const expected = new Map<string, Buffer>();
+    const result = await compile({ memos: memosFormat }, { memos: { path: 'content/memos', format: 'memos' } }, {
+      recordOutput(file, bytes) { expected.set(path.relative(out, file), Buffer.from(bytes)); },
+    });
+    expect([...expected.keys()].sort()).toEqual(['content.json', 'media/memos/pic.png', 'memos.content.json']);
+    for (const [file, bytes] of expected) expect(fs.readFileSync(path.join(out, file))).toEqual(bytes);
 
     const { records } = read('memos.content.json');
     expect(records.map((r: { title: string }) => r.title)).toEqual(['2024', 'Group']);

@@ -197,4 +197,4 @@ JSON exports preserve the entity-based structure: `media/{entityId}/{filename}`.
 | `parseMarkdownSections(body)` | `library/be/utils.ts` | Parse `<!-- section:TYPE -->` markers into `ContentSection[]` |
 | `serializeContentToMarkdown(sections)` | `library/be/utils.ts` | `ContentSection[]` → markdown with section markers |
 | `importCompiledContent(options)` | `@apackdev/sdk/utils` (`utils/apply.ts`) | Run the registered appliers over a compiled content directory |
-| `computeManifestContentRevision(dir, artifacts)` | `@apackdev/host/packs/runtime` (`apply.ts`, internal) | SHA-256 hash of a boot apply's compiled files |
+| `computeManifestContentRevision(dir, files)` | `@apackdev/host/packs/runtime` (`apply.ts`, internal) | SHA-256 hash of a boot apply's compiled files |

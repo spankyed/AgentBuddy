@@ -19,10 +19,6 @@
     "forceConsistentCasingInFileNames": true,
     "resolveJsonModule": true,
     "outDir": "dist",
-    "baseUrl": ".",
-    "paths": {
-      "@/*": ["src/*"]
-    },
     // tsup bundles the server as ESM
     "moduleResolution": "bundler",
     "module": "esnext"

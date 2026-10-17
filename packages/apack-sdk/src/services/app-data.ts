@@ -13,8 +13,7 @@ export interface BackupSummary {
 }
 
 /**
- * The app's stored data as a whole: reset it, back it up, restore a backup, and whether the user finished
- * onboarding (the app's own state, which the host keeps). The host implements it.
+ * Whole-app data administration: reset it, back it up and restore a backup. The host implements it.
  */
 export interface AppDataService {
   /**
@@ -22,10 +21,6 @@ export interface AppDataService {
    * too), then runs each pack's init hook, the boot apply and the app migrations. Onboarding starts over
    */
   reset(): Promise<void>;
-  /** Whether the user finished onboarding */
-  hasOnboarded(): boolean;
-  /** Records that the user finished onboarding: the app opens without its onboarding from then on */
-  completeOnboarding(): void;
   /** Copies the chosen databases (and media, with the primary database) into a new backup directory under `targetPath`; returns its path */
   exportBackup(targetPath: string, name?: string, databases?: BackupDatabase[]): Promise<string>;
   /**

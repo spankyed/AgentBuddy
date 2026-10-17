@@ -269,6 +269,18 @@ describe('configuredHostPackagesDir', () => {
   const betaPackages = (version: string) =>
     path.join(dirs.cache, 'apps', 'beta', version, 'apack Beta.app', 'Contents', 'Resources', 'app', 'packages');
 
+  it('requires an existing compatible beta for read-only package inspection', async () => {
+    const options = { ...opts({ APACK_HOST: 'beta' }), readOnly: true };
+    await expect(configuredHostPackagesDir(options)).rejects.toThrow('no compatible cached build');
+    expect(beta).not.toHaveBeenCalled();
+    expect(fs.existsSync(dirs.cache)).toBe(false);
+    cacheBeta('0.4.0-beta.2');
+    await expect(configuredHostPackagesDir(options)).resolves.toEqual({
+      dir: betaPackages('0.4.0-beta.2'), label: 'apack Beta 0.4.0-beta.2',
+    });
+    expect(beta).not.toHaveBeenCalled();
+  });
+
   it('uses APACK_HOST, then the checkout behind the pack', async () => {
     const derived = makeCheckout('derived');
     expect((await configuredHostPackagesDir(opts({ APACK_HOST: '/env-root' }, derived)))?.dir).toBe('/env-root/packages');

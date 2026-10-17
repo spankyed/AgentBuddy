@@ -1,18 +1,30 @@
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { _declarationRevision } from '@apackdev/sdk/build';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import * as os from 'node:os';
 import { execFileSync } from 'node:child_process';
 import { PACK_SNAPSHOT_FORMAT } from '@apackdev/sdk/build';
-import { PACK_LAYOUT } from '@apackdev/host/packs';
+import { PACK_LAYOUT, sealPackBuild } from '@apackdev/host/packs';
 
 let tmpDir: string;
+let previousEnvironment: { channel?: string; userDataDir?: string; hostRoot?: string; hostExecutable?: string };
 
 beforeEach(() => {
   tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'pack-cli-test-'));
+  previousEnvironment = { channel: process.env.APACK_CLI_CHANNEL, userDataDir: process.env.APACK_USER_DATA_DIR, hostRoot: process.env.APACK_HOST_ROOT, hostExecutable: process.env.APACK_HOST_EXECUTABLE };
+  process.env.APACK_CLI_CHANNEL = 'test';
+  process.env.APACK_USER_DATA_DIR = path.join(tmpDir, 'app-data');
+  process.env.APACK_HOST_ROOT = path.join(tmpDir, 'host');
+  delete process.env.APACK_HOST_EXECUTABLE;
+  fs.mkdirSync(path.join(tmpDir, 'host', 'packages'), { recursive: true });
 });
 
 afterEach(() => {
+  for (const [key, value] of [['APACK_CLI_CHANNEL', previousEnvironment.channel], ['APACK_USER_DATA_DIR', previousEnvironment.userDataDir], ['APACK_HOST_ROOT', previousEnvironment.hostRoot], ['APACK_HOST_EXECUTABLE', previousEnvironment.hostExecutable]] as const) {
+    if (value === undefined) delete process.env[key];
+    else process.env[key] = value;
+  }
   fs.rmSync(tmpDir, { recursive: true, force: true });
 });
 
@@ -25,7 +37,8 @@ function writeBuild(dir: string, id: string) {
   fs.mkdirSync(path.join(dir, 'dist', 'runtime'), { recursive: true });
   fs.mkdirSync(path.join(dir, 'dist', 'types'), { recursive: true });
   fs.writeFileSync(path.join(dir, 'dist', 'runtime', 'index.cjs'), `module.exports = { registration: { id: ${JSON.stringify(id)} } };`);
-  fs.writeFileSync(path.join(dir, 'dist', PACK_LAYOUT.snapshot), JSON.stringify({ format: PACK_SNAPSHOT_FORMAT }));
+  fs.writeFileSync(path.join(dir, 'dist', PACK_LAYOUT.snapshot), JSON.stringify({ declarationRevision: _declarationRevision(JSON.parse(fs.readFileSync(path.join(dir, 'apack.json'), 'utf-8'))), format: PACK_SNAPSHOT_FORMAT, manifest: JSON.parse(fs.readFileSync(path.join(dir, 'apack.json'), 'utf-8')), types: { entities: {}, relKinds: {} }, entityDestinations: {}, facades: {} }));
+  sealPackBuild(path.join(dir, 'dist'), JSON.parse(fs.readFileSync(path.join(dir, 'apack.json'), 'utf8')));
 }
 
 describe('pack CLI: init', () => {
@@ -144,7 +157,7 @@ describe('pack CLI: install', () => {
     await expect(install([noManifest])).rejects.toThrow(/No apack.json/);
   });
 
-  it('symlinks in source directory are skipped during copy', async () => {
+  it('refuses symlinks in built output before replacing the installed copy', async () => {
     const { installPackFromLocal } = await import('@apackdev/host/packs');
 
     const sourceDir = path.join(tmpDir, 'symlink-pack');
@@ -155,6 +168,10 @@ describe('pack CLI: install', () => {
       version: '1.0.0',
     });
     writeBuild(sourceDir, 'symlink-test');
+    const packsDir = path.join(tmpDir, 'packs');
+    const installed = await installPackFromLocal(sourceDir, packsDir);
+    const entry = path.join(installed.dir, PACK_LAYOUT.runtimeEntry);
+    const before = fs.readFileSync(entry, 'utf8');
 
     const outsideFile = path.join(tmpDir, 'secret.txt');
     fs.writeFileSync(outsideFile, 'secret data');
@@ -162,12 +179,11 @@ describe('pack CLI: install', () => {
 
     expect(fs.lstatSync(path.join(sourceDir, 'dist', 'runtime', 'link.txt')).isSymbolicLink()).toBe(true);
 
-    const packsDir = path.join(tmpDir, 'packs');
-    const result = await installPackFromLocal(sourceDir, packsDir);
-
-    const installedDir = result.dir;
-    expect(fs.existsSync(path.join(installedDir, 'runtime', 'index.cjs'))).toBe(true);
-    expect(fs.existsSync(path.join(installedDir, 'runtime', 'link.txt'))).toBe(false);
+    const beforePlace = vi.fn();
+    await expect(installPackFromLocal(sourceDir, packsDir, { beforePlace })).rejects.toThrow('symbolic link: runtime/link.txt');
+    expect(beforePlace).not.toHaveBeenCalled();
+    expect(fs.readFileSync(entry, 'utf8')).toBe(before);
+    expect(fs.existsSync(path.join(installed.dir, 'runtime', 'link.txt'))).toBe(false);
   });
 
   it('installs from a zip file', async () => {
@@ -245,7 +261,7 @@ it('pack installation refuses removed or misspelled target flags before changing
   const { install } = await import('../../src/commands/pack-install');
   const { uninstall } = await import('../../src/commands/pack-uninstall');
   for (const flag of ['--dev', '-b', '--channel', '--typo']) {
-    await expect(install(['demo', flag])).rejects.toThrow('Usage');
+    await expect(install(['demo', flag])).rejects.toThrow(/Usage|not a pack host selector/);
     await expect(uninstall(['demo', flag])).rejects.toThrow('Usage');
   }
 });

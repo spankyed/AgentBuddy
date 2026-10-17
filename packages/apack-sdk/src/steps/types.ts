@@ -150,7 +150,7 @@ export interface StepRun {
 
 export interface RuntimeServices {
   getFlowActor: (flowTNodeId: EARS.EntityId) => AnyActorRef | undefined;
-  getAppServices: () => unknown;
+  servicesForAction: import('../services/index.ts').PackServiceAccess['servicesForAction'];
 }
 
 export interface ExecutionContext {
@@ -208,11 +208,9 @@ export interface StepRuntimeFacet {
 
 /**
  * What a node of this step type is, as against how it is drawn: how it is labelled and what fields it
- * starts with. **Both processes read it** — the backend writes it onto a new entity
- * (`stepRegistry.createNodeDefaults`, reached from `flowRepository.createNode`) and the renderer applies it
- * to the node it draws optimistically — so a pack declares it in a module neither Vue nor lucide reaches,
- * and codegen emits it into both registrations. The frontend facet beside it holds the icon and the
- * components, which is why it cannot hold this.
+ * starts with. Declared inline at `extensions.steps.<type>.node`; codegen carries the same data into both
+ * registrations. The backend writes it onto a new entity (`stepRegistry.createNodeDefaults`, reached from
+ * `flowRepository.createNode`) and the renderer applies it to the node it draws optimistically.
  */
 export interface StepNodeFacet {
   /** The label a new node starts with, and what the canvas shows */
@@ -245,10 +243,8 @@ export interface StepLayoutDescriptor {
 export interface StepFEFacet {
   nodeConfig: StepNodeConfig;
   colorKey?: string;
-  /** Vue component refs: the renderer's pack store (`@apackdev/host/fe`) fills them from `loadComponents` when the pack registers. */
+  /** Component bindings generated from the declared slots and their loading modes. */
   components?: { node?: unknown; form?: unknown };
-  /** Lazy factory that returns Vue components. Runs in FE context only. */
-  loadComponents?: () => { node?: unknown; form?: unknown };
   /** Custom ELK layout descriptor (height/ports). Omit → default single-input single-output. */
   layout?: StepLayoutDescriptor;
   /** Handle prefix for multi-output steps (e.g. 'branch' → 'branch-0', 'branch-1'). */

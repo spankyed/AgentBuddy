@@ -14,7 +14,7 @@ export interface DevPackFrontend {
  * comma-separated, relative to `cwd`) — which is how a pack outside the workspace, `tests/packs/*` among
  * them, joins the same loop.
  *
- * It asks nothing about `builtIn`. A pack is eligible here because its source is on this disk, which is
+ * It grants no manifest shipping privilege. A pack is eligible here because its source is on this disk, which is
  * the only thing a dev server can act on.
  */
 export function discoverDevPackFrontends(

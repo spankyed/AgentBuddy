@@ -25,17 +25,24 @@ name: CI
 
 on:
   workflow_dispatch:
+    inputs:
+      compiler_windows:
+        description: Run only the focused Windows compiler checks
+        type: boolean
+        default: false
   # push:
   #   branches: [master]
   # pull_request:
   #   branches: [master]
 
 concurrency:
-  group: ci-${{ github.ref }}
-  cancel-in-progress: true
+  group: ci-${{ github.ref }}-${{ inputs.compiler_windows && 'compiler-windows' || 'full' }}
+  # Native diagnostic results must finish; full CI still supersedes older runs.
+  cancel-in-progress: ${{ !inputs.compiler_windows }}
 
 jobs:
   check:
+    if: ${{ !inputs.compiler_windows }}
     runs-on: macos-14
     timeout-minutes: 25
 
@@ -64,7 +71,7 @@ jobs:
 
       # Compiled content, snapshot, build/ (content compilers, content runtime) and the backend runtime: read by the
       # content parity, dependent-pack, SDK bridge drift and content runtime tests
-      - name: Build default-setup pack artifacts
+      - name: Build default-setup pack output
         working-directory: packages/default-setup
         run: npx apack pack build
 
@@ -125,6 +132,7 @@ jobs:
   # Builds tests/packs/external-pack with the apack CLI and runs its Playwright
   # suite from the pack dir against the built app — the third-party pack path.
   external-pack-e2e:
+    if: ${{ !inputs.compiler_windows }}
     runs-on: macos-14
     timeout-minutes: 30
 
@@ -159,3 +167,9 @@ jobs:
           path: |
             tests/packs/external-pack/tests/results/
             tests/packs/external-pack/tests/screenshots/
+
+  compiler-windows:
+    if: ${{ inputs.compiler_windows }}
+    permissions:
+      contents: read
+    uses: ./.github/workflows/compiler-windows.yml

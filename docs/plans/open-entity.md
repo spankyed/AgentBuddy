@@ -1,10 +1,42 @@
-# Opening an entity is one verb, and no caller names a plugin
+# Open entities through declared destinations
 
-Status: planned after complete [discovery without activation](discovery-without-activation.md),
-as ordered by [manifest maturity](manifest-maturity.md). Re-audit the survey against the naming result. The catalog owns declared entity-to-feature destinations; activation binds the
+Status: in progress on the accepted declaration/catalog and actor-readiness contracts. The
+[execution goal](../goals/goal-settings-and-pack-contracts.md#execution-order-and-change-control) owns
+the current order; unrelated compiler/freshness work is not a prerequisite. Re-audit the historical
+survey against current code. The catalog owns declared entity-to-feature destinations; activation binds the
 handler. Keep one `openEntity` verb, but do not implement the old registry lookup as a second inventory.
-The survey below is historical input: current `ReferenceTypeConfig` still has `navigate`, so the claim
-that it was already removed is not a current-code assertion.
+The context survey below is historical. Source `cd9c57de6` removes reference navigation callbacks and
+migrates generic callers; blueprint node revealing retains its separate purpose and remains below.
+
+Build producer `94148c9e0` and catalog/admission `479c75e01` are implemented. Codegen materializes
+exported `Contract.opens` into snapshot data; native composition supplies the same map explicitly.
+Catalog entries project claims without activation. Enabled conflicts refuse before executable imports,
+enablement persistence and catalog publication; disabled declarations remain visible. Native binding
+eligibility compares accepted claims, while installed bindings use their sealed build identity. Window
+frames validate target membership before publication.
+
+Routing checkpoint `cd9c57de6` implements `openEntity`, typed guards, the host existence query and
+one child actor owning cancellation, final validation and delivery. The existing readiness queue
+carries only a token. All six feature adapters handle the event directly; reference callbacks are gone.
+The harness captures verified destinations once per file, and CLI inspection exposes the compiled map.
+Sixty shell checks, including missing-actor refusal, and the real external reference click pass.
+
+Feature checkpoint `831221020` uses the explicit `NODE.REVEAL { flowId, nodeId }` operation. Flows owns its
+matching reply and retires it on supersession or navigation; graph identity also guards async layout
+delivery. Library accepts document data only in the editor for its current target; replies do not
+navigate. All 99 affected Flows/Library tests and pack types pass. The strict checkpoint stopped at an
+authoring read of a missing runtime source map during an overlapping default-pack build; the default
+build passed. See the [checkpoint evidence](../evidence/settings-and-pack-contracts.md#feature-navigation-checkpoint-2026-10-16).
+
+Acceptance checkpoint `95ff95ab3` covers all six real handlers, including unrelated entity types,
+nested notes, unlisted threads, superseded replies, abandoned editors and cached selection. Actions
+and Prompts retire pending selection calls on detail exit/deactivation. The shell also cancels on
+breadcrumb/Back/Forward input. All 105 shell and 159 affected feature cases pass. A real Electron case
+imports a thread, reloads its persisted message, clicks the rendered reference and verifies the note's
+title and content in another feature; this closes the stored-message gap left by the preview test.
+See [acceptance evidence](../evidence/settings-and-pack-contracts.md#entity-navigation-acceptance-checkpoint-2026-10-16).
+Implementation and local acceptance are complete; the execution goal retains the failed authoring
+checkpoint and final committed-source strict gate. Do not archive this plan until final validation.
 
 ## Context
 
@@ -105,35 +137,49 @@ second intent in this tree. If one arrives it is `OPEN_ENTITY { id, intent? }`, 
 own internal event; what changes is that nothing outside sends them. Dropping them from the published
 `Contract.inbox` is a follow-on once every external sender is converted, not part of this.
 
+### Blueprint node revealing
+
+Opening a flow entity and revealing a particular node within it are separate operations. The Brain's
+blueprint link must retain both the flow and node target. Keep this as an explicit Flows operation;
+addressing that feature for node revealing is intentional, rather than a generic entity-opening caller.
+Do not force the coordinates into `OpenEntity`, invent a node destination, or discard the node reveal.
+
+Replace the caller's timer with feature-owned coordination: load the requested flow, match the response
+to the current request, and reveal its node only once that graph is available. A newer navigation cancels
+the pending reveal; late responses cannot reveal a node in another graph or another window. An already
+loaded matching graph can reveal immediately. Cover delayed loading, supersession and the loaded case.
+Implemented by `NODE.REVEAL` and the feature-owned pending flow request. `FLOW_SELECTED` replies only
+to the asking window; `FLOW_REFRESHED` remains a notification for the current graph. The Brain caller
+no longer sequences navigation with a timer. Delayed loading, supersession, deactivation, cached graphs,
+missing nodes, startup metadata and stale layout delivery have focused regression coverage.
+
 ## What this deletes
 
 - `ReferenceTypeConfig.plugin` and `ReferenceTypeConfig.navigate` — a feature publishing how to open its
-  things is the thing being removed, and the config shrinks to what it is for: `protocol`, `category`,
-  `icon`, `svgElements`. The click handler in `extensions/tiptap/reference-node.ts` becomes
+  things is the thing being removed, and the config shrinks to what it is for: `category`, `icon`, `svgElements`. The click handler in `extensions/tiptap/reference-node.ts` becomes
   `openEntity(node.attrs.refId)`.
 - The six `navigate` closures, which are each `openPlugin(<own plugin>, { type: <constant>, <field>: refId })`
   with no branching — six declarations, none of which needed a function.
 
-The original branch survey reported these fields removed. Re-audit the implementation: `navigate`
-exists in the current reference type. Remove obsolete fields only as their callers migrate.
+The historical survey below predates this migration. `navigate` and its runtime binding are removed
+in `cd9c57de6`; the click handler now lives in `apack-ui/src/components/tiptap/reference-node.ts`.
 
 ## Phases
 
 Each leaves the tree green and is landable alone.
 
-**Phase 0 — settle the short-code hazard.** `openEntity` takes an entity id, and the tiptap markdown-parse
-path may not hold one. `reference-node.ts`'s `getAttrs` does `refId: href.slice(protocol.length + 3)`, i.e.
-the **short code**, and `thread` and `document` have short codes distinct from their ids (`note`, `task`,
-`tasklist` and `folder` use the id for both). Nothing resolves one: `SELECT_THREAD`'s id passes straight to
-`VIEW_THREAD` (`features/threads/fe/state.ts:399`), and a thread's short code is `T-<count>`, which
-`entityTypeOf` reads as entity type `T`.
+**Phase 0 — preserve canonical reference identity.** The audit confirmed a reachable Markdown
+round-trip bug: the picker inserted an entity id but serialization wrote its short code into href.
+Use the percent-encoded entity id as the canonical URL target and decode exactly once when parsing.
+Labels and short codes remain presentation. HTML can retain the display code as an attribute;
+Markdown preserves its visible label. Duplicate codes must retain distinct ids, malformed/empty
+URLs must not become references, and an updated node view must navigate its new target.
 
-This is **pre-existing** — today's `navigate(refId)` has the same exposure — so Phase 0 establishes whether it
-is reachable (does stored content round-trip through markdown, or through ProseMirror JSON which keeps
-`refId`?). Fix reachable short-code resolution before migrating those callers; test missing and ambiguous
-references explicitly. Static reference descriptors cannot resolve user-created short codes by themselves. The design does not depend on the answer: `openEntity` takes an
-entity id, and resolving a short code to one is the reference system's job, on the side of the boundary that
-knows short codes exist.
+Do not add a lookup or old-format fallback to reinterpret saved short-code URLs. There are no users
+requiring that compatibility path. Explicit user entry of a short code is a separate operation,
+which must resolve ambiguity before calling openEntity; current parsing does not introduce it.
+See the [identity audit and selected correction](#reference-identity-prerequisite-audit-and-correction-2026-10-13).
+The primitive still handles missing entities and unavailable destinations usefully in Phase 1.
 
 **Phase 1 — the primitive.** `entityTypeOf` promoted to `@apackdev/ears`' barrel; `OpenEntity` in
 `PLUGIN_EVENT_TYPES`; `entityIs` beside `targetIs`; `openEntity` in `apack-sdk/src/fe/navigation.ts`;
@@ -178,7 +224,7 @@ the rule "a feature declares the entities it is the home of, not the entities it
 
 ## Risks
 
-**The snapshot format is the artifact contract.** Coordinate this change with the discovery descriptor
+**The snapshot format is the build contract.** Coordinate this change with the discovery descriptor
 under the current format rules. The archived manifest-redesign goal is not an independent workstream;
 do not force a release/version bump merely because its old plan prescribed one.
 
@@ -188,8 +234,8 @@ copy destination facts into both manifest flags and contract types. Normalize th
 readers; active handlers bind to that account.
 
 **Phase 4 changes reference navigation.** Re-audit existing coverage rather than assume the historical
-survey is current. Prove short-code resolution, stored-reference round trips and catalog/readiness routing
-before converting callers. Remove `navigate` bindings only after every supported caller migrates.
+survey is current. Prove canonical entity-ID round trips and catalog/readiness routing before converting
+callers. Labels and short codes remain presentation; no short-code lookup or old-format fallback is required. Remove `navigate` bindings only after every supported caller migrates.
 
 The resulting navigation API can support lazy activation if that deferred work is resumed: a destination is known before it
 runs, but opening still waits for the current handler to be ready.
@@ -201,3 +247,143 @@ runs, but opening still waits for the current handler to be ready.
 - Not a change to how a feature opens its own things internally. `NOTE.OPEN` keeps working and keeps its name.
 - Not a replacement for `untypedOpenPlugin`, which stays the door for opening a *plugin* — a navigation
   rather than a thing.
+
+
+### Reference identity prerequisite audit and correction (2026-10-13)
+
+The short-code hazard is reachable: the reference picker inserts both the entity id and short code,
+but ReferenceNode serializes its href using shortCode; Threads input reads the Markdown serializer
+when sending a message. Reparsing then assigns that URL target to refId, and navigation sends it as
+an entity id. Threads and documents therefore lose their real targets on this supported route.
+
+Use stable entity ids as canonical URL targets and keep human labels/short codes as presentation.
+Percent-encode the target and decode once; malformed/empty targets must not create a reference node.
+HTML retains an optional short-code data attribute; Markdown keeps its visible label. Do not guess
+ids from display text, consult a mutable list to interpret saved links, or add an old short-code read
+path. Duplicate short codes then have no bearing on target identity. Explicit user entry of a short
+code is a separate resolver operation and is not silently introduced by reference parsing.
+
+Audit also found that a node view's update changes its displayed label/icon while its click closure
+still uses the original node. Retain the latest accepted node for click delivery. Unknown reference
+types and missing ids must not default to thread navigation. Escape Markdown labels through the
+serializer's text method, preserving canonical targets for punctuation-bearing labels/ids.
+
+Implement and test this prerequisite through actual Tiptap HTML/Markdown round trips and node-view
+updates before moving the six navigation callbacks to entity opening. Test same-code/different-id
+references, encoded ids, malformed URLs, missing ids, unknown types and a changed target in an existing
+node view. This fixes the current writer/parser contract; actual entity destination readiness and
+unavailable/missing-entity results remain required by subsequent phases. No historical conversion,
+compatibility fallback or fake actor is added.
+
+
+The prerequisite implementation now writes encoded entity ids in HTML/Markdown URLs, decodes once,
+keeps HTML display-code attributes, escapes Markdown labels through the serializer and refuses empty
+or malformed targets. Unknown types/missing ids produce plain presentation and no navigation; they
+never default to a thread. Node-view updates retain the latest accepted node for click delivery.
+
+Eight tests run actual Tiptap parsing/serialization and DOM node views for thread/document round trips,
+same-code/different-id targets, encoded punctuation, malformed URLs, missing ids/unknown types and
+in-place updates. Descriptor callbacks are test stand-ins, so this proves delivered identity rather
+than full destination readiness. Typechecking passes with a narrow typed Markdown storage adapter.
+Short-code serialization makes four cases fail; retaining the stale node makes the update case fail.
+Exact source is restored after each mutation. Strict validation remains required before commit.
+
+The pack declares its editor/DOM test dependencies. The offline install initially selected newer cached
+Tiptap releases; the original locked package resolutions were restored, with only dev-dependency
+metadata added. Tests retain Node's binary globals and install DOM globals locally, avoiding the
+repository's documented jsdom/esbuild realm conflict. There are no runtime compatibility reads or
+production-data changes. Declarative references/categories/providers, entity routing and remaining
+readiness/stale-delivery work remain required by the full goal.
+
+
+Strict checkpoint validation passes all 30 gates in 491.1 seconds (none cached), including the full
+unit/integration suites, actual external-pack app acceptance, smoke and both packaged-authoring halves.
+Evidence: `node_modules/.cache/apack-chain/runs/2026-10-14T00-51-53Z-23984`;
+`/private/tmp/apack-reference-identity-strict.log`. This verifies the canonical reference writer/parser
+prerequisite and retains the full later routing/discovery scope. Descriptor navigation callbacks still
+exist; actual entity destination lookup, unavailable/missing-entity outcomes and stale delivery remain
+unfinished. No plan is archived and this is not final goal-wide strict --all acceptance.
+
+
+### Reference wire identity correction (2026-10-14)
+
+The delayed-catalog audit disproved a hidden assumption in Phase 0: a URI whose scheme is defined by
+pack metadata cannot be parsed independently of that metadata. With the catalog empty, real Tiptap
+parsing turns `[Saved memo](memo://Memo-before-catalog)` into `Saved memo`; the target is already gone
+when declarations arrive. The failing assertion is recorded in
+`/private/tmp/apack-reference-delayed-catalog-repro.log`. Separately, the common UI Link configuration
+still lists `note`, `thread` and `doc` explicitly. This is runtime-discovery coupling in stored identity.
+
+Use one internal reference format: `apack-ref://<encoded-reference-type>/<encoded-entity-id>`.
+Both segments are percent-encoded independently and decoded exactly once. Parsing requires two
+nonempty segments and refuses malformed encoding/structure. This scheme identifies document
+references, not a production/beta/preview app selector or an operating-system launch request.
+Reference type remains presentation identity; entity id remains the canonical navigation target.
+Do not infer entity identity from labels/short codes or allow declaration data to reinterpret the id.
+
+Put the pure formatter/parser and their target type in the SDK reference entry. The editor's existing
+`reference` node keeps `refType`, `refId`, `label` and `shortCode`; no new provisional node, feature, actor
+or data entity is needed. Its HTML and Markdown parse/serialization must preserve valid targets while
+metadata is loading, unavailable or absent. Unknown presentation types stay inert until eligible;
+node-view declaration subscriptions can update icons in place without reparsing content, changing
+selection/history or replaying navigation. Ordinary web/mail links retain the existing Link validator.
+
+Replace the per-type URI scheme contract outright. Remove reference `protocol` from declarations and
+accepted bindings, `referenceProtocols` provenance/collision claims, `findReferenceTypeByProtocol`,
+and the common UI's hardcoded reference schemes. Retain qualified type/category ownership and
+collision refusal. Update every manifest, fixture, schema, API report, generator and public guide in
+the same checkpoint. No old-scheme aliases, dual parsing, saved-format conversion or compatibility
+fallback. Developer backup conversion, if needed, remains a separate explicit operation.
+
+Required proof: pure Unicode/reserved-character round trips and malformed target refusals; actual
+HTML/Markdown parsing before first catalog delivery; serialization after declarations disappear;
+metadata arrival updating an existing node without document/selection/history changes; navigation
+remaining unavailable until matching acceptance; ordinary web/mail links unaffected; and updated real
+external pack reference/picker acceptance. Mutation-check target retention and parser guards. Run the
+strict checkpoint chain with its corrected shipped-pack inputs and record the committed evidence.
+
+This replaces the Phase 0 per-type-scheme parsing/writing design, not the entity-opening primitive.
+Phase 4 still supplies checked `opens`, canonical-id destination resolution, useful missing/disabled
+results and stale-window/revision refusal. The URI alone neither activates nor authorizes a destination.
+
+
+### Reference identity implementation (2026-10-14)
+
+The pure SDK framework formatter/parser now implements the internal URI above; the frontend reference
+entry reexports that same implementation because its shared entry can be loaded by pack frontends.
+Neither formatter nor parser reads a host or catalog. Encoding also escapes Markdown URL delimiters
+such as parentheses, preserving ids across editor serialization and backend link extraction.
+
+The existing node parses and serializes type/id directly, keeping unknown targets inert rather than
+dropping them. Metadata arrival updates geometry through the existing view subscription without
+changing document state, selection/history or replaying navigation. Static metadata still supplies
+presentation and accepted bindings still gate navigation. Per-type protocols, provenance/claims/lookup
+and the shared UI hardcoded list are removed outright. The obsolete inline note-scheme click branch
+is removed; sub-document blocks remain a separate existing contract for the entity-navigation phase.
+
+Note backlink extraction uses the common parser and the notes feature's shared presentation mapping,
+including tasks and task lists. Authored content examples and their independent expectations are
+migrated; goldens are regenerated through `content-parity:update`, never edited by hand. The first
+content run caught the old URI syntax in the independent change-tracking oracle; that oracle now
+expects the current format. Templates, public schema/reports and the external reference fixture agree.
+
+Focused proof covers pure encoded identities, malformed/foreign URI refusal, cold HTML/Markdown
+parse/write, absent declarations after load, unchanged document state and node identity on publication,
+readiness-gated navigation, ordinary web/mail links, and encoded backend backlinks. Removing the URI
+structure guard or reintroducing declaration-gated serialization fails named regression assertions.
+Full strict and real external acceptance are required before recording a validated checkpoint.
+
+The parsing node is still provided by the default pack's editor extension. The broader native/editor
+discovery audit must also settle intrinsic reference-schema availability when that extension is absent;
+this checkpoint proves absence of reference-provider metadata, not absence of the parser itself.
+Entity opening, checked `opens`, unavailable destinations and stale delivery remain due as above.
+
+
+The reference identity checkpoint passed all 30 strict gates in 545.8 seconds with no cached gates,
+including 4,405 host tests, 855 pack tests (two existing skips), 639 integration tests, fresh real
+external-reference/default-fork Electron acceptance, smoke and both packaged-authoring halves.
+The external reference/picker case passes with the new URI. Schema and three reviewed SDK API
+reports agree; content parity passes all 145 checks after deliberate golden regeneration.
+Evidence: `node_modules/.cache/apack-chain/runs/2026-10-14T04-44-15Z-64383`;
+`/private/tmp/apack-reference-wire-strict.log`. The intrinsic editor-schema ownership and remaining
+whole-goal work above are still required.

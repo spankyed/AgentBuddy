@@ -4,6 +4,8 @@
 
 ```ts
 
+import { EARS } from '@apackdev/ears';
+
 // @public
 export const answersCall: (event: {
     [key: string]: unknown;
@@ -179,10 +181,16 @@ export function onConnected(callback: () => void): () => void;
 export function onIncoming(callback: (message: Message) => void): () => void;
 
 // @public
+export type OpenEntity = {
+    type: 'OPEN_ENTITY';
+    id: EARS.EntityId;
+};
+
+// @public
 export type OutgoingEventsOf<C> = ContractOutgoing<C>;
 
 // @public
-export const PLUGIN_EVENT_TYPES: readonly ["FEATURE_SETTINGS_UPDATED"];
+export const PLUGIN_EVENT_TYPES: readonly ["FEATURE_SETTINGS_UPDATED", "OPEN_ENTITY"];
 
 // @public
 export type PluginEvents = {

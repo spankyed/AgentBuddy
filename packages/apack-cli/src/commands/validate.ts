@@ -1,98 +1,113 @@
+import { _packServiceSelection, _parseServiceReference } from '@apackdev/sdk/framework';
+import { HOST_PACK_ID } from '@apackdev/sdk/ids';
 import * as path from 'node:path';
-import { generatePackFiles, validateManifest, validateFeatures } from '@apackdev/sdk/build';
-import { resolveDep } from './fetch-deps';
-import { resolveDeps } from './generate';
+import {
+  generatePackFiles, packValidation, validateManifest, validatePackSources,
+  type PackDiagnostic, type PackValidation, type SkippedPackCheck,
+} from '@apackdev/sdk/build';
+import { dependencyTypes, type ResolvedDeps } from './generate';
+import { inspectDependencies, type DependencyInspection } from '../build/dependency-inspection.ts';
 import { findPackRoot, readManifest } from '../utils';
 import { packRuleProblems, PACK_RULES } from '../build/pack-rules.ts';
 import { errorMessage } from '@apackdev/sdk/utils/pure';
 
-/**
- * Warnings only: an unresolved dependency is fixable with "apack pack fetch-deps", and `apack pack build`
- * is what refuses to build without it.
- */
-async function validateDeps(root: string): Promise<string[]> {
-  let deps: Record<string, string> | undefined;
-  try {
-    // A missing or unparsable manifest is already reported by validateManifest
-    deps = readManifest(root).dependencies;
-  } catch {
-    return [];
-  }
-  if (!deps) return [];
+/** Authoring checks are read-only; unresolved dependencies leave a useful but incomplete report. */
+export async function validatePack(root: string): Promise<PackValidation & { dependencies: DependencyInspection[] }> {
+  const manifestResult = validateManifest(path.join(root, 'apack.json'));
+  const diagnostics: PackDiagnostic[] = [...manifestResult.diagnostics];
+  const skippedChecks: SkippedPackCheck[] = [];
+  let packId: string | undefined;
+  let dependencies: DependencyInspection[] = [];
 
-  const warnings: string[] = [];
-  for (const [depId, depValue] of Object.entries(deps)) {
-    try {
-      const resolved = await resolveDep(root, depId, depValue);
-      if (!resolved) warnings.push(`Dependency "${depId}" could not be resolved — run "apack pack fetch-deps"`);
-    } catch (err) {
-      // Found only in builds this CLI can't use: the message names each one and why
-      warnings.push(errorMessage(err));
+  if (manifestResult.status === 'valid') {
+    const manifest = readManifest(root);
+    packId = manifest.id;
+    const sources = validatePackSources(root, manifest);
+    diagnostics.push(...sources.diagnostics);
+    let resolved: ResolvedDeps | undefined;
+    const inspection = await inspectDependencies(root, manifest.dependencies);
+    dependencies = inspection.entries;
+    const failed = dependencies.filter(entry => entry.status !== 'resolved');
+    if (failed.length) {
+      const reason = failed.map(entry => `${entry.id} (${entry.spec}): ${entry.problem}`).join('; ');
+      diagnostics.push({
+        code: 'dependency.unresolved', severity: 'warning', packId, path: ['dependencies'],
+        message: reason, suggestion: 'Run "apack pack fetch-deps"; build linked dependencies first.',
+      });
+      skippedChecks.push({ check: 'dependencies', reason });
+    } else resolved = dependencyTypes(inspection.files);
+
+    // Required APIs are declaration data: invalid own source must not hide a provider error.
+    const requiredProviders = (manifest.consumes?.services ?? []).map(ref => _parseServiceReference(ref).packId)
+      .filter(id => id !== manifest.id && id !== HOST_PACK_ID);
+    if (requiredProviders.some(id => !inspection.files.has(id))) {
+      skippedChecks.push({ check: 'consumed-services', reason: 'Requires local declarations for the requested service providers.' });
+    } else {
+      try {
+        _packServiceSelection({ ...manifest, services: manifest.extensions?.services }, id => {
+          const declaration = inspection.files.get(id)?.snapshot.manifest;
+          return declaration && { ...declaration, services: declaration.extensions?.services };
+        });
+      } catch (error) {
+        diagnostics.push({ code: 'consumed-services.invalid', severity: 'error', packId,
+          path: ['consumes', 'services'], message: errorMessage(error) });
+      }
+    }
+
+    if (sources.status !== 'valid' || !resolved) {
+      skippedChecks.push({ check: 'codegen', reason: 'Requires valid declared sources and resolved dependencies.' });
+    } else {
+      try {
+        // Generates in memory: checks exports, contracts and content without writing generated files.
+        await generatePackFiles(manifest, { packRoot: root, depTypes: resolved.depTypes, depSnapshots: resolved.depSnapshots });
+      } catch (err) {
+        diagnostics.push({ code: 'codegen.failed', severity: 'error', packId, path: [], message: errorMessage(err) });
+        skippedChecks.push({ check: 'remaining-codegen', reason: 'Code generation stopped at its first error.' });
+      }
+    }
+  } else {
+    for (const check of ['declared-sources', 'dependencies', 'codegen', 'source-rules']) {
+      skippedChecks.push({ check, reason: 'Requires a valid manifest.' });
+    }
+    return { ...packValidation(diagnostics, skippedChecks), dependencies };
+  }
+
+  // Independent source rules still run when other checks fail.
+  for (const [key, found] of packRuleProblems(root)) {
+    const rule = PACK_RULES.find(candidate => candidate.key === key);
+    for (const problem of found) {
+      diagnostics.push({
+        code: `rule.${key}`, severity: 'error', packId, path: [],
+        message: `${problem}  (${key}: ${rule?.rule ?? ''})`,
+      });
     }
   }
-  return warnings;
+  return { ...packValidation(diagnostics, skippedChecks), dependencies };
 }
 
-/**
- * The checks code generation makes (content formats' entities, dependency formats, content writer and service
- * exports, …), run in memory without writing. Skipped while a dependency is unresolved: validateDeps
- * reports that, and these checks need the dependency's manifest. Types that don't resolve (the pack's
- * `@apackdev/sdk` not installed) are a warning, not the pack's error.
- */
-async function validateCodegen(root: string): Promise<{ errors: string[]; warnings: string[] }> {
-  const manifest = readManifest(root);
-  let resolved: Awaited<ReturnType<typeof resolveDeps>>;
-  try {
-    resolved = await resolveDeps(root, manifest.dependencies);
-  } catch {
-    return { errors: [], warnings: [] };
-  }
-  try {
-    generatePackFiles(manifest, { packRoot: root, ...resolved });
-    return { errors: [], warnings: [] };
-  } catch (err) {
-    // Whatever stopped code generation stopped the checks after it too. A pack whose dependencies aren't
-    // installed reads the same as one with a mistake, and always did — the code that claimed otherwise was
-    // reading a value that resolves to `any` when an import fails.
-    return { errors: [errorMessage(err)], warnings: [] };
-  }
-}
-
-export async function validate(_args: string[]) {
+export async function validate(args: string[]) {
+  const unknown = args.filter(arg => arg !== '--json');
+  if (unknown.length) throw new Error(`Unknown option(s): ${unknown.join(', ')}`);
   const root = findPackRoot(process.cwd());
-  console.log(`Validating pack at: ${root}`);
-
-  const manifestPath = path.join(root, 'apack.json');
-  const manifestResult = validateManifest(manifestPath);
-  // Checked against the pack only when the manifest parses: its features[] is what's on disk to check
-  const featureResult = manifestResult.errors.length === 0
-    ? validateFeatures(root, readManifest(root))
-    : { errors: [], warnings: [] };
-  const depWarnings = await validateDeps(root);
-  // Codegen stops at its first problem, so it runs only once the manifest and features check out
-  const codegen = manifestResult.errors.length === 0 && featureResult.errors.length === 0 ? await validateCodegen(root) : { errors: [], warnings: [] };
-
-  // The rules `apack pack build` refuses on, reported here without building: this is also what covers the repo's
-  // fixture packs, which are not npm workspaces and so are reached by no lint script (`build/pack-rules.ts`)
-  const ruleErrors = [...packRuleProblems(root)].flatMap(([key, found]) => {
-    const rule = PACK_RULES.find((candidate) => candidate.key === key);
-    return found.map((problem) => `${problem}  (${key}: ${rule?.rule ?? ''})`);
-  });
-
-  const errors = [...manifestResult.errors, ...featureResult.errors, ...codegen.errors, ...ruleErrors];
-  const warnings = [...manifestResult.warnings, ...featureResult.warnings, ...depWarnings, ...codegen.warnings];
-
-  if (warnings.length > 0) {
-    console.log('\nWarnings:');
-    for (const w of warnings) console.log(`  ! ${w}`);
+  const report = await validatePack(root);
+  if (args.includes('--json')) {
+    console.log(JSON.stringify(report));
+  } else {
+    console.log(`Validating pack at: ${root}`);
+    for (const [severity, heading, symbol] of [['warning', 'Warnings', '!'], ['error', 'Errors', 'x']] as const) {
+      const issues = report.diagnostics.filter(issue => issue.severity === severity);
+      if (!issues.length) continue;
+      console.log(`\n${heading}:`);
+      for (const issue of issues) {
+        console.log(`  ${symbol} ${issue.message}`);
+        if (issue.suggestion) console.log(`    ${issue.suggestion}`);
+      }
+    }
+    if (report.skippedChecks.length) {
+      console.log('\nSkipped checks:');
+      for (const { check, reason } of report.skippedChecks) console.log(`  - ${check}: ${reason}`);
+    }
+    console.log(report.status === 'valid' ? '\n+ Pack is valid' : `\nValidation ${report.status}.`);
   }
-
-  if (errors.length > 0) {
-    console.log('\nErrors:');
-    for (const e of errors) console.log(`  x ${e}`);
-    console.log(`\nValidation failed with ${errors.length} error(s).`);
-    process.exit(1);
-  }
-
-  console.log('\n+ Pack is valid');
+  if (report.status !== 'valid') process.exit(report.status === 'invalid' ? 1 : 2);
 }

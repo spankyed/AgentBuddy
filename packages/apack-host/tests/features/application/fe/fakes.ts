@@ -2,6 +2,9 @@
 // test loads, storage kept in memory, and records of what the shell reported to the user
 import { vi } from 'vitest';
 import { setup } from 'xstate';
+import type { FeatureRef } from '@apackdev/sdk/ids';
+import type { PluginCatalogEntry } from '../../../../src/packs/catalog.ts';
+import type { PluginFrontendBinding } from '../../../../src/fe/pack-store.ts';
 import type { Message } from '@apackdev/sdk/events';
 import type { Plugin, ShellPanelSizes } from '@apackdev/sdk/fe';
 import type { LoadedPackEntry, ShellClient, ShellConnection, ShellFailure, ShellOptions } from '../../../../src/fe/index.ts';
@@ -19,15 +22,16 @@ export function fakeClient() {
     return connection;
   };
   const mocks = {
+    entityExists: vi.fn<ShellClient['entityExists']>(() => Promise.resolve(true)),
     send: vi.fn<(message: Message) => void>(),
-    packClientReady: vi.fn<(packId: string) => Promise<void>>(() => Promise.resolve()),
+    packClientReady: vi.fn<(packId: string, runtimeRevision: string) => Promise<void>>(() => Promise.resolve()),
     // A test gives only the fields of a loaded pack the shell reads
     loadedPacks: vi.fn<() => Promise<Array<Partial<LoadedPackEntry> & { id: string }>>>(() => Promise.resolve([])),
     describeConnection: vi.fn<() => Promise<string>>(() => Promise.resolve('')),
   };
   const client: ShellClient = {
     ...mocks,
-    loadedPacks: () => mocks.loadedPacks() as Promise<LoadedPackEntry[]>,
+    loadedPacks: async () => (await mocks.loadedPacks()).map(pack => ({ runtimeRevision: 'runtime', ...pack })) as LoadedPackEntry[],
     subscribe: (next) => {
       connection = next;
       return () => { if (connection === next) connection = undefined; };
@@ -48,7 +52,7 @@ export function fakeClient() {
 }
 
 /** The shell's options over fakes, starting with `plugins` registered (the first is the default, unless one is given) */
-export function fakeShell(start: { plugins: Plugin[]; defaultPlugin?: Plugin }) {
+export function fakeShell(start: { plugins: Plugin[]; defaultPlugin?: Plugin; designations?: Record<string, FeatureRef> }) {
   const client = fakeClient();
   const packFrontends = {
     load: vi.fn<(pack: { id: string }) => Promise<Plugin[] | null>>(() => Promise.resolve(null)),
@@ -63,14 +67,41 @@ export function fakeShell(start: { plugins: Plugin[]; defaultPlugin?: Plugin }) 
     loadPanelSizes: () => savedSizes,
     savePanelSizes: vi.fn((sizes: ShellPanelSizes) => { savedSizes = sizes; }),
   };
+  const declarations = new Map<string, PluginCatalogEntry>();
+  const bindings = new Map<string, PluginFrontendBinding>();
+  const accept = (value: Plugin) => {
+    const entry: PluginCatalogEntry = { featureRef: value.id as FeatureRef, packId: value.id.split('/')[0]!, origin: 'native', enabled: true,
+      declaration: { label: value.label, state: 'native/state.ts',
+        ...(value.id === (start.defaultPlugin ?? start.plugins[0])?.id && { default: true }) } };
+    if (!declarations.has(value.id)) declarations.set(value.id, entry);
+    bindings.set(value.id, { packId: entry.packId, declaration: declarations.get(value.id)!.declaration, opens: declarations.get(value.id)!.opens, binding: value });
+  };
+  start.plugins.forEach(accept);
+  const catalogListeners = new Set<() => void>();
+  const catalog = { status: vi.fn<() => 'loading' | 'ready'>(() => 'loading'), plugins: () => [...declarations.values()],
+    subscribe(listener: () => void) { catalogListeners.add(listener); return () => { catalogListeners.delete(listener); }; } };
+  const pending = new Set<string>();
+  const ready = () => { if (!pending.size) { catalog.status.mockReturnValue('ready'); for (const listener of catalogListeners) listener(); } };
   const options: ShellOptions = {
-    packs: { getRegisteredPlugins: () => start.plugins, defaultPlugin: () => start.defaultPlugin ?? start.plugins[0] },
-    client: client.client,
-    packFrontends,
+    packs: { getRegisteredPlugins: () => start.plugins, pluginBindings: () => bindings, designation: role => start.designations?.[role] },
+    catalog,
+    client: { ...client.client, async loadedPacks() {
+      const packs = await client.client.loadedPacks();
+      pending.clear(); for (const pack of packs) if (pack.feEntry) pending.add(pack.id);
+      ready(); return packs;
+    } },
+    packFrontends: {
+      async load(pack) {
+        try { const plugins = await packFrontends.load(pack); plugins?.forEach(accept); return plugins; }
+        finally { pending.delete(pack.id); ready(); }
+      },
+      unload(id) { packFrontends.unload(id); for (const [ref, binding] of bindings) if (binding.packId === id) bindings.delete(ref); },
+    },
     storage,
     notify,
   };
-  return { options, client, packFrontends, notify, storage };
+  return { options, client, packFrontends, notify, storage, declarations, bindings, catalog, catalogListeners, acceptPlugin: accept,
+    publishCatalog() { for (const listener of catalogListeners) listener(); } };
 }
 
 /** Lets the loader's read of the loaded packs and its frontend loads settle */

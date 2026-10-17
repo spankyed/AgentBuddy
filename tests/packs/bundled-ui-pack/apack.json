@@ -4,15 +4,72 @@
   "name": "Bundled UI Fixture",
   "version": "0.1.0",
   "hostVersion": ">=0.3.0",
-  "entities": {},
-  "relKinds": {},
+  "data": {
+    "entities": {},
+    "relations": []
+  },
   "features": {
     "scribbles": {
-      "settings": "src/features/scribbles/settings.ts",
+      "description": "Exercise a custom settings form with bundled UI components.",
+      "settings": {
+        "schema": {
+          "type": "object",
+          "additionalProperties": false
+        },
+        "defaults": {}
+      },
       "plugin": {
-        "entry": "src/features/scribbles/fe/plugin.ts"
+        "defaultVisible": true,
+        "label": "Scribbles",
+        "icon": "NotebookPen",
+        "state": "src/features/scribbles/fe/state.ts",
+        "canvas": "src/features/scribbles/fe/canvas/editor.vue"
       },
       "services": {}
+    }
+  },
+  "extensions": {
+    "settings": {
+      "restricted": {
+        "title": "Owner-only preference",
+        "access": "owner",
+        "schema": {
+          "type": "object",
+          "properties": {
+            "count": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 10
+            }
+          },
+          "required": [
+            "count"
+          ],
+          "additionalProperties": false
+        },
+        "defaults": {
+          "count": 1
+        }
+      },
+      "assistant": {
+        "title": "Scribbles Assistant",
+        "schema": {
+          "type": "object",
+          "properties": {
+            "name": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "name"
+          ],
+          "additionalProperties": false
+        },
+        "defaults": {
+          "name": "Scribbles helper"
+        },
+        "form": "src/extensions/settings/assistant.vue"
+      }
     }
   },
   "dependencies": {},

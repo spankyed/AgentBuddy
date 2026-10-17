@@ -4,7 +4,7 @@
 // the thing it describes, and the throwaway data dir goes after the app has actually exited rather than
 // after it has been asked to. Both are asserted here as an order, so a step moved out of place fails rather
 // than being discovered on Windows.
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { createDevHold } from '../../src/app/dev-hold.ts';
 import type { ChildProcess } from 'node:child_process';
 
@@ -23,17 +23,16 @@ function held(options: { app?: boolean; profile?: boolean } = {}) {
   });
   hold.holdsMarker('memos');
   hold.holdsSession(() => order.push('session.unpublish'));
-  hold.holdsServer({ close: () => order.push('server.close') });
   if (app) hold.holdsApp(fakeApp);
   return { hold, order };
 }
 
 describe('what a dev session holds', () => {
-  it('lets go of the records, then the server, then the app, and only then the data dir', async () => {
+  it('lets go of the records, then the app, and only then the data dir', async () => {
     const { hold, order } = held();
     await hold.release();
     expect(order).toEqual([
-      'marker.remove:memos', 'session.unpublish', 'server.close', 'app.kill', 'app.exited', 'profile.remove',
+      'marker.remove:memos', 'session.unpublish', 'app.kill', 'app.exited', 'profile.remove',
     ]);
   });
 
@@ -41,7 +40,7 @@ describe('what a dev session holds', () => {
     const { hold, order } = held();
     hold.releaseNow();
     // The app is asked to go; nothing waits for it and nothing is removed from under it
-    expect(order).toEqual(['marker.remove:memos', 'session.unpublish', 'server.close', 'app.kill']);
+    expect(order).toEqual(['marker.remove:memos', 'session.unpublish', 'app.kill']);
   });
 
   // `release` ends by exiting the process, which fires the `exit` handler that calls `releaseNow`
@@ -66,7 +65,7 @@ describe('what a dev session holds', () => {
   it('releases only what it was given', async () => {
     const { hold, order } = held({ app: false, profile: false });
     await hold.release();
-    expect(order).toEqual(['marker.remove:memos', 'session.unpublish', 'server.close']);
+    expect(order).toEqual(['marker.remove:memos', 'session.unpublish']);
   });
 });
 
@@ -87,4 +86,30 @@ it('concurrent shutdown callers wait until the app exits and profile cleanup com
   finish();
   await Promise.all([signal, childExit]);
   expect(removed).toBe(true);
+});
+
+
+it('closes the watcher before app teardown and closes a late watcher immediately', async () => {
+  const { hold, order } = held();
+  hold.holdsWatcher(() => { order.push('watcher.close'); });
+  await hold.release();
+  expect(order[0]).toBe('watcher.close');
+  expect(order.indexOf('watcher.close')).toBeLessThan(order.indexOf('app.kill'));
+  const late = vi.fn();
+  hold.holdsWatcher(late);
+  expect(late).toHaveBeenCalledOnce();
+});
+
+
+it('waits for an in-flight watcher operation before removing the profile', async () => {
+  const { hold, order } = held();
+  let finish!: () => void;
+  hold.holdsWatcher(() => new Promise<void>(resolve => { finish = resolve; }));
+  const released = hold.release();
+  await Promise.resolve();
+  expect(order).toContain('app.kill');
+  expect(order).not.toContain('profile.remove');
+  finish();
+  await released;
+  expect(order.at(-1)).toBe('profile.remove');
 });

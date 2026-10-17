@@ -1,17 +1,21 @@
 import { tx, qx } from '#generated/ears.ts';
 import { EARS } from '#generated/ears.ts';
 
+import { parseReferenceHref } from '@apackdev/sdk/framework';
+import { NOTE_TYPE_TO_REFERENCE_TYPE } from '../../reference-types.ts';
+
 import { REFERENCES } from '../types.ts';
 
 /**
- * Extract all note:// link target IDs from markdown content.
+ * Extract canonical note, task and task-list targets from internal Markdown references.
  */
 export function parseNoteLinks(content: string): EARS.EntityId[] {
-  const pattern = /\[[^\]]*\]\(note:\/\/([^)]+)\)/g;
+  const pattern = /\[(?:\\.|[^\]\\])*\]\((apack-ref:\/\/[^)\s]+)\)/g;
   const ids = new Set<string>();
   let match: RegExpExecArray | null;
   while ((match = pattern.exec(content)) !== null) {
-    ids.add(match[1]);
+    const target = parseReferenceHref(match[1]);
+    if (target && Object.values(NOTE_TYPE_TO_REFERENCE_TYPE).includes(target.type)) ids.add(target.id);
   }
   return [...ids] as EARS.EntityId[];
 }

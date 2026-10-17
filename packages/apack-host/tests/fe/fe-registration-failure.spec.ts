@@ -1,33 +1,28 @@
-// A pack's frontend registration runs the pack's own code — a step's `loadComponents` — so it can throw
-// partway. What that must not do is leave the registry holding half a pack: nothing records what got in,
-// so nothing can take it back out, and a step left broken by one pack would throw again for every pack
-// registered after it.
+import { createMachine } from 'xstate';
+import { createNativeFrontendTestRegistry } from '@apackdev/host/fe/testing';
 import { describe, expect, it } from 'vitest';
 import type { PackFERegistration, PluginDefinition } from '@apackdev/sdk/fe';
 import type { StepDefinition } from '@apackdev/sdk/steps';
-import { createFePackRegistry } from '../../src/fe/index.ts';
 
-const plugin = (label: string) => ({ label, icon: 'x', state: {}, canvas: {} } as unknown as PluginDefinition);
-/** A step whose components the pack fails to load, as a pack with a bad frontend bundle would have */
-const unloadable = (type: string): StepDefinition =>
-  ({ type, kind: 'step', fe: { loadComponents: () => { throw new Error(`${type} components are broken`); } } } as unknown as StepDefinition);
+const plugin = (label: string) => ({ label, icon: {}, state: createMachine({}), canvas: {} } satisfies PluginDefinition);
+const step = (type: string): StepDefinition => ({ type, kind: 'step', node: { label: type } });
 const registration = (id: string, r: Partial<PackFERegistration>) => ({ id, ...r }) as PackFERegistration;
 
 describe('a plugin', () => {
   // The registration names features and the registry addresses them, so no pack's plugin can be registered
   // in another pack's namespace, whatever the pack writes
   it("is registered at its feature's address", () => {
-    const registry = createFePackRegistry();
-    registry.registerPackFE(registration('memo-pack', { features: { memos: { plugin: plugin('Memos') } } }));
+    const registry = createNativeFrontendTestRegistry();
+    registry.registerFixture(registration('memo-pack', { features: { memos: { plugin: plugin('Memos') } } }));
     expect(registry.getRegisteredPlugins().map((p) => p.id)).toEqual(['memo-pack/memos']);
   });
 
   // As the backend registry refuses them: a key with a `/` would land at another pack's ref, and `x` beside
   // `memo-pack/x` would register one plugin twice
   it('is refused when its key is no feature id, and nothing of the pack is registered', () => {
-    const registry = createFePackRegistry();
-    expect(() => registry.registerPackFE(registration('memo-pack', { features: { memos: { plugin: plugin('Memos') }, 'other-pack/notes': { plugin: plugin('Notes') } } })))
-      .toThrow('Pack "memo-pack": feature "other-pack/notes" isn\'t a feature id');
+    const registry = createNativeFrontendTestRegistry();
+    expect(() => registry.registerFixture(registration('memo-pack', { features: { memos: { plugin: plugin('Memos') }, 'other-pack/notes': { plugin: plugin('Notes') } } })))
+      .toThrow('features.other-pack/notes');
     expect(registry.getRegisteredPlugins()).toEqual([]);
     expect(registry.unregisterPackFE('memo-pack')).toEqual([]);
   });
@@ -35,30 +30,30 @@ describe('a plugin', () => {
 
 describe('a frontend registration that throws partway', () => {
   it('leaves the registry as it found it', () => {
-    const registry = createFePackRegistry();
-    registry.registerPackFE(registration('neighbour-pack', { features: { neighbour: { plugin: plugin('neighbour') } } }));
+    const registry = createNativeFrontendTestRegistry();
+    registry.registerFixture(registration('neighbour-pack', { features: { neighbour: { plugin: plugin('neighbour'), designation: 'occupied' } } }));
 
-    expect(() => registry.registerPackFE(registration('partial-pack', { features: { ghost: { plugin: plugin('ghost') } }, artifacts: [{ type: 'ghost-view' }], steps: [unloadable('ghost-step')] }))).toThrow('ghost-step components are broken');
+    expect(() => registry.registerFixture(registration('partial-pack', { features: { ghost: { plugin: plugin('ghost'), designation: 'occupied' } }, artifacts: [{ type: 'ghost-view', fe: { icon: {} } }], steps: [step('ghost-step')] }))).toThrow(/Designation collision/);
 
     expect(registry.getRegisteredPlugins().map((p) => p.id), 'its plugin stayed in the list').toEqual(['neighbour-pack/neighbour']);
-    expect(registry.step('ghost-step'), 'its step stayed registered').toBeUndefined();
+    expect(registry.stepBindings().get('ghost-step'), 'its step stayed registered').toBeUndefined();
     expect(registry.artifact('ghost-view'), 'its artifact stayed registered').toBeUndefined();
     expect(registry.unregisterPackFE('partial-pack'), 'it was recorded as registered').toEqual([]);
   });
 
   it("doesn't make its failure the next pack's", () => {
-    const registry = createFePackRegistry();
-    expect(() => registry.registerPackFE(registration('broken-pack', { steps: [unloadable('theirs')] }))).toThrow();
+    const registry = createNativeFrontendTestRegistry();
+    expect(() => registry.registerFixture(registration('broken-pack', { steps: [step('theirs')], features: { first: { designation: 'duplicate' }, second: { designation: 'duplicate' } } }))).toThrow();
 
-    expect(() => registry.registerPackFE(registration('later-pack', { features: { mine: { plugin: plugin('mine') } }, steps: [{ type: 'mine', kind: 'step' } as StepDefinition] }))).not.toThrow();
+    expect(() => registry.registerFixture(registration('later-pack', { features: { mine: { plugin: plugin('mine') } }, steps: [step('mine')] }))).not.toThrow();
     expect(registry.getRegisteredPlugins().map((p) => p.id)).toEqual(['later-pack/mine']);
   });
 
   it('gives back the default plugin it had taken', () => {
-    const registry = createFePackRegistry();
-    expect(() => registry.registerPackFE(registration('default-pack', { features: { first: { plugin: plugin('first'), default: true } }, steps: [unloadable('boom')] }))).toThrow();
+    const registry = createNativeFrontendTestRegistry();
+    expect(() => registry.registerFixture(registration('default-pack', { features: { first: { plugin: plugin('first'), default: true, designation: 'duplicate' }, second: { designation: 'duplicate' } }, steps: [step('boom')] }))).toThrow();
 
-    expect(registry.defaultPlugin(), 'it kept the default plugin slot').toBeUndefined();
+    expect(registry.pluginBindings().size, 'it kept a provisional plugin binding').toBe(0);
   });
 });
 
@@ -66,10 +61,10 @@ describe('a frontend registration that throws partway', () => {
 // so the first registration's way back out was dropped and its plugins could never be removed.
 describe('a pack registering its frontend twice', () => {
   it('is refused, as the backend registry refuses it', () => {
-    const registry = createFePackRegistry();
-    registry.registerPackFE(registration('twice-pack', { features: { once: { plugin: plugin('once') } } }));
+    const registry = createNativeFrontendTestRegistry();
+    registry.registerFixture(registration('twice-pack', { features: { once: { plugin: plugin('once') } } }));
 
-    expect(() => registry.registerPackFE(registration('twice-pack', { features: { again: { plugin: plugin('again') } } })))
+    expect(() => registry.registerFixture(registration('twice-pack', { features: { again: { plugin: plugin('again') } } })))
       .toThrow('Pack "twice-pack" frontend is already registered');
 
     expect(registry.unregisterPackFE('twice-pack').map((p) => p.id)).toEqual(['twice-pack/once']);

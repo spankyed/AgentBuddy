@@ -11,7 +11,7 @@ import { RECORD_KEYS, itemLabel, type CompiledContentFile, type ContentItem } fr
 import { _contentWriterRegistry, type ContentWriteContext, type ContentMatch, type ContentWriter } from './writers.ts';
 import { trash } from '../repositories/trash.ts';
 import { errorMessage } from '../utils/shared.ts';
-import type { ContentEditPolicy } from '../build/manifest-schema.ts';
+import type { ContentEditPolicy } from '../framework/declaration-schema.ts';
 
 export interface FormatApplierOptions {
   key: string;

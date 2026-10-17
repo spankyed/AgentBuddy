@@ -10,14 +10,14 @@
 // Writing stays out: only `facade-report --update` writes the report, and the build never does.
 import * as fs from 'node:fs';
 import * as path from 'node:path';
-import { PACK_TYPES_DEF } from '@apackdev/sdk/build';
+import { PACK_TYPES_FACADE } from '@apackdev/sdk/build';
 import { PACK_LAYOUT } from '@apackdev/host/packs';
 import ts from 'typescript';
 import { sortLiteralUnions } from './declaration-text';
 
 /** The pack's committed facade report, the file `facade:check` holds a facade to */
 export function facadeReportFile(packDir: string): string {
-  return path.join(packDir, 'etc', `${PACK_TYPES_DEF}.api.md`);
+  return path.join(packDir, 'etc', `${PACK_TYPES_FACADE}.api.md`);
 }
 
 /** A path relative to where the command was run, for a message someone reads in a terminal */
@@ -31,7 +31,7 @@ export function shownPath(file: string): string {
  * what makes that true by construction rather than by two callers agreeing.
  */
 function bundleLabel(packDir: string): string {
-  return path.join(packDir, 'dist', PACK_LAYOUT.typesDir, `${PACK_TYPES_DEF}.d.ts`);
+  return path.join(packDir, 'dist', PACK_LAYOUT.typesDir, `${PACK_TYPES_FACADE}.d.ts`);
 }
 
 /** Names a top-level statement declares, its sort key */

@@ -1,3 +1,6 @@
+import { _packEntityTypes } from '@apackdev/sdk/framework';
+import { writeInstalledPackFixture, sealPack, sealBuild, eventContractsFixture } from '../../../packs/runtime/build-fixture.ts';
+import { _declarationRevision } from '@apackdev/sdk/build';
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import * as fs from 'node:fs';
 import * as os from 'node:os';
@@ -5,21 +8,27 @@ import * as path from 'node:path';
 import { createActor, setup, type AnyEventObject } from 'xstate';
 import { HOST } from '../../../../src/refs.ts';
 import { _appDirOf, resolveAppEnvironment } from '@apackdev/sdk/env';
-import { resetTestData, takeSystemErrors, testRootEvents } from '@apackdev/sdk/testing';
-import { readInstalledPacks } from '../../../../src/packs/installed.ts';
+import { startTestRuntime, resetTestData, takeSystemErrors, testRootEvents } from '@apackdev/sdk/testing';
+import { readInstalledPacks, setPackEnabled } from '../../../../src/packs/installed.ts';
 import { registry } from '../../../packs/runtime/test-host.ts';
 import { appliedContent, appState } from '../../../../src/app-state/index.ts';
-import { installPackFromLocal } from '../../../../src/packs/installer.ts';
+import { installPackFromLocal, restoreShippedPack } from '../../../../src/packs/installer.ts';
 import { createPacksSystem, type InstalledPackSummary } from '../../../../src/features/packs/be/system.ts';
 import { activatePack } from '../../../../src/packs/runtime/lifecycle.ts';
 import { loadAppPacks } from '../../../../src/packs/runtime/loader.ts';
 import { reloadPackById } from '../../../../src/packs/runtime/reload.ts';
 import { PACK_SNAPSHOT_FORMAT } from '@apackdev/sdk/build';
-import { createPackArchive, stagePack } from '../../../../src/packs/layout.ts';
+import { readPackBuild, createPackArchive, stagePack } from '../../../../src/packs/layout.ts';
 import { PACK_LAYOUT } from '../../../../src/packs/layout.ts';
 import { applyPacks } from '../../../../src/packs/runtime/apply.ts';
+import { readAppPackSources } from '../../../../src/packs/app-sources.ts';
 import { createFormatApplier } from '@apackdev/sdk/content';
 import { untypedQx, untypedTx } from '@apackdev/ears';
+
+const referenceDeclarations = {
+  types: { note: { category: 'notes', icon: 'NotebookText', svgElements: [] } },
+  categories: { notes: { label: 'Notes', icon: 'NotebookText', useItems: 'src/references.ts#useItems' } },
+};
 
 const PACK_ID = 'reinstall-pack';
 
@@ -34,8 +43,9 @@ beforeEach(() => {
 });
 
 afterEach(() => {
-  if (registry.getPackExtensions(PACK_ID)) registry.unregisterPack(PACK_ID);
+  if (registry.getPackRegistration(PACK_ID)) registry.unregisterPack(PACK_ID);
   registry.clearLoadProblem(PACK_ID);
+  registry.catalog.setAppPackSources({ sources: [], problems: [] });
   if (origEnv.env === undefined) delete process.env.APACK_ENV;
   else process.env.APACK_ENV = origEnv.env;
   if (origEnv.userDataDir === undefined) delete process.env.APACK_USER_DATA_DIR;
@@ -44,19 +54,22 @@ afterEach(() => {
 });
 
 /** The pack source `apack pack build` would leave, at `version`; `content` gives it compiled data that won't content */
-function packSource(version: string, { failsImport = false, id = PACK_ID } = {}): string {
+function packSource(version: string, { failsImport = false, id = PACK_ID, runtime = '', manifest = {} } = {}): string {
   const dir = path.join(tmpDir, 'source');
   fs.rmSync(dir, { recursive: true, force: true });
   fs.mkdirSync(path.join(dir, 'dist', 'runtime'), { recursive: true });
   fs.mkdirSync(path.join(dir, 'dist', 'types'), { recursive: true });
-  fs.writeFileSync(path.join(dir, 'apack.json'), JSON.stringify({ id, name: 'Reinstall Pack', version }));
-  fs.writeFileSync(path.join(dir, 'dist', 'runtime', 'index.cjs'), `module.exports = { registration: { id: ${JSON.stringify(id)} } };`);
-  fs.writeFileSync(path.join(dir, 'dist', PACK_LAYOUT.snapshot), JSON.stringify({ format: PACK_SNAPSHOT_FORMAT }));
+  fs.writeFileSync(path.join(dir, 'apack.json'), JSON.stringify({ id, name: 'Reinstall Pack', version, ...manifest }));
+  fs.writeFileSync(path.join(dir, 'dist', 'runtime', 'index.cjs'), (`module.exports = { registration: { id: ${JSON.stringify(id)} } };\n${runtime}`) + `
+if (module.exports.registration) module.exports.registration.declarationRevision = '${_declarationRevision(JSON.parse(fs.readFileSync(path.join(dir, 'apack.json'), 'utf-8')))}';`);
+  fs.writeFileSync(path.join(dir, 'dist', PACK_LAYOUT.snapshot), JSON.stringify({ declarationRevision: _declarationRevision(JSON.parse(fs.readFileSync(path.join(dir, 'apack.json'), 'utf-8'))), format: PACK_SNAPSHOT_FORMAT, manifest: JSON.parse(fs.readFileSync(path.join(dir, 'apack.json'), 'utf-8')), eventContracts: eventContractsFixture(JSON.parse(fs.readFileSync(path.join(dir, 'apack.json'), 'utf-8'))), types: { entities: {}, relKinds: {} }, entityDestinations: {}, facades: {} }));
+  fs.writeFileSync(path.join(dir, 'dist', PACK_LAYOUT.feEntry), 'export {};');
   if (failsImport) {
     // Compiled data with no content.json: the applier can't tell whose records these are, so applying fails
     fs.mkdirSync(path.join(dir, 'dist', 'runtime', 'content'), { recursive: true });
     fs.writeFileSync(path.join(dir, 'dist', 'runtime', 'content', 'flows.content.json'), '[]');
   }
+  sealBuild(dir);
   return dir;
 }
 
@@ -83,7 +96,7 @@ async function stubRelease(source: string) {
 function runPacksSystem() {
   const sent: AnyEventObject[] = [];
   const busStub = setup({ types: {} as { events: AnyEventObject } }).createMachine({
-    on: { '*': { actions: ({ event }) => void sent.push(event) } },
+    on: { '*': { actions: ({ event }) => { sent.push(event); if (typeof event.afterStop === 'function') event.afterStop(); } } },
   });
   const stopListening = testRootEvents.onPluginSend((message) => void sent.push({ type: 'OUTGOING', message }));
   const root = setup({ actors: { bus: busStub, packs: createPacksSystem(registry) } }).createMachine({
@@ -107,7 +120,7 @@ const emitted = (sent: AnyEventObject[]) => sent.flatMap(e => {
 });
 
 describe('installing over a pack that is already running', () => {
-  it('tears the running copy down first, so the reinstall activates instead of colliding', async () => {
+  it('replaces the registered copy without a deactivation window', async () => {
     const system = runPacksSystem();
     try {
       const { installPackFromLocal } = await import('../../../../src/packs/installer.ts');
@@ -121,8 +134,10 @@ describe('installing over a pack that is already running', () => {
         expect(types, JSON.stringify(emitted(system.sent))).toContain('PACK_INSTALL_COMPLETE');
       });
       expect(emitted(system.sent).map(e => e.type)).not.toContain('PACK_INSTALL_FAILED');
+      expect(emitted(system.sent).map(e => e.type)).not.toContain('PACK_DEACTIVATED');
+      expect(system.sent.map(e => e.type)).toContain('RELOAD_PACK');
       // Registered once, by the copy that was just installed
-      expect(registry.getPackExtensions(PACK_ID)).not.toBeNull();
+      expect(registry.getPackRegistration(PACK_ID)).not.toBeNull();
       expect(emitted(system.sent).find(e => e.type === 'PACK_INSTALL_COMPLETE')).toMatchObject({ version: '2.0.0' });
     } finally {
       system.stop();
@@ -164,7 +179,7 @@ describe('a community release checksum pin', () => {
       expect(emitted(system.sent).map(event => event.type)).not.toContain('PACK_INSTALL_COMPLETE');
       const installed = JSON.parse(fs.readFileSync(path.join(resolveAppEnvironment().packsDir, PACK_ID, 'apack.json'), 'utf8'));
       expect(installed.version).toBe('1.0.0');
-      expect(registry.getPackExtensions(PACK_ID)).not.toBeNull();
+      expect(registry.getPackRegistration(PACK_ID)).not.toBeNull();
     } finally {
       system.stop();
       vi.unstubAllGlobals();
@@ -172,79 +187,104 @@ describe('a community release checksum pin', () => {
   });
 });
 
-// The host and the built-in packs come with the app: no uninstall removes them, and no installed pack takes their id
-describe('a pack that ships with the app', () => {
-  const shipped = { id: PACK_ID, name: 'Shipped', version: '1.0.0', dir: 'packs/shipped', shipped: true };
+describe('app-default installation intent and lifecycle', () => {
+  function advertise() {
+    const input = readAppPackSources(tmpDir);
+    registry.catalog.setAppPackSources(input);
+    expect(input.sources).toHaveLength(1);
+    return input.sources[0];
+  }
 
-  it.each([['a pack the app ships', PACK_ID], ['the host', 'host']])("can't be uninstalled: %s", async (_what, packId) => {
-    registry.registerPack({ id: PACK_ID }, shipped);
+  it('refuses host removal without affecting any installed pack', async () => {
     const system = runPacksSystem();
     try {
-      system.send({ type: 'UNINSTALL_PACK', packId });
-
+      system.send({ type: 'UNINSTALL_PACK', packId: 'host' });
       await vi.waitFor(() => expect(emitted(system.sent).map(e => e.type)).toContain('PACK_UNINSTALL_FAILED'));
-      expect(emitted(system.sent).find(e => e.type === 'PACK_UNINSTALL_FAILED')).toMatchObject({ error: `"${packId}" is part of apack, so it can't be uninstalled` });
+      expect(emitted(system.sent).find(e => e.type === 'PACK_UNINSTALL_FAILED')?.error).toContain('part of apack');
       expect(emitted(system.sent).map(e => e.type)).not.toContain('PACK_DEACTIVATED');
-      expect(registry.packOrigin(PACK_ID)).toEqual(shipped);
-    } finally {
-      system.stop();
-    }
+    } finally { system.stop(); }
   });
 
-  /**
-   * Disabling is the other half of what the Packs view hides for a shipped pack, and it has to be refused
-   * here too: every pack is an installed record now, so nothing in the handler turns one away on its own.
-   * Without this the event tears the pack down and persists `enabled: false`, and the switch that would put
-   * it back is the one the view doesn't draw — so the app boots with no packs and no way out of it.
-   */
-  it("can't be disabled, and is told so with its real state", async () => {
-    await installPackFromLocal(packSource('1.0.0'));
-    registry.registerPack({ id: PACK_ID }, shipped);
-    const system = runPacksSystem();
-    try {
-      takeSystemErrors();
-
-      system.send({ type: 'TOGGLE_PACK_ENABLED', packId: PACK_ID });
-
-      expect(takeSystemErrors().map(e => e.message)).toEqual([`"${PACK_ID}" is part of apack, so it can't be disabled`]);
-      expect(emitted(system.sent).map(e => e.type)).not.toContain('PACK_DEACTIVATED');
-      expect(emitted(system.sent).find(e => e.type === 'PACK_ENABLED_CHANGED')).toMatchObject({ packId: PACK_ID, enabled: true });
-      expect(readInstalledPacks().find(r => r.id === PACK_ID)?.enabled, 'the record is untouched').not.toBe(false);
-      expect(registry.packOrigin(PACK_ID)).toEqual(shipped);
-    } finally {
-      system.stop();
-    }
-  });
-
-  /**
-   * The third door to losing it, and the one that was left open. Uninstalling and disabling are refused
-   * above; an install naming its id used to tear the running pack down and replace its files, which is the
-   * same outcome by another route — so `canUninstall: false` hid a button while the Packs view's own
-   * install field achieved what the button would have.
-   *
-   * *"Installing over a pack is how an update lands"* was the argument for allowing it, and it does not
-   * reach a pack that updates with the app: the next boot's hash comparison reverts the replacement
-   * (`tests/packs/shipped-packs.spec.ts`), so what an install bought was a session running a pack nobody
-   * chose. Refused before the teardown, which is what the last assertion here holds.
-   */
-  it("is not replaced by an install taking its id, and keeps running", async () => {
-    await installPackFromLocal(packSource('1.0.0'));
-    registry.registerPack({ id: PACK_ID }, shipped);
+  it.each(['absent', 'disabled', 'activation-failed', 'invalid-source'])('requires explicit replacement of an advertised id: %s', async kind => {
+    const dir = packSource('1.0.0');
+    if (kind !== 'absent' && kind !== 'invalid-source') await installPackFromLocal(dir);
+    if (kind === 'disabled') setPackEnabled(PACK_ID, false);
+    if (kind === 'activation-failed') registry.recordLoadProblem(PACK_ID, 'runtime refused');
+    if (kind === 'invalid-source') fs.rmSync(path.join(dir, 'dist'), { recursive: true });
+    registry.catalog.setAppPackSources(readAppPackSources(tmpDir));
     const system = runPacksSystem();
     try {
       system.send({ type: 'INSTALL_PACK', packSlug: packSource('2.0.0'), sourceKind: 'local' });
-
       await vi.waitFor(() => expect(emitted(system.sent).map(e => e.type)).toContain('PACK_INSTALL_FAILED'));
-      expect(emitted(system.sent).find(e => e.type === 'PACK_INSTALL_FAILED'))
-        .toMatchObject({ error: `"${PACK_ID}" is part of apack, so an install can't take its id` });
-      const installed = path.join(_appDirOf(tmpDir), 'packs', PACK_ID, 'apack.json');
-      expect(JSON.parse(fs.readFileSync(installed, 'utf-8')).version, 'its files are untouched').toBe('1.0.0');
-      expect(emitted(system.sent).map(e => e.type), 'and it was never torn down')
-        .not.toContain('PACK_DEACTIVATED');
-      expect(registry.packOrigin(PACK_ID)).toEqual(shipped);
-    } finally {
-      system.stop();
-    }
+      expect(emitted(system.sent).find(e => e.type === 'PACK_INSTALL_FAILED')?.error).toContain('Use Replace');
+      expect(emitted(system.sent).map(e => e.type)).not.toContain('PACK_DEACTIVATED');
+      const installed = path.join(resolveAppEnvironment().packsDir, PACK_ID);
+      if (kind === 'absent' || kind === 'invalid-source') expect(fs.existsSync(installed)).toBe(false);
+      else expect(readPackBuild(installed).snapshot.manifest.version).toBe('1.0.0');
+    } finally { system.stop(); }
+  });
+
+  it('disables an app-owned pack without deleting its declarations, then removes it deliberately', async () => {
+    await restoreShippedPack(PACK_ID, packSource('1.0.0'), resolveAppEnvironment().packsDir, {
+      installedPacksFile: resolveAppEnvironment().installedPacksFile,
+    });
+    expect(activatePack(registry, PACK_ID, { send: () => {} } as never)).toBe(true);
+    const system = runPacksSystem();
+    try {
+      system.send({ type: 'TOGGLE_PACK_ENABLED', packId: PACK_ID });
+      expect(readInstalledPacks().find(record => record.id === PACK_ID)?.enabled).toBe(false);
+      expect(registry.catalog.get(PACK_ID)?.enabled).toBe(false);
+      expect(registry.getPackRegistration(PACK_ID)).toBeNull();
+      expect(fs.existsSync(path.join(resolveAppEnvironment().packsDir, PACK_ID))).toBe(true);
+      system.send({ type: 'UNINSTALL_PACK', packId: PACK_ID });
+      await vi.waitFor(() => expect(emitted(system.sent).map(e => e.type)).toContain('PACK_UNINSTALL_COMPLETE'));
+      expect(fs.existsSync(path.join(resolveAppEnvironment().packsDir, PACK_ID))).toBe(false);
+      expect(readInstalledPacks().find(record => record.id === PACK_ID)?.suppressAppInstall).toBe(true);
+      expect(registry.catalog.get(PACK_ID)).toBeUndefined();
+    } finally { system.stop(); }
+  });
+
+  it('restores a missing default, replaces it with a user fork, then restores the selected app revision', async () => {
+    const appDefault = path.join(tmpDir, 'app-default');
+    fs.renameSync(packSource('1.0.0'), appDefault);
+    const source = advertise();
+    const system = runPacksSystem();
+    try {
+      system.send({ type: 'RESTORE_PACK', packId: PACK_ID, sourceRevision: source.sourceRevision });
+      await vi.waitFor(() => expect(emitted(system.sent).filter(e => e.type === 'PACK_INSTALL_COMPLETE')).toHaveLength(1));
+      expect(readInstalledPacks().find(record => record.id === PACK_ID)).toMatchObject({ updatesWith: 'app', enabled: true });
+      const initialRevision = registry.getPackRuntime(PACK_ID)!.runtimeRevision;
+      system.send({ type: 'REPLACE_PACK', packId: PACK_ID, packSlug: packSource('2.0.0'), sourceKind: 'local' });
+      await vi.waitFor(() => expect(emitted(system.sent).filter(e => e.type === 'PACK_INSTALL_COMPLETE')).toHaveLength(2));
+      expect(readInstalledPacks().find(record => record.id === PACK_ID)?.updatesWith).toBe('user');
+      expect(registry.getPackRuntime(PACK_ID)!.runtimeRevision).not.toBe(initialRevision);
+      expect(readPackBuild(path.join(resolveAppEnvironment().packsDir, PACK_ID)).snapshot.manifest.version).toBe('2.0.0');
+      system.send({ type: 'RESTORE_PACK', packId: PACK_ID, sourceRevision: source.sourceRevision });
+      await vi.waitFor(() => expect(emitted(system.sent).filter(e => e.type === 'PACK_INSTALL_COMPLETE')).toHaveLength(3));
+      expect(readInstalledPacks().find(record => record.id === PACK_ID)).toMatchObject({ updatesWith: 'app', enabled: true });
+      expect(readPackBuild(path.join(resolveAppEnvironment().packsDir, PACK_ID)).snapshot.manifest.version).toBe('1.0.0');
+      expect(emitted(system.sent).map(e => e.type)).not.toContain('PACK_INSTALL_FAILED');
+    } finally { system.stop(); }
+  });
+
+  it('refuses stale restore selections and replacement id mismatches before changing the incumbent', async () => {
+    await installPackFromLocal(packSource('1.0.0'));
+    const source = advertise();
+    expect(activatePack(registry, PACK_ID, { send: () => {} } as never)).toBe(true);
+    const before = registry.getPackRuntime(PACK_ID);
+    const record = readInstalledPacks();
+    const system = runPacksSystem();
+    try {
+      system.send({ type: 'RESTORE_PACK', packId: PACK_ID, sourceRevision: '0'.repeat(64) });
+      await vi.waitFor(() => expect(emitted(system.sent).filter(e => e.type === 'PACK_INSTALL_FAILED')).toHaveLength(1));
+      expect(emitted(system.sent).find(e => e.type === 'PACK_INSTALL_FAILED')?.error).toContain('changed; refresh');
+      system.send({ type: 'REPLACE_PACK', packId: PACK_ID, packSlug: packSource('2.0.0', { id: 'other-pack' }), sourceKind: 'local' });
+      await vi.waitFor(() => expect(emitted(system.sent).filter(e => e.type === 'PACK_INSTALL_FAILED')).toHaveLength(2));
+      expect(registry.getPackRuntime(PACK_ID)).toEqual(before);
+      expect(readInstalledPacks()).toEqual(record);
+      expect(registry.catalog.getSnapshot().appPackSources[0].sourceRevision).toBe(source.sourceRevision);
+      expect(readPackBuild(path.join(resolveAppEnvironment().packsDir, PACK_ID)).snapshot.manifest.version).toBe('1.0.0');
+    } finally { system.stop(); }
   });
 });
 
@@ -278,11 +318,99 @@ describe('a pack with nothing recorded about it', () => {
 
       const list = emitted(system.sent).find(e => e.type === 'PACKS_LIST');
       expect(list?.packs).toContainEqual(
-        expect.objectContaining({ id: PACK_ID, version: '1.0.0', enabled: true, canUninstall: true }),
+        expect.objectContaining({ id: PACK_ID, version: '1.0.0', enabled: true, updatesWith: 'user' }),
       );
     } finally {
       system.stop();
     }
+  });
+});
+
+describe('pack information without activation', () => {
+  const list = (system: ReturnType<typeof runPacksSystem>) => {
+    system.sent.length = 0;
+    system.send({ type: 'GET_INSTALLED_PACKS' });
+    const event = emitted(system.sent).find(event => event.type === 'PACKS_LIST');
+    expect(event).toBeDefined();
+    return (event!.packs as InstalledPackSummary[]).find(pack => pack.id === PACK_ID)!;
+  };
+
+  it.each(['disabled', 'activation-failed'])('lists %s declarations without activating backend or frontend code', kind => {
+    const dir = path.join(resolveAppEnvironment().packsDir, PACK_ID);
+    const manifest = { id: PACK_ID, name: 'Declared pack', version: '1.0.0',
+      data: { relations: ['parent'] },
+      features: { notes: { description: 'Feature declaration fixture.', entities: { Memo: null }, designation: 'notes', system: { entry: 'src/system.ts' },
+        plugin: { label: 'Fixture', state: 'src/plugin.ts' }, references: referenceDeclarations, services: { notesApi: 'src/api.ts#notesApi' } } },
+      extensions: { services: { packApi: 'src/api.ts#packApi' }, artifacts: { memo: { icon: 'File' } } },
+      migrations: { pack: { '1.0.0': { description: 'Create notes', up: 'src/migration.ts#up' } } },
+      lifecycle: { onInit: 'src/hooks.ts#onInit' } };
+    fs.mkdirSync(path.join(dir, 'runtime'), { recursive: true });
+    fs.mkdirSync(path.join(dir, 'types'));
+    fs.writeFileSync(path.join(dir, PACK_LAYOUT.manifest), JSON.stringify(manifest));
+    fs.writeFileSync(path.join(dir, PACK_LAYOUT.snapshot), JSON.stringify({ format: PACK_SNAPSHOT_FORMAT,
+      declarationRevision: _declarationRevision(manifest), manifest, eventContracts: eventContractsFixture(manifest), types: { entities: {}, relKinds: {} }, entityDestinations: {}, facades: {} }));
+    const marker = path.join(tmpDir, 'executed');
+    fs.writeFileSync(path.join(dir, PACK_LAYOUT.runtimeEntry), `require('node:fs').writeFileSync(${JSON.stringify(marker)}, 'yes'); throw new Error('Do not activate');`);
+    fs.writeFileSync(path.join(dir, PACK_LAYOUT.feEntry), 'throw new Error("Do not activate frontend");');
+    sealPack(dir);
+    expect(() => readPackBuild(dir)).not.toThrow();
+    setPackEnabled(PACK_ID, kind !== 'disabled');
+    if (kind === 'activation-failed') {
+      const bus = createActor(setup({}).createMachine({})).start();
+      try { expect(activatePack(registry, PACK_ID, bus)).toBe(false); }
+      finally { bus.stop(); }
+      expect(registry.loadProblem(PACK_ID)).toContain('Do not activate');
+    }
+    registry.refreshCatalog(resolveAppEnvironment().packsDir);
+    const system = runPacksSystem();
+    try {
+      expect(list(system)).toMatchObject({ name: 'Declared pack', version: '1.0.0', enabled: kind !== 'disabled',
+        entities: { Memo: 'Memo' }, entityCount: 1, relKinds: { PARENT: 'parent' }, hasFrontend: true,
+        systems: [`${PACK_ID}/notes`], services: ['packApi', 'notesApi'], artifacts: ['memo'],
+        migrationCount: 1, lifecycleHooks: ['onInit'],
+        features: [{ id: 'notes', description: manifest.features.notes.description, designation: 'notes', hasSystem: true, plugin: manifest.features.notes.plugin, references: referenceDeclarations, services: ['notesApi'] }] });
+      expect(registry.getPackRegistration(PACK_ID)).toBeNull();
+      expect(fs.existsSync(marker)).toBe(kind === 'activation-failed');
+    } finally { system.stop(); }
+  });
+
+  it('retains accepted metadata and publishes a replacement refusal before notifying readers', async () => {
+    await installPackFromLocal(packSource('1.0.0'));
+    registry.refreshCatalog(resolveAppEnvironment().packsDir);
+    const observations: Array<string | undefined> = [];
+    const stop = registry.catalog.onChanged(() => observations.push(registry.loadProblem(PACK_ID)));
+    const dir = path.join(resolveAppEnvironment().packsDir, PACK_ID);
+    fs.writeFileSync(path.join(dir, PACK_LAYOUT.manifest), JSON.stringify({ id: PACK_ID, name: 'Unaccepted', version: '9.0.0' }));
+    const system = runPacksSystem();
+    try {
+      const pack = list(system);
+      expect(pack).toMatchObject({ name: 'Reinstall Pack', version: '1.0.0', loadProblem: expect.stringContaining('declarations were refused') });
+      expect(observations).toEqual([pack.loadProblem]);
+    } finally { stop(); system.stop(); }
+  });
+
+  it('can remove an unreadable installation without treating its manifest as authority', async () => {
+    const dir = path.join(resolveAppEnvironment().packsDir, PACK_ID);
+    fs.mkdirSync(dir, { recursive: true });
+    fs.writeFileSync(path.join(dir, PACK_LAYOUT.manifest), '{');
+    const system = runPacksSystem();
+    try {
+      system.send({ type: 'UNINSTALL_PACK', packId: PACK_ID });
+      await vi.waitFor(() => expect(emitted(system.sent).some(event => event.type === 'PACK_UNINSTALL_COMPLETE')).toBe(true));
+      expect(fs.existsSync(dir)).toBe(false);
+    } finally { system.stop(); }
+  });
+
+  it('shows unreadable installations without trusting their manifest metadata', () => {
+    const dir = path.join(resolveAppEnvironment().packsDir, PACK_ID);
+    fs.mkdirSync(dir, { recursive: true });
+    fs.writeFileSync(path.join(dir, PACK_LAYOUT.manifest), '{');
+    const system = runPacksSystem();
+    try {
+      expect(list(system)).toMatchObject({ id: PACK_ID, name: PACK_ID, enabled: true,
+        loadProblem: expect.stringContaining('declarations were refused') });
+      expect(list(system).version).toBeUndefined();
+    } finally { system.stop(); }
   });
 });
 
@@ -311,10 +439,10 @@ describe('an installed pack the app could not load', () => {
     try {
       expect(listed(system)).toMatchObject({
         enabled: true,
-        loadProblem: `its snapshot is format ${PACK_SNAPSHOT_FORMAT + 1}, written by a newer apack CLI; this apack reads format ${PACK_SNAPSHOT_FORMAT}. Update apack to use it`,
+        loadProblem: `its declarations were refused: its snapshot is format ${PACK_SNAPSHOT_FORMAT + 1}, written by a newer apack CLI; this apack reads format ${PACK_SNAPSHOT_FORMAT}. Update apack to use it`,
       });
 
-      fs.writeFileSync(snapshotFile(), JSON.stringify({ format: PACK_SNAPSHOT_FORMAT }));
+      fs.writeFileSync(snapshotFile(), JSON.stringify({ declarationRevision: _declarationRevision(JSON.parse(fs.readFileSync(path.join(resolveAppEnvironment().packsDir, PACK_ID, 'apack.json'), 'utf-8'))), format: PACK_SNAPSHOT_FORMAT, manifest: JSON.parse(fs.readFileSync(path.join(resolveAppEnvironment().packsDir, PACK_ID, 'apack.json'), 'utf-8')), eventContracts: eventContractsFixture(JSON.parse(fs.readFileSync(path.join(resolveAppEnvironment().packsDir, PACK_ID, 'apack.json'), 'utf-8'))), types: { entities: {}, relKinds: {} }, entityDestinations: {}, facades: {} }));
       await reloadPackById(registry, PACK_ID, { send: () => {} } as never);
 
       expect(registry.getPackRegistration(PACK_ID)).not.toBeNull();
@@ -324,18 +452,22 @@ describe('an installed pack the app could not load', () => {
     }
   });
 
-  it('is listed with why its activation failed, and not once it is disabled', async () => {
+  it('keeps a declaration failure visible after the pack is disabled', async () => {
     await installPackFromLocal(packSource('1.0.0'));
     fs.writeFileSync(snapshotFile(), JSON.stringify({}));
     expect(activatePack(registry, PACK_ID, { send: () => {} } as never)).toBe(false);
 
     const system = runPacksSystem();
     try {
-      expect(listed(system)?.loadProblem).toMatch(/^its snapshot is format \(none\), written by an older apack CLI/);
+      expect(listed(system)?.loadProblem).toMatch(/^its declarations were refused: its snapshot is format \(none\), written by an older apack CLI/);
 
       system.send({ type: 'TOGGLE_PACK_ENABLED', packId: PACK_ID });
 
-      expect(listed(system)).toMatchObject({ enabled: false, loadProblem: undefined });
+      expect(listed(system)).toMatchObject({
+        enabled: false,
+        loadProblem: expect.stringMatching(/^its declarations were refused: its snapshot is format \(none\)/),
+      });
+      expect(registry.getPackRegistration(PACK_ID)).toBeNull();
     } finally {
       system.stop();
     }
@@ -359,6 +491,9 @@ describe('a decision that could not be saved', () => {
 
       expect(takeSystemErrors().map(e => e.message).join('\n'))
         .toMatch(new RegExp(`Couldn't save that ${PACK_ID} is disabled`));
+      expect(registry.getPackRegistration(PACK_ID)).not.toBeNull();
+      expect(emitted(system.sent).map(event => event.type)).not.toContain('PACK_DEACTIVATED');
+      expect(emitted(system.sent).find(event => event.type === 'PACK_ENABLED_CHANGED')).toMatchObject({ enabled: true });
     } finally {
       system.stop();
     }
@@ -366,7 +501,7 @@ describe('a decision that could not be saved', () => {
 });
 
 describe('a pack that is gone', () => {
-  it('leaves no row behind when it is uninstalled', async () => {
+  it('records deliberate removal when it is uninstalled', async () => {
     const system = runPacksSystem();
     try {
       const { installPackFromLocal } = await import('../../../../src/packs/installer.ts');
@@ -379,7 +514,7 @@ describe('a pack that is gone', () => {
       await vi.waitFor(() => {
         expect(emitted(system.sent).map(e => e.type)).toContain('PACK_UNINSTALL_COMPLETE');
       });
-      expect(readInstalledPacks()).toEqual([]);
+      expect(readInstalledPacks()).toEqual([{ id: PACK_ID, enabled: true, suppressAppInstall: true }]);
     } finally {
       system.stop();
     }
@@ -392,6 +527,8 @@ describe('a pack that is gone', () => {
     try {
       const { installPackFromLocal } = await import('../../../../src/packs/installer.ts');
       await installPackFromLocal(packSource('1.0.0'));
+      expect(activatePack(registry, PACK_ID, { send: () => {} } as never)).toBe(true);
+      const accepted = registry.getPackRuntime(PACK_ID);
       // A read-only pack directory: the uninstall can't unlink what is inside it, so it throws with the
       // pack still there — which is the case this is about, an uninstall that did not happen
       fs.chmodSync(path.join(_appDirOf(tmpDir), 'packs', PACK_ID), 0o500);
@@ -401,6 +538,8 @@ describe('a pack that is gone', () => {
       await vi.waitFor(() => {
         expect(emitted(system.sent).map(e => e.type)).toContain('PACK_UNINSTALL_FAILED');
       });
+      expect(registry.getPackRuntime(PACK_ID)).toEqual(accepted);
+      expect(emitted(system.sent).map(event => event.type)).not.toContain('PACK_DEACTIVATED');
       fs.chmodSync(path.join(_appDirOf(tmpDir), 'packs', PACK_ID), 0o700);
       system.send({ type: 'GET_INSTALLED_PACKS' });
       const list = emitted(system.sent).filter(e => e.type === 'PACKS_LIST').pop();
@@ -423,23 +562,71 @@ describe('a pack that is gone', () => {
 });
 
 describe('installing over a pack that is already running', () => {
-  // The install replaces the pack's directory. A pack left running across that reads the new code on its
-  // next lazy require, so the teardown has to happen while the files it was loaded from are still there.
-  it('tears the running copy down before its files are replaced', async () => {
-    const { installPackFromLocal } = await import('../../../../src/packs/installer.ts');
+  it.each([
+    ['runtime import', 'throw new Error("candidate import refused");'],
+    ['runtime binding', 'module.exports.registration.bindServices = () => { throw new Error("candidate binding refused"); };'],
+  ])('preserves the incumbent and build after refused %s', async (_kind, runtime) => {
+    const installed = await installPackFromLocal(packSource('1.0.0'));
+    expect(activatePack(registry, PACK_ID, { send: () => {} } as never)).toBe(true);
+    const previous = registry.getPackRuntime(PACK_ID);
+    const registration = registry.getPackRegistration(PACK_ID);
+    const build = readPackBuild(installed.dir);
+    const records = readInstalledPacks();
+    const system = runPacksSystem();
+    try {
+      system.send({ type: 'INSTALL_PACK', packSlug: packSource('2.0.0', { runtime }), sourceKind: 'local' });
+      await vi.waitFor(() => expect(emitted(system.sent).map(e => e.type)).toContain('PACK_INSTALL_FAILED'));
+      expect(registry.getPackRegistration(PACK_ID)).toBe(registration);
+      expect(registry.getPackRuntime(PACK_ID)).toEqual(previous);
+      expect(readPackBuild(installed.dir)).toEqual(build);
+      expect(readInstalledPacks()).toEqual(records);
+      expect(emitted(system.sent).map(e => e.type)).not.toContain('PACK_DEACTIVATED');
+      expect(system.sent.map(e => e.type)).not.toContain('TEARDOWN_PACK');
+      expect(system.sent.map(e => e.type)).not.toContain('RELOAD_PACK');
+      expect(registry.loadProblem(PACK_ID)).toBeUndefined();
+    } finally { system.stop(); }
+  });
+
+  it('reserves the resolved owner across installs from different sources', async () => {
+    const a = path.join(tmpDir, 'source-a');
+    const b = path.join(tmpDir, 'source-b');
+    fs.cpSync(packSource('2.0.0'), a, { recursive: true });
+    fs.cpSync(packSource('3.0.0'), b, { recursive: true });
+    const system = runPacksSystem();
+    try {
+      system.send({ type: 'INSTALL_PACK', packSlug: a, sourceKind: 'local' });
+      system.send({ type: 'INSTALL_PACK', packSlug: b, sourceKind: 'local' });
+      await vi.waitFor(() => {
+        expect(emitted(system.sent).map(e => e.type)).toContain('PACK_INSTALL_COMPLETE');
+        expect(emitted(system.sent).map(e => e.type)).toContain('PACK_INSTALL_FAILED');
+      });
+      expect(emitted(system.sent).find(e => e.type === 'PACK_INSTALL_FAILED')).toMatchObject({
+        packSlug: b, error: expect.stringContaining('Operation already in progress'),
+      });
+      expect(registry.packOrigin(PACK_ID)?.version).toBe('2.0.0');
+      expect(readPackBuild(path.join(resolveAppEnvironment().packsDir, PACK_ID)).integrity.version).toBe('2.0.0');
+    } finally { system.stop(); }
+  });
+
+  it('retains accepted files but stops runtime after initialization fails', async () => {
     await installPackFromLocal(packSource('1.0.0'));
     expect(activatePack(registry, PACK_ID, { send: () => {} } as never)).toBe(true);
-
-    /** What the pack's manifest on disk said each time the callback ran */
-    const versionsWhenCalled: string[] = [];
-    await installPackFromLocal(packSource('2.0.0'), undefined, {
-      beforePlace: () => {
-        const installed = path.join(_appDirOf(tmpDir), 'packs', PACK_ID, 'apack.json');
-        versionsWhenCalled.push(JSON.parse(fs.readFileSync(installed, 'utf-8')).version);
-      },
+    const source = packSource('2.0.0', {
+      runtime: 'module.exports.registration.lifecycle = { onInit() { throw new Error("initialization refused"); } };',
+      manifest: { lifecycle: { onInit: 'init.ts#onInit' } },
     });
-
-    expect(versionsWhenCalled, 'the old copy is still in place when the caller is told').toEqual(['1.0.0']);
+    const system = runPacksSystem();
+    try {
+      system.send({ type: 'INSTALL_PACK', packSlug: source, sourceKind: 'local' });
+      await vi.waitFor(() => expect(emitted(system.sent).map(e => e.type)).toContain('PACK_INSTALL_FAILED'));
+      expect(emitted(system.sent).find(e => e.type === 'PACK_INSTALL_FAILED')).toMatchObject({
+        error: expect.stringContaining('initialization refused'),
+      });
+      expect(registry.getPackRegistration(PACK_ID)).toBeNull();
+      expect(registry.settingsCatalog().dependencies).toHaveProperty(PACK_ID);
+      expect(readPackBuild(path.join(resolveAppEnvironment().packsDir, PACK_ID)).integrity.version).toBe('2.0.0');
+      expect(system.sent.map(e => e.type)).toContain('PACK_CHANGED');
+    } finally { system.stop(); }
   });
 
   it('refuses a second install of the same slug while one is in flight', async () => {
@@ -553,11 +740,160 @@ describe('uninstalling by an id that is not an installed pack', () => {
   });
 });
 
+describe('live updates preserve availability and enablement', () => {
+  afterEach(() => vi.unstubAllGlobals());
+
+  it('keeps the incumbent throughout a refused download', async () => {
+    await installPackFromLocal(packSource('1.0.0'));
+    const { recordInstalled } = await import('../../../../src/packs/installed.ts');
+    recordInstalled(PACK_ID, 'acme/pack');
+    expect(activatePack(registry, PACK_ID, { send: () => {} } as never)).toBe(true);
+    const previous = registry.getPackRuntime(PACK_ID);
+    const records = readInstalledPacks();
+    let respond!: (response: Response) => void;
+    vi.stubGlobal('fetch', vi.fn(() => new Promise<Response>(resolve => { respond = resolve; })));
+    const system = runPacksSystem();
+    try {
+      system.send({ type: 'UPDATE_PACK', packId: PACK_ID });
+      expect(registry.getPackRuntime(PACK_ID)).toEqual(previous);
+      expect(system.sent.map(e => e.type)).not.toContain('TEARDOWN_PACK');
+      respond(new Response('missing', { status: 404 }));
+      await vi.waitFor(() => expect(emitted(system.sent).map(e => e.type)).toContain('PACK_UPDATE_FAILED'));
+      expect(registry.getPackRuntime(PACK_ID)).toEqual(previous);
+      expect(readInstalledPacks()).toEqual(records);
+      expect(emitted(system.sent).map(e => e.type)).not.toContain('PACK_DEACTIVATED');
+    } finally { system.stop(); }
+  });
+
+  it('updates a disabled build without activating it', async () => {
+    await installPackFromLocal(packSource('1.0.0'));
+    const { recordInstalled } = await import('../../../../src/packs/installed.ts');
+    recordInstalled(PACK_ID, 'acme/pack');
+    setPackEnabled(PACK_ID, false);
+    registry.refreshCatalog();
+    await stubRelease(packSource('2.0.0'));
+    const system = runPacksSystem();
+    try {
+      system.send({ type: 'UPDATE_PACK', packId: PACK_ID });
+      await vi.waitFor(() => expect(emitted(system.sent).map(e => e.type)).toContain('PACK_UPDATE_COMPLETE'));
+      expect(registry.getPackRegistration(PACK_ID)).toBeNull();
+      expect(readInstalledPacks().find(entry => entry.id === PACK_ID)?.enabled).toBe(false);
+      expect(registry.catalog.getSnapshot().packs.find(pack => pack.snapshot.manifest.id === PACK_ID))
+        .toMatchObject({ enabled: false, snapshot: { manifest: { version: '2.0.0' } } });
+      expect(emitted(system.sent).map(e => e.type)).not.toContain('PACK_ACTIVATED');
+    } finally { system.stop(); }
+  });
+});
+
+describe('app-source update offers and acceptance', () => {
+  const installed = () => path.join(resolveAppEnvironment().packsDir, PACK_ID);
+  async function ownDefault(enabled = true) {
+    await restoreShippedPack(PACK_ID, packSource('1.0.0'), resolveAppEnvironment().packsDir, {
+      installedPacksFile: resolveAppEnvironment().installedPacksFile,
+    });
+    if (!enabled) setPackEnabled(PACK_ID, false);
+    else expect(activatePack(registry, PACK_ID, { send: () => {} } as never)).toBe(true);
+  }
+  function offer() {
+    const input = readAppPackSources(tmpDir);
+    registry.catalog.setAppPackSources(input);
+    return input.sources[0];
+  }
+
+  it.each([true, false])('updates selected app-owned bytes while preserving enablement: %s', async enabled => {
+    await ownDefault(enabled);
+    const marker = path.join(tmpDir, 'activated');
+    packSource('2.0.0', { runtime: enabled ? '' : `require('node:fs').writeFileSync(${JSON.stringify(marker)}, 'activated'); throw new Error('Disabled update executed');` });
+    const source = offer();
+    const system = runPacksSystem();
+    try {
+      system.send({ type: 'GET_INSTALLED_PACKS' });
+      expect(emitted(system.sent).find(event => event.type === 'PACKS_LIST')?.packs)
+        .toContainEqual(expect.objectContaining({ id: PACK_ID, appUpdate: expect.objectContaining({ sourceRevision: source.sourceRevision }) }));
+      system.send({ type: 'UPDATE_APP_PACK', packId: PACK_ID, sourceRevision: source.sourceRevision });
+      await vi.waitFor(() => expect(emitted(system.sent).map(event => event.type)).toContain('PACK_UPDATE_COMPLETE'));
+      expect(readInstalledPacks().find(record => record.id === PACK_ID)).toMatchObject({ enabled, updatesWith: 'app', shippedRevision: source.sourceRevision });
+      expect(readPackBuild(installed()).snapshot.manifest.version).toBe('2.0.0');
+      expect(registry.catalog.get(PACK_ID)?.enabled).toBe(enabled);
+      if (!enabled) {
+        expect(registry.getPackRegistration(PACK_ID)).toBeNull();
+        expect(fs.existsSync(marker)).toBe(false);
+        expect(emitted(system.sent).map(event => event.type)).not.toContain('PACK_ACTIVATED');
+      }
+      system.send({ type: 'GET_INSTALLED_PACKS' });
+      const last = emitted(system.sent).filter(event => event.type === 'PACKS_LIST').pop();
+      expect(last?.packs.find((pack: InstalledPackSummary) => pack.id === PACK_ID)?.appUpdate).toBeUndefined();
+    } finally { system.stop(); }
+  });
+
+  it('offers a changed build with the same version, while user-owned forks get no app update', async () => {
+    await ownDefault(false);
+    const dir = packSource('1.0.0');
+    fs.appendFileSync(path.join(dir, 'dist', PACK_LAYOUT.runtimeEntry), '\n// new app build');
+    sealBuild(dir);
+    const source = offer();
+    const system = runPacksSystem();
+    try {
+      system.send({ type: 'GET_INSTALLED_PACKS' });
+      expect(emitted(system.sent).filter(event => event.type === 'PACKS_LIST').pop()?.packs[0].appUpdate)
+        .toMatchObject({ version: '1.0.0', sourceRevision: source.sourceRevision });
+      await installPackFromLocal(dir, undefined, { installedPacksFile: resolveAppEnvironment().installedPacksFile });
+      system.send({ type: 'GET_INSTALLED_PACKS' });
+      expect(emitted(system.sent).filter(event => event.type === 'PACKS_LIST').pop()?.packs[0].appUpdate).toBeUndefined();
+      system.send({ type: 'UPDATE_APP_PACK', packId: PACK_ID, sourceRevision: source.sourceRevision });
+      await vi.waitFor(() => expect(emitted(system.sent).map(event => event.type)).toContain('PACK_UPDATE_FAILED'));
+      expect(emitted(system.sent).find(event => event.type === 'PACK_UPDATE_FAILED')?.error).toContain('user-managed');
+      expect(readInstalledPacks().find(record => record.id === PACK_ID)?.updatesWith).toBe('user');
+    } finally { system.stop(); }
+  });
+
+  it('keeps an invalid app source visible and refuses the remote route for app-owned records', async () => {
+    await ownDefault(false);
+    const records = readInstalledPacks();
+    const { writeInstalledPacks } = await import('../../../../src/packs/installed.ts');
+    writeInstalledPacks(records.map(record => ({ ...record, installedFrom: 'acme/pack', availableVersion: '9.0.0' })));
+    const dir = packSource('2.0.0');
+    fs.rmSync(path.join(dir, 'dist'), { recursive: true });
+    offer();
+    const fetch = vi.fn(() => { throw new Error('No remote fetch permitted'); });
+    vi.stubGlobal('fetch', fetch);
+    const system = runPacksSystem();
+    try {
+      system.send({ type: 'GET_INSTALLED_PACKS' });
+      const pack = emitted(system.sent).find(event => event.type === 'PACKS_LIST')?.packs[0];
+      expect(pack.appUpdate).toBeUndefined();
+      expect(pack.availableVersion).toBeUndefined();
+      expect(pack.appSourceProblem).toContain('not built');
+      system.send({ type: 'UPDATE_PACK', packId: PACK_ID });
+      expect(emitted(system.sent).find(event => event.type === 'PACK_UPDATE_FAILED')?.error).toContain('app-source');
+      expect(fetch).not.toHaveBeenCalled();
+      expect(readPackBuild(installed()).snapshot.manifest.version).toBe('1.0.0');
+    } finally { system.stop(); vi.unstubAllGlobals(); }
+  });
+
+  it('refuses stale selections without replacing the incumbent build, runtime or record', async () => {
+    await ownDefault();
+    packSource('2.0.0');
+    offer();
+    const before = readPackBuild(installed()).revision;
+    const runtime = registry.getPackRuntime(PACK_ID);
+    const records = readInstalledPacks();
+    const system = runPacksSystem();
+    try {
+      system.send({ type: 'UPDATE_APP_PACK', packId: PACK_ID, sourceRevision: '0'.repeat(64) });
+      await vi.waitFor(() => expect(emitted(system.sent).map(event => event.type)).toContain('PACK_UPDATE_FAILED'));
+      expect(readPackBuild(installed()).revision).toBe(before);
+      expect(registry.getPackRuntime(PACK_ID)).toEqual(runtime);
+      expect(readInstalledPacks()).toEqual(records);
+    } finally { system.stop(); }
+  });
+});
+
 // An update takes whatever the release holds, which its source decides and the app doesn't
 describe('updating to a release that holds another pack', () => {
   afterEach(() => {
     vi.unstubAllGlobals();
-    if (registry.getPackExtensions('shipped-pack')) registry.unregisterPack('shipped-pack');
+    if (registry.getPackRegistration('shipped-pack')) registry.unregisterPack('shipped-pack');
   });
 
   async function updateTo(releaseId: string) {
@@ -567,10 +903,13 @@ describe('updating to a release that holds another pack', () => {
     expect(activatePack(registry, PACK_ID, { send: () => {} } as never)).toBe(true);
     await stubRelease(packSource('2.0.0', { id: releaseId }));
 
+    const previous = registry.getPackRuntime(PACK_ID);
     const system = runPacksSystem();
     try {
       system.send({ type: 'UPDATE_PACK', packId: PACK_ID });
       await vi.waitFor(() => expect(emitted(system.sent).map(e => e.type)).toContain('PACK_UPDATE_FAILED'));
+      expect(registry.getPackRuntime(PACK_ID)).toEqual(previous);
+      expect(system.sent.map(e => e.type)).not.toContain('TEARDOWN_PACK');
       return emitted(system.sent);
     } finally {
       system.stop();
@@ -581,24 +920,26 @@ describe('updating to a release that holds another pack', () => {
 
   // Refused for the same reason as any other id, and worded the same: the release is for a different pack
   // than the one being updated. A shipped pack gets no refusal of its own — it is installed like any other
-  it("is refused the same way when that pack is one the app ships, and the installed copy runs again", async () => {
-    registry.registerPack({ id: 'shipped-pack' }, { id: 'shipped-pack', name: 'Shipped', version: '1.0.0', dir: 'packs/shipped-pack', shipped: true });
+  it("is refused the same way when that pack is one the app ships, and the incumbent keeps running", async () => {
+    registry.registerPack({ id: 'shipped-pack' }, { declarationRevision: 'fixture-revision', id: 'shipped-pack', name: 'Shipped', version: '1.0.0', dir: 'packs/shipped-pack' });
 
     const sent = await updateTo('shipped-pack');
 
     expect(sent.find(e => e.type === 'PACK_UPDATE_FAILED')).toMatchObject({ error: expect.stringContaining('holds the pack "shipped-pack", not "reinstall-pack"') });
     expect(fs.existsSync(path.join(_appDirOf(tmpDir), 'packs', 'shipped-pack'))).toBe(false);
     expect(installedVersion()).toBe('1.0.0');
-    expect(sent.map(e => e.type)).toContain('PACK_ACTIVATED');
+    expect(sent.map(e => e.type)).not.toContain('PACK_ACTIVATED');
+    expect(sent.map(e => e.type)).not.toContain('PACK_DEACTIVATED');
   });
 
-  it('is refused when that pack is any other, and the installed copy runs again', async () => {
+  it('is refused when that pack is any other, and the incumbent keeps running', async () => {
     const sent = await updateTo('other-pack');
 
     expect(sent.find(e => e.type === 'PACK_UPDATE_FAILED')).toMatchObject({ error: expect.stringContaining('holds the pack "other-pack", not "reinstall-pack"') });
     expect(fs.existsSync(path.join(_appDirOf(tmpDir), 'packs', 'other-pack'))).toBe(false);
     expect(installedVersion()).toBe('1.0.0');
-    expect(sent.map(e => e.type)).toContain('PACK_ACTIVATED');
+    expect(sent.map(e => e.type)).not.toContain('PACK_ACTIVATED');
+    expect(sent.map(e => e.type)).not.toContain('PACK_DEACTIVATED');
   });
 });
 
@@ -614,7 +955,7 @@ describe('importing a pack’s content', () => {
     const dir = path.join(tmpDir, 'compiled');
     fs.mkdirSync(dir, { recursive: true });
     fs.writeFileSync(path.join(dir, 'content.json'), JSON.stringify({
-      version: 1, packId: PACK_ID, entries: [{ key: 'memos', written: true, count: 1 }],
+      version: 1, packId: PACK_ID, entries: [{ key: 'memos', written: true, count: 1, identity: ['name'], items: [{ key: 'Intro' }] }],
     }));
     fs.writeFileSync(path.join(dir, 'memos.content.json'), JSON.stringify({
       records: [{ entity: 'Memo', name: 'Intro', body: 'Hello', contentHash: 'intro-v1' }],
@@ -668,7 +1009,7 @@ describe('importing a pack’s content', () => {
  * **The three answers a user gives to one content item**, which are the only requests in the app that write
  * a pack's content over what the user has made of it, or remove it.
  *
- * The fixture is two entries over two SDK entity types, which is default-setup's own shape: one that offers
+ * The fixture has two entries: an SDK action and a pack-owned prompt with its own writer, one that offers
  * and one that does not. Two entries rather than one because the thing most worth holding here is what a
  * request about *one* item does to everything else — the answer was "overwrites all of it", and nothing
  * could have said so with a single entry.
@@ -676,7 +1017,7 @@ describe('importing a pack’s content', () => {
 describe('a user answering for one of a pack’s content items', () => {
   const CONTENT_PACK = 'content-pack';
   const ACTION_KEY = `${CONTENT_PACK}:actions/${encodeURIComponent(JSON.stringify(['Action', 'Echo']))}`;
-  const PROMPT_KEY = `${CONTENT_PACK}:prompts/${encodeURIComponent(JSON.stringify(['Prompt', 'Greet']))}`;
+  const PROMPT_KEY = `${CONTENT_PACK}:pack-prompts/${encodeURIComponent(JSON.stringify(['PackPrompt', 'Greet']))}`;
 
   /**
    * The pack as installed, in the data dir's packs directory — which is where the restore looks, because
@@ -687,14 +1028,22 @@ describe('a user answering for one of a pack’s content items', () => {
     const content = path.join(dir, PACK_LAYOUT.contentDir);
     fs.rmSync(dir, { recursive: true, force: true });
     fs.mkdirSync(content, { recursive: true });
-    fs.writeFileSync(path.join(dir, 'apack.json'), JSON.stringify({ id: CONTENT_PACK, name: 'Content Pack', version: '1.0.0' }));
-    fs.writeFileSync(path.join(content, 'content.json'), JSON.stringify({ version: 1, packId: CONTENT_PACK, entries: [] }));
+    writeInstalledPackFixture(dir, { id: CONTENT_PACK, name: 'Content Pack', version: '1.0.0',
+      data: { entities: { PackPrompt: null } },
+      content: { sources: { actions: 'src/actions', 'pack-prompts': { path: 'src/prompts', format: 'pack-prompts', onUserEdit: 'offer' } },
+        formats: { 'pack-prompts': { format: 'json', entity: 'PackPrompt', identity: ['label'] } },
+        writers: { PackPrompt: 'src/writers.ts#promptWriter' } } });
+    fs.writeFileSync(path.join(content, 'content.json'), JSON.stringify({ version: 1, packId: CONTENT_PACK, entries: [
+      { key: 'actions', written: true, count: 1, identity: ['label'], items: [{ key: 'Echo' }] },
+      { key: 'pack-prompts', written: true, count: 1, identity: ['label'], items: [{ key: 'Greet' }] },
+    ] }));
     fs.writeFileSync(path.join(content, 'actions.content.json'), JSON.stringify({
       records: [{ entity: 'Action', label: 'Echo', description: `theirs ${version}`, contentHash: `echo-${version}` }],
     }));
-    fs.writeFileSync(path.join(content, 'prompts.content.json'), JSON.stringify({
-      records: [{ entity: 'Prompt', label: 'Greet', description: `theirs ${version}`, contentHash: `greet-${version}` }],
+    fs.writeFileSync(path.join(content, 'pack-prompts.content.json'), JSON.stringify({
+      records: [{ entity: 'PackPrompt', label: 'Greet', description: `theirs ${version}`, contentHash: `greet-${version}` }],
     }));
+    sealPack(dir);
     return dir;
   }
 
@@ -702,21 +1051,27 @@ describe('a user answering for one of a pack’s content items', () => {
   const removed: string[] = [];
 
   function registerContentPack(): void {
+    const dir = path.join(resolveAppEnvironment().packsDir, CONTENT_PACK);
+    const { snapshot, integrity, revision } = readPackBuild(dir);
+    const manifest = snapshot.manifest;
     registry.registerPack({
+      declarationRevision: snapshot.declarationRevision,
+      ears: { entities: { ..._packEntityTypes(manifest) }, relKinds: {} },
       id: CONTENT_PACK,
       appliers: [
         createFormatApplier({ key: 'actions', entities: ['Action'], identity: ['label'], onUserEdit: 'offer' }),
-        createFormatApplier({ key: 'prompts', entities: ['Prompt'], identity: ['label'], onUserEdit: 'offer' }),
+        createFormatApplier({ key: 'pack-prompts', entities: ['PackPrompt'], identity: ['label'], onUserEdit: 'offer' }),
       ],
       contentWriters: {
-        Prompt: {
+        PackPrompt: {
           remove(id) {
             removed.push(id);
             untypedTx(id).update('deleted' as never, true);
           },
         },
       },
-    });
+    }, { id: manifest.id, name: manifest.name, version: manifest.version, manifest, dir,
+      declarationRevision: snapshot.declarationRevision, buildRevision: revision, buildFiles: integrity.files });
   }
 
   const describedBy = (id: string) => untypedQx(id as never).pickOne(['description'])?.description as string | undefined;
@@ -725,6 +1080,7 @@ describe('a user answering for one of a pack’s content items', () => {
   beforeEach(() => {
     resetTestData();
     removed.length = 0;
+    startTestRuntime({ entityTypes: ['PackPrompt'] });
     dir = contentPack('v1');
     registerContentPack();
     // The apply that writes both items and records what it wrote, which is what makes the rest an answer
@@ -732,10 +1088,10 @@ describe('a user answering for one of a pack’s content items', () => {
   });
 
   afterEach(() => {
-    if (registry.getPackExtensions(CONTENT_PACK)) registry.unregisterPack(CONTENT_PACK);
+    if (registry.getPackRegistration(CONTENT_PACK)) registry.unregisterPack(CONTENT_PACK);
   });
 
-  const entityOf = (key: string, entity: 'Action' | 'Prompt') =>
+  const entityOf = (key: string, entity: 'Action' | 'PackPrompt') =>
     (untypedQx(entity as never).where('contentKey', key).pickAll()[0] as { id: string } | undefined)?.id;
 
   /**
@@ -745,7 +1101,7 @@ describe('a user answering for one of a pack’s content items', () => {
    * edited under every other entry — on a click that asked for one.
    */
   it('writes the item the user asked for, and nothing of any other entry', () => {
-    const prompt = entityOf(PROMPT_KEY, 'Prompt')!;
+    const prompt = entityOf(PROMPT_KEY, 'PackPrompt')!;
     untypedTx(prompt as never).update('description' as never, 'mine');
     fs.rmSync(dir, { recursive: true, force: true });
     contentPack('v2');
@@ -769,7 +1125,7 @@ describe('a user answering for one of a pack’s content items', () => {
    * and skip the second, which for a note is the user's undo.
    */
   it('removes a deleted item through its pack’s own writer', () => {
-    const prompt = entityOf(PROMPT_KEY, 'Prompt')!;
+    const prompt = entityOf(PROMPT_KEY, 'PackPrompt')!;
 
     const system = runPacksSystem();
     try {
@@ -792,6 +1148,7 @@ describe('a user answering for one of a pack’s content items', () => {
     appliedContent.record(CONTENT_PACK, { wrote: new Map(), offers: new Map([[ACTION_KEY, offer]]) });
     // The content no longer holds an item under that label, so the selection matches no record
     fs.writeFileSync(path.join(dir, PACK_LAYOUT.contentDir, 'actions.content.json'), JSON.stringify({ records: [] }));
+    sealPack(dir);
 
     const system = runPacksSystem();
     try {
@@ -828,4 +1185,33 @@ describe('a user answering for one of a pack’s content items', () => {
       system.stop();
     }
   });
+});
+
+
+it('refuses a conflicting destination before saving enablement or importing its runtime', async () => {
+  const feature = { description: 'Open actions', plugin: { label: 'Actions', state: 'missing.ts' } };
+  const marker = path.join(tmpDir, 'conflicting-runtime-imported');
+  for (const id of ['incumbent', PACK_ID]) {
+    const source = packSource('1.0.0', { id, manifest: { features: { view: feature } },
+      runtime: `require('node:fs').writeFileSync(${JSON.stringify(marker)}, 'executed');` });
+    const file = path.join(source, 'dist', PACK_LAYOUT.snapshot);
+    const snapshot = JSON.parse(fs.readFileSync(file, 'utf8'));
+    snapshot.entityDestinations = { Action: 'view' };
+    fs.writeFileSync(file, JSON.stringify(snapshot)); sealBuild(source);
+    await installPackFromLocal(source);
+  }
+  setPackEnabled(PACK_ID, false);
+  const system = runPacksSystem();
+  try {
+    registry.refreshCatalog(resolveAppEnvironment().packsDir);
+    const before = registry.catalog.getSnapshot();
+    takeSystemErrors();
+    system.send({ type: 'TOGGLE_PACK_ENABLED', packId: PACK_ID });
+    expect(readInstalledPacks().find(entry => entry.id === PACK_ID)?.enabled).toBe(false);
+    expect(registry.catalog.getSnapshot()).toBe(before);
+    expect(registry.getPackRegistration(PACK_ID)).toBeNull();
+    expect(fs.existsSync(marker)).toBe(false);
+    expect(takeSystemErrors().map(error => error.message).join(' ')).toMatch(/Action.*incumbent\/view.*reinstall-pack\/view/);
+    expect(emitted(system.sent).find(event => event.type === 'PACK_ENABLED_CHANGED')).toMatchObject({ enabled: false });
+  } finally { system.stop(); }
 });

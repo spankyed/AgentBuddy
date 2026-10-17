@@ -5,6 +5,7 @@ import { createRequire, isBuiltin } from 'node:module';
 import * as path from 'node:path';
 import ts from 'typescript';
 import { errorMessage } from '@apackdev/sdk/utils/pure';
+import { readPackCompilerConfiguration } from './compiler-configuration.ts';
 
 /** Declaration extensions an import of the facade must resolve to; anything else reads as `any` */
 const DECLARATION_EXTENSIONS: readonly string[] = [ts.Extension.Dts, ts.Extension.Dmts, ts.Extension.Dcts, ts.Extension.Ts, ts.Extension.Mts, ts.Extension.Cts, ts.Extension.Tsx];
@@ -96,10 +97,8 @@ function unpublishedReason(packDir: string, name: string, specifier: string): st
 
 /** The pack's compiler options for checking the bundle: its tsconfig, resolving as the bundler did, with the bundle's own declarations checked */
 function checkOptions(packDir: string): ts.CompilerOptions {
-  const tsconfig = path.join(packDir, 'tsconfig.json');
-  const base: ts.CompilerOptions = fs.existsSync(tsconfig)
-    ? ts.getParsedCommandLineOfConfigFile(tsconfig, {}, { ...ts.sys, onUnRecoverableConfigFileDiagnostic: () => {} })?.options ?? {}
-    : { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.ESNext, moduleResolution: ts.ModuleResolutionKind.Bundler, strict: true };
+  const base = readPackCompilerConfiguration(packDir)?.options
+    ?? { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.ESNext, moduleResolution: ts.ModuleResolutionKind.Bundler, strict: true };
   // No customConditions: the gate compiles the facade the way an installed dependent does, against the
   // packages' published declarations
   return { ...base, noEmit: true, skipLibCheck: false, customConditions: undefined, allowImportingTsExtensions: true };

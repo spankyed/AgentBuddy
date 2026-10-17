@@ -1,16 +1,15 @@
-import { ensureCheckoutPackages } from '../build/checkout-packages.ts';
-import * as fs from 'node:fs';
+import { recordCliInstall } from '../app/installed-packs';
 import * as path from 'node:path';
 import { spawn, type ChildProcess } from 'node:child_process';
 import { createRequire } from 'node:module';
-import { build } from './build';
+import { createPackBuilder } from '../build/build-process.ts';
 import { findPackRoot, readManifest } from '../utils';
 import {
   debugPortArgsFor, lastAttachedAt, publishSession, readDevToolsPort, readSession, startedByFromEnv,
   type DevSession,
 } from '@apackdev/host/dev-session';
-import { findFEEntry, packDevServerConfig } from '../build/fe-bundler';
-import { reloadPack, type AppPlace, type DevReload } from '../build/dev-reload.ts';
+import type { AppPlace } from '../build/dev-reload.ts';
+import { startPackBuildWatcher } from '../build/watch.ts';
 import { cliDirs, parseHostFlags, resolvePackHost, resolveRepositoryHost, packagedHostChannel, hostLabel, setHostHandoff, type PackHost } from '../app/pack-host';
 import { endAppHolding, profileFor, parseProfileFlags, removeProfile, PROFILE_USAGE } from '../app/profiles';
 import { verifySessionHost } from '../app/drive-attach';
@@ -27,8 +26,8 @@ import { removeDevServerMarker, writeDevServerMarker } from '@apackdev/host/pack
 const HELP = `
 Usage: apack pack dev [--host <path|beta>]
 
-Build and install this pack, then watch it: FE changes reload through Vite,
-BE changes rebuild, reinstall, and reload in place. Requires a pack directory.
+Build and install this pack, then watch its authored inputs. Vite serves frontend changes;
+successful staged builds reinstall and reload the verified pack. Requires a pack directory.
 
 A development app is launched with a debug port and publishes <dataDir>/session.json, which is
 what lets \`apack pack drive\` ask it questions instead of launching one of its own.
@@ -68,19 +67,13 @@ export function developmentHostEnv(app: PackHost, isolated: boolean): AppEnv {
   return env;
 }
 
-/** Prints what a reload came to; `what` names the changes (`BE changes`, `changes`) */
-function reportReload(result: DevReload, what: string): void {
-  if (result.status === 'reloaded') console.log('BE reloaded successfully.\n');
-  else if (result.status === 'not-running') console.warn(`The app is not running (${result.detail}). Restart to apply ${what}.\n`);
-  else if (result.status === 'failed') console.warn(`The app refused the reload (${result.detail}). Restart the app to apply ${what}.\n`);
-  else console.warn(`Could not reach the app (${result.detail}). Restart to apply ${what}.\n`);
-}
-
 /** Installs into the app's data dir, checking hostVersion and the build format against the app that last used it. */
 export function installToApp(root: string, place: AppPlace = { env: 'development' }) {
-  const { packsDir, userDataDir } = resolveAppEnvironment(place);
+  const { packsDir, userDataDir, installedPacksFile } = resolveAppEnvironment(place);
   const { version: hostVersion, packFormat } = readHostCompatibility(userDataDir);
-  return installPackFromLocal(root, packsDir, { hostVersion, packFormat });
+  return installPackFromLocal(root, packsDir, { hostVersion, packFormat, installedPacksFile,
+    accept: candidate => { recordCliInstall(installedPacksFile, candidate.id); },
+  });
 }
 
 /**
@@ -256,13 +249,8 @@ async function session(args: string[], hooks: SessionHooks, target: 'app' | 'pac
   const root = target === 'pack' ? findPackRoot(process.cwd()) : undefined;
   const pack = root === undefined ? undefined : {
     root,
-    srcDir: path.join(root, 'src'),
     manifest: readManifest(root),
-    feEntry: findFEEntry(root),
   };
-  if (pack && !fs.existsSync(pack.srcDir)) {
-    throw new Error('No src/ directory to watch');
-  }
 
   const { mode, withSecrets, rest } = parseProfileFlags(args);
   const flags = parseHostFlags(rest);
@@ -302,6 +290,18 @@ async function session(args: string[], hooks: SessionHooks, target: 'app' | 'pac
       },
     } : {}),
   });
+  const buildLifetime = new AbortController();
+  const builder = pack ? createPackBuilder(pack.root) : undefined;
+  let building: Promise<void> | undefined;
+  let watching: ReturnType<typeof startPackBuildWatcher> | undefined;
+  // Startup failures are reported by the session; release must still drain their cleanup.
+  hold.holdsWatcher(async () => {
+    await building?.catch(() => {});
+    await watching?.then(watcher => watcher.close(), () => {});
+    await builder?.close();
+  });
+  const releaseNow = () => { buildLifetime.abort(); hold.releaseNow(); };
+  const release = () => { buildLifetime.abort(); return hold.release(); };
 
   /**
    * Publishes `<dataDir>/session.json`, so something can attach to the app this command holds.
@@ -361,14 +361,14 @@ async function session(args: string[], hooks: SessionHooks, target: 'app' | 'pac
   /** Release, then exit, so the profile goes with the app as it does for any other way this ends. */
   async function reap(why: string): Promise<void> {
     console.log(`\nClosing the app this question started: ${why}.`);
-    await hold.release();
+    await release();
     process.exit(0);
   }
 
-  hooks.teardown = hold.release;
-  process.on('exit', hold.releaseNow);
+  hooks.teardown = release;
+  process.on('exit', releaseNow);
   for (const signal of ['SIGINT', 'SIGTERM'] as const) {
-    process.on(signal, () => void hold.release().then(() => process.exit(0)));
+    process.on(signal, () => void release().then(() => process.exit(0)));
   }
 
   if (profile && withSecrets) {
@@ -383,11 +383,10 @@ async function session(args: string[], hooks: SessionHooks, target: 'app' | 'pac
   }
 
   if (pack) {
-    // The build and the app both read the @apackdev packages' dist; from a checkout that dist is built on demand
-    ensureCheckoutPackages(pack.root);
-
     console.log('Running initial build...\n');
-    await build([]);
+    building = builder!.build({ signal: buildLifetime.signal });
+    await building;
+    buildLifetime.signal.throwIfAborted();
   }
 
   /**
@@ -445,7 +444,7 @@ async function session(args: string[], hooks: SessionHooks, target: 'app' | 'pac
       // port a driver needs. An app that was already here has a session of its own or is not attachable,
       // and either way is not this command's to describe.
       await publish(launchedAt);
-      spawned.once('exit', () => void hold.release().then(() => process.exit(0)));
+      spawned.once('exit', () => void release().then(() => process.exit(0)));
     }
   }
 
@@ -462,111 +461,24 @@ async function session(args: string[], hooks: SessionHooks, target: 'app' | 'pac
   const result = await installToApp(pack.root, place);
   console.log(`  ${result.dir}\n`);
 
-  if (!pack.feEntry) {
-    console.log('No FE entry found. Falling back to watch + rebuild + reload mode.\n');
-    await watchRebuildFallback(pack.root, pack.srcDir, pack.manifest.id, place);
-    return;
-  }
-
-  const vite = await import('vite');
-  const devServer = await vite.createServer(await packDevServerConfig(pack.root, pack.feEntry));
-  hold.holdsServer(devServer);
-  await devServer.listen();
-  const address = devServer.httpServer?.address();
-  const port = typeof address === 'object' && address ? address.port : 0;
-
-  if (!port) {
-    throw new Error('Vite dev server failed to bind a port');
-  }
-
-  // Outside the installed pack: its directory is the verified pack, replaced by every install below
-  writeDevServerMarker(userDataDir, pack.manifest.id, { port, pid: process.pid });
-  hold.holdsMarker(pack.manifest.id);
-
-  let debounceTimer: ReturnType<typeof setTimeout> | null = null;
-  fs.watch(path.join(pack.root, 'apack.json'), () => {
-    if (debounceTimer) clearTimeout(debounceTimer);
-    debounceTimer = setTimeout(async () => {
-      console.log('\napack.json changed — regenerating entries...');
-      try {
-        const { generateEntries } = await import('./generate-entries');
-        await generateEntries(['--force'], pack.root);
-      } catch (err) {
-        console.error(`Regeneration failed: ${err instanceof Error ? err.message : err}`);
-      }
-    }, 300);
+  const watch = async () => {
+    watching = startPackBuildWatcher(pack.root, {
+      place,
+      signal: buildLifetime.signal,
+      builder: builder!,
+      onBuilt: async () => { await installToApp(pack.root, place); },
+    });
+    await watching;
+    await new Promise<never>(() => {});
+  };
+  const address = await builder!.serveFrontend(address => {
+    if (address) {
+      writeDevServerMarker(userDataDir, pack.manifest.id, address);
+      hold.holdsMarker(pack.manifest.id);
+    } else removeDevServerMarker(userDataDir, pack.manifest.id);
   });
-
-  // BE file watcher: rebuild → install → hot-reload backend
-  let beDebounceTimer: ReturnType<typeof setTimeout> | null = null;
-  let beReloading = false;
-  fs.watch(pack.srcDir, { recursive: true }, (_eventType, filename) => {
-    if (!filename || filename.endsWith('.vue') || filename.endsWith('.css')) return;
-    if (!filename.endsWith('.ts') && !filename.endsWith('.tsx')) return;
-    if (filename.endsWith('.d.ts')) return;
-    if (beDebounceTimer) clearTimeout(beDebounceTimer);
-    beDebounceTimer = setTimeout(async () => {
-      if (beReloading) return;
-      beReloading = true;
-      try {
-        console.log(`\nBE change detected: ${filename}`);
-        console.log('Rebuilding...');
-        await build([]);
-        console.log('Installing...');
-        await installToApp(pack.root, place);
-        console.log('Triggering BE reload...');
-        reportReload(await reloadPack(pack.manifest.id, place), 'BE changes');
-      } catch {
-        console.warn('Rebuild failed. Fix the error to apply BE changes.\n');
-      } finally {
-        beReloading = false;
-      }
-    }, 300);
-  });
-
-  console.log(`\nDev server running at http://localhost:${port}`);
-  // Measured 2026-10-07: a `.vue` edit reloads the window, it does not patch the component. Vite decides that
-  // because the pack's entry is imported by the app through `pack://`, outside Vite's module graph, so there is
-  // no accepting importer for the update to stop at. Saying "HMR" promised the component-level thing.
-  console.log(`FE changes reload the app's window (Vite watches this pack).`);
-  console.log(`BE changes auto-rebuild and hot-reload via API.`);
+  if (address) console.log(`\nDev server running at http://localhost:${address.port}`);
+  console.log('Frontend changes reload through Vite; authored inputs rebuild, reinstall and reload the verified pack.');
   console.log('Press Ctrl+C to stop.\n');
-
-  await new Promise(() => {});
-}
-
-async function watchRebuildFallback(root: string, srcDir: string, packId: string, place: AppPlace) {
-  let debounceTimer: ReturnType<typeof setTimeout> | null = null;
-  let reloading = false;
-
-  function scheduleBuild(label: string) {
-    if (debounceTimer) clearTimeout(debounceTimer);
-    debounceTimer = setTimeout(async () => {
-      if (reloading) return;
-      reloading = true;
-      try {
-        console.log(`\nChange detected: ${label}`);
-        await build([]);
-        await installToApp(root, place);
-        reportReload(await reloadPack(packId, place), 'changes');
-      } catch {
-        console.warn('Rebuild failed. Fix the error to apply changes.\n');
-      } finally {
-        reloading = false;
-      }
-    }, 300);
-  }
-
-  fs.watch(srcDir, { recursive: true }, (_eventType, filename) => {
-    if (!filename || filename.endsWith('.d.ts')) return;
-    if (!filename.endsWith('.ts') && !filename.endsWith('.tsx') && !filename.endsWith('.vue') && !filename.endsWith('.css') && !filename.endsWith('.md')) return;
-    scheduleBuild(filename);
-  });
-
-  fs.watch(path.join(root, 'apack.json'), () => {
-    scheduleBuild('apack.json');
-  });
-
-  console.log('Watching src/ and apack.json... (Ctrl+C to stop)');
-  await new Promise(() => {});
+  await watch();
 }

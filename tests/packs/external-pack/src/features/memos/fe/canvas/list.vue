@@ -9,6 +9,7 @@ import { id, type MemosState } from '../state.ts';
 const actor: MemosState = usePlugin();
 const memos = useSelector(actor, (state) => state.context.memos);
 const draft = ref('');
+const referenceDraft = ref('');
 
 function add() {
   const text = draft.value.trim();
@@ -35,6 +36,9 @@ function add() {
     </form>
     <div data-testid="memo-preview">
       <TiptapEditor mode="viewer" :model-value="draft || 'Memo preview'" />
+    </div>
+    <div data-testid="memo-reference-editor">
+      <TiptapEditor mode="editor" v-model="referenceDraft" :show-gutter="false" />
     </div>
     <ul data-testid="memo-list" class="flex flex-col gap-1">
       <li v-for="memo in memos" :key="memo.id" class="text-sm">{{ memo.text }}</li>

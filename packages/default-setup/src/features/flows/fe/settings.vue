@@ -214,12 +214,10 @@ import { ref as featureRef } from '#generated/ref.ts'
 
 interface Props {
   settings?: SettingsOf<'flows'>
-  allSettings?: any
 }
 
 const props = withDefaults(defineProps<Props>(), {
-  settings: undefined,
-  allSettings: undefined
+  settings: undefined
 })
 
 const emit = defineEmits<{

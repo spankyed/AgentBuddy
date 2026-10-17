@@ -6,7 +6,7 @@ import { REPO_ROOT } from '@apackdev/host/build/packages-built';
 import { afterEach, describe, expect, it } from 'vitest';
 import { packFixture } from '@apackdev/sdk/testing/pack-fixture';
 import { population } from '@apackdev/sdk/testing';
-import { formatPackWide, loadPackChecks, packRuleProblems, PACK_RULES, refusePackRuleViolations, type PackRuleKey } from '../../src/build/pack-rules.ts';
+import { formatPackWide, packRuleProblems, PACK_RULES, refusePackRuleViolations, type PackRuleKey } from '../../src/build/pack-rules.ts';
 import { resetSourceCache } from '../../src/build/pack-sources.ts';
 
 /**
@@ -374,36 +374,34 @@ describe('every rule', () => {
  * derived from the rules rather than repeated, and a name outside it is an error naming what is allowed —
  * a silent typo would leave a rule off for as long as nobody looked.
  */
-describe('apack.checks.json', () => {
-  const withChecks = (checks: string, code = "console.log('x');\n") => pack({
-    'apack.checks.json': checks,
-    'src/extensions/steps/x.ts': code,
-  });
+describe('manifest checks.allow', () => {
+  const withChecks = (checks: object) => {
+    const dir = pack({ 'apack.json': JSON.stringify({ id: 'example', name: 'Example', version: '1.0.0' }), 'package.json': JSON.stringify({ name: 'p', type: 'module' }), 'src/extensions/steps/x.ts': "console.log('x');\n" });
+    const file = path.join(dir, 'apack.json');
+    fs.writeFileSync(file, JSON.stringify({ ...JSON.parse(fs.readFileSync(file, 'utf8')), checks }));
+    return dir;
+  };
 
   it('silences a switchable rule the pack allows', () => {
-    const dir = withChecks(JSON.stringify({ allow: ['backend-console'] }));
-    expect(loadPackChecks(dir)).toEqual(new Set(['backend-console']));
-    expect([...packRuleProblems(dir)]).toEqual([]);
+    expect([...packRuleProblems(withChecks({ allow: ['backend-console'] }))]).toEqual([]);
   });
 
   it('reports the rule when the pack allows nothing', () => {
-    expect(problems(withChecks(JSON.stringify({ allow: [] })), 'backend-console'))
-      .toEqual(['src/extensions/steps/x.ts:1: console.log']);
+    expect(problems(withChecks({ allow: [] }), 'backend-console')).toEqual(['src/extensions/steps/x.ts:1: console.log']);
   });
 
-  it('refuses a rule that is not switchable, naming the ones that are', () => {
-    expect(() => loadPackChecks(withChecks(JSON.stringify({ allow: ['host-imports'] }))))
-      .toThrow(/"host-imports", which is not a rule a pack may switch off.*backend-console/s);
+  it.each(['host-imports', 'no-console'])('refuses a non-switchable or unknown rule: %s', key => {
+    expect(() => packRuleProblems(withChecks({ allow: [key] }))).toThrow('checks.allow.0');
+    expect(() => packRuleProblems(withChecks({ allow: [key] }))).toThrow(key);
+    expect(() => packRuleProblems(withChecks({ allow: [key] }))).toThrow('backend-console');
   });
 
-  it('refuses a name that is no rule at all, and a file that is not a list', () => {
-    expect(() => loadPackChecks(withChecks(JSON.stringify({ allow: ['no-console'] })))).toThrow(/not a rule a pack may switch off/);
-    expect(() => loadPackChecks(withChecks(JSON.stringify({ allow: 'backend-console' })))).toThrow(/is a list of rule names/);
-    expect(() => loadPackChecks(withChecks('{'))).toThrow(/does not parse/);
+  it('refuses a value that is not a list', () => {
+    expect(() => packRuleProblems(withChecks({ allow: 'backend-console' }))).toThrow('checks.allow');
   });
 
-  it('is optional: a pack without one allows nothing', () => {
-    expect(loadPackChecks(pack({ 'src/f.ts': 'export const x = 1;\n' }))).toEqual(new Set());
+  it('is optional: a pack without checks allows nothing', () => {
+    expect([...packRuleProblems(pack({ 'src/f.ts': 'export const x = 1;\n' }))]).toEqual([]);
   });
 });
 
@@ -422,7 +420,7 @@ describe('refusePackRuleViolations', () => {
     expect(message).toContain('2 pack rules failed.');
     expect(message).toContain('src/extensions/steps/x.ts:1: @apackdev/host/ears');
     expect(message).toContain('src/extensions/steps/x.ts:2: console.log');
-    expect(message).toContain('{ "allow": ["backend-console"] }');
+    expect(message).toContain('{ "checks": { "allow": ["backend-console"] } }');
     expect(message, 'a rule that is not switchable must not offer a way to allow it')
       .not.toContain('["host-imports"]');
   });
@@ -576,7 +574,7 @@ describe('when several rules are right about one site', () => {
       'these rows of the cli.md table say nothing in the Switchable? column').toEqual([]);
     expect(documented.filter((row) => row.switchable === 'yes').map((row) => row.key).sort(),
       'cli.md marks a different set of rules switchable than PACK_RULES declares, so a pack author is told they '
-      + 'may allow a rule apack.checks.json will refuse, or not told about one they may')
+      + 'may allow a rule apack.json will refuse, or not told about one they may')
       .toEqual(PACK_RULES.filter((rule) => rule.switchable).map((rule) => rule.key).sort());
   });
 
@@ -605,12 +603,13 @@ describe('when several rules are right about one site', () => {
  * key the reader never looks for — so this pastes it rather than matching its text.
  */
 it('allowLineWorks: pasting the line the error prints switches the rule off', () => {
-  const dir = pack({ 'package.json': JSON.stringify({ name: 'p', type: 'module' }), 'src/extensions/steps/x.ts': "console.log('x');\n" });
+  const dir = pack({ 'apack.json': JSON.stringify({ id: 'example', name: 'Example', version: '1.0.0' }), 'package.json': JSON.stringify({ name: 'p', type: 'module' }), 'src/extensions/steps/x.ts': "console.log('x');\n" });
   const printed = (() => { try { refusePackRuleViolations(dir); return ''; } catch (err) { return (err as Error).message; } })();
-  const advice = printed.split('\n').find((line) => line.includes('apack.checks.json'));
+  const advice = printed.split('\n').find((line) => line.includes('apack.json'));
   expect(advice).toBeDefined();
   const json = advice!.slice(advice!.indexOf('{'), advice!.lastIndexOf('}') + 1);
-  fs.writeFileSync(path.join(dir, 'apack.checks.json'), json);
+  const file = path.join(dir, 'apack.json');
+  fs.writeFileSync(file, JSON.stringify({ ...JSON.parse(fs.readFileSync(file, 'utf8')), ...JSON.parse(json) }));
   expect(() => refusePackRuleViolations(dir)).not.toThrow();
 });
 

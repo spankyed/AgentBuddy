@@ -12,15 +12,15 @@
         <div class="flex items-center gap-2">
           <h2 class="text-base font-medium text-neutral-200 truncate">{{ pack.name }}</h2>
           <span
-            v-if="!pack.canUninstall"
+            v-if="pack.updatesWith === 'app'"
             class="px-1.5 py-0.5 text-[10px] font-medium text-neutral-500 bg-neutral-800 border border-neutral-700/50 rounded cursor-default"
-            title="Always active — cannot be disabled or removed"
-          >Built-in</span>
+            title="Updates with the app"
+          >App-managed</span>
         </div>
         <div class="flex items-center gap-1.5">
           <span class="text-xs text-neutral-500">{{ pack.id }}</span>
           <span class="text-neutral-700">&middot;</span>
-          <span class="text-xs text-neutral-600">v{{ pack.version }}</span>
+          <span v-if="pack.version" class="text-xs text-neutral-600">v{{ pack.version }}</span>
           <template v-if="pack.availableVersion">
             <span class="text-neutral-700">&middot;</span>
             <span class="px-1.5 py-0.5 text-[10px] font-medium text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 rounded">
@@ -36,6 +36,14 @@
       <p v-if="pack.updateCheckError" class="text-xs text-amber-400" data-testid="pack-update-check-error">
         Update check: {{ pack.updateCheckError }}
       </p>
+
+      <p v-if="pack.appSourceProblem" class="text-xs text-amber-400" data-testid="pack-app-source-problem">
+        App source: {{ pack.appSourceProblem }}
+      </p>
+      <p v-if="pack.loadProblem" class="text-xs text-red-400 break-words" data-testid="pack-load-problem">
+        Failed to load: {{ pack.loadProblem }}
+      </p>
+      <p v-if="!pack.version" class="text-sm text-neutral-400">Pack metadata is unavailable.</p>
 
       <!-- Description -->
       <p v-if="pack.description" class="text-sm text-neutral-400">{{ pack.description }}</p>
@@ -58,7 +66,7 @@
             <p class="text-sm text-neutral-200">{{ offer.label }}</p>
             <p class="text-xs text-neutral-400 mt-0.5">
               {{ offer.kind === 'update'
-                ? `You changed this, and ${pack.name} v${pack.version} ships a newer version.`
+                ? `You changed this, and ${pack.name}${pack.version ? ` v${pack.version}` : ''} ships a newer version.`
                 : `You changed this, and ${pack.name} no longer ships it.` }}
             </p>
           </div>
@@ -72,7 +80,7 @@
               </ul>
             </div>
             <div class="min-w-0">
-              <p class="text-neutral-500 mb-1">{{ offer.kind === 'update' ? `${pack.name} v${pack.version}` : 'The pack' }}</p>
+              <p class="text-neutral-500 mb-1">{{ offer.kind === 'update' ? `${pack.name}${pack.version ? ` v${pack.version}` : ''}` : 'The pack' }}</p>
               <p class="text-neutral-400">
                 {{ offer.kind === 'update'
                   ? 'Replaces the whole item, your changes included.'
@@ -121,11 +129,8 @@
       </section>
 
       <!-- Status / Controls -->
-      <section v-if="pack.canUninstall" class="flex items-center justify-between px-4 py-3 bg-neutral-800/50 border border-neutral-700/50 rounded-lg">
-        <span v-if="pack.loadProblem" class="text-sm text-red-400 min-w-0 mr-3 break-words" data-testid="pack-load-problem">
-          Failed to load: {{ pack.loadProblem }}
-        </span>
-        <span v-else class="text-sm text-neutral-300">{{ pack.enabled ? 'Enabled' : 'Disabled' }}</span>
+      <section class="flex items-center justify-between px-4 py-3 bg-neutral-800/50 border border-neutral-700/50 rounded-lg">
+        <span class="text-sm text-neutral-300">{{ pack.loadProblem ? 'Unavailable' : pack.enabled ? 'Enabled' : 'Disabled' }}</span>
         <div class="flex items-center gap-3 flex-shrink-0">
           <button
             class="relative w-9 h-5 rounded-full transition-colors"
@@ -137,6 +142,10 @@
               class="absolute top-0.5 left-0.5 w-4 h-4 bg-white rounded-full transition-transform"
               :class="pack.enabled ? 'translate-x-4' : 'translate-x-0'"
             />
+          </button>
+          <button v-if="pack.appUpdate" :disabled="updating || busy" class="text-xs text-emerald-400 disabled:opacity-50"
+            data-testid="pack-app-update" @click="$emit('appUpdate', pack.appUpdate.sourceRevision)">
+            {{ updating ? 'Updating...' : `Update from app v${pack.appUpdate.version}` }}
           </button>
           <button
             v-if="pack.availableVersion"
@@ -153,6 +162,31 @@
             Remove
           </button>
         </div>
+      </section>
+
+      <section class="space-y-3 px-4 py-3 bg-neutral-800/50 rounded-lg" data-testid="pack-replacement">
+        <p class="text-xs text-neutral-400">{{ pack.updatesWith === 'app' ? 'Updates with the app.' : 'Updates are user-managed.' }}
+          Replacing changes this pack's files and keeps your stored settings.</p>
+        <div class="flex gap-2">
+          <input v-model="replacement" placeholder="Local path, URL, or owner/repo" class="flex-1 min-w-0 px-2 py-1 bg-neutral-900 text-sm rounded" :disabled="busy" />
+          <button :disabled="busy || !replacement.trim()" class="text-xs text-primary-400 disabled:opacity-50"
+            data-testid="pack-replace" @click="$emit('replace', replacement.trim())">Replace</button>
+        </div>
+        <template v-if="appSource">
+          <button v-if="!confirmingRestore" :disabled="busy" class="text-xs text-primary-400" data-testid="pack-restore"
+            @click="confirmingRestore = appSource.sourceRevision">Restore app default v{{ appSource.version }}</button>
+          <div v-else class="space-y-2" data-testid="pack-restore-confirmation">
+            <p class="text-xs text-neutral-300">Replace your installed files with the selected app default and enable it? Stored settings are kept.</p>
+            <button :disabled="busy" class="text-xs text-primary-400 mr-3" data-testid="pack-confirm-restore"
+              @click="$emit('restore', confirmingRestore); confirmingRestore = null">Restore</button>
+            <button class="text-xs text-neutral-400" @click="confirmingRestore = null">Cancel</button>
+          </div>
+        </template>
+      </section>
+      <section v-if="confirmingUninstall" class="space-y-2" data-testid="pack-remove-confirmation">
+        <p class="text-sm text-neutral-300">Remove {{ pack.name }}? Pack files will be deleted; stored settings are kept.</p>
+        <button class="text-xs text-red-400 mr-3" @click="$emit('confirmUninstall', pack.id)">Remove</button>
+        <button class="text-xs text-neutral-400" @click="$emit('cancelUninstall')">Cancel</button>
       </section>
 
       <!-- Summary stats -->
@@ -193,15 +227,17 @@
             class="px-3 py-2 bg-neutral-800/40 border border-neutral-700/30 rounded-lg"
           >
             <div class="flex items-center gap-2 mb-1">
-              <span class="text-sm text-neutral-200 font-medium">{{ feature.id }}</span>
+              <span class="text-sm text-neutral-200 font-medium">{{ feature.plugin?.label ?? feature.id }}</span>
               <span
                 v-if="feature.designation"
                 class="px-1 py-0.5 text-[9px] font-medium text-neutral-500 bg-neutral-800 border border-neutral-700/50 rounded"
               >{{ feature.designation }}</span>
             </div>
+            <p class="text-xs text-neutral-400 mb-1">{{ feature.description }}</p>
             <div class="flex flex-wrap gap-x-3 gap-y-0.5 text-[11px] text-neutral-500">
               <span v-if="feature.hasSystem">system</span>
-              <span v-if="feature.hasPlugin">plugin</span>
+              <span v-if="feature.plugin">plugin</span>
+              <span v-if="feature.references && Object.keys(feature.references.types).length">references: {{ Object.keys(feature.references.types).join(', ') }}</span>
               <span v-if="feature.services.length">services: {{ feature.services.join(', ') }}</span>
             </div>
           </div>
@@ -248,11 +284,11 @@
       </section>
 
       <!-- Boot Hooks -->
-      <section v-if="pack.bootHooks.length > 0">
-        <SectionHeader label="Boot Hooks" :count="pack.bootHooks.length" />
+      <section v-if="pack.lifecycleHooks.length > 0">
+        <SectionHeader label="Boot Hooks" :count="pack.lifecycleHooks.length" />
         <div class="flex flex-wrap gap-1.5">
           <span
-            v-for="hook in pack.bootHooks"
+            v-for="hook in pack.lifecycleHooks"
             :key="hook"
             class="chip"
           >{{ hook }}</span>
@@ -338,18 +374,26 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue';
+import { computed, ref, watch } from 'vue';
 import { ArrowLeft, Shield } from 'lucide-vue-next';
-import type { InstalledPackSummary } from '@apackdev/host/fe';
+import type { AppPackSourceSummary, InstalledPackSummary } from '@apackdev/host/fe';
 import SectionHeader from './SectionHeader.vue';
 
-const props = defineProps<{ pack: InstalledPackSummary; updating?: boolean }>();
+const props = defineProps<{ pack: InstalledPackSummary; appSource?: AppPackSourceSummary; updating?: boolean; busy?: boolean; confirmingUninstall?: boolean }>();
+const replacement = ref('');
+const confirmingRestore = ref<string | null>(null);
+watch(() => props.pack.id, () => { replacement.value = ''; confirmingRestore.value = null; });
 
 defineEmits<{
   back: [];
+  replace: [source: string];
+  restore: [sourceRevision: string];
+  confirmUninstall: [packId: string];
+  cancelUninstall: [];
   toggle: [packId: string];
   uninstall: [packId: string];
   update: [packId: string];
+  appUpdate: [sourceRevision: string];
   /** One content item, by content key: write the pack's version over whatever is there */
   restoreContent: [key: string];
   /** Keep the user's version of this item, against the version they were shown */

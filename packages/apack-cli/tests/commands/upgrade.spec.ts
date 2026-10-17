@@ -37,7 +37,7 @@ describe('pickAppRelease', () => {
     expect(pickAppRelease(published, 'beta')?.version).toBe('0.4.2-beta.1');
   });
 
-  // Each channel's artifacts carry its own product name, so a release holding only the other's is no answer
+  // Each channel's release files carry its own product name, so a release holding only the other's is no answer
   it('ignores a release whose zip is the other channel\'s build', () => {
     const onlyBeta = [release('0.4.1', { product: 'apack-Beta' })];
 

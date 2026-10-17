@@ -102,7 +102,7 @@ function updateChannelIncludesPrereleases(): boolean {
  * saying why there's nothing to offer). Nothing is cached: the Packs view runs this when asked.
  */
 export async function checkForUpdates(options: { hostVersion?: string } = {}): Promise<UpdateCheckResult[]> {
-  const updatable = installedPacks().filter(p => p.record.installedFrom && p.record.enabled);
+  const updatable = installedPacks().filter(p => p.record.updatesWith !== 'app' && p.record.installedFrom && p.record.enabled);
 
   if (updatable.length === 0) return [];
 
@@ -153,7 +153,7 @@ export async function checkForUpdates(options: { hostVersion?: string } = {}): P
 
 export function getAvailableUpdates(): UpdateCheckResult[] {
   return installedPacks()
-    .filter(({ manifest, record }) => record.availableVersion && record.installedFrom && isNewer(record.availableVersion, manifest.version))
+    .filter(({ manifest, record }) => record.updatesWith !== 'app' && record.availableVersion && record.installedFrom && isNewer(record.availableVersion, manifest.version))
     .map(({ manifest, record }) => ({
       packId: record.id,
       currentVersion: manifest.version,

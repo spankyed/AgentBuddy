@@ -1,31 +1,66 @@
 # Manifest Reference
 
-The `apack.json` file at the root of your pack is the single source of truth. It declares features, extensions, content, entities, dependencies, and boot-time hooks. The CLI reads it to generate code, compile content, and bundle your pack.
+The `apack.json` file at the root of your pack is the single source of truth. It declares features, extensions, content, entities, dependencies, and lifecycle hooks. The CLI reads it to generate code, compile content, and bundle your pack.
+
+## Editor assistance
+
+Set `"$schema": "https://apack.dev/schemas/apack.json"` in `apack.json`, or use the schema shipped
+at `@apackdev/sdk/apack.schema.json` for offline editing. JSON editors can complete declaration keys
+and policy/loading values, show field descriptions, and diagnose structural errors at their source
+ranges. Settings value schemas use JSON Schema draft-07.
+
+Run `apack pack validate` for complete semantic checks: npm version ranges, cross-declaration ownership,
+settings defaults, declared modules and exports need more than JSON Schema validation. The CLI reports
+invalid and incomplete checks separately; `--json` supplies field paths for tooling. Editor acceptance
+does not prove that source exports or dependency builds are available.
+
+## Module references
+
+Source paths are relative to the pack root, including declarations inside a feature. They may name
+an explicit file, an extensionless module or a directory barrel. Resolution stays within the pack,
+including symlinks. A path and a selected export have different meanings:
+
+| Declaration | Syntax | Meaning |
+|---|---|---|
+| Systems, settings forms, block/artifact views, DSL type modules, frontend app extensions/popups, content compilers/appliers and feature type barrels | `src/module.ts` | Whole module, with the export convention described by that field; no `#export` selector |
+| Services, repositories, step facets, lifecycle hooks, migrations, content writers, Tiptap extension objects/predicates, contracts and entity shapes | `src/module.ts#Export` | The named export; contracts and shapes select TypeScript types, without executing them |
+| Plugin machines/views and reference icon components | `src/module.ts` or `src/module.ts#Export` | Default export when omitted, or the explicitly named binding |
+
+Schema validation, source checks and codegen use these same distinctions. Whole-module readers check
+their conventional runtime exports (`default` or `apply`) without activation; type
+barrels remain type-only and Vue component exports are checked by the frontend build. JavaScript
+exports are inspected too, including CommonJS default-import semantics. Missing modules or required
+exports are errors; dependency problems that prevent complete export checking are reported as incomplete.
+
+Built and installed declarations use the [pack build contract](pack-builds.md); native host
+composition supplies declarations directly, without an installed receipt.
+
+The CLI writes root, feature-definition and extension-kind fields in schema order. Feature IDs,
+contribution maps, dependency maps, arrays and custom settings/schema data retain their authored
+order. `init`, `add` and the release version editor share this writer.
 
 ## Field reference
 
 | Field | Type | Required | Description |
 |---|---|---|---|
 | `$schema` | `string` | no | JSON Schema reference for editor validation |
-| `$manifestVersion` | `1` | no | Schema version. Enables future format evolution. |
 | `id` | `string` | yes | Unique pack identifier: a lowercase letter, then lowercase letters, digits and hyphens (`^[a-z][a-z0-9-]*$`) |
 | `name` | `string` | yes | Human-readable display name |
-| `version` | `string` | yes | Semver version, starting with `major.minor.patch` (e.g. `"0.1.0"`, `"0.2.0-beta.1"`) |
+| `version` | `string` | yes | Complete [SemVer 2.0](https://semver.org/) version (e.g. `"0.1.0"`, `"0.2.0-beta.1"`) |
 | `description` | `string` | no | Short description |
-| `hostVersion` | `string` | no | Semver range of compatible host versions (e.g. `">=0.3.0"`) |
+| `hostVersion` | `string` | no | Nonempty npm semver range of compatible host versions (e.g. `">=0.3.0"`) |
 | `license` | `string` | no | SPDX license identifier |
-| `builtIn` | `boolean` | no | `true` for packs built into the app only |
 | `features` | `Record<string, PackFeatureEntry>` | no | Feature declarations (system + plugin bundles), keyed by feature id |
 | `extensions` | `object` | no | What the pack contributes to the app; see [Extensions](#extensions) |
 | `migrations` | `{ app?, pack? }` | no | Data migrations, by version line; see [Migrations](#migrations) |
-| `entities` | `Record<string, string>` | no | EARS entity type declarations; see [Entities and relations](#entities-and-relations) |
-| `relKinds` | `Record<string, string>` | no | EARS relation kind declarations; see [Entities and relations](#entities-and-relations) |
-| `dependencies` | `Record<string, string>` | no | Pack dependencies (`id` -> semver, `github:owner/repo range`, or `file:path`) |
+| `data.entities` | `Record<string, string \| null>` | no | Entities without a feature owner; see [Entities and relations](#entities-and-relations) |
+| `data.relations` | `string[]` | no | Pack-level snake_case relation wire names; see [Entities and relations](#entities-and-relations) |
+| `dependencies` | `Record<string, string>` | no | Pack IDs mapped to a nonempty npm semver range, `github:owner/repo [range]`, or `file:path` |
+| `checks` | `{ allow?: string[] }` | no | Development conventions this pack allows; schema completion lists supported rule names. See [source checks](cli.md#apack-pack-validate---json). |
 | `permissions` | `string[]` | no | Required capabilities: `ears`, `llm`, `filesystem`, `network`, `terminal` |
-| `boot` | `PackBootConfig` | no | Boot hooks and content; see [Boot configuration](#boot-configuration) |
-| `entityShapes` | `Record<string, { source, type }>` | no | Entity type -> TS interface mappings |
+| `lifecycle` | `PackLifecycleConfig` | no | Explicit lifecycle functions; see [Lifecycle configuration](#lifecycle-configuration) |
 | `content.formats` | `Record<string, ContentFormatConfig>` | no | Named content formats: how a source becomes records. `content.sources` entries name them, dependents as `<pack id>:<name>`; see [Content](content.md#writing-entities) |
-| `content.writers` | `Record<string, string>` | no | Content writers for entity types this pack declares: the entity type's value in `entities` -> `path#exportName` of a `ContentWriter` object (`find`, `create`, `update`, `remove`, all optional). Every pack writing that type goes through them; see [Content](content.md#content-hooks) |
+| `content.writers` | `Record<string, string>` | no | Content writers for entity types this pack declares: the declared entity's wire name -> `path#exportName` of a `ContentWriter` object (`find`, `create`, `update`, `remove`, all optional). Every pack writing that type goes through them; see [Content](content.md#content-hooks) |
 
 ## Extensions
 
@@ -39,12 +74,46 @@ ships (`content`). Every entry is a contribution the app registers and other pac
 | `blocks` | `Record<string, { kind?, fe?, be? }>` | Message blocks, keyed by type; see [Blocks](extensions.md#blocks) |
 | `commands` | `{ <name>: { placeholder } }` | Slash commands the pack adds to the chat, keyed by the name typed after the `/` (`^[a-z][a-z0-9-]*$`). A pack cannot declare one twice, the name being the key; across packs it must still be unique, and `apack pack build` fails when a dependency, or anything it depends on, declares it. `placeholder` is what the composer shows after it. Sending one fires a `user.command` event your flows handle; see [Slash commands](content.md#slash-commands) |
 | `services` | `Record<string, string>` | Pack-level services, belonging to no one feature, in the same form as [a feature's `services`](#packfeatureentry-fields) |
+| `settings` | `Record<string, SettingsDefinition>` | Inline pack-owned preference definitions; see [Pack settings declarations](#pack-settings-declarations) |
 | `dsl` | `Record<string, DslEntry>` | Monaco editor type definitions for code the app edits; see [DSL definitions](#dsl-definitions) |
-| `fe` | `object` | Frontend contributions; see [Frontend configuration](#frontend-configuration) |
+| `tiptapPlugins` | `Record<string, TiptapPluginDeclaration>` | Named editor extension and popup groups; see [Editor and app extensions](#editor-and-app-extensions) |
+| `appExtensions` | `Record<string, string>` | Named app extension components; see [Editor and app extensions](#editor-and-app-extensions) |
 
 **A setting that only changes what `apack pack build` produces is not one of these**: it goes in `build`, which
 holds `opaqueDeps` and `bundleUi`. `extensions` is what the pack gives the app, and a packaging choice gives
 it nothing.
+
+### Pack settings declarations
+
+Pack groups are keyed by a local ID: a lowercase letter followed by letters or digits. The catalog
+keeps each group's owner, so two packs can both declare `assistant` independently.
+
+```json
+{
+  "extensions": {
+    "settings": {
+      "assistant": {
+        "title": "Assistant",
+        "schema": {
+          "type": "object",
+          "properties": { "name": { "type": "string" } },
+          "required": ["name"],
+          "additionalProperties": false
+        },
+        "defaults": { "name": "" }
+      }
+    }
+  }
+}
+```
+
+Require explicit `schema` and `defaults`. Schemas use draft-07 and document-local references; validation
+does not coerce values, populate schema default annotations or remove properties. Optional metadata is
+`title`, `description`, `form` (a custom component's source path), and `access` (`shared` or `owner`).
+
+Current implementation: declarations are validated and readable as catalog data without activation.
+Pack group value handles, access enforcement and custom-form binding are still being integrated.
+The feature settings interface below remains the current feature API until its migration is complete.
 
 ## Features
 
@@ -54,13 +123,20 @@ The `features` map is the primary way to add functionality. Each entry is keyed 
 {
   "features": {
     "bookmarks": {
+      "description": "Save and organize bookmarks.",
       "designation": "bookmarks",
-      "settings": "src/features/bookmarks/settings.ts",
+      "settings": {
+        "schema": { "type": "object", "additionalProperties": false },
+        "defaults": {}
+      },
       "system": {
         "entry": "src/features/bookmarks/be/system.ts"
       },
       "plugin": {
-        "entry": "src/features/bookmarks/fe/plugin.ts"
+        "label": "Bookmarks",
+        "icon": "Bookmark",
+        "state": "src/features/bookmarks/fe/state.ts",
+        "canvas": "src/features/bookmarks/fe/canvas/list.vue"
       },
       "services": {
         "bookmarks": "src/features/bookmarks/be/services/bookmarks.ts#bookmarksService"
@@ -72,47 +148,178 @@ The `features` map is the primary way to add functionality. Each entry is keyed 
 
 ### PackFeatureEntry fields
 
-| Field | Type | Required | Description |
-|---|---|---|---|
 The entry's **key** is the feature id: a lowercase letter, then letters and digits
 (`^[a-z][a-zA-Z0-9]*$`, e.g. `notes`, `calendarEvents`). It becomes an identifier in generated code, so
 JavaScript reserved words (`default`, `export`, …) aren't allowed. Being a key is what makes a duplicate id
 unrepresentable.
 
-| `designation` | `string` | no | Links the system to an EARS designation. Must equal the feature `id` (`apack pack validate` checks it) |
-| `settings` | `string` | no | Path to a module default-exporting the feature's default settings; see [Feature settings](#feature-settings) |
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `entities` | `Record<string, string \| null>` | no | Entity wire names owned by this feature, mapped to a TypeScript shape export or `null` for untyped entities. Paths remain pack-root-relative. |
+| `designation` | `string` | no | Role played by this feature; it may differ from the feature ID. Duplicate claims are refused locally and across packs. |
+| `settings` | `object` | no | Declarative `schema`, explicit `defaults`, optional custom `form`, title, description and access policy; see [Feature settings](#feature-settings) |
 | `system` | `{ entry, contract?, events? }` | no | Backend system module. `entry` must **default-export** its `SystemEntry`; how it's declared doesn't matter. `contract` is `"path#Export"` of the system's contract — a declared type holding its `incoming`, `internal`, `outgoing` and `context` (`SystemContract`, `@apackdev/sdk/framework`) — which the build reads without running or resolving the machine, so it lives in a leaf module such as `be/contract.ts`. Omit it for a system that sends and receives nothing. What its plugin receives is the contract's outgoing events; a plugin that also takes events from another feature or another pack declares those itself, in its own `Contract` (`plugin.contract`). `events.incoming` lists event types the bus routes to the system besides those its machine declares. |
-| `plugin` | `{ entry, contract?, default? }` | no | Frontend plugin module. `entry` must **default-export** its `Plugin`, which carries the plugin's `id`, `label`, `icon` and `isPinned`. `contract` is `"path#exportName"` of the plugin's contract — a declared type holding the state it publishes and the inbox others may send to (`PluginInbox`, `@apackdev/sdk/fe`). Put it in a leaf module your plugin's machine doesn't import, so codegen can read it without resolving the machine; omit it for a plugin that publishes nothing, which still receives its own feature's system events. `default: true` opens this plugin when the app starts — at most one of your features may claim it, and across the app the first pack to register one wins. Without a claim, your pack's first plugin feature is its default |
+| `plugin` | `{ label, state, icon?, canvas?, panel?, chat?, contract?, default? }` | no | Declarative frontend plugin. State and views name modules; paths use default exports, or `path#exportName` for named exports. Codegen assembles the binding. Icons name Lucide exports or a custom component target. Contract is a leaf `path#exportName` containing published state/inbox types. `default: true` declares the startup default; a pack without a claim has none. See [plugin declarations](features.md#defining-a-plugin). |
 | `services` | `Record<string, string>` | no | Services. Keys are identifiers, the names on `services`; values are `"path#exportName"`: a source file and the name of its export holding the service object (an object literal or class instance, not a factory). See [Services](services-and-data.md#services) |
 | `repositories` | `Record<string, string>` | no | Repository objects. Keys are identifiers, the names on `repository`; values are `"path#exportName"`. Carried by the generated pack entry's registration (the app registers them with its engine) and typed on `repository` from `#generated/repository`. A name is the app's, not the feature's: declaring one twice in a pack, or one a dependency declares, fails the build, since the app refuses to register two packs that share a repository name |
-| `typesEntry` | `string` | no | Additional types to include in the generated type barrel |
-| `references` | `string` | no | Path to the module declaring which of the feature's things are linkable from an editor. Built-in packs only: ignored for external packs |
+| `description` | `string` | yes | Nonblank feature purpose, independent of plugin display labels |
+| `types` | `string` | no | Pack-root-relative TypeScript module re-exported through `#generated/types`; optional `.ts` or directory `index.ts` resolution. No undeclared files are inferred. |
+| `references` | `object` | no | Keyed reference identities and presentation metadata, with reactive item-provider exports; entity navigation uses declared plugin destinations |
 
 A feature can have just a system (backend-only), just a plugin (frontend-only), or both.
 
+A pack may claim at most one default plugin. The host selects from enabled declarations before
+loading frontends: native claims precede installed claims, then fully qualified feature refs sort
+lexically using the English locale. Authoring-source previews do not participate. Frontend delivery
+order cannot change the winner; opening waits for its matching accepted binding and actor. A saved
+selection, popout target or explicit navigation takes precedence over this startup default.
+A designation is a separately owned role, so duplicate roles across packs are errors.
+
 ### Feature settings
 
-The `settings` module default-exports a feature's schema and sidebar visibility. `defineFeatureSettings` derives defaults and the settings type from the schema:
+A feature declares effective-value validation and explicit defaults as JSON data. Codegen derives its TypeScript value type from the schema:
 
-```typescript
-// src/features/bookmarks/settings.ts
-import { z } from 'zod';
-import { defineFeatureSettings } from '@apackdev/sdk/framework';
-
-const settings = defineFeatureSettings({
-  visible: true,
-  schema: z.object({
-    syncInterval: z.number().int().positive().default(300),
-  }).strict(),
-});
-
-export default settings;
-export type BookmarkSettings = typeof settings.defaults;
+```json
+{
+  "features": {
+    "bookmarks": {
+      "description": "Save and organize bookmarks.",
+      "entities": { "Bookmark": "src/features/bookmarks/be/types.ts#BookmarkAttributes" },
+      "settings": {
+        "schema": {
+          "type": "object",
+          "properties": {
+            "syncInterval": {
+              "type": "integer",
+              "minimum": 1
+            }
+          },
+          "required": [
+            "syncInterval"
+          ],
+          "additionalProperties": false
+        },
+        "defaults": {
+          "syncInterval": 300
+        }
+      },
+      "plugin": {
+        "label": "Bookmarks",
+        "icon": "Bookmark",
+        "state": "src/features/bookmarks/fe/state.ts",
+        "canvas": "src/features/bookmarks/fe/canvas/list.vue",
+        "defaultVisible": true
+      }
+    }
+  }
+}
 ```
 
-The declaration owns only this feature's settings; it does not repeat the feature ID. The host stores user overrides under `features.<packId>/<featureId>` and validates changed values for every write, including custom forms, actions and the JSON editor. Forms remain custom Vue components; no form is generated from the schema. Use synchronous schemas for validation, without coercions or transforms: parsed values are not substituted for user input.
+The declaration owns only this feature's settings; it does not repeat the feature ID. The host stores user overrides under `features.<packId>/<featureId>` and validates changed values for every write, including custom forms, actions and the JSON editor. Forms remain custom Vue components; no form is generated from the schema. Use JSON Schema draft-07 for validation; values are never coerced, transformed or populated from schema annotations. References stay within the value schema.
 
-A declaration may contain only `schema`, `defaults` and `visible`. Defaults must pass the schema before the pack builds or registers. `{ visible: false }` is sufficient for a feature with no configurable settings. Unchanged legacy values remain available for migrations and can be removed or corrected. A disabled pack retains its user overrides, but its schema must be loaded before those values can be edited.
+Defaults must pass the schema before the pack builds or registers. Navigation visibility is separate: `plugin.defaultVisible: false` needs no settings declaration. Settings may also declare presentation metadata and a custom `form` path. Writes must satisfy the current schema; unchanged invalid values are not exempt. A disabled pack retains its user overrides, but its schema must be loaded before those values can be edited.
+
+Declare a custom form at `features.<id>.settings.form`, for example
+`"form": "src/features/bookmarks/fe/settings.vue"`. The module default-exports a Vue
+component that receives `settings` and emits `update-setting` with `{ path, value, condition? }`.
+The host supplies the target address. Forms are independent of plugins: a feature can provide a
+form without a plugin or system.
+
+Pack-wide preferences use the same definition under `extensions.settings.<groupId>`, including
+`schema`, `defaults`, optional `title` and `description`, and optional `form`. Their values live at
+`packs[packId][groupId]`. Use a group for preferences shared across features; app preferences belong
+to the host. Pack and feature declarations remain visible in Settings when their executable form
+is unavailable; the JSON editor remains available. There is no pack-owned assembly of app settings.
+
+### Entity destination declarations
+
+A plugin's TypeScript contract may declare the literal entity types it opens:
+
+```ts
+export type Contract = {
+  opens: 'Note' | 'Action'
+  // state and inbox declarations belong here too
+}
+```
+
+These are existing entity wire names, including SDK and dependency entities; declaring a destination
+creates no entity type or ownership claim. The build reads exported types without executing the module,
+rejects unknown entities and competing destination features within a pack, and materializes the map in
+`snapshot.json` as `entityDestinations`. Installed inspection reads that data without authored sources.
+Omit `opens` for a plugin with no entity destination; present declarations must be nonempty literal
+unions. This build metadata does not itself make a runtime handler ready.
+
+Call `openEntity(id)` from `@apackdev/sdk/fe` to open an existing entity. The shell checks existence,
+selects its enabled declared destination and waits for the accepted frontend. Missing, disabled or
+replaced destinations produce a useful refusal; callers do not choose a plugin or send its private events.
+The destination handles the shared `OpenEntity` event from `@apackdev/sdk/events`. Bind the SDK guard
+as `entityIs: entityIs<Contract['opens']>` in the machine's `guards` and handle `OPEN_ENTITY` with
+`guard: { type: 'entityIs', params: { entity: 'Memo' } }`. The event carries only `id`.
+
+
+### Reference declarations
+
+A feature declares reference identities and presentation as data. Item enumeration uses a named
+function export, checked at build time without executing the module. Reference clicks pass the canonical
+entity ID to `openEntity`; the destination comes from `Contract.opens`, independently of reference types.
+
+```json
+"references": {
+  "types": {
+    "memo": {
+      "category": "memos",
+      "icon": "NotebookText",
+      "svgElements": [["path", { "d": "M2 6h4" }]]
+    }
+  },
+  "categories": {
+    "memos": {
+      "label": "Memos",
+      "icon": "NotebookText",
+      "useItems": "src/features/memos/fe/references.ts#useItems"
+    }
+  }
+}
+```
+
+Reference type and category names have global identities. Duplicate claims within a pack or
+across its dependency tree fail validation/build; a shared ancestor arriving through two dependencies
+retains its actual owner. A type may use a category declared by its pack or a dependency. Each category
+owns one provider. Icons name Lucide exports or use `{ "entry": "src/icon.vue", "load": "lazy" }` for a
+custom component. SVG geometry supports path, rect and circle tuples.
+
+`useItems()` is a Vue composable returning a reactive
+reference-item list. Providers must work in an owned effect scope and release subscriptions with
+Vue's `onScopeDispose`; they cannot depend on component lifecycle hooks or a particular component instance.
+Generated frontend entries register these bindings under their owning feature. The host checks
+complete declaration membership and refuses global type or category collisions before
+publishing a candidate. Metadata remains discoverable while a pack is disabled or its runtime fails.
+The SDK's `@apackdev/sdk/fe/references` exposes `getReferenceDeclarations()`,
+`getReferenceCatalogStatus()` and `onReferenceDeclarationsChanged(listener)` over the common catalog.
+Reading declarations never invokes navigation, item providers or components. The subscription returns
+its cleanup function. A disconnected window can retain its last accepted metadata; status reports
+that it is unavailable for current execution. Native/source entries do not invent installed receipts
+or source enablement.
+
+`getReferenceTypeDeclaration(name)` reads static type presentation; an ambiguous runtime name
+returns absence. `getReferenceCategoryDeclarations()` lists categories with their owning feature refs,
+including disabled and source declarations, without silently overwriting duplicate names.
+`getReferenceTypeBinding(name)` and `getReferenceCategoryBinding(name)` return stable accepted entries
+only with a ready catalog and matching enabled owner. Installed entries require matching declaration
+and build identities plus a runtime identity; native entries carry no invented installed receipts.
+Source advertisements are metadata, not executable claims. Ambiguous runtime names cannot execute.
+Reactive consumers observe both `onReferenceDeclarationsChanged` and `onReferenceBindingsChanged`,
+and release both subscriptions. Looking up a binding does not call navigation or start an item provider.
+
+The editor reads these common declarations rather than a pack-local aggregate. Its generic anchor
+parser reads `apack-ref://<encoded-type>/<encoded-entity-id>` independently of metadata; HTML/Markdown
+preserve this identity while declarations are loading or absent. `formatReferenceHref({ type, id })`
+and `parseReferenceHref(href)` are pure SDK helpers; malformed or unrelated URIs are refused. Node views follow declared geometry and resolve eligible navigation when clicked.
+The picker starts only the selected category's provider while open, in an owned effect scope. Closing,
+changing category, disconnecting, replacing/removing its binding or destroying the view stops that
+scope. Unrelated publications retain the existing provider. Generated references contain only the
+per-feature bindings registered by the frontend entry. The host shares the reference SDK module with
+pack frontends so its readers use the renderer's catalog and accepted registry.
 
 ## Steps
 
@@ -123,18 +330,75 @@ Flow step types are declared under `extensions.steps`, keyed by type.
   "extensions": {
     "steps": {
       "my-step": {
-        "build": "src/extensions/steps/my-step/build.ts#myStepStepBuild",
-        "fe": "src/extensions/steps/my-step/fe.ts#myStepStepFE",
-        "runtime": { "handler": "src/extensions/steps/my-step/runtime.ts#handler", "isAsync": true },
-        "dsl": { "primaryField": "action" }
+        "node": {
+          "label": "My Step",
+          "defaultLabel": "Run my step"
+        },
+        "build": {
+          "compile": "src/extensions/steps/my-step/build.ts#compile",
+          "validate": "src/extensions/steps/my-step/build.ts#validate",
+          "getLabel": "src/extensions/steps/my-step/build.ts#getLabel"
+        },
+        "fe": {
+          "nodeConfig": {
+            "icon": "Box",
+            "isImplemented": true,
+            "category": "logic",
+            "connectionRules": {
+              "inputs": -1,
+              "outputs": -1
+            }
+          },
+          "colorKey": "indigo",
+          "components": {
+            "form": {
+              "entry": "src/extensions/steps/my-step/form.vue",
+              "load": "lazy"
+            }
+          }
+        },
+        "runtime": {
+          "handler": "src/extensions/steps/my-step/runtime.ts#handler",
+          "isAsync": true
+        },
+        "dsl": {
+          "primaryField": "action"
+        },
+        "types": "src/extensions/steps/my-step/types.ts"
       },
       "my-trigger": {
         "kind": "trigger",
+        "node": {
+          "label": "My Trigger",
+          "defaults": {
+            "source": "change me"
+          }
+        },
         "trigger": {
-          "facet": "src/extensions/steps/my-trigger/build.ts#myTriggerBuild",
+          "trackField": "myTrigger",
+          "compile": "src/extensions/steps/my-trigger/build.ts#compile",
+          "decompile": "src/extensions/steps/my-trigger/build.ts#decompile",
           "register": "src/extensions/steps/my-trigger/runtime.ts#register"
         },
-        "fe": "src/extensions/steps/my-trigger/fe.ts#myTriggerFE"
+        "fe": {
+          "nodeConfig": {
+            "icon": "Radio",
+            "isImplemented": true,
+            "category": "trigger",
+            "connectionRules": {
+              "inputs": 0,
+              "outputs": -1
+            }
+          },
+          "colorKey": "blue",
+          "components": {
+            "form": {
+              "entry": "src/extensions/steps/my-trigger/form.vue",
+              "load": "lazy"
+            }
+          }
+        },
+        "types": "src/extensions/steps/my-trigger/types.ts"
       }
     }
   }
@@ -146,52 +410,47 @@ Codegen sends each facet where it is used, so no barrel keeps them in step with 
 to `src/__generated__/steps-build.ts`, which `apack pack build` bundles to `dist/build/steps.build.mjs` — the
 module a *dependent* pack's build loads to validate its flows with your step code.
 
-A step's directory is the dirname of the first facet it names: its `types.ts` and, for `dsl.custom`, its
-`helpers.ts` are read from there.
+Step `types` and `dsl.helpers` name pack-root-relative modules explicitly. No files are inferred from
+facet directories; build, layout, form and type modules may live in different directories.
 
 ### StepEntry fields
 
 | Field | Type | Description |
 |---|---|---|
 | `kind` | `"step" \| "trigger"` | Whether this is a regular step or a trigger. `step` is the default |
-| `build` | `string` | `"path#exportName"` of its `StepBuildFacet` (`compile`, `validate`, `getLabel`, `decompile`). A trigger declares `trigger` instead |
-| `trigger` | `{ facet, register? }` | For a trigger: `"path#exportName"` of its `TriggerFacet`, and of the function that starts it |
-| `fe` | `string` | `"path#exportName"` of its `StepFEFacet`: what the flow editor draws and the form it opens |
+| `node` | `{ label, defaultLabel?, defaults? }` | Required inline data: canvas label, optional palette label and initial JSON fields; readable without importing modules |
+| `build` | `{ compile, validate, getLabel, decompile?, branches?, relation? }` | Callback references and inline relation metadata. A trigger declares `trigger` instead |
+| `trigger` | `{ trackField, compile, decompile, persistent?, queryFields?, validateTrack?, validate?, register? }` | Track metadata and callback references. Only register is loaded lazily at runtime |
+| `fe` | `StepFrontendDeclaration` | Inline presentation, component targets and layout function references; see [frontend declaration](extensions.md#frontend-declaration) |
+| `types` | `string` | Explicit pack-root-relative module declaring the step’s node and DSL types |
 | `runtime` | `{ handler?, sync?, isAsync?, waits?, spawnsSubflow? }` | What the brain runs, and the flags it reads before running it. `handler` is loaded on the step's first run unless `sync`; see [Steps](extensions.md#runtime-facet) |
-| `dsl` | `{ primaryField?, defaultLabel?, custom? }` | Generates a flow helper for the step, named after the type (`keep_alive` → `keepAlive`). Without `dsl`, the step gets no helper |
+| `dsl` | `{ primaryField?, defaultLabel?, helpers? }` | Generates a flow helper for the step, named after the type (`keep_alive` → `keepAlive`). Without `dsl`, the step gets no helper |
 
 A step's `dsl` fields:
 
 | Field | Helper |
 |---|---|
-| `primaryField` | `name(<primaryField>: string, opts?)`, with the other fields of the `export interface DSL…Node` in the step's `types.ts` (required) as options |
+| `primaryField` | `name(<primaryField>: string, opts?)`, with the other fields of the `export interface DSL…Node` in the declared `types` module (required) as options |
 | `defaultLabel` | `name(label = defaultLabel)` |
-| `custom: true` | No generated helper: re-exports the step's own `helpers` module |
+| `helpers` | Explicit pack-root-relative module whose custom helpers are re-exported |
 | `{}` | `name(label?)` |
 
-## Boot configuration
+## Lifecycle configuration
 
-The `boot` object configures hooks that run during app startup:
+The `lifecycle` object declares each lifecycle function explicitly. Its availability can be read without
+executing the pack, and codegen checks that the named export is a function.
 
 ```json
 {
-  "boot": {
-    "hooks": "src/hooks.ts",
-    "sources": {
-      "actions": "src/content/actions",
-      "prompts": "src/content/prompts",
-      "flows": { "path": "src/content/flows" }
-    }
+  "lifecycle": {
+    "onInit": "src/hooks.ts#onInit",
+    "onShutdown": "src/hooks.ts#onShutdown"
   }
 }
 ```
 
-| Field | Type | Description |
-|---|---|---|
-| `hooks` | `string` | Module exporting lifecycle hooks (see below) |
-| `content` | `Record<string, string \| ContentSourceConfig>` | Content sources: `actions`, `prompts` and `flows` take a path; any other key is `{ path, format }` (optionally with `applier`) or `{ applier }`. **Every content source writes entities into the database** — that is what `content.sources` is for, so content your own code reads back is an ordinary import of your own source, not an entry here. Declare a feature's default settings with `features.<id>.settings` |
-
-The `hooks` module's named exports become the pack's boot hooks:
+Only declared functions enter the registration. Other exports from the module are not lifecycle hooks.
+Content sources belong in `content.sources`, independently of lifecycle callbacks.
 
 ```typescript
 // src/hooks.ts
@@ -201,7 +460,7 @@ export const onShutdown = () => stopProcesses(); // when the pack's backend stop
 
 | Export | Runs |
 |---|---|
-| `onInit` | Once per boot, after EARS hydration and before migrations and content. Create rows the pack's systems expect to exist here |
+| `onInit` | Whenever the pack starts (app boot/reset, installation, enablement or reload), after EARS hydration and before migrations and content. Create rows the pack's systems expect to exist here |
 | `onShutdown` | When the pack's backend stops. Release what outlives its actors: processes, timers, listeners |
 
 Every system starts when the bus does, after hydration. There is no way for a feature to ask to start before it.
@@ -246,8 +505,8 @@ under the **version line** its target is on, keyed by the version it targets:
 ```json
 {
   "migrations": {
-    "pack": { "1.2.0": "src/migrations/1.2.0.ts#migration" },
-    "app":  { "0.3.16": "src/migrations/0.3.16.ts#migration" }
+    "pack": { "1.2.0": { "description": "Give every memo a colour", "up": "src/migrations/1.2.0.ts#up" } },
+    "app": { "0.4.0": { "description": "Update app-owned data", "up": "src/migrations/0.4.0.ts#up" } }
   }
 }
 ```
@@ -259,45 +518,55 @@ under the **version line** its target is on, keyed by the version it targets:
 
 Most migrations belong on `pack`: the pack's data moves when the pack does. Use `app` for data whose shape
 follows apack's rather than yours. A target is always three numbers — the app reads a prerelease as its
-release, so `0.3.16-beta.2` would match nothing.
+release, so `0.4.0-beta.2` would match nothing.
 
 `apack pack add migration 1.2.0` writes the entry and the file; `--app` puts it on the app's line.
 
-The version is the key, so the module states only what it does:
+The declaration owns the version line, target and description. The module exports behavior only:
 
 ```ts
-import type { DeclaredMigration } from '@apackdev/sdk/framework';
-
-export const migration: DeclaredMigration = {
-  description: 'Give every memo a colour',
-  // Synchronous, and safe to run again: it runs on each prerelease of its release, on every development
-  // boot, and after a data reset — so check whether the change is needed before applying it
-  up: () => { /* … */ },
-};
+// src/migrations/1.2.0.ts
+export function up(): void {
+  // Apply the change synchronously, checking first whether it is needed.
+}
 ```
+
+Keep migrations idempotent: development boots, prereleases and resets may repeat them. Descriptions are
+available in the installed snapshot even when the pack is disabled or cannot activate.
 
 A pack may declare both lines. They run at different moments, so a single change split across them gets an
 order you probably did not intend — keep one change on one line.
 
-## Frontend configuration
+## Editor and app extensions
+
+Declare these contributions directly under `extensions`, alongside artifacts, help and other kinds:
 
 ```json
 {
   "extensions": {
-    "fe": {
-      "tiptapPlugins": "src/extensions/tiptap/index.ts",
-      "appExtensions": {
-        "welcome": "src/extensions/app/Welcome.vue"
+    "tiptapPlugins": {
+      "suggestions": {
+        "extensions": { "mention": "src/editor/mention.ts#Mention" },
+        "popups": { "mentions": "src/editor/MentionPopup.vue" },
+        "isSuggestionActive": "src/editor/suggestions.ts#isSuggestionActive"
       }
-    }
+    },
+    "appExtensions": { "welcome": "src/extensions/app/Welcome.vue" }
   }
 }
 ```
 
 | Field | Type | Description |
 |---|---|---|
-| `tiptapPlugins` | `string` | Tiptap plugin registration module |
-| `appExtensions` | `Record<string, string>` | Named app extensions: extension name (an identifier) → Vue component path |
+| `tiptapPlugins` | `Record<string, TiptapPluginDeclaration>` | Named groups of editor extensions, popups and optional suggestion predicates |
+| `appExtensions` | `Record<string, string>` | Named app extensions: slot name (an identifier) → Vue component path |
+
+Within each Tiptap group, `extensions` maps the actual Tiptap name to its exported extension object
+(`path#export`); `popups` maps local popup IDs to Vue modules; `isSuggestionActive` names a function
+export. All paths are pack-root-relative. Discovery reads these declarations without importing their
+modules. Build checks exports and runtime admission checks exact member identities and executable
+shapes. Conflicting active extension names are refused with both owners.
+See [Tiptap plugins](extensions.md#tiptap-plugins) for the binding contract.
 
 Carrying your own copy of `@apackdev/ui` is `build.bundleUi`, not one of these: it changes what the build
 produces rather than giving the app anything.
@@ -358,17 +627,33 @@ Run `apack pack fetch-deps` to pull dependency snapshots for cross-pack type int
 
 ```json
 {
-  "entities": {
-    "Bookmark": "Bookmark",
-    "Tag": "Tag"
+  "features": {
+    "bookmarks": {
+      "description": "Save and organize bookmarks.",
+      "entities": {
+        "Bookmark": "src/features/bookmarks/be/types.ts#BookmarkAttributes",
+        "Tag": null
+      }
+    }
   },
-  "relKinds": {
-    "TAGGED_WITH": "tagged_with"
+  "data": {
+    "entities": { "ImportLog": null },
+    "relations": ["tagged_with"]
   }
 }
 ```
 
-Keys become TypeScript constants in the generated `ears.ts`, values are the runtime strings stored in the database. An entity's key must be its type name, the same as its value (`"Bookmark": "Bookmark"`); a relation kind's key and value may differ.
+Declare each entity once, under its owning feature or `data.entities` when it has no feature owner.
+The key is its unchanged EARS wire name. Placement records ownership, without a feature prefix.
+A string names an exported TypeScript shape; `null` explicitly leaves the entity untyped. Paths are
+relative to the pack root, including those declared inside a feature. The build checks modules and
+exports without executing them; installed discovery reads built declarations without source files.
+Duplicate entity declarations name both owners and fail validation.
+
+Keys become TypeScript constants in generated `ears.ts`. Entity constants equal their keys; a relation
+wire is declared once in `data.relations`, shared across the pack's features. Its constant name is
+uppercase (`tagged_with` → `TAGGED_WITH`). Duplicate and SDK-owned relation wires are refused.
+Shapes type attributes without changing stored identities.
 
 No two packs may use the same name: a key or a value another installed pack declares fails `apack pack build` (for a dependency) and the app's registration of the pack.
 
@@ -396,9 +681,11 @@ The SDK defines the entity types `Relation`, `Flow`, `Node`, `TNode`, `Action` a
 |---|---|---|
 | `entry` | `string` | Module whose types are bundled into the definitions |
 | `targets` | `["monaco"]` | Editors that get the definitions |
-| `prefix` | `string` | Editor models whose path starts with it get these definitions (e.g. `action:`) |
+| `prefix` | `string` | Editor models whose path starts with it get these definitions (e.g. `action:`). Omission or an empty value disables path inference; an editor can select the DSL explicitly |
 | `inline` | `string[]` | Packages whose declarations are bundled into the definitions besides your own modules and `@apackdev/*`. The editor loads no `node_modules`, so a type it needs from another package belongs here; everything else stays an import |
-| `globals` | `Record<string, string>` | Globals in scope and their types. With `globals`, the generated FE entry's registration carries the definitions from `dist/defs/monaco/<name>-defs.d.ts` in its `dslTypes` |
+| `globals` | `Record<string, string>` | Globals in scope and their types. The catalog carries these declarations with the compiled definition text; Monaco follows updates without activating a frontend |
+
+Path inference uses the unique longest matching nonempty prefix; equal-length matches from different DSLs are ambiguous. DSL files default to TypeScript unless the editor explicitly selects another language.
 
 For each entry with a `monaco` target, `apack pack build` writes `dist/defs/monaco/<name>-defs.d.ts`: the entry's types bundled into one declaration file, wrapped as `declare module "@app/defs/<name>"`.
 
@@ -406,43 +693,72 @@ For each entry with a `monaco` target, `apack pack build` writes `dist/defs/mona
 
 ```json
 {
-  "id": "bookmarks",
   "name": "Bookmarks",
   "version": "0.1.0",
   "hostVersion": ">=0.3.0",
   "license": "MIT",
-
   "dependencies": {
     "default-setup": "*"
   },
-
-  "entities": {
-    "Bookmark": "Bookmark"
-  },
-
   "features": {
     "bookmarks": {
-      "settings": "src/features/bookmarks/settings.ts",
+      "description": "Save and organize bookmarks.",
+      "entities": {
+        "Bookmark": "src/features/bookmarks/be/types.ts#BookmarkAttributes"
+      },
+      "settings": {
+        "schema": {
+          "type": "object",
+          "additionalProperties": false
+        },
+        "defaults": {}
+      },
       "system": {
         "entry": "src/features/bookmarks/be/system.ts"
       },
       "plugin": {
-        "entry": "src/features/bookmarks/fe/plugin.ts"
+        "label": "Bookmarks",
+        "icon": "Bookmark",
+        "state": "src/features/bookmarks/fe/state.ts",
+        "canvas": "src/features/bookmarks/fe/canvas/list.vue"
       },
       "services": {}
     }
   },
-
   "extensions": {
     "steps": {
       "bookmark-check": {
-        "build": "src/extensions/steps/bookmark-check/build.ts#bookmarkCheckStepBuild",
-        "fe": "src/extensions/steps/bookmark-check/fe.ts#bookmarkCheckStepFE"
+        "build": {
+          "compile": "src/extensions/steps/bookmark-check/build.ts#compile",
+          "validate": "src/extensions/steps/bookmark-check/build.ts#validate",
+          "getLabel": "src/extensions/steps/bookmark-check/build.ts#getLabel"
+        },
+        "fe": {
+          "nodeConfig": {
+            "icon": "Box",
+            "isImplemented": true,
+            "category": "logic",
+            "connectionRules": {
+              "inputs": -1,
+              "outputs": -1
+            }
+          },
+          "colorKey": "indigo",
+          "components": {
+            "form": {
+              "entry": "src/extensions/steps/bookmark-check/form.vue",
+              "load": "lazy"
+            }
+          }
+        },
+        "node": {
+          "label": "My Step"
+        },
+        "types": "src/extensions/steps/bookmark-check/types.ts"
       }
     }
   },
-
-  "boot": {
+  "lifecycle": {
     "sources": {
       "actions": "src/content/actions",
       "flows": "src/content/flows"

@@ -13,7 +13,7 @@
     "templates"
   ],
   "engines": {
-    "node": ">=22"
+    "node": "^22.15.0 || >=23.5.0"
   },
   "scripts": {
     "build:package": "tsx ../../scripts/bundle-package.ts .",
@@ -28,9 +28,12 @@
     "@apackdev/sdk": "*",
     "@octokit/rest": "^21.1.1",
     "@vitejs/plugin-vue": "^6.0.1",
+    "ajv": "^8.20.0",
     "autoprefixer": "^10.4.14",
+    "chokidar": "^3.6.0",
     "env-paths": "^3.0.0",
     "esbuild": "^0.25.0",
+    "get-tsconfig": "^4.13.7",
     "lmdb": "^3.4.2",
     "rollup": "^4.60.1",
     "rollup-plugin-dts": "^6.4.1",
@@ -39,7 +42,8 @@
     "tsx": "^4.19.4",
     "typescript": "^5.8.3",
     "vite": "^7.0.6",
-    "vue": "^3.5.18"
+    "vue": "^3.5.18",
+    "magic-string": "^0.30.21"
   },
   "devDependencies": {
     "es-module-lexer": "^1.7.0",

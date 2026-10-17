@@ -3,16 +3,18 @@ import * as path from 'path';
 import Module from 'module';
 import { createLogger } from '@apackdev/sdk/logger';
 import { resolveAppEnvironment, getAppVersion } from '@apackdev/sdk/env';
-import type { PackSnapshot } from '@apackdev/sdk/build';
-import type { PackRegistration } from '@apackdev/sdk/framework';
+import { _packDeclarationProblem, type PackRegistration } from '@apackdev/sdk/framework';
 import { packSystemIds, type PackRegistry, type PackOrigin } from '../registry.ts';
-import { discoverPacks, discoveredPackIds, enabledExternalPacks, type PackManifest } from '../discovery.ts';
+import { readInstalledPackBuild, readInstalledPackBuilds, type PackManifest } from '../discovery.ts';
 import { disabledPackIds, forgetPacksExcept } from '../installed.ts';
-import { PACK_LAYOUT, PACK_LAYOUT_VERSION, buildFormatProblem, isPackLayout, readPackIntegrity } from '../layout.ts';
+import { PACK_LAYOUT } from '../layout.ts';
 import { isHostCompatible } from '../installer.ts';
 import { packLoadFailed, packRegistered } from '../load-messages.ts';
 import { findSdkVersion } from '../../build/shared-deps.ts';
 import { withHostResolution } from './bridge.ts';
+import { backendBindingProblem } from '../declaration-binding.ts';
+import type { PackEventContracts } from '@apackdev/sdk/framework';
+import { assertPackServiceRequirements } from '../service-requirements.ts';
 
 // Always use createRequire — esbuild's require shim is a Proxy without .cache
 const esmRequire = Module.createRequire(import.meta.url);
@@ -54,71 +56,42 @@ export interface PackLoadProblem {
 /** Where the loader records why it skipped a pack: the app's registry, which the Packs view reads it from */
 export type LoadProblemSink = Pick<PackRegistry, 'recordLoadProblem'>;
 
-function skipped(manifest: PackManifest, problem: string): PackLoadProblem {
-  logger.warn(`Skipping ${manifest.id}: ${problem}`);
+function skipped(id: string, problem: string): PackLoadProblem {
+  logger.warn(`Skipping ${id}: ${problem}`);
   return { problem };
 }
 
 /** Reads an installed pack and its runtime, or says why it can't be loaded */
 export function loadSingleExternalPack(
-  manifest: PackManifest,
+  registry: Pick<PackRegistry, 'catalog'>,
   dir: string,
-  shippedIds: ReadonlySet<string> = new Set(),
 ): LoadedPack | PackLoadProblem {
-  // The same semver check the installer applies, so any range a pack declares is honored
+  let build;
+  try { build = readInstalledPackBuild(dir); }
+  catch (error) { return skipped(path.basename(dir), (error as Error).message); }
+  const { snapshot, integrity, revision: buildRevision } = build;
+  const { manifest, declarationRevision } = snapshot;
+  try {
+    registry.catalog.assertPackDestinations({ dir, snapshot });
+    assertPackServiceRequirements(registry.catalog.getSnapshot(), { origin: 'installed', declaration: manifest });
+  }
+  catch (error) { return skipped(manifest.id, (error as Error).message); }
+  const buildFiles = Object.freeze({ ...integrity.files });
   const appVersion = getAppVersion();
   if (!isHostCompatible(manifest.hostVersion, appVersion)) {
-    return skipped(manifest, `requires host ${manifest.hostVersion}, running ${appVersion}`);
+    return skipped(manifest.id, `requires host ${manifest.hostVersion}, running ${appVersion}`);
   }
-
+  const hostSdk = getHostSdkVersion();
+  if (snapshot.sdkVersion && hostSdk && snapshot.sdkVersion.split('.')[0] !== hostSdk.split('.')[0]) {
+    logger.warn(`Pack ${manifest.id} was built with SDK v${snapshot.sdkVersion} but host is v${hostSdk} (major version mismatch)`);
+  }
   const runtimeEntry = path.join(dir, PACK_LAYOUT.runtimeEntry);
-  if (!isPackLayout(dir) || !fs.existsSync(runtimeEntry)) {
-    return skipped(manifest, `${dir} isn't an installed pack (no ${PACK_LAYOUT.integrity} or ${PACK_LAYOUT.runtimeEntry}). Install it with apack pack install or apack pack dev`);
-  }
-  try {
-    const integrity = readPackIntegrity(dir);
-    if (Math.floor(integrity.formatVersion) !== PACK_LAYOUT_VERSION) {
-      return skipped(manifest, `pack layout format ${integrity.formatVersion} is not supported (host supports ${PACK_LAYOUT_VERSION})`);
-    }
-  } catch (err) {
-    logger.warn(`Skipping ${manifest.id}: unreadable ${PACK_LAYOUT.integrity}`, err as Error);
-    return { problem: `unreadable ${PACK_LAYOUT.integrity}: ${(err as Error).message}` };
-  }
-
-  // Before its runtime is loaded: a registration another apack built fails in ways that name nothing the author can act on
-  const formatProblem = buildFormatProblem(dir);
-  if (formatProblem) return skipped(manifest, formatProblem);
-
-  const snapshotPath = path.join(dir, PACK_LAYOUT.snapshot);
-  if (fs.existsSync(snapshotPath)) {
-    try {
-      const snapshot: PackSnapshot = JSON.parse(fs.readFileSync(snapshotPath, 'utf-8'));
-      const hostSdk = getHostSdkVersion();
-      if (snapshot.sdkVersion && hostSdk) {
-        const packMajor = snapshot.sdkVersion.split('.')[0];
-        const hostMajor = hostSdk.split('.')[0];
-        if (packMajor !== hostMajor) {
-          logger.warn(
-            `Pack ${manifest.id} was built with SDK v${snapshot.sdkVersion} but host is v${hostSdk} (major version mismatch)`,
-          );
-        }
-      }
-    } catch {}
-  }
-
-  const registration = loadBundledRuntime(manifest, dir, runtimeEntry);
+  const registration = loadBundledRuntime(manifest, dir, runtimeEntry, declarationRevision, snapshot.eventContracts);
   if ('problem' in registration) return registration;
-
-  // The one thing the app adds to what a pack registered: the entity types its manifest declares, for a
-  // pack whose registration names none. Written onto the pack module's own object, which is safe only
-  // because it is the same value every load — nothing is *taken off* a registration any more
-  if (!registration.ears && (manifest.entities || manifest.relKinds)) {
-    registration.ears = { entities: manifest.entities ?? {}, relKinds: manifest.relKinds ?? {} };
-  }
 
   return {
     registration,
-    origin: { id: manifest.id, name: manifest.name, version: manifest.version, dir, shipped: shippedIds.has(manifest.id), manifest },
+    origin: { id: manifest.id, name: manifest.name, version: manifest.version, declarationRevision, buildRevision, buildFiles, eventContracts: snapshot.eventContracts, dir, manifest },
   };
 }
 
@@ -130,11 +103,16 @@ function loadBundledRuntime(
   manifest: PackManifest,
   dir: string,
   runtimeEntry: string,
+  declarationRevision: string,
+  eventContracts: PackEventContracts | undefined,
 ): PackRegistration | PackLoadProblem {
-  let registration: PackRegistration;
+  let registration: PackRegistration | PackLoadProblem;
   try {
     registration = withHostResolution(() => {
       const mod = esmRequire(runtimeEntry);
+      const problem = _packDeclarationProblem({ id: manifest.id, declarationRevision }, mod.registration)
+        ?? backendBindingProblem(manifest, mod.registration, eventContracts);
+      if (problem) return { problem };
       mod.setCompiledDir?.(path.join(dir, PACK_LAYOUT.contentDir));
       return mod.registration;
     });
@@ -142,53 +120,49 @@ function loadBundledRuntime(
     logger.error(`Failed to load ${manifest.id} runtime (${PACK_LAYOUT.runtimeEntry}): ${(err as Error).message}`, err as Error);
     return { problem: `its runtime (${PACK_LAYOUT.runtimeEntry}) threw: ${(err as Error).message}` };
   }
-  if (!registration) {
-    const problem = `${PACK_LAYOUT.runtimeEntry} does not export \`registration\``;
-    logger.error(`Pack ${manifest.id}: ${problem}`);
-    return { problem };
-  }
-  if (registration.id !== manifest.id) {
-    const problem = `runtime registration id "${registration.id}" does not match its manifest`;
-    logger.error(`Pack ${manifest.id}: ${problem}`);
-    return { problem };
-  }
+  if ('problem' in registration) return registration;
 
   return { ...registration };
 }
 
 export function clearPackRequireCache(packDir: string): void {
-  const prefix = packDir + path.sep;
+  // Node keys its cache by real path; callers may name the installed tree through a symlink.
+  const prefixes = [path.resolve(packDir), ...(fs.existsSync(packDir) ? [fs.realpathSync(packDir)] : [])]
+    .map(dir => dir + path.sep);
   for (const key of Object.keys(esmRequire.cache)) {
-    if (key.startsWith(prefix)) {
+    if (prefixes.some(prefix => key.startsWith(prefix))) {
       delete esmRequire.cache[key];
     }
   }
 }
 
 /**
- * Reads every enabled installed pack. Why each one it skips was skipped goes to `problems` when given: the app passes
- * its registry, so the Packs view can say why an enabled pack isn't running.
+ * Reads every enabled installed pack against one committed catalog. Validate the complete installed
+ * claim set before importing any candidate; record individual load refusals in the same registry.
  */
-export function loadExternalPacks(problems?: LoadProblemSink, shippedIds: ReadonlySet<string> = new Set()): LoadedPack[] {
+export function loadExternalPacks(registry: LoadProblemSink & Pick<PackRegistry, 'catalog' | 'refreshCatalog'>): LoadedPack[] {
   const { packsDir } = resolveAppEnvironment();
-  const discovered = discoverPacks(packsDir);
+  registry.refreshCatalog(packsDir);
+  const discovered = readInstalledPackBuilds(packsDir);
   // Boot is where what is installed is settled, so it is where rows for packs that are gone are dropped
-  forgetPacksExcept(discoveredPackIds(discovered));
-  // **The packs this app ships load first, and that is a guarantee rather than an accident of readdir.**
-  // Registration order decides who wins a designation or a plugin id, so an installed pack that claimed
-  // `brain` would take it from the pack the app needs if it happened to be discovered first. Two separate
-  // load calls used to make this ordering structural; with one list it has to be said.
-  const enabled = enabledExternalPacks(discovered, disabledPackIds())
-    .sort((a, b) => Number(shippedIds.has(b.manifest.id)) - Number(shippedIds.has(a.manifest.id)));
+  forgetPacksExcept(new Set(discovered.map(entry => entry.id)));
+  const disabled = disabledPackIds();
+  const enabled = discovered.filter(entry => !disabled.has(entry.id)).sort((a, b) => a.id.localeCompare(b.id));
 
   if (enabled.length === 0) return [];
 
   logger.info(`Loading ${enabled.length} pack(s)`);
   const loaded: LoadedPack[] = [];
 
-  for (const { manifest, dir } of enabled) {
-    const pack = loadSingleExternalPack(manifest, dir, shippedIds);
-    if ('problem' in pack) problems?.recordLoadProblem(manifest.id, pack.problem);
+  for (const entry of enabled) {
+    if (!entry.build) {
+      logger.warn(`Skipping ${entry.id}: ${entry.problem}`);
+      registry.recordLoadProblem(entry.id, entry.problem);
+      continue;
+    }
+    const { dir, build: { snapshot: { manifest } } } = entry;
+    const pack = loadSingleExternalPack(registry, dir);
+    if ('problem' in pack) registry.recordLoadProblem(manifest.id, pack.problem);
     else loaded.push(pack);
   }
 
@@ -214,14 +188,8 @@ export function registerExternalPacks(registry: PackRegistry, packs: LoadedPack[
   return registered;
 }
 
-/**
- * Loads the app's packs into `registry` — every pack, by the one path, from its own installed directory.
- *
- * The packs in `shippedIds` are ordered first, so a role one of them designates can't be taken by a pack
- * installed later that designates it too: the shipped pack would then fail to register at all. That is the
- * whole of what shipping buys a pack here, and it is an argument rather than something read off a manifest.
- */
-export function loadAppPacks(registry: PackRegistry, shippedIds: ReadonlySet<string> = new Set()): { loaded: LoadedPack[] } {
-  const loaded = loadExternalPacks(registry, shippedIds);
+/** Load and register every enabled installed pack; advertisements grant no registration priority. */
+export function loadAppPacks(registry: PackRegistry): { loaded: LoadedPack[] } {
+  const loaded = loadExternalPacks(registry);
   return { loaded: loaded.length > 0 ? registerExternalPacks(registry, loaded) : [] };
 }

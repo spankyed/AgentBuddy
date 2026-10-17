@@ -1,7 +1,5 @@
-// A test running the shell: `startShell` binds a frontend host, and the lookups the two halves share
-// (roles, steps, artifacts, blocks) still answer with what the pack's backend registered, as its systems
-// need them to. The frontend host is bound *over* the backend one, so without `backendFirst` in the harness
-// every one of these would read an empty frontend registry.
+// Backend step metadata and providers remain available when the harness also binds a frontend host.
+// Shared designations use the harness's backend-first view.
 import { expect, it } from 'vitest';
 import { startShell } from '@apackdev/testing/harness';
 import { getDesignated, hasDesignation } from '@apackdev/sdk/designations';
@@ -14,8 +12,7 @@ it("keeps the backend's roles and steps while a shell is running", async () => {
   expect(hasDesignation('brain')).toBe(true);
   expect(getDesignated('brain')).toBe('default-setup/brain');
 
-  // Its facets, not just the definition: a step reachable by name but stripped of what the backend reads
-  // off it is the shape that let every created node lose its field defaults
+  // Declaration defaults and executable facets have independent readers.
   expect(stepRegistry.getNode('llm')?.label).toBe('LLM');
   expect(stepRegistry.getBuild('llm')).toBeDefined();
   expect(stepRegistry.createNodeDefaults('schedule')).toMatchObject({ cronExpression: '0 * * * *' });

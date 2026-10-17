@@ -47,29 +47,41 @@ useWorkDir() {
   mkdir -p "$HOME"
 }
 
-# A work dir for this run, after sweeping the ones earlier runs left behind.
-#
-# **The dir is named after the process that made it, which is what lets a sweep tell a leftover from a live
-# run** — `isolatedDataDir` (`@apackdev/testing/vitest`) names its data dirs the same way for the same reason.
-# The rule before this was to delete the one the *handoff* named, which cleaned nothing whenever the handoff
-# did not survive to name it: a run interrupted before writing one, or one whose handoff another path had
-# already replaced. Each dir is around 566MB, so measured 2026-10-10 that left 26 of them and 13GB, exactly
-# one of which any run would ever have removed.
-#
-# A dir with no pid in its name is from before that naming and so is always a leftover, which is why those
-# go unconditionally: nothing creates one any more.
+# Sweep only this canonical checkout's dead owners. A live (possibly reused) PID is
+# preserved conservatively. The caller must serialize this checkout's author/app halves.
 newWorkDir() {
-  node -e '
-    const fs = require("node:fs"), os = require("node:os"), path = require("node:path");
+  local prefix
+  prefix="$(node -e '
+    const fs = require("node:fs"), os = require("node:os"), path = require("node:path"), crypto = require("node:crypto");
+    const prefix = "apack-authoring-" + crypto.createHash("sha256").update(fs.realpathSync(process.argv[1])).digest("hex") + "-";
     const live = (pid) => { try { process.kill(pid, 0); return true; } catch (e) { return e.code === "EPERM"; } };
     for (const name of fs.readdirSync(os.tmpdir())) {
-      if (!name.startsWith("apack-authoring-")) continue;
-      const pid = /^apack-authoring-(\d+)-[A-Za-z0-9]{6}$/.exec(name)?.[1];
-      if (pid !== undefined && live(Number(pid))) continue;
-      // Another run cleaning up beside us, or a dir we may not touch: not this run'"'"'s concern
-      try { fs.rmSync(path.join(os.tmpdir(), name), { recursive: true, force: true }); } catch {}
+      if (!name.startsWith(prefix)) continue;
+      const pid = Number(/^(\d+)-[A-Za-z0-9]{6}$/.exec(name.slice(prefix.length))?.[1]);
+      if (!Number.isSafeInteger(pid) || pid <= 0 || live(pid)) continue;
+      const directory = path.join(os.tmpdir(), name);
+      // Only ordinary directories belong to this sweep; links and files are preserved.
+      try {
+        if (fs.lstatSync(directory).isDirectory()) fs.rmSync(directory, { recursive: true, force: true });
+      } catch {}
     }
-  '
-  mktemp -d "${TMPDIR:-/tmp}/apack-authoring-$$-XXXXXX"
+    process.stdout.write(prefix);
+  ' "$ROOT")"
+  mktemp -d "${TMPDIR:-/tmp}/${prefix}$$-XXXXXX"
 }
 
+# Required file outputs expose loss of external work and changed archive bytes to the
+# chain without walking node_modules. Publish only after authoring succeeds.
+writeAuthoringHandoff() {
+  mkdir -p "$HANDOFF"
+  node -e '
+    const fs = require("node:fs"), path = require("node:path"), crypto = require("node:crypto");
+    const [work, archive, pack, out] = process.argv.slice(1);
+    const sha = crypto.createHash("sha256").update(fs.readFileSync(archive)).digest("hex");
+    const ready = path.join(work, "authoring-ready");
+    fs.writeFileSync(ready, "ready\n");
+    fs.symlinkSync(ready, path.join(out, "work-ready"));
+    fs.symlinkSync(archive, path.join(out, "archive"));
+    fs.writeFileSync(path.join(out, "work.json"), JSON.stringify({ work, archive, pack, sha }, null, 2) + "\n");
+  ' "$WORK" "$ARCHIVE" "$PACK" "$HANDOFF"
+}

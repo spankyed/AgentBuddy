@@ -1,73 +1,62 @@
 /**
- * Reusing a build phase's output when nothing it reads has moved.
+ * Content-keyed reuse of facade types and DSL definitions.
  *
- * **Three of `apack pack build`'s phases are expensive and read a bounded set of files** — the frontend
- * bundle, the facade types and the DSL defs — so a build whose pack sources have not changed can take the
- * previous build's output forward instead of making it again. Measured on the pack the app ships,
- * 2026-10-08: hashing the whole scope is **17-19ms over 705 files**, against 11.3s for the frontend bundle
- * alone, and a build whose pack has not changed goes **21.0s to 6.3s, -70%** with all three gated (paired
- * A/B, median of 3, 74% idle, 2026-10-08). What is left is the hash and the copy of what the phases
- * produced — 101 files and 8.5 MB for the pack the app ships.
- *
- * **Reuse, not skip.** `--skip-fe` omits the frontend from the published tree; this produces the same tree
- * either way, which is the whole requirement — `apack pack build` stages into `.apack/build/` and renames
- * that over `dist/`, so a phase that does not run still has to leave its files in the staged tree.
- * Everything here exists to make the two trees identical, not to leave one short.
- *
- * **It is a content key over a declared scope, which is what makes it sound.** The build also records what
- * each phase *read* (`build-reads.ts`), and that record is explicitly never a cache key: a dep file can be
- * stale about a read nobody has made yet. A scope is the other half of the root guide's rule — *"a key
- * that cannot go stale, or a scope in which it cannot"* — because it hashes the tree rather than the reads,
- * so a file nobody touched last time is still in it. The reads record is how the scopes below were checked
- * against reality rather than guessed: measured 2026-10-08, the frontend phase read 329 files under the
- * pack's `src/` and 84 in the `@apackdev` packages' `dist`, and no others.
- *
- * **What the hash must cover besides the inputs is the options that change the output.** A `--release`
- * build minifies and drops sourcemaps, so reusing a development build's bundle for it would publish the
- * wrong bytes under the right name — the one failure here that no missing-file check could catch.
+ * Keys cover authored pack files, generated entries, the phase's additional inputs, tools and options.
+ * Diagnostic build-read records do not define this scope: additions must invalidate reuse even when
+ * no previous build read them. Reused output is copied into the staged tree before publication, so
+ * reuse produces the same output as running the phase. Release and development keys stay distinct.
  */
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { createHash } from 'node:crypto';
 import { createRequire } from 'node:module';
-import { cliVersion } from '../utils';
+import { packInputsHash } from '@apackdev/host/build/pack-inputs';
+import type { CompilationInputs } from './compilation-inputs.ts';
+import { dependencyInputsHash } from './dependency-inputs.ts';
+import type { ResolvedDepFiles } from '../commands/fetch-deps.ts';
+import { verifyPack, type PackIntegrity } from '@apackdev/host/packs';
+import type { RecordBuildOutput } from './build-outputs.ts';
+import { readPackBuildInputs, assertPackBuildInputsCurrent, type PackBuildInputs } from '@apackdev/host/build/pack-build-inputs';
 
-/** Where the stamps live: beside `reads.json`, in the directory every pack already ignores */
-const CACHE_FILE = path.join('.apack', 'build-cache.json');
+/** Private source-build metadata, sealed and replaced with its output; staging omits root cache files. */
+const CACHE_FILE = 'phase-cache.json';
 
 export interface PhaseStamp {
   /** What the phase read, and the options that change what it writes */
   readonly hash: string;
   /**
-   * What it wrote, relative to `dist`. **Recorded rather than fixed**, because a phase's output set
-   * follows the pack: the frontend bundle emits a chunk per lazy import, so a hard-coded list would be
-   * wrong for every pack but the one it was written against.
+   * What it wrote, relative to `dist`. The output set follows the pack's declarations, so membership
+   * belongs to the recorded phase rather than a fixed inventory.
    */
   readonly files: readonly string[];
 }
 
 export type PhaseStamps = Readonly<Record<string, PhaseStamp>>;
 
-export function readStamps(root: string): PhaseStamps {
+export function readPhaseCache(root: string): { stamps: PhaseStamps; inputs?: PackBuildInputs; integrity?: PackIntegrity } {
   try {
-    const parsed: unknown = JSON.parse(fs.readFileSync(path.join(root, CACHE_FILE), 'utf-8'));
-    if (parsed === null || typeof parsed !== 'object') return {};
-    return parsed as PhaseStamps;
+    const dir = path.join(root, 'dist');
+    const receipt = verifyPack(dir);
+    const inputs = readPackBuildInputs(dir, receipt);
+    assertPackBuildInputsCurrent(root, inputs);
+    const bytes = fs.readFileSync(path.join(dir, CACHE_FILE));
+    if (createHash('sha256').update(bytes).digest('hex') !== receipt.files[CACHE_FILE]) return { stamps: {} };
+    const parsed: unknown = JSON.parse(bytes.toString('utf8'));
+    if (parsed === null || typeof parsed !== 'object' || Array.isArray(parsed)) return { stamps: {} };
+    return { stamps: parsed as PhaseStamps, inputs, integrity: receipt };
   } catch {
-    // Absent or unreadable is simply no record, which reads as every phase stale
-    return {};
+    // Missing, damaged or stale input/output records require a cold rebuild.
+    return { stamps: {} };
   }
 }
 
-/**
- * Records the stamps. **Called with the snapshot and never per phase**, for the reason `reads.write()` is:
- * a build that failed produced no output to reuse, so it must leave the last complete record in place
- * rather than a record of the half it managed.
- */
-export function writeStamps(root: string, stamps: PhaseStamps): void {
-  const file = path.join(root, CACHE_FILE);
-  fs.mkdirSync(path.dirname(file), { recursive: true });
-  fs.writeFileSync(file, `${JSON.stringify(stamps, null, 2)}\n`);
+/** Write only to staging; its seal and directory replacement own publication. */
+export function writeStamps(outputDir: string, stamps: PhaseStamps, recordOutput?: RecordBuildOutput): void {
+  fs.mkdirSync(outputDir, { recursive: true });
+  const file = path.join(outputDir, CACHE_FILE);
+  const bytes = `${JSON.stringify(stamps, null, 2)}\n`;
+  fs.writeFileSync(file, bytes);
+  recordOutput?.(file, bytes);
 }
 
 /**
@@ -102,23 +91,19 @@ export function filesUnder(dir: string, base = dir, out: string[] = []): string[
 }
 
 /** Copies a phase's recorded output from `dist` into the staged tree, at the same relative paths */
-export function takeForward(distDir: string, stagedDir: string, files: readonly string[]): void {
+export function takeForward(distDir: string, stagedDir: string, files: readonly string[], options: { hashes: PackIntegrity['files']; recordOutput?: RecordBuildOutput }): void {
   for (const file of files) {
+    const from = path.join(distDir, file);
+    const expected = options.hashes[file.split(path.sep).join('/')];
+    if (!expected) throw new Error(`Reusable output is not in the verified receipt: ${file}`);
+    const bytes = fs.readFileSync(from);
+    if (createHash('sha256').update(bytes).digest('hex') !== expected) throw new Error(`Reusable output changed: ${file}`);
     const to = path.join(stagedDir, file);
     fs.mkdirSync(path.dirname(to), { recursive: true });
-    fs.copyFileSync(path.join(distDir, file), to);
+    fs.writeFileSync(to, bytes);
+    fs.chmodSync(to, fs.statSync(from).mode);
+    options.recordOutput?.(to, bytes);
   }
-}
-
-/**
- * The implementation of the phase, so an edit to a bundler invalidates what it produced. Workspace source
- * first, then the published bundle, then the version — the three cases and the order are `codegenSource()`'s
- * in `generate-entries.ts`, for the same reason: in a checkout the version does not move when the code does.
- */
-function bundlerSource(file: string): string {
-  const candidate = path.join(import.meta.dirname, file);
-  if (fs.existsSync(candidate)) return fs.readFileSync(candidate, 'utf-8');
-  return cliVersion() ?? '';
 }
 
 /**
@@ -144,57 +129,23 @@ export function apackScope(packDir: string): { readonly dirs: readonly string[] 
   return missing.length > 0 ? { missing } : { dirs };
 }
 
-/**
- * The versions of the tools that do the bundling, so upgrading one invalidates what it produced.
- *
- * **Deliberately one set for every phase rather than per phase.** A typescript bump invalidating the
- * frontend bundle costs one rebuild; the other error — a phase reusing output a different bundler made —
- * is silent, and over-broad is the safe direction for a cache key. Before reuse existed this needed no
- * answer at all, because the bundler always ran.
- *
- * `bundlerSource` covers the CLI's own code; this covers what it calls.
- */
-function bundlerVersions(): string {
-  const require = createRequire(import.meta.url);
-  return ['vite', 'rollup', 'esbuild', 'typescript'].map((pkg) => {
-    try {
-      return `${pkg}@${(JSON.parse(fs.readFileSync(require.resolve(`${pkg}/package.json`), 'utf-8')) as { version?: string }).version ?? '?'}`;
-    } catch {
-      return `${pkg}@absent`;
-    }
-  }).join(',');
-}
-
 /** Hashable file lists, each a scope rather than a list of reads */
-function hashTree(hash: ReturnType<typeof createHash>, dir: string, keep: (name: string) => boolean): void {
+function hashTree(hash: ReturnType<typeof createHash>, dir: string): void {
   for (const file of filesUnder(dir)) {
-    if (!keep(path.basename(file))) continue;
-    hash.update(file);
-    hash.update(fs.readFileSync(path.join(dir, file)));
+    const content = fs.readFileSync(path.join(dir, file));
+    hash.update(`${file.length}:${file}:${content.length}:`);
+    hash.update(content);
   }
 }
 
-const SOURCE = /\.(ts|tsx|js|mjs|cjs|vue|json|css)$/;
-
-/**
- * The frontend bundle's scope: the pack's own sources — `src/__generated__` included, since the entry it
- * bundles is generated — its build inputs, the DSL defs it resolves `?raw` from the real `dist`, and the
- * `@apackdev` packages it compiles against, which are what the recorded reads showed it reaching outside the
- * pack.
- */
-export function feInputsHash(root: string, options: { readonly release: boolean }, apackDirs: readonly string[]): string {
-  // `dist/defs` because the bundle resolves the DSL defs from the pack's real dist as `?raw`
-  return phaseInputsHash(root, { bundler: 'fe-bundler.ts', release: options.release, dirs: apackDirs, trees: ['dist/defs'] });
-}
-
 /** The facade types a dependent compiles against: the pack's own sources, and what it compiles them with */
-export function typesInputsHash(root: string, depSnapshots: ReadonlyMap<string, unknown>): string {
-  return phaseInputsHash(root, { bundler: 'types-bundler.ts', depSnapshots });
+export function typesInputsHash(root: string, dependencies: ReadonlyMap<string, ResolvedDepFiles>, compilation: CompilationInputs): string {
+  return phaseInputsHash(root, { bundler: 'types-bundler.ts', dependencies, compilation });
 }
 
 /** The DSL defs: the manifest's `dsl` entries, the sources they name, and the packages their types come from */
-export function dslInputsHash(root: string, apackDirs: readonly string[]): string {
-  return phaseInputsHash(root, { bundler: 'dsl-defs.ts', dirs: apackDirs });
+export function dslInputsHash(root: string, apackDirs: readonly string[], dependencies: ReadonlyMap<string, ResolvedDepFiles>, compilation: CompilationInputs): string {
+  return phaseInputsHash(root, { bundler: 'dsl-defs.ts', dirs: apackDirs, dependencies, compilation });
 }
 
 /**
@@ -203,25 +154,15 @@ export function dslInputsHash(root: string, apackDirs: readonly string[]): strin
  */
 function phaseInputsHash(root: string, o: {
   readonly bundler: string;
-  readonly release?: boolean;
   readonly dirs?: readonly string[];
-  readonly trees?: readonly string[];
-  readonly depSnapshots?: ReadonlyMap<string, unknown>;
+  readonly dependencies: ReadonlyMap<string, ResolvedDepFiles>;
+  readonly compilation: CompilationInputs;
 }): string {
   const hash = createHash('sha256');
-  if (o.release !== undefined) hash.update(`release:${o.release}`);
-  hash.update(bundlerSource(o.bundler));
-  hash.update(bundlerVersions());
-  for (const file of ['apack.json', 'package.json', 'tsconfig.json', 'tailwind.config.ts', 'tailwind.config.js']) {
-    const full = path.join(root, file);
-    if (fs.existsSync(full)) { hash.update(file); hash.update(fs.readFileSync(full)); }
-  }
-  hashTree(hash, path.join(root, 'src'), (name) => SOURCE.test(name));
-  for (const tree of o.trees ?? []) hashTree(hash, path.join(root, tree), () => true);
-  for (const dir of o.dirs ?? []) hashTree(hash, dir, (name) => SOURCE.test(name));
-  for (const id of [...(o.depSnapshots?.keys() ?? [])].sort()) {
-    hash.update(id);
-    hash.update(JSON.stringify(o.depSnapshots!.get(id)));
-  }
+  hash.update(o.bundler);
+  hash.update(o.compilation.hash);
+  hash.update(packInputsHash(root, { generated: true }));
+  for (const dir of o.dirs ?? []) hashTree(hash, dir);
+  hash.update(dependencyInputsHash(o.dependencies));
   return hash.digest('hex');
 }

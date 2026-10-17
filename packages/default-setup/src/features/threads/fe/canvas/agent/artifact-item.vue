@@ -17,8 +17,8 @@
 
 <script setup lang="ts">
 import { computed } from 'vue';
-import { FileText } from 'lucide-vue-next';
-import { artifactRegistry } from '@apackdev/sdk/artifacts';
+import { FileText, icons } from 'lucide-vue-next';
+import { useArtifactDeclarations } from '@apackdev/sdk/fe';
 import type { ArtifactItem } from '@apackdev/sdk/artifacts';
 
 const props = defineProps<{
@@ -47,7 +47,10 @@ const pillClasses = computed(() => {
   return 'bg-neutral-800 text-neutral-300 hover:bg-neutral-700';
 });
 
+const declarations = useArtifactDeclarations();
+
 function getIcon(type: string) {
-  return artifactRegistry.getIcon(type) || FileText;
+  const name = declarations.value.find(entry => entry.type === type)?.declaration.icon;
+  return name && name in icons ? icons[name as keyof typeof icons] : FileText;
 }
 </script>

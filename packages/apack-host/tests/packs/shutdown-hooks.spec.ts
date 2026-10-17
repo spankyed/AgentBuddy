@@ -1,8 +1,8 @@
+import { createNativePackTestRegistry } from '@apackdev/host/testing';
 // A registry's shutdown hooks: the ones each pack declares (boot.onShutdown), keyed by pack id, and the app's
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { createPackRegistry } from '../../src/packs/registry.ts';
 
-const { registerShutdownHook, removeShutdownHooksForKey, runShutdownHooks, runShutdownHooksForKey } = createPackRegistry();
+const { registerShutdownHook, removeShutdownHooksForKey, runShutdownHooks, runShutdownHooksForKey } = createNativePackTestRegistry();
 
 afterEach(() => {
   for (const key of ['_global', 'pack-a', 'pack-b']) removeShutdownHooksForKey(key);

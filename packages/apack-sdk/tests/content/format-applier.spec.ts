@@ -38,7 +38,7 @@ afterAll(() => {
 function compiled(packId: string, records: Array<{ name: string; body: string; version?: string; [field: string]: unknown }>): string {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'applier-'));
   dirs.push(dir);
-  fs.writeFileSync(path.join(dir, 'content.json'), JSON.stringify({ version: 1, packId, content: [] }));
+  fs.writeFileSync(path.join(dir, 'content.json'), JSON.stringify({ version: 1, packId, entries: [] }));
   const contentItems: ContentItem[] = records.map(({ version = 'v1', ...fields }) => ({ entity: 'Memo', ...fields, contentHash: `${fields.name}-${version}` }));
   fs.writeFileSync(path.join(dir, 'memos.content.json'), JSON.stringify({ records: contentItems }));
   return dir;
@@ -361,8 +361,7 @@ describe('an entity we wrote with no recorded parts', () => {
    * **It is adopted: written once and re-stamped**, which is the one branch of the merge that can overwrite
    * something the user typed. Every entity written before anything recorded *which part* we wrote is in
    * this state, so the alternative is freezing all of them for good — a user who upgrades would then never
-   * get a fix again. It is the rule that replaced a migration doing the same thing by hand
-   * (`default-setup/src/migrations/0.4.0.ts`).
+   * get a fix again. The merge records ownership on adoption, so subsequent applies can distinguish user edits.
    */
   it('is written once, and its edits are honoured from then on', () => {
     apply(compiled('pack-a', [{ name: 'Intro', body: 'Hello' }]));
@@ -521,10 +520,10 @@ describe("two packs' records with the same entry key and identity", () => {
     expect(memos('Welcome').map((row) => row.body).sort()).toEqual(['From A', 'From B, revised']);
   });
 
-  it('fail with a rebuild error when the compiled content name no pack', () => {
+  it('refuses compiled content that names no pack', () => {
     const dir = compiled('pack-a', [{ name: 'Welcome', body: 'From A' }]);
     fs.writeFileSync(path.join(dir, 'content.json'), JSON.stringify({ version: 1, entries: [] }));
-    expect(() => apply(dir)).toThrow(/doesn't name the pack that compiled this content: rebuild the pack/);
+    expect(() => apply(dir)).toThrow('packId');
   });
 });
 
@@ -537,7 +536,7 @@ describe("a folder another pack written", () => {
   function tree(packId: string, memoNames: string[], entryKey = 'memos'): string {
     const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'applier-tree-'));
     dirs.push(dir);
-    fs.writeFileSync(path.join(dir, 'content.json'), JSON.stringify({ version: 1, packId, content: [] }));
+    fs.writeFileSync(path.join(dir, 'content.json'), JSON.stringify({ version: 1, packId, entries: [] }));
     const records: ContentItem[] = [{
       entity: 'Folder',
       name: 'internal',

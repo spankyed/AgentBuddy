@@ -1,7 +1,7 @@
 import * as path from 'node:path';
-import { SPECIALTY_CONTENT_KEYS } from '../manifest-schema.ts';
+import { SPECIALTY_CONTENT_KEYS } from '../../framework/declaration-schema.ts';
 import { CONTENT_COMPILERS_FILE, type PackManifest, type ContentFormatConfig } from '../manifest.ts';
-import type { ContentEditPolicy } from '../manifest-schema.ts';
+import type { ContentEditPolicy } from '../../framework/declaration-schema.ts';
 
 /** What resolving a dependency's formats needs: its manifest, and its build dir for compiler modules */
 export interface ContentDependency {

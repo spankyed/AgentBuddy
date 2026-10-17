@@ -102,8 +102,11 @@ describe('packTree', () => {
    * a mutex against 29 of the chain's 30 steps. Given a destination it writes nowhere else.
    */
   it('writes the tarball where it is told and leaves the packed tree alone', () => {
+    const original = dir;
+    dir = `${dir} & spaces`;
+    fs.renameSync(original, dir);
     pkg({ 'README.md': '# fake\n' });
-    const dest = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'packed-')));
+    const dest = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'packed & spaces-')));
     const before = fs.readdirSync(dir, { recursive: true, encoding: 'utf-8' }).sort();
     try {
       const tarball = packTree(dir, dest);

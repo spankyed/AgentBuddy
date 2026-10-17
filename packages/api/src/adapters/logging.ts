@@ -2,7 +2,7 @@
 // console calls) is printed once to the original console, and streamed to the client by the logs system
 import { formatWithOptions, type InspectOptions } from 'node:util';
 import type { LogEvent, LogLevel } from '@apackdev/sdk/logger';
-import { rootEvents } from '@/transport/emitter';
+import { rootEvents } from '../transport/emitter.ts';
 import { errorMessage, redactSecretText } from '@apackdev/sdk/utils/pure';
 
 // Store original console methods

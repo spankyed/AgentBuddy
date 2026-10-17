@@ -23,7 +23,9 @@ it('pins the selected tag, validates before replacement, and records only a succ
     const install: typeof installPackFromGitHub = vi.fn(async (_source, _dir, options) => {
       options?.beforePlace?.(incoming);
       fs.writeFileSync(path.join(dir, 'apack.json'), JSON.stringify(incoming));
-      return { id: 'demo', name: 'Demo', version: incoming.version, dir, missingDependencies: [], integrity: { formatVersion: 1, id: 'demo', version: incoming.version, files: {} } };
+      const result = { id: 'demo', name: 'Demo', version: incoming.version, dir, missingDependencies: [], integrity: { formatVersion: 1, id: 'demo', version: incoming.version, files: {} } };
+      options?.accept?.(result);
+      return result;
     });
     incoming = { ...incoming, id: 'wrong' };
     await expect(upgradePack(context, 'demo', { find, install })).rejects.toThrow('Expected external pack');

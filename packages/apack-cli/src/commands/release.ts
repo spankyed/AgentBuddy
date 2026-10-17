@@ -1,3 +1,4 @@
+import { writeManifest } from '../manifest-writer.ts';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { execFileSync } from 'node:child_process';
@@ -6,7 +7,8 @@ import { Octokit } from '@octokit/rest';
 import { findPackRoot, readManifest } from '../utils';
 import { parseManifest } from '@apackdev/sdk/build';
 import { resolveDeps } from './generate';
-import { build } from './build';
+import { runPackBuild } from '../build/build-process.ts';
+import { withBuildSignals } from '../build/build-signals.ts';
 import { buildPackArchive } from './archive';
 import { packArchiveName, readPackIntegrity, verifyPack, extractPackArchive } from '@apackdev/host/packs';
 import { errorMessage } from '@apackdev/sdk/utils/pure';
@@ -138,8 +140,8 @@ export async function preflight(root: string, options: { local: boolean; run: Ru
   const git = (...args: string[]) => options.run('git', args, root);
 
   const raw = readManifest(root);
-  const { errors: manifestErrors } = parseManifest(raw);
-  errors.push(...manifestErrors.map(e => `apack.json: ${e}`));
+  const { diagnostics: manifestErrors } = parseManifest(raw);
+  errors.push(...manifestErrors.map(({ message }) => `apack.json: ${message}`));
   if (!raw.hostVersion) errors.push('apack.json: hostVersion is required for releases (e.g. ">=0.3.0")');
 
   try {
@@ -202,7 +204,8 @@ function writeVersion(root: string, version: string): string[] {
     if (!fs.existsSync(p)) continue;
     const json = JSON.parse(fs.readFileSync(p, 'utf-8'));
     json.version = version;
-    fs.writeFileSync(p, JSON.stringify(json, null, 2) + '\n');
+    if (file === 'apack.json') writeManifest(root, json);
+    else fs.writeFileSync(p, JSON.stringify(json, null, 2) + '\n');
     changed.push(file);
   }
   // The lockfile records the root package's version twice, so leaving it behind tags a commit that
@@ -228,9 +231,9 @@ function hasScript(root: string, name: string): boolean {
   }
 }
 
-async function verify(root: string, options: { skipTests: boolean; skipE2e: boolean; run: Runner }): Promise<void> {
+async function verify(root: string, options: { skipTests: boolean; skipE2e: boolean; run: Runner; onInterrupted: () => void }): Promise<void> {
   console.log('\nBuilding (release)...');
-  await build(['--release']);
+  await withBuildSignals(signal => runPackBuild(root, { args: ['--release'], signal }), options.onInterrupted);
 
   if (fs.existsSync(path.join(root, 'tsconfig.json'))) {
     console.log('Typechecking...');
@@ -367,12 +370,15 @@ export async function runRelease(root: string, options: ReleaseOptions): Promise
   }
 
   const versionFiles = !options.dryRun && !existing.committed ? writeVersion(root, version) : [];
-  try {
-    await verify(root, { skipTests: options.skipTests, skipE2e: options.skipE2e, run });
-  } catch (err) {
-    if (options.dryRun) throw err;
+  const reportVerificationFailure = () => {
+    if (options.dryRun) return;
     if (existing.committed) console.error(releaseStateReport(version, existing));
     else console.error(`Verification failed; version files were bumped to ${version} — revert them before retrying.`);
+  };
+  try {
+    await verify(root, { skipTests: options.skipTests, skipE2e: options.skipE2e, run, onInterrupted: reportVerificationFailure });
+  } catch (err) {
+    reportVerificationFailure();
     throw err;
   }
 

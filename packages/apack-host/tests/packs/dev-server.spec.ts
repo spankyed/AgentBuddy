@@ -1,3 +1,4 @@
+import { sealBuild } from './runtime/build-fixture.ts';
 // `apack pack dev` state lives in the data dir, outside the installed (verified, replaced-on-install) pack
 import * as fs from 'node:fs';
 import * as os from 'node:os';
@@ -13,7 +14,7 @@ import {
   removeDevServerMarker,
   writeDevServerMarker,
 } from '../../src/packs/dev-server.ts';
-import { PACK_SNAPSHOT_FORMAT } from '@apackdev/sdk/build';
+import { _declarationRevision, PACK_SNAPSHOT_FORMAT } from '@apackdev/sdk/build';
 
 let tmp: string;
 let userDataDir: string;
@@ -38,7 +39,9 @@ function builtPack(): string {
   write('apack.json', JSON.stringify({ id: 'demo-pack', name: 'Demo Pack', version: '1.2.3' }));
   write('dist/runtime/index.cjs', 'module.exports = { registration: { id: "demo-pack" } };');
   write('dist/runtime/fe.js', 'export default {};');
-  write('dist/types/snapshot.json', JSON.stringify({ types: {}, format: PACK_SNAPSHOT_FORMAT }));
+  const manifest = JSON.parse(fs.readFileSync(path.join(root, 'apack.json'), 'utf8'));
+  write('dist/types/snapshot.json', JSON.stringify({ format: PACK_SNAPSHOT_FORMAT, manifest, declarationRevision: _declarationRevision(manifest), types: { entities: {}, relKinds: {} }, entityDestinations: {}, facades: {} }));
+  sealBuild(root);
   return root;
 }
 

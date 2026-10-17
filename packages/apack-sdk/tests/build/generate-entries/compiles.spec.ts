@@ -15,7 +15,7 @@ import * as path from 'node:path';
 import ts from 'typescript';
 import { describe, expect, it } from 'vitest';
 import type { PackSnapshot } from '../../../src/build/manifest.ts';
-import { setupPackFixture, dependency, facade, generatePackFiles, manifest, root, system, withPlugin, write, writePluginEntry, writeSystemEntry  } from './_support/pack.ts';
+import { setupPackFixture, dependency, facade, generatePackFiles, manifest, root, system, withPlugin, withPluginState, write, writePluginState, writeSystemEntry  } from './_support/pack.ts';
 
 setupPackFixture();
 
@@ -57,7 +57,7 @@ function typecheck(files: Record<string, string>, names: string[], noUnusedLocal
   const sdk = path.resolve(import.meta.dirname, '../../..');
   const fromSdk = (name: string) => path.dirname(createRequire(path.join(sdk, 'package.json')).resolve(`${name}/package.json`));
   // The generated facades import the engine too, which a pack installs with the SDK
-  const links = { '@apackdev/sdk': sdk, '@apackdev/ears': fromSdk('@apackdev/ears'), zod: fromSdk('zod') };
+  const links = { '@apackdev/sdk': sdk, '@apackdev/ears': fromSdk('@apackdev/ears'), zod: fromSdk('zod'), vue: fromSdk('vue') };
   for (const [name, target] of Object.entries(links)) {
     const link = path.join(root, 'node_modules', name);
     fs.mkdirSync(path.dirname(link), { recursive: true });
@@ -89,10 +89,10 @@ function typedDependency(systems: Record<string, string>): PackSnapshot {
 }
 
 describe('generated sends compile', () => {
-  it('for feature ids that match generated names, beside a dependency with the same feature ids', () => {
+  it('for feature ids that match generated names, beside a dependency with the same feature ids', async () => {
     const ids = ['foo', 'fooEntry', 'specs', 'specEvents', 'ref', 'openPlugin', 'registration', 'steps'];
     for (const id of ids) writeSystemEntry(id, "{ type: 'DONE' }", `{ type: '${id.toUpperCase()}_RUN'; n: number }`);
-    const files = generatePackFiles(manifest({ features: ids.map((id) => ({ ...system(id), designation: id === 'foo' ? 'foo' : undefined })) }), {
+    const files = await generatePackFiles(manifest({ features: ids.map((id) => ({ ...system(id), designation: id === 'foo' ? 'foo' : undefined })) }), {
       packRoot: root,
       depSnapshots: new Map([['base-pack', typedDependency({ foo: 'BASE_FOO_RUN', calendar: 'CALENDAR_RUN' })]]),
     });
@@ -103,11 +103,11 @@ describe('generated sends compile', () => {
       '// @ts-expect-error the own foo system receives FOO_RUN',
       "sendToSystem('foo', { type: 'BASE_FOO_RUN', n: 1 });",
     ].join('\n'));
-    expect(typecheck(files, ['src/probe.ts', 'src/__generated__/pack-entry.ts'])).toEqual([]);
+    expect(typecheck(files, ['src/probe.ts', 'src/__generated__/pack-entry.ts'], true)).toEqual([]);
   });
 
-  it("for a pack without systems, sending to its dependencies'", () => {
-    const files = generatePackFiles(manifest({ features: [{ id: 'sidebar', plugin: { entry: writePluginEntry('src/features/sidebar/fe/plugin.ts') } }] }), {
+  it("for a pack without systems, sending to its dependencies'", async () => {
+    const files = await generatePackFiles(manifest({ features: [{ id: 'sidebar', plugin: { label: 'Fixture', state: writePluginState('src/features/sidebar/fe/plugin.ts') } }] }), {
       packRoot: root,
       depSnapshots: new Map([['base-pack', typedDependency({ calendar: 'CALENDAR_RUN' })]]),
     });
@@ -122,13 +122,13 @@ describe('generated sends compile', () => {
     expect(typecheck(files, ['src/probe.ts'])).toEqual([]);
   });
 
-  it("to a dependency's plugins and a host plugin, with the events their owner declares", () => {
+  it("to a dependency's plugins and a host plugin, with the events their owner declares", async () => {
     writeSystemEntry('memos', "{ type: 'MEMO_ADDED'; text: string }");
     const base = dependency(
       { features: [withPlugin(system('calendar')), withPlugin(system('code'))] },
-      facade({ PackPluginEvents: "{ 'calendar': { type: 'TAG_ADDED'; name: string }; 'code': { type: 'FILE_OPENED'; path: string } }" }),
+      withPluginState(facade({ PackPluginEvents: "{ 'calendar': { type: 'TAG_ADDED'; name: string }; 'code': { type: 'FILE_OPENED'; path: string } }" }), ['calendar', 'code']),
     );
-    const files = generatePackFiles(
+    const files = await generatePackFiles(
       manifest({ features: [withPlugin(system('memos'))] }),
       { packRoot: root, depSnapshots: new Map([['base-pack', base]]) },
     );
@@ -151,34 +151,86 @@ describe('generated sends compile', () => {
 
 
 describe('generated settings compile', () => {
-  it('pairs schema-derived paths and values in backend accessors and custom forms', () => {
-    write('src/settings.ts', `import { z } from 'zod';
-      import { defineFeatureSettings } from '@apackdev/sdk/framework';
-      export default defineFeatureSettings({ schema: z.object({
-        enabled: z.boolean().default(true),
-        paths: z.record(z.string()).default({}),
-        chat: z.object({ mode: z.string().optional() }).default({}),
-        items: z.array(z.string()).default([]),
-      }).strict() });`);
-    write('src/visibility.ts', 'export default { visible: false };');
-    const files = generatePackFiles(manifest({ features: [
-      { id: 'notes', settings: 'src/settings.ts' },
-      { id: 'hidden', settings: 'src/visibility.ts' },
+  it('derives pack group values from schemas, preserving enums, optional fields and local references', async () => {
+    const files = await generatePackFiles(manifest({ extensions: { settings: {
+      other: {
+        schema: { type: 'object', additionalProperties: false,
+          definitions: { label: { type: 'number' } },
+          properties: { label: { $ref: '#/definitions/label' } }, required: ['label'],
+        },
+        defaults: { label: 1 },
+      },
+      assistant: {
+        title: 'Assistant preferences',
+        schema: {
+          type: 'object', additionalProperties: false,
+          definitions: { label: { type: 'string' } },
+          properties: {
+            mode: { type: 'string', enum: ['quick', 'thorough'] },
+            limit: { type: 'number' },
+            label: { $ref: '#/definitions/label' },
+            optional: { type: 'boolean' },
+            nullable: { type: ['string', 'null'] },
+            labels: { type: 'object', additionalProperties: { type: 'string' } },
+          },
+          required: ['mode', 'limit', 'label', 'nullable', 'labels'],
+        },
+        defaults: { mode: 'quick', limit: 10, label: 'Default', nullable: null, labels: {} },
+      },
+    } } }), { packRoot: root });
+    write('src/probe.ts', `
+      import type { PackGroupSettings } from './__generated__/settings.ts';
+      const settings: PackGroupSettings['assistant'] = {
+        mode: 'thorough', limit: 20, label: 'Other', nullable: 'present', labels: { first: 'one' },
+      };
+      const other: PackGroupSettings['other'] = { label: 2 };
+      // @ts-expect-error groups with identically named schema definitions stay independent
+      other.label = settings.label;
+      settings.optional = false;
+      settings.nullable = null;
+      // @ts-expect-error the enum is closed
+      settings.mode = 'unknown';
+      // @ts-expect-error defaults do not determine numeric types
+      settings.limit = '20';
+      // @ts-expect-error local references retain their value type
+      settings.label = 1;
+      // @ts-expect-error record values follow their schema
+      settings.labels.first = false;
+      // @ts-expect-error undeclared group
+      type Missing = PackGroupSettings['missing'];
+    `);
+    expect(typecheck(files, ['src/probe.ts'])).toEqual([]);
+    expect(files['src/__generated__/pack-types.ts']).toContain('PackGroupSettings');
+  });
+
+  it('pairs schema-derived paths and values in backend accessors and custom forms', async () => {
+    const declaration = { schema: { type: 'object', additionalProperties: false,
+      properties: {
+        enabled: { type: 'boolean' }, paths: { type: 'object', additionalProperties: { type: 'string' } },
+        chat: { type: 'object', additionalProperties: false, properties: { mode: { type: 'string' } } },
+        items: { type: 'array', items: { type: 'string' } },
+      }, required: ['enabled', 'paths', 'chat', 'items'],
+    }, defaults: { enabled: true, paths: {}, chat: {}, items: [] } };
+    const files = await generatePackFiles(manifest({ features: [
+      { id: 'notes', settings: declaration },
+      { id: 'hidden', plugin: { label: 'Fixture', state: writePluginState('src/hidden.ts'), defaultVisible: false } },
     ] }), { packRoot: root, depSnapshots: new Map([['base-pack', dependency({
-      features: [{ id: 'calendar', settings: 'src/settings.ts' }],
+      features: [{ id: 'calendar', settings: declaration }],
     }, facade({ PackFeatureSettings: "{ calendar: { weekStartsOn: number } }" }))]]) });
     write('src/probe.ts', `
-      import { settings, type SettingUpdate } from './__generated__/settings.ts';
+      import { featureSettings, type SettingUpdate } from './__generated__/settings.ts';
       import { useSettings } from './__generated__/settings-fe.ts';
-      const notes = settings.forFeature('notes');
+      const notes = featureSettings.forFeature('notes');
       const enabled: boolean = notes.get().enabled;
       notes.set({ path: ['enabled'], value: enabled });
       notes.set({ path: ['enabled'] as const, value: false });
       notes.set({ path: ['paths', 'claude'], value: '/usr/bin/claude' });
+      notes.set({ path: ['chat', 'mode'], value: 'focused' });
+      // @ts-expect-error JSON writes do not encode undefined
       notes.set({ path: ['chat', 'mode'], value: undefined });
       notes.set({ path: ['items'], value: ['one'] });
       notes.reset();
-      settings.forFeature('base-pack/calendar').set({ path: ['weekStartsOn'], value: 1 });
+      featureSettings.forFeature('base-pack/calendar').set({ path: ['weekStartsOn'], value: 1 });
       useSettings('base-pack/calendar').set({ path: ['weekStartsOn'], value: 2 });
       const update: SettingUpdate<'notes'> = { path: ['enabled'], value: false };
       useSettings('notes').set(update);
@@ -189,9 +241,9 @@ describe('generated settings compile', () => {
       // @ts-expect-error undeclared setting
       notes.set({ path: ['missing'], value: true });
       // @ts-expect-error undeclared feature
-      settings.forFeature('missing');
+      featureSettings.forFeature('missing');
       // @ts-expect-error visibility-only declaration has no settings schema
-      settings.forFeature('hidden');
+      featureSettings.forFeature('hidden');
       // @ts-expect-error frontend enforces the same value type
       useSettings('notes').set({ path: ['enabled'], value: 1 });
     `);
@@ -202,20 +254,18 @@ describe('generated settings compile', () => {
 });
 
 
-it('emits settings modules that compile with unused-import checking for a pack without settings', () => {
-  const files = generatePackFiles(manifest({}), { packRoot: root });
+it('emits settings modules that compile with unused-import checking for a pack without settings', async () => {
+  const files = await generatePackFiles(manifest({}), { packRoot: root });
   const diagnostics = typecheck(files, ['src/__generated__/settings.ts', 'src/__generated__/settings-fe.ts'], true);
   expect(diagnostics.filter(d => /^src\/__generated__\/settings(?:-fe)?\.ts:/.test(d))).toEqual([]);
 });
 
 
-it('allows feature services to create settings handles during module initialization', () => {
-  write('src/settings.ts', `import { z } from 'zod';
-    export default { schema: z.object({ limit: z.number().default(10) }) };`);
-  write('src/service.ts', `import { settings } from './__generated__/settings.ts';
-    export const notesService = { settings: settings.forFeature('notes') };`);
-  const files = generatePackFiles(manifest({ features: [{
-    id: 'notes', settings: 'src/settings.ts', services: { notes: 'src/service.ts#notesService' },
+it('allows feature services to create settings handles during module initialization', async () => {
+  write('src/service.ts', `import { featureSettings } from './__generated__/settings.ts';
+    export const notesService = { settings: featureSettings.forFeature('notes') };`);
+  const files = await generatePackFiles(manifest({ features: [{
+    id: 'notes', settings: { schema: { type: 'object', properties: { limit: { type: 'number' } }, required: ['limit'] }, defaults: { limit: 10 } }, services: { notes: 'src/service.ts#notesService' },
   }] }), { packRoot: root });
   write('src/probe.ts', `import './__generated__/services.ts';
     import { notesService } from './service.ts';
@@ -225,4 +275,194 @@ it('allows feature services to create settings handles during module initializat
   buildSync({ entryPoints: [path.join(root, 'src/probe.ts')], outfile,
     bundle: true, platform: 'node', format: 'esm', external: ['@apackdev/sdk/*'] });
   expect(() => execFileSync(process.execPath, ['--import', 'tsx', outfile], { stdio: 'pipe' })).not.toThrow();
+});
+
+it('runs generated frontend settings through its entry binding without ambient host administration', async () => {
+  const definition = { schema: { type: 'object', properties: { limit: { type: 'number' } }, required: ['limit'] }, defaults: { limit: 10 } };
+  const files = await generatePackFiles(manifest({ features: [{ id: 'notes', settings: definition }],
+    extensions: { settings: { shared: definition } },
+  }), { packRoot: root });
+  write('src/probe.ts', `
+    import { effectScope } from 'vue';
+    import type { SettingsPort } from '@apackdev/sdk/fe';
+    import entry from './__generated__/pack-entry-fe.ts';
+    import { useSettings, usePackSettings, useAppSettings } from './__generated__/settings-fe.ts';
+    const updates: unknown[] = [];
+    const port: SettingsPort = {
+      get: <T,>() => ({ limit: 10 } as T), status: () => 'ready', subscribe: () => () => {},
+      update: async (target, path, value, condition) => { updates.push({ target, path, value, condition }); return { status: 'saved' }; },
+      reset: async target => { updates.push({ target }); return { status: 'saved' }; },
+    };
+    const binding = entry.bindSettings(port);
+    binding.activate();
+    const scope = effectScope();
+    const handles = scope.run(() => ({ notes: useSettings('notes'), shared: usePackSettings('shared'), app: useAppSettings() }))!;
+    await handles.notes.set({ path: ['limit'], value: 20 });
+    await handles.shared.set({ path: ['limit'], value: 30 });
+    await handles.app.set({ path: ['personal', 'name'], value: 'Ada' });
+    if (JSON.stringify(updates) !== JSON.stringify([
+      { target: { kind: 'feature', featureRef: 'demo-pack/notes' }, path: ['limit'], value: 20 },
+      { target: { kind: 'pack', packId: 'demo-pack', groupId: 'shared' }, path: ['limit'], value: 30 },
+      { target: { kind: 'app' }, path: ['personal', 'name'], value: 'Ada' },
+    ])) throw new Error('Generated settings did not reach their bound targets');
+    binding.dispose();
+    if ((await handles.app.reset()).status !== 'refused') throw new Error('Retained app handle remained writable');
+    if ((await handles.notes.reset()).status !== 'refused') throw new Error('Retained handle remained writable');
+    const next = entry.bindSettings(port);
+    next.activate();
+    if ((await handles.shared.reset()).status !== 'refused') throw new Error('Rebinding revived an old handle');
+    next.dispose();
+    scope.stop();
+  `);
+  expect(typecheck(files, ['src/probe.ts'])).toEqual([]);
+  const outfile = path.join(root, 'probe.mjs');
+  buildSync({ entryPoints: [path.join(root, 'src/probe.ts')], outfile,
+    bundle: true, platform: 'node', format: 'esm', external: ['@apackdev/sdk/*', 'vue'] });
+  expect(() => execFileSync(process.execPath, ['--conditions=@apackdev/source', '--import', 'tsx', outfile], { stdio: 'pipe' })).not.toThrow();
+});
+
+it('generates owner-writable and dependency-readonly handles for both settings owners', async () => {
+  const shared = {
+    schema: { type: 'object', properties: { enabled: { type: 'boolean' } }, required: ['enabled'], additionalProperties: false },
+    defaults: { enabled: true },
+  };
+  const owner = { ...shared, access: 'owner' as const };
+  const files = await generatePackFiles(manifest({ id: 'consumer-pack',
+    extensions: { settings: { local: owner } }, features: [{ id: 'local', settings: owner }],
+  }), { packRoot: root, depSnapshots: new Map([['base-pack', dependency({
+    extensions: { settings: { shared, private: owner } },
+    features: [{ id: 'shared', settings: shared }, { id: 'private', settings: owner }],
+  }, facade({
+    PackFeatureSettings: '{ shared: { enabled: boolean }; private: { enabled: boolean } }',
+    PackGroupSettings: '{ shared: { enabled: boolean }; private: { enabled: boolean } }',
+  }))]]) });
+  write('src/probe.ts', `
+    import { featureSettings, packSettings } from './__generated__/settings.ts';
+    import { useSettings, usePackSettings } from './__generated__/settings-fe.ts';
+    featureSettings.forFeature('local').set({ path: ['enabled'], value: false });
+    featureSettings.forFeature('consumer-pack/local').reset();
+    packSettings.forGroup('local').reset();
+    packSettings.forGroup('consumer-pack/local').set({ path: ['enabled'], value: true });
+    useSettings('local').reset();
+    usePackSettings('consumer-pack/local').set({ path: ['enabled'], value: false });
+    featureSettings.forFeature('base-pack/shared').set({ path: ['enabled'], value: false });
+    packSettings.forGroup('base-pack/shared').reset();
+    useSettings('base-pack/shared').reset();
+    usePackSettings('base-pack/shared').set({ path: ['enabled'], value: false });
+    const serialized: import('@apackdev/sdk/types').SettingsTarget = { kind: 'feature', featureRef: 'base-pack/private' };
+    void serialized;
+    // @ts-expect-error serialized feature targets still require a qualified ref
+    const bare: import('@apackdev/sdk/types').SettingsTarget = { kind: 'feature', featureRef: 'private' };
+    void bare;
+    const feature = featureSettings.forFeature('base-pack/private');
+    const group = packSettings.forGroup('base-pack/private');
+    const enabled: boolean = feature.get().enabled;
+    const stop = group.onChange(value => { const enabled: boolean = value.enabled; void enabled; });
+    stop(); void enabled;
+    // @ts-expect-error restricted dependencies are readable but not writable
+    feature.set({ path: ['enabled'], value: false });
+    // @ts-expect-error reset is also a mutation
+    group.reset();
+    // @ts-expect-error frontend uses the same feature policy
+    useSettings('base-pack/private').set({ path: ['enabled'], value: false });
+    // @ts-expect-error frontend uses the same group policy
+    usePackSettings('base-pack/private').reset();
+    // @ts-expect-error undeclared group
+    usePackSettings('missing');
+    // @ts-expect-error declared group value comes from its schema
+    packSettings.forGroup('base-pack/shared').set({ path: ['enabled'], value: 'false' });
+  `);
+  expect(typecheck(files, ['src/probe.ts'])).toEqual([]);
+});
+
+it('preserves prototype-like entity wires in generated registrations and typed/untyped EARS', async () => {
+  write('src/shape.ts', 'throw new Error("shape modules must never execute");\nexport interface EntityShape { title: string }\n');
+  const fields = { data: { entities: Object.fromEntries([['__proto__', 'src/shape.ts#EntityShape'], ['Untyped', null]]) } };
+  const files = await generatePackFiles(manifest(fields), { packRoot: root });
+  write('src/probe.ts', `import { EARS, type EntityShape } from './__generated__/ears.ts';
+    import { registration } from './__generated__/pack-entry.ts';
+    function check(typed: EntityShape<'__proto__'>, untyped: EntityShape<'Untyped'>) {
+      const title: string = typed.title;
+      // @ts-expect-error a declared string field is not a number
+      const bad: number = typed.title;
+      const extra: unknown = untyped.extra;
+      // @ts-expect-error untyped entities do not acquire typed fields
+      const invented: string = untyped.extra;
+    }
+    const wire: EARS.Entity.__proto__ = EARS.Entity.__proto__;
+    if (wire !== '__proto__' || !Object.hasOwn(EARS.Entity, '__proto__')) throw new Error('EARS wire lost');
+    if (registration.ears?.entities?.['__proto__'] !== wire || !Object.hasOwn(registration.ears.entities, '__proto__')) throw new Error('Registration wire lost');
+    if (Object.getPrototypeOf(registration.ears.entities) !== Object.prototype) throw new Error('Prototype changed');
+  `);
+  expect(typecheck(files, ['src/probe.ts'])).toEqual([]);
+  const outfile = path.join(root, 'probe.mjs');
+  buildSync({ entryPoints: [path.join(root, 'src/probe.ts')], outfile,
+    bundle: true, platform: 'node', format: 'esm', external: ['@apackdev/sdk/*', '@apackdev/ears'] });
+  expect(() => execFileSync(process.execPath, ['--import', 'tsx', outfile], { stdio: 'pipe' })).not.toThrow();
+});
+
+it('keeps retained backend service roots retired across rebind and failed cleanup', async () => {
+  const files = await generatePackFiles(manifest({}), { packRoot: root });
+  write('src/probe.ts', `
+    import type { SettingsService } from '@apackdev/sdk/services';
+    import { services, servicesForAction, bindServices } from './__generated__/services.ts';
+    let cleanupFails = false;
+    const settings: SettingsService = {
+      get: <T,>() => ({ count: 10 } as T), set() {}, reset() {},
+      onChange: () => () => { if (cleanupFails) throw new Error('Cleanup failed'); },
+    };
+    function retired(root: typeof services) {
+      try { root.settings.get({ kind: 'app' }); }
+      catch (error) { if (String(error).includes('revoked')) return; throw error; }
+      throw new Error('Retained root was revived');
+    }
+    const first = services;
+    const firstFactory = servicesForAction;
+    const dispose = bindServices({ services: { settings }, servicesForAction: () => ({ settings }) });
+    if (first !== services) throw new Error('Initial binding lost its constructed frame');
+    if (services.settings.get<{ count: number }>({ kind: 'app' }).count !== 10) throw new Error('Missing bound settings');
+    dispose();
+    if (first === services) throw new Error('Disposal retained the old root');
+    retired(first);
+    let refusedFactory = false;
+    try { firstFactory('retired'); } catch (error) { refusedFactory = String(error).includes('revoked'); }
+    if (!refusedFactory) throw new Error('Retained action factory was revived');
+    const second = services;
+    const disposeSecond = bindServices({ services: { settings }, servicesForAction: () => ({ settings }) });
+    retired(first);
+    services.settings.onChange(() => {});
+    cleanupFails = true;
+    let failed = false;
+    try { disposeSecond(); } catch { failed = true; }
+    if (!failed) throw new Error('Cleanup error was swallowed');
+    if (second === services) throw new Error('Failed cleanup retained the old export');
+    retired(second);
+    cleanupFails = false;
+    const disposeThird = bindServices({ services: { settings }, servicesForAction: () => ({ settings }) });
+    retired(first);
+    retired(second);
+    if (services.settings.get<{ count: number }>({ kind: 'app' }).count !== 10) throw new Error('Rebind did not publish a fresh root');
+    disposeThird();
+  `);
+  expect(typecheck(files, ['src/probe.ts'])).toEqual([]);
+  const outfile = path.join(root, 'probe.mjs');
+  buildSync({ entryPoints: [path.join(root, 'src/probe.ts')], outfile,
+    bundle: true, platform: 'node', format: 'esm', external: ['@apackdev/sdk/*'] });
+  expect(() => execFileSync(process.execPath, ['--import', 'tsx', outfile], { stdio: 'pipe' })).not.toThrow();
+});
+
+it('typechecks only consumed host APIs and directly owned dependency service members', async () => {
+  const snapshot = dependency({ services: { search: 'unavailable.ts#search', hidden: 'unavailable.ts#hidden' } },
+    facade({ Services: '{ search: { read(): string }; hidden: { read(): string } }' }));
+  const files = await generatePackFiles(manifest({ dependencies: { 'base-pack': '*' },
+    consumes: { services: ['host/onboarding', 'base-pack/search'] },
+  }), { packRoot: root, depSnapshots: new Map([['base-pack', snapshot]]) });
+  write('src/probe.ts', `import { services } from './__generated__/services.ts';
+    services.onboarding.isComplete(); services.search.read();
+    services.appData.reset(); services.hidden.read();`);
+  const diagnostics = typecheck(files, ['src/probe.ts']);
+  expect(diagnostics).toHaveLength(2);
+  expect(diagnostics.every(diagnostic => diagnostic.includes('src/probe.ts'))).toBe(true);
+  expect(diagnostics.join('\n')).toContain("Property 'appData' does not exist");
+  expect(diagnostics.join('\n')).toContain("Property 'hidden' does not exist");
 });

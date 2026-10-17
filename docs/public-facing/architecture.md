@@ -58,7 +58,7 @@ Packs import `@apackdev/sdk`, `@apackdev/ears` and `@apackdev/ui`, never `@apack
 
 Installing is stage, verify, place:
 
-1. **Stage:** a built pack source is copied into a temporary staging directory (`runtime/`, `build/`, `types/` from `dist/`, without source maps), with the resolved `apack.json` and a `integrity.json` listing each file's sha256. An archive — `.tgz` or `.zip` — is checked against its sha256 before anything is unpacked. A GitHub install takes that checksum from the release's `<archive>.sha256` asset and refuses a release that publishes none; a URL install has one only if the caller passes it, and warns when it doesn't. Downloads carry a two-minute timeout, so a stalled one fails instead of hanging the install.
+1. **Stage:** a built pack source is copied into a temporary staging directory (`runtime/`, `build/`, `types/` from `dist/`, without source maps), carrying the verified producer manifest and expected file hashes; staging does not re-sign arbitrary copied bytes. An archive — `.tgz` or `.zip` — is checked against its sha256 before anything is unpacked. A GitHub install takes that checksum from the release's `<archive>.sha256` asset and refuses a release that publishes none; a URL install has one only if the caller passes it, and warns when it doesn't. Downloads carry a two-minute timeout, so a stalled one fails instead of hanging the install.
 2. **Verify:** the pack's format version must match the host's, and the files on disk must be exactly the ones `integrity.json` lists, with matching checksums.
 3. **Place:** the staged pack is copied into a hidden `.<id>.installing-<pid>-…` dir in `packs/`, the current copy (if any) is renamed aside to `.<id>.previous-…`, the new copy is renamed into place, and the previous one is removed. At boot, `prepareHostDataDirs` restores a pack whose install crashed between those renames, unless the pack was uninstalled since, and removes stale staging dirs (a dir whose process is gone, or which predates the boot).
 
@@ -72,7 +72,7 @@ The source directory must be built first: installing a directory with neither a 
 1. Registers the host `packs` system.
 2. `prepareHostDataDirs`: records the app version in the data dir (for `apack pack install`) and recovers staging dirs in `packs/`.
 3. `forwardSecretsChanges` (`@apackdev/host/secrets`): every system that takes `SECRETS_CHANGED` hears that API key changes, never their values.
-4. Installs the packs the app ships into `packs/<id>`, each being a directory under `SHIPPED_PACKS_DIR` that holds an `apack.json`. It installs one only when its files differ from the installed copy's, so a first boot and a version bump write and every other boot writes nothing; a differing copy also covers one something changed on disk. This is before loading, not beside it: a pack is loaded from `packs/`, so it has to be there to be found.
+4. Installs the packs the app ships into `packs/<id>`, each being a directory under `SHIPPED_PACKS_DIR` that holds an `apack.json`. Missing defaults are installed unless deliberately suppressed. Existing user-managed replacements are preserved; explicitly app-managed copies refresh when the shipped source revision changes. This is before loading, not beside it: a pack is loaded from `packs/`, so it has to be there to be found.
 5. Loads packs — one path for all of them, the ones the app ships included. Discovered in `packs/` and reconciled with `installed-packs.json` (new packs added enabled, missing ones removed), the shipped ones ordered first so a pack depending on one finds it registered. For each enabled pack: `hostVersion` check, pack layout format check, a warning on an SDK major version mismatch, and `runtime/index.cjs` loaded from its own installed directory through the module bridge. A pack with no built runtime, or one whose load throws, has a load problem recorded and the rest load. Each pack's systems register as `<packId>/<featureId>`, and the registry's `registerPack()` stores each registration (see [Collision detection](#collision-detection)). A pack contributes only through its registration: nothing registers when its modules are imported.
 7. Wires each pack's `onShutdown` hook, keyed by pack id.
 8. Hydrates the app's engine from LMDB. Every pack's entity types are registered by now, so the partition policy sees them all.
@@ -87,8 +87,8 @@ Every pack's frontend is loaded at runtime, the ones the app ships included. A d
 
 1. Each time this window's bus subscription is established, the application actor queries the loaded packs (`trpc.packs.loaded`), which lists each loaded external pack's `feEntry` and `feStyles` — the pack's `runtime/fe.js` and `runtime/fe.css`, when it has them. It loads only the packs it hasn't loaded yet, so a query that fails leaves them to the next connection and a pack is never loaded twice.
 2. For each external pack, the shell loads its frontend (`createPackFrontends(io, packs).load` in `@apackdev/host/fe`, over the window's `importModule` and stylesheet I/O):
-   - loads `pack://<id>/runtime/fe.css` as a `<link>` when the pack has styles;
-   - imports `pack://<id>/runtime/fe.js` and registers its default export, a `PackFERegistration`, in the renderer's frontend registry (`createFePackRegistry()` from `@apackdev/host/fe`, bound with `bindFeHost`);
+   - loads `pack://<id>/builds/<revision>/runtime/fe.css` as a `<link>` when the pack has styles;
+   - imports `pack://<id>/builds/<revision>/runtime/fe.js` and registers its default export, a `PackFERegistration`, in the renderer's frontend registry (`createFePackRegistry()` from `@apackdev/host/fe`, bound with `bindFeHost`);
    - returns the plugins it exports, `[]` when the load failed, or `null` for a pack without frontend code.
 3. When it returns plugins (even none), the shell handles `PACK_FRONTEND_LOADED`, which spawns the plugins whose ids aren't taken and calls `trpc.bus.packClientReady({ packId })`.
 4. `packClientReady` sends the pack's systems `CLIENT_CONNECTED` and asks them to publish, so they send their startup data once the plugin actors exist.
@@ -117,7 +117,7 @@ export const registration: PackRegistration = {
   features?: Record<string, PackFeature>;  // by feature id: { designation?, system?: { machine, receives, early? }, plugin?: { receives }, services?, settings? }
   services?: Record<string, unknown>;
   ears?: PackEARS;                 // entities, relKinds
-  boot?: PackBootHooks;            // onInit/onShutdown (boot.hooks)
+  lifecycle?: PackLifecycleHooks;            // onInit/onShutdown (lifecycle.onInit / lifecycle.onShutdown)
   migrations?: PackMigration[];    // { target, description, up }
   repositories?: Record<string, unknown>;  // features.<id>.repositories, registered with the app's engine
   steps?: StepDefinition[];
@@ -129,59 +129,99 @@ export const registration: PackRegistration = {
 };
 ```
 
-The app runs each feature at `<packId>/<featureId>` and derives everything else from `features`: the systems it starts (an `early` one before hydration, outside the bus), the events each system accepts (`receives`: its machine's, plus the manifest's `system.events.incoming`, put there by `packSystem` when `apack pack build` generates the entry), the plugins and the events each receives, and the roles.
+The app runs each feature at `<packId>/<featureId>`. Its declared contract supplies system inputs and outputs and plugin inboxes; the build writes those event names into static snapshot data and generates matching runtime bindings. Explicit `system.events.incoming` entries add routing names. Shared SDK lifecycle events remain implicit. Discovery reads the catalog without activating the pack; the bus uses the captured contracts of endpoints that actually bound. A machine's private handlers do not add public inbox entries.
 
 The runtime bundle also exports `setCompiledDir(dir)`, which the host calls with the directory of the pack's compiled content.
 
+The native host frontend registers the `reference` document node from `@apackdev/ui` before external
+pack frontends load. Its declaration is part of the common native catalog. Parsing saved references
+therefore does not require default-setup; that pack owns only its suggestion extension and popup UI.
+
 ### Frontend entry (`PackFERegistration`)
 
-Your `__generated__/pack-entry-fe.ts` default-exports:
+Your generated frontend entry exports its declaration revision and executable bindings:
 
 ```typescript
 export default {
   id: string;
-  // Keyed by feature id, as the backend entry's `features`: each plugin, the role it plays, and the default claim
-  features?: Record<string, { plugin: PluginDefinition; designation?: string; default?: true }>;
+  declarationRevision: string;
+  features?: Record<string, {
+    plugin?: PluginDefinition;
+    designation?: string;
+    default?: true;
+    settingsForm?: Component;
+    references?: ReferenceBindings;
+  }>;
+  settingsForms?: Record<string, Component>;
   steps?: StepDefinition[];
-  tiptapPlugins?: TiptapPlugin[];
+  tiptapPlugins?: Record<string, TiptapPlugin>;
   appExtensions?: Record<string, Component>;
   artifacts?: ArtifactDefinition[];
   blocks?: BlockDefinition[];
-  dslTypes?: Record<string, DslTypeConfig>;  // apack.json `extensions.dsl` entries with a `monaco` target
 } satisfies PackFERegistration;
 ```
 
-Both entry files are auto-generated by `generate-entries`. You don't write them by hand. Everything your pack contributes arrives in these two registrations, appliers and DSL types included: the SDK has no registry for pack code to write to, and its lookups (`getDesignated`, `stepRegistry`, `getPackCommands`, `getDslTypes`, `services`, …) read what the app registered.
+Both entry files are generated by `apack pack build`. The host admits installed frontend bindings against
+its accepted backend declarations and revision. Native host composition supplies its own declarative
+contract. Serving a frontend through a development server changes delivery, not declaration authority.
+Pack code contributes through its registration; it cannot write the host's registry directly.
+
+Frontend preparation captures metadata and slot membership before checking or binding settings. It keeps
+actual machines, components and callbacks intact. Refused or stale candidates preserve accepted lookups;
+provisional settings resources are retired. Catalog declarations have a separate lifetime from active code.
+`getStepFrontendBindings()` from `@apackdev/sdk/fe` exposes active step bindings with the accepted owner,
+declaration and host-issued revisions. Runtime/build revisions identify the accepted backend; source
+delivery is a separate concern. Native bindings have no installed build stamp.
+
+Native content declares `content.writers` and `content.sources.<key> = { applier: "path.ts" }`.
+Writers must belong to entities declared by that native pack, under a feature or `data.entities`.
+These references describe composition bindings; discovery never imports them. Native appliers run
+through `importCompiledContent` with an explicitly supplied compiled-content directory. Native
+composition does not declare source paths/formats or datasets to compile, and automatic application
+continues to target installed builds. Both native and built backend bindings must match declared writer
+and applier names before receiving runtime authority.
+
+Native composition may also declare the same `migrations.app` and `migrations.pack` maps as authored
+packs. App-line changes use the app version. Pack-line changes require the native owner's `version`;
+it is never inferred from the app version. Checked migration targets, descriptions and callbacks are
+captured at admission. Native and installed owners share migration targeting and dependency ordering,
+while discovery reads only declaration data. No installed directory or manifest is invented for native
+migrations.
 
 ### Collision detection
 
-`registerPack()` refuses a registration that would collide:
+The host refuses conflicting active ownership before publishing registry lookups:
 
 | What | Checked against |
 |---|---|
 | Pack id | Registered packs |
-| Entity types, relation kinds | Other packs' (names the SDK owns are dropped from a pack's own first) |
-| Service keys | Other packs' keys and the host's own services (`logger`, `emitter`, `repository`, `appData`, `traceStore`, `inference`, `secrets`) |
+| Entity types, relation kinds | Other owners; SDK-owned declarations are refused |
+| Step wire types | Other active pack owners; facets from different packs do not merge |
+| Service keys | Other packs' keys and the host's services |
 | Designations | Other packs' roles |
-| Content writers | Another pack's hooks for the same entity type |
-| ContentAppliers | Two appliers for one content key in the pack |
+| Reference identities | Other declaring features, naming both owners |
+| Tiptap extension names | Other groups, naming both owners |
+| Content writers | Other packs' writers for the same entity type |
+| Content appliers | Other appliers for the same content key in the pack |
 | Commands | Other packs' command names |
-| Feature settings | A feature setting anything but its own plugin's settings |
 
-Steps, artifacts, blocks, content writers, appliers, commands and feature settings register one at a time; if one fails, those already registered in the call are unregistered. A step type another registration defines is merged facet by facet (build, runtime, frontend); a later artifact or block of a registered type replaces it.
+Artifacts, blocks, app-extension slots and DSL keys retain registration-order precedence; removing an
+owner reveals contributions from earlier owners. Settings use pack/group or fully qualified feature identities. Writes and resets obey declared dependency
+access and opt-in owner restrictions. Registry publication is separate from runtime activation: preserving
+an accepted lookup view does not undo arbitrary effects of executable pack code.
 
 ## The `pack://` protocol
 
-A custom Electron protocol registered in the main process. It serves files from the pack's install directory.
+The installed asset protocol binds every request to an accepted build:
 
 ```
-pack://<packId>/<filePath>
+pack://<packId>/builds/<buildRevision>/<filePath>
 ```
 
-- Resolves to `<userDataDir>/packs/<packId>/<filePath>`
-- Path traversal protection: the resolved path must be inside the pack's directory
-- While `apack pack dev` runs, `<userDataDir>/pack-dev-servers/<packId>.json` names the pack's Vite dev server port, and requests are proxied there (an invalid port answers 502; a failed or non-OK fetch falls back to the file). The marker lives outside the pack directory, so the installed pack still verifies and the marker survives reinstalls
-- Used by the renderer to load `runtime/fe.js`, `runtime/fe.css`, and other pack assets
+The main process verifies the requested build and file receipt under that pack's installed directory.
+Traversal and requests without a build revision are refused. A development frontend uses the explicit
+source delivery supplied by the host; it does not change installed protocol identity or declaration
+checks. The renderer uses revision URLs for built frontend entries, styles and assets.
 
 ## Host dependency sharing
 
@@ -246,7 +286,15 @@ The pack test harness uses the same bridge with the pack's own SDK instance.
 
 ## Host services
 
-The SDK reaches the running app through one typed port, `HostRuntime` (`@apackdev/sdk/runtime`), bound once per process with `bindHost`: the app's event bus (`transport.rootEvents`), its EARS engine, the registered packs, the app version, and the five services packs call that the app implements: `appData` (reset, backup export/import, onboarding), `traceStore` (the volatile trace store), `inference` (model calls), `secrets` (API key metadata) and `filesystem` (files and folders on disk). Their contracts live in `@apackdev/sdk/services`; the implementations live in `@apackdev/host/services`, whose `createHostRuntime(...)` assembles the runtime. `openAppStore()` in `packages/api/src/setup/backend.ts`, which `setupBackend()` calls first, opens the LMDB store and binds that runtime over it. `appData.reset()` resets the whole app as a fresh boot leaves it: it empties the stores and keys, then runs each pack's `onInit` and boot apply, then the app migrations.
+The SDK reaches the running app through one typed port, `HostRuntime` (`@apackdev/sdk/runtime`),
+bound once per process with `bindHost`. It supplies the event transport, EARS engine, registered packs,
+app version and host service implementations. `createHostRuntime(...)` in `@apackdev/host/services`
+assembles it; `setupBackend()` in `packages/api/src/runtime/index.ts` opens and binds the app store.
+Packs receive their accepted service selection rather than this internal port: logger, emitter,
+repository and caller-bound settings are implicit; onboarding, app data, trace store, inference,
+secrets and filesystem require `consumes.services` declarations. Onboarding is separate from app data.
+Reset clears stored data and keys, then runs `onInit`, app-line migrations, pack-line migrations and
+content application in dependency order, as startup does. Failed app-line migrations stop later stages.
 
 Sends, logging and error reports are SDK code over the bound bus: `sendToSystem` emits an incoming event, `broadcastToPlugin` (and `services.emitter.broadcastToPlugin`) goes through the bus actor, which drops it until a client connects, like a system's `emit`, and `createLogger` emits log events, which the API prints once and streams to the logs plugin (with nothing bound, as in the CLI, a logger writes to the console). In the renderer, `bindFeHost` binds the application actor, the secrets client behind `secretsClient` (the Settings → Secrets procedures) and a transport that sends to systems over the API client. Using the port with nothing bound throws, naming `bindHost` or `bindFeHost`.
 
@@ -278,34 +326,37 @@ The policy is `appPartitionPolicy()` (`@apackdev/host/database`), a constant ove
 
 - **Export** (`exportBackup(targetPath, name?, databases?)`): copies the chosen databases (`lmdb`, `volatileLmdb`; default `lmdb`) into `<targetPath>/<name>` (default `apack-backup-<timestamp>`), with a `metadata.json` and, when `lmdb` is included, `media/`.
 - **Import** (`importBackup(path)`): requires `metadata.json`; restores only databases the app has. It copies the current files aside, closes persistence, replaces the files and media, reopens LMDB and reloads memory. On failure the previous files are put back and reloaded.
-- **Reset** (`reset()`): clears the engine's memory, deletes both LMDB databases and reopens them, clears the stored API keys, then runs each pack's `onInit` and boot apply and the app migrations, leaving the app as a fresh boot does.
+- **Reset** (`reset()`): clears the engine's memory, deletes both LMDB databases and reopens them, clears the stored API keys, then runs `onInit`, app-line migrations, pack-line migrations and content application in dependency order, leaving the app as a fresh boot does.
 
 ## Generated files
 
-`generate-entries` reads `apack.json` and produces up to 18 files in `src/__generated__/`, plus files per dependency. These are regenerated on every build — never edit them.
+`generate-entries` reads `apack.json` and produces modules and metadata in `src/__generated__/`, including files per dependency. Builds regenerate these when their declared inputs change; never edit them. The main outputs are listed below; some exist only when their contribution is declared.
 
 | File | Contents |
 |---|---|
-| `pack-entry.ts` | BE registration: systems, services, repositories, steps, artifacts, blocks, EARS, boot hooks, migrations, content writers, appliers, commands, features |
-| `pack-entry-fe.ts` | FE registration: plugins keyed by feature (the host registers each at its address), the default plugin and designations by feature, step/artifact/block FE, tiptap, app extensions, DSL types |
+| `pack-entry.ts` | BE registration: systems, services, repositories, steps, artifacts, blocks, EARS, lifecycle hooks, migrations, content writers, appliers, commands, features |
+| `pack-entry-fe.ts` | FE registration: plugins keyed by feature (the host registers each at its address), the default plugin and designations by feature, step/artifact/block FE, settings forms, tiptap and app extensions. DSL definitions are discoverable snapshot data |
 | `ears.ts` | Typed EARS namespace (Entity, RelKind constants + types), `PackShapes`, and the typed `qx`/`find*`/`createEntity` facade |
 | `ref.ts` | `ref(name)`: the ref (`<packId>/<featureId>`) a name in this pack's code stands for, its own features by id and any other by ref, bound to the pack so its code never passes its own pack id |
 | `fe.ts` | `openPlugin(name, event?)`, taking the names pack code writes, and the `PluginName` type, which lists exactly those names (the pack's own plugins by feature id, its dependencies' by `<packId>/<featureId>`). Only packs with plugins get it |
 | `system-specs.ts` | Type-only: `specs`, the events each system receives and sends, keyed by feature id, read from its entry's spec. `events.ts` imports it; only packs with systems get it |
 | `events.ts` | `SendablePluginEvents` (plugin ID -> the events it receives: its own feature's system's, plus the inbox that plugin's `Contract` declares), `PackSystemEvents`, and the typed `broadcastToPlugin` (backend, every window), `sendToPlugin` (renderer, this window) and `sendToSystem` |
-| `types.ts` | Type barrel: each feature's `typesEntry` and step node types |
-| `services.ts` | Service aggregation: imports each service object its manifest entry names (`"path#exportName"`), exports `Services`/`Z`/`EntityId` and the typed `services` proxy (with dependencies' services). `Services` types `services.emitter` as `PackEmitter`, with this pack's plugin and system events |
+| `types.ts` | Type barrel: each feature's `types` and step node types |
+| `entity-destinations.json` / `event-contracts.json` | Build-checked entity destinations and event contracts, readable without executing pack modules |
+| `settings.ts` / `settings-fe.ts` | Typed, owner-bound settings handles and frontend settings binding |
+| `paths.ts` | `getDataDirPath(name)` for a directory in this pack's data namespace |
+| `runtime-services.ts` | Shared runtime service binding used by the generated facade and registration |
+| `services.ts` | Service aggregation: imports each service object its manifest entry names (`"path#exportName"`), exports `Services`/`Z`/`EntityId` and the host-selected `services` facade and `servicesForAction(label)` factory. `Services` types `services.emitter` as `PackEmitter`, with this pack's plugin and system events |
 | `repository.ts` | `repository`, typed with the repositories declared in `features.<id>.repositories` and dependencies' |
 | `repositories.ts` | This pack's repositories by name, which `pack-entry.ts` puts in the registration (the host registers them with the app's engine) |
 | `pack-types.ts` | The facade types `apack pack build` bundles into `dist/types/pack-types.d.ts` for dependents |
 | `deps/<id>.d.ts` | Each dependency's facade types, from its snapshot. Its header names the version (`// <id>@<version> facade types`); `apack pack build` warns when the dependency it builds with is another version |
 | `deps/<id>.flow-helpers.js`, `.d.ts` | Each dependency's flow helpers module and declarations, from its snapshot |
-| `references.ts` | Reference type aggregation: which things are linkable from an editor |
+| `references.ts` | Executable reference provider and icon bindings; identities and presentation metadata remain discoverable catalog data |
 | `appliers.ts` | `appliers`, one per content key, which `pack-entry.ts` puts in the registration, and the compiled data path accessors (`setCompiledDir`, `getCompiledDir`) |
 | `content-runtime.ts` | The pack's content runtime (entity types, relation kinds, repositories, content writers). The pack's tests import it; `apack pack build` bundles it into `dist/build/content-runtime.mjs` for dependents' tests |
 | `flow-helpers.ts` | Typed DSL helpers for each step definition, with dependencies' |
 | `step-types.ts` | Re-exports DSL/compiled node types from step definitions |
-| `dsl-types-fe.ts` | `dslTypes` for the Monaco editor, from the definitions `apack pack build` writes to `dist/defs/monaco/`, which `pack-entry-fe.ts` puts in the frontend registration |
 
 ## FE build pipeline
 
@@ -317,7 +368,11 @@ The FE bundler uses Vite with `@vitejs/plugin-vue`:
 - **Minification:** off, on with `--release`
 - **Entry:** `src/pack-entry-fe.ts` (or `.js`) if present, otherwise `src/__generated__/pack-entry-fe.ts`
 - **Output:** `dist/runtime/fe.js` + `dist/runtime/fe.css`
-- `--skip-fe` skips it
+- `--skip-fe` skips it for packs without declared frontend bindings; a pack that declares them cannot publish a build without `runtime/fe.js`.
+
+Pack builds run frontend compilation through the same captured file and namespace reads as earlier
+phases. Final checks refuse publication when inputs no longer match the captured view, preserving the
+accepted output.
 
 Vue SFCs (`.vue` files) are compiled automatically — no extra build step needed.
 
@@ -330,13 +385,12 @@ Vue SFCs (`.vue` files) are compiled automatically — no extra build step neede
 | Steps, artifacts, blocks | Yes | Extension points |
 | Services | Yes | Stateless modules |
 | EARS entities/relations | Yes | With collision detection |
-| Migrations | Yes | Targeted at the pack's own version, run at boot |
-| `content.sources.settings` | No | Feature defaults go in `features.<id>.settings` |
-| `builtIn` | No | Reserved for the default pack |
+| Migrations | Yes | Explicit pack/app version lines, run during startup |
+| Settings and references | Yes | Feature settings/references and pack-wide settings use the same declarations as shipped packs; app preferences belong to the host |
 
 ## Build-time dependency resolution
 
-`apack pack generate-entries`, `apack pack validate`, `apack pack build` and `apack pack fetch-deps` resolve each dependency in `apack.json` to its artifacts: `types/snapshot.json`, plus `build/` and `runtime/index.cjs` with its compiled content when it ships them (dependents' tests load the runtime). Sources, in order:
+`apack pack generate-entries`, `apack pack validate`, `apack pack build` and `apack pack fetch-deps` resolve each dependency in `apack.json` to its build output: `types/snapshot.json`, plus `build/` and `runtime/index.cjs` with its compiled content when it ships them (dependents' tests load the runtime). Sources, in order:
 
 A selected host supplies its own packs before workspace lookup. An incompatible or unbuilt dependency belonging to that host fails; it never falls through to another app. Explicit `file:` dependencies override this selection. Without a host dependency, lookup continues in this order:
 
@@ -348,6 +402,42 @@ A selected host supplies its own packs before workspace lookup. An incompatible 
 6. **GitHub releases** — for `github:owner/repo [range]` values: the newest release matching the range, whose `<id>-<version>.tgz` is downloaded with its `.sha256`, checksum-checked, extracted and verified.
 7. **Registry** — a stub for future `api.apack.dev` resolution. Currently a no-op.
 
-Sources 2–4 must satisfy the declared semver range. Every source, the cache included, must also carry a snapshot in the format this CLI reads (`format`, `PACK_SNAPSHOT_FORMAT`): a build in another format is passed over for the next source, and a dependency found only in other formats fails, naming each build and whether it was written by an older or a newer apack CLI. A dependency found on this machine or on GitHub is written to `.apack/deps/<id>/` (`snapshot.json`, `defs/`, `build/`, `runtime/`).
+Sources 2–4 must satisfy the declared semver range. Dependency type inspection validates the current
+snapshot data contract and checks the facade exports codegen actually consumes. Recorded snapshot/SDK
+stamps remain diagnostic context; absent or differing snapshot stamps do not invent a matching stamp
+or authorize executable code. Cache entries retain that context. Only a matching snapshot format can
+expose dependency build/runtime files. Type-only builds can proceed without those files; content
+compilation and the test runtime refuse incompatible dependency execution before importing it.
+A dependency found on this machine or on GitHub is cached under `.apack/deps/<id>/`
+(`snapshot.json`, `facades/`, and eligible `build/`/`runtime/` files).
 
-A `PackSnapshot` contains `format` (the snapshot format the writing CLI used), `types` (entity and relKind maps), `defs` (`.d.ts` contents, including the bundled `pack-types` facade), `manifest`, `sdkVersion`, `provenance` (which pack in its tree declares each name) and `flowHelpers` (the pack's bundled flow helpers module and declarations). The format versions everything a dependent's codegen reads from it; a snapshot and the CLI generating against it must agree on it exactly, so a pack and its dependencies are built with the same apack version.
+A `PackSnapshot` contains `format` (the snapshot format the writing CLI used), `types` (entity and relKind maps), `facades` (dependent-facing `.d.ts` contents, including the bundled `pack-types` facade), `entityDestinations` (entity wire name to local destination feature, compiled from plugin `Contract.opens`), `manifest`, `sdkVersion`, `provenance` (which pack in its tree declares each name) and `flowHelpers` (the pack's bundled flow helpers module and declarations). Runtime/install readers use `PackSnapshot` with an exact execution stamp. Type-data readers use `PackDependencySnapshot`, retaining an optional recorded stamp and validating the same current fields; they do not read or convert another grammar.
+
+Plugin catalog entries project compiled destination claims as `opens`; unbuilt authoring previews do
+not claim compiled destinations. Enabled native/installed claims must be unique per entity type, while
+disabled claims remain visible. Native composition supplies `entityDestinations` as data and its accepted
+frontend retains those claims; installed frontend eligibility uses the matching sealed build revision.
+Catalog candidate validation runs before executable imports, enablement persistence and publication.
+
+The common host/window catalog also exposes artifact and block declarations, including their owner,
+origin, enablement and available declaration/build revisions. Artifact icons, block input kinds and
+module references remain data when a pack is disabled or its implementation is unavailable. Reading
+these declarations imports no viewer or backend module; executable registrations have a separate lifetime.
+
+
+Step discovery reads `PackCatalogView.steps()`, whose entries carry the declaring pack, wire type,
+origin and available declaration/build identity. Disabled installed and unbuilt source declarations remain
+visible; executable component/layout readiness is separate. Active packs cannot share a step wire.
+Native host composition uses the same step declaration grammar. Step defaults and presentation data
+are captured at admission, so changing an authored object later does not mutate the accepted binding.
+
+### Pack view failures
+
+A failing pack canvas, panel, chat view or custom settings form shows an error in its own pane, with
+its owner named. Other panes and host settings remain available. Retry remounts the current accepted
+frontend; an unloaded or superseded version cannot be revived. A replacement resets its own failed
+view, including when it reuses the same component. Settings declarations, defaults and saved values
+remain intact; general settings and its JSON editor remain available after a custom form fails.
+Contained errors are recorded with their pack and area without becoming window-fatal errors. The
+native shell and settings runtime retain their host error handling. This contains Vue component
+failures; it does not isolate arbitrary JavaScript or change pack permissions.

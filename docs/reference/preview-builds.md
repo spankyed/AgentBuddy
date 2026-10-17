@@ -27,7 +27,7 @@ there, leaving development's workspace `dist` directories alone. A single `build
 version and channel; main and API read that same file at runtime, and electron-builder uses it for app identity
 and package version. After all bundlers succeed, a hash receipt records their outputs. Packaging verifies the
 staging files and the actual packaged files against that receipt before signing. Incomplete, changed, or mixed
-artifacts are refused during packaging, with no runtime version comparisons.
+outputs are refused during packaging, with no runtime version comparisons.
 
 Production and beta use the same staging mechanism through the release workflow. Release versions still
 come from `package.json`; preview overrides are refused outside the preview channel.

@@ -10,10 +10,13 @@ import type { EARS } from '@apackdev/ears';
 function createThread(codexState: Record<string, unknown>) {
   const { id } = repository.threadCommands.create({ topic: 'Codex', instructions: '', tags: [] });
   repository.threadCommands.update(id, { context: { codex: codexState } });
-  mockService<Services, 'codex'>('codex', { respondToApproval: vi.fn().mockResolvedValue(undefined) });
-  mockService<Services, 'chat'>('chat', { updateMessageState: vi.fn() });
-  mockService<Services, 'threads'>('threads', { updateChatState: vi.fn() });
-  return id;
+  const respondToApproval = vi.fn().mockResolvedValue(undefined);
+  const updateMessageState = vi.fn();
+  const updateChatState = vi.fn();
+  mockService<Services, 'codex'>('codex', { respondToApproval });
+  mockService<Services, 'chat'>('chat', { updateMessageState });
+  mockService<Services, 'threads'>('threads', { updateChatState });
+  return { threadId: id, respondToApproval, updateMessageState, updateChatState };
 }
 
 const codexState = (threadId: EARS.EntityId) =>
@@ -21,7 +24,7 @@ const codexState = (threadId: EARS.EntityId) =>
 
 describe('CDX: Update Session Settings', () => {
   it('approves a pending Codex tool approval when switching to auto', async () => {
-    const threadId = createThread({
+    const { threadId, respondToApproval, updateMessageState, updateChatState } = createThread({
       pendingApproval: {
         requestId: 0,
         method: 'item/commandExecution/requestApproval',
@@ -33,18 +36,18 @@ describe('CDX: Update Session Settings', () => {
     const result = await updateSessionSettings({ threadId, approvalMode: 'auto_review' }, services);
 
     expect(result).toEqual({ success: true });
-    expect(services.codex.respondToApproval).toHaveBeenCalledWith(0, 'acceptForSession');
-    expect(services.chat.updateMessageState).toHaveBeenCalledWith('approval-1', expect.objectContaining({
+    expect(respondToApproval).toHaveBeenCalledWith(0, 'acceptForSession');
+    expect(updateMessageState).toHaveBeenCalledWith('approval-1', expect.objectContaining({
       blockResponse: { approved: true, decision: 'acceptForSession' },
     }));
-    expect(services.threads.updateChatState).toHaveBeenCalledWith(threadId, 'working');
+    expect(updateChatState).toHaveBeenCalledWith(threadId, 'working');
     const state = codexState(threadId);
     expect(state).toMatchObject({ approvalMode: 'auto_review', isRunning: true });
     expect(state?.pendingApproval).toBeUndefined();
   });
 
   it('does not approve a pending plan approval when switching to auto', async () => {
-    const threadId = createThread({
+    const { threadId, respondToApproval, updateMessageState, updateChatState } = createThread({
       pendingApproval: {
         requestId: -1,
         method: 'plan/approval',
@@ -56,9 +59,9 @@ describe('CDX: Update Session Settings', () => {
     const result = await updateSessionSettings({ threadId, approvalMode: 'auto_review' }, services);
 
     expect(result).toEqual({ success: true });
-    expect(services.codex.respondToApproval).not.toHaveBeenCalled();
-    expect(services.chat.updateMessageState).not.toHaveBeenCalled();
-    expect(services.threads.updateChatState).not.toHaveBeenCalled();
+    expect(respondToApproval).not.toHaveBeenCalled();
+    expect(updateMessageState).not.toHaveBeenCalled();
+    expect(updateChatState).not.toHaveBeenCalled();
     expect(codexState(threadId)).toMatchObject({
       approvalMode: 'auto_review',
       pendingApproval: expect.objectContaining({ method: 'plan/approval' }),

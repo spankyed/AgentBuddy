@@ -1,90 +1,62 @@
-import { z } from 'zod';
-// A feature's settings are stored under its ref, `<packId>/<featureId>`, and nothing else is stored there. The store
-// takes a `FeatureRef`; a name that arrives as a string (a client's send, an action's `services.settings` call) is
-// parsed once where it arrives, and one that isn't an installed feature's with settings throws, naming the ref it
-// likely meant, rather than writing a slice no reader looks at.
+// Generated handles resolve local names; raw settings targets require qualified owner identities.
 import { describe, expect, it, onTestFinished } from 'vitest';
-import { registerPack, startApp, takeSystemErrors, unregisterPack } from '@apackdev/testing/harness';
-import type { FeatureRef } from '@apackdev/sdk/ids';
+import { untypedQx } from '@apackdev/ears';
+import { getTestSettings, registerPack, startApp, takeSystemErrors, unregisterPack } from '@apackdev/testing/harness';
+import { featureSettings } from '#generated/settings.ts';
 import { services } from '#generated/services.ts';
 import { ref } from '#generated/ref.ts';
 
-const stored = () => services.settings.getStored().features as Record<string, any>;
+const stored = () => untypedQx('Settings-app').pickOne(['data'])?.data;
 
-describe('the feature settings keys', () => {
-  it("takes a feature's ref", async () => {
-    await startApp({ systems: ['host/settings'] });
+describe('feature settings identities', () => {
+  it('resolves local and qualified handles to the same owner', () => {
+    featureSettings.forFeature('threads').set({ path: ['recentThreadsSortOrder'], value: 'created' });
 
-    services.settings.setForFeature(ref('threads'), ['recentThreadsSortOrder'], 'created');
-
-    expect(stored()).toEqual({ 'default-setup/threads': { recentThreadsSortOrder: 'created' } });
+    expect(stored()).toEqual({ features: { 'default-setup/threads': { recentThreadsSortOrder: 'created' } } });
+    expect(featureSettings.forFeature('default-setup/threads').get().recentThreadsSortOrder).toBe('created');
   });
 
-  it('parses a name to the ref of an installed feature with settings, and refuses one that is none', async () => {
-    await startApp({ systems: ['host/settings'] });
-
-    expect(services.settings.forFeature('default-setup/threads') && 'default-setup/threads').toBe('default-setup/threads');
-    expect(() => services.settings.forFeature('threads' as `${string}/${string}`))
-      .toThrow('No installed feature with settings is named "threads": name a feature with settings as "<packId>/<featureId>" — did you mean "default-setup/threads"?');
-    expect(() => services.settings.forFeature('default-setup/thread')).toThrow('No installed feature with settings is named "default-setup/thread"');
-  });
-
-  // An action can still reach the repository through services.repository: the one writer keeps the document's shape
-  it("refuses to store a key that isn't a ref, whoever writes it", async () => {
-    await startApp({ systems: ['host/settings'] });
-
-    expect(() => services.settings.setForFeature('threads' as FeatureRef, ['sort'], 'oldest'))
-      .toThrow(`No installed feature with settings is named "threads"`);
+  it('refuses malformed or unavailable raw targets without writing', () => {
+    expect(() => services.settings.get({ kind: 'feature', featureRef: 'threads' as `${string}/${string}` }))
+      .toThrow('settings target');
+    expect(() => services.settings.get({ kind: 'feature', featureRef: 'default-setup/thread' }))
+      .toThrow('settings definition is unavailable');
+    expect(() => services.settings.set({ kind: 'feature', featureRef: 'threads' as `${string}/${string}` }, ['sort'], 'oldest'))
+      .toThrow('settings target');
     expect(stored()).toBeUndefined();
   });
 
-  it("refuses a client's update naming a feature by a bare name, and writes nothing", async () => {
+  it('refuses a client update with an unqualified feature identity', async () => {
     const app = await startApp({ systems: ['host/settings'] });
     await app.connect();
+    const call = await app.send('host/settings', {
+      type: 'UPDATE_SETTINGS', target: { kind: 'feature', featureRef: 'threads' }, path: ['sort'], value: 'oldest',
+    }, { settingsAccess: { kind: 'host', service: getTestSettings() }, sender: 'host/settings', client: 'c-window' });
 
-    await app.send('host/settings', { type: 'UPDATE_SETTINGS', entityType: 'feature', label: 'threads', path: ['sort'], value: 'oldest' });
-
-    // The sender's mistake to fix, which its form shows: not a system error
-    expect(app.emitted('host/settings')).toContainEqual({
-      type: 'SETTINGS_REFUSED',
-      problems: [expect.stringContaining('did you mean "default-setup/threads"?')],
-    });
+    expect(await app.nextEmit('host/settings', 'SETTINGS_REFUSED', { answering: call }))
+      .toMatchObject({ problems: [expect.stringContaining('settings target')] });
     expect(takeSystemErrors()).toEqual([]);
     expect(stored()).toBeUndefined();
   });
-});
 
-// Dependent packs and actions reach the settings through services.settings. Resolving a bare name there would read
-// and write the settings plugin's own pack's slice, whoever called: another pack's `memos` would land at
-// `default-setup/memos`. So it takes the ref and refuses a name.
-describe('services.settings', () => {
-  it("reads and writes another pack's feature at its ref", async () => {
-    registerPack({ id: 'memo-pack', features: { memos: { plugin: { receives: [] }, settings: { defaults: {}, schema: z.record(z.unknown()) } } } });
+  it('does not grant access merely because another pack is registered', () => {
+    registerPack({ id: 'memo-pack', features: { memos: { settings: { defaults: {}, schema: { type: 'object' } } } } });
     onTestFinished(() => unregisterPack('memo-pack'));
-    await startApp({ systems: ['host/settings'] });
+    const target = { kind: 'feature', featureRef: 'memo-pack/memos' } as const;
 
-    services.settings.setForFeature('memo-pack/memos', ['sort'], 'oldest');
-
-    expect(stored()).toEqual({ 'memo-pack/memos': { sort: 'oldest' } });
-    expect(services.settings.forFeature('memo-pack/memos')).toEqual({ sort: 'oldest' });
-  });
-
-  it('refuses a bare name, and writes nothing', async () => {
-    await startApp({ systems: ['host/settings'] });
-
-    // @ts-expect-error a feature's settings are keyed by its ref
-    expect(() => services.settings.setForFeature('threads', ['sort'], 'oldest')).toThrow('did you mean "default-setup/threads"?');
-    // @ts-expect-error a feature's settings are keyed by its ref
-    expect(() => services.settings.forFeature('threads')).toThrow('did you mean "default-setup/threads"?');
+    expect(() => services.settings.get(target)).toThrow('does not depend on settings owner "memo-pack"');
+    expect(() => services.settings.set(target, ['sort'], 'oldest')).toThrow('does not depend on settings owner "memo-pack"');
+    expect(() => services.settings.reset(target)).toThrow('does not depend on settings owner "memo-pack"');
     expect(stored()).toBeUndefined();
   });
 });
 
-// Checked by `npm run typecheck:pack`: ref() takes only the names this pack's code can write
-it("doesn't compile a misspelled feature name", () => {
+it('rejects misspelled generated feature handles at compile time', () => {
   const typed = (): void => {
-    // @ts-expect-error `nots` names no feature this pack, a dependency or the host has
-    ref('nots');
+    // @ts-expect-error no settings definition has this name
+    featureSettings.forFeature('nots');
+    // @ts-expect-error a raw target requires a qualified feature identity
+    services.settings.get({ kind: 'feature', featureRef: 'threads' });
   };
   expect(ref('notes')).toBe('default-setup/notes');
   expect(typeof typed).toBe('function');

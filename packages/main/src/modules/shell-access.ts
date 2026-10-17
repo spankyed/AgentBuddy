@@ -24,6 +24,7 @@ export function externalUrlProblem(url: string): string | undefined {
     return 'it is not a URL';
   }
   if (!WEB_SCHEMES.has(parsed.protocol)) return `its scheme is ${parsed.protocol}, and only http and https open in a browser`;
+  if (parsed.hostname === 'help.apack.invalid') return 'it addresses an internal help article';
   // "https://apple.com@evil.example" is a link to evil.example, read as one to apple.com
   if (parsed.username || parsed.password) return 'it carries credentials, which hide the host it opens';
   return undefined;

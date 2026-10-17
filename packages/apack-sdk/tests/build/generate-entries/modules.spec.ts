@@ -1,3 +1,4 @@
+import { _declarationRevision } from '../../../src/build/declaration-revision.ts';
 // The generated modules' own surface.
 //
 // What the generated modules import and re-export: a diamond dependency resolved once, the EARS facade,
@@ -22,16 +23,16 @@ import { PROVENANCE_KINDS, _buildProvenance } from '../../../src/build/manifest.
 import { SDK_ENTITIES, SDK_REL_KINDS } from '../../../src/types/sdk-entities.ts';
 import type { PackFeatureEntry, PackManifest, PackPluginEntry, PackSnapshot, PackSystemEntry, ContentFormatConfig } from '../../../src/build/manifest.ts';
 import type { PackFeature, PackFeaturePlugin, PackFeatureSystem, PackRegistration } from '../../../src/framework/index.ts';
-import { setupPackFixture, PACK_SNAPSHOT_FORMAT, dependency, facade, generate, generatePackFiles, manifest, root, system, withPlugin, write, writePluginEntry, writeSystemEntry  } from './_support/pack.ts';
+import { setupPackFixture, PACK_SNAPSHOT_FORMAT, dependency, facade, generate, generatePackFiles, manifest, root, system, withPlugin, withPluginState, write, writePluginState, writeSystemEntry  } from './_support/pack.ts';
 
 setupPackFixture();
 
 // A → B and A → C, both of which depend on D. Nothing exercised two dependencies converging, which
 // is where a collision is silent rather than obvious: each dependency is fine on its own.
 describe('a diamond dependency', () => {
-  const surfacing = (id: string, owner: string) => ({
+  const surfacing = (id: string, owner: string) => ({ declarationRevision: _declarationRevision(manifest({ id })),
     types: { entities: { Memo: 'Memo' }, relKinds: {} },
-    defs: facade(),
+    entityDestinations: {}, facades: facade(),
     provenance: { entities: { Memo: owner } },
     manifest: manifest({ id }),
     format: PACK_SNAPSHOT_FORMAT,
@@ -41,11 +42,11 @@ describe('a diamond dependency', () => {
   // chain resolves one level deep. Attributing it to the dependency it arrived through made this
   // read as two packs declaring Memo — and since every pack depends on the base pack, that was every
   // pack with two dependencies.
-  it('accepts one ancestor\'s entity arriving through both sides', () => {
-    expect(() => generate({ features: [system('brain')] }, {
+  it('accepts one ancestor\'s entity arriving through both sides', async () => {
+    await expect(generate({ features: [system('brain')] }, {
       'left-pack': surfacing('left-pack', 'deep-pack'),
       'right-pack': surfacing('right-pack', 'deep-pack'),
-    })).not.toThrow();
+    })).resolves.toBeDefined();
   });
 
   /**
@@ -71,54 +72,87 @@ describe('a diamond dependency', () => {
     expect(registry.entities.get('constructor')?.source).toBe('base-pack');
   });
 
-  it("accepts an ancestor's entity named __proto__ arriving through both sides", () => {
-    const side = (id: string) => ({
+  it("accepts an ancestor's entity named __proto__ arriving through both sides", async () => {
+    const side = (id: string) => ({ declarationRevision: _declarationRevision(manifest({ id })),
       types: { entities: { ['__proto__']: '__proto__' }, relKinds: {} },
-      defs: facade(),
+      entityDestinations: {}, facades: facade(),
         provenance: JSON.parse(JSON.stringify(_buildProvenance(
-        [['deep-pack', { manifest: { entities: { ['__proto__']: '__proto__' } } }] as const],
+        [['deep-pack', { manifest: { data: { entities: { ['__proto__']: null } } } }] as const],
         { id, manifest: {} },
       ))),
       manifest: manifest({ id }),
       format: PACK_SNAPSHOT_FORMAT,
     }) as PackSnapshot;
 
-    expect(() => generate({ features: [system('brain')] }, {
+    await expect(generate({ features: [system('brain')] }, {
       'left-pack': side('left-pack'),
       'right-pack': side('right-pack'),
-    })).not.toThrow();
+    })).resolves.toBeDefined();
   });
 
-  it('still reports two different packs that each declare the same entity', () => {
-    expect(() => generate({ features: [system('brain')] }, {
+  it('still reports two different packs that each declare the same entity', async () => {
+    await expect(generate({ features: [system('brain')] }, {
       'left-pack': surfacing('left-pack', 'left-pack'),
       'right-pack': surfacing('right-pack', 'right-pack'),
-    })).toThrow(/entity "Memo" declared by both/);
+    })).rejects.toThrow(/entity "Memo" declared by both/);
   });
 
 });
 
 describe('generated imports', () => {
+  it.each(['js', 'mjs', 'cjs'])('inspects a %s system module without executing it', async (extension) => {
+    const entry = `src/system.${extension}`;
+    const fields = { features: { memos: { description: 'Manage memos.', system: { entry } } } };
+    write(entry, `throw new Error("Must not execute"); ${extension === 'cjs' ? 'module.exports = {};' : 'export default {};'}`);
+    await expect(generate(fields)).resolves.toBeDefined();
+    if (extension !== 'cjs') {
+      write(entry, 'export const named = {};');
+      await expect(generate(fields)).rejects.toThrow('export "default" as a value');
+    }
+  });
+
+  it.each([
+    ['system', { features: { memos: { description: 'Manage memos.', system: { entry: 'src/module' } } } }, 'default'],
+    ['form', { features: { memos: { description: 'Manage memos.', settings: { schema: { type: 'object' }, defaults: {}, form: 'src/module' } } } }, 'default'],
+    ['compiler', { content: { formats: { custom: { compiler: 'src/module' } } } }, 'default'],
+    ['applier', { content: { sources: { custom: { applier: 'src/module' } } } }, 'apply'],
+  ])('checks the %s conventional export without executing its module', async (_name, fields, expected) => {
+    await expect(generate(fields)).rejects.toThrow('no module found at src/module');
+    write('src/module/index.ts', 'throw new Error("Must not execute"); export interface TypeOnly {}');
+    await expect(generate(fields)).rejects.toThrow(`doesn't export "${expected}" as a value`);
+    write('src/module/index.ts', `export interface TypeOnly {} export type { TypeOnly as ${expected} };`);
+    await expect(generate(fields)).rejects.toThrow(`doesn't export "${expected}" as a value`);
+    write('src/module/index.ts', `throw new Error("Must not execute"); ${expected === 'default' ? 'export default function value() {}' : 'export function apply() {}'}`);
+    await expect(generate(fields)).resolves.toBeDefined();
+  });
+
+  it('checks whole-module grammar even without any named exports to inspect', async () => {
+    await expect(generate({ features: { memos: { description: 'Manage memos.', system: { entry: 'src/system#default' } } } }))
+      .rejects.toThrow('without an export selector');
+    await expect(generate({ extensions: { blocks: { text: { fe: 'src/view.vue#default' } } } }))
+      .rejects.toThrow('without an export selector');
+  });
+
   // The extension the module has, not the `.js` this used to write for a `.ts` file: a pack is bundled rather
   // than emitted as individual modules, and every tool in its toolchain resolves `.ts`. Explicit either way,
   // because no runtime resolves an extensionless specifier in ESM — which the second assertion pins.
-  it('names generated modules by the file that is there', () => {
-    const files = generate({ features: [system('memos')] });
+  it('names generated modules by the file that is there', async () => {
+    const files = await generate({ features: [system('memos')] });
     expect(files['src/__generated__/pack-entry.ts']).toContain("import { appliers } from './appliers.ts';");
     expect(files['src/__generated__/pack-entry.ts']).not.toMatch(/from '\.\/appliers';/);
   });
 
-  it('keeps dots in extensionless names and normalizes backslashes', () => {
+  it('keeps dots in extensionless names and normalizes backslashes', async () => {
     write('src/features/memos/be/memo.types.ts', 'export interface MemoEntity { text: string }\n');
-    const ears = generate({ entityShapes: { Memo: { source: 'src\\features\\memos\\be\\memo.types', type: 'MemoEntity' } } })['src/__generated__/ears.ts'];
+    const ears = (await generate({ data: { entities: { Memo: "src\\features\\memos\\be\\memo.types#MemoEntity" } } }))['src/__generated__/ears.ts'];
     expect(ears).toContain("from '../features/memos/be/memo.types.ts';");
   });
 });
 
 describe('generated EARS facade', () => {
-  it('names the declared entities and passes them to the typed helpers, with tx', () => {
+  it('names the declared entities and passes them to the typed helpers, with tx', async () => {
     write('src/memo.ts', 'export interface MemoEntity { text: string }\n');
-    const ears = generate({ entities: { Memo: 'Memo', Tag: 'Tag' }, entityShapes: { Memo: { source: 'src/memo.ts', type: 'MemoEntity' } } })['src/__generated__/ears.ts'];
+    const ears = (await generate({ data: { entities: { Memo: "src/memo.ts#MemoEntity", Tag: null } }, }))['src/__generated__/ears.ts'];
     expect(ears).toContain(`export type EntityName = ${['Memo', 'Tag', ...Object.values(SDK_ENTITIES)].map((name) => `'${name}'`).join(' | ')};`);
     expect(ears).toContain('defineEars<PackShapes, EntityName>()');
     expect(ears).toMatch(/export const \{\n  qx, tx, findById/);
@@ -126,8 +160,8 @@ describe('generated EARS facade', () => {
 });
 
 describe("the SDK's entities and relation kinds", () => {
-  it('are in every pack, with no entities or dependencies declared', () => {
-    const ears = generate({})['src/__generated__/ears.ts'];
+  it('are in every pack, with no entities or dependencies declared', async () => {
+    const ears = (await generate({}))['src/__generated__/ears.ts'];
     for (const entity of Object.values(SDK_ENTITIES)) expect(ears).toContain(`export const ${entity} = '${entity}';`);
     for (const [name, kind] of Object.entries(SDK_REL_KINDS)) expect(ears).toContain(`export const ${name} = '${kind}';`);
     expect(ears).toContain(`export type EntityName = ${Object.values(SDK_ENTITIES).map((name) => `'${name}'`).join(' | ')};`);
@@ -136,53 +170,51 @@ describe("the SDK's entities and relation kinds", () => {
     expect(ears).toContain('export type Entity = string;');
   });
 
-  it("rejects a dependency whose types still declare the SDK's names, asking to rebuild it", () => {
+  it("rejects a dependency whose types still declare the SDK's names, asking to rebuild it", async () => {
     const base = { ...dependency({}), types: { entities: { Flow: 'Flow', Tag: 'Tag' }, relKinds: { NEXT: 'transitions_to' } } };
-    expect(() => generate({ dependencies: { 'base-pack': '*' } }, { 'base-pack': base })).toThrow(
-      'Type conflicts:\n  entity "Flow" from "base-pack" is defined by the SDK: rebuild "base-pack" with the current apack CLI',
-    );
+    await expect(generate({ dependencies: { 'base-pack': '*' } }, { 'base-pack': base })).rejects.toThrow('Type conflicts:\n  entity "Flow" from "base-pack" is defined by the SDK: rebuild "base-pack" with the current apack CLI');
     const relKindsOnly = { ...dependency({}), types: { entities: { Tag: 'Tag' }, relKinds: { NEXT: 'transitions_to' } } };
-    expect(() => generate({ dependencies: { 'base-pack': '*' } }, { 'base-pack': relKindsOnly }))
-      .toThrow('relKind "NEXT": "transitions_to" from "base-pack" is defined by the SDK');
+    await expect(generate({ dependencies: { 'base-pack': '*' } }, { 'base-pack': relKindsOnly })).rejects.toThrow('relKind "NEXT": "transitions_to" from "base-pack" is defined by the SDK');
   });
 
-  it('rejects a name or value two sources declare', () => {
+  it('rejects a name or value two sources declare', async () => {
     const base = { ...dependency({}), types: { entities: { Tag: 'Tag' }, relKinds: { TAGGED: 'tagged' } } };
-    const withBase = (manifest: object) => () => generate({ ...manifest, dependencies: { 'base-pack': '*' } }, { 'base-pack': base });
-    expect(withBase({ entities: { Tag: 'Tag' } })).toThrow('entity "Tag" declared by both "demo-pack" and "base-pack"');
-    expect(withBase({ relKinds: { LABELLED: 'tagged' } })).toThrow('relKind "TAGGED" declared by both "demo-pack" and "base-pack"');
-    expect(withBase({ relKinds: { TAGGED: 'labelled' } })).toThrow('relKind "TAGGED" declared by both "demo-pack" and "base-pack"');
+    const withBase = (manifest: object) => generate({ ...manifest, dependencies: { 'base-pack': '*' } }, { 'base-pack': base });
+    await expect(withBase({ data: { entities: { Tag: null } } })).rejects.toThrow('entity "Tag" declared by both "demo-pack" and "base-pack"');
+    await expect(withBase({ data: { relations: ['tagged'] } })).rejects.toThrow('relKind "TAGGED" declared by both "demo-pack" and "base-pack"');
+    const conflictingName = { ...base, types: { entities: { Tag: 'Tag' }, relKinds: { LABELLED: 'tagged' } } };
+    await expect(generate({ data: { relations: ['labelled'] } }, { 'base-pack': conflictingName }))
+      .rejects.toThrow('relKind "LABELLED" declared by both "demo-pack" and "base-pack"');
   });
 
-  it('names entity types by their values in EntityName, the type names rows carry', () => {
-    // apack.json requires an entity's key to be its type name; the generated names follow the value regardless
+  it('uses entity keys as unchanged wire names in EntityName', async () => {
     const base = { ...dependency({}), types: { entities: { Tag: 'Tag' }, relKinds: {} } };
-    const ears = generate({ entities: { Memo: 'memo' }, dependencies: { 'base-pack': '*' } }, { 'base-pack': base })['src/__generated__/ears.ts'];
+    const ears = (await generate({ data: { entities: { Memo: null } }, dependencies: { 'base-pack': '*' } }, { 'base-pack': base }))['src/__generated__/ears.ts'];
     const names = ears.match(/export type EntityName = ([^;]*);/)![1];
-    expect(names).toContain("'memo'");
-    expect(names).not.toContain("'Memo'");
+    expect(names).toContain("'Memo'");
     expect(names).toContain("'Tag'");
     expect(names).toContain("'Relation'");
   });
 
-  it("registers only the pack's own entities and relation kinds, not its dependencies' or the SDK's", () => {
+  it("registers only the pack's own entities and relation kinds, not its dependencies' or the SDK's", async () => {
     const base = { ...dependency({}), types: { entities: { Tag: 'Tag' }, relKinds: { TAGGED: 'tagged' } } };
-    const entry = generate({ entities: { Memo: 'Memo' }, relKinds: { PINNED: 'pinned' }, dependencies: { 'base-pack': '*' } }, { 'base-pack': base })['src/__generated__/pack-entry.ts'];
+    const entry = (await generate({ data: { entities: { Memo: null }, relations: ['pinned'] }, dependencies: { 'base-pack': '*' } }, { 'base-pack': base }))['src/__generated__/pack-entry.ts'];
     expect(entry).toContain('entities: {"Memo":"Memo"},');
     expect(entry).toContain('relKinds: {"PINNED":"pinned"},');
   });
 
-  it("rejects a pack's own declaration of the SDK's names", () => {
-    expect(() => generate({ entities: { Relation: 'Relation' } })).toThrow(/entity "Relation" is defined by the SDK/);
-    expect(() => generate({ entities: { Action: 'Action' } })).toThrow(/entity "Action" is defined by the SDK/);
-    expect(() => generate({ relKinds: { TRANSITIONS_TO: 'transitions_to' } })).toThrow(/relKind "TRANSITIONS_TO": "transitions_to" is defined by the SDK/);
+  it("rejects a pack's own declaration of the SDK's names", async () => {
+    await expect(generate({ data: { entities: { Relation: null } } })).rejects.toThrow(/entity "Relation" is defined by the SDK/);
+    await expect(generate({ data: { entities: { Action: null } } })).rejects.toThrow(/entity "Action" is defined by the SDK/);
+    await expect(generate({ data: { relations: ['transitions_to'] } })).rejects.toThrow(/relKind "TRANSITIONS_TO": "transitions_to" is defined by the SDK/);
   });
 });
 
 describe('generated appliers', () => {
-  it('registers the generic applier with its format settings, and SDK appliers for specialty keys', () => {
-    const files = generate({
-      entities: { Memo: 'Memo' },
+  it('registers the generic applier with its format settings, and SDK appliers for specialty keys', async () => {
+    write('src/content/compilers/help.ts', 'export default () => [];');
+    const files = await generate({
+      data: { entities: { Memo: null } },
       content: {
         formats: {
           memos: { format: 'markdown-tree', entity: 'Memo', identity: ['title', 'parent'], tree: { relKind: 'has_memo' }, media: 'media' },
@@ -193,7 +225,7 @@ describe('generated appliers', () => {
           flows: { path: 'src/content/flows' },
           memos: { path: 'src/content/memos', format: 'memos', onUserEdit: 'offer' },
         },
-        artifacts: { help: { path: 'src/content/help', format: 'help' } },
+        datasets: { help: { path: 'src/content/help', format: 'help' } },
       },
     });
     const appliers = files['src/__generated__/appliers.ts'];
@@ -205,23 +237,25 @@ describe('generated appliers', () => {
     expect(appliers).not.toContain('help');
   });
 
-  it("uses a dependency's format settings for an entry naming it", () => {
+  it("uses a dependency's format settings for an entry naming it", async () => {
     const deps = { 'base-pack': { ...dependency({ content: { formats: { notes: { format: 'markdown-tree', entity: 'Note', identity: ['title'], tree: { branch: 'index.md' } } } } }), types: { entities: { Note: 'Note' }, relKinds: {} } } };
-    const appliers = generate({ dependencies: { 'base-pack': '*' }, content: { sources: { team: { path: 'src/content/team', format: 'base-pack:notes' } } } }, deps)['src/__generated__/appliers.ts'];
+    const appliers = (await generate({ dependencies: { 'base-pack': '*' }, content: { sources: { team: { path: 'src/content/team', format: 'base-pack:notes' } } } }, deps))['src/__generated__/appliers.ts'];
     expect(appliers).toContain('  createFormatApplier({"key":"team","entities":["Note"],"identity":["title"]}),');
-    expect(() => generate({ dependencies: { 'base-pack': '*' }, content: { sources: { team: { path: 'p', format: 'base-pack:missing' } } } }, deps))
-      .toThrow('Content "team": dependency "base-pack" has no format "missing"');
+    await expect(generate({ dependencies: { 'base-pack': '*' }, content: { sources: { team: { path: 'p', format: 'base-pack:missing' } } } }, deps)).rejects.toThrow('Content "team": dependency "base-pack" has no format "missing"');
   });
 
-  it("registers a pack applier module under a content key that isn't an identifier", () => {
-    const appliers = generate({ content: { sources: { 'my-memos': { applier: 'src/content/memos.ts' } } } })['src/__generated__/appliers.ts'];
+  it("registers a pack applier module under a content key that isn't an identifier", async () => {
+    write('src/content/memos.ts', 'export function apply() {}');
+    const appliers = (await generate({ content: { sources: { 'my-memos': { applier: 'src/content/memos.ts' } } } }))['src/__generated__/appliers.ts'];
     expect(appliers).toContain("import { apply as __applier_my_memos } from '../content/memos.ts';");
     expect(appliers).toContain('  { key: "my-memos", apply: __applier_my_memos },');
   });
 
-  it("registers a pack applier module for a content source naming one, and still compiles it", () => {
-    const files = generate({
-      entities: { Memo: 'Memo' },
+  it("registers a pack applier module for a content source naming one, and still compiles it", async () => {
+    write('src/content/compilers/settings.ts', 'export default () => [];');
+    write('src/content/settings-applier.ts', 'export function apply() {}');
+    const files = await generate({
+      data: { entities: { Memo: null } },
       content: {
         formats: { settings: { compiler: 'src/content/compilers/settings.ts', entity: 'Memo' } },
         sources: { settings: { path: 'src/content/settings.ts', format: 'settings', applier: 'src/content/settings-applier.ts' } },
@@ -233,32 +267,29 @@ describe('generated appliers', () => {
     expect(appliers).not.toContain('createFormatApplier');
   });
 
-  it('accepts format entities from the SDK and dependencies, and rejects one nobody declares', () => {
+  it('accepts format entities from the SDK and dependencies, and rejects one nobody declares', async () => {
     const deps = { 'base-pack': { ...dependency({}), types: { entities: { Note: 'Note' }, relKinds: {} } } };
-    expect(() => generate({ dependencies: { 'base-pack': '*' }, content: { formats: {
+    await expect(generate({ dependencies: { 'base-pack': '*' }, content: { formats: {
       notes: { format: 'markdown-tree', entity: 'Note' },
       actions2: { format: 'json', entity: 'Action', identity: ['label'] },
-    } } }, deps)).not.toThrow();
+    } } }, deps)).resolves.toBeDefined();
     // Unused formats are checked too: dependents may use them
-    expect(() => generate({ content: { formats: { notes: { format: 'json', entity: 'Memo' } } } }))
-      .toThrow(`Content format "notes": entity "Memo" isn't declared by this pack, its dependencies or the SDK`);
-    expect(() => generate({ content: { formats: { notes: { format: 'markdown-tree', entity: 'Action', tree: { branchEntity: 'Folder' } } } } }))
-      .toThrow(`entity "Folder" isn't declared`);
+    await expect(generate({ content: { formats: { notes: { format: 'json', entity: 'Memo' } } } })).rejects.toThrow(`Content format "notes": entity "Memo" isn't declared by this pack, its dependencies or the SDK`);
+    await expect(generate({ content: { formats: { notes: { format: 'markdown-tree', entity: 'Action', tree: { branchEntity: 'Folder' } } } } })).rejects.toThrow(`entity "Folder" isn't declared`);
   });
 
-  it("registers the pack's content writers by entity type", () => {
+  it("registers the pack's content writers by entity type", async () => {
     write('src/memo-writers.ts', 'export const memoWriter = {};');
-    const entry = generate({ entities: { Memo: 'Memo' }, content: { writers: { Memo: 'src/memo-writers.ts#memoWriter' } } })['src/__generated__/pack-entry.ts'];
+    const entry = (await generate({ data: { entities: { Memo: null } }, content: { writers: { Memo: 'src/memo-writers.ts#memoWriter' } } }))['src/__generated__/pack-entry.ts'];
     expect(entry).toContain("import { memoWriter as __contentWriter_0 } from '../memo-writers.ts';");
     expect(entry).toContain('contentWriters: { "Memo": __contentWriter_0 },');
-    expect(() => generate({ entities: { Memo: 'Memo' }, content: { writers: { Memo: 'src/memo-writers.ts#missing' } } }))
-      .toThrow(`A content writer for "Memo": src/memo-writers.ts doesn't export "missing"`);
+    await expect(generate({ data: { entities: { Memo: null } }, content: { writers: { Memo: 'src/memo-writers.ts#missing' } } })).rejects.toThrow(`A content writer for "Memo": src/memo-writers.ts doesn't export "missing"`);
   });
 
-  it('names content writer imports validly whatever the entity is called', () => {
+  it('names content writer imports validly whatever the entity is called', async () => {
     write('src/writers.ts', 'export const docWriter = {};\nexport const noteWriter = {};');
-    const files = generate({
-      entities: { 'team-doc': 'team-doc', 'team.note': 'team.note' },
+    const files = await generate({
+      data: { entities: { 'team-doc': null, 'team.note': null } },
       content: { writers: { 'team-doc': 'src/writers.ts#docWriter', 'team.note': 'src/writers.ts#noteWriter' } },
     });
     for (const file of ['src/__generated__/pack-entry.ts', 'src/__generated__/content-runtime.ts']) {
@@ -271,42 +302,42 @@ describe('generated appliers', () => {
 describe('generated flow helpers', () => {
   const helpers = (exports: string[], name: string) => ({ exports, module: `// ${name} module`, types: `// ${name} types` });
 
-  it("types a step helper's options with the step's DSL node fields", () => {
+  it("types a step helper's options with the step's DSL node fields", async () => {
     write('src/steps/pour/types.ts', "export interface DSLPourNode { type: 'pour'; cup: string; size?: 'small' | 'large'; [key: string]: unknown }\n");
-    write('src/steps/pour/build.ts', 'export const pourStepBuild = {};\n');
-    const files = generate({ steps: { pour: { build: 'src/steps/pour/build.ts#pourStepBuild', dsl: { primaryField: 'cup' } } } });
+    write('src/steps/pour/build.ts', "export const compile = () => ({ entity: {}, relations: [] });\nexport const validate = () => [];\nexport const getLabel = () => '';\n");
+    const files = await generate({ steps: { pour: { node: { label: 'Pour' }, build: { compile: 'src/steps/pour/build.ts#compile', validate: 'src/steps/pour/build.ts#validate', getLabel: 'src/steps/pour/build.ts#getLabel' }, types: 'src/steps/pour/types.ts', dsl: { primaryField: 'cup' } } } });
 
     expect(files['src/__generated__/flow-helpers.ts']).toContain(
       "export function pour(cup: string, opts?: { [K in keyof DSLPourNode as K extends 'type' | 'cup' ? never : K]: DSLPourNode[K] }): DSLStepNode {",
     );
   });
 
-  it('names helpers in camelCase, splitting step types and track fields on - and _', () => {
+  it('names helpers in camelCase, splitting step types and track fields on - and _', async () => {
     write('src/steps/pour-cup/types.ts', "export interface DSLPourCupNode { type: 'pour-cup'; cup: string; [key: string]: unknown }\n");
-    for (const dir of ['pour-cup', 'keep-alive', 'stop-now']) write(`src/steps/${dir}/build.ts`, 'export const stepBuild = {};\n');
-    write('src/steps/every-day/build.ts', "export const everyDay = { trackField: 'every_day' };\n");
-    const files = generate({ steps: {
-      'pour-cup': { build: 'src/steps/pour-cup/build.ts#stepBuild', dsl: { primaryField: 'cup' } },
-      keep_alive: { build: 'src/steps/keep-alive/build.ts#stepBuild', dsl: {} },
-      'stop-now': { build: 'src/steps/stop-now/build.ts#stepBuild', dsl: { defaultLabel: 'Stop' } },
-      'every-day': { kind: 'trigger', trigger: { facet: 'src/steps/every-day/build.ts#everyDay' } },
+    for (const dir of ['pour-cup', 'keep-alive', 'stop-now']) write(`src/steps/${dir}/build.ts`, "export const compile = () => ({ entity: {}, relations: [] });\nexport const validate = () => [];\nexport const getLabel = () => '';\n");
+    write('src/steps/every-day/build.ts', "export function compile() { return {}; } export function decompile() { return {}; }\n");
+    const files = await generate({ steps: {
+      'pour-cup': { node: { label: 'Pour cup' }, build: { compile: 'src/steps/pour-cup/build.ts#compile', validate: 'src/steps/pour-cup/build.ts#validate', getLabel: 'src/steps/pour-cup/build.ts#getLabel' }, types: 'src/steps/pour-cup/types.ts', dsl: { primaryField: 'cup' } },
+      keep_alive: { node: { label: 'Keep alive' }, build: { compile: 'src/steps/keep-alive/build.ts#compile', validate: 'src/steps/keep-alive/build.ts#validate', getLabel: 'src/steps/keep-alive/build.ts#getLabel' }, dsl: {} },
+      'stop-now': { node: { label: 'Stop' }, build: { compile: 'src/steps/stop-now/build.ts#compile', validate: 'src/steps/stop-now/build.ts#validate', getLabel: 'src/steps/stop-now/build.ts#getLabel' }, dsl: { defaultLabel: 'Stop' } },
+      'every-day': { node: { label: 'Every day' }, kind: 'trigger', trigger: { trackField: 'every_day', compile: 'src/steps/every-day/build.ts#compile', decompile: 'src/steps/every-day/build.ts#decompile' } },
     } });
     const flowHelpers = files['src/__generated__/flow-helpers.ts'];
 
     expect(flowHelpers).toContain('export function pourCup(cup: string, opts?:');
     expect(flowHelpers).toContain("return { type: 'pour-cup', cup, ...opts };");
     expect(flowHelpers).toContain('export function keepAlive(label?: string): DSLStepNode {');
-    expect(flowHelpers).toContain("export function stopNow(label: string = 'Stop'): DSLStepNode {");
+    expect(flowHelpers).toContain("export function stopNow(label: string = \"Stop\"): DSLStepNode {");
     expect(flowHelpers).toContain('export function everyDay(every_day: string, exits: DSLStepNode[][], label?: string): Track {');
     const { diagnostics } = ts.transpileModule(flowHelpers, { reportDiagnostics: true, compilerOptions: { module: ts.ModuleKind.ESNext } });
     expect(diagnostics?.map(d => ts.flattenDiagnosticMessageText(d.messageText, '\n'))).toEqual([]);
   });
 
-  it("re-exports each dependency's flow helpers from the module its snapshot carries, except names already exported", () => {
+  it("re-exports each dependency's flow helpers from the module its snapshot carries, except names already exported", async () => {
     write('src/steps/pour/types.ts', "export interface DSLPourNode { type: 'pour'; cup: string }\n");
-    write('src/steps/pour/build.ts', 'export const pourStepBuild = {};\n');
-    const files = generate(
-      { steps: { pour: { build: 'src/steps/pour/build.ts#pourStepBuild', dsl: { primaryField: 'cup' } } } },
+    write('src/steps/pour/build.ts', "export const compile = () => ({ entity: {}, relations: [] });\nexport const validate = () => [];\nexport const getLabel = () => '';\n");
+    const files = await generate(
+      { steps: { pour: { node: { label: 'Pour' }, build: { compile: 'src/steps/pour/build.ts#compile', validate: 'src/steps/pour/build.ts#validate', getLabel: 'src/steps/pour/build.ts#getLabel' }, types: 'src/steps/pour/types.ts', dsl: { primaryField: 'cup' } } } },
       {
         'base-pack': { ...dependency({}), flowHelpers: helpers(['branch', 'entry', 'on', 'pour', 'schedule'], 'base-pack') },
         'other-pack': { ...dependency({ id: 'other-pack' }), flowHelpers: helpers(['branch', 'every'], 'other-pack') },
@@ -334,27 +365,28 @@ describe('generated flow helpers', () => {
 describe('the snapshot format', () => {
   // Each typed against its interface, so adding, renaming or removing a field fails the typecheck until it is listed
   const SNAPSHOT_FIELDS: Record<keyof PackSnapshot, true> = {
-    types: true, defs: true, manifest: true, format: true, sdkVersion: true, provenance: true, flowHelpers: true,
+    declarationRevision: true, dslDefinitions: true, eventContracts: true,
+    types: true, facades: true, entityDestinations: true, manifest: true, help: true, format: true, sdkVersion: true, provenance: true, flowHelpers: true,
   };
   /** The snapshot's manifest, which a dependent's codegen reads (features, services, content formats, version…) */
   const MANIFEST_FIELDS: Record<keyof PackManifest, true> = {
-    $manifestVersion: true, $schema: true, boot: true, build: true, builtIn: true,
-    dependencies: true, description: true, entities: true, entityShapes: true, extensions: true, features: true,
+    $schema: true, lifecycle: true, build: true, checks: true,
+    dependencies: true, consumes: true, description: true, data: true,  extensions: true, features: true,
     hostVersion: true, id: true, license: true, migrations: true, name: true,
-    permissions: true, relKinds: true, content: true, settingsSections: true, version: true,
+    permissions: true, content: true, version: true,
   };
   /** What the pack contributes, which a dependent reads to know what it may send to and build with */
   const MANIFEST_EXTENSION_FIELDS: Record<keyof NonNullable<PackManifest['extensions']>, true> = {
-    artifacts: true, blocks: true, commands: true, dsl: true, fe: true, help: true, services: true, steps: true,
+    artifacts: true, blocks: true, commands: true, dsl: true, appExtensions: true, tiptapPlugins: true, help: true, services: true, settings: true, steps: true,
   };
   // No `id`: a feature's id is the key its entry sits under, which is what makes a duplicate unrepresentable
   const MANIFEST_FEATURE_FIELDS: Record<keyof PackFeatureEntry, true> = {
-    designation: true, plugin: true, references: true, repositories: true, services: true,
-    settings: true, system: true, typesEntry: true,
+    description: true, entities: true, designation: true, plugin: true, references: true, repositories: true, services: true,
+    settings: true, system: true, types: true,
   };
     const MANIFEST_SYSTEM_FIELDS: Record<keyof PackSystemEntry, true> = { contract: true, entry: true, events: true };
   const MANIFEST_SYSTEM_EVENTS_FIELDS: Record<keyof NonNullable<PackSystemEntry['events']>, true> = { incoming: true };
-  const MANIFEST_PLUGIN_FIELDS: Record<keyof PackPluginEntry, true> = { contract: true, default: true, entry: true };
+  const MANIFEST_PLUGIN_FIELDS: Record<keyof PackPluginEntry, true> = { contract: true, default: true, defaultVisible: true, label: true, state: true, icon: true, canvas: true, panel: true, chat: true, isPinned: true, hotkeys: true, options: true, fallbackPanel: true };
   /** A dependency's content formats, which a dependent's `content.sources` compiles its own sources with */
   const FORMAT_FIELDS: Record<keyof ContentFormatConfig, true> = {
     compiler: true, entity: true, fields: true, format: true, identity: true, media: true, tree: true,
@@ -363,8 +395,9 @@ describe('the snapshot format', () => {
   const FIELD_FIELDS: Record<keyof NonNullable<ContentFormatConfig['fields']>[string], true> = { default: true, from: true, type: true };
   /** The registration the runtime bundle exports, which the app loads */
   const REGISTRATION_FIELDS: Record<keyof PackRegistration, true> = {
-    id: true, name: true, features: true, services: true, ears: true, repositories: true, boot: true, migrations: true, steps: true,
-    artifacts: true, blocks: true, contentWriters: true, appliers: true, commands: true, help: true, settingsSections: true,
+    declarationRevision: true,
+    id: true, features: true, services: true, bindServices: true, ears: true, repositories: true, lifecycle: true, migrations: true, steps: true,
+    artifacts: true, blocks: true, contentWriters: true, appliers: true, commands: true, settings: true, dependencies: true,
   };
   const REGISTRATION_FEATURE_FIELDS: Record<keyof PackFeature, true> = {
     designation: true, system: true, plugin: true, services: true, settings: true,
@@ -373,14 +406,14 @@ describe('the snapshot format', () => {
   const REGISTRATION_PLUGIN_FIELDS: Record<keyof PackFeaturePlugin, true> = { receives: true };
 
   /** Every name generated code imports from a dependency's facade, with a send to one of its plugins */
-  function facadeImports(): string[] {
-    const deps = { 'base-pack': dependency({ features: [{ id: 'memos', system: { entry: 'x' }, plugin: { entry: writePluginEntry('y') } }] }) };
-    const files = generate({ dependencies: { 'base-pack': '1.0.0' }, features: [withPlugin(system('actions'))] }, deps);
+  async function facadeImports(): Promise<string[]> {
+    const deps = { 'base-pack': dependency({ services: { search: 'unavailable.ts#search' }, features: [{ id: 'memos', system: { entry: 'x' }, plugin: { label: 'Fixture', state: writePluginState('y') } }] }, withPluginState(facade({ Services: '{ search: { read(): string } }' }), ['memos'])) };
+    const files = await generate({ dependencies: { 'base-pack': '1.0.0' }, consumes: { services: ['base-pack/search'] }, features: [withPlugin(system('actions'))] }, deps);
     const names = Object.values(files).flatMap((file) => [...file.matchAll(/import type \{ (\w+) as \w+ \} from '\.\/deps\/base-pack\.ts'/g)].map((m) => m[1]));
     return [...new Set(names)].sort();
   }
 
-  it('covers exactly what dependents read', () => {
+  it('covers exactly what dependents read', async () => {
     expect({
       format: PACK_SNAPSHOT_FORMAT,
       fields: Object.keys(SNAPSHOT_FIELDS).sort(),
@@ -402,52 +435,48 @@ describe('the snapshot format', () => {
         plugin: Object.keys(REGISTRATION_PLUGIN_FIELDS).sort(),
       },
       provenanceKinds: Object.keys(PROVENANCE_KINDS).sort(),
-      facadeImports: facadeImports(),
+      facadeImports: await facadeImports(),
     }).toEqual({
       format: 1,
-      fields: ['defs', 'flowHelpers', 'format', 'manifest', 'provenance', 'sdkVersion', 'types'],
+      fields: ['declarationRevision', 'dslDefinitions', 'entityDestinations', 'eventContracts', 'facades', 'flowHelpers', 'format', 'help', 'manifest', 'provenance', 'sdkVersion', 'types'],
       manifest: {
-        fields: [
-          '$manifestVersion', '$schema', 'boot', 'build', 'builtIn', 'content', 'dependencies', 'description',
-          'entities', 'entityShapes', 'extensions', 'features', 'hostVersion', 'id', 'license', 'migrations', 'name',
-          'permissions', 'relKinds', 'settingsSections', 'version',
-        ],
-        extensions: ['artifacts', 'blocks', 'commands', 'dsl', 'fe', 'help', 'services', 'steps'],
-        feature: ['designation', 'plugin', 'references', 'repositories', 'services', 'settings', 'system', 'typesEntry'],
+        fields: ['$schema', 'build', 'checks', 'consumes', 'content', 'data', 'dependencies', 'description', 'extensions', 'features', 'hostVersion', 'id', 'license', 'lifecycle', 'migrations', 'name', 'permissions', 'version'],
+        extensions: ['appExtensions', 'artifacts', 'blocks', 'commands', 'dsl', 'help', 'services', 'settings', 'steps', 'tiptapPlugins'],
+        feature: ['description', 'designation', 'entities', 'plugin', 'references', 'repositories', 'services', 'settings', 'system', 'types'],
         system: ['contract', 'entry', 'events'],
         systemEvents: ['incoming'],
-        plugin: ['contract', 'default', 'entry'],
+        plugin: ['canvas', 'chat', 'contract', 'default', 'defaultVisible', 'fallbackPanel', 'hotkeys', 'icon', 'isPinned', 'label', 'options', 'panel', 'state'],
         contentFormat: ['compiler', 'entity', 'fields', 'format', 'identity', 'media', 'tree'],
         contentTree: ['branch', 'branchEntity', 'relKind'],
         contentField: ['default', 'from', 'type'],
       },
       registration: {
-        fields: ['appliers', 'artifacts', 'blocks', 'boot', 'commands', 'contentWriters', 'ears', 'features', 'help', 'id', 'migrations', 'name', 'repositories', 'services', 'settingsSections', 'steps'],
+        fields: ['appliers', 'artifacts', 'bindServices', 'blocks', 'commands', 'contentWriters', 'declarationRevision', 'dependencies', 'ears', 'features', 'id', 'lifecycle', 'migrations', 'repositories', 'services', 'settings', 'steps'],
         feature: ['designation', 'plugin', 'services', 'settings', 'system'],
         system: ['machine', 'receives'],
         plugin: ['receives'],
       },
-      provenanceKinds: ['commands', 'entities', 'plugins', 'relKinds'],
-      facadeImports: ['PackEntityShapes', 'PackFeatureSettings', 'PackPluginEvents', 'PackPluginState', 'PackStepNodes', 'PackSystemEvents', 'Repositories', 'Services'],
+      provenanceKinds: ['commands', 'entities', 'plugins', 'referenceCategories', 'referenceTypes', 'relKinds', 'tiptapExtensions'],
+      facadeImports: ['PackEntityShapes', 'PackFeatureSettings', 'PackGroupSettings', 'PackPluginEvents', 'PackPluginState', 'PackStepNodes', 'PackSystemEvents', 'Repositories', 'Services'],
     });
   });
 });
 
 // The barrel is how one feature names another's types (`#generated/types`). A feature may have repositories or
 // services and no system at all, and the types its callers need are the ones its repository and service signatures
-// use — so what decides is whether it has a types module, not whether it has a system.
+// use — so the declaration decides, independently of whether it has a system.
 describe('generated type barrel', () => {
-  it("takes every feature's types module, with or without a system", () => {
+  it("takes every feature's types module, with or without a system", async () => {
     write('src/features/records/be/types.ts', 'export interface RecordRow { id: string }');
     write('src/features/records/be/repository/index.ts', 'export const recordQueries = {};');
     write('src/features/memos/be/types.ts', 'export interface Memo { text: string }');
     writeSystemEntry('memos', "{ type: 'MEMO_ADDED' }");
 
-    const files = generatePackFiles(manifest({
+    const files = await generatePackFiles(manifest({
       features: [
         // Data for the rest of the pack, and no system of its own
-        { id: 'records', repositories: { recordQueries: 'src/features/records/be/repository/index.ts#recordQueries' } },
-        system('memos'),
+        { id: 'records', description: 'Expose record types.', types: 'src/features/records/be/types.ts', repositories: { recordQueries: 'src/features/records/be/repository/index.ts#recordQueries' } },
+        { ...system('memos'), types: 'src/features/memos/be/types' },
       ] as PackFeatureEntry[],
     }), { packRoot: root });
 
@@ -455,13 +484,30 @@ describe('generated type barrel', () => {
     expect(files['src/__generated__/types.ts']).toContain("export type * from '../features/memos/be/types.ts';");
   });
 
-  it('leaves out a feature with no types module, whatever else it has', () => {
+  it('leaves out undeclared modules even when conventional files exist', async () => {
     writeSystemEntry('memos', "{ type: 'MEMO_ADDED' }");
+    write('src/features/memos/be/types.ts', 'throw new Error("must not execute"); export interface Memo {}');
+    write('src/features/memos/be/export-types.ts', 'export interface ExportedMemo {}');
 
-    const files = generatePackFiles(manifest({
+    const files = await generatePackFiles(manifest({
       features: [system('memos')] as PackFeatureEntry[],
     }), { packRoot: root });
 
     expect(files['src/__generated__/types.ts']).not.toContain('features/memos/be/types');
+    expect(files['src/__generated__/types.ts']).not.toContain('export-types');
+  });
+
+  it('names the feature when a declared type module is missing', async () => {
+    await expect(generate({ features: { memos: { types: 'src/missing.ts' } } }))
+      .rejects.toThrow('Feature "memos": types: no TypeScript module found at src/missing.ts');
+  });
+
+  it('exports an explicitly located type barrel without executing it or probing companions', async () => {
+    write('src/public/index.ts', 'throw new Error("must not execute"); export type * from "./models.ts";');
+    write('src/public/models.ts', 'export interface Memo { text: string }');
+    write('src/public/export-types.ts', 'export interface Undeclared {}');
+    const files = await generate({ features: { memos: { types: 'src/public' } } });
+    expect(files['src/__generated__/types.ts']).toContain("export type * from '../public/index.ts';");
+    expect(files['src/__generated__/types.ts']).not.toContain('export-types');
   });
 });

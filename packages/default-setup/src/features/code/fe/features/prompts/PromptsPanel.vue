@@ -237,7 +237,7 @@
 import { usePlugin } from '@apackdev/sdk/fe'
 
 import { ref, computed, watch, nextTick } from 'vue'
-import { openPlugin } from '#generated/fe.ts'
+import { openEntity } from '@apackdev/sdk/fe'
 import type { CodeState } from '#features/code/fe/state.ts'
 import { usePluginState } from '#generated/fe.ts'
 import { ExternalLink, Plus, X, Pencil, Trash2, Sparkle, Search, ChevronDown, ChevronRight } from 'lucide-vue-next'
@@ -472,7 +472,7 @@ const selectPrompt = (prompt: PromptEntity) => {
 }
 
 const goToPrompt = (prompt: PromptEntity) => {
-  openPlugin('prompts', { type: 'PROMPT.SELECT', promptId: prompt.id })
+  openEntity(prompt.id)
 }
 
 const createPromptInline = () => {

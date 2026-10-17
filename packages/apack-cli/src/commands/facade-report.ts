@@ -27,8 +27,9 @@ import * as os from 'node:os';
 import * as path from 'node:path';
 import { compareFacadeReport, facadeReportFile, facadeReportText, shownPath } from '../build/facade-report';
 import { bundlePackTypes } from '../build/types-bundler';
-import { generateEntries } from './generate-entries';
-import { findPackRoot } from '../utils';
+import { assertGeneratedCurrent, generateEntries } from './generate-entries';
+import { findPackRoot, readValidManifest } from '../utils';
+import { resolveDeps } from './generate';
 
 export async function facadeReport(args: string[]): Promise<void> {
   if (args.some(arg => !['--update', '--skip-generate'].includes(arg))) {
@@ -39,7 +40,7 @@ export async function facadeReport(args: string[]): Promise<void> {
   const reportFile = facadeReportFile(packDir);
   const scratch = fs.mkdtempSync(path.join(os.tmpdir(), 'facade-report-'));
 
-  // The generated barrel the facade is bundled from, regenerated first: it skips on a matching `.inputs-hash`
+  // The generated barrel the facade is bundled from, regenerated first: it skips on a matching generation stamp
   // in milliseconds and resolves its own dependencies, so this closes the one input a re-bundle alone would
   // still read as whatever was last written — a manifest change nobody regenerated for.
   //
@@ -48,7 +49,11 @@ export async function facadeReport(args: string[]): Promise<void> {
   // compiles out of it. `scripts/typecheck.ts` regenerates once, ordered ahead of its pool, and passes this —
   // the same flag and the same reasoning as `apack pack build --skip-generate`. Default is to regenerate, so a
   // pack author running it by hand still gets an answer over a tree nobody has built.
-  if (!args.includes('--skip-generate')) await generateEntries([]);
+  if (args.includes('--skip-generate')) {
+    const manifest = readValidManifest(packDir);
+    const dependencies = await resolveDeps(packDir, manifest.dependencies, { readOnly: true });
+    assertGeneratedCurrent(packDir, manifest, dependencies);
+  } else await generateEntries([]);
   // Into the scratch directory, never dist/: that is the build's output, and a check that wrote it would both
   // claim a build had run and race one that had
   const built = await bundlePackTypes(packDir, path.join(scratch, 'pack-types.d.ts'));

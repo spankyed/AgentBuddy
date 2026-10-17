@@ -7,8 +7,9 @@ Implement docs/goals/goal-settings-and-pack-contracts.md. Read CLAUDE.md, Backgr
 Working setup and checkpoint workflow, Phases and Constraints first. The updated base is 3d389b9c8 on
 session/naming-contracts, which completes naming. Start from a committed state containing that work
 and this goal; master is suitable only once it contains both.
-Create a dedicated branch and worktree as explicitly requested. Preserve the source checkout's
-uncommitted work; never share dependencies, generated output or the index between worktrees.
+Continue on session/settings-pack-contracts in the main checkout: the user promoted this work out
+of its initial worktree. Preserve unrelated changes. Use further isolation only if requested or clearly
+necessary; never share dependencies, generated output or the index between worktrees.
 
 Follow the linked subsystem plans without duplicating their designs here. This goal owns execution,
 checkpoints and completion; manifest-maturity owns the roadmap and subsystem plans own contracts.
@@ -20,8 +21,8 @@ validated implementation checkpoint before beginning the next; apply the settled
 to new APIs without reopening the completed naming project.
 
 Finished when:
-- Phases 0–7 meet their Done when conditions, including all three Phase 6 workstreams.
-- Host, pack and feature settings use the common declarative contract and migrated stored data.
+- Phases 0–7 meet their Done when conditions, including restored manifest-consolidation M1–M6 and all three Phase 6 workstreams.
+- Host, pack and feature settings use the common declarative contract and current-format stored data.
 - Every supported contribution is discoverable without executable pack/dependency activation;
   generated bindings, catalog identities, updates and source-build freshness agree.
 - Entity navigation, frontend boundaries, supported consumed APIs, dependency provenance and
@@ -38,9 +39,769 @@ Constraints for isolated test data, typed EARS, migrations and validation. No co
 
 # Complete settings and discoverable pack contracts
 
-Status: planned; naming conventions are complete. This executes the five remaining work items in
+Status: in progress on `session/settings-pack-contracts`; naming conventions are complete. This executes the remaining work items, including restored manifest consolidation, in
 [manifest maturity](../plans/manifest-maturity.md), building on the completed naming prerequisite.
 Lazy activation is deferred.
+
+## Live execution ledger (reconciled 2026-10-16)
+
+This ledger owns current execution status and ordering. The phases below retain all completion
+requirements; subsystem plans retain detailed contracts and acceptance cases. Dated checkpoint notes
+are historical evidence, not additional live backlogs. Their old “next,” “remaining” and prerequisite
+statements do not override this ledger. Where a subsystem plan still requires the entire freshness
+workstream before every discovery migration, use the per-deliverable dependencies below instead.
+No requirement is waived by this reconciliation, and no final acceptance is claimed.
+
+“Implemented” means source checkpoints exist; it does not mean final committed-source acceptance is
+complete. “Partial” identifies implementation still required. Final verification is tracked separately
+so completed implementation is not repeatedly scheduled as new work.
+
+| Deliverable | Implementation status and source evidence | Remaining implementation / exit condition |
+|---|---|---|
+| Naming and checkout baseline (Phase 0) | Complete: `3d389b9c8`; promoted checkout recorded below | No naming integration or repeated baseline project. |
+| Shared declaration/catalog foundation (Phase 1) | Implemented foundation; current registration-field classification closed in `031e3a521` | Retain native/authored, source-free and checked-binding coverage for final all-kind acceptance; no new catalog or unclassified registration field. |
+| Settings (Phase 2) | Implemented: catalog integration `f3416ad2f` and subsequent settings checkpoints in the evidence record | Final three-owner, policy, reset/import, disabled/failed owner, custom-form and multiple-window acceptance; no new extraction. |
+| Manifest consolidation M1–M6 | Implemented and checkpoint-validated through `0994ae787`; own-key preservation `29f0cc556` | Preserve all 17 reconciled decisions, both naming outcomes and generated EARS/content behavior in final acceptance; do not restart consolidation. |
+| Settings/help/info/reference/step/command discovery (Phase 3) | Implemented reader migrations: `2169d29f8`, `6c876c9ba`, `20ab75efe`, `c776d1c5d`, `76df2f0e5`, `71fad4013`, `8ec5285ed`, `f7d63434c`, command catalog `ff48438cd` | Final all-kind acceptance, including source-free inspection, inactive owners and checked runtime eligibility. |
+| Live editor composition (Phase 3) | Implemented in `8863043a6`; real cold-worker/typed replacement/shared lifetime acceptance `d1c38bc58`, no-activation marker `9b7d112cf` | Preserve the five real host-only window cases and locally accepted five-build DSL case `3913fe196` for final acceptance; do not restart composition. |
+| Remaining discovery consumers (Phase 3) | Implemented reader/admission slices recorded below and in the discovery plan; current field/reader classification closed in `031e3a521` | Flow external/source-free acceptance `415228f0c` and real DSL worker acceptance `d1c38bc58` are locally closed. Preserve native/viewer/content/migration/endpoint/navigation/asset checks for final all-kind and window/loader acceptance. Build-input ownership remains separately open under B1/B3/B6. No additional reader implementation gap is identified by the current audit. |
+| Build input/publication and freshness (Phase 3) | B2, B4 and B5 implemented and locally accepted; generation-cache ownership repaired in `caf57cb0e`; B1/B3 closure and B6 outstanding | Close remaining native/platform/thread ownership acceptance and converged checks; preserve the common record and four migrated passive consumers. Installed discovery must remain source-free and activation-free. |
+| Entity navigation (Phase 4) | Implemented with local handler/runtime acceptance through `95ff95ab3`, following producer `94148c9e0`, catalog/admission `479c75e01`, routing `cd9c57de6` and feature repair `831221020` | Preserve six-handler, cancellation and stored-message acceptance through final strict validation; retain build/publication and strict-gate acceptance for B6. No further navigation implementation is currently identified. |
+| Frontend boundaries (Phase 5) | Implemented and locally accepted: `713a6c1fd`, including the real external-pack window | Preserve pane/form containment, attributed nonfatal diagnostics and retired-instance refusal through final committed-source strict acceptance. |
+| Consumed APIs (Phase 6) | A1–A4 implemented through `bb6df4a45`; A5 authoring/harness `45f2a3458` / `1fbc1e223`, complete external app/fork acceptance on `031e3a521`, and schema/API/export agreement on `b62da5c72` locally accepted. See [A4–A5 evidence](../plans/declared-capabilities.md#bounded-implementation-checkpoints). | Preserve accepted selection, lifetimes, content-target checks, settings policy and typed/untyped EARS through final producer/app convergence and strict acceptance. No additional API implementation or separate unexecuted local app migration is identified. Declaration availability remains distinct from executable readiness. |
+| Dependency provenance (Phase 6) | Cache/admission `ff4358588` and inspection `d6fa2c6dc`; current reader/producer audit confirms exact origin/version/content and read-only reuse acceptance | Local provenance acceptance closed by the existing real producer/consumer proof and current passing cache/resolution/inspection cases. Preserve through the final gate. Compiler input/output freshness remains separately owned by B1–B6; frozen resolution stays conditional on a distribution requirement. |
+| Shipped-pack replacement (Phase 6) | Implemented ownership/suppression/replacement/source updates; refreshed complete external app and normal fork lifecycle acceptance passes | Local restart/reload, two-window fork preservation, disable/remove/restore and settings preservation are accepted on current source. Preserve existing managed-update and failure-retention cases for the final gate; no replacement redesign remains identified. |
+| Final review/acceptance (Phase 7) | Outstanding | Audit every phase and reconciled manifest requirement on committed source, run final strict `--all`, record evidence and archive only completed work. |
+
+### Bounded build-input and freshness checkpoints
+
+Completed prerequisites: captured compiler installation/session reuse (`aba660aed`), shared authored
+scope (`882d2a50b`), public cancellation (`6641b2c99`), startup capture (`37890aa9b`), publication
+alias-processing repair (`c85fc178a`), and ordered effective execution-options/runtime-version hashing
+(`65a189cb7`), early launch identity (`3929897a3`), and authored bytes/membership before
+preloads (`bbf05ec00`). These are source evidence, not a claim that the full strict gate passes.
+
+| Checkpoint | Required outcome and acceptance boundary | Dependencies |
+|---|---|---|
+| B1 — Launch and remaining input coverage | Reconcile current capture against actual supported compiler paths. The launch audit preserves inherited NODE_OPTIONS and forwarded export conditions; supervisor entry modes are not worker configuration. Early launch identity and authored bytes/membership are implemented through `bbf05ec00`. Selected runtime ownership is implemented in `e369d3cb9`, with local Node/Electron and actual backend/Vite acceptance. Close the named input gaps and platform cases in the B1/B3 closure register below. Separate reproduced defects from missing evidence; enumerate concrete missing inputs before implementing; prove relevant changes invalidate/refuse publication while equivalent runs preserve identity and resolution. Ordered options already landed; do not reimplement them. | Existing captured installation/startup view. |
+| B2 — Frontend compiler generation | Implemented and locally accepted in `a595246f2` / `d3833f788`: matching backend/Vite generations, configuration replacement, fresh metadata/link resolution, private caches, failure retention, interrupted startup and awaited retirement pass. Real browser HMR through a generated external-pack entry preserves state/document. Retain these checks for final committed-source acceptance; B1/B3 still own remaining input/subscription and platform/runtime cases. | Relevant B1 inputs are implemented; preserve remaining cross-phase producer acceptance. |
+| B3 — Remaining resource lifetime | Use the B1/B3 closure register below to identify each remaining native/background operation, its existing lifetime owner and missing proof. Close demonstrated gaps so build-owned work cannot outlive final validation/disposal. Preserve accepted cancellation/watch behavior; unverified platform behavior is not itself a demonstrated defect. | Relevant B1/B2 owners; no security sandbox or general resource-confinement expansion. |
+| B4 — Persist successful input/output association | Publish the completed input record atomically with sealed output. Failed or incoherent builds retain the incumbent; readers can validate the association without executing pack/compiler code. Startup observations alone are not this record. | Complete relevant B1–B3 producer ownership. |
+| B5 — Passive freshness consumers | Migrate archive, prebuilt tests, default-fork preparation and drive to the common record. Preserve manual builds, deterministic reuse, source-free installed inspection and deliberately stale drive behavior. Remove replaced freshness heuristics. | B4. |
+| B6 — Converged acceptance | Resolve affected failures from preserved evidence and focused reproducers, then run the required converged strict checkpoint. The final committed-source strict `--all` remains Phase 7. | Converged B1–B5 source; focused checks accompany each earlier checkpoint. |
+
+#### Current compiler checkpoint (2026-10-17)
+
+**Operational hold — local builds/native tests (2026-10-17):** the user reported system-wide app
+launch failures. Local runs were already terminal; no new local build/native runs are allowed until
+the machine is usable. Original Slack, ChatGPT and Activity Monitor tasks remain stopped at startup;
+a single fresh built-in Activity Monitor launch also stopped and was removed with targeted TERM.
+Fixture/native-runtime policy assessments and online failures are confirmed; causation of the global
+launch failure is unproven. Evidence is preserved in `/private/tmp/apack-launch-policy-visllvke`.
+Admin diagnostics require a password; no security settings/databases or installed applications were
+changed, and no daemon restart was performed. Recommend a targeted admin restart of
+`system/com.apple.security.syspolicy` before considering a whole-machine restart. Do not resume local
+expensive validation from this handoff automatically. GitHub runs must continue: run `39075394015`
+was mistakenly cancelled and restored as attempt 2 on the same `4b4d820fa` source. Remote CI does not
+establish local recovery. See [incident evidence](../evidence/build-input-snapshot-proof.md#macos-launch-policy-investigation-2026-10-17).
+
+**Current handoff:** source `ccaa809a8` delivers retained frontend native discoveries into live watch
+subscriptions and retains failed-candidate probes for repair. Native copies and receipts belong to the
+whole frontend process, so late workers reuse admitted bytes after the original library changes.
+Unresponsive frontend freshness requests now refuse within five seconds instead of holding the builder
+queue indefinitely. The real unchanged-touch/refusal/incumbent/recovery/retirement case passes in
+72.76 seconds; four existing backend/Vite preload/worker cases pass. Forty focused checks, copied-file
+mode/integrity checks, CLI/scripts types and lint pass. The strict two-core checkpoint stopped at three
+repository bookkeeping failures after passing external packaged authoring, external-pack contracts,
+default-pack build, facade/schema/import checks and typechecks. The input/subprocess declarations are
+corrected in this source; all 951 checks in the affected repository suite pass. This is not a complete
+strict-gate pass. Do not rerun the broad gate to rediscover those corrected bookkeeping failures.
+Windows run `39069845156` is fully green on `d8a1c02dc`, including Vite owners and repeat-build/cache/
+archive identity; it does not certify the newer live-watch source. Follow-up `c85f3fd95` captures
+frontend startup reads before the actual CLI entry releases ordinary authored-source reads. The real
+CommonJS preload-byte change/restoration cases pass for both direct and explicit-worker native loading,
+Vue remains live, and the complete native watch recovery still passes. Worker startup observations join
+frontend freshness through the existing coordinator, retaining bounded refusal for unresponsive checks.
+Next: custom-loader/ESM and transitive-resolution acceptance and the remaining named native-platform
+cases, then B6 and final committed-source strict `--all`. Preserve the full scope below. See [checkpoint evidence](../evidence/build-input-snapshot-proof.md#live-frontend-native-watch-and-shared-copies-2026-10-17).
+
+Source `525350813` applies native canonical path identity consistently, preserving authored metadata
+query semantics and root-link observations. Corrections `672645cf4` / `329cfbd89` preserve fixture and
+logical-source filesystem identities. Windows run `39063657523` on `0c259a570` passes all 157 focused
+checks (eight platform skips), completes its first build at 77.74 seconds and archive at 90.28 seconds,
+and produces second-build output around 174 seconds. Its 180-second deadline expires during return
+or cleanup, so the case makes forward progress; final completion is still unverified. Give this single
+Windows two-build/archive case 240 seconds, retaining 120 seconds locally and every assertion. The
+focused Windows diagnostic selects startup and repeat-build baseline cases; broader platform/native
+lifetime acceptance remains required with its implementation. See
+[timing evidence](../evidence/build-input-snapshot-proof.md#windows-repeated-build-forward-progress-2026-10-17).
+Source `b1c1c87c6` integrates the shared Windows build/Vite job owner. Run `39065375155` passes the
+actual production launch helper's success/failure/cancellation/Unicode proof and all 162 focused unit
+cases (eight platform skips). The publication step never reaches its intended case: a Windows shell
+hop splits the quoted name filter and runs unrelated tests instead. The workflow now invokes Vitest's
+JavaScript entry directly, retaining the source condition through its environment and preserving argv.
+No assertion is weakened to hide the unintended SIGTERM-handler failure.
+
+The native proof now also checks that retiring one compiler leaves its replacement alive, and forcibly
+kills an independent controller to verify parent-loss cleanup. The original 30-second proof budget
+and two-second parent-loss settlement bound remain. Review also identifies a launcher input defect:
+PowerShell modifies its own environment, which must not reach Node. The requested Node environment
+now travels over a private memory channel directly into `CreateProcessW`, including correct IPC vars;
+it is absent from launch files. The native proof checks policy/module-path/Unicode/absent-variable
+preservation. Run `39066744863` on `519ac2a16` now passes that complete native helper proof,
+including forced parent loss and isolated replacement. Its package/publication/repeated-build steps
+did not run: dependency installation failed with a GitHub API 403 downloading ripgrep.
+The focused workflow now supplies the installer's supported `GITHUB_TOKEN`, matching the main CI;
+the native helper pass does not certify the pending integrations. See
+[handoff evidence](../evidence/build-input-snapshot-proof.md#windows-environment-and-final-lifetime-cases-2026-10-17).
+Local types, CLI packaging, POSIX descendant publication, syntax/lint and 53 tooling cases pass.
+Actual repeated-build baseline, build/frontend integration and final strict acceptance remain open.
+
+Follow-up Windows run `39067640431` on `1dacb59ec` is terminal and fully passes: authenticated
+installation, matching package build, 162 focused checks (eight platform skips), the exact real
+descendant-publication case, startup identity and repeated-build/archive identity. The repeated-build
+case takes 164.325 seconds under its existing 240-second Windows budget. This closes the previously
+unexecuted Windows baseline/publication acceptance, not the remaining Vite/native-input paths or
+the converged/final gates. See [Windows acceptance evidence](../evidence/build-input-snapshot-proof.md#windows-producer-baseline-acceptance-2026-10-17).
+
+Source `6fd1a5050` implements SDK-dependent standard macOS native fallbacks and distinguishes absent
+fallback settings from explicitly empty lists. Forty-two unit cases, four real loader cases covering
+SDK 13/14 dylib/framework searches and empty-list suppression, the real explicit-fallback
+refusal/incumbent-retention case, CLI types and lint pass. The real loader proof uses macOS 26.3.1 /
+Node 23.11.1 and private fixtures; no system directory writes. Restricted/hardened-runtime fallback
+policy still needs acceptance; versioned/shared-cache controls, retained Vite native initialization,
+ELF/PE and converged/final acceptance remain open. See [standard fallback evidence](../evidence/build-input-snapshot-proof.md#sdk-dependent-standard-native-fallbacks-2026-10-17).
+
+Source `ce172953d` installs native admission before retained Vite preloads, shares the existing native
+capture owner, and checks frontend inputs before readiness/reuse. Vite copies selected images rather
+than freezing the authored package. Actual native preload and explicit-worker cases preserve Vue HMR,
+detect changed libraries and refuse outside-library initialization while retaining the incumbent;
+backend preload/thread regressions also pass. Builder cancellation, real generation replacement and
+actual Vite descendant/replacement ownership pass locally. Next: deliver frontend discoveries and
+failure probes into live watch subscriptions, account for frontend preload JS inputs, and accept the
+loader/late-load paths. Versioned/shared-cache/restricted-runtime controls, ELF/PE, remaining platform
+coverage and converged/final gates remain required. See [retained Vite evidence](../evidence/build-input-snapshot-proof.md#retained-vite-native-input-ownership-2026-10-17).
+
+Windows run `39069433335` on `0ac839c94` passes native job ownership, 169 focused checks, both
+publication/cancellation cases and actual Vite replacement/descendant ownership. Its baseline then
+fails because the final cleanup removed `stopReads`, still required by the JavaScript CLI entry and
+embedded launch fixture. Source `482ee0598` restores that distinct preload/compilation phase boundary;
+real local launch identity and repeated build/cache/archive checks pass (48.36 seconds), as do CLI
+types and lint. Windows baseline acceptance on the repaired source remains pending. Live frontend
+subscription delivery is next; no watch implementation is claimed by this repair.
+
+Source `59b890dcb` repairs the macOS explicit fallback gap: launch-time `DYLD_FALLBACK_LIBRARY_PATH`
+survives preload mutation, selected external fallback libraries refuse before native initialization,
+and the incumbent survives. Current-directory lookup precedes fallback lookup; a successfully resolved
+package-relative library does not consult unused fallback paths. Twenty-seven unit cases, four real
+native/compiler cases, CLI types and correctness lint pass. See
+[checkpoint evidence](../evidence/build-input-snapshot-proof.md#explicit-native-fallback-admission-2026-10-17).
+Source `c1abbd9c2` implements framework override/fallback admission using the same ordered search, with full framework/version
+paths and the retained launch environment. Thirty unit cases and three real compiler-preload cases
+pass, including preserved dylib fallback behavior; see
+[framework evidence](../evidence/build-input-snapshot-proof.md#native-framework-search-admission-2026-10-17).
+Versioned/shared-cache controls and default fallbacks, retained frontend native initialization,
+ELF/PE, platform lifetime and converged/final acceptance remain open. Do not treat these focused repairs as full B1/B3 closure.
+The demonstrated `DYLD_IMAGE_SUFFIX` gap is now repaired: capture launch-time ordered suffixes and
+inspect selected addon/library variants, preserving suffix-before-rpath and directory-before-suffix
+ordering. Missing variants are observed; nonexistent owned candidates are not realpathed. A real build
+executes captured suffixed bytes, detects their change, and refuses a later transitive outside
+dependency before initialization while retaining the incumbent. Thirty-five native unit cases,
+subprocess inventory, CLI types and lint pass; see
+[suffix evidence](../evidence/build-input-snapshot-proof.md#selected-native-image-suffix-admission-2026-10-17).
+Versioned overrides/shared-cache controls/default fallbacks, retained frontend native initialization,
+ELF/PE, platform lifetime and final gates still require closure.
+
+#### Execution boundaries and closure
+
+The contract is: each published build has one coherent input/output association; source consumers can
+compare that association with their required inputs without running compiler or pack code. Coherence
+and freshness differ: a build can faithfully represent its captured inputs while being older than the
+checkout. Output integrity is required even when a consumer deliberately accepts that older build.
+
+For B1 and B3, record a finite path matrix in the existing evidence record before implementation:
+
+| Supported path / operation | Existing owner and source evidence | Uncovered requirement | Closing check / disposition |
+|---|---|---|---|
+| Enumerate actual startup, compiler, dependency-resolution and native/background paths | Name the current capture or lifetime owner | State the concrete missing guarantee, or record none | Link existing proof, add a focused check where needed, or identify an explicit unsupported path |
+
+Audit findings are not automatically implementation tasks. A supported path with sufficient ownership
+and evidence closes without new machinery. An unverified requirement remains open; do not call it a
+defect without evidence or treat lack of a reproducer as permission to omit it. Include one-shot and
+dev/watch execution and relevant platform differences; do not invent a broader resource framework.
+
+#### B1/B3 closure register and decisions
+
+The remaining work distinguishes a reproduced defect, missing acceptance evidence and a support
+boundary decision. None alone authorizes a new general capture or confinement framework.
+The [proposed native compiler input boundary ADR](../reference/adr/native-compiler-input-boundary.md)
+records the user-approved bounded contract (2026-10-17): captured package-contained and OS libraries,
+with attributed refusal of identifiable outside-library dependencies. Implementation/acceptance remain open;
+arbitrary external native capture and native I/O are excluded by that explicit approval.
+
+| Item | Current evidence | Required closure |
+|---|---|---|
+| Absolute external-library loading | A real addon executes the original external library; changing it does not invalidate freshness. Package-relative capture in `6710e3026` does not fix this. The [search-path prototype](../evidence/build-input-snapshot-proof.md#external-native-library-search-path-prototype-2026-10-17) rejects a tempting shortcut: two distinct absolute libraries with the same basename collapse to one captured library. Exact identity must remain preserved. `cc186a0d0` implements selected macOS module admission with direct/transitive pre-initialization refusal and captured relative-loading proof. | Implement the approved bounded contract through the existing compiler owners. Refuse identifiable outside-library dependencies; preserve captured package-relative and OS loading. Prove the known counterexample refuses before native initialization, public-build incumbent retention, transitive cases and startup/thread/Vite path coverage. Static inspection is not universal native-I/O detection. |
+| Native/background lifetime | The [finite resource audit](../evidence/build-input-snapshot-proof.md#remaining-resource-lifetime-audit-2026-10-17) reconciles local loader, JS worker, process-group, Vite and installation ownership with existing proof. The common build/frontend launcher now implements a Windows Job Object owner after the native prototype passed (`62f6a03b8`); the descendant-publication check is enabled for Windows. The complete native helper lifetime matrix passes on `519ac2a16`; actual build/frontend integration and final acceptance remain open. | Preserve accepted macOS cases. Accept the integrated Windows owner through native build/frontend execution and success/failure/cancellation/parent-loss/replacement checks, following the passed suspended-launch/IPC prototype. The user authorized branch pushes and focused Windows CI on 2026-10-17; release workflows remain prohibited. Native acceptance requires passing execution of the committed source. Linux runtime acceptance remains unverified. Do not substitute PID-only termination, mocked calls or a new general resource framework for this missing platform guarantee. |
+| Platform coverage | Release/build configuration establishes targets, not acceptance of compiler capture or cleanup guarantees. | Record exact OS/architecture/runtime combinations, relevant cases and results. Mark missing evidence as unverified, not broken or implicitly unsupported. |
+
+Configured targets, inspected 2026-10-17:
+
+- macOS ARM64: packaging in `electron-builder.mjs` and `build/build.sh`, release workflow in
+  `.github/workflows/build-mac.yml`, and main CI in `.github/workflows/ci.yml`.
+- Windows x64: packaging in the same build files and release workflow in
+  `.github/workflows/build-windows.yml`; these do not establish native compiler acceptance.
+- Linux x64: packaging configuration exists; no Linux app-build workflow was found. Resolve intended
+  support explicitly before expanding platform work. This uncertainty does not exclude Linux.
+- Runtime declarations: Node `>=23.5.0`, Electron `37.2.4` in root `package.json`. Record the exact
+  runtime exercised by each acceptance case; a version range is not evidence for every version.
+
+Before implementation, enumerate the applicable library-loading, changed-input, cancellation and
+watch-recovery cases for those environments, with observable pass criteria: supported inputs execute
+as intended; tracked changes invalidate freshness; owned work settles before final validation/disposal;
+and refused candidates preserve the incumbent. Record each case as passed, failed or unverified;
+unsupported cases require an explicit approved boundary decision. Do not create an unlimited platform
+or runtime-version matrix from these headings.
+
+A scanner, binary relocation, additional interception or general resource confinement is not the
+prescribed solution. Any proposal must demonstrate that it closes the observed defect while preserving
+resolution and loading semantics. Static dependency inspection alone cannot establish complete capture
+of dynamic loading or arbitrary native I/O. Distinguish input coherence/freshness from security
+isolation; stronger isolation remains deferred. Any change to the promised input guarantee needs an
+explicit decision, not merely a documentation disclaimer.
+
+Continue API consumption and other independent work while resolving these items. Use focused checks
+for each repair, preserve existing evidence, and run the converged/final gates after the relevant
+implementation has converged rather than using broad suites to discover the next task.
+
+B2 must demonstrate that a successful compiler refresh changes the compiler actually used by both
+backend builds and Vite. Define their generation relationship, failed-refresh recovery and awaited
+retirement from the inspected lifecycle. Do not prescribe simultaneous server startup or an atomic
+cross-process swap without showing that the architecture needs it. Preserve HMR and useful source paths.
+
+B4 must settle the common successful-build record before migrating consumers. It must associate:
+
+- The accepted compiler installation/runtime identity and effective execution/build options.
+- The completed source and dependency input identity, including relevant external/linked inputs and
+  resolution observations (including missing paths or directory membership when they affect output).
+- The sealed output identity, so an input record cannot certify another build's bytes.
+
+Reuse captured inputs and existing output verification rather than introducing another source scanner
+or reading private phase caches as public authority. Specify record ownership, deterministic encoding,
+and verification at a common layer. State the expected execution/environment comparison context;
+do not blindly compare a different authoring command's ambient environment or persist raw credentials
+for replay; the host must not import CLI internals. Publish the record with its
+output only after input validation and build-owned work settle; failure retains the incumbent pair.
+Startup observations alone do not establish this completed association. Installed verification must
+not need authored sources, machine-local temporary paths or executable compiler/pack modules.
+
+B5 must record the actual policy and migrate each consumer to that common authority:
+
+| Consumer | Required policy / acceptance |
+|---|---|
+| Archive creation | Verify sealed output and enforce the command's required source-input freshness; explicitly identify the comparison context. |
+| Prebuilt tests | Refuse missing, altered or mismatched builds against the inputs required by the test invocation. |
+| Default-fork preparation | Verify the selected build and required provenance; compare current inputs wherever preparation promises a current-source build. |
+| Drive | Verify output integrity; retain explicit deliberately stale use and give accurate current-input guidance otherwise. |
+| Installed/offline discovery (preservation boundary) | Verify published data without authored source files, compiler execution, automatic rebuilding or staging. |
+
+Direct/manual builds and watch must produce the same association. Prove timestamp-only touches and
+exact byte restoration remain current; same-mtime byte changes, relevant additions/removals, linked
+inputs and compiler/dependency/option changes invalidate reuse. Preserve deterministic output caching.
+Exercise the actual cached-chain/app-preparation path as well as focused record checks. Remove the
+replaced mtime and reader-specific heuristics; do not add dual-format reads or compatibility fallbacks.
+
+Close each B checkpoint with its concrete implementation delta (or evidence-only closure), focused
+acceptance results, source commit and explicit remaining cases. B6 consolidates B1–B5 and diagnoses the
+retained failures from exact reproducers before the required converged strict checkpoint; it does not
+restart accepted implementation or require repeated broad runs for diagnosis. Phase 7 still owns the
+final whole-goal strict `--all` on committed source. These details clarify existing scope, not new phases.
+
+The latest strict run, `2026-10-17T00-23-23Z-27374`, failed in integration after `ENOSPC` errors and
+its existing 600-second aggregate deadline. Both unit pools, typechecks, builds and both packaged-authoring
+halves passed. A dependent-runtime fixture omission found in that run is repaired (all five cases pass).
+Other compiler/publication/watch assertions and individual timeouts remain unclassified; disk exhaustion
+does not prove their common cause. The final full external-app step was not reached. Preserve the earlier
+watch/frontend evidence too. Diagnose exact failures and establish available disk capacity before another
+broad run; do not reopen the publication repair without new evidence. No passing strict gate is claimed.
+
+### Execution order and change control
+
+Phase 5 source checkpoint: frontend boundaries, `713a6c1fd`. Focused Vue/lifetime checks and the
+real external-pack Electron case pass: failed panes/forms preserve other panes, host settings and
+defaults; retired frontend retry is refused. The staged source and built runtime matched that proof.
+Final whole-goal strict acceptance remains open.
+
+Current Phase 4 source checkpoint: `cd9c57de6`, following producer `94148c9e0` and catalog/admission
+`479c75e01`. One child actor owns entity intent, the invoked existence query and final delivery;
+readiness carries a token. Feature handlers are direct, reference callbacks are removed, verified test
+metadata is captured once, and offline inspection shows compiled destinations. Sixty shell checks and
+the real external-pack Electron reference click pass. See [checkpoint evidence](../evidence/settings-and-pack-contracts.md#entity-opening-lifecycle-checkpoint-2026-10-16).
+Strict run `2026-10-16T22-31-16Z-68388` failed the import boundary and facade report; both are corrected
+and individually verified. Its authoring and external contract steps pass. Later gate steps and final
+committed-source strict `--all` remain unproven; no passing broad gate is claimed.
+
+Feature checkpoint `831221020` replaces the blueprint timer with `NODE.REVEAL`, a matching reply and
+feature-owned cancellation; layout results belong to their requesting graph. Library document replies
+fill only the current editor target and cannot navigate. All 99 affected Flows/Library tests, pack
+types, lint, import boundaries, facade check and real default-pack build pass. Strict run
+`2026-10-16T23-05-19Z-85766` stopped at packaged authoring: `lstat` could not find a default-pack runtime
+source map while its build overlapped the authoring step. The disappearance's exact cause is not
+established. No broad rerun or tooling change; preserve this for B6. See
+[feature checkpoint evidence](../evidence/settings-and-pack-contracts.md#feature-navigation-checkpoint-2026-10-16).
+
+Acceptance checkpoint `95ff95ab3` closes the six-handler and stored-message gaps. Eight reproduced
+Actions/Prompts failures now pass: leaving detail, deactivation and returning to a cached selection
+retire pending calls. Three reproduced shell failures now pass: breadcrumb/Back/Forward navigation
+cancels pending entity opening. All 105 shell cases and 159 affected feature cases pass, as do host,
+pack and E2E types and lint. The rebuilt runtime passes the real saved-message cross-feature click:
+import a thread, reload its persisted message, click the rendered reference, verify the destination
+note's title and content. See [acceptance evidence](../evidence/settings-and-pack-contracts.md#entity-navigation-acceptance-checkpoint-2026-10-16).
+The preserved authoring gate failure remains open; no passing broad gate is claimed for this source.
+
+Next: complete the remaining discovery inventory against current registration fields, native
+declarations, event contracts and static assets; identify and close actual gaps. Do not restart the
+implemented reference identity, destination catalog, shell lifecycle or unrelated compiler work.
+The [registration inventory](../plans/discovery-without-activation.md#remaining-registration-audit-2026-10-16)
+now records each field's authority and remaining gap. Native designation parity is repaired in
+`b268fac86`. Endpoint source checkpoint `774b0844c` publishes one static endpoint-contract projection,
+checks native/authored bindings and captures effective routing sets at admission. The real external-app
+run exposed queued sends outliving their inbox; bus stop completion now drains earlier messages before
+retiring authority. All 110 bus/lifecycle cases and the exact Electron disable/remove/restore case pass.
+All 5,168 host and 888 pack unit cases pass (two pack cases remain intentionally skipped), as do five
+dependent-runtime integration cases. CLI/testing types and lint pass after the last fixture repair.
+The strict gate remains incomplete as recorded above; see the [checkpoint evidence](../evidence/discovery-without-activation.md#static-endpoint-contracts-2026-10-17).
+Viewer checkpoint `be5a9344b` closes native backend artifact/block admission with the existing authored
+checks. All 705 affected registry/runtime/fixture/frontend cases, host/SDK types and lint pass; no broad
+rerun follows the recorded disk failure. Content checkpoint `2e1701fad` adds native content declarations,
+shared writer ownership/backend membership checks and explicit native application acceptance. All 761
+affected cases, 46 authored-manifest cases, host/SDK types, lint, refreshed package builds and schema/API
+generation pass. Current checkpoint `f72cb8756` adds native migrations, shared checked bindings and
+admitted native/installed targeting without fake manifests. App-line native owners need no own version;
+pack-line owners declare it. All 840 affected cases, host/SDK types, lint, package builds and schema/API
+generation pass. The inherited-key version-record and SemVer build-metadata rerun bugs are repaired.
+Display-name audit/cleanup `123efbd6f` removes unused registration metadata rather than inventing a
+native field. Required-entry checkpoint `b916d0e5e` refuses missing backend entries and frontend entries
+required by declared bindings before staging, installation or build publication. All 705 affected
+pack/CLI cases, two real build cases, host/CLI types and lint pass. Backend-only builds remain valid;
+source-free discovery does not import authored modules. See [entry evidence](../evidence/discovery-without-activation.md#required-build-entries-and-display-metadata-2026-10-17).
+Compiled-content checkpoint `3119205be` centralizes verified index capture in `readPackBuild`, shared
+by staging and installer admission; CLI inspection drops its independent checks. Missing index entries,
+wrong owners/policies and missing compiled data files refuse; missing specialty source paths fail the
+compiler. Focused cases, types/lint and real shipped/external output reads pass; final layout acceptance
+passes 110 cases including installation and capture races. See [content evidence](../evidence/discovery-without-activation.md#compiled-content-admission-2026-10-17).
+Reader cleanup `e6ce3f1e4` removes the unused declaration-only reader; all 110 layout cases, host types
+and lint pass. The [asset producer audit](../evidence/build-input-snapshot-proof.md#asset-producer-audit-and-bounded-follow-through-2026-10-17)
+classifies remaining media, CSS, lazy/worker chunks and public-file copying. Proofs show returned Vite
+graphs omit public copies and media copying bypasses an injected captured-byte view; neither alone
+proves a publication failure. The [B1/B3 path matrix](../evidence/build-input-snapshot-proof.md#b1b3-current-compiler-path-matrix-2026-10-17)
+is now recorded against current owners. Media execution checkpoint `129b541de` copies ordinary files
+through captured byte/directory/metadata reads, preserving permissions and native link/special-file
+behavior. The real input-view regression passes after reproducing live-byte copying; 22 compiler cases,
+SDK/CLI types, lint and package builds pass. The preserved exit-handler case passes unchanged in an
+isolated run; its earlier failure cause remains unclassified. See [media evidence](../evidence/build-input-snapshot-proof.md#captured-media-execution-checkpoint-2026-10-17).
+Native-package acceptance `4c126846f` runs a real captured platform executable and addon after deleting
+their source fixture; all ten installation cases pass. This verifies the existing package owner on the
+current platform, not external binary overrides or Node/Electron runtime ownership. Public-input
+checkpoint `d09a7f447` gives the frontend bundler the existing build owner and projects Vite's public
+directory onto captured authored files, preserving copied permissions and bundle replacement behavior.
+The real Vite regression, 19 adjacent frontend cases, CLI types/lint and package refresh pass. See
+[public-input evidence](../evidence/build-input-snapshot-proof.md#captured-public-directory-checkpoint-2026-10-17).
+Frontend scope checkpoint `0e03d4021` runs the complete bundling operation under the existing captured
+read owner, retaining Vite's root and resolvers. Changed/unchanged real compiler cases cover Vue,
+dependency code, CSS/SVG, lazy imports, browser workers, globs, Sass, Tailwind and configuration source
+globals. The public-file case, 19 adjacent cases, CLI types/lint/package refresh and real external-pack
+build/publication pass. See [frontend evidence](../evidence/build-input-snapshot-proof.md#frontend-read-scope-checkpoint-2026-10-17).
+Dependency-startup checkpoint `9ecf788fb` captures declared npm bytes, filtered membership and missing
+lookups before user initialization through the existing package reader/input owner. Twelve focused
+input tests, the real native-preload regression, CLI/host types, lint and refreshed CLI build pass.
+The real worker's two builds preserve unchanged sealed output/cache identity (50.02s). Existing twenty
+package-reader cases also pass. See [dependency evidence](../evidence/build-input-snapshot-proof.md#early-declared-dependency-capture-checkpoint-2026-10-17).
+This closes the demonstrated early declared-input gap, not external executable/runtime ownership or
+all transient resolution paths. The next [executable-selection proof](../evidence/build-input-snapshot-proof.md#external-esbuild-executable-selection-proof-2026-10-17)
+demonstrates that a changed external `ESBUILD_BINARY_PATH` executes under unchanged captured compiler
+identity. Source `5c5f733fb` repairs that configured selection through the existing installation owner,
+including its reuse checks, worker environment and cleanup. Twelve installation cases, real override
+build/repeat identity, corrected cancellation fixture, CLI types/lint and package refresh pass; see
+[executable checkpoint evidence](../evidence/build-input-snapshot-proof.md#captured-external-esbuild-executable-checkpoint-2026-10-17).
+Frontend ownership checkpoint `a595246f2` now retains one builder for initial/dev/watch compilation and
+Vite workers. Actual A/B publication/HTTP source watching, failure retention, watcher/session ownership
+and complete process/copy/cache retirement pass, alongside affected lifecycle tests, CLI/scripts types,
+lint and package builds. See [frontend generation evidence](../evidence/build-input-snapshot-proof.md#retained-frontend-compiler-ownership-checkpoint-2026-10-17).
+Configuration checkpoint `d3833f788` refreshes on pack/shared metadata changes through the same owner;
+fresh lookup fixes a reproduced UI link-cache omission. All 39 focused builder/package/shared cases,
+CLI/host types, lint and package refresh pass. Real browser HMR through generated registration preserves
+component state and document with no page errors; see [configuration/browser evidence](../evidence/build-input-snapshot-proof.md#frontend-configuration-and-browser-hmr-checkpoint-2026-10-17).
+Cleanup `a67edefc1` centralizes generation sequencing; 29 affected lifecycle cases, CLI types and lint
+pass. The [runtime-copy proof](../evidence/build-input-snapshot-proof.md#generation-cleanup-and-runtime-copy-feasibility-2026-10-17)
+shows owned Node and Electron execution is feasible locally; Electron needs adjacent frameworks.
+Runtime checkpoint `e369d3cb9` now owns the selected executable in the captured installation and uses
+it for both worker launches. Twenty-three focused cases across the recorded runs, three real integration
+cases, CLI types/lint/package refresh and integrated owned Electron execution pass; see
+[runtime ownership evidence](../evidence/build-input-snapshot-proof.md#selected-runtime-ownership-checkpoint-2026-10-17).
+Tooling subscription checkpoint `0bb9e64ec` closes the idle compiler/runtime/esbuild omission through
+the existing observer/signature. Twenty-five focused cases, real idle filesystem delivery, CLI
+types/lint/package refresh and a real distributable inventory check pass; see
+[subscription evidence](../evidence/build-input-snapshot-proof.md#idle-tooling-subscription-checkpoint).
+Namespace/native checkpoint `701928e9f` proves actual outside-addon execution uses the owned tree;
+existing implementation suffices. Thirty-three view/namespace/observation cases and actual early
+startup pass; see [bounded reconciliation](../evidence/build-input-snapshot-proof.md#native-module-and-namespacethread-acceptance-2026-10-17).
+Environment checkpoint `84f473549` repairs a reproduced Vite output/identity mismatch, using a shared
+initial-environment digest and private-path normalization. Twenty-five focused cases, actual startup
+capture, CLI types/lint/package refresh pass. Repeat-build revision/cache assertions pass in a 64.02s
+diagnostic run; its original 60s aggregate-budget failure remains a B6/final-gate item. See
+[environment evidence](../evidence/build-input-snapshot-proof.md#initial-environment-identity-checkpoint).
+Passive glob replay is implemented in `6c7198474`: actual TypeScript directory selection records
+native filesystem facts, with complete authored membership supplied by its existing owner. Fifty focused
+cases and real early startup pass; see [replay evidence](../evidence/build-input-snapshot-proof.md#passive-glob-replay-checkpoint).
+Watch checkpoint `268ef667b` eliminates redundant tooling discovery while preserving build-time byte
+verification. All 24 affected integration cases pass with two workers; no timeout changed. The
+external-types budget remains tight and no broad/strict pass is claimed; see
+[watch repair evidence](../evidence/build-input-snapshot-proof.md#compilerwatch-integration-repair-2026-10-17).
+Common native input ownership is implemented in `0434a0703`: capture/replay now lives in the host
+build layer, with no compiler activation or import-time filesystem interception. Eighty-two focused
+checks, actual bundled startup, host/CLI types, lint and package refresh pass; see
+[common-owner evidence](../evidence/build-input-snapshot-proof.md#common-native-input-owner-checkpoint).
+Completed-frame replay repair `2d7dd140c` now honors explicitly consumed generated bytes without
+expanding authored membership. Its regression failed on unchanged input before the fix; 52 affected
+cases, passive replay and host/CLI types pass. See
+[generated-input evidence](../evidence/build-input-snapshot-proof.md#explicit-generated-input-replay-checkpoint).
+B4 source checkpoint `0192d2819` publishes completed input observations and recorded package/compiler/execution context in
+`dist/build-inputs.json`, sealed by the existing output receipt. Reused phases retain their prior input
+facts; passive replay uses common native ownership and installed staging omits source metadata. Real
+repeat publication preserves phase reuse, sealed revision and cleanup (50.00s); 100 affected cases,
+110 layout/receipt cases and host/CLI types pass. See
+[completed-record evidence](../evidence/build-input-snapshot-proof.md#completed-source-inputoutput-association-checkpoint).
+The frontend metadata reader now derives shared SDK owners from `getSdkFeModules()` and retains UI's
+dynamic exports; it does not adopt backend EARS sharing. The six shared-package rule cases and eight
+builder cases pass, alongside CLI types/lint; see the same evidence record.
+Frontend output checkpoint `0e84bd67c` retains actual Vite emissions and public copies through final
+sealing, including CSS/lazy/worker/maps and placeholder replacement. Missing required output refuses
+the real candidate and retains its incumbent directory. See
+[frontend output evidence](../evidence/build-input-snapshot-proof.md#frontend-output-expectations-checkpoint).
+Content-output checkpoint `72435c778` feeds compiled JSON, the index and regular media bytes into that same
+expectation owner. The real post-compilation media-deletion case refuses publication and retains its
+incumbent; SDK/CLI types, 23 focused checks and all 28 SDK API reports pass. See
+[content output evidence](../evidence/build-input-snapshot-proof.md#content-and-media-output-expectations-checkpoint).
+Writer-output checkpoint `d4e24d4b5` feeds native backend/content/step bundles, rendered facade/helper/DSL
+declarations, metadata and reused-phase files into that same final check. Reuse verifies the prior receipt's expected bytes before copying.
+Twenty-eight unit/passive cases, six DSL cases, three actual native compiler cases, host/CLI types and
+lint pass. Two real builds preserve reuse/revision/cleanup in 65.20s; see
+[remaining writer evidence](../evidence/build-input-snapshot-proof.md#remaining-writer-output-expectations-checkpoint).
+This implements B4's supported file-writer coverage. Its final acceptance still depends on the retained
+B1/B3 ownership/lifetime requirements and converged checks. B5's prebuilt-test checkpoint `c70f37c3b` now verifies
+the sealed output, replays completed source/dependency observations and requires a recorded `--release`
+option when the invocation requests it. Its comparison context is the selected build's captured
+compiler/execution context, not the Playwright runner's unrelated environment. A real default-setup
+build now publishes that record and passes prebuilt acceptance; a release invocation refuses that
+development output. Default-fork checkpoint `6a4f68602` checks the selected shipped build's completed inputs
+and pins its prepared archive digest and checksum bytes. Its context is that selected build's recorded
+compiler/options; preparation still builds the fork normally. Full preparation/cache/app acceptance
+remains open. Archive checkpoint `8058fd1a2` verifies the completed record under its build lock and replays inputs again
+after creating a temporary archive, before replacing published files. Its default output is
+`.apack/archives`, outside authored inventory; custom output should remain under `.apack/` or outside the
+pack. The comparison context is the selected build's recorded compiler/options, not the archiving process.
+Archive-based tests compare the candidate's verified published-file hashes to that same captured
+receipt and recheck its inputs at installation acceptance. Without local dist, explicit archives retain
+independent source-free verification; a release invocation requires local release output for comparison.
+Drive verifies the default pack's output/record and warns without preventing deliberate stale use.
+The app-runtime timestamp nudge remains separate; it is not a pack freshness authority. The obsolete
+pack timestamp checker and archive mtime comparison are removed. Focused acceptance, types and lint
+are recorded in the evidence; no converged strict or final `--all` pass is claimed.
+The real default build and archive pass; archive takes 19.39s and its unchanged assertions now live in
+the integration suite rather than exceeding the fast suite's 15s budget. External preparation builds
+both fixtures and passes 38 contract cases, but the fresh fork's archive exposed a source namespace
+defect: native root-directory observations included the not-yet-published dist entry. Native directory
+and cursor reads now apply the same source exclusions as module resolution; explicit output-directory
+reads retain their full observations. A small case fails before the fix and passes afterward. The actual
+worker now proves fresh publication, archive acceptance and unchanged repeat-build reuse in 61.51s.
+See [fresh directory evidence](../evidence/build-input-snapshot-proof.md#fresh-publication-directory-namespace-repair).
+Generic acceptance repair `f8fbbedf5`: adapted the generic portions of `d5845c96f` without merging research work.
+The watcher mock now supplies the current factory; build stamps declare the two transitive input
+modules; synthetic packs include required frontend/content files before sealing. The content compiler
+failure fixture no longer declares an unrelated nonexistent source. All 155 affected fast checks pass.
+The three-build replacement/cache case passes its assertions in 59.27s alone and exceeds 60s alongside
+focused checks; it now has a named 120s exception, alongside the two existing 120s scenarios. This does
+not resolve compiler cost or the earlier aggregate integration deadline. See
+[generic acceptance evidence](../evidence/build-input-snapshot-proof.md#generic-acceptance-repair).
+B5 real handoff acceptance now passes on source `895143b7b`: default build, fresh fork build/archive,
+cached preparation verification and all four isolated app launches (two-window replacement/dev reload,
+fork restart, removed-pack boot and restored-pack boot). The old external fixture correctly refused
+before startup for stale compiler observations; rebuilding that fixture allowed the complete lifecycle
+to pass. App bundles were refreshed because they inline changed host code. See
+[real handoff evidence](../evidence/build-input-snapshot-proof.md#real-default-fork-handoff-acceptance).
+Ordinary compiler-worker filesystem observations and one-shot settlement are implemented in
+`c7d5603c5`. A real content compiler previously published an external worker-read value that freshness
+did not track; the regression now passes for explicit termination, natural exit with explicit options,
+nested workers and a background worker. A CPU-blocked worker refuses publication and preserves the
+incumbent. Existing native preload/loader and builder cancellation checks pass. See
+[worker ownership evidence](../evidence/build-input-snapshot-proof.md#compiler-created-worker-input-ownership).
+Watch continuity and repair are implemented in `77e4bffc5`: typed capture probes feed existing
+subscriptions after successful and failed compilers; the common record supplies additional native
+freshness checks. A real external retarget fails without replacing the incumbent, then creating its
+missing file publishes the repair without authored edits. Recursive directory probes, original source
+paths, close cancellation and native termination semantics are covered. See
+[watch evidence](../evidence/build-input-snapshot-proof.md#worker-watch-continuity-and-repair).
+Native package-relative library ownership has source checkpoint `6710e3026`: extensionless file-path imports
+capture the selected addon's owning package through the existing native input reader. An actual macOS
+addon/library test and public build prove copied-byte execution and passive changed-input refusal;
+see [native-library evidence](../evidence/build-input-snapshot-proof.md#package-relative-native-library-ownership).
+Absolute external-library loading remains a demonstrated gap; other-platform lifetime behavior remains
+unverified. The B1/B3 closure register above owns the support decisions and finite acceptance work;
+neither item has an approved exclusion. Do not grow this repair into an incidental binary
+relocation framework or make all independent work wait on that design decision. A1's API-route
+inventory/prototype can proceed using the already implemented catalog and caller binding.
+Focused tests, types/lint and the actual public build pass. One strict chain was deliberately stopped
+during external authoring after its completed package/report/type checks passed; it is not a strict pass.
+Its exact evidence and terminal cleanup are recorded at the link above. A1's first interface slice is
+committed as `b39c189b8`: host onboarding is separate from appData administration, with owning-engine,
+actual reset/restore, published-pack action and type/report acceptance. See
+[onboarding evidence](../evidence/settings-and-pack-contracts.md#onboarding-api-separation-2026-10-17).
+A1's combined codegen/host-binding/provider/lifetime/action prototype now passes; see
+[prototype evidence](../evidence/settings-and-pack-contracts.md#consumed-service-prototype-2026-10-17).
+The A2 declaration/codegen foundation is committed as `1a0de64fb`: shared grammar/host baseline,
+direct provider ownership/selection, build validation, schema assistance and catalog preservation pass.
+See [declaration evidence](../evidence/settings-and-pack-contracts.md#consumed-service-declaration-foundation-2026-10-17).
+A2's pre-import/admission and read-only validation/inspection checkpoint is committed as `558b42220`.
+Missing/disabled/invalid providers, direct ownership, dependency versions and nested requirements are
+checked from catalog data; poisoned consumer modules remain unexecuted. See
+[admission evidence](../evidence/settings-and-pack-contracts.md#consumed-service-admission-2026-10-17).
+A3 root retirement is implemented in `3ccd27614`: retained generated roots cannot regain settings
+authority after rebind, and cleanup failure still refreshes the exported root. See
+[root lifetime evidence](../evidence/settings-and-pack-contracts.md#generated-service-root-retirement-2026-10-17).
+A3 core binding/filtering/lifetimes are implemented in `cccc12d5d`: backend `bindServices` receives
+the host-selected facade, types select the same APIs, accepted provider/host generations guard
+retained methods and nested objects, and inference agent methods retain their lifetime. Registry-local
+mock overrides cannot expand the selection or cross registries. The coordinator still owns caller
+retirement after actor cleanup; scheduling failure revokes immediately. See
+[core binding evidence](../evidence/settings-and-pack-contracts.md#selected-service-bindings-2026-10-17).
+A4 service/action routes are implemented in `bb6df4a45`: the public ambient SDK service value is
+removed, ActionService/LLM use generated bindings, and action logger/emitter views preserve accepted
+selection, lifetime and sender labels. Root flows capture the action factory once; child flows inherit
+it. Scoped settings and registry-owned harness overrides retain their contracts. Actual shipped-pack
+action, inference, onboarding and reset cases pass; see
+[action access evidence](../evidence/settings-and-pack-contracts.md#bound-action-access-and-ambient-route-removal-2026-10-17).
+The named B4/B6 marker mutation is reproduced and repaired in `caf57cb0e`; see
+[generation cache evidence](../evidence/settings-and-pack-contracts.md#generation-cache-ownership-2026-10-17).
+A4 content-target validation already uses the normalized entity registry; retain its checks rather than
+reimplementing it. Authoring acceptance on source `1fbc1e223` passes: default build, standalone facade report with
+preserved build freshness, five dependent runtime cases, seven unchanged harness cases, and the real
+external authoring contract (38 fixture cases, bundled UI build/typecheck and default-fork archive).
+`45f2a3458` gives the dependent fixture real generated registration/bindings; `1fbc1e223` types a
+scheduler test double from its provider without granting the consumer unused APIs. See
+[current authoring evidence](../evidence/settings-and-pack-contracts.md#current-build-service-authoring-acceptance-2026-10-17).
+The app run then passed 26 cases, including fork reload, and exposed premature caller retirement
+when disabling default-setup. `3769e930f` fixes that owner mismatch; 64 focused cases and the actual
+formerly failing disable/remove/replace/restore window pass. See
+[teardown evidence](../evidence/settings-and-pack-contracts.md#disabled-caller-retirement-2026-10-17).
+The two-core checkpoint stopped at `typecheck:api` after 24.7s: four API composition test files still
+used dynamic imports of the removed ambient SDK service value. `5f5970e6e` migrates those tests to
+bound host ports/engine/registry and the baseline emitter. All 30 affected cases, all three API typecheck
+projects and focused lint pass. See
+[API test migration evidence](../evidence/settings-and-pack-contracts.md#api-composition-test-migration-2026-10-17).
+The resumed two-core checkpoint then passed the current default build, facade, all reached type/schema/
+export/specifier/tier/lint checks and external contract/fork preparation, but failed packaged authoring:
+the generated demo service called inference without declaring it. `a0911a017` adds `host/inference`
+to that fixture and checks authored types before running its unit tests. Its retained tarball-installed
+workspace passes types and all seven harness cases. See
+[packaged fixture evidence](../evidence/settings-and-pack-contracts.md#packaged-inference-declaration-2026-10-17).
+The corrected complete author half passes in 263s and its app half in 21s, including both browser
+cases, offline database export and no workspace symlinks. Logs:
+`/private/tmp/apack-packaged-consumption-author-full.log` and
+`/private/tmp/apack-packaged-consumption-app.log`. The two-worker host pool completed with 5,323
+passing cases, one failed case and one collection failure. `1f5db11c6` repairs the API composition mock
+and nonexistent docs-index link; all 21 affected cases pass. The pack pool completed with 881 passing
+cases and eight failures in four files: tests inspected lifetime-bound service handles as raw spies or
+expected raw object identity. `df1a937a8` retains the original spies for assertions while executing through
+the guarded services; all 17 affected cases, pack types and focused lint pass. Neither focused repair
+is a single converged pool pass. The previously unexecuted integration pool reached its 600s suite deadline on two workers
+(`/private/tmp/apack-service-integration-pool.log`). Before termination it reported scaffold and linked
+Tailwind watcher case deadlines plus an overly specific stale-archive diagnostic assertion. The
+scaffold and linked Tailwind scenarios now pass together on two workers in `545054877`:
+three selected cases pass in 108.70s, including the feature-build prerequisite. The scenario-specific
+120s exceptions retain every assertion and both 20s watcher waits; actual scenario times are 59.76s
+and 65.45s. `1ad1c8c12` also accepts both exact valid stale-archive diagnostics. Local concurrency is
+accepted, but the aggregate 600s suite timeout and remaining integration files are unresolved. Do not repeat the broad pool for
+diagnosis or treat the generic timeout message's historical 60s estimate as evidence of a deadlock.
+The bounded cost diagnostic is complete: `858120200` removes duplicate namespace-admission work;
+actual captured-resolution cases pass, but whole-build/aggregate capacity is not claimed improved.
+`ac964c348` makes pool output live and integration fail at its first failure, retaining verdict and
+coverage rules. See [cost and failure evidence](../evidence/settings-and-pack-contracts.md#bounded-compiler-cost-and-early-failure-checkpoint-2026-10-17).
+The [public contract audit](../evidence/settings-and-pack-contracts.md#public-contract-documentation-audit-2026-10-17)
+aligns current default selection, static versus executable contributions, caller-bound services,
+migrations, settings and shell-test guidance with inspected implementation. Manifest decision 12 now
+records catalog-based selection as the explicit replacement for registration-order selection.
+The subsequent converged two-worker attempt reached 600s with three publication-file failures:
+one help-case timeout and two resulting cwd/temporary-directory failures. `a8531f54d` removes global
+cwd mutation, skips unrelated frontend work in the help-only case, and forwards `--bail=1` through the
+pool CLI because root configuration was not inherited by independent projects. All 14 affected cases
+and 62 pool checks pass; the real separate-project/control proof and types/lint pass. See
+[repair evidence](../evidence/settings-and-pack-contracts.md#project-fail-fast-and-publication-test-isolation-2026-10-17).
+The broad run remains incomplete. Do not repeat it for diagnosis: aggregate execution/budget must be
+resolved before another whole-pool attempt. `b366ae4d5` also corrects the historical healthy-cost diagnostic and isolated retry reports: neither
+elapsed time nor a passing retry identifies the original cause. All 185 affected checks and types/lint
+pass; [diagnostic evidence](../evidence/settings-and-pack-contracts.md#evidence-only-timeout-and-retry-diagnostics-2026-10-17).
+No budget is changed and no broad rerun follows. Next: resolve native/platform and aggregate validation boundaries, then finish converged
+acceptance, the final requirement audit and strict gate. Do not
+repeat the accepted tarball producer just to restate its status. No whole-gate pass is claimed from the focused repairs.
+After the captured pack-test edits, refreshed default-setup, both external fixtures and the fork through
+the real authoring contract. The complete external app command now passes all 27 fixture cases, the
+bundled-UI editor case and all four normal fork launch/restart/removal/restoration cases:
+`/private/tmp/apack-editor-checkpoint-external-app.log`. See
+[current app evidence](../evidence/settings-and-pack-contracts.md#refreshed-external-app-and-normal-fork-acceptance-2026-10-17).
+This is current local app convergence, not a whole strict-gate pass. Keep B1/B3 native/platform
+requirements and the final committed-source strict `--all` open. The user subsequently approved bounded
+native support in `711565757`. `cc186a0d0` enforces declared outside-library refusal for selected macOS
+compiler modules, preserving real captured relative loading, JavaScript exports fallback and repeated
+refusal. See [native checkpoint evidence](../evidence/build-input-snapshot-proof.md#bounded-macos-module-library-admission-2026-10-17).
+Startup/thread/Vite, ELF/PE and public-build acceptance remain required within that approved boundary.
+Windows validation uses the existing manual CI dispatch (`6fb4d9bcb`). The user authorized branch
+pushes and focused Windows CI on 2026-10-17. No descendant-lifetime acceptance is claimed.
+Native startup checkpoint `e6dd35d52` keeps native admission active independently of startup filesystem
+interception, reuses the package/read-tree owners, and verifies captured relative preload loading,
+changed-library freshness and incumbent retention after direct/transitive refusal. Four real addon
+cases, 79 affected unit cases, 53 tooling cases, host/CLI types and lint pass. See the
+[startup evidence](../evidence/build-input-snapshot-proof.md#native-startup-admission-checkpoint-2026-10-17).
+This is a focused source checkpoint, not the converged B6 or final strict gate. A diagnostic run also
+demonstrated inherited preloads executing without capture in checkout setup and the separate content
+runtime checker. `70101557e` fixes the checker boundary: it simulates a dependent runtime without
+compiler launch options, preventing compiler hooks from hiding unusable published bundles. The
+regression fails on the prior implementation; six runtime cases and the real ordered-preload,
+changed-loader rebuild case pass. Checkout setup precedes compiler capture; it is not an unowned
+compilation phase. See the [boundary evidence](../evidence/build-input-snapshot-proof.md#published-runtime-initialization-boundary-2026-10-17).
+Do not interpret compiler-startup acceptance as arbitrary child-process coverage. Retained frontend
+and other-platform native acceptance, ELF/PE, loader-environment semantics, Windows lifetime ownership and the converged/final
+gates remain open. Next, reconcile native initialization with retained frontend generations while
+preserving live authored HMR and checking the existing generation owner before adding machinery.
+`abdcb7c95` fixes one inspected frontend identity omission: the reuse signature now includes effective
+ordered Node options with the same source-condition filtering as launch. Its regression fails before
+the fix; nine builder lifecycle/identity checks, CLI types and focused lint pass. This closes changed
+launch-option reuse, not native preload dependency capture or all frontend initialization inputs.
+`c3b27fda7` closes the real macOS native-worker acceptance case through the existing thread owner:
+captured relative loading, changed-library freshness, direct/transitive pre-initialization refusal and
+incumbent retention pass in 38.18s. The shared preload regression also passes in 27.77s, with 53 tooling
+checks, CLI types and lint. See [native-worker evidence](../evidence/build-input-snapshot-proof.md#native-worker-library-acceptance-2026-10-17).
+A separate 0.84s native-loader experiment demonstrates that inherited `DYLD_LIBRARY_PATH` can replace
+a captured loader-relative library with an outside copy. `70480baeb` closes that demonstrated case:
+launch settings survive preload environment changes and worker creation; matching outside overrides
+refuse before addon initialization, while an unused directory is allowed and its later matching file
+invalidates freshness. The real worker/public-build case passes in 31.03s with incumbent retention;
+52 focused cases, 53 tooling cases, CLI types, lint and a targeted mutation check pass. See the
+[search-path checkpoint](../evidence/build-input-snapshot-proof.md#native-search-override-admission-2026-10-17).
+`99ca1c6af` closes direct pre-initialization insertion through build preparation and both worker launch
+owners: normal OS insertion succeeds; live outside and original-package paths refuse before launch,
+without running a real library constructor or replacing the accepted build. The real case passes in
+25.70s with 24 policy cases, 53 tooling cases, CLI types, lint and a targeted mutation check. See the
+[insertion checkpoint](../evidence/build-input-snapshot-proof.md#pre-launch-library-insertion-admission-2026-10-17).
+This does not close every loader control: inspect applicable framework/versioned/fallback/suffix
+controls and shared-cache-specific precedence before claiming the macOS environment boundary complete.
+Then finish retained-frontend initialization without freezing HMR. ELF/PE, Windows descendant
+lifetime/native execution and the converged/final strict gates remain open.
+The user authorized branch pushes and focused Windows CI. Packaging launch/exports and unit
+portability repairs now pass all seven original focused files on Windows (81 cases, seven platform
+skips) in [run 39059985521](https://github.com/spankyed/AgentBuddy/actions/runs/39059985521).
+`71e862359` preserves worker stacks; [run 39060486872](https://github.com/spankyed/AgentBuddy/actions/runs/39060486872)
+identifies ordinary realpath failing on Windows extended paths. The current coherent correction
+uses native identity across roots, package inputs, captured trees and passive readers while preserving
+root-link metadata and authored-root watch exclusions. `f42e77db9` separately isolates a pack's esbuild
+override from checkout setup. See [path-policy evidence](../evidence/build-input-snapshot-proof.md#consistent-native-compiler-path-identity-2026-10-17)
+for the focused checks and real local repeated-build proof. Run the expanded focused Windows job
+against the committed correction; worker-baseline fail-fast remains enabled. Compiler platform and
+descendant-lifetime acceptance remain open. The earlier Windows trial history is retained in that
+evidence record rather than another live task list.
+The local two-core integration run against `e8940bb6d` reached its unchanged 600s deadline after
+eight files / 474 cases passed, including all seven native-library cases; the pool remains incomplete.
+See [launcher and pool evidence](../evidence/build-input-snapshot-proof.md#windows-package-launcher-and-local-integration-checkpoint-2026-10-17).
+Do not repeat this broad run to diagnose the Windows launcher or count it as B6/final acceptance.
+
+The single two-core strict run failed preparing the default-pack fork: the build observation for
+`src/__generated__/.inputs-hash` no longer matched, and the chain also invalidated default-setup's
+output stamp. The external fixture's 38 checks and real packaged-authoring author half passed first;
+app halves, unit pools and integrations did not complete in that run. This is a named B4/B6 freshness
+acceptance gap, not permission to weaken strict validation. The focused reproduction now proves the actual writer: standalone generation changes only its
+compiler-specific stamp, which previously lived among consumed generated modules. The stamp now lives
+in `.apack/generate-entries.json`; generated-byte changes still invalidate builds. The real default/fork
+path now passes on the repaired committed source; strict convergence still needs acceptance. Retain the explicit B1/B3 gaps and incomplete gate. Finish affected integration
+acceptance on two cores before repeating a broad gate. Do not rebuild
+the accepted default/fork handoff again unless its inputs change or a named coverage gap requires it.
+Reconcile
+the finite native/platform lifetime boundary against supported compiler operations before closing B1/B3. Preserve required external-library and
+platform/thread-lifetime acceptance;
+preserve the now-accepted namespace cases without starting another resolver or observation framework. Preserve
+B2's accepted owner and browser proof; do not schedule another frontend generation implementation.
+Then complete B4–B6 and all-kind acceptance. Asset input/output completeness remains required under B1/B4,
+not a deferred follow-up or another discovery store. All three Phase 6 workstreams remain required. Do not restart implemented endpoint
+or navigation work, or rerun a broad gate to investigate the preserved integration failures.
+
+1. Phase 4 entity destinations/caller migration and Phase 5 containment are implemented and locally
+   accepted. Retain their checks for final verification rather than schedule another implementation.
+2. Close the remaining discovery inventory: classify supported registration fields, native declarations,
+   events and static assets; identify actual reader/loader gaps and finish those migrations. Each slice
+   names the declaration, binding and publication guarantees it consumes. A producer dependency blocks
+   only the affected slice, not all installed-data readers.
+3. Complete B1–B6. Before changing B1 or B3, record a finite matrix of supported paths, existing owners,
+   concrete uncovered requirements and the check that closes each gap. Review existing implementation
+   first; do not treat an audit heading as authorization for another general capture/resource framework.
+4. Implement consumed APIs and close the actual remaining provenance/replacement gaps. Reuse landed
+   ownership, inspection and replacement behavior rather than replaying historical plans.
+5. Complete Phase 7 across the entire preserved scope using the acceptance register below.
+
+Before each checkpoint, record its concrete change, acceptance cases and dependency. Close it with
+source/evidence before selecting another. A newly found concern must name the observed defect or
+required acceptance gap, the existing requirement it serves, and a finite exit condition. An existing
+requirement remains required even before a failing reproducer exists; investigating it is not permission
+to implement an unlimited generalization. Proposals expanding the agreed scope require an explicit user
+decision. Keep research hypotheses separate from demonstrated defects and required acceptance checks.
+
+Keep detailed historical logs in [the evidence record](../evidence/settings-and-pack-contracts.md) for traceability. Update this ledger when a checkpoint closes;
+do not append a new competing live backlog or repeatedly copy all remaining work into every evidence
+entry. No scope is dropped, validation weakened, deferred work revived or implementation certified by
+this documentation change.
+
+### Final acceptance register
+
+This is the cross-phase closure checklist. Subsystem plans retain their detailed cases; link existing
+coverage and source evidence here as each row converges, recording missing checks explicitly. A row
+with missing or indirect evidence remains open. Existing local passes need not be rerun separately
+before the final gate unless their inputs or asserted behavior change. This register does not replace
+required checkpoint validation or the final committed-source strict `--all`.
+
+| Scope | Required closure evidence | Current disposition |
+|---|---|---|
+| Foundation and manifest | Complete supported-field classification; all 17 consolidation decisions and both naming outcomes; generated EARS typed/untyped behavior, ownership, canonical writer, schema/API reports and external authoring | Implemented checkpoints exist; final cross-phase audit pending. |
+| Settings | Host, pack and feature ownership; same-name groups, shared/restricted policy, disabled/failed owners, reset/import, custom forms and multiple windows | Current five host-only window cases and complete 27-case external app suite pass, including import, two assistant groups, restricted dependency credentials, custom forms and cross-window edits. Preserve the existing unit/failure cases for final strict acceptance. |
+| Discovery | Every supported kind/native field and static asset; source-free poisoned pack/dependency inspection, inactive owners, collisions, atomic updates and checked bindings; no activation/user-data writes | Reconcile remaining readers/fields and all-kind evidence through the closure checklist below; do not infer a defect from an old partial label. |
+| Editor and content | Actual Monaco worker/cold document and typing through replacement; shared-library disposal; static flow edges, rename/missing-target diagnostics and honest dynamic status | Local producer/reader checks exist; close the named real-window, worker and flow-reference cases below. |
+| Build ownership/freshness | Finite B1/B3 path matrices, frontend generation replacement/HMR, atomic successful input/output association, four passive consumers, preserved failure retention and deterministic reuse | B1–B6 remain partial; preserve failed run evidence and diagnose exact cases. |
+| Entity navigation | Build-checked destinations, conflicts/disabled/missing/retired delivery, typed guard, complete caller migration and stored-reference Electron case | Locally accepted through `95ff95ab3`; retain the complete handler, cancellation and real-window evidence for final acceptance. |
+| Frontend containment | Pane/form failures preserve other panes, host settings/defaults; retries reject retired instances in main/popout paths | Locally accepted in `713a6c1fd`; preserve through final gate. |
+| API consumption | Audited declaration granularity, generated/runtime facade agreement, undeclared/unavailable API diagnostics, content/dependency contracts and settings policy | A1–A4 service routes are implemented through `bb6df4a45`; A4 content checks already exist. Refreshed authoring/harness and complete external app/fork acceptance pass; A5 schema/API/export agreement passes on `b62da5c72`, with public guides and templates reconciled; see [agreement evidence](../evidence/settings-and-pack-contracts.md#a5-schema-and-api-agreement-2026-10-17). Converged and final strict acceptance remain open. |
+| Provenance/replacement | Exact origin/version/content through reuse/inspection; explicit linked development; fork restart/reload, managed updates, disable/remove/restore, override retention and failed-publication incumbent | Substantial source exists; reconcile exact origin, reuse and replacement cases through the closure checklist below and linked plans. |
+| Final committed tree | Requirement-by-requirement audit, reviewed schema/API/docs/templates, required strict `--all` and real authoring/app checks on recorded committed source | Outstanding; archive only after every row is proven. |
+
+### Discovery, editor and provenance closure
+
+Use this checklist to reconcile the register above against current code before scheduling repairs.
+For each row, record the implementation path/source commit, existing test/evidence links, exact missing
+work (or none), and result in the existing subsystem evidence record. Distinguish a demonstrated defect
+from unverified acceptance. An old “partial” label is not evidence that implementation is still missing.
+
+| Closure item | Existing implementation to reconcile | Pass condition / missing evidence to resolve |
+|---|---|---|
+| Discovery readers and fields | Common catalog and reader migrations; current registration/native/snapshot field inventory rechecked | Supported registration-field classification is closed in the [current audit](../evidence/settings-and-pack-contracts.md#registration-and-reader-closure-audit-2026-10-17). Lifecycle, offline schema, CLI and UI metadata use accepted declarations; activation eligibility is separate. Final all-kind and asset/producer acceptance remain required; no new duplicate reader is identified by this audit. |
+| Installed discovery and replacement | Verified build admission, checked bindings and catalog publication | Every supported kind remains inspectable with authored sources absent and throwing executable entries unimported. Disabled/failed owners remain explainable; collisions name owners; invalid replacements retain accepted metadata/bindings. Inspection writes no user data. Reuse existing per-kind proof and add only uncovered cases. |
+| Compiled flow references | Static index/reader checkpoint `7196d61d3`; actual source-free external build inspected at `df1a937a8` | Local acceptance closed: verified external output reports two incoming memo-action edges; rename/removal analysis retains those edges as `not-indexed`. Existing computed/unavailable cases remain explicit. See [external flow evidence](../evidence/settings-and-pack-contracts.md#source-free-external-flow-inspection-2026-10-17). Final committed-source gate remains required. |
+| Cold editor and worker readiness | Catalog-driven composition `8863043a6`; compiled DSL readers/offline Monaco; real worker acceptance `d1c38bc58` | Local acceptance closed: cold document gains actual worker completions from a disabled source-free build; replacement changes completions/diagnostics without replacing its model or losing typed draft/selection. Removal yields missing-provider diagnostics. See [window evidence](../evidence/settings-and-pack-contracts.md#real-cold-monaco-worker-and-editor-lifetimes-2026-10-17); preserve for the final gate. |
+| Editor replacement and shared-library lifetime | Generation-checked composition and owned DSL libraries; five real host-only window cases pass at `d1c38bc58` | Monaco local acceptance closed: typed document/model/selection survive replacement and shared assistance survives one editor closing; Tiptap activation/removal preserves draft/selection/update count. Compiler five-build publication/refusal/reuse/removal is locally accepted in `3913fe196`, with explicit invocation-versus-published identity and a measured per-case deadline. Preserve for final all-kind/strict acceptance. |
+| Dependency origin and inspection | Immutable cache/admission `ff4358588`, read-only inspection `d6fa2c6dc`; current reader/producer audit | Local acceptance closed: cache reuse retains original origin/version/content, differing repositories cannot reuse one another's cache, changed same-version builds retain prior paths, and explicit links remain identifiable. Existing real producer/consumer inspection survives source removal without cache writes or activation. See [provenance reconciliation](../evidence/settings-and-pack-contracts.md#dependency-provenance-closure-audit-2026-10-17). Final strict acceptance remains required. |
+| Dependency/replacement consistency | Existing receipt admission, common freshness record and shipped-pack replacement checkpoints | A consumer cannot mix declarations and executable bytes from different accepted builds. Failed publication preserves the incumbent; captured paths remain coherent across replacement. Reconcile restart/reload, overrides and disable/remove/restore against existing real handoff evidence before adding cases. |
+
+Close each row by linking sufficient evidence or fixing its named omission, then update the owning
+register disposition. Preserve the complete per-kind and cross-phase requirements in linked plans;
+this checklist neither replaces them nor starts a parallel backlog. Reuse accepted evidence unless
+inputs or assertions changed. Run focused checks for repairs and the required converged/final gates
+after convergence. Do not restart implemented subsystems or add frozen resolution without a concrete
+distribution requirement. API-consumption implementation continues independently where dependencies allow.
 
 ## Background (2026-10-12, at 3d389b9c8 on session/naming-contracts)
 
@@ -49,16 +810,16 @@ and validation recorded. Commit `3d389b9c8` closes that work. The settings/disco
 are already on its branch; use that completed state or a later integration containing it as the baseline.
 Do not restart naming implementation or require ongoing synchronization with the finished branch.
 
-The settings and discovery designs are reconciled but remain unimplemented. Five work items remain:
+At kickoff, settings and discovery were designed but unimplemented. That historical baseline comprised
 shared foundation, settings, full discovery, navigation/fault boundaries, and API consumption/provenance/
-replacement. The last item contains three distinct deliverables. Audit current paths and interfaces
-against the completed naming result; historical surveys in the linked plans are not current-code claims.
+replacement. The live ledger now distinguishes landed implementation from unfinished work and final
+verification. Historical surveys in the linked plans are not current-code claims.
 
 ## Decisions
 
-1. **One isolated working branch.** Fork the completed naming baseline in a dedicated worktree.
-   The user explicitly authorized branching/worktree creation and incremental commits for execution.
-   Naming integration is a kickoff prerequisite, not an ongoing workstream.
+1. **One working branch in the main checkout.** The initial isolated branch was forked from master.
+   The user then promoted it to the main checkout; continue there on `session/settings-pack-contracts`.
+   Naming integration is a kickoff prerequisite, not an ongoing workstream. Commit incrementally.
 2. **One shared foundation.** Inventory all supported contribution kinds before designing the catalog.
    Extend the existing snapshot/build pipeline, with settings as the first catalog projection. No second
    authored inventory, settings-only catalog or runtime fallback for missing declaration metadata.
@@ -75,8 +836,9 @@ against the completed naming result; historical surveys in the linked plans are 
    None is silently dropped because the settings/discovery work is substantial. Strong security isolation,
    general lazy activation and speculative package-manager work remain outside this goal.
 7. **Contracts are maintained when they change.** Migrate all owned callers, fixtures, templates and public
-   docs at each checkpoint; regenerate affected schemas/API reports then. Stored user data requires
-   idempotent migration under the repository's current migration rules; code needs no compatibility aliases.
+   docs at each checkpoint; regenerate affected schemas/API reports then. There are no users to support
+   through old-format compatibility. Normal boot/import use the current settings contract only; the
+   developer backup is a separate explicit operation if conversion proves necessary.
 
 ## Working setup and checkpoint workflow
 
@@ -88,15 +850,11 @@ with preserved history, verify ancestry. If squash/rebase changed its commit ide
 commit and verify the resulting contracts and archived validation instead of insisting on the old SHA.
 Master is a suitable base once that integration has landed; do not branch from a tree missing naming.
 
-Create the dedicated worktree through the repository session workflow:
-
-```sh
-npm run session:new -- settings-pack-contracts <pinned-base-commit>
-```
-
-Continue all edits, validation and commits there with its own dependencies and outputs. If the name is
-already in use, resume the matching goal worktree or choose an unused explicit name. Preserve other
-checkouts' uncommitted work. The goal doc must be committed and present in the selected starting tree.
+The initial branch and worktree were created from master `d7e77829a`. On 2026-10-12 the user promoted
+this goal into the main checkout at `/Users/spankyed/Develop/Projects/AgentBuddy`, keeping the branch
+`session/settings-pack-contracts` and its commits. Continue there; do not create another worktree merely
+because the original kickoff used one. Preserve unrelated concurrent work and use isolation only when
+requested or clearly necessary under CLAUDE.md. The promotion supersedes the original worktree requirement.
 
 If an existing goal branch lacks naming, integrate the completed commits once through the repository's
 `session:check` workflow before implementation. Resolve conflicts and validate the combined candidate,
@@ -105,8 +863,16 @@ then incorporate only the tested result. No repeating naming-branch fetch/merge 
 ### Each implementation checkpoint
 
 Run focused checks and the required checkpoint validation, inspect the staged diff, and commit a usable
-logical change before starting the next. Record its commit and evidence in Progress. Large phases have
+logical change before starting the next. Record its commit and validation in [the evidence record](../evidence/settings-and-pack-contracts.md), then update the live ledger. Large phases have
 multiple checkpoints; Phase 6's three workstreams each have their own commits and evidence.
+
+Follow [bounded validation](../../CLAUDE.md#keep-validation-bounded). Define the checkpoint's claims
+and checks before its broad run. Diagnose failures from preserved logs and the smallest reproducer;
+after a fix, run the failing case and affected suite. Another broad run needs a stated coverage gap or
+the required converged checkpoint/final gate, not reassurance after each edit. An unexplained recurring
+failure stops broad reruns: report the exact blocker and next diagnostic action. Do not expand the
+implementation into unrelated test infrastructure or performance work without an explicit scope decision.
+Required gates and the final committed-source strict `--all` acceptance remain required.
 
 Apply settled naming rules to new interfaces as ordinary implementation review. If separately authorized
 integration work later becomes necessary, follow CLAUDE.md's pinned integration validation; the completed
@@ -116,9 +882,10 @@ naming branch is not an automatic source of future changes.
 
 ### Phase 0 — Isolate the work and establish the baseline
 
-Create the worktree from a committed state containing completed naming and this goal. Inspect the
-linked plans against that code, record current contribution/setting entry points, and verify the naming
-baseline once. Use existing isolated fixtures for stored-data and app checks.
+Establish the branch from a committed state containing completed naming and this goal. The initial
+worktree setup is complete and the branch is now promoted to the main checkout. Inspect the linked plans
+against that code, record current contribution/setting entry points, and verify the naming baseline once.
+Use existing isolated fixtures for stored-data and app checks.
 
 **Done when:** the branch/worktree and source SHA are recorded, setup succeeds, source work is untouched,
 and baseline failures or stale survey claims are investigated and accounted for before affected work starts.
@@ -142,18 +909,44 @@ and failed rebuilds are covered before consumer migration. Mutation checks prove
 ### Phase 2 — Complete settings ownership and interfaces
 
 Implement the remaining [settings architecture](../plans/settings-architecture.md) checkpoints in
-reviewable slices: host app ownership and migration; pack groups and handles; feature-schema conversion;
-assistant lifecycle separation; window runtime; custom forms and product surface.
+reviewable slices: host app ownership and current-document validation; pack groups and handles; feature-schema conversion;
+onboarding state/preferences separation; window runtime; custom forms and product surface.
 
 Use the existing draft helper, request correlation and typed paths. Fix Projects snapshot mutation,
 disposal and stale-array writes. Validate defaults and overrides consistently; preserve orphaned overrides.
-Migrate stored documents before the new writer validates them, including import/restore paths.
+Validate the current document through the common installed catalog, including import/restore paths.
+Do not add automatic historical-format conversion; backup preflight must refuse invalid candidates
+before replacing live data.
 
 **Done when:** the settings plan's acceptance checks pass for all three owners; host settings work with
 no default-setup; disabled definitions remain readable/validated; shared/owner policies hold through typed
 and untyped supported paths; reset/defaults, restored data, custom forms and multiple windows behave correctly.
 
+### Required manifest consolidation before extending Phase 3
+
+Implement [manifest consolidation](../plans/manifest-consolidation.md) M1–M6. The original entity/shape
+ownership, relations, module-reference, lifecycle, checks, feature-description, format-key and canonical
+writing outcomes were not optional. Preserve all 17 reconciled decisions and the original phase checks,
+with explicit replacements/exclusions recorded there. M1–M6 source checkpoints are committed and audited in the evidence record. Their remaining cross-phase requirements
+continue in Phase 3; preserve the consolidated grammar while expanding other consumers. The required
+[own-key preservation correction](../plans/manifest-consolidation.md#required-own-key-preservation-correction-2026-10-15)
+closed the reopened M1 preservation condition in `29f0cc556`, before the next discovery-reader switch.
+
+**Done when:** every required consolidation row has source/validation evidence; generated EARS and
+typed/untyped behavior are preserved; unchanged authored content keeps compiled identity and ordinary
+boot/apply behavior; all native/source/installed and loosely typed readers, authoring tools, schemas,
+reports, fixtures/templates and public docs agree. Required field descriptions and canonical writing
+have explicit checks. The completed naming baseline, current format constants, existing settings
+contract and release metadata remain intact. No compatibility, inferred existence or volatility addition.
+
 ### Phase 3 — Complete discovery and remove obsolete glue
+
+The live execution ledger above owns status and execution dependencies; the discovery plan's
+[current checklist](../plans/discovery-without-activation.md#current-discovery-checklist)
+provides detailed consumer contracts, source checkpoints and remaining acceptance. Historical audits and dated
+“next/remaining” notes in this goal are checkpoint evidence, not a second current backlog; later work
+supersedes their status claims without dropping unmet requirements. Keep build-freshness consumers
+separate from discovery consumers, and retain every later phase below.
 
 Finish the [discovery plan](../plans/discovery-without-activation.md) on Phase 1's foundation. Extend
 checked binding/freshness per kind before migrating settings/details/help, shell navigation, references,
@@ -163,18 +956,25 @@ projections without deleting real execution, readiness, teardown or user-content
 **Done when:** all discovery acceptance checks pass, including poisoned executable pack/dependency entries,
 zero activation or user-data writes during discovery, disabled/failed pack metadata, ownership diamonds,
 atomic catalog updates and stale frontend completion rejection. Actual queries still execute their required
-providers. Source watch/codegen publication cannot pair new bindings with stale descriptors.
+providers. Source watch/codegen publication cannot pair new bindings with stale descriptors. Compiled
+content inventory includes static flow/action edges and named rename/missing-reference checks with
+honest dynamic-reference status. `apack pack info` shows actual contribution identities and useful
+metadata, including unbuilt/unavailable status without source-file-count substitution. Facade field,
+constant and cache naming are consistent (`facades`, `PACK_TYPES_FACADE`); missing required facades
+fail by dependency name with a rebuild remedy, preserving capability-based acceptance and DSL defs.
 
 ### Phase 4 — Entity navigation
 
-Implement [entity opening](../plans/open-entity.md) using the catalog and readiness coordinator. Prove
-short-code resolution before migrating affected callers. Declare build-checked destinations once; keep
+Implement [entity opening](../plans/open-entity.md) using the catalog and readiness coordinator. Preserve
+canonical entity IDs through stored-reference round trips before migrating affected callers. Labels and
+short codes remain presentation; do not add short-code lookup or old-format fallback. Declare build-checked destinations once; keep
 entity ownership distinct from the feature that opens an entity. Migrate callers before deleting old
 reference navigation callbacks.
 
 **Done when:** claimed eligible destinations are unambiguous; missing/disabled destinations have useful
-results; readiness delivery rejects stale revisions; stored references open the right entity, including
-short-code round trips. Required guards and the plan's focused/E2E checks pass.
+results; readiness delivery rejects stale revisions; stored references preserve canonical entity IDs
+through serialization/parsing and open the right entity even when display codes collide. Required
+guards and the plan's focused/E2E checks pass.
 
 ### Phase 5 — Frontend failure boundaries
 
@@ -183,23 +983,36 @@ canvas, panel and custom-form failures to their pane, with the catalog owner nam
 path. Keep the shell and settings runtime outside those boundaries.
 
 **Done when:** throwing contribution fixtures leave another pane and host settings usable; declarations
-and defaults survive failure; retries cannot revive unloaded artifact revisions. Do not implement process
+and defaults survive failure; retries cannot revive unloaded build revisions. Do not implement process
 isolation or change the security model here.
 
 ### Phase 6 — Finish the three contract workstreams
 
-Deliver these independently, committing each validated logical checkpoint:
+Complete these independently, committing each validated logical checkpoint. Provenance and shipped
+replacement already have substantial landed implementation; audit their remaining gaps against the
+live ledger and recorded source rather than treating all three workstreams as unimplemented:
 
 | Workstream | Implementation owner | Done when |
 |---|---|---|
 | Consumed APIs | [API consumption](../plans/declared-capabilities.md) | Actual APIs/granularity are audited; generated and host-bound facades agree; undeclared supported APIs and unavailable required providers fail usefully; content targets respect supported SDK/dependency contracts; settings policy remains intact |
 | Dependency provenance | [Manifest maturity, section 4](../plans/manifest-maturity.md#4-preserve-dependency-provenance-and-reproducibility) | Exact version, origin and content identity survive cache reuse and inspection; linked development remains explicit; differing resolutions are explainable. A new frozen-resolution mode is conditional on distribution needing it, not required speculatively |
-| Shipped-pack replacement | [Replacement](../plans/replaceable-shipped-packs.md) | Deliberate forks survive restart/reload; app-managed updates remain supported; disable, uninstall and restoration stay distinct; overrides survive; pre-publication failure retains the old artifact/catalog; activation failure does not claim rollback of arbitrary user-data effects |
+| Shipped-pack replacement | [Replacement](../plans/replaceable-shipped-packs.md) | Deliberate forks survive restart/reload; app-managed updates remain supported; disable, uninstall and restoration stay distinct; overrides survive; pre-publication failure retains the old build/catalog; activation failure does not claim rollback of arbitrary user-data effects |
 
 These share catalog identities and existing caller/refresh contracts; no new inventory or sandbox is
 introduced. Re-audit old paths, CLI refusals and install records before changing them. Settle the concrete
-consumption declaration/granularity and removal-suppression record through the linked plans' prototypes
-before implementing their dependent behavior; record the selected designs there.
+consumption declaration/granularity through the linked plan's prototype before implementing its
+dependent behavior. The removal-suppression record is already implemented; preserve its selected
+contract and test actual gaps rather than redesigning it from the old proposal.
+
+For consumed APIs, the linked plan owns the finite A1–A5 checkpoints and acceptance matrix. Record
+A1's real generated/runtime prototype and the selected API baseline, provider identities and pack/feature
+granularity before committing to syntax. At pack granularity, onboarding/administration separation limits
+what an onboarding-only pack consumes; it does not isolate features inside a pack that consumes both.
+Keep dependency selection, required-provider availability, runtime readiness and target mutation policy
+separate. A3 must prove retained methods cannot acquire replacement-runtime authority; A4 must exercise
+the actual Database, onboarding and action paths. Close A5 with schema/API/docs/template agreement and
+external runtime evidence, then retain these cases for Phase 7. Do not implement sandboxing, a new
+catalog or general lazy activation as part of this API contract.
 
 **Done when:** all three rows and their linked verification pass, with affected external-pack fixtures,
 templates and public contracts updated. No workstream is merely marked “follow up” to close this goal.
@@ -207,7 +1020,7 @@ templates and public contracts updated. No workstream is merely marked “follow
 ### Phase 7 — Final review and completion
 
 Review the entire implemented diff for correctness and completeness
-against the inventory and each plan's acceptance criteria. Fix omissions and bugs, and commit them. Check failure paths, artifact revisions, dependency ownership, import
+against the inventory, all reconciled original requirements in manifest consolidation, and each plan's acceptance criteria. Fix omissions and bugs, and commit them. Check failure paths, build revisions, dependency ownership, import
 migration, multiple windows, disable/uninstall/reinstall, and external authoring.
 
 Run focused checks as changes are made, `npm run chain` at validated checkpoints, and the full strict
@@ -222,7 +1035,7 @@ do not archive unfinished or deferred work as completed. Publishing or PR merge 
 
 ## Deferred
 
-- [Lazy activation](../plans/deferred/lazy-activation.md), including boot-performance implementation.
+- [Lazy activation](../plans/lazy-activation.md), including boot-performance implementation.
 - [Security isolation](goal-pack-security-isolation.md) and out-of-process backend execution.
 - Storage/LMDB, advisory-lock and console-transaction redesign; plugins-to-surfaces, logs extraction
   and distribution work outside the required dependency provenance contract.
@@ -232,23 +1045,21 @@ do not archive unfinished or deferred work as completed. Publishing or PR merge 
 ## Constraints
 
 Follow root and package CLAUDE instructions, including isolated test storage, bounded process cleanup,
-change-controlled typed EARS behavior and stored-data migrations. Do not touch production app data,
+change-controlled typed EARS behavior and the current data contract. Do not touch production app data,
 release metadata or unrelated concurrent work. Install dependencies and generate output independently
 in each worktree. Fix failing checks rather than relax assertions; mutation-check new contract guards.
 
 Commit usable logical checkpoints with explicit paths and reviewed staged diffs. No pushes, publishing,
-release workflows or PR operations without separate authorization. No compatibility aliases or a
-permanent legacy settings/discovery path after migrating callers and stored data. An unresolved required
-contract or failing acceptance check keeps the goal open; document blockers instead of calling it complete.
+release workflows or PR operations without separate authorization. No compatibility aliases or
+old-format settings/discovery paths, including temporary boot/import fallback or invalid-value exemptions.
+An unresolved required contract or failing acceptance check keeps the goal open; document blockers
+instead of calling it complete.
 
-## Progress
+## Evidence
 
-Record the completed naming baseline at kickoff, then implementation evidence as work proceeds:
-
-| Checkpoint | Commit | Validation / outcome |
-|---|---|---|
-| Naming prerequisite | `3d389b9c8` | Complete; verify inclusion at kickoff and record the chosen base |
-| Kickoff | Pending | Pending |
+Checkpoint history and validation logs live in [the evidence record](../evidence/settings-and-pack-contracts.md).
+The live ledger and acceptance register above own current work and closure. Preserve unresolved
+requirements recorded in that history; moving evidence does not complete or exclude them.
 
 ## Outcome
 

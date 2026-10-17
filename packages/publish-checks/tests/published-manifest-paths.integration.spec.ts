@@ -63,7 +63,7 @@ describe.skipIf(!PACKAGES_BUILT)('a published tarball', () => {
 
   /**
    * The inverse of the failure a staged tree can introduce, and the reason the source condition has nothing to
-   * resolve to here. Not "no `.ts` file", which is red on a correct artifact twice over: `@apackdev/cli` ships its
+   * resolve to here. Not "no `.ts` file", which is red on a correct package twice over: `@apackdev/cli` ships its
    * pack templates as source on purpose, and `@apackdev/ui`'s declarations are named `*.d.vue.ts`, which no
    * `.d.ts` test matches.
    */

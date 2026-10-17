@@ -178,9 +178,7 @@ describe('outgrownRungs', () => {
    *
    * `suite`'s 4x is measured end to end on `test:unit:host`, whose pool takes the whole box.
    * `test:integration` holds back half the cores and loses five workers to two — 1.94x, measured 2026-10-04.
-   * Charged 4x, every reading of it this repo has taken lands past the rung: 77s reads 103%, 101s reads 135%,
-   * against a step costing what its row says. At its own factor those are 50% and 65%, and it still fires at
-   * 155s, where it genuinely would reach the deadline on a box 1.94x slower.
+   * A synthetic 202s reading fits the 600s budget at 1.94x but exceeds it at 4x; 320s exceeds it at either.
    *
    * Pessimism is safe in a ceiling and noise in a report, and `declaredShare` is both — which is why the
    * override reaches it and never `TIMEOUT_MS[...].ms`, the number a step is actually killed at.
@@ -190,27 +188,27 @@ describe('outgrownRungs', () => {
   it("charges a width-capped member its own stretch rather than its rung's", () => {
     const capped = [step('test:integration', [], { seconds: 60, timeout: 'suite', stretches: 1.94 })];
 
-    expect(asked(capped, new Map([['test:integration', 101_000]])), 'the worst reading taken of it')
+    expect(asked(capped, new Map([['test:integration', 202_000]])), 'a reading that fits only at the capped stretch')
       .toEqual([]);
-    expect(asked(capped, new Map([['test:integration', 160_000]])).map((row) => row.name), 'and still fires')
+    expect(asked(capped, new Map([['test:integration', 320_000]])).map((row) => row.name), 'and still fires')
       .toEqual(['test:integration']);
   });
 
   /** The case this exists for: the declaration passes the bound and the measurement does not */
   it('reports a step whose measured cost passes the rung its declared cost fits in', () => {
-    // test:integration's own numbers: 60s declared is 0.80 of `suite`; 80s measured is 1.07
-    const steps = [ran('test:integration', 'suite', 60)];
-    const found = asked(steps, new Map([['test:integration', 80_000]]));
+    // Synthetic suite costs: 120s declared is 0.80 of the budget; 160s measured is 1.07
+    const steps = [ran('test:integration', 'suite', 120)];
+    const found = asked(steps, new Map([['test:integration', 160_000]]));
 
     expect(found.map((row) => row.name)).toEqual(['test:integration']);
     expect(found[0], 'both numbers, since the gap is the finding').toMatchObject({
-      declared: 60, measured: 80,
+      declared: 120, measured: 160,
     });
     expect(found[0]!.at, 'and where the measurement lands on the rung').toBeCloseTo(1.07, 2);
   });
 
   it('says nothing about a step whose measured cost still fits', () => {
-    // 67.3s is the real reading that prompted this, and it is inside the rung — 0.90, uncomfortable, not over
+    // 67.3s is the real reading that prompted this, and it is inside the rung
     expect(asked([ran('test:integration', 'suite', 60)], new Map([['test:integration', 67_300]])))
       .toEqual([]);
   });
@@ -233,7 +231,7 @@ describe('outgrownRungs', () => {
   });
 
   it('weighs each step against its own rung', () => {
-    // 40s is over `quick` (2.67) and well inside `suite` (0.53) — the rung is the unit, not the number
+    // 40s is over `quick` (2.67) and well inside `suite` (0.27) — the rung is the unit, not the number
     const found = asked(
       [ran('leg', 'quick', 10), ran('pool', 'suite', 40)],
       new Map([['leg', 40_000], ['pool', 40_000]]),
@@ -252,7 +250,7 @@ describe('outgrownRungs', () => {
    */
   describe('off the schedule the table was measured on', () => {
     const SMALLER: Machine = { cpu: 'Some Smaller CPU', cores: 4 };
-    // Inside `suite` by declaration (0.80), and four times that is not
+    // Inside `suite` by declaration (0.40), and four times that is not
     const steps = [ran('test:integration', 'suite', 60), ran('typecheck:renderer', 'quick', 10)];
     const fourTimesSlower = new Map([['test:integration', 240_000], ['typecheck:renderer', 40_000]]);
 
@@ -293,7 +291,7 @@ describe('outgrownRungs over a partial run', () => {
     step(name, [], { seconds: declared, timeout });
   const TABLE: Machine = { cpu: 'Apple M1 Pro', cores: 10 };
   const steps = [ran('test:integration', 'suite', 60)];
-  const measured = new Map([['test:integration', 80_000]]);
+  const measured = new Map([['test:integration', 160_000]]);
 
   it('still reports, because a crowded reading can clear a step and not convict one', () => {
     const found = outgrownRungs(steps, measured, TABLE.cores, TABLE, TABLE, false);

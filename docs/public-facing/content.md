@@ -2,6 +2,12 @@
 
 A pack's content is source files compiled to JSON at build time and written into the database when the pack is installed or updated. `apack.json` `content.sources` names each one.
 
+A declared specialty source (`actions`, `prompts` or `flows`) must exist; a missing path fails the build.
+Completed builds validate the content index against the manifest: compiled sources are written entries,
+datasets are non-written entries, and each has its compiled JSON file. Applier-only sources read their
+own data and have no compiled index entry. Build publication, staging and installation refuse missing
+or contradictory inventories without executing pack modules.
+
 ## The four stages
 
 A pack's content passes through four, and each has its own vocabulary. **The content is the noun. The two verbs are `apply`, which the app does, and `import`, which the user asks for.**
@@ -112,7 +118,9 @@ The compiled body of `action` runs in one sandbox, whether a flow's action step 
 
 ### Available services
 
-Actions receive a `services` object: default-setup's feature services (each is the object its `apack.json` entry names, `path#<key>Service`), the host's services, and the pack's repositories. A pack depending on default-setup gets the same object, typed by `Services` from its generated facade.
+Actions receive the accepted service view supplied by their executing pack, with an attributed logger and emitter. The default-setup action runner supplies its own declared services and selected host APIs. The tables below describe that runner.
+
+Ordinary pack source imports its own `services` and `Services` from `#generated/services.ts`: own services and the SDK baseline are implicit, while host/dependency APIs require `consumes.services`. Depending on default-setup alone does not grant its services. See [service selection](services-and-data.md#services).
 
 **default-setup's services**
 
@@ -127,11 +135,8 @@ Actions receive a `services` object: default-setup's feature services (each is t
 | `services.brain` | Ad-hoc brain event listeners (`listen`, `unlisten`) |
 | `services.scheduler` | Cron schedules for flow triggers (`registerSchedule`, `unregisterByPrefix`, `clearAllSchedules`) |
 | `services.database` | Live-data schema and topology context for AI query generation (`buildQueryContext`) |
-| `services.settings` | Settings read and write: `getAll` and `getStored`, `getSection`/`setInSection` for a registered section, and `forFeature`/`setForFeature`, which take a feature's ref (`'default-setup/code'`) |
 | `services.cli` | CLI tools: `git`, `gh`, `claudeCode`, `codex`, plus `testCli` |
 | `services.codex` | The Codex app-server (threads, turns, approvals, sessions) |
-| `services.browser` | Browser automation sessions (`createBrowser`) |
-| `services.textStream` | Chunked text streaming for simulated typing (`streamText`, `streamTextByChars`) |
 
 **Host services**
 
@@ -139,9 +144,11 @@ Actions receive a `services` object: default-setup's feature services (each is t
 |---|---|
 | `services.inference` | Model calls (`generateText`, `streamText`, `createAgent`, `embed`/`embedMany`, `generateImage`, `generateSpeech`, `transcribe`, `rerank`) with the user's provider keys; see [Inference](services-and-data.md#inference) |
 | `services.repository` | The pack's declared repositories (queries and commands); actions read and write data through them |
+| `services.settings` | Caller-bound preferences: `get(target)`, `set(target, path, value, condition?)`, `reset(target)` and `onChange(listener)`. Targets identify host app, pack-group or feature preferences; target mutation policy still applies |
 | `services.logger` | Structured logging, named `action:<label>` |
 | `services.emitter` | Typed sends to plugins and systems (`broadcastToPlugin`, and `sendToSystem` naming a system `<pack>/<feature>`, such as `'my-pack/bookmarks'`, or a role, `{ role: 'brain' }`) |
-| `services.appData` | Reset, back up and restore the app's data; whether the user finished onboarding (`hasOnboarded`, `completeOnboarding`) |
+| `services.appData` | Reset, export and import app data, and inspect backup metadata |
+| `services.onboarding` | Read and complete onboarding (`isComplete`, `complete`) without granting whole-data administration |
 | `services.traceStore` | Read flow execution records |
 | `services.secrets` | The user's API keys as metadata (`list`, `select`, `rename`, `delete`, `status`); never values |
 | `services.filesystem` | Files and folders on disk, as UTF-8 text (`readFile`, `writeFile`, `readDir`, `mkdir`, `stat`, `exists`, `rename`, `remove`) |
@@ -339,6 +346,16 @@ A flow file's default export is a `FlowDSL` (`@apackdev/sdk/build`): flow name �
 
 Every other flow runs as a subflow that a running flow spawned: default-setup's `Root Flow` spawns its long-running work modes from its entry track. An event reaches every running flow (see `fire`'s `scope`).
 
+The root also receives `client.ready` once per run after this pack's frontend has become available.
+If the frontend was already seen when a root starts or restarts, that new root receives readiness too.
+This is a lifecycle signal to that root actor, not a broadcast or a count of live connections. Reconnects
+and additional windows do not repeat it in the same run. A paused root defers the signal; replacing or
+stopping the root discards its pending delivery. A data restore leaves the root stopped until explicitly
+started. Default-setup's authored root uses readiness to check host onboarding completion and start or
+resume its onboarding workflow; a custom root need not do so. Backend flow entry can run before any
+frontend exists, when frontend sends are ignored, so presentation-dependent startup belongs behind
+readiness rather than an unconditional entry track.
+
 **A worked example of the exported form** lives in the apack repo at
 `packages/default-setup/tests/extensions/steps/__golden__/exported-flows.json` — what
 `exportFlowsToDSL` writes for a flow that uses every step default-setup registers, including a
@@ -433,7 +450,7 @@ Point your manifest at the content directories:
 
 ```json
 {
-  "boot": {
+  "lifecycle": {
     "sources": {
       "actions": "src/content/actions",
       "prompts": "src/content/prompts",
@@ -479,7 +496,7 @@ Content rows of an entity type from markdown or JSON in two parts of `apack.json
       "media": "media"
     }
   },
-  "boot": {
+  "lifecycle": {
     "sources": {
       "memos": { "path": "src/content/memos", "format": "memos" }
     }
@@ -573,7 +590,7 @@ An entry can name a format of a pack it depends on as `"<pack id>:<name>"`. It c
 ```json
 {
   "dependencies": { "default-setup": "*" },
-  "boot": {
+  "lifecycle": {
     "sources": {
       "team-notes": { "path": "src/content/notes", "format": "default-setup:notes" },
       "team-docs": { "path": "src/content/docs", "format": "default-setup:library" }
@@ -719,7 +736,7 @@ A slash command is a `/name` the chat composer recognizes. The composer's list i
 1. **The manifest**: `"commands": { "standup": { "placeholder": "Topic" } }` under `extensions` in `apack.json`, keyed by the name. They come with the pack: installing or enabling it adds them, disabling or uninstalling it takes them away. A name another registered pack declares is refused, and with it the whole pack, so `apack pack build` fails for a name one of your dependencies declares. Names are `^[a-z][a-z0-9-]*$` and unique across the app.
 2. **The library**: every document in the `internal/commands` folder, each with a field section of `**name**: placeholder` lines. Users edit those from the Library, so a pack content there what it wants them to change; default-setup content `Claude Code commands` and `Codex commands` from `src/content/library/internal/commands/`, and declares its own `pr2md` and `instructions` in the manifest.
 
-Declared commands come first, in the order their packs were first registered (a pack rebuilt or updated keeps its place); a document repeating a declared name is ignored, and a name two documents define keeps the first. The threads system sends the list whenever it is asked to publish, and only when it has changed since — so a pack changing while the app runs (installed, updated, enabled, disabled, uninstalled or rebuilt, or its content imported from Settings; the bus's `PACK_CHANGED`) or a library change alters it (a document in the folder, or the folder, created, edited, moved, renamed or deleted).
+Declared commands come first, in stable catalog admission order (a pack rebuilt or updated keeps its place). Inspection lists commands without activating their packs; the composer offers only enabled declarations matching accepted active runtimes. In the composer, a document repeating a declared name is ignored, and a name two documents define keeps the first. The threads system refreshes on catalog changes and when it is asked to publish, sending only changed lists. A pack changing while the app runs (installed, updated, enabled, disabled, uninstalled or rebuilt, or its content imported from Settings; the bus's `PACK_CHANGED`) or a library change alters it (a document in the folder, or the folder, created, edited, moved, renamed or deleted).
 
 Uninstalling a pack removes its declared commands but not the documents it wrote: they're the user's library now, so their commands stay listed, with no flow handling them, until the user deletes them.
 
@@ -730,3 +747,21 @@ Sending `/name args` fires a `user.command` event (`$.event.data.payload.command
 3. List it: add it to `extensions.commands` in `apack.json`, or add `**name**: placeholder` to a document in `internal/commands` (in default-setup, one of the files under `src/content/library/internal/commands/`).
 
 A command listed without a handler does nothing, and a handled command that isn't listed is sent as a plain message.
+
+### Inspecting compiled references
+
+`apack pack info` reads verified compiled content without activating a pack or importing authored
+modules. Its JSON output includes each collection's `references` when its compiler supports analysis.
+Flow analysis uses step declarations: `extensions.steps.<type>.dsl.references` maps a DSL field to a
+compiled content key, for example `"references": { "prompt": "prompts" }`. This also works for custom
+steps and nested branches exposed by their build facet.
+
+The index records literal targets and marks computed targets as dynamic. Human-readable inspection
+reports whether a literal target is indexed. A target missing from this index may still exist in user
+data or be created by an applier. Analysis is static and non-exhaustive; an omitted `references` field
+means analysis is unavailable, while an empty list means no known references were found. Action and
+prompt JavaScript bodies are not analyzed yet.
+
+Build tooling can use `inspectContentReferences` and `findContentDependents` from `@apackdev/sdk/build`
+for missing-target and rename/removal review. These operate on index data only and never execute a
+pack. Known incoming references do not rule out additional computed or runtime dependencies.

@@ -7,8 +7,8 @@ import { execFileSync } from 'node:child_process';
 import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
-import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { extractPackArchive, verifyPack } from '@apackdev/host/packs';
+import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest';
+import { extractPackArchive, verifyPack, PACK_LAYOUT } from '@apackdev/host/packs';
 import { parse as parseYaml } from 'yaml';
 import { callCli, typecheckPack } from '../_support/pack-builds';
 
@@ -25,6 +25,9 @@ let tmp: string;
 let pack: string;
 /** What `init` printed: it names scripts, so it is held to the same rule as the files it wrote */
 let initOutput: string;
+
+// Synchronous toolchain cases must let Vitest receive task-update replies between tests.
+afterEach(() => new Promise<void>(resolve => { setImmediate(resolve); }));
 
 function run(cmd: string, args: string[], cwd: string): { code: number; output: string } {
   try {
@@ -76,7 +79,16 @@ describe('apack pack init → add feature → build → tsc → pack', () => {
 
   it('adds a feature, builds, typechecks and packs a verified archive', async () => {
     // produces: the feature the build below compiles
-    expect((await callCli(pack, 'add', ['feature', 'notes', '--label', 'Notes'])).code).toBe(0);
+    expect((await callCli(pack, 'add', ['feature', 'notes', '--description', 'Manage notes.', '--label', 'Notes', '--designation', 'notebook'])).code).toBe(0);
+    const manifest = JSON.parse(fs.readFileSync(path.join(pack, 'apack.json'), 'utf-8'));
+    expect(manifest.features.notes.types).toBe('src/features/notes/be/types.ts');
+    expect(manifest.features.notes.description).toBe('Manage notes.');
+    expect(manifest.features.notes.settings.form).toBe('src/features/notes/fe/settings.vue');
+    expect(manifest.features.notes.designation).toBe('notebook');
+    for (const command of ['validate', 'doctor']) {
+      const result = run(process.execPath, [CLI, 'pack', command], pack);
+      expect(result.code, result.output).toBe(0);
+    }
 
     // produces: the dist files and apply JSON asserted just below
     const build = await callCli(pack, 'build');
@@ -97,6 +109,12 @@ describe('apack pack init → add feature → build → tsc → pack', () => {
     expect(packed.code, packed.output).toBe(0);
     const extracted = await extractPackArchive(path.join(out, 'demo-pack-0.1.0.tgz'), path.join(tmp, 'extract'));
     expect(verifyPack(extracted).id).toBe('demo-pack');
+    const guide = fs.readFileSync(path.join(REPO_ROOT, 'docs/public-facing/pack-builds.md'), 'utf8');
+    for (const file of [PACK_LAYOUT.manifest, PACK_LAYOUT.integrity, PACK_LAYOUT.runtimeEntry, PACK_LAYOUT.feEntry, PACK_LAYOUT.snapshot]) {
+      expect(fs.existsSync(path.join(extracted, file)), file).toBe(true);
+      expect(guide, `Missing public build path ${file}`).toContain('`' + file + '`');
+    }
+
   });
 
   /**
@@ -217,9 +235,12 @@ describe('apack pack init → add feature → build → tsc → pack', () => {
     expect(manifest.extensions.steps).toEqual({
       ping: {
         kind: 'step',
-        node: 'src/extensions/steps/ping/build.ts#pingStepNode',
-        build: 'src/extensions/steps/ping/build.ts#pingStepBuild',
-        fe: 'src/extensions/steps/ping/fe.ts#pingStepFE',
+        node: { label: 'Ping', defaultLabel: 'Ping' },
+        build: { compile: 'src/extensions/steps/ping/build.ts#compile', validate: 'src/extensions/steps/ping/build.ts#validate', getLabel: 'src/extensions/steps/ping/build.ts#getLabel' },
+        types: 'src/extensions/steps/ping/types.ts',
+        fe: { colorKey: 'indigo', nodeConfig: { icon: 'Box',
+          connectionRules: { inputs: -1, outputs: -1 }, category: 'logic', isImplemented: true },
+          components: { form: { entry: 'src/extensions/steps/ping/form.vue', load: 'lazy' } } },
       },
     });
 
@@ -232,14 +253,16 @@ describe('apack pack init → add feature → build → tsc → pack', () => {
     // typecheck: as above
     const tsc = await typecheckPack(pack);
     expect(tsc.code, tsc.output).toBe(0);
-  });
+  }, 120_000);
 
   it('regenerates entries when a source file codegen reads changes, not only the manifest', async () => {
     const servicePath = path.join(pack, 'src', 'extensions', 'services', 'cache.ts');
     fs.writeFileSync(servicePath, 'export const cacheService = {};\n');
 
     // produces: regenerates services.ts, whose content is asserted below
-    const generate = await callCli(pack, 'generate-entries');
+    // Both runs use the actual CLI's conditions; Vitest's development condition is a different input.
+    const generate = run('node', [CLI, 'pack', 'generate-entries'], pack);
+    expect(generate.code, generate.output).toBe(0);
     expect(generate.output).not.toMatch(/inputs unchanged/);
     expect(fs.readFileSync(path.join(pack, 'src', '__generated__', 'services.ts'), 'utf-8')).toMatch(/import \{ cacheService as __service_cache \}/);
     // process: the stdout a second, unchanged run prints is the assertion
@@ -296,11 +319,14 @@ describe('apack pack init → add feature → build → tsc → pack', () => {
     // The failed build left the previous one where it was: it assembles `dist` aside and renames it into
     // place, so a reader finds the build before this one rather than nothing
     expect(fs.existsSync(path.join(pack, 'dist', 'runtime', 'index.cjs'))).toBe(true);
-    // **Which is why `pack` asks whether that build is of these sources**, rather than failing for want of
-    // files as it used to. The manifest edited above is newer than the build, so this is refused and names it
+    // The incumbent build's captured manifest bytes no longer match, regardless of timestamps.
     // process: the exit code and the message are the assertion
     const packed = run('node', [CLI, 'pack', 'archive', '--out', path.join(tmp, 'stale-out')], pack);
     expect(packed.code).not.toBe(0);
-    expect(packed.output).toMatch(/build is older than apack\.json/);
+    // Either the authored inventory or the manifest bytes may be the first differing observation.
+    expect([
+      'Compiler startup input changed: ["authored-files"]',
+      'Compiler startup input changed: ["file","apack.json"]',
+    ]).toContain(packed.output.trim());
   });
 });

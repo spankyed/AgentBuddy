@@ -107,3 +107,14 @@ describe('the watch loop', () => {
     expect(state.entered).toBe(2);
   });
 });
+
+
+it('closing the runner cancels queued and future requests', async () => {
+  const { state, run } = heldRun();
+  const runs = coalescingRunner(run);
+  runs.request();
+  runs.close();
+  runs.request();
+  await vi.advanceTimersByTimeAsync(DEBOUNCE_MS * 2);
+  expect(state.entered).toBe(0);
+});

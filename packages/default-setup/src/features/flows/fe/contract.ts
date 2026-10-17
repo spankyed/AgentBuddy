@@ -11,6 +11,8 @@ import type { EARS } from '#generated/ears.ts'
 import type { EdgeEntity, NodeEntity } from '#generated/types.ts'
 
 export interface FlowsContext {
+  pendingFlow?: { call: string; flowId: EARS.EntityId; nodeId?: string; recordHistory: boolean };
+
   selectedNodeId?: EARS.EntityId;
   editingNodeId?: EARS.EntityId; // Node currently being edited
   selectedFlowId?: EARS.EntityId;
@@ -65,8 +67,10 @@ export type FlowsInboxEvent =
   | { type: 'ACTION_DELETED'; actionId: EARS.EntityId }
   | { type: 'FLOW.SELECT'; flowId: EARS.EntityId }
   | { type: 'NODE.DOUBLE_CLICK'; nodeId: string }
+  | { type: 'NODE.REVEAL'; flowId: EARS.EntityId; nodeId: string }
 
 export type Contract = {
+  opens: 'Flow'
   state: FlowsContext
   inbox: PluginInbox<{ pack: FlowsInboxEvent }>
 }

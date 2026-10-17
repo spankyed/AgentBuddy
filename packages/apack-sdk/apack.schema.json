@@ -5,11 +5,6 @@
       "type": "string",
       "description": "JSON Schema reference for editor validation."
     },
-    "$manifestVersion": {
-      "type": "number",
-      "const": 1,
-      "description": "Schema version. Enables future format evolution."
-    },
     "id": {
       "type": "string",
       "pattern": "^[a-z][a-z0-9-]*$",
@@ -22,12 +17,8 @@
     },
     "version": {
       "type": "string",
-      "pattern": "^\\d+\\.\\d+\\.\\d+",
-      "description": "Semver version string."
-    },
-    "builtIn": {
-      "type": "boolean",
-      "description": "Whether this pack is bundled with the host app."
+      "pattern": "^(?:0|[1-9][0-9]*)\\.(?:0|[1-9][0-9]*)\\.(?:0|[1-9][0-9]*)(?:-(?:(?:0|[1-9][0-9]*)|[0-9]*[A-Za-z-][0-9A-Za-z-]*)(?:\\.(?:(?:0|[1-9][0-9]*)|[0-9]*[A-Za-z-][0-9A-Za-z-]*))*)?(?:\\+[0-9A-Za-z-]+(?:\\.[0-9A-Za-z-]+)*)?$(?![\\s\\S])",
+      "description": "Complete SemVer 2.0 version (major.minor.patch), optionally with prerelease and build metadata."
     },
     "description": {
       "type": "string",
@@ -35,7 +26,7 @@
     },
     "hostVersion": {
       "type": "string",
-      "description": "Semver range for compatible host versions (e.g. \">=0.3.0\")."
+      "description": "Nonempty npm semver range for compatible host versions (e.g. \">=0.3.0\")."
     },
     "license": {
       "type": "string",
@@ -46,7 +37,48 @@
       "additionalProperties": {
         "type": "string"
       },
-      "description": "Other packs this pack depends on. Keys are pack IDs, values are semver ranges or file/URL references."
+      "propertyNames": {
+        "pattern": "^[a-z][a-z0-9-]*$"
+      },
+      "description": "Other packs this pack depends on. Keys are pack IDs, values are nonempty semver ranges, file:<path> or github:<owner>/<repo> [range]."
+    },
+    "consumes": {
+      "type": "object",
+      "properties": {
+        "services": {
+          "type": "array",
+          "items": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "host/logger",
+                  "host/emitter",
+                  "host/repository",
+                  "host/settings",
+                  "host/onboarding",
+                  "host/appData",
+                  "host/traceStore",
+                  "host/inference",
+                  "host/secrets",
+                  "host/filesystem"
+                ]
+              },
+              {
+                "type": "string",
+                "pattern": "^(?!host\\/)[a-z][a-z0-9-]*\\/[A-Za-z_$][\\w$]*$"
+              }
+            ]
+          },
+          "description": "Required service refs (provider-pack/service). Use the listed host refs for host APIs. Other providers must be this pack or direct dependencies, and must directly declare the service.",
+          "uniqueItems": true
+        }
+      },
+      "required": [
+        "services"
+      ],
+      "additionalProperties": false,
+      "description": "Supported API dependencies. Logger, emitter, repository, caller-bound settings and this pack's own services are implicit. This is not a resource permission or security sandbox."
     },
     "permissions": {
       "type": "array",
@@ -62,111 +94,163 @@
       },
       "description": "Capabilities this pack requires from the host."
     },
-    "entities": {
+    "data": {
       "type": "object",
-      "additionalProperties": {
-        "type": "string",
-        "not": {
-          "enum": [
-            "Relation",
-            "Flow",
-            "Node",
-            "TNode",
-            "Action",
-            "Prompt"
-          ]
-        }
-      },
-      "description": "EARS entity types this pack registers, each key equal to its value, the type name ({ \"Memo\": \"Memo\" }). The SDK defines Relation, Flow, Node, TNode, Action, Prompt.",
-      "propertyNames": {
-        "not": {
-          "enum": [
-            "Relation",
-            "Flow",
-            "Node",
-            "TNode",
-            "Action",
-            "Prompt"
-          ]
-        }
-      }
-    },
-    "relKinds": {
-      "type": "object",
-      "additionalProperties": {
-        "type": "string",
-        "not": {
-          "enum": [
-            "contains",
-            "transitions_to",
-            "instance_of",
-            "spawned",
-            "tracked"
-          ]
-        }
-      },
-      "description": "EARS relation kinds this pack registers. Keys are enum names, values are string identifiers. The SDK defines CONTAINS, TRANSITIONS_TO, INSTANCE_OF, SPAWNED, TRACKED.",
-      "propertyNames": {
-        "not": {
-          "enum": [
-            "CONTAINS",
-            "TRANSITIONS_TO",
-            "INSTANCE_OF",
-            "SPAWNED",
-            "TRACKED"
-          ]
-        }
-      }
-    },
-    "entityShapes": {
-      "type": "object",
-      "additionalProperties": {
-        "type": "object",
-        "properties": {
-          "source": {
-            "type": "string",
-            "description": "Source file path relative to pack root."
+      "properties": {
+        "entities": {
+          "type": "object",
+          "additionalProperties": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^([^#]+)#([A-Za-z_$][\\w$]*)$"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
-          "type": {
-            "type": "string",
-            "description": "Exported TypeScript type name for the entity attributes."
-          }
+          "propertyNames": {
+            "minLength": 1,
+            "not": {
+              "enum": [
+                "Relation",
+                "Flow",
+                "Node",
+                "TNode",
+                "Action",
+                "Prompt"
+              ]
+            }
+          },
+          "description": "Entity wire names mapped to pack-root-relative TypeScript shape exports (path#exportName), or null for untyped entities."
         },
-        "required": [
-          "source",
-          "type"
-        ],
-        "additionalProperties": false
+        "relations": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9]*(?:_[a-z0-9]+)*$",
+            "not": {
+              "enum": [
+                "contains",
+                "transitions_to",
+                "instance_of",
+                "spawned",
+                "tracked"
+              ]
+            }
+          },
+          "description": "Pack-level relation wire names; generated EARS constants are their uppercase names. Do not repeat or redeclare SDK-owned wires.",
+          "uniqueItems": true
+        }
       },
-      "description": "Maps entity type strings to their TypeScript attribute interfaces for type-safe EARS queries."
+      "additionalProperties": false,
+      "description": "Pack-level data declarations without a feature owner."
     },
     "features": {
       "type": "object",
       "additionalProperties": {
         "type": "object",
         "properties": {
+          "description": {
+            "type": "string",
+            "pattern": "\\S",
+            "description": "What this feature does, independently of its plugin display label."
+          },
+          "entities": {
+            "type": "object",
+            "additionalProperties": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "pattern": "^([^#]+)#([A-Za-z_$][\\w$]*)$"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "propertyNames": {
+              "minLength": 1,
+              "not": {
+                "enum": [
+                  "Relation",
+                  "Flow",
+                  "Node",
+                  "TNode",
+                  "Action",
+                  "Prompt"
+                ]
+              }
+            },
+            "description": "Entity wire names owned by this feature, mapped to pack-root-relative TypeScript shape exports (path#exportName) or null for untyped entities. Placement does not change wire names."
+          },
           "designation": {
             "type": "string",
             "description": "Links the system to an EARS designation."
           },
           "settings": {
-            "type": "string",
-            "description": "Path to default settings file."
+            "type": "object",
+            "properties": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": {},
+                "description": "JSON Schema draft-07 for the effective settings object; references stay within this schema.",
+                "$ref": "http://json-schema.org/draft-07/schema#"
+              },
+              "defaults": {
+                "description": "Complete explicit baseline values, validated without coercion or schema default population.",
+                "type": "object",
+                "additionalProperties": {}
+              },
+              "title": {
+                "type": "string",
+                "minLength": 1,
+                "description": "Display title for this preference group; falls back to its group ID or feature label."
+              },
+              "description": {
+                "type": "string",
+                "description": "Explanatory text shown above this group's custom settings form."
+              },
+              "form": {
+                "type": "string",
+                "pattern": "^[^#]+$",
+                "description": "Source path of the custom settings form; its default export is a component."
+              },
+              "access": {
+                "type": "string",
+                "enum": [
+                  "shared",
+                  "owner"
+                ],
+                "description": "Shared with declared dependents by default; owner restricts writes and resets."
+              }
+            },
+            "required": [
+              "schema",
+              "defaults"
+            ],
+            "additionalProperties": false,
+            "description": "Declarative feature preferences: effective-value schema and explicit defaults."
           },
-          "typesEntry": {
+          "types": {
             "type": "string",
-            "description": "Additional types to include in the generated type barrel."
+            "minLength": 1,
+            "pattern": "^[^#]+$",
+            "description": "Pack-root-relative TypeScript module whose public types are re-exported through #generated/types. Only declared modules contribute; no feature-path inference."
           },
           "system": {
             "type": "object",
             "properties": {
               "entry": {
                 "type": "string",
+                "pattern": "^[^#]+$",
                 "description": "Path to the backend system module."
               },
               "contract": {
                 "type": "string",
-                "description": "\"path#exportName\" of this system's contract: a declared type holding its context and its incoming, internal and outgoing events (SystemContract, @apackdev/sdk/framework). It lives in a leaf module of its own (be/contract.ts), so codegen reads it without running anything. Omit it for a system that sends no events."
+                "pattern": "^([^#]+)#([A-Za-z_$][\\w$]*)$",
+                "description": "\"path#exportName\" of this system's contract: a declared type holding its context and its incoming, internal and outgoing events (SystemContract, @apackdev/sdk/framework). It lives in a leaf module of its own (be/contract.ts), so codegen reads it without running anything. Omit only when there are no typed incoming or outgoing events; explicit events.incoming still declares routing additions."
               },
               "events": {
                 "type": "object",
@@ -192,12 +276,253 @@
           "plugin": {
             "type": "object",
             "properties": {
-              "entry": {
+              "label": {
                 "type": "string",
-                "description": "Path to the frontend plugin module, which default-exports the Plugin (its id, label, icon and isPinned)."
+                "minLength": 1,
+                "description": "Plugin display name used by shell navigation and menus."
+              },
+              "state": {
+                "type": "string",
+                "pattern": "^[^#]+(?:#[A-Za-z_$][\\w$]*)?$",
+                "description": "Machine module, by default export or path#exportName."
+              },
+              "icon": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "pattern": "^[A-Z][A-Za-z0-9]*$"
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "entry": {
+                        "type": "string",
+                        "pattern": "^[^#]+(?:#[A-Za-z_$][\\w$]*)?$",
+                        "description": "Pack-root-relative component module, using its default export unless #exportName selects a binding."
+                      },
+                      "load": {
+                        "type": "string",
+                        "const": "lazy",
+                        "description": "Load the component on demand; omission uses the normal eager component binding."
+                      }
+                    },
+                    "required": [
+                      "entry"
+                    ],
+                    "additionalProperties": false
+                  }
+                ],
+                "description": "Lucide icon export name or component module displayed in shell navigation."
+              },
+              "canvas": {
+                "anyOf": [
+                  {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "pattern": "^[^#]+(?:#[A-Za-z_$][\\w$]*)?$"
+                      },
+                      {
+                        "type": "object",
+                        "properties": {
+                          "entry": {
+                            "type": "string",
+                            "pattern": "^[^#]+(?:#[A-Za-z_$][\\w$]*)?$",
+                            "description": "Pack-root-relative component module, using its default export unless #exportName selects a binding."
+                          },
+                          "load": {
+                            "type": "string",
+                            "const": "lazy",
+                            "description": "Load the component on demand; omission uses the normal eager component binding."
+                          }
+                        },
+                        "required": [
+                          "entry"
+                        ],
+                        "additionalProperties": false
+                      }
+                    ]
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "routes": {
+                        "type": "object",
+                        "additionalProperties": {
+                          "anyOf": [
+                            {
+                              "type": "string",
+                              "pattern": "^[^#]+(?:#[A-Za-z_$][\\w$]*)?$"
+                            },
+                            {
+                              "type": "object",
+                              "properties": {
+                                "entry": {
+                                  "type": "string",
+                                  "pattern": "^[^#]+(?:#[A-Za-z_$][\\w$]*)?$",
+                                  "description": "Pack-root-relative component module, using its default export unless #exportName selects a binding."
+                                },
+                                "load": {
+                                  "type": "string",
+                                  "const": "lazy",
+                                  "description": "Load the component on demand; omission uses the normal eager component binding."
+                                }
+                              },
+                              "required": [
+                                "entry"
+                              ],
+                              "additionalProperties": false
+                            }
+                          ]
+                        },
+                        "description": "Canvas components keyed by the route names published by this plugin."
+                      }
+                    },
+                    "required": [
+                      "routes"
+                    ],
+                    "additionalProperties": false
+                  }
+                ],
+                "description": "Main canvas component, or an explicit nonempty map of routed canvas components."
+              },
+              "panel": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "pattern": "^[^#]+(?:#[A-Za-z_$][\\w$]*)?$"
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "entry": {
+                        "type": "string",
+                        "pattern": "^[^#]+(?:#[A-Za-z_$][\\w$]*)?$",
+                        "description": "Pack-root-relative component module, using its default export unless #exportName selects a binding."
+                      },
+                      "load": {
+                        "type": "string",
+                        "const": "lazy",
+                        "description": "Load the component on demand; omission uses the normal eager component binding."
+                      }
+                    },
+                    "required": [
+                      "entry"
+                    ],
+                    "additionalProperties": false
+                  }
+                ],
+                "description": "Context panel component shown alongside the canvas."
+              },
+              "chat": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "pattern": "^[^#]+(?:#[A-Za-z_$][\\w$]*)?$"
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "entry": {
+                        "type": "string",
+                        "pattern": "^[^#]+(?:#[A-Za-z_$][\\w$]*)?$",
+                        "description": "Pack-root-relative component module, using its default export unless #exportName selects a binding."
+                      },
+                      "load": {
+                        "type": "string",
+                        "const": "lazy",
+                        "description": "Load the component on demand; omission uses the normal eager component binding."
+                      }
+                    },
+                    "required": [
+                      "entry"
+                    ],
+                    "additionalProperties": false
+                  }
+                ],
+                "description": "Chat component supplied by this plugin."
+              },
+              "isPinned": {
+                "type": "boolean",
+                "description": "Place this plugin in the pinned toolbar group."
+              },
+              "hotkeys": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "action": {
+                      "type": "string",
+                      "minLength": 1,
+                      "description": "Action name matched against the configured keyboard shortcut."
+                    },
+                    "global": {
+                      "type": "boolean",
+                      "description": "Allow this action while another plugin is active; omission limits it to the active plugin."
+                    }
+                  },
+                  "required": [
+                    "action"
+                  ],
+                  "additionalProperties": false
+                },
+                "description": "Keyboard actions exposed by this plugin; actual shortcuts are configured in settings."
+              },
+              "options": {
+                "type": "object",
+                "properties": {
+                  "headerClass": {
+                    "type": "string",
+                    "description": "CSS classes applied to the canvas and popout header."
+                  }
+                },
+                "additionalProperties": false,
+                "description": "Shell presentation options for this plugin."
+              },
+              "fallbackPanel": {
+                "type": "object",
+                "properties": {
+                  "label": {
+                    "type": "string",
+                    "minLength": 1,
+                    "description": "Shell menu label for toggling this shared context panel."
+                  },
+                  "toggle": {
+                    "type": "object",
+                    "properties": {
+                      "type": {
+                        "type": "string",
+                        "minLength": 1,
+                        "description": "Event type sent to this plugin machine to toggle its panel."
+                      }
+                    },
+                    "required": [
+                      "type"
+                    ],
+                    "additionalProperties": false,
+                    "description": "Toggle event delivered to the panel-owning plugin."
+                  },
+                  "isShown": {
+                    "type": "string",
+                    "pattern": "^([^#]+)#([A-Za-z_$][\\w$]*)$",
+                    "description": "Named predicate export that reads this plugin snapshot to decide whether its fallback panel is shown."
+                  }
+                },
+                "required": [
+                  "label",
+                  "toggle",
+                  "isShown"
+                ],
+                "additionalProperties": false,
+                "description": "Offer this plugin panel to plugins without their own panel, with a toggle event and visibility predicate."
+              },
+              "defaultVisible": {
+                "type": "boolean",
+                "description": "Default navigation visibility, independent of settings values and the startup default claim."
               },
               "contract": {
                 "type": "string",
+                "pattern": "^([^#]+)#([A-Za-z_$][\\w$]*)$",
                 "description": "\"path#exportName\" of this plugin's contract: a declared type holding the state it publishes and the inbox other plugins may send to (PluginInbox, @apackdev/sdk/fe). It lives in a leaf module of its own (fe/contract.ts), which the plugin's machine does not import, so codegen can read it without resolving the machine. Omit it for a plugin that publishes nothing: it still receives its own feature's system events."
               },
               "default": {
@@ -206,7 +531,8 @@
               }
             },
             "required": [
-              "entry"
+              "label",
+              "state"
             ],
             "additionalProperties": false,
             "description": "Frontend plugin definition."
@@ -215,7 +541,7 @@
             "type": "object",
             "additionalProperties": {
               "type": "string",
-              "pattern": "^[^#]+#[A-Za-z_$][\\w$]*$"
+              "pattern": "^([^#]+)#([A-Za-z_$][\\w$]*)$"
             },
             "propertyNames": {
               "pattern": "^[A-Za-z_$][\\w$]*$"
@@ -226,7 +552,7 @@
             "type": "object",
             "additionalProperties": {
               "type": "string",
-              "pattern": "^[^#]+#[A-Za-z_$][\\w$]*$"
+              "pattern": "^([^#]+)#([A-Za-z_$][\\w$]*)$"
             },
             "propertyNames": {
               "pattern": "^[A-Za-z_$][\\w$]*$"
@@ -234,10 +560,193 @@
             "description": "Repository objects. Keys are repository names on `repository` (from #generated/repository), values are \"path#exportName\" of the object in a source file."
           },
           "references": {
-            "type": "string",
-            "description": "Path to a module declaring which of this feature's things are linkable from an editor (protocol, category, icon, navigate). Built-in packs only. Ignored for external packs."
+            "type": "object",
+            "properties": {
+              "types": {
+                "type": "object",
+                "additionalProperties": {
+                  "type": "object",
+                  "properties": {
+                    "category": {
+                      "type": "string",
+                      "pattern": "^[a-z][a-z0-9_-]*$",
+                      "description": "Category ID grouping this reference type in the picker."
+                    },
+                    "icon": {
+                      "anyOf": [
+                        {
+                          "type": "string",
+                          "pattern": "^[A-Z][A-Za-z0-9]*$"
+                        },
+                        {
+                          "type": "object",
+                          "properties": {
+                            "entry": {
+                              "type": "string",
+                              "pattern": "^[^#]+(?:#[A-Za-z_$][\\w$]*)?$",
+                              "description": "Pack-root-relative component module, using its default export unless #exportName selects a binding."
+                            },
+                            "load": {
+                              "type": "string",
+                              "const": "lazy",
+                              "description": "Load the component on demand; omission uses the normal eager component binding."
+                            }
+                          },
+                          "required": [
+                            "entry"
+                          ],
+                          "additionalProperties": false
+                        }
+                      ],
+                      "description": "Lucide icon export name or a declared component module for this reference type."
+                    },
+                    "svgElements": {
+                      "type": "array",
+                      "items": {
+                        "anyOf": [
+                          {
+                            "type": "array",
+                            "minItems": 2,
+                            "maxItems": 2,
+                            "items": [
+                              {
+                                "type": "string",
+                                "const": "path"
+                              },
+                              {
+                                "type": "object",
+                                "properties": {
+                                  "d": {
+                                    "type": "string",
+                                    "description": "SVG path geometry."
+                                  }
+                                },
+                                "required": [
+                                  "d"
+                                ],
+                                "additionalProperties": false
+                              }
+                            ]
+                          },
+                          {
+                            "type": "array",
+                            "minItems": 2,
+                            "maxItems": 2,
+                            "items": [
+                              {
+                                "type": "string",
+                                "const": "rect"
+                              },
+                              {
+                                "type": "object",
+                                "additionalProperties": {
+                                  "type": "string"
+                                }
+                              }
+                            ]
+                          },
+                          {
+                            "type": "array",
+                            "minItems": 2,
+                            "maxItems": 2,
+                            "items": [
+                              {
+                                "type": "string",
+                                "const": "circle"
+                              },
+                              {
+                                "type": "object",
+                                "additionalProperties": {
+                                  "type": "string"
+                                }
+                              }
+                            ]
+                          }
+                        ]
+                      },
+                      "description": "Static SVG geometry for rendering this reference in serialized editor content."
+                    }
+                  },
+                  "required": [
+                    "category",
+                    "icon",
+                    "svgElements"
+                  ],
+                  "additionalProperties": false
+                },
+                "propertyNames": {
+                  "pattern": "^[a-z][a-z0-9_-]*$"
+                },
+                "description": "Reference type IDs with static presentation and declared navigation bindings."
+              },
+              "categories": {
+                "type": "object",
+                "additionalProperties": {
+                  "type": "object",
+                  "properties": {
+                    "label": {
+                      "type": "string",
+                      "minLength": 1,
+                      "description": "Visible category label in the reference picker."
+                    },
+                    "icon": {
+                      "anyOf": [
+                        {
+                          "type": "string",
+                          "pattern": "^[A-Z][A-Za-z0-9]*$"
+                        },
+                        {
+                          "type": "object",
+                          "properties": {
+                            "entry": {
+                              "type": "string",
+                              "pattern": "^[^#]+(?:#[A-Za-z_$][\\w$]*)?$",
+                              "description": "Pack-root-relative component module, using its default export unless #exportName selects a binding."
+                            },
+                            "load": {
+                              "type": "string",
+                              "const": "lazy",
+                              "description": "Load the component on demand; omission uses the normal eager component binding."
+                            }
+                          },
+                          "required": [
+                            "entry"
+                          ],
+                          "additionalProperties": false
+                        }
+                      ],
+                      "description": "Lucide icon export name or a declared component module for this category."
+                    },
+                    "useItems": {
+                      "type": "string",
+                      "pattern": "^([^#]+)#([A-Za-z_$][\\w$]*)$",
+                      "description": "Named reactive item-provider export; queries execute when the picker requests items."
+                    }
+                  },
+                  "required": [
+                    "label",
+                    "icon",
+                    "useItems"
+                  ],
+                  "additionalProperties": false
+                },
+                "propertyNames": {
+                  "pattern": "^[a-z][a-z0-9_-]*$"
+                },
+                "description": "Reference picker category IDs and their declared item providers."
+              }
+            },
+            "required": [
+              "types",
+              "categories"
+            ],
+            "additionalProperties": false,
+            "description": "Reference identities and presentation, with reactive item-provider exports. Entity opening is declared separately by the destination plugin contract."
           }
         },
+        "required": [
+          "description"
+        ],
         "additionalProperties": false
       },
       "description": "Feature definitions, keyed by feature id. Each feature bundles a backend system, frontend plugin, services, and settings; the id is the key, so a pack cannot declare one twice."
@@ -245,19 +754,70 @@
     "extensions": {
       "type": "object",
       "properties": {
+        "settings": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "object",
+            "properties": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": {},
+                "description": "JSON Schema draft-07 for the effective settings object; references stay within this schema.",
+                "$ref": "http://json-schema.org/draft-07/schema#"
+              },
+              "defaults": {
+                "description": "Complete explicit baseline values, validated without coercion or schema default population.",
+                "type": "object",
+                "additionalProperties": {}
+              },
+              "title": {
+                "type": "string",
+                "minLength": 1,
+                "description": "Display title for this preference group; falls back to its group ID or feature label."
+              },
+              "description": {
+                "type": "string",
+                "description": "Explanatory text shown above this group's custom settings form."
+              },
+              "form": {
+                "type": "string",
+                "pattern": "^[^#]+$",
+                "description": "Source path of the custom settings form; its default export is a component."
+              },
+              "access": {
+                "type": "string",
+                "enum": [
+                  "shared",
+                  "owner"
+                ],
+                "description": "Shared with declared dependents by default; owner restricts writes and resets."
+              }
+            },
+            "required": [
+              "schema",
+              "defaults"
+            ],
+            "additionalProperties": false
+          },
+          "propertyNames": {
+            "pattern": "^[a-z][a-zA-Z0-9]*$"
+          },
+          "description": "Pack-owned preference groups keyed by local group ID; stored under this pack, independently of app and feature settings."
+        },
         "help": {
           "type": "object",
           "properties": {
             "path": {
               "type": "string",
-              "minLength": 1
+              "minLength": 1,
+              "description": "Pack-root-relative directory of Markdown help articles compiled during the pack build."
             }
           },
           "required": [
             "path"
           ],
           "additionalProperties": false,
-          "description": "Directory of Markdown help articles, bundled into the pack runtime."
+          "description": "Markdown help articles compiled into the snapshot for inspection without loading pack code."
         },
         "steps": {
           "type": "object",
@@ -273,46 +833,340 @@
                 "description": "Whether this is a regular step or a trigger. \"step\" is the default."
               },
               "node": {
-                "type": "string",
-                "pattern": "^[^#]+#[A-Za-z_$][\\w$]*$",
-                "description": "\"path#exportName\" of its StepNodeFacet: the label a new node starts with and the fields it starts with. Declare it in a module no Vue or icon import reaches — its `build` module is the usual home — because the backend reads it too."
+                "type": "object",
+                "properties": {
+                  "label": {
+                    "type": "string",
+                    "pattern": "\\S",
+                    "description": "Label a new node starts with, also shown on its canvas."
+                  },
+                  "defaultLabel": {
+                    "type": "string",
+                    "description": "Palette label when different from the node label."
+                  },
+                  "defaults": {
+                    "description": "Initial JSON node fields; these must satisfy the step or trigger validation.",
+                    "type": "object",
+                    "additionalProperties": {}
+                  }
+                },
+                "required": [
+                  "label"
+                ],
+                "additionalProperties": false,
+                "description": "Node labels and initial values, available without importing step code. Both generated registrations carry this data."
               },
               "build": {
-                "type": "string",
-                "pattern": "^[^#]+#[A-Za-z_$][\\w$]*$",
-                "description": "\"path#exportName\" of its StepBuildFacet (compile, validate, getLabel, decompile). A trigger declares `trigger` instead."
+                "type": "object",
+                "properties": {
+                  "compile": {
+                    "type": "string",
+                    "pattern": "^([^#]+)#([A-Za-z_$][\\w$]*)$",
+                    "description": "Exported function that compiles a DSL step into an entity and relations."
+                  },
+                  "validate": {
+                    "type": "string",
+                    "pattern": "^([^#]+)#([A-Za-z_$][\\w$]*)$",
+                    "description": "Exported function that validates a DSL step before compilation."
+                  },
+                  "getLabel": {
+                    "type": "string",
+                    "pattern": "^([^#]+)#([A-Za-z_$][\\w$]*)$",
+                    "description": "Exported function that computes the label of a compiled step."
+                  },
+                  "decompile": {
+                    "type": "string",
+                    "pattern": "^([^#]+)#([A-Za-z_$][\\w$]*)$",
+                    "description": "Exported function that restores a DSL step from a stored node."
+                  },
+                  "branches": {
+                    "type": "string",
+                    "pattern": "^([^#]+)#([A-Za-z_$][\\w$]*)$",
+                    "description": "Exported function that lists nested DSL branches."
+                  },
+                  "relation": {
+                    "type": "object",
+                    "properties": {
+                      "field": {
+                        "type": "string",
+                        "pattern": "\\S",
+                        "description": "Node field containing the related entity ID."
+                      },
+                      "targetEntity": {
+                        "type": "string",
+                        "pattern": "\\S",
+                        "description": "Entity wire name targeted by the instance_of relation."
+                      }
+                    },
+                    "required": [
+                      "field",
+                      "targetEntity"
+                    ],
+                    "additionalProperties": false,
+                    "description": "Static relation metadata, available without loading compiler callbacks."
+                  }
+                },
+                "required": [
+                  "compile",
+                  "validate",
+                  "getLabel"
+                ],
+                "additionalProperties": false,
+                "description": "Compiler callbacks and static relation metadata. A trigger declares `trigger` instead."
               },
               "trigger": {
                 "type": "object",
                 "properties": {
-                  "facet": {
+                  "trackField": {
                     "type": "string",
-                    "pattern": "^[^#]+#[A-Za-z_$][\\w$]*$",
-                    "description": "\"path#exportName\" of the TriggerFacet: how a track compiles, decompiles and validates."
+                    "pattern": "^[A-Za-z_$][\\w$]*$",
+                    "description": "DSL track field owned by this trigger; also names its generated flow helper."
+                  },
+                  "persistent": {
+                    "type": "boolean",
+                    "description": "Whether the flow stays alive after all tracks drain."
+                  },
+                  "queryFields": {
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "pattern": "\\S"
+                    },
+                    "description": "Additional node fields required when querying this trigger."
+                  },
+                  "compile": {
+                    "type": "string",
+                    "pattern": "^([^#]+)#([A-Za-z_$][\\w$]*)$",
+                    "description": "Exported function that compiles a DSL track into a trigger node."
+                  },
+                  "decompile": {
+                    "type": "string",
+                    "pattern": "^([^#]+)#([A-Za-z_$][\\w$]*)$",
+                    "description": "Exported function that restores DSL track fields from a trigger node."
+                  },
+                  "validateTrack": {
+                    "type": "string",
+                    "pattern": "^([^#]+)#([A-Za-z_$][\\w$]*)$",
+                    "description": "Exported function that validates a DSL track before compilation."
+                  },
+                  "validate": {
+                    "type": "string",
+                    "pattern": "^([^#]+)#([A-Za-z_$][\\w$]*)$",
+                    "description": "Exported function that validates a trigger node before persistence."
                   },
                   "register": {
                     "type": "string",
-                    "pattern": "^[^#]+#[A-Za-z_$][\\w$]*$",
+                    "pattern": "^([^#]+)#([A-Za-z_$][\\w$]*)$",
                     "description": "\"path#exportName\" of the function that starts the trigger. Loaded when it is first registered."
                   }
                 },
                 "required": [
-                  "facet"
+                  "trackField",
+                  "compile",
+                  "decompile"
                 ],
                 "additionalProperties": false,
-                "description": "For a trigger: its TriggerFacet and the function that starts it."
+                "description": "Trigger metadata, compiler callbacks and optional lazy registration."
               },
               "fe": {
+                "type": "object",
+                "properties": {
+                  "nodeConfig": {
+                    "type": "object",
+                    "properties": {
+                      "icon": {
+                        "anyOf": [
+                          {
+                            "type": "string",
+                            "pattern": "^[A-Z][A-Za-z0-9]*$"
+                          },
+                          {
+                            "type": "object",
+                            "properties": {
+                              "entry": {
+                                "type": "string",
+                                "pattern": "^[^#]+(?:#[A-Za-z_$][\\w$]*)?$",
+                                "description": "Pack-root-relative component module, using its default export unless #exportName selects a binding."
+                              },
+                              "load": {
+                                "type": "string",
+                                "const": "lazy",
+                                "description": "Load the component on demand; omission uses the normal eager component binding."
+                              }
+                            },
+                            "required": [
+                              "entry"
+                            ],
+                            "additionalProperties": false
+                          }
+                        ],
+                        "description": "Lucide export name or declared custom icon component."
+                      },
+                      "connectionRules": {
+                        "type": "object",
+                        "properties": {
+                          "inputs": {
+                            "type": "integer",
+                            "minimum": -1,
+                            "description": "Maximum incoming connections; -1 means unlimited."
+                          },
+                          "outputs": {
+                            "type": "integer",
+                            "minimum": -1,
+                            "description": "Maximum outgoing connections; -1 means unlimited."
+                          }
+                        },
+                        "required": [
+                          "inputs",
+                          "outputs"
+                        ],
+                        "additionalProperties": false,
+                        "description": "Static connection limits for this node type."
+                      },
+                      "category": {
+                        "type": "string",
+                        "enum": [
+                          "trigger",
+                          "action",
+                          "logic",
+                          "data",
+                          "ai"
+                        ],
+                        "description": "Palette category for this node type."
+                      },
+                      "isImplemented": {
+                        "type": "boolean",
+                        "description": "Whether the palette offers this node for creation; only true enables it."
+                      },
+                      "isDisabled": {
+                        "type": "boolean",
+                        "description": "Disable this palette entry."
+                      }
+                    },
+                    "required": [
+                      "icon",
+                      "connectionRules",
+                      "category"
+                    ],
+                    "additionalProperties": false,
+                    "description": "Palette and connection metadata, independent of component activation."
+                  },
+                  "colorKey": {
+                    "type": "string",
+                    "minLength": 1,
+                    "description": "Editor color token; unknown tokens use the editor’s neutral color."
+                  },
+                  "components": {
+                    "type": "object",
+                    "properties": {
+                      "node": {
+                        "anyOf": [
+                          {
+                            "type": "string",
+                            "pattern": "^[^#]+(?:#[A-Za-z_$][\\w$]*)?$"
+                          },
+                          {
+                            "type": "object",
+                            "properties": {
+                              "entry": {
+                                "type": "string",
+                                "pattern": "^[^#]+(?:#[A-Za-z_$][\\w$]*)?$",
+                                "description": "Pack-root-relative component module, using its default export unless #exportName selects a binding."
+                              },
+                              "load": {
+                                "type": "string",
+                                "const": "lazy",
+                                "description": "Load the component on demand; omission uses the normal eager component binding."
+                              }
+                            },
+                            "required": [
+                              "entry"
+                            ],
+                            "additionalProperties": false
+                          }
+                        ],
+                        "description": "Custom node component; omission uses the generic node."
+                      },
+                      "form": {
+                        "anyOf": [
+                          {
+                            "type": "string",
+                            "pattern": "^[^#]+(?:#[A-Za-z_$][\\w$]*)?$"
+                          },
+                          {
+                            "type": "object",
+                            "properties": {
+                              "entry": {
+                                "type": "string",
+                                "pattern": "^[^#]+(?:#[A-Za-z_$][\\w$]*)?$",
+                                "description": "Pack-root-relative component module, using its default export unless #exportName selects a binding."
+                              },
+                              "load": {
+                                "type": "string",
+                                "const": "lazy",
+                                "description": "Load the component on demand; omission uses the normal eager component binding."
+                              }
+                            },
+                            "required": [
+                              "entry"
+                            ],
+                            "additionalProperties": false
+                          }
+                        ],
+                        "description": "Node configuration form component."
+                      }
+                    },
+                    "additionalProperties": false,
+                    "description": "Named component slots and their loading modes."
+                  },
+                  "layout": {
+                    "type": "object",
+                    "properties": {
+                      "getHeight": {
+                        "type": "string",
+                        "pattern": "^([^#]+)#([A-Za-z_$][\\w$]*)$",
+                        "description": "Named function calculating node height from the node and layout context."
+                      },
+                      "getPorts": {
+                        "type": "string",
+                        "pattern": "^([^#]+)#([A-Za-z_$][\\w$]*)$",
+                        "description": "Named function calculating ports from the node and layout context."
+                      },
+                      "hasInput": {
+                        "type": "boolean",
+                        "description": "Whether this layout has an input port."
+                      },
+                      "usesExitCount": {
+                        "type": "boolean",
+                        "description": "Whether layout calculations consume the track exit count."
+                      }
+                    },
+                    "additionalProperties": false,
+                    "description": "Static layout flags and executable calculation targets."
+                  },
+                  "handlePrefix": {
+                    "type": "string",
+                    "minLength": 1,
+                    "description": "Prefix for indexed output handles, such as branch-0."
+                  }
+                },
+                "required": [
+                  "nodeConfig"
+                ],
+                "additionalProperties": false,
+                "description": "Static editor presentation and explicit component/layout bindings."
+              },
+              "types": {
                 "type": "string",
-                "pattern": "^[^#]+#[A-Za-z_$][\\w$]*$",
-                "description": "\"path#exportName\" of its StepFEFacet: what the flow editor draws and the form it opens."
+                "pattern": "^[^#]+$",
+                "description": "Type-only module declaring this step’s node and DSL types. No conventional file is inferred."
               },
               "runtime": {
                 "type": "object",
                 "properties": {
                   "handler": {
                     "type": "string",
-                    "pattern": "^[^#]+#[A-Za-z_$][\\w$]*$",
+                    "pattern": "^([^#]+)#([A-Za-z_$][\\w$]*)$",
                     "description": "\"path#exportName\" of the function that runs the step. Loaded on its first run, unless `sync`."
                   },
                   "sync": {
@@ -342,18 +1196,30 @@
               "dsl": {
                 "type": "object",
                 "properties": {
+                  "references": {
+                    "type": "object",
+                    "additionalProperties": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "propertyNames": {
+                      "pattern": "^[A-Za-z_$][\\w$]*$"
+                    },
+                    "description": "DSL field to compiled content key, for static dependency and rename inspection. Computed targets are recorded as dynamic."
+                  },
                   "primaryField": {
                     "type": "string",
+                    "pattern": "^[A-Za-z_$][\\w$]*$",
                     "description": "The field whose value becomes the step label in the flow editor."
                   },
                   "defaultLabel": {
                     "type": "string",
-                    "description": "Fallback label when primaryField is empty."
+                    "description": "Default label argument for the generated label-only helper."
                   },
-                  "custom": {
-                    "type": "boolean",
-                    "const": true,
-                    "description": "Marks the step as a custom (non-built-in) type."
+                  "helpers": {
+                    "type": "string",
+                    "pattern": "^[^#]+$",
+                    "description": "Pack-root-relative module whose custom flow helpers are re-exported."
                   }
                 },
                 "additionalProperties": false,
@@ -368,7 +1234,7 @@
           "propertyNames": {
             "pattern": "^[a-z][a-z0-9_-]*$"
           },
-          "description": "Flow step types this pack contributes. Each names where its node, build, frontend and runtime facets live. The type is the key, so a pack cannot declare one twice."
+          "description": "Flow step types this pack contributes. Inline node and editor data with explicit build, component, layout, type and runtime bindings. The type is the key, so a pack cannot declare one twice."
         },
         "artifacts": {
           "type": "object",
@@ -382,6 +1248,7 @@
               },
               "fe": {
                 "type": "string",
+                "pattern": "^[^#]+$",
                 "description": "Path to the viewer that opens it (a .vue file, taken by its default export). Without one the host shows the text viewer."
               }
             },
@@ -410,11 +1277,12 @@
               },
               "fe": {
                 "type": "string",
+                "pattern": "^[^#]+$",
                 "description": "Path to the component that draws it (a .vue file, taken by its default export)."
               },
               "be": {
                 "type": "string",
-                "pattern": "^[^#]+#[A-Za-z_$][\\w$]*$",
+                "pattern": "^([^#]+)#([A-Za-z_$][\\w$]*)$",
                 "description": "\"path#exportName\" of its backend facet (BlockBEFacet), for a block that summarises itself in a transcript."
               }
             },
@@ -450,7 +1318,7 @@
           "type": "object",
           "additionalProperties": {
             "type": "string",
-            "pattern": "^[^#]+#[A-Za-z_$][\\w$]*$"
+            "pattern": "^([^#]+)#([A-Za-z_$][\\w$]*)$"
           },
           "propertyNames": {
             "pattern": "^[A-Za-z_$][\\w$]*$"
@@ -464,6 +1332,7 @@
             "properties": {
               "entry": {
                 "type": "string",
+                "pattern": "^[^#]+$",
                 "description": "Path to the DSL type definition module."
               },
               "targets": {
@@ -478,7 +1347,7 @@
               },
               "prefix": {
                 "type": "string",
-                "description": "Namespace prefix for DSL symbols."
+                "description": "Editor model path prefix selecting this DSL. Omit or use an empty value to require explicit selection."
               },
               "globals": {
                 "type": "object",
@@ -503,46 +1372,77 @@
           },
           "description": "DSL type definitions for Monaco editor intellisense."
         },
-        "fe": {
+        "tiptapPlugins": {
           "type": "object",
-          "properties": {
-            "tiptapPlugins": {
-              "type": "string",
-              "description": "Path to tiptap plugin registration module."
+          "additionalProperties": {
+            "type": "object",
+            "properties": {
+              "extensions": {
+                "type": "object",
+                "additionalProperties": {
+                  "type": "string",
+                  "pattern": "^([^#]+)#([A-Za-z_$][\\w$]*)$"
+                },
+                "propertyNames": {
+                  "pattern": "^[A-Za-z_$][\\w$]*$"
+                },
+                "description": "Tiptap extension name to its exported extension object (\"path#exportName\"). Each key must match the exported object's Tiptap name."
+              },
+              "popups": {
+                "type": "object",
+                "additionalProperties": {
+                  "type": "string",
+                  "pattern": "^[^#]+$"
+                },
+                "propertyNames": {
+                  "pattern": "^[A-Za-z_$][\\w$]*$"
+                },
+                "description": "Popup IDs local to this group, mapped to pack-root-relative Vue component modules."
+              },
+              "isSuggestionActive": {
+                "type": "string",
+                "pattern": "^([^#]+)#([A-Za-z_$][\\w$]*)$",
+                "description": "Exported predicate (\"path#exportName\") reporting whether this group has an active suggestion for the current editor state."
+              }
             },
-            "appExtensions": {
-              "type": "object",
-              "additionalProperties": {
-                "type": "string"
-              },
-              "propertyNames": {
-                "pattern": "^[A-Za-z_$][\\w$]*$"
-              },
-              "description": "Named app extensions. Keys are extension names (identifiers), values are paths to Vue components."
-            }
+            "additionalProperties": false
           },
-          "additionalProperties": false,
-          "description": "Frontend contributions: what the pack adds to the app's own UI."
+          "propertyNames": {
+            "pattern": "^[A-Za-z_$][\\w$]*$"
+          },
+          "description": "Named rich-text editor contribution groups. Extensions, popup IDs and the optional suggestion predicate are declared without loading pack code."
+        },
+        "appExtensions": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string",
+            "pattern": "^[^#]+$"
+          },
+          "propertyNames": {
+            "pattern": "^[A-Za-z_$][\\w$]*$"
+          },
+          "description": "Named app extensions. Keys are extension names (identifiers), values are paths to Vue components."
         }
       },
       "additionalProperties": false,
       "description": "What the pack contributes to the app: steps, artifacts, blocks, commands, services, DSL types, help articles and frontend extensions."
     },
-    "settingsSections": {
-      "type": "string",
-      "pattern": "^[^#]+#[A-Za-z_$][\\w$]*$",
-      "description": "Sections of the app settings this pack owns, with their defaults, beside the \"features\" section the app keeps itself. \"path#exportName\" of a function returning them; it is called the first time the defaults are read, so a pack can read its compiled content then."
-    },
-    "boot": {
+    "lifecycle": {
       "type": "object",
       "properties": {
-        "hooks": {
+        "onInit": {
           "type": "string",
-          "description": "Module exporting lifecycle hooks: onInit (after EARS hydration, before migrations and content) and onShutdown (when the pack's backend stops)."
+          "pattern": "^([^#]+)#([A-Za-z_$][\\w$]*)$",
+          "description": "Function called after hydration, before migrations and content."
+        },
+        "onShutdown": {
+          "type": "string",
+          "pattern": "^([^#]+)#([A-Za-z_$][\\w$]*)$",
+          "description": "Function called when this pack stops."
         }
       },
       "additionalProperties": false,
-      "description": "Boot sequence configuration."
+      "description": "Explicit lifecycle function targets, discoverable without loading their modules."
     },
     "content": {
       "type": "object",
@@ -568,6 +1468,7 @@
                   },
                   "applier": {
                     "type": "string",
+                    "pattern": "^[^#]+$",
                     "description": "A pack module exporting apply(ctx), used instead of the format applier. Alone, the build compiles nothing for the source and the module brings its own data; with \"path\" and \"format\", the module writes the compiled items."
                   },
                   "onUserEdit": {
@@ -604,6 +1505,7 @@
               },
               "applier": {
                 "type": "string",
+                "pattern": "^[^#]+$",
                 "description": "A pack module exporting apply(ctx), used instead of the format applier. Alone, the build compiles nothing for the source and the module brings its own data; with \"path\" and \"format\", the module writes the compiled items."
               },
               "onUserEdit": {
@@ -637,6 +1539,7 @@
               },
               "compiler": {
                 "type": "string",
+                "pattern": "^[^#]+$",
                 "description": "A module in this pack whose default export compiles an entry's path into records. Used instead of \"format\"."
               },
               "entity": {
@@ -724,7 +1627,7 @@
           "type": "object",
           "additionalProperties": {
             "type": "string",
-            "pattern": "^[^#]+#[A-Za-z_$][\\w$]*$"
+            "pattern": "^([^#]+)#([A-Za-z_$][\\w$]*)$"
           },
           "description": "How one entity type this pack declares is found, created, updated and removed when content is written as it (\"path#exportName\" of a ContentWriter object). Any pack writing that entity type goes through them."
         }
@@ -738,8 +1641,24 @@
         "app": {
           "type": "object",
           "additionalProperties": {
-            "type": "string",
-            "pattern": "^[^#]+#[A-Za-z_$][\\w$]*$"
+            "type": "object",
+            "properties": {
+              "description": {
+                "type": "string",
+                "minLength": 1,
+                "description": "What this versioned data change does."
+              },
+              "up": {
+                "type": "string",
+                "pattern": "^([^#]+)#([A-Za-z_$][\\w$]*)$",
+                "description": "Synchronous function applying the change."
+              }
+            },
+            "required": [
+              "description",
+              "up"
+            ],
+            "additionalProperties": false
           },
           "propertyNames": {
             "pattern": "^\\d+\\.\\d+\\.\\d+$"
@@ -749,8 +1668,24 @@
         "pack": {
           "type": "object",
           "additionalProperties": {
-            "type": "string",
-            "pattern": "^[^#]+#[A-Za-z_$][\\w$]*$"
+            "type": "object",
+            "properties": {
+              "description": {
+                "type": "string",
+                "minLength": 1,
+                "description": "What this versioned data change does."
+              },
+              "up": {
+                "type": "string",
+                "pattern": "^([^#]+)#([A-Za-z_$][\\w$]*)$",
+                "description": "Synchronous function applying the change."
+              }
+            },
+            "required": [
+              "description",
+              "up"
+            ],
+            "additionalProperties": false
           },
           "propertyNames": {
             "pattern": "^\\d+\\.\\d+\\.\\d+$"
@@ -759,7 +1694,7 @@
         }
       },
       "additionalProperties": false,
-      "description": "Migrations this pack runs, under the version line each targets. The key is the version — a migration module names only its description and its `up`."
+      "description": "Migrations this pack runs, under the version line each targets. The key is the version; the declaration owns its description and names the executable up function."
     },
     "build": {
       "type": "object",
@@ -778,6 +1713,27 @@
       },
       "additionalProperties": false,
       "description": "Build-time configuration: settings that change what the build produces, never what the app loads."
+    },
+    "checks": {
+      "type": "object",
+      "properties": {
+        "allow": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": [
+              "cross-feature-imports",
+              "untyped-sends",
+              "raw-transport",
+              "backend-console",
+              "repository-casts"
+            ]
+          },
+          "description": "Development conventions explicitly allowed by this pack; all other checks remain enabled."
+        }
+      },
+      "additionalProperties": false,
+      "description": "Build-time source-check policy; does not change runtime permissions."
     }
   },
   "required": [
@@ -788,7 +1744,7 @@
   "additionalProperties": false,
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://apack.dev/schemas/apack.json",
-  "$comment": "Auto-generated from manifest-schema.ts — do not edit by hand. Run: npm run schema:update",
+  "$comment": "Auto-generated from framework/declaration-schema.ts — do not edit by hand. Run: npm run schema:update",
   "title": "apack Pack Manifest",
   "description": "Configuration manifest for an apack pack. Declares metadata, features, entities, services, extensions, content, and build-time codegen inputs."
 }

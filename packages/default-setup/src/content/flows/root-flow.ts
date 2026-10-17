@@ -1,5 +1,5 @@
 import type { FlowDSL } from '@apackdev/sdk/build';
-import { entry, on, keepAlive, subflow } from '#generated/flow-helpers.ts';
+import { entry, on, keepAlive, subflow, action, branch } from '#generated/flow-helpers.ts';
 
 export default {
   "Root Flow": {
@@ -17,9 +17,12 @@ export default {
         [keepAlive()],
       ),
       on(
-        "onboarding.start",
-        [[subflow("Onboarding Flow", { label: "run onboarding" })]],
-        "Start Onboarding",
+        "client.ready",
+        [[
+          action("Check Onboarding", { label: "check onboarding" }),
+          branch([{ if: "$.lastStep.result.needed", steps: [subflow("Onboarding Flow", { label: "run onboarding" })] }]),
+        ]],
+        "Client Ready",
       ),
     ],
   },

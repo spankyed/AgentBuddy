@@ -1,3 +1,4 @@
+import { createNativePackTestRegistry } from '@apackdev/host/testing';
 // A client's event reaches the root event bus only when a registered system accepts its type, and is logged
 // with long arrays summarized
 import { afterAll, describe, expect, it } from 'vitest';
@@ -6,10 +7,9 @@ import { testRootEvents } from '@apackdev/sdk/testing';
 import type { LogEvent } from '@apackdev/sdk/logger';
 import '../packs/runtime/test-host.ts';
 import { receiveClientEvent, UnknownClientEventError } from '../../src/bus/client-events.ts';
-import { createPackRegistry } from '../../src/packs/registry.ts';
 
 const machine = setup({}).createMachine({});
-const registry = createPackRegistry();
+const registry = createNativePackTestRegistry();
 const { registerPack, unregisterPack } = registry;
 registerPack({ id: 'host', features: { ping: { system: { machine, receives: ['PING'] } } } });
 registerPack({ id: 'client-events-pack', features: { any: { system: { machine, receives: ['*'] } } } });

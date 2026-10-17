@@ -7,4 +7,4 @@ favorite: true
 
 # Hello again
 
-Now see [the roadmap](note://Note-external-roadmap) instead.
+Now see [the roadmap](apack-ref://note/Note-external-roadmap) instead.

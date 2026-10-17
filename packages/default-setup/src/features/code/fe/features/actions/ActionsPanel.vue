@@ -237,7 +237,7 @@
 import { usePlugin } from '@apackdev/sdk/fe'
 
 import { ref, computed, watch, nextTick } from 'vue'
-import { openPlugin } from '#generated/fe.ts'
+import { openEntity } from '@apackdev/sdk/fe'
 import type { CodeState } from '#features/code/fe/state.ts'
 import { usePluginState } from '#generated/fe.ts'
 import { ExternalLink, Plus, X, Pencil, Trash2, Play, Search, ChevronDown, ChevronRight } from 'lucide-vue-next'
@@ -465,7 +465,7 @@ const selectAction = (action: ActionEntity) => {
 }
 
 const goToAction = (action: ActionEntity) => {
-  openPlugin('actions', { type: 'ACTION.SELECT', actionId: action.id })
+  openEntity(action.id)
 }
 
 const createActionInline = () => {

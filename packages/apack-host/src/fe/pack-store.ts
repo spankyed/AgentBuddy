@@ -1,30 +1,54 @@
 // The packs whose frontends the renderer registered, as an instance: the renderer creates one and binds its read
 // face for the SDK's frontend lookups (`bindFeHost({ packs })`). It holds the only writes to it.
-import type { Plugin, PackFERegistration, TiptapPlugin, DslTypeConfig } from '@apackdev/sdk/fe';
+import type { DeclarationData, PluginDeclaration } from '@apackdev/sdk/framework';
+import type { ReferenceTypeConfig, ReferenceBindings, ReferenceBinding } from '@apackdev/sdk/fe/references';
+import type { Plugin, PackFERegistration, TiptapPlugin, TiptapPluginBinding, SettingsPort, StepFrontendBinding, ArtifactFrontendBinding, BlockFrontendBinding } from '@apackdev/sdk/fe';
 import type { FePackRegistryView } from '@apackdev/sdk/runtime';
-import type { ArtifactDefinition } from '@apackdev/sdk/artifacts';
-import type { BlockDefinition } from '@apackdev/sdk/blocks';
-import { addContributions, createDefinitionStore, createDesignationStore, createOwnedStore, createStepStore, definitions, type Contribution } from '../packs/extensions.ts';
+import { createDesignationStore, createOwnedStore, createOwnedStepStore } from '../packs/extensions.ts';
 import { resolveName, type FeatureRef } from '@apackdev/sdk/ids';
-import { createAppExtensionSlots } from './app-extensions.ts';
+import { createFrontendSettingsBinding } from './settings-binding.ts';
 import { checkFeatureIds } from '../packs/feature-ids.ts';
+import { settingsTargetPath, type SettingsTarget } from '@apackdev/sdk/types';
+import { createLogger } from '@apackdev/sdk/logger';
+import { captureFrontendAdmission, frontendIdentityProblem, type FrontendAdmission, type AcceptedFrontendAdmission } from './frontend-admission.ts';
+import { captureFrontendBindings } from './binding-snapshot.ts';
+import { frontendBindingProblem } from './declaration-binding.ts';
 
-interface PackFEExtensions {
-  /** The plugins this pack added */
-  plugins: Plugin[];
-  /** Takes back everything it added, as recorded where each part went in */
-  undo: () => unknown;
+type OwnedReferenceBindings = {
+  types: Record<string, ReferenceBinding<ReferenceTypeConfig>>;
+  categories: Record<string, ReferenceBinding<ReferenceBindings['categories'][string]>>;
+};
+
+type SettingsForm = NonNullable<PackFERegistration['settingsForms']>[string];
+
+const formKey = (target: SettingsTarget): string => settingsTargetPath(target).join('/');
+
+/** Host-owned settings resource for one accepted frontend, including transport cleanup. */
+export interface FrontendSettingsBinding {
+  port: SettingsPort;
+  dispose(): void;
 }
 
 /** The renderer's registered pack frontends */
 export interface FePackRegistry extends FePackRegistryView {
   /** Registers a pack's frontend, and returns its plugins as registered: each at its feature's ref */
-  registerPackFE(registration: PackFERegistration): Plugin[];
+  registerPackFE(admission: FrontendAdmission, registration: PackFERegistration, settings?: FrontendSettingsBinding): Plugin[];
+  /** Prepare a fresh or replacement frontend without publishing it; disposal cancels only this candidate. */
+  preparePackFE(admission: FrontendAdmission, registration: PackFERegistration, settings?: FrontendSettingsBinding, replacing?: boolean): PreparedFrontend;
+  /** Replace an existing owner; failure preserves its accepted resources. */
+  replacePackFE(admission: FrontendAdmission, registration: PackFERegistration, settings?: FrontendSettingsBinding): Plugin[];
+  hasPackFE(packId: string): boolean;
+  prepareUnregisterPackFE(packId: string): PreparedFrontend;
   /** Unregisters a pack's frontend; returns the plugins it had added */
   unregisterPackFE(packId: string): Plugin[];
   /** Every registered plugin, in registration order */
   getRegisteredPlugins(): Plugin[];
+  pluginBindings(): ReadonlyMap<string, PluginFrontendBinding>;
+  /** Identity of this accepted frontend instance; replacement changes it even when components are reused. */
+  frontendIdentity(packId: string): Readonly<Pick<AcceptedFrontendAdmission, 'declarationRevision' | 'runtimeRevision' | 'buildRevision'>> | undefined;
   getAppExtension(slot: string): ReturnType<FePackRegistryView['appExtension']>;
+  /** Lookup of an accepted form; installed declarations remain separate from executable availability. */
+  settingsForm(target: SettingsTarget): SettingsForm | undefined;
 }
 
 /**
@@ -37,155 +61,284 @@ type AddressedRegistration = PackFERegistration & {
 };
 
 function addressed(registration: PackFERegistration): AddressedRegistration {
-  const features = Object.entries(registration.features ?? {});
+  const features = Object.entries(registration.features ?? {}).map(([id, feature]) => [id, { ...feature }] as const);
+  const defaults = features.filter(([, feature]) => feature.default);
+  if (defaults.length > 1) throw new Error(`Pack "${registration.id}" declares default plugins "${defaults[0]![0]}" and "${defaults[1]![0]}"; only one may be claimed`);
+  if (defaults[0] && !defaults[0][1].plugin) throw new Error(`Pack "${registration.id}" declares a default for feature "${defaults[0][0]}" without a plugin`);
+  const roles = new Map<string, FeatureRef>();
+  for (const [id, feature] of features) {
+    if (!feature.designation) continue;
+    if (roles.has(feature.designation)) throw new Error(`Pack "${registration.id}" declares designation "${feature.designation}" twice`);
+    roles.set(feature.designation, resolveName(id, registration.id));
+  }
   return {
     ...registration,
+    features: Object.fromEntries(features),
     addressed: features.flatMap(([featureId, feature]) => feature.plugin
-      ? [{ plugin: { ...feature.plugin, id: resolveName(featureId, registration.id) } as Plugin, default: feature.default }]
+      ? [{ plugin: Object.freeze({ ...feature.plugin, id: resolveName(featureId, registration.id) }) as Plugin, default: feature.default }]
       : []),
-    roles: Object.fromEntries(features.flatMap(([featureId, { designation }]) =>
-      designation ? [[designation, resolveName(featureId, registration.id)]] : [])),
+    roles: Object.fromEntries(roles),
   };
 }
 
-/**
- * Pushes each of `items` onto `list`, recording how to take that item back out.
- *
- * Removal is by value, which is safe only where no two packs can contribute the same object. Its one
- * caller is the plugin list, and a plugin comes from the pack's own feature, so it cannot be shared. For a
- * kind that can be, use `createOwnedList`.
- */
-function listed<T>(list: T[], items: readonly T[] | undefined, undo: (fn: () => void) => void): void {
-  for (const item of items ?? []) {
-    list.push(item);
-    undo(() => {
-      const idx = list.indexOf(item);
-      if (idx >= 0) list.splice(idx, 1);
+/** A staged frontend cannot change the published view until its commit. */
+export interface PreparedFrontend {
+  plugins: Plugin[];
+  /** Commit other prepared host resources after revision checks, before publishing the lookup view. */
+  commit(beforePublish?: () => void): Plugin[];
+  dispose(): void;
+}
+
+/** A plugin implementation admitted against a captured declaration and backend generation. */
+export interface PluginFrontendBinding {
+  readonly opens?: readonly string[];
+  readonly packId: string;
+  readonly declaration: DeclarationData<PluginDeclaration>;
+  readonly declarationRevision?: string;
+  readonly runtimeRevision?: string;
+  readonly buildRevision?: string;
+  readonly binding: Plugin;
+}
+
+type DefinitionEntry<T> = readonly [string, T];
+interface FrontendContributions {
+  id: string;
+  identity: Readonly<Pick<AcceptedFrontendAdmission, 'declarationRevision' | 'runtimeRevision' | 'buildRevision'>>;
+  addressed: AddressedRegistration['addressed'];
+  pluginBindings: PluginFrontendBinding[];
+  roles: Record<string, FeatureRef>;
+  forms: Array<readonly [string, SettingsForm]>;
+  steps: Array<DefinitionEntry<StepFrontendBinding>>;
+  artifacts: Array<DefinitionEntry<ArtifactFrontendBinding>>;
+  blocks: Array<DefinitionEntry<BlockFrontendBinding>>;
+  tiptapPlugins: Array<[string, TiptapPlugin]>;
+  appExtensions: Array<readonly [string, SettingsForm]>;
+  references: OwnedReferenceBindings[];
+  bindSettings: PackFERegistration['bindSettings'];
+}
+
+function captureReferenceType(type: ReferenceTypeConfig): ReferenceTypeConfig {
+  const svgElements = structuredClone(type.svgElements);
+  for (const element of svgElements) { Object.freeze(element[1]); Object.freeze(element); }
+  return Object.freeze({ ...type, svgElements: Object.freeze(svgElements) });
+}
+
+function capture(registration: PackFERegistration, identity: AcceptedFrontendAdmission): FrontendContributions {
+  const reg = addressed({ ...registration });
+  const revisions = {
+    ...(identity.declarationRevision !== undefined && { declarationRevision: identity.declarationRevision }),
+    ...(identity.runtimeRevision !== undefined && { runtimeRevision: identity.runtimeRevision }),
+    ...(identity.buildRevision !== undefined && { buildRevision: identity.buildRevision }),
+  };
+  checkFeatureIds(reg.id, Object.keys(reg.features ?? {}));
+  checkFeatureIds(reg.id, Object.keys(reg.settingsForms ?? {}));
+  return {
+    id: reg.id, identity: Object.freeze(revisions), addressed: reg.addressed, roles: reg.roles, bindSettings: reg.bindSettings,
+    pluginBindings: reg.addressed.map(({ plugin }) => Object.freeze({ packId: reg.id, ...revisions,
+      ...(identity.entityDestinations && { opens: Object.freeze(Object.keys(identity.entityDestinations)
+        .filter(entity => identity.entityDestinations![entity] === plugin.id.slice(reg.id.length + 1)).sort()) }),
+      declaration: identity.declarations.features![plugin.id.slice(reg.id.length + 1)]!.plugin!, binding: plugin })),
+    forms: [
+      ...Object.entries(reg.features ?? {}).flatMap(([id, feature]) => feature.settingsForm
+        ? [[formKey({ kind: 'feature', featureRef: resolveName(id, reg.id) }), feature.settingsForm] as const] : []),
+      ...Object.entries(reg.settingsForms ?? {}).map(([id, component]) => [formKey({ kind: 'pack', packId: reg.id, groupId: id }), component] as const),
+    ],
+    references: Object.entries(reg.features ?? {}).flatMap(([id, feature]) => {
+      const references = feature.references;
+      if (!references) return [];
+      const owner = { featureRef: resolveName(id, reg.id), ...revisions };
+      return [{
+        types: Object.fromEntries(Object.entries(references.types).map(([name, type]) => [name,
+          Object.freeze({ ...owner, binding: captureReferenceType(type) })])),
+        categories: Object.fromEntries(Object.entries(references.categories).map(([name, category]) => [name,
+          Object.freeze({ ...owner, binding: Object.freeze({ ...category }) })])),
+      }];
+    }),
+    steps: (reg.steps ?? []).map(value => [value.type, Object.freeze({ packId: reg.id, ...revisions,
+      declaration: identity.declarations.extensions!.steps![value.type]!, binding: value })]),
+    artifacts: (reg.artifacts ?? []).map(value => [value.type, Object.freeze({ packId: reg.id, ...revisions,
+      declaration: identity.declarations.extensions!.artifacts![value.type]!, binding: value })]),
+    blocks: (reg.blocks ?? []).map(value => [value.type, Object.freeze({ packId: reg.id, ...revisions,
+      declaration: identity.declarations.extensions!.blocks![value.type]!, binding: value })]),
+    tiptapPlugins: Object.entries(reg.tiptapPlugins ?? {}),
+    appExtensions: Object.entries(reg.appExtensions ?? {}),
+  };
+}
+
+function buildTables(packs: Iterable<FrontendContributions>) {
+  const plugins: Plugin[] = [];
+  const pluginBindings = new Map<string, PluginFrontendBinding>();
+  const designations = createDesignationStore();
+  const steps = createOwnedStepStore<StepFrontendBinding>();
+  const artifacts = createOwnedStore<ArtifactFrontendBinding>();
+  const blocks = createOwnedStore<BlockFrontendBinding>();
+  const appExtensions = createOwnedStore<SettingsForm>();
+  const forms = new Map<string, SettingsForm>();
+  const tiptapPlugins: TiptapPluginBinding[] = [];
+  const editorOwners = new Map<string, string>();
+  const referenceTypes = new Map<string, ReferenceBinding<ReferenceTypeConfig>>();
+  const referenceCategories = new Map<string, ReferenceBinding<ReferenceBindings['categories'][string]>>();
+  const referenceOwners = { types: new Map<string, FeatureRef>(), categories: new Map<string, FeatureRef>() };
+  const claim = (kind: keyof typeof referenceOwners, name: string, owner: FeatureRef) => {
+    const previous = referenceOwners[kind].get(name);
+    if (previous !== undefined) throw new Error(`Reference ${kind} "${name}" claimed by both features "${previous}" and "${owner}"`);
+    referenceOwners[kind].set(name, owner);
+  };
+  for (const pack of packs) {
+    for (const references of pack.references) {
+      for (const [name, type] of Object.entries(references.types)) {
+        claim('types', name, type.featureRef);
+        referenceTypes.set(name, type);
+      }
+      for (const [name, category] of Object.entries(references.categories)) {
+        claim('categories', name, category.featureRef);
+        referenceCategories.set(name, category);
+      }
+    }
+    designations.register(pack.roles);
+    plugins.push(...pack.addressed.map(({ plugin }) => plugin));
+    for (const binding of pack.pluginBindings) pluginBindings.set(binding.binding.id, binding);
+    for (const [key, value] of pack.forms) forms.set(key, value);
+    for (const [key, value] of pack.steps) { steps.set(key, value, pack.id); }
+    for (const [key, value] of pack.artifacts) artifacts.set(key, value, pack.id);
+    for (const [key, value] of pack.blocks) blocks.set(key, value, pack.id);
+    for (const [key, value] of pack.appExtensions) appExtensions.set(key, value, pack.id);
+    for (const [id, plugin] of pack.tiptapPlugins) {
+      const owner = `${pack.id}/${id}`;
+      for (const name of Object.keys(plugin.extensions ?? {})) {
+        const previous = editorOwners.get(name);
+        if (previous !== undefined) throw new Error(`Tiptap extension "${name}" declared by both "${previous}" and "${owner}"`);
+        editorOwners.set(name, owner);
+      }
+      tiptapPlugins.push(Object.freeze({ packId: pack.id, groupId: id, binding: plugin }));
+    }
+  }
+  return { plugins, pluginBindings, designations, steps, artifacts, blocks, appExtensions, forms, tiptapPlugins, referenceTypes, referenceCategories };
+}
+
+/** Published lookup data and executable resource lifetime have separate commit/retirement paths. */
+export function createFePackRegistry(): FePackRegistry {
+  const logger = createLogger('pack-frontends');
+  let accepted = new Map<string, FrontendContributions>();
+  let tables = buildTables(accepted.values());
+  const bindings = new Map<string, ReturnType<typeof createFrontendSettingsBinding>>();
+  const listeners = new Set<(packId: string) => void>();
+  let revision = 0;
+  let changing = false;
+  function mutate<T>(operation: () => T): T {
+    if (changing) throw new Error('A frontend registry change is already in progress');
+    changing = true;
+    try { return operation(); } finally { changing = false; }
+  }
+  function publishChange(packId: string) {
+    for (const listener of listeners) {
+      try { listener(packId); }
+      catch (error) { logger.error('Frontend registry listener failed', error instanceof Error ? error : new Error(String(error))); }
+    }
+  }
+  function retire(binding: ReturnType<typeof createFrontendSettingsBinding> | undefined) {
+    const errors = binding?.dispose() ?? [];
+    if (errors.length) logger.error('Frontend resource retirement failed', new AggregateError(errors, 'Frontend resource retirement failed'));
+  }
+  function prepareChange(id: string, next: Map<string, FrontendContributions>, projected: ReturnType<typeof buildTables>,
+    binding: ReturnType<typeof createFrontendSettingsBinding> | undefined, plugins: Plugin[]): PreparedFrontend {
+    const before = revision;
+    let state: 'pending' | 'committed' | 'disposed' = 'pending';
+    const discard = () => {
+      if (state !== 'pending') return;
+      state = 'disposed';
+      retire(binding);
+    };
+    const dispose = () => { if (changing) discard(); else mutate(discard); };
+    return {
+      plugins,
+      commit(beforePublish) {
+        try { return mutate(() => {
+          if (state !== 'pending') throw new Error('Only a pending frontend may commit');
+          if (revision !== before) throw new Error('The frontend registry changed while this candidate was prepared');
+          binding?.activate();
+          beforePublish?.();
+          if (state !== 'pending') throw new Error('Frontend preparation was disposed before publication');
+          const previous = bindings.get(id);
+          accepted = next;
+          tables = projected;
+          if (binding) bindings.set(id, binding); else bindings.delete(id);
+          state = 'committed';
+          revision++;
+          retire(previous);
+          publishChange(id);
+          return plugins;
+        }); } catch (error) { dispose(); throw error; }
+      },
+      dispose,
+    };
+  }
+  function prepareUnregisterPackFE(id: string): PreparedFrontend {
+    return mutate(() => {
+      if (!accepted.has(id)) throw new Error(`Pack "${id}" frontend is not registered`);
+      const next = new Map(accepted);
+      next.delete(id);
+      return prepareChange(id, next, buildTables(next.values()), undefined, []);
     });
   }
-}
-
-/**
- * A list of contributions kept with the pack that made each, for a kind whose items have no key to collide
- * on — which is every kind `createOwnedStore` cannot hold.
- *
- * Removal is by **contribution**, not by value. Two packs can contribute the same object: `@apackdev/sdk` is
- * a shared instance, so a tiptap plugin a dependency exports is the same reference in both packs, and
- * removing it by `indexOf` takes the first occurrence — which may be the other pack's, leaving the
- * unregistered pack's behind.
- */
-function createOwnedList<T>() {
-  let held: Array<{ owner: string; value: T }> = [];
-  return {
-    register(owner: string, items: readonly T[] | undefined): void {
-      for (const value of items ?? []) held.push({ owner, value });
-    },
-    unregister(owner: string): void {
-      held = held.filter((entry) => entry.owner !== owner);
-    },
-    /** In registration order, which is load-bearing: tiptap resolves equal-priority extensions by it */
-    all: (): T[] => held.map((entry) => entry.value),
-  };
-}
-
-/** A new, empty frontend registry */
-export function createFePackRegistry(): FePackRegistry {
-  const allPlugins: Plugin[] = [];
-  let defaultPlugin: Plugin | undefined;
-  const packExtensions = new Map<string, PackFEExtensions>();
-  const designations = createDesignationStore();
-  const steps = createStepStore();
-  const artifacts = createDefinitionStore<ArtifactDefinition>();
-  const blocks = createDefinitionStore<BlockDefinition>();
-  const tiptapPlugins = createOwnedList<TiptapPlugin>();
-  const appExtensions = createAppExtensionSlots();
-  const dslTypes = createOwnedStore<DslTypeConfig>();
-
-  /** What a pack's frontend contributes, each kind recording how to take it back out (as the backend registry does) */
-  const contributions: ReadonlyArray<Contribution<AddressedRegistration>> = [
-    // First, so a role another pack plays refuses the pack before anything else of it is in, as the backend's does
-    (reg, undo) => {
-      designations.register(reg.roles);
-      undo(() => designations.unregister(reg.roles));
-    },
-    (reg, undo) => listed(allPlugins, reg.addressed.map(({ plugin }) => plugin), undo),
-    // The first pack to claim the default keeps it
-    (reg, undo) => {
-      const claim = reg.addressed.find((feature) => feature.default);
-      if (!claim || defaultPlugin) return;
-      defaultPlugin = claim.plugin;
-      undo(() => { defaultPlugin = undefined; });
-    },
-    (reg, undo) => {
-      tiptapPlugins.register(reg.id, reg.tiptapPlugins);
-      undo(() => tiptapPlugins.unregister(reg.id));
-    },
-    (reg, undo) => {
-      for (const [slot, component] of Object.entries(reg.appExtensions ?? {})) {
-        appExtensions.register(slot, component, reg.id);
-        undo(() => appExtensions.unregister(slot, reg.id));
-      }
-    },
-    definitions(artifacts, (reg) => reg.artifacts),
-    definitions(blocks, (reg) => reg.blocks),
-    // Each step's components, loaded once, off the pack's own `fe` — the object every merged definition of the type
-    // hands out, since merging keeps the facet by reference. Loaded here, `loadComponents` (the pack's own code)
-    // can't run inside another pack's registration and fail it.
-    definitions(steps, (reg) => reg.steps, (step) => {
-      if (step.fe?.loadComponents && !step.fe.components) step.fe.components = step.fe.loadComponents();
-    }),
-    (reg, undo) => {
-      for (const [name, config] of Object.entries(reg.dslTypes ?? {})) {
-        dslTypes.set(name, config, reg.id);
-        undo(() => dslTypes.remove(name, reg.id));
-      }
-    },
-  ];
-
-  function registerPackFE(registration: PackFERegistration): Plugin[] {
-    const packId = registration.id;
-    if (packExtensions.has(packId)) {
-      throw new Error(`Pack "${packId}" frontend is already registered`);
+  function preparePackFE(authority: FrontendAdmission, registration: PackFERegistration, settings?: FrontendSettingsBinding, replacing = false): PreparedFrontend {
+    const binding = createFrontendSettingsBinding(settings);
+    try {
+      return mutate(() => {
+        const admission = captureFrontendAdmission(authority);
+        registration = captureFrontendBindings(registration, admission.declarations);
+        const problem = frontendIdentityProblem(admission, registration) ?? frontendBindingProblem(admission.declarations, registration);
+        if (problem) throw new Error(problem);
+        const { id, ...definition } = registration;
+        if (accepted.has(id) !== replacing) throw new Error(replacing
+          ? `Pack "${id}" frontend is not registered` : `Pack "${id}" frontend is already registered`);
+        const candidate = capture({ ...definition, id }, admission);
+        const next = new Map(accepted);
+        next.set(id, candidate);
+        const projected = buildTables(next.values());
+        binding.bind(candidate.bindSettings);
+        return prepareChange(id, next, projected, binding, candidate.addressed.map(({ plugin }) => plugin));
+      });
+    } catch (error) {
+      if (changing) retire(binding); else mutate(() => retire(binding));
+      throw error;
     }
-    checkFeatureIds(packId, Object.keys(registration.features ?? {}));
-    // All or nothing: a throw partway (a step's `loadComponents`, a role collision) leaves the registry as it was
-    const reg = addressed(registration);
-    const undos = addContributions(reg, contributions);
-    const plugins = reg.addressed.map(({ plugin }) => plugin);
-    packExtensions.set(packId, { plugins, undo: undos.undoAll });
-    return plugins;
   }
-
-  function unregisterPackFE(packId: string): Plugin[] {
-    const contrib = packExtensions.get(packId);
-    if (!contrib) return [];
-
-    contrib.undo();
-    packExtensions.delete(packId);
-    return contrib.plugins;
+  const accept = (admission: FrontendAdmission, registration: PackFERegistration, settings: FrontendSettingsBinding | undefined, replacing: boolean) => {
+    const prepared = preparePackFE(admission, registration, settings, replacing);
+    try { return prepared.commit(); } finally { prepared.dispose(); }
+  };
+  function unregisterPackFE(id: string): Plugin[] {
+    const previous = accepted.get(id);
+    if (!previous) return [];
+    const prepared = prepareUnregisterPackFE(id);
+    try { prepared.commit(); } finally { prepared.dispose(); }
+    return previous.addressed.map(({ plugin }) => plugin);
   }
 
   return {
-    registerPackFE,
+    preparePackFE,
+    prepareUnregisterPackFE,
+    hasPackFE: id => accepted.has(id),
+    registerPackFE: (admission, registration, settings) => accept(admission, registration, settings, false),
+    replacePackFE: (admission, registration, settings) => accept(admission, registration, settings, true),
     unregisterPackFE,
-    getRegisteredPlugins: () => allPlugins,
-    getAppExtension: appExtensions.get,
-
-    // The SDK's frontend lookups (FePackRegistryView)
-    designation: designations.get,
-    step: steps.get,
-    steps: steps.all,
-    artifact: artifacts.get,
-    artifacts: artifacts.all,
-    block: blocks.get,
-    blocks: blocks.all,
-    plugins: () => allPlugins,
-    // **No throwing counterpart, because at startup the answer is legitimately "not yet".** Every pack's
-    // frontend loads after the window is up, so a caller demanding a default plugin could not run at all:
-    // the shell waits for one instead (`wantsDefaultPlugin`). Absent until a pack claims it
-    defaultPlugin: () => defaultPlugin,
-    tiptapPlugins: tiptapPlugins.all,
-    appExtension: appExtensions.get,
-    dslTypes: () => dslTypes.entries(),
+    getRegisteredPlugins: () => [...tables.plugins],
+    getAppExtension: key => tables.appExtensions.get(key),
+    settingsForm: target => tables.forms.get(formKey(target)),
+    onChanged(listener) { listeners.add(listener); return () => { listeners.delete(listener); }; },
+    designation: key => tables.designations.get(key),
+    stepBindings: () => new Map(tables.steps.entries()),
+    artifactBindings: () => new Map(tables.artifacts.entries()),
+    artifact: key => tables.artifacts.get(key)?.binding, artifacts: () => tables.artifacts.all().map(entry => entry.binding),
+    blockBindings: () => new Map(tables.blocks.entries()),
+    block: key => tables.blocks.get(key)?.binding, blocks: () => tables.blocks.all().map(entry => entry.binding),
+    pluginBindings: () => new Map(tables.pluginBindings),
+    frontendIdentity: packId => accepted.get(packId)?.identity,
+    plugins: () => [...tables.plugins],
+    tiptapPlugins: () => [...tables.tiptapPlugins],
+    referenceTypes: () => new Map(tables.referenceTypes),
+    referenceCategories: () => new Map(tables.referenceCategories),
+    appExtension: key => tables.appExtensions.get(key),
   };
 }

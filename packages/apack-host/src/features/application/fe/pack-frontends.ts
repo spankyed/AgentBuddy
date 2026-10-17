@@ -1,5 +1,5 @@
-// External packs' frontends, loaded by a child actor: it reads the loaded packs and loads the frontend of each this
-// window hasn't loaded, reporting each one as it finishes and the run as a whole when it's done.
+// One cancellable read/load cycle: reconcile absent owners, accept new frontends, and refresh existing
+// resources on reconnect. Refused candidates leave accepted resources to their owner.
 import { fromCallback } from 'xstate';
 import type { ShellClient } from '../../../fe/client.ts';
 import type { ShellEvent } from './types.ts';
@@ -13,31 +13,32 @@ function messageOf(err: unknown): string {
 }
 
 /**
- * Loads the frontends of the loaded packs not in `loadedPackIds`. A failed read of the loaded packs leaves them
- * unloaded: the shell runs the loader again whenever its subscription is established, so the next connection picks
- * them up. One pack that throws doesn't stop the others; it's reported as its own failure, since the loaded packs
- * were read and only that pack is missing.
+ * Ordinary reads skip matching accepted lifetimes; changed revisions and reconnect refresh their resources.
+ * Only a successful authoritative list can remove an owner; failed reads and candidates preserve incumbents.
  */
 export function packFrontendLoader(client: ShellClient, packFrontends: ShellPackFrontends) {
-  return fromCallback<ShellEvent, { loadedPackIds: string[] }>(({ sendBack, input }) => {
+  return fromCallback<ShellEvent, { acceptedPackRuntimes: Record<string, string>; refresh: boolean }>(({ sendBack, input }) => {
     let stopped = false;
+    const controller = new AbortController();
     const failedPacks: { packId: string; error: string }[] = [];
 
     client.loadedPacks().then(async (loadedPacks) => {
+      if (stopped) return;
+      const present = new Set(loadedPacks.map(pack => pack.id));
+      for (const packId of Object.keys(input.acceptedPackRuntimes)) {
+        if (!present.has(packId)) sendBack({ type: 'PACK_PLUGINS_UNLOADED', packId });
+      }
       for (const pack of loadedPacks) {
         if (stopped) return;
-        if (input.loadedPackIds.includes(pack.id)) continue;
+        if (!input.refresh && input.acceptedPackRuntimes[pack.id] === pack.runtimeRevision) continue;
         try {
           // null: the pack has no frontend code, so there's nothing to merge or ask startup data for
-          const plugins = await packFrontends.load(pack);
+          const plugins = await packFrontends.load(pack, controller.signal);
           if (stopped) return;
-          sendBack({ type: 'PACK_FRONTEND_LOADED', packId: pack.id, plugins });
+          sendBack({ type: 'PACK_FRONTEND_LOADED', packId: pack.id, runtimeRevision: pack.runtimeRevision, plugins });
         } catch (err: unknown) {
           if (stopped) return;
           failedPacks.push({ packId: pack.id, error: messageOf(err) });
-          // Reported as loaded with nothing, like a frontend that failed to import: its systems are asked for their
-          // startup data and the loader doesn't come back to it
-          sendBack({ type: 'PACK_FRONTEND_LOADED', packId: pack.id, plugins: [] });
         }
       }
       if (!stopped) sendBack({ type: 'PACK_FRONTENDS_SETTLED', failedPacks });
@@ -45,7 +46,7 @@ export function packFrontendLoader(client: ShellClient, packFrontends: ShellPack
       if (!stopped) sendBack({ type: 'PACK_FRONTENDS_SETTLED', loadedPacksError: messageOf(err), failedPacks });
     });
 
-    return () => { stopped = true; };
+    return () => { stopped = true; controller.abort(); };
   });
 }
 
@@ -54,8 +55,8 @@ export function packFrontendLoader(client: ShellClient, packFrontends: ShellPack
  * with frontend code, the ones the app ships included, since that frontend loads after it; each is asked for once
  * its load finished, whether it added plugins or not, so its systems without plugins get it too.
  */
-export function announcePackClientReady(client: ShellClient, packId: string): void {
-  client.packClientReady(packId).catch((err: unknown) => {
+export function announcePackClientReady(client: ShellClient, packId: string, runtimeRevision: string): void {
+  client.packClientReady(packId, runtimeRevision).catch((err: unknown) => {
     console.warn(`[shell] Couldn't request startup data for pack ${packId}:`, err);
   });
 }

@@ -73,30 +73,28 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
+import { watch } from 'vue'
+import { useSettingsDraft } from '@apackdev/sdk/fe'
+import { useWindowSettingsSnapshot } from '@/runtime/settings'
 import { useDebounce } from '@apackdev/ui/composables/useDebounce'
 import { User, MapPin } from 'lucide-vue-next'
 import AddressInput from './AddressInput.vue'
-import type { Address, PersonalSection} from '@/views/settings/types'
+import type { AppPersonalInfo } from '@apackdev/sdk/types'
 import type { SettingUpdate } from '@apackdev/sdk/fe'
 
 interface Props {
-  settings?: PersonalSection
+  settings?: AppPersonalInfo
 }
 
-// `settings` is optional, so it is already undefined when the tab has no slice for this form; the forms read it
-// with `?.`, so the default that turned it into null was never a distinction either of them could see.
 const props = defineProps<Props>()
+const snapshot = useWindowSettingsSnapshot()
 
 const emit = defineEmits<{
   'update-setting': [SettingUpdate]
 }>()
 
-const formData = ref<{
-  name: string
-  phoneNumber: string
-  address: Address
-}>({
+const formData = useSettingsDraft(() => ({
+  ...props.settings,
   name: props.settings?.name || '',
   phoneNumber: props.settings?.phoneNumber || '',
   address: props.settings?.address || {
@@ -107,7 +105,7 @@ const formData = ref<{
     postalCode: '',
     country: 'US'
   },
-})
+}))
 
 // Format phone number as user types
 const formatPhoneNumber = (value: string) => {
@@ -143,11 +141,17 @@ const handleNameInput = () => {
 }
 
 // Use the debounce composable
-const { debounced: debouncedSave } = useDebounce(() => {
+const { debounced: debouncedSave, cancel } = useDebounce(() => {
   emit('update-setting', {
     path: [],
-    value: formData.value
+    value: JSON.parse(JSON.stringify(formData.value)),
+    condition: snapshot.value ? {
+      runId: snapshot.value.runId,
+      expected: { exists: true, value: JSON.parse(JSON.stringify(props.settings ?? {})) }
+    } : undefined
   })
 }, 500)
+// An accepted reset/import/remote edit supersedes a pending draft save.
+watch(() => JSON.stringify(props.settings), cancel)
 </script>
 

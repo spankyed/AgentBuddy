@@ -3,6 +3,8 @@
   "include": ["env.d.ts", "src/**/*", "src/**/*.vue", "../apack-sdk/src/fe/**/*"],
   "exclude": [],
   "compilerOptions": {
+    // The renderer targets Electron's Chromium, including Error.cause.
+    "lib": ["ES2022", "DOM", "DOM.Iterable"],
     "noUnusedLocals": true,
     // Workspace @apackdev/* packages resolve to source (see their package.json exports)
     "customConditions": ["@apackdev/source"],

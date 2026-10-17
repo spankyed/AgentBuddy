@@ -9,6 +9,7 @@ A step definition adds a new node type to the visual flow editor. A `StepDefinit
 | Field | Type | Description |
 |---|---|---|
 | `type` | `string` | Node type id (`node.nodeType`) and DSL `type` |
+| `node` | `StepNodeFacet` | Inline manifest labels/defaults emitted into both registrations |
 | `kind` | `'step' \| 'trigger'` | Omitted means `'step'`. Trigger nodes start tracks and never run as steps |
 | `build` | `StepBuildFacet` | Compile/validate/decompile DSL nodes |
 | `runtime` | `StepRuntimeFacet` | Execute the step |
@@ -16,19 +17,46 @@ A step definition adds a new node type to the visual flow editor. A `StepDefinit
 | `trigger` | `TriggerFacet` | For `kind: 'trigger'` |
 | `dsl` | `StepDSLMeta` | Same shape as the manifest entry's `dsl`; codegen reads the manifest's (see [Flow helpers](#flow-helpers)) |
 
+Declare initial values once in `apack.json`:
+
+```json
+{
+  "extensions": {
+    "steps": {
+      "my-step": {
+        "node": {
+          "label": "My Step",
+          "defaults": {
+            "enabled": true
+          }
+        },
+        "build": {
+          "compile": "src/extensions/steps/my-step/build.ts#compile",
+          "validate": "src/extensions/steps/my-step/build.ts#validate",
+          "getLabel": "src/extensions/steps/my-step/build.ts#getLabel"
+        }
+      }
+    }
+  }
+}
+```
+
+`node.defaults` contains JSON data and must satisfy the step's validation. New nodes receive independent
+copies, so editing a nested field does not change the next node's baseline. No node-data export is needed.
+
 ### Scaffolding
 
 ```bash
 apack pack add step my-step
-apack pack add step my-trigger --trigger   # sets kind: 'trigger' in the manifest; no trigger facet is scaffolded
+apack pack add step my-trigger --trigger   # scaffolds a TriggerFacet and inline initial node values
 ```
 
 Creates:
 
 ```
 src/extensions/steps/my-step/
-  build.ts      # myStepStepBuild: its StepBuildFacet (no FE or runtime imports)
-  fe.ts         # myStepStepFE: its StepFEFacet — node config, form component
+  build.ts      # Named compiler callbacks; no FE or runtime imports
+  layout.ts     # optional calculated layout function exports
   types.ts      # DSL and compiled node types
   form.vue      # Step configuration form
 ```
@@ -37,6 +65,29 @@ It writes the manifest entry under `extensions.steps` naming those two facets, a
 `runtime.ts` and name it in the entry to give the step something to run. A type the manifest already
 declares is refused.
 
+### Reading step declarations and implementations
+
+Backend code reads `getStepDeclaration(type)` or `getStepDeclarations()` from
+`@apackdev/sdk/steps` for labels, defaults and declared capabilities. These reads do not load pack
+modules and remain available when a pack is disabled or its implementation is unavailable.
+`stepRegistry.createNodeDefaults(type)` copies the declared defaults, so editing a node cannot mutate
+the catalog.
+
+Creating a node through `flowRepository` requires `getStepBinding(type)` to identify an enabled,
+accepted backend matching the current declaration and build. The repository checks that binding again
+after trigger validation and before writing. Missing or replaced providers refuse creation without
+persisting a node. `stepRegistry.getRuntime`, `getBuild` and `getTrigger` read active providers for
+execution, compilation and retirement; they do not establish eligibility for new work.
+
+Updating a node keeps its type fixed and reads its declared relation and validation policy. A declared
+trigger validator requires a matching eligible backend, checked again after validation before any write.
+Missing, stale or replaced providers refuse the update. Edits with no declared validator can proceed
+without activating a backend; an unknown declaration cannot establish an editing policy.
+
+Frontend code uses `getStepDeclarations`, `getStepDeclaration` and `getStepBinding` from
+`@apackdev/sdk/fe`. Frontend metadata comes from the catalog; executable views additionally require the
+current frontend binding. Backend and frontend implementations have separate lifetimes.
+
 ### Build facet (build.ts)
 
 ```typescript
@@ -44,20 +95,20 @@ import type { StepBuildFacet, StepCompileResult, StepValidationError } from '@ap
 import { EARS } from '@apackdev/sdk';
 import type { DSLMyStepNode } from './types.ts';
 
-export const myStepStepBuild: StepBuildFacet = {
-  compile(node, nodeId, ts, ctx): StepCompileResult {
+export const compile: StepBuildFacet['compile'] = (node, nodeId, ts, ctx): StepCompileResult => {
     const step = node as unknown as DSLMyStepNode;
     return {
-      entity: { id: nodeId, entityType: EARS.Entity.Node, createdAt: ts, nodeType: 'my-step', label: step.label ?? 'My Step' },
-      relations: [],
+        entity: { id: nodeId, entityType: EARS.Entity.Node, createdAt: ts, nodeType: 'my-step', label: step.label ?? 'My Step' },
+        relations: [],
     };
-  },
-  validate(step, path, ctx): StepValidationError[] {
+};
+
+export const validate: StepBuildFacet['validate'] = (step, path, ctx): StepValidationError[] => {
     return [];
-  },
-  getLabel(step, index) {
+};
+
+export const getLabel: StepBuildFacet['getLabel'] = (step, index) => {
     return typeof step.label === 'string' ? step.label : `My Step ${index}`;
-  },
 };
 ```
 
@@ -92,7 +143,7 @@ brain reads them before it decides how to run the step; `sync` is the one that c
 
 | Member | Description |
 |---|---|
-| `handler(tNode, node, executionContext, actor)` | Runs the step. `tNode` is its trace node, `node` the compiled entity, `executionContext` has `flowTNodeId`, `event`, `steps` (earlier runs), `lastStep` and `runtime` (`getFlowActor`, `getAppServices`). Finish with `actor.send({ type: 'COMPLETE', result })`, or `actor.send({ type: 'ERROR', error })` with the error `reportError({ error, source, step: { phase, tNodeId, … } })` (`@apackdev/sdk/logger`) returns. A type without a handler completes with `{ executed: true }` |
+| `handler(tNode, node, executionContext, actor)` | Runs the step. `tNode` is its trace node, `node` the compiled entity, `executionContext` has `flowTNodeId`, `event`, `steps` (earlier runs), `lastStep` and `runtime` (`getFlowActor`, `servicesForAction(label)`). Finish with `actor.send({ type: 'COMPLETE', result })`, or `actor.send({ type: 'ERROR', error })` with the error `reportError({ error, source, step: { phase, tNodeId, … } })` (`@apackdev/sdk/logger`) returns. A type without a handler completes with `{ executed: true }` |
 | `isAsync` | The handler returns a promise; a rejection is reported and sent as `ERROR` |
 | `sync` | The handler's module is imported with the pack entry rather than on the step's first run, so its sends land in the brain's own dispatch. For a handler whose sends have to be ordered with the transition that called it — `kill` ends the flow *and* completes itself, and a tick's delay leaves the step reading as still running. Exclusive with `isAsync` |
 | `spawnsSubflow` | The brain spawns a sub-flow machine for the node instead of a step machine (the `subflow` step) |
@@ -123,43 +174,41 @@ A trigger (`kind: 'trigger'`) compiles a DSL track, not a step:
 | `validateTrack?(track)` | `{ valid, errors }` before compiling |
 | `validate?(node)` | `{ valid, errors }` for a compiled node on persist |
 
-`register` is declared beside the facet rather than inside it, for the same reason a step's handler is:
-`trigger.facet` names the eager half, which `build.ts` exports, and `trigger.register` names the function
-whose module is loaded when the trigger is first registered.
+`trigger` declares track metadata inline and each callback as a `"path#export"` reference. Compiler
+callbacks are checked and loaded for compilation. `trigger.register` stays lazy: its module is loaded
+when the trigger is first registered at runtime. Static discovery imports none of these modules.
 
-### Frontend facet (fe.ts)
+### Frontend declaration
 
-```typescript
-import type { StepFEFacet } from '@apackdev/sdk/steps';
-import { defineAsyncComponent } from 'vue';
-import { Box } from 'lucide-vue-next';
+`extensions.steps.<type>.fe` contains presentation data and explicit bindings. Discovery can read it
+without importing components or layout code. Codegen assembles the checked `StepFEFacet` at build time.
 
-export const myStepStepFE: StepFEFacet = {
-  loadComponents: () => ({
-    form: defineAsyncComponent(() => import('./form.vue')),
-  }),
-  nodeConfig: {
-    label: 'My Step',
-    icon: Box,
-    color: 'text-indigo-400',
-    bgColor: 'bg-indigo-700/20',
-    hoverBgColor: 'group-hover:bg-indigo-700/30',
-    connectionRules: { inputs: -1, outputs: -1 },
-    category: 'logic',
-    isImplemented: true,
+```json
+{
+  "nodeConfig": {
+    "icon": "Box",
+    "isImplemented": true,
+    "connectionRules": { "inputs": -1, "outputs": -1 },
+    "category": "logic"
   },
-};
+  "colorKey": "indigo",
+  "components": { "form": { "entry": "src/extensions/steps/my-step/form.vue", "load": "lazy" } },
+  "layout": { "hasInput": true, "getHeight": "src/extensions/steps/my-step/layout.ts#getHeight" }
+}
 ```
 
 | Field | Description |
 |---|---|
-| `nodeConfig` | Palette and node appearance (below) |
-| `loadComponents?` | `() => ({ node?, form? })`, called once on the frontend to fill `components` |
-| `components?` | `{ node?, form? }`. `node` replaces the default canvas node (trigger nodes always use the trigger node); `form` replaces the default form |
-| `defaults?` | Fields copied into a new node of this type |
+| `nodeConfig` | Palette category, icon, connection rules and availability flags (below) |
+| `components?` | Optional `node` and `form` targets: a component path or `{ entry, load?: "lazy" }`. A script component may name `path#export`; Vue SFCs use their default export. `node` replaces the default canvas node; `form` replaces the default form |
 | `colorKey?` | Node style color: `purple`, `blue`, `amber`, `cyan`, `orange`, `emerald`, `indigo`, `neutral`, `red` or `yellow` |
-| `handlePrefix?` | Multi-output steps: new outgoing handles are `<prefix>-0`, `<prefix>-1`, … (`'branch'` pairs with `sourceHandle: 'branch-N'`) |
-| `layout?` | ELK layout: `getHeight(node, { exitCount })`, `getPorts(node, { exitCount })`, `hasInput`, `usesExitCount`. Omitted → one input, one output |
+| `handlePrefix?` | Multi-output steps: outgoing handles are `<prefix>-0`, `<prefix>-1`, … |
+| `layout?` | Inline `hasInput`/`usesExitCount` flags and named `getHeight`/`getPorts` function references. Functions receive `(node, { exitCount })`; omitted layout uses one input and one output |
+
+All paths are pack-root-relative. An icon is a Lucide export name or a component target object.
+Components and layout functions are validated without invoking them. Layout exports use
+`StepLayoutDescriptor` from `@apackdev/sdk/steps` for their callback types. Labels and initial node
+fields belong to the separate inline `node` declaration, shared by frontend and backend.
 
 The form component receives `node` and `resources` (`{ actions, flows, models, prompts }`) and emits `update-node` (the changed fields), `reindex-branches` (`{ type: 'inserted' \| 'removed', index }`) and `close`. The scaffolded `form.vue` declares `node` and `resources` and wraps `BaseForm` (`@apackdev/ui/components/BaseForm`), re-emitting its `update-node` and `close`.
 
@@ -167,16 +216,33 @@ The form component receives `node` and `resources` (`{ actions, flows, models, p
 
 | Field | Type | Description |
 |---|---|---|
-| `label` | `string` | Display name in the node palette |
-| `defaultLabel` | `string` | Label for new instances (falls back to `label`) |
-| `icon` | `Component` | Lucide Vue component |
-| `color` | `string` | Tailwind text color class |
-| `bgColor` | `string` | Tailwind background class |
-| `hoverBgColor` | `string` | Tailwind hover background class |
+| `icon` | `string` or component target object | Lucide export name or explicit component binding |
 | `connectionRules` | `{ inputs, outputs }` | Max connections (-1 = unlimited) |
 | `category` | `'trigger' \| 'action' \| 'logic' \| 'data' \| 'ai'` | Palette category |
 | `isImplemented` | `boolean` | Palette items not implemented are disabled |
 | `isDisabled` | `boolean` | Disables the palette item |
+
+### Reading step declarations and frontend bindings
+
+`getStepDeclarations()` and `getStepDeclaration(type)` from `@apackdev/sdk/fe` return catalog entries:
+owner, origin, enablement, identities and declaration data. They read no executable pack modules.
+A unique installed/native owner takes precedence over authoring previews; ambiguous owners are not
+selected. Disabled or disconnected declarations remain readable.
+
+`getStepBinding(type)` returns the current eligible frontend binding, or `undefined`. It requires a ready
+catalog, enabled runtime owner and matching accepted declaration/build identities. Native bindings also
+match their captured declaration data without invented version stamps. This read never starts a pack.
+`getStepFrontendBindings()` is the lower-level inventory of admitted frontends; admission alone does not
+establish current catalog readiness.
+
+In Vue, call `useStepDeclarations()` inside setup or an effect scope. Its computed list refreshes for
+both declaration and frontend changes, including readiness changes with unchanged metadata. Disposal
+releases both subscriptions. Imperative observers can use `onStepsChanged(callback)` and call its disposer.
+
+For flow UI, `useNodeStyles()` from `@apackdev/ui/components/node-styles` supplies reactive node/palette
+helpers in the same scope. The standalone helper exports read current data on each call. Unavailable
+steps retain presentation and a fallback icon, with creation disabled. Custom components and calculated
+layouts require an eligible binding; static layout flags remain readable without one.
 
 ### Types (types.ts)
 
@@ -205,18 +271,71 @@ A step is declared in `apack.json` under `extensions.steps`, keyed by its type, 
   "extensions": {
     "steps": {
       "my-step": {
-        "build": "src/extensions/steps/my-step/build.ts#myStepStepBuild",
-        "fe": "src/extensions/steps/my-step/fe.ts#myStepStepFE",
-        "runtime": { "handler": "src/extensions/steps/my-step/runtime.ts#handler", "isAsync": true },
-        "dsl": { "primaryField": "action" }
+        "build": {
+          "compile": "src/extensions/steps/my-step/build.ts#compile",
+          "validate": "src/extensions/steps/my-step/build.ts#validate",
+          "getLabel": "src/extensions/steps/my-step/build.ts#getLabel"
+        },
+        "fe": {
+          "nodeConfig": {
+            "icon": "Box",
+            "isImplemented": true,
+            "category": "logic",
+            "connectionRules": {
+              "inputs": -1,
+              "outputs": -1
+            }
+          },
+          "colorKey": "indigo",
+          "components": {
+            "form": {
+              "entry": "src/extensions/steps/my-step/form.vue",
+              "load": "lazy"
+            }
+          }
+        },
+        "runtime": {
+          "handler": "src/extensions/steps/my-step/runtime.ts#handler",
+          "isAsync": true
+        },
+        "dsl": {
+          "primaryField": "action"
+        },
+        "node": {
+          "label": "My Step"
+        },
+        "types": "src/extensions/steps/my-step/types.ts"
       },
       "my-trigger": {
         "kind": "trigger",
         "trigger": {
-          "facet": "src/extensions/steps/my-trigger/build.ts#myTriggerBuild",
+          "trackField": "myTrigger",
+          "compile": "src/extensions/steps/my-trigger/build.ts#compile",
+          "decompile": "src/extensions/steps/my-trigger/build.ts#decompile",
           "register": "src/extensions/steps/my-trigger/runtime.ts#register"
         },
-        "fe": "src/extensions/steps/my-trigger/fe.ts#myTriggerFE"
+        "fe": {
+          "nodeConfig": {
+            "icon": "Radio",
+            "isImplemented": true,
+            "category": "trigger",
+            "connectionRules": {
+              "inputs": 0,
+              "outputs": -1
+            }
+          },
+          "colorKey": "blue",
+          "components": {
+            "form": {
+              "entry": "src/extensions/steps/my-trigger/form.vue",
+              "load": "lazy"
+            }
+          }
+        },
+        "node": {
+          "label": "My Trigger"
+        },
+        "types": "src/extensions/steps/my-trigger/types.ts"
       }
     }
   }
@@ -226,9 +345,11 @@ A step is declared in `apack.json` under `extensions.steps`, keyed by its type, 
 | Field | What it is |
 |---|---|
 | `kind` | `step` (the default) or `trigger` |
-| `build` | `"path#exportName"` of its `StepBuildFacet`. A trigger declares `trigger` instead |
-| `trigger` | For a trigger: `{ facet, register? }` — its `TriggerFacet`, and the function that starts it |
-| `fe` | `"path#exportName"` of its `StepFEFacet` |
+| `build` | An object declaring compile/validate/getLabel references, optional decompile/branches references and inline relation metadata. A trigger declares `trigger` instead |
+| `trigger` | Track metadata (`trackField`, optional `persistent`/`queryFields`) and compile/decompile references, with optional validation/register references |
+| `node` | Inline labels and initial JSON node fields |
+| `fe` | Inline frontend declaration (above) |
+| `types` | Explicit module declaring node and DSL types |
 | `runtime` | `{ handler?, isAsync?, waits?, spawnsSubflow? }` |
 | `dsl` | DSL configuration for flow-helper generation (below) |
 
@@ -238,8 +359,8 @@ Codegen sends each facet where it is used, so no barrel keeps them in step with 
 module a *dependent* pack's build loads to validate its flows with your step code. A dependency's step types
 are loaded that way too, and a type this pack and a dependency both define fails the build.
 
-A step's directory is the dirname of the first facet it names: `types.ts` and, for `dsl.custom`,
-`helpers.ts` are read from there.
+Step `types` and `dsl.helpers` explicitly name pack-root-relative modules. No contribution is inferred
+from neighboring files or the directory of another facet.
 
 ### Flow helpers
 
@@ -250,10 +371,10 @@ A step's directory is the dirname of the first facet it names: `types.ts` and, f
 | none | No helper |
 | `{}` | `ping(label?)` (type `ping`) |
 | `{ defaultLabel: 'Kill Flow' }` | `kill(label = 'Kill Flow')` |
-| `{ primaryField: 'action' }` | `action(action, opts?)`: `opts` takes the other fields of the first `export interface DSL…Node` in the step's `types.ts`; `generate-entries` fails when there is none |
-| `{ custom: true }` | Re-exports everything from `<path>/helpers.ts` |
+| `{ primaryField: 'action' }` | `action(action, opts?)`: `opts` takes the other fields of the first `export interface DSL…Node` in the declared `types` module; `generate-entries` fails when there is none |
+| `{ helpers: "src/helpers.ts" }` | Re-exports the custom helpers from that module |
 
-A `kind: 'trigger'` entry whose declared facet module contains `trackField: '<name>'` (other than `event`) gets `<name>(value, exits, label?)`, returning a track.
+A `kind: 'trigger'` entry declaring `trigger.trackField: '<name>'` (other than `event`) gets a camelCase helper named after that field, returning a track. Codegen reads the manifest, without scanning implementation source.
 
 The helper is named after `type` in camelCase, with `-` and `_` separating words (`keep_alive` → `keepAlive`, `my-step` → `myStep`). The scaffolded `types.ts` names its DSL interface `DSL<Type>Node` (`DSLMyStepNode`), which `primaryField` reads.
 
@@ -267,6 +388,13 @@ An artifact is a typed content item (code, image, markdown, …) shown in a thre
 |---|---|---|
 | `icon` | yes | The icon shown in the artifact list |
 | `component` | no | The viewer. Without one, the host shows the text viewer |
+
+Frontend code reads `getArtifactDeclaration(type)` or `getArtifactDeclarations()` from
+`@apackdev/sdk/fe` for declared icon names and viewer paths without loading the pack. Use
+`getArtifactBinding(type)` for an executable viewer: it is available only while the current enabled
+owner and accepted declaration/build agree. `useArtifactDeclarations()` observes both metadata and
+binding readiness inside a Vue effect scope, so mounted lists and viewers follow pack changes.
+Unavailable viewers display the text fallback; declared icons remain available independently.
 
 ### Scaffolding
 
@@ -345,6 +473,13 @@ A block is an inline UI widget inside a chat message. A `BlockDefinition` (`@apa
 
 - **Display blocks** (`kind` omitted or `'display'`) render data (markdown, code, tool activity).
 - **Input blocks** (`kind: 'input'`) collect a response (text, choices, approvals).
+
+Frontend code reads `getBlockDeclaration(type)` or `getBlockDeclarations()` from
+`@apackdev/sdk/fe` for input/display kind and declared facet paths. `getBlockBinding(type)` supplies
+only a frontend matching the current enabled owner and accepted declaration/build.
+`useBlockDeclarations()` observes independent metadata and binding updates within a Vue effect scope.
+The thread UI does not render missing, disabled or stale components. Backend transcript callbacks
+remain execution-facing lookups with their runtime lifetime.
 
 ### Scaffolding
 
@@ -519,17 +654,56 @@ The block answers with a `ButtonGroupResponse` — `{ buttonId, state }`. Respon
 
 ### Tiptap plugins
 
-`fe.tiptapPlugins` in the manifest names a module exporting `tiptapPlugins: TiptapPlugin[]` (`@apackdev/sdk/fe`). Every `TiptapEditor` created afterwards uses them:
+`extensions.tiptapPlugins` declares named editor groups. Each group names its extensions,
+popups and optional suggestion predicate without importing executable code:
 
-| Field | Description |
-|---|---|
-| `extensions?` | Tiptap extensions added to the editor |
-| `popups?` | Components rendered with the editor (suggestion popups) |
-| `isSuggestionActive?(state)` | Return `true` while a popup is open, so Escape goes to the popup |
+```json
+{
+  "extensions": {
+    "tiptapPlugins": {
+      "suggestions": {
+        "extensions": {
+          "mention": "src/editor/mention.ts#Mention"
+        },
+        "popups": {
+          "mentions": "src/editor/MentionPopup.vue"
+        },
+        "isSuggestionActive": "src/editor/suggestions.ts#isSuggestionActive"
+      }
+    }
+  }
+}
+```
+
+Extension keys must match the exported Tiptap objects' names. Popup IDs belong to their group.
+The predicate receives an editor state and returns `true` while suggestions should handle Escape.
+Codegen imports each target and assembles keyed `TiptapPlugin` bindings (`@apackdev/sdk/fe`);
+there is no registration module or aggregate array export. Binding admission checks exact group/member
+names and executable shapes without calling components or predicates. Conflicting active extension
+names are refused with both owners. Catalog metadata remains available for disabled packs.
+
+`tiptapPluginRegistry.getAll()` returns accepted `{ packId, groupId, binding }` rows in pack/group
+registration order. Each row is immutable and its binding holds captured extension/popup membership.
+The returned list is detached. `onChanged(listener)` observes committed frontend changes and returns
+an unsubscribe function; reread the projection to distinguish relevant editor changes from unrelated
+pack changes. Discovery and unavailable groups remain in the catalog, separate from these bindings.
+
+Open editors follow accepted contribution changes. Popup/predicate-only updates preserve the editor
+and undo history. Extension changes replace its executable editor after retiring the previous popups;
+pending document data, selection and focus survive when the new schema represents them exactly.
+Undo history resets on that replacement. An unavailable or incompatible schema suspends the editor
+without saving altered content; restoring a compatible pack restores the pending document. Switching
+to another document explicitly discards that suspended editor state.
+
+The app's native frontend owns the `reference` node used by saved `apack-ref://` links. It is present
+without default-setup or a reference provider. Default-setup adds `referenceSuggestion`, its picker
+popups and command behavior; disabling it removes those tools while preserving stored references.
+Packs cannot claim the native node name. Reference type/category metadata and eligible navigation
+bindings still determine presentation and click behavior independently of parsing.
 
 ### App extensions
 
-`extensions.fe.appExtensions` maps a slot name to a Vue component file: `{ "welcome": "src/extensions/app/Welcome.vue" }`. The app renders one slot, `welcome`: an overlay shown to first-time users during onboarding. A pack registering a slot another pack registered replaces it.
+`extensions.appExtensions` maps a slot name to a Vue component file: `{ "welcome": "src/extensions/app/Welcome.vue" }`. The app renders one slot, `welcome`: an overlay shown to first-time users during onboarding. Slot names have one active pack owner; conflicting registrations are refused.
 
 ### PackFERegistration
 
@@ -537,12 +711,35 @@ The generated FE entry (`__generated__/pack-entry-fe.ts`) default-exports a `Pac
 
 | Field | Source |
 |---|---|
-| `features` | Each feature with a `plugin`: its `plugin.entry`, its `designation`, and `default: true` on the one whose `plugin` sets `default` (else the first). The first pack registered with a default opens by default; a role another pack's plugin plays refuses the pack |
+| `features` | Each feature with a `plugin`: its generated binding from declared state/views/presentation, its `designation`, and `default: true` on the one whose `plugin` sets `default`. Bindings must match the accepted declaration; startup selection follows the [declared default policy](manifest.md#features), independently of frontend delivery. Duplicate designation ownership refuses the pack |
 | `steps` / `artifacts` / `blocks` | each entry's `fe` facet, imported into the generated frontend entry (an artifact's `icon` with it) |
-| `tiptapPlugins` | `extensions.fe.tiptapPlugins` |
-| `appExtensions` | `extensions.fe.appExtensions` |
-| `dslTypes` | `extensions.dsl` entries with a `monaco` target (`__generated__/dsl-types-fe.ts`) |
+| `tiptapPlugins` | `extensions.tiptapPlugins` |
+| `appExtensions` | `extensions.appExtensions` |
 
 The renderer registers it for your pack; nothing in your frontend registers anything itself.
 
-`features.<id>.references` (`ReferenceTypeConfig`s from `@apackdev/sdk/fe/references`: how an entity type appears and navigates when referenced in the UI) is read only for built-in packs.
+`features.<id>.references` declares reference identities and presentation for any pack. Catalog metadata is independent of activation; item providers and navigation bind when the frontend is accepted.
+
+## DSL editor assistance
+
+DSL editor assistance is static catalog data. `getDslDeclarations()` / `getDslDeclaration(type)` from
+`@apackdev/sdk/fe` expose declarations and available compiled definition text, including disabled packs.
+`useDslDeclarations()` observes catalog updates in a Vue effect scope; `onDslDeclarationsChanged()`
+returns an explicit unsubscribe function. Ambiguous owners are unavailable. Unbuilt source entries may
+lack compiled definitions. Monaco replaces or removes libraries and globals when catalog data changes,
+sharing them until the last editor releases them. `setupMonacoForFile()` returns that release function;
+call it when a direct consumer changes files or disposes its editor. `UnifiedMonacoEditor` owns this
+lifecycle automatically. These data reads import no pack or compiler modules.
+
+### Navigation discovery
+
+The shell lists enabled plugins from their declarations before loading their frontend. Labels, pinning,
+visibility defaults and order come from the catalog; source-only previews are not app destinations.
+Native host tabs follow pack tabs within each pinned/unpinned group. Frontend delivery order cannot
+reorder tabs. User visibility choices override `features.<id>.plugin.defaultVisible` (which defaults
+to visible). Hidden destinations remain in the toolbar visibility menu.
+
+Accepted frontend bindings supply icons and executable behavior. Until an icon is available, the shell
+shows its own placeholder. Opening a declared destination still uses the shell's checked loading and
+readiness path; listing a tab does not activate its pack. Disabled packs retain discoverable metadata
+in the pack catalog but are omitted from app navigation.

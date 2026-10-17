@@ -19,12 +19,12 @@ import * as os from 'node:os';
 import * as path from 'node:path';
 import { diffableStamp, firstChange, freshnessSweep, REPO_ROOT, stampRecord } from '@apackdev/host/build/packages-built';
 import type { UnitSuite } from './lib/unit-suites.ts';
-import { holdPoolLock, POOLS, poolStampFor, poolUnitFor, projectsThatDidNotRun, provenanceOf, prunePoolStamps, recordRun, recordsVerdict, whyItRuns, type Pool, type Provenance } from './lib/unit-pool.ts';
+import { holdPoolLock, poolWorkers, POOLS, poolStampFor, poolUnitFor, projectsThatDidNotRun, provenanceOf, prunePoolStamps, recordRun, recordsVerdict, whyItRuns, type Pool, type Provenance } from './lib/unit-pool.ts';
 import type { ReportedRun } from './lib/spec-durations-reporter.ts';
 import { boundedSpawn } from './lib/bounded-spawn.ts';
-import { POOL_SECONDS } from './lib/chain-steps.ts';
+import { POOL_SECONDS, poolStepName } from './lib/chain-steps.ts';
 import { MEASURED_ON } from './lib/core-budget.ts';
-import { TIMEOUT_MS, timedOutBecause } from './lib/step-timeouts.ts';
+import { timeoutMsFor, timedOutBecause } from './lib/step-timeouts.ts';
 import { exitOnEpipe } from './lib/exit-on-epipe.ts';
 import { asDuration, durationsOf, halfTotal, markedSpecs, trendOf, placementOf, pruneDurationCache, slowestFiles, tailBar, uncheckedNote, UNMARKED_NOTE, writeDurations } from './lib/spec-durations.ts';
 import { readReportedRun, SPEC_DURATIONS_FILE } from './lib/spec-durations-reporter.ts';
@@ -56,11 +56,11 @@ exitOnEpipe();
  * verdict and an explanation taken from two readings can describe two different trees, which is the shape the
  * chain's report had removed from it a week ago.
  */
-function decide(suites: readonly UnitSuite[], pool: Pool, all: boolean, provenance: Provenance): Array<{ suite: UnitSuite; why: string }> {
+function decide(suites: readonly UnitSuite[], pool: Pool, all: boolean, provenance: Provenance, workers?: number): Array<{ suite: UnitSuite; why: string }> {
   const sweep = freshnessSweep();
   return suites.flatMap((suite) => {
     const stamp = poolStampFor(suite, POOLS[pool].half, provenance);
-    const unit = poolUnitFor(suite, pool, provenance);
+    const unit = poolUnitFor(suite, pool, provenance, workers);
     const read = diffableStamp(stampRecord(stamp));
     if (!all && sweep.staleReason(unit, stamp) === null) return [];
     // The stamp is read once and handed to both halves, rather than fetched again inside the diff
@@ -155,6 +155,7 @@ async function main(): Promise<void> {
   const asked = process.argv[2] ?? '';
   if (!(asked in POOLS)) throw new Error(`no pool named '${asked}' — one of ${Object.keys(POOLS).join(', ')}`);
   const kind = asked as Pool;
+  const workers = poolWorkers(kind);
   // npm `pretest` hooks do not fire under a root run, so the freshness guard the suites share has nothing
   // to rebuild them. Without this, editing anything a published package is built from — this repo's own
   // package.json included — fails a dozen specs at that guard rather than running them, and the pool
@@ -174,7 +175,7 @@ async function main(): Promise<void> {
   // separate records — `CHAIN_RUN_ENV` has the sequence that made this necessary.
   const provenance = provenanceOf();
   // The sweep lives and dies inside this call, and what comes back is text
-  const running = decide(suites, kind, all, provenance);
+  const running = decide(suites, kind, all, provenance, workers);
   const stale = running.map(({ suite }) => suite);
   if (stale.length === 0) {
     console.log(`${kind} pool: all ${suites.length} project(s) up to date`);
@@ -191,7 +192,7 @@ async function main(): Promise<void> {
   }
 
   // What each run covers is the pool's to say; a suite is stamped only by the run that included it.
-  const runs = run(stale);
+  const runs = run(stale, workers);
   // Said out loud, because a run that records nothing looks exactly like one that does until the next run
   // repeats it. `recordsVerdict` has why.
   if (!recordsVerdict()) console.log(`${kind} pool: recording nothing — this is a diagnostic run`);
@@ -206,23 +207,18 @@ async function main(): Promise<void> {
       // filename does: a person opening the cache directory has to be able to tell two records apart. Nothing
       // reads it — `unitStaleReason` consults the fingerprint and nothing else — so this is a diagnostic, and
       // what keeps the two records *distinct* is the command inside that fingerprint.
-      covered.map((suite) => ({ label: `${suite.dir} (${half}, ${provenance})`, unit: poolUnitFor(suite, kind, provenance), stamp: poolStampFor(suite, half, provenance) })),
+      covered.map((suite) => ({ label: `${suite.dir} (${half}, ${provenance})`, unit: poolUnitFor(suite, kind, provenance, workers), stamp: poolStampFor(suite, half, provenance) })),
       async () => {
-        // `suite`, the same class the chain gives this pool as a step — a pool fans out across workers, so
-        // it is the rung that stretches most on a smaller box. The *deadline* is never `POOL_SECONDS`, which
-        // is this machine's measurement and so would be this machine's deadline (`step-timeouts.ts`); the
-        // message below reads that cost, which is a different use of it and the one it is for.
         const reportFile = path.join(reports, `${covered.map((suite) => suite.dir).join('+')}.json`);
-        const { code, output, timedOut } = await boundedSpawn(command, [...args], TIMEOUT_MS.suite.ms,
-          { env: { ...process.env, [SPEC_DURATIONS_FILE]: reportFile } });
-        process.stdout.write(output);
+        const { code, timedOut } = await boundedSpawn(command, [...args], timeoutMsFor('suite'),
+          { stream: true, env: { ...process.env, [SPEC_DURATIONS_FILE]: reportFile } });
         if (code !== 0) {
           // `POOL_SECONDS` only where this run is the whole pool, which is the one thing that cost describes
           // — a run of two projects out of eleven has no recorded cost, and the message says that rather than
           // computing a rope from a number about other work
           throw new Error(timedOut
             ? timedOutBecause({
-              what: `${kind} pool`,
+              what: poolStepName(kind),
               timeout: 'suite',
               measuredOn: MEASURED_ON,
               ...covered.length === suites.length ? { seconds: POOL_SECONDS[kind] } : {},

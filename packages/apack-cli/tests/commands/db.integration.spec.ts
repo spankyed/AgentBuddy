@@ -18,7 +18,8 @@ import { parseDbArgs } from '../../src/commands/db/target';
 import { dbRepl } from '../../src/commands/db/repl';
 import { mintProfile, openProfile } from '../../src/app/profiles';
 import type { CliDirs } from '../../src/app/pack-host';
-import { PACK_LAYOUT } from '@apackdev/host/packs';
+import { _declarationRevision, PACK_SNAPSHOT_FORMAT } from '@apackdev/sdk/build';
+import { sealPackBuild, PACK_LAYOUT } from '@apackdev/host/packs';
 
 // `--profile` resolves a name through the CLI's own data dir, which is the real one on this machine.
 // Pointing it at a temp tree is the only way to test the lookup without reading whatever profiles the
@@ -29,7 +30,7 @@ vi.mock('../../src/app/pack-host', async (importOriginal) => ({
   cliDirs: () => cliTree,
 }));
 
-const DEFAULT_SETUP_SNAPSHOT = path.resolve(import.meta.dirname, '..', '..', '..', 'default-setup', 'dist', PACK_LAYOUT.snapshot);
+const DEFAULT_SETUP_DIST = path.resolve(import.meta.dirname, '..', '..', '..', 'default-setup', 'dist');
 
 const dirs: string[] = [];
 afterEach(() => {
@@ -73,15 +74,13 @@ async function write(userDataDir: string, change: () => void): Promise<void> {
 /** A data dir the app ran on: default-setup installed, its state, settings, and notes with a relation and a role */
 async function appDataDir(): Promise<string> {
   const dir = tempDir('apack-db-');
-  // Installed, in the packs dir, which is where the app puts every pack — the ones it ships included. The
-  // manifest is the one the pack's build wrote, taken from its snapshot, so the entity types and relation
-  // kinds these cases query are exactly default-setup's
-  const manifest = path.join(_appDirOf(dir), 'packs', 'default-setup', PACK_LAYOUT.manifest);
-  fs.mkdirSync(path.dirname(manifest), { recursive: true });
-  fs.writeFileSync(manifest, JSON.stringify(JSON.parse(fs.readFileSync(DEFAULT_SETUP_SNAPSHOT, 'utf-8')).manifest));
+  // Install the actual verified build, as the app does; settings discovery reads its sealed declarations.
+  const packDir = path.join(_appDirOf(dir), 'packs', 'default-setup');
+  fs.mkdirSync(path.dirname(packDir), { recursive: true });
+  fs.cpSync(DEFAULT_SETUP_DIST, packDir, { recursive: true });
   await write(dir, () => {
     untypedTx(id('AppState-app'), true).put('entityType', 'AppState').put('hasOnboarded', true);
-    untypedTx(id('Settings-app'), true).put('entityType', 'Settings').put('label', 'App').put('data', { general: { theme: 'dark' } });
+    untypedTx(id('Settings-app'), true).put('entityType', 'Settings').put('label', 'App').put('data', { app: { personal: { name: 'Developer' } } });
     untypedTx(id('Note-a'), true).put('entityType', 'Note').put('title', 'Alpha').grant('pinned').link('parent_of', id('Note-b'));
     untypedTx(id('Note-b'), true).put('entityType', 'Note').put('title', 'Beta, "quoted"');
     // The run history, which the app keeps in its own partition (TNode is excluded from the main one)
@@ -795,7 +794,7 @@ describe('apack db export', () => {
     expect(fs.readdirSync(out).sort()).toEqual(['Flow.csv', 'Settings.csv', 'export.json']);
     const [header, row] = fs.readFileSync(path.join(out, 'Settings.csv'), 'utf-8').split('\n');
     expect(header.split(',')).toEqual(expect.arrayContaining(['id', 'entityType', 'label', 'data']));
-    expect(row).toContain('"{""general"":{""theme"":""dark""}}"');
+    expect(row).toContain('"{""app"":{""personal"":{""name"":""Developer""}}}"');
     expect((await run(['export', '--out', out, '--type', 'Nope', '--data-dir', dir])).error?.message).toBe('Not an entity type of the installed packs: Nope');
     expect((await run(['export', '--data-dir', dir])).error?.message).toMatch(/^--out is required/);
   });
@@ -1045,9 +1044,14 @@ describe('apack db import', () => {
     const dir = await appDataDir();
     const source = await appDataDir();
     // A pack was installed when the backup was made and declared Bookmark, which the target dir's packs don't
-    const manifestFile = path.join(_appDirOf(source), 'packs', 'bookmarks', PACK_LAYOUT.manifest);
-    fs.mkdirSync(path.dirname(manifestFile), { recursive: true });
-    fs.writeFileSync(manifestFile, JSON.stringify({ id: 'bookmarks', name: 'Bookmarks', version: '1.0.0', entities: { Bookmark: 'Bookmark' } }));
+    const packDir = path.join(_appDirOf(source), 'packs', 'bookmarks');
+    const manifest = { id: 'bookmarks', name: 'Bookmarks', version: '1.0.0', data: { entities: { Bookmark: null } } };
+    fs.mkdirSync(path.join(packDir, PACK_LAYOUT.typesDir), { recursive: true });
+    fs.mkdirSync(path.join(packDir, PACK_LAYOUT.runtimeDir), { recursive: true });
+    fs.writeFileSync(path.join(packDir, PACK_LAYOUT.snapshot), JSON.stringify({ format: PACK_SNAPSHOT_FORMAT,
+      declarationRevision: _declarationRevision(manifest), manifest, types: { entities: {}, relKinds: {} }, entityDestinations: {}, facades: {} }));
+    fs.writeFileSync(path.join(packDir, PACK_LAYOUT.runtimeEntry), 'throw new Error("Offline discovery must not activate");');
+    sealPackBuild(packDir, manifest);
     await write(source, () => {
       untypedTx(id('Bookmark-1'), true).put('entityType', 'Bookmark').put('url', 'https://example.com');
       untypedTx(id('Bookmark-2'), true).put('entityType', 'Bookmark').put('url', 'https://example.org');

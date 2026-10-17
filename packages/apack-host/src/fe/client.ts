@@ -1,3 +1,4 @@
+import type { EARS } from '@apackdev/ears';
 // The window's client to the API as the app shell uses it: the SDK's part (sending to backend systems) and what only
 // the shell reads. The renderer implements it over its API client; tests pass a fake.
 import type { Message } from '@apackdev/sdk/events';
@@ -32,10 +33,12 @@ export interface ShellConnection {
 }
 
 export interface ShellClient extends FeClient {
+  /** Whether the current database contains a non-deleted entity; abort when its navigation ends. */
+  entityExists(id: EARS.EntityId, signal: AbortSignal): Promise<boolean>;
   /** Subscribes to what the backend sends this window; returns the unsubscribe */
   subscribe(connection: ShellConnection): () => void;
-  /** Asks a pack's systems for their startup data, once this window has its frontend */
-  packClientReady(packId: string): Promise<void>;
+  /** Acknowledges this window's accepted frontend lifetime before requesting startup data. */
+  packClientReady(packId: string, runtimeRevision: string): Promise<void>;
   /** The packs the backend loaded, the built-in ones first */
   loadedPacks(): Promise<LoadedPackEntry[]>;
   /** What the platform knows about the backend, for the error page when it doesn't answer */

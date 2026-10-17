@@ -1,9 +1,10 @@
+import { _declarationRevision } from '@apackdev/sdk/build';
 import { spawnSync } from 'node:child_process';
 import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { recordHostCompatibility } from '@apackdev/host/packs';
+import { recordHostCompatibility, sealPackBuild } from '@apackdev/host/packs';
 import { install } from '../../src/commands/pack-install';
 import { uninstall } from '../../src/commands/pack-uninstall';
 import { publishRunningApp, findDatabaseWriter } from '@apackdev/host/database';
@@ -14,6 +15,9 @@ let tmp: string;
 beforeEach(() => {
   tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'install-host-version-'));
   vi.stubEnv('APACK_USER_DATA_DIR', path.join(tmp, 'data'));
+  vi.stubEnv('APACK_HOST_ROOT', path.join(tmp, 'host'));
+  vi.stubEnv('APACK_HOST_EXECUTABLE', '');
+  fs.mkdirSync(path.join(tmp, 'host', 'packages'), { recursive: true });
   vi.spyOn(console, 'log').mockImplementation(() => {});
   vi.spyOn(console, 'warn').mockImplementation(() => {});
 });
@@ -32,7 +36,8 @@ function builtPack(hostVersion: string): string {
   };
   write('apack.json', JSON.stringify({ id: 'demo-pack', name: 'Demo Pack', version: '1.0.0', hostVersion }));
   write('dist/runtime/index.cjs', 'module.exports = { registration: { id: "demo-pack" } };');
-  write('dist/types/snapshot.json', JSON.stringify({ types: {}, format: PACK_SNAPSHOT_FORMAT }));
+  write('dist/types/snapshot.json', JSON.stringify({ declarationRevision: _declarationRevision(JSON.parse(fs.readFileSync(path.join(root, 'apack.json'), 'utf-8'))), format: PACK_SNAPSHOT_FORMAT, manifest: JSON.parse(fs.readFileSync(path.join(root, 'apack.json'), 'utf-8')), types: { entities: {}, relKinds: {} }, entityDestinations: {}, facades: {} }));
+  sealPackBuild(path.join(root, 'dist'), JSON.parse(fs.readFileSync(path.join(root, 'apack.json'), 'utf8')));
   return root;
 }
 

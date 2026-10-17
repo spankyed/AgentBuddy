@@ -5,7 +5,7 @@
  * cannot load `chain.ts` without starting a six-minute build.
  */
 import { covers } from '@apackdev/host/build/packages-built';
-import { isMeasuredMachine, isMeasuredSchedule, machineText, thisMachine, type Machine } from './core-budget.ts';
+import { isMeasuredSchedule, thisMachine, type Machine } from './core-budget.ts';
 import { criticalPath, overBand } from './step-timing.ts';
 import { IDLE_FLOOR } from './measure.ts';
 import type { SchedulableStep } from './chain-schedule.ts';
@@ -533,7 +533,7 @@ export function shouldClassify(run: {
   readonly ranAlone: boolean;
   /**
    * A wedged step is not re-run: its deadline is a declared class (`step-timeouts.ts`), so the retry spends
-   * that whole class again — five minutes for a `suite` step — to reach a message `classifyLine` can already
+   * that whole class again — ten minutes for a `suite` step — to reach a message `classifyLine` can already
    * write from what the first run proved.
    */
   readonly timedOut: boolean;
@@ -612,36 +612,12 @@ export const outgrownReport = (
 };
 
 /**
- * What the re-run proved.
- *
- * A pass here rules the code out, which is the useful half: the retry runs the same command over the same tree,
- * so anything deterministic in it would fail again. What is left is interference from whatever else was running,
- * or the step being nondeterministic on its own. It does not say which — and **it used to conclude "contention
- * or a flake, not the code", which is a verdict over a variable it had never identified.**
- *
- * What it names now is what the schedule saw: `ScheduleResult.peers`, the steps that actually overlapped,
- * recorded at dispatch. The reason this was a guess is recorded here and has since expired — the admission
- * limit cannot say it, being what was permitted rather than what happened, and a full budget with nine steps
- * cached is none at all. `peers` is not the budget, so the objection that stood against naming the variable is
- * now the argument for it.
- *
- * It still claims no cause, and says so, because there is a variable it cannot see at all: a writer outside
- * the chain. `docs/reference/pipeline-lessons.md` has the run where that was the answer, and the shape of the
- * hedging is `timedOutBecause`'s — a disjunction rather than a verdict, and a sentence admitting the message
- * cannot decide.
- *
- * A pass is also the dangerous output: it is the one a reader can mistake for the chain being fine. It says
- * "fails" in the sentence, the exit code stays 1, and the retry records nothing — `run` rather than
- * `runAndStamp` for the chain's own stamp, and `DIAGNOSTIC_RUN_ENV` for a step that caches inside itself —
- * so the next chain has to do the step again. The second half was missing until 2026-10-02, and a crowded
- * failure of `test:unit:host` went green on the next chain having run no tests at all. A green-on-retry nobody
- * sees is how a flake becomes rot, and those are what stop this feature making the repo worse than not having
- * it.
+ * Describe the isolated retry and recorded overlap without assigning a cause.
+ * A passing retry neither rules out nondeterministic code nor clears the original failure.
+ * The chain retains its failed exit status and records no successful stamp for the retry.
  */
 export function classifyLine(
   retry: { readonly code: number; readonly ms: number; readonly timedOut?: true },
-  /** The machine the costs were measured on (`MEASURED_ON`), which is what licenses the word "wedged" */
-  measuredOn: Machine,
   /**
    * The steps that actually overlapped the failing one (`ScheduleResult.peers`), which is what the pass arm
    * names instead of calling the whole thing contention. `schedule` records them at dispatch, so this is what
@@ -650,15 +626,9 @@ export function classifyLine(
   peers: readonly string[] = [],
 ): string {
   const took = `${(retry.ms / 1000).toFixed(1)}s`;
-  // Running alone rules out contention, which is the question this re-run exists to answer — but not slowness.
-  // A deadline is sized for a machine this one may be smaller than, so off that machine "wedged" is the half
-  // the retry cannot establish, and `timedOutBecause` draws the same distinction for the first run's message.
   if (retry.timedOut) {
-    return isMeasuredMachine(measuredOn)
-      ? `\nre-ran it alone: timed out after ${took} — wedged, not crowded.`
-      : `\nre-ran it alone: timed out after ${took} — not crowded, which is all this says. Deadlines are sized `
-        + `against ${machineText(measuredOn)} and this is ${machineText(thisMachine())}, so wedged and simply `
-        + 'slow are both still open.';
+    return `\nre-ran it alone: timed out after ${took}. No other chain step overlapped this retry; `
+      + 'slow progress and stalled work remain possible. Inspect its output before retrying.';
   }
   if (retry.code !== 0) return `\nre-ran it alone: failed again (exit ${retry.code}) in ${took} — the failure is real.`;
   // What it ran beside, which is the fact; `and N others` keeps a 24-step line readable while still saying how
@@ -666,7 +636,7 @@ export function classifyLine(
   const beside = peers.length === 0
     ? 'It ran alone the first time too, so nothing here was beside it.'
     : `It ran beside ${listOf(peers)} the first time.`;
-  return `\nre-ran it alone: passed in ${took} — so the code is ruled out, and nothing else is. ${beside}`
+  return `\nre-ran it alone: passed in ${took} — the original failure remains unresolved. ${beside}`
     + ' Either one of those interfered, or something this run cannot see did — a tool outside the chain, an'
     + ' editor, another checkout — or the step is nondeterministic on its own. Running it alone does not say'
     + ' which, and neither does this message. The chain still fails.';

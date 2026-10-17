@@ -1,3 +1,4 @@
+import { featureSettings } from '#generated/settings.ts';
 // Testing a CLI provider belongs to the code feature: `resolve-cli` is its own, and so are the stored paths
 // (`features['default-setup/code'].cliPaths`). The Settings view asks for it and is told the result, which is why
 // the settings plugin declares it in its inbox (`accepts`, beside the plugin). It lived in the settings system until settings
@@ -6,11 +7,9 @@
 // What this covers is the routing, not `resolve-cli`: whether a CLI is on this machine's PATH is not the
 // system's behaviour, so the case that asserts an outcome is the one that needs no CLI at all.
 import { describe, expect, it } from 'vitest';
-import { services } from '#generated/services.ts';
-import { ref } from '#generated/ref.ts';
 import { startApp } from '@apackdev/testing/harness';
 
-const cliPaths = () => services.settings.forFeature<{ cliPaths?: Record<string, string> }>(ref('code')).cliPaths ?? {};
+const cliPaths = () => featureSettings.forFeature('code').get().cliPaths ?? {};
 
 describe('TEST_CLI_PROVIDER', () => {
   // A name no CLI answers to is the user's to fix, so it is answered rather than reported as a system error

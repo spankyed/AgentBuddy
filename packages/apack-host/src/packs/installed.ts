@@ -1,8 +1,8 @@
 /**
  * What the app has recorded about the external packs it has.
  *
- * `installed-packs.json` is not the list of installed packs — `packs/<id>/` is, and `enabledExternalPacks`
- * (`discovery.ts`) derives it. This file is a side table keyed by pack id, holding only what the
+ * `installed-packs.json` is not the list of installed packs — `packs/<id>/` is, and `readInstalledPackBuilds`
+ * (`discovery.ts`) reads it independently of build validity. This file is a side table keyed by pack id, holding only what the
  * directory cannot say: the user's enabled choice, where an install came from, and what the last apply and
  * update check found. A pack with no row is installed all the same; development installs can write
  * the directory without recording an update source.
@@ -24,6 +24,12 @@ const logger = createLogger('installed-packs');
 export interface PackRecord {
   id: string;
   enabled: boolean;
+  /** Only explicit app ownership permits refresh from the shipped build. Absence means user-owned. */
+  updatesWith?: 'app' | 'user';
+  /** Published shipped files last accepted for an app-owned installation. */
+  shippedRevision?: string;
+  /** Deliberate removal: boot must not put the shipped build back. Independent of enablement. */
+  suppressAppInstall?: true;
   /** When it was first recorded as installed; absent for unrecorded development installs */
   installedAt?: string;
   /** The GitHub slug an update reinstalls from; absent for local and URL installs */
@@ -60,7 +66,11 @@ export function readInstalledPacks(installedPacksPath = getInstalledPacksPath(),
     if (strict && (!data || !Array.isArray(data.packs) || data.packs.some(e =>
       !e || typeof e.id !== 'string' || !PACK_ID_PATTERN.test(e.id)
       || (e.enabled !== undefined && typeof e.enabled !== 'boolean')
-      || (e.installedFrom !== undefined && typeof e.installedFrom !== 'string'),
+      || (e.installedFrom !== undefined && typeof e.installedFrom !== 'string')
+      || (e.updatesWith !== undefined && e.updatesWith !== 'app' && e.updatesWith !== 'user')
+      || (e.shippedRevision !== undefined && (typeof e.shippedRevision !== 'string' || !/^[a-f0-9]{64}$/.test(e.shippedRevision)))
+      || (e.updatesWith === 'app' && e.shippedRevision === undefined)
+      || (e.suppressAppInstall !== undefined && e.suppressAppInstall !== true),
     ))) {
       throw new Error('Invalid installed pack records');
     }
@@ -155,6 +165,7 @@ export function recordInstalled(id: string, installedFrom?: string): boolean {
   return changeRecord(id, previous => ({
     id,
     enabled: true,
+    updatesWith: 'user',
     installedAt: previous.installedAt ?? new Date().toISOString(),
     installedFrom,
     ...(previous.lastError !== undefined && { lastError: previous.lastError }),
@@ -196,23 +207,18 @@ export function recordApplyOutcomes(outcomes: ReadonlyMap<string, string | undef
 }
 
 /**
- * Drops what was recorded about packs that are no longer installed.
+ * Drops records for absent packs, retaining deliberate removal markers.
  *
  * Called at boot with the packs discovery just found, which is the one moment the answer is settled: an
  * install moves a pack's directory aside while it replaces it (`placePack`), so a prune that went by
  * what is on disk at any other time could throw away the enabled choice and install source of a pack
  * that is merely mid-install.
  */
-export function forgetPacksExcept(installed: ReadonlySet<string>): boolean {
+export function forgetPacksExcept(installed: ReadonlySet<string>, installedPacksPath = getInstalledPacksPath()): boolean {
   return updateInstalledPacks(entries => {
-    const kept = entries.filter(e => installed.has(e.id));
+    const kept = entries.filter(e => installed.has(e.id) || e.suppressAppInstall);
     return kept.length === entries.length ? entries : kept;
-  });
-}
-
-/** Drops everything recorded about a pack, for one that is no longer installed. */
-export function forgetPack(id: string): boolean {
-  return updateInstalledPacks(entries => entries.some(e => e.id === id) ? removeInstalledPack(entries, id) : entries);
+  }, installedPacksPath);
 }
 
 function addInstalledPack(entries: PackRecord[], pack: PackRecord): PackRecord[] {
@@ -222,16 +228,12 @@ function addInstalledPack(entries: PackRecord[], pack: PackRecord): PackRecord[]
   return [...entries.slice(0, idx), entry, ...entries.slice(idx + 1)];
 }
 
-function removeInstalledPack(entries: PackRecord[], id: string): PackRecord[] {
-  return entries.filter(e => e.id !== id);
-}
-
 /** Applies `mutate` and writes the result, reporting whether what it changed reached disk. */
-function updateInstalledPacks(mutate: (entries: PackRecord[]) => PackRecord[]): boolean {
+function updateInstalledPacks(mutate: (entries: PackRecord[]) => PackRecord[], installedPacksPath = getInstalledPacksPath()): boolean {
   // A write over an unreadable record starts from nothing: the row being written is the one fact we have
-  const entries = readInstalledPacks();
+  const entries = readInstalledPacks(installedPacksPath);
   const updated = mutate(entries);
   // A mutation that changed nothing writes nothing, so a data dir where nothing has been decided keeps no
   // record at all rather than gaining an empty one — and nothing was lost, so it reports success
-  return updated === entries || writeInstalledPacks(updated);
+  return updated === entries || writeInstalledPacks(updated, installedPacksPath);
 }

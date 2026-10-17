@@ -1,5 +1,10 @@
+import { _declarationRevision } from '@apackdev/sdk/build';
 import { describe, expect, it } from 'vitest';
-import { releasesInRange, type GitHubRelease } from '../../src/commands/fetch-deps';
+import * as fs from 'node:fs';
+import * as os from 'node:os';
+import * as path from 'node:path';
+import { PACK_SNAPSHOT_FORMAT } from '@apackdev/sdk/build';
+import { findDepFiles, releasesInRange, type GitHubRelease } from '../../src/commands/fetch-deps';
 
 const release = (tag: string): GitHubRelease => ({ tag_name: tag, assets: [] });
 
@@ -16,5 +21,25 @@ describe('releasesInRange', () => {
 
   it('ignores tags that are not semver, and lists none when nothing matches', () => {
     expect(releasesInRange([release('nightly'), release('v3.0.0')], '^1.0.0')).toEqual([]);
+  });
+});
+
+describe('dependency build reading', () => {
+  it.each(['valid', 'malformed', 'unsafe-name'])('validates snapshot data without loading runtime code: %s', mode => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'snapshot-reader-'));
+    try {
+      fs.mkdirSync(path.join(dir, 'types'));
+      fs.mkdirSync(path.join(dir, 'runtime'));
+      fs.writeFileSync(path.join(dir, 'runtime', 'index.cjs'), 'throw new Error("runtime was executed");');
+      fs.writeFileSync(path.join(dir, 'types', 'snapshot.json'), JSON.stringify({ declarationRevision: _declarationRevision({ id: 'fixture-pack', name: 'Fixture', version: '1.0.0' }),
+        format: PACK_SNAPSHOT_FORMAT,
+        manifest: { id: 'fixture-pack', name: 'Fixture', version: '1.0.0' },
+        types: { entities: {}, relKinds: {} }, entityDestinations: {}, facades: mode === 'malformed' ? { 'pack-types': false } : mode === 'unsafe-name' ? { '../escape': 'export {};' } : {},
+      }));
+      const before = fs.readFileSync(path.join(dir, 'types', 'snapshot.json'), 'utf-8');
+      if (mode !== 'valid') expect(() => findDepFiles(dir)).toThrow(mode === 'malformed' ? 'facades.pack-types' : 'Facade names');
+      else expect(findDepFiles(dir)?.snapshot.manifest.id).toBe('fixture-pack');
+      expect(fs.readFileSync(path.join(dir, 'types', 'snapshot.json'), 'utf-8')).toBe(before);
+    } finally { fs.rmSync(dir, { recursive: true, force: true }); }
   });
 });

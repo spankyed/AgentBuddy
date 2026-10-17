@@ -6,7 +6,7 @@
  * - Otherwise scans for .md files → Markdown import (flat structure)
  *
  * Media files are copied to new entity directories and URLs rewritten.
- * Entity IDs are persisted from export data to preserve doc:// and folder:// reference pills.
+ * Entity IDs are persisted from export data to preserve internal document and folder reference pills.
  */
 
 import * as fs from 'node:fs'

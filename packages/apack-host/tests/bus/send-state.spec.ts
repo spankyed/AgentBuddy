@@ -1,3 +1,4 @@
+import { createNativePackTestRegistry } from '@apackdev/host/testing';
 // Asking a system to publish what it holds — the one thing every cause on this bus comes down to.
 //
 // A client connecting, a pack changing and the data being replaced are three facts with one consequence:
@@ -10,9 +11,8 @@ import { startTestRuntime, testRootEvents } from '@apackdev/sdk/testing';
 import { createAppBus } from '../../src/bus/index.ts';
 import { HOST } from '../../src/refs.ts';
 import { HOST_ENTITY_TYPES } from '../../src/app-state/index.ts';
-import { createPackRegistry } from '../../src/packs/registry.ts';
 
-const registry = createPackRegistry();
+const registry = createNativePackTestRegistry();
 startTestRuntime({ entityTypes: HOST_ENTITY_TYPES, packs: registry });
 
 const seen: Record<string, string[]> = {};

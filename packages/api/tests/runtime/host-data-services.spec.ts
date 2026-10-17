@@ -16,10 +16,12 @@ vi.mock('@apackdev/sdk/env', async (importOriginal) => {
 const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'api-host-data-services-'));
 process.env.APACK_ENV = 'test';
 process.env.APACK_USER_DATA_DIR = dataDir;
-const { openAppStore } = await import('@/runtime');
+const { openAppStore } = await import('../../src/runtime/index.ts');
 const { store, engine, packs } = openAppStore();
 const { untypedQx, untypedTx } = await import('@apackdev/ears');
-const { services } = await import('@apackdev/sdk/services');
+const { boundHost } = await import('@apackdev/sdk/runtime/internals');
+const { services } = boundHost();
+const settingsAdmin = () => boundHost().services.settings;
 
 afterAll(() => {
   store.close();
@@ -119,24 +121,36 @@ describe('services.appData', () => {
       .toEqual({ databases: ['lmdb'], missingDatabases: ['volatileLmdb'], unknownEntityTypes: [] });
   });
 
-  it("moves the app's state out of the settings of a backup from before AppState", async () => {
+  it('restores current preferences, onboarding completion and unavailable feature overrides', async () => {
     const { appState } = await import('@apackdev/host/app-state');
-    // The release that moves it
     version.current = '0.4.0';
-    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'app-data-old-backup-'));
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'app-data-current-backup-'));
     dirs.push(dir);
-    // The settings as 0.3.14 stored them: the app's state in `internal`, and no AppState
     engine.admin.clear();
-    untypedTx('Settings-app', true).put('entityType', 'Settings').put('data', { internal: { hasOnboarded: true, version: '0.3.14' } });
+    const settings = {
+      app: { personal: { name: 'Ada', phoneNumber: '123' }, projects: [
+        { name: 'Restored', directories: ['/second', '/first'], color: 'blue' },
+      ] },
+      features: { 'removed/feature': { retained: true } },
+    };
+    appState.update({ hasOnboarded: true, version: '0.4.0' });
+    untypedTx('Settings-app', true).put('entityType', 'Settings').put('data', settings);
     await new Promise((resolve) => setTimeout(resolve, 0));
-    const backup = await services.appData.exportBackup(dir, 'old', ['lmdb']);
-    expect(appState.exists()).toBe(false);
+    const backup = await services.appData.exportBackup(dir, 'current', ['lmdb']);
 
     try {
+      appState.update({ hasOnboarded: false });
+      settingsAdmin().resetAll();
       await services.appData.importBackup(backup);
-
-      expect(services.appData.hasOnboarded()).toBe(true);
+      expect(services.onboarding.isComplete()).toBe(true);
       expect(appState.get().version).toBe('0.4.0');
+      expect(settingsAdmin().getOverrides()).toEqual(settings);
+      settingsAdmin().set({ kind: 'app' }, ['personal', 'name'], 'Edited after restore');
+      expect(settingsAdmin().get<{ personal: { name: string } }>({ kind: 'app' }).personal.name).toBe('Edited after restore');
+      expect(settingsAdmin().getOverrides().features).toEqual(settings.features);
+      await services.appData.importBackup(backup);
+      expect(settingsAdmin().getOverrides()).toEqual(settings);
+      expect(services.onboarding.isComplete()).toBe(true);
     } finally {
       version.current = undefined;
     }
@@ -146,6 +160,7 @@ describe('services.appData', () => {
     const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'app-data-gone-pack-backup-'));
     dirs.push(dir);
     // Backed up while the pack that declares Bookmark was installed
+    packs.catalog.setNative([...packs.catalog.getSnapshot().native, { id: 'bookmarks', data: { entities: { Bookmark: null, Tag: null } } }, { id: 'tags', data: { entities: { Tag: null } } }]);
     packs.registerPack({
       id: 'bookmarks',
       ears: { entities: { Bookmark: 'Bookmark', Tag: 'Tag' }, relKinds: {} },
@@ -168,6 +183,30 @@ describe('services.appData', () => {
     } finally {
       packs.unregisterPack('tags');
     }
+  });
+
+  it.each([
+    { app: { projects: 'invalid' } },
+    { general: { personal: { name: 'obsolete address' } } },
+    null,
+  ])('refuses invalid backup settings before clearing live memory or entering replacement', async data => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'app-data-invalid-settings-'));
+    dirs.push(dir);
+    const settingsId = 'Settings-app';
+    untypedTx(settingsId, true).put('entityType', 'Settings').put('data', data);
+    await new Promise(resolve => setTimeout(resolve, 0));
+    const backup = await services.appData.exportBackup(dir, 'invalid', ['lmdb']);
+    // The fixture wrote an invalid row directly to create the candidate; seed valid live data independently.
+    untypedTx(settingsId).put('data', {});
+    settingsAdmin().set({ kind: 'app' }, ['personal', 'name'], 'Keep live');
+    const before = settingsAdmin().getSnapshot();
+    const heard: string[] = [];
+    const off = settingsAdmin().onChange(change => heard.push(change));
+    try {
+      await expect(services.appData.importBackup(backup)).rejects.toThrow();
+      expect(settingsAdmin().getSnapshot()).toEqual(before);
+      expect(heard).toEqual([]);
+    } finally { off(); }
   });
 
   it('rejects an import of a directory that is not a backup', async () => {

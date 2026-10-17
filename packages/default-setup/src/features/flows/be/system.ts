@@ -1,4 +1,4 @@
-import { settings as featureSettings } from '#generated/settings.ts';
+import { featureSettings } from '#generated/settings.ts';
 
 import { broadcastToPlugin } from '#generated/events.ts';
 import { setup } from 'xstate';
@@ -93,21 +93,12 @@ export const flowsSystem = setup({
       sendConnectedData();
     },
 
-    selectFlow: ({ event }) => {
+    selectFlow: ({ event, reply }) => {
       const { flowId } = flowsSpec.typeOf('FLOW_SELECT', event);
-      const pluginId = 'flows' as const;
-      
-      logger.info('Selecting flow', { flowId });
-      
-      const data = repository.flowsQueries.extendedData(flowId as EARS.EntityId);
-      
-      broadcastToPlugin(pluginId, {
-        type: 'FLOW_SELECTED',
-        flowId: flowId as EARS.EntityId,
-        data,
-      });
+      reply?.({ type: 'FLOW_SELECTED', flowId: flowId as EARS.EntityId,
+        data: repository.flowsQueries.extendedData(flowId as EARS.EntityId) });
     },
-    
+
     createFlow: ({ reply }) => {
       const pluginId = 'flows' as const;
       
@@ -270,7 +261,7 @@ export const flowsSystem = setup({
         logger.warn('Edge update failed', { edgeId, source, target, error: err.message });
         // The canvas already moved the edge: send the flow as stored, and the reason
         broadcastToPlugin(pluginId, {
-          type: 'FLOW_SELECTED',
+          type: 'FLOW_REFRESHED',
           flowId: flowId as EARS.EntityId,
           data: repository.flowsQueries.extendedData(flowId as EARS.EntityId),
         });

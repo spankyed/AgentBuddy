@@ -1,5 +1,5 @@
 // What `npm run typecheck` runs besides its legs: the prerequisite that regenerates the pack's barrel, and
-// the recorded artifacts whose checks are chain steps.
+// the recorded files whose checks are chain steps.
 //
 // **Not in `typecheck-legs.ts`, though that is where a reader would look first.** That file is one of
 // `STEP_TABLES`, which locates a step's declaration by its `name:` and the `seconds:` that follows it.
@@ -21,7 +21,7 @@ import { ENSURE } from './typecheck-legs.ts';
 export const CODEGEN = 'generate:entries';
 
 /**
- * The recorded artifacts' checks, which are chain steps rather than legs and stay that way.
+ * The recorded files' checks, which are chain steps rather than legs and stay that way.
  *
  * **They are borrowed, not moved.** `api:check` as a leg would need five hand-written fields on a table whose
  * point is deriving them, and would drop nine declared inputs — six with nothing to catch it, since the
@@ -29,9 +29,9 @@ export const CODEGEN = 'generate:entries';
  * step's own class, cost and width and leaves its cache key alone.
  *
  * Why they are here at all: `exports:check` and `schema:check` are legs, so a green `npm run typecheck` used
- * to say nothing about the other two recorded artifacts — the trap root `CLAUDE.md` warned about in prose.
+ * to say nothing about the other two recorded files — the trap root `CLAUDE.md` warned about in prose.
  */
-export const ARTIFACT_CHECKS: readonly { readonly name: string; readonly command: string }[] = [
+export const RECORDED_FILE_CHECKS: readonly { readonly name: string; readonly command: string }[] = [
   { name: 'api:check', command: 'npm run api:check' },
   // `--skip-generate`, because `CODEGEN` above has just done it. Without the flag this writes into the pack
   // while the legs read it, which is the one reason it is not a leg itself

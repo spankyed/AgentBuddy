@@ -1,4 +1,4 @@
-import { settings as featureSettings } from '#generated/settings.ts';
+import { featureSettings } from '#generated/settings.ts';
 
 import { tx } from '#generated/ears.ts';
 /**
@@ -6,7 +6,7 @@ import { tx } from '#generated/ears.ts';
  *
  * Imports threads from an exported JSON file, recreating messages with full data
  * (blocks, references, commands), artifacts, fork relations, and media.
- * Persists original entity IDs to preserve thread:// links and cross-entity context references.
+ * Persists original entity IDs to preserve internal thread references and cross-entity context references.
  */
 
 import * as fs from 'node:fs'
@@ -257,7 +257,7 @@ export function importThreads(importDir: string): ImportResult {
     }
   }
 
-  // No remapThreadRefs needed — entity IDs are persisted, so thread:// links
+  // No remapThreadRefs needed — entity IDs are persisted, so internal thread references
   // and cross-entity context references (note, document, folder, etc.) are all valid.
 
   return result

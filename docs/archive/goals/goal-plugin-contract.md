@@ -427,7 +427,7 @@ Neither `Deferred` item is still open; both were settled after this was archived
   `#generated/events` builds stamp the pack that sent it, and the four diagnostics that report an undeliverable
   message name it — while nothing routes or refuses on it. The enforcement the item asked for (audience-split
   `receives`, the bus refusing a cross-pack send of a `pack`-tier event) is recorded as won't-do in
-  [`goal-sender-enforced-audiences.md`](../../goals/wont-do/goal-sender-enforced-audiences.md), with its reopen
+  [`goal-sender-enforced-audiences.md`](goal-sender-enforced-audiences.md), with its reopen
   triggers. That item's own reason for deferring was wrong too; the dated note beside it says why.
 
 An earlier version of this section named a third open item, `pluginAccepts` "for a plugin with no system of its
@@ -460,7 +460,7 @@ own". There is no such item: `pluginAccepts` is the API this goal deleted, and n
    > in scope: `defineEvents(packId)` builds all three sends and closes over the pack id. The envelope half
    > shipped on that basis — `Message.from`, stamped by the generated sends and named in the bus and client
    > diagnostics. The enforcement half is won't-do, for reasons that survive the correction:
-   > [`goal-sender-enforced-audiences.md`](../../goals/wont-do/goal-sender-enforced-audiences.md).
+   > [`goal-sender-enforced-audiences.md`](goal-sender-enforced-audiences.md).
 
 ## Constraints
 

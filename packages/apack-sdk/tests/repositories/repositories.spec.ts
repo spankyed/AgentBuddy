@@ -1,3 +1,4 @@
+import { nativePackDeclarationFixture } from '../../src/testing/index.ts';
 // The repositories of the SDK's entities, on the in-memory runtime: imported flows with their root role,
 // nodes and edges, step results on TNodes, and actions and prompts
 import * as os from 'node:os';
@@ -16,6 +17,10 @@ startTestRuntime();
 beforeAll(() => {
   testPacks.steps.set(listenerTrigger.type, listenerTrigger);
   testPacks.steps.set(actionStep.type, actionStep);
+  const declaration = nativePackDeclarationFixture({ id: 'repository-fixture', steps: [listenerTrigger, actionStep] });
+  for (const [type, step] of Object.entries(declaration.steps ?? {})) testPacks.stepDeclarations.set(type, {
+    type, packId: declaration.id, origin: 'native', enabled: true, declaration: step,
+  });
 });
 
 beforeEach(() => resetTestData());
@@ -87,7 +92,7 @@ describe('flowRepository', () => {
     const entry = flowRepository.createNode(flow.id, { nodeType: 'listener', label: 'Entry' });
     const step = flowRepository.createNode(flow.id, { nodeType: 'action' });
     const other = flowRepository.createNode(flow.id, { nodeType: 'action' });
-    expect(step.label).toBe('New Node');
+    expect(step.label).toBe('Action');
 
     expect(() => flowRepository.createEdge(step.id, entry.id)).toThrow('Trigger nodes cannot receive incoming connections');
     flowRepository.createEdge(step.id, other.id, { sourceHandle: 'case-0' });
@@ -204,4 +209,57 @@ describe('trash', () => {
     trash.move([recent], 9_000);
     expect(trash.olderThan('Prompt', 5_000, 10_000).map((n) => n.id)).toEqual([old]);
   });
+});
+
+it('refuses new nodes with unavailable or unknown providers before writing data', () => {
+  const flow = flowRepository.createFlow(); const listener = testPacks.steps.get('listener')!;
+  try {
+    testPacks.steps.delete('listener');
+    expect(() => flowRepository.createNode(flow.id, { nodeType: 'listener' })).toThrow('no active backend');
+    expect(() => flowRepository.createNode(flow.id, { nodeType: 'missing' })).toThrow('no active backend');
+    expect(flowRepository.flowNodes(flow.id)).toEqual([]);
+  } finally { testPacks.steps.set('listener', listener); }
+});
+
+it.each(['retire', 'replace'] as const)('refuses writes when trigger validation can %s its provider', change => {
+  const flow = flowRepository.createFlow(); const listener = testPacks.steps.get('listener')!;
+  const replacement = { ...listener };
+  const validating = { ...listener, trigger: { ...listener.trigger!, validate: () => {
+    if (change === 'retire') testPacks.steps.delete('listener');
+    else testPacks.steps.set('listener', replacement);
+    return { valid: true, errors: [] };
+  } } };
+  try {
+    testPacks.steps.set('listener', validating);
+    expect(() => flowRepository.createNode(flow.id, { nodeType: 'listener' })).toThrow('backend changed while validating');
+    expect(flowRepository.flowNodes(flow.id)).toEqual([]);
+  } finally { testPacks.steps.set('listener', listener); }
+});
+
+
+it('retains declared trigger connection rules after its provider is unavailable', () => {
+  const flow = flowRepository.createFlow();
+  const listener = flowRepository.createNode(flow.id, { nodeType: 'listener' });
+  const action = flowRepository.createNode(flow.id, { nodeType: 'action' });
+  const provider = testPacks.steps.get('listener')!;
+  try {
+    testPacks.steps.delete('listener');
+    expect(() => flowRepository.createEdge(action.id, listener.id)).toThrow('Trigger nodes cannot receive incoming connections');
+    expect(flowRepository.flowEdges(flow.id)).toEqual([]);
+  } finally { testPacks.steps.set('listener', provider); }
+});
+
+
+it('keeps declared relation fields available when updating a node without its compiler provider', () => {
+  const first = actionRepository.create({ label: 'First', actionFn: 'return 1' });
+  const next = actionRepository.create({ label: 'Next', actionFn: 'return 2' });
+  const flow = flowRepository.createFlow();
+  const node = flowRepository.createNode(flow.id, { nodeType: 'action', actionId: first.id });
+  const provider = testPacks.steps.get('action')!;
+  try {
+    testPacks.steps.delete('action');
+    flowRepository.updateNode(node.id, { actionId: next.id });
+    expect(flowRepository.getNodeActionId(node.id)).toBe(next.id);
+    expect(flowRepository.node(node.id)?.actionId).toBe(next.id);
+  } finally { testPacks.steps.set('action', provider); }
 });

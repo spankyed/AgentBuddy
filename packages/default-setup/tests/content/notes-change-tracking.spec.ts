@@ -138,7 +138,7 @@ function addLinkTargets() {
 const referencesOf = (snap: Snapshot, alias: string) =>
   snap.relations.filter((relation) => relation.startsWith(`${alias} --references--> `)).map((relation) => relation.split(' --references--> ')[1]).sort();
 /** The note ids a record's content links to */
-const linksOf = (record: ContentItem) => [...String(record.content ?? '').matchAll(/\]\(note:\/\/([^)]+)\)/g)].map((match) => `Note:${match[1]}`).sort();
+const linksOf = (record: ContentItem) => [...String(record.content ?? '').matchAll(/\]\(apack-ref:\/\/note\/([^)]+)\)/g)].map((match) => `Note:${decodeURIComponent(match[1])}`).sort();
 
 /**
  * The Decision 10 rules for a re-apply: an existing row is left as it was when its stored hash matches

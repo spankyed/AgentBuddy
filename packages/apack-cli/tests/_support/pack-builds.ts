@@ -22,8 +22,8 @@ export function run(cmd: string, args: string[], cwd: string): { code: number; o
 
 /**
  * The commands `callCli` can run, by the name the CLI's argv dispatch uses (`src/index.ts`). `build`
- * is the inner `build`, not `buildCommand`: the wrapper's only extra is `ensureCheckoutPackages`, a
- * freshness check the suite's own `pretest` already made once for the whole run.
+ * is the inner `build`, not `buildCommand`: focused compiler checks run in-process; process-boundary
+ * checks use the actual CLI or its private build runner.
  */
 const COMMANDS = {
   'init': async () => (await import('../../src/commands/init')).init,

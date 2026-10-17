@@ -28,19 +28,11 @@ export function recordCliInstall(file: string, id: string, installedFrom?: strin
   const records = readInstalledPacks(file, { strict: true });
   const old = records.find(record => record.id === id);
   const next: PackRecord = {
-    id, enabled: old?.enabled ?? true, installedAt: old?.installedAt ?? new Date().toISOString(),
+    id, enabled: old?.enabled ?? true, updatesWith: 'user', installedAt: old?.installedAt ?? new Date().toISOString(),
     ...(installedFrom !== undefined && { installedFrom }),
     ...(old?.lastError !== undefined && { lastError: old.lastError }),
   };
   if (!writeInstalledPacks([...records.filter(record => record.id !== id), next], file)) {
     throw new Error(`Pack files were installed, but recording their source failed: ${file}`);
-  }
-}
-
-export function forgetCliInstall(file: string, id: string): void {
-  const records = readInstalledPacks(file, { strict: true });
-  const remaining = records.filter(record => record.id !== id);
-  if (remaining.length !== records.length && !writeInstalledPacks(remaining, file)) {
-    throw new Error(`Pack files were removed, but removing their installation record failed: ${file}`);
   }
 }

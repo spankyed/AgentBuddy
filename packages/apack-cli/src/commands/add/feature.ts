@@ -1,22 +1,12 @@
-import { FEATURE_ID_PATTERN } from '@apackdev/sdk/build';
+import { writeManifest } from '../../manifest-writer.ts';
+import { FEATURE_ID_PATTERN, FeatureEntrySchema } from '@apackdev/sdk/build';
 import * as fs from 'node:fs';
 import { renderTemplate } from '../../templates.ts';
 import * as path from 'node:path';
 import { regenerateAfterScaffold } from '../generate-entries';
 import { scaffoldUnitTestSetup, type UnitTestSetup } from '../init';
 import { toPascalCase, toCamelCase, toLabel, writeIfNotExists, logCreated, parseFlag, hasFlag } from './write';
-import { readManifest, writeManifest, addFeature as addFeatureToManifest } from './manifest';
-
-
-
-
-
-
-
-
-
-
-
+import { readManifest, addFeature as addFeatureToManifest } from './manifest';
 
 /**
  * The strings a feature's templates are rendered with, derived once. Five of them wrote
@@ -36,15 +26,16 @@ function featureValues(name: string) {
 }
 
 const HELP = `
-Usage: apack pack add feature <name> [options]
+Usage: apack pack add feature <name> --description <purpose> [options]
 
 Options:
+  --description <purpose> Required feature purpose
   --label <Label>          Display label (default: derived from name)
   --icon <LucideIcon>      Lucide icon name (default: Box)
   --designation <role>     The role this feature plays, for getDesignated(role); need not be the feature name
 
 Example:
-  apack pack add feature bookmarks --label "Bookmarks" --icon Bookmark
+  apack pack add feature bookmarks --description "Save and organize bookmarks." --label "Bookmarks" --icon Bookmark
 `.trim();
 
 export async function addFeature(args: string[], root: string) {
@@ -59,28 +50,38 @@ export async function addFeature(args: string[], root: string) {
     throw new Error(`Feature name "${name}" must start with a lowercase letter and contain only letters and digits (e.g. "notes" or "calendarEvents"); it is used as an identifier in generated code`);
   }
 
+  const description = parseFlag(args, '--description');
+  const purpose = FeatureEntrySchema.shape.description.safeParse(description);
+  if (!purpose.success || description?.startsWith('--')) {
+    throw new Error('--description <purpose> is required and must not be blank');
+  }
+
   const label = parseFlag(args, '--label') || toLabel(name);
   const icon = parseFlag(args, '--icon') || 'Box';
   const designation = parseFlag(args, '--designation');
   const camel = toCamelCase(name);
   const pascal = toPascalCase(name);
   const v = featureValues(name);
-  const featureDir = path.join(root, 'src', 'features', name);
+  const featureRoot = `src/features/${name}`;
+  const layout = {
+    system: `${featureRoot}/be/system.ts`, types: `${featureRoot}/be/types.ts`,
+    systemContract: `${featureRoot}/be/contract.ts`, repositories: `${featureRoot}/be/repository/index.ts`,
+    pluginContract: `${featureRoot}/fe/contract.ts`, state: `${featureRoot}/fe/state.ts`,
+    canvas: `${featureRoot}/fe/canvas/list.vue`, settingsForm: `${featureRoot}/fe/settings.vue`,
+  };
 
   const created: string[] = [];
   // The system test runs on the harness: a pack scaffolded before it has no tests/setup.ts
   const unitTestSetup = fs.existsSync(path.join(root, 'tests', 'setup.ts')) ? undefined : scaffoldUnitTestSetup(root);
   const files: [string, string][] = [
-    [path.join(featureDir, 'settings.ts'), renderTemplate('pack/src/features/feature/settings.ts')],
-    [path.join(featureDir, 'be', 'system.ts'), renderTemplate('pack/src/features/feature/be/system.ts', { NAME: v.NAME, CAMEL: v.CAMEL, CONNECTED_EVENT: v.CONNECTED_EVENT, REFRESH_EVENT: v.REFRESH_EVENT })],
-    [path.join(featureDir, 'be', 'types.ts'), renderTemplate('pack/src/features/feature/be/types.ts', { PASCAL: v.PASCAL, CONNECTED_EVENT: v.CONNECTED_EVENT, REFRESH_EVENT: v.REFRESH_EVENT })],
-    [path.join(featureDir, 'be', 'contract.ts'), renderTemplate('pack/src/features/feature/be/contract.ts', { PASCAL: pascal })],
-    [path.join(featureDir, 'be', 'repository', 'index.ts'), renderTemplate('pack/src/features/feature/be/repository/index.ts', { CAMEL: camel })],
-    [path.join(featureDir, 'fe', 'plugin.ts'), renderTemplate('pack/src/features/feature/fe/plugin.ts', { CAMEL: camel, LABEL: label, ICON: icon })],
-    [path.join(featureDir, 'fe', 'contract.ts'), renderTemplate('pack/src/features/feature/fe/contract.ts', { PASCAL: pascal })],
-    [path.join(featureDir, 'fe', 'state.ts'), renderTemplate('pack/src/features/feature/fe/state.ts', { NAME: v.NAME, CAMEL: v.CAMEL, PASCAL: v.PASCAL })],
-    [path.join(featureDir, 'fe', 'canvas', 'list.vue'), renderTemplate('pack/src/features/feature/fe/canvas/list.vue', { LABEL: label })],
-    [path.join(featureDir, 'fe', 'settings.vue'), renderTemplate('pack/src/features/feature/fe/settings.vue')],
+    [path.join(root, layout.system), renderTemplate('pack/src/features/feature/be/system.ts', { NAME: v.NAME, CAMEL: v.CAMEL, CONNECTED_EVENT: v.CONNECTED_EVENT, REFRESH_EVENT: v.REFRESH_EVENT })],
+    [path.join(root, layout.types), renderTemplate('pack/src/features/feature/be/types.ts', { PASCAL: v.PASCAL, CONNECTED_EVENT: v.CONNECTED_EVENT, REFRESH_EVENT: v.REFRESH_EVENT })],
+    [path.join(root, layout.systemContract), renderTemplate('pack/src/features/feature/be/contract.ts', { PASCAL: pascal })],
+    [path.join(root, layout.repositories), renderTemplate('pack/src/features/feature/be/repository/index.ts', { CAMEL: camel })],
+    [path.join(root, layout.pluginContract), renderTemplate('pack/src/features/feature/fe/contract.ts', { PASCAL: pascal })],
+    [path.join(root, layout.state), renderTemplate('pack/src/features/feature/fe/state.ts', { NAME: v.NAME, CAMEL: v.CAMEL, PASCAL: v.PASCAL })],
+    [path.join(root, layout.canvas), renderTemplate('pack/src/features/feature/fe/canvas/list.vue', { LABEL: label })],
+    [path.join(root, layout.settingsForm), renderTemplate('pack/src/features/feature/fe/settings.vue')],
     [path.join(root, 'tests', 'features', name, 'be', 'system.spec.ts'), renderTemplate('pack/tests/features/feature/be/system.spec.ts', { NAME: v.NAME, CONNECTED_EVENT: v.CONNECTED_EVENT })],
   ];
 
@@ -90,14 +91,16 @@ export async function addFeature(args: string[], root: string) {
 
   const manifest = readManifest(root);
   addFeatureToManifest(manifest, name, {
+    description: purpose.data,
     ...(designation !== undefined && { designation }),
-    settings: `src/features/${name}/settings.ts`,
-    system: { entry: `src/features/${name}/be/system.ts`, contract: `src/features/${name}/be/contract.ts#Contract` },
-    plugin: { entry: `src/features/${name}/fe/plugin.ts`, contract: `src/features/${name}/fe/contract.ts#Contract` },
+    settings: { schema: { type: 'object', additionalProperties: false }, defaults: {}, form: layout.settingsForm },
+    system: { entry: layout.system, contract: `${layout.systemContract}#Contract` },
+    plugin: { label, icon, state: layout.state, canvas: layout.canvas, defaultVisible: true, contract: `${layout.pluginContract}#Contract` },
+    types: layout.types,
     services: {},
     repositories: {
-      [`${camel}Queries`]: `src/features/${name}/be/repository/index.ts#${camel}Queries`,
-      [`${camel}Commands`]: `src/features/${name}/be/repository/index.ts#${camel}Commands`,
+      [`${camel}Queries`]: `${layout.repositories}#${camel}Queries`,
+      [`${camel}Commands`]: `${layout.repositories}#${camel}Commands`,
     },
   });
   writeManifest(root, manifest);

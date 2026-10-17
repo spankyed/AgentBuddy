@@ -21,7 +21,7 @@ import { useContextMenu, type MenuItem } from '@apackdev/ui/composables/useConte
 const { showMenu, menuPos, open: openMenu } = useContextMenu();
 const shell = useShell();
 const { hasHelp, openFeatureHelp } = useContextualHelp();
-const selectedPlugin = ref<Plugin | null>(null);
+const selectedPlugin = ref<Pick<Plugin, 'id' | 'label'> | null>(null);
 
 const menuItems = computed<MenuItem[]>(() => {
   const plugin = selectedPlugin.value;
@@ -68,7 +68,7 @@ const menuItems = computed<MenuItem[]>(() => {
   ];
 });
 
-const open = (event: MouseEvent, plugin: Plugin) => {
+const open = (event: MouseEvent, plugin: Pick<Plugin, 'id' | 'label'>) => {
   selectedPlugin.value = plugin;
   openMenu(event, menuItems.value.length, plugin.label ? 32 : 0);
 };

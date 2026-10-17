@@ -3,15 +3,16 @@ export { expect } from '@playwright/test';
 import * as path from 'path';
 import * as fs from 'fs';
 import * as os from 'os';
-import { execFileSync } from 'child_process';
+import { execFile, execFileSync } from 'child_process';
 import { createRequire } from 'module';
 import { resolveAppEnvironment } from '@apackdev/sdk/env';
 import { resolveName } from '@apackdev/sdk/ids';
-import { installPackFromLocal, PACK_LOAD_MESSAGES, staleBuildOutput } from '@apackdev/host/packs';
+import { installPackFromLocal, PACK_LOAD_MESSAGES } from '@apackdev/host/packs';
 import { resolveTestHost, type AppLaunch, type TestHostOptions } from './test-host.ts';
 import { appVersion } from './app-version.ts';
 import { appLaunchEnv, pinsViewport } from './launch-env.ts';
 import { assertCheckoutPackagesFresh } from './checkout-freshness.ts';
+import { assertPrebuiltPackCurrent, packArchiveAcceptance } from './prebuilt-pack.ts';
 
 export interface AppDriver {
   sendEvent: (event: Record<string, unknown>) => Promise<void>;
@@ -20,7 +21,7 @@ export interface AppDriver {
   screenshot: (name: string) => Promise<Buffer>;
   /**
    * An answer a driving run is meant to be *read* for, rather than watched: written to
-   * `drive/results/<name>.json` and printed as one `[drive:report] <name> <json>` line.
+   * `.apack/drive/results/<name>.json` and printed as one `[drive:report] <name> <json>` line.
    *
    * **A driving script's output is otherwise `console.log` inside Playwright's reporter**, so whoever runs
    * it — usually an agent — invents a prefix and greps for it. Standardising the prefix and the file is the
@@ -39,13 +40,9 @@ export interface CreateTestOptions extends TestHostOptions {
 
 function resolveScreenshotDir(override?: string): string {
   if (override) return path.resolve(override);
-  // A caller that is not a test says where its own output goes. The fallbacks below assume the caller is
-  // a suite — written when it always was — so `npm run dev:drive --` landed its screenshots under `tests/`,
-  // which is the one place the command exists to keep driving out of. Same reason `E2E_DATA_DIR` exists:
-  // the `screenshotDir` option cannot reach the `test` every script imports, built here with no options
+  // Driving selects its own output through the environment; ordinary tests use the pack's work directory.
   if (process.env.E2E_SCREENSHOT_DIR) return path.resolve(process.env.E2E_SCREENSHOT_DIR);
-  if (process.env.PACK_DIR) return path.join(path.resolve(process.env.PACK_DIR), 'tests', 'screenshots');
-  return path.join(process.cwd(), 'tests', 'screenshots');
+  return path.resolve(process.env.PACK_DIR || process.cwd(), '.apack', 'tests', 'screenshots');
 }
 
 /**
@@ -55,8 +52,7 @@ function resolveScreenshotDir(override?: string): string {
  */
 function resolveReportDir(): string {
   if (process.env.E2E_REPORT_DIR) return path.resolve(process.env.E2E_REPORT_DIR);
-  if (process.env.PACK_DIR) return path.join(path.resolve(process.env.PACK_DIR), 'drive', 'results');
-  return path.join(process.cwd(), 'drive', 'results');
+  return path.resolve(process.env.PACK_DIR || process.cwd(), '.apack', 'drive', 'results');
 }
 
 /** The apack CLI bin that builds the pack under test. */
@@ -70,34 +66,6 @@ function resolveApackBin(app: AppLaunch, packDir: string): string {
     } catch {}
   }
   throw new Error('Could not find the apack CLI to build the pack. Install it in the pack (npm i -D @apackdev/cli) or run the tests with `apack pack test`.');
-}
-
-/** The newest thing under `dir`, or 0 when there is nothing there. */
-function newestMtime(dir: string): number {
-  if (!fs.existsSync(dir)) return 0;
-  return fs.readdirSync(dir, { withFileTypes: true, recursive: true })
-    .filter((entry) => entry.isFile())
-    .reduce((newest, entry) => Math.max(newest, fs.statSync(path.join(entry.parentPath, entry.name)).mtimeMs), 0);
-}
-
-/**
- * Refuses a packed archive older than the build it was supposed to come from.
- *
- * `PACK_ARCHIVE` is the one way past this fixture's rule that a pack is rebuilt before it is tested, and
- * the rule is there because a stale build tested silently is worse than no test. Installing the artifact
- * a release ships is a good reason to skip the rebuild; installing one from before the last change is
- * not, and the two look identical from the outside.
- */
-function assertArchiveIsCurrent(archive: string, packDir: string): void {
-  if (!fs.existsSync(archive)) throw new Error(`PACK_ARCHIVE does not exist: ${archive}`);
-  const built = newestMtime(path.join(packDir, 'dist'));
-  if (built === 0) return; // nothing built beside it to be older than
-  if (fs.statSync(archive).mtimeMs >= built) return;
-  throw new Error(
-    `PACK_ARCHIVE is older than the pack's build, so it would be testing code that has since changed:\n` +
-    `  archive: ${archive}\n  built:   ${path.join(packDir, 'dist')}\n` +
-    'Pack it again, or unset PACK_ARCHIVE to build and install from source.',
-  );
 }
 
 let _packManifest: { id: string; pluginIds: string[] } | null | undefined;
@@ -281,8 +249,8 @@ export const APP_READY_STATE = 'running.connected';
  * reloaded window; this is the same shape, used by every caller.
  *
  * `window.__disableOnboardingUI` is defined unconditionally (`renderer/src/main.ts`), so a page that
- * arrived over CDP reaches it exactly as a launched one does. It sends `ONBOARDING_COMPLETE`, which is a
- * write to the data dir — the one thing this does that outlives the call, and what a caller reports.
+ * arrived over CDP reaches it exactly as a launched one does. It dismisses this window's onboarding UI
+ * without completing the persisted onboarding lifecycle. Call again after a window reload.
  *
  * `state` is a parameter with a default because the caller this leaves room for wants onboarding **left
  * up**: driving the onboarding screens themselves, which nothing can do today. A hard-coded terminal state
@@ -344,7 +312,7 @@ export function createAppDriver(page: Page, screenshotDir: string): AppDriver {
   
     screenshot: async (name) => {
       // Made on first use, not at fixture setup: every run of every spec used to leave an empty
-      // `tests/screenshots/` behind, including suites that screenshot nothing
+      // `.apack/tests/screenshots/` behind, including suites that screenshot nothing
       fs.mkdirSync(screenshotDir, { recursive: true });
       const filePath = path.join(screenshotDir, `${name}.png`);
       return page.screenshot({ path: filePath });
@@ -436,23 +404,14 @@ export function createTest(options: CreateTestOptions = {}) {
           const packDir = path.resolve(process.env.PACK_DIR);
           const manifest = getPackManifest();
           if (!manifest) throw new Error(`No apack.json found in PACK_DIR: ${packDir}`);
-          // PACK_ARCHIVE names a packed .tgz to install as it is, so a run can exercise the artifact a
+          // PACK_ARCHIVE names a packed .tgz to install as it is, so a run can exercise the build a
           // release ships rather than another build of the same source. Everything else — the plugin ids
           // the fixture waits for, the screenshot directory — still comes from PACK_DIR.
           const archive = process.env.PACK_ARCHIVE ? path.resolve(process.env.PACK_ARCHIVE) : undefined;
-          if (archive) assertArchiveIsCurrent(archive, packDir);
+          const acceptArchive = archive ? packArchiveAcceptance(packDir, !!process.env.APACK_PACK_RELEASE) : undefined;
           if (!archive && process.env.APACK_PACK_PREBUILT) {
-            // The caller built it in an earlier step (`apack pack test --prebuilt`), so this installs that build.
-            // **Because rebuilding it here is the expensive half of the step**: with two fixture packs rebuilt
-            // per run, dropping the rebuild took `test:external-pack:app` from 1.3m to 4.4s. It also stopped
-            // the step rebuilding a tree it declares as an input, which made each pack look unbuilt for the
-            // ~20s the rebuild took — a race this suite lost under load rather than a hypothetical, and one
-            // `apack pack build` no longer creates now that it stages its output and renames it into place.
-            //
-            // What the rebuild bought is checked instead of dropped: a build older than the sources it came
-            // from fails here, which is the whole of "a stale build tested silently is worse than no test".
-            const stale = staleBuildOutput(packDir);
-            if (stale) throw new Error(`Pack ${manifest.id} was built before ${stale} changed. Build it (apack pack build) or drop --prebuilt.`);
+            // Reuse the caller's build without silently testing changed inputs or altered output.
+            assertPrebuiltPackCurrent(packDir, !!process.env.APACK_PACK_RELEASE);
           } else if (!archive) {
             // Always rebuild: installing an existing dist would silently test stale code
             const apackBin = resolveApackBin(appLaunch, packDir);
@@ -473,9 +432,14 @@ export function createTest(options: CreateTestOptions = {}) {
           // `hostVersion` is the launched app's own (its package.json), so this is that app's answer rather than a
           // second opinion. No `packFormat`: whether this app can read the pack's build is the app's to decide, and
           // it does, at boot, naming which side is older. Nothing here can tell — the CLI that runs the fixture
-          // needn't be the app's, and inferring the app's format from an artifact it ships refuses good packs
-          // whenever that artifact is the stale one. `waitForPackBackend` reports the app's verdict within 15s.
-          await installPackFromLocal(archive ?? packDir, packsDir, { hostVersion: appVersion(appLaunch) });
+          // needn't be the app's, and inferring the app's format from a build it ships refuses good packs
+          // whenever that build is the stale one. `waitForPackBackend` reports the app's verdict within 15s.
+          await installPackFromLocal(archive ?? packDir, packsDir, {
+            hostVersion: appVersion(appLaunch), accept: acceptArchive,
+            beforePlace: installed => {
+              if (installed.id !== manifest.id) throw new Error(`Expected pack ${manifest.id}, received ${installed.id}`);
+            },
+          });
         }
 
         // A checkout runs its sources with its own electron, so packs don't need electron installed
@@ -497,16 +461,66 @@ export function createTest(options: CreateTestOptions = {}) {
         userDataDirs.set(app, userDataDir);
         captureOutput(app, appLogPath(workerInfo));
         if (process.env.DEBUG_E2E) {
-          app.process().stdout?.on('data', (data: Buffer) => {
-            process.stdout.write(`[electron] ${data}`);
+          app.process().once('exit', (code, signal) => console.log('[e2e shutdown] process exited', { code, signal }));
+          app.once('close', () => console.log('[e2e shutdown] Playwright application closed'));
+          if (process.env.DEBUG_E2E !== 'shutdown') await app.evaluate(({ app, BrowserWindow }) => {
+            const observe = (window: Electron.BrowserWindow) => {
+              const id = window.id;
+              window.on('close', () => console.log('[e2e shutdown] window closing', id));
+              window.on('closed', () => console.log('[e2e shutdown] window closed', id));
+            };
+            BrowserWindow.getAllWindows().forEach(observe);
+            app.on('browser-window-created', (_event, window) => observe(window));
+            app.on('before-quit', () => console.log('[e2e shutdown] before-quit'));
+            app.on('will-quit', () => console.log('[e2e shutdown] will-quit'));
+            app.on('quit', () => console.log('[e2e shutdown] quit'));
           });
-          app.process().stderr?.on('data', (data: Buffer) => {
-            process.stderr.write(`[electron] ${data}`);
-          });
+          if (process.env.DEBUG_E2E !== 'shutdown') {
+            app.process().stdout?.on('data', (data: Buffer) => {
+              process.stdout.write(`[electron] ${data}`);
+            });
+            app.process().stderr?.on('data', (data: Buffer) => {
+              process.stderr.write(`[electron] ${data}`);
+            });
+          }
         }
 
         await use(app);
-        await app.close();
+        const endpointFile = resolveAppEnvironment({ env: 'test', userDataDir }).apiPortFile;
+        const apiPid: number | undefined = fs.existsSync(endpointFile)
+          ? JSON.parse(fs.readFileSync(endpointFile, 'utf8')).pid : undefined;
+        if (process.env.DEBUG_E2E) console.log('[e2e shutdown] calling close');
+        const inspectShutdown = process.env.DEBUG_E2E ? setTimeout(() => {
+          console.log('[e2e shutdown] still waiting', {
+            pid: app.process().pid,
+            exitCode: app.process().exitCode,
+            signalCode: app.process().signalCode,
+            stdoutEnded: app.process().stdout?.readableEnded,
+            stderrEnded: app.process().stderr?.readableEnded,
+            windows: app.windows().map(page => ({ closed: page.isClosed() })),
+          });
+          const pid = app.process().pid;
+          if (process.env.DEBUG_E2E === 'sample' && process.platform === 'darwin' && pid && app.process().exitCode === null) {
+            const output = `${appLogPath(workerInfo)}.shutdown.sample.txt`;
+            execFile('/usr/bin/sample', [String(pid), '2', '-file', output], { timeout: 10_000 }, error => {
+              console.log('[e2e shutdown] sample', error ? error.message : output);
+            });
+          }
+        }, 5000) : undefined;
+        try { await app.close(); }
+        finally { clearTimeout(inspectShutdown); }
+        // Electron close must include its API child; otherwise deleting storage races the final writes.
+        if (apiPid !== undefined) {
+          let alive = true;
+          try {
+            process.kill(apiPid, 0);
+          } catch (error) {
+            if ((error as NodeJS.ErrnoException).code !== 'ESRCH') throw error;
+            alive = false;
+          }
+          if (alive) throw new Error(`Electron closed while API process ${apiPid} was still alive`);
+        }
+        if (process.env.DEBUG_E2E) console.log('[e2e shutdown] close resolved');
       } finally {
         // A dir the caller gave is the caller's to remove; this owns only the one it made
         if (givenDataDir !== undefined) {

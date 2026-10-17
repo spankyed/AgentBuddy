@@ -4,7 +4,7 @@ import { execFileSync } from 'node:child_process';
 import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
-import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
+import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
 import { packFixture } from '@apackdev/sdk/testing/pack-fixture';
 import { init } from '../../src/commands/init';
 import { addStep } from '../../src/commands/add/step';
@@ -23,6 +23,9 @@ const BIN = path.join(REPO_ROOT, 'node_modules', '.bin');
 
 let tmp: string;
 let pack: string;
+
+// Synchronous toolchain cases must let Vitest receive task-update replies between tests.
+afterEach(() => new Promise<void>(resolve => { setImmediate(resolve); }));
 
 const read = (file: string) => fs.readFileSync(path.join(pack, file), 'utf-8');
 const write = (file: string, content: string) => {
@@ -112,18 +115,18 @@ describe('apack pack add step in a pack without steps', () => {
     expect(manifest.extensions.steps).toEqual({
       ping: {
         kind: 'step',
-        node: 'src/extensions/steps/ping/build.ts#pingStepNode',
-        build: 'src/extensions/steps/ping/build.ts#pingStepBuild',
-        fe: 'src/extensions/steps/ping/fe.ts#pingStepFE',
+        node: { label: 'Ping', defaultLabel: 'Ping' },
+        build: { compile: 'src/extensions/steps/ping/build.ts#compile', validate: 'src/extensions/steps/ping/build.ts#validate', getLabel: 'src/extensions/steps/ping/build.ts#getLabel' },
+        types: 'src/extensions/steps/ping/types.ts',
+        fe: { colorKey: 'indigo', nodeConfig: { icon: 'Box',
+          connectionRules: { inputs: -1, outputs: -1 }, category: 'logic', isImplemented: true },
+          components: { form: { entry: 'src/extensions/steps/ping/form.vue', load: 'lazy' } } },
       },
     });
     expect(fs.existsSync(path.join(bare, 'src/extensions/steps/ping/build.ts'))).toBe(true);
   });
 
-  // A trigger is not a step with a flag: its facet is a TriggerFacet, from its own template. While both
-  // kinds pointed at the step template's StepBuildFacet, `--trigger` scaffolded a pack that did not compile
-  // and no test here asked it to.
-  it('declares a trigger against its own facet, and the pack typechecks', async () => {
+  it('scaffolds a hyphenated trigger with declared track metadata and checked callbacks', async () => {
     // Its own scaffolded pack rather than the shared one: `init` is what writes the tsconfig `typecheckPack`
     // needs, and a trigger added to the shared pack would join the `NodeEntity` union another case pins
     const cwd = process.cwd();
@@ -136,19 +139,23 @@ describe('apack pack add step in a pack without steps', () => {
     const triggerPack = path.join(tmp, 'trigger-pack');
     fs.symlinkSync(path.join(REPO_ROOT, 'node_modules'), path.join(triggerPack, 'node_modules'), 'dir');
 
-    await addStep(['heartbeat', '--trigger'], triggerPack);
+    await addStep(['heart-beat', '--trigger'], triggerPack);
 
     const manifest = JSON.parse(fs.readFileSync(path.join(triggerPack, 'apack.json'), 'utf-8'));
-    expect(manifest.extensions.steps.heartbeat).toEqual({
+    expect(manifest.extensions.steps['heart-beat']).toEqual({
       kind: 'trigger',
-      node: 'src/extensions/steps/heartbeat/trigger.ts#heartbeatTriggerNode',
-      trigger: { facet: 'src/extensions/steps/heartbeat/trigger.ts#heartbeatTriggerBuild' },
-      fe: 'src/extensions/steps/heartbeat/fe.ts#heartbeatTriggerFE',
+      node: { label: 'Heart Beat', defaultLabel: 'On heart-beat', defaults: { source: 'change me' } },
+      trigger: { trackField: 'heartBeat', persistent: false, validate: 'src/extensions/steps/heart-beat/trigger.ts#validate', compile: 'src/extensions/steps/heart-beat/trigger.ts#compile', decompile: 'src/extensions/steps/heart-beat/trigger.ts#decompile' },
+      types: 'src/extensions/steps/heart-beat/types.ts',
+        fe: { colorKey: 'blue', nodeConfig: { icon: 'Radio',
+          connectionRules: { inputs: 0, outputs: -1 }, category: 'trigger', isImplemented: true },
+          components: { form: { entry: 'src/extensions/steps/heart-beat/form.vue', load: 'lazy' } } },
     });
-    // Its own template, so no StepBuildFacet is written for it
-    expect(fs.existsSync(path.join(triggerPack, 'src/extensions/steps/heartbeat/trigger.ts'))).toBe(true);
-    expect(fs.existsSync(path.join(triggerPack, 'src/extensions/steps/heartbeat/build.ts'))).toBe(false);
+    expect(fs.existsSync(path.join(triggerPack, 'src/extensions/steps/heart-beat/trigger.ts'))).toBe(true);
+    expect(fs.existsSync(path.join(triggerPack, 'src/extensions/steps/heart-beat/build.ts'))).toBe(false);
 
+    expect(fs.readFileSync(path.join(triggerPack, 'src/__generated__/flow-helpers.ts'), 'utf8'))
+      .toContain('export function heartBeat(heartBeat: string');
     const tsc = await typecheckPack(triggerPack);
     expect(tsc.code, tsc.output).toBe(0);
   });
@@ -222,24 +229,24 @@ describe('apack pack add migration', () => {
     await addMigration(['0.3.16-beta.1', '--app'], pack);
 
     const migration = read('src/migrations/0.2.0.ts');
-    expect(migration).toContain("import type { DeclaredMigration } from '@apackdev/sdk/framework';");
+    expect(migration).toContain('export function up(): void');
     // The version is the manifest key and the line is the map, so the module restates neither
     expect(migration).not.toContain('target:');
     expect(readManifest().migrations).toEqual({
       pack: {
-        '0.2.0': 'src/migrations/0.2.0.ts#migration',
-        '0.10.1': 'src/migrations/0.10.1.ts#migration',
-        '0.11.0': 'src/migrations/0.11.0.ts#migration',
+        '0.2.0': { description: 'Describe what this migration changes', up: 'src/migrations/0.2.0.ts#up' },
+        '0.10.1': { description: 'Describe what this migration changes', up: 'src/migrations/0.10.1.ts#up' },
+        '0.11.0': { description: 'Describe what this migration changes', up: 'src/migrations/0.11.0.ts#up' },
       },
-      app: { '0.3.16': 'src/migrations/0.3.16.ts#migration' },
+      app: { '0.3.16': { description: 'Describe what this migration changes', up: 'src/migrations/0.3.16.ts#up' } },
     });
     expect(fs.existsSync(path.join(pack, 'src/migrations/index.ts'))).toBe(false);
 
     await generateEntries([], pack);
     const entry = read('src/__generated__/pack-entry.ts');
     // One array per line, each in version order, each entry with the target its key names
-    expect(entry).toContain("    app: [\n      { target: '0.3.16', ...__migration_app_0_3_16 },\n    ],");
-    expect(entry).toContain("    pack: [\n      { target: '0.2.0', ...__migration_pack_0_2_0 },\n      { target: '0.10.1', ...__migration_pack_0_10_1 },\n      { target: '0.11.0', ...__migration_pack_0_11_0 },\n    ],");
+    expect(entry).toContain("    app: [\n      { target: '0.3.16', description: \"Describe what this migration changes\", up: __migration_app_0_3_16 },\n    ],");
+    expect(entry).toContain("    pack: [\n      { target: '0.2.0', description: \"Describe what this migration changes\", up: __migration_pack_0_2_0 },\n      { target: '0.10.1', description: \"Describe what this migration changes\", up: __migration_pack_0_10_1 },\n      { target: '0.11.0', description: \"Describe what this migration changes\", up: __migration_pack_0_11_0 },\n    ],");
     const tsc = await typecheckPack(pack);
     expect(tsc.code, tsc.output).toBe(0);
   });
@@ -253,12 +260,12 @@ describe('apack pack add migration', () => {
     // lands on a file that is already there, which is the one thing the two lines share. So codegen
     // imports that module twice under two locals, which is the case the typecheck below is here for
     await addMigration(['0.2.0', '--app'], pack);
-    expect(readManifest().migrations?.app?.['0.2.0']).toBe('src/migrations/0.2.0.ts#migration');
+    expect(readManifest().migrations?.app?.['0.2.0']).toEqual({ description: 'Describe what this migration changes', up: 'src/migrations/0.2.0.ts#up' });
 
     await generateEntries([], pack);
     const entry = read('src/__generated__/pack-entry.ts');
-    expect(entry).toContain("import { migration as __migration_app_0_2_0 } from '../migrations/0.2.0.ts';");
-    expect(entry).toContain("import { migration as __migration_pack_0_2_0 } from '../migrations/0.2.0.ts';");
+    expect(entry).toContain("import { up as __migration_app_0_2_0 } from '../migrations/0.2.0.ts';");
+    expect(entry).toContain("import { up as __migration_pack_0_2_0 } from '../migrations/0.2.0.ts';");
     const tsc = await typecheckPack(pack);
     expect(tsc.code, tsc.output).toBe(0);
   });
@@ -281,7 +288,7 @@ describe('apack pack add migration', () => {
     await addMigration(['--app'], pack);
 
     const version = readManifest().version;
-    expect(readManifest().migrations?.app?.[version]).toBe(`src/migrations/${version}.ts#migration`);
+    expect(readManifest().migrations?.app?.[version]).toEqual({ description: 'Describe what this migration changes', up: `src/migrations/${version}.ts#up` });
     expect(fs.existsSync(path.join(pack, 'src/migrations/.ts')), 'no file named for the empty version').toBe(false);
   });
 });

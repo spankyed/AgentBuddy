@@ -1,3 +1,4 @@
+import { carrySettingsRequest } from '../features/settings/be/access.ts';
 // The backend bus: spawns the registered systems, routes client events to them and their events to
 // clients. The app composes it with its event sources and client sink (createAppBus, app-bus.ts); the pack
 // test harness runs the same machine with a recording sink.
@@ -17,7 +18,7 @@ export type BusEvent =
 
 /** Restarts a pack's systems: stops each running one, then starts those still registered */
 export type ReloadPackEvent = { type: 'RELOAD_PACK'; packId: string; systemIds: string[] };
-export type TeardownPackEvent = { type: 'TEARDOWN_PACK'; systemIds: string[] };
+export type TeardownPackEvent = { type: 'TEARDOWN_PACK'; systemIds: string[]; packId?: string; afterStop?: () => void };
 export type ActivatePackEvent = { type: 'ACTIVATE_PACK'; packId: string; systemIds: string[] };
 /** A client loaded a pack's frontend after connecting: its systems send their startup data */
 export type PackClientConnectedEvent = { type: 'PACK_CLIENT_CONNECTED'; packId: string };
@@ -41,14 +42,15 @@ export type BackendEvents =
   | PackClientConnectedEvent
   | PackChangedEvent
   | DataReplacedEvent
-  | SystemsSpawnedEvent;
+  | SystemsSpawnedEvent
+  | { type: 'SYSTEMS_STOPPED'; afterStop(): void };
 
 /** The events a bus source can feed it: OUTGOING for sends to plugins from outside a system (`broadcastToPlugin`) */
 export type BusSourceEvent = Extract<BackendEvents, { type: 'INCOMING' | 'OUTGOING' | 'CLIENT_CONNECTED' | 'PACK_CLIENT_CONNECTED' }>;
 
 export interface BusOptions {
   /** The registered packs whose systems the bus runs */
-  registry: Pick<PackRegistry, 'getRegisteredSystems' | 'getRegisteredPackSystemIds' | 'getPluginEventValidationMap' | 'getEventValidationMap' | 'isPluginReplacing'>;
+  registry: Pick<PackRegistry, 'getRegisteredSystems' | 'getRegisteredPackSystemIds' | 'getPluginEventValidationMap' | 'getEventValidationMap'>;
   /** The systems the bus runs, by id; defaults to every system in `registry` */
   systems?(): ReadonlyMap<string, AnyStateMachine>;
   /** Delivers a message a system sent to a frontend plugin */
@@ -127,10 +129,24 @@ function stopSystems(
   enqueue: { stopChild(actor: AnyActorRef): void },
   system: { get(id: string): AnyActorRef | undefined },
   systemIds: readonly string[],
+  afterStop?: () => void,
 ): void {
-  for (const id of systemIds) {
+  const actors = [...new Set(systemIds)].flatMap(id => {
     const actor = system.get(id);
-    if (actor) enqueue.stopChild(actor);
+    return actor && actor.getSnapshot().status === 'active' ? [actor] : [];
+  });
+  let remaining = actors.length;
+  if (remaining === 0) afterStop?.();
+  for (const actor of actors) {
+    let stopped = false;
+    const complete = () => {
+      if (stopped) return;
+      stopped = true;
+      if (--remaining === 0) afterStop?.();
+    };
+    // stopChild defers actual stop; authority must survive queued work and callback cleanup.
+    if (afterStop) actor.subscribe({ complete, error: complete });
+    enqueue.stopChild(actor);
   }
 }
 
@@ -140,6 +156,15 @@ export function createBusMachine(options: BusOptions) {
   const { registry } = options;
   const systems = options.systems ?? registry.getRegisteredSystems;
   const clientLoadedPacks = () => new Set(options.clientLoadedPacks?.() ?? []);
+  function awaiting(previous: ReadonlySet<string>, packId: string): Set<string> {
+    const next = new Set(previous);
+    if (clientLoadedPacks().has(packId)) next.add(packId); else next.delete(packId);
+    return next;
+  }
+  function publishable(ids: string[], awaitingFrontends: ReadonlySet<string>): string[] {
+    const pending = new Set([...awaitingFrontends].flatMap(id => registry.getRegisteredPackSystemIds(id)));
+    return ids.filter(id => !pending.has(id));
+  }
   /**
    * The drops already reported, keyed by plugin, event type and sender, so each is reported once per bus.
    *
@@ -159,6 +184,7 @@ export function createBusMachine(options: BusOptions) {
   return setup({
     types: {
       events: {} as BackendEvents,
+      context: {} as { awaitingFrontends: Set<string> },
     },
     actors: {
       listen: fromCallback<BackendEvents>(({ sendBack }) => options.listen(sendBack)),
@@ -191,9 +217,6 @@ export function createBusMachine(options: BusOptions) {
         const answering = event.message.answering !== undefined;
         const accepted = options.registry.getPluginEventValidationMap().get(pluginId);
         const reportDrop = (message: string) => {
-          // A pack mid-replacement has no systems running and no plugins registered until its
-          // replacement lands. Dropping is right; saying something went wrong is not.
-          if (options.registry.isPluginReplacing(pluginId)) return;
           // Keyed on what the report says rather than on a second reading of the envelope, so whatever the
           // message distinguishes the dedupe distinguishes, and a suppressed drop is never one the report names
           // differently — which is why `answering` is in the key now that it changes the wording
@@ -291,7 +314,9 @@ export function createBusMachine(options: BusOptions) {
         // before a guard runs, so the event is the only channel to one.
         if (actor) {
           reportUndeclared(to, incoming.type, event.message);
-          deliverAs({ to, sender, client, call }, () => actor.send({ ...incoming, ..._callOn(event.message) }));
+          const delivered = { ...incoming, ..._callOn(event.message) };
+          carrySettingsRequest(incoming, delivered);
+          deliverAs({ to, sender, client, call }, () => actor.send(delivered));
         }
         // An event every system accepts (a feature's settings changing) is the feature's system's if it runs one
         else if (!(SYSTEM_EVENT_TYPES as readonly string[]).includes(incoming.type)) {
@@ -308,25 +333,28 @@ export function createBusMachine(options: BusOptions) {
         askToPublish(system, targets);
         for (const message of options.connectedEvents?.() ?? []) system.get(HOST.bus).send({ type: 'OUTGOING', message });
       },
-      sendPackConnected: ({ event, system, self }) => {
+      sendPackConnected: enqueueActions(({ event, context, system, self, enqueue }) => {
         if (event.type !== 'PACK_CLIENT_CONNECTED') return;
+        const awaitingFrontends = new Set(context.awaitingFrontends);
+        awaitingFrontends.delete(event.packId);
+        enqueue.assign({ awaitingFrontends });
         const running = systems();
         const targets = registry.getRegisteredPackSystemIds(event.packId).filter((id) => running.has(id));
         sendToRunning(system, targets, { type: 'CLIENT_CONNECTED' });
         if (listening(self)) askToPublish(system, targets);
-      },
+      }),
       // Every system, not just the changed pack's: what a pack registers and content is read by others
       // (its slash commands by the chat, say)
-      sendPackChanged: ({ event, system, self }) => {
+      sendPackChanged: ({ event, context, system, self }) => {
         if (event.type !== 'PACK_CHANGED') return;
         const running = [...systems().keys()];
         sendToRunning(system, running, { type: 'PACK_CHANGED', packId: event.packId });
-        if (listening(self)) askToPublish(system, running);
+        if (listening(self)) askToPublish(system, publishable(running, context.awaitingFrontends));
       },
-      sendDataReplaced: ({ system, self }) => {
+      sendDataReplaced: ({ context, system, self }) => {
         const running = [...systems().keys()];
         sendToRunning(system, running, { type: 'DATA_REPLACED' });
-        if (listening(self)) askToPublish(system, running);
+        if (listening(self)) askToPublish(system, publishable(running, context.awaitingFrontends));
       },
       sendSpawnedConnected: ({ event, system }) => {
         if (event.type !== 'SYSTEMS_SPAWNED') return;
@@ -337,21 +365,26 @@ export function createBusMachine(options: BusOptions) {
         const machines = systems();
         spawnSystems(enqueue, machines, [...machines.keys()]);
       }),
-      reloadPack: enqueueActions(({ enqueue, event, system }) => {
+      reloadPack: enqueueActions(({ enqueue, event, context, system }) => {
         if (event.type !== 'RELOAD_PACK') return;
+        enqueue.assign({ awaitingFrontends: awaiting(context.awaitingFrontends, event.packId) });
         // Stopping releases each system's id and its children's, so the fresh copies claim them here
         stopSystems(enqueue, system, event.systemIds);
-        // A client already has the pack's frontend, so the restarted systems send their startup data.
-        // Spawned children join the actor system only after this action runs.
+        // Startup requests wait for acceptance of the fresh frontend; pack facts still reach its systems.
         const spawned = spawnSystems(enqueue, systems(), event.systemIds);
-        if (spawned.length > 0) enqueue.raise({ type: 'SYSTEMS_SPAWNED', systemIds: spawned });
+        if (spawned.length > 0 && !clientLoadedPacks().has(event.packId)) enqueue.raise({ type: 'SYSTEMS_SPAWNED', systemIds: spawned });
       }),
-      teardownPack: enqueueActions(({ enqueue, event, system }) => {
+      teardownPack: enqueueActions(({ enqueue, event, context, system, self }) => {
         if (event.type !== 'TEARDOWN_PACK') return;
-        stopSystems(enqueue, system, event.systemIds);
+        const current = clientLoadedPacks();
+        enqueue.assign({ awaitingFrontends: new Set([...context.awaitingFrontends].filter(id => current.has(id) && id !== event.packId)) });
+        const afterStop = event.afterStop;
+        // Drain already queued sends before revoking the inboxes they were sent to.
+        stopSystems(enqueue, system, event.systemIds, afterStop && (() => self.send({ type: 'SYSTEMS_STOPPED', afterStop })));
       }),
-      activatePack: enqueueActions(({ enqueue, event }) => {
+      activatePack: enqueueActions(({ enqueue, event, context }) => {
         if (event.type !== 'ACTIVATE_PACK') return;
+        enqueue.assign({ awaitingFrontends: awaiting(context.awaitingFrontends, event.packId) });
         const spawned = spawnSystems(enqueue, systems(), event.systemIds);
         // A pack whose frontend a client loads next gets CLIENT_CONNECTED when the client asks for it
         // (PACK_CLIENT_CONNECTED), once its plugin actors can receive the data; any other sends it now
@@ -367,6 +400,7 @@ export function createBusMachine(options: BusOptions) {
     // reconnecting client connects again and gets the startup data), so `clientSeen` means "a client has
     // connected since the bus started", not "one is connected now".
     initial: 'awaitingClient',
+    context: () => ({ awaitingFrontends: new Set(clientLoadedPacks()) }),
     // Listening first: a system sends as it starts (a plugin's report, another system's event), and what it sends
     // before the bus hears the root events is lost
     entry: ['listen', 'spawnActors'],
@@ -378,6 +412,7 @@ export function createBusMachine(options: BusOptions) {
       INCOMING: { actions: 'routeIncoming' },
       RELOAD_PACK: { actions: 'reloadPack' },
       TEARDOWN_PACK: { actions: 'teardownPack' },
+      SYSTEMS_STOPPED: { actions: ({ event }) => event.afterStop() },
       ACTIVATE_PACK: { actions: 'activatePack' },
       PACK_CLIENT_CONNECTED: { actions: 'sendPackConnected' },
       PACK_CHANGED: { actions: 'sendPackChanged' },

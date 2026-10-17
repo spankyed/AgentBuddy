@@ -18,10 +18,10 @@ vi.mock('@apackdev/host/bus', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@apackdev/host/bus')>();
   return { ...actual, receiveClientEvent: () => {} };
 });
-vi.mock('@/runtime', () => ({ appPacks: {}, appClaims: claims }));
-vi.mock('@/transport/emitter', () => ({ rootEvents: { onOutgoing: () => () => {}, emitConnected: () => {}, emitPackClientConnected: () => {} } }));
+vi.mock('../../src/runtime/index.ts', () => ({ appPacks: {}, appClaims: claims }));
+vi.mock('../../src/transport/emitter.ts', () => ({ rootEvents: { onOutgoing: () => () => {}, emitConnected: () => {}, emitPackClientConnected: () => {} } }));
 
-const { systemBusRouter } = await import('@/transport/bus');
+const { systemBusRouter } = await import('../../src/transport/bus.ts');
 
 /** Every connection a case opened, so each case cleans up only what it made */
 const opened: string[] = [];

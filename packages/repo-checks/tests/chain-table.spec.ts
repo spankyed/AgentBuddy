@@ -2,7 +2,7 @@
 //
 // Nothing here opens a file in the repo: every case is answered from `CHAIN_STEPS`, `UNIT_SUITES` and the
 // npm scripts, by asking whether the table agrees with itself — that a pool declares what its projects
-// declare, that a step keeping its own cache says so, that a recorded artifact has both of its halves.
+// declare, that a step keeping its own cache says so, that a recorded file has both of its halves.
 // `chain-inputs.spec.ts` is the other half of the split: whether a step's declared inputs cover the files
 // that step actually reads, which is answered by walking the tree and is where the cost lives.
 import * as fs from 'node:fs';
@@ -421,9 +421,9 @@ describe('a step whose runner reads stamps declares forceArgs', () => {
 });
 
 /**
- * The chain runs every recorded artifact's check.
+ * The chain runs every recorded file's check.
  *
- * An `<artifact>:check` that nothing runs is a recorded file free to go stale with every gate green, and with
+ * An `<name>:check` that nothing runs is a recorded file free to go stale with every gate green, and with
  * CI off the chain is the only gate. Two of them were in exactly that state until 2026-09-27 — `schema:check`,
  * which holds the manifest schema published with the SDK, and `facade:check` — each named only by
  * `.github/workflows/ci.yml`, whose triggers are commented out. `packages:check` had been the same. Three
@@ -435,14 +435,14 @@ describe('a step whose runner reads stamps declares forceArgs', () => {
  * follower, so the two cannot disagree about what a step reaches.
  *
  * A check counts as run when its own `<workspace>:<name>` is invoked **or** the bare `<name>` is: root
- * `lint:check` fans out with `-ws`, which no `-w <name>` pattern can follow, and an artifact's exception is
- * about the artifact rather than about each workspace the root script delegates to.
+ * `lint:check` fans out with `-ws`, which no `-w <name>` pattern can follow, and a recorded file's exception is
+ * about the recorded file rather than about each workspace the root script delegates to.
  */
 /**
- * A recorded artifact has both halves.
+ * A recorded file has both halves.
  *
- * The convention is that `<artifact>:check` and `<artifact>:update` carry the same noun, and root CLAUDE.md
- * gives the reason: "an artifact with only an update is one nothing will notice has gone stale". Until this,
+ * The convention is that `<name>:check` and `<name>:update` carry the same noun, and root CLAUDE.md
+ * gives the reason: "a recorded file with only an update is one nothing will notice has gone stale". Until this,
  * that rule was prose — `sdk-modules:update` had no check for as long as it has existed, and the only thing
  * standing between it and a silent staleness was a spec in another package that happens to compare the file.
  *
@@ -450,7 +450,7 @@ describe('a step whose runner reads stamps declares forceArgs', () => {
  * else: `lint:check` pairs with `lint:fix` and `packages:check` with `packages:build`, both under the
  * `<action>:<variant>` shape, and neither records a file that can go stale.
  */
-describe('a recorded artifact has both halves', () => {
+describe('a recorded file has both halves', () => {
   const scriptsByManifest = (): { where: string; scripts: Record<string, string> }[] =>
     [{ where: 'root', file: path.join(REPO_ROOT, 'package.json') },
       ...PACKAGE_DIRS.map((dir) => ({ where: dir, file: path.join(REPO_ROOT, 'packages', dir, 'package.json') }))]
@@ -466,24 +466,24 @@ describe('a recorded artifact has both halves', () => {
     const unchecked = updates
       .filter(({ noun, scripts }) => scripts[`${noun}:check`] === undefined)
       .map(({ where, noun }) => `${where}'s ${noun}:update`);
-    expect(unchecked, 'these rewrite a committed file and nothing named for that artifact re-derives it. Add '
+    expect(unchecked, 'these rewrite a committed file and nothing named for that recorded file re-derives it. Add '
       + 'the `:check` half — it may be a one-line wrapper for a spec that already compares it, as '
       + 'content-parity:check is').toEqual([]);
   });
 });
 
-describe("the chain runs every artifact's check", () => {
+describe("the chain runs every recorded file's check", () => {
   /** A `:check` script the chain does not run, and why. An entry that stops applying is reported. */
   const NOT_RUN_BY_THE_CHAIN: Record<string, string> = {
     'session:check': 'runs the full chain over explicitly named branches in another checkout; nesting it in the chain would recurse',
-    // These are commands over a rule a spec already asserts, so the artifact is checked and the script is
+    // These are commands over a rule a spec already asserts, so the recorded file is checked and the script is
     // a way to ask by hand.
     'content-parity:check': 'a wrapper for `npm test -- tests/content`; those specs run in test:unit:pack',
     'sdk-modules:check': 'a wrapper for `sdk-bridge-drift.spec.ts`, which compares the generated file against a fresh render; it runs in test:unit:host',
     'flow-export:check': 'a wrapper for `npm test -- tests/extensions/steps/export-example.spec.ts`; that spec runs in test:unit:pack, where it compares the flow DSL example rather than recording it',
   };
 
-  /** Every `<artifact>:check` in the repo, as the label of the manifest declaring it and the script's name */
+  /** Every `<name>:check` in the repo, as the label of the manifest declaring it and the script's name */
   const checkScripts = (): { where: string; name: string }[] => {
     const manifests = [path.join(REPO_ROOT, 'package.json'),
       ...PACKAGE_DIRS

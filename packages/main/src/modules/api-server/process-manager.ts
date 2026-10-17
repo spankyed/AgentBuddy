@@ -16,6 +16,7 @@ export class ProcessManager {
   private handlers: ProcessHandlers;
   private serverReady = false;
   private exited = false;
+  private stopping?: Promise<void>;
   private lastStderr = '';
   private fatalErrors: { message: string; stack?: string; source?: string }[] = [];
 
@@ -147,47 +148,40 @@ export class ProcessManager {
   /**
    * Ends the process and resolves once it is **gone**, not once the signal was sent.
    *
-   * **Waiting is what a reload needs and a quit does not.** The departing API holds the port the next one
-   * prefers and the LMDB store it is about to open, so starting the replacement before it lets go of
-   * either is the failure this exists to prevent.
+   * Reload and quit both wait for the API to release its port, database and log files.
    *
    * **The order is the method.** `cleanup()` removes *every* listener, so the waiter goes on after it and
    * the signal after that: before, and it is stripped with the handlers it replaces. Stripping them first
    * is also what keeps this off `onExit`, so a reload is never counted as a crash.
    *
-   * A process that ignores the signal and survives the force-kill still gets an answer; hanging is not one.
+   * A process that survives the force-kill rejects the wait; it must not be reported as stopped.
    */
   stop(signal: NodeJS.Signals = 'SIGTERM', forceKillDelay = 5000): Promise<void> {
+    if (this.stopping) return this.stopping;
     const child = this.process;
-    if (!child || this.exited) return Promise.resolve();
+    if (!child || !this.isRunning()) return Promise.resolve();
     this.cleanup();
 
-    let gone = false;
-    const signalling = new Promise<void>((resolve) => {
+    const signalling = new Promise<void>((resolve, reject) => {
+      let forceKill: ReturnType<typeof setTimeout> | undefined;
       const done = (): void => {
-        gone = true;
         // `cleanup()` took the handler that normally sets this, and `isRunning()` reads it
         this.exited = true;
         clearTimeout(giveUp);
+        clearTimeout(forceKill);
         resolve();
       };
       const giveUp = setTimeout(() => {
         child.removeListener('exit', done);
-        resolve();
+        clearTimeout(forceKill);
+        reject(new Error('API process did not exit after shutdown signals'));
       }, forceKillDelay + 1000);
       child.once('exit', done);
+      if (forceKillDelay > 0) forceKill = setTimeout(() => this.signal(child, 'SIGKILL'), forceKillDelay);
+      this.signal(child, signal);
     });
-
-    this.signal(child, signal);
-    // **`gone`, never `child.killed`.** That flag means "a signal was delivered", not "the process ended",
-    // so it is already true here — a force-kill guarded on it can never fire, which is what this one did.
-    if (forceKillDelay > 0) setTimeout(() => { if (!gone) this.signal(child, 'SIGKILL'); }, forceKillDelay);
-    return signalling;
-  }
-
-  /** Fire and forget, for the callers that cannot await — `before-quit` and `window-all-closed`. */
-  kill(signal: NodeJS.Signals = 'SIGTERM', forceKillDelay = 5000): void {
-    void this.stop(signal, forceKillDelay);
+    this.stopping = signalling.finally(() => { this.stopping = undefined; });
+    return this.stopping;
   }
 
   private signal(child: ChildProcess, signal: NodeJS.Signals): void {
@@ -199,7 +193,7 @@ export class ProcessManager {
   }
 
   isRunning(): boolean {
-    return !!this.process && !this.process.killed && !this.exited;
+    return !!this.process && !this.exited && this.process.exitCode == null && this.process.signalCode == null;
   }
 
   getPid(): number | undefined {

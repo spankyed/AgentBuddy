@@ -4,11 +4,12 @@ import { installEngine, type EarsQuery } from '@apackdev/ears';
 import { setSecretValueMatcher } from '../utils/redact.ts';
 import type { RootEvents } from './root-events.ts';
 import type { AppDataService } from '../services/app-data.ts';
+import type { OnboardingService } from '../services/onboarding.ts';
 import type { TraceStore } from '../services/trace-store.ts';
 import type { InferenceService } from '../services/inference.ts';
 import type { SecretsService } from '../services/secrets.ts';
 import type { FilesystemService } from '../services/filesystem.ts';
-import type { SettingsService } from '../services/settings.ts';
+import type { SettingsAdmin } from '../services/settings.ts';
 import type { PackRegistryView } from './packs-view.ts';
 
 /** The app's EARS engine, as packs query it: its query face (`createEarsEngine` from `@apackdev/ears`) */
@@ -18,6 +19,8 @@ export type { EarsQuery } from '@apackdev/ears';
 export interface HostRuntimeServices {
   /** Reset, back up and restore the app's stored data */
   appData: AppDataService;
+  /** Completion of the app's onboarding */
+  onboarding: OnboardingService;
   /** The volatile trace store (flow execution records) */
   traceStore: TraceStore;
   /** Model calls with the user's provider keys */
@@ -27,7 +30,7 @@ export interface HostRuntimeServices {
   /** Files and folders on the user's disk */
   filesystem: FilesystemService;
   /** The app's settings: the one row, its defaults and its one writer */
-  settings: SettingsService;
+  settings: SettingsAdmin;
 }
 
 /**
@@ -56,11 +59,16 @@ export interface HostRuntime {
 }
 
 let bound: HostRuntime | undefined;
+let generation = 0;
+
+/** @internal A successful bind or unbind starts a distinct host lifetime, even with the same object. */
+export const _boundHostGeneration = (): number => generation;
 
 /** Binds the running app, and installs its engine (`installEngine(runtime.ears)`); once per process */
 export function bindHost(runtime: HostRuntime): void {
   if (bound) throw new Error('A host is already bound in this process: bindHost runs once, at boot');
   bound = runtime;
+  generation++;
   installEngine(runtime.ears);
   setSecretValueMatcher(runtime.redaction && ((text, from, to) => runtime.redaction!.matchesSecret(text, from, to)));
 }
@@ -68,6 +76,7 @@ export function bindHost(runtime: HostRuntime): void {
 /** @internal Tests only: forgets the bound app and uninstalls its engine, so a test can bind another */
 export function unbindHost(): void {
   bound = undefined;
+  generation++;
   installEngine(undefined);
   setSecretValueMatcher(undefined);
 }

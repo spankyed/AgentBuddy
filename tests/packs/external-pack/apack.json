@@ -3,65 +3,243 @@
   "id": "e2e-fixture",
   "name": "E2E Fixture",
   "version": "0.1.0",
+  "consumes": {
+    "services": [
+      "host/inference"
+    ]
+  },
   "hostVersion": ">=0.3.0",
-  "entities": {
-    "Memo": "Memo"
+  "dependencies": {
+    "default-setup": "*"
   },
-  "entityShapes": {
-    "Memo": {
-      "source": "src/features/memos/be/types.ts",
-      "type": "MemoEntity"
-    }
+  "permissions": [],
+  "data": {
+    "relations": []
   },
-  "relKinds": {},
   "features": {
     "memos": {
-      "settings": "src/features/memos/settings.ts",
+      "description": "Write memos and run reminder flows.",
+      "entities": {
+        "Memo": "src/features/memos/be/types.ts#MemoEntity"
+      },
+      "settings": {
+        "schema": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "listTitle": {
+              "type": "string",
+              "description": "Heading shown above the memo list."
+            }
+          },
+          "required": [
+            "listTitle"
+          ]
+        },
+        "defaults": {
+          "listTitle": "Memos"
+        },
+        "title": "Memos",
+        "form": "src/features/memos/fe/settings.vue"
+      },
+      "types": "src/features/memos/be/types.ts",
       "system": {
         "entry": "src/features/memos/be/system.ts",
         "contract": "src/features/memos/be/contract.ts#Contract"
       },
       "plugin": {
-        "entry": "src/features/memos/fe/plugin.ts",
-        "contract": "src/features/memos/fe/contract.ts#Contract"
+        "contract": "src/features/memos/fe/contract.ts#Contract",
+        "defaultVisible": false,
+        "label": "Memos",
+        "icon": "StickyNote",
+        "state": "src/features/memos/fe/state.ts",
+        "canvas": {
+          "entry": "src/features/memos/fe/canvas/list.vue",
+          "load": "lazy"
+        }
       },
       "services": {},
       "repositories": {
         "memoQueries": "src/features/memos/be/repository.ts#memoQueries",
         "memoCommands": "src/features/memos/be/repository.ts#memoCommands"
+      },
+      "references": {
+        "types": {
+          "memo": {
+            "category": "memos",
+            "icon": "StickyNote",
+            "svgElements": [
+              [
+                "rect",
+                {
+                  "x": "3",
+                  "y": "3",
+                  "width": "18",
+                  "height": "18",
+                  "rx": "2"
+                }
+              ]
+            ]
+          }
+        },
+        "categories": {
+          "memos": {
+            "label": "Memos",
+            "icon": "StickyNote",
+            "useItems": "src/features/memos/fe/references.ts#useItems"
+          }
+        }
       }
     },
     "notes": {
-      "settings": "src/features/notes/settings.ts",
+      "description": "Write, organize and export notes.",
+      "settings": {
+        "schema": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "listTitle": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "listTitle"
+          ]
+        },
+        "defaults": {
+          "listTitle": "Fixture Notes"
+        },
+        "title": "Fixture Notes"
+      },
       "plugin": {
-        "entry": "src/features/notes/fe/plugin.ts"
+        "label": "Fixture Notes",
+        "icon": "NotebookPen",
+        "state": "src/features/notes/fe/state.ts",
+        "canvas": "src/features/notes/fe/canvas/list.vue"
       },
       "services": {}
+    },
+    "faults": {
+      "description": "Exercise host containment of failing pack panes and forms.",
+      "settings": {
+        "schema": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "message": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "message"
+          ]
+        },
+        "defaults": {
+          "message": "Still here"
+        },
+        "title": "Fault fixture",
+        "form": "src/features/faults/form.vue"
+      },
+      "plugin": {
+        "label": "Fault fixture",
+        "icon": "TriangleAlert",
+        "defaultVisible": false,
+        "state": "src/features/faults/state.ts",
+        "canvas": "src/features/faults/Pane.vue",
+        "panel": "src/features/faults/Pane.vue"
+      }
     }
   },
   "extensions": {
+    "settings": {
+      "assistant": {
+        "title": "Fixture Assistant",
+        "schema": {
+          "type": "object",
+          "properties": {
+            "name": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "name"
+          ],
+          "additionalProperties": false
+        },
+        "defaults": {
+          "name": "Memo helper"
+        },
+        "form": "src/extensions/settings/assistant.vue"
+      }
+    },
     "help": {
       "path": "src/extensions/help"
     },
     "steps": {
       "stamp": {
-        "node": "src/extensions/steps/stamp/build.ts#stampStepNode",
-        "build": "src/extensions/steps/stamp/build.ts#stampStepBuild",
-        "fe": "src/extensions/steps/stamp/fe.ts#stampStepFE",
+        "node": {
+          "label": "Stamp",
+          "defaultLabel": "Stamp a memo",
+          "defaults": {
+            "note": "stamped"
+          }
+        },
+        "build": {
+          "compile": "src/extensions/steps/stamp/build.ts#compile",
+          "validate": "src/extensions/steps/stamp/build.ts#validate",
+          "getLabel": "src/extensions/steps/stamp/build.ts#getLabel"
+        },
+        "fe": {
+          "colorKey": "purple",
+          "nodeConfig": {
+            "icon": "Stamp",
+            "connectionRules": {
+              "inputs": 1,
+              "outputs": 1
+            },
+            "category": "action",
+            "isImplemented": true
+          }
+        },
         "runtime": {
           "handler": "src/extensions/steps/stamp/runtime.ts#handler"
         },
         "dsl": {
           "primaryField": "note"
-        }
+        },
+        "types": "src/extensions/steps/stamp/types.ts"
       },
       "pulse": {
         "kind": "trigger",
-        "node": "src/extensions/steps/pulse/trigger.ts#pulseTriggerNode",
-        "trigger": {
-          "facet": "src/extensions/steps/pulse/trigger.ts#pulseTriggerBuild"
+        "node": {
+          "label": "Pulse",
+          "defaultLabel": "On pulse",
+          "defaults": {
+            "interval": "5m"
+          }
         },
-        "fe": "src/extensions/steps/pulse/fe.ts#pulseTriggerFE"
+        "trigger": {
+          "trackField": "pulse",
+          "compile": "src/extensions/steps/pulse/trigger.ts#compile",
+          "decompile": "src/extensions/steps/pulse/trigger.ts#decompile",
+          "persistent": true,
+          "queryFields": [
+            "interval"
+          ],
+          "validate": "src/extensions/steps/pulse/trigger.ts#validate"
+        },
+        "fe": {
+          "colorKey": "blue",
+          "nodeConfig": {
+            "icon": "Radio",
+            "connectionRules": {
+              "inputs": 0,
+              "outputs": -1
+            },
+            "category": "trigger",
+            "isImplemented": true
+          }
+        }
       }
     },
     "artifacts": {
@@ -81,12 +259,9 @@
       }
     }
   },
-  "dependencies": {
-    "default-setup": "*"
-  },
-  "permissions": [],
-  "boot": {
-    "hooks": "src/features/hooks.ts"
+  "lifecycle": {
+    "onInit": "src/features/hooks.ts#onInit",
+    "onShutdown": "src/features/hooks.ts#onShutdown"
   },
   "content": {
     "sources": {

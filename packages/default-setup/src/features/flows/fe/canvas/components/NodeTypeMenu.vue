@@ -18,7 +18,7 @@
           <DropdownMenuItem
             v-for="item in items"
             :key="item.type"
-            @select="$emit('select', item.type)"
+            @select="selectStep(item.type)"
             class="flex items-center gap-2.5 px-3 py-2 text-sm text-neutral-300 rounded-md cursor-pointer transition-colors hover:bg-neutral-800 hover:text-white outline-none focus:bg-neutral-800 focus:text-white"
           >
             <component :is="item.icon" class="flex-shrink-0 w-4 h-4" />
@@ -52,8 +52,10 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from 'reka-ui'
-import { getConnectableNodeTypes } from '@apackdev/ui/components/node-styles'
-import type { Component } from 'vue'
+import { useNodeStyles } from '@apackdev/ui/components/node-styles'
+import { computed, type Component } from 'vue'
+
+const { getConnectableNodeTypes } = useNodeStyles()
 
 export interface ExtraMenuItem {
   type: string
@@ -77,10 +79,14 @@ withDefaults(defineProps<Props>(), {
   extraItems: () => [],
 })
 
-defineEmits<{
+const emit = defineEmits<{
   'update:open': [value: boolean]
   'select': [nodeType: string]
 }>()
 
-const items = getConnectableNodeTypes()
+const items = computed(() => getConnectableNodeTypes())
+
+function selectStep(type: string) {
+  if (getConnectableNodeTypes().some(item => item.type === type)) emit('select', type)
+}
 </script>

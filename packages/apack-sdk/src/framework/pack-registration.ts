@@ -7,22 +7,11 @@
 
 import type { AnyStateMachine } from 'xstate';
 
-/**
- * A migration a pack's module exports. **It does not name the version it targets** — the manifest key does
- * (`"migrations": { "0.4.0": "src/migrations/0.4.0.ts#migration" }`), and codegen supplies it from there.
- *
- * Two sources for one fact is what that avoids: a `target` in the file and a version in the filename could
- * disagree, and nothing read the filename, so the one that counted was invisible. The key is now the only
- * place the version is written, and a key that is not a version is refused by the schema.
- */
-export interface DeclaredMigration {
+/** A versioned change: declared target/description with a checked executable function. */
+export interface PackMigration {
+  target: string;
   description: string;
   up: () => void;
-}
-
-/** A migration as the runners take it: a `DeclaredMigration` with the version it targets */
-export interface PackMigration extends DeclaredMigration {
-  target: string;
 }
 
 /**
@@ -41,14 +30,14 @@ export interface PackMigrations {
 }
 
 /**
- * The pack's boot hooks: code the app runs for it, and nothing else.
+ * The pack's lifecycle hooks: code the app runs for it, and nothing else.
  *
- * **A registration carries code; the manifest and the compiled artifacts carry facts.** So nothing here
+ * **A registration carries code; the manifest and the compiled builds carry facts.** So nothing here
  * describes a pack's content: which keys it writes is `content.json`'s, where its compiled content is follows
  * from where the pack is installed, and what an apply leaves alone the applier decides from the rows — an
  * unchanged hash, an edited row, one the user deleted. A fact put here is a second account of one of those.
  */
-export interface PackBootHooks {
+export interface PackLifecycleHooks {
   onInit?: () => void;
   onShutdown?: () => void;
 }
@@ -61,7 +50,7 @@ export interface PackEARS {
 /** A feature's backend system, which the app runs at the feature's ref, `<packId>/<featureId>` */
 export interface PackFeatureSystem {
   machine: AnyStateMachine;
-  /** The event types it accepts: its machine's, and those apack.json `system.events.incoming` adds (`packSystem`) */
+  /** Declared incoming events plus the SDK lifecycle protocol; private machine handlers do not define an inbox. */
   receives: readonly string[];
 }
 
@@ -71,7 +60,7 @@ export interface PackFeaturePlugin {
    * Generated from its own feature's system's outgoing events and every audience of the inbox the plugin's
    * `Contract` declares. One flat list: a passing check means the event's shape was accepted, not that this sender
    * was allowed to send it. `Message.from` is a label the generated sends stamp, not a claim the bus checks —
-   * `docs/goals/wont-do/goal-sender-enforced-audiences.md` says why.
+   * `docs/archive/goals/goal-sender-enforced-audiences.md` says why.
    */
   receives: readonly string[];
 }
@@ -83,22 +72,26 @@ export interface PackFeature {
   plugin?: PackFeaturePlugin;
   /** The keys of the services the feature provides, which `PackRegistration.services` holds */
   services?: readonly string[];
-  /** The feature's default settings (apack.json `features[].settings`) */
-  settings?: import('./pack-settings.ts').FeatureSettings;
+  /** The feature's default settings (apack.json `features.<id>.settings`) */
+  settings?: import('./settings-definition.ts').SettingsDefinition;
 }
 
 export interface PackRegistration {
   id: string;
+  /** Generated bindings identify their declaration data; trusted host registrations have no installed build. */
+  declarationRevision?: string;
   /**
    * The pack's features by id. The app runs each at `<packId>/<featureId>` and derives the rest from here:
    * the systems it starts and the events each accepts, the plugins and what each receives, the roles.
    */
   features?: Record<string, PackFeature>;
   services?: Record<string, unknown>;
+  /** Generated runtime service binding; the host supplies accepted caller authority and records its revocation. */
+  bindServices?: (access: import('../services/index.ts').PackServiceAccess) => () => void;
   ears?: PackEARS;
   /** The pack's repositories by name (apack.json `features[].repositories`), registered with the app's engine */
   repositories?: Record<string, unknown>;
-  boot?: PackBootHooks;
+  lifecycle?: PackLifecycleHooks;
   /**
    * The pack's migrations by version line, mirroring `apack.json`'s two maps: `app` runs against
    * apack's version, `pack` against this pack's own. Nested rather than two sibling fields so one
@@ -108,24 +101,13 @@ export interface PackRegistration {
   steps?: import('../steps/types.ts').StepDefinition[];
   artifacts?: import('../artifacts/types.ts').ArtifactDefinition[];
   blocks?: import('../blocks/types.ts').BlockDefinition[];
-  /** Content writers for the entity types this pack owns (apack.json `contentWriters`) */
+  /** Content writers for the entity types this pack owns (apack.json `content.writers`) */
   contentWriters?: Record<string, import('../content/writers.ts').ContentWriter>;
   /** The pack's appliers, one per content key (apack.json `content.sources`), which `importCompiledContent` runs for the pack's compiled content */
   appliers?: import('../utils/apply.ts').ContentApplier[];
-  /** The slash commands this pack adds to the chat (apack.json `commands`) */
+  /** Build-checked command identities from extensions.commands; discovery reads catalog declarations. */
   commands?: import('./pack-commands.ts').PackCommand[];
-  /** Markdown articles bundled into this pack (apack.json `help`). */
-  help?: import('./pack-help.ts').HelpDocument[];
-  /** Display name used for this pack's contributions. */
-  name?: string;
-  /**
-   * Sections of the app's settings this pack owns, with their defaults, beside the `features` section the app keeps
-   * itself (apack.json `settingsSections`). A feature declares only its own slice (`features[].settings`); a
-   * section is the pack's, and whoever registers one owns its shape — the app stores, merges and diffs it without
-   * knowing what is in it.
-   *
-   * Called the first time the defaults are read, so a pack whose defaults come from its compiled content can read
-   * them then rather than at registration.
-   */
-  settingsSections?: () => Record<string, unknown>;
+  dependencies?: Record<string, string>;
+  /** Pack-owned preference groups declared inline in extensions.settings. */
+  settings?: Record<string, import('./settings-definition.ts').SettingsDefinition>;
 }

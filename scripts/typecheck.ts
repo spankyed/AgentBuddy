@@ -38,7 +38,7 @@ import { box, coresFor, MEASURED_ON } from './lib/core-budget.ts';
 import { pruneDepFiles } from './lib/dep-files.ts';
 import { asCount, parseFlags } from './lib/measure.ts';
 import { TIMEOUT_MS, timedOutBecause, type TimeoutClass } from './lib/step-timeouts.ts';
-import { ARTIFACT_CHECKS, CODEGEN } from './lib/typecheck-jobs.ts';
+import { RECORDED_FILE_CHECKS, CODEGEN } from './lib/typecheck-jobs.ts';
 import { ENSURE, LEG_TIMEOUT, TYPECHECK_LEGS } from './lib/typecheck-legs.ts';
 
 /**
@@ -66,7 +66,7 @@ import { ENSURE, LEG_TIMEOUT, TYPECHECK_LEGS } from './lib/typecheck-legs.ts';
 const budgetFrom = (cores: string | undefined, jobs: number): number =>
   asCount(cores, 'cores') ?? Math.min(jobs, Math.max(2, box()));
 
-/** One thing this runner spawns: a leg, a prerequisite that writes, or a recorded artifact's check */
+/** One thing this runner spawns: a leg, a prerequisite that writes, or a recorded file's check */
 interface Job {
   readonly name: string;
   readonly command: string;
@@ -103,7 +103,7 @@ const JOBS: readonly Job[] = [
   })),
   { name: CODEGEN, command: `npm run ${CODEGEN} -w @app/default-setup`, timeout: LEG_TIMEOUT, seconds: 2,
     cores: 1, dependsOn: [ENSURE] },
-  ...ARTIFACT_CHECKS.map(borrowed),
+  ...RECORDED_FILE_CHECKS.map(borrowed),
 ];
 
 const secs = (ms: number) => `${(ms / 1000).toFixed(1)}s`;

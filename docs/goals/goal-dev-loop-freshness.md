@@ -71,7 +71,7 @@ re-derived:
 ## Handoff with discovery
 
 [Manifest maturity](../plans/manifest-maturity.md) owns the priority order. Discovery must solve coherent
-artifact publication for each migrated kind before switching its readers; it need not wait for this
+build publication for each migrated kind before switching its readers; it need not wait for this
 entire package-dist watcher follow-up. This goal supplies reusable freshness coordination, not an
 alternative catalog or permission to leave descriptor/codegen outputs stale. Update this goal’s measured
 survey only with new evidence; historical timings below are not promises for the renamed tree.

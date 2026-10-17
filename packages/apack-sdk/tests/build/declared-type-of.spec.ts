@@ -21,6 +21,16 @@ import { createModuleExports, type ModuleExports } from '../../src/build/module-
  * `__generated__/` is deliberately absent, which is what a pack's own tree looks like before codegen has run once.
  */
 const FIXTURES = {
+  'opens-alias.ts': "type Opened = 'Note' | 'Action'; export type Contract = { opens: Opened }; throw new Error('Do not execute');",
+  'opens-interface.ts': "interface Base { opens: 'Note' }; export interface Contract extends Base {}",
+  'opens-reexport.ts': "export type { Contract } from './opens-interface.ts';",
+  'opens-string.ts': 'export type Contract = { opens: string };',
+  'opens-empty.ts': "export type Contract = { opens: '' };",
+  'opens-never.ts': 'export type Contract = { opens: never };',
+  'opens-unknown.ts': 'export type Contract = { opens: unknown };',
+  'opens-optional.ts': "export type Contract = { opens?: 'Note' };",
+  'opens-missing.ts': "import type { Missing } from './absent.ts'; export type Contract = { opens: Missing };",
+
   'unresolved-contract.ts': "import type { Theirs } from '@not/installed';\nexport type Contract = Theirs;\n",
   'unresolved-inbox.ts': "import type { Theirs } from '@not/installed';\nexport type Contract = { state: {}; inbox: Theirs };\n",
   'unresolved-audience.ts': "import type { Theirs } from '@not/installed';\nexport type Contract = { state: {}; inbox: { public: Theirs } };\n",
@@ -176,4 +186,32 @@ describe('declaredTypeOf, through inboxEventTypesOf', () => {
   it('refuses an audience that does not exist, rather than silently declaring nothing', () => {
     expect(() => read.inboxEventTypesOf(at('bad-audience.ts'), 'Contract')).toThrow(/"publik".*is not an audience/s);
   });
+});
+
+
+it('resolves virtual declaration re-exports without creating their directories', () => {
+  const dir = path.join(root, 'virtual', 'declarations');
+  const entry = path.join(dir, 'facade.ts');
+  const shapes = path.join(dir, 'shapes.ts');
+  const reader = createModuleExports(root, [entry, shapes], new Map([
+    [entry, "export type { Shape as PackEntityShapes } from './shapes.ts';"],
+    [shapes, 'export interface Shape { label: string }'],
+  ]));
+  expect(reader.hasTypeExport(entry, 'PackEntityShapes')).toBe(true);
+  expect(fs.existsSync(dir)).toBe(false);
+});
+
+
+describe('plugin entity destination types', () => {
+  it('reads literal aliases, inherited interfaces and re-exports without executing modules', () => {
+    expect(read.openedEntityTypesOf(at('opens-alias.ts'), 'Contract')).toEqual(['Action', 'Note']);
+    expect(read.openedEntityTypesOf(at('opens-interface.ts'), 'Contract')).toEqual(['Note']);
+    expect(read.openedEntityTypesOf(at('opens-reexport.ts'), 'Contract')).toEqual(['Note']);
+    expect(read.openedEntityTypesOf(at('state-only.ts'), 'Contract')).toEqual([]);
+  });
+  it.each(['opens-string.ts', 'opens-empty.ts', 'opens-never.ts', 'opens-unknown.ts', 'opens-optional.ts', 'opens-missing.ts'] as const)(
+    'refuses an indeterminate destination: %s', name => {
+      expect(() => read.openedEntityTypesOf(at(name), 'Contract')).toThrow(/literal entity types|resolves to/);
+    },
+  );
 });

@@ -1,42 +1,151 @@
 import { describe, it, expect } from 'vitest';
 import { readFileSync } from 'fs';
 import { resolve } from 'path';
+import { FeatureEntrySchema, _NativePackDeclarationSchema } from '../../src/framework/declaration-schema.ts';
 import { parseManifest } from '../../src/build/validate.ts';
-import { _MOVED_ROOT_KEYS } from '../../src/build/manifest-schema.ts';
+import { ALLOWABLE_PACK_CHECKS } from '../../src/framework/pack-checks.ts';
+import { _HOST_SERVICE_NAMES } from '../../src/framework/service-consumption.ts';
 
 describe('parseManifest', () => {
+  it('offers known host service refs and duplicate diagnostics in the generated editor schema', () => {
+    const schema = JSON.parse(readFileSync(resolve(__dirname, '../../apack.schema.json'), 'utf8'));
+    const services = schema.properties.consumes.properties.services;
+    expect(services.uniqueItems).toBe(true);
+    expect(services.items.anyOf[0].enum).toEqual(_HOST_SERVICE_NAMES.map(name => `host/${name}`));
+    expect(services.description).toContain('directly declare the service');
+  });
+  it('validates inline node labels and JSON defaults without a code target', () => {
+    const pack = { id: 'nodes', name: 'Nodes', version: '1.0.0' };
+    const parse = (node: unknown) => parseManifest({ ...pack, extensions: { steps: { memo: { node } } } });
+    expect(parse({ label: 'Memo', defaults: { tags: ['draft'], ready: false, nested: { value: null } } }).status).toBe('valid');
+    for (const node of [{}, { label: ' ' }, { label: 'Memo', extra: true },
+      { label: 'Memo', defaults: { value: undefined } }, { label: 'Memo', defaults: { value: Infinity } },
+      { label: 'Memo', defaults: { value() {} } }]) {
+      const result = parse(node);
+      expect(result.status).toBe('invalid');
+      expect(result.diagnostics[0].path.slice(0, 4)).toEqual(['extensions', 'steps', 'memo', 'node']);
+    }
+  });
+  it('documents and enforces the same inline check allowances', () => {
+    const schema = JSON.parse(readFileSync(resolve(__dirname, '../../apack.schema.json'), 'utf8'));
+    expect(schema.properties.checks.properties.allow.items.enum).toEqual([...ALLOWABLE_PACK_CHECKS]);
+    const pack = { id: 'checks', name: 'Checks', version: '1.0.0' };
+    expect(parseManifest({ ...pack, checks: { allow: [...ALLOWABLE_PACK_CHECKS] } }).status).toBe('valid');
+    for (const checks of [{ allow: ['host-imports'] }, { allow: ['unknown'] }, { allow: 'backend-console' }, null, { unknown: true }]) {
+      const report = parseManifest({ ...pack, checks });
+      expect(report.status).toBe('invalid');
+      expect(report.diagnostics[0].path[0]).toBe('checks');
+    }
+  });
+
+  it('enforces the same default-plugin uniqueness for native declarations', () => {
+    const feature = { description: 'Show fixture items.', plugin: { label: 'Items', state: 'state.ts', default: true } };
+    expect(_NativePackDeclarationSchema.safeParse({ id: 'native', features: { first: feature } }).success).toBe(true);
+    const result = _NativePackDeclarationSchema.safeParse({ id: 'native', features: { first: feature, second: feature } });
+    expect(result.success).toBe(false);
+    if (result.success) throw new Error('Duplicate defaults accepted');
+    expect(result.error.issues[0].path).toEqual(['features', 'second', 'plugin', 'default']);
+    expect(result.error.issues[0].message).toContain('"first" and "second"');
+  });
+
+  it('distinguishes whole modules from named contract exports before reading any source', () => {
+    const pack = { id: 'grammar', name: 'Grammar', version: '1.0.0' };
+    const settings = { schema: { type: 'object' }, defaults: {} };
+    const fields = [
+      { features: { memos: { description: 'Manage memos.', system: { entry: 'src/module#value' } } } },
+      { features: { memos: { description: 'Manage memos.', settings: { ...settings, form: 'src/module#value' } } } },
+      { extensions: { settings: { extra: { ...settings, form: 'src/module#value' } } } },
+      { extensions: { blocks: { extra: { fe: 'src/module#value' } } } },
+      { extensions: { artifacts: { extra: { icon: 'File', fe: 'src/module#value' } } } },
+      { extensions: { tiptapPlugins: { editor: { popups: { extra: 'src/module#value' } } }, appExtensions: { extra: 'src/module#value' } } },
+      { extensions: { dsl: { extra: { entry: 'src/module#value', targets: ['monaco'] } } } },
+      { content: { formats: { extra: { compiler: 'src/module#value' } } } },
+      { content: { sources: { extra: { applier: 'src/module#value' } } } },
+    ];
+    for (const fieldsOf of fields) {
+      const report = parseManifest({ ...pack, ...fieldsOf });
+      expect(report.status).toBe('invalid');
+      expect(report.diagnostics.every(issue => issue.message.includes('without an export selector'))).toBe(true);
+    }
+    for (const owner of ['system', 'plugin']) {
+      const declaration = owner === 'system' ? { entry: 'src/system', contract: 'src/types' }
+        : { label: 'Memos', state: 'src/plugin#machine', contract: 'src/types' };
+      const feature = { description: 'Manage memos.', [owner]: declaration };
+      expect(parseManifest({ ...pack, features: { memos: feature } }).diagnostics[0].path)
+        .toEqual(['features', 'memos', owner, 'contract']);
+      expect(parseManifest({ ...pack, features: { memos: { ...feature, [owner]: { ...declaration, contract: 'src/types#Contract' } } } }).status).toBe('valid');
+    }
+  });
+
+  it('names both editor groups claiming one Tiptap extension for native and external packs', () => {
+    const plugin = { extensions: { mention: 'src/editor.ts#Mention' } };
+    const contributions = { tiptapPlugins: { first: plugin, second: plugin } };
+    const external = parseManifest({ id: 'editor', name: 'Editor', version: '1.0.0', extensions: contributions });
+    expect(external.status).toBe('invalid');
+    expect(external.diagnostics[0].path).toEqual(['extensions', 'tiptapPlugins', 'second', 'extensions', 'mention']);
+    expect(external.diagnostics[0].message).toContain('"first" and "second"');
+    const native = _NativePackDeclarationSchema.safeParse({ id: 'editor', ...contributions });
+    expect(native.success).toBe(false);
+    if (native.success) throw new Error('Duplicate native editor extension accepted');
+    expect(native.error.issues[0].path).toEqual(['tiptapPlugins', 'second', 'extensions', 'mention']);
+    expect(native.error.issues[0].message).toContain('"first" and "second"');
+  });
+
+  it('requires a nonblank feature purpose without changing authored text', () => {
+    const pack = { id: 'test-pack', name: 'Test', version: '0.1.0' };
+    expect(parseManifest({ ...pack, features: { notes: {} } }).status).toBe('invalid');
+    for (const description of ['', ' \n\t']) {
+      expect(messagesOf(parseManifest({ ...pack, features: { notes: { description } } })))
+        .toEqual([expect.stringContaining('Feature description must not be blank')]);
+    }
+    expect(parseManifest({ ...pack, features: { notes: { description: 'Write notes.' } } }).status).toBe('valid');
+    expect(FeatureEntrySchema.parse({ description: '  Write notes.  ' }).description).toBe('  Write notes.  ');
+  });
   it('accepts default-setup apack.json', () => {
     const raw = JSON.parse(
       readFileSync(resolve(__dirname, '../../../default-setup/apack.json'), 'utf-8'),
     );
     const result = parseManifest(raw);
-    expect(result.errors).toEqual([]);
+    expect(messagesOf(result)).toEqual([]);
   });
 
   it("rejects declaring the SDK's entities or relation kinds, by name or value, naming each", () => {
     const pack = { id: 'test-pack', name: 'Test', version: '0.1.0' };
-    const errorsOf = (field: object) => parseManifest({ ...pack, ...field }).errors;
-    expect(errorsOf({ entities: { Relation: 'Relation', Memo: 'Memo' } })).toEqual([
-      'apack.json "entities": "Relation" is defined by the SDK and available to every pack: remove it',
+    const errorsOf = (field: object) => messagesOf(parseManifest({ ...pack, ...field }));
+    expect(errorsOf({ data: { entities: { Relation: null, Memo: null } } })).toEqual([
+      'apack.json "data.entities": "Relation" is defined by the SDK and available to every pack: remove it',
     ]);
-    expect(errorsOf({ relKinds: { CONTAINS: 'contains', NEXT: 'transitions_to', HOLDS: 'holds', PINNED: 'pinned' } })).toEqual([
-      'apack.json "relKinds": "CONTAINS": "contains", "NEXT": "transitions_to" are defined by the SDK and available to every pack: remove them',
+    expect(errorsOf({ data: { relations: ['contains', 'transitions_to', 'holds', 'pinned'] } })).toEqual([
+      'apack.json "data.relations": "CONTAINS": "contains", "TRANSITIONS_TO": "transitions_to" are defined by the SDK and available to every pack: remove them',
     ]);
-    expect(errorsOf({ relKinds: { CONTAINS: 'holds' } })).toEqual([expect.stringContaining('"CONTAINS": "holds" is defined by the SDK')]);
+    expect(errorsOf({ data: { relations: ['holds'] } })).toEqual([]);
     // A name only an object's prototype has is a pack's to use
-    expect(errorsOf({ entities: { constructor: 'constructor', toString: 'toString' } })).toEqual([]);
-    // Settings is a pack's entity (default-setup's)
-    expect(errorsOf({ entities: { Memo: 'Memo', Note: 'Note', Settings: 'Settings' }, relKinds: { PINNED: 'pinned' } })).toEqual([]);
+    expect(errorsOf({ data: { entities: { constructor: null, toString: null } } })).toEqual([]);
+    // Settings is not an SDK-reserved entity name
+    expect(errorsOf({ data: { entities: { Memo: null, Note: null, Settings: null }, relations: ['pinned'] }, })).toEqual([]);
   });
 
-  it("rejects an entity whose key isn't its type name", () => {
-    const errors = parseManifest({ id: 'test-pack', name: 'Test', version: '0.1.0', entities: { Memo: 'memo', Note: 'Note' } }).errors;
-    expect(errors).toEqual(['apack.json "entities.Memo": an entity\'s key must be its type name: use "memo": "memo"']);
+  it('rejects malformed shape targets and names both duplicate owners', () => {
+    const pack = { id: 'test-pack', name: 'Test', version: '0.1.0' };
+    expect(messagesOf(parseManifest({ ...pack, data: { entities: { Memo: 'src/types.ts#' } } }))[0]).toContain('path#exportName');
+    expect(messagesOf(parseManifest({ ...pack, data: { entities: { Memo: null } },
+      features: { memos: { description: 'Feature validation fixture.', entities: { Memo: null } } } }))[0]).toContain('both "data" and "features.memos"');
+  });
+
+  it('keeps type-module validation and generated schema assistance consistent', () => {
+    const pack = { id: 'test-pack', name: 'Test', version: '0.1.0' };
+    const field = JSON.parse(readFileSync(resolve(__dirname, '../../apack.schema.json'), 'utf-8'))
+      .properties.features.additionalProperties.properties.types;
+    expect(new RegExp(field.pattern).test('src/public/types.ts')).toBe(true);
+    expect(new RegExp(field.pattern).test('src/public/types.ts#Memo')).toBe(false);
+    expect(messagesOf(parseManifest({ ...pack, features: { memos: { description: 'Feature validation fixture.', types: 'src/public/types.ts' } } }))).toEqual([]);
+    expect(messagesOf(parseManifest({ ...pack, features: { memos: { description: 'Feature validation fixture.', types: 'src/public/types.ts#Memo' } } }))[0])
+      .toContain('Must name a TypeScript module, not a single export');
   });
 
   it('accepts a minimal valid manifest', () => {
     const result = parseManifest({ id: 'test-pack', name: 'Test', version: '0.1.0' });
-    expect(result.errors).toEqual([]);
+    expect(messagesOf(result)).toEqual([]);
   });
 
   it('rejects unknown top-level keys', () => {
@@ -44,88 +153,70 @@ describe('parseManifest', () => {
       id: 'test-pack', name: 'Test', version: '0.1.0',
       bogusField: true,
     });
-    expect(result.errors.length).toBeGreaterThan(0);
-    expect(result.errors[0]).toContain('bogusField');
+    expect(messagesOf(result).length).toBeGreaterThan(0);
+    expect(messagesOf(result)[0]).toContain('bogusField');
   });
 
   it('rejects unknown keys in feature system entries', () => {
     const result = parseManifest({
       id: 'test-pack', name: 'Test', version: '0.1.0',
-      features: { main: { system: { entry: 'src/system.ts', exportName: 'mainEntry' } } },
+      features: { main: { description: 'Feature validation fixture.', system: { entry: 'src/system.ts', exportName: 'mainEntry' } } },
     });
-    expect(result.errors.length).toBeGreaterThan(0);
-    expect(result.errors[0]).toContain('exportName');
+    expect(messagesOf(result).length).toBeGreaterThan(0);
+    expect(messagesOf(result)[0]).toContain('exportName');
   });
 
   it('rejects missing required fields', () => {
     const result = parseManifest({ name: 'Test' });
-    expect(result.errors.length).toBeGreaterThan(0);
+    expect(messagesOf(result).length).toBeGreaterThan(0);
   });
 
   it('rejects invalid id format', () => {
     const result = parseManifest({ id: 'BadCase', name: 'Test', version: '0.1.0' });
-    expect(result.errors.length).toBeGreaterThan(0);
-    expect(result.errors[0]).toContain('id');
+    expect(messagesOf(result).length).toBeGreaterThan(0);
+    expect(messagesOf(result)[0]).toContain('id');
   });
 
   it('rejects feature ids generated code reserves: reserved words', () => {
     const pack = { id: 'test-pack', name: 'Test', version: '0.1.0' };
     for (const id of ['default', 'export', 'eval']) {
-      expect(parseManifest({ ...pack, features: { [id]: {} } }).errors).toEqual([expect.stringContaining(`"${id}" is reserved in generated code`)]);
+      expect(messagesOf(parseManifest({ ...pack, features: { [id]: { description: 'Feature validation fixture.',} } }))).toEqual([expect.stringContaining(`"${id}" is reserved in generated code`)]);
     }
-    expect(parseManifest({ ...pack, features: { defaults: {}, specs: {} } }).errors).toEqual([]);
+    expect(messagesOf(parseManifest({ ...pack, features: { defaults: { description: 'Feature validation fixture.',}, specs: { description: 'Feature validation fixture.',} } }))).toEqual([]);
   });
 
   // JSON cannot hold a key twice, so this is a property of the format rather than a check anything runs:
   // two features with one id used to collapse last-wins across five generated modules, silently
   it('cannot be given one feature id twice', () => {
     const pack = { id: 'test-pack', name: 'Test', version: '0.1.0' };
-    const parsed = JSON.parse('{"notes": {"settings": "a.ts"}, "notes": {"settings": "b.ts"}}');
+    const parsed = JSON.parse('{"notes": {"description": "Manage notes.", "settings": {"schema": {"type": "object"}, "defaults": {}}}, "notes": {"description": "Manage notes.", "settings": {"schema": {"type": "object"}, "defaults": {}}}}');
     expect(Object.keys(parsed)).toEqual(['notes']);
-    expect(parseManifest({ ...pack, features: parsed }).errors).toEqual([]);
+    expect(messagesOf(parseManifest({ ...pack, features: parsed }))).toEqual([]);
   });
 
-  /**
-   * `.strict()` refuses a contribution key at the root, which is the whole of the rule — but on its own it
-   * says no more than "Unrecognized key", and the one thing a reader needs is where the key went. The names
-   * are derived from the section's own shape, so a key added to `extensions` is named here without an edit.
-   */
-  it('names where a contribution key went when it is found at the root', () => {
-    const pack = { id: 'test-pack', name: 'Test', version: '0.1.0' };
-    for (const [key, to] of Object.entries(_MOVED_ROOT_KEYS)) {
-      expect(parseManifest({ ...pack, [key]: {} }).errors, key)
-        .toEqual([expect.stringContaining(`"${key}" is now "${to}"`)]);
-    }
-    // Every key the section holds, and the two that moved elsewhere
-    expect(Object.keys(_MOVED_ROOT_KEYS).sort())
-      .toEqual(['artifacts', 'blocks', 'bundleUi', 'commands', 'dsl', 'fe', 'help', 'packServices', 'services', 'steps']);
-  });
-
-  // The hint is for a key that moved; an unrecognized key that never existed gets the plain message
-  it('says nothing extra about a root key that was never a contribution', () => {
-    const errors = parseManifest({ id: 'test-pack', name: 'Test', version: '0.1.0', nonsense: 1 }).errors;
+  it('rejects unsupported root fields through the current schema', () => {
+    const errors = messagesOf(parseManifest({ id: 'test-pack', name: 'Test', version: '0.1.0', nonsense: 1 }));
     expect(errors).toEqual([expect.stringContaining('nonsense')]);
-    expect(errors[0]).not.toContain('is now');
   });
 
   it('rejects an app extension name that is not an identifier', () => {
     const pack = { id: 'test-pack', name: 'Test', version: '0.1.0' };
-    expect(parseManifest({ ...pack, extensions: { fe: { appExtensions: { 'my-ext': 'x.vue' } } } }).errors).toEqual([expect.stringContaining('Must be an identifier')]);
-    expect(parseManifest({ ...pack, extensions: { fe: { appExtensions: { welcome: 'x.vue' } } } }).errors).toEqual([]);
+    expect(messagesOf(parseManifest({ ...pack, extensions: {  appExtensions: { 'my-ext': 'x.vue' }  } }))).toEqual([expect.stringContaining('Must be an identifier')]);
+    expect(messagesOf(parseManifest({ ...pack, extensions: {  appExtensions: { welcome: 'x.vue' }  } }))).toEqual([]);
   });
 });
 
 describe('the pack id', () => {
   // The app is the pack `host`: its features are `host/<feature>`, so a pack of that id would share them
   it("refuses the host's own", () => {
-    expect(parseManifest({ id: 'host', name: 'Host', version: '0.1.0' }).errors)
+    expect(messagesOf(parseManifest({ id: 'host', name: 'Host', version: '0.1.0' })))
       .toEqual([expect.stringContaining('"host" is the app\'s own pack id')]);
-    expect(parseManifest({ id: 'hosted', name: 'Hosted', version: '0.1.0' }).errors).toEqual([]);
+    expect(messagesOf(parseManifest({ id: 'hosted', name: 'Hosted', version: '0.1.0' }))).toEqual([]);
   });
 });
 
 describe('content.formats, content.sources and content.datasets', () => {
-  const pack = { id: 'test-pack', name: 'Test', version: '0.1.0', entities: { Memo: 'Memo' }, dependencies: { 'base-pack': '*' } };
+  const pack = { id: 'test-pack', name: 'Test', version: '0.1.0', data: { entities: { Memo: null } }, dependencies: { 'base-pack': '*' } };
   const memos = {
     format: 'markdown-tree', entity: 'Memo', identity: ['title', 'parent'],
     tree: { branch: 'index.md', relKind: 'contains' },
@@ -133,9 +224,9 @@ describe('content.formats, content.sources and content.datasets', () => {
     media: 'media',
   };
   const errorsFor = (sources: Record<string, unknown>, formats: Record<string, unknown> = { memos }) =>
-    parseManifest({ ...pack, content: { formats, sources } }).errors;
+    messagesOf(parseManifest({ ...pack, content: { formats, sources } }));
   const datasetErrors = (datasets: Record<string, unknown>, formats: Record<string, unknown> = { memos }) =>
-    parseManifest({ ...pack, content: { formats, datasets } }).errors;
+    messagesOf(parseManifest({ ...pack, content: { formats, datasets } }));
 
   it('accepts specialty paths, sources naming own or dependency formats, applier sources, and format sources with an applier', () => {
     expect(errorsFor({
@@ -177,10 +268,10 @@ describe('content.formats, content.sources and content.datasets', () => {
       .toEqual([expect.stringMatching(/Dataset "faqs" must be \{ "path", "format" \}: it is compiled and never written/)]);
     expect(datasetErrors({ faqs: { format: 'memos' } }))
       .toEqual([expect.stringMatching(/Dataset "faqs" must be \{ "path", "format" \}/)]);
-    expect(parseManifest({
+    expect(messagesOf(parseManifest({
       ...pack,
       content: { formats: { memos }, sources: { memos: { path: 'p', format: 'memos' } }, datasets: { memos: { path: 'q', format: 'memos' } } },
-    }).errors).toEqual([expect.stringMatching(/"memos" is both a content source and a dataset/)]);
+    }))).toEqual([expect.stringMatching(/"memos" is both a content source and a dataset/)]);
   });
 
   it('rejects format settings on a source: they belong to a content.formats format', () => {
@@ -197,9 +288,8 @@ describe('content.formats, content.sources and content.datasets', () => {
   // gone, so there is nothing left to permit and no bespoke message to write: an unknown key is an unknown
   // key, which `.strict()` refuses for every pack alike
   it('refuses features[].earlySystem as the unknown key it now is, in any pack', () => {
-    const features = { logs: { earlySystem: true, system: { entry: 'src/logs/system.ts' } } };
-    expect(parseManifest({ ...pack, features }).errors).toEqual([expect.stringMatching(/features\.logs.*[Uu]nrecognized key/)]);
-    expect(parseManifest({ ...pack, builtIn: true, features }).errors).toEqual([expect.stringMatching(/features\.logs.*[Uu]nrecognized key/)]);
+    const features = { logs: { description: 'Inspect logs.', earlySystem: true, system: { entry: 'src/logs/system.ts' } } };
+    expect(messagesOf(parseManifest({ ...pack, features }))).toEqual([expect.stringMatching(/features\.logs.*[Uu]nrecognized key/)]);
   });
 
   // Which plugin opens first is an annotation on the plugin, not a feature id at the root: an id there
@@ -207,15 +297,15 @@ describe('content.formats, content.sources and content.datasets', () => {
   // claiming none has no default plugin, which the shell handles.
   it('takes the default plugin from the plugin that claims it, and refuses two claims', () => {
     const plugin = (id: string, isDefault?: boolean) =>
-      ({ [id]: { plugin: { entry: `src/${id}/fe/plugin.ts`, ...(isDefault ? { default: true } : {}) } } });
+      ({ [id]: { description: `Exercise ${id} navigation.`, plugin: { label: 'Fixture', state: `src/${id}/fe/plugin.ts`, ...(isDefault ? { default: true } : {}) } } });
 
-    expect(parseManifest({ ...pack, features: { ...plugin('notes'), ...plugin('cards', true) } }).errors).toEqual([]);
-    expect(parseManifest({ ...pack, features: { ...plugin('notes', true), ...plugin('cards', true) } }).errors)
+    expect(messagesOf(parseManifest({ ...pack, features: { ...plugin('notes'), ...plugin('cards', true) } }))).toEqual([]);
+    expect(messagesOf(parseManifest({ ...pack, features: { ...plugin('notes', true), ...plugin('cards', true) } })))
       .toEqual([expect.stringMatching(/"features\.cards\.plugin\.default": Two features claim the default plugin: "notes" and "cards"/)]);
   });
 
   it('has no root defaultPlugin to name a feature that may not exist', () => {
-    expect(parseManifest({ ...pack, defaultPlugin: 'threads' }).errors).toEqual([expect.stringMatching(/Unrecognized key.*defaultPlugin/)]);
+    expect(messagesOf(parseManifest({ ...pack, defaultPlugin: 'threads' }))).toEqual([expect.stringMatching(/Unrecognized key.*defaultPlugin/)]);
   });
 
   it('rejects anything but a path on a specialty key', () => {
@@ -265,37 +355,37 @@ describe('content.formats, content.sources and content.datasets', () => {
 });
 
 describe('content.writers', () => {
-  const pack = { id: 'test-pack', name: 'Test', version: '0.1.0', entities: { Memo: 'Memo' } };
+  const pack = { id: 'test-pack', name: 'Test', version: '0.1.0', data: { entities: { Memo: null } } };
 
   it('accepts a writer for an entity type the pack declares', () => {
-    expect(parseManifest({ ...pack, content: { writers: { Memo: 'src/memo-writers.ts#memoWriter' } } }).errors).toEqual([]);
+    expect(messagesOf(parseManifest({ ...pack, content: { writers: { Memo: 'src/memo-writers.ts#memoWriter' } } }))).toEqual([]);
   });
 
   it("rejects a writer for an entity type the pack doesn't declare", () => {
-    expect(parseManifest({ ...pack, content: { writers: { Action: 'src/writers.ts#actionWriter' } } }).errors)
+    expect(messagesOf(parseManifest({ ...pack, content: { writers: { Action: 'src/writers.ts#actionWriter' } } })))
       .toEqual([expect.stringMatching(/A content writer for "Action": only entity types this pack declares/)]);
   });
 
   it('rejects a target without an export name', () => {
-    expect(parseManifest({ ...pack, content: { writers: { Memo: 'src/memo-writers.ts' } } }).errors).toEqual([expect.stringMatching(/Must be "path#exportName"/)]);
+    expect(messagesOf(parseManifest({ ...pack, content: { writers: { Memo: 'src/memo-writers.ts' } } }))).toEqual([expect.stringMatching(/Must be "path#exportName"/)]);
   });
 });
 
 describe('services', () => {
   const pack = { id: 'test-pack', name: 'Test', version: '0.1.0' };
-  const feature = (services: Record<string, string>) => ({ ...pack, features: { memos: { services } } });
+  const feature = (services: Record<string, string>) => ({ ...pack, features: { memos: { description: 'Feature validation fixture.', services } } });
 
   it('accepts feature and pack-level services naming their export', () => {
-    expect(parseManifest({ ...feature({ memo: 'src/features/memos/be/services/memo.ts#memoService' }), extensions: { services: { cache: 'src/cache#cacheService' } } }).errors).toEqual([]);
+    expect(messagesOf(parseManifest({ ...feature({ memo: 'src/features/memos/be/services/memo.ts#memoService' }), extensions: { services: { cache: 'src/cache#cacheService' } } }))).toEqual([]);
   });
 
   it('rejects a service path without an export name', () => {
-    expect(parseManifest(feature({ memo: 'src/features/memos/be/services/memo.ts' })).errors).toEqual([expect.stringMatching(/Must be "path#exportName"/)]);
-    expect(parseManifest({ ...pack, extensions: { services: { cache: 'src/cache' } } }).errors).toEqual([expect.stringMatching(/Must be "path#exportName"/)]);
+    expect(messagesOf(parseManifest(feature({ memo: 'src/features/memos/be/services/memo.ts' })))).toEqual([expect.stringMatching(/Must be "path#exportName"/)]);
+    expect(messagesOf(parseManifest({ ...pack, extensions: { services: { cache: 'src/cache' } } }))).toEqual([expect.stringMatching(/Must be "path#exportName"/)]);
   });
 
   it('rejects a service name that is not an identifier', () => {
-    expect(parseManifest({ ...pack, extensions: { services: { 'my-cache': 'src/cache.ts#cacheService' } } }).errors).toEqual([expect.stringMatching(/Must be an identifier/)]);
+    expect(messagesOf(parseManifest({ ...pack, extensions: { services: { 'my-cache': 'src/cache.ts#cacheService' } } }))).toEqual([expect.stringMatching(/Must be an identifier/)]);
   });
 });
 
@@ -304,26 +394,48 @@ describe('commands', () => {
   const withCommands = (commands: Record<string, unknown>) => ({ ...pack, extensions: { commands } });
 
   it('accepts lowercase names with hyphens as keys, each with its placeholder', () => {
-    expect(parseManifest(withCommands({ standup: { placeholder: 'Topic' }, 'team-digest': { placeholder: 'Week (optional)' } })).errors).toEqual([]);
+    expect(messagesOf(parseManifest(withCommands({ standup: { placeholder: 'Topic' }, 'team-digest': { placeholder: 'Week (optional)' } })))).toEqual([]);
   });
 
   it('rejects a key that is not a command: uppercase, a leading slash, digit or hyphen, a space, an underscore', () => {
     for (const name of ['Standup', '/standup', '2do', '-standup', 'team digest', 'team_digest']) {
-      expect(parseManifest(withCommands({ [name]: { placeholder: 'x' } })).errors)
+      expect(messagesOf(parseManifest(withCommands({ [name]: { placeholder: 'x' } }))))
         .toEqual([expect.stringMatching(/Must be a lowercase letter, then lowercase letters, digits and hyphens/)]);
     }
   });
 
   it('rejects a command without a placeholder or with an empty one, and unknown keys on one', () => {
-    expect(parseManifest(withCommands({ standup: {} })).errors.length).toBeGreaterThan(0);
-    expect(parseManifest(withCommands({ standup: { placeholder: '' } })).errors[0]).toContain('placeholder');
-    expect(parseManifest(withCommands({ standup: { placeholder: 'x', action: 'Standup' } })).errors[0]).toContain('action');
+    expect(messagesOf(parseManifest(withCommands({ standup: {} }))).length).toBeGreaterThan(0);
+    expect(messagesOf(parseManifest(withCommands({ standup: { placeholder: '' } })))[0]).toContain('placeholder');
+    expect(messagesOf(parseManifest(withCommands({ standup: { placeholder: 'x', action: 'Standup' } })))[0]).toContain('action');
   });
 
   // The name is the key, so declaring one twice is unrepresentable rather than refused: JSON cannot hold a
   // key twice, which is why the check that used to say so is gone. What is still refused is a command on a
   // feature — commands are the pack's.
   it("refuses one on a feature: they're the pack's", () => {
-    expect(parseManifest({ ...pack, features: { memos: { commands: { standup: { placeholder: 'a' } } } } }).errors[0]).toContain('commands');
+    expect(messagesOf(parseManifest({ ...pack, features: { memos: { description: 'Feature validation fixture.', commands: { standup: { placeholder: 'a' } } } } }))[0]).toContain('commands');
   });
+});
+
+function messagesOf(result: { diagnostics: { message: string }[] }): string[] {
+  return result.diagnostics.map(issue => issue.message);
+}
+
+it('preserves opaque JSON default keys across authored and native declaration decoding', async () => {
+  const { ManifestSchema } = await import('../../src/framework/declaration-schema.ts');
+  const defaults = JSON.parse('{"__proto__":{"retained":true},"constructor":"value","nested":{"value":1}}');
+  const settings = { schema: { type: 'object' }, defaults };
+  const source = { id: 'data-pack', name: 'Data', version: '1.0.0', extensions: {
+    settings: { preferences: settings }, steps: { memo: { node: { label: 'Memo', defaults } } },
+  } };
+  const parsed = ManifestSchema.parse(source);
+  expect(Object.hasOwn(parsed.extensions!.steps!.memo.node.defaults!, '__proto__')).toBe(true);
+  expect(Object.hasOwn(parsed.extensions!.settings!.preferences.defaults, '__proto__')).toBe(true);
+  expect(parsed.extensions!.steps!.memo.node.defaults).toEqual(defaults);
+  expect(parsed.extensions!.steps!.memo.node.defaults).not.toBe(defaults);
+  const native = _NativePackDeclarationSchema.parse({ id: 'native', settings: { preferences: settings },
+    steps: source.extensions.steps });
+  expect(native.steps!.memo.node.defaults).toEqual(defaults);
+  expect(native.settings!.preferences.defaults).toEqual(defaults);
 });

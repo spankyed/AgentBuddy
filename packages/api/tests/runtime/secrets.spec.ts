@@ -35,14 +35,15 @@ const logDir = fs.mkdtempSync(path.join(os.tmpdir(), 'api-secrets-logs-'));
 process.env.APACK_ENV = 'test';
 process.env.APACK_USER_DATA_DIR = dataDir;
 process.env.APACK_LOG_DIR = logDir;
-const { openAppStore } = await import('@/runtime');
+const { openAppStore } = await import('../../src/runtime/index.ts');
 const { store, packs } = openAppStore();
-const { secretsRouter } = await import('@/transport/secrets');
-const { rootEvents } = await import('@/transport/emitter');
+const { secretsRouter } = await import('../../src/transport/secrets.ts');
+const { rootEvents } = await import('../../src/transport/emitter.ts');
 const { createLogger, reportError } = await import('@apackdev/sdk/logger');
-const { originalConsole, initializeLogCapture, restoreConsole } = await import('@/adapters/logging');
+const { originalConsole, initializeLogCapture, restoreConsole } = await import('../../src/adapters/logging.ts');
 const { secretsStore, forwardSecretsChanges } = await import('@apackdev/host/secrets');
-const { services } = await import('@apackdev/sdk/services');
+const { boundHost } = await import('@apackdev/sdk/runtime/internals');
+const { services } = boundHost();
 const { _getSecretsFilePath } = await import('@apackdev/sdk/utils');
 const { setup } = await import('xstate');
 
@@ -52,6 +53,7 @@ const caller = secretsRouter.createCaller({ client: 'c-test', closed: new AbortC
 forwardSecretsChanges(packs);
 // A pack with a settings feature, whose system isn't running yet: a system is sent the event because it declares
 // it, not because of any role it plays
+packs.catalog.setNative([...packs.catalog.getSnapshot().native, { id: 'test', eventContracts: { settings: { system: { incoming: ['SECRETS_CHANGED'], outgoing: [] } } }, features: { settings: { description: 'Feature declaration fixture.',} } }]);
 packs.registerPack({ id: 'test', features: { settings: {} } });
 // The same pack again, now running that feature's system, which declares the event and so is sent it
 const registerSettingsSystem = () => {

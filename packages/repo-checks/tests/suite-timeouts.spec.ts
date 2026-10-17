@@ -26,7 +26,24 @@ import { overrideKey, sizeOf, specFilesUnder, timeoutOverrides, type TimeoutOver
  * once 5s and nobody revisited it, which is what the other overrides turned out to be. The check below
  * fails on an entry whose override has gone, so the list shrinks when the reason does.
  */
-const TIMEOUT_EXCEPTIONS: Record<string, string> = {};
+const TIMEOUT_EXCEPTIONS: Record<string, string> = {
+  'packages/apack-cli/tests/build/compiler-native-libraries.integration.spec.ts > watches external Vite native changes and repairs a failed generation through newly discovered inputs':
+    'Initial backend/Vite publication, native dependency refusal and real watched repair are sequential. The measured run reaches repair at 55.13 seconds and continues compiling beyond its old 20-second repair wait (86.17 seconds including cleanup). This scenario has 120 seconds and a 40-second repair bound; incumbent, native values and retirement assertions remain unchanged.',
+  'packages/apack-cli/tests/commands/scaffold.integration.spec.ts > adds a step (declared, shipped in build/steps.build.mjs) and a service that build':
+    'Real step/service scaffolding, compiler publication and authored-pack typechecking take 56.93 seconds alone and exceeded 60 seconds in the two-worker pool. This complete authoring scenario has a 120-second budget; its assertions are unchanged.',
+  'packages/apack-cli/tests/build/frontend-resources.integration.spec.ts > watches initially empty external Tailwind content through nested directory links':
+    'Initial compilation plus two actual watched rebuilds take 57.05 seconds alone and exceeded 60 seconds in the two-worker pool. The scenario has a 120-second budget; both existing 20-second rebuild waits and CSS assertions remain unchanged.',
+  'packages/apack-cli/tests/build/staged-dsl.integration.spec.ts > preserves a verified build on a later failure, then publishes and reuses the current definitions with its frontend':
+    'Five sequential actual builds cover initial publication, refusal, recovery, reuse and removal. Measured at 93.33 seconds alongside the two-build DSL case on two workers; assertions and per-operation waits are unchanged.',
+  'packages/apack-cli/tests/build/watch-worker-inputs.integration.spec.ts > rebuilds for worker inputs and repairs missing external reads without authored edits':
+    'Three actual backend compiler attempts and ready watch subscriptions take 68.27 seconds. The measured repair takes 26.57 seconds; each build wait uses the existing 60-second integration budget within this 120-second scenario.',
+  'packages/apack-cli/tests/build/build-output-swap.integration.spec.ts > does not reuse facade files from an incumbent with stamps from a refused replacement':
+    'Three sequential real builds prove initial publication, refused replacement and recovery. Assertions pass in 59.27 seconds alone; the same scenario reaches 63.50 seconds alongside focused checks.',
+  'packages/apack-cli/tests/build/watch-external-types.integration.spec.ts > rebuilds external contracts and recovers a retargeted missing input without an authored edit':
+    'Four real compiler attempts share this scenario, including refusal and missing-input repair. Measured at 73.69 seconds; each rebuild wait stays bounded at 20 seconds.',
+  'packages/apack-cli/tests/build/build-worker.integration.spec.ts > uses the captured compiler and retains unchanged build/cache identity on repeat builds':
+    'Two fresh compiler installations and builds, plus archive acceptance and reuse verification. macOS retains 120 seconds (61.51 seconds measured). Windows run 39063657523 completes its first build in 77.74 seconds, archives at 90.28 seconds, and emits second-build output around 174 seconds before the 180-second deadline expires during return/cleanup. This one Windows scenario has a 240-second budget with phase milestones; completion evidence remains pending. Assertions are unchanged.',
+};
 
 /** Every override in the repo's spec files, with the size it has to fit inside */
 function overrides(): (TimeoutOverride & { size: Size; budget: number })[] {

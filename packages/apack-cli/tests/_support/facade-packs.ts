@@ -47,6 +47,7 @@ import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import ts from 'typescript';
+import { sealPackBuild } from '@apackdev/host/packs';
 import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest';
 import { PACKAGES_BUILT, REPO_ROOT, installPublishedPackages } from '@app/publish-checks';
 import { callCli, packageJson, preparePack, tsconfig, typecheckPack, write } from './pack-builds';
@@ -64,19 +65,19 @@ const BASE_PACK = {
   'tsconfig.json': tsconfig,
   'apack.json': JSON.stringify({
     id: 'base-pack', name: 'Base', version: '1.0.0',
-    entities: { Tag: 'Tag', Item: 'Item' },
-    entityShapes: { Tag: { source: 'src/types.ts', type: 'TagEntity' }, Item: { source: 'src/types.ts', type: 'ItemEntity' } },
+    data: { entities: { Tag: "src/types.ts#TagEntity", Item: "src/types.ts#ItemEntity" } },
+
     features: {
-      calendar: {
+      calendar: { description: 'Feature declaration fixture.',
         system: { entry: 'src/system.ts', contract: 'src/system.contract.ts#Contract' },
-        plugin: { entry: 'src/plugin.ts', contract: 'src/plugin.types.ts#Contract' },
+        plugin: { label: 'Fixture', state: 'src/plugin.ts', contract: 'src/plugin.types.ts#Contract' },
         services: { search: 'src/search.ts#searchService' },
         repositories: { tagQueries: 'src/repository.ts#tagQueries' },
       },
       // A second plugin of the dependency, which declares no inbox: nothing may send it
-      inbox: {
+      inbox: { description: 'Feature declaration fixture.',
         system: { entry: 'src/inbox.ts', contract: 'src/inbox.contract.ts#Contract' },
-        plugin: { entry: 'src/inbox-plugin.ts' },
+        plugin: { label: 'Fixture', state: 'src/inbox-plugin.ts' },
       },
     },
   }),
@@ -95,8 +96,8 @@ const BASE_PACK = {
     'export default entry;',
   ].join('\n'),
   'src/plugin.ts': [
-    "import type { Plugin } from '@apackdev/sdk/fe';",
-    "export default { id: 'calendar' } as unknown as Plugin;",
+    "import type { AnyStateMachine } from 'xstate';",
+    "export default { id: 'calendar' } as unknown as AnyStateMachine;",
   ].join('\n') + '\n',
   // The plugin's contract: a declared type in a leaf the plugin's own module never imports, which is what the
   // dependent's facade carries as this plugin's published inbox
@@ -113,7 +114,7 @@ const BASE_PACK = {
     'const entry = { spec: inboxSpec, machine: setup({ types: inboxSpec.types }).createMachine({ id: "inbox" }) };',
     'export default entry;',
   ].join('\n'),
-  'src/inbox-plugin.ts': "import type { Plugin } from '@apackdev/sdk/fe';\nexport default { id: 'inbox' } as unknown as Plugin;\n",
+  'src/inbox-plugin.ts': "import type { AnyStateMachine } from 'xstate';\nexport default { id: 'inbox' } as unknown as AnyStateMachine;\n",
   'src/search.ts': 'export const searchService = { query: (q: string): string[] => [q] };\n',
   'src/repository.ts': [
     "import { findAll, EARS } from '#generated/ears.ts';",
@@ -127,13 +128,13 @@ const APP_PACK = {
   'apack.json': JSON.stringify({
     id: 'app-pack', name: 'App', version: '1.0.0',
     dependencies: { 'base-pack': 'file:../base-pack' },
-    entities: { Memo: 'Memo' },
+    data: { entities: { Memo: "src/types.ts#ItemEntity" } },
     // Same type name as the dependency's Item shape
-    entityShapes: { Memo: { source: 'src/types.ts', type: 'ItemEntity' } },
-    features: { memos: { system: { entry: 'src/system.ts', contract: 'src/system.contract.ts#Contract' }, plugin: { entry: 'src/plugin.ts' } } },
+
+    features: { memos: { description: 'Feature declaration fixture.', system: { entry: 'src/system.ts', contract: 'src/system.contract.ts#Contract' }, plugin: { label: 'Fixture', state: 'src/plugin.ts' } } },
   }),
   'src/types.ts': 'export interface ItemEntity { text: string; pinned: boolean }\n',
-  'src/plugin.ts': "import type { Plugin } from '@apackdev/sdk/fe';\nexport default { id: 'memos' } as unknown as Plugin;\n",
+  'src/plugin.ts': "import type { AnyStateMachine } from 'xstate';\nexport default { id: 'memos' } as unknown as AnyStateMachine;\n",
   'src/system.contract.ts': [
     "export type OutgoingMemosEvents = { type: 'MEMO_ADDED'; text: string };",
     "export type IncomingMemosEvents = { type: 'ADD_MEMO'; text: string } | { type: 'CLEAR_MEMOS' } | { type: 'PIN_MEMO' | 'UNPIN_MEMO'; id: string };",
@@ -327,7 +328,7 @@ async function addBaseStep(dir: string): Promise<void> {
     + '\n/** A node type that doesn\'t narrow nodeType and adds no required field */\nexport interface NoteNode extends NodeBase {\n  note?: string;\n}\n');
 }
 
-async function buildPacks(published: boolean): Promise<string> {
+async function buildPacks(published: boolean, dependencyStamp?: { format?: number; sdkVersion?: string }): Promise<string> {
   const parent = fs.mkdtempSync(path.join(os.tmpdir(), 'facade-typing-'));
   const modules = published ? path.join(installPublishedPackages(), 'node_modules') : path.join(REPO_ROOT, 'node_modules');
   for (const [name, files] of [['base-pack', BASE_PACK], ['app-pack', APP_PACK]] as const) {
@@ -336,6 +337,16 @@ async function buildPacks(published: boolean): Promise<string> {
     // produces: the built pack whose snapshot and declarations the tests read
     const build = await callCli(dir, 'build');
     if (build.code !== 0) throw new Error(`apack pack build failed in ${name}:\n${build.output}`);
+    if (name === 'base-pack' && dependencyStamp) {
+      const file = path.join(dir, 'dist/types/snapshot.json');
+      const snapshot = JSON.parse(fs.readFileSync(file, 'utf8'));
+      Object.assign(snapshot, dependencyStamp);
+      fs.writeFileSync(file, JSON.stringify(snapshot));
+      fs.writeFileSync(path.join(dir, 'dist/runtime/index.cjs'), 'throw new Error("Dependency runtime must not execute for type inspection");');
+      fs.writeFileSync(path.join(dir, 'dist/build/steps.build.mjs'), 'throw new Error("Dependency build code must not execute for type inspection");');
+      sealPackBuild(path.join(dir, 'dist'), snapshot.manifest, snapshot.sdkVersion);
+    }
+
   }
   write(path.join(parent, 'app-pack'), { 'src/consumer.ts': CONSUMER });
   return parent;
@@ -450,7 +461,7 @@ function packDeclarationDiagnostics(app: string, tsconfig: string): string[] {
  * `LAYOUTS` list did by omitting the entry: a skipped case says in its name why it did not run, where a
  * list one short says nothing at all.
  */
-export function facadeSuite(name: string, published: boolean): void {
+export function facadeSuite(name: string, published: boolean, dependencyStamp?: { format?: number; sdkVersion?: string }): void {
 
 /**
  * Turn the event loop between tests.
@@ -466,19 +477,19 @@ afterEach(() => new Promise<void>((resolve) => { setImmediate(resolve); }));
 
   describe.skipIf(published && !PACKAGES_BUILT)(`generated facades with a dependency ('${name}')`, () => {
   let parent: string;
-  beforeAll(async () => { parent = await buildPacks(published); });
-  afterAll(() => fs.rmSync(parent, { recursive: true, force: true }));
+  beforeAll(async () => { parent = await buildPacks(published, dependencyStamp); });
+  afterAll(() => { if (parent) fs.rmSync(parent, { recursive: true, force: true }); });
 
   it("writes the dependency's facade types into its snapshot", () => {
     const snapshot = JSON.parse(fs.readFileSync(path.join(parent, 'base-pack', 'dist', PACK_LAYOUT.snapshot), 'utf-8'));
-    expect(snapshot.defs['pack-types']).toMatch(/export type \{[^}]*PackEntityShapes[^}]*\}/);
+    expect(snapshot.facades['pack-types']).toMatch(/export type \{[^}]*PackEntityShapes[^}]*\}/);
   });
 
   it("gives dependents the dependency's system events without its machines", () => {
     const snapshot = JSON.parse(fs.readFileSync(path.join(parent, 'base-pack', 'dist', PACK_LAYOUT.snapshot), 'utf-8'));
-    expect(snapshot.defs['pack-types']).toMatch(/export type \{[^}]*PackSystemEvents[^}]*\}/);
-    expect(snapshot.defs['pack-types']).toMatch(/type: ["']ADD_TAG["']/);
-    expect(snapshot.defs['pack-types']).not.toContain('StateMachine');
+    expect(snapshot.facades['pack-types']).toMatch(/export type \{[^}]*PackSystemEvents[^}]*\}/);
+    expect(snapshot.facades['pack-types']).toMatch(/type: ["']ADD_TAG["']/);
+    expect(snapshot.facades['pack-types']).not.toContain('StateMachine');
   });
 
   it.each(['bundler', 'node16'] as const)('typechecks own and dependency types under moduleResolution %s', async (moduleResolution) => {
@@ -516,6 +527,19 @@ afterEach(() => new Promise<void>((resolve) => { setImmediate(resolve); }));
     const { at } = completionsIn(app, writeTsconfig(app, moduleResolution, published));
     expect(at.qx, 'entity-name completions in qx()').toEqual(expect.arrayContaining(['Memo', 'Tag', 'Relation', 'Prompt']));
     expect(at.qx, 'no completion for an entity no pack here declares').not.toContain('Settings');
+  });
+
+  if (dependencyStamp) it('refuses incompatible dependency build code when compiling content', async () => {
+    const app = path.join(parent, 'app-pack');
+    const file = path.join(app, 'apack.json');
+    const manifest = JSON.parse(fs.readFileSync(file, 'utf8'));
+    manifest.content = { formats: { items: { format: 'json' } }, datasets: { items: { path: 'src/content/items.json', format: 'items' } } };
+    fs.writeFileSync(file, JSON.stringify(manifest));
+    write(app, { 'src/content/items.json': '[]' });
+    const result = await callCli(app, 'build');
+    expect(result.code, result.output).toBe(1);
+    expect(result.output).toContain('Dependency "base-pack" cannot supply build code');
+    expect(result.output).not.toContain('Dependency build code must not execute');
   });
   });
 }

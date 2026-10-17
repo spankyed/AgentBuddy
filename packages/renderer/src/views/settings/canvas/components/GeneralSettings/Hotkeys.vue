@@ -72,7 +72,7 @@
                 type="text"
                 placeholder="EVENT_NAME"
                 class="flex-1 px-3 py-1.5 text-sm bg-neutral-800 border border-neutral-700 rounded-md text-white placeholder-neutral-600 font-mono uppercase focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500/50 hover:border-neutral-600 transition-all"
-                @input="() => debouncedSave(saveCustomHotkeys)"
+                @input="debouncedSave"
               />
 
               <!-- Keyboard Shortcut Input -->
@@ -112,11 +112,13 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive } from 'vue'
+import { computed, watch } from 'vue'
+import { useSettingsDraft } from '@apackdev/sdk/fe'
+import { useWindowSettingsSnapshot } from '@/runtime/settings'
 import { X, Plus } from 'lucide-vue-next'
 import KeyboardShortcutInput from '@apackdev/ui/components/KeyboardShortcutInput'
-import { useDebounceFn } from '@apackdev/ui/composables/useDebounce'
-import type { ApplicationHotkeys, CustomHotkey, KeyboardShortcut } from '@apackdev/sdk/types'
+import { useDebounce } from '@apackdev/ui/composables/useDebounce'
+import type { ApplicationHotkeys, KeyboardShortcut } from '@apackdev/sdk/types'
 import type { SettingUpdate } from '@apackdev/sdk/fe'
 
 interface Props {
@@ -131,113 +133,54 @@ const emit = defineEmits<{
   'update-setting': [SettingUpdate]
 }>()
 
-// Helper function to convert hotkey format
-const convertToShortcut = (hotkey?: KeyboardShortcut): KeyboardShortcut | null => {
-  if (!hotkey) return null
-  return {
-    key: hotkey.key || '',
-    modifiers: hotkey.modifiers || []
-  }
-}
+// Copy each shortcut's array before editing or sending it; preserve optional fields such as global.
+const copyShortcut = (shortcut?: KeyboardShortcut | null): KeyboardShortcut | undefined => shortcut ? {
+  ...shortcut, modifiers: [...shortcut.modifiers]
+} : undefined
 
-// Helper function to convert shortcut back to backend format
-const convertToBackend = (shortcut: KeyboardShortcut | null) => {
-  if (!shortcut) return undefined
-  return {
-    key: shortcut.key,
-    modifiers: shortcut.modifiers
-  }
-}
-
-// Store all built-in hotkeys in a reactive object
-const builtInHotkeys = reactive<Record<string, KeyboardShortcut | null>>({
-  switchPluginUp: convertToShortcut(props.settings?.switchPluginUp) || null,
-  switchPluginDown: convertToShortcut(props.settings?.switchPluginDown) || null,
-  toggleInspectionPanel: convertToShortcut(props.settings?.toggleInspectionPanel) || null
-})
-
-// Custom hotkeys state
-interface CustomHotkeyItem {
-  id: string
-  eventName: string
-  shortcut: KeyboardShortcut | null
-}
-
-const customHotkeys = ref<CustomHotkeyItem[]>(
-  props.settings?.custom?.map((h: CustomHotkey) => ({
-    id: h.id,
-    eventName: h.eventName || '',
-    shortcut: convertToShortcut(h)
-  })) || []
-)
-
-// Use the debounce composable with callback parameter
-const debouncedSave = useDebounceFn(500)
-
-// Update hotkeys via event emission
-const updateHotkeys = () => {
-  // Get current custom hotkeys
-  const customData = customHotkeys.value.map(h => ({
-    id: h.id,
-    eventName: h.eventName,
-    ...(h.shortcut ? convertToBackend(h.shortcut) : {})
+const snapshot = useWindowSettingsSnapshot()
+const draft = useSettingsDraft(() => ({
+  builtIn: {
+    switchPluginUp: copyShortcut(props.settings?.switchPluginUp) ?? null,
+    switchPluginDown: copyShortcut(props.settings?.switchPluginDown) ?? null,
+    toggleInspectionPanel: copyShortcut(props.settings?.toggleInspectionPanel) ?? null
+  },
+  custom: (props.settings?.custom ?? []).map(h => ({
+    id: h.id, eventName: h.eventName, shortcut: copyShortcut(h) ?? null
   }))
-  
+}))
+const builtInHotkeys = computed(() => draft.value.builtIn)
+const customHotkeys = computed(() => draft.value.custom)
+const { debounced: debouncedSave, cancel } = useDebounce(saveHotkeys, 500)
+watch(() => [JSON.stringify(props.settings), snapshot.value?.runId], cancel)
+
+function saveHotkeys() {
   emit('update-setting', {
     path: [],
     value: {
-      switchPluginUp: convertToBackend(builtInHotkeys.switchPluginUp),
-      switchPluginDown: convertToBackend(builtInHotkeys.switchPluginDown),
-      toggleInspectionPanel: convertToBackend(builtInHotkeys.toggleInspectionPanel),
-      custom: customData
-    }
+      ...Object.fromEntries(Object.entries(builtInHotkeys.value)
+        .filter(([, shortcut]) => shortcut !== null)
+        .map(([id, shortcut]) => [id, copyShortcut(shortcut)])),
+      custom: customHotkeys.value.map(h => ({
+        ...(copyShortcut(h.shortcut) ?? { key: '', modifiers: [] }), id: h.id, eventName: h.eventName
+      }))
+    },
+    condition: snapshot.value ? {
+      runId: snapshot.value.runId,
+      expected: props.settings === undefined ? { exists: false }
+        : { exists: true, value: JSON.parse(JSON.stringify(props.settings)) }
+    } : undefined
   })
 }
 
-// Generate unique ID for new hotkeys
-const generateId = () => {
-  return `hotkey_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
-}
-
-// Add new custom hotkey
-const addCustomHotkey = () => {
-  customHotkeys.value.push({
-    id: generateId(),
-    eventName: '',
-    shortcut: null
-  })
-}
-
-// Remove custom hotkey
+const updateHotkeys = saveHotkeys
+const updateCustomHotkey = saveHotkeys
+const addCustomHotkey = () => customHotkeys.value.push({
+  id: crypto.randomUUID(), eventName: '', shortcut: null
+})
 const removeCustomHotkey = (index: number) => {
   customHotkeys.value.splice(index, 1)
-  saveCustomHotkeys()
-}
-
-// Update custom hotkey shortcut
-const updateCustomHotkey = () => {
-  saveCustomHotkeys()
-}
-
-// Save custom hotkeys via event emission
-const saveCustomHotkeys = () => {
-  // Convert to backend format - save all entries, even incomplete ones
-  const customData = customHotkeys.value.map(h => ({
-    id: h.id,
-    eventName: h.eventName,
-    ...(h.shortcut ? convertToBackend(h.shortcut) : {})
-  }))
-  
-  // Save all hotkeys together
-  emit('update-setting', {
-    path: [],
-    value: {
-      switchPluginUp: convertToBackend(builtInHotkeys.switchPluginUp),
-      switchPluginDown: convertToBackend(builtInHotkeys.switchPluginDown),
-      toggleInspectionPanel: convertToBackend(builtInHotkeys.toggleInspectionPanel),
-      custom: customData
-    }
-  })
+  saveHotkeys()
 }
 </script>
 

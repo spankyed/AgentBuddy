@@ -1,28 +1,17 @@
-import type { NodeKind } from '#generated/types.ts'
-import { default as TriggerNode } from './TriggerNode.vue'
-import { default as BaseNode } from '@apackdev/ui/components/BaseNode'
-import { nodeConfigs } from '@apackdev/ui/components/node-styles'
-import { stepRegistry } from '@apackdev/sdk/steps'
+import { computed, type Component } from 'vue'
+import { getStepBinding, getStepDeclaration } from '@apackdev/sdk/fe'
+import TriggerNode from './TriggerNode.vue'
+import BaseNode from '@apackdev/ui/components/BaseNode'
+import { useNodeStyles } from '@apackdev/ui/components/node-styles'
 
 export { BaseNode }
 export type { HandleConfig } from '@apackdev/ui/components/node-handles'
 
-export const nodeTypes: Record<NodeKind, any> = new Proxy({} as any, {
-  get(_target, type: string | symbol) {
-    if (typeof type !== 'string') return undefined;
-    if (stepRegistry.isTrigger(type)) return TriggerNode;
-    return stepRegistry.getComponent(type) || BaseNode;
-  },
-  ownKeys() {
-    return Object.keys(nodeConfigs);
-  },
-  getOwnPropertyDescriptor(_target, prop) {
-    if (prop in nodeConfigs) {
-      return { configurable: true, enumerable: true, value: undefined };
-    }
-    return undefined;
-  },
-  has(_target, prop: string) {
-    return prop in nodeConfigs;
-  },
-})
+/** The open canvas follows declarations and current eligible component bindings. */
+export function useNodeTypes() {
+  const { getNodeConfigs } = useNodeStyles()
+  return computed(() => Object.fromEntries(Object.keys(getNodeConfigs()).map(type => [type,
+    getStepDeclaration(type)?.declaration.kind === 'trigger' ? TriggerNode
+      : (getStepBinding(type)?.binding.fe?.components?.node as Component | undefined) ?? BaseNode,
+  ])))
+}

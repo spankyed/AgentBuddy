@@ -10,10 +10,12 @@ import * as os from 'node:os';
 import * as path from 'node:path';
 import ts from 'typescript';
 import { afterEach, describe, expect, it } from 'vitest';
+import { parseCLI } from 'vitest/node';
 import { declaredPaths, diffableStamp } from '@apackdev/host/build/packages-built';
-import { DIAGNOSTIC_RUN_ENV, holdPoolLock, POOLS, livePoolStamps, poolLockFor, measureCommandFor, poolStampFor, poolUnitFor, projectsThatDidNotRun, recordRun, recordsVerdict, whyItRuns, type Pool } from '../../../scripts/lib/unit-pool.ts';
+import { DIAGNOSTIC_RUN_ENV, CHAIN_CORES_ENV, holdPoolLock, poolWorkers, poolWorkerLimit, POOLS, livePoolStamps, poolLockFor, measureCommandFor, poolStampFor, poolUnitFor, projectsThatDidNotRun, recordRun, recordsVerdict, whyItRuns, type Pool } from '../../../scripts/lib/unit-pool.ts';
 import type { ReportedRun } from '../../../scripts/lib/spec-durations-reporter.ts';
 import { REPO_ROOT } from '@apackdev/host/build/packages-built';
+import { unitFor } from '../../../scripts/lib/chain-stamps.ts';
 import { CHAIN_STEPS, POOL_SECONDS, poolStepName } from '../../../scripts/lib/chain-steps.ts';
 import { coresFor } from '../../../scripts/lib/core-budget.ts';
 import { poolDurationLines } from '../../../scripts/lib/unit-pool.ts';
@@ -38,6 +40,53 @@ import { UNIT_SUITES } from '../../../scripts/lib/unit-suites.ts';
  * reproduces what it was built to catch. The chain already refuses to inherit its *own* lone retry
  * (`DIAGNOSTIC_RUN_ENV`); this is the same rule through the other door.
  */
+describe('the chain budget bounds actual Vitest pools', () => {
+  const pools = Object.keys(POOLS) as Pool[];
+
+  it('keeps standalone config defaults and converts the chain budget to each pool width', () => {
+    for (const pool of pools) {
+      expect(poolWorkers(pool, {})).toBeUndefined();
+      expect(poolWorkers(pool, { [CHAIN_CORES_ENV]: '2' })).toBe(Math.min(2, poolWorkerLimit(pool)));
+    }
+    expect(poolWorkers('integration', { [CHAIN_CORES_ENV]: '10' })).toBe(Math.min(5, poolWorkerLimit('integration')));
+    expect(poolWorkers('host', { [CHAIN_CORES_ENV]: '10' })).toBe(Math.min(9, poolWorkerLimit('host')));
+    for (const pool of pools) expect(poolWorkers(pool, { [CHAIN_CORES_ENV]: '1000' })).toBe(poolWorkerLimit(pool));
+  });
+
+  it.each(['0', '-1', '1.5', 'NaN', '9007199254740992'])('refuses invalid budget handoff %s', value => {
+    expect(() => poolWorkers('integration', { [CHAIN_CORES_ENV]: value })).toThrow(CHAIN_CORES_ENV);
+  });
+
+  it('gives Vitest explicit pool overrides, including a minimum that permits a one-worker run', () => {
+    for (const pool of pools) {
+      const workers = poolWorkers(pool, { [CHAIN_CORES_ENV]: '1' });
+      for (const run of POOLS[pool].run(POOLS[pool].suites(), workers)) {
+        const args = run.args.filter(arg => arg.startsWith('--poolOptions.'));
+        const { options } = parseCLI(['vitest', 'run', ...args]);
+        expect(Number(options.poolOptions?.threads?.maxThreads), pool).toBe(1);
+        expect(Number(options.poolOptions?.threads?.minThreads), pool).toBe(1);
+        expect(Number(options.poolOptions?.forks?.maxForks), pool).toBe(1);
+        expect(Number(options.poolOptions?.forks?.minForks), pool).toBe(1);
+      }
+    }
+  });
+
+  it('keys both cache layers by the worker configuration that actually ran', () => {
+    for (const pool of pools) {
+      const step = CHAIN_STEPS.find(step => step.name === poolStepName(pool))!;
+      const suite = POOLS[pool].suites()[0]!;
+      expect(unitFor(step, 2).command === unitFor(step, 10).command, pool)
+        .toBe(poolWorkerLimit(pool, 2) === poolWorkerLimit(pool, 10));
+      expect(unitFor(step, 1000).command, pool).toBe(unitFor(step).command);
+      expect(poolUnitFor(suite, pool, 'chain', 1).command, pool)
+        .not.toBe(poolUnitFor(suite, pool, 'chain', 5).command);
+      expect(measureCommandFor(step.name, 1), pool).toContain('maxForks=1');
+    }
+    const build = CHAIN_STEPS.find(step => step.name === 'build:runtime')!;
+    expect(unitFor(build, 2).command).toBe(unitFor(build, 10).command);
+  });
+});
+
 describe('a pass under the chain and a pass alone are different records', () => {
   const suite = UNIT_SUITES.find((one) => one.kind === 'host')!;
 
@@ -84,6 +133,11 @@ describe('a pass under the chain and a pass alone are different records', () => 
       (Object.keys(POOLS) as Pool[]).reduce((sum, name) => sum + POOLS[name].suites().length, 0) * PROVENANCES.length,
     );
   });
+});
+
+it('forwards integration fail-fast to project configs through the CLI', () => {
+  const [{ args }] = POOLS.integration.run(POOLS.integration.suites(), 2);
+  expect(args).toContain('--bail=1');
 });
 
 /**

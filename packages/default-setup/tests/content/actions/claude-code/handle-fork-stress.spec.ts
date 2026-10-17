@@ -62,12 +62,14 @@ function createServices(opts: {
     return opts.viewSessionResult ?? [];
   });
   mockService<Services, 'cli'>('cli', { claudeCode: { viewSession: viewSessionMock } as never });
-  mockService<Services, 'logger'>('logger', { debug: vi.fn(), info: vi.fn(), warn: vi.fn(), error: vi.fn() });
+  const warn = vi.fn();
+  mockService<Services, 'logger'>('logger', { debug: vi.fn(), info: vi.fn(), warn, error: vi.fn() });
 
   return {
     t: (key: string) => threadIds.get(key) ?? (`Thread-${key}` as EntityId),
     m: (key: string) => messageIds.get(key) ?? (key as EntityId),
     viewSessionMock,
+    warn,
   };
 }
 
@@ -289,7 +291,7 @@ describe('CC: Handle Fork — stress tests', () => {
       )],
     ]);
 
-    const { t, m } = createServices({
+    const { t, m, warn } = createServices({
       threads, messages,
       viewSessionResult: new Error('JSONL not found'),
     });
@@ -300,7 +302,7 @@ describe('CC: Handle Fork — stress tests', () => {
     );
 
     expect(result).toMatchObject({ success: true, copied: true, cliUuid: undefined });
-    expect(services.logger.warn).toHaveBeenCalledWith(
+    expect(warn).toHaveBeenCalledWith(
       '[fork] could not validate cliUuid against session JSONL',
       expect.objectContaining({ cliUuid: 'U1' }),
     );

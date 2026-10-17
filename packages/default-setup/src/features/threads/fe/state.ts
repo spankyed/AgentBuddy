@@ -1,3 +1,5 @@
+import { entityIs } from '@apackdev/sdk/fe'
+import type { OpenEntity } from '@apackdev/sdk/events'
 import breadcrumb, { breadcrumbWithParams } from '@apackdev/sdk/fe';
 import { targetIs, type TrailClickEvent } from '@apackdev/sdk/fe';
 import { safeEvents } from '@apackdev/sdk/fe';
@@ -5,7 +7,7 @@ import { setup, assign, enqueueActions, fromCallback, spawnChild, stopChild, typ
 import { createNavHistory, pushNavHistory, goBack, goForward, canGoBack, canGoForward } from '@apackdev/sdk/fe';
 import type { ActorRefFrom } from 'xstate';
 import type { ThreadEntity, ThreadCreateData, ThreadViewData, ThreadEditFields, ThreadsSettings, MessageEntity, AgentThreadData, Tab, AgentSettings, AgentMode as AgentModeConfig, MessageReferences, CommandItem, BlockResponse } from '#generated/types.ts';
-import type { ChatState, ThreadListItem, ThreadsContext } from './contract.ts';
+import type { Contract, ChatState, ThreadListItem, ThreadsContext } from './contract.ts';
 import type { OutgoingThreadsEvents } from '#features/threads/be/types.ts';
 import { sendToSystem } from '#generated/events.ts';
 import { Archive, Copy, Pin, Trash2 } from 'lucide-vue-next';
@@ -228,6 +230,7 @@ type UIEvent =
   | { type: 'NAVIGATE_FORWARD' }
 
 type ThreadEvents =
+  | OpenEntity
   | UIEvent
   | SystemEvent
   | TrailClickEvent;
@@ -395,8 +398,11 @@ const threadsState = setup({
         parentThreadId: context.create.parentThreadId,
       });
     },
+    recordThreadNavigation: assign(({ context, event }) => ({
+      navHistory: pushNavHistory(context.navHistory, `view:${typeOf(['SELECT_THREAD', 'OPEN_ENTITY'], event).id}`),
+    })),
     sendViewThread: ({ event }) => {
-      const threadId = typeOf('SELECT_THREAD', event).id;
+      const threadId = typeOf(['SELECT_THREAD', 'OPEN_ENTITY'], event).id;
       sendToSystem(id, {
         type: 'VIEW_THREAD',
         threadId,
@@ -414,7 +420,7 @@ const threadsState = setup({
       }
     }),
     setSelectedThread: assign(({ event, context }) => {
-      const typedEvent = typeOf(['SELECT_THREAD', 'THREAD_CREATED'], event);
+      const typedEvent = typeOf(['SELECT_THREAD', 'THREAD_CREATED', 'OPEN_ENTITY'], event);
       const selectedThread = context.threadMap[typedEvent.id];
       if (!selectedThread) {
         // Thread not in threadMap (e.g. archived, or tab restored from storage).
@@ -1424,7 +1430,7 @@ const threadsState = setup({
       sendToSystem(id, { type: 'DELETE_MESSAGE', messageId });
     },
   },
-  guards: {
+  guards: { entityIs: entityIs<Contract['opens']>,
     targetIs,
     quickPromptsOpen: ({ context }) => context.quickPromptCursor !== null,
   }
@@ -1474,6 +1480,7 @@ const threadsState = setup({
     sidebarArchivedThreads: [],
   }),
   on: {
+    OPEN_ENTITY: { guard: { type: 'entityIs', params: { entity: 'Thread' } }, target: '.view', actions: ['setSelectedThread', 'sendViewThread', 'recordThreadNavigation'] },
     // Thread management events
     SHOW_CREATE_FORM: {
       target: '.create',
@@ -1704,9 +1711,7 @@ const threadsState = setup({
       actions: [
         'setSelectedThread',
         'sendViewThread',
-        assign(({ context, event }) => ({
-          navHistory: pushNavHistory(context.navHistory, `view:${typeOf('SELECT_THREAD', event).id}`),
-        })),
+        'recordThreadNavigation',
       ],
     },
 

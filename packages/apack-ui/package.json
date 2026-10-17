@@ -204,6 +204,11 @@
       "types": "./dist/components/tiptap/extensions/search-plugin.d.ts",
       "default": "./dist/components/tiptap/extensions/search-plugin.js"
     },
+    "./components/tiptap/reference-node": {
+      "@apackdev/source": "./src/components/tiptap/reference-node.ts",
+      "types": "./dist/components/tiptap/reference-node.d.ts",
+      "default": "./dist/components/tiptap/reference-node.js"
+    },
     "./components/tiptap/resizable-image": {
       "@apackdev/source": "./src/components/tiptap/resizable-image.ts",
       "types": "./dist/components/tiptap/resizable-image.d.ts",

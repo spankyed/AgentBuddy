@@ -6,7 +6,7 @@
  * and every typecheck leg in this repo sets it (`tsBuildInfoFile`, into `node_modules/.cache/tsbuildinfo`,
  * which is why it survives a `dist` clean and is absent on a fresh clone).
  *
- * **It is a proxy, in this repo's taxonomy** (root `CLAUDE.md`, "Three kinds of recorded artifact"): it
+ * **It is a proxy, in this repo's taxonomy** (root `CLAUDE.md`, "Three kinds of recorded file"): it
  * records what was read *last* time, so it can go stale from an input nobody listed. That was what bit the
  * API report stamp, the repo's other proxy until it was deleted for the derivation it stood in for — which
  * leaves this and `build-reads.ts` as the two that remain. It is the known unsoundness of dep files

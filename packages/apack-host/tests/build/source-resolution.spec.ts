@@ -3,7 +3,7 @@ import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { assertSourceResolution, type ResolveFile } from '../../src/build/source-resolution.ts';
+import { assertSourceResolution, formatNodeOptions, parseNodeOptions, SOURCE_CONDITION, withoutSourceCondition, type ResolveFile } from '../../src/build/source-resolution.ts';
 
 const MANIFEST = {
   name: '@apackdev/sdk',
@@ -78,5 +78,31 @@ describe('assertSourceResolution', () => {
     const dir = path.join(root, 'empty');
     fs.mkdirSync(dir);
     expect(() => assertSourceResolution(nodeResolver(dir), 'The test process')).not.toThrow();
+  });
+});
+
+
+describe('Node launch options', () => {
+  it('uses Node quoting and escaping rather than shell rules', () => {
+    expect(parseNodeOptions('--conditions="two  spaces" --conditions=\'single quote\'')).toEqual([
+      '--conditions=two  spaces', "--conditions='single", "quote'",
+    ]);
+    const args = ['--require', String.raw`C:\two  spaces\a"b.cjs`, '--conditions=with\ttab'];
+    expect(parseNodeOptions(formatNodeOptions(args))).toEqual(args);
+    expect(parseNodeOptions('"" --conditions=value')).toEqual(['--conditions=value']);
+    expect(() => parseNodeOptions('--require "unfinished')).toThrow('unterminated string');
+    expect(() => parseNodeOptions('"trailing' + String.fromCharCode(92))).toThrow('invalid escape');
+  });
+
+  it.each(['--conditions', '-C', '--conditions=', '-C='])('removes %s source selectors while preserving native preload execution', flag => {
+    const dir = checkout({ built: true });
+    const preload = path.join(root, 'pre load  file.cjs');
+    write(preload, 'globalThis.preloadProbe = "PRELOADED";');
+    const source = flag.endsWith('=') ? [flag + SOURCE_CONDITION] : [flag, SOURCE_CONDITION];
+    const options = formatNodeOptions(['--require', preload, ...source, '--conditions=other  selector']);
+    const result = execFileSync(process.execPath, ['-p', 'JSON.stringify([globalThis.preloadProbe, require.resolve("@apackdev/sdk")])'], {
+      cwd: dir, env: { PATH: process.env.PATH, NODE_OPTIONS: withoutSourceCondition(options) }, encoding: 'utf8',
+    });
+    expect(JSON.parse(result)).toEqual(['PRELOADED', path.join(dir, 'packages/apack-sdk/dist/index.js')]);
   });
 });

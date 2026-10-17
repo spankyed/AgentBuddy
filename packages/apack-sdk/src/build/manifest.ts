@@ -1,18 +1,18 @@
+import { _packEntityTypes, _packRelationTypes, type PackDataDeclarations } from '../framework/data-declaration.ts';
 import * as path from 'path';
 import type { z } from 'zod';
 import { resolveName } from '../ids/refs.ts';
 import type {
-  ManifestSchema, FeatureEntrySchema, BootConfigSchema, ContentSourceSchema, ContentFormatSchema,
+  ManifestSchema, FeatureEntrySchema, LifecycleConfigSchema, MigrationDeclarationSchema, ContentSourceSchema, ContentFormatSchema,
   StepEntrySchema, StepDSLMetaSchema, DslEntrySchema, PackPermissionSchema,
-} from './manifest-schema.ts';
+} from '../framework/declaration-schema.ts';
 
-// Types derived from the canonical Zod schema in manifest-schema.ts.
-// The schema is the single source of truth; these re-exports preserve
-// the existing import surface so no consumer code needs to change.
+// Types derive from the shared authored/native declaration grammar.
 
 export type PackManifest = z.infer<typeof ManifestSchema>;
 export type PackFeatureEntry = z.infer<typeof FeatureEntrySchema>;
-export type PackBootConfig = z.infer<typeof BootConfigSchema>;
+export type PackLifecycleConfig = z.infer<typeof LifecycleConfigSchema>;
+export type PackMigrationDeclaration = z.infer<typeof MigrationDeclarationSchema>;
 export type ContentSourceConfig = z.infer<typeof ContentSourceSchema>;
 export type ContentFormatConfig = z.infer<typeof ContentFormatSchema>;
 export type StepEntry = z.infer<typeof StepEntrySchema>;
@@ -42,7 +42,7 @@ export function packFeatures(manifest: { features?: Record<string, PackFeatureEn
 
 /**
  * The format of a pack's build, recorded in its snapshot: everything another apack reads from what `apack pack build`
- * wrote. A dependent's codegen reads the facade types in `defs['pack-types']` and the exports generated code imports
+ * wrote. A dependent's codegen reads the facade types in `facades['pack-types']` and the exports generated code imports
  * from them, `types`, `provenance` and its kinds, `flowHelpers`, and the manifest's fields. The app loads the
  * registration the runtime bundle exports, and refuses to install or load a build in another format.
  *
@@ -66,9 +66,20 @@ export interface PackTypeManifest {
 }
 
 export interface PackSnapshot {
+  /** Identifies the same declared data in generated backend/frontend bindings. */
+  declarationRevision: string;
   types: PackTypeManifest;
-  defs: Record<string, string>;
+  /** Dependent-facing TypeScript declaration bundles, keyed by facade name. */
+  facades: Record<string, string>;
+  /** Entity type to local destination feature, materialized from declared plugin contract types. */
+  entityDestinations: Record<string, string>;
+  /** Compiled names for every declared endpoint; absent only when there are no endpoints. */
+  eventContracts?: import('../framework/event-contracts.ts').PackEventContracts;
   manifest: PackManifest;
+  /** Self-contained Monaco declarations keyed by DSL name; required for every declared Monaco target. */
+  dslDefinitions?: Record<string, string>;
+  /** Materialized articles; required when the manifest declares help. */
+  help?: import('../framework/pack-help.ts').HelpDocument[];
   /** The `PACK_SNAPSHOT_FORMAT` of the CLI that wrote it; a snapshot without one predates the format */
   format: number;
   sdkVersion?: string;
@@ -90,6 +101,9 @@ export interface PackSnapshot {
   flowHelpers?: PackFlowHelpers;
 }
 
+/** Type-data inspection retains the recorded stamp when present; it does not authorize execution. */
+export type PackDependencySnapshot = Omit<PackSnapshot, 'format'> & { format?: number };
+
 /**
  * A build whose snapshot is in another format than `PACK_SNAPSHOT_FORMAT`: what's wrong, and which side is older, since
  * that decides which one moves. Each reader adds its own remedy.
@@ -110,13 +124,14 @@ export interface SnapshotFormatMismatch {
  * @internal Host-only: the apack CLI, the pack test harness, the pack installer and the app's pack loader.
  */
 export function _snapshotFormatMismatch(
-  snapshot: { format?: unknown; sdkVersion?: string },
+  snapshot: unknown,
   readerFormat: number = PACK_SNAPSHOT_FORMAT,
 ): SnapshotFormatMismatch | undefined {
-  const { format } = snapshot;
+  const format = snapshot && typeof snapshot === 'object' && 'format' in snapshot ? snapshot.format : undefined;
   if (format === readerFormat) return undefined;
   const newer = typeof format === 'number' && format > readerFormat;
-  const builtWith = snapshot.sdkVersion ? ` (SDK ${snapshot.sdkVersion})` : '';
+  const sdkVersion = snapshot && typeof snapshot === 'object' && 'sdkVersion' in snapshot ? snapshot.sdkVersion : undefined;
+  const builtWith = typeof sdkVersion === 'string' && sdkVersion ? ` (SDK ${sdkVersion})` : '';
   return {
     newer,
     problem: `its snapshot is format ${typeof format === 'number' ? format : '(none)'}, written by ${newer ? 'a newer' : 'an older'} apack CLI${builtWith}`,
@@ -137,9 +152,12 @@ export function _cliFormatMismatchMessage({ problem }: SnapshotFormatMismatch): 
  * an entry here: the reader, the snapshot field and every consumer are already generic over it.
  */
 export const PROVENANCE_KINDS = {
-  entities: (m: ProvenanceManifest) => Object.keys(m.entities ?? {}),
-  relKinds: (m: ProvenanceManifest) => Object.keys(m.relKinds ?? {}),
+  entities: (m: ProvenanceManifest) => Object.keys(_packEntityTypes(m)),
+  relKinds: (m: ProvenanceManifest) => Object.keys(_packRelationTypes(m)),
+  referenceTypes: (m: ProvenanceManifest) => Object.values(m.features ?? {}).flatMap(f => Object.keys(f.references?.types ?? {})),
+  referenceCategories: (m: ProvenanceManifest) => Object.values(m.features ?? {}).flatMap(f => Object.keys(f.references?.categories ?? {})),
   commands: (m: ProvenanceManifest) => Object.keys(m.extensions?.commands ?? {}),
+  tiptapExtensions: (m: ProvenanceManifest) => Object.values(m.extensions?.tiptapPlugins ?? {}).flatMap(plugin => Object.keys(plugin.extensions ?? {})),
   // Keyed by ref, so a dependent reusing one of its dependency's feature ids keeps both apart
   plugins: (m: ProvenanceManifest, packId: string) => Object.entries(m.features ?? {}).filter(([, f]) => f.plugin).map(([id]) => resolveName(id, packId)),
 } as const;
@@ -150,11 +168,9 @@ export type ProvenanceKind = keyof typeof PROVENANCE_KINDS;
 export type PackProvenance = Partial<Record<ProvenanceKind, Record<string, string>>>;
 
 /** The parts of a manifest `PROVENANCE_KINDS` reads; a `PackManifest` satisfies it */
-export interface ProvenanceManifest {
-  entities?: Record<string, string>;
-  relKinds?: Record<string, string>;
-  extensions?: { commands?: Readonly<Record<string, unknown>> };
-  features?: Record<string, { plugin?: unknown }>;
+export interface ProvenanceManifest extends PackDataDeclarations {
+  extensions?: { commands?: Readonly<Record<string, unknown>>; tiptapPlugins?: import('../framework/frontend-declaration.ts').FrontendDeclaration['tiptapPlugins'] };
+  features?: Record<string, { entities?: Record<string, string | null>; plugin?: unknown; references?: import('../framework/reference-declaration.ts').ReferenceDeclarations }>;
 }
 
 /**

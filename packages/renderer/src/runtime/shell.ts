@@ -4,6 +4,7 @@ import { createPackFrontends, createShellMachine } from '@apackdev/host/fe';
 import { windowNotify } from '@/adapters/notify';
 import { packFrontendIO } from '@/adapters/pack-frontends';
 import { windowStorage } from '@/adapters/storage';
+import { windowCatalog } from '@/runtime/catalog';
 import { fePacks } from '@/runtime/packs';
 import { feClient } from '@/transport/client';
 
@@ -13,6 +14,7 @@ const packFrontends = createPackFrontends(packFrontendIO, fePacks);
 export function createAppShell() {
   return createShellMachine({
     packs: fePacks,
+    catalog: windowCatalog,
     client: feClient,
     packFrontends,
     storage: windowStorage,

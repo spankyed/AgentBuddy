@@ -1,4 +1,4 @@
-import { settings as featureSettings } from '#generated/settings.ts';
+import { featureSettings } from '#generated/settings.ts';
 
 import { broadcastToPlugin } from '#generated/events.ts';
 // Cross-plugin send: the flows plugin also receives action events

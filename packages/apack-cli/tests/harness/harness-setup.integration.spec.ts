@@ -5,6 +5,7 @@ import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { afterAll, afterEach, describe, expect, it } from 'vitest';
+import { _declarationRevision } from '@apackdev/sdk/build';
 import { callCli } from '../_support/pack-builds';
 
 const REPO_ROOT = path.resolve(__dirname, '..', '..', '..', '..');
@@ -57,12 +58,25 @@ import { definePackTestConfig } from '@apackdev/testing/vitest';
 export default definePackTestConfig({ dataDirPrefix: 'harness-setup-' });`);
   write(root, 'tests/setup.ts', `
 import { setupPackTests } from '@apackdev/testing/harness';
-await setupPackTests({ contentRuntime: { id: 'data-pack', entities: {}, relKinds: {}, repositories: {}, contentWriters: {} } });`);
+await setupPackTests({ contentRuntime: { id: 'data-pack', declarationRevision: ${JSON.stringify(_declarationRevision(JSON.parse(fs.readFileSync(path.join(root, 'apack.json'), 'utf-8'))))}, entities: {}, relKinds: {}, repositories: {}, contentWriters: {} } });`);
   write(root, 'tests/pack.spec.ts', spec);
   return root;
 }
 
 describe("a pack's unit tests on the harness", () => {
+  it('runs without a bundled build and refuses stale source declarations before starting the harness', () => {
+    const root = dataPack(`import { expect, it } from 'vitest'; it('source works', () => expect(true).toBe(true));`);
+    expect(fs.existsSync(path.join(root, 'dist'))).toBe(false);
+    expect(run(process.execPath, [VITEST, 'run'], root).output).toMatch(/Tests\s+1 passed/);
+    const manifestFile = path.join(root, 'apack.json');
+    const manifest = JSON.parse(fs.readFileSync(manifestFile, 'utf-8'));
+    fs.writeFileSync(manifestFile, JSON.stringify({ ...manifest, name: 'Edited source' }));
+    const refused = run(process.execPath, [VITEST, 'run'], root);
+    expect(refused.code).toBe(1);
+    expect(refused.output).toContain('generated declarations are stale');
+    expect(fs.existsSync(path.join(root, 'dist'))).toBe(false);
+  });
+
   it('find the pack from the vitest project root when run from another directory (--root)', () => {
     const root = dataPack(`
 import { expect, it } from 'vitest';
@@ -79,12 +93,12 @@ it('writes nothing', async () => {
   it("let services.emitter send to the features the pack's manifest declares", () => {
     const root = dataPack(`
 import { expect, it } from 'vitest';
-import { services } from '@apackdev/sdk/services';
+import { createActionEmitter } from '@apackdev/sdk/services';
 it('sends to its own system and plugin', () => {
-  expect(() => services.emitter.sendToSystem('data-pack/memos', { type: 'GET_MEMOS' })).not.toThrow();
-  expect(() => services.emitter.broadcastToPlugin('data-pack/memos', { type: 'MEMOS_UPDATED' })).not.toThrow();
-  expect(() => services.emitter.broadcastToPlugin('data-pack/ghost', { type: 'MEMOS_UPDATED' })).toThrow('No registered plugin is named "data-pack/ghost"');
-});`, { features: { memos: { system: { entry: 'src/features/memos/be/system.ts' }, plugin: { entry: 'src/features/memos/fe/index.ts' } } } });
+  expect(() => createActionEmitter().sendToSystem('data-pack/memos', { type: 'GET_MEMOS' })).not.toThrow();
+  expect(() => createActionEmitter().broadcastToPlugin('data-pack/memos', { type: 'MEMOS_UPDATED' })).not.toThrow();
+  expect(() => createActionEmitter().broadcastToPlugin('data-pack/ghost', { type: 'MEMOS_UPDATED' })).toThrow('No registered plugin is named "data-pack/ghost"');
+});`, { features: { memos: { description: 'Exercise the harness system.', system: { entry: 'src/features/memos/be/system.ts' }, plugin: { label: 'Fixture', state: 'src/features/memos/fe/index.ts' } } } });
     // inherent: runs a pack's own vitest suite — the nested runner is the thing under test
     const result = run(process.execPath, [VITEST, 'run'], root);
     expect(result.output).toMatch(/Tests\s+1 passed/);
@@ -152,7 +166,7 @@ describe('apack pack add feature in a pack without the unit test setup', () => {
     fs.writeFileSync(pkgPath, JSON.stringify(pkg, null, 2));
 
     // process: the report the command prints, line by line, is the assertion
-    const added = run(process.execPath, [CLI, 'pack', 'add', 'feature', 'memos'], pack);
+    const added = run(process.execPath, [CLI, 'pack', 'add', 'feature', 'memos', '--description', 'Manage memos.'], pack);
 
     expect(added.code, added.output).toBe(0);
     expect(added.output).toContain('+ tests/setup.ts');

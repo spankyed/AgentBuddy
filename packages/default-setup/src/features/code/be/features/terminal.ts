@@ -1,4 +1,4 @@
-import { settings as featureSettings } from '#generated/settings.ts';
+import { featureSettings } from '#generated/settings.ts';
 import type { OutgoingTerminalEvents } from '../contract.ts'
 
 import { broadcastToPlugin } from '#generated/events.ts';

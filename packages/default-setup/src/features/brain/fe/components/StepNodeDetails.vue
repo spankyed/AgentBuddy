@@ -132,19 +132,10 @@ const emit = defineEmits<{
 }>();
 
 const openBlueprint = () => {
-  if (props.node?.blueprint) {
-    openPlugin('flows', { type: 'FLOW.SELECT', flowId: props.node.blueprint.flowId });
-
-    // Node editor needs time to render after flow selection
-    setTimeout(() => {
-      openPlugin('flows', {
-        type: 'NODE.DOUBLE_CLICK',
-        nodeId: props.node!.blueprint!.nodeId
-      });
-    }, 100);
-
-    emit('close');
-  }
+  const blueprint = props.node?.blueprint;
+  if (!blueprint) return;
+  openPlugin('flows', { type: 'NODE.REVEAL', flowId: blueprint.flowId, nodeId: blueprint.nodeId });
+  emit('close');
 };
 
 const statusClasses = computed(() => {

@@ -16,7 +16,8 @@ const DEFAULT_MANIFEST = {
   id: 'demo-pack', name: 'Demo', version: '1.0.0',
   features: {
     memos: {
-      plugin: { entry: 'src/features/memos/fe/plugin.ts', contract: 'src/features/memos/fe/contract.ts#Contract' },
+      description: 'Manage fixture memos.',
+      plugin: { label: 'Memos', state: 'src/features/memos/fe/state.ts', contract: 'src/features/memos/fe/contract.ts#Contract' },
       system: { entry: 'src/features/memos/be/system.ts', contract: 'src/features/memos/be/contract.ts#Contract' },
     },
   },
@@ -34,7 +35,7 @@ export interface PackFixtureOptions {
    * **Merge rather than replace, because that is what the call sites want.** Surveyed 2026-10-02 over the 54
    * manifest-writing sites in the two packages that may import this: 23 of the 28 written inline are the
    * minimum plus at most one key — `{ id, name, version }`, sometimes with `features`, `dependencies`,
-   * `entities` or `builtIn`. Replacing meant each of those restated a whole manifest, which is how they came
+   * `entities` or `hostVersion`. Replacing meant each of those restated a whole manifest, which is how they came
    * to differ from each other in ways no case was about.
    */
   readonly manifest?: Record<string, unknown>;
@@ -101,7 +102,7 @@ export interface PackFixtureOptions {
  * the installer's own helper: composition, not options, because both already take a directory. A `built: true`
  * option was considered and dropped for that reason — it would own a second way to call something that works.
  * The *installed* shape (a manifest beside `integrity.json`, a snapshot and `dist/runtime`) is a different
- * artifact whose layout `@apackdev/host` owns (`PACK_LAYOUT`), and host's own tests build it in host, where the
+ * build whose layout `@apackdev/host` owns (`PACK_LAYOUT`), and host's own tests build it in host, where the
  * layer rule keeps it.
  */
 export function packFixture({ at, files = {}, manifest, rawManifest, nodeModules }: PackFixtureOptions = {}): string {
@@ -118,7 +119,7 @@ export function packFixture({ at, files = {}, manifest, rawManifest, nodeModules
     'apack.json': JSON.stringify(written),
     'src/__generated__/events.ts': 'export const sendToSystem = 1;\n',
     'src/sibling.ts': 'export const sibling = 1;\n',
-    'src/features/memos/fe/plugin.ts': 'export type P = { id: string };\n',
+    'src/features/memos/fe/state.ts': 'export default {}; export type P = { id: string };\n',
     'src/features/memos/be/system.ts': 'export const system = 1;\n',
     'src/features/memos/fe/contract.ts': 'export type Contract = { state: {} };\n',
     'src/features/memos/be/contract.ts': "export type Contract = { outgoing: { type: 'A' } };\n",

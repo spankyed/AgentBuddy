@@ -1,4 +1,4 @@
-import { settings as featureSettings } from '#generated/settings.ts';
+import { featureSettings } from '#generated/settings.ts';
 
 import { tx, findById, findAll, qx } from '#generated/ears.ts';
 

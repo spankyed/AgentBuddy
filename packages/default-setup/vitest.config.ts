@@ -1,8 +1,16 @@
+import { defineConfig } from 'vitest/config';
 import { definePackTestConfig } from '@apackdev/testing/vitest';
 
-// Everything a pack's suite needs is `definePackTestConfig` (@apackdev/testing/vitest): the SFC stub that lets
-// `vitest related` walk this pack's graph, the include and exclude, the small-target timeouts, and a throwaway data
-// dir per run. This pack adds nothing: its own modules are `#` subpath imports, which Vite resolves from
-// `package.json` `imports` unaided — measured, including extensionless — so the `vite-tsconfig-paths` that
-// used to be here for its `@/…` aliases went with them.
-export default definePackTestConfig({ dataDirPrefix: 'default-setup-tests-' });
+// Backend tests keep their in-memory runtime and SFC stubs. Frontend tests compile real views in
+// jsdom, without importing the backend harness into its browser realm. Both use published packages.
+const backend = await definePackTestConfig({ dataDirPrefix: 'default-setup-tests-' });
+const frontend = await definePackTestConfig({ dataDirPrefix: 'default-setup-frontend-tests-', vue: true, setupFiles: [] });
+
+export default defineConfig({
+  test: {
+    projects: [
+      { ...backend, test: { ...backend.test, name: '@app/default-setup:backend', include: ['tests/**/!(*.frontend).spec.ts'] } },
+      { ...frontend, test: { ...frontend.test, name: '@app/default-setup:frontend', environment: 'jsdom', include: ['tests/**/*.frontend.spec.ts'] } },
+    ],
+  },
+});

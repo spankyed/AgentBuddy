@@ -1,8 +1,6 @@
 // The lookups only the backend's registry (createPackRegistry) keeps of what registered packs contributed
 import type { ContentWriter } from '@apackdev/sdk/content';
 import type { ContentApplier } from '@apackdev/sdk/utils';
-import { checkFeatureSettings, type FeatureSettings, type PackCommand, type HelpDocument, type HelpCatalog, type HelpProblem, type PackSettingsDefaults } from '@apackdev/sdk/framework';
-import { resolveName } from '@apackdev/sdk/ids';
 
 /** Content writers per entity type, each type's owned by the pack that registered it */
 export function createContentWriterStore() {
@@ -43,99 +41,6 @@ export function createApplierStore() {
   };
 }
 
-/**
- * Registered packs' feature settings, merged into the defaults: each feature's own slice and whether its
- * tab shows (`checkFeatureSettings`). `revision` changes, and listeners hear, whenever a pack's settings come or
- * go. A manifest names the feature; its settings land under the feature's ref, which the renderer reads by.
- */
-export function createSettingsDefaultsStore() {
-  const byPack = new Map<string, Array<{ id: string; settings: FeatureSettings }>>();
-  /** Each pack's settings sections, read the first time the defaults are, then kept until the pack changes */
-  const sectionsByPack = new Map<string, () => Record<string, unknown>>();
-  const listeners = new Set<() => void>();
-  let current: PackSettingsDefaults = { revision: 0, settings: { features: {} }, schemas: {}, visibility: {} };
-
-  function rebuild(): void {
-    const features: Record<string, unknown> = {};
-    const schemas: PackSettingsDefaults['schemas'] = {};
-    const visibility: Record<string, boolean> = {};
-    for (const [packId, declarations] of byPack) {
-      for (const { id, settings } of declarations) {
-        const ref = resolveName(id, packId);
-        if (settings.schema) {
-          features[ref] = settings.schema.parse(settings.defaults ?? {});
-          schemas[ref] = settings.schema;
-        }
-        if (settings.visible !== undefined) visibility[ref] = settings.visible;
-      }
-    }
-    const sections: Record<string, unknown> = {};
-    for (const [packId, read] of sectionsByPack) {
-      try {
-        for (const [name, value] of Object.entries(read())) sections[name] = value;
-      } catch (error) {
-        throw new Error(`Pack "${packId}" could not read its settings sections: ${(error as Error).message}`);
-      }
-    }
-    current = { revision: current.revision + 1, settings: { ...sections, features }, schemas, visibility };
-    for (const listener of listeners) listener();
-  }
-
-  return {
-    /** Validates each declaration before registering the pack's defaults and schemas */
-    register(packId: string, features: ReadonlyArray<{ id: string; settings?: FeatureSettings }>, sections?: () => Record<string, unknown>): void {
-      const withSettings = features.filter((feature): feature is { id: string; settings: FeatureSettings } => feature.settings !== undefined);
-      const problems = withSettings.flatMap(({ id, settings }) => checkFeatureSettings(id, settings));
-      if (problems.length > 0) throw new Error(`Pack "${packId}" has invalid feature settings:\n  ${problems.join('\n  ')}`);
-      if (sections) sectionsByPack.set(packId, sections);
-      if (withSettings.length === 0 && !sections && !byPack.has(packId)) return;
-      byPack.set(packId, withSettings);
-      rebuild();
-    },
-    unregister(packId: string): void {
-      const had = byPack.delete(packId);
-      if (sectionsByPack.delete(packId) || had) rebuild();
-    },
-    get: (): PackSettingsDefaults => current,
-    onChanged(listener: () => void): () => void {
-      listeners.add(listener);
-      return () => listeners.delete(listener);
-    },
-  };
-}
-
-/** Each pack's declared slash commands, listed in the order the packs first registered */
-export function createCommandStore() {
-  const byPack = new Map<string, PackCommand[]>();
-  // Kept when a pack unregisters, so a reload or update registers it again where it was
-  const rank = new Map<string, number>();
-  return {
-    /** Throws when another pack already declares one of the commands, so nothing of this pack is registered */
-    register(packId: string, commands: readonly PackCommand[]): void {
-      for (const [otherId, theirs] of byPack) {
-        if (otherId === packId) continue;
-        for (const { name } of commands) {
-          if (theirs.some((command) => command.name === name)) {
-            throw new Error(`Command collision: "${name}" — pack "${packId}" vs "${otherId}"`);
-          }
-        }
-      }
-      if (commands.length === 0) {
-        byPack.delete(packId);
-        return;
-      }
-      if (!rank.has(packId)) rank.set(packId, rank.size);
-      byPack.set(packId, commands.map((command) => ({ ...command })));
-    },
-    unregister(packId: string): void {
-      byPack.delete(packId);
-    },
-    all: (): PackCommand[] => [...byPack]
-      .sort(([a], [b]) => rank.get(a)! - rank.get(b)!)
-      .flatMap(([, commands]) => commands.map((command) => ({ ...command }))),
-  };
-}
-
 /** Hooks run when a pack stops (keyed by pack id) or the app exits */
 export function createShutdownHooks() {
   const byKey = new Map<string, Array<() => void>>();
@@ -165,38 +70,5 @@ export function createShutdownHooks() {
     removeShutdownHooksForKey(key: string): void {
       byKey.delete(key);
     },
-  };
-}
-
-/** Each pack's bundled articles, qualified by pack and isolated from malformed contributions. */
-export function createHelpStore() {
-  const byPack = new Map<string, HelpCatalog>();
-  return {
-    register(packId: string, help?: HelpDocument[], packName = packId): void {
-      byPack.delete(packId);
-      if (help === undefined) return;
-      const ids = new Set<string>();
-      const problems: HelpProblem[] = [];
-      const invalid = !Array.isArray(help) || help.some(article => {
-        if (!article || typeof article.id !== 'string' || !article.id
-          || typeof article.title !== 'string' || !article.title.trim() || typeof article.body !== 'string'
-          || (article.order !== undefined && !Number.isFinite(article.order))
-          || (article.features !== undefined && (!Array.isArray(article.features) || article.features.some(f => typeof f !== 'string')))
-          || ids.has(article.id)) return true;
-        ids.add(article.id);
-        return false;
-      });
-      if (invalid) {
-        problems.push({ packId, message: 'This pack supplied invalid or duplicate help articles. Rebuild or update the pack.' });
-      }
-      byPack.set(packId, { articles: problems.length ? [] : help.map(article => ({ ...article, packId, packName })), problems });
-    },
-    unregister(packId: string): void { byPack.delete(packId); },
-    all: (): HelpCatalog => ({
-      articles: [...byPack.values()].flatMap(c => c.articles).sort((a, b) =>
-        a.packName.localeCompare(b.packName) || a.packId.localeCompare(b.packId)
-        || (a.order ?? Infinity) - (b.order ?? Infinity) || a.title.localeCompare(b.title)),
-      problems: [...byPack.values()].flatMap(c => c.problems),
-    }),
   };
 }

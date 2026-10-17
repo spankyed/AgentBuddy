@@ -9,11 +9,6 @@ export function withHostLast(plugins: Plugin[]): Plugin[] {
   return [...plugins.filter((plugin) => !isHost(plugin)), ...plugins.filter(isHost)];
 }
 
-/** The plugins whose tab shows: every plugin but those the host's visibility hides (unset shows it) */
-export function visiblePluginsOf(context: Pick<ShellContext, 'plugins' | 'pluginVisibility'>): Plugin[] {
-  return context.plugins.filter((plugin) => context.pluginVisibility[plugin.id] !== false);
-}
-
 /**
  * Spawns a plugin's state machine under its own id as well as its system id. The id is the key the shell tracks the
  * child by: without one every plugin shares a key, the shell holds only the last one spawned, and stopping it stops
@@ -27,13 +22,11 @@ export function spawnPluginActor(enqueue: unknown, plugin: Plugin): void {
   spawner.spawnChild(plugin.state, { id: plugin.id, systemId: plugin.id });
 }
 
-/** The visible plugin above or below the one open, wrapping around; undefined when the one open isn't visible */
-export function neighbourOf(context: ShellContext, direction: 'up' | 'down'): Plugin | undefined {
-  const visible = visiblePluginsOf(context);
-  const index = visible.findIndex((plugin) => plugin.id === context.activePlugin.id);
+/** The adjacent declared tab, wrapping around; absent when the current tab is hidden. */
+export function neighbourOf<T extends { id: string }>(visible: readonly T[], activePluginId: string, direction: 'up' | 'down'): T | undefined {
+  const index = visible.findIndex(plugin => plugin.id === activePluginId);
   if (index === -1) return undefined;
-  const next = direction === 'up' ? (index === 0 ? visible.length - 1 : index - 1) : (index === visible.length - 1 ? 0 : index + 1);
-  return visible[next];
+  return visible[(index + (direction === 'up' ? -1 : 1) + visible.length) % visible.length];
 }
 
 /** The history after opening `plugin`: moved within it when `historyIndex` is set (back and forward), else extended */

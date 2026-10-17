@@ -6,8 +6,7 @@
   "imports": {
     "#generated/*": "./src/__generated__/*",
     "#features/*": "./src/features/*",
-    "#extensions/*": "./src/extensions/*",
-    "#app-settings/*": "./src/app-settings/*"
+    "#extensions/*": "./src/extensions/*"
   },
   "scripts": {
     "typecheck": "vue-tsc --noEmit",
@@ -50,11 +49,17 @@
   "devDependencies": {
     "@apackdev/testing": "*",
     "@types/node": "^25.5.0",
+    "@vitejs/plugin-vue": "^6.0.5",
     "esbuild": "^0.25.0",
     "tsx": "^4.19.4",
     "typescript": "^5.8.3",
     "vitest": "^3.2.4",
     "vue-tsc": "^3.0.4",
-    "zod": "^3.25.76"
+    "zod": "^3.25.76",
+    "@tiptap/core": "3.22.3",
+    "@tiptap/starter-kit": "3.22.2",
+    "jsdom": "^26.1.0",
+    "tiptap-markdown": "^0.9.0",
+    "@types/jsdom": "^21.1.7"
   }
 }

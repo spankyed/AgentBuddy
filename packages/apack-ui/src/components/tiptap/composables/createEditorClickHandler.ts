@@ -34,10 +34,6 @@ export function createEditorClickHandler(emit: ClickEmit) {
     // Other links require ctrl/cmd+click in editor mode
     if (!(event.ctrlKey || event.metaKey)) return false
     if (!href) return false
-    if (href.startsWith('note://')) {
-      emit.noteLinkClick(href.slice('note://'.length))
-      return true
-    }
     const url = /^https?:\/\//.test(href) ? href : `https://${href}`
     openLink(url)
     return true
@@ -45,7 +41,8 @@ export function createEditorClickHandler(emit: ClickEmit) {
 }
 
 export function createViewerClickHandler(emit: { imageClick: (src: string) => void; openLink?: (href: string) => void }) {
-  return (_view: any, _pos: any, event: MouseEvent) => {
+  // DOM clicks also cover repeated clicks that ProseMirror classifies as double/triple clicks.
+  return (_view: unknown, event: MouseEvent) => {
     // Links open on regular click in viewer mode
     const anchor = (event.target as HTMLElement).closest('a')
     const href = anchor?.getAttribute('href')
@@ -60,6 +57,7 @@ export function createViewerClickHandler(emit: { imageClick: (src: string) => vo
     }
     const img = (event.target as HTMLElement).closest('img')
     if (img?.src) {
+      event.preventDefault()
       emit.imageClick(img.src)
       return true
     }

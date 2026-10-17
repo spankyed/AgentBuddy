@@ -7,7 +7,7 @@ export async function list(args: string[]) {
   const context = targetDataContext(env, profile);
   const packs = packInventory(context).map(({ manifest, record }) => ({
     id: manifest.id, name: manifest.name, version: manifest.version,
-    builtIn: manifest.builtIn ?? false, enabled: record.enabled,
+    updatesWith: record.updatesWith ?? 'user', enabled: record.enabled,
     dependencies: manifest.dependencies ?? {}, source: record.installedFrom ?? null,
   }));
   if (rest.includes('--json')) {

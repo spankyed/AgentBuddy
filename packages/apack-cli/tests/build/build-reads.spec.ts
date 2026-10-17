@@ -2,13 +2,36 @@
 import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { PACK_READS_FILE } from '@apackdev/host/build/pack-workdir';
 import { buildReads } from '../../src/build/build-reads';
+import { COMPILER_INPUTS_ENV } from '../../src/build/compiler-installation-inputs.ts';
+
+const roots: string[] = [];
+afterEach(() => {
+  vi.unstubAllEnvs();
+  roots.splice(0).forEach(root => fs.rmSync(root, { recursive: true, force: true }));
+});
 
 function tmp(): string {
-  return fs.mkdtempSync(path.join(os.tmpdir(), 'apack-build-reads-'));
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'apack-build-reads-'));
+  roots.push(root);
+  return root;
 }
+
+it('records captured compiler files by source origin without reading the original file', () => {
+  const pack = tmp(), captured = tmp();
+  const input = path.join(captured, 'types.ts');
+  fs.writeFileSync(input, 'export type Captured = string;');
+  const inputsFile = path.join(captured, 'compiler-inputs.json');
+  fs.writeFileSync(inputsFile, JSON.stringify({ hash: '0'.repeat(64), packages: [], paths: [{ captured: fs.realpathSync(captured), source: fs.realpathSync(pack) }] }));
+  vi.stubEnv(COMPILER_INPUTS_ENV, inputsFile);
+  const reads = buildReads(pack)!;
+  reads.forPhase('types')({ bundler: 'rollup', version: '1', files: [input] });
+  reads.write();
+  expect(JSON.parse(fs.readFileSync(path.join(pack, PACK_READS_FILE), 'utf8')).phases.types).toEqual(['types.ts']);
+  expect(fs.existsSync(path.join(pack, 'types.ts'))).toBe(false);
+});
 
 describe('carry', () => {
   it('keeps the previous build\'s reads for a phase this build reused, bundlers included', () => {

@@ -1,64 +1,123 @@
-// This window's half of loading a pack's frontend: the stylesheet in the document. The rules are the host's
-// (`fe/packs/frontends.ts`); what this covers is the document itself, which only this window has.
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it } from 'vitest';
 import { packFrontendIO } from '@/adapters/pack-frontends';
 
+const stylesheetUrl = (packId = 'ext', revision = 'a') => `pack://${packId}/builds/${revision.repeat(64)}/runtime/fe.css`;
 const links = () => [...document.querySelectorAll('link[data-pack-id]')] as HTMLLinkElement[];
-
-/** Adds a stylesheet and lets the element report the outcome the browser would */
-function add(packId: string, href: string, outcome: 'load' | 'error' = 'load'): Promise<void> {
-  const added = packFrontendIO.styles.add(packId, href);
-  const link = links().find((el) => el.href.endsWith(href) && el.dataset.packId === packId);
-  link?.[outcome === 'load' ? 'onload' : 'onerror']?.(new Event(outcome));
-  return added;
-}
+const linkFor = (href: string) => links().find(link => link.href === href)!;
+const load = (href: string) => linkFor(href).onload?.(new Event('load'));
 
 afterEach(() => {
-  links().forEach((el) => el.remove());
-  vi.restoreAllMocks();
+  for (const id of new Set(links().map(link => link.dataset.packId!))) packFrontendIO.styles.remove(id);
 });
 
-describe("a pack's stylesheet", () => {
-  it('is one link for the pack, with the pack on it, and is waited for', async () => {
-    await add('ext', 'pack://ext/runtime/fe.css');
-
+describe('owned pack styles', () => {
+  it('loads an inert stylesheet and applies it only on commit', async () => {
+    const href = stylesheetUrl();
+    const lease = packFrontendIO.styles.prepare('ext', href);
     expect(links()).toHaveLength(1);
-    expect(links()[0].rel).toBe('stylesheet');
-    expect(links()[0].dataset.packId).toBe('ext');
-    expect(links()[0].href).toContain('pack://ext/runtime/fe.css');
+    expect(linkFor(href).media).toBe('not all');
+    load(href);
+    await lease.ready;
+    expect(linkFor(href).media).toBe('not all');
+    lease.commit();
+    expect(linkFor(href).media).toBe('all');
+    lease.dispose();
+    expect(links()).toEqual([]);
   });
 
-  // A pack whose frontend is only styles reports no plugins, so every later load run reaches it again
-  it('is added once however often the same pack asks for it', async () => {
-    await add('ext', 'pack://ext/runtime/fe.css');
-    await add('ext', 'pack://ext/runtime/fe.css');
-
+  it('shares the fetch while cancellation belongs to each attempt', async () => {
+    const href = stylesheetUrl();
+    const first = packFrontendIO.styles.prepare('ext', href);
+    const second = packFrontendIO.styles.prepare('ext', href);
     expect(links()).toHaveLength(1);
+    first.dispose();
+    await expect(first.ready).rejects.toThrow('unloaded');
+    expect(links()).toHaveLength(1);
+    load(href);
+    await second.ready;
+    second.commit();
+    expect(linkFor(href).media).toBe('all');
   });
 
-  // The URL carries the frontend's revision, so an updated pack's stylesheet is a different one
-  it('is added again for another href, and for another pack', async () => {
-    await add('ext', 'pack://ext/runtime/fe.css');
-    await add('ext', 'pack://ext/runtime/fe.css?v=2');
-    await add('other', 'pack://ext/runtime/fe.css');
-
-    expect(links()).toHaveLength(3);
+  it('keeps an accepted stylesheet when a same-href candidate is disposed', async () => {
+    const href = stylesheetUrl();
+    const old = packFrontendIO.styles.prepare('ext', href);
+    load(href);
+    await old.ready;
+    old.commit();
+    const candidate = packFrontendIO.styles.prepare('ext', href);
+    await candidate.ready;
+    candidate.dispose();
+    expect(links()).toHaveLength(1);
+    expect(linkFor(href).media).toBe('all');
+    old.dispose();
+    expect(links()).toEqual([]);
   });
 
-  it("goes on when it can't be loaded, saying which pack's it was", async () => {
-    const warned = vi.spyOn(console, 'warn').mockImplementation(() => {});
-
-    await add('ext', 'pack://ext/missing.css', 'error');
-
-    expect(warned).toHaveBeenCalled();
+  it('transfers same-href ownership without an old disposal removing new styles', async () => {
+    const href = stylesheetUrl();
+    const old = packFrontendIO.styles.prepare('ext', href);
+    load(href);
+    await old.ready;
+    old.commit();
+    const next = packFrontendIO.styles.prepare('ext', href);
+    await next.ready;
+    next.commit();
+    old.dispose();
+    expect(links()).toHaveLength(1);
+    expect(linkFor(href).media).toBe('all');
+    next.dispose();
+    expect(links()).toEqual([]);
   });
 
-  it("is taken out with the pack, and leaves another pack's", async () => {
-    await add('ext', 'pack://ext/runtime/fe.css');
-    await add('other', 'pack://other/runtime/fe.css');
+  it('retains old styles through another revision failing and permits retry', async () => {
+    const href = stylesheetUrl();
+    const old = packFrontendIO.styles.prepare('ext', href);
+    load(href);
+    await old.ready;
+    old.commit();
+    const nextHref = stylesheetUrl('ext', 'b');
+    const candidate = packFrontendIO.styles.prepare('ext', nextHref);
+    expect(linkFor(nextHref).media).toBe('not all');
+    linkFor(nextHref).onerror?.(new Event('error'));
+    await expect(candidate.ready).rejects.toThrow('Failed to load styles');
+    candidate.dispose();
+    expect(links()).toEqual([linkFor(href)]);
+    expect(linkFor(href).media).toBe('all');
+    const retry = packFrontendIO.styles.prepare('ext', nextHref);
+    load(nextHref);
+    await retry.ready;
+    retry.commit();
+    old.dispose();
+    expect(links()).toEqual([linkFor(nextHref)]);
+    expect(linkFor(nextHref).media).toBe('all');
+  });
 
+  it('refuses premature or disposed commits', async () => {
+    const href = stylesheetUrl();
+    const lease = packFrontendIO.styles.prepare('ext', href);
+    expect(() => lease.commit()).toThrow('not ready');
+    load(href);
+    await lease.ready;
+    lease.dispose();
+    expect(() => lease.commit()).toThrow('not ready');
+    expect(links()).toEqual([]);
+  });
+
+  it('unloads pending and accepted leases without affecting another pack', async () => {
+    const old = packFrontendIO.styles.prepare('ext', stylesheetUrl());
+    load(stylesheetUrl());
+    await old.ready;
+    old.commit();
+    const pending = packFrontendIO.styles.prepare('ext', stylesheetUrl('ext', 'b'));
+    const other = packFrontendIO.styles.prepare('other', stylesheetUrl('other'));
+    load(stylesheetUrl('other'));
+    await other.ready;
+    other.commit();
     packFrontendIO.styles.remove('ext');
-
-    expect(links().map((el) => el.dataset.packId)).toEqual(['other']);
+    await expect(pending.ready).rejects.toThrow('unloaded');
+    expect(links()).toHaveLength(1);
+    expect(links()[0].dataset.packId).toBe('other');
+    expect(() => old.commit()).toThrow('not ready');
   });
 });

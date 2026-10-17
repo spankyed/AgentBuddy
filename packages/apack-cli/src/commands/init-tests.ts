@@ -54,7 +54,7 @@ export async function initTests(_args: string[]): Promise<void> {
   }
 
   const gitignorePath = path.join(cwd, '.gitignore');
-  const gitignoreEntries = ['tests/screenshots/', 'tests/results/'];
+  const gitignoreEntries = ['.apack/'];
   if (fs.existsSync(gitignorePath)) {
     const existing = fs.readFileSync(gitignorePath, 'utf-8');
     const toAdd = gitignoreEntries.filter(e => !existing.includes(e));

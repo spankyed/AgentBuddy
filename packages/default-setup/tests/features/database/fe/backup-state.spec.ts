@@ -2,6 +2,8 @@
 // system reports how it ended, and the outcome is kept for the Backup & Restore view to report.
 import { beforeEach, expect, it, vi } from 'vitest';
 import { createActor } from 'xstate';
+import { answerTo } from '@apackdev/sdk/testing';
+import { sentCall } from '../../../_support/calls.ts';
 
 const sendToSystem = vi.hoisted(() => vi.fn());
 vi.mock('#generated/events.ts', () => ({ sendToSystem }));
@@ -21,6 +23,51 @@ const backup = (actor: ReturnType<typeof backupView>) => {
 
 beforeEach(() => {
   sendToSystem.mockReset();
+});
+
+it('retains the import result instructions for the backup view', () => {
+  const actor = backupView();
+  const message = 'Import successful. Please restart the brain manually.';
+  actor.send({ type: 'IMPORT_DATABASE_SUCCESS', message });
+  expect(backup(actor).backupResult).toEqual({ operation: 'import', error: undefined, message });
+  actor.stop();
+});
+
+it.each(['IMPORT_DATABASE_SUCCESS', 'RESET_DATABASE_SUCCESS'] as const)(
+  '%s discards old database results and late replies without restarting the window', type => {
+    const actor = createActor(databaseState).start();
+    actor.send({ type: 'QUERY.UPDATE', code: 'return "keep this editor"' });
+    actor.send({ type: 'QUERY.EXECUTE', code: 'return "old rows"' });
+    actor.send(answerTo(sentCall(sendToSystem, 'EXECUTE_QUERY'), { type: 'QUERY_RESULT', result: 'old rows', executionTime: 1 }));
+    expect(actor.getSnapshot().context.queryResult).toBe('old rows');
+    actor.send({ type: 'QUERY.EXECUTE', code: 'return "late rows"' });
+    const abandoned = sentCall(sendToSystem, 'EXECUTE_QUERY', 1);
+    actor.send({ type, message: 'Completed' });
+    expect(actor.getSnapshot().context).toMatchObject({ currentQuery: 'return "keep this editor"',
+      queryResult: null, isLoading: false, pendingQueryCall: null, pendingTransactionCall: null });
+    actor.send(answerTo(abandoned, { type: 'QUERY_RESULT', result: 'late rows', executionTime: 2 }));
+    expect(actor.getSnapshot().context.queryResult).toBeNull();
+    actor.stop();
+  },
+);
+
+it('keeps mutable trace state separate between windows', () => {
+  const first = createActor(databaseState).start();
+  const second = createActor(databaseState).start();
+  first.getSnapshot().context.expandedNodes.add('row-from-first-window');
+  expect(second.getSnapshot().context.expandedNodes.size).toBe(0);
+  expect(first.getSnapshot().context.nodeDetails).not.toBe(second.getSnapshot().context.nodeDetails);
+  first.stop(); second.stop();
+});
+
+it('keeps the current database results when import is refused', () => {
+  const actor = createActor(databaseState).start();
+  actor.send({ type: 'QUERY.EXECUTE', code: 'return "current rows"' });
+  actor.send(answerTo(sentCall(sendToSystem, 'EXECUTE_QUERY'), { type: 'QUERY_RESULT', result: 'current rows', executionTime: 1 }));
+  actor.send({ type: 'IMPORT_DATABASE_ERROR', error: 'Invalid settings' });
+  expect(actor.getSnapshot().context.queryResult).toBe('current rows');
+  expect(backup(actor).backupResult?.error).toBe('Invalid settings');
+  actor.stop();
 });
 
 it('exports until the system reports success', () => {

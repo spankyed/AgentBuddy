@@ -12,6 +12,5 @@ export type ActionParams = Record<string, any>;
 export const params = undefined as unknown as ActionParams;
 
 export type { ActionEntity } from '@apackdev/sdk';
-export type { SettingsData } from '#app-settings/types.ts';
 
 export { z, type z as Z } from 'zod';

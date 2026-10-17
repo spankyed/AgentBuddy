@@ -1,5 +1,5 @@
 > **Archived historical review.** The 22 ready items are complete. Remaining deferred and unverified
-> work is tracked in [the deferred checklist](../../plans/deferred/external-pack-authoring.md).
+> work is tracked in [the deferred checklist](../../plans/external-pack-authoring.md).
 > Paths, line numbers, and unresolved diagnoses below describe the original review.
 
 # External pack authoring: remaining action items
@@ -75,7 +75,7 @@ Both halves were wrong, and investigating it found something else:
 - **About 50 lines would go, not 124**, and `flock` carries no metadata, so the file stays either way.
 
 What is left for an advisory lock is a false held (loud, one `rm`) and the take-over window `wx` can't
-close. Deferred on value rather than blocked on a dependency: see `docs/goals/deferred/goal-write-lock-advisory.md`
+close. Deferred on value rather than blocked on a dependency: see `docs/goals/goal-write-lock-advisory.md`
 for the spike and the accounting.
 `write-lock.ts`
 

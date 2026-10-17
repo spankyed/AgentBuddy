@@ -81,9 +81,9 @@ export function readManifest(root: string): PackManifest {
 /** The pack's manifest, or an error listing why the installer would reject it */
 export function readValidManifest(root: string): PackManifest {
   const manifest = readManifest(root);
-  const { errors } = parseManifest(manifest);
-  if (errors.length > 0) {
-    throw new Error(`apack.json is invalid:\n${errors.map(e => `  - ${e}`).join('\n')}`);
+  const { diagnostics } = parseManifest(manifest);
+  if (diagnostics.length > 0) {
+    throw new Error(`apack.json is invalid:\n${diagnostics.map(({ message }) => `  - ${message}`).join('\n')}`);
   }
   return manifest;
 }

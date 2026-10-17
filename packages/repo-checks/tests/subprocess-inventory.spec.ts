@@ -48,6 +48,10 @@ const loadedByThePool = (): string[] => reachableFrom(
  * exists to catch, and a file-level list would wave it through.
  */
 const INVENTORY: Record<string, { calls: number; why: string }> = {
+  'packages/apack-cli/tests/build/compiler-native-libraries.integration.spec.ts': { calls: 5,
+    why: 'clang produces real direct/transitive libraries and Node addons; fresh Node children prove actual dyld search and image-suffix selection before captured admission. The live-watch case compiles a replacement dependency graph; in-process fixtures cannot change dyld launch settings or prove refusal precedes initialization' },
+  'packages/apack-cli/tests/build/build-worker.integration.spec.ts': { calls: 8,
+    why: 'private worker IPC lifetime and refusal, public shutdown, native preload identity, loader-startup refusal and natural shutdown under signal refusal require their own processes; two OS process-state queries verify inherited subprocess termination' },
   'packages/repo-checks/tests/bounded-spawn.integration.spec.ts': { calls: 1,
     why: 'a separate orchestrator process receives real signals so cancellation proves its whole child tree is reaped without signaling the test worker' },
   'packages/repo-checks/tests/session.integration.spec.ts': { calls: 2,
@@ -76,7 +80,7 @@ const INVENTORY: Record<string, { calls: number; why: string }> = {
     why: 'node -e inside the consumer directory, so import.meta.resolve and the dynamic imports answer with the consumer\'s resolution and not this process\'s' },
   'packages/repo-checks/tests/_support/repo-files.ts': { calls: 1,
     why: 'git is the only thing that knows what is tracked, and tracked-ness is the subject: a walk of the '
-      + 'tree cannot tell a committed file from a build artifact, which is the distinction every repo-wide '
+      + 'tree cannot tell a committed file from a build output, which is the distinction every repo-wide '
       + 'guard reading this rests on. One call, shared by every spec that asks' },
   'packages/repo-checks/tests/component-contracts.integration.spec.ts': { calls: 1,
     why: 'vue-tsc again, and it emits declarations for the component reports rather than only checking them' },

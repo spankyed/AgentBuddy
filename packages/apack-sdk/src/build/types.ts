@@ -10,23 +10,28 @@ export interface PackBuildDefinitions {
   blocks: BlockDefinition[];
 }
 
+/** Loads executable pack build code from an absolute module path. */
+export type PackModuleLoader = (file: string) => Promise<Record<string, unknown>>;
+
 /** A pack's content sources, as `compilePack` compiles them (built from apack.json by buildPackConfigFromManifest) */
 export interface PackConfig {
   name: string;
   /** `content.sources`, each entry resolved to its path, applier, or format settings */
   sources: Record<string, ResolvedContentSource>;
   /** Loads the definitions compiling validates against, such as the step types flows use */
-  loadDefinitions?: () => Promise<PackBuildDefinitions>;
+  loadDefinitions?: (importModule?: PackModuleLoader) => Promise<PackBuildDefinitions>;
 }
 
 export interface CompilePackOptions {
   packDir: string;
   outputDir: string;
+  /** Expected content/media bytes at absolute output paths, retained by the caller until sealing. */
+  recordOutput?: (file: string, bytes: string | Uint8Array) => void;
   packConfig?: PackConfig;
   /** The definitions to compile with; the pack config's (`loadDefinitions`) by default, none without one */
   definitions?: PackBuildDefinitions;
-  /** Loads a compiler module (the pack's own source, or a dependency's content-compilers.mjs); the CLI loads TypeScript modules with tsx. Defaults to import(). */
-  importModule?: (file: string) => Promise<Record<string, unknown>>;
+  /** Loads executable content, flow and step modules; defaults to native import(). */
+  importModule?: PackModuleLoader;
   /** Progress lines (the pack and each key's item count); defaults to console.log */
   log?: (message: string) => void;
 }

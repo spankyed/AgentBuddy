@@ -153,6 +153,11 @@ the layout a pack author has, and in a checkout that layout is only as current a
 
 ## Unit test harness (`@apackdev/testing/harness`)
 
+The shell composes native frontend fixture declarations before registering its plugins through the real
+host admission API. Supply real machines and component stand-ins; string components or casts concealing
+incomplete plugins do not satisfy the frontend contract. The SDK native fixture helper supplies only
+module-target placeholders for declaration data, never executable fallbacks in the production registry.
+
 A pack's unit tests run its code without the app: content, repositories and content writers against an in-memory EARS, and with `registration` its systems, services, steps and flows, all including its dependencies' behaviour. The registered packs are the test file's own: `harness.ts` creates a registry (`createPackRegistry()` from `@apackdev/host/packs`) per test file, registers the pack and its dependencies in it with no guard against an earlier registration, binds it for the SDK's lookups and hands it to `startApp` (`setAppPacks`). `apack pack init` scaffolds the setup (`vitest.config.ts` with `isolatedDataDir`, `tests/setup.ts` passing `contentRuntime` and `registration`, an example content test); `apack pack add feature` scaffolds a system test, adding `tests/setup.ts` (and `vitest.config.ts` when vitest has no config, devDependencies) to a pack without it. Published declarations import only published packages (`Message` from `@apackdev/sdk/events`, never `@apackdev/host`). Pack-facing guide: `docs/public-facing/testing.md`.
 
 - **`setupPackTests({ contentRuntime, registration?, appliers?, packDir? })`** — from a vitest setup file. `packDir` defaults to the nearest `apack.json` at or above the injected vitest project root (else the working directory).
@@ -160,7 +165,7 @@ A pack's unit tests run its code without the app: content, repositories and cont
   - A test that needs a database of its own (tooling, a compiler) creates it with `createEarsEngine` from `@apackdev/ears` and passes it where the API takes one (`exportFlowsToDSL(dir, { engine })`), leaving the installed engine alone.
   - Binds it (`bindHost`) with `packs`: the test file's registry, with the current test's `mockService` mocks over its services (`@apackdev/sdk/testing`'s `testPacks` stand-in sits over it).
   - Data tier (no `registration`): registers each dependency's `build/content-runtime.mjs`, then the pack's own content runtime with its `appliers`, in the registry, each as a registration (entity types, repositories, content writers, appliers).
-  - Runtime tier (`registration`): loads each dependency's `.apack/deps/<id>/runtime/index.cjs` with `src/dependency-runtime.ts`, points it at `runtime/content`, and registers it and the pack's registration (which carries the pack's appliers) in the registry.
+  - Runtime tier (`registration`): reads each dependency's `.apack/deps/<id>/resolution.json`, verifies its immutable complete build through the shared host cache reader, then loads that build's `runtime/index.cjs` with `src/dependency-runtime.ts`, points it at `runtime/content`, and registers it and the pack's registration (which carries the pack's appliers) in the registry.
   - Before each test it empties the database and media store, and fails a concurrent test that can run alongside another (vitest runs a suite's consecutive concurrent children together; a lone `it.concurrent` passes): the database, mocks and apps are per file.
   - After each test it stops apps, clears mocks, and fails the test on system errors the test didn't take; every step runs even when an earlier one throws.
 - **Dependency runtimes load on the pack's SDK.** `withModuleBridge` (`@apackdev/host/packs`, shared with the API's pack loader) maps every export of the shared-instance packages (`@apackdev/sdk`, `@apackdev/ears`: `sharedInstanceSpecifiers` from `@apackdev/host/build/shared-deps`), `xstate` and `zod` to the namespaces the test process imported. A subpath whose optional peer isn't installed maps to a module that throws on use. npm packages the runtime keeps external that the pack doesn't install (default-setup's `node-pty`, `playwright`, …) load as modules that throw on use.
@@ -169,8 +174,8 @@ A pack's unit tests run its code without the app: content, repositories and cont
   - Members: `connect`, `send`, `emitted`, `nextEmit` (5 s default), `settle`, `runFlow` (10 s default), `flowTrace`, `system`, `stop`. Bare system ids resolve as given, then as `<packId>.<id>` for the pack under test; an external dependency's systems need their full bus id.
   - `connect` sends `CLIENT_CONNECTED` and then `SEND_STATE` to every running system, as the app's bus does: the test bus sets no `clientLoadedPacks`, so no pack waits for `PACK_CLIENT_CONNECTED`. `send` routes whether or not a client connected. `broadcastToPlugin` goes through the bus (`OUTGOING`; the bus hears it through `testRootEvents.onPluginSend`), delivered only once connected, so `emitted` holds nothing sent before a client connected (`apack-cli/tests/harness/dependency-runtime.integration.spec.ts`).
   - Events for systems (client events, `sendToSystem`, `fire` steps, schedule ticks) reach them from `startApp`, as in the app; only sends to plugins wait for a client (`connect`, or `CLIENT_CONNECTED` from any app's `connect`, which reaches every running bus). The bus's state (`awaitingClient`, `clientSeen`) is its own.
-  - The first app to start (none running) calls every registered pack's `boot.onInit` (the registry's `getBootHooks`, registration order: dependencies first) before its bus starts, as the API does at boot after hydrating and before starting the systems. A failing `onInit` shuts the packs down again and fails `startApp`.
-  - `stop` stops the bus, rejects pending waits with "The test app stopped" (marking in-flight calls handled, so a wait nobody awaits isn't an unhandled rejection), and, once no app runs, calls every registered pack's `boot.onShutdown`, as the API does when it tears a pack down. So each test's apps run between one `onInit` and one `onShutdown`. Stopped actors never reach their own cleanup (default-setup's `killBrain`), so module-level state (cron jobs, ad-hoc brain listeners, the flow actor registry) is cleared there: default-setup's `features/hooks.ts` (whose `onInit` ensures the Settings entity, safe on each test's emptied database).
+  - The first app to start (none running) calls every registered pack's `lifecycle.onInit` (the registry's `getLifecycleHooks`, registration order: dependencies first) before its bus starts, as the API does at boot after hydrating and before starting the systems. A failing `onInit` shuts the packs down again and fails `startApp`.
+  - `stop` stops the bus, rejects pending waits with "The test app stopped" (marking in-flight calls handled, so a wait nobody awaits isn't an unhandled rejection), and, once no app runs, calls every registered pack's `lifecycle.onShutdown`, as the API does when it tears a pack down. So each test's apps run between one `onInit` and one `onShutdown`. Stopped actors never reach their own cleanup (default-setup's `killBrain`), so module-level state (cron jobs, ad-hoc brain listeners, the flow actor registry) is cleared there: default-setup's `features/hooks.ts` (whose `onInit` ensures the Settings entity, safe on each test's emptied database).
   - After `stop`, `connect`, `send`, `nextEmit`, `settle` and `runFlow` reject with "The test app stopped" (already handled, so `void app.nextEmit(…)` isn't an unhandled rejection) and `system` throws it; `emitted` and `flowTrace` still read what the app recorded.
   - `settle` waits zero-delay timer turns until xstate's inspection reports no activity.
   - `runFlow` and `flowTrace` drive default-setup's brain (designated `brain`). The brain runs the declared root flow (`root: true`, imported with `importFlows` or written) from `startApp`, and subflows it spawns. `runFlow` never grants the root role or restarts the brain: it sends `TRIGGER_BRAIN_EVENT` (global, as a client does) and waits on the brain's `TNODE_SPAWNED`/`TNODE_UPDATED` reports for the running flow with that label (root or subflow); without an event, it returns the entry tracks that flow ran. The reports are recorded from the bus's inspection, so trace reports from before a client connected are seen, and `runFlow` doesn't connect the app. `runFlow` returns only the tracks its event triggered; tracks started by their `fire` steps need `settle()` and `flowTrace`. Steps whose runtime sets `waits` (keep-alive) count as finished-waiting. Trace node rows are captured as reported, since the brain clears them when it stops. `flowTrace` finds a subflow by its flow's label (the subflow step's `flowRef`). `runFlow`'s timeout covers its sends and settling too.
@@ -180,13 +185,17 @@ A pack's unit tests run its code without the app: content, repositories and cont
 - **Exported types:** `PackTestOptions`, `ImportContentOptions`, `ContentRuntime`, `StartShellOptions`, `TestShell`, `TestPlugin`, `StartAppOptions`, `TestApp`, `FlowRun` (`eventTNodeIds`, `steps`), `FlowStepTrace`, `RunFlowOptions`, `PluginEvent`, `Message`.
 - **`importFlows(dsl)`** — compiles flow DSL (steps name the SDK's actions and prompts by label) and imports it through the SDK's `flowRepository`, as the flow applier does; `root: true` declares the root flow the brain starts with. It needs no dependency on default-setup.
 - **`registerPack(registration)`, `unregisterPack(packId)`** — another pack in the test file's registry, as the app registers an installed one (its commands, feature settings, appliers, …); default-setup's `library-commands`, `pack-settings-defaults` and `content-parity/edited-flows` specs use it.
+- **`getTestSettings()`** — the active test's host settings administration for fixture setup and assertions.
+  Use `forPack(id)` to exercise a registered fixture pack's caller policy; ordinary pack code continues to
+  use generated settings handles. Host data replacement fixtures use `whileReplacingData` so reads,
+  mutation refusal and feature notifications follow the real replacement lifecycle. Throws outside a test.
 - **`mockService(name, impl)`** — overlays a service in `services` for the current test; it throws outside a test (`beforeAll`, module scope), where the mock would lapse after the first test.
 - **`addTestSecret(provider, label)`** — stores a key's metadata (no value) in the test host's in-memory `services.secrets`, by the host's selection rules; emptied with the rest of the test data.
 - **`mockInference(reply, replies?)`** — mocks `services.inference` for the current test with `fakeInference(reply, replies)` (text, agents, and `embedding`, `image`, `speech`, `transcript` and `relevance` replies; `calls` kinds `text`, `embedding`, `image`, `speech`, `transcription`, `reranking`) (`@apackdev/sdk/testing`) and returns the fake, whose `calls` a test asserts.
 - **One SDK and engine instance.** The harness imports `@apackdev/sdk` and `@apackdev/ears` externally (the published bundle keeps the shared-instance packages external for this entry and declares them peer dependencies; `scripts/bundle-package.ts` `sharedExternalEntries`) and inlines `@apackdev/host`, so its registrations are the ones the pack's code and dependency runtimes see. `setupPackTests` first checks that the pack's `@apackdev/ears` is the copy its `@apackdev/sdk` loads (`src/shared-ears.ts`, `apack-testing/tests/shared-ears.spec.ts`): with versions that don't match, npm nests another copy under the SDK, the test runtime would install its engine there, and the pack's code would find none; the harness fails naming both copies, or asks to install `@apackdev/ears` when the pack has none. It then calls `assertCheckoutPackagesFresh` (`src/checkout-freshness.ts`), which fails naming `npm run packages:ensure` when this bundle is older than the checkout's sources — a stale bundle would load and silently test the previous `@apackdev/host`, which it inlines. For an installed package there is no checkout above it and the check is a no-op (`apack-testing/tests/checkout-freshness.spec.ts`, and `checkout-packages.spec.ts` for the checkout a pack's packages come from).
 - **The content runtime facet** (`src/__generated__/content-runtime.ts`, bundled by `apack pack build` into `dist/build/content-runtime.mjs` with only the shared-instance packages, `@apackdev/sdk` and `@apackdev/ears`, external) holds the pack's entity types, relation kinds, repositories and content writers. Everything it imports must load in a plain Node process: no `@apackdev/host` (rejected at build), no native modules, no optional SDK peers. `apack pack build` checks this for every pack (`apack-cli/src/build/content-runtime-check.ts`).
 - **Proofs:**
-  - `tests/packs/external-pack` unit-tests its memo content, its memos system, a memo flow on default-setup's brain, its `boot.onInit`/`onShutdown` pair around a test's apps (`boot-hooks.spec.ts`), and the harness's isolation (mocks, waits and calls ended by stop, events for systems before a client connects), run by `test:external-pack`.
+  - `tests/packs/external-pack` unit-tests its memo content, its memos system, a memo flow on default-setup's brain, its `lifecycle.onInit`/`onShutdown` pair around a test's apps (`boot-hooks.spec.ts`), and the harness's isolation (mocks, waits and calls ended by stop, events for systems before a client connects), run by `test:external-pack`.
   - `default-setup/tests/harness-app-stop.spec.ts`: a real schedule (an action step) ticks while its app runs and stops with it.
   - `apack-cli/tests/harness/harness-setup.integration.spec.ts`: `vitest run --root <pack>` from elsewhere, tests that run concurrently rejected (a lone concurrent test isn't), a second `setupPackTests` in one process (vitest `isolate: false`) rejected naming why, `apack pack add feature` adding the setup to a pack without one.
   - `apack-cli/tests/commands/scaffold-unit-test-setup.spec.ts`: that setup keeps any config vitest loads (`vitest.config.*`, `vite.config.*`), adds `@apackdev/testing` at the pack's `@apackdev/sdk` range (the two release at one version, and `@apackdev/testing` peers on `^<version>`), and names the upgrade for an `@apackdev/testing` without `./harness` or off the SDK range, or a vitest before 3.
@@ -369,9 +378,10 @@ The fixture honors the CLI's resolved `APACK_HOST_EXECUTABLE` or `APACK_HOST_ROO
 
 1. **Pack build/install** (if `PACK_DIR` is set):
    - Parse `apack.json` from `PACK_DIR` → extract pack `id` and `pluginIds`
-   - Always rebuild the pack with `apack pack build` (a stale `dist/` would otherwise be tested silently), including while `apack pack dev` runs for that pack: its marker means a dev server is up, not that `dist/` is current (N4 in `docs/archive/issues/postmortem-external-pack-calendar-extraction.md`). `PACK_ARCHIVE` skips the build and installs that packed `.tgz` as it is, so a run can exercise the artifact a release ships (`tests/scripts/test-packaged-authoring.sh` step 8), and is refused when it is older than the pack's `dist/`; everything else still comes from `PACK_DIR`
+   - Always rebuild the pack with `apack pack build` (a stale `dist/` would otherwise be tested silently), including while `apack pack dev` runs for that pack: its marker means a dev server is up, not that `dist/` is current (N4 in `docs/archive/issues/postmortem-external-pack-calendar-extraction.md`). `PACK_ARCHIVE` skips the build and installs that packed `.tgz` as it is, so a run can exercise the build a release ships (`tests/scripts/test-packaged-authoring.sh` step 8), and is compared against the local build's verified published-file hashes when `dist/` exists; that build's recorded inputs must remain current through installation. Without local `dist/`, the explicitly selected archive is verified and installed without source freshness comparison; `--release` requires a local release build for comparison. Everything else still comes from `PACK_DIR`
    - Install it into the worker's data dir with `installPackFromLocal()` — the same stage → verify → place bundle path users get — passing `hostVersion`: the launched app's version (`src/app-version.ts`: the checkout's `package.json`, or the packaged app's `Resources/app/package.json` / `resources/app/package.json`), so a pack whose manifest `hostVersion` excludes it fails to install
-   - It passes no `packFormat`. Whether the app can read a pack's build is the app's to decide, and it decides at boot, naming which side is older; the fixture reports that verdict (step 6) instead of forming its own. It has no way to form one: the app's `host.json` is written at its first boot, after this install, the CLI running the fixture needn't be the app's, and inferring the app's format from an artifact it ships (a built-in pack's snapshot) refuses good packs whenever that artifact is the stale one. `packs/runtime/load-messages.spec.ts` pins that a refusal reaches the fixture as a line it matches
+   - `--prebuilt` (`APACK_PACK_PREBUILT`) skips compilation, verifies the sealed output and replays its completed source/dependency observations through `src/prebuilt-pack.ts`. The recorded compiler/execution context belongs to that build, not the Playwright process. `APACK_PACK_RELEASE` additionally requires the recorded `--release` option. Missing output, modified bytes and changed inputs refuse before app startup; timestamps do not establish freshness. `tests/prebuilt-pack.spec.ts` covers these boundaries.
+   - It passes no `packFormat`. Whether the app can read a pack's build is the app's to decide, and it decides at boot, naming which side is older; the fixture reports that verdict (step 6) instead of forming its own. It has no way to form one: the app's `host.json` is written at its first boot, after this install, the CLI running the fixture needn't be the app's, and inferring the app's format from a build it ships (a built-in pack's snapshot) refuses good packs whenever that build is the stale one. `packs/runtime/load-messages.spec.ts` pins that a refusal reaches the fixture as a line it matches
    - Build uses `APACK_CLI` (set by `apack pack test`), else the `@apackdev/cli` the pack resolves, else the checkout's; it runs as `node <bin> build`
    - After the app connects, the fixture fails the test if the pack's installed-packs entry has a `lastError` (its data failed to write)
 
@@ -379,7 +389,7 @@ The fixture honors the CLI's resolved `APACK_HOST_EXECUTABLE` or `APACK_HOST_ROO
 
 3. **Debug logging** (if `DEBUG_E2E=1`): pipes Electron's stdout/stderr to the test terminal with `[electron]` prefix
 4. **A log file, always**: the same output goes to `app-<workerIndex>.log` in Playwright's `outputDir` —
-   `tests/results/` under `apack pack test`, `drive/results/` under `npm run dev:drive --`. Playwright wipes that
+   `.apack/tests/results/` under `apack pack test`, `.apack/drive/results/` under `npm run dev:drive --`. Playwright wipes that
    directory at the start of every run, so it is always the last run and never an archive. It is what a
    fixture failure now names, in place of asking for a re-run under `DEBUG_E2E`; the app's own
    electron-log files live in the data dir, which an ephemeral drive session deletes on the way out.
@@ -400,7 +410,7 @@ The fixture honors the CLI's resolved `APACK_HOST_EXECUTABLE` or `APACK_HOST_ROO
 ### Teardown
 
 - Per-test: `pageerror` and `console` listeners are removed
-- Per-worker: `electronApp.close()` shuts down Electron
+- Per-worker: `electronApp.close()` shuts down Electron. The fixture captures the API pid before close and fails if that child is still alive afterwards; Electron quit must finish API shutdown before fixture-owned data can be cleaned up.
 
 ## API reference
 
@@ -421,7 +431,7 @@ The fixture honors the CLI's resolved `APACK_HOST_EXECUTABLE` or `APACK_HOST_ROO
 | `getState()` | Returns `snapshot.value` (e.g. `{ running: 'connected' }`) |
 | `getContext()` | Returns `{ activePluginId, pluginIds }` |
 | `sendEvent(event)` | Send any event object to `applicationState` |
-| `report(name, value)` | Write `drive/results/{name}.json` and print one `[drive:report] {name} {json}` line, for a driving run whose answer is meant to be read by a program rather than watched. Returns the path |
+| `report(name, value)` | Write `.apack/drive/results/{name}.json` and print one `[drive:report] {name} {json}` line, for a driving run whose answer is meant to be read by a program rather than watched. Returns the path |
 | `waitForState(check, ms?)` | Wait for dot-separated state path (e.g. `'running.connected'`), default 10s |
 | `waitForPlugin(pluginId, ms?)` | Wait for a plugin to appear in the plugin list, default 30s |
 
@@ -445,9 +455,9 @@ Screenshot output location depends on context:
 | Context | Screenshot directory |
 |---------|---------------------|
 | `screenshotDir` option passed | The specified directory |
-| `E2E_SCREENSHOT_DIR` is set | That directory — how `npm run dev:drive --` keeps its output in `drive/screenshots/` rather than under `tests/`, since the option cannot reach the `test` a script imports |
-| `PACK_DIR` is set | `{PACK_DIR}/tests/screenshots/` |
-| Default | `{cwd}/tests/screenshots/` |
+| `E2E_SCREENSHOT_DIR` is set | That directory — how `npm run dev:drive --` keeps its output in `.apack/drive/screenshots/` rather than under `tests/`, since the option cannot reach the `test` a script imports |
+| `PACK_DIR` is set | `{PACK_DIR}/.apack/tests/screenshots/` |
+| Default | `{cwd}/.apack/tests/screenshots/` |
 
 ## Environment variables
 
@@ -458,11 +468,11 @@ Screenshot output location depends on context:
 | `APACK_CLI` | The apack bin that builds the pack. Set by `apack pack test`. |
 | `APACK_HOST` | `beta`: `apack pack test` and `apack pack build` use the newest matching apack Beta (CI; the scaffolded release workflow sets it). |
 | `PACK_DIR` | Path to an external pack directory. Triggers build/install and plugin waiting. |
-| `PACK_ARCHIVE` | A packed `<id>-<version>.tgz` to install instead of building `PACK_DIR`, so the run tests what a release ships. Refused when it is older than the pack's `dist/`: skipping the rebuild is for testing the shipped artifact, not for testing a stale one. |
+| `PACK_ARCHIVE` | A packed `<id>-<version>.tgz` to install instead of building `PACK_DIR`, so the run tests what a release ships. When local `dist/` exists, verifies its recorded inputs and requires matching published-file hashes at installation acceptance. Without it, verifies the selected archive independently; `--release` requires local release output for comparison. |
 | `E2E_KEEP_DATA` | Set to `1` to keep each worker's temp data dir for debugging. |
 | `E2E_DATA_DIR` | A data dir the caller owns and keeps, used instead of the per-worker temp one and never cleaned up. Set by `npm run dev:drive --` for a profile. **`apack pack test` strips it** (`fixtureEnv`), so a pinned run cannot be aimed at a directory by the shell it was started from. |
-| `E2E_SCREENSHOT_DIR` | Where `app.screenshot()` writes, ahead of the `PACK_DIR` and cwd fallbacks. Set by `npm run dev:drive --` to `drive/screenshots/`, and stripped by `apack pack test` for the same reason. |
-| `E2E_REPORT_DIR` | Where `app.report()` writes, ahead of the same two fallbacks (`drive/results/`). Set by this repo's `drive` scripts and stripped by `apack pack test`, for the reason the two above are: the run decides where its output lands, not the shell that started it. |
+| `E2E_SCREENSHOT_DIR` | Where `app.screenshot()` writes, ahead of the `PACK_DIR` and cwd fallbacks. Set by `npm run dev:drive --` to `.apack/drive/screenshots/`, and stripped by `apack pack test` for the same reason. |
+| `E2E_REPORT_DIR` | Where `app.report()` writes, ahead of the same two fallbacks (`.apack/drive/results/`). Set by this repo's `drive` scripts and stripped by `apack pack test`, for the reason the two above are: the run decides where its output lands, not the shell that started it. |
 | `PLAYWRIGHT_TEST` | Set automatically to `'true'` by the fixture. The app resolves the `test` environment (`apack-test` name, lock and data dir), crashes on uncaught errors, and runs headless (suppresses window display and splash screen). |
 | `APACK_USER_DATA_DIR` | Optional. Overrides the app's data dir (e.g. an isolated temp dir); read through `@apackdev/sdk/env`. |
 | `DEBUG_E2E` | Set to `1` to pipe Electron stdout/stderr to the test terminal. |
@@ -492,3 +502,12 @@ PACK_DIR=/path/to/my-pack npm run test:e2e -- tests/e2e/scratch
 - **Pack manifest caching**: `getPackManifest()` reads and parses `apack.json` once per process, cached at module scope. Plugin IDs are the keys of `features` entries with a `plugin` (the manifest's `plugin` has no `id`).
 - **Dev server marker**: `apack pack dev` writes `{devUserDataDir}/pack-dev-servers/{packId}.json` containing `{ port, pid }` for the dev app's HMR. The E2E fixture ignores it: tests always run a fresh build in an isolated data dir.
 - **`pack://` protocol**: Custom Electron protocol (`packages/main/src/modules/pack-protocol/PackProtocol.ts`) that reads the marker through `devServerUrl` (`@apackdev/host/packs/dev-server`) and proxies to the Vite dev server if present, otherwise serves files from disk.
+
+
+### Shutdown sampling
+
+`DEBUG_E2E=sample` enables the existing lifecycle diagnostics and, on macOS, captures a two-second
+native sample if the fixture's own Electron process still has not exited five seconds into teardown.
+The sample is written beside its `app-<worker>.log`. It changes no close timeout or test assertion;
+normal test runs do not invoke the sampler. This distinguishes a live native shutdown stall from an
+application that exited while its driver is waiting for another resource.

@@ -82,7 +82,7 @@ class WindowManager implements AppModule {
         if (response === 0) {
           app.relaunch();
         }
-        app.exit(0);
+        app.quit();
         return;
       }
     }
@@ -321,7 +321,7 @@ class WindowManager implements AppModule {
         meta: entry.meta,
       };
 
-      if (entry.fatal || level === 'error') {
+      if (entry.fatal ?? (level === 'error')) {
         logRendererFatal(payload.message || 'renderer error', payload);
       } else {
         logRenderer(level, payload);

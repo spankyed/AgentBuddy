@@ -51,7 +51,7 @@ describe('what each published tree is asked', () => {
   it('asks publint alone of a tree that publishes no declarations', () => {
     const checks = checksFor([tree('apack-cli', { bin: { apack: './bin/apack.mjs' } })], packInto);
     expect(checks.map(({ label }) => label)).toEqual(['publint apack-cli']);
-    // It still gets a tarball: what attw has nothing to say about is the declarations, not the artifact
+    // It still gets a tarball: what attw has nothing to say about is the declarations, not the package
     expect(checks[0]!.args).toEqual(['--strict', '/tmp/packed/publish.tgz']);
   });
 

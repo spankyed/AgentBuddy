@@ -7,4 +7,4 @@ favorite: true
 
 # Hello
 
-See [the plan](note://Note-external-plan) for details.
+See [the plan](apack-ref://note/Note-external-plan) for details.

@@ -38,9 +38,7 @@ export interface ActionSender {
 
 // @public
 export interface AppDataService {
-    completeOnboarding(): void;
     exportBackup(targetPath: string, name?: string, databases?: BackupDatabase[]): Promise<string>;
-    hasOnboarded(): boolean;
     importBackup(backupPath: string, options?: {
         skipUnknownDatabases?: boolean;
     }): Promise<{
@@ -67,14 +65,35 @@ export interface BackupSummary {
     timestamp: number;
 }
 
+// @internal
+export function _captureHostServices(): {
+    current: () => boolean;
+    forAction(sender: ActionSender): {
+        logger: Logger;
+        emitter: {
+            broadcastToPlugin: typeof untypedBroadcastToPlugin;
+            sendToWindow: typeof untypedSendToWindow;
+            sendToSystem: typeof untypedSendToSystem;
+        };
+    };
+    get(name: string): unknown;
+};
+
 // @public
 export function createActionEmitter(sender?: ActionSender): HostServices['emitter'];
 
 // @internal
 export function _createInferenceService(resolveModel: _ResolveModel): InferenceService;
 
-// @public
-export function _featureSettings<T>(feature: FeatureRef, service: () => SettingsService): FeatureSettingsAccess<T>;
+// @internal
+export function _createPackServices(): {
+    settingsHandle: <T>(target: SettingsTarget) => SettingsHandle<T>;
+    readonly services: Readonly<Record<string, unknown>> & {
+        readonly settings: SettingsService;
+    };
+    readonly servicesForAction: (label: string) => Readonly<Record<string, unknown>>;
+    bindServices(services: PackServiceAccess): () => void;
+};
 
 // @public
 export interface FileEntry {
@@ -117,6 +136,7 @@ export interface HostServices {
     inference: InferenceService;
     // (undocumented)
     logger: Logger;
+    onboarding: OnboardingService;
     // (undocumented)
     repository: typeof repository;
     secrets: SecretsService;
@@ -157,6 +177,12 @@ export interface InferenceService {
 export type ModelId = `${ProviderName}:${string}`;
 
 // @public
+export interface OnboardingService {
+    complete(): void;
+    isComplete(): boolean;
+}
+
+// @public
 export type OutputSchema = FlexibleSchema<unknown> | JSONSchema7;
 
 // @public
@@ -176,6 +202,14 @@ export type OutputSpec = {
     type: 'choice';
     options: readonly string[];
 } & OutputNaming);
+
+// @public
+export interface PackServiceAccess {
+    // (undocumented)
+    readonly services: Readonly<Record<string, unknown>>;
+    // (undocumented)
+    readonly servicesForAction: (label: string) => Readonly<Record<string, unknown>>;
+}
 
 // @public
 export type ProviderName = 'google' | 'anthropic' | 'openai' | 'groq' | 'mistral' | 'cohere';
@@ -244,27 +278,44 @@ export interface SecretsStatus {
 }
 
 // @public
-export const services: HostServices & Record<string, unknown>;
+export interface SettingsAdmin extends SettingsService {
+    // (undocumented)
+    forPack(packId: string): SettingsService;
+    // (undocumented)
+    getAll(): SettingsDocument;
+    // (undocumented)
+    getOverrides(): SettingsOverrides;
+    // (undocumented)
+    getSnapshot(): SettingsSnapshot;
+    // (undocumented)
+    removeOverrides(path: readonly string[]): void;
+    // (undocumented)
+    replaceAll(document: unknown, condition?: SettingsWriteCondition): void;
+    // (undocumented)
+    resetAll(): void;
+    // (undocumented)
+    whileReplacingData<T>(replace: () => Promise<T>): Promise<T>;
+}
 
-// @public
-export type SettingsChange = 'written' | 'replacing' | 'replaced';
-
-// @public
-export type SettingsFeatureName = FeatureRef | `${string}/${string}`;
+// @internal
+export function _settingsAdmin(): SettingsAdmin;
 
 // @public (undocumented)
+export type SettingsChange = 'written' | 'replacing' | 'replaced';
+
+// @internal
+export function _settingsHandle<T>(target: SettingsTarget, service: SettingsService): SettingsHandle<T>;
+
+// @public
 export interface SettingsService {
-    forFeature<T = unknown>(name: SettingsFeatureName): T;
-    getAll<T = Record<string, unknown>>(): T;
-    getSection<T = unknown>(section: string): T;
-    getStored<T = Record<string, unknown>>(): T;
+    // (undocumented)
+    get<T = unknown>(target: SettingsTarget): T;
+    // (undocumented)
     onChange(listener: (change: SettingsChange) => void): () => void;
-    removeStored(path: readonly string[]): void;
-    replaceAll(settings: unknown): void;
-    reset(): void;
-    setForFeature(name: SettingsFeatureName, path: readonly string[], value: unknown): void;
-    setInSection(section: string, path: readonly string[], value: unknown): void;
-    whileReplacingData<T>(replace: () => Promise<T>): Promise<T>;
+    // (undocumented)
+    reset(target: SettingsTarget): void;
+    // (undocumented)
+    set(target: SettingsTarget, path: readonly string[], value: unknown, condition?: SettingsWriteCondition): void;
 }
 
 // @internal

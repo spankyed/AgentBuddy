@@ -20,8 +20,8 @@ const MANIFEST: PackManifest = {
   id: 'entry-pack',
   name: 'Entry',
   version: '1.0.0',
-  features: { tags: { system: { entry: 'src/system.ts', contract: 'src/contract.ts#Contract' } } },
-} as PackManifest;
+  features: { tags: { description: 'Manage tags.', system: { entry: 'src/system.ts', contract: 'src/contract.ts#Contract' } } },
+};
 
 const CONTRACT = [
   "export type IncomingTagsEvents = { type: 'ADD_TAG'; name: string };",
@@ -59,7 +59,7 @@ async function gate(declaration: 'bare' | 'annotation'): Promise<{ problems: str
     fs.writeFileSync(path.join(dir, rel), content);
   }
   if (!fs.existsSync(path.join(dir, 'node_modules'))) fs.symlinkSync(path.join(REPO_ROOT, 'node_modules'), path.join(dir, 'node_modules'), 'dir');
-  for (const [rel, content] of Object.entries(generatePackFiles(MANIFEST, { packRoot: dir }))) {
+  for (const [rel, content] of Object.entries(await generatePackFiles(MANIFEST, { packRoot: dir }))) {
     fs.mkdirSync(path.dirname(path.join(dir, rel)), { recursive: true });
     fs.writeFileSync(path.join(dir, rel), content);
   }

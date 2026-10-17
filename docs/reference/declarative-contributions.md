@@ -2,15 +2,20 @@
 
 Status: current-code reference, revised 2026-10-12. The implementation target is
 [discovery without activation](../plans/discovery-without-activation.md); ordering and transferred
-manifest decisions live in [manifest maturity](../plans/manifest-maturity.md). Re-audit exact API names
-after the in-flight naming goal. This reference is not a competing implementation plan.
+manifest decisions live in [manifest maturity](../plans/manifest-maturity.md). Naming is complete;
+apply its settled contracts to new interfaces. This reference is not a competing implementation plan.
 
 ## What is already data
 
 `apack.json` names features, dependencies, host compatibility, entity/relation names and many keyed
 extensions: steps, artifacts, blocks, commands, services, DSL and frontend slots. Built snapshots carry
-manifests, facade/type artifacts and partial provenance. Compiled content and integrity indexes already
+manifests, facade/type declarations and partial provenance. Compiled content and integrity indexes already
 exist. Offline database tooling reads schema data without pack runtime imports.
+
+The working settings extraction declares schemas and defaults inline for pack groups and features;
+host app preferences use the same definition contract. The installed contribution catalog exposes
+these definitions without activation, including disabled packs. Custom forms remain executable
+presentation bindings. There is no pack-owned app-settings assembly or settings-section thunk.
 
 This is partial discovery, not an absence of discovery. A keyed declaration identifies a contribution;
 its executable path is a binding reference, not a reason to execute it when listing its existence.
@@ -19,15 +24,13 @@ See [extension authoring](../public-facing/extensions.md) for the current manife
 ## What still depends on executable registration
 
 Generated backend/frontend entries import implementation modules and assemble registration objects.
-Some static facts are embedded in those objects rather than exposed in a complete data artifact:
+Some static facts are embedded in those objects rather than exposed in a complete data declaration:
 
 - Plugin labels, icons, default-navigation claims and pane metadata.
-- Feature settings schemas/defaults and globally merged `settingsSections`.
 - Reference protocols/categories and anonymous editor contribution lists.
 - Help articles, some step palette metadata and generated event contracts.
 
-Current readers combine installed declarations with runtime registration: settings unions installed and
-registered feature refs, pack details lose extension information while inactive, and shell navigation
+Other readers still depend on runtime registration: pack details lose extension information while inactive, and shell navigation
 learns destinations/default claims as frontend imports finish. The discovery plan records the exact
 consumer/refactor inventory. The old claim that events are the only remaining gap is incorrect.
 
@@ -46,7 +49,7 @@ eligible and active status separately.
 ## Checks move earlier; rollback remains
 
 Descriptor ownership and compatibility checks can run before activation. Runtime binding checks still
-protect against mismatched artifacts, and executable registration can fail after acquiring resources.
+protect against mismatched builds, and executable registration can fail after acquiring resources.
 Keep owned contribution stores, undo logs, teardown and replacement rollback. Knowing an actor's address
 or event contract does not make the actor ready; catalog discovery cannot replace delivery handshakes.
 
@@ -58,8 +61,8 @@ runtime behavior. In-process contract enforcement is not a security sandbox. Fol
 
 Descriptor/codegen/runtime freshness must agree, including in source/HMR workflows. A failed rebuild
 retains the last valid committed view and reports staleness. Installed descriptor inspection must never
-activate code to fill a missing field. Unsupported/malformed artifacts receive explicit diagnostics.
+activate code to fill a missing field. Unsupported/malformed builds receive explicit diagnostics.
 
-[Recorded artifacts](recorded-artifacts.md) documents artifact derivation rules. The discovery plan owns
+[Recorded files](recorded-files.md) documents recorded-file derivation rules. The discovery plan owns
 coverage fixtures, import-time-throw proof, consumer regressions and format/API checks. Historical plans
 in the archive preserve earlier proposals; their example manifests are not current schema instructions.

@@ -3,7 +3,7 @@
 // both are answered by a pid, which is why each carries a record of the boot it was written in.
 //
 // The unit tests for these live in @apackdev/host. This one boots the real composition, because what both
-// regressions broke was the boot: one refused to start at all, the other deleted a pack on the way up.
+// regressions broke was the lifecycle: one refused to start at all, the other deleted a pack on the way up.
 import { spawnSync } from 'node:child_process';
 import * as fs from 'node:fs';
 import * as os from 'node:os';
@@ -14,7 +14,7 @@ import { _appDirOf } from '@apackdev/sdk/env';
 const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'api-boot-recovery-'));
 process.env.APACK_ENV = 'test';
 process.env.APACK_USER_DATA_DIR = dataDir;
-const backend = await import('@/runtime');
+const backend = await import('../../src/runtime/index.ts');
 
 /** A process id no process has any more */
 function exitedPid(): number {

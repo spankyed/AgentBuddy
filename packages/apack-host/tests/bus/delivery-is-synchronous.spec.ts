@@ -1,3 +1,4 @@
+import { createNativePackTestRegistry } from '@apackdev/host/testing';
 // The delivery scope lasts exactly as long as the call that delivers the message, and no longer.
 //
 // That is a decision, not a limitation left in place. It was an `AsyncLocalStorage` while `reply()` read the
@@ -12,10 +13,9 @@ import { beforeEach, describe, expect, it } from 'vitest';
 import { startTestRuntime, testRootEvents } from '@apackdev/sdk/testing';
 import { _currentDelivery, untypedSendToSystem } from '@apackdev/sdk/events';
 import { HOST_ENTITY_TYPES } from '../../src/app-state/index.ts';
-import { createPackRegistry } from '../../src/packs/registry.ts';
 import { deliverAs } from '../../src/bus/delivery.ts';
 
-startTestRuntime({ entityTypes: HOST_ENTITY_TYPES, packs: createPackRegistry() });
+startTestRuntime({ entityTypes: HOST_ENTITY_TYPES, packs: createNativePackTestRegistry() });
 
 const ASKED = { to: 'pack/feature', sender: 'pack/asker', client: 'c-1' };
 

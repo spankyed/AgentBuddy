@@ -1,15 +1,12 @@
-import { z } from 'zod';
 // Every feature, any pack's, hears when its settings change: its system (with what changed in its lists) and its
 // plugin get FEATURE_SETTINGS_UPDATED, which the SDK declares for every system and plugin, whatever changed the
 // settings. A feature with no system, or no plugin, just doesn't get that half.
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { assign, setup } from 'xstate';
-import { mockService, registerPack, startApp, takeSystemErrors, unregisterPack } from '@apackdev/testing/harness';
+import { getTestSettings, mockService, registerPack, startApp, takeSystemErrors, unregisterPack } from '@apackdev/testing/harness';
 import { untypedTx } from '@apackdev/ears';
 import type { EARS } from '@apackdev/sdk';
 
-import { services } from '#generated/services.ts';
-import { resolveName } from '@apackdev/sdk/ids';
 
 /** A system that keeps each FEATURE_SETTINGS_UPDATED it gets */
 const recorder = setup({ types: { context: {} as { heard: unknown[] } } }).createMachine({
@@ -21,9 +18,9 @@ beforeEach(() => {
   registerPack({
     id: 'memo-pack',
     features: {
-      memos: { system: { machine: recorder, receives: [] }, plugin: { receives: [] }, settings: { defaults: { tags: [{ name: 'a' }] }, schema: z.record(z.unknown()) } },
+      memos: { system: { machine: recorder, receives: [] }, plugin: { receives: [] }, settings: { defaults: { tags: [{ name: 'a' }] }, schema: { type: 'object' } } },
       // Settings but no system: only its plugin hears
-      board: { plugin: { receives: [] }, settings: { defaults: { columns: 2 }, schema: z.record(z.unknown()) } },
+      board: { plugin: { receives: [] }, settings: { defaults: { columns: 2 }, schema: { type: 'object' } } },
     },
   });
 });
@@ -39,7 +36,7 @@ describe('a feature whose settings change', () => {
     const app = await startApp({ systems: ['memo-pack/memos', 'host/settings'] });
     await app.connect();
 
-    await app.send('host/settings', { type: 'UPDATE_SETTINGS', entityType: 'feature', label: 'memo-pack/memos', path: ['tags'], value: [{ name: 'b' }] });
+    await app.send('host/settings', { type: 'UPDATE_SETTINGS', target: { kind: 'feature', featureRef: 'memo-pack/memos' }, path: ['tags'], value: [{ name: 'b' }] }, { settingsAccess: { kind: 'host', service: getTestSettings() } });
 
     expect(heardBy(app)).toEqual([{
       type: 'FEATURE_SETTINGS_UPDATED',
@@ -54,11 +51,13 @@ describe('a feature whose settings change', () => {
     const app = await startApp({ systems: ['memo-pack/memos', 'host/settings'] });
     await app.connect();
 
-    await app.send('host/settings', { type: 'REPLACE_SETTINGS', data: { general: {}, features: { 'memo-pack/board': { columns: 3 } } } });
+    const replacement = getTestSettings().getAll();
+    replacement.features['memo-pack/board'] = { columns: 3 };
+    await app.send('host/settings', { type: 'REPLACE_SETTINGS', data: replacement }, { settingsAccess: { kind: 'host', service: getTestSettings() } });
     expect(heardBy(app)).toEqual([]);
     expect(app.emitted('memo-pack/board')).toContainEqual({ type: 'FEATURE_SETTINGS_UPDATED', settings: { columns: 3 } });
 
-    await app.send('host/settings', { type: 'RESET_SETTINGS' });
+    await app.send('host/settings', { type: 'RESET_ALL_SETTINGS' }, { settingsAccess: { kind: 'host', service: getTestSettings() } });
     expect(app.emitted('memo-pack/board')).toContainEqual({ type: 'FEATURE_SETTINGS_UPDATED', settings: { columns: 2 } });
     expect(heardBy(app)).toEqual([]);
     // The board runs no system: its half of the event is nobody's, and nothing warns of a missing system
@@ -72,11 +71,11 @@ describe('a feature whose settings change', () => {
     const app = await startApp({ systems: ['memo-pack/memos', 'host/settings'] });
     await app.connect();
 
-    services.settings.setForFeature(resolveName('memo-pack/memos'), ['tags'], [{ name: 'c' }]);
+    getTestSettings().forPack('memo-pack').set({ kind: 'feature', featureRef: 'memo-pack/memos' }, ['tags'], [{ name: 'c' }]);
     await app.settle();
     expect(heardBy(app).map((e) => e.settings)).toEqual([{ tags: [{ name: 'c' }] }]);
 
-    await app.send('host/settings', { type: 'UPDATE_SETTINGS', entityType: 'feature', label: 'memo-pack/board', path: ['columns'], value: 4 });
+    await app.send('host/settings', { type: 'UPDATE_SETTINGS', target: { kind: 'feature', featureRef: 'memo-pack/board' }, path: ['columns'], value: 4 }, { settingsAccess: { kind: 'host', service: getTestSettings() } });
     expect(heardBy(app)).toHaveLength(1);
   });
 
@@ -84,8 +83,7 @@ describe('a feature whose settings change', () => {
     const app = await startApp({ systems: ['memo-pack/memos', 'host/settings'] });
     await app.connect();
 
-    (services.settings as { setForFeature(plugin: string, path: string[], value: unknown): void })
-      .setForFeature('memo-pack/memos', ['tags'], [{ name: 'd' }]);
+    getTestSettings().forPack('memo-pack').set({ kind: 'feature', featureRef: 'memo-pack/memos' }, ['tags'], [{ name: 'd' }]);
     await app.settle();
 
     expect(heardBy(app).map((e) => e.settings)).toEqual([{ tags: [{ name: 'd' }] }]);
@@ -96,10 +94,10 @@ describe('a feature whose settings change', () => {
   describe('an app reset', () => {
     /** A reset that writes the settings as the real one does, then succeeds or throws */
     const resetWriting = (tags: unknown[], outcome: 'succeeds' | 'fails') => mockService('appData', {
-      reset: async () => {
-        services.settings.setForFeature(resolveName('memo-pack/memos'), ['tags'], tags);
+      reset: () => getTestSettings().whileReplacingData(async () => {
+        getTestSettings().set({ kind: 'feature', featureRef: 'memo-pack/memos' }, ['tags'], tags);
         if (outcome === 'fails') throw new Error('store could not reopen');
-      },
+      }),
     });
 
     it.each(['succeeds', 'fails'] as const)('tells each feature its settings with no changes once it %s', async (outcome) => {
@@ -107,11 +105,11 @@ describe('a feature whose settings change', () => {
       const app = await startApp({ systems: ['memo-pack/memos', 'host/settings'] });
       await app.connect();
 
-      await app.send('host/settings', { type: 'RESET_APP' });
+      await app.send('host/settings', { type: 'RESET_APP' }, { settingsAccess: { kind: 'host', service: getTestSettings() } });
       await app.settle();
 
       expect(heardBy(app)).toEqual([{ type: 'FEATURE_SETTINGS_UPDATED', settings: { tags: [{ name: 'fresh' }] }, changes: null }]);
-      await app.send('host/settings', { type: 'UPDATE_SETTINGS', entityType: 'feature', label: 'memo-pack/board', path: ['columns'], value: 5 });
+      await app.send('host/settings', { type: 'UPDATE_SETTINGS', target: { kind: 'feature', featureRef: 'memo-pack/board' }, path: ['columns'], value: 5 }, { settingsAccess: { kind: 'host', service: getTestSettings() } });
       expect(heardBy(app)).toHaveLength(1);
       if (outcome === 'fails') takeSystemErrors();
     });
@@ -120,10 +118,10 @@ describe('a feature whose settings change', () => {
   // An import replaces the stored rows past the settings' writer, so nothing else tells the features
   it('tells each feature its settings with no changes after a backup import, and not a diff across it later', async () => {
     mockService('appData', {
-      importBackup: async () => {
+      importBackup: () => getTestSettings().whileReplacingData(async () => {
         untypedTx('Settings-app' as EARS.EntityId).put('data', { features: { 'memo-pack/memos': { tags: [{ name: 'imported' }] } } })
         return { databases: ['lmdb'], missingDatabases: [], unknownEntityTypes: [] }
-      },
+      }),
     });
     const app = await startApp({ systems: ['database', 'memo-pack/memos', 'host/settings'] });
     await app.connect();
@@ -132,7 +130,7 @@ describe('a feature whose settings change', () => {
     await app.settle();
 
     expect(heardBy(app)).toEqual([{ type: 'FEATURE_SETTINGS_UPDATED', settings: { tags: [{ name: 'imported' }] }, changes: null }]);
-    await app.send('host/settings', { type: 'UPDATE_SETTINGS', entityType: 'feature', label: 'memo-pack/board', path: ['columns'], value: 6 });
+    await app.send('host/settings', { type: 'UPDATE_SETTINGS', target: { kind: 'feature', featureRef: 'memo-pack/board' }, path: ['columns'], value: 6 }, { settingsAccess: { kind: 'host', service: getTestSettings() } });
     expect(heardBy(app)).toHaveLength(1);
   });
 
@@ -140,15 +138,15 @@ describe('a feature whose settings change', () => {
   // against what features heard before the import would have them rewrite rows that came in with it
   describe('a backup import whose migrations write the settings', () => {
     const importWriting = (outcome: 'succeeds' | 'fails') => mockService('appData', {
-      importBackup: async () => {
+      importBackup: () => getTestSettings().whileReplacingData(async () => {
         // Before the import's first await, and after it: the writes tell nothing whenever they happen
-        services.settings.setForFeature(resolveName('memo-pack/memos'), ['tags'], [{ name: 'early' }]);
+        getTestSettings().set({ kind: 'feature', featureRef: 'memo-pack/memos' }, ['tags'], [{ name: 'early' }]);
         await Promise.resolve();
         untypedTx('Settings-app' as EARS.EntityId).put('data', { features: { 'memo-pack/memos': { tags: [{ name: 'imported' }] } } });
-        services.settings.setForFeature(resolveName('memo-pack/memos'), ['tags'], [{ name: 'migrated' }]);
+        getTestSettings().set({ kind: 'feature', featureRef: 'memo-pack/memos' }, ['tags'], [{ name: 'migrated' }]);
         if (outcome === 'fails') throw new Error('backup unreadable');
         return { databases: ['lmdb'], missingDatabases: [], unknownEntityTypes: [] };
-      },
+      }),
     });
 
     it.each(['succeeds', 'fails'] as const)('tells each feature no changes when it %s', async (outcome) => {
@@ -160,7 +158,7 @@ describe('a feature whose settings change', () => {
       await app.settle();
 
       expect(heardBy(app)).toEqual([{ type: 'FEATURE_SETTINGS_UPDATED', settings: { tags: [{ name: 'migrated' }] }, changes: null }]);
-      await app.send('host/settings', { type: 'UPDATE_SETTINGS', entityType: 'feature', label: 'memo-pack/board', path: ['columns'], value: 7 });
+      await app.send('host/settings', { type: 'UPDATE_SETTINGS', target: { kind: 'feature', featureRef: 'memo-pack/board' }, path: ['columns'], value: 7 }, { settingsAccess: { kind: 'host', service: getTestSettings() } });
       expect(heardBy(app)).toHaveLength(1);
     });
   });
@@ -170,13 +168,13 @@ describe('a feature whose settings change', () => {
     const app = await startApp({ systems: ['memo-pack/memos', 'host/settings'] });
     await app.connect();
 
-    await app.send('host/settings', { type: 'UPDATE_SETTINGS', entityType: 'feature', label: 'memo-pack/memos', path: ['tags'], value: [] });
+    await app.send('host/settings', { type: 'UPDATE_SETTINGS', target: { kind: 'feature', featureRef: 'memo-pack/memos' }, path: ['tags'], value: [] }, { settingsAccess: { kind: 'host', service: getTestSettings() } });
     expect(app.emitted('host/settings')).toContainEqual({ type: 'SETTINGS_SAVED' });
 
-    await app.send('host/settings', { type: 'UPDATE_SETTINGS', entityType: 'feature', label: 'memos', path: ['tags'], value: [] });
+    await app.send('host/settings', { type: 'UPDATE_SETTINGS', target: { kind: 'feature', featureRef: 'memos' }, path: ['tags'], value: [] }, { settingsAccess: { kind: 'host', service: getTestSettings() } });
     expect(app.emitted('host/settings')).toContainEqual({
       type: 'SETTINGS_REFUSED',
-      problems: [expect.stringContaining('did you mean "memo-pack/memos"?')],
+      problems: [expect.stringContaining('settings target')],
     });
   });
 
@@ -187,7 +185,7 @@ describe('a feature whose settings change', () => {
     async function importing(app: Awaited<ReturnType<typeof startApp>>) {
       let finish!: () => void;
       const done = new Promise<void>((resolve) => { finish = resolve; });
-      mockService('appData', { importBackup: async () => { await done; return { databases: ['lmdb'], missingDatabases: [], unknownEntityTypes: [] }; } });
+      mockService('appData', { importBackup: () => getTestSettings().whileReplacingData(async () => { await done; return { databases: ['lmdb'], missingDatabases: [], unknownEntityTypes: [] }; }) });
       await app.send('database', { type: 'IMPORT_DATABASE', path: '/backups/1' });
       return { finish };
     }
@@ -197,7 +195,7 @@ describe('a feature whose settings change', () => {
       await app.connect();
       const { finish } = await importing(app);
 
-      await app.send('host/settings', { type: 'RESET_APP' });
+      await app.send('host/settings', { type: 'RESET_APP' }, { settingsAccess: { kind: 'host', service: getTestSettings() } });
 
       expect(app.emitted('host/settings')).toContainEqual({ type: 'APP_RESET_FAILED', error: expect.stringContaining('backup is being imported') });
       finish();
@@ -207,13 +205,13 @@ describe('a feature whose settings change', () => {
     it("tells no feature a pack's settings changed until it ends", async () => {
       const app = await startApp({ systems: ['database', 'memo-pack/memos', 'host/settings'] });
       await app.connect();
-      services.settings.setForFeature(resolveName('memo-pack/memos'), ['tags'], [{ name: 'before' }]);
+      getTestSettings().forPack('memo-pack').set({ kind: 'feature', featureRef: 'memo-pack/memos' }, ['tags'], [{ name: 'before' }]);
       await app.settle();
       const heardBefore = heardBy(app).length;
       const { finish } = await importing(app);
 
       untypedTx('Settings-app' as EARS.EntityId).put('data', { features: { 'memo-pack/memos': { tags: [{ name: 'imported' }] } } });
-      await app.send('host/settings', { type: 'PACK_CHANGED', packId: 'memo-pack' });
+      await app.send('host/settings', { type: 'PACK_CHANGED', packId: 'memo-pack' }, { settingsAccess: { kind: 'host', service: getTestSettings() } });
       expect(heardBy(app)).toHaveLength(heardBefore);
 
       finish();
@@ -228,7 +226,7 @@ describe('a feature whose settings change', () => {
       await app.connect();
       const { finish } = await importing(app);
 
-      await app.send('host/settings', { type: 'UPDATE_SETTINGS', entityType: 'feature', label: 'memo-pack/memos', path: ['tags'], value: [] });
+      await app.send('host/settings', { type: 'UPDATE_SETTINGS', target: { kind: 'feature', featureRef: 'memo-pack/memos' }, path: ['tags'], value: [] }, { settingsAccess: { kind: 'host', service: getTestSettings() } });
 
       expect(app.emitted('host/settings')).toContainEqual({
         type: 'SETTINGS_REFUSED',
@@ -245,7 +243,7 @@ describe('a feature whose settings change', () => {
       const { finish } = await importing(app);
       const before = app.emitted('host/settings').length;
 
-      await app.send('host/settings', { type: 'GET_SETTINGS' });
+      await app.send('host/settings', { type: 'GET_SETTINGS' }, { settingsAccess: { kind: 'host', service: getTestSettings() } });
 
       expect(app.emitted('host/settings').slice(before)).toContainEqual(
         expect.objectContaining({ type: 'SETTINGS_LOADED' }),
@@ -257,49 +255,48 @@ describe('a feature whose settings change', () => {
 
   // A bare key would be stored where nothing reads it, for good. A refusal is the user's to fix, not the system's
   // error: the settings plugin hears it with the reasons
-  it('refuses replaced settings holding a plugin key that is not a ref, naming the ref it likely meant', async () => {
+  it('refuses replaced settings holding an unqualified feature key', async () => {
     const app = await startApp({ systems: ['memo-pack/memos', 'host/settings'] });
     await app.connect();
 
-    await app.send('host/settings', { type: 'REPLACE_SETTINGS', data: { general: {}, features: { memos: { tags: [] } } } });
+    const replacement = getTestSettings().getAll();
+    replacement.features.memos = { tags: [] };
+    await app.send('host/settings', { type: 'REPLACE_SETTINGS', data: replacement }, { settingsAccess: { kind: 'host', service: getTestSettings() } });
 
     expect(app.emitted('host/settings')).toContainEqual({
       type: 'SETTINGS_REFUSED',
-      problems: [expect.stringMatching(/^No installed feature with settings is named "memos": .* did you mean "memo-pack\/memos"\?/)],
+      problems: [expect.stringContaining(`"memos" isn't a ref`)],
     });
     expect(app.emitted('host/settings').map((e) => e.type)).not.toContain('SETTINGS_SAVED');
-    expect(services.settings.getStored<Record<string, any>>()).toEqual({});
+    expect(getTestSettings().getOverrides()).toEqual({});
     expect(heardBy(app)).toEqual([]);
   });
 
   it.each([
     ['null', null, 'The settings must be a JSON object'],
     ['an array', [], 'The settings must be a JSON object'],
-    ['a section that is not an object', { general: {}, features: null }, '"features" must be an object'],
-    ['a section the settings do not hold', { general: {}, extra: {} }, `"extra" isn't a settings section`],
+    ['an owner map that is not an object', { features: null }, '"features" must be an object'],
+    ['an unknown settings owner', { extra: {} }, `"extra" isn't a settings owner`],
   ])('refuses replaced settings that are %s, storing nothing', async (_, data, problem) => {
     const app = await startApp({ systems: ['memo-pack/memos', 'host/settings'] });
     await app.connect();
 
-    await app.send('host/settings', { type: 'REPLACE_SETTINGS', data });
+    await app.send('host/settings', { type: 'REPLACE_SETTINGS', data }, { settingsAccess: { kind: 'host', service: getTestSettings() } });
 
-    expect(app.emitted('host/settings')).toContainEqual({ type: 'SETTINGS_REFUSED', problems: [expect.stringContaining(problem)] });
-    expect(services.settings.getStored<Record<string, any>>()).toEqual({});
+    expect(app.emitted('host/settings')).toContainEqual({ type: 'SETTINGS_REFUSED', problems: expect.arrayContaining([expect.stringContaining(problem)]) });
+    expect(getTestSettings().getOverrides()).toEqual({});
   });
 
-  // The editor sends the settings in effect, defaults included: storing them as given would freeze today's defaults
-  // into the user's settings, where a later default change never reaches them
-  it('stores what replaced settings change from the defaults, and says it saved them', async () => {
+  // Whole-document edits store the explicit supplied choices; reset is how the user returns to defaults.
+  it('stores explicit replaced settings, including default-equal values, and says it saved them', async () => {
     const app = await startApp({ systems: ['memo-pack/memos', 'host/settings'] });
     await app.connect();
-    const inEffect = services.settings.getAll<Record<string, any>>();
+    const inEffect = getTestSettings().getAll();
 
-    await app.send('host/settings', {
-      type: 'REPLACE_SETTINGS',
-      data: { ...inEffect, features: { ...inEffect.features, 'memo-pack/board': { columns: 5 } } },
-    });
+    const replacement = { ...inEffect, features: { ...inEffect.features, 'memo-pack/board': { columns: 5 } } };
+    await app.send('host/settings', { type: 'REPLACE_SETTINGS', data: replacement }, { settingsAccess: { kind: 'host', service: getTestSettings() } });
 
-    expect(services.settings.getStored<Record<string, any>>()).toEqual({ features: { 'memo-pack/board': { columns: 5 } } });
+    expect(getTestSettings().getOverrides()).toEqual(replacement);
     expect(app.emitted('host/settings')).toContainEqual({ type: 'SETTINGS_SAVED' });
   });
 
@@ -323,14 +320,19 @@ describe('a feature whose settings change', () => {
     const app = await startApp({ systems: ['host/settings'] });
     await app.connect();
 
-    await app.send('host/settings', { type: 'REPLACE_SETTINGS', data: { features: { 'gone-pack/journal': { font: 'serif' }, 'memo-pack/memo': { tags: [] } } } });
+    const invalid = getTestSettings().getAll();
+    invalid.features['memo-pack/memo'] = { tags: [] };
+    await app.send('host/settings', { type: 'REPLACE_SETTINGS', data: invalid }, { settingsAccess: { kind: 'host', service: getTestSettings() } });
     expect(app.emitted('host/settings')).toContainEqual({
       type: 'SETTINGS_REFUSED',
-      problems: [expect.stringContaining('No installed feature with settings is named "memo-pack/memo"')],
+      problems: [expect.stringContaining('memo-pack/memo')],
     });
 
-    await app.send('host/settings', { type: 'REPLACE_SETTINGS', data: { features: { 'gone-pack/journal': { font: 'serif' }, 'memo-pack/board': { columns: 9 } } } });
-    expect(services.settings.getStored<Record<string, any>>().features).toEqual({ 'gone-pack/journal': { font: 'serif' }, 'memo-pack/board': { columns: 9 } });
+    const replacement = getTestSettings().getAll();
+    replacement.features['memo-pack/board'] = { columns: 9 };
+    await app.send('host/settings', { type: 'REPLACE_SETTINGS', data: replacement }, { settingsAccess: { kind: 'host', service: getTestSettings() } });
+    expect(getTestSettings().getOverrides()).toEqual(replacement);
+    expect(getTestSettings().getOverrides().features?.['gone-pack/journal']).toEqual({ font: 'serif' });
   });
 });
 
@@ -340,17 +342,17 @@ describe('settings naming prototype machinery', () => {
   afterEach(() => { delete (Object.prototype as Record<string, unknown>).polluted; });
 
   it.each([
-    ['a path segment', { entityType: 'section', label: 'general', path: ['application', '__proto__', 'polluted'] }],
-    ['a constructor path', { entityType: 'section', label: 'general', path: ['application', 'constructor', 'prototype', 'polluted'] }],
-    ["a plugin's path", { entityType: 'feature', label: 'memo-pack/memos', path: ['__proto__', 'polluted'] }],
+    ['a path segment', { target: { kind: 'pack', packId: 'default-setup', groupId: 'assistant' }, path: [ '__proto__', 'polluted'] }],
+    ['a constructor path', { target: { kind: 'pack', packId: 'default-setup', groupId: 'assistant' }, path: [ 'constructor', 'prototype', 'polluted'] }],
+    ["a plugin's path", { target: { kind: 'feature', featureRef: 'memo-pack/memos' }, path: ['__proto__', 'polluted'] }],
   ])('keeps %s as data, and pollutes nothing', async (_, update) => {
     const app = await startApp({ systems: ['host/settings'] });
     await app.connect();
 
-    await app.send('host/settings', { type: 'UPDATE_SETTINGS', ...update, value: 'yes' });
+    await app.send('host/settings', { type: 'UPDATE_SETTINGS', ...update, value: 'yes' }, { settingsAccess: { kind: 'host', service: getTestSettings() } });
 
     expect(({} as Record<string, unknown>).polluted).toBeUndefined();
-    expect(Object.getPrototypeOf(services.settings.getAll().general)).toBe(Object.prototype);
+    expect(Object.getPrototypeOf(getTestSettings().getAll().packs['default-setup'].assistant)).toBe(Object.prototype);
   });
 
   it('keeps such a key in replaced settings as data, and pollutes nothing', async () => {
@@ -358,41 +360,43 @@ describe('settings naming prototype machinery', () => {
     await app.connect();
 
     // As a client's JSON arrives: "__proto__" an own key
-    const data = JSON.parse('{ "general": {}, "features": { "memo-pack/memos": { "__proto__": { "polluted": "yes" } } } }');
-    await app.send('host/settings', { type: 'REPLACE_SETTINGS', data });
+    const data = getTestSettings().getAll();
+    data.features['memo-pack/memos'] = JSON.parse('{ "tags": [], "__proto__": { "polluted": "yes" } }');
+    await app.send('host/settings', { type: 'REPLACE_SETTINGS', data }, { settingsAccess: { kind: 'host', service: getTestSettings() } });
 
-    const memos = services.settings.forFeature(resolveName('memo-pack/memos')) as Record<string, unknown>;
+    const memos = getTestSettings().forPack('memo-pack').get({ kind: 'feature', featureRef: 'memo-pack/memos' }) as Record<string, unknown>;
     expect(({} as Record<string, unknown>).polluted).toBeUndefined();
     expect(memos.polluted).toBeUndefined();
     expect(Object.getPrototypeOf(memos)).toBe(Object.prototype);
+    expect(Object.hasOwn(memos, '__proto__')).toBe(true);
+    expect(memos.__proto__).toEqual({ polluted: 'yes' });
+    expect(app.emitted('host/settings')).toContainEqual({ type: 'SETTINGS_SAVED' });
   });
 });
 
-// A change names a section by the name whoever registered it gave, and the whole of `path` is inside that section.
-// Addressing it one level in wrote `general.general.projects`, which no reader looks at: the write vanished and the
-// junk key stayed in the user's settings.
-describe('a change to a section', () => {
-  it('writes the section it names, whichever section that is', async () => {
+// Paths are relative to an explicit owner; app and pack preferences cannot share document roots.
+describe('a change to an explicit settings owner', () => {
+  it('writes app and pack preferences at their own addresses', async () => {
     const app = await startApp({ systems: ['host/settings'] });
     await app.connect();
 
-    await app.send('host/settings', { type: 'UPDATE_SETTINGS', entityType: 'section', label: 'general', path: ['projects'], value: [{ name: 'one' }] });
-    await app.send('host/settings', { type: 'UPDATE_SETTINGS', entityType: 'section', label: 'assistant', path: ['name'], value: 'Ada' });
+    await app.send('host/settings', { type: 'UPDATE_SETTINGS', target: { kind: 'app' }, path: ['projects'], value: [{ name: 'one', directories: [], color: 'blue' }] }, { settingsAccess: { kind: 'host', service: getTestSettings() } });
+    await app.send('host/settings', { type: 'UPDATE_SETTINGS', target: { kind: 'pack', packId: 'default-setup', groupId: 'assistant' }, path: ['name'], value: 'Ada' }, { settingsAccess: { kind: 'host', service: getTestSettings() } });
 
-    const all = services.settings.getAll<Record<string, any>>();
-    expect(all.general.projects).toEqual([{ name: 'one' }]);
-    expect(all.general).not.toHaveProperty('general');
-    expect(all.assistant.name).toBe('Ada');
-    expect(all.general).not.toHaveProperty('assistant');
+    const all = getTestSettings().getAll();
+    expect(all.app.projects).toEqual([{ name: 'one', directories: [], color: 'blue' }]);
+    expect(all.app).not.toHaveProperty('general');
+    expect(all.packs['default-setup'].assistant).toEqual({ name: 'Ada' });
+    expect(all.app).not.toHaveProperty('assistant');
   });
 
-  it('refuses a section no pack registered, and stores nothing', async () => {
+  it('refuses an undeclared pack group without writing', async () => {
     const app = await startApp({ systems: ['host/settings'] });
     await app.connect();
 
-    await app.send('host/settings', { type: 'UPDATE_SETTINGS', entityType: 'section', label: 'not-a-section', path: ['x'], value: 1 });
+    await app.send('host/settings', { type: 'UPDATE_SETTINGS', target: { kind: 'pack', packId: 'default-setup', groupId: 'missing' }, path: ['x'], value: 1 }, { settingsAccess: { kind: 'host', service: getTestSettings() } });
 
     expect(app.emitted('host/settings').map((e) => e.type)).toContain('SETTINGS_REFUSED');
-    expect(services.settings.getStored<Record<string, any>>()).not.toHaveProperty('not-a-section');
+    expect(getTestSettings().getOverrides()).toEqual({});
   });
 });

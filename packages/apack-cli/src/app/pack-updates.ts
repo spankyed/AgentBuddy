@@ -9,8 +9,8 @@ export async function packUpdate(
   find = findLatestRelease,
 ) {
   const base = { id: manifest.id, currentVersion: manifest.version, source: record.installedFrom ?? null };
-  if (manifest.builtIn || !record.installedFrom) {
-    return { ...base, status: 'unmanaged' as const, reason: manifest.builtIn ? 'ships with the app' : 'no recorded GitHub source', candidate: null };
+  if (record.updatesWith === 'app' || !record.installedFrom) {
+    return { ...base, status: 'unmanaged' as const, reason: record.updatesWith === 'app' ? 'updates with the app' : 'no recorded GitHub source', candidate: null };
   }
   if (!/^[\w.-]+\/[\w.-]+(?:@[^\s@]+)?$/.test(record.installedFrom)) {
     return { ...base, status: 'error' as const, reason: 'source is not a GitHub slug', candidate: null };

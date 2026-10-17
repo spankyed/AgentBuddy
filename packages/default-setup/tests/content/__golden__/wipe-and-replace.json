@@ -191,7 +191,7 @@
       },
       "Note:Welcome": {
         "completed": false,
-        "content": "# Hello\n\nSee [the plan](note://Note-external-plan) for details.\n",
+        "content": "# Hello\n\nSee [the plan](apack-ref://note/Note-external-plan) for details.\n",
         "displayOrder": 1,
         "entityType": "Note",
         "favorite": true,
@@ -457,7 +457,7 @@
       },
       "Note:Welcome": {
         "completed": false,
-        "content": "# Hello\n\nSee [the plan](note://Note-external-plan) for details.\n",
+        "content": "# Hello\n\nSee [the plan](apack-ref://note/Note-external-plan) for details.\n",
         "displayOrder": 1,
         "entityType": "Note",
         "favorite": true,
@@ -716,7 +716,7 @@
       },
       "Note:Welcome": {
         "completed": false,
-        "content": "# Hello\n\nSee [the plan](note://Note-external-plan) for details.\n",
+        "content": "# Hello\n\nSee [the plan](apack-ref://note/Note-external-plan) for details.\n",
         "displayOrder": 1,
         "entityType": "Note",
         "favorite": true,

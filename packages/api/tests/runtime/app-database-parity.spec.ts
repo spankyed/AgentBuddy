@@ -1,3 +1,4 @@
+import { _declarationRevision } from '@apackdev/sdk/build';
 // The API's boot and a tool opening the data dir (openAppDatabase, which apack db uses) hydrate the same entities,
 // relations and roles: both open the store through @apackdev/host/database, and the tool reads the installed packs'
 // manifests where the API registers their code. Runs the built-in packs' built runtimes (npm run build:default-setup).
@@ -7,12 +8,12 @@ import * as path from 'node:path';
 import { afterAll, describe, expect, it } from 'vitest';
 import type { EarsQuery } from '@apackdev/ears';
 import { PACK_SNAPSHOT_FORMAT } from '@apackdev/sdk/build';
-import { PACK_LAYOUT } from '@apackdev/host/packs';
+import { PACK_LAYOUT, sealPackBuild } from '@apackdev/host/packs';
 
 const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'api-database-parity-'));
 process.env.APACK_ENV = 'test';
 process.env.APACK_USER_DATA_DIR = dataDir;
-const { openAppStore } = await import('@/runtime');
+const { openAppStore } = await import('../../src/runtime/index.ts');
 const { loadAppPacks, startPacks } = await import('@apackdev/host/packs/runtime');
 const { installPackFromLocal, installShippedPacks } = await import('@apackdev/host/packs');
 const { openAppDatabase } = await import('@apackdev/host/database');
@@ -41,10 +42,17 @@ function snapshot(query: EarsQuery) {
  */
 async function bootApi() {
   const app = openAppStore();
-  const installed = await installShippedPacks(PACKAGES_DIR, resolveAppEnvironment().packsDir);
-  loadAppPacks(app.packs, new Set(installed.map((result: { id: string }) => result.id)));
+  await installShippedPacks(PACKAGES_DIR, resolveAppEnvironment().packsDir, { installedPacksFile: resolveAppEnvironment().installedPacksFile });
+  loadAppPacks(app.packs);
   await app.store.hydrate();
   return app;
+}
+
+function closeApi(app: Awaited<ReturnType<typeof bootApi>>) {
+  app.packs.runShutdownHooks();
+  for (const pack of app.packs.loadedPacks()) app.packs.unregisterPack(pack.id);
+  app.store.close();
+  unbindHost();
 }
 
 /**
@@ -54,14 +62,16 @@ async function bootApi() {
 async function installExternalPack(id: string, entityType: string): Promise<void> {
   const source = fs.mkdtempSync(path.join(os.tmpdir(), `${id}-`));
   const ears = { entities: { [entityType]: entityType }, relKinds: {} };
-  fs.writeFileSync(path.join(source, 'apack.json'), JSON.stringify({ id, name: id, version: '1.0.0', ...ears }));
+  fs.writeFileSync(path.join(source, 'apack.json'), JSON.stringify({ id, name: id, version: '1.0.0', data: { entities: { [entityType]: null }, relations: [] }, }));
   fs.mkdirSync(path.join(source, 'dist', 'runtime'), { recursive: true });
   fs.mkdirSync(path.join(source, 'dist', 'types'), { recursive: true });
-  fs.writeFileSync(path.join(source, 'dist', PACK_LAYOUT.snapshot), JSON.stringify({ format: PACK_SNAPSHOT_FORMAT }));
+  fs.writeFileSync(path.join(source, 'dist', PACK_LAYOUT.snapshot), JSON.stringify({ declarationRevision: _declarationRevision(JSON.parse(fs.readFileSync(path.join(source, 'apack.json'), 'utf-8'))), format: PACK_SNAPSHOT_FORMAT, manifest: JSON.parse(fs.readFileSync(path.join(source, 'apack.json'), 'utf-8')), types: { entities: {}, relKinds: {} }, entityDestinations: {}, facades: {} }));
   fs.writeFileSync(
     path.join(source, 'dist', 'runtime', 'index.cjs'),
-    `module.exports = { registration: { id: ${JSON.stringify(id)}, ears: ${JSON.stringify(ears)} } };`,
+    (`module.exports = { registration: { id: ${JSON.stringify(id)}, ears: ${JSON.stringify(ears)} } };`) + `
+if (module.exports.registration) module.exports.registration.declarationRevision = '${_declarationRevision(JSON.parse(fs.readFileSync(path.join(source, 'apack.json'), 'utf-8')))}';`,
   );
+  sealPackBuild(path.join(source, 'dist'), JSON.parse(fs.readFileSync(path.join(source, 'apack.json'), 'utf8')));
   await installPackFromLocal(source, resolveAppEnvironment().packsDir);
   fs.rmSync(source, { recursive: true, force: true });
 }
@@ -74,13 +84,12 @@ describe('a data dir opened by the API and by openAppDatabase', () => {
     startPacks(first.packs);
     untypedTx('Note-parity', true).put('entityType', 'Note').put('title', 'mine').grant('pinned').link('parent_of', 'Note-child');
     untypedTx('TNode-parity', true).put('entityType', 'TNode').put('status', 'done');
-    first.store.close();
-    unbindHost();
+    closeApi(first);
 
     const api = await bootApi();
     const fromApi = snapshot(api.engine.query);
-    api.store.close();
-    unbindHost();
+    const types = api.packs.getRegisteredEntityTypes();
+    closeApi(api);
 
     const db = await openAppDatabase({ env: 'test', userDataDir: dataDir, readOnly: true, log: () => {} });
     const fromTool = snapshot(db.query);
@@ -95,7 +104,7 @@ describe('a data dir opened by the API and by openAppDatabase', () => {
     // The tool knows the built-in pack's entity types. Which partition each lands in is not compared here:
     // both sides call the one `appPartitionPolicy()`, so an equality between them cannot fail —
     // tests/database/partition-policy.spec.ts is where that routing is asserted
-    expect(db.schema.getRegisteredEntityTypes()).toEqual(api.packs.getRegisteredEntityTypes());
+    expect(db.schema.getRegisteredEntityTypes()).toEqual(types);
   });
 });
 
@@ -104,8 +113,7 @@ describe('a data dir opened by the API and by openAppDatabase', () => {
 describe('what the tool writes', () => {
   it('lands where the API reads it, the excluded types in the volatile partition', async () => {
     const booted = await bootApi();
-    booted.store.close();
-    unbindHost();
+    closeApi(booted);
 
     const db = await openAppDatabase({ env: 'test', userDataDir: dataDir, log: () => {} });
     untypedTx('Note-tool', true).put('entityType', 'Note').put('title', 'from the tool').grant('pinned');
@@ -121,8 +129,7 @@ describe('what the tool writes', () => {
       expect(api.engine.query.getAttr('TNode-tool', 'status')).toBeNull();
       expect(api.store.query('volatileBackup').getFirstAttr('status', 'TNode-tool')).toBe('done');
     } finally {
-      api.store.close();
-      unbindHost();
+      closeApi(api);
     }
   });
 });
@@ -135,13 +142,12 @@ describe('an installed external pack', () => {
 
     const api = await bootApi();
     const types = [...api.packs.getRegisteredEntityTypes()];
-    api.store.close();
-    unbindHost();
+    closeApi(api);
 
     const db = await openAppDatabase({ env: 'test', userDataDir: dataDir, readOnly: true, log: () => {} });
     try {
       expect(types).toContain('Memo');
-      expect(db.schema.getRegisteredEntityTypes()).toEqual(api.packs.getRegisteredEntityTypes());
+      expect(db.schema.getRegisteredEntityTypes()).toEqual(new Set(types));
       expect(db.schema.entities.Memo).toBe('Memo');
     } finally {
       db.close();

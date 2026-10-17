@@ -7,6 +7,21 @@ what was tried first, how many copies there were, and which commit closed it.
 Read it when a rule's one-line citation is not enough to tell you whether your case is the same case, or
 when you are about to argue that a rule does not apply here.
 
+## Validation loops
+
+On 2026-10-16 the settings/discovery compiler checkpoint had spent over four hours in testing without
+a source commit. Broad strict runs repeatedly found failures; focused fixes were followed by another
+broad run rather than a defined investigation and checkpoint decision. Concrete defects were found,
+including late public-watch signal ownership, but that did not justify the repeated diagnostic scope.
+Changing test budgets and investigating infrastructure also accumulated inside the unfinished checkpoint.
+
+The correction is a bounded sequence: define the checkpoint claim, converge focused checks, run the
+required broad gate, then investigate any failure from its evidence with a targeted reproducer. A further
+broad run must close a named coverage gap or the converged gate. An unexplained recurring failure calls
+for a blocker report and a diagnostic decision, not another broad run. Keep one current goal handoff;
+preserve historical evidence without treating each dated note as a fresh work instruction. Required
+gates remain required, and their failures must not be disguised by isolated passes.
+
 Things that waste the most time, in order:
 
 - **Running anything at all after a comment, a doc or a CLAUDE.md edit.** Nothing means nothing: not

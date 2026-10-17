@@ -11,6 +11,8 @@ import * as path from 'node:path';
 import { REPO_ROOT, type BuildUnit } from '@apackdev/host/build/packages-built';
 import type { ChainStep } from './chain-steps.ts';
 import { commandText, rootScripts } from './npm-scripts.ts';
+import { poolForStep, measureCommandFor } from './unit-pool.ts';
+import { box } from './core-budget.ts';
 
 /**
  * Beside the package builds' and the pools' stamps, in the same cache directory and the same format, so one
@@ -53,13 +55,14 @@ export const flatStepName = (step: string): string => step.replace(/[:/]/g, '-')
  * step's output is current. `scripts/drive-preflight.ts` asks it of `build:runtime` and `build:default-setup` before
  * launching the app, and asking it any other way would be a second account of what those steps read.
  */
-export function unitFor(step: ChainStep): BuildUnit {
+export function unitFor(step: ChainStep, budget?: number): BuildUnit {
   return {
     inputs: step.inputs.map((input) => path.join(REPO_ROOT, input)),
     outputs: (step.outputs ?? []).map((output) => path.join(REPO_ROOT, output)),
     excludes: (step.excludes ?? []).map((excluded) => path.join(REPO_ROOT, excluded)),
     ...(step.excludeSuffixes === undefined ? {} : { excludeSuffixes: step.excludeSuffixes }),
     // What `npm run <name>` resolves to, which is what `package.json` used to be in every step's inputs for
-    command: commandText(step.name, rootScripts()),
+    command: commandText(step.name, rootScripts()) + (poolForStep(step.name) === undefined ? ''
+      : `\n${measureCommandFor(step.name, budget ?? box())}`),
   };
 }

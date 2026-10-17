@@ -1,275 +1,181 @@
 # Goal docs
 
-For the current settings/manifest work, use the
-[settings and pack contracts goal](goal-settings-and-pack-contracts.md) for execution and
-[manifest maturity](../plans/manifest-maturity.md) for the remaining priority order. The reworked
-[naming contracts goal](../archive/goals/goal-naming-conventions.md) is complete. Build on its resulting APIs.
-The roadmap records absorbed goals and separates the storage/security tracks; an archive entry does
-not imply that a superseded proposal was implemented.
+A goal lets someone resume delivery without the conversation that produced it. It owns the required
+outcomes, execution order and completion criteria. [Subsystem plans](../plans/) own detailed designs;
+[evidence records](../evidence/) own investigations and checkpoint history. See the
+[documentation guide](../README.md) for the full layout and [maintenance rules](../AGENTS.md).
 
-A goal doc is a plan an agent can pick up later and carry out without the conversation that produced it. It holds the prompt to run it with, the facts behind the plan, the decisions already made, the work in phases with checks, and the rules for doing it. When the work is done, the doc records what happened and moves to the archive.
-
-This file describes how to write one. The best current examples are [`goal-package-boundaries.md`](../archive/goals/goal-package-boundaries.md) (a finished goal with its outcome) and [`goal-lmdb-only.md`](goal-lmdb-only.md) (a goal with spike results and open decisions).
+Write a goal for work spanning sessions, requiring coordinated checkpoints or awaiting important
+decisions. A small fix can stay in the conversation. A small goal can contain its design; a separate
+plan is useful only when the design needs substantial explanation.
 
 ## Where they live
 
-- **`docs/goals/`**: goals not started or in progress.
-- **`docs/archive/goals/`**: finished, absorbed or abandoned goals. Moving a doc there takes a note at the top (see [Finishing a goal](#finishing-a-goal)). An archived doc records the code as it was, so it will name things that have since been renamed or removed: read it as history, and don't update it to match the code.
-- **File name:** `goal-<short-kebab-topic>.md`, named after what it achieves, not the ticket or the date (`goal-lmdb-only.md`, `goal-apack-db-cli.md`).
+- `docs/goals/goal-<topic>.md`: planned, active or deferred work, with an explicit status.
+- `docs/archive/goals/`: completed, absorbed, superseded, abandoned or rejected work, with its reason
+  and successor links. Archiving does not mean every proposal was implemented.
 
-## When to write one
-
-Write a goal doc when the work:
-- spans several sessions or phases;
-- needs decisions settled first;
-- should be picked up by an agent later rather than done now.
-
-A single fix, or a plan the user is acting on right away, stays in the conversation.
+Deferred documents name what would justify reconsideration. They are not the active execution queue.
+Rejected work belongs in the archive rather than a separate `wont-do/` lifecycle directory.
 
 ## Structure
 
-Sections in this order. Leave out a section that has nothing in it, rather than writing "none".
+Use only sections the work needs. Each fact has one authoritative home; link rather than repeat it.
 
 ### 1. The prompt block
 
-The doc opens with a one-line note naming the session that wrote it, for context the doc left out (the id is the transcript's file name under `~/.claude/projects/<project>/`):
+Open with a short task prompt that points to this document, its surveyed base and the current handoff.
+Keep it below the goal runner's 4,000-character limit. Reference standing repository instructions
+instead of copying their prohibitions, validation commands or compatibility policy.
 
-```
-> **Written in session** `<session id>` (Claude Code, YYYY-MM-DD). Resume it with `claude -r <session id>`.
-```
+````text
+```text
+# Goal: <required outcome>
 
-Then a fenced code block (```` ``` ````) holding the prompt a user pastes to start the work (for example with `/goal`). It's self-contained: the agent reads the rest of the doc because the prompt tells it to.
-
-````
-```
-# Goal: <what it achieves, in one line>
-
-Implement docs/goals/goal-<topic>.md on <branch>, at or after <commit> — the base its Background was
-surveyed at. <If it waits on another goal: "after goal-<other>.md lands.">
-Before Phase 1, confirm the base: <the names or paths the plan acts on> exist at HEAD. If they don't,
-stop and say so — the plan was surveyed somewhere else.
-Read Background, Decisions, Phases and Constraints first. Decisions are final: implement them, don't
-reopen them or stop to ask. <If there are open decisions: "The Open decisions must be settled with the
-user before Phase N; if any is still marked open, stop and ask.">
-Where a detail isn't specified, pick the conventional option, note it in the final summary, and keep
-going. No backward compatibility in code (root `CLAUDE.md`, "Backward compatibility" — it is a standing rule,
-not this goal's choice): change signatures, move modules, migrate every in-repo caller, test, fixture,
-template and doc in the same change, and fix forward. Stored user data is the exception: it moves with
-migrations.
+Implement docs/goals/goal-<topic>.md. Follow CLAUDE.md and docs/AGENTS.md.
+Read Scope, Current handoff, Decisions, Phases and Constraints before continuing.
+The initial survey was made at <commit> on <branch>; inspect current code before relying on it.
+Follow the current checkout arrangement and preserve unrelated work.
 
 Finished when:
-- Phases 1–N are implemented and each meets its "Done when"; every new guard, helper or test is
-  mutation-checked.
-- <the end state, as checkable facts: what exists, what's gone, what behaves how>
-- <the check list: typecheck, schema/api/facade checks, packages:build + packages:check, the unit suites
-  the goal touches>
-- <npm run build, E2E, test:external-pack, test:packaged-authoring, the example pack, as relevant>
-- A final summary: phase → done/deferred, evidence, and the conventional choices made.
-- The doc is in `docs/archive/goals/`, with its status blockquote and an Outcome section, committed
-  (see [Finishing a goal](#finishing-a-goal)).
+- Every required outcome and phase acceptance condition below is met on current source.
+- Required integrated/final validation passes, with source commits and evidence recorded.
+- Current reference/public docs describe the resulting contract.
+- Record Outcome, archive completed work, repair links and commit closure.
 
-Commit as you go:
-- Commit each phase when its "Done when" holds and the checks are green — not once at the end. A
-  phase is landable on its own; a commit is how that stays true. Conventional message, no
-  Co-Authored-By or session lines, `git commit -- <paths>` naming only that phase's files.
-- Check `git diff --cached` first: something outside the session stages files, and a pathspec commit
-  leaves the rest of the index alone.
-- Don't push, tag, or open a PR unless the user asks.
-
-Never:
-- push, tag or open a PR unless the user asks in this session.
-- npm publish, create GitHub releases, or trigger workflows (dry runs only).
-- open, copy or modify ~/Library/Application Support/apack* or any real data dir.
-- pkill/killall Electron or node; launch the app outside the test env without an isolated
-  APACK_USER_DATA_DIR.
-- run bare tsc on packages/preload, `npm install` in the example pack, or edit version/release
-  metadata.
-- change the typed EARS types' behaviour (packages/apack-sdk/TYPED-EARS.md) to make a call site compile.
-- add backward-compat shims or loosen a failing assertion instead of investigating.
-- <goal-specific prohibitions, e.g. approaches the spikes ruled out>
+Commit usable checkpoints as you go. Do not expand or reduce scope without user authorization.
 ```
 ````
 
-Rules for the prompt block:
-- **"Finished when" is the stop condition.** A `/goal` hook checks it, so every item must be checkable from the transcript: a spec passes, a command succeeds, a name no longer exists. **Archiving is one of those items**, which is why the template ends with it: without it a goal can meet every check and still sit in `docs/goals/`, and the Outcome — which nobody writes as they go — never gets written. Thirteen of the archive's first thirty-three goals have no Outcome section for that reason.
-- **Keep the "Never" list.** It's the standing list (git, publishing, real data, processes, preload, example pack, release metadata, typed EARS, shims, assertions) plus the goal's own. Don't list an item in "Never" that a phase requires: if the goal needs something the list normally forbids, say so in the phase and leave it out of the list. A goal once required a step its own "Never" forbade, and the run could not finish.
-- **The block has a 4000-character limit.** `/goal` refuses a longer one, and it refuses it *after* the
-  doc is written, which is the wrong moment to find out. Two docs hit it on the same day (4,317 and 4,572).
-  What is nearly always too long is the "Never" list repeating the standing rules that Constraints already
-  carries: collapse those to one line naming them, and keep only the goal's own prohibitions in full. Put
-  detail that is not an instruction — measurements, what landed since, a check list — in Background or the
-  phase that uses it, and point at it from the block.
-- **Name the base the survey was made at, not the default branch.** Give the branch *and* the commit from the Background header, and check that the names the plan acts on exist there before writing the line. "A branch cut from master" is the reflex answer and is wrong whenever the survey was made on a feature branch: five of the first seven goal docs said it, and at least two described code that has never existed on master, so an agent starting there would have found no Background and no targets. A branch name alone doesn't pin a tree either — branches move, and the commit is what the survey was true at. The confirm-the-base line above turns a wrong base into an immediate stop instead of a confusing run.
-- **Don't instruct a branch to be created.** Where the work lands is the user's call, and a goal doc is read long after the conversation that could have asked. Name the base; leave the branching out.
-- **Name steps that need the user.** If a check depends on something only the user can do (installing dependencies in another repo, approving a data copy), say so in the prompt, so the agent asks instead of looping.
+The prompt delegates detail to the document; it must not become a second specification. If the survey
+is stale, inspect current implementation and reconcile the plan before acting. A moved path is a reason
+to investigate, not automatically to stop. Respect explicit user instructions and blocking decisions.
 
-### 2. Background
+### 2. Scope and background
 
-What exists now, and why the goal is needed, as facts the agent can check:
-- file paths with line numbers where they matter (`packages/apack-ears/src/query.ts:57`);
-- how the current code works, and what depends on the part being changed;
-- the date, commit and branch the survey was made at (`## Background (2026-09-14, at 114d18e1b on AS/package-boundaries)`). The prompt block's base has to match it, and the branch is what says where that commit is.
+State the outcome, required deliverables and exclusions. Name the surveyed commit/date and relevant
+entry points. Keep background short and factual; detailed surveys and spike results belong in evidence.
+A deferred requirement names its disposition and owner. Consolidation must account for every unfinished
+requirement transferred from a predecessor; “absorbed” does not authorize dropping deliverables.
 
-Keep it factual. No recommendations here; those go in Decisions.
+### 3. Current handoff
 
-### 3. Spike results (when a spike ran)
+Maintain one replaceable handoff with:
 
-`## Spike results (YYYY-MM-DD)`. Record what was tried and measured:
-- **Where the spike code is.** Worktree or branch, the commit it started from, and that it's throwaway. Assume it will be deleted: copy into the doc everything a later agent needs (key layouts, seams, measured numbers, gotchas).
-- **Whether to reuse its code.** Usually "don't reuse; rewrite on the branch, keeping X".
-- **Results as tables:** what passed, what failed and why, benchmark numbers with the method (runs, median, machine).
-- **What it didn't cover**, so a phase proves it.
+- branch/checkout and latest usable source checkpoint;
+- the next concrete deliverable and its actual dependencies;
+- proven checks, unresolved failures and links to detailed evidence.
+
+Update it in place. Do not append new “next steps” or remaining-work lists after each checkpoint.
+Mark implemented work separately from unverified final acceptance so an evidence gap does not silently
+restart implementation. Historical handoffs live in evidence and do not override current ordering.
 
 ### 4. Decisions
 
-The settled design, numbered so phases and later notes can cite them ("Decision 3"). Each decision says what to do and, briefly, why. Say "Final." at the top when the user has agreed to them.
+Record settled choices and their reasons, or cite the owning subsystem plan's decision. Keep one
+owner for each contract. Identify genuinely open decisions and the phase they block; continue
+independent work where possible.
 
-- Decisions can't be reopened by the implementing agent. If one turns out wrong in practice, the agent notes it under the Outcome's "Corrections to the Decisions" and follows the corrected approach.
-- Name the things being deleted or renamed explicitly, so a guard test and the docs can check them.
+When a decision changes, update every affected phase, acceptance condition and startup instruction
+in the same change. Link the previous reasoning from evidence. Routine corrections follow repository
+and user instructions; material scope or product changes need a user decision. Do not silently replace
+an approved outcome or reopen settled design without evidence.
 
-### 5. Open decisions (only while any are open)
+### 5. Phases
 
-`## Open decisions (settle with the user before Phase N)`. Number them, give the options with their trade-offs neutrally, and mark each `— *open*`. When the user decides, move the choice into Decisions and delete the entry. The prompt block tells the agent to stop and ask if any is still open when it reaches that phase.
+Each phase or coherent checkpoint names:
 
-### 6. Phases
+- **Deliverable:** the concrete behavior or contract being changed, citing its owning decision.
+- **Dependencies:** only the guarantees it actually consumes, not blanket phase-number barriers.
+- **Done when:** finite observable conditions, the checks that prove them and relevant existing evidence.
 
-`### Phase N — <name>`, each with:
-- **The work.** Bullets naming the files, modules and behaviour, citing Decisions instead of repeating them.
-- **"Done when:"** Checkable conditions: named specs pass, commands succeed, guards exist, measured numbers are within a stated tolerance. Include the mutation checks for new guards: "Mutation: skipping X fails Y".
+Specify the acceptance boundary before implementation. A new finding must name the observed defect
+or required gap, the existing requirement it serves, and a finite exit condition. Additional work outside
+those requirements is a scope proposal, not an automatic extension of the goal.
 
-Order phases so each leaves the code working and the full check list passing. A phase that can't finish without another says so ("after Phase 3"). If a phase can land before an earlier one, say that too.
+Commit validated logical checkpoints before expanding work. Large phases may contain several usable
+checkpoints. Follow root instructions for staging and validation; do not commit other sessions' changes.
 
-**Commit a phase when it's done, before starting the next one.** "Landable on its own" is a property the code has while the phase is finishing and loses once the next one starts: a later phase that edits the same files makes the earlier one impossible to separate afterwards. `git commit -- <paths>` takes a file's whole working state, so once two phases have touched one file there is no honest split left — you either ship both together or ship a commit that doesn't build. The pack-naming goal ran all five phases before committing and could only be landed as three commits instead of five, nine files having picked up several phases each (`docs/archive/goals/goal-pack-naming.md`). Committing as you go costs nothing and is the only moment the split is free.
+### 6. Acceptance and evidence
 
-### 7. Deferred (optional)
+For a large goal, keep one acceptance table rather than competing checklists. Small goals may use their
+phase conditions directly. Distinguish the following states explicitly:
 
-Work deliberately left out of the goal, with a pointer to where it's tracked if anywhere. The agent must not do it.
+| Requirement | Implementation / source | Evidence | Remaining work |
+|---|---|---|---|
+| <observable outcome> | <implemented, partial or missing; commit> | <check/result or evidence link> | <specific missing implementation or verification> |
 
-### 8. Constraints
+Detailed cases stay in their owning plan; the goal records closure and links to them. Existing evidence
+can close a requirement when it actually covers that requirement and its relevant inputs still apply.
+Reopen it when new evidence or changed inputs invalidate the claim. Required final integrated gates
+remain required; a focused pass cannot stand in for broader acceptance.
 
-The standing rules, as prose bullets (the prompt's "Never" list in fuller form), plus the goal's own:
-- commit each phase as it finishes, in logical chunks, no attribution lines, `git diff --cached` first;
-  pushing, tagging and PRs are on request;
-- no publishing, releases or triggered workflows;
-- no real data dirs, no broad pkill, E2E in the `apack-test` namespace;
-- preload, example pack and release metadata rules;
-- typed EARS types are change-controlled (`packages/apack-sdk/TYPED-EARS.md`);
-- published packages: no `any`, the TypeScript floor, `api:update` after export changes;
-- build order (`packages:build` before the CLI suite, default-setup's runtime before the api suites and E2E);
-- migrations follow `packages/apack-host/src/migrations/CLAUDE.md`;
-- investigate failing tests, mutation-check new guards;
-- external packs are first-class: keep the fixture packs, the example pack and `test:packaged-authoring` passing.
+Checkpoint logs belong in `docs/evidence/<topic>.md`. Date entries, record source commits, exact
+commands/results and limitations. Failed checks remain visible until resolved; old failures alone do
+not establish a current failure. Evidence records are history, not another implementation queue.
+
+### 7. Deferred and constraints
+
+Include only goal-specific exclusions, operational constraints and authorized deferrals. Cite standing
+repository rules rather than copying them. Deferring required work is a scope change; an agent cannot
+move it here merely to call the goal complete. Open decisions and unsupported hypotheses do not
+silently become new requirements either.
 
 ## Keeping the loop fast
 
-A goal is carried out in edit-check cycles, and the check is where the time goes. In this repo the
-narrow checks cost seconds — one spec file, one package's `tsc --noEmit`, `npm run spec` over what you
-changed, `packages:ensure` when nothing is stale — while the full chain costs about five minutes
-(285.6s measured 2026-09-25), most of it in `test:packaged-authoring` (60s), `test:unit` and
-`test:integration` (43s each), `build` (37s) and `typecheck` (30s). Running the chain after every edit
-is the single easiest way to make a goal take days, and it finds nothing the narrow check wouldn't.
-`api:check` is a chain step (it was not, while `api:stamp` stood in for it at 0.6s), so a phase
-that changes a published export runs it itself.
+Follow [bounded validation](../../CLAUDE.md#keep-validation-bounded). Use focused checks during
+implementation and required converged checkpoint/final gates. Diagnose failures from preserved logs
+and the smallest relevant reproducer; do not rerun broad suites for reassurance after every fix.
 
-So a goal doc plans its own checks:
-
-- **Each phase's "Done when" names the narrow commands** that cover that phase — the spec files, the
-  package's typecheck, the guard and its mutation check. That is what runs during the work.
-- **The full chain runs once per phase, at its end**, and in the background while the diff is
-  reviewed. The root `CLAUDE.md` table ("What to run after a change") says which command covers which
-  kind of change; the phase cites it rather than repeating it.
-- **Slow steps run last, and only when their input changed.** The published API reports, the app
-  build and the E2E, external-pack and packaged-authoring suites each have a trigger; a phase that
-  doesn't touch that input doesn't run them.
-- **`test:unit` has no scheduler of its own: the pools run one after another.** It shares a checkout,
-  which used to mean two suites racing each other's package build; the readers now wait for an in-flight
-  build and the builders wait for the lock rather than failing on it. Running the pools concurrently was a
-  measured dead end before that — 44.4s against 43s — and what each pool takes is declared now rather
-  than measured in passing (`POOL_WIDTH`, `scripts/lib/core-budget.ts`), which is what the chain admits
-  on. Run `packages:ensure` once before any fan-out, so the suites' own pretests find nothing to do.
-- **Don't run two suites from two shells to save time.** The locking makes it correct, not fast: the
-  cores are already busy, and a contended measurement is worthless — one produced 249s for what is 182.6s
-  idle here, a 36% error.
-- **A stale build looks like a bug.** When a failure makes no sense, check what the run loads before
-  reading the code: a test run against a package's `dist`, or an E2E run against the built app, tests
-  what was last built, not what was last edited.
-
-If a goal's phases genuinely need a slow check every time (a build format, a packaged app), say so in
-the phase, with the reason, so the cost is a decision rather than a habit.
+Name the behavior a check proves. Mutation checks are useful for meaningful guards; do not require
+one for every helper or test, or invent tests that merely restate wiring. If a test reads built output,
+confirm that output matches the source being claimed. Keep detailed timings and experiments in evidence,
+not standing instructions. Documentation-only edits need relevant document checks, not app suites.
 
 ## Finishing a goal
 
-When the work is done, move the doc to `docs/archive/goals/` and add a status blockquote as its first line, above the session note. Move it when the work is done, not when it merges: a goal whose phases are all finished is history, and leaving it in `docs/goals/` reads as a plan and keeps describing code that no longer exists. Name wherever the work is — a PR, a branch, a commit — or nothing at all if there's nothing useful to name.
+Audit every required outcome against current source and appropriate evidence. Resolve missing or weak
+proof, run the required final checks on recorded source, and write Outcome. A checkpoint or a smaller
+passing subset does not complete the goal.
 
-- **Done:** `> **Done** (<where the work is, if it's worth naming>). The text below is the plan as written; <what later work changed>. For the current layout, see <doc>.`
-- **Absorbed by another goal:** `> **Absorbed by [`goal-x.md`](../../goals/goal-x.md)** (its Decision N and Phase M). <which decisions it superseded>. The text below is the plan as written…`
-- **Superseded in part:** `> **Superseded in part** by `goal-x.md`: <what changed>.`
+Document the resulting implemented contract in [reference](../reference/) or
+[public-facing docs](../public-facing/) before archiving completed plans. Update existing documentation
+where it already owns that contract; do not manufacture a new reference document for every goal.
 
-Fix links in other docs to the moved file. Docs outside the archive must describe the code as it is; the archived doc keeps the old names.
+Move completed goals to `docs/archive/goals/` and completed plans to `docs/archive/plans/`. Add a status
+notice identifying done, absorbed, superseded, abandoned or rejected, with source/successor links and
+any unmet requirements' owner. Repair incoming and outgoing links, including anchors. Keep deferred
+and unfinished work visible; do not archive it as completed. Commit closure without assuming permission
+to push, publish or merge.
 
 ### Invariants and milestones
 
-A goal's "Finished when" list mixes two kinds of statement, and archiving is the moment to separate them:
-
-- A **milestone** was true when the work landed. *"`navigateToPlugin` still compiles at every in-repo caller"* is
-  one: a later rename makes it false, and that is fine — it did its job at the time.
-- An **invariant** has to stay true afterwards. *"no feature imports another feature's `fe/`"*, *"`#generated/events`
-  imports the leaf, never the machine"*.
-
-**For each invariant, name the guard that holds it — or say it has none.** A guard is a spec, a `check:specifiers`
-rule, a schema, a type: something that fails when the invariant does. Prose in an archived doc is not one, because
-the archive describes the past; a reader is told to read it as history, so an invariant recorded only there is an
-assertion about the present living in the one place marked "this is not about the present".
-
-Writing "no guard" is a valid and useful answer. It is worth more than silence: it is visible at the moment someone
-can still act on it, and it stops the next reader mistaking a satisfied criterion for open work.
-
-What this does *not* license is a guard whose only job is to name a deleted thing — "`oldApi` must not come back"
-is legacy handling, and it belongs nowhere. Guard the property that made the old shape wrong (nothing reads a
-phantom off a value), not the identifier that used to carry it.
-
-The archive was swept once, on 2026-09-24, against the 31 goals then in it. Every criterion that is an invariant
-had a guard — `findCrossFeatureImports`, `findContractLeafImports`, `findRepositoryCasts`, `findUpwardImports`,
-`no-pack-content-specifics.spec.ts`, `no-phantom-contract.spec.ts`, the host's `HOST_ENTITY_TYPES`, the fixture packs'
-`@ts-expect-error` cases. The criteria with no guard were all of the deleted-identifier kind above
-(`registerHostModule`, `sendsTo`, `usePluginSettings`, `pluginAccepts`), and stay that way on purpose: the property
-each protected is guarded, the name is not.
-
-That sweep also turned up the clearest example of the distinction. `goal-plugin-inbox.md` finished when
-"`receivedEventTypes` … [is] gone from generate-entries.ts". That function is back, added by later work for a
-different reason, and nothing is wrong: it was a milestone describing one step, never a property to hold.
+A milestone was true when work landed; later renaming does not make that goal unfinished. An invariant
+must continue to hold. For each lasting invariant, identify its enforcing type, schema, check or test,
+or state explicitly that no automated guard exists. Guard the behavior, not the absence of an obsolete
+identifier. Put the current contract in maintained reference/public docs, not solely in archived plans.
 
 ### The Outcome section
 
-An archived doc carries an Outcome section, before Deferred and Constraints. **Write it at archive time if it isn't there already, and never hold up the move for it.** Nobody writes one as they go, so requiring it first is how finished goals sit in `docs/goals/` describing code that has changed — which costs more than a thin Outcome does.
+Keep closure concise:
 
-Take the parts that have something in them:
-
-```
+```text
 ## Outcome (YYYY-MM-DD)
 
-<one paragraph: where it landed, and anything that didn't pass>
+<What landed, where, and the result.>
 
-### Per phase
-| Phase | Status | Evidence |          (done / deferred; specs, commands, guards)
+| Phase / requirement | Disposition | Source and evidence |
+|---|---|---|
 
-### Conventional choices               (details the doc didn't specify, per phase)
-### Corrections to the Decisions       (where the implementation had to differ, and why)
-### Open items                         (known leftovers and follow-ups)
-### Final verification                 (the full check list, with results)
+<Resulting reference/public documentation and final validation.>
+<Authorized exclusions or follow-ups, their owners and relevant decision.>
 ```
 
-A goal that went as planned needs the paragraph and the per-phase lines, not five headings — leave out a section with nothing in it, as everywhere else in this format. The two worth stretching for are **Corrections to the Decisions**, because a decision the implementation had to break is the thing a later reader most needs and the only place it gets recorded, and **Open items**, which is where the follow-ups go instead of a conversation nobody can find.
-
-Writing it later means writing it from the branch rather than from memory: the commits, the specs that landed and the doc's own Phases are enough to reconstruct one, and an Outcome written that way is no worse than one written as you went.
-
-Benchmarks and measurements go where the doc asked for them: inside the phase, or in a table in the Outcome.
+Write from commits and evidence, not memory. Missing required work keeps completion open; recording
+it as a follow-up does not waive it. Omit empty sections and repeated histories.
 
 ## Writing style
 
-- **Plain, specific sentences.** Name the file, function, command or spec. Avoid vague words ("robust", "cleanly", "properly").
-- **Facts in Background and Spike results, choices in Decisions.** Recommendations belong in Decisions, or as neutral options under Open decisions.
-- **Explain terms the reader may not know** the first time they appear (what a partition is, what a hook does), briefly.
-- **Checkable over aspirational.** "`tests/boundaries.spec.ts` fails if `src/services` gains a file" beats "services stay tidy".
-- **Record dates and commits** for surveys and spikes, and method and machine for measurements.
-- **Keep it current while it's open.** When a decision changes or a spike reruns, update the doc instead of appending contradictions.
+Use plain, specific language and checkable outcomes. Distinguish observed facts, decisions and hypotheses.
+Date historical evidence and identify its source. Update active instructions instead of appending
+contradictions. Avoid arbitrary document-length gates; keep execution usable by giving history its own home.

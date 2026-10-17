@@ -89,4 +89,60 @@ describe('replaceDir', () => {
       for (const d of aside(stagingParent)) fs.chmodSync(path.join(stagingParent, d, 'locked'), 0o700);
     }
   });
+
+  it('keeps the prior tree available until synchronous acceptance and removes it after commit', () => {
+    const { root, staged, dest, stagingParent } = tree();
+    try {
+      let accepted = false;
+      replaceDir(staged, dest, () => {
+        expect(fs.readFileSync(path.join(dest, 'new.js'), 'utf8')).toBe('new');
+        const previous = entries(stagingParent).find(name => name.includes('.previous-'))!;
+        expect(fs.readFileSync(path.join(stagingParent, previous, 'old.js'), 'utf8')).toBe('old');
+        accepted = true;
+      });
+      expect(accepted).toBe(true);
+      expect(entries(stagingParent)).toEqual([]);
+      expect(entries(dest)).toEqual(['new.js']);
+    } finally { fs.rmSync(root, { recursive: true, force: true }); }
+  });
+
+  it('restores the complete prior directory after candidate acceptance refuses', () => {
+    const { root, staged, dest, stagingParent } = tree();
+    try {
+      fs.mkdirSync(path.join(dest, 'assets'));
+      fs.writeFileSync(path.join(dest, 'assets', 'old.txt'), 'old asset');
+      const refusal = new Error('candidate refused');
+      expect(() => replaceDir(staged, dest, () => { throw refusal; })).toThrow(refusal);
+      expect(entries(dest)).toEqual(['assets', 'old.js']);
+      expect(fs.readFileSync(path.join(dest, 'assets', 'old.txt'), 'utf8')).toBe('old asset');
+      expect(entries(stagingParent)).toEqual([]);
+    } finally { fs.rmSync(root, { recursive: true, force: true }); }
+  });
+
+  it('removes a refused first installation instead of leaving an unaccepted directory', () => {
+    const { root, staged, dest, stagingParent } = tree();
+    try {
+      fs.rmSync(dest, { recursive: true });
+      expect(() => replaceDir(staged, dest, () => { throw new Error('refused'); })).toThrow('refused');
+      expect(fs.existsSync(dest)).toBe(false);
+      expect(entries(stagingParent)).toEqual([]);
+    } finally { fs.rmSync(root, { recursive: true, force: true }); }
+  });
+
+  it('preserves another replacement and the old backup when rollback no longer owns the destination', () => {
+    const { root, staged, dest, stagingParent } = tree();
+    try {
+      const claimed = path.join(root, 'other');
+      fs.mkdirSync(claimed);
+      fs.writeFileSync(path.join(claimed, 'other.js'), 'other');
+      expect(() => replaceDir(staged, dest, () => {
+        fs.renameSync(dest, path.join(root, 'displaced'));
+        fs.renameSync(claimed, dest);
+        throw new Error('refused');
+      })).toThrow('rollback failed');
+      expect(entries(dest)).toEqual(['other.js']);
+      const previous = entries(stagingParent).find(name => name.includes('.previous-'))!;
+      expect(entries(path.join(stagingParent, previous))).toEqual(['old.js']);
+    } finally { fs.rmSync(root, { recursive: true, force: true }); }
+  });
 });

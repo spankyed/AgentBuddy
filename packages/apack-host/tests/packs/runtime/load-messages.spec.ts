@@ -8,8 +8,9 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { registry } from './test-host.ts';
 import { PACK_LOAD_MESSAGES, packRegistered } from '../../../src/packs/load-messages.ts';
 import { loadSingleExternalPack, registerExternalPacks } from '../../../src/packs/runtime/loader.ts';
-import { PACK_LAYOUT, PACK_LAYOUT_VERSION } from '../../../src/packs/layout.ts';
+import { PACK_LAYOUT } from '../../../src/packs/layout.ts';
 import { PACK_SNAPSHOT_FORMAT } from '@apackdev/sdk/build';
+import { sealPack } from './build-fixture.ts';
 import { testRootEvents } from '@apackdev/sdk/testing';
 
 const PACK_ID = 'load-messages-pack';
@@ -34,7 +35,7 @@ describe('what the loader says about a pack', () => {
     const manifest = { id: PACK_ID, name: PACK_ID, version: '1.0.0' };
     const pack = {
       registration: { id: PACK_ID },
-      origin: { ...manifest, dir: tmpDir, shipped: false, manifest },
+      origin: { declarationRevision: 'fixture-revision', ...manifest, dir: tmpDir, manifest },
     };
 
     expect(registerExternalPacks(registry, [pack])).toHaveLength(1);
@@ -48,17 +49,20 @@ describe('what the loader says about a pack', () => {
   // format against that app first — nothing outside the app knows which format it reads. It doesn't try: the app
   // decides, and this is how its decision reaches the fixture. Matched exactly as the fixture matches it.
   it('says a pack it will not load is not loaded, in the sentence the harness watches for', () => {
+    const packDir = path.join(tmpDir, PACK_ID);
     const manifest = { id: PACK_ID, name: PACK_ID, version: '1.0.0' };
     // An installed pack as `apack pack install` leaves one, except that another apack built it
-    fs.mkdirSync(path.join(tmpDir, PACK_LAYOUT.runtimeDir), { recursive: true });
-    fs.mkdirSync(path.join(tmpDir, PACK_LAYOUT.typesDir), { recursive: true });
-    fs.writeFileSync(path.join(tmpDir, PACK_LAYOUT.runtimeEntry), 'module.exports = {};');
-    fs.writeFileSync(path.join(tmpDir, PACK_LAYOUT.integrity), JSON.stringify({ formatVersion: PACK_LAYOUT_VERSION, id: PACK_ID, version: '1.0.0' }));
-    fs.writeFileSync(path.join(tmpDir, PACK_LAYOUT.snapshot), JSON.stringify({ format: PACK_SNAPSHOT_FORMAT + 1 }));
+    fs.mkdirSync(path.join(packDir, PACK_LAYOUT.runtimeDir), { recursive: true });
+    fs.mkdirSync(path.join(packDir, PACK_LAYOUT.typesDir), { recursive: true });
+    fs.writeFileSync(path.join(packDir, PACK_LAYOUT.manifest), JSON.stringify(manifest));
+    fs.writeFileSync(path.join(packDir, PACK_LAYOUT.runtimeEntry), 'module.exports = {};');
+    fs.writeFileSync(path.join(packDir, PACK_LAYOUT.snapshot), JSON.stringify({ format: PACK_SNAPSHOT_FORMAT + 1 }));
+    sealPack(packDir);
 
-    const result = loadSingleExternalPack(manifest, tmpDir);
+    const result = loadSingleExternalPack(registry, packDir);
 
     expect(result).toHaveProperty('problem');
+    expect(result).toHaveProperty('problem', expect.stringContaining(`format ${PACK_SNAPSHOT_FORMAT + 1}`));
     const watched = new RegExp(`(${PACK_LOAD_MESSAGES.notLoaded.join('|')}) ${PACK_ID}\\b`);
     expect(logged.some((line) => watched.test(line))).toBe(true);
   });

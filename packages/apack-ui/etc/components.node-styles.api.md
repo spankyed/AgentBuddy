@@ -25,6 +25,9 @@ export const getNodeClasses: (nodeType: string, options?: NodeStyleOptions) => s
 export const getNodeConfig: (nodeType: string) => NodeConfig | undefined;
 
 // @public (undocumented)
+export const getNodeConfigs: () => Record<string, NodeConfig>;
+
+// @public (undocumented)
 export const getNodeDividerClass: (nodeType: string, options?: NodeStyleOptions) => string;
 
 // @public (undocumented)
@@ -67,6 +70,8 @@ export const isTriggerNode: (nodeType: string | undefined) => boolean;
 export interface NodeConfig {
     color: string;
     // (undocumented)
+    colorKey?: string;
+    // (undocumented)
     connectionRules: {
         inputs: number;
         outputs: number;
@@ -86,9 +91,6 @@ export interface NodeConfig {
 }
 
 // @public (undocumented)
-export const nodeConfigs: Record<string, NodeConfig | undefined>;
-
-// @public (undocumented)
 export type NodeStatus = 'active' | 'paused' | 'completed' | 'failed';
 
 // @public (undocumented)
@@ -101,6 +103,40 @@ export interface NodeStyleOptions {
 
 // @public (undocumented)
 export type StatusVariant = 'simple' | 'detailed';
+
+// @public
+export function useNodeStyles(): {
+    getNodeConfigs: () => Record<string, NodeConfig>;
+    getNodeClasses: (nodeType: string, options?: NodeStyleOptions) => string;
+    getNodeDividerClass: (nodeType: string, options?: NodeStyleOptions) => string;
+    getNodeIconTextColor: (nodeType: string, options?: NodeStyleOptions) => string;
+    getNodeStatusClasses: (status: NodeStatus | string, variant?: StatusVariant) => string | {
+        outer: string;
+        inner: string;
+    };
+    getNodeConfig: (nodeType: string) => NodeConfig | undefined;
+    isTriggerNode: (nodeType: string | undefined) => boolean;
+    getPaletteItems: () => {
+        type: string;
+        label: string;
+        icon: Component;
+        isImplemented: boolean | undefined;
+        isDisabled: boolean | undefined;
+    }[];
+    getConnectableNodeTypes: () => {
+        type: string;
+        label: string;
+        icon: Component;
+        isImplemented: boolean | undefined;
+        isDisabled: boolean | undefined;
+    }[];
+    getPaletteItemClasses: (type: string) => string;
+    getInspectionItemClasses: (type: string) => string;
+    getPaletteIconClasses: (type: string) => string;
+    getPaletteIconComponentClasses: (type: string) => string;
+    getPaletteGlowClasses: (type: string) => string;
+    getPaletteGradientClasses: (type: string) => string;
+};
 
 // (No @packageDocumentation comment for this package)
 

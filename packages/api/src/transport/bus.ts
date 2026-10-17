@@ -8,8 +8,9 @@ import { HOST, receiveClientEvent, UnknownClientEventError } from '@apackdev/hos
 import { splitRef } from '@apackdev/sdk/ids';
 import { procedure, router } from './trpc';
 import { createLogger } from '@apackdev/sdk/logger';
-import { rootEvents } from '@/transport/emitter';
-import { appClaims, appPacks } from '@/runtime';
+import { rootEvents } from './emitter.ts';
+import { appClaims, appPacks, appSettingsAccess } from '../runtime/index.ts';
+import { bindSettingsRequest, SETTINGS_MUTATIONS, SettingsRefusedError } from '@apackdev/host/settings';
 
 const logger = createLogger('app-events');
 
@@ -56,7 +57,7 @@ export const systemBusRouter = router({
     // today means every caller holds the API token and no pack exists outside this repo — a premise the root
     // CLAUDE.md gives an expiry for. Closing it properly needs per-connection knowledge of which plugins a
     // window actually loaded, which `packClientReady` does not keep.
-    .input(z.object({ to: z.string().min(1), from: z.string().min(1).optional(), via: z.string().min(1).optional(), sender: z.string().min(1).optional(), call: z.string().min(1).optional(), answering: z.string().min(1).optional(), event: z.object({ type: z.string().min(1) }).passthrough() }))
+    .input(z.object({ to: z.string().min(1), from: z.string().min(1).optional(), via: z.string().min(1).optional(), sender: z.string().min(1).optional(), call: z.string().min(1).optional(), answering: z.string().min(1).optional(), settingsCredential: z.string().min(1).optional(), event: z.object({ type: z.string().min(1) }).passthrough() }))
     .mutation(({ input, ctx }) => {
       if (input.sender !== undefined && !addressable(input.sender)) {
         throw new TRPCError({
@@ -65,8 +66,16 @@ export const systemBusRouter = router({
         });
       }
       try {
-        receiveClientEvent(appPacks, { ...input, client: ctx.client });
+        const { settingsCredential, ...message } = input;
+        if (message.to === HOST.settings && SETTINGS_MUTATIONS.has(message.event.type)) {
+          if (ctx.closed.aborted || !settingsCredential) throw new SettingsRefusedError(['Settings requests require host-issued access.']);
+          const access = appSettingsAccess;
+          access.resolve(ctx.client, settingsCredential);
+          bindSettingsRequest(message.event, () => access.resolve(ctx.client, settingsCredential));
+        }
+        receiveClientEvent(appPacks, { ...message, client: ctx.client });
       } catch (error) {
+        if (error instanceof SettingsRefusedError) throw new TRPCError({ code: 'FORBIDDEN', message: error.message });
         if (error instanceof UnknownClientEventError) throw new TRPCError({ code: 'BAD_REQUEST', message: error.message });
         throw error;
       }
@@ -80,8 +89,11 @@ export const systemBusRouter = router({
    * is the right reach for it: the data is for every window showing the plugin, not for whoever connected.
    */
   packClientReady: procedure
-    .input(z.object({ packId: z.string().min(1) }))
+    .input(z.object({ packId: z.string().min(1), runtimeRevision: z.string().min(1) }).strict())
     .mutation(({ input }) => {
+      if (appPacks.getPackRuntime(input.packId)?.runtimeRevision !== input.runtimeRevision) {
+        throw new TRPCError({ code: 'CONFLICT', message: 'The frontend belongs to an unavailable pack runtime.' });
+      }
       logger.info(`→ Pack client ready: "${input.packId}"`, { packId: input.packId });
       rootEvents.emitPackClientConnected(input.packId);
     }),

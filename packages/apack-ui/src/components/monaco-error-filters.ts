@@ -1,4 +1,4 @@
-// Monaco's diff view throws an internal range-validation error that it recovers from on its own. The
+// Monaco recovers from its diff range error and cancels pending work when an editor is disposed. The
 // app reports every uncaught renderer error as fatal, so unless this filter is registered *before* that
 // reporter, the reporter runs first — listeners on one target fire in registration order, and the
 // capture flag does not change that for an event dispatched at the target itself.
@@ -9,20 +9,29 @@
 // pack that mounts the editor in a host that forgot is still covered.
 let installed = false;
 
-/** Stops Monaco's recoverable diff-range error from reaching a global error handler. Safe to call repeatedly. */
+/** Recognizes the vendor errors Monaco recovers from, including disposal reported through Vue. */
+export function isRecoverableMonacoError(error: unknown): boolean {
+  if (!(error instanceof Error)) return false;
+  const origin = error.stack?.split('\n').find(line => line.trimStart().startsWith('at ')) ?? '';
+  return error.message.includes('cannot be after endLineNumberExclusive')
+    || (error.name === 'Canceled' && error.message === 'Canceled'
+      && (/\/monaco(?:-editor|-[A-Za-z0-9_-]+\.js)/.test(origin)));
+}
+
+/** Stops recoverable Monaco errors from reaching a global error handler. Safe to call repeatedly. */
 export function installMonacoErrorFilters(): void {
   if (installed || typeof window === 'undefined') return;
   installed = true;
-  const isRecoverableDiffError = (message: string | undefined): boolean =>
-    message?.includes('cannot be after endLineNumberExclusive') ?? false;
-
   window.addEventListener('error', (event) => {
-    if (isRecoverableDiffError(event.error?.message)) {
+    if (isRecoverableMonacoError(event.error)) {
       event.preventDefault();
       event.stopImmediatePropagation();
     }
   });
   window.addEventListener('unhandledrejection', (event) => {
-    if (isRecoverableDiffError(event.reason?.message ?? String(event.reason))) event.preventDefault();
+    if (isRecoverableMonacoError(event.reason)) {
+      event.preventDefault();
+      event.stopImmediatePropagation();
+    }
   });
 }

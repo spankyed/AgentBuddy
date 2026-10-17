@@ -1,4 +1,3 @@
-import type { TriggerFacet, StepNodeFacet } from '@apackdev/sdk/steps';
 import { EARS } from '@apackdev/sdk';
 import { Cron } from 'croner';
 
@@ -43,21 +42,3 @@ export function validate(node: Record<string, unknown>): { valid: boolean; error
   const errors = validateCron((node as any).cronExpression as string | undefined, 'cronExpression');
   return { valid: errors.length === 0, errors };
 }
-
-/** Build-time facets only (no runtime or FE imports); loaded by `apack pack build` in dependent packs. */
-export const scheduleTriggerBuild: TriggerFacet = {
-  trackField: 'schedule',
-  compile,
-  decompile,
-  persistent: true,
-  queryFields: ['cronExpression'],
-  validateTrack,
-  validate,
-};
-
-/** What a node of this type starts with; the backend writes it and the canvas draws it */
-export const scheduleTriggerNode: StepNodeFacet = {
-  label: 'Schedule',
-  defaultLabel: 'On schedule',
-  defaults: { cronExpression: '0 * * * *' },
-};

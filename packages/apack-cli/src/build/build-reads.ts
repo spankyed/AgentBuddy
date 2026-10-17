@@ -9,8 +9,8 @@
  * declaring too little.
  *
  * Every bundler here already computes this set and threw it away. esbuild's `metafile.inputs` is the dep
- * file outright; Rollup's `bundle.watchFiles` is the declaration program's file list; Vite's module graph
- * is the same thing for the frontend bundle. So this records what they say rather than inferring anything,
+ * file outright; Rollup's `bundle.watchFiles` is the declaration program's file list; Vite's watch files
+ * include the frontend's modules, styles and asset dependencies. So this records what they say rather than inferring anything,
  * and the phases that have no bundler to ask — codegen, the tsx-loaded content compilation, the feature
  * settings load, the static pack rules — are absent rather than guessed at.
  *
@@ -28,6 +28,8 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { PACK_READS_FILE } from '@apackdev/host/build/pack-workdir';
+import { compilerSourcePath } from '@apackdev/host/build/compiler-inputs';
+import { readCompilerInstallationInputs } from './compiler-installation-inputs.ts';
 
 /**
  * The one way to turn the record off, and it is environmental: a read-only filesystem, or a sandbox that
@@ -100,8 +102,8 @@ export interface BuildReads {
    */
   carry(phase: BuildPhase): boolean;
   /**
-   * Write the record. Called where the build commits its output, so a failed build records nothing — and
-   * it never fails the build itself, however it fails.
+   * Write candidate diagnostics after validation. A placement failure can leave them ahead of dist;
+   * they never authorize output reuse or fail the build themselves.
    */
   write(): void;
 }
@@ -112,7 +114,7 @@ export interface BuildReads {
  * `packDir` is where the file goes and what the paths are relative to — a pack author outside this repo
  * has no repo root, and the reader resolves against the pack directory it found the file in.
  */
-export function buildReads(packDir: string): BuildReads | undefined {
+export function buildReads(packDir: string, sourcePath?: (file: string) => string): BuildReads | undefined {
   if (optedOut()) return undefined;
   // The directory the bundlers resolve their relative paths against, taken once: esbuild's metafile keys
   // are relative to it, and a build does not change directory
@@ -145,7 +147,7 @@ export function buildReads(packDir: string): BuildReads | undefined {
       bundlers: Object.fromEntries([...bundlers].sort(([a], [b]) => a.localeCompare(b))),
       phases: Object.fromEntries(BUILD_PHASES
         .filter((phase) => phases.has(phase))
-        .map((phase) => [phase, relativeReads(phases.get(phase)!, cwd, root)])),
+        .map((phase) => [phase, relativeReads(phases.get(phase)!, cwd, root, sourcePath)])),
     };
     const file = path.join(packDir, PACK_READS_FILE);
     fs.mkdirSync(path.dirname(file), { recursive: true });
@@ -215,13 +217,15 @@ export function buildReads(packDir: string): BuildReads | undefined {
  * way — resolving it follows a symlink out of `node_modules`, and realpath is what puts it back under
  * `packages/`, which is exactly where a declaration has to name it.
  */
-function relativeReads(files: Iterable<string>, cwd: string, root: string): string[] {
+function relativeReads(files: Iterable<string>, cwd: string, root: string, sourcePath?: (file: string) => string): string[] {
   const out = new Set<string>();
+  const compilerPaths = readCompilerInstallationInputs()?.paths ?? [];
   for (const file of files) {
     if (file.includes('\0')) continue;
     let real: string;
     try {
-      real = fs.realpathSync(path.resolve(cwd, file));
+      const physical = fs.realpathSync(path.resolve(cwd, file));
+      real = sourcePath ? sourcePath(physical) : compilerSourcePath(physical, compilerPaths);
     } catch {
       continue;
     }

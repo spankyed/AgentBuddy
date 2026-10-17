@@ -20,7 +20,7 @@ afterEach(() => {
 function compiledDir(packId?: string): string {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'content-registry-'));
   dirs.push(dir);
-  fs.writeFileSync(path.join(dir, 'content.json'), JSON.stringify({ version: 1, ...(packId && { packId }), content: [] }));
+  fs.writeFileSync(path.join(dir, 'content.json'), JSON.stringify({ version: 1, ...(packId && { packId }), entries: [] }));
   return dir;
 }
 
@@ -57,7 +57,7 @@ describe('importCompiledContent', () => {
   });
 
   it('refuses a directory that names no pack', () => {
-    expect(() => importCompiledContent({ compiledDir: compiledDir() })).toThrow("doesn't name the pack that compiled this content");
+    expect(() => importCompiledContent({ compiledDir: compiledDir() })).toThrow('packId');
   });
 
   /**

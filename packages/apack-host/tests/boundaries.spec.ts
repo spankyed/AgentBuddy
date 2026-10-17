@@ -4,6 +4,7 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import type { HostRuntime } from '@apackdev/sdk/runtime';
+import ts from 'typescript';
 
 const HOST_ROOT = path.resolve(__dirname, '..');
 const SRC = path.join(HOST_ROOT, 'src');
@@ -53,7 +54,7 @@ function runtimeClosure(entry: string): Set<string> {
 }
 
 /** The services the app implements, each in `src/services/<kebab-case key>.ts`; the type checks the list is complete */
-const HOST_SERVICE_KEYS = ['appData', 'traceStore', 'inference', 'secrets', 'filesystem', 'settings'] as const satisfies readonly (keyof HostRuntime['services'])[];
+const HOST_SERVICE_KEYS = ['appData', 'onboarding', 'traceStore', 'inference', 'secrets', 'filesystem', 'settings'] as const satisfies readonly (keyof HostRuntime['services'])[];
 type MissingServiceKey = Exclude<keyof HostRuntime['services'], (typeof HOST_SERVICE_KEYS)[number]>;
 const serviceKeysComplete: [MissingServiceKey] extends [never] ? true : MissingServiceKey = true;
 const kebab = (key: string) => key.replace(/[A-Z]/g, (c) => `-${c.toLowerCase()}`);
@@ -61,6 +62,21 @@ const kebab = (key: string) => key.replace(/[A-Z]/g, (c) => `-${c.toLowerCase()}
 const inRuntime = (file: string) => file.startsWith(RUNTIME + path.sep);
 
 const rel = (file: string) => path.relative(HOST_ROOT, file);
+
+/** Inspect accesses, not comments or import paths such as settings/document.ts. */
+function browserGlobals(file: string): string[] {
+  const found: string[] = [];
+  const source = ts.createSourceFile(file, fs.readFileSync(file, 'utf8'), ts.ScriptTarget.Latest, true);
+  function visit(node: ts.Node): void {
+    if ((ts.isPropertyAccessExpression(node) || ts.isElementAccessExpression(node))
+      && ts.isIdentifier(node.expression) && ['window', 'document', 'localStorage'].includes(node.expression.text)) {
+      found.push(node.getText(source));
+    }
+    ts.forEachChild(node, visit);
+  }
+  visit(source);
+  return found;
+}
 
 describe('host package boundaries', () => {
   // The record's shape is one module's business. Every write outside it is a named intention — an
@@ -105,9 +121,10 @@ describe('host package boundaries', () => {
   // The app is the pack `host`, so its own features are laid out as a pack's. Before that, one feature's system
   // lived in `bus/` and the other's in `packs/runtime/`, with both frontends in `fe/`, which is how `bus/` came to
   // export a feature's system and `packs/` to run both other packs and one of the host's own.
-  it("lays the host pack's features out as a pack's: <feature>/{be,fe}", () => {
+  it("keeps feature implementations in be/ and fe/, with shared contracts beside them", () => {
     const features = fs.readdirSync(path.join(SRC, 'features'), { withFileTypes: true }).filter((e) => e.isDirectory());
-    const halves = features.flatMap((f) => fs.readdirSync(path.join(SRC, 'features', f.name)).map((half) => `${f.name}/${half}`));
+    const halves = features.flatMap((f) => fs.readdirSync(path.join(SRC, 'features', f.name), { withFileTypes: true })
+      .filter(entry => entry.isDirectory()).map((half) => `${f.name}/${half.name}`));
 
     expect(features.map((f) => f.name).sort()).toEqual(['application', 'help', 'packs', 'settings']);
     expect(halves.filter((h) => !/\/(be|fe)$/.test(h)), "a feature holds be/ and fe/, as a pack's does").toEqual([]);
@@ -132,10 +149,26 @@ describe('host package boundaries', () => {
 
     const found = frontendDirs.flatMap(sourceFiles).flatMap((file) => {
       const imports = importsOf(file).map((i) => i.specifier).filter((s) => s === 'vue' || s.startsWith('@/') || s.startsWith('@trpc/'));
-      const globals = [...fs.readFileSync(file, 'utf8').matchAll(/\b(?:window|document|localStorage)\./g)].map((m) => m[0]);
+      const globals = browserGlobals(file);
       return [...imports, ...globals].map((what) => `${path.relative(HOST_ROOT, file)}: ${what}`);
     });
     expect(found).toEqual([]);
+  });
+
+  it('keeps shared feature contracts and the frontend runtime free of Node-only modules', () => {
+    const featureContracts = fs.readdirSync(path.join(SRC, 'features'), { withFileTypes: true })
+      .filter(entry => entry.isDirectory())
+      .flatMap(feature => fs.readdirSync(path.join(SRC, 'features', feature.name), { withFileTypes: true })
+        .filter(entry => entry.isFile() && entry.name.endsWith('.ts'))
+        .map(entry => path.join(SRC, 'features', feature.name, entry.name)));
+    const reached = new Set([path.join(SRC, 'fe', 'index.ts'), ...featureContracts].flatMap(file => [...runtimeClosure(file)]));
+    const forbidden = /^(node:|fs(?:\/|$)|crypto$|lmdb(?:\/|$)|@apackdev\/ears(?:\/|$)|@trpc\/)/;
+    const imports = [...reached].flatMap(file => [
+      ...importsOf(file).filter(imported => !imported.typeOnly && forbidden.test(imported.specifier))
+        .map(imported => `${rel(file)}: ${imported.specifier}`),
+      ...browserGlobals(file).map(global => `${rel(file)}: ${global}`),
+    ]);
+    expect(imports).toEqual([]);
   });
 
   it("holds only the app-implemented services in src/services, one file each, and the runtime's index", () => {

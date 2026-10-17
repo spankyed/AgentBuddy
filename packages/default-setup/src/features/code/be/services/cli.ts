@@ -1,4 +1,4 @@
-import { settings as featureSettings } from '#generated/settings.ts';
+import { featureSettings } from '#generated/settings.ts';
 
 import { GitRepository } from '#features/code/be/services/git.ts'
 import * as ghCli from '#features/code/be/services/gh-cli.ts'
