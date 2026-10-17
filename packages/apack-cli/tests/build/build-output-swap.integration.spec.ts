@@ -145,7 +145,7 @@ describe('a build that fails', () => {
     expect(facade()).toMatch(/title:\s*string/);
     await build(['--skip-fe'], root);
     expect(facade()).toMatch(/title:\s*number/);
-  });
+  }, 120_000);
 
   it('refuses stale generated declarations and retains the previous build', async () => {
     const dir = previousBuild(PREVIOUS);
@@ -241,7 +241,7 @@ describe('a pack whose content compiler modules fail to bundle', () => {
       manifest: {
         id: 'built-in-pack', name: 'Built-in', features: {},
         // Not used by an entry here, so only the bundle for dependents compiles it
-        content: { sources: { flows: 'src/content/flows' }, formats: { tags: { compiler: 'src/tags.ts', entity: 'Relation' } } },
+        content: { formats: { tags: { compiler: 'src/tags.ts', entity: 'Relation' } } },
       },
     });
     const cwd = process.cwd();

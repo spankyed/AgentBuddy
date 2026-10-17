@@ -135,6 +135,8 @@ function compiled(pkg: string, ...extraInputs: string[]): BuildUnit {
       pkgFile('apack-host', 'src', 'build', 'node-options.d.ts'),
       // Reached through this module: it is where the list of inlined packages comes from
       pkgFile('apack-host', 'src', 'build', 'shared-deps.ts'),
+      pkgFile('apack-host', 'src', 'build', 'package-inputs.ts'),
+      pkgFile('apack-host', 'src', 'build', 'pack-inputs.ts'),
       // How the built tree is published: assembled under `.temp/` and renamed over `dist`, so it decides where
       // the output lands rather than merely whether the build runs — which is what `NOT_A_BUILD_INPUT` is for,
       // and why this is declared instead

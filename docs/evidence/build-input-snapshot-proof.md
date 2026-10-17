@@ -1361,6 +1361,40 @@ to be run against this final wiring. Do not count the earlier real prebuilt pass
 B1/B3 lifetime closure, B6 convergence, all Phase 6 streams and final committed-source strict `--all`
 remain required. Available disk before these runs is 83GiB; no broad suite was launched here.
 
+## Generic acceptance repair
+
+Reviewed candidate `d5845c96f` against current source and the three supplied logs. Applied only its
+generic watcher mock, build-input declarations and sealed fixture repairs; research work and its
+timeout exceptions remain untouched. Strict admission remains in place. Missing, changed and extra
+frontend receipt files retain their existing refusal coverage in `pack-layout.spec.ts`.
+
+The latest integration log also exposed a content compiler failure fixture declaring nonexistent
+`src/content/flows`. Removing that unrelated source lets it reach its intended dependent compiler
+bundle failure; its unchanged assertion passes in 10.87s.
+
+Evidence:
+
+- `packages:ensure` passes: `/private/tmp/apack-generic-acceptance-packages.log`.
+- All 155 checks across the six affected fast files pass in 10.22s:
+  `/private/tmp/apack-generic-acceptance-focused.log`. An initial sandboxed run lost a worker IPC
+  channel; the permitted subprocess run completes successfully.
+- The replacement/cache scenario executes three real builds. At the existing 60s deadline it times
+  out at 63.50s; a single diagnostic with 120s passes all unchanged assertions in 59.27s:
+  `/private/tmp/apack-generic-output-swap-focused.log`,
+  `/private/tmp/apack-generic-output-swap-diagnostic.log`. Its source now uses that bounded 120s limit.
+- The timeout registry documents this scenario and the two already-committed 120s scenarios, previously
+  measured at 61.51s and 73.69s. No global timeout changes. These entries register measured scenario
+  costs; they do not establish that compilation is efficient.
+- Focused correctness lint passes on all seven changed code files.
+- CLI, host, API test and repo-checks TypeScript checks pass. The timeout policy's 42 checks pass
+  after registering the final exception: `/private/tmp/apack-generic-acceptance-types.log`,
+  `/private/tmp/apack-generic-acceptance-timeouts.log`.
+
+Aggregate integration acceptance remains open: the supplied run reached its 600s suite deadline.
+The earlier log's repeat-worker 60s failure predates its existing 120s override. No aggregate pass,
+performance improvement or strict final gate is claimed. Finish remaining affected integration checks
+on two cores before broad convergence; do not diagnose this again by repeating the full chain.
+
 ## Fresh publication directory namespace repair
 
 Consumer source checkpoint: `8058fd1a2`.

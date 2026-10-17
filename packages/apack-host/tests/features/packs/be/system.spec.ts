@@ -63,6 +63,7 @@ function packSource(version: string, { failsImport = false, id = PACK_ID, runtim
   fs.writeFileSync(path.join(dir, 'dist', 'runtime', 'index.cjs'), (`module.exports = { registration: { id: ${JSON.stringify(id)} } };\n${runtime}`) + `
 if (module.exports.registration) module.exports.registration.declarationRevision = '${_declarationRevision(JSON.parse(fs.readFileSync(path.join(dir, 'apack.json'), 'utf-8')))}';`);
   fs.writeFileSync(path.join(dir, 'dist', PACK_LAYOUT.snapshot), JSON.stringify({ declarationRevision: _declarationRevision(JSON.parse(fs.readFileSync(path.join(dir, 'apack.json'), 'utf-8'))), format: PACK_SNAPSHOT_FORMAT, manifest: JSON.parse(fs.readFileSync(path.join(dir, 'apack.json'), 'utf-8')), eventContracts: eventContractsFixture(JSON.parse(fs.readFileSync(path.join(dir, 'apack.json'), 'utf-8'))), types: { entities: {}, relKinds: {} }, entityDestinations: {}, facades: {} }));
+  fs.writeFileSync(path.join(dir, 'dist', PACK_LAYOUT.feEntry), 'export {};');
   if (failsImport) {
     // Compiled data with no content.json: the applier can't tell whose records these are, so applying fails
     fs.mkdirSync(path.join(dir, 'dist', 'runtime', 'content'), { recursive: true });
@@ -334,7 +335,7 @@ describe('pack information without activation', () => {
     return (event!.packs as InstalledPackSummary[]).find(pack => pack.id === PACK_ID)!;
   };
 
-  it.each(['disabled', 'activation-failed'])('lists %s declarations without requiring runtime registration or undeclared frontend files', kind => {
+  it.each(['disabled', 'activation-failed'])('lists %s declarations without activating backend or frontend code', kind => {
     const dir = path.join(resolveAppEnvironment().packsDir, PACK_ID);
     const manifest = { id: PACK_ID, name: 'Declared pack', version: '1.0.0',
       data: { relations: ['parent'] },
@@ -350,6 +351,7 @@ describe('pack information without activation', () => {
       declarationRevision: _declarationRevision(manifest), manifest, eventContracts: eventContractsFixture(manifest), types: { entities: {}, relKinds: {} }, entityDestinations: {}, facades: {} }));
     const marker = path.join(tmpDir, 'executed');
     fs.writeFileSync(path.join(dir, PACK_LAYOUT.runtimeEntry), `require('node:fs').writeFileSync(${JSON.stringify(marker)}, 'yes'); throw new Error('Do not activate');`);
+    fs.writeFileSync(path.join(dir, PACK_LAYOUT.feEntry), 'throw new Error("Do not activate frontend");');
     sealPack(dir);
     expect(() => readPackBuild(dir)).not.toThrow();
     setPackEnabled(PACK_ID, kind !== 'disabled');
@@ -360,12 +362,10 @@ describe('pack information without activation', () => {
       expect(registry.loadProblem(PACK_ID)).toContain('Do not activate');
     }
     registry.refreshCatalog(resolveAppEnvironment().packsDir);
-    // A file that was never part of the accepted build must not advertise available frontend code.
-    fs.writeFileSync(path.join(dir, PACK_LAYOUT.feEntry), 'throw new Error("Do not import");');
     const system = runPacksSystem();
     try {
       expect(list(system)).toMatchObject({ name: 'Declared pack', version: '1.0.0', enabled: kind !== 'disabled',
-        entities: { Memo: 'Memo' }, entityCount: 1, relKinds: { PARENT: 'parent' }, hasFrontend: false,
+        entities: { Memo: 'Memo' }, entityCount: 1, relKinds: { PARENT: 'parent' }, hasFrontend: true,
         systems: [`${PACK_ID}/notes`], services: ['packApi', 'notesApi'], artifacts: ['memo'],
         migrationCount: 1, lifecycleHooks: ['onInit'],
         features: [{ id: 'notes', description: manifest.features.notes.description, designation: 'notes', hasSystem: true, plugin: manifest.features.notes.plugin, references: referenceDeclarations, services: ['notesApi'] }] });
@@ -1033,7 +1033,10 @@ describe('a user answering for one of a pack’s content items', () => {
       content: { sources: { actions: 'src/actions', 'pack-prompts': { path: 'src/prompts', format: 'pack-prompts', onUserEdit: 'offer' } },
         formats: { 'pack-prompts': { format: 'json', entity: 'PackPrompt', identity: ['label'] } },
         writers: { PackPrompt: 'src/writers.ts#promptWriter' } } });
-    fs.writeFileSync(path.join(content, 'content.json'), JSON.stringify({ version: 1, packId: CONTENT_PACK, entries: [] }));
+    fs.writeFileSync(path.join(content, 'content.json'), JSON.stringify({ version: 1, packId: CONTENT_PACK, entries: [
+      { key: 'actions', written: true, count: 1, identity: ['label'], items: [{ key: 'Echo' }] },
+      { key: 'pack-prompts', written: true, count: 1, identity: ['label'], items: [{ key: 'Greet' }] },
+    ] }));
     fs.writeFileSync(path.join(content, 'actions.content.json'), JSON.stringify({
       records: [{ entity: 'Action', label: 'Echo', description: `theirs ${version}`, contentHash: `echo-${version}` }],
     }));

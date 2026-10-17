@@ -44,6 +44,14 @@ function writeBuild(packDir: string, id: string, featuresSource: string) {
   const appliers = Object.keys(manifest.content?.sources ?? {}).map(key => `{ key: ${JSON.stringify(key)}, apply: () => ({ created: 0, updated: 0, skipped: 0 }) }`).join(', ');
   write('runtime/index.cjs', (`module.exports = { registration: { id: ${JSON.stringify(id)}, features: ${featuresSource}, ears: ${JSON.stringify({ entities: _packEntityTypes(manifest), relKinds: _packRelationTypes(manifest) })}, appliers: [${appliers}] } };`) + `
 if (module.exports.registration) module.exports.registration.declarationRevision = '${_declarationRevision(JSON.parse(fs.readFileSync(path.join(packDir, 'apack.json'), 'utf-8')))}';`);
+  write(PACK_LAYOUT.feEntry, 'export {};');
+  const entries = Object.entries(manifest.content?.sources ?? {}).flatMap(([key, entry]) => {
+    const source = entry as { path?: string; format?: string };
+    if (typeof entry !== 'string' && source.path === undefined && source.format === undefined) return [];
+    write(`${PACK_LAYOUT.contentDir}/${key}.content.json`, JSON.stringify({ records: [] }));
+    return [{ key, written: true, count: 0, identity: [], items: [] }];
+  });
+  if (entries.length) write(`${PACK_LAYOUT.contentDir}/content.json`, JSON.stringify({ version: 1, packId: id, entries }));
   write(PACK_LAYOUT.snapshot, JSON.stringify({ declarationRevision: _declarationRevision(JSON.parse(fs.readFileSync(path.join(packDir, 'apack.json'), 'utf-8'))), format: PACK_SNAPSHOT_FORMAT, manifest: JSON.parse(fs.readFileSync(path.join(packDir, 'apack.json'), 'utf-8')), types: { entities: {}, relKinds: {} }, entityDestinations: {}, eventContracts: { main: { system: { incoming: ['TEST_EVENT'], outgoing: [] }, plugin: { receives: [] } } }, facades: {} }));
   sealPackBuild(path.join(packDir, 'dist'), JSON.parse(fs.readFileSync(path.join(packDir, 'apack.json'), 'utf8')));
 }

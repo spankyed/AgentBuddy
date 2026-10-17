@@ -26,7 +26,14 @@ import { overrideKey, sizeOf, specFilesUnder, timeoutOverrides, type TimeoutOver
  * once 5s and nobody revisited it, which is what the other overrides turned out to be. The check below
  * fails on an entry whose override has gone, so the list shrinks when the reason does.
  */
-const TIMEOUT_EXCEPTIONS: Record<string, string> = {};
+const TIMEOUT_EXCEPTIONS: Record<string, string> = {
+  'packages/apack-cli/tests/build/build-output-swap.integration.spec.ts > does not reuse facade files from an incumbent with stamps from a refused replacement':
+    'Three sequential real builds prove initial publication, refused replacement and recovery. Assertions pass in 59.27 seconds alone; the same scenario reaches 63.50 seconds alongside focused checks.',
+  'packages/apack-cli/tests/build/watch-external-types.integration.spec.ts > rebuilds external contracts and recovers a retargeted missing input without an authored edit':
+    'Four real compiler attempts share this scenario, including refusal and missing-input repair. Measured at 73.69 seconds; each rebuild wait stays bounded at 20 seconds.',
+  'packages/apack-cli/tests/build/build-worker.integration.spec.ts > uses the captured compiler and retains unchanged build/cache identity on repeat builds':
+    'Two fresh compiler installations and builds, plus archive acceptance and reuse verification. Measured at 61.51 seconds with unchanged assertions; the scenario shares one 120-second budget.',
+};
 
 /** Every override in the repo's spec files, with the size it has to fit inside */
 function overrides(): (TimeoutOverride & { size: Size; budget: number })[] {
