@@ -253,7 +253,7 @@ describe('apack pack init → add feature → build → tsc → pack', () => {
     // typecheck: as above
     const tsc = await typecheckPack(pack);
     expect(tsc.code, tsc.output).toBe(0);
-  });
+  }, 120_000);
 
   it('regenerates entries when a source file codegen reads changes, not only the manifest', async () => {
     const servicePath = path.join(pack, 'src', 'extensions', 'services', 'cache.ts');

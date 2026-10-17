@@ -27,6 +27,10 @@ import { overrideKey, sizeOf, specFilesUnder, timeoutOverrides, type TimeoutOver
  * fails on an entry whose override has gone, so the list shrinks when the reason does.
  */
 const TIMEOUT_EXCEPTIONS: Record<string, string> = {
+  'packages/apack-cli/tests/commands/scaffold.integration.spec.ts > adds a step (declared, shipped in build/steps.build.mjs) and a service that build':
+    'Real step/service scaffolding, compiler publication and authored-pack typechecking take 56.93 seconds alone and exceeded 60 seconds in the two-worker pool. This complete authoring scenario has a 120-second budget; its assertions are unchanged.',
+  'packages/apack-cli/tests/build/frontend-resources.integration.spec.ts > watches initially empty external Tailwind content through nested directory links':
+    'Initial compilation plus two actual watched rebuilds take 57.05 seconds alone and exceeded 60 seconds in the two-worker pool. The scenario has a 120-second budget; both existing 20-second rebuild waits and CSS assertions remain unchanged.',
   'packages/apack-cli/tests/build/staged-dsl.integration.spec.ts > preserves a verified build on a later failure, then publishes and reuses the current definitions with its frontend':
     'Five sequential actual builds cover initial publication, refusal, recovery, reuse and removal. Measured at 93.33 seconds alongside the two-build DSL case on two workers; assertions and per-operation waits are unchanged.',
   'packages/apack-cli/tests/build/watch-worker-inputs.integration.spec.ts > rebuilds for worker inputs and repairs missing external reads without authored edits':

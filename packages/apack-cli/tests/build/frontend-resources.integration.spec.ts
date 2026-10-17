@@ -259,4 +259,4 @@ it('watches initially empty external Tailwind content through nested directory l
     expect(errors.mock.calls).toEqual([]);
     expect(readFrontendOutput(pack, '.css')).not.toContain('.text-orange-500');
   } finally { await watcher?.close(); }
-});
+}, 120_000);
