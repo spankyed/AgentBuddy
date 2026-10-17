@@ -381,22 +381,30 @@ describe('reloading a pack', () => {
     expect(registry.getPackRuntime(PACK_ID)).toEqual(previous);
   });
 
-  // A pack the app is the first to load has no row in installed-packs.json, and an apply failure still has
-  // to reach it: the row is made when there is something to record on it.
-  it("records a first-time pack's apply failure", async () => {
-    resetTestData();
+  it('refuses malformed compiled content before replacing the running pack', async () => {
     writeRebuild(runtime());
-    // Invalid current index data must record an apply failure without claiming success.
     fs.writeFileSync(
       path.join(_appDirOf(tmpDir), 'packs', PACK_ID, 'runtime', 'content', 'content.json'),
       JSON.stringify({ version: 1, entries: [] }),
     );
     sealPack(path.join(_appDirOf(tmpDir), 'packs', PACK_ID));
 
+    await expect(reloadPackById(registry, PACK_ID, bus as never)).rejects.toThrow('packId');
+    expectRunningPackIntact();
+  });
+
+  // A first apply has no installed-packs row yet; execution failures must still create its error record.
+  it("records a first-time pack's apply failure", async () => {
+    resetTestData();
+    writeRebuild(runtime(`appliers: [{ key: 'custom', apply() { throw new Error('content apply failed'); } }],`),
+      { content: { sources: { custom: { applier: 'src/custom.ts' } } } });
+    fs.writeFileSync(path.join(_appDirOf(tmpDir), 'packs', PACK_ID, 'runtime', 'content', 'content.json'),
+      JSON.stringify({ version: 1, packId: PACK_ID, entries: [] }));
+    sealPack(path.join(_appDirOf(tmpDir), 'packs', PACK_ID));
     await reloadPackById(registry, PACK_ID, bus as never);
 
     expect(readInstalledPacks()).toMatchObject([
-      expect.objectContaining({ id: PACK_ID, lastError: expect.stringContaining('packId') }),
+      expect.objectContaining({ id: PACK_ID, lastError: expect.stringContaining('content apply failed') }),
     ]);
   });
 

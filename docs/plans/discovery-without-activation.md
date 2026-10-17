@@ -157,6 +157,17 @@ separately for missing media, CSS and lazy chunks; do not substitute authored-so
 JavaScript text scanning for compiler output evidence. The latter producer requirements remain part
 of B1–B4 and final all-kind acceptance, not an exemption from completeness.
 
+Compiled-content checkpoint: make the common current-format build reader own the validated index,
+including pack identity, exact compiled source/dataset membership, written-versus-dataset semantics
+and each indexed data file's receipt membership. Staging and installation must use the same check;
+CLI inspection consumes the captured result instead of maintaining its own weaker validation.
+Applier-only sources intentionally contribute no compiled entry; they still produce the pack index.
+Declared specialty sources currently disappear from the index when their source path is missing:
+refuse that build rather than turning a missing declared source into an empty inventory. Preserve
+explicit native imports and source-free installed reads. Prove failures with isolated filesystem
+fixtures and compiler cases before applying the repair. Media files still need producer evidence;
+declared media directories alone cannot identify the files required by compiled records.
+
 Execute the identified gaps in this order:
 
 1. Native designation comparison is repaired in `b268fac86` without expanding its contract. Three

@@ -2,7 +2,7 @@ import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { _declarationRevision, _packEntityTypes, PACK_SNAPSHOT_FORMAT, type PackManifest } from '@apackdev/sdk/build';
+import { _declarationRevision, _packEntityTypes, PACK_SNAPSHOT_FORMAT, type ContentIndex, type PackManifest } from '@apackdev/sdk/build';
 import { cacheDependency, PACK_LAYOUT, sealPackBuild } from '@apackdev/host/packs';
 import type { PackEventContracts } from '@apackdev/sdk/framework';
 import { inspectPack, info } from '../../src/commands/info.ts';
@@ -44,6 +44,9 @@ function writeBuild(directory: string, declared = manifest, index?: object, enti
   if (index) {
     fs.mkdirSync(path.join(output, PACK_LAYOUT.contentDir));
     fs.writeFileSync(path.join(output, PACK_LAYOUT.contentDir, 'content.json'), JSON.stringify(index));
+    for (const entry of (index as ContentIndex).entries) {
+      fs.writeFileSync(path.join(output, PACK_LAYOUT.contentDir, `${entry.key}.content.json`), '{"records":[]}');
+    }
   }
   sealPackBuild(output, declared);
   return output;
@@ -142,7 +145,9 @@ describe('read-only pack inspection', () => {
       { item: 'Demo', path: 'Demo.action', kind: 'static', target: { key: 'actions', item: 'Removed' } },
       { item: 'Demo', path: 'Demo.prompt', kind: 'dynamic', target: { key: 'prompts' } },
     ] }] };
-    writeBuild(root, manifest, content);
+    const declaration: PackManifest = { ...manifest, content: { sources: { flows: 'src/flows' } } };
+    fs.writeFileSync(path.join(root, 'apack.json'), JSON.stringify(declaration));
+    writeBuild(root, declaration, content);
     expect((await inspectPack(root)).build.content).toEqual(content);
     const output = vi.spyOn(console, 'log').mockImplementation(() => {});
     vi.spyOn(process, 'cwd').mockReturnValue(root);

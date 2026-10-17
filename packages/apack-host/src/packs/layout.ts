@@ -20,7 +20,7 @@ import * as path from 'node:path';
 import * as tar from 'tar';
 import { isDeepStrictEqual } from 'node:util';
 import { replaceDir } from '../replace-dir.ts';
-import { parseSnapshot, _snapshotFormatMismatch, PACK_SNAPSHOT_FORMAT, type PackManifest, type PackSnapshot, type SnapshotFormatMismatch } from '@apackdev/sdk/build';
+import { parseSnapshot, parseContentIndex, contentFile, CONTENT_INDEX_FILE, _snapshotFormatMismatch, PACK_SNAPSHOT_FORMAT, type ContentIndex, type PackManifest, type PackSnapshot, type SnapshotFormatMismatch } from '@apackdev/sdk/build';
 import type { PackRegistry } from './registry.ts';
 import { PACK_LAYOUT, PACK_LAYOUT_VERSION, type PackIntegrity } from './layout-paths.ts';
 import { readPackIntegrity, packBuildRevision } from './assets.ts';
@@ -35,6 +35,8 @@ const SECTIONS = [PACK_LAYOUT.runtimeDir, PACK_LAYOUT.buildDir, PACK_LAYOUT.type
 export interface PackBuild {
   snapshot: PackSnapshot;
   integrity: PackIntegrity;
+  /** Verified compiled inventory; absent when no content was compiled. */
+  content?: ContentIndex;
   /** Content identity independent of file enumeration order and installation directory. */
   revision: string;
 }
@@ -201,7 +203,10 @@ function readBuiltPackIntegrity(packRoot: string, packFormat?: number): PackInte
   }
   const snapshot = !_snapshotFormatMismatch(data) ? checkedSnapshot(data, manifest) : undefined;
   const integrity = verifyPack(dist);
-  if (snapshot) assertRequiredEntries(snapshot.manifest, integrity);
+  if (snapshot) {
+    assertRequiredEntries(snapshot.manifest, integrity);
+    readCompiledContent(dist, snapshot.manifest, integrity);
+  }
   if (sha256(bytes) !== integrity.files[PACK_LAYOUT.snapshot]
     || sha256(JSON.stringify(manifest, null, 2) + '\n') !== integrity.files[PACK_LAYOUT.manifest]) {
     throw new Error('Source declarations do not match the sealed build; rebuild the complete pack');
@@ -256,11 +261,44 @@ export function readPackBuild(dir: string): PackBuild {
   const snapshot = checkedSnapshot(data, JSON.parse(manifestBytes.toString('utf8')));
   const integrity = verifyPack(dir);
   assertRequiredEntries(snapshot.manifest, integrity);
+  const content = readCompiledContent(dir, snapshot.manifest, integrity);
   for (const [file, bytes] of [[PACK_LAYOUT.snapshot, snapshotBytes], [PACK_LAYOUT.manifest, manifestBytes]] as const) {
     if (sha256(bytes) !== integrity.files[file]) throw new Error('Captured declarations do not match the verified build; retry with the complete pack');
   }
   const revision = packBuildRevision(integrity);
-  return { snapshot, integrity, revision };
+  return { snapshot, integrity, revision, ...(content && { content }) };
+}
+
+/** Capture indexed data against the same receipt as its owning declarations, without loading compilers. */
+function readCompiledContent(dir: string, manifest: PackManifest, integrity: PackIntegrity): ContentIndex | undefined {
+  const sources = manifest.content?.sources ?? {};
+  const datasets = manifest.content?.datasets ?? {};
+  const indexFile = `${PACK_LAYOUT.contentDir}/${CONTENT_INDEX_FILE}`;
+  if (!Object.hasOwn(integrity.files, indexFile)) {
+    if (Object.keys(sources).length || Object.keys(datasets).length) {
+      throw new Error(`Pack "${manifest.id}" is missing its declared compiled content index; rebuild the complete pack`);
+    }
+    return;
+  }
+  const bytes = fs.readFileSync(path.join(dir, indexFile));
+  if (sha256(bytes) !== integrity.files[indexFile]) throw new Error(`Captured content index does not match the verified build for "${manifest.id}"`);
+  const index = parseContentIndex(JSON.parse(bytes.toString('utf8')));
+  if (index.packId !== manifest.id) throw new Error(`Content index belongs to "${index.packId}", not "${manifest.id}"`);
+  const expected = new Map<string, boolean>();
+  for (const [key, entry] of Object.entries(sources)) {
+    // Applier-only sources read their own data; sources with a path/format are compiled and indexed.
+    if (typeof entry === 'string' || entry.path !== undefined || entry.format !== undefined) expected.set(key, true);
+  }
+  for (const key of Object.keys(datasets)) expected.set(key, false);
+  for (const entry of index.entries) {
+    if (!expected.has(entry.key)) throw new Error(`Content index for "${manifest.id}" includes undeclared compiled entry "${entry.key}"`);
+    if (entry.written !== expected.get(entry.key)) throw new Error(`Content index for "${manifest.id}" has the wrong written policy for "${entry.key}"`);
+    const file = `${PACK_LAYOUT.contentDir}/${contentFile(entry.key)}`;
+    if (!Object.hasOwn(integrity.files, file)) throw new Error(`Pack "${manifest.id}" is missing required compiled content file ${file}`);
+    expected.delete(entry.key);
+  }
+  if (expected.size) throw new Error(`Content index for "${manifest.id}" is missing declared compiled entries: ${[...expected.keys()].join(', ')}`);
+  return index;
 }
 
 /** Required bindings are not optional just because an incomplete producer omitted them from its receipt. */
@@ -314,7 +352,9 @@ export function packBuildProblem(dir: string, appFormat: number = PACK_SNAPSHOT_
     if (appFormat !== PACK_SNAPSHOT_FORMAT) return undefined;
     try {
       const snapshot = checkedSnapshot(raw, JSON.parse(fs.readFileSync(path.join(dir, PACK_LAYOUT.manifest), 'utf-8')));
-      assertRequiredEntries(snapshot.manifest, readPackIntegrity(dir));
+      const integrity = readPackIntegrity(dir);
+      assertRequiredEntries(snapshot.manifest, integrity);
+      readCompiledContent(dir, snapshot.manifest, integrity);
       return undefined;
     } catch (error) { return { kind: 'declarations', message: (error as Error).message }; }
   }

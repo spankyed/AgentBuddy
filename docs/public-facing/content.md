@@ -2,6 +2,12 @@
 
 A pack's content is source files compiled to JSON at build time and written into the database when the pack is installed or updated. `apack.json` `content.sources` names each one.
 
+A declared specialty source (`actions`, `prompts` or `flows`) must exist; a missing path fails the build.
+Completed builds validate the content index against the manifest: compiled sources are written entries,
+datasets are non-written entries, and each has its compiled JSON file. Applier-only sources read their
+own data and have no compiled index entry. Build publication, staging and installation refuse missing
+or contradictory inventories without executing pack modules.
+
 ## The four stages
 
 A pack's content passes through four, and each has its own vocabulary. **The content is the noun. The two verbs are `apply`, which the app does, and `import`, which the user asks for.**

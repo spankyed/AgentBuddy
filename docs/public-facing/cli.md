@@ -149,6 +149,11 @@ flow helpers and contribution provenance. Explicit `null` entity shapes remain u
 compilers, helpers and content runtime may execute during building; inspecting the completed snapshot
 does not execute them. Discovery and executable bindings are separate contracts.
 
+Compiled content has a separate verified `runtime/content/content.json` index. The common build reader
+checks its owner, exact compiled source/dataset membership, written policy and required data files;
+`apack pack info` uses that captured inventory. An omitted index or data file fails validation even
+when an incomplete producer sealed the remaining files successfully.
+
 Bundle and gate failures are reported and exit with code 1. `--release` minifies and drops source maps.
 
 Compiler workers inherit Node options from `NODE_OPTIONS`, including ordered `--require` and `--import`

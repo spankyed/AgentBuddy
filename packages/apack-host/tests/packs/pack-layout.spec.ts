@@ -219,6 +219,71 @@ describe('verifyPack', () => {
   });
 });
 
+describe('compiled content admission', () => {
+  function contentBuild() {
+    const root = builtPack({ data: { entities: { Memo: null } }, content: {
+      formats: { records: { format: 'json', entity: 'Memo', identity: ['id'] }, lookup: { format: 'json' } },
+      sources: { memos: { path: 'src/memos', format: 'records' }, custom: { applier: 'src/custom.ts' } },
+      datasets: { inventory: { path: 'src/inventory', format: 'lookup' } },
+    } });
+    const dir = path.join(root, 'dist/runtime/content');
+    const index = { version: 1, packId: 'demo-pack', entries: [
+      { key: 'memos', written: true, count: 0, items: [] },
+      { key: 'inventory', written: false, count: 0, items: [] },
+    ] };
+    fs.writeFileSync(path.join(dir, 'content.json'), JSON.stringify(index));
+    for (const entry of index.entries) fs.writeFileSync(path.join(dir, `${entry.key}.content.json`), '{"records":[]}');
+    sealBuild(root);
+    return { root, dir, index };
+  }
+
+  it('captures a source-free index including empty datasets and excluding applier-only sources', () => {
+    const { root, index } = contentBuild();
+    expect(readPackBuild(path.join(root, 'dist')).content).toEqual(index);
+  });
+
+  it('refuses an index changed between integrity verification and metadata capture', () => {
+    const { root, dir, index } = contentBuild();
+    const indexFile = path.join(dir, 'content.json');
+    const read = fs.readFileSync;
+    let reads = 0;
+    const capture = vi.spyOn(fs, 'readFileSync').mockImplementation(((file, ...args) => {
+      const bytes = read(file, ...args);
+      if (String(file) === indexFile && ++reads === 1) fs.writeFileSync(indexFile, JSON.stringify({ ...index, packId: 'replacement-pack' }));
+      return bytes;
+    }) as typeof fs.readFileSync);
+    syncBuiltinESMExports();
+    try {
+      expect(() => readPackBuild(path.join(root, 'dist'))).toThrow('Captured content index does not match');
+    } finally { capture.mockRestore(); syncBuiltinESMExports(); }
+  });
+
+  it.each(['index', 'owner', 'missing entry', 'extra entry', 'source policy', 'dataset policy', 'data'] as const)('refuses incomplete or contradictory content: %s', async problem => {
+    const { root, dir, index } = contentBuild();
+    const stage = path.join(tmp, 'stage');
+    stagePack(root, stage);
+    const before = packFileHashes(stage);
+    switch (problem) {
+      case 'owner': index.packId = 'other-pack'; break;
+      case 'missing entry': index.entries.pop(); break;
+      case 'extra entry': index.entries.push({ key: 'ghost', written: true, count: 0, items: [] }); break;
+      case 'source policy': index.entries[0].written = false; break;
+      case 'dataset policy': index.entries[1].written = true; break;
+      case 'data': fs.rmSync(path.join(dir, 'memos.content.json')); break;
+    }
+    fs.writeFileSync(path.join(dir, 'content.json'), JSON.stringify(index));
+    if (problem === 'index') fs.rmSync(path.join(dir, 'content.json'));
+    sealBuild(root);
+    expect(() => readPackBuild(path.join(root, 'dist'))).toThrow(/content/i);
+    expect(packBuildProblem(path.join(root, 'dist'))).toMatchObject({ kind: 'declarations' });
+    expect(() => stagePack(root, stage)).toThrow(/content/i);
+    expect(packFileHashes(stage)).toEqual(before);
+    const beforePlace = vi.fn();
+    await expect(installPackFromLocal(path.join(root, 'dist'), path.join(tmp, 'packs'), { beforePlace })).rejects.toThrow(/content/i);
+    expect(beforePlace).not.toHaveBeenCalled();
+  });
+});
+
 describe('installed build reader', () => {
   it('refuses a backend entry omitted before sealing, including at installation', async () => {
     const root = builtPack();

@@ -157,7 +157,7 @@ export async function compilePack(options: CompilePackOptions): Promise<CompileP
     const sourcePath = path.resolve(packDir, source.path);
     if (source.kind === 'specialty') {
       const specialty = SPECIALTY_COMPILERS[key];
-      if (!fs.existsSync(sourcePath)) continue;
+      if (!fs.existsSync(sourcePath)) throw new Error(`Content "${key}": source path does not exist: ${sourcePath}`);
       const data = await specialty.compile(sourcePath, { packDir, importModule });
       for (const message of specialty.collectErrors?.(data) ?? []) errors.push(`${key}: ${message}`);
       specialtyData.set(key, data);

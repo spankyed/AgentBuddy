@@ -1,8 +1,8 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { isDeepStrictEqual } from 'node:util';
-import { _packEntities, inspectContentReferences, parseContentIndex, CONTENT_INDEX_FILE, type ContentIndex } from '@apackdev/sdk/build';
-import { PACK_LAYOUT, readPackBuild, readPackAsset, type PackBuild } from '@apackdev/host/packs';
+import { _packEntities, inspectContentReferences, type ContentIndex } from '@apackdev/sdk/build';
+import { PACK_LAYOUT, readPackBuild, type PackBuild } from '@apackdev/host/packs';
 import { errorMessage } from '@apackdev/sdk/utils/pure';
 import { findPackRoot, readValidManifest } from '../utils';
 import { inspectDependencies, describeDependency } from '../build/dependency-inspection.ts';
@@ -21,16 +21,7 @@ function inspectBuild(root: string, manifest: ReturnType<typeof readValidManifes
   if (!fs.existsSync(directory)) return { status: 'unbuilt', directory };
   try {
     const build = readPackBuild(directory);
-    const indexFile = `${PACK_LAYOUT.contentDir}/${CONTENT_INDEX_FILE}`;
-    const declaredContent = build.snapshot.manifest.content;
-    if (!Object.hasOwn(build.integrity.files, indexFile)
-      && (Object.keys(declaredContent?.sources ?? {}).length || Object.keys(declaredContent?.datasets ?? {}).length)) {
-      throw new Error('Build is missing its declared compiled content index; rebuild the complete pack.');
-    }
-    const content = Object.hasOwn(build.integrity.files, indexFile)
-      ? parseContentIndex(JSON.parse(readPackAsset(directory, build.snapshot.manifest.id, build.revision, indexFile).toString('utf8')))
-      : undefined;
-    if (content && content.packId !== build.snapshot.manifest.id) throw new Error(`Content index belongs to "${content.packId}", not "${build.snapshot.manifest.id}"`);
+    const content = build.content;
     const stale = !isDeepStrictEqual(manifest, build.snapshot.manifest);
     return { status: stale ? 'stale' : 'verified', directory, revision: build.revision,
       metadata: { packId: build.snapshot.manifest.id, declarationRevision: build.snapshot.declarationRevision, format: build.snapshot.format,
