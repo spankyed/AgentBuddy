@@ -6624,3 +6624,13 @@ existing watcher. Twenty-five focused cases pass, including real idle filesystem
 broken-configuration repair subscriptions; CLI types/lint/package refresh and real distribution
 inventory checks pass. See [subscription evidence](build-input-snapshot-proof.md#idle-tooling-subscription-checkpoint).
 Remaining B1/B3 native/platform/namespace/thread cases, B4–B6 and every other goal phase stay open.
+
+
+### Native module and namespace/thread acceptance (2026-10-17)
+
+`701928e9f` proves an outside native compiler addon executes from owned bytes and rejects later source
+changes, using the existing implementation. Thirty-three namespace/view/observation cases, actual
+native startup, CLI types and focused lint pass. See
+[native and namespace evidence](build-input-snapshot-proof.md#native-module-and-namespacethread-acceptance-2026-10-17).
+Effective environment, linked native libraries and platform/thread lifetimes remain B1/B3 acceptance;
+all subsequent goal work remains required. No new runtime machinery or broad gate is claimed.

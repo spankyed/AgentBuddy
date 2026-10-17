@@ -275,8 +275,12 @@ Tooling subscription checkpoint `0bb9e64ec` closes the idle compiler/runtime/esb
 the existing observer/signature. Twenty-five focused cases, real idle filesystem delivery, CLI
 types/lint/package refresh and a real distributable inventory check pass; see
 [subscription evidence](../evidence/build-input-snapshot-proof.md#idle-tooling-subscription-checkpoint).
-Next: reconcile remaining namespace/thread cases against existing ownership/tests, and close externally
-linked runtime/native and supported-platform matrix cases. Preserve
+Namespace/native checkpoint `701928e9f` proves actual outside-addon execution uses the owned tree;
+existing implementation suffices. Thirty-three view/namespace/observation cases and actual early
+startup pass; see [bounded reconciliation](../evidence/build-input-snapshot-proof.md#native-module-and-namespacethread-acceptance-2026-10-17).
+Next: audit effective environment inputs in actual frontend/content compilation against execution
+identity before B4. Close externally linked runtime/native and required platform/thread-lifetime cases;
+preserve the now-accepted namespace cases without starting another resolver or observation framework. Preserve
 B2's accepted owner and browser proof; do not schedule another frontend generation implementation.
 Then complete B4–B6 and all-kind acceptance. Asset input/output completeness remains required under B1/B4,
 not a deferred follow-up or another discovery store. All three Phase 6 workstreams remain required. Do not restart implemented endpoint

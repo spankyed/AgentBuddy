@@ -847,3 +847,40 @@ unvalidated metadata cache or event-only freshness authority was introduced.
 This closes the demonstrated idle tooling subscription omission. Continue the existing B1/B3 matrix's
 externally linked native/runtime, namespace/thread and platform lifetime acceptance; B4–B6 and all other
 active goal phases remain required. No broad gate or cross-platform completion is claimed.
+
+
+## Native module and namespace/thread acceptance (2026-10-17)
+
+Checkpoint `701928e9f` adds a real outside native-addon execution case. It passes against existing
+production code: no new loader, native hook or namespace framework is needed. The current input view
+materializes positive file queries in `snapshot()`, and native module resolution uses that owned tree.
+The case copies the platform Rollup addon into a private location outside the pack, loads it through
+an authored CommonJS compiler module, verifies the exported native function, compares owned bytes,
+and checks the runtime's loaded-image report: the owned addon is loaded; the original private source
+is not. Modifying that source then refuses final input validation. This is darwin/arm64 acceptance,
+not proof about every addon's external libraries or another platform's unload behavior.
+
+The strengthened case passes in 17.57s including runner setup:
+`/private/tmp/apack-native-module-owned.log`. Its initial version also passed; loaded-image assertions
+were added because merely finding copied bytes would not prove which library executed.
+
+Current bounded reconciliation:
+
+| Path | Existing owner and evidence | Disposition |
+|---|---|---|
+| Authored/declared dependency bytes before preloads, package membership and initially absent dependencies | `createPackCompilerInputView`; five view cases and actual native startup case | Supported cases accepted; retain them for final validation. |
+| Outside transitive imports, missing/retargeted resolution parents, ambient types, Vue scripts and projected identities | `readCompilerModuleInputs`, file view and native read tree; all 24 module-input cases pass | Supported namespace cases accepted; no replacement resolver needed. |
+| Outside native addon execution and changed-input refusal | Common module/input owner; new actual loaded-image case above | Locally accepted; external native-library and platform lifetime coverage remain open. |
+| Thread observation consistency, native refusals, cursor prefixes and restoration conflicts | `createCompilerInputObservations`, `assertNativeCompilerObservations`; four cases pass; `finishStartup` awaits startup observations and merges with compilation observations before final validation | Serialized consistency accepted; this does not prove every platform/thread resource lifetime. |
+
+The 33 view/observation/module-input cases pass in 1.75s:
+`/private/tmp/apack-namespace-thread-acceptance.log`. The existing actual early-native startup case
+also passes (2.13s including runner setup), preserving initial options and authored/dependency bytes
+before a preload rewrites ambient values:
+`/private/tmp/apack-native-thread-startup-acceptance.log`. CLI types, focused correctness lint and
+whitespace checks pass. No full integration suite or broad chain was rerun.
+
+Next reconcile effective environment inputs used by actual frontend/content compilation with the
+execution identity before B4; do not infer coverage from NODE_OPTIONS alone. External linked native
+libraries and required platform/thread lifetimes remain in B1/B3. B4–B6, all-kind discovery, all three
+Phase 6 streams and final strict committed-source `--all` remain required.
