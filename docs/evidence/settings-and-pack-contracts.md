@@ -6539,3 +6539,12 @@ already existed; the unchecked binding path is now closed without new grammar or
 All 705 affected cases, host/SDK types and lint pass. The prior strict integration resource failure
 remains open and no broad rerun follows it. See [viewer evidence](discovery-without-activation.md#native-backend-viewer-parity-2026-10-17).
 Native content/migrations are next, followed by the full remaining goal; this is not overall completion.
+
+### Native content declarations (2026-10-17)
+
+`2e1701fad` declares native writers/appliers, shares writer ownership and backend binding checks with
+built packs, and preserves explicit native content application. All 761 affected cases, 46 authored
+manifest cases, host/SDK types, lint, package builds and schema/API generation pass. Public docs/reports
+are updated; no broad rerun follows the preserved integration failure. See [content evidence](discovery-without-activation.md#native-content-declarations-2026-10-17).
+Native migration declarations and executable targeting are next, then static assets/readers and the
+rest of the full goal. Final strict `--all` acceptance remains required.

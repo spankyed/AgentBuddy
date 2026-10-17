@@ -3455,3 +3455,29 @@ through `importCompiledContent` in registered-lookups tests, while automatic con
 currently derive from installed origins. Preserve that supported explicit operation and resolve the
 runner distinction before introducing metadata that cannot execute. Static assets/readers, B1–B6,
 all three Phase 6 workstreams and final committed-source strict `--all` remain required.
+
+### Native content declarations (2026-10-17)
+
+`2e1701fad` adds native `content.writers` and applier-only `content.sources` declarations. It reuses
+shared authored field grammar, writer entity-ownership validation and exact backend operation binding
+checks. Native composition describes its existing functions without importing target modules during
+inspection. Explicit `importCompiledContent({ compiledDir })` continues to dispatch native appliers;
+automatic application continues to target installed builds. Native paths/formats/datasets are refused
+because this composition path does not compile them. No dummy build directory or compatibility path
+was added. Fixtures now declare their actual entity owners and content names; invalid writers fail
+before publishing any contribution or granting settings authority.
+
+Evidence: 761 affected host pack/runtime and SDK framework cases pass in 14.0s; all 46 authored manifest
+cases pass. Twelve native content cases prove absent-source discovery, explicit dispatch, callback
+identity, no activation-time execution, cleanup/retained metadata, entity ownership and atomic refusal.
+The first new ownership test used a non-JSON undefined property; correcting that fixture exposed the
+intended ownership check. Host/SDK types, lint, package freshness/builds, reviewed SDK API generation
+and authored schema check pass. An equivalent schema-field simplification has its own 12-case/SDK-type
+pass. Public architecture docs and both affected API reports match the contract. No protected EARS
+types or release metadata changed. Logs: `/private/tmp/apack-native-content-*`.
+
+The previous full strict gate remains incomplete; no broad rerun followed its resource failure. Native
+migration declarations/targeting are next: registration currently accepts migrations but automatic
+runners enumerate installed origins. Resolve their identity/version semantics and checked functions
+without silently ignoring native migrations. Static assets/readers, all-kind lifetime acceptance,
+B1–B6, Phase 6 and final committed-source strict `--all` remain required.

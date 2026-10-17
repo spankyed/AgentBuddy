@@ -125,7 +125,7 @@ not a discovery defect when its caller needs an executing implementation.
 | `migrations` | Authored line/target/description/`up` declarations; checked backend bindings | Authored implemented. Native declaration omits migrations while native backend registration accepts them unchecked. Reconcile native support, then check it without running `up`. |
 | `steps` (both registrations) | Snapshot/native step declarations and catalog projections | Implemented metadata and checked facets. Keep handlers, compilers, live labels/layout and trigger resources executable; include native and external paths in final acceptance. |
 | `artifacts`, `blocks` (both registrations) | Snapshot/native declarations; frontend checked components; backend authored membership/kind/facet checks | Implemented in `be5a9344b`: native and authored backends share identity, block-kind and backend-facet membership checks before authority/publication. Frontend facets are refused on the backend; native metadata remains after unload. Runtime callbacks remain executable bindings. |
-| `contentWriters`, `appliers` | Authored `content.writers` and `content.sources`; compiled content index | Authored bindings checked. Native registration accepts these without matching native declarations. Resolve this alongside native migration support, retaining real content execution and runtime teardown. |
+| `contentWriters`, `appliers` | Authored `content.writers` and `content.sources`; compiled content index | Implemented in `2e1701fad`: native content declares owned writers and explicit applier sources; native/authored backend admission shares exact binding checks and writer ownership validation. Explicit native import remains executable; automatic application still requires an installed build directory. Keep final all-kind/lifetime acceptance separate from this checkpoint. |
 | `commands` | Native/authored keyed metadata and catalog order; runtime selection checks accepted identity | Implemented; preserve document-command precedence and global dispatch behavior. |
 | `features.*.plugin` (frontend) | Plugin declaration plus compiled destination claims; checked binding/catalog eligibility | Implemented. Backend inbox metadata is a separate transport concern; the host application actor has an inbox without a contributed sidebar pane. |
 | `features.*.references` | Declared type/category metadata and checked provider/icon bindings | Implemented; no navigation callbacks. Provider results remain executable. |
@@ -161,10 +161,11 @@ Execute the identified gaps in this order:
    implementation and its [evidence](../evidence/discovery-without-activation.md#native-backend-viewer-parity-2026-10-17);
    the resource-failed strict gate remains incomplete.
 
-   Content and migrations are a subsequent checkpoint, not waived: native appliers are used through
-   explicit `importCompiledContent` calls in registered-lookups tests, while automatic content/migration
-   targets currently come only from installed origins. Resolve that distinction before adding metadata
-   that a runner cannot execute or removing a supported explicit operation.
+   Content checkpoint `2e1701fad` declares native writers/appliers and preserves explicit native
+   `importCompiledContent`; 761 affected cases, 46 authored-manifest cases, types, lint, package builds
+   and schema/API generation pass. Migrations remain next: automatic targets currently come only from
+   installed origins. Resolve native target/version semantics before adding metadata a runner cannot
+   execute. See [content evidence](../evidence/discovery-without-activation.md#native-content-declarations-2026-10-17).
 4. Finish native name/static-asset and remaining consumer checks, then all-kind source-free/external
    acceptance. Record which asset classes and entry kinds the checks actually exercise. Keep B1–B6 and
    Phase 6 enforcement in their existing execution slots; this inventory does not reopen them.

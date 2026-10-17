@@ -64,7 +64,7 @@ so completed implementation is not repeatedly scheduled as new work.
 | Manifest consolidation M1–M6 | Implemented and checkpoint-validated through `0994ae787`; own-key preservation `29f0cc556` | Preserve all 17 reconciled decisions, both naming outcomes and generated EARS/content behavior in final acceptance; do not restart consolidation. |
 | Settings/help/info/reference/step/command discovery (Phase 3) | Implemented reader migrations: `2169d29f8`, `6c876c9ba`, `20ab75efe`, `c776d1c5d`, `76df2f0e5`, `71fad4013`, `8ec5285ed`, `f7d63434c`, command catalog `ff48438cd` | Final all-kind acceptance, including source-free inspection, inactive owners and checked runtime eligibility. |
 | Live editor composition (Phase 3) | Implemented: `8863043a6` | Complete cold-document/provider readiness and real typing/replacement acceptance; fix demonstrated omissions without restarting composition. |
-| Remaining discovery consumers (Phase 3) | Partial; viewer readers `a278d4116`, shell default/dispatch `69860e4be`, static endpoint contracts `774b0844c` and native backend viewer parity `be5a9344b` implemented | Navigation inventories/order/visibility implemented in `cfcbb53f9`; complete final window/loader acceptance; DSL producer/readers are implemented in `8ed188046` / `39e48e66e` and await final worker acceptance. Flow reference/rename/missing-target inspection is implemented in `7196d61d3`; complete its final external acceptance. Native API ownership and endpoint contracts are implemented; finish native backend contribution parity, static assets and all-kind acceptance. Remove only superseded discovery stores. |
+| Remaining discovery consumers (Phase 3) | Partial; viewer readers `a278d4116`, shell default/dispatch `69860e4be`, static endpoint contracts `774b0844c` and native backend viewer parity `be5a9344b` and native content `2e1701fad` implemented | Navigation inventories/order/visibility implemented in `cfcbb53f9`; complete final window/loader acceptance; DSL producer/readers are implemented in `8ed188046` / `39e48e66e` and await final worker acceptance. Flow reference/rename/missing-target inspection is implemented in `7196d61d3`; complete its final external acceptance. Native API ownership and endpoint contracts are implemented; finish native migration targeting, static assets and all-kind acceptance. Remove only superseded discovery stores. |
 | Build input/publication and freshness (Phase 3) | Partial; finite checkpoints B1–B6 below | Finish the common producer contract and four passive consumer migrations; installed discovery must remain source-free and activation-free. |
 | Entity navigation (Phase 4) | Implemented with local handler/runtime acceptance through `95ff95ab3`, following producer `94148c9e0`, catalog/admission `479c75e01`, routing `cd9c57de6` and feature repair `831221020` | Preserve six-handler, cancellation and stored-message acceptance through final strict validation; retain build/publication and strict-gate acceptance for B6. No further navigation implementation is currently identified. |
 | Frontend boundaries (Phase 5) | Implemented and locally accepted: `713a6c1fd`, including the real external-pack window | Preserve pane/form containment, attributed nonfatal diagnostics and retired-instance refusal through final committed-source strict acceptance. |
@@ -144,10 +144,13 @@ retiring authority. All 110 bus/lifecycle cases and the exact Electron disable/r
 All 5,168 host and 888 pack unit cases pass (two pack cases remain intentionally skipped), as do five
 dependent-runtime integration cases. CLI/testing types and lint pass after the last fixture repair.
 The strict gate remains incomplete as recorded above; see the [checkpoint evidence](../evidence/discovery-without-activation.md#static-endpoint-contracts-2026-10-17).
-Current checkpoint `be5a9344b` closes native backend artifact/block admission with the existing authored
+Viewer checkpoint `be5a9344b` closes native backend artifact/block admission with the existing authored
 checks. All 705 affected registry/runtime/fixture/frontend cases, host/SDK types and lint pass; no broad
-rerun follows the recorded disk failure. Next is native content/migration parity, then static assets and
-remaining reader acceptance. B1–B6 and all three Phase 6 workstreams remain required. Do not restart implemented endpoint
+rerun follows the recorded disk failure. Current checkpoint `2e1701fad` adds native content declarations,
+shared writer ownership/backend membership checks and explicit native application acceptance. All 761
+affected cases, 46 authored-manifest cases, host/SDK types, lint, refreshed package builds and schema/API
+generation pass. Next is native migration declaration/targeting, then static assets and remaining reader
+acceptance. B1–B6 and all three Phase 6 workstreams remain required. Do not restart implemented endpoint
 or navigation work, or rerun a broad gate to investigate the preserved integration failures.
 
 1. Phase 4 entity destinations/caller migration and Phase 5 containment are implemented and locally
