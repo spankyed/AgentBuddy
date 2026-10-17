@@ -117,8 +117,13 @@ preserves physical module/link resolution and executable bits, verifies the copy
 read-only. Its private metadata records the compiler fingerprint, captured package directories and
 source-path mappings. Workers require this metadata to belong to their actual CLI; they keep the
 selected compiler rather than hand off to the project again. Module identity, diagnostic reads and
-frontend subscriptions use source origins. Pack and outside-module inputs are rechecked before
-publication; the already captured compiler fingerprint is reused within its immutable lifetime.
+frontend subscriptions use source origins. Initial execution context also includes the inherited
+environment digest from `compiler-environment.ts`, captured before user initialization. Raw environment
+maps are not recorded; private transport/temp/cache fields are excluded and owned paths use source
+origins. NODE_OPTIONS keeps its separate ordered-options contract. The same environment digest
+participates in frontend configuration and watcher signatures, including custom content/VITE keys.
+This is conservative: an included variable changes identity even if a particular compiler ignores it.
+Pack and outside-module inputs are rechecked before publication; the already captured compiler fingerprint is reused within its immutable lifetime.
 
 Configured `ESBUILD_BINARY_PATH` executables belong to that installation too. Relative overrides resolve
 against the worker checkout; the worker receives the private copy. Missing overrides keep esbuild's

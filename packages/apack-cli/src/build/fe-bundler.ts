@@ -1,3 +1,4 @@
+import { compilerEnvironmentIdentity } from './compiler-environment.ts';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { createRequire } from 'node:module';
@@ -377,7 +378,7 @@ export function readPackDevServerInputs(root: string): string {
     if (directory) metadata.push(path.join(directory, 'package.json'));
   }
   const directories = sharedResolveDirs(root);
-  return JSON.stringify([manifest, findFEEntry(root), directories, sharedFeModules(...directories),
+  return JSON.stringify([manifest, findFEEntry(root), directories, sharedFeModules(...directories), compilerEnvironmentIdentity(),
     metadata.map(file => [file, fs.existsSync(file) ? fs.readFileSync(file, 'utf8') : null])]);
 }
 

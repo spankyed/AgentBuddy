@@ -27,6 +27,7 @@ import { ensureCheckoutPackages } from '../../src/build/checkout-packages.ts';
 import { BUILD_INPUTS_DIRECTORY_ENV, removeCompilerReadTree } from '../../src/build/compiler-read-tree.ts';
 import { COMPILER_PROCESS_GROUP_ENV, stopCompilerProcessGroup } from '../../src/build/compiler-process-group.ts';
 import { captureCompilerInstallation, compilerPackageDirectory, type CompilerInstallation } from '../../src/build/compiler-installation.ts';
+import { compilerEnvironmentIdentity } from '../../src/build/compiler-environment.ts';
 
 const roots: string[] = [];
 const compilers: CompilerInstallation[] = [];
@@ -55,6 +56,7 @@ function fixture(files: Record<string, string> = {}, content = {}) {
 }
 
 it('captures native launch identity and authored/dependency bytes before user preload changes', async () => {
+  vi.stubEnv('APACK_TEST_STARTUP_ENV', 'ORIGINAL');
   const root = fixture();
   fs.rmSync(path.join(root, 'node_modules'), { recursive: true, force: true });
   const dependencyDir = path.join(root, 'node_modules/owned-dependency');
@@ -73,7 +75,7 @@ it('captures native launch identity and authored/dependency bytes before user pr
   const valueFile = path.join(root, 'value.txt');
   fs.writeFileSync(valueFile, 'ORIGINAL');
   const preload = path.join(root, 'preload.cjs');
-  fs.writeFileSync(preload, `process.env.NODE_OPTIONS = ''; process.execArgv.splice(0);
+  fs.writeFileSync(preload, `process.env.NODE_OPTIONS = ''; process.execArgv.splice(0); process.env.APACK_TEST_STARTUP_ENV = 'CHANGED';
     if (Object.keys(require.cache).some(file => /typescript[\\/]lib/.test(file))) throw new Error('Compiler activated before preload');
     require('node:fs').writeFileSync(${JSON.stringify(valueFile)}, 'CHANGED');
     require('node:fs').writeFileSync(${JSON.stringify(dependencyFile)}, "module.exports = 'DEPENDENCY_CHANGED';");`);
@@ -105,6 +107,7 @@ it('captures native launch identity and authored/dependency bytes before user pr
     const execution = JSON.parse(identity);
     expect(execution[3]).toEqual(['--conditions=launch-probe']);
     expect(execution[4]).toEqual(['--require', preload]);
+    expect(execution[5]).toBe(compilerEnvironmentIdentity());
     expect(identity).not.toContain('compiler-startup.cjs');
   } finally {
     if (child.exitCode === null && child.signalCode === null) child.kill('SIGKILL');

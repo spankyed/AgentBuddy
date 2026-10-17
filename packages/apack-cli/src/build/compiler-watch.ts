@@ -6,6 +6,7 @@ import { readPackageInputs } from '@apackdev/host/build/package-inputs';
 import { physicalWatchPath } from './watch-paths.ts';
 import { compilerPackageDirectory, readEsbuildOverride } from './compiler-installation.ts';
 import { readCompilerRuntimeInputs } from './compiler-runtime.ts';
+import { compilerEnvironmentIdentity } from './compiler-environment.ts';
 import type { BuildInputKind, BuildInputObserver } from '@apackdev/host/build/pack-inputs';
 
 export type CompilerWatchPaths = ReadonlyMap<string, BuildInputKind>;
@@ -53,7 +54,7 @@ export function compilerWatchPaths(root: string): { paths: CompilerWatchPaths; c
     for (const directory of runtime.directories) observe(directory, 'entries');
     for (const { source, target } of runtime.links) { observe(source, 'file'); observe(target, 'file'); }
     const override = readEsbuildOverride({ cwd: root });
-    const tooling = createHash('sha256').update(tools).update(runtime.hash);
+    const tooling = createHash('sha256').update(tools).update(runtime.hash).update(compilerEnvironmentIdentity());
     if (override) {
       observe(override.file, 'file');
       tooling.update(JSON.stringify([override.file, override.kind]));

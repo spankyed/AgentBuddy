@@ -6,6 +6,7 @@ import { createCompilerReadTree, type CompilerReadTree } from './compiler-read-t
 import { compilerDiagnostic, compilerSourcePath, type CompilerPathMapping } from './compiler-paths.ts';
 import type { CompilerInputObservations } from './compiler-observations.ts';
 import { parseNodeOptions } from '@apackdev/host/build/source-resolution';
+import { compilerEnvironmentIdentity } from './compiler-environment.ts';
 
 const STARTUP = Symbol.for('apack.compiler.startup');
 
@@ -21,9 +22,9 @@ export interface CompilerStartupInputs {
 }
 
 /** Capture launch state before user initialization can rewrite the ambient process values. */
-export function compilerExecutionIdentity(nodeOptions = process.env.NODE_OPTIONS): string {
+export function compilerExecutionIdentity(nodeOptions = process.env.NODE_OPTIONS, paths: readonly CompilerPathMapping[] = []): string {
   return JSON.stringify([Object.entries(process.versions).sort(), process.platform, process.arch,
-    process.execArgv, parseNodeOptions(nodeOptions)]);
+    process.execArgv, parseNodeOptions(nodeOptions), compilerEnvironmentIdentity(process.env, paths)]);
 }
 
 export function compilerStartupInputs(): CompilerStartupInputs | undefined {
@@ -34,7 +35,7 @@ export function compilerStartupInputs(): CompilerStartupInputs | undefined {
 export function beginCompilerStartupInputs(root: string, workspace: string, paths: readonly CompilerPathMapping[], nodeOptions = process.env.NODE_OPTIONS): CompilerStartupInputs {
   if (compilerStartupInputs()) throw new Error('Compiler startup inputs already have an owner');
   const canonicalRoot = fs.realpathSync(root);
-  const executionIdentity = compilerExecutionIdentity(nodeOptions);
+  const executionIdentity = compilerExecutionIdentity(nodeOptions, paths);
   const within = (parent: string, file: string) => {
     const relative = path.relative(parent, file);
     return relative === '' || (relative !== '..' && !relative.startsWith(`..${path.sep}`) && !path.isAbsolute(relative));

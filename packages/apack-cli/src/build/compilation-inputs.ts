@@ -70,6 +70,7 @@ export function captureCompilationInputs(packRoot: string, view?: PackCompilerIn
   const cliRoot = cliPackageDirectory();
   const compiler = readCompilerInstallationInputs();
   if (compiler && !compiler.packages.includes(cliRoot)) throw new Error('Captured compiler inputs do not belong to this CLI');
+  const executionIdentity = startup?.executionIdentity ?? compilerExecutionIdentity(undefined, compiler?.paths);
   const capturedPackages = new Set(compiler?.packages);
   const modules = readCompilerModuleInputs(packRoot, undefined, view);
   let startupObservations: CompilerInputObservations[] = [];
@@ -85,7 +86,7 @@ export function captureCompilationInputs(packRoot: string, view?: PackCompilerIn
     });
     const hash = createHash('sha256').update(compiler?.hash ?? buildToolHash()).update(inputs.hash).update(modules.hash)
       // Preload order and native flags can change behavior while reading identical files.
-      .update(startup?.executionIdentity ?? compilerExecutionIdentity())
+      .update(executionIdentity)
       .update(JSON.stringify(startup?.initial?.map(hashCompilerInputObservations) ?? []))
       .digest('hex');
     return { hash, packages: inputs };

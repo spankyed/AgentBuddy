@@ -80,7 +80,7 @@ function fixture() {
         }
       };
       writable('.apack/build');
-      process.send({...${JSON.stringify(handoff)}, inputHash:process.env.APACK_FIXTURE_INPUT_HASH ?? ${JSON.stringify(handoff.inputHash)}}, () => process.disconnect());
+      process.send({...${JSON.stringify(handoff)}, inputHash:fs.existsSync('.apack/fixture-input-hash') ? fs.readFileSync('.apack/fixture-input-hash','utf8') : ${JSON.stringify(handoff.inputHash)}}, () => process.disconnect());
     }
     fs.writeFileSync('.apack/built.json', JSON.stringify({pid:process.pid, bin:import.meta.url, label:fs.readFileSync(new URL('../label.txt',import.meta.url),'utf8')}));
   `);
@@ -162,13 +162,13 @@ it('replaces a server for pack configuration changes while reusing unchanged sou
     addresses.push(address);
   });
   const first = report();
-  vi.stubEnv('APACK_FIXTURE_INPUT_HASH', packInputsHash(pack));
+  fs.writeFileSync(path.join(pack, '.apack/fixture-input-hash'), packInputsHash(pack));
   await builder.build();
   expect(report().bin).toBe(first.bin);
   expect(addresses).toHaveLength(1);
   fs.writeFileSync(path.join(pack, 'package.json'), '{"type":"module"}');
   await expect(builder.serveFrontend(() => {})).rejects.toThrow('configuration changed');
-  vi.stubEnv('APACK_FIXTURE_INPUT_HASH', packInputsHash(pack));
+  fs.writeFileSync(path.join(pack, '.apack/fixture-input-hash'), packInputsHash(pack));
   await builder.build();
   expect(addresses).toHaveLength(2);
   expect(report().bin).not.toBe(first.bin);
@@ -198,6 +198,9 @@ it('replaces a server for pack configuration changes while reusing unchanged sou
   fs.symlinkSync(other, lookup, 'dir');
   await builder.build();
   expect(addresses).toHaveLength(5);
+  vi.stubEnv('VITE_APACK_BUILDER_TEST', 'changed');
+  await builder.build();
+  expect(addresses).toHaveLength(6);
   expect(readPackDevServerInputs(pack)).toContain('@apackdev/ui/two');
 });
 
