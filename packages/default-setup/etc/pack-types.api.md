@@ -1372,6 +1372,8 @@ interface ClaudeNativeTerminalOptions {
 }
 
 interface ClaudeNativeTerminalOwner {
+    /** Reviewed native UI operations; reverse hosts and the full UI owner are integrated separately. */
+    readonly uiTransport: ClaudeTerminalUiTransport;
     readonly state: ClaudeNativeTerminalState;
     readonly busy: boolean;
     readonly done: Promise<void>;
@@ -1607,6 +1609,21 @@ declare const ClaudeSettingsSchema: z.ZodObject<{
     applied: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodUnknown>>;
 }, z.ZodTypeAny, "passthrough">>;
 
+interface ClaudeTerminalSubmissionState {
+    ownerId: string;
+    revision: number;
+    status: 'accepted' | 'pending' | 'rejected';
+    receipt?: ClaudeNativeSubmissionReceipt;
+    problem?: string;
+}
+
+interface ClaudeTerminalUiTransport {
+    request(value: Record<string, unknown> & {
+        subtype: string;
+    }): Promise<unknown>;
+    subscribe(listener: (event: Record<string, unknown>) => void): () => void;
+}
+
 type ClaudeTerminalViewReply = ClaudeTerminalViewSnapshot & {
     type: 'CLAUDE_TERMINAL_STATE';
     threadId: string;
@@ -1623,6 +1640,11 @@ type ClaudeTerminalViewRequest = {
 } | {
     type: 'CLAUDE_TERMINAL_OPEN';
 } | {
+    type: 'CLAUDE_TERMINAL_SUBMIT';
+    ownerId: string;
+    revision: number;
+    text: string;
+} | {
     type: 'CLAUDE_TERMINAL_INPUT';
     ownerId: string;
     text: string;
@@ -1637,6 +1659,7 @@ type ClaudeTerminalViewRequest = {
 });
 
 type ClaudeTerminalViewSnapshot = {
+    submission?: ClaudeTerminalSubmissionState;
     state?: ClaudeNativeTerminalState;
     opening: boolean;
     problem?: string;
