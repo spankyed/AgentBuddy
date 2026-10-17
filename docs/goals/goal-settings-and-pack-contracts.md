@@ -118,6 +118,11 @@ outside roots before filesystem probes; all 46 parser/environment cases, CLI typ
 Hosted run `39080454772` passes both real versioned cases on that source (9.24 and 6.78 seconds),
 including actual override selection, attributed prelaunch refusal and no addon initialization.
 Shared-cache and restricted-runtime policy remain separate open cases.
+The shared-cache audit now extends that same prelaunch policy to the single `DYLD_SHARED_CACHE_DIR`
+path. The existing OS-library baseline/refusal scenario covers both build and frontend entry points
+and incumbent preservation. All 48 parser/environment checks, CLI types, lint and workflow syntax pass;
+its extended hosted scenario is still pending. CI now records Node's linked images and signing flags
+for the actual runtime; this does not certify another hardened profile or close ELF/PE/final gates.
 Source `e6ce60a78` awaits each detected watch build directly, retaining missing-event bounds and all
 behavior assertions. Its isolated hosted run `39079492068` passes in 98.76 seconds, including refusal,
 repair, incumbent preservation and retirement. Restore the original 120-second scenario budget; the

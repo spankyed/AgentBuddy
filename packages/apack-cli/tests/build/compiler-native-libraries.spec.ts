@@ -200,18 +200,22 @@ it.runIf(process.platform === 'darwin')('permits empty insertion and normal oper
   expect(() => assertCompilerLibraryEnvironment({ DYLD_INSERT_LIBRARIES: '/usr/lib/libSystem.B.dylib' })).not.toThrow();
 });
 
-it.runIf(process.platform === 'darwin').each(['DYLD_VERSIONED_LIBRARY_PATH', 'DYLD_VERSIONED_FRAMEWORK_PATH'] as const)(
+it.runIf(process.platform === 'darwin').each(['DYLD_VERSIONED_LIBRARY_PATH', 'DYLD_VERSIONED_FRAMEWORK_PATH', 'DYLD_SHARED_CACHE_DIR'] as const)(
   'limits %s to operating-system directories before launch', variable => {
     for (const directory of ['/outside', '/usr/lib/../../outside', '/usr/lib/apack-nonexistent-directory', 'relative', ':', '/usr/lib:']) {
       expect(() => assertCompilerLibraryEnvironment({ [variable]: directory })).toThrow(`${variable} references directory`);
     }
-    for (const directory of ['', '/usr/lib', '/System/Library/Frameworks', '/usr/lib:/System/Library']) {
+    for (const directory of ['', '/usr/lib', '/System/Library/Frameworks',
+      ...(variable === 'DYLD_SHARED_CACHE_DIR' ? [] : ['/usr/lib:/System/Library'])]) {
       expect(() => assertCompilerLibraryEnvironment({ [variable]: directory })).not.toThrow();
+    }
+    if (variable === 'DYLD_SHARED_CACHE_DIR') {
+      expect(() => assertCompilerLibraryEnvironment({ [variable]: '/usr/lib:/System/Library' })).toThrow(`${variable} references directory`);
     }
   },
 );
 
-it.runIf(process.platform === 'darwin').each(['DYLD_VERSIONED_LIBRARY_PATH', 'DYLD_VERSIONED_FRAMEWORK_PATH'] as const)(
+it.runIf(process.platform === 'darwin').each(['DYLD_VERSIONED_LIBRARY_PATH', 'DYLD_VERSIONED_FRAMEWORK_PATH', 'DYLD_SHARED_CACHE_DIR'] as const)(
   'refuses outside %s directories without filesystem probes', variable => {
     const stat = vi.spyOn(fs, 'statSync').mockImplementation(() => { throw new Error('Outside path was probed'); });
     try { expect(() => assertCompilerLibraryEnvironment({ [variable]: '/outside' })).toThrow(`${variable} references directory`); }

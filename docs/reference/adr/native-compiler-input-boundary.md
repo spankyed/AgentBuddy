@@ -38,6 +38,9 @@ targets; refuse other configured directories before either build or frontend lau
 environment admission policy, including unused outside directories, rather than a claim to reproduce
 dyld's global install-name/version selection. Package libraries continue to use captured package-relative
 loading. The real outside-versioned reproducer and this policy's acceptance are recorded in the evidence.
+Apply the same location policy to `DYLD_SHARED_CACHE_DIR`, which names one directory rather than a path
+list. Normal OS shared-cache use remains supported; outside custom caches refuse before execution.
+The shared cache is an OS input, not another compiler-owned library tree to copy or rewrite.
 
 Static inspection alone cannot establish complete capture: dynamic library loading and native file
 reads may bypass JavaScript observation. Neither an input declaration nor a scanner establishes

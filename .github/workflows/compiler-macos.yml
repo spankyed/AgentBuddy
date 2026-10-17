@@ -39,6 +39,9 @@ jobs:
           node -p 'JSON.stringify({platform:process.platform,arch:process.arch,versions:process.versions})'
           test -f "$(dirname "$(command -v node)")/../include/node/node_api.h"
           clang --version
+          compiler_node=$(command -v node)
+          otool -L "$compiler_node"
+          codesign --display --verbose=2 --entitlements :- "$compiler_node"
       - name: Install dependencies
         env:
           GITHUB_TOKEN: ${{ github.token }}

@@ -503,10 +503,11 @@ it.runIf(process.platform === 'darwin')('retains launch-time native search paths
   }
 });
 
-it.runIf(process.platform === 'darwin')('admits OS insertion and refuses live library constructors before build or frontend launch', async () => {
+it.runIf(process.platform === 'darwin')('admits OS libraries and refuses outside launch overrides before build or frontend launch', async () => {
   const fixture = nativeFixture('relative');
   const builder = createPackBuilder(fixture.pack);
   const previous = process.env.DYLD_INSERT_LIBRARIES;
+  const previousCache = process.env.DYLD_SHARED_CACHE_DIR;
   const marker = path.join(fixture.root, 'inserted');
   const outside = path.join(fixture.root, 'insert/libinit.dylib');
   let compiler: CompilerInstallation | undefined;
@@ -529,9 +530,17 @@ __attribute__((constructor)) static void initialize(void) {
       expect(fs.existsSync(marker)).toBe(false);
       expect(readPackBuild(output).revision).toBe(revision);
     }
+    process.env.DYLD_INSERT_LIBRARIES = '/usr/lib/libSystem.B.dylib';
+    process.env.DYLD_SHARED_CACHE_DIR = fixture.root;
+    await expect(builder.build({ args: ['--skip-fe'] })).rejects.toThrow('DYLD_SHARED_CACHE_DIR');
+    await expect(startPackFrontend(fixture.pack, compiler, new AbortController().signal)).rejects.toThrow('DYLD_SHARED_CACHE_DIR');
+    expect(fs.existsSync(marker)).toBe(false);
+    expect(readPackBuild(output).revision).toBe(revision);
   } finally {
     if (previous === undefined) delete process.env.DYLD_INSERT_LIBRARIES;
     else process.env.DYLD_INSERT_LIBRARIES = previous;
+    if (previousCache === undefined) delete process.env.DYLD_SHARED_CACHE_DIR;
+    else process.env.DYLD_SHARED_CACHE_DIR = previousCache;
     await builder.close();
     await compiler?.dispose();
     fs.rmSync(fixture.root, { recursive: true, force: true });

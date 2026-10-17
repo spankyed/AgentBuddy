@@ -32,14 +32,15 @@ const systemLibrary = (file: string) => file.startsWith('/usr/lib/') || file.sta
 /** Launch-time overrides run outside JS admission; non-OS libraries must use captured package paths. */
 export function assertCompilerLibraryEnvironment(env: NodeJS.ProcessEnv = process.env): void {
   if (process.platform !== 'darwin') return;
-  for (const variable of ['DYLD_VERSIONED_LIBRARY_PATH', 'DYLD_VERSIONED_FRAMEWORK_PATH'] as const) {
+  for (const variable of ['DYLD_VERSIONED_LIBRARY_PATH', 'DYLD_VERSIONED_FRAMEWORK_PATH', 'DYLD_SHARED_CACHE_DIR'] as const) {
     const value = env[variable];
-    for (const directory of value ? value.split(':') : []) {
+    if (!value) continue;
+    for (const directory of variable === 'DYLD_SHARED_CACHE_DIR' ? [value] : value.split(':')) {
       const normalized = path.resolve(directory);
       const physical = path.isAbsolute(directory) && systemLibrary(normalized + '/')
         && fs.statSync(normalized, { throwIfNoEntry: false })?.isDirectory() ? fs.realpathSync(normalized) : undefined;
       if (!physical || !systemLibrary(physical + '/')) {
-        throw new Error(`Cannot launch captured compiler: ${variable} references directory "${directory}" outside operating-system libraries. Versioned overrides are selected before compiler startup; use captured package-relative libraries instead.`);
+        throw new Error(`Cannot launch captured compiler: ${variable} references directory "${directory}" outside operating-system libraries. Native overrides are selected before compiler startup; use captured package-relative libraries instead.`);
       }
     }
   }

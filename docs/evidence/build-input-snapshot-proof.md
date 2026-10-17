@@ -2935,3 +2935,24 @@ in 9.24 and 6.78 seconds (16.02 seconds tests, 18.05 seconds runner). Each prove
 override selection, the attributed directory refusal and absent addon initialization. Log:
 `/private/tmp/apack-hosted-versioned-39080454772.log`. This accepts the documented OS-directory launch
 policy, not a full dyld resolver or the still-open shared-cache/restricted-runtime and ELF/PE coverage.
+
+### Shared-cache environment audit and bounded admission (2026-10-17)
+
+Source audit of [Apple's dyld process configuration](https://github.com/apple-oss-distributions/dyld/blob/main/dyld/DyldProcessConfig.cpp)
+shows `DYLD_SHARED_CACHE_DIR` selecting a directory before JavaScript. `DYLD_SHARED_REGION` can request
+private use subject to platform policy. The simulator/internal-OS root/overlay branches are distinct
+from ordinary desktop macOS; do not invent support requirements for those runtimes from their names.
+
+Extend the existing prelaunch OS-directory policy to the shared-cache directory. This setting holds
+one path, not a colon-separated list. Preserve ordinary OS cache use and the existing environment
+identity; refuse other configured locations before build/frontend launch without probing outside
+paths. No cache copying, binary parsing or custom cache generation is introduced.
+
+The existing OS-insertion/constructor refusal scenario now also checks outside cache configuration
+through both real public launch paths and preserves the accepted build revision. This proves admission,
+not execution of a manufactured shared cache. All 48 parser/environment checks, CLI types, focused
+lint and diff checks pass; actual extended-scenario acceptance remains pending on hosted macOS.
+The workflow also records the real Node image's linked libraries, signature flags and entitlements
+using `otool`/`codesign` on the disposable runner. These are evidence for the exercised runtime,
+not an assumption that every hardened profile has been accepted. Restricted-runtime and ELF/PE
+coverage and converged/final gates remain open. No native runtime batch was executed locally.

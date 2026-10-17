@@ -171,6 +171,8 @@ Load package libraries through captured compiler modules rather than inserting l
 directories under `/usr/lib` or `/System/Library`, including their physical targets. Other configured
 directories are refused before worker launch, even if their entries might be unused. Unset these
 variables and use captured package-relative dependencies for package libraries.
+`DYLD_SHARED_CACHE_DIR` selects a single directory and follows the same OS-directory policy. The normal
+OS shared cache remains supported; custom caches outside OS library locations are refused before launch.
 
 `apack pack build --watch` watches authored inputs throughout the pack, including `apack.json`,
 modules outside `src/`, JSON schemas, assets and help. The authored watcher excludes generated,
