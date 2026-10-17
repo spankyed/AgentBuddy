@@ -3,6 +3,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { promisify } from 'node:util';
+import { createRequire } from 'node:module';
 import { afterEach, expect, it, vi } from 'vitest';
 import { compilePack, buildPackConfigFromManifest, ManifestSchema } from '@apackdev/sdk/build';
 import { captureCompilationInputs } from '../../src/build/compilation-inputs.ts';
@@ -11,6 +12,36 @@ import { createCompilerModuleLoader } from '../../src/build/compiler-modules.ts'
 
 const roots: string[] = [];
 afterEach(() => { vi.unstubAllEnvs(); for (const root of roots.splice(0)) fs.rmSync(root, { recursive: true, force: true }); });
+
+it('loads an explicitly imported outside native addon from owned bytes', async () => {
+  const require = createRequire(import.meta.url);
+  require('rollup/parseAst');
+  const addon = Object.keys(require.cache).find(file => file.endsWith('.node') && path.basename(file).startsWith('rollup.'));
+  if (!addon) throw new Error('Rollup did not load its platform addon');
+  const root = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'apack-native-module-')));
+  roots.push(root);
+  const pack = path.join(root, 'pack');
+  fs.mkdirSync(pack);
+  fs.writeFileSync(path.join(pack, 'package.json'), '{"type":"commonjs"}');
+  fs.writeFileSync(path.join(pack, 'tsconfig.json'), '{"compilerOptions":{"noLib":true,"types":[]}}');
+  const entry = path.join(pack, 'compiler.cjs');
+  const native = path.join(root, 'native.node');
+  fs.copyFileSync(addon, native);
+  fs.writeFileSync(entry, `module.exports = typeof require('../native.node').parse;`);
+  const compilation = captureCompilationInputs(pack);
+  const modules = createCompilerModuleLoader(compilation);
+  try {
+    const loaded = await withCompilerFileReads({ compilation, outputDirectory: path.join(pack, 'dist') }, () => modules.importModule(entry));
+    expect(loaded.default).toBe('function');
+    const owned = compilation.readTree().path(native);
+    expect(fs.readFileSync(owned)).toEqual(fs.readFileSync(native));
+    const report = process.report.getReport() as { sharedObjects: string[] };
+    expect(report.sharedObjects).toContain(owned);
+    expect(report.sharedObjects).not.toContain(native);
+    fs.writeFileSync(native, 'changed native input');
+    expect(() => compilation.assertCurrent()).toThrow(/changed/);
+  } finally { try { await modules.dispose(); } finally { compilation.dispose(); } }
+});
 
 it('compiles content records and copied media from the same captured input view', async () => {
   const root = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'apack-media-reads-')));
