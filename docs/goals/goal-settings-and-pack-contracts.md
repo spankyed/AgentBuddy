@@ -507,7 +507,16 @@ The [public contract audit](../evidence/settings-and-pack-contracts.md#public-co
 aligns current default selection, static versus executable contributions, caller-bound services,
 migrations, settings and shell-test guidance with inspected implementation. Manifest decision 12 now
 records catalog-based selection as the explicit replacement for registration-order selection.
-Next: close remaining compiler native/platform and integration acceptance, then finish the final requirement audit and strict gate. Do not
+The subsequent converged two-worker attempt reached 600s with three publication-file failures:
+one help-case timeout and two resulting cwd/temporary-directory failures. `a8531f54d` removes global
+cwd mutation, skips unrelated frontend work in the help-only case, and forwards `--bail=1` through the
+pool CLI because root configuration was not inherited by independent projects. All 14 affected cases
+and 62 pool checks pass; the real separate-project/control proof and types/lint pass. See
+[repair evidence](../evidence/settings-and-pack-contracts.md#project-fail-fast-and-publication-test-isolation-2026-10-17).
+The broad run remains incomplete. Do not repeat it for diagnosis: aggregate execution/budget must be
+resolved before another whole-pool attempt. The historical healthy-cost diagnostic is not a deadlock
+finding. Next: resolve native/platform and aggregate validation boundaries, then finish converged
+acceptance, the final requirement audit and strict gate. Do not
 repeat the accepted tarball producer just to restate its status. No whole-gate pass is claimed from the focused repairs.
 After the captured pack-test edits, refreshed default-setup, both external fixtures and the fork through
 the real authoring contract. The complete external app command now passes all 27 fixture cases, the

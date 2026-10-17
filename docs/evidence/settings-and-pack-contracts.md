@@ -7492,3 +7492,45 @@ This closes the named schema/API/export agreement check for A5 on this source, n
 acceptance. Native external-input and Windows lifetime decisions/implementation, Linux evidence,
 integration convergence and the final committed-source strict gate remain open. No broad suite,
 producer rebuild or additional platform support claim is made by this checkpoint.
+
+## Project fail-fast and publication-test isolation (2026-10-17)
+
+Source `a8531f54d` repairs failures found by one converged two-worker integration attempt on
+`1bae3d616`. The run reached its unchanged 600s aggregate limit and exited 1; ten completed file
+reports contain 506 tests, including three failures. Other files were unfinished/unexecuted, so this
+is neither complete integration acceptance nor a passing verdict. Log:
+`/private/tmp/apack-converged-integration-20261017.log`. Reported complete passing files include
+scaffolding, add-extensions, captured esbuild configuration, database, release simulation and repo
+import checks. Those results do not stand in for the unfinished pool.
+
+The help snapshot test exceeded 60s after performing two unrelated frontend bundles. Its unfinished
+promise later restored process-wide cwd into another test's removed temporary directory, producing
+two ENOENT failures. The publication file now passes explicit pack roots to every build rather than
+changing cwd across awaits. The help-only snapshot/refusal case uses `--skip-fe`, retaining initial
+publication, changed article, invalid H1, accepted snapshot and incumbent checks. Its 60s deadline is
+unchanged. Frontend help navigation has its dedicated existing external-app case in
+`tests/packs/external-pack/tests/e2e/help.spec.ts`; it is not rerun in this focused checkpoint.
+
+The supposed fail-fast setting from `ac964c348` was also ineffective for independent project configs:
+Vitest 3.2.4 forwards CLI `bail` overrides, but does not inherit root `test.bail` into those projects.
+The earlier single-config proof did not cover that boundary. The integration pool now passes
+`--bail=1`; the misleading root-only setting is removed. Coverage and successful-verdict rules are
+unchanged. The cancelled work in other already-running projects may still need to settle.
+
+Focused acceptance:
+
+- All 62 pool cases pass: `/private/tmp/apack-project-bail-unit.log`.
+- Actual production pool arguments, root integration configuration and an independently configured
+  temporary project: first failure exits 1, later-work marker absent. The same fixture without the CLI
+  flag creates that marker. `/private/tmp/apack-project-bail-proof.log` records the retained fixture
+  path. Vitest labels the cancelled test pending; the proof checks the actual filesystem side effect.
+- All 14 affected publication cases pass in 246.34s (247.93s runner); help takes 43.69s under its
+  unchanged 60s limit. `/private/tmp/apack-output-swap-root-fix.log`.
+- Scripts/repo/publish/E2E and CLI types, correctness lint and whitespace checks pass:
+  `/private/tmp/apack-project-bail-types.log`, `/private/tmp/apack-output-root-types.log`,
+  `/private/tmp/apack-output-root-lint.log`.
+
+No broad rerun follows this repair. Aggregate integration capacity remains unresolved; the timeout
+message's historical healthy-cost estimate does not establish a deadlock. A further full run needs a
+resolved aggregate execution/budget decision, not another diagnostic repeat. Native input/platform
+requirements, the converged checkpoint and final committed-source strict `--all` remain open.
