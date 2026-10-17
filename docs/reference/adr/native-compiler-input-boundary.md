@@ -45,6 +45,15 @@ that execution used captured bytes. Do not claim complete capture from those mec
 - Binary relocation or broader interception: no solution is selected; justify either against an
   observed requirement rather than introducing a general framework speculatively.
 
+## Rejected shortcut
+
+A real macOS ARM64 / Node 23.11.1 prototype shows that `DYLD_LIBRARY_PATH` can redirect one absolute
+library to captured bytes, but collapses two distinct absolute libraries sharing a basename: expected
+`[11, 22]` becomes `[11, 11]`. A search-path override alone therefore fails the resolution-preservation
+criterion. See [prototype evidence](../../evidence/build-input-snapshot-proof.md#external-native-library-search-path-prototype-2026-10-17).
+This rules out that shortcut, not every possible exact-identity capture design. No support exclusion
+or implementation is approved by the result.
+
 ## Acceptance and decision process
 
 Before accepting this ADR, record the chosen boundary, approval, guarantees and limitations. Prove it

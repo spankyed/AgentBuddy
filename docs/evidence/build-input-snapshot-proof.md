@@ -1668,3 +1668,29 @@ worker exit; test success, failed build, explicit cancellation, parent loss and 
 No implementation or new dependency is selected by this audit. A native Windows runner is required
 for acceptance. Do not weaken or remove the Windows requirement, silently refuse that platform, or
 claim all-platform B3 completion from the accepted macOS path.
+
+## External native-library search-path prototype (2026-10-17)
+
+A private macOS ARM64 / Node 23.11.1 prototype evaluates whether a loader search-path override could
+close the absolute-library counterexample without binary rewriting or additional capture machinery.
+It compiles two real N-API addons, each linked to its own absolute `libvalue.dylib`, with values 11 and
+22. Copies are retained under distinct captured directories; originals are then replaced with values
+91 and 92. The original retained reproducer is read for its addon source only and remains untouched.
+
+Observed results:
+
+- Baseline: both distinct absolute dependencies load and return `[11, 22]`.
+- With `DYLD_LIBRARY_PATH` naming the captured left directory, the left addon returns 11 and the
+  loaded-image report names the captured library, despite its original now returning 91.
+- With both captured directories in the search path, both addons return `[11, 11]`; the loaded-image
+  report names only the left captured library. Different absolute identities have collapsed by basename.
+
+Log: `/private/tmp/apack-native-loader-path-proof.log`. The log records the retained private fixture;
+reproducer: `/private/tmp/apack-native-loader-path-proof.py`. Each compile/child has a finite deadline;
+no app data, compiler implementation, existing fixture or support policy was changed.
+
+This rejects a search-path-only fix: a single-library success does not preserve resolution semantics.
+It does not prove exact per-image rebinding impossible or establish capture of transitive/dynamic
+loads or native file I/O. Those would require their own demonstrated design, not a broad claim from
+this prototype. Full external-library capture remains open; the proposed bounded support policy is
+still unapproved. No product loader interception, scanner, binary rewriting or new dependency is added.
