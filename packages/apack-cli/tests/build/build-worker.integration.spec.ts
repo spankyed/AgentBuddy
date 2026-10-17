@@ -153,8 +153,8 @@ it('uses the captured compiler and retains unchanged build/cache identity on rep
   expect(readPackBuild(path.join(root, 'dist')).snapshot.manifest.id).toBe('fresh-worker');
   expect(fs.existsSync(path.join(root, 'dist/runtime/fe.js'))).toBe(false);
   const content = JSON.parse(fs.readFileSync(path.join(root, 'dist/runtime/content/rows.content.json'), 'utf8'));
-  expect(content.records[0].source).toBe(path.join(fs.realpathSync.native(root), 'src/compiler.cjs'));
-  expect(content.records[0].directory).toBe(path.join(fs.realpathSync.native(root), 'src'));
+  expect(fs.realpathSync.native(content.records[0].source)).toBe(path.join(fs.realpathSync.native(root), 'src/compiler.cjs'));
+  expect(fs.realpathSync.native(content.records[0].directory)).toBe(path.join(fs.realpathSync.native(root), 'src'));
   const inputs = readPackBuildInputs(path.join(root, 'dist'));
   expect(inputs.options).toEqual(['--skip-fe']);
   expect(inputs.observations.length).toBeGreaterThan(0);

@@ -2203,3 +2203,13 @@ An independent, disposable macOS prototype confirms the next loader gap: a nativ
 `DYLD_FALLBACK_LIBRARY_PATH` selects an external library and returns its value 37. Prototype script:
 `/private/tmp/apack-native-fallback-proof.cjs`. This establishes a concrete missing input/admission
 case; it does not establish a repair or justify treating every dyld control as equivalent.
+
+Windows follow-up on `672645cf4`: all 14 focused files pass (151 cases, eight platform skips).
+[Run 39062755440](https://github.com/spankyed/AgentBuddy/actions/runs/39062755440) reaches and completes
+the first real pack build, then its useful-source-path assertion compares short and native spellings.
+`compiler-commonjs.ts` intentionally passes the logical source path to `_compile` while retaining its
+owned module identity. The assertion now resolves the returned source file and directory natively and
+compares them with the original source locations. A private compiler copy still fails that comparison;
+repeat-build revision/cache equality and receipt no-private-path checks remain. No production mapping
+changes. Full log: `/private/tmp/apack-windows-39062755440.log`. Repeat-build completion and subsequent
+worker cases remain unverified on Windows.
