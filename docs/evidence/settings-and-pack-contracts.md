@@ -6531,3 +6531,11 @@ full strict success is claimed and no broad rerun follows the resource failure. 
 [endpoint evidence](discovery-without-activation.md#static-endpoint-contracts-2026-10-17) for the complete
 claims and limits. Continue native backend parity/static assets, then B1–B6 and all three Phase 6
 workstreams; preserve the full goal and final committed-source strict `--all` requirement.
+
+### Native backend viewer parity (2026-10-17)
+
+`be5a9344b` shares artifact/block backend admission across native and built packs. Native metadata
+already existed; the unchecked binding path is now closed without new grammar or a second validator.
+All 705 affected cases, host/SDK types and lint pass. The prior strict integration resource failure
+remains open and no broad rerun follows it. See [viewer evidence](discovery-without-activation.md#native-backend-viewer-parity-2026-10-17).
+Native content/migrations are next, followed by the full remaining goal; this is not overall completion.

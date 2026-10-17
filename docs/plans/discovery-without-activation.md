@@ -124,7 +124,7 @@ not a discovery defect when its caller needs an executing implementation.
 | `lifecycle` | Explicit hook targets, checked callable bindings | Implemented authored/native metadata and membership checks. Running hooks is execution. |
 | `migrations` | Authored line/target/description/`up` declarations; checked backend bindings | Authored implemented. Native declaration omits migrations while native backend registration accepts them unchecked. Reconcile native support, then check it without running `up`. |
 | `steps` (both registrations) | Snapshot/native step declarations and catalog projections | Implemented metadata and checked facets. Keep handlers, compilers, live labels/layout and trigger resources executable; include native and external paths in final acceptance. |
-| `artifacts`, `blocks` (both registrations) | Snapshot/native declarations; frontend checked components; backend authored membership/kind/facet checks | Native backend does not run the authored artifact/block checks. Required parity for declared identities and backend facet membership, preserving runtime callbacks. |
+| `artifacts`, `blocks` (both registrations) | Snapshot/native declarations; frontend checked components; backend authored membership/kind/facet checks | Implemented in `be5a9344b`: native and authored backends share identity, block-kind and backend-facet membership checks before authority/publication. Frontend facets are refused on the backend; native metadata remains after unload. Runtime callbacks remain executable bindings. |
 | `contentWriters`, `appliers` | Authored `content.writers` and `content.sources`; compiled content index | Authored bindings checked. Native registration accepts these without matching native declarations. Resolve this alongside native migration support, retaining real content execution and runtime teardown. |
 | `commands` | Native/authored keyed metadata and catalog order; runtime selection checks accepted identity | Implemented; preserve document-command precedence and global dispatch behavior. |
 | `features.*.plugin` (frontend) | Plugin declaration plus compiled destination claims; checked binding/catalog eligibility | Implemented. Backend inbox metadata is a separate transport concern; the host application actor has an inbox without a contributed sidebar pane. |
@@ -155,12 +155,11 @@ Execute the identified gaps in this order:
 3. Close native backend contribution parity for migrations, content writers/appliers and artifact/block
    facets. Reuse shared binding checks instead of growing a second native validator. Any unsupported
    native slot must be explicitly absent from the supported contract and refused, not silently ignored.
-   First checkpoint: share authored artifact/block backend binding checks with native admission.
-   Native declarations already describe these contributions; do not add another inventory or validator.
-   Match declared identities, block kind and backend-facet presence; refuse frontend facets in backend
-   registrations. Check before granting settings authority or publishing contributions. Retain callbacks
-   as execution and retain declarations after unload. Migrate mixed backend/frontend test fixtures to
-   their actual runtime boundary; existing frontend lookup coverage must remain.
+   Viewer checkpoint `be5a9344b` shares authored/native backend checks; 705 affected cases, host/SDK
+   types and lint pass. Discovery/unload, atomic refusal before authority, callback identity and existing
+   frontend lookup coverage pass. No new public grammar or inventory was introduced. Preserve this
+   implementation and its [evidence](../evidence/discovery-without-activation.md#native-backend-viewer-parity-2026-10-17);
+   the resource-failed strict gate remains incomplete.
 
    Content and migrations are a subsequent checkpoint, not waived: native appliers are used through
    explicit `importCompiledContent` calls in registered-lookups tests, while automatic content/migration

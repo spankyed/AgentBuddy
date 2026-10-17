@@ -3433,3 +3433,25 @@ Before another broad B6 run, establish disk capacity and diagnose exact retained
 increase deadlines, weaken assertions or sweep global temporary prefixes. No broad rerun was launched
 after this resource failure. Native migration/content/backend-viewer parity and static-asset/readers
 remain the next discovery implementation, followed by the preserved B1–B6 and Phase 6 workstreams.
+
+### Native backend viewer parity (2026-10-17)
+
+`be5a9344b` closes the native artifact/block admission bypass. Both native and built packs now use
+`backendViewerBindingProblem` for exact identities, block kind, backend-facet presence/shape and
+refusal of frontend facets in backend registrations. Checks run before settings authority or registry
+publication. No new declaration grammar, runtime inventory or compatibility handling was introduced.
+The native fixture composer now declares its artifact/block metadata. Backend lookup fixtures no
+longer contain frontend components; existing real frontend registry lookup tests remain and pass.
+
+Acceptance: 77 initial cases pass, then all 705 cases across 47 affected pack/loader/registry, frontend
+lookup and SDK fixture-consumer files pass in 12.3s. Thirteen new native cases prove source-free metadata,
+binding identity without executing callbacks, retained declarations after unload and atomic refusal.
+Host/SDK types and lint pass; public signatures and schema are unchanged. Logs:
+`/private/tmp/apack-native-viewer-{parity,consumers,lint}.log`.
+
+The previous strict integration gate remains failed/incomplete; no broad rerun was made after its
+resource failure. Next: native content/migration parity. Audit found explicit native applier execution
+through `importCompiledContent` in registered-lookups tests, while automatic content/migration targets
+currently derive from installed origins. Preserve that supported explicit operation and resolve the
+runner distinction before introducing metadata that cannot execute. Static assets/readers, B1–B6,
+all three Phase 6 workstreams and final committed-source strict `--all` remain required.
