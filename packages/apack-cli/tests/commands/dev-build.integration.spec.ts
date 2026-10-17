@@ -74,7 +74,7 @@ it('cancels its build child and disables inherited input reporting without an ob
       const { pid } = JSON.parse(fs.readFileSync(ready, 'utf8'));
       expect(() => process.kill(pid, 0)).toThrow();
     });
-    vi.spyOn(compiler, 'captureCompilerInstallation').mockResolvedValue({ bin: script, hash: '0'.repeat(64), inputsFile: path.join(root, 'compiler-inputs.json'), environment: { ESBUILD_BINARY_PATH: undefined }, isCurrent: () => true, dispose });
+    vi.spyOn(compiler, 'captureCompilerInstallation').mockResolvedValue({ executable: process.execPath, bin: script, hash: '0'.repeat(64), inputsFile: path.join(root, 'compiler-inputs.json'), environment: { ESBUILD_BINARY_PATH: undefined }, isCurrent: () => true, dispose });
     vi.spyOn(checkout, 'ensureCheckoutPackages').mockImplementation(() => {});
     vi.stubEnv(BUILD_INPUTS_IPC_ENV, '1');
     running = runPackBuild(root, { signal: controller.signal });

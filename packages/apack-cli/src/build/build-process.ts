@@ -156,7 +156,7 @@ async function buildWithCompiler(root: string, compiler: CompilerInstallation, {
       let escalation: ReturnType<typeof setTimeout> | undefined;
       const grouped = process.platform !== 'win32';
       const nodeOptions = compilerStartupOptions(compiler.bin, process.env.NODE_OPTIONS);
-      const child = spawn(process.execPath, [
+      const child = spawn(compiler.executable, [
         ...compilationConditions().map(condition => `--conditions=${condition}`),
         compiler.bin, 'pack', 'build', ...args,
       ], {

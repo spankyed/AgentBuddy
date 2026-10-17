@@ -92,6 +92,18 @@ function fixture() {
   return { compiler, pack, builder, report };
 }
 
+async function prepareCompiler(compiler: string) {
+  const captured = await installation.captureCompilerInstallation(compiler);
+  try {
+    // First launch of a copied native executable can exceed the shutdown tests' readiness budget.
+    execFileSync(captured.executable, ['-e', ''], { timeout: 5_000 });
+  } catch (error) {
+    await captured.dispose();
+    throw error;
+  }
+  vi.spyOn(installation, 'captureCompilerInstallation').mockResolvedValueOnce(captured);
+}
+
 it('reuses a verified compiler, refreshes changed or damaged copies, and releases its scope', async () => {
   const { compiler, builder, report } = fixture();
   await builder.build();
@@ -190,7 +202,8 @@ it('replaces a server for pack configuration changes while reusing unchanged sou
 });
 
 it('stops its worker before removing the compiler on close', async () => {
-  const { pack, builder, report } = fixture();
+  const { compiler, pack, builder, report } = fixture();
+  await prepareCompiler(compiler);
   const running = builder.build({ args: ['--wait'] });
   await vi.waitFor(() => expect(fs.existsSync(path.join(pack, '.apack/built.json'))).toBe(true));
   const active = report();
@@ -240,7 +253,8 @@ it.skipIf(process.platform === 'win32')('stops remaining compiler group members 
 
 
 it('force-stops a compiler that ignores cancellation before releasing its inputs', async () => {
-  const { pack, builder, report } = fixture();
+  const { compiler, pack, builder, report } = fixture();
+  await prepareCompiler(compiler);
   const running = builder.build({ args: ['--wait', '--ignore-term'] });
   await vi.waitFor(() => expect(fs.existsSync(path.join(pack, '.apack/built.json'))).toBe(true));
   const active = report();

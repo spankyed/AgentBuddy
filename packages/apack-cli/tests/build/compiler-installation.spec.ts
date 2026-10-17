@@ -61,6 +61,49 @@ function esbuildFixture() {
   return { ...compiler, options, file, bytes, capture, run };
 }
 
+it('executes its owned runtime and refuses a damaged, aliased or missing copy', async () => {
+  const compiler = fixture();
+  const installation = await compiler.capture();
+  expect(installation.executable).not.toBe(fs.realpathSync(process.execPath));
+  expect(execFileSync(installation.executable, [installation.bin], { encoding: 'utf8', timeout: 5_000 }).trim()).toBe('captured');
+  expect(installation.isCurrent(compiler.root)).toBe(true);
+  fs.chmodSync(installation.executable, 0o755);
+  fs.writeFileSync(installation.executable, 'damaged runtime');
+  expect(installation.isCurrent(compiler.root)).toBe(false);
+  fs.chmodSync(path.dirname(installation.executable), 0o755);
+  fs.rmSync(installation.executable);
+  fs.symlinkSync(process.execPath, installation.executable, 'file');
+  expect(installation.isCurrent(compiler.root)).toBe(false);
+  fs.rmSync(installation.executable);
+  expect(installation.isCurrent(compiler.root)).toBe(false);
+});
+
+it.skipIf(process.platform === 'win32' || !!process.versions.electron)('retains runtime execution after its selected source is replaced', () => {
+  const compiler = fixture();
+  const runtime = fs.mkdtempSync(path.join(os.tmpdir(), 'apack-selected-runtime-'));
+  roots.push(runtime);
+  const executable = path.join(runtime, path.basename(process.execPath));
+  fs.copyFileSync(process.execPath, executable, fs.constants.COPYFILE_FICLONE);
+  const script = `
+    import fs from 'node:fs';
+    import {execFileSync} from 'node:child_process';
+    import {captureCompilerInstallation} from ${JSON.stringify(new URL('../../src/build/compiler-installation.ts', import.meta.url).href)};
+    const captured = await captureCompilerInstallation(process.argv[1]);
+    try {
+      fs.unlinkSync(process.execPath);
+      fs.writeFileSync(process.execPath, 'replaced runtime');
+      console.log(JSON.stringify({
+        current: captured.isCurrent(process.argv[1]),
+        output: execFileSync(captured.executable, [captured.bin], {encoding:'utf8', timeout:5000}).trim(),
+      }));
+    } finally { await captured.dispose(); }
+  `;
+  const output = execFileSync(executable, ['--import', 'tsx', '--conditions=@apackdev/source', '--input-type=module', '-e', script, compiler.root], {
+    encoding: 'utf8', timeout: 10_000,
+  });
+  expect(JSON.parse(output)).toEqual({ current: false, output: 'captured' });
+});
+
 it('owns a relative external esbuild executable and detects changed selection, bytes and copy damage', async () => {
   const compiler = esbuildFixture();
   fs.writeFileSync(compiler.file, compiler.bytes, { mode: 0o755 });

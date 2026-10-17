@@ -73,7 +73,14 @@ Packaged channels come from `build-manifest.json`, never a release tag or execut
 Public builds, release verification and development builds use `build/build-process.ts`.
 `createPackBuilder(root)` owns one compiler copy and serializes fresh worker processes. Before reuse it
 refreshes linked packages and verifies both the selected compiler's current inputs and its copied bytes.
-A changed compiler or damaged copy is replaced. `runPackBuild` closes this scope after a single build;
+The selected runtime executable is copied into that same owner and used for both backend and Vite
+workers. `compiler-runtime.ts` inventories runtime bytes, executable modes, links and directory
+membership; Electron includes its adjacent frameworks (or distribution directory outside macOS).
+Copied runtime bytes are verified before admission and included in compiler identity and reuse checks.
+Clone-capable runtime copies are still verified against the bytes read for identity. External linked
+runtime libraries and other-platform acceptance remain B1 work; the runtime version map alone does not
+close those requirements. A changed compiler/runtime or damaged copy is replaced.
+`runPackBuild` closes this scope after a single build;
 a watcher retains it until close. Closing aborts active work, drains the worker and input observers,
 then removes the private installation.
 

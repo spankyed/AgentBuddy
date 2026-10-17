@@ -5,9 +5,11 @@ import { createRequire } from 'node:module';
 import { createHash } from 'node:crypto';
 import { readPackageInputs } from '@apackdev/host/build/package-inputs';
 import { cliPackageDirectory } from './tool-identity.ts';
+import { readCompilerRuntimeInputs } from './compiler-runtime.ts';
 
 export interface CompilerInstallation {
   readonly bin: string;
+  readonly executable: string;
   readonly hash: string;
   readonly inputsFile: string;
   readonly environment: Readonly<Pick<NodeJS.ProcessEnv, 'ESBUILD_BINARY_PATH'>>;
@@ -84,7 +86,7 @@ export async function captureCompilerInstallation(directory = compilerPackageDir
     }
   };
   try {
-    const copy = ({ source, mode, hash }: { source: string; mode: number; hash: string }, bytes: Buffer) => {
+    const copy = ({ source, mode, hash }: { source: string; mode: number; hash: string }, bytes: Buffer, clone = false) => {
       const identity = `${mode}:${hash}`;
       const previous = copied.get(source);
       if (previous !== undefined) {
@@ -93,11 +95,14 @@ export async function captureCompilerInstallation(directory = compilerPackageDir
       }
       const target = capturedPath(source);
       mkdir(path.dirname(target));
-      fs.writeFileSync(target, bytes, { flag: 'wx', mode: mode & ~0o222 });
+      if (clone) fs.copyFileSync(source, target, fs.constants.COPYFILE_EXCL | fs.constants.COPYFILE_FICLONE);
+      else fs.writeFileSync(target, bytes, { flag: 'wx', mode: mode & ~0o222 });
       fs.chmodSync(target, mode & ~0o222);
       copied.set(source, identity);
     };
     const inputs = readPackageInputs([{ id: 'compiler', directory, contents: true }], { onFile: copy });
+    const runtime = readCompilerRuntimeInputs(process.execPath, !!process.versions.electron, (file, bytes) => copy(file, bytes, true));
+    for (const directory of runtime.directories) mkdir(capturedPath(directory));
     const executable = readEsbuildExecutable(options);
     const executableId = JSON.stringify(executableIdentity(directory, executable));
     if (executable?.kind === 'file') {
@@ -128,6 +133,7 @@ export async function captureCompilerInstallation(directory = compilerPackageDir
         }
       }
     }
+    for (const { source, target } of runtime.links) addLink(source, target);
     // Parent links first: a child lookup may already exist through its captured parent.
     for (const [source, target] of [...links].sort(([a], [b]) => a.length - b.length)) {
       const destination = capturedPath(source);
@@ -147,7 +153,7 @@ export async function captureCompilerInstallation(directory = compilerPackageDir
     if (verified.hash !== inputs.hash || verified.nodes.some(node => !node.directory.startsWith(`${temporary}${path.sep}`))) {
       throw new Error('Captured compiler installation differs from its inputs');
     }
-    const hash = createHash('sha256').update(JSON.stringify([inputs.hash, executableId])).digest('hex');
+    const hash = createHash('sha256').update(JSON.stringify([inputs.hash, executableId, runtime.hash])).digest('hex');
     const inputsFile = path.join(temporary, 'compiler-inputs.json');
     fs.writeFileSync(inputsFile, JSON.stringify({ hash,
       packages: inputs.nodes.map(node => capturedPath(node.directory)),
@@ -162,11 +168,16 @@ export async function captureCompilerInstallation(directory = compilerPackageDir
         && fs.readFileSync(file).equals(executable.bytes);
     };
     if (!executableCurrent()) throw new Error('Captured esbuild executable differs from its input');
-    return { bin: path.join(root, 'bin/apack.mjs'), hash, inputsFile, environment, dispose,
+    const capturedRuntimeCurrent = () => !!fs.lstatSync(capturedPath(runtime.executable), { throwIfNoEntry: false })?.isFile()
+      && fs.realpathSync(capturedPath(runtime.executable)) === capturedPath(runtime.executable)
+      && readCompilerRuntimeInputs(capturedPath(runtime.executable)).hash === runtime.hash;
+    if (!capturedRuntimeCurrent()) throw new Error('Captured compiler runtime differs from its input');
+    return { bin: path.join(root, 'bin/apack.mjs'), executable: capturedPath(runtime.executable), hash, inputsFile, environment, dispose,
       isCurrent(source, options = {}) {
         return fs.realpathSync(source) === directory
           && executableId === JSON.stringify(executableIdentity(directory, readEsbuildExecutable(options)))
-          && executableCurrent() && fs.existsSync(root)
+          && executableCurrent() && fs.existsSync(root) && capturedRuntimeCurrent()
+          && readCompilerRuntimeInputs(process.execPath).hash === runtime.hash
           && compilerPackagesHash(source) === inputs.hash && compilerPackagesHash(root) === inputs.hash;
       },
     };
