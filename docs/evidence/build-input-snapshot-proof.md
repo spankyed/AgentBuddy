@@ -424,3 +424,49 @@ snapshot, resolver or global interceptor. Add changed/unchanged real frontend re
 exercise configuration source globals. Verify a real pack build before claiming the production
 handoff. Continue native/runtime and dependency closure, retained compiler lifetime and B4 output
 association; this proof alone is not whole B1/B2 acceptance or universal native-library coverage.
+
+## Frontend read scope checkpoint (2026-10-17)
+
+Source `0e03d4021` runs the complete frontend bundling operation under the existing
+`withCompilerFileReads` owner when a build supplies `CompilationInputs`. This includes configuration,
+resolution and resource reads, not only the `vite.build` call. Vite keeps its original root, resolvers
+and source IDs; standalone calls keep their existing behavior. There is no additional snapshot,
+resolver, global interceptor, worker-count setting or public API. Public assets retain the preceding
+owned-directory projection and permission/replacement behavior.
+
+Two real integration cases use captured originals before the first frontend build. The edited case
+changes authored files and dependency code after capture; all emitted markers remain captured and the
+final input guard refuses the changed originals. The unchanged case emits the same captured markers
+and passes final validation. Coverage includes Vue script/template, npm dependency JS, separate SFC
+style files and CSS imports, SVG template/CSS assets, lazy chunks, browser workers, glob members,
+Sass imports, custom TypeScript Tailwind configuration and a configuration helper's original source
+directory. Emitted output excludes private input-directory names.
+
+Evidence:
+
+- Both matrix cases pass (20.44s): `/private/tmp/apack-frontend-owned-regression-entry.log`.
+- Captured public asset bytes, modes and bundle replacement still pass (10.49s):
+  `/private/tmp/apack-frontend-owned-public.log`.
+- All 19 adjacent standalone/external-sharing/Tailwind/theme cases pass (2.45s):
+  `/private/tmp/apack-frontend-owned-unit.log`.
+- CLI TypeScript, lint and refreshed CLI package build pass:
+  `/private/tmp/apack-frontend-owned-{types-final,lint-final,packages}.log`.
+- The actual external-pack build passes the captured worker, generated declarations, content/backend/
+  frontend phases, final validation, sealing and publication:
+  `/private/tmp/apack-frontend-owned-external-build.log`. This is build acceptance, not a new app/Electron run.
+
+Initial test setup errors were corrected without weakening guards: Sass exposes its entry, not
+`package.json`; source globals use the canonical source path; Tailwind's jiti temporary cache needs
+file-wide lifetime in this in-process test file; Tailwind injection requires the JS entry used by real
+packs. Its direct-Vue-entry fixture did not inject utilities. No production fallback, cache disabling,
+timeout increase or broader run was introduced to address those fixture issues. The earlier disposable
+proof's corrected output-directory ordering remains recorded above. Existing Browserslist and Tailwind
+sourcemap warnings are outside this source change.
+
+This establishes ordinary frontend file/namespace consumption through the common owner on the tested
+paths. It does not certify arbitrary native-library I/O or close remaining executable/runtime,
+dependency/namespace acceptance, retained Vite compiler refresh, platform/resource lifetime or the
+successful input/output association. Continue those B1–B6 boundaries, all-kind discovery acceptance
+and all three Phase 6 workstreams. Final committed-source strict `--all` remains open; no broad gate
+was rerun during this checkpoint. Another worktree's test process was observed; no other session's
+process or files were changed.

@@ -239,7 +239,12 @@ checkpoint `d09a7f447` gives the frontend bundler the existing build owner and p
 directory onto captured authored files, preserving copied permissions and bundle replacement behavior.
 The real Vite regression, 19 adjacent frontend cases, CLI types/lint and package refresh pass. See
 [public-input evidence](../evidence/build-input-snapshot-proof.md#captured-public-directory-checkpoint-2026-10-17).
-Next: close the matrix's remaining native/dependency/frontend input paths and B2/B3 lifetimes,
+Frontend scope checkpoint `0e03d4021` runs the complete bundling operation under the existing captured
+read owner, retaining Vite's root and resolvers. Changed/unchanged real compiler cases cover Vue,
+dependency code, CSS/SVG, lazy imports, browser workers, globs, Sass, Tailwind and configuration source
+globals. The public-file case, 19 adjacent cases, CLI types/lint/package refresh and real external-pack
+build/publication pass. See [frontend evidence](../evidence/build-input-snapshot-proof.md#frontend-read-scope-checkpoint-2026-10-17).
+Next: close the matrix's remaining native/runtime and dependency/namespace acceptance, plus B2/B3 lifetimes,
 then B4–B6 and all-kind acceptance. Asset input/output completeness remains required under B1/B4,
 not a deferred follow-up or another discovery store. All three Phase 6 workstreams remain required. Do not restart implemented endpoint
 or navigation work, or rerun a broad gate to investigate the preserved integration failures.

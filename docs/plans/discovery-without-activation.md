@@ -181,8 +181,10 @@ locates current owners rather than treating every unverified path as new impleme
 `129b541de` closes ordinary media-byte consumption through the existing captured reads and preserves
 copy modes/link behavior. Source `d09a7f447` projects Vite public copying onto the same captured owner,
 preserving file permissions and emitted-bundle replacement. Native package executable/addon acceptance
-`4c126846f` verifies existing capture on the current platform. Remaining Vite module/resource inputs,
-external native overrides/runtime ownership, dependency closure and expected copied outputs under B4
+`4c126846f` verifies existing capture on the current platform. Source `0e03d4021` scopes the whole frontend
+operation to existing captured reads; ordinary Vue, dependency, CSS/SVG, lazy/worker/glob, Sass/Tailwind
+and config-global paths plus real pack publication pass. Remaining native/runtime and dependency/namespace
+acceptance, retained frontend generation and expected copied outputs under B4
 remain open; these source checkpoints do not certify full producer coverage.
 
 Execute the identified gaps in this order:
