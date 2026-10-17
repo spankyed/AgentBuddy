@@ -83,7 +83,7 @@ preloads (`bbf05ec00`). These are source evidence, not a claim that the full str
 
 | Checkpoint | Required outcome and acceptance boundary | Dependencies |
 |---|---|---|
-| B1 — Launch and remaining input coverage | Reconcile current capture against actual supported compiler paths. The launch audit preserves inherited NODE_OPTIONS and forwarded export conditions; supervisor entry modes are not worker configuration. Early launch identity and authored bytes/membership are implemented through `bbf05ec00`. Close remaining executable/native-runtime ownership and pre-startup/dependency/resolution gaps. Enumerate concrete missing inputs before implementing; prove relevant changes invalidate/refuse publication while equivalent runs preserve identity and resolution. Ordered options already landed; do not reimplement them. | Existing captured installation/startup view. |
+| B1 — Launch and remaining input coverage | Reconcile current capture against actual supported compiler paths. The launch audit preserves inherited NODE_OPTIONS and forwarded export conditions; supervisor entry modes are not worker configuration. Early launch identity and authored bytes/membership are implemented through `bbf05ec00`. Selected runtime ownership is implemented in `e369d3cb9`, with local Node/Electron and actual backend/Vite acceptance. Close remaining externally linked/native-runtime and pre-startup/dependency/resolution gaps; other-platform acceptance remains required. Enumerate concrete missing inputs before implementing; prove relevant changes invalidate/refuse publication while equivalent runs preserve identity and resolution. Ordered options already landed; do not reimplement them. | Existing captured installation/startup view. |
 | B2 — Frontend compiler generation | Implemented and locally accepted in `a595246f2` / `d3833f788`: matching backend/Vite generations, configuration replacement, fresh metadata/link resolution, private caches, failure retention, interrupted startup and awaited retirement pass. Real browser HMR through a generated external-pack entry preserves state/document. Retain these checks for final committed-source acceptance; B1/B3 still own remaining input/subscription and platform/runtime cases. | Relevant B1 inputs are implemented; preserve remaining cross-phase producer acceptance. |
 | B3 — Remaining resource lifetime | Audit native/background work and required platform-specific descendant handling against existing cancellation. Close demonstrated ownership gaps so build-owned work cannot outlive final validation/disposal. Retain required one-shot/dev/platform cases; public cancellation is already implemented. | Relevant B1/B2 owners; no security sandbox or general resource-confinement expansion. |
 | B4 — Persist successful input/output association | Publish the completed input record atomically with sealed output. Failed or incoherent builds retain the incumbent; readers can validate the association without executing pack/compiler code. Startup observations alone are not this record. | Complete relevant B1–B3 producer ownership. |
@@ -267,8 +267,12 @@ component state and document with no page errors; see [configuration/browser evi
 Cleanup `a67edefc1` centralizes generation sequencing; 29 affected lifecycle cases, CLI types and lint
 pass. The [runtime-copy proof](../evidence/build-input-snapshot-proof.md#generation-cleanup-and-runtime-copy-feasibility-2026-10-17)
 shows owned Node and Electron execution is feasible locally; Electron needs adjacent frameworks.
-Next: integrate selected runtime ownership into the existing captured installation and both worker
-launches, then close supported platform/native and remaining namespace/subscription cases. Preserve
+Runtime checkpoint `e369d3cb9` now owns the selected executable in the captured installation and uses
+it for both worker launches. Twenty-three focused cases across the recorded runs, three real integration
+cases, CLI types/lint/package refresh and integrated owned Electron execution pass; see
+[runtime ownership evidence](../evidence/build-input-snapshot-proof.md#selected-runtime-ownership-checkpoint-2026-10-17).
+Next: close externally linked runtime/native, supported-platform and remaining namespace/subscription
+matrix cases. Preserve
 B2's accepted owner and browser proof; do not schedule another frontend generation implementation.
 Then complete B4–B6 and all-kind acceptance. Asset input/output completeness remains required under B1/B4,
 not a deferred follow-up or another discovery store. All three Phase 6 workstreams remain required. Do not restart implemented endpoint

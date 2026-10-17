@@ -6604,3 +6604,14 @@ cases, CLI types and focused lint pass. Disposable Node/Electron runtime copies 
 owned execution; Electron requires its framework neighbors. See
 [runtime feasibility evidence](build-input-snapshot-proof.md#generation-cleanup-and-runtime-copy-feasibility-2026-10-17).
 Runtime integration and cross-platform acceptance remain required under B1/B3. No broad gate is claimed.
+
+
+### Selected runtime ownership (2026-10-17)
+
+`e369d3cb9` retains the selected executable with compiler generations and launches backend/Vite workers
+through it. Runtime identity and copied-byte checks participate in admission/reuse; existing generation
+shutdown owns cleanup. Twenty-three focused cases across the recorded runs, three real integration
+cases, CLI types/lint/package refresh and integrated owned Electron execution pass. See
+[runtime ownership evidence](build-input-snapshot-proof.md#selected-runtime-ownership-checkpoint-2026-10-17).
+External linked native libraries, platform acceptance and remaining namespace/subscription cases stay
+under B1/B3; B4–B6 and every other active goal phase remain required.

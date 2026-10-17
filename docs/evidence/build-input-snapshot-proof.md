@@ -755,3 +755,53 @@ identity and reuse checks. Preserve compiler source-path mappings, launch option
 Check actual supported platform layouts and externally linked runtime libraries before claiming
 portable closure; this local proof does not authorize ignoring them or a generic native-I/O sandbox.
 Remaining namespace/subscription acceptance, B3 lifetimes, B4–B6 and all other goal phases stay open.
+
+
+## Selected runtime ownership checkpoint (2026-10-17)
+
+Source `e369d3cb9` adds the selected runtime to the existing captured compiler installation. Both
+backend and Vite workers launch `compiler.executable`; disposal remains under their generation owner.
+Runtime bytes, executable permissions, symlinks and directory membership contribute to compiler
+identity. Admission verifies the copied runtime, and reuse checks original and captured identities;
+a missing, damaged or externally aliased executable refuses reuse. Runtime copies use clone-capable
+exclusive copying and are verified against the initially read byte hashes before admission. No new
+receipt, cache authority, runtime fallback or compatibility path was added.
+
+Plain Node captures its executable. Electron on macOS additionally captures the adjacent Frameworks
+tree, preserving framework links and resources; other Electron layouts conservatively inventory the
+executable's distribution directory. Those other layouts still require platform acceptance and cost
+review. This is not proof that every external runtime library or native I/O path is owned: linked
+Node distributions and platform-specific native dependencies remain explicit B1/B3 requirements.
+
+Evidence on current darwin/arm64:
+
+- Runtime inventory, installation and builder regressions: 22 cases pass in 26.54s,
+  `/private/tmp/apack-owned-runtime-focused.log`. A subsequently added source-replacement case passes
+  separately in 5.91s, `/private/tmp/apack-runtime-source-replacement.log`: a disposable selected Node
+  executable is replaced; reuse refuses it while its captured executable still runs captured compiler
+  code. No developer-installed binary is edited. The Windows running-executable replacement constraint
+  and Electron's adjacent-library requirement exclude that particular plain-Node fixture there.
+- The integrated capture runs Electron in Node mode with matching versions, its actual executable in
+  the owned tree, and all six non-system loaded images inside that tree. Original and copied runtime
+  identities agree. `/private/tmp/apack-owned-electron-runtime.log` records the result; copied runtime
+  and fixture directories are removed in `finally`. This uses no production profile or GUI startup.
+- Both real integration files pass (three cases, 72.93s): actual backend/Vite A/B generation replacement,
+  ordinary source update, failed frontend replacement retention, watcher/session cleanup and dev-build
+  cancellation. `/private/tmp/apack-owned-runtime-integration.log`. Existing bare-import fixture and
+  sourcemap warnings remain; no assertions or deadlines were increased.
+- CLI typecheck, eight-file correctness lint, package refresh and whitespace checks pass.
+  `/private/tmp/apack-owned-runtime-types-final.log` and `/private/tmp/apack-owned-runtime-packages.log`.
+
+The initial unit run exposed a readiness-fixture assumption rather than a hung compiler. A direct
+measurement found 320ms capture, 1,167ms first execution of the copied Node and 33ms subsequent
+execution (32ms for the original). Redundant capture-time original rereads were removed, and verified
+clone-capable copying avoids a full byte write. Two shutdown tests now prepare and first-launch their
+real captured compiler before starting the existing one-second shutdown-readiness observation; they
+retain their original lifecycle assertions and deadlines. This does not hide product startup cost:
+the first owned runtime launch still pays it. No claim is made about its OS-internal cause.
+
+Next: audit externally linked native/runtime inputs and remaining namespace/subscription cases from
+the existing finite matrix; retain implemented runtime ownership. Close B3 resource/platform cases,
+then B4's successful input/output association and B5 consumers before B6 convergence. All discovery
+and Phase 6 requirements and the final committed-source strict `--all` remain open. No broad gate or
+cross-platform completion is claimed.
