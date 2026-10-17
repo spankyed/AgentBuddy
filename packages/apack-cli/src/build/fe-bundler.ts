@@ -373,7 +373,9 @@ export async function packDevServerConfig(root: string, feEntry: string): Promis
 export function readPackDevServerInputs(root: string): string {
   const manifest = fs.readFileSync(path.join(root, 'apack.json'), 'utf8');
   const metadata = [path.join(root, 'package.json')];
-  for (const name of ['@apackdev/sdk', '@apackdev/ui']) {
+  const packages = new Set(Object.keys(getSdkFeModules()).flatMap(specifier => sharedInstancePackage(specifier) ?? []));
+  packages.add('@apackdev/ui');
+  for (const name of packages) {
     const directory = findPackageDirectory(root, name)?.directory;
     if (directory) metadata.push(path.join(directory, 'package.json'));
   }

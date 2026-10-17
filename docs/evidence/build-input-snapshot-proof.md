@@ -1067,6 +1067,8 @@ or a claim that individual rebuild stalls are fixed.
 
 ### Completed source input/output association checkpoint
 
+Source checkpoint: `0192d2819`.
+
 `dist/build-inputs.json` is source-only metadata, sealed by the existing integrity receipt alongside
 all output. No layout stamp, snapshot format, installed asset manifest or revision algorithm changes.
 Existing staging filters omit this root metadata just as they omit `phase-cache.json`. The common host
@@ -1121,3 +1123,21 @@ bytes (media/public/CSS/lazy/worker), remaining B1/B3 external-library/platform 
 B5's archive/prebuilt/default-fork/drive policies and expected compiler/options contexts, B6, all
 Phase 6 streams and final committed-source strict `--all` remain required. No broad gate was repeated
 to diagnose these two reproduced failures, and no whole-goal completion is claimed.
+
+
+### Frontend shared-metadata selection repair
+
+`readPackDevServerInputs` derived its metadata list from literal SDK/UI names. The shared-package
+rule correctly rejected the duplicated SDK inventory. It now derives SDK package owners from the
+frontend `getSdkFeModules()` declaration through `sharedInstancePackage`, deduplicates them and keeps
+UI's dynamic metadata. It does not substitute `SHARED_INSTANCE_PACKAGES` or the backend dependency
+list: EARS remains bundled by frontends rather than becoming host-shared frontend startup metadata.
+
+Six `findSharedPackageLists` cases pass, including every registered consumer, with the check unchanged:
+`/private/tmp/apack-frontend-metadata-rule.log`. All eight builder cases pass (26.35s runner), including
+a new regression proving SDK/UI metadata changes alter the startup signature while an EARS-only
+metadata change does not: `/private/tmp/apack-frontend-metadata-focused.log`. The first sandboxed
+builder run reached two `spawn EPERM` failures when its existing process-group cleanup launched `ps`;
+the permitted rerun passed without source, assertion or deadline changes. CLI typecheck and changed-file
+lint pass; type log `/private/tmp/apack-frontend-metadata-types.log`. This resolves the previously
+recorded hardcoded-list failure; it does not convert the interrupted broad integration run into a pass.

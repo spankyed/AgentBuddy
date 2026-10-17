@@ -204,6 +204,24 @@ it('replaces a server for pack configuration changes while reusing unchanged sou
   expect(readPackDevServerInputs(pack)).toContain('@apackdev/ui/two');
 });
 
+it('tracks frontend SDK and UI metadata while leaving bundled EARS outside the shared frontend inputs', () => {
+  const { pack } = fixture();
+  const metadata = (name: string, description: string) => {
+    const directory = path.join(pack, 'node_modules', name);
+    fs.mkdirSync(directory, { recursive: true });
+    fs.writeFileSync(path.join(directory, 'package.json'), JSON.stringify({ name, description, exports: {} }));
+  };
+  for (const name of ['@apackdev/sdk', '@apackdev/ui', '@apackdev/ears']) metadata(name, 'original');
+  const before = readPackDevServerInputs(pack);
+  metadata('@apackdev/ears', 'changed');
+  expect(readPackDevServerInputs(pack)).toBe(before);
+  metadata('@apackdev/sdk', 'changed');
+  const sdkChanged = readPackDevServerInputs(pack);
+  expect(sdkChanged).not.toBe(before);
+  metadata('@apackdev/ui', 'changed');
+  expect(readPackDevServerInputs(pack)).not.toBe(sdkChanged);
+});
+
 it('stops its worker before removing the compiler on close', async () => {
   const { compiler, pack, builder, report } = fixture();
   await prepareCompiler(compiler);

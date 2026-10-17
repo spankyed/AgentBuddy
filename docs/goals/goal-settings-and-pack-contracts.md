@@ -300,12 +300,15 @@ Completed-frame replay repair `2d7dd140c` now honors explicitly consumed generat
 expanding authored membership. Its regression failed on unchanged input before the fix; 52 affected
 cases, passive replay and host/CLI types pass. See
 [generated-input evidence](../evidence/build-input-snapshot-proof.md#explicit-generated-input-replay-checkpoint).
-B4 now publishes completed input observations and recorded package/compiler/execution context in
+B4 source checkpoint `0192d2819` publishes completed input observations and recorded package/compiler/execution context in
 `dist/build-inputs.json`, sealed by the existing output receipt. Reused phases retain their prior input
 facts; passive replay uses common native ownership and installed staging omits source metadata. Real
 repeat publication preserves phase reuse, sealed revision and cleanup (50.00s); 100 affected cases,
 110 layout/receipt cases and host/CLI types pass. See
 [completed-record evidence](../evidence/build-input-snapshot-proof.md#completed-source-inputoutput-association-checkpoint).
+The frontend metadata reader now derives shared SDK owners from `getSdkFeModules()` and retains UI's
+dynamic exports; it does not adopt backend EARS sharing. The six shared-package rule cases and eight
+builder cases pass, alongside CLI types/lint; see the same evidence record.
 This closes the record/association slice, not all B4: expected emitted/copied output membership and
 bytes (media/public/CSS/lazy/worker) remain required. B5's four consumer policies and compiler/options
 comparison contexts remain unimplemented. No converged strict or final `--all` pass is claimed.
