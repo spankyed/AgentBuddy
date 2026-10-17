@@ -646,10 +646,11 @@ export function createPackRegistry({ installedPacksDir, appPackSourcesDir, setti
         const accepted = candidate.get(registration.id)!;
         binding = createPackServiceBinding({ caller: registration.id, selection,
           settings: settingsForPack(registration.id), overrides: serviceOverrides, bind: registration.bindServices,
-          // The coordinator owns caller retirement after its actors stop.
-          current: () => serviceEnabled(serviceOwner),
           provider: (id, name) => {
-            const owner = id === registration.id ? accepted : admitted.get(id);
+            // Own actors drain on their accepted services until the coordinator disposes the binding.
+            if (id === registration.id) return accepted.services.has(name)
+              ? { generation: accepted, value: accepted.services.get(name) } : undefined;
+            const owner = admitted.get(id);
             if (!owner?.serviceOwner || !serviceEnabled(owner.serviceOwner) || !owner.services.has(name)) return;
             // Validate the requested API against its accepted provider, not a prospective replacement.
             _packServiceSelection({ ...packServiceDeclaration(serviceOwner), consumes: { services: [`${id}/${name}`] } },

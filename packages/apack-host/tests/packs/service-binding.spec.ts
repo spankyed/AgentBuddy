@@ -4,6 +4,8 @@ import { startTestRuntime, fakeInference, testRootEvents } from '@apackdev/sdk/t
 import { bindHost } from '@apackdev/sdk/runtime';
 import { boundHost, unbindHost } from '@apackdev/sdk/runtime/internals';
 import type { NativePackDeclaration, PackRegistration } from '@apackdev/sdk/framework';
+import { _declarationRevision, PACK_SNAPSHOT_FORMAT, type PackManifest } from '@apackdev/sdk/build';
+import type { PackCatalogEntry } from '../../src/packs/catalog.ts';
 import { createPackRegistry } from '../../src/packs/registry.ts';
 
 const settings = { get: <T>() => ({} as T), set() {}, reset() {}, onChange: () => () => {} };
@@ -80,6 +82,37 @@ describe('accepted service bindings', () => {
       expect((first.services.search as Search).read()).toBe('mocked');
       expect((second.services.search as Search).read()).toBe('isolated');
     } finally { isolated.unregisterPack('other'); isolated.unregisterPack('provider'); }
+  });
+
+  it('keeps disabled actors bound until retirement while refusing other callers access to the provider', () => {
+    const manifest: PackManifest = { id: 'provider', name: 'Provider', version: '1.0.0',
+      extensions: { services: { search: 'unavailable.ts#search' } } };
+    const declarationRevision = _declarationRevision(manifest);
+    const entry: PackCatalogEntry = { dir: '/unavailable/provider', enabled: true, snapshot: {
+      format: PACK_SNAPSHOT_FORMAT, declarationRevision, manifest,
+      types: { entities: {}, relKinds: {} }, entityDestinations: {}, facades: {},
+    } };
+    packs.catalog.replace([entry]);
+    const own = _createPackServices();
+    packs.registerPack({ id: 'provider', declarationRevision, services: { search: new Search() }, bindServices: own.bindServices },
+      { id: 'provider', name: manifest.name, version: manifest.version, dir: entry.dir, manifest, declarationRevision });
+    try {
+      const peer = caller();
+      const ownServices = own.services;
+      const ownRead = (ownServices.search as Search).read;
+      const peerRead = (peer.services.search as Search).read;
+      packs.catalog.replace([{ ...entry, enabled: false }]);
+      expect(ownRead()).toBe('original');
+      expect((own.services.search as Search).read()).toBe('original');
+      expect(() => peerRead()).toThrow('retired provider');
+      expect(() => peer.services.search).toThrow('not ready');
+      packs.unregisterPack('provider');
+      expect(() => ownRead()).toThrow('revoked');
+      expect(() => ownServices.search).toThrow('revoked');
+    } finally {
+      if (packs.getPackRegistration('provider')) packs.unregisterPack('provider');
+      packs.catalog.replace([]);
+    }
   });
 
   it('keeps a draining callers own service on its original generation until coordinated retirement', () => {

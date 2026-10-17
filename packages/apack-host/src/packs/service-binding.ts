@@ -10,19 +10,18 @@ interface ProviderService {
 }
 
 /** One admitted caller owns authority and subscriptions, including when its generated hook misbehaves. */
-export function createPackServiceBinding({ caller, selection, settings, current, provider, overrides, bind }: {
+export function createPackServiceBinding({ caller, selection, settings, provider, overrides, bind }: {
   caller: string;
   selection: Selection;
   settings: SettingsService;
   overrides?: ReadonlyMap<string, unknown>;
-  current: () => boolean;
   provider: (packId: string, name: string) => ProviderService | undefined;
   bind: (access: PackServiceAccess) => () => void;
 }) {
   const host = _captureHostServices();
   let status: 'pending' | 'active' | 'revoked' = 'pending';
   const subscriptions = new Set<() => void>();
-  const live = () => status === 'active' && current() && host.current();
+  const live = () => status === 'active' && host.current();
   const assertCaller = () => {
     if (!live()) throw new Error(`Pack "${caller}" services ${status === 'pending' ? 'are unavailable until the host accepts this runtime' : status === 'revoked' ? 'have been revoked' : 'belong to a retired runtime or host'}`);
   };
