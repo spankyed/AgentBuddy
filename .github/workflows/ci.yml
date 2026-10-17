@@ -25,17 +25,23 @@ name: CI
 
 on:
   workflow_dispatch:
+    inputs:
+      compiler_windows:
+        description: Run only the focused Windows compiler checks
+        type: boolean
+        default: false
   # push:
   #   branches: [master]
   # pull_request:
   #   branches: [master]
 
 concurrency:
-  group: ci-${{ github.ref }}
+  group: ci-${{ github.ref }}-${{ inputs.compiler_windows && 'compiler-windows' || 'full' }}
   cancel-in-progress: true
 
 jobs:
   check:
+    if: ${{ !inputs.compiler_windows }}
     runs-on: macos-14
     timeout-minutes: 25
 
@@ -125,6 +131,7 @@ jobs:
   # Builds tests/packs/external-pack with the apack CLI and runs its Playwright
   # suite from the pack dir against the built app — the third-party pack path.
   external-pack-e2e:
+    if: ${{ !inputs.compiler_windows }}
     runs-on: macos-14
     timeout-minutes: 30
 
@@ -159,3 +166,9 @@ jobs:
           path: |
             tests/packs/external-pack/tests/results/
             tests/packs/external-pack/tests/screenshots/
+
+  compiler-windows:
+    if: ${{ inputs.compiler_windows }}
+    permissions:
+      contents: read
+    uses: ./.github/workflows/compiler-windows.yml
