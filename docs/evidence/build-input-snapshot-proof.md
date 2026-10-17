@@ -1997,3 +1997,25 @@ when terminated. This is incomplete pool acceptance, not a pass or evidence of a
 Log: `/private/tmp/apack-native-checkpoint-integration.log`. The default-pack rebuild passed first:
 `/private/tmp/apack-native-checkpoint-default.log`. Do not repeat the broad run for Windows-launch
 diagnosis or silently widen its deadline. B6 and final strict acceptance remain open.
+
+
+### First repaired Windows run: launcher accepted, UI paths exposed
+
+Source `d7dc7f224` was pushed and tested by
+[run 39058353468](https://github.com/spankyed/AgentBuddy/actions/runs/39058353468).
+The runner confirmed the adjacent npm JavaScript entry exists. Both EARS and SDK built and staged
+successfully, establishing the repaired npm launch through the original failing path. Preparation
+then failed at UI's export-map check, before compiler tests. Full log:
+`/private/tmp/apack-windows-39058353468-failed.log`.
+
+Inspection found `computeEntries()` writes native `path.relative()` results directly into package
+subpaths and targets. Windows therefore emits backslashes. Normalize public-module paths to `/`
+before sorting and writing the map; keep private-module filtering over filesystem paths. The existing
+nested-entry case and a new export-target/order case run in the focused Windows job. No committed
+package export, API contract or timeout changes.
+
+All three local export tests pass (0.235s runner), UI types and focused lint pass:
+`/private/tmp/apack-windows-ui-exports-unit.log`, `/private/tmp/apack-windows-ui-exports-types.log`.
+The first local `exports:check` attempt hit sandbox-only tsx IPC denial; the unchanged check passes
+with IPC access: `/private/tmp/apack-windows-ui-exports-check.log`. Native Windows/compiler and
+full-pool acceptance remain open.

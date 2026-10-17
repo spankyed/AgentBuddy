@@ -35,8 +35,9 @@ jobs:
         run: npm run packages:ensure
       - name: Compiler input and installation checks
         run: >-
-          node scripts/with-source.mjs npx vitest run --project @apackdev/cli --project @apackdev/host
+          node scripts/with-source.mjs npx vitest run --project @apackdev/cli --project @apackdev/host --project @apackdev/ui
           packages/apack-host/tests/build/published-manifest.spec.ts
+          packages/apack-ui/tests/exports.spec.ts
           packages/apack-cli/tests/build/compiler-read-tree.spec.ts
           packages/apack-cli/tests/build/compiler-module-inputs.spec.ts
           packages/apack-cli/tests/build/compiler-installation.spec.ts

@@ -2,7 +2,7 @@ import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { computeEntries, findComponentsWithoutEntry } from '../scripts/exports.ts';
+import { computeEntries, computeExports, findComponentsWithoutEntry } from '../scripts/exports.ts';
 
 /** packages/apack-ui/scripts/exports.ts: which modules @apackdev/ui publishes */
 let root: string;
@@ -28,6 +28,20 @@ describe('computeEntries', () => {
     expect(computeEntries(path.join(root, 'src'))).toEqual({
       'composables/useDebounce': 'src/composables/useDebounce.ts',
       'design/button': 'src/design/button.ts',
+    });
+  });
+});
+
+describe('computeExports', () => {
+  it('uses ordered package specifiers and targets independent of filesystem separators', () => {
+    write('src/design/buttonA.ts');
+    write('src/design/button/child.ts');
+    const exports = computeExports(path.join(root, 'src'));
+    expect(Object.keys(exports)).toEqual(['./package.json', './design/button/child', './design/buttonA']);
+    expect(exports['./design/button/child']).toEqual({
+      '@apackdev/source': './src/design/button/child.ts',
+      types: './dist/design/button/child.d.ts',
+      default: './dist/design/button/child.js',
     });
   });
 });

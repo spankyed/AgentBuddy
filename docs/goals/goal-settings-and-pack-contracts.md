@@ -578,7 +578,10 @@ lifetime/native execution and the converged/final strict gates remain open.
 The user pushed `e8940bb6d`; authorized Windows CI run [39057355477](https://github.com/spankyed/AgentBuddy/actions/runs/39057355477)
 installed dependencies successfully but failed in package preparation (`spawnSync npm ENOENT` in
 `published-manifest.ts`), before tests. Fix that demonstrated cross-platform launch defect and rerun
-the focused workflow. This run does not establish Windows compiler or descendant-lifetime acceptance.
+the focused workflow. `d7dc7f224` repairs the launcher: [run 39058353468](https://github.com/spankyed/AgentBuddy/actions/runs/39058353468)
+built and staged EARS/SDK successfully, then exposed native separators leaking into UI export targets.
+Normalize those specifiers and their ordering before the next focused run. Compiler tests and
+descendant-lifetime acceptance remain unverified.
 The local two-core integration run against that checkpoint reached its unchanged 600s deadline after
 eight files / 474 cases passed, including all seven native-library cases; the pool remains incomplete.
 See [launcher and pool evidence](../evidence/build-input-snapshot-proof.md#windows-package-launcher-and-local-integration-checkpoint-2026-10-17).
