@@ -34,6 +34,10 @@ on:
         description: Run focused compiler and native checks on a disposable macOS runner
         type: boolean
         default: false
+      compiler_macos_test:
+        description: Optional native integration test name pattern (skips compiler unit checks)
+        type: string
+        default: ''
   # push:
   #   branches: [master]
   # pull_request:
@@ -183,3 +187,5 @@ jobs:
     permissions:
       contents: read
     uses: ./.github/workflows/compiler-macos.yml
+    with:
+      test_name: ${{ inputs.compiler_macos_test || '' }}

@@ -1,6 +1,7 @@
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
+import { pathToFileURL } from 'node:url';
 import { execFileSync } from 'node:child_process';
 import { expect, it, vi } from 'vitest';
 import { captureCompilationInputs } from '../../src/build/compilation-inputs.ts';
@@ -120,6 +121,71 @@ require('node:worker_threads').parentPort.postMessage('NATIVE');`)}, { eval: tru
   worker.once('exit', code => { if (code) reject(new Error('Native compiler worker exited with code ' + code)); });
 });`;
 }
+
+it('tracks retained Vite ESM preload and loader inputs without freezing Vue sources', async () => {
+  const root = fs.realpathSync.native(fs.mkdtempSync(path.join(os.tmpdir(), 'apack-vite-esm-inputs-')));
+  const pack = path.join(root, 'pack');
+  const previous = process.env.NODE_OPTIONS;
+  let compiler: CompilerInstallation | undefined;
+  let frontend: PackFrontend | undefined;
+  const signal = new AbortController().signal;
+  try {
+    packFixture({ at: pack, nodeModules: path.join(REPO_ROOT, 'node_modules'), manifest: { features: {} },
+      files: { 'src/pack-entry-fe.ts': "export { default } from './View.vue';", 'src/View.vue': '<template>VITE_ESM_BEFORE</template>' } });
+    const dependency = path.join(root, 'node_modules/preload-dependency');
+    fs.mkdirSync(dependency, { recursive: true });
+    const metadata = path.join(dependency, 'package.json');
+    const declaration = JSON.stringify({ name: 'preload-dependency', type: 'module', exports: './first.mjs' });
+    fs.writeFileSync(metadata, declaration);
+    fs.writeFileSync(path.join(dependency, 'first.mjs'), "export default 'FIRST';");
+    fs.writeFileSync(path.join(dependency, 'second.mjs'), "export default 'SECOND';");
+    const child = path.join(root, 'child.mjs');
+    const childSource = "export { default } from 'preload-dependency';";
+    fs.writeFileSync(child, childSource);
+    const payload = path.join(root, 'loader-input.txt');
+    fs.writeFileSync(payload, 'LOADER');
+    const proof = path.join(root, 'preload-proof.json');
+    const imported = path.join(root, 'preload.mjs');
+    fs.writeFileSync(imported, `import value from './child.mjs'; import fs from 'node:fs';
+      import { isMainThread } from 'node:worker_threads';
+      if (globalThis[Symbol.for('apack.compiler.frontend')] && isMainThread)
+        fs.writeFileSync(${JSON.stringify(proof)}, JSON.stringify({ value, loader: globalThis.loaderValue, origin: import.meta.url }));`);
+    const loader = path.join(root, 'loader.mjs');
+    fs.writeFileSync(loader, `import fs from 'node:fs';
+      const value = fs.readFileSync(${JSON.stringify(payload)}, 'utf8');
+      export async function load(url, context, next) {
+        const result = await next(url, context);
+        return url === ${JSON.stringify(pathToFileURL(imported).href)}
+          ? { ...result, source: 'globalThis.loaderValue = ' + JSON.stringify(value) + ';\\n' + result.source } : result;
+      }`);
+    compiler = await captureCompilerInstallation(compilerPackageDirectory(), { cwd: pack });
+    process.env.NODE_OPTIONS = formatNodeOptions([...parseNodeOptions(previous), '--import', pathToFileURL(imported).href, '--experimental-loader', loader]);
+    frontend = await startPackFrontend(pack, compiler, signal);
+    expect(JSON.parse(fs.readFileSync(proof, 'utf8'))).toEqual({ value: 'FIRST', loader: 'LOADER', origin: pathToFileURL(imported).href });
+    expect(await frontend.isCurrent(signal)).toBe(true);
+    for (const [file, original, changed] of [
+      [payload, 'LOADER', 'CHANGED'],
+      [child, childSource, "export default 'CHANGED';"],
+      [path.join(dependency, 'first.mjs'), "export default 'FIRST';", "export default 'CHANGED';"],
+      [metadata, declaration, JSON.stringify({ name: 'preload-dependency', type: 'module', exports: './second.mjs' })],
+    ] as const) {
+      fs.writeFileSync(file, changed);
+      expect(await frontend.isCurrent(signal), file).toBe(false);
+      fs.writeFileSync(file, original);
+      expect(await frontend.isCurrent(signal), file).toBe(true);
+    }
+    const view = `http://localhost:${frontend.address.port}/src/View.vue`;
+    expect(await (await fetch(view)).text()).toContain('VITE_ESM_BEFORE');
+    fs.writeFileSync(path.join(pack, 'src/View.vue'), '<template>VITE_ESM_AFTER</template>');
+    await vi.waitFor(async () => expect(await (await fetch(view)).text()).toContain('VITE_ESM_AFTER'), { timeout: 2_000 });
+    expect(await frontend.isCurrent(signal)).toBe(true);
+  } finally {
+    if (previous === undefined) delete process.env.NODE_OPTIONS;
+    else process.env.NODE_OPTIONS = previous;
+    try { await frontend?.close(); }
+    finally { await compiler?.dispose(); fs.rmSync(root, { recursive: true, force: true }); }
+  }
+});
 
 it('retains independent captured Vite owners through replacement and close', async () => {
   const root = fs.realpathSync.native(fs.mkdtempSync(path.join(os.tmpdir(), 'apack-vite-owners-')));

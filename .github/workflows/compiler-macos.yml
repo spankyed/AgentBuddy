@@ -2,7 +2,16 @@ name: Compiler macOS
 
 on:
   workflow_dispatch:
+    inputs:
+      test_name:
+        description: Optional native integration test name pattern (skips compiler unit checks)
+        type: string
+        default: ''
   workflow_call:
+    inputs:
+      test_name:
+        type: string
+        default: ''
 
 permissions:
   contents: read
@@ -37,6 +46,7 @@ jobs:
       - name: Build matching packages
         run: npm run packages:ensure
       - name: Captured compiler and process ownership
+        if: ${{ !inputs.test_name }}
         env:
           NODE_OPTIONS: --conditions=@apackdev/source
         run: >-
@@ -48,7 +58,10 @@ jobs:
           packages/apack-cli/tests/build/pack-builder.spec.ts
           --bail=1 --poolOptions.threads.maxThreads=2 --poolOptions.threads.minThreads=1 --no-file-parallelism
       - name: Native admission, preloads and watch recovery
+        env:
+          APACK_TEST_NAME: ${{ inputs.test_name || '.' }}
         run: >-
           node node_modules/vitest/vitest.mjs run --config vitest.integration.config.ts --project @apackdev/cli
           packages/apack-cli/tests/build/compiler-native-libraries.integration.spec.ts
+          --testNamePattern "$APACK_TEST_NAME"
           --bail=1 --poolOptions.threads.maxThreads=1 --poolOptions.threads.minThreads=1 --no-file-parallelism

@@ -2816,3 +2816,18 @@ The runner label is explicit rather than `latest`; its actual image is recorded 
 [hosted-runner reference](https://docs.github.com/en/actions/reference/runners/github-hosted-runners)
 describe the macOS labels and disposable hosted environments. Isolation is an operational precaution,
 not evidence for an M1 hardware limitation or a substitute for diagnosing the incident.
+
+### Retained frontend ESM/loader acceptance preparation (2026-10-17)
+
+The next focused case exercises the actual retained Vite process with an ESM preload, its transitive
+bare-package import and a custom loader reading an external payload. It checks execution values and
+the authored `import.meta.url`, invalidation after changing the loader payload, transitive module bytes
+or package export selection, exact-restoration reuse and live Vue edits. It uses existing frontend
+capture/collection; no new loader or production capture mechanism is introduced speculatively.
+CLI TypeScript, focused correctness lint, YAML parsing/routing and diff checks pass. Runtime acceptance
+is pending on hosted macOS; no captured-runtime or native test was executed on the daily-use Mac.
+
+The macOS dispatch accepts `compiler_macos_test` to select one integration case and skip the unit batch.
+The pattern travels through an environment variable and quoted argv, not shell-code interpolation.
+An empty pattern retains the full focused acceptance job. Existing run `39079072090` continues on
+`6e19d17b8`; do not cancel or replace it to test this additional case.
