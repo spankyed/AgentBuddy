@@ -1785,3 +1785,35 @@ committed-source strict `--all` remain outstanding. Thread/Vite acceptance, ELF/
 runtime proof, inherited loader environment, computed/native name searches and Windows descendant
 ownership remain open within the approved support boundary. Windows workflow dispatch still awaits
 permission to push the committed branch; no remote run has occurred.
+
+## Published runtime initialization boundary (2026-10-17)
+
+Source `70101557e` resolves the runtime-checker finding from the preceding startup checkpoint without
+making the dependent-runtime simulation another compiler process. `checkContentRuntimeLoads` exists
+to prove a compiled bundle loads in a dependent's fresh SDK runtime with optional peers absent.
+Replaying compiler initialization there violates that purpose: a preload can supply app globals or
+loaders and make an otherwise unusable published runtime pass. The checker now omits compiler
+`NODE_OPTIONS`, retaining its explicit Node invocation and optional-peer blocker. Actual compiler
+workers continue receiving their ordered launch options unchanged. Public CLI and contributor docs
+state the distinction.
+
+Evidence:
+
+- A real child-process regression supplies a required global from both `--require` and `--import`
+  compiler hooks. Before the fix the checker incorrectly accepts the bundle; the test fails on
+  `success: true`. `/private/tmp/apack-runtime-preload-red.log` (1.26s runner).
+- After the fix all six runtime-load/checker cases pass (1.66s runner), including the new refusal,
+  absent hook side effects, valid SDK-only runtime, source-condition isolation, native/throwing runtime
+  refusal and missing-SDK cleanup. `/private/tmp/apack-runtime-preload-focused.log`.
+- The actual bundled compiler's ordered require/import/loader initialization and changed-loader-input
+  rebuild pass in 35.05s (36.62s runner). `/private/tmp/apack-runtime-preload-worker.log`.
+- Matching CLI package build, CLI typecheck, focused correctness lint and whitespace checks pass.
+  `/private/tmp/apack-runtime-preload-packages.log`, `/private/tmp/apack-runtime-preload-types.log`.
+
+Checkout npm setup executes before compiler installation/source capture. Its inherited initialization
+is part of preparation, not an ongoing compilation phase needing a post-capture input owner. This
+clarifies the prior diagnostic instead of labeling every subprocess a new capture requirement. The
+runtime check deliberately no longer executes compiler initialization. Arbitrary compiler-created
+subprocess capture, native thread/frontend coverage, ELF/PE and Windows lifetime acceptance are not
+established by this checkpoint. No timeout or acceptance assertion was weakened; B6 convergence and
+the final committed-source strict `--all` remain open.

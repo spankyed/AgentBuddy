@@ -542,9 +542,16 @@ cases, 79 affected unit cases, 53 tooling cases, host/CLI types and lint pass. S
 [startup evidence](../evidence/build-input-snapshot-proof.md#native-startup-admission-checkpoint-2026-10-17).
 This is a focused source checkpoint, not the converged B6 or final strict gate. A diagnostic run also
 demonstrated inherited preloads executing without capture in checkout setup and the separate content
-runtime checker. Reconcile those process owners next; do not interpret compiler-startup acceptance as
-child-process coverage. Thread/Vite native acceptance, ELF/PE, loader-environment semantics, Windows
-lifetime ownership and the converged/final gates remain open. Windows push approval is still pending.
+runtime checker. `70101557e` fixes the checker boundary: it simulates a dependent runtime without
+compiler launch options, preventing compiler hooks from hiding unusable published bundles. The
+regression fails on the prior implementation; six runtime cases and the real ordered-preload,
+changed-loader rebuild case pass. Checkout setup precedes compiler capture; it is not an unowned
+compilation phase. See the [boundary evidence](../evidence/build-input-snapshot-proof.md#published-runtime-initialization-boundary-2026-10-17).
+Do not interpret compiler-startup acceptance as arbitrary child-process coverage. Thread/Vite native
+acceptance, ELF/PE, loader-environment semantics, Windows lifetime ownership and the converged/final
+gates remain open. Next, reconcile native initialization with retained frontend generations while
+preserving live authored HMR and checking the existing generation owner before adding machinery.
+Windows push approval is still pending.
 
 The single two-core strict run failed preparing the default-pack fork: the build observation for
 `src/__generated__/.inputs-hash` no longer matched, and the chain also invalidated default-setup's
