@@ -1,6 +1,8 @@
 import { beforeEach, afterEach, expect, it, vi } from 'vitest';
 import type { DevReload } from '../../src/build/dev-reload.ts';
 import { startPackBuildWatcher } from '../../src/build/watch.ts';
+import * as fs from 'node:fs';
+import * as compilerWatch from '../../src/build/compiler-watch.ts';
 
 const fixture = vi.hoisted(() => ({
   authored: 'first',
@@ -12,7 +14,7 @@ const fixture = vi.hoisted(() => ({
 vi.mock('node:fs', async importOriginal => ({
   ...await importOriginal<typeof import('node:fs')>(),
   watch: vi.fn((_root: string, _options: unknown, receive: (event: string, file: string) => void) => {
-    fixture.changed = receive;
+    if (_root === '/fixture') fixture.changed = receive;
     return { close: vi.fn() };
   }),
 }));
@@ -27,7 +29,8 @@ vi.mock('@apackdev/host/build/pack-inputs', () => ({
 }));
 vi.mock('../../src/build/compiler-watch.ts', () => ({
   createCompilerWatchTools: () => ({ read: vi.fn(), changed: vi.fn() }),
-  compilerWatchPaths: () => ({ paths: new Map(), complete: true, signature: 'compiler' }),
+  compilerWatchPaths: () => ({ paths: new Map(), staticPaths: new Map(), complete: true, signature: 'compiler' }),
+  additionalCompilerObservations: (observations: unknown) => observations,
   mergeCompilerWatchPaths: () => new Map(),
   compilerWatchTargets: () => new Map(),
   createCompilerWatchMatcher: () => () => false,
@@ -98,4 +101,21 @@ it('keeps duplicate-save suppression when building without a running app', async
     expect(fixture.build).toHaveBeenCalledTimes(2);
     expect(fixture.reload).toHaveBeenCalledTimes(1);
   } finally { await watcher.close(); }
+});
+
+it('does not recreate input subscriptions when an active build fails during close', async () => {
+  vi.spyOn(compilerWatch, 'compilerWatchTargets').mockReturnValue(new Map([
+    ['/outside', { paths: new Map([['/outside/value', 'file']]), recursive: false }],
+  ]));
+  const watcher = await startPackBuildWatcher('/fixture');
+  let rejectBuild!: (error: Error) => void;
+  fixture.build.mockImplementationOnce(() => new Promise<void>((_resolve, reject) => { rejectBuild = reject; }));
+  fixture.authored = 'second';
+  fixture.changed!('change', 'apack.json');
+  await vi.advanceTimersByTimeAsync(300);
+  const stopping = watcher.close();
+  const subscriptions = vi.mocked(fs.watch).mock.calls.length;
+  rejectBuild(new Error('Build cancelled'));
+  await stopping;
+  expect(fs.watch).toHaveBeenCalledTimes(subscriptions);
 });

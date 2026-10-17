@@ -5,10 +5,12 @@ import { withBuildSignals } from './build-signals.ts';
 import { readValidManifest } from '../utils.ts';
 import { isPackInputPath, packInputWatchTargets, packInputsHash } from '@apackdev/host/build/pack-inputs';
 import { reloadPack, type AppPlace } from './dev-reload.ts';
-import { compilerWatchPaths, createCompilerWatchTools, compilerWatchTargets, createCompilerWatchMatcher, mergeCompilerWatchPaths, type CompilerWatchPaths } from './compiler-watch.ts';
+import { compilerWatchPaths, createCompilerWatchTools, compilerWatchTargets, createCompilerWatchMatcher, mergeCompilerWatchPaths, additionalCompilerObservations, type CompilerWatchPaths } from './compiler-watch.ts';
 import { createFrontendWatcher, type FrontendInputSnapshot } from './frontend-watch.ts';
 import type { BuildWatchInputs } from './build-watch-inputs.ts';
 import { resolveAppEnvironment } from '@apackdev/sdk/env';
+import { readPackBuildInputs } from '@apackdev/host/build/pack-build-inputs';
+import { assertNativeCompilerObservations, type CompilerInputObservations } from '@apackdev/host/build/compiler-inputs';
 
 const DEBOUNCE_MS = 300;
 
@@ -82,6 +84,13 @@ export async function startPackBuildWatcher(root: string, options: WatchOptions 
   let lastChange = '';
   const tools = createCompilerWatchTools(root);
   let compilerPaths: CompilerWatchPaths = new Map();
+  let observedPaths: CompilerWatchPaths = new Map();
+  let acceptedObservations: CompilerInputObservations | undefined;
+  const observedInputsCurrent = () => {
+    if (!acceptedObservations) return true;
+    try { assertNativeCompilerObservations(acceptedObservations); return true; }
+    catch { return false; }
+  };
   let matchesCompilerInput = createCompilerWatchMatcher(compilerPaths);
   let compilerSignature: string | undefined;
   let authoredSignature: string | undefined;
@@ -98,13 +107,32 @@ export async function startPackBuildWatcher(root: string, options: WatchOptions 
     const compiler = refreshInputs();
     const authored = packInputsHash(root) + JSON.stringify(compiler.authored);
     const beforeFrontend = frontend.snapshot();
-    if (compiler.signature === compilerSignature && authored === authoredSignature && beforeFrontend.hash === frontendSignature) return false;
+    if (compiler.signature === compilerSignature && authored === authoredSignature && beforeFrontend.hash === frontendSignature && observedInputsCurrent()) return false;
     compilerSignature = compiler.signature;
     authoredSignature = authored;
     frontendSignature = beforeFrontend.hash;
     if (readValidManifest(root).id !== packId) throw new Error('Pack identity changed; restart the development session');
     let reported: { inputs: BuildWatchInputs; snapshot: FrontendInputSnapshot } | undefined;
-    await build({ signal: options.signal, onInputs: async inputs => { reported = { inputs, snapshot: await frontend.observe(inputs) }; } });
+    let observed: CompilerWatchPaths = new Map();
+    let nativeReported = false;
+    try {
+      await build({ signal: options.signal, onInputs: async inputs => {
+        if (inputs.probes) { nativeReported = true; observed = mergeCompilerWatchPaths(observed, new Map(inputs.probes)); return; }
+        reported = { inputs, snapshot: await frontend.observe(inputs) };
+      } });
+      if (closed) return false;
+      acceptedObservations = nativeReported ? additionalCompilerObservations({
+        root: fs.realpathSync(root), entries: readPackBuildInputs(path.join(root, 'dist')).observations,
+      }, observed, compiler.staticPaths) : undefined;
+      observedPaths = observed;
+    } catch (error) {
+      // Failed workers can discover absent inputs. Subscribe before waiting for their repair.
+      if (!closed) {
+        observedPaths = mergeCompilerWatchPaths(observedPaths, observed);
+        refreshInputs();
+      }
+      throw error;
+    }
     if (closed) return false;
     const accepted = reported?.inputs.successful ? reported.inputs : { files: [], directories: [], successful: true };
     await frontend.accept(accepted);
@@ -114,7 +142,7 @@ export async function startPackBuildWatcher(root: string, options: WatchOptions 
     // Close the discovery/subscription window before retaining the initial tooling inventory.
     if (!ready) tools.changed(undefined, 'rename');
     const after = refreshInputs(true);
-    if (frontendChanged || after.signature !== compiler.signature || packInputsHash(root) + JSON.stringify(after.authored) !== authored) {
+    if (frontendChanged || !observedInputsCurrent() || after.signature !== compiler.signature || packInputsHash(root) + JSON.stringify(after.authored) !== authored) {
       request('inputs changed during the build');
     }
     return true;
@@ -154,7 +182,7 @@ export async function startPackBuildWatcher(root: string, options: WatchOptions 
   let links: fs.FSWatcher[] = [];
   function refreshInputs(replace = false) {
     const next: fs.FSWatcher[] = [];
-    const compiler = compilerWatchPaths(root, tools);
+    const compiler = compilerWatchPaths(root, tools, observedPaths);
     const paths = replace && compiler.complete ? compiler.paths : mergeCompilerWatchPaths(compilerPaths, compiler.paths);
     const authored = packInputWatchTargets(root);
     try {

@@ -392,7 +392,8 @@ it('reports frontend inputs that remain available after its compiler installatio
   await runPackBuild(root, { onInputs: inputs => { reports.push(inputs); } });
   expect(reports.some(report => report.successful && report.files.some(file => file.endsWith('Panel.vue')))).toBe(true);
   for (const report of reports) {
-    expect([...report.files, ...report.directories].some(file => /[\\/]apack-compiler-[^\\/]+[\\/]/.test(file))).toBe(false);
+    expect([...report.files, ...report.directories, ...(report.probes?.map(([file]) => file) ?? [])]
+      .filter(file => /[\\/]apack-compiler-[^\\/]+[\\/]/.test(file))).toEqual([]);
     for (const file of report.files) expect(fs.existsSync(file), file).toBe(true);
   }
   const reads = JSON.parse(fs.readFileSync(path.join(root, '.apack/reads.json'), 'utf8')) as { phases: Record<string, string[]> };

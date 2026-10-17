@@ -2,15 +2,36 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { fork } from 'node:child_process';
-import { afterEach, expect, it } from 'vitest';
+import { afterEach, expect, it, vi } from 'vitest';
 import { cliBin } from '../../src/utils.ts';
-import { COMPILER_INPUTS_ENV } from '../../src/build/compiler-installation-inputs.ts';
+import { COMPILER_INPUTS_ENV, readCompilerInstallationInputs } from '../../src/build/compiler-installation-inputs.ts';
+import { withCompilerFileReads } from '@apackdev/host/build/compiler-inputs';
 import { _byDeadline } from '@apackdev/sdk/testing/waiting';
 import { compilerStartupOptions } from '../../src/build/compiler-startup-options.ts';
 import { parseNodeOptions } from '@apackdev/host/build/source-resolution';
 
 const roots: string[] = [];
-afterEach(() => roots.splice(0).forEach(root => fs.rmSync(root, { recursive: true, force: true })));
+afterEach(() => { vi.unstubAllEnvs(); roots.splice(0).forEach(root => fs.rmSync(root, { recursive: true, force: true })); });
+
+it('reads owned compiler metadata without capturing it as authored input', () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'apack-owned-metadata-'));
+  roots.push(root);
+  const file = path.join(root, 'compiler-inputs.json');
+  fs.writeFileSync(file, JSON.stringify({ hash: '0'.repeat(64), packages: [root], paths: [] }));
+  vi.stubEnv(COMPILER_INPUTS_ENV, file);
+  const scope = { compilation: {
+    isInput: () => true,
+    readDataPath: () => { throw new Error('Authored input captured'); },
+    readDirectory: () => [],
+    openDirectory: () => { throw new Error('Unexpected directory read'); },
+    readMetadata: () => undefined,
+    sourcePath: (file: string) => file,
+    diagnostic: (message: string) => message,
+    requireParent: (file: string) => file,
+  } };
+  expect(withCompilerFileReads(scope, () => readCompilerInstallationInputs())).toMatchObject({ packages: [root] });
+  expect(() => withCompilerFileReads(scope, () => fs.readFileSync(file))).toThrow('Authored input captured');
+});
 
 it('keeps private startup options separate from child options and preserves user loader flags', () => {
   const bin = path.resolve('compiler/bin/apack.mjs');

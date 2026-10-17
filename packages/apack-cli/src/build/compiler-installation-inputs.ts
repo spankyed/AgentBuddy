@@ -1,6 +1,6 @@
 import fs from 'node:fs';
 import path from 'node:path';
-import { parseCompilerPaths, type CompilerPathMapping } from '@apackdev/host/build/compiler-inputs';
+import { parseCompilerPaths, withoutCompilerFileReads, type CompilerPathMapping } from '@apackdev/host/build/compiler-inputs';
 
 export const COMPILER_INPUTS_ENV = 'APACK_COMPILER_INPUTS';
 
@@ -14,7 +14,8 @@ interface CompilerInstallationInputs {
 export function readCompilerInstallationInputs(): CompilerInstallationInputs | undefined {
   const file = process.env[COMPILER_INPUTS_ENV];
   if (file === undefined) return;
-  const data = JSON.parse(fs.readFileSync(file, 'utf8'));
+  // Host bookkeeping belongs to the captured installation, not the authored read-set.
+  const data = withoutCompilerFileReads(() => JSON.parse(fs.readFileSync(file, 'utf8')));
   if (!data || typeof data.hash !== 'string' || !/^[a-f0-9]{64}$/.test(data.hash)
     || !Array.isArray(data.packages) || !data.packages.every((directory: unknown) => typeof directory === 'string' && path.isAbsolute(directory) && !directory.includes('\0'))) {
     throw new Error(`Invalid captured compiler inputs: ${file}`);

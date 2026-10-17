@@ -9,7 +9,7 @@ import { captureCompilerInstallation, compilerPackageDirectory, type CompilerIns
 import { cliPackageDirectory } from './tool-identity.ts';
 import { compilationConditions } from './compilation-inputs.ts';
 import { compilerStartupOptions, COMPILER_NODE_OPTIONS_ENV } from './compiler-startup-options.ts';
-import { BUILD_INPUTS_IPC_ENV, readBuildWatchInputs, type BuildWatchInputs } from './build-watch-inputs.ts';
+import { BUILD_INPUTS_IPC_ENV, readBuildWatchInputs, readCompilerWatchReports, type BuildWatchInputs } from './build-watch-inputs.ts';
 import { holdPackBuildLock } from './build-lock.ts';
 import { readValidManifest } from '../utils.ts';
 import { buildStagingDir, publishPackBuild, readPackBuildCandidate, type PackBuildCandidate } from './build-publication.ts';
@@ -199,6 +199,9 @@ async function buildWithCompiler(root: string, compiler: CompilerInstallation, {
         clearStop();
         try { await stopping; } catch (error) { reject(error); return; }
         await observing;
+        try {
+          if (onInputs) for (const inputs of readCompilerWatchReports(inputsDirectory)) await onInputs(inputs);
+        } catch (error) { observationError ??= error instanceof Error ? error : new Error(String(error)); }
         if (processError || observationError) reject(processError ?? observationError);
         else if (code === 0 && candidate) resolve(candidate);
         else if (code === 0) reject(new Error('Build worker exited without a completed candidate'));

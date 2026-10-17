@@ -5,6 +5,25 @@ import { spawnSync } from 'node:child_process';
 import { expect, it } from 'vitest';
 import { createCompilerFileView, assertNativeCompilerObservations } from '../../src/build/compiler-inputs/index.ts';
 
+it('reports nested namespace probes for recursive native listings and consumed cursor entries', () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'apack-recursive-probes-'));
+  const nested = path.join(root, 'nested/empty');
+  fs.mkdirSync(nested, { recursive: true });
+  const observed = new Set<string>();
+  const view = createCompilerFileView(root, { observe: (file, kind) => { if (kind === 'entries') observed.add(file); } });
+  try {
+    for (const options of [{ recursive: true }, { recursive: true, withFileTypes: true }]) {
+      observed.clear();
+      view.readDirectoryData(root, options);
+      expect(observed.has(nested)).toBe(true);
+    }
+    observed.clear();
+    const cursor = view.openDirectoryData(root, { recursive: true });
+    for (let index = 0; cursor.read(index); index++) { /* consume the listing */ }
+    expect(observed.has(nested)).toBe(true);
+  } finally { view.dispose(); fs.rmSync(root, { recursive: true, force: true }); }
+});
+
 it('keeps source directory observations current when a fresh build publishes output', () => {
   const root = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'apack-source-directory-')));
   fs.mkdirSync(path.join(root, 'src'));

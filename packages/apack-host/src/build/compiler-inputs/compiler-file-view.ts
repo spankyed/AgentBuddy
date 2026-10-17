@@ -28,6 +28,8 @@ interface FileState {
 interface FileInput extends FileState { file: string; slot: string }
 export type CompilerDirectoryResult = Array<string | Buffer | fs.Dirent<string> | fs.Dirent<Buffer>>;
 
+const recursiveDirectory = (options: unknown) => options && typeof options === 'object' && 'recursive' in options && options.recursive === true;
+
 /** Keep mutable names, arrays and Dirent fields outside the captured query authority. */
 function copyDirectoryResult(result: CompilerDirectoryResult): CompilerDirectoryResult {
   return result.map(entry => {
@@ -81,6 +83,14 @@ export function createCompilerFileView(root: string, options: {
   });
   const origin = compilerSourcePath(fs.realpathSync(root), paths);
   const observe = options.observe;
+  const observeRecursiveEntry = (directory: string, options: unknown, entry: CompilerDirectoryResult[number]) => {
+    if (!observe || !recursiveDirectory(options)) return;
+    const file = typeof entry === 'string' || Buffer.isBuffer(entry)
+      ? path.resolve(directory, entry.toString()) : path.join(entry.parentPath, entry.name.toString());
+    observe(path.dirname(file), 'entries');
+    // Strings do not carry entry kinds. Subscription discovery checks which targets are directories.
+    observe(file, 'entries');
+  };
   let disposed = false;
   const assertOpen = () => { if (disposed) throw new Error('Compiler input operation outlived its build'); };
   const relative = (file: string) => path.relative(origin, compilerSourcePath(file, paths)).split(path.sep).join('/');
@@ -285,12 +295,11 @@ export function createCompilerFileView(root: string, options: {
           const relative = path.relative(parent, child);
           return relative !== '..' && !relative.startsWith(`..${path.sep}`) && !path.isAbsolute(relative);
         };
-        const recursive = (options: unknown) => options && typeof options === 'object' && 'recursive' in options && options.recursive === true;
         for (const previous of directoryQueries.values()) {
           const physical = node?.physical ?? file;
           if (previous.physical !== physical
-            && !(recursive(previous.options) && contains(previous.physical, physical))
-            && !(recursive(queryOptions) && contains(physical, previous.physical))) continue;
+            && !(recursiveDirectory(previous.options) && contains(previous.physical, physical))
+            && !(recursiveDirectory(queryOptions) && contains(physical, previous.physical))) continue;
           const current = readDirectory(previous.file, previous.options);
           if (directoryResultKey(current) !== previous.key) changed(previous.file);
         }
@@ -302,6 +311,7 @@ export function createCompilerFileView(root: string, options: {
         query = { file, physical: node?.physical ?? file, options: queryOptions, result: copyDirectoryResult(result), key: directoryResultKey(result) };
         directoryQueries.set(key, query);
       }
+      for (const entry of query.result) observeRecursiveEntry(file, queryOptions, entry);
       return copyDirectoryResult(query.result);
     },
     openDirectoryData(file: string, options: unknown) {
@@ -313,8 +323,11 @@ export function createCompilerFileView(root: string, options: {
       const key = JSON.stringify([file, capturedOptions]);
       let query = directoryCursors.get(key);
       if (!query) {
-        query = { file, options: capturedOptions, cursor: captureNativeDirectory(file, capturedOptions,
-          entry => includesDirectoryEntry(file, path.join(entry.parentPath, String(entry.name)))) };
+        query = { file, options: capturedOptions, cursor: captureNativeDirectory(file, capturedOptions, entry => {
+          if (!includesDirectoryEntry(file, path.join(entry.parentPath, String(entry.name)))) return false;
+          observeRecursiveEntry(file, capturedOptions, entry);
+          return true;
+        }) };
         directoryCursors.set(key, query);
       }
       return query.cursor;

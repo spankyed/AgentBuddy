@@ -27,6 +27,8 @@ import { overrideKey, sizeOf, specFilesUnder, timeoutOverrides, type TimeoutOver
  * fails on an entry whose override has gone, so the list shrinks when the reason does.
  */
 const TIMEOUT_EXCEPTIONS: Record<string, string> = {
+  'packages/apack-cli/tests/build/watch-worker-inputs.integration.spec.ts > rebuilds for worker inputs and repairs missing external reads without authored edits':
+    'Three actual backend compiler attempts and ready watch subscriptions take 68.27 seconds. The measured repair takes 26.57 seconds; each build wait uses the existing 60-second integration budget within this 120-second scenario.',
   'packages/apack-cli/tests/build/build-output-swap.integration.spec.ts > does not reuse facade files from an incumbent with stamps from a refused replacement':
     'Three sequential real builds prove initial publication, refused replacement and recovery. Assertions pass in 59.27 seconds alone; the same scenario reaches 63.50 seconds alongside focused checks.',
   'packages/apack-cli/tests/build/watch-external-types.integration.spec.ts > rebuilds external contracts and recovers a retargeted missing input without an authored edit':

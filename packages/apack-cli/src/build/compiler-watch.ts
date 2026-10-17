@@ -3,7 +3,7 @@ import path from 'node:path';
 import { createHash } from 'node:crypto';
 import { readCompilerModuleInputs } from './compiler-module-inputs.ts';
 import { readPackageInputs } from '@apackdev/host/build/package-inputs';
-import { physicalWatchPath } from '@apackdev/host/build/compiler-inputs';
+import { physicalWatchPath, type CompilerInputObservations } from '@apackdev/host/build/compiler-inputs';
 import { compilerPackageDirectory, readEsbuildOverride } from './compiler-installation.ts';
 import { readCompilerRuntimeInputs } from './compiler-runtime.ts';
 import { compilerEnvironmentIdentity } from './compiler-environment.ts';
@@ -21,6 +21,24 @@ export function mergeCompilerWatchPaths(before: CompilerWatchPaths, next: Compil
   const paths = new Map(before);
   for (const [file, kind] of next) addPath(paths, file, kind);
   return paths;
+}
+
+/** The static fingerprint already owns ordinary module/package bytes and authored membership. */
+export function additionalCompilerObservations(observations: CompilerInputObservations, probes: CompilerWatchPaths, covered: CompilerWatchPaths): CompilerInputObservations {
+  const additional = new Set<string>();
+  const physical = new Map<string, string>();
+  for (const file of probes.keys()) {
+    if (covered.has(file)) continue;
+    additional.add(file);
+    additional.add(physicalWatchPath(file, physical));
+  }
+  return { root: observations.root, entries: observations.entries.filter(([encoded]) => {
+    const [kind, file] = JSON.parse(encoded);
+    if (kind === 'authored-files') return false;
+    if (['file', 'namespace', 'entries', 'package-entries'].includes(kind)) return additional.has(path.resolve(observations.root, file));
+    // Preserve native metadata/representation queries and refuse unknown future kinds in the replayer.
+    return true;
+  }) };
 }
 
 function isDirectory(file: string): boolean {
@@ -84,13 +102,14 @@ export function createCompilerWatchTools(root: string): CompilerWatchTools {
 }
 
 /** Fresh resolution probes include absent candidates, so creating a previously missing input can recover a build. */
-export function compilerWatchPaths(root: string, tools?: CompilerWatchTools): { paths: CompilerWatchPaths; complete: boolean; signature: string } {
+export function compilerWatchPaths(root: string, tools?: CompilerWatchTools, observed: CompilerWatchPaths = new Map()): { paths: CompilerWatchPaths; staticPaths: CompilerWatchPaths; complete: boolean; signature: string } {
   const paths = new Map<string, BuildInputKind>();
+  const staticPaths = new Map<string, BuildInputKind>();
   const physical = new Map<string, string>();
   const physicalPath = (file: string) => physicalWatchPath(file, physical);
 
   try {
-    const observe: BuildInputObserver = (file, kind) => {
+    const observe = (file: string, kind: BuildInputKind, dynamic = false) => {
       const absolute = path.resolve(file);
       const relative = path.relative(root, absolute);
       // The authored root already has a recursive watcher with output exclusions.
@@ -98,13 +117,18 @@ export function compilerWatchPaths(root: string, tools?: CompilerWatchTools): { 
       if (inside && !relative.split(path.sep).includes('node_modules')) return;
       addPath(paths, absolute, kind);
       addPath(paths, physicalPath(absolute), kind);
+      if (!dynamic) {
+        addPath(staticPaths, absolute, kind);
+        addPath(staticPaths, physicalPath(absolute), kind);
+      }
     };
+    for (const [file, kind] of observed) observe(file, kind, true);
     const tooling = tools?.read(observe) ?? readCompilerWatchTools(root, observe);
     for (const [file, kind] of tooling.paths) addPath(paths, file, kind);
     const modules = readCompilerModuleInputs(root, observe);
     try {
       const packages = readPackageInputs([{ id: 'pack', directory: root, development: true }], { discovered: modules.packageDirectories, observe }).hash;
-      return { paths, complete: true, signature: `valid:${modules.hash}:${packages}:${tooling.signature}` };
+      return { paths, staticPaths, complete: true, signature: `valid:${modules.hash}:${packages}:${tooling.signature}` };
     } finally { modules.dispose(); }
   } catch {
     // The normal CLI build reports the refusal. Keep partial probes and the previous subscriptions for repair.
@@ -115,7 +139,7 @@ export function compilerWatchPaths(root: string, tools?: CompilerWatchTools): { 
       try { hash.update(fs.readFileSync(file)); }
       catch (error) { hash.update(String((error as NodeJS.ErrnoException).code)); }
     }
-    return { paths, complete: false, signature: `invalid:${hash.digest('hex')}` };
+    return { paths, staticPaths, complete: false, signature: `invalid:${hash.digest('hex')}` };
   }
 }
 

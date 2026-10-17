@@ -2,7 +2,8 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { afterEach, expect, it, vi } from 'vitest';
-import { createCompilerWatchMatcher, createCompilerWatchTools, compilerWatchPaths, compilerWatchTargets, mergeCompilerWatchPaths } from '../../src/build/compiler-watch.ts';
+import { createCompilerWatchMatcher, createCompilerWatchTools, compilerWatchPaths, compilerWatchTargets, mergeCompilerWatchPaths, additionalCompilerObservations } from '../../src/build/compiler-watch.ts';
+import { assertNativeCompilerObservations, createCompilerFileView } from '@apackdev/host/build/compiler-inputs';
 import * as installation from '../../src/build/compiler-installation.ts';
 import * as runtime from '../../src/build/compiler-runtime.ts';
 import { startPackBuildWatcher } from '../../src/build/watch.ts';
@@ -67,6 +68,41 @@ it('retains tooling subscriptions when pack configuration is broken', () => {
   for (const file of [entry, executable, override]) expect(broken.paths.get(file)).toBe('file');
   fs.writeFileSync(executable, 'repaired runtime');
   expect(compilerWatchPaths(pack).signature).not.toBe(broken.signature);
+});
+
+it('keeps runtime probes distinct from the static fingerprint across refreshes', () => {
+  const { root, pack } = fixture();
+  const outside = path.join(root, 'runtime.txt');
+  fs.writeFileSync(outside, 'FIRST');
+  const probes = new Map([[outside, 'file']] as const);
+  const first = compilerWatchPaths(pack, undefined, probes);
+  expect(first.paths.get(outside)).toBe('file');
+  expect(first.staticPaths.has(outside)).toBe(false);
+  fs.writeFileSync(outside, 'SECOND');
+  expect(compilerWatchPaths(pack, undefined, probes).staticPaths.has(outside)).toBe(false);
+});
+
+it('replays worker bytes and native metadata while leaving ordinary static bytes to their fingerprint', () => {
+  const { root, pack } = fixture();
+  const worker = path.join(root, 'worker.txt');
+  const shared = path.join(root, 'shared.txt');
+  fs.writeFileSync(worker, 'FIRST');
+  fs.writeFileSync(shared, 'SHARED');
+  const view = createCompilerFileView(pack);
+  try {
+    view.readDataBytes(worker);
+    view.readDataBytes(shared);
+    Reflect.get(view.readMetadata('stat', shared, []) as object, 'mtimeMs');
+    const observed = additionalCompilerObservations(view.observations(),
+      new Map([[worker, 'file'], [shared, 'file']]), new Map([[shared, 'file']]));
+    assertNativeCompilerObservations(observed);
+    fs.writeFileSync(worker, 'SECOND');
+    expect(() => assertNativeCompilerObservations(observed)).toThrow(/changed/);
+    fs.writeFileSync(worker, 'FIRST');
+    const future = new Date(Date.now() + 60_000);
+    fs.utimesSync(shared, future, future);
+    expect(() => assertNativeCompilerObservations(observed)).toThrow(/changed/);
+  } finally { view.dispose(); }
 });
 
 it('rebuilds an idle session on actual tooling filesystem events', async () => {

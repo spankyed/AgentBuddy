@@ -98,7 +98,8 @@ export function ownCompilerThreads(bootstrap: string, workspace: string, environ
         })() : request(false);
       worker.terminate = () => {
         const collected = collect(true);
-        return collected.then(() => stopping!);
+        // Keep native exit-status semantics; the build owner retains collection refusals.
+        return collected.then(() => stopping!, () => stopping!);
       };
       workers.push({ collect });
       return worker;

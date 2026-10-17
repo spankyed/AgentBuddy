@@ -9,6 +9,7 @@ import { beginCompilerStartupInputs } from './compiler-startup-inputs.ts';
 import { type CompilerInputObservations } from '@apackdev/host/build/compiler-inputs';
 import { COMPILER_NODE_OPTIONS_ENV } from './compiler-startup-options.ts';
 import { compilerThreadHandoff, ownCompilerThreads, serveCompilerThread } from './compiler-threads.ts';
+import { BUILD_INPUTS_IPC_ENV } from './build-watch-inputs.ts';
 
 interface CompilerThreadLineage {
   readonly pid: number;
@@ -39,6 +40,7 @@ if ((isMainThread && process.env.APACK_BUILD_WORKER === '1' && process.send && p
       [COMPILER_INPUTS_ENV]: process.env[COMPILER_INPUTS_ENV]!,
       [BUILD_INPUTS_DIRECTORY_ENV]: workspace,
       [COMPILER_NODE_OPTIONS_ENV]: userOptions,
+      [BUILD_INPUTS_IPC_ENV]: process.env[BUILD_INPUTS_IPC_ENV] ?? '0',
     });
     let port: MessagePort | undefined;
     const request = (type: 'snapshot' | 'finish'): Promise<CompilerInputObservations[]> => {

@@ -14,6 +14,7 @@ import { createCompilerReadTree, type CompilerReadTree } from './compiler-read-t
 
 import { parseNodeOptions } from '@apackdev/host/build/source-resolution';
 import { compilerEnvironmentIdentity } from './compiler-environment.ts';
+import { createCompilerWatchRecorder } from './build-watch-inputs.ts';
 
 const STARTUP = Symbol.for('apack.compiler.startup');
 
@@ -47,10 +48,22 @@ export function beginCompilerStartupInputs(root: string, workspace: string, path
     const relative = path.relative(parent, file);
     return relative === '' || (relative !== '..' && !relative.startsWith(`..${path.sep}`) && !path.isAbsolute(relative));
   };
-  const original = createPackCompilerInputView(root, { paths });
+  const includes = (file: string) => !within(workspace, file) && !paths.some(({ captured }) => within(captured, file));
+  const recordWatchInput = createCompilerWatchRecorder(workspace);
+  const known = new Set<string>();
+  let initializing = true;
+  const original = createPackCompilerInputView(root, { paths, observe: recordWatchInput && ((file, kind) => {
+    const key = `${kind}\0${file}`;
+    if (known.has(key)) return;
+    known.add(key);
+    if (initializing || !includes(file)) return;
+    const relative = path.relative(canonicalRoot, file);
+    if (within(canonicalRoot, file) && !relative.split(path.sep).includes('node_modules')) return;
+    recordWatchInput(compilerSourcePath(file, paths), kind);
+  }) });
+  initializing = false;
   let tree: CompilerReadTree | undefined;
   const sourcePath = (file: string) => tree?.sourcePath(file) ?? compilerSourcePath(file, paths);
-  const includes = (file: string) => !within(workspace, file) && !paths.some(({ captured }) => within(captured, file));
   const readDataPath = (file: string) => withoutCompilerFileReads(() => {
     if (!includes(file)) return file;
     file = sourcePath(file);
