@@ -805,3 +805,45 @@ the existing finite matrix; retain implemented runtime ownership. Close B3 resou
 then B4's successful input/output association and B5 consumers before B6 convergence. All discovery
 and Phase 6 requirements and the final committed-source strict `--all` remain open. No broad gate or
 cross-platform completion is claimed.
+
+
+## Idle tooling-input subscription audit (2026-10-17)
+
+After `e369d3cb9`, `compilerWatchPaths` still inventories only pack/module dependencies. The builder
+checks changed compiler/runtime inputs when invoked, but idle watches do not subscribe to those inputs.
+Two private regression cases fail before implementation: selected compiler/runtime/override paths are
+absent, including during broken pack configuration. `/private/tmp/apack-tooling-watch-repro.log`.
+The bounded correction is to include the selected distributable compiler graph, existing runtime
+inventory, and the same configured esbuild override selection in the current observer/signature.
+Register these before pack discovery so configuration failure preserves repair subscriptions. Reuse
+existing path matching, physical-link guards, coalescing, failure retention and watcher teardown;
+no new scanner, watcher framework or persisted receipt. Acceptance must include compiler edits,
+runtime edits and missing override creation while the authored tree remains unchanged, plus actual
+filesystem event delivery through a retained watcher. This closes one B1 subscription gap, not native
+library/platform or successful input/output association requirements.
+
+
+### Idle tooling subscription checkpoint
+
+Source `0bb9e64ec` implements the bounded correction above using the existing package/runtime readers
+and esbuild override selector. Valid signatures include those inputs; failed pack discovery retains
+their repair probes. Physical-link guards and watcher coalescing/teardown remain the existing owners.
+
+All 23 watcher/runner/retry cases pass in 3.67s, including actual private filesystem changes to compiler,
+runtime and initially missing override with no authored edit. Two affected override ownership/fallback
+cases pass separately in 5.45s. Logs: `/private/tmp/apack-tooling-watch-focused.log` and
+`/private/tmp/apack-tooling-watch-override.log`. The first real-FSEvents attempt inside the sandbox
+returned asynchronous EMFILE errors; the same tests pass outside it without changing limits or
+assertions. Unit fixtures use private tiny tool inventories, avoiding repeatedly scanning the real
+compiler for tests about unrelated resolution behavior.
+
+CLI types, three-file correctness lint, package refresh and whitespace checks pass. A separate real
+inventory probe against the refreshed distributable compiler succeeds and explicitly verifies the
+selected runtime and CLI entry subscriptions: 15,413 paths, 3,382ms on this checkout. Log:
+`/private/tmp/apack-tooling-watch-inventory.log`. That is an observed scan cost, not a latency guarantee;
+the watcher now performs the complete tool inventory when refreshing its input signature. No
+unvalidated metadata cache or event-only freshness authority was introduced.
+
+This closes the demonstrated idle tooling subscription omission. Continue the existing B1/B3 matrix's
+externally linked native/runtime, namespace/thread and platform lifetime acceptance; B4–B6 and all other
+active goal phases remain required. No broad gate or cross-platform completion is claimed.

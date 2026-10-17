@@ -271,8 +271,12 @@ Runtime checkpoint `e369d3cb9` now owns the selected executable in the captured 
 it for both worker launches. Twenty-three focused cases across the recorded runs, three real integration
 cases, CLI types/lint/package refresh and integrated owned Electron execution pass; see
 [runtime ownership evidence](../evidence/build-input-snapshot-proof.md#selected-runtime-ownership-checkpoint-2026-10-17).
-Next: close externally linked runtime/native, supported-platform and remaining namespace/subscription
-matrix cases. Preserve
+Tooling subscription checkpoint `0bb9e64ec` closes the idle compiler/runtime/esbuild omission through
+the existing observer/signature. Twenty-five focused cases, real idle filesystem delivery, CLI
+types/lint/package refresh and a real distributable inventory check pass; see
+[subscription evidence](../evidence/build-input-snapshot-proof.md#idle-tooling-subscription-checkpoint).
+Next: reconcile remaining namespace/thread cases against existing ownership/tests, and close externally
+linked runtime/native and supported-platform matrix cases. Preserve
 B2's accepted owner and browser proof; do not schedule another frontend generation implementation.
 Then complete B4–B6 and all-kind acceptance. Asset input/output completeness remains required under B1/B4,
 not a deferred follow-up or another discovery store. All three Phase 6 workstreams remain required. Do not restart implemented endpoint

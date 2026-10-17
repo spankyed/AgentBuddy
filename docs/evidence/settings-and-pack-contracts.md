@@ -6615,3 +6615,12 @@ cases, CLI types/lint/package refresh and integrated owned Electron execution pa
 [runtime ownership evidence](build-input-snapshot-proof.md#selected-runtime-ownership-checkpoint-2026-10-17).
 External linked native libraries, platform acceptance and remaining namespace/subscription cases stay
 under B1/B3; B4–B6 and every other active goal phase remain required.
+
+
+### Idle tooling subscriptions (2026-10-17)
+
+`0bb9e64ec` subscribes/fingerprints selected compiler, runtime and configured esbuild inputs through the
+existing watcher. Twenty-five focused cases pass, including real idle filesystem event delivery and
+broken-configuration repair subscriptions; CLI types/lint/package refresh and real distribution
+inventory checks pass. See [subscription evidence](build-input-snapshot-proof.md#idle-tooling-subscription-checkpoint).
+Remaining B1/B3 native/platform/namespace/thread cases, B4–B6 and every other goal phase stay open.
