@@ -7169,3 +7169,21 @@ accumulated call count; its setup now explicitly clears that spy between tests.
 No service guards, deadlines or production behavior changed. These focused passes do not replace
 a converged pool or strict checkpoint result. The outstanding integration pool starts on two workers
 against this committed source; its log is `/private/tmp/apack-service-integration-pool.log`.
+
+
+## Source-free external flow inspection (2026-10-17)
+
+At source `df1a937a8`, copied the existing real built external fixture into an owned temporary
+installed-layout directory, without authored sources. `inspectPack` verifies that build and reads its
+compiled content; no build or runtime import is requested. `findContentDependents` finds both
+`Memo Flow` and `Memo Reminder Flow` pointing to `actions/Memo: Add`, each `indexed`.
+Against a cloned inventory, renaming and then removing that target preserves both incoming edges
+with `not-indexed` status. These are inspection-time simulations, not a claim that a renamed pack
+was rebuilt or installed. The original fixture/build and user data were unchanged; the temporary
+copy was removed after the proof. Log: `/private/tmp/apack-external-flow-offline-acceptance.log`.
+
+This closes the previously missing real external/source-free reader check in combination with the
+existing actual compiler, custom/nested/computed-reference, rename and unavailable-analysis cases
+recorded under `7196d61d3`. It adds no scanner, runtime dependency or permanent fixture framework.
+Missing compiled inventory targets remain distinct from missing user database records. Final strict
+acceptance remains required.
