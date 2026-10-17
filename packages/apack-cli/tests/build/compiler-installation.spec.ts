@@ -262,7 +262,7 @@ it('refuses captured bytes that differ from the captured package graph', async (
   const write = fs.writeFileSync;
   vi.spyOn(fs, 'writeFileSync').mockImplementation((file, bytes, options) => {
     write(file, bytes, options);
-    if (typeof file === 'string' && file.endsWith('/nested/index.cjs')) {
+    if (typeof file === 'string' && file.endsWith(path.join('nested', 'index.cjs'))) {
       fs.chmodSync(file, 0o644);
       write(file, 'module.exports = "corrupted copy";');
     }

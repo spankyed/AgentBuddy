@@ -43,7 +43,7 @@ jobs:
           packages/apack-cli/tests/build/compiler-installation.spec.ts
           packages/apack-cli/tests/build/compiler-runtime.spec.ts
           packages/apack-cli/tests/build/compiler-native-libraries.spec.ts
-          --bail=1 --poolOptions.threads.maxThreads=2 --poolOptions.threads.minThreads=1
+          --poolOptions.threads.maxThreads=2 --poolOptions.threads.minThreads=1
       # Existing Windows skips do not establish descendant-lifetime acceptance. Keep that gap explicit
       # until a Windows lifetime owner and its native success/failure/cancellation cases are implemented.
       - name: Build worker platform baseline

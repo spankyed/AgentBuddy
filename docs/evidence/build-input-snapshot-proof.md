@@ -2090,3 +2090,15 @@ assertions and compare the workspace-link installation's captured execute bits a
 source bits, keeping its file read-only assertion on every platform. No production hash changes.
 All 17 local runtime/installation cases pass (12.25s runner), with focused lint and whitespace:
 `/private/tmp/apack-windows-runtime-permissions.log`.
+
+
+### Windows runtime permission checks accepted; repair fault-injection path
+
+Source `75be5b00b`, [run 39059751459](https://github.com/spankyed/AgentBuddy/actions/runs/39059751459),
+passes all six other selected files. Its only reported failure is installation corruption refusal:
+the test matches `/nested/index.cjs`, so its mutation never runs on Windows. 79 cases pass and seven
+platform cases skip. Log: `/private/tmp/apack-windows-39059751459-failed.log`.
+Use `path.join()` for the fault-injection suffix; the focused local corruption case and lint pass
+(`/private/tmp/apack-windows-installation-mutation.log`). Production refusal remains unchanged.
+Collect all failures in this small isolated unit step instead of stopping at the first; retain
+fail-fast for the expensive real worker baseline. No test selection or deadline changes.
