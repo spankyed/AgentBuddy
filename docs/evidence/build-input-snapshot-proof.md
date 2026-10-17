@@ -2369,3 +2369,29 @@ The workflow now selects its actual startup/repeat-build baseline, rather than r
 worker file before Windows descendant ownership exists. This is a diagnostic boundary, not exclusion
 of required final native cancellation/parent-loss/replacement checks. The next committed-source run
 must finish revision/cache equality and workspace cleanup before this baseline is accepted.
+
+### Windows Job Object launcher proof design (2026-10-17)
+
+The production Windows branches still kill only their worker PID. Prototype a private job before
+selecting production wiring: create the Node worker suspended, assign it to a kill-on-close job,
+then resume it. Keep the existing compiler's Node IPC protocol rather than introducing another
+candidate transport. The wrapper waits on root/parent process handles, stops the job and queries its
+active-process count before reporting normal completion. Creation/assignment failures terminate the
+still-suspended child. The job handle is not inheritable by compiler code.
+
+The proof forwards the inherited libuv stdio table from the wrapper's startup information.
+[libuv's Windows spawn implementation](https://github.com/libuv/libuv/blob/v1.x/src/win/process.c)
+establishes that table; [Microsoft's Job Object contract](https://learn.microsoft.com/en-us/windows/win32/procthread/job-objects)
+establishes assignment and kill-on-close semantics. These sources justify a prototype, not acceptance
+of the implementation or universal handle-transfer compatibility.
+
+`.github/scripts/compiler-job-proof.{cjs,ps1}` exercises bidirectional JSON IPC, stdout/stderr,
+arguments containing spaces/quotes/backslashes, cwd and an explicit environment marker. A real
+Node child starts its own background Node descendant before the outer controller requests normal
+exit, nonzero exit or kills the launcher. The test must observe both processes stopped. A 30-second
+outer deadline bounds the proof; helper work/data is isolated to its private temporary directory.
+The focused Windows workflow executes it before npm installation, giving early native diagnostics.
+This is not production wiring and does not close parent-loss/replacement acceptance. The C# interop
+and inherited IPC remain unverified until native execution; macOS cannot provide that evidence.
+Node syntax, focused correctness lint and whitespace checks pass locally. No extra published package
+or runtime dependency is introduced by the proof.

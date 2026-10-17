@@ -29,6 +29,8 @@ jobs:
           node -p "JSON.stringify({platform:process.platform,arch:process.arch,versions:process.versions})"
           node -e "const path=require('node:path'); const npm=path.join(path.dirname(process.execPath),'node_modules/npm/bin/npm-cli.js'); console.log(JSON.stringify({node:process.execPath,npm,exists:require('node:fs').existsSync(npm)}))"
           npm --version
+      - name: Prototype Windows compiler job ownership
+        run: node .github/scripts/compiler-job-proof.cjs
       - name: Install dependencies
         run: npm ci
       - name: Build matching packages

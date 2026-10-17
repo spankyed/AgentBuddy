@@ -102,7 +102,11 @@ Windows two-build/archive case 240 seconds, retaining 120 seconds locally and ev
 focused Windows diagnostic selects startup and repeat-build baseline cases; broader platform/native
 lifetime acceptance remains required with its implementation. See
 [timing evidence](../evidence/build-input-snapshot-proof.md#windows-repeated-build-forward-progress-2026-10-17).
-Descendant lifetime remains separately unimplemented.
+Descendant lifetime remains separately unimplemented. A Windows-only Job Object prototype now
+checks suspended launch before assignment/resume, inherited Node JSON IPC/stdio, cwd/argument/env
+preservation and actual descendant termination on success, failure and launcher cancellation. It runs
+before dependency installation in the focused workflow; no production compiler path uses it. Native
+proof must pass before selecting production integration, parent-loss and replacement handling.
 
 Source `59b890dcb` repairs the macOS explicit fallback gap: launch-time `DYLD_FALLBACK_LIBRARY_PATH`
 survives preload mutation, selected external fallback libraries refuse before native initialization,
