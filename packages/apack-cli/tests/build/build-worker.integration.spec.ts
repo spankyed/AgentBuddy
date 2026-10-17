@@ -178,7 +178,7 @@ it('uses the captured compiler and retains unchanged build/cache identity on rep
   expect(readPackBuild(path.join(root, 'dist')).revision).toBe(revision);
   expect(workspaces).toHaveLength(2);
   for (const workspace of workspaces) expect(fs.existsSync(workspace)).toBe(false);
-}, process.platform === 'win32' ? 180_000 : 120_000);
+}, process.platform === 'win32' ? 240_000 : 120_000);
 
 it('records external inputs read by content compiler worker threads', async () => {
   const outside = fs.mkdtempSync(path.join(os.tmpdir(), 'apack-worker-input-'));

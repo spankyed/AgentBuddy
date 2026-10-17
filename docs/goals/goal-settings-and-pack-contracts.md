@@ -94,12 +94,14 @@ preloads (`bbf05ec00`). These are source evidence, not a claim that the full str
 
 Source `525350813` applies native canonical path identity consistently, preserving authored metadata
 query semantics and root-link observations. Corrections `672645cf4` / `329cfbd89` preserve fixture and
-logical-source filesystem identities. Windows run `39063156389` on `59b890dcb` passes all 154 focused
-checks (eight platform skips), completes its first actual worker build and archive, then exhausts the
-120-second repeated-build case during the second setup. This is not a deadlock diagnosis. The named
-Windows case now has a bounded 180-second diagnostic allowance and elapsed phase milestones; all
-assertions and other deadlines remain. Run that committed source to classify completion versus
-stalled progress. See [timing evidence](../evidence/build-input-snapshot-proof.md#windows-repeated-build-timing-diagnosis-2026-10-17).
+logical-source filesystem identities. Windows run `39063657523` on `0c259a570` passes all 157 focused
+checks (eight platform skips), completes its first build at 77.74 seconds and archive at 90.28 seconds,
+and produces second-build output around 174 seconds. Its 180-second deadline expires during return
+or cleanup, so the case makes forward progress; final completion is still unverified. Give this single
+Windows two-build/archive case 240 seconds, retaining 120 seconds locally and every assertion. The
+focused Windows diagnostic selects startup and repeat-build baseline cases; broader platform/native
+lifetime acceptance remains required with its implementation. See
+[timing evidence](../evidence/build-input-snapshot-proof.md#windows-repeated-build-forward-progress-2026-10-17).
 Descendant lifetime remains separately unimplemented.
 
 Source `59b890dcb` repairs the macOS explicit fallback gap: launch-time `DYLD_FALLBACK_LIBRARY_PATH`

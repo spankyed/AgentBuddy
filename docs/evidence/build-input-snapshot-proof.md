@@ -2352,3 +2352,20 @@ macOS ARM64 / Node 23.11.1 evidence:
 Versioned overrides, shared-cache controls, default fallback policy, retained frontend native
 initialization, ELF/PE and platform/descendant acceptance remain open. B6/final strict acceptance is
 not claimed. Windows timing run `39063657523` continues against its pinned `0c259a570` checkpoint.
+
+### Windows repeated-build forward progress (2026-10-17)
+
+[Run 39063657523](https://github.com/spankyed/AgentBuddy/actions/runs/39063657523), pinned to
+`0c259a570`, passes all 157 focused unit cases (eight platform skips). Phase milestones report first
+build completion at 77.735s, input replay at 82.085s and archive at 90.275s. The second compiler
+reuses facade types, emits compiled output and reports `Output: dist/` around 174s. The 180s test
+deadline expires before the command returns and cleanup completes. This demonstrates forward
+progress rather than a stalled compiler; it does not prove completion or acceptable cleanup.
+Full log: `/private/tmp/apack-windows-39063657523.log`.
+
+Set only this Windows scenario to 240s, based on its measured two fresh installations/builds plus
+archive/replay/cleanup cost. The macOS budget stays 120s; assertions and every other deadline stay.
+The workflow now selects its actual startup/repeat-build baseline, rather than running the entire
+worker file before Windows descendant ownership exists. This is a diagnostic boundary, not exclusion
+of required final native cancellation/parent-loss/replacement checks. The next committed-source run
+must finish revision/cache equality and workspace cleanup before this baseline is accepted.

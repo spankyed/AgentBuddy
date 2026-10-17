@@ -53,8 +53,10 @@ jobs:
           --poolOptions.threads.maxThreads=2 --poolOptions.threads.minThreads=1
       # Existing Windows skips do not establish descendant-lifetime acceptance. Keep that gap explicit
       # until a Windows lifetime owner and its native success/failure/cancellation cases are implemented.
+      # Establish startup/repeated-build identity first. Expand native lifetime cases with their Windows owner.
       - name: Build worker platform baseline
         run: >-
           npx vitest run --config vitest.integration.config.ts --project @apackdev/cli
           packages/apack-cli/tests/build/build-worker.integration.spec.ts
+          --testNamePattern='captures native launch identity|uses the captured compiler'
           --bail=1 --poolOptions.threads.maxThreads=2 --poolOptions.threads.minThreads=1
