@@ -96,8 +96,10 @@ preloads (`bbf05ec00`). These are source evidence, not a claim that the full str
 restart, reporting a roughly ten-minute restart and unusual initial app loading. Cause remains
 unproven; do not describe this as M1 capacity exhaustion or a confirmed daemon deadlock. Sustained
 native, captured-runtime and startup/cancellation batches stay off the daily-use Mac. Use the focused
-`compiler_macos=true` / `compiler_windows=true` GitHub dispatch routes; the new macOS route awaits its
-first run. Preserve required acceptance rather than silently skipping it. No security settings or
+`compiler_macos=true` / `compiler_windows=true` GitHub dispatch routes. Source `6e19d17b8` adds the macOS
+route; run `39079072090` is in progress on that source, with platform/header checks passed and all broad
+jobs skipped. Follow this run rather than dispatching a duplicate. Preserve required acceptance rather
+than silently skipping it. No security settings or
 system databases were changed by this session. See [incident evidence](../evidence/build-input-snapshot-proof.md#macos-launch-policy-investigation-2026-10-17).
 
 **Current handoff:** source `ccaa809a8` delivers retained frontend native discoveries into live watch
