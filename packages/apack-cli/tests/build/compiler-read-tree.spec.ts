@@ -2,7 +2,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { afterEach, expect, it, vi } from 'vitest';
-import { createCompilerFileView } from '../../src/build/compiler-file-view.ts';
+import { createCompilerFileView } from '@apackdev/host/build/compiler-inputs';
 import { BUILD_INPUTS_DIRECTORY_ENV, createCompilerReadTree, removeCompilerReadTree, type CompilerReadTree } from '../../src/build/compiler-read-tree.ts';
 
 const roots: string[] = [];
@@ -85,7 +85,6 @@ it('refuses conflicting captured/source origins and removes the incomplete tree'
   expect(directory).not.toBe('');
   expect(fs.existsSync(directory)).toBe(false);
 });
-
 
 it('reuses materialized directories independently for code and data reads', () => {
   const root = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'apack-read-tree-reuse-')));

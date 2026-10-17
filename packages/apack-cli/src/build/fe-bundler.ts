@@ -10,7 +10,7 @@ import { errorMessage } from '@apackdev/sdk/utils/pure';
 import type { BuildWatchInputs } from './build-watch-inputs.ts';
 import { globWatchPlugin } from './glob-watch.ts';
 import type { CompilationInputs } from './compilation-inputs.ts';
-import { withCompilerFileReads } from './compiler-file-reads.ts';
+import { withCompilerFileReads } from '@apackdev/host/build/compiler-inputs';
 import { findPackageDirectory } from '@apackdev/host/build/package-inputs';
 
 /**

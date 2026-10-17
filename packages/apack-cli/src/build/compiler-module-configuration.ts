@@ -3,7 +3,7 @@ import path from 'node:path';
 import { parseTsconfig } from 'get-tsconfig';
 import { esbuildTsconfig, type PackCompilerConfiguration } from './compiler-configuration.ts';
 import type { CompilerReadTree } from './compiler-read-tree.ts';
-import { physicalWatchPath } from './watch-paths.ts';
+import { physicalWatchPath } from '@apackdev/host/build/compiler-inputs';
 
 /** Match logical source filenames while resolving inherited configuration and aliases from owned files. */
 export function writeCompilerModuleConfiguration(configuration: PackCompilerConfiguration | undefined,

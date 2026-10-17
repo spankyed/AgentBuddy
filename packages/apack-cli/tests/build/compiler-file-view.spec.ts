@@ -3,7 +3,7 @@ import os from 'node:os';
 import path from 'node:path';
 import ts from 'typescript';
 import { afterEach, expect, it, vi } from 'vitest';
-import { createCompilerFileView } from '../../src/build/compiler-file-view.ts';
+import { createCompilerFileView } from '@apackdev/host/build/compiler-inputs';
 
 const roots: string[] = [];
 afterEach(() => {

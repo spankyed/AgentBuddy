@@ -3,7 +3,7 @@ import { registerCompilerCommonJS } from './compiler-commonjs.ts';
 import { createRequire, findPackageJSON, isBuiltin, register, registerHooks, type ModuleHooks } from 'node:module';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import type { CompilationInputs } from './compilation-inputs.ts';
-import { withoutCompilerFileReads } from './compiler-file-reads.ts';
+import { withoutCompilerFileReads } from '@apackdev/host/build/compiler-inputs';
 import { cliPackageDirectory } from './tool-identity.ts';
 import { writeCompilerModuleConfiguration } from './compiler-module-configuration.ts';
 

@@ -3,7 +3,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { inspect, types } from 'node:util';
 import { afterEach, expect, it } from 'vitest';
-import { captureCompilerMetadata } from '../../src/build/compiler-metadata.ts';
+import { captureCompilerMetadata } from '@apackdev/host/build/compiler-inputs';
 
 const roots: string[] = [];
 afterEach(() => { for (const root of roots.splice(0)) fs.rmSync(root, { recursive: true, force: true }); });

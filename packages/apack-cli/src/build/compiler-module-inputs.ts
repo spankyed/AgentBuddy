@@ -5,9 +5,9 @@ import ts from 'typescript';
 import { readPackCompilerConfiguration, type PackCompilerConfiguration } from './compiler-configuration.ts';
 import type { BuildInputObserver } from '@apackdev/host/build/pack-inputs';
 import { codeBlocks } from './pack-sources.ts';
-import { compilerSourcePath } from './compiler-paths.ts';
+import { compilerSourcePath, type createCompilerFileView, type CompilerFileSystem } from '@apackdev/host/build/compiler-inputs';
 import { compilerGlobDirectories } from './compiler-source-globs.ts';
-import type { createCompilerFileView, CompilerFileSystem } from './compiler-file-view.ts';
+
 import { readCompilerInstallationInputs } from './compiler-installation-inputs.ts';
 import { createPackCompilerInputView, type PackCompilerInputView } from './compiler-input-view.ts';
 

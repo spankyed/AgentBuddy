@@ -1002,3 +1002,19 @@ affected cases, after 12 compiler-filesystem cases passed; it separately found a
 list refusal at `fe-bundler.ts:376`. `/private/tmp/apack-watch-integration-two-cores.log` is not a
 completed broad gate. The original repeat-build budget failure, B4–B6 and final strict acceptance remain
 open. No work in the Claude research worktree was changed.
+
+
+## Common input-record boundary audit (2026-10-17)
+
+B4 must bind completed observations to sealed output, not merely store the initial phase-cache hash.
+The current `finishStartup()` validates a merged frame then discards it. Native replay currently lives
+in the CLI, so passive host consumers cannot reuse it without reversing the package boundary. Move
+that existing native capture/replay owner to `@apackdev/host/build/compiler-inputs`; keep TypeScript
+activation, compiler installation and worker lifetime in the CLI. No second scanner or query grammar.
+
+This checkpoint must preserve existing filesystem/metadata/cursor behavior and actual native startup,
+and prove fresh-process host replay neither imports TypeScript/Vite/CLI nor installs filesystem hooks.
+Then expose the completed producer frame and bind it through the existing integrity record. Audit
+reused phase outputs too: a phase skipped by a cache cannot silently drop its external consumed inputs
+from the successful record. Expected media/public/CSS/chunk output membership and B5's four consumers
+remain required; moving the shared owner does not close B4 or platform/native-library acceptance.

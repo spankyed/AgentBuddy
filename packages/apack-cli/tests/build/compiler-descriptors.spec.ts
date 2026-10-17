@@ -2,7 +2,13 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { afterEach, expect, it, vi } from 'vitest';
-import { capturedDescriptor, descriptorStats, releaseDescriptor, instrumentFileHandle, rememberDescriptor } from '../../src/build/compiler-descriptors.ts';
+import {
+  capturedDescriptor,
+  descriptorStats,
+  releaseDescriptor,
+  instrumentFileHandle,
+  rememberDescriptor,
+} from '@apackdev/host/build/compiler-inputs';
 
 const roots: string[] = [];
 afterEach(() => { for (const root of roots.splice(0)) fs.rmSync(root, { recursive: true, force: true }); });

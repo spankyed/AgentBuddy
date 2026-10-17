@@ -3,7 +3,7 @@ import path from 'node:path';
 import { createHash } from 'node:crypto';
 import { watch, type FSWatcher } from 'chokidar';
 import type { BuildWatchInputs } from './build-watch-inputs.ts';
-import { physicalWatchPath } from './watch-paths.ts';
+import { physicalWatchPath } from '@apackdev/host/build/compiler-inputs';
 
 type Subscription = FSWatcher | fs.FSWatcher;
 

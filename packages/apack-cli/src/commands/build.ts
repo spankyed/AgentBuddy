@@ -34,7 +34,7 @@ import { compareFacadeReport, facadeReportFile, facadeReportText } from '../buil
 import { bundlePackFlowHelpers } from '../build/flow-helpers-bundler';
 import { PACK_LAYOUT, sealPackBuild, readPackBuild } from '@apackdev/host/packs';
 import { buildStagingDir, publishPackBuild, type PackBuildCandidate } from '../build/build-publication.ts';
-import { withCompilerFileReads } from '../build/compiler-file-reads.ts';
+import { withCompilerFileReads } from '@apackdev/host/build/compiler-inputs';
 import { createCompilerModuleLoader } from '../build/compiler-modules.ts';
 import { holdPackBuildLock } from '../build/build-lock.ts';
 import { dependencyTypes, resolveDependencyFiles } from './generate';

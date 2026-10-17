@@ -5,7 +5,7 @@ import { afterEach, expect, it, vi } from 'vitest';
 // Real TypeScript programs and full installed package graphs are compiler integration work.
 import { captureCompilationInputs } from '../../src/build/compilation-inputs.ts';
 import * as moduleInputs from '../../src/build/compiler-module-inputs.ts';
-import { withCompilerFileReads } from '../../src/build/compiler-file-reads.ts';
+import { withCompilerFileReads } from '@apackdev/host/build/compiler-inputs';
 import { createPackCompilerInputView } from '../../src/build/compiler-input-view.ts';
 
 const roots: string[] = [];
@@ -132,7 +132,6 @@ it('keeps compiler operations native inside captured callbacks and excludes owne
     expect(() => compilation.assertCurrent()).not.toThrow();
   } finally { compilation.dispose(); }
 });
-
 
 it('refuses retained async reads after disposal without recreating input storage', async () => {
   const { root, file } = pack();

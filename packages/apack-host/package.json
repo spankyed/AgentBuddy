@@ -14,6 +14,7 @@
   "exports": {
     "./app-state": "./src/app-state/index.ts",
     "./backup": "./src/backup/index.ts",
+    "./build/compiler-inputs": "./src/build/compiler-inputs/index.ts",
     "./build/discover": "./src/build/discover.ts",
     "./build/package-inputs": "./src/build/package-inputs.ts",
     "./build/pack-inputs": "./src/build/pack-inputs.ts",

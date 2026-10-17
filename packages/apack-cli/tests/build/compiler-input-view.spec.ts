@@ -3,8 +3,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { afterEach, expect, it } from 'vitest';
 import { createPackCompilerInputView, type PackCompilerInputView } from '../../src/build/compiler-input-view.ts';
-import { assertNativeCompilerObservations } from '../../src/build/compiler-observation-validation.ts';
-import { hashCompilerInputObservations } from '../../src/build/compiler-observations.ts';
+import { assertNativeCompilerObservations, hashCompilerInputObservations } from '@apackdev/host/build/compiler-inputs';
 
 const roots: string[] = [];
 const views: PackCompilerInputView[] = [];

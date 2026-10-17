@@ -4,7 +4,7 @@ import { createPathsMatcher, parseTsconfig } from 'get-tsconfig';
 import { transformSync, type Loader } from 'esbuild';
 import type { CompilationInputs } from './compilation-inputs.ts';
 import { esbuildTsconfig } from './compiler-configuration.ts';
-import { withoutCompilerFileReads } from './compiler-file-reads.ts';
+import { withoutCompilerFileReads } from '@apackdev/host/build/compiler-inputs';
 
 /** tsx's CommonJS API has no per-registration config. Transform only this build's owned modules. */
 export function registerCompilerCommonJS(compilation: CompilationInputs, directory: string, tsconfig?: string): () => void {

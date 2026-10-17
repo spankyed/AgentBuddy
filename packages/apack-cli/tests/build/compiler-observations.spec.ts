@@ -3,9 +3,13 @@ import os from 'node:os';
 import path from 'node:path';
 import { afterEach, expect, it } from 'vitest';
 import ts from 'typescript';
-import { createCompilerFileView } from '../../src/build/compiler-file-view.ts';
-import { createCompilerInputObservations, hashCompilerInputObservations } from '../../src/build/compiler-observations.ts';
-import { assertNativeCompilerObservations } from '../../src/build/compiler-observation-validation.ts';
+import {
+  createCompilerFileView,
+  createCompilerInputObservations,
+  hashCompilerInputObservations,
+  assertNativeCompilerObservations,
+} from '@apackdev/host/build/compiler-inputs';
+
 import { createPackCompilerInputView } from '../../src/build/compiler-input-view.ts';
 
 const roots: string[] = [];

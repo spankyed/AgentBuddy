@@ -2,8 +2,8 @@ import path from 'node:path';
 import { createCompilerFileView } from './compiler-file-view.ts';
 import { createCompilerInputObservations, type CompilerInputObservations } from './compiler-observations.ts';
 import type { CompilerMetadataKind } from './compiler-metadata.ts';
-import { readPackageDirectoryEntries } from '@apackdev/host/build/package-inputs';
-import { packInputFiles } from '@apackdev/host/build/pack-inputs';
+import { readPackageDirectoryEntries } from '../package-inputs.ts';
+import { packInputFiles } from '../pack-inputs.ts';
 
 /** Replay native thread facts against originals immediately before synchronous publication checks. */
 export function assertNativeCompilerObservations(observations: CompilerInputObservations): void {

@@ -49,6 +49,7 @@ const UNBRIDGED_BY_POLICY = new Map<string, string>([
   // loaded pack's runtime code.
   ['@apackdev/host/build/shared-deps', 'build-time only'],
   ['@apackdev/host/build/discover', 'build-time only'],
+  ['@apackdev/host/build/compiler-inputs', 'source-build tooling: captured pack input facts and native replay, never a pack runtime API'],
   ['@apackdev/host/build/package-inputs', 'source-build tooling: package input identity and dependency resolution, never pack runtime code'],
   ['@apackdev/host/build/pack-inputs', 'source-build tooling: authored input identity and watch targets, never pack runtime code'],
   ['@apackdev/host/build/source-resolution', 'host tooling only (CLI, fixture, API boot)'],

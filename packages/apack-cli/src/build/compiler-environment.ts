@@ -1,6 +1,6 @@
 import { createHash } from 'node:crypto';
 import path from 'node:path';
-import type { CompilerPathMapping } from './compiler-paths.ts';
+import { type CompilerPathMapping } from '@apackdev/host/build/compiler-inputs';
 
 // These select private transport/cache locations, not authored compiler inputs.
 const PRIVATE_ENVIRONMENT = new Set([

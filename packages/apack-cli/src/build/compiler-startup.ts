@@ -6,7 +6,7 @@ import { getEnvironmentData, setEnvironmentData, isMainThread, isInternalThread,
 import { readCompilerInstallationInputs } from './compiler-installation-inputs.ts';
 import { BUILD_INPUTS_DIRECTORY_ENV } from './compiler-read-tree.ts';
 import { beginCompilerStartupInputs } from './compiler-startup-inputs.ts';
-import type { CompilerInputObservations } from './compiler-observations.ts';
+import { type CompilerInputObservations } from '@apackdev/host/build/compiler-inputs';
 import { COMPILER_NODE_OPTIONS_ENV } from './compiler-startup-options.ts';
 
 interface CompilerThreadLineage {

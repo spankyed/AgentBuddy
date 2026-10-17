@@ -1,9 +1,14 @@
 import path from 'node:path';
 import { packInputFiles, type BuildInputObserver } from '@apackdev/host/build/pack-inputs';
-import { createCompilerFileView } from './compiler-file-view.ts';
-import { compilerSourcePath, type CompilerPathMapping } from './compiler-paths.ts';
+import {
+  createCompilerFileView,
+  compilerSourcePath,
+  type CompilerPathMapping,
+  createCompilerInputObservations,
+  hashCompilerInputObservations,
+} from '@apackdev/host/build/compiler-inputs';
+
 import { readPackageInputs, readPackageDirectoryEntries } from '@apackdev/host/build/package-inputs';
-import { createCompilerInputObservations, hashCompilerInputObservations } from './compiler-observations.ts';
 
 /** Native startup and compilation share authored/dependency bytes and their namespace history. */
 export function createPackCompilerInputView(root: string, options: {

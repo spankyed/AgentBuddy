@@ -9,17 +9,23 @@ import type { PackCompilerConfiguration } from './compiler-configuration.ts';
 import fs from 'node:fs';
 import path from 'node:path';
 import { packInputFiles } from '@apackdev/host/build/pack-inputs';
-import { withoutCompilerFileReads } from './compiler-file-reads.ts';
-import type { CompilerMetadataKind } from './compiler-metadata.ts';
-import type { CompilerDirectoryCursor } from './compiler-directories.ts';
-import type { CompilerDirectoryResult } from './compiler-file-view.ts';
-import { compilerDiagnostic, compilerSourcePath } from './compiler-paths.ts';
+import {
+  withoutCompilerFileReads,
+  type CompilerMetadataKind,
+  type CompilerDirectoryCursor,
+  type CompilerDirectoryResult,
+  compilerDiagnostic,
+  compilerSourcePath,
+  createCompilerInputObservations,
+  hashCompilerInputObservations,
+  type CompilerInputObservations,
+  assertNativeCompilerObservations,
+} from '@apackdev/host/build/compiler-inputs';
+
 import { createNativeInputReader } from './compiler-native-inputs.ts';
 import { BUILD_INPUTS_DIRECTORY_ENV, createCompilerReadTree, type CompilerReadTree } from './compiler-read-tree.ts';
 import type { PackCompilerInputView } from './compiler-input-view.ts';
 import { compilerExecutionIdentity, compilerStartupInputs } from './compiler-startup-inputs.ts';
-import { createCompilerInputObservations, hashCompilerInputObservations, type CompilerInputObservations } from './compiler-observations.ts';
-import { assertNativeCompilerObservations } from './compiler-observation-validation.ts';
 
 /** Export selectors passed to the worker; executable preloads need their own captured input closure. */
 export function compilationConditions(args = process.execArgv, nodeOptions = process.env.NODE_OPTIONS ?? ''): string[] {

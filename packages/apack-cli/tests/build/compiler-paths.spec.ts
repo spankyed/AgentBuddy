@@ -1,6 +1,6 @@
 import path from 'node:path';
 import { expect, it } from 'vitest';
-import { compilerSourcePath, parseCompilerPaths } from '../../src/build/compiler-paths.ts';
+import { compilerSourcePath, parseCompilerPaths } from '@apackdev/host/build/compiler-inputs';
 
 it('maps captured inputs to their source origins without rewriting neighboring paths', () => {
   const captured = path.resolve('/temporary/compiler');

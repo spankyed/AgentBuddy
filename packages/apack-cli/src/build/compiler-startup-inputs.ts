@@ -1,10 +1,16 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { createPackCompilerInputView, type PackCompilerInputView } from './compiler-input-view.ts';
-import { beginCompilerStartupReads, withoutCompilerFileReads } from './compiler-file-reads.ts';
+import {
+  beginCompilerStartupReads,
+  withoutCompilerFileReads,
+  compilerDiagnostic,
+  compilerSourcePath,
+  type CompilerPathMapping,
+  type CompilerInputObservations,
+} from '@apackdev/host/build/compiler-inputs';
 import { createCompilerReadTree, type CompilerReadTree } from './compiler-read-tree.ts';
-import { compilerDiagnostic, compilerSourcePath, type CompilerPathMapping } from './compiler-paths.ts';
-import type { CompilerInputObservations } from './compiler-observations.ts';
+
 import { parseNodeOptions } from '@apackdev/host/build/source-resolution';
 import { compilerEnvironmentIdentity } from './compiler-environment.ts';
 

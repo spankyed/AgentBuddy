@@ -1,6 +1,6 @@
 import fs from 'node:fs';
 import path from 'node:path';
-import { parseCompilerPaths, type CompilerPathMapping } from './compiler-paths.ts';
+import { parseCompilerPaths, type CompilerPathMapping } from '@apackdev/host/build/compiler-inputs';
 
 export const COMPILER_INPUTS_ENV = 'APACK_COMPILER_INPUTS';
 

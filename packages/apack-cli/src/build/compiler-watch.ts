@@ -3,7 +3,7 @@ import path from 'node:path';
 import { createHash } from 'node:crypto';
 import { readCompilerModuleInputs } from './compiler-module-inputs.ts';
 import { readPackageInputs } from '@apackdev/host/build/package-inputs';
-import { physicalWatchPath } from './watch-paths.ts';
+import { physicalWatchPath } from '@apackdev/host/build/compiler-inputs';
 import { compilerPackageDirectory, readEsbuildOverride } from './compiler-installation.ts';
 import { readCompilerRuntimeInputs } from './compiler-runtime.ts';
 import { compilerEnvironmentIdentity } from './compiler-environment.ts';

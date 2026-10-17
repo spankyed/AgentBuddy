@@ -7,7 +7,7 @@ import { createRequire } from 'node:module';
 import { afterEach, expect, it, vi } from 'vitest';
 import { compilePack, buildPackConfigFromManifest, ManifestSchema } from '@apackdev/sdk/build';
 import { captureCompilationInputs } from '../../src/build/compilation-inputs.ts';
-import { withCompilerFileReads } from '../../src/build/compiler-file-reads.ts';
+import { withCompilerFileReads } from '@apackdev/host/build/compiler-inputs';
 import { createCompilerModuleLoader } from '../../src/build/compiler-modules.ts';
 
 const roots: string[] = [];
@@ -423,7 +423,6 @@ it('executes owned TypeScript compiler modules and transitive imports through te
     compilation.assertCurrent();
   } finally { await modules.dispose(); compilation.dispose(); }
 });
-
 
 it('keeps original-parent require calls isolated across concurrent module scopes', async () => {
   vi.stubEnv('TSX_DISABLE_CACHE', '1');

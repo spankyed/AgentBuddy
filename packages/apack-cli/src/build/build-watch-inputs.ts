@@ -1,5 +1,5 @@
 import path from 'node:path';
-import { compilerSourcePath } from './compiler-paths.ts';
+import { compilerSourcePath } from '@apackdev/host/build/compiler-inputs';
 import { readCompilerInstallationInputs } from './compiler-installation-inputs.ts';
 
 /** Current compiler observations; a failed build extends subscriptions without replacing the incumbent. */

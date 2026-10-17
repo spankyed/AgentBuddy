@@ -3,7 +3,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { createHash } from 'node:crypto';
 import { compilerReadMapping } from '../../bin/compiler-source-hooks.mjs';
-import { compilerDiagnostic, compilerSourcePath, type CompilerPathMapping } from './compiler-paths.ts';
+import { compilerDiagnostic, compilerSourcePath, type CompilerPathMapping } from '@apackdev/host/build/compiler-inputs';
 
 export const BUILD_INPUTS_DIRECTORY_ENV = 'APACK_BUILD_INPUTS_DIRECTORY';
 
