@@ -1380,13 +1380,34 @@ type ClaudePromptEdit = Omit<ClaudeUiPromptEdit, 'client_id' | 'surface'> & {
 };
 
 interface ClaudePromptHost {
-    read(signal: AbortSignal): Promise<ClaudePromptHostBox | undefined>;
-    fill(input: ClaudePromptHostFill, signal: AbortSignal): Promise<boolean>;
+    read(signal: AbortSignal, expiresAt: number): Promise<ClaudePromptHostBox | undefined>;
+    fill(input: ClaudePromptHostFill, signal: AbortSignal, expiresAt: number): Promise<boolean>;
 }
 
 type ClaudePromptHostBox = z.infer<typeof box>;
 
 type ClaudePromptHostFill = z.infer<typeof fill>;
+
+type ClaudePromptHostRequest = {
+    requestId: string;
+    revision: number;
+    expiresAt: number;
+} & ({
+    kind: 'read';
+} | {
+    kind: 'fill';
+    input: ClaudePromptHostFill;
+});
+
+type ClaudePromptHostResponse = {
+    requestId: string;
+} & ({
+    kind: 'read';
+    box?: ClaudePromptHostBox;
+} | {
+    kind: 'fill';
+    filled: boolean;
+});
 
 type ClaudePromptReply = {
     revision: number;
@@ -1637,6 +1658,10 @@ interface ClaudeUiTextStyle {
 }
 
 type ClaudeUiViewRequest = ({
+    type: 'CLAUDE_PROMPT_HOST_RESPONSE';
+    threadId: string;
+    mountId: string;
+} & ClaudePromptHostResponse) | ({
     type: 'CLAUDE_UI_FOCUS';
     threadId: string;
     mountId: string;
@@ -5241,6 +5266,11 @@ type OutgoingThreadsEvents = {
     mountId: string;
     result: ClaudePromptReply;
 } | {
+    type: 'CLAUDE_PROMPT_HOST_REQUEST';
+    threadId: string;
+    mountId: string;
+    request: ClaudePromptHostRequest;
+} | {
     type: 'CLAUDE_UI_FOCUS_STATE';
     threadId: string;
     mountId: string;
@@ -6486,6 +6516,7 @@ interface ThreadsContext {
     nativeUiViews: Record<string, {
         threadId: string;
         state: ClaudeUiMountState;
+        promptHostRequest?: ClaudePromptHostRequest;
         focusRevision?: number;
         focus?: ClaudeUiFocusReply;
         prompt?: ClaudePromptReply;
