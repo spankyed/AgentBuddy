@@ -521,3 +521,32 @@ executable overrides, the Node/Electron runtime, arbitrary native I/O or every t
 path. Continue the existing B1/B3 matrix, then B2–B6 and all other active goal requirements. No broad
 gate was repeated; preserved integration failures and final committed-source strict acceptance remain
 open. Other sessions' source/processes and saved work were preserved.
+
+## External esbuild executable selection proof (2026-10-17)
+
+Baseline `c2efeab05`. A disposable compiler fixture depends on the real installed esbuild package and
+calls its actual `transformSync` API from a captured installation. `ESBUILD_BINARY_PATH` selects a
+separate executable wrapper which records its version marker and delegates the service protocol to
+the real native binary. After capture, changing only that wrapper leaves
+`compilerInstallationHash(originalCompiler) === captured.hash`, but the second captured-API execution
+records the changed wrapper. The exact result was:
+
+```json
+{"sameIdentity":true,"before":"ORIGINAL","after":"LIVE","first":"let value=1;","second":"let value=1;"}
+```
+
+The fresh Node/tsx proof completed in 0.498s and removed its private fixture and captured installation.
+It changed no repository source or shared dependency. This proves executable selection escapes the
+captured owner, not that the emitted bytes differed (they deliberately agree), nor that every native
+path is unowned. Installed esbuild `lib/main.js::generateBinPath` reads this environment-selected path;
+the build parent currently forwards the ambient environment unchanged.
+
+Next bounded repair: include the effective external esbuild executable selection in the existing
+compiler generation, own its bytes/mode and pass its captured location to the worker. Reuse the current
+installation lifetime and source-path projection; do not introduce a general subprocess interceptor or
+silently drop the override. Account for relative paths against the actual worker checkout, changes in
+selection between retained builds, copy tampering, missing-path/fallback semantics and awaited cleanup.
+Acceptance must exercise the real esbuild API after the external original changes or disappears,
+unchanged deterministic identity and changed selection/bytes, plus the actual build handoff. Preserve
+default package-native selection. Node/Electron executable ownership and platform/background lifetime
+remain separate B1/B3 requirements; this proof does not close them.

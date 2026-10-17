@@ -250,7 +250,10 @@ input tests, the real native-preload regression, CLI/host types, lint and refres
 The real worker's two builds preserve unchanged sealed output/cache identity (50.02s). Existing twenty
 package-reader cases also pass. See [dependency evidence](../evidence/build-input-snapshot-proof.md#early-declared-dependency-capture-checkpoint-2026-10-17).
 This closes the demonstrated early declared-input gap, not external executable/runtime ownership or
-all transient resolution paths. Next: close those remaining matrix cases, plus B2/B3 lifetimes,
+all transient resolution paths. The next [executable-selection proof](../evidence/build-input-snapshot-proof.md#external-esbuild-executable-selection-proof-2026-10-17)
+demonstrates that a changed external `ESBUILD_BINARY_PATH` executes under unchanged captured compiler
+identity. Repair that specific selection through the existing compiler owner next, then close the
+remaining matrix cases, plus B2/B3 lifetimes,
 then B4–B6 and all-kind acceptance. Asset input/output completeness remains required under B1/B4,
 not a deferred follow-up or another discovery store. All three Phase 6 workstreams remain required. Do not restart implemented endpoint
 or navigation work, or rerun a broad gate to investigate the preserved integration failures.
