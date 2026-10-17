@@ -484,8 +484,15 @@ workspace passes types and all seven harness cases. See
 The corrected complete author half passes in 263s and its app half in 21s, including both browser
 cases, offline database export and no workspace symlinks. Logs:
 `/private/tmp/apack-packaged-consumption-author-full.log` and
-`/private/tmp/apack-packaged-consumption-app.log`. Next: run the previously unexecuted unit pools and
-integration checks on two workers, then complete remaining app/fork and converged acceptance. Do not
+`/private/tmp/apack-packaged-consumption-app.log`. The two-worker host pool completed with 5,323
+passing cases, one failed case and one collection failure. `1f5db11c6` repairs the API composition mock
+and nonexistent docs-index link; all 21 affected cases pass. The pack pool completed with 881 passing
+cases and eight failures in four files: tests inspected lifetime-bound service handles as raw spies or
+expected raw object identity. `df1a937a8` retains the original spies for assertions while executing through
+the guarded services; all 17 affected cases, pack types and focused lint pass. Neither focused repair
+is a single converged pool pass. The previously unexecuted integration pool is now running on two workers
+(`/private/tmp/apack-service-integration-pool.log`); inspect its preserved results before any rerun.
+Next: resolve demonstrated integration failures, then complete remaining app/fork and converged acceptance. Do not
 repeat the accepted tarball producer just to restate its status. No whole-gate pass is claimed from the focused repairs.
 The prior 26 app passes plus focused teardown repair are not a single converged app pass; bundled UI
 app and normal fork restart/restoration retain their planned acceptance. Keep B1/B3 native/platform

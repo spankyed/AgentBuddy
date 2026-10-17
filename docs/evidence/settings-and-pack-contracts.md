@@ -7141,3 +7141,31 @@ The public content guide now uses caller-bound settings targets, separates onboa
 administration, removes nonexistent browser/textStream services, and distinguishes the default action
 runner's accepted view from a pack's generated source facade. No compatibility accessors or new grants
 were added. Final source/consumer/schema/doc and app acceptance still belong to the active goal.
+
+
+## Unit-pool service migration follow-through (2026-10-17)
+
+The standalone host pool ran on two workers in 156.58s: 454 files passed, two failed;
+5,323 collected cases passed and one failed, plus a collection failure. Log:
+`/private/tmp/apack-service-host-unit-pool.log`. The bus transport test's complete app-state mock
+omitted `createAppState`, required by real host composition. A partial mock preserves the actual
+module while retaining its intentional onboarding getter stub. The docs index linked a nonexistent
+`prompts/` directory; that row is removed. Source `1f5db11c6`: all 15 bus cases and six documentation
+cases pass, API test types and focused lint pass. Logs:
+`/private/tmp/apack-bus-composition-mock-fixed.log`,
+`/private/tmp/apack-doc-index-links-fixed.log`,
+`/private/tmp/apack-bus-composition-mock-types.log`.
+
+The standalone pack pool ran on two workers in 83.67s: 116 files passed, four failed, one skipped;
+881 cases passed, eight failed, two skipped. Log: `/private/tmp/apack-service-pack-unit-pool.log`.
+All eight failures were assertions against guarded handles: raw service object identity or Vitest spy
+inspection on a bound function. Source `df1a937a8` retains original spies for inspection while actions
+continue through generated lifetime-bound handles. The harness test proves routing into the test's
+mock and absence of leakage outside that test; it no longer relies on object identity.
+All 17 cases across the four affected files pass in 4.58s; pack Vue/TypeScript checks and focused lint
+pass. Logs: `/private/tmp/apack-pack-guarded-mocks.log` and
+`/private/tmp/apack-pack-guarded-mocks-types.log`. The first focused run caught a shared spy's
+accumulated call count; its setup now explicitly clears that spy between tests.
+No service guards, deadlines or production behavior changed. These focused passes do not replace
+a converged pool or strict checkpoint result. The outstanding integration pool starts on two workers
+against this committed source; its log is `/private/tmp/apack-service-integration-pool.log`.
