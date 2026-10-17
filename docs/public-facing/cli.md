@@ -155,6 +155,7 @@ checks its owner, exact compiled source/dataset membership, written policy and r
 when an incomplete producer sealed the remaining files successfully.
 
 Bundle and gate failures are reported and exit with code 1. `--release` minifies and drops source maps.
+Files under `public/` are copied into the frontend output from the build's captured authored inputs.
 
 Compiler workers inherit Node options from `NODE_OPTIONS`, including ordered `--require` and `--import`
 preloads. Node arguments passed directly to the CLI configure its supervisor; custom export conditions

@@ -232,6 +232,13 @@ through captured byte/directory/metadata reads, preserving permissions and nativ
 behavior. The real input-view regression passes after reproducing live-byte copying; 22 compiler cases,
 SDK/CLI types, lint and package builds pass. The preserved exit-handler case passes unchanged in an
 isolated run; its earlier failure cause remains unclassified. See [media evidence](../evidence/build-input-snapshot-proof.md#captured-media-execution-checkpoint-2026-10-17).
+Native-package acceptance `4c126846f` runs a real captured platform executable and addon after deleting
+their source fixture; all ten installation cases pass. This verifies the existing package owner on the
+current platform, not external binary overrides or Node/Electron runtime ownership. Public-input
+checkpoint `d09a7f447` gives the frontend bundler the existing build owner and projects Vite's public
+directory onto captured authored files, preserving copied permissions and bundle replacement behavior.
+The real Vite regression, 19 adjacent frontend cases, CLI types/lint and package refresh pass. See
+[public-input evidence](../evidence/build-input-snapshot-proof.md#captured-public-directory-checkpoint-2026-10-17).
 Next: close the matrix's remaining native/dependency/frontend input paths and B2/B3 lifetimes,
 then B4–B6 and all-kind acceptance. Asset input/output completeness remains required under B1/B4,
 not a deferred follow-up or another discovery store. All three Phase 6 workstreams remain required. Do not restart implemented endpoint

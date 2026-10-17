@@ -179,8 +179,11 @@ declaration-only `readPackSnapshot`; current installed readers use `readPackBuil
 [B1/B3 matrix](../evidence/build-input-snapshot-proof.md#b1b3-current-compiler-path-matrix-2026-10-17)
 locates current owners rather than treating every unverified path as new implementation. Source
 `129b541de` closes ordinary media-byte consumption through the existing captured reads and preserves
-copy modes/link behavior. Vite/public copying, remaining native/dependency paths and expected copied
-outputs under B4 remain open; the media source checkpoint does not certify full producer coverage.
+copy modes/link behavior. Source `d09a7f447` projects Vite public copying onto the same captured owner,
+preserving file permissions and emitted-bundle replacement. Native package executable/addon acceptance
+`4c126846f` verifies existing capture on the current platform. Remaining Vite module/resource inputs,
+external native overrides/runtime ownership, dependency closure and expected copied outputs under B4
+remain open; these source checkpoints do not certify full producer coverage.
 
 Execute the identified gaps in this order:
 

@@ -363,3 +363,36 @@ captured before startup. Keep the ordinary standalone bundler default and do not
 root yet: the full SFC/resource/resolution handoff is a separate open B1/B2 boundary. Prove public-byte
 consumption with an actual Vite build after live public files change; preserve the final input guard.
 B4 still owns expected copied outputs, which Vite's returned graph omits.
+
+## Captured public directory checkpoint (2026-10-17)
+
+Source `d09a7f447` passes the existing build `CompilationInputs` owner into the frontend bundler, as
+its backend sibling already does. Vite's public directory uses that owner's read-tree projection of
+already-captured authored files. Standalone bundler calls retain their existing Vite defaults. The
+module root remains unchanged: this is public-file consumption, not completion of full Vite capture.
+
+Owned input files are read-only. A bounded generation hook restores captured public-file permission
+modes after Vite's copy and before emitted bundle writes, preserving both original modes despite umask
+and normal replacement of a copied filename by the emitted bundle. Installed Vite's `prepareOutDir`
+precedes `bundle.write`/generation; the real compiler test covers this boundary. Errors from the owned
+projection are mapped through the existing compiler diagnostics. No new filesystem API, asset receipt
+or source scanner is introduced.
+
+The actual Vite regression captures a public file, changes its live bytes, and bundles a real fixture
+SFC with the common input owner. Before repair the output contains `LIVE`; afterward it contains
+`CAPTURED`. It also verifies copied mode `0666`, replacement of a public `fe.js` placeholder by the
+bundle, and continued final refusal of changed live inputs.
+
+- Reproducer: `/private/tmp/apack-public-input-before.log` (expected `CAPTURED`, got `LIVE`).
+- Final actual Vite case passes in 10.22s: `/private/tmp/apack-public-input-final.log`.
+- All 19 adjacent frontend unit cases pass in 2.67s, preserving standalone bundling, shared externals,
+  Tailwind refusal and UI theme checks: `/private/tmp/apack-public-input-unit.log`.
+- CLI TypeScript, lint and local CLI package refresh pass:
+  `/private/tmp/apack-public-input-{types,lint,packages}.log`.
+
+The focused run emits the existing Tailwind injection sourcemap warning; no unrelated sourcemap change
+or broad watch/integration rerun was made. Vite's returned output graph still omits public copies: B4
+must account for their expected bytes alongside emitted CSS/lazy/worker output. Full frontend
+source/resource ownership, external native overrides/runtime ownership, dependency closure, B2/B3
+lifetimes, B4–B6, all-kind and all three Phase 6 workstreams remain required. The final committed-source
+strict `--all` gate remains open.
