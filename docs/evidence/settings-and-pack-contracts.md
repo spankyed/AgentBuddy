@@ -6723,3 +6723,53 @@ same selection rather than introducing another runtime policy. No public manifes
 just to run the experiment. A2 must implement it in the common declaration pipeline; A3/A4 must carry
 it through production bindings, generated types, action consumers, subscriptions and inference handles.
 The prototype does not close those acceptance cases, B1/B3/B6 or final strict validation.
+
+### Consumed service declaration foundation (2026-10-17)
+
+Source checkpoint: `1a0de64fb`, following A1 decision/evidence commit `71f76a41b`.
+
+Authored and native declarations now accept `consumes.services` as unique qualified refs. The shared
+module owns host names/baseline, direct feature/pack service ownership and selection validation.
+Codegen uses that projection for imports, collision checks and consumed-provider validation; an
+intersected dependency facade cannot manufacture ownership of a service its manifest does not declare.
+Host-name collision checks reuse the canonical SDK inventory. Selection refuses two providers that
+would map to the same service property, naming the caller, key and both providers. Dependency
+membership uses owned keys, including for a provider named constructor.
+
+The JSON Schema lists known host refs, excludes unknown host names, explains provider ownership and
+reports duplicates. PackConsumption is a named readonly data contract in the generated reports.
+Contextual checks skip already-invalid child syntax: Zod may invoke a parent refinement after a child
+regex failure, and malformed refs now yield validation diagnostics rather than escaping safeParse.
+The snapshot field inventory deliberately includes the new optional field; no format/version metadata
+was changed.
+
+Evidence:
+
+- All 251 SDK generator/declaration cases pass in 23.78s:
+  `/private/tmp/apack-consumption-generators-final.log`. This covers every generator entry path because
+  generation now always validates service selection, plus native grammar and editor-schema assistance.
+- All 21 host catalog cases pass in 1.51s: `/private/tmp/apack-consumption-catalog.log`. Requests survive
+  native/source admission and disabled sealed-build inspection, with poisoned runtime files untouched;
+  a changed source request with an old declaration identity refuses atomically.
+- Existing 49 host registration cases passed during the initial focused run, preserving collisions:
+  `/private/tmp/apack-consumption-declarations-tests.log`.
+- Final SDK/host/CLI types, correctness lint, package refresh and schema check pass:
+  `/private/tmp/apack-consumption-{sdk,host,cli}-types-final.log`,
+  `/private/tmp/apack-consumption-lint-final.log`, `/private/tmp/apack-consumption-packages-final.log`,
+  `/private/tmp/apack-consumption-schema-check.log`.
+- API reports regenerated and reviewed: `/private/tmp/apack-consumption-api-update-final.log`.
+  TypeScript also reordered inferred Zod type members. A temporary AST audit compares all 247
+  pre-existing declarations with `71f76a41b`, ignoring type-member/union order and the intended optional
+  consumes additions: no other signature changes. It lists exactly the nine intended new framework
+  declarations. `/private/tmp/apack-consumption-api-review.mjs`,
+  `/private/tmp/apack-consumption-api-review.log`. Report line endings retain the repository convention;
+  no production report-normalization machinery was added.
+
+This closes the declaration/codegen slice of A2, not A2/A3 overall. The common catalog already retains
+the new facts; next use them to refuse missing/disabled required APIs before importing a runtime and
+at admission, and align read-only validation/inspection diagnostics. Registration after module import
+is too late for that requirement. Then implement A3's filtered generated/runtime facades with caller
+and provider lifetime binding. Existing generated Services and runtime access remain broad at this
+checkpoint. Preserve harness mocks, actual action attribution, settings policy and EARS behavior.
+Finish A4/A5 migration, external acceptance, the outstanding B1/B3/B6 and other phase requirements,
+then the final committed-source strict --all. No broad chain or default-pack rebuild was repeated here.

@@ -142,8 +142,9 @@ entries first, which is why it is the one pack authors call. The code:
 Pack service consumption is declared as qualified refs in `consumes.services`.
 `framework/service-consumption.ts` owns the host baseline/name inventory, direct provided-service
 projection and selection validation used by codegen. Provider declarations are read without loading
-source targets. Production runtime filtering and matching type projection are the next A3 slice;
-this metadata foundation does not yet replace the ambient runtime union.
+source targets. A2 still owns catalog-based pre-import admission and inspection; A3 owns production
+runtime filtering and matching type projection. This metadata foundation does not yet replace the
+ambient runtime union.
 
 ## Registered packs
 

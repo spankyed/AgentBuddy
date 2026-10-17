@@ -1,7 +1,7 @@
 # Declare the APIs a pack consumes
 
-Status: A1 started using the implemented settings/catalog foundation. Remaining discovery/build ownership
-work stays active in the [owning goal](../goals/goal-settings-and-pack-contracts.md); it blocks only
+Status: A1 audit/prototype and selection are recorded; A2 declaration/codegen foundation is implemented
+in `1a0de64fb`. Remaining discovery/build ownership work stays active in the [owning goal](../goals/goal-settings-and-pack-contracts.md); it blocks only
 the slices that consume its missing guarantees. This is an API dependency contract, not a security sandbox.
 
 ## Problem
@@ -9,7 +9,7 @@ the slices that consume its missing guarantees. This is an API dependency contra
 The manifest declares provided services, but consumption of host and dependency APIs is mostly implicit.
 Generated service types alone do not restrict runtime objects. The 2026-10-08 survey found a per-pack
 facade casting an ambient SDK object, direct SDK service imports, and `permissions` used as display
-metadata. Re-audit those paths against completed naming and discovery before choosing the declaration syntax.
+metadata. The A1 audit/prototype below confirms those paths and records the selected contract.
 
 Authors need an accurate answer to which supported APIs their pack requires, actionable failures when a
 provider is unavailable, and tests that can supply just those dependencies. This does not establish what
@@ -23,15 +23,14 @@ arbitrary JavaScript can do in the host process.
   a caller-supplied pack ID or mistake a type cast for runtime filtering.
 - Inventory host services, pack/dependency services, repositories, EARS queries, content appliers and
   ambient imports separately. A service-name list cannot describe every route to stored data or Node APIs.
-- Keep provided-service declarations distinct from consumed APIs. Choose the consumption field and
-  granularity from the inventory; do not ship the old per-feature `capabilities` sketch by default.
-  The existing per-pack facade favors an initial pack-level contract. A per-feature contract requires
-  genuine feature-bound facades and execution context, not a widened pack union presented as isolation.
+- Keep provided-service declarations distinct from consumed APIs. Use pack-level qualified refs in
+  `consumes.services`, as selected in A1; do not restore the old per-feature `capabilities` sketch.
+  A per-feature contract requires genuine feature-bound facades and execution context, not a widened pack union presented as isolation.
 - A declared dependency does not automatically mean every API it provides is consumed. Required API
   availability is validated before activation. Optional integrations wait for a concrete consumer.
 
 Settings retain [shared dependency read/write/reset by default](settings-architecture.md), with opt-in
-owner-only mutation. Declaring consumption of settings and satisfying the selected target’s mutation
+owner-only mutation. Baseline settings availability and satisfying the selected target’s mutation
 policy are separate checks; neither replaces the other. Host app settings follow the host SDK contract.
 
 The settings ownership review found a supported administration path that the inventory must resolve:
@@ -67,15 +66,14 @@ service names. The runtime/type mismatch is instead in SDK `resolveServices`, `_
 and codegen's `generateServices`: the latter knows dependencies, while the runtime still consults a
 global union. An administration-only fix would leave that larger mismatch intact.
 
-Before choosing syntax, prototype these cases together: onboarding without administration; Database
-with administration; one dependency service with another installed but undeclared provider; a retained
-method after unload/re-registration; and content actions receiving the same accepted facade. Use a
-pack-level declaration first unless the prototype demonstrates a need for genuine feature-local
-facades. These are acceptance cases, not a new settings assembly or a blanket sandbox promise.
+A1's bounded prototype exercised onboarding without administration, Database with administration,
+selected versus unrelated providers, retained methods after replacement/rebind and the actual action
+runner. Preserve those cases in production acceptance. The selected contract is pack-level; no
+feature-local isolation or general sandbox is introduced.
 
 1. Audit actual consumption in default-setup, fixtures, scaffolds and supported local/URL pack installs.
    Record which APIs are explicit, which are an intentional SDK baseline, and which cannot be mediated
-   by this facade. Settle pack/feature granularity and syntax with a representative generated prototype.
+   by this facade. A1 below records that audit and the selected prototype; A4/A5 own the real authoring/runtime migration.
 2. Add consumption metadata to the existing manifest/descriptor pipeline. Reuse shared diagnostics for
    unknown API names, unavailable required providers and dependency ownership errors.
 3. Construct caller-bound runtime facades from that declaration; generate types from the same facts.
@@ -96,18 +94,16 @@ on a speculative sandbox, or claim they close direct Node or ambient runtime acc
 
 ### First implementation slice: onboarding versus data administration
 
-The current-code audit confirms that only the three onboarding action sources need completion state;
-Database consumes reset/export/import/backup inspection. Split the supported interfaces before selecting
-consumption syntax: `services.onboarding.isComplete()` / `.complete()` represent host lifecycle state,
-while `services.appData` retains whole-data administration. The onboarding service belongs to the host
-and uses its owning engine's existing AppState row, not a pack feature or preference group. Migrate the
-in-memory host, harness, authored actions, fixtures and public reports with the split; do not keep old
-methods on appData. This establishes API granularity, not permission enforcement. A1 still needs the
-combined dependency/lifetime/action prototype before its consumption declaration is settled.
+Source `b39c189b8` separates the three onboarding action sources' completion API from Database's
+reset/export/import/backup inspection API. `services.onboarding.isComplete()` / `.complete()` represent
+host lifecycle state, while `services.appData` retains whole-data administration. Onboarding belongs to
+the host and uses its owning engine's existing AppState row, not a pack feature or preference group.
+The in-memory host, harness, authored actions, fixtures and public reports are migrated; old appData
+methods are removed. This establishes API granularity, not permission enforcement.
 
-Validate the owning-engine boundary, onboarding reset/restore behavior, and the generated service
-surface using existing focused suites. Keep the full chain for the converged consumption checkpoint;
-this slice must not trigger another external authoring/release diagnostic loop.
+Owning-engine, reset/restore and generated-service acceptance is recorded in the owning goal's
+onboarding evidence. Retain it for final validation; do not repeat that extraction or rebuild the pack
+just to choose consumption syntax. The subsequent combined A1 prototype records that choice below.
 
 ### A1 prototype decisions (2026-10-17)
 
@@ -178,18 +174,24 @@ checks. Preserve current shared-settings policy and the documented query model.
 | User-authored actions | `runActionCode`, ActionService and brain's `getAppServices` | Brain already passes generated services; ActionService still passes the ambient union. Both must use the executing pack's accepted facade with attributed logger/emitter. |
 | EARS/repositories and database console | Generated `ears.ts`/`repository.ts`, SDK repositories, Database query/transaction helpers | Existing engine/declared repository ownership remains. No new entity grants or confinement claims. |
 | Content appliers/writers | Generated content runtime and SDK `content/writers.ts`, host apply/registry | Existing entity/writer ownership remains. A4 validates targets through normalized declarations/dependencies; applier execution is not a service grant. |
+| Fixtures, scaffolds and install paths | External-pack repository actions use the baseline; its harness-isolation spec needs host/inference, and shared-engine.spec.ts still imports ambient services. CLI action/service templates use generated Services or provide their own object. Local/URL/GitHub installs converge on verified build/staging before runtime loading. | Migrate those fixtures, preserve mockService behavior through the accepted selection, keep baseline-only scaffolds minimal, and apply the same pre-import host checks regardless of origin. |
 | Frontend ports | SDK `fe/settings.ts`, `fe/secrets-client.ts` over the bound window host | Preserve their existing owner/policy and window lifetime. Backend service refs do not expose a new frontend transport. |
 | Direct Node/package access | Default-setup code/library services and external authored JavaScript | Outside this API facade's mediation; security isolation remains separate. |
 
-Next A2 checkpoint: canonical host service names/baseline, shared consumption grammar and normalized
-provider/service projection, authored/native declarations, dependency validation and schema assistance.
+A2 foundation `1a0de64fb` implements canonical host names/baseline, shared authored/native grammar,
+one direct service-ownership/selection projection, build-time provider checks and schema assistance.
+Catalog tests retain requests in native/source/disabled installed data without activation and reject
+a changed request with stale source identity. Next finish A2: resolve required services through the
+common catalog before importing a candidate runtime, recheck at admission, and expose the same
+diagnostics through read-only validation/inspection. Missing/disabled requirements must refuse before
+any poisoned runtime module executes; waiting until registerPack after import is insufficient.
 Then implement host-owned lifetime/filtering and generated types together in A3, before migrating all
 consumers and completing runtime/docs acceptance. Do not add a runtime `consumes` inventory when the
 host already holds the accepted declaration.
 
 Rechecked the service proxy, `_createPackServices`, SDK `generateServices` and Database consumer on
 2026-10-16. The ambient runtime union, generated dependency intersections and settings-only binding
-remain present; the dated inventory above is a starting point, not a completed current-code audit.
+remain present. A1 confirms those gaps; preserve them as A3 work rather than repeat the baseline audit.
 Use the active goal's execution order and existing catalog/runtime owners. These checkpoints partition
 this workstream; they do not introduce another goal or require a new dependency container.
 
@@ -203,9 +205,9 @@ this workstream; they do not introduce another goal or require a new dependency 
 
 A4's content-target validation may land independently when its existing declaration inputs are ready.
 Do not restart it if inspection finds it already implemented. A2/A3 depend on the settled A1 selection;
-prototype names are not public contract until that decision is recorded.
+the A1 qualified-ref contract is settled. Do not repeat the prototype to choose syntax.
 
-### Decisions A1 must settle
+### Preserve the A1 decisions through implementation
 
 Record each supported route's producer, real consumer, current entry point, provider identity,
 accepted caller/lifetime owner and disposition: intentional baseline, explicitly consumed API, internal
@@ -213,7 +215,7 @@ host operation, or a documented route outside service-facade mediation. Cover ge
 direct supported SDK imports, repositories/EARS, content appliers and user-authored actions. Each row
 needs a concrete migration or existing-proof link; lack of a failing test does not close the inventory.
 
-Select the smallest useful API groups from actual consumers. Start at pack granularity; feature-local
+Use the selected API groups and pack granularity; feature-local
 consumption requires an actual feature-bound execution/facade model. At pack granularity, separating
 onboarding from administration does not isolate two features of a pack that consumes both. It gives
 packs that only need onboarding a smaller supported interface. Do not describe that as per-feature
