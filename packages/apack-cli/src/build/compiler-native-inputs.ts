@@ -1,6 +1,7 @@
 import path from 'node:path';
 import { isBuiltin } from 'node:module';
 import ts from 'typescript';
+import { assertCapturedMachOLibraries } from './compiler-native-libraries.ts';
 import { compilerGlobDirectories } from './compiler-source-globs.ts';
 import { readPackageInputs, type PackageInputs } from '@apackdev/host/build/package-inputs';
 import type { readCompilerModuleInputs } from './compiler-module-inputs.ts';
@@ -216,8 +217,23 @@ export function createNativeInputReader(view: NativeInputView, initialPackages: 
           if (path.basename(file.path) === 'tsconfig.json') configuration(file.source);
         }
       }
-      request(specifier, importer);
-      includePending();
+      try {
+        request(specifier, importer);
+        // Namespace candidates may include unused native entrypoints. Check selected absolute images,
+        // including repeated loads whose resolution namespace is already admitted.
+        if (process.platform === 'darwin' && path.isAbsolute(specifier) && specifier.endsWith('.node')) {
+          assertCapturedMachOLibraries(specifier, scope(path.dirname(specifier)).packageRoot ?? path.dirname(specifier), {
+            arch: process.arch,
+            realpath: file => view.fileSystem.realpath(file),
+            read(file) {
+              const bytes = view.readBytes(file);
+              if (bytes !== undefined) pending.files.push(view.captureFile(file, bytes));
+              location(file, 'file');
+              return bytes;
+            },
+          });
+        }
+      } finally { includePending(); }
     },
     projectMetadata(file: string, bytes: Buffer, readPath: (file: string) => string): Buffer {
       const config = configFiles.has(file), pkg = path.basename(file) === 'package.json';

@@ -142,7 +142,11 @@ exercise the real bootstrap and runner.
 
 The macOS native-library regression compiles a small addon with `clang` and the selected Node
 installation's `include/node` headers. These are developer test requirements, not CLI runtime
-dependencies. It verifies package-relative linked libraries through the actual OS loader.
+dependencies. It verifies package-relative loading from captured bytes and refuses direct/transitive
+absolute-library escapes before addon initialization. The binary reader is dependency-free; it does not
+run `otool` or require developer tools at CLI runtime. The approved native support boundary is in
+`docs/reference/adr/native-compiler-input-boundary.md`; startup/thread/Vite and other-platform closure
+remain separate from this module-reader checkpoint.
 
 `@apackdev/host/build/compiler-inputs` owns metadata, bytes, physical bindings and directory/glob results
 for one compiler frame. Its `createPackCompilerInputView` captures authored and declared npm dependency bytes,
