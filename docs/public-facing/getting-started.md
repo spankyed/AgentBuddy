@@ -147,15 +147,15 @@ apack pack clean      # Remove dist/, .apack/, __generated__/
 ## Key concepts
 
 - **Manifest (`apack.json`)** — declares everything: features, steps, services, content, entities. See [Manifest Reference](manifest.md).
-- **Generated files (`__generated__/`)** — auto-generated from the manifest. Never edit these. They are regenerated on every build. The generated `pack-entry.ts` and `pack-entry-fe.ts` are your pack's registrations: everything it contributes (systems, services, repositories, steps, appliers, DSL types, …) reaches the app through them, never by writing to a registry when a module is imported.
+- **Generated files (`__generated__/`)** — auto-generated from the manifest. Never edit these. The build regenerates them when their declared inputs change. `pack-entry.ts` and `pack-entry-fe.ts` supply executable bindings for systems, services, repositories, steps and views. The sealed build snapshot supplies discoverable declarations, including DSL definitions, without activating those bindings. Modules never register contributions as an import side effect.
 - **Host dependencies** — packs share `vue`, `xstate`, tiptap, `lucide-vue-next` and other libraries, the SDK modules and `@apackdev/ui` with the host app. The build pipeline leaves those imports external and the app's document carries an import map naming its own copy of each, so your pack gets the app's instance.
 - **Content** — actions, prompts, flows and entity rows are compiled at build time and written when the pack loads. See [Content](content.md) for what action code may import.
 - **`pack://` protocol** — the host loads your pack's FE bundle at runtime via `pack://<id>/builds/<revision>/runtime/fe.js`. This is handled automatically.
 
 ## Constraints
 
-- Some manifest fields are for built-in packs only: validation rejects `content.sources.settings` in an external pack, and the app ignores an external pack's `features.<id>.references`.
-- Entity types, relation kinds and service keys must be unique across all installed packs, or the pack fails to load. Service keys also can't be the host's (`logger`, `emitter`, `repository`, `appData`, `traceStore`, `inference`, `secrets`).
+- External packs declare feature preferences in `features.<id>.settings`, pack preferences in `extensions.settings`, and references in `features.<id>.references`. Host preferences belong to the host; see [settings declarations](manifest.md#feature-settings).
+- Entity types, relation kinds and service keys must be unique across all installed packs, or the pack fails to load. Service keys also can't be the host's (`logger`, `emitter`, `repository`, `settings`, `onboarding`, `appData`, `traceStore`, `inference`, `secrets`, `filesystem`).
 - The app must be restarted after installing or uninstalling a pack.
 
 ## Next steps

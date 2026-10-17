@@ -159,12 +159,14 @@ it('reaches its system and hears back', async () => {
 
 | Member | What it does |
 |---|---|
-| `startShell({ plugins, defaultPlugin?, designations? })` | Starts the shell with `plugins` (by feature id: each one's `state`, and anything else of its definition the test needs) registered as your pack's, opens `defaultPlugin` (the first listed when unset), and binds the frontend host, so `openPlugin`, `openPlugin` and `useShell()` reach it. Its client is the harness's bus: what plugins send reaches a `startApp` app's systems, and what those systems send plugins reaches your plugins' actors. It resolves once the shell is connected |
+| `startShell({ plugins, defaultPlugin?, designations? })` | Starts the shell with `plugins` (by feature id: each one's `state`, and anything else of its definition the test needs) registered as your pack's, opens `defaultPlugin` (the first listed when unset), and binds the frontend host, so `openPlugin`, `openEntity` and `useShell()` reach it. Its client is the harness's bus: what plugins send reaches a `startApp` app's systems, and what those systems send plugins reaches your plugins' actors. It resolves once the shell is connected |
 | `opened()` | The ref of the plugin open |
 | `plugin(name)` | A plugin's running actor, named as your pack names it |
 | `notices` | What the shell told the user went wrong (a plugin it couldn't open, say), in order |
 | `actor` | The shell's actor |
 | `stop()` | Stops the shell and unbinds the frontend host; the harness stops shells after each test |
+
+`startShell()` verifies the built pack once per test-file setup and reuses its captured entity destinations. Missing builds or declarations that differ from the manifest fail explicitly; run `apack pack build` before shell tests.
 
 Start one shell per test, in place of `startFeTestRuntime`: it binds the frontend host itself, and refuses when one is already bound. Your systems' lookups (roles, steps) still see everything your pack registered while it runs. `useShell()` runs in a component's setup or an effect scope (`effectScope().run(() => useShell())` in a test).
 

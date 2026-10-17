@@ -503,7 +503,11 @@ The bounded cost diagnostic is complete: `858120200` removes duplicate namespace
 actual captured-resolution cases pass, but whole-build/aggregate capacity is not claimed improved.
 `ac964c348` makes pool output live and integration fail at its first failure, retaining verdict and
 coverage rules. See [cost and failure evidence](../evidence/settings-and-pack-contracts.md#bounded-compiler-cost-and-early-failure-checkpoint-2026-10-17).
-Next: close remaining compiler native/platform and integration acceptance, then the final requirement audit and strict gate. Do not
+The [public contract audit](../evidence/settings-and-pack-contracts.md#public-contract-documentation-audit-2026-10-17)
+aligns current default selection, static versus executable contributions, caller-bound services,
+migrations, settings and shell-test guidance with inspected implementation. Manifest decision 12 now
+records catalog-based selection as the explicit replacement for registration-order selection.
+Next: close remaining compiler native/platform and integration acceptance, then finish the final requirement audit and strict gate. Do not
 repeat the accepted tarball producer just to restate its status. No whole-gate pass is claimed from the focused repairs.
 After the captured pack-test edits, refreshed default-setup, both external fixtures and the fork through
 the real authoring contract. The complete external app command now passes all 27 fixture cases, the

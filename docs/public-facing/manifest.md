@@ -164,14 +164,16 @@ unrepresentable.
 | `repositories` | `Record<string, string>` | no | Repository objects. Keys are identifiers, the names on `repository`; values are `"path#exportName"`. Carried by the generated pack entry's registration (the app registers them with its engine) and typed on `repository` from `#generated/repository`. A name is the app's, not the feature's: declaring one twice in a pack, or one a dependency declares, fails the build, since the app refuses to register two packs that share a repository name |
 | `description` | `string` | yes | Nonblank feature purpose, independent of plugin display labels |
 | `types` | `string` | no | Pack-root-relative TypeScript module re-exported through `#generated/types`; optional `.ts` or directory `index.ts` resolution. No undeclared files are inferred. |
-| `references` | `object` | no | Keyed reference types and categories, with explicit navigation and reactive item-provider exports |
+| `references` | `object` | no | Keyed reference identities and presentation metadata, with reactive item-provider exports; entity navigation uses declared plugin destinations |
 
 A feature can have just a system (backend-only), just a plugin (frontend-only), or both.
 
-A pack may claim at most one default plugin. Across accepted pack frontends, the first registered
-claim wins. Replacing that pack preserves its priority; removing it promotes the next claim. A pack
-registered again joins the end of that order. A designation is a separately owned role, not a priority
-claim, so duplicate roles across packs are errors.
+A pack may claim at most one default plugin. The host selects from enabled declarations before
+loading frontends: native claims precede installed claims, then fully qualified feature refs sort
+lexically using the English locale. Authoring-source previews do not participate. Frontend delivery
+order cannot change the winner; opening waits for its matching accepted binding and actor. A saved
+selection, popout target or explicit navigation takes precedence over this startup default.
+A designation is a separately owned role, so duplicate roles across packs are errors.
 
 ### Feature settings
 

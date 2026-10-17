@@ -7448,3 +7448,27 @@ The bounded cost diagnostic is finished; no further profiling loop or broad diag
 Native external-library support, Windows ownership/runner access, Linux acceptance, aggregate
 integration convergence and final strict acceptance remain open. The later compiler source change
 also belongs to final producer/app convergence.
+
+## Public contract documentation audit (2026-10-17)
+
+Reviewed current plugin selection, generated entry outputs, service consumption, startup, migration
+scaffolding and shell harness code against the public guides. Corrected stale registration-order
+default selection, runtime DSL registration, external reference restrictions, administrative versus
+caller-bound service access, onboarding ownership, reset ordering, migration sidecar examples and
+settings delivery status. The generated-output guide now includes settings, runtime service binding,
+paths and static destination/event metadata; shell guidance describes verified build reuse.
+
+Manifest decision 12 explicitly records `69860e4be` as a better replacement: catalog selection before
+frontend loading removes delivery-order races without dropping per-plugin default declarations or
+uniqueness. The dated M4 paragraph remains historical and names its successor.
+
+Evidence inspected: `apack-host/src/fe/plugin-selection.ts`, `apack-host/src/packs/runtime/start.ts`,
+`apack-sdk/src/framework/service-consumption.ts`, `apack-sdk/src/build/generate-entries.ts`,
+`apack-cli/src/commands/add/migration.ts`, `api/src/runtime/index.ts` and
+`apack-testing/src/harness.ts` (all under `packages/`). This checkpoint changes documentation only;
+JSON examples parse, added relative links resolve and whitespace checks pass. No broad builds or
+suites were run for prose. Existing runtime evidence is not claimed rerun on this checkpoint.
+
+Native external-library capture, Windows descendant ownership/native runner, Linux acceptance,
+integration convergence and final committed strict acceptance remain open. This audit closes the
+identified documentation mismatches, not the full goal or its final acceptance register.

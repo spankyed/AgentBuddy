@@ -286,7 +286,15 @@ The pack test harness uses the same bridge with the pack's own SDK instance.
 
 ## Host services
 
-The SDK reaches the running app through one typed port, `HostRuntime` (`@apackdev/sdk/runtime`), bound once per process with `bindHost`: the app's event bus (`transport.rootEvents`), its EARS engine, the registered packs, the app version, and the five services packs call that the app implements: `appData` (reset, backup export/import, onboarding), `traceStore` (the volatile trace store), `inference` (model calls), `secrets` (API key metadata) and `filesystem` (files and folders on disk). Their contracts live in `@apackdev/sdk/services`; the implementations live in `@apackdev/host/services`, whose `createHostRuntime(...)` assembles the runtime. `openAppStore()` in `packages/api/src/setup/backend.ts`, which `setupBackend()` calls first, opens the LMDB store and binds that runtime over it. `appData.reset()` resets the whole app as a fresh boot leaves it: it empties the stores and keys, then runs each pack's `onInit` and boot apply, then the app migrations.
+The SDK reaches the running app through one typed port, `HostRuntime` (`@apackdev/sdk/runtime`),
+bound once per process with `bindHost`. It supplies the event transport, EARS engine, registered packs,
+app version and host service implementations. `createHostRuntime(...)` in `@apackdev/host/services`
+assembles it; `setupBackend()` in `packages/api/src/runtime/index.ts` opens and binds the app store.
+Packs receive their accepted service selection rather than this internal port: logger, emitter,
+repository and caller-bound settings are implicit; onboarding, app data, trace store, inference,
+secrets and filesystem require `consumes.services` declarations. Onboarding is separate from app data.
+Reset clears stored data and keys, then runs `onInit`, app-line migrations, pack-line migrations and
+content application in dependency order, as startup does. Failed app-line migrations stop later stages.
 
 Sends, logging and error reports are SDK code over the bound bus: `sendToSystem` emits an incoming event, `broadcastToPlugin` (and `services.emitter.broadcastToPlugin`) goes through the bus actor, which drops it until a client connects, like a system's `emit`, and `createLogger` emits log events, which the API prints once and streams to the logs plugin (with nothing bound, as in the CLI, a logger writes to the console). In the renderer, `bindFeHost` binds the application actor, the secrets client behind `secretsClient` (the Settings → Secrets procedures) and a transport that sends to systems over the API client. Using the port with nothing bound throws, naming `bindHost` or `bindFeHost`.
 
@@ -318,29 +326,33 @@ The policy is `appPartitionPolicy()` (`@apackdev/host/database`), a constant ove
 
 - **Export** (`exportBackup(targetPath, name?, databases?)`): copies the chosen databases (`lmdb`, `volatileLmdb`; default `lmdb`) into `<targetPath>/<name>` (default `apack-backup-<timestamp>`), with a `metadata.json` and, when `lmdb` is included, `media/`.
 - **Import** (`importBackup(path)`): requires `metadata.json`; restores only databases the app has. It copies the current files aside, closes persistence, replaces the files and media, reopens LMDB and reloads memory. On failure the previous files are put back and reloaded.
-- **Reset** (`reset()`): clears the engine's memory, deletes both LMDB databases and reopens them, clears the stored API keys, then runs each pack's `onInit` and boot apply and the app migrations, leaving the app as a fresh boot does.
+- **Reset** (`reset()`): clears the engine's memory, deletes both LMDB databases and reopens them, clears the stored API keys, then runs `onInit`, app-line migrations, pack-line migrations and content application in dependency order, leaving the app as a fresh boot does.
 
 ## Generated files
 
-`generate-entries` reads `apack.json` and produces up to 18 files in `src/__generated__/`, plus files per dependency. These are regenerated on every build — never edit them.
+`generate-entries` reads `apack.json` and produces modules and metadata in `src/__generated__/`, including files per dependency. Builds regenerate these when their declared inputs change; never edit them. The main outputs are listed below; some exist only when their contribution is declared.
 
 | File | Contents |
 |---|---|
 | `pack-entry.ts` | BE registration: systems, services, repositories, steps, artifacts, blocks, EARS, lifecycle hooks, migrations, content writers, appliers, commands, features |
-| `pack-entry-fe.ts` | FE registration: plugins keyed by feature (the host registers each at its address), the default plugin and designations by feature, step/artifact/block FE, tiptap, app extensions, DSL types |
+| `pack-entry-fe.ts` | FE registration: plugins keyed by feature (the host registers each at its address), the default plugin and designations by feature, step/artifact/block FE, settings forms, tiptap and app extensions. DSL definitions are discoverable snapshot data |
 | `ears.ts` | Typed EARS namespace (Entity, RelKind constants + types), `PackShapes`, and the typed `qx`/`find*`/`createEntity` facade |
 | `ref.ts` | `ref(name)`: the ref (`<packId>/<featureId>`) a name in this pack's code stands for, its own features by id and any other by ref, bound to the pack so its code never passes its own pack id |
 | `fe.ts` | `openPlugin(name, event?)`, taking the names pack code writes, and the `PluginName` type, which lists exactly those names (the pack's own plugins by feature id, its dependencies' by `<packId>/<featureId>`). Only packs with plugins get it |
 | `system-specs.ts` | Type-only: `specs`, the events each system receives and sends, keyed by feature id, read from its entry's spec. `events.ts` imports it; only packs with systems get it |
 | `events.ts` | `SendablePluginEvents` (plugin ID -> the events it receives: its own feature's system's, plus the inbox that plugin's `Contract` declares), `PackSystemEvents`, and the typed `broadcastToPlugin` (backend, every window), `sendToPlugin` (renderer, this window) and `sendToSystem` |
 | `types.ts` | Type barrel: each feature's `types` and step node types |
+| `entity-destinations.json` / `event-contracts.json` | Build-checked entity destinations and event contracts, readable without executing pack modules |
+| `settings.ts` / `settings-fe.ts` | Typed, owner-bound settings handles and frontend settings binding |
+| `paths.ts` | `getDataDirPath(name)` for a directory in this pack's data namespace |
+| `runtime-services.ts` | Shared runtime service binding used by the generated facade and registration |
 | `services.ts` | Service aggregation: imports each service object its manifest entry names (`"path#exportName"`), exports `Services`/`Z`/`EntityId` and the host-selected `services` facade and `servicesForAction(label)` factory. `Services` types `services.emitter` as `PackEmitter`, with this pack's plugin and system events |
 | `repository.ts` | `repository`, typed with the repositories declared in `features.<id>.repositories` and dependencies' |
 | `repositories.ts` | This pack's repositories by name, which `pack-entry.ts` puts in the registration (the host registers them with the app's engine) |
 | `pack-types.ts` | The facade types `apack pack build` bundles into `dist/types/pack-types.d.ts` for dependents |
 | `deps/<id>.d.ts` | Each dependency's facade types, from its snapshot. Its header names the version (`// <id>@<version> facade types`); `apack pack build` warns when the dependency it builds with is another version |
 | `deps/<id>.flow-helpers.js`, `.d.ts` | Each dependency's flow helpers module and declarations, from its snapshot |
-| `references.ts` | Reference type aggregation: which things are linkable from an editor |
+| `references.ts` | Executable reference provider and icon bindings; identities and presentation metadata remain discoverable catalog data |
 | `appliers.ts` | `appliers`, one per content key, which `pack-entry.ts` puts in the registration, and the compiled data path accessors (`setCompiledDir`, `getCompiledDir`) |
 | `content-runtime.ts` | The pack's content runtime (entity types, relation kinds, repositories, content writers). The pack's tests import it; `apack pack build` bundles it into `dist/build/content-runtime.mjs` for dependents' tests |
 | `flow-helpers.ts` | Typed DSL helpers for each step definition, with dependencies' |
@@ -373,8 +385,8 @@ Vue SFCs (`.vue` files) are compiled automatically — no extra build step neede
 | Steps, artifacts, blocks | Yes | Extension points |
 | Services | Yes | Stateless modules |
 | EARS entities/relations | Yes | With collision detection |
-| Migrations | Yes | Targeted at the pack's own version, run at boot |
-| `content.sources.settings` | No | Feature defaults go in `features.<id>.settings` |
+| Migrations | Yes | Explicit pack/app version lines, run during startup |
+| Settings and references | Yes | Feature settings/references and pack-wide settings use the same declarations as shipped packs; app preferences belong to the host |
 
 ## Build-time dependency resolution
 

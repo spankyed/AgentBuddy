@@ -111,17 +111,17 @@ authority after rebind. Actions access the resulting view via their `services` p
 
 ### Host services
 
-`services` holds the host services listed below. The SDK implements three itself, over the running app: `logger` and `emitter` over the app's event bus, and `repository` from the app's EARS engine. The app implements `appData`, `onboarding`, `settings`, `traceStore`, `inference`, `secrets` and `filesystem` (operations on lifecycle state, preferences, stored data, keys and files); their contracts are types in `@apackdev/sdk/services`. `services.inference` and `services.repository` are covered below:
+Every pack receives `logger`, `emitter`, `repository` and caller-bound `settings`, plus its own services. The six additional host APIs—`onboarding`, `appData`, `traceStore`, `inference`, `secrets` and `filesystem`—require explicit `host/<service>` entries in `consumes.services`. Settings access remains subject to the target's access policy; packs never receive the host's administrative settings operations. Contracts live in `@apackdev/sdk/services`. The table describes these APIs; availability follows the pack's declared selection. Inference and repositories are covered further below:
 
 | Service | Methods |
 |---|---|
-| `services.appData` | `reset()` resets the whole app as a fresh boot leaves it: deletes all stored data and API keys, then runs each pack's `onInit` and boot apply and the app's migrations. `exportBackup(targetPath, name?, databases?)` copies databases (and media) into a new backup directory. `importBackup(path)` replaces stored data with a backup and reloads memory from it, restoring the previous data on failure. `readBackupSummary(path)` reads a backup's metadata, or `null`. |
+| `services.appData` | `reset()` resets the whole app as a fresh boot leaves it: deletes all stored data and API keys, then runs `onInit`, app-line migrations, pack-line migrations and content application in dependency order. `exportBackup(targetPath, name?, databases?)` copies databases (and media) into a new backup directory. `importBackup(path)` replaces stored data with a backup and reloads memory from it, restoring the previous data on failure. `readBackupSummary(path)` reads a backup's metadata, or `null`. |
 | `services.onboarding` | `isComplete()` reads completion and `complete()` records it. Preferences reset leaves this lifecycle state intact; resetting the app starts onboarding again. This service exposes no reset, import or export operations. |
 | `services.traceStore` | Read-only access to the volatile trace store (flow execution records): `entities()`, `getEntityMeta(id)`, `getAttr(kind, id)`, `relations({ kind?, src?, tgt?, limit? })`. |
 | `services.secrets` | The user's API keys, without their values: `list()` (each key's `id`, `provider`, `label`, whether it's `selected`, timestamps), `select(id)`, `rename(id, label)`, `delete(id)` and `status()` (how keys are protected). Keys are added, and their values replaced, only in Settings → Secrets. A key's `provider` (`SecretProvider`) is a model provider or `'custom'`, for keys the app's own integrations name. |
 | `services.filesystem` | Files and folders on the user's disk, as UTF-8 text: `readFile(path)`, `writeFile(path, content)` (creating missing parent folders), `exists(path)`, `mkdir(path)` (with its parents), `readDir(path)` (`{ name, isDirectory }` entries), `stat(path)` (`size`, `mtime`, `isFile`, `isDirectory`), `rename(from, to)` and `remove(path)` (a folder with its contents; a missing path isn't an error). In unit tests it fails until the test mocks it with `mockService('filesystem', …)`. |
 | `services.logger` | `debug`, `info`, `warn`, `error` (any arguments), sent to the app as redacted log events. In an action it's named `action:<label>`. `createLogger(source)` from `@apackdev/sdk/logger` gives a logger tagged with your own source. |
-| `services.emitter` | `broadcastToPlugin(plugin, event)` (to the frontend) and `sendToSystem(system, event)` (onto the bus); `sendToSystem({ role: 'brain' }, { type: 'TRIGGER_BRAIN_EVENT', eventType, payload?, targetFlowId? })` fires a flow event. `Services` types both with your pack's events. An action is content — a row a user can edit, export and copy into another pack — so both name every feature `<packId>/<featureId>`, your own too (`'my-pack/bookmarks'`, `'default-setup/threads'`); the app's own are the pack `host`'s (`'host/application'`). The host sends to the plugin or system the name is, and throws for a name nothing is registered under, suggesting the `<packId>/<featureId>` form when a bare name matches one pack's feature. What an action sends says where it came from: your pack in `Message.from`, and the action as `action:<label>` in `Message.via`, which is also what names its logger — so a message the app couldn't deliver names the action in the same string you grep the logs for. |
+| `services.emitter` | `broadcastToPlugin(plugin, event)` (to the frontend) and `sendToSystem(system, event)` (onto the bus); `sendToSystem({ role: 'brain' }, { type: 'TRIGGER_BRAIN_EVENT', eventType, payload?, targetFlowId? })` fires a flow event. `Services` types both with your pack's events. An action is content — a row a user can edit, export and copy into another pack — so both name every feature `<packId>/<featureId>`, your own too (`'my-pack/bookmarks'`, `'default-setup/threads'`); the app's own are the pack `host`'s (`'host/application'`). The host sends to the plugin or system the name is, and throws for a name nothing is registered under, suggesting the `<packId>/<featureId>` form when a bare name matches one pack's feature. What an action sends says where it came from: the executing pack in `Message.from`, and the action as `action:<label>` in `Message.via`, which is also what names its logger — so a message the app couldn't deliver names the action in the same string you grep the logs for. |
 
 Backups never include API keys; `exportBackup` copies the primary database (`lmdb`, with media) and the trace store (`volatileLmdb`). `importBackup` restores only the databases the app has, and leaves out any other a backup lists.
 
@@ -576,60 +576,55 @@ TypeScript can't check a name it doesn't know yet. Constrain it to `EntityName`,
 
 ## Migrations
 
-Migrations are version-targeted data transformations that run on app boot when the stored pack version is below the target.
+Migrations are synchronous data transformations declared by target version under `migrations.pack`
+or `migrations.app`. The selected line determines which version is compared; shipped and external
+packs use the same rules.
 
 ### Scaffolding
 
 ```bash
-apack pack add migration --version 0.2.0
+apack pack add migration 1.2.0       # this pack's version line
+apack pack add migration 0.4.0 --app # apack's version line
 ```
 
-Creates `src/migrations/0.2.0.ts` and lists it in `src/migrations/index.ts`.
+The command writes `src/migrations/<version>.ts` and its manifest declaration. Edit the declaration's
+description to explain the change. The version and description live only in the manifest:
 
-### Writing a migration
+```json
+{
+  "migrations": {
+    "pack": {
+      "1.2.0": {
+        "description": "Add default tags to bookmarks",
+        "up": "src/migrations/1.2.0.ts#up"
+      }
+    }
+  }
+}
+```
+
+The source module exports behavior only:
 
 ```typescript
-import type { PackMigration } from '@apackdev/sdk/framework';
-
-export const migration: PackMigration = {
-  target: '0.2.0',
-  description: 'Add default tags to bookmarks',
-  up() {
-    // Migration logic
-    // Use idempotent guards: check if the change is needed before applying
-  },
-};
+// src/migrations/1.2.0.ts
+export function up(): void {
+  // Apply the change synchronously, checking first whether it is needed.
+}
 ```
 
 ### Rules
 
-- **Target the next release version** — migrations run when `stored_version < target <= pack_version` (the pack's manifest version; for the built-in pack, the app's).
-- **Idempotent guards** — always check if the change is needed before applying, since migrations may re-run.
-- **Never bump `package.json` version** — the release process handles version bumps.
-- **One file per version** — multiple changes targeting the same version go in the same file.
+- Target the next release: migrations run when `stored version < target <= current version` on their declared line. Pack-line migrations compare against the pack's version; app-line migrations compare against apack's version, regardless of where the pack came from.
+- Keep changes idempotent: development boots, prereleases and resets may repeat them.
+- The release process owns version bumps; adding a migration does not bump `package.json`.
+- Put changes targeting the same version and line in one declaration.
 
-### Registration
+See [manifest migrations](manifest.md#migrations) for execution and failure behavior.
 
-```typescript
-// src/migrations/index.ts
-import type { PackMigration } from '@apackdev/sdk/framework';
-import { migration as v020 } from './0-2-0.ts';
-
-export const migrations: PackMigration[] = [
-  v020,
-];
-```
-
-### Manifest
-
-```json
-{
-  "migrations": "src/migrations/index.ts"
-}
-```
+## Preferences
 
 App preferences belong to the host and are available without default-setup. `AppSettings` from
 `@apackdev/sdk/types` describes `hotkeys`, `personal` and ordered `projects` (each project has
 `name`, `color` and ordered `directories`). The host validates writes with the same declarative
-JSON Schema used to generate that type. Current section access addresses these values at `app`;
-pack preference groups and owner-bound handles are the next settings delivery checkpoint.
+JSON Schema used to generate that type. Pack-wide and feature preferences use declarative schemas
+and owner-bound generated handles; see [settings declarations](manifest.md#feature-settings).
