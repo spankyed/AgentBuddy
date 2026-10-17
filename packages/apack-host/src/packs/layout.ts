@@ -131,14 +131,9 @@ export function sealPackBuild(dir: string, manifest: PackManifest, sdkVersion?: 
 }
 
 /** The installation variant excludes build source maps and carries the same manifest bytes. */
-function stagedHashes(integrity: PackIntegrity): Record<string, string> {
+export function stagedFileHashes(integrity: PackIntegrity): Record<string, string> {
   return Object.fromEntries(Object.entries(integrity.files).filter(([file]) =>
     file === PACK_LAYOUT.manifest || (!file.endsWith('.map') && SECTIONS.some(section => file.startsWith(`${section}/`)))));
-}
-
-/** Verify the producer's output and the source descriptor before computing a shipped update. */
-export function stagedFileHashes(packRoot: string): Record<string, string> {
-  return stagedHashes(readBuiltPackIntegrity(packRoot));
 }
 
 /** Capture a verified source declaration and its published files without executing or staging it. */
@@ -148,7 +143,7 @@ export function readBuiltPackSource(packRoot: string): { snapshot: PackSnapshot;
   if (!isDeepStrictEqual(built, build.integrity)) {
     throw new Error('Built build changed while reading its source declarations; retry with the complete build');
   }
-  const files = stagedHashes(built);
+  const files = stagedFileHashes(built);
   return { snapshot: build.snapshot, files, sourceRevision: shippedPackRevision(files) };
 }
 
@@ -193,7 +188,7 @@ export function stagePack(
   const built = readBuiltPackIntegrity(packRoot, options.packFormat);
   const integrity: PackIntegrity = {
     ...built, sdkVersion: options.sdkVersion ?? built.sdkVersion,
-    provenance: options.provenance ?? built.provenance, files: stagedHashes(built),
+    provenance: options.provenance ?? built.provenance, files: stagedFileHashes(built),
   };
   fs.mkdirSync(path.dirname(stageDir), { recursive: true });
   const incoming = fs.mkdtempSync(path.join(path.dirname(stageDir), '.apack-stage-'));
@@ -359,50 +354,4 @@ export async function extractPackArchive(archive: string, destDir: string, expec
 /** A pack's compiled content files, relative to the content directory holding them */
 export function packContentFiles(contentDir: string): string[] {
   return fs.existsSync(contentDir) ? listPackFiles(contentDir).sort() : [];
-}
-
-/**
- * The newest source file a pack's build should have seen, when that file is newer than the build — or
- * nothing when the build is current.
- *
- * **Absence is no longer the signal that a build failed**, which is why this is here rather than in the one
- * caller it started with. `apack pack build` assembles its output aside and renames it over `dist`, so a failed
- * build leaves the previous one in place; every reader that took a missing tree to mean "nothing to use" has
- * to ask this instead. Two do: `apack pack archive`, which would otherwise ship the build before the one that
- * failed, and `apack pack test --prebuilt`, which trusts a build it did not make.
- *
- * Sources are the pack's `src/` and its `apack.json`; the build is the oldest of the two files the installer
- * requires, since a build is only as current as its least finished part. mtimes are what a build leaves
- * behind, so this is the same question `packages-built.ts` asks of the workspace packages and the same
- * answer: it can only be wrong in the safe direction, reporting stale for a file touched without being
- * changed. A rename preserves the mtime of the file as it was written, so staging does not disturb it.
- */
-export function staleBuildOutput(packDir: string): string | undefined {
-  // `PACK_LAYOUT` is relative to a layout directory, which for a pack's own build output is `dist`
-  const built = [PACK_LAYOUT.runtimeEntry, PACK_LAYOUT.snapshot].map((file) => path.join(packDir, 'dist', file));
-  const builtAt = built.map((file) => (fs.existsSync(file) ? fs.statSync(file).mtimeMs : 0));
-  // Absent rather than stale: the caller's own "not built" message names the files and the command
-  if (builtAt.some((at) => at === 0)) return undefined;
-  const oldestBuilt = Math.min(...builtAt);
-
-  let newest: { file: string; at: number } | undefined;
-  const walk = (dir: string): void => {
-    for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
-      // `__generated__` is written by the build itself, so it is output wearing a source file's path
-      if (entry.name === '__generated__' || entry.name === 'node_modules') continue;
-      const full = path.join(dir, entry.name);
-      if (entry.isDirectory()) walk(full);
-      else {
-        const at = fs.statSync(full).mtimeMs;
-        if (!newest || at > newest.at) newest = { file: path.relative(packDir, full), at };
-      }
-    }
-  };
-  const src = path.join(packDir, 'src');
-  if (fs.existsSync(src)) walk(src);
-  const manifest = path.join(packDir, PACK_LAYOUT.manifest);
-  const manifestAt = fs.existsSync(manifest) ? fs.statSync(manifest).mtimeMs : 0;
-  if (manifestAt > (newest?.at ?? 0)) newest = { file: PACK_LAYOUT.manifest, at: manifestAt };
-
-  return newest && newest.at > oldestBuilt ? newest.file : undefined;
 }

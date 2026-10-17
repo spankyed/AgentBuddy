@@ -7,12 +7,15 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { defaultRunner, nextReleaseVersion, preflight, publishRelease, releaseStateReport, runRelease, type Runner } from '../../src/commands/release';
 import { readPackIntegrity, sealPackBuild } from '@apackdev/host/packs';
 import { runPackBuild } from '../../src/build/build-process.ts';
+import { createPackCompilerInputView } from '@apackdev/host/build/compiler-inputs';
+import { readPackageInputs } from '@apackdev/host/build/package-inputs';
+import { writePackBuildInputs } from '@apackdev/host/build/pack-build-inputs';
 
 /**
  * runRelease verifies with a release build; these tests use prebuilt packs, so the build is a stand-in.
  *
  * **It still has to leave what the steps after it read.** `writeVersion` rewrites `apack.json` immediately
- * before `verify`, and `apack pack archive` refuses a build older than the sources it came from — a build it cannot
+ * before `verify`, and `apack pack archive` refuses a build of different sources — a build it cannot
  * see having happened is exactly the stale build that check exists for. A stand-in returning nothing claimed
  * the build had run and left a tree it had not touched, which is the fidelity gap rather than the check being
  * wrong: a real `apack pack build` writes `dist` here.
@@ -28,19 +31,26 @@ vi.mock('../../src/build/build-process.ts', () => ({
     snapshot.manifest = manifest;
     snapshot.declarationRevision = _declarationRevision(manifest);
     writeFileSync(snapshotFile, JSON.stringify(snapshot));
-    // Rewritten rather than `utimesSync(new Date())`, which truncates to the millisecond and so can stamp a
-    // time *before* the sub-millisecond one the manifest was just written at — the stand-in then looks older
-    // than the sources it was supposedly built from. Writing the bytes is what a build does, and it takes the
-    // filesystem's own clock at its full precision
-    const runtimeFile = join(builtAt.root, 'dist/runtime/index.cjs');
-    writeFileSync(runtimeFile, readFileSync(runtimeFile));
-    sealPackBuild(join(builtAt.root, 'dist'), manifest);
+    sealBuild(builtAt.root);
   }),
 }));
 import { buildPackArchive } from '../../src/commands/archive';
 import { PACK_SNAPSHOT_FORMAT } from '@apackdev/sdk/build';
 
 let tmp: string;
+
+/** The synthetic build still records the inputs and output its archive consumer requires. */
+function sealBuild(root: string): void {
+  const view = createPackCompilerInputView(root);
+  const observations = view.observations().entries;
+  view.dispose();
+  writePackBuildInputs(path.join(root, 'dist'), {
+    compiler: 'a'.repeat(64), execution: 'b'.repeat(64), options: ['--release'], observations,
+    packages: { hash: readPackageInputs([{ id: 'pack', directory: root }]).hash,
+      owners: [{ id: 'pack', directory: '' }], discovered: [] },
+  });
+  sealPackBuild(path.join(root, 'dist'), JSON.parse(fs.readFileSync(path.join(root, 'apack.json'), 'utf8')));
+}
 
 beforeEach(() => {
   tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'release-spec-'));
@@ -62,7 +72,7 @@ function builtPack(version = '1.2.3'): string {
   write('package-lock.json', JSON.stringify({ name: 'demo-pack', version, lockfileVersion: 3, packages: { '': { name: 'demo-pack', version } } }));
   write('dist/runtime/index.cjs', 'module.exports = { registration: { id: "demo-pack" } };');
   write('dist/types/snapshot.json', JSON.stringify({ declarationRevision: _declarationRevision(JSON.parse(fs.readFileSync(path.join(root, 'apack.json'), 'utf-8'))), format: PACK_SNAPSHOT_FORMAT, manifest: JSON.parse(fs.readFileSync(path.join(root, 'apack.json'), 'utf-8')), types: { entities: {}, relKinds: {} }, entityDestinations: {}, facades: {} }));
-  sealPackBuild(path.join(root, 'dist'), JSON.parse(fs.readFileSync(path.join(root, 'apack.json'), 'utf8')));
+  sealBuild(root);
   // Which pack the stand-in build above refreshes
   builtAt.root = root;
   return root;
@@ -80,6 +90,25 @@ function fakeGit(answers: Record<string, string | Error>): Runner & { calls: str
   };
   return Object.assign(run, { calls });
 }
+
+it('archives repeatedly outside the source inventory and refuses same-mtime input changes', async () => {
+  const root = builtPack();
+  const original = await buildPackArchive(root);
+  expect(path.dirname(original.file)).toBe(path.join(root, '.apack/archives'));
+  const source = path.join(root, 'apack.json');
+  const bytes = fs.readFileSync(source);
+  const stat = fs.statSync(source);
+  fs.utimesSync(source, new Date(), new Date());
+  expect((await buildPackArchive(root)).sha256).toBe(original.sha256);
+  const manifest = JSON.parse(bytes.toString());
+  manifest.name = 'Changed';
+  fs.writeFileSync(source, JSON.stringify(manifest));
+  fs.utimesSync(source, stat.atime, stat.mtime);
+  await expect(buildPackArchive(root)).rejects.toThrow(/input changed/);
+  expect(fs.readFileSync(original.checksumFile, 'utf8')).toContain(original.sha256);
+  fs.writeFileSync(source, bytes);
+  expect((await buildPackArchive(root)).sha256).toBe(original.sha256);
+});
 
 describe('nextReleaseVersion', () => {
   it.each([

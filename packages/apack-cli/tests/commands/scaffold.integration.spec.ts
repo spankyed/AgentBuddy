@@ -319,11 +319,10 @@ describe('apack pack init → add feature → build → tsc → pack', () => {
     // The failed build left the previous one where it was: it assembles `dist` aside and renames it into
     // place, so a reader finds the build before this one rather than nothing
     expect(fs.existsSync(path.join(pack, 'dist', 'runtime', 'index.cjs'))).toBe(true);
-    // **Which is why `pack` asks whether that build is of these sources**, rather than failing for want of
-    // files as it used to. The manifest edited above is newer than the build, so this is refused and names it
+    // The incumbent build's captured manifest bytes no longer match, regardless of timestamps.
     // process: the exit code and the message are the assertion
     const packed = run('node', [CLI, 'pack', 'archive', '--out', path.join(tmp, 'stale-out')], pack);
     expect(packed.code).not.toBe(0);
-    expect(packed.output).toMatch(/build is older than apack\.json/);
+    expect(packed.output).toMatch(/input changed.*apack\.json/);
   });
 });

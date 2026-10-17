@@ -328,15 +328,23 @@ the sealed output, replays completed source/dependency observations and requires
 option when the invocation requests it. Its comparison context is the selected build's captured
 compiler/execution context, not the Playwright runner's unrelated environment. A real default-setup
 build now publishes that record and passes prebuilt acceptance; a release invocation refuses that
-development output. Default-fork preparation now checks the selected shipped build's completed inputs
+development output. Default-fork checkpoint `6a4f68602` checks the selected shipped build's completed inputs
 and pins its prepared archive digest and checksum bytes. Its context is that selected build's recorded
 compiler/options; preparation still builds the fork normally. Full preparation/cache/app acceptance
-remains open. Archive-based tests retain their separate unfinished check. Archive and drive migrations remain open;
-no converged strict or final `--all` pass is claimed.
-Next: migrate archive (including archive-based tests) and drive to the common
-record, removing their replaced freshness heuristics. Archive must account for its default root-level
-generated output without misclassifying that output as new authored inputs. Then exercise the combined
-cached preparation/app path, including the default fork, against these consumers. Reconcile
+remains open. Archive now verifies the completed record under its build lock and replays inputs again
+after creating a temporary archive, before replacing published files. Its default output is
+`.apack/archives`, outside authored inventory; custom output should remain under `.apack/` or outside the
+pack. The comparison context is the selected build's recorded compiler/options, not the archiving process.
+Archive-based tests compare the candidate's verified published-file hashes to that same captured
+receipt and recheck its inputs at installation acceptance. Without local dist, explicit archives retain
+independent source-free verification; a release invocation requires local release output for comparison.
+Drive verifies the default pack's output/record and warns without preventing deliberate stale use.
+The app-runtime timestamp nudge remains separate; it is not a pack freshness authority. The obsolete
+pack timestamp checker and archive mtime comparison are removed. Focused acceptance, types and lint
+are recorded in the evidence; no converged strict or final `--all` pass is claimed.
+Next: exercise the combined cached preparation/app path, including the default fork, against these
+consumers. Measure the existing real-default archive case under its declared test budget instead of
+assuming the larger record is free. Reconcile
 the finite native/platform lifetime boundary against supported compiler operations before closing B1/B3. Preserve required external-library and
 platform/thread-lifetime acceptance;
 preserve the now-accepted namespace cases without starting another resolver or observation framework. Preserve

@@ -1308,3 +1308,55 @@ The full fork preparation, cache-reuse and app boundary have not been rerun for 
 once with the remaining archive/drive migrations rather than rebuilding this large fork at every
 consumer edit. This is not a converged or whole-goal strict pass; B1/B3, B6 and every preserved Phase 6
 stream remain required.
+
+## Archive and drive consumer checkpoint
+
+Default-fork source checkpoint: `6a4f68602`.
+
+All four B5 consumer implementations now use the common completed record for pack freshness:
+
+- Archive holds the producer lock before reading its record, verifies sealed output, replays inputs,
+  creates the archive in an owned temporary directory and rechecks inputs before copying archive and
+  checksum into the requested destination. Source/input refusal leaves incumbent published files intact;
+  the lock is released even if temporary cleanup fails. Default output is now `.apack/archives`, so a
+  repeat archive does not add generated downloads to authored membership. Arbitrary `.tgz` source inputs
+  are not excluded. Custom `--out` stays available; callers should keep generated output under `.apack/`
+  or outside the source tree. Its expected compiler/options context is the selected build's captured
+  context, not the environment of this packaging command.
+- `PACK_ARCHIVE` captures the current local record and its verified receipt together, uses staging's
+  existing published-file projection and compares the installer's verified candidate during acceptance.
+  Its input replay happens again there, preserving rollback on refusal. This avoids both duplicate archive
+  extraction and a second read that could combine one build's options with another build's file map.
+  Without local dist, an explicit archive remains independently verified without authored-source
+  comparison. A requested release comparison requires local release output. Every fixture install also
+  checks the expected pack id before placement.
+- Drive checks the default pack's sealed record and inputs but continues on refusal with attributed
+  guidance. The app-runtime timestamp hint remains explicitly separate; that app build does not publish
+  a pack record. Drive does not claim that hint proves runtime freshness.
+
+Removed `staleBuildOutput`, the archive mtime walker and the replaced pack-side drive comparison.
+The published-file projection is shared with staging/source provenance; no new input scanner or receipt.
+Updated CLI help, public reference, fixture guide and release-test stand-in agree with the new contract.
+
+Evidence:
+
+- All 31 release/archive integration cases pass (9.89s runner), including repeated default-location
+  archives, timestamp touches, same-mtime manifest changes, byte restoration and retained checksum:
+  `/private/tmp/apack-b5-archive-release.log`. The final archive regression passes in 2.43s runner
+  (154ms body): `/private/tmp/apack-b5-archive-repeat-final.log`.
+- Six prebuilt/archive cases pass with the pinned receipt projection (2.21s runner, 132ms bodies):
+  `/private/tmp/apack-b5-archive-consumer-pinned.log`. They include altered published-file hashes,
+  changed inputs at acceptance, source-free archive selection and release-comparison refusal.
+- 113 layout/record cases and ten staging cases pass in the initial 124-case run; one existing staging
+  case is sandbox-blocked at `os.uptime()` (`uv_uptime EPERM`): `/private/tmp/apack-b5-host-layout.log`.
+  All eleven staging cases then pass with system-uptime access (1.47s):
+  `/private/tmp/apack-b5-staging-permitted.log`. No product workaround or assertion/deadline change.
+- Host, CLI, testing and scripts types pass; logs `/private/tmp/apack-b5-{host,cli,testing}-types-final.log`
+  and `/private/tmp/apack-b5-scripts-types.log`. Nine-file lint passes:
+  `/private/tmp/apack-b5-lint-final.log`. Direct drive execution exits 0 while reporting the exact changed host
+  input and rebuild guidance: `/private/tmp/apack-b5-drive.log`.
+
+Real combined default/fork preparation, cached app acceptance and the real-default archive case remain
+to be run against this final wiring. Do not count the earlier real prebuilt pass as proving those paths.
+B1/B3 lifetime closure, B6 convergence, all Phase 6 streams and final committed-source strict `--all`
+remain required. Available disk before these runs is 83GiB; no broad suite was launched here.

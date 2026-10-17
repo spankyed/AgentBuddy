@@ -2,7 +2,8 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { execFileSync } from 'node:child_process';
 import { findPackRoot, readValidManifest, sdkVersion } from '../utils';
-import { createPackArchive, stagePack, staleBuildOutput, verifyPack, type PackIntegrity } from '@apackdev/host/packs';
+import { createPackArchive, stagePack, type PackIntegrity } from '@apackdev/host/packs';
+import { readPackBuildInputs, assertPackBuildInputsCurrent } from '@apackdev/host/build/pack-build-inputs';
 import { holdPackBuildLock } from '../build/build-lock.ts';
 
 const HELP = `
@@ -13,7 +14,7 @@ Stage the built pack (dist/) into a verified pack layout and write
 ("apack pack build --release" for publishable output).
 
 Options:
-  --out <dir>   Output directory (default: pack root)
+  --out <dir>   Output directory (default: .apack/archives)
 `.trim();
 
 export function gitProvenance(root: string): PackIntegrity['provenance'] | undefined {
@@ -37,32 +38,33 @@ export interface PackResult {
   integrity: PackIntegrity;
 }
 
-export async function buildPackArchive(root: string, outDir: string): Promise<PackResult> {
-  const manifest = readValidManifest(root);
-  // **A build that is not of these sources must not be shipped, and absence is no longer what says so.**
-  // `apack pack build` renames its output into place, so a failed build leaves the previous one where it was and
-  // `stagePack` would find a complete `dist` to pack. Before that it left none, and the pack simply failed for
-  // want of files — which caught a failed build and missed a stale one. This catches both.
-  const stale = staleBuildOutput(root);
-  if (stale) {
-    throw new Error(`${manifest.id}'s build is older than ${stale}. Run apack pack build, then apack pack archive.`);
-  }
-  // **Held for the whole stage, because this is a multi-file copy of `dist`.** A build renaming that tree
-  // mid-copy would leave an archive holding half of two builds — whole-looking, verified, and wrong — which is
-  // a far wider window than the rename and a worse outcome than the "not built" a short read sees.
+export async function buildPackArchive(root: string, outDir = path.join(root, '.apack', 'archives')): Promise<PackResult> {
+  // Keep one producer generation through verification, staging and archive publication.
   const lock = await holdPackBuildLock(root, {
-    packId: manifest.id,
+    packId: readValidManifest(root).id,
     what: 'apack pack archive',
     onWait: (holder) => console.log(`Waiting for ${holder} to finish...`),
   });
+  let temporary: string | undefined;
   try {
+    const manifest = readValidManifest(root);
+    // Archive the selected compiler/options context, not this command's ambient environment.
+    const inputs = readPackBuildInputs(path.join(root, 'dist'));
+    assertPackBuildInputsCurrent(root, inputs);
     const stageDir = path.join(root, '.apack', 'staged', manifest.id);
-    stagePack(root, stageDir, { sdkVersion: sdkVersion(), provenance: gitProvenance(root) });
-    const integrity = verifyPack(stageDir);
-    const archive = await createPackArchive(stageDir, outDir);
-    return { ...archive, integrity };
+    const integrity = stagePack(root, stageDir, { sdkVersion: sdkVersion(), provenance: gitProvenance(root) });
+    temporary = fs.mkdtempSync(path.join(root, '.apack', 'archive-'));
+    const archive = await createPackArchive(stageDir, temporary);
+    assertPackBuildInputsCurrent(root, inputs);
+    fs.mkdirSync(outDir, { recursive: true });
+    const file = path.join(outDir, path.basename(archive.file));
+    const checksumFile = `${file}.sha256`;
+    fs.copyFileSync(archive.file, file);
+    fs.copyFileSync(archive.checksumFile, checksumFile);
+    return { file, checksumFile, sha256: archive.sha256, integrity };
   } finally {
-    lock.release();
+    try { if (temporary) fs.rmSync(temporary, { recursive: true, force: true }); }
+    finally { lock.release(); }
   }
 }
 
@@ -76,7 +78,7 @@ export async function archive(args: string[]) {
   }
   const root = findPackRoot(process.cwd());
   const outIndex = args.indexOf('--out');
-  const outDir = outIndex >= 0 && args[outIndex + 1] ? path.resolve(args[outIndex + 1]) : root;
+  const outDir = outIndex >= 0 && args[outIndex + 1] ? path.resolve(args[outIndex + 1]) : undefined;
 
   const result = await buildPackArchive(root, outDir);
   const show = (p: string) => {

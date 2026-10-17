@@ -12,7 +12,7 @@ import { resolveTestHost, type AppLaunch, type TestHostOptions } from './test-ho
 import { appVersion } from './app-version.ts';
 import { appLaunchEnv, pinsViewport } from './launch-env.ts';
 import { assertCheckoutPackagesFresh } from './checkout-freshness.ts';
-import { assertPrebuiltPackCurrent } from './prebuilt-pack.ts';
+import { assertPrebuiltPackCurrent, packArchiveAcceptance } from './prebuilt-pack.ts';
 
 export interface AppDriver {
   sendEvent: (event: Record<string, unknown>) => Promise<void>;
@@ -66,34 +66,6 @@ function resolveApackBin(app: AppLaunch, packDir: string): string {
     } catch {}
   }
   throw new Error('Could not find the apack CLI to build the pack. Install it in the pack (npm i -D @apackdev/cli) or run the tests with `apack pack test`.');
-}
-
-/** The newest thing under `dir`, or 0 when there is nothing there. */
-function newestMtime(dir: string): number {
-  if (!fs.existsSync(dir)) return 0;
-  return fs.readdirSync(dir, { withFileTypes: true, recursive: true })
-    .filter((entry) => entry.isFile())
-    .reduce((newest, entry) => Math.max(newest, fs.statSync(path.join(entry.parentPath, entry.name)).mtimeMs), 0);
-}
-
-/**
- * Refuses a packed archive older than the build it was supposed to come from.
- *
- * `PACK_ARCHIVE` is the one way past this fixture's rule that a pack is rebuilt before it is tested, and
- * the rule is there because a stale build tested silently is worse than no test. Installing the build
- * a release ships is a good reason to skip the rebuild; installing one from before the last change is
- * not, and the two look identical from the outside.
- */
-function assertArchiveIsCurrent(archive: string, packDir: string): void {
-  if (!fs.existsSync(archive)) throw new Error(`PACK_ARCHIVE does not exist: ${archive}`);
-  const built = newestMtime(path.join(packDir, 'dist'));
-  if (built === 0) return; // nothing built beside it to be older than
-  if (fs.statSync(archive).mtimeMs >= built) return;
-  throw new Error(
-    `PACK_ARCHIVE is older than the pack's build, so it would be testing code that has since changed:\n` +
-    `  archive: ${archive}\n  built:   ${path.join(packDir, 'dist')}\n` +
-    'Pack it again, or unset PACK_ARCHIVE to build and install from source.',
-  );
 }
 
 let _packManifest: { id: string; pluginIds: string[] } | null | undefined;
@@ -436,7 +408,7 @@ export function createTest(options: CreateTestOptions = {}) {
           // release ships rather than another build of the same source. Everything else — the plugin ids
           // the fixture waits for, the screenshot directory — still comes from PACK_DIR.
           const archive = process.env.PACK_ARCHIVE ? path.resolve(process.env.PACK_ARCHIVE) : undefined;
-          if (archive) assertArchiveIsCurrent(archive, packDir);
+          const acceptArchive = archive ? packArchiveAcceptance(packDir, !!process.env.APACK_PACK_RELEASE) : undefined;
           if (!archive && process.env.APACK_PACK_PREBUILT) {
             // Reuse the caller's build without silently testing changed inputs or altered output.
             assertPrebuiltPackCurrent(packDir, !!process.env.APACK_PACK_RELEASE);
@@ -462,7 +434,12 @@ export function createTest(options: CreateTestOptions = {}) {
           // it does, at boot, naming which side is older. Nothing here can tell — the CLI that runs the fixture
           // needn't be the app's, and inferring the app's format from a build it ships refuses good packs
           // whenever that build is the stale one. `waitForPackBackend` reports the app's verdict within 15s.
-          await installPackFromLocal(archive ?? packDir, packsDir, { hostVersion: appVersion(appLaunch) });
+          await installPackFromLocal(archive ?? packDir, packsDir, {
+            hostVersion: appVersion(appLaunch), accept: acceptArchive,
+            beforePlace: installed => {
+              if (installed.id !== manifest.id) throw new Error(`Expected pack ${manifest.id}, received ${installed.id}`);
+            },
+          });
         }
 
         // A checkout runs its sources with its own electron, so packs don't need electron installed

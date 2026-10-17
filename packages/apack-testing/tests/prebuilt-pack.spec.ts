@@ -3,11 +3,11 @@ import os from 'node:os';
 import path from 'node:path';
 import { afterEach, expect, it } from 'vitest';
 import { _declarationRevision, PACK_SNAPSHOT_FORMAT } from '@apackdev/sdk/build';
-import { sealPackBuild } from '@apackdev/host/packs';
+import { sealPackBuild, stagedFileHashes, verifyPack } from '@apackdev/host/packs';
 import { createPackCompilerInputView } from '@apackdev/host/build/compiler-inputs';
 import { readPackageInputs } from '@apackdev/host/build/package-inputs';
 import { PACK_BUILD_INPUTS_FILE, writePackBuildInputs } from '@apackdev/host/build/pack-build-inputs';
-import { assertPrebuiltPackCurrent } from '../src/prebuilt-pack.ts';
+import { assertPrebuiltPackCurrent, packArchiveAcceptance } from '../src/prebuilt-pack.ts';
 
 const roots: string[] = [];
 afterEach(() => roots.splice(0).forEach(root => fs.rmSync(root, { recursive: true, force: true })));
@@ -79,9 +79,9 @@ it('refuses missing or modified output and missing or modified input metadata', 
     const file = path.join(dist, target);
     const bytes = fs.readFileSync(file);
     fs.appendFileSync(file, 'altered');
-    expect(() => assertPrebuiltPackCurrent(root, false)).toThrow(/verification.*drop --prebuilt/s);
+    expect(() => assertPrebuiltPackCurrent(root, false)).toThrow(/verification.*apack pack build/s);
     fs.rmSync(file);
-    expect(() => assertPrebuiltPackCurrent(root, false)).toThrow(/verification.*drop --prebuilt/s);
+    expect(() => assertPrebuiltPackCurrent(root, false)).toThrow(/verification.*apack pack build/s);
     fs.writeFileSync(file, bytes);
     expect(() => assertPrebuiltPackCurrent(root, false)).not.toThrow();
   }
@@ -106,4 +106,19 @@ it('refuses changed dependency bytes and a missing build before launching the ap
   expect(() => assertPrebuiltPackCurrent(root, false)).not.toThrow();
   fs.rmSync(dist, { recursive: true });
   expect(() => assertPrebuiltPackCurrent(root, false)).toThrow(/Cannot test the prebuilt pack.*apack pack build/s);
+});
+
+it('accepts only the selected published bytes and rechecks inputs at archive installation', () => {
+  const { root, dist, source } = fixture();
+  const accept = packArchiveAcceptance(root, false)!;
+  const built = verifyPack(dist);
+  const integrity = { ...built, files: stagedFileHashes(built) };
+  expect(() => accept({ integrity })).not.toThrow();
+  expect(() => accept({ integrity: { ...integrity, files: { ...integrity.files, 'runtime/index.cjs': '0'.repeat(64) } } }))
+    .toThrow(/PACK_ARCHIVE does not match/);
+  fs.writeFileSync(source, 'CHANGED');
+  expect(() => accept({ integrity })).toThrow(/input changed/);
+  fs.rmSync(dist, { recursive: true });
+  expect(packArchiveAcceptance(root, false)).toBeUndefined();
+  expect(() => packArchiveAcceptance(root, true)).toThrow(/requires a local --release build/);
 });

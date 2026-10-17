@@ -50,11 +50,11 @@ export type { ReleaseCandidate } from './updater.ts';
 export {
   PACK_LAYOUT_VERSION, PACK_LAYOUT,
   sealPackBuild, stagePack, verifyPack, readPackIntegrity, readPackBuild, isPackLayout,
+  stagedFileHashes,
   packFrontendFiles,
   packBuildRevision, readPackAsset,
   createPackArchive, extractPackArchive, packArchiveName,
   getLoadedPackEntries, getPacksWithClientLoadedFrontends,
-  staleBuildOutput,
 } from './layout.ts';
 export type { PackIntegrity, PackBuild, LoadedPackEntry } from './layout.ts';
 export { cacheDependency, readCachedDependency, readDependencyBuild } from './dependency-cache.ts';
