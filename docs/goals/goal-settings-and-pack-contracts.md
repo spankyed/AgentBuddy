@@ -364,7 +364,15 @@ fork restart, removed-pack boot and restored-pack boot). The old external fixtur
 before startup for stale compiler observations; rebuilding that fixture allowed the complete lifecycle
 to pass. App bundles were refreshed because they inline changed host code. See
 [real handoff evidence](../evidence/build-input-snapshot-proof.md#real-default-fork-handoff-acceptance).
-Next: finish affected integration acceptance on two cores before repeating a broad gate. Do not rebuild
+Ordinary compiler-worker filesystem observations and one-shot settlement are implemented in
+`c7d5603c5`. A real content compiler previously published an external worker-read value that freshness
+did not track; the regression now passes for explicit termination, natural exit with explicit options,
+nested workers and a background worker. A CPU-blocked worker refuses publication and preserves the
+incumbent. Existing native preload/loader and builder cancellation checks pass. See
+[worker ownership evidence](../evidence/build-input-snapshot-proof.md#compiler-created-worker-input-ownership).
+Next: project these dynamic observations into existing watch subscriptions and prove an external edit
+rebuilds without an authored edit. Then finish affected integration acceptance on two cores before
+repeating a broad gate. Do not rebuild
 the accepted default/fork handoff again unless its inputs change or a named coverage gap requires it.
 Reconcile
 the finite native/platform lifetime boundary against supported compiler operations before closing B1/B3. Preserve required external-library and

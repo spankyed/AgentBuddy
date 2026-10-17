@@ -1361,6 +1361,54 @@ to be run against this final wiring. Do not count the earlier real prebuilt pass
 B1/B3 lifetime closure, B6 convergence, all Phase 6 streams and final committed-source strict `--all`
 remain required. Available disk before these runs is 83GiB; no broad suite was launched here.
 
+## Compiler-created worker input ownership
+
+Source checkpoint: `c7d5603c5`.
+
+The finite B1/B3 audit found a reproducible omission: an actual content compiler reads an outside file
+through `node:worker_threads`, publishes its value, and passive freshness still accepts the build after
+that file changes. The failing case completes the build and fails only the final refusal assertion:
+`/private/tmp/apack-worker-input-before.log` (24.78s). This is a demonstrated missing input, not a
+timeout diagnosis or a reason to redesign every compiler path.
+
+The native startup owner now owns ordinary compiler-created workers and their nested workers, in
+addition to each thread's asynchronous module loader. Each receives the existing captured read view;
+its completed observations merge into the same successful build-input record. A private broadcast
+channel carries collection requests without touching application messages or workerData. A disposable
+report under the existing worker workspace closes the ordering race between broadcast delivery and
+native thread exit; it is transport, not another cache or freshness authority.
+
+Natural exit, explicit termination and final build settlement collect observations. Final settlement
+awaits native termination of remaining workers before publication. Explicit execArgv retains the private
+bootstrap; explicit environments receive only the required private handoff fields. A two-second grace
+bounds a worker that cannot begin collection, rather than the duration of filesystem verification or
+nested collection. An unresponsive worker is terminated and publication refuses; incomplete input
+reports cannot certify output. This is input/lifetime ownership, not a JavaScript security boundary.
+
+Evidence:
+
+- Original isolated regression passes after the first implementation in 26.90s:
+  `/private/tmp/apack-worker-input-after.log`.
+- The extended real compiler case covers explicitly terminated, naturally exiting (with explicit
+  execArgv/environment), nested and still-running background workers. It verifies each independently
+  read external file invalidates freshness. Existing native launch/preload and loader invalidation
+  cases also pass: three cases, 83.01s total, unchanged per-test budgets:
+  `/private/tmp/apack-worker-input-lifetime.log`.
+- Reviewed collection adds a responsiveness acknowledgment so nested verification does not consume
+  the termination grace. Both the four-variant positive case (35.38s) and an actual CPU-blocked worker
+  refusal (12.25s) pass, preserving the incumbent file and publishing no replacement:
+  `/private/tmp/apack-worker-input-reviewed.log`.
+- Startup/options, environment, builder cancellation/reuse and subprocess inventory: 26 checks pass
+  across four files in 28.20s: `/private/tmp/apack-worker-input-fast.log`.
+- CLI types and correctness lint pass:
+  `/private/tmp/apack-worker-input-final-types.log`, `/private/tmp/apack-worker-input-final-lint.log`.
+
+Remaining: watch mode's current inventories do not yet project these dynamic worker observations into
+subscriptions. Feed the accepted facts into the existing subscription owner and prove external edits
+rebuild without an authored edit; do not invent another scanner. Native addons/external libraries and
+platform-specific lifetime acceptance remain open, as do B6 and the whole-goal final strict gate.
+No B1/B3 completion or broad pass is claimed.
+
 ## Generic acceptance repair
 
 Source checkpoint: `f8fbbedf5`.
