@@ -396,3 +396,31 @@ must account for their expected bytes alongside emitted CSS/lazy/worker output. 
 source/resource ownership, external native overrides/runtime ownership, dependency closure, B2/B3
 lifetimes, B4–B6, all-kind and all three Phase 6 workstreams remain required. The final committed-source
 strict `--all` gate remains open.
+
+## Frontend scoped-read proof (2026-10-17)
+
+Baseline `e8fb68b7b`. A disposable fresh-process proof runs the actual `bundlePackFE` through the
+existing `withCompilerFileReads` owner, keeping Vite's original module root and resolution. It captures
+inputs, changes live files before the first Vite build, and checks emitted output rather than source
+maps. Vue source, npm dependency code, imported CSS, SVG raw/template/CSS assets, lazy imports,
+browser-worker source and glob members all contain captured markers and no live marker. The same
+holds with installed Sass and custom Tailwind configuration; the configured color is captured too.
+Changed originals still fail final input validation. Logs:
+`/private/tmp/apack-vite-owned-read-proof.log`, `/private/tmp/apack-vite-owned-read-sass.log`,
+`/private/tmp/apack-vite-owned-read-config-changed.log`.
+
+Unchanged-input controls pass final validation, including Sass/Tailwind:
+`/private/tmp/apack-vite-owned-read-unchanged-prepared.log`,
+`/private/tmp/apack-vite-owned-read-config-unchanged.log`. The initial unchanged fixture created its
+output parent after capture and therefore changed an observed root namespace; the controls prepare
+output first, matching the actual build pipeline. This correction is not a production guard change.
+Installed Vite's Sass importer loads through the async file-read path; no worker-count change is needed
+for the tested path. The scripts use only disposable owned directories and preserve repository inputs.
+
+Next source checkpoint: put the full frontend bundling operation under the same existing read scope
+when `CompilationInputs` is supplied. Keep its original root, resolvers, compiler selection and
+standalone behavior. This closes ordinary observed frontend file reads without creating another
+snapshot, resolver or global interceptor. Add changed/unchanged real frontend regressions that also
+exercise configuration source globals. Verify a real pack build before claiming the production
+handoff. Continue native/runtime and dependency closure, retained compiler lifetime and B4 output
+association; this proof alone is not whole B1/B2 acceptance or universal native-library coverage.
