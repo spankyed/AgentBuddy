@@ -470,3 +470,26 @@ successful input/output association. Continue those B1–B6 boundaries, all-kind
 and all three Phase 6 workstreams. Final committed-source strict `--all` remains open; no broad gate
 was rerun during this checkpoint. Another worktree's test process was observed; no other session's
 process or files were changed.
+
+## Early declared dependency capture design (2026-10-17)
+
+Baseline `55c64b68f`. The startup view captures authored files before user initialization, but declared
+npm dependency files are first captured later by compiler initialization. Three isolated filesystem
+regressions reproduce the gap: first dependency reads observe changed live bytes; added package
+members do not invalidate the early view; a missing optional dependency becoming available is not
+remembered. Existing authored ownership and generated-output checks pass:
+`/private/tmp/apack-early-dependencies-before.log` (three expected failures, two passes, 0.394s).
+
+Extend the existing input view using `readPackageInputs` before preloads. Its file callback supplies the
+same captured bytes used by package identity; lookup observations retain missingness and bindings.
+Add a directory callback to the same package reader so the view records the exact filtered membership
+used during that walk, without a second inventory scan. Share the directory-entry reader/exclusions
+between capture, local validation and native thread replay. Serialize a purpose-specific
+`package-entries` query through the existing observation protocol; do not create another record store,
+resolver or package format. Changes to ignored cache directories must remain irrelevant. Keep derived
+package facts with the same owner as authored bytes, and retain the existing final package checks.
+
+Prove byte ownership, membership, missing optional lookups, cache exclusions and cross-thread replay
+before running the affected startup path. Native overrides/runtime ownership and transient resolution
+acceptance remain separate B1 requirements. Measure actual affected execution rather than adding
+whole-graph rehashes to every validation call or treating this as all dependency closure.
