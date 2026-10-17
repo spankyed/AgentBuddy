@@ -100,6 +100,11 @@ This inventory follows `PackRegistration`, `PackFeature`, `PackFERegistration` a
 as implemented now, not the original survey. Existing declarations are retained; a runtime lookup is
 not a discovery defect when its caller needs an executing implementation.
 
+The 2026-10-17 [closure audit](../evidence/settings-and-pack-contracts.md#registration-and-reader-closure-audit-2026-10-17)
+rechecks every current field in those four interfaces against this table and the native declaration.
+No unclassified registration field remains. This closes field classification, not the outstanding
+compiler input/lifetime requirements or final all-kind acceptance.
+
 | Registration field | Static authority / binding boundary | Current finding |
 |---|---|---|
 | `id`, `declarationRevision` | Accepted snapshot/native owner; installed runtime revision checks in `declaration-binding.ts` | Implemented. Native composition has no installed revision. |

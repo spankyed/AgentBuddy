@@ -7283,3 +7283,45 @@ This closes local origin/version/content/inspection acceptance using existing co
 it does not claim a new integration pass. Compiler generation/input/output ownership remains under
 B1–B6, and final committed-source strict acceptance remains required. No frozen-resolution mode,
 cache redesign or additional package-manager scope is introduced.
+
+## Registration and reader closure audit (2026-10-17)
+
+Re-read current SDK `framework/pack-registration.ts` (`PackRegistration`, `PackFeature`) and
+`fe/pack-fe-registration.ts` (`PackFERegistration`, `PackFEFeature`), the native declaration in
+`framework/pack-catalog.ts`, snapshot parsing, backend catalog projections and frontend admission.
+The discovery plan's registration inventory covers every current field. The classification is:
+
+| Current fields / contribution | Static authority and checked execution boundary | Existing acceptance |
+|---|---|---|
+| IDs, revisions, dependencies, consumes | Snapshot/native declaration, common cache/build receipt and selected service admission | Catalog, declaration-binding, dependency-cache and service-binding cases |
+| Feature membership, designation, default, plugin presentation and endpoint events | Keyed declaration plus compiled event contracts; machines/components bind separately | Native-declarations, catalog-plugins, catalog-navigation, backend/frontend declaration-binding |
+| Entity/relation identity and optional shape | Shared normalized entity projection and `data.relations`; generated typed EARS and installed schema | Manifest consolidation evidence; snapshot and installed-schema cases |
+| Pack/feature settings and custom forms | Inline definitions through catalog; frontend forms and scoped ports are checked execution | Catalog settings, native declarations, frontend admission and five real host-only window cases |
+| Service/repository names and ownership | Manifest/native ownership before construction; selected runtime object/method authority remains executable | Native-api-declarations, content-binding and selected lifetime tests |
+| Lifecycle/migrations | Explicit static targets/line/version/description; callable bindings checked before execution | Native-declarations, native-migrations, lifecycle and declaration-binding cases |
+| Steps, artifacts and blocks | Catalog projections retain static node/style/kind/member metadata; callbacks/components remain bindings | Backend-step-catalog, native-viewers, frontend declaration-binding/viewer-reader cases |
+| Content writers/appliers | Owned entity/source declarations and verified compiled index; actual writes/import remain execution | Native-content, content-binding, pack-layout and actual external authoring cases |
+| Commands, reference types/categories | Keyed catalog declarations; dispatch/query providers require accepted running bindings | Command-catalog, reference readers/bindings, stored-reference window and external reference navigation |
+| Tiptap/app extensions and DSL | Explicit frontend member identities; compiled DSL text is snapshot data, editor objects/components are bindings | Frontend declaration-binding, source-free CLI inspection and real cold-worker/shared-editor case |
+| `bindServices`, `bindSettings` | Generated resource acquisition/revocation, not discoverable contributions | Selected service/action lifetime and scoped frontend settings cases |
+
+The normal packs UI (`features/packs/be/system.ts`) iterates the committed catalog for installed
+summaries, including problems and disabled owners. It does not construct services to list them.
+The offline database schema uses shared verified installed declarations; five current cases cover
+feature-owned typed/untyped entities, collisions and unreadable records. CLI info consumes
+`readPackBuild` and the same read-only dependency inspection frame. Runtime repository/service
+lookups, migration execution, actor readiness and content import eligibility remain execution policy;
+they are not duplicate discovery inventories to remove.
+
+Current host-pool results include all 36 native-declaration, 43 frontend binding, 34 backend binding,
+20 frontend catalog, 21 backend catalog, 12 native-content, 13 native-viewer, nine native-API,
+eight content-binding, 18 backend-step, five installed-schema and 41 snapshot cases passing:
+`/private/tmp/apack-service-host-unit-pool.log`. Their inspected assertions include absent source
+modules, poisoned runtime inspection, native metadata before binding/after unload, membership
+refusal before granting authority and retained incumbent metadata on refusal. The broader pool's
+unrelated repaired failures do not constitute a whole-pool green verdict.
+
+This closes the supported registration-field classification against current code. It does not turn
+historical producer checks into a final all-kind pass. Required assets, compiler lifetime/input
+ownership, frontend reuse/removal, actual external app/fork acceptance and final strict validation
+remain owned by the goal. No additional discovery store or runtime-only contribution was introduced.
