@@ -1,0 +1,47 @@
+name: Compiler Windows
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: compiler-windows-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  compiler:
+    runs-on: windows-latest
+    timeout-minutes: 20
+    env:
+      APACK_CHAIN_CORES: 2
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 23.11.1
+          cache: npm
+      - name: Record platform and source
+        run: |
+          git rev-parse HEAD
+          node -p "JSON.stringify({platform:process.platform,arch:process.arch,versions:process.versions})"
+      - name: Install dependencies
+        run: npm ci
+      - name: Build matching packages
+        run: npm run packages:ensure
+      - name: Compiler input and installation checks
+        run: >-
+          node scripts/with-source.mjs npx vitest run --project @apackdev/cli
+          packages/apack-cli/tests/build/compiler-read-tree.spec.ts
+          packages/apack-cli/tests/build/compiler-module-inputs.spec.ts
+          packages/apack-cli/tests/build/compiler-installation.spec.ts
+          packages/apack-cli/tests/build/compiler-runtime.spec.ts
+          --bail=1 --poolOptions.threads.maxThreads=2 --poolOptions.threads.minThreads=1
+      # Existing Windows skips do not establish descendant-lifetime acceptance. Keep that gap explicit
+      # until a Windows lifetime owner and its native success/failure/cancellation cases are implemented.
+      - name: Build worker platform baseline
+        run: >-
+          npx vitest run --config vitest.integration.config.ts --project @apackdev/cli
+          packages/apack-cli/tests/build/build-worker.integration.spec.ts
+          --bail=1 --poolOptions.threads.maxThreads=2 --poolOptions.threads.minThreads=1
