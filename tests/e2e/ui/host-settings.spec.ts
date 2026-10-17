@@ -240,7 +240,7 @@ test('cold Monaco documents follow source-free declarations and share worker lib
     });
     await appPage.keyboard.type('// draft\n');
     const draft = await mounted.evaluate(value => value.state());
-    expect(draft.value).toContain('// draft'); expect(draft.updates).toBeGreaterThan(0);
+    expect(draft.value).toContain('// draft'); expect(draft.updates).toBeGreaterThan(0); expect(draft.sameModel).toBe(true);
     publish('after: number'); await refresh();
     await expect.poll(() => mounted.evaluate(value => value.completions())).toContain('after');
     expect(await mounted.evaluate(value => value.completions())).not.toContain('before');
