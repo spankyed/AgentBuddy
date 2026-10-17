@@ -1018,3 +1018,20 @@ Then expose the completed producer frame and bind it through the existing integr
 reused phase outputs too: a phase skipped by a cache cannot silently drop its external consumed inputs
 from the successful record. Expected media/public/CSS/chunk output membership and B5's four consumers
 remain required; moving the shared owner does not close B4 or platform/native-library acceptance.
+
+
+### Common native input owner checkpoint
+
+Source `0434a0703` moves the existing capture/replay implementation to the host-only
+`build/compiler-inputs` export, with every CLI reader migrated and no forwarding files. The shared
+filesystem contract no longer imports TypeScript types. Explicit compilation scopes still own adapter
+installation; importing/replaying facts does not activate a compiler or replace filesystem operations.
+Host bridge policy explicitly keeps this tooling out of pack runtime APIs.
+
+All 82 capture/namespace/metadata/cursor/descriptor/path/replay and bridge checks pass in 4.35s:
+`/private/tmp/apack-common-inputs-focused-final.log`. The fresh-process replay probe poisons compiler
+imports and checks unchanged native read/stat functions. Actual bundled early startup also passes
+(73ms body, 1.90s total): `/private/tmp/apack-common-inputs-native-startup.log`. Host/CLI types,
+39-file lint and package refresh pass. No broad suite was rerun. This is shared ownership, not completed
+B4 persistence or final acceptance. Next expose and validate the completed frame, including explicit
+generated reads and retained inputs from reused phases, before binding it to sealed output.

@@ -292,6 +292,12 @@ The subsequent watch repair eliminates redundant tooling discovery while preserv
 verification. All 24 affected integration cases pass with two workers; no timeout changed. The
 external-types budget remains tight and no broad/strict pass is claimed; see
 [watch repair evidence](../evidence/build-input-snapshot-proof.md#compilerwatch-integration-repair-2026-10-17).
+Common native input ownership is implemented in `0434a0703`: capture/replay now lives in the host
+build layer, with no compiler activation or import-time filesystem interception. Eighty-two focused
+checks, actual bundled startup, host/CLI types, lint and package refresh pass; see
+[common-owner evidence](../evidence/build-input-snapshot-proof.md#common-native-input-owner-checkpoint).
+B4's next producer work is the completed frame and its association with sealed output, including
+inputs needed by reused phases; the relocation alone does not satisfy that contract.
 Next: reconcile the finite native/platform lifetime boundary against supported compiler operations,
 then settle B4's common successful input/output association. Preserve required external-library and
 platform/thread-lifetime acceptance;
