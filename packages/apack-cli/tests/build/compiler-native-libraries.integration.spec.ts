@@ -15,12 +15,12 @@ import { withCompilerFileReads } from '@apackdev/host/build/compiler-inputs';
 import { captureCompilerInstallation, compilerPackageDirectory, type CompilerInstallation } from '../../src/build/compiler-installation.ts';
 import { startPackFrontend } from '../../src/build/frontend-process.ts';
 
-function nativeFixture(mode: 'relative' | 'absolute' | 'transitive' | 'fallback') {
+function nativeFixture(mode: 'relative' | 'absolute' | 'transitive' | 'fallback' | 'framework') {
   const root = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'apack-native-libraries-')));
   try {
     const pack = path.join(root, 'pack');
     const native = path.join(root, 'native-package');
-    const library = path.join(native, 'lib/libvalue.dylib');
+    const library = path.join(native, mode === 'framework' ? 'Value.framework/Versions/A/Value' : 'lib/libvalue.dylib');
     fs.mkdirSync(pack);
     fs.mkdirSync(path.dirname(library), { recursive: true });
     fs.mkdirSync(path.join(native, 'binding'));
@@ -38,7 +38,7 @@ function nativeFixture(mode: 'relative' | 'absolute' | 'transitive' | 'fallback'
     buildLibrary(library, mode === 'transitive'
       ? 'extern int outside_value(void); int native_value(void) { return outside_value(); }'
       : 'int native_value(void) { return 11; }',
-    mode === 'absolute' ? library : mode === 'fallback' ? 'libvalue.dylib' : '@loader_path/../lib/libvalue.dylib', mode === 'transitive' ? [outside] : []);
+    mode === 'absolute' ? library : mode === 'fallback' ? 'libvalue.dylib' : '@loader_path/../' + path.relative(native, library), mode === 'transitive' ? [outside] : []);
     const addonSource = path.join(native, 'binding/addon.c');
     fs.writeFileSync(addonSource, `#include <node_api.h>
 #include <stdio.h>
@@ -256,42 +256,54 @@ __attribute__((constructor)) static void initialize(void) {
   }
 });
 
-it.runIf(process.platform === 'darwin')('refuses an external native fallback before initialization after a preload clears its launch setting', async () => {
-  const fixture = nativeFixture('fallback');
-  const builder = createPackBuilder(fixture.pack);
-  const previousOptions = process.env.NODE_OPTIONS;
-  const previousFallback = process.env.DYLD_FALLBACK_LIBRARY_PATH;
-  const preload = path.join(fixture.pack, 'clear-fallback.cjs');
-  const attempted = path.join(fixture.root, 'owned-attempt');
-  try {
-    // First prove dyld really selects the external bytes in a fresh process.
-    expect(execFileSync(process.execPath, ['-e', `console.log(require(${JSON.stringify(path.join(fixture.native, 'binding/addon.node'))}).read())`], {
-      encoding: 'utf8', env: { ...process.env, DYLD_FALLBACK_LIBRARY_PATH: path.dirname(fixture.library) },
-    }).trim()).toBe('11');
-    expect(fs.existsSync(fixture.marker)).toBe(true);
-    fs.rmSync(fixture.marker);
-    packFixture({ at: fixture.pack, nodeModules: path.join(REPO_ROOT, 'node_modules'), manifest: { features: {} },
-      files: { 'tsconfig.json': JSON.stringify({ compilerOptions: { module: 'esnext', moduleResolution: 'bundler', skipLibCheck: true } }) } });
-    await builder.build({ args: ['--skip-fe'] });
-    const output = path.join(fixture.pack, 'dist');
-    const revision = readPackBuild(output).revision;
-    fs.writeFileSync(preload, `if (globalThis[Symbol.for('apack.compiler.startup')]) {
-      delete process.env.DYLD_FALLBACK_LIBRARY_PATH;
-      require('node:fs').writeFileSync(${JSON.stringify(attempted)}, 'owned');
-      require(${JSON.stringify(path.join(fixture.native, 'binding/addon.node'))});
-    }`);
-    process.env.DYLD_FALLBACK_LIBRARY_PATH = path.dirname(fixture.library);
-    process.env.NODE_OPTIONS = formatNodeOptions([...parseNodeOptions(previousOptions), '--require', preload]);
-    await expect(builder.build({ args: ['--skip-fe'] })).rejects.toThrow();
-    expect(fs.readFileSync(attempted, 'utf8')).toBe('owned');
-    expect(fs.existsSync(fixture.marker)).toBe(false);
-    expect(readPackBuild(output).revision).toBe(revision);
-  } finally {
-    if (previousOptions === undefined) delete process.env.NODE_OPTIONS;
-    else process.env.NODE_OPTIONS = previousOptions;
-    if (previousFallback === undefined) delete process.env.DYLD_FALLBACK_LIBRARY_PATH;
-    else process.env.DYLD_FALLBACK_LIBRARY_PATH = previousFallback;
-    await builder.close();
-    fs.rmSync(fixture.root, { recursive: true, force: true });
-  }
-});
+it.runIf(process.platform === 'darwin').each(['DYLD_FALLBACK_LIBRARY_PATH', 'DYLD_FRAMEWORK_PATH', 'DYLD_FALLBACK_FRAMEWORK_PATH'] as const)(
+  'refuses external %s before native initialization after preload mutation', async variable => {
+    const framework = variable !== 'DYLD_FALLBACK_LIBRARY_PATH';
+    const fixture = nativeFixture(framework ? 'framework' : 'fallback');
+    const builder = createPackBuilder(fixture.pack);
+    const previousOptions = process.env.NODE_OPTIONS;
+    const previousSearch = process.env[variable];
+    const preload = path.join(fixture.pack, 'clear-fallback.cjs');
+    const attempted = path.join(fixture.root, 'owned-attempt');
+    const search = framework ? path.join(fixture.root, 'outside') : path.dirname(fixture.library);
+    const selected = framework ? path.join(search, path.relative(fixture.native, fixture.library)) : fixture.library;
+    try {
+      if (framework) {
+        fs.mkdirSync(path.dirname(selected), { recursive: true });
+        fs.copyFileSync(fixture.library, selected);
+        if (variable === 'DYLD_FALLBACK_FRAMEWORK_PATH') fs.rmSync(fixture.library);
+      }
+      // First prove dyld really selects the external bytes in a fresh process.
+      const loaded = JSON.parse(execFileSync(process.execPath, ['-e', `const value = require(${JSON.stringify(path.join(fixture.native, 'binding/addon.node'))}).read(); console.log(JSON.stringify({ value, libraries: process.report.getReport().sharedObjects }));`], {
+        encoding: 'utf8', env: { ...process.env, [variable]: search },
+      })) as { value: number; libraries: string[] };
+      expect(loaded.value).toBe(11);
+      expect(loaded.libraries).toContain(fs.realpathSync.native(selected));
+      expect(fs.existsSync(fixture.marker)).toBe(true);
+      fs.rmSync(fixture.marker);
+      packFixture({ at: fixture.pack, nodeModules: path.join(REPO_ROOT, 'node_modules'), manifest: { features: {} },
+        files: { 'tsconfig.json': JSON.stringify({ compilerOptions: { module: 'esnext', moduleResolution: 'bundler', skipLibCheck: true } }) } });
+      await builder.build({ args: ['--skip-fe'] });
+      const output = path.join(fixture.pack, 'dist');
+      const revision = readPackBuild(output).revision;
+      fs.writeFileSync(preload, `if (globalThis[Symbol.for('apack.compiler.startup')]) {
+        delete process.env[${JSON.stringify(variable)}];
+        require('node:fs').writeFileSync(${JSON.stringify(attempted)}, 'owned');
+        require(${JSON.stringify(path.join(fixture.native, 'binding/addon.node'))});
+      }`);
+      process.env[variable] = search;
+      process.env.NODE_OPTIONS = formatNodeOptions([...parseNodeOptions(previousOptions), '--require', preload]);
+      await expect(builder.build({ args: ['--skip-fe'] })).rejects.toThrow();
+      expect(fs.readFileSync(attempted, 'utf8')).toBe('owned');
+      expect(fs.existsSync(fixture.marker)).toBe(false);
+      expect(readPackBuild(output).revision).toBe(revision);
+    } finally {
+      if (previousOptions === undefined) delete process.env.NODE_OPTIONS;
+      else process.env.NODE_OPTIONS = previousOptions;
+      if (previousSearch === undefined) delete process.env[variable];
+      else process.env[variable] = previousSearch;
+      await builder.close();
+      fs.rmSync(fixture.root, { recursive: true, force: true });
+    }
+  },
+);

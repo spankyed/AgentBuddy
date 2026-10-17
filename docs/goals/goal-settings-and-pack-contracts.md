@@ -68,7 +68,7 @@ so completed implementation is not repeatedly scheduled as new work.
 | Build input/publication and freshness (Phase 3) | B2, B4 and B5 implemented and locally accepted; generation-cache ownership repaired in `caf57cb0e`; B1/B3 closure and B6 outstanding | Close remaining native/platform/thread ownership acceptance and converged checks; preserve the common record and four migrated passive consumers. Installed discovery must remain source-free and activation-free. |
 | Entity navigation (Phase 4) | Implemented with local handler/runtime acceptance through `95ff95ab3`, following producer `94148c9e0`, catalog/admission `479c75e01`, routing `cd9c57de6` and feature repair `831221020` | Preserve six-handler, cancellation and stored-message acceptance through final strict validation; retain build/publication and strict-gate acceptance for B6. No further navigation implementation is currently identified. |
 | Frontend boundaries (Phase 5) | Implemented and locally accepted: `713a6c1fd`, including the real external-pack window | Preserve pane/form containment, attributed nonfatal diagnostics and retired-instance refusal through final committed-source strict acceptance. |
-| Consumed APIs (Phase 6) | A1 selection `71f76a41b`; onboarding/admin split `b39c189b8`; A2 foundation/admission `1a0de64fb` / `558b42220`; A3 core binding/filtering/lifetimes `cccc12d5d`; A4 service/action routes `bb6df4a45` implemented | Complete [A4–A5](../plans/declared-capabilities.md#bounded-implementation-checkpoints): retain the implemented content-target checks and close app/converged acceptance. Authoring and harness acceptance now pass in `45f2a3458` / `1fbc1e223`. Preserve A1's contract, settings policy and EARS behavior. Declaration availability is not executable readiness. Strict checkpoint acceptance remains incomplete as recorded below. |
+| Consumed APIs (Phase 6) | A1–A4 implemented through `bb6df4a45`; A5 authoring/harness `45f2a3458` / `1fbc1e223`, complete external app/fork acceptance on `031e3a521`, and schema/API/export agreement on `b62da5c72` locally accepted. See [A4–A5 evidence](../plans/declared-capabilities.md#bounded-implementation-checkpoints). | Preserve accepted selection, lifetimes, content-target checks, settings policy and typed/untyped EARS through final producer/app convergence and strict acceptance. No additional API implementation or separate unexecuted local app migration is identified. Declaration availability remains distinct from executable readiness. |
 | Dependency provenance (Phase 6) | Cache/admission `ff4358588` and inspection `d6fa2c6dc`; current reader/producer audit confirms exact origin/version/content and read-only reuse acceptance | Local provenance acceptance closed by the existing real producer/consumer proof and current passing cache/resolution/inspection cases. Preserve through the final gate. Compiler input/output freshness remains separately owned by B1–B6; frozen resolution stays conditional on a distribution requirement. |
 | Shipped-pack replacement (Phase 6) | Implemented ownership/suppression/replacement/source updates; refreshed complete external app and normal fork lifecycle acceptance passes | Local restart/reload, two-window fork preservation, disable/remove/restore and settings preservation are accepted on current source. Preserve existing managed-update and failure-retention cases for the final gate; no replacement redesign remains identified. |
 | Final review/acceptance (Phase 7) | Outstanding | Audit every phase and reconciled manifest requirement on committed source, run final strict `--all`, record evidence and archive only completed work. |
@@ -99,14 +99,18 @@ fails on a logical-source path spelling assertion; `329cfbd89` compares native f
 while retaining private-path, repeated-output and cache checks. The next Windows run must prove the
 remaining real-worker cases; descendant lifetime remains separately unimplemented.
 
-The demonstrated macOS explicit fallback gap is repaired: launch-time `DYLD_FALLBACK_LIBRARY_PATH`
+Source `59b890dcb` repairs the macOS explicit fallback gap: launch-time `DYLD_FALLBACK_LIBRARY_PATH`
 survives preload mutation, selected external fallback libraries refuse before native initialization,
 and the incumbent survives. Current-directory lookup precedes fallback lookup; a successfully resolved
 package-relative library does not consult unused fallback paths. Twenty-seven unit cases, four real
 native/compiler cases, CLI types and correctness lint pass. See
 [checkpoint evidence](../evidence/build-input-snapshot-proof.md#explicit-native-fallback-admission-2026-10-17).
-Other dyld controls/default fallbacks, retained frontend native initialization, ELF/PE, platform lifetime
-and converged/final acceptance remain open. Do not treat this focused repair as full B1/B3 closure.
+Framework override/fallback admission now uses the same ordered search, with full framework/version
+paths and the retained launch environment. Thirty unit cases and three real compiler-preload cases
+pass, including preserved dylib fallback behavior; see
+[framework evidence](../evidence/build-input-snapshot-proof.md#native-framework-search-admission-2026-10-17).
+Versioned/suffix/shared-cache controls and default fallbacks, retained frontend native initialization,
+ELF/PE, platform lifetime and converged/final acceptance remain open. Do not treat this focused repair as full B1/B3 closure.
 
 #### Execution boundaries and closure
 

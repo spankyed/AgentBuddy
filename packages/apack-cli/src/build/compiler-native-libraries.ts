@@ -9,13 +9,18 @@ interface NativeLibraryCommands {
 export interface MachOLibraryEnvironment {
   readonly libraryPaths: readonly string[];
   readonly fallbackLibraryPaths: readonly string[];
+  readonly frameworkPaths: readonly string[];
+  readonly fallbackFrameworkPaths: readonly string[];
 }
 
 /** dyld reads these settings at process launch, before user preloads can change process.env. */
 export function captureMachOLibraryEnvironment(env: NodeJS.ProcessEnv = process.env): MachOLibraryEnvironment {
+  const paths = (name: string) => Object.freeze(env[name] ? env[name].split(':') : []);
   return Object.freeze({
-    libraryPaths: Object.freeze(env.DYLD_LIBRARY_PATH ? env.DYLD_LIBRARY_PATH.split(':') : []),
-    fallbackLibraryPaths: Object.freeze(env.DYLD_FALLBACK_LIBRARY_PATH ? env.DYLD_FALLBACK_LIBRARY_PATH.split(':') : []),
+    libraryPaths: paths('DYLD_LIBRARY_PATH'),
+    fallbackLibraryPaths: paths('DYLD_FALLBACK_LIBRARY_PATH'),
+    frameworkPaths: paths('DYLD_FRAMEWORK_PATH'),
+    fallbackFrameworkPaths: paths('DYLD_FALLBACK_FRAMEWORK_PATH'),
   });
 }
 
@@ -101,11 +106,16 @@ export function assertCapturedMachOLibraries(entry: string, packageRoot: string,
     return relative === '' || (relative !== '..' && !relative.startsWith(`..${path.sep}`) && !path.isAbsolute(relative));
   };
   const environment = input.environment ?? captureMachOLibraryEnvironment();
-  const search = (reference: string, requester: string, directories: readonly string[], variable: string) => {
-    // Framework overrides use DYLD_FRAMEWORK_PATH, not the dylib basename search.
-    if (/([^/]+)\.framework\/(?:Versions\/[^/]+\/)?\1$/.test(reference)) return false;
+  const search = (reference: string, requester: string, fallback = false) => {
+    const framework = reference.match(/(?:^|\/)(([^/]+)\.framework\/(?:Versions\/[^/]+\/)?\2)$/)?.[1];
+    const directories = framework
+      ? fallback ? environment.fallbackFrameworkPaths : environment.frameworkPaths
+      : fallback ? environment.fallbackLibraryPaths : environment.libraryPaths;
+    const variable = framework
+      ? fallback ? 'DYLD_FALLBACK_FRAMEWORK_PATH' : 'DYLD_FRAMEWORK_PATH'
+      : fallback ? 'DYLD_FALLBACK_LIBRARY_PATH' : 'DYLD_LIBRARY_PATH';
     for (const directory of directories) {
-      const candidate = path.resolve(`${directory}/${path.basename(reference)}`);
+      const candidate = path.resolve(`${directory}/${framework ?? path.basename(reference)}`);
       if (input.read(candidate) === undefined) continue;
       if (systemLibrary(candidate) && systemLibrary(input.realpath(candidate))) return true;
       throw new Error(`Native compiler image "${requester}" selects "${candidate}" through ${variable} outside its captured package. Use package-relative native libraries or operating-system libraries.`);
@@ -134,7 +144,7 @@ export function assertCapturedMachOLibraries(entry: string, packageRoot: string,
       return expanded ? [{ reference, expanded }] : [];
     }), ...inherited];
     for (const reference of commands.dependencies) {
-      if (search(reference, file, environment.libraryPaths, 'DYLD_LIBRARY_PATH')) continue;
+      if (search(reference, file)) continue;
       if (path.isAbsolute(reference)) {
         if (!systemLibrary(path.resolve(reference))) refuse(reference);
         continue;
@@ -152,9 +162,9 @@ export function assertCapturedMachOLibraries(entry: string, packageRoot: string,
         if (!within(candidate) || !within(input.realpath(candidate), input.realpath(packageRoot))) refuse(reference);
         if (inspect(candidate, rpaths)) { found = true; break; }
       }
-      if (!found) search(reference, file, environment.fallbackLibraryPaths, 'DYLD_FALLBACK_LIBRARY_PATH');
+      if (!found) search(reference, file, true);
     }
     return true;
   }
-  if (!search(entry, entry, environment.libraryPaths, 'DYLD_LIBRARY_PATH')) inspect(entry, []);
+  if (!search(entry, entry)) inspect(entry, []);
 }

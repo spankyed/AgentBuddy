@@ -2245,3 +2245,41 @@ Acceptance on macOS ARM64 / Node 23.11.1:
 This closes explicit fallback admission for the exercised path. Default fallback policy for older
 images, framework/versioned/suffix/shared-cache controls, retained frontend native initialization,
 ELF/PE and native platform/descendant acceptance remain open. B6/final strict acceptance is not claimed.
+
+### Native framework search admission (2026-10-17)
+
+A disposable actual Mach-O framework prototype returns 11 with its package-relative dependency and
+37 under `DYLD_FRAMEWORK_PATH`, while the previous admission check accepts the external override.
+Removing the original framework also demonstrates external fallback selection. A separate actual
+`DYLD_LIBRARY_PATH` basename candidate leaves the framework at 11, validating the existing distinction
+between dylib and framework lookup. Script and fixture record:
+`/private/tmp/apack-native-framework-proof.cjs`, `/private/tmp/apack-native-framework-proof.json`.
+
+Extend the existing search helper, preserving its ordered first-match behavior. Framework references
+use the entire `Foo.framework/Foo` or `Foo.framework/Versions/A/Foo` suffix rather than a basename.
+Capture both framework environment lists in the existing frozen startup environment, inherited by
+compiler threads; no new owner or runtime loader is introduced. Missing overrides remain reads;
+fallbacks are consulted only after normal resolution fails. This preserves an existing relative
+framework rather than refusing an unused outside fallback.
+
+| Executed path | Existing owner | Result |
+|---|---|---|
+| Explicit dylib fallback after preload deletes its environment setting | Startup native-module admission | Pass; retains `59b890dcb` behavior. |
+| Framework override after preload deletes its environment setting | Same startup native-module admission | Pass; full versioned framework candidate attributed and refused before initialization. |
+| Missing original framework with explicit outside fallback | Same startup native-module admission | Pass; fallback attributed and refused before initialization. |
+
+MacOS ARM64 / Node 23.11.1: all 30 unit cases pass (0.202s runner), with complete/flat framework
+paths, missing-candidate observations, fallback eligibility and immutable launch settings:
+`/private/tmp/apack-native-framework-unit.log`. Three real public-build cases pass (63.65s runner;
+individual cases 19.56–22.96s, unchanged deadlines): `/private/tmp/apack-native-framework-worker.log`.
+Each proves the selected library using a fresh child's actual loaded-image report, publishes a valid
+incumbent, reaches the owned compiler preload, refuses before addon initialization and preserves the
+incumbent revision. All three diagnostics name the selected path and appropriate dyld variable.
+CLI types, correctness lint and whitespace checks pass:
+`/private/tmp/apack-native-framework-types.log`.
+
+This closes the exercised explicit framework search paths. Versioned overrides, image suffixes,
+shared-cache controls, default fallback behavior, retained frontend native initialization, ELF/PE and
+platform lifetime remain open, as do converged/final gates. The API live ledger is also reconciled
+with its already recorded A4/A5 implementation and local app/schema/API acceptance; final producer/app
+convergence is retained rather than repeating an already completed migration.
