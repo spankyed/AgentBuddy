@@ -493,3 +493,31 @@ Prove byte ownership, membership, missing optional lookups, cache exclusions and
 before running the affected startup path. Native overrides/runtime ownership and transient resolution
 acceptance remain separate B1 requirements. Measure actual affected execution rather than adding
 whole-graph rehashes to every validation call or treating this as all dependency closure.
+
+## Early declared dependency capture checkpoint (2026-10-17)
+
+Source `9ecf788fb` implements the preceding design. The shared package walk supplies exact consumed
+bytes and filtered directory membership; the existing view records package lookup locations, including
+missing optional dependencies. Local validation and native-thread replay compare the same filtered
+membership. The view's hash includes those added observations. No source modules execute during capture,
+and ignored package cache directories remain irrelevant.
+
+Evidence:
+
+- Twelve focused input/observation/worker-admission tests pass (3.30s):
+  `/private/tmp/apack-early-dependencies-unit-final.log`. The preceding shared-reader run also passed
+  all twenty package-input tests: `/private/tmp/apack-early-dependencies-after.log`.
+- Actual native startup captures dependency code before a preload overwrites it, retains the captured
+  value and refuses changed originals; restoration passes validation (69ms test, 1.82s process):
+  `/private/tmp/apack-early-dependencies-native-final.log`. The existing two-second deadline is unchanged.
+- Actual captured-worker publication and repeat build preserve source globals, output revision and
+  type-cache identity, and remove both private input workspaces (50.02s):
+  `/private/tmp/apack-early-dependencies-build-final.log`.
+- CLI/host types, lint and package refresh pass:
+  `/private/tmp/apack-early-dependencies-{types-final,lint-final,packages-final}.log`.
+
+This closes the reproduced early declared-dependency gap. It does not establish ownership of external
+executable overrides, the Node/Electron runtime, arbitrary native I/O or every transient resolution
+path. Continue the existing B1/B3 matrix, then B2–B6 and all other active goal requirements. No broad
+gate was repeated; preserved integration failures and final committed-source strict acceptance remain
+open. Other sessions' source/processes and saved work were preserved.

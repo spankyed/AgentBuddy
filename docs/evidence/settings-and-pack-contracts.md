@@ -6559,3 +6559,10 @@ have reproduced repairs. All 840 affected cases, host/SDK types, lint, package b
 generation pass. See [migration evidence](discovery-without-activation.md#native-migration-targeting-2026-10-17).
 No broad rerun follows the preserved integration resource failure. Static assets/readers and all-kind
 acceptance are next; B1–B6, Phase 6 and final committed-source strict `--all` remain required.
+
+### Early declared dependency inputs (2026-10-17)
+
+`9ecf788fb` captures declared npm bytes, package membership and missing lookups before preloads through
+the existing input owner. Focused cases, native startup, unchanged real repeat builds, CLI/host types,
+lint and CLI package refresh pass. See [dependency-input evidence](build-input-snapshot-proof.md#early-declared-dependency-capture-checkpoint-2026-10-17).
+Remaining native/runtime and transient resolution acceptance, B2–B6 and all other goal phases remain open.

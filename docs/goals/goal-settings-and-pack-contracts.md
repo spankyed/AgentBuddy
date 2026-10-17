@@ -244,7 +244,13 @@ read owner, retaining Vite's root and resolvers. Changed/unchanged real compiler
 dependency code, CSS/SVG, lazy imports, browser workers, globs, Sass, Tailwind and configuration source
 globals. The public-file case, 19 adjacent cases, CLI types/lint/package refresh and real external-pack
 build/publication pass. See [frontend evidence](../evidence/build-input-snapshot-proof.md#frontend-read-scope-checkpoint-2026-10-17).
-Next: close the matrix's remaining native/runtime and dependency/namespace acceptance, plus B2/B3 lifetimes,
+Dependency-startup checkpoint `9ecf788fb` captures declared npm bytes, filtered membership and missing
+lookups before user initialization through the existing package reader/input owner. Twelve focused
+input tests, the real native-preload regression, CLI/host types, lint and refreshed CLI build pass.
+The real worker's two builds preserve unchanged sealed output/cache identity (50.02s). Existing twenty
+package-reader cases also pass. See [dependency evidence](../evidence/build-input-snapshot-proof.md#early-declared-dependency-capture-checkpoint-2026-10-17).
+This closes the demonstrated early declared-input gap, not external executable/runtime ownership or
+all transient resolution paths. Next: close those remaining matrix cases, plus B2/B3 lifetimes,
 then B4–B6 and all-kind acceptance. Asset input/output completeness remains required under B1/B4,
 not a deferred follow-up or another discovery store. All three Phase 6 workstreams remain required. Do not restart implemented endpoint
 or navigation work, or rerun a broad gate to investigate the preserved integration failures.
