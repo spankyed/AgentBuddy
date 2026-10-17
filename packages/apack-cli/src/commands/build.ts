@@ -360,7 +360,7 @@ async function buildIntoStaging(args: string[], root: string) {
     const feEntry = args.includes('--skip-fe') ? null : findFEEntry(root);
     if (feEntry) {
       const feOutputDir = path.join(outputDir, PACK_LAYOUT.runtimeDir);
-      const feResult = await bundlePackFE({ packDir: root, outputDir: feOutputDir, entryPoint: feEntry, release,
+      const feResult = await bundlePackFE({ packDir: root, outputDir: feOutputDir, entryPoint: feEntry, release, compilation,
         recordReads: reads?.forPhase('fe'), onInputs: process.env[BUILD_INPUTS_IPC_ENV] === '1' ? reportBuildWatchInputs : undefined });
       if (feResult.success) {
         console.log(`  fe: dist/${PACK_LAYOUT.feEntry}`);

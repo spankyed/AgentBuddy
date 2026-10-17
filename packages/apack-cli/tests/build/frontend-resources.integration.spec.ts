@@ -6,9 +6,30 @@ import { readPackBuild } from '@apackdev/host/packs';
 import { callCli } from '../_support/pack-builds.ts';
 import { startPackBuildWatcher } from '../../src/build/watch.ts';
 import { bundlePackFE } from '../../src/build/fe-bundler.ts';
+import { captureCompilationInputs } from '../../src/build/compilation-inputs.ts';
 
 const fixture = createFrontendResourceFixture();
 const { consumer } = fixture;
+
+it('copies public assets from the accepted input view instead of changed live files', async () => {
+  const { pack } = consumer();
+  const asset = path.join(pack, 'public', 'proof.txt');
+  fs.mkdirSync(path.dirname(asset), { recursive: true });
+  fs.writeFileSync(asset, 'CAPTURED');
+  fs.chmodSync(asset, 0o666);
+  fs.writeFileSync(path.join(pack, 'public/fe.js'), '// public placeholder overwritten by the bundle');
+  const compilation = captureCompilationInputs(pack);
+  try {
+    fs.writeFileSync(asset, 'LIVE');
+    const outputDir = path.join(pack, 'dist/runtime');
+    const result = await bundlePackFE({ packDir: pack, outputDir, entryPoint: path.join(pack, 'src/canvas.vue'), compilation });
+    expect(result.success, result.error).toBe(true);
+    expect(fs.readFileSync(path.join(outputDir, 'proof.txt'), 'utf8')).toBe('CAPTURED');
+    if (process.platform !== 'win32') expect(fs.statSync(path.join(outputDir, 'proof.txt')).mode & 0o777).toBe(0o666);
+    expect(fs.readFileSync(path.join(outputDir, 'fe.js'), 'utf8')).not.toContain('public placeholder');
+    expect(() => compilation.assertCurrent()).toThrow('Compiler or installed package inputs changed');
+  } finally { compilation.dispose(); }
+});
 
 it('rebuilds Vue styles after only an external stylesheet changes', async () => {
   const { pack } = consumer();

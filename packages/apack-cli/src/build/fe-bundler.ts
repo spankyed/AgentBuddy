@@ -8,6 +8,7 @@ import type { RecordReads } from './build-reads';
 import { errorMessage } from '@apackdev/sdk/utils/pure';
 import type { BuildWatchInputs } from './build-watch-inputs.ts';
 import { globWatchPlugin } from './glob-watch.ts';
+import type { CompilationInputs } from './compilation-inputs.ts';
 
 /**
  * The package names the pack declares opaque to the bundler (`build.opaqueDeps`). Unreadable is an error
@@ -373,6 +374,8 @@ export interface BundleFEOptions {
   packDir: string;
   outputDir: string;
   entryPoint: string;
+  /** Uses the build's captured authored public files when supplied. */
+  compilation?: CompilationInputs;
   /** Minified, no source maps (release bundles). */
   release?: boolean;
   /** Where this bundle reports the files it read, for the build's record of its inputs */
@@ -514,7 +517,7 @@ async function tailwindPostcssPlugins(packDir: string): Promise<any[]> {
 }
 
 export async function bundlePackFE(options: BundleFEOptions): Promise<{ success: boolean; error?: string }> {
-  const { packDir, outputDir, entryPoint, release = false, recordReads } = options;
+  const { packDir, outputDir, entryPoint, release = false, recordReads, compilation } = options;
 
   const vite = await import('vite');
   const vue = (await import('@vitejs/plugin-vue')).default;
@@ -559,8 +562,10 @@ export async function bundlePackFE(options: BundleFEOptions): Promise<{ success:
 
   try {
     const opaque = opaqueDeps(packDir);
+    const publicDir = compilation?.readTree().path(path.join(packDir, 'public'));
     await vite.build({
       root: packDir,
+      publicDir,
       configFile: false,
       plugins: [
         {
@@ -579,6 +584,24 @@ export async function bundlePackFE(options: BundleFEOptions): Promise<{ success:
         ...(opaque.length > 0 ? [opaqueVendorPlugin(opaque)] : []),
         vue(),
         ...inputPlugins(),
+        ...(compilation && publicDir ? [{
+          name: 'captured-public-file-modes',
+          generateBundle() {
+            // Vite has copied public files before generation; owned inputs are read-only.
+            const restoreModes = (directory: string) => {
+              if (!fs.existsSync(directory)) return;
+              for (const name of fs.readdirSync(directory)) {
+                const file = path.join(directory, name);
+                if (fs.statSync(file).isDirectory()) restoreModes(file);
+                else {
+                  const stat = compilation.readMetadata('stat', compilation.sourcePath(file), []) as fs.Stats;
+                  fs.chmodSync(path.join(outputDir, path.relative(publicDir, file)), stat.mode);
+                }
+              }
+            };
+            restoreModes(publicDir);
+          },
+        }] : []),
       ],
       worker: { plugins: inputPlugins },
       css: {
@@ -623,7 +646,7 @@ export async function bundlePackFE(options: BundleFEOptions): Promise<{ success:
   } catch (err) {
     return {
       success: false,
-      error: errorMessage(err),
+      error: compilation?.diagnostic(errorMessage(err)) ?? errorMessage(err),
     };
   }
 }
