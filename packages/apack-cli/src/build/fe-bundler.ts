@@ -6,6 +6,7 @@ import { pathToFileURL } from 'node:url';
 import type { InlineConfig, Plugin as VitePlugin } from 'vite';
 import { getSharedFeDeps, unresolvedSubpathPackages, getSdkFeModules, getUiFeModules, sharedFeModules, sharedInstancePackage } from '@apackdev/host/build/shared-deps';
 import type { RecordReads } from './build-reads';
+import type { RecordBuildOutput } from './build-outputs.ts';
 import { errorMessage } from '@apackdev/sdk/utils/pure';
 import type { BuildWatchInputs } from './build-watch-inputs.ts';
 import { globWatchPlugin } from './glob-watch.ts';
@@ -394,6 +395,8 @@ export interface BundleFEOptions {
   release?: boolean;
   /** Where this bundle reports the files it read, for the build's record of its inputs */
   recordReads?: RecordReads;
+  /** Expected emitted/copied bytes, retained by the build until sealing. */
+  recordOutput?: RecordBuildOutput;
   /** Live subscriptions for the worker's parent, independent of optional diagnostic recording. */
   onInputs?: (inputs: BuildWatchInputs) => void | Promise<void>;
 }
@@ -584,7 +587,7 @@ async function bundleFrontend(options: BundleFEOptions): Promise<{ success: bool
   try {
     const opaque = opaqueDeps(packDir);
     const publicDir = compilation?.readTree().path(path.join(packDir, 'public'));
-    await vite.build({
+    const built = await vite.build({
       root: packDir,
       publicDir,
       configFile: false,
@@ -605,22 +608,27 @@ async function bundleFrontend(options: BundleFEOptions): Promise<{ success: bool
         ...(opaque.length > 0 ? [opaqueVendorPlugin(opaque)] : []),
         vue(),
         ...inputPlugins(),
-        ...(compilation && publicDir ? [{
-          name: 'captured-public-file-modes',
+        ...(compilation || options.recordOutput ? [{
+          name: 'captured-public-files',
           generateBundle() {
             // Vite has copied public files before generation; owned inputs are read-only.
-            const restoreModes = (directory: string) => {
+            const publicFiles = publicDir ?? path.join(packDir, 'public');
+            const capturePublic = (directory: string) => {
               if (!fs.existsSync(directory)) return;
               for (const name of fs.readdirSync(directory)) {
                 const file = path.join(directory, name);
-                if (fs.statSync(file).isDirectory()) restoreModes(file);
+                if (fs.statSync(file).isDirectory()) capturePublic(file);
                 else {
-                  const stat = compilation.readMetadata('stat', compilation.sourcePath(file), []) as fs.Stats;
-                  fs.chmodSync(path.join(outputDir, path.relative(publicDir, file)), stat.mode);
+                  const target = path.join(outputDir, path.relative(publicFiles, file));
+                  options.recordOutput?.(target, fs.readFileSync(file));
+                  if (compilation) {
+                    const stat = compilation.readMetadata('stat', compilation.sourcePath(file), []) as fs.Stats;
+                    fs.chmodSync(target, stat.mode);
+                  }
                 }
               }
             };
-            restoreModes(publicDir);
+            capturePublic(publicFiles);
           },
         }] : []),
       ],
@@ -663,6 +671,11 @@ async function bundleFrontend(options: BundleFEOptions): Promise<{ success: bool
       },
       logLevel: 'warn',
     });
+    for (const output of Array.isArray(built) ? built : [built]) {
+      if (!('output' in output)) throw new Error('Frontend build did not return its written output');
+      for (const file of output.output) options.recordOutput?.(path.join(outputDir, file.fileName),
+        file.type === 'chunk' ? file.code : file.source);
+    }
     return { success: true };
   } catch (err) {
     return {

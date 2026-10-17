@@ -1141,3 +1141,37 @@ builder run reached two `spawn EPERM` failures when its existing process-group c
 the permitted rerun passed without source, assertion or deadline changes. CLI typecheck and changed-file
 lint pass; type log `/private/tmp/apack-frontend-metadata-types.log`. This resolves the previously
 recorded hardcoded-list failure; it does not convert the interrupted broad integration run into a pass.
+
+
+### Frontend output expectations checkpoint
+
+The producer now retains final writer byte hashes in `build/build-outputs.ts`, scoped to its candidate.
+Frontend bundling records Vite's actual returned chunk/asset bytes and copied public bytes from the
+existing public-file walk. The build checks these expectations after loader/thread settlement and
+input validation, immediately before sealing. Missing/changed expected output refuses the candidate;
+there is no second on-disk output manifest or reference scanner. Existing integrity and installation
+rules remain the published authority. Ordered writes preserve Vite's intentional replacement of a
+public placeholder by an emitted file; they do not impose a new collision policy on that behavior.
+
+Focused acceptance:
+
+- The actual frontend compiler emits CSS, a lazy chunk, a worker, their maps and nested public files.
+  Every recorded output matches its written bytes; deleting or changing each file refuses the final
+  check, and restoration succeeds. This also covers an emitted entry replacing `public/fe.js`.
+- The existing captured-public case now exercises expected-output recording: changed live public
+  originals do not replace captured copied bytes, file permissions survive, placeholders are replaced,
+  and the existing input-change refusal remains. Both frontend cases pass (12.08s runner, 9.70s bodies):
+  `/private/tmp/apack-output-expectations-frontend-final.log`.
+- The actual build's missing-producer-output case refuses before sealing, keeps the incumbent directory
+  inventory and removes staging (20.01s): `/private/tmp/apack-output-expectations-publication.log`.
+- The output owner refuses missing/changed/escaped output, accepts restored bytes and tracks ordered
+  replacement: `/private/tmp/apack-output-expectations-unit.log`.
+- CLI typecheck, seven-file lint and package refresh pass. Type and package logs:
+  `/private/tmp/apack-output-expectations-types-final.log`,
+  `/private/tmp/apack-output-expectations-packages.log`.
+
+Remaining B4 producer work is media plus backend/content/helper and declaration/reused-phase writer
+results. Extend this same short-lived expectation owner from their actual copy/writer results; do not
+invent a new receipt or infer dependencies from generated JavaScript. B1/B3 lifetime acceptance, B5
+consumer policies, B6, all Phase 6 streams and final committed-source strict `--all` remain required.
+No broad or final acceptance is claimed by these focused checks.

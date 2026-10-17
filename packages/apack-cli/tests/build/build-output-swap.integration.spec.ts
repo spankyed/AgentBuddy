@@ -1,3 +1,4 @@
+import * as frontend from '../../src/build/fe-bundler.ts';
 import { buildStagingDir } from '../../src/build/build-publication.ts';
 import * as fs from 'node:fs';
 import * as os from 'node:os';
@@ -40,6 +41,24 @@ const list = (dir: string): string[] => fs.existsSync(dir)
 
 describe('a build that fails', () => {
   const PREVIOUS = ['flows.content.json', 'content.json', 'runtime/index.cjs', 'defs/monaco/actions.d.ts'];
+
+  it('refuses missing producer output before sealing and retains the incumbent', async () => {
+    const dir = previousBuild(PREVIOUS);
+    const root = path.dirname(dir);
+    packFixture({ at: root, nodeModules: path.join(REPO_ROOT, 'node_modules'), manifest: {
+      id: 'incomplete-output', name: 'Incomplete output', features: { view: {
+        description: 'Output verification.', plugin: { label: 'View', state: 'src/view.ts' },
+      } },
+    }, files: { 'src/view.ts': "import { createMachine } from 'xstate'; export default createMachine({});" } });
+    vi.spyOn(frontend, 'bundlePackFE').mockImplementation(async options => {
+      fs.writeFileSync(path.join(options.outputDir, 'fe.js'), 'export {};');
+      options.recordOutput!(path.join(options.outputDir, 'required.css'), 'EXPECTED');
+      return { success: true };
+    });
+    await expect(build([], root)).rejects.toThrow('Required build output is missing or changed: runtime/required.css');
+    expect(list(dir)).toEqual([...PREVIOUS].sort());
+    expect(fs.existsSync(buildStagingDir(root))).toBe(false);
+  });
 
   it('refuses publication when an authored input changes during a real build', async () => {
     const dir = previousBuild(PREVIOUS);

@@ -1,3 +1,4 @@
+import { createBuildOutputs } from '../build/build-outputs.ts';
 import { writePackBuildInputs } from '@apackdev/host/build/pack-build-inputs';
 import { _packEntityTypes, _packRelationTypes } from '@apackdev/sdk/framework';
 import * as fs from 'node:fs';
@@ -125,6 +126,7 @@ async function buildIntoStaging(args: string[], root: string) {
   const resolvedDependencies = dependencyTypes(dependencyFiles);
   const { depSnapshots } = resolvedDependencies;
   const compilation = captureCompilationInputs(root);
+  const outputs = createBuildOutputs(outputDir);
   const modules = createCompilerModuleLoader(compilation);
   const reusePhase = (name: string) => {
     const stamp = stamps[name];
@@ -282,6 +284,7 @@ async function buildIntoStaging(args: string[], root: string) {
       fs.writeFileSync(snapshotPath, JSON.stringify(snapshot, null, 2));
       writeStamps(outputDir, nextStamps);
       writePackBuildInputs(outputDir, await compilation.finish(args));
+      outputs.assertCurrent();
       sealPackBuild(outputDir, manifest, snapshot.sdkVersion);
       // Optional diagnostics describe this validated candidate; only the sealed cache authorizes reuse.
       reads?.write();
@@ -366,7 +369,7 @@ async function buildIntoStaging(args: string[], root: string) {
     const feEntry = args.includes('--skip-fe') ? null : findFEEntry(root);
     if (feEntry) {
       const feOutputDir = path.join(outputDir, PACK_LAYOUT.runtimeDir);
-      const feResult = await bundlePackFE({ packDir: root, outputDir: feOutputDir, entryPoint: feEntry, release, compilation,
+      const feResult = await bundlePackFE({ packDir: root, outputDir: feOutputDir, entryPoint: feEntry, release, compilation, recordOutput: outputs.record,
         recordReads: reads?.forPhase('fe'), onInputs: process.env[BUILD_INPUTS_IPC_ENV] === '1' ? reportBuildWatchInputs : undefined });
       if (feResult.success) {
         console.log(`  fe: dist/${PACK_LAYOUT.feEntry}`);

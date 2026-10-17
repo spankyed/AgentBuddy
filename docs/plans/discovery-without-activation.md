@@ -179,6 +179,13 @@ record; installed/offline inspection remains source-free. See
 Expected emitted/copied output bytes and B5 consumer policies remain required; the presence of this
 record alone does not establish those guarantees.
 
+Frontend producer output expectations now use Vite's returned emitted bytes plus copied public bytes
+from the existing walk, retained in memory until final sealing. Missing or changed expected output
+refuses publication; ordered bundle emissions preserve public-placeholder replacement. CSS, lazy/worker
+files and maps are included. See [frontend output evidence](../evidence/build-input-snapshot-proof.md#frontend-output-expectations-checkpoint).
+Media and the remaining bundle/declaration writers still need the same final expectation check; this
+does not close all B4 output completeness or B5 freshness policy.
+
 The [asset producer audit](../evidence/build-input-snapshot-proof.md#asset-producer-audit-and-bounded-follow-through-2026-10-17)
 now enumerates the remaining concrete paths. Vite's output graph includes CSS/lazy/worker emissions
 but omits copied public files; media `fs.cpSync` bypasses the injected captured-byte view in a focused

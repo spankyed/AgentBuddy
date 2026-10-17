@@ -194,6 +194,12 @@ existing integrity receipt. Raw environment values and private compiler paths ar
 Compiler-installation facts stay under the installation identity; source facts replay against originals
 without importing compiler or pack code. Comparing another command's ambient environment is not replay.
 
+`build/build-outputs.ts` retains expected writer bytes until final sealing. Frontend expectations come
+from Vite's actual emitted graph and the existing public-file walk, including CSS, lazy/worker files,
+maps and copied public files. Final validation refuses missing/changed expected output before creating
+the receipt. Ordered emissions may replace public placeholders. This is an in-memory producer check,
+not another published manifest; media and the other writers remain tracked by B4 in the goal.
+
 Private phase stamps live in `dist/phase-cache.json`, published with that completed record and output.
 Cache reads verify the receipt and current source/dependency inputs before considering phase keys.
 A reused phase retains its prior observations for final validation and the next completed record;

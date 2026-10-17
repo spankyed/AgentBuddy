@@ -8,6 +8,7 @@ import { readPackBuild } from '@apackdev/host/packs';
 import { callCli } from '../_support/pack-builds.ts';
 import { startPackBuildWatcher } from '../../src/build/watch.ts';
 import { bundlePackFE } from '../../src/build/fe-bundler.ts';
+import { createBuildOutputs } from '../../src/build/build-outputs.ts';
 import { captureCompilationInputs } from '../../src/build/compilation-inputs.ts';
 
 const fixture = createFrontendResourceFixture();
@@ -85,7 +86,9 @@ it('copies public assets from the accepted input view instead of changed live fi
   try {
     fs.writeFileSync(asset, 'LIVE');
     const outputDir = path.join(pack, 'dist/runtime');
-    const result = await bundlePackFE({ packDir: pack, outputDir, entryPoint: path.join(pack, 'src/canvas.vue'), compilation });
+    const outputs = createBuildOutputs(outputDir);
+    const result = await bundlePackFE({ packDir: pack, outputDir, entryPoint: path.join(pack, 'src/canvas.vue'), compilation, recordOutput: outputs.record });
+    expect(() => outputs.assertCurrent()).not.toThrow();
     expect(result.success, result.error).toBe(true);
     expect(fs.readFileSync(path.join(outputDir, 'proof.txt'), 'utf8')).toBe('CAPTURED');
     if (process.platform !== 'win32') expect(fs.statSync(path.join(outputDir, 'proof.txt')).mode & 0o777).toBe(0o666);

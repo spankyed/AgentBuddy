@@ -309,10 +309,14 @@ repeat publication preserves phase reuse, sealed revision and cleanup (50.00s); 
 The frontend metadata reader now derives shared SDK owners from `getSdkFeModules()` and retains UI's
 dynamic exports; it does not adopt backend EARS sharing. The six shared-package rule cases and eight
 builder cases pass, alongside CLI types/lint; see the same evidence record.
-This closes the record/association slice, not all B4: expected emitted/copied output membership and
-bytes (media/public/CSS/lazy/worker) remain required. B5's four consumer policies and compiler/options
+Frontend expected-output validation now retains actual Vite emissions and public copies through final
+sealing, including CSS/lazy/worker/maps and placeholder replacement. Missing required output refuses
+the real candidate and retains its incumbent directory. See
+[frontend output evidence](../evidence/build-input-snapshot-proof.md#frontend-output-expectations-checkpoint).
+This closes the record/association and frontend-expectation slices, not all B4: expected media,
+backend/content/helper and declaration/reused-phase writer bytes remain required. B5's four consumer policies and compiler/options
 comparison contexts remain unimplemented. No converged strict or final `--all` pass is claimed.
-Next: finish B4's producer output expectations using the actual compiler graphs and copy operations,
+Next: extend B4's same in-memory output check to media and remaining bundle/declaration writers,
 then migrate B5 consumers. Reconcile the finite native/platform lifetime boundary against supported
 compiler operations before closing B1/B3. Preserve required external-library and
 platform/thread-lifetime acceptance;
