@@ -112,6 +112,8 @@ dev/watch execution and relevant platform differences; do not invent a broader r
 
 The remaining work distinguishes a reproduced defect, missing acceptance evidence and a support
 boundary decision. None alone authorizes a new general capture or confinement framework.
+The [proposed native compiler input boundary ADR](../reference/adr/native-compiler-input-boundary.md)
+records the options and decision criteria; it does not approve exclusions or change this goal's scope.
 
 | Item | Current evidence | Required closure |
 |---|---|---|
