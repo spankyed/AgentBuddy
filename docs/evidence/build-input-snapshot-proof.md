@@ -2929,3 +2929,9 @@ Versioned admission source: `0f0f6a43c`. Follow-up `b7385c0bb` rejects non-OS ro
 avoiding probes of arbitrary configured paths. Two focused regressions enforce that ordering; all 46
 parser/environment checks, CLI types and lint pass. Hosted run `39080454772` is queued on `b7385c0bb`
 for both real versioned cases. Preserve this exact run rather than dispatching a duplicate.
+
+Run `39080454772` is terminal success on `b7385c0bb`: both real library/framework versioned cases pass
+in 9.24 and 6.78 seconds (16.02 seconds tests, 18.05 seconds runner). Each proves actual ordinary-Node
+override selection, the attributed directory refusal and absent addon initialization. Log:
+`/private/tmp/apack-hosted-versioned-39080454772.log`. This accepts the documented OS-directory launch
+policy, not a full dyld resolver or the still-open shared-cache/restricted-runtime and ELF/PE coverage.
