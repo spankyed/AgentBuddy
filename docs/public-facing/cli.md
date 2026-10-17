@@ -531,11 +531,12 @@ newest; `--all` removes that one too, which is how you move to a newer Beta.
 **`apack pack test` never reads a stored app preference and never asks**, so a test run means the same thing on a fresh machine as on one you have been developing on. Neither command stores a host preference. The fixture builds the pack with the same CLI and installs it into a fresh data dir for each worker, so a run leaves nothing behind either.
 
 `--prebuilt` installs the build already in `dist/` instead of making a new one, for a pipeline that built the
-pack in an earlier step. The build is still held to being no older than the pack's sources and `apack.json`,
-naming the file that moved if it is not — so a stale build fails rather than being tested quietly, which is
-what the rebuild was there for. Reach for it when something else owns the build: a rebuild empties `dist`
-before its first phase and does not refill it until the last, so a second build of the same pack, or anything
-reading that directory meanwhile, sees a pack that is not built.
+pack in an earlier step. It verifies the sealed output and rechecks the recorded source, linked inputs,
+dependency bytes and resolution observations. Timestamp-only touches pass; changed or missing inputs
+and damaged output fail with a rebuild instruction. `--prebuilt --release` requires output made with
+`apack pack build --release`. The recorded compiler/execution context identifies the selected build;
+the Playwright runner's environment is not compared to the compiler's environment. Use this when an
+earlier pipeline step owns the build; the test fixture verifies it without rebuilding.
 
 ### Distribution
 

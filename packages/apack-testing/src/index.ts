@@ -7,11 +7,12 @@ import { execFile, execFileSync } from 'child_process';
 import { createRequire } from 'module';
 import { resolveAppEnvironment } from '@apackdev/sdk/env';
 import { resolveName } from '@apackdev/sdk/ids';
-import { installPackFromLocal, PACK_LOAD_MESSAGES, staleBuildOutput } from '@apackdev/host/packs';
+import { installPackFromLocal, PACK_LOAD_MESSAGES } from '@apackdev/host/packs';
 import { resolveTestHost, type AppLaunch, type TestHostOptions } from './test-host.ts';
 import { appVersion } from './app-version.ts';
 import { appLaunchEnv, pinsViewport } from './launch-env.ts';
 import { assertCheckoutPackagesFresh } from './checkout-freshness.ts';
+import { assertPrebuiltPackCurrent } from './prebuilt-pack.ts';
 
 export interface AppDriver {
   sendEvent: (event: Record<string, unknown>) => Promise<void>;
@@ -437,17 +438,8 @@ export function createTest(options: CreateTestOptions = {}) {
           const archive = process.env.PACK_ARCHIVE ? path.resolve(process.env.PACK_ARCHIVE) : undefined;
           if (archive) assertArchiveIsCurrent(archive, packDir);
           if (!archive && process.env.APACK_PACK_PREBUILT) {
-            // The caller built it in an earlier step (`apack pack test --prebuilt`), so this installs that build.
-            // **Because rebuilding it here is the expensive half of the step**: with two fixture packs rebuilt
-            // per run, dropping the rebuild took `test:external-pack:app` from 1.3m to 4.4s. It also stopped
-            // the step rebuilding a tree it declares as an input, which made each pack look unbuilt for the
-            // ~20s the rebuild took — a race this suite lost under load rather than a hypothetical, and one
-            // `apack pack build` no longer creates now that it stages its output and renames it into place.
-            //
-            // What the rebuild bought is checked instead of dropped: a build older than the sources it came
-            // from fails here, which is the whole of "a stale build tested silently is worse than no test".
-            const stale = staleBuildOutput(packDir);
-            if (stale) throw new Error(`Pack ${manifest.id} was built before ${stale} changed. Build it (apack pack build) or drop --prebuilt.`);
+            // Reuse the caller's build without silently testing changed inputs or altered output.
+            assertPrebuiltPackCurrent(packDir, !!process.env.APACK_PACK_RELEASE);
           } else if (!archive) {
             // Always rebuild: installing an existing dist would silently test stale code
             const apackBin = resolveApackBin(appLaunch, packDir);

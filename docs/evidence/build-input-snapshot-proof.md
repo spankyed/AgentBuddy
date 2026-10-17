@@ -1259,3 +1259,26 @@ Supported file-writer expectation coverage is implemented; it does not waive B1/
 or platform/thread-lifetime acceptance. B5 now needs the four actual consumer policies/comparison
 contexts and migration off their replaced freshness heuristics. B6, all Phase 6 streams and the final
 committed-source strict `--all` remain required. No broad acceptance is claimed here.
+
+## Prebuilt-test consumer checkpoint
+
+The Playwright fixture now uses the common sealed build-input record instead of `staleBuildOutput`.
+It verifies output integrity before replaying the completed source/dependency observations and requires
+the recorded `--release` option for a release test invocation. Its context is the compiler/execution
+context of the explicitly selected existing build; the Playwright process's environment does not become
+a new compiler context. A normal prebuilt invocation may test a release build. This check neither
+compiles nor activates the pack, and installed/offline discovery is unchanged.
+
+Five filesystem cases cover timestamp touches, same-mtime source/dependency edits, exact restoration,
+linked external inputs, added/removed membership, missing/modified output and metadata, missing dist,
+and the release-option requirement. They pass in 2.01s (90ms test bodies):
+`/private/tmp/apack-prebuilt-record-regression.log`. Ten existing checkout-freshness cases also pass;
+the combined run initially exposed an overly specific error-message assertion in the new dependency
+case, corrected to require the actual changed dependency path. Testing types and four-file lint pass:
+`/private/tmp/apack-prebuilt-record-types-final.log`, `/private/tmp/apack-prebuilt-record-lint.log`.
+
+The archive-based fixture path still has its separate mtime check. Archive/default-fork/drive migration,
+actual cached app-preparation acceptance, B1/B3 lifetime closure, B6 and final strict acceptance remain
+open. Archive also needs a deliberate boundary for root-level generated archive output: the current
+authored inventory would otherwise treat a default-location archive as a new source input. This finding
+does not justify omitting archive freshness or broadly excluding arbitrary authored `.tgz` inputs.
