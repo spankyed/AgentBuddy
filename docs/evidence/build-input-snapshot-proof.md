@@ -2508,3 +2508,12 @@ no claim of their execution is made yet. Local checks pass:
 The preceding Windows run is terminal. The next focused run must first pass the production helper
 proof, then the exact descendant-publication case and actual repeated-build baseline. Other native
 input/platform cases, B6 and the final full strict gate remain open.
+
+Native result update: [run 39066744863](https://github.com/spankyed/AgentBuddy/actions/runs/39066744863)
+on committed source `519ac2a16` passes the complete `Windows compiler job ownership` step on Windows
+x64 / Node 23.11.1. The source proof runs success, nonzero exit, forced owner cancellation, two live
+replacement owners and forced independent-controller loss; environment/module-policy/Unicode/absence,
+argv/stdio/IPC and no-environment-in-config assertions all pass. The job remains live in dependency
+installation at observation time. Publication and real repeated-build acceptance are not yet proven;
+retrieve full logs after the job is terminal. This closes the helper's native cases, not the complete
+Windows producer/frontend or whole-goal gates.
