@@ -222,6 +222,18 @@ it('tracks frontend SDK and UI metadata while leaving bundled EARS outside the s
   expect(readPackDevServerInputs(pack)).not.toBe(sdkChanged);
 });
 
+it('tracks effective ordered frontend Node options without treating source-mode flags as runtime changes', () => {
+  const { pack } = fixture();
+  vi.stubEnv('NODE_OPTIONS', '--require one.cjs --import two.mjs');
+  const first = readPackDevServerInputs(pack);
+  vi.stubEnv('NODE_OPTIONS', '--require "one.cjs"   --import two.mjs --conditions=@apackdev/source');
+  expect(readPackDevServerInputs(pack)).toBe(first);
+  vi.stubEnv('NODE_OPTIONS', '--import two.mjs --require one.cjs');
+  expect(readPackDevServerInputs(pack)).not.toBe(first);
+  vi.stubEnv('NODE_OPTIONS', '--require other.cjs --import two.mjs');
+  expect(readPackDevServerInputs(pack)).not.toBe(first);
+});
+
 it('stops its worker before removing the compiler on close', async () => {
   const { compiler, pack, builder, report } = fixture();
   await prepareCompiler(compiler);

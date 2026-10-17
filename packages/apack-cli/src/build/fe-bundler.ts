@@ -13,6 +13,7 @@ import { globWatchPlugin } from './glob-watch.ts';
 import type { CompilationInputs } from './compilation-inputs.ts';
 import { withCompilerFileReads } from '@apackdev/host/build/compiler-inputs';
 import { findPackageDirectory } from '@apackdev/host/build/package-inputs';
+import { parseNodeOptions, withoutSourceCondition } from '@apackdev/host/build/source-resolution';
 
 /**
  * The package names the pack declares opaque to the bundler (`build.opaqueDeps`). Unreadable is an error
@@ -382,6 +383,7 @@ export function readPackDevServerInputs(root: string): string {
   }
   const directories = sharedResolveDirs(root);
   return JSON.stringify([manifest, findFEEntry(root), directories, sharedFeModules(...directories), compilerEnvironmentIdentity(),
+    parseNodeOptions(withoutSourceCondition(process.env.NODE_OPTIONS)),
     metadata.map(file => [file, fs.existsSync(file) ? fs.readFileSync(file, 'utf8') : null])]);
 }
 
