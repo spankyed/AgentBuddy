@@ -3565,3 +3565,45 @@ authored sources are not installed discovery prerequisites. Keep producer/input 
 no new receipt inventory or executable inspection was introduced. The preserved strict integration
 failures, all-kind acceptance, all three Phase 6 workstreams and final committed-source strict `--all`
 remain open. Concurrent documentation commits `71e854172` and `70547b7f9` are preserved.
+
+## Compiled content admission (2026-10-17)
+
+Source `3119205be` moves verified compiled-content inventory into the common build reader. The CLI's
+separate index-existence/owner checks are removed; `PackBuild.content` carries the captured parsed
+index. Source staging and current-format installer admission use the same validator. No compiler or
+pack module is imported to inspect installed content; explicit native imports remain separate.
+
+The validator checks index pack identity, exact compiled source/dataset membership, written policy
+and receipt membership for each compiled JSON data file. A missing index cannot look like an empty
+inventory, and its captured bytes must match the receipt even if the file changes after verification.
+Applier-only sources intentionally have no indexed data entry; their pack index can be empty. Empty
+datasets remain indexed as non-written. Existing manifest validation already rejects a key shared
+between sources and datasets. Specialty compilation previously skipped missing declared source paths;
+it now refuses them rather than silently publishing an incomplete index.
+
+Evidence:
+
+- Before repair, seven invalid sealed inventories were accepted and all three specialty compilers
+  silently skipped absent sources. The new positive captured-index assertion also failed because the
+  build reader returned none: `/private/tmp/apack-content-admission-before.log`.
+- The affected pack/content/CLI run passes 740 of 741 cases. Its one failure was an existing reload test
+  expecting a malformed index to reach apply. That boundary is now tested as an admission refusal
+  preserving the running pack; a separate real applier execution failure preserves the first-apply
+  installed-error-record requirement. The corrected focused run passes all 166 cases (4.26s):
+  `/private/tmp/apack-content-admission-{consumers,final}.log`.
+- Final layout acceptance passes all 110 cases (3.11s), including actual installer refusal before
+  placement, incumbent stage retention and mutation between verification/capture:
+  `/private/tmp/apack-content-admission-capture-final.log`. The first capture mock did not update Node's
+  named filesystem exports; synchronizing them, as sibling filesystem-race tests do, fixes the test.
+- Host, SDK and CLI TypeScript, final lint and refreshed SDK/testing/CLI package builds pass:
+  `/private/tmp/apack-content-admission-{host-types-final,cli-types,lint-final,packages}.log`.
+- Read-only checks against the actual previously compiled default-setup and external fixture outputs
+  pass with five indexed entries each, including specialty and generic formats. These are reads of real
+  compiler output, not a new build or runtime acceptance claim:
+  `/private/tmp/apack-content-admission-real-output.log`.
+
+Media-file completeness and frontend CSS/lazy-chunk output graphs remain unproven. A media directory
+alone does not identify all required files, and receipt byte equality does not prove a producer emitted
+every required file. Continue that audit with compiler observations/producer ownership in B1–B4. The
+preserved strict failures, all-kind/external acceptance, all three Phase 6 workstreams and final
+committed-source strict `--all` remain required. No broad gate was rerun for this checkpoint.

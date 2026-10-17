@@ -157,15 +157,15 @@ separately for missing media, CSS and lazy chunks; do not substitute authored-so
 JavaScript text scanning for compiler output evidence. The latter producer requirements remain part
 of B1–B4 and final all-kind acceptance, not an exemption from completeness.
 
-Compiled-content checkpoint: make the common current-format build reader own the validated index,
-including pack identity, exact compiled source/dataset membership, written-versus-dataset semantics
-and each indexed data file's receipt membership. Staging and installation must use the same check;
-CLI inspection consumes the captured result instead of maintaining its own weaker validation.
+Compiled-content checkpoint `3119205be`: the common current-format build reader owns the validated
+index, including pack identity, exact compiled source/dataset membership, written-versus-dataset
+semantics and each indexed data file's receipt membership. Staging and installation use the same
+check; CLI inspection consumes the captured result instead of maintaining its own weaker validation.
 Applier-only sources intentionally contribute no compiled entry; they still produce the pack index.
-Declared specialty sources currently disappear from the index when their source path is missing:
-refuse that build rather than turning a missing declared source into an empty inventory. Preserve
-explicit native imports and source-free installed reads. Prove failures with isolated filesystem
-fixtures and compiler cases before applying the repair. Media files still need producer evidence;
+Missing declared specialty source paths now refuse compilation instead of silently disappearing from
+the index. Explicit native imports and source-free installed reads are preserved. Filesystem/compiler
+regressions, installation/refusal and real shipped/external output checks pass; see [content admission
+evidence](../evidence/discovery-without-activation.md#compiled-content-admission-2026-10-17). Media files still need producer evidence;
 declared media directories alone cannot identify the files required by compiled records.
 
 Execute the identified gaps in this order:
@@ -194,7 +194,8 @@ Execute the identified gaps in this order:
    schema/API generation pass. Preserve app/pack version separation and captured accepted bindings. See [content evidence](../evidence/discovery-without-activation.md#native-content-declarations-2026-10-17).
 4. Display-name cleanup `123efbd6f` and required-entry admission `b916d0e5e` are implemented; preserve
    their [evidence](../evidence/discovery-without-activation.md#required-build-entries-and-display-metadata-2026-10-17).
-   Finish compiled-content, CSS/chunk completeness and remaining consumer checks, then all-kind source-free/external
+   Compiled index/data admission is implemented in `3119205be`. Finish media, CSS/chunk completeness
+   and remaining consumer checks, then all-kind source-free/external
    acceptance. Record which asset classes and entry kinds the checks actually exercise. Keep B1–B6 and
    Phase 6 enforcement in their existing execution slots; this inventory does not reopen them.
 
