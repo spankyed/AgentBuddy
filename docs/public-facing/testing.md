@@ -170,7 +170,7 @@ Start one shell per test, in place of `startFeTestRuntime`: it binds the fronten
 
 ## Services
 
-`services` (from `#generated/services`) holds your services and your dependencies'. `mockService` replaces one for the current test:
+`services` (from `#generated/services`) contains your pack's own services, the SDK baseline, and host/dependency APIs selected by `consumes.services`. `mockService` replaces one for the current test. The inference example requires `host/inference`:
 
 ```typescript
 import { mockService } from '@apackdev/testing/harness';
@@ -182,9 +182,11 @@ it('digests a note, with only the inference call it makes mocked', async () => {
 });
 ```
 
+When testing a dependency's internal use of its own service, type its mock with that provider's generated contract, for example `import type { Services as DefaultServices } from '#generated/deps/default-setup'` and `mockService<DefaultServices, 'scheduler'>(...)`. A test double does not grant the consuming pack access to that service.
+
 Give only the members the code under test uses. A mock lasts for the test it's made in: make it in the test or a `beforeEach` (`mockService` fails in `beforeAll` or at the top of a file). Code that imports a service module directly, instead of using `services`, isn't affected. Mock services that reach outside the process (CLIs, the network) in any test that runs code using them.
 
-`services.secrets` works in unit tests, in memory and emptied before each test: store a key's metadata as Settings → Secrets would with `addTestSecret(provider, label)` from `@apackdev/testing/harness` (the first key for a provider is selected). Keys have no values in tests.
+With `host/secrets` declared in `consumes.services`, `services.secrets` works in unit tests, in memory and emptied before each test: store a key's metadata as Settings → Secrets would with `addTestSecret(provider, label)` from `@apackdev/testing/harness` (the first key for a provider is selected). Keys have no values in tests.
 
 For host settings fixture setup and assertions, `getTestSettings()` from the harness returns the active
 test's settings administration. `getOverrides()` inspects explicit stored choices; `getAll()` reads
