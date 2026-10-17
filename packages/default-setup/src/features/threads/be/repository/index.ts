@@ -565,6 +565,9 @@ export const chatQueries = {
     };
   },
 
+  hasMessageInThread: (messageId: EARS.EntityId, threadId: EARS.EntityId): boolean =>
+    qx(messageId).linksTo(EARS.RelKind.CONTAINS, EARS.Entity.Thread).ids().includes(threadId),
+
   messageById: (messageId: EARS.EntityId): MessageEntity | null => {
     const message = qx(messageId).pickOne([
       'id', 'text', 'sender', 'timestamp', 'blocks', 'blockResponse',

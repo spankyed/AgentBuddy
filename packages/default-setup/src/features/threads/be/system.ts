@@ -821,7 +821,10 @@ export const threadsSystem = setup({
       try {
       const { messageId, threadId, response } = threadsSpec.typeOf('INTERACTIVE_MSG_RESPONSE', event);
 
-      if (!repository.chatQueries.messageById(messageId as EARS.EntityId)) return;
+      const message = repository.chatQueries.messageById(messageId as EARS.EntityId);
+      if (!message || !repository.chatQueries.hasMessageInThread(messageId as EARS.EntityId, threadId as EARS.EntityId)) return;
+      // A retired question cannot regain authority through a delayed frontend response.
+      if (message.responseTimestamp && message.blocks?.some(block => block.type === 'question')) return;
 
       const result = repository.chatCommands.updateMessageBlockResponse({
         messageId: messageId as EARS.EntityId,
@@ -830,8 +833,7 @@ export const threadsSystem = setup({
 
       // Compute aside text for autoHide messages
       let asideText: string | undefined;
-      const message = repository.chatQueries.messageById(messageId as EARS.EntityId);
-      if (message?.autoHide) {
+      if (message.autoHide) {
         asideText = generateAsideText(message, response);
         tx(messageId as EARS.EntityId).put('asideText', asideText);
       }
