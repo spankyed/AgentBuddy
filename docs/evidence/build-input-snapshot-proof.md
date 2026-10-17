@@ -338,3 +338,28 @@ Vite generation, platform/resource acceptance or B4 expected output association.
 case's isolated pass is recorded above; remaining preserved failures are not assigned a common cause.
 Continue the matrix's open paths, B2/B3, B4–B6, all-kind discovery acceptance and all three Phase 6
 workstreams. Final committed-source strict `--all` remains required; no broad gate was rerun here.
+
+## Native package execution acceptance (2026-10-17)
+
+Source `4c126846f` proves the package capture owner needs no additional native-file inventory for
+ordinary package-contained executables/addons. Two real platform cases copy the installed esbuild executable and Rollup addon
+into disposable dependency packages, capture the compiler installation, remove the entire original
+fixture package, and execute the captured installation. The copied executable retains executable mode
+and reports the expected version; the copied addon loads its native parser. Both pass alongside the
+existing nested/linked/global dependency and capture-refusal cases (10 total, 2.45s):
+`/private/tmp/apack-native-installation-acceptance.log`. CLI TypeScript and lint pass:
+`/private/tmp/apack-native-installation-{types,lint}.log`.
+
+This proves package-contained native execution on the current platform, not every platform, dynamic
+shared library, external executable override or the Node/Electron executable itself. Installed esbuild's
+`lib/main.js::generateBinPath` explicitly accepts `ESBUILD_BINARY_PATH` outside its package, while
+`build-process.ts` inherits ambient environment; that path is not proven captured by the package graph.
+Keep it and runtime ownership open in B1 rather than silently claiming the two tests cover them.
+
+Next bounded frontend copy checkpoint: give `bundlePackFE` the same optional `CompilationInputs`
+owner its backend sibling already receives. In actual builds, point Vite's `publicDir` at the existing
+owned read-tree projection of the pack's authored public directory. Those bytes/membership are already
+captured before startup. Keep the ordinary standalone bundler default and do not move Vite's module
+root yet: the full SFC/resource/resolution handoff is a separate open B1/B2 boundary. Prove public-byte
+consumption with an actual Vite build after live public files change; preserve the final input guard.
+B4 still owns expected copied outputs, which Vite's returned graph omits.
