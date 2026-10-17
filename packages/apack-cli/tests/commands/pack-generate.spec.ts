@@ -238,19 +238,19 @@ describe('the inputs stamp', () => {
     writeManifest({ id: 'test-pack', name: 'Test', version: '0.1.0' });
     await generateEntries([], tmpDir, undefined, compilation);
     const output = fs.readFileSync(generated('settings.ts'), 'utf8');
-    const stamp = fs.readFileSync(generated('.inputs-hash'), 'utf8');
+    const stamp = fs.readFileSync(path.join(tmpDir, '.apack/generate-entries.json'), 'utf8');
     let refuse!: (error: Error) => void;
     const pending = new Promise<Record<string, string>>((_, reject) => { refuse = reject; });
     const spy = vi.spyOn(sdkBuild, 'generatePackFiles').mockReturnValueOnce(pending);
     try {
       const result = expect(generateEntries(['--force'], tmpDir, undefined, compilation)).rejects.toThrow('type generation failed');
       await vi.waitFor(() => expect(fs.existsSync(generated('.generating.lock'))).toBe(true));
-      expect(fs.readFileSync(generated('.inputs-hash'), 'utf8')).toBe(stamp);
+      expect(fs.readFileSync(path.join(tmpDir, '.apack/generate-entries.json'), 'utf8')).toBe(stamp);
       refuse(new Error('type generation failed'));
       await result;
       expect(fs.existsSync(generated('.generating.lock'))).toBe(false);
       expect(fs.readFileSync(generated('settings.ts'), 'utf8')).toBe(output);
-      expect(fs.readFileSync(generated('.inputs-hash'), 'utf8')).toBe(stamp);
+      expect(fs.readFileSync(path.join(tmpDir, '.apack/generate-entries.json'), 'utf8')).toBe(stamp);
     } finally {
       spy.mockRestore();
     }
@@ -339,7 +339,7 @@ describe('the inputs stamp', () => {
     await generateEntries([], tmpDir, undefined, compilation);
     expect(fs.existsSync(generated('fe.ts')), 'no plugins, so no fe.ts').toBe(false);
 
-    const stamp = JSON.parse(fs.readFileSync(generated('.inputs-hash'), 'utf-8')) as { files: Record<string, string> };
+    const stamp = JSON.parse(fs.readFileSync(path.join(tmpDir, '.apack/generate-entries.json'), 'utf-8')) as { files: Record<string, string> };
     expect(Object.keys(stamp.files), 'and it is not recorded as an output').not.toContain('src/__generated__/fe.ts');
 
     const said: string[] = [];

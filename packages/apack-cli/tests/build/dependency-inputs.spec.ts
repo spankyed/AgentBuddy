@@ -116,21 +116,21 @@ async function generatedConsumer() {
 it('rejects skipped generation for a newly resolved helper revision with unchanged declarations', async () => {
   const { pack, dependency, manifest, generated } = await generatedConsumer();
   const ears = fs.readFileSync(path.join(generated, 'ears.ts'));
-  const stamp = fs.readFileSync(path.join(generated, '.inputs-hash'));
+  const stamp = fs.readFileSync(path.join(pack.directory, '.apack/generate-entries.json'));
   fs.appendFileSync(path.join(dependency.directory, 'build/helper.js'), '\n// new helper\n');
   sealPackBuild(dependency.directory, dependency.manifest);
   const dependencies = dependencyTypes(dependency.capture());
   expect(() => assertGeneratedCurrent(pack.directory, manifest, dependencies, compilation)).toThrow('inputs changed');
   await generateEntries([], pack.directory, dependencies, compilation);
   expect(fs.readFileSync(path.join(generated, 'ears.ts'))).toEqual(ears);
-  expect(fs.readFileSync(path.join(generated, '.inputs-hash'))).not.toEqual(stamp);
+  expect(fs.readFileSync(path.join(pack.directory, '.apack/generate-entries.json'))).not.toEqual(stamp);
   expect(() => assertGeneratedCurrent(pack.directory, manifest, dependencies, compilation)).not.toThrow();
 });
 
 it('preserves generated files and their stamp if dependency bytes change during async generation', async () => {
   const { pack, dependency, dependencies, generated } = await generatedConsumer();
   const ears = fs.readFileSync(path.join(generated, 'ears.ts'));
-  const stamp = fs.readFileSync(path.join(generated, '.inputs-hash'));
+  const stamp = fs.readFileSync(path.join(pack.directory, '.apack/generate-entries.json'));
   const generate = sdkBuild.generatePackFiles;
   vi.spyOn(sdkBuild, 'generatePackFiles').mockImplementationOnce(async (...args) => {
     const files = await generate(...args);
@@ -139,13 +139,13 @@ it('preserves generated files and their stamp if dependency bytes change during 
   });
   await expect(generateEntries(['--force'], pack.directory, dependencies, compilation)).rejects.toThrow('failed verification');
   expect(fs.readFileSync(path.join(generated, 'ears.ts'))).toEqual(ears);
-  expect(fs.readFileSync(path.join(generated, '.inputs-hash'))).toEqual(stamp);
+  expect(fs.readFileSync(path.join(pack.directory, '.apack/generate-entries.json'))).toEqual(stamp);
 });
 
 it('refuses an incomplete resolution frame before writing generated files', async () => {
-  const { pack, generated } = await generatedConsumer();
-  const stamp = fs.readFileSync(path.join(generated, '.inputs-hash'));
+  const { pack } = await generatedConsumer();
+  const stamp = fs.readFileSync(path.join(pack.directory, '.apack/generate-entries.json'));
   await expect(generateEntries(['--force'], pack.directory, dependencyTypes(new Map()), compilation))
     .rejects.toThrow('Resolved dependencies differ from apack.json');
-  expect(fs.readFileSync(path.join(generated, '.inputs-hash'))).toEqual(stamp);
+  expect(fs.readFileSync(path.join(pack.directory, '.apack/generate-entries.json'))).toEqual(stamp);
 });

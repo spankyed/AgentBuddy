@@ -11,6 +11,9 @@ import { startPackBuildWatcher } from '../../src/build/watch.ts';
 import { runtimePack, vueRuntimePack } from '../_support/frontend-pack.ts';
 import { captureCompilationInputs } from '../../src/build/compilation-inputs.ts';
 import { bundlePackFE } from '../../src/build/fe-bundler.ts';
+import { runPackBuild } from '../../src/build/build-process.ts';
+import { readPackBuildInputs, assertPackBuildInputsCurrent } from '@apackdev/host/build/pack-build-inputs';
+import { packInputFiles } from '@apackdev/host/build/pack-inputs';
 
 let root: string | undefined;
 afterEach(() => { vi.restoreAllMocks(); if (root) fs.rmSync(root, { recursive: true, force: true }); root = undefined; });
@@ -127,7 +130,7 @@ it('regenerates event metadata for changed installed types with unchanged packag
 it('preserves generated files when installed package bytes change during async generation', async () => {
   const { pack, library, events, declarations } = await consumer();
   const before = fs.readFileSync(events);
-  const stampFile = path.join(pack, 'src/__generated__/.inputs-hash');
+  const stampFile = path.join(pack, '.apack/generate-entries.json');
   const stamp = fs.readFileSync(stampFile);
   const generate = sdkBuild.generatePackFiles;
   vi.spyOn(sdkBuild, 'generatePackFiles').mockImplementationOnce(async (...args) => {
@@ -140,4 +143,29 @@ it('preserves generated files when installed package bytes change during async g
   expect(refused.output).toContain('Compiler or installed package inputs changed');
   expect(fs.readFileSync(events)).toEqual(before);
   expect(fs.readFileSync(stampFile)).toEqual(stamp);
+});
+
+
+it('keeps a captured build current after standalone generation with unchanged generated code', async () => {
+  root = fs.mkdtempSync(path.join(os.tmpdir(), 'apack-generation-inputs-'));
+  const pack = preparePack(root, 'generation-inputs', {
+    'apack.json': JSON.stringify({ id: 'generation-inputs', name: 'Generation Inputs', version: '1.0.0' }),
+    'package.json': packageJson('generation-inputs'), 'tsconfig.json': tsconfig,
+  }, path.join(REPO_ROOT, 'node_modules'));
+  await runPackBuild(pack, { args: ['--skip-fe'] });
+  const inputs = readPackBuildInputs(path.join(pack, 'dist'));
+  assertPackBuildInputsCurrent(pack, inputs);
+  const generated = () => Object.fromEntries(packInputFiles(pack, { generated: true })
+    .filter(file => file.startsWith('src/__generated__/'))
+    .map(file => [file, fs.readFileSync(path.join(pack, file), 'utf8')]));
+  const before = generated();
+  const stampFile = path.join(pack, '.apack/generate-entries.json');
+  const stamp = fs.readFileSync(stampFile);
+  const result = await callCli(pack, 'generate-entries');
+  expect(result.code, result.output).toBe(0);
+  expect(generated()).toEqual(before);
+  expect(fs.readFileSync(stampFile)).not.toEqual(stamp);
+  assertPackBuildInputsCurrent(pack, inputs);
+  fs.appendFileSync(path.join(pack, 'src/__generated__/ears.ts'), '\n// changed generated module\n');
+  expect(() => assertPackBuildInputsCurrent(pack, inputs)).toThrow('Compiler startup input changed');
 });

@@ -786,8 +786,8 @@ describe('every spawn an orchestrator makes is bounded', () => {
    * `--skip-generate`, where `npm run typecheck` does, having regenerated once ahead of its own pool. That
    * tree is what `typecheck:pack` compiles and what the two repo-scope steps walk, so a step running beside
    * it could read it mid-write. None does, because `build:default-setup` writes that tree and this one declares it as an
-   * input, so the edge derives; and `build:default-setup` runs the same codegen, so the `.inputs-hash` matches and the
-   * regenerate is a no-op by the time this runs. One declaration gives both the ordering and the quiet.
+   * input, so the edge derives. Compiler-specific cache metadata lives outside generated outputs;
+   * rewriting that cache with identical generated modules leaves the build current.
    *
    * **`chain-inputs`' "a step that reads what another writes depends on it" cannot hold this.** That rule
    * fires on an overlap between one step's inputs and another's outputs, so narrowing this step's inputs

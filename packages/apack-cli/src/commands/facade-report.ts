@@ -40,7 +40,7 @@ export async function facadeReport(args: string[]): Promise<void> {
   const reportFile = facadeReportFile(packDir);
   const scratch = fs.mkdtempSync(path.join(os.tmpdir(), 'facade-report-'));
 
-  // The generated barrel the facade is bundled from, regenerated first: it skips on a matching `.inputs-hash`
+  // The generated barrel the facade is bundled from, regenerated first: it skips on a matching generation stamp
   // in milliseconds and resolves its own dependencies, so this closes the one input a re-bundle alone would
   // still read as whatever was last written — a manifest change nobody regenerated for.
   //

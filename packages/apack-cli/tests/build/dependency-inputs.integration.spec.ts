@@ -34,13 +34,13 @@ export default function compile() {
   }, path.join(REPO_ROOT, 'node_modules'));
   await buildPack(consumer);
   const previous = readPackBuild(path.join(consumer, 'dist'));
-  const generated = fs.readFileSync(path.join(consumer, 'src/__generated__/.inputs-hash'));
+  const generated = fs.readFileSync(path.join(consumer, '.apack/generate-entries.json'));
   fs.writeFileSync(path.join(consumer, '.apack/tamper'), '');
   const refused = await callCli(consumer, 'build', ['--skip-generate', '--skip-fe']);
   expect(refused.code, refused.output).toBe(1);
   expect(refused.output).toContain('failed verification');
   expect(readPackBuild(path.join(consumer, 'dist'))).toEqual(previous);
-  expect(fs.readFileSync(path.join(consumer, 'src/__generated__/.inputs-hash'))).toEqual(generated);
+  expect(fs.readFileSync(path.join(consumer, '.apack/generate-entries.json'))).toEqual(generated);
   expect(fs.existsSync(path.join(consumer, '.apack/build'))).toBe(false);
   const resolution = JSON.parse(fs.readFileSync(path.join(consumer, '.apack/deps/provider/resolution.json'), 'utf8'));
   expect(fs.readFileSync(path.join(consumer, '.apack/deps/provider/builds', resolution.revision, PACK_LAYOUT.runtimeEntry), 'utf8'))
