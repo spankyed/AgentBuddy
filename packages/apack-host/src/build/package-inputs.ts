@@ -47,6 +47,15 @@ interface PackageInputOptions {
   readonly observe?: BuildInputObserver;
   /** Bytes used by this capture's identity; copying must not reread the live file. */
   readonly onFile?: (file: PackageInputFile, bytes: Buffer) => void;
+  /** The exact filtered membership used during the package walk. */
+  readonly onDirectory?: (directory: string, names: readonly string[]) => void;
+}
+
+/** Package inventory ignores tool/cache trees; capture and validation use the same membership. */
+export function readPackageDirectoryEntries(directory: string): fs.Dirent[] {
+  return fs.readdirSync(directory, { withFileTypes: true })
+    .filter(entry => !['node_modules', '.git', '.temp', '.apack', '.cache'].includes(entry.name))
+    .sort((a, b) => a.name < b.name ? -1 : a.name > b.name ? 1 : 0);
 }
 
 /** Resolve package ownership without executing an entry or requiring package.json to be exported. */
@@ -63,7 +72,7 @@ function dependencyDirectory(owner: string, name: string, observe?: BuildInputOb
   }
 }
 
-function readPackageFiles(node: PackageInputNode, targets: readonly string[], owners: ReadonlyMap<string, unknown>, { observe, onFile }: PackageInputOptions): void {
+function readPackageFiles(node: PackageInputNode, targets: readonly string[], owners: ReadonlyMap<string, unknown>, { observe, onFile, onDirectory }: PackageInputOptions): void {
   const root = node.directory;
   const ancestors = new Set<string>();
   const files = new Map<string, { source: string; mode?: number }>();
@@ -90,8 +99,9 @@ function readPackageFiles(node: PackageInputNode, targets: readonly string[], ow
     ancestors.add(real);
     node.directories.push({ path: relative, source: real });
     observe?.(file, 'entries');
-    for (const child of fs.readdirSync(file, { withFileTypes: true }).sort((a, b) => a.name < b.name ? -1 : a.name > b.name ? 1 : 0)) {
-      if (['node_modules', '.git', '.temp', '.apack', '.cache'].includes(child.name)) continue;
+    const entries = readPackageDirectoryEntries(file);
+    onDirectory?.(real, entries.map(entry => entry.name));
+    for (const child of entries) {
       walk(path.join(file, child.name), child, real);
     }
     ancestors.delete(real);

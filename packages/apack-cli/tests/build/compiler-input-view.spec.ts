@@ -3,6 +3,8 @@ import os from 'node:os';
 import path from 'node:path';
 import { afterEach, expect, it } from 'vitest';
 import { createPackCompilerInputView, type PackCompilerInputView } from '../../src/build/compiler-input-view.ts';
+import { assertNativeCompilerObservations } from '../../src/build/compiler-observation-validation.ts';
+import { hashCompilerInputObservations } from '../../src/build/compiler-observations.ts';
 
 const roots: string[] = [];
 const views: PackCompilerInputView[] = [];
@@ -21,6 +23,51 @@ function fixture() {
   fs.writeFileSync(source, 'export const value = 1;');
   return { root, pack, source };
 }
+
+function declaredDependency() {
+  const input = fixture();
+  const dependency = path.join(input.root, 'node_modules/owned-dependency');
+  fs.mkdirSync(dependency, { recursive: true });
+  fs.writeFileSync(path.join(input.pack, 'package.json'), JSON.stringify({ dependencies: { 'owned-dependency': '*' }, optionalDependencies: { 'absent-input-fixture': '*' } }));
+  fs.writeFileSync(path.join(dependency, 'package.json'), '{"name":"owned-dependency","main":"index.js"}');
+  const entry = path.join(dependency, 'index.js');
+  fs.writeFileSync(entry, 'throw new Error("CAPTURED dependency must not execute");');
+  return { ...input, dependency, entry };
+}
+
+it('owns declared dependency bytes before their first read or preload execution', () => {
+  const { pack, entry } = declaredDependency();
+  const view = createPackCompilerInputView(pack);
+  views.push(view);
+  fs.writeFileSync(entry, 'LIVE');
+  expect(view.readBytes(entry)?.toString()).toContain('CAPTURED dependency');
+  expect(() => view.assertCurrent()).toThrow('namespace changed');
+});
+
+it('records dependency membership for local and cross-thread validation while ignoring package caches', () => {
+  const { pack, dependency } = declaredDependency();
+  const view = createPackCompilerInputView(pack);
+  views.push(view);
+  const observations = view.observations();
+  expect(view.hash()).toBe(hashCompilerInputObservations(observations));
+  fs.mkdirSync(path.join(dependency, '.cache'));
+  fs.writeFileSync(path.join(dependency, '.cache/generated.js'), 'CACHE');
+  expect(() => view.assertCurrent()).not.toThrow();
+  expect(() => assertNativeCompilerObservations(observations)).not.toThrow();
+  fs.writeFileSync(path.join(dependency, 'new-entry.js'), 'NEW');
+  expect(() => view.assertCurrent()).toThrow('Declared npm package membership changed');
+  expect(() => assertNativeCompilerObservations(observations)).toThrow('Compiler startup input changed');
+});
+
+it('retains missing optional dependency lookups before preloads can populate them', () => {
+  const { root, pack } = declaredDependency();
+  const view = createPackCompilerInputView(pack);
+  views.push(view);
+  const optional = path.join(root, 'node_modules/absent-input-fixture');
+  fs.mkdirSync(optional);
+  fs.writeFileSync(path.join(optional, 'package.json'), '{"name":"absent-input-fixture"}');
+  expect(() => view.assertCurrent()).toThrow('namespace changed');
+});
 
 it('owns authored bytes before their first compiler read, including linked files and binary assets', () => {
   const { root, pack, source } = fixture();

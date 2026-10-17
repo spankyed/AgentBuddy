@@ -53,8 +53,18 @@ function fixture(files: Record<string, string> = {}, content = {}) {
   return root;
 }
 
-it('captures native launch identity and authored bytes before user preload changes', async () => {
+it('captures native launch identity and authored/dependency bytes before user preload changes', async () => {
   const root = fixture();
+  fs.rmSync(path.join(root, 'node_modules'), { recursive: true, force: true });
+  const dependencyDir = path.join(root, 'node_modules/owned-dependency');
+  fs.mkdirSync(dependencyDir, { recursive: true });
+  const metadataFile = path.join(root, 'package.json');
+  const metadata = JSON.parse(fs.readFileSync(metadataFile, 'utf8'));
+  fs.writeFileSync(metadataFile, JSON.stringify({ ...metadata, dependencies: { 'owned-dependency': '*' } }));
+  fs.writeFileSync(path.join(dependencyDir, 'package.json'), '{"name":"owned-dependency","main":"index.cjs"}');
+  const dependencyFile = path.join(dependencyDir, 'index.cjs');
+  const dependencySource = `module.exports = 'DEPENDENCY_ORIGINAL';`;
+  fs.writeFileSync(dependencyFile, dependencySource);
   const workspace = path.join(root, '.apack/native-inputs');
   fs.mkdirSync(workspace, { recursive: true });
   const inputsFile = path.join(workspace, 'compiler-inputs.json');
@@ -64,18 +74,21 @@ it('captures native launch identity and authored bytes before user preload chang
   const preload = path.join(root, 'preload.cjs');
   fs.writeFileSync(preload, `process.env.NODE_OPTIONS = ''; process.execArgv.splice(0);
     if (Object.keys(require.cache).some(file => /typescript[\\/]lib/.test(file))) throw new Error('Compiler activated before preload');
-    require('node:fs').writeFileSync(${JSON.stringify(valueFile)}, 'CHANGED');`);
+    require('node:fs').writeFileSync(${JSON.stringify(valueFile)}, 'CHANGED');
+    require('node:fs').writeFileSync(${JSON.stringify(dependencyFile)}, "module.exports = 'DEPENDENCY_CHANGED';");`);
   const entry = path.join(root, 'entry.cjs');
   fs.writeFileSync(entry, `const startup = globalThis[Symbol.for('apack.compiler.startup')];
     const identity = startup.executionIdentity;
     const fs = require('node:fs');
     const value = fs.readFileSync(${JSON.stringify(valueFile)}, 'utf8');
+    const dependency = require('owned-dependency');
     let refusal;
     try { startup.view.assertCurrent(); } catch (error) { refusal = error.message; }
     fs.writeFileSync(${JSON.stringify(valueFile)}, 'ORIGINAL');
+    fs.writeFileSync(${JSON.stringify(dependencyFile)}, ${JSON.stringify(dependencySource)});
     startup.view.assertCurrent();
     startup.stopReads(); startup.view.dispose();
-    process.send({ identity, value, refusal }, () => process.exit(0));`);
+    process.send({ identity, value, dependency, refusal }, () => process.exit(0));`);
   const options = compilerStartupOptions(path.join(compilerPackageDirectory(), 'bin/apack.mjs'), formatNodeOptions(['--require', preload]));
   const child = fork(entry, [], { cwd: root, execArgv: ['--conditions=launch-probe'], stdio: ['ignore', 'ignore', 'pipe', 'ipc'],
     env: { ...process.env, APACK_BUILD_WORKER: '1', [COMPILER_INPUTS_ENV]: inputsFile,
@@ -86,7 +99,7 @@ it('captures native launch identity and authored bytes before user preload chang
   const closed = finished(child);
   try {
     expect(await _byDeadline(closed, 'native launch identity', 2_000), errors).toBe(0);
-    expect(result).toMatchObject({ value: 'ORIGINAL', refusal: expect.stringContaining('Compiler resolution namespace changed') });
+    expect(result).toMatchObject({ value: 'ORIGINAL', dependency: 'DEPENDENCY_ORIGINAL', refusal: expect.stringContaining('Compiler resolution namespace changed') });
     const identity = (result as { identity: string }).identity;
     const execution = JSON.parse(identity);
     expect(execution[3]).toEqual(['--conditions=launch-probe']);
