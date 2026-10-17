@@ -88,7 +88,7 @@ describe('steps', () => {
     expect(stepRegistry.createNodeDefaults('note')).toEqual({ nodeType: 'note' });
   });
 
-  it("aren't found when their pack's registration is refused later on", () => {
+  it("aren't found when their pack's content declarations are refused", () => {
     add({ id: 'first-pack', commands: [{ name: 'standup', placeholder: 'Topic' }] });
     expect(() => add({ id: 'second-pack', steps: [noteStep], commands: [{ name: 'standup', placeholder: 'Theirs' }] }))
       .toThrow('Command collision');
@@ -120,9 +120,9 @@ describe('artifacts and blocks', () => {
     expect(blockRegistry.all()).toEqual([]);
   });
 
-  it("aren't found when their pack's registration is refused later on", () => {
-    add({ id: 'memo-pack', contentWriters: { Memo: {} } });
-    expect(() => add({ id: 'card-pack', artifacts: [cardView], blocks: [choice], contentWriters: { Memo: {} } })).toThrow('Content writers for "Memo"');
+  it("aren't found when their pack's content declarations are refused", () => {
+    add({ id: 'memo-pack', ears: { entities: { Memo: 'Memo' }, relKinds: {} }, contentWriters: { Memo: {} } });
+    expect(() => add({ id: 'card-pack', artifacts: [cardView], blocks: [choice], contentWriters: { Memo: {} } })).toThrow('A content writer for "Memo": only entity types this pack declares');
     expect(artifactRegistry.has('card-view')).toBe(false);
     expect(blockRegistry.has('choice')).toBe(false);
   });
@@ -194,7 +194,7 @@ describe('appliers', () => {
 
   it("refuse two appliers for one key in a pack, registering none of the pack", () => {
     expect(() => add({ id: 'pack-a', steps: [noteStep], appliers: [applier('notes', 1), applier('notes', 2)] }))
-      .toThrow('Pack "pack-a" registers two appliers for content key "notes"');
+      .toThrow('Native pack "pack-a" runtime appliers does not match its admitted declarations');
     expect(importCompiledContent({ compiledDir: compiledDir('pack-a') })).toEqual({});
     expect(stepRegistry.has('note')).toBe(false);
   });
@@ -301,18 +301,20 @@ describe('a pack whose registration is refused', () => {
       steps: [noteStep],
       artifacts: [{ type: 'note-view' }],
       blocks: [{ type: 'note-block' }],
+      ears: { entities: { Note: 'Note' }, relKinds: {} },
       contentWriters: { Note: {} },
       appliers: [anApplier('notes')],
       commands: [{ name: 'standup', placeholder: 'Topic' }],
       features: { notes: { plugin: { receives: [] }, settings: { defaults: { from: 'incumbent' }, schema: { type: 'object' } } } },
     });
 
-    // Every kind of its own, and a command the incumbent already declares — refused after the rest registered
+    // Every kind of its own, and a command the incumbent already declares — the candidate is refused atomically
     expect(() => add({
       id: 'refused',
       steps: [tickTrigger],
       artifacts: [{ type: 'card-view' }],
       blocks: [{ type: 'card-block' }],
+      ears: { entities: { Card: 'Card' }, relKinds: {} },
       contentWriters: { Card: {} },
       appliers: [anApplier('cards')],
       commands: [{ name: 'standup', placeholder: 'Theirs' }],

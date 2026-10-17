@@ -5,7 +5,7 @@ import type { StepEntry } from '@apackdev/sdk/build';
 import { captureStepBinding, captureStepDeclaration } from './step-bindings.ts';
 import { lifecycleBindingProblem } from './lifecycle-binding.ts';
 import { _packEntityTypes, _packRelationTypes } from '@apackdev/sdk/framework';
-import { apiBindingProblem, backendBindingProblem, backendViewerBindingProblem, backendStepBindingProblem, commandBindingProblem, contentBindingProblem } from './declaration-binding.ts';
+import { apiBindingProblem, backendBindingProblem, backendContentBindingProblem, backendViewerBindingProblem, backendStepBindingProblem, commandBindingProblem, contentBindingProblem } from './declaration-binding.ts';
 import { eventBindingProblem } from './event-binding.ts';
 import { SYSTEM_EVENT_TYPES, type PackEventContracts } from '@apackdev/sdk/framework';
 /**
@@ -554,6 +554,8 @@ export function createPackRegistry({ installedPacksDir, appPackSourcesDir, setti
       if (!declaration) throw new Error(`Native pack "${registration.id}" must declare its data before binding`);
       const eventsProblem = eventBindingProblem(declaration.eventContracts, registration.features ?? {}, true);
       if (eventsProblem) throw new Error(`Native pack "${registration.id}" runtime ${eventsProblem} does not match its admitted declarations`);
+      const contentProblem = backendContentBindingProblem(declaration.content, registration);
+      if (contentProblem) throw new Error(`Native pack "${registration.id}" runtime ${contentProblem} does not match its admitted declarations`);
       const viewerProblem = backendViewerBindingProblem(declaration, registration);
       if (viewerProblem) throw new Error(`Native pack "${registration.id}" runtime ${viewerProblem} does not match its admitted declarations`);
       const apiProblem = apiBindingProblem(declaration.features, declaration, registration);

@@ -14,6 +14,10 @@ export function nativePackDeclarationFixture(fixture: PackRegistration): NativeP
         ...(feature.system && { system: { incoming: [...feature.system.receives], outgoing: [] } }),
         ...(feature.plugin && { plugin: { receives: [...feature.plugin.receives] } }),
       }])),
+    ...((fixture.contentWriters !== undefined || fixture.appliers !== undefined) && { content: {
+      ...(fixture.contentWriters !== undefined && { writers: target('writers', Object.keys(fixture.contentWriters)) }),
+      ...(fixture.appliers !== undefined && { sources: Object.fromEntries(fixture.appliers.map(({ key }) => [key, { applier: `fixtures/content/${key}.ts` }])) }),
+    } }),
     ...(fixture.artifacts !== undefined && { artifacts: Object.fromEntries(fixture.artifacts.map(({ type }) => [type, { icon: 'File' }])) }),
     ...(fixture.blocks !== undefined && { blocks: Object.fromEntries(fixture.blocks.map(block => [block.type, {
       ...(block.kind !== undefined && { kind: block.kind }),

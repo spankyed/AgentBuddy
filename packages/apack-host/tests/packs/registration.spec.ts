@@ -250,7 +250,7 @@ describe('registerPack feature settings', () => {
 describe('registerPack content writers', () => {
   const memoHooks = { find: () => undefined };
 
-  it('rejects hooks for an entity another pack owns, rolling back what the pack registered', () => {
+  it('rejects hooks for an entity another pack owns, preserving existing lookups', () => {
     registerPack({ id: 'memo-pack', ears: { entities: { Memo: 'Memo' }, relKinds: {} }, contentWriters: { Memo: memoHooks } } as unknown as PackRegistration);
     registered.push('memo-pack');
 
@@ -262,7 +262,7 @@ describe('registerPack content writers', () => {
       contentWriters: { Card: {}, Memo: {} },
     };
     expect(() => registerPack(other as unknown as PackRegistration))
-      .toThrow('Content writers for "Memo" are already registered by pack "memo-pack"');
+      .toThrow('A content writer for "Memo": only entity types this pack declares');
 
     expect(getPackRegistration('other-pack')).toBeNull();
     expect(_contentWriterRegistry.get('Memo')).toBe(memoHooks);
@@ -277,7 +277,7 @@ describe('registerPack content writers', () => {
     expect(_contentWriterRegistry.get('Memo')).toBeUndefined();
 
     const theirs = {};
-    registerPack({ id: 'other-pack', contentWriters: { Memo: theirs } } as unknown as PackRegistration);
+    registerPack({ id: 'other-pack', ears: { entities: { Memo: 'Memo' }, relKinds: {} }, contentWriters: { Memo: theirs } } as unknown as PackRegistration);
     registered.push('other-pack');
     expect(_contentWriterRegistry.get('Memo')).toBe(theirs);
   });

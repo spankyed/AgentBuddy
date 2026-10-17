@@ -2226,6 +2226,24 @@ export const _NativePackDeclarationSchema: z.ZodEffects<z.ZodEffects<z.ZodObject
         onInit?: string | undefined;
         onShutdown?: string | undefined;
     }>>>;
+    content: z.ZodOptional<z.ZodLazy<z.ZodObject<{
+        writers: z.ZodOptional<z.ZodType<Record<string, string>, z.ZodTypeDef, Record<string, string>>>;
+        sources: z.ZodOptional<z.ZodType<Record<string, {
+            applier: string;
+        }>, z.ZodTypeDef, Record<string, {
+            applier: string;
+        }>>>;
+    }, "strict", z.ZodTypeAny, {
+        sources?: Record<string, {
+            applier: string;
+        }> | undefined;
+        writers?: Record<string, string> | undefined;
+    }, {
+        sources?: Record<string, {
+            applier: string;
+        }> | undefined;
+        writers?: Record<string, string> | undefined;
+    }>>>;
     steps: z.ZodLazy<z.ZodOptional<z.ZodType<Record<string, {
         node: {
             label: string;
@@ -2509,6 +2527,12 @@ export const _NativePackDeclarationSchema: z.ZodEffects<z.ZodEffects<z.ZodObject
         onInit?: string | undefined;
         onShutdown?: string | undefined;
     } | undefined;
+    content?: {
+        sources?: Record<string, {
+            applier: string;
+        }> | undefined;
+        writers?: Record<string, string> | undefined;
+    } | undefined;
     entityDestinations?: Record<string, string> | undefined;
     eventContracts?: Record<string, {
         system?: {
@@ -2612,6 +2636,12 @@ export const _NativePackDeclarationSchema: z.ZodEffects<z.ZodEffects<z.ZodObject
     lifecycle?: {
         onInit?: string | undefined;
         onShutdown?: string | undefined;
+    } | undefined;
+    content?: {
+        sources?: Record<string, {
+            applier: string;
+        }> | undefined;
+        writers?: Record<string, string> | undefined;
     } | undefined;
     entityDestinations?: Record<string, string> | undefined;
     eventContracts?: Record<string, {
@@ -2731,6 +2761,12 @@ export const _NativePackDeclarationSchema: z.ZodEffects<z.ZodEffects<z.ZodObject
         onInit?: string | undefined;
         onShutdown?: string | undefined;
     } | undefined;
+    content?: {
+        sources?: Record<string, {
+            applier: string;
+        }> | undefined;
+        writers?: Record<string, string> | undefined;
+    } | undefined;
     entityDestinations?: Record<string, string> | undefined;
     eventContracts?: Record<string, {
         system?: {
@@ -2834,6 +2870,12 @@ export const _NativePackDeclarationSchema: z.ZodEffects<z.ZodEffects<z.ZodObject
     lifecycle?: {
         onInit?: string | undefined;
         onShutdown?: string | undefined;
+    } | undefined;
+    content?: {
+        sources?: Record<string, {
+            applier: string;
+        }> | undefined;
+        writers?: Record<string, string> | undefined;
     } | undefined;
     entityDestinations?: Record<string, string> | undefined;
     eventContracts?: Record<string, {
@@ -2952,6 +2994,12 @@ export const _NativePackDeclarationSchema: z.ZodEffects<z.ZodEffects<z.ZodObject
     lifecycle?: {
         onInit?: string | undefined;
         onShutdown?: string | undefined;
+    } | undefined;
+    content?: {
+        sources?: Record<string, {
+            applier: string;
+        }> | undefined;
+        writers?: Record<string, string> | undefined;
     } | undefined;
     entityDestinations?: Record<string, string> | undefined;
     eventContracts?: Record<string, {

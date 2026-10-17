@@ -116,12 +116,12 @@ describe('native fixture admission', () => {
   // The rollback has to take it back out again, or a refused pack stays listed
   it('is unlisted again when its extensions are refused', () => {
     const registry = createNativePackTestRegistry();
-    // Two appliers for one key: refused partway through registering the extensions
+    // Two appliers for one key: refused before registering any contribution
     expect(() => registry.registerPack({
       id: 'clumsy-pack',
       features: { memos: plugin(['MEMO_ADDED']) },
       appliers: [{ key: 'notes' } as never, { key: 'notes' } as never],
-    })).toThrow('two appliers');
+    })).toThrow('runtime appliers does not match its admitted declarations');
     expect(registry.getPluginEventValidationMap().has('clumsy-pack/memos')).toBe(false);
     expect(registry.getRegisteredPackSystemIds('clumsy-pack')).toEqual([]);
   });

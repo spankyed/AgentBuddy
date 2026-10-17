@@ -13,6 +13,11 @@ import type { FrontendDeclaration } from './frontend-declaration.ts';
 export interface NativePackDeclaration extends PackDataDeclarations, FrontendDeclaration {
   id: string;
   lifecycle?: PackLifecycleDeclaration;
+  /** Native writers and explicitly applied content; compilation and automatic application belong to installed builds. */
+  content?: {
+    writers?: Record<string, string>;
+    sources?: Record<string, { applier: string }>;
+  };
   steps?: Record<string, z.infer<typeof StepEntrySchema>>;
   artifacts?: Record<string, z.infer<typeof ArtifactEntrySchema>>;
   blocks?: Record<string, z.infer<typeof BlockEntrySchema>>;

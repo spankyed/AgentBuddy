@@ -81,9 +81,8 @@ export function backendBindingProblem(manifest: PackManifest, registration: unkn
   if (!isPlainObject(ears)) return problem('ears');
   if (!isDeepStrictEqual(ears.entities === undefined ? {} : ears.entities, _packEntityTypes(manifest))) return problem('ears.entities');
   if (!isDeepStrictEqual(ears.relKinds === undefined ? {} : ears.relKinds, _packRelationTypes(manifest))) return problem('ears.relKinds');
-  if (!sameKeys(registration.contentWriters === undefined ? {} : registration.contentWriters,
-    Object.keys(manifest.content?.writers ?? {}))) return problem('contentWriters');
-  if (!namedBindings(registration.appliers, 'key', Object.keys(manifest.content?.sources ?? {}))) return problem('appliers');
+  const contentProblem = backendContentBindingProblem(manifest.content, registration);
+  if (contentProblem) return problem(contentProblem);
 
   const commands = commandBindingProblem(manifest.extensions?.commands, registration.commands);
   if (commands) return problem(commands);
@@ -164,4 +163,13 @@ export function backendViewerBindingProblem(declarations: DeclarationData<Pick<N
     if ((block.be !== undefined) !== (declaration.be !== undefined)) return `blocks.${type}.be`;
     if (block.be !== undefined && (!block.be || typeof block.be !== 'object' || Array.isArray(block.be))) return `blocks.${type}.be`;
   }
+}
+
+/** Match executable content operations to their declared names without applying content. */
+export function backendContentBindingProblem(content: Pick<NonNullable<PackManifest['content']>, 'sources' | 'writers'> | undefined,
+  registration: unknown): string | undefined {
+  if (!isPlainObject(registration)) return 'registration';
+  if (!sameKeys(registration.contentWriters === undefined ? {} : registration.contentWriters,
+    Object.keys(content?.writers ?? {}))) return 'contentWriters';
+  if (!namedBindings(registration.appliers, 'key', Object.keys(content?.sources ?? {}))) return 'appliers';
 }

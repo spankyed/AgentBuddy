@@ -101,7 +101,7 @@ export interface PackRegistration {
   steps?: import('../steps/types.ts').StepDefinition[];
   artifacts?: import('../artifacts/types.ts').ArtifactDefinition[];
   blocks?: import('../blocks/types.ts').BlockDefinition[];
-  /** Content writers for the entity types this pack owns (apack.json `contentWriters`) */
+  /** Content writers for the entity types this pack owns (apack.json `content.writers`) */
   contentWriters?: Record<string, import('../content/writers.ts').ContentWriter>;
   /** The pack's appliers, one per content key (apack.json `content.sources`), which `importCompiledContent` runs for the pack's compiled content */
   appliers?: import('../utils/apply.ts').ContentApplier[];

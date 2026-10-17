@@ -173,6 +173,14 @@ provisional settings resources are retired. Catalog declarations have a separate
 declaration and host-issued revisions. Runtime/build revisions identify the accepted backend; source
 delivery is a separate concern. Native bindings have no installed build stamp.
 
+Native content declares `content.writers` and `content.sources.<key> = { applier: "path.ts" }`.
+Writers must belong to entities declared by that native pack, under a feature or `data.entities`.
+These references describe composition bindings; discovery never imports them. Native appliers run
+through `importCompiledContent` with an explicitly supplied compiled-content directory. Native
+composition does not declare source paths/formats or datasets to compile, and automatic application
+continues to target installed builds. Both native and built backend bindings must match declared writer
+and applier names before receiving runtime authority.
+
 ### Collision detection
 
 The host refuses conflicting active ownership before publishing registry lookups:

@@ -3,7 +3,7 @@ import { declarationRecord } from './declaration-record.ts';
 import { _eventContractsProblem } from './event-contracts.ts';
 import type { PackLifecycleDeclaration } from './lifecycle-declaration.ts';
 export { LIFECYCLE_HOOK_NAMES } from './lifecycle-declaration.ts';
-import { _packEntities, _packEntityTypes, _packRelationTypes, _RELATION_WIRE_PATTERN } from './data-declaration.ts';
+import { _packEntities, _packEntityTypes, _packRelationTypes, _RELATION_WIRE_PATTERN, type PackDataDeclarations } from './data-declaration.ts';
 import { _MODULE_REFERENCE_PATTERN, _MODULE_PATH_PATTERN } from './module-reference.ts';
 import { z } from 'zod';
 import { _PACK_VERSION_PATTERN, _validPackVersion, _validPackRange, parsePackDependency } from './dependency-source.ts';
@@ -145,6 +145,7 @@ export const _NativePackDeclarationSchema = z.preprocess(checkDeclaredNames, z.o
   repositories: z.lazy(() => ServicesSchema).optional(),
   data: DataSchema.optional(),
   lifecycle: z.lazy(() => LifecycleConfigSchema).optional(),
+  content: z.lazy(() => NativeContentConfigSchema).optional(),
   steps: z.lazy(() => ExtensionsSchema.shape.steps),
   artifacts: z.lazy(() => ExtensionsSchema.shape.artifacts),
   blocks: z.lazy(() => ExtensionsSchema.shape.blocks),
@@ -165,6 +166,7 @@ export const _NativePackDeclarationSchema = z.preprocess(checkDeclaredNames, z.o
   if (destinationProblem) ctx.addIssue({ code: 'custom', path: ['entityDestinations'], message: destinationProblem });
   const dslProblem = dslDefinitionsProblem(declaration.dsl, declaration.dslDefinitions);
   if (dslProblem) ctx.addIssue({ code: 'custom', path: ['dslDefinitions'], message: dslProblem });
+  checkContentWriterClaims(declaration, ctx);
   checkFrontendClaims(declaration, ctx, []);
   checkReferenceClaims(declaration.features, ctx);
   checkDefaultPluginClaims(declaration.features, ctx);
@@ -562,6 +564,23 @@ export const ContentConfigSchema = z.object({
     .describe('How one entity type this pack declares is found, created, updated and removed when content is written as it ("path#exportName" of a ContentWriter object). Any pack writing that entity type goes through them.').optional(),
 }).strict().describe("A pack's content: what it ships, how it is compiled, and how it reaches the database.");
 
+/** Native appliers consume an explicitly supplied content directory; they do not declare build inputs. */
+const NativeContentConfigSchema = z.object({
+  writers: ContentConfigSchema.shape.writers,
+  sources: declarationRecord(CONTENT_KEY_SCHEMA, ContentSourceSchema.pick({ applier: true }).required()).optional(),
+}).strict();
+
+function checkContentWriterClaims(declaration: PackDataDeclarations & { content?: { writers?: Readonly<Record<string, string>> } }, ctx: z.RefinementCtx): void {
+  let declared: Set<string>;
+  try { declared = new Set(Object.keys(_packEntityTypes(declaration))); }
+  catch { return; } // Duplicate homes were diagnosed against the original input above.
+  for (const entity of Object.keys(declaration.content?.writers ?? {})) {
+    if (!declared.has(entity)) {
+      ctx.addIssue({ code: 'custom', path: ['content', 'writers', entity], message: `A content writer for "${entity}": only entity types this pack declares under a feature or data.entities can have one` });
+    }
+  }
+}
+
 export const LifecycleConfigSchema = z.object({
   onInit: ExportTargetSchema.describe('Function called after hydration, before migrations and content.').optional(),
   onShutdown: ExportTargetSchema.describe('Function called when this pack stops.').optional(),
@@ -789,12 +808,5 @@ export const ManifestSchema = z.preprocess(checkDeclaredNames, z.object({
       ctx.addIssue({ code: 'custom', path: ['content', 'datasets', key], message: `"${key}" is both a content source and a dataset: they compile to the same file` });
     }
   }
-  let declared: Set<string>;
-  try { declared = new Set(Object.keys(_packEntityTypes(manifest))); }
-  catch { return; } // Duplicate homes were diagnosed against the original input above.
-  for (const entity of Object.keys(manifest.content?.writers ?? {})) {
-    if (!declared.has(entity)) {
-      ctx.addIssue({ code: 'custom', path: ['content', 'writers', entity], message: `A content writer for "${entity}": only entity types this pack declares under a feature or data.entities can have one` });
-    }
-  }
+  checkContentWriterClaims(manifest, ctx);
 }));
