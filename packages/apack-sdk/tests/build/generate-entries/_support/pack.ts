@@ -214,5 +214,5 @@ export function receives(files: Record<string, string>, featureId: string): stri
   const entry = files['src/__generated__/pack-entry.ts'];
   const feature = entry.slice(entry.indexOf(`    '${featureId}': {`));
   const match = /^ {4}'[^']+': \{\n(?:(?! {4}\}).*\n)*? {6}plugin: \{ receives: \[(.*)\] \}/.exec(feature);
-  return match ? [...match[1].matchAll(/'([^']+)'/g)].map((m) => m[1]) : undefined;
+  return match ? JSON.parse(`[${match[1]}]`) as string[] : undefined;
 }

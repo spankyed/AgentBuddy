@@ -29,7 +29,7 @@ function fixture() {
   };
   const listeners = new Set<() => void>();
   stop = startFeTestRuntime({ packs: registry, catalog: { status: () => state.status, problem: () => undefined,
-      artifacts: () => state.artifacts, blocks: () => state.blocks, dsl: () => [], steps: () => [], references: () => [], frontend: () => [],
+      artifacts: () => state.artifacts, blocks: () => state.blocks, events: () => [], dsl: () => [], steps: () => [], references: () => [], frontend: () => [],
       subscribe(listener) { listeners.add(listener); return () => { listeners.delete(listener); }; } } });
   return { registry, pack, registration, component, state, listeners,
     publish: () => { for (const listener of listeners) listener(); },

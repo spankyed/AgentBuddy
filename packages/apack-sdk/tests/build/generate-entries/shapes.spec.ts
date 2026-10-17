@@ -150,7 +150,7 @@ describe('generated feature settings', () => {
     const entry = (await generate({ features: [{ ...system('memos'), settings }, system('todos')] }))['src/__generated__/pack-entry.ts'];
     expect(entry).toContain(`settings: JSON.parse(${JSON.stringify(JSON.stringify(settings))})`);
     expect(entry).not.toContain('import __settings');
-    expect(entry).toContain("    'todos': {\n      system: packSystem(__system_todos),\n      services: [],\n    }");
+    expect(entry).toContain("    'todos': {\n      system: packSystem(__system_todos, { incoming: [\"TODOS_RUN\"] }),\n      services: [],\n    }");
   });
 
   it('preserves ordinary JSON prototype-named keys in emitted registrations', async () => {

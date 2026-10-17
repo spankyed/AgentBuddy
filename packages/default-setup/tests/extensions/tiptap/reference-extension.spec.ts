@@ -17,7 +17,7 @@ it('adds reference suggestions alongside the host-owned reference node', () => {
   for (const key of ['window', 'document', 'DOMParser', 'HTMLElement', 'Node', 'MutationObserver', 'getComputedStyle'] as const)
     vi.stubGlobal(key, key === 'window' ? dom.window : dom.window[key]);
   startFeTestRuntime({ catalog: { status: () => 'ready', problem: () => undefined,
-    references: () => [], frontend: () => [], artifacts: () => [], blocks: () => [], dsl: () => [], steps: () => [], subscribe: () => () => {} } });
+    references: () => [], frontend: () => [], artifacts: () => [], blocks: () => [], events: () => [], dsl: () => [], steps: () => [], subscribe: () => () => {} } });
   editor = new Editor({ element: document.createElement('div'), extensions: [StarterKit, ReferenceNode, ReferenceSuggestion] });
   expect(editor.schema.nodes.reference).toBeDefined();
   expect(referenceSuggestionPluginKey.getState(editor.state)?.active).toBe(false);

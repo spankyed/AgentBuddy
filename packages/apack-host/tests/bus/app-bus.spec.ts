@@ -50,6 +50,7 @@ beforeEach(() => {
   fs.writeFileSync(path.join(packDir, 'runtime', 'fe.js'), '');
   registry.registerPack({ id: 'fe-pack', features: { feature: { system: { machine: recorder('fe-pack'), receives: ['CLIENT_CONNECTED'] } } } }, { declarationRevision: 'fixture-revision',
     buildRevision: 'a'.repeat(64), buildFiles: { 'runtime/fe.js': 'b'.repeat(64) },
+    eventContracts: { feature: { system: { incoming: [], outgoing: [] } } },
     id: 'fe-pack', name: 'fe-pack', version: '1.0.0', dir: packDir,
     manifest: { id: 'fe-pack', name: 'fe-pack', version: '1.0.0', features: { feature: { description: 'Feature declaration fixture.', system: { entry: 'system.ts' } } } },
   });

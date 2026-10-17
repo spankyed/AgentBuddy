@@ -3,7 +3,8 @@ import { SDK_ENTITIES } from '../types/sdk-entities.ts';
 import { dslDefinitionsProblem } from '../framework/dsl-declarations.ts';
 import { declarationRecord } from '../framework/declaration-record.ts';
 import { z } from 'zod';
-import { ManifestSchema } from '../framework/declaration-schema.ts';
+import { ManifestSchema, _EventContractsSchema } from '../framework/declaration-schema.ts';
+import { _eventContractsProblem } from '../framework/event-contracts.ts';
 import { PACK_SNAPSHOT_FORMAT, PROVENANCE_KINDS, _snapshotFormatMismatch, type PackSnapshot, type PackDependencySnapshot, type ProvenanceKind } from './manifest.ts';
 import { packValidation, type PackValidation } from './diagnostics.ts';
 import { _declarationRevision } from './declaration-revision.ts';
@@ -20,6 +21,7 @@ const SnapshotShape = {
   types: z.object({ entities: declarationRecord(z.string()), relKinds: declarationRecord(z.string()) }).strict(),
   facades: declarationRecord(z.string().regex(/^[a-z][a-z0-9-]*$/, 'Facade names must be lowercase identifiers with hyphens, suitable for cache filenames'), z.string()),
   entityDestinations: declarationRecord(z.string().min(1), z.string().min(1)),
+  eventContracts: _EventContractsSchema.optional(),
   provenance: declarationRecord(z.enum(Object.keys(PROVENANCE_KINDS) as [ProvenanceKind, ...ProvenanceKind[]]), declarationRecord(z.string())).optional(),
   flowHelpers: z.object({ exports: z.array(z.string()), module: z.string(), types: z.string() }).strict().optional(),
 } satisfies Record<keyof PackSnapshot, z.ZodTypeAny>;
@@ -62,6 +64,9 @@ function parseSnapshotData<T extends PackDependencySnapshot>(raw: unknown, schem
     message: `snapshot.json ${issue.path.join('.') || 'root'}: ${issue.message}`,
   })));
   const snapshot = result.data;
+  const eventsProblem = _eventContractsProblem(snapshot.eventContracts, snapshot.manifest.features);
+  if (eventsProblem) return packValidation([{ code: 'snapshot.eventContracts', severity: 'error',
+    path: ['eventContracts'], source: 'snapshot.json', message: `${eventsProblem}; rebuild the complete pack` }]);
   const destinationProblem = _entityDestinationsProblem(snapshot.entityDestinations, snapshot.manifest.features,
     new Set([...Object.values(SDK_ENTITIES), ...Object.keys(snapshot.types.entities)]));
   if (destinationProblem) return packValidation([{ code: 'snapshot.entityDestinations', severity: 'error',

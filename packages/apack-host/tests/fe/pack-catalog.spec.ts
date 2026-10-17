@@ -1,3 +1,4 @@
+import { eventContractsFixture } from '../packs/runtime/build-fixture.ts';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { _declarationRevision, PACK_SNAPSHOT_FORMAT } from '@apackdev/sdk/build';
 import { createContributionCatalog } from '../../src/packs/catalog.ts';
@@ -17,6 +18,25 @@ function fixture() {
 }
 
 describe('window declaration catalog', () => {
+  it('publishes static endpoints and refuses malformed replacement metadata without losing the accepted frame', () => {
+    const { reader, catalog, sessions, wire } = fixture();
+    catalog.setNative([{ id: 'native', features: { shell: { description: 'Coordinate a window.' } },
+      eventContracts: { shell: { system: { incoming: ['START'], outgoing: ['DONE'] }, plugin: { receives: ['DONE'] } } },
+    }]);
+    reader.connect(); sessions[0].receive(wire());
+    expect(reader.catalog.events()).toEqual(catalog.events());
+    const previous = reader.getSnapshot();
+    const contracts = reader.catalog.events();
+    const invalid = wire();
+    Object.assign(invalid.snapshot, { revision: invalid.snapshot.revision + 1 });
+    Object.assign(invalid.snapshot.native[0], { eventContracts: { shell: { system: { incoming: ['START', 'START'], outgoing: [] } } } });
+    sessions[0].receive(invalid);
+    expect(reader.status()).toBe('error');
+    expect(reader.getSnapshot()).toBe(previous);
+    expect(reader.catalog.events()).toBe(contracts);
+    expect(Reflect.set(contracts[0].declaration!.system!.incoming, 0, 'CHANGED')).toBe(false);
+    reader.dispose();
+  });
   it('projects native and disabled installed DSL definitions without modules, while source metadata stays unbuilt', () => {
     const { reader, catalog, sessions, wire } = fixture();
     const dsl = { rows: { entry: 'missing/types.ts', targets: ['monaco' as const], prefix: 'row:' } };
@@ -24,7 +44,7 @@ describe('window declaration catalog', () => {
     catalog.setNative([{ id: 'native-pack', dsl, dslDefinitions: { rows: definitions } }]);
     const manifest = { id: 'installed-pack', name: 'Installed', version: '1.0.0', extensions: { dsl } };
     catalog.replace([{ dir: '/no-executable-pack', enabled: false, snapshot: { format: PACK_SNAPSHOT_FORMAT,
-      declarationRevision: _declarationRevision(manifest), manifest, types: { entities: {}, relKinds: {} }, entityDestinations: {}, facades: {},
+      declarationRevision: _declarationRevision(manifest), manifest, eventContracts: eventContractsFixture(manifest), types: { entities: {}, relKinds: {} }, entityDestinations: {}, facades: {},
       dslDefinitions: { rows: definitions } } }]);
     const source = { ...manifest, id: 'source-pack' };
     catalog.setSources([{ dir: '/no-authored-modules', manifest: source, declarationRevision: _declarationRevision(source) }]);
@@ -53,7 +73,7 @@ describe('window declaration catalog', () => {
     const manifest = { id: 'installed', name: 'Installed', version: '1.0.0', features: {
       view: { description: 'Open actions', plugin: { label: 'View', state: 'missing.ts' } },
     } };
-    const snapshot = { manifest, declarationRevision: _declarationRevision(manifest), format: PACK_SNAPSHOT_FORMAT,
+    const snapshot = { manifest, eventContracts: eventContractsFixture(manifest), declarationRevision: _declarationRevision(manifest), format: PACK_SNAPSHOT_FORMAT,
       types: { entities: {}, relKinds: {} }, facades: {}, entityDestinations: { Action: 'view' } };
     catalog.replace([{ dir: '/missing/installed', enabled: false, snapshot }]);
     reader.connect(); sessions[0].receive(wire());
@@ -109,7 +129,7 @@ describe('window declaration catalog', () => {
     catalog.setSources([{ dir: '/isolated/source', manifest, declarationRevision: _declarationRevision(manifest) }]);
     const installed = { ...manifest, id: 'installed-pack' };
     catalog.replace([{ dir: '/isolated/installed', enabled: false, snapshot: {
-      format: PACK_SNAPSHOT_FORMAT, declarationRevision: _declarationRevision(installed), manifest: installed,
+      format: PACK_SNAPSHOT_FORMAT, declarationRevision: _declarationRevision(installed), manifest: installed, eventContracts: eventContractsFixture(installed),
       types: { entities: {}, relKinds: {} }, entityDestinations: {}, facades: {},
     } }]);
     reader.connect(); sessions[0].receive(wire());

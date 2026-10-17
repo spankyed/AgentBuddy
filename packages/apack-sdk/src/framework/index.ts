@@ -9,13 +9,14 @@ export { getPackHelp, type HelpDocument, type HelpArticle, type HelpProblem, typ
 export { getSettingsCatalog, type SettingsCatalog } from './pack-settings.ts';
 export { getPackCommands, type PackCommand } from './pack-commands.ts';
 export type { SettingsDefinition, SettingsSchema, SettingsProblem, SettingsValidator } from './settings-definition.ts';
-export { _packDeclarationProblem, _nativePackDeclarationProblem } from './declaration-binding.ts';
+export { _packDeclarationProblem, _nativePackDeclarationProblem, _parseEventContracts } from './declaration-binding.ts';
 export { _compileSettingsDefinition, _settingsJsonProblems } from './settings-validation.ts';
 export { onPackCatalogChanged, type NativePackDeclaration } from './pack-catalog.ts';
+export { _eventContractsProblem, type FeatureEventContract, type PackEventContracts } from './event-contracts.ts';
 
 export { _referenceTargets, type ReferenceDeclarations, type ReferenceTypeDeclaration, type ReferenceCategoryDeclaration, type ReferenceSvgElement } from './reference-declaration.ts';
 
-export type { PackCatalogView, DslCatalogEntry, DslDeclaration, ReferenceCatalogEntry, FrontendCatalogEntry, StepCatalogEntry, ArtifactCatalogEntry, BlockCatalogEntry, ArtifactDeclaration, BlockDeclaration, DeclarationData } from './catalog-view.ts';
+export type { PackCatalogView, FeatureEventCatalogEntry, DslCatalogEntry, DslDeclaration, ReferenceCatalogEntry, FrontendCatalogEntry, StepCatalogEntry, ArtifactCatalogEntry, BlockCatalogEntry, ArtifactDeclaration, BlockDeclaration, DeclarationData } from './catalog-view.ts';
 
 export { formatReferenceHref, parseReferenceHref, type ReferenceTarget } from './reference-link.ts';
 

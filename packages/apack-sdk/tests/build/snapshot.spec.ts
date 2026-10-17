@@ -11,6 +11,17 @@ const snapshot = (): PackSnapshot => ({
 });
 
 describe('snapshot data reader', () => {
+  it('requires compiled contracts for every declared endpoint and refuses foreign or malformed contracts', () => {
+    const data = snapshot();
+    data.manifest.features = { jobs: { description: 'Run jobs', system: { entry: 'src/jobs.ts' } } };
+    data.declarationRevision = _declarationRevision(data.manifest);
+    expect(parseSnapshot(data).diagnostics[0].code).toBe('snapshot.eventContracts');
+    data.eventContracts = { jobs: { system: { incoming: ['START'], outgoing: [] } } };
+    expect(parseSnapshot(data).status).toBe('valid');
+    expect(parseSnapshot({ ...data, eventContracts: { foreign: data.eventContracts.jobs } }).status).toBe('invalid');
+    expect(parseSnapshot({ ...data, eventContracts: { jobs: { plugin: { receives: [] } } } }).status).toBe('invalid');
+    expect(parseSnapshot({ ...data, eventContracts: { jobs: { system: { incoming: ['START', 'START'], outgoing: [] } } } }).status).toBe('invalid');
+  });
   it('requires complete, exclusively declared Monaco definitions without requiring globals', () => {
     const data = snapshot();
     data.manifest.extensions = { dsl: { rows: { entry: 'src/rows.ts', targets: ['monaco'] } } };
@@ -177,12 +188,14 @@ describe('compiled entity destinations', () => {
     data.manifest.features = { notes: { description: 'Opens notes', plugin: { label: 'Notes', state: 'src/notes.ts' } } };
     data.types.entities = { Note: 'Note' };
     data.entityDestinations = { Note: 'notes', Action: 'notes' };
+    data.eventContracts = { notes: { plugin: { receives: [] } } };
     data.declarationRevision = _declarationRevision(data.manifest);
     expect(parseSnapshot(data).snapshot?.entityDestinations).toEqual(data.entityDestinations);
     for (const invalid of [{ Missing: 'notes' }, { Note: 'missing' }, { Note: 'constructor' }]) {
       expect(parseSnapshot({ ...data, entityDestinations: invalid }).diagnostics[0].code).toBe('snapshot.entityDestinations');
     }
     data.manifest.features.notes = { description: 'No longer a plugin' };
+    data.eventContracts = {};
     expect(parseSnapshot(data).diagnostics[0].code).toBe('snapshot.entityDestinations');
   });
 });

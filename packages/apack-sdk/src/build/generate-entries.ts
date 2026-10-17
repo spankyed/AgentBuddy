@@ -22,12 +22,15 @@ import { compareVersions } from '../utils/compare-versions.ts';
 import type { StepDefinition } from '../steps/types.ts';
 import type { PackCommand } from '../framework/pack-commands.ts';
 import type { ComponentTarget } from '../framework/plugin-declaration.ts';
+import type { PackEventContracts } from '../framework/event-contracts.ts';
 
 const HEADER = `// @generated from apack.json — do not edit by hand
 // Regenerate: apack pack generate-entries\n`;
 
 /** Generated data read by the build, never an executable pack module. */
 export const GENERATED_ENTITY_DESTINATIONS_FILE = 'src/__generated__/entity-destinations.json';
+/** Generated endpoint data shared by the snapshot producer and source runtime harness. */
+export const GENERATED_EVENT_CONTRACTS_FILE = 'src/__generated__/event-contracts.json';
 
 // ── EARS emitter ─────────────────────────────────────────────────
 
@@ -599,6 +602,19 @@ export async function generatePackFiles(
     return contractTypes(feature, 'plugin', inboxEventTypesOf);
   }
 
+  let compiledEvents: PackEventContracts | undefined;
+  function eventContracts(): PackEventContracts {
+    return compiledEvents ??= Object.fromEntries(packFeatures(manifest)
+      .filter(feature => feature.system || feature.plugin).map(feature => [feature.id, {
+        ...(feature.system && { system: {
+          incoming: [...new Set([...contractTypes(feature, 'system', (file, name) => moduleReader().incomingEventTypesOf(file, name)),
+            ...(feature.system.events?.incoming ?? [])])].sort(),
+          outgoing: [...new Set(sentEventTypes(feature))].sort(),
+        } }),
+        ...(feature.plugin && { plugin: { receives: receivedEventTypes(feature) } }),
+      }]));
+  }
+
   function entityDestinations(): Record<string, string> {
     const known = new Set([...Object.values(SDK_ENTITIES), ...Object.keys(_packEntityTypes(manifest)),
       ...[...depSnapshots.values()].flatMap(snapshot => Object.keys(snapshot.types.entities))]);
@@ -969,19 +985,16 @@ ${items.join('\n')}
       .map(f => `import ${systemBinding(f.id)} from '${toImportPath(root, f.system!.entry)}';`)
       .join('\n');
 
-    // `incoming` — the extra event types a manifest declares its system accepts — is the only option
-    // `packSystem` takes, so there is nothing here to combine
+    // Routing comes from the compiled contract, never the machine's private handler inventory.
     const systemExpr = (f: PackFeature): string => {
-      const incoming = f.system!.events?.incoming;
-      const options = incoming?.length ? `, { incoming: ${dataLiteral(incoming)} }` : '';
-      return `packSystem(${systemBinding(f.id)}${options})`;
+      return `packSystem(${systemBinding(f.id)}, { incoming: ${dataLiteral(eventContracts()[f.id].system!.incoming)} })`;
     };
 
     const featuresLiteral = features.map(f => {
       const parts: string[] = [];
       if (f.designation) parts.push(`      designation: '${f.designation}'`);
       if (f.system) parts.push(`      system: ${systemExpr(f)}`);
-      if (f.plugin) parts.push(`      plugin: { receives: [${receivedEventTypes(f).map((type) => `'${type}'`).join(', ')}] }`);
+      if (f.plugin) parts.push(`      plugin: { receives: ${dataLiteral(eventContracts()[f.id].plugin!.receives)} }`);
       parts.push(`      services: [${Object.keys(f.services ?? {}).map(s => `'${s}'`).join(', ')}]`);
       // JSON.parse preserves own __proto__ keys, which an object literal would treat as a prototype setter.
       if (f.settings) parts.push(`      settings: JSON.parse(${dataLiteral(JSON.stringify(f.settings))})`);
@@ -2113,6 +2126,7 @@ export type { ImportMode } from '@apackdev/sdk/utils';
 
   const files: [string, string][] = ([
     [GENERATED_ENTITY_DESTINATIONS_FILE, JSON.stringify(entityDestinations(), null, 2) + '\n'],
+    [GENERATED_EVENT_CONTRACTS_FILE, JSON.stringify(eventContracts(), null, 2) + '\n'],
     ['src/__generated__/pack-entry.ts', generateBackendEntry()],
     ['src/__generated__/pack-entry-fe.ts', generateFrontendEntry()],
     ['src/__generated__/ears.ts', generateEars()],

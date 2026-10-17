@@ -22,7 +22,7 @@ it('renders stored references with only the native host registered and refuses a
   const registry = createNativeFrontendTestRegistry([hostDeclaration]);
   registry.registerFixture(hostFrontend);
   startFeTestRuntime({ packs: registry, catalog: {
-    status: () => 'disconnected', problem: () => undefined, references: () => [], frontend: () => [], artifacts: () => [], blocks: () => [], dsl: () => [], steps: () => [], subscribe: () => () => {},
+    status: () => 'disconnected', problem: () => undefined, references: () => [], frontend: () => [], artifacts: () => [], blocks: () => [], dsl: () => [], events: () => [], steps: () => [], subscribe: () => () => {},
   } });
   expect(registry.hasPackFE('default-setup')).toBe(false);
   const root = document.createElement('div'); document.body.appendChild(root);
@@ -51,7 +51,7 @@ async function openEditor(content = 'Draft') {
     return () => { unsubscribed(); stop(); };
   });
   startFeTestRuntime({ packs: registry, catalog: {
-    status: () => 'ready', problem: () => undefined, references: () => [], frontend: () => [], artifacts: () => [], blocks: () => [], dsl: () => [], steps: () => [], subscribe: () => () => {},
+    status: () => 'ready', problem: () => undefined, references: () => [], frontend: () => [], artifacts: () => [], blocks: () => [], dsl: () => [], events: () => [], steps: () => [], subscribe: () => () => {},
   } });
   const root = document.createElement('div'); document.body.appendChild(root);
   const updates = vi.fn(); const subDocuments = vi.fn();

@@ -2,6 +2,7 @@ import type { StepEntry } from '../build/manifest.ts';
 import type { FeatureRef } from '../ids/refs.ts';
 import type { ReferenceDeclarations } from './reference-declaration.ts';
 import type { FrontendDeclaration } from './frontend-declaration.ts';
+import type { FeatureEventContract } from './event-contracts.ts';
 import type { z } from 'zod';
 import type { ArtifactEntrySchema, BlockEntrySchema, DslEntrySchema } from './declaration-schema.ts';
 
@@ -75,6 +76,17 @@ export interface DslCatalogEntry {
   readonly enabled?: boolean;
 }
 
+/** Declared endpoint names; source previews distinguish uncompiled contracts from empty inboxes. */
+export type FeatureEventCatalogEntry = {
+  readonly featureRef: FeatureRef;
+  readonly packId: string;
+  readonly origin: 'native' | 'installed' | 'source';
+  readonly enabled?: boolean;
+  readonly declarationRevision?: string;
+  readonly buildRevision?: string;
+} & ({ readonly status: 'compiled'; readonly declaration: DeclarationData<FeatureEventContract> }
+  | { readonly status: 'unavailable'; readonly declaration?: never });
+
 /** Typed projections of the common declaration inventory; reading never activates a pack. */
 export interface PackCatalogView {
   status(): 'loading' | 'ready' | 'disconnected' | 'error' | 'disposed';
@@ -85,5 +97,7 @@ export interface PackCatalogView {
   artifacts(): readonly ArtifactCatalogEntry[];
   blocks(): readonly BlockCatalogEntry[];
   dsl(): readonly DslCatalogEntry[];
+  /** Static endpoint contracts, independently of runtime binding availability. */
+  events(): readonly FeatureEventCatalogEntry[];
   subscribe(listener: () => void): () => void;
 }

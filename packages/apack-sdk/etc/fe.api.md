@@ -17,6 +17,7 @@ import { DefineComponent } from 'vue';
 import { EARS as EARS_2 } from '@apackdev/ears';
 import type { Editor } from '@tiptap/vue-3';
 import type { EditorState } from '@tiptap/pm/state';
+import { entityTypeOf } from '@apackdev/ears';
 import type { EventObject } from 'xstate';
 import { ExtractPropTypes } from 'vue';
 import type { InjectionKey } from 'vue';
@@ -179,6 +180,8 @@ export function entityIs<E extends string>(input: {
 }, params: {
     entity: E;
 }): boolean;
+
+export { entityTypeOf }
 
 // @public (undocumented)
 export const EXTRA_BLOCK_ITEMS_KEY: InjectionKey<BlockItem[]>;

@@ -1,3 +1,4 @@
+import { eventContractsFixture } from './runtime/build-fixture.ts';
 import { resolveAppEnvironment } from '@apackdev/sdk/env';
 import { startTestRuntime } from '@apackdev/sdk/testing';
 import { createPackRegistry } from '../../src/packs/registry.ts';
@@ -18,7 +19,7 @@ const feature = { description: 'Open actions', plugin: { label: 'Actions', state
 function source(id: string, enabled = true) {
   const manifest = { id, name: id, version: '1.0.0', features: { view: feature } };
   return { dir: `/missing/${id}`, enabled, snapshot: { manifest, declarationRevision: _declarationRevision(manifest),
-    format: PACK_SNAPSHOT_FORMAT, types: { entities: {}, relKinds: {} }, facades: {}, entityDestinations: { Action: 'view' } } };
+    format: PACK_SNAPSHOT_FORMAT, types: { entities: {}, relKinds: {} }, facades: {}, eventContracts: eventContractsFixture(manifest), entityDestinations: { Action: 'view' } } };
 }
 
 it('projects compiled claims without source or activation, leaving source previews unbuilt', () => {

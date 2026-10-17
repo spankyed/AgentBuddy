@@ -684,21 +684,3 @@ export function createPacksSystem(registry: PackRegistry) {
     },
   });
 }
-
-export const packsEvents = new Set([
-  'SEND_STATE',
-  'INSTALL_PACK',
-  'REPLACE_PACK',
-  'RESTORE_PACK',
-  'UNINSTALL_PACK',
-  'TOGGLE_PACK_ENABLED',
-  'GET_INSTALLED_PACKS',
-  'UPDATE_PACK',
-  'UPDATE_APP_PACK',
-  'CHECK_FOR_UPDATES',
-  'PREVIEW_PACK_CONTENT',
-  'IMPORT_PACK_CONTENT',
-  'RESTORE_CONTENT_ITEM',
-  'DISMISS_CONTENT_OFFER',
-  'DELETE_CONTENT_ITEM',
-]);

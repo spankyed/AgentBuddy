@@ -9,6 +9,7 @@ Declared as a pack via `apack.json`. Being shipped by the app is installation pr
 ```
 src/
   __generated__/           # All generated from apack.json — do not edit
+    event-contracts.json   # Static system incoming/outgoing and plugin receive names
     pack-entry.ts          # BE entry — exports PackRegistration (repositories and appliers included)
     pack-entry-fe.ts       # FE entry — the PackFERegistration: plugins, steps, tiptap + app extensions, DSL types
     ears.ts                # EARS entity/relation registry, generated from apack.json

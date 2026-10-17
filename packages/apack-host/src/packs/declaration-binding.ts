@@ -5,6 +5,8 @@ import type { PackManifest, StepEntry } from '@apackdev/sdk/build';
 import { isPlainObject } from '@apackdev/sdk/utils/pure';
 import { namedBindings, sameKeys, sameNames } from './binding-shape.ts';
 import { isDeepStrictEqual } from 'node:util';
+import { eventBindingProblem } from './event-binding.ts';
+import type { PackEventContracts } from '@apackdev/sdk/framework';
 
 interface ApiOwnerDeclaration {
   readonly services?: Readonly<Record<string, string>>;
@@ -54,7 +56,7 @@ export function contentBindingProblem(manifest: PackManifest, runtime: unknown, 
 }
 
 /** Check contributed identities before any runtime object enters the registry. */
-export function backendBindingProblem(manifest: PackManifest, registration: unknown): string | undefined {
+export function backendBindingProblem(manifest: PackManifest, registration: unknown, eventContracts?: Readonly<PackEventContracts>): string | undefined {
   const problem = (path: string) => `Pack "${manifest.id}" runtime ${path} does not match its accepted declarations`;
   if (!isPlainObject(registration)) return problem('registration');
   const declared = manifest.features ?? {};
@@ -70,6 +72,8 @@ export function backendBindingProblem(manifest: PackManifest, registration: unkn
       if (declaration[kind] && !isPlainObject(feature[kind])) return problem(`features.${id}.${kind}`);
     }
   }
+  const eventsProblem = eventBindingProblem(eventContracts, features);
+  if (eventsProblem) return problem(eventsProblem);
   const apiProblem = apiBindingProblem(declared, { services: manifest.extensions?.services }, registration);
   if (apiProblem) return problem(apiProblem);
 

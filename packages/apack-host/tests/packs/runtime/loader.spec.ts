@@ -1,3 +1,4 @@
+import { eventContractsFixture } from './build-fixture.ts';
 import { sealBuild, sealPack } from './build-fixture.ts';
 import { _declarationRevision, type PackManifest } from '@apackdev/sdk/build';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -39,7 +40,7 @@ function makePack(
   fs.mkdirSync(path.join(packDir, 'runtime'), { recursive: true });
   fs.writeFileSync(path.join(packDir, 'apack.json'), JSON.stringify(manifest));
   fs.mkdirSync(path.join(packDir, 'types'), { recursive: true });
-  fs.writeFileSync(path.join(packDir, PACK_LAYOUT.snapshot), JSON.stringify({ declarationRevision, format: PACK_SNAPSHOT_FORMAT, manifest, types: { entities: {}, relKinds: {} }, entityDestinations: {}, facades: {} }));
+  fs.writeFileSync(path.join(packDir, PACK_LAYOUT.snapshot), JSON.stringify({ declarationRevision, format: PACK_SNAPSHOT_FORMAT, manifest, eventContracts: eventContractsFixture(manifest as PackManifest), types: { entities: {}, relKinds: {} }, entityDestinations: {}, facades: {} }));
   fs.writeFileSync(path.join(packDir, 'runtime', 'index.cjs'), `module.exports = { registration: { id: ${JSON.stringify(manifest.id)}, declarationRevision: '${declarationRevision}', features: ${featuresSource} } };`);
   sealPack(packDir);
   return packDir;
@@ -292,14 +293,14 @@ describe('loadAppPacks deterministic registration', () => {
 });
 
 describe('pack-loader: bundled runtime (runtime/index.cjs)', () => {
-  function makeBundledPack(id: string, registrationSource: string, manifestExtra: Record<string, unknown> = {}) {
+  function makeBundledPack(id: string, registrationSource: string, manifestExtra: Record<string, unknown> = {}, incoming = ['PING', 'EXTRA']) {
     const packDir = path.join(_appDirOf(tmpDir), 'packs', id);
     fs.mkdirSync(path.join(packDir, 'runtime', 'content'), { recursive: true });
     fs.mkdirSync(path.join(packDir, 'types'), { recursive: true });
     const manifest = { id, name: id, version: '1.0.0', data: { entities: { Widget: null } }, lifecycle: { onInit: 'hooks.ts#onInit' }, features: { widget: { description: 'Feature declaration fixture.', system: { entry: 'system.ts' } } }, extensions: { services: { hello: 'hello.ts#hello' } }, ...manifestExtra };
     fs.writeFileSync(path.join(packDir, 'apack.json'), JSON.stringify(manifest));
     const declarationRevision = _declarationRevision(manifest);
-    fs.writeFileSync(path.join(packDir, PACK_LAYOUT.snapshot), JSON.stringify({ declarationRevision, format: PACK_SNAPSHOT_FORMAT, manifest, types: { entities: {}, relKinds: {} }, entityDestinations: {}, facades: {} }));
+    fs.writeFileSync(path.join(packDir, PACK_LAYOUT.snapshot), JSON.stringify({ declarationRevision, format: PACK_SNAPSHOT_FORMAT, manifest, eventContracts: eventContractsFixture(manifest as PackManifest, { widget: { system: { incoming, outgoing: [] }, ...((manifest as PackManifest).features?.widget?.plugin && { plugin: { receives: [] } }) } }), types: { entities: {}, relKinds: {} }, entityDestinations: {}, facades: {} }));
     fs.writeFileSync(path.join(packDir, 'runtime', 'index.cjs'), `${registrationSource}\nif (module.exports.registration) module.exports.registration.declarationRevision = '${declarationRevision}';`);
     sealPack(packDir);
     return packDir;
@@ -357,7 +358,7 @@ describe('pack-loader: bundled runtime (runtime/index.cjs)', () => {
     makeBundledPack('settings-pack', registration('settings-pack', `
       contentWriters: { Widget: { find() { return undefined; } } },
       features: { widget: { system: { machine, receives: ['PING'] }, plugin: { receives: [] }, settings: { defaults: { size: 3 }, schema: { type: 'object' } } } },
-    `), { features: { widget: { description: 'Exercise the widget system.', system: { entry: 'system.ts' }, plugin: { label: 'Fixture', state: 'plugin.ts', defaultVisible: false }, settings: { defaults: { size: 3 }, schema: { type: 'object' } } } }, content: { writers: { Widget: 'writer.ts#writer' } } });
+    `), { features: { widget: { description: 'Exercise the widget system.', system: { entry: 'system.ts' }, plugin: { label: 'Fixture', state: 'plugin.ts', defaultVisible: false }, settings: { defaults: { size: 3 }, schema: { type: 'object' } } } }, content: { writers: { Widget: 'writer.ts#writer' } } }, ['PING']);
 
     registry.refreshCatalog(path.join(_appDirOf(tmpDir), 'packs'));
     const [pack] = loadExternalPacks(registry);

@@ -1,5 +1,6 @@
 import { dslDefinitionsProblem } from './dsl-declarations.ts';
 import { declarationRecord } from './declaration-record.ts';
+import { _eventContractsProblem } from './event-contracts.ts';
 import type { PackLifecycleDeclaration } from './lifecycle-declaration.ts';
 export { LIFECYCLE_HOOK_NAMES } from './lifecycle-declaration.ts';
 import { _packEntities, _packEntityTypes, _packRelationTypes, _RELATION_WIRE_PATTERN } from './data-declaration.ts';
@@ -130,6 +131,12 @@ function checkFrontendClaims(frontend: FrontendDeclaration | undefined, ctx: z.R
 }
 
 /** @internal Host composition admits shared declaration data independently of executable bindings. */
+const EventNamesSchema = z.array(z.string().min(1)).refine(names => new Set(names).size === names.length, 'Event names must be unique');
+export const _EventContractsSchema = declarationRecord(z.string().regex(FEATURE_ID_PATTERN), z.object({
+  system: z.object({ incoming: EventNamesSchema, outgoing: EventNamesSchema }).strict().optional(),
+  plugin: z.object({ receives: EventNamesSchema }).strict().optional(),
+}).strict());
+
 export const _NativePackDeclarationSchema = z.preprocess(checkDeclaredNames, z.object({
   id: z.string().regex(PACK_ID_PATTERN),
   dependencies: declarationRecord(z.string().regex(PACK_ID_PATTERN), PackRangeSchema).optional(),
@@ -145,12 +152,15 @@ export const _NativePackDeclarationSchema = z.preprocess(checkDeclaredNames, z.o
   dsl: z.lazy(() => ExtensionsSchema.shape.dsl),
   dslDefinitions: declarationRecord(z.string()).optional(),
   entityDestinations: declarationRecord(z.string().min(1), z.string().min(1)).optional(),
+  eventContracts: _EventContractsSchema.optional(),
   tiptapPlugins: z.lazy(() => FrontendConfigSchema.shape.tiptapPlugins),
   appExtensions: z.lazy(() => FrontendConfigSchema.shape.appExtensions),
   features: declarationRecord(z.string().regex(FEATURE_ID_PATTERN), z.lazy(() => FeatureEntrySchema.pick({
     description: true, entities: true, designation: true, settings: true, plugin: true, references: true, services: true, repositories: true,
   }))).optional(),
 }).strict().superRefine((declaration, ctx) => {
+  const eventsProblem = _eventContractsProblem(declaration.eventContracts, declaration.features, true);
+  if (eventsProblem) ctx.addIssue({ code: 'custom', path: ['eventContracts'], message: eventsProblem });
   const destinationProblem = _entityDestinationsProblem(declaration.entityDestinations ?? {}, declaration.features);
   if (destinationProblem) ctx.addIssue({ code: 'custom', path: ['entityDestinations'], message: destinationProblem });
   const dslProblem = dslDefinitionsProblem(declaration.dsl, declaration.dslDefinitions);
@@ -387,7 +397,7 @@ const ContentDatasetsSchema = declarationRecord(CONTENT_KEY_SCHEMA, ContentSourc
 
 const SystemSchema = z.object({
   entry: ModulePathSchema.describe('Path to the backend system module.'),
-  contract: ExportTargetSchema.describe('"path#exportName" of this system\'s contract: a declared type holding its context and its incoming, internal and outgoing events (SystemContract, @apackdev/sdk/framework). It lives in a leaf module of its own (be/contract.ts), so codegen reads it without running anything. Omit it for a system that sends no events.').optional(),
+  contract: ExportTargetSchema.describe('"path#exportName" of this system\'s contract: a declared type holding its context and its incoming, internal and outgoing events (SystemContract, @apackdev/sdk/framework). It lives in a leaf module of its own (be/contract.ts), so codegen reads it without running anything. Omit only when there are no typed incoming or outgoing events; explicit events.incoming still declares routing additions.').optional(),
   events: z.object({
     incoming: z.array(z.string()).describe('Event types this system listens for.').optional(),
   }).strict().describe('Event routing declarations.').optional(),
@@ -594,7 +604,7 @@ export const FeatureEntrySchema = z.object({
     .describe('Services. Keys are service names on `services`, values are "path#exportName" of the service object (an object literal or a class instance, not a factory) in a source file.').optional(),
   repositories: declarationRecord(IdentifierSchema, ExportTargetSchema)
     .describe('Repository objects. Keys are repository names on `repository` (from #generated/repository), values are "path#exportName" of the object in a source file.').optional(),
-  references: ReferencesSchema.describe('Reference identities and presentation, with explicit navigation and reactive item-provider exports.').optional(),
+  references: ReferencesSchema.describe('Reference identities and presentation, with reactive item-provider exports. Entity opening is declared separately by the destination plugin contract.').optional(),
 }).strict();
 
 export const PackPermissionSchema = z.enum(['ears', 'llm', 'filesystem', 'network', 'terminal']);

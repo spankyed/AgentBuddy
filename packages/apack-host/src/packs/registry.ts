@@ -6,6 +6,8 @@ import { captureStepBinding, captureStepDeclaration } from './step-bindings.ts';
 import { lifecycleBindingProblem } from './lifecycle-binding.ts';
 import { _packEntityTypes, _packRelationTypes } from '@apackdev/sdk/framework';
 import { apiBindingProblem, backendBindingProblem, backendStepBindingProblem, commandBindingProblem, contentBindingProblem } from './declaration-binding.ts';
+import { eventBindingProblem } from './event-binding.ts';
+import { SYSTEM_EVENT_TYPES, type PackEventContracts } from '@apackdev/sdk/framework';
 /**
  * Pack Registration
  *
@@ -185,6 +187,7 @@ export interface PackOrigin {
   buildRevision?: string;
   /** File membership/checksums admitted with this runtime, never reconstructed from changed disk bytes. */
   buildFiles?: Readonly<Record<string, string>>;
+  eventContracts?: Readonly<PackEventContracts>;
   name: string;
   version: string;
   /** Where the pack's files are: `packs/<id>`, for every pack */
@@ -297,7 +300,8 @@ export interface PackRegistry extends PackRegistryView {
 }
 
 /** Capture ownership and collection membership once; executable values retain their identity. */
-function admitContributions(registration: PackRegistration, declarations: DeclarationData<Record<string, StepEntry>> | undefined, origin?: PackOrigin) {
+function admitContributions(registration: PackRegistration, declarations: DeclarationData<Record<string, StepEntry>> | undefined,
+  eventContracts: Readonly<PackEventContracts> | undefined, origin?: PackOrigin) {
   const runtimeRevision = randomUUID();
   const steps = (registration.steps ?? []).map(binding => {
     if (!declarations || !Object.hasOwn(declarations, binding.type)) throw new Error(`Pack "${registration.id}" needs accepted declarations for step "${binding.type}"`);
@@ -310,6 +314,10 @@ function admitContributions(registration: PackRegistration, declarations: Declar
     id: registration.id,
     runtimeRevision,
     steps,
+    systems: new Map(featuresOf(registration).flatMap(({ featureId, ref, feature }) => feature.system
+      ? [[ref, { machine: feature.system.machine, receives: [...eventContracts![featureId].system!.incoming, ...SYSTEM_EVENT_TYPES] }] as const] : [])),
+    pluginEvents: new Map(featuresOf(registration).flatMap(({ featureId, ref, feature }) => feature.plugin
+      ? [[ref, [...eventContracts![featureId].plugin!.receives, ...PLUGIN_EVENT_TYPES]] as const] : [])),
     designations: designationsOf(registration),
     repositories: new Map(Object.entries(registration.repositories ?? {})),
     services: new Map(Object.entries(registration.services ?? {})),
@@ -530,6 +538,7 @@ export function createPackRegistry({ installedPacksDir, appPackSourcesDir, setti
     if (origin) origin = Object.freeze({ ...origin,
       ...(origin.manifest && { manifest: captureData(origin.manifest) }),
       ...(origin.buildFiles && { buildFiles: Object.freeze({ ...origin.buildFiles }) }),
+      ...(origin.eventContracts && { eventContracts: captureData(origin.eventContracts) }),
     });
     if (registrations.has(registration.id) && !replacing) {
       throw new Error(`Pack "${registration.id}" is already registered`);
@@ -543,6 +552,8 @@ export function createPackRegistry({ installedPacksDir, appPackSourcesDir, setti
     if (!origin) {
       const declaration = catalog.getSnapshot().native.find(pack => pack.id === registration.id);
       if (!declaration) throw new Error(`Native pack "${registration.id}" must declare its data before binding`);
+      const eventsProblem = eventBindingProblem(declaration.eventContracts, registration.features ?? {}, true);
+      if (eventsProblem) throw new Error(`Native pack "${registration.id}" runtime ${eventsProblem} does not match its admitted declarations`);
       const apiProblem = apiBindingProblem(declaration.features, declaration, registration);
       if (apiProblem) throw new Error(`Native pack "${registration.id}" runtime ${apiProblem} does not match its admitted declarations`);
       if (!isDeepStrictEqual(registration.ears?.relKinds ?? {}, _packRelationTypes(declaration))) {
@@ -578,6 +589,10 @@ export function createPackRegistry({ installedPacksDir, appPackSourcesDir, setti
     if (source && (registration.declarationRevision !== source.declarationRevision || origin?.declarationRevision !== source.declarationRevision)) {
       throw new Error(`Pack "${registration.id}" runtime does not match its accepted source declarations`);
     }
+    if (source?.eventContracts && checkBinding === backendBindingProblem
+      && !isDeepStrictEqual(source.eventContracts, origin?.eventContracts)) {
+      throw new Error(`Pack "${registration.id}" runtime event contracts do not match its accepted source declarations`);
+    }
 
     if (origin?.manifest) {
       const definitions = (features: Record<string, { settings?: unknown }> = {}) => Object.fromEntries(
@@ -587,8 +602,12 @@ export function createPackRegistry({ installedPacksDir, appPackSourcesDir, setti
         || !isDeepStrictEqual(registration.settings === undefined ? {} : registration.settings, origin.manifest.extensions?.settings ?? {})) {
         throw new Error(`Pack "${registration.id}" runtime settings do not match its accepted declarations`);
       }
-      const problem = checkBinding(origin.manifest, checkedRegistration);
+      const problem = checkBinding(origin.manifest, checkedRegistration, origin.eventContracts);
       if (problem) throw new Error(problem);
+    }
+    if (origin && !origin.manifest && checkBinding === backendBindingProblem) {
+      const problem = eventBindingProblem(origin.eventContracts, registration.features ?? {});
+      if (problem) throw new Error(`Pack "${registration.id}" runtime ${problem} has no matching admitted event contract`);
     }
 
     checkEARS(registration, replacing ? registration.id : undefined);
@@ -604,7 +623,8 @@ export function createPackRegistry({ installedPacksDir, appPackSourcesDir, setti
     const candidate = new Map(admitted);
     const declarations = origin ? origin.manifest?.extensions?.steps
       : catalog.getSnapshot().native.find(pack => pack.id === registration.id)?.steps;
-    candidate.set(registration.id, admitContributions(checkedRegistration, declarations, origin));
+    const eventContracts = origin ? origin.eventContracts : catalog.getSnapshot().native.find(pack => pack.id === registration.id)?.eventContracts;
+    candidate.set(registration.id, admitContributions(checkedRegistration, declarations, eventContracts, origin));
     const nextTables = buildContributionTables(candidate.values());
     let binding: ReturnType<typeof createPackSettingsBinding> | undefined;
     try {
@@ -661,14 +681,13 @@ export function createPackRegistry({ installedPacksDir, appPackSourcesDir, setti
   }
 
   function getRegisteredPackSystemIds(packId: string): string[] {
-    const reg = registrations.get(packId);
-    return reg ? packSystemIds(reg) : [];
+    return [...(admitted.get(packId)?.systems.keys() ?? [])];
   }
 
   function buildEventValidationMap(): Map<string, Set<string>> {
     const map = new Map<string, Set<string>>();
-    for (const reg of registrations.values()) {
-      for (const { ref, system } of systemsOf(reg)) map.set(ref, new Set(system.receives));
+    for (const pack of admitted.values()) {
+      for (const [ref, system] of pack.systems) map.set(ref, new Set(system.receives));
     }
     // The bus isn't a feature's system, but pack code sends it events (HostSystemEvents): from a frontend too, so the
     // client path checks them as the backend's does. It runs where the host is registered.
@@ -681,10 +700,8 @@ export function createPackRegistry({ installedPacksDir, appPackSourcesDir, setti
   function buildPluginEventValidationMap(): Map<string, PluginEventTypes> {
     const map = new Map<string, PluginEventTypes>();
     // Each pack's plugins are under its own refs, the host's included, so no pack reaches another's entry
-    for (const reg of registrations.values()) {
-      for (const { ref, feature } of featuresOf(reg)) {
-        if (feature.plugin) map.set(ref, new Set([...feature.plugin.receives, ...PLUGIN_EVENT_TYPES]));
-      }
+    for (const pack of admitted.values()) {
+      for (const [ref, receives] of pack.pluginEvents) map.set(ref, new Set(receives));
     }
     return map;
   }
@@ -719,8 +736,8 @@ export function createPackRegistry({ installedPacksDir, appPackSourcesDir, setti
 
     getRegisteredSystems() {
       const systems = new Map<string, AnyStateMachine>();
-      for (const reg of registrations.values()) {
-        for (const { ref, system } of systemsOf(reg)) systems.set(ref, system.machine);
+      for (const pack of admitted.values()) {
+        for (const [ref, system] of pack.systems) systems.set(ref, system.machine);
       }
       return systems;
     },

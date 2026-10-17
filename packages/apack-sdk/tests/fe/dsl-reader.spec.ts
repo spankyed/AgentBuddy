@@ -13,7 +13,7 @@ it('selects owned static definitions without consulting activation and follows c
   const listeners = new Set<() => void>();
   startFeTestRuntime({ packs: new Proxy({} as never, { get() { throw new Error('No executable providers'); } }), catalog: {
     status: () => 'disconnected', problem: () => undefined, references: () => [], frontend: () => [], steps: () => [], artifacts: () => [], blocks: () => [],
-    dsl: () => entries, subscribe(listener) { listeners.add(listener); return () => { listeners.delete(listener); }; },
+    events: () => [], dsl: () => entries, subscribe(listener) { listeners.add(listener); return () => { listeners.delete(listener); }; },
   } });
   expect(getDslDeclaration('memo')).toBe(entry);
   const scope = effectScope(); const seen: (string | undefined)[] = [];

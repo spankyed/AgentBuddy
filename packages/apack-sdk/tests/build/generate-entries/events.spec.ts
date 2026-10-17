@@ -19,8 +19,28 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { setupPackFixture, dependency, facade, generate, pluginWithContract, receives, root, system, withPlugin, withPluginState, write, writeContract, writePluginState, writeSystemEntry } from './_support/pack.ts';
+import { GENERATED_EVENT_CONTRACTS_FILE } from '../../../src/build/generate-entries.ts';
 
 setupPackFixture();
+
+it('preserves quoted event names in both static data and generated runtime literals', async () => {
+  writeSystemEntry('quoted', `{ type: "can't" }`);
+  const files = await generate({ features: [withPlugin(system('quoted'))] });
+  expect(receives(files, 'quoted')).toEqual(["can't"]);
+  expect(JSON.parse(files[GENERATED_EVENT_CONTRACTS_FILE]).quoted.plugin.receives).toEqual(["can't"]);
+});
+
+it('captures endpoint contracts without executing modules or publishing internal events', async () => {
+  writeSystemEntry('jobs', "{ type: 'DONE' }", "{ type: 'START' | 'CANCEL' }");
+  write('src/features/jobs/be/contract.ts', `throw new Error('Never activate');
+export type Contract = { incoming: { type: 'START' | 'CANCEL' }; internal: { type: 'PRIVATE' }; outgoing: { type: 'DONE' } };`);
+  const files = await generate({ features: [withPlugin(system('jobs', { events: { incoming: ['EXTERNAL', 'START'] } }), "{ type: 'SHOW' }")] });
+  expect(JSON.parse(files[GENERATED_EVENT_CONTRACTS_FILE])).toEqual({ jobs: {
+    system: { incoming: ['CANCEL', 'EXTERNAL', 'START'], outgoing: ['DONE'] },
+    plugin: { receives: ['DONE', 'SHOW'] },
+  } });
+  expect(files['src/__generated__/pack-entry.ts']).toContain('incoming: ["CANCEL","EXTERNAL","START"]');
+});
 
 describe('generated events', () => {
   it('keys each plugin by its own system\'s events and the inbox it declares', async () => {

@@ -1,3 +1,4 @@
+import { eventContractsFixture } from './runtime/build-fixture.ts';
 import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
@@ -41,7 +42,7 @@ describe('contribution catalog data', () => {
           commands: { cold: { placeholder: 'Cold command' } }, artifacts: { cold: { icon: 'FileText', fe: 'src/unavailable.vue' } },
           blocks: { cold: { kind: 'input', fe: 'src/unavailable.vue', be: 'src/unavailable.ts#backend' } }, help: { path: 'help' }, ...frontend } };
       const snapshot = { declarationRevision: _declarationRevision(manifest), format: PACK_SNAPSHOT_FORMAT,
-        manifest, types: { entities: {}, relKinds: {} }, entityDestinations: { Action: 'notes' }, facades: {},
+        manifest, eventContracts: eventContractsFixture(manifest), types: { entities: {}, relKinds: {} }, entityDestinations: { Action: 'notes' }, facades: {},
         dslDefinitions: { cold: 'declare module "@app/defs/cold" { export interface Cold {} }' },
         help: [{ id: 'start', title: 'Start', body: 'Available without activation', features: ['notes'] }] };
       fs.mkdirSync(path.join(dir, 'runtime'), { recursive: true });
@@ -287,6 +288,7 @@ it('projects native, disabled installed and authoring plugins without activating
   installed.snapshot.manifest.features = { view: { description: 'Feature declaration fixture.', plugin: { label: 'Installed view', state: 'src/state.ts',
     canvas: { routes: { list: 'src/list.vue', view: { entry: 'src/view.vue', load: 'lazy' } } } } } };
   installed.snapshot.declarationRevision = _declarationRevision(installed.snapshot.manifest);
+  Object.assign(installed.snapshot, { eventContracts: eventContractsFixture(installed.snapshot.manifest) });
   catalog.replace([installed]);
   const author = { id: 'author', name: 'Author', version: '1.0.0', features: { view: { description: 'Present an author view.', plugin: { label: 'Author view', state: 'src/state.ts' } } } };
   catalog.setSources([{ dir: '/source/author', manifest: author, declarationRevision: _declarationRevision(author) }]);
@@ -315,6 +317,7 @@ it('keeps reference metadata immutable and independent of native, installed and 
   const installed = source('installed', false);
   installed.snapshot.manifest.features = { memos: { description: 'Feature declaration fixture.', references } };
   installed.snapshot.declarationRevision = _declarationRevision(installed.snapshot.manifest);
+  Object.assign(installed.snapshot, { eventContracts: eventContractsFixture(installed.snapshot.manifest) });
   catalog.replace([installed]);
   const author = { id: 'author', name: 'Author', version: '1.0.0', features: { memos: { description: 'Manage memos.', references } } };
   catalog.setSources([{ dir: '/source/author', manifest: author, declarationRevision: _declarationRevision(author) }]);
@@ -344,6 +347,7 @@ it('projects native, disabled installed and unbuilt source steps without loading
   const installed = source('installed', false);
   installed.snapshot.manifest.extensions!.steps = { memo: structuredClone(step) };
   installed.snapshot.declarationRevision = _declarationRevision(installed.snapshot.manifest);
+  Object.assign(installed.snapshot, { eventContracts: eventContractsFixture(installed.snapshot.manifest) });
   catalog.replace([installed]);
   const manifest: PackManifest = { id: 'author', name: 'Author', version: '1.0.0', extensions: { steps: { memo: structuredClone(step) } } };
   catalog.setSources([{ dir: '/unavailable/source', manifest, declarationRevision: _declarationRevision(manifest) }]);

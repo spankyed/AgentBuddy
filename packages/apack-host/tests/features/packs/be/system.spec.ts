@@ -1,5 +1,5 @@
 import { _packEntityTypes } from '@apackdev/sdk/framework';
-import { writeInstalledPackFixture, sealPack, sealBuild } from '../../../packs/runtime/build-fixture.ts';
+import { writeInstalledPackFixture, sealPack, sealBuild, eventContractsFixture } from '../../../packs/runtime/build-fixture.ts';
 import { _declarationRevision } from '@apackdev/sdk/build';
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import * as fs from 'node:fs';
@@ -62,7 +62,7 @@ function packSource(version: string, { failsImport = false, id = PACK_ID, runtim
   fs.writeFileSync(path.join(dir, 'apack.json'), JSON.stringify({ id, name: 'Reinstall Pack', version, ...manifest }));
   fs.writeFileSync(path.join(dir, 'dist', 'runtime', 'index.cjs'), (`module.exports = { registration: { id: ${JSON.stringify(id)} } };\n${runtime}`) + `
 if (module.exports.registration) module.exports.registration.declarationRevision = '${_declarationRevision(JSON.parse(fs.readFileSync(path.join(dir, 'apack.json'), 'utf-8')))}';`);
-  fs.writeFileSync(path.join(dir, 'dist', PACK_LAYOUT.snapshot), JSON.stringify({ declarationRevision: _declarationRevision(JSON.parse(fs.readFileSync(path.join(dir, 'apack.json'), 'utf-8'))), format: PACK_SNAPSHOT_FORMAT, manifest: JSON.parse(fs.readFileSync(path.join(dir, 'apack.json'), 'utf-8')), types: { entities: {}, relKinds: {} }, entityDestinations: {}, facades: {} }));
+  fs.writeFileSync(path.join(dir, 'dist', PACK_LAYOUT.snapshot), JSON.stringify({ declarationRevision: _declarationRevision(JSON.parse(fs.readFileSync(path.join(dir, 'apack.json'), 'utf-8'))), format: PACK_SNAPSHOT_FORMAT, manifest: JSON.parse(fs.readFileSync(path.join(dir, 'apack.json'), 'utf-8')), eventContracts: eventContractsFixture(JSON.parse(fs.readFileSync(path.join(dir, 'apack.json'), 'utf-8'))), types: { entities: {}, relKinds: {} }, entityDestinations: {}, facades: {} }));
   if (failsImport) {
     // Compiled data with no content.json: the applier can't tell whose records these are, so applying fails
     fs.mkdirSync(path.join(dir, 'dist', 'runtime', 'content'), { recursive: true });
@@ -347,7 +347,7 @@ describe('pack information without activation', () => {
     fs.mkdirSync(path.join(dir, 'types'));
     fs.writeFileSync(path.join(dir, PACK_LAYOUT.manifest), JSON.stringify(manifest));
     fs.writeFileSync(path.join(dir, PACK_LAYOUT.snapshot), JSON.stringify({ format: PACK_SNAPSHOT_FORMAT,
-      declarationRevision: _declarationRevision(manifest), manifest, types: { entities: {}, relKinds: {} }, entityDestinations: {}, facades: {} }));
+      declarationRevision: _declarationRevision(manifest), manifest, eventContracts: eventContractsFixture(manifest), types: { entities: {}, relKinds: {} }, entityDestinations: {}, facades: {} }));
     const marker = path.join(tmpDir, 'executed');
     fs.writeFileSync(path.join(dir, PACK_LAYOUT.runtimeEntry), `require('node:fs').writeFileSync(${JSON.stringify(marker)}, 'yes'); throw new Error('Do not activate');`);
     sealPack(dir);
@@ -442,7 +442,7 @@ describe('an installed pack the app could not load', () => {
         loadProblem: `its declarations were refused: its snapshot is format ${PACK_SNAPSHOT_FORMAT + 1}, written by a newer apack CLI; this apack reads format ${PACK_SNAPSHOT_FORMAT}. Update apack to use it`,
       });
 
-      fs.writeFileSync(snapshotFile(), JSON.stringify({ declarationRevision: _declarationRevision(JSON.parse(fs.readFileSync(path.join(resolveAppEnvironment().packsDir, PACK_ID, 'apack.json'), 'utf-8'))), format: PACK_SNAPSHOT_FORMAT, manifest: JSON.parse(fs.readFileSync(path.join(resolveAppEnvironment().packsDir, PACK_ID, 'apack.json'), 'utf-8')), types: { entities: {}, relKinds: {} }, entityDestinations: {}, facades: {} }));
+      fs.writeFileSync(snapshotFile(), JSON.stringify({ declarationRevision: _declarationRevision(JSON.parse(fs.readFileSync(path.join(resolveAppEnvironment().packsDir, PACK_ID, 'apack.json'), 'utf-8'))), format: PACK_SNAPSHOT_FORMAT, manifest: JSON.parse(fs.readFileSync(path.join(resolveAppEnvironment().packsDir, PACK_ID, 'apack.json'), 'utf-8')), eventContracts: eventContractsFixture(JSON.parse(fs.readFileSync(path.join(resolveAppEnvironment().packsDir, PACK_ID, 'apack.json'), 'utf-8'))), types: { entities: {}, relKinds: {} }, entityDestinations: {}, facades: {} }));
       await reloadPackById(registry, PACK_ID, { send: () => {} } as never);
 
       expect(registry.getPackRegistration(PACK_ID)).not.toBeNull();

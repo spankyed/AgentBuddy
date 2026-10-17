@@ -50,7 +50,7 @@ export interface PackEARS {
 /** A feature's backend system, which the app runs at the feature's ref, `<packId>/<featureId>` */
 export interface PackFeatureSystem {
   machine: AnyStateMachine;
-  /** The event types it accepts: its machine's, and those apack.json `system.events.incoming` adds (`packSystem`) */
+  /** Declared incoming events plus the SDK lifecycle protocol; private machine handlers do not define an inbox. */
   receives: readonly string[];
 }
 

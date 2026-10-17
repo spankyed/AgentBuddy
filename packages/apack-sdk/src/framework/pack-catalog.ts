@@ -22,6 +22,8 @@ export interface NativePackDeclaration extends PackDataDeclarations, FrontendDec
   dslDefinitions?: Record<string, string>;
   /** Compiled entity wire name to local plugin feature, supplied by native composition. */
   entityDestinations?: Record<string, string>;
+  /** Static transport contracts, including native inboxes without contributed UI panes. */
+  eventContracts?: import('./event-contracts.ts').PackEventContracts;
   dependencies?: Record<string, string>;
   settings?: Record<string, SettingsDefinition>;
   /** Native APIs without a feature owner; values identify their composition bindings. */

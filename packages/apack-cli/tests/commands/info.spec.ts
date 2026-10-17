@@ -4,6 +4,7 @@ import * as path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { _declarationRevision, _packEntityTypes, PACK_SNAPSHOT_FORMAT, type PackManifest } from '@apackdev/sdk/build';
 import { cacheDependency, PACK_LAYOUT, sealPackBuild } from '@apackdev/host/packs';
+import type { PackEventContracts } from '@apackdev/sdk/framework';
 import { inspectPack, info } from '../../src/commands/info.ts';
 
 let root: string;
@@ -26,14 +27,18 @@ afterEach(() => {
   fs.rmSync(root, { recursive: true, force: true });
 });
 
-function writeBuild(directory: string, declared = manifest, index?: object, entityDestinations: Record<string, string> = {}): string {
+function writeBuild(directory: string, declared = manifest, index?: object, entityDestinations: Record<string, string> = {}, eventContracts: PackEventContracts = Object.fromEntries(Object.entries(declared.features ?? {})
+  .filter(([, feature]) => feature.system || feature.plugin).map(([id, feature]) => [id, {
+    ...(feature.system && { system: { incoming: feature.system.events?.incoming ?? [], outgoing: [] } }),
+    ...(feature.plugin && { plugin: { receives: [] } }),
+  }]))): string {
   const output = path.join(directory, 'dist');
   fs.mkdirSync(path.join(output, 'types'), { recursive: true });
   fs.mkdirSync(path.join(output, 'runtime'), { recursive: true });
   fs.writeFileSync(path.join(output, PACK_LAYOUT.runtimeEntry), 'throw new Error("Inspection imported executable code");');
   fs.writeFileSync(path.join(output, PACK_LAYOUT.snapshot), JSON.stringify({
     manifest: declared, declarationRevision: _declarationRevision(declared), format: PACK_SNAPSHOT_FORMAT,
-    types: { entities: _packEntityTypes(declared), relKinds: {} }, entityDestinations, facades: {},
+    types: { entities: _packEntityTypes(declared), relKinds: {} }, entityDestinations, eventContracts, facades: {},
   }));
   if (index) {
     fs.mkdirSync(path.join(output, PACK_LAYOUT.contentDir));
@@ -48,6 +53,33 @@ const index = { version: 1, packId: manifest.id, entries: [
 ] };
 
 describe('read-only pack inspection', () => {
+  it('attributes stale compiled endpoints to their built owner after an authored pack rename', async () => {
+    const declared: PackManifest = { ...manifest, features: { memos: { ...manifest.features!.memos,
+      plugin: { label: 'Memos', state: 'src/missing.ts' },
+    } } };
+    writeBuild(root, declared, index, { Memo: 'memos' });
+    fs.writeFileSync(path.join(root, 'apack.json'), JSON.stringify({ ...declared, id: 'renamed-pack' }));
+    const report = await inspectPack(root);
+    expect(report.build.status).toBe('stale');
+    expect(report.build.metadata?.packId).toBe('inspection-pack');
+    const output = vi.spyOn(console, 'log').mockImplementation(() => {});
+    vi.spyOn(process, 'cwd').mockReturnValue(root);
+    await info([]);
+    expect(output.mock.calls.flat().join('\n')).toContain('Memo → inspection-pack/memos');
+    expect(output.mock.calls.flat().join('\n')).not.toContain('Memo → renamed-pack/memos');
+  });
+  it('inspects compiled endpoint events with no authored sources and a poisoned runtime', async () => {
+    const declared: PackManifest = { ...manifest, features: { memos: { ...manifest.features!.memos,
+      system: { entry: 'src/missing-system.ts' }, plugin: { label: 'Memos', state: 'src/missing-state.ts' },
+    } } };
+    const events = { memos: { system: { incoming: ['SAVE'], outgoing: ['SAVED'] }, plugin: { receives: ['SAVED', 'SHOW'] } } };
+    fs.writeFileSync(path.join(root, 'apack.json'), JSON.stringify(declared));
+    writeBuild(root, declared, index, {}, events);
+    const report = await inspectPack(root);
+    expect(report.build.status).toBe('verified');
+    expect(report.build.metadata?.eventContracts).toEqual(events);
+    expect(fs.existsSync(path.join(root, 'src'))).toBe(false);
+  });
   it('reads node defaults and step bindings from an installed build without authored modules', async () => {
     const steps = { memo: { node: { label: 'Memo', defaultLabel: 'Write a memo', defaults: { tags: ['draft'], pinned: false } },
       build: { compile: 'src/unavailable.ts#compile', validate: 'src/unavailable.ts#validate', getLabel: 'src/unavailable.ts#getLabel', relation: { field: 'memoId', targetEntity: 'Memo' } }, fe: { nodeConfig: { icon: 'File', category: 'data' as const, connectionRules: { inputs: 1, outputs: 1 } }, components: { form: 'src/unavailable.vue' }, layout: { getHeight: 'src/unavailable.ts#getHeight' } } }, pulse: { kind: 'trigger' as const, node: { label: 'Pulse' },

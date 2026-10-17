@@ -20,7 +20,8 @@ import { resetTestData as resetSdkTestData, startTestRuntime, takeSystemErrors, 
 import type { PackRegistryView } from '@apackdev/sdk/runtime';
 import { _settingsAdmin, type SettingsAdmin } from '@apackdev/sdk/services';
 import type { FeatureRef } from '@apackdev/sdk/ids';
-import type { PackRegistration } from '@apackdev/sdk/framework';
+import { _parseEventContracts, type PackEventContracts, type PackRegistration } from '@apackdev/sdk/framework';
+import { GENERATED_EVENT_CONTRACTS_FILE } from '@apackdev/sdk/build';
 import { createPackRegistry, readCachedDependency, readPackBuild, type PackOrigin } from '@apackdev/host/packs';
 import { createPacksSystem, createSettingsSystem, hostRegistration, hostDeclaration, packsEvents, settingsEvents } from '@apackdev/host/features';
 import { appState, HOST_ENTITY_TYPES } from '@apackdev/host/app-state';
@@ -246,10 +247,11 @@ function readDependencies(packDir: string, manifest: PackManifest): Map<string, 
 }
 
 /** Where a pack came from, as the app records it */
-function originOf(manifest: PackManifest, dir: string): PackOrigin {
+function originOf(manifest: PackManifest, dir: string, eventContracts?: Readonly<PackEventContracts>): PackOrigin {
   // `shipped` is about the app having installed this copy, which a test app never did — and nothing a pack's
   // own tests exercise reads it
-  return { id: manifest.id, name: manifest.name, version: manifest.version, declarationRevision: _declarationRevision(manifest), dir, manifest };
+  return { id: manifest.id, name: manifest.name, version: manifest.version, declarationRevision: _declarationRevision(manifest), dir, manifest,
+    ...(eventContracts && { eventContracts }) };
 }
 
 /**
@@ -281,7 +283,12 @@ export async function setupPackTests(options: PackTestOptions): Promise<void> {
     throw new Error(`Pack "${manifest.id}" generated declarations are stale. Run apack pack generate-entries before testing.`);
   }
   const dependencies = readDependencies(packDir, manifest);
-  registry.catalog.setSources([{ manifest, dir: packDir, declarationRevision: revision, ...(manifest.extensions?.help && { help: compileHelp(packDir, manifest) }) }]);
+  // The source entry and this data are one codegen output; runtime tests need no compiled app bundle.
+  const eventContracts = options.registration
+    ? _parseEventContracts(JSON.parse(fs.readFileSync(path.join(packDir, GENERATED_EVENT_CONTRACTS_FILE), 'utf8')), manifest.features)
+    : undefined;
+  registry.catalog.setSources([{ manifest, dir: packDir, declarationRevision: revision,
+    ...(eventContracts && { eventContracts }), ...(manifest.extensions?.help && { help: compileHelp(packDir, manifest) }) }]);
   registry.catalog.replace([...dependencies.values()].map(({ snapshot, dir }) => ({ snapshot, dir, enabled: true })));
 
   startTestRuntime({
@@ -299,7 +306,7 @@ export async function setupPackTests(options: PackTestOptions): Promise<void> {
     })),
   });
   if (options.registration) {
-    await registerRuntimes(packDir, manifest, dependencies, options.registration);
+    await registerRuntimes(packDir, manifest, dependencies, options.registration, eventContracts);
   } else {
     for (const [depId, dependency] of dependencies) {
       const file = dependency.buildDir && path.join(dependency.buildDir, CONTENT_RUNTIME_FILE);
@@ -366,7 +373,8 @@ export async function startShell(options: StartShellOptions): Promise<TestShell>
 }
 
 /** Registers the pack's runtime and its dependencies' (loaded from their cached runtime/index.cjs), as the app does */
-async function registerRuntimes(packDir: string, manifest: PackManifest, dependencies: ReadonlyMap<string, CachedDependency>, registration: PackRegistration): Promise<void> {
+async function registerRuntimes(packDir: string, manifest: PackManifest, dependencies: ReadonlyMap<string, CachedDependency>,
+  registration: PackRegistration, eventContracts?: Readonly<PackEventContracts>): Promise<void> {
   for (const [depId, dependency] of dependencies) {
     const runtimeEntry = path.join(dependency.dir, 'runtime', 'index.cjs');
     if (!fs.existsSync(runtimeEntry)) {
@@ -375,10 +383,10 @@ async function registerRuntimes(packDir: string, manifest: PackManifest, depende
     const contentDir = path.join(dependency.dir, 'runtime', 'content');
     const runtime = await loadDependencyRuntime(packDir, depId, runtimeEntry, fs.existsSync(contentDir) ? contentDir : undefined);
     startTestRuntime({ entityTypes: Object.values(runtime.registration.ears?.entities ?? {}) });
-    registry.registerPack(runtime.registration, originOf(dependency.manifest, dependency.dir));
+    registry.registerPack(runtime.registration, originOf(dependency.manifest, dependency.dir, dependency.snapshot.eventContracts));
   }
   startTestRuntime({ entityTypes: Object.values(registration.ears?.entities ?? {}) });
-  registry.registerPack(registration, originOf(manifest, packDir));
+  registry.registerPack(registration, originOf(manifest, packDir, eventContracts));
   setAppPacks(registry, manifest.id);
 }
 

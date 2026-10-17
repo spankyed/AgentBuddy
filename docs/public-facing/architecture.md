@@ -129,7 +129,7 @@ export const registration: PackRegistration = {
 };
 ```
 
-The app runs each feature at `<packId>/<featureId>` and derives everything else from `features`: the systems it starts (an `early` one before hydration, outside the bus), the events each system accepts (`receives`: its machine's, plus the manifest's `system.events.incoming`, put there by `packSystem` when `apack pack build` generates the entry), the plugins and the events each receives, and the roles.
+The app runs each feature at `<packId>/<featureId>`. Its declared contract supplies system inputs and outputs and plugin inboxes; the build writes those event names into static snapshot data and generates matching runtime bindings. Explicit `system.events.incoming` entries add routing names. Shared SDK lifecycle events remain implicit. Discovery reads the catalog without activating the pack; the bus uses the captured contracts of endpoints that actually bound. A machine's private handlers do not add public inbox entries.
 
 The runtime bundle also exports `setCompiledDir(dir)`, which the host calls with the directory of the pack's compiled content.
 

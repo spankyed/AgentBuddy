@@ -1,3 +1,4 @@
+import { eventContractsFixture } from './build-fixture.ts';
 import { createMachine } from 'xstate';
 import { createNativeFrontendTestRegistry } from '@apackdev/host/fe/testing';
 import { writeInstalledPackFixture } from './build-fixture.ts';
@@ -53,7 +54,7 @@ function writeBuild(packDir: string, id: string, featuresSource = '{}', extraFil
   };
   write('runtime/index.cjs', (`module.exports = { registration: { id: ${JSON.stringify(id)}, features: ${featuresSource} } };`) + `
 if (module.exports.registration) module.exports.registration.declarationRevision = '${_declarationRevision(JSON.parse(fs.readFileSync(path.join(packDir, 'apack.json'), 'utf-8')))}';`);
-  write(PACK_LAYOUT.snapshot, JSON.stringify({ declarationRevision: _declarationRevision(JSON.parse(fs.readFileSync(path.join(packDir, 'apack.json'), 'utf-8'))), format: PACK_SNAPSHOT_FORMAT, manifest: JSON.parse(fs.readFileSync(path.join(packDir, 'apack.json'), 'utf-8')), types: { entities: {}, relKinds: {} }, entityDestinations: {}, facades: {} }));
+  write(PACK_LAYOUT.snapshot, JSON.stringify({ declarationRevision: _declarationRevision(JSON.parse(fs.readFileSync(path.join(packDir, 'apack.json'), 'utf-8'))), format: PACK_SNAPSHOT_FORMAT, manifest: JSON.parse(fs.readFileSync(path.join(packDir, 'apack.json'), 'utf-8')), eventContracts: eventContractsFixture(JSON.parse(fs.readFileSync(path.join(packDir, 'apack.json'), 'utf-8'))), types: { entities: {}, relKinds: {} }, entityDestinations: {}, facades: {} }));
   for (const [rel, content] of Object.entries(extraFiles)) write(rel, content);
   sealBuild(packDir);
 }

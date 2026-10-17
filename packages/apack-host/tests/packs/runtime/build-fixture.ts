@@ -2,6 +2,16 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { _declarationRevision, PACK_SNAPSHOT_FORMAT, type PackManifest } from '@apackdev/sdk/build';
 import { sealPackBuild, PACK_LAYOUT, PACK_LAYOUT_VERSION, packFileHashes } from '../../../src/packs/layout.ts';
+import type { PackEventContracts } from '@apackdev/sdk/framework';
+
+/** Synthetic compiled endpoint data; callers supply names when their fixture exposes an inbox. */
+export function eventContractsFixture(manifest: Pick<PackManifest, 'id' | 'features'>, overrides: PackEventContracts = {}): PackEventContracts {
+  return Object.fromEntries(Object.entries(manifest.features ?? {}).filter(([, feature]) => feature.system || feature.plugin)
+    .map(([id, feature]) => [id, overrides[id] ?? {
+      ...(feature.system && { system: { incoming: feature.system.events?.incoming ?? [], outgoing: [] } }),
+      ...(feature.plugin && { plugin: { receives: [] } }),
+    }]));
+}
 
 /** Finish a synthetic installed build after writing its files, exactly as staging records them. */
 export function sealPack(dir: string): void {
@@ -25,6 +35,7 @@ export function writeInstalledPackFixture(dir: string, manifest: PackManifest): 
   fs.writeFileSync(path.join(dir, PACK_LAYOUT.snapshot), JSON.stringify({
     format: PACK_SNAPSHOT_FORMAT, declarationRevision: _declarationRevision(manifest), manifest,
     types: { entities: {}, relKinds: {} }, entityDestinations: {}, facades: {},
+    eventContracts: eventContractsFixture(manifest),
   }));
   fs.writeFileSync(path.join(dir, PACK_LAYOUT.runtimeEntry), 'throw new Error("Data discovery must not activate this fixture");');
   sealPack(dir);

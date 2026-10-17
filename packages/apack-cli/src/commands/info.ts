@@ -12,8 +12,9 @@ function inspectBuild(root: string, manifest: ReturnType<typeof readValidManifes
   directory: string;
   problem?: string;
   revision?: string;
-  metadata?: { declarationRevision: string; format: number; sdkVersion?: string;
-    entities: ReturnType<typeof _packEntities>; relations: PackBuild['snapshot']['types']['relKinds']; entityDestinations: PackBuild['snapshot']['entityDestinations']; facades: string[] };
+  metadata?: { packId: string; declarationRevision: string; format: number; sdkVersion?: string;
+    entities: ReturnType<typeof _packEntities>; relations: PackBuild['snapshot']['types']['relKinds'];
+    entityDestinations: PackBuild['snapshot']['entityDestinations']; eventContracts: PackBuild['snapshot']['eventContracts']; facades: string[] };
   content?: ContentIndex;
 } {
   const directory = fs.existsSync(path.join(root, PACK_LAYOUT.integrity)) ? root : path.join(root, 'dist');
@@ -32,9 +33,10 @@ function inspectBuild(root: string, manifest: ReturnType<typeof readValidManifes
     if (content && content.packId !== build.snapshot.manifest.id) throw new Error(`Content index belongs to "${content.packId}", not "${build.snapshot.manifest.id}"`);
     const stale = !isDeepStrictEqual(manifest, build.snapshot.manifest);
     return { status: stale ? 'stale' : 'verified', directory, revision: build.revision,
-      metadata: { declarationRevision: build.snapshot.declarationRevision, format: build.snapshot.format,
+      metadata: { packId: build.snapshot.manifest.id, declarationRevision: build.snapshot.declarationRevision, format: build.snapshot.format,
         sdkVersion: build.snapshot.sdkVersion, entities: _packEntities(build.snapshot.manifest),
-        relations: build.snapshot.types.relKinds, entityDestinations: build.snapshot.entityDestinations, facades: Object.keys(build.snapshot.facades) },
+        relations: build.snapshot.types.relKinds, entityDestinations: build.snapshot.entityDestinations,
+        eventContracts: build.snapshot.eventContracts, facades: Object.keys(build.snapshot.facades) },
       ...(content && { content }), ...(stale && { problem: 'Built declarations differ from the current manifest; rebuild the pack.' }),
     };
   } catch (error) {
@@ -84,10 +86,19 @@ export async function info(args: string[]) {
   for (const [kind, declaration] of Object.entries(manifest.content ?? {})) names(`Declared content ${kind}`, declaration);
   console.log(`\nBuild: ${report.build.status}${report.build.revision ? `; revision ${report.build.revision}` : ''}`);
   if (report.build.problem) console.log(`  ${report.build.problem}`);
-  if (report.build.metadata) {
-    const destinations = Object.entries(report.build.metadata.entityDestinations);
-    console.log(`Entity destinations: ${destinations.length ? destinations.map(([entity, feature]) => `${entity} → ${report.id}/${feature}`).join(', ') : 'none'}`);
-  } else console.log('Entity destinations: unavailable (requires a verified build)');
+  const metadata = report.build.metadata;
+  if (metadata) {
+    const destinations = Object.entries(metadata.entityDestinations);
+    console.log(`Entity destinations: ${destinations.length ? destinations.map(([entity, feature]) => `${entity} → ${metadata.packId}/${feature}`).join(', ') : 'none'}`);
+    console.log(`Event contracts: ${Object.keys(metadata.eventContracts ?? {}).length ? '' : 'none'}`);
+    for (const [feature, events] of Object.entries(metadata.eventContracts ?? {})) {
+      if (events.system) console.log(`  ${metadata.packId}/${feature} system: receives ${events.system.incoming.join(', ') || 'none'}; sends ${events.system.outgoing.join(', ') || 'none'}`);
+      if (events.plugin) console.log(`  ${metadata.packId}/${feature} plugin: receives ${events.plugin.receives.join(', ') || 'none'}`);
+    }
+  } else {
+    console.log('Entity destinations: unavailable (requires a verified build)');
+    console.log('Event contracts: unavailable (requires a verified build)');
+  }
   if (report.build.content) {
     console.log('Compiled content:');
     for (const entry of report.build.content.entries) {

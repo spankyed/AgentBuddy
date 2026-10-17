@@ -52,7 +52,7 @@ const caller = secretsRouter.createCaller({ client: 'c-test', closed: new AbortC
 forwardSecretsChanges(packs);
 // A pack with a settings feature, whose system isn't running yet: a system is sent the event because it declares
 // it, not because of any role it plays
-packs.catalog.setNative([...packs.catalog.getSnapshot().native, { id: 'test', features: { settings: { description: 'Feature declaration fixture.',} } }]);
+packs.catalog.setNative([...packs.catalog.getSnapshot().native, { id: 'test', eventContracts: { settings: { system: { incoming: ['SECRETS_CHANGED'], outgoing: [] } } }, features: { settings: { description: 'Feature declaration fixture.',} } }]);
 packs.registerPack({ id: 'test', features: { settings: {} } });
 // The same pack again, now running that feature's system, which declares the event and so is sent it
 const registerSettingsSystem = () => {

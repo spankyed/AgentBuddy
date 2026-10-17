@@ -111,6 +111,14 @@ export default bookmarksEntry;
 
 `defineSystem<Contract>()` returns the spec. It takes no id: the system is its feature's, which the manifest names it under, and runs at the feature's ref, `<packId>/<featureId>`; code names it by the feature id (see below).
 
+The build materializes each endpoint's event names into `eventContracts` in the snapshot. Systems record
+`incoming` and `outgoing`; plugin `receives` combines its own system's outgoing events with its declared
+inbox. Shared SDK lifecycle events are implicit in both protocols. `apack pack info --json` exposes this
+under `build.metadata.eventContracts` without importing pack modules or requiring authored sources.
+An installed build missing a declared endpoint's contract is refused; an unbuilt source preview reports
+that metadata as unavailable. The catalog retains contracts when an owner is disabled or its runtime
+fails. Runtime availability remains separate from this declaration inventory.
+
 The contract is a **declared type**, not a value, and it lives in a leaf module of its own. `apack.json` names it at `features.<id>.system.contract` (`"src/features/bookmarks/be/contract.ts#Contract"`), and the build reads the type from there without running or resolving the machine. Its fields:
 
 | Field | What it is |
@@ -172,7 +180,7 @@ sendToSystem('bookmarks', { type: 'CREATE_BOOKMARK', url, title });
 sendToSystem('default-setup/notes', { type: 'GET_TRASHED_NOTES' });
 ```
 
-`sendToSystem` accepts only systems of your pack and its dependencies, and only the events each one declares (its contract's `incoming`); a missing field is reported against the event its `type` names. Each send names one system and one event type: a `systemId` or `type` typed as a union is rejected. A bare name is your own feature (`'bookmarks'` is `my-pack/bookmarks`). A dependency's system is always named with the dependency's id, so a feature of yours may share its name: `'notes'` is your own, `'default-setup/notes'` default-setup's. The app rejects an unknown `systemId`, and an event `type` none of the machine's transitions names unless the feature lists it in `system.events.incoming`.
+`sendToSystem` accepts only systems of your pack and its dependencies, and only the events each one declares (its contract's `incoming`); a missing field is reported against the event its `type` names. Each send names one system and one event type: a `systemId` or `type` typed as a union is rejected. A bare name is your own feature (`'bookmarks'` is `my-pack/bookmarks`). A dependency's system is always named with the dependency's id, so a feature of yours may share its name: `'notes'` is your own, `'default-setup/notes'` default-setup's. The app checks target and event-name membership against the accepted endpoint contract. The generated system inbox contains the contract's `incoming`, explicit `system.events.incoming` additions, and shared SDK lifecycle events. Private machine handlers do not define a public inbox; backend event diagnostics do not validate payloads or authorize senders.
 
 Backend code that needs the connection or every incoming event subscribes with `onConnected(callback)` and `onIncoming(callback)` from `@apackdev/sdk/events`; each returns an unsubscribe function. Log entries arrive through `onLog(callback)` from `@apackdev/sdk/logger`.
 
@@ -387,7 +395,7 @@ Other feature fields:
 
 | Field | Effect |
 |---|---|
-| `system.events.incoming` | Event types the app accepts for the system (`sendToSystem`) besides those its machine's transitions name |
+| `system.events.incoming` | Explicit routing additions besides the contract's typed `incoming` and shared SDK lifecycle events |
 | `description` | Required nonblank purpose, displayed from declarations without activation |
 | `types` | Types module re-exported from `#generated/types`; explicit pack-root-relative module path; no inferred default |
 | `references` | Inline type/category declarations and explicit function exports; see [reference declarations](manifest.md#reference-declarations) |

@@ -1,4 +1,6 @@
 import { dslCatalogEntries } from './catalog-dsl.ts';
+import { eventCatalogEntries } from './catalog-events.ts';
+import { _parseEventContracts, type PackEventContracts } from '@apackdev/sdk/framework';
 import { captureData } from './captured-data.ts';
 import { assertEntityDestinationClaims, pluginCatalogEntries } from './catalog-plugins.ts';
 import { stepCatalogEntries } from './catalog-steps.ts';
@@ -43,6 +45,7 @@ export interface SourcePackDeclaration {
   readonly dir: string;
   readonly declarationRevision: string;
   readonly help?: CatalogData<HelpDocument[]>;
+  readonly eventContracts?: CatalogData<PackEventContracts>;
 }
 
 /** Known plugin data; availability and accepted executable bindings are separate. */
@@ -181,6 +184,7 @@ export function createContributionCatalog(appSettings: SettingsDefinition) {
     artifacts: () => artifactCatalogEntries(current),
     blocks: () => blockCatalogEntries(current),
     dsl: () => dslCatalogEntries(current),
+    events: () => eventCatalogEntries(current),
     commands: () => Object.freeze([...commandCatalogEntries(current)].sort((a, b) => commandOrder.get(a.packId)! - commandOrder.get(b.packId)!)),
     get: (packId: string): PackCatalogEntry | undefined => byId.get(packId),
     settings: (): SettingsCatalog => settings,
@@ -191,6 +195,7 @@ export function createContributionCatalog(appSettings: SettingsDefinition) {
         const result = ManifestSchema.safeParse(source.manifest);
         if (!result.success) throw new Error(`Source pack declarations in ${source.dir}: ${result.error.issues.map(issue => issue.message).join('; ')}`);
         if (_declarationRevision(result.data) !== source.declarationRevision) throw new Error(`Source pack "${result.data.id}" has a stale declaration identity`);
+        if (source.eventContracts !== undefined) _parseEventContracts(source.eventContracts, result.data.features);
         return { ...source, manifest: result.data };
       });
       publish({ sourcePacks: next });

@@ -2,8 +2,10 @@ import { createNativePackTestRegistry } from '@apackdev/host/testing';
 // What bus.send accepts: each registered system's incoming events, kept current by registration itself.
 import { describe, expect, it } from 'vitest';
 import { setup } from 'xstate';
+import { SYSTEM_EVENT_TYPES } from '@apackdev/sdk/framework';
 import type { PackFeature } from '@apackdev/sdk/framework';
-import { hostRegistration, PACKS_PLUGIN_EVENT_TYPES } from '../../src/features/registration.ts';
+import { hostRegistration } from '../../src/features/registration.ts';
+import { PACKS_PLUGIN_EVENT_TYPES } from '../../src/features/event-contracts.ts';
 import { PLUGIN_EVENT_TYPES } from '@apackdev/sdk/events';
 
 /** The events a pack's plugin receives: what its pack declares, and what the app sends every plugin */
@@ -22,7 +24,7 @@ describe('getEventValidationMap', () => {
     expect(getEventValidationMap().has('validation-pack/feature')).toBe(false);
 
     registerPack({ id: 'validation-pack', features: { feature: { system: { machine, receives: ['PING'] } } } });
-    expect(getEventValidationMap().get('validation-pack/feature')).toEqual(new Set(['PING']));
+    expect(getEventValidationMap().get('validation-pack/feature')).toEqual(new Set(['PING', ...SYSTEM_EVENT_TYPES]));
 
     unregisterPack('validation-pack');
     expect(getEventValidationMap().has('validation-pack/feature')).toBe(false);
@@ -31,14 +33,14 @@ describe('getEventValidationMap', () => {
   // The registry makes every ref `<packId>/<featureId>`, so a feature id naming another pack's feature is refused
   it('refuses a feature id that is not one segment', () => {
     expect(() => registerPack({ id: 'stray-pack', features: { 'other-pack/logs': { system: { machine, receives: [] } } } }))
-      .toThrow('Invalid native declarations: features.other-pack/logs');
+      .toThrow(/Invalid native declarations:.*features.other-pack\/logs/);
   });
 
   // The host is a pack like any other: its features' systems are checked the same way
   it("lists the host's systems once it registers", () => {
     expect(getEventValidationMap().has('host/application')).toBe(false);
     registerPack(hostRegistration({ application: { machine, receives: ['HELLO'] } }));
-    expect(getEventValidationMap().get('host/application')).toEqual(new Set(['HELLO']));
+    expect(getEventValidationMap().get('host/application')).toEqual(new Set(['HELLO', ...SYSTEM_EVENT_TYPES]));
     unregisterPack('host');
   });
 });

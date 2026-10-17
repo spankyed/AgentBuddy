@@ -26,6 +26,8 @@ export interface ModuleExports {
    * what left the reader unable to tell a broken install from a mistake, since a failed import reads as `any`.
    */
   outgoingEventTypesOf(file: string, name: string): string[];
+  /** External incoming events from a declared system contract; excludes private child events. */
+  incomingEventTypesOf(file: string, name: string): string[];
 
   /**
    * The `type` literals of the events a plugin's contract says *other* plugins may send it, read from the type
@@ -243,6 +245,14 @@ export function createModuleExports(packRoot: string, files: string[], sources: 
         throw new Error(`${path.basename(file)}: ${name}.opens must name one or more literal entity types`);
       }
       return [...new Set(members.flatMap(member => member.isStringLiteral() ? [member.value] : []))].sort();
+    },
+    incomingEventTypesOf(file, name) {
+      const contract = declaredTypeOf(file, name);
+      if (!contract) throw new Error(`${path.basename(file)}: it declares no type "${name}"`);
+      const incoming = propertyType(contract, 'incoming');
+      if (!incoming) return [];
+      checkResolved(incoming, file, `${name}'s incoming events`);
+      return eventTypeLiterals(incoming, file, "its system's incoming events");
     },
     outgoingEventTypesOf(file, name) {
       const contract = declaredTypeOf(file, name);

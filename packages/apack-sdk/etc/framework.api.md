@@ -138,6 +138,39 @@ export function _entityDestinationsProblem(destinations: Readonly<Record<string,
     readonly plugin?: unknown;
 }>> | undefined, entities?: ReadonlySet<string>): string | undefined;
 
+// @internal
+export function _eventContractsProblem(contracts: PackEventContracts | undefined, features: Readonly<Record<string, {
+    system?: unknown;
+    plugin?: unknown;
+}>> | undefined, native?: boolean): string | undefined;
+
+// @public
+export type FeatureEventCatalogEntry = {
+    readonly featureRef: FeatureRef;
+    readonly packId: string;
+    readonly origin: 'native' | 'installed' | 'source';
+    readonly enabled?: boolean;
+    readonly declarationRevision?: string;
+    readonly buildRevision?: string;
+} & ({
+    readonly status: 'compiled';
+    readonly declaration: DeclarationData<FeatureEventContract>;
+} | {
+    readonly status: 'unavailable';
+    readonly declaration?: never;
+});
+
+// @public
+export interface FeatureEventContract {
+    plugin?: {
+        receives: readonly string[];
+    };
+    system?: {
+        incoming: readonly string[];
+        outgoing: readonly string[];
+    };
+}
+
 // @public
 export function formatReferenceHref(target: ReferenceTarget): string;
 
@@ -265,6 +298,7 @@ export interface NativePackDeclaration extends PackDataDeclarations, FrontendDec
     dsl?: Record<string, DeclarationData<z.infer<typeof DslEntrySchema>>>;
     dslDefinitions?: Record<string, string>;
     entityDestinations?: Record<string, string>;
+    eventContracts?: PackEventContracts;
     // (undocumented)
     features?: Record<string, {
         description: string;
@@ -303,6 +337,7 @@ export interface PackCatalogView {
     blocks(): readonly BlockCatalogEntry[];
     // (undocumented)
     dsl(): readonly DslCatalogEntry[];
+    events(): readonly FeatureEventCatalogEntry[];
     // (undocumented)
     frontend(): readonly FrontendCatalogEntry[];
     // (undocumented)
@@ -365,6 +400,9 @@ export interface _PackEntityDeclaration {
 
 // @internal
 export function _packEntityTypes(declaration: PackDataDeclarations): Record<string, string>;
+
+// @public
+export type PackEventContracts = Record<string, FeatureEventContract>;
 
 // @public
 export interface PackFeature {
@@ -445,9 +483,12 @@ export interface PackRegistration {
 export function _packRelationTypes(declaration: PackDataDeclarations): Record<string, string>;
 
 // @public
-export function packSystem(entry: SystemEntry, options?: {
-    incoming?: readonly string[];
+export function packSystem(entry: SystemEntry, options: {
+    incoming: readonly string[];
 }): PackFeatureSystem;
+
+// @internal
+export function _parseEventContracts(data: unknown, features: Parameters<typeof _eventContractsProblem>[1], native?: boolean): PackEventContracts;
 
 // @public
 export function parseReferenceHref(href: string): ReferenceTarget | undefined;

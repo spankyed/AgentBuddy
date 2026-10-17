@@ -1,6 +1,4 @@
 import type { Contract } from './contract.ts';
-import type { OutgoingSettingsEvents } from './types.ts';
-import { eventTypes } from '@apackdev/sdk/events';
 import type { ApplicationHotkeys } from '@apackdev/sdk/types';
 import { broadcastToPlugin, sendToSystem } from '../../../events.ts';
 import { assign, setup, fromCallback, fromPromise, type ErrorActorEvent } from 'xstate';
@@ -322,36 +320,3 @@ export const settingsEntry = { spec: settingsSpec, machine: settingsSystem };
 
 /** The host `settings` system, as the app registers it */
 export const createSettingsSystem = () => settingsSystem;
-
-/** The event types the host `settings` system accepts */
-export const settingsEvents = new Set([
-  'CLIENT_CONNECTED', 'PACK_CHANGED',
-  'GET_SETTINGS',
-  'UPDATE_SETTINGS',
-  'RESET_SETTINGS', 'RESET_ALL_SETTINGS',
-  'REPLACE_SETTINGS',
-  'RESET_APP',
-  'SECRETS_CHANGED',
-  'SETTINGS_WRITTEN',
-  'DATA_REPLACING',
-  'DATA_REPLACED',
-]);
-
-/** What the settings system sends its own plugin: everything outgoing but the shell's hotkeys */
-export type SettingsPluginEvents = Exclude<OutgoingSettingsEvents, { type: 'APPLICATION_HOTKEYS' }>;
-
-/** The event types the `settings` plugin receives; the host's to send, and no pack's */
-export const SETTINGS_PLUGIN_EVENT_TYPES = eventTypes<SettingsPluginEvents>()(
-  'SETTINGS_LOADED',
-  'SETTINGS_UPDATED',
-  'SETTINGS_SAVED',
-  'SETTINGS_REFUSED',
-  'SETTINGS_RESET',
-  'PACK_CONTENT_IMPORTED',
-  'PACK_CONTENT_IMPORT_FAILED',
-  'PACK_CONTENT_PREVIEW',
-  'PACK_CONTENT_PREVIEW_FAILED',
-  'APP_RESET_COMPLETE',
-  'APP_RESET_FAILED',
-  'SECRETS_UPDATED',
-);

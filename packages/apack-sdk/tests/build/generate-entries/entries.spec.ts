@@ -158,7 +158,7 @@ describe('generated backend entry', () => {
     ] });
     const entry = files['src/__generated__/pack-entry.ts'];
     expect(entry).toContain("    'memos': {\n      plugin: { receives: [] },\n      services: [],\n    }");
-    expect(entry).toContain("    'brain': {\n      system: packSystem(__system_brain),\n      services: [],\n    }");
+    expect(entry).toContain("    'brain': {\n      system: packSystem(__system_brain, { incoming: [\"BRAIN_RUN\"] }),\n      services: [],\n    }");
   });
 
   // One record, keyed by feature: the app derives every ref, system and plugin from it
@@ -168,7 +168,7 @@ describe('generated backend entry', () => {
       { ...system('inbox'), system: { entry: 'src/features/inbox/be/system.ts', events: { incoming: ['MAIL_ARRIVED'] } } },
       { ...system('config'), designation: 'settings' },
     ] }))['src/__generated__/pack-entry.ts'];
-    expect(entry).toContain("system: packSystem(__system_logs),");
+    expect(entry).toContain("system: packSystem(__system_logs, { incoming: [\"LOGS_RUN\"] }),");
     expect(entry).toContain(`system: packSystem(__system_inbox, { incoming: ["MAIL_ARRIVED"] }),`);
     // No role orders the features: a system that needs another's data reads it when it needs it
     expect(entry.indexOf("'logs': {")).toBeLessThan(entry.indexOf("'config': {"));

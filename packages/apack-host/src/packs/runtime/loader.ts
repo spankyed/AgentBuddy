@@ -13,6 +13,7 @@ import { packLoadFailed, packRegistered } from '../load-messages.ts';
 import { findSdkVersion } from '../../build/shared-deps.ts';
 import { withHostResolution } from './bridge.ts';
 import { backendBindingProblem } from '../declaration-binding.ts';
+import type { PackEventContracts } from '@apackdev/sdk/framework';
 
 // Always use createRequire — esbuild's require shim is a Proxy without .cache
 const esmRequire = Module.createRequire(import.meta.url);
@@ -81,12 +82,12 @@ export function loadSingleExternalPack(
     logger.warn(`Pack ${manifest.id} was built with SDK v${snapshot.sdkVersion} but host is v${hostSdk} (major version mismatch)`);
   }
   const runtimeEntry = path.join(dir, PACK_LAYOUT.runtimeEntry);
-  const registration = loadBundledRuntime(manifest, dir, runtimeEntry, declarationRevision);
+  const registration = loadBundledRuntime(manifest, dir, runtimeEntry, declarationRevision, snapshot.eventContracts);
   if ('problem' in registration) return registration;
 
   return {
     registration,
-    origin: { id: manifest.id, name: manifest.name, version: manifest.version, declarationRevision, buildRevision, buildFiles, dir, manifest },
+    origin: { id: manifest.id, name: manifest.name, version: manifest.version, declarationRevision, buildRevision, buildFiles, eventContracts: snapshot.eventContracts, dir, manifest },
   };
 }
 
@@ -99,13 +100,14 @@ function loadBundledRuntime(
   dir: string,
   runtimeEntry: string,
   declarationRevision: string,
+  eventContracts: PackEventContracts | undefined,
 ): PackRegistration | PackLoadProblem {
   let registration: PackRegistration | PackLoadProblem;
   try {
     registration = withHostResolution(() => {
       const mod = esmRequire(runtimeEntry);
       const problem = _packDeclarationProblem({ id: manifest.id, declarationRevision }, mod.registration)
-        ?? backendBindingProblem(manifest, mod.registration);
+        ?? backendBindingProblem(manifest, mod.registration, eventContracts);
       if (problem) return { problem };
       mod.setCompiledDir?.(path.join(dir, PACK_LAYOUT.contentDir));
       return mod.registration;

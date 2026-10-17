@@ -3,6 +3,7 @@ import { createActor, fromCallback, setup, type AnyActorRef } from 'xstate';
 import { createNativePackTestRegistry } from '@apackdev/host/testing';
 import { startTestRuntime } from '@apackdev/sdk/testing';
 import { createAppBus } from '../../src/bus/app.ts';
+import { createBusMachine } from '../../src/bus/machine.ts';
 import { HOST_ENTITY_TYPES } from '../../src/app-state/index.ts';
 
 let bus: AnyActorRef | undefined;
@@ -27,4 +28,29 @@ it('finishes actor work and subscription cleanup before retiring runtime authori
   bus.system.get('worker/observer').send({ type: 'STOP' });
   expect(order).toEqual(['current-action', 'cleanup', 'retired']);
   expect(bus.system.get('worker/observer')).toBeUndefined();
+});
+
+it('drains messages queued before actor shutdown before removing their declared inbox', () => {
+  const registry = createNativePackTestRegistry();
+  const order: string[] = [];
+  const worker = setup({ actors: { subscription: fromCallback(() => () => { order.push('cleanup'); }) } }).createMachine({
+    invoke: { src: 'subscription' },
+    on: { STOP: { actions: () => {
+      bus!.send({ type: 'TEARDOWN_PACK', systemIds: ['worker/observer'], afterStop: () => {
+        registry.unregisterPack('worker');
+        order.push('retired');
+      } });
+      bus!.send({ type: 'OUTGOING', message: { to: 'worker/observer', event: { type: 'FINAL_STATE' } } });
+    } } },
+  });
+  registry.registerPack({ id: 'worker', features: { observer: {
+    system: { machine: worker, receives: ['STOP'] }, plugin: { receives: ['FINAL_STATE'] },
+  } } });
+  bus = createActor(createBusMachine({ registry, listen: () => () => {},
+    onOutgoing: () => { order.push('message'); },
+  })).start();
+  bus.send({ type: 'CLIENT_CONNECTED' });
+  bus.send({ type: 'INCOMING', message: { to: 'worker/observer', event: { type: 'STOP' } } });
+  expect(order).toEqual(['cleanup', 'message', 'retired']);
+  expect(registry.getPackRegistration('worker')).toBeNull();
 });

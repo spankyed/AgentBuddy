@@ -1,5 +1,14 @@
-import { _NativePackDeclarationSchema } from './declaration-schema.ts';
+import { _NativePackDeclarationSchema, _EventContractsSchema } from './declaration-schema.ts';
+import { _eventContractsProblem, type PackEventContracts } from './event-contracts.ts';
 import { _settingsJsonProblems } from './settings-validation.ts';
+
+/** @internal Read compiled authoring data with the same grammar and ownership checks as snapshots. */
+export function _parseEventContracts(data: unknown, features: Parameters<typeof _eventContractsProblem>[1], native = false): PackEventContracts {
+  const contracts = _EventContractsSchema.parse(data);
+  const problem = _eventContractsProblem(contracts, features, native);
+  if (problem) throw new Error(problem);
+  return contracts;
+}
 
 /** @internal Validate native composition data before copying it or touching executable bindings. */
 export function _nativePackDeclarationProblem(declaration: unknown): string | undefined {

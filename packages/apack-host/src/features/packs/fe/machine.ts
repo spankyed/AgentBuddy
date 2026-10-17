@@ -5,7 +5,7 @@ import { assign, setup, type ActorRefFrom } from 'xstate';
 import { breadcrumb, safeEvents } from '@apackdev/sdk/fe';
 import { sendToSystem } from '../../../events.ts';
 import type { AppPackSourceSummary, InstalledPackSummary } from '../../../packs/registry.ts';
-import type { OutgoingPacksEvents } from '../../registration.ts';
+import type { OutgoingPacksEvents } from '../../event-contracts.ts';
 import { HOST } from '../../../refs.ts';
 import { notifyPluginActor } from '../../../fe/plugin-delivery.ts';
 

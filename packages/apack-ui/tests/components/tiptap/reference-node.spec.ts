@@ -29,7 +29,7 @@ beforeEach(() => {
   entries = []; bindings = new Map(); ready = true;
   addType('thread'); addType('document');
   startFeTestRuntime({ application: { send } as never, settings: {} as never, secrets: {} as never, client: {} as never,
-    catalog: { frontend: () => [], artifacts: () => [], blocks: () => [], dsl: () => [], steps: () => [], status: () => ready ? 'ready' : 'disconnected', problem: () => undefined, references: () => entries,
+    catalog: { frontend: () => [], artifacts: () => [], blocks: () => [], events: () => [], dsl: () => [], steps: () => [], status: () => ready ? 'ready' : 'disconnected', problem: () => undefined, references: () => entries,
       subscribe(listener) { listeners.add(listener); return () => { listeners.delete(listener); }; } },
     packs: { referenceTypes: () => bindings } as never });
   dom = new JSDOM('<!doctype html><html><body></body></html>');

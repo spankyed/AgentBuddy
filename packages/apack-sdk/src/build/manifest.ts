@@ -73,6 +73,8 @@ export interface PackSnapshot {
   facades: Record<string, string>;
   /** Entity type to local destination feature, materialized from declared plugin contract types. */
   entityDestinations: Record<string, string>;
+  /** Compiled names for every declared endpoint; absent only when there are no endpoints. */
+  eventContracts?: import('../framework/event-contracts.ts').PackEventContracts;
   manifest: PackManifest;
   /** Self-contained Monaco declarations keyed by DSL name; required for every declared Monaco target. */
   dslDefinitions?: Record<string, string>;

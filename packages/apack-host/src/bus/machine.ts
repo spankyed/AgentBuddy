@@ -42,7 +42,8 @@ export type BackendEvents =
   | PackClientConnectedEvent
   | PackChangedEvent
   | DataReplacedEvent
-  | SystemsSpawnedEvent;
+  | SystemsSpawnedEvent
+  | { type: 'SYSTEMS_STOPPED'; afterStop(): void };
 
 /** The events a bus source can feed it: OUTGOING for sends to plugins from outside a system (`broadcastToPlugin`) */
 export type BusSourceEvent = Extract<BackendEvents, { type: 'INCOMING' | 'OUTGOING' | 'CLIENT_CONNECTED' | 'PACK_CLIENT_CONNECTED' }>;
@@ -373,11 +374,13 @@ export function createBusMachine(options: BusOptions) {
         const spawned = spawnSystems(enqueue, systems(), event.systemIds);
         if (spawned.length > 0 && !clientLoadedPacks().has(event.packId)) enqueue.raise({ type: 'SYSTEMS_SPAWNED', systemIds: spawned });
       }),
-      teardownPack: enqueueActions(({ enqueue, event, context, system }) => {
+      teardownPack: enqueueActions(({ enqueue, event, context, system, self }) => {
         if (event.type !== 'TEARDOWN_PACK') return;
         const current = clientLoadedPacks();
         enqueue.assign({ awaitingFrontends: new Set([...context.awaitingFrontends].filter(id => current.has(id) && id !== event.packId)) });
-        stopSystems(enqueue, system, event.systemIds, event.afterStop);
+        const afterStop = event.afterStop;
+        // Drain already queued sends before revoking the inboxes they were sent to.
+        stopSystems(enqueue, system, event.systemIds, afterStop && (() => self.send({ type: 'SYSTEMS_STOPPED', afterStop })));
       }),
       activatePack: enqueueActions(({ enqueue, event, context }) => {
         if (event.type !== 'ACTIVATE_PACK') return;
@@ -409,6 +412,7 @@ export function createBusMachine(options: BusOptions) {
       INCOMING: { actions: 'routeIncoming' },
       RELOAD_PACK: { actions: 'reloadPack' },
       TEARDOWN_PACK: { actions: 'teardownPack' },
+      SYSTEMS_STOPPED: { actions: ({ event }) => event.afterStop() },
       ACTIVATE_PACK: { actions: 'activatePack' },
       PACK_CLIENT_CONNECTED: { actions: 'sendPackConnected' },
       PACK_CHANGED: { actions: 'sendPackChanged' },

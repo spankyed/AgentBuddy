@@ -1,8 +1,8 @@
 import { setup, fromCallback } from 'xstate';
-import { defineSystem, getPackHelp, onPackCatalogChanged, type HelpCatalog } from '@apackdev/sdk/framework';
+import { defineSystem, getPackHelp, onPackCatalogChanged } from '@apackdev/sdk/framework';
 import { broadcastToPlugin } from '../../../events.ts';
 
-export type HelpOutgoing = { type: 'HELP_CATALOG'; catalog: HelpCatalog };
+import type { HelpOutgoing } from '../../event-contracts.ts';
 export type Contract = {
   context: Record<string, never>;
   incoming: { type: 'GET_HELP' } | { type: 'CLIENT_CONNECTED' };
@@ -23,4 +23,3 @@ export const helpSystem = setup({
     CATALOG_CHANGED: { actions: 'sendCatalog' },
   },
 });
-export const helpEvents = ['GET_HELP', 'CLIENT_CONNECTED'] as const;

@@ -9,6 +9,11 @@ export function nativePackDeclarationFixture(fixture: PackRegistration): NativeP
     [name, `fixtures/${kind}.ts#${name}`]));
   return {
     id: fixture.id,
+    eventContracts: Object.fromEntries(Object.entries(fixture.features ?? {})
+      .filter(([, feature]) => feature.system || feature.plugin).map(([id, feature]) => [id, {
+        ...(feature.system && { system: { incoming: [...feature.system.receives], outgoing: [] } }),
+        ...(feature.plugin && { plugin: { receives: [...feature.plugin.receives] } }),
+      }])),
     ...(fixture.commands !== undefined && { commands: Object.fromEntries(fixture.commands.map(({ name, placeholder }) => [name, { placeholder }])) }),
     ...(fixture.lifecycle && { lifecycle: Object.fromEntries(Object.keys(fixture.lifecycle).map(name =>
       [name, `fixtures/lifecycle.ts#${name}`])) }),

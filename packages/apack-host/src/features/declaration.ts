@@ -1,6 +1,7 @@
 import { HOST_PACK_ID, splitRef } from '@apackdev/sdk/ids';
 import type { NativePackDeclaration, PluginDeclaration } from '@apackdev/sdk/framework';
 import { HOST } from '../refs.ts';
+import { hostEventContracts } from './event-contracts.ts';
 
 export const hostFeatureIds = Object.fromEntries(
   (['application', 'packs', 'settings', 'help'] as const).map(name => [name, splitRef(HOST[name])!.featureId]),
@@ -16,6 +17,7 @@ export const hostPluginDeclarations = {
 
 export const hostDeclaration: NativePackDeclaration = {
   id: HOST_PACK_ID,
+  eventContracts: hostEventContracts,
   tiptapPlugins: { references: { extensions: {
     reference: '@apackdev/ui/components/tiptap/reference-node#ReferenceNode',
   } } },

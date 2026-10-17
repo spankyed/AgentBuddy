@@ -6,7 +6,7 @@ import * as os from 'node:os';
 import * as path from 'node:path';
 import { afterAll, describe, expect, it } from 'vitest';
 import { ALLOW_UNBUILT } from '@apackdev/host/build/packages-built';
-import { _declarationRevision, PACK_SNAPSHOT_FORMAT } from '@apackdev/sdk/build';
+import { _declarationRevision, GENERATED_EVENT_CONTRACTS_FILE, PACK_SNAPSHOT_FORMAT } from '@apackdev/sdk/build';
 import { PACK_LAYOUT, cacheDependency, readCachedDependency, sealPackBuild } from '@apackdev/host/packs';
 const REPO_ROOT = path.resolve(__dirname, '..', '..', '..', '..');
 
@@ -31,6 +31,10 @@ function dependentPack(spec: string): string {
   fs.symlinkSync(path.join(REPO_ROOT, 'node_modules'), path.join(root, 'node_modules'), 'dir');
   write(root, 'package.json', JSON.stringify({ name: 'dependent-pack', type: 'module' }));
   write(root, 'apack.json', JSON.stringify({ id: 'dependent-pack', name: 'Dependent', version: '1.0.0', dependencies: { 'default-setup': '*' }, features: { memos: { description: 'Feature declaration fixture.', system: { entry: 'tests/memos-system.ts' }, plugin: { label: 'Fixture', state: 'tests/memos-plugin.ts' } }, widgets: { description: 'Feature declaration fixture.', settings: { defaults: { size: 3 }, schema: { type: 'object' } } } } }));
+  write(root, GENERATED_EVENT_CONTRACTS_FILE, JSON.stringify({ memos: {
+    system: { incoming: ['SAVE', 'NOTIFY'], outgoing: ['MEMOS_STARTED', 'MEMOS_NOTIFIED'] },
+    plugin: { receives: ['MEMOS_STARTED', 'MEMOS_NOTIFIED'] },
+  } }));
   cacheDependency(root, 'default-setup', DEFAULT_SETUP_DIST, '*', {
     kind: 'host', directory: DEFAULT_SETUP_DIST, selection: 'test checkout',
   });

@@ -12,7 +12,7 @@ function fixture() {
     definitions: 'declare module "@app/defs/memo" { export interface Item { before: string } }' };
   const state = { entries: [entry] }; const listeners = new Set<() => void>();
   startFeTestRuntime({ catalog: { status: () => 'ready', problem: () => undefined, frontend: () => [], references: () => [], steps: () => [], artifacts: () => [], blocks: () => [],
-    dsl: () => state.entries, subscribe(listener) { listeners.add(listener); return () => { listeners.delete(listener); }; },
+    events: () => [], dsl: () => state.entries, subscribe(listener) { listeners.add(listener); return () => { listeners.delete(listener); }; },
   } });
   const files = new Map<string, string>(); let revision = 0;
   const defaults = { setDiagnosticsOptions() {}, setCompilerOptions() {}, addExtraLib(text: string, uri: string) {

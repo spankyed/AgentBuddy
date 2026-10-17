@@ -18,7 +18,7 @@ const manifest = ManifestSchema.parse({
 
 function binding() {
   return { features: {
-    notes: { designation: 'notes', system: { machine: {} }, plugin: {}, services: ['notes'] },
+    notes: { designation: 'notes', system: { machine: {}, receives: [] }, plugin: { receives: [] }, services: ['notes'] },
     preferences: {},
   }, services: { notes: {}, shared: {} }, repositories: { noteQueries: {} } };
 }
@@ -26,7 +26,7 @@ function binding() {
 it('accepts exactly declared identities independently of registration order', () => {
   const registration = binding();
   registration.services = { shared: {}, notes: {} };
-  expect(backendBindingProblem(manifest, registration)).toBeUndefined();
+  expect(backendBindingProblem(manifest, registration, { notes: { system: { incoming: [], outgoing: [] }, plugin: { receives: [] } } })).toBeUndefined();
 });
 
 it.each([
@@ -44,11 +44,11 @@ it.each([
 ] as const)('refuses a mismatched %s and identifies the owner and contribution', (_name, change, path) => {
   const registration = binding();
   change(registration);
-  expect(backendBindingProblem(manifest, registration)).toBe(`Pack "example" runtime ${path} does not match its accepted declarations`);
+  expect(backendBindingProblem(manifest, registration, { notes: { system: { incoming: [], outgoing: [] }, plugin: { receives: [] } } })).toBe(`Pack "example" runtime ${path} does not match its accepted declarations`);
 });
 
 it.each([null, [], { features: [] }, { features: { notes: null, preferences: {} } }])('refuses malformed runtime records: %j', registration => {
-  expect(backendBindingProblem(manifest, registration)).toBeDefined();
+  expect(backendBindingProblem(manifest, registration, { notes: { system: { incoming: [], outgoing: [] }, plugin: { receives: [] } } })).toBeDefined();
 });
 
 it.each(['features', 'services', 'repositories'])('refuses explicit null %s even when nothing is declared', key => {

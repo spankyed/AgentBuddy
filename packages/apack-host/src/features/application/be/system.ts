@@ -4,7 +4,7 @@
 import { defineHandlers } from '@apackdev/sdk/framework';
 import type { MachineContext } from 'xstate';
 import { setup } from 'xstate';
-import { eventTypes } from '@apackdev/sdk/events';
+import type { ApplicationClientEvent } from '../../event-contracts.ts';
 import { broadcastToPlugin } from '../../../events.ts';
 import { splitRef } from '@apackdev/sdk/ids';
 import { appState } from '../../../app-state/index.ts';
@@ -19,16 +19,7 @@ export function pluginVisibility(registry: Pick<PackRegistry, 'pluginDefaults'>)
   return { ...registry.pluginDefaults(), ...appState.get().pluginVisibility };
 }
 
-/** The events a client may send this system */
-type ApplicationClientEvent =
-  | { type: 'SET_PLUGIN_VISIBILITY'; plugin: string; visible: boolean }
-  | { type: 'SET_LAST_ACTIVE_PLUGIN'; plugin: string };
-
-/** What the system handles: a client's events, and the bus asking it to publish */
 type ApplicationEvent = ApplicationClientEvent | { type: 'SEND_STATE' };
-
-/** The events a client may send this system, which the bus checks a client's send against */
-export const APPLICATION_SYSTEM_EVENTS = eventTypes<ApplicationClientEvent>()('SET_PLUGIN_VISIBILITY', 'SET_LAST_ACTIVE_PLUGIN');
 
 /**
  * The host `application` system over the packs in `registry`. It records the user's choices, and sends the

@@ -1,4 +1,6 @@
 import { entityTypeOf, type EARS } from '@apackdev/ears';
+/** Canonical entity wire type, available through the frontend SDK. */
+export { entityTypeOf };
 import type { OpenEntity } from '../events/index.ts';
 import { boundFeHost } from '../runtime/fe-host.ts';
 import { getDesignated, hasDesignation } from '../designations/index.ts';

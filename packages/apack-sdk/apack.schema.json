@@ -212,7 +212,7 @@
               "contract": {
                 "type": "string",
                 "pattern": "^([^#]+)#([A-Za-z_$][\\w$]*)$",
-                "description": "\"path#exportName\" of this system's contract: a declared type holding its context and its incoming, internal and outgoing events (SystemContract, @apackdev/sdk/framework). It lives in a leaf module of its own (be/contract.ts), so codegen reads it without running anything. Omit it for a system that sends no events."
+                "description": "\"path#exportName\" of this system's contract: a declared type holding its context and its incoming, internal and outgoing events (SystemContract, @apackdev/sdk/framework). It lives in a leaf module of its own (be/contract.ts), so codegen reads it without running anything. Omit only when there are no typed incoming or outgoing events; explicit events.incoming still declares routing additions."
               },
               "events": {
                 "type": "object",
@@ -703,7 +703,7 @@
               "categories"
             ],
             "additionalProperties": false,
-            "description": "Reference identities and presentation, with explicit navigation and reactive item-provider exports."
+            "description": "Reference identities and presentation, with reactive item-provider exports. Entity opening is declared separately by the destination plugin contract."
           }
         },
         "required": [

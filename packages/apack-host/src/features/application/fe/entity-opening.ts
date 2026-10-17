@@ -1,5 +1,6 @@
 import { assign, enqueueActions, fromPromise, setup, type ActorRefFrom } from 'xstate';
-import { entityTypeOf, type EARS } from '@apackdev/ears';
+import { entityTypeOf } from '@apackdev/sdk/fe';
+import type { EARS } from '@apackdev/sdk';
 import { newCall, type OpenEntity } from '@apackdev/sdk/events';
 import { errorMessage } from '@apackdev/sdk/utils/pure';
 import { isEqual } from '../../settings/document.ts';
