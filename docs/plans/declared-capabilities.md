@@ -52,7 +52,7 @@ The following findings are from the working settings candidate, rather than the 
 |---|---|---|
 | Generated `services.settings` and settings handles | Bound at accepted registration; revoked on unload; target mutation policy checked | Retain caller identity and lifetime. Consumption declarations must not replace target policy. |
 | Generated `services.appData` | All methods forwarded through the ambient host delegate | Separate onboarding operations from database administration in the public interface and declarations. |
-| Database feature | Calls `exportBackup`, `importBackup`, `readBackupSummary`, `reset` | Use this actual consumer to prove declared administration access, including failure and rollback. |
+| Database feature | Calls `exportBackup`, `importBackup`, `readBackupSummary`, `reset` | Use this actual consumer to prove declared administration access, denial before effects and the actual failure/commit behavior. |
 | Authored onboarding actions | `check-onboarding` and `ignore-onboarding-message` read completion; `onboarding-helpers` completes it | This lifecycle API must remain usable without granting backup/import/reset. Do not manufacture an assistant feature. |
 | Other host services | Generated `Services` includes every `HostServices` member | Choose an intentional SDK baseline and require explicit consumption for the remainder; generate types and runtime members from the same selection. |
 | Dependency-provided services | Types intersect declared dependencies; the runtime proxy returns every registered pack's service | Runtime visibility must match declared providers, not merely the generated intersection. Registration already refuses host-name and cross-pack collisions; preserve that protection. |
@@ -89,6 +89,72 @@ Data/resource confinement belongs to the separate
 [pack security isolation goal](../goals/goal-pack-security-isolation.md). This plan neither adds entity
 read/write grants nor silently removes documented EARS affordances. Do not block supported API contracts
 on a speculative sandbox, or claim they close direct Node or ambient runtime access.
+
+## Bounded implementation checkpoints
+
+Rechecked the service proxy, `_createPackServices`, SDK `generateServices` and Database consumer on
+2026-10-16. The ambient runtime union, generated dependency intersections and settings-only binding
+remain present; the dated inventory above is a starting point, not a completed current-code audit.
+Use the active goal's execution order and existing catalog/runtime owners. These checkpoints partition
+this workstream; they do not introduce another goal or require a new dependency container.
+
+| Checkpoint | Concrete output | Closure evidence |
+|---|---|---|
+| A1 — Inventory and representative prototype | A finite API-route matrix and selected declaration/granularity, exercised through real codegen and host binding | Onboarding without administration; Database with it; declared versus unrelated installed dependency service; retained method after retirement; action execution with the accepted facade |
+| A2 — Common consumption metadata | One normalized selection in the manifest/catalog pipeline, with explicit provider ownership and intentional SDK baseline | Unknown names, unowned providers and unavailable required APIs refuse with the consuming pack/API/provider named; offline inspection reads declarations without activation |
+| A3 — Matching types and runtime access | Generated and host-bound service facades use the same accepted selection and runtime lifetime | Removing consumption fails real call sites; untyped supported access cannot retrieve undeclared services; retained objects/methods cannot rebind to another runtime or host |
+| A4 — Real consumer and content migration | Default-setup, authored actions, fixtures, scaffolds and external authoring use the selected contract; compiled content targets use normalized entity/dependency declarations | Database/onboarding and dependency consumers run; settings policy remains intact; legitimate typed/untyped and shared SDK content targets pass, unsupported targets refuse |
+| A5 — Converged acceptance and handoff | Schema/API reports, inspection, public docs and templates agree with the implemented contract | Focused acceptance plus required checkpoint validation and actual external-pack runtime proof; source commits and unresolved cases recorded in the owning goal's evidence record |
+
+A4's content-target validation may land independently when its existing declaration inputs are ready.
+Do not restart it if inspection finds it already implemented. A2/A3 depend on the settled A1 selection;
+prototype names are not public contract until that decision is recorded.
+
+### Decisions A1 must settle
+
+Record each supported route's producer, real consumer, current entry point, provider identity,
+accepted caller/lifetime owner and disposition: intentional baseline, explicitly consumed API, internal
+host operation, or a documented route outside service-facade mediation. Cover generated services,
+direct supported SDK imports, repositories/EARS, content appliers and user-authored actions. Each row
+needs a concrete migration or existing-proof link; lack of a failing test does not close the inventory.
+
+Select the smallest useful API groups from actual consumers. Start at pack granularity; feature-local
+consumption requires an actual feature-bound execution/facade model. At pack granularity, separating
+onboarding from administration does not isolate two features of a pack that consumes both. It gives
+packs that only need onboarding a smaller supported interface. Do not describe that as per-feature
+privilege isolation or invent an assistant feature to obtain it.
+
+Keep four questions separate:
+
+- What API does this pack consume, including any intentional baseline and access to its own services?
+- Which declared provider supplies it, and does the accepted catalog contain that required contract?
+- Is that provider ready now, or does the current lifecycle require waiting or refusing this call?
+- Does the target operation's own policy permit it, such as restricted settings mutation?
+
+Dependency declaration alone must not expose every provider service. Use stable identities from the
+common catalog; do not make unrelated installation order determine resolution or availability. Missing,
+disabled, failed, not-yet-ready and retired providers need explicit behavior under the existing lifecycle.
+Do not add general lazy activation or silently redirect a retained handle to a replacement provider.
+
+### Acceptance boundaries
+
+Prove both generated types and runtime behavior, including destructured/retained methods, service
+objects, subscriptions and pending results where the selected APIs expose them. Capture caller and
+provider lifetimes through host-accepted bindings, not caller-supplied IDs or message labels. Define
+retirement/cancellation and commit behavior for affected operations; do not promise rollback of already
+committed backup/import/reset effects. Denied administration must fail before starting those effects.
+
+Carry the executing pack's facade into user-authored actions and keep their existing attributed sends.
+Removing supported ambient imports must migrate real callers and use existing validation/public export
+boundaries; a build check is not confinement of arbitrary JavaScript. Retain documented EARS access,
+repository ownership/collision behavior, shared/restricted settings policy and notification semantics.
+Any proposed removal of a documented affordance needs an explicit design decision, not a type workaround.
+
+Close each checkpoint with its implementation delta or evidence-only closure, focused acceptance,
+source commit and remaining cases. Reuse existing proof; run broader validation at required checkpoints,
+not repeatedly to choose syntax. A5 feeds the whole-goal final committed-source acceptance and does not
+replace it. Actual API names, manifest syntax and any trusted administration policy must be recorded
+from A1 evidence; this plan does not preselect security permission names or a consent UI.
 
 ## Handoff to security isolation
 

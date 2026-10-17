@@ -68,7 +68,7 @@ so completed implementation is not repeatedly scheduled as new work.
 | Build input/publication and freshness (Phase 3) | Partial; finite checkpoints B1–B6 below | Finish the common producer contract and four passive consumer migrations; installed discovery must remain source-free and activation-free. |
 | Entity navigation (Phase 4) | Implemented with local handler/runtime acceptance through `95ff95ab3`, following producer `94148c9e0`, catalog/admission `479c75e01`, routing `cd9c57de6` and feature repair `831221020` | Preserve six-handler, cancellation and stored-message acceptance through final strict validation; retain build/publication and strict-gate acceptance for B6. No further navigation implementation is currently identified. |
 | Frontend boundaries (Phase 5) | Implemented and locally accepted: `713a6c1fd`, including the real external-pack window | Preserve pane/form containment, attributed nonfatal diagnostics and retired-instance refusal through final committed-source strict acceptance. |
-| Consumed APIs (Phase 6) | Inventory/prototype requirements documented; implementation outstanding | Settle declarations and granularity, generate matching runtime/type facades, mediate administration and dependency APIs, and migrate real consumers. |
+| Consumed APIs (Phase 6) | Inventory/prototype requirements documented; implementation outstanding | Close [A1–A5](../plans/declared-capabilities.md#bounded-implementation-checkpoints): finite route inventory/prototype, common metadata, matching caller-bound runtime/type facades, real consumer/content migration and external acceptance. Preserve settings policy and documented EARS behavior. |
 | Dependency provenance (Phase 6) | Cache/admission `ff4358588`, inspection and verified-build checkpoints in the evidence record implemented; overall closure partial | Verify exact origin/version/content through reuse and inspection, integrate remaining freshness dependencies, and close the linked acceptance matrix. Do not restart cache/provenance storage. Frozen resolution remains conditional on a distribution requirement. |
 | Shipped-pack replacement (Phase 6) | Substantially implemented: ownership/suppression `03745e1dc`, replace/restore `85a7e955b`, subsequent live-control/source-update checkpoints in the evidence record | Reconcile and close remaining restart/reload, overrides and failure acceptance against landed implementation; implement only identified gaps. Do not restart replacement. |
 | Final review/acceptance (Phase 7) | Outstanding | Audit every phase and reconciled manifest requirement on committed source, run final strict `--all`, record evidence and archive only completed work. |
@@ -462,6 +462,16 @@ introduced. Re-audit old paths, CLI refusals and install records before changing
 consumption declaration/granularity through the linked plan's prototype before implementing its
 dependent behavior. The removal-suppression record is already implemented; preserve its selected
 contract and test actual gaps rather than redesigning it from the old proposal.
+
+For consumed APIs, the linked plan owns the finite A1–A5 checkpoints and acceptance matrix. Record
+A1's real generated/runtime prototype and the selected API baseline, provider identities and pack/feature
+granularity before committing to syntax. At pack granularity, onboarding/administration separation limits
+what an onboarding-only pack consumes; it does not isolate features inside a pack that consumes both.
+Keep dependency selection, required-provider availability, runtime readiness and target mutation policy
+separate. A3 must prove retained methods cannot acquire replacement-runtime authority; A4 must exercise
+the actual Database, onboarding and action paths. Close A5 with schema/API/docs/template agreement and
+external runtime evidence, then retain these cases for Phase 7. Do not implement sandboxing, a new
+catalog or general lazy activation as part of this API contract.
 
 **Done when:** all three rows and their linked verification pass, with affected external-pack fixtures,
 templates and public contracts updated. No workstream is merely marked “follow up” to close this goal.
