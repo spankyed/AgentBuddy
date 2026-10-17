@@ -112,7 +112,7 @@ not a discovery defect when its caller needs an executing implementation.
 | Registration field | Static authority / binding boundary | Current finding |
 |---|---|---|
 | `id`, `declarationRevision` | Accepted snapshot/native owner; installed runtime revision checks in `declaration-binding.ts` | Implemented. Native composition has no installed revision. |
-| `name`, `dependencies` | Authored manifest; native declaration has dependencies | Native display name is not represented. Audit actual display readers before deciding whether to add native metadata or remove redundant binding data. |
+| `name`, `version`, `dependencies` | Authored manifest; native declarations have dependencies and optional own version | Native version is implemented for pack-line migration caps in `f72cb8756`. Native display name is not represented. Audit actual display readers before deciding whether to add native metadata or remove redundant binding data. |
 | `features` membership | Manifest/native keyed features; backend and frontend admission | Both admit against declarations; native backend nested checks remain incomplete below. |
 | `features.*.designation` | Feature declaration; runtime designation lookup is execution | Native parity repaired in `b268fac86`: changed/added/omitted claims refuse atomically; fixtures retain declarations, including explicit candidate admission before role replacement. Authored backend and shared frontend already compare it. |
 | `features.*.system.machine` | Authored `system.entry`; executable machine remains activation | Implemented in `774b0844c`: compiled event contracts declare endpoint presence independently of machine bindings. Native composition may bind only the systems it runs; every bound endpoint must match. No UI pane is invented for the shell inbox. |
@@ -122,7 +122,7 @@ not a discovery defect when its caller needs an executing implementation.
 | `bindSettings` (both registrations) | Generated caller authority setup/disposal | Executable resource acquisition, not a discoverable contribution. Keep its rollback and retirement. |
 | `ears.entities`, `ears.relKinds` | Shared normalized `data`/feature entities and `data.relations` | Implemented typed/untyped wire projection; runtime registration checks authored/native equality. Runtime EARS registration remains execution. |
 | `lifecycle` | Explicit hook targets, checked callable bindings | Implemented authored/native metadata and membership checks. Running hooks is execution. |
-| `migrations` | Authored line/target/description/`up` declarations; checked backend bindings | Authored implemented. Native declaration omits migrations while native backend registration accepts them unchecked. Reconcile native support, then check it without running `up`. |
+| `migrations` | Authored line/target/description/`up` declarations; checked backend bindings | Implemented in `f72cb8756`: shared keyed declarations and checked callable bindings; admitted native/installed owners feed common runners. Native app-line needs no pack version; pack-line targets require a declared native version. Targets/callbacks/version are captured once. Unaccepted installed origins cannot bind migrations. |
 | `steps` (both registrations) | Snapshot/native step declarations and catalog projections | Implemented metadata and checked facets. Keep handlers, compilers, live labels/layout and trigger resources executable; include native and external paths in final acceptance. |
 | `artifacts`, `blocks` (both registrations) | Snapshot/native declarations; frontend checked components; backend authored membership/kind/facet checks | Implemented in `be5a9344b`: native and authored backends share identity, block-kind and backend-facet membership checks before authority/publication. Frontend facets are refused on the backend; native metadata remains after unload. Runtime callbacks remain executable bindings. |
 | `contentWriters`, `appliers` | Authored `content.writers` and `content.sources`; compiled content index | Implemented in `2e1701fad`: native content declares owned writers and explicit applier sources; native/authored backend admission shares exact binding checks and writer ownership validation. Explicit native import remains executable; automatic application still requires an installed build directory. Keep final all-kind/lifetime acceptance separate from this checkpoint. |
@@ -163,15 +163,18 @@ Execute the identified gaps in this order:
 
    Content checkpoint `2e1701fad` declares native writers/appliers and preserves explicit native
    `importCompiledContent`; 761 affected cases, 46 authored-manifest cases, types, lint, package builds
-   and schema/API generation pass. Migrations remain next: automatic targets currently come only from
-   installed origins. Resolve native target/version semantics before adding metadata a runner cannot
-   execute. See [content evidence](../evidence/discovery-without-activation.md#native-content-declarations-2026-10-17).
+   and schema/API generation pass. Migration checkpoint `f72cb8756` adds checked native declarations
+   and real targeting through the existing runners; 840 affected cases, types, lint, package builds and
+   schema/API generation pass. Preserve app/pack version separation and captured accepted bindings. See [content evidence](../evidence/discovery-without-activation.md#native-content-declarations-2026-10-17).
 4. Finish native name/static-asset and remaining consumer checks, then all-kind source-free/external
    acceptance. Record which asset classes and entry kinds the checks actually exercise. Keep B1–B6 and
    Phase 6 enforcement in their existing execution slots; this inventory does not reopen them.
 
 No completion is claimed from this table. It identifies inspected implementation, concrete omissions
 and the bounded checks needed to close them. Historical checkpoint evidence is not a second backlog.
+
+Native migration checkpoint `f72cb8756` implements this contract; see the
+[migration evidence](../evidence/discovery-without-activation.md#native-migration-targeting-2026-10-17).
 
 Native migration checkpoint contract: reuse `migrations.app` / `migrations.pack`, with the same
 keyed target/description/export grammar and shared checked callable bindings as authored packs.
@@ -198,8 +201,8 @@ native appliers. Automatic application still targets installed builds with a rea
 invent a native build directory. Share writer entity-ownership validation and backend binding-name
 checks with authored packs, before granting runtime authority. Fixtures must declare their actual
 entity owners rather than preserve the native bypass. Prove offline metadata, exact/duplicate/missing
-membership, ownership refusals, explicit application and cleanup/rollback. Native migrations remain
-required follow-up work; resolve their target/version semantics separately.
+membership, ownership refusals, explicit application and cleanup/rollback. Native migrations are implemented in `f72cb8756` with separate app/pack version semantics;
+final all-kind and lifetime acceptance remain required.
 
 Endpoint checkpoint contract: compiled `eventContracts` is keyed by local feature ID. A system records
 `{ incoming: string[], outgoing: string[] }`; a plugin records `{ receives: string[] }` (its own system's

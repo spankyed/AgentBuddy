@@ -3481,3 +3481,40 @@ migration declarations/targeting are next: registration currently accepts migrat
 runners enumerate installed origins. Resolve their identity/version semantics and checked functions
 without silently ignoring native migrations. Static assets/readers, all-kind lifetime acceptance,
 B1–B6, Phase 6 and final committed-source strict `--all` remain required.
+
+### Native migration targeting (2026-10-17)
+
+`f72cb8756` closes native migrations' unchecked-and-unexecuted path. Native declarations reuse the
+existing `migrations.app` / `migrations.pack` grammar. App-line owners need no native version;
+nonempty pack-line declarations require their own valid SemVer version. Both native and authored
+bindings share exact target/description/callable checks before authority. Discovery imports no target
+modules. Test composition accepts explicit native version metadata rather than inventing a version.
+
+Admission captures owner version/dependencies and migration target/description/function membership.
+Native and installed owners share dependency ordering before caller subsets and line-specific target
+projection. Runner targets carry `packId`, callbacks and the pack cap where applicable, with no fabricated
+manifest/directory or old-shape alias. Catalog updates and original registration mutation cannot change
+accepted callbacks or advance their cap. Synthetic installed origins without accepted manifests now
+refuse migration functions instead of silently accepting work no runner can see. Normal startup,
+reset/import, activation and reload use the migrated target contract.
+
+Two reproduced version-record bugs were repaired: a legal `constructor` pack ID read an inherited
+function as a stored version, and SemVer build metadata caused the same migration to run twice. Stored
+version lookup now checks owned keys; the shared comparator ignores build metadata for precedence while
+records retain the complete declared version. Five direct comparator cases cover release/prerelease
+ordering with build metadata. No real release metadata, migrations or production data was edited.
+
+Acceptance: all 840 affected cases across 58 registry/loader/migration/startup-reset/schema/framework
+and comparator files pass in 11.2s. Sixteen native cases cover discovery without modules, real startup
+ordering, both caps, retry/recording, mixed native/installed dependencies, subset ordering, mutation
+isolation, unload, fixture version metadata and atomic refusal. The initial run exposed a stale mock;
+its repair briefly changed the separate content mock too. Both now derive parameter types from their
+actual function signatures, and the unchanged content/reset assertions pass. Host/SDK types, lint,
+package freshness/builds, reviewed three SDK API reports and unchanged authored schema check pass.
+Logs: `/private/tmp/apack-native-migrations-*`, including the two failing reproducers and final acceptance.
+
+The prior full strict integration gate remains incomplete; no broad rerun followed its resource failure.
+Next: static-asset and remaining-reader audit, including whether native display names have a real
+consumer, then all-kind acceptance. The app-line record remains global; disabled-owner catch-up is the
+existing Phase 6 requirement, not solved by native targeting. B1–B6, all three Phase 6 workstreams and
+final committed-source strict `--all` remain required.

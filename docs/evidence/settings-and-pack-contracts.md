@@ -6548,3 +6548,14 @@ manifest cases, host/SDK types, lint, package builds and schema/API generation p
 are updated; no broad rerun follows the preserved integration failure. See [content evidence](discovery-without-activation.md#native-content-declarations-2026-10-17).
 Native migration declarations and executable targeting are next, then static assets/readers and the
 rest of the full goal. Final strict `--all` acceptance remains required.
+
+### Native migrations (2026-10-17)
+
+`f72cb8756` declares and checks native migrations and includes admitted native/installed owners in
+normal runner targeting. Native app-line owners need no native version; pack-line owners declare their
+own cap. Targets no longer pretend to be manifests, and checked callbacks/version data are captured at
+admission. Inherited-key version lookup and duplicate migration execution with SemVer build metadata
+have reproduced repairs. All 840 affected cases, host/SDK types, lint, package builds and schema/API
+generation pass. See [migration evidence](discovery-without-activation.md#native-migration-targeting-2026-10-17).
+No broad rerun follows the preserved integration resource failure. Static assets/readers and all-kind
+acceptance are next; B1–B6, Phase 6 and final committed-source strict `--all` remain required.
