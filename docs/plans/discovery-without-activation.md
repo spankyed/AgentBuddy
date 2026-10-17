@@ -27,38 +27,29 @@ may execute code; their discoverable results must be materialized before install
 
 ## Current discovery checklist
 
-Current status audited 2026-10-15. This checklist owns discovery progress; the execution goal owns
-phase ordering and final acceptance. Update these rows as checkpoints land rather than copying a new
-remaining-work list into each checkpoint. Source commits in the checklist and evidence record establish implemented slices, not
-completion of the whole plan. Compiler capture/session ownership landed in `aba660aed`; its checkpoint
-strict run passed (29 executed, one cached), including all 744 integration cases. Frozen pack/external
-inputs, complete build-session lifetime and whole-build freshness remain unfinished.
+Current status reconciled 2026-10-17. This checklist owns discovery progress; the execution goal
+owns phase ordering and final acceptance. Source checkpoints establish implemented slices, not final
+acceptance of this entire plan.
 
-Execution follows the goal's [live ledger](../goals/goal-settings-and-pack-contracts.md#live-execution-ledger-reconciled-2026-10-16)
-and [bounded validation](../../CLAUDE.md#keep-validation-bounded). Diagnose a failed assertion with its
-preserved evidence and targeted reproducer; do not restart the broad chain after every local fix.
-Broaden only to close a stated coverage gap or run the required converged gate. Keep checkpoint claims,
-unresolved acceptance and unrelated infrastructure defects distinct. No deadline increase, weakened
-assertion or repeated green focused run substitutes for the required gate. The compiler checkpoint is
-committed. Use the ledger's per-deliverable dependencies: independent installed-data readers may
-advance while the unfinished producer/freshness workstream remains required.
+Compiler capture and startup/authored inputs are implemented through `aba660aed`, `37890aa9b` and
+`bbf05ec00`. Selected executable/runtime ownership is implemented in `e369d3cb9`; matching backend/Vite
+generations and retained frontend lifetimes in `a595246f2` / `d3833f788`. The completed input/output
+association and producer output expectations are implemented through `d4e24d4b5`. Archive, prebuilt tests,
+default-fork preparation and drive use the common record; see the
+[consumer evidence](../evidence/build-input-snapshot-proof.md#prebuilt-test-consumer-checkpoint) and
+[real handoff](../evidence/build-input-snapshot-proof.md#real-default-fork-handoff-acceptance).
+`caf57cb0e` repairs compiler-specific generation-cache ownership without weakening generated-byte
+validation. These implemented owners must not be scheduled again as new designs.
 
-Source `37890aa9b` now installs native input capture before worker preloads and adopts it during
-compilation. It observes existing loader threads through a coordinator without adding source hooks or
-changing measured preload order. Cached filesystem APIs share the same capture owner, and final
-validation includes loader facts. Source `65a189cb7` adds ordered effective execution options and the full runtime version map to the
-compilation key. Source `3929897a3` captures that identity before user preloads can rewrite ambient
-values. The worker inherits `NODE_OPTIONS` and custom export conditions; supervisor entry modes are
-not implicitly worker configuration. Immutable executable/native runtime ownership, source/dependency
-snapshot ownership, retained frontend lifetimes and persisted receipt/passive freshness remain required. Source
-`bbf05ec00` captures authored bytes and file membership before preloads, and discovery reuses that
-inventory. Consumed namespace queries still have their existing owner. Declared dependency capture,
-late external inputs, cross-thread coherence and derived-output ownership remain unfinished; the goal's
-live ledger owns execution order and the checkpoint evidence record contains exact claims. Source `c85fc178a` removes repeated identical-path projections during native input materialization;
-the previously failing focused watch publication/refusal/repair scenario passes. The latest strict
-run remains failed, and this focused result does not establish pooled acceptance.
-The goal's live ledger owns current acceptance and next work. Keep all remaining discovery
-and downstream requirements active; no timeout/assertion adjustment or broad diagnostic rerun is implied.
+B1/B3 absolute external-library and platform/resource-lifetime requirements remain open, as does
+converged B6/final acceptance. The [live ledger](../goals/goal-settings-and-pack-contracts.md#live-execution-ledger-reconciled-2026-10-16)
+owns their finite closure register and next actions. Installed/offline discovery continues to require
+neither authored sources nor compiler activation. Independent readers may advance without dropping
+unfinished producer requirements.
+
+Follow [bounded validation](../../CLAUDE.md#keep-validation-bounded): diagnose failures from preserved
+evidence and focused reproducers; broaden for a named coverage gap or the required converged gate.
+No deadline/assertion change or repeated focused pass substitutes for final acceptance.
 
 **How to read the history:** dated audits, designs and checkpoint handoffs in [the evidence record](../evidence/discovery-without-activation.md) record what was known
 at that time. Their “remaining,” “next” and “not yet implemented” statements are superseded for current
@@ -93,8 +84,8 @@ consumers**, not additional discovery UIs. Their common input/publication contra
 required under [content-based source freshness](../evidence/discovery-without-activation.md#required-content-based-source-freshness-correction-2026-10-15).
 Shared authored inputs landed in `882d2a50b`; compiler capture/session reuse landed in `aba660aed`
 after strict checkpoint validation. Captured TypeScript query views and retained read-set validation land
-in `e171b3acf`, with full checkpoint evidence in the evidence record. Frozen pack/external inputs, whole-build input/output association and the
-passive freshness authority remain unfinished. Installed/offline discovery must continue to need
+in `e171b3acf`, with full checkpoint evidence in the evidence record. Whole-build input/output association and passive consumers are implemented as recorded above;
+B1/B3 native/platform closure and B6 remain open. Installed/offline discovery must continue to need
 neither authored source files nor compiler activation.
 
 The execution goal owns the current order. Only consumers requiring an unfinished producer guarantee
@@ -113,14 +104,14 @@ not a discovery defect when its caller needs an executing implementation.
 |---|---|---|
 | `id`, `declarationRevision` | Accepted snapshot/native owner; installed runtime revision checks in `declaration-binding.ts` | Implemented. Native composition has no installed revision. |
 | `name`, `version`, `dependencies` | Authored manifest; native declarations have dependencies and optional own version | Native version is implemented for pack-line migration caps in `f72cb8756`. Display readers use manifest/origin names or feature labels; none reads `PackRegistration.name`. `123efbd6f` removes that redundant registration field and generated assignment; native name metadata has no demonstrated consumer. |
-| `features` membership | Manifest/native keyed features; backend and frontend admission | Both admit against declarations; native backend nested checks remain incomplete below. |
+| `features` membership | Manifest/native keyed features; backend and frontend admission | Both admit against declarations; the native backend nested checks below are implemented. |
 | `features.*.designation` | Feature declaration; runtime designation lookup is execution | Native parity repaired in `b268fac86`: changed/added/omitted claims refuse atomically; fixtures retain declarations, including explicit candidate admission before role replacement. Authored backend and shared frontend already compare it. |
 | `features.*.system.machine` | Authored `system.entry`; executable machine remains activation | Implemented in `774b0844c`: compiled event contracts declare endpoint presence independently of machine bindings. Native composition may bind only the systems it runs; every bound endpoint must match. No UI pane is invented for the shell inbox. |
 | `features.*.system.receives`, `features.*.plugin.receives` | Generated contract event names; backend validation maps consume running bindings | Implemented in `774b0844c`: generated JSON feeds the snapshot, source harness and generated entries; native composition supplies the same static contract. Catalog/CLI inspection imports no pack modules. Admission captures effective receive sets instead of rereading mutable registration arrays. Uncompiled source previews explicitly report unavailable contracts. |
 | `features.*.services`, top-level `services`, `repositories` | Manifest/native named targets; `apiBindingProblem` checks ownership and membership | Implemented names/owners; constructing objects and calling methods remain execution. Phase 6 owns consumed API enforcement. Verify source-free inspection and collision acceptance rather than replace their runtime stores. |
-| `consumes.services` (declarations only) | Qualified provider/service refs, canonical SDK baseline and normalized direct ownership | Declaration/codegen foundation `1a0de64fb`; catalog retains native/source/disabled installed requests without activation. Phase 6 A2 still owns required-API checks before runtime import and inspection diagnostics; A3 owns matching facade types and runtime filtering. There is no duplicate runtime consumption inventory. |
+| `consumes.services` (declarations only) | Qualified provider/service refs, canonical SDK baseline and normalized direct ownership | Declaration/codegen foundation `1a0de64fb`; catalog retains native/source/disabled installed requests without activation. A2 admission/diagnostics `558b42220` and A3 runtime/type filtering/lifetimes `cccc12d5d` are implemented; `bb6df4a45` removes the ambient service value and binds attributed action access. There is no duplicate runtime consumption inventory. |
 | `settings`, `features.*.settings` | Inline schema/defaults; shared catalog projection and binding equality | Implemented. Retain disabled/failed-owner definitions and current policy semantics in final acceptance. |
-| `bindSettings` (both registrations) | Generated caller authority setup/disposal | Executable resource acquisition, not a discoverable contribution. Keep its rollback and retirement. |
+| `bindServices` (backend), `bindSettings` (frontend) | Generated caller authority setup/disposal | Executable resource acquisition, not discoverable contributions. Backend selected/action facades and frontend scoped settings retain their distinct lifetime owners; keep rollback and retirement. |
 | `ears.entities`, `ears.relKinds` | Shared normalized `data`/feature entities and `data.relations` | Implemented typed/untyped wire projection; runtime registration checks authored/native equality. Runtime EARS registration remains execution. |
 | `lifecycle` | Explicit hook targets, checked callable bindings | Implemented authored/native metadata and membership checks. Running hooks is execution. |
 | `migrations` | Authored line/target/description/`up` declarations; checked backend bindings | Implemented in `f72cb8756`: shared keyed declarations and checked callable bindings; admitted native/installed owners feed common runners. Native app-line needs no pack version; pack-line targets require a declared native version. Targets/callbacks/version are captured once. Unaccepted installed origins cannot bind migrations. |
@@ -166,8 +157,8 @@ Applier-only sources intentionally contribute no compiled entry; they still prod
 Missing declared specialty source paths now refuse compilation instead of silently disappearing from
 the index. Explicit native imports and source-free installed reads are preserved. Filesystem/compiler
 regressions, installation/refusal and real shipped/external output checks pass; see [content admission
-evidence](../evidence/discovery-without-activation.md#compiled-content-admission-2026-10-17). Media files still need producer evidence;
-declared media directories alone cannot identify the files required by compiled records.
+evidence](../evidence/discovery-without-activation.md#compiled-content-admission-2026-10-17). Producer media-byte and missing-output checks are implemented in the content/media checkpoint
+linked below; declared directories alone cannot establish required file membership.
 
 The common source-build association is now `dist/build-inputs.json`, written only after loader/thread
 settlement and final validation, and sealed by the existing output receipt. It records completed native
@@ -184,8 +175,8 @@ fingerprints and additional captured native facts retain distinct ownership; pri
 bookkeeping is excluded from authored reads. See
 [worker/watch evidence](../evidence/build-input-snapshot-proof.md#worker-watch-continuity-and-repair).
 Native-library/platform lifetime and converged acceptance remain open under B1/B3/B6.
-Expected emitted/copied output bytes and B5 consumer policies remain required; the presence of this
-record alone does not establish those guarantees.
+Expected emitted/copied output bytes and B5 consumer policies have the separate checkpoints below
+and in the consumer evidence; the record alone does not establish those guarantees.
 
 Frontend producer output expectations now use Vite's returned emitted bytes plus copied public bytes
 from the existing walk, retained in memory until final sealing. Missing or changed expected output
@@ -199,7 +190,8 @@ copying, then retain their destination expectations. Snapshot/cache/input metada
 inline flow helpers belong to their actual snapshot output. See
 [remaining writer evidence](../evidence/build-input-snapshot-proof.md#remaining-writer-output-expectations-checkpoint).
 B4 final producer acceptance still includes the remaining B1/B3 lifetime requirements and converged
-checks. B5's four consumer policies and comparison contexts remain required.
+checks. B5's four consumers are implemented with their recorded distinct freshness policies; preserve
+their remaining converged acceptance.
 
 The [asset producer audit](../evidence/build-input-snapshot-proof.md#asset-producer-audit-and-bounded-follow-through-2026-10-17)
 now enumerates the remaining concrete paths. Vite's output graph includes CSS/lazy/worker emissions

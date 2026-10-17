@@ -6998,3 +6998,46 @@ are retained; the audit is not a claim that their external runtime acceptance ra
 The actual default/fork path, current-build CLI harness integration and converged strict gate remain
 open. No broad suite was repeated to diagnose this cache-ownership defect. All other active goal scope
 is preserved, including B1/B3 closure, output completeness, provenance and shipped replacement.
+
+
+## Current-build service authoring acceptance (2026-10-17)
+
+Source checkpoints: `45f2a3458` and `1fbc1e223`, following service/action checkpoint `bb6df4a45`
+and generation-cache repair `caf57cb0e`.
+
+A real default-setup build passes: `/private/tmp/apack-current-service-default-build.log`.
+Standalone facade generation/report comparison passes and passive replay confirms its completed build
+inputs remain current: `/private/tmp/apack-current-service-facade-check.log` and
+`/private/tmp/apack-current-service-facade-freshness.log`. No generated-byte or compiler checks weakened.
+Obsolete ignored generation stamps in current-checkout pack outputs were removed explicitly; no
+normal-runtime compatibility reader or cleanup was added.
+
+The migrated dependent harness case initially failed because its handwritten fixture imported a
+nonexistent generated Services module. `45f2a3458` replaces the duplicated handwritten registration,
+event metadata and content runtime with actual generated declarations over the authored contract.
+Its five runtime cases pass (13.55s): `/private/tmp/apack-current-service-harness-fixed.log`.
+The initial combined run passed the seven unchanged harness setup/scaffolding cases and failed only
+that dependent case: `/private/tmp/apack-current-service-harness.log`. This is evidence across runs,
+not a claim of a single twelve-case green run. CLI types and focused lint pass:
+`/private/tmp/apack-current-service-harness-types.log`.
+
+The first real authoring-contract run built the external fixture, then typechecking found a scheduler
+mock typed against the consumer's intentionally filtered Services. The dependency's brain invokes its
+own scheduler; the consumer does not need a scheduler grant. `1fbc1e223` types that test double from
+the provider's generated Services without changing consumption declarations. External types pass and
+the real scheduled-flow file's three cases pass: `/private/tmp/apack-service-external-types.log` and
+`/private/tmp/apack-service-external-scheduler.log`. Public testing docs explain this distinction.
+
+The corrected complete authoring contract exits zero:
+`/private/tmp/apack-service-authoring-contract-fixed.log`. It validates/builds/typechecks both external
+fixtures, runs all 38 external-pack contract cases, then builds and archives the external default fork.
+The bundled UI fixture intentionally has no contract-test config; its validation/build/types run.
+The first failed run is retained: `/private/tmp/apack-service-authoring-contract.log`.
+Prepared fork metadata associates shipped revision
+`0952158f499afc03bd3d63485c8849c1d22bd5f036424779f0cf9bda35438f8e` with archive SHA-256
+`1e4ba95c6d7554fa3bd2e32a4a109a1ac3c3b3e6b73df9a9f91e4c3a9ddf2105`.
+
+This accepts the real formerly failing default/fork freshness boundary plus selected-service authoring
+and harness behavior. Actual app/fork restart/restoration, converged B6 and final committed-source
+strict `--all` remain open. Native/platform closure, complete discovery/editor acceptance and all
+three Phase 6 workstreams remain in the active goal; no deferred work or compatibility handling added.

@@ -2,7 +2,7 @@
 
 Status: A1 selection and A2 declaration, pre-import/admission and read-only diagnostics are implemented.
 A3 core selection, runtime/type filtering and lifetimes are implemented in `cccc12d5d`;
-A4 service/action routes are implemented in `bb6df4a45`; existing content-target validation is retained. External acceptance remains. Remaining discovery/build ownership work stays active in the [owning goal](../goals/goal-settings-and-pack-contracts.md); it blocks only
+A4 service/action routes are implemented in `bb6df4a45`; existing content-target validation is retained. Current-build authoring/harness acceptance passes; app and converged acceptance remain. Remaining discovery/build ownership work stays active in the [owning goal](../goals/goal-settings-and-pack-contracts.md); it blocks only
 the slices that consume its missing guarantees. This is an API dependency contract, not a security sandbox.
 
 ## Problem
@@ -231,10 +231,13 @@ normalized own/dependency/SDK entity projection. Both ordinary and tree branch t
 null/untyped declarations remain legitimate entities. Existing modules/shapes/compilation cases cover
 these contracts, and CLI validation reports undeclared format targets. Do not add service grants to
 content appliers or duplicate entity ownership checks.
-A5 external runtime/template acceptance remains. Migrated CLI harness integration paths need a current
-default build before execution. The B4/B6 marker mutation is reproduced and repaired in `caf57cb0e`;
-its actual default/fork convergence and strict gate remain unproven. See the
-[generation cache evidence](../evidence/settings-and-pack-contracts.md#generation-cache-ownership-2026-10-17).
+A5 current-build authoring/harness acceptance passes: real generated dependent runtime (`45f2a3458`),
+provider-typed scheduler doubles without widening consumer APIs (`1fbc1e223`), the external fixture's
+38 cases, bundled UI fixture and default-fork build/archive. Templates already use generated Services;
+public testing guidance now explains selected APIs and provider-owned doubles. See
+[current authoring evidence](../evidence/settings-and-pack-contracts.md#current-build-service-authoring-acceptance-2026-10-17).
+The real default build remains current after facade generation, and fork preparation passes after
+`caf57cb0e`. Actual app/restart/restoration acceptance and the converged strict gate remain required.
 
 | Checkpoint | Concrete output | Closure evidence |
 |---|---|---|
