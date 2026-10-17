@@ -210,9 +210,8 @@ async function main(): Promise<void> {
       covered.map((suite) => ({ label: `${suite.dir} (${half}, ${provenance})`, unit: poolUnitFor(suite, kind, provenance, workers), stamp: poolStampFor(suite, half, provenance) })),
       async () => {
         const reportFile = path.join(reports, `${covered.map((suite) => suite.dir).join('+')}.json`);
-        const { code, output, timedOut } = await boundedSpawn(command, [...args], timeoutMsFor('suite'),
-          { env: { ...process.env, [SPEC_DURATIONS_FILE]: reportFile } });
-        process.stdout.write(output);
+        const { code, timedOut } = await boundedSpawn(command, [...args], timeoutMsFor('suite'),
+          { stream: true, env: { ...process.env, [SPEC_DURATIONS_FILE]: reportFile } });
         if (code !== 0) {
           // `POOL_SECONDS` only where this run is the whole pool, which is the one thing that cost describes
           // — a run of two projects out of eleven has no recorded cost, and the message says that rather than
