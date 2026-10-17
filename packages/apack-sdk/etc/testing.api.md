@@ -173,9 +173,6 @@ export function stopFeTestRuntime(): void;
 export function takeSystemErrors(): SystemErrorEvent[];
 
 // @public
-export type TestOnboarding = Pick<AppDataService, 'hasOnboarded' | 'completeOnboarding'>;
-
-// @public
 export interface TestPacks {
     readonly appliers: Map<string, ContentApplier[]>;
     readonly artifacts: Map<string, ArtifactDefinition>;
@@ -213,7 +210,7 @@ export const testRootEvents: TestRootEvents;
 export interface TestRuntimeStartOptions {
     appVersion?: string;
     entityTypes?: readonly string[];
-    onboarding?: TestOnboarding;
+    onboarding?: OnboardingService;
     packs?: PackRegistryView;
     settings?: SettingsAdmin;
 }

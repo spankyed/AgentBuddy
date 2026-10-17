@@ -93,6 +93,7 @@ export interface HostRuntimeServices {
     appData: AppDataService;
     filesystem: FilesystemService;
     inference: InferenceService;
+    onboarding: OnboardingService;
     secrets: SecretsService;
     settings: SettingsAdmin;
     traceStore: TraceStore;

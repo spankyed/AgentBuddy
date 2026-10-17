@@ -11,7 +11,7 @@ describe('resetting settings', () => {
   it("keeps the app's own state", async () => {
     const app = await startApp({ systems: ['host/settings'] });
     await app.connect();
-    services.appData.completeOnboarding();
+    services.onboarding.complete();
     untypedTx(APP_STATE_ID).update('packVersions', { 'memo-pack': '1.2.0' }).update('failedAgainst', { 'memo-pack': 'provider:' });
     featureSettings.forFeature('threads').set({ path: ['recentThreadsSortOrder'], value: 'created' });
 
@@ -24,6 +24,6 @@ describe('resetting settings', () => {
       packVersions: { 'memo-pack': '1.2.0' },
       failedAgainst: { 'memo-pack': 'provider:' },
     });
-    expect(services.appData.hasOnboarded()).toBe(true);
+    expect(services.onboarding.isComplete()).toBe(true);
   });
 });

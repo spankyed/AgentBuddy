@@ -37,7 +37,7 @@ describe('registerPack services', () => {
     expect(() => register('second-pack', { llm: {} })).toThrow('Service collision: key "llm" — pack "second-pack" vs "first-pack"');
   });
 
-  it.each(['logger', 'emitter', 'repository'])('rejects a pack service named like the host service %s', (name) => {
+  it.each(['logger', 'emitter', 'repository', 'onboarding'])('rejects a pack service named like the host service %s', (name) => {
     expect(() => register('shadowing-pack', { [name]: {} })).toThrow(`vs the host's own "${name}" service`);
     expect(getRegisteredServices()).not.toHaveProperty(name);
   });

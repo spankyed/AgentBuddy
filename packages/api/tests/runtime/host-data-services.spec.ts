@@ -142,7 +142,7 @@ describe('services.appData', () => {
       appState.update({ hasOnboarded: false });
       settingsAdmin().resetAll();
       await services.appData.importBackup(backup);
-      expect(services.appData.hasOnboarded()).toBe(true);
+      expect(services.onboarding.isComplete()).toBe(true);
       expect(appState.get().version).toBe('0.4.0');
       expect(settingsAdmin().getOverrides()).toEqual(settings);
       settingsAdmin().set({ kind: 'app' }, ['personal', 'name'], 'Edited after restore');
@@ -150,7 +150,7 @@ describe('services.appData', () => {
       expect(settingsAdmin().getOverrides().features).toEqual(settings.features);
       await services.appData.importBackup(backup);
       expect(settingsAdmin().getOverrides()).toEqual(settings);
-      expect(services.appData.hasOnboarded()).toBe(true);
+      expect(services.onboarding.isComplete()).toBe(true);
     } finally {
       version.current = undefined;
     }

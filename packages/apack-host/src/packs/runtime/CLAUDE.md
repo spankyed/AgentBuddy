@@ -151,7 +151,7 @@ Designations come from the manifest's `features[].designation`, which generate-e
 | EARS entity type values | The SDK's and the host's, and all registered packs' entity values | Throws (blocks registration) |
 | EARS relation kind values | The SDK's, and all registered packs' relation values | Throws (blocks registration) |
 | Designation roles | All registered packs' roles | Throws (blocks registration) |
-| Service keys | Host service names (`logger`, `emitter`, `repository`, `appData`, `traceStore`, `inference`, `secrets`) and all registered packs' keys | Throws (blocks registration) |
+| Service keys | Host service names (`logger`, `emitter`, `repository`, `onboarding`, `appData`, `traceStore`, `inference`, `secrets`, `filesystem`, `settings`) and all registered packs' keys | Throws (blocks registration) |
 | Repository names | All registered packs' repository names | Throws (blocks registration) |
 | Content writers | Another pack's hooks for the entity type | Throws before candidate publication |
 | ContentAppliers | Two appliers for one content key in the pack | Throws before candidate publication |

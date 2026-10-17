@@ -81,7 +81,7 @@ describe('the test host', () => {
     expect(() => startTestRuntime({ appVersion: '2.0.0' })).toThrow('pass appVersion on its first call');
     expect(() => startTestRuntime({ packs: testPacksView() }))
       .toThrow('pass packs on its first call');
-    expect(() => startTestRuntime({ onboarding: { hasOnboarded: () => true, completeOnboarding: () => {} } }))
+    expect(() => startTestRuntime({ onboarding: { isComplete: () => true, complete: () => {} } }))
       .toThrow('pass onboarding on its first call');
   });
 
@@ -100,10 +100,10 @@ describe('the test host', () => {
   });
 
   it('keeps whether the user onboarded in memory by default, until the database is emptied', () => {
-    expect(services.appData.hasOnboarded()).toBe(false);
-    services.appData.completeOnboarding();
-    expect(services.appData.hasOnboarded()).toBe(true);
+    expect(services.onboarding.isComplete()).toBe(false);
+    services.onboarding.complete();
+    expect(services.onboarding.isComplete()).toBe(true);
     resetTestData();
-    expect(services.appData.hasOnboarded()).toBe(false);
+    expect(services.onboarding.isComplete()).toBe(false);
   });
 });

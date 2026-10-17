@@ -1,8 +1,8 @@
 // The app's own state: one AppState row the host declares and alone reads and writes. Packs never read
-// it; they learn whether the user onboarded through services.appData, and the renderer through the
+// it; they learn whether the user onboarded through services.onboarding, and the renderer through the
 // application plugin's CLIENT_CONNECTED. Resetting the user's settings doesn't touch it; resetting the
 // app (appData.reset()) empties it with everything else.
-import { untypedTx, untypedQx } from '@apackdev/ears';
+import { untypedTx, untypedQx, type EarsQuery } from '@apackdev/ears';
 import type { EARS } from '@apackdev/sdk';
 import { SETTINGS_ENTITY } from '../features/settings/be/store.ts';
 import { APPLIED_CONTENT_ENTITY } from './applied-content.ts';
@@ -74,42 +74,48 @@ type PerPackValue = string;
 
 type StoredAppState = Partial<AppState>;
 
-function stored(): StoredAppState | undefined {
-  return untypedQx(APP_STATE_ID).pickOne([...FIELDS]) as StoredAppState | undefined ?? undefined;
+/** App state on a specific engine; the default instance follows the installed app engine. */
+export function createAppState(ears: Pick<EarsQuery, 'qx' | 'tx'>) {
+  function stored(): StoredAppState | undefined {
+    return ears.qx(APP_STATE_ID).pickOne([...FIELDS]) as StoredAppState | undefined ?? undefined;
+  }
+
+  const state = {
+    /** Whether the row exists: data from before AppState, or no data at all, has none */
+    exists: (): boolean => stored() !== undefined,
+
+    /** The app's state; fields never written read as their defaults */
+    get: (): AppState => {
+      const row = stored() ?? {};
+      return {
+        hasOnboarded: row.hasOnboarded ?? false,
+        ...(row.version !== undefined && { version: row.version }),
+        packVersions: row.packVersions ?? {},
+        failedAgainst: row.failedAgainst ?? {},
+        pluginVisibility: row.pluginVisibility ?? {},
+        ...(row.lastActivePlugin != null && { lastActivePlugin: row.lastActivePlugin }),
+      };
+    },
+
+    /** Writes the given fields, creating the row on the first write */
+    update: (changes: Partial<AppState>): void => {
+      const write = stored() === undefined
+        ? ears.tx(APP_STATE_ID, true).put('entityType', APP_STATE_ENTITY)
+        : ears.tx(APP_STATE_ID);
+      for (const [field, value] of Object.entries(changes)) {
+        if (value !== undefined) write.update(field, value);
+      }
+    },
+
+    /** Records one pack's entry in a per-pack field, or with `undefined` removes it, leaving the others' alone */
+    updatePackEntry: (field: PerPackField, packId: string, value: PerPackValue | undefined): void => {
+      const entries = { ...state.get()[field] };
+      if (value === undefined) delete entries[packId];
+      else entries[packId] = value;
+      state.update({ [field]: entries });
+    },
+  };
+  return state;
 }
 
-export const appState = {
-  /** Whether the row exists: data from before AppState, or no data at all, has none */
-  exists: (): boolean => stored() !== undefined,
-
-  /** The app's state; fields never written read as their defaults */
-  get: (): AppState => {
-    const row = stored() ?? {};
-    return {
-      hasOnboarded: row.hasOnboarded ?? false,
-      ...(row.version !== undefined && { version: row.version }),
-      packVersions: row.packVersions ?? {},
-      failedAgainst: row.failedAgainst ?? {},
-      pluginVisibility: row.pluginVisibility ?? {},
-      ...(row.lastActivePlugin != null && { lastActivePlugin: row.lastActivePlugin }),
-    };
-  },
-
-  /** Writes the given fields, creating the row on the first write */
-  update: (changes: Partial<AppState>): void => {
-    const write = stored() === undefined
-      ? untypedTx(APP_STATE_ID, true).put('entityType', APP_STATE_ENTITY)
-      : untypedTx(APP_STATE_ID);
-    for (const [field, value] of Object.entries(changes)) {
-      if (value !== undefined) write.update(field, value);
-    }
-  },
-
-  /** Records one pack's entry in a per-pack field, or with `undefined` removes it, leaving the others' alone */
-  updatePackEntry: (field: PerPackField, packId: string, value: PerPackValue | undefined): void => {
-    const entries = { ...appState.get()[field] };
-    if (value === undefined) delete entries[packId];
-    else entries[packId] = value;
-    appState.update({ [field]: entries });
-  },
-};
+export const appState = createAppState({ qx: untypedQx, tx: untypedTx });

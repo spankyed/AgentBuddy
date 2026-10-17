@@ -38,9 +38,7 @@ export interface ActionSender {
 
 // @public
 export interface AppDataService {
-    completeOnboarding(): void;
     exportBackup(targetPath: string, name?: string, databases?: BackupDatabase[]): Promise<string>;
-    hasOnboarded(): boolean;
     importBackup(backupPath: string, options?: {
         skipUnknownDatabases?: boolean;
     }): Promise<{
@@ -121,6 +119,7 @@ export interface HostServices {
     inference: InferenceService;
     // (undocumented)
     logger: Logger;
+    onboarding: OnboardingService;
     // (undocumented)
     repository: typeof repository;
     secrets: SecretsService;
@@ -159,6 +158,12 @@ export interface InferenceService {
 
 // @public
 export type ModelId = `${ProviderName}:${string}`;
+
+// @public
+export interface OnboardingService {
+    complete(): void;
+    isComplete(): boolean;
+}
 
 // @public
 export type OutputSchema = FlexibleSchema<unknown> | JSONSchema7;

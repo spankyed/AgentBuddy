@@ -4,6 +4,7 @@ import { installEngine, type EarsQuery } from '@apackdev/ears';
 import { setSecretValueMatcher } from '../utils/redact.ts';
 import type { RootEvents } from './root-events.ts';
 import type { AppDataService } from '../services/app-data.ts';
+import type { OnboardingService } from '../services/onboarding.ts';
 import type { TraceStore } from '../services/trace-store.ts';
 import type { InferenceService } from '../services/inference.ts';
 import type { SecretsService } from '../services/secrets.ts';
@@ -18,6 +19,8 @@ export type { EarsQuery } from '@apackdev/ears';
 export interface HostRuntimeServices {
   /** Reset, back up and restore the app's stored data */
   appData: AppDataService;
+  /** Completion of the app's onboarding */
+  onboarding: OnboardingService;
   /** The volatile trace store (flow execution records) */
   traceStore: TraceStore;
   /** Model calls with the user's provider keys */

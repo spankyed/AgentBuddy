@@ -4,6 +4,7 @@ import { createSends, untypedBroadcastToPlugin, untypedSendToWindow, untypedSend
 import { resolveRegistered } from '../ids/refs.ts';
 import { createLogger, type Logger } from '../logger/logger.ts';
 import type { AppDataService } from './app-data.ts';
+import type { OnboardingService } from './onboarding.ts';
 import type { TraceStore } from './trace-store.ts';
 import type { InferenceService } from './inference.ts';
 import type { SecretsService } from './secrets.ts';
@@ -14,6 +15,7 @@ import type { SettingsTarget } from '../types/settings.ts';
 import { _settingsHandle } from './settings-handle.ts';
 
 export type { AppDataService, BackupDatabase, BackupSummary } from './app-data.ts';
+export type { OnboardingService } from './onboarding.ts';
 export { UnknownBackupDatabasesError } from './app-data.ts';
 export type { TraceStore, TraceEntityMeta, TraceRelation } from './trace-store.ts';
 export { _createInferenceService, type _InferenceModels, type InferenceService, type OutputSchema, type OutputSpec, type _ResolveModel } from './inference.ts';
@@ -60,7 +62,9 @@ export interface HostServices {
     sendToSystem: typeof untypedSendToSystem;
   };
   repository: typeof repository;
-  /** Reset, back up and restore the app's stored data; whether the user finished onboarding */
+  /** Completion of the app's onboarding, independent of preferences and database administration */
+  onboarding: OnboardingService;
+  /** Reset, back up and restore the app's stored data */
   appData: AppDataService;
   /** Read the volatile trace store (flow execution records) */
   traceStore: TraceStore;
@@ -115,10 +119,13 @@ const emitter: HostServices['emitter'] = createActionEmitter();
 /** The bound app's implementation of a service; each call reads the binding */
 const app = <K extends keyof HostRuntimeServices>(name: K): HostRuntimeServices[K] => boundHost().services[name];
 
+const onboarding: OnboardingService = {
+  isComplete: () => app('onboarding').isComplete(),
+  complete: () => app('onboarding').complete(),
+};
+
 const appData: AppDataService = {
   reset: () => app('appData').reset(),
-  hasOnboarded: () => app('appData').hasOnboarded(),
-  completeOnboarding: () => app('appData').completeOnboarding(),
   exportBackup: (targetPath, name, databases) => app('appData').exportBackup(targetPath, name, databases),
   importBackup: (backupPath, options) => app('appData').importBackup(backupPath, options),
   readBackupSummary: (backupPath) => app('appData').readBackupSummary(backupPath),
@@ -171,8 +178,8 @@ const settings: SettingsService = {
 };
 
 /**
- * The services the SDK builds (logger, emitter, repository from the bound engine), the app's six, and every
- * registered pack's. Reading them needs a bound app; the app's six are delegates that read it on each call.
+ * The services the SDK builds (logger, emitter, repository from the bound engine), the app's implementations, and every
+ * registered pack's. Reading them needs a bound app; the app's services are delegates that read it on each call.
  */
 function resolveServices(): HostServices & Record<string, unknown> {
   const runtime = boundHost();
@@ -181,6 +188,7 @@ function resolveServices(): HostServices & Record<string, unknown> {
     emitter,
     repository: runtime.ears.repository,
     appData,
+    onboarding,
     traceStore,
     inference,
     secrets,

@@ -88,7 +88,7 @@ it('resumes existing progress after data replacement and explicit restart', asyn
 });
 
 it('leaves completed onboarding alone', async () => {
-  services.appData.completeOnboarding();
+  services.onboarding.complete();
   const app = await start();
   await app.connect();
   expect(initialized(app)).toEqual([]);

@@ -10,9 +10,10 @@ import type { EARS } from '../types/entities.ts';
 import type { PackRegistryView } from '../runtime/packs-view.ts';
 import { _isHostBound } from '../runtime/host-runtime.ts';
 import { testPacks } from './packs.ts';
-import { bindTestRuntime, resetTestHostState, type TestOnboarding } from './host.ts';
+import { bindTestRuntime, resetTestHostState } from './host.ts';
+import type { OnboardingService } from '../services/onboarding.ts';
 
-export { testRootEvents, takeSystemErrors, addTestSecret, type TestRootEvents, type TestOnboarding } from './host.ts';
+export { testRootEvents, takeSystemErrors, addTestSecret, type TestRootEvents } from './host.ts';
 export { testPacks, type TestPacks } from './packs.ts';
 export { fakeInference, type FakeInference, type FakeInferenceCall, type FakeInferenceReplies, type FakeInferenceReply, type FakeTextCall } from './fake-inference.ts';
 // A pack's own tests bind a frontend host for the file and forget it again; bindFeHost is the renderer's,
@@ -34,10 +35,10 @@ export interface TestRuntimeStartOptions {
   /** What `getAppVersion()` returns; `0.0.0-test` by default. First call only */
   appVersion?: string;
   /**
-   * Where `appData.hasOnboarded` and `completeOnboarding` keep their state (the harness passes the host's app state);
+   * Where `onboarding.isComplete` and `complete` keep their state (the harness passes the host's app state);
    * in memory by default. First call only
    */
-  onboarding?: TestOnboarding;
+  onboarding?: OnboardingService;
   /**
    * Backs `services.settings` (the harness passes the host's settings store, so a test writes settings the way the
    * app does); without one, reading or writing settings says to run on the harness. First call only

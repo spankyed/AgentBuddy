@@ -44,7 +44,7 @@ const externalOrigin = (id: string, name: string) => ({ declarationRevision: 'fi
 });
 
 describe('createHostRuntime', () => {
-  it('keeps settings on the owning engine when another engine is installed', () => {
+  it('keeps settings and onboarding on the owning engine when another engine is installed', () => {
     const firstEngine = newEngine();
     const secondEngine = newEngine();
     const runtime = (engine: ReturnType<typeof newEngine>) => createHostRuntime({
@@ -59,6 +59,9 @@ describe('createHostRuntime', () => {
       second.services.settings.set({ kind: 'app' }, ['personal', 'name'], 'Second');
       expect(first.services.settings.getAll().app.personal.name).toBe('First');
       expect(second.services.settings.getAll().app.personal.name).toBe('Second');
+      first.services.onboarding.complete();
+      expect(first.services.onboarding.isComplete()).toBe(true);
+      expect(second.services.onboarding.isComplete()).toBe(false);
     } finally { installEngine(previous); }
   });
 
@@ -73,10 +76,12 @@ describe('createHostRuntime', () => {
     expect(runtime.appVersion).toBe('1.2.3');
     expect(runtime.ears).toBe(engine.query);
     expect(runtime.packs).toBe(packs);
-    expect(Object.keys(runtime.services).sort()).toEqual(['appData', 'filesystem', 'inference', 'secrets', 'settings', 'traceStore']);
+    expect(Object.keys(runtime.services).sort()).toEqual(['appData', 'filesystem', 'inference', 'onboarding', 'secrets', 'settings', 'traceStore']);
     expect(runtime.services.inference).toBe(inference);
     expect(runtime.services.secrets).toBe(secrets);
     expect(runtime.services.filesystem).toBe(filesystem);
+    expect(Object.keys(runtime.services.onboarding).sort()).toEqual(['complete', 'isComplete']);
+    expect(Object.keys(runtime.services.appData).sort()).toEqual(['exportBackup', 'importBackup', 'readBackupSummary', 'reset']);
 
     const service = { ping: () => 'pong' };
     packs.registerPack({ id: 'runtime-pack', features: { memos: { system: { machine: {} as never, receives: [] } } }, services: { memoService: service } });

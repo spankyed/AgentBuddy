@@ -296,8 +296,8 @@ export async function setupPackTests(options: PackTestOptions): Promise<void> {
     entityTypes: [...HOST_ENTITY_TYPES, ...[...dependencies.values()].flatMap(({ snapshot }) => Object.values(snapshot.types.entities))],
     packs: packsWithMocks,
     onboarding: {
-      hasOnboarded: () => appState.get().hasOnboarded,
-      completeOnboarding: () => appState.update({ hasOnboarded: true }),
+      isComplete: () => appState.get().hasOnboarded,
+      complete: () => appState.update({ hasOnboarded: true }),
     },
     // The app's own settings store, so a test writes and reads settings the way the app does rather than a fake
     settings: createSettingsService(createSettingsStore({ ears: installedEngine,

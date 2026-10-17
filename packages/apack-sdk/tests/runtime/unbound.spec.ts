@@ -31,7 +31,8 @@ const runtime: HostRuntime = {
   packs: testPacksView(),
   appVersion: '1.2.3',
   services: {
-    appData: { reset: unused, hasOnboarded: unused, completeOnboarding: unused, exportBackup: unused, importBackup: unused, readBackupSummary: unused },
+    onboarding: { isComplete: unused, complete: unused },
+    appData: { reset: unused, exportBackup: unused, importBackup: unused, readBackupSummary: unused },
     traceStore: { entities: unused, getEntityMeta: unused, getAttr: unused, relations: unused },
     inference: {
       generateText: unused, streamText: unused, createAgent: unused, embed: unused, embedMany: unused,
@@ -66,6 +67,7 @@ describe('with no app bound', () => {
       ['getAppVersion', () => getAppVersion()],
       ['services.inference', () => services.inference.generateText({ model: 'openai:gpt-5', prompt: 'hi' })],
       ['services.appData', () => services.appData.reset()],
+      ['services.onboarding', () => services.onboarding.isComplete()],
       ['services.traceStore', () => services.traceStore.entities()],
       ['services.secrets', () => services.secrets.list()],
       ['services.filesystem', () => services.filesystem.readFile('/tmp/x')],

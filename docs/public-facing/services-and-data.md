@@ -68,7 +68,7 @@ Service names (the keys) are identifiers. `apack pack add service <name>` writes
 
 1. Imports each feature and pack-level service export
 2. Exports a `featureServices` object aggregating them (`Services` is typed from it)
-3. Exports `Services`: this pack's services, its dependencies' services and the host's (`logger`, `emitter`, `appData`, `traceStore`, `inference`, `secrets`, and `repository` typed with your repositories)
+3. Exports `Services`: this pack's services, its dependencies' services and the host's (`logger`, `emitter`, `appData`, `onboarding`, `settings`, `traceStore`, `inference`, `secrets`, `filesystem`, and `repository` typed with your repositories)
 4. Exports `services`, the host's services proxy typed as `Services`
 
 ```typescript
@@ -83,11 +83,12 @@ Actions access services via the `services` parameter. Service names are global a
 
 ### Host services
 
-`services` holds eight host services. The SDK implements three itself, over the running app: `logger` and `emitter` over the app's event bus, and `repository` from the app's EARS engine. The app implements the other five, `appData`, `traceStore`, `inference`, `secrets` and `filesystem` (operations on stored data, keys and files); their contracts are types in `@apackdev/sdk/services`. `services.inference` and `services.repository` are covered below:
+`services` holds the host services listed below. The SDK implements three itself, over the running app: `logger` and `emitter` over the app's event bus, and `repository` from the app's EARS engine. The app implements `appData`, `onboarding`, `settings`, `traceStore`, `inference`, `secrets` and `filesystem` (operations on lifecycle state, preferences, stored data, keys and files); their contracts are types in `@apackdev/sdk/services`. `services.inference` and `services.repository` are covered below:
 
 | Service | Methods |
 |---|---|
-| `services.appData` | `reset()` resets the whole app as a fresh boot leaves it: deletes all stored data and API keys, then runs each pack's `onInit` and boot apply and the app's migrations. `exportBackup(targetPath, name?, databases?)` copies databases (and media) into a new backup directory. `importBackup(path)` replaces stored data with a backup and reloads memory from it, restoring the previous data on failure. `backupInfo(path)` reads a backup's metadata, or `null`. `hasOnboarded()` says whether the user finished onboarding, and `completeOnboarding()` records it; the app keeps it apart from settings, so resetting settings leaves it. |
+| `services.appData` | `reset()` resets the whole app as a fresh boot leaves it: deletes all stored data and API keys, then runs each pack's `onInit` and boot apply and the app's migrations. `exportBackup(targetPath, name?, databases?)` copies databases (and media) into a new backup directory. `importBackup(path)` replaces stored data with a backup and reloads memory from it, restoring the previous data on failure. `readBackupSummary(path)` reads a backup's metadata, or `null`. |
+| `services.onboarding` | `isComplete()` reads completion and `complete()` records it. Preferences reset leaves this lifecycle state intact; resetting the app starts onboarding again. This service exposes no reset, import or export operations. |
 | `services.traceStore` | Read-only access to the volatile trace store (flow execution records): `entities()`, `getEntityMeta(id)`, `getAttr(kind, id)`, `relations({ kind?, src?, tgt?, limit? })`. |
 | `services.secrets` | The user's API keys, without their values: `list()` (each key's `id`, `provider`, `label`, whether it's `selected`, timestamps), `select(id)`, `rename(id, label)`, `delete(id)` and `status()` (how keys are protected). Keys are added, and their values replaced, only in Settings → Secrets. A key's `provider` (`SecretProvider`) is a model provider or `'custom'`, for keys the app's own integrations name. |
 | `services.filesystem` | Files and folders on the user's disk, as UTF-8 text: `readFile(path)`, `writeFile(path, content)` (creating missing parent folders), `exists(path)`, `mkdir(path)` (with its parents), `readDir(path)` (`{ name, isDirectory }` entries), `stat(path)` (`size`, `mtime`, `isFile`, `isDirectory`), `rename(from, to)` and `remove(path)` (a folder with its contents; a missing path isn't an error). In unit tests it fails until the test mocks it with `mockService('filesystem', …)`. |
@@ -540,7 +541,7 @@ TypeScript can't check a name it doesn't know yet. Constrain it to `EntityName`,
   - The flow model its flow compiler, flow applier and steps API use: `Flow`, `Node`, `TNode`, `Action` and `Prompt` (`FlowEntity`, `NodeBase`, `TNodeEntity`, `ActionEntity`, `PromptEntity`), and the `contains`, `transitions_to`, `instance_of`, `spawned` and `tracked` relation kinds.
   - Your step node types extend `NodeBase` (`interface PingNode extends NodeBase`). Your pack reads `Node` rows as the union of its own and its dependencies' step node types (each pack's facade exports them as `PackStepNodes`), or as `NodeBase` when none define any.
   - The SDK owns these entities' repositories too, exported from `@apackdev/sdk/repositories`: `flowRepository` (flows, nodes, edges, the root flow, `importFromDSL`), `tnodeRepository`, `actionRepository` and `promptRepository`. Call them directly; they aren't in `services.repository`, which holds packs' repositories (default-setup's `flowsQueries`, `actionQueries` and `promptQueries` expose them by reference and add their views, so its code uses `repository` alone; a pack of yours can do the same).
-  - Settings, library documents and notes belong to default-setup (`Settings`, `Document`, `Collection`, `Note`); a pack depending on it uses them like any dependency's entities. The app's own state (onboarding, versions, content hashes) isn't an entity packs see: ask `services.appData.hasOnboarded()`. API keys aren't entities: the host keeps them ([API keys](#api-keys)).
+  - Library documents and notes belong to default-setup (`Document`, `Collection`, `Note`); a pack depending on it uses them like any dependency's entities. The host owns settings and app state: use caller-bound settings handles and `services.onboarding.isComplete()`, rather than querying their stored rows. API keys aren't entities: the host keeps them ([API keys](#api-keys)).
   - `TNode` rows are execution records. They and their relations are written to the volatile trace store instead of the primary database, and aren't loaded back into memory at startup; read past runs with `services.traceStore`.
 
 ---

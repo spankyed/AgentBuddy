@@ -18,7 +18,7 @@ export async function action(
   _flowId: string,
 ) {
   // If onboarding is already complete, do nothing
-  if (services.appData.hasOnboarded()) {
+  if (services.onboarding.isComplete()) {
     return { success: true, skipped: true };
   }
 

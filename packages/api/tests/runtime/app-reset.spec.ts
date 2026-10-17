@@ -64,7 +64,7 @@ describe('services.appData.reset()', () => {
     expect(appState.get()).toMatchObject({ hasOnboarded: false, version: getAppVersion() });
 
     // The user onboards, changes settings and deletes a flow; the data records an older version
-    services.appData.completeOnboarding();
+    services.onboarding.complete();
     appState.update({ version: '0.0.1' });
     _settingsAdmin().set({ kind: 'app' }, ['personal', 'name'], 'Ada');
     expect(storedSettings()).not.toEqual(fresh.settings);
@@ -77,7 +77,7 @@ describe('services.appData.reset()', () => {
     expect(flows()).toEqual(fresh.flows);
     expect(storedSettings()).toEqual(fresh.settings);
     expect(appState.get()).toMatchObject({ hasOnboarded: false, version: getAppVersion() });
-    expect(services.appData.hasOnboarded()).toBe(false);
+    expect(services.onboarding.isComplete()).toBe(false);
   });
 
   // Without this the Database plugin refreshed itself and nothing else did, so a reset left Notes, Threads
@@ -116,13 +116,13 @@ it('restores unfinished onboarding and resumes it only after an explicit restart
     untypedTx(id).put('context', progress);
     const backup = await services.appData.exportBackup(dataDir, 'unfinished-onboarding', ['lmdb']);
     untypedTx(id).put('context', { onboarding: { step: 'changed after backup' } });
-    services.appData.completeOnboarding();
+    services.onboarding.complete();
 
     await services.appData.importBackup(backup);
     const brain = bus.system.get('default-setup/brain');
     expect(brain.getSnapshot().matches('stopped')).toBe(true);
     expect(context()).toEqual(progress);
-    expect(services.appData.hasOnboarded()).toBe(false);
+    expect(services.onboarding.isComplete()).toBe(false);
     rootEvents.emitPackClientConnected('default-setup');
     expect(opened).toHaveLength(1);
 

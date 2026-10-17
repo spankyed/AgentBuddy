@@ -6,6 +6,7 @@ import type { EarsEngine } from '@apackdev/ears';
 import type { LmdbStore } from '@apackdev/ears/lmdb';
 import type { PackRegistry } from '../packs/registry.ts';
 import { createAppData } from './app-data.ts';
+import { createOnboarding } from './onboarding.ts';
 import { HOST } from '../refs.ts';
 import { filesystem } from './filesystem.ts';
 import { createSettingsService } from './settings.ts';
@@ -41,6 +42,7 @@ export function createHostRuntime({ transport, appVersion, store, engine, packs 
     appVersion,
     redaction: secretRedaction,
     services: {
+      onboarding: createOnboarding(engine.query),
       // The service replaces the data; naming what the app is told about it belongs here, with the wiring
       appData: createAppData({ store, engine: engine.admin, registry: packs, settings,
         onReplaced: () => transport.rootEvents.emitIncoming({ to: HOST.bus, event: { type: 'DATA_REPLACED' } }),

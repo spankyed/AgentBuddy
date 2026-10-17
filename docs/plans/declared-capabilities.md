@@ -1,7 +1,8 @@
 # Declare the APIs a pack consumes
 
-Status: planned after settings and complete discovery, as ordered by
-[manifest maturity](manifest-maturity.md). This is an API dependency contract, not a security sandbox.
+Status: A1 started using the implemented settings/catalog foundation. Remaining discovery/build ownership
+work stays active in the [owning goal](../goals/goal-settings-and-pack-contracts.md); it blocks only
+the slices that consume its missing guarantees. This is an API dependency contract, not a security sandbox.
 
 ## Problem
 
@@ -36,22 +37,23 @@ policy are separate checks; neither replaces the other. Host app settings follow
 The settings ownership review found a supported administration path that the inventory must resolve:
 `_createPackServices()` forwards `AppDataService` without caller scoping, including whole-database
 `reset()` and `importBackup()`. Default-setup's Database feature consumes both. These operations can
-replace restricted settings without using the targeted settings writer. Inventory onboarding reads and
-completion separately from backup inspection/export and destructive whole-data operations. Prototype an
+replace restricted settings without using the targeted settings writer. The first implementation slice
+separates onboarding into `services.onboarding`; appData now holds only administration. Prototype an
 explicit administration consumption/grant contract using that real Database consumer before selecting
 syntax. Ordinary settings access must not implicitly grant whole-data administration; types and runtime
 facades must agree. This addresses supported API authority, not arbitrary Node execution confinement.
 
 ## Delivery
 
-### Current-code inventory (2026-10-12)
+### Current-code inventory (2026-10-12, interface split updated 2026-10-17)
 
 The following findings are from the working settings candidate, rather than the earlier survey:
 
 | Supported route | Current behavior | Required contract |
 |---|---|---|
 | Generated `services.settings` and settings handles | Bound at accepted registration; revoked on unload; target mutation policy checked | Retain caller identity and lifetime. Consumption declarations must not replace target policy. |
-| Generated `services.appData` | All methods forwarded through the ambient host delegate | Separate onboarding operations from database administration in the public interface and declarations. |
+| Generated `services.appData` | Four administration methods forwarded through the ambient host delegate | Require explicit administration consumption; preserve reset/import effect and failure semantics. |
+| Generated `services.onboarding` | Separate `isComplete`/`complete` interface over host-owned AppState; in-memory host/harness share the contract | Allow selection without exposing appData; bind its accepted caller/runtime lifetime with the other mediated services. |
 | Database feature | Calls `exportBackup`, `importBackup`, `readBackupSummary`, `reset` | Use this actual consumer to prove declared administration access, denial before effects and the actual failure/commit behavior. |
 | Authored onboarding actions | `check-onboarding` and `ignore-onboarding-message` read completion; `onboarding-helpers` completes it | This lifecycle API must remain usable without granting backup/import/reset. Do not manufacture an assistant feature. |
 | Other host services | Generated `Services` includes every `HostServices` member | Choose an intentional SDK baseline and require explicit consumption for the remainder; generate types and runtime members from the same selection. |
@@ -91,6 +93,21 @@ read/write grants nor silently removes documented EARS affordances. Do not block
 on a speculative sandbox, or claim they close direct Node or ambient runtime access.
 
 ## Bounded implementation checkpoints
+
+### First implementation slice: onboarding versus data administration
+
+The current-code audit confirms that only the three onboarding action sources need completion state;
+Database consumes reset/export/import/backup inspection. Split the supported interfaces before selecting
+consumption syntax: `services.onboarding.isComplete()` / `.complete()` represent host lifecycle state,
+while `services.appData` retains whole-data administration. The onboarding service belongs to the host
+and uses its owning engine's existing AppState row, not a pack feature or preference group. Migrate the
+in-memory host, harness, authored actions, fixtures and public reports with the split; do not keep old
+methods on appData. This establishes API granularity, not permission enforcement. A1 still needs the
+combined dependency/lifetime/action prototype before its consumption declaration is settled.
+
+Validate the owning-engine boundary, onboarding reset/restore behavior, and the generated service
+surface using existing focused suites. Keep the full chain for the converged consumption checkpoint;
+this slice must not trigger another external authoring/release diagnostic loop.
 
 Rechecked the service proxy, `_createPackServices`, SDK `generateServices` and Database consumer on
 2026-10-16. The ambient runtime union, generated dependency intersections and settings-only binding

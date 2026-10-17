@@ -218,7 +218,7 @@ holds both, and was the first spec for any `code` frontend machine.
 
 ## Services
 
-Service aggregation generated in `__generated__/services.ts`. Feature services are declared in `apack.json` `features.<id>.services` and live in `src/features/<name>/be/services/`; the pack declares no pack-level `extensions.services`. Systems and actions call them through `services.<key>`, next to the host's (`logger`, `emitter`, `repository`, `appData`, `traceStore`, `inference`, `secrets`, `filesystem`):
+Service aggregation generated in `__generated__/services.ts`. Feature services are declared in `apack.json` `features.<id>.services` and live in `src/features/<name>/be/services/`; the pack declares no pack-level `extensions.services`. Systems and actions call them through `services.<key>`, next to the host's (`logger`, `emitter`, `repository`, `onboarding`, `appData`, `traceStore`, `inference`, `secrets`, `filesystem`):
 
 `chat`, `artifact`, `threads`, `cli`, `codex`, `library`, `action`, `prompt`, `brain`, `scheduler`, `database`
 
@@ -242,7 +242,7 @@ Reset removes an override; an explicit value equal to a default remains a choice
 The pack uses owner-bound handles from `#generated/settings`; app-wide replacement and backup
 coordination belong to host services. Forms receive correlated save/refusal results; the host settings system
 publishes feature change notifications after accepted writes. Onboarding completion is lifecycle
-state accessed through `services.appData.hasOnboarded()`/`completeOnboarding()`, not an assistant preference. Which tabs show and the plugin last open are the host's, in `AppState`. The host keeps TNode out of persistence. API keys aren't entities: Settings → Secrets manages them through the host's `secrets` procedures and `services.secrets`, and CLI path overrides live in the code plugin's settings (`features['default-setup/code'].cliPaths`), which the code feature's CLI resolution reads (`features/code/be/utils/resolve-cli.ts`: `resolveForService`, `testCli`).
+state accessed through `services.onboarding.isComplete()`/`complete()`, not an assistant preference. Which tabs show and the plugin last open are the host's, in `AppState`. The host keeps TNode out of persistence. API keys aren't entities: Settings → Secrets manages them through the host's `secrets` procedures and `services.secrets`, and CLI path overrides live in the code plugin's settings (`features['default-setup/code'].cliPaths`), which the code feature's CLI resolution reads (`features/code/be/utils/resolve-cli.ts`: `resolveForService`, `testCli`).
 
 Import `EARS` from `#generated/ears` by default. The SDK's `EARS` (`@apackdev/sdk`) is fine for `EntityId`, SDK-owned constants and shared EARS types (build facets use it), but its `EARS.Entity` type is open: annotate with it only when any entity name is intended, as the create step's `entityTypeTarget` does (see `packages/apack-sdk/TYPED-EARS.md`).
 

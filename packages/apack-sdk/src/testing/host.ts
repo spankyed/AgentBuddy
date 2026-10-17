@@ -11,7 +11,7 @@ import type { EarsEngine } from '@apackdev/ears';
 import type { EARS } from '../types/entities.ts';
 import type { LogEvent, SystemErrorEvent } from '../logger/index.ts';
 import type { TraceStore } from '../services/trace-store.ts';
-import type { AppDataService } from '../services/app-data.ts';
+import type { OnboardingService } from '../services/onboarding.ts';
 import type { SecretMetadata, SecretProvider, SecretsService } from '../services/secrets.ts';
 import { _secretRules } from '../services/secrets-rules.ts';
 
@@ -68,12 +68,9 @@ export function addTestSecret(provider: SecretProvider, label: string): SecretMe
 /** Whether the test app's user finished onboarding, unless the test app is given where the app keeps it */
 let onboarded = false;
 
-/** Where the test app keeps whether the user finished onboarding */
-export type TestOnboarding = Pick<AppDataService, 'hasOnboarded' | 'completeOnboarding'>;
-
-const memoryOnboarding: TestOnboarding = {
-  hasOnboarded: () => onboarded,
-  completeOnboarding: () => { onboarded = true; },
+const memoryOnboarding: OnboardingService = {
+  isComplete: () => onboarded,
+  complete: () => { onboarded = true; },
 };
 
 /** @internal Empties the test host's stored keys and starts onboarding over */
@@ -156,8 +153,8 @@ export interface TestRuntimeOptions {
   packs?: PackRegistryView;
   /** `getAppVersion()`; `0.0.0-test` by default */
   appVersion?: string;
-  /** Backs `appData.hasOnboarded` and `completeOnboarding`; in memory by default, emptied with the database */
-  onboarding?: TestOnboarding;
+  /** Backs `onboarding.isComplete` and `complete`; in memory by default, emptied with the database */
+  onboarding?: OnboardingService;
   /** Backs `services.settings`; without one, reading or writing settings says to run on the harness */
   settings?: SettingsAdmin;
 }
@@ -174,10 +171,9 @@ export function bindTestRuntime({ engine, resetData, packs, appVersion = '0.0.0-
     packs: testPacksView(packs),
     appVersion,
     services: {
+      onboarding,
       appData: {
         reset: async () => { resetData(); },
-        hasOnboarded: () => onboarding.hasOnboarded(),
-        completeOnboarding: () => onboarding.completeOnboarding(),
         exportBackup: unsupported('exportBackup'),
         importBackup: unsupported('importBackup'),
         readBackupSummary: async () => null,

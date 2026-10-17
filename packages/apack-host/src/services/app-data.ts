@@ -1,4 +1,4 @@
-// services.appData: reset, back up and restore the app's stored data, and the user's onboarding (AppState)
+// services.appData: reset, back up and restore the app's stored data
 import type { AppDataService, BackupDatabase, SettingsAdmin } from '@apackdev/sdk/services';
 import type { EarsAdmin } from '@apackdev/ears';
 import type { LmdbStore } from '@apackdev/ears/lmdb';
@@ -10,7 +10,6 @@ import type { PackRegistry } from '../packs/registry.ts';
 import { startPacks } from '../packs/runtime/start.ts';
 import { runAppMigrations, runPackMigrations } from '../migrations/index.ts';
 import { createSettingsBackupValidator } from '../features/settings/be/backup.ts';
-import { appState } from '../app-state/index.ts';
 
 /**
  * `onReplaced` runs after either operation has rebuilt the world, and after a failed one too: a failed import
@@ -43,8 +42,6 @@ export function createAppData({ store, engine, registry, settings, onReplaced }:
         startPacks(registry);
       });
     },
-    hasOnboarded: () => appState.get().hasOnboarded,
-    completeOnboarding: () => appState.update({ hasOnboarded: true }),
     exportBackup: (targetPath, name, databases) =>
       exportDatabase(store, targetPath, { name, databases, mediaPath: _getMediaPath(), appVersion: getAppVersion() }),
     async importBackup(backupPath, options) {

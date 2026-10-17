@@ -9,5 +9,5 @@ export const meta: ActionMeta = {
 };
 
 export async function action(_params: Record<string, unknown>, services: Services, _z: Z, _flowId: string) {
-  return { needed: !services.appData.hasOnboarded() };
+  return { needed: !services.onboarding.isComplete() };
 }
