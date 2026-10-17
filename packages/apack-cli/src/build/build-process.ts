@@ -32,7 +32,7 @@ export interface PackBuilder {
   close(): Promise<void>;
 }
 
-/** One pack owns its compiler copy; every build gets a fresh process and live input checks. */
+/** A pack retains its accepted compiler and frontend until a replacement is ready. */
 export function createPackBuilder(root: string): PackBuilder {
   interface Generation { compiler: CompilerInstallation; frontend?: PackFrontend; configuration?: string }
   let current: Generation | undefined;
@@ -41,36 +41,49 @@ export function createPackBuilder(root: string): PackBuilder {
   let active = Promise.resolve();
   let stopping: Promise<void> | undefined;
   const stopped = new AbortController();
+  const enqueue = <T>(operation: () => Promise<T>): Promise<T> => {
+    if (stopped.signal.aborted) return Promise.reject(new Error('Pack builder is closed'));
+    const result = active.then(() => {
+      stopped.signal.throwIfAborted();
+      return operation();
+    });
+    // A failed operation must not prevent a later build or cleanup.
+    active = result.then(() => {}, () => {});
+    return result;
+  };
   const dispose = async (generation: Generation) => {
     await generation.frontend?.close();
     await generation.compiler.dispose();
     owned.delete(generation);
   };
-  const frontend = async (generation: Generation, signal: AbortSignal) => {
+  const ensureFrontend = async (generation: Generation, signal: AbortSignal) => {
     const entry = findFEEntry(root);
     const configuration = readPackDevServerInputs(root);
     if (!entry) {
       await generation.frontend?.close();
       generation.frontend = undefined;
-    } else if (!generation.frontend?.alive()) {
-      await generation.frontend?.close();
-      generation.frontend = await startPackFrontend(root, generation.compiler, signal);
-      if (readPackDevServerInputs(root) !== configuration) {
-        await generation.frontend.close();
-        generation.frontend = undefined;
-        throw new Error('Pack frontend configuration changed during startup; build the pack again');
-      }
-      generation.configuration = configuration;
-    } else if (generation.configuration !== configuration) {
-      throw new Error('Pack frontend configuration changed; build the pack before serving it again');
+      return;
     }
-    return generation.frontend?.address;
+    if (generation.frontend?.alive()) {
+      if (generation.configuration !== configuration) {
+        throw new Error('Pack frontend configuration changed; build the pack before serving it again');
+      }
+      return generation.frontend.address;
+    }
+    await generation.frontend?.close();
+    generation.frontend = await startPackFrontend(root, generation.compiler, signal);
+    if (readPackDevServerInputs(root) !== configuration) {
+      await generation.frontend.close();
+      generation.frontend = undefined;
+      throw new Error('Pack frontend configuration changed during startup; build the pack again');
+    }
+    generation.configuration = configuration;
+    return generation.frontend.address;
   };
   return {
     build({ args = [], onInputs, signal }: PackBuildOptions = {}) {
-      if (stopped.signal.aborted) return Promise.reject(new Error('Pack builder is closed'));
       const options = { args: [...args], onInputs, signal: signal ? AbortSignal.any([signal, stopped.signal]) : stopped.signal };
-      const result = active.then(async () => {
+      return enqueue(async () => {
         options.signal.throwIfAborted();
         ensureCheckoutPackages(root);
         const cli = cliPackageDirectory();
@@ -79,13 +92,13 @@ export function createPackBuilder(root: string): PackBuilder {
         const configuration = frontendChanged ? readPackDevServerInputs(root) : undefined;
         const reusable = current?.compiler.isCurrent(directory, { cwd: root })
           && (!current.frontend || current.configuration === configuration);
-        const candidate: Generation = reusable ? current!
+        const candidate: Generation = current && reusable ? current
           : { compiler: await captureCompilerInstallation(directory, { cwd: root }) };
         owned.add(candidate);
         try {
           options.signal.throwIfAborted();
           // A replacement must be ready before its backend can replace the accepted build.
-          if (frontendChanged && candidate !== current && current?.frontend) await frontend(candidate, options.signal);
+          if (frontendChanged && candidate !== current && current?.frontend) await ensureFrontend(candidate, options.signal);
           const lock = await holdPackBuildLock(root, {
             packId: readValidManifest(root).id, what: ['apack pack build', ...args].join(' '), signal: options.signal,
             onWait: holder => console.log(`Waiting for ${holder} to finish...`),
@@ -94,7 +107,7 @@ export function createPackBuilder(root: string): PackBuilder {
           finally { lock.release(); }
           if (frontendChanged) {
             const before = current?.frontend?.address;
-            const address = await frontend(candidate, options.signal);
+            const address = await ensureFrontend(candidate, options.signal);
             if (address !== before) frontendChanged(address);
           }
           const previous = current;
@@ -105,21 +118,15 @@ export function createPackBuilder(root: string): PackBuilder {
           throw error;
         }
       });
-      active = result.catch(() => {});
-      return result;
     },
     serveFrontend(changed) {
-      if (stopped.signal.aborted) return Promise.reject(new Error('Pack builder is closed'));
-      const result = active.then(async () => {
-        stopped.signal.throwIfAborted();
+      return enqueue(async () => {
         if (!current) throw new Error('Build the pack before starting its frontend');
-        const address = await frontend(current, stopped.signal);
+        const address = await ensureFrontend(current, stopped.signal);
         changed(address);
         frontendChanged = changed;
         return address;
       });
-      active = result.then(() => {}, () => {});
-      return result;
     },
     close() {
       if (!stopping) {
