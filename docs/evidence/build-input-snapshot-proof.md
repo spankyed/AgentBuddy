@@ -1363,6 +1363,8 @@ remain required. Available disk before these runs is 83GiB; no broad suite was l
 
 ## Generic acceptance repair
 
+Source checkpoint: `f8fbbedf5`.
+
 Reviewed candidate `d5845c96f` against current source and the three supplied logs. Applied only its
 generic watcher mock, build-input declarations and sealed fixture repairs; research work and its
 timeout exceptions remain untouched. Strict admission remains in place. Missing, changed and extra

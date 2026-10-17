@@ -350,7 +350,7 @@ and cursor reads now apply the same source exclusions as module resolution; expl
 reads retain their full observations. A small case fails before the fix and passes afterward. The actual
 worker now proves fresh publication, archive acceptance and unchanged repeat-build reuse in 61.51s.
 See [fresh directory evidence](../evidence/build-input-snapshot-proof.md#fresh-publication-directory-namespace-repair).
-Generic acceptance repair: adapted the generic portions of `d5845c96f` without merging research work.
+Generic acceptance repair `f8fbbedf5`: adapted the generic portions of `d5845c96f` without merging research work.
 The watcher mock now supplies the current factory; build stamps declare the two transitive input
 modules; synthetic packs include required frontend/content files before sealing. The content compiler
 failure fixture no longer declares an unrelated nonexistent source. All 155 affected fast checks pass.
