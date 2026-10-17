@@ -28,7 +28,7 @@ import { overrideKey, sizeOf, specFilesUnder, timeoutOverrides, type TimeoutOver
  */
 const TIMEOUT_EXCEPTIONS: Record<string, string> = {
   'packages/apack-cli/tests/build/compiler-native-libraries.integration.spec.ts > watches external Vite native changes and repairs a failed generation through newly discovered inputs':
-    'Initial backend/Vite publication, native dependency refusal and real watched repair are sequential. The measured run reaches repair at 55.13 seconds and continues compiling beyond its old 20-second repair wait (86.17 seconds including cleanup). This scenario has 120 seconds and a 40-second repair bound; incumbent, native values and retirement assertions remain unchanged.',
+    'Initial backend/Vite publication, native dependency refusal and watched repair are sequential. Hosted macOS run 39079072090 reaches its first native edit at 69.65 seconds, starts the rebuild and emits the expected missing-library refusal after the former 20-second console wait expires. Await each observed build directly under the complete scenario\'s 180-second budget; separate 20-second bounds still detect missing watch events, and every incumbent/value/retirement assertion remains.',
   'packages/apack-cli/tests/commands/scaffold.integration.spec.ts > adds a step (declared, shipped in build/steps.build.mjs) and a service that build':
     'Real step/service scaffolding, compiler publication and authored-pack typechecking take 56.93 seconds alone and exceeded 60 seconds in the two-worker pool. This complete authoring scenario has a 120-second budget; its assertions are unchanged.',
   'packages/apack-cli/tests/build/frontend-resources.integration.spec.ts > watches initially empty external Tailwind content through nested directory links':

@@ -2831,3 +2831,24 @@ The macOS dispatch accepts `compiler_macos_test` to select one integration case 
 The pattern travels through an environment variable and quoted argv, not shell-code interpolation.
 An empty pattern retains the full focused acceptance job. Existing run `39079072090` continues on
 `6e19d17b8`; do not cancel or replace it to test this additional case.
+
+### First hosted macOS result and watch completion boundary (2026-10-17)
+
+Run `39079072090` is terminal failure on `6e19d17b8`, macOS 26.6.2 (25G83), ARM64, Node 23.11.1,
+Apple clang 21.0.0. All 76 selected unit checks pass. Native integration passes four real default-loader
+cases and independent Vite ownership, then stops at the watch scenario; later cases were not executed.
+Preserved log: `/private/tmp/apack-hosted-macos-39079072090-job.log`.
+
+The watch scenario reaches initial backend readiness at 54.10 seconds, frontend readiness at 61.74
+seconds and the timestamp-only check at 69.65 seconds. After the native edit, the log shows a new
+`packages:ensure` and subsequently the expected missing-helper `ERR_DLOPEN_FAILED`. Its separate
+20-second console-observation wait expires first; cleanup suppresses the eventual watch error log.
+This proves event detection and forward progress, not a missed rebuild or passing recovery.
+
+The correction observes the actual `builder.build` calls and awaits their rejection/resolution,
+then checks the existing refusal/publication assertions. Missing watch events still fail within 20
+seconds; the complete initial/refused/repaired generation scenario has a single 180-second budget,
+instead of competing compilation waits. Incumbent retention, no native initialization, exact native
+values and old-process retirement remain required. No production source or suite-wide deadline changes.
+CLI types, correctness lint, diff checks and all 42 timeout-policy checks pass; hosted repair acceptance
+remains pending. No native runtime was executed locally.

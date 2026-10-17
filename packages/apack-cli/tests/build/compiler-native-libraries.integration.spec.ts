@@ -234,6 +234,7 @@ it.runIf(process.platform === 'darwin')('watches external Vite native changes an
   const errors = vi.spyOn(console, 'error').mockImplementation(() => {});
   const addresses: { port: number; pid: number }[] = [];
   const publications = vi.fn(async () => {});
+  const builds = vi.spyOn(builder, 'build');
   const current = vi.spyOn(builder, 'isFrontendCurrent');
   const proof = path.join(fixture.root, 'watch-native-proof.jsonl');
   const preload = path.join(fixture.root, 'vite-preload.cjs');
@@ -268,9 +269,13 @@ it.runIf(process.platform === 'darwin')('watches external Vite native changes an
     fixture.buildLibrary(helper, 'int helper_value(void) { return 22; }', '@loader_path/new/libhelper.dylib');
     fixture.buildLibrary(replacement, 'extern int helper_value(void); int native_value(void) { return helper_value(); }',
       '@loader_path/../lib/libvalue.dylib', [helper]);
+    builds.mockClear();
     fs.rmSync(fixture.marker);
     fs.renameSync(replacement, fixture.library);
-    await vi.waitFor(() => expect(errors).toHaveBeenCalledWith(expect.stringContaining('Build/reload failed')), { timeout: 20_000 });
+    await vi.waitFor(() => expect(builds).toHaveBeenCalled(), { timeout: 20_000 });
+    // Wait for the detected rebuild itself, rather than timing compilation through a console spy.
+    await expect(builds.mock.results[0]!.value).rejects.toThrow('Pack frontend exited before readiness');
+    expect(errors).toHaveBeenCalledWith(expect.stringContaining('Build/reload failed'));
     checkpoint('missing dependency refused');
     expect(fs.existsSync(fixture.marker)).toBe(false);
     expect(addresses).toHaveLength(1);
@@ -279,9 +284,12 @@ it.runIf(process.platform === 'darwin')('watches external Vite native changes an
     // Repair only the new dependency, outside the authored pack and the incumbent's inputs.
     const repaired = path.join(fixture.native, 'lib/new/libhelper.dylib');
     fs.mkdirSync(path.dirname(repaired), { recursive: true });
+    builds.mockClear();
     fs.copyFileSync(helper, repaired);
     checkpoint('new dependency repaired');
-    await vi.waitFor(() => expect(publications).toHaveBeenCalledTimes(1), { timeout: 40_000 });
+    await vi.waitFor(() => expect(builds).toHaveBeenCalled(), { timeout: 20_000 });
+    await expect(builds.mock.results[0]!.value).resolves.toBeUndefined();
+    await vi.waitFor(() => expect(publications).toHaveBeenCalledTimes(1), { timeout: 2_000 });
     checkpoint('repair published');
     expect(addresses).toHaveLength(2);
     expect(() => process.kill(addresses[0]!.pid, 0)).toThrow();
@@ -297,7 +305,7 @@ it.runIf(process.platform === 'darwin')('watches external Vite native changes an
     try { await watcher?.close(); await builder.close(); }
     finally { errors.mockRestore(); fs.rmSync(fixture.root, { recursive: true, force: true }); }
   }
-}, 120_000);
+}, 180_000);
 
 it.runIf(process.platform === 'darwin').each(['preload', 'thread'] as const)(
   'owns retained Vite native %s inputs while authored Vue sources stay live', async site => {
