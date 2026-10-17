@@ -22,6 +22,11 @@ export function createNativeInputReader(view: NativeInputView, initialPackages: 
   let pending: PendingInputs;
   let primed = false;
 
+  function includePending() {
+    const locations = new Map(pending.locations.map(location => [JSON.stringify(location), location]));
+    include({ ...pending, locations: [...locations.values()] });
+  }
+
   function location(file: string, kind: 'file' | 'directory' | 'entries') {
     const value = view.captureLocation(file, kind);
     if (value) pending.locations.push(value);
@@ -201,7 +206,7 @@ export function createNativeInputReader(view: NativeInputView, initialPackages: 
       scope(path.dirname(file));
       const source = ts.createSourceFile(file, contents.toString('utf8'), ts.ScriptTarget.Latest, false);
       for (const directory of compilerGlobDirectories(source)) subtree(directory);
-      include(pending);
+      includePending();
     },
     prepare(specifier: string, importer: string) {
       pending = { files: [], locations: [], links: [] };
@@ -212,7 +217,7 @@ export function createNativeInputReader(view: NativeInputView, initialPackages: 
         }
       }
       request(specifier, importer);
-      include(pending);
+      includePending();
     },
     projectMetadata(file: string, bytes: Buffer, readPath: (file: string) => string): Buffer {
       const config = configFiles.has(file), pkg = path.basename(file) === 'package.json';
