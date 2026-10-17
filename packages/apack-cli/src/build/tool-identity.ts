@@ -12,12 +12,12 @@ function packageRoot(entry: string): string {
     if (parent === root) throw new Error(`Cannot locate build tool package for ${entry}`);
     root = parent;
   }
-  return root;
+  return fs.realpathSync.native(root);
 }
 
 /** Complete implementation scopes, rather than a previous build's observed imports. */
 export function buildToolHash(moduleUrl = import.meta.url): string {
-  const entry = fileURLToPath(moduleUrl);
+  const entry = fs.realpathSync.native(fileURLToPath(moduleUrl));
   const root = cliPackageDirectory(moduleUrl);
   const source = path.relative(root, entry).split(path.sep)[0] === 'src';
   const scopes: Array<{ name: string; root: string; directory: string }> = [

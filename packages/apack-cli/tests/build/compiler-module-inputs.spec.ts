@@ -91,7 +91,7 @@ it('refuses a resolution link changing during a single discovery', () => {
   const { pack, write } = fixture();
   write('first.d.ts', 'export type Value = string;');
   write('second.d.ts', 'export type Value = string;');
-  const link = path.join(pack, '../contract.d.ts');
+  const link = path.join(fs.realpathSync.native(path.dirname(pack)), 'contract.d.ts');
   fs.symlinkSync('first.d.ts', link);
   let observations = 0;
   expect(() => readCompilerModuleInputs(pack, file => {
@@ -108,7 +108,7 @@ it('refuses a lookup parent retargeted during discovery', () => {
   } }));
   write('first/contract.d.ts', 'export type Value = string;');
   write('second/contract.d.ts', 'export type Value = string;');
-  const link = path.join(pack, '../shared');
+  const link = path.join(fs.realpathSync.native(path.dirname(pack)), 'shared');
   fs.symlinkSync('first', link, 'dir');
   let observations = 0;
   expect(() => readCompilerModuleInputs(pack, file => {
@@ -181,7 +181,7 @@ it('keeps source input identity when the pack root is captured at a different de
   write('pack/tsconfig.json', JSON.stringify({ compilerOptions: { noLib: true, types: [], module: 'ESNext' } }));
   write('pack/src/index.ts', 'export interface Value { title: string }');
   const source = readCompilerModuleInputs(pack).hash;
-  const temporary = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'apack-owned-modules-')));
+  const temporary = fs.realpathSync.native(fs.mkdtempSync(path.join(os.tmpdir(), 'apack-owned-modules-')));
   roots.push(temporary);
   const captured = path.join(temporary, 'nested/tree/pack');
   fs.cpSync(pack, captured, { recursive: true });
@@ -203,11 +203,11 @@ it('keeps discovered package ordering relative to the source root across a captu
     write(`${directory}/package.json`, JSON.stringify({ name, types: 'index.d.ts' }));
     write(`${directory}/index.d.ts`, `export interface ${type} { title: string }`);
   }
-  const context = fs.realpathSync(path.dirname(pack)), sourceRoot = path.join(context, 'a-pack');
+  const context = fs.realpathSync.native(path.dirname(pack)), sourceRoot = path.join(context, 'a-pack');
   fs.renameSync(pack, sourceRoot);
   const source = readCompilerModuleInputs(sourceRoot);
   expect(source.packageDirectories).toEqual([path.join(context, 'node_modules/outside'), path.join(sourceRoot, 'node_modules/inside')]);
-  const temporary = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'apack-owned-package-order-')));
+  const temporary = fs.realpathSync.native(fs.mkdtempSync(path.join(os.tmpdir(), 'apack-owned-package-order-')));
   roots.push(temporary);
   const capturedContext = path.join(temporary, 'nested/tree/context');
   fs.cpSync(context, capturedContext, { recursive: true });
@@ -223,8 +223,8 @@ it('keeps captured compiler input identity stable across different private direc
   write('first/contract.d.ts', 'export type Value = string;');
   write('second/contract.d.ts', 'export type Value = string;');
   const capture = (directory: string) => {
-    const captured = fs.realpathSync(path.join(pack, '..', directory));
-    const source = path.join(fs.realpathSync(path.dirname(pack)), 'original');
+    const captured = fs.realpathSync.native(path.join(pack, '..', directory));
+    const source = path.join(fs.realpathSync.native(path.dirname(pack)), 'original');
     const link = path.join(pack, '../contract.d.ts');
     fs.rmSync(link, { force: true });
     fs.symlinkSync(path.join(captured, 'contract.d.ts'), link);
@@ -243,8 +243,8 @@ it('refuses different captured and live bytes claimed under one source identity'
   write('original/contract.d.ts', 'export type Value = number;');
   write('pack/src/index.ts', 'import "../../captured/contract.d.ts"; import "../../original/contract.d.ts";');
   setCompilerPaths(pack, [{
-    captured: fs.realpathSync(path.join(pack, '../captured')),
-    source: fs.realpathSync(path.join(pack, '../original')),
+    captured: fs.realpathSync.native(path.join(pack, '../captured')),
+    source: fs.realpathSync.native(path.join(pack, '../original')),
   }]);
   expect(hash).toThrow('Conflicting compiler input observation');
 });
@@ -258,7 +258,7 @@ it('discovers scoped package owners through workspace links without loading thei
   fs.mkdirSync(path.join(pack, 'node_modules/@scope'), { recursive: true });
   const library = path.join(pack, '../library');
   fs.symlinkSync(library, path.join(pack, 'node_modules/@scope/library'), 'dir');
-  expect(readCompilerModuleInputs(pack).packageDirectories).toContain(fs.realpathSync(library));
+  expect(readCompilerModuleInputs(pack).packageDirectories).toContain(fs.realpathSync.native(library));
 });
 
 it.each(['', 'setup', 'lang="ts"', 'setup lang="tsx"'])('follows imports in Vue script %s without evaluating them', attributes => {

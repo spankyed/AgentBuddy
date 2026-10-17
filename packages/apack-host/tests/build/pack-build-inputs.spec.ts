@@ -13,7 +13,7 @@ import { writeInstalledPackFixture } from '../packs/runtime/build-fixture.ts';
 const roots: string[] = [];
 afterEach(() => roots.splice(0).forEach(root => fs.rmSync(root, { recursive: true, force: true })));
 function fixture() {
-  const root = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'apack-build-inputs-record-')));
+  const root = fs.realpathSync.native(fs.mkdtempSync(path.join(os.tmpdir(), 'apack-build-inputs-record-')));
   roots.push(root);
   const source = path.join(root, 'source.txt');
   fs.writeFileSync(source, 'FIRST');

@@ -144,7 +144,7 @@ it('uses the captured compiler and retains unchanged build/cache identity on rep
   const mkdtemp = fs.mkdtempSync;
   vi.spyOn(fs, 'mkdtempSync').mockImplementation(prefix => {
     const directory = mkdtemp(prefix);
-    if (String(prefix).includes('apack-build-inputs-')) workspaces.push(directory);
+    if (String(prefix).includes('apack-build-inputs-')) workspaces.push(fs.realpathSync.native(directory));
     return directory;
   });
   vi.spyOn(process, 'cwd').mockReturnValue(root);
@@ -153,8 +153,8 @@ it('uses the captured compiler and retains unchanged build/cache identity on rep
   expect(readPackBuild(path.join(root, 'dist')).snapshot.manifest.id).toBe('fresh-worker');
   expect(fs.existsSync(path.join(root, 'dist/runtime/fe.js'))).toBe(false);
   const content = JSON.parse(fs.readFileSync(path.join(root, 'dist/runtime/content/rows.content.json'), 'utf8'));
-  expect(content.records[0].source).toBe(path.join(fs.realpathSync(root), 'src/compiler.cjs'));
-  expect(content.records[0].directory).toBe(path.join(fs.realpathSync(root), 'src'));
+  expect(content.records[0].source).toBe(path.join(fs.realpathSync.native(root), 'src/compiler.cjs'));
+  expect(content.records[0].directory).toBe(path.join(fs.realpathSync.native(root), 'src'));
   const inputs = readPackBuildInputs(path.join(root, 'dist'));
   expect(inputs.options).toEqual(['--skip-fe']);
   expect(inputs.observations.length).toBeGreaterThan(0);
@@ -298,8 +298,8 @@ describe('native compiler startup', () => {
     expect(output.records[0].name).toBe('OWNED:JSX:PRELOADED:IMPORTED:LOADED');
     expect(output.records[0].requireSource).toBe(fs.realpathSync(preload));
     expect(output.records[0].importSource).toBe(pathToFileURL(fs.realpathSync(imported)).href);
-    expect(output.records[0].source).toBe(path.join(fs.realpathSync(root), 'src/compiler.tsx'));
-    expect(output.records[0].origin).toBe(pathToFileURL(path.join(fs.realpathSync(root), 'src/compiler.tsx')).href + '?tsx-namespace=apack-build-1');
+    expect(output.records[0].source).toBe(path.join(fs.realpathSync.native(root), 'src/compiler.tsx'));
+    expect(output.records[0].origin).toBe(pathToFileURL(path.join(fs.realpathSync.native(root), 'src/compiler.tsx')).href + '?tsx-namespace=apack-build-1');
     expect(fs.readFileSync(trace, 'utf8').trim().split('\n')).toEqual(['require:0', 'require:1', 'loader:1', 'import:0']);
     const revision = readPackBuild(path.join(root, 'dist')).revision;
     fs.writeFileSync(payload, 'UPDATED');

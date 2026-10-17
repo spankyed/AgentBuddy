@@ -32,12 +32,13 @@ export function readCompilerModuleInputs(root: string, observe?: BuildInputObser
   observations: ReturnType<typeof createCompilerFileView>['observations'];
   assertCurrent(): void;
 } {
-  const realRoot = fs.realpathSync(root);
+  const realRoot = fs.realpathSync.native(root);
   const compilerPaths = readCompilerInstallationInputs()?.paths ?? [];
   const sourceRoot = compilerSourcePath(realRoot, compilerPaths);
   const relative = (file: string) => path.relative(sourceRoot, compilerSourcePath(file, compilerPaths)).split(path.sep).join('/');
   const view = captured ?? createPackCompilerInputView(root, { paths: compilerPaths, observe });
   if (view.observations().root !== sourceRoot) throw new Error('Compiler input view belongs to another pack');
+  root = realRoot;
   const excluded = view.excluded;
   const readDirectory: ts.System['readDirectory'] = (...args) => ts.sys.readDirectory(...args);
   const fileSystem: CompilerFileSystem = { ...view.fileSystem, readDirectory: (...args) => view.readGlob(readDirectory, ...args) };

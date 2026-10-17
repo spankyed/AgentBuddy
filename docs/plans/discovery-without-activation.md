@@ -41,6 +41,13 @@ default-fork preparation and drive use the common record; see the
 `caf57cb0e` repairs compiler-specific generation-cache ownership without weakening generated-byte
 validation. These implemented owners must not be scheduled again as new designs.
 
+Compiler identity uses native canonical filesystem paths consistently across roots, package origins,
+private captures and passive replay. The common input view normalizes representational root spellings
+while retaining a real root link's namespace slot and observable metadata. Authored metadata operations
+keep their own semantics; they are not all converted to native-realpath queries. Watch exclusions
+recognize both declared and canonical roots. See the [path-policy proof](../evidence/build-input-snapshot-proof.md#consistent-native-compiler-path-identity-2026-10-17);
+its local acceptance does not close the goal's Windows/native or final strict requirements.
+
 The user approved B1's bounded native contract on 2026-10-17: captured package-contained and OS
 libraries, with refusal of identifiable outside dependencies. `cc186a0d0` implements selected macOS
 module admission; [native checkpoint evidence](../evidence/build-input-snapshot-proof.md#bounded-macos-module-library-admission-2026-10-17)

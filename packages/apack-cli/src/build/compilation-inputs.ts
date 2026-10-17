@@ -71,7 +71,7 @@ export interface CompilationInputs {
 /** Own one module read-set per build; recheck its data and package/tool inputs without rerunning TypeScript. */
 export function captureCompilationInputs(packRoot: string, view?: PackCompilerInputView): CompilationInputs {
   const startup = compilerStartupInputs();
-  if (startup && (startup.root !== fs.realpathSync(packRoot) || (view && view !== startup.view))) {
+  if (startup && (startup.root !== fs.realpathSync.native(packRoot) || (view && view !== startup.view))) {
     throw new Error('Compiler startup inputs belong to another compilation');
   }
   view ??= startup?.view;
@@ -84,7 +84,7 @@ export function captureCompilationInputs(packRoot: string, view?: PackCompilerIn
   const modules = readCompilerModuleInputs(packRoot, undefined, view);
   let startupObservations: CompilerInputObservations[] = [];
   const retained = new Set<PackBuildInputs>();
-  const observationRoot = compilerSourcePath(fs.realpathSync(packRoot), compiler?.paths ?? []);
+  const observationRoot = compilerSourcePath(fs.realpathSync.native(packRoot), compiler?.paths ?? []);
   let tree: CompilerReadTree | undefined;
   let disposed = false;
   const assertOpen = () => { if (disposed) throw new Error('Compiler input operation outlived its build'); };

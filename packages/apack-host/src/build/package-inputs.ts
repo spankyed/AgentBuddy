@@ -67,7 +67,7 @@ export function findPackageDirectory(owner: string, name: string, observe?: Buil
     const candidate = path.join(directory, name);
     observe?.(path.join(candidate, 'package.json'), 'file');
     if (fs.statSync(path.join(candidate, 'package.json'), { throwIfNoEntry: false })?.isFile()) {
-      return { directory: fs.realpathSync(candidate), lookup: candidate };
+      return { directory: fs.realpathSync.native(candidate), lookup: candidate };
     }
   }
 }
@@ -82,18 +82,18 @@ function readPackageFiles(node: PackageInputNode, targets: readonly string[], ow
     const stat = entry && !link ? entry : fs.statSync(file, { throwIfNoEntry: false });
     const relative = path.relative(root, file).split(path.sep).join('/');
     if (link) {
-      node.links.push({ path: relative, target: stat ? fs.realpathSync(file) : path.resolve(path.dirname(file), fs.readlinkSync(file)) });
+      node.links.push({ path: relative, target: stat ? fs.realpathSync.native(file) : path.resolve(path.dirname(file), fs.readlinkSync(file)) });
     }
     if (!stat) return;
     if (stat.isFile()) {
       files.set(relative, {
-        source: entry && !link && parent ? path.join(parent, entry.name) : fs.realpathSync(file),
+        source: entry && !link && parent ? path.join(parent, entry.name) : fs.realpathSync.native(file),
         mode: 'mode' in stat ? stat.mode & 0o777 : undefined,
       });
       return;
     }
     if (!stat.isDirectory()) throw new Error(`Unsupported package input: ${file}`);
-    const real = fs.realpathSync(file);
+    const real = fs.realpathSync.native(file);
     if (file !== root && owners.has(real)) return;
     if (ancestors.has(real)) throw new Error(`Cyclic package input: ${file}`);
     ancestors.add(real);
@@ -150,13 +150,13 @@ export function readPackageInputs(owners: readonly PackageInputOwner[], options:
   const seen = new Map<string, number>();
   const rootInputs = new Map<string, { development: boolean; contents: boolean }>();
   for (const owner of owners) {
-    const root = fs.realpathSync(owner.directory);
+    const root = fs.realpathSync.native(owner.directory);
     const previous = rootInputs.get(root);
     rootInputs.set(root, { development: previous?.development || !!owner.development, contents: previous?.contents || !!owner.contents });
   }
   const nodes: PackageInputNode[] = [];
   function register(directory: string, contents: boolean): number {
-    const root = fs.realpathSync(directory);
+    const root = fs.realpathSync.native(directory);
     const existing = seen.get(root);
     if (existing !== undefined) return existing;
     const index = nodes.length;
@@ -169,7 +169,7 @@ export function readPackageInputs(owners: readonly PackageInputOwner[], options:
     const node: PackageInputNode = { directory: root, metadata, files: [], directories: [], links: [],
       dependencies: Object.create(null), lookups: Object.create(null) };
     nodes.push(node);
-    if (bytes && onFile) onFile({ path: 'package.json', source: fs.realpathSync(file), mode: fs.statSync(file).mode & 0o777,
+    if (bytes && onFile) onFile({ path: 'package.json', source: fs.realpathSync.native(file), mode: fs.statSync(file).mode & 0o777,
       hash: createHash('sha256').update(bytes).digest('hex') }, bytes);
     if (contents) readPackageFiles(node, packageTargets(manifest), rootInputs, options);
     return index;
@@ -194,7 +194,7 @@ export function readPackageInputs(owners: readonly PackageInputOwner[], options:
   }
   // Consumer roots normally have their own authored scope. Pre-register roots so cycles cannot
   // accidentally include their build output in their own input key.
-  const roots = owners.map(owner => ({ id: owner.id, node: register(owner.directory, rootInputs.get(fs.realpathSync(owner.directory))!.contents) }));
+  const roots = owners.map(owner => ({ id: owner.id, node: register(owner.directory, rootInputs.get(fs.realpathSync.native(owner.directory))!.contents) }));
   owners.forEach((owner, index) => populate(roots[index]!.node, owner.development ?? false));
   const imported = discovered.map(directory => {
     const index = register(directory, true);

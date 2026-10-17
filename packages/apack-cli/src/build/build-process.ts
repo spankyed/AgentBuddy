@@ -147,7 +147,7 @@ export async function runPackBuild(root: string, options: PackBuildOptions = {})
 }
 
 async function buildWithCompiler(root: string, compiler: CompilerInstallation, { args = [], onInputs, signal }: PackBuildOptions): Promise<void> {
-  const inputsDirectory = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'apack-build-inputs-')));
+  const inputsDirectory = fs.realpathSync.native(fs.mkdtempSync(path.join(os.tmpdir(), 'apack-build-inputs-')));
   try {
     assertCompilerLibraryInsertion();
     const candidate = await new Promise<PackBuildCandidate>((resolve, reject) => {

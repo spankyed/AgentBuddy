@@ -109,12 +109,15 @@ export function compilerWatchPaths(root: string, tools?: CompilerWatchTools, obs
   const physicalPath = (file: string) => physicalWatchPath(file, physical);
 
   try {
+    const authoredRoots = [path.resolve(root), physicalPath(root)];
     const observe = (file: string, kind: BuildInputKind, dynamic = false) => {
       const absolute = path.resolve(file);
-      const relative = path.relative(root, absolute);
       // The authored root already has a recursive watcher with output exclusions.
-      const inside = relative !== '..' && !relative.startsWith(`..${path.sep}`) && !path.isAbsolute(relative);
-      if (inside && !relative.split(path.sep).includes('node_modules')) return;
+      if (authoredRoots.some(root => {
+        const relative = path.relative(root, absolute);
+        return relative !== '..' && !relative.startsWith(`..${path.sep}`) && !path.isAbsolute(relative)
+          && !relative.split(path.sep).includes('node_modules');
+      })) return;
       addPath(paths, absolute, kind);
       addPath(paths, physicalPath(absolute), kind);
       if (!dynamic) {
@@ -150,7 +153,7 @@ export interface CompilerWatchTarget {
 
 /** Package scopes share recursive subscriptions; filesystem ancestors remain nonrecursive replacement guards. */
 export function compilerWatchTargets(paths: CompilerWatchPaths, authoredRoot?: string, platform: NodeJS.Platform = process.platform): Map<string, CompilerWatchTarget> {
-  const authoredRoots = authoredRoot === undefined ? [] : [path.resolve(authoredRoot), fs.realpathSync(authoredRoot)];
+  const authoredRoots = authoredRoot === undefined ? [] : [path.resolve(authoredRoot), fs.realpathSync.native(authoredRoot)];
   const roots = new Set<string>();
   // Linux emulates recursive watches per directory; avoid traversing a whole dependency install there.
   for (const file of platform === 'darwin' || platform === 'win32' ? paths.keys() : []) {
@@ -158,14 +161,14 @@ export function compilerWatchTargets(paths: CompilerWatchPaths, authoredRoot?: s
     const modules = parts.indexOf('node_modules');
     if (modules >= 0) {
       const root = parts.slice(0, modules + 1).join(path.sep);
-      if (!roots.has(root) && isDirectory(root)) { roots.add(root); roots.add(fs.realpathSync(root)); }
+      if (!roots.has(root) && isDirectory(root)) { roots.add(root); roots.add(fs.realpathSync.native(root)); }
     }
     if (path.basename(file) !== 'package.json') continue;
     try {
       const metadata = JSON.parse(fs.readFileSync(file, 'utf8'));
       if (!metadata.workspaces) {
         roots.add(path.dirname(file));
-        roots.add(fs.realpathSync(path.dirname(file)));
+        roots.add(fs.realpathSync.native(path.dirname(file)));
       }
     } catch {
       // Compression is optional: an unreadable manifest keeps its ordinary file/parent subscriptions.

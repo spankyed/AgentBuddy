@@ -22,7 +22,7 @@ export async function startPackFrontend(root: string, compiler: CompilerInstalla
   signal.throwIfAborted();
   assertCompilerLibraryInsertion();
   const grouped = process.platform !== 'win32';
-  const directory = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'apack-vite-')));
+  const directory = fs.realpathSync.native(fs.mkdtempSync(path.join(os.tmpdir(), 'apack-vite-')));
   const child = spawn(compiler.executable, [...compilationConditions().map(value => `--conditions=${value}`), compiler.bin], {
     cwd: root, detached: grouped, stdio: ['ignore', 'inherit', 'inherit', 'ipc'],
     env: { ...process.env, ...compiler.environment, APACK_FRONTEND_WORKER: '1', APACK_BUILD_WORKER: undefined,

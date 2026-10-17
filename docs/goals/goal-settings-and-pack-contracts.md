@@ -575,35 +575,19 @@ This does not close every loader control: inspect applicable framework/versioned
 controls and shared-cache-specific precedence before claiming the macOS environment boundary complete.
 Then finish retained-frontend initialization without freezing HMR. ELF/PE, Windows descendant
 lifetime/native execution and the converged/final strict gates remain open.
-The user pushed `e8940bb6d`; authorized Windows CI run [39057355477](https://github.com/spankyed/AgentBuddy/actions/runs/39057355477)
-installed dependencies successfully but failed in package preparation (`spawnSync npm ENOENT` in
-`published-manifest.ts`), before tests. Fix that demonstrated cross-platform launch defect and rerun
-the focused workflow. `d7dc7f224` repairs the launcher: [run 39058353468](https://github.com/spankyed/AgentBuddy/actions/runs/39058353468)
-built and staged EARS/SDK successfully, then exposed native separators leaking into UI export targets.
-`6a8a514cf` normalizes those specifiers and their ordering. [Run 39058623655](https://github.com/spankyed/AgentBuddy/actions/runs/39058623655)
-passes complete package preparation and all 15 packaging cases, then fails the existing equivalent-
-checkout module identity assertion. Diagnostic `8fb57ac5e` / [run 39058844360](https://github.com/spankyed/AgentBuddy/actions/runs/39058844360)
-shows that namespace native-realpath expansion and ordinary-realpath roots disagree on Windows
-short names. `707b17837` aligns the namespace resolver with the existing root policy;
-[run 39059173727](https://github.com/spankyed/AgentBuddy/actions/runs/39059173727) passes all 24
-module-input cases on Windows. The next failure is a POSIX-only cleanup-fixture permission assumption.
-`caf9a29c0` asserts unchanged foreign permissions and no foreign chmod;
-[run 39059442652](https://github.com/spankyed/AgentBuddy/actions/runs/39059442652) passes all five
-read-tree cases on Windows. Its next failure is runtime identity assuming POSIX execute bits.
-`75be5b00b` keeps byte identity everywhere and isolates that POSIX assertion;
-[run 39059751459](https://github.com/spankyed/AgentBuddy/actions/runs/39059751459) passes the other six
-selected files. Its remaining installation-test fault injection uses a POSIX-only path suffix. Fix
-`22739f676` fixes that suffix and collects all isolated unit failures.
-[Run 39059985521](https://github.com/spankyed/AgentBuddy/actions/runs/39059985521) passes all seven
-files (81 passed, seven platform skips). The real worker startup probe passes, then compilation
-fails at `lstat C:`. `71e862359` preserves the worker stack;
-[run 39060486872](https://github.com/spankyed/AgentBuddy/actions/runs/39060486872) locates ordinary
-realpath failing on a Windows namespaced drive root. Replace the partial ordinary-realpath fix with
-consistent native identity across compiler roots, package inputs, captured trees and passive checks.
-A local producer check also exposed a pack esbuild override leaking into checkout setup; isolate
-that setup environment before accepting the native-path checkpoint. Worker-baseline fail-fast stays enabled. Compiler completion and
-descendant-lifetime acceptance remain open.
-The local two-core integration run against that checkpoint reached its unchanged 600s deadline after
+The user authorized branch pushes and focused Windows CI. Packaging launch/exports and unit
+portability repairs now pass all seven original focused files on Windows (81 cases, seven platform
+skips) in [run 39059985521](https://github.com/spankyed/AgentBuddy/actions/runs/39059985521).
+`71e862359` preserves worker stacks; [run 39060486872](https://github.com/spankyed/AgentBuddy/actions/runs/39060486872)
+identifies ordinary realpath failing on Windows extended paths. The current coherent correction
+uses native identity across roots, package inputs, captured trees and passive readers while preserving
+root-link metadata and authored-root watch exclusions. `f42e77db9` separately isolates a pack's esbuild
+override from checkout setup. See [path-policy evidence](../evidence/build-input-snapshot-proof.md#consistent-native-compiler-path-identity-2026-10-17)
+for the focused checks and real local repeated-build proof. Run the expanded focused Windows job
+against the committed correction; worker-baseline fail-fast remains enabled. Compiler platform and
+descendant-lifetime acceptance remain open. The earlier Windows trial history is retained in that
+evidence record rather than another live task list.
+The local two-core integration run against `e8940bb6d` reached its unchanged 600s deadline after
 eight files / 474 cases passed, including all seven native-library cases; the pool remains incomplete.
 See [launcher and pool evidence](../evidence/build-input-snapshot-proof.md#windows-package-launcher-and-local-integration-checkpoint-2026-10-17).
 Do not repeat this broad run to diagnose the Windows launcher or count it as B6/final acceptance.

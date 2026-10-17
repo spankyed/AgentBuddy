@@ -20,7 +20,7 @@ const CHECKOUT_PACKAGES = ['@apackdev/sdk', '@apackdev/ears', '@apackdev/ui', '@
 function checkoutOf(packDir: string, pkg: string): string | undefined {
   let dir: string;
   try {
-    dir = path.dirname(fs.realpathSync(createRequire(path.join(packDir, 'package.json')).resolve(`${pkg}/package.json`)));
+    dir = path.dirname(fs.realpathSync.native(createRequire(path.join(packDir, 'package.json')).resolve(`${pkg}/package.json`)));
   } catch {
     return undefined; // Not installed here, or it exports no package.json: nothing to build either way
   }

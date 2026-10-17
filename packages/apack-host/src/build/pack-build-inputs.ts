@@ -72,7 +72,7 @@ export function readPackBuildInputs(directory: string, integrity: PackIntegrity 
 export function assertPackBuildInputsCurrent(root: string, inputs: PackBuildInputs): void {
   withoutCompilerFileReads(() => {
     parsePackBuildInputs(inputs);
-    assertNativeCompilerObservations({ root: fs.realpathSync(root), entries: inputs.observations });
+    assertNativeCompilerObservations({ root: fs.realpathSync.native(root), entries: inputs.observations });
     const packages = readPackageInputs(inputs.packages.owners.map(owner => ({ ...owner,
       directory: path.resolve(root, owner.directory),
     })), { discovered: inputs.packages.discovered.map(directory => path.resolve(root, directory)) });

@@ -48,7 +48,7 @@ export function compilerStartupInputs(): CompilerStartupInputs | undefined {
 export function beginCompilerStartupInputs(root: string, workspace: string, paths: readonly CompilerPathMapping[], nodeOptions = process.env.NODE_OPTIONS,
   nativeEnvironment = captureMachOLibraryEnvironment()): CompilerStartupInputs {
   if (compilerStartupInputs()) throw new Error('Compiler startup inputs already have an owner');
-  const canonicalRoot = fs.realpathSync(root);
+  const canonicalRoot = fs.realpathSync.native(root);
   const executionIdentity = compilerExecutionIdentity(nodeOptions, paths);
   const within = (parent: string, file: string) => {
     const relative = path.relative(parent, file);
@@ -94,7 +94,7 @@ export function beginCompilerStartupInputs(root: string, workspace: string, path
     if (!includes(file) || sourcePath(file) !== file) {
       assertCapturedMachOLibraries(file, packageRoot(file, fs.existsSync), {
         arch: process.arch, environment: nativeEnvironment,
-        realpath: file => fs.realpathSync(file),
+        realpath: file => fs.realpathSync.native(file),
         read: file => includes(file) && sourcePath(file) === file ? original.readDataBytes(file)
           : fs.statSync(file, { throwIfNoEntry: false })?.isFile() ? fs.readFileSync(file) : undefined,
       });

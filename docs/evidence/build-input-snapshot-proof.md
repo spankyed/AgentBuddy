@@ -2140,3 +2140,47 @@ A private mutation restores inherited environment; the real subprocess case then
 `binary: selected-pack-binary`, proving fault detection without touching production source:
 `/private/tmp/apack-checkout-env-mutation.log`, configuration recorded in
 `/private/tmp/apack-checkout-env-mutation-config.txt`.
+
+
+### Consistent native compiler path identity (2026-10-17)
+
+Replace the earlier ordinary-realpath alignment with one native canonical policy across compiler
+roots, package graph origins, runtime/installation captures, private work trees, watch targets and
+passive freshness. Normalize the module-program root after preserving the caller's root spelling
+in its input view. Keep the authored `realpath` and `realpathNative` query ports distinct; there is
+no runtime-version fallback or stripping of Windows path namespaces.
+
+Root spellings project through the common file view. A real root link retains its final namespace
+slot, so `lstat`/`readlink`, directory facts and passive retarget refusal still describe that link.
+A focused regression first failed with a falsely stale lstat mode when the link was erased:
+`/private/tmp/apack-native-path-root-link-before.log`. The corrected projection passes, including
+retargeting to identical bytes. Authored-root watcher exclusions also recognize canonical paths;
+a linked pack does not gain duplicate external subscriptions for its own sources.
+
+Local evidence:
+
+- Initial direct-consumer run: 115 cases passed, five failures exposed canonical-path assumptions
+  in fault injection and the watcher authored-root exclusion. Log:
+  `/private/tmp/apack-native-path-policy-unit.log`.
+- Repaired module/view/watch regressions: 44 pass (4.15s runner):
+  `/private/tmp/apack-native-path-policy-regressions.log`.
+- Final affected package/view/passive/watch checks: 82 pass across seven files (5.48s runner):
+  `/private/tmp/apack-native-path-policy-final-unit.log`. POSIX-only execute-bit assertions are
+  separate; file-origin and supported-mode assertions remain active on Windows.
+- Real repeated-build acceptance, after setup environment repair: 90.63s case / 92.57s runner,
+  including matching package rebuilds, captured esbuild execution, useful source paths, publication,
+  archive/freshness validation and unchanged facade/build reuse:
+  `/private/tmp/apack-native-path-policy-worker-repaired.log`. The subsequent root-link review
+  correction is covered by the focused root-link/passive cases; final Windows runtime remains pending.
+- Host and CLI/testing types, focused correctness lint and whitespace checks pass:
+  `/private/tmp/apack-native-path-policy-host-types.log`,
+  `/private/tmp/apack-native-path-policy-cli-types.log`. All 53 process-inventory/deadline checks pass
+  (2.61s runner): `/private/tmp/apack-native-path-policy-tooling.log`.
+
+The focused Windows job now covers the changed package/view/passive/check-out/watch/tool-identity
+owners before its real worker baseline. It retains two workers and the existing deadlines. The
+real test records canonical workspace paths so its no-private-path assertion checks actual owner
+locations. No broad pool was restarted. Windows/native lifetime, remaining loader controls, ELF/PE,
+retained frontend initialization and converged/final strict acceptance remain open. The installed
+Apple dyld manual was inspected for the remaining control audit; its text is retained at
+`/private/tmp/apack-dyld-native-controls.txt`, not treated as proof of runtime acceptance.

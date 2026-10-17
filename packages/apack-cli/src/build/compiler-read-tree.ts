@@ -39,7 +39,7 @@ type ProjectMetadata = (file: string, bytes: Buffer, readPath: (file: string) =>
 export function createCompilerReadTree(snapshot: CompilerReadSnapshot, paths: readonly CompilerPathMapping[], projectMetadata?: ProjectMetadata) {
   const parent = process.env[BUILD_INPUTS_DIRECTORY_ENV] ?? os.tmpdir();
   if (!path.isAbsolute(parent)) throw new Error('Compiler input workspace must be absolute');
-  const directory = fs.realpathSync(fs.mkdtempSync(path.join(parent, 'apack-inputs-')));
+  const directory = fs.realpathSync.native(fs.mkdtempSync(path.join(parent, 'apack-inputs-')));
   const roots = new Map<string, string>();
   const dataRoots = new Map<string, string>();
   const directories = new Set([directory]);
@@ -84,7 +84,7 @@ export function createCompilerReadTree(snapshot: CompilerReadSnapshot, paths: re
         writable.add(file);
         return;
       }
-      const real = fs.realpathSync(file);
+      const real = fs.realpathSync.native(file);
       const relative = path.relative(directory, real);
       if (relative === '..' || relative.startsWith(`..${path.sep}`) || path.isAbsolute(relative)) changed('binding', file);
       if (writable.has(real)) return;
@@ -143,7 +143,7 @@ export function createCompilerReadTree(snapshot: CompilerReadSnapshot, paths: re
         const existing = fs.lstatSync(file, { throwIfNoEntry: false });
         if (existing) {
           if (existing.isSymbolicLink() && path.resolve(path.dirname(file), fs.readlinkSync(file)) === target) continue;
-          if (fs.realpathSync(file) === fs.realpathSync(target)) continue;
+          if (fs.realpathSync.native(file) === fs.realpathSync.native(target)) continue;
           throw new Error(`Conflicting captured input path: ${sourcePath(file)}`);
         }
         mkdir(path.dirname(file));
@@ -175,7 +175,7 @@ export function createCompilerReadTree(snapshot: CompilerReadSnapshot, paths: re
     for (const [file, target] of links) {
       const stat = fs.lstatSync(file, { throwIfNoEntry: false });
       if (stat?.isSymbolicLink() && path.resolve(path.dirname(file), fs.readlinkSync(file)) === target) continue;
-      if (stat && fs.realpathSync(file) === fs.realpathSync(target)) continue;
+      if (stat && fs.realpathSync.native(file) === fs.realpathSync.native(target)) continue;
       changed('binding', file);
     }
     for (const [file, expected] of entries) {

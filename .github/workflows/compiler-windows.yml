@@ -37,9 +37,16 @@ jobs:
         run: >-
           node scripts/with-source.mjs npx vitest run --project @apackdev/cli --project @apackdev/host --project @apackdev/ui
           packages/apack-host/tests/build/published-manifest.spec.ts
+          packages/apack-host/tests/build/compiler-inputs.spec.ts
+          packages/apack-host/tests/build/package-inputs.spec.ts
+          packages/apack-host/tests/build/pack-inputs.spec.ts
+          packages/apack-host/tests/build/pack-build-inputs.spec.ts
           packages/apack-ui/tests/exports.spec.ts
           packages/apack-cli/tests/build/compiler-read-tree.spec.ts
           packages/apack-cli/tests/build/compiler-module-inputs.spec.ts
+          packages/apack-cli/tests/build/compiler-watch.spec.ts
+          packages/apack-cli/tests/build/checkout-packages.spec.ts
+          packages/apack-cli/tests/build/tool-identity.spec.ts
           packages/apack-cli/tests/build/compiler-installation.spec.ts
           packages/apack-cli/tests/build/compiler-runtime.spec.ts
           packages/apack-cli/tests/build/compiler-native-libraries.spec.ts

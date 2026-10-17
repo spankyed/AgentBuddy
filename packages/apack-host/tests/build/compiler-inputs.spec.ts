@@ -5,6 +5,58 @@ import { spawnSync } from 'node:child_process';
 import { expect, it } from 'vitest';
 import { createCompilerFileView, assertNativeCompilerObservations } from '../../src/build/compiler-inputs/index.ts';
 
+it('keeps native, authored and extended root spellings in one input identity', () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'apack-root-spellings-'));
+  const canonical = fs.realpathSync.native(root);
+  fs.writeFileSync(path.join(root, 'value.txt'), 'VALUE');
+  fs.mkdirSync(path.join(root, 'src/__generated__'), { recursive: true });
+  fs.writeFileSync(path.join(root, 'src/__generated__/ignored.ts'), 'GENERATED');
+  const views = [...new Set([root, canonical, path.toNamespacedPath(canonical)])].map(spelling => ({
+    spelling, view: createCompilerFileView(spelling, { authoredFiles: ['value.txt'] }),
+  }));
+  try {
+    for (const { spelling, view } of views) {
+      expect(view.readBytes(path.join(spelling, 'value.txt'))?.toString()).toBe('VALUE');
+      view.readMetadata('realpathNative', path.join(spelling, 'value.txt'), []);
+      view.readDirectoryData(spelling, { withFileTypes: true });
+      expect(view.fileSystem.fileExists(path.join(spelling, 'src/__generated__/ignored.ts'))).toBe(false);
+      expect(view.observations().root).toBe(canonical);
+    }
+    const expected = views[0]!.view.observations().entries;
+    for (const { view } of views) {
+      expect(view.observations().entries).toEqual(expected);
+      expect(() => assertNativeCompilerObservations(view.observations())).not.toThrow();
+    }
+  } finally {
+    for (const { view } of views) view.dispose();
+    fs.rmSync(root, { recursive: true, force: true });
+  }
+});
+
+it('preserves a root link and its metadata when replaying input facts', () => {
+  const temporary = fs.realpathSync.native(fs.mkdtempSync(path.join(os.tmpdir(), 'apack-root-link-')));
+  const root = path.join(temporary, 'pack'), replacement = path.join(temporary, 'replacement');
+  const alias = path.join(temporary, 'linked-pack');
+  for (const directory of [root, replacement]) {
+    fs.mkdirSync(directory);
+    fs.writeFileSync(path.join(directory, 'value.txt'), 'VALUE');
+  }
+  fs.symlinkSync(root, alias, 'dir');
+  const view = createCompilerFileView(alias, { authoredFiles: ['value.txt'] });
+  try {
+    expect((view.readMetadata('lstat', alias, []) as fs.Stats).isSymbolicLink()).toBe(true);
+    view.readMetadata('readlink', alias, []);
+    view.readDirectoryData(alias, { withFileTypes: true });
+    view.readBytes(path.join(alias, 'value.txt'));
+    const observations = view.observations();
+    expect(() => assertNativeCompilerObservations(observations)).not.toThrow();
+    fs.unlinkSync(alias);
+    fs.symlinkSync(replacement, alias, 'dir');
+    expect(() => view.assertCurrent()).toThrow(/changed/);
+    expect(() => assertNativeCompilerObservations(observations)).toThrow(/changed/);
+  } finally { view.dispose(); fs.rmSync(temporary, { recursive: true, force: true }); }
+});
+
 it('reports nested namespace probes for recursive native listings and consumed cursor entries', () => {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'apack-recursive-probes-'));
   const nested = path.join(root, 'nested/empty');

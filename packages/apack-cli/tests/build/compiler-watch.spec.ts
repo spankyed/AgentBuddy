@@ -16,7 +16,7 @@ afterEach(() => {
   roots.splice(0).forEach(root => fs.rmSync(root, { recursive: true, force: true }));
 });
 function fixture() {
-  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'apack-compiler-watch-'));
+  const root = fs.realpathSync.native(fs.mkdtempSync(path.join(os.tmpdir(), 'apack-compiler-watch-')));
   roots.push(root);
   const pack = path.join(root, 'pack');
   fs.mkdirSync(path.join(pack, 'src'), { recursive: true });
@@ -129,6 +129,18 @@ it('collects inherited configuration and resolved outside files, excluding the a
   expect(before.paths.has(path.join(pack, 'src/index.ts'))).toBe(false);
   fs.writeFileSync(path.join(root, 'contract.d.ts'), 'export type Contract = number;');
   expect(compilerWatchPaths(pack).signature).not.toBe(before.signature);
+});
+
+it('keeps authored files out of external subscriptions when the pack root is a link', () => {
+  const { root, pack } = fixture();
+  const alias = path.join(root, 'linked-pack');
+  fs.symlinkSync(pack, alias, 'dir');
+  const direct = compilerWatchPaths(pack), linked = compilerWatchPaths(alias);
+  expect(linked.complete).toBe(true);
+  expect(linked.signature).not.toBe(direct.signature);
+  expect(linked.paths.has(path.join(pack, 'src/index.ts'))).toBe(false);
+  expect(linked.paths.has(path.join(alias, 'src/index.ts'))).toBe(false);
+  expect(linked.paths.get(path.join(root, 'contract.d.ts'))).toBe('file');
 });
 
 it('collects absent resolution candidates and observes their first existing parent', () => {

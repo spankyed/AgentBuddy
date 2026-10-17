@@ -149,12 +149,12 @@ it('exposes the resolved graph, copied bytes and blocked exports without activat
   const owner = inputs.nodes[inputs.roots[0]!.node]!;
   const compiler = inputs.nodes[owner.dependencies.compiler!]!;
   const helper = inputs.nodes[compiler.dependencies.helper!]!;
-  expect(compiler.directory).toBe(fs.realpathSync(path.join(pack.root, 'node_modules/compiler')));
+  expect(compiler.directory).toBe(fs.realpathSync.native(path.join(pack.root, 'node_modules/compiler')));
   expect(helper.files.map(file => file.path)).toContain('index.js');
   expect(copies.get(path.join(helper.directory, 'index.js'))).toBe('export const value = 1;');
 });
 
-it('tracks linked targets, executable bits and empty directory membership', () => {
+it('tracks linked targets and empty directory membership', () => {
   const pack = tree();
   pack.write('node_modules/compiler/first.cjs', 'same bytes');
   pack.write('node_modules/compiler/second.cjs', 'same bytes');
@@ -165,19 +165,24 @@ it('tracks linked targets, executable bits and empty directory membership', () =
   fs.symlinkSync('second.cjs', link);
   expect(pack.hash()).not.toBe(first);
   const linked = pack.hash();
-  fs.chmodSync(path.join(pack.root, 'node_modules/compiler/first.cjs'), 0o755);
-  expect(pack.hash()).not.toBe(linked);
-  const executable = pack.hash();
   fs.mkdirSync(path.join(pack.root, 'node_modules/compiler/empty'));
-  expect(pack.hash()).not.toBe(executable);
+  expect(pack.hash()).not.toBe(linked);
+});
+
+it.skipIf(process.platform === 'win32')('tracks changes to POSIX package executable permissions', () => {
+  const pack = tree();
+  const before = pack.hash();
+  fs.chmodSync(path.join(pack.root, 'node_modules/compiler/index.js'), 0o755);
+  expect(pack.hash()).not.toBe(before);
 });
 
 it('preserves physical file origins through nested directory and file links', () => {
   const pack = tree();
   pack.write('outside/nested/value.cjs', 'module.exports = 1;');
   pack.write('replacement/nested/value.cjs', 'module.exports = 1;');
-  const source = fs.realpathSync(path.join(pack.root, 'outside/nested/value.cjs'));
+  const source = fs.realpathSync.native(path.join(pack.root, 'outside/nested/value.cjs'));
   fs.chmodSync(source, 0o755);
+  const mode = fs.statSync(source).mode & 0o777;
   fs.chmodSync(path.join(pack.root, 'replacement/nested/value.cjs'), 0o755);
   fs.symlinkSync('value.cjs', path.join(pack.root, 'outside/nested/alias.cjs'));
   fs.symlinkSync('value.cjs', path.join(pack.root, 'replacement/nested/alias.cjs'));
@@ -189,7 +194,7 @@ it('preserves physical file origins through nested directory and file links', ()
   });
   const compiler = inputs.nodes[inputs.nodes[0]!.dependencies.compiler!]!;
   for (const name of ['value.cjs', 'alias.cjs']) {
-    expect(compiler.files.find(file => file.path === `assets/nested/${name}`)).toMatchObject({ source, mode: 0o755 });
+    expect(compiler.files.find(file => file.path === `assets/nested/${name}`)).toMatchObject({ source, mode });
   }
   expect(copies.get(source)).toBe('module.exports = 1;');
   expect(pack.hash()).toBe(inputs.hash);

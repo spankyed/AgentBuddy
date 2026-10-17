@@ -68,7 +68,13 @@ export function createCompilerFileView(root: string, options: {
 } = {}) {
   const paths = options.paths?.map(mapping => ({ ...mapping })) ?? [];
   const authoredFiles = options.authoredFiles && [...options.authoredFiles];
-  const roots = [...new Set([path.resolve(root), fs.realpathSync(root)])];
+  const realRoot = fs.realpathSync.native(root);
+  const authoredRoot = path.resolve(root);
+  // Normalize OS spelling without erasing the root link that lstat/readlink can observe.
+  const rootSlot = fs.lstatSync(authoredRoot).isSymbolicLink()
+    ? path.join(fs.realpathSync.native(path.dirname(authoredRoot)), path.basename(authoredRoot)) : realRoot;
+  const roots = [...new Set([authoredRoot, realRoot])];
+  const rootAliases = roots.map(captured => ({ captured, source: captured === authoredRoot ? rootSlot : realRoot }));
   const authoredPath = (file: string) => {
     if (!authoredFiles) return;
     for (const root of roots) {
@@ -81,7 +87,7 @@ export function createCompilerFileView(root: string, options: {
     const relative = authoredPath(file);
     return relative !== undefined && !isPackInputPath(relative, false);
   });
-  const origin = compilerSourcePath(fs.realpathSync(root), paths);
+  const origin = compilerSourcePath(realRoot, paths);
   const observe = options.observe;
   const observeRecursiveEntry = (directory: string, options: unknown, entry: CompilerDirectoryResult[number]) => {
     if (!observe || !recursiveDirectory(options)) return;
@@ -93,7 +99,8 @@ export function createCompilerFileView(root: string, options: {
   };
   let disposed = false;
   const assertOpen = () => { if (disposed) throw new Error('Compiler input operation outlived its build'); };
-  const relative = (file: string) => path.relative(origin, compilerSourcePath(file, paths)).split(path.sep).join('/');
+  const relative = (file: string) => path.relative(origin,
+    compilerSourcePath(compilerSourcePath(file, rootAliases), paths)).split(path.sep).join('/');
   const physical = new Map<string, string>();
   const inputs = new Map<string, FileInput>();
   const contents = new Map<string, Buffer | undefined>();

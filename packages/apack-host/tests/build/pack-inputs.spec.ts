@@ -77,7 +77,7 @@ it('derives linked-directory and atomic-file replacement watches from authored i
   fs.symlinkSync(path.join(linked, 'schema.json'), path.join(root, 'schema.json'));
   fs.symlinkSync(linked, path.join(root, 'node_modules'), 'dir');
   const targets = packInputWatchTargets(root);
-  expect(targets).toContainEqual({ directory: fs.realpathSync(linked), relative: 'schemas' });
-  expect(targets).toContainEqual({ directory: fs.realpathSync(linked), child: 'schema.json', relative: 'schema.json' });
+  expect(targets).toContainEqual({ directory: fs.realpathSync.native(linked), relative: 'schemas' });
+  expect(targets).toContainEqual({ directory: fs.realpathSync.native(linked), child: 'schema.json', relative: 'schema.json' });
   expect(targets.some(target => target.relative.startsWith('node_modules'))).toBe(false);
 });

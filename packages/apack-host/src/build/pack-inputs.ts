@@ -18,7 +18,7 @@ export function packInputFiles(root: string, { generated = false, modulesOnly = 
   const files: string[] = [];
   const ancestors = new Set<string>();
   function walk(dir: string): void {
-    const real = fs.realpathSync(dir);
+    const real = fs.realpathSync.native(dir);
     if (ancestors.has(real)) throw new Error(`Cyclic source directory: ${dir}`);
     ancestors.add(real);
     for (const name of fs.readdirSync(dir).sort()) {
@@ -47,7 +47,7 @@ export interface PackInputWatchTarget {
 export function packInputWatchTargets(root: string): PackInputWatchTarget[] {
   const targets: PackInputWatchTarget[] = [{ directory: root, relative: '' }];
   packInputFiles(root, { onLink(file, directory) {
-    const target = fs.realpathSync(file);
+    const target = fs.realpathSync.native(file);
     const relative = path.relative(root, file);
     targets.push({ directory: path.dirname(target), child: path.basename(target), relative });
     if (directory) targets.push({ directory: target, relative });

@@ -16,7 +16,7 @@ export function readCompilerRuntimeInputs(
   electron = !!process.versions.electron,
   onFile?: (file: PackageInputFile, bytes: Buffer) => void,
 ): CompilerRuntimeInputs {
-  executable = fs.realpathSync(executable);
+  executable = fs.realpathSync.native(executable);
   const root = path.dirname(executable);
   const directories: string[] = [];
   const links: CompilerRuntimeInputs['links'] = [];
@@ -31,7 +31,7 @@ export function readCompilerRuntimeInputs(
       const target = path.resolve(path.dirname(file), fs.readlinkSync(file));
       links.push({ source: file, target });
       // Preserve dangling links, without inventing a target's contents.
-      if (fs.existsSync(target)) walk(fs.realpathSync(target));
+      if (fs.existsSync(target)) walk(fs.realpathSync.native(target));
     } else if (stat.isDirectory()) {
       directories.push(file);
       for (const name of fs.readdirSync(file).sort()) walk(path.join(file, name));

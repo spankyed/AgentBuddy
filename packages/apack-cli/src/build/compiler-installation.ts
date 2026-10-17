@@ -32,7 +32,7 @@ export function readEsbuildOverride({ cwd = process.cwd(), env = process.env }: 
   if (!value || value === '/usr/bin/esbuild') return;
   const file = path.resolve(cwd, value);
   try {
-    const source = fs.realpathSync(file);
+    const source = fs.realpathSync.native(file);
     const stat = fs.statSync(source);
     if (!stat.isFile()) throw new Error(`esbuild executable is not a file: ${file}`);
     return { kind: 'file' as const, file, source, mode: stat.mode & 0o777, bytes: fs.readFileSync(source) };
@@ -54,13 +54,13 @@ export function compilerPackageDirectory(root = cliPackageDirectory()): string {
   if (!fs.existsSync(path.join(directory, 'dist/build-worker.js'))) {
     throw new Error(`Missing pack compiler at ${directory}; build the CLI package before compiling packs`);
   }
-  return fs.realpathSync(directory);
+  return fs.realpathSync.native(directory);
 }
 
 /** Capture before startup: normal Node loading reads private copies, never mutable compiler originals. */
 export async function captureCompilerInstallation(directory = compilerPackageDirectory(), options: CompilerInstallationOptions = {}): Promise<CompilerInstallation> {
-  directory = fs.realpathSync(directory);
-  const temporary = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'apack-compiler-')));
+  directory = fs.realpathSync.native(directory);
+  const temporary = fs.realpathSync.native(fs.mkdtempSync(path.join(os.tmpdir(), 'apack-compiler-')));
   const paths = new Map<string, string>();
   const capturedPath = (source: string) => {
     const root = path.parse(source).root;
@@ -142,7 +142,7 @@ export async function captureCompilerInstallation(directory = compilerPackageDir
       const existing = fs.lstatSync(destination, { throwIfNoEntry: false });
       if (existing) {
         if (existing.isSymbolicLink() && path.resolve(path.dirname(destination), fs.readlinkSync(destination)) === resolved) continue;
-        if (fs.realpathSync(destination) !== fs.realpathSync(resolved)) throw new Error(`Conflicting captured compiler path: ${source}`);
+        if (fs.realpathSync.native(destination) !== fs.realpathSync.native(resolved)) throw new Error(`Conflicting captured compiler path: ${source}`);
       } else {
         const directoryType = process.platform === 'win32' ? 'junction' : 'dir';
         fs.symlinkSync(resolved, destination, fs.statSync(resolved, { throwIfNoEntry: false })?.isDirectory() ? directoryType : 'file');
@@ -169,12 +169,12 @@ export async function captureCompilerInstallation(directory = compilerPackageDir
     };
     if (!executableCurrent()) throw new Error('Captured esbuild executable differs from its input');
     const capturedRuntimeCurrent = () => !!fs.lstatSync(capturedPath(runtime.executable), { throwIfNoEntry: false })?.isFile()
-      && fs.realpathSync(capturedPath(runtime.executable)) === capturedPath(runtime.executable)
+      && fs.realpathSync.native(capturedPath(runtime.executable)) === capturedPath(runtime.executable)
       && readCompilerRuntimeInputs(capturedPath(runtime.executable)).hash === runtime.hash;
     if (!capturedRuntimeCurrent()) throw new Error('Captured compiler runtime differs from its input');
     return { bin: path.join(root, 'bin/apack.mjs'), executable: capturedPath(runtime.executable), hash, inputsFile, environment, dispose,
       isCurrent(source, options = {}) {
-        return fs.realpathSync(source) === directory
+        return fs.realpathSync.native(source) === directory
           && executableId === JSON.stringify(executableIdentity(directory, readEsbuildOverride(options)))
           && executableCurrent() && fs.existsSync(root) && capturedRuntimeCurrent()
           && readCompilerRuntimeInputs(process.execPath).hash === runtime.hash
