@@ -1635,3 +1635,36 @@ It neither proves dynamic loading/native I/O is captured nor closes the existing
 library reproducer, platform acceptance or thread lifetime requirements. No loader/scanner policy or
 scope exclusion is implemented. The native boundary ADR remains proposed and requires explicit
 approval for a reduced guarantee; a pending question is not approval.
+
+## Remaining resource lifetime audit (2026-10-17)
+
+Current source audit separates the supported operations and their actual owners. This is not a claim
+that arbitrary native code is confined, and does not add security isolation to this goal.
+
+| Operation | Current owner and evidence | Remaining closure |
+|---|---|---|
+| Primary loader observations | `compiler-startup.ts` awaits its coordinator before final input validation; `compiler-startup-inputs.ts` owns the view | Existing launch/loader and observation checks cover local ownership. Retain for final acceptance. |
+| Naturally exiting, explicitly terminated, nested and background JS workers | `compiler-threads.ts` collects reports and awaits native termination; `c7d5603c5` and `77e4bffc5` prove external reads, blocked-worker refusal and watch repair | Local macOS ownership accepted in the recorded actual worker cases. Other-platform behavior remains unverified. |
+| Timers and native work inside a compiler process | `build-worker.ts` drains diagnostics and exits; parent verification follows process close | Local process-lifetime ownership is covered by the background-work and exit-handler cases. External native-library input capture remains a separate B1 issue. |
+| Inherited compiler subprocesses on POSIX | `build-process.ts` creates a dedicated group; `stopCompilerProcessGroup` stops live group members before parent publication | Actual macOS background-child, cancellation and parent-loss cases are recorded. Linux has the same code path but no native-run acceptance here. |
+| Retained Vite generation and its subprocesses on POSIX | `frontend-process.ts` awaits close, then stops the group; builder retirement closes frontend before removing its compiler installation | Existing real generation replacement, failure retention, HMR and cancellation cases cover local ownership. Preserve these; do not create a new resource manager. |
+| Temporary views and compiler/runtime installation | Build `finally` waits worker/observer settlement before removing its read tree; builder close drains queued work and awaits generation disposal | Existing cancellation/reuse/retirement checks cover local ownership. Cleanup failure remains a refusal, not permission to publish. |
+| Windows build and frontend subprocesses | Both parents set `grouped = false`; fallback termination calls only `child.kill`. Worker parent-loss handlers stop only themselves. Normal build exit has no Windows descendant owner | Concrete implementation gap: no equivalent descendant-lifetime owner is present. A real Windows implementation and acceptance are required; a mocked process call is insufficient. |
+
+The Windows gap follows the current branches in `build-process.ts`, `build-worker.ts`,
+`frontend-process.ts` and `frontend-worker.ts`. The existing actual background-child assertion in
+`build-worker.integration.spec.ts` explicitly skips subprocess creation/verification on Windows.
+It therefore cannot establish Windows descendant cleanup. No native Windows reproducer was run.
+
+[Node 23.11.1 documents `subprocess.kill`](https://nodejs.org/download/release/v23.11.1/docs/api/child_process.html#subprocesskillsignal)
+as signaling the child. [Windows Job Objects](https://learn.microsoft.com/en-us/windows/win32/procthread/job-objects)
+provide descendant lifetime ownership, including termination when the last owning handle closes.
+Inference for this implementation: a late PID-tree command can race worker exit, so adding that command
+alone would not establish the goal's normal-exit, crash, cancellation and parent-loss guarantees.
+
+Before implementing Windows closure, prototype a native lifetime owner against the real build and
+Vite launch paths. Prove descendant ownership begins before user/compiler initialization and survives
+worker exit; test success, failed build, explicit cancellation, parent loss and generation replacement.
+No implementation or new dependency is selected by this audit. A native Windows runner is required
+for acceptance. Do not weaken or remove the Windows requirement, silently refuse that platform, or
+claim all-platform B3 completion from the accepted macOS path.

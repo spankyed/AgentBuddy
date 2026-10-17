@@ -7391,3 +7391,26 @@ backend entry. The test asserts the marker never exists after metadata arrival/r
 so catching a runtime exception cannot falsely establish discovery without activation. The actual
 worker/window case passes in 6.4s (`/private/tmp/apack-cold-monaco-no-activation.log`). Final type logs:
 `/private/tmp/apack-dsl-identity-cli-types.log` and `/private/tmp/apack-cold-monaco-final-types.log`.
+
+## Compiler scenario concurrency acceptance (2026-10-17)
+
+Source `545054877` gives only the two demonstrated near-deadline compiler scenarios explicit 120s
+budgets through the existing exception registry. The scaffold case includes actual step/service
+generation, compiler publication and authored typechecking. The linked Tailwind case includes initial
+compilation and two actual watched rebuilds. Previously they passed alone in 56.93s/57.05s but reached
+60s in the full two-worker pool. Assertions and both 20s watcher waits are unchanged.
+
+The focused concurrency run explicitly caps both pool kinds at two workers and includes the scaffold's
+feature-build prerequisite: all three selected cases pass in 108.70s. Actual scenario times are 59.76s
+for step/service and 65.45s for linked Tailwind. Log:
+`/private/tmp/apack-compiler-scenario-concurrency.log`. The deadline exceptions address demonstrated
+complete-scenario cost; they do not assert a new watcher correctness fix or raise general limits.
+All 42 timeout-policy cases, CLI types, focused lint and whitespace checks pass:
+`/private/tmp/apack-compiler-scenario-timeout-policy.log`,
+`/private/tmp/apack-compiler-scenario-types.log`.
+
+The retained 600s full-pool attempt has only eight completed file reports, totaling 1,028.2 seconds of
+file time across two workers; it does not prove a deadlock. Aggregate integration capacity remains an
+open B6 issue. Do not start another broad run to diagnose it or raise every suite's budget. A bounded
+profile of one ordinary compiler build is the next diagnostic before selecting a cost repair or a
+specific aggregate-budget change. Keep native/platform work and the final strict gate open.

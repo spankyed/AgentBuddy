@@ -118,7 +118,7 @@ records the options and decision criteria; it does not approve exclusions or cha
 | Item | Current evidence | Required closure |
 |---|---|---|
 | Absolute external-library loading | A real addon executes the original external library; changing it does not invalidate freshness. Package-relative capture in `6710e3026` does not fix this. | Audit the native dependencies actually executed by supported compiler paths. Prototype against the existing reproducer, then decide support or explicit refusal. Preserve normal platform-library loading. Any exclusion or reduced guarantee requires explicit user approval; until then the requirement remains open. |
-| Native/background lifetime | Worker settlement, cancellation and watch recovery have accepted checkpoints; a blanket claim about every native/platform lifetime is unproven. | List each remaining concrete operation, current owner, missing proof and closing case in the existing evidence matrix. Reuse accepted cases. Repair demonstrated gaps; close audit rows with sufficient existing evidence without new machinery. |
+| Native/background lifetime | The [finite resource audit](../evidence/build-input-snapshot-proof.md#remaining-resource-lifetime-audit-2026-10-17) reconciles local loader, JS worker, process-group, Vite and installation ownership with existing proof. Windows build/frontend branches have no descendant-lifetime owner; their background-child acceptance is skipped. | Preserve accepted macOS cases. Prototype and implement Windows lifetime ownership, then prove success/failure/cancellation/parent-loss/replacement on a native Windows runner. Linux runtime acceptance remains unverified. Do not substitute PID-only termination, mocked calls or a new general resource framework for this missing platform guarantee. |
 | Platform coverage | Release/build configuration establishes targets, not acceptance of compiler capture or cleanup guarantees. | Record exact OS/architecture/runtime combinations, relevant cases and results. Mark missing evidence as unverified, not broken or implicitly unsupported. |
 
 Configured targets, inspected 2026-10-17:
@@ -493,12 +493,11 @@ the guarded services; all 17 affected cases, pack types and focused lint pass. N
 is a single converged pool pass. The previously unexecuted integration pool reached its 600s suite deadline on two workers
 (`/private/tmp/apack-service-integration-pool.log`). Before termination it reported scaffold and linked
 Tailwind watcher case deadlines plus an overly specific stale-archive diagnostic assertion. The
-scaffold step/service case passes alone in 56.93s at its unchanged deadline; that does not establish
-concurrent acceptance. The diagnostic can name either authored inventory or manifest bytes, according
-to the first differing captured observation. `1ad1c8c12` accepts those two exact refusal diagnostics; the real initial-build/archive cases pass
-in 55.78s, without deadline changes. The linked Tailwind watcher also passes alone in 57.05s at its original deadline, including both
-nested-file creation and link replacement. Neither isolated check proves concurrent acceptance or
-closes the suite timeout; remaining integration files are unresolved. Do not repeat the broad pool for
+scaffold and linked Tailwind scenarios now pass together on two workers in `545054877`:
+three selected cases pass in 108.70s, including the feature-build prerequisite. The scenario-specific
+120s exceptions retain every assertion and both 20s watcher waits; actual scenario times are 59.76s
+and 65.45s. `1ad1c8c12` also accepts both exact valid stale-archive diagnostics. Local concurrency is
+accepted, but the aggregate 600s suite timeout and remaining integration files are unresolved. Do not repeat the broad pool for
 diagnosis or treat the generic timeout message's historical 60s estimate as evidence of a deadlock.
 Next: close remaining compiler native/platform and integration acceptance, then the final requirement audit and strict gate. Do not
 repeat the accepted tarball producer just to restate its status. No whole-gate pass is claimed from the focused repairs.
