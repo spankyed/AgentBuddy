@@ -123,6 +123,8 @@ path. The existing OS-library baseline/refusal scenario covers both build and fr
 and incumbent preservation. All 48 parser/environment checks, CLI types, lint and workflow syntax pass;
 its extended hosted scenario is still pending. CI now records Node's linked images and signing flags
 for the actual runtime; this does not certify another hardened profile or close ELF/PE/final gates.
+Shared-cache source `ef01842ed` is running as hosted macOS run `39080870051`, selecting only the
+extended launch-admission scenario. Platform/signature recording passed; follow this run for acceptance.
 Source `e6ce60a78` awaits each detected watch build directly, retaining missing-event bounds and all
 behavior assertions. Its isolated hosted run `39079492068` passes in 98.76 seconds, including refusal,
 repair, incumbent preservation and retirement. Restore the original 120-second scenario budget; the
@@ -149,7 +151,7 @@ frontend startup reads before the actual CLI entry releases ordinary authored-so
 CommonJS preload-byte change/restoration cases pass for both direct and explicit-worker native loading,
 Vue remains live, and the complete native watch recovery still passes. Worker startup observations join
 frontend freshness through the existing coordinator, retaining bounded refusal for unresponsive checks.
-Next: the bounded versioned-loader proof and remaining named native-platform cases, preserving the
+Next: shared-cache/restricted-runtime acceptance and remaining named native-platform cases, preserving the
 accepted ESM/loader/transitive metadata and Vue behavior above; then B6 and final committed-source
 strict `--all`. Preserve the full scope below. See [checkpoint evidence](../evidence/build-input-snapshot-proof.md#live-frontend-native-watch-and-shared-copies-2026-10-17).
 

@@ -2956,3 +2956,7 @@ The workflow also records the real Node image's linked libraries, signature flag
 using `otool`/`codesign` on the disposable runner. These are evidence for the exercised runtime,
 not an assumption that every hardened profile has been accepted. Restricted-runtime and ELF/PE
 coverage and converged/final gates remain open. No native runtime batch was executed locally.
+
+Shared-cache correction source `ef01842ed` is running as hosted run `39080870051` with only the extended
+launch-admission scenario selected. Platform/library/signature recording passed; test acceptance is
+pending. Follow this existing run rather than dispatching a replacement.
