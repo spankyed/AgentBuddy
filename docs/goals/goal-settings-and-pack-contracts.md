@@ -139,6 +139,16 @@ Node 23.11.1 and private fixtures; no system directory writes. Restricted/harden
 policy still needs acceptance; versioned/shared-cache controls, retained Vite native initialization,
 ELF/PE and converged/final acceptance remain open. See [standard fallback evidence](../evidence/build-input-snapshot-proof.md#sdk-dependent-standard-native-fallbacks-2026-10-17).
 
+Source `ce172953d` installs native admission before retained Vite preloads, shares the existing native
+capture owner, and checks frontend inputs before readiness/reuse. Vite copies selected images rather
+than freezing the authored package. Actual native preload and explicit-worker cases preserve Vue HMR,
+detect changed libraries and refuse outside-library initialization while retaining the incumbent;
+backend preload/thread regressions also pass. Builder cancellation, real generation replacement and
+actual Vite descendant/replacement ownership pass locally. Next: deliver frontend discoveries and
+failure probes into live watch subscriptions, account for frontend preload JS inputs, and accept the
+loader/late-load paths. Versioned/shared-cache/restricted-runtime controls, ELF/PE, remaining platform
+coverage and converged/final gates remain required. See [retained Vite evidence](../evidence/build-input-snapshot-proof.md#retained-vite-native-input-ownership-2026-10-17).
+
 Source `59b890dcb` repairs the macOS explicit fallback gap: launch-time `DYLD_FALLBACK_LIBRARY_PATH`
 survives preload mutation, selected external fallback libraries refuse before native initialization,
 and the incumbent survives. Current-directory lookup precedes fallback lookup; a successfully resolved

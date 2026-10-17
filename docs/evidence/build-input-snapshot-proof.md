@@ -2576,3 +2576,42 @@ This proves the ordinary locally exercised runtime's standard fallback policy. A
 runtime policy is not established by this proof and remains open, alongside versioned/shared-cache
 controls, retained frontend native initialization, ELF/PE and converged/final acceptance. This is not
 universal dyld emulation, native-I/O confinement or completion of B1/B3.
+
+### Retained Vite native input ownership (2026-10-17)
+
+Source `ce172953d` puts the existing compiler bootstrap ahead of retained Vite's user preloads.
+Backend startup and Vite share native admission/read-tree ownership. Backend keeps its package capture;
+Vite uses a lazy view and copies selected native images, including transitive libraries, so an addon
+inside the authored pack does not cause Vue sources to become frozen inputs. The launch environment
+is retained across owned worker/loader lineages. Input collection is checked before readiness and
+before builder reuse; cancellation releases pending IPC listeners and lets the builder retire its
+process owner. Cleanup removes private read trees only after process/group/job settlement.
+
+Local macOS ARM64 / Node 23.11.1 evidence:
+
+- 52 native-library/builder checks pass in 28.37 seconds, including pending freshness-check cancellation:
+  `/private/tmp/apack-frontend-native-unit.log`.
+- Actual native Vite preload and explicit-worker cases pass. They load owned addon/library bytes,
+  retain HMR for Vue files in the same authored package, detect changed native bytes and refuse an
+  outside-library replacement before addon initialization while preserving the running frontend.
+  The existing backend native preload/thread cases also pass after the owner extraction. Four cases,
+  79.19 seconds runner time: `/private/tmp/apack-frontend-native-integration.log`.
+- Existing real backend/Vite generation replacement, failed-incumbent retention, HMR and awaited
+  retirement pass in 53.24 seconds: `/private/tmp/apack-frontend-native-generation.log`.
+- Actual simultaneous Vite owners survive independent replacement and close; each descendant stops
+  with its own owner. The final packaged-bootstrap check passes in 8.38 seconds:
+  `/private/tmp/apack-frontend-native-owners.log`.
+- CLI typechecking, correctness lint, coordinator syntax and package build pass. Final cleanup removes
+  the unused exposed `stopReads` field and distinguishes native-input refusal from configuration
+  refusal. No timeout changes or public SDK/schema changes.
+
+The Windows workflow adds the actual Vite owner case and pending-check cancellation to its focused
+selection. Its execution on this source remains pending; the earlier green Windows producer baseline
+was on `1dacb59ec` and does not certify these changes.
+
+Remaining frontend acceptance/implementation is explicit: live delivery of newly discovered native
+inputs and failed-startup probes to watch subscriptions; frontend preload JavaScript input ownership;
+custom-loader and late-load acceptance. Do not treat checking freshness when a build is requested as
+automatic external-change detection. Existing versioned/shared-cache/restricted-runtime policy,
+ELF/PE, platform coverage and converged/final gates remain open. Native I/O and arbitrary computed
+loading retain the user-approved bounded contract; this checkpoint is not security isolation.
