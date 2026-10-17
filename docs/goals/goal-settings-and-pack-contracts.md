@@ -317,8 +317,8 @@ Content-output checkpoint `72435c778` feeds compiled JSON, the index and regular
 expectation owner. The real post-compilation media-deletion case refuses publication and retains its
 incumbent; SDK/CLI types, 23 focused checks and all 28 SDK API reports pass. See
 [content output evidence](../evidence/build-input-snapshot-proof.md#content-and-media-output-expectations-checkpoint).
-Native backend/content/step bundles, rendered facade/helper/DSL declarations, metadata and reused-phase
-files now feed that same final check. Reuse verifies the prior receipt's expected bytes before copying.
+Writer-output checkpoint `d4e24d4b5` feeds native backend/content/step bundles, rendered facade/helper/DSL
+declarations, metadata and reused-phase files into that same final check. Reuse verifies the prior receipt's expected bytes before copying.
 Twenty-eight unit/passive cases, six DSL cases, three actual native compiler cases, host/CLI types and
 lint pass. Two real builds preserve reuse/revision/cleanup in 65.20s; see
 [remaining writer evidence](../evidence/build-input-snapshot-proof.md#remaining-writer-output-expectations-checkpoint).

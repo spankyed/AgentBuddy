@@ -1213,6 +1213,8 @@ B5 consumer policies, B6, all Phase 6 streams and final strict committed-source 
 
 ### Remaining writer output expectations checkpoint
 
+Source checkpoint: `d4e24d4b5`.
+
 The same candidate-scoped owner now receives every supported file writer:
 
 - esbuild backend/runtime, content compilers/runtime and step facets report emitted bytes after the
