@@ -490,9 +490,17 @@ and nonexistent docs-index link; all 21 affected cases pass. The pack pool compl
 cases and eight failures in four files: tests inspected lifetime-bound service handles as raw spies or
 expected raw object identity. `df1a937a8` retains the original spies for assertions while executing through
 the guarded services; all 17 affected cases, pack types and focused lint pass. Neither focused repair
-is a single converged pool pass. The previously unexecuted integration pool is now running on two workers
-(`/private/tmp/apack-service-integration-pool.log`); inspect its preserved results before any rerun.
-Next: resolve demonstrated integration failures, then complete remaining app/fork and converged acceptance. Do not
+is a single converged pool pass. The previously unexecuted integration pool reached its 600s suite deadline on two workers
+(`/private/tmp/apack-service-integration-pool.log`). Before termination it reported scaffold and linked
+Tailwind watcher case deadlines plus an overly specific stale-archive diagnostic assertion. The
+scaffold step/service case passes alone in 56.93s at its unchanged deadline; that does not establish
+concurrent acceptance. The diagnostic can name either authored inventory or manifest bytes, according
+to the first differing captured observation. `1ad1c8c12` accepts those two exact refusal diagnostics; the real initial-build/archive cases pass
+in 55.78s, without deadline changes. The linked Tailwind watcher also passes alone in 57.05s at its original deadline, including both
+nested-file creation and link replacement. Neither isolated check proves concurrent acceptance or
+closes the suite timeout; remaining integration files are unresolved. Do not repeat the broad pool for
+diagnosis or treat the generic timeout message's historical 60s estimate as evidence of a deadlock.
+Next: finish the focused repairs/diagnosis, then complete remaining app/fork and converged acceptance. Do not
 repeat the accepted tarball producer just to restate its status. No whole-gate pass is claimed from the focused repairs.
 The prior 26 app passes plus focused teardown repair are not a single converged app pass; bundled UI
 app and normal fork restart/restoration retain their planned acceptance. Keep B1/B3 native/platform

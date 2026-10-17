@@ -7187,3 +7187,38 @@ existing actual compiler, custom/nested/computed-reference, rename and unavailab
 recorded under `7196d61d3`. It adds no scanner, runtime dependency or permanent fixture framework.
 Missing compiled inventory targets remain distinct from missing user database records. Final strict
 acceptance remains required.
+
+
+## Two-worker integration attempt and scaffold refusal (2026-10-17)
+
+The previously unexecuted integration pool ran once with two workers against source `df1a937a8`
+and reached its existing 600s suite deadline. Log: `/private/tmp/apack-service-integration-pool.log`.
+The process group was terminated; no complete integration verdict or cache stamp is claimed.
+Before stopping, the reported failures were scaffold step/service compilation at 60s, an archive
+refusal diagnostic assertion, and the initially empty linked external Tailwind content watcher at 60s.
+Other completed file results are retained in that log; unreached cases remain unverified.
+The runner's historical 60s healthy estimate is not evidence of a deadlock; workers advanced across
+files throughout this run. No deadline was increased and no broad diagnostic rerun was started.
+
+A focused three-case scaffold run (`/private/tmp/apack-scaffold-coherence-focused.log`) passes the
+real feature build/archive in 39.36s and step/service build/typecheck in 56.93s. The latter is close
+to its unchanged 60s limit; isolated success does not prove concurrent acceptance. The archive
+assertion assumed a particular observation order. In the broad run the changed authored-file
+inventory refused first; with fewer preceding scaffold operations, the changed `apack.json` bytes
+refuse first. Both are the existing correct stale-build rejection.
+
+Source `1ad1c8c12` accepts only those two exact diagnostics and retains the nonzero exit and incumbent
+output assertions. The initial valid build plus unresolved-dependency build/archive cases pass in
+55.78s: `/private/tmp/apack-scaffold-refusal-fixed.log`. Focused lint and whitespace checks pass.
+The first diagnostic adjustment was too specific to the inventory and failed against the individual
+manifest observation; the final assertion explicitly accounts for both, rather than depending on
+first-observation ordering. No production source or observation validation changed.
+The isolated linked Tailwind watcher passes in 57.05s at the original 60s deadline:
+`/private/tmp/apack-tailwind-linked-watch-focused.log`. Initial compilation, creation through the
+nested directory link and replacement of that link all publish the expected CSS; both watch events
+appear in the log. No missed rebuild is demonstrated by this reproducer. Both formerly timed-out
+cases finish close to their deadlines, so concurrent acceptance remains unresolved. These results
+do not justify a blanket deadline increase or a claim that the broad suite is green. No deadline,
+watcher or production compiler changes were made. Next: address the integration acceptance budget
+with these measured cases before another required broad run; preserve all remaining goal work.
+Integration/converged and final strict acceptance remain open.
