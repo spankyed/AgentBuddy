@@ -3373,3 +3373,63 @@ Remaining native system/event contracts must account for the shell's non-toolbar
 a visual plugin or infer executable behavior to fill that gap. Method-contract consumption belongs to
 Phase 6; native content/migration data, static assets, loader coordination and all-kind acceptance
 remain required alongside the full build-input/freshness and later goal scope.
+
+### Static endpoint contracts (2026-10-17)
+
+Source checkpoint: `774b0844c`, following the settled endpoint contract in `fe2c28146`.
+The generator reads declared TypeScript incoming/outgoing and inbox contracts without executing their
+modules. Generated event JSON feeds runtime entries, the build snapshot and the source harness.
+Manifest routing additions remain explicit; private machine handlers do not become public inputs.
+Installed snapshots refuse missing endpoint contracts. Native declarations supply the same data and
+may leave declared systems unbound; the native shell inbox needs no contributed UI pane.
+
+The catalog and CLI expose endpoint data independently of activation; an uncompiled source preview
+reports unavailable metadata rather than an empty inbox. Backend admission checks event membership
+and captures effective inputs/plugin inboxes once, adding shared SDK protocol events. Mutating a
+registration afterward cannot change accepted routing or machine identities. Host endpoint metadata
+now lives in a data-only module. Event names do not validate payloads or authorize senders.
+
+The external runtime check exposed a separate queue-ordering boundary: a pack can send a message
+behind its own teardown request while the bus handles its caller. Actor cleanup completed, then the
+inline completion callback unregistered the inbox before the already queued message was processed.
+A failing two-test reproducer proved that ordering. The bus now queues `SYSTEMS_STOPPED` after actual
+actor/subscription cleanup, allowing earlier sends to drain before the existing callback retires
+runtime authority. No timer, extra request framework or suppressed diagnostic was added.
+
+Focused evidence:
+
+- Codegen/event/shape cases: 121 pass; snapshot cases: 41 pass; immutable event admission/replacement
+  cases: 32 pass; window catalog cases: 20 pass; CLI offline/poisoned-runtime inspection: 16 pass.
+- The initial SDK/host runs exposed stale synthetic fixtures, repaired in the owning tests. Shared
+  catalog changes also require renderer/API consumer validation: limiting the initial focused checks
+  to SDK/host missed those consumers. Renderer types and all nine native-editor cases pass.
+- Five CLI/API fixture files pass all 35 cases after declaring their actual endpoint metadata. The
+  handwritten dependent-runtime integration fixture now writes the same generated data a real
+  author's codegen writes; all five cases pass in 27.3s. No runtime inference/fallback was added.
+- All 110 bus/lifecycle cases pass. The exact real Electron disable/remove/replace/restore case
+  passes in 14.2s against a rebuilt app. Before that repair the full external-pack run passed 26/27,
+  including canonical reference navigation and real default-fork dev reload; do not call that a full
+  passing run. Its evidence is `2026-10-17T00-15-59Z-21258`.
+- Public schema/API reports and docs were regenerated/reviewed. Final CLI/testing types and lint pass
+  after the last fixture repair. No protected typed EARS implementation or shape types changed.
+
+Required strict gate attempt (before the final harness-fixture repair):
+`npm run chain -- --strict --cores 4 --no-classify`, run
+`2026-10-17T00-23-23Z-27374`, **failed**, 1,262.3s. All 5,168 host unit tests pass; pack tests pass
+888 with two intentional skips. Types, lint, import/export/tier/schema/API checks, default-pack and
+runtime builds, facade check, external authoring, smoke and both packaged-authoring halves pass.
+Integration reported `ENOSPC` while writing captured inputs/build output and reached its existing
+600-second aggregate limit. It also contains compiler/publication assertions and individual timeouts
+that are not yet classified; disk exhaustion is not proof of every failure's cause. In particular,
+retain the compiler exit-handler incumbent assertion and the original compiler/watch evidence for B6.
+The dependent-runtime fixture failure was diagnosed and repaired afterward with the focused pass above.
+The final full external-app step was not reached. No full strict pass, `--all` pass or whole-goal
+completion is claimed. Earlier passing default-build output was later changed by the external fixture
+producer; its cache invalidation remains build/publication acceptance evidence, not an endpoint fix.
+
+Evidence is in `node_modules/.cache/apack-chain/runs/<run-id>/`; focused logs are under
+`/private/tmp/apack-endpoint-*`. After the run, `df` reported 6.3GiB available on a 99%-full data volume.
+Before another broad B6 run, establish disk capacity and diagnose exact retained failures; do not
+increase deadlines, weaken assertions or sweep global temporary prefixes. No broad rerun was launched
+after this resource failure. Native migration/content/backend-viewer parity and static-asset/readers
+remain the next discovery implementation, followed by the preserved B1–B6 and Phase 6 workstreams.

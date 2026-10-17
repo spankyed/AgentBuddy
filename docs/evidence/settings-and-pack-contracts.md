@@ -6513,3 +6513,21 @@ were migrated rather than weakening admission or removing replacement assertions
 No public shape, generated schema or API signature changes. No new broad run was used to replay the
 preserved authoring failure; its convergence and the final committed-source strict `--all` remain due.
 Compiled endpoint contracts and the other inventory omissions remain required next work.
+
+### Static endpoints and queued teardown delivery (2026-10-17)
+
+`774b0844c` implements static event contracts, native/authored endpoint admission, captured routing
+membership and offline catalog/CLI inspection. A real default-pack disable exposed queued delivery
+after inbox removal; the bus now processes stop completion after earlier messages. All 110 bus and
+lifecycle cases and the exact Electron disable/remove/replace/restore case pass. The source checkpoint
+includes migrated generators, snapshot/native schemas, readers, harnesses, fixtures and public reports.
+
+The converged strict run `2026-10-17T00-23-23Z-27374` passes both unit pools (5,168 host; 888 pack,
+two skipped), types, lint, schema/API/boundaries, builds, external authoring, smoke and both packaged
+authoring halves. It fails in integration with `ENOSPC`, unclassified assertions/timeouts and the
+existing 600-second aggregate limit; it does not reach the final full external-app step. One actual
+handwritten-harness fixture omission was fixed afterward and its five integration cases pass. No
+full strict success is claimed and no broad rerun follows the resource failure. See the
+[endpoint evidence](discovery-without-activation.md#static-endpoint-contracts-2026-10-17) for the complete
+claims and limits. Continue native backend parity/static assets, then B1–B6 and all three Phase 6
+workstreams; preserve the full goal and final committed-source strict `--all` requirement.

@@ -64,9 +64,9 @@ so completed implementation is not repeatedly scheduled as new work.
 | Manifest consolidation M1–M6 | Implemented and checkpoint-validated through `0994ae787`; own-key preservation `29f0cc556` | Preserve all 17 reconciled decisions, both naming outcomes and generated EARS/content behavior in final acceptance; do not restart consolidation. |
 | Settings/help/info/reference/step/command discovery (Phase 3) | Implemented reader migrations: `2169d29f8`, `6c876c9ba`, `20ab75efe`, `c776d1c5d`, `76df2f0e5`, `71fad4013`, `8ec5285ed`, `f7d63434c`, command catalog `ff48438cd` | Final all-kind acceptance, including source-free inspection, inactive owners and checked runtime eligibility. |
 | Live editor composition (Phase 3) | Implemented: `8863043a6` | Complete cold-document/provider readiness and real typing/replacement acceptance; fix demonstrated omissions without restarting composition. |
-| Remaining discovery consumers (Phase 3) | Partial; viewer readers `a278d4116` and shell default/dispatch `69860e4be` implemented | Navigation inventories/order/visibility implemented in `cfcbb53f9`; complete final window/loader acceptance; DSL producer/readers are implemented in `8ed188046` / `39e48e66e` and await final worker acceptance. Flow reference/rename/missing-target inspection is implemented in `7196d61d3`; complete its final external acceptance. Audit services, repositories, events, native fields and static assets; migrate each actual gap and remove superseded discovery stores. |
+| Remaining discovery consumers (Phase 3) | Partial; viewer readers `a278d4116`, shell default/dispatch `69860e4be` and static endpoint contracts `774b0844c` implemented | Navigation inventories/order/visibility implemented in `cfcbb53f9`; complete final window/loader acceptance; DSL producer/readers are implemented in `8ed188046` / `39e48e66e` and await final worker acceptance. Flow reference/rename/missing-target inspection is implemented in `7196d61d3`; complete its final external acceptance. Native API ownership and endpoint contracts are implemented; finish native backend contribution parity, static assets and all-kind acceptance. Remove only superseded discovery stores. |
 | Build input/publication and freshness (Phase 3) | Partial; finite checkpoints B1–B6 below | Finish the common producer contract and four passive consumer migrations; installed discovery must remain source-free and activation-free. |
-| Entity navigation (Phase 4) | Implemented with local handler/runtime acceptance through `95ff95ab3`, following producer `94148c9e0`, catalog/admission `479c75e01`, routing `cd9c57de6` and feature repair `831221020` | Preserve six-handler, cancellation and stored-message acceptance through final strict validation; retain the unresolved authoring gate evidence for B6. No further navigation implementation is currently identified. |
+| Entity navigation (Phase 4) | Implemented with local handler/runtime acceptance through `95ff95ab3`, following producer `94148c9e0`, catalog/admission `479c75e01`, routing `cd9c57de6` and feature repair `831221020` | Preserve six-handler, cancellation and stored-message acceptance through final strict validation; retain build/publication and strict-gate acceptance for B6. No further navigation implementation is currently identified. |
 | Frontend boundaries (Phase 5) | Implemented and locally accepted: `713a6c1fd`, including the real external-pack window | Preserve pane/form containment, attributed nonfatal diagnostics and retired-instance refusal through final committed-source strict acceptance. |
 | Consumed APIs (Phase 6) | Inventory/prototype requirements documented; implementation outstanding | Settle declarations and granularity, generate matching runtime/type facades, mediate administration and dependency APIs, and migrate real consumers. |
 | Dependency provenance (Phase 6) | Cache/admission `ff4358588`, inspection and verified-build checkpoints in the evidence record implemented; overall closure partial | Verify exact origin/version/content through reuse and inspection, integrate remaining freshness dependencies, and close the linked acceptance matrix. Do not restart cache/provenance storage. Frozen resolution remains conditional on a distribution requirement. |
@@ -90,14 +90,17 @@ preloads (`bbf05ec00`). These are source evidence, not a claim that the full str
 | B5 — Passive freshness consumers | Migrate archive, prebuilt tests, default-fork preparation and drive to the common record. Preserve manual builds, deterministic reuse, source-free installed inspection and deliberately stale drive behavior. Remove replaced freshness heuristics. | B4. |
 | B6 — Converged acceptance | Resolve affected failures from preserved evidence and focused reproducers, then run the required converged strict checkpoint. The final committed-source strict `--all` remains Phase 7. | Converged B1–B5 source; focused checks accompany each earlier checkpoint. |
 
-The latest recorded strict run failed; focused publication and retarget/refusal/repair cases now pass.
-Other preserved watch/frontend and Electron-teardown failures are unresolved acceptance items, not proof
-of a common cause. Diagnose the smallest failing case before another broad run. Do not reopen the
-publication repair as outstanding implementation without new evidence.
+The latest strict run, `2026-10-17T00-23-23Z-27374`, failed in integration after `ENOSPC` errors and
+its existing 600-second aggregate deadline. Both unit pools, typechecks, builds and both packaged-authoring
+halves passed. A dependent-runtime fixture omission found in that run is repaired (all five cases pass).
+Other compiler/publication/watch assertions and individual timeouts remain unclassified; disk exhaustion
+does not prove their common cause. The final full external-app step was not reached. Preserve the earlier
+watch/frontend evidence too. Diagnose exact failures and establish available disk capacity before another
+broad run; do not reopen the publication repair without new evidence. No passing strict gate is claimed.
 
 ### Execution order and change control
 
-Last closed checkpoint: Phase 5 frontend boundaries, `713a6c1fd`. Focused Vue/lifetime checks and the
+Phase 5 source checkpoint: frontend boundaries, `713a6c1fd`. Focused Vue/lifetime checks and the
 real external-pack Electron case pass: failed panes/forms preserve other panes, host settings and
 defaults; retired frontend retry is refused. The staged source and built runtime matched that proof.
 Final whole-goal strict acceptance remains open.
@@ -134,10 +137,16 @@ declarations, event contracts and static assets; identify and close actual gaps.
 implemented reference identity, destination catalog, shell lifecycle or unrelated compiler work.
 The [registration inventory](../plans/discovery-without-activation.md#remaining-registration-audit-2026-10-16)
 now records each field's authority and remaining gap. Native designation parity is repaired in
-`b268fac86` (646 pack-registry cases, host/SDK types and lint pass). Next is one compiled endpoint-contract
-projection for authored/native discovery, preserving the host shell inbox versus UI-plugin distinction;
-then native migration/content/viewer parity and the remaining asset/reader acceptance. The source
-checkpoint and previous broad-gate limitation are recorded in the evidence, not treated as a final pass.
+`b268fac86`. Current source checkpoint `774b0844c` publishes one static endpoint-contract projection,
+checks native/authored bindings and captures effective routing sets at admission. The real external-app
+run exposed queued sends outliving their inbox; bus stop completion now drains earlier messages before
+retiring authority. All 110 bus/lifecycle cases and the exact Electron disable/remove/restore case pass.
+All 5,168 host and 888 pack unit cases pass (two pack cases remain intentionally skipped), as do five
+dependent-runtime integration cases. CLI/testing types and lint pass after the last fixture repair.
+The strict gate remains incomplete as recorded above; see the [checkpoint evidence](../evidence/discovery-without-activation.md#static-endpoint-contracts-2026-10-17).
+Next implementation is native migration/content/viewer parity, then static assets and remaining reader
+acceptance. B1–B6 and all three Phase 6 workstreams remain required. Do not restart implemented endpoint
+or navigation work, or rerun a broad gate to investigate the preserved integration failures.
 
 1. Phase 4 entity destinations/caller migration and Phase 5 containment are implemented and locally
    accepted. Retain their checks for final verification rather than schedule another implementation.
