@@ -2395,3 +2395,13 @@ This is not production wiring and does not close parent-loss/replacement accepta
 and inherited IPC remain unverified until native execution; macOS cannot provide that evidence.
 Node syntax, focused correctness lint and whitespace checks pass locally. No extra published package
 or runtime dependency is introduced by the proof.
+
+Windows baseline run `39064147051` on `f10e4bcf6` passes 162 focused unit cases (eight platform skips),
+then completes its first build at 61.972s and archive at 73.861s. It is cancelled during the second
+setup when the next prototype workflow is manually dispatched. Full log:
+`/private/tmp/apack-windows-39064147051.log`. This is orchestration cancellation, not compiler failure
+or acceptance of the 240s case. The outer CI workflow's `cancel-in-progress: true` overrides the called
+Windows workflow's noncancelling policy. Restrict outer cancellation to full CI; focused Windows runs
+queue so an explicitly running diagnostic can finish. Do not dispatch another run while one is active
+merely to observe newer source; wait for terminal evidence. Run `39064447097` remains live against
+`62f6a03b8`, with the native Job Object proof before package installation.

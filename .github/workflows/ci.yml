@@ -37,7 +37,8 @@ on:
 
 concurrency:
   group: ci-${{ github.ref }}-${{ inputs.compiler_windows && 'compiler-windows' || 'full' }}
-  cancel-in-progress: true
+  # Native diagnostic results must finish; full CI still supersedes older runs.
+  cancel-in-progress: ${{ !inputs.compiler_windows }}
 
 jobs:
   check:
