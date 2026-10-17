@@ -94,6 +94,25 @@ describe('pack-loader', () => {
       } finally { unsubscribe(); }
     });
 
+    it.each(['missing', 'disabled', 'wrong-owner'] as const)('refuses a %s required service before executing pack code', condition => {
+      const packsDir = path.join(_appDirOf(tmpDir), 'packs');
+      const dir = makePack(packsDir, 'consumer', { id: 'consumer', name: 'Consumer', version: '1.0.0',
+        dependencies: { provider: '*' }, consumes: { services: ['provider/search'] } });
+      if (condition !== 'missing') {
+        makePack(packsDir, 'provider', { id: 'provider', name: 'Provider', version: '1.0.0',
+          ...(condition === 'disabled' && { extensions: { services: { search: 'unavailable.ts#search' } } }) });
+        if (condition === 'disabled') setPackEnabled('provider', false);
+      }
+      const marker = path.join(tmpDir, 'consumer-executed');
+      fs.writeFileSync(path.join(dir, PACK_LAYOUT.runtimeEntry), `require('node:fs').writeFileSync(${JSON.stringify(marker)}, 'yes'); throw new Error('Must not execute');`);
+      sealPack(dir);
+      const recordLoadProblem = vi.fn();
+      const loaded = loadExternalPacks({ ...registry, recordLoadProblem });
+      expect(loaded.some(pack => pack.origin.id === 'consumer')).toBe(false);
+      expect(recordLoadProblem).toHaveBeenCalledWith('consumer', expect.stringContaining('provider "provider"'));
+      expect(fs.existsSync(marker)).toBe(false);
+    });
+
     it('refuses directory owner mismatches before executing a runtime', () => {
       const dir = makePack(path.join(_appDirOf(tmpDir), 'packs'), 'local-pack', { id: 'other-pack', name: 'Other', version: '1.0.0' });
       const marker = path.join(tmpDir, 'owner-mismatch-executed');

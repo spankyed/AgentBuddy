@@ -68,6 +68,7 @@ export async function info(args: string[]) {
     if (kind === 'help') console.log(`Declared help: ${manifest.extensions!.help!.path}`);
     else names(`Declared ${kind}`, declaration);
   }
+  if (manifest.consumes?.services.length) console.log(`Required services: ${manifest.consumes.services.join(', ')}`);
   names('Declared lifecycle', manifest.lifecycle);
   names('Declared app migrations', manifest.migrations?.app);
   names('Declared pack migrations', manifest.migrations?.pack);

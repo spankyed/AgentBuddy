@@ -1,3 +1,5 @@
+import { _packServiceSelection, _parseServiceReference } from '@apackdev/sdk/framework';
+import { HOST_PACK_ID } from '@apackdev/sdk/ids';
 import * as path from 'node:path';
 import {
   generatePackFiles, packValidation, validateManifest, validatePackSources,
@@ -34,6 +36,23 @@ export async function validatePack(root: string): Promise<PackValidation & { dep
       });
       skippedChecks.push({ check: 'dependencies', reason });
     } else resolved = dependencyTypes(inspection.files);
+
+    // Required APIs are declaration data: invalid own source must not hide a provider error.
+    const requiredProviders = (manifest.consumes?.services ?? []).map(ref => _parseServiceReference(ref).packId)
+      .filter(id => id !== manifest.id && id !== HOST_PACK_ID);
+    if (requiredProviders.some(id => !inspection.files.has(id))) {
+      skippedChecks.push({ check: 'consumed-services', reason: 'Requires local declarations for the requested service providers.' });
+    } else {
+      try {
+        _packServiceSelection({ ...manifest, services: manifest.extensions?.services }, id => {
+          const declaration = inspection.files.get(id)?.snapshot.manifest;
+          return declaration && { ...declaration, services: declaration.extensions?.services };
+        });
+      } catch (error) {
+        diagnostics.push({ code: 'consumed-services.invalid', severity: 'error', packId,
+          path: ['consumes', 'services'], message: errorMessage(error) });
+      }
+    }
 
     if (sources.status !== 'valid' || !resolved) {
       skippedChecks.push({ check: 'codegen', reason: 'Requires valid declared sources and resolved dependencies.' });

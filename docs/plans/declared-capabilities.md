@@ -1,7 +1,7 @@
 # Declare the APIs a pack consumes
 
-Status: A1 audit/prototype and selection are recorded; A2 declaration/codegen foundation is implemented
-in `1a0de64fb`. Remaining discovery/build ownership work stays active in the [owning goal](../goals/goal-settings-and-pack-contracts.md); it blocks only
+Status: A1 selection and A2 declaration, pre-import/admission and read-only diagnostics are implemented.
+A3 runtime/type filtering and lifetime binding are next. Remaining discovery/build ownership work stays active in the [owning goal](../goals/goal-settings-and-pack-contracts.md); it blocks only
 the slices that consume its missing guarantees. This is an API dependency contract, not a security sandbox.
 
 ## Problem
@@ -181,12 +181,19 @@ checks. Preserve current shared-settings policy and the documented query model.
 A2 foundation `1a0de64fb` implements canonical host names/baseline, shared authored/native grammar,
 one direct service-ownership/selection projection, build-time provider checks and schema assistance.
 Catalog tests retain requests in native/source/disabled installed data without activation and reject
-a changed request with stale source identity. Next finish A2: resolve required services through the
-common catalog before importing a candidate runtime, recheck at admission, and expose the same
-diagnostics through read-only validation/inspection. Missing/disabled requirements must refuse before
-any poisoned runtime module executes; waiting until registerPack after import is insufficient.
-Then implement host-owned lifetime/filtering and generated types together in A3, before migrating all
-consumers and completing runtime/docs acceptance. Do not add a runtime `consumes` inventory when the
+a changed request with stale source identity. The A2 admission checkpoint now resolves requirements
+through one catalog snapshot before runtime import and again before registration bindings. It checks
+direct service ownership, provider versions, enablement, invalid installed declarations and providers'
+own requirements; cycles use the prospective candidate contract. A source-only preview can satisfy
+another source consumer, never an installed/native consumer. Invalid installed data cannot be masked
+by source previews. CLI validation checks available dependency declarations independently of source
+validation/codegen; unavailable local data produces an incomplete report. Human inspection lists
+qualified service requests; JSON inspection retains the authored declaration.
+
+This proves declaration availability, not executable readiness: a provider may still fail while loading.
+A3 must bind the accepted service implementations and handle provider failure/replacement and caller
+retirement. Implement lifetime/filtering and generated types together before migrating all consumers
+and completing external runtime/docs acceptance. Do not add a runtime `consumes` inventory when the
 host already holds the accepted declaration.
 
 Rechecked the service proxy, `_createPackServices`, SDK `generateServices` and Database consumer on

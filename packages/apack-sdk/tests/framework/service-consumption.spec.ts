@@ -45,7 +45,7 @@ describe('consumed service declarations', () => {
     expect(selected).toEqual([..._BASELINE_HOST_SERVICE_NAMES.map(name => `host/${name}`), 'consumer/own', 'host/onboarding', 'provider/SearchAPI']);
     expect(selected).not.toContain('host/appData');
     expect(find).toHaveBeenCalledOnce();
-    expect(find).toHaveBeenCalledWith('provider');
+    expect(find).toHaveBeenCalledWith('provider', 'provider/SearchAPI');
   });
 
   it('refuses missing declarations and facade members that the named provider does not own', () => {
@@ -63,6 +63,17 @@ describe('consumed service declarations', () => {
       consumes: { services: ['first/search', 'second/search'] } };
     expect(() => _packServiceSelection(declarations, id => ({ id, services: { search: 'missing.ts#search' } })))
       .toThrow('Pack "consumer" selects service "search" from both "first" and "second"');
+  });
+
+  it.each([
+    ['^1.0.0', '1.2.0', true], ['^1.0.0', '2.0.0', false],
+    ['^1.0.0', '1.2.0-beta.1', true], ['file:../provider', undefined, true],
+    ['*', undefined, true], ['^1.0.0', undefined, false],
+  ])('checks provider version %s against %s', (spec, version, accepted) => {
+    const select = () => _packServiceSelection({ ...consumer, dependencies: { provider: spec },
+      consumes: { services: ['provider/SearchAPI'] } }, () => ({ ...provider, version }));
+    if (accepted) expect(select).not.toThrow();
+    else expect(select).toThrow('does not satisfy');
   });
 
   it('does not mistake an inherited dependency key for an owned provider', () => {

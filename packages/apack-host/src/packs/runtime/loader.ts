@@ -14,6 +14,7 @@ import { findSdkVersion } from '../../build/shared-deps.ts';
 import { withHostResolution } from './bridge.ts';
 import { backendBindingProblem } from '../declaration-binding.ts';
 import type { PackEventContracts } from '@apackdev/sdk/framework';
+import { assertPackServiceRequirements } from '../service-requirements.ts';
 
 // Always use createRequire — esbuild's require shim is a Proxy without .cache
 const esmRequire = Module.createRequire(import.meta.url);
@@ -70,7 +71,10 @@ export function loadSingleExternalPack(
   catch (error) { return skipped(path.basename(dir), (error as Error).message); }
   const { snapshot, integrity, revision: buildRevision } = build;
   const { manifest, declarationRevision } = snapshot;
-  try { registry.catalog.assertPackDestinations({ dir, snapshot }); }
+  try {
+    registry.catalog.assertPackDestinations({ dir, snapshot });
+    assertPackServiceRequirements(registry.catalog.getSnapshot(), { origin: 'installed', declaration: manifest });
+  }
   catch (error) { return skipped(manifest.id, (error as Error).message); }
   const buildFiles = Object.freeze({ ...integrity.files });
   const appVersion = getAppVersion();

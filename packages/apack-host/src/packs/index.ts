@@ -12,6 +12,7 @@ export {
 export type { DiscoveredPack, InstalledPack, PackManifest } from './discovery.ts';
 export { createContributionCatalog, readInstalledContributionCatalog } from './catalog.ts';
 export type { PackCatalogEntry, PackCatalogSource, PackCatalogSnapshot, PackCatalogFrame, SourcePackDeclaration, PluginCatalogEntry } from './catalog.ts';
+export { assertPackServiceRequirements, packServiceContracts, type PackServiceContract, type PackServiceOwner } from './service-requirements.ts';
 
 export { readAppPackSources } from './app-sources.ts';
 export type { AppPackSource, AppPackSourceProblem, AppPackSources } from './app-sources.ts';

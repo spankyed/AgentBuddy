@@ -26,6 +26,7 @@ import type { MigrationLine, PackManifest } from '@apackdev/sdk/build';
 import type { PackRegistryView } from '@apackdev/sdk/runtime';
 import type { SettingsService } from '@apackdev/sdk/services';
 import { _HOST_SERVICE_NAMES } from '@apackdev/sdk/framework';
+import { assertPackServiceRequirements } from './service-requirements.ts';
 import type { ContentOffer, ContentApplier } from '@apackdev/sdk/utils';
 import type { ArtifactDefinition } from '@apackdev/sdk/artifacts';
 import type { BlockDefinition } from '@apackdev/sdk/blocks';
@@ -614,6 +615,11 @@ export function createPackRegistry({ installedPacksDir, appPackSourcesDir, setti
 
     const candidate = new Map(admitted);
     const native = origin ? undefined : catalog.getSnapshot().native.find(pack => pack.id === registration.id);
+    if (origin?.manifest) {
+      assertPackServiceRequirements(catalog.getSnapshot(), { origin: source ? 'source' : 'installed', declaration: origin.manifest });
+    } else if (native) {
+      assertPackServiceRequirements(catalog.getSnapshot(), { origin: 'native', declaration: native });
+    }
     candidate.set(registration.id, admitContributions(checkedRegistration, {
       steps: origin ? origin.manifest?.extensions?.steps : native?.steps,
       eventContracts: origin ? origin.eventContracts : native?.eventContracts,

@@ -22,7 +22,7 @@ import { _settingsAdmin, type SettingsAdmin } from '@apackdev/sdk/services';
 import type { FeatureRef } from '@apackdev/sdk/ids';
 import { _parseEventContracts, type PackEventContracts, type PackRegistration } from '@apackdev/sdk/framework';
 import { GENERATED_EVENT_CONTRACTS_FILE } from '@apackdev/sdk/build';
-import { createPackRegistry, readCachedDependency, readPackBuild, type PackOrigin } from '@apackdev/host/packs';
+import { createPackRegistry, readCachedDependency, readPackBuild, assertPackServiceRequirements, type PackOrigin } from '@apackdev/host/packs';
 import { createPacksSystem, createSettingsSystem, hostRegistration, hostDeclaration, packsEvents, settingsEvents } from '@apackdev/host/features';
 import { appState, HOST_ENTITY_TYPES } from '@apackdev/host/app-state';
 import { createSettingsService, createSettingsStore } from '@apackdev/host/settings';
@@ -376,6 +376,7 @@ export async function startShell(options: StartShellOptions): Promise<TestShell>
 async function registerRuntimes(packDir: string, manifest: PackManifest, dependencies: ReadonlyMap<string, CachedDependency>,
   registration: PackRegistration, eventContracts?: Readonly<PackEventContracts>): Promise<void> {
   for (const [depId, dependency] of dependencies) {
+    assertPackServiceRequirements(registry.catalog.getSnapshot(), { origin: 'installed', declaration: dependency.manifest });
     const runtimeEntry = path.join(dependency.dir, 'runtime', 'index.cjs');
     if (!fs.existsSync(runtimeEntry)) {
       throw new Error(`Dependency "${depId}" has no runtime/index.cjs in ${path.relative(packDir, dependency.dir)}; rebuild it, or update apack for built-in packs, then run \`apack pack build\` again`);

@@ -529,13 +529,15 @@ export interface _PackServiceDeclarations {
     readonly id: string;
     // (undocumented)
     readonly services?: Readonly<Record<string, string>>;
+    // (undocumented)
+    readonly version?: string;
 }
 
 // @internal
 export function _packServiceDeclarations(pack: _PackServiceDeclarations): readonly _PackServiceDeclaration[];
 
 // @internal
-export function _packServiceSelection(pack: _PackServiceDeclarations, provider: (packId: string) => _PackServiceDeclarations | undefined): readonly {
+export function _packServiceSelection(pack: _PackServiceDeclarations, provider: (packId: string, ref: string) => _PackServiceDeclarations | undefined): readonly {
     readonly ref: string;
     readonly packId: string;
     readonly name: string;

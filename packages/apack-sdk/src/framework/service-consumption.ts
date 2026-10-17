@@ -1,6 +1,8 @@
 import { z } from 'zod';
 import { HOST_PACK_ID, PACK_ID_PATTERN } from '../ids/refs.ts';
 import type { HostServices } from '../services/index.ts';
+import { satisfies } from 'semver';
+import { parsePackDependency } from './dependency-source.ts';
 
 /** @internal The always-available SDK facilities; target settings policy still applies. */
 export const _BASELINE_HOST_SERVICE_NAMES = ['logger', 'emitter', 'repository', 'settings'] as const;
@@ -36,6 +38,7 @@ export const PackConsumptionSchema: z.ZodType<PackConsumption> = z.object({
 /** @internal Native and authored readers supply their pack-level service map explicitly. */
 export interface _PackServiceDeclarations {
   readonly id: string;
+  readonly version?: string;
   readonly services?: Readonly<Record<string, string>>;
   readonly features?: Readonly<Record<string, { readonly services?: Readonly<Record<string, string>> }>>;
   readonly dependencies?: Readonly<Record<string, unknown>>;
@@ -86,7 +89,7 @@ export function _serviceProviderProblem(pack: Pick<_PackServiceDeclarations, 'id
 
 /** @internal Resolve the same selection for codegen and accepted host bindings, from declaration data alone. */
 export function _packServiceSelection(pack: _PackServiceDeclarations,
-  provider: (packId: string) => _PackServiceDeclarations | undefined,
+  provider: (packId: string, ref: string) => _PackServiceDeclarations | undefined,
 ): readonly { readonly ref: string; readonly packId: string; readonly name: string }[] {
   const own = _packServiceDeclarations(pack);
   const reserved = own.find(entry => (_HOST_SERVICE_NAMES as readonly string[]).includes(entry.name));
@@ -101,10 +104,18 @@ export function _packServiceSelection(pack: _PackServiceDeclarations,
     if (parsed.packId === HOST_PACK_ID) {
       if (!(_HOST_SERVICE_NAMES as readonly string[]).includes(parsed.name)) throw new Error(`Pack "${pack.id}" consumes unknown host service "${ref}"`);
     } else {
-      const declaration = parsed.packId === pack.id ? pack : provider(parsed.packId);
+      const declaration = parsed.packId === pack.id ? pack : provider(parsed.packId, ref);
       if (!declaration || declaration.id !== parsed.packId) throw new Error(`Pack "${pack.id}" consumes "${ref}", but provider "${parsed.packId}" has no available declaration`);
       if (!(parsed.packId === pack.id ? own : _packServiceDeclarations(declaration)).some(entry => entry.name === parsed.name)) {
         throw new Error(`Pack "${pack.id}" consumes "${ref}", but provider "${parsed.packId}" does not declare service "${parsed.name}"`);
+      }
+      if (parsed.packId !== pack.id) {
+        const spec = pack.dependencies?.[parsed.packId];
+        if (typeof spec !== 'string') throw new Error(`Pack "${pack.id}" consumes "${ref}" with an invalid dependency specification`);
+        const { range } = parsePackDependency(spec);
+        if (range !== '*' && (!declaration.version || !satisfies(declaration.version, range, { includePrerelease: true }))) {
+          throw new Error(`Pack "${pack.id}" consumes "${ref}", but provider "${parsed.packId}" version ${declaration.version ?? '(undeclared)'} does not satisfy ${range}`);
+        }
       }
     }
     const previous = exposed.get(parsed.name);

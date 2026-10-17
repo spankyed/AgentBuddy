@@ -62,6 +62,25 @@ Each entry names the file and its export, as `"path#exportName"`. The export can
 
 Service names (the keys) are identifiers. `apack pack add service <name>` writes both: a module exporting `<name>Service` (camelCase) and its entry.
 
+### Required services
+
+Declare APIs required beyond logger, emitter, repository, caller-bound settings and your own services:
+
+```json
+{
+  "dependencies": { "search-pack": "^1.0.0" },
+  "consumes": { "services": ["host/onboarding", "search-pack/search"] }
+}
+```
+
+The provider must be a direct dependency and directly declare the service. The host checks its
+version and availability from declaration data before importing the consumer. An installed app cannot
+use an authoring-only preview as a provider. `apack pack validate` checks local declarations without
+activating providers; missing local dependency data makes validation incomplete. `apack pack info`
+lists the requests. These declarations describe API dependencies, not a JavaScript security sandbox.
+Runtime/type filtering is still being implemented; declaration checks do not yet restrict the ambient
+SDK service object.
+
 ### Generated aggregation
 
 `generate-entries` creates `__generated__/services.ts` (import it as `#generated/services`), which:

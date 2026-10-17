@@ -2,7 +2,7 @@ import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { generatePackFiles } from '@apackdev/sdk/build';
+import { _declarationRevision, generatePackFiles } from '@apackdev/sdk/build';
 import { inspectDependencies } from '../../src/build/dependency-inspection.ts';
 import { validate, validatePack } from '../../src/commands/validate';
 
@@ -36,6 +36,37 @@ describe('pack authoring validation', () => {
     expect(generatePackFiles).not.toHaveBeenCalled();
     expect(inspectDependencies).toHaveBeenCalledWith(root, undefined);
     expect(fs.readdirSync(root)).toEqual(before);
+  });
+
+  it('checks consumed service ownership even when own sources are missing and another dependency is unavailable', async () => {
+    const declaration = { ...manifest, dependencies: { provider: '*', other: '*' },
+      consumes: { services: ['provider/search'] }, extensions: { services: { own: 'missing.ts#own' } } };
+    fs.writeFileSync(path.join(root, 'apack.json'), JSON.stringify(declaration));
+    const provider = { id: 'provider', name: 'Provider', version: '1.0.0' };
+    vi.mocked(inspectDependencies).mockResolvedValue({ entries: [
+      { id: 'provider', spec: '*', status: 'resolved' }, { id: 'other', spec: '*', status: 'unavailable', problem: 'Offline' },
+    ], files: new Map([['provider', { directory: '/missing', kind: 'type-data', revision: 'test', snapshot: {
+      manifest: provider, declarationRevision: _declarationRevision(provider),
+      types: { entities: {}, relKinds: {} }, entityDestinations: {}, facades: {},
+    } }]]) });
+    const report = await validatePack(root);
+    expect(report.status).toBe('invalid');
+    expect(report.diagnostics).toContainEqual(expect.objectContaining({ code: 'consumed-services.invalid',
+      message: 'Pack "demo" consumes "provider/search", but provider "provider" does not declare service "search"' }));
+    expect(generatePackFiles).not.toHaveBeenCalled();
+    expect(fs.readdirSync(root)).toEqual(['apack.json']);
+  });
+
+  it('reports unavailable consumed declarations as incomplete rather than an invalid API', async () => {
+    fs.writeFileSync(path.join(root, 'apack.json'), JSON.stringify({ ...manifest,
+      dependencies: { provider: '*' }, consumes: { services: ['provider/search'] } }));
+    vi.mocked(inspectDependencies).mockResolvedValue({ entries: [
+      { id: 'provider', spec: '*', status: 'unavailable', problem: 'Offline' },
+    ], files: new Map() });
+    const report = await validatePack(root);
+    expect(report.status).toBe('incomplete');
+    expect(report.skippedChecks).toContainEqual(expect.objectContaining({ check: 'consumed-services' }));
+    expect(report.diagnostics.some(issue => issue.code === 'consumed-services.invalid')).toBe(false);
   });
 
   it('reports a malformed manifest as invalid and skips dependent checks', async () => {
