@@ -9,9 +9,9 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createActor, setup, type AnyActorRef } from 'xstate';
 import type { Message } from '@apackdev/sdk/events';
 
-vi.mock('@apackdev/host/app-state', () => ({
+vi.mock('@apackdev/host/app-state', async (importOriginal) => ({
+  ...await importOriginal<typeof import('@apackdev/host/app-state')>(),
   appState: { get: () => ({ hasOnboarded: true }) },
-  HOST_ENTITY_TYPES: ['AppState'],
 }));
 
 const { createNativePackTestRegistry } = await import('@apackdev/host/testing');

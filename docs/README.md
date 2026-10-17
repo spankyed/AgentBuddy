@@ -13,7 +13,6 @@ For repository implementation and validation rules, read [CLAUDE.md](../CLAUDE.m
 | [plans/](plans/) | Intended designs | Proposed contracts, decisions, dependencies and acceptance cases |
 | [evidence/](evidence/) | What happened | Dated investigations, experiments, source commits and validation results |
 | [issues/](issues/) | Problems awaiting resolution | Reproductions, observed impact and unresolved findings |
-| [prompts/](prompts/) | Reusable task prompts | Instructions for repeatable tasks |
 | [archive/](archive/) | Historical work and decisions | Completed, superseded, absorbed, abandoned or rejected documents with explicit status |
 
 Goals coordinate delivery; subsystem plans own detailed designs. Small goals may contain their design
