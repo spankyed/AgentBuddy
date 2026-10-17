@@ -172,6 +172,18 @@ Execute the identified gaps in this order:
 No completion is claimed from this table. It identifies inspected implementation, concrete omissions
 and the bounded checks needed to close them. Historical checkpoint evidence is not a second backlog.
 
+Native content checkpoint contract: declare `content.writers` with the authored export-reference
+map and `content.sources.<key> = { applier: "path.ts" }` for explicitly composed native appliers.
+Native composition supplies the functions; these targets are discoverable data and are never loaded
+by discovery. Native sources do not claim authored paths/formats, datasets or build output that native
+composition cannot compile. Explicit `importCompiledContent({ compiledDir })` continues to execute
+native appliers. Automatic application still targets installed builds with a real directory; do not
+invent a native build directory. Share writer entity-ownership validation and backend binding-name
+checks with authored packs, before granting runtime authority. Fixtures must declare their actual
+entity owners rather than preserve the native bypass. Prove offline metadata, exact/duplicate/missing
+membership, ownership refusals, explicit application and cleanup/rollback. Native migrations remain
+required follow-up work; resolve their target/version semantics separately.
+
 Endpoint checkpoint contract: compiled `eventContracts` is keyed by local feature ID. A system records
 `{ incoming: string[], outgoing: string[] }`; a plugin records `{ receives: string[] }` (its own system's
 outgoing events plus its declared inbox). Shared SDK lifecycle events remain implicit in the protocol
