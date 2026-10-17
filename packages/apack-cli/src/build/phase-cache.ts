@@ -14,7 +14,8 @@ import { packInputsHash } from '@apackdev/host/build/pack-inputs';
 import type { CompilationInputs } from './compilation-inputs.ts';
 import { dependencyInputsHash } from './dependency-inputs.ts';
 import type { ResolvedDepFiles } from '../commands/fetch-deps.ts';
-import { verifyPack } from '@apackdev/host/packs';
+import { verifyPack, type PackIntegrity } from '@apackdev/host/packs';
+import type { RecordBuildOutput } from './build-outputs.ts';
 import { readPackBuildInputs, assertPackBuildInputsCurrent, type PackBuildInputs } from '@apackdev/host/build/pack-build-inputs';
 
 /** Private source-build metadata, sealed and replaced with its output; staging omits root cache files. */
@@ -32,7 +33,7 @@ export interface PhaseStamp {
 
 export type PhaseStamps = Readonly<Record<string, PhaseStamp>>;
 
-export function readPhaseCache(root: string): { stamps: PhaseStamps; inputs?: PackBuildInputs } {
+export function readPhaseCache(root: string): { stamps: PhaseStamps; inputs?: PackBuildInputs; integrity?: PackIntegrity } {
   try {
     const dir = path.join(root, 'dist');
     const receipt = verifyPack(dir);
@@ -42,7 +43,7 @@ export function readPhaseCache(root: string): { stamps: PhaseStamps; inputs?: Pa
     if (createHash('sha256').update(bytes).digest('hex') !== receipt.files[CACHE_FILE]) return { stamps: {} };
     const parsed: unknown = JSON.parse(bytes.toString('utf8'));
     if (parsed === null || typeof parsed !== 'object' || Array.isArray(parsed)) return { stamps: {} };
-    return { stamps: parsed as PhaseStamps, inputs };
+    return { stamps: parsed as PhaseStamps, inputs, integrity: receipt };
   } catch {
     // Missing, damaged or stale input/output records require a cold rebuild.
     return { stamps: {} };
@@ -50,9 +51,12 @@ export function readPhaseCache(root: string): { stamps: PhaseStamps; inputs?: Pa
 }
 
 /** Write only to staging; its seal and directory replacement own publication. */
-export function writeStamps(outputDir: string, stamps: PhaseStamps): void {
+export function writeStamps(outputDir: string, stamps: PhaseStamps, recordOutput?: RecordBuildOutput): void {
   fs.mkdirSync(outputDir, { recursive: true });
-  fs.writeFileSync(path.join(outputDir, CACHE_FILE), `${JSON.stringify(stamps, null, 2)}\n`);
+  const file = path.join(outputDir, CACHE_FILE);
+  const bytes = `${JSON.stringify(stamps, null, 2)}\n`;
+  fs.writeFileSync(file, bytes);
+  recordOutput?.(file, bytes);
 }
 
 /**
@@ -87,11 +91,18 @@ export function filesUnder(dir: string, base = dir, out: string[] = []): string[
 }
 
 /** Copies a phase's recorded output from `dist` into the staged tree, at the same relative paths */
-export function takeForward(distDir: string, stagedDir: string, files: readonly string[]): void {
+export function takeForward(distDir: string, stagedDir: string, files: readonly string[], options: { hashes: PackIntegrity['files']; recordOutput?: RecordBuildOutput }): void {
   for (const file of files) {
+    const from = path.join(distDir, file);
+    const expected = options.hashes[file.split(path.sep).join('/')];
+    if (!expected) throw new Error(`Reusable output is not in the verified receipt: ${file}`);
+    const bytes = fs.readFileSync(from);
+    if (createHash('sha256').update(bytes).digest('hex') !== expected) throw new Error(`Reusable output changed: ${file}`);
     const to = path.join(stagedDir, file);
     fs.mkdirSync(path.dirname(to), { recursive: true });
-    fs.copyFileSync(path.join(distDir, file), to);
+    fs.writeFileSync(to, bytes);
+    fs.chmodSync(to, fs.statSync(from).mode);
+    options.recordOutput?.(to, bytes);
   }
 }
 

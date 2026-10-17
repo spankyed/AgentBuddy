@@ -185,8 +185,13 @@ refuses publication; ordered bundle emissions preserve public-placeholder replac
 files and maps are included. See [frontend output evidence](../evidence/build-input-snapshot-proof.md#frontend-output-expectations-checkpoint).
 Compiled JSON/index and ordinary media now feed the same final expectation check through
 `CompilePackOptions.recordOutput`; deletion after actual media compilation refuses publication.
-Remaining bundle/declaration/reused-phase writers still need that check; this does not close all B4
-output completeness or B5 freshness policy.
+Native bundle writers now report bytes after source-map transformation; declaration writers report
+final rendered text. Reused phases validate source bytes against the prior verified receipt before
+copying, then retain their destination expectations. Snapshot/cache/input metadata are checked too;
+inline flow helpers belong to their actual snapshot output. See
+[remaining writer evidence](../evidence/build-input-snapshot-proof.md#remaining-writer-output-expectations-checkpoint).
+B4 final producer acceptance still includes the remaining B1/B3 lifetime requirements and converged
+checks. B5's four consumer policies and comparison contexts remain required.
 
 The [asset producer audit](../evidence/build-input-snapshot-proof.md#asset-producer-audit-and-bounded-follow-through-2026-10-17)
 now enumerates the remaining concrete paths. Vite's output graph includes CSS/lazy/worker emissions

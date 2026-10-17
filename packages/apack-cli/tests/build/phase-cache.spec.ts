@@ -1,6 +1,8 @@
 // What makes a phase's output reusable, and what must not. The gate's whole risk is answering "reusable"
 // when it is not, so each case here is one way that could happen.
 import * as fs from 'node:fs';
+import { createHash } from 'node:crypto';
+import { createBuildOutputs } from '../../src/build/build-outputs.ts';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { afterEach, describe, expect, it, vi } from 'vitest';
@@ -91,11 +93,29 @@ describe('reuseProblem', () => {
 });
 
 describe('takeForward', () => {
+  it('checks reused bytes against their verified receipt and retains their final output expectation', () => {
+    const file = 'types/facade.d.ts';
+    const dist = tmp({ [file]: 'FIRST' }), staged = tmp();
+    const hashes = { [file]: createHash('sha256').update('FIRST').digest('hex') };
+    const outputs = createBuildOutputs(staged);
+    fs.writeFileSync(path.join(dist, file), 'OTHER');
+    expect(() => takeForward(dist, staged, [file], { hashes, recordOutput: outputs.record })).toThrow(/Reusable output changed/);
+    expect(filesUnder(staged)).toEqual([]);
+    fs.writeFileSync(path.join(dist, file), 'FIRST');
+    takeForward(dist, staged, [file], { hashes, recordOutput: outputs.record });
+    expect(() => outputs.assertCurrent()).not.toThrow();
+    fs.writeFileSync(path.join(staged, file), 'OTHER');
+    expect(() => outputs.assertCurrent()).toThrow(/missing or changed/);
+    expect(() => takeForward(dist, staged, ['../outside'], { hashes })).toThrow(/not in the verified receipt/);
+  });
+
   it('puts the recorded output where the staged tree expects it', () => {
     const dist = tmp({ 'runtime/fe.js': 'bundle', 'runtime/chunks/a.js': 'chunk' });
     const staged = tmp();
 
-    takeForward(dist, staged, ['runtime/fe.js', 'runtime/chunks/a.js']);
+    const files = ['runtime/fe.js', 'runtime/chunks/a.js'];
+    const hashes = Object.fromEntries(files.map(file => [file, createHash('sha256').update(fs.readFileSync(path.join(dist, file))).digest('hex')]));
+    takeForward(dist, staged, files, { hashes });
 
     expect(filesUnder(staged)).toEqual(['runtime/chunks/a.js', 'runtime/fe.js']);
     expect(fs.readFileSync(path.join(staged, 'runtime/chunks/a.js'), 'utf-8')).toBe('chunk');

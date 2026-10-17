@@ -117,6 +117,7 @@ it('captures native launch identity and authored/dependency bytes before user pr
   }
 });
 
+// Includes two fresh compiler installations, builds and final input/output verification.
 it('uses the captured compiler and retains unchanged build/cache identity on repeat builds', async () => {
   const require = createRequire(import.meta.url);
   const esbuild = createRequire(require.resolve('esbuild/package.json'));
@@ -165,7 +166,7 @@ it('uses the captured compiler and retains unchanged build/cache identity on rep
   expect(readPackBuild(path.join(root, 'dist')).revision).toBe(revision);
   expect(workspaces).toHaveLength(2);
   for (const workspace of workspaces) expect(fs.existsSync(workspace)).toBe(false);
-});
+}, 120_000);
 
 describe('native compiler startup', () => {
   let root: string, preload: string, imported: string, payload: string, trace: string, builder: PackBuilder;

@@ -1,5 +1,5 @@
 import { createBuildOutputs } from '../build/build-outputs.ts';
-import { writePackBuildInputs } from '@apackdev/host/build/pack-build-inputs';
+import { writePackBuildInputs, PACK_BUILD_INPUTS_FILE } from '@apackdev/host/build/pack-build-inputs';
 import { _packEntityTypes, _packRelationTypes } from '@apackdev/sdk/framework';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
@@ -100,7 +100,7 @@ async function buildIntoStaging(args: string[], root: string) {
   const manifest = readValidManifest(root);
 
   // What the last build left reusable, and what this one leaves for the next
-  const { stamps, inputs: cachedInputs } = readPhaseCache(root);
+  const { stamps, inputs: cachedInputs, integrity: cachedIntegrity } = readPhaseCache(root);
   const nextStamps: Record<string, PhaseStamp> = {};
 
   // `outputDir` is where every phase below writes; `distDir` is what it becomes, once they have all succeeded
@@ -130,9 +130,9 @@ async function buildIntoStaging(args: string[], root: string) {
   const modules = createCompilerModuleLoader(compilation);
   const reusePhase = (name: string) => {
     const stamp = stamps[name];
-    if (!stamp || !cachedInputs) throw new Error(`Cannot reuse ${name} without completed build inputs`);
+    if (!stamp || !cachedInputs || !cachedIntegrity) throw new Error(`Cannot reuse ${name} without completed build inputs`);
     compilation.retainInputs(cachedInputs);
-    takeForward(distDir, outputDir, stamp.files);
+    takeForward(distDir, outputDir, stamp.files, { hashes: cachedIntegrity.files, recordOutput: outputs.record });
     nextStamps[name] = stamp;
   };
   // What each bundling phase read, for the chain step that builds this pack to be checked against. The
@@ -188,7 +188,7 @@ async function buildIntoStaging(args: string[], root: string) {
     );
     const contentCompilersBundled = Object.keys(contentCompilers).length > 0;
     if (contentCompilersBundled) {
-      const bundled = await bundlePackContentCompilers(root, outputDir, contentCompilers, { release, compilation, recordReads: reads?.forPhase('contentCompilers') });
+      const bundled = await bundlePackContentCompilers(root, outputDir, contentCompilers, { release, compilation, recordOutput: outputs.record, recordReads: reads?.forPhase('contentCompilers') });
       if (!bundled.success) throw new Error(`Content compiler bundle failed: ${bundled.error}`);
     }
 
@@ -220,7 +220,7 @@ async function buildIntoStaging(args: string[], root: string) {
       ? (reusePhase('types'),
          console.log('  facade types: unchanged, reused'),
          { success: true as const, content: fs.readFileSync(packTypesFile, 'utf-8') })
-      : await bundlePackTypes(root, packTypesFile, reads?.forPhase('types'), compilation);
+      : await bundlePackTypes(root, packTypesFile, { recordReads: reads?.forPhase('types'), compilation, recordOutput: outputs.record });
     if (typesStale !== null && packTypes.success) {
       nextStamps.types = { hash: typesHash, files: [path.join(PACK_LAYOUT.typesDir, `${PACK_TYPES_FACADE}.d.ts`)] };
     }
@@ -247,6 +247,7 @@ async function buildIntoStaging(args: string[], root: string) {
       release,
       compilation,
       recordModuleReads: reads?.forPhase('flowHelpersModule'),
+      recordOutput: outputs.record,
       recordTypeReads: reads?.forPhase('flowHelperTypes'),
     });
     if (!flowHelpers.success) fail(`Flow helpers bundle failed: ${flowHelpers.error}`);
@@ -282,9 +283,12 @@ async function buildIntoStaging(args: string[], root: string) {
         throw new Error(`Build failed, so no snapshot was written:\n${failures.map((f) => `  - ${f}`).join('\n')}`);
       }
       fs.mkdirSync(path.dirname(snapshotPath), { recursive: true });
-      fs.writeFileSync(snapshotPath, JSON.stringify(snapshot, null, 2));
-      writeStamps(outputDir, nextStamps);
-      writePackBuildInputs(outputDir, await compilation.finish(args));
+      const snapshotBytes = JSON.stringify(snapshot, null, 2);
+      fs.writeFileSync(snapshotPath, snapshotBytes);
+      outputs.record(snapshotPath, snapshotBytes);
+      writeStamps(outputDir, nextStamps, outputs.record);
+      const inputBytes = writePackBuildInputs(outputDir, await compilation.finish(args));
+      outputs.record(path.join(outputDir, PACK_BUILD_INPUTS_FILE), inputBytes);
       outputs.assertCurrent();
       sealPackBuild(outputDir, manifest, snapshot.sdkVersion);
       // Optional diagnostics describe this validated candidate; only the sealed cache authorizes reuse.
@@ -316,7 +320,7 @@ async function buildIntoStaging(args: string[], root: string) {
 
     // ── Step build facets (for dependents' flow validation) ─────────────
     if (Object.keys(manifest.extensions?.steps ?? {}).length > 0) {
-      const stepBuild = await bundlePackStepBuild(root, outputDir, { release, compilation, recordReads: reads?.forPhase('stepBuild') });
+      const stepBuild = await bundlePackStepBuild(root, outputDir, { release, compilation, recordOutput: outputs.record, recordReads: reads?.forPhase('stepBuild') });
       if (stepBuild.success) {
         console.log(`  step build: dist/${PACK_LAYOUT.stepsBuild}`);
       } else {
@@ -325,7 +329,7 @@ async function buildIntoStaging(args: string[], root: string) {
     }
 
     // ── Content runtime (for dependents' unit tests) ─────────────────────────
-    const contentRuntime = await bundlePackContentRuntime(root, outputDir, { release, compilation, recordReads: reads?.forPhase('contentRuntime') });
+    const contentRuntime = await bundlePackContentRuntime(root, outputDir, { release, compilation, recordOutput: outputs.record, recordReads: reads?.forPhase('contentRuntime') });
     if (contentRuntime.success) {
       console.log(`  content runtime: dist/${PACK_LAYOUT.buildDir}/${CONTENT_RUNTIME_FILE}`);
     } else {
@@ -344,7 +348,7 @@ async function buildIntoStaging(args: string[], root: string) {
         ? (reusePhase('dslDefs'),
            console.log('  dsl defs: unchanged, reused'),
            { success: true as const, files: [] as string[] })
-        : await bundleDslDefs(root, outputDir, manifest, reads?.forPhase('dslDefs'), compilation);
+        : await bundleDslDefs(root, outputDir, manifest, { recordReads: reads?.forPhase('dslDefs'), compilation, recordOutput: outputs.record });
       if (dslStale !== null && defs.success && dslHash !== null) {
         nextStamps.dslDefs = { hash: dslHash, files: defs.files };
       }
@@ -359,7 +363,7 @@ async function buildIntoStaging(args: string[], root: string) {
     }
 
     // ── Backend runtime ──────────────────────────────────────────────────
-    const runtimeResult = await bundlePackRuntime(root, outputDir, { release, compilation, recordReads: reads?.forPhase('runtime') });
+    const runtimeResult = await bundlePackRuntime(root, outputDir, { release, compilation, recordOutput: outputs.record, recordReads: reads?.forPhase('runtime') });
     if (runtimeResult.success) {
       console.log(`  runtime: dist/${PACK_LAYOUT.runtimeEntry}`);
     } else {

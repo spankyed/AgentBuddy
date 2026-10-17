@@ -4,6 +4,7 @@ import { APP_ONLY_EXPORTS, HOST_RESOLVED_BINARIES, SHARED_DEPS, sharedInstanceEx
 import { CONTENT_COMPILERS_FILE, STEPS_BUILD_MODULE } from '@apackdev/sdk/build';
 import { checkContentRuntimeLoads } from './content-runtime-check';
 import type { RecordReads } from './build-reads';
+import type { RecordBuildOutput } from './build-outputs.ts';
 import { errorMessage } from '@apackdev/sdk/utils/pure';
 import { esbuildTsconfig, readPackCompilerConfiguration } from './compiler-configuration.ts';
 import type { CompilerReadTree } from './compiler-read-tree.ts';
@@ -20,6 +21,7 @@ export interface BundleRuntimeOptions {
    * nothing is recording, which is what keeps `metafile` off in that case.
    */
   recordReads?: RecordReads;
+  recordOutput?: RecordBuildOutput;
 }
 
 /**
@@ -90,16 +92,19 @@ async function bundlePackSource<T extends EsbuildOptions>(
         ? overrides.entryPoints.map(entry => typeof entry === 'string' ? tree.path(entry) : { ...entry, in: tree.path(entry.in) })
         : overrides.entryPoints && Object.fromEntries(Object.entries(overrides.entryPoints).map(([name, file]) => [name, tree.path(file)])),
       stdin: stdin && { ...stdin, resolveDir: tree.path(stdin.resolveDir ?? packDir) },
-      write: false,
     }),
+    ...((tree || options.recordOutput) && { write: false }),
   };
   let result: import('esbuild').BuildResult;
   try { result = await esbuild.build(merged); }
   catch (error) { throw new Error(tree?.diagnostic(errorMessage(error)) ?? errorMessage(error), { cause: error }); }
-  if (tree && overrides.write !== false) {
-    for (const file of result.outputFiles ?? []) {
+  if ((tree || options.recordOutput) && overrides.write !== false) {
+    if (!result.outputFiles?.length) throw new Error('Native bundle returned no output files');
+    for (const file of result.outputFiles) {
       fs.mkdirSync(path.dirname(file.path), { recursive: true });
-      fs.writeFileSync(file.path, file.path.endsWith('.map') ? sourceMapOrigins(file.text, file.path, tree) : file.contents);
+      const bytes = tree && file.path.endsWith('.map') ? sourceMapOrigins(file.text, file.path, tree) : file.contents;
+      fs.writeFileSync(file.path, bytes);
+      options.recordOutput?.(file.path, bytes);
     }
   }
   if (options.recordReads && result.metafile) {

@@ -53,8 +53,10 @@ export function parsePackBuildInputs(value: unknown): PackBuildInputs {
 }
 
 /** Write only to the candidate before sealPackBuild; the existing file receipt binds inputs and output. */
-export function writePackBuildInputs(directory: string, inputs: PackBuildInputs): void {
-  fs.writeFileSync(path.join(directory, PACK_BUILD_INPUTS_FILE), `${JSON.stringify(parsePackBuildInputs(inputs), null, 2)}\n`);
+export function writePackBuildInputs(directory: string, inputs: PackBuildInputs): string {
+  const bytes = `${JSON.stringify(parsePackBuildInputs(inputs), null, 2)}\n`;
+  fs.writeFileSync(path.join(directory, PACK_BUILD_INPUTS_FILE), bytes);
+  return bytes;
 }
 
 /** A supplied receipt must already be verified by the caller; captured bytes must still match it. */

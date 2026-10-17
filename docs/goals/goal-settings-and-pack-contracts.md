@@ -317,12 +317,17 @@ Content-output checkpoint `72435c778` feeds compiled JSON, the index and regular
 expectation owner. The real post-compilation media-deletion case refuses publication and retains its
 incumbent; SDK/CLI types, 23 focused checks and all 28 SDK API reports pass. See
 [content output evidence](../evidence/build-input-snapshot-proof.md#content-and-media-output-expectations-checkpoint).
-This closes the record/association, frontend and ordinary content/media expectation slices, not all
-B4: backend/content/helper bundles and declaration/reused-phase writer bytes remain required. B5's four consumer policies and compiler/options
-comparison contexts remain unimplemented. No converged strict or final `--all` pass is claimed.
-Next: extend B4's same in-memory output check to remaining bundle/declaration and reused-phase writers,
-then migrate B5 consumers. Reconcile the finite native/platform lifetime boundary against supported
-compiler operations before closing B1/B3. Preserve required external-library and
+Native backend/content/step bundles, rendered facade/helper/DSL declarations, metadata and reused-phase
+files now feed that same final check. Reuse verifies the prior receipt's expected bytes before copying.
+Twenty-eight unit/passive cases, six DSL cases, three actual native compiler cases, host/CLI types and
+lint pass. Two real builds preserve reuse/revision/cleanup in 65.20s; see
+[remaining writer evidence](../evidence/build-input-snapshot-proof.md#remaining-writer-output-expectations-checkpoint).
+This implements B4's supported file-writer coverage. Its final acceptance still depends on the retained
+B1/B3 ownership/lifetime requirements and converged checks. B5's four consumer policies and their
+required comparison contexts remain unimplemented; no converged strict or final `--all` pass is claimed.
+Next: settle B5's per-command comparison context and migrate archive, prebuilt tests, default-fork
+preparation and drive to the common record, removing their replaced freshness heuristics. Reconcile
+the finite native/platform lifetime boundary against supported compiler operations before closing B1/B3. Preserve required external-library and
 platform/thread-lifetime acceptance;
 preserve the now-accepted namespace cases without starting another resolver or observation framework. Preserve
 B2's accepted owner and browser proof; do not schedule another frontend generation implementation.

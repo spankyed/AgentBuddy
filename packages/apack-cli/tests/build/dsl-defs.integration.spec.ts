@@ -2,6 +2,7 @@ import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { createBuildOutputs } from '../../src/build/build-outputs.ts';
 import { bundleDslDefs, monacoDefsFile, withoutRenameSuffixes } from '../../src/build/dsl-defs';
 import type { PackManifest } from '@apackdev/sdk/build';
 
@@ -49,7 +50,9 @@ describe('bundleDslDefs', () => {
     ].join('\n'));
 
     write('dist/defs/monaco/console-defs.d.ts', 'accepted published definitions');
-    const result = await bundleDslDefs(dir, path.join(dir, '.apack', 'build'), manifest({}));
+    const outputs = createBuildOutputs(path.join(dir, '.apack', 'build'));
+    const result = await bundleDslDefs(dir, path.join(dir, '.apack', 'build'), manifest({}), { recordOutput: outputs.record });
+    expect(() => outputs.assertCurrent()).not.toThrow();
     expect(fs.readFileSync(path.join(dir, 'dist/defs/monaco/console-defs.d.ts'), 'utf8')).toBe('accepted published definitions');
 
     expect(result).toEqual({ success: true, files: [monacoDefsFile('console')] });
@@ -58,6 +61,8 @@ describe('bundleDslDefs', () => {
     expect(defs()).toMatch(/interface Row \{/);
     expect(defs()).toMatch(/interface ArtifactItem</);
     expect(defs()).not.toMatch(/from '@apackdev\//);
+    fs.appendFileSync(path.join(dir, '.apack', 'build', monacoDefsFile('console')), '// changed');
+    expect(() => outputs.assertCurrent()).toThrow(/missing or changed/);
   });
 
   it('leaves other packages imports until the entry inlines them', async () => {

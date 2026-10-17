@@ -2,6 +2,7 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { sortLiteralUnions } from './declaration-text';
 import type { RecordReads } from './build-reads';
+import type { RecordBuildOutput } from './build-outputs.ts';
 import { errorMessage } from '@apackdev/sdk/utils/pure';
 import ts from 'typescript';
 import { compilerReadOptions, readPackCompilerConfiguration } from './compiler-configuration.ts';
@@ -18,8 +19,8 @@ export function isPackageSpecifier(id: string): boolean {
  * services, repositories) into one declaration file that dependents import. The pack's own
  * modules and its dependencies' facade types are inlined; packages stay imports.
  */
-export async function bundlePackTypes(packDir: string, outFile: string, recordReads?: RecordReads, compilation?: CompilationInputs): Promise<{ success: true; content: string } | { success: false; error: string }> {
-  return bundleDeclarations(packDir, path.join(packDir, 'src', '__generated__', 'pack-types.ts'), outFile, { recordReads, compilation });
+export async function bundlePackTypes(packDir: string, outFile: string, options: Pick<BundleDeclarationsOptions, 'recordReads' | 'compilation' | 'recordOutput'> = {}): Promise<{ success: true; content: string } | { success: false; error: string }> {
+  return bundleDeclarations(packDir, path.join(packDir, 'src', '__generated__', 'pack-types.ts'), outFile, options);
 }
 
 export interface BundleDeclarationsOptions {
@@ -41,6 +42,7 @@ export interface BundleDeclarationsOptions {
    * `watchFiles` is the declaration program's file list, which is where another package's `.d.ts` is read.
    */
   recordReads?: RecordReads;
+  recordOutput?: RecordBuildOutput;
 }
 
 /**
@@ -122,6 +124,7 @@ export async function bundleDeclarations(
     const content = sortLiteralUnions(rendered, outFile);
     fs.mkdirSync(path.dirname(outFile), { recursive: true });
     fs.writeFileSync(outFile, content);
+    options.recordOutput?.(outFile, content);
     return { success: true, content };
   } catch (err) {
     return { success: false, error: tree?.diagnostic(errorMessage(err)) ?? errorMessage(err) };

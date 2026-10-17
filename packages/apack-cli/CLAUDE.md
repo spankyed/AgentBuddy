@@ -199,7 +199,10 @@ from Vite's actual emitted graph and the existing public-file walk, including CS
 maps and copied public files. Final validation refuses missing/changed expected output before creating
 the receipt. Ordered emissions may replace public placeholders. This is an in-memory producer check,
 not another published manifest. `compilePack.recordOutput` feeds compiled JSON, the content index and
-regular media into the same check. Remaining bundle/declaration writers stay tracked by B4 in the goal.
+regular media into the same check. Native bundles report their emitted bytes after source-map rewriting; facade/helper/DSL declarations
+report their final rendered text. Reused phase files must match the prior verified receipt before
+copying and retain the same final-byte expectations. Snapshot, cache and completed input metadata also
+join the check. Flow-helper module text stays covered by the snapshot that actually carries it.
 
 Private phase stamps live in `dist/phase-cache.json`, published with that completed record and output.
 Cache reads verify the receipt and current source/dependency inputs before considering phase keys.

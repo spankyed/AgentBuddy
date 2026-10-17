@@ -5,6 +5,7 @@ import vm from 'node:vm';
 import { pathToFileURL } from 'node:url';
 import { build as nativeBuild, type BuildOptions } from 'esbuild';
 import { afterEach, expect, it, vi } from 'vitest';
+import { createBuildOutputs } from '../../src/build/build-outputs.ts';
 import { bundlePackRuntime } from '../../src/build/be-bundler.ts';
 import { captureCompilationInputs } from '../../src/build/compilation-inputs.ts';
 import * as configuration from '../../src/build/compiler-configuration.ts';
@@ -76,9 +77,13 @@ it.each([false, true])('preserves native inherited aliases and transform semanti
   const expected = evaluate(baseline.outputFiles[0]!.text);
   expect(expected).toEqual({ calls: [7], label: 'PACKAGE', value: 'ALIASED', jsx: 'div' });
   const output = path.join(pack, 'dist');
-  const result = await bundlePackRuntime(pack, output);
+  const outputs = createBuildOutputs(output);
+  const result = await bundlePackRuntime(pack, output, { recordOutput: outputs.record });
+  expect(() => outputs.assertCurrent()).not.toThrow();
   expect(result.success, result.error).toBe(true);
   expect(evaluate(fs.readFileSync(path.join(output, 'runtime/index.cjs'), 'utf8'))).toEqual(expected);
+  fs.unlinkSync(path.join(output, 'runtime/index.cjs.map'));
+  expect(() => outputs.assertCurrent()).toThrow(/missing or changed/);
 });
 
 it('consumes its captured config without reparsing and refuses changed inputs before publication', async () => {
@@ -89,7 +94,9 @@ it('consumes its captured config without reparsing and refuses changed inputs be
   fs.unlinkSync(path.join(root, 'configs/base.json'));
   const reread = vi.spyOn(configuration, 'readPackCompilerConfiguration').mockImplementation(() => { throw new Error('Reparsed live configuration'); });
   const output = path.join(pack, 'dist');
-  const result = await bundlePackRuntime(pack, output, { compilation });
+  const outputs = createBuildOutputs(output);
+  const result = await bundlePackRuntime(pack, output, { compilation, recordOutput: outputs.record });
+  expect(() => outputs.assertCurrent()).not.toThrow();
   expect(result.success, result.error).toBe(true);
   expect(evaluate(fs.readFileSync(path.join(output, 'runtime/index.cjs'), 'utf8')))
     .toEqual({ calls: [7], label: 'PACKAGE', value: 'ALIASED', jsx: 'div' });

@@ -1209,3 +1209,51 @@ Acceptance:
 Remaining B4 writer coverage is native backend/content/helper bundles and declaration/reused-phase
 outputs. Existing receipt/format and installed source-free behavior remain unchanged; B1/B3 acceptance,
 B5 consumer policies, B6, all Phase 6 streams and final strict committed-source `--all` remain required.
+
+
+### Remaining writer output expectations checkpoint
+
+The same candidate-scoped owner now receives every supported file writer:
+
+- esbuild backend/runtime, content compilers/runtime and step facets report emitted bytes after the
+  existing source-map projection. A standalone caller requesting output records also writes those
+  captured results; the ordinary standalone path and in-memory flow-helper module path retain their
+  existing behavior. A missing native output inventory refuses rather than silently recording no files.
+- Facade, helper and Monaco DSL declarations report text after rendering and union normalization.
+  Flow-helper executable text is in the snapshot, not a fictitious separate file.
+- Reused phase output must be present in the previous verified receipt and match its expected hash
+  before copying. Captured matching bytes are written with copied permissions and recorded for final
+  destination validation. A changed cached file cannot be re-signed merely because it was copied.
+- Snapshot, private phase-cache and completed input metadata retain expected writer bytes too. The
+  input writer returns its canonical encoding rather than making the CLI duplicate its serialization.
+  Final sealing still owns the canonical manifest and integrity receipt, without another format/store.
+
+The facade/DSL internal call interfaces now take their optional compilation/read/output controls in
+one options argument. All in-tree callers are migrated; no positional-argument compatibility path.
+
+Evidence:
+
+- 28 unit/passive cases across four files pass (2.10s), including changed reused bytes, missing receipt
+  membership, post-copy destination changes and compiler-free record verification:
+  `/private/tmp/apack-remaining-output-unit-final.log`.
+- All six DSL cases pass (2.77s), including expected final rendered bytes and post-write corruption:
+  `/private/tmp/apack-remaining-output-dsl.log`.
+- Three real native-compiler cases pass (11.36s): inherited resolution/transform behavior without an
+  owned tree, captured configuration without live reparsing, expected rewritten output bytes and a
+  missing source map: `/private/tmp/apack-remaining-output-native-final.log`.
+- Host/CLI types, eleven-file lint and packages refresh pass. Logs:
+  `/private/tmp/apack-remaining-output-host-types.log`,
+  `/private/tmp/apack-remaining-output-types-final.log`,
+  `/private/tmp/apack-remaining-output-packages-final.log`.
+- Actual captured worker: two builds preserve phase reuse, identical sealed revision and input-tree
+  cleanup in 65.20s (67.42s runner): `/private/tmp/apack-remaining-output-repeat-diagnostic.log`.
+  Its default 60s scenario run timed out during the second completion after reaching phase reuse:
+  `/private/tmp/apack-remaining-output-repeat.log`. No own child remained afterward. The previously
+  measured 64.02s run predates these writer changes; 50.00s was also observed. Only this two-installation,
+  two-build scenario now receives 120s total, with assertions and global budgets unchanged. The
+  diagnostic behavioral pass is not a strict-gate pass; the deadline-only edit was not rerun separately.
+
+Supported file-writer expectation coverage is implemented; it does not waive B1/B3 external-library
+or platform/thread-lifetime acceptance. B5 now needs the four actual consumer policies/comparison
+contexts and migration off their replaced freshness heuristics. B6, all Phase 6 streams and the final
+committed-source strict `--all` remain required. No broad acceptance is claimed here.

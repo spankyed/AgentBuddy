@@ -2,6 +2,7 @@ import * as path from 'node:path';
 import { builtinModules } from 'node:module';
 import type { PackManifest } from '@apackdev/sdk/build';
 import type { RecordReads } from './build-reads';
+import type { RecordBuildOutput } from './build-outputs.ts';
 import { bundleDeclarations, isPackageSpecifier } from './types-bundler';
 import { readPackCompilerConfiguration } from './compiler-configuration.ts';
 import type { CompilationInputs } from './compilation-inputs.ts';
@@ -54,9 +55,9 @@ export async function bundleDslDefs(
   packDir: string,
   outputDir: string,
   manifest: PackManifest,
-  recordReads?: RecordReads,
-  compilation?: CompilationInputs,
+  options: { recordReads?: RecordReads; compilation?: CompilationInputs; recordOutput?: RecordBuildOutput } = {},
 ): Promise<{ success: true; files: string[] } | { success: false; error: string }> {
+  const { recordReads, compilation, recordOutput } = options;
   const entries = Object.entries(manifest.extensions?.dsl ?? {}).filter(([, def]) => def.targets.includes('monaco'));
   if (entries.length === 0) return { success: true, files: [] };
   const compilerOptions = packCompilerOptions(packDir, compilation);
@@ -76,6 +77,7 @@ export async function bundleDslDefs(
       compilerOptions,
       recordReads,
       compilation,
+      recordOutput,
     });
     if (!result.success) return { success: false, error: `${name}: ${result.error}` };
     files.push(monacoDefsFile(name));

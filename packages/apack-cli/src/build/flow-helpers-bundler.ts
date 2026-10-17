@@ -2,6 +2,7 @@ import * as path from 'node:path';
 import type { PackFlowHelpers } from '@apackdev/sdk/build';
 import { bundlePackFlowHelpersModule } from './be-bundler';
 import type { RecordReads } from './build-reads';
+import type { RecordBuildOutput } from './build-outputs.ts';
 import { bundleDeclarations } from './types-bundler';
 import { facadeProblems } from './facade-gate';
 import type { CompilationInputs } from './compilation-inputs.ts';
@@ -22,6 +23,7 @@ export interface BundleFlowHelpersOptions {
   /** One recorder per bundle, and this runs two: the ES module, and its declarations */
   recordModuleReads?: RecordReads;
   recordTypeReads?: RecordReads;
+  recordOutput?: RecordBuildOutput;
 }
 
 export async function bundlePackFlowHelpers(
@@ -33,7 +35,7 @@ export async function bundlePackFlowHelpers(
   if (!bundled.success) return bundled;
 
   const typesFile = path.join(typesDir, FLOW_HELPERS_TYPES_FILE);
-  const types = await bundleDeclarations(packDir, path.join(packDir, 'src', '__generated__', 'flow-helpers.ts'), typesFile, { recordReads: options.recordTypeReads, compilation: options.compilation });
+  const types = await bundleDeclarations(packDir, path.join(packDir, 'src', '__generated__', 'flow-helpers.ts'), typesFile, { recordReads: options.recordTypeReads, compilation: options.compilation, recordOutput: options.recordOutput });
   if (!types.success) return types;
   const problems = facadeProblems(packDir, typesFile);
   if (problems.length > 0) {
