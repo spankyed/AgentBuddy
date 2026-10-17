@@ -2283,3 +2283,35 @@ shared-cache controls, default fallback behavior, retained frontend native initi
 platform lifetime remain open, as do converged/final gates. The API live ledger is also reconciled
 with its already recorded A4/A5 implementation and local app/schema/API acceptance; final producer/app
 convergence is retained rather than repeating an already completed migration.
+
+### Windows repeated-build timing diagnosis (2026-10-17)
+
+[Run 39063156389](https://github.com/spankyed/AgentBuddy/actions/runs/39063156389) on `59b890dcb`
+passes all 14 unit files (154 cases, eight platform skips). The repeated-worker case completes the
+first actual build, useful-source-path checks, input replay and archive, then reaches its second
+checkout setup before the unchanged 120-second case deadline expires. The first output handoff takes
+about 69 seconds; the second setup starts at about 84 seconds. The run does not prove a deadlock or
+completion of the second build. Cleanup then encounters EPERM while the timed-out operation is still
+using the fixture. Full log: `/private/tmp/apack-windows-39063156389.log`.
+
+Give this one Windows case a bounded 180-second diagnostic allowance while retaining 120 seconds on
+macOS; record elapsed milestones after builds, input replay and archive. The purpose is to distinguish
+phase cost from stalled progress, not to certify Windows acceptance from a timeout change. The next
+native run must finish and preserve repeat revision/cache equality, input/output checks and workspace
+cleanup. Do not increase other case or suite deadlines. Existing timeout-exception guidance records
+this exact measured boundary. All 53 deadline/subprocess tooling checks, CLI types and focused lint
+pass; `/private/tmp/apack-windows-repeat-diagnostic-tooling.log`,
+`/private/tmp/apack-windows-repeat-diagnostic-types.log`. The subprocess inventory now includes the
+fresh Node child introduced for actual launch-setting selection; no new subprocess is added here.
+
+### Native image suffix counterexample (2026-10-17)
+
+A disposable actual Mach-O prototype returns 11 normally and 37 under `DYLD_IMAGE_SUFFIX=_apack`.
+The selected package-contained suffixed library has an absolute outside dependency. Current admission
+inspects the nominal library instead and accepts the image. This is a demonstrated next gap, not a
+repair or a reason to refuse every suffix setting. Preserve loader selection and inspect the selected
+variant, including its transitive dependencies and missing-candidate observations. Prototype:
+`/private/tmp/apack-native-suffix-proof.cjs`; selected paths:
+`/private/tmp/apack-native-suffix-proof.json`. Apple's
+[dyld configuration source](https://github.com/apple-oss-distributions/dyld/blob/main/dyld/DyldProcessConfig.cpp)
+was located for the next suffix-order audit; no implementation is inferred merely from that search.

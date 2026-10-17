@@ -120,6 +120,10 @@ it('captures native launch identity and authored/dependency bytes before user pr
 
 // Includes two fresh compiler installations, builds and final input/output verification.
 it('uses the captured compiler and retains unchanged build/cache identity on repeat builds', async () => {
+  const started = performance.now();
+  const checkpoint = (phase: string) => {
+    if (process.platform === 'win32') console.info(`Repeated worker: ${phase} (${Math.round(performance.now() - started)}ms)`);
+  };
   const require = createRequire(import.meta.url);
   const esbuild = createRequire(require.resolve('esbuild/package.json'));
   const binary = esbuild.resolve(`@esbuild/${process.platform}-${process.arch}/${process.platform === 'win32' ? 'esbuild.exe' : 'bin/esbuild'}`);
@@ -149,6 +153,7 @@ it('uses the captured compiler and retains unchanged build/cache identity on rep
   });
   vi.spyOn(process, 'cwd').mockReturnValue(root);
   await buildCommand(['--skip-fe']);
+  checkpoint('build completed');
   expect(bundlePackRuntime).not.toHaveBeenCalled();
   expect(readPackBuild(path.join(root, 'dist')).snapshot.manifest.id).toBe('fresh-worker');
   expect(fs.existsSync(path.join(root, 'dist/runtime/fe.js'))).toBe(false);
@@ -160,17 +165,20 @@ it('uses the captured compiler and retains unchanged build/cache identity on rep
   expect(inputs.observations.length).toBeGreaterThan(0);
   expect(fs.readFileSync(path.join(root, 'dist', PACK_BUILD_INPUTS_FILE), 'utf8')).not.toContain(workspaces[0]);
   assertPackBuildInputsCurrent(root, inputs);
+  checkpoint('input replay completed');
   const archived = await buildPackArchive(root);
   expect(fs.existsSync(archived.checksumFile)).toBe(true);
+  checkpoint('archive completed');
   const stamp = readPhaseCache(root).stamps.types;
   const revision = readPackBuild(path.join(root, 'dist')).revision;
   expect(stamp).toBeDefined();
   await buildCommand(['--skip-fe']);
+  checkpoint('build completed');
   expect(readPhaseCache(root).stamps.types).toEqual(stamp);
   expect(readPackBuild(path.join(root, 'dist')).revision).toBe(revision);
   expect(workspaces).toHaveLength(2);
   for (const workspace of workspaces) expect(fs.existsSync(workspace)).toBe(false);
-}, 120_000);
+}, process.platform === 'win32' ? 180_000 : 120_000);
 
 it('records external inputs read by content compiler worker threads', async () => {
   const outside = fs.mkdtempSync(path.join(os.tmpdir(), 'apack-worker-input-'));

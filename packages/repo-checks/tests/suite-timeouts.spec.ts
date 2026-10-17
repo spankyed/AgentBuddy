@@ -40,7 +40,7 @@ const TIMEOUT_EXCEPTIONS: Record<string, string> = {
   'packages/apack-cli/tests/build/watch-external-types.integration.spec.ts > rebuilds external contracts and recovers a retargeted missing input without an authored edit':
     'Four real compiler attempts share this scenario, including refusal and missing-input repair. Measured at 73.69 seconds; each rebuild wait stays bounded at 20 seconds.',
   'packages/apack-cli/tests/build/build-worker.integration.spec.ts > uses the captured compiler and retains unchanged build/cache identity on repeat builds':
-    'Two fresh compiler installations and builds, plus archive acceptance and reuse verification. Measured at 61.51 seconds with unchanged assertions; the scenario shares one 120-second budget.',
+    'Two fresh compiler installations and builds, plus archive acceptance and reuse verification. macOS retains 120 seconds (61.51 seconds measured). Windows run 39063156389 completes its first build in about 69 seconds and reaches the second setup after about 84 seconds, exhausting 120 seconds before completion. This one Windows scenario has a bounded 180-second allowance with phase milestones; completion evidence remains pending. Assertions are unchanged.',
 };
 
 /** Every override in the repo's spec files, with the size it has to fit inside */

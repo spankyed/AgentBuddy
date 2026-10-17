@@ -93,11 +93,14 @@ preloads (`bbf05ec00`). These are source evidence, not a claim that the full str
 #### Current compiler checkpoint (2026-10-17)
 
 Source `525350813` applies native canonical path identity consistently, preserving authored metadata
-query semantics and root-link observations. Fixture correction `672645cf4` passes all 151 focused
-Windows checks (eight platform skips) in run `39062755440`. Its real worker builds successfully, then
-fails on a logical-source path spelling assertion; `329cfbd89` compares native filesystem identities
-while retaining private-path, repeated-output and cache checks. The next Windows run must prove the
-remaining real-worker cases; descendant lifetime remains separately unimplemented.
+query semantics and root-link observations. Corrections `672645cf4` / `329cfbd89` preserve fixture and
+logical-source filesystem identities. Windows run `39063156389` on `59b890dcb` passes all 154 focused
+checks (eight platform skips), completes its first actual worker build and archive, then exhausts the
+120-second repeated-build case during the second setup. This is not a deadlock diagnosis. The named
+Windows case now has a bounded 180-second diagnostic allowance and elapsed phase milestones; all
+assertions and other deadlines remain. Run that committed source to classify completion versus
+stalled progress. See [timing evidence](../evidence/build-input-snapshot-proof.md#windows-repeated-build-timing-diagnosis-2026-10-17).
+Descendant lifetime remains separately unimplemented.
 
 Source `59b890dcb` repairs the macOS explicit fallback gap: launch-time `DYLD_FALLBACK_LIBRARY_PATH`
 survives preload mutation, selected external fallback libraries refuse before native initialization,
@@ -105,12 +108,16 @@ and the incumbent survives. Current-directory lookup precedes fallback lookup; a
 package-relative library does not consult unused fallback paths. Twenty-seven unit cases, four real
 native/compiler cases, CLI types and correctness lint pass. See
 [checkpoint evidence](../evidence/build-input-snapshot-proof.md#explicit-native-fallback-admission-2026-10-17).
-Framework override/fallback admission now uses the same ordered search, with full framework/version
+Source `c1abbd9c2` implements framework override/fallback admission using the same ordered search, with full framework/version
 paths and the retained launch environment. Thirty unit cases and three real compiler-preload cases
 pass, including preserved dylib fallback behavior; see
 [framework evidence](../evidence/build-input-snapshot-proof.md#native-framework-search-admission-2026-10-17).
 Versioned/suffix/shared-cache controls and default fallbacks, retained frontend native initialization,
-ELF/PE, platform lifetime and converged/final acceptance remain open. Do not treat this focused repair as full B1/B3 closure.
+ELF/PE, platform lifetime and converged/final acceptance remain open. Do not treat these focused repairs as full B1/B3 closure.
+A native prototype now demonstrates the next concrete input gap: `DYLD_IMAGE_SUFFIX` selects a
+package-contained variant whose outside dependency is missed when admission inspects the nominal
+image. Audit variant ordering and check the selected bytes through the existing owner; preserve
+supported suffix resolution rather than blanket-refusing the setting.
 
 #### Execution boundaries and closure
 
