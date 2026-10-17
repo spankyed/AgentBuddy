@@ -2,7 +2,7 @@ import { posix as path } from 'node:path';
 import { expect, it } from 'vitest';
 import { assertCapturedMachOLibraries, assertCompilerLibraryInsertion, captureMachOLibraryEnvironment, parseMachOLibraryCommands } from '../../src/build/compiler-native-libraries.ts';
 
-function image(commands: [number, string][], little = true) {
+function image(commands: [number, string][], little = true, sdk?: number) {
   const write = (buffer: Buffer, value: number, at: number) => little ? buffer.writeUInt32LE(value, at) : buffer.writeUInt32BE(value, at);
   const entries = commands.map(([command, name]) => {
     const value = Buffer.from(name + '\0');
@@ -11,6 +11,11 @@ function image(commands: [number, string][], little = true) {
     value.copy(entry, 24);
     return entry;
   });
+  if (sdk !== undefined) {
+    const version = Buffer.alloc(24);
+    write(version, 0x32, 0); write(version, 24, 4); write(version, 1, 8); write(version, sdk, 16);
+    entries.push(version);
+  }
   const header = Buffer.alloc(32);
   write(header, 0xfeedfacf, 0); write(header, entries.length, 16);
   write(header, entries.reduce((sum, entry) => sum + entry.length, 0), 20);
@@ -23,6 +28,46 @@ it.each([true, false])('distinguishes dependencies and rpaths from image IDs (li
     [0x80000018, '@loader_path/weak.dylib'], [0x8000001f, '@rpath/reexport.dylib'],
     [0x8000001c, '@loader_path/lib'],
   ], little), 'arm64')).toEqual({ dependencies: ['/usr/lib/libSystem.B.dylib', '@loader_path/weak.dylib', '@rpath/reexport.dylib'], rpaths: ['@loader_path/lib'] });
+});
+
+it.each([0xc0000, 0xd0000, 0xe0000])('uses the image SDK to select standard dylib fallbacks: %s', sdk => {
+  const library = '/usr/local/lib/value.dylib';
+  const files = new Map([[entry, image([[0xc, 'value.dylib']], true, sdk)], [library, image([])]]);
+  const read: string[] = [];
+  const check = () => assertCapturedMachOLibraries(entry, root, { arch: 'arm64', realpath: file => file,
+    environment: captureMachOLibraryEnvironment({}), read(file) { read.push(file); return files.get(file); } });
+  if (sdk < 0xe0000) expect(check).toThrow(`selects "${library}"`);
+  else { expect(check).not.toThrow(); expect(read).not.toContain(library); }
+});
+
+it.each([true, false])('reads SDK versions from both Mach-O version commands (little endian: %s)', little => {
+  const bytes = image([], little, 0xd0200);
+  const write = (value: number, at: number) => little ? bytes.writeUInt32LE(value, at) : bytes.writeUInt32BE(value, at);
+  expect(parseMachOLibraryCommands(bytes, 'arm64').sdk).toBe(0xd0200);
+  write(0x24, 32); write(0xc0000, 44);
+  expect(parseMachOLibraryCommands(bytes, 'arm64').sdk).toBe(0xc0000);
+});
+
+it('suppresses standard fallbacks when the explicit fallback list is empty', () => {
+  const library = '/usr/local/lib/value.dylib';
+  const files = new Map([[entry, image([[0xc, 'value.dylib']], true, 0xd0000)], [library, image([])]]);
+  const reads: string[] = [];
+  assertCapturedMachOLibraries(entry, root, { arch: 'arm64', realpath: file => file,
+    environment: captureMachOLibraryEnvironment({ DYLD_FALLBACK_LIBRARY_PATH: '' }),
+    read(file) { reads.push(file); return files.get(file); } });
+  expect(reads).not.toContain(library);
+});
+
+it('checks standard framework fallbacks only after a package-relative dependency is missing', () => {
+  const relative = path.join(root, 'Value.framework/Versions/A/Value');
+  const fallback = '/Library/Frameworks/Value.framework/Versions/A/Value';
+  const files = new Map([[entry, image([[0xc, '@loader_path/../Value.framework/Versions/A/Value']], true, 0xd0000)],
+    [relative, image([])], [fallback, image([])]]);
+  const check = () => assertCapturedMachOLibraries(entry, root, { arch: 'arm64', realpath: file => file,
+    environment: captureMachOLibraryEnvironment({}), read: file => files.get(file) });
+  expect(check).not.toThrow();
+  files.delete(relative);
+  expect(check).toThrow(`selects "${fallback}"`);
 });
 
 it('inspects only the selected architecture in a universal image', () => {

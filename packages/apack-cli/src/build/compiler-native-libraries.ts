@@ -4,13 +4,14 @@ import fs from 'node:fs';
 interface NativeLibraryCommands {
   dependencies: string[];
   rpaths: string[];
+  sdk?: number;
 }
 
 export interface MachOLibraryEnvironment {
   readonly libraryPaths: readonly string[];
-  readonly fallbackLibraryPaths: readonly string[];
+  readonly fallbackLibraryPaths: readonly string[] | undefined;
   readonly frameworkPaths: readonly string[];
-  readonly fallbackFrameworkPaths: readonly string[];
+  readonly fallbackFrameworkPaths: readonly string[] | undefined;
   readonly imageSuffixes: readonly string[];
 }
 
@@ -19,9 +20,9 @@ export function captureMachOLibraryEnvironment(env: NodeJS.ProcessEnv = process.
   const paths = (name: string) => Object.freeze(env[name] ? env[name].split(':') : []);
   return Object.freeze({
     libraryPaths: paths('DYLD_LIBRARY_PATH'),
-    fallbackLibraryPaths: paths('DYLD_FALLBACK_LIBRARY_PATH'),
+    fallbackLibraryPaths: env.DYLD_FALLBACK_LIBRARY_PATH === undefined ? undefined : paths('DYLD_FALLBACK_LIBRARY_PATH'),
     frameworkPaths: paths('DYLD_FRAMEWORK_PATH'),
-    fallbackFrameworkPaths: paths('DYLD_FALLBACK_FRAMEWORK_PATH'),
+    fallbackFrameworkPaths: env.DYLD_FALLBACK_FRAMEWORK_PATH === undefined ? undefined : paths('DYLD_FALLBACK_FRAMEWORK_PATH'),
     imageSuffixes: paths('DYLD_IMAGE_SUFFIX'),
   });
 }
@@ -79,6 +80,10 @@ export function parseMachOLibraryCommands(bytes: Buffer, arch: string): NativeLi
     if (cursor + 8 > end) throw invalid();
     const command = uint(cursor) & 0x7fffffff, size = uint(cursor + 4);
     if (size < 8 || cursor + size > end) throw invalid();
+    if (command === 0x24 || command === 0x32) {
+      if (size < (command === 0x24 ? 16 : 24)) throw invalid();
+      if (command === 0x24 || uint(cursor + 8) === 1) result.sdk = uint(cursor + (command === 0x24 ? 12 : 16));
+    }
     const target = command === 0x1c ? result.rpaths
       : [0xc, 0x18, 0x1f, 0x20, 0x23].includes(command) ? result.dependencies : undefined;
     if (target) {
@@ -114,12 +119,15 @@ export function assertCapturedMachOLibraries(entry: string, packageRoot: string,
     const at = dot > file.lastIndexOf('/') ? dot : file.length;
     return [...environment.imageSuffixes.map(suffix => file.slice(0, at) + suffix + file.slice(at)), file];
   };
-  const search = (reference: string, requester: string, fallback = false) => {
+  const search = (reference: string, requester: string, fallback = false, sdk = 0) => {
     const framework = reference.match(/(?:^|\/)(([^/]+)\.framework\/(?:Versions\/[^/]+\/)?\2)$/)?.[1];
-    const directories = framework
-      ? fallback ? environment.fallbackFrameworkPaths : environment.frameworkPaths
-      : fallback ? environment.fallbackLibraryPaths : environment.libraryPaths;
-    const variable = framework
+    // dyld's standard fallbacks apply to pre-macOS-14 SDK images. An explicitly empty
+    // fallback variable suppresses them; an absent variable selects the standard list.
+    const defaults = sdk < 0xe0000 ? framework
+      ? ['/Library/Frameworks', '/System/Library/Frameworks'] : ['/usr/local/lib', '/usr/lib'] : [];
+    const fallbackPaths = framework ? environment.fallbackFrameworkPaths : environment.fallbackLibraryPaths;
+    const directories = fallback ? fallbackPaths ?? defaults : framework ? environment.frameworkPaths : environment.libraryPaths;
+    const variable = fallback && fallbackPaths === undefined ? `standard ${framework ? 'framework' : 'library'} fallback` : framework
       ? fallback ? 'DYLD_FALLBACK_FRAMEWORK_PATH' : 'DYLD_FRAMEWORK_PATH'
       : fallback ? 'DYLD_FALLBACK_LIBRARY_PATH' : 'DYLD_LIBRARY_PATH';
     const candidates = directories.flatMap(directory => variants(path.resolve(`${directory}/${framework ?? path.basename(reference)}`)));
@@ -173,7 +181,7 @@ export function assertCapturedMachOLibraries(entry: string, packageRoot: string,
         if (!within(input.realpath(candidate), input.realpath(packageRoot))) refuse(reference);
         if (inspect(candidate, rpaths)) { found = true; break; }
       }
-      if (!found) search(reference, file, true);
+      if (!found) search(reference, file, true, commands.sdk);
     }
     return true;
   }

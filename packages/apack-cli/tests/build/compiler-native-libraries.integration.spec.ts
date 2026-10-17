@@ -14,8 +14,9 @@ import { formatNodeOptions, parseNodeOptions } from '@apackdev/host/build/source
 import { withCompilerFileReads } from '@apackdev/host/build/compiler-inputs';
 import { captureCompilerInstallation, compilerPackageDirectory, type CompilerInstallation } from '../../src/build/compiler-installation.ts';
 import { startPackFrontend } from '../../src/build/frontend-process.ts';
+import { assertCapturedMachOLibraries, captureMachOLibraryEnvironment } from '../../src/build/compiler-native-libraries.ts';
 
-function nativeFixture(mode: 'relative' | 'absolute' | 'transitive' | 'fallback' | 'framework') {
+function nativeFixture(mode: 'relative' | 'absolute' | 'transitive' | 'fallback' | 'framework', sdk?: string) {
   const root = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'apack-native-libraries-')));
   try {
     const pack = path.join(root, 'pack');
@@ -53,6 +54,7 @@ NAPI_MODULE_INIT() {
 }`);
     execFileSync('clang', [...architecture, '-bundle', '-undefined', 'dynamic_lookup',
       '-I', path.resolve(path.dirname(process.execPath), '../include/node'), addonSource, library,
+      ...(sdk ? ['-mmacosx-version-min=11.0', `-Wl,-platform_version,macos,11.0,${sdk}`] : []),
       '-o', path.join(native, 'binding/addon.node')]);
     fs.writeFileSync(path.join(pack, 'package.json'), '{"type":"commonjs"}');
     fs.writeFileSync(path.join(pack, 'tsconfig.json'), '{"compilerOptions":{"noLib":true,"types":[]}}');
@@ -69,6 +71,37 @@ NAPI_MODULE_INIT() {
     return { root, pack, native, library, marker, outside, entry, buildLibrary };
   } catch (error) { fs.rmSync(root, { recursive: true, force: true }); throw error; }
 }
+
+it.runIf(process.platform === 'darwin').each([
+  ['fallback', '13.0'], ['fallback', '14.0'], ['framework', '13.0'], ['framework', '14.0'],
+] as const)(
+  'matches native default-fallback lookup for %s / SDK %s without touching system directories', (mode, sdk) => {
+    const fixture = nativeFixture(mode, sdk);
+    try {
+      fs.rmSync(fixture.library);
+      const entry = path.join(fixture.native, 'binding/addon.node');
+      const environment = Object.fromEntries(Object.entries(process.env).filter(([key]) => key !== 'NODE_OPTIONS' && !key.startsWith('DYLD_')));
+      const fallback = mode === 'framework' ? '/Library/Frameworks/Value.framework/Versions/A/Value' : '/usr/local/lib/libvalue.dylib';
+      const variable = mode === 'framework' ? 'DYLD_FALLBACK_FRAMEWORK_PATH' : 'DYLD_FALLBACK_LIBRARY_PATH';
+      for (const setting of [undefined, '']) {
+        const env = { ...environment, [variable]: setting };
+        const actual = execFileSync(process.execPath, ['-e', `try { require(${JSON.stringify(entry)}) } catch (error) { console.log(error.message) }`], {
+          encoding: 'utf8', env,
+        });
+        const probes: string[] = [];
+        assertCapturedMachOLibraries(entry, fixture.native, { arch: process.arch,
+          environment: captureMachOLibraryEnvironment(env), realpath: file => fs.realpathSync.native(file),
+          read(file) { probes.push(file); return fs.statSync(file, { throwIfNoEntry: false })?.isFile() ? fs.readFileSync(file) : undefined; },
+        });
+        const usesFallback = sdk === '13.0' && setting === undefined;
+        expect(actual).toContain('Library not loaded:');
+        expect(actual.includes(fallback)).toBe(usesFallback);
+        expect(probes.includes(fallback)).toBe(usesFallback);
+      }
+      expect(fs.existsSync(fixture.marker)).toBe(false);
+    } finally { fs.rmSync(fixture.root, { recursive: true, force: true }); }
+  },
+);
 
 function nativeLoad(fixture: ReturnType<typeof nativeFixture>, proof: string) {
   return `const addon = require(${JSON.stringify(path.join(fixture.native, 'binding/addon.node'))});
