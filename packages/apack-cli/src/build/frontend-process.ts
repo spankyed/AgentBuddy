@@ -7,6 +7,7 @@ import { withoutSourceCondition } from '@apackdev/host/build/source-resolution';
 import { COMPILER_INPUTS_ENV } from './compiler-installation-inputs.ts';
 import { COMPILER_PROCESS_GROUP_ENV, stopCompilerProcessGroup } from './compiler-process-group.ts';
 import type { CompilerInstallation } from './compiler-installation.ts';
+import { assertCompilerLibraryInsertion } from './compiler-native-libraries.ts';
 
 export interface PackFrontendAddress { readonly port: number; readonly pid: number }
 
@@ -19,6 +20,7 @@ export interface PackFrontend {
 /** A generation's Vite modules are private; authored sources stay live for HMR. */
 export async function startPackFrontend(root: string, compiler: CompilerInstallation, signal: AbortSignal): Promise<PackFrontend> {
   signal.throwIfAborted();
+  assertCompilerLibraryInsertion();
   const grouped = process.platform !== 'win32';
   const directory = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'apack-vite-')));
   const child = spawn(compiler.executable, [...compilationConditions().map(value => `--conditions=${value}`), compiler.bin], {

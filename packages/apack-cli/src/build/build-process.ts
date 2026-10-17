@@ -16,6 +16,7 @@ import { buildStagingDir, publishPackBuild, readPackBuildCandidate, type PackBui
 import { BUILD_INPUTS_DIRECTORY_ENV, removeCompilerReadTree } from './compiler-read-tree.ts';
 import { startPackFrontend, type PackFrontend, type PackFrontendAddress } from './frontend-process.ts';
 import { findFEEntry, readPackDevServerInputs } from './fe-bundler.ts';
+import { assertCompilerLibraryInsertion } from './compiler-native-libraries.ts';
 
 // Give worker SIGTERM handlers a short cleanup phase before forced termination.
 const STOP_GRACE_MS = 2_000;
@@ -85,6 +86,7 @@ export function createPackBuilder(root: string): PackBuilder {
       const options = { args: [...args], onInputs, signal: signal ? AbortSignal.any([signal, stopped.signal]) : stopped.signal };
       return enqueue(async () => {
         options.signal.throwIfAborted();
+        assertCompilerLibraryInsertion();
         ensureCheckoutPackages(root);
         const cli = cliPackageDirectory();
         if (checkoutFor(cli) !== checkoutFor(root)) ensureCheckoutPackages(cli);
@@ -147,6 +149,7 @@ export async function runPackBuild(root: string, options: PackBuildOptions = {})
 async function buildWithCompiler(root: string, compiler: CompilerInstallation, { args = [], onInputs, signal }: PackBuildOptions): Promise<void> {
   const inputsDirectory = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'apack-build-inputs-')));
   try {
+    assertCompilerLibraryInsertion();
     const candidate = await new Promise<PackBuildCandidate>((resolve, reject) => {
       let processError: Error | undefined;
       let observationError: Error | undefined;

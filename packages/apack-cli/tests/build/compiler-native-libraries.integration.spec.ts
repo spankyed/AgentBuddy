@@ -12,6 +12,8 @@ import { readPackBuildInputs, assertPackBuildInputsCurrent } from '@apackdev/hos
 import { createPackBuilder } from '../../src/build/build-process.ts';
 import { formatNodeOptions, parseNodeOptions } from '@apackdev/host/build/source-resolution';
 import { withCompilerFileReads } from '@apackdev/host/build/compiler-inputs';
+import { captureCompilerInstallation, compilerPackageDirectory, type CompilerInstallation } from '../../src/build/compiler-installation.ts';
+import { startPackFrontend } from '../../src/build/frontend-process.ts';
 
 function nativeFixture(mode: 'relative' | 'absolute' | 'transitive') {
   const root = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'apack-native-libraries-')));
@@ -64,7 +66,7 @@ NAPI_MODULE_INIT() {
     const entry = path.join(pack, 'compiler.cjs');
     // Extensionless file resolution must capture the selected native image's package too.
     fs.writeFileSync(entry, "module.exports = require('../native-package/binding/addon');");
-    return { root, pack, native, library, marker, outside, entry };
+    return { root, pack, native, library, marker, outside, entry, buildLibrary };
   } catch (error) { fs.rmSync(root, { recursive: true, force: true }); throw error; }
 }
 
@@ -215,6 +217,41 @@ it.runIf(process.platform === 'darwin')('retains launch-time native search paths
     if (previousSearch === undefined) delete process.env.DYLD_LIBRARY_PATH;
     else process.env.DYLD_LIBRARY_PATH = previousSearch;
     await builder.close();
+    fs.rmSync(fixture.root, { recursive: true, force: true });
+  }
+});
+
+it.runIf(process.platform === 'darwin')('admits OS insertion and refuses live library constructors before build or frontend launch', async () => {
+  const fixture = nativeFixture('relative');
+  const builder = createPackBuilder(fixture.pack);
+  const previous = process.env.DYLD_INSERT_LIBRARIES;
+  const marker = path.join(fixture.root, 'inserted');
+  const outside = path.join(fixture.root, 'insert/libinit.dylib');
+  let compiler: CompilerInstallation | undefined;
+  try {
+    fixture.buildLibrary(outside, `#include <stdio.h>
+__attribute__((constructor)) static void initialize(void) {
+  FILE *marker = fopen(${JSON.stringify(marker)}, "w"); if (marker) fclose(marker);
+}`, outside);
+    packFixture({ at: fixture.pack, nodeModules: path.join(REPO_ROOT, 'node_modules'), manifest: { features: {} },
+      files: { 'tsconfig.json': JSON.stringify({ compilerOptions: { module: 'esnext', moduleResolution: 'bundler', skipLibCheck: true } }) } });
+    process.env.DYLD_INSERT_LIBRARIES = '/usr/lib/libSystem.B.dylib';
+    await builder.build({ args: ['--skip-fe'] });
+    const output = path.join(fixture.pack, 'dist');
+    const revision = readPackBuild(output).revision;
+    compiler = await captureCompilerInstallation(compilerPackageDirectory(), { cwd: fixture.pack });
+    for (const library of [outside, fixture.library]) {
+      process.env.DYLD_INSERT_LIBRARIES = library;
+      await expect(builder.build({ args: ['--skip-fe'] })).rejects.toThrow('DYLD_INSERT_LIBRARIES');
+      await expect(startPackFrontend(fixture.pack, compiler, new AbortController().signal)).rejects.toThrow('DYLD_INSERT_LIBRARIES');
+      expect(fs.existsSync(marker)).toBe(false);
+      expect(readPackBuild(output).revision).toBe(revision);
+    }
+  } finally {
+    if (previous === undefined) delete process.env.DYLD_INSERT_LIBRARIES;
+    else process.env.DYLD_INSERT_LIBRARIES = previous;
+    await builder.close();
+    await compiler?.dispose();
     fs.rmSync(fixture.root, { recursive: true, force: true });
   }
 });

@@ -165,6 +165,8 @@ hide missing runtime dependencies or provide globals that dependent packs will n
 On macOS, native addon admission checks library dependencies and matching `DYLD_LIBRARY_PATH`
 candidates. A library selected outside the captured package or normal OS libraries is refused before
 addon initialization; an unused search directory is allowed.
+`DYLD_INSERT_LIBRARIES` executes before that module-loading boundary and accepts normal OS libraries.
+Load package libraries through captured compiler modules rather than inserting live package paths.
 
 `apack pack build --watch` watches authored inputs throughout the pack, including `apack.json`,
 modules outside `src/`, JSON schemas, assets and help. The authored watcher excludes generated,

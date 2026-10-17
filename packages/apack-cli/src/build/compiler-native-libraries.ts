@@ -1,4 +1,5 @@
 import { posix as path } from 'node:path';
+import fs from 'node:fs';
 
 interface NativeLibraryCommands {
   dependencies: string[];
@@ -12,6 +13,22 @@ export interface MachOLibraryEnvironment {
 /** dyld reads these settings at process launch, before user preloads can change process.env. */
 export function captureMachOLibraryEnvironment(env: NodeJS.ProcessEnv = process.env): MachOLibraryEnvironment {
   return Object.freeze({ libraryPaths: Object.freeze(env.DYLD_LIBRARY_PATH ? env.DYLD_LIBRARY_PATH.split(':') : []) });
+}
+
+const systemLibrary = (file: string) => file.startsWith('/usr/lib/') || file.startsWith('/System/Library/');
+
+/** Inserted libraries execute before JS admission; live package paths cannot select captured bytes. */
+export function assertCompilerLibraryInsertion(env: NodeJS.ProcessEnv = process.env): void {
+  if (process.platform !== 'darwin') return;
+  for (const library of env.DYLD_INSERT_LIBRARIES?.split(':').filter(Boolean) ?? []) {
+    if (!path.isAbsolute(library) || !systemLibrary(path.normalize(library))) {
+      throw new Error(`Cannot launch captured compiler: DYLD_INSERT_LIBRARIES references "${library}" outside its captured installation. Use operating-system libraries or load package libraries through captured compiler modules.`);
+    }
+    assertCapturedMachOLibraries(library, path.dirname(library), { arch: process.arch,
+      environment: captureMachOLibraryEnvironment(env), realpath: file => fs.realpathSync(file),
+      read: file => fs.statSync(file, { throwIfNoEntry: false })?.isFile() ? fs.readFileSync(file) : undefined,
+    });
+  }
 }
 
 /** Inspect dependency commands, never LC_ID_DYLIB or executable code. */
@@ -79,7 +96,6 @@ export function assertCapturedMachOLibraries(entry: string, packageRoot: string,
     const relative = path.relative(root, file);
     return relative === '' || (relative !== '..' && !relative.startsWith(`..${path.sep}`) && !path.isAbsolute(relative));
   };
-  const system = (file: string) => file.startsWith('/usr/lib/') || file.startsWith('/System/Library/');
   const environment = input.environment ?? captureMachOLibraryEnvironment();
   const overridden = (reference: string, requester: string) => {
     // Framework overrides use DYLD_FRAMEWORK_PATH, not the dylib basename search.
@@ -87,7 +103,7 @@ export function assertCapturedMachOLibraries(entry: string, packageRoot: string,
     for (const directory of environment.libraryPaths) {
       const candidate = path.resolve(`${directory}/${path.basename(reference)}`);
       if (input.read(candidate) === undefined) continue;
-      if (system(candidate) && system(input.realpath(candidate))) return true;
+      if (systemLibrary(candidate) && systemLibrary(input.realpath(candidate))) return true;
       throw new Error(`Native compiler image "${requester}" selects "${candidate}" through DYLD_LIBRARY_PATH outside its captured package. Use package-relative native libraries or operating-system libraries.`);
     }
     return false;
@@ -116,7 +132,7 @@ export function assertCapturedMachOLibraries(entry: string, packageRoot: string,
     for (const reference of commands.dependencies) {
       if (overridden(reference, file)) continue;
       if (path.isAbsolute(reference)) {
-        if (!system(path.resolve(reference))) refuse(reference);
+        if (!systemLibrary(path.resolve(reference))) refuse(reference);
         continue;
       }
       if (!reference.startsWith('@') && reference.includes('/')) refuse(reference);
@@ -125,7 +141,7 @@ export function assertCapturedMachOLibraries(entry: string, packageRoot: string,
         : [{ file: expand(reference), search: undefined }];
       for (const { file: candidate, search } of candidates) {
         if (!candidate) continue;
-        if (system(candidate)) break;
+        if (systemLibrary(candidate)) break;
         if (search && path.isAbsolute(search)) refuse(search);
         if (!within(candidate) || !within(input.realpath(candidate), input.realpath(packageRoot))) refuse(reference);
         if (inspect(candidate, rpaths)) break;
