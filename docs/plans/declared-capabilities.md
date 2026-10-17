@@ -146,7 +146,9 @@ Use this contract for A2–A5:
   Generate the type projection from the same normalized selection: own services, baseline, selected
   HostServices members and `Pick` of each directly owning dependency's provided services.
 - Retained service objects, nested service objects and methods retain their caller/provider generation.
-  Retirement, disablement or host replacement refuses new operations. A new property lookup by a live
+  Provider disablement/retirement refuses other callers immediately; host replacement also refuses new
+  operations. Caller authority ends when its coordinator finishes actor cleanup and disposes its binding.
+  A new property lookup by a live
   caller may acquire a current compatible provider; it must not revive an already retained handle.
   Refresh the generated exported facade on caller rebind so retained root facades also stay retired.
 - Preserve private receivers and method binding. Do not cache wrappers only by service object identity:
@@ -212,7 +214,10 @@ returned resources: methods start new calls and check lifetime; already-started 
 settle on their original implementation.
 
 The existing coordinator owns caller retirement after actor cleanup, which differs from publication
-of the replacement provider. During that drain, a caller's own services stay on its original generation.
+of the replacement provider. During that drain, a caller's own services stay on its original generation,
+even after catalog metadata marks it disabled. `3769e930f` removes the duplicate catalog-based caller
+retirement signal; other callers still lose access to the disabled provider immediately. The installed
+caller/peer regression and actual disable/remove/replace/restore window pass.
 If retirement cannot be scheduled, the host revokes immediately. Scoped settings subscriptions keep
 their owner and policy. Registry-local `serviceOverrides` supplies harness doubles after selection;
 ambient registries cannot supply another registry's service or expand its API set.

@@ -7041,3 +7041,44 @@ This accepts the real formerly failing default/fork freshness boundary plus sele
 and harness behavior. Actual app/fork restart/restoration, converged B6 and final committed-source
 strict `--all` remain open. Native/platform closure, complete discovery/editor acceptance and all
 three Phase 6 workstreams remain in the active goal; no deferred work or compatibility handling added.
+
+
+## Disabled caller retirement (2026-10-17)
+
+Source checkpoint: `3769e930f`. The first full external app run after the service migration passes
+26 of 27 cases, including actual fork reload, pane/form containment, offline JSON assistance,
+settings windows/policies/import, onboarding, reference navigation and step-palette updates.
+`/private/tmp/apack-service-external-app.log` records the one failure: disabling default-setup causes
+its threads actor's queued `sendCommands` action to access `services.library` after catalog enablement
+has already retired the caller. The initial backend stack points to `library.commands()` in that
+action and reports `Pack "default-setup" services belong to a retired runtime or host`.
+The resulting restore wait times out; increasing that deadline would not repair the fatal backend.
+The script exits before bundled UI app and normal fork restart/restoration checks.
+
+A 13ms installed-pack caller/peer regression reproduces the exact binding failure:
+`/private/tmp/apack-disabled-binding-repro.log`. Catalog availability and actor lifetime had two
+retirement owners. The binding now owns caller authority until coordinated disposal; its accepted
+own-service generation remains usable during queued work and shutdown. Other callers immediately
+lose access to a disabled provider. Retained caller roots/methods still refuse after disposal, and
+host generation remains independently checked. No exception is swallowed and no stale-call guard
+or deadline is weakened.
+
+Focused binding/replacement/lifecycle/reload/bus teardown: 64 cases pass across five files (3.62s),
+`/private/tmp/apack-disabled-binding-focused-final.log`. Host types and three-file correctness lint
+pass; types: `/private/tmp/apack-disabled-binding-types.log`.
+Published packages were refreshed, then only the affected API app bundle rebuilt:
+`/private/tmp/apack-disabled-binding-api-build.log`. The prebuilt check correctly refused the external
+fixture's now-changed captured host input (`/private/tmp/apack-disabled-binding-app-focused.log`), so
+only that fixture was rebuilt (`/private/tmp/apack-disabled-binding-external-build.log`).
+
+The exact real-window disable/remove/replace/restore case then passes in 14.1s (15.4s runner):
+`/private/tmp/apack-disabled-binding-app-fixed.log`. Its backend log contains no retired-runtime or
+fatal backend error: `/private/tmp/apack-disabled-binding-app-fixed-backend.log`.
+The preceding four-workspace app build also passed on two cores:
+`/private/tmp/apack-service-app-runtime-build.log`.
+
+This is the focused repair proof, not a converged 27-case pass or strict gate. The host source changed
+captured inputs, so affected default/fork and other fixture builds need their normal refresh before
+claiming current prebuilt acceptance. Preserve the earlier accepted authoring evidence as dated
+proof rather than silently treating it as post-fix source. All active goal requirements remain open
+where their final evidence is absent; no broad run has been repeated to diagnose this bug.

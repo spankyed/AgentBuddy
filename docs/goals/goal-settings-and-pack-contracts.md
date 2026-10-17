@@ -460,15 +460,21 @@ action, inference, onboarding and reset cases pass; see
 The named B4/B6 marker mutation is reproduced and repaired in `caf57cb0e`; see
 [generation cache evidence](../evidence/settings-and-pack-contracts.md#generation-cache-ownership-2026-10-17).
 A4 content-target validation already uses the normalized entity registry; retain its checks rather than
-reimplementing it. Current-build acceptance now passes: default build, standalone facade report with
+reimplementing it. Authoring acceptance on source `1fbc1e223` passes: default build, standalone facade report with
 preserved build freshness, five dependent runtime cases, seven unchanged harness cases, and the real
 external authoring contract (38 fixture cases, bundled UI build/typecheck and default-fork archive).
 `45f2a3458` gives the dependent fixture real generated registration/bindings; `1fbc1e223` types a
 scheduler test double from its provider without granting the consumer unused APIs. See
 [current authoring evidence](../evidence/settings-and-pack-contracts.md#current-build-service-authoring-acceptance-2026-10-17).
-Next: complete the external app/fork restart/restoration checks against the current runtime, then the
-required converged gate. Do not repeat the settled A1 prototype or accepted default/fork builds unless
-their inputs change or a named coverage gap requires it.
+The app run then passed 26 cases, including fork reload, and exposed premature caller retirement
+when disabling default-setup. `3769e930f` fixes that owner mismatch; 64 focused cases and the actual
+formerly failing disable/remove/replace/restore window pass. See
+[teardown evidence](../evidence/settings-and-pack-contracts.md#disabled-caller-retirement-2026-10-17).
+Next: run the required converged checkpoint on committed source with two cores. The host source fix
+changed captured inputs: refresh affected builds through their normal owners before asserting current
+prebuilt/fork acceptance. Do not repeat unaffected source/design prototypes. The prior 26 app passes
+plus focused repair are not a single converged app pass; bundled UI app and normal fork restart/
+restoration still need their planned acceptance.
 The single two-core strict run failed preparing the default-pack fork: the build observation for
 `src/__generated__/.inputs-hash` no longer matched, and the chain also invalidated default-setup's
 output stamp. The external fixture's 38 checks and real packaged-authoring author half passed first;
