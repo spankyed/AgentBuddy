@@ -173,6 +173,22 @@ Execute the identified gaps in this order:
 No completion is claimed from this table. It identifies inspected implementation, concrete omissions
 and the bounded checks needed to close them. Historical checkpoint evidence is not a second backlog.
 
+Native migration checkpoint contract: reuse `migrations.app` / `migrations.pack`, with the same
+keyed target/description/export grammar and shared checked callable bindings as authored packs.
+Native app-line migrations use the app version and do not require a native version. A native declaration
+with nonempty pack-line migrations must declare its own valid SemVer `version`; never infer it from
+app provenance. Leave existing host/default-setup release metadata and migration inventories unchanged.
+
+Migration runner targets carry `packId`, checked callbacks and, for the pack line, the owner's `version`;
+they do not manufacture a manifest or installed directory. Type the two target results by the requested
+line. Order admitted native and installed owners together by declared dependencies, then filter caller
+subsets; unversioned native owners can participate in ordering without becoming pack-line targets.
+Preserve the existing exclusion of synthetic installed origins without accepted manifests. Capture
+migration target/description/function membership and owner version at admission so later registration
+mutation cannot alter a checked migration. Keep existing app caps, failure/retry/version records and
+startup/reset/import ordering. Prove source-free native discovery, app-only operation without a pack
+version, per-pack cap/recording, mixed dependency order, atomic refusals, mutation isolation and unload.
+
 Native content checkpoint contract: declare `content.writers` with the authored export-reference
 map and `content.sources.<key> = { applier: "path.ts" }` for explicitly composed native appliers.
 Native composition supplies the functions; these targets are discoverable data and are never loaded
