@@ -1053,3 +1053,13 @@ output inventory, followed by B5 consumers. In that design, distinguish captured
 author code from incidental file touches, and retain external inputs of reused phases. These are
 acceptance requirements to inspect, not authorization for another scanner/cache framework. Native
 external-library/platform lifetime cases and the final committed-source strict gate remain open.
+
+
+### External-types aggregate budget correction
+
+The user reports another external-types 60s aggregate timeout after the repaired case passed in
+59.58s. Its four compiler attempts share one scenario budget. Give only this scenario 120s; retain all
+20s rebuild waits, assertions, input scope and global/suite budgets. This follows the demonstrated
+aggregate cost, not an assumption that every integration timeout is slow compilation. The prior
+unchanged-assertion two-worker pass remains behavioral evidence; the larger limit is not a new pass
+or a claim that individual rebuild stalls are fixed.

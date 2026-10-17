@@ -71,4 +71,5 @@ export default { spec, machine: setup({ types: spec.types }).createMachine({ id:
     errors.mockRestore();
     fs.rmSync(temporary, { recursive: true, force: true });
   }
-});
+// Four compiler attempts share this scenario; individual rebuild waits remain bounded above.
+}, 120_000);
