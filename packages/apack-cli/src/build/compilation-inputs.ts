@@ -61,6 +61,7 @@ export interface CompilationInputs {
   prepareNative(specifier: string, importer: string): void;
   prepareNativeSource(file: string, contents: Buffer): void;
   requireParent(file: string): string;
+  nativeModule(file: string): string;
   retainInputs(inputs: PackBuildInputs): void;
   finish(options: readonly string[]): Promise<PackBuildInputs>;
   dispose(): void;
@@ -207,6 +208,13 @@ export function captureCompilationInputs(packRoot: string, view?: PackCompilerIn
     readTree,
     sourcePath,
     diagnostic(message) { return compilerDiagnostic(tree?.diagnostic(message) ?? message, compiler?.paths ?? []); },
+    nativeModule(file) {
+      assertOpen();
+      if (ownsToolPath(file)) return startup?.nativeModule(file) ?? file;
+      file = sourcePath(file);
+      native.prepare(file, path.dirname(file));
+      return readTree().path(file);
+    },
     prepareNative(specifier, importer) { withoutCompilerFileReads(() => { readTree(); native.prepare(specifier, sourcePath(importer)); }); },
     requireParent(file) { return withoutCompilerFileReads(() => { readTree(); native.prepare(file, path.dirname(sourcePath(file))); return readTree().path(file); }); },
     retainInputs(inputs) {

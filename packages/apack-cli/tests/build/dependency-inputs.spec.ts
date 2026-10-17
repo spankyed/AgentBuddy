@@ -22,6 +22,7 @@ const compilation = {
   isInput() { return true; },
   prepareNative() {},
   requireParent() { throw new Error('No module loading in hash-only fixture'); },
+  nativeModule() { throw new Error('No native module loading in hash-only fixture'); },
   retainInputs() {},
   async finish(): Promise<never> { throw new Error('No completion in hash-only fixture'); },
   prepareNativeSource() {},

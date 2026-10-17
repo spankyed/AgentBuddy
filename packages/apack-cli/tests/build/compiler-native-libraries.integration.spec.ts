@@ -5,16 +5,20 @@ import { execFileSync } from 'node:child_process';
 import { expect, it } from 'vitest';
 import { captureCompilationInputs } from '../../src/build/compilation-inputs.ts';
 import { createCompilerModuleLoader } from '../../src/build/compiler-modules.ts';
+import { packFixture } from '@apackdev/sdk/testing/pack-fixture';
+import { REPO_ROOT } from '@apackdev/host/build/packages-built';
+import { readPackBuild } from '@apackdev/host/packs';
+import { readPackBuildInputs, assertPackBuildInputsCurrent } from '@apackdev/host/build/pack-build-inputs';
+import { createPackBuilder } from '../../src/build/build-process.ts';
+import { formatNodeOptions, parseNodeOptions } from '@apackdev/host/build/source-resolution';
 import { withCompilerFileReads } from '@apackdev/host/build/compiler-inputs';
 
-it.runIf(process.platform === 'darwin').each(['relative', 'absolute', 'transitive'] as const)('checks %s native libraries before addon initialization', async mode => {
+function nativeFixture(mode: 'relative' | 'absolute' | 'transitive') {
   const root = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'apack-native-libraries-')));
-  const pack = path.join(root, 'pack');
-  const native = path.join(root, 'native-package');
-  const library = path.join(native, 'lib/libvalue.dylib');
-  let compilation: ReturnType<typeof captureCompilationInputs> | undefined;
-  let modules: ReturnType<typeof createCompilerModuleLoader> | undefined;
   try {
+    const pack = path.join(root, 'pack');
+    const native = path.join(root, 'native-package');
+    const library = path.join(native, 'lib/libvalue.dylib');
     fs.mkdirSync(pack);
     fs.mkdirSync(path.dirname(library), { recursive: true });
     fs.mkdirSync(path.join(native, 'binding'));
@@ -60,6 +64,15 @@ NAPI_MODULE_INIT() {
     const entry = path.join(pack, 'compiler.cjs');
     // Extensionless file resolution must capture the selected native image's package too.
     fs.writeFileSync(entry, "module.exports = require('../native-package/binding/addon');");
+    return { root, pack, native, library, marker, outside, entry };
+  } catch (error) { fs.rmSync(root, { recursive: true, force: true }); throw error; }
+}
+
+it.runIf(process.platform === 'darwin').each(['relative', 'absolute', 'transitive'] as const)('checks %s native libraries before addon initialization', async mode => {
+  const { root, pack, library, marker, outside, entry } = nativeFixture(mode);
+  let compilation: ReturnType<typeof captureCompilationInputs> | undefined;
+  let modules: ReturnType<typeof createCompilerModuleLoader> | undefined;
+  try {
     compilation = captureCompilationInputs(pack);
     modules = createCompilerModuleLoader(compilation);
     const load = () => withCompilerFileReads({ compilation: compilation! }, () => modules!.importModule(entry));
@@ -89,5 +102,53 @@ NAPI_MODULE_INIT() {
   } finally {
     try { await modules?.dispose(); }
     finally { compilation?.dispose(); fs.rmSync(root, { recursive: true, force: true }); }
+  }
+});
+
+it.runIf(process.platform === 'darwin')('captures native preload libraries and retains the incumbent after outside-library refusal', async () => {
+  const supported = nativeFixture('relative');
+  const refused = [nativeFixture('absolute'), nativeFixture('transitive')];
+  const builder = createPackBuilder(supported.pack);
+  const previous = process.env.NODE_OPTIONS;
+  const preload = path.join(supported.pack, 'native-preload.cjs');
+  const proof = path.join(supported.root, 'preload-proof.json');
+  const writePreload = (fixture: ReturnType<typeof nativeFixture>) => fs.writeFileSync(preload,
+    `if (globalThis[Symbol.for('apack.compiler.startup')]) {
+const addon = require(${JSON.stringify(path.join(fixture.native, 'binding/addon.node'))});
+require('node:fs').appendFileSync(${JSON.stringify(proof)}, JSON.stringify({ value: addon.read(), libraries: process.report.getReport().sharedObjects }) + '\\n');
+}`);
+  try {
+    packFixture({ at: supported.pack, nodeModules: path.join(REPO_ROOT, 'node_modules'), manifest: { features: {} },
+      files: { 'tsconfig.json': JSON.stringify({ compilerOptions: { module: 'esnext', moduleResolution: 'bundler', skipLibCheck: true } }) } });
+    writePreload(supported);
+    process.env.NODE_OPTIONS = formatNodeOptions([...parseNodeOptions(previous), '--require', preload]);
+    await builder.build({ args: ['--skip-fe'] });
+    const results = fs.readFileSync(proof, 'utf8').trim().split('\n').map(line => JSON.parse(line)) as { value: number; libraries: string[] }[];
+    for (const result of results) {
+      expect(result.value).toBe(11);
+      expect(result.libraries).not.toContain(supported.library);
+      expect(result.libraries.some(file => file.includes('apack-inputs-') && file.endsWith('/lib/libvalue.dylib'))).toBe(true);
+    }
+    const inputs = readPackBuildInputs(path.join(supported.pack, 'dist'));
+    assertPackBuildInputsCurrent(supported.pack, inputs);
+    const original = fs.readFileSync(supported.library);
+    fs.writeFileSync(supported.library, 'CHANGED');
+    expect(() => assertPackBuildInputsCurrent(supported.pack, inputs)).toThrow();
+    fs.writeFileSync(supported.library, original);
+    assertPackBuildInputsCurrent(supported.pack, inputs);
+    const revision = readPackBuild(path.join(supported.pack, 'dist')).revision;
+    for (const fixture of refused) {
+      fs.rmSync(proof, { force: true });
+      writePreload(fixture);
+      await expect(builder.build({ args: ['--skip-fe'] })).rejects.toThrow();
+      expect(fs.existsSync(fixture.marker)).toBe(false);
+      expect(fs.existsSync(proof)).toBe(false);
+      expect(readPackBuild(path.join(supported.pack, 'dist')).revision).toBe(revision);
+    }
+  } finally {
+    if (previous === undefined) delete process.env.NODE_OPTIONS;
+    else process.env.NODE_OPTIONS = previous;
+    await builder.close();
+    for (const fixture of [supported, ...refused]) fs.rmSync(fixture.root, { recursive: true, force: true });
   }
 });

@@ -3,7 +3,8 @@ import { isBuiltin } from 'node:module';
 import ts from 'typescript';
 import { assertCapturedMachOLibraries } from './compiler-native-libraries.ts';
 import { compilerGlobDirectories } from './compiler-source-globs.ts';
-import { readPackageInputs, type PackageInputs } from '@apackdev/host/build/package-inputs';
+import type { PackageInputs } from '@apackdev/host/build/package-inputs';
+import { captureCompilerPackage } from './compiler-package-inputs.ts';
 import type { readCompilerModuleInputs } from './compiler-module-inputs.ts';
 import type { CompilerReadSnapshot } from './compiler-read-tree.ts';
 
@@ -103,21 +104,15 @@ export function createNativeInputReader(view: NativeInputView, initialPackages: 
     const physical = view.fileSystem.realpath(file);
     if (packages.has(physical)) return;
     packages.add(physical);
-    const graph = readPackageInputs([{ id: 'native', directory: file, contents: true }], {
-      observe: location,
-      onFile(file, bytes) {
-        pending.files.push(view.captureFile(file.source, bytes));
-        if (!view.configuration && path.basename(file.source) === 'tsconfig.json') configuration(file.source);
-      },
+    const { graph, snapshot } = captureCompilerPackage(file, location, (file, bytes) => {
+      const captured = view.captureFile(file.source, bytes);
+      if (!view.configuration && path.basename(file.source) === 'tsconfig.json') configuration(file.source);
+      return captured;
     });
-    for (const node of graph.nodes) {
-      packages.add(node.directory);
-      pending.locations.push(...node.directories.map(directory => ({ file: directory.source, physical: directory.source, kind: 'directory' })));
-      pending.links.push(...node.links.map(link => ({ file: path.join(node.directory, link.path), target: link.target })));
-      for (const [name, index] of Object.entries(node.dependencies)) {
-        if (index !== null) pending.links.push({ file: node.lookups[name]!, target: graph.nodes[index]!.directory });
-      }
-    }
+    for (const node of graph.nodes) packages.add(node.directory);
+    pending.files.push(...snapshot.files);
+    pending.locations.push(...snapshot.locations);
+    pending.links.push(...snapshot.links);
   }
   function candidate(file: string) {
     directory(path.dirname(file));

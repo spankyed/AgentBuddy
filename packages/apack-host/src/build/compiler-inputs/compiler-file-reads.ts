@@ -19,6 +19,8 @@ export interface CompilerFileReadInputs {
   sourcePath(file: string): string;
   diagnostic(message: string): string;
   requireParent(file: string): string;
+  /** Executable scopes own native images; filesystem-only query scopes defer to startup ownership. */
+  nativeModule?(file: string): string;
 }
 
 interface CompilerFileReadScope {
@@ -29,6 +31,7 @@ interface CompilerFileReadScope {
 interface CompilerReadState {
   readonly scopes: AsyncLocalStorage<CompilerFileReadScope | null>;
   startup?: CompilerFileReadScope;
+  nativeModule?: (file: string) => string;
   installed: boolean;
 }
 // The native bootstrap and ESM compiler bundle must share interception, including cached preload APIs.
@@ -143,6 +146,15 @@ function capturedDirectory(file: fs.PathLike, options: unknown) {
 function install() {
   if (state.installed) return;
   state.installed = true;
+  const dlopen = process.dlopen;
+  process.dlopen = (module, filename, flags) => {
+    const scope = currentScope();
+    try {
+      const target = withoutCompilerFileReads(() => scope?.compilation.nativeModule?.(filename)
+        ?? state.nativeModule?.(filename) ?? filename);
+      return Reflect.apply(dlopen, process, [module, target, flags]);
+    } catch (error) { throw sourceError(error); }
+  };
   const readSync = fs.readFileSync, read = fs.readFile, readPromise = fs.promises.readFile;
   fs.readFileSync = ((file: fs.PathOrFileDescriptor, ...args: unknown[]) => {
     try { return Reflect.apply(readSync, fs, [readPath(file), ...args]); }
@@ -311,4 +323,12 @@ export function beginCompilerStartupReads(scope: CompilerFileReadScope): () => v
   install();
   state.startup = scope;
   return () => { if (state.startup === scope) state.startup = undefined; };
+}
+
+/** Native admission lasts through compiler execution, independently of startup filesystem interception. */
+export function beginCompilerNativeModules(admit: (file: string) => string): () => void {
+  if (state.nativeModule) throw new Error('Compiler native modules already have an owner');
+  install();
+  state.nativeModule = admit;
+  return () => { if (state.nativeModule === admit) state.nativeModule = undefined; };
 }
