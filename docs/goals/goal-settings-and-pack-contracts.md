@@ -83,9 +83,9 @@ preloads (`bbf05ec00`). These are source evidence, not a claim that the full str
 
 | Checkpoint | Required outcome and acceptance boundary | Dependencies |
 |---|---|---|
-| B1 — Launch and remaining input coverage | Reconcile current capture against actual supported compiler paths. The launch audit preserves inherited NODE_OPTIONS and forwarded export conditions; supervisor entry modes are not worker configuration. Early launch identity and authored bytes/membership are implemented through `bbf05ec00`. Selected runtime ownership is implemented in `e369d3cb9`, with local Node/Electron and actual backend/Vite acceptance. Close remaining externally linked/native-runtime and pre-startup/dependency/resolution gaps; other-platform acceptance remains required. Enumerate concrete missing inputs before implementing; prove relevant changes invalidate/refuse publication while equivalent runs preserve identity and resolution. Ordered options already landed; do not reimplement them. | Existing captured installation/startup view. |
+| B1 — Launch and remaining input coverage | Reconcile current capture against actual supported compiler paths. The launch audit preserves inherited NODE_OPTIONS and forwarded export conditions; supervisor entry modes are not worker configuration. Early launch identity and authored bytes/membership are implemented through `bbf05ec00`. Selected runtime ownership is implemented in `e369d3cb9`, with local Node/Electron and actual backend/Vite acceptance. Close the named input gaps and platform cases in the B1/B3 closure register below. Separate reproduced defects from missing evidence; enumerate concrete missing inputs before implementing; prove relevant changes invalidate/refuse publication while equivalent runs preserve identity and resolution. Ordered options already landed; do not reimplement them. | Existing captured installation/startup view. |
 | B2 — Frontend compiler generation | Implemented and locally accepted in `a595246f2` / `d3833f788`: matching backend/Vite generations, configuration replacement, fresh metadata/link resolution, private caches, failure retention, interrupted startup and awaited retirement pass. Real browser HMR through a generated external-pack entry preserves state/document. Retain these checks for final committed-source acceptance; B1/B3 still own remaining input/subscription and platform/runtime cases. | Relevant B1 inputs are implemented; preserve remaining cross-phase producer acceptance. |
-| B3 — Remaining resource lifetime | Audit native/background work and required platform-specific descendant handling against existing cancellation. Close demonstrated ownership gaps so build-owned work cannot outlive final validation/disposal. Retain required one-shot/dev/platform cases; public cancellation is already implemented. | Relevant B1/B2 owners; no security sandbox or general resource-confinement expansion. |
+| B3 — Remaining resource lifetime | Use the B1/B3 closure register below to identify each remaining native/background operation, its existing lifetime owner and missing proof. Close demonstrated gaps so build-owned work cannot outlive final validation/disposal. Preserve accepted cancellation/watch behavior; unverified platform behavior is not itself a demonstrated defect. | Relevant B1/B2 owners; no security sandbox or general resource-confinement expansion. |
 | B4 — Persist successful input/output association | Publish the completed input record atomically with sealed output. Failed or incoherent builds retain the incumbent; readers can validate the association without executing pack/compiler code. Startup observations alone are not this record. | Complete relevant B1–B3 producer ownership. |
 | B5 — Passive freshness consumers | Migrate archive, prebuilt tests, default-fork preparation and drive to the common record. Preserve manual builds, deterministic reuse, source-free installed inspection and deliberately stale drive behavior. Remove replaced freshness heuristics. | B4. |
 | B6 — Converged acceptance | Resolve affected failures from preserved evidence and focused reproducers, then run the required converged strict checkpoint. The final committed-source strict `--all` remains Phase 7. | Converged B1–B5 source; focused checks accompany each earlier checkpoint. |
@@ -107,6 +107,46 @@ Audit findings are not automatically implementation tasks. A supported path with
 and evidence closes without new machinery. An unverified requirement remains open; do not call it a
 defect without evidence or treat lack of a reproducer as permission to omit it. Include one-shot and
 dev/watch execution and relevant platform differences; do not invent a broader resource framework.
+
+#### B1/B3 closure register and decisions
+
+The remaining work distinguishes a reproduced defect, missing acceptance evidence and a support
+boundary decision. None alone authorizes a new general capture or confinement framework.
+
+| Item | Current evidence | Required closure |
+|---|---|---|
+| Absolute external-library loading | A real addon executes the original external library; changing it does not invalidate freshness. Package-relative capture in `6710e3026` does not fix this. | Audit the native dependencies actually executed by supported compiler paths. Prototype against the existing reproducer, then decide support or explicit refusal. Preserve normal platform-library loading. Any exclusion or reduced guarantee requires explicit user approval; until then the requirement remains open. |
+| Native/background lifetime | Worker settlement, cancellation and watch recovery have accepted checkpoints; a blanket claim about every native/platform lifetime is unproven. | List each remaining concrete operation, current owner, missing proof and closing case in the existing evidence matrix. Reuse accepted cases. Repair demonstrated gaps; close audit rows with sufficient existing evidence without new machinery. |
+| Platform coverage | Release/build configuration establishes targets, not acceptance of compiler capture or cleanup guarantees. | Record exact OS/architecture/runtime combinations, relevant cases and results. Mark missing evidence as unverified, not broken or implicitly unsupported. |
+
+Configured targets, inspected 2026-10-17:
+
+- macOS ARM64: packaging in `electron-builder.mjs` and `build/build.sh`, release workflow in
+  `.github/workflows/build-mac.yml`, and main CI in `.github/workflows/ci.yml`.
+- Windows x64: packaging in the same build files and release workflow in
+  `.github/workflows/build-windows.yml`; these do not establish native compiler acceptance.
+- Linux x64: packaging configuration exists; no Linux app-build workflow was found. Resolve intended
+  support explicitly before expanding platform work. This uncertainty does not exclude Linux.
+- Runtime declarations: Node `>=23.5.0`, Electron `37.2.4` in root `package.json`. Record the exact
+  runtime exercised by each acceptance case; a version range is not evidence for every version.
+
+Before implementation, enumerate the applicable library-loading, changed-input, cancellation and
+watch-recovery cases for those environments, with observable pass criteria: supported inputs execute
+as intended; tracked changes invalidate freshness; owned work settles before final validation/disposal;
+and refused candidates preserve the incumbent. Record each case as passed, failed or unverified;
+unsupported cases require an explicit approved boundary decision. Do not create an unlimited platform
+or runtime-version matrix from these headings.
+
+A scanner, binary relocation, additional interception or general resource confinement is not the
+prescribed solution. Any proposal must demonstrate that it closes the observed defect while preserving
+resolution and loading semantics. Static dependency inspection alone cannot establish complete capture
+of dynamic loading or arbitrary native I/O. Distinguish input coherence/freshness from security
+isolation; stronger isolation remains deferred. Any change to the promised input guarantee needs an
+explicit decision, not merely a documentation disclaimer.
+
+Continue API consumption and other independent work while resolving these items. Use focused checks
+for each repair, preserve existing evidence, and run the converged/final gates after the relevant
+implementation has converged rather than using broad suites to discover the next task.
 
 B2 must demonstrate that a successful compiler refresh changes the compiler actually used by both
 backend builds and Vite. Define their generation relationship, failed-refresh recovery and awaited
@@ -380,8 +420,9 @@ Native package-relative library ownership has source checkpoint `6710e3026`: ext
 capture the selected addon's owning package through the existing native input reader. An actual macOS
 addon/library test and public build prove copied-byte execution and passive changed-input refusal;
 see [native-library evidence](../evidence/build-input-snapshot-proof.md#package-relative-native-library-ownership).
-Absolute external-library loading remains a demonstrated gap; other-platform lifetime acceptance also
-remains required. Neither has an approved exclusion. Do not grow this repair into an incidental binary
+Absolute external-library loading remains a demonstrated gap; other-platform lifetime behavior remains
+unverified. The B1/B3 closure register above owns the support decisions and finite acceptance work;
+neither item has an approved exclusion. Do not grow this repair into an incidental binary
 relocation framework or make all independent work wait on that design decision. A1's API-route
 inventory/prototype can proceed using the already implemented catalog and caller binding.
 Focused tests, types/lint and the actual public build pass. One strict chain was deliberately stopped
