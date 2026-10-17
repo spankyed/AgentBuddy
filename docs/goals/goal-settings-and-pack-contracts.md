@@ -90,6 +90,65 @@ preloads (`bbf05ec00`). These are source evidence, not a claim that the full str
 | B5 — Passive freshness consumers | Migrate archive, prebuilt tests, default-fork preparation and drive to the common record. Preserve manual builds, deterministic reuse, source-free installed inspection and deliberately stale drive behavior. Remove replaced freshness heuristics. | B4. |
 | B6 — Converged acceptance | Resolve affected failures from preserved evidence and focused reproducers, then run the required converged strict checkpoint. The final committed-source strict `--all` remains Phase 7. | Converged B1–B5 source; focused checks accompany each earlier checkpoint. |
 
+#### Execution boundaries and closure
+
+The contract is: each published build has one coherent input/output association; source consumers can
+compare that association with their required inputs without running compiler or pack code. Coherence
+and freshness differ: a build can faithfully represent its captured inputs while being older than the
+checkout. Output integrity is required even when a consumer deliberately accepts that older build.
+
+For B1 and B3, record a finite path matrix in the existing evidence record before implementation:
+
+| Supported path / operation | Existing owner and source evidence | Uncovered requirement | Closing check / disposition |
+|---|---|---|---|
+| Enumerate actual startup, compiler, dependency-resolution and native/background paths | Name the current capture or lifetime owner | State the concrete missing guarantee, or record none | Link existing proof, add a focused check where needed, or identify an explicit unsupported path |
+
+Audit findings are not automatically implementation tasks. A supported path with sufficient ownership
+and evidence closes without new machinery. An unverified requirement remains open; do not call it a
+defect without evidence or treat lack of a reproducer as permission to omit it. Include one-shot and
+dev/watch execution and relevant platform differences; do not invent a broader resource framework.
+
+B2 must demonstrate that a successful compiler refresh changes the compiler actually used by both
+backend builds and Vite. Define their generation relationship, failed-refresh recovery and awaited
+retirement from the inspected lifecycle. Do not prescribe simultaneous server startup or an atomic
+cross-process swap without showing that the architecture needs it. Preserve HMR and useful source paths.
+
+B4 must settle the common successful-build record before migrating consumers. It must associate:
+
+- The accepted compiler installation/runtime identity and effective execution/build options.
+- The completed source and dependency input identity, including relevant external/linked inputs and
+  resolution observations (including missing paths or directory membership when they affect output).
+- The sealed output identity, so an input record cannot certify another build's bytes.
+
+Reuse captured inputs and existing output verification rather than introducing another source scanner
+or reading private phase caches as public authority. Specify record ownership, deterministic encoding,
+and verification at a common layer; the host must not import CLI internals. Publish the record with its
+output only after input validation and build-owned work settle; failure retains the incumbent pair.
+Startup observations alone do not establish this completed association. Installed verification must
+not need authored sources, machine-local temporary paths or executable compiler/pack modules.
+
+B5 must record the actual policy and migrate each consumer to that common authority:
+
+| Consumer | Required policy / acceptance |
+|---|---|
+| Archive creation | Verify sealed output and enforce the command's required source-input freshness; explicitly identify the comparison context. |
+| Prebuilt tests | Refuse missing, altered or mismatched builds against the inputs required by the test invocation. |
+| Default-fork preparation | Verify the selected build and required provenance; compare current inputs wherever preparation promises a current-source build. |
+| Drive | Verify output integrity; retain explicit deliberately stale use and give accurate current-input guidance otherwise. |
+| Installed/offline discovery (preservation boundary) | Verify published data without authored source files, compiler execution, automatic rebuilding or staging. |
+
+Direct/manual builds and watch must produce the same association. Prove timestamp-only touches and
+exact byte restoration remain current; same-mtime byte changes, relevant additions/removals, linked
+inputs and compiler/dependency/option changes invalidate reuse. Preserve deterministic output caching.
+Exercise the actual cached-chain/app-preparation path as well as focused record checks. Remove the
+replaced mtime and reader-specific heuristics; do not add dual-format reads or compatibility fallbacks.
+
+Close each B checkpoint with its concrete implementation delta (or evidence-only closure), focused
+acceptance results, source commit and explicit remaining cases. B6 consolidates B1–B5 and diagnoses the
+retained failures from exact reproducers before the required converged strict checkpoint; it does not
+restart accepted implementation or require repeated broad runs for diagnosis. Phase 7 still owns the
+final whole-goal strict `--all` on committed source. These details clarify existing scope, not new phases.
+
 The latest strict run, `2026-10-17T00-23-23Z-27374`, failed in integration after `ENOSPC` errors and
 its existing 600-second aggregate deadline. Both unit pools, typechecks, builds and both packaged-authoring
 halves passed. A dependent-runtime fixture omission found in that run is repaired (all five cases pass).
