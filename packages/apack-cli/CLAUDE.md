@@ -143,6 +143,8 @@ package fallback. The installation's `isCurrent` checks selection, original/capt
 graphs before reuse; its existing disposal removes the executable with the compiler.
 
 `bin/apack.mjs` selects `build-worker` only with its private worker handoff and parent IPC channel.
+It calls `stopReads()` before loading the worker bundle, ending preload filesystem interception while
+keeping the captured view and native admission alive. `disposeLocal()` ends both; these are distinct phases.
 That entry checks the compiler inputs before importing `build()`, avoiding recursive command dispatch;
 it ships beside `cli.js`. Internal compiler tests call `build()` in-process; process-boundary tests
 exercise the real bootstrap and runner.

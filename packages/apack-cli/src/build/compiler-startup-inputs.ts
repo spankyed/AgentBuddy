@@ -23,6 +23,7 @@ export interface CompilerStartupInputs {
   readonly executionIdentity: string;
   readonly view: PackCompilerInputView;
   readonly nativeEnvironment: MachOLibraryEnvironment;
+  stopReads(): void;
   disposeLocal(): void;
   nativeModule(file: string): string;
   finishLocal(): CompilerInputObservations;
@@ -79,7 +80,7 @@ export function beginCompilerStartupInputs(root: string, workspace: string, path
     requireParent: file => file,
   } });
   const startup: CompilerStartupInputs = {
-    root: canonicalRoot, executionIdentity, view, nativeEnvironment, nativeModule,
+    root: canonicalRoot, executionIdentity, view, nativeEnvironment, stopReads, nativeModule,
     disposeLocal() { stopReads(); view.dispose(); },
     finishLocal() {
       return withoutCompilerFileReads(() => {
