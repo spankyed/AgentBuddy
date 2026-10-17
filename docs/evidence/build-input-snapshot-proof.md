@@ -1262,6 +1262,8 @@ committed-source strict `--all` remain required. No broad acceptance is claimed 
 
 ## Prebuilt-test consumer checkpoint
 
+Source checkpoint: `c70f37c3b`.
+
 The Playwright fixture now uses the common sealed build-input record instead of `staleBuildOutput`.
 It verifies output integrity before replaying the completed source/dependency observations and requires
 the recorded `--release` option for a release test invocation. Its context is the compiler/execution
@@ -1282,3 +1284,27 @@ actual cached app-preparation acceptance, B1/B3 lifetime closure, B6 and final s
 open. Archive also needs a deliberate boundary for root-level generated archive output: the current
 authored inventory would otherwise treat a default-location archive as a new source input. This finding
 does not justify omitting archive freshness or broadly excluding arbitrary authored `.tgz` inputs.
+
+## Default-fork consumer wiring and real prebuilt acceptance
+
+Default-fork preparation now verifies the selected shipped output and replays its common completed
+input record before capturing its revision, and again after building the fork. The comparison context
+is the selected build's captured compiler/options, not a newly inferred environment for the preparation
+script. The prepared handoff now pins its archive SHA-256; verification checks actual archive bytes
+and exact published checksum contents rather than accepting two files merely because they exist.
+
+Direct typechecking of `tests/scripts/prepare-default-pack-fork.ts` passes (the normal `tests/tsconfig`
+does not itself include that script): `/private/tmp/apack-default-fork-direct-types.log`. One-file lint
+passes: `/private/tmp/apack-default-fork-record-lint-final.log`.
+
+The normal `npm run build:default-setup` refreshes the changed testing/CLI packages and successfully
+publishes the real default pack with its completed record and supported expected outputs:
+`/private/tmp/apack-b5-default-setup-build.log`. A direct call through the actual prebuilt consumer
+accepts that build without compilation and refuses it for a release invocation:
+`/private/tmp/apack-prebuilt-real-default.log`. The first sandboxed build attempt stopped at tsx's IPC
+socket before compilation; the permitted normal command completed successfully.
+
+The full fork preparation, cache-reuse and app boundary have not been rerun for this wiring. Run them
+once with the remaining archive/drive migrations rather than rebuilding this large fork at every
+consumer edit. This is not a converged or whole-goal strict pass; B1/B3, B6 and every preserved Phase 6
+stream remain required.

@@ -2,7 +2,9 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
-import { readPackBuild, staleBuildOutput } from '@apackdev/host/packs';
+import { readPackBuild } from '@apackdev/host/packs';
+import { sha256File } from '@apackdev/host/packs/assets';
+import { readPackBuildInputs, assertPackBuildInputsCurrent } from '@apackdev/host/build/pack-build-inputs';
 import { boundedSpawn } from '../../scripts/lib/bounded-spawn.ts';
 import { timeoutMsFor } from '../../scripts/lib/step-timeouts.ts';
 
@@ -12,18 +14,22 @@ const output = path.join(root, 'node_modules/.cache/apack-fixtures/default-fork'
 const remedy = 'Run npm run test:external-pack:contract to prepare the default fork.';
 
 function shippedRevision(): string {
-  const stale = staleBuildOutput(source);
-  if (stale) throw new Error(`The shipped pack build is stale (${stale}). Run npm run build:default-setup first.`);
-  return readPackBuild(path.join(source, 'dist')).revision;
+  const dist = path.join(source, 'dist');
+  const build = readPackBuild(dist);
+  assertPackBuildInputsCurrent(source, readPackBuildInputs(dist, build.integrity));
+  return build.revision;
 }
 
 export function verifyDefaultPackFork(): void {
   const file = path.join(output, 'fork.json');
   if (!fs.existsSync(file)) throw new Error(remedy);
   const prepared = JSON.parse(fs.readFileSync(file, 'utf8'));
-  if (typeof prepared.archive !== 'string' || path.basename(prepared.archive) !== prepared.archive
+  if (typeof prepared.archive !== 'string' || !prepared.archive.endsWith('.tgz') || path.basename(prepared.archive) !== prepared.archive
+    || typeof prepared.archiveSha256 !== 'string' || !/^[a-f0-9]{64}$/.test(prepared.archiveSha256)
     || prepared.shippedBuildRevision !== shippedRevision()
-    || !fs.existsSync(path.join(output, prepared.archive)) || !fs.existsSync(path.join(output, `${prepared.archive}.sha256`))) {
+    || !fs.existsSync(path.join(output, prepared.archive)) || !fs.existsSync(path.join(output, `${prepared.archive}.sha256`))
+    || sha256File(path.join(output, prepared.archive)) !== prepared.archiveSha256
+    || fs.readFileSync(path.join(output, `${prepared.archive}.sha256`), 'utf8') !== `${prepared.archiveSha256}  ${prepared.archive}\n`) {
     throw new Error(`The prepared default fork does not match the shipped pack. ${remedy}`);
   }
 }
@@ -58,7 +64,8 @@ async function prepare(): Promise<void> {
     if (shippedRevision() !== shippedBuildRevision) throw new Error('The shipped pack changed during fork preparation');
     const archive = `${manifest.id}-${manifest.version}.tgz`;
     if (!fs.existsSync(path.join(staged, archive)) || !fs.existsSync(path.join(staged, `${archive}.sha256`))) throw new Error('Fork archive or checksum is missing');
-    fs.writeFileSync(path.join(staged, 'fork.json'), JSON.stringify({ shippedBuildRevision, archive }, null, 2) + '\n');
+    const archiveSha256 = sha256File(path.join(staged, archive));
+    fs.writeFileSync(path.join(staged, 'fork.json'), JSON.stringify({ shippedBuildRevision, archive, archiveSha256 }, null, 2) + '\n');
     fs.rmSync(output, { recursive: true, force: true });
     fs.renameSync(staged, output);
   } finally {

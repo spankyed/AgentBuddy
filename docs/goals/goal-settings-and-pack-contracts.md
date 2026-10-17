@@ -323,15 +323,20 @@ Twenty-eight unit/passive cases, six DSL cases, three actual native compiler cas
 lint pass. Two real builds preserve reuse/revision/cleanup in 65.20s; see
 [remaining writer evidence](../evidence/build-input-snapshot-proof.md#remaining-writer-output-expectations-checkpoint).
 This implements B4's supported file-writer coverage. Its final acceptance still depends on the retained
-B1/B3 ownership/lifetime requirements and converged checks. B5's prebuilt-test consumer now verifies
+B1/B3 ownership/lifetime requirements and converged checks. B5's prebuilt-test checkpoint `c70f37c3b` now verifies
 the sealed output, replays completed source/dependency observations and requires a recorded `--release`
 option when the invocation requests it. Its comparison context is the selected build's captured
-compiler/execution context, not the Playwright runner's unrelated environment. Archive-based tests
-retain their separate unfinished check. Archive, default-fork and drive migrations remain open;
+compiler/execution context, not the Playwright runner's unrelated environment. A real default-setup
+build now publishes that record and passes prebuilt acceptance; a release invocation refuses that
+development output. Default-fork preparation now checks the selected shipped build's completed inputs
+and pins its prepared archive digest and checksum bytes. Its context is that selected build's recorded
+compiler/options; preparation still builds the fork normally. Full preparation/cache/app acceptance
+remains open. Archive-based tests retain their separate unfinished check. Archive and drive migrations remain open;
 no converged strict or final `--all` pass is claimed.
-Next: migrate archive (including archive-based tests), default-fork preparation and drive to the common
+Next: migrate archive (including archive-based tests) and drive to the common
 record, removing their replaced freshness heuristics. Archive must account for its default root-level
-generated output without misclassifying that output as new authored inputs. Reconcile
+generated output without misclassifying that output as new authored inputs. Then exercise the combined
+cached preparation/app path, including the default fork, against these consumers. Reconcile
 the finite native/platform lifetime boundary against supported compiler operations before closing B1/B3. Preserve required external-library and
 platform/thread-lifetime acceptance;
 preserve the now-accepted namespace cases without starting another resolver or observation framework. Preserve
