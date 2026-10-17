@@ -97,15 +97,21 @@ restart, reporting a roughly ten-minute restart and unusual initial app loading.
 unproven; do not describe this as M1 capacity exhaustion or a confirmed daemon deadlock. Sustained
 native, captured-runtime and startup/cancellation batches stay off the daily-use Mac. Use the focused
 `compiler_macos=true` / `compiler_windows=true` GitHub dispatch routes. Source `6e19d17b8` adds the macOS
-route; run `39079072090` is in progress on that source, with platform/header checks passed and all broad
-jobs skipped. Follow this run rather than dispatching a duplicate. Preserve required acceptance rather
+route; run `39079072090` is terminal failure on that source: all 76 selected unit checks and five native
+cases pass, then the watch case's console wait expires during a detected rebuild. Later native cases
+were not executed. Preserve required acceptance rather
 than silently skipping it. No security settings or
 system databases were changed by this session. See [incident evidence](../evidence/build-input-snapshot-proof.md#macos-launch-policy-investigation-2026-10-17).
 
 Source `0275df801` adds the real retained Vite ESM preload/custom-loader/transitive-resolution case.
-CLI types, focused lint and workflow checks pass; runtime acceptance is queued as run `39079253353`
-behind the existing macOS batch. It selects only that new case, leaving the prior run intact. Do not
-claim the loader gap closed until this execution passes; no production capture change is assumed.
+CLI types, focused lint and workflow checks pass. Run `39079253353` fails in 12.39 seconds: loader and
+transitive module bytes invalidate, but package export metadata changes do not. The shared native
+startup data owner now observes enclosing package declarations through the existing file view; no
+resolver or loader is added. Hosted execution of that correction remains required before closing the gap.
+Source `e6ce60a78` awaits each detected watch build directly, retaining missing-event bounds and all
+behavior assertions under one measured scenario budget. Its isolated hosted acceptance is queued as
+run `39079492068`. CLI types, lint and 42 timeout-policy checks pass; watch recovery remains unverified
+on hosted macOS until this run finishes. See [failure and correction evidence](../evidence/build-input-snapshot-proof.md#first-hosted-macos-result-and-watch-completion-boundary-2026-10-17).
 
 **Current handoff:** source `ccaa809a8` delivers retained frontend native discoveries into live watch
 subscriptions and retains failed-candidate probes for repair. Native copies and receipts belong to the

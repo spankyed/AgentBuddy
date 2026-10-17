@@ -27,6 +27,13 @@ export function createCompilerNativeInputs(original: ReturnType<typeof createCom
   const readDataPath = (file: string) => withoutCompilerFileReads(() => {
     if (!includes(file)) return file;
     file = sourcePath(file);
+    // Node's package metadata reader bypasses fs wrappers. Observe enclosing declarations,
+    // including absent nearer scopes, without resolving or rewriting module requests.
+    for (let directory = path.dirname(file); ; directory = path.dirname(directory)) {
+      const metadata = path.join(directory, 'package.json');
+      if (includes(metadata)) original.readDataBytes(metadata);
+      if (path.dirname(directory) === directory) break;
+    }
     const bytes = original.readDataBytes(file);
     const location = original.captureLocation(file, 'file');
     tree ??= createCompilerReadTree({ files: [], locations: [], links: [] }, paths);

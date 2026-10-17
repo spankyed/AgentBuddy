@@ -2852,3 +2852,18 @@ instead of competing compilation waits. Incumbent retention, no native initializ
 values and old-process retirement remain required. No production source or suite-wide deadline changes.
 CLI types, correctness lint, diff checks and all 42 timeout-policy checks pass; hosted repair acceptance
 remains pending. No native runtime was executed locally.
+
+### Native startup package metadata omission (2026-10-17)
+
+Hosted run `39079253353` on `0275df801` fails the single new frontend case in 12.39 seconds:
+the real ESM preload executes correctly, loader payload/transitive module byte changes invalidate,
+but changing `preload-dependency/package.json` from `./first.mjs` to `./second.mjs` incorrectly remains
+current. Log: `/private/tmp/apack-hosted-esm-39079253353.log`. This is a demonstrated metadata omission,
+not a deadline failure. Vue preservation assertions after that point were not reached.
+
+The shared native startup data owner now observes enclosing `package.json` files (including absent
+nearer scopes) when capturing a startup read. Node's internal package metadata access bypasses the
+filesystem wrappers. This uses the existing file view and watch recorder for both build and frontend
+startup; it adds no resolver, loader or rewrite, and capture still stops at the existing frontend phase
+boundary. Compiler-owned paths remain excluded. CLI TypeScript, focused lint and diff checks pass;
+the same real frontend reproducer still requires hosted acceptance on this correction.
