@@ -590,6 +590,47 @@ it.runIf(process.platform === 'darwin').each(['DYLD_FALLBACK_LIBRARY_PATH', 'DYL
   },
 );
 
+it.runIf(process.platform === 'darwin').each(['DYLD_VERSIONED_LIBRARY_PATH', 'DYLD_VERSIONED_FRAMEWORK_PATH'] as const)(
+  'refuses selected external %s libraries before retained frontend initialization', async variable => {
+    const fixture = nativeFixture('relative');
+    const previousOptions = process.env.NODE_OPTIONS;
+    const previousSearch = process.env[variable];
+    let compiler: CompilerInstallation | undefined;
+    let frontend: PackFrontend | undefined;
+    try {
+      const directory = path.join(fixture.root, 'overrides');
+      const selected = path.join(directory, variable === 'DYLD_VERSIONED_FRAMEWORK_PATH' ? 'Value.framework/Value' : 'liboverride.dylib');
+      fixture.buildLibrary(selected, 'int native_value(void) { return 22; }', '@loader_path/../lib/libvalue.dylib');
+      const addon = path.join(fixture.native, 'binding/addon.node');
+      const loaded = JSON.parse(execFileSync(process.execPath, ['-e', `const addon = require(${JSON.stringify(addon)}); console.log(JSON.stringify({ value: addon.read(), libraries: process.report.getReport().sharedObjects }));`], {
+        encoding: 'utf8', env: { ...process.env, [variable]: directory },
+      })) as { value: number; libraries: string[] };
+      expect(loaded.value).toBe(22);
+      expect(loaded.libraries).toContain(selected);
+      fs.rmSync(fixture.marker);
+      packFixture({ at: fixture.pack, nodeModules: path.join(REPO_ROOT, 'node_modules'), manifest: { features: {} },
+        files: { 'src/pack-entry-fe.ts': "export { default } from './View.vue';", 'src/View.vue': '<template>VERSIONED</template>' } });
+      const preload = path.join(fixture.root, 'versioned-preload.cjs');
+      fs.writeFileSync(preload, `if (globalThis[Symbol.for('apack.compiler.frontend')]) {
+        delete process.env[${JSON.stringify(variable)}]; require(${JSON.stringify(addon)});
+      }`);
+      compiler = await captureCompilerInstallation(compilerPackageDirectory(), { cwd: fixture.pack });
+      process.env[variable] = directory;
+      process.env.NODE_OPTIONS = formatNodeOptions([...parseNodeOptions(previousOptions), '--require', preload]);
+      await expect(startPackFrontend(fixture.pack, compiler, new AbortController().signal)
+        .then(value => { frontend = value; })).rejects.toThrow();
+      expect(fs.existsSync(fixture.marker)).toBe(false);
+    } finally {
+      if (previousOptions === undefined) delete process.env.NODE_OPTIONS;
+      else process.env.NODE_OPTIONS = previousOptions;
+      if (previousSearch === undefined) delete process.env[variable];
+      else process.env[variable] = previousSearch;
+      try { await frontend?.close(); }
+      finally { await compiler?.dispose(); fs.rmSync(fixture.root, { recursive: true, force: true }); }
+    }
+  },
+);
+
 it.runIf(process.platform === 'darwin')('captures the selected native image suffix and refuses its later transitive escape', async () => {
   const fixture = nativeFixture('relative');
   const builder = createPackBuilder(fixture.pack);

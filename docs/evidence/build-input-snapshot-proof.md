@@ -2881,3 +2881,24 @@ completion rather than console timing. No repeat native run is needed solely to 
 less than 120. This accepts watch behavior on `e6ce60a78`, not the subsequent metadata correction.
 Run `39079716622` queues the exact ESM/loader reproducer on metadata repair `6d482e79f`; do not restart
 that run or claim acceptance before it completes.
+
+### Frontend metadata acceptance and next versioned-loader proof (2026-10-17)
+
+Run `39079716622` is terminal success on `6d482e79f`: the exact ESM/loader/transitive package-export
+case passes in 17.90 seconds (runner 20.77 seconds). It also reaches and passes the unchanged Vue/live
+source assertions. Log: `/private/tmp/apack-hosted-esm-39079716622.log`. This closes that demonstrated
+package metadata omission; it does not claim every possible resolution or native platform case passed.
+
+Before changing the remaining versioned-loader path, inspect
+[Apple's dyld implementation](https://github.com/apple-oss-distributions/dyld/blob/main/dyld/DyldProcessConfig.cpp):
+`processVersionedPaths` scans library/framework directories, reads install names and versions, and builds
+overrides used by `forEachPathVariant` after ordinary environment overrides. It is not a basename-only
+search. Shared-cache and restricted-runtime policy remain separate open cases.
+
+| Next bounded path | Existing owner / gap | Proof and acceptance |
+|---|---|---|
+| `DYLD_VERSIONED_LIBRARY_PATH` / `DYLD_VERSIONED_FRAMEWORK_PATH` | Shared native owner inspects ordinary library paths but captures neither versioned directory selection nor its launch-time state | In hosted CI only, build private override images with the fixture library's install name. First prove a fresh ordinary Node actually loads their value/path. Then require retained frontend admission to refuse before addon initialization, even when a preload deletes the variable. Reuse the current owner; no binary rewriting or general loader framework. |
+
+The proof reuses the existing native fixture and cleanup ownership. Its fresh Node selection call is
+declared in the subprocess inventory. CLI types, focused lint and diff checks pass; native behavior
+and any implementation correction await this focused hosted run. No native test was executed locally.

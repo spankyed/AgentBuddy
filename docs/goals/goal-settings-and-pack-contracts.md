@@ -107,8 +107,8 @@ Source `0275df801` adds the real retained Vite ESM preload/custom-loader/transit
 CLI types, focused lint and workflow checks pass. Run `39079253353` fails in 12.39 seconds: loader and
 transitive module bytes invalidate, but package export metadata changes do not. The shared native
 startup data owner now observes enclosing package declarations through the existing file view; no
-resolver or loader is added (`6d482e79f`). Run `39079716622` queues that correction's exact reproducer;
-hosted acceptance remains required before closing the gap.
+resolver or loader is added (`6d482e79f`). Run `39079716622` passes the exact reproducer in 17.90 seconds,
+including restored-byte reuse and live Vue edits. This closes the demonstrated metadata omission.
 Source `e6ce60a78` awaits each detected watch build directly, retaining missing-event bounds and all
 behavior assertions. Its isolated hosted run `39079492068` passes in 98.76 seconds, including refusal,
 repair, incumbent preservation and retirement. Restore the original 120-second scenario budget; the
@@ -135,8 +135,9 @@ frontend startup reads before the actual CLI entry releases ordinary authored-so
 CommonJS preload-byte change/restoration cases pass for both direct and explicit-worker native loading,
 Vue remains live, and the complete native watch recovery still passes. Worker startup observations join
 frontend freshness through the existing coordinator, retaining bounded refusal for unresponsive checks.
-Next: custom-loader/ESM and transitive-resolution acceptance and the remaining named native-platform
-cases, then B6 and final committed-source strict `--all`. Preserve the full scope below. See [checkpoint evidence](../evidence/build-input-snapshot-proof.md#live-frontend-native-watch-and-shared-copies-2026-10-17).
+Next: the bounded versioned-loader proof and remaining named native-platform cases, preserving the
+accepted ESM/loader/transitive metadata and Vue behavior above; then B6 and final committed-source
+strict `--all`. Preserve the full scope below. See [checkpoint evidence](../evidence/build-input-snapshot-proof.md#live-frontend-native-watch-and-shared-copies-2026-10-17).
 
 Source `525350813` applies native canonical path identity consistently, preserving authored metadata
 query semantics and root-link observations. Corrections `672645cf4` / `329cfbd89` preserve fixture and
