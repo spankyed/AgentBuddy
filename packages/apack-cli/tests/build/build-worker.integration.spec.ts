@@ -172,6 +172,73 @@ it('uses the captured compiler and retains unchanged build/cache identity on rep
   for (const workspace of workspaces) expect(fs.existsSync(workspace)).toBe(false);
 }, 120_000);
 
+it('records external inputs read by content compiler worker threads', async () => {
+  const outside = fs.mkdtempSync(path.join(os.tmpdir(), 'apack-worker-input-'));
+  roots.push(outside);
+  const modes = ['terminated', 'natural', 'nested', 'background'];
+  const values = modes.map(mode => path.join(outside, `${mode}.txt`));
+  values.forEach((file, index) => fs.writeFileSync(file, modes[index]!));
+  const root = fixture({
+    'src/value.txt': 'rows',
+    'src/compiler.cjs': `const {Worker} = require('node:worker_threads');
+      const {once} = require('node:events');
+      module.exports = async () => {
+        const rows = [];
+        const read = "const {parentPort, workerData} = require('node:worker_threads'); parentPort.postMessage(require('node:fs').readFileSync(workerData, 'utf8'));";
+        for (const [index, mode] of ${JSON.stringify(modes)}.entries()) {
+          const code = mode === 'nested'
+            ? "const {Worker, parentPort, workerData} = require('node:worker_threads'); const child = new Worker(" + JSON.stringify(read) + ", {eval: true, workerData}); child.once('message', value => parentPort.postMessage(value));"
+            : read + (mode === 'background' ? 'setInterval(() => {}, 1000);' : '');
+          const worker = new Worker(code, {eval: true, workerData: ${JSON.stringify(values)}[index],
+            ...(mode === 'natural' ? {execArgv: [], env: {WORKER_CUSTOM: 'present'}} : {})});
+          const exited = once(worker, 'exit');
+          try {
+            const [name] = await once(worker, 'message');
+            rows.push({entity: 'Relation', name});
+          } finally {
+            if (mode === 'natural') await exited;
+            else if (mode !== 'background') await worker.terminate();
+          }
+        }
+        return rows;
+      };`,
+  }, { formats: { rows: { compiler: 'src/compiler.cjs', entity: 'Relation', identity: ['name'] } },
+    sources: { rows: { path: 'src/value.txt', format: 'rows' } } });
+  vi.spyOn(process, 'cwd').mockReturnValue(root);
+  await buildCommand(['--skip-fe']);
+  const content = JSON.parse(fs.readFileSync(path.join(root, 'dist/runtime/content/rows.content.json'), 'utf8'));
+  expect(content.records.map((record: {name: string}) => record.name)).toEqual(modes);
+  const inputs = readPackBuildInputs(path.join(root, 'dist'));
+  assertPackBuildInputsCurrent(root, inputs);
+  for (const [index, file] of values.entries()) {
+    fs.writeFileSync(file, 'CHANGED_WORKER_INPUT');
+    expect(() => assertPackBuildInputsCurrent(root, inputs), modes[index]).toThrow(/changed/i);
+    fs.writeFileSync(file, modes[index]!);
+  }
+});
+
+it('refuses publication when a compiler worker cannot return its observations', async () => {
+  const root = fixture({
+    'src/value.txt': 'rows',
+    'src/compiler.cjs': `const {Worker} = require('node:worker_threads');
+      const {once} = require('node:events');
+      module.exports = async () => {
+        const worker = new Worker("require('node:worker_threads').parentPort.postMessage('started'); while (true) {}", {eval: true});
+        await once(worker, 'message');
+        await worker.terminate();
+        return [{entity: 'Relation', name: 'unverified'}];
+      };`,
+  }, { formats: { rows: { compiler: 'src/compiler.cjs', entity: 'Relation', identity: ['name'] } },
+    sources: { rows: { path: 'src/value.txt', format: 'rows' } } });
+  const marker = path.join(root, 'dist', 'incumbent.txt');
+  fs.mkdirSync(path.dirname(marker));
+  fs.writeFileSync(marker, 'KEEP');
+  vi.spyOn(process, 'cwd').mockReturnValue(root);
+  await expect(buildCommand(['--skip-fe'])).rejects.toThrow(/Pack build process exited/);
+  expect(fs.readFileSync(marker, 'utf8')).toBe('KEEP');
+  expect(fs.readdirSync(path.dirname(marker))).toEqual(['incumbent.txt']);
+});
+
 describe('native compiler startup', () => {
   let root: string, preload: string, imported: string, payload: string, trace: string, builder: PackBuilder;
   beforeEach(async () => {

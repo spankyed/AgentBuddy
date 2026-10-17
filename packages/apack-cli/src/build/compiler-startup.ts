@@ -2,25 +2,25 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { register } from 'node:module';
 import { pathToFileURL } from 'node:url';
-import { getEnvironmentData, setEnvironmentData, isMainThread, isInternalThread, threadId, MessageChannel, type MessagePort } from 'node:worker_threads';
-import { readCompilerInstallationInputs } from './compiler-installation-inputs.ts';
+import { getEnvironmentData, setEnvironmentData, isMainThread, isInternalThread, MessageChannel, type MessagePort } from 'node:worker_threads';
+import { COMPILER_INPUTS_ENV, readCompilerInstallationInputs } from './compiler-installation-inputs.ts';
 import { BUILD_INPUTS_DIRECTORY_ENV } from './compiler-read-tree.ts';
 import { beginCompilerStartupInputs } from './compiler-startup-inputs.ts';
 import { type CompilerInputObservations } from '@apackdev/host/build/compiler-inputs';
 import { COMPILER_NODE_OPTIONS_ENV } from './compiler-startup-options.ts';
+import { compilerThreadHandoff, ownCompilerThreads, serveCompilerThread } from './compiler-threads.ts';
 
 interface CompilerThreadLineage {
   readonly pid: number;
-  readonly parent: number;
   readonly loader: SharedArrayBuffer;
 }
 const LINEAGE = 'apack.compiler.thread';
 const inherited = getEnvironmentData(LINEAGE) as CompilerThreadLineage | undefined;
-const primaryLoader = isInternalThread && inherited?.pid === process.pid && inherited.parent === 0;
-// Tag regular workers too: their loader is not this process's primary module loader.
-if (inherited?.pid === process.pid) setEnvironmentData(LINEAGE, { ...inherited, parent: threadId });
+const primaryLoader = isInternalThread && inherited?.pid === process.pid;
+const handoff = !isMainThread && !isInternalThread ? compilerThreadHandoff() : undefined;
 
-if ((isMainThread && process.env.APACK_BUILD_WORKER === '1' && process.send && process.connected) || primaryLoader) {
+if ((isMainThread && process.env.APACK_BUILD_WORKER === '1' && process.send && process.connected) || primaryLoader || handoff) {
+  if (handoff) Object.assign(process.env, handoff.environment);
   const compiler = readCompilerInstallationInputs();
   const workspace = process.env[BUILD_INPUTS_DIRECTORY_ENV];
   const userOptions = process.env[COMPILER_NODE_OPTIONS_ENV];
@@ -34,7 +34,12 @@ if ((isMainThread && process.env.APACK_BUILD_WORKER === '1' && process.send && p
   const ready = new Int32Array(primaryLoader ? inherited.loader : new SharedArrayBuffer(4));
   if (primaryLoader) Atomics.store(ready, 0, 1);
   else {
-    setEnvironmentData(LINEAGE, { pid: process.pid, parent: threadId, loader: ready.buffer });
+    setEnvironmentData(LINEAGE, { pid: process.pid, loader: ready.buffer });
+    const collectThreads = ownCompilerThreads(__filename, workspace, {
+      [COMPILER_INPUTS_ENV]: process.env[COMPILER_INPUTS_ENV]!,
+      [BUILD_INPUTS_DIRECTORY_ENV]: workspace,
+      [COMPILER_NODE_OPTIONS_ENV]: userOptions,
+    });
     let port: MessagePort | undefined;
     const request = (type: 'snapshot' | 'finish'): Promise<CompilerInputObservations[]> => {
       // Filesystem interception observes native ESM reads too. Never create a loader just to capture them:
@@ -63,9 +68,18 @@ if ((isMainThread && process.env.APACK_BUILD_WORKER === '1' && process.send && p
         channel.postMessage(type);
       });
     };
+    const collect = async (finish: boolean) => (await Promise.all([
+      request(finish ? 'finish' : 'snapshot'), collectThreads(finish),
+    ])).flat();
     let captured: Promise<void> | undefined, finished: Promise<CompilerInputObservations[]> | undefined;
-    startup.capture = () => captured ??= (async () => { startup.initial = await request('snapshot'); })();
-    startup.finish = () => finished ??= request('finish');
+    startup.capture = () => captured ??= (async () => { startup.initial = await collect(false); })();
+    startup.finish = () => finished ??= collect(true);
+    if (handoff) serveCompilerThread(handoff,
+      async () => [...await collect(false), startup.finishLocal()],
+      async () => {
+        try { return [...await startup.finish(), startup.finishLocal()]; }
+        finally { startup.stopReads(); startup.view.dispose(); }
+      });
   }
   // Keep the handoff for a loader created later by the compiler; children inherit only user options.
   process.env.NODE_OPTIONS = userOptions;
