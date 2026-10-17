@@ -587,3 +587,39 @@ I/O or executable-wrapper dependencies, transient user-code changes to environme
 Node/Electron runtime ownership, retained frontend generation or other platforms. Retained generation
 handoff is the next bounded implementation audit (B2); the remaining B1/B3 matrix and B4–B6, final
 all-kind discovery and all Phase 6 requirements stay open. No broad gate was repeated.
+
+## Retained frontend generation proof and design (2026-10-17)
+
+Baseline `d8f4dd4ea`. `dev.ts` creates Vite in the supervisor after its one-shot initial build;
+`startPackBuildWatcher` creates a separate retained builder. Refreshing that builder cannot refresh
+the supervisor's already imported Vite/plugin modules. `createDevHold` also starts `server.close()`
+without awaiting it, so it does not establish retirement before compiler disposal.
+
+A disposable proof bundles the actual `packDevServerConfig`, captures its compiler packages and runs
+real HTTP transforms through Vite. A fixture Vue plugin marks compiler generation A/B. Source changes
+continue through the retained server, while changing the original compiler leaves its transforms on A;
+a second capture/server uses B with a different compiler identity:
+
+```json
+{"firstA":true,"retainedA":true,"retainedSourceUpdated":true,"freshB":true,"identityChanged":true}
+```
+
+Script/log: `/private/tmp/apack-retained-frontend-proof.{mts,log}`. All sources, dependencies selected
+for modification, server caches and compiler copies were private; both servers were closed and both
+installations disposed. Initial fixture corrections concerned directory-symlink removal, bundling host
+helpers as the actual CLI does, the unqueried entry redirect and awaiting real watcher invalidation.
+They did not require production changes or a larger suite.
+
+B2 implementation: the existing pack builder owns compiler generations and their optional frontend
+worker. `pack dev` retains that builder from the initial build through watching; the watcher receives
+its build operation, not ownership of the same compiler. Run Vite in a private worker from the selected
+captured CLI, using the existing dev configuration and live authored root. Its compiler is captured;
+its authored inputs remain live for HMR. A successful refresh hands the marker to the new ready server,
+then awaits retirement of the old server before disposing its installation. A failed candidate retains
+the incumbent server/compiler; close aborts startup/build work, awaits workers and then removes copies.
+No simultaneous backend/frontend startup or atomic cross-process serving swap is required. A new
+server may use a new port; the existing marker and successful-build app reload communicate it.
+
+Prove actual A/B transforms and backend builds from matching generations, live source/HMR behavior,
+failed-refresh recovery, retained reuse, marker handoff, awaited retirement and cleanup. Preserve source
+paths, one-shot builds and existing cancellation. Keep remaining B1/B3 and B4–B6 requirements open.
