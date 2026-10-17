@@ -68,7 +68,7 @@ so completed implementation is not repeatedly scheduled as new work.
 | Build input/publication and freshness (Phase 3) | B2, B4 and B5 implemented and locally accepted; B1/B3 closure and B6 outstanding | Close remaining native/platform/thread ownership acceptance and converged checks; preserve the common record and four migrated passive consumers. Installed discovery must remain source-free and activation-free. |
 | Entity navigation (Phase 4) | Implemented with local handler/runtime acceptance through `95ff95ab3`, following producer `94148c9e0`, catalog/admission `479c75e01`, routing `cd9c57de6` and feature repair `831221020` | Preserve six-handler, cancellation and stored-message acceptance through final strict validation; retain build/publication and strict-gate acceptance for B6. No further navigation implementation is currently identified. |
 | Frontend boundaries (Phase 5) | Implemented and locally accepted: `713a6c1fd`, including the real external-pack window | Preserve pane/form containment, attributed nonfatal diagnostics and retired-instance refusal through final committed-source strict acceptance. |
-| Consumed APIs (Phase 6) | A1 selection `71f76a41b`; onboarding/admin split `b39c189b8`; A2 declaration foundation `1a0de64fb` and pre-import/admission/CLI checks `558b42220` implemented | Complete [A3–A5](../plans/declared-capabilities.md#bounded-implementation-checkpoints): matching caller-bound runtime/type facades, real consumer/content migration and external acceptance. Preserve A1's contract, settings policy and EARS behavior. Declaration availability is not executable readiness. Strict checkpoint acceptance remains incomplete as recorded below. |
+| Consumed APIs (Phase 6) | A1 selection `71f76a41b`; onboarding/admin split `b39c189b8`; A2 foundation/admission `1a0de64fb` / `558b42220`; A3 core binding/filtering/lifetimes `cccc12d5d` implemented | Complete [A3–A5](../plans/declared-capabilities.md#bounded-implementation-checkpoints): close ambient/action routes, migrate real consumers/content, and prove external runtime/template acceptance. Preserve A1's contract, settings policy and EARS behavior. Declaration availability is not executable readiness. Strict checkpoint acceptance remains incomplete as recorded below. |
 | Dependency provenance (Phase 6) | Cache/admission `ff4358588`, inspection and verified-build checkpoints in the evidence record implemented; overall closure partial | Verify exact origin/version/content through reuse and inspection, integrate remaining freshness dependencies, and close the linked acceptance matrix. Do not restart cache/provenance storage. Frozen resolution remains conditional on a distribution requirement. |
 | Shipped-pack replacement (Phase 6) | Substantially implemented: ownership/suppression `03745e1dc`, replace/restore `85a7e955b`, subsequent live-control/source-update checkpoints in the evidence record | Reconcile and close remaining restart/reload, overrides and failure acceptance against landed implementation; implement only identified gaps. Do not restart replacement. |
 | Final review/acceptance (Phase 7) | Outstanding | Audit every phase and reconciled manifest requirement on committed source, run final strict `--all`, record evidence and archive only completed work. |
@@ -445,10 +445,18 @@ checked from catalog data; poisoned consumer modules remain unexecuted. See
 A3 root retirement is implemented in `3ccd27614`: retained generated roots cannot regain settings
 authority after rebind, and cleanup failure still refreshes the exported root. See
 [root lifetime evidence](../evidence/settings-and-pack-contracts.md#generated-service-root-retirement-2026-10-17).
-Next: complete A3's host-accepted selection, matching filtered runtime/types, caller/provider/host
-generation checks and inference resource adapters. Non-settings members and generated types are still
-broad; retained non-settings objects/methods remain unguarded. Preserve harness mocks and actual
-action attribution. Do not mistake the root fix for A3 closure or repeat A1's settled syntax prototype.
+A3 core binding/filtering/lifetimes are implemented in `cccc12d5d`: backend `bindServices` receives
+the host-selected facade, types select the same APIs, accepted provider/host generations guard
+retained methods and nested objects, and inference agent methods retain their lifetime. Registry-local
+mock overrides cannot expand the selection or cross registries. The coordinator still owns caller
+retirement after actor cleanup; scheduling failure revokes immediately. See
+[core binding evidence](../evidence/settings-and-pack-contracts.md#selected-service-bindings-2026-10-17).
+Next: close A3's supported-route gap through A4's real consumer migration. Remove remaining ambient
+service imports/exports, pass the accepted facade into ActionService and LLM calls, and preserve action
+logger/emitter labels with the same lifetime guard. Keep Database/admin and onboarding behavior,
+settings policy, harness overrides and EARS semantics. The external fixture is migrated but not yet
+rebuilt/run against this checkpoint. Then complete A5's external runtime/docs/template agreement.
+Do not repeat A1's settled prototype or the 452 passing focused cases merely to restate their status.
 The single two-core strict run failed preparing the default-pack fork: the build observation for
 `src/__generated__/.inputs-hash` no longer matched, and the chain also invalidated default-setup's
 output stamp. The external fixture's 38 checks and real packaged-authoring author half passed first;

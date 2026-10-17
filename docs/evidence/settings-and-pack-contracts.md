@@ -6861,3 +6861,60 @@ remain required. Preserve mocks and action attribution while replacing the backe
 binding with full host-accepted service authority. Do not repeat the A1 design prototype.
 The previous strict run's `.inputs-hash` refusal remains open under B4/B6. No broad run was repeated;
 final committed-source strict `--all` and the entire active goal remain outstanding.
+
+
+## Selected service bindings (2026-10-17)
+
+Source checkpoint: `cccc12d5d`. Backend `PackRegistration.bindServices` replaces `bindSettings`
+without an alias; the frontend settings-port hook remains `bindSettings`. The host supplies the
+normalized own/baseline/consumed selection, and generated `Services` uses the same host/dependency
+`Pick` projection. Build checks still require direct service ownership and preserve global collision
+policy. Native and authored admitted entries retain their accepted declarations and generation.
+Runtime readiness validates the accepted provider rather than a prospective replacement's metadata.
+
+`packs/service-binding.ts` owns pending/active/revoked authority and settings subscriptions.
+Retained service objects, nested objects and bound methods refuse after provider retirement, including
+reuse of the same underlying service and registration objects. New live lookups can acquire current
+compatible providers. Private receivers and frozen objects work. Host bind/unbind increments a
+lifetime even when rebinding the same object. Caller retirement follows the existing coordinator's
+actor cleanup; a draining caller's own service remains on its original generation. Failed retirement
+scheduling now disposes immediately rather than leaving orphaned authority. Hook refusal, omitted
+cleanup and thrown cleanup keep host authority/subscription ownership intact.
+
+Inference `createAgent` results are explicitly guarded resources, including agents delivered after
+retirement. A real AI SDK agent over `fakeInference` proves its private receiver and retained-method
+refusal. Started calls and streams can finish on the original implementation; ordinary result objects
+are returned unchanged. There is no generic result-data membrane or new lazy activation.
+
+Harness overrides now enter through the owning registry's `serviceOverrides` map, after selection;
+they cannot create an API or borrow another registry's same-named service. The test harness preserves
+its file/test mock lifetime. The external fixture declares inference, verifies logger behavior through
+the facade, and uses generated repository reads instead of ambient object identity. Default-setup
+explicitly requests all six host groups for its existing code/user-authored actions. Reports, guides
+and public service docs reflect the new contract.
+
+Converged focused evidence:
+
+- Twenty-one affected files, 452 cases pass on two workers in 29.83s:
+  `/private/tmp/apack-full-binding-converged-tests.log`. Includes actual generated TypeScript/bundled
+  module execution, missing-member diagnostics for unconsumed host/dependency APIs, backend hook
+  consumers, replacement/refusal/reload, class/frozen/nested handles, same-object generation reuse,
+  real inference agent lifetime, started stream/result behavior and registry-local mock isolation.
+- SDK, host, CLI, testing and shipped default-setup types pass:
+  `/private/tmp/apack-full-binding-converged-types.log`.
+- All 28 SDK API reports match: `/private/tmp/apack-full-binding-api-check.log`.
+  Report changes are the backend hook, current facade type and internal captured-host helper.
+- Lint passes: `/private/tmp/apack-full-binding-converged-lint.log`.
+- Package refresh: `/private/tmp/apack-full-binding-packages-final.log`.
+- Default pack declaration/report generation: `/private/tmp/apack-full-binding-default-facade.log`;
+  reviewed report change is the selected HostServices type and its description.
+
+This is core implementation, not A3–A5 or whole-goal closure. A4 still must remove the supported
+ambient SDK service route and migrate ActionService/LLM consumers. Its action logger/emitter must
+preserve accepted lifetime as well as `from`/`via`; generated filtering alone does not prove that.
+The changed external fixture has not yet been rebuilt/run, and the real Database/admin/onboarding
+paths need their planned acceptance. No broad chain was repeated: its recorded `.inputs-hash`
+refusal remains a bounded B4/B6 investigation before another broad run. Final strict committed-source
+`--all`, native/platform evidence, provenance, shipped replacement and the full phase audit remain
+required. No legacy fallback, release/version change, production-data operation or stash/worktree
+change was introduced.

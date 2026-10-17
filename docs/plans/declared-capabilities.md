@@ -1,7 +1,8 @@
 # Declare the APIs a pack consumes
 
 Status: A1 selection and A2 declaration, pre-import/admission and read-only diagnostics are implemented.
-A3 is in progress: retained root retirement is fixed; runtime/type filtering and provider lifetimes remain. Remaining discovery/build ownership work stays active in the [owning goal](../goals/goal-settings-and-pack-contracts.md); it blocks only
+A3 core selection, runtime/type filtering and lifetimes are implemented in `cccc12d5d`;
+ambient-route/action migration and external acceptance remain. Remaining discovery/build ownership work stays active in the [owning goal](../goals/goal-settings-and-pack-contracts.md); it blocks only
 the slices that consume its missing guarantees. This is an API dependency contract, not a security sandbox.
 
 ## Problem
@@ -167,7 +168,7 @@ checks. Preserve current shared-settings policy and the documented query model.
 | Route / producer | Actual consumer and entry point | Ownership and migration |
 |---|---|---|
 | SDK logger/emitter and host engine repository | `services/index.ts`; action sends and generated repository/service facades | Intentional baseline; capture the accepted host, preserve the documented query model and sender labels. |
-| Scoped settings | `_createPackServices`, generated settings handles, host `createPackSettingsBinding` | Baseline; preserve accepted pack identity, target policy and subscription cleanup. |
+| Scoped settings | `_createPackServices`, generated settings handles, host `createPackServiceBinding` | Baseline; preserve accepted pack identity, target policy and subscription cleanup. |
 | Host I/O and lifecycle services | Onboarding actions, Database, query/LLM steps, library embeddings; contracts in SDK `services/` | Six explicit groups: onboarding, appData, traceStore, inference, secrets, filesystem. Default-setup's user-authored action surface intentionally supports all six, including APIs without a shipped action call site. |
 | Pack-provided services | `generateServices` and registry API ownership; default-setup provides chat/artifact/threads/cli/codex/library/action/prompt/brain/scheduler/database | Own services implicit; selected services of direct providers explicit. Preserve classes/private receivers and validate ownership from declarations, not a dependency's intersected facade. |
 | Ambient SDK services import | `extensions/steps/llm/runtime.ts` and `features/actions/be/services/action.ts` in default-setup | Migrate to the generated facade and remove the supported ambient bypass in A3/A4; host/test composition gets an internal accessor where needed. |
@@ -200,14 +201,29 @@ A3 root retirement checkpoint `3ccd27614` fixes a concrete rebind hole: the old 
 previously followed the factory's current settings binding. Each root now retains its construction
 frame; generated `services` is a live export refreshed after disposal, including failed cleanup.
 Actual generated-module execution proves old roots cannot reacquire settings after later binds.
-This does not close A3: non-settings members still delegate to the ambient union, and previously
-retained service objects/methods still need caller/provider generation checks. Complete host-accepted
-selection, matching type/runtime filtering, host/provider lifetimes and inference resource adapters
-before declaring A3 done. Preserve this regression while replacing the settings-only backend hook.
+Core checkpoint `cccc12d5d` replaces the backend settings-only hook with `bindServices`. It supplies
+only the normalized selection and generates matching host/dependency `Pick` types. Accepted provider
+declarations and registration generations govern calls; a prospective replacement refusal cannot
+substitute its metadata for an incumbent's contract. Provider retirement refuses retained methods and
+nested objects, including when the same service/registration objects are reused. Host bind/unbind has
+a distinct generation even when the host object is reused. Private receivers, frozen providers and
+stable bound methods are preserved. Ordinary result data stays untouched. Inference agents are named
+returned resources: methods start new calls and check lifetime; already-started calls/streams may
+settle on their original implementation.
 
-Rechecked the service proxy, `_createPackServices`, SDK `generateServices` and Database consumer on
-2026-10-16. The ambient runtime union, generated dependency intersections and settings-only binding
-remain present. A1 confirms those gaps; preserve them as A3 work rather than repeat the baseline audit.
+The existing coordinator owns caller retirement after actor cleanup, which differs from publication
+of the replacement provider. During that drain, a caller's own services stay on its original generation.
+If retirement cannot be scheduled, the host revokes immediately. Scoped settings subscriptions keep
+their owner and policy. Registry-local `serviceOverrides` supplies harness doubles after selection;
+ambient registries cannot supply another registry's service or expand its API set.
+
+A3 route closure still requires A4's removal of supported ambient imports and lifetime-safe action
+logger/emitter attribution, followed by A5's real external runtime acceptance. The default pack now
+explicitly requests all six selected host groups, and the external harness fixture requests inference;
+its mock and shared-engine assertions exercise behavior through the generated facade. The ordinary
+SDK ambient export and actual default-setup ActionService/LLM imports still exist: migrate/remove
+those routes rather than claiming generated filtering closes all supported access. Do not restart the
+A1 syntax or granularity prototype. No real app/external-package run has validated this core checkpoint.
 Use the active goal's execution order and existing catalog/runtime owners. These checkpoints partition
 this workstream; they do not introduce another goal or require a new dependency container.
 
