@@ -551,6 +551,10 @@ Do not interpret compiler-startup acceptance as arbitrary child-process coverage
 acceptance, ELF/PE, loader-environment semantics, Windows lifetime ownership and the converged/final
 gates remain open. Next, reconcile native initialization with retained frontend generations while
 preserving live authored HMR and checking the existing generation owner before adding machinery.
+`abdcb7c95` fixes one inspected frontend identity omission: the reuse signature now includes effective
+ordered Node options with the same source-condition filtering as launch. Its regression fails before
+the fix; nine builder lifecycle/identity checks, CLI types and focused lint pass. This closes changed
+launch-option reuse, not native preload dependency capture or all frontend initialization inputs.
 Windows push approval is still pending.
 
 The single two-core strict run failed preparing the default-pack fork: the build observation for

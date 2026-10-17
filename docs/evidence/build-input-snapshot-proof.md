@@ -1817,3 +1817,26 @@ runtime check deliberately no longer executes compiler initialization. Arbitrary
 subprocess capture, native thread/frontend coverage, ELF/PE and Windows lifetime acceptance are not
 established by this checkpoint. No timeout or acceptance assertion was weakened; B6 convergence and
 the final committed-source strict `--all` remain open.
+
+## Frontend launch-option identity (2026-10-17)
+
+Source `abdcb7c95` corrects an inspected omission in the existing frontend generation owner. Vite
+inherits the source-condition-filtered `NODE_OPTIONS`, but `readPackDevServerInputs` included only
+the general environment digest, which deliberately excludes that separately ordered option contract.
+Changing a preload/import/loader option could therefore rebuild the backend while reusing Vite's old
+initialization. The existing signature now includes parsed effective options using the same source
+condition filter as launch. No second generation owner or source inventory is added, and ordinary
+source edits remain outside the startup signature for HMR.
+
+The regression fails on the prior source because changing option order produces the identical
+signature (`/private/tmp/apack-frontend-options-red.log`). All nine builder checks pass after the fix
+in 25.21s (26.66s runner), covering normal reuse, configuration replacement, failure/cancellation,
+retirement and POSIX descendant cleanup in addition to the new option case. The option case also
+proves equivalent quoting/spacing and the ignored checkout source condition do not change identity,
+while changed option targets do. `/private/tmp/apack-frontend-options-focused.log`. CLI typecheck and
+focused correctness lint pass; `/private/tmp/apack-frontend-options-types.log`.
+
+This accepts launch-option identity, not capture of arbitrary preload modules/data or all native
+frontend initialization. The retained frontend still needs its bounded native-path audit and relevant
+acceptance without freezing the authored source graph used for HMR. Windows lifetime implementation,
+remote execution and the converged/final strict gates remain open.
