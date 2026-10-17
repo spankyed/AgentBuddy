@@ -244,16 +244,6 @@ export function stagePack(
   }
 }
 
-/**
- * Why the apack reading pack snapshot format `appFormat` (this process's by default, which in the app is the
- * app's) can't load the pack built into `dir` (a pack layout), or undefined when it can: its snapshot records the
- * format of the build (`PACK_SNAPSHOT_FORMAT`), which covers the registration its runtime exports as well as what
- * dependents read. `integrity.json`'s format can't say this: whoever stages a pack writes it, not whoever built it.
- */
-export function readPackSnapshot(dir: string): PackSnapshot {
-  return checkedSnapshot(readSnapshotFile(dir).data, JSON.parse(fs.readFileSync(path.join(dir, PACK_LAYOUT.manifest), 'utf-8')));
-}
-
 /** Read installed declarations without loading code; refuse changed, missing or additional files. */
 export function readPackBuild(dir: string): PackBuild {
   const { bytes: snapshotBytes, data } = readSnapshotFile(dir);

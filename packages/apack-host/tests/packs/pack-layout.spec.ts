@@ -15,7 +15,6 @@ import {
   packFrontendFiles,
   packBuildProblem,
   packFileHashes,
-  readPackSnapshot,
   readPackBuild,
   stagePack,
   verifyPack,
@@ -673,7 +672,7 @@ describe('installPackFromLocal (pack layout path)', () => {
       const integrity = readPackIntegrity(input);
       fs.writeFileSync(path.join(input, 'integrity.json'), JSON.stringify({ ...integrity, files: packFileHashes(input) }));
       expect(verifyPack(input).id).toBe('demo-pack');
-      expect(() => readPackSnapshot(input)).toThrow('manifest does not match its built declarations');
+      expect(() => readPackBuild(input)).toThrow('manifest does not match its built declarations');
       expect(packBuildProblem(input)).toMatchObject({ kind: 'declarations', message: expect.stringContaining('manifest does not match its built declarations') });
     }
     const beforePlace = vi.fn();
