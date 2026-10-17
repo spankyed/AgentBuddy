@@ -1331,6 +1331,7 @@ interface ClaudeNativeTerminalOptions {
     sessionId: string;
     cwd: string;
     settings: ClaudeSettings;
+    permissionMode: PermissionMode;
     cliPath?: string;
     env?: NodeJS.ProcessEnv;
     columns?: number;
@@ -6044,6 +6045,8 @@ interface QueryHandle {
     setModel(model: string): Promise<void>;
     /** Change the running CLI policy and return its acknowledged permission mode. */
     setPermissionMode(mode: PermissionMode): Promise<PermissionMode>;
+    /** Last native acknowledgement, initialized from the native handshake. */
+    getPermissionMode(): Promise<PermissionMode | undefined>;
     /** Close stdin and wait for the child to exit. */
     close(): Promise<void>;
     /** Force-terminate the child process. */
