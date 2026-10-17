@@ -7359,3 +7359,35 @@ Current local app/fork acceptance is now converged; the earlier 26-pass/one-fail
 historical evidence rather than the current verdict. B1/B3 native/platform guarantees, integration
 concurrency/suite-budget acceptance, the five-build frontend reuse/removal case, final full-scope
 audit and committed-source strict `--all` remain open. No final gate pass or goal completion is claimed.
+
+## DSL reuse identity and measured five-build acceptance (2026-10-17)
+
+Source `3913fe196` repairs the two DSL integration cases' identity assertions after the completed
+input-record contract. The source build seals `build-inputs.json`, including actual invocation options.
+Building with `[]` then `['--skip-generate']` intentionally changes that source receipt. It must not
+change publishable output. Both cases now compare every file/digest through the production
+`stagedFileHashes` projection and separately verify both recorded option lists. Snapshot definitions,
+failure retention, restored reads/cache bytes, phase reuse, frontend output and removal checks remain.
+No production identity algorithm or freshness validation was changed.
+
+The first isolated five-build run reaches its unchanged 60s deadline during build four:
+`/private/tmp/apack-staged-dsl-closeout.log`. One diagnostic run with 120s reaches the stale identity
+assertion in 78.20s (`/private/tmp/apack-staged-dsl-diagnostic.log`), proving a deeper assertion issue
+behind the timeout. A separate source-phase-only inline probe refused stale generated entries before
+its comparison (`/private/tmp/apack-dsl-reuse-identity-diff.log`); it is not passing public-CLI evidence
+and was not used to justify changing production behavior.
+
+After the identity repair, both actual DSL cases pass together on two workers:
+`/private/tmp/apack-dsl-published-identity-focused.log`. The two-build source-free snapshot case takes
+45.37s; the five-build publication/refusal/recovery/reuse/removal case takes 93.33s (95.12s total run).
+That diagnostic command used a 120s test limit. The source now declares the same 120s limit only for
+the five-build scenario, with a measured reason in the existing timeout-exception registry. General
+60s test and 600s suite limits are unchanged. All 42 timeout-policy cases pass
+(`/private/tmp/apack-dsl-timeout-exception-check.log`); CLI/E2E types and focused lint pass.
+This closes local five-build behavior, not integration concurrency or the final strict gate.
+
+Source `9b7d112cf` also strengthens the cold-window case with an activation marker in its poisoned
+backend entry. The test asserts the marker never exists after metadata arrival/replacement/removal,
+so catching a runtime exception cannot falsely establish discovery without activation. The actual
+worker/window case passes in 6.4s (`/private/tmp/apack-cold-monaco-no-activation.log`). Final type logs:
+`/private/tmp/apack-dsl-identity-cli-types.log` and `/private/tmp/apack-cold-monaco-final-types.log`.
