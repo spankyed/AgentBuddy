@@ -1353,8 +1353,8 @@ declare const ClaudeNativeBashDialogSchema: z.ZodObject<{
     input: z.ZodRecord<z.ZodString, z.ZodUnknown>;
 }, "strip", z.ZodTypeAny, {
     cwd: string;
-    id: string;
     command: string;
+    id: string;
     revision: string;
     sessionId: string;
     requestId: string;
@@ -1364,8 +1364,8 @@ declare const ClaudeNativeBashDialogSchema: z.ZodObject<{
     reason?: string | undefined;
 }, {
     cwd: string;
-    id: string;
     command: string;
+    id: string;
     revision: string;
     sessionId: string;
     requestId: string;
@@ -2241,6 +2241,7 @@ interface ClaudeNativeTaskDetails {
     taskId: string;
     name: string;
     status: string;
+    canInput: boolean;
     canMessage: boolean;
     metadata?: {
         prompt?: string;
@@ -2258,6 +2259,11 @@ interface ClaudeNativeTaskDetails {
         text: string;
     }[];
     truncated: boolean;
+}
+
+interface ClaudeNativeTaskInputReceipt {
+    messageId: string;
+    mode: 'queued' | 'resumed';
 }
 
 type ClaudeNativeTerminalHandoffOptions = Pick<ClaudeNativeTerminalOptions, 'cliPath' | 'columns' | 'env' | 'rows'>;
@@ -2312,8 +2318,9 @@ interface ClaudeNativeTerminalOwner {
     answerPlanDialog(response: ClaudeNativePlanDialogResponse): Promise<void>;
     getFileDialogs(): Promise<ClaudeNativeFileDialog[]>;
     answerFileDialog(response: ClaudeNativeFileDialogResponse): Promise<void>;
-    operateTask(taskId: string, operation: 'inspect' | 'send' | 'stop', text?: string): Promise<{
+    operateTask(taskId: string, operation: 'input' | 'inspect' | 'send' | 'stop', text?: string): Promise<{
         sent?: boolean;
+        input?: ClaudeNativeTaskInputReceipt;
         stopped?: boolean;
         details?: ClaudeNativeTaskDetails;
     }>;
@@ -2616,8 +2623,9 @@ interface ClaudeTerminalTaskState {
     ownerId: string;
     taskId: string;
     revision: number;
-    operation: 'inspect' | 'send' | 'stop';
+    operation: 'input' | 'inspect' | 'send' | 'stop';
     status: 'done' | 'error' | 'pending';
+    input?: ClaudeNativeTaskInputReceipt;
     sent?: boolean;
     details?: ClaudeNativeTaskDetails;
     problem?: string;
@@ -2669,7 +2677,7 @@ type ClaudeTerminalViewRequest = {
 } & ({
     operation: 'inspect' | 'stop';
 } | {
-    operation: 'send';
+    operation: 'input' | 'send';
     text: string;
 })) | {
     type: 'CLAUDE_TERMINAL_CLOSE';
