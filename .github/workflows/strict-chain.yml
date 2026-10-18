@@ -1,0 +1,47 @@
+name: Strict chain
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: strict-chain-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  check:
+    runs-on: macos-26
+    timeout-minutes: 30
+    env:
+      APACK_CHAIN_CORES: 2
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 23.11.1
+          cache: npm
+      - name: Record source and platform
+        run: |
+          git rev-parse HEAD
+          sw_vers
+          node -p 'JSON.stringify({platform:process.platform,arch:process.arch,versions:process.versions})'
+      - name: Install dependencies
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: npm ci
+      - name: Full strict acceptance
+        run: npm run chain -- --strict --all --cores 2 --no-classify | tee "$RUNNER_TEMP/strict-chain.log"
+      - name: Retain validation evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: strict-chain-${{ github.sha }}
+          include-hidden-files: true
+          path: |
+            ${{ runner.temp }}/strict-chain.log
+            node_modules/.cache/apack-chain/runs/
