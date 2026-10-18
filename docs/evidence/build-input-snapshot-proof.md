@@ -3807,3 +3807,34 @@ Only this new variant needs the next Windows run. CLI types and focused lint/dif
 The next macOS run uses the existing retained Vite/process-ownership case to exercise actual captured
 Node startup after the new guard. Required signing/runtime combinations, Windows lookup semantics,
 Linux mapped-image closure, B6 and final strict acceptance remain open.
+
+### Shared Windows preload/thread ownership repair (2026-10-18)
+
+macOS run [39095878658](https://github.com/spankyed/AgentBuddy/actions/runs/39095878658) on
+`468eaecf1` passes the existing retained-Node/Vite ownership case in 10.77 seconds (13.06 seconds
+Vitest total). Two actual captured Node frontends start through the new launcher admission; retirement
+settles each descendant independently while the other frontend remains current and serves Vue. This
+closes that real Node path after the guard, not the Electron/signed-app obligations. Log:
+`/private/tmp/apack-node-runtime-39095878658.log`.
+
+Windows run [39095875703](https://github.com/spankyed/AgentBuddy/actions/runs/39095875703) on the same
+source passes ordinary Node's combined main/thread DLL control, then fails the captured build in
+45.01 seconds. The thread sees the DLL already loaded from the startup preload's owned input tree,
+but treats it as an outside dependency relative to the authored package. Log:
+`/private/tmp/apack-pe-composition-39095875703.log`. This is a demonstrated ownership-sharing refusal,
+not a timeout or invalid native fixture.
+
+Source `3fa7a19f8` extracts the frontend's existing native-report reader/writer into
+`compiler-native-reports.ts` and uses it for backend startup too. All frames publish atomic per-thread
+reports and reuse an exact source module only after validating the captured copy. The common reader
+also requires a hash observation for the declared captured module; a workspace path alone is not
+sufficient. Other outside DLLs remain subject to the same native admission. Process and workspace
+retirement retain their existing owners. No blanket workspace trust, basename remapping, extra native
+copy authority or lock is introduced. Frontend report watching uses the same shared filename contract.
+
+All 14 inert filesystem/ownership/report cases pass, including unrelated-source refusal, tampered bytes,
+wrong owner, escaping paths, missing copy data and unobserved module claims. CLI types, six-file lint
+and diff checks pass. All 11 subprocess-inventory checks pass after recording the three macOS
+constructor-control call sites and the Windows publication control, with their actual OS-boundary reasons.
+No scanner assertion was weakened. The combined Windows case and the two existing frontend-native
+preload/thread cases need acceptance on the refactored source. No native execution ran locally.
