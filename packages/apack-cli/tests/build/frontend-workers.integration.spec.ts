@@ -28,7 +28,8 @@ it.each(['url', 'import', 'nested'] as const)('watches external %s worker depend
     : 'import Worker from "../../worker.ts?worker"; const worker = new Worker();';
   fs.writeFileSync(entryPoint, `<script setup>${script}</script><template><div>{{ worker }}</div></template>`);
   const changed = vi.fn();
-  const watcher = createFrontendWatcher(pack, undefined, changed);
+  const failures: Error[] = [];
+  const watcher = createFrontendWatcher(pack, undefined, changed, error => { failures.push(error); });
   let lastFiles: readonly string[] = [];
   const compile = async () => {
     const outputDir = path.join(pack, 'dist/runtime');
@@ -55,7 +56,7 @@ it.each(['url', 'import', 'nested'] as const)('watches external %s worker depend
       await compile();
       expect(readFrontendOutput(pack, '.js')).toContain('NESTED_WORKER_PAGE');
     }
-  } finally { await watcher.close(); }
+  } finally { await watcher.close(); expect(failures).toEqual([]); }
 });
 
 it('retains the accepted build after a worker error and publishes its repair', async () => {

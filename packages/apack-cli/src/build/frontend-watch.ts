@@ -3,12 +3,12 @@ import path from 'node:path';
 import { createHash } from 'node:crypto';
 import { watch, type FSWatcher } from 'chokidar';
 import type { BuildWatchInputs } from './build-watch-inputs.ts';
-import { physicalWatchPath } from '@apackdev/host/build/compiler-inputs';
+import { physicalWatchPath, relativeCompilerPath } from '@apackdev/host/build/compiler-inputs';
 
 type Subscription = FSWatcher | fs.FSWatcher;
 
 const inside = (root: string, file: string) => {
-  const relative = path.relative(root, file);
+  const relative = relativeCompilerPath(root, file);
   return relative !== '..' && !relative.startsWith(`..${path.sep}`) && !path.isAbsolute(relative);
 };
 
@@ -18,16 +18,22 @@ export interface FrontendInputSnapshot {
 }
 
 /** Compiler observations drive ready subscriptions, never output reuse. */
-export function createFrontendWatcher(root: string, dataDirectory: string | undefined, changed: (file: string) => void) {
+export function createFrontendWatcher(root: string, dataDirectory: string | undefined, changed: (file: string) => void, failed: (error: Error) => void) {
   const authored = [...new Set([path.resolve(root), fs.realpathSync(root)])];
   const data = dataDirectory ? [...new Set([path.resolve(dataDirectory), physicalWatchPath(path.resolve(dataDirectory))])] : [];
   const files = new Set<string>();
   const directories = new Set<string>();
   let linkedInputs = new Set<string>();
-  const active = new Set<Subscription>();
+  // Retired subscriptions remain owned until their asynchronous close settles.
+  const subscriptions = new Map<Subscription, { closing?: Promise<void> }>();
+  const live = (watcher: Subscription) => {
+    const owned = subscriptions.get(watcher);
+    return owned !== undefined && !owned.closing;
+  };
   let current: Subscription[] = [];
   let namespace = 0;
   let closed = false;
+  let failure: Error | undefined;
   let closeTask: Promise<void> | undefined;
   let notified: string | undefined;
   let signalClose!: () => void;
@@ -108,10 +114,33 @@ export function createFrontendWatcher(root: string, dataDirectory: string | unde
     changed(file);
   };
   const stop = async (watchers: readonly Subscription[]) => {
-    watchers.forEach(watcher => active.delete(watcher));
-    await Promise.all(watchers.map(watcher => watcher.close()));
+    const results = await Promise.allSettled(watchers.map(watcher => {
+      const owned = subscriptions.get(watcher);
+      if (!owned) return;
+      return owned.closing ??= Promise.resolve().then(() => watcher.close()).finally(() => { subscriptions.delete(watcher); });
+    }));
+    const errors = results.flatMap(result => result.status === 'rejected' ? [result.reason] : []);
+    if (errors.length) {
+      const error = new AggregateError(errors, 'Could not close frontend input watchers');
+      if (!closed) refuse(root, error);
+      throw error;
+    }
+  };
+  const close = (): Promise<void> => {
+    if (!closeTask) { closed = true; signalClose(); closeTask = stop([...subscriptions.keys()]); }
+    return closeTask;
+  };
+  const refuse = (directory: string, error: unknown): Error => {
+    if (!failure) {
+      failure = new Error(`Cannot watch frontend input "${directory}": ${String(error)}`, { cause: error });
+      const closing = close();
+      failed(failure);
+      void closing.catch(() => {});
+    }
+    return failure;
   };
   async function subscribe() {
+    if (failure) throw failure;
     if (closed) return;
     linkedInputs = directoryInputs(directories).links;
     const anchors = [...new Set([...files].map(file => path.dirname(file)).concat([...directories, ...linkedInputs]))].map(existingDirectory);
@@ -125,16 +154,18 @@ export function createFrontendWatcher(root: string, dataDirectory: string | unde
     const next: Subscription[] = [];
     const ready: Promise<void>[] = [];
     if (selected.length) {
-      const watcher = watch(selected, { ignoreInitial: true, followSymlinks: false, disableGlobbing: true, atomic: true, ignored });
-      active.add(watcher); next.push(watcher);
+      let watcher: FSWatcher;
+      try { watcher = watch(selected, { ignoreInitial: true, followSymlinks: false, disableGlobbing: true, atomic: true, ignored }); }
+      catch (error) { throw refuse(selected.join(', '), error); }
+      subscriptions.set(watcher, {}); next.push(watcher);
       let initialized = false;
-      watcher.on('all', (_event, file) => { if (initialized && active.has(watcher)) notify(path.resolve(file)); });
+      watcher.on('all', (_event, file) => { if (initialized && live(watcher)) notify(path.resolve(file)); });
       ready.push(new Promise<void>((resolve, reject) => {
         watcher.once('ready', () => { initialized = true; resolve(); });
         watcher.on('error', error => {
-          if (!active.has(watcher)) return;
-          if (!initialized) reject(error);
-          else { console.error(`[watch] Frontend subscription failed: ${error.message}`); namespace++; notify(selected[0]!); }
+          if (!live(watcher)) return;
+          const failure = refuse(selected.join(', '), error);
+          if (!initialized) reject(failure);
         });
       }));
     }
@@ -142,25 +173,30 @@ export function createFrontendWatcher(root: string, dataDirectory: string | unde
       for (const child of guards) {
         const identity = fs.statSync(child);
         const parent = path.dirname(child);
-        const guard = fs.watch(parent, (kind, file) => {
-          if (closed || !active.has(guard) || kind !== 'rename' || (file && path.resolve(parent, file) !== child)) return;
-          let stat: fs.Stats | undefined;
-          try { stat = fs.statSync(child, { throwIfNoEntry: false }); } catch { notify(child); return; }
-          if (!stat || stat.ino !== identity.ino || stat.dev !== identity.dev) notify(child);
-        });
-        active.add(guard); next.push(guard);
+        let guard: fs.FSWatcher;
+        try {
+          guard = fs.watch(parent, (kind, file) => {
+            if (closed || !live(guard) || kind !== 'rename' || (file && path.resolve(parent, file) !== child)) return;
+            let stat: fs.Stats | undefined;
+            try { stat = fs.statSync(child, { throwIfNoEntry: false }); } catch { notify(child); return; }
+            if (!stat || stat.ino !== identity.ino || stat.dev !== identity.dev) notify(child);
+          });
+        } catch (error) { throw refuse(parent, error); }
+        subscriptions.set(guard, {}); next.push(guard);
+        guard.on('error', error => { if (!closed && live(guard)) refuse(parent, error); });
       }
       await Promise.race([Promise.all(ready), closing]);
-      if (closed) { await stop(next); return; }
+      if (closed) { await stop(next); if (failure) throw failure; return; }
       const previous = current;
       current = next;
       await stop(previous);
-      notified = signature(files, directories);
+      if (!closed) notified = signature(files, directories);
     } catch (error) { await stop(next); throw error; }
   }
   return {
     snapshot: () => snapshot(),
     async observe(inputs: BuildWatchInputs): Promise<FrontendInputSnapshot> {
+      if (failure) throw failure;
       if (closed) return snapshot();
       const selected = normalize(inputs.files);
       selected.forEach(file => files.add(file));
@@ -170,16 +206,14 @@ export function createFrontendWatcher(root: string, dataDirectory: string | unde
       return before;
     },
     async accept(inputs: BuildWatchInputs): Promise<void> {
+      if (failure) throw failure;
       if (closed) return;
       files.clear(); normalize(inputs.files).forEach(file => files.add(file));
       directories.clear();
       normalize(inputs.directories).forEach(directory => directories.add(directory));
       await subscribe();
     },
-    close(): Promise<void> {
-      if (!closeTask) { closed = true; signalClose(); closeTask = stop([...active]); }
-      return closeTask;
-    },
+    close,
   };
 }
 

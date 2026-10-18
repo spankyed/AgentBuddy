@@ -72,14 +72,22 @@ export function coalescingRunner(run: () => Promise<void>, delayMs: number = DEB
   };
 }
 
-/** Every edit publishes the same complete build as a normal build, then requests reload. */
-export async function startPackBuildWatcher(root: string, options: WatchOptions = {}): Promise<{ close: () => Promise<void> }> {
-  options.signal?.throwIfAborted();
+/** Every edit publishes a complete build. done reports terminal failure after cleanup; close drains disposal. */
+export async function startPackBuildWatcher(root: string, options: WatchOptions = {}): Promise<{ close: () => Promise<void>; readonly done: Promise<void> }> {
+  const controller = new AbortController();
+  const signal = options.signal ? AbortSignal.any([options.signal, controller.signal]) : controller.signal;
+  signal.throwIfAborted();
   const packId = readValidManifest(root).id;
   const ownedBuilder = options.builder ? undefined : createPackBuilder(root);
   const builder = options.builder ?? ownedBuilder!;
   let closed = false;
   let stopping: Promise<void> | undefined;
+  let failure: Error | undefined;
+  let resolveDone!: () => void;
+  let rejectDone!: (error: unknown) => void;
+  const done = new Promise<void>((resolve, reject) => { resolveDone = resolve; rejectDone = reject; });
+  // Startup may fail before the caller receives the handle; done still reports the same failure later.
+  void done.catch(() => {});
   let ready = false;
   let pending = false;
   let lastChange = '';
@@ -105,13 +113,13 @@ export async function startPackBuildWatcher(root: string, options: WatchOptions 
   };
   const dataDirectory = options.place?.userDataDir ?? (options.place ? resolveAppEnvironment(options.place).userDataDir : undefined);
   const frontend = createFrontendWatcher(root, dataDirectory,
-    file => request(path.relative(root, file)));
+    file => request(path.relative(root, file)), fail);
   const publish = async (): Promise<boolean> => {
     const compiler = refreshInputs();
     const authored = packInputsHash(root) + JSON.stringify(compiler.authored);
     const beforeFrontend = frontend.snapshot();
     if (compiler.signature === compilerSignature && authored === authoredSignature && beforeFrontend.hash === frontendSignature
-      && observedInputsCurrent() && await builder.isFrontendCurrent(options.signal)) return false;
+      && observedInputsCurrent() && await builder.isFrontendCurrent(signal)) return false;
     compilerSignature = compiler.signature;
     authoredSignature = authored;
     frontendSignature = beforeFrontend.hash;
@@ -120,7 +128,7 @@ export async function startPackBuildWatcher(root: string, options: WatchOptions 
     let observed: CompilerWatchPaths = new Map();
     let nativeReported = false;
     try {
-      await builder.build({ args: options.buildArgs, signal: options.signal, onInputs: async inputs => {
+      await builder.build({ args: options.buildArgs, signal, onInputs: async inputs => {
         if (inputs.probes) { nativeReported = true; observed = mergeCompilerWatchPaths(observed, new Map(inputs.probes)); return; }
         reported = { inputs, snapshot: await frontend.observe(inputs) };
       } });
@@ -177,21 +185,34 @@ export async function startPackBuildWatcher(root: string, options: WatchOptions 
     if (ready) runs.request();
     else pending = true;
   };
-  // Keep the root subscribed while replacing link watches, including during failed builds.
-  const watcher = fs.watch(root, { recursive: true }, (event, filename) => {
-    tools.changed(filename ? path.resolve(root, filename) : undefined, event);
-    if (!filename || isPackInputPath(filename)) request(filename ?? 'authored inputs');
-    else if (matchesCompilerInput(path.resolve(root, filename), event)) request(filename);
-  });
-  let links: fs.FSWatcher[] = [];
+  type InputWatcher = Pick<fs.FSWatcher, 'close'>;
+  const subscriptions = new Set<InputWatcher>();
+  let links: InputWatcher[] = [];
+  function watchDirectory(directory: string, recursive: boolean, receive: fs.WatchListener<string>): InputWatcher {
+    const refused = (error: unknown) => new Error(`Cannot watch pack input "${directory}": ${String(error)}`, { cause: error });
+    try {
+      let subscription: InputWatcher;
+      const native = fs.watch(directory, { recursive }, (event, file) => {
+        if (!closed && subscriptions.has(subscription)) receive(event, file);
+      });
+      subscription = { close() { if (subscriptions.delete(subscription)) native.close(); } };
+      subscriptions.add(subscription);
+      native.on('error', error => { if (!closed && subscriptions.has(subscription)) fail(refused(error)); });
+      return subscription;
+    } catch (error) {
+      const failure = refused(error);
+      fail(failure);
+      throw failure;
+    }
+  }
   function refreshInputs(replace = false) {
-    const next: fs.FSWatcher[] = [];
+    const next: InputWatcher[] = [];
     const compiler = compilerWatchPaths(root, tools, mergeCompilerWatchPaths(observedPaths, frontendPaths));
     const paths = replace && compiler.complete ? compiler.paths : mergeCompilerWatchPaths(compilerPaths, compiler.paths);
     const authored = packInputWatchTargets(root);
     try {
       for (const target of authored.slice(1)) {
-        next.push(fs.watch(target.directory, { recursive: true }, (_event, filename) => {
+        next.push(watchDirectory(target.directory, true, (_event, filename) => {
           if (target.child && filename && filename !== target.child) return;
           const relative = target.child ? target.relative : path.join(target.relative, filename ?? '');
           if (isPackInputPath(relative)) request(relative);
@@ -199,7 +220,7 @@ export async function startPackBuildWatcher(root: string, options: WatchOptions 
       }
       for (const [directory, target] of compilerWatchTargets(paths, root)) {
         const matches = createCompilerWatchMatcher(target.paths);
-        next.push(fs.watch(directory, { recursive: target.recursive }, (event, filename) => {
+        next.push(watchDirectory(directory, target.recursive, (event, filename) => {
           if (!filename || matches(path.resolve(directory, filename), event)) {
             tools.changed(filename ? path.resolve(directory, filename) : undefined, event);
             request(path.relative(root, path.resolve(directory, filename ?? '')));
@@ -218,52 +239,70 @@ export async function startPackBuildWatcher(root: string, options: WatchOptions 
   }
   const close = () => {
     if (!stopping) {
-      options.signal?.removeEventListener('abort', abort);
-      closed = true; watcher.close(); for (const watch of links) watch.close();
-      unsubscribe?.();
-      stopping = Promise.all([frontend.close(), runs.close(), ownedBuilder?.close()]).then(() => {});
+      signal.removeEventListener('abort', abort);
+      closed = true;
+      const cleanup: Array<() => unknown> = [
+        ...[...subscriptions].map(watcher => () => watcher.close()),
+        () => unsubscribe?.(), () => frontend.close(), () => runs.close(), () => ownedBuilder?.close(),
+      ];
+      stopping = Promise.allSettled(cleanup.map(stop => Promise.resolve().then(stop))).then(results => {
+        const errors = results.flatMap(result => result.status === 'rejected' ? [result.reason] : []);
+        if (errors.length) throw new AggregateError(errors, 'Could not close pack watcher');
+      });
+      void stopping.then(() => failure ? rejectDone(failure) : resolveDone(), error => rejectDone(failure
+        ? new AggregateError([failure, error], failure.message, { cause: failure }) : error));
+      controller.abort(failure);
     }
     return stopping;
   };
+  function fail(error: Error) {
+    if (closed) return;
+    failure = error;
+    void close().catch(() => {});
+  }
   // Startup and the returned close promise report cleanup errors to the owner.
   const abort = () => { void close().catch(() => {}); };
-  options.signal?.addEventListener('abort', abort, { once: true });
+  signal.addEventListener('abort', abort, { once: true });
   try {
-    options.signal?.throwIfAborted();
+    signal.throwIfAborted();
+    // The authored root stays subscribed across replacement of linked/compiler inputs.
+    watchDirectory(root, true, (event, filename) => {
+      tools.changed(filename ? path.resolve(root, filename) : undefined, event);
+      if (!filename || isPackInputPath(filename)) request(filename ?? 'authored inputs');
+      else if (matchesCompilerInput(path.resolve(root, filename), event)) request(filename);
+    });
     unsubscribe = builder.subscribeFrontendInputs(({ paths, changed }) => {
       if (closed) return;
       if (paths.size !== frontendPaths.size || [...paths].some(([file, kind]) => frontendPaths.get(file) !== kind)) {
         frontendPaths = paths;
-        refreshInputs(true);
+        try { refreshInputs(true); }
+        catch (error) { fail(error instanceof Error ? error : new Error(String(error), { cause: error })); return; }
       }
       if (changed) request('frontend compiler inputs discovered');
     });
     await publish();
-    options.signal?.throwIfAborted();
+    signal.throwIfAborted();
     options.onFirstBuild?.();
     ready = true;
     if (pending) runs.request();
     console.log('[watch] Watching build inputs; each successful build publishes verified dist/');
-    return { close };
+    return { close, done };
   } catch (error) {
-    await close();
-    throw error;
+    failure ??= error instanceof Error ? error : new Error(String(error), { cause: error });
+    try { await close(); }
+    catch (cleanup) { throw new AggregateError([failure, cleanup], failure.message, { cause: failure }); }
+    throw failure;
   }
 }
 
 export async function watchPackBuild(root: string, options: WatchOptions = {}): Promise<void> {
   await withBuildSignals(async stoppedByProcess => {
     const signal = options.signal ? AbortSignal.any([options.signal, stoppedByProcess]) : stoppedByProcess;
-    let notifyStopped!: () => void;
-    const stopped = new Promise<void>(resolve => { notifyStopped = resolve; });
-    signal.addEventListener('abort', notifyStopped, { once: true });
-    if (signal.aborted) notifyStopped();
     let watcher: Awaited<ReturnType<typeof startPackBuildWatcher>> | undefined;
     try {
       watcher = await startPackBuildWatcher(root, { ...options, signal });
-      await stopped;
+      await watcher.done;
     } finally {
-      signal.removeEventListener('abort', notifyStopped);
       await watcher?.close();
     }
     signal.throwIfAborted();

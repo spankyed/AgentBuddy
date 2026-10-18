@@ -314,7 +314,13 @@ Two suites, split by what a spec costs:
 On macOS the integration config requires a GitHub-hosted runner and refuses before importing specs.
 Use the root guide's disposable compiler workflows for focused native checks; full integration and
 strict gates also belong on disposable CI. A generic `CI=true` or a self-hosted runner is insufficient.
-The unit config is unchanged. This guard does not restrict normal CLI use or development builds.
+Live filesystem-watcher cases use the same runner guard even in unit files; mocked watcher-error
+and cancellation tests remain local. This guard does not restrict normal CLI use or development builds.
+
+`startPackBuildWatcher().done` reports terminal subscription failures after owned cleanup; `close()`
+drains disposal. Both the public watch command and dev session await `done`. Syntax/build/reload errors
+remain recoverable on a later edit; a broken subscription cancels the operation with its input path and
+cause. Frontend replacement retains retiring subscriptions until asynchronous disposal settles.
 
 **How many specs each half holds and what they cost is a command, not a line here**:
 `npm run spec:dry -- packages/apack-cli/tests` answers both halves and prints the date it measured them.

@@ -4,19 +4,22 @@ import path from 'node:path';
 import { afterEach, expect, it, vi } from 'vitest';
 import { _byDeadline } from '@apackdev/sdk/testing/waiting';
 import { createFrontendWatcher } from '../../src/build/frontend-watch.ts';
+import { assertCompilerTestRunner } from '../_support/compiler-test-runner.ts';
 import { readBuildWatchInputs } from '../../src/build/build-watch-inputs.ts';
 
+const failures: Error[] = [];
 const cleanups: Array<() => void | Promise<void>> = [];
-afterEach(async () => { for (const cleanup of cleanups.splice(0).reverse()) await cleanup(); });
+afterEach(async () => { for (const cleanup of cleanups.splice(0).reverse()) await cleanup(); expect(failures.splice(0)).toEqual([]); });
 
 function fixture() {
+  assertCompilerTestRunner();
   const temporary = fs.mkdtempSync(path.join(os.tmpdir(), 'apack-frontend-watch-'));
   const root = path.join(temporary, 'pack');
   fs.mkdirSync(root);
   let notify!: () => void;
   const firstChange = new Promise<void>(resolve => { notify = resolve; });
   const changed = vi.fn((_file: string) => notify());
-  const watcher = createFrontendWatcher(root, path.join(temporary, 'profile'), changed);
+  const watcher = createFrontendWatcher(root, path.join(temporary, 'profile'), changed, error => { failures.push(error); });
   cleanups.push(() => fs.rmSync(temporary, { recursive: true, force: true }), () => watcher.close());
   const write = (file: string, text: string) => {
     const absolute = path.join(temporary, file);
@@ -172,7 +175,7 @@ it('ignores output/profile events beneath a broad parent and cannot reopen after
   await watcher.accept(inputs);
   let notified!: () => void;
   const observed = new Promise<void>(resolve => { notified = resolve; });
-  const control = createFrontendWatcher(root, path.join(temporary, 'profile'), () => notified());
+  const control = createFrontendWatcher(root, path.join(temporary, 'profile'), () => notified(), error => { failures.push(error); });
   cleanups.push(() => control.close());
   await control.observe(inputs);
   write('style.css', 'closed');

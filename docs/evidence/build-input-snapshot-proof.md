@@ -4097,3 +4097,24 @@ Use the existing watcher owner and cancellation/disposal path to report and term
 with an inert emitted-error regression before another live run. Do not add a generic resource manager,
 retry loop, polling fallback or increase limits. This source finding remains required even though the
 ordinary hosted live-event controls pass.
+
+
+## Async watcher failure ownership (2026-10-18)
+
+An inert EventEmitter regression reproduces the missing error listener: emitting an error throws
+instead of producing an attributed terminal result. The repair keeps the existing pack watcher owner:
+`done` reports terminal subscription failure after cleanup, while `close` drains disposal. Native and
+frontend subscriptions report the watched path and original cause, abort active builds and prevent
+further publication/reload. Public watch and dev await this result; dev retains its existing profile,
+app and shared-builder cleanup. Build/install/reload failures still retry on a subsequent save.
+
+Retired frontend subscriptions stay in the ownership map until their asynchronous close settles;
+concurrent final disposal awaits them without closing twice. Replaced subscriptions ignore late
+errors. Synchronous subscription creation and frontend-input replacement failures use the same
+terminal path. Cleanup drains every resource even if another close rejects, retaining failure evidence.
+
+Local checks: 31 cases across `watch-retry`, `frontend-watch-errors`, `watch` and `dev-cancellation`
+pass (2.79s total); CLI `tsc --noEmit`, focused correctness lint and diff checks pass. These cases use
+mocked subscriptions/builders and inert files, with no native fixture or real filesystem watcher.
+The focused hosted workflow now selects these cases and live frontend watcher controls alongside the
+existing backend live-event case. Hosted acceptance is pending; this is not B6 or final strict acceptance.

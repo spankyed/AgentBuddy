@@ -70,6 +70,10 @@ jobs:
           packages/apack-cli/tests/build/compilation-inputs.spec.ts
           packages/apack-cli/tests/build/compiler-watch.spec.ts
           packages/apack-cli/tests/build/compiler-module-path.spec.ts
+          packages/apack-cli/tests/build/watch-retry.spec.ts
+          packages/apack-cli/tests/build/frontend-watch-errors.spec.ts
+          packages/apack-cli/tests/build/frontend-watch.spec.ts
+          packages/apack-cli/tests/commands/dev-cancellation.spec.ts
           --testNamePattern "$APACK_TEST_NAME"
           --reporter=default --reporter=json --outputFile="$RUNNER_TEMP/apack-compiler-input-tests.json"
           --bail=1 --poolOptions.threads.maxThreads=1 --poolOptions.threads.minThreads=1 --no-file-parallelism

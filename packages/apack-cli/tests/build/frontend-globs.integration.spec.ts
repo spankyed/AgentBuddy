@@ -27,7 +27,8 @@ it.each([
   const entryPoint = path.join(pack, expression.includes('#pages') ? 'canvas.vue' : 'src/canvas.vue');
   fs.writeFileSync(entryPoint, `<script setup>const pages = ${expression};</script><template><div>{{ pages }}</div></template>`);
   const changed = vi.fn();
-  const watcher = createFrontendWatcher(pack, undefined, changed);
+  const failures: Error[] = [];
+  const watcher = createFrontendWatcher(pack, undefined, changed, error => { failures.push(error); });
   let reported: readonly string[] = [];
   const compile = () => {
     const outputDir = path.join(pack, 'dist/runtime');
@@ -54,7 +55,7 @@ it.each([
     const third = await compile();
     expect(third.success, third.error).toBe(true);
     expect(readFrontendOutput(pack, '.js')).not.toContain('NEW_GLOB_PAGE');
-  } finally { await watcher.close(); }
+  } finally { await watcher.close(); expect(failures).toEqual([]); }
 });
 
 it('leaves explicitly ignored variable imports outside compiler subscriptions', async () => {

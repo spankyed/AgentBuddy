@@ -468,8 +468,8 @@ async function session(args: string[], hooks: SessionHooks, target: 'app' | 'pac
       builder: builder!,
       onBuilt: async () => { await installToApp(pack.root, place); },
     });
-    await watching;
-    await new Promise<never>(() => {});
+    try { await (await watching).done; }
+    finally { await release(); }
   };
   const address = await builder!.serveFrontend(address => {
     if (address) {

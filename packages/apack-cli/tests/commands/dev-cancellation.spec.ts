@@ -3,7 +3,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 
-const state = vi.hoisted(() => ({ root: '', stage: 'build' as 'build' | 'watch', aborted: false, finish: () => {} }));
+const state = vi.hoisted(() => ({ root: '', stage: 'build' as 'build' | 'watch' | 'ready', aborted: false, finish: () => {}, fail: (_error: Error) => {} }));
 
 function pending(signal: AbortSignal): Promise<never> {
   const resource = path.join(state.root, 'compiler');
@@ -25,7 +25,13 @@ vi.mock('../../src/build/build-process.ts', () => ({
   }),
 }));
 vi.mock('../../src/build/watch.ts', () => ({
-  startPackBuildWatcher: vi.fn((_root: string, { signal }: { signal: AbortSignal }) => pending(signal)),
+  startPackBuildWatcher: vi.fn((_root: string, { signal }: { signal: AbortSignal }) => {
+    if (state.stage !== 'ready') return pending(signal);
+    const file = path.join(state.root, 'watcher');
+    fs.writeFileSync(file, 'owned watcher');
+    const done = new Promise<void>((_resolve, reject) => { state.fail = reject; });
+    return Promise.resolve({ done, close: async () => { fs.rmSync(file, { force: true }); } });
+  }),
 }));
 vi.mock('../../src/app/pack-host', async importOriginal => ({
   ...await importOriginal<typeof import('../../src/app/pack-host')>(),
@@ -97,4 +103,16 @@ it.each(['build', 'watch'] as const)('drains %s startup before removing its prof
   await vi.waitFor(() => expect(process.exit).toHaveBeenCalledWith(0));
   expect(fs.existsSync(resource)).toBe(false);
   expect(fs.existsSync(profile)).toBe(false);
+});
+
+it('drains a failed running watcher before removing its dev profile', async () => {
+  state.stage = 'ready';
+  const failure = new Error('watch limit');
+  const watching = expect(dev(['--fresh'])).rejects.toBe(failure);
+  const resource = path.join(state.root, 'watcher');
+  await vi.waitFor(() => expect(fs.existsSync(resource)).toBe(true));
+  state.fail(failure);
+  await watching;
+  expect(fs.existsSync(resource)).toBe(false);
+  expect(fs.existsSync(path.join(state.root, 'profile'))).toBe(false);
 });
