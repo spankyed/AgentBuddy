@@ -312,6 +312,28 @@ additional consolidated requirements remain unfinished. Final strict `--all` on 
 the whole-goal requirement audit remain mandatory.
 
 
+## Current-source consolidation review (2026-10-18)
+
+Inspected source through `dcf2493e5`. This reconciles the original decision checklist above against
+current implementations; it is a source review, not final runtime or strict-gate acceptance.
+
+| Original requirements | Current source evidence | Remaining acceptance |
+|---|---|---|
+| 1, 7, 13: organization, authoring, feature purpose | `declaration-schema.ts` defines the structural order and required nonblank feature descriptions. CLI `manifest-writer.ts` derives that order; init/add/release call it. `add/feature.ts` requires the same description schema. | Preserve writer idempotence, member ordering, scaffold/build and description cases in convergence. |
+| 2, 3, 4: references, entities/shapes and relations | `framework/data-declaration.ts` supplies one owned entity projection and flat wire maps. `entityShapeEntries()` in codegen skips null shapes and checks exported types with `hasTypeExport`; it emits type-only imports. The shared reference parser does not load modules. | Retain duplicate-owner attribution, typed/untyped EARS, generated wire identities and installed source-free checks. |
+| 5, 16: storage exclusion and no compatibility | Current authored schema adds neither partition policy nor volatility. Source search finds no entityShapes/settingsSections/typesEntry/$manifestVersion/sidecar/wrapper readers in packages or scripts. The retired default-setup app-settings/assistant feature directories are absent. | Keep developer backup operations separate and preserve current-format behavior in final acceptance. |
+| 6, 8, 9, 12: roles, explicit contributions, extensions and defaults | Registry designation stores and catalog claims use explicit identities. Backend bindings compare declared/runtime names before registration. Source endpoint frames validate compiled contract coverage before catalog projection. `dcf2493e5` fixes the discovered inherited-property exception in content validation/resolution. | Retain inactive-owner, collision, exact binding, source-offer and default-selection tests; no new inventory or naming restriction. |
+| 10: content and lifecycle | `ContentConfigSchema` groups content. `LifecycleConfigSchema` declares named hooks, and `lifecycle-binding.ts` verifies exact callable membership. | Preserve hook ordering, content identity and native/installed admission through the gate. |
+| 11, 14, 17: schema assistance, format key and checks | Current generated JSON has no undocumented declared property, no authored format-version key, and the expected lifecycle/checks fields. `PackChecksSchema` shares the allowable-check vocabulary. `dcf2493e5` changes behavior without changing generated schema or API shape. | Keep editor completion/diagnostics, exact build stamps, API reports, public docs and actual allowance/refusal cases in strict acceptance. |
+| 15 and both naming questions | Completed naming baseline remains unchanged. Current schema retains `hostVersion` and places `tiptapPlugins`/`appExtensions` directly under extensions. Release metadata is untouched. | Preserve the settled contract; no new naming or release work. |
+
+The own-property repair passes 72 focused schema/declaration/resolution cases, the existing dependency
+format codegen consumer, SDK types, schema check and lint. See its
+[evidence](../evidence/settings-and-pack-contracts.md#explicit-content-declarations-in-schema-and-resolution-2026-10-18).
+The converged/final strict gates, all-kind discovery and the complete execution goal remain required.
+Remote execution is waiting for the explicit push authorization requested after automatic review
+rejected that action; do not substitute historical-source CI or these static checks for the gate.
+
 ## Facade handoff correction (2026-10-14)
 
 `c1d8497b4` implements the selected facade terminology and missing-data/cache-name refusals, preserving
