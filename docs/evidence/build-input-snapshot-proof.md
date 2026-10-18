@@ -3995,3 +3995,50 @@ remain unchanged; resource and link fixes use the existing installation owner.
 requires Apple-signed or same-team libraries when this exception is absent, so the earlier default
 Electron result cannot stand in for the strict profile. Other native/profile requirements, B6 and
 final strict acceptance remain required.
+
+### Content-compiler native ownership checkpoint (2026-10-18)
+
+The separate native-image preflight in `createNativeInputReader.prepare()` was not covered by the
+accepted preload/thread proof. Sources `2707f1ce2` / `84f347c92` add a CommonJS content-compiler
+variant to the existing Windows publication case, with explicit startup/compiler proof records.
+The CommonJS path deliberately participates in captured resolution; ESM `createRequire()` can take a
+different route. Ordinary Node proves repeated same-module loading before captured execution.
+
+Hosted run [39099421891](https://github.com/spankyed/AgentBuddy/actions/runs/39099421891) on
+`84f347c92` passes that ordinary control, then fails captured compilation in 44.08 seconds. The
+compiler reader rejects the DLL already loaded from the startup owner's private tree as outside the
+authored package. The stack names `createNativeInputReader.prepare()`, rather than a timeout or
+fixture initialization failure. Log: `/private/tmp/apack-pe-module-39099421891.log`.
+
+Source `4f1fdfbee` delegates build-owned selected-image admission to the existing startup native owner
+and returns that owner's checked native path at actual loading. It preserves direct admission when
+there is no startup owner. The host retains one native dispatcher; no second loader, generic request
+framework, blanket workspace trust or basename remapping is added. Exact-source receipt and captured
+copy checks remain required.
+
+The inert reader regression fails before the correction and passes afterwards, including refusal
+propagation, repeated-image revalidation and standalone outside-dependency enforcement. All 10
+reader/owner/report cases and the three affected compilation-input retention cases pass, as do CLI
+types, focused lint and diff checks. No native code or copied runtime executed locally. Actual
+Windows run [39099755751](https://github.com/spankyed/AgentBuddy/actions/runs/39099755751) on that
+source gets past native ownership admission, then stops in 47.51 seconds at the fixture's literal
+`.node` import: esbuild has no native-file bundling loader. This is not complete publication acceptance.
+Log: `/private/tmp/apack-pe-module-39099755751.log`.
+
+Fixture correction `965b914b4` uses a runtime native-module path, preserving the same CommonJS
+parent/resolver and admission boundary while avoiding an unsupported static native-bundle request.
+All ownership, exact selected DLL, source replacement/restoration, disposal and pre-initialization
+outside-refusal assertions remain. Hosted run [39100052114](https://github.com/spankyed/AgentBuddy/actions/runs/39100052114) on
+`965b914b4` passes the complete case in 106.17 seconds (109.64 seconds Vitest total), under the
+unchanged 120-second bound. Startup and the CommonJS compiler report the same private DLL; source
+replacement invalidates the published input record and exact restoration makes it current again.
+Parent retirement removes the workspace. Ordinary outside-PATH loading succeeds, but the captured
+candidate refuses before either native initialization marker or proof publication and preserves the
+published revision. Log: `/private/tmp/apack-pe-module-39100052114.log`.
+
+This closes the reproduced content-compiler ownership defect. No bundler policy, assertions or deadline
+is weakened. The finite remaining platform/native obligations, converged acceptance and final strict
+`--all` remain required. During the reader audit, an inert Node 23 `path.win32.relative()` control also
+confirms normal versus `\\?\` spelling returns an absolute result for the same directory. Compilation
+ownership still uses plain `path.relative()` in two guards; audit those actual call sites against the
+existing `relativeCompilerPath` contract next rather than inventing a second comparison helper.
