@@ -2,7 +2,7 @@ import { expect, it, vi } from 'vitest';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { createRequire } from 'node:module';
+import module, { createRequire } from 'node:module';
 import { beginCompilerNativeModules, beginCompilerStartupReads, type CompilerFileReadInputs } from '../../../src/build/compiler-inputs/compiler-file-reads.ts';
 import { createCompilerFileView } from '../../../src/build/compiler-inputs/compiler-file-view.ts';
 
@@ -45,14 +45,24 @@ it.each(['selected', 'missing'])('observes nearer package declarations during %s
     readMetadata: view.readMetadata, readDirectory: view.readDirectoryData, openDirectory: view.openDirectoryData,
     sourcePath: file => file, requireParent: file => file, diagnostic: message => message,
   };
+  const register = module.registerHooks;
+  const release = vi.fn();
+  const registration = vi.spyOn(module, 'registerHooks').mockImplementation(options => {
+    const hooks = register(options);
+    return { deregister() { release(); hooks.deregister(); } };
+  });
   const stop = beginCompilerStartupReads({ compilation });
   try {
     const resolve = () => require('probe-package');
     if (selected === 'selected') expect(resolve()).toBe(42);
     else expect(resolve).toThrow('Cannot find module');
     stop();
+    expect(release).toHaveBeenCalledTimes(1);
     expect(() => view.assertCurrent()).not.toThrow();
     declare(path.join(parent, 'node_modules/probe-package'));
     expect(() => view.assertCurrent()).toThrow();
-  } finally { stop(); view.dispose(); fs.rmSync(root, { recursive: true, force: true }); }
+  } finally {
+    stop(); registration.mockRestore();
+    view.dispose(); fs.rmSync(root, { recursive: true, force: true });
+  }
 });

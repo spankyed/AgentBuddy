@@ -306,35 +306,6 @@ function install() {
       return createRequire(scope.compilation.requireParent(parent));
     });
   }) as typeof module.createRequire;
-  // Node reads package declarations internally, bypassing the public fs adapters.
-  // Observe lookup candidates, including missing nearer packages, without replacing resolution.
-  // Node's asynchronous loader worker has no synchronous resolve implementation.
-  if (!isInternalThread) module.registerHooks({
-    resolve(specifier, context, next) {
-      const scope = currentScope();
-      const parent = context.parentURL;
-      if (scope && scope === state.startup && parent?.startsWith('file:') && scope.compilation.isInput(fileURLToPath(parent))
-        && !module.isBuiltin(specifier) && !specifier.startsWith('.') && !specifier.startsWith('#')
-        && !path.isAbsolute(specifier) && !/^[a-z][\w+.-]*:/i.test(specifier)) {
-        const name = specifier.split('/').slice(0, specifier.startsWith('@') ? 2 : 1).join('/');
-        if (name.split('/').every(part => part && part !== '.' && part !== '..')) {
-          withoutCompilerFileReads(() => {
-            for (const directory of createRequire(parent).resolve.paths(specifier) ?? []) {
-              // ESM searches ancestor node_modules; it does not use CommonJS global paths.
-              if (!Array.from(context.conditions).includes('require')) {
-                const relative = relativeCompilerPath(path.dirname(directory), path.dirname(fileURLToPath(parent)));
-                if (path.basename(directory) !== 'node_modules' || relative === '..'
-                  || relative.startsWith(`..${path.sep}`) || path.isAbsolute(relative)) continue;
-              }
-              const file = path.join(directory, name, 'package.json');
-              if (scope.compilation.isInput(file)) scope.compilation.readDataPath(file);
-            }
-          });
-        }
-      }
-      return next(specifier, context);
-    },
-  });
   syncBuiltinESMExports();
 }
 
@@ -354,7 +325,41 @@ export function beginCompilerStartupReads(scope: CompilerFileReadScope): () => v
   if (state.startup) throw new Error('Compiler startup reads already have an owner');
   install();
   state.startup = scope;
-  return () => { if (state.startup === scope) state.startup = undefined; };
+  // Node reads package declarations internally, bypassing the public fs adapters.
+  // Observe lookup candidates, including missing nearer packages, without replacing resolution.
+  // Node's asynchronous loader worker has no synchronous resolve implementation.
+  const hooks = !isInternalThread ? module.registerHooks({
+    resolve(specifier, context, next) {
+      const scope = currentScope();
+      const parent = context.parentURL;
+      if (scope && scope === state.startup && parent?.startsWith('file:') && scope.compilation.isInput(fileURLToPath(parent))
+        && !module.isBuiltin(specifier) && !specifier.startsWith('.') && !specifier.startsWith('#')
+        && !path.isAbsolute(specifier) && !/^[a-z][\w+.-]*:/i.test(specifier)) {
+        const name = specifier.split('/').slice(0, specifier.startsWith('@') ? 2 : 1).join('/');
+        if (name.split('/').every(part => part && part !== '.' && part !== '..')) {
+          withoutCompilerFileReads(() => {
+            for (const directory of module.createRequire(parent).resolve.paths(specifier) ?? []) {
+              // ESM searches ancestor node_modules; it does not use CommonJS global paths.
+              if (!Array.from(context.conditions).includes('require')) {
+                const relative = relativeCompilerPath(path.dirname(directory), path.dirname(fileURLToPath(parent)));
+                if (path.basename(directory) !== 'node_modules' || relative === '..'
+                  || relative.startsWith(`..${path.sep}`) || path.isAbsolute(relative)) continue;
+              }
+              const file = path.join(directory, name, 'package.json');
+              if (scope.compilation.isInput(file)) scope.compilation.readDataPath(file);
+            }
+          });
+        }
+      }
+      return next(specifier, context);
+    },
+  }) : undefined;
+  return () => {
+    if (state.startup === scope) {
+      state.startup = undefined;
+      hooks?.deregister();
+    }
+  };
 }
 
 /** Native admission lasts through compiler execution, independently of startup filesystem interception. */
