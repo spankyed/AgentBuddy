@@ -5314,3 +5314,44 @@ remain open. Previously accepted frontend/backend/watch lifecycles are not repea
 Off-machine diagnostic archive: `/private/tmp/apack-compiler-scope-evidence-b8d487f53.zip`.
 VM overlay stash `885f4c1f86a4becd433ff2611d87bc5b269909e6` retains only this repair; the
 pre-existing launcher change remains untouched. Deallocation was requested after export.
+
+
+## Package mapping candidate ownership — 2026-10-18
+
+Source **`34684ee56`** repairs three demonstrated omissions: missing exports targets, missing local
+imports targets, and newly appearing nearer packages behind imports aliases. All three focused native
+resolution models fail against `733495687` in 17ms because source freshness remains unchanged.
+Original result: `/private/tmp/apack-mapping-regression-733495687.log`.
+
+Node's CommonJS imports and self-reference resolution return before `_findPath`. The existing startup
+owner now also observes `_resolveFilename` with the actual parent, forwarding its original receiver,
+arguments and result and restoring it on stop if still owned. `_findPath` retains actual lookup paths.
+The common module probe reads matching manifest targets, including pattern substitutions and external
+imports packages. ESM retains its existing hooks. No executable mapping module or alternate resolver
+is introduced. **Candidate observation is conservative:** matching conditional/array branches are
+recorded rather than reimplementing Node's branch selection. An unused branch can cause extra
+invalidation; Node still chooses the loaded file and owns mapping validation and errors.
+
+All **22** host models pass locally and on Windows, including exports/imports patterns, package self
+references, invalidation/restoration and observer cleanup. The three CLI native-owner models also pass
+against the new observer, preserving the installation namespace repair. Host types, focused correctness
+lint and diff checks pass. The first lint invocation used ESLint without this repository's configuration;
+the repository's actual Oxlint command then passes. No lint configuration was changed.
+
+Bounded actual-runtime controls pass on Windows x64 with **Node 23.11.1** and **Electron 37.2.4 /
+Node 22.17.1**. Both main thread and asynchronous-loader thread record missing conditional export files,
+local imports/self targets and nearer external-package declarations. Both preserve selected value 42,
+CommonJS MODULE_NOT_FOUND and the expected ESM ERR_MODULE_NOT_FOUND target. Versions are emitted by
+the actual executed runtimes; Electron uses awaited Node spawn with explicit pipes. This is not a full
+pack build, live watcher or final strict gate. No whole build or already accepted native lifecycle was
+repeated, no deadline changed, and no captured executable/native fixture ran on the daily-use Mac.
+
+Windows source base `733495687` plus the reviewed three-file patch. Evidence:
+`C:\apack-setup\mapping-runtime-733495687` (source patch, model report, bundled bootstrap, per-runtime
+stdout/stderr, lookup observations and version/selection summaries). Off-machine archive:
+`/private/tmp/apack-mapping-evidence-733495687.zip` (32 files, including the control scripts).
+VM overlay stash **`4b3829e7b5931d31a4cfa75bd2ca9fc2e4af83a9`** preserves this patch. The pre-existing
+launcher change and earlier stashes remain untouched. No Node/Electron process remained after terminal
+inspection; deallocation was requested after export. This closes the named mapping-candidate audit;
+remaining native/platform requirements, repeated-build acceptance, B6 and final strict `--all` remain
+required. Do not start another general resolver project without a concrete counterexample.

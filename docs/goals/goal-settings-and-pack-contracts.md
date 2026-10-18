@@ -102,8 +102,15 @@ first-build replay and archive verification; both workers exit 0 without an unha
 the test reaches its unchanged 240s budget during the second build and fixture cleanup races. The
 original native failure remains unexplained, and repeated-build identity is unaccepted. Preserve the
 owned-process receipts and avoid another uninstrumented rerun or deadline increase. Neither run is a
-complete public-build acceptance result. Import/export mapping targets remain the next namespace audit after this checkpoint;
-preserve all other B1/B3, B6 and whole-goal requirements below.
+complete public-build acceptance result.
+
+Source `34684ee56` closes the named [imports/exports candidate audit](../evidence/build-input-snapshot-proof.md#package-mapping-candidate-ownership--2026-10-18):
+three original freshness counterexamples, 22 host models, three CLI ownership regressions and actual
+Node/Electron main-thread/async-loader controls pass. Matching mapping branches are conservatively
+observed; Node owns selection/errors. No new general resolver work is identified by this bounded audit.
+Continue the finite native/platform obligations below, then B6 and final acceptance. Keep repeated-build
+identity unaccepted on current source; preserve all phases and do not restart accepted lifecycles for
+reassurance.
 
 **Execution boundary:** the user recovered the daily-use Mac by restarting after unrelated apps
 stopped launching. Cause remains unproven. Use the approved
