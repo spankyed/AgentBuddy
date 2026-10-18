@@ -3139,3 +3139,18 @@ coverage, not another broad suite for reassurance. The focused ELF/Mach-O metada
 on Linux. Keep one worker and sequential stages; preserve the same native proof without weakening
 its assertions or changing deadlines. Other ELF configurations/mapped-image behavior, PE, stricter
 app signing and converged/final gates are still open.
+
+### Empty ELF search-list correction (2026-10-17)
+
+Review against glibc's `decompose_rpath` found that an entirely empty RPATH/RUNPATH is ignored,
+whereas an empty component inside a nonempty list means the working directory. The initial synthetic
+test mistakenly expected a current-directory lookup for an empty RUNPATH. Correcting that expectation
+fails on `b02217703`, selecting `/work/value.so` instead of the OS cache entry. The fix drops entirely
+empty declared lists while retaining embedded empty components, including LD_LIBRARY_PATH components.
+An empty LD_LIBRARY_PATH now captures no directories rather than one current-directory entry.
+
+The corrected focused checks pass (112 cases across the four metadata/admission files, with the
+46-case ELF file rerun after cleanup); CLI types and changed-file correctness lint pass. No native
+execution ran locally. The ongoing Linux lifecycle run `39083965583` remains pinned to `80578dd4a`;
+its evidence does not claim acceptance of this subsequent source correction. Preserve that run and
+include the correction in converged/final source acceptance.

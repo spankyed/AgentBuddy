@@ -84,7 +84,7 @@ export function captureElfLibraryEnvironment(env: NodeJS.ProcessEnv = process.en
   return Object.freeze({ ...metadata, hardwareCapabilities: Object.freeze(metadata.hardwareCapabilities),
     systemDirectories: Object.freeze(metadata.systemDirectories), loader,
     littleEndian: bytes[5] === 1, loadedLibraries: Object.freeze(loadedLibraries),
-    cwd: process.cwd(), executable: process.execPath, libraryPaths: Object.freeze(env.LD_LIBRARY_PATH?.split(/[:;]/) ?? []),
+    cwd: process.cwd(), executable: process.execPath, libraryPaths: Object.freeze(env.LD_LIBRARY_PATH ? env.LD_LIBRARY_PATH.split(/[:;]/) : []),
     executableRpath: Object.freeze(commands.runpath !== undefined || commands.rpath === undefined ? [] : [commands.rpath]),
   });
 }

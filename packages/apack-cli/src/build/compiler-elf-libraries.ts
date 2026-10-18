@@ -59,7 +59,8 @@ export function assertCapturedElfLibraries(entry: string, packageRoot: string, i
     },
   );
   type SearchPath = { directory: string; relocatable: boolean };
-  const searchPaths = (references: readonly string[], requester: string): SearchPath[] => references.flatMap(reference =>
+  const searchPaths = (references: readonly string[], requester: string): SearchPath[] => references
+    .filter(reference => reference !== '').flatMap(reference =>
     reference.split(':').map(directory => ({
       directory: path.resolve(environment.cwd, expand(directory, requester)),
       relocatable: /^\$(?:ORIGIN(?![A-Za-z0-9_])|\{ORIGIN\})(?:\/|$)/.test(directory)
@@ -82,7 +83,7 @@ export function assertCapturedElfLibraries(entry: string, packageRoot: string, i
       ? [...searchPaths(commands.rpath === undefined ? [] : [commands.rpath], file), ...inherited] : inherited;
     const paths = [
       ...(commands.runpath === undefined ? [...rpaths, ...searchPaths(environment.executableRpath, environment.executable)] : []),
-      ...searchPaths(environment.libraryPaths, environment.executable),
+      ...searchPaths([environment.libraryPaths.join(':')], environment.executable),
       ...searchPaths(commands.runpath === undefined ? [] : [commands.runpath], file),
     ];
     const admit = (candidate: string, reference: string, relocatable: boolean) => {

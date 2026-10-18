@@ -194,10 +194,22 @@ it('checks environment overrides before RUNPATH and observes earlier missing loo
 
 it('suppresses an image RPATH when RUNPATH is declared, including an empty RUNPATH', () => {
   const { check, reads } = admission([[15, '$ORIGIN/../lib'], [29, ''], [1, 'value.so']], [
+    ['/pack/lib/value.so', []], ['/work/value.so', []], ['/usr/lib/value.so', []],
+  ], { cached: '/usr/lib/value.so' });
+  expect(check).not.toThrow();
+  expect(reads).not.toContain('/pack/lib/value.so');
+  expect(reads).not.toContain('/work/value.so');
+});
+
+it('preserves current-directory lookup for empty components within a nonempty search list', () => {
+  const { check, reads } = admission([[29, ':$ORIGIN/../lib'], [1, 'value.so']], [
     ['/pack/lib/value.so', []], ['/work/value.so', []],
   ]);
   expect(check).toThrow('selects "/work/value.so"');
   expect(reads).not.toContain('/pack/lib/value.so');
+  expect(admission([[1, 'value.so']], [['/work/value.so', []]], {
+    environment: { libraryPaths: ['', '/missing'] },
+  }).check).toThrow('selects "/work/value.so"');
 });
 
 it('expands LIB and PLATFORM using loader metadata and prioritizes active hardware directories', () => {
