@@ -144,6 +144,12 @@ it('uses the captured compiler and retains unchanged build/cache identity on rep
     'src/value.txt': 'OWNED',
   }, { formats: { rows: { compiler: 'src/compiler.cjs', entity: 'Relation', identity: ['name'] } },
     sources: { rows: { path: 'src/value.txt', format: 'rows' } } });
+  const build = async () => {
+    const builder = createPackBuilder(root);
+    builders.push(builder);
+    try { await builder.build({ args: ['--skip-fe'] }); }
+    finally { await builder.close(); }
+  };
   const workspaces: string[] = [];
   const mkdtemp = fs.mkdtempSync;
   vi.spyOn(fs, 'mkdtempSync').mockImplementation(prefix => {
@@ -152,7 +158,7 @@ it('uses the captured compiler and retains unchanged build/cache identity on rep
     return directory;
   });
   vi.spyOn(process, 'cwd').mockReturnValue(root);
-  await buildCommand(['--skip-fe']);
+  await build();
   checkpoint('build completed');
   expect(bundlePackRuntime).not.toHaveBeenCalled();
   expect(readPackBuild(path.join(root, 'dist')).snapshot.manifest.id).toBe('fresh-worker');
@@ -172,13 +178,13 @@ it('uses the captured compiler and retains unchanged build/cache identity on rep
   const stamp = readPhaseCache(root).stamps.types;
   const revision = readPackBuild(path.join(root, 'dist')).revision;
   expect(stamp).toBeDefined();
-  await buildCommand(['--skip-fe']);
+  await build();
   checkpoint('build completed');
   expect(readPhaseCache(root).stamps.types).toEqual(stamp);
   expect(readPackBuild(path.join(root, 'dist')).revision).toBe(revision);
   expect(workspaces).toHaveLength(2);
   for (const workspace of workspaces) expect(fs.existsSync(workspace)).toBe(false);
-}, process.platform === 'win32' ? 240_000 : 120_000);
+}, process.platform === 'win32' ? 360_000 : 120_000);
 
 it('records external inputs read by content compiler worker threads', async () => {
   const outside = fs.mkdtempSync(path.join(os.tmpdir(), 'apack-worker-input-'));
