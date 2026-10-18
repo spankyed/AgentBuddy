@@ -18,6 +18,40 @@ import { startPackFrontend, type PackFrontend } from '../../src/build/frontend-p
 import { assertCapturedMachOLibraries, captureMachOLibraryEnvironment } from '../../src/build/compiler-native-libraries.ts';
 import { startPackBuildWatcher } from '../../src/build/watch.ts';
 import { nativeAddonSource } from '../_support/native-addon.ts';
+import { spawnCompilerWorker } from '../../src/build/compiler-process.ts';
+
+it.runIf(process.platform === 'darwin')('demonstrates runtime-linked Mach-O initialization before JS admission', async () => {
+  const root = fs.realpathSync.native(fs.mkdtempSync(path.join(os.tmpdir(), 'apack-macho-runtime-')));
+  try {
+    const runtime = path.join(root, 'runtime');
+    const outside = path.join(root, 'outside');
+    fs.mkdirSync(runtime); fs.mkdirSync(outside);
+    const marker = path.join(root, 'initialized');
+    const library = path.join(outside, 'libvalue.dylib');
+    const executable = path.join(runtime, 'compiler');
+    fs.writeFileSync(library + '.c', `#include <stdio.h>
+__attribute__((constructor)) static void initialize(void) {
+  FILE *marker = fopen(${JSON.stringify(marker)}, "w"); if (marker) fclose(marker);
+}
+int native_value(void) { return 11; }`);
+    fs.writeFileSync(executable + '.c', '#include <stdio.h>\nextern int native_value(void);\nint main(void) { printf("%d\\n", native_value()); return 0; }');
+    const compile = (args: string[]) => execFileSync('clang', args, { timeout: 15_000 });
+    compile(['-dynamiclib', library + '.c', '-Wl,-install_name,' + library, '-o', library]);
+    compile([executable + '.c', library, '-o', executable]);
+    const env = Object.fromEntries(Object.entries(process.env).filter(([key]) => !key.startsWith('DYLD_')));
+    expect(execFileSync(executable, [], { env, encoding: 'utf8', timeout: 5_000 }).trim()).toBe('11');
+    expect(fs.existsSync(marker)).toBe(true);
+    fs.rmSync(marker);
+    // A minimal executable exercises the real shared launch boundary without another Node copy.
+    const child = spawnCompilerWorker({ executable, bin: path.join(root, 'bin/apack.mjs') }, [],
+      { cwd: root, env, stdio: 'ignore', timeout: 5_000 }, root);
+    const code = await new Promise<number | null>((resolve, reject) => {
+      child.once('error', reject); child.once('close', resolve);
+    });
+    expect(code).toBe(0);
+    expect(fs.existsSync(marker), 'the current macOS launcher admits the outside constructor').toBe(true);
+  } finally { fs.rmSync(root, { recursive: true, force: true }); }
+});
 
 function nativeFixture(mode: 'relative' | 'absolute' | 'transitive' | 'fallback' | 'framework' | 'runpath', sdk?: string) {
   const root = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'apack-native-libraries-')));
