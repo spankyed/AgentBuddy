@@ -2,7 +2,16 @@ name: Compiler Windows
 
 on:
   workflow_dispatch:
+    inputs:
+      test_name:
+        description: Optional PE native test name pattern (skips accepted platform stages)
+        type: string
+        default: ''
   workflow_call:
+    inputs:
+      test_name:
+        type: string
+        default: ''
 
 permissions:
   contents: read
@@ -30,6 +39,7 @@ jobs:
           node -e "const path=require('node:path'); const npm=path.join(path.dirname(process.execPath),'node_modules/npm/bin/npm-cli.js'); console.log(JSON.stringify({node:process.execPath,npm,exists:require('node:fs').existsSync(npm)}))"
           npm --version
       - name: Windows compiler job ownership
+        if: ${{ !inputs.test_name }}
         run: node .github/scripts/compiler-job-proof.cjs
       - name: Install dependencies
         env:
@@ -37,7 +47,19 @@ jobs:
         run: npm ci
       - name: Build matching packages
         run: npm run packages:ensure
+      - name: Prepare matching Node native SDK and MSVC
+        timeout-minutes: 3
+        run: ./.github/scripts/setup-node-native-sdk.ps1
+      - name: Native DLL ownership and pre-initialization refusal
+        env:
+          APACK_TEST_NAME: ${{ inputs.test_name || '.' }}
+        run: >-
+          node node_modules/vitest/vitest.mjs run --config vitest.integration.config.ts --project @apackdev/cli
+          packages/apack-cli/tests/build/compiler-pe-libraries.integration.spec.ts
+          --testNamePattern "$env:APACK_TEST_NAME"
+          --bail=1 --poolOptions.threads.maxThreads=1 --poolOptions.threads.minThreads=1 --no-file-parallelism
       - name: Compiler input and installation checks
+        if: ${{ !inputs.test_name }}
         env:
           NODE_OPTIONS: --conditions=@apackdev/source
         run: >-
@@ -58,6 +80,7 @@ jobs:
           packages/apack-cli/tests/build/compiler-native-libraries.spec.ts
           --poolOptions.threads.maxThreads=2 --poolOptions.threads.minThreads=1
       - name: Compiler publication waits for descendants
+        if: ${{ !inputs.test_name }}
         env:
           NODE_OPTIONS: --conditions=@apackdev/source
         run: >-
@@ -66,6 +89,7 @@ jobs:
           --testNamePattern='stops remaining compiler descendants|cancels a frontend input check'
           --bail=1 --poolOptions.threads.maxThreads=2 --poolOptions.threads.minThreads=1
       - name: Retained Vite process ownership
+        if: ${{ !inputs.test_name }}
         run: >-
           node node_modules/vitest/vitest.mjs run --config vitest.integration.config.ts --project @apackdev/cli
           packages/apack-cli/tests/build/compiler-native-libraries.integration.spec.ts
@@ -73,6 +97,7 @@ jobs:
           --bail=1 --poolOptions.threads.maxThreads=2 --poolOptions.threads.minThreads=1
       # These establish process ownership and baseline identity; native input admission remains separate.
       - name: Build worker platform baseline
+        if: ${{ !inputs.test_name }}
         run: >-
           node node_modules/vitest/vitest.mjs run --config vitest.integration.config.ts --project @apackdev/cli
           packages/apack-cli/tests/build/build-worker.integration.spec.ts

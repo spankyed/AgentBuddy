@@ -48,6 +48,8 @@ const loadedByThePool = (): string[] => reachableFrom(
  * exists to catch, and a file-level list would wave it through.
  */
 const INVENTORY: Record<string, { calls: number; why: string }> = {
+  'packages/apack-cli/tests/build/compiler-pe-libraries.integration.spec.ts': { calls: 2,
+    why: 'MSVC builds a private NAPI addon and value DLL; fresh ordinary Node controls prove adjacent/PATH DLL selection before captured ownership and pre-initialization refusal' },
   'packages/apack-cli/tests/build/compiler-elf-libraries.integration.spec.ts': { calls: 3,
     why: 'the Linux proofs compile private NAPI/shared-library fixtures; ordinary Node controls establish actual addon and pre-JavaScript runtime library selection before captured ownership and pre-initialization refusal' },
   'packages/apack-cli/tests/build/compiler-native-libraries.integration.spec.ts': { calls: 7,

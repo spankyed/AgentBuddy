@@ -30,6 +30,10 @@ on:
         description: Run only the focused Windows compiler checks
         type: boolean
         default: false
+      compiler_windows_test:
+        description: Optional PE native test name pattern (skips accepted platform stages)
+        type: string
+        default: ''
       compiler_macos:
         description: Run focused compiler and native checks on a disposable macOS runner
         type: boolean
@@ -189,6 +193,8 @@ jobs:
     permissions:
       contents: read
     uses: ./.github/workflows/compiler-windows.yml
+    with:
+      test_name: ${{ inputs.compiler_windows_test || '' }}
 
   compiler-macos:
     if: ${{ inputs.compiler_macos }}

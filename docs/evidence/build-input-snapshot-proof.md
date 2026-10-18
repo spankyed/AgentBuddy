@@ -3356,3 +3356,24 @@ This is required implementation/acceptance, not a new optional goal or an exclus
 behavior. Remaining ELF mapped-image/runtime-distribution checks, stricter macOS app signing,
 converged B6 and final committed-source strict `--all` also remain open. Stronger security isolation
 and universal native I/O/computed-loading capture stay outside the approved bounded contract.
+
+### Windows DLL ownership control candidate (2026-10-17)
+
+Added one retained-frontend Windows control using the common NAPI fixture source and a private
+adjacent value DLL. Ordinary Node must execute the addon, report the real DLL and create distinct
+DLL/NAPI initialization markers. Captured loading must report owned DLL bytes, track source
+replacement/restoration, retain Vue updates, and refuse the DLL moved onto PATH before either
+initialization marker while keeping the incumbent alive. Raw controls finish before source DLL
+replacement; mutations use atomic replacement. Report paths use physical Windows identity and
+PATH mutation respects Node's Windows key selection.
+
+The disposable runner obtains matching Node headers/import library with official release checksums
+and activates its installed MSVC toolchain. Downloads have 30-second bounds and SDK setup a
+three-minute stage bound. Only the fixture requires that toolchain; no product dependency or native
+process-owner implementation changes. An optional Windows test-name filter follows the existing
+Linux/macOS routes so the proof skips already accepted platform suites; the default route retains them.
+
+Local CLI types, changed-file correctness lint, workflow YAML/diff checks and all 11 subprocess
+inventory cases pass. No native fixture or captured runtime was executed locally; PowerShell/MSVC
+execution remains for Windows CI. Production still bypasses PE admission. The next run must first
+establish a working SDK/ordinary DLL control; a setup failure is not evidence of an ownership defect.
