@@ -149,6 +149,10 @@ That entry checks the compiler inputs before importing `build()`, avoiding recur
 it ships beside `cli.js`. Internal compiler tests call `build()` in-process; process-boundary tests
 exercise the real bootstrap and runner.
 
+Read trees beneath `APACK_BUILD_INPUTS_DIRECTORY` retain their files until the parent settles the
+compiler process and removes the workspace. Disposing a frame closes its API and bookkeeping; it
+cannot unlink DLLs still mapped by the worker. Standalone trees own their own deletion.
+
 The macOS native-library regression compiles a small addon with `clang` and the selected Node
 installation's `include/node` headers. These are developer test requirements, not CLI runtime
 dependencies. It verifies package-relative loading from captured bytes and refuses direct/transitive

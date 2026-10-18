@@ -3641,3 +3641,25 @@ publication while preserving the accepted output revision. The thread case requi
 and the existing startup input owner. No new coordinator, timeout increase or production admission
 change is introduced. These cases are pending disposable Windows execution; local CLI types and
 focused lint/diff checks pass.
+
+### Windows loaded-DLL workspace cleanup correction (2026-10-17)
+
+Run [39093514651](https://github.com/spankyed/AgentBuddy/actions/runs/39093514651) on `6fed2f4c4`
+compiles the Windows addon and passes its ordinary value/path control. Its first backend build reaches
+code generation, then fails disposing the startup native tree: `removeCompilerReadTree` reports EPERM
+while the copied DLL is still loaded by that worker. The preload case fails in 36.00 seconds; fail-fast
+leaves the thread case unexecuted. This is a cleanup failure, not a deadline or missed-rebuild problem.
+Log: `/private/tmp/apack-pe-publication-39093514651.log`.
+
+Source `1a92f05e5` puts physical deletion at the existing process owner. A tree under
+`APACK_BUILD_INPUTS_DIRECTORY` closes its frame and releases bookkeeping on disposal, retaining its
+files until the parent drains the worker and removes that workspace. Standalone trees still remove
+their own files. This also protects compilation trees whose modules remain mapped, rather than fixing
+only startup's native tree. The frontend-only `retainTree` switch is removed; both native owners close
+their trees normally. No retry, ignored EPERM, loader unload or second lifetime owner is added.
+
+All seven filesystem read-tree cases pass locally, including retained bytes after local closure,
+refused use after disposal, parent deletion and existing foreign-link cleanup protection. CLI types,
+five-file correctness lint and diff checks pass. The real Windows publication cases additionally
+require the advertised workspace to be absent after successful worker completion. Their repaired
+source still needs disposable execution; no native fixture ran locally.
