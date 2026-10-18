@@ -108,19 +108,19 @@ cases below. Earlier source-specific failures are history, not instructions to r
 | macOS launch environment | `b7385c0bb` accepts only physical OS directories for versioned overrides; both real versioned cases pass in `39080454772`. `ef01842ed` applies the same policy to the single shared-cache directory. The revised one-builder OS baseline/refusal case passes on `baf461618` in `39081394988` in 27.62 seconds with its original 60-second deadline. All 48 parser/environment checks pass. | Preserve ordinary package-relative/OS loading and attributed refusal. Converged native-file acceptance on final source remains required; selected runs do not cover every case. |
 | Runtime/signing | Hosted Node 23.11.1 ARM64 has hardened runtime, normal OS linked images and dyld/library-validation exceptions. Earlier Node/Electron runtime-copy ownership is accepted in `e369d3cb9`. | The app's stricter signing profile and other externally linked runtime/native combinations still need the bounded audit/acceptance; do not broaden permissions or claim isolation. |
 | Windows process ownership | Run `39075394015`, attempt 2, passes on `4b4d820fa`: complete native Job Object matrix, 170 unit checks (eight skips), descendant/cancellation, independent Vite owners and startup/repeated-build/cache/archive identity. | Preserve this implementation. PE library admission remains required; process lifetime acceptance does not prove it. |
-| Linux native ownership | `b02217703` implements ELF admission through the existing owner. Run `39084414891` on `1fbf12216` accepts the retained ELF/Vue case, 102 metadata checks (ten declared skips), five lifetime cases, independent Vite owners and two backend baselines. Both native backend preload/thread cases pass, including direct/transitive outside refusal, freshness restoration and incumbent retention. Run `39084877933` then demonstrates the distinct pre-JavaScript runtime-linked constructor gap on `675d65f5f`. | Native addon/backend and portable lifetime acceptance are closed on the recorded source. Next accept the shared-launcher correction for the confirmed runtime-linked gap, then finish remaining linked-runtime and loader/mapped-image checks. PE, stricter app signing and converged/final acceptance remain open. |
+| Linux native ownership | `3ec217669` adds runtime preflight at the existing shared launcher after `39084877933` demonstrated outside initialization before JS. Run `39085132469` accepts the corrected constructor boundary, 102 metadata checks (ten declared skips), retained ELF/Vue, five lifetime cases, both native backend preload/thread publication cases, independent Vite owners and both backend baselines. | The demonstrated runtime/addon/backend and portable lifetime gaps are closed on the recorded Node profile. Next accept bare SONAME/ORIGIN RUNPATH lookup with launch-env mutation/new-override invalidation through the existing worker case. Remaining mapped-image/runtime-distribution checks, PE, stricter app signing and converged/final acceptance remain open. |
 
 The Linux retained-library counterexample is repaired and accepted on `b02217703`; see
 [Linux acceptance](../evidence/build-input-snapshot-proof.md#retained-elf-library-acceptance-2026-10-17).
 The native backend preload/thread publication boundary also passes on `1fbf12216`; see
 [Linux backend acceptance](../evidence/build-input-snapshot-proof.md#linux-native-backend-publication-acceptance-2026-10-17).
-Run `39084877933` on `675d65f5f` now confirms the distinct runtime-linked gap: an outside constructor
-runs before JavaScript admission, after the ordinary control proves the fixture valid. The correction
-uses the existing shared launcher and ELF reader with the actual child executable/env/cwd, excluding
-the supervisor's loaded images for fresh-process selection. Next accept that correction on the same
-Linux control; see the [runtime checkpoint](../evidence/build-input-snapshot-proof.md#confirmed-runtime-linked-elf-initialization-gap-and-correction-2026-10-17).
-No local native execution occurred. Remaining linked-runtime distributions, loader/platform cases
-and the final gates remain open.
+The runtime-linked constructor control and all bounded Linux stages now pass on `3ec217669` in
+`39085132469`; see [runtime acceptance](../evidence/build-input-snapshot-proof.md#runtime-linked-elf-launcher-acceptance-2026-10-17).
+No native job remains active. Next reuse the launch-time worker case for the ordinary ELF bare
+SONAME/ORIGIN RUNPATH path, including env mutation and newly appearing override invalidation.
+Do not rerun accepted runtime/addon/lifetime cases as missing implementation. No local native
+execution occurred. Remaining linked-runtime distributions, mapped-image/platform cases and the
+final gates remain open.
 
 The strict two-core checkpoint on `ccaa809a8` stopped at three repository bookkeeping failures after
 passing packaged authoring, external-pack contracts, default-pack build, facade/schema/import checks

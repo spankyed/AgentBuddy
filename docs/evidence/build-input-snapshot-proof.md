@@ -3261,3 +3261,24 @@ All 112 local synthetic/mocked metadata cases pass, plus CLI types, changed-file
 No native execution ran locally. Real acceptance of the correction remains pending the same Linux
 control and bounded workflow; other linked-runtime distributions, loader/mapped-image cases, PE,
 stricter app signing and converged/final acceptance remain open.
+
+### Runtime-linked ELF launcher acceptance (2026-10-17)
+
+Run [`39085132469`](https://github.com/spankyed/AgentBuddy/actions/runs/39085132469) succeeds on
+`3ec217669`, Ubuntu 24.04 x64 / Node 23.11.1. The same ordinary Node control still loads the outside
+runtime shim and executes its constructor; the captured runtime now refuses before that constructor,
+and the refusal names the actual selected shim. The case passes in 2.82 seconds, compared with the
+confirmed constructor failure on `675d65f5f`. No runtime environment variables are stripped or rewritten.
+
+All bounded Linux stages also pass on this correction: 102 metadata checks with ten declared skips,
+the retained ELF/Vue case, five cancellation/descendant cases, both native backend preload/thread
+publication cases (24.52 / 34.64 seconds), independent Vite owners and both backend baselines.
+Log: `/private/tmp/apack-elf-runtime-39085132469.log`. Deadlines are unchanged. No native execution
+ran locally and no remote native job remains active.
+
+This closes the demonstrated runtime-linked constructor gap for the recorded Node profile. The
+next concrete ELF selection acceptance is the ordinary bare SONAME plus `$ORIGIN` RUNPATH case,
+including preload mutation of LD_LIBRARY_PATH and a newly appearing override: reuse the existing
+launch-time worker test rather than add another owner or general loader framework. Preserve the
+remaining mapped-image/runtime-distribution checks, PE, stricter app signing, B6 and final strict
+`--all` requirements. These passes do not establish every ELF/Electron/Windows profile.
