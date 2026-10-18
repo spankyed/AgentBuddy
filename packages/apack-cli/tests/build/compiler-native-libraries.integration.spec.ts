@@ -21,11 +21,14 @@ import { startPackBuildWatcher } from '../../src/build/watch.ts';
 import { nativeAddonSource } from '../_support/native-addon.ts';
 import { spawnCompilerWorker } from '../../src/build/compiler-process.ts';
 
-it.runIf(process.platform === 'darwin')('uses the captured Electron runtime through the shared compiler launcher', () => {
+const electronRuntimes = [{ label: 'captured', executable: undefined },
+  ...(process.env.APACK_TEST_SIGNED_ELECTRON ? [{ label: 'strictly signed captured', executable: process.env.APACK_TEST_SIGNED_ELECTRON }] : [])];
+
+it.runIf(process.platform === 'darwin').each(electronRuntimes)('uses the $label Electron runtime through the shared compiler launcher', ({ executable }) => {
   const root = fs.realpathSync.native(fs.mkdtempSync(path.join(os.tmpdir(), 'apack-electron-runtime-')));
   try {
     const require = createRequire(import.meta.url);
-    const electron = require('electron') as string;
+    const electron = executable ?? (require('electron') as string);
     const version = (require('electron/package.json') as { version: string }).version;
     const compiler = path.join(root, 'compiler');
     fs.mkdirSync(path.join(compiler, 'bin'), { recursive: true });

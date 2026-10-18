@@ -7,11 +7,23 @@ on:
         description: Optional native integration test name pattern (skips compiler unit checks)
         type: string
         default: ''
+      sign_runtime:
+        description: Sign a private Electron copy with the app's entitlements
+        type: boolean
+        default: false
   workflow_call:
     inputs:
       test_name:
         type: string
         default: ''
+      sign_runtime:
+        type: boolean
+        default: false
+    secrets:
+      certificate:
+        required: false
+      certificate_password:
+        required: false
 
 permissions:
   contents: read
@@ -48,8 +60,58 @@ jobs:
         run: npm ci
       - name: Build matching packages
         run: npm run packages:ensure
+      - name: Prepare strictly signed Electron fixture
+        if: ${{ inputs.sign_runtime }}
+        env:
+          APACK_TEST_CERTIFICATE: ${{ secrets.certificate || secrets.MAC_CERTIFICATE_P12_BASE64 }}
+          APACK_TEST_CERTIFICATE_PASSWORD: ${{ secrets.certificate_password || secrets.MAC_CERTIFICATE_PASSWORD }}
+        run: |
+          test -n "$APACK_TEST_CERTIFICATE"
+          umask 077
+          keychain="$RUNNER_TEMP/apack-compiler-signing.keychain-db"
+          certificate="$RUNNER_TEMP/apack-compiler-signing.p12"
+          password=$(openssl rand -hex 24)
+          echo "::add-mask::$password"
+          trap 'rm -f "$certificate"' EXIT
+          printf '%s' "$APACK_TEST_CERTIFICATE" | base64 --decode > "$certificate"
+          security create-keychain -p "$password" "$keychain"
+          security set-keychain-settings -lut 1200 "$keychain"
+          security unlock-keychain -p "$password" "$keychain"
+          security import "$certificate" -P "$APACK_TEST_CERTIFICATE_PASSWORD" -T /usr/bin/codesign -t cert -f pkcs12 -k "$keychain"
+          security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "$password" "$keychain" > /dev/null
+          export APACK_TEST_SIGNING_KEYCHAIN="$keychain"
+          node --input-type=module <<'JS'
+          import fs from 'node:fs';
+          import path from 'node:path';
+          import { createRequire } from 'node:module';
+          import { execFileSync, spawnSync } from 'node:child_process';
+          import assert from 'node:assert/strict';
+          import { signAsync } from '@electron/osx-sign';
+          const require = createRequire(import.meta.url);
+          const original = require('electron');
+          const app = path.join(process.env.RUNNER_TEMP, 'apack-signed-runtime', 'Electron.app');
+          fs.cpSync(path.resolve(original, '../../..'), app, {recursive:true});
+          const keychain = process.env.APACK_TEST_SIGNING_KEYCHAIN;
+          const identities = execFileSync('security', ['find-identity', '-v', '-p', 'codesigning', keychain], {encoding:'utf8'});
+          const matches = [...identities.matchAll(/\b([A-F0-9]{40}) "Developer ID Application:[^"\n]+"/g)];
+          assert.equal(matches.length, 1, 'Expected one Developer ID Application identity');
+          const entitlements = path.resolve('build/resources/entitlements.mac.plist');
+          await signAsync({app, identity:matches[0][1], keychain, platform:'darwin',
+            preAutoEntitlements:false, preEmbedProvisioningProfile:false,
+            optionsForFile:() => ({entitlements,hardenedRuntime:true,timestamp:'none'})});
+          const executable = path.join(app, 'Contents/MacOS/Electron');
+          const actual = execFileSync('codesign', ['--display','--entitlements','-','--xml',executable], {encoding:'utf8'});
+          const json = input => JSON.parse(execFileSync('plutil', ['-convert','json','-o','-','-'], {input,encoding:'utf8'}));
+          assert.deepEqual(json(actual), json(fs.readFileSync(entitlements, 'utf8')));
+          const details = spawnSync('codesign', ['--display','--verbose=4',executable], {encoding:'utf8'});
+          assert.equal(details.status, 0);
+          assert.match(details.stderr, /flags=.*\bruntime\b/);
+          assert.match(details.stderr, /TeamIdentifier=[A-Z0-9]{10}\b/);
+          console.log(details.stderr);
+          fs.appendFileSync(process.env.GITHUB_ENV, `APACK_TEST_SIGNED_ELECTRON=${executable}\n`);
+          JS
       - name: Captured compiler and process ownership
-        if: ${{ !inputs.test_name }}
+        if: ${{ !inputs.test_name && !inputs.sign_runtime }}
         env:
           NODE_OPTIONS: --conditions=@apackdev/source
         run: >-
@@ -62,9 +124,16 @@ jobs:
           --bail=1 --poolOptions.threads.maxThreads=2 --poolOptions.threads.minThreads=1 --no-file-parallelism
       - name: Native admission, preloads and watch recovery
         env:
-          APACK_TEST_NAME: ${{ inputs.test_name || '.' }}
+          APACK_TEST_NAME: ${{ inputs.test_name || (inputs.sign_runtime && 'uses the strictly signed captured Electron runtime') || '.' }}
         run: >-
           node node_modules/vitest/vitest.mjs run --config vitest.integration.config.ts --project @apackdev/cli
           packages/apack-cli/tests/build/compiler-native-libraries.integration.spec.ts
           --testNamePattern "$APACK_TEST_NAME"
           --bail=1 --poolOptions.threads.maxThreads=1 --poolOptions.threads.minThreads=1 --no-file-parallelism
+      - name: Remove signing keychain and fixture
+        if: ${{ always() && inputs.sign_runtime }}
+        run: |
+          keychain="$RUNNER_TEMP/apack-compiler-signing.keychain-db"
+          if test -f "$keychain"; then security delete-keychain "$keychain"; fi
+          rm -f "$RUNNER_TEMP/apack-compiler-signing.p12"
+          rm -rf "$RUNNER_TEMP/apack-signed-runtime"
