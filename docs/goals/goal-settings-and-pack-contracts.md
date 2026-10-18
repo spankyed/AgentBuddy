@@ -79,9 +79,10 @@ Current-source review `dcf2493e5` repairs [content declaration existence](../evi
 in both schema validation and local/dependency resolution. Inherited object names cannot masquerade as
 formats/dependencies or cause false source/dataset collisions; explicitly declared names remain valid.
 All 72 focused declaration/resolution checks, the existing codegen consumer, SDK types, schema check
-and lint pass. The converged strict run still needs a remote branch update: automatic approval review
-rejected the push as lacking separate authorization; explicit approval is pending. No required gate
-is waived and no remote run against an older tip counts as acceptance of this checkpoint.
+and lint pass. The user explicitly authorized pushing; checkpoint `a74bbd88a` is pushed and
+[strict run `39163655338`](https://github.com/spankyed/AgentBuddy/actions/runs/39163655338)
+is queued on that exact source with the two-core budget. Push authorization is resolved. Record its
+result before claiming B6 acceptance; remaining native/platform obligations and Phase 7 stay open.
 
 ### Bounded build-input and freshness checkpoints
 
