@@ -7845,7 +7845,7 @@ terminated with exit 0. The hosted strict gate remains live on its earlier pinne
 
 ## Fork producer core reservation — 2026-10-18
 
-The `d0ab6dd6b` split omitted the fork's core reservation: absent entries default to one, while the
+Source **`e24103ebf`** corrects an omission in the `d0ab6dd6b` split: absent entries default to one, while the
 full shipped-pack build reserves two. Fork preparation runs that same pack build with fixture edits,
 then archives it serially. It now shares the existing `PACK_BUILD_WIDTH` reservation with
 `build:default-setup`; this borrows that build's measured reservation, not a new fork CPU measurement.

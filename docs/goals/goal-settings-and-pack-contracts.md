@@ -112,7 +112,7 @@ This corrects producer/cache and aggregate-budget ownership; it does not establi
 fork build fits its unchanged limit or that compiler performance is resolved. All 120 focused graph/input/scheduler cases,
 scripts/repo/E2E types, tiers, lint and shell checks pass; the regression rejects the restored combined
 producer. See [producer evidence](../evidence/settings-and-pack-contracts.md#independent-default-fork-producer--2026-10-18).
-Fork preparation also shares the full pack build's existing two-core reservation; the initial split
+Checkpoint `e24103ebf` gives fork preparation the full pack build's existing two-core reservation; the initial split
 incorrectly inherited the one-core default. All 84 scheduler/graph/budget cases and scripts/repo types
 pass; the new regression reproduces the old one-core reservation and proves serialization at two cores.
 See [reservation evidence](../evidence/settings-and-pack-contracts.md#fork-producer-core-reservation--2026-10-18). The required hosted
