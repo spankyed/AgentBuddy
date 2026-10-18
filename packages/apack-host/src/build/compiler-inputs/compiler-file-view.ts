@@ -3,7 +3,7 @@ import path from 'node:path';
 import { createHash } from 'node:crypto';
 import { createCompilerInputObservations, hashCompilerInputObservations } from './compiler-observations.ts';
 import { isPackInputPath, type BuildInputKind, type BuildInputObserver } from '../pack-inputs.ts';
-import { compilerSourcePath, type CompilerPathMapping } from './compiler-paths.ts';
+import { compilerSourcePath, resolveCompilerPath, type CompilerPathMapping } from './compiler-paths.ts';
 import { captureNativeDirectory, type CompilerDirectoryCursor } from './compiler-directories.ts';
 import { captureCompilerMetadata, compilerMetadataOperations, type CompilerMetadataKind } from './compiler-metadata.ts';
 import { physicalWatchPath } from './watch-paths.ts';
@@ -122,7 +122,7 @@ export function createCompilerFileView(root: string, options: {
 
   function input(file: string, kind: BuildInputKind): FileInput | undefined {
     assertOpen();
-    file = path.resolve(file);
+    file = resolveCompilerPath(file);
     observe?.(file, kind);
     if (excluded(file) && !included.has(file)) return;
     let value = inputs.get(file);

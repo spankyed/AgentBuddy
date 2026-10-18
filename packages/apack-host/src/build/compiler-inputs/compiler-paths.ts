@@ -5,6 +5,11 @@ export interface CompilerPathMapping {
   readonly source: string;
 }
 
+/** Node 23 resolves an extended drive root to a volume handle by dropping its final separator. */
+export function resolveCompilerPath(file: string): string {
+  return /^\\\\\?\\[a-z]:\\$/i.test(file) ? file : path.resolve(file);
+}
+
 export function parseCompilerPaths(mappings: unknown): readonly CompilerPathMapping[] {
   const absolute = (value: unknown): value is string => typeof value === 'string' && path.isAbsolute(value) && !value.includes('\0');
   if (!Array.isArray(mappings) || mappings.some(mapping => !mapping || !absolute(mapping.captured) || !absolute(mapping.source))) {

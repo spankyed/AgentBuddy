@@ -2,6 +2,12 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { expect, it, vi } from 'vitest';
 import { physicalWatchPath } from '../../src/build/compiler-inputs/watch-paths.ts';
+import { resolveCompilerPath } from '../../src/build/compiler-inputs/compiler-paths.ts';
+
+it('preserves an extended drive root before compiler input resolution can turn it into a volume handle', () => {
+  expect(resolveCompilerPath('\\\\?\\C:\\')).toBe('\\\\?\\C:\\');
+  expect(resolveCompilerPath('.')).toBe(process.cwd());
+});
 
 it('resolves extended Windows drive roots through their equivalent DOS spelling', () => {
   const native = vi.spyOn(fs.realpathSync, 'native').mockImplementation(file => {
