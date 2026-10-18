@@ -1,9 +1,9 @@
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { execFile, execFileSync } from 'node:child_process';
+import { execFile, execFileSync, fork } from 'node:child_process';
 import { promisify } from 'node:util';
-import { expect, it, vi } from 'vitest';
+import { expect, it, onTestFinished, vi } from 'vitest';
 import { packFixture } from '@apackdev/sdk/testing/pack-fixture';
 import { REPO_ROOT } from '@apackdev/host/build/packages-built';
 import { readPackBuild } from '@apackdev/host/packs';
@@ -19,6 +19,9 @@ import { assertCapturedPeLibraries } from '../../src/build/compiler-pe-admission
 import { BUILD_INPUTS_DIRECTORY_ENV } from '../../src/build/compiler-read-tree.ts';
 import type { CapturedNativeModule } from '../../src/build/compiler-native-input-owner.ts';
 import { readPeLoaderMetadata, capturePeLibraryEnvironment } from '../../src/build/compiler-pe-environment.ts';
+import { readCompilerRuntimeInputs } from '../../src/build/compiler-runtime.ts';
+import { compilerStartupOptions, COMPILER_NODE_OPTIONS_ENV } from '../../src/build/compiler-startup-options.ts';
+import { COMPILER_INPUTS_ENV } from '../../src/build/compiler-installation-inputs.ts';
 
 /** Bind the value IAT while retaining the lookup table needed when Windows cannot reuse the binding. */
 function bindValueImport(bytes: Buffer, address: bigint, timeStamp: number) {
@@ -57,7 +60,7 @@ function createPeNativeFixture(root: string, pack: string, bound = false) {
   const addon = path.join(binding, 'addon.node');
   const dllMarker = path.join(root, 'dll-initialized');
   const addonMarker = path.join(root, 'addon-initialized');
-  const buildLibrary = (file: string, value: number) => {
+  const buildLibrary = (file: string, value: number, manifest?: string) => {
     fs.mkdirSync(path.dirname(file), { recursive: true });
     const source = file + '.c';
     fs.writeFileSync(source, `#include <windows.h>
@@ -71,6 +74,7 @@ BOOL WINAPI DllMain(HINSTANCE module, DWORD reason, LPVOID reserved) {
   return TRUE;
 }`);
     compile(['/LD', source, '/Fo' + path.join(root, 'value.obj'), '/link', '/INCREMENTAL:NO',
+      ...(manifest ? ['/MANIFEST:EMBED,ID=1', '/MANIFESTUAC:NO', '/MANIFESTINPUT:' + manifest] : []),
       ...(bound ? ['/DYNAMICBASE:NO', '/FIXED'] : []),
       '/OUT:' + file, '/IMPLIB:' + path.join(root, 'value.lib')]);
   };
@@ -108,6 +112,18 @@ int wmain(int argc, wchar_t **argv) {
   execFileSync(tool, [executable, ...manifests.map(manifest => String(manifest.path[2]))], { timeout: 5_000 });
   expect(parsePeLibraryMetadata(fs.readFileSync(executable)).manifests.filter(item => item.path[1] === 1)).toEqual([]);
   return executable;
+}
+
+function copyPeRuntimeFixture(executable: string, destination: string) {
+  const inputs = readCompilerRuntimeInputs(executable, false, (file, bytes) => {
+    const target = path.join(destination, file.path);
+    fs.mkdirSync(path.dirname(target), { recursive: true });
+    fs.writeFileSync(target, bytes);
+  });
+  for (const directory of inputs.directories) fs.mkdirSync(path.join(destination, path.relative(inputs.directory, directory)), { recursive: true });
+  const copied = path.join(destination, path.relative(inputs.directory, executable));
+  expect(readCompilerRuntimeInputs(copied, false).hash).toBe(inputs.hash);
+  return copied;
 }
 
 it.runIf(process.platform === 'win32')('refuses Node .local overrides through the captured compiler runtime before initialization', async ({ onTestFinished }) => {
@@ -167,9 +183,66 @@ it.runIf(process.platform === 'win32')('refuses Node .local overrides through th
   }
 }, 120_000);
 
+it.runIf(process.platform === 'win32')('preserves Node assembly selection and refuses it through compiler startup before initialization', async () => {
+  const root = fs.realpathSync.native(fs.mkdtempSync(path.join(os.tmpdir(), 'apack-node-assembly-')));
+  let completed = false;
+  try {
+    const pack = path.join(root, 'pack'), runtime = path.join(root, 'runtime'), copied = path.join(root, 'copied');
+    fs.mkdirSync(runtime);
+    packFixture({ at: pack, nodeModules: path.join(REPO_ROOT, 'node_modules'), manifest: { features: {} } });
+    const { addon, dllMarker, addonMarker, buildLibrary } = createPeNativeFixture(root, pack);
+    const executable = createNodeWithoutApplicationManifest(runtime);
+    const library = path.join(runtime, 'apack.fixture.value/apack_value.dll');
+    buildLibrary(library, 22);
+    const identity = '<assemblyIdentity type="win32" name="apack.fixture.value" version="1.0.0.0" processorArchitecture="amd64"/>';
+    fs.writeFileSync(path.join(path.dirname(library), 'apack.fixture.value.manifest'),
+      `<?xml version="1.0"?><assembly xmlns="urn:schemas-microsoft-com:asm.v1" manifestVersion="1.0">${identity}<file name="apack_value.dll"/></assembly>`);
+    fs.writeFileSync(executable + '.manifest',
+      `<?xml version="1.0"?><assembly xmlns="urn:schemas-microsoft-com:asm.v1" manifestVersion="1.0"><assemblyIdentity type="win32" name="apack.fixture.node" version="1.0.0.0" processorArchitecture="amd64"/><dependency><dependentAssembly>${identity}</dependentAssembly></dependency></assembly>`);
+    const copiedExecutable = copyPeRuntimeFixture(executable, copied);
+    // The private manifest-less Node retains the existing supported-runner platform-check override.
+    const environment = { ...process.env, NODE_SKIP_PLATFORM_CHECK: '1', NODE_OPTIONS: '' };
+    const ordinary = JSON.parse(execFileSync(copiedExecutable, ['-e',
+      `const addon = require(${JSON.stringify(addon)}); console.log(JSON.stringify({value:addon.read(),file:addon.libraryPath()}));`],
+    { cwd: pack, env: environment, encoding: 'utf8', timeout: 5_000 })) as { value: number; file: string };
+    const copiedLibrary = path.join(copied, path.relative(runtime, library));
+    expect(ordinary).toEqual({ value: 22, file: copiedLibrary });
+    expect(fs.existsSync(dllMarker)).toBe(true);
+    expect(fs.existsSync(addonMarker)).toBe(true);
+    fs.rmSync(dllMarker); fs.rmSync(addonMarker);
+    const workspace = path.join(root, 'inputs');
+    fs.mkdirSync(workspace);
+    const inputsFile = path.join(workspace, 'compiler-inputs.json');
+    fs.writeFileSync(inputsFile, JSON.stringify({ hash: '0'.repeat(64), packages: [compilerPackageDirectory()],
+      paths: [{ captured: copied, source: runtime }] }));
+    const entry = path.join(root, 'entry.cjs'), preload = path.join(root, 'preload.cjs');
+    fs.writeFileSync(entry, "throw new Error('Refused preload reached the compiler entry');");
+    fs.writeFileSync(preload, `require(${JSON.stringify(addon)});`);
+    const options = compilerStartupOptions(path.join(compilerPackageDirectory(), 'bin/apack.mjs'), formatNodeOptions(['--require', preload]));
+    const child = fork(entry, [], { execPath: copiedExecutable, execArgv: [], cwd: pack, stdio: ['ignore', 'ignore', 'pipe', 'ipc'],
+      env: { ...environment, APACK_BUILD_WORKER: '1', [COMPILER_INPUTS_ENV]: inputsFile,
+        [BUILD_INPUTS_DIRECTORY_ENV]: workspace, [COMPILER_NODE_OPTIONS_ENV]: options.user, NODE_OPTIONS: options.worker } });
+    let errors = '';
+    child.stderr!.on('data', chunk => { errors += chunk; });
+    const closed = new Promise<number | null>((resolve, reject) => {
+      child.once('error', reject); child.once('close', resolve);
+    });
+    onTestFinished(async () => { if (child.exitCode === null && child.signalCode === null) child.kill(); await closed; });
+    expect(await closed, errors).toBe(1);
+    expect(errors).toContain(`selects "${library}" outside its captured package`);
+    expect(errors).not.toContain('Refused preload reached the compiler entry');
+    expect(fs.existsSync(dllMarker)).toBe(false);
+    expect(fs.existsSync(addonMarker)).toBe(false);
+    completed = true;
+  } finally {
+    if (completed) fs.rmSync(root, { recursive: true, force: true });
+    else console.error(`Retained Node assembly startup: ${root}`);
+  }
+});
+
 // Ordinary Windows loader controls: these deliberately bypass compiler admission. A failed
 // control invalidates the fixture; it does not establish a production admission defect.
-it.runIf(process.platform === 'win32').each(['local', 'assembly'] as const)(
+it.runIf(process.platform === 'win32').each(['local', 'assembly', 'assembly-resource'] as const)(
   'identifies ordinary PE %s redirection while loading a native image', kind => {
     const root = fs.realpathSync.native(fs.mkdtempSync(path.join(os.tmpdir(), 'apack-pe-redirection-')));
     let completed = false;
@@ -219,7 +292,8 @@ int wmain(int argc, wchar_t **argv) {
       compile();
       expect(parsePeLibraryMetadata(fs.readFileSync(executable)).manifests).toEqual([]);
       expect(observe()).toEqual({ value: 11, file: fs.realpathSync.native(library).toLowerCase() });
-      const selected = path.join(runtime, ...(kind === 'assembly' ? ['apack.fixture.value'] : []), 'apack_value.dll');
+      const assemblyName = kind === 'assembly-resource' ? 'apack_value' : 'apack.fixture.value';
+      const selected = path.join(runtime, ...(kind === 'local' ? [] : [assemblyName]), 'apack_value.dll');
       buildLibrary(selected, 22);
       // Merely placing a same-name DLL next to the executable must not change explicit loading.
       expect(observe()).toEqual({ value: 11, file: fs.realpathSync.native(library).toLowerCase() });
@@ -230,9 +304,14 @@ int wmain(int argc, wchar_t **argv) {
         fs.copyFileSync(executable, configured);
         fs.writeFileSync(configured + '.local', '');
       } else {
-        const identity = '<assemblyIdentity type="win32" name="apack.fixture.value" version="1.0.0.0" processorArchitecture="amd64"/>';
-        fs.writeFileSync(path.join(path.dirname(selected), 'apack.fixture.value.manifest'),
+        const identity = `<assemblyIdentity type="win32" name="${assemblyName}" version="1.0.0.0" processorArchitecture="amd64"/>`;
+        const assemblyManifest = path.join(path.dirname(selected), assemblyName + '.manifest');
+        fs.writeFileSync(assemblyManifest,
           `<?xml version="1.0" encoding="UTF-8"?><assembly xmlns="urn:schemas-microsoft-com:asm.v1" manifestVersion="1.0">${identity}<file name="apack_value.dll"/></assembly>`);
+        if (kind === 'assembly-resource') {
+          buildLibrary(selected, 22, assemblyManifest);
+          fs.rmSync(assemblyManifest);
+        }
         const manifest = path.join(root, 'probe.manifest');
         fs.writeFileSync(manifest,
           `<?xml version="1.0" encoding="UTF-8"?><assembly xmlns="urn:schemas-microsoft-com:asm.v1" manifestVersion="1.0"><assemblyIdentity type="win32" name="apack.fixture.probe" version="1.0.0.0" processorArchitecture="amd64"/><dependency><dependentAssembly>${identity}</dependentAssembly></dependency></assembly>`);
@@ -240,16 +319,59 @@ int wmain(int argc, wchar_t **argv) {
         expect(parsePeLibraryMetadata(fs.readFileSync(executable)).manifests.length).toBeGreaterThan(0);
       }
       expect(observe(configured)).toEqual({ value: 22, file: fs.realpathSync.native(selected).toLowerCase() });
-      if (kind === 'local') {
+      fs.rmSync(dllMarker);
+      expect(() => assertCapturedPeLibraries(entry, path.dirname(library), {
+        environment: capturePeLibraryEnvironment(configured), executable: configured, cwd: root,
+        variables: process.env, loadedLibraries: [], arch: process.arch,
+        realpath: file => fs.realpathSync.native(file),
+        directoryExists: file => fs.statSync(file, { throwIfNoEntry: false })?.isDirectory() ?? false,
+        read: file => fs.statSync(file, { throwIfNoEntry: false })?.isFile() ? fs.readFileSync(file) : undefined,
+      })).toThrow(selected);
+      expect(fs.existsSync(dllMarker)).toBe(false);
+      if (kind === 'assembly') {
+        const before = readCompilerRuntimeInputs(configured, false);
+        const manifest = path.join(path.dirname(selected), 'apack.fixture.value.manifest');
+        const original = fs.readFileSync(manifest);
+        fs.appendFileSync(manifest, '<!-- changed -->');
+        expect(readCompilerRuntimeInputs(configured, false).hash).not.toBe(before.hash);
+        fs.writeFileSync(manifest, original);
+        expect(readCompilerRuntimeInputs(configured, false).hash).toBe(before.hash);
+        // Missing configuration and DLL candidates must participate in freshness too.
+        fs.writeFileSync(configured + '.config', '<?xml version="1.0"?><configuration/>');
+        expect(readCompilerRuntimeInputs(configured, false).hash).not.toBe(before.hash);
+        fs.rmSync(configured + '.config');
+        const alternate = path.join(runtime, 'alternate/apack.fixture.alternate/apack_value.dll');
+        buildLibrary(alternate, 33);
+        const alternateIdentity = '<assemblyIdentity type="win32" name="apack.fixture.alternate" version="1.0.0.0" processorArchitecture="amd64"/>';
+        fs.writeFileSync(path.join(path.dirname(alternate), 'apack.fixture.alternate.manifest'),
+          `<?xml version="1.0"?><assembly xmlns="urn:schemas-microsoft-com:asm.v1" manifestVersion="1.0">${alternateIdentity}<file name="apack_value.dll"/></assembly>`);
+        const applicationManifest = path.join(root, 'alternate-probe.manifest');
+        fs.writeFileSync(applicationManifest, `<?xml version="1.0"?><assembly xmlns="urn:schemas-microsoft-com:asm.v1" manifestVersion="1.0"><assemblyIdentity type="win32" name="apack.fixture.probe" version="1.0.0.0" processorArchitecture="amd64"/><dependency><dependentAssembly>${alternateIdentity}</dependentAssembly></dependency></assembly>`);
+        const originalExecutable = fs.readFileSync(configured);
+        compile(applicationManifest);
+        fs.writeFileSync(configured + '.config', `<?xml version="1.0"?><configuration><windows><assemblyBinding xmlns="urn:schemas-microsoft-com:asm.v1"><assemblyIdentity type="win32" name="apack.fixture.probe" version="1.0.0.0" processorArchitecture="amd64"/><probing privatePath="alternate"/></assemblyBinding></windows></configuration>`);
+        expect(observe(configured)).toEqual({ value: 33, file: fs.realpathSync.native(alternate).toLowerCase() });
+        expect(capturePeLibraryEnvironment(configured).applicationContext.redirections).toContainEqual({ name: 'apack_value.dll', file: alternate });
+        expect(readCompilerRuntimeInputs(configured, false).hash).not.toBe(before.hash);
         fs.rmSync(dllMarker);
-        expect(() => assertCapturedPeLibraries(entry, path.dirname(library), {
-          environment: capturePeLibraryEnvironment(), executable: configured, cwd: root,
-          variables: process.env, loadedLibraries: [], arch: process.arch,
-          realpath: file => fs.realpathSync.native(file),
-          directoryExists: file => fs.statSync(file, { throwIfNoEntry: false })?.isDirectory() ?? false,
-          read: file => fs.statSync(file, { throwIfNoEntry: false })?.isFile() ? fs.readFileSync(file) : undefined,
-        })).toThrow(selected);
+        const policyRoot = path.join(root, 'copied-policy');
+        const policyExecutable = copyPeRuntimeFixture(configured, policyRoot);
         expect(fs.existsSync(dllMarker)).toBe(false);
+        expect(observe(policyExecutable)).toEqual({ value: 33,
+          file: fs.realpathSync.native(path.join(policyRoot, path.relative(runtime, alternate))).toLowerCase() });
+        fs.rmSync(configured + '.config');
+        fs.writeFileSync(configured, originalExecutable);
+        expect(readCompilerRuntimeInputs(configured, false).hash).toBe(before.hash);
+        const value = fs.readFileSync(selected);
+        fs.rmSync(selected);
+        const missing = readCompilerRuntimeInputs(configured, false).hash;
+        expect(missing).not.toBe(before.hash);
+        fs.writeFileSync(selected, value);
+        expect(readCompilerRuntimeInputs(configured, false).hash).toBe(before.hash);
+        const copiedRoot = path.join(root, 'copied');
+        const copiedExecutable = copyPeRuntimeFixture(configured, copiedRoot);
+        expect(observe(copiedExecutable)).toEqual({ value: 22,
+          file: fs.realpathSync.native(path.join(copiedRoot, path.relative(runtime, selected))).toLowerCase() });
       }
       completed = true;
     } finally {

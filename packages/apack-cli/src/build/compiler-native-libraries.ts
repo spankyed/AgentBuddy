@@ -75,8 +75,9 @@ export function assertCompilerRuntimeLibraries(executable: string, runtimeDirect
     });
   }
   if (process.platform === 'win32') {
+    const environment = capturePeLibraryEnvironment(executable);
     return assertCapturedPeLibraries(executable, runtimeDirectory, {
-      arch: process.arch, environment: capturePeLibraryEnvironment(), executable, cwd, variables: env, loadedLibraries: [],
+      arch: process.arch, environment, executable, cwd, variables: env, loadedLibraries: [],
       directoryExists: file => fs.statSync(file, { throwIfNoEntry: false })?.isDirectory() ?? false,
       realpath: file => fs.realpathSync.native(file),
       read: file => fs.statSync(file, { throwIfNoEntry: false })?.isFile() ? fs.readFileSync(file) : undefined,

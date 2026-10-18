@@ -1,4 +1,5 @@
 import { expect, it } from 'vitest';
+import { createHash } from 'node:crypto';
 import { assertCapturedPeLibraries } from '../../src/build/compiler-pe-admission.ts';
 import type { CompilerPeEnvironment } from '../../src/build/compiler-pe-environment.ts';
 import { peImage } from '../_support/pe-image.ts';
@@ -6,7 +7,8 @@ import { peImage } from '../_support/pe-image.ts';
 const entry = 'C:\\pack\\binding\\addon.node';
 const library = 'C:\\pack\\binding\\value.dll';
 const environment: CompilerPeEnvironment = { systemDirectory: 'C:\\Windows\\System32', windowsDirectory: 'C:\\Windows',
-  safeSearch: true, devOverride: false, knownDlls: [], apiSets: [], schema: 'C:\\Windows\\System32\\apisetschema.dll' };
+  safeSearch: true, devOverride: false, knownDlls: [], apiSets: [], schema: 'C:\\Windows\\System32\\apisetschema.dll',
+  applicationContext: { image: 'C:\\compiler\\node.exe', inputs: [], redirections: [] } };
 
 function image(dependency?: string, forwarder?: string) {
   const image = peImage();
@@ -27,7 +29,9 @@ function admission(files: [string, Buffer][], options: { environment?: Partial<C
   const images = new Map(entries.map(([file, bytes]) => [file.toLowerCase(), bytes]));
   const reads: string[] = [];
   return { reads, check: () => assertCapturedPeLibraries(entry, 'C:\\pack', {
-    environment: { ...environment, ...options.environment }, executable: options.executable ?? 'C:\\compiler\\node.exe', cwd: 'C:\\work',
+    environment: { ...environment, applicationContext: { ...environment.applicationContext,
+      image: options.executable ?? environment.applicationContext.image }, ...options.environment },
+    executable: options.executable ?? 'C:\\compiler\\node.exe', cwd: 'C:\\work',
     variables: options.variables ?? {}, loadedLibraries: options.loaded ?? [], arch: 'x64',
     directoryExists: file => options.directories?.includes(file) ?? false,
     read(file) { reads.push(file); return images.get(file.toLowerCase()); }, realpath: options.realpath ?? (file => file),
@@ -72,6 +76,40 @@ it('uses KnownDLLs before adjacent images and accepts physical OS libraries', ()
     { environment: { knownDlls: ['value.dll'] } });
   expect(value.check).not.toThrow();
   expect(value.reads).not.toContain(library);
+});
+
+it('uses application-context redirection before loaded images, KnownDLLs and adjacent libraries', () => {
+  const selected = 'C:\\compiler\\private\\value.dll';
+  const value = admission([[library, image()], [selected, image()]], {
+    loaded: [library], environment: { knownDlls: ['value.dll'],
+      applicationContext: { image: 'C:\\compiler\\node.exe', inputs: [], redirections: [{ name: 'VALUE.dll', file: selected }] } },
+  });
+  expect(value.check).toThrow(selected);
+});
+
+it('checks physical ownership of application-context libraries', () => {
+  const value = admission([[library, image()]], {
+    environment: { applicationContext: { image: 'C:\\compiler\\node.exe', inputs: [], redirections: [{ name: 'value.dll', file: library }] } },
+    realpath: file => file === library ? 'C:\\outside\\value.dll' : file,
+  });
+  expect(value.check).toThrow('outside its captured package');
+});
+
+it('does not fall back to an adjacent DLL when the activation context names a missing library', () => {
+  const value = admission([[library, image()]], {
+    environment: { applicationContext: { image: 'C:\\compiler\\node.exe', inputs: [], redirections: [{ name: 'value.dll', file: null }] } },
+  });
+  expect(value.check).toThrow('application context cannot locate');
+});
+
+it.each(['file', 'directory', 'missing'] as const)('observes and rejects changed %s context inputs', kind => {
+  const manifest = 'C:\\compiler\\private\\value.manifest';
+  const value = admission([[library, image()], [manifest, Buffer.from('changed')]], {
+    environment: { applicationContext: { image: 'C:\\compiler\\node.exe',
+      inputs: [{ file: manifest, kind, hash: kind === 'file' ? createHash('sha256').update('original').digest('hex') : null }], redirections: [] } },
+  });
+  expect(value.check).toThrow(`Windows application context changed during inspection: ${manifest}`);
+  expect(value.reads).toContain(manifest);
 });
 
 it('delegates the running Node image to its installation owner without recording private executable bytes', () => {

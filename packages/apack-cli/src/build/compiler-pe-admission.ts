@@ -1,7 +1,9 @@
 import { win32 as path } from 'node:path';
+import { createHash } from 'node:crypto';
 import { parsePeLibraryMetadata, type PeImportedSymbol, type PeLibraryMetadata } from './compiler-pe-libraries.ts';
 import { resolvePeApiSet } from './compiler-pe-api-sets.ts';
-import { peLibraryPaths, pePath, type CompilerPeEnvironment } from './compiler-pe-environment.ts';
+import { peLibraryPaths, type CompilerPeEnvironment } from './compiler-pe-environment.ts';
+import { isPeSystemPath, pePath } from './compiler-pe-paths.ts';
 
 /** Node uses LOAD_WITH_ALTERED_SEARCH_PATH: transitive imports share the top image's directory. */
 export function assertCapturedPeLibraries(entry: string, packageRoot: string, input: {
@@ -20,15 +22,23 @@ export function assertCapturedPeLibraries(entry: string, packageRoot: string, in
     const relative = path.relative(pePath(root), pePath(file));
     return relative === '' || (relative !== '..' && !relative.startsWith('..\\') && !path.isAbsolute(relative));
   };
-  const system = (file: string) => within(file, environment.systemDirectory)
-    || within(file, path.join(environment.windowsDirectory, 'WinSxS'))
-    || path.dirname(pePath(file)).toLowerCase() === pePath(environment.windowsDirectory).toLowerCase();
+  const system = (file: string) => isPeSystemPath(file, environment);
   const root = input.realpath(packageRoot);
   const images = new Map<string, PeLibraryMetadata>();
   const symbols = new Set<string>();
   const refuse = (requester: string, file: string): never => {
     throw new Error(`Native compiler image "${requester}" selects "${file}" outside its captured package. Use package-contained DLLs or operating-system libraries.`);
   };
+  if (pePath(environment.applicationContext.image).toLowerCase() !== pePath(input.executable).toLowerCase()) {
+    throw new Error('Windows application context does not match the compiler executable');
+  }
+  for (const selected of environment.applicationContext.inputs) {
+    const bytes = input.read(selected.file);
+    const kind = bytes !== undefined ? 'file' : input.directoryExists(selected.file) ? 'directory' : 'missing';
+    const hash = bytes === undefined ? null : createHash('sha256').update(bytes).digest('hex');
+    if (kind !== selected.kind || hash !== selected.hash) throw new Error(`Windows application context changed during inspection: ${selected.file}`);
+  }
+  const bindings = new Map(environment.applicationContext.redirections.map(binding => [binding.name.toLowerCase(), binding.file]));
   const marker = input.executable + '.local';
   const markerFile = input.read(marker);
   const markerDirectory = input.directoryExists(marker);
@@ -81,6 +91,11 @@ export function assertCapturedPeLibraries(entry: string, packageRoot: string, in
     if (mapped !== undefined) {
       if (!mapped) throw new Error(`Native compiler image "${requester}" references unavailable Windows API set "${name}"`);
       name = mapped;
+    }
+    if (path.basename(name) === name && bindings.has(name.toLowerCase())) {
+      const file = bindings.get(name.toLowerCase());
+      if (!file) throw new Error(`Windows application context cannot locate native compiler library "${name}" requested by "${requester}"`);
+      return file;
     }
     // Copying an image cannot relocate an absolute import encoded in its bytes.
     if (path.isAbsolute(name) && !system(name)) refuse(requester, name);

@@ -3,6 +3,9 @@ import { createRequire } from 'node:module';
 import path from 'node:path';
 import { createHash } from 'node:crypto';
 import type { PackageInputFile } from '@apackdev/host/build/package-inputs';
+import { readPeApplicationContext } from './compiler-pe-activation.ts';
+import { readPeSystemDirectory } from './compiler-pe-environment.ts';
+import { isPeSystemPath, pePath } from './compiler-pe-paths.ts';
 
 // Runtime distributions contain physical ASAR files; Electron's patched fs expands them as directories.
 const fs: typeof nodeFs = process.versions.electron ? createRequire(import.meta.url)('original-fs') : nodeFs;
@@ -25,7 +28,7 @@ export function readCompilerRuntimeInputs(
 ): CompilerRuntimeInputs {
   executable = fs.realpathSync.native(executable);
   const root = path.dirname(executable);
-  const directories: string[] = [];
+  const directories = new Set<string>();
   const links: CompilerRuntimeInputs['links'] = [];
   const files: Array<[string, number, string]> = [];
   const visited = new Set<string>();
@@ -41,7 +44,7 @@ export function readCompilerRuntimeInputs(
       // Preserve dangling links, without inventing a target's contents.
       if (fs.existsSync(target)) walk(fs.realpathSync.native(target));
     } else if (stat.isDirectory()) {
-      directories.push(file);
+      directories.add(file);
       for (const name of fs.readdirSync(file).sort()) walk(path.join(file, name));
     } else if (stat.isFile()) {
       const bytes = fs.readFileSync(file);
@@ -61,7 +64,7 @@ export function readCompilerRuntimeInputs(
       // A file marker redirects any requested basename to the executable directory.
       // A directory marker instead owns its own subtree; unrelated directories are not runtime inputs.
       if (stat.isFile()) {
-        directories.push(root);
+        directories.add(root);
         for (const entry of fs.readdirSync(root, { withFileTypes: true })) {
           const file = path.join(root, entry.name);
           if (entry.isFile() || (entry.isSymbolicLink() && !fs.statSync(file, { throwIfNoEntry: false })?.isDirectory())) walk(file);
@@ -69,12 +72,43 @@ export function readCompilerRuntimeInputs(
       }
     }
   }
+  let activation: unknown;
+  if (process.platform === 'win32') {
+    const bytes = fs.readFileSync(executable);
+    // Inventory still fingerprints opaque/damaged files; launch admission validates executable format.
+    if (bytes.length >= 2 && bytes.readUInt16LE(0) === 0x5a4d) {
+      const systemDirectory = readPeSystemDirectory();
+      const environment = { systemDirectory, windowsDirectory: path.dirname(systemDirectory) };
+      const context = readPeApplicationContext(executable, systemDirectory);
+      const within = (file: string) => {
+        const value = path.relative(pePath(root), pePath(file));
+        return value === '' || (value !== '..' && !value.startsWith(`..${path.sep}`) && !path.isAbsolute(value));
+      };
+      const system = (file: string) => isPeSystemPath(file, environment);
+      const own = (file: string) => {
+        const stat = fs.lstatSync(file, { throwIfNoEntry: false });
+        const physical = stat && fs.existsSync(file) ? fs.realpathSync.native(file) : file;
+        if (system(file) && system(physical)) return;
+        if (!within(file) || !within(physical)) throw new Error(`Windows runtime context selects "${file}" outside its runtime directory. Use runtime-contained private assemblies or operating-system libraries.`);
+        directories.add(path.dirname(file));
+        if (stat?.isDirectory()) directories.add(file);
+        else if (stat) walk(file);
+      };
+      for (const input of context.inputs) own(input.file);
+      for (const binding of context.redirections) if (binding.file) own(binding.file);
+      const identity = (file: string) => system(file) ? ['system', pePath(file).toLowerCase()] : ['runtime', relative(file)];
+      const ordered = (rows: unknown[]) => rows.sort((a, b) => JSON.stringify(a).localeCompare(JSON.stringify(b), 'en'));
+      activation = [ordered(context.inputs.map(input => [identity(input.file), input.kind, input.hash])),
+        ordered(context.redirections.map(binding => [binding.name.toLowerCase(), binding.file ? identity(binding.file) : null]))];
+    }
+  }
   // The macOS executable is inside Contents/MacOS. Keep the signed distribution together,
   // including Info.plist and sealed resources, as on the other Electron platforms.
   if (electron) walk(process.platform === 'darwin' ? path.dirname(root) : root);
-  const identity = [relative(executable), files.sort(([a], [b]) => a < b ? -1 : a > b ? 1 : 0),
-    directories.map(relative).sort(), links.map(({ source, target, text }) => [relative(source), relative(target),
+  const identity: unknown[] = [relative(executable), files.sort(([a], [b]) => a < b ? -1 : a > b ? 1 : 0),
+    [...directories].map(relative).sort(), links.map(({ source, target, text }) => [relative(source), relative(target),
       process.platform === 'win32' || path.isAbsolute(text) ? null : text]).sort()];
+  if (activation !== undefined) identity.push(activation);
   return { executable, directory: electron && process.platform === 'darwin' ? path.dirname(root) : root,
-    directories, links, hash: createHash('sha256').update(JSON.stringify(identity)).digest('hex') };
+    directories: [...directories], links, hash: createHash('sha256').update(JSON.stringify(identity)).digest('hex') };
 }

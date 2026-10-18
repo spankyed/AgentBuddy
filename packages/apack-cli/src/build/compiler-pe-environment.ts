@@ -3,28 +3,22 @@ import { win32 as path } from 'node:path';
 import { execFileSync } from 'node:child_process';
 import { parsePeApiSets, type PeApiSet } from './compiler-pe-api-sets.ts';
 import { readPeSection } from './compiler-pe-libraries.ts';
+import { pePath, type CompilerPeSystemPaths } from './compiler-pe-paths.ts';
+import { readPeApplicationContext, type CompilerPeActivationContext } from './compiler-pe-activation.ts';
 
-export interface CompilerPeEnvironment {
-  readonly systemDirectory: string;
-  readonly windowsDirectory: string;
+export interface CompilerPeEnvironment extends CompilerPeSystemPaths {
   readonly safeSearch: boolean;
   readonly devOverride: boolean;
   readonly knownDlls: readonly string[];
   readonly apiSets: readonly PeApiSet[];
   readonly schema: string;
+  readonly applicationContext: CompilerPeActivationContext;
 }
 
 // Capture the public report API before user preloads can replace it. Node's excludeEnv option is
 // per Environment, so a synchronous try/finally does not change another worker's reporting policy.
 const getReport = process.report.getReport.bind(process.report);
 const reportOptions = process.report as NodeJS.ProcessReport & { excludeEnv: boolean };
-
-/** Reports and realpath.native can spell the same Windows file with different namespace prefixes. */
-export function pePath(file: string): string {
-  const normalized = path.normalize(file);
-  if (normalized.startsWith('\\\\?\\UNC\\')) return '\\\\' + normalized.slice(8);
-  return normalized.startsWith('\\\\?\\') ? normalized.slice(4) : normalized;
-}
 
 function readPeReport() {
   const exclude = reportOptions.excludeEnv;
@@ -39,6 +33,10 @@ function peSystemDirectory(libraries: readonly string[]) {
   const ntdll = libraries.find(file => path.basename(file).toLowerCase() === 'ntdll.dll');
   if (!ntdll) throw new Error('Cannot locate the Windows system directory from loaded ntdll');
   return path.dirname(pePath(fs.realpathSync.native(ntdll)));
+}
+
+export function readPeSystemDirectory(): string {
+  return peSystemDirectory(readPeReport().libraries);
 }
 
 /** Query the OS for full paths; Node 23 reports use a fixed, undersized module filename buffer. */
@@ -86,15 +84,16 @@ export function readPeProcessState() {
   return { libraries: metadata.libraries, environment: report.environment };
 }
 
-/** Only OS metadata is queried; no pack image is passed to a loader or helper. */
-export function capturePeLibraryEnvironment(): CompilerPeEnvironment {
+/** Capture loader policy and the default application context before user preloads. */
+export function capturePeLibraryEnvironment(executable = process.execPath): CompilerPeEnvironment {
   const systemDirectory = peSystemDirectory(readPeReport().libraries);
   const { safeSearch, devOverride, knownDlls } = readPeLoaderMetadata(systemDirectory);
   const schema = path.join(systemDirectory, 'apisetschema.dll');
   const section = readPeSection(fs.readFileSync(schema), '.apiset');
   if (!section) throw new Error('Windows API-set schema has no .apiset section');
   return Object.freeze({ systemDirectory, windowsDirectory: path.dirname(systemDirectory), safeSearch, devOverride,
-    knownDlls: Object.freeze(knownDlls.map(name => name.toLowerCase())), schema, apiSets: parsePeApiSets(section) });
+    knownDlls: Object.freeze(knownDlls.map(name => name.toLowerCase())), schema, apiSets: parsePeApiSets(section),
+    applicationContext: readPeApplicationContext(executable, systemDirectory) });
 }
 
 export function peLibraryPaths(env: NodeJS.ProcessEnv): string[] {
