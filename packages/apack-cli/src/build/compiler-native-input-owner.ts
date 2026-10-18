@@ -16,6 +16,7 @@ export function createCompilerNativeInputs(original: ReturnType<typeof createCom
     onCapture?(): void;
   }) {
   const modules = new Map<string, CapturedNativeModule>();
+  const packRoot = original.observations().root;
   const within = (parent: string, file: string) => {
     const relative = relativeCompilerPath(parent, file);
     return relative === '' || (relative !== '..' && !relative.startsWith(`..${path.sep}`) && !path.isAbsolute(relative));
@@ -69,7 +70,10 @@ export function createCompilerNativeInputs(original: ReturnType<typeof createCom
       return file;
     }
     const owner = packageRoot(file, original.fileSystem.fileExists);
-    if (options.capture === 'package' && !nativePackages.has(owner)) {
+    // The authored pack already has an input owner, including codegen's later admission of
+    // generated files. Whole-package capture is for dependencies, whose output is immutable here.
+    const capturePackage = options.capture === 'package' && relativeCompilerPath(packRoot, owner) !== '';
+    if (capturePackage && !nativePackages.has(owner)) {
       const { snapshot } = captureCompilerPackage(owner, original.captureDataLocation, (file, bytes) =>
         original.captureFile(file.source, original.readDataBytes(file.source) ?? bytes));
       tree ??= createCompilerReadTree({ files: [], locations: [], links: [] }, paths);
@@ -80,7 +84,7 @@ export function createCompilerNativeInputs(original: ReturnType<typeof createCom
       arch: process.arch, environment: nativeEnvironment, realpath: original.fileSystem.realpath,
       read(candidate) {
         const bytes = original.readDataBytes(candidate);
-        if (options.capture === 'images' && bytes && within(owner, candidate)) readDataPath(candidate);
+        if (!capturePackage && bytes && within(owner, candidate)) readDataPath(candidate);
         return bytes;
       },
     });
