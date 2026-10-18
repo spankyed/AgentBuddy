@@ -11,7 +11,8 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { PACK_TYPES_FACADE } from '@apackdev/sdk/build';
-import { PACK_LAYOUT } from '@apackdev/host/packs';
+import { PACK_LAYOUT, readPackBuild } from '@apackdev/host/packs';
+import { readPackBuildInputs, assertPackBuildInputsCurrent } from '@apackdev/host/build/pack-build-inputs';
 import ts from 'typescript';
 import { sortLiteralUnions } from './declaration-text';
 
@@ -32,6 +33,16 @@ export function shownPath(file: string): string {
  */
 function bundleLabel(packDir: string): string {
   return path.join(packDir, 'dist', PACK_LAYOUT.typesDir, `${PACK_TYPES_FACADE}.d.ts`);
+}
+
+/** Reuse the facade dependents read only after verifying sealed output and current recorded inputs. */
+export function readBuiltFacadeReport(packDir: string): string {
+  const directory = path.join(packDir, 'dist');
+  const { snapshot, integrity } = readPackBuild(directory);
+  assertPackBuildInputsCurrent(packDir, readPackBuildInputs(directory, integrity));
+  const facade = snapshot.facades[PACK_TYPES_FACADE];
+  if (typeof facade !== 'string' || !facade.trim()) throw new Error('Built pack has no pack-types facade; rebuild the complete pack');
+  return facadeReportText(facade, packDir, snapshot.manifest.id);
 }
 
 /** Names a top-level statement declares, its sort key */

@@ -162,14 +162,11 @@ Three things the chain cannot work out for you, because they rewrite files you c
   `facade:check` are chain steps the runner borrows (`RECORDED_FILE_CHECKS`, `scripts/lib/typecheck-jobs.ts`), so
   one command answers for every one of them. It did not until 2026-10-08, and a green typecheck over a stale
   report is what that cost.
-  The check needs no build: it re-bundles the facade from the pack's sources, as `api:check` re-extracts the
-  reports it compares, so what it holds the report to is what the pack describes now rather than whatever is
-  in `dist`. **That is why it is a step of its own rather than appended to `build:default-setup`**, which is where it sat
-  while it still read what the build wrote. `apack pack build` warns when the report has fallen behind the bundle
-  it just wrote, which is a nudge at the moment the information exists and not the gate — the gate is
-  `facade:check`. It is not a typecheck leg because it regenerates the pack's barrel, which a leg may not do
-  (`scripts/lib/typecheck-legs.ts`'s header says why); `npm run typecheck` borrows the step instead and passes
-  `--skip-generate`, having regenerated once ahead of its pool.
+  The root chain check uses `facade-report --from-build`: verify sealed output, replay the common
+  build-input record, then compare the published facade without regenerating shared files. It runs
+  after `build:default-setup`. Source edits, missing output or modified receipts refuse.
+  The pack-local command still derives from source without needing a build. `npm run typecheck`
+  uses that command with `--skip-generate` after regenerating once ahead of its pool.
 - **a pack's content source (`src/content/`)** — when only `contentHash`/`rowSha256` moved, re-record
   deliberately with `npm run content-parity:update -w @app/default-setup`, and never edit a hash by hand.
   Re-recording rewrites a test expectation, not user data; what reaches users is the new `contentHash`.
@@ -693,26 +690,13 @@ npm run api:update       # Dev: regenerate etc/<entry>.api.md (and etc/<entry>.c
                          # before one API Extractor compiler state was shared across a package's entries.
                          # A chain step, so a merge runs it and an unchanged tree pays nothing for it
 
-# Built-in pack facade types (a root script; or from packages/default-setup, or -w @app/default-setup)
-npm run facade:check     # A chain step: fails if the facade the pack's sources describe isn't what
-                         # etc/pack-types.api.md records. **Needs no build**: it regenerates the pack's
-                         # barrels and re-bundles the facade itself (2.7s, median of 3, 2.7-2.8s, 86% idle,
-                         # 2026-10-07), so `dist` is never its subject and a build from older sources cannot
-                         # be mistaken for one. That is what makes it a step rather than a line appended to
-                         # `build:default-setup`, where it cost that step 2.7s in series for an ordering it stopped
-                         # needing. Not a typecheck leg either, for the one reason a leg may not: it writes,
-                         # regenerating the barrel it bundles. `--skip-generate` is for a caller that has
-                         # just done that — `npm run typecheck` ahead of its pool — and makes it a pure read
-npm run facade:update    # Dev: regenerate etc/pack-types.api.md, off that same re-bundle
-                         # Both are `apack pack facade-report [--update]`: it reads one pack's sources and writes
-                         # that pack's etc, so it is a CLI command like `validate` and `build`, not a repo
-                         # script. As a repo script its normalisation had to live in a third package to be
-                         # reachable from both it and the bundler, which is what the wrong home costs.
-                         # `apack pack build` warns when the report has fallen behind the bundle it just produced
-                         # — free there, and a nudge rather than the gate: failing would mean a pack author
-                         # could not start their app until they had rewritten a reviewed report mid-change.
-                         # `build:default-setup` declares etc/ because of that read, so the warning is keyed; what fails
-                         # on it is the facade:check step
+# Built-in pack facade types
+npm run facade:check     # Chain: compare the verified current build with etc/pack-types.api.md.
+                         # Requires build:default-setup; reads the common input record without codegen.
+npm run facade:check -w @app/default-setup
+                         # Standalone source derivation: regenerate entries and bundle the facade.
+npm run facade:update    # Derive from source and update the reviewed report; commit intentional changes.
+                         # apack pack build warns on a stale report; facade:check fails on it.
 
 # Manifest JSON schema (-w @apackdev/sdk)
 npm run schema:update    # Regenerate packages/apack-sdk/apack.schema.json from manifest-schema.ts

@@ -644,23 +644,8 @@ describe('every spawn an orchestrator makes is bounded', () => {
       + 'the graph does not support — they would refuse on a package it is still building').toEqual([]);
   });
 
-  /**
-   * `facade:check` runs after `build:default-setup`, and that is what makes its one write safe rather than lucky.
-   *
-   * `apack pack facade-report` regenerates `src/__generated__` before it bundles — the chain's step passes no
-   * `--skip-generate`, where `npm run typecheck` does, having regenerated once ahead of its own pool. That
-   * tree is what `typecheck:pack` compiles and what the two repo-scope steps walk, so a step running beside
-   * it could read it mid-write. None does, because `build:default-setup` writes that tree and this one declares it as an
-   * input, so the edge derives. Compiler-specific cache metadata lives outside generated outputs;
-   * rewriting that cache with identical generated modules leaves the build current.
-   *
-   * **`chain-inputs`' "a step that reads what another writes depends on it" cannot hold this.** That rule
-   * fires on an overlap between one step's inputs and another's outputs, so narrowing this step's inputs
-   * until `packages/default-setup/src` is no longer among them takes the overlap away too — leaving the rule
-   * nothing to require, green, while the edge goes. Checked by hand at the time: `dependsOn` returns `[]`.
-   * So the edge is named here, where losing it fails.
-   */
-  it('orders facade:check after build:default-setup, which is what keeps its codegen a no-op', () => {
+  it('checks the current built facade after its producer without running codegen', () => {
+    expect(rootScripts()['facade:check']).toContain('--from-build');
     const step = CHAIN_STEPS.find((candidate) => candidate.name === 'facade:check');
     expect(step, 'no facade:check step, so this would pass over nothing').toBeDefined();
 

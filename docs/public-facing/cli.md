@@ -505,7 +505,7 @@ Dependency details retain the declared spec, exact version, origin, delivery pat
 Exits 0 when validation is complete and valid, 1 for errors, and 2 when dependency resolution prevents
 complete checking. Unchecked work is listed explicitly; incomplete checks are never reported as valid.
 
-#### `apack pack facade-report [--update]`
+#### `apack pack facade-report`
 
 Reports your pack's **facade types** — what packs depending on yours compile against, the same bundle
 `apack pack build` writes to `dist/types/pack-types.d.ts` — as a reviewed file at `etc/pack-types.api.md`.
@@ -515,6 +515,13 @@ held against the facade your sources describe now; a `dist` left by an older bui
 Without `--update` it fails, printing a diff, when the committed report differs; with `--update` it rewrites
 the report. Commit the result: the point is that a change to what dependents can see is visible in review
 rather than buried in a generated bundle.
+
+After a build, use `--from-build` to compare its verified facade without regeneration or compilation.
+It checks sealed output integrity and replays the build's recorded source/dependency inputs; missing,
+stale or modified builds fail. This is the root repository's `npm run facade:check` path. The pack-local
+script still derives from sources by default. `--skip-generate` instead derives from previously generated
+entries and checks their generation stamp. The read-only `--from-build` option cannot be combined
+with `--update` or `--skip-generate`.
 
 `apack pack build` warns when your committed report has fallen behind the bundle it just produced. The command
 above is what fails, which is why a pack's own CI runs it.

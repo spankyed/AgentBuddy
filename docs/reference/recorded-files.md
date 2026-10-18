@@ -10,6 +10,12 @@ The archived goals hold the same ground from the other direction:
 ended the sample, and [`goal-measured-placement.md`](../archive/goals/goal-measured-placement.md) is the one
 that built it.
 
+**Current facade check (2026-10-18):** the root chain now uses explicit `--from-build`. Its producer
+seals input observations and output together; the check verifies that receipt and replays source and
+dependency freshness before comparing the published facade. This replaces the unchecked `dist` read
+criticized below and avoids regeneration beside build consumers. Standalone source derivation remains
+the pack-local default. The measurements and ordering discussion below describe the earlier implementation.
+
 **Three kinds of recorded file, and the question to ask of a new one is which it is.**
 
 A **derivation** re-takes its answer on every run and compares — `schema:check`, `exports:check`,

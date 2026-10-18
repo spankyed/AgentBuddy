@@ -90,6 +90,17 @@ describe.skipIf(!PACKAGES_BUILT)('apack pack facade-report', () => {
     expect(output).toContain('is up to date');
   });
 
+  it('checks the verified current build without changing generated files', async () => {
+    const directory = path.join(pack, 'src/__generated__');
+    const before = fs.readdirSync(directory);
+    const stamp = fs.readFileSync(path.join(pack, '.apack/generate-entries.json'), 'utf8');
+    const { code, output } = await callCli(pack, 'facade-report', ['--from-build']);
+    expect(code, output).toBe(0);
+    expect(output).toContain('is up to date');
+    expect(fs.readdirSync(directory)).toEqual(before);
+    expect(fs.readFileSync(path.join(pack, '.apack/generate-entries.json'), 'utf8')).toBe(stamp);
+  });
+
   it('refuses edited generated files on the skip path without updating the report', async () => {
     const entry = path.join(pack, 'src/__generated__/pack-types.ts');
     const original = fs.readFileSync(entry, 'utf8');
@@ -122,6 +133,7 @@ describe.skipIf(!PACKAGES_BUILT)('apack pack facade-report', () => {
   it('is not told anything by the built bundle: junk in dist does not move the verdict', async () => {
     fs.writeFileSync(bundleFile(), 'declare const nonsense: 1;\nexport { nonsense };\n');
 
+    expect((await callCli(pack, 'facade-report', ['--from-build'])).code).toBe(1);
     const { code, output } = await callCli(pack, 'facade-report');
     expect(code, output).toBe(0);
     expect(output).toContain('is up to date');
