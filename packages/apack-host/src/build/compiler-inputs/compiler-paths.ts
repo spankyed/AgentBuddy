@@ -12,7 +12,16 @@ export function resolveCompilerPath(file: string): string {
 
 /** Compare DOS and extended Windows spellings without removing extended-path component semantics. */
 export function relativeCompilerPath(from: string, to: string): string {
-  return path.relative(path.toNamespacedPath(from), path.toNamespacedPath(to));
+  const source = path.toNamespacedPath(from), target = path.toNamespacedPath(to);
+  const root = (file: string) => {
+    const ordinary = file.toUpperCase().startsWith('\\\\?\\UNC\\') ? '\\\\' + file.slice(8)
+      : file.startsWith('\\\\?\\') ? file.slice(4) : file;
+    return path.parse(ordinary).root.toLowerCase();
+  };
+  // Node treats extended drive/share names as components of the same device. Across
+  // roots, retain the absolute target rather than inventing a relative path through D:.
+  if (path.isAbsolute(source) && path.isAbsolute(target) && root(source) !== root(target)) return target;
+  return path.relative(source, target);
 }
 
 export function parseCompilerPaths(mappings: unknown): readonly CompilerPathMapping[] {
