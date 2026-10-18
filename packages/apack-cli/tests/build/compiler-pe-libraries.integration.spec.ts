@@ -5,11 +5,14 @@ import { execFileSync } from 'node:child_process';
 import { expect, it, vi } from 'vitest';
 import { packFixture } from '@apackdev/sdk/testing/pack-fixture';
 import { REPO_ROOT } from '@apackdev/host/build/packages-built';
+import { relativeCompilerPath } from '@apackdev/host/build/compiler-inputs';
 import { formatNodeOptions, parseNodeOptions } from '@apackdev/host/build/source-resolution';
 import { captureCompilerInstallation, compilerPackageDirectory, type CompilerInstallation } from '../../src/build/compiler-installation.ts';
 import { startPackFrontend, type PackFrontend } from '../../src/build/frontend-process.ts';
 import { nativeAddonSource } from '../_support/native-addon.ts';
 import { parsePeLibraryMetadata } from '../../src/build/compiler-pe-libraries.ts';
+import { BUILD_INPUTS_DIRECTORY_ENV } from '../../src/build/compiler-read-tree.ts';
+import type { CapturedNativeModule } from '../../src/build/compiler-native-input-owner.ts';
 
 it.runIf(process.platform === 'win32')('owns retained PE libraries and refuses outside DLLs before initialization', async () => {
   const root = fs.realpathSync.native(fs.mkdtempSync(path.join(os.tmpdir(), 'apack-pe-libraries-')));
@@ -77,16 +80,23 @@ BOOL WINAPI DllMain(HINSTANCE module, DWORD reason, LPVOID reserved) {
       process.report.excludeEnv = true;
       const addon = require(${JSON.stringify(addon)});
       if (!process.report.excludeEnv) throw new Error('Native admission changed report privacy policy');
-      require('node:fs').writeFileSync(${JSON.stringify(proof)}, JSON.stringify({value:addon.read(),libraries:process.report.getReport().sharedObjects}));
+      const fs = require('node:fs'), path = require('node:path');
+      const workspace = process.env[${JSON.stringify(BUILD_INPUTS_DIRECTORY_ENV)}];
+      const receipt = JSON.parse(fs.readFileSync(path.join(workspace, 'native-inputs-0.json'), 'utf8'));
+      const owner = receipt.modules.find(module => fs.realpathSync.native(module.source).toLowerCase() === fs.realpathSync.native(${JSON.stringify(addon)}).toLowerCase());
+      fs.writeFileSync(${JSON.stringify(proof)}, JSON.stringify({value:addon.read(),libraries:process.report.getReport().sharedObjects,workspace,owner}));
     }`);
     compiler = await captureCompilerInstallation(compilerPackageDirectory(), { cwd: pack });
     process.env.NODE_OPTIONS = formatNodeOptions([...parseNodeOptions(previousOptions), '--require', preload]);
     frontend = await startPackFrontend(pack, compiler, signal);
-    const loaded = JSON.parse(fs.readFileSync(proof, 'utf8')) as { value: number; libraries: string[] };
+    const loaded = JSON.parse(fs.readFileSync(proof, 'utf8')) as { value: number; libraries: string[]; workspace: string; owner: CapturedNativeModule };
     expect(loaded.value).toBe(11);
     expect(loaded.libraries.map(normalize)).not.toContain(normalize(library));
-    expect(loaded.libraries.map(normalize).some(file => file.includes('apack-vite-')
-      && file.endsWith(path.join('binding', 'apack_value.dll')))).toBe(true);
+    expect(loaded.owner).toBeDefined();
+    const owned = relativeCompilerPath(loaded.workspace, loaded.owner.captured);
+    expect(path.isAbsolute(owned)).toBe(false);
+    expect(owned).not.toMatch(/^\.\.(?:\\|\/|$)/);
+    expect(loaded.libraries.map(normalize)).toContain(normalize(path.join(path.dirname(loaded.owner.captured), 'apack_value.dll')));
     expect(await frontend.isCurrent(signal)).toBe(true);
     const original = fs.readFileSync(library), mode = fs.statSync(library).mode & 0o777;
     const replacement = path.join(root, 'replacement/apack_value.dll');
