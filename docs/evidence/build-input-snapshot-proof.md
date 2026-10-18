@@ -3687,3 +3687,27 @@ Final acceptance now has an explicit disposable route: `ci.yml` with `strict_cha
 branch-only workflow cannot be dispatched directly until registered on the default branch; this uses
 the existing CI dispatcher without modifying master or enabling automatic triggers. YAML parsing and
 all three affected CI-header checks pass. The final gate has not been launched and remains required.
+
+### Windows publication scenario progress and deadline (2026-10-17)
+
+Run [39094144526](https://github.com/spankyed/AgentBuddy/actions/runs/39094144526) on `d9cbbac35`
+gets beyond the generated-file refusal. Its preload case emits generated entries at 03:38:02, starts
+compilation at 03:38:03 and emits content/backend runtime output at 03:38:27, then reaches the 60-second
+case deadline at 03:38:29. This establishes build progress, not completed publication or a pass for the
+subsequent freshness/refusal checks. Fail-fast leaves the thread case unexecuted. Log:
+`/private/tmp/apack-pe-publication-39094144526.log`.
+
+Source `38e20971a` gives only the two Windows publication scenarios a 120-second bound, with phase
+timings for ordinary loading, initial build completion, source freshness/restoration, outside loading
+and refused-candidate retention. The suite's 60-second default, assertions and input scope are unchanged.
+The exception records the actual incomplete run and requires subsequent acceptance. All 42 timeout
+policy checks pass, including live-exception/override agreement, as do CLI types, focused lint and
+diff checks. No local native execution occurred.
+
+A separate source audit identifies the next macOS runtime gap: `assertCompilerRuntimeLibraries`
+checks linked images at the common launcher for Linux/Windows, but returns without a macOS image
+check. Mach-O addon admission already exists; it cannot run before an executable's linked-library
+constructors. Establish a small ordinary-loader/shared-launcher constructor control on hosted macOS
+before changing this path. Account for Electron's framework distribution and the selected executable's
+`@executable_path`; do not transplant a dirname-only Node boundary onto Electron or claim a reproduced
+OS defect from this source audit alone. The stricter signing-profile obligation remains separate.
