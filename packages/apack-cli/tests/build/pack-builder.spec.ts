@@ -63,6 +63,7 @@ function fixture() {
         }
       });
       fs.writeFileSync('.apack/frontend-starting.json', JSON.stringify({pid:process.pid, directory:process.env.APACK_FRONTEND_DIRECTORY}));
+      if (fs.existsSync('.apack/frontend-refuse')) process.exit(1);
       if (!hanging) process.send({type:'frontend-ready', port:12345, pid:process.pid, hash:JSON.parse(fs.readFileSync(process.env.APACK_COMPILER_INPUTS,'utf8')).hash});
       await new Promise(() => {});
     }
@@ -110,6 +111,7 @@ async function prepareCompiler(compiler: string) {
     throw error;
   }
   vi.spyOn(installation, 'captureCompilerInstallation').mockResolvedValueOnce(captured);
+  return captured;
 }
 
 it('reuses a verified compiler, refreshes changed or damaged copies, and releases its scope', async () => {
@@ -146,7 +148,7 @@ it('drains an interrupted frontend startup before removing its compiler and writ
   fs.writeFileSync(path.join(pack, '.apack/frontend-hang'), '');
   const refused = expect(builder.serveFrontend(() => {})).rejects.toMatchObject({ name: 'AbortError' });
   const record = path.join(pack, '.apack/frontend-starting.json');
-  await vi.waitFor(() => expect(fs.existsSync(record)).toBe(true));
+  await vi.waitFor(() => expect(fs.existsSync(record)).toBe(true), { timeout: 5_000 });
   const { pid, directory } = JSON.parse(fs.readFileSync(record, 'utf8'));
   expect(fs.existsSync(directory)).toBe(true);
   expect(fs.existsSync(fileURLToPath(accepted.bin))).toBe(true);
@@ -208,12 +210,34 @@ it('replaces a server for pack configuration changes while reusing unchanged sou
   fs.writeFileSync(path.join(pack, 'package.json'), '{"type":"module"}');
   await expect(builder.serveFrontend(() => {})).rejects.toThrow('configuration changed');
   fs.writeFileSync(path.join(pack, '.apack/fixture-input-hash'), packInputsHash(pack));
+  fs.writeFileSync(path.join(pack, '.apack/frontend-refuse'), '');
+  await expect(builder.build()).rejects.toThrow('Pack frontend exited before readiness');
+  expect(addresses).toHaveLength(1);
+  expect(() => process.kill(addresses[0]!.pid, 0)).not.toThrow();
+  expect(fs.existsSync(fileURLToPath(first.bin))).toBe(true);
+  const refused = JSON.parse(fs.readFileSync(path.join(pack, '.apack/frontend-starting.json'), 'utf8'));
+  expect(fs.existsSync(refused.directory)).toBe(false);
+  fs.rmSync(path.join(pack, '.apack/frontend-refuse'));
   await builder.build();
   expect(addresses).toHaveLength(2);
-  expect(report().bin).not.toBe(first.bin);
+  expect(report().bin).toBe(first.bin);
   expect(() => process.kill(addresses[0]!.pid, 0)).toThrow();
-  expect((await capture.mock.results[1]!.value).hash).toBe((await capture.mock.results[0]!.value).hash);
+  expect(capture).toHaveBeenCalledTimes(1);
+  expect(fs.existsSync(fileURLToPath(first.bin))).toBe(true);
+  await builder.close();
   expect(fs.existsSync(fileURLToPath(first.bin))).toBe(false);
+});
+
+it('replaces frontend metadata generations while retaining their verified compiler', async () => {
+  const capture = vi.spyOn(installation, 'captureCompilerInstallation');
+  const { pack, builder, report } = fixture();
+  await builder.build();
+  fs.mkdirSync(path.join(pack, 'src'));
+  fs.writeFileSync(path.join(pack, 'src/pack-entry-fe.ts'), 'export {};');
+  const addresses: { pid: number }[] = [];
+  await builder.serveFrontend(address => { if (address) addresses.push(address); });
+  const first = report();
+  fs.writeFileSync(path.join(pack, '.apack/fixture-input-hash'), packInputsHash(pack));
   const ui = path.join(pack, '.apack/ui-one');
   fs.mkdirSync(ui, { recursive: true });
   const lookup = path.join(pack, 'node_modules/@apackdev/ui');
@@ -223,11 +247,11 @@ it('replaces a server for pack configuration changes while reusing unchanged sou
   fs.writeFileSync(path.join(ui, 'package.json'), JSON.stringify(metadata));
   fs.writeFileSync(path.join(ui, 'one.js'), 'throw new Error("Metadata must not activate this module");');
   await builder.build();
-  expect(addresses).toHaveLength(3);
+  expect(addresses).toHaveLength(2);
   metadata.exports['./one'] = './two.js';
   fs.writeFileSync(path.join(ui, 'package.json'), JSON.stringify(metadata));
   await builder.build();
-  expect(addresses).toHaveLength(4);
+  expect(addresses).toHaveLength(3);
   const other = path.join(pack, '.apack/ui-two');
   fs.mkdirSync(other);
   fs.writeFileSync(path.join(other, 'package.json'), JSON.stringify({ name: '@apackdev/ui', exports: {
@@ -236,11 +260,27 @@ it('replaces a server for pack configuration changes while reusing unchanged sou
   fs.unlinkSync(lookup);
   fs.symlinkSync(other, lookup, 'dir');
   await builder.build();
-  expect(addresses).toHaveLength(5);
+  expect(addresses).toHaveLength(4);
+  expect(readPackDevServerInputs(pack)).toContain('@apackdev/ui/two');
+  expect(capture).toHaveBeenCalledTimes(1);
+  await builder.close();
+  expect(fs.existsSync(fileURLToPath(first.bin))).toBe(false);
+});
+
+it('replaces the frontend for environment changes without recopying the compiler', async () => {
+  const capture = vi.spyOn(installation, 'captureCompilerInstallation');
+  const { pack, builder } = fixture();
+  await builder.build();
+  fs.mkdirSync(path.join(pack, 'src'));
+  fs.writeFileSync(path.join(pack, 'src/pack-entry-fe.ts'), 'export {};');
+  fs.writeFileSync(path.join(pack, '.apack/fixture-input-hash'), packInputsHash(pack));
+  const addresses: { pid: number }[] = [];
+  await builder.serveFrontend(address => { if (address) addresses.push(address); });
   vi.stubEnv('VITE_APACK_BUILDER_TEST', 'changed');
   await builder.build();
-  expect(addresses).toHaveLength(6);
-  expect(readPackDevServerInputs(pack)).toContain('@apackdev/ui/two');
+  expect(addresses).toHaveLength(2);
+  expect(() => process.kill(addresses[0]!.pid, 0)).toThrow();
+  expect(capture).toHaveBeenCalledTimes(1);
 });
 
 it('tracks frontend SDK and UI metadata while leaving bundled EARS outside the shared frontend inputs', () => {
@@ -275,14 +315,25 @@ it('tracks effective ordered frontend Node options without treating source-mode 
 
 it('stops its worker before removing the compiler on close', async () => {
   const { compiler, pack, builder, report } = fixture();
-  await prepareCompiler(compiler);
+  const captured = await prepareCompiler(compiler);
   const running = builder.build({ args: ['--wait'] });
-  await vi.waitFor(() => expect(fs.existsSync(path.join(pack, '.apack/built.json'))).toBe(true));
+  await vi.waitFor(() => expect(fs.existsSync(path.join(pack, '.apack/built.json'))).toBe(true), { timeout: 5_000 });
   const active = report();
+  const dispose = captured.dispose;
+  const disposal = vi.spyOn(captured, 'dispose').mockImplementation(async () => {
+    try {
+      expect(() => process.kill(active.pid, 0)).toThrow();
+      expect(fs.existsSync(fileURLToPath(active.bin))).toBe(true);
+    } finally { await dispose(); }
+  });
   const stopped = expect(running).rejects.toMatchObject({ name: 'AbortError' });
   await builder.close();
   await stopped;
-  expect(JSON.parse(fs.readFileSync(path.join(pack, '.apack/stopped.json'), 'utf8')).compilerExists).toBe(true);
+  // Windows terminates the owned job; only POSIX delivers the fixture's SIGTERM handler.
+  if (process.platform !== 'win32') {
+    expect(JSON.parse(fs.readFileSync(path.join(pack, '.apack/stopped.json'), 'utf8')).compilerExists).toBe(true);
+  }
+  expect(disposal).toHaveBeenCalledTimes(1);
   expect(() => process.kill(active.pid, 0)).toThrow();
   expect(fs.existsSync(fileURLToPath(active.bin))).toBe(false);
 });
@@ -332,7 +383,7 @@ it('force-stops a compiler that ignores cancellation before releasing its inputs
   const { compiler, pack, builder, report } = fixture();
   await prepareCompiler(compiler);
   const running = builder.build({ args: ['--wait', '--ignore-term'] });
-  await vi.waitFor(() => expect(fs.existsSync(path.join(pack, '.apack/built.json'))).toBe(true));
+  await vi.waitFor(() => expect(fs.existsSync(path.join(pack, '.apack/built.json'))).toBe(true), { timeout: 5_000 });
   const active = report();
   const stopped = expect(running).rejects.toMatchObject({ name: 'AbortError' });
   await builder.close();

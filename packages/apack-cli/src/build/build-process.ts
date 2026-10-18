@@ -66,8 +66,8 @@ export function createPackBuilder(root: string): PackBuilder {
   const dispose = async (generation: Generation) => {
     try { await generation.frontend?.close(); }
     finally {
-      try { await generation.compiler.dispose(); }
-      finally { owned.delete(generation); }
+      owned.delete(generation);
+      if (![...owned].some(other => other.compiler === generation.compiler)) await generation.compiler.dispose();
     }
   };
   const ensureFrontend = async (generation: Generation, signal: AbortSignal) => {
@@ -114,10 +114,11 @@ export function createPackBuilder(root: string): PackBuilder {
         if (checkoutFor(cli) !== checkoutFor(root)) ensureCheckoutPackages(cli);
         const directory = compilerPackageDirectory();
         const configuration = frontendChanged ? readPackDevServerInputs(root) : undefined;
-        const reusable = current?.compiler.isCurrent(directory, { cwd: root })
-          && (!current.frontend || (current.configuration === configuration && await current.frontend.isCurrent(options.signal)));
+        const compiler = current?.compiler.isCurrent(directory, { cwd: root }) ? current.compiler : undefined;
+        const reusable = compiler && (!current?.frontend
+          || (current.configuration === configuration && await current.frontend.isCurrent(options.signal)));
         const candidate: Generation = current && reusable ? current
-          : { compiler: await captureCompilerInstallation(directory, { cwd: root }) };
+          : { compiler: compiler ?? await captureCompilerInstallation(directory, { cwd: root }) };
         owned.add(candidate);
         try {
           options.signal.throwIfAborted();

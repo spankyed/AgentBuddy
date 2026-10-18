@@ -9,6 +9,8 @@ import { packFixture } from '@apackdev/sdk/testing/pack-fixture';
 import { REPO_ROOT } from '@apackdev/host/build/packages-built';
 import { readPackBuild } from '@apackdev/host/packs';
 import { readPackBuildInputs, assertPackBuildInputsCurrent } from '@apackdev/host/build/pack-build-inputs';
+import { startPackBuildWatcher } from '../../src/build/watch.ts';
+import { createCompilerWatchMatcher, type CompilerWatchPaths } from '../../src/build/compiler-watch.ts';
 import { createPackBuilder } from '../../src/build/build-process.ts';
 import { createCompilerFileView, relativeCompilerPath } from '@apackdev/host/build/compiler-inputs';
 import { formatNodeOptions, parseNodeOptions } from '@apackdev/host/build/source-resolution';
@@ -779,3 +781,100 @@ require('node:worker_threads').parentPort.postMessage('NATIVE');`)}, {eval:true}
   },
   120_000,
 );
+
+it.runIf(process.platform === 'win32')('repairs a failed Vite assembly context through newly discovered watch inputs', async () => {
+  const root = fs.realpathSync.native(fs.mkdtempSync(path.join(os.tmpdir(), 'apack-pe-watch-')));
+  const pack = path.join(root, 'pack'), native = path.join(root, 'native'), preloadRoot = path.join(root, 'preload');
+  const previous = process.env.NODE_OPTIONS;
+  let builder: ReturnType<typeof createPackBuilder> | undefined;
+  let watcher: Awaited<ReturnType<typeof startPackBuildWatcher>> | undefined;
+  let unsubscribe: (() => void) | undefined;
+  let completed = false;
+  const errors = vi.spyOn(console, 'error').mockImplementation(() => {});
+  const started = performance.now();
+  const checkpoint = (phase: string) => console.info(`PE assembly watch: ${phase} (${Math.round(performance.now() - started)}ms)`);
+  let closing: Promise<void> | undefined;
+  const close = () => closing ??= (async () => {
+    try { await watcher?.close(); } finally {
+      try { await builder?.close(); } finally {
+        unsubscribe?.(); errors.mockRestore();
+        if (previous === undefined) delete process.env.NODE_OPTIONS; else process.env.NODE_OPTIONS = previous;
+        if (completed) fs.rmSync(root, { recursive: true, force: true });
+        else console.error(`Retained PE assembly watch: ${root}`);
+      }
+    }
+  })();
+  onTestFinished(close);
+  try {
+    packFixture({ at: pack, nodeModules: path.join(REPO_ROOT, 'node_modules'), manifest: { features: {} }, files: {
+      'src/pack-entry-fe.ts': "export { default } from './View.vue';", 'src/View.vue': '<template>ASSEMBLY_WATCH</template>',
+      'tsconfig.json': JSON.stringify({ compilerOptions: { module: 'esnext', moduleResolution: 'bundler', skipLibCheck: true } }),
+    } });
+    fs.mkdirSync(native); fs.writeFileSync(path.join(native, 'package.json'), '{"name":"native-fixture"}');
+    const { addon, dllMarker, buildLibrary, buildAddon } = createPeNativeFixture(root, native);
+    const assembly = 'apack.fixture.watch.value';
+    const identity = `<assemblyIdentity type="win32" name="${assembly}" version="1.0.0.0" processorArchitecture="amd64"/>`;
+    const manifest = path.join(root, 'addon.manifest');
+    fs.writeFileSync(manifest, `<assembly xmlns="urn:schemas-microsoft-com:asm.v1" manifestVersion="1.0"><assemblyIdentity type="win32" name="apack.fixture.watch" version="1.0.0.0" processorArchitecture="amd64"/><dependency><dependentAssembly>${identity}</dependentAssembly></dependency></assembly>`);
+    const initial = path.join(path.dirname(addon), 'initial', assembly);
+    fs.mkdirSync(initial, { recursive: true });
+    fs.writeFileSync(path.join(initial, assembly + '.manifest'), `<assembly xmlns="urn:schemas-microsoft-com:asm.v1" manifestVersion="1.0">${identity}<file name="apack_value.dll"/></assembly>`);
+    buildLibrary(path.join(initial, 'apack_value.dll'), 11);
+    buildAddon(manifest);
+    const configure = (directory: string) => fs.writeFileSync(addon + '.2.config', `<configuration><windows><assemblyBinding xmlns="urn:schemas-microsoft-com:asm.v1"><assemblyIdentity type="win32" name="apack.fixture.watch" version="1.0.0.0" processorArchitecture="amd64"/><probing privatePath="${directory}"/></assemblyBinding></windows></configuration>`);
+    configure('initial');
+    fs.mkdirSync(preloadRoot);
+    fs.writeFileSync(path.join(preloadRoot, 'package.json'), '{"name":"preload-fixture"}');
+    fs.writeFileSync(path.join(preloadRoot, 'state.json'), JSON.stringify({ addon }));
+    const proof = path.join(root, 'values.jsonl'), preload = path.join(preloadRoot, 'preload.cjs');
+    // Data-driven loading keeps the external native package outside the static module inventory.
+    fs.writeFileSync(preload, `if (globalThis[Symbol.for('apack.compiler.frontend')]) {
+      const addon = require(require('./state.json').addon);
+      require('node:fs').appendFileSync(${JSON.stringify(proof)}, JSON.stringify({value:addon.read(),thread:require('node:worker_threads').threadId})+'\\n');
+    }`);
+    process.env.NODE_OPTIONS = formatNodeOptions([...parseNodeOptions(previous), '--require', preload]);
+    checkpoint('fixture ready');
+    // Drain runner messages before cold synchronous compiler inventory work.
+    await new Promise<void>(resolve => setImmediate(resolve));
+    builder = createPackBuilder(pack);
+    let observed: CompilerWatchPaths = new Map();
+    unsubscribe = builder.subscribeFrontendInputs(update => { observed = update.paths; });
+    const builds = vi.spyOn(builder, 'build'), publications = vi.fn(async () => {});
+    const addresses: Array<{ port: number; pid: number }> = [];
+    watcher = await startPackBuildWatcher(pack, { builder, buildArgs: ['--skip-fe'], onBuilt: publications,
+      place: { env: 'test', userDataDir: path.join(root, 'profile') } });
+    checkpoint('watch ready');
+    await builder.serveFrontend(address => { if (address) addresses.push(address); });
+    checkpoint('initial frontend ready');
+    const url = `http://localhost:${addresses[0]!.port}/src/View.vue`;
+    expect(await (await fetch(url, { signal: AbortSignal.timeout(2_000) })).text()).toContain('ASSEMBLY_WATCH');
+    fs.rmSync(dllMarker);
+    builds.mockClear(); configure('repair');
+    await vi.waitFor(() => expect(builds).toHaveBeenCalled(), { timeout: 20_000 });
+    await expect(builds.mock.results[0]!.value).rejects.toThrow('Pack frontend exited before readiness');
+    checkpoint('missing assembly refused');
+    expect(addresses).toHaveLength(1);
+    expect(fs.existsSync(dllMarker)).toBe(false);
+    expect(await (await fetch(url, { signal: AbortSignal.timeout(2_000) })).text()).toContain('ASSEMBLY_WATCH');
+    const repair = path.join(path.dirname(addon), 'repair', assembly);
+    const repairedManifest = path.join(repair, assembly + '.manifest');
+    expect(createCompilerWatchMatcher(observed)(repairedManifest, 'rename'), 'Failed context lost its new repair subscription').toBe(true);
+    const staged = path.join(root, 'repair-stage', assembly);
+    fs.mkdirSync(staged, { recursive: true });
+    fs.copyFileSync(path.join(initial, assembly + '.manifest'), path.join(staged, assembly + '.manifest'));
+    buildLibrary(path.join(staged, 'apack_value.dll'), 22);
+    builds.mockClear();
+    fs.mkdirSync(path.dirname(repair), { recursive: true });
+    fs.renameSync(staged, repair);
+    await vi.waitFor(() => expect(builds).toHaveBeenCalled(), { timeout: 20_000 });
+    await expect(builds.mock.results[0]!.value).resolves.toBeUndefined();
+    await vi.waitFor(() => expect(publications).toHaveBeenCalledTimes(1), { timeout: 2_000 });
+    checkpoint('repair published');
+    expect(addresses).toHaveLength(2);
+    expect(() => process.kill(addresses[0]!.pid, 0)).toThrow();
+    expect(fs.readFileSync(proof, 'utf8').trim().split('\n').map(line => JSON.parse(line))
+      .filter(row => row.thread === 0).map(row => row.value)).toEqual([11, 22]);
+    completed = true;
+  } catch (error) { console.info('PE assembly watch refusals:', errors.mock.calls); throw error; }
+  finally { await close(); }
+}, 300_000);

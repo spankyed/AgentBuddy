@@ -27,6 +27,8 @@ import { overrideKey, sizeOf, specFilesUnder, timeoutOverrides, type TimeoutOver
  * fails on an entry whose override has gone, so the list shrinks when the reason does.
  */
 const TIMEOUT_EXCEPTIONS: Record<string, string> = {
+  'packages/apack-cli/tests/build/compiler-pe-libraries.integration.spec.ts > repairs a failed Vite assembly context through newly discovered watch inputs':
+    'The real Windows lifecycle passes in 232.4s: initial backend/frontend readiness, missing-assembly refusal, repair publication and retirement run sequentially. Frontend replacements share one verified compiler installation. This scenario uses 300s. Keep the 20-second event bounds, failed-input matcher, no-initialization, incumbent, value and retirement assertions; this does not extend helper deadlines or other cases.',
   'packages/apack-cli/tests/build/compiler-pe-libraries.integration.spec.ts > refuses Node .local overrides through the captured compiler runtime before initialization':
     'Ordinary redirected Node loading, full public-CLI compiler capture/verification, then protected worker refusal and cleanup are sequential. VM stage evidence records 46.07s in package capture; the complete invocation reaches attributed refusal at 73.08s. This single scenario uses 120s with test-owned child cancellation. Keep the authored-path diagnostic, captured-marker/DLL and both no-initialization assertions.',
   'packages/apack-cli/tests/build/compiler-pe-libraries.integration.spec.ts > captures PE %s inputs and preserves publication after outside-library refusal':
