@@ -3282,3 +3282,20 @@ including preload mutation of LD_LIBRARY_PATH and a newly appearing override: re
 launch-time worker test rather than add another owner or general loader framework. Preserve the
 remaining mapped-image/runtime-distribution checks, PE, stricter app signing, B6 and final strict
 `--all` requirements. These passes do not establish every ELF/Electron/Windows profile.
+
+### Ordinary ELF RUNPATH worker acceptance candidate (2026-10-17)
+
+Extended the existing launch-time worker case to Linux using a bare SONAME and `$ORIGIN/../lib`
+RUNPATH. The first build must execute captured library bytes even though a preload deletes
+LD_LIBRARY_PATH; a matching override appearing later must invalidate the accepted input record,
+refuse before native initialization and retain the published revision. A fresh ordinary Node control
+must actually select that override before refusal is accepted. macOS retains its existing relative
+load-command fixture. Shared ordinary-Node setup is extracted once without another subprocess call
+site; library source changes remain atomic.
+
+CLI types, changed-file lint, workflow parsing/diff checks and all 11 subprocess-inventory checks
+pass locally. No native execution ran locally. The Linux workflow now accepts the same optional
+`test_name` filtering pattern as the macOS route, with the filter passed through a quoted environment
+variable. The affected three shared native backend cases can run without repeating the unchanged
+runtime/lifetime/baseline stages; the default route still retains all those gates. Real acceptance
+of the new RUNPATH case is pending.

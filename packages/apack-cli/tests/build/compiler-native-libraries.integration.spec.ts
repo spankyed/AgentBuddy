@@ -19,7 +19,7 @@ import { assertCapturedMachOLibraries, captureMachOLibraryEnvironment } from '..
 import { startPackBuildWatcher } from '../../src/build/watch.ts';
 import { nativeAddonSource } from '../_support/native-addon.ts';
 
-function nativeFixture(mode: 'relative' | 'absolute' | 'transitive' | 'fallback' | 'framework', sdk?: string) {
+function nativeFixture(mode: 'relative' | 'absolute' | 'transitive' | 'fallback' | 'framework' | 'runpath', sdk?: string) {
   const root = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'apack-native-libraries-')));
   try {
     const pack = path.join(root, 'pack');
@@ -44,12 +44,13 @@ function nativeFixture(mode: 'relative' | 'absolute' | 'transitive' | 'fallback'
     buildLibrary(library, mode === 'transitive'
       ? 'extern int outside_value(void); int native_value(void) { return outside_value(); }'
       : 'int native_value(void) { return 11; }',
-    mode === 'absolute' ? library : mode === 'fallback' ? path.basename(library)
+    mode === 'absolute' ? library : mode === 'fallback' || mode === 'runpath' ? path.basename(library)
       : (macho ? '@loader_path/../' : '$ORIGIN/../') + path.relative(native, library), mode === 'transitive' ? [outside] : []);
     const addonSource = path.join(native, 'binding/addon.c');
     fs.writeFileSync(addonSource, nativeAddonSource(marker));
     execFileSync(macho ? 'clang' : 'cc', [...architecture, ...(macho ? ['-bundle', '-undefined', 'dynamic_lookup'] : ['-shared']),
       '-I', path.resolve(path.dirname(process.execPath), '../include/node'), addonSource, library,
+      ...(mode === 'runpath' ? ['-Wl,-rpath,$ORIGIN/../lib'] : []),
       ...(sdk ? ['-mmacosx-version-min=11.0', `-Wl,-platform_version,macos,11.0,${sdk}`] : []),
       '-o', path.join(native, 'binding/addon.node')]);
     fs.writeFileSync(path.join(pack, 'package.json'), '{"type":"commonjs"}');
@@ -66,6 +67,13 @@ function nativeFixture(mode: 'relative' | 'absolute' | 'transitive' | 'fallback'
     fs.writeFileSync(entry, "module.exports = require('../native-package/binding/addon');");
     return { root, pack, native, library, marker, outside, entry, buildLibrary };
   } catch (error) { fs.rmSync(root, { recursive: true, force: true }); throw error; }
+}
+
+function ordinaryNativeLoad(fixture: ReturnType<typeof nativeFixture>, env: NodeJS.ProcessEnv) {
+  return JSON.parse(execFileSync(process.execPath, ['-e', `const addon = require(${JSON.stringify(path.join(fixture.native, 'binding/addon.node'))});
+console.log(JSON.stringify({ value: addon.read(), libraries: process.report.getReport().sharedObjects.map(file => require('node:path').normalize(file)) }));`], {
+    encoding: 'utf8', env, timeout: 10_000,
+  })) as { value: number; libraries: string[] };
 }
 
 it.runIf(process.platform === 'darwin').each([
@@ -442,10 +450,7 @@ it.runIf(process.platform === 'darwin' || process.platform === 'linux').each(['p
     assertPackBuildInputsCurrent(supported.pack, inputs);
     const revision = readPackBuild(path.join(supported.pack, 'dist')).revision;
     for (const fixture of refused) {
-      const ordinary = JSON.parse(execFileSync(process.execPath, ['-e', `const addon = require(${JSON.stringify(path.join(fixture.native, 'binding/addon.node'))});
-console.log(JSON.stringify({ value: addon.read(), libraries: process.report.getReport().sharedObjects.map(file => require('node:path').normalize(file)) }));`], {
-        encoding: 'utf8', env: { ...process.env, NODE_OPTIONS: previous }, timeout: 10_000,
-      })) as { value: number; libraries: string[] };
+      const ordinary = ordinaryNativeLoad(fixture, { ...process.env, NODE_OPTIONS: previous });
       expect(ordinary.value).toBe(11);
       expect(ordinary.libraries).toContain(fixture.library);
       expect(fs.existsSync(fixture.marker)).toBe(true);
@@ -465,11 +470,12 @@ console.log(JSON.stringify({ value: addon.read(), libraries: process.report.getR
   }
 });
 
-it.runIf(process.platform === 'darwin')('retains launch-time native search paths across preload changes and compiler workers', async () => {
-  const fixture = nativeFixture('relative');
+it.runIf(process.platform === 'darwin' || process.platform === 'linux')('retains launch-time native search paths across preload changes and compiler workers', async () => {
+  const fixture = nativeFixture(process.platform === 'linux' ? 'runpath' : 'relative');
   const builder = createPackBuilder(fixture.pack);
   const previousOptions = process.env.NODE_OPTIONS;
-  const previousSearch = process.env.DYLD_LIBRARY_PATH;
+  const variable = process.platform === 'linux' ? 'LD_LIBRARY_PATH' : 'DYLD_LIBRARY_PATH';
+  const previousSearch = process.env[variable];
   const search = path.join(fixture.root, 'search');
   const proof = path.join(fixture.root, 'worker-proof.json');
   const preload = path.join(fixture.pack, 'clear-loader-env.cjs');
@@ -480,14 +486,15 @@ it.runIf(process.platform === 'darwin')('retains launch-time native search paths
         sources: { rows: { path: 'src/value.txt', format: 'rows' } } } },
       files: { 'src/compiler.ts': nativeWorkerCompiler(nativeLoad(fixture, proof)), 'src/value.txt': 'input',
         'tsconfig.json': JSON.stringify({ compilerOptions: { module: 'esnext', moduleResolution: 'bundler', skipLibCheck: true } }) } });
-    fs.writeFileSync(preload, `delete process.env.DYLD_LIBRARY_PATH;`);
+    fs.writeFileSync(preload, `delete process.env[${JSON.stringify(variable)}];`);
     process.env.NODE_OPTIONS = formatNodeOptions([...parseNodeOptions(previousOptions), '--require', preload]);
-    process.env.DYLD_LIBRARY_PATH = search;
+    process.env[variable] = search;
     await builder.build({ args: ['--skip-fe'] });
     const loaded = JSON.parse(fs.readFileSync(proof, 'utf8')) as { value: number; thread: number; libraries: string[] };
     expect(loaded.thread).toBeGreaterThan(0);
     expect(loaded.value).toBe(11);
     expect(loaded.libraries).not.toContain(fixture.library);
+    expect(loaded.libraries.some(file => file.includes('apack-inputs-') && file.endsWith('/lib/' + path.basename(fixture.library)))).toBe(true);
     const output = path.join(fixture.pack, 'dist');
     const revision = readPackBuild(output).revision;
     const inputs = readPackBuildInputs(output);
@@ -495,7 +502,13 @@ it.runIf(process.platform === 'darwin')('retains launch-time native search paths
     fs.rmSync(fixture.marker);
     fs.rmSync(proof);
     // An unused directory was harmless; this new matching library would now override the owned copy.
-    fs.copyFileSync(fixture.library, path.join(search, path.basename(fixture.library)));
+    const selected = path.join(search, path.basename(fixture.library));
+    fs.copyFileSync(fixture.library, selected);
+    const ordinary = ordinaryNativeLoad(fixture, { ...process.env, NODE_OPTIONS: previousOptions });
+    expect(ordinary.value).toBe(11);
+    expect(ordinary.libraries).toContain(selected);
+    expect(fs.existsSync(fixture.marker)).toBe(true);
+    fs.rmSync(fixture.marker);
     expect(() => assertPackBuildInputsCurrent(fixture.pack, inputs)).toThrow();
     await expect(builder.build({ args: ['--skip-fe'] })).rejects.toThrow();
     expect(fs.existsSync(fixture.marker)).toBe(false);
@@ -504,8 +517,8 @@ it.runIf(process.platform === 'darwin')('retains launch-time native search paths
   } finally {
     if (previousOptions === undefined) delete process.env.NODE_OPTIONS;
     else process.env.NODE_OPTIONS = previousOptions;
-    if (previousSearch === undefined) delete process.env.DYLD_LIBRARY_PATH;
-    else process.env.DYLD_LIBRARY_PATH = previousSearch;
+    if (previousSearch === undefined) delete process.env[variable];
+    else process.env[variable] = previousSearch;
     await builder.close();
     fs.rmSync(fixture.root, { recursive: true, force: true });
   }
