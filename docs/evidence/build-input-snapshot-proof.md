@@ -4606,3 +4606,56 @@ in `/private/tmp/apack-helper-ownership-44db25ef2.zip`; the observer script is p
 `/private/tmp/apack-helper-ownership-observe.ps1`. No Node/MSVC compiler remained at the final process
 inspection. The VM retains its existing launcher change, earlier stashes and the validated proof overlay;
 none was reset or deleted.
+
+## Windows DLL configuration acceptance (2026-10-18)
+
+Source checkpoint `61431e063` extends existing controls without changing production admission,
+runtime capture or deadlines. Windows Server 2025 x64 / Node 23.11.1, one worker, two-core budget.
+The final test blob is `161a9abd8950dcc731062baa76b373d2c2882b21` on both machines.
+
+The ordinary resource-2 control now proves that a DLL's `.2.config` probing path selects the exact
+private assembly Windows executes. The same metadata reader returns that selection, fingerprints
+the configuration and changes its recorded hash when configuration bytes change. Admission observes
+both the configuration and selected DLL through its existing input callbacks, without initialization.
+This proves input observation, not live watcher delivery or every selection-policy change.
+
+The existing real Node module-context case now places the private assembly under `alternate`,
+requiring the DLL's own configuration. Ordinary Node loads value 22 from that exact library. Protected
+startup refuses its PATH-selected outside transitive dependency before DLL/NAPI markers; once that
+dependency is package-contained, a fresh owned snapshot executes value 22 and reports its DLL under
+the snapshot workspace. The selecting configuration must therefore survive capture as well as the
+library bytes. No extra full compiler-installation build is introduced.
+
+Two failed controls were diagnosed before acceptance. Moving an assembly after its original DLL
+had loaded yielded ordinary loader error 2; a fresh configured DLL loaded successfully. Using that
+renamed assembly in metadata inspection then yielded error 3: the mapped section reported its old,
+now-missing filename. Copying independent assembly files instead of renaming the already-mapped file
+made both actual loading and metadata selection agree. This does not establish a configuration
+selection defect in production. The renamed-section case remains a fail-closed limitation; no runtime
+fallback or workaround is added. A short SxS trace produced no useful events and was stopped in
+`finally`; it is not cited as proof of loader caching.
+
+Focused acceptance is deliberately split by changed boundary:
+
+- `module-config-final-8c388fdf7`: all five affected ordinary-loader controls pass in 20.29s
+  (17.84s tests), including the configuration/hash case in 3.562s. Blob
+  `0892b046d16626f60c24f97235bc325243c1fe28`; its ordinary-control code matches the final source.
+- `node-module-config-8c388fdf7`: the strengthened real Node startup case passes in 11.28s
+  (8.990s test), using the final blob above.
+- CLI typecheck, focused oxlint and diff checks pass. No public schema/API changes or broad native
+  rerun is required by this test-only extension; converged and final strict gates remain outstanding.
+
+All run directories are under `C:\apack-setup\runs`; failed native fixtures
+`apack-pe-redirection-7tdGtt` and `apack-pe-redirection-ELS71b` remain preserved. The logs, diagnostics,
+reports and both failed fixtures are saved off-machine in
+`/private/tmp/apack-module-config-evidence-8c388fdf7.zip`. The original unaccepted outside-configuration
+draft in stash `4fc71560e7c203d3cfd54bd7583583fe9ac3d3c4` remains untouched.
+
+Remaining: broader publisher/culture/selection policy, newly appearing higher-priority watch inputs,
+Electron, helper descendant cleanup on timeout/parent loss, other named B1/B3 platform cases, B6 and
+final strict `--all`. Basic module configuration and captured Node selection are accepted here;
+the goal is not complete.
+
+The validated VM overlay is preserved in stash `Validated DLL configuration overlay on 8c388fdf7`,
+then the checkout is fast-forwarded to `61431e063`. The pre-existing launcher change and all earlier
+stashes remain untouched. Azure confirms `VM deallocated`; no execution owner remains.
