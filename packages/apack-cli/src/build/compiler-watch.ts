@@ -3,7 +3,7 @@ import path from 'node:path';
 import { createHash } from 'node:crypto';
 import { readCompilerModuleInputs } from './compiler-module-inputs.ts';
 import { readPackageInputs } from '@apackdev/host/build/package-inputs';
-import { physicalWatchPath, relativeCompilerPath, type CompilerInputObservations } from '@apackdev/host/build/compiler-inputs';
+import { physicalWatchPath, relativeCompilerPath, resolveCompilerPath, type CompilerInputObservations } from '@apackdev/host/build/compiler-inputs';
 import { compilerPackageDirectory, readEsbuildOverride } from './compiler-installation.ts';
 import { readCompilerRuntimeInputs } from './compiler-runtime.ts';
 import { compilerEnvironmentIdentity } from './compiler-environment.ts';
@@ -11,6 +11,8 @@ import type { BuildInputKind, BuildInputObserver } from '@apackdev/host/build/pa
 
 export type CompilerWatchPaths = ReadonlyMap<string, BuildInputKind>;
 const priority = { directory: 0, file: 1, entries: 2 };
+const parentDirectory = (file: string) => file.startsWith('\\\\?\\')
+  ? resolveCompilerPath(path.dirname(resolveCompilerPath(file))) : path.dirname(file);
 
 function addPath(paths: Map<string, BuildInputKind>, file: string, kind: BuildInputKind): void {
   const previous = paths.get(file);
@@ -42,7 +44,7 @@ export function additionalCompilerObservations(observations: CompilerInputObserv
 }
 
 function isDirectory(file: string): boolean {
-  try { return fs.statSync(file, { throwIfNoEntry: false })?.isDirectory() ?? false; }
+  try { return fs.statSync(resolveCompilerPath(file), { throwIfNoEntry: false })?.isDirectory() ?? false; }
   catch (error) {
     if ((error as NodeJS.ErrnoException).code === 'ENOTDIR') return false;
     throw error;
@@ -167,19 +169,20 @@ export function compilerWatchTargets(paths: CompilerWatchPaths, authoredRoot?: s
     try {
       const metadata = JSON.parse(fs.readFileSync(file, 'utf8'));
       if (!metadata.workspaces) {
-        roots.add(path.dirname(file));
-        roots.add(fs.realpathSync.native(path.dirname(file)));
+        roots.add(parentDirectory(file));
+        roots.add(fs.realpathSync.native(parentDirectory(file)));
       }
     } catch {
       // Compression is optional: an unreadable manifest keeps its ordinary file/parent subscriptions.
     }
   }
-  const scopes = [...roots].filter(scope => path.dirname(scope) !== scope
+  const scopes = [...roots].filter(scope => parentDirectory(scope) !== scope
     && !authoredRoots.some(root => root === scope || root.startsWith(`${scope}${path.sep}`)))
     .sort((a, b) => a.length - b.length);
   const targets = new Map<string, CompilerWatchTarget>();
   const scopeFor = new Map<string, string | undefined>();
   const add = (directory: string, file: string, kind: BuildInputKind) => {
+    directory = resolveCompilerPath(directory);
     if (!scopeFor.has(directory)) scopeFor.set(directory, scopes.find(root => directory === root || directory.startsWith(`${root}${path.sep}`)));
     const scope = scopeFor.get(directory);
     const anchor = scope ?? directory;
@@ -198,17 +201,17 @@ export function compilerWatchTargets(paths: CompilerWatchPaths, authoredRoot?: s
       const relative = relativeCompilerPath(root, file);
       return relative !== '..' && !relative.startsWith(`..${path.sep}`) && !path.isAbsolute(relative);
     })) continue;
-    let directory = path.dirname(file);
+    let directory = parentDirectory(file);
     while (!directoryExists(directory)) {
-      const parent = path.dirname(directory);
+      const parent = parentDirectory(directory);
       if (parent === directory) throw new Error(`No existing directory for compiler input ${file}`);
       directory = parent;
     }
     add(directory, file, kind);
     // A watch stays on its old inode after replacement; subscribe to each ancestor's own replacement too.
-    for (let child = directory; path.dirname(child) !== child && !guarded.has(child); child = path.dirname(child)) {
+    for (let child = directory; parentDirectory(child) !== child && !guarded.has(child); child = parentDirectory(child)) {
       guarded.add(child);
-      add(path.dirname(child), child, 'directory');
+      add(parentDirectory(child), child, 'directory');
     }
     if (kind === 'entries' && directoryExists(file)) add(file, file, kind);
   }
@@ -219,14 +222,14 @@ export function compilerWatchTargets(paths: CompilerWatchPaths, authoredRoot?: s
 export function createCompilerWatchMatcher(paths: CompilerWatchPaths): (changed: string, event: string) => boolean {
   const ancestors = new Set<string>();
   for (const file of paths.keys()) {
-    for (let parent = path.dirname(file); !ancestors.has(parent); parent = path.dirname(parent)) {
+    for (let parent = parentDirectory(file); !ancestors.has(parent); parent = parentDirectory(parent)) {
       ancestors.add(parent);
-      if (parent === path.dirname(parent)) break;
+      if (parent === parentDirectory(parent)) break;
     }
   }
   return (changed, event) => {
     const kind = paths.get(changed);
     if (event !== 'rename') return kind !== undefined && kind !== 'directory';
-    return kind !== undefined || ancestors.has(changed) || paths.get(path.dirname(changed)) === 'entries';
+    return kind !== undefined || ancestors.has(changed) || paths.get(parentDirectory(changed)) === 'entries';
   };
 }

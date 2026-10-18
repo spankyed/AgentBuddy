@@ -232,6 +232,17 @@ it('shares package scopes on native recursive platforms and uses selected leaf d
   expect(linux.has(path.join(pack, 'src'))).toBe(false);
 });
 
+it.runIf(process.platform === 'win32')('stops extended-path watch guards at the actual drive root', () => {
+  const { root } = fixture();
+  const volume = path.parse(root).root;
+  const file = path.toNamespacedPath(path.join(root, 'contract.d.ts'));
+  const inputs = new Map([[path.toNamespacedPath(volume), 'directory'], [file, 'file']] as const);
+  const targets = compilerWatchTargets(inputs);
+  expect(targets.has(volume)).toBe(true);
+  for (const directory of targets.keys()) expect(fs.statSync(directory).isDirectory()).toBe(true);
+  expect(createCompilerWatchMatcher(inputs)(volume, 'rename')).toBe(true);
+});
+
 it('watches package runtime bytes, directory membership and missing transitive dependencies behind unchanged types', () => {
   const { root, pack } = fixture();
   const library = path.join(fs.realpathSync(root), 'node_modules/library');
