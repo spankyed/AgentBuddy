@@ -42,12 +42,17 @@ const {spawnCompilerWorker} = await import(${JSON.stringify(new URL('../../src/b
 const installation = await captureCompilerInstallation(${JSON.stringify(compiler)});
 let output;
 try {
+  if (process.env.APACK_TEST_SIGNED_ELECTRON) {
+    const {spawnSync} = await import('node:child_process');
+    const signature = spawnSync('codesign', ['--verify','--strict','--verbose=4',installation.executable], {encoding:'utf8'});
+    if (signature.status !== 0) throw new Error('Captured runtime signature failed: ' + signature.stdout + signature.stderr);
+  }
   const child = spawnCompilerWorker(installation, [installation.bin], {cwd:${JSON.stringify(compiler)},
     env:{...process.env,ELECTRON_RUN_AS_NODE:'1',NODE_OPTIONS:undefined},stdio:['ignore','pipe','pipe','ipc'],signal:AbortSignal.timeout(15000)}, ${JSON.stringify(root)});
   let stdout = '', stderr = '';
   child.stdout.on('data', bytes => { stdout += bytes; }); child.stderr.on('data', bytes => { stderr += bytes; });
   await new Promise((resolve, reject) => {
-    child.once('error', reject); child.once('close', code => code === 0 ? resolve() : reject(new Error('Captured Electron exited with ' + code + ': ' + stderr)));
+    child.once('error', reject); child.once('close', (code, signal) => code === 0 ? resolve() : reject(new Error('Captured Electron exited with ' + (signal ?? code) + ': ' + stderr)));
   });
   output = {value:JSON.parse(stdout),captured:installation.executable,current:installation.isCurrent(${JSON.stringify(compiler)})};
 } finally { await installation.dispose(); }
