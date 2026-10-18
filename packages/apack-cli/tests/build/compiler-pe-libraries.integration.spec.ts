@@ -1,7 +1,8 @@
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { execFileSync } from 'node:child_process';
+import { execFile, execFileSync } from 'node:child_process';
+import { promisify } from 'node:util';
 import { expect, it, vi } from 'vitest';
 import { packFixture } from '@apackdev/sdk/testing/pack-fixture';
 import { REPO_ROOT } from '@apackdev/host/build/packages-built';
@@ -80,6 +81,91 @@ BOOL WINAPI DllMain(HINSTANCE module, DWORD reason, LPVOID reserved) {
     '/OUT:' + addon, path.join(root, 'value.lib'), importLibrary!]);
   return { library, addon, dllMarker, addonMarker, buildLibrary };
 }
+
+/** Change only a private copy: DotLocal is suppressed by Node's embedded application manifest. */
+function createNodeWithoutApplicationManifest(root: string) {
+  const executable = path.join(root, 'node.exe');
+  fs.copyFileSync(process.execPath, executable);
+  const manifests = parsePeLibraryMetadata(fs.readFileSync(executable)).manifests.filter(item => item.path[1] === 1);
+  expect(manifests.length).toBeGreaterThan(0);
+  const source = path.join(root, 'remove-manifest.c'), tool = path.join(root, 'remove-manifest.exe');
+  fs.writeFileSync(source, `#include <windows.h>
+#include <stdlib.h>
+int wmain(int argc, wchar_t **argv) {
+  if (argc < 3) return 2;
+  HANDLE update = BeginUpdateResourceW(argv[1], FALSE);
+  if (!update) return 3;
+  for (int i = 2; i < argc; i++) {
+    if (!UpdateResourceW(update, MAKEINTRESOURCEW(24), MAKEINTRESOURCEW(1), (WORD)wcstoul(argv[i], NULL, 10), NULL, 0)) {
+      EndUpdateResourceW(update, TRUE); return 4;
+    }
+  }
+  return EndUpdateResourceW(update, FALSE) ? 0 : 5;
+}`);
+  execFileSync('cl.exe', ['/nologo', '/MT', source, '/Fo' + path.join(root, 'remove-manifest.obj'),
+    '/link', '/OUT:' + tool], { cwd: root, timeout: 15_000 });
+  for (const manifest of manifests) expect(typeof manifest.path[2]).toBe('number');
+  execFileSync(tool, [executable, ...manifests.map(manifest => String(manifest.path[2]))], { timeout: 5_000 });
+  expect(parsePeLibraryMetadata(fs.readFileSync(executable)).manifests.filter(item => item.path[1] === 1)).toEqual([]);
+  return executable;
+}
+
+it.runIf(process.platform === 'win32')('refuses Node .local overrides through the captured compiler runtime before initialization', async ({ onTestFinished }) => {
+  const root = fs.realpathSync.native(fs.mkdtempSync(path.join(os.tmpdir(), 'apack-node-local-')));
+  let completed = false;
+  try {
+    const pack = path.join(root, 'pack'), runtime = path.join(root, 'runtime');
+    fs.mkdirSync(runtime);
+    packFixture({ at: pack, nodeModules: path.join(REPO_ROOT, 'node_modules'), manifest: { features: {} },
+      files: { 'src/pack-entry-fe.ts': "export { default } from './View.vue';", 'src/View.vue': '<template>LOCAL</template>' } });
+    const { addon, dllMarker, addonMarker, buildLibrary } = createPeNativeFixture(root, pack);
+    const executable = createNodeWithoutApplicationManifest(runtime);
+    const library = path.join(runtime, 'apack_value.dll');
+    buildLibrary(library, 22);
+    fs.writeFileSync(executable + '.local', '');
+    // Removing the manifest also removes Windows-version declarations; the runner is supported Windows.
+    const environment = { ...process.env, NODE_SKIP_PLATFORM_CHECK: '1' };
+    const ordinary = JSON.parse(execFileSync(executable, ['-e',
+      `const addon = require(${JSON.stringify(addon)}); console.log(JSON.stringify({ value:addon.read(), file:addon.libraryPath() }));`],
+    { cwd: pack, env: environment, encoding: 'utf8', timeout: 5_000 })) as { value: number; file: string };
+    expect(ordinary.value).toBe(22);
+    expect(fs.realpathSync.native(ordinary.file).toLowerCase()).toBe(fs.realpathSync.native(library).toLowerCase());
+    expect(fs.existsSync(dllMarker)).toBe(true);
+    expect(fs.existsSync(addonMarker)).toBe(true);
+    fs.rmSync(dllMarker); fs.rmSync(addonMarker);
+    const preload = path.join(root, 'preload.cjs'), proof = path.join(root, 'captured.json');
+    fs.writeFileSync(preload, `if (process.env.APACK_BUILD_WORKER === '1') {
+      const fs = require('node:fs'), path = require('node:path');
+      const library = path.join(path.dirname(process.execPath), 'apack_value.dll');
+      fs.writeFileSync(${JSON.stringify(proof)}, JSON.stringify({executable:process.execPath, library,
+        marker:fs.existsSync(process.execPath + '.local'), copied:fs.statSync(library).isFile()}));
+      require(${JSON.stringify(addon)});
+    }`);
+    const cli = path.join(compilerPackageDirectory(), 'dist/cli.js');
+    const stop = new AbortController();
+    const request = promisify(execFile)(executable, [cli, 'pack', 'build'], {
+      cwd: pack, env: { ...environment, NODE_OPTIONS: formatNodeOptions(['--require', preload]) },
+      encoding: 'utf8', signal: stop.signal, maxBuffer: 1024 * 1024,
+    });
+    const closed = new Promise<void>(resolve => request.child.once('close', () => resolve()));
+    onTestFinished(async () => { stop.abort(); await closed; });
+    const result = await request.then(output => ({ code: 0, stderr: output.stderr }), error => ({ code: error.code, stderr: String(error.stderr) }));
+    expect(result.code).toBe(1);
+    const captured = JSON.parse(fs.readFileSync(proof, 'utf8')) as {
+      library: string; executable: string; marker: boolean; copied: boolean;
+    };
+    expect(captured.executable).not.toBe(executable);
+    expect(captured.marker).toBe(true);
+    expect(captured.copied).toBe(true);
+    expect(result.stderr).toContain(`selects "${library}" outside its captured package`);
+    expect(fs.existsSync(dllMarker)).toBe(false);
+    expect(fs.existsSync(addonMarker)).toBe(false);
+    completed = true;
+  } finally {
+    if (completed) fs.rmSync(root, { recursive: true, force: true });
+    else console.error(`Retained Node .local runtime: ${root}`);
+  }
+}, 120_000);
 
 // Ordinary Windows loader controls: these deliberately bypass compiler admission. A failed
 // control invalidates the fixture; it does not establish a production admission defect.

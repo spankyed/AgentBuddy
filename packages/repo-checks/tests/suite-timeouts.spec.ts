@@ -27,6 +27,8 @@ import { overrideKey, sizeOf, specFilesUnder, timeoutOverrides, type TimeoutOver
  * fails on an entry whose override has gone, so the list shrinks when the reason does.
  */
 const TIMEOUT_EXCEPTIONS: Record<string, string> = {
+  'packages/apack-cli/tests/build/compiler-pe-libraries.integration.spec.ts > refuses Node .local overrides through the captured compiler runtime before initialization':
+    'Ordinary redirected Node loading, full public-CLI compiler capture/verification, then protected worker refusal and cleanup are sequential. VM stage evidence records 46.07s in package capture; the complete invocation reaches attributed refusal at 73.08s. This single scenario uses 120s with test-owned child cancellation. Keep the authored-path diagnostic, captured-marker/DLL and both no-initialization assertions.',
   'packages/apack-cli/tests/build/compiler-pe-libraries.integration.spec.ts > captures PE %s inputs and preserves publication after outside-library refusal':
     'Windows run 39094144526 emits its first backend runtime near the 60-second deadline, before freshness/restoration and refusal complete. Run 39095177818 passes the preload/thread scenarios in 62.55s/61.63s. Keep the 120-second scenario bound and phase timings; the combined preload/thread case additionally verifies process-wide DLL reuse. The CommonJS compiler-reuse case passes in run 39100052114 in 106.17s, including freshness/restoration and refused publication, under that unchanged bound.',
   'packages/apack-cli/tests/build/compiler-native-libraries.integration.spec.ts > watches external Vite native changes and repairs a failed generation through newly discovered inputs':
