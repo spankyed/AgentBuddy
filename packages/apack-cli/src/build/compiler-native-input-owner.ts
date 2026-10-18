@@ -5,6 +5,7 @@ import { beginCompilerNativeModules, compilerDiagnostic, compilerSourcePath, rel
 import { captureCompilerPackage } from './compiler-package-inputs.ts';
 import { assertCapturedCompilerLibraries, type CompilerLibraryEnvironment } from './compiler-native-libraries.ts';
 import { createCompilerReadTree, type CompilerReadTree } from './compiler-read-tree.ts';
+import { readPeDirectoryEntries } from './compiler-pe-activation.ts';
 import { isOwnedCompilerPath, type CompilerInstallationInputs } from './compiler-installation-inputs.ts';
 
 export interface CapturedNativeModule { readonly source: string; readonly captured: string; readonly packageRoot: string }
@@ -43,6 +44,16 @@ export function createCompilerNativeInputs(original: ReturnType<typeof createCom
       locations: [...(location ? [location] : []), ...original.ancestors(file)], links: [] });
     return tree.dataPath(file);
   });
+  const readEntries = (file: string) => {
+    if (includes(file) && sourcePath(file) === file) {
+      original.captureDataLocation(file, 'entries');
+      original.fileSystem.getDirectories(file);
+      const entries = readPeDirectoryEntries(file);
+      if (entries) readDataPath(file);
+      return entries;
+    }
+    return readPeDirectoryEntries(file);
+  };
   const nativePackages = new Set<string>();
   const packageRoot = (file: string, exists: (file: string) => boolean) => {
     for (let directory = path.dirname(file); ; directory = path.dirname(directory)) {
@@ -55,6 +66,7 @@ export function createCompilerNativeInputs(original: ReturnType<typeof createCom
     const known = options.findModule?.(file);
     if (known) {
       assertCapturedCompilerLibraries(known.captured, known.packageRoot, {
+        readEntries,
         directoryExists: file => fs.statSync(file, { throwIfNoEntry: false })?.isDirectory() ?? false,
         arch: process.arch, environment: nativeEnvironment, realpath: file => fs.realpathSync.native(file),
         read: file => fs.statSync(file, { throwIfNoEntry: false })?.isFile() ? fs.readFileSync(file) : undefined,
@@ -65,6 +77,7 @@ export function createCompilerNativeInputs(original: ReturnType<typeof createCom
     // actual images without recording ephemeral private paths as new source inputs.
     if (!includes(file) || sourcePath(file) !== file) {
       assertCapturedCompilerLibraries(file, packageRoot(file, fs.existsSync), {
+        readEntries,
         directoryExists: file => includes(file) && sourcePath(file) === file
           ? original.captureDataLocation(file, 'directory')?.kind === 'directory'
           : fs.statSync(file, { throwIfNoEntry: false })?.isDirectory() ?? false,
@@ -87,6 +100,7 @@ export function createCompilerNativeInputs(original: ReturnType<typeof createCom
       nativePackages.add(owner);
     }
     assertCapturedCompilerLibraries(file, owner, {
+      readEntries,
       directoryExists: file => !includes(file) || sourcePath(file) !== file
         ? fs.statSync(file, { throwIfNoEntry: false })?.isDirectory() ?? false
         : original.captureDataLocation(file, 'directory')?.kind === 'directory',

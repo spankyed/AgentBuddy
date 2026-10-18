@@ -8,11 +8,12 @@ import { createCompilerNativeInputs } from '../../src/build/compiler-native-inpu
 import { BUILD_INPUTS_DIRECTORY_ENV, removeCompilerReadTree } from '../../src/build/compiler-read-tree.ts';
 
 // Exercise capture ownership with inert bytes; actual native loading belongs on disposable runners.
-const runtimeProbe = vi.hoisted(() => ({ file: undefined as string | undefined }));
+const runtimeProbe = vi.hoisted(() => ({ file: undefined as string | undefined, directory: undefined as string | undefined }));
 vi.mock('../../src/build/compiler-native-libraries.ts', () => ({
   assertCapturedCompilerLibraries(file: string, _root: string, input: {
-    read(file: string): unknown; directoryExists(file: string): boolean;
+    read(file: string): unknown; directoryExists(file: string): boolean; readEntries(file: string): unknown;
   }) {
+    if (runtimeProbe.directory) input.readEntries(runtimeProbe.directory);
     input.read(file);
     input.read(file.replace('addon.node', 'value.dll'));
     if (runtimeProbe.file) { input.read(runtimeProbe.file); input.directoryExists(runtimeProbe.file); }
@@ -90,4 +91,31 @@ it('keeps compiler copy locations out of replayable source input identity', () =
     }
     expect(hashes[1]).toBe(hashes[0]);
   } finally { vi.unstubAllEnvs(); removeCompilerReadTree(root); }
+});
+
+
+it('retains directory membership for native language lookup and replays it after disposal', () => {
+  const root = fs.realpathSync.native(fs.mkdtempSync(path.join(os.tmpdir(), 'apack-native-directory-')));
+  const pack = path.join(root, 'pack'), workspace = path.join(root, 'workspace');
+  fs.mkdirSync(pack); fs.mkdirSync(workspace);
+  fs.writeFileSync(path.join(pack, 'addon.node'), 'ADDON');
+  fs.writeFileSync(path.join(pack, 'value.dll'), 'VALUE');
+  fs.writeFileSync(path.join(pack, 'package.json'), '{}');
+  vi.stubEnv(BUILD_INPUTS_DIRECTORY_ENV, workspace);
+  const watched: string[] = [];
+  const view = createCompilerFileView(pack, { observe: (file, kind) => { if (kind === 'entries') watched.push(file); } });
+  const native = createCompilerNativeInputs(view, workspace, { directory: path.join(root, 'compiler'), paths: [] },
+    { macho: { libraryPaths: [], fallbackLibraryPaths: undefined, frameworkPaths: [], fallbackFrameworkPaths: undefined, imageSuffixes: [] } }, { capture: 'images' });
+  try {
+    runtimeProbe.directory = pack;
+    native.nativeModule(path.join(pack, 'addon.node'));
+    expect(watched).toContain(pack);
+    const observations = view.observations();
+    native.dispose();
+    expect(() => assertNativeCompilerObservations(observations)).not.toThrow();
+    fs.mkdirSync(path.join(pack, 'fr-BE'));
+    expect(() => assertNativeCompilerObservations(observations)).toThrow();
+    fs.rmdirSync(path.join(pack, 'fr-BE'));
+    expect(() => assertNativeCompilerObservations(observations)).not.toThrow();
+  } finally { runtimeProbe.directory = undefined; native.dispose(); vi.unstubAllEnvs(); removeCompilerReadTree(root); }
 });

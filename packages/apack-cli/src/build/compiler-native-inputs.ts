@@ -1,4 +1,5 @@
 import path from 'node:path';
+import { readPeDirectoryEntries } from './compiler-pe-activation.ts';
 import { isBuiltin } from 'node:module';
 import ts from 'typescript';
 import { assertCapturedCompilerLibraries, captureCompilerLibraryEnvironment, type CompilerLibraryEnvironment } from './compiler-native-libraries.ts';
@@ -222,6 +223,7 @@ export function createNativeInputReader(view: NativeInputView, initialPackages: 
           // Startup owns process-wide native copies, including images already loaded by preloads.
           if (options.admitNative) options.admitNative(specifier);
           else assertCapturedCompilerLibraries(specifier, scope(path.dirname(specifier)).packageRoot ?? path.dirname(specifier), {
+            readEntries(file) { location(file, 'entries'); view.fileSystem.getDirectories(file); return readPeDirectoryEntries(file); },
             directoryExists(file) { location(file, 'directory'); return view.fileSystem.directoryExists(file); },
             arch: process.arch, environment,
             realpath: file => view.fileSystem.realpath(file),

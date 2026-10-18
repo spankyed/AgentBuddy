@@ -90,16 +90,17 @@ export function readCompilerRuntimeInputs(
         const physical = stat && fs.existsSync(file) ? fs.realpathSync.native(file) : file;
         if (system(file) && system(physical)) return;
         if (!within(file) || !within(physical)) throw new Error(`Windows runtime context selects "${file}" outside its runtime directory. Use runtime-contained private assemblies or operating-system libraries.`);
-        directories.add(path.dirname(file));
         if (stat?.isDirectory()) directories.add(file);
-        else if (stat) walk(file);
+        else { directories.add(path.dirname(file)); if (stat) walk(file); }
       };
       // Absent candidates affect identity without inventing directories in the copied runtime.
       for (const input of context.inputs) if (input.kind !== 'missing') own(input.file);
       for (const binding of context.redirections) if (binding.file) own(binding.file);
       const identity = (file: string) => system(file) ? ['system', pePath(file).toLowerCase()] : ['runtime', relative(file)];
       const ordered = (rows: unknown[]) => rows.sort((a, b) => JSON.stringify(a).localeCompare(JSON.stringify(b), 'en'));
-      activation = [ordered(context.inputs.map(input => [identity(input.file), input.kind, input.hash])),
+      // Full listings guard inspection; named candidates and owned directories define copy identity.
+      // A selective Node runtime does not copy unrelated source-directory files.
+      activation = [ordered(context.inputs.map(input => [identity(input.file), input.kind, input.kind === 'entries' ? null : input.hash])),
         ordered(context.redirections.map(binding => [binding.name.toLowerCase(), binding.file ? identity(binding.file) : null]))];
     }
   }

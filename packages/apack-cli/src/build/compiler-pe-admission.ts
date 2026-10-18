@@ -4,7 +4,7 @@ import { parsePeLibraryMetadata, type PeImportedSymbol, type PeLibraryMetadata }
 import { resolvePeApiSet } from './compiler-pe-api-sets.ts';
 import { peLibraryPaths, type CompilerPeEnvironment } from './compiler-pe-environment.ts';
 import { isPeSystemPath, pePath } from './compiler-pe-paths.ts';
-import type { CompilerPeActivationContext } from './compiler-pe-activation.ts';
+import { peDirectoryEntriesHash, type CompilerPeActivationContext, type CompilerPeDirectoryEntry, type CompilerPeInputObserver } from './compiler-pe-activation.ts';
 
 interface CompilerPeImage {
   metadata: PeLibraryMetadata;
@@ -21,8 +21,9 @@ export function assertCapturedPeLibraries(entry: string, packageRoot: string, in
   arch: string;
   read(file: string): Buffer | undefined;
   directoryExists(file: string): boolean;
+  readEntries(file: string): readonly CompilerPeDirectoryEntry[] | undefined;
   realpath(file: string): string;
-  moduleContext(image: string, observe: (file: string) => void): CompilerPeActivationContext;
+  moduleContext(image: string, observe: CompilerPeInputObserver): CompilerPeActivationContext;
 }): void {
   const environment = input.environment;
   const within = (file: string, root: string) => {
@@ -39,6 +40,11 @@ export function assertCapturedPeLibraries(entry: string, packageRoot: string, in
   const contextBindings = (context: CompilerPeActivationContext, image: string) => {
     if (pePath(context.image).toLowerCase() !== pePath(image).toLowerCase()) throw new Error(`Windows activation context does not match its image: ${image}`);
     for (const selected of context.inputs) {
+      if (selected.kind === 'entries') {
+        const entries = input.readEntries(selected.file);
+        if (!entries || peDirectoryEntriesHash(entries) !== selected.hash) throw new Error(`Windows activation directory changed during inspection: ${selected.file}`);
+        continue;
+      }
       const bytes = input.read(selected.file);
       const kind = bytes !== undefined ? 'file' : input.directoryExists(selected.file) ? 'directory' : 'missing';
       const hash = bytes === undefined ? null : createHash('sha256').update(bytes).digest('hex');
@@ -84,7 +90,7 @@ export function assertCapturedPeLibraries(entry: string, packageRoot: string, in
     const machine = input.arch === 'x64' ? 0x8664 : input.arch === 'arm64' ? 0xaa64 : input.arch === 'ia32' ? 0x14c : undefined;
     if (metadata.machine !== machine) throw new Error(`Native compiler image "${file}" has no PE code for ${input.arch}`);
     const active = metadata.manifests.some(manifest => manifest.path[1] === 2)
-      ? contextBindings(input.moduleContext(file, candidate => { input.read(candidate); }), file) : inherited;
+      ? contextBindings(input.moduleContext(file, { read: candidate => input.read(candidate), readEntries: candidate => input.readEntries(candidate) }), file) : inherited;
     const image = { metadata, bindings: active };
     images.set(identity, image);
     for (const imported of metadata.imports) {

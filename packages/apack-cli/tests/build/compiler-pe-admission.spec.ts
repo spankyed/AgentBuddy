@@ -1,7 +1,7 @@
 import { expect, it } from 'vitest';
 import { createHash } from 'node:crypto';
 import { assertCapturedPeLibraries } from '../../src/build/compiler-pe-admission.ts';
-import type { CompilerPeActivationContext } from '../../src/build/compiler-pe-activation.ts';
+import { peDirectoryEntriesHash, type CompilerPeDirectoryEntry, type CompilerPeActivationContext } from '../../src/build/compiler-pe-activation.ts';
 import type { CompilerPeEnvironment } from '../../src/build/compiler-pe-environment.ts';
 import { peImage } from '../_support/pe-image.ts';
 
@@ -34,7 +34,7 @@ function image(dependency?: string, forwarder?: string, resource?: number) {
 
 function admission(files: [string, Buffer][], options: { environment?: Partial<CompilerPeEnvironment>;
   variables?: NodeJS.ProcessEnv; loaded?: string[]; directories?: string[]; executable?: string;
-  realpath?: (file: string) => string; contexts?: Record<string, CompilerPeActivationContext> } = {}) {
+  realpath?: (file: string) => string; entries?: Record<string, CompilerPeDirectoryEntry[]>; contexts?: Record<string, CompilerPeActivationContext> } = {}) {
   const entries: [string, Buffer][] = [[entry, image('value.dll')], ...files];
   const images = new Map(entries.map(([file, bytes]) => [file.toLowerCase(), bytes]));
   const reads: string[] = [];
@@ -45,6 +45,7 @@ function admission(files: [string, Buffer][], options: { environment?: Partial<C
     variables: options.variables ?? {}, loadedLibraries: options.loaded ?? [], arch: 'x64',
     moduleContext: file => options.contexts?.[file] ?? { image: file, inputs: [], redirections: [] },
     directoryExists: file => options.directories?.includes(file) ?? false,
+    readEntries: file => options.entries?.[file] ?? [],
     read(file) { reads.push(file); return images.get(file.toLowerCase()); }, realpath: options.realpath ?? (file => file),
   }) };
 }
@@ -337,4 +338,18 @@ it.each([false, true])('respects manifest suppression of .local unless DevOverri
   });
   if (devOverride) expect(value.check).toThrow(selected);
   else expect(value.check).not.toThrow();
+});
+
+
+it('refuses activation metadata when a directory member changes before admission', () => {
+  const directory = 'C:\\pack\\binding';
+  const entries: CompilerPeDirectoryEntry[] = [{ name: 'en-US', kind: 'directory' }];
+  const context: CompilerPeActivationContext = { image: environment.applicationContext.image,
+    inputs: [{ file: directory, kind: 'entries', hash: peDirectoryEntriesHash(entries) }], redirections: [] };
+  const value = admission([[library, image()]], { environment: { applicationContext: context }, entries: { [directory]: entries } });
+  expect(value.check).not.toThrow();
+  entries.push({ name: 'fr-BE', kind: 'directory' });
+  expect(value.check).toThrow('Windows activation directory changed during inspection');
+  entries.pop();
+  expect(value.check).not.toThrow();
 });

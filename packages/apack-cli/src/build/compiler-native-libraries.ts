@@ -3,7 +3,7 @@ import fs from 'node:fs';
 import { assertCapturedElfLibraries } from './compiler-elf-libraries.ts';
 import { assertElfLaunchEnvironment, captureElfLibraryEnvironment, type CompilerElfEnvironment } from './compiler-elf-environment.ts';
 import { findElfCachedLibrary, parseElfLibraryCache } from './compiler-elf-cache.ts';
-import { readPeActivationContext } from './compiler-pe-activation.ts';
+import { readPeActivationContext, readPeDirectoryEntries, type CompilerPeDirectoryEntry } from './compiler-pe-activation.ts';
 import { assertCapturedPeLibraries } from './compiler-pe-admission.ts';
 import { capturePeLibraryEnvironment, readPeProcessState, type CompilerPeEnvironment } from './compiler-pe-environment.ts';
 
@@ -36,6 +36,7 @@ export function captureCompilerLibraryEnvironment(env: NodeJS.ProcessEnv = proce
 export function assertCapturedCompilerLibraries(entry: string, packageRoot: string, input: {
   read(file: string): Buffer | undefined;
   directoryExists(file: string): boolean;
+  readEntries(file: string): readonly CompilerPeDirectoryEntry[] | undefined;
   realpath(file: string): string;
   arch: string;
   environment: CompilerLibraryEnvironment;
@@ -81,6 +82,7 @@ export function assertCompilerRuntimeLibraries(executable: string, runtimeDirect
     return assertCapturedPeLibraries(executable, runtimeDirectory, {
       arch: process.arch, environment, executable, cwd, variables: env, loadedLibraries: [],
       moduleContext: (image, observe) => readPeActivationContext(image, { systemDirectory: environment.systemDirectory, application: executable, resource: 2, observe }),
+      readEntries: readPeDirectoryEntries,
       directoryExists: file => fs.statSync(file, { throwIfNoEntry: false })?.isDirectory() ?? false,
       realpath: file => fs.realpathSync.native(file),
       read: file => fs.statSync(file, { throwIfNoEntry: false })?.isFile() ? fs.readFileSync(file) : undefined,
@@ -89,6 +91,7 @@ export function assertCompilerRuntimeLibraries(executable: string, runtimeDirect
   if (process.platform !== 'linux') return;
   const elf = captureElfLibraryEnvironment(env, executable, cwd);
   assertCapturedCompilerLibraries(executable, runtimeDirectory, {
+    readEntries: readPeDirectoryEntries,
     directoryExists: file => fs.statSync(file, { throwIfNoEntry: false })?.isDirectory() ?? false,
     arch: process.arch, environment: { macho: captureMachOLibraryEnvironment(env), elf: { ...elf, loadedLibraries: [] } },
     realpath: file => fs.realpathSync.native(file),

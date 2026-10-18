@@ -108,14 +108,26 @@ public static class ApackPeActivationContext {
     public string kind { get; set; }
     public string hash { get; set; }
   }
-  static InputInfo Input(string file) {
+  static string DirectoryHash(string file) {
+    string[] entries = Directory.GetFileSystemEntries(NativePath(file));
+    Array.Sort(entries, StringComparer.Ordinal);
+    StringBuilder value = new StringBuilder();
+    foreach (string entry in entries) {
+      uint attributes = GetFileAttributesW(entry);
+      if (attributes == uint.MaxValue) throw new Win32Exception(Marshal.GetLastWin32Error());
+      string kind = (attributes & 1024) != 0 ? "link" : (attributes & 16) != 0 ? "directory" : "file";
+      value.Append(kind).Append('\0').Append(Path.GetFileName(entry)).Append('\0');
+    }
+    using (SHA256 hash = SHA256.Create()) return BitConverter.ToString(hash.ComputeHash(Encoding.UTF8.GetBytes(value.ToString()))).Replace("-", "").ToLowerInvariant();
+  }
+  static InputInfo Input(string file, bool entries = false) {
     uint attributes = GetFileAttributesW(NativePath(file));
     if (attributes == uint.MaxValue) {
       int error = Marshal.GetLastWin32Error();
       if (error != 2 && error != 3) throw new Win32Exception(error);
       return new InputInfo { file = file, kind = "missing", hash = null };
     }
-    if ((attributes & 16) != 0) return new InputInfo { file = file, kind = "directory", hash = null };
+    if ((attributes & 16) != 0) return new InputInfo { file = file, kind = entries ? "entries" : "directory", hash = entries ? DirectoryHash(file) : null };
     using (FileStream stream = ReadFile(file)) using (SHA256 hash = SHA256.Create())
       return new InputInfo { file = file, kind = "file", hash = BitConverter.ToString(hash.ComputeHash(stream)).Replace("-", "").ToLowerInvariant() };
   }
@@ -189,6 +201,17 @@ public static class ApackPeActivationContext {
         }
       }
     }
+    HashSet<string> cultures = new HashSet<string>(Array.ConvertAll(
+      System.Globalization.CultureInfo.GetCultures(System.Globalization.CultureTypes.AllCultures), culture => culture.Name), StringComparer.OrdinalIgnoreCase);
+    HashSet<string> presentLanguages = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+    foreach (string root in roots) {
+      InputInfo input = Input(root, true); reads[root] = input;
+      if (input.kind != "entries") continue;
+      foreach (string child in Directory.GetDirectories(NativePath(root))) {
+        string name = Path.GetFileName(child);
+        if (cultures.Contains(name)) presentLanguages.Add(name);
+      }
+    }
     Queue<XmlDocument> pending = new Queue<XmlDocument>(); pending.Enqueue(manifest);
     while (pending.Count != 0) foreach (XmlNode dependency in pending.Dequeue().SelectNodes("/*[local-name()='assembly']/*[local-name()='dependency']/*[local-name()='dependentAssembly']/*[local-name()='assemblyIdentity']")) {
       if (dependency.Attributes["name"] == null) continue;
@@ -204,11 +227,18 @@ public static class ApackPeActivationContext {
         culture = separator < 0 ? "" : culture.Substring(0, separator);
       }
       List<string> candidates = new List<string>();
-      foreach (string root in roots) foreach (string culture in languages)
-        foreach (string parent in new string[] { Path.Combine(root, culture), Path.Combine(root, culture, name) }) {
-          candidates.Add(Path.Combine(parent, name + ".dll"));
-          candidates.Add(Path.Combine(parent, name + ".manifest"));
+      foreach (string root in roots) {
+        HashSet<string> selectedLanguages = new HashSet<string>(languages, StringComparer.OrdinalIgnoreCase);
+        selectedLanguages.UnionWith(presentLanguages);
+        foreach (string culture in selectedLanguages) {
+          string folder = Path.Combine(root, culture);
+          if (!reads.ContainsKey(folder)) reads[folder] = Input(folder, true);
+          foreach (string parent in new string[] { Path.Combine(root, culture), Path.Combine(root, culture, name) }) {
+            candidates.Add(Path.Combine(parent, name + ".dll"));
+            candidates.Add(Path.Combine(parent, name + ".manifest"));
+          }
         }
+      }
       // Follow possible private declarations so failed contexts retain transitive repair probes too.
       // This observes candidates; CreateActCtx still owns selection and manifest validation.
       foreach (string file in candidates) {
@@ -262,7 +292,7 @@ public static class ApackPeActivationContext {
       List<object> redirections = new List<object>();
       foreach (string name in names) redirections.Add(new { name = name, file = MapFile(name) });
       foreach (InputInfo before in probes.Values) {
-        InputInfo after = Input(before.file), selected;
+        InputInfo after = Input(before.file, before.kind == "entries"), selected;
         if (before.kind != after.kind || before.hash != after.hash
           || (inputs.TryGetValue(before.file, out selected) && (before.kind != selected.kind || before.hash != selected.hash)))
           throw new Win32Exception(1237);
@@ -270,7 +300,7 @@ public static class ApackPeActivationContext {
       }
       return new { inputs = new List<InputInfo>(inputs.Values).ToArray(), redirections = redirections.ToArray() };
     } catch (Exception failure) {
-      failure.Data["candidates"] = new List<string>(probes.Keys).ToArray();
+      failure.Data["inputs"] = new List<InputInfo>(probes.Values).ToArray();
       throw;
     } finally {
       if (active) DeactivateActCtx(0, cookie);
@@ -293,8 +323,8 @@ public static class ApackPeActivationContext {
 } catch {
   $failure = $_.Exception
   while ($null -ne $failure.InnerException) { $failure = $failure.InnerException }
-  $result = @{ error = $(if ($failure -is [System.ComponentModel.Win32Exception]) { $failure.NativeErrorCode } else { 13 }); candidates = @() }
-  if ($failure.Data.Contains('candidates')) { $result.candidates = @($failure.Data['candidates']) }
+  $result = @{ error = $(if ($failure -is [System.ComponentModel.Win32Exception]) { $failure.NativeErrorCode } else { 13 }); inputs = @() }
+  if ($failure.Data.Contains('inputs')) { $result.inputs = @($failure.Data['inputs']) }
 }
 $json = $result | ConvertTo-Json -Depth 7 -Compress
 $bytes = [System.Text.Encoding]::UTF8.GetBytes($json)
