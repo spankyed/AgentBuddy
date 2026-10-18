@@ -5830,3 +5830,33 @@ The wrapper exits 0 and preserves all statuses. Evidence is exported as 24 files
 `/private/tmp/apack-single-import-fcb037442.zip`, including source, images, hashes and JSON results.
 The VM is confirmed deallocated after export; all prior stashes and the launcher line-ending change
 remain preserved. No native execution ran on the developer's Mac.
+
+
+## Bounded Windows build profile (2026-10-18)
+
+Exact source `fcb037442`, Windows Server 2025 x64 / Node 23.11.1, two-core environment. The compiler
+distribution was refreshed before invoking the existing `runPackBuild(default-setup, { signal })` owner.
+A private inspector preload profiles current Node processes without a network listener. Its exit flush
+is verified before the build. Initial setup fails in 0.452s when Git Bash converts the preload path;
+that attempt is retained. The second attempt excludes only `NODE_OPTIONS` from that diagnostic
+Git Bash conversion. No repository, npm configuration or security policy changes are made for profiling.
+
+The second attempt reaches completed generation and `Building pack: Default Setup`. Its 600s abort
+timer leads to a failed result at 612.013s; the record does not separately timestamp timer dispatch
+and cleanup. The worker's CPU time rises from 2.188s to 127.719s and its working set reaches about
+2 GB before that stage. At an earlier sample it has 111,566 read operations / 1.605 GB read transfer.
+These are measured activity/volume, not proof of an AV, disk, CPU-overload or deadlock diagnosis.
+
+Supervisor profile `3060-0.cpuprofile` is retained: 613.498s total, mostly idle while waiting; the first
+approximately 99s precede worker startup and include package capture/filesystem work. The forcibly
+terminated worker does **not** flush its exit-time profile. Its main compilation hotspot is therefore
+still unproven. Do not optimize a guessed hotspot, weaken input checks or increase deadlines from this
+partial profile. Any next profiling attempt must save worker samples before termination and target the
+unexplained phase, rather than repeat the complete suite or another full-build wait.
+
+Both exit codes are recorded as 1. All Node/compiler/shell work was confirmed stopped; the VM is
+confirmed deallocated. One lingering local SSH observer was then closed by its exact identified PID;
+that observer's 255 status is not the build result. Evidence: inspected 30-file archive
+`/private/tmp/apack-default-build-profile-fcb037442.zip`; pure JSON analysis
+`/private/tmp/apack-default-build-profile-summary.json`. All prior VM stashes and its pre-existing
+launcher line-ending change remain preserved. No captured runtime/native workload ran on the Mac.

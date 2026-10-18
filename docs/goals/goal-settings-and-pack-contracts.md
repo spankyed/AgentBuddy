@@ -99,7 +99,12 @@ the full packaged-authoring author half passes in 690.1s. The external-contract 
 its unchanged 600s bound while building the default-pack fork, after both ordinary fixture builds and
 38 memo cases pass. Its remaining cause is unproven. Preserve [hosted acceptance and failure evidence](../evidence/settings-and-pack-contracts.md#hosted-facade-and-author-half-acceptance-2026-10-18);
 profile one bounded build before choosing a repair, rather than repeating broad gates or raising deadlines.
-The app half and final strict acceptance remain open. A separate [Windows binder control](../evidence/build-input-snapshot-proof.md#windows-binder-ordinary-loader-control--2026-10-18)
+The app half and final strict acceptance remain open. A [bounded Windows profile](../evidence/build-input-snapshot-proof.md#bounded-windows-build-profile-2026-10-18)
+reaches generation/content setup before its 600s abort, but retains only the supervisor profile; the
+terminated worker did not flush its samples. Its hotspot remains unproven. Save worker samples before
+termination in the next targeted diagnostic; do not choose a source optimization or deadline change
+from the incomplete profile. The VM is deallocated and all evidence is exported.
+A separate [Windows binder control](../evidence/build-input-snapshot-proof.md#windows-binder-ordinary-loader-control--2026-10-18)
 uses the OS-generated bound directory: ordinary/bound imports load, while removing the lookup table
 still fails in the ordinary loader. This changes neither admission nor the unresolved valid-input
 question; preserve the result instead of repeating the failed construction. The subsequent
