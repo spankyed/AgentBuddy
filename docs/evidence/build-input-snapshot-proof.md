@@ -3377,3 +3377,33 @@ Local CLI types, changed-file correctness lint, workflow YAML/diff checks and al
 inventory cases pass. No native fixture or captured runtime was executed locally; PowerShell/MSVC
 execution remains for Windows CI. Production still bypasses PE admission. The next run must first
 establish a working SDK/ordinary DLL control; a setup failure is not evidence of an ownership defect.
+
+### Confirmed Windows DLL ownership bypass (2026-10-17)
+
+Run [`39086491464`](https://github.com/spankyed/AgentBuddy/actions/runs/39086491464) on `4df331dc9`
+passes SDK download/checksums, MSVC setup and ordinary NAPI/DLL loading. The captured frontend also
+executes value 11, then fails the ownership assertion in 29.64 seconds: its module report contains
+the original `binding/apack_value.dll`. This confirms the Windows bypass in the existing native owner;
+it is not a setup failure or timeout. Later freshness/Vue/PATH-refusal assertions were not reached.
+Profile: Node 23.11.1 x64, Windows Server 2025, runner image `windows-2025-vs2026` version
+`20261007.264.1`, MSVC 14.51.36231. Log: `/private/tmp/apack-pe-proof-39086491464.log`.
+
+### Static PE metadata checkpoint (2026-10-17)
+
+Added one checked PE32/PE32+ header/RVA reader for native admission and OS metadata sections. The
+library projection preserves ordinary/delay imports, named/ordinal symbols, binding timestamps and
+bound addresses, export aliases/ordinals/forwarders, plus manifest resource identity/language/raw
+encoding. It distinguishes file offsets from RVAs, including certificate metadata, and refuses
+unbacked/ambiguous ranges and cyclic resource trees without loading native code. The grammar follows
+the [Microsoft PE format](https://learn.microsoft.com/en-us/windows/win32/debug/pe-format).
+
+All 19 synthetic cases pass in 16 ms. CLI TypeScript, three-file correctness lint and diff checks pass;
+no native code ran locally. The existing Windows proof now checks the actual compiled addon/DLL
+metadata before its ordinary loader control on its next run. Those real-header assertions have not
+yet executed; no additional CI run was launched merely to repeat the known ownership failure.
+
+Next implement the Windows lookup metadata/admission adapter through `createCompilerNativeInputs`,
+then rerun the same control on the correction. Keep API sets/KnownDLLs, loaded-module and search-state
+semantics, meaningful activation data and selected forwarders explicit. This metadata-only source
+checkpoint does not fix copying or close PE admission, and must not be cited as runtime acceptance.
+The accepted Windows Job Object owner is unchanged. Other profile and final gates remain required.

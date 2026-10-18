@@ -9,6 +9,7 @@ import { formatNodeOptions, parseNodeOptions } from '@apackdev/host/build/source
 import { captureCompilerInstallation, compilerPackageDirectory, type CompilerInstallation } from '../../src/build/compiler-installation.ts';
 import { startPackFrontend, type PackFrontend } from '../../src/build/frontend-process.ts';
 import { nativeAddonSource } from '../_support/native-addon.ts';
+import { parsePeLibraryMetadata } from '../../src/build/compiler-pe-libraries.ts';
 
 it.runIf(process.platform === 'win32')('owns retained PE libraries and refuses outside DLLs before initialization', async () => {
   const root = fs.realpathSync.native(fs.mkdtempSync(path.join(os.tmpdir(), 'apack-pe-libraries-')));
@@ -56,6 +57,11 @@ BOOL WINAPI DllMain(HINSTANCE module, DWORD reason, LPVOID reserved) {
     fs.writeFileSync(source, nativeAddonSource(addonMarker));
     compile(['/LD', '/I' + headers!, source, '/Fo' + path.join(root, 'addon.obj'), '/link', '/INCREMENTAL:NO',
       '/OUT:' + addon, path.join(root, 'value.lib'), importLibrary!]);
+    const metadata = parsePeLibraryMetadata(fs.readFileSync(addon));
+    expect(metadata.machine).toBe(0x8664);
+    expect(metadata.imports.map(imported => imported.name.toLowerCase())).toContain('apack_value.dll');
+    expect(metadata.exports.some(exported => exported.names.includes('napi_register_module_v1'))).toBe(true);
+    expect(parsePeLibraryMetadata(fs.readFileSync(library)).exports.some(exported => exported.names.includes('native_value'))).toBe(true);
     const observe = () => JSON.parse(execFileSync(process.execPath, ['-e',
       `const addon = require(${JSON.stringify(addon)}); console.log(JSON.stringify({value:addon.read(),libraries:process.report.getReport().sharedObjects}));`],
     { encoding: 'utf8', timeout: 10_000 })) as { value: number; libraries: string[] };
