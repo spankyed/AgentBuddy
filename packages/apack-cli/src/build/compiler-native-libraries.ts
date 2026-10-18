@@ -1,4 +1,4 @@
-import { posix as path, win32 as windowsPath } from 'node:path';
+import { posix as path } from 'node:path';
 import fs from 'node:fs';
 import { assertCapturedElfLibraries } from './compiler-elf-libraries.ts';
 import { assertElfLaunchEnvironment, captureElfLibraryEnvironment, type CompilerElfEnvironment } from './compiler-elf-environment.ts';
@@ -65,9 +65,16 @@ export function assertCapturedCompilerLibraries(entry: string, packageRoot: stri
 }
 
 /** A new runtime resolves its linked libraries before JS; it cannot reuse the parent's loaded images. */
-export function assertCompilerRuntimeLibraries(executable: string, env: NodeJS.ProcessEnv, cwd: string): void {
+export function assertCompilerRuntimeLibraries(executable: string, runtimeDirectory: string, env: NodeJS.ProcessEnv, cwd: string): void {
+  if (process.platform === 'darwin') {
+    return assertCapturedMachOLibraries(executable, runtimeDirectory, {
+      arch: process.arch, executable, cwd, environment: captureMachOLibraryEnvironment(env),
+      realpath: file => fs.realpathSync.native(file),
+      read: file => fs.statSync(file, { throwIfNoEntry: false })?.isFile() ? fs.readFileSync(file) : undefined,
+    });
+  }
   if (process.platform === 'win32') {
-    return assertCapturedPeLibraries(executable, windowsPath.dirname(executable), {
+    return assertCapturedPeLibraries(executable, runtimeDirectory, {
       arch: process.arch, environment: capturePeLibraryEnvironment(), executable, cwd, variables: env, loadedLibraries: [],
       realpath: file => fs.realpathSync.native(file),
       read: file => fs.statSync(file, { throwIfNoEntry: false })?.isFile() ? fs.readFileSync(file) : undefined,
@@ -75,7 +82,7 @@ export function assertCompilerRuntimeLibraries(executable: string, env: NodeJS.P
   }
   if (process.platform !== 'linux') return;
   const elf = captureElfLibraryEnvironment(env, executable, cwd);
-  assertCapturedCompilerLibraries(executable, path.dirname(executable), {
+  assertCapturedCompilerLibraries(executable, runtimeDirectory, {
     arch: process.arch, environment: { macho: captureMachOLibraryEnvironment(env), elf: { ...elf, loadedLibraries: [] } },
     realpath: file => fs.realpathSync.native(file),
     read: file => fs.statSync(file, { throwIfNoEntry: false })?.isFile() ? fs.readFileSync(file) : undefined,
@@ -187,12 +194,15 @@ export function assertCapturedMachOLibraries(entry: string, packageRoot: string,
   realpath(file: string): string;
   arch: string;
   environment?: MachOLibraryEnvironment;
+  executable?: string;
+  cwd?: string;
 }) {
   const within = (file: string, root = packageRoot) => {
     const relative = path.relative(root, file);
     return relative === '' || (relative !== '..' && !relative.startsWith(`..${path.sep}`) && !path.isAbsolute(relative));
   };
   const environment = input.environment ?? captureMachOLibraryEnvironment();
+  const executable = input.executable ?? process.execPath, cwd = input.cwd ?? process.cwd();
   // dyld inserts each suffix before the leaf's last dot, then tries the unsuffixed path.
   const variants = (file: string) => {
     const dot = file.lastIndexOf('.');
@@ -210,7 +220,7 @@ export function assertCapturedMachOLibraries(entry: string, packageRoot: string,
     const variable = fallback && fallbackPaths === undefined ? `standard ${framework ? 'framework' : 'library'} fallback` : framework
       ? fallback ? 'DYLD_FALLBACK_FRAMEWORK_PATH' : 'DYLD_FRAMEWORK_PATH'
       : fallback ? 'DYLD_FALLBACK_LIBRARY_PATH' : 'DYLD_LIBRARY_PATH';
-    const candidates = directories.flatMap(directory => variants(path.resolve(`${directory}/${framework ?? path.basename(reference)}`)));
+    const candidates = directories.flatMap(directory => variants(path.resolve(cwd, `${directory}/${framework ?? path.basename(reference)}`)));
     for (const file of candidates) {
       const candidate = path.normalize(file);
       if (input.read(candidate) === undefined) continue;
@@ -233,7 +243,7 @@ export function assertCapturedMachOLibraries(entry: string, packageRoot: string,
     };
     const expand = (reference: string): string | undefined => {
       if (reference.startsWith('@loader_path/')) return path.resolve(path.dirname(file), reference.slice(13));
-      if (reference.startsWith('@executable_path/')) return path.resolve(path.dirname(process.execPath), reference.slice(17));
+      if (reference.startsWith('@executable_path/')) return path.resolve(path.dirname(executable), reference.slice(17));
       if (path.isAbsolute(reference)) return path.resolve(reference);
     };
     const rpaths = [...commands.rpaths.flatMap(reference => {
@@ -250,7 +260,7 @@ export function assertCapturedMachOLibraries(entry: string, packageRoot: string,
       const bare = !reference.startsWith('@');
       const candidates = variants(reference).flatMap<{ file: string | undefined; search: string | undefined }>(variant => variant.startsWith('@rpath/')
         ? rpaths.map(({ reference: search, expanded }) => ({ file: path.resolve(expanded, variant.slice(7)), search }))
-        : [{ file: bare ? path.resolve(variant) : expand(variant), search: undefined }]);
+        : [{ file: bare ? path.resolve(cwd, variant) : expand(variant), search: undefined }]);
       let found = false;
       for (const { file: candidate, search } of candidates) {
         if (!candidate || (bare && input.read(candidate) === undefined)) continue;
@@ -265,8 +275,9 @@ export function assertCapturedMachOLibraries(entry: string, packageRoot: string,
     }
     return true;
   }
-  if (!search(entry, entry)) {
-    for (const candidate of variants(entry).map(file => path.normalize(file))) {
+  const mainExecutable = entry === executable;
+  if (mainExecutable || !search(entry, entry)) {
+    for (const candidate of (mainExecutable ? [entry] : variants(entry)).map(file => path.normalize(file))) {
       if (input.read(candidate) === undefined) continue;
       if (!systemLibrary(candidate) && (!within(candidate) || !within(input.realpath(candidate), input.realpath(packageRoot)))) {
         throw new Error(`Native compiler image "${entry}" selects "${candidate}" outside its captured package. Use package-relative native libraries or operating-system libraries.`);

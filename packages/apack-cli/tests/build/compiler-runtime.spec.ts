@@ -20,6 +20,7 @@ it('identifies runtime bytes independently of the capture location', () => {
   const first = fixture(), second = fixture();
   const captured = new Map<string, Buffer>();
   const read = readCompilerRuntimeInputs(first.executable, false, (file, bytes) => captured.set(file.source, bytes));
+  expect(read.directory).toBe(path.dirname(first.executable));
   expect(captured.get(first.executable)?.toString()).toBe('runtime');
   expect(readCompilerRuntimeInputs(second.executable, false).hash).toBe(read.hash);
   fs.writeFileSync(first.executable, 'replacement');
@@ -43,6 +44,7 @@ it.skipIf(process.platform !== 'darwin')('includes Electron framework bytes, lin
   fs.symlinkSync('A', path.join(framework, 'Versions/Current'));
   fs.symlinkSync('Versions/Current/runtime', path.join(framework, 'runtime'));
   const initial = readCompilerRuntimeInputs(executable, true);
+  expect(initial.directory).toBe(root);
   expect(initial.links).toHaveLength(2);
   fs.writeFileSync(path.join(framework, 'Versions/A/runtime'), 'changed');
   expect(readCompilerRuntimeInputs(executable, true).hash).not.toBe(initial.hash);

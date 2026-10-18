@@ -104,6 +104,39 @@ it('accepts transitive package-relative and system libraries without treating ID
   ]))).not.toThrow();
 });
 
+it('resolves executable-relative framework inputs against the selected runtime distribution', () => {
+  const directory = '/captured/App.app/Contents';
+  const executable = directory + '/MacOS/apack';
+  const library = directory + '/Frameworks/value.dylib';
+  const files = new Map([[executable, image([[0xc, '@executable_path/../Frameworks/value.dylib']])], [library, image([])]]);
+  const reads: string[] = [];
+  expect(() => assertCapturedMachOLibraries(executable, directory, { executable, cwd: '/child', arch: 'arm64',
+    environment: captureMachOLibraryEnvironment({}), realpath: file => file,
+    read(file) { reads.push(file); return files.get(file); } })).not.toThrow();
+  expect(reads).toContain(library);
+});
+
+it('resolves relative native search paths against the child working directory', () => {
+  const outside = '/child/overrides/value.dylib';
+  const files = new Map([[entry, image([[0xc, '@loader_path/../lib/value.dylib']])], [outside, image([])]]);
+  expect(() => assertCapturedMachOLibraries(entry, root, { cwd: '/child', arch: 'arm64',
+    environment: captureMachOLibraryEnvironment({ DYLD_LIBRARY_PATH: 'overrides' }),
+    read: file => files.get(file), realpath: file => file })).toThrow(outside);
+});
+
+it('applies dyld overrides to dependencies without replacing the selected main executable', () => {
+  const executable = root + '/runtime';
+  const files = new Map([[executable, image([[0xc, '/usr/lib/libSystem.B.dylib']])],
+    ['/outside/runtime', image([])], [executable + '_debug', image([[0xc, '/outside/value.dylib']])]]);
+  const reads: string[] = [];
+  expect(() => assertCapturedMachOLibraries(executable, root, { executable, arch: 'arm64',
+    environment: captureMachOLibraryEnvironment({ DYLD_LIBRARY_PATH: '/outside', DYLD_IMAGE_SUFFIX: '_debug' }),
+    realpath: file => file, read(file) { reads.push(file); return files.get(file); } })).not.toThrow();
+  expect(reads).toContain(executable);
+  expect(reads).not.toContain('/outside/runtime');
+  expect(reads).not.toContain(executable + '_debug');
+});
+
 it.each([
   '/outside/lib.dylib', path.join(root, 'lib/live-original.dylib'), '@loader_path/../../../outside/lib.dylib', '../outside/lib.dylib',
 ])('refuses a dependency that bypasses the captured package: %s', dependency => {

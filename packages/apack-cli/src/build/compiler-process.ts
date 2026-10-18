@@ -6,12 +6,12 @@ import { assertCompilerRuntimeLibraries } from './compiler-native-libraries.ts';
 
 /** Each Windows worker owns a kernel job; POSIX workers retain their existing process group. */
 export function spawnCompilerWorker(
-  compiler: Pick<CompilerInstallation, 'bin' | 'executable'>,
+  compiler: Pick<CompilerInstallation, 'bin' | 'executable' | 'runtimeDirectory'>,
   args: readonly string[],
   options: SpawnOptions & { cwd: string; env: NodeJS.ProcessEnv },
   workspace: string,
 ) {
-  assertCompilerRuntimeLibraries(compiler.executable, options.env, options.cwd);
+  assertCompilerRuntimeLibraries(compiler.executable, compiler.runtimeDirectory, options.env, options.cwd);
   if (process.platform !== 'win32') return spawn(compiler.executable, [...args], options);
   if (!Array.isArray(options.stdio) || options.stdio.length !== 4 || options.stdio[3] !== 'ipc') {
     throw new Error('Windows compiler launch requires stdio and one IPC channel');

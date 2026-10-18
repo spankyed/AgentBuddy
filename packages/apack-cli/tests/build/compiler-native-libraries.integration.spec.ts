@@ -20,7 +20,7 @@ import { startPackBuildWatcher } from '../../src/build/watch.ts';
 import { nativeAddonSource } from '../_support/native-addon.ts';
 import { spawnCompilerWorker } from '../../src/build/compiler-process.ts';
 
-it.runIf(process.platform === 'darwin')('demonstrates runtime-linked Mach-O initialization before JS admission', async () => {
+it.runIf(process.platform === 'darwin')('refuses outside runtime-linked Mach-O constructors and accepts contained runtime libraries', async () => {
   const root = fs.realpathSync.native(fs.mkdtempSync(path.join(os.tmpdir(), 'apack-macho-runtime-')));
   try {
     const runtime = path.join(root, 'runtime');
@@ -43,13 +43,22 @@ int native_value(void) { return 11; }`);
     expect(fs.existsSync(marker)).toBe(true);
     fs.rmSync(marker);
     // A minimal executable exercises the real shared launch boundary without another Node copy.
-    const child = spawnCompilerWorker({ executable, bin: path.join(root, 'bin/apack.mjs') }, [],
+    const launch = () => spawnCompilerWorker({ executable, runtimeDirectory: runtime, bin: path.join(root, 'bin/apack.mjs') }, [],
       { cwd: root, env, stdio: 'ignore', timeout: 5_000 }, root);
+    expect(launch).toThrow(library);
+    expect(fs.existsSync(marker)).toBe(false);
+    const contained = path.join(runtime, 'libvalue.dylib');
+    compile(['-dynamiclib', library + '.c', '-Wl,-install_name,@executable_path/libvalue.dylib', '-o', contained]);
+    compile([executable + '.c', contained, '-o', executable]);
+    expect(execFileSync(executable, [], { env, encoding: 'utf8', timeout: 5_000 }).trim()).toBe('11');
+    expect(fs.existsSync(marker)).toBe(true);
+    fs.rmSync(marker);
+    const child = launch();
     const code = await new Promise<number | null>((resolve, reject) => {
       child.once('error', reject); child.once('close', resolve);
     });
     expect(code).toBe(0);
-    expect(fs.existsSync(marker), 'the current macOS launcher admits the outside constructor').toBe(true);
+    expect(fs.existsSync(marker)).toBe(true);
   } finally { fs.rmSync(root, { recursive: true, force: true }); }
 });
 

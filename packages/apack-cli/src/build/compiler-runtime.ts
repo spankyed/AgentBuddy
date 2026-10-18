@@ -5,6 +5,7 @@ import type { PackageInputFile } from '@apackdev/host/build/package-inputs';
 
 interface CompilerRuntimeInputs {
   executable: string;
+  directory: string;
   hash: string;
   directories: string[];
   links: Array<{ source: string; target: string }>;
@@ -51,5 +52,6 @@ export function readCompilerRuntimeInputs(
   }
   const identity = [relative(executable), files.sort(([a], [b]) => a < b ? -1 : a > b ? 1 : 0),
     directories.map(relative).sort(), links.map(({ source, target }) => [relative(source), relative(target)]).sort()];
-  return { executable, directories, links, hash: createHash('sha256').update(JSON.stringify(identity)).digest('hex') };
+  return { executable, directory: electron && process.platform === 'darwin' ? path.dirname(root) : root,
+    directories, links, hash: createHash('sha256').update(JSON.stringify(identity)).digest('hex') };
 }

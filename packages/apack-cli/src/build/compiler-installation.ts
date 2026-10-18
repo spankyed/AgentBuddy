@@ -10,6 +10,7 @@ import { readCompilerRuntimeInputs } from './compiler-runtime.ts';
 export interface CompilerInstallation {
   readonly bin: string;
   readonly executable: string;
+  readonly runtimeDirectory: string;
   readonly hash: string;
   readonly inputsFile: string;
   readonly environment: Readonly<Pick<NodeJS.ProcessEnv, 'ESBUILD_BINARY_PATH'>>;
@@ -172,7 +173,7 @@ export async function captureCompilerInstallation(directory = compilerPackageDir
       && fs.realpathSync.native(capturedPath(runtime.executable)) === capturedPath(runtime.executable)
       && readCompilerRuntimeInputs(capturedPath(runtime.executable)).hash === runtime.hash;
     if (!capturedRuntimeCurrent()) throw new Error('Captured compiler runtime differs from its input');
-    return { bin: path.join(root, 'bin/apack.mjs'), executable: capturedPath(runtime.executable), hash, inputsFile, environment, dispose,
+    return { bin: path.join(root, 'bin/apack.mjs'), executable: capturedPath(runtime.executable), runtimeDirectory: capturedPath(runtime.directory), hash, inputsFile, environment, dispose,
       isCurrent(source, options = {}) {
         return fs.realpathSync.native(source) === directory
           && executableId === JSON.stringify(executableIdentity(directory, readEsbuildOverride(options)))
