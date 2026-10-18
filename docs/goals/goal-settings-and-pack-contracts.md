@@ -105,7 +105,7 @@ perturbed shutdown through its inspector helper and was intentionally stopped; i
 or hotspot evidence. All owned work stopped, evidence is exported and the VM is confirmed deallocated.
 Do not repeat that helper or start another compiler-performance project from these inconclusive profiles.
 
-The current checkpoint separates default-fork preparation from fixture contracts in the existing chain.
+Checkpoint `d0ab6dd6b` separates default-fork preparation from fixture contracts in the existing chain.
 The two producers publish independent outputs; app acceptance requires both. Existing build/archive
 integrity and freshness checks, per-operation suite deadlines and the final strict gate remain required.
 This corrects producer/cache and aggregate-budget ownership; it does not establish that a standalone
@@ -114,6 +114,9 @@ scripts/repo/E2E types, tiers, lint and shell checks pass; the regression reject
 producer. See [producer evidence](../evidence/settings-and-pack-contracts.md#independent-default-fork-producer--2026-10-18). The required hosted
 strict gate must exercise the independent producers and exact archive/app handoff. If the standalone
 fork still fails, use its retained phase output; do not restart broad runs without a demonstrated repair.
+[Strict run `39172886664`](https://github.com/spankyed/AgentBuddy/actions/runs/39172886664) is in progress
+on exact source `d0ab6dd6b`. The run owns disposable two-core execution; no local compiler/native run or
+Windows VM work remains active. Await its authoritative result before another execution or acceptance claim.
 A separate [Windows binder control](../evidence/build-input-snapshot-proof.md#windows-binder-ordinary-loader-control--2026-10-18)
 uses the OS-generated bound directory: ordinary/bound imports load, while removing the lookup table
 still fails in the ordinary loader. This changes neither admission nor the unresolved valid-input

@@ -7793,3 +7793,9 @@ Remaining evidence: the required hosted strict run must prove the fork completes
 unchanged limit and both app halves consume their exact prepared outputs. Splitting producer/cache
 ownership does not prove a standalone fork build is fast enough or diagnose the prior worker slowdown.
 No further compiler-performance redesign or timeout increase is implied.
+
+Source checkpoint: **`d0ab6dd6b`**, pushed under existing authorization. Hosted strict run
+[`39172886664`](https://github.com/spankyed/AgentBuddy/actions/runs/39172886664) is confirmed in progress
+on exactly that commit, with dependency installation active when checked. No passing strict result
+is claimed. The private diagnostic SSH observer also terminated with exit 1 and its saved stopped
+result; there is no remaining live diagnostic handle.
