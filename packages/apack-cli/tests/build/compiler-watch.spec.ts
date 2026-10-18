@@ -8,6 +8,7 @@ import * as installation from '../../src/build/compiler-installation.ts';
 import * as runtime from '../../src/build/compiler-runtime.ts';
 import { startPackBuildWatcher } from '../../src/build/watch.ts';
 import * as reload from '../../src/build/dev-reload.ts';
+import { assertCompilerTestRunner } from '../_support/compiler-test-runner.ts';
 
 const roots: string[] = [];
 afterEach(() => {
@@ -106,6 +107,7 @@ it('replays worker bytes and native metadata while leaving ordinary static bytes
 });
 
 it('rebuilds an idle session on actual tooling filesystem events', async () => {
+  assertCompilerTestRunner();
   const { pack, entry, executable, override } = fixture();
   fs.writeFileSync(path.join(pack, 'apack.json'), JSON.stringify({ id: 'watch-tooling', name: 'Watch tooling', version: '1.0.0' }));
   vi.spyOn(reload, 'reloadPack').mockResolvedValue({ status: 'not-running', detail: 'fixture has no app' });
@@ -282,4 +284,14 @@ it('reuses tooling discovery for pack edits, but refreshes on tooling events and
   tools.changed(path.dirname(entry), 'rename');
   expect(compilerWatchPaths(pack, tools).signature).not.toBe(beforeMember);
   expect(read).toHaveBeenCalledTimes(5);
+});
+
+it.runIf(process.platform === 'win32')('keeps authored watch subscriptions covered for extended Windows paths', () => {
+  const { pack } = fixture();
+  const file = path.toNamespacedPath(path.join(pack, 'src/index.ts'));
+  const observed = new Map([[file, 'file' as const]]);
+  const inputs = compilerWatchPaths(pack, undefined, observed);
+  expect(inputs.complete).toBe(true);
+  expect(inputs.paths.has(file)).toBe(false);
+  expect(compilerWatchTargets(observed, pack).size).toBe(0);
 });

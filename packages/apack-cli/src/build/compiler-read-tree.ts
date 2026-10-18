@@ -3,7 +3,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { createHash } from 'node:crypto';
 import { compilerReadMapping } from '../../bin/compiler-source-hooks.mjs';
-import { compilerDiagnostic, compilerSourcePath, createCompilerInputObservations, type CompilerPathMapping } from '@apackdev/host/build/compiler-inputs';
+import { compilerDiagnostic, compilerSourcePath, relativeCompilerPath, createCompilerInputObservations, type CompilerPathMapping } from '@apackdev/host/build/compiler-inputs';
 
 export const BUILD_INPUTS_DIRECTORY_ENV = 'APACK_BUILD_INPUTS_DIRECTORY';
 
@@ -88,7 +88,7 @@ export function createCompilerReadTree(snapshot: CompilerReadSnapshot, paths: re
         return;
       }
       const real = fs.realpathSync.native(file);
-      const relative = path.relative(directory, real);
+      const relative = relativeCompilerPath(directory, real);
       if (relative === '..' || relative.startsWith(`..${path.sep}`) || path.isAbsolute(relative)) changed('binding', file);
       if (writable.has(real)) return;
       const expected = entries.get(real);

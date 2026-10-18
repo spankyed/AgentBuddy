@@ -3,7 +3,7 @@ import path from 'node:path';
 import { createHash } from 'node:crypto';
 import { readCompilerModuleInputs } from './compiler-module-inputs.ts';
 import { readPackageInputs } from '@apackdev/host/build/package-inputs';
-import { physicalWatchPath, type CompilerInputObservations } from '@apackdev/host/build/compiler-inputs';
+import { physicalWatchPath, relativeCompilerPath, type CompilerInputObservations } from '@apackdev/host/build/compiler-inputs';
 import { compilerPackageDirectory, readEsbuildOverride } from './compiler-installation.ts';
 import { readCompilerRuntimeInputs } from './compiler-runtime.ts';
 import { compilerEnvironmentIdentity } from './compiler-environment.ts';
@@ -114,7 +114,7 @@ export function compilerWatchPaths(root: string, tools?: CompilerWatchTools, obs
       const absolute = path.resolve(file);
       // The authored root already has a recursive watcher with output exclusions.
       if (authoredRoots.some(root => {
-        const relative = path.relative(root, absolute);
+        const relative = relativeCompilerPath(root, absolute);
         return relative !== '..' && !relative.startsWith(`..${path.sep}`) && !path.isAbsolute(relative)
           && !relative.split(path.sep).includes('node_modules');
       })) return;
@@ -195,7 +195,7 @@ export function compilerWatchTargets(paths: CompilerWatchPaths, authoredRoot?: s
   };
   for (const [file, kind] of paths) {
     if (authoredRoots.some(root => {
-      const relative = path.relative(root, file);
+      const relative = relativeCompilerPath(root, file);
       return relative !== '..' && !relative.startsWith(`..${path.sep}`) && !path.isAbsolute(relative);
     })) continue;
     let directory = path.dirname(file);

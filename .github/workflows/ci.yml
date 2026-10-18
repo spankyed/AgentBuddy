@@ -44,7 +44,7 @@ on:
         type: boolean
         default: false
       compiler_macos_test:
-        description: Optional native integration test name pattern (skips compiler unit checks)
+        description: Optional compiler test name pattern (skips other compiler checks)
         type: string
         default: ''
       compiler_macos_signing:

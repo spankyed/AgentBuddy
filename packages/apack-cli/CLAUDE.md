@@ -175,7 +175,8 @@ run `otool` or require developer tools at CLI runtime. The approved native suppo
 `docs/reference/adr/native-compiler-input-boundary.md`; startup/thread/Vite and other-platform closure
 remain separate from this module-reader checkpoint.
 
-Use `relativeCompilerPath` for compiler ownership comparisons and `compilerSourcePath` for source
+Use `splitCompilerModulePath` for tsx filename scope queries; the `?` in a Windows device prefix
+is part of the path. Use `relativeCompilerPath` for compiler ownership comparisons and `compilerSourcePath` for source
 projection. Node passes extended Windows filenames to native loading; both sides of a comparison must
 use the same spelling. The common file view uses `resolveCompilerPath` for drive-root identity; see
 [Windows copy-path evidence](../../docs/evidence/build-input-snapshot-proof.md#windows-native-copy-path-identity-2026-10-17).

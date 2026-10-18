@@ -17,6 +17,7 @@ import {
   type CompilerDirectoryResult,
   compilerDiagnostic,
   compilerSourcePath,
+  relativeCompilerPath,
   createCompilerInputObservations,
   hashCompilerInputObservations,
   type CompilerInputObservations,
@@ -126,7 +127,7 @@ export function captureCompilationInputs(packRoot: string, view?: PackCompilerIn
     return tree;
   });
   const ownsToolPath = (file: string) => !!compiler?.paths.some(({ captured }) => {
-    const relative = path.relative(captured, file);
+    const relative = relativeCompilerPath(captured, file);
     return relative !== '..' && !relative.startsWith(`..${path.sep}`) && !path.isAbsolute(relative);
   });
   const native = createNativeInputReader(modules, packages, sourcePath, snapshot => readTree().include(snapshot), {
@@ -152,7 +153,7 @@ export function captureCompilationInputs(packRoot: string, view?: PackCompilerIn
       if (ownsToolPath(file)) return false;
       const internal = [workspace, tree?.directory].some(directory => {
         if (!directory) return false;
-        const relative = path.relative(directory, file);
+        const relative = relativeCompilerPath(directory, file);
         return relative === '' || (relative !== '..' && !relative.startsWith(`..${path.sep}`) && !path.isAbsolute(relative));
       });
       return !internal || sourcePath(file) !== file;

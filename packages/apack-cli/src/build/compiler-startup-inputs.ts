@@ -63,7 +63,7 @@ export function beginCompilerStartupInputs(root: string, workspace: string, path
     if (known.has(key)) return;
     known.add(key);
     if (initializing || !includes(file)) return;
-    const relative = path.relative(canonicalRoot, file);
+    const relative = relativeCompilerPath(canonicalRoot, file);
     if (within(canonicalRoot, file) && !relative.split(path.sep).includes('node_modules')) return;
     recordWatchInput(compilerSourcePath(file, paths), kind);
   }) });

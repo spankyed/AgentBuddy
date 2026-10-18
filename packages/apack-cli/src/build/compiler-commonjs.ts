@@ -4,7 +4,8 @@ import { createPathsMatcher, parseTsconfig } from 'get-tsconfig';
 import { transformSync, type Loader } from 'esbuild';
 import type { CompilationInputs } from './compilation-inputs.ts';
 import { esbuildTsconfig } from './compiler-configuration.ts';
-import { withoutCompilerFileReads } from '@apackdev/host/build/compiler-inputs';
+import { splitCompilerModulePath } from './compiler-module-path.ts';
+import { relativeCompilerPath, withoutCompilerFileReads } from '@apackdev/host/build/compiler-inputs';
 
 /** tsx's CommonJS API has no per-registration config. Transform only this build's owned modules. */
 export function registerCompilerCommonJS(compilation: CompilationInputs, directory: string, tsconfig?: string): () => void {
@@ -15,7 +16,7 @@ export function registerCompilerCommonJS(compilation: CompilationInputs, directo
   const aliases = tsconfig ? createPathsMatcher({ path: tsconfig, config: parseTsconfig(tsconfig) }) : null;
   const owns = (file: string | undefined) => {
     if (!file || !path.isAbsolute(file)) return false;
-    const relative = path.relative(directory, file.split('?')[0]!);
+    const relative = relativeCompilerPath(directory, splitCompilerModulePath(file)[0]);
     return relative !== '..' && !relative.startsWith(`..${path.sep}`) && !path.isAbsolute(relative);
   };
   let inputs: CompilationInputs | undefined = compilation;
@@ -27,11 +28,9 @@ export function registerCompilerCommonJS(compilation: CompilationInputs, directo
     const run = () => {
       const filename = parent?.filename;
       if (inputs && aliases && filename && owns(filename) && !filename.includes(`${path.sep}node_modules${path.sep}`)) {
-        const separator = request.indexOf('?');
-        const specifier = separator < 0 ? request : request.slice(0, separator);
-        const query = separator < 0 ? '' : request.slice(separator);
+        const [specifier, query] = splitCompilerModulePath(request);
         const targets = isBuiltin(specifier) ? [] : aliases(specifier);
-        if (targets.length) inputs.prepareNative(specifier, path.dirname(inputs.sourcePath(filename.split('?')[0]!)));
+        if (targets.length) inputs.prepareNative(specifier, path.dirname(inputs.sourcePath(splitCompilerModulePath(filename)[0])));
         for (const target of targets) {
           try { return nativeResolve.call(this, target + query, parent, ...args); }
           catch (error) {
@@ -49,8 +48,8 @@ export function registerCompilerCommonJS(compilation: CompilationInputs, directo
     const previous = extensions[extension];
     const fallback = previous ?? extensions['.js']!;
     const load: NodeJS.RequireExtensions[string] = (module, filename) => {
-      const file = filename.split('?')[0]!;
-      const relative = path.relative(directory, file);
+      const file = splitCompilerModulePath(filename)[0];
+      const relative = relativeCompilerPath(directory, file);
       const compilation = inputs;
       if (!compilation || !enabled || relative === '..' || relative.startsWith(`..${path.sep}`) || path.isAbsolute(relative)) return fallback(module, filename);
       const source = compilation.sourcePath(file);

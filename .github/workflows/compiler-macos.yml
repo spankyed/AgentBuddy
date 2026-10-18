@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
     inputs:
       test_name:
-        description: Optional native integration test name pattern (skips compiler unit checks)
+        description: Optional compiler test name pattern (skips other compiler checks)
         type: string
         default: ''
       sign_runtime:
@@ -60,6 +60,19 @@ jobs:
         run: npm ci
       - name: Build matching packages
         run: npm run packages:ensure
+      - name: Focused compiler input checks
+        if: ${{ inputs.test_name }}
+        env:
+          NODE_OPTIONS: --conditions=@apackdev/source
+          APACK_TEST_NAME: ${{ inputs.test_name }}
+        run: >-
+          node node_modules/vitest/vitest.mjs run --project @apackdev/cli
+          packages/apack-cli/tests/build/compilation-inputs.spec.ts
+          packages/apack-cli/tests/build/compiler-watch.spec.ts
+          packages/apack-cli/tests/build/compiler-module-path.spec.ts
+          --testNamePattern "$APACK_TEST_NAME"
+          --reporter=default --reporter=json --outputFile="$RUNNER_TEMP/apack-compiler-input-tests.json"
+          --bail=1 --poolOptions.threads.maxThreads=1 --poolOptions.threads.minThreads=1 --no-file-parallelism
       - name: Prepare strictly signed Electron fixture
         if: ${{ inputs.sign_runtime }}
         env:
@@ -123,6 +136,7 @@ jobs:
           packages/apack-cli/tests/build/compiler-runtime.spec.ts
           packages/apack-cli/tests/build/compiler-native-libraries.spec.ts
           packages/apack-cli/tests/build/compiler-read-tree.spec.ts
+          packages/apack-cli/tests/build/compiler-watch.spec.ts
           packages/apack-cli/tests/build/pack-builder.spec.ts
           --bail=1 --poolOptions.threads.maxThreads=2 --poolOptions.threads.minThreads=1 --no-file-parallelism
       - name: Native admission, preloads and watch recovery
@@ -134,15 +148,19 @@ jobs:
           --testNamePattern "$APACK_TEST_NAME"
           --reporter=default --reporter=json --outputFile="$RUNNER_TEMP/apack-native-tests.json"
           --bail=1 --poolOptions.threads.maxThreads=1 --poolOptions.threads.minThreads=1 --no-file-parallelism
-      - name: Verify selected native cases executed
+      - name: Verify selected compiler cases executed
         run: |
           node --input-type=module <<'JS'
           import fs from 'node:fs';
           import assert from 'node:assert/strict';
-          const report = JSON.parse(fs.readFileSync(`${process.env.RUNNER_TEMP}/apack-native-tests.json`, 'utf8'));
-          assert.ok(report.numPassedTests > 0, 'Native filter selected no passing cases');
-          assert.equal(report.numFailedTests, 0);
-          console.log({passed:report.numPassedTests,skipped:report.numPendingTests});
+          const native = `${process.env.RUNNER_TEMP}/apack-native-tests.json`;
+          const inputs = `${process.env.RUNNER_TEMP}/apack-compiler-input-tests.json`;
+          const reports = [native, ...(fs.existsSync(inputs) ? [inputs] : [])]
+            .map(file => JSON.parse(fs.readFileSync(file, 'utf8')));
+          const passed = reports.reduce((sum, report) => sum + report.numPassedTests, 0);
+          assert.ok(passed > 0, 'Compiler filter selected no passing cases');
+          assert.ok(reports.every(report => report.numFailedTests === 0));
+          console.log({passed});
           JS
       - name: Remove signing keychain and fixture
         if: ${{ always() && inputs.sign_runtime }}

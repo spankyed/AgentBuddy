@@ -55,6 +55,8 @@ jobs:
         run: >-
           node node_modules/vitest/vitest.mjs run --project @apackdev/cli --project @apackdev/host
           packages/apack-cli/tests/build/compilation-inputs.spec.ts
+          packages/apack-cli/tests/build/compiler-module-path.spec.ts
+          packages/apack-cli/tests/build/compiler-watch.spec.ts
           packages/apack-host/tests/build/compiler-paths.windows.spec.ts
           --testNamePattern "$env:APACK_TEST_NAME"
           --reporter=default --reporter=json --outputFile="$env:RUNNER_TEMP/apack-compiler-input-tests.json"
@@ -100,6 +102,7 @@ jobs:
           packages/apack-cli/tests/build/compiler-read-tree.spec.ts
           packages/apack-cli/tests/build/compiler-module-inputs.spec.ts
           packages/apack-cli/tests/build/compilation-inputs.spec.ts
+          packages/apack-cli/tests/build/compiler-module-path.spec.ts
           packages/apack-cli/tests/build/compiler-watch.spec.ts
           packages/apack-cli/tests/build/checkout-packages.spec.ts
           packages/apack-cli/tests/build/tool-identity.spec.ts

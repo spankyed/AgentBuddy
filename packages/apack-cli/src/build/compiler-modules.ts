@@ -1,5 +1,6 @@
 import path from 'node:path';
 import { registerCompilerCommonJS } from './compiler-commonjs.ts';
+import { splitCompilerModulePath } from './compiler-module-path.ts';
 import { createRequire, findPackageJSON, isBuiltin, register, registerHooks, type ModuleHooks } from 'node:module';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import type { CompilationInputs } from './compilation-inputs.ts';
@@ -29,11 +30,11 @@ export function createCompilerModuleLoader(compilation: CompilationInputs) {
     const readURL = (value: string) => {
       const url = new URL(value);
       let file = fileURLToPath(url);
-      const separator = file.indexOf('?');
-      if (separator >= 0 && new URLSearchParams(file.slice(separator + 1)).get('namespace') === namespace) {
+      const [physical, query] = splitCompilerModulePath(file);
+      if (query && new URLSearchParams(query.slice(1)).get('namespace') === namespace) {
         // Node may encode tsx's CommonJS scope suffix into the URL pathname.
-        url.search = '?' + [url.search.slice(1), file.slice(separator + 1)].filter(Boolean).join('&');
-        file = file.slice(0, separator);
+        url.search = '?' + [url.search.slice(1), query.slice(1)].filter(Boolean).join('&');
+        file = physical;
       }
       const owned = pathToFileURL(tree.path(compilation.sourcePath(file)));
       owned.search = url.search;
@@ -51,7 +52,7 @@ export function createCompilerModuleLoader(compilation: CompilationInputs) {
           if (!path.isAbsolute(specifier) && /^[a-z][\w+.-]*:/i.test(specifier) && !specifier.startsWith('file:')) return next(specifier, context);
           const require = Array.from(context.conditions).includes('require');
           // tsx carries its CommonJS scope in a path suffix; it is not part of the filename.
-          const commonjsScope = require && new URLSearchParams(specifier.slice(specifier.indexOf('?') + 1)).get('namespace') === namespace;
+          const commonjsScope = require && new URLSearchParams(splitCompilerModulePath(specifier)[1].slice(1)).get('namespace') === namespace;
           const url = specifier.startsWith('file:') ? new URL(specifier)
             : path.isAbsolute(specifier) && (!require || commonjsScope) ? new URL(specifier, context.parentURL) : undefined;
           const target = url ? fileURLToPath(url) : specifier;

@@ -260,7 +260,8 @@ evidence without changing macOS security settings. Cause remains unproven in the
 [launch incident](docs/evidence/build-input-snapshot-proof.md#macos-launch-policy-investigation-2026-10-17).
 The CLI integration config refuses macOS runs outside GitHub-hosted runners before loading test
 modules. Do not bypass that guard with fabricated runner variables; use disposable CI. This also applies
-when the root integration project or chain selects the CLI suite. Pure unit checks remain local.
+when the root integration project or chain selects the CLI suite. Live watcher cases share this boundary
+even inside a unit suite; use the runner guard before opening their watchers. Pure unit checks remain local.
 Run required final strict acceptance with `gh workflow run ci.yml --ref <branch> -f strict_chain=true`: the
 disposable macOS runner runs strict `--all` with two cores and retains per-step evidence.
 
