@@ -25,7 +25,7 @@ export function pePath(file: string): string {
   return normalized.startsWith('\\\\?\\') ? normalized.slice(4) : normalized;
 }
 
-export function readPeProcessState() {
+function readPeReport() {
   const exclude = reportOptions.excludeEnv;
   let report: { sharedObjects?: string[]; environmentVariables?: NodeJS.ProcessEnv };
   try { reportOptions.excludeEnv = false; report = getReport(); }
@@ -34,38 +34,60 @@ export function readPeProcessState() {
   return { libraries: report.sharedObjects, environment: report.environmentVariables };
 }
 
-/** Only OS metadata is queried; no pack image is passed to a loader or helper. */
-export function capturePeLibraryEnvironment(): CompilerPeEnvironment {
-  const { libraries } = readPeProcessState();
+function peSystemDirectory(libraries: readonly string[]) {
   const ntdll = libraries.find(file => path.basename(file).toLowerCase() === 'ntdll.dll');
   if (!ntdll) throw new Error('Cannot locate the Windows system directory from loaded ntdll');
-  const systemDirectory = path.dirname(pePath(fs.realpathSync.native(ntdll)));
-  const windowsDirectory = path.dirname(systemDirectory);
+  return path.dirname(pePath(fs.realpathSync.native(ntdll)));
+}
+
+/** Query the OS for full paths; Node 23 reports use a fixed, undersized module filename buffer. */
+export function readPeLoaderMetadata(systemDirectory: string, pid = process.pid) {
+  if (!Number.isSafeInteger(pid) || pid <= 0) throw new Error('Windows loader metadata requires a positive process id');
   const script = `$ErrorActionPreference = 'Stop'
+$target = [System.Diagnostics.Process]::GetProcessById(${pid})
+try { $libraries = @($target.Modules | ForEach-Object { $_.FileName }) }
+finally { $target.Dispose() }
 $session = [Microsoft.Win32.Registry]::LocalMachine.OpenSubKey('SYSTEM\\CurrentControlSet\\Control\\Session Manager')
 try {
   $known = $session.OpenSubKey('KnownDLLs')
   try {
     $dlls = @($known.GetValueNames() | ForEach-Object { $known.GetValue($_) } | Where-Object { $_ -is [string] -and $_ -match '\\.dll$' })
-    @{ safeSearch = ($session.GetValue('SafeDllSearchMode', 1) -ne 0); knownDlls = $dlls } | ConvertTo-Json -Compress
+    @{ libraries = $libraries; safeSearch = ($session.GetValue('SafeDllSearchMode', 1) -ne 0); knownDlls = $dlls } | ConvertTo-Json -Compress
   } finally { $known.Dispose() }
 } finally { $session.Dispose() }`;
-  let metadata: { safeSearch: boolean; knownDlls: string[] };
+  let metadata: { libraries: string[]; safeSearch: boolean; knownDlls: string[] };
   try {
     const text = execFileSync(path.join(systemDirectory, 'WindowsPowerShell/v1.0/powershell.exe'),
-      ['-NoProfile', '-NonInteractive', '-Command', script], { encoding: 'utf8', timeout: 5_000, maxBuffer: 1024 * 1024, windowsHide: true });
+      ['-NoProfile', '-NonInteractive', '-Command', script],
+      { encoding: 'utf8', timeout: 5_000, maxBuffer: 1024 * 1024, windowsHide: true });
     metadata = JSON.parse(text.replace(/^\ufeff/, ''));
     if (typeof metadata.safeSearch !== 'boolean' || !Array.isArray(metadata.knownDlls)
-      || metadata.knownDlls.some(name => typeof name !== 'string' || path.basename(name) !== name)) throw new Error('Invalid metadata');
+      || metadata.knownDlls.some(name => typeof name !== 'string' || path.basename(name) !== name)
+      || !Array.isArray(metadata.libraries) || !metadata.libraries.length
+      || metadata.libraries.some(file => typeof file !== 'string' || !path.isAbsolute(file)
+        || !fs.statSync(file, { throwIfNoEntry: false })?.isFile())) throw new Error('Invalid metadata');
   } catch (error) {
     const failure = error as NodeJS.ErrnoException & { signal?: string };
     throw new Error(`Cannot read Windows compiler loader policy: ${failure.code ?? failure.signal ?? 'invalid OS metadata'}`);
   }
+  return metadata;
+}
+
+export function readPeProcessState() {
+  const report = readPeReport();
+  const metadata = readPeLoaderMetadata(peSystemDirectory(report.libraries));
+  return { libraries: metadata.libraries, environment: report.environment };
+}
+
+/** Only OS metadata is queried; no pack image is passed to a loader or helper. */
+export function capturePeLibraryEnvironment(): CompilerPeEnvironment {
+  const systemDirectory = peSystemDirectory(readPeReport().libraries);
+  const { safeSearch, knownDlls } = readPeLoaderMetadata(systemDirectory);
   const schema = path.join(systemDirectory, 'apisetschema.dll');
   const section = readPeSection(fs.readFileSync(schema), '.apiset');
   if (!section) throw new Error('Windows API-set schema has no .apiset section');
-  return Object.freeze({ systemDirectory, windowsDirectory, ...metadata,
-    knownDlls: Object.freeze(metadata.knownDlls.map(name => name.toLowerCase())), schema, apiSets: parsePeApiSets(section) });
+  return Object.freeze({ systemDirectory, windowsDirectory: path.dirname(systemDirectory), safeSearch,
+    knownDlls: Object.freeze(knownDlls.map(name => name.toLowerCase())), schema, apiSets: parsePeApiSets(section) });
 }
 
 export function peLibraryPaths(env: NodeJS.ProcessEnv): string[] {

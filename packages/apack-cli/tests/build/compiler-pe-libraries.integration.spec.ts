@@ -13,6 +13,7 @@ import { nativeAddonSource } from '../_support/native-addon.ts';
 import { parsePeLibraryMetadata } from '../../src/build/compiler-pe-libraries.ts';
 import { BUILD_INPUTS_DIRECTORY_ENV } from '../../src/build/compiler-read-tree.ts';
 import type { CapturedNativeModule } from '../../src/build/compiler-native-input-owner.ts';
+import { readPeLoaderMetadata, capturePeLibraryEnvironment } from '../../src/build/compiler-pe-environment.ts';
 
 it.runIf(process.platform === 'win32')('owns retained PE libraries and refuses outside DLLs before initialization', async () => {
   const root = fs.realpathSync.native(fs.mkdtempSync(path.join(os.tmpdir(), 'apack-pe-libraries-')));
@@ -84,19 +85,21 @@ BOOL WINAPI DllMain(HINSTANCE module, DWORD reason, LPVOID reserved) {
       const workspace = process.env[${JSON.stringify(BUILD_INPUTS_DIRECTORY_ENV)}];
       const receipt = JSON.parse(fs.readFileSync(path.join(workspace, 'native-inputs-0.json'), 'utf8'));
       const owner = receipt.modules.find(module => fs.realpathSync.native(module.source).toLowerCase() === fs.realpathSync.native(${JSON.stringify(addon)}).toLowerCase());
-      fs.writeFileSync(${JSON.stringify(proof)}, JSON.stringify({value:addon.read(),libraries:process.report.getReport().sharedObjects,workspace,owner}));
+      fs.writeFileSync(${JSON.stringify(proof)}, JSON.stringify({value:addon.read(),workspace,owner}));
     }`);
     compiler = await captureCompilerInstallation(compilerPackageDirectory(), { cwd: pack });
     process.env.NODE_OPTIONS = formatNodeOptions([...parseNodeOptions(previousOptions), '--require', preload]);
     frontend = await startPackFrontend(pack, compiler, signal);
-    const loaded = JSON.parse(fs.readFileSync(proof, 'utf8')) as { value: number; libraries: string[]; workspace: string; owner: CapturedNativeModule };
+    const loaded = JSON.parse(fs.readFileSync(proof, 'utf8')) as { value: number; workspace: string; owner: CapturedNativeModule };
     expect(loaded.value).toBe(11);
-    expect(loaded.libraries.map(normalize)).not.toContain(normalize(library));
     expect(loaded.owner).toBeDefined();
     const owned = relativeCompilerPath(loaded.workspace, loaded.owner.captured);
     expect(path.isAbsolute(owned)).toBe(false);
     expect(owned).not.toMatch(/^\.\.(?:\\|\/|$)/);
-    expect(loaded.libraries.map(normalize)).toContain(normalize(path.join(path.dirname(loaded.owner.captured), 'apack_value.dll')));
+    const expectedLibrary = normalize(path.join(path.dirname(loaded.owner.captured), 'apack_value.dll'));
+    const modules = readPeLoaderMetadata(capturePeLibraryEnvironment().systemDirectory, frontend.address.pid).libraries;
+    expect(modules.map(normalize)).not.toContain(normalize(library));
+    expect(modules.filter(file => path.basename(file).toLowerCase() === 'apack_value.dll').map(normalize)).toEqual([expectedLibrary]);
     expect(await frontend.isCurrent(signal)).toBe(true);
     const original = fs.readFileSync(library), mode = fs.statSync(library).mode & 0o777;
     const replacement = path.join(root, 'replacement/apack_value.dll');
