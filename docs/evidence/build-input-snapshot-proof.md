@@ -4706,3 +4706,54 @@ manifest and all three Phase 6 deliverables retain their existing acceptance req
 The validated VM overlay is preserved in scoped stash `Validated helper lifetime overlay on 0f4381dd8`
 before fast-forwarding to `f6cd78014`. The pre-existing launcher change and all saved work remain
 untouched. No Node/C#/MSVC test process remains; Azure confirms `VM deallocated`.
+
+## Windows Electron Node-API host binding (2026-10-18)
+
+Source checkpoint: `4aa3bc7a5`. Four final source blobs match the Windows acceptance checkout.
+Windows Server 2025 x64, Node 23.11.1 supervisor and actual Electron 37.2.4 / Node 22.17.1 worker;
+one worker and two-core budget. The Electron executable is unmodified, and its full distribution is
+copied by the existing runtime inventory with matching identity. The control confirms the executing
+Electron version, exact selected private DLL, and DLL/NAPI initialization markers.
+
+The new standard node-gyp delay-hook control first passes ordinary Electron loading and protected
+outside-library refusal. After containing the transitive dependency, baseline `7e3c9cfea` wrongly
+refuses `C:\Program Files\nodejs\node.exe`: static admission interprets the delayed Node-API host
+reference as a filesystem dependency. The documented hook actually binds those calls to Electron.
+That valid failure is `electron-module-v2-7e3c9cfea` (22.098s test); fixture
+`C:\Users\apackdev\AppData\Local\Temp\apack-electron-assembly-EoI9Y3` remains preserved.
+
+The common PE environment now records the runtime's concrete Node-API exports, verifying that they
+come from the same executable hash as its application context. Standard delayed `node.exe` Node-API
+references use that host contract; missing APIs refuse there instead of selecting another Node on
+PATH. The hook's preferred loaded `libnode.dll` still undergoes ownership checks. Other DLLs, eager
+imports, ordinals and non-Node-API symbols retain ordinary admission. The native boundary ADR records
+this distinction without claiming arbitrary native hook analysis or security isolation.
+
+The existing Node application/module controls and the new Electron module control now use the
+production worker launcher, including runtime preflight, Windows jobs, IPC/environment transfer and
+published startup guard. Ordinary execution selects value 22; outside transitive dependencies refuse
+before DLL/NAPI initialization; contained dependencies execute from a fresh owned snapshot retaining
+the DLL-specific configuration. This adds runtime/launcher acceptance to the earlier direct-startup
+proof rather than introducing a separate copy or admission path.
+
+Affected native acceptance passes eight cases in `electron-final-7e3c9cfea` (53.06s total, 50.82s tests).
+After review adds the executable/export hash check, final frozen-source startup acceptance passes
+all three affected runtime/context cases in `electron-coherence-7e3c9cfea` (33.43s total, 31.23s tests:
+Node application 7.264s, Node module 9.205s, Electron module 14.761s). Forty-six inert model checks,
+CLI types, focused lint and diff checks pass. Matching CLI packages build; no deadline changed.
+The first object-formatted test titles acquired quotes and selected zero cases; that report is retained
+as a non-result. Tuple titles preserve the existing Node names and the corrected runs execute the
+reported case counts. An unused direct-fork import was removed when switching to the launcher.
+
+Evidence directories are under `C:\apack-setup\runs`: `electron-module[-v2|-fixed]-7e3c9cfea`,
+`electron-final-7e3c9cfea` and `electron-coherence-7e3c9cfea`. Logs, reports, matching-build output,
+runtime version and final source hashes are saved off-machine in
+`/private/tmp/apack-electron-host-evidence-7e3c9cfea.zip`.
+
+Remaining: Electron application-context/`.local` controls, broader selection policy and higher-priority
+watch inputs, other named runtime/platform cases, B6 and final strict `--all`. This establishes the
+standard Node-API module path, not every Electron addon ABI or native hook. No scope exclusion is added.
+
+The validated overlay is preserved in VM stash `Validated Electron Node-API host overlay on 7e3c9cfea`
+before fast-forwarding to `4aa3bc7a5`. Earlier stashes, the retained failure and the pre-existing launcher
+change remain untouched. No Node/Electron/C#/MSVC test process remains; Azure confirms `VM deallocated`.
