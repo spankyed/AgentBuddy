@@ -5,8 +5,10 @@ export function physicalWatchPath(file: string, cache = new Map<string, string>(
   const known = cache.get(file);
   if (known) return known;
   let resolved: string;
-  // Native realpath handles extended paths, but Windows drive roots can fail with EISDIR.
-  try { resolved = path.dirname(file) === file ? fs.realpathSync(file) : fs.realpathSync.native(file); }
+  // Node drops the final separator for an extended drive root (nodejs/node#62446).
+  // Only the root has an equivalent short spelling; retain native handling for other extended paths.
+  const query = /^\\\\\?\\[a-z]:\\$/i.test(file) ? file.slice(4) : file;
+  try { resolved = fs.realpathSync.native(query); }
   catch (error) {
     if (!['ENOENT', 'ENOTDIR'].includes((error as NodeJS.ErrnoException).code ?? '')) throw error;
     const parent = path.dirname(file);
