@@ -144,13 +144,19 @@ repairs the next demonstrated defect: extended drive-root probes made subscripti
 accepts all 18 watcher checks and a real frontend-report subscription replay. The actual lifecycle now
 detects configuration changes, refuses a missing assembly without initialization, retains the incumbent,
 and detects repair-only file creation; the new captured frontend executes value 22. Full recovery is
-still unaccepted: publication then fails renaming `.apack/build` to `dist` with `EPERM` at 298.6s.
-Preserve local stash `540fa3cc844918afe1c634c00d24857451c5506f` (the complete lifecycle regression,
-including its measured 300-second scenario budget). Do not rerun the whole lifecycle to diagnose this
-new failure. Next isolate staged publication with overlapping retained frontends and inspect actual
-handles/permissions; the small ordinary-Vite control does not reproduce it. Initial backend/frontend
-readiness itself took 123.2s in a prepared run, so the old 120s budget could not exercise recovery.
-That changes this one scenario's proposed bound, not its 20s event checks or five-second helpers.
+still unaccepted. Source `595a7d8e1` fixes the reproduced publication boundary: separate retained Vite
+processes scan private staged output during Windows rename. The focused regression fails against the
+old code in 2.4s and passes with private `.apack` watching excluded; authored generated files and
+external dependency inputs remain watched. See the
+[publication checkpoint](../evidence/build-input-snapshot-proof.md#windows-private-output-publication-checkpoint-2026-10-18).
+The subsequent complete native lifecycle times out at 300s: initial readiness takes 200.5s and the
+missing-assembly refusal arrives at 254.1s. Vitest also reports its worker communication timeout.
+It does not reach accepted repair publication. Do not count this as a pass or as another reproduced
+`EPERM`. Preserve local stash `540fa3cc844918afe1c634c00d24857451c5506f` and the current two-file draft.
+Before rerunning that lifecycle, attribute the actual slow setup with bounded phase/process evidence;
+standalone scans previously took about eight seconds and do not explain the slow integrated path.
+Do not raise deadlines or start a general compiler redesign on that evidence alone. Its 20s event
+checks and five-second helper bounds remain unchanged.
 Transitive/localized/outside-image probing and publisher/system-policy
 changes remain required beyond the recognized root-dependency prefixes closed here. Then close
 Electron application-context/`.local` and remaining runtime acceptance. Preserve helper

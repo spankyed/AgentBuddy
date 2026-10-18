@@ -4936,3 +4936,36 @@ The VM overlay is retained in stash `Validated watch root repair and recovery pu
 6e16483b4`, alongside the earlier phase-diagnostic stash. Its checkout was fast-forwarded to
 `9bbe9e505`; pre-existing launcher state remains untouched. No native execution remains and Azure
 confirms `VM deallocated`.
+
+## Windows private-output publication checkpoint — 2026-10-18
+
+Source **`595a7d8e1`** excludes the pack-root private `.apack` tree from Vite watches, using the existing
+compiler-relative path resolver for Windows aliases. Two separate Vite processes plus an authored-root
+recursive watcher reproduce the original failure on the first staged publication (`EPERM`, 23ms).
+The permanent regression against the old configuration fails in 2.398s. With the fix, all three
+frontend dev-server checks pass in 4.14s; the publication case takes 2.984s and performs ten replacements.
+It also checks authored generated frontend modules and external dependency paths remain eligible for
+watching, observes an authored change and serves its updated bytes. No rename retry, ACL modification
+or security bypass was introduced. The subprocess inventory records the owned Vite children.
+
+CLI TypeScript and focused lint pass; 53 tooling checks pass, including timeout and subprocess
+inventories. No native execution ran on the daily Mac. VM source was `9bbe9e505` with the reviewed
+publication patch and regression helper, then committed locally as `595a7d8e1`.
+
+The full native watcher draft was run once afterward with one worker and the two-core budget.
+Fixture setup took 5.055s, watch readiness 193.384s, frontend readiness 200.527s and missing-assembly
+refusal 254.146s. The 300s scenario deadline expired during recovery; Vitest also reported
+`Timeout calling "onTaskUpdate"`. Repair publication and incumbent retirement are **not accepted**.
+No new `EPERM` appears in this result. The cause of the slow integrated setup remains unproven;
+earlier standalone input computations around eight seconds do not explain it. Increasing the test
+budget alone would not resolve the worker communication failure. Keep the lifecycle draft and its
+original stash; diagnose the slow phase before another full run, without reopening the compiler
+architecture or repeating broad suites.
+
+Reports: `C:\apack-setup\runs\publication-race-9bbe9e505` (`baseline.json`,
+`dev-server-baseline.json`, `dev-server-final.json`) and
+`C:\apack-setup\runs\assembly-watch-publication-fixed-9bbe9e505` (`test.log`, `result.json`).
+The latter retains the failed fixture `apack-pe-watch-8euHgh`. Off-machine evidence is
+`/private/tmp/apack-publication-evidence-595a7d8e1.zip`. Native Node/C++/C# processes were absent after
+the terminal report; Azure confirms `VM deallocated`. All remaining B1/B3, B6 and final strict gates
+remain open.
