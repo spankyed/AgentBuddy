@@ -65,7 +65,7 @@ JavaScript starts. Check the captured executable at the existing shared worker l
 actual environment, working directory and the runtime directory declared by its installation owner.
 Electron framework distribution and Node executable-directory ownership are distinct. The Mach-O
 implementation uses the selected executable for `@executable_path` and does not apply dylib overrides
-to main-image selection. Its hosted refusal/contained-loading acceptance is still pending. A fresh process cannot reuse the
+to main-image selection. Its minimal hosted refusal/contained-loading control passes in run `39095180283`; actual runtime/signing combinations remain separately required. A fresh process cannot reuse the
 supervisor's already loaded libraries; that optimization applies only to admission within an existing
 process. Reuse the same metadata/admission implementation, with no second runtime or copy owner.
 

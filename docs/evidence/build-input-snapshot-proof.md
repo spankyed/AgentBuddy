@@ -3777,3 +3777,33 @@ layout, child cwd and main-image override distinction. Host/CLI types, ten-file 
 diff checks pass. The source has not yet received hosted runtime acceptance. Stricter signed-app,
 actual Node/Electron runtime combinations, remaining Windows lookup/thread/publication and final
 gates remain required; the minimal executable control cannot establish those.
+
+### Windows publication and macOS runtime admission accepted (2026-10-18)
+
+Windows run [39095177818](https://github.com/spankyed/AgentBuddy/actions/runs/39095177818) on
+`994bb37cb` passes both publication cases: startup preload in 62.55 seconds and compiler thread in
+61.63 seconds, within their existing 120-second scenario bound (126.71 seconds Vitest total). Each
+proves its ordinary DLL value/path control, real backend publication, captured DLL inside the reported
+input workspace, parent workspace removal, current → stale on source replacement → current on exact
+byte/mode restoration, successful ordinary outside-PATH selection, and refused captured replacement
+before either initialization marker or proof publication while preserving the accepted revision. The
+thread case executes in a non-main thread. Log: `/private/tmp/apack-pe-publication-39095177818.log`.
+This accepts the earlier loaded-DLL cleanup, author-codegen ownership and cross-drive repairs through
+those real paths; do not keep scheduling them as unresolved defects.
+
+macOS run [39095180283](https://github.com/spankyed/AgentBuddy/actions/runs/39095180283) on the same
+source passes the repaired runtime constructor control in 1.13 seconds (5.12 seconds Vitest total).
+Ordinary execution initializes the outside absolute dylib; the shared compiler launcher refuses it
+before its constructor. A contained executable-relative library then succeeds through both ordinary
+and shared launch. Log: `/private/tmp/apack-macho-runtime-39095180283.log`. This accepts that boundary,
+not actual retained Node/Electron or the stricter signed-app profile.
+
+The next Windows gap is composition, not a repeat of the accepted isolated cases. Source `90ce9179b`
+adds one `preload-and-thread` variant to the same fixture. Ordinary Node must prove that both contexts
+load the same value DLL before captured execution is attempted. Captured output requires both main
+and non-main proof rows, followed by the same freshness and refused-publication checks. This exercises
+Windows' process-wide loaded-DLL state across input owners; no defect is claimed before execution.
+Only this new variant needs the next Windows run. CLI types and focused lint/diff checks pass.
+The next macOS run uses the existing retained Vite/process-ownership case to exercise actual captured
+Node startup after the new guard. Required signing/runtime combinations, Windows lookup semantics,
+Linux mapped-image closure, B6 and final strict acceptance remain open.
