@@ -4380,3 +4380,51 @@ acceptance or SxS support. Next use the retained SxS counterexample and metadata
 reconcile actual executable/image contexts, selecting manifest/policy inputs and loader precedence.
 Keep actual configured-runtime acceptance, valid bound-only behavior, remaining native/platform cases,
 B6 and the final committed-source strict gate required. No CI dispatch, push or system-policy change.
+
+## Configured Node .local runtime acceptance (2026-10-18)
+
+Source `9d25152aa` adds actual configured Node acceptance through the built public `pack build`
+command. A private Node copy has only its application-manifest resources removed through
+`BeginUpdateResourceW`/`UpdateResourceW`; the installed runtime is untouched. Its `.local` marker and
+DLL are configured before first launch. Ordinary loading proves value 22 and the exact runtime DLL
+path instead of the adjacent package's value 11. The public compiler capture retains the marker and
+DLL beside its copied executable; worker startup refuses that outside-package DLL before either its
+constructor or the addon's initializer runs. The CLI diagnostic identifies the original authored path,
+while the fixture's proof file records the private physical copy.
+
+Removing Node's manifest also removes Windows-version declarations. The first control exits at Node's
+platform guard before loading an addon. Only this private fixture's child environment sets
+`NODE_SKIP_PLATFORM_CHECK=1` on the verified Server 2025 VM; no Windows policy or product launch
+setting changes. This is a deliberately transformed runtime fixture, not unmodified Node or Electron
+acceptance. Retain existing normal Node/package-contained/OS controls.
+
+Early source-driver and public-entry attempts hit 60s. A later import-only probe takes 0.96s; this
+does not establish the first timeout's cause. A retained public-command phase trace records checkout
+preparation 1.09s, package capture 46.07s, runtime capture 0.11s, then copied-package verification still
+active at the 60s kill. No worker has started there. That diagnostic exits 1; its small JSON reports
+`code: 0, killed: true` because its reporter defaulted a missing numeric error code to zero. Do not
+interpret that field as success. Temporary source instrumentation is saved as a patch and restored;
+matching package output is rebuilt before acceptance.
+
+This one full-pipeline scenario has a reviewed 120s limit, with its child aborted and awaited through
+the test's lifetime owner. Other limits and all path/marker assertions remain. A completed invocation
+first fails only because the test expects a private path instead of the correctly source-mapped
+diagnostic (73.08s); both initialization markers are absent. The corrected final test passes in
+67.021s / 69.21s Vitest total, exactly one pass and eight deliberately unselected cases. Forty-two
+timeout-policy checks, CLI typecheck, correctness lint and diff checks pass. This does not establish
+whole-pool capacity, B6 or final strict acceptance.
+
+VM source is `fab8bc465` plus `apack-node-local-runtime-v5.patch`; both test-file blobs match committed
+`9d25152aa`. One Vitest worker, two-core environment; Node 23.11.1, Windows Server 2025 x64. Final
+records: `C:\apack-setup\runs\node-local-runtime-v5-fab8bc465`, copied to
+`/private/tmp/apack-node-local-final-vm/`. Preparation/capture traces, the authored-path assertion
+failure, platform-guard failure and import-only probe are preserved in the sibling `node-local-*`
+run directories and `/private/tmp/apack-node-local-*-vm/`. Failed fixtures remain attributed in logs.
+The validated overlay is preserved in a scoped VM stash before fast-forwarding to exact `9d25152aa`;
+the pre-existing launcher bytes and earlier stashes remain untouched. No native/compiler process
+remains, evidence is saved off the machine, and Azure confirms `VM deallocated`.
+
+Next close SxS admission/input capture using the retained counterexample and OS metadata/resource
+prototype. Keep executable versus image contexts, loaded-module precedence, manifest/policy freshness,
+actual Node/Electron SxS and Electron `.local` acceptance explicit. No scope exclusion or security
+isolation claim follows from this fixture. Other native/platform obligations and final gates remain.
