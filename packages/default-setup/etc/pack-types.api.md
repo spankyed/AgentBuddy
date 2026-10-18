@@ -1360,6 +1360,7 @@ declare const ClaudeNativeReadDialogSchema: z.ZodObject<{
     toolName: z.ZodLiteral<"Read">;
     title: z.ZodString;
     question: z.ZodString;
+    reason: z.ZodOptional<z.ZodString>;
     input: z.ZodRecord<z.ZodString, z.ZodUnknown>;
 }, "strip", z.ZodTypeAny, {
     id: string;
@@ -1370,6 +1371,7 @@ declare const ClaudeNativeReadDialogSchema: z.ZodObject<{
     toolName: "Read";
     question: string;
     input: Record<string, unknown>;
+    reason?: string | undefined;
 }, {
     id: string;
     title: string;
@@ -1379,6 +1381,7 @@ declare const ClaudeNativeReadDialogSchema: z.ZodObject<{
     toolName: "Read";
     question: string;
     input: Record<string, unknown>;
+    reason?: string | undefined;
 }>;
 
 interface ClaudeNativeSessionMetadata {
