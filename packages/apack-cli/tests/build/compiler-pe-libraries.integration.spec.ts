@@ -80,6 +80,67 @@ BOOL WINAPI DllMain(HINSTANCE module, DWORD reason, LPVOID reserved) {
   return { library, addon, dllMarker, addonMarker, buildLibrary };
 }
 
+// Ordinary Windows loader controls: these deliberately bypass compiler admission. A failed
+// control invalidates the fixture; it does not establish a production admission defect.
+it.runIf(process.platform === 'win32').each(['local', 'assembly'] as const)(
+  'identifies ordinary PE %s redirection ahead of an explicit DLL path', kind => {
+    const root = fs.realpathSync.native(fs.mkdtempSync(path.join(os.tmpdir(), 'apack-pe-redirection-')));
+    try {
+      const pack = path.join(root, 'pack');
+      fs.mkdirSync(pack);
+      const { library, buildLibrary } = createPeNativeFixture(root, pack);
+      const runtime = path.join(root, 'runtime');
+      fs.mkdirSync(runtime);
+      const executable = path.join(runtime, 'probe.exe');
+      const source = path.join(root, 'probe.c');
+      fs.writeFileSync(source, `#include <windows.h>
+#include <stdio.h>
+int wmain(int argc, wchar_t **argv) {
+  if (argc != 2) return 2;
+  HMODULE module = LoadLibraryExW(argv[1], NULL, LOAD_WITH_ALTERED_SEARCH_PATH);
+  if (!module) { fprintf(stderr, "LoadLibraryExW: %lu", GetLastError()); return 3; }
+  int (*value)(void) = (int (*)(void))GetProcAddress(module, "native_value");
+  if (!value) return 4;
+  WCHAR file[32768];
+  DWORD length = GetModuleFileNameW(module, file, sizeof(file) / sizeof(file[0]));
+  if (!length || length >= sizeof(file) / sizeof(file[0])) return 5;
+  char utf8[131072];
+  int bytes = WideCharToMultiByte(CP_UTF8, WC_ERR_INVALID_CHARS, file, length, utf8, sizeof(utf8), NULL, NULL);
+  if (!bytes) return 6;
+  printf("%d\\n", value());
+  fwrite(utf8, 1, bytes, stdout);
+  return FreeLibrary(module) ? 0 : 7;
+}`);
+      const compile = (manifest?: string) => execFileSync('cl.exe', ['/nologo', '/MT', source,
+        '/Fo' + path.join(root, 'probe.obj'), '/link', '/INCREMENTAL:NO', '/OUT:' + executable,
+        ...(manifest ? ['/MANIFEST:EMBED', '/MANIFESTINPUT:' + manifest] : ['/MANIFEST:NO'])],
+      { cwd: root, timeout: 15_000 });
+      const observe = () => {
+        const [value, file] = execFileSync(executable, [library], { encoding: 'utf8', timeout: 5_000, cwd: root }).split(/\r?\n/);
+        return { value: Number(value), file: fs.realpathSync.native(file!).toLowerCase() };
+      };
+      compile();
+      expect(observe()).toEqual({ value: 11, file: fs.realpathSync.native(library).toLowerCase() });
+      const selected = path.join(runtime, ...(kind === 'assembly' ? ['apack.fixture.value'] : []), 'apack_value.dll');
+      buildLibrary(selected, 22);
+      // Merely placing a same-name DLL next to the executable must not change explicit loading.
+      expect(observe()).toEqual({ value: 11, file: fs.realpathSync.native(library).toLowerCase() });
+      if (kind === 'local') fs.writeFileSync(executable + '.local', '');
+      else {
+        const identity = '<assemblyIdentity type="win32" name="apack.fixture.value" version="1.0.0.0" processorArchitecture="amd64"/>';
+        fs.writeFileSync(path.join(path.dirname(selected), 'apack.fixture.value.manifest'),
+          `<?xml version="1.0" encoding="UTF-8"?><assembly xmlns="urn:schemas-microsoft-com:asm.v1" manifestVersion="1.0">${identity}<file name="apack_value.dll"/></assembly>`);
+        const manifest = path.join(root, 'probe.manifest');
+        fs.writeFileSync(manifest,
+          `<?xml version="1.0" encoding="UTF-8"?><assembly xmlns="urn:schemas-microsoft-com:asm.v1" manifestVersion="1.0"><assemblyIdentity type="win32" name="apack.fixture.probe" version="1.0.0.0" processorArchitecture="amd64"/><dependency><dependentAssembly>${identity}</dependentAssembly></dependency></assembly>`);
+        compile(manifest);
+        expect(parsePeLibraryMetadata(fs.readFileSync(executable)).manifests.length).toBeGreaterThan(0);
+      }
+      expect(observe()).toEqual({ value: 22, file: fs.realpathSync.native(selected).toLowerCase() });
+    } finally { fs.rmSync(root, { recursive: true, force: true }); }
+  },
+);
+
 it.runIf(process.platform === 'win32').each([
   { bound: false, label: 'named imports, Unicode paths' },
   { bound: true, label: 'bound imports with lookup fallback' },

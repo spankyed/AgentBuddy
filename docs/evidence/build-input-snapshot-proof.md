@@ -4155,3 +4155,24 @@ control prerequisite. Reuse the existing native owner; no new capture or loader 
 Hosted validation of watcher source `6d6a8e9e1` is pending: automatic approval review rejected its
 push as not authorized, and explicit push approval was requested. Do not dispatch a run against the
 older remote tip and describe it as acceptance of this source. This does not block static audits.
+
+
+### Private PE redirection control candidate
+
+The `identifies ordinary PE ... redirection ahead of an explicit DLL path` cases in
+`compiler-pe-libraries.integration.spec.ts` now provide a bounded Windows-only control candidate.
+They reuse the existing DLL fixture and compile a private console executable using
+`LoadLibraryExW(..., LOAD_WITH_ALTERED_SEARCH_PATH)`. Each verifies original value/path, verifies
+that merely placing a same-name alternative does not redirect, then checks distinct value and exact
+physical path after enabling `.local` or embedding a private assembly dependency. Every compiler
+invocation and process has a bounded timeout; all files stay in one disposable directory. No registry,
+installed-app, system-file or security-policy changes are made.
+
+CLI typechecking, focused correctness lint and diff checks pass. These cases have **not executed**:
+the daily-use Mac boundary prohibits local native execution and push approval remains pending.
+A failed ordinary-loader control means the fixture needs correction before drawing admission
+conclusions. A passing probe establishes those OS redirection mechanisms for this private executable;
+it does not establish the selected Node/Electron runtime's manifest/policy behavior, correct compiler
+admission, native freshness or full runtime acceptance. Compare the actual selected runtime next,
+then select any necessary admission correction from that evidence. Do not treat this fixture commit
+as completion of the Windows resolution requirement.
