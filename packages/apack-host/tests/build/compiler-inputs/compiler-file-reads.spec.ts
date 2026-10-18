@@ -136,3 +136,51 @@ it.each(['selected', 'missing', 'package-less', 'relative', 'index', 'main', 'su
     view.dispose(); fs.rmSync(root, { recursive: true, force: true });
   }
 });
+
+it.each(['exports', 'exports-pattern', 'imports-file', 'imports-pattern', 'imports-package', 'self'] as const)('observes missing %s mapping targets without choosing them', kind => {
+  const root = fs.realpathSync.native(fs.mkdtempSync(path.join(os.tmpdir(), 'apack-module-mapping-')));
+  const parent = path.join(root, 'sub');
+  fs.mkdirSync(parent);
+  const packageRoot = path.join(root, 'node_modules/probe-package');
+  fs.mkdirSync(packageRoot, { recursive: true });
+  fs.writeFileSync(path.join(packageRoot, 'package.json'), JSON.stringify({
+    name: 'probe-package', exports: kind === 'exports' ? { require: './missing.cjs', default: './index.cjs' }
+      : kind === 'exports-pattern' ? { './*': './*.cjs' } : './index.cjs',
+  }));
+  fs.writeFileSync(path.join(packageRoot, 'index.cjs'), 'module.exports = 42;');
+  fs.writeFileSync(path.join(parent, 'package.json'), JSON.stringify({
+    name: 'self-probe', exports: './missing.cjs',
+    imports: { [kind === 'imports-pattern' ? '#value/*' : '#value']:
+      kind === 'imports-pattern' ? './*.cjs' : kind === 'imports-file' ? './missing.cjs' : 'probe-package' },
+  }));
+  const view = createCompilerFileView(root);
+  const resolveFilename = Reflect.get(module, '_resolveFilename');
+  const findPath = Reflect.get(module, '_findPath');
+  const stop = beginCompilerStartupReads({ compilation: {
+    isInput: file => file.startsWith(root + path.sep),
+    readDataPath(file) { view.readDataBytes(file); return file; },
+    readMetadata: view.readMetadata, readDirectory: view.readDirectoryData, openDirectory: view.openDirectoryData,
+    sourcePath: file => file, requireParent: file => file, diagnostic: message => message,
+  } });
+  try {
+    const require = createRequire(path.join(parent, 'entry.cjs'));
+    const request = kind === 'exports' ? 'probe-package' : kind === 'exports-pattern' ? 'probe-package/missing'
+      : kind === 'imports-pattern' ? '#value/missing' : kind === 'self' ? 'self-probe' : '#value';
+    if (kind === 'imports-package') expect(require.resolve(request)).toBe(path.join(packageRoot, 'index.cjs'));
+    else expect(() => require.resolve(request)).toThrow('Cannot find module');
+    stop();
+    expect(Reflect.get(module, '_resolveFilename')).toBe(resolveFilename);
+    expect(Reflect.get(module, '_findPath')).toBe(findPath);
+    expect(() => view.assertCurrent()).not.toThrow();
+    if (kind === 'imports-package') {
+      const nearer = path.join(parent, 'node_modules/probe-package');
+      fs.mkdirSync(nearer, { recursive: true });
+      fs.writeFileSync(path.join(nearer, 'package.json'), '{"exports":"./index.cjs"}');
+      fs.writeFileSync(path.join(nearer, 'index.cjs'), 'module.exports = 43;');
+    } else fs.writeFileSync(path.join(kind.startsWith('exports') ? packageRoot : parent, 'missing.cjs'), 'module.exports = 43;');
+    expect(() => view.assertCurrent()).toThrow();
+    fs.rmSync(kind === 'imports-package' ? path.join(parent, 'node_modules')
+      : path.join(kind.startsWith('exports') ? packageRoot : parent, 'missing.cjs'), { recursive: true });
+    expect(() => view.assertCurrent()).not.toThrow();
+  } finally { stop(); view.dispose(); fs.rmSync(root, { recursive: true, force: true }); }
+});

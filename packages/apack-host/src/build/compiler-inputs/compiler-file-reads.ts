@@ -339,7 +339,9 @@ export function beginCompilerStartupReads(scope: CompilerFileReadScope): () => v
   };
   state.observeResolution = observeResolution;
   // Async loader hooks omit createRequire; this native CJS lookup also supplies resolve({ paths }).
-  const commonjs = module as typeof module & { _findPath: (...args: unknown[]) => unknown };
+  const commonjs = module as typeof module & {
+    _findPath: (...args: unknown[]) => unknown; _resolveFilename: (...args: unknown[]) => unknown;
+  };
   const findPath = commonjs._findPath;
   const findObserved = new Proxy(findPath, {
     apply(target, receiver, args) {
@@ -356,6 +358,22 @@ export function beginCompilerStartupReads(scope: CompilerFileReadScope): () => v
     },
   });
   commonjs._findPath = findObserved;
+  const resolveFilename = commonjs._resolveFilename;
+  const resolveObserved = new Proxy(resolveFilename, {
+    apply(target, receiver, args) {
+      const [specifier, parent] = args as [unknown, { filename?: unknown } | undefined];
+      const current = currentScope();
+      if (current && current === state.startup && typeof specifier === 'string') {
+        withoutCompilerFileReads(() => observeCompilerModuleResolution(current.compilation, specifier, {
+          parentURL: typeof parent?.filename === 'string' ? pathToFileURL(parent.filename).href : preloadParent,
+          conditions: ['require'],
+        }));
+      }
+      return Reflect.apply(target, receiver, args);
+    },
+  });
+  commonjs._resolveFilename = resolveObserved;
+
   // Node reads package declarations internally, bypassing the public fs adapters.
   // Observe lookup candidates, including missing nearer packages, without replacing resolution.
   // Node's asynchronous loader worker has no synchronous resolve implementation.
@@ -382,6 +400,7 @@ export function beginCompilerStartupReads(scope: CompilerFileReadScope): () => v
       state.startup = undefined;
       state.observeResolution = undefined;
       if (commonjs._findPath === findObserved) commonjs._findPath = findPath;
+      if (commonjs._resolveFilename === resolveObserved) commonjs._resolveFilename = resolveFilename;
       hooks?.deregister();
       if (module.register === registerObserved) { module.register = register; syncBuiltinESMExports(); }
     }
