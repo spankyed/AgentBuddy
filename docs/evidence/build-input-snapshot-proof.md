@@ -3838,3 +3838,33 @@ and diff checks pass. All 11 subprocess-inventory checks pass after recording th
 constructor-control call sites and the Windows publication control, with their actual OS-boundary reasons.
 No scanner assertion was weakened. The combined Windows case and the two existing frontend-native
 preload/thread cases need acceptance on the refactored source. No native execution ran locally.
+
+### Native report alias validation and Electron runtime probe (2026-10-18)
+
+macOS run [39096671311](https://github.com/spankyed/AgentBuddy/actions/runs/39096671311) on
+`1176303bf` passes the refactored frontend-native preload/thread cases in 15.93s/9.53s (27.68s Vitest
+total), preserving captured native ownership, freshness/restoration, live Vue and refused outside-library
+replacement with the incumbent retained. Log: `/private/tmp/apack-native-reports-39096671311.log`.
+
+Windows run [39096668957](https://github.com/spankyed/AgentBuddy/actions/runs/39096668957) passes
+the ordinary combined control and reaches the shared receipt, then fails its new captured-file presence
+check in 50.01 seconds. The cause is `Native module has no captured file observation`; the report does
+not expose enough path details to claim the exact alias pair. Log:
+`/private/tmp/apack-pe-composition-39096668957.log`.
+
+Source `241a0f190` fixes a filesystem-reproduced limitation of that check: a declared module may use
+an owned directory alias while the hash observation names its physical target. Correlation now uses
+physical identities, preserving the hash requirement and checking resolved module/package/copy roots
+stay inside the workspace. Errors name the declared/physical module and copy root. The unit case
+proves an owned alias works and changed target bytes still refuse; an independent alias-escape case
+refuses before trusting its observation. All 15 ownership/report/read-tree cases pass. Actual Windows
+acceptance remains required; no assertion or deadline is weakened.
+
+Source `d1cd81bb0` adds a bounded default-Electron runtime probe before the stricter signing work.
+The original installed Electron runs a driver that captures its real framework distribution and uses
+the shared launcher for a tiny JS compiler entry. It requires the correct Electron version, a distinct
+captured executable, current-input identity and retirement. It does not establish full pack compilation
+or the app's stricter signing profile. It runs only on disposable macOS through the guarded integration
+config. No certificate values were read, installed binaries modified or signing policies changed.
+CLI types, focused lint/diff checks and all 11 subprocess-inventory checks pass. The next hosted checks
+are the same Windows composition case and this new Electron probe.
