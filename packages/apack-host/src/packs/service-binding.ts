@@ -64,7 +64,7 @@ export function createPackServiceBinding({ caller, selection, settings, provider
       return bound;
     };
     // A bound target preserves call/construct capability without the source's frozen own properties.
-    const facade: object = new Proxy(callable ? callable.bind(undefined) : Object.create(null), {
+    const facade: object = new Proxy(callable ? Function.prototype.bind.call(callable, undefined) : Object.create(null), {
       apply(_, receiver, args) { check(); return Reflect.apply(callable!, receiver, args); },
       construct(_, args, constructor) {
         check();

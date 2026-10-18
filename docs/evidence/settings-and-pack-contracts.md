@@ -7630,3 +7630,14 @@ focused correctness lint and diff checks accompany this repair. The settings pla
 that whole-data API separation remained unimplemented was stale; corrected against A1–A5 and current
 binding code, retaining final strict acceptance. Hosted watcher/native controls and API-report/final
 strict gates still await authorized execution on matching source; no completion or exclusion is claimed.
+
+
+### Callable binding construction edge
+
+Current-source follow-up reproduces a wrapper-construction error when an exported callable owns a
+custom `bind` method: the facade calls that method to create its proxy target, invoking user code and
+potentially obtaining a non-object target. The added pure regression fails in 11ms with that exact
+proxy-construction error. Target creation now uses the intrinsic `Function.prototype.bind`, preserving
+the callable's custom `bind` as an ordinary guarded service member. All 15 binding checks, host types,
+focused correctness lint and diff checks pass. This is a one-line correction to the same lifetime
+owner; it adds no service restriction, new public surface or native execution.

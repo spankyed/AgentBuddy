@@ -92,6 +92,20 @@ describe('accepted service bindings', () => {
     if (retired === 'provider') expect((generated.services.search as typeof search)('new')).toBe('original:new');
   });
 
+  it('does not invoke a callable services own bind method when creating its facade', () => {
+    const bind = vi.fn(() => 'custom binding');
+    const search = Object.assign((query: string) => `original:${query}`, { bind });
+    register(provider, { id: 'provider', services: { search } });
+    const generated = caller();
+    const service = generated.services.search as typeof search;
+    expect(bind).not.toHaveBeenCalled();
+    expect(service('direct')).toBe('original:direct');
+    expect(Reflect.apply(Reflect.get(service, 'bind'), undefined, [])).toBe('custom binding');
+    expect(bind).toHaveBeenCalledTimes(1);
+    packs.unregisterPack('consumer');
+    expect(() => service('late')).toThrow('revoked');
+  });
+
   it('preserves callable construction while refusing new instances after retirement', () => {
     class SearchClient { readonly text: string; constructor(text: string) { this.text = text; } }
     register(provider, { id: 'provider', services: { search: SearchClient } });
