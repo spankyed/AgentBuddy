@@ -11,7 +11,7 @@ import { compilerStartupOptions, COMPILER_NODE_OPTIONS_ENV } from './compiler-st
 import { BUILD_INPUTS_DIRECTORY_ENV, removeCompilerReadTree } from './compiler-read-tree.ts';
 import { BUILD_INPUTS_IPC_ENV, readCompilerWatchReports } from './build-watch-inputs.ts';
 import { mergeCompilerWatchPaths, type CompilerWatchPaths } from './compiler-watch.ts';
-import { FRONTEND_NATIVE_REPORT } from './frontend-native-inputs.ts';
+import { COMPILER_NATIVE_REPORT } from './compiler-native-reports.ts';
 
 export interface PackFrontendAddress { readonly port: number; readonly pid: number }
 export interface FrontendInputUpdate { readonly paths: CompilerWatchPaths; readonly changed: boolean }
@@ -108,7 +108,7 @@ export async function startPackFrontend(root: string, compiler: CompilerInstalla
         child.kill('SIGKILL');
       };
       inputWatch = fs.watch(directory, (_event, name) => {
-        if (name && !/^watch-\d+\.jsonl$/.test(name) && !FRONTEND_NATIVE_REPORT.test(name)) return;
+        if (name && !/^watch-\d+\.jsonl$/.test(name) && !COMPILER_NATIVE_REPORT.test(name)) return;
         try { deliverInputs(true); } catch (error) { refused(error); }
       });
       inputWatch.on('error', refused);

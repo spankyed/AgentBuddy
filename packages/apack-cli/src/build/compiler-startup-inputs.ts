@@ -12,6 +12,7 @@ import {
 } from '@apackdev/host/build/compiler-inputs';
 import { captureCompilerLibraryEnvironment, type CompilerLibraryEnvironment } from './compiler-native-libraries.ts';
 import { createCompilerNativeInputs } from './compiler-native-input-owner.ts';
+import { createCompilerNativeReports } from './compiler-native-reports.ts';
 
 import { parseNodeOptions } from '@apackdev/host/build/source-resolution';
 import { compilerEnvironmentIdentity } from './compiler-environment.ts';
@@ -67,7 +68,14 @@ export function beginCompilerStartupInputs(root: string, workspace: string, path
     recordWatchInput(compilerSourcePath(file, paths), kind);
   }) });
   initializing = false;
-  const native = createCompilerNativeInputs(original, workspace, paths, nativeEnvironment, { capture: 'package' });
+  const reports = createCompilerNativeReports(original.observations().root, workspace);
+  const save = () => withoutCompilerFileReads(() => reports.write({
+    source: original.observations(file => !native.includes(file)), copies: native.copies(), modules: native.modules(),
+  }));
+  const native = createCompilerNativeInputs(original, workspace, paths, nativeEnvironment, {
+    capture: 'package', onCapture: save, findModule: file => reports.findModule(file),
+  });
+  save();
   const { sourcePath, readDataPath, nativeModule } = native;
   const view: PackCompilerInputView = { ...original, dispose: native.dispose, assertCurrent: native.assertCurrent };
   const stopReads = beginCompilerStartupReads({ outputDirectory: workspace, compilation: {

@@ -48,12 +48,12 @@ const loadedByThePool = (): string[] => reachableFrom(
  * exists to catch, and a file-level list would wave it through.
  */
 const INVENTORY: Record<string, { calls: number; why: string }> = {
-  'packages/apack-cli/tests/build/compiler-pe-libraries.integration.spec.ts': { calls: 2,
+  'packages/apack-cli/tests/build/compiler-pe-libraries.integration.spec.ts': { calls: 3,
     why: 'MSVC builds a private NAPI addon and value DLL; fresh ordinary Node controls prove adjacent/PATH DLL selection before captured ownership and pre-initialization refusal' },
   'packages/apack-cli/tests/build/compiler-elf-libraries.integration.spec.ts': { calls: 3,
     why: 'the Linux proofs compile private NAPI/shared-library fixtures; ordinary Node controls establish actual addon and pre-JavaScript runtime library selection before captured ownership and pre-initialization refusal' },
-  'packages/apack-cli/tests/build/compiler-native-libraries.integration.spec.ts': { calls: 7,
-    why: 'clang/cc produce real direct/transitive libraries and Node addons; fresh Node children prove refused backend fixtures actually execute, plus dyld search, image-suffix and versioned override selection before captured admission. The live-watch case compiles a replacement dependency graph; in-process fixtures cannot change OS launch settings or prove refusal precedes initialization' },
+  'packages/apack-cli/tests/build/compiler-native-libraries.integration.spec.ts': { calls: 10,
+    why: 'clang/cc produce direct/transitive libraries and Node addons; fresh Node children prove backend fixture execution and dyld selection. The macOS runtime control compiles a private executable/library and runs ordinary outside/contained constructor controls before shared-launcher admission. The live-watch case compiles a replacement graph; in-process checks cannot establish OS loading or pre-initialization refusal' },
   'packages/apack-cli/tests/build/build-worker.integration.spec.ts': { calls: 8,
     why: 'private worker IPC lifetime and refusal, public shutdown, native preload identity, loader-startup refusal and natural shutdown under signal refusal require their own processes; two OS process-state queries verify inherited subprocess termination' },
   'packages/repo-checks/tests/bounded-spawn.integration.spec.ts': { calls: 1,
