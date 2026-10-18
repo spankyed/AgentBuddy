@@ -2,6 +2,8 @@ import fs from 'node:fs';
 import { createHash } from 'node:crypto';
 import { win32 as path } from 'node:path';
 import { execFileSync } from 'node:child_process';
+import { pathToFileURL } from 'node:url';
+import { cliPackageDirectory } from './tool-identity.ts';
 import { parsePeApiSets, type PeApiSet } from './compiler-pe-api-sets.ts';
 import { parsePeLibraryMetadata, readPeSection } from './compiler-pe-libraries.ts';
 import { pePath, type CompilerPeSystemPaths } from './compiler-pe-paths.ts';
@@ -17,19 +19,8 @@ export interface CompilerPeEnvironment extends CompilerPeSystemPaths {
   readonly nodeApiExports: readonly string[];
 }
 
-// Capture the public report API before user preloads can replace it. Node's excludeEnv option is
-// per Environment, so a synchronous try/finally does not change another worker's reporting policy.
-const getReport = process.report.getReport.bind(process.report);
-const reportOptions = process.report as NodeJS.ProcessReport & { excludeEnv: boolean };
-
-function readPeReport() {
-  const exclude = reportOptions.excludeEnv;
-  let report: { sharedObjects?: string[]; environmentVariables?: NodeJS.ProcessEnv };
-  try { reportOptions.excludeEnv = false; report = getReport(); }
-  finally { reportOptions.excludeEnv = exclude; }
-  if (!report.sharedObjects || !report.environmentVariables) throw new Error('Cannot read Windows compiler loader state');
-  return { libraries: report.sharedObjects, environment: report.environmentVariables };
-}
+// The loaded ntdll location is fixed for this process; DLL inventory, policy and PATH remain live.
+let systemDirectoryCache: string | undefined;
 
 function peSystemDirectory(libraries: readonly string[]) {
   const ntdll = libraries.find(file => path.basename(file).toLowerCase() === 'ntdll.dll');
@@ -38,58 +29,47 @@ function peSystemDirectory(libraries: readonly string[]) {
 }
 
 export function readPeSystemDirectory(): string {
-  return peSystemDirectory(readPeReport().libraries);
+  return systemDirectoryCache ?? peSystemDirectory(readPeLoaderMetadata().libraries);
 }
 
-/** Query the OS for full paths; Node 23 reports use a fixed, undersized module filename buffer. */
-export function readPeLoaderMetadata(systemDirectory: string, pid = process.pid) {
+/** Query the actual process without Node's unsafe concurrent diagnostic-report generation. */
+export function readPeLoaderMetadata(systemDirectory?: string, pid = process.pid, { environment = false } = {}) {
   if (!Number.isSafeInteger(pid) || pid <= 0) throw new Error('Windows loader metadata requires a positive process id');
-  const script = `$ErrorActionPreference = 'Stop'
-$target = [System.Diagnostics.Process]::GetProcessById(${pid})
-try { $libraries = @($target.Modules | ForEach-Object { $_.FileName }) }
-finally { $target.Dispose() }
-$session = [Microsoft.Win32.Registry]::LocalMachine.OpenSubKey('SYSTEM\\CurrentControlSet\\Control\\Session Manager')
-try {
-  $known = $session.OpenSubKey('KnownDLLs')
+  const owner = cliPackageDirectory(typeof __filename === 'string' ? pathToFileURL(__filename).href : import.meta.url);
+  // GLOBALROOT resolves the OS object-manager root, independently of mutable process environment.
+  const inspector = systemDirectory ?? systemDirectoryCache;
+  const executable = inspector ? path.join(inspector, 'WindowsPowerShell/v1.0/powershell.exe')
+    : fs.realpathSync.native(String.raw`\\?\GLOBALROOT\SystemRoot\System32\WindowsPowerShell\v1.0\powershell.exe`);
+  let metadata: { libraries: string[]; safeSearch: boolean; devOverride: boolean; knownDlls: string[]; environment: NodeJS.ProcessEnv | null };
   try {
-    $dlls = @($known.GetValueNames() | ForEach-Object { $known.GetValue($_) } | Where-Object { $_ -is [string] -and $_ -match '\\.dll$' })
-    $options = [Microsoft.Win32.Registry]::LocalMachine.OpenSubKey('SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\Image File Execution Options')
-    try { $devOverride = $null -ne $options -and $options.GetValue('DevOverrideEnable', 0) -eq 1 }
-    finally { if ($null -ne $options) { $options.Dispose() } }
-    $json = @{ libraries = $libraries; safeSearch = ($session.GetValue('SafeDllSearchMode', 1) -ne 0); devOverride = $devOverride; knownDlls = $dlls } | ConvertTo-Json -Compress
-    $bytes = [System.Text.Encoding]::UTF8.GetBytes($json)
-    $output = [Console]::OpenStandardOutput()
-    $output.Write($bytes, 0, $bytes.Length)
-  } finally { $known.Dispose() }
-} finally { $session.Dispose() }`;
-  let metadata: { libraries: string[]; safeSearch: boolean; devOverride: boolean; knownDlls: string[] };
-  try {
-    const text = execFileSync(path.join(systemDirectory, 'WindowsPowerShell/v1.0/powershell.exe'),
-      ['-NoProfile', '-NonInteractive', '-Command', script],
-      { encoding: 'utf8', timeout: 5_000, maxBuffer: 1024 * 1024, windowsHide: true });
+    const text = execFileSync(executable,
+      ['-NoProfile', '-NonInteractive', '-File', path.join(owner, 'bin/compiler-pe-process.ps1')],
+      { input: JSON.stringify({ pid, environment }), encoding: 'utf8', timeout: 5_000, maxBuffer: 1024 * 1024, windowsHide: true });
     metadata = JSON.parse(text.replace(/^\ufeff/, ''));
     if (typeof metadata.safeSearch !== 'boolean' || typeof metadata.devOverride !== 'boolean' || !Array.isArray(metadata.knownDlls)
       || metadata.knownDlls.some(name => typeof name !== 'string' || path.basename(name) !== name)
       || !Array.isArray(metadata.libraries) || !metadata.libraries.length
       || metadata.libraries.some(file => typeof file !== 'string' || !path.isAbsolute(file)
-        || !fs.statSync(file, { throwIfNoEntry: false })?.isFile())) throw new Error('Invalid metadata');
+        || !fs.statSync(file, { throwIfNoEntry: false })?.isFile())
+      || (environment && (!metadata.environment || typeof metadata.environment !== 'object' || Array.isArray(metadata.environment)
+        || Object.entries(metadata.environment).some(([name, value]) => name !== 'PATH' || typeof value !== 'string')))) throw new Error('Invalid metadata');
   } catch (error) {
     const failure = error as NodeJS.ErrnoException & { signal?: string };
     throw new Error(`Cannot read Windows compiler loader policy: ${failure.code ?? failure.signal ?? 'invalid OS metadata'}`);
   }
+  if (pid === process.pid) systemDirectoryCache = peSystemDirectory(metadata.libraries);
   return metadata;
 }
 
-export function readPeProcessState() {
-  const report = readPeReport();
-  const metadata = readPeLoaderMetadata(peSystemDirectory(report.libraries));
-  return { libraries: metadata.libraries, environment: report.environment };
+export function readPeProcessState(systemDirectory: string) {
+  const metadata = readPeLoaderMetadata(systemDirectory, process.pid, { environment: true });
+  return { libraries: metadata.libraries, environment: metadata.environment! };
 }
 
 /** Capture loader policy and the default application context before user preloads. */
 export function capturePeLibraryEnvironment(executable = process.execPath): CompilerPeEnvironment {
-  const systemDirectory = peSystemDirectory(readPeReport().libraries);
-  const { safeSearch, devOverride, knownDlls } = readPeLoaderMetadata(systemDirectory);
+  const { libraries, safeSearch, devOverride, knownDlls } = readPeLoaderMetadata();
+  const systemDirectory = peSystemDirectory(libraries);
   const schema = path.join(systemDirectory, 'apisetschema.dll');
   const section = readPeSection(fs.readFileSync(schema), '.apiset');
   if (!section) throw new Error('Windows API-set schema has no .apiset section');

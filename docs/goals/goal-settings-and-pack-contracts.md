@@ -155,12 +155,13 @@ single public repeated-build case fails at 129.548s with `0xC0000374`, matching 
 not its 240s deadline. The [follow-up report-API controls](../evidence/build-input-snapshot-proof.md#windows-report-api-race-short-reproducer-and-rejected-lock--2026-10-18)
 reproduce the same native status without pack compilation in 184ms, and through the actual Windows
 metadata reader in 461ms. Excluding network diagnostics and a shared-lock candidate do not fix the
-actual reader; the rejected candidate and regression are stashed, not shipped. Next replace the unsafe
-Windows report path while preserving live OS environment and exact loaded-DLL meaning through the
-existing metadata/lifetime owner. Fix the short actual-reader case before another full build run;
-retain repeated-build identity as unaccepted. The scoped diagnostic's first worker exits 0, but its
-second build hits 240s, so it neither closes acceptance nor disproves the uninstrumented crash.
-Remaining policy/platform cases, B6 and final strict acceptance stay open.
+actual reader; the rejected candidate remains stashed. The [replacement process-metadata reader](../evidence/build-input-snapshot-proof.md#windows-process-metadata-reader-without-diagnostic-reports--2026-10-18)
+now removes Windows report calls, retaining native PATH and exact loaded-DLL meaning through the existing
+metadata/lifetime owner. Both short regressions, 57 models and actual packaged Node/Electron startup
+controls pass. The uninstrumented public build now completes its first build/replay/archive without
+heap corruption; its second fresh build reaches the 240s limit. Repeated-build identity remains unaccepted.
+Next fix that case's owned teardown and measured two-capture Windows budget, retaining every assertion,
+then close the remaining policy/platform cases, B6 and final strict acceptance. No other phase is waived.
 
 **Execution boundary:** the user recovered the daily-use Mac by restarting after unrelated apps
 stopped launching. Cause remains unproven. Use the approved

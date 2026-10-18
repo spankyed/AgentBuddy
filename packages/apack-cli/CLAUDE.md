@@ -137,6 +137,13 @@ requires no TypeScript execution or second glob implementation. Local captured g
 live compiler-side validation remain in place.
 Pack and outside-module inputs are rechecked before publication; the already captured compiler fingerprint is reused within its immutable lifetime.
 
+Windows loader metadata is read by `bin/compiler-pe-process.ps1`, shipped with the captured CLI.
+It reuses the helper Job Object before optional C# compilation. The inspector reads actual loaded
+modules and native PATH; a worker's private or replaced `process.env` is not the OS loader state.
+Do not reintroduce `process.report.getReport()` for Windows queries: concurrent worker reports
+reproduce heap corruption. Only the immutable ntdll directory is cached; policy, modules and PATH stay
+live. See the [report-reader evidence](../../docs/evidence/build-input-snapshot-proof.md#windows-process-metadata-reader-without-diagnostic-reports--2026-10-18).
+
 The runtime capture declares `runtimeDirectory`; the shared launcher uses it for linked-library
 admission before native constructors can run. On macOS, Electron includes the complete Contents
 directory: its signature binds Info.plist and sealed resources as well as the executable/frameworks.

@@ -45,7 +45,7 @@ export function assertCapturedCompilerLibraries(entry: string, packageRoot: stri
   if (process.platform === 'win32') {
     const environment = input.environment.pe;
     if (!environment) throw new Error('Compiler PE library admission requires OS loader metadata');
-    const state = readPeProcessState();
+    const state = readPeProcessState(environment.systemDirectory);
     return assertCapturedPeLibraries(entry, packageRoot, { ...input, environment, executable: process.execPath,
       cwd: process.cwd(), variables: state.environment, loadedLibraries: state.libraries,
       moduleContext: (image, observe) => readPeActivationContext(image, { systemDirectory: environment.systemDirectory, application: process.execPath, resource: 2, observe }) });

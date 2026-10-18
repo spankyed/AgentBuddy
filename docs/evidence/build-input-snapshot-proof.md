@@ -5640,3 +5640,51 @@ Diagnostic evidence: `C:\apack-setup\runs\native-policy-crash-2dc550a5b` and
 Both exports were inspected: 14 diagnostic entries and 27 short-control entries, no dependency trees.
 The VM remains at `2dc550a5b`, with only the pre-existing launcher line-ending change unstashed.
 Azure instance view confirms **VM deallocated** after terminal-process inspection and export.
+
+## Windows process metadata reader without diagnostic reports — 2026-10-18
+
+The report-API failure is repaired by removing `process.report.getReport()` from Windows metadata
+queries. A small proof first verifies `GLOBALROOT\SystemRoot` resolves to physical Windows system
+files without PATH/SystemRoot environment selection. A separate read-only target-process proof returns
+the native Unicode PATH despite replacing JavaScript `process.env`: exit 0 in **2.015s**.
+
+`compiler-pe-process.ps1` now owns the existing module/policy query and optional native PATH inspection.
+It uses the existing helper Job Object before compiling its trusted C# reader, so helper timeout or
+parent loss retains the established compiler-descendant cleanup boundary. Process access is query/read
+only; handles are disposed. Native/WOW64 layouts select pointer widths. Reads stop at page boundaries,
+are capped at 1 MiB and require unchanged PATH/environment-pointer observations. Only PATH is returned,
+not a complete environment. The helper does not initialize target pack images or write target memory.
+These internal Windows layouts still require platform acceptance; do not claim every future OS layout.
+
+Bootstrap uses the OS namespace, then the target's actual loaded ntdll identifies the system directory.
+Only that process-fixed directory is cached. DLL inventory, policy and PATH are queried live. There is
+no fallback to JavaScript environment values, no report mutex and no compatibility path. The new helper
+is included in the existing CLI bundle copy list and captured compiler input graph.
+
+On Windows x64/Node 23.11.1, base `ffd4ba8cd` plus the recorded repair:
+
+- The actual-reader concurrency regression passes in **2.008s**, versus the preserved sub-second native
+  corruption on original source. Both participating threads preserve their report exclusion policy.
+- Native PATH meaning passes in **2.063s**: Unicode values, a later native change, replaced main-thread
+  JavaScript PATH/SystemRoot, private worker PATH/SystemRoot and exact loaded ntdll presence. Responses
+  contain only PATH environment data. The two regressions total **4.072s**.
+- After one matching `packages:ensure`, actual packaged Node and Electron application-context controls
+  pass in **20.317s / 19.947s**, unchanged 60s limits. Exact DLL selection, copied-runtime identity,
+  package-contained loading and refusal before DLL/addon/entry initialization remain asserted.
+- All **57** Windows identity/ownership/admission checks pass in **4.87s**. CLI types, scripts/repo/E2E
+  types, focused correctness lint and all **42** timeout-policy checks pass.
+
+The single affected public two-build case was rerun once without a debugger. Its first build completes
+at **155.705s**, passive replay at **160.375s**, archive at **169.409s**. The second fresh worker is
+observed compiling at 214s; at that point the supervisor has read **3.43 GB** and written **572 MB**.
+The unchanged 240s scenario limit expires before completion, followed by the existing EPERM root cleanup
+race. This is forward progress through real captures/builds, not a heap-corruption recurrence or a
+missed watcher event. It does not accept repeated-build identity. Repair this test's lifecycle ownership
+so teardown aborts/drains an active build before deleting its root, and give this specific two-capture
+scenario a defensible Windows budget. Do not increase per-query or watcher deadlines or rerun broad suites.
+
+Evidence lives under `C:\apack-setup\runs\pe-process-ffd4ba8cd`: exact tracked source patch, the new
+helper's bytes, focused/runtime/model/repeat JSON reports and logs, and package preparation. The original
+unsafe-report reproducer and rejected-lock stashes remain preserved. No native execution ran on the
+lead developer's Mac. Remaining policy/platform cases, repeated-build completion, B6 and final strict
+committed-source `--all` remain open; no goal phase is excluded.

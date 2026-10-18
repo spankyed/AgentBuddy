@@ -30,6 +30,68 @@ import { compilerStartupOptions, COMPILER_NODE_OPTIONS_ENV } from '../../src/bui
 import { COMPILER_INPUTS_ENV } from '../../src/build/compiler-installation-inputs.ts';
 import { spawnCompilerWorker } from '../../src/build/compiler-process.ts';
 
+it.runIf(process.platform === 'win32')('reads Windows loader state concurrently across owned threads without native corruption', async () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'apack-pe-report-'));
+  onTestFinished(() => fs.rmSync(root, { recursive: true, force: true }));
+  const probe = path.join(root, 'report.mjs');
+  fs.writeFileSync(probe, `import { Worker, isMainThread, parentPort } from 'node:worker_threads';
+    import { readPeSystemDirectory } from ${JSON.stringify(new URL('../../src/build/compiler-pe-environment.ts', import.meta.url).href)};
+    process.report.excludeEnv = true;
+    if (!isMainThread) parentPort.postMessage('ready');
+    const worker = isMainThread ? new Worker(new URL(import.meta.url)) : undefined;
+    const done = worker && new Promise((resolve, reject) => {
+      worker.once('exit', code => code ? reject(new Error('Worker exit ' + code)) : resolve());
+      worker.once('error', reject);
+    });
+    if (worker) await new Promise(resolve => worker.once('message', resolve));
+    for (let n = 0; n < 8; n++) readPeSystemDirectory();
+    if (!process.report.excludeEnv) throw new Error('Report policy was not restored');
+    if (done) { await done; console.log('REPORT_THREADS_COMPLETE'); }
+  `);
+  const result = await promisify(execFile)(process.execPath, ['--conditions=@apackdev/source', '--import', 'tsx', probe], {
+    cwd: REPO_ROOT, env: { ...process.env, NODE_OPTIONS: '' }, timeout: 10_000, windowsHide: true,
+  }).catch(error => { throw new Error(`Report child exited ${error.code}: ${error.stdout} ${error.stderr}`); });
+  expect(result.stdout).toContain('REPORT_THREADS_COMPLETE');
+}, 15_000);
+
+it.runIf(process.platform === 'win32')('reads live native PATH despite replaced and thread-local JavaScript environments', async () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'apack-pe-environment-'));
+  onTestFinished(() => fs.rmSync(root, { recursive: true, force: true }));
+  const probe = path.join(root, 'environment.mjs');
+  fs.writeFileSync(probe, `import { Worker, isMainThread, workerData, parentPort } from 'node:worker_threads';
+    import path from 'node:path';
+    import { readPeSystemDirectory, readPeProcessState } from ${JSON.stringify(new URL('../../src/build/compiler-pe-environment.ts', import.meta.url).href)};
+    const native = process.env;
+    const state = () => readPeProcessState(readPeSystemDirectory());
+    const check = expected => {
+      const result = state();
+      if (result.environment.PATH !== expected || Object.keys(result.environment).some(key => key !== 'PATH'))
+        throw new Error('Reader did not retain the native PATH-only contract');
+      if (!result.libraries.some(file => path.basename(file).toLowerCase() === 'ntdll.dll')) throw new Error('Loaded ntdll missing');
+    };
+    if (!isMainThread) { check(workerData.expected); parentPort.postMessage('NATIVE_PATH_COMPLETE'); }
+    else {
+      native.PATH += ';C:/apack-environment-Ω';
+      process.env = { ...native, PATH: 'JS_PATH', SystemRoot: 'JS_ROOT', windir: 'JS_ROOT' };
+      check(native.PATH);
+      native.PATH += ';C:/apack-environment-next';
+      check(native.PATH);
+      const worker = new Worker(new URL(import.meta.url), {
+        env: { ...native, PATH: 'WORKER_PATH', SystemRoot: 'WORKER_ROOT', windir: 'WORKER_ROOT' }, workerData: { expected: native.PATH },
+      });
+      const done = new Promise((resolve, reject) => {
+        worker.once('exit', code => code ? reject(new Error('Worker exit ' + code)) : resolve());
+        worker.once('error', reject);
+      });
+      await done; console.log('NATIVE_PATH_COMPLETE');
+    }
+  `);
+  const result = await promisify(execFile)(process.execPath, ['--conditions=@apackdev/source', '--import', 'tsx', probe], {
+    cwd: REPO_ROOT, env: { ...process.env, NODE_OPTIONS: '' }, timeout: 25_000, windowsHide: true,
+  }).catch(error => { throw new Error(`Native environment child exited ${error.code}: ${error.stdout} ${error.stderr}`); });
+  expect(result.stdout).toContain('NATIVE_PATH_COMPLETE');
+});
+
 /** Bind the value IAT while retaining the lookup table needed when Windows cannot reuse the binding. */
 function bindValueImport(bytes: Buffer, address: bigint, timeStamp: number) {
   const pe = bytes.readUInt32LE(60), optional = pe + 24;

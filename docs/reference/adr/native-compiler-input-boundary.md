@@ -53,10 +53,20 @@ subject to per-image admission. Runtime acceptance and environments without thos
 require evidence; this implementation is not a new approval to exclude configured platform targets.
 
 The PE implementation uses checked static image declarations and the common native copy owner.
-Loaded-module inventory comes from a bounded installed Windows PowerShell/.NET OS query: Node 23's
-report implementation limits module filenames to 130 characters and is insufficient for captured
-paths. Reports supply native environment values and the short loaded ntdll location; they are not the
-Windows module authority. The query does not initialize pack images. The exact owned-DLL, restoration,
+Loaded-module inventory comes from a bounded installed Windows PowerShell/.NET OS query. Node 23's
+report implementation truncates module filenames and concurrent report generation can corrupt the
+Windows heap; Windows admission therefore does not use that API. Bootstrap the inspector through the
+OS object-manager namespace, then derive the system directory from the target's actual loaded ntdll.
+Only that immutable directory is cached; modules, loader policy and native PATH remain live.
+
+The existing inspector reads PATH from the target's native process parameters rather than a replaced
+JavaScript environment or a worker's private environment. It uses read-only process access, explicit
+native/WOW64 pointer widths, page-bounded reads capped at 1 MiB, and rejects a changed PATH/pointer
+between observations. Process handles are disposed. Only PATH is returned; no other environment values
+are serialized. The existing helper job is established before optional C# compilation, retaining the
+five-second query bound and descendant cleanup. Unreadable or changing process parameters refuse rather
+than substituting JavaScript values. These internal Windows layouts need platform acceptance; this
+is not universal native-input capture or stronger isolation. The query does not initialize pack images. The exact owned-DLL, restoration,
 Vue and outside-PATH refusal control passes on `b70228539`; other required Windows lookup and platform
 checks remain open. See [Windows evidence](../../evidence/build-input-snapshot-proof.md#accepted-windows-dll-ownership-and-full-path-module-metadata-2026-10-17).
 
