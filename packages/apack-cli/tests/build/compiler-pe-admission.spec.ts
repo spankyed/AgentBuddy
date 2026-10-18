@@ -1,6 +1,7 @@
 import { expect, it } from 'vitest';
 import { createHash } from 'node:crypto';
 import { assertCapturedPeLibraries } from '../../src/build/compiler-pe-admission.ts';
+import type { CompilerPeActivationContext } from '../../src/build/compiler-pe-activation.ts';
 import type { CompilerPeEnvironment } from '../../src/build/compiler-pe-environment.ts';
 import { peImage } from '../_support/pe-image.ts';
 
@@ -10,7 +11,7 @@ const environment: CompilerPeEnvironment = { systemDirectory: 'C:\\Windows\\Syst
   safeSearch: true, devOverride: false, knownDlls: [], apiSets: [], schema: 'C:\\Windows\\System32\\apisetschema.dll',
   applicationContext: { image: 'C:\\compiler\\node.exe', inputs: [], redirections: [] } };
 
-function image(dependency?: string, forwarder?: string) {
+function image(dependency?: string, forwarder?: string, resource?: number) {
   const image = peImage();
   if (dependency) { image.imports(); image.text(0x1200, dependency); }
   if (forwarder) {
@@ -19,12 +20,21 @@ function image(dependency?: string, forwarder?: string) {
     image.uint(0x1b00, 0x1a70); image.text(0x1a70, forwarder);
     image.uint(0x1b20, 0x1c00); image.text(0x1c00, 'native_value');
   }
+  if (resource) {
+    image.directory(2, 0x1d00, 0x400);
+    for (const [level, name] of [24, resource, 1033].entries()) {
+      const at = 0x1d00 + level * 32;
+      image.bytes.writeUInt16LE(1, image.offset(at + 14)); image.uint(at + 16, name);
+      image.uint(at + 20, level === 2 ? 0x60 : 0x80000000 + (level + 1) * 32);
+    }
+    image.uint(0x1d60, 0x1f00); image.uint(0x1d64, 11); image.text(0x1f00, '<assembly/>');
+  }
   return image.bytes;
 }
 
 function admission(files: [string, Buffer][], options: { environment?: Partial<CompilerPeEnvironment>;
   variables?: NodeJS.ProcessEnv; loaded?: string[]; directories?: string[]; executable?: string;
-  realpath?: (file: string) => string } = {}) {
+  realpath?: (file: string) => string; contexts?: Record<string, CompilerPeActivationContext> } = {}) {
   const entries: [string, Buffer][] = [[entry, image('value.dll')], ...files];
   const images = new Map(entries.map(([file, bytes]) => [file.toLowerCase(), bytes]));
   const reads: string[] = [];
@@ -33,6 +43,7 @@ function admission(files: [string, Buffer][], options: { environment?: Partial<C
       image: options.executable ?? environment.applicationContext.image }, ...options.environment },
     executable: options.executable ?? 'C:\\compiler\\node.exe', cwd: 'C:\\work',
     variables: options.variables ?? {}, loadedLibraries: options.loaded ?? [], arch: 'x64',
+    moduleContext: file => options.contexts?.[file] ?? { image: file, inputs: [], redirections: [] },
     directoryExists: file => options.directories?.includes(file) ?? false,
     read(file) { reads.push(file); return images.get(file.toLowerCase()); }, realpath: options.realpath ?? (file => file),
   }) };
@@ -95,11 +106,51 @@ it('checks physical ownership of application-context libraries', () => {
   expect(value.check).toThrow('outside its captured package');
 });
 
+it('uses a DLL context for its imports and dependencies without their own context', () => {
+  const selected = 'C:\\pack\\private\\value.dll', deeper = 'C:\\pack\\private\\deeper.dll';
+  const value = admission([[entry, image('value.dll', undefined, 2)], [library, Buffer.from('unused')],
+    [selected, image('deeper.dll')], [deeper, image()]], {
+    loaded: [library], environment: { knownDlls: ['value.dll'], applicationContext: {
+      image: 'C:\\compiler\\node.exe', inputs: [], redirections: [{ name: 'value.dll', file: 'C:\\outside\\value.dll' }] } },
+    contexts: { [entry]: { image: entry, inputs: [], redirections: [{ name: 'value.dll', file: selected }, { name: 'deeper.dll', file: deeper }] } },
+  });
+  expect(value.check).not.toThrow();
+  expect(value.reads).toContain(deeper);
+  expect(value.reads).not.toContain(library);
+});
+
+it('replaces the inherited context when a dependency declares its own resource 2', () => {
+  const selected = 'C:\\pack\\private\\value.dll', deeper = 'C:\\pack\\private\\deeper.dll';
+  const value = admission([[entry, image('value.dll', undefined, 2)], [selected, image('deeper.dll', undefined, 2)], [deeper, image()]], {
+    contexts: {
+      [entry]: { image: entry, inputs: [], redirections: [{ name: 'value.dll', file: selected }, { name: 'deeper.dll', file: 'C:\\outside\\deeper.dll' }] },
+      [selected]: { image: selected, inputs: [], redirections: [{ name: 'deeper.dll', file: deeper }] },
+    },
+  });
+  expect(value.check).not.toThrow();
+  expect(value.reads).toContain(deeper);
+});
+
+it('refuses an outside library selected by a DLL context', () => {
+  const selected = 'C:\\outside\\value.dll';
+  const value = admission([[entry, image('value.dll', undefined, 2)], [library, image()], [selected, image()]], {
+    contexts: { [entry]: { image: entry, inputs: [], redirections: [{ name: 'value.dll', file: selected }] } },
+  });
+  expect(value.check).toThrow(selected);
+});
+
+it('does not treat a resource-3 manifest as a static-import context', () => {
+  const value = admission([[entry, image('value.dll', undefined, 3)], [library, image()]], {
+    contexts: { [entry]: { image: entry, inputs: [], redirections: [{ name: 'value.dll', file: null }] } },
+  });
+  expect(value.check).not.toThrow();
+});
+
 it('does not fall back to an adjacent DLL when the activation context names a missing library', () => {
   const value = admission([[library, image()]], {
     environment: { applicationContext: { image: 'C:\\compiler\\node.exe', inputs: [], redirections: [{ name: 'value.dll', file: null }] } },
   });
-  expect(value.check).toThrow('application context cannot locate');
+  expect(value.check).toThrow('activation context cannot locate');
 });
 
 it.each(['file', 'directory', 'missing'] as const)('observes and rejects changed %s context inputs', kind => {
@@ -108,7 +159,7 @@ it.each(['file', 'directory', 'missing'] as const)('observes and rejects changed
     environment: { applicationContext: { image: 'C:\\compiler\\node.exe',
       inputs: [{ file: manifest, kind, hash: kind === 'file' ? createHash('sha256').update('original').digest('hex') : null }], redirections: [] } },
   });
-  expect(value.check).toThrow(`Windows application context changed during inspection: ${manifest}`);
+  expect(value.check).toThrow(`Windows activation context changed during inspection: ${manifest}`);
   expect(value.reads).toContain(manifest);
 });
 

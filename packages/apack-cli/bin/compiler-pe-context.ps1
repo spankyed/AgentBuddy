@@ -17,9 +17,9 @@ function Read-Manifest([byte[]]$bytes) {
 try {
   $payload = [Console]::In.ReadToEnd() | ConvertFrom-Json
   $preference = [Microsoft.Win32.Registry]::GetValue('HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\SideBySide', 'PreferExternalManifest', 0)
-  $external = $null -ne $payload.external -and (($preference -is [int] -and $preference -eq 1) -or $payload.manifests.Count -eq 0)
+  $external = $payload.resource -eq 1 -and $null -ne $payload.external -and (($preference -is [int] -and $preference -eq 1) -or $payload.manifests.Count -eq 0)
   $documents = if ($external) { @($payload.external) } else { @($payload.manifests) }
-  $bindings = @($payload.inputs | Where-Object { $_.file -eq ($payload.image + '.config') -and $_.kind -eq 'file' }).Count -ne 0
+  $bindings = @($payload.inputs | Where-Object { $_.file -eq $payload.configuration -and $_.kind -eq 'file' }).Count -ne 0
   foreach ($encoded in $documents) {
     $document = Read-Manifest ([Convert]::FromBase64String($encoded))
     if ($document.SelectNodes('//*[local-name()="dependency" or local-name()="file"]').Count -ne 0) { $bindings = $true }
@@ -38,7 +38,7 @@ using System.Security.Cryptography;
 using System.Runtime.InteropServices;
 using Microsoft.Win32.SafeHandles;
 
-public static class ApackPeApplicationContext {
+public static class ApackPeActivationContext {
   [StructLayout(LayoutKind.Sequential, CharSet=CharSet.Unicode)]
   struct ContextSpec {
     public uint Size, Flags;
@@ -120,11 +120,11 @@ public static class ApackPeApplicationContext {
       document.Load(reader); return document;
     }
   }
-  static XmlDocument ReadResource(string image) {
+  static XmlDocument ReadResource(string image, int resourceId) {
     IntPtr module = LoadLibraryExW(NativePath(image), IntPtr.Zero, 0x60);
     if (module == IntPtr.Zero) throw new Win32Exception(Marshal.GetLastWin32Error());
     try {
-      IntPtr resource = FindResourceW(module, new IntPtr(1), new IntPtr(24));
+      IntPtr resource = FindResourceW(module, new IntPtr(resourceId), new IntPtr(24));
       if (resource == IntPtr.Zero) throw new Win32Exception(Marshal.GetLastWin32Error());
       uint size = SizeofResource(module, resource);
       IntPtr bytes = LockResource(LoadResource(module, resource));
@@ -133,9 +133,9 @@ public static class ApackPeApplicationContext {
       using (MemoryStream stream = new MemoryStream(data)) return ReadXml(stream);
     } finally { FreeLibrary(module); }
   }
-  static XmlDocument ReadManifest(string file) {
+  static XmlDocument ReadManifest(string file, int resourceId) {
     using (FileStream stream = ReadFile(file)) {
-      if (stream.ReadByte() == 'M' && stream.ReadByte() == 'Z') return ReadResource(file);
+      if (stream.ReadByte() == 'M' && stream.ReadByte() == 'Z') return ReadResource(file, resourceId);
       stream.Position = 0;
       return ReadXml(stream);
     }
@@ -171,13 +171,13 @@ public static class ApackPeApplicationContext {
       }
     } finally { FreeLibrary(module); }
   }
-  public static object Read(string image, bool external) {
+  public static object Read(string image, string application, int resourceId, bool external) {
     ContextSpec spec = new ContextSpec();
     spec.Size = (uint)Marshal.SizeOf(typeof(ContextSpec));
     spec.Source = NativePath(external ? image + ".manifest" : image);
     spec.Flags = external ? 0x24u : 0x2cu;
-    spec.Resource = external ? IntPtr.Zero : new IntPtr(1);
-    spec.AssemblyDirectory = NativePath(image.Substring(0, image.LastIndexOf('\\') + 1)); spec.Application = image;
+    spec.Resource = external ? IntPtr.Zero : new IntPtr(resourceId);
+    spec.AssemblyDirectory = NativePath(image.Substring(0, image.LastIndexOf('\\') + 1)); spec.Application = application;
     IntPtr context = CreateActCtxW(ref spec);
     if (context == new IntPtr(-1)) throw new Win32Exception(Marshal.GetLastWin32Error());
     IntPtr index = Marshal.AllocHGlobal(4);
@@ -193,7 +193,8 @@ public static class ApackPeApplicationContext {
         string manifest = DosPath(item.Manifest);
         inputs[manifest] = Input(manifest);
         if (!String.IsNullOrEmpty(item.Policy)) inputs[DosPath(item.Policy)] = Input(DosPath(item.Policy));
-        XmlDocument document = ReadManifest(manifest);
+        // The first roster entry is the requested image; dependent assemblies use resource 1.
+        XmlDocument document = ReadManifest(manifest, assembly == 1 ? resourceId : 1);
         foreach (XmlNode file in document.SelectNodes("//*[local-name()='file' and namespace-uri()='urn:schemas-microsoft-com:asm.v1']")) {
           string name = file.Attributes["name"].Value;
           if (name.Length != 0) names.Add(name);
@@ -211,7 +212,7 @@ public static class ApackPeApplicationContext {
   }
 }
 '@
-    $context = [ApackPeApplicationContext]::Read($payload.image, $external)
+    $context = [ApackPeActivationContext]::Read($payload.image, $payload.application, $payload.resource, $external)
     $known = @{}
     foreach ($inputFile in $payload.inputs) { $known[$inputFile.file] = $inputFile }
     foreach ($inputFile in $context.inputs) {

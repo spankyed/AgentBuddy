@@ -3,7 +3,7 @@ import { createRequire } from 'node:module';
 import path from 'node:path';
 import { createHash } from 'node:crypto';
 import type { PackageInputFile } from '@apackdev/host/build/package-inputs';
-import { readPeApplicationContext } from './compiler-pe-activation.ts';
+import { readPeActivationContext } from './compiler-pe-activation.ts';
 import { readPeSystemDirectory } from './compiler-pe-environment.ts';
 import { isPeSystemPath, pePath } from './compiler-pe-paths.ts';
 
@@ -79,7 +79,7 @@ export function readCompilerRuntimeInputs(
     if (bytes.length >= 2 && bytes.readUInt16LE(0) === 0x5a4d) {
       const systemDirectory = readPeSystemDirectory();
       const environment = { systemDirectory, windowsDirectory: path.dirname(systemDirectory) };
-      const context = readPeApplicationContext(executable, systemDirectory);
+      const context = readPeActivationContext(executable, { systemDirectory, application: executable, resource: 1 });
       const within = (file: string) => {
         const value = path.relative(pePath(root), pePath(file));
         return value === '' || (value !== '..' && !value.startsWith(`..${path.sep}`) && !path.isAbsolute(value));

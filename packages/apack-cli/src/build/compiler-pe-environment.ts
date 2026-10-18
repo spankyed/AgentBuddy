@@ -4,7 +4,7 @@ import { execFileSync } from 'node:child_process';
 import { parsePeApiSets, type PeApiSet } from './compiler-pe-api-sets.ts';
 import { readPeSection } from './compiler-pe-libraries.ts';
 import { pePath, type CompilerPeSystemPaths } from './compiler-pe-paths.ts';
-import { readPeApplicationContext, type CompilerPeActivationContext } from './compiler-pe-activation.ts';
+import { readPeActivationContext, type CompilerPeActivationContext } from './compiler-pe-activation.ts';
 
 export interface CompilerPeEnvironment extends CompilerPeSystemPaths {
   readonly safeSearch: boolean;
@@ -93,7 +93,7 @@ export function capturePeLibraryEnvironment(executable = process.execPath): Comp
   if (!section) throw new Error('Windows API-set schema has no .apiset section');
   return Object.freeze({ systemDirectory, windowsDirectory: path.dirname(systemDirectory), safeSearch, devOverride,
     knownDlls: Object.freeze(knownDlls.map(name => name.toLowerCase())), schema, apiSets: parsePeApiSets(section),
-    applicationContext: readPeApplicationContext(executable, systemDirectory) });
+    applicationContext: readPeActivationContext(executable, { systemDirectory, application: executable, resource: 1 }) });
 }
 
 export function peLibraryPaths(env: NodeJS.ProcessEnv): string[] {

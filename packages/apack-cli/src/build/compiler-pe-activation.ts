@@ -19,8 +19,10 @@ export interface CompilerPeActivationContext {
   readonly redirections: readonly { name: string; file: string | null }[];
 }
 
-/** The default application context; queries resources without initializing native pack code. */
-export function readPeApplicationContext(image: string, systemDirectory: string): CompilerPeActivationContext {
+/** Query an executable or DLL context without initializing native pack code. */
+export function readPeActivationContext(image: string, { systemDirectory, application, resource }: {
+  systemDirectory: string; application: string; resource: 1 | 2;
+}): CompilerPeActivationContext {
   image = pePath(image);
   const inputs: CompilerPeActivationInput[] = [];
   const read = (file: string) => {
@@ -31,13 +33,14 @@ export function readPeApplicationContext(image: string, systemDirectory: string)
     return bytes;
   };
   const bytes = read(image);
-  if (!bytes) throw new Error(`Cannot inspect Windows application image "${image}"`);
-  const manifests = parsePeLibraryMetadata(bytes).manifests.filter(item => item.path[1] === 1);
-  const external = read(image + '.manifest');
-  read(image + '.config');
+  if (!bytes) throw new Error(`Cannot inspect Windows activation image "${image}"`);
+  const manifests = parsePeLibraryMetadata(bytes).manifests.filter(item => item.path[1] === resource);
+  const external = resource === 1 ? read(image + '.manifest') : undefined;
+  const configuration = image + (resource === 1 ? '.config' : '.2.config');
+  read(configuration);
   if (!manifests.length && external === undefined) return { image, inputs, redirections: [] };
   try {
-    const payload = JSON.stringify({ image, inputs, manifests: manifests.map(item => item.bytes.toString('base64')),
+    const payload = JSON.stringify({ image, application, resource, configuration, inputs, manifests: manifests.map(item => item.bytes.toString('base64')),
       external: external?.toString('base64') }).replace(/[\u007f-\uffff]/g, value => '\\u' + value.charCodeAt(0).toString(16).padStart(4, '0'));
     const owner = cliPackageDirectory(typeof __filename === 'string' ? pathToFileURL(__filename).href : import.meta.url);
     const text = execFileSync(path.join(systemDirectory, 'WindowsPowerShell/v1.0/powershell.exe'),
@@ -57,6 +60,6 @@ export function readPeApplicationContext(image: string, systemDirectory: string)
     return value;
   } catch (error) {
     const failure = error as NodeJS.ErrnoException & { status?: number; signal?: string };
-    throw new Error(`Cannot inspect Windows application context for "${image}": ${failure.code ?? failure.signal ?? failure.status ?? 'invalid OS metadata'}`);
+    throw new Error(`Cannot inspect Windows activation context for "${image}": ${failure.code ?? failure.signal ?? failure.status ?? 'invalid OS metadata'}`);
   }
 }

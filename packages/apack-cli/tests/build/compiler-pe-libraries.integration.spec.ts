@@ -19,6 +19,8 @@ import { assertCapturedPeLibraries } from '../../src/build/compiler-pe-admission
 import { BUILD_INPUTS_DIRECTORY_ENV } from '../../src/build/compiler-read-tree.ts';
 import type { CapturedNativeModule } from '../../src/build/compiler-native-input-owner.ts';
 import { readPeLoaderMetadata, capturePeLibraryEnvironment } from '../../src/build/compiler-pe-environment.ts';
+import { readPeActivationContext } from '../../src/build/compiler-pe-activation.ts';
+import { pePath } from '../../src/build/compiler-pe-paths.ts';
 import { readCompilerRuntimeInputs } from '../../src/build/compiler-runtime.ts';
 import { compilerStartupOptions, COMPILER_NODE_OPTIONS_ENV } from '../../src/build/compiler-startup-options.ts';
 import { COMPILER_INPUTS_ENV } from '../../src/build/compiler-installation-inputs.ts';
@@ -60,11 +62,11 @@ function createPeNativeFixture(root: string, pack: string, bound = false) {
   const addon = path.join(binding, 'addon.node');
   const dllMarker = path.join(root, 'dll-initialized');
   const addonMarker = path.join(root, 'addon-initialized');
-  const buildLibrary = (file: string, value: number, manifest?: string) => {
+  const buildLibrary = (file: string, value: number, { manifest, symbol = 'native_value' }: { manifest?: string; symbol?: string } = {}) => {
     fs.mkdirSync(path.dirname(file), { recursive: true });
     const source = file + '.c';
     fs.writeFileSync(source, `#include <windows.h>
-__declspec(dllexport) int native_value(void) { return ${value}; }
+__declspec(dllexport) int ${symbol}(void) { return ${value}; }
 BOOL WINAPI DllMain(HINSTANCE module, DWORD reason, LPVOID reserved) {
   if (reason == DLL_PROCESS_ATTACH) {
     HANDLE marker = CreateFileW(L${JSON.stringify(dllMarker)}, GENERIC_WRITE,
@@ -183,7 +185,7 @@ it.runIf(process.platform === 'win32')('refuses Node .local overrides through th
   }
 }, 120_000);
 
-it.runIf(process.platform === 'win32')('preserves Node assembly selection and refuses it through compiler startup before initialization', async () => {
+it.runIf(process.platform === 'win32').each(['application', 'module'] as const)('preserves Node %s-context assembly selection and refuses it through compiler startup before initialization', async kind => {
   const root = fs.realpathSync.native(fs.mkdtempSync(path.join(os.tmpdir(), 'apack-node-assembly-')));
   let completed = false;
   try {
@@ -192,47 +194,87 @@ it.runIf(process.platform === 'win32')('preserves Node assembly selection and re
     packFixture({ at: pack, nodeModules: path.join(REPO_ROOT, 'node_modules'), manifest: { features: {} } });
     const { addon, dllMarker, addonMarker, buildLibrary } = createPeNativeFixture(root, pack);
     const executable = createNodeWithoutApplicationManifest(runtime);
-    const library = path.join(runtime, 'apack.fixture.value/apack_value.dll');
+    const library = path.join(kind === 'application' ? runtime : path.dirname(addon), 'apack.fixture.value/apack_value.dll');
+    const outsideLibrary = kind === 'application' ? library : path.join(root, 'outside/apack_outside.dll');
     buildLibrary(library, 22);
     const identity = '<assemblyIdentity type="win32" name="apack.fixture.value" version="1.0.0.0" processorArchitecture="amd64"/>';
     fs.writeFileSync(path.join(path.dirname(library), 'apack.fixture.value.manifest'),
       `<?xml version="1.0"?><assembly xmlns="urn:schemas-microsoft-com:asm.v1" manifestVersion="1.0">${identity}<file name="apack_value.dll"/></assembly>`);
-    fs.writeFileSync(executable + '.manifest',
-      `<?xml version="1.0"?><assembly xmlns="urn:schemas-microsoft-com:asm.v1" manifestVersion="1.0"><assemblyIdentity type="win32" name="apack.fixture.node" version="1.0.0.0" processorArchitecture="amd64"/><dependency><dependentAssembly>${identity}</dependentAssembly></dependency></assembly>`);
+    const ownerIdentity = `<assemblyIdentity type="win32" name="apack.fixture.${kind}" version="1.0.0.0" processorArchitecture="amd64"/>`;
+    const manifest = `<?xml version="1.0"?><assembly xmlns="urn:schemas-microsoft-com:asm.v1" manifestVersion="1.0">${ownerIdentity}<dependency><dependentAssembly>${identity}</dependentAssembly></dependency></assembly>`;
+    if (kind === 'application') fs.writeFileSync(executable + '.manifest', manifest);
+    else {
+      const manifestFile = path.join(root, 'addon.manifest');
+      fs.writeFileSync(manifestFile, manifest);
+      execFileSync('cl.exe', ['/nologo', '/MT', '/LD', '/I' + process.env.APACK_TEST_NODE_HEADERS!, path.join(root, 'addon.c'),
+        '/Fo' + path.join(root, 'addon.obj'), '/link', '/INCREMENTAL:NO', '/MANIFEST:EMBED,ID=2', '/MANIFESTUAC:NO',
+        '/MANIFESTINPUT:' + manifestFile, '/OUT:' + addon, path.join(root, 'value.lib'), process.env.APACK_TEST_NODE_IMPORT_LIBRARY!],
+      { cwd: root, timeout: 15_000 });
+      buildLibrary(outsideLibrary, 22, { symbol: 'outside_value' });
+      const dependencySource = path.join(root, 'dependency.c');
+      fs.writeFileSync(dependencySource, '__declspec(dllimport) int outside_value(void); __declspec(dllexport) int native_value(void) { return outside_value(); }');
+      execFileSync('cl.exe', ['/nologo', '/MT', '/LD', dependencySource, '/Fo' + path.join(root, 'dependency.obj'),
+        '/link', '/INCREMENTAL:NO', '/OUT:' + library, path.join(root, 'value.lib')], { cwd: root, timeout: 15_000 });
+    }
     const copiedExecutable = copyPeRuntimeFixture(executable, copied);
     // The private manifest-less Node retains the existing supported-runner platform-check override.
-    const environment = { ...process.env, NODE_SKIP_PLATFORM_CHECK: '1', NODE_OPTIONS: '' };
+    const environment: NodeJS.ProcessEnv = { ...process.env, NODE_SKIP_PLATFORM_CHECK: '1', NODE_OPTIONS: '' };
+    if (kind === 'module') {
+      const key = Object.keys(environment).find(key => key.toUpperCase() === 'PATH') ?? 'PATH';
+      environment[key] = path.dirname(outsideLibrary) + ';' + (environment[key] ?? '');
+    }
     const ordinary = JSON.parse(execFileSync(copiedExecutable, ['-e',
       `const addon = require(${JSON.stringify(addon)}); console.log(JSON.stringify({value:addon.read(),file:addon.libraryPath()}));`],
     { cwd: pack, env: environment, encoding: 'utf8', timeout: 5_000 })) as { value: number; file: string };
-    const copiedLibrary = path.join(copied, path.relative(runtime, library));
-    expect(ordinary).toEqual({ value: 22, file: copiedLibrary });
+    const copiedLibrary = kind === 'application' ? path.join(copied, path.relative(runtime, library)) : library;
+    expect(ordinary.value).toBe(22);
+    expect(pePath(fs.realpathSync.native(ordinary.file)).toLowerCase())
+      .toBe(pePath(fs.realpathSync.native(copiedLibrary)).toLowerCase());
     expect(fs.existsSync(dllMarker)).toBe(true);
     expect(fs.existsSync(addonMarker)).toBe(true);
     fs.rmSync(dllMarker); fs.rmSync(addonMarker);
-    const workspace = path.join(root, 'inputs');
-    fs.mkdirSync(workspace);
-    const inputsFile = path.join(workspace, 'compiler-inputs.json');
-    fs.writeFileSync(inputsFile, JSON.stringify({ hash: '0'.repeat(64), packages: [compilerPackageDirectory()],
-      paths: [{ captured: copied, source: runtime }] }));
-    const entry = path.join(root, 'entry.cjs'), preload = path.join(root, 'preload.cjs');
-    fs.writeFileSync(entry, "throw new Error('Refused preload reached the compiler entry');");
+    const preload = path.join(root, 'preload.cjs');
     fs.writeFileSync(preload, `require(${JSON.stringify(addon)});`);
     const options = compilerStartupOptions(path.join(compilerPackageDirectory(), 'bin/apack.mjs'), formatNodeOptions(['--require', preload]));
-    const child = fork(entry, [], { execPath: copiedExecutable, execArgv: [], cwd: pack, stdio: ['ignore', 'ignore', 'pipe', 'ipc'],
-      env: { ...environment, APACK_BUILD_WORKER: '1', [COMPILER_INPUTS_ENV]: inputsFile,
-        [BUILD_INPUTS_DIRECTORY_ENV]: workspace, [COMPILER_NODE_OPTIONS_ENV]: options.user, NODE_OPTIONS: options.worker } });
-    let errors = '';
-    child.stderr!.on('data', chunk => { errors += chunk; });
-    const closed = new Promise<number | null>((resolve, reject) => {
-      child.once('error', reject); child.once('close', resolve);
-    });
-    onTestFinished(async () => { if (child.exitCode === null && child.signalCode === null) child.kill(); await closed; });
-    expect(await closed, errors).toBe(1);
-    expect(errors).toContain(`selects "${library}" outside its captured package`);
-    expect(errors).not.toContain('Refused preload reached the compiler entry');
+    const runStartup = async (workspace: string, source: string) => {
+      fs.mkdirSync(workspace);
+      const inputsFile = path.join(workspace, 'compiler-inputs.json'), entry = path.join(workspace, 'entry.cjs');
+      fs.writeFileSync(inputsFile, JSON.stringify({ hash: '0'.repeat(64), packages: [compilerPackageDirectory()],
+        paths: [{ captured: copied, source: runtime }] }));
+      fs.writeFileSync(entry, source);
+      const child = fork(entry, [], { execPath: copiedExecutable, execArgv: [], cwd: pack, stdio: ['ignore', 'ignore', 'pipe', 'ipc'],
+        env: { ...environment, APACK_BUILD_WORKER: '1', [COMPILER_INPUTS_ENV]: inputsFile,
+          [BUILD_INPUTS_DIRECTORY_ENV]: workspace, [COMPILER_NODE_OPTIONS_ENV]: options.user, NODE_OPTIONS: options.worker } });
+      let errors = '', result: unknown;
+      child.stderr!.on('data', chunk => { errors += chunk; });
+      child.on('message', message => { result = message; });
+      const closed = new Promise<number | null>((resolve, reject) => {
+        child.once('error', reject); child.once('close', resolve);
+      });
+      onTestFinished(async () => { if (child.exitCode === null && child.signalCode === null) child.kill(); await closed; });
+      const code = await closed;
+      return { code, errors, result };
+    };
+    const refused = await runStartup(path.join(root, 'inputs'), "throw new Error('Refused preload reached the compiler entry');");
+    expect(refused.code, refused.errors).toBe(1);
+    expect(refused.errors).toContain(`selects "${outsideLibrary}" outside its captured package`);
+    expect(refused.errors).not.toContain('Refused preload reached the compiler entry');
     expect(fs.existsSync(dllMarker)).toBe(false);
     expect(fs.existsSync(addonMarker)).toBe(false);
+    if (kind === 'module') {
+      fs.renameSync(outsideLibrary, path.join(path.dirname(addon), 'apack_outside.dll'));
+      const workspace = path.join(root, 'allowed-inputs');
+      const allowed = await runStartup(workspace, `const addon = require(${JSON.stringify(addon)});
+        process.send({value:addon.read(), library:addon.libraryPath()}, () => process.exit(0));`);
+      expect(allowed.code, allowed.errors).toBe(0);
+      expect(allowed.result).toMatchObject({ value: 22, library: expect.any(String) });
+      const file = (allowed.result as { library: string }).library;
+      const capturedFile = pePath(fs.realpathSync.native(file)).toLowerCase();
+      const capturedRoot = pePath(fs.realpathSync.native(workspace)).toLowerCase() + path.sep;
+      expect(capturedFile.startsWith(capturedRoot)).toBe(true);
+      expect(fs.existsSync(dllMarker)).toBe(true);
+      expect(fs.existsSync(addonMarker)).toBe(true);
+    }
     completed = true;
   } finally {
     if (completed) fs.rmSync(root, { recursive: true, force: true });
@@ -242,7 +284,7 @@ it.runIf(process.platform === 'win32')('preserves Node assembly selection and re
 
 // Ordinary Windows loader controls: these deliberately bypass compiler admission. A failed
 // control invalidates the fixture; it does not establish a production admission defect.
-it.runIf(process.platform === 'win32').each(['local', 'assembly', 'assembly-resource'] as const)(
+it.runIf(process.platform === 'win32').each(['local', 'assembly', 'assembly-resource', 'image-assembly', 'image-assembly-api'] as const)(
   'identifies ordinary PE %s redirection while loading a native image', kind => {
     const root = fs.realpathSync.native(fs.mkdtempSync(path.join(os.tmpdir(), 'apack-pe-redirection-')));
     let completed = false;
@@ -253,7 +295,14 @@ it.runIf(process.platform === 'win32').each(['local', 'assembly', 'assembly-reso
       // Admission resolves named dependencies of an explicitly loaded image.
       const entry = path.join(path.dirname(library), 'bridge.dll');
       const bridge = path.join(root, 'bridge.c');
-      fs.writeFileSync(bridge, '__declspec(dllimport) int native_value(void); __declspec(dllexport) int probe_value(void) { return native_value(); }');
+      fs.writeFileSync(bridge, `#include <windows.h>
+__declspec(dllimport) int native_value(void);
+__declspec(dllexport) int probe_value(void) { return native_value(); }
+__declspec(dllexport) HMODULE probe_library(void) {
+  HMODULE module = NULL;
+  return GetModuleHandleExW(GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS | GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT,
+    (LPCWSTR)&native_value, &module) ? module : NULL;
+}`);
       execFileSync('cl.exe', ['/nologo', '/MT', '/LD', bridge, '/Fo' + path.join(root, 'bridge.obj'), '/link',
         '/INCREMENTAL:NO', '/OUT:' + entry, path.join(root, 'value.lib')], { cwd: root, timeout: 15_000 });
       expect(parsePeLibraryMetadata(fs.readFileSync(entry)).imports.map(imported => imported.name)).toContain('apack_value.dll');
@@ -265,11 +314,14 @@ it.runIf(process.platform === 'win32').each(['local', 'assembly', 'assembly-reso
 #include <stdio.h>
 int wmain(int argc, wchar_t **argv) {
   if (argc != 2) return 2;
+  ${kind === 'image-assembly-api' ? 'if (!LoadLibraryExW(L"psapi.dll", NULL, LOAD_LIBRARY_SEARCH_SYSTEM32)) return 8;' : ''}
   HMODULE module = LoadLibraryExW(argv[1], NULL, LOAD_WITH_ALTERED_SEARCH_PATH);
   if (!module) { fprintf(stderr, "LoadLibraryExW: %lu", GetLastError()); return 3; }
   int (*value)(void) = (int (*)(void))GetProcAddress(module, "probe_value");
   if (!value) return 4;
-  HMODULE dependency = GetModuleHandleW(L"apack_value.dll");
+  HMODULE (*library)(void) = (HMODULE (*)(void))GetProcAddress(module, "probe_library");
+  if (!library) return 5;
+  HMODULE dependency = library();
   if (!dependency) return 5;
   WCHAR file[32768];
   DWORD length = GetModuleFileNameW(dependency, file, sizeof(file) / sizeof(file[0]));
@@ -293,7 +345,9 @@ int wmain(int argc, wchar_t **argv) {
       expect(parsePeLibraryMetadata(fs.readFileSync(executable)).manifests).toEqual([]);
       expect(observe()).toEqual({ value: 11, file: fs.realpathSync.native(library).toLowerCase() });
       const assemblyName = kind === 'assembly-resource' ? 'apack_value' : 'apack.fixture.value';
-      const selected = path.join(runtime, ...(kind === 'local' ? [] : [assemblyName]), 'apack_value.dll');
+      const imageContext = kind === 'image-assembly' || kind === 'image-assembly-api';
+      const selected = path.join(imageContext ? path.dirname(entry) : runtime,
+        ...(kind === 'local' ? [] : [assemblyName]), kind === 'image-assembly-api' ? 'psapi.dll' : 'apack_value.dll');
       buildLibrary(selected, 22);
       // Merely placing a same-name DLL next to the executable must not change explicit loading.
       expect(observe()).toEqual({ value: 11, file: fs.realpathSync.native(library).toLowerCase() });
@@ -307,26 +361,42 @@ int wmain(int argc, wchar_t **argv) {
         const identity = `<assemblyIdentity type="win32" name="${assemblyName}" version="1.0.0.0" processorArchitecture="amd64"/>`;
         const assemblyManifest = path.join(path.dirname(selected), assemblyName + '.manifest');
         fs.writeFileSync(assemblyManifest,
-          `<?xml version="1.0" encoding="UTF-8"?><assembly xmlns="urn:schemas-microsoft-com:asm.v1" manifestVersion="1.0">${identity}<file name="apack_value.dll"/></assembly>`);
+          `<?xml version="1.0" encoding="UTF-8"?><assembly xmlns="urn:schemas-microsoft-com:asm.v1" manifestVersion="1.0">${identity}<file name="${path.basename(selected)}"/></assembly>`);
         if (kind === 'assembly-resource') {
-          buildLibrary(selected, 22, assemblyManifest);
+          buildLibrary(selected, 22, { manifest: assemblyManifest });
           fs.rmSync(assemblyManifest);
         }
         const manifest = path.join(root, 'probe.manifest');
         fs.writeFileSync(manifest,
           `<?xml version="1.0" encoding="UTF-8"?><assembly xmlns="urn:schemas-microsoft-com:asm.v1" manifestVersion="1.0"><assemblyIdentity type="win32" name="apack.fixture.probe" version="1.0.0.0" processorArchitecture="amd64"/><dependency><dependentAssembly>${identity}</dependentAssembly></dependency></assembly>`);
-        compile(manifest);
-        expect(parsePeLibraryMetadata(fs.readFileSync(executable)).manifests.length).toBeGreaterThan(0);
+        if (imageContext) {
+          execFileSync('cl.exe', ['/nologo', '/MT', '/LD', bridge, '/Fo' + path.join(root, 'bridge.obj'), '/link',
+            '/INCREMENTAL:NO', '/MANIFEST:EMBED,ID=2', '/MANIFESTUAC:NO', '/MANIFESTINPUT:' + manifest,
+            '/OUT:' + entry, path.join(root, 'value.lib')], { cwd: root, timeout: 15_000 });
+          expect(parsePeLibraryMetadata(fs.readFileSync(entry)).manifests.some(item => item.path[1] === 2)).toBe(true);
+        } else {
+          compile(manifest);
+          expect(parsePeLibraryMetadata(fs.readFileSync(executable)).manifests.length).toBeGreaterThan(0);
+        }
       }
       expect(observe(configured)).toEqual({ value: 22, file: fs.realpathSync.native(selected).toLowerCase() });
       fs.rmSync(dllMarker);
-      expect(() => assertCapturedPeLibraries(entry, path.dirname(library), {
-        environment: capturePeLibraryEnvironment(configured), executable: configured, cwd: root,
-        variables: process.env, loadedLibraries: [], arch: process.arch,
+      const reads: string[] = [];
+      const environment = capturePeLibraryEnvironment(configured);
+      const check = () => assertCapturedPeLibraries(entry, path.dirname(library), {
+        environment, executable: configured,
+        moduleContext: image => readPeActivationContext(image, { systemDirectory: environment.systemDirectory, application: configured, resource: 2 }), cwd: root,
+        variables: process.env,
+        loadedLibraries: kind === 'image-assembly-api' ? [path.join(environment.systemDirectory, 'psapi.dll')] : [], arch: process.arch,
         realpath: file => fs.realpathSync.native(file),
         directoryExists: file => fs.statSync(file, { throwIfNoEntry: false })?.isDirectory() ?? false,
-        read: file => fs.statSync(file, { throwIfNoEntry: false })?.isFile() ? fs.readFileSync(file) : undefined,
-      })).toThrow(selected);
+        read: file => { reads.push(file); return fs.statSync(file, { throwIfNoEntry: false })?.isFile() ? fs.readFileSync(file) : undefined; },
+      });
+      if (imageContext) {
+        expect(check).not.toThrow();
+        expect(reads).toContain(selected);
+        expect(reads).toContain(entry + '.2.config');
+      } else expect(check).toThrow(fs.realpathSync.native(selected));
       expect(fs.existsSync(dllMarker)).toBe(false);
       if (kind === 'assembly') {
         const before = readCompilerRuntimeInputs(configured, false);
