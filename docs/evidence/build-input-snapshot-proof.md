@@ -3882,3 +3882,21 @@ This closes the default Electron capture/shared-launch path after macOS prefligh
 full pack compilation under Electron or the application's stricter signing profile. No native
 execution or signing operation ran on the developer's Mac. Windows combined preload/thread run
 `39097382309` is tracked separately; its outcome does not follow from this macOS pass.
+
+### Combined Windows preload/thread acceptance (2026-10-18)
+
+Hosted Windows run [39097382309](https://github.com/spankyed/AgentBuddy/actions/runs/39097382309)
+on `cbbee04d9` passes the combined native main-preload/compiler-thread publication case in 74.49
+seconds (77.83 seconds Vitest total), under the unchanged 120-second per-case budget. Ordinary Node
+loads the same DLL successfully in both frames. Captured execution shares the owned module across
+frames, publishes the build, detects source-byte replacement, accepts exact restoration, and removes
+the input workspace after process exit. An outside-PATH candidate is refused before either native
+initialization marker or proof publication; the previous published revision remains intact. Log:
+`/private/tmp/apack-pe-composition-39097382309.log`.
+
+This accepts the shared-report repair (`3fa7a19f8`) with physical-alias validation (`241a0f190`)
+on the actual Windows compiler path. It closes the reproduced combined-loading failure; it does not
+prove every concurrent first-capture ordering or resolve the separate activation/SxS/.local, valid
+bound-only import and search-state cases. Accepted isolated preload/thread and frontend proofs remain
+valid evidence, not cases to restart for diagnosis. Runtime/signing, remaining platform closure,
+converged acceptance and final committed-source strict `--all` remain required.
