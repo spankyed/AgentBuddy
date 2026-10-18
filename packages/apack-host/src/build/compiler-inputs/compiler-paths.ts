@@ -23,7 +23,10 @@ export function relativeCompilerPath(from: string, to: string): string {
   if (path.isAbsolute(source) && path.isAbsolute(target) && root(source) !== root(target)) {
     return path.parse(target).root === target ? resolveCompilerPath(target) : target;
   }
-  return path.relative(source, target);
+  const relative = path.relative(source, target);
+  // An embedded Windows drive can make a relative suffix look absolute. Keep the
+  // original probe; resolving that suffix would silently select another location.
+  return path.isAbsolute(relative) ? resolveCompilerPath(to) : relative;
 }
 
 export function parseCompilerPaths(mappings: unknown): readonly CompilerPathMapping[] {

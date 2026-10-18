@@ -45,6 +45,18 @@ it('keeps native, authored and extended root spellings in one input identity', (
   }
 });
 
+it.skipIf(process.platform !== 'win32')('replays missing probes containing an embedded drive without aliasing the pack root', () => {
+  const root = fs.realpathSync.native(fs.mkdtempSync(path.join(os.tmpdir(), 'apack-drive-probe-')));
+  const probe = path.join(root, root);
+  const view = createCompilerFileView(root);
+  try {
+    expect(view.readMetadata('stat', probe, [{ throwIfNoEntry: false }])).toBeUndefined();
+    expect(() => assertNativeCompilerObservations(view.observations())).not.toThrow();
+    expect((view.readMetadata('stat', root, []) as fs.Stats).isDirectory()).toBe(true);
+    expect(() => assertNativeCompilerObservations(view.observations())).not.toThrow();
+  } finally { view.dispose(); fs.rmSync(root, { recursive: true, force: true }); }
+});
+
 it('preserves a root link and its metadata when replaying input facts', () => {
   const temporary = fs.realpathSync.native(fs.mkdtempSync(path.join(os.tmpdir(), 'apack-root-link-')));
   const root = path.join(temporary, 'pack'), replacement = path.join(temporary, 'replacement');

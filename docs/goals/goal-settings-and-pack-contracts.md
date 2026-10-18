@@ -1429,3 +1429,17 @@ A separate retained Windows public-CLI proof at `e5ffd9468` successfully scaffol
 real pack under Electron 37.2.4 / Node 22.17.1. Archive refused a recorded stat outcome; this
 is being investigated, not accepted as a complete runtime path. Evidence remains under
 `C:\apack-setup\runs\electron-cli-e5ffd9468`; the VM is currently running for that investigation.
+
+### Windows missing-probe identity repair — 2026-10-18
+
+The public Electron build/archive proof exposed a relative-path serialization defect. On Windows,
+`path.relative(root, path.join(root, root))` returns a drive-prefixed suffix. Treating it as a
+relative observation silently replays the real root instead of the missing probe. Preserve the
+original absolute probe whenever its relative spelling would itself be absolute. This changes no
+input allowance or metadata validation rule. The real Windows regression reproduces the identical
+refusal before the fix and passes afterward; all seven adjacent host replay checks pass in 573ms.
+Local focused checks pass 34 cases (Windows-only case skipped); host types, lint and diff checks pass.
+Full Electron build/archive acceptance on the repaired committed source remains next.
+
+Pack typecheck admission is committed as `04a876675`; 86 combined scheduler/core/graph checks
+pass, plus scripts/repo/publish/E2E types and lint. No deadline changed.
