@@ -222,7 +222,8 @@ it.runIf(process.platform === 'win32').each(['preload', 'thread', 'preload-and-t
       checkpoint('ordinary loader control');
       fs.rmSync(dllMarker); fs.rmSync(addonMarker);
       const proof = path.join(root, 'loaded.jsonl');
-      const load = (phase: 'startup' | 'compiler') => `const addon = require(${JSON.stringify(addon)});
+      const load = (phase: 'startup' | 'compiler') => `const nativeModulePath = ${JSON.stringify(addon)};
+const addon = require(nativeModulePath);
 const {threadId} = require('node:worker_threads');
 require('node:fs').appendFileSync(${JSON.stringify(proof)}, JSON.stringify({phase:${JSON.stringify(phase)},thread:threadId,value:addon.read(),library:addon.libraryPath(),workspace:process.env[${JSON.stringify(BUILD_INPUTS_DIRECTORY_ENV)}]}) + '\\n');`;
       if (site !== 'thread') {
