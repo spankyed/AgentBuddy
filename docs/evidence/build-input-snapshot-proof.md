@@ -3498,3 +3498,101 @@ pass. Diagnostic run [`39088919972`](https://github.com/spankyed/AgentBuddy/acti
 is pinned to this source. Inspect those exact path values before another behavior change; the injected
 root cases alone have twice been insufficient to establish actual Windows behavior. No native
 fixture/captured runtime ran locally, and the full Windows/goal acceptance remains open.
+
+### Confirmed input-resolution root loss (2026-10-17)
+
+Diagnostic [`39088919972`](https://github.com/spankyed/AgentBuddy/actions/runs/39088919972) fails in
+26.19 seconds and identifies the actual input/query as `\\?\C:` without a trailing separator. Log:
+`/private/tmp/apack-pe-proof-39088919972.log`. A local Node 23.11.1 path-only reproduction confirms
+`path.win32.resolve()` turns the complete extended drive root into that volume-handle spelling.
+The file view's unconditional `path.resolve(file)` creates it during ancestor capture. Earlier native
+and portable realpath changes could not fix a path already damaged at that boundary.
+
+Source `9334c2ca4` introduces `resolveCompilerPath` for the file-view input boundary, preserving an
+explicit complete extended drive root before resolution loses its separator. Three focused path/error
+cases plus five file-view cases, host types and focused lint pass. Source `1768018fa` also delegates the
+running Node image before reading bytes in PE inspection: the captured installation already owns it,
+and a package must not record that private executable as its own source. Its fifteen PE admission cases,
+CLI types and focused lint pass. No runtime version, deadline or Windows process-owner change.
+
+The same Windows control now runs as
+[`39089261502`](https://github.com/spankyed/AgentBuddy/actions/runs/39089261502) on `1768018fa`.
+Run `39089261502` gets past realpath but fails startup consistency in 31.81 seconds for a synthetic
+root namespace entry ending `C:`. A local path-only reproduction confirms that Node returns `C:` as
+the basename of the complete extended root, producing a slot `C:\C:`. Source `a0dde9f74` therefore
+canonicalizes that complete root to its equivalent DOS root at the input boundary, rather than merely
+preserving its separator. Eight host cases, host types and focused lint/diff checks pass. Its control
+[`39089547141`](https://github.com/spankyed/AgentBuddy/actions/runs/39089547141) gets past root consistency
+but fails a different namespace entry, the checkout's `package.json`, in 30.52 seconds. Logs:
+`/private/tmp/apack-pe-proof-39089261502.log` and `/private/tmp/apack-pe-proof-39089547141.log`.
+
+Source `7294ae0d5` adds expected/observed values to namespace consistency refusals (paths/kind/mode
+only, not file contents or arbitrary metadata results). Six file-view cases and focused lint/diff checks
+pass, including an actual missing-to-directory refusal proving the attribution. Diagnostic
+[`39089857543`](https://github.com/spankyed/AgentBuddy/actions/runs/39089857543) is pinned to that source;
+inspect those values before changing namespace ownership or replay. The initial DLL control still
+has not completed, and other Windows lookup/whole-goal gaps remain required.
+
+### Windows native copy path identity (2026-10-17)
+
+Diagnostic [`39089857543`](https://github.com/spankyed/AgentBuddy/actions/runs/39089857543) identifies
+the checkout package.json mismatch precisely: recorded missing, replayed file. Log:
+`/private/tmp/apack-pe-proof-39089857543.log`. Extended Windows native filenames bypassed DOS-spelled
+copy-owner boundaries and source mappings; a private copy's missing parent metadata was projected to
+an existing original. A Windows-path-only regression reproduces the mapping failure before the fix.
+
+Source `a07182ec2` uses shared `relativeCompilerPath` comparisons with both paths in Windows namespace
+form. Source projection, authored membership, observations, native/startup ownership and receipt bounds
+share that identity. This preserves extended component semantics instead of stripping every prefix.
+Four Windows-flavor path cases, nine adjacent host cases, one dlopen adapter case and thirty CLI
+read-tree/module cases pass (44 total), along with host/CLI types, six-file lint and diff checks.
+Only synthetic/filesystem/mocked checks ran locally.
+
+Windows [`39090358782`](https://github.com/spankyed/AgentBuddy/actions/runs/39090358782) on that source
+gets through frontend readiness and addon execution, with the original DLL absent from loaded modules.
+It fails in 23.41 seconds on an opaque boolean assertion requiring a particular temporary prefix and
+suffix. This result does not yet prove the exact native copy owner, freshness or outside-PATH refusal.
+Log: `/private/tmp/apack-pe-proof-39090358782.log`.
+
+Source `7fdbb1d58` replaces that boolean with exact loaded-DLL identity against the native owner's
+existing receipt, checking the captured addon belongs to the advertised frontend workspace and the
+loaded DLL is its adjacent captured dependency. Assertion failures now expose actual/expected paths.
+The preload reads the existing receipt; it adds no production declarations or alternative owner.
+CLI types and focused lint/diff checks pass. Run
+[`39090745973`](https://github.com/spankyed/AgentBuddy/actions/runs/39090745973) is pinned to that source;
+follow it to terminal before accepting the complete control. No timeout or production admission was
+changed in this fixture checkpoint.
+
+### Accepted Windows DLL ownership and full-path module metadata (2026-10-17)
+
+Run [`39090745973`](https://github.com/spankyed/AgentBuddy/actions/runs/39090745973) reaches the exact
+receipt assertion but Node's report does not contain the full captured DLL filename. The upstream
+[Node 23.11.1 Windows implementation](https://github.com/nodejs/node/blob/v23.11.1/src/debug_utils.cc)
+passes `arraysize(module_name) / sizeof(WCHAR)` to GetModuleFileNameExW for a MAX_PATH WCHAR buffer,
+limiting names to 130 characters. Both the earlier boolean and exact-receipt report assertions exposed
+an inadequate module inventory; they were not evidence of a wrong temporary prefix. The short original
+DLL controls still checked actual complete filenames, while captured filenames exceeded this limit.
+Log: `/private/tmp/apack-pe-proof-39090745973.log`.
+
+Source `b70228539` queries live full-path modules with the installed Windows PowerShell/.NET process
+API, sharing the existing bounded five-second OS policy query. It adds no helper binary, executable
+image inspection or new tool installation. Returned paths must identify complete existing files.
+Node reports remain the native-environment reader and short ntdll OS-directory seed, never the
+Windows loaded-module authority. Report privacy is restored in finally. The test queries the real
+frontend PID through this reader and compares its value DLL to the existing native owner receipt.
+All 46 focused PE metadata/admission/OS-query cases, CLI types, focused lint and diff checks pass.
+
+Actual Windows run [`39091568546`](https://github.com/spankyed/AgentBuddy/actions/runs/39091568546)
+**passes** on `b70228539`: one case in 44.38 seconds, 46.02 seconds Vitest total, within the unchanged
+60-second case deadline. It proves matching SDK/ordinary loading and real PE-header assertions;
+preserved report privacy; frontend readiness; an exact owned DLL and no original DLL in the live
+module list; current → stale on source replacement → current on exact byte/mode restoration; Vue
+updates; a successful ordinary outside-PATH loader control; attributed captured refusal naming the
+addon and outside DLL before either DLL/NAPI initialization marker; and a still-usable incumbent.
+Log: `/private/tmp/apack-pe-proof-39091568546.log`. No native fixture/captured runtime ran locally.
+
+This closes that concrete Windows control, not all PE behavior or B1/B3. Activation/SxS/.local
+redirection, bound-only imports, supported search-state reconciliation and Windows preload/thread/
+publication coverage remain open. Keep the previously accepted Job Object owner. Other native/profile
+requirements, B6 and the final committed-source strict `--all` are still required; no broad rerun or
+archive follows from this focused pass.

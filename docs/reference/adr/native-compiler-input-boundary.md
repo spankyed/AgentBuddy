@@ -52,6 +52,14 @@ only physical OS library paths, including `/etc/ld.so.preload`; selected ordinar
 subject to per-image admission. Runtime acceptance and environments without those diagnostics still
 require evidence; this implementation is not a new approval to exclude configured platform targets.
 
+The PE implementation uses checked static image declarations and the common native copy owner.
+Loaded-module inventory comes from a bounded installed Windows PowerShell/.NET OS query: Node 23's
+report implementation limits module filenames to 130 characters and is insufficient for captured
+paths. Reports supply native environment values and the short loaded ntdll location; they are not the
+Windows module authority. The query does not initialize pack images. The exact owned-DLL, restoration,
+Vue and outside-PATH refusal control passes on `b70228539`; other required Windows lookup and platform
+checks remain open. See [Windows evidence](../../evidence/build-input-snapshot-proof.md#accepted-windows-dll-ownership-and-full-path-module-metadata-2026-10-17).
+
 Runtime linkage is a separate earlier boundary: ELF DT_NEEDED resolution can execute library
 constructors before JavaScript starts. Check the captured executable at the existing shared worker
 launcher, using its actual environment and working directory. A fresh process cannot reuse the
