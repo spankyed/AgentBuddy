@@ -129,6 +129,10 @@ No further performance profiling follows from the accepted producers. The next s
 the remaining runtime/integration/app legs on the corrected source. Its whole-job cap is 60m because
 this cold run consumed 28m before those legs; individual step bounds remain unchanged. Windows is
 deallocated and no earlier hosted gate remains running.
+Cold-import checkpoint **`9b056f4ab`** is pushed. [Strict run `39175530615`](https://github.com/spankyed/AgentBuddy/actions/runs/39175530615)
+is active on exactly that source, including the fixture fix, selector repair and fork core reservation.
+Await its retained results rather than dispatching another broad gate. The finite native closure
+register and full Phase 7 audit remain required; this active run is not a passing acceptance claim.
 The pure helper-protocol expectation repair `39352b2c7` passes all 67 adjacent PE cases and CLI types;
 it is newer than the run's pinned source. B1/B2 checkpoint `2a0e9efc0` separates runtime selector
 observations from copy callbacks, delivering selected OS policies and missing/failed-context probes to

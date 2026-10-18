@@ -7890,3 +7890,7 @@ unreached runtime/app/integration legs. The workflow's whole-job cap becomes 60m
 run consumed 28m before those legs; all individual step budgets remain unchanged. No fresh broad run
 starts until this focused checkpoint is reviewed and committed. Native/platform closure still follows
 the preserved goal register.
+
+Source checkpoint: **`9b056f4ab`**, pushed. The required strict run
+[`39175530615`](https://github.com/spankyed/AgentBuddy/actions/runs/39175530615) is confirmed active
+on that exact source. No earlier run remains active, and no passing final gate is claimed.
