@@ -3299,3 +3299,60 @@ pass locally. No native execution ran locally. The Linux workflow now accepts th
 variable. The affected three shared native backend cases can run without repeating the unchanged
 runtime/lifetime/baseline stages; the default route still retains all those gates. Real acceptance
 of the new RUNPATH case is pending.
+
+### ELF RUNPATH and launch-state acceptance (2026-10-17)
+
+Filtered run [`39085739556`](https://github.com/spankyed/AgentBuddy/actions/runs/39085739556) succeeds
+on `b310e9a0b`, containing source case `6fd081b13`, Ubuntu 24.04 x64 / Node 23.11.1. All three affected
+shared backend cases pass: preload 26.29 seconds, thread 36.60 seconds and launch-time RUNPATH
+26.94 seconds (92.46-second stage wall). The RUNPATH case proves a bare SONAME selects owned bytes
+through `$ORIGIN/../lib`, despite preload mutation of LD_LIBRARY_PATH. A new matching override
+invalidates the accepted record; an ordinary Node control proves it really selects that override;
+the captured worker refuses it before initialization and preserves the published revision. The
+diagnostic names `binding/addon.node`, `libvalue.so` and its selected outside path.
+
+Log: `/private/tmp/apack-elf-runpath-39085739556.log`. The optional filter runs only the shared native
+file: unchanged metadata, runtime, lifetime, independent-Vite and baseline stages are intentionally
+skipped. Their earlier recorded acceptance remains evidence, not a claim they ran here. No production
+change or deadline increase was necessary; no native execution ran locally. No native job remains
+active. Preserve this acceptance through converged/final source checks.
+
+### Windows PE admission audit and bounded next proof (2026-10-17)
+
+Current source still returns the original module for Windows in `createCompilerNativeInputs`;
+`createNativeInputReader` and `assertCapturedCompilerLibraries` admit selected images only for
+Mach-O/ELF. The Windows Job Object owner is accepted but does not establish DLL input ownership.
+Do not redesign that accepted process owner to implement library admission.
+
+Exact [Node 23.11.1 libuv source](https://github.com/nodejs/node/blob/v23.11.1/deps/uv/src/win/dl.c)
+uses `LoadLibraryExW(..., LOAD_WITH_ALTERED_SEARCH_PATH)`. The
+[Windows loader contract](https://learn.microsoft.com/en-us/windows/win32/dlls/dynamic-link-library-search-order)
+includes loaded modules, KnownDLLs, API sets and activation/redirection state before ordinary directory
+search. ELF path precedence and a guessed System32 whitelist are not an adequate replacement.
+Node's [report implementation](https://github.com/nodejs/node/blob/v23.11.1/src/node_report.cc) reads
+native process environment with `uv_os_environ`, but its exclude-env option can omit that field;
+settle actual Windows observations before choosing an environment reader or overriding user options.
+
+Next bounded checkpoints:
+
+1. Add a private NAPI addon and adjacent value DLL to the existing disposable Windows route. Obtain
+   matching Node headers/import library and the installed MSVC environment as test prerequisites,
+   not end-user requirements. Ordinary Node must load and report the actual DLL. The captured
+   frontend must use an owned copy; source DLL changes must invalidate freshness. Then move the DLL
+   outside its package and prove the ordinary loader selects it through PATH while captured loading
+   refuses before DLL/NAPI initialization. Only a successful ordinary control can establish a defect.
+2. Use that proof to implement PE metadata/admission through the common native owner. Account for
+   imports, delay imports, selected export forwarders, API sets/KnownDLLs, physical ownership and
+   actual Node search behavior; malformed metadata must be attributed, never silently empty. Keep
+   native-code activation out of metadata reading and preserve meaningful manifest/activation data.
+   Resolve actual environment/search-state observations, including worker and report-option behavior,
+   before claiming those paths complete. No basename-only redirection or ELF-policy transplant.
+3. Extend the existing preload/thread/publication cases on the Windows source after ownership works.
+   Preserve ordinary OS dependencies, changed-input tracking, direct/transitive refusal, incumbent
+   retention and the existing Job Object lifetime acceptance. Runtime linkage must be checked at the
+   existing launcher before execution, as the ELF counterexample demonstrated.
+
+This is required implementation/acceptance, not a new optional goal or an exclusion of loader
+behavior. Remaining ELF mapped-image/runtime-distribution checks, stricter macOS app signing,
+converged B6 and final committed-source strict `--all` also remain open. Stronger security isolation
+and universal native I/O/computed-loading capture stay outside the approved bounded contract.
