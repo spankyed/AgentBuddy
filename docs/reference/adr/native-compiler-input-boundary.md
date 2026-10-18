@@ -60,9 +60,12 @@ Windows module authority. The query does not initialize pack images. The exact o
 Vue and outside-PATH refusal control passes on `b70228539`; other required Windows lookup and platform
 checks remain open. See [Windows evidence](../../evidence/build-input-snapshot-proof.md#accepted-windows-dll-ownership-and-full-path-module-metadata-2026-10-17).
 
-Runtime linkage is a separate earlier boundary: ELF DT_NEEDED resolution can execute library
-constructors before JavaScript starts. Check the captured executable at the existing shared worker
-launcher, using its actual environment and working directory. A fresh process cannot reuse the
+Runtime linkage is a separate earlier boundary: linked images can execute library constructors before
+JavaScript starts. Check the captured executable at the existing shared worker launcher, using its
+actual environment, working directory and the runtime directory declared by its installation owner.
+Electron framework distribution and Node executable-directory ownership are distinct. The Mach-O
+implementation uses the selected executable for `@executable_path` and does not apply dylib overrides
+to main-image selection. Its hosted refusal/contained-loading acceptance is still pending. A fresh process cannot reuse the
 supervisor's already loaded libraries; that optimization applies only to admission within an existing
 process. Reuse the same metadata/admission implementation, with no second runtime or copy owner.
 

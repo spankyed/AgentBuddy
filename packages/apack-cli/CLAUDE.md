@@ -137,6 +137,11 @@ requires no TypeScript execution or second glob implementation. Local captured g
 live compiler-side validation remain in place.
 Pack and outside-module inputs are rechecked before publication; the already captured compiler fingerprint is reused within its immutable lifetime.
 
+The runtime capture declares `runtimeDirectory`; the shared launcher uses it for linked-library
+admission before native constructors can run. On macOS, Electron includes its sibling Frameworks
+directory. Resolve executable-relative paths against the selected child runtime and relative searches
+against its cwd, preserving main-image selection and signing permissions.
+
 Configured `ESBUILD_BINARY_PATH` executables belong to that installation too. Relative overrides resolve
 against the worker checkout; the worker receives the private copy. Missing overrides keep esbuild's
 package fallback. The installation's `isCurrent` checks selection, original/captured bytes and package

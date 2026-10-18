@@ -3752,3 +3752,28 @@ signed-app or full native acceptance. Log: `/private/tmp/apack-macho-runtime-390
 Implement the pre-initialization guard through the existing launcher/parser, preserving the selected
 executable's paths, Electron framework ownership and required signing semantics. No native run occurred
 on the daily-use Mac.
+
+### macOS runtime admission source and cross-drive root replay (2026-10-17)
+
+Source `abaca80b9` also preserves complete drive roots when cross-drive queries are serialized and
+resolved again. Node resolves `//?/D:/` to the incomplete `\\?\D:` spelling. The common path helper
+uses its existing complete-root normalization for that boundary while preserving extended components
+on ordinary targets. All 17 Windows-path/filesystem input cases pass; no OS execution was needed.
+
+Source `7ddae5c1f` closes the missing macOS launch branch through the existing Mach-O admission and
+`spawnCompilerWorker`. `readCompilerRuntimeInputs` supplies the owned runtime directory to the
+installation: Node owns its executable directory, while macOS Electron includes Contents/Frameworks
+as before. The launcher receives that declaration rather than guessing a package boundary from its
+working directory or binary name. Windows/Linux use the same declared directory.
+
+Mach-O admission now resolves `@executable_path` against the selected runtime and relative search
+paths against the child's cwd. Main-executable selection bypasses dylib basename/suffix overrides;
+actual dependency selection still checks them. The real constructor prototype is replaced with the
+desired refusal before initialization and a positive contained-library control using an executable-relative
+install name. No image, signing entitlement, process-group/Job Object owner or public CLI selector changes.
+
+All 54 focused Mach-O/runtime filesystem cases pass, including selected Electron-style framework
+layout, child cwd and main-image override distinction. Host/CLI types, ten-file correctness lint and
+diff checks pass. The source has not yet received hosted runtime acceptance. Stricter signed-app,
+actual Node/Electron runtime combinations, remaining Windows lookup/thread/publication and final
+gates remain required; the minimal executable control cannot establish those.
