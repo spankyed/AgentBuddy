@@ -644,6 +644,23 @@ describe('every spawn an orchestrator makes is bounded', () => {
       + 'the graph does not support — they would refuse on a package it is still building').toEqual([]);
   });
 
+  it('prepares the default fork independently of fixture contracts before app consumption', () => {
+    const output = 'node_modules/.cache/apack-fixtures/default-fork';
+    const producer = CHAIN_STEPS.find(step => step.name === 'test:external-pack:fork')!;
+    expect(producer).toBeDefined();
+    expect(CHAIN_STEPS.filter(step => step.outputs?.includes(output)).map(step => step.name))
+      .toEqual([producer.name]);
+    expect(dependsOn(producer)).toContain('build:default-setup');
+    const app = CHAIN_STEPS.find(step => step.name === 'test:external-pack:app')!;
+    expect(dependsOn(app)).toEqual(expect.arrayContaining([producer.name, 'test:external-pack:contract']));
+    const scripts = rootScripts();
+    expect(reachableText('test:external-pack:contract', scripts).text).not.toContain('prepare-default-pack-fork');
+    expect(scripts[producer.name]).toContain('bounded.ts suite tsx tests/scripts/prepare-default-pack-fork.ts');
+    const combined = read('tests/scripts/test-external-pack.sh');
+    expect(combined.indexOf('test-external-pack-contract.sh')).toBeLessThan(combined.indexOf('prepare-default-pack-fork.ts'));
+    expect(combined.indexOf('prepare-default-pack-fork.ts')).toBeLessThan(combined.indexOf('test-external-pack-app.sh'));
+  });
+
   it('checks the current built facade after its producer without running codegen', () => {
     expect(rootScripts()['facade:check']).toContain('--from-build');
     const step = CHAIN_STEPS.find((candidate) => candidate.name === 'facade:check');

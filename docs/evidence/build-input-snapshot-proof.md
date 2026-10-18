@@ -5860,3 +5860,23 @@ that observer's 255 status is not the build result. Evidence: inspected 30-file 
 `/private/tmp/apack-default-build-profile-fcb037442.zip`; pure JSON analysis
 `/private/tmp/apack-default-build-profile-summary.json`. All prior VM stashes and its pre-existing
 launcher line-ending change remain preserved. No captured runtime/native workload ran on the Mac.
+
+## Short Windows diagnostic cleanup — 2026-10-18
+
+Source `fcb037442` was unchanged during a private profiling attempt. A separate inspector worker
+successfully saved samples during an eight-second busy-loop control, but the actual build attempt
+logged `Waiting for the debugger to disconnect`. The captured compiler did not publish samples.
+This instrumentation perturbed shutdown and does not establish a compiler defect or a useful build
+hotspot. No product optimization, timeout change or loader-policy change follows from it.
+
+The verified owned launcher was stopped; the supervising diagnostic recorded `status: stopped`,
+exit `4294967295`, elapsed 175.150s. This was an intentional stop, not the diagnostic's configured
+240s deadline. A fresh CIM query found none of the three owned PIDs or any remaining Node, Electron,
+esbuild or native compiler processes. The saved result, controls, failed helper attempts and profile
+chunks are exported in `/private/tmp/apack-short-profile-fcb037442.zip` (131 ZIP entries, including
+directories). Windows PowerShell's mixed-object formatting had hidden process fields in one earlier
+query; explicit CIM selection/formatting supplied the authoritative process identities.
+
+Azure subsequently confirmed `VM deallocated`. No security settings, installed applications,
+shared temporary directories, stashes or repository source were changed by this diagnostic.
+Do not repeat the inspector helper or infer a worker hotspot from supervisor samples.

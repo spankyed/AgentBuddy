@@ -1075,12 +1075,18 @@ export const CHAIN_STEPS: readonly ChainStep[] = [
   // 38s, not the 20s it takes alone: `seconds` is what a step costs under the chain's own default
   // admission, because that is the schedule the drift report compares against. Raising the lane default from
   // two to three moved this one and nothing else past the drift band, which is `driftedSteps` doing its job.
-  { name: 'test:external-pack:contract', timeout: 'suite', seconds: 36, outputs: [...FIXTURE_OUTPUTS, DEFAULT_FORK_OUTPUT],
+  { name: 'test:external-pack:contract', timeout: 'suite', seconds: 36, outputs: FIXTURE_OUTPUTS,
     // It declares `tests/packs` for the pack sources; the Playwright output under each pack is written
     // by `:app`, changes every run, and is read by nothing
     excludes: FIXTURE_TEST_OUTPUT,
     inputs: [...ROOT, ...BOUNDED_RUNNER, 'tests/packs', 'tests/scripts/test-external-pack-contract.sh',
-      'tests/scripts/lib', 'tests/scripts/prepare-default-pack-fork.ts', ...PACK_SOURCES, ...PACKAGE_BUILD_READS, ...PACK_OUTPUTS] },
+      'tests/scripts/lib', ...PACKAGE_BUILD_READS, ...PACK_OUTPUTS] },
+  // A full shipped-pack fork is a separate producer, not work charged to the fixture contract suite.
+  // Initial cost borrows the shipped build's 28s estimate; measure this producer separately.
+  // Both the step and its build/archive operations retain the existing suite bound.
+  { name: 'test:external-pack:fork', timeout: 'suite', seconds: 28, outputs: [DEFAULT_FORK_OUTPUT],
+    inputs: [...PACK_DERIVED_READS, ...BOUNDED_RUNNER, 'tests/scripts/prepare-default-pack-fork.ts',
+      ...['apack-host', ...workspaceDeps('apack-host')].flatMap(dependencySource), ...PACK_OUTPUTS] },
   // The widest inputs in the table, and honestly so: it compiles every workspace, the scripts and the
   // tests, and lints them. A change anywhere in the repo's TypeScript is a change to what it checks.
   ...TYPECHECK_STEPS,

@@ -98,12 +98,22 @@ tested exact checkpoint `fcb037442`: the facade passes in 27.7s under its unchan
 the full packaged-authoring author half passes in 690.1s. The external-contract suite instead reaches
 its unchanged 600s bound while building the default-pack fork, after both ordinary fixture builds and
 38 memo cases pass. Its remaining cause is unproven. Preserve [hosted acceptance and failure evidence](../evidence/settings-and-pack-contracts.md#hosted-facade-and-author-half-acceptance-2026-10-18);
-profile one bounded build before choosing a repair, rather than repeating broad gates or raising deadlines.
+do not repeat broad gates or raise deadlines to diagnose it.
 The app half and final strict acceptance remain open. A [bounded Windows profile](../evidence/build-input-snapshot-proof.md#bounded-windows-build-profile-2026-10-18)
-reaches generation/content setup before its 600s abort, but retains only the supervisor profile; the
-terminated worker did not flush its samples. Its hotspot remains unproven. Save worker samples before
-termination in the next targeted diagnostic; do not choose a source optimization or deadline change
-from the incomplete profile. The VM is deallocated and all evidence is exported.
+retained only supervisor samples. A [short follow-up](../evidence/build-input-snapshot-proof.md#short-windows-diagnostic-cleanup--2026-10-18)
+perturbed shutdown through its inspector helper and was intentionally stopped; it is not compiler-defect
+or hotspot evidence. All owned work stopped, evidence is exported and the VM is confirmed deallocated.
+Do not repeat that helper or start another compiler-performance project from these inconclusive profiles.
+
+The current checkpoint separates default-fork preparation from fixture contracts in the existing chain.
+The two producers publish independent outputs; app acceptance requires both. Existing build/archive
+integrity and freshness checks, per-operation suite deadlines and the final strict gate remain required.
+This corrects producer/cache and aggregate-budget ownership; it does not establish that a standalone
+fork build fits its unchanged limit or that compiler performance is resolved. All 120 focused graph/input/scheduler cases,
+scripts/repo/E2E types, tiers, lint and shell checks pass; the regression rejects the restored combined
+producer. See [producer evidence](../evidence/settings-and-pack-contracts.md#independent-default-fork-producer--2026-10-18). The required hosted
+strict gate must exercise the independent producers and exact archive/app handoff. If the standalone
+fork still fails, use its retained phase output; do not restart broad runs without a demonstrated repair.
 A separate [Windows binder control](../evidence/build-input-snapshot-proof.md#windows-binder-ordinary-loader-control--2026-10-18)
 uses the OS-generated bound directory: ordinary/bound imports load, while removing the lookup table
 still fails in the ordinary loader. This changes neither admission nor the unresolved valid-input

@@ -11,7 +11,7 @@ import { timeoutMsFor } from '../../scripts/lib/step-timeouts.ts';
 const root = fs.realpathSync.native(fileURLToPath(new URL('../../', import.meta.url)));
 const source = path.join(root, 'packages/default-setup');
 const output = path.join(root, 'node_modules/.cache/apack-fixtures/default-fork');
-const remedy = 'Run npm run test:external-pack:contract to prepare the default fork.';
+const remedy = 'Run npm run test:external-pack:fork to prepare the default fork.';
 
 function shippedRevision(): string {
   const dist = path.join(source, 'dist');

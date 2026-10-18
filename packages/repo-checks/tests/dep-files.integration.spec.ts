@@ -610,6 +610,7 @@ describe('what has looked at a step at all', () => {
       'test:e2e',
       'test:external-pack:app',
       'test:external-pack:contract',
+      'test:external-pack:fork',
       'test:packaged-authoring:app',
       'test:packaged-authoring:author',
       'test:smoke',

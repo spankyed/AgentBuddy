@@ -7764,3 +7764,32 @@ the exact archive/app handoff and all still-open native/platform requirements re
 
 Console and per-step logs: `/private/tmp/apack-strict-39167659691{.log,/}`. Preserve this source/run
 identity and the successful facade/author evidence instead of scheduling those as new implementation.
+
+## Independent default-fork producer — 2026-10-18
+
+The preserved strict run `39167659691` charged two fixture builds, their contract checks, and a full
+default-pack fork build/archive to one 600s suite step. It timed out during the fork, with no assertion
+failure identifying a compiler bug. The incomplete Windows profiles do not establish a hotspot; see
+[diagnostic cleanup](build-input-snapshot-proof.md#short-windows-diagnostic-cleanup--2026-10-18).
+
+`test:external-pack:fork` now owns the existing preparation script and its published archive directory
+as an independent cached chain producer. Fixture contracts retain their own output; app acceptance
+requires both producer edges. The combined manual command still performs contracts, fork preparation
+and app checks in that order. Missing-fork guidance names the new producer. Source imports and their
+workspace dependency closure are declared alongside the shipped build and compiler package inputs.
+The existing archive digest, shipped-revision/current-input verification, isolated build and runtime
+checks remain intact. Each producer retains the existing suite class; neither its 600s deadline nor the
+build/archive operation limits increased. The new non-gating cost estimate explicitly borrows the
+existing shipped-build estimate; it is not a completed fork-duration measurement.
+
+Validation: all 120 focused graph/input/scheduler cases pass (2.37s); scripts, repo-checks and E2E
+TypeScript checks pass; affected-file lint, shell syntax, tier checks and diff checks pass. Restoring
+the old combined producer call makes the new regression fail; original bytes restored afterward
+(`/private/tmp/apack-fork-producer-mutation.log`). The dry chain recognizes the independent producer
+and app dependency. The observation-ledger integration expectation includes the new producer because
+no per-step compiler dep-file verifies its entire work; that integration case awaits hosted execution.
+
+Remaining evidence: the required hosted strict run must prove the fork completes within its own
+unchanged limit and both app halves consume their exact prepared outputs. Splitting producer/cache
+ownership does not prove a standalone fork build is fast enough or diagnose the prior worker slowdown.
+No further compiler-performance redesign or timeout increase is implied.

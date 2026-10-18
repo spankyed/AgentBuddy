@@ -432,9 +432,9 @@ with its consumers: `docs/archive/plans/tier-split.md` has the evidence, and the
 `SIZE_MS` in `scripts/lib/unit-suites.ts`.
 
 `test:external-pack` is split at that boundary: `:contract` validates, builds and typechecks each fixture
-pack and runs its harness specs with no app, before `build:runtime`, and `:app` runs its Playwright suite after
-it. Two scripts rather than one with a flag, because the scan reads a step's scripts as text and a branch it
-never takes still reads as a reach.
+pack and runs its harness specs with no app. `:fork` builds and archives the shipped-pack fork as a separate
+producer. `:app` consumes both outputs and runs Playwright after `build:runtime`. Separate scripts keep
+app launches out of the producers: the scan reads scripts as text, including branches never taken.
 
 `test:packaged-authoring` is split the same way: `:author` authors, builds, tests and releases a pack with
 no app, `:app` runs that archive against one. They hand over a work dir through `tests/authoring-handoff`,
@@ -670,6 +670,7 @@ npm run test:unit:pack   # (--project per stale project, one process). Each is a
 npm run bench -w @apackdev/ears    # EARS engine benchmark (baseline and tolerance: packages/apack-ears/CLAUDE.md)
 npm run test:external-pack       # Both halves of the fixture-pack check, for running it by hand
 npm run test:external-pack:contract  # validate, build, typecheck, harness specs — no app needed
+npm run test:external-pack:fork  # build and archive the shipped-pack fork — no app needed
 npm run test:external-pack:app   # each pack's Playwright suite against this checkout (needs npm run build:default-setup && npm run build:runtime)
 npm run test:packaged-authoring  # Both halves, for running it by hand: author, build, test and install a pack
                                  # outside the monorepo from the packed @apackdev/* tarballs (needs npm run build:default-setup && npm run build:runtime)

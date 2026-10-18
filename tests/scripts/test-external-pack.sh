@@ -1,11 +1,11 @@
 #!/usr/bin/env bash
-# Both halves of the external fixture pack check, in order, for running it by hand. The chain runs them as
-# two steps: the contract half needs no app and runs before `build:runtime`, the Playwright half needs one and
-# runs after (`needsApp`, scripts/lib/chain-steps.ts). Extra args are forwarded to Playwright.
+# External fixture contracts, fork preparation and app checks, in order, for running by hand. The chain uses
+# separate producers: fixture contracts and the default-pack fork need no app; Playwright consumes
+# their output after `build:runtime`. Extra args are forwarded to Playwright.
 #
-# Both halves run as bash here rather than through their npm scripts, so this takes one outer bound — the
-# `scenario` one its own npm script carries — and not the contract half's `suite` bound as well.
+# The combined command takes its existing outer scenario bound. The chain bounds each producer separately.
 set -euo pipefail
 HERE="$(cd "$(dirname "$0")" && pwd)"
 bash "$HERE/test-external-pack-contract.sh"
+"$HERE/../../node_modules/.bin/tsx" "$HERE/prepare-default-pack-fork.ts"
 bash "$HERE/test-external-pack-app.sh" "$@"
