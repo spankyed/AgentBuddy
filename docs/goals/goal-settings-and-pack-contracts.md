@@ -118,10 +118,11 @@ fork still fails, use its retained phase output; do not restart broad runs witho
 on exact source `d0ab6dd6b`. The run owns disposable two-core execution; no local compiler/native run or
 Windows VM work remains active. Await its authoritative result before another broad execution or acceptance claim.
 The pure helper-protocol expectation repair `39352b2c7` passes all 67 adjacent PE cases and CLI types;
-it is newer than the run's pinned source. The subsequent bounded B1/B2 repair separates runtime selector
+it is newer than the run's pinned source. B1/B2 checkpoint `2a0e9efc0` separates runtime selector
 observations from copy callbacks, delivering selected OS policies and missing/failed-context probes to
 the existing tooling/watch owner. All 89 focused pure cases, mutation checks and CLI types/lint pass;
 the existing real Windows Node application-context case passes in 22.610s with added selector assertions.
+The Windows VM is confirmed deallocated; its useful overlay is preserved in a scoped stash.
 See [selector evidence](../evidence/settings-and-pack-contracts.md#runtime-selection-inputs-reach-compiler-watches--2026-10-18).
 Broader installed publisher-policy mutations and registry notifications are not proven by this check;
 retain the finite closure register and final platform/strict obligations. No new watcher framework,

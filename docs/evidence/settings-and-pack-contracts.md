@@ -7839,3 +7839,6 @@ command, source/platform, package log, test log, JSON report and exit code. VM o
 additional scoped stash **`b52b42dcd7013a1e5c36120149d7ef3eb1d808ec`**; prior stashes and the pre-existing
 launcher line-ending change are untouched. No compiler/test processes remained before deallocation.
 The existing hosted strict run is still pinned to `d0ab6dd6b`; this repair requires the later converged gate.
+
+Source checkpoint: **`2a0e9efc0`**. Azure confirms `VM deallocated`; the focused SSH observer
+terminated with exit 0. The hosted strict gate remains live on its earlier pinned source.
