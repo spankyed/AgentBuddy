@@ -157,8 +157,17 @@ repair-only creation, values 11 then 22, successful publication, one notificatio
 retirement. See the [reuse and recovery checkpoint](../evidence/build-input-snapshot-proof.md#verified-compiler-reuse-and-windows-recovery-2026-10-18).
 Preserve stash `540fa3cc844918afe1c634c00d24857451c5506f` and earlier failed reports as history.
 Do not repeat this accepted lifecycle for reassurance or infer acceptance for other loader paths.
-Next audit frontend startup JavaScript observations against the existing live subscription owner;
-preserve the accepted native repair path and ordinary ESM/custom-loader controls.
+Sources `1293ae2fe` and `47387a502` close a demonstrated frontend startup JavaScript gap: existing reads reached
+subscriptions, but a newly appearing nearer package did not invalidate reuse. Startup lookup metadata
+now goes through the existing file view while Node retains resolution. The real ESM/custom-loader case
+passes in 44.54s under its original 60s bound, including probe delivery, actual nearer-package selection
+by a replacement, restoration and live Vue. The resolver hook is released with startup read ownership. See the
+[startup lookup checkpoint](../evidence/build-input-snapshot-proof.md#startup-package-lookup-observation-2026-10-18).
+Next audit the unresolved startup namespace cases against existing observations before implementing: dependencies of the asynchronous loader itself,
+initial bare launch requests/directory-parent URLs, and package-less or missing relative/index inputs.
+Do not infer those cases from the accepted transitive bare-package test. Keep the failed cold-capture
+and prototype reports; broader budget/converged acceptance remains open. Preserve the accepted native
+repair path without repeating it for reassurance.
 Transitive/localized/outside-image probing and publisher/system-policy
 changes remain required beyond the recognized root-dependency prefixes closed here. Then close
 Electron application-context/`.local` and remaining runtime acceptance. Preserve helper

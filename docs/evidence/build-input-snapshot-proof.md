@@ -5025,3 +5025,64 @@ Off-machine evidence: `/private/tmp/apack-reuse-evidence-72ad6bae9.zip`. The acc
 is also retained in stash `Accepted compiler reuse and native watch recovery on 147df3291`.
 Its checkout was fast-forwarded to `72ad6bae9`; pre-existing launcher state remains untouched.
 No owned native processes remained after the terminal checks; VM deallocation was requested.
+
+## Startup package lookup observation — 2026-10-18
+
+Sources **`1293ae2fe`** and **`47387a502`** repair a reproduced input-coherence omission. The existing
+real retained-Vite ESM/custom-loader test, extended to inspect delivered probes, confirms that loaded JavaScript, loader
+data and selected package metadata already reach the parent. But adding a nearer `node_modules`
+package leaves the frontend marked current on the preceding source. The diagnostic reaches frontend
+readiness in 36.41s and fails that assertion at 38.19s. This is a real missing input, not a missed
+filesystem event or slow compilation.
+
+During active startup capture, Node's synchronous resolver hook records bare-package declaration
+candidates through the existing file view, including missing nearer declarations. Native resolution
+receives the original request/context. CommonJS uses its native lookup paths; ESM excludes CommonJS
+global search paths. Explicit compilation scopes keep their existing ownership. No new inventory,
+resolver result cache, source parser, eager compiler activation or loader thread is introduced.
+Review follow-up `47387a502` ties registration and deregistration to the startup read owner. Keeping
+a no-op synchronous hook after startup would still affect Node's loader dispatch. The real native hook
+is now released when startup reads stop; model checks verify exactly one release.
+The hook is not installed in Node's internal asynchronous loader worker: the installed Node 23.11.1
+implementation explicitly lacks `Hooks.resolveSync`; the first prototype failed there. That failure
+and the inspected actual loader source are preserved. This boundary is not proof that the loader's
+own dependency-resolution namespace is covered.
+
+Two small Node module models prove successful and failed CommonJS lookups retain missing nearer
+package declarations. All nine focused file-view/model checks pass locally; host and CLI TypeScript,
+focused lint and diff checks pass. No copied-runtime or native-fixture execution ran on the daily Mac.
+The real Windows ESM/custom-loader case passes in **44.539s** on the final lifetime correction,
+under its unchanged **60s** budget. The preceding hook-placement proof passes in 41.309s.
+It verifies change-probe delivery for the loader payload, transitive JS and selected package metadata;
+rename-probe delivery for the missing nearer declaration; invalidation on its creation; a replacement
+frontend actually selecting `NEARER`; restoration after removal; and preserved live Vue updates.
+Both frontend processes and the captured compiler are closed by their owners.
+
+The existing fixture's `--experimental-loader` argument was also corrected to a file URL: a Windows
+absolute path is interpreted as an unsupported `c:` scheme. This is fixture input, not a new production
+argument conversion. The first cold attempt exceeded the existing 60s limit and ended after 95.6s
+with a worker RPC error; a phase-marked diagnostic then measured capture at 34.54s and exposed that
+invalid URL. A single filtered 120s diagnostic reached the functional counterexample. The final focused check
+uses the original 60s limit, with a turn yielded before cold synchronous capture. No permanent timeout
+or helper budget was raised. The cold/aggregate validation-budget boundary remains open.
+
+VM source was `201e56259` plus the reviewed patch. Exact passing blobs match the source commit:
+file reads `755ab3200a64aab41c5fd1ed7f56bff0f638363d`, model tests
+`0fd643c8040364dea0e70f75e473a97c90209955`, real frontend case
+`27f15772b814078614bf263a7bbfaeb1ca18b750`.
+Run directories under `C:\apack-setup\runs` are `frontend-startup-delivery-201e56259`,
+`frontend-startup-stages-201e56259`, `frontend-startup-resolution-201e56259`,
+`frontend-startup-fixed-201e56259`, `frontend-startup-thread-safe-201e56259` (accepted placement),
+and **`frontend-startup-lifetime-201e56259`** (accepted final ownership).
+They retain preparation, patches, source identity, logs, JSON and exit codes.
+
+Remaining required startup namespace audit (inspect existing coverage before adding machinery):
+the async loader's own graph, initial bare launch
+requests/directory-parent URLs, package-less and missing relative/index inputs. This checkpoint closes
+the demonstrated transitive package-metadata omission only. Other B1/B3 paths, B6 and final committed
+strict `--all` acceptance remain required; no scope exclusion is created.
+
+Off-machine evidence: `/private/tmp/apack-startup-lookup-evidence-47387a502.zip`. The VM overlay is
+also retained in stash `Accepted startup lookup and resolver lifetime on 201e56259`; no saved work was
+dropped. Its checkout was fast-forwarded to `47387a502`, preserving pre-existing launcher state.
+No owned native processes remained; VM deallocation was requested.
