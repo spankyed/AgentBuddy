@@ -3037,3 +3037,32 @@ undefined. Host TypeScript, focused lint and diff checks pass. This local regres
 mocked native function; it launches no compiler or addon. The same real Linux proof must now run on
 the correction before attributing any later failure to ELF ownership. No ELF parser/admission change
 or timeout increase has been made.
+
+### Linux ownership counterexample after argument repair (2026-10-17)
+
+Run `39082546636` on `5d2178a6a` now starts the actual Vite frontend and executes the addon with value
+11. It fails in 4.29 seconds at the owned-library assertion: `sharedObjects` contains the original
+`pack/lib/libvalue.so`. This accepts the native argument-count correction and demonstrates the
+non-Darwin ownership omission. Freshness, Vue and outside-refusal assertions later in the case are
+not yet reached. Log: `/private/tmp/apack-elf-proof-39082546636.log`.
+
+The next coherent ELF correction must:
+
+- Keep `createCompilerNativeInputs` as the copy, observation, watch and lifetime owner. Add a
+  format-specific metadata/admission adapter, not another build-input authority or source scanner.
+- Parse declared ELF dependencies and search paths without executing the image. Preserve direct
+  pathname dependencies, `$ORIGIN`, RPATH versus RUNPATH inheritance, relevant launch environment
+  and normal OS cache/default lookup. Account for other loader tokens explicitly rather than guess
+  an expansion or return an empty result. Malformed ranges fail by native-image identity.
+- Retain platform-specific launch state before user preloads and carry it through existing thread
+  handoff. Migrate the private environment type outright; no old/new field aliases.
+- Feed source files, negative lookups and relevant directory/cache observations through the existing
+  view. Copy package-contained dependencies into their original relative layout; keep authored Vue
+  live. Refuse direct/transitive outside dependencies before initialization and retain the incumbent.
+- First pass pure parser/admission checks without local native execution, then the same real Linux
+  case. Accept applicable existing portable Vite/process-lifetime cases on Linux. Preserve macOS
+  behavior for converged native acceptance; do not rerun broad suites after each parser edit.
+
+OS metadata and loaders remain authoritative for execution. Do not add library relocation, a required
+external inspection tool, a custom resource framework or a narrower completion condition. PE admission,
+the stricter signed-app profile, B6 and the final strict gate remain part of this goal.
