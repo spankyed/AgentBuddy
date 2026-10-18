@@ -53,6 +53,17 @@ export function assertCapturedCompilerLibraries(entry: string, packageRoot: stri
   });
 }
 
+/** A new runtime resolves its linked libraries before JS; it cannot reuse the parent's loaded images. */
+export function assertCompilerRuntimeLibraries(executable: string, env: NodeJS.ProcessEnv, cwd: string): void {
+  if (process.platform !== 'linux') return;
+  const elf = captureElfLibraryEnvironment(env, executable, cwd);
+  assertCapturedCompilerLibraries(executable, path.dirname(executable), {
+    arch: process.arch, environment: { macho: captureMachOLibraryEnvironment(env), elf: { ...elf, loadedLibraries: [] } },
+    realpath: file => fs.realpathSync.native(file),
+    read: file => fs.statSync(file, { throwIfNoEntry: false })?.isFile() ? fs.readFileSync(file) : undefined,
+  });
+}
+
 /** dyld reads these settings at process launch, before user preloads can change process.env. */
 export function captureMachOLibraryEnvironment(env: NodeJS.ProcessEnv = process.env): MachOLibraryEnvironment {
   const paths = (name: string) => Object.freeze(env[name] ? env[name].split(':') : []);

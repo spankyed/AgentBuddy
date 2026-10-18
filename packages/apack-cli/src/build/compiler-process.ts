@@ -2,6 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { spawn, type SpawnOptions } from 'node:child_process';
 import type { CompilerInstallation } from './compiler-installation.ts';
+import { assertCompilerRuntimeLibraries } from './compiler-native-libraries.ts';
 
 /** Each Windows worker owns a kernel job; POSIX workers retain their existing process group. */
 export function spawnCompilerWorker(
@@ -10,6 +11,7 @@ export function spawnCompilerWorker(
   options: SpawnOptions & { cwd: string; env: NodeJS.ProcessEnv },
   workspace: string,
 ) {
+  assertCompilerRuntimeLibraries(compiler.executable, options.env, options.cwd);
   if (process.platform !== 'win32') return spawn(compiler.executable, [...args], options);
   if (!Array.isArray(options.stdio) || options.stdio.length !== 4 || options.stdio[3] !== 'ipc') {
     throw new Error('Windows compiler launch requires stdio and one IPC channel');

@@ -52,6 +52,12 @@ only physical OS library paths, including `/etc/ld.so.preload`; selected ordinar
 subject to per-image admission. Runtime acceptance and environments without those diagnostics still
 require evidence; this implementation is not a new approval to exclude configured platform targets.
 
+Runtime linkage is a separate earlier boundary: ELF DT_NEEDED resolution can execute library
+constructors before JavaScript starts. Check the captured executable at the existing shared worker
+launcher, using its actual environment and working directory. A fresh process cannot reuse the
+supervisor's already loaded libraries; that optimization applies only to admission within an existing
+process. Reuse the same metadata/admission implementation, with no second runtime or copy owner.
+
 Static inspection alone cannot establish complete capture: dynamic library loading and native file
 reads may bypass JavaScript observation. Neither an input declaration nor a scanner establishes
 that execution used captured bytes. Do not claim complete capture from those mechanisms alone.

@@ -149,6 +149,7 @@ __attribute__((constructor)) static void initialize(void) {
     catch (error) { refusal = error; }
     expect(fs.existsSync(marker), 'outside runtime constructor executed before JavaScript admission').toBe(false);
     expect(refusal).toBeInstanceOf(Error);
+    expect((refusal as Error).message).toContain(shim);
     expect(frontend).toBeUndefined();
   } finally {
     if (previous === undefined) delete process.env.LD_LIBRARY_PATH;

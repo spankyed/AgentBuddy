@@ -3241,3 +3241,23 @@ new native case was not executed locally. Production behavior is unchanged for t
 the existing isolated Linux route will establish actual selection and the refusal boundary before
 implementation. A red result at the constructor assertion is a demonstrated gap; a broken ordinary
 control is a fixture failure and must not be cited as a runtime defect.
+
+### Confirmed runtime-linked ELF initialization gap and correction (2026-10-17)
+
+Run `39084877933` on `675d65f5f` validates the ordinary Node control, then fails the captured
+runtime assertion in 2.22 seconds: its outside constructor marker exists before JavaScript admission.
+The earlier retained-addon case still passes. This demonstrates runtime-library loading before the
+existing module admission boundary, not a slow compiler or broken fixture. Log:
+`/private/tmp/apack-elf-runtime-39084877933.log`.
+
+The correction checks runtime linkage at `spawnCompilerWorker`, the common build/frontend launcher,
+using the exact child executable, environment and working directory. It reuses ELF parsing and
+admission without introducing a copy owner. Preflight deliberately excludes the supervisor's loaded
+images: a fresh child resolves its own dependencies, including changed LD_LIBRARY_PATH values.
+Launch metadata capture now accepts the selected executable and cwd; startup defaults remain the
+current process. The control also requires the refusal to name the actual outside shim.
+
+All 112 local synthetic/mocked metadata cases pass, plus CLI types, changed-file lint and diff checks.
+No native execution ran locally. Real acceptance of the correction remains pending the same Linux
+control and bounded workflow; other linked-runtime distributions, loader/mapped-image cases, PE,
+stricter app signing and converged/final acceptance remain open.

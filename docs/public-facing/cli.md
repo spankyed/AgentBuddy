@@ -180,6 +180,9 @@ Search uses launch-time loader tokens, RPATH/RUNPATH, `LD_LIBRARY_PATH`, the OS 
 default directories. `LD_PRELOAD`, `LD_AUDIT` and system-wide preload entries accept normal OS library
 paths only. The installed ELF interpreter supplies its own search metadata; no `readelf` or `ldd`
 installation is required. Failure to obtain that metadata is explicit.
+The runtime's own linked libraries are checked before launch using the child executable, environment
+and working directory. An unused `LD_LIBRARY_PATH` directory is allowed; a selected outside runtime
+library is refused before its initialization code can run.
 
 `apack pack build --watch` watches authored inputs throughout the pack, including `apack.json`,
 modules outside `src/`, JSON schemas, assets and help. The authored watcher excludes generated,
