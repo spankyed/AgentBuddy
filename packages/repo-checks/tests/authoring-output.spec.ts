@@ -27,6 +27,10 @@ function run(root: string, temporary: string, command: string, args: string[] = 
 const author = CHAIN_STEPS.find(step => step.name === 'test:packaged-authoring:author')!;
 
 describe('external authoring output ownership', () => {
+  it('builds the selected host pack before authoring against its snapshot', () => {
+    expect(dependsOn(author)).toContain('build:default-setup');
+  });
+
   it('sweeps dead owners by canonical checkout while preserving foreign, live, unscoped and non-directory entries', () => {
     const dir = fixture(), temporary = path.join(dir, 'private-tmp');
     fs.mkdirSync(temporary);

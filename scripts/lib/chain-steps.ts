@@ -1204,8 +1204,9 @@ export const CHAIN_STEPS: readonly ChainStep[] = [
    */
   { name: 'test:packaged-authoring:author', timeout: 'scenario', seconds: 95,
     outputs: ['tests/authoring-handoff', 'tests/authoring-handoff/work-ready', 'tests/authoring-handoff/archive'],
+    // APACK_HOST selects default-setup's built snapshot for the external pack's dependency.
     inputs: [...ROOT, ...BOUNDED_RUNNER, 'tests/scripts/test-packaged-authoring-author.sh',
-      'tests/scripts/lib', ...PACKAGE_BUILD_READS] },
+      'tests/scripts/lib', ...PACKAGE_BUILD_READS, ...PACK_OUTPUTS] },
   { name: 'test:packaged-authoring:app', timeout: 'suite', seconds: 9,
     inputs: [...ROOT, ...BOUNDED_RUNNER, 'tests/scripts/test-packaged-authoring-app.sh',
       'tests/scripts/lib', 'tests/authoring-handoff', ...PACKAGE_BUILD_READS, ...APP_OUTPUTS, ...PACK_OUTPUTS] },
