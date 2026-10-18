@@ -234,10 +234,11 @@ was never one number — `test:smoke` read 11s, 16s, 20s, 21s and 24s across fiv
 floor, because it is the cost beside whichever peers the schedule admitted. It is declared now, and its
 three readers all tolerate half-to-double, so nothing needed the apparatus the floor was defending.
 
-The chain is the whole gate: **CI does not run, on purpose.** `.github/workflows/ci.yml` has its `push`
-and `pull_request` triggers commented out while this is a single-contributor repo, so `gh run list` is empty
-and always will be. That is not a failure to report, and CI is not a check to cite — the local chain is the
-check. The workflow's header says when it goes back on.
+The chain is the normal repository gate. **Automatic CI is disabled, on purpose:**
+`.github/workflows/ci.yml` has its `push` and `pull_request` triggers commented out while this is a
+single-contributor repo. Do not report their absence as a failure or enable them. Manual platform and
+strict-chain dispatches remain available and are used where the execution boundary below or an active
+goal requires them; cite actual results, not an assumption that all CI runs or never runs.
 
 **And when it does: CI may fail a check, never a clock.** A runner is smaller and noisier than any
 developer's box, so anything gating on wall-clock there manufactures flakes that read as code failures.
@@ -252,10 +253,14 @@ The condition is the machine, which is a fact a run can check.
 
 ### Keep validation bounded
 
-Run sustained compiler/native validation on disposable GitHub-hosted runners, not the developer's
+Use the approved [Windows development VM](docs/references/guides/windows-development-vm.md) for
+interactive Windows compiler/native debugging and focused validation instead of dispatching CI for
+each experiment. Coordinate one expensive execution owner, use two cores and deallocate when idle.
+Keep macOS/Linux-specific execution on the corresponding disposable runners, not the developer's
 daily-use Mac: `gh workflow run ci.yml --ref <branch> -f compiler_macos=true` (or
-`compiler_windows=true` / `compiler_linux=true`). This includes native fixtures, repeated captured-runtime execution and
-startup/cancellation batches. Stop local testing immediately if unrelated apps stop launching; preserve
+`compiler_windows=true` / `compiler_linux=true` for clean platform verification). This includes native
+fixtures, repeated captured-runtime execution and startup/cancellation batches. Stop local testing
+immediately if unrelated apps stop launching; preserve
 evidence without changing macOS security settings. Cause remains unproven in the
 [launch incident](docs/evidence/build-input-snapshot-proof.md#macos-launch-policy-investigation-2026-10-17).
 The CLI integration config refuses macOS runs outside GitHub-hosted runners before loading test

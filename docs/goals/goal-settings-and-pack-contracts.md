@@ -93,8 +93,11 @@ preloads (`bbf05ec00`). These are source evidence, not a claim that the full str
 #### Current compiler checkpoint (2026-10-18)
 
 **Execution boundary:** the user recovered the daily-use Mac by restarting after unrelated apps
-stopped launching. Cause remains unproven. Keep sustained native, captured-runtime and cancellation
-batches on disposable GitHub runners through `compiler_macos`, `compiler_windows` or `compiler_linux`.
+stopped launching. Cause remains unproven. Use the approved
+[Windows development VM](../references/guides/windows-development-vm.md) for interactive Windows
+native, captured-runtime and cancellation debugging and focused validation, with one execution owner
+and two cores. Use disposable GitHub runners for macOS/Linux execution, clean platform verification
+and the existing final gates through `compiler_macos`, `compiler_windows` or `compiler_linux`.
 Do not change macOS security settings or repeat local native batches. Preserve the
 [incident evidence](../evidence/build-input-snapshot-proof.md#macos-launch-policy-investigation-2026-10-17).
 

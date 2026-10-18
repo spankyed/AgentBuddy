@@ -9,6 +9,7 @@ For repository implementation and validation rules, read [CLAUDE.md](../CLAUDE.m
 |---|---|---|
 | [public-facing/](public-facing/) | User and pack-author documentation | Supported workflows, APIs, CLI commands and manifest contracts |
 | [reference/](reference/) | How the current system works | Architecture, internal contracts, operational guidance and reusable lessons |
+| [references/guides/](references/guides/) | Development environment guides | Agent access, practical workflows, resource ownership and operational safeguards |
 | [goals/](goals/) | Delivery scope and completion | Required outcomes, execution order, remaining checkpoints and acceptance |
 | [plans/](plans/) | Intended designs | Proposed contracts, decisions, dependencies and acceptance cases |
 | [evidence/](evidence/) | What happened | Dated investigations, experiments, source commits and validation results |
@@ -26,6 +27,10 @@ The [settings and pack contracts goal](goals/goal-settings-and-pack-contracts.md
 order and completion. [Manifest maturity](plans/manifest-maturity.md) maps the subsystem designs and
 their architectural dependencies. Consult their current status rather than treating historical handoffs
 as additional instructions. Other goals and plans carry their own status; this index is not a second backlog.
+
+For interactive Windows development and native debugging, use the
+[Windows development VM guide](references/guides/windows-development-vm.md). It covers access, source
+transfer, focused validation, costs, shutdown and recovery; it does not replace the goal's final gates.
 
 ## Document lifecycle
 
