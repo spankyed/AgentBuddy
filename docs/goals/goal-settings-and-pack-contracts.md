@@ -136,9 +136,14 @@ imports. Runtime exports are tied to captured executable bytes; ordinary outside
 covered. Source `4dbeaa968` repairs
 [higher-priority private-candidate observation](../evidence/build-input-snapshot-proof.md#windows-private-assembly-candidate-freshness-2026-10-18):
 real selection changes from value 22 to 33, invalidates the earlier view and restores its identity
-when the candidate is removed. Next exercise live Windows watcher delivery and failure repair;
-failed context queries currently return no candidate observations, so audit broader subscriptions
-before adding failure plumbing. Transitive/localized/outside-image probing and publisher/system-policy
+when the candidate is removed. Source `6e16483b4` now preserves failed-query repair inputs through
+the existing observer. The [refusal-input checkpoint](../evidence/build-input-snapshot-proof.md#windows-activation-refusal-input-checkpoint-2026-10-18) accepts configuration/missing-candidate observation,
+repair invalidation and four real Node/Electron/helper cases on identical VM source. Live Windows
+watch delivery/recovery remains unproven: two attempts expired before watcher readiness, including
+one after package preparation, without reaching the repair assertion. Do not repeat the complete
+scenario or raise its deadline without diagnosing that startup phase. The diagnostic is preserved
+in local stash `b66e269863832e8e81e7f79e1f0d7895b7843d29`; the finite passing view test does not close
+that runtime obligation. Transitive/localized/outside-image probing and publisher/system-policy
 changes remain required beyond the recognized root-dependency prefixes closed here. Then close
 Electron application-context/`.local` and remaining runtime acceptance. Preserve helper
 cleanup through clean-platform/converged acceptance; do not reschedule the

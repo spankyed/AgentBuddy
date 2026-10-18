@@ -4805,3 +4805,59 @@ The helper's recognized private-prefix coverage is not full selection-policy clo
 The validated overlay is preserved in VM stash `Validated private candidate overlay on 1be3d3b02`
 before fast-forwarding to `4dbeaa968`. The original failure, earlier stashes and pre-existing launcher
 change remain untouched. No native test execution remains; Azure confirms `VM deallocated`.
+
+
+## Windows activation refusal input checkpoint (2026-10-18)
+
+Source `6e16483b4`, based on `ed6cbbd45`, repairs a failed-query observation gap through the existing
+PE metadata helper, admission callbacks and compiler file view. Image/configuration inputs are
+observed before inspection. If Windows refuses context construction, the helper returns its already
+computed private candidate paths alongside the refusal. Admission records those paths before throwing.
+No native code is initialized, no failed generation is accepted, and no new watch coordinator or
+loader is introduced. Cleanup now also covers failed context creation and index allocation.
+
+The existing ordinary image-assembly control now configures a missing private assembly and verifies
+that the refused view observed both configuration and absent repair manifest, remains current while
+nothing changes, and becomes stale when that manifest appears. DLL initialization remains absent.
+The addon fixture's duplicated MSVC invocation is consolidated into its existing builder; the tooling
+inventory changes from 14 callsites to 13 for that actual removal.
+
+### Four-point review
+
+| Question | Evidence and limit |
+|---|---|
+| Same DLL as real Node/Electron? | Existing ordinary selection controls and production-launcher startup cases pass again. Node application/module and Electron module contexts execute the expected allowed value and attribute the outside dependency. This does not establish every Windows context or loader hook. |
+| Do selection inputs invalidate reuse? | The earlier higher-priority candidate test retains byte/missing-input freshness and restored identity. This checkpoint additionally proves refused configuration and absent repair paths reach the same view and invalidate when repaired. Transitive/localized/outside-image probing and publisher/system-policy changes remain unproven; broad policy closure is not claimed. |
+| Does copying retain the selectors? | Existing runtime-copy/context identity and actual captured startup controls pass unchanged. Missing candidates remain identity inputs without inventing copied directories. Electron application-context/`.local` remains required. |
+| Allowed execution and refusal before initialization? | Three real startup cases pass through the production launcher, including Electron's standard Node-API delay hook. Existing DLL/addon initialization markers remain absent on forbidden paths and allowed captured code returns 22. This is bounded native-library admission, not arbitrary native-code isolation. |
+
+### Validation and retained evidence
+
+One worker/two cores on the approved Windows VM: four cases pass in **42.56s total / 40.34s tests**:
+Node application 7.045s, Node module 8.085s, Electron module 19.144s, ordinary image assembly 6.060s.
+No case deadline was increased. The five helper/production/integration source blobs in
+`C:\apack-setup\runs\assembly-refusal-final-ed6cbbd45\source.txt` match the committed files exactly.
+The source base, command, log and JSON report are retained in that run directory. Existing VM Node
+23.11.1, Electron 37.2.4 and MSVC native SDK setup are reused; this is a retained development environment,
+not fresh-runner acceptance.
+
+Locally, only inert checks ran: 66 PE parser/admission/environment cases, 53 tooling cases, CLI
+TypeScript, focused lint and diff checks pass. No native/captured-runtime batch ran on the daily Mac.
+Required converged and final committed-source strict `--all` gates remain open.
+
+The full Windows watch scenario did **not** pass: initial `assembly-watch-ed6cbbd45` expired before
+readiness, and prepared-package `assembly-watch-warm-ed6cbbd45` also expired before readiness after
+emitting backend output. Neither reached failed-context repair. Their root cause is not established;
+do not interpret these as a demonstrated missed watch event. Preserve the draft in local stash
+`b66e269863832e8e81e7f79e1f0d7895b7843d29` rather than adding a known failing case or a larger deadline.
+An intermediate four-case attempt failed because removing that draft also removed an import still
+used by existing startup tests; the import was restored before the accepted run. All failed logs and
+fixtures remain retained. Off-machine evidence is
+`/private/tmp/apack-assembly-refusal-evidence-ed6cbbd45.zip`.
+
+Next diagnose the watch scenario's initial setup phase before another full attempt. Preserve all
+remaining B1/B3, B6 and Phase 7 obligations; this scoped repair does not close the goal.
+
+The validated overlay is retained in VM stash `Validated activation refusal overlay on ed6cbbd45`;
+the checkout was then fast-forwarded to `6e16483b4`. Earlier stashes, failed fixtures and unrelated
+launcher state remain untouched. No native execution remains, and Azure confirms `VM deallocated`.
