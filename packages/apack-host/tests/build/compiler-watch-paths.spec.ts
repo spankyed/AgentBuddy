@@ -4,8 +4,10 @@ import { expect, it, vi } from 'vitest';
 import { physicalWatchPath } from '../../src/build/compiler-inputs/watch-paths.ts';
 import { resolveCompilerPath } from '../../src/build/compiler-inputs/compiler-paths.ts';
 
-it('preserves an extended drive root before compiler input resolution can turn it into a volume handle', () => {
-  expect(resolveCompilerPath('\\\\?\\C:\\')).toBe('\\\\?\\C:\\');
+it('canonicalizes an extended drive root without producing a volume handle or a synthetic C: child', () => {
+  const root = resolveCompilerPath('\\\\?\\C:\\');
+  expect(root).toBe('C:\\');
+  expect(path.win32.join(root, path.win32.basename(root))).toBe(root);
   expect(resolveCompilerPath('.')).toBe(process.cwd());
 });
 

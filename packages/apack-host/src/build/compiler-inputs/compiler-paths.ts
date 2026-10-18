@@ -5,9 +5,9 @@ export interface CompilerPathMapping {
   readonly source: string;
 }
 
-/** Node 23 resolves an extended drive root to a volume handle by dropping its final separator. */
+/** Keep drive-root identity stable across Node's resolve/basename handling of extended paths. */
 export function resolveCompilerPath(file: string): string {
-  return /^\\\\\?\\[a-z]:\\$/i.test(file) ? file : path.resolve(file);
+  return /^\\\\\?\\[a-z]:\\$/i.test(file) ? file.slice(4) : path.resolve(file);
 }
 
 export function parseCompilerPaths(mappings: unknown): readonly CompilerPathMapping[] {
