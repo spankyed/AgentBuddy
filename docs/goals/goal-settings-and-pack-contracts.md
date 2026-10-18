@@ -29,6 +29,8 @@ Finished when:
   explicit shipped-pack replacement satisfy their linked plans and external-pack checks.
 - The completed naming baseline is included and recorded; no naming integration remains outstanding.
 - Changed public schemas, API reports, templates and docs agree; final validation passes.
+- External authoring uses real packed CLI/SDK packages and isolated host data; distinguish local
+  archive/runtime acceptance from release preflight and public distribution, as specified below.
 - Record outcomes, corrections and validation, then archive this goal and completed subsystem plans
   with repaired links. Deferred work remains deferred.
 
@@ -831,7 +833,45 @@ required checkpoint validation or the final committed-source strict `--all`.
 | Frontend containment | Pane/form failures preserve other panes, host settings/defaults; retries reject retired instances in main/popout paths | Locally accepted in `713a6c1fd`; preserve through final gate. |
 | API consumption | Audited declaration granularity, generated/runtime facade agreement, undeclared/unavailable API diagnostics, content/dependency contracts and settings policy | A1–A4 service routes are implemented through `bb6df4a45`; A4 content checks already exist. Refreshed authoring/harness and complete external app/fork acceptance pass; A5 schema/API/export agreement passes on `b62da5c72`, with public guides and templates reconciled; see [agreement evidence](../evidence/settings-and-pack-contracts.md#a5-schema-and-api-agreement-2026-10-17). Converged and final strict acceptance remain open. |
 | Provenance/replacement | Exact origin/version/content through reuse/inspection; explicit linked development; fork restart/reload, managed updates, disable/remove/restore, override retention and failed-publication incumbent | Substantial source exists; reconcile exact origin, reuse and replacement cases through the closure checklist below and linked plans. |
+| External package consumer and release preparation | Real CLI/SDK/testing package tarballs installed outside the monorepo; real scaffold/build, release preparation, verified archive and exact archive execution against isolated host data; preserve relevant release-sequence checks | Use the existing packaged-authoring author/app halves and release tests. Apply the evidence boundaries below; local success is not public release readiness. |
 | Final committed tree | Requirement-by-requirement audit, reviewed schema/API/docs/templates, required strict `--all` and real authoring/app checks on recorded committed source | Outstanding; archive only after every row is proven. |
+
+### External authoring and release evidence
+
+Use the existing [packaged-authoring author half](../../tests/scripts/test-packaged-authoring-author.sh)
+and [app half](../../tests/scripts/test-packaged-authoring-app.sh), not a second acceptance harness.
+They pack the actual CLI/SDK/UI/EARS/testing distribution trees into local npm tarballs, install them
+in a temporary project outside the monorepo, scaffold/build/test a pack and prepare a verified archive.
+The app half runs that exact archive against the explicitly selected built host with disposable
+profile/database data and compares installed integrity metadata. An isolated host here does not mean
+cutting an app release: reuse the built checkout through the existing host-selection contract.
+
+Required closure for this goal:
+
+- Preserve real installed-package behavior, generated declarations/exports, archived files and
+  source-free runtime checks; workspace imports or unpublished global CLI fallback cannot stand in
+  for package-consumer acceptance. App/pack dependencies must use the recorded explicit test host.
+- Separate local build publication (accepting `dist/` and its build/input record) from publishing a
+  public release. Failure retention and coherent replacement remain required local behavior.
+- Report archive/runtime acceptance separately from release readiness. Current release dry-run
+  continues after reporting preflight errors; a passing dry-run archive does not establish valid
+  origin, credentials, workflow or public package/host availability. Record those preflight findings
+  and any intentionally split E2E checks rather than claiming an unrestricted release pass.
+- Preserve relevant existing release-sequence/refusal tests and repair regressions caused by this
+  goal's contract changes. Add cases only for uncovered affected behavior; this is not a new release
+  subsystem or a requirement to perform a real version/tag/push cycle before this goal can close.
+- Record source/package/host identity, exact checks/results and the scope actually exercised in the
+  existing evidence record, retaining the required converged/final checks. Reuse unchanged accepted
+  cases rather than restarting authoring implementation or repeatedly running broad suites.
+
+No permanent external pack repository, monorepo release, public npm/Homebrew publication or GitHub
+release token is required for these local checks. The
+[external-pack release readiness plan](../plans/external-pack-release-readiness.md) owns fresh public
+workflow bootstrap, release-readiness semantics/recovery and the separately authorized GitHub release
+round trip. The [distribution plan](../plans/npm-and-homebrew-distribution.md) owns npm/Homebrew.
+Record these public paths as unverified; do not silently claim them from local tarballs or make them
+prerequisites for finishing this goal. No existing manifest, settings, discovery or external runtime
+requirement is moved out of this goal by that distinction.
 
 ### Discovery, editor and provenance closure
 
@@ -1081,6 +1121,8 @@ Run focused checks as changes are made, `npm run chain` at validated checkpoints
 chain on the final committed tree. Include the affected real app/external-pack/packaged-authoring checks
 from the linked plans and current repository instructions; do not substitute schema acceptance for behavior.
 Record the final commit, exact commands/results and naming completion SHA.
+Apply the external-authoring/release evidence boundaries above when reporting the packaged-authoring
+result; public publishing is not a substitute for, or prerequisite to, the required local behavior.
 Use `gh workflow run ci.yml --ref session/settings-pack-contracts -f strict_chain=true` for disposable macOS
 execution of `npm run chain -- --strict --all --cores 2 --no-classify`. The workflow preserves the
 console and per-step evidence even on failure. Launch it after the outstanding implementation and
@@ -1099,6 +1141,9 @@ do not archive unfinished or deferred work as completed. Publishing or PR merge 
   and distribution work outside the required dependency provenance contract.
 - A new registry/package manager, speculative optional integrations, generated settings forms and new
   preference scopes. The package-dist watcher follow-up is separate; required descriptor freshness is not.
+- [External-pack public release readiness](../plans/external-pack-release-readiness.md) and
+  [npm/Homebrew distribution](../plans/npm-and-homebrew-distribution.md); required local
+  packaged-authoring/archive/runtime acceptance remains in this goal.
 
 ## Constraints
 

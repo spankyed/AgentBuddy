@@ -34,6 +34,12 @@ An upstream tap provides an installation path under our account. It does not res
 
 These checks establish the current baseline; rerun them against the code and toolchain at resumption.
 
+The [external-pack release readiness plan](external-pack-release-readiness.md) owns the pack author's
+release commands, scaffolded GitHub workflow, upload/recovery behavior and external release smoke check.
+Coordinate its public package/host prerequisites with this plan; local tarball consumer tests do not
+establish registry availability. Neither public workstream blocks the settings/contracts goal's
+required local packaged-authoring and isolated app/runtime acceptance.
+
 ## Conditions for resuming
 
 1. Review the public exports, CLI behavior and scaffolded project dependencies. Resolve known API changes

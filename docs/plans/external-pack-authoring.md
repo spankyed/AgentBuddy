@@ -10,13 +10,13 @@ This is a tracking list, not a new implementation plan. Revalidate the unverifie
 
 ## Release and platform follow-ups
 
-- Create GitHub releases as drafts, upload assets, then publish; handle retries after partial uploads.
-  `packages/apack-cli/src/commands/release.ts` still creates a published release before uploading assets.
-- Review branch restrictions and pre-publish typecheck/test gates in `.github/workflows/publish-packages.yml`.
-  Validate through a workflow run; publishing remains manual and dry-run by default.
-- Verify `npx`/`npm` invocation on Windows in the pack release runner. The original review had no Windows verification.
-- Exercise release resolution through a real GitHub release cycle. Offline beta-cache and rate-limit behavior
-  already have coverage; this item concerns the real release path.
+- [External-pack release readiness](external-pack-release-readiness.md) now owns draft/upload/publish
+  ordering and partial-upload recovery, Windows release-command invocation, fresh scaffold/workflow
+  prerequisites and the authorized real GitHub release round trip. These remain unfinished requirements,
+  not work completed by moving this list. Offline beta-cache/rate-limit cases do not prove that round trip.
+- [npm/Homebrew distribution](npm-and-homebrew-distribution.md) owns reviewing branch restrictions and
+  pre-publish typecheck/test gates in `.github/workflows/publish-packages.yml`, followed by authorized
+  workflow verification. Publishing remains manual and requires an explicit decision.
 
 ## Findings still requiring inspection
 
