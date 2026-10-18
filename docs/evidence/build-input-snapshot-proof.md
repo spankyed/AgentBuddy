@@ -5812,3 +5812,21 @@ sources, compiler output, all images, hashes, exact checkpoint and JSON results:
 `/private/tmp/apack-bind-api-31cb54f4d.zip`. Prior accepted overlay is preserved in VM stash
 `bb55bb2a612af22fe7912d1307a767b84aacf97d`; the pre-existing launcher line-ending change is untouched.
 The VM is confirmed deallocated after export. No native execution ran on the developer's Mac.
+
+
+### Single-import binding control (2026-10-18)
+
+At exact `fcb037442`, one private follow-up removes Windows/CRT imports from the importer and value
+DLL (`/NODEFAULTLIB /NOENTRY`, fixed bases `0x180000000` / `0x190000000`). Parsed metadata confirms
+exactly one `apack_value.dll` import and no imports in that DLL. Ordinary loading and `BindImageEx`
+output both return value 22 and the exact private path/base; the binder succeeds with error 0 and a
+real bound directory (RVA 584, size 32). Removing only the value import lookup pointer still yields
+ordinary-loader `0xC0000005` without probe output. This closes the extra-import/fallback hypothesis,
+not the validity of every possible table-less image. No admission change or new exclusion follows.
+Stop these constructions; further work needs an independently valid image or a distinct supported-path
+counterexample. Compiler children have 15s bounds, loader/binder children 5s; no pack suite ran.
+
+The wrapper exits 0 and preserves all statuses. Evidence is exported as 24 files in
+`/private/tmp/apack-single-import-fcb037442.zip`, including source, images, hashes and JSON results.
+The VM is confirmed deallocated after export; all prior stashes and the launcher line-ending change
+remain preserved. No native execution ran on the developer's Mac.
