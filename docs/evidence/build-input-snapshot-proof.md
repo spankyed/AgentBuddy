@@ -3429,3 +3429,72 @@ ad hoc native launches are not mechanically guarded by this CLI test-config chan
 disposable-runner requirement still applies to them. No security settings, installed apps or system
 services were changed. The incident's cause remains unproven. Windows lookup/admission/copying and
 the other recorded compiler completion requirements remain unfinished.
+
+### Windows DLL capture correction candidate (2026-10-17)
+
+Source `503bb97eb` removes the Windows bypass in both selected-image readers and routes PE admission
+through the existing `createCompilerNativeInputs` owner. Package DLL reads therefore use the existing
+copy, observation, freshness and lifetime machinery. The Windows Job Object implementation is
+unchanged. The shared launcher also checks the new runtime's ordinary PE imports before spawning,
+using its actual executable/environment/cwd and an empty loaded-module list.
+
+The Windows adapter reads KnownDLLs and SafeDllSearchMode through the installed OS PowerShell and
+registry (one bounded five-second metadata query per capture), locating that OS tool from the physical
+loaded ntdll directory rather than PATH. It reads the OS API-set namespace from apisetschema.dll without
+loading it. The checked v6 layout follows [System Informer's native declarations](https://github.com/winsiderss/systeminformer/blob/master/phnt/include/ntpebteb.h);
+hashed contract and importer-specific host lookup agree with the corresponding
+[Wine loader implementation](https://github.com/wine-mirror/wine/blob/master/dlls/ntdll/loader.c).
+Directory ordering follows the [Windows altered-search-path contract](https://learn.microsoft.com/en-us/windows/win32/dlls/dynamic-link-library-search-order).
+Live native environment and loaded-module observations come from Node's public report API. Its
+per-Environment excludeEnv flag is synchronously restored in finally; report contents are never logged.
+The actual Windows fixture now sets excludeEnv before loading and checks that admission preserves it.
+
+Admission follows ordinary/delay imports, import-selected named/ordinal forwarders, loaded-module and
+KnownDLL precedence, OS mappings, top-image-relative transitive lookup, safe-search ordering and live
+PATH. It checks physical ownership, recognizes DOS/extended namespace spellings and refuses absolute
+non-OS imports that cannot relocate with the copied image. OS libraries and the already-owned Node
+executable are delegated to their existing owners. Bound-only package import tables currently refuse
+with attribution; support is not claimed complete. Manifest metadata remains preserved by the PE reader,
+but activation-context/SxS, .local redirection and native-mutated search-state handling are still open.
+These are implementation gaps, not approved exclusions or a closure of Windows support.
+
+Local acceptance: the seven synthetic Mach-O/ELF/PE files passed 152 cases; after the final absolute-import
+regression the three PE files pass 41 cases. CLI TypeScript, eleven-file correctness lint and diff checks
+pass. No native fixture or captured runtime ran locally. The original 60-second Windows control
+[`39088038495`](https://github.com/spankyed/AgentBuddy/actions/runs/39088038495) fails on this source
+in 30.60 seconds before frontend readiness: filesystem observation calls native realpath on the Windows
+drive root and receives EISDIR (`path: C:`). SDK setup, real compiled PE metadata assertions and ordinary
+Node loading complete before that failure; ownership/freshness/refusal are not accepted. Preserved log:
+`/private/tmp/apack-pe-proof-39088038495.log`.
+
+### Windows filesystem-root correction (2026-10-17)
+
+Source `70627b26b` uses portable realpath only for filesystem roots in `physicalWatchPath`; other paths
+retain native realpath for Windows extended paths. The root-specific injected EISDIR regression fails
+before the correction and passes afterward; a second case preserves non-root failures. Both and the
+five existing compiler-file-view cases pass, along with host TypeScript, focused lint and diff checks.
+The same original-deadline control
+[`39088334914`](https://github.com/spankyed/AgentBuddy/actions/runs/39088334914) disproves that workaround:
+portable realpath also fails before readiness (28.96 seconds), now through lstat with the same `C:`
+error. Log: `/private/tmp/apack-pe-proof-39088334914.log`. The first generic root regression was too weak
+to establish Windows behavior and is replaced rather than retained as supposed acceptance.
+
+Source `14362f23d` replaces the workaround with exact extended drive-root spelling normalization:
+`\\?\C:\` queries native realpath as `C:\`, retaining the original cache key. Other paths use native
+realpath unchanged. This addresses the root-prefix/separator problem documented in
+[Node issue 62446](https://github.com/nodejs/node/issues/62446) and its
+[upstream correction](https://github.com/nodejs/node/pull/65378), without upgrading the runtime or
+stripping meaningful namespace semantics from arbitrary files. The exact-spelling injected regression
+fails before and passes after; seven host checks, host types and focused lint/diff checks pass. Actual
+Windows run [`39088648163`](https://github.com/spankyed/AgentBuddy/actions/runs/39088648163) still fails
+before frontend readiness in 43.11 seconds. The stack moves from missing-file resolution into
+`ancestors()` and still reports native realpath EISDIR with `path: C:`. This is partial progress through
+observation, not proof that root handling or DLL capture is correct. Log:
+`/private/tmp/apack-pe-proof-39088648163.log`. No timeout has changed and no broad suite was launched.
+
+Source `acf82888c` attributes unexpected physical-path errors with the original and queried path
+spellings, preserving the native cause. The existing two root/error cases and focused lint/diff checks
+pass. Diagnostic run [`39088919972`](https://github.com/spankyed/AgentBuddy/actions/runs/39088919972)
+is pinned to this source. Inspect those exact path values before another behavior change; the injected
+root cases alone have twice been insufficient to establish actual Windows behavior. No native
+fixture/captured runtime ran locally, and the full Windows/goal acceptance remains open.
