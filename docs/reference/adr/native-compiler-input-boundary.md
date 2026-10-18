@@ -67,6 +67,16 @@ requires library ownership checks. Missing Node-API exports refuse at the host b
 other libraries, ordinals and non-Node-API symbols retain ordinary admission. This models the [documented Electron host-binding contract](https://www.electronjs.org/docs/latest/tutorial/using-native-node-modules/);
 it does not infer the behavior of arbitrary native hook code or widen the approved native-I/O boundary.
 
+Private assembly selection observes directory membership as well as named files. Typed snapshots
+reach the existing input owner on successful and refused queries, preserving newly created language
+folders and failed-context repair subscriptions. Full listing hashes guard each inspection; runtime
+copy identity derives from named candidate state, owned directories and owned file bytes. This keeps
+selective Node copies reproducible without copying unrelated installation files. See the
+[directory-membership checkpoint](../../evidence/build-input-snapshot-proof.md#private-assembly-directory-membership-and-copy-identity--2026-10-18).
+Resource manifests that affect DLL selection remain required inputs. General resource reads performed
+by native code remain within the already excluded native-I/O boundary; do not turn those reads into
+an implicit new capture project when classifying MUI follow-ups.
+
 Runtime linkage is a separate earlier boundary: linked images can execute library constructors before
 JavaScript starts. Check the captured executable at the existing shared worker launcher, using its
 actual environment, working directory and the runtime directory declared by its installation owner.

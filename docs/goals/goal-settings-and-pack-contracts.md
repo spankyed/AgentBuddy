@@ -135,6 +135,18 @@ behavior remain unverified within the existing localized/policy obligation, alon
 probing, publisher/system-policy inputs, other platform cases, B6 and final strict `--all`. No exclusion
 or reduction of the full goal is made.
 
+Source `8d6f62323` implements [directory membership through successful and refused activation queries](../evidence/build-input-snapshot-proof.md#private-assembly-directory-membership-and-copy-identity--2026-10-18).
+Typed entries reach the existing source record, watcher and owned copy; passive replay after disposal
+passes. Six affected Windows cases accept wildcard directory creation/removal and repair, direct,
+transitive and declared-culture selection, Node/Electron copy identity and pre-initialization refusal
+in 58.549s total, unchanged per-case budgets. Fifty-one inert local cases, CLI types and lint pass.
+Keep remaining outside-image/publisher/system-policy and platform obligations, repeated-build acceptance,
+B6 and final strict `--all`. Next reconcile policy/selection-context requirements against current producer
+cache identity and the approved ADR, with concrete counterexamples before new machinery. Classify MUI
+requirements as actual assembly selection or native resource I/O; the latter is already outside the
+user-approved boundary and must not silently expand this goal. No required assembly-selection case is
+excluded by this classification.
+
 **Execution boundary:** the user recovered the daily-use Mac by restarting after unrelated apps
 stopped launching. Cause remains unproven. Use the approved
 [Windows development VM](../references/guides/windows-development-vm.md) for interactive Windows

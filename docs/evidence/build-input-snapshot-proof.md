@@ -5488,3 +5488,58 @@ Export, including fixture, scripts, source, preparation, reports and logs:
 VM stash **`930efe5d0bb960ca67264f533e5f058a105a30c2`** preserves the executed repair. Earlier stashes
 and the pre-existing launcher change are untouched. No Node/Electron process remained at terminal
 inspection; deallocation is requested after export. No native execution occurred on the daily-use Mac.
+
+
+## Private assembly directory membership and copy identity — 2026-10-18
+
+Source **`8d6f62323`** replaces culture-by-culture probes with directory-membership input ownership.
+The original wildcard variant selects the `en-US` assembly correctly but omits its missing preferred
+manifest: **9.799s**, one failing case before candidate creation. The existing private traversal now
+captures directory entry names/kinds before binding, inspects present OS-recognized culture directories
+alongside declared cultures and validates the same namespace afterward. Entry hashes use ordinal name
+ordering and UTF-8 NUL-delimited kind/name values shared by the C# and TypeScript readers.
+
+The private activation protocol carries typed file/directory/missing/entries records on both success
+and refusal. A required readEntries capability reaches the existing source view, watch observer and
+owned read tree; its captured observations remain passively replayable after disposal. Refusals retain
+directory inputs rather than reducing them to paths. This matters when the repair root already exists
+and repair only creates a language subdirectory. No aliases or old reply conversion remain.
+
+Runtime inventory is another consumer of this contract. Its existing Node copy-equality assertion
+reproduces an identity mismatch in **6.212s**: full source listings include unrelated files omitted by a
+selective Node copy. Full listing hashes guard inspection; reproducible runtime identity uses named
+candidate state, owned directories and owned file bytes. Directory ownership also stops at the runtime
+root rather than adding its parent. Exact source/copy equality and the directory-boundary assertions
+are retained. A real Node control proves unrelated file additions preserve identity while a relevant
+language-directory addition invalidates it and removal restores it.
+
+Final Windows x64 acceptance passes six selected cases, one worker/two cores, unchanged 60s per-case
+bounds: **Node application 11.460s; Electron application 22.117s; direct DLL context 6.214s; transitive
+6.226s; declared culture 6.315s; wildcard 6.215s** (58.549s test total). Controls retain exact DLL path/value
+selection, refusal before DLL/addon/entry initialization, configuration freshness and 22-to-33 selection.
+The wildcard test now creates and removes the entire preferred language directory. Its refused context
+has an existing empty repair root; adding the repair language directory invalidates its recorded inputs.
+Unicode/astral filenames and a junction directory exercise C#/Node entry-hash agreement.
+
+The first membership run stopped on an overly specific old assertion: the changed repair directory is
+now diagnosed before its child manifest. The assertion now names that directory; declared-language
+cases retain the exact missing-manifest delivery check. The wildcard case asserts the earlier ancestor
+watch boundary. Fixture successor images/configurations are prepared before namespace capture so their
+creation does not contaminate restoration. No timeout, source identity or integrity check is weakened.
+
+CLI types, focused correctness lint and diff checks pass. Local inert models accept **51 cases**, with
+two Windows-only runtime cases skipped; the final ownership callback change also passes its focused
+post-disposal replay/watch-delivery case. No native executable or fixture ran on the daily-use Mac.
+Base `888ecf962` plus exact recorded patches. VM runs under `C:\apack-setup\runs`:
+`wildcard-original-888ecf962`, `wildcard-membership-888ecf962`, `membership-node-copy-888ecf962`, and
+`membership-complete-888ecf962`. Original failing fixtures remain on the VM. Export:
+`/private/tmp/apack-membership-evidence-8d6f62323.zip` (125 entries; verified zero node_modules entries).
+VM stash **`d8b4c89f21f9b1aabd68f11eefd054ee9347f4ce`** preserves the complete repair; earlier saved work
+and the pre-existing launcher change remain untouched. No Node/Electron process remained at terminal
+inspection; deallocation follows export.
+
+This accepts the named wildcard membership/repair and runtime-copy cases, not every language or
+publisher/system policy. Audit effective selection context in producer/cache identity, remaining
+outside-image/policy cases and MUI-related requirements against the approved native-I/O boundary before
+adding more implementation. Remaining platform obligations, repeated-build identity, B6 and final strict
+`--all` stay required. Native resource I/O is not a new implicit capture guarantee.
