@@ -244,7 +244,7 @@ it('tracks retained Vite ESM preload and loader inputs without freezing Vue sour
     fs.writeFileSync(imported, `import value from './sub/child.mjs'; import fs from 'node:fs';
       import { isMainThread } from 'node:worker_threads';
       if (globalThis[Symbol.for('apack.compiler.frontend')] && isMainThread)
-        fs.writeFileSync(${JSON.stringify(proof)}, JSON.stringify({ value, loader: globalThis.loaderValue, origin: import.meta.url }));`);
+        fs.writeFileSync(${JSON.stringify(proof)}, JSON.stringify({ value, required: globalThis.requiredValue, loader: globalThis.loaderValue, origin: import.meta.url }));`);
     const loader = path.join(root, 'loader.mjs');
     fs.writeFileSync(loader, `import fs from 'node:fs';
       const value = fs.readFileSync(${JSON.stringify(payload)}, 'utf8');
@@ -253,14 +253,32 @@ it('tracks retained Vite ESM preload and loader inputs without freezing Vue sour
         return url === ${JSON.stringify(pathToFileURL(imported).href)}
           ? { ...result, source: 'globalThis.loaderValue = ' + JSON.stringify(value) + ';\\n' + result.source } : result;
       }`);
+    const required = path.join(root, 'sub/required');
+    fs.mkdirSync(required);
+    fs.writeFileSync(path.join(required, 'package.json'), '{"main":"preferred.js"}');
+    fs.writeFileSync(path.join(required, 'index.js'), "module.exports = require('startup-cjs-dependency');");
+    const cjsDependency = path.join(root, 'node_modules/startup-cjs-dependency');
+    fs.mkdirSync(cjsDependency);
+    fs.writeFileSync(path.join(cjsDependency, 'index.js'), 'module.exports = 42;');
+    const nearerCjs = path.join(required, 'node_modules/startup-cjs-dependency');
+    fs.mkdirSync(nearerCjs, { recursive: true });
+    const requireEntry = path.join(root, 'node_modules/startup-require-fixture');
+    fs.mkdirSync(requireEntry);
+    fs.writeFileSync(path.join(requireEntry, 'package.json'), '{"main":"index.cjs"}');
+    fs.writeFileSync(path.join(requireEntry, 'index.cjs'), `globalThis.requiredValue = require(${JSON.stringify(required)});`);
+    const importEntry = path.join(root, 'node_modules/startup-import-fixture');
+    fs.mkdirSync(importEntry);
+    fs.writeFileSync(path.join(importEntry, 'package.json'), '{"type":"module","exports":"./index.mjs"}');
+    fs.writeFileSync(path.join(importEntry, 'index.mjs'), `import ${JSON.stringify(pathToFileURL(imported).href)};`);
     await new Promise<void>(resolve => setImmediate(resolve));
     compiler = await captureCompilerInstallation(compilerPackageDirectory(), { cwd: pack });
-    process.env.NODE_OPTIONS = formatNodeOptions([...parseNodeOptions(previous), '--import', pathToFileURL(imported).href, '--experimental-loader', pathToFileURL(loader).href]);
+    process.env.NODE_OPTIONS = formatNodeOptions([...parseNodeOptions(previous), '--require', 'startup-require-fixture',
+      '--import', 'startup-import-fixture', '--experimental-loader', pathToFileURL(loader).href]);
     let observed: CompilerWatchPaths = new Map();
     frontend = await startPackFrontend(pack, compiler, signal, inputs => {
       observed = mergeCompilerWatchPaths(observed, inputs.paths);
     });
-    expect(JSON.parse(fs.readFileSync(proof, 'utf8'))).toEqual({ value: 'FIRST', loader: 'LOADER', origin: pathToFileURL(imported).href });
+    expect(JSON.parse(fs.readFileSync(proof, 'utf8'))).toEqual({ value: 'FIRST', required: 42, loader: 'LOADER', origin: pathToFileURL(imported).href });
     expect(await frontend.isCurrent(signal)).toBe(true);
     for (const [file, original, changed] of [
       [payload, 'LOADER', 'CHANGED'],
@@ -273,6 +291,13 @@ it('tracks retained Vite ESM preload and loader inputs without freezing Vue sour
       expect(await frontend.isCurrent(signal), file).toBe(false);
       fs.writeFileSync(file, original);
       expect(await frontend.isCurrent(signal), file).toBe(true);
+    }
+    for (const candidate of [required + '.js', path.join(required, 'preferred.js'), path.join(nearerCjs, 'index.js')]) {
+      expect(createCompilerWatchMatcher(observed)(candidate, 'rename'), candidate).toBe(true);
+      fs.writeFileSync(candidate, 'module.exports = 43;');
+      expect(await frontend.isCurrent(signal), candidate).toBe(false);
+      fs.rmSync(candidate);
+      expect(await frontend.isCurrent(signal), candidate).toBe(true);
     }
     const nearer = path.join(root, 'sub/node_modules/preload-dependency');
     expect(createCompilerWatchMatcher(observed)(path.join(nearer, 'package.json'), 'rename')).toBe(true);
@@ -296,7 +321,7 @@ it('tracks retained Vite ESM preload and loader inputs without freezing Vue sour
     try { await frontend?.close(); }
     finally { await compiler?.dispose(); fs.rmSync(root, { recursive: true, force: true }); }
   }
-});
+}, 120_000);
 
 it('retains independent captured Vite owners through replacement and close', async () => {
   const root = fs.realpathSync.native(fs.mkdtempSync(path.join(os.tmpdir(), 'apack-vite-owners-')));

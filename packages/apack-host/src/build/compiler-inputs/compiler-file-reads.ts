@@ -2,14 +2,14 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { AsyncLocalStorage } from 'node:async_hooks';
 import module, { syncBuiltinESMExports } from 'node:module';
-import { fileURLToPath } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 import { isInternalThread } from 'node:worker_threads';
 import { openCapturedDirectory } from './compiler-directories.ts';
 import { capturedDescriptor, descriptorStats, releaseDescriptor, instrumentFileHandle, rememberDescriptor } from './compiler-descriptors.ts';
 import { compilerMetadataOperations, type CompilerMetadataKind } from './compiler-metadata.ts';
 import type { CompilerDirectoryCursor } from './compiler-directories.ts';
 import type { CompilerDirectoryResult } from './compiler-file-view.ts';
-import { relativeCompilerPath } from './compiler-paths.ts';
+import { observeCompilerModuleResolution } from './compiler-module-probes.ts';
 
 /** Filesystem interception is usable before compiler configuration or module activation. */
 export interface CompilerFileReadInputs {
@@ -325,31 +325,17 @@ export function beginCompilerStartupReads(scope: CompilerFileReadScope): () => v
   if (state.startup) throw new Error('Compiler startup reads already have an owner');
   install();
   state.startup = scope;
+  const preloadParent = pathToFileURL(process.cwd() + path.sep).href;
   // Node reads package declarations internally, bypassing the public fs adapters.
   // Observe lookup candidates, including missing nearer packages, without replacing resolution.
   // Node's asynchronous loader worker has no synchronous resolve implementation.
   const hooks = !isInternalThread ? module.registerHooks({
     resolve(specifier, context, next) {
       const scope = currentScope();
-      const parent = context.parentURL;
-      if (scope && scope === state.startup && parent?.startsWith('file:') && scope.compilation.isInput(fileURLToPath(parent))
-        && !module.isBuiltin(specifier) && !specifier.startsWith('.') && !specifier.startsWith('#')
-        && !path.isAbsolute(specifier) && !/^[a-z][\w+.-]*:/i.test(specifier)) {
-        const name = specifier.split('/').slice(0, specifier.startsWith('@') ? 2 : 1).join('/');
-        if (name.split('/').every(part => part && part !== '.' && part !== '..')) {
-          withoutCompilerFileReads(() => {
-            for (const directory of module.createRequire(parent).resolve.paths(specifier) ?? []) {
-              // ESM searches ancestor node_modules; it does not use CommonJS global paths.
-              if (!Array.from(context.conditions).includes('require')) {
-                const relative = relativeCompilerPath(path.dirname(directory), path.dirname(fileURLToPath(parent)));
-                if (path.basename(directory) !== 'node_modules' || relative === '..'
-                  || relative.startsWith(`..${path.sep}`) || path.isAbsolute(relative)) continue;
-              }
-              const file = path.join(directory, name, 'package.json');
-              if (scope.compilation.isInput(file)) scope.compilation.readDataPath(file);
-            }
-          });
-        }
+      if (scope && scope === state.startup) {
+        withoutCompilerFileReads(() => observeCompilerModuleResolution(scope.compilation, specifier, {
+          parentURL: context.parentURL ?? preloadParent, conditions: context.conditions,
+        }));
       }
       return next(specifier, context);
     },
