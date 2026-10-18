@@ -328,6 +328,26 @@ describe('content.formats, content.sources and content.datasets', () => {
       .toEqual([expect.stringMatching(/"content\.datasets\.faqs\.format": Content "faqs": no format "notes" in content\.formats/)]);
   });
 
+  it.each(['sources', 'datasets'] as const)('requires explicit format and dependency declarations for content.%s', section => {
+    const errors = section === 'sources' ? errorsFor : datasetErrors;
+    expect(errors({ items: { path: 'p', format: 'constructor' } }))
+      .toEqual([expect.stringContaining('no format "constructor" in content.formats')]);
+    expect(errors({ items: { path: 'p', format: 'constructor:memos' } }))
+      .toEqual([expect.stringContaining('names "constructor", which isn\'t a dependency')]);
+    expect(errors({ items: { path: 'p', format: 'constructor' } }, { constructor: memos })).toEqual([]);
+    expect(messagesOf(parseManifest({ ...pack, dependencies: { constructor: '*' },
+      content: { [section]: { items: { path: 'p', format: 'constructor:memos' } } },
+    }))).toEqual([]);
+  });
+
+  it('checks source/dataset collisions against declared source names only', () => {
+    const entry = { path: 'p', format: 'memos' };
+    expect(datasetErrors({ constructor: entry })).toEqual([]);
+    expect(messagesOf(parseManifest({ ...pack, content: {
+      formats: { memos }, sources: { constructor: entry }, datasets: { constructor: entry },
+    } }))).toEqual([expect.stringContaining('"constructor" is both a content source and a dataset')]);
+  });
+
   it('rejects unknown format keys, bad field sources, and format/compiler misuse', () => {
     const sources = { memos: { path: 'p', format: 'memos' } };
     expect(errorsFor(sources, { memos: { format: 'json', entityType: 'Memo' } })).toEqual([expect.stringMatching(/Unrecognized key.*entityType/)]);

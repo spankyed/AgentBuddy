@@ -1,6 +1,7 @@
 import { PackConsumptionSchema, _serviceProviderProblem, _SERVICE_NAME_PATTERN } from './service-consumption.ts';
 import { dslDefinitionsProblem } from './dsl-declarations.ts';
 import { declarationRecord } from './declaration-record.ts';
+import { hasOwn } from '../utils/shared.ts';
 import { _eventContractsProblem } from './event-contracts.ts';
 import type { PackLifecycleDeclaration } from './lifecycle-declaration.ts';
 export { LIFECYCLE_HOOK_NAMES } from './lifecycle-declaration.ts';
@@ -816,16 +817,16 @@ export const ManifestSchema = z.preprocess(checkDeclaredNames, z.object({
       const [, pack, name] = CONTENT_FORMAT_REF.exec(entry.format) ?? [];
       if (!name) continue;
       const at = ['content', section, key, 'format'];
-      if (pack === undefined && !manifest.content?.formats?.[name]) {
+      if (pack === undefined && !hasOwn(manifest.content?.formats ?? {}, name)) {
         ctx.addIssue({ code: 'custom', path: at, message: `Content "${key}": no format "${name}" in content.formats` });
-      } else if (pack !== undefined && !(pack in (manifest.dependencies ?? {}))) {
+      } else if (pack !== undefined && !hasOwn(manifest.dependencies ?? {}, pack)) {
         ctx.addIssue({ code: 'custom', path: at, message: `Content "${key}": format "${entry.format}" names "${pack}", which isn't a dependency` });
       }
     }
   }
   // A key is a file name in the compiled output, so the two sections cannot share one
   for (const key of Object.keys(manifest.content?.datasets ?? {})) {
-    if (key in (manifest.content?.sources ?? {})) {
+    if (hasOwn(manifest.content?.sources ?? {}, key)) {
       ctx.addIssue({ code: 'custom', path: ['content', 'datasets', key], message: `"${key}" is both a content source and a dataset: they compile to the same file` });
     }
   }
