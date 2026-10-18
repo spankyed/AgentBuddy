@@ -1,5 +1,8 @@
 import { defineConfig } from 'vitest/config';
 import { defaultServerConditions } from 'vite';
+import { assertCompilerTestRunner } from './tests/_support/compiler-test-runner.ts';
+
+assertCompilerTestRunner();
 
 // Vitest's own defaults: Vite's server conditions without 'module'
 const conditions = ['@apackdev/source', ...defaultServerConditions.filter((c) => c !== 'module')];

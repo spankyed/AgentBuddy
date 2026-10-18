@@ -258,6 +258,9 @@ daily-use Mac: `gh workflow run ci.yml --ref <branch> -f compiler_macos=true` (o
 startup/cancellation batches. Stop local testing immediately if unrelated apps stop launching; preserve
 evidence without changing macOS security settings. Cause remains unproven in the
 [launch incident](docs/evidence/build-input-snapshot-proof.md#macos-launch-policy-investigation-2026-10-17).
+The CLI integration config refuses macOS runs outside GitHub-hosted runners before loading test
+modules. Do not bypass that guard with fabricated runner variables; use disposable CI. This also applies
+when the root integration project or chain selects the CLI suite. Pure unit checks remain local.
 
 Before a checkpoint's broad run, state what it must prove and which required checks cover it. Run the
 chain after the focused checks converge. On failure, inspect the preserved evidence and reproduce the
