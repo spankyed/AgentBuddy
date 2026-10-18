@@ -8,7 +8,7 @@ interface CompilerRuntimeInputs {
   directory: string;
   hash: string;
   directories: string[];
-  links: Array<{ source: string; target: string }>;
+  links: Array<{ source: string; target: string; text: string }>;
 }
 
 /** Node needs its executable; Electron also needs its distribution's native libraries and resources. */
@@ -29,8 +29,9 @@ export function readCompilerRuntimeInputs(
     visited.add(file);
     const stat = fs.lstatSync(file);
     if (stat.isSymbolicLink()) {
-      const target = path.resolve(path.dirname(file), fs.readlinkSync(file));
-      links.push({ source: file, target });
+      const text = fs.readlinkSync(file);
+      const target = path.resolve(path.dirname(file), text);
+      links.push({ source: file, target, text });
       // Preserve dangling links, without inventing a target's contents.
       if (fs.existsSync(target)) walk(fs.realpathSync.native(target));
     } else if (stat.isDirectory()) {
@@ -50,7 +51,8 @@ export function readCompilerRuntimeInputs(
   // including Info.plist and sealed resources, as on the other Electron platforms.
   if (electron) walk(process.platform === 'darwin' ? path.dirname(root) : root);
   const identity = [relative(executable), files.sort(([a], [b]) => a < b ? -1 : a > b ? 1 : 0),
-    directories.map(relative).sort(), links.map(({ source, target }) => [relative(source), relative(target)]).sort()];
+    directories.map(relative).sort(), links.map(({ source, target, text }) => [relative(source), relative(target),
+      process.platform === 'win32' || path.isAbsolute(text) ? null : text]).sort()];
   return { executable, directory: electron && process.platform === 'darwin' ? path.dirname(root) : root,
     directories, links, hash: createHash('sha256').update(JSON.stringify(identity)).digest('hex') };
 }

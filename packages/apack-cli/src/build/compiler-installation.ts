@@ -134,6 +134,7 @@ export async function captureCompilerInstallation(directory = compilerPackageDir
         }
       }
     }
+    const runtimeLinks = new Map(runtime.links.map(link => [link.source, link.text]));
     for (const { source, target } of runtime.links) addLink(source, target);
     // Parent links first: a child lookup may already exist through its captured parent.
     for (const [source, target] of [...links].sort(([a], [b]) => a.length - b.length)) {
@@ -146,7 +147,10 @@ export async function captureCompilerInstallation(directory = compilerPackageDir
         if (fs.realpathSync.native(destination) !== fs.realpathSync.native(resolved)) throw new Error(`Conflicting captured compiler path: ${source}`);
       } else {
         const directoryType = process.platform === 'win32' ? 'junction' : 'dir';
-        fs.symlinkSync(resolved, destination, fs.statSync(resolved, { throwIfNoEntry: false })?.isDirectory() ? directoryType : 'file');
+        const text = runtimeLinks.get(source);
+        // Relative framework links are sealed by macOS signatures; keep their exact spelling.
+        const link = process.platform !== 'win32' && text !== undefined && !path.isAbsolute(text) ? text : resolved;
+        fs.symlinkSync(link, destination, fs.statSync(resolved, { throwIfNoEntry: false })?.isDirectory() ? directoryType : 'file');
       }
     }
     const root = capturedPath(inputs.nodes[inputs.roots[0]!.node]!.directory);
