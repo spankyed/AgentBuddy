@@ -3596,3 +3596,29 @@ redirection, bound-only imports, supported search-state reconciliation and Windo
 publication coverage remain open. Keep the previously accepted Job Object owner. Other native/profile
 requirements, B6 and the final committed-source strict `--all` are still required; no broad rerun or
 archive follows from this focused pass.
+
+### Windows Unicode metadata and bound-import control correction (2026-10-17)
+
+Source `52e77402b` writes the Windows metadata query's JSON as explicit UTF-8 bytes to its
+standard-output stream. It does not change console encoding or the shared terminal code page.
+Run [39092975820](https://github.com/spankyed/AgentBuddy/actions/runs/39092975820) on `2e1cde9bb`
+passes the complete named-import control with a Unicode package path in 37.18 seconds: exact captured
+DLL ownership, freshness replacement/restoration, Vue updates, privacy preservation and outside-PATH
+refusal before initialization, with the incumbent retained. The unchanged per-case deadline is 60 seconds.
+Log: `/private/tmp/apack-pe-proof-39092975820.log`.
+
+The second case fails in ordinary Node with access violation `3221225477` before captured execution.
+The prior run [39092534862](https://github.com/spankyed/AgentBuddy/actions/runs/39092534862) has the
+same raw-loader failure. These failures establish an invalid control, not an apack loader defect.
+The hand-edited image removed its lookup table after filling its IAT with preferred addresses.
+[Microsoft's binding explanation](https://devblogs.microsoft.com/oldnewthing/20231129-00/?p=109077)
+requires the lookup table for fallback when those addresses cannot be reused. Restoring that table
+provides a normal bound-import control; the parser must continue reading names and ordinals rather
+than cached addresses. A focused synthetic regression establishes that distinction.
+
+The corrected bound-import control still needs actual Windows execution. Bound-only behavior remains
+unverified: neither failing raw-loader fixture proves a valid supported case or authorizes an exclusion.
+Do not implement address-to-export recovery based on these malformed controls. The existing explicit
+refusal remains; activation/SxS/.local, search-state reconciliation, preload/thread/publication and the
+other platform/final requirements remain open. All 24 focused metadata/OS-query tests, CLI types and
+focused lint/diff checks pass; no native code ran on the daily-use Mac.

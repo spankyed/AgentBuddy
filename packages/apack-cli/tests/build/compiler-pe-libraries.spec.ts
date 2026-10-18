@@ -20,6 +20,14 @@ it.each([true, false])('reads delay imports using RVA or VA attributes (RVA %s)'
   ]);
 });
 
+it('uses lookup names and ordinals when the IAT contains bound addresses', () => {
+  const value = image(); value.imports();
+  value.uint(0x1004, 5678);
+  value.pointer(0x1300, 0x180001234n);
+  expect(parsePeLibraryMetadata(value.bytes).imports[0]).toMatchObject({ timeStamp: 5678,
+    symbols: [{ name: 'native_value' }, { ordinal: 7 }] });
+});
+
 it('retains bound addresses and timestamps without mistaking them for import names', () => {
   const value = image(); value.imports();
   value.uint(0x1000, 0); value.uint(0x1004, 5678);

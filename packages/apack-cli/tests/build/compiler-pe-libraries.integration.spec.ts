@@ -15,7 +15,7 @@ import { BUILD_INPUTS_DIRECTORY_ENV } from '../../src/build/compiler-read-tree.t
 import type { CapturedNativeModule } from '../../src/build/compiler-native-input-owner.ts';
 import { readPeLoaderMetadata, capturePeLibraryEnvironment } from '../../src/build/compiler-pe-environment.ts';
 
-/** Bind the fixture's single value import without its lookup-name table, using its fixed image base. */
+/** Bind the value IAT while retaining the lookup table needed when Windows cannot reuse the binding. */
 function bindValueImport(bytes: Buffer, address: bigint, timeStamp: number) {
   const pe = bytes.readUInt32LE(60), optional = pe + 24;
   const sections = optional + bytes.readUInt16LE(pe + 20);
@@ -31,7 +31,7 @@ function bindValueImport(bytes: Buffer, address: bigint, timeStamp: number) {
     if (bytes.toString('ascii', name, bytes.indexOf(0, name)) !== 'apack_value.dll') continue;
     const iat = offset(bytes.readUInt32LE(descriptor + 16));
     expect(bytes.readBigUInt64LE(iat + 8)).toBe(0n);
-    bytes.writeUInt32LE(0, descriptor);
+    expect(bytes.readUInt32LE(descriptor)).not.toBe(0);
     bytes.writeUInt32LE(timeStamp, descriptor + 4);
     bytes.writeUInt32LE(0xffffffff, descriptor + 8); // No bound forwarder chain.
     bytes.writeBigUInt64LE(address, iat);
@@ -42,7 +42,7 @@ function bindValueImport(bytes: Buffer, address: bigint, timeStamp: number) {
 
 it.runIf(process.platform === 'win32').each([
   { bound: false, label: 'named imports, Unicode paths' },
-  { bound: true, label: 'bound-only imports' },
+  { bound: true, label: 'bound imports with lookup fallback' },
 ])('owns retained PE libraries and refuses outside DLLs before initialization ($label)', async ({ bound }) => {
   const root = fs.realpathSync.native(fs.mkdtempSync(path.join(os.tmpdir(), 'apack-pe-libraries-')));
   const pack = path.join(root, bound ? 'pack' : 'pack-é');
@@ -107,7 +107,7 @@ BOOL WINAPI DllMain(HINSTANCE module, DWORD reason, LPVOID reserved) {
       bindValueImport(bytes, target.imageBase + BigInt(exported.address), target.timeStamp);
       fs.writeFileSync(addon, bytes);
       expect(parsePeLibraryMetadata(bytes).imports.find(imported => imported.name === 'apack_value.dll')?.symbols)
-        .toEqual([{ boundAddress: target.imageBase + BigInt(exported.address) }]);
+        .toEqual([{ name: 'native_value' }]);
     }
     const ordinary = observe();
     expect(ordinary.value).toBe(11);
