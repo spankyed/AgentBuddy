@@ -20,7 +20,9 @@ export function relativeCompilerPath(from: string, to: string): string {
   };
   // Node treats extended drive/share names as components of the same device. Across
   // roots, retain the absolute target rather than inventing a relative path through D:.
-  if (path.isAbsolute(source) && path.isAbsolute(target) && root(source) !== root(target)) return target;
+  if (path.isAbsolute(source) && path.isAbsolute(target) && root(source) !== root(target)) {
+    return path.parse(target).root === target ? resolveCompilerPath(target) : target;
+  }
   return path.relative(source, target);
 }
 

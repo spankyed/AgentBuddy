@@ -38,3 +38,9 @@ it.each([
   expect(path.resolve(from, encoded)).toBe(path.toNamespacedPath(to));
   expect(compilerSourcePath(to, [{ captured: from, source: 'E:\\original' }])).toBe(to);
 });
+
+it('retains a valid drive root when a cross-drive observation is serialized and resolved again', () => {
+  const root = 'C:\\pack';
+  const encoded = relativeCompilerPath(root, 'D:\\').split(path.sep).join('/');
+  expect(path.resolve(root, encoded)).toBe('D:\\');
+});
