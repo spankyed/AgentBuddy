@@ -196,7 +196,7 @@ it.runIf(process.platform === 'win32').each(['preload', 'thread', 'preload-and-t
     const checkpoint = (phase: string) => console.info(`[PE ${site}] ${phase}: ${((performance.now() - started) / 1000).toFixed(2)}s`);
     try {
       packFixture({ at: pack, nodeModules: path.join(REPO_ROOT, 'node_modules'), manifest: { features: {},
-        ...(site !== 'preload' ? { content: { formats: { rows: { compiler: 'src/compiler.ts', entity: 'Relation', identity: ['name'] } },
+        ...(site !== 'preload' ? { content: { formats: { rows: { compiler: site === 'preload-and-module' ? 'src/compiler.cjs' : 'src/compiler.ts', entity: 'Relation', identity: ['name'] } },
           sources: { rows: { path: 'src/value.txt', format: 'rows' } } } } : {}) },
         files: { 'src/value.txt': 'input', 'tsconfig.json': JSON.stringify({ compilerOptions: { module: 'esnext', moduleResolution: 'bundler', skipLibCheck: true } }) } });
       const { library, addon, dllMarker, addonMarker } = createPeNativeFixture(root, pack);
@@ -231,9 +231,7 @@ require('node:fs').appendFileSync(${JSON.stringify(proof)}, JSON.stringify({phas
         process.env.NODE_OPTIONS = formatNodeOptions([...parseNodeOptions(previousOptions), '--require', preload]);
       }
       if (site === 'preload-and-module') {
-        fs.writeFileSync(path.join(pack, 'src/compiler.ts'), `import { createRequire } from 'node:module';
-const require = createRequire(import.meta.url);
-export default () => {
+        fs.writeFileSync(path.join(pack, 'src/compiler.cjs'), `module.exports = () => {
   ${load('compiler')}
   return [{entity:'Relation',name:'NATIVE'}];
 };`);
