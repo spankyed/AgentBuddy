@@ -3723,3 +3723,32 @@ Its next step is actual hosted execution, then replacing that expectation with p
 refusal through the existing owner. No extra Node copy, installed-app modification, environment
 override or signing permission is involved. It does not establish Node/Electron ABI or signing-profile
 acceptance. CLI types, focused correctness lint and diff checks pass; no local native code ran.
+
+### Cross-drive Windows observation repair and macOS constructor result (2026-10-17)
+
+Windows run [39094465491](https://github.com/spankyed/AgentBuddy/actions/runs/39094465491) on
+`ba2113bc2` completes its first real backend build at the 76.31-second checkpoint. The full-path native
+DLL/workspace assertions pass, including parent workspace removal, so the earlier cleanup and author
+codegen corrections now reach publication. Initial sealed-input freshness fails on an `entries` query
+encoded as `../../../../../../../../D:/a/AgentBuddy/AgentBuddy/node_modules/@ai-sdk/gateway`. The
+pack is on C: and the checkout on D:. Fail-fast leaves the thread case unexecuted; source restoration
+and outside-library publication refusal are not accepted yet. Case duration: 83.58 seconds. Log:
+`/private/tmp/apack-pe-publication-39094465491.log`.
+
+A pure `path.win32` reproducer confirms Node's relative calculation treats extended drive identifiers
+as components of one device. Source `aeed4337e` compares ordinary root identities without stripping
+extended spelling from the actual path. Cross-drive/share targets remain absolute; same-root paths
+retain their previous namespace-aware comparison. Ten Windows-spelling cases cover drive/share
+boundaries, serialized forward-slash replay and source-projection containment; together with the six
+filesystem input cases, all 16 pass. Host types, focused lint/diff checks pass. This is the common path
+owner, not a receipt-only rewrite, drive-specific fixture or relaxed freshness assertion. Actual Windows
+publication acceptance of the repair remains pending.
+
+macOS run [39094566233](https://github.com/spankyed/AgentBuddy/actions/runs/39094566233) on
+`1f4c8b67c` passes the ordinary/shared-launcher constructor prototype in 0.904 seconds (4.16 seconds
+Vitest total). Both executions initialize the outside absolute dylib and return 11. This confirms the
+missing shared-launcher admission boundary for that minimal executable; it is not Node/Electron ABI,
+signed-app or full native acceptance. Log: `/private/tmp/apack-macho-runtime-39094566233.log`.
+Implement the pre-initialization guard through the existing launcher/parser, preserving the selected
+executable's paths, Electron framework ownership and required signing semantics. No native run occurred
+on the daily-use Mac.
