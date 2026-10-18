@@ -5355,3 +5355,27 @@ launcher change and earlier stashes remain untouched. No Node/Electron process r
 inspection; deallocation was requested after export. This closes the named mapping-candidate audit;
 remaining native/platform requirements, repeated-build acceptance, B6 and final strict `--all` remain
 required. Do not start another general resolver project without a concrete counterexample.
+
+
+## Electron application-context startup acceptance — 2026-10-18
+
+Source **`afc98b845`** adds the missing Electron application-context case to the existing native
+selection/startup matrix. The fixture helper copies Electron's complete runtime before removing its
+embedded manifest, asserts the executable belongs to the private fixture directory, and reuses the
+existing Node-API delay-load hook. Installed runtime files are never edited. Node fixture behavior
+is retained; no production admission, capture or loader code changes.
+
+One selected Windows x64 case passes in **22.039s**, unchanged 60s test budget, two cores and one
+Vitest worker. The ordinary private Electron control identifies the exact assembly DLL copied under
+its application runtime, returns value 22 and sets both initialization markers. The production compiler
+startup launcher then attributes refusal to the source outside-package library before the compiler entry,
+DLL initialization or addon initialization. Runtime-copy identity is checked by the existing helper;
+the ordinary process verifies its Electron version against the selected installation.
+
+Base `4b3b454da` plus the reviewed fixture patch; source/hash, native toolchain record, package
+preparation, test log, JSON report and exit code:
+`C:\apack-setup\runs\electron-application-4b3b454da`. Matching packages were prepared once, and
+cached SDK paths were verified before use. CLI types, focused correctness lint and diff checks pass.
+This accepts the configured private Electron application context, not every Windows policy or full
+Electron pack compilation. Electron `.local`, other named native/platform cases, repeated-build
+acceptance, B6 and whole-goal strict `--all` remain open.

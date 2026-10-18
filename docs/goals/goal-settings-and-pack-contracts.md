@@ -112,6 +112,11 @@ Continue the finite native/platform obligations below, then B6 and final accepta
 identity unaccepted on current source; preserve all phases and do not restart accepted lifecycles for
 reassurance.
 
+Source `afc98b845` accepts the missing [Electron application-context startup case](../evidence/build-input-snapshot-proof.md#electron-application-context-startup-acceptance--2026-10-18)
+in 22.039s under the unchanged 60s bound: exact private copied-DLL selection and pre-initialization
+compiler refusal pass. This is a fixture/acceptance checkpoint; production code needed no change.
+Electron `.local` remains the next named runtime gap; preserve other native/platform and final gates.
+
 **Execution boundary:** the user recovered the daily-use Mac by restarting after unrelated apps
 stopped launching. Cause remains unproven. Use the approved
 [Windows development VM](../references/guides/windows-development-vm.md) for interactive Windows
@@ -208,7 +213,7 @@ cases, B6 and final committed-source strict acceptance remain open. Preserve acc
 repeating them for reassurance.
 Transitive/localized/outside-image probing and publisher/system-policy
 changes remain required beyond the recognized root-dependency prefixes closed here. Then close
-Electron application-context/`.local` and remaining runtime acceptance. Preserve helper
+Electron `.local` and remaining runtime acceptance; the application-context case is accepted in `afc98b845` as linked above. Preserve helper
 cleanup through clean-platform/converged acceptance; do not reschedule the
 accepted basic Node/DLL controls. Earlier stashed controls remain preserved as evidence. Configured
 Node `.local` public-build acceptance remains `9d25152aa`; the separate full-CLI
