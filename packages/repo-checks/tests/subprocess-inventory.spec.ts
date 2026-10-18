@@ -48,8 +48,8 @@ const loadedByThePool = (): string[] => reachableFrom(
  * exists to catch, and a file-level list would wave it through.
  */
 const INVENTORY: Record<string, { calls: number; why: string }> = {
-  'packages/apack-cli/tests/build/compiler-elf-libraries.integration.spec.ts': { calls: 2,
-    why: 'the Linux proof compiles private NAPI/shared-library fixtures and uses an ordinary Node control to establish actual ELF selection before captured frontend ownership and pre-initialization refusal' },
+  'packages/apack-cli/tests/build/compiler-elf-libraries.integration.spec.ts': { calls: 3,
+    why: 'the Linux proofs compile private NAPI/shared-library fixtures; ordinary Node controls establish actual addon and pre-JavaScript runtime library selection before captured ownership and pre-initialization refusal' },
   'packages/apack-cli/tests/build/compiler-native-libraries.integration.spec.ts': { calls: 7,
     why: 'clang/cc produce real direct/transitive libraries and Node addons; fresh Node children prove refused backend fixtures actually execute, plus dyld search, image-suffix and versioned override selection before captured admission. The live-watch case compiles a replacement dependency graph; in-process fixtures cannot change OS launch settings or prove refusal precedes initialization' },
   'packages/apack-cli/tests/build/build-worker.integration.spec.ts': { calls: 8,

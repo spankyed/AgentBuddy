@@ -8,7 +8,11 @@ import { REPO_ROOT } from '@apackdev/host/build/packages-built';
 import { formatNodeOptions, parseNodeOptions } from '@apackdev/host/build/source-resolution';
 import { captureCompilerInstallation, compilerPackageDirectory, type CompilerInstallation } from '../../src/build/compiler-installation.ts';
 import { startPackFrontend, type PackFrontend } from '../../src/build/frontend-process.ts';
+import { parseElfLibraryCommands } from '../../src/build/compiler-elf-libraries.ts';
+import { isElfSystemLibrary } from '../../src/build/compiler-elf-environment.ts';
 import { nativeAddonSource } from '../_support/native-addon.ts';
+
+const compile = (args: string[]) => execFileSync('cc', args, { timeout: 15_000 });
 
 it.runIf(process.platform === 'linux')('owns retained ELF libraries, preserves Vue updates and refuses absolute outside dependencies', async () => {
   const root = fs.realpathSync.native(fs.mkdtempSync(path.join(os.tmpdir(), 'apack-elf-libraries-')));
@@ -18,7 +22,6 @@ it.runIf(process.platform === 'linux')('owns retained ELF libraries, preserves V
   let frontend: PackFrontend | undefined;
   let refused: PackFrontend | undefined;
   const signal = new AbortController().signal;
-  const compile = (args: string[]) => execFileSync('cc', args, { timeout: 15_000 });
   try {
     packFixture({ at: pack, nodeModules: path.join(REPO_ROOT, 'node_modules'), manifest: { features: {} },
       files: { 'src/pack-entry-fe.ts': "export { default } from './View.vue';", 'src/View.vue': '<template>ELF_BEFORE</template>' } });
@@ -91,6 +94,66 @@ it.runIf(process.platform === 'linux')('owns retained ELF libraries, preserves V
     if (previous === undefined) delete process.env.NODE_OPTIONS;
     else process.env.NODE_OPTIONS = previous;
     try { await refused?.close(); await frontend?.close(); }
+    finally { await compiler?.dispose(); fs.rmSync(root, { recursive: true, force: true }); }
+  }
+});
+
+it.runIf(process.platform === 'linux')('refuses outside runtime-linked libraries before captured executable initialization', async () => {
+  const root = fs.realpathSync.native(fs.mkdtempSync(path.join(os.tmpdir(), 'apack-elf-runtime-')));
+  const pack = path.join(root, 'pack');
+  const previous = process.env.LD_LIBRARY_PATH;
+  let compiler: CompilerInstallation | undefined;
+  let frontend: PackFrontend | undefined;
+  try {
+    packFixture({ at: pack, nodeModules: path.join(REPO_ROOT, 'node_modules'), manifest: { features: {} },
+      files: { 'src/pack-entry-fe.ts': 'export const plugins = [];' } });
+    const libraries = (process.report.getReport() as { sharedObjects: string[] }).sharedObjects;
+    const original = libraries.find(file => isElfSystemLibrary(file)
+      && parseElfLibraryCommands(fs.readFileSync(file)).soname === 'libstdc++.so.6');
+    expect(original, 'the Node control must expose its real C++ runtime library').toBeDefined();
+    const outside = path.join(root, 'outside');
+    fs.mkdirSync(outside);
+    // A shim retains Node's complete ABI through a renamed private copy of its real provider.
+    // Only the private copy changes; no OS file or already mapped image is modified.
+    const bytes = fs.readFileSync(original!);
+    const name = Buffer.from('libstdc++.so.6\0');
+    const at = bytes.indexOf(name);
+    expect(at).toBeGreaterThanOrEqual(0);
+    bytes.fill(0, at, at + name.length);
+    bytes.write('$ORIGIN/r.so', at);
+    expect(parseElfLibraryCommands(bytes).soname).toBe('$ORIGIN/r.so');
+    const provider = path.join(outside, 'r.so');
+    fs.writeFileSync(provider, bytes, { mode: 0o555 });
+    const marker = path.join(root, 'runtime-initialized');
+    const source = path.join(outside, 'shim.c');
+    const shim = path.join(outside, 'libstdc++.so.6');
+    fs.writeFileSync(source, `#include <stdio.h>
+__attribute__((constructor)) static void initialize(void) {
+  FILE *marker = fopen(${JSON.stringify(marker)}, "w"); if (marker) fclose(marker);
+}`);
+    compile(['-fPIC', '-shared', '-Wl,-soname,libstdc++.so.6', '-Wl,--no-as-needed', source, provider, '-o', shim]);
+    expect(parseElfLibraryCommands(fs.readFileSync(shim)).dependencies).toContain('$ORIGIN/r.so');
+    const search = [outside, previous].filter(Boolean).join(':');
+    const control = JSON.parse(execFileSync(process.execPath, ['-e',
+      'console.log(JSON.stringify({version:process.version,libraries:process.report.getReport().sharedObjects}))'], {
+      encoding: 'utf8', env: { ...process.env, LD_LIBRARY_PATH: search }, timeout: 10_000,
+    })) as { version: string; libraries: string[] };
+    expect(control.version).toBe(process.version);
+    expect(control.libraries).toContain(shim);
+    expect(fs.existsSync(marker)).toBe(true);
+    fs.rmSync(marker);
+    compiler = await captureCompilerInstallation(compilerPackageDirectory(), { cwd: pack });
+    process.env.LD_LIBRARY_PATH = search;
+    let refusal: unknown;
+    try { frontend = await startPackFrontend(pack, compiler, new AbortController().signal); }
+    catch (error) { refusal = error; }
+    expect(fs.existsSync(marker), 'outside runtime constructor executed before JavaScript admission').toBe(false);
+    expect(refusal).toBeInstanceOf(Error);
+    expect(frontend).toBeUndefined();
+  } finally {
+    if (previous === undefined) delete process.env.LD_LIBRARY_PATH;
+    else process.env.LD_LIBRARY_PATH = previous;
+    try { await frontend?.close(); }
     finally { await compiler?.dispose(); fs.rmSync(root, { recursive: true, force: true }); }
   }
 });

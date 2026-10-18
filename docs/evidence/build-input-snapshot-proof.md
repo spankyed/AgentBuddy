@@ -3226,3 +3226,18 @@ substitute the passing addon/backend checks for this separately required runtime
 
 Relevant remaining real loader-selection/mapped-image cases, PE admission, stricter app signing,
 B6 and the final committed-source strict `--all` gate remain required.
+
+### Pre-JavaScript ELF runtime control candidate (2026-10-17)
+
+Added one real Linux control for the audited runtime edge. It creates a private shim for Node's
+actual C++ runtime library and forwards the ABI through a renamed private copy of that library.
+An ordinary Node process must retain its exact version, report the selected outside shim and execute
+its constructor marker. The captured frontend must refuse without that constructor running, whether
+startup would otherwise succeed or fail later. This distinguishes runtime initialization from later
+addon admission. No OS file or mapped image is modified; the fixture owns every written file.
+
+CLI types, changed-file lint, diff checks and all 11 subprocess-inventory checks pass locally. The
+new native case was not executed locally. Production behavior is unchanged for this control checkpoint;
+the existing isolated Linux route will establish actual selection and the refusal boundary before
+implementation. A red result at the constructor assertion is a demonstrated gap; a broken ordinary
+control is a fixture failure and must not be cited as a runtime defect.
