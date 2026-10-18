@@ -3066,3 +3066,24 @@ The next coherent ELF correction must:
 OS metadata and loaders remain authoritative for execution. Do not add library relocation, a required
 external inspection tool, a custom resource framework or a narrower completion condition. PE admission,
 the stricter signed-app profile, B6 and the final strict gate remain part of this goal.
+
+### Static ELF metadata checkpoint (2026-10-17)
+
+Added `compiler-elf-libraries.ts` as the dependency metadata reader for the existing native input owner.
+It reads program headers and file-backed dynamic strings directly, including stripped images, ELF32
+and ELF64, either byte order and extended program-header counts. It preserves dependency order and
+distinguishes RPATH, RUNPATH, flags, auxiliary/filter libraries and audit declarations so admission
+cannot silently omit additional declared image loading. Malformed bounds, missing termination,
+out-of-segment string tables and duplicate singleton metadata refuse explicitly.
+
+The format follows the [ELF dynamic section](https://gabi.xinuos.com/elf/08-dynamic.html), with metadata
+reading deliberately separate from dependency selection and executable admission. All 23 synthetic
+binary regression cases pass in 9 ms; CLI TypeScript and changed-file correctness lint pass. These
+checks execute no native fixtures or captured runtimes. No broad build or CI rerun was needed for
+this static checkpoint.
+
+This reader is not yet connected to native loading. The confirmed retained-library defect remains
+open: next implement ELF dependency selection/admission and copying through
+`createCompilerNativeInputs`, including launch-state capture and relevant OS lookup observations,
+then run the existing Linux proof on committed source. This checkpoint does not establish runtime
+ownership, Linux lifetime acceptance, or the final strict gate.
