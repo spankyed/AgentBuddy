@@ -1565,13 +1565,13 @@
         "shortCode": "ACT-61"
       },
       "Collection:commands": {
-        "contentHash": "66ec37d1fe3047f5",
+        "contentHash": "4ae68f9f5dcd2ac9",
         "displayOrder": 1000,
         "entityType": "Collection",
         "name": "commands"
       },
       "Collection:internal": {
-        "contentHash": "bae4f87aa8fb6123",
+        "contentHash": "18e6be05e82b0ef2",
         "displayOrder": 1000,
         "entityType": "Collection",
         "name": "internal"
@@ -1602,8 +1602,12 @@
                 "value": "Show version and auth info"
               },
               {
+                "key": "cc-models",
+                "value": "Read the matching native conversation catalog; `start` permits temporary discovery and session hooks. `start --include-unsupported-models` explicitly includes unknown account models."
+              },
+              {
                 "key": "cc-model",
-                "value": "Model name (optional, shows current if omitted)"
+                "value": "Select this thread's model through its idle native conversation, or stage it for the next launch. With no argument, show selected and last reported model."
               },
               {
                 "key": "cc-memory",
@@ -1672,7 +1676,7 @@
             ]
           }
         ],
-        "contentHash": "9485e9e97ec7a0cf",
+        "contentHash": "fa79554b5a3ced90",
         "displayOrder": 1000,
         "entityType": "Document",
         "name": "Claude Code commands",
