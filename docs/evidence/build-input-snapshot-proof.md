@@ -4861,3 +4861,78 @@ remaining B1/B3, B6 and Phase 7 obligations; this scoped repair does not close t
 The validated overlay is retained in VM stash `Validated activation refusal overlay on ed6cbbd45`;
 the checkout was then fast-forwarded to `6e16483b4`. Earlier stashes, failed fixtures and unrelated
 launcher state remain untouched. No native execution remains, and Azure confirms `VM deallocated`.
+
+
+## Windows watch root checkpoint (2026-10-18)
+
+Source `9bbe9e505` repairs subscription construction for extended Windows drive-root observations.
+The real frontend reported both ordinary and extended path spellings. Walking an extended root with
+Node's ordinary `dirname`/`stat` handling produced a drive-relative `C:` query, which throws `EISDIR`.
+The watcher terminated while its separately owned incumbent frontend continued serving, so editing a
+tracked `.2.config` produced no rebuild. A production-frontend-only probe reproduced the exact
+subscription exception from its 62 reported paths; the configuration was present in those reports.
+The defect was downstream of observation, not missing PE metadata.
+
+The fix uses the existing `resolveCompilerPath` at directory queries, subscription anchors and
+extended-path parent boundaries. Matcher ancestors stop at the actual drive root. Ordinary lexical
+matcher behavior is preserved. The Windows regression checks actual existing subscription directories,
+root identity and root replacement matching. All **18 watcher cases pass** on the approved VM,
+including the live tooling-filesystem case. Replaying the actual frontend report now opens **19**
+valid subscriptions and delivers the configuration change. Both source/test blobs match the commit:
+`76c93a1d21cde0ff06ccba51c59b78720f8a493f` and
+`fa0f784b11b3036a537e805cbff98b33a63593e9`.
+CLI TypeScript, focused lint and diff checks pass locally; no daily-Mac native execution ran.
+The 53 tooling checks also pass with the preserved lifecycle draft and its explicit timeout entry.
+The required converged and final strict gates remain open.
+
+### Startup diagnosis and remaining recovery boundary
+
+A phase-instrumented run on the preceding source measured 92.57s in initial input/subscription setup,
+11.12s preparing changed CLI output and 38.08s capturing its installation. That slow scan was not
+reproduced by the smaller controls: compiler package inventory 3.07s, runtime 0.545s, module discovery
+1.09s and pack dependency inventory 0.660s. Complete input computation took 7.85s standalone,
+7.94s inside Vitest and 7.90s on a fresh fixture. Grouping took 0.26–0.31s; opening 18–19 subscriptions
+and their matchers took 0.008–0.011s. These controls do not explain the initial slow measurement;
+no speculative cache or watcher-performance redesign was made.
+
+A prepared 120-second lifecycle run reached initial frontend readiness at **123.2s**, after successful
+backend publication. This established that its borrowed macOS scenario budget could not reach the
+Windows refusal/repair work. The preserved draft uses **300s for this case only**, keeping all
+20-second event checks, five-second helper bounds, cancellation and incumbent/no-initialization/value/
+retirement assertions. It does not extend other tests. On the old root handling it then failed its
+20-second config-change event assertion, which led to the concrete subscription repair above.
+
+With that repair, the lifecycle reaches watch readiness at **109.03s**, initial frontend at **116.29s**,
+and attributed missing-assembly refusal at **172.38s**. The old frontend still serves; DLL initialization
+is absent on refusal; the failed-input matcher includes the new repair manifest. Publishing the
+staged repair files triggers another build automatically. Actual captured main-thread values are
+**11 then 22**. However, publication rejects with **`EPERM` renaming `.apack/build` to `dist`**, and the
+case fails after **298.61s**. Full publication, notification and retirement acceptance remains open.
+The lifecycle's retained fixture is `apack-pe-watch-AbLy4h`; do not relabel this as a passing case.
+
+The complete uncommitted lifecycle test and timeout entry are preserved in local stash
+`540fa3cc844918afe1c634c00d24857451c5506f`. Do not pop it wholesale: adapt its two draft files to current
+source while preserving other work. Earlier stash `b66e2698` and VM diagnostic stashes remain intact.
+A small ordinary-Vite control observed the staging tree and successfully replaced it, but does not
+reproduce the retained captured-generation conditions. A stronger variant did not observe both trees
+before its three-second observation bound, so it is inconclusive. No Vite ignore rule, rename retry or
+permission change was introduced. Two source-level native-owner diagnostics also fail outside the
+production bootstrap and are not used as production acceptance.
+
+Next isolate the publication failure with the actual overlapping frontend ownership and sealed output,
+and inspect handles and permissions while the failure exists. Avoid another full backend/native
+lifecycle run until that boundary has a focused explanation or repair. Preserve all other B1/B3,
+B6 and Phase 7 obligations, including transitive/localized/outside-image probing, publisher/system-policy
+changes and remaining Electron/runtime cases. No scope exclusion is created here.
+
+The VM run directories are `assembly-watch-phases-6e16483b4`,
+`assembly-watch-isolation-6e16483b4`, `assembly-watch-recovery-6e16483b4`,
+`assembly-watch-bounded-6e16483b4` and `assembly-watch-root-fixed-6e16483b4` under
+`C:\apack-setup\runs`. They retain selected-case logs, JSON reports, source identities and small
+probe reports. The watcher unit result is recorded in the tool transcript rather than a separate
+JSON report. Off-machine copy: `/private/tmp/apack-watch-root-evidence-6e16483b4.zip`.
+
+The VM overlay is retained in stash `Validated watch root repair and recovery publication failure on
+6e16483b4`, alongside the earlier phase-diagnostic stash. Its checkout was fast-forwarded to
+`9bbe9e505`; pre-existing launcher state remains untouched. No native execution remains and Azure
+confirms `VM deallocated`.

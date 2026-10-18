@@ -138,12 +138,20 @@ covered. Source `4dbeaa968` repairs
 real selection changes from value 22 to 33, invalidates the earlier view and restores its identity
 when the candidate is removed. Source `6e16483b4` now preserves failed-query repair inputs through
 the existing observer. The [refusal-input checkpoint](../evidence/build-input-snapshot-proof.md#windows-activation-refusal-input-checkpoint-2026-10-18) accepts configuration/missing-candidate observation,
-repair invalidation and four real Node/Electron/helper cases on identical VM source. Live Windows
-watch delivery/recovery remains unproven: two attempts expired before watcher readiness, including
-one after package preparation, without reaching the repair assertion. Do not repeat the complete
-scenario or raise its deadline without diagnosing that startup phase. The diagnostic is preserved
-in local stash `b66e269863832e8e81e7f79e1f0d7895b7843d29`; the finite passing view test does not close
-that runtime obligation. Transitive/localized/outside-image probing and publisher/system-policy
+repair invalidation and four real Node/Electron/helper cases on identical VM source. Source `9bbe9e505`
+repairs the next demonstrated defect: extended drive-root probes made subscription construction throw
+`EISDIR` and terminate the watcher. The [watch-root checkpoint](../evidence/build-input-snapshot-proof.md#windows-watch-root-checkpoint-2026-10-18)
+accepts all 18 watcher checks and a real frontend-report subscription replay. The actual lifecycle now
+detects configuration changes, refuses a missing assembly without initialization, retains the incumbent,
+and detects repair-only file creation; the new captured frontend executes value 22. Full recovery is
+still unaccepted: publication then fails renaming `.apack/build` to `dist` with `EPERM` at 298.6s.
+Preserve local stash `540fa3cc844918afe1c634c00d24857451c5506f` (the complete lifecycle regression,
+including its measured 300-second scenario budget). Do not rerun the whole lifecycle to diagnose this
+new failure. Next isolate staged publication with overlapping retained frontends and inspect actual
+handles/permissions; the small ordinary-Vite control does not reproduce it. Initial backend/frontend
+readiness itself took 123.2s in a prepared run, so the old 120s budget could not exercise recovery.
+That changes this one scenario's proposed bound, not its 20s event checks or five-second helpers.
+Transitive/localized/outside-image probing and publisher/system-policy
 changes remain required beyond the recognized root-dependency prefixes closed here. Then close
 Electron application-context/`.local` and remaining runtime acceptance. Preserve helper
 cleanup through clean-platform/converged acceptance; do not reschedule the
