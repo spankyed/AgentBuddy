@@ -4757,3 +4757,51 @@ standard Node-API module path, not every Electron addon ABI or native hook. No s
 The validated overlay is preserved in VM stash `Validated Electron Node-API host overlay on 7e3c9cfea`
 before fast-forwarding to `4aa3bc7a5`. Earlier stashes, the retained failure and the pre-existing launcher
 change remain untouched. No Node/Electron/C#/MSVC test process remains; Azure confirms `VM deallocated`.
+
+## Windows private-assembly candidate freshness (2026-10-18)
+
+Source checkpoint `4dbeaa968`; all three tested source blobs match the Windows checkout. Windows Server
+2025 x64, Node 23.11.1, Electron 37.2.4, one worker and two-core budget.
+
+Baseline `1be3d3b02` has a real omission: the common PE admission/input view observes a private value-22
+assembly selected through `.2.config`, but records no absence for a higher-priority private assembly.
+Adding that assembly makes a fresh ordinary load and OS metadata query select value 33, while the
+original view's `assertCurrent()` still succeeds. The valid failing regression is
+`private-probe-1be3d3b02` (12.280s test); fixture `apack-pe-redirection-YPEK2L` remains preserved.
+This proves a missing observation, not a runtime watcher-delivery failure.
+
+The existing helper now derives candidate paths for root dependencies with neutral/wildcard language
+and child probing roots within the image directory. It uses the OS roster to identify a recognized
+private selection and retains only candidate prefixes through that selected manifest. It snapshots
+those prefixes before binding a new context and checks them again after inspection, refusing namespace
+changes. Selected shared assemblies acquire no unrelated local probes. Windows remains the selector;
+candidate presence follows its [documented private search sequence](https://learn.microsoft.com/en-us/windows/win32/sbscs/assembly-searching-sequence).
+No new observation store, background poller or runtime loader is introduced.
+
+Missing candidates pass through the existing input callbacks and observer. The regression verifies
+the missing manifest reaches the observer, the added assembly invalidates the view, both fresh-image
+and original-source metadata see value 33, and removing the candidate restores validity. Unrelated
+new image files remain present during restoration, so this is not blanket directory invalidation.
+Runtime identity retains absent probes; copying skips them instead of inventing empty directories.
+
+Focused repair acceptance passes in `private-probe-owned-1be3d3b02` (6.664s test). Final matching-output
+acceptance `private-probe-final-1be3d3b02` passes all eight affected native cases in 56.05s total
+(53.82s tests): Node application/module startup, Electron module startup and five ordinary controls,
+including the strengthened freshness case (5.418s). Fifty inert checks pass locally with two platform
+skips; CLI types, focused lint and diff checks pass. Matching CLI packages build. Existing metadata
+and test deadlines are unchanged.
+
+Logs, reports, package-build output and final source hashes are saved off-machine in
+`/private/tmp/apack-private-probe-evidence-1be3d3b02.zip`; VM directories use the same names under
+`C:\apack-setup\runs`, including the initial `private-probe-fixed-1be3d3b02` diagnostic.
+
+Next: verify actual Windows watcher delivery and failed-context repair, first checking existing
+subscriptions. A failed context query currently returns only an error, so no candidate observations
+reach the caller on that path; producer recovery has not been established by this passing view test.
+Transitive, localized and outside-image probing, publisher/system-policy changes, Electron application
+context/`.local`, remaining named platform/runtime cases, B6 and final strict `--all` stay required.
+The helper's recognized private-prefix coverage is not full selection-policy closure or a new exclusion.
+
+The validated overlay is preserved in VM stash `Validated private candidate overlay on 1be3d3b02`
+before fast-forwarding to `4dbeaa968`. The original failure, earlier stashes and pre-existing launcher
+change remain untouched. No native test execution remains; Azure confirms `VM deallocated`.

@@ -133,8 +133,14 @@ Source `4aa3bc7a5` accepts the
 [Electron module-context path](../evidence/build-input-snapshot-proof.md#windows-electron-node-api-host-binding-2026-10-18)
 through the production launcher, repairing a false outside-Node refusal for standard Node-API delay
 imports. Runtime exports are tied to captured executable bytes; ordinary outside-library refusal stays
-covered. Next close broader selection policy, Electron application-context/`.local` and remaining
-runtime/watch acceptance. Preserve helper
+covered. Source `4dbeaa968` repairs
+[higher-priority private-candidate observation](../evidence/build-input-snapshot-proof.md#windows-private-assembly-candidate-freshness-2026-10-18):
+real selection changes from value 22 to 33, invalidates the earlier view and restores its identity
+when the candidate is removed. Next exercise live Windows watcher delivery and failure repair;
+failed context queries currently return no candidate observations, so audit broader subscriptions
+before adding failure plumbing. Transitive/localized/outside-image probing and publisher/system-policy
+changes remain required beyond the recognized root-dependency prefixes closed here. Then close
+Electron application-context/`.local` and remaining runtime acceptance. Preserve helper
 cleanup through clean-platform/converged acceptance; do not reschedule the
 accepted basic Node/DLL controls. The unaccepted module-configuration draft is stashed; it is not an
 exclusion. Configured Node `.local` public-build acceptance remains `9d25152aa`; the separate full-CLI
