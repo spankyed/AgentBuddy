@@ -5762,3 +5762,26 @@ line-ending change remains. The accepted two-test overlay was preserved in VM st
 setup error, corrected before compilation. Source, compiler inputs, binaries, exact statuses, hashes
 and logs are exported in `/private/tmp/apack-bound-only-f78056f13.zip`. Terminal inspection finds no
 Node/Electron/MSVC/linker process. No compiler/native execution ran on the developer's Mac.
+
+## Outside private-assembly DLL ownership acceptance — 2026-10-18
+
+Source **`931e08186`** extends the existing PE ordinary-loader/admission control with a private
+assembly whose manifest remains beside the DLL-owning image, but whose DLL is a file link to an
+outside directory. Actual Windows loading selects value 22 from the exact physical outside path,
+after the ordinary adjacent-library baseline returns 11. The existing admission code names that
+physical outside DLL and refuses without its initialization marker appearing. Production code needs
+no change; both logical and physical ownership checks were already present.
+
+Windows Server 2025 x64 / Node 23.11.1, committed base `70bfb6f07` plus the exact recorded test patch:
+**one selected case passes in 4.561s**, 23 unrelated cases skip, unchanged 60s bound, one worker/two
+cores. CLI types, focused correctness lint and diff checks pass. The preceding whole-directory junction
+control fails ordinary Windows activation with 14001 in 5.793s; it is an invalid selection control,
+not a production failure. Its exact source and failed report are preserved alongside the passing case.
+
+VM directories: `C:\apack-setup\runs\outside-assembly{-file,}-70bfb6f07`. Export:
+`/private/tmp/apack-outside-assembly-70bfb6f07.zip`, inspected as ten entries including exact source
+patches, source SHAs, logs, JSON reports and exit codes. No remaining Node/Electron/MSVC/linker
+process was found. The VM test overlay and all prior stashes remain preserved; no native execution
+ran on the developer's Mac. This accepts physical outside selection through a private assembly,
+not arbitrary publisher/system-policy mutations, every mapped-image combination, B6 or final strict
+acceptance. The latter obligations remain owned by the live goal.

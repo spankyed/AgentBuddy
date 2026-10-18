@@ -108,6 +108,12 @@ it proves no product defect or valid unsupported image. Keep valid bound-only ac
 repeating that invalid fixture. Next resolve outside-image/publisher-policy and remaining mapped/runtime
 acceptance against actual supported paths; B6 and the full Phase 7 audit remain required.
 
+Source `931e08186` now accepts [physical outside selection through a private assembly](../evidence/build-input-snapshot-proof.md#outside-private-assembly-dll-ownership-acceptance--2026-10-18)
+in 4.561s: Windows loads the exact outside DLL, then existing admission refuses before initialization.
+No production change is needed. Preserve this proof alongside the accepted application-context
+controls. Publisher/system-policy changes and remaining mapped/runtime acceptance remain explicit;
+the converged strict checkpoint still needs the full cross-phase producer/consumer run.
+
 Source `c27e78a06` and its [ownership evidence](../evidence/build-input-snapshot-proof.md#compiler-installation-namespace-ownership--2026-10-18)
 exclude private installation ancestor probes from replayable source identity. Inert owner regression,
 mutation, types and lint are accepted; the public two-installation check instead ended with native
