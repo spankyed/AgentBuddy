@@ -3,7 +3,7 @@ import path from 'node:path';
 import { createHash } from 'node:crypto';
 import { createCompilerInputObservations, hashCompilerInputObservations } from './compiler-observations.ts';
 import { isPackInputPath, type BuildInputKind, type BuildInputObserver } from '../pack-inputs.ts';
-import { compilerSourcePath, resolveCompilerPath, type CompilerPathMapping } from './compiler-paths.ts';
+import { compilerSourcePath, relativeCompilerPath, resolveCompilerPath, type CompilerPathMapping } from './compiler-paths.ts';
 import { captureNativeDirectory, type CompilerDirectoryCursor } from './compiler-directories.ts';
 import { captureCompilerMetadata, compilerMetadataOperations, type CompilerMetadataKind } from './compiler-metadata.ts';
 import { physicalWatchPath } from './watch-paths.ts';
@@ -78,7 +78,7 @@ export function createCompilerFileView(root: string, options: {
   const authoredPath = (file: string) => {
     if (!authoredFiles) return;
     for (const root of roots) {
-      const relative = path.relative(root, file);
+      const relative = relativeCompilerPath(root, file);
       if (relative !== '..' && !relative.startsWith(`..${path.sep}`) && !path.isAbsolute(relative)
         && !relative.split(path.sep).includes('node_modules')) return relative;
     }
@@ -99,7 +99,7 @@ export function createCompilerFileView(root: string, options: {
   };
   let disposed = false;
   const assertOpen = () => { if (disposed) throw new Error('Compiler input operation outlived its build'); };
-  const relative = (file: string) => path.relative(origin,
+  const relative = (file: string) => relativeCompilerPath(origin,
     compilerSourcePath(compilerSourcePath(file, rootAliases), paths)).split(path.sep).join('/');
   const physical = new Map<string, string>();
   const inputs = new Map<string, FileInput>();
@@ -205,7 +205,7 @@ export function createCompilerFileView(root: string, options: {
     assertOpen();
     const values: FileInput[] = [];
     const boundary = paths.find(mapping => {
-      const relative = path.relative(mapping.captured, path.resolve(file));
+      const relative = relativeCompilerPath(mapping.captured, path.resolve(file));
       return relative !== '..' && !relative.startsWith(`..${path.sep}`) && !path.isAbsolute(relative);
     })?.captured;
     if (boundary === path.resolve(file)) return values;
@@ -299,7 +299,7 @@ export function createCompilerFileView(root: string, options: {
         // A new representation must agree with earlier observations before joining this view.
         // Cached identical queries still serve their owned result through transient live edits.
         const contains = (parent: string, child: string) => {
-          const relative = path.relative(parent, child);
+          const relative = relativeCompilerPath(parent, child);
           return relative !== '..' && !relative.startsWith(`..${path.sep}`) && !path.isAbsolute(relative);
         };
         for (const previous of directoryQueries.values()) {

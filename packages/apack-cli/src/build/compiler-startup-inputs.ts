@@ -6,6 +6,7 @@ import {
   beginCompilerStartupReads,
   withoutCompilerFileReads,
   compilerSourcePath,
+  relativeCompilerPath,
   type CompilerPathMapping,
   type CompilerInputObservations,
 } from '@apackdev/host/build/compiler-inputs';
@@ -49,7 +50,7 @@ export function beginCompilerStartupInputs(root: string, workspace: string, path
   const canonicalRoot = fs.realpathSync.native(root);
   const executionIdentity = compilerExecutionIdentity(nodeOptions, paths);
   const within = (parent: string, file: string) => {
-    const relative = path.relative(parent, file);
+    const relative = relativeCompilerPath(parent, file);
     return relative === '' || (relative !== '..' && !relative.startsWith(`..${path.sep}`) && !path.isAbsolute(relative));
   };
   const includes = (file: string) => !within(workspace, file) && !paths.some(({ captured }) => within(captured, file));

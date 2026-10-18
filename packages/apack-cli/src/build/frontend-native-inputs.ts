@@ -1,7 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { threadId } from 'node:worker_threads';
-import { assertNativeCompilerObservations, beginCompilerStartupReads, createCompilerFileView, withoutCompilerFileReads, type CompilerInputObservations,
+import { assertNativeCompilerObservations, beginCompilerStartupReads, createCompilerFileView, relativeCompilerPath, withoutCompilerFileReads, type CompilerInputObservations,
   type CompilerPathMapping } from '@apackdev/host/build/compiler-inputs';
 import { captureCompilerLibraryEnvironment, type CompilerLibraryEnvironment } from './compiler-native-libraries.ts';
 import { createCompilerNativeInputs, type CapturedNativeModule } from './compiler-native-input-owner.ts';
@@ -38,7 +38,7 @@ export function beginFrontendNativeInputs(root: string, workspace: string, paths
   const report = path.join(workspace, `native-inputs-${threadId}.json`);
   const absolute = (value: unknown): value is string => typeof value === 'string' && path.isAbsolute(value) && !value.includes('\0');
   const owned = (file: string) => {
-    const relative = path.relative(workspace, file);
+    const relative = relativeCompilerPath(workspace, file);
     return relative !== '..' && !relative.startsWith(`..${path.sep}`) && !path.isAbsolute(relative);
   };
   const observations = (value: unknown): value is CompilerInputObservations => {
