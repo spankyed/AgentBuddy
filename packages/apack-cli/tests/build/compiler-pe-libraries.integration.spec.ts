@@ -15,7 +15,31 @@ import { BUILD_INPUTS_DIRECTORY_ENV } from '../../src/build/compiler-read-tree.t
 import type { CapturedNativeModule } from '../../src/build/compiler-native-input-owner.ts';
 import { readPeLoaderMetadata, capturePeLibraryEnvironment } from '../../src/build/compiler-pe-environment.ts';
 
-it.runIf(process.platform === 'win32')('owns retained PE libraries and refuses outside DLLs before initialization', async () => {
+/** Bind the fixture's single value import without its lookup-name table, using its fixed image base. */
+function bindValueImport(bytes: Buffer, address: bigint, timeStamp: number) {
+  const pe = bytes.readUInt32LE(60), optional = pe + 24;
+  const sections = optional + bytes.readUInt16LE(pe + 20);
+  const offset = (rva: number) => {
+    for (let i = 0; i < bytes.readUInt16LE(pe + 6); i++) {
+      const at = sections + i * 40, base = bytes.readUInt32LE(at + 12), size = bytes.readUInt32LE(at + 16);
+      if (rva >= base && rva - base < size) return bytes.readUInt32LE(at + 20) + rva - base;
+    }
+    throw new Error('Fixture import RVA has no file-backed section');
+  };
+  for (let descriptor = offset(bytes.readUInt32LE(optional + 112 + 8)); bytes.readUInt32LE(descriptor + 12); descriptor += 20) {
+    const name = offset(bytes.readUInt32LE(descriptor + 12));
+    if (bytes.toString('ascii', name, bytes.indexOf(0, name)) !== 'apack_value.dll') continue;
+    const iat = offset(bytes.readUInt32LE(descriptor + 16));
+    expect(bytes.readBigUInt64LE(iat + 8)).toBe(0n);
+    bytes.writeUInt32LE(0, descriptor);
+    bytes.writeUInt32LE(timeStamp, descriptor + 4);
+    bytes.writeBigUInt64LE(address, iat);
+    return;
+  }
+  throw new Error('Fixture has no value DLL import');
+}
+
+it.runIf(process.platform === 'win32').each([false, true])('owns retained PE libraries and refuses outside DLLs before initialization (bound %s)', async bound => {
   const root = fs.realpathSync.native(fs.mkdtempSync(path.join(os.tmpdir(), 'apack-pe-libraries-')));
   const pack = path.join(root, 'pack');
   const previousOptions = process.env.NODE_OPTIONS;
@@ -54,6 +78,7 @@ BOOL WINAPI DllMain(HINSTANCE module, DWORD reason, LPVOID reserved) {
   return TRUE;
 }`);
       compile(['/LD', source, '/Fo' + path.join(root, 'value.obj'), '/link', '/INCREMENTAL:NO',
+        ...(bound ? ['/DYNAMICBASE:NO', '/FIXED'] : []),
         '/OUT:' + file, '/IMPLIB:' + path.join(root, 'value.lib')]);
     };
     buildLibrary(library, 11);
@@ -69,6 +94,17 @@ BOOL WINAPI DllMain(HINSTANCE module, DWORD reason, LPVOID reserved) {
     const observe = () => JSON.parse(execFileSync(process.execPath, ['-e',
       `const addon = require(${JSON.stringify(addon)}); console.log(JSON.stringify({value:addon.read(),libraries:process.report.getReport().sharedObjects}));`],
     { encoding: 'utf8', timeout: 10_000 })) as { value: number; libraries: string[] };
+    if (bound) {
+      expect(observe().value).toBe(11);
+      fs.rmSync(dllMarker); fs.rmSync(addonMarker);
+      const target = parsePeLibraryMetadata(fs.readFileSync(library));
+      const exported = target.exports.find(exported => exported.names.includes('native_value'))!;
+      const bytes = fs.readFileSync(addon);
+      bindValueImport(bytes, target.imageBase + BigInt(exported.address), target.timeStamp);
+      fs.writeFileSync(addon, bytes);
+      expect(parsePeLibraryMetadata(bytes).imports.find(imported => imported.name === 'apack_value.dll')?.symbols)
+        .toEqual([{ boundAddress: target.imageBase + BigInt(exported.address) }]);
+    }
     const ordinary = observe();
     expect(ordinary.value).toBe(11);
     expect(ordinary.libraries.map(normalize)).toContain(normalize(library));
