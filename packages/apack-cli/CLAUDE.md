@@ -184,7 +184,9 @@ Retained Vite uses the same early bootstrap and native admission as backend buil
 that copies selected images rather than the authored package. Vue sources remain live for HMR.
 Backend and frontend frames share checked per-thread native reports within their input workspace.
 Reuse requires the exact source module and intact captured-file observations; loaded DLL names alone
-do not establish ownership. Before reusing a frontend generation, its builder checks native inputs
+do not establish ownership. Content-compiler resolution and native loading delegate to this same
+startup owner; standalone in-process compilation retains direct admission. The inert
+`compiler-native-inputs.spec.ts` checks owner refusal propagation and standalone enforcement. Before reusing a frontend generation, its builder checks native inputs
 across the main thread, loader and owned workers. The check is cancellable, and retirement settles the process owner before removing
 its private read trees. Live watch subscription delivery and broader platform admission remain tracked
 in the owning goal; native input checks alone do not establish those guarantees.

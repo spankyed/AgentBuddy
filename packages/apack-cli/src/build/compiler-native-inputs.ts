@@ -14,7 +14,8 @@ type PendingInputs = { files: Array<CompilerReadSnapshot['files'][number]>; loca
 /** Admit lookup namespaces, not a second resolver: esbuild still selects files and package exports. */
 export function createNativeInputReader(view: NativeInputView, initialPackages: PackageInputs,
   sourcePath: (file: string) => string, include: (snapshot: CompilerReadSnapshot) => void,
-  environment: CompilerLibraryEnvironment = captureCompilerLibraryEnvironment()) {
+  options: { environment?: CompilerLibraryEnvironment; admitNative?(file: string): void } = {}) {
+  const environment = options.environment ?? captureCompilerLibraryEnvironment();
   const directories = new Set<string>();
   const packages = new Set(initialPackages.nodes.map(node => node.directory));
   const configurations = new Map<string, ts.CompilerOptions>();
@@ -218,7 +219,9 @@ export function createNativeInputReader(view: NativeInputView, initialPackages: 
         // Namespace candidates may include unused native entrypoints. Check selected absolute images,
         // including repeated loads whose resolution namespace is already admitted.
         if ((process.platform === 'darwin' || process.platform === 'linux' || process.platform === 'win32') && path.isAbsolute(specifier) && specifier.endsWith('.node')) {
-          assertCapturedCompilerLibraries(specifier, scope(path.dirname(specifier)).packageRoot ?? path.dirname(specifier), {
+          // Startup owns process-wide native copies, including images already loaded by preloads.
+          if (options.admitNative) options.admitNative(specifier);
+          else assertCapturedCompilerLibraries(specifier, scope(path.dirname(specifier)).packageRoot ?? path.dirname(specifier), {
             arch: process.arch, environment,
             realpath: file => view.fileSystem.realpath(file),
             read(file) {

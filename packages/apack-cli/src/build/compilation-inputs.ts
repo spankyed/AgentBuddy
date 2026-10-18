@@ -129,7 +129,9 @@ export function captureCompilationInputs(packRoot: string, view?: PackCompilerIn
     const relative = path.relative(captured, file);
     return relative !== '..' && !relative.startsWith(`..${path.sep}`) && !path.isAbsolute(relative);
   });
-  const native = createNativeInputReader(modules, packages, sourcePath, snapshot => readTree().include(snapshot), startup?.nativeEnvironment);
+  const native = createNativeInputReader(modules, packages, sourcePath, snapshot => readTree().include(snapshot), {
+    environment: startup?.nativeEnvironment, admitNative: startup?.nativeModule,
+  });
   const workspace = process.env[BUILD_INPUTS_DIRECTORY_ENV];
   const assertCurrent = () => {
     assertOpen();
@@ -213,7 +215,7 @@ export function captureCompilationInputs(packRoot: string, view?: PackCompilerIn
       if (ownsToolPath(file)) return startup?.nativeModule(file) ?? file;
       file = sourcePath(file);
       native.prepare(file, path.dirname(file));
-      return readTree().path(file);
+      return startup?.nativeModule(file) ?? readTree().path(file);
     },
     prepareNative(specifier, importer) { withoutCompilerFileReads(() => { readTree(); native.prepare(specifier, sourcePath(importer)); }); },
     requireParent(file) { return withoutCompilerFileReads(() => { readTree(); native.prepare(file, path.dirname(sourcePath(file))); return readTree().path(file); }); },
