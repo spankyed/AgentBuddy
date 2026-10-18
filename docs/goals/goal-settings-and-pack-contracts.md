@@ -86,8 +86,12 @@ snapshot, allowing authoring before that producer. Source `268533807` declares `
 inputs, restoring ordering and cache invalidation through the existing graph. The new regression
 fails before the repair; all 68 focused authoring/graph/scheduler cases, repo/scripts types and lint
 pass afterward. See [checkpoint evidence](../evidence/settings-and-pack-contracts.md#external-authoring-host-build-dependency-2026-10-18).
-Push authorization is resolved. Hosted acceptance of the repair, remaining native/platform obligations
-and Phase 7 stay open.
+Push authorization is resolved. [Strict run `39166185325`](https://github.com/spankyed/AgentBuddy/actions/runs/39166185325)
+is running on exact checkpoint `31cb54f4d`. Hosted acceptance, remaining native/platform obligations
+and Phase 7 stay open. A separate [Windows binder control](../evidence/build-input-snapshot-proof.md#windows-binder-ordinary-loader-control--2026-10-18)
+uses the OS-generated bound directory: ordinary/bound imports load, while removing the lookup table
+still fails in the ordinary loader. This changes neither admission nor the unresolved valid-input
+question; preserve the result instead of repeating the failed construction.
 
 ### Bounded build-input and freshness checkpoints
 

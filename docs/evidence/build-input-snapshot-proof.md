@@ -5785,3 +5785,30 @@ process was found. The VM test overlay and all prior stashes remain preserved; n
 ran on the developer's Mac. This accepts physical outside selection through a private assembly,
 not arbitrary publisher/system-policy mutations, every mapped-image combination, B6 or final strict
 acceptance. The latter obligations remain owned by the live goal.
+
+
+## Windows binder ordinary-loader control — 2026-10-18
+
+At exact checkpoint `31cb54f4d`, Windows Server 2025 x64 / Node 23.11.1, a private single-process
+control calls Microsoft's [BindImageEx](https://learn.microsoft.com/en-us/windows/win32/api/imagehlp/nf-imagehlp-bindimageex)
+on a copy of the prior fixed-base importer. This replaces hand-authored binding bytes with the OS
+binder's result. The ordinary importer returns value 22, base `0x190000000` and the exact private DLL
+path. Binding succeeds; the resulting importer also returns those values. Its bound-import directory
+is present (RVA 736, size 56), and the value import timestamp is `0xffffffff`. Removing only that
+import's lookup-table pointer still produces ordinary-loader `0xC0000005`, with no probe output.
+Each loader/binder subprocess has a five-second bound. The binder runs once in its own process;
+no concurrent ImageHlp calls, system policy changes or pack builds are involved.
+
+This rules out the missing modern bound directory as the explanation for the earlier manually bound
+fixture. It does not prove every bound-only image invalid, a valid supported image refused by apack,
+or refusal before library initialization. No admission change or new exclusion is justified. Keep the
+valid-bound-only question open; do not repeat either failed construction as a product reproducer.
+Publisher/system-policy and remaining runtime combinations retain their existing acceptance obligations.
+
+The PowerShell wrapper reports failure because its `Stop` error preference treats Node's experimental
+warning on stderr as an error. Inspection of the completed `result.json` confirms all four child
+statuses above; no child/compiler remained. No retry was needed. The exported 16-file archive includes
+sources, compiler output, all images, hashes, exact checkpoint and JSON results:
+`/private/tmp/apack-bind-api-31cb54f4d.zip`. Prior accepted overlay is preserved in VM stash
+`bb55bb2a612af22fe7912d1307a767b84aacf97d`; the pre-existing launcher line-ending change is untouched.
+The VM is confirmed deallocated after export. No native execution ran on the developer's Mac.
