@@ -33,15 +33,19 @@ function bindValueImport(bytes: Buffer, address: bigint, timeStamp: number) {
     expect(bytes.readBigUInt64LE(iat + 8)).toBe(0n);
     bytes.writeUInt32LE(0, descriptor);
     bytes.writeUInt32LE(timeStamp, descriptor + 4);
+    bytes.writeUInt32LE(0xffffffff, descriptor + 8); // No bound forwarder chain.
     bytes.writeBigUInt64LE(address, iat);
     return;
   }
   throw new Error('Fixture has no value DLL import');
 }
 
-it.runIf(process.platform === 'win32').each([false, true])('owns retained PE libraries and refuses outside DLLs before initialization (bound %s)', async bound => {
+it.runIf(process.platform === 'win32').each([
+  { bound: false, label: 'named imports, Unicode paths' },
+  { bound: true, label: 'bound-only imports' },
+])('owns retained PE libraries and refuses outside DLLs before initialization ($label)', async ({ bound }) => {
   const root = fs.realpathSync.native(fs.mkdtempSync(path.join(os.tmpdir(), 'apack-pe-libraries-')));
-  const pack = path.join(root, 'pack');
+  const pack = path.join(root, bound ? 'pack' : 'pack-é');
   const previousOptions = process.env.NODE_OPTIONS;
   const pathKey = Object.keys(process.env).sort().find(key => key.toUpperCase() === 'PATH') ?? 'PATH';
   const previousPath = process.env[pathKey];
