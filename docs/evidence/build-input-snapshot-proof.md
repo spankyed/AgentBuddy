@@ -5379,3 +5379,31 @@ cached SDK paths were verified before use. CLI types, focused correctness lint a
 This accepts the configured private Electron application context, not every Windows policy or full
 Electron pack compilation. Electron `.local`, other named native/platform cases, repeated-build
 acceptance, B6 and whole-goal strict `--all` remain open.
+
+
+## Electron DotLocal startup acceptance — 2026-10-18
+
+Source **`d2c459913`** accepts the other named Electron runtime gap through the same selection/startup
+matrix. Its `.local` fixture uses a private manifest-less Electron runtime, with an application-local
+value-22 DLL competing against the addon package's value-11 DLL. The existing copy helper verifies
+runtime identity after copying; ordinary Electron loads the exact copied value-22 DLL and sets both
+initialization markers. The production compiler startup then refuses that identified source dependency
+outside the addon package, before its entry or either DLL/addon initialization marker.
+
+One selected Windows x64 case passes in **13.320s**, unchanged 60s budget, two cores and one worker.
+CLI types, focused correctness lint and diff checks pass. No production implementation change was
+needed, no installed executable was edited and no security policy or deadline changed. The matrix's
+name now describes native selection because it covers both assembly contexts and DotLocal; no CI or
+tooling reference used its old exact name. Existing application/module assertions remain intact.
+
+Source base `03f952c60` plus the reviewed fixture delta; raw patch, source/hash, SDK toolchain record,
+package preparation, JSON report, exit code and log:
+`C:\apack-setup\runs\electron-local-03f952c60`. Both this and the preceding application-context
+acceptance are exported with their scripts to
+`/private/tmp/apack-electron-runtime-acceptance-03f952c60.zip`.
+VM stashes preserve application fixture **`5b532989491e812ade931f7300733c5f70ab6a3d`** and DotLocal
+fixture **`5810739089f5667493c1eb097610c57fb1206c3a`**. Earlier stashes and the pre-existing launcher
+change remain untouched. Terminal inspection finds no Node/Electron process; deallocation is requested
+after evidence export. Remaining named localized/transitive/publisher/system-policy input obligations,
+other platform acceptance, repeated-build identity, B6 and final strict `--all` stay open. These two
+small cases do not certify a full Electron pack build or universal Windows loading behavior.
