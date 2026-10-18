@@ -4223,3 +4223,45 @@ by full path. The failed runs do not establish why that direct-image redirection
 new dependency-shaped control remains unexecuted and must demonstrate its expected selection before
 any production change. Existing value/path assertions, timeout budgets and private-file-only boundaries
 remain. No further broad native run is justified by these failures.
+
+
+## Windows VM redirection-control acceptance (2026-10-18)
+
+The approved VM is used for this diagnosis, not another CI iteration. Its idle checkout was verified
+at `167722d1f`, then fast-forwarded by bundle to `30ebaf8e2`; the existing launcher bytes were checked
+and preserved. Matching packages were built once, and the existing native SDK helper prepared the
+same shell. Execution used one Vitest worker, `APACK_CHAIN_CORES=2` and `GOMAXPROCS=2`. Environment:
+Windows Server 2025 x64 / OS 10.0.26100.0, Node 23.11.1, MSVC cl product version 14.51.36260.0.
+
+The dependency-shaped `.local` control initially still fails (4.42s). A recorded diagnostic patch
+queries the active activation context and retains failed fixtures. The probe has no embedded manifest,
+the active context has no root manifest, and `DevOverrideEnable` is not configured. File and directory
+markers added after the initial baseline launches both leave the original DLL/value 11 selected.
+Renaming the same executable bytes and configuring its marker before its first launch selects the
+exact redirected DLL/value 22. A second fresh name launched first without a marker again remains on
+11 after adding one. A fresh name with the exact file-marker form selects 22 on its first launch.
+These observations establish the fixture-order defect; they do not identify Windows' precise caching
+implementation or justify registry/security changes.
+
+The `.local` control now configures a never-launched executable copy, retaining the original baseline
+and unconfigured same-name DLL checks. SxS uses an explicit bridge's named import; its diagnostic run
+shows the embedded application manifest becomes active and the exact private-assembly DLL/value 22
+is selected. Diagnostic API/logging code is removed from the final test. Failed fixtures remain
+attributed and retained; successful fixtures clean up normally. Value, physical-path and original
+baseline assertions and deadlines remain intact.
+
+Both corrected cases pass on `30ebaf8e2` plus `first-launch.patch`: `.local` 1.512s, SxS 1.465s,
+2.978s case time / 5.55s Vitest total. The normalized tested file blob is
+`8bbec5c072689a383850f95a807ecbd1f81c58f2`, matching the checkpoint source. CLI types, focused
+correctness lint and diff checks pass. The run's JSON confirms exactly two passes and six intentionally
+unselected existing native cases. No assertion or timeout was relaxed and no system policy changed.
+
+VM records: `C:\apack-setup\runs\pe-controls-30ebaf8e2`, including command, exit, JSON, logs,
+source/toolchain context and both patches. Copies: `/private/tmp/apack-pe-vm-30ebaf8e2/`. The retained
+failed fixture is `C:\Users\apackdev\AppData\Local\Temp\apack-pe-redirection-OLlaY7`;
+its original marker and every small diagnostic result are preserved. No native process remains live.
+
+This accepts the ordinary Windows controls only. Next compare admission with those established
+selections, then implement/accept the required policy and actual selected-runtime paths. Bound-only,
+other remaining native/platform cases, B6 and final strict acceptance remain required. No support
+exclusion is inferred from the earlier invalid controls or from this helper executable.

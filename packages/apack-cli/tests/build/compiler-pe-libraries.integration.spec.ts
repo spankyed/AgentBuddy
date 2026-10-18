@@ -85,6 +85,7 @@ BOOL WINAPI DllMain(HINSTANCE module, DWORD reason, LPVOID reserved) {
 it.runIf(process.platform === 'win32').each(['local', 'assembly'] as const)(
   'identifies ordinary PE %s redirection while loading a native image', kind => {
     const root = fs.realpathSync.native(fs.mkdtempSync(path.join(os.tmpdir(), 'apack-pe-redirection-')));
+    let completed = false;
     try {
       const pack = path.join(root, 'pack');
       fs.mkdirSync(pack);
@@ -124,8 +125,8 @@ int wmain(int argc, wchar_t **argv) {
         '/Fo' + path.join(root, 'probe.obj'), '/link', '/INCREMENTAL:NO', '/OUT:' + executable,
         ...(manifest ? ['/MANIFEST:EMBED', '/MANIFESTINPUT:' + manifest] : ['/MANIFEST:NO'])],
       { cwd: root, timeout: 15_000 });
-      const observe = () => {
-        const [value, file] = execFileSync(executable, [entry], { encoding: 'utf8', timeout: 5_000, cwd: root }).split(/\r?\n/);
+      const observe = (program = executable) => {
+        const [value, file] = execFileSync(program, [entry], { encoding: 'utf8', timeout: 5_000, cwd: root }).split(/\r?\n/);
         return { value: Number(value), file: fs.realpathSync.native(file!).toLowerCase() };
       };
       compile();
@@ -135,8 +136,13 @@ int wmain(int argc, wchar_t **argv) {
       buildLibrary(selected, 22);
       // Merely placing a same-name DLL next to the executable must not change explicit loading.
       expect(observe()).toEqual({ value: 11, file: fs.realpathSync.native(library).toLowerCase() });
-      if (kind === 'local') fs.writeFileSync(executable + '.local', '');
-      else {
+      let configured = executable;
+      if (kind === 'local') {
+        // Configure before first launch: Windows can retain an image's initial .local absence.
+        configured = path.join(runtime, 'configured.exe');
+        fs.copyFileSync(executable, configured);
+        fs.writeFileSync(configured + '.local', '');
+      } else {
         const identity = '<assemblyIdentity type="win32" name="apack.fixture.value" version="1.0.0.0" processorArchitecture="amd64"/>';
         fs.writeFileSync(path.join(path.dirname(selected), 'apack.fixture.value.manifest'),
           `<?xml version="1.0" encoding="UTF-8"?><assembly xmlns="urn:schemas-microsoft-com:asm.v1" manifestVersion="1.0">${identity}<file name="apack_value.dll"/></assembly>`);
@@ -146,8 +152,12 @@ int wmain(int argc, wchar_t **argv) {
         compile(manifest);
         expect(parsePeLibraryMetadata(fs.readFileSync(executable)).manifests.length).toBeGreaterThan(0);
       }
-      expect(observe()).toEqual({ value: 22, file: fs.realpathSync.native(selected).toLowerCase() });
-    } finally { fs.rmSync(root, { recursive: true, force: true }); }
+      expect(observe(configured)).toEqual({ value: 22, file: fs.realpathSync.native(selected).toLowerCase() });
+      completed = true;
+    } finally {
+      if (completed) fs.rmSync(root, { recursive: true, force: true });
+      else console.error(`Retained PE ${kind} control: ${root}`);
+    }
   },
 );
 
