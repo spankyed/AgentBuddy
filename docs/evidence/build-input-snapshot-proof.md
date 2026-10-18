@@ -5407,3 +5407,45 @@ change remain untouched. Terminal inspection finds no Node/Electron process; dea
 after evidence export. Remaining named localized/transitive/publisher/system-policy input obligations,
 other platform acceptance, repeated-build identity, B6 and final strict `--all` stay open. These two
 small cases do not certify a full Electron pack build or universal Windows loading behavior.
+
+
+## Transitive private assembly candidate ownership — 2026-10-18
+
+Source **`8fae65949`** repairs the concrete transitive private-assembly omission in the existing
+activation-context helper. The original helper inspects only the entry manifest's dependency list.
+A new variant of the existing DLL-context control inserts a private parent assembly between that
+manifest and the value DLL. On unchanged production code the ordinary Windows selection/configuration
+controls pass, but the missing higher-priority transitive manifest is absent from delivered observations:
+**10.312s**, one selected failing case, before candidate creation. That failure proves the omitted
+probe; it does not itself execute the later stale-view assertion.
+
+Candidate discovery now follows possible private declaration files with a queue and one input dictionary
+for deduplication, byte/classification capture, final validation and refusal repair paths. Resource
+inspection uses existing noninitializing mappings. Windows still owns selection and schema validation;
+unselected invalid XML/non-resource candidates do not replace its result. Observations are conservative:
+possible private candidates are retained even when another candidate or shared assembly wins. This can
+cause extra invalidation. The redundant first-context roster scan and second binding are removed:
+candidate inputs are captured before the OS bind and checked afterward. No new resolver, serialized
+format, security policy, process owner or deadline is introduced.
+
+The first repair accepts the transitive case in 7.213s. After simplifying duplicate candidate collections,
+final matching-source Windows x64 acceptance passes both affected cases: **direct 6.725s; transitive
+6.302s**, unchanged 60s bounds, two cores and one worker. They prove actual Windows value/path selection
+changes from 22 to 33 when the preferred private assembly appears, freshness invalidation and restoration,
+configuration byte tracking, missing transitive repair input delivery on refusal and repair invalidation.
+Admission/resource inspection leaves the DLL initialization marker absent. CLI types, focused correctness
+lint and diff checks pass. The language-neutral control does not close localized or publisher-policy cases.
+Microsoft's [assembly searching sequence](https://learn.microsoft.com/en-us/windows/win32/sbscs/assembly-searching-sequence)
+provides the platform background; actual selection in these controls is the acceptance evidence.
+
+Base `279efcba8` plus exact recorded patches. VM evidence:
+`C:\apack-setup\runs\transitive-original-279efcba8`, `transitive-fixed-279efcba8`, and
+`transitive-final-279efcba8` under the same runs directory. Original failed fixture is retained at
+`C:\Users\apackdev\AppData\Local\Temp\apack-pe-redirection-fcKCv6`. Export includes the fixture,
+reports/logs, preparation, source patches and scripts:
+`/private/tmp/apack-transitive-context-evidence-279efcba8.zip`.
+VM stash **`e6cc2d15fae32bbbd14745e6025fa791e4d8e8ff`** preserves the validated repair; the pre-existing
+launcher change and earlier stashes remain untouched. Terminal inspection finds no Node/Electron process;
+deallocation is requested after export. Localized and outside-image probing, publisher/system-policy
+input acceptance, other named platform cases, repeated-build identity, B6 and final strict `--all` remain
+required. Previously accepted full watch/startup lifecycles were not repeated to diagnose this omission.

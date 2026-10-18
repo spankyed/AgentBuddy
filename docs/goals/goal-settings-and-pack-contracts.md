@@ -118,7 +118,14 @@ compiler refusal pass. This is a fixture/acceptance checkpoint; production code 
 Source `d2c459913` also accepts [Electron DotLocal startup](../evidence/build-input-snapshot-proof.md#electron-dotlocal-startup-acceptance--2026-10-18)
 in 13.320s under the unchanged 60s bound, with copied-runtime identity, actual selected DLL and refusal
 before initialization. Both named Electron context gaps are now accepted; preserve remaining
-localized/transitive/publisher/system-policy input obligations, platform cases, B6 and final gates.
+localized/outside-image/publisher/system-policy input obligations, platform cases, B6 and final gates.
+
+Source `8fae65949` closes the demonstrated [neutral transitive private-candidate gap](../evidence/build-input-snapshot-proof.md#transitive-private-assembly-candidate-ownership--2026-10-18):
+original missing-probe failure in 10.312s, final direct/transitive acceptance in 6.725s/6.302s. Actual
+selection, candidate creation/removal, configuration changes and refused-context repair inputs pass.
+One dictionary owns candidate traversal and validation; the extra context rebind is removed. Localized
+and outside-image private probing, publisher/system-policy acceptance, other platform cases, B6 and
+final strict `--all` remain required; this does not close all Windows policy behavior.
 
 **Execution boundary:** the user recovered the daily-use Mac by restarting after unrelated apps
 stopped launching. Cause remains unproven. Use the approved
