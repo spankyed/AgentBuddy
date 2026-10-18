@@ -3197,3 +3197,32 @@ Local checks: CLI TypeScript, two-file correctness lint, diff checks, workflow Y
 11 subprocess-inventory checks pass. No native test or captured runtime was executed locally. The
 Linux workflow adds only these two existing cases, sequentially with one worker; deadlines and
 production code are unchanged. Their real Linux result remains pending.
+
+### Linux native backend publication acceptance (2026-10-17)
+
+Run [`39084414891`](https://github.com/spankyed/AgentBuddy/actions/runs/39084414891) succeeds on
+`1fbf12216`, Ubuntu 24.04 x64 / Node 23.11.1. The reused native preload case passes in 19.52 seconds
+and compiler-thread case in 27.16 seconds (48.75-second stage wall). Each proves captured library
+execution, changed/restored input freshness, ordinary-Node validity of both refused fixtures,
+direct absolute and transitive outside refusal before initialization, and preservation of the verified
+published incumbent. The log attributes direct refusals to `binding/addon.node` and transitive
+refusals to `lib/libvalue.so`, naming the actual selected dependency.
+
+The same run accepts the preceding empty-list correction on committed source: 102 metadata checks
+pass with ten declared macOS-only skips; the retained ELF/Vue case, five lifetime cases, independent
+Vite owners and two real backend baseline cases all pass. No deadlines were changed, no broad suite
+was run locally and no native job remains active. Log:
+`/private/tmp/apack-linux-backend-39084414891.log`.
+
+This closes the recorded native backend preload/thread publication boundary on Linux. Preserve its
+source and assertions; do not recreate it as a missing workstream. The remaining externally linked
+runtime audit has a distinct pre-JavaScript edge: `assertElfLaunchEnvironment` currently guards
+preload/audit insertion, but does not inspect the runtime's own DT_NEEDED selection before launching
+the captured executable. `captureElfLibraryEnvironment` runs inside that executable and reports only
+OS images as its initial loaded-library list. A changed LD_LIBRARY_PATH could therefore affect
+runtime loading before module admission; reproduce actual selection in disposable Linux CI before
+selecting a correction. This is a code-audit gap, not yet a demonstrated runtime failure. Do not
+substitute the passing addon/backend checks for this separately required runtime boundary.
+
+Relevant remaining real loader-selection/mapped-image cases, PE admission, stricter app signing,
+B6 and the final committed-source strict `--all` gate remain required.
