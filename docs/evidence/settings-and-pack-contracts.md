@@ -7565,3 +7565,40 @@ focused checks, CLI/scripts types and lint. The required strict checkpoint stopp
 input/inventory omissions; those are corrected and the complete affected 951-check repository suite
 passes. External authoring and external-pack contract checks passed before the stop. No complete strict
 or final acceptance is claimed. [Detailed evidence and remaining scope](build-input-snapshot-proof.md#live-frontend-native-watch-and-shared-copies-2026-10-17).
+
+
+## Current-source manifest audit, first pass (2026-10-18)
+
+Inspected source `9e6901e96` against the consolidation decision table; this is the beginning of Phase 7
+review, not completion or a substitute for remaining compiler work or final strict acceptance.
+
+- The single `_packEntities` projection in SDK `framework/data-declaration.ts` supplies shape/type
+  generation, module targets, provenance, CLI info/build, host schema/Packs views, native binding and
+  catalog navigation. It names both owners for duplicate homes and derives flat unchanged wire names.
+  `generate-entries.ts:entityShapeEntries` skips null shapes, checks exported TypeScript types and emits
+  `import type`; module targets distinguish shape types from executable bindings. This source audit
+  does not re-prove historical generated EARS/content identity or source-free runtime acceptance.
+- Relations derive from the same declaration module. Lifecycle has explicit shared hook names and
+  checked admission through `lifecycleBindingProblem`. Current authored schema is strict and exposes
+  inline checks, feature descriptions, typed/untyped entity maps and direct editor/app extensions.
+  A source search finds no old settings-sections, entity-shapes or checks-sidecar reader in owned code.
+  Windows XML `manifestVersion` is a separate third-party format and remains intact.
+- The canonical writer derives structural ordering from the schema, preserving declaration/data order;
+  init, release and all manifest-mutating add commands inspected use it. The schema editor test checks
+  offline completion, actual diagnostic ranges, useful descriptions and typed/untyped declarations.
+- `selectDefaultPluginDeclaration` and public feature/manifest docs agree on enabled native-before-
+  installed claims and English lexical feature-ref tie-breaking. The roadmap's first-registered claim
+  was stale. Its semver/range and M6 coverage descriptions were stale too; corrected against current
+  schema, accepted decision replacements and the live execution ledger, without dropping final gates.
+
+Checks on this source: 68 cases pass across SDK manifest schema (47), JSON editor assistance (11),
+module references (7), CLI canonical writing (1) and host plugin selection (2), in 2.70s. These are pure
+source/inert-data checks; no native fixture, copied runtime, compiler worker or live watcher executes.
+`node --import tsx scripts/generate-schema.ts --check` from the SDK passes. The npm `tsx` launcher
+first refused its IPC socket under sandbox EPERM; invoking the same script through the standard Node
+import hook avoids that launcher-only socket.
+
+`node --import tsx scripts/api-check.ts` refuses before extraction because local published package
+inputs are stale (including lockfile and CLI inputs). No report was regenerated or gate bypassed, and
+no package/native rebuild was launched locally. Current-source API-report agreement remains required
+on matching built output in disposable CI, alongside all remaining final acceptance requirements.

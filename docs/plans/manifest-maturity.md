@@ -76,8 +76,8 @@ the settings plan, as that goal already specifies.
 
 | Item | Decision and destination |
 |---|---|
-| Complete generated inventory, event contracts and static assets | Adopt in discovery; declarations determine supported contributions, build materializes their complete descriptor. Step node labels/defaults are inline and checked in `324816421`; authored frontend metadata/bindings and explicit type/helper sources land in `cda9fa00e`. Native step grammar/catalog projections, captured data and active ownership land in `fdd967ec5`; mandatory frontend admission and accepted binding rows land in `e5dcdec63`; keyed-declaration preservation lands in `29f0cc556`; frontend live readers/caches land in `76df2f0e5`; backend defaults/obsolete lookup cleanup land in `71fad4013`; complete backend facet declarations and source-free trigger helpers land in `8ec5285ed`; node-update write eligibility lands in `f7d63434c`; generated run-output isolation lands in `ecbb2c6af`; content-based source freshness (replacing the audited mtime consumer, with complete compiler/input/publication identity) remains next, while remaining kinds/assets stay required |
-| Conventional implementation paths | M4 completed in `11bdc7faa`: one scaffold path definition, declared-target validation/doctor and real external authoring agreement. No implicit existence or forced file renaming. M6 still owns final documentation/schema coverage |
+| Complete generated inventory, event contracts and static assets | Adopt in discovery; declarations determine supported contributions, build materializes their complete descriptor. Step node labels/defaults are inline and checked in `324816421`; authored frontend metadata/bindings and explicit type/helper sources land in `cda9fa00e`. Native step grammar/catalog projections, captured data and active ownership land in `fdd967ec5`; mandatory frontend admission and accepted binding rows land in `e5dcdec63`; keyed-declaration preservation lands in `29f0cc556`; frontend live readers/caches land in `76df2f0e5`; backend defaults/obsolete lookup cleanup land in `71fad4013`; complete backend facet declarations and source-free trigger helpers land in `8ec5285ed`; node-update write eligibility lands in `f7d63434c`; generated run-output isolation lands in `ecbb2c6af`; content-based source freshness and the common input/output record are implemented (B2/B4/B5); the execution goal owns remaining B1/B3 native/platform closure, B6 and final all-kind/asset acceptance |
+| Conventional implementation paths | M4 completed in `11bdc7faa`: one scaffold path definition, declared-target validation/doctor and real external authoring agreement. No implicit existence or forced file renaming. M6 authored documentation/schema coverage is implemented through `0994ae787`; preserve it through final acceptance |
 | `provides` lists and filesystem-inferred existence | Reject as a second authority beside existing keyed declarations; do not implement the old feature grammar |
 | Entity names/shapes and feature ownership | M1 lands in `2fff8bb76`: owned feature/pack declarations, explicit null for untyped and one projection. Required [own-key preservation correction](manifest-consolidation.md#required-own-key-preservation-correction-2026-10-15) completed in `29f0cc556`: accepted own keys survive parsing, compiled bindings and source-free discovery; preserve this contract through reader migrations |
 | Relation identity maps | M2 implemented in `3ff590240`: `data.relations` wire lists, unchanged generated EARS/content, validated names/uniqueness/reservations, native bindings and collision/provenance behavior |
@@ -85,7 +85,7 @@ the settings plan, as that goal already specifies.
 | `boot`/`lifecycle` metadata | M3 implemented in `e063ec1a5`: explicit lifecycle targets, shared native/installed checked hook bindings, preserved order and byte-identical compiled content |
 | Module-reference syntax | M1 uses one shape-reference parser; M4 type authoring implemented in `0e65ece42` uses explicit module paths with type-only export-star semantics. Shared named/default parsing and contained file resolution implemented in `4285d748c`. M4 grammar/inventory/conventional-export and authoring checks are complete through `11bdc7faa`; richer component/loading declarations remain intact. Full contribution-kind discovery and M6 coverage remain required |
 | Schema descriptions, current-schema diagnostics, semver/ranges | Adopt in validation/diagnostics and every surface-changing checkpoint |
-| Default navigation and feature descriptions | Feature descriptions implemented in `ae7a995bd` through schema, scaffold, native/catalog and inspection. M4 target/layout and native/frontend default-claim checks completed in `11bdc7faa`; first-registered cross-pack policy is documented and tested. Full discovery/navigation remains required |
+| Default navigation and feature descriptions | Feature descriptions implemented in `ae7a995bd` through schema, scaffold, native/catalog and inspection. M4 target/layout and native/frontend default-claim checks completed in `11bdc7faa`; `69860e4be` replaces registration-order selection with enabled native claims before installed claims, then English lexical feature-ref order. Current selector and public docs agree; final discovery/navigation acceptance remains required |
 | `builtIn` and shipped provenance | Replacement owns behavior changes; provenance is host-established, never author-declared trust |
 | Build/check configuration and sidecars | Preserve build options; M5 inline allowances implemented in `24bd9f116`, with one policy/schema, no sidecar reader and unknown/non-switchable refusals. M5 format cleanup completed in `9374189e5`: no authored version key, exact build stamps, retained facade-capability acceptance. M6 writing/order implemented in `4bd88f6c9`; schema/editor/docs coverage remains required |
 | `extensions.fe` and `hostVersion` questions | Settled in consolidation: direct `extensions.tiptapPlugins` and `extensions.appExtensions` during their declarative migration (no frontend wrapper); keep `hostVersion` for one host range. No blanket fe/be rename |
@@ -145,8 +145,8 @@ Manifest and feature checks carry codes, severity, owner and paths; `apack pack 
 one report. Exit codes are 0 valid, 1 invalid and 2 incomplete. Dependency failure names skipped checks
 instead of claiming validity. Validation resolves existing builds without downloads or cache writes,
 including a selected beta host; malformed manifests skip checks that require their shape. Build and
-installation keep their strict refusals. Remaining semantic checkers must adopt the same records as their
-contributions migrate; semver/range tightening below is still outstanding.
+installation keep their strict refusals. Preserve the shared records as contributions change. Complete semver and nonempty range validation
+are implemented in the current declaration schema; retain their current-contract checks at final acceptance.
 
 Introduce a shared diagnostic record with a stable code, severity, owning pack, manifest path and human
 message. Include a source location or actionable suggestion when available; do not require every checker
@@ -157,10 +157,10 @@ Report valid, invalid or incompletely checked, including which checks were skipp
 authoring check should remain useful offline; strict build/install gates must not mistake it for successful
 validation. Decide exit-code behavior explicitly when adding machine-readable output.
 
-Tighten existing values before adding more fields:
+Preserve the implemented value contracts before adding more fields:
 
-- `version` currently accepts a semver-looking prefix rather than validating the complete string.
-- `hostVersion` is an unrestricted string in the schema, despite being interpreted as a range later.
+- `version` validates the complete SemVer string, including optional prerelease and build metadata.
+- `hostVersion` uses the shared nonempty semver-range validator at the manifest boundary.
 - Export/source references use several conventions. Preserve intentional differences (component default
   exports versus named runtime exports), document them, and share resolution/checking where they overlap.
 - Check dependency/reference errors at the earliest phase that has enough information; the host remains
