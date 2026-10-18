@@ -194,7 +194,7 @@ it.runIf(process.platform === 'win32').each(['application', 'module'] as const)(
     packFixture({ at: pack, nodeModules: path.join(REPO_ROOT, 'node_modules'), manifest: { features: {} } });
     const { addon, dllMarker, addonMarker, buildLibrary } = createPeNativeFixture(root, pack);
     const executable = createNodeWithoutApplicationManifest(runtime);
-    const library = path.join(kind === 'application' ? runtime : path.dirname(addon), 'apack.fixture.value/apack_value.dll');
+    const library = path.join(kind === 'application' ? runtime : path.join(path.dirname(addon), 'alternate'), 'apack.fixture.value/apack_value.dll');
     const outsideLibrary = kind === 'application' ? library : path.join(root, 'outside/apack_outside.dll');
     buildLibrary(library, 22);
     const identity = '<assemblyIdentity type="win32" name="apack.fixture.value" version="1.0.0.0" processorArchitecture="amd64"/>';
@@ -215,6 +215,8 @@ it.runIf(process.platform === 'win32').each(['application', 'module'] as const)(
       fs.writeFileSync(dependencySource, '__declspec(dllimport) int outside_value(void); __declspec(dllexport) int native_value(void) { return outside_value(); }');
       execFileSync('cl.exe', ['/nologo', '/MT', '/LD', dependencySource, '/Fo' + path.join(root, 'dependency.obj'),
         '/link', '/INCREMENTAL:NO', '/OUT:' + library, path.join(root, 'value.lib')], { cwd: root, timeout: 15_000 });
+      // Successful captured startup must retain this selector, not just the DLL it selects.
+      fs.writeFileSync(addon + '.2.config', `<?xml version="1.0"?><configuration><windows><assemblyBinding xmlns="urn:schemas-microsoft-com:asm.v1">${ownerIdentity}<probing privatePath="alternate"/></assemblyBinding></windows></configuration>`);
     }
     const copiedExecutable = copyPeRuntimeFixture(executable, copied);
     // The private manifest-less Node retains the existing supported-runner platform-check override.
@@ -337,8 +339,8 @@ int wmain(int argc, wchar_t **argv) {
         '/Fo' + path.join(root, 'probe.obj'), '/link', '/INCREMENTAL:NO', '/OUT:' + executable,
         ...(manifest ? ['/MANIFEST:EMBED', '/MANIFESTINPUT:' + manifest] : ['/MANIFEST:NO'])],
       { cwd: root, timeout: 15_000 });
-      const observe = (program = executable) => {
-        const [value, file] = execFileSync(program, [entry], { encoding: 'utf8', timeout: 5_000, cwd: root }).split(/\r?\n/);
+      const observe = (program = executable, image = entry) => {
+        const [value, file] = execFileSync(program, [image], { encoding: 'utf8', timeout: 5_000, cwd: root }).split(/\r?\n/);
         return { value: Number(value), file: fs.realpathSync.native(file!).toLowerCase() };
       };
       compile();
@@ -383,7 +385,7 @@ int wmain(int argc, wchar_t **argv) {
       fs.rmSync(dllMarker);
       const reads: string[] = [];
       const environment = capturePeLibraryEnvironment(configured);
-      const check = () => assertCapturedPeLibraries(entry, path.dirname(library), {
+      const check = (image = entry) => assertCapturedPeLibraries(image, path.dirname(library), {
         environment, executable: configured,
         moduleContext: image => readPeActivationContext(image, { systemDirectory: environment.systemDirectory, application: configured, resource: 2 }), cwd: root,
         variables: process.env,
@@ -393,11 +395,42 @@ int wmain(int argc, wchar_t **argv) {
         read: file => { reads.push(file); return fs.statSync(file, { throwIfNoEntry: false })?.isFile() ? fs.readFileSync(file) : undefined; },
       });
       if (imageContext) {
-        expect(check).not.toThrow();
+        expect(() => check()).not.toThrow();
         expect(reads).toContain(selected);
         expect(reads).toContain(entry + '.2.config');
-      } else expect(check).toThrow(fs.realpathSync.native(selected));
+      } else expect(() => check()).toThrow(fs.realpathSync.native(selected));
       expect(fs.existsSync(dllMarker)).toBe(false);
+      if (kind === 'image-assembly') {
+        const context = (image: string) => readPeActivationContext(image, {
+          systemDirectory: environment.systemDirectory, application: configured, resource: 2,
+        });
+        expect(context(entry).inputs).toContainEqual({ file: entry + '.2.config', kind: 'missing', hash: null });
+        // Configure a fresh image before first load: Windows can retain its activation context.
+        const configuredImage = path.join(path.dirname(entry), 'configured.dll');
+        const configuration = configuredImage + '.2.config';
+        const alternate = path.join(path.dirname(entry), 'alternate', assemblyName);
+        fs.mkdirSync(path.dirname(alternate));
+        // A renamed mapped file can retain its old section path; use independent captured files.
+        fs.cpSync(path.dirname(selected), alternate, { recursive: true });
+        fs.rmSync(path.dirname(selected), { recursive: true });
+        fs.writeFileSync(configuration, `<?xml version="1.0"?><configuration><windows><assemblyBinding xmlns="urn:schemas-microsoft-com:asm.v1"><assemblyIdentity type="win32" name="apack.fixture.probe" version="1.0.0.0" processorArchitecture="amd64"/><probing privatePath="alternate"/></assemblyBinding></windows></configuration>`);
+        fs.copyFileSync(entry, configuredImage);
+        const relocated = path.join(alternate, path.basename(selected));
+        // Establish real DLL configuration behavior before assessing metadata or admission.
+        expect(observe(executable, configuredImage)).toEqual({ value: 22, file: fs.realpathSync.native(relocated).toLowerCase() });
+        fs.rmSync(dllMarker);
+        const after = context(configuredImage);
+        expect(after.inputs).toContainEqual({ file: configuration, kind: 'file', hash: expect.any(String) });
+        expect(after.redirections).toContainEqual({ name: 'apack_value.dll', file: relocated });
+        reads.length = 0;
+        expect(() => check(configuredImage)).not.toThrow();
+        expect(reads).toContain(configuration);
+        expect(reads).toContain(relocated);
+        expect(fs.existsSync(dllMarker)).toBe(false);
+        fs.appendFileSync(configuration, '<!-- changed -->');
+        expect(context(configuredImage).inputs.find(input => input.file === configuration)?.hash)
+          .not.toBe(after.inputs.find(input => input.file === configuration)?.hash);
+      }
       if (kind === 'assembly') {
         const before = readCompilerRuntimeInputs(configured, false);
         const manifest = path.join(path.dirname(selected), 'apack.fixture.value.manifest');
