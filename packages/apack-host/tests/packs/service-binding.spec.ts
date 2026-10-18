@@ -68,6 +68,45 @@ describe('accepted service bindings', () => {
     expect(() => generated.services.search).toThrow('provider "provider" is not ready');
   });
 
+  it.each(['caller', 'provider'] as const)('retires callable services and bound calls with their %s', retired => {
+    const search = Object.freeze(Object.assign((query: string) => `original:${query}`, { label: 'Search' }));
+    const registration = { id: 'provider', services: { search } };
+    register(provider, registration);
+    const generated = caller();
+    const retained = generated.services.search as typeof search;
+    const bound = retained.bind(undefined, 'bound');
+    const call = retained.call;
+    const apply = retained.apply;
+    expect(retained.bind).toBe(retained.bind);
+    expect(retained('direct')).toBe('original:direct');
+    expect(bound()).toBe('original:bound');
+    expect(Reflect.apply(call, undefined, [undefined, 'call'])).toBe('original:call');
+    expect(Reflect.apply(apply, undefined, [undefined, ['apply']])).toBe('original:apply');
+    expect(retained.label).toBe('Search');
+    if (retired === 'caller') packs.unregisterPack('consumer');
+    else packs.replacePack(registration);
+    expect(() => retained('late')).toThrow(retired === 'caller' ? 'revoked' : 'retired provider');
+    expect(() => bound()).toThrow(retired === 'caller' ? 'revoked' : 'retired provider');
+    expect(() => Reflect.apply(call, undefined, [undefined, 'late'])).toThrow(retired === 'caller' ? 'revoked' : 'retired provider');
+    expect(() => Reflect.apply(apply, undefined, [undefined, ['late']])).toThrow(retired === 'caller' ? 'revoked' : 'retired provider');
+    if (retired === 'provider') expect((generated.services.search as typeof search)('new')).toBe('original:new');
+  });
+
+  it('preserves callable construction while refusing new instances after retirement', () => {
+    class SearchClient { readonly text: string; constructor(text: string) { this.text = text; } }
+    register(provider, { id: 'provider', services: { search: SearchClient } });
+    const generated = caller();
+    const Client = generated.services.search as typeof SearchClient;
+    const BoundClient = Client.bind(undefined, 'bound');
+    const started = new Client('original');
+    expect(started).toBeInstanceOf(SearchClient);
+    expect(new BoundClient().text).toBe('bound');
+    packs.unregisterPack('consumer');
+    expect(started.text).toBe('original');
+    expect(() => new Client('late')).toThrow('revoked');
+    expect(() => new BoundClient()).toThrow('revoked');
+  });
+
   it('keeps another registrys same-named service and overrides out of this selection', () => {
     register(provider, { id: 'provider', services: { search: { read: () => 'original' } } });
     mocks.set('search', { read: () => 'mocked' });

@@ -7602,3 +7602,31 @@ import hook avoids that launcher-only socket.
 inputs are stale (including lockfile and CLI inputs). No report was regenerated or gate bypassed, and
 no package/native rebuild was launched locally. Current-source API-report agreement remains required
 on matching built output in disposable CI, alongside all remaining final acceptance requirements.
+
+
+## Settings/API current-source review and callable-service repair (2026-10-18)
+
+Reviewed source `4cc76ef73`: host app defaults, pack/group and qualified feature ownership, the common
+JSON Schema validator, sparse overrides, caller-bound settings service, WeakMap transport authority,
+client/runtime grants, generated backend/frontend handles and accepted service selection. The review
+finds no additional targeted-settings defect. The four pure suites (`settings-definition`,
+`settings-handle`, host settings `access`, window `settings-runtime`) pass all 81 cases in 2.18s,
+including invalid snapshots, two-window correlation, scoped access, disconnect and stale-runtime cases.
+No LMDB/native fixture or real app is run; this does not replace real data/onboarding/final acceptance.
+
+A concrete Phase 6 lifetime defect is reproduced separately: `createPackServiceBinding` returns any
+function unchanged, although registration accepts callable service exports. After caller retirement,
+a retained callable still executes. The new regression fails against that source in 14ms. The existing
+facade owner now wraps functions using a fresh bound proxy target, preserving call versus construction
+capability without violating frozen source-property invariants. Invocation helpers retain the facade,
+so a function produced by `bind` cannot escape retirement; private method receivers keep their existing
+behavior. Calls and construction check the same accepted caller/provider generation as object services.
+Already-started results/streams retain the existing settlement contract; this adds no sandbox guarantee.
+
+All 14 service-binding checks pass, including direct/bound/extracted invocation, caller/provider
+replacement, constructor preservation, frozen objects, private receivers, draining owners, host
+replacement, selected providers, attributed actions and real AI SDK agent receivers. Host typechecking,
+focused correctness lint and diff checks accompany this repair. The settings plan's top-level claim
+that whole-data API separation remained unimplemented was stale; corrected against A1–A5 and current
+binding code, retaining final strict acceptance. Hosted watcher/native controls and API-report/final
+strict gates still await authorized execution on matching source; no completion or exclusion is claimed.

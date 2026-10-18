@@ -6,8 +6,9 @@ The [manifest maturity roadmap](manifest-maturity.md) orders this work with the 
 foundation. This plan must not introduce a separate settings-only catalog.
 
 Status: in progress on `session/settings-pack-contracts`. The integrated extraction passes checkpoint
-validation. The supported-API inventory identifies whole-data administration and ambient service access
-as remaining Phase 6 work; targeted settings policy is not a completed API authority audit.
+validation. Whole-data administration, onboarding separation and supported service selection are
+implemented through the [consumed-API checkpoints](declared-capabilities.md); preserve their runtime
+lifetime and external-consumer evidence for final strict acceptance. This is an API contract, not isolation.
 
 This replaces the earlier plan to make globally named settings sections exclusive. The work is an
 ownership and service redesign, not merely removal of the `settingsSections` thunk.
@@ -136,25 +137,18 @@ The following responsibilities must also stay separated throughout the remaining
 | Effective values and persistence | Host settings store, installed declarations and sparse overrides | One writer validates every change; disabling a runtime removes neither its definition nor saved choices. |
 | Frontend access | Window resource established before shell/pack loading | Opening Settings must not initialize another consumer's data. Navigation chooses presentation only. |
 | Onboarding | Existing AppState completion and authored workflow progress | Resetting preferences must not reset onboarding; whole-data replacement must restart the real consumers correctly. |
-| Whole-data administration | Public `AppDataService`, currently forwarded by generated pack services | This is broader authority than targeted settings access. Its supported access contract remains unfinished. |
+| Whole-data administration | Explicit `host/appData` consumption, separate `host/onboarding`, accepted caller/provider-bound service facades | Preserve declaration/type/runtime agreement and real Database/onboarding/action acceptance; final strict validation remains required. |
 
-The last row is a concrete gap, not a hypothetical renderer sandbox issue. `_createPackServices()`
-scopes `settings` but forwards other host services; `appData.reset()` and `importBackup()` can replace
-settings belonging to every owner. Default-setup's Database feature uses these operations. Therefore
-restricted-target RPC refusals do not prove that all supported pack APIs respect the intended boundary.
+The original whole-data authority gap is resolved by the [consumed-API contract](declared-capabilities.md):
+`host/appData` is an explicit consumption, onboarding uses its separate API, generated types match
+host-selected facades, and accepted caller/provider lifetimes govern retained services. Keep targeted
+settings policy separate from whole-data administration; do not claim these facades isolate arbitrary
+in-process JavaScript, EARS or Node access. The current-source review additionally repairs callable
+services bypassing retirement through the same binding owner; object services, bound calls and
+construction must preserve their accepted lifetimes. Final committed-source acceptance remains required.
 
-Resolve whole-data administration together with the consumed-API inventory in
-[declared APIs](declared-capabilities.md). The contract must distinguish targeted preference edits,
-host-wide data administration and onboarding operations, even if implementation shares a module.
-Select the declaration/grant shape from that inventory and a representative Database consumer;
-do not invent a settings-specific permission field or move the Database feature merely to hide this path.
-An explicit supported administration grant must be distinguishable from ordinary settings access.
-Validate both generated types and runtime access, preserve normal backup/reset behavior, and document
-the trusted in-process execution limit. Until then, record targeted settings policy as partial evidence,
-not a completed supported-API authority audit.
-
-Before committing the integrated extraction, review the app/pack/feature consumers and presentation
-routes against this table, run real export/import and onboarding acceptance, and search active contracts
+For final acceptance, review the app/pack/feature consumers and presentation
+routes against this table, preserve real export/import and onboarding checks, and search active contracts
 and guides for removed section APIs. No old-format accommodation or replacement assembly is required.
 
 Real two-window import acceptance exposed a publication-order defect: hydration changed the values while

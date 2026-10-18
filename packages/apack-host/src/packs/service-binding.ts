@@ -40,18 +40,22 @@ export function createPackServiceBinding({ caller, selection, settings, provider
 
   // Fresh proxy targets preserve frozen provider objects; calls retain the provider's private receiver.
   const guard = (value: unknown, check: () => void, inference = false, cache = new WeakMap<object, unknown>()): unknown => {
-    if (value === null || typeof value !== 'object') return value;
+    if (value === null || (typeof value !== 'object' && typeof value !== 'function')) return value;
+    const callable = typeof value === 'function' ? value : undefined;
     if (cache.has(value)) return cache.get(value);
     const methods = new Map<PropertyKey, { source: unknown; bound: (...args: unknown[]) => unknown }>();
-    const member = (key: PropertyKey) => {
+    const member = (key: PropertyKey): unknown => {
       check();
       const result = Reflect.get(value, key, value);
       if (typeof result !== 'function') return guard(result, check, false, cache);
       const previous = methods.get(key);
       if (previous && previous.source === result) return previous.bound;
+      // Native invocation helpers retain the facade, including functions returned by bind.
+      const receiver = callable && (key === 'call' || key === 'apply' || key === 'bind')
+        && result === Reflect.get(Function.prototype, key) ? facade : value;
       const bound = (...args: unknown[]) => {
         check();
-        const output = Reflect.apply(result, value, args);
+        const output = Reflect.apply(result, receiver, args);
         // Agent methods start new model calls. Started calls/streams may settle on their original implementation.
         return inference && key === 'createAgent'
           ? Promise.resolve(output).then(agent => guard(agent, check)) : output;
@@ -59,7 +63,13 @@ export function createPackServiceBinding({ caller, selection, settings, provider
       methods.set(key, { source: result, bound });
       return bound;
     };
-    const facade = new Proxy(Object.create(null), {
+    // A bound target preserves call/construct capability without the source's frozen own properties.
+    const facade: object = new Proxy(callable ? callable.bind(undefined) : Object.create(null), {
+      apply(_, receiver, args) { check(); return Reflect.apply(callable!, receiver, args); },
+      construct(_, args, constructor) {
+        check();
+        return Reflect.construct(callable!, args, constructor === facade ? callable! : constructor);
+      },
       // Promise assimilation must be able to deliver a non-thenable, already-retired agent.
       get: (_, key) => key === 'then' && !Reflect.has(value, key) ? undefined : member(key),
       has(_, key) { check(); return Reflect.has(value, key); },
