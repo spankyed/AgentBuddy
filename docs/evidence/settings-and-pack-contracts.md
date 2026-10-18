@@ -7842,3 +7842,16 @@ The existing hosted strict run is still pinned to `d0ab6dd6b`; this repair requi
 
 Source checkpoint: **`2a0e9efc0`**. Azure confirms `VM deallocated`; the focused SSH observer
 terminated with exit 0. The hosted strict gate remains live on its earlier pinned source.
+
+## Fork producer core reservation — 2026-10-18
+
+The `d0ab6dd6b` split omitted the fork's core reservation: absent entries default to one, while the
+full shipped-pack build reserves two. Fork preparation runs that same pack build with fixture edits,
+then archives it serially. It now shares the existing `PACK_BUILD_WIDTH` reservation with
+`build:default-setup`; this borrows that build's measured reservation, not a new fork CPU measurement.
+A regression fails against the previous declaration (one versus two) and confirms the real scheduler
+keeps fork preparation separate from another step on a two-core budget. All **84** focused scheduler,
+graph and core-budget cases pass in 962ms; scripts/repo-checks types, focused lint, dry scheduling and
+diff checks pass. The dry plan reports the fork as two cores. No timeout class or deadline changes.
+The in-progress strict run remains pinned to `d0ab6dd6b`; its cause/results remain unproven until
+retained output is available. This correction does not attribute that run's elapsed time to contention.

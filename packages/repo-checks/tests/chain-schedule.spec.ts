@@ -3,6 +3,7 @@
 // never return. Each of those is a case here, and none of them is visible from a green `npm run chain`.
 import { describe, expect, it } from 'vitest';
 import { schedule, type SchedulableStep } from '../../../scripts/lib/chain-schedule.ts';
+import { coresFor } from '../../../scripts/lib/core-budget.ts';
 
 const step = (name: string, dependsOn: string[] = [], extra: Partial<SchedulableStep> = {}): SchedulableStep =>
   ({ name, dependsOn, ...extra });
@@ -62,6 +63,17 @@ describe('schedule', () => {
     await done;
     expect(r.peak()).toBe(2);
     expect(r.order.sort()).toEqual(['a', 'b', 'c', 'd']);
+  });
+
+  it('reserves the full pack-build width for fork preparation on a two-core budget', async () => {
+    const r = runner();
+    const cores = coresFor('test:external-pack:fork', 10);
+    expect(cores).toBe(coresFor('build:default-setup', 10));
+    const done = schedule({ steps: [step('test:external-pack:fork', [], { cores }), step('other')],
+      budget: 2, skip: never, run: r.run });
+    await r.drain();
+    await done;
+    expect(r.peak()).toBe(1);
   });
 
   it('never runs a step beside one it conflicts with', async () => {

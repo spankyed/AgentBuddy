@@ -45,6 +45,8 @@ export const UNCAPPED = Symbol('vitest default: one less than the box');
  */
 export type PoolWidth = { readonly share: number } | { readonly cores: number } | typeof UNCAPPED;
 
+const PACK_BUILD_WIDTH: PoolWidth = { cores: 2 };
+
 /**
  * What each step's inner pool takes. A step with no entry takes one core.
  *
@@ -77,7 +79,9 @@ export const POOL_WIDTH: Readonly<Record<string, PoolWidth>> = {
   // gave `build:default-setup` 1.8 cores on one run and 2.7 on the next. A process's own CPU time does not care what
   // else is running. It does assume the work is awaited — a step that detaches a child would read low,
   // and neither of these does.
-  'build:default-setup': { cores: 2 },
+  'build:default-setup': PACK_BUILD_WIDTH,
+  // Preparation builds the same shipped pack with fixture edits, then archives it serially.
+  'test:external-pack:fork': PACK_BUILD_WIDTH,
   // **`build:runtime` was re-measured on 2026-10-06, when it stopped running its four builds in series**:
   // 2.57, 2.57, 2.56, 2.49, 2.44 cores over five readings, median 2.56, against 2.2 when it was serial.
   //
