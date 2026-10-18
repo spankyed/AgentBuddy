@@ -194,13 +194,21 @@ public static class ApackPeActivationContext {
       if (dependency.Attributes["name"] == null) continue;
       string name = dependency.Attributes["name"].Value;
       string language = dependency.Attributes["language"] == null ? "" : dependency.Attributes["language"].Value;
-      if (String.IsNullOrEmpty(name) || name == "." || name == ".." || name.IndexOfAny(Path.GetInvalidFileNameChars()) >= 0
-        || (language != "" && language != "*")) continue;
-      List<string> candidates = new List<string>();
-      foreach (string root in roots) foreach (string parent in new string[] { root, Path.Combine(root, name) }) {
-        candidates.Add(Path.Combine(parent, name + ".dll"));
-        candidates.Add(Path.Combine(parent, name + ".manifest"));
+      if (String.IsNullOrEmpty(name) || name == "." || name == ".." || name.IndexOfAny(Path.GetInvalidFileNameChars()) >= 0) continue;
+      List<string> languages = new List<string> { "" };
+      // Observe declared culture fallbacks; Windows still chooses the assembly and language.
+      for (string culture = language; culture != "" && culture != "*"; ) {
+        if (culture == "." || culture == ".." || culture.IndexOfAny(Path.GetInvalidFileNameChars()) >= 0) break;
+        languages.Add(culture);
+        int separator = culture.LastIndexOf('-');
+        culture = separator < 0 ? "" : culture.Substring(0, separator);
       }
+      List<string> candidates = new List<string>();
+      foreach (string root in roots) foreach (string culture in languages)
+        foreach (string parent in new string[] { Path.Combine(root, culture), Path.Combine(root, culture, name) }) {
+          candidates.Add(Path.Combine(parent, name + ".dll"));
+          candidates.Add(Path.Combine(parent, name + ".manifest"));
+        }
       // Follow possible private declarations so failed contexts retain transitive repair probes too.
       // This observes candidates; CreateActCtx still owns selection and manifest validation.
       foreach (string file in candidates) {

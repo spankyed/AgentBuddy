@@ -318,7 +318,7 @@ it.runIf(process.platform === 'win32').each([
 
 // Ordinary Windows loader controls: these deliberately bypass compiler admission. A failed
 // control invalidates the fixture; it does not establish a production admission defect.
-it.runIf(process.platform === 'win32').each(['local', 'assembly', 'assembly-resource', 'image-assembly', 'image-assembly-api', 'image-assembly-transitive'] as const)(
+it.runIf(process.platform === 'win32').each(['local', 'assembly', 'assembly-resource', 'image-assembly', 'image-assembly-api', 'image-assembly-transitive', 'image-assembly-localized'] as const)(
   'identifies ordinary PE %s redirection while loading a native image', kind => {
     const root = fs.realpathSync.native(fs.mkdtempSync(path.join(os.tmpdir(), 'apack-pe-redirection-')));
     let completed = false;
@@ -380,8 +380,9 @@ int wmain(int argc, wchar_t **argv) {
       expect(observe()).toEqual({ value: 11, file: fs.realpathSync.native(library).toLowerCase() });
       const assemblyName = kind === 'assembly-resource' ? 'apack_value' : 'apack.fixture.value';
       const imageContext = kind.startsWith('image-assembly');
+      const language = kind === 'image-assembly-localized' ? ['en-US'] : [];
       const selected = path.join(imageContext ? path.dirname(entry) : runtime,
-        ...(kind === 'local' ? [] : [assemblyName]), kind === 'image-assembly-api' ? 'psapi.dll' : 'apack_value.dll');
+        ...language, ...(kind === 'local' ? [] : [assemblyName]), kind === 'image-assembly-api' ? 'psapi.dll' : 'apack_value.dll');
       buildLibrary(selected, 22);
       // Merely placing a same-name DLL next to the executable must not change explicit loading.
       expect(observe()).toEqual({ value: 11, file: fs.realpathSync.native(library).toLowerCase() });
@@ -392,7 +393,7 @@ int wmain(int argc, wchar_t **argv) {
         fs.copyFileSync(executable, configured);
         fs.writeFileSync(configured + '.local', '');
       } else {
-        const identity = `<assemblyIdentity type="win32" name="${assemblyName}" version="1.0.0.0" processorArchitecture="amd64"/>`;
+        const identity = `<assemblyIdentity type="win32" name="${assemblyName}" version="1.0.0.0" processorArchitecture="amd64"${language.length ? ' language="en-US"' : ''}/>`;
         const assemblyManifest = path.join(path.dirname(selected), assemblyName + '.manifest');
         fs.writeFileSync(assemblyManifest,
           `<?xml version="1.0" encoding="UTF-8"?><assembly xmlns="urn:schemas-microsoft-com:asm.v1" manifestVersion="1.0">${identity}<file name="${path.basename(selected)}"/></assembly>`);
@@ -441,7 +442,7 @@ int wmain(int argc, wchar_t **argv) {
         expect(reads).toContain(entry + '.2.config');
       } else expect(() => check()).toThrow(fs.realpathSync.native(selected));
       expect(fs.existsSync(dllMarker)).toBe(false);
-      if (kind === 'image-assembly' || kind === 'image-assembly-transitive') {
+      if (kind === 'image-assembly' || kind === 'image-assembly-transitive' || kind === 'image-assembly-localized') {
         const context = (image: string) => readPeActivationContext(image, {
           systemDirectory: environment.systemDirectory, application: configured, resource: 2,
         });
@@ -449,8 +450,8 @@ int wmain(int argc, wchar_t **argv) {
         // Configure a fresh image before first load: Windows can retain its activation context.
         const configuredImage = path.join(path.dirname(entry), 'configured.dll');
         const configuration = configuredImage + '.2.config';
-        const alternate = path.join(path.dirname(entry), 'alternate', assemblyName);
-        fs.mkdirSync(path.dirname(alternate));
+        const alternate = path.join(path.dirname(entry), 'alternate', ...language, assemblyName);
+        fs.mkdirSync(path.dirname(alternate), { recursive: true });
         // A renamed mapped file can retain its old section path; use independent captured files.
         fs.cpSync(path.dirname(selected), alternate, { recursive: true });
         fs.rmSync(path.dirname(selected), { recursive: true });
@@ -476,7 +477,7 @@ int wmain(int argc, wchar_t **argv) {
         try {
           check(configuredImage, view);
           expect(() => view.assertCurrent()).not.toThrow();
-          const preferred = path.join(path.dirname(entry), assemblyName);
+          const preferred = path.join(path.dirname(entry), ...language, assemblyName);
           expect(observed).toContain(path.join(preferred, assemblyName + '.manifest'));
           fs.mkdirSync(preferred);
           fs.copyFileSync(path.join(alternate, assemblyName + '.manifest'), path.join(preferred, assemblyName + '.manifest'));
@@ -494,7 +495,7 @@ int wmain(int argc, wchar_t **argv) {
           fs.rmSync(preferred, { recursive: true });
           expect(() => view.assertCurrent()).not.toThrow();
         } finally { view.dispose(); }
-        const repair = path.join(path.dirname(entry), 'repair', assemblyName);
+        const repair = path.join(path.dirname(entry), 'repair', ...language, assemblyName);
         fs.writeFileSync(configuration, fs.readFileSync(configuration, 'utf8').replace('privatePath="alternate"', 'privatePath="repair"'));
         const failedReads: string[] = [];
         const failed = createCompilerFileView(pack, { observe: file => { failedReads.push(file); } });
