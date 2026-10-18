@@ -8,7 +8,7 @@ import { peImage } from '../_support/pe-image.ts';
 const entry = 'C:\\pack\\binding\\addon.node';
 const library = 'C:\\pack\\binding\\value.dll';
 const environment: CompilerPeEnvironment = { systemDirectory: 'C:\\Windows\\System32', windowsDirectory: 'C:\\Windows',
-  safeSearch: true, devOverride: false, knownDlls: [], apiSets: [], schema: 'C:\\Windows\\System32\\apisetschema.dll',
+  safeSearch: true, devOverride: false, knownDlls: [], apiSets: [], nodeApiExports: [], schema: 'C:\\Windows\\System32\\apisetschema.dll',
   applicationContext: { image: 'C:\\compiler\\node.exe', inputs: [], redirections: [] } };
 
 function image(dependency?: string, forwarder?: string, resource?: number) {
@@ -167,6 +167,71 @@ it('delegates the running Node image to its installation owner without recording
   const value = admission([[entry, image('node.exe')], ['C:\\compiler\\node.exe', Buffer.from('owned runtime')]]);
   expect(value.check).not.toThrow();
   expect(value.reads).not.toContain('C:\\compiler\\node.exe');
+});
+
+function delayedHostImage(dependency = 'node.exe', symbol: string | number = 'napi_create_int32') {
+  const value = peImage();
+  value.directory(13, 0x1000, 64); value.uint(0x1000, 1);
+  value.uint(0x1004, 0x1200); value.uint(0x100c, 0x1300); value.uint(0x1010, 0x1100);
+  value.text(0x1200, dependency);
+  value.pointer(0x1100, typeof symbol === 'number' ? (1n << 63n) | BigInt(symbol) : 0x1400n);
+  if (typeof symbol === 'string') value.text(0x1402, symbol);
+  return value.bytes;
+}
+
+it('binds verified delayed Node-API imports to a renamed host instead of a Node installation on PATH', () => {
+  const value = admission([[entry, delayedHostImage()], ['C:\\outside\\node.exe', image()]], {
+    executable: 'C:\\compiler\\apack.exe', environment: { nodeApiExports: ['napi_create_int32'] },
+    variables: { PATH: 'C:\\outside' },
+  });
+  expect(value.check).not.toThrow();
+  expect(value.reads).not.toContain('C:\\outside\\node.exe');
+  expect(value.reads).not.toContain('C:\\compiler\\apack.exe');
+});
+
+it.each(['value.dll', 'node.dll', 'libnode.dll'])('still admits delayed %s as a library', dependency => {
+  const file = 'C:\\outside\\' + dependency;
+  const value = admission([[entry, delayedHostImage(dependency)], [file, image()]], {
+    executable: 'C:\\compiler\\apack.exe', environment: { nodeApiExports: ['napi_create_int32'] },
+    variables: { PATH: 'C:\\outside' },
+  });
+  expect(value.check).toThrow(file);
+});
+
+it.each(['native_value', 7])('does not assume delayed host symbol %s is supplied by the runtime', symbol => {
+  const value = admission([[entry, delayedHostImage('node.exe', symbol)], ['C:\\outside\\node.exe', image()]], {
+    executable: 'C:\\compiler\\apack.exe', environment: { nodeApiExports: ['napi_create_int32'] },
+    variables: { PATH: 'C:\\outside' },
+  });
+  expect(value.check).toThrow('C:\\outside\\node.exe');
+});
+
+it('refuses a missing Node-API host export without selecting a different Node installation', () => {
+  const value = admission([[entry, delayedHostImage('node.exe', 'napi_missing')], ['C:\\outside\\node.exe', image()]], {
+    executable: 'C:\\compiler\\apack.exe', environment: { nodeApiExports: ['napi_create_int32'] },
+    variables: { PATH: 'C:\\outside' },
+  });
+  expect(value.check).toThrow('does not export Node-API symbol "napi_missing"');
+  expect(value.reads).not.toContain('C:\\outside\\node.exe');
+});
+
+it('checks the loaded shared Node-API host selected by the delay hook', () => {
+  const file = 'C:\\outside\\libnode.dll';
+  const value = admission([[entry, delayedHostImage()], [file, image()]], {
+    executable: 'C:\\compiler\\apack.exe', environment: { nodeApiExports: ['napi_create_int32'] }, loaded: [file],
+  });
+  expect(value.check).toThrow(file);
+});
+
+it('does not reinterpret an eager Node-API import as a delay hook', () => {
+  const eager = peImage(); eager.imports(); eager.text(0x1200, 'node.exe');
+  eager.text(0x1402, 'napi_create_int32'); eager.pointer(0x1108, 0n);
+  const file = 'C:\\outside\\node.exe';
+  const value = admission([[entry, eager.bytes], [file, image()]], {
+    executable: 'C:\\compiler\\apack.exe', environment: { nodeApiExports: ['napi_create_int32'] },
+    variables: { PATH: 'C:\\outside' },
+  });
+  expect(value.check).toThrow(file);
 });
 
 it('does not trust a System32 link to an outside DLL', () => {

@@ -1,8 +1,9 @@
 import fs from 'node:fs';
+import { createHash } from 'node:crypto';
 import { win32 as path } from 'node:path';
 import { execFileSync } from 'node:child_process';
 import { parsePeApiSets, type PeApiSet } from './compiler-pe-api-sets.ts';
-import { readPeSection } from './compiler-pe-libraries.ts';
+import { parsePeLibraryMetadata, readPeSection } from './compiler-pe-libraries.ts';
 import { pePath, type CompilerPeSystemPaths } from './compiler-pe-paths.ts';
 import { readPeActivationContext, type CompilerPeActivationContext } from './compiler-pe-activation.ts';
 
@@ -13,6 +14,7 @@ export interface CompilerPeEnvironment extends CompilerPeSystemPaths {
   readonly apiSets: readonly PeApiSet[];
   readonly schema: string;
   readonly applicationContext: CompilerPeActivationContext;
+  readonly nodeApiExports: readonly string[];
 }
 
 // Capture the public report API before user preloads can replace it. Node's excludeEnv option is
@@ -91,9 +93,16 @@ export function capturePeLibraryEnvironment(executable = process.execPath): Comp
   const schema = path.join(systemDirectory, 'apisetschema.dll');
   const section = readPeSection(fs.readFileSync(schema), '.apiset');
   if (!section) throw new Error('Windows API-set schema has no .apiset section');
+  const applicationContext = readPeActivationContext(executable, { systemDirectory, application: executable, resource: 1 });
+  const bytes = fs.readFileSync(executable);
+  if (createHash('sha256').update(bytes).digest('hex') !== applicationContext.inputs.find(input => input.file === applicationContext.image)?.hash) {
+    throw new Error(`Windows compiler runtime changed while capturing Node-API exports: ${executable}`);
+  }
   return Object.freeze({ systemDirectory, windowsDirectory: path.dirname(systemDirectory), safeSearch, devOverride,
     knownDlls: Object.freeze(knownDlls.map(name => name.toLowerCase())), schema, apiSets: parsePeApiSets(section),
-    applicationContext: readPeActivationContext(executable, { systemDirectory, application: executable, resource: 1 }) });
+    nodeApiExports: Object.freeze(parsePeLibraryMetadata(bytes).exports
+      .flatMap(item => item.forwarder ? [] : item.names.filter(name => /^(napi_|node_api_)/.test(name))).sort()),
+    applicationContext });
 }
 
 export function peLibraryPaths(env: NodeJS.ProcessEnv): string[] {

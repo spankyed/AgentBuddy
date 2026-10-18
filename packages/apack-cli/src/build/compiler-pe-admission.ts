@@ -88,6 +88,18 @@ export function assertCapturedPeLibraries(entry: string, packageRoot: string, in
     const image = { metadata, bindings: active };
     images.set(identity, image);
     for (const imported of metadata.imports) {
+      // node-gyp's delay hook binds this Node-API reference to the running host, even when renamed.
+      // A shared libnode host still needs ownership checks; other symbols use ordinary resolution.
+      if (imported.delayed && imported.name.toLowerCase() === 'node.exe' && imported.symbols.length
+        && imported.symbols.every(symbol => 'name' in symbol && /^(napi_|node_api_)/.test(symbol.name))) {
+        const sharedHost = input.loadedLibraries.find(file => path.basename(file).toLowerCase() === 'libnode.dll');
+        if (sharedHost) inspect(sharedHost, imported.symbols, file, active);
+        else {
+          const missing = imported.symbols.find(symbol => 'name' in symbol && !environment.nodeApiExports.includes(symbol.name));
+          if (missing && 'name' in missing) throw new Error(`Windows compiler host "${input.executable}" does not export Node-API symbol "${missing.name}" requested by "${file}"`);
+        }
+        continue;
+      }
       const target = resolve(imported.name, file, active);
       if (target) inspect(target, imported.symbols, file, active);
     }

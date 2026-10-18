@@ -1,8 +1,9 @@
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { execFile, execFileSync, fork } from 'node:child_process';
+import { execFile, execFileSync } from 'node:child_process';
 import { promisify } from 'node:util';
+import { createRequire } from 'node:module';
 import { expect, it, onTestFinished, vi } from 'vitest';
 import { packFixture } from '@apackdev/sdk/testing/pack-fixture';
 import { REPO_ROOT } from '@apackdev/host/build/packages-built';
@@ -24,6 +25,7 @@ import { pePath } from '../../src/build/compiler-pe-paths.ts';
 import { readCompilerRuntimeInputs } from '../../src/build/compiler-runtime.ts';
 import { compilerStartupOptions, COMPILER_NODE_OPTIONS_ENV } from '../../src/build/compiler-startup-options.ts';
 import { COMPILER_INPUTS_ENV } from '../../src/build/compiler-installation-inputs.ts';
+import { spawnCompilerWorker } from '../../src/build/compiler-process.ts';
 
 /** Bind the value IAT while retaining the lookup table needed when Windows cannot reuse the binding. */
 function bindValueImport(bytes: Buffer, address: bigint, timeStamp: number) {
@@ -116,15 +118,15 @@ int wmain(int argc, wchar_t **argv) {
   return executable;
 }
 
-function copyPeRuntimeFixture(executable: string, destination: string) {
-  const inputs = readCompilerRuntimeInputs(executable, false, (file, bytes) => {
+function copyPeRuntimeFixture(executable: string, destination: string, electron = false) {
+  const inputs = readCompilerRuntimeInputs(executable, electron, (file, bytes) => {
     const target = path.join(destination, file.path);
     fs.mkdirSync(path.dirname(target), { recursive: true });
     fs.writeFileSync(target, bytes);
   });
   for (const directory of inputs.directories) fs.mkdirSync(path.join(destination, path.relative(inputs.directory, directory)), { recursive: true });
   const copied = path.join(destination, path.relative(inputs.directory, executable));
-  expect(readCompilerRuntimeInputs(copied, false).hash).toBe(inputs.hash);
+  expect(readCompilerRuntimeInputs(copied, electron).hash).toBe(inputs.hash);
   return copied;
 }
 
@@ -185,15 +187,21 @@ it.runIf(process.platform === 'win32')('refuses Node .local overrides through th
   }
 }, 120_000);
 
-it.runIf(process.platform === 'win32').each(['application', 'module'] as const)('preserves Node %s-context assembly selection and refuses it through compiler startup before initialization', async kind => {
-  const root = fs.realpathSync.native(fs.mkdtempSync(path.join(os.tmpdir(), 'apack-node-assembly-')));
+it.runIf(process.platform === 'win32').each([
+  ['Node', 'application'],
+  ['Node', 'module'],
+  ['Electron', 'module'],
+] as const)('preserves %s %s-context assembly selection and refuses it through compiler startup before initialization', async (runtimeName, kind) => {
+  const electron = runtimeName === 'Electron';
+  const root = fs.realpathSync.native(fs.mkdtempSync(path.join(os.tmpdir(), `apack-${runtimeName.toLowerCase()}-assembly-`)));
   let completed = false;
   try {
     const pack = path.join(root, 'pack'), runtime = path.join(root, 'runtime'), copied = path.join(root, 'copied');
     fs.mkdirSync(runtime);
     packFixture({ at: pack, nodeModules: path.join(REPO_ROOT, 'node_modules'), manifest: { features: {} } });
     const { addon, dllMarker, addonMarker, buildLibrary } = createPeNativeFixture(root, pack);
-    const executable = createNodeWithoutApplicationManifest(runtime);
+    const executable = electron ? createRequire(import.meta.url)('electron') as string : createNodeWithoutApplicationManifest(runtime);
+    const runtimeSource = electron ? path.dirname(executable) : runtime;
     const library = path.join(kind === 'application' ? runtime : path.join(path.dirname(addon), 'alternate'), 'apack.fixture.value/apack_value.dll');
     const outsideLibrary = kind === 'application' ? library : path.join(root, 'outside/apack_outside.dll');
     buildLibrary(library, 22);
@@ -206,9 +214,16 @@ it.runIf(process.platform === 'win32').each(['application', 'module'] as const)(
     else {
       const manifestFile = path.join(root, 'addon.manifest');
       fs.writeFileSync(manifestFile, manifest);
+      const hostLink: string[] = [];
+      if (electron) {
+        const hook = path.join(root, 'host-hook.obj');
+        execFileSync('cl.exe', ['/nologo', '/MT', '/c', path.join(REPO_ROOT, 'node_modules/node-gyp/src/win_delay_load_hook.cc'),
+          '/DHOST_BINARY="node.exe"', '/Fo' + hook], { cwd: root, timeout: 15_000 });
+        hostLink.push(hook, 'delayimp.lib', '/DELAYLOAD:node.exe');
+      }
       execFileSync('cl.exe', ['/nologo', '/MT', '/LD', '/I' + process.env.APACK_TEST_NODE_HEADERS!, path.join(root, 'addon.c'),
         '/Fo' + path.join(root, 'addon.obj'), '/link', '/INCREMENTAL:NO', '/MANIFEST:EMBED,ID=2', '/MANIFESTUAC:NO',
-        '/MANIFESTINPUT:' + manifestFile, '/OUT:' + addon, path.join(root, 'value.lib'), process.env.APACK_TEST_NODE_IMPORT_LIBRARY!],
+        '/MANIFESTINPUT:' + manifestFile, '/OUT:' + addon, path.join(root, 'value.lib'), process.env.APACK_TEST_NODE_IMPORT_LIBRARY!, ...hostLink],
       { cwd: root, timeout: 15_000 });
       buildLibrary(outsideLibrary, 22, { symbol: 'outside_value' });
       const dependencySource = path.join(root, 'dependency.c');
@@ -218,16 +233,18 @@ it.runIf(process.platform === 'win32').each(['application', 'module'] as const)(
       // Successful captured startup must retain this selector, not just the DLL it selects.
       fs.writeFileSync(addon + '.2.config', `<?xml version="1.0"?><configuration><windows><assemblyBinding xmlns="urn:schemas-microsoft-com:asm.v1">${ownerIdentity}<probing privatePath="alternate"/></assemblyBinding></windows></configuration>`);
     }
-    const copiedExecutable = copyPeRuntimeFixture(executable, copied);
+    const copiedExecutable = copyPeRuntimeFixture(executable, copied, electron);
     // The private manifest-less Node retains the existing supported-runner platform-check override.
-    const environment: NodeJS.ProcessEnv = { ...process.env, NODE_SKIP_PLATFORM_CHECK: '1', NODE_OPTIONS: '' };
+    const environment: NodeJS.ProcessEnv = { ...process.env, NODE_OPTIONS: '',
+      ...(electron ? { ELECTRON_RUN_AS_NODE: '1' } : { NODE_SKIP_PLATFORM_CHECK: '1' }) };
     if (kind === 'module') {
       const key = Object.keys(environment).find(key => key.toUpperCase() === 'PATH') ?? 'PATH';
       environment[key] = path.dirname(outsideLibrary) + ';' + (environment[key] ?? '');
     }
     const ordinary = JSON.parse(execFileSync(copiedExecutable, ['-e',
-      `const addon = require(${JSON.stringify(addon)}); console.log(JSON.stringify({value:addon.read(),file:addon.libraryPath()}));`],
-    { cwd: pack, env: environment, encoding: 'utf8', timeout: 5_000 })) as { value: number; file: string };
+      `const addon = require(${JSON.stringify(addon)}); console.log(JSON.stringify({value:addon.read(),file:addon.libraryPath(),electron:process.versions.electron ?? null}));`],
+    { cwd: pack, env: environment, encoding: 'utf8', timeout: 5_000 })) as { value: number; file: string; electron: string | null };
+    expect(ordinary.electron).toBe(electron ? createRequire(import.meta.url)('electron/package.json').version : null);
     const copiedLibrary = kind === 'application' ? path.join(copied, path.relative(runtime, library)) : library;
     expect(ordinary.value).toBe(22);
     expect(pePath(fs.realpathSync.native(ordinary.file)).toLowerCase())
@@ -242,11 +259,12 @@ it.runIf(process.platform === 'win32').each(['application', 'module'] as const)(
       fs.mkdirSync(workspace);
       const inputsFile = path.join(workspace, 'compiler-inputs.json'), entry = path.join(workspace, 'entry.cjs');
       fs.writeFileSync(inputsFile, JSON.stringify({ hash: '0'.repeat(64), packages: [compilerPackageDirectory()],
-        paths: [{ captured: copied, source: runtime }] }));
+        paths: [{ captured: copied, source: runtimeSource }] }));
       fs.writeFileSync(entry, source);
-      const child = fork(entry, [], { execPath: copiedExecutable, execArgv: [], cwd: pack, stdio: ['ignore', 'ignore', 'pipe', 'ipc'],
+      const child = spawnCompilerWorker({ executable: copiedExecutable, runtimeDirectory: copied,
+        bin: path.join(compilerPackageDirectory(), 'bin/apack.mjs') }, [entry], { cwd: pack, stdio: ['ignore', 'ignore', 'pipe', 'ipc'],
         env: { ...environment, APACK_BUILD_WORKER: '1', [COMPILER_INPUTS_ENV]: inputsFile,
-          [BUILD_INPUTS_DIRECTORY_ENV]: workspace, [COMPILER_NODE_OPTIONS_ENV]: options.user, NODE_OPTIONS: options.worker } });
+          [BUILD_INPUTS_DIRECTORY_ENV]: workspace, [COMPILER_NODE_OPTIONS_ENV]: options.user, NODE_OPTIONS: options.worker } }, workspace);
       let errors = '', result: unknown;
       child.stderr!.on('data', chunk => { errors += chunk; });
       child.on('message', message => { result = message; });
@@ -280,7 +298,7 @@ it.runIf(process.platform === 'win32').each(['application', 'module'] as const)(
     completed = true;
   } finally {
     if (completed) fs.rmSync(root, { recursive: true, force: true });
-    else console.error(`Retained Node assembly startup: ${root}`);
+    else console.error(`Retained ${runtimeName} assembly startup: ${root}`);
   }
 });
 

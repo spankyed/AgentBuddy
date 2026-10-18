@@ -60,6 +60,13 @@ Windows module authority. The query does not initialize pack images. The exact o
 Vue and outside-PATH refusal control passes on `b70228539`; other required Windows lookup and platform
 checks remain open. See [Windows evidence](../../evidence/build-input-snapshot-proof.md#accepted-windows-dll-ownership-and-full-path-module-metadata-2026-10-17).
 
+Windows Node-API addons using node-gyp's standard `node.exe` delay-load hook bind to the running
+runtime. Verify their named Node-API imports against the runtime's concrete exports, tied to the same
+executable bytes recorded by its application context. A loaded `libnode.dll`, which that hook prefers,
+requires library ownership checks. Missing Node-API exports refuse at the host boundary. Eager imports,
+other libraries, ordinals and non-Node-API symbols retain ordinary admission. This models the [documented Electron host-binding contract](https://www.electronjs.org/docs/latest/tutorial/using-native-node-modules/);
+it does not infer the behavior of arbitrary native hook code or widen the approved native-I/O boundary.
+
 Runtime linkage is a separate earlier boundary: linked images can execute library constructors before
 JavaScript starts. Check the captured executable at the existing shared worker launcher, using its
 actual environment, working directory and the runtime directory declared by its installation owner.
