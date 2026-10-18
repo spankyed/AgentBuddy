@@ -50,8 +50,8 @@ const loadedByThePool = (): string[] => reachableFrom(
 const INVENTORY: Record<string, { calls: number; why: string }> = {
   'packages/apack-cli/tests/build/compiler-elf-libraries.integration.spec.ts': { calls: 2,
     why: 'the Linux proof compiles private NAPI/shared-library fixtures and uses an ordinary Node control to establish actual ELF selection before captured frontend ownership and pre-initialization refusal' },
-  'packages/apack-cli/tests/build/compiler-native-libraries.integration.spec.ts': { calls: 6,
-    why: 'clang produces real direct/transitive libraries and Node addons; fresh Node children prove actual dyld search, image-suffix and versioned override selection before captured admission. The live-watch case compiles a replacement dependency graph; in-process fixtures cannot change dyld launch settings or prove refusal precedes initialization' },
+  'packages/apack-cli/tests/build/compiler-native-libraries.integration.spec.ts': { calls: 7,
+    why: 'clang/cc produce real direct/transitive libraries and Node addons; fresh Node children prove refused backend fixtures actually execute, plus dyld search, image-suffix and versioned override selection before captured admission. The live-watch case compiles a replacement dependency graph; in-process fixtures cannot change OS launch settings or prove refusal precedes initialization' },
   'packages/apack-cli/tests/build/build-worker.integration.spec.ts': { calls: 8,
     why: 'private worker IPC lifetime and refusal, public shutdown, native preload identity, loader-startup refusal and natural shutdown under signal refusal require their own processes; two OS process-state queries verify inherited subprocess termination' },
   'packages/repo-checks/tests/bounded-spawn.integration.spec.ts': { calls: 1,

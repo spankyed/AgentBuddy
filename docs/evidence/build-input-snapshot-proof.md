@@ -3178,3 +3178,22 @@ Next reuse the existing ELF fixture with the public backend build owner for nati
 outside refusal and published-incumbent preservation. The successful generic backend baseline does
 not establish that native-specific boundary. Keep remaining real loader-selection/mapped-image
 checks, PE, stricter app signing, B6 and final strict `--all` acceptance explicit.
+
+### Shared backend native acceptance candidate (2026-10-17)
+
+Reused the existing native preload/thread publication cases rather than adding another backend test
+implementation. Their fixture now emits ELF `.so`/NAPI images with `cc` on Linux and preserves the
+existing Mach-O compiler arguments on macOS. Both cases retain their owned-image, changed/restored
+input, pre-initialization refusal and unchanged published-revision assertions. Source-library mutation
+now uses atomic replacement with the original executable mode, avoiding truncation of a potentially
+mapped image.
+
+Each refused direct/transitive fixture must first execute successfully in an ordinary fresh Node
+process and produce its initialization marker. The test removes that marker before the captured build
+attempt, preventing a broken fixture from masquerading as successful admission refusal. This adds one
+explicit subprocess call site; its inventory reason now covers both OS formats and those controls.
+
+Local checks: CLI TypeScript, two-file correctness lint, diff checks, workflow YAML parsing and all
+11 subprocess-inventory checks pass. No native test or captured runtime was executed locally. The
+Linux workflow adds only these two existing cases, sequentially with one worker; deadlines and
+production code are unchanged. Their real Linux result remains pending.

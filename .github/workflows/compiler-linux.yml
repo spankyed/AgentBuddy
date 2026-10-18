@@ -55,6 +55,12 @@ jobs:
           packages/apack-cli/tests/build/pack-builder.spec.ts
           --testNamePattern='drains an interrupted frontend startup|cancels a frontend input check|stops its worker before removing|stops remaining compiler descendants|force-stops a compiler'
           --bail=1 --poolOptions.threads.maxThreads=1 --poolOptions.threads.minThreads=1
+      - name: Native backend publication and compiler threads
+        run: >-
+          node node_modules/vitest/vitest.mjs run --config vitest.integration.config.ts --project @apackdev/cli
+          packages/apack-cli/tests/build/compiler-native-libraries.integration.spec.ts
+          --testNamePattern='captures native .* libraries and retains the incumbent'
+          --bail=1 --poolOptions.threads.maxThreads=1 --poolOptions.threads.minThreads=1 --no-file-parallelism
       - name: Retained Vite process ownership
         run: >-
           node node_modules/vitest/vitest.mjs run --config vitest.integration.config.ts --project @apackdev/cli

@@ -24,28 +24,31 @@ function nativeFixture(mode: 'relative' | 'absolute' | 'transitive' | 'fallback'
   try {
     const pack = path.join(root, 'pack');
     const native = path.join(root, 'native-package');
-    const library = path.join(native, mode === 'framework' ? 'Value.framework/Versions/A/Value' : 'lib/libvalue.dylib');
+    const macho = process.platform === 'darwin';
+    const library = path.join(native, mode === 'framework' ? 'Value.framework/Versions/A/Value' : `lib/libvalue.${macho ? 'dylib' : 'so'}`);
     fs.mkdirSync(pack);
     fs.mkdirSync(path.dirname(library), { recursive: true });
     fs.mkdirSync(path.join(native, 'binding'));
     fs.writeFileSync(path.join(native, 'package.json'), JSON.stringify({ name: 'native-fixture', version: '1.0.0', main: 'binding/addon.node' }));
     const marker = path.join(root, 'initialized');
-    const outside = path.join(root, 'outside/liboutside.dylib');
-    const architecture = ['-arch', process.arch === 'arm64' ? 'arm64' : 'x86_64'];
+    const outside = path.join(root, `outside/liboutside.${macho ? 'dylib' : 'so'}`);
+    const architecture = macho ? ['-arch', process.arch === 'arm64' ? 'arm64' : 'x86_64'] : ['-fPIC'];
     function buildLibrary(file: string, source: string, installName: string, dependencies: string[] = []) {
       fs.mkdirSync(path.dirname(file), { recursive: true });
       const input = file + '.c';
       fs.writeFileSync(input, source);
-      execFileSync('clang', [...architecture, '-dynamiclib', input, ...dependencies, '-Wl,-install_name,' + installName, '-o', file]);
+      execFileSync(macho ? 'clang' : 'cc', [...architecture, macho ? '-dynamiclib' : '-shared', input, ...dependencies,
+        (macho ? '-Wl,-install_name,' : '-Wl,-soname,') + installName, '-o', file]);
     }
     if (mode === 'transitive') buildLibrary(outside, 'int outside_value(void) { return 11; }', outside);
     buildLibrary(library, mode === 'transitive'
       ? 'extern int outside_value(void); int native_value(void) { return outside_value(); }'
       : 'int native_value(void) { return 11; }',
-    mode === 'absolute' ? library : mode === 'fallback' ? 'libvalue.dylib' : '@loader_path/../' + path.relative(native, library), mode === 'transitive' ? [outside] : []);
+    mode === 'absolute' ? library : mode === 'fallback' ? path.basename(library)
+      : (macho ? '@loader_path/../' : '$ORIGIN/../') + path.relative(native, library), mode === 'transitive' ? [outside] : []);
     const addonSource = path.join(native, 'binding/addon.c');
     fs.writeFileSync(addonSource, nativeAddonSource(marker));
-    execFileSync('clang', [...architecture, '-bundle', '-undefined', 'dynamic_lookup',
+    execFileSync(macho ? 'clang' : 'cc', [...architecture, ...(macho ? ['-bundle', '-undefined', 'dynamic_lookup'] : ['-shared']),
       '-I', path.resolve(path.dirname(process.execPath), '../include/node'), addonSource, library,
       ...(sdk ? ['-mmacosx-version-min=11.0', `-Wl,-platform_version,macos,11.0,${sdk}`] : []),
       '-o', path.join(native, 'binding/addon.node')]);
@@ -397,7 +400,7 @@ it.runIf(process.platform === 'darwin').each(['relative', 'absolute', 'transitiv
   }
 });
 
-it.runIf(process.platform === 'darwin').each(['preload', 'thread'] as const)('captures native %s libraries and retains the incumbent after outside-library refusal', async site => {
+it.runIf(process.platform === 'darwin' || process.platform === 'linux').each(['preload', 'thread'] as const)('captures native %s libraries and retains the incumbent after outside-library refusal', async site => {
   const supported = nativeFixture('relative');
   const refused = [nativeFixture('absolute'), nativeFixture('transitive')];
   const builder = createPackBuilder(supported.pack);
@@ -422,17 +425,31 @@ it.runIf(process.platform === 'darwin').each(['preload', 'thread'] as const)('ca
       if (site === 'thread') expect(result.thread).toBeGreaterThan(0);
       expect(result.value).toBe(11);
       expect(result.libraries).not.toContain(supported.library);
-      expect(result.libraries.some(file => file.includes('apack-inputs-') && file.endsWith('/lib/libvalue.dylib'))).toBe(true);
+      expect(result.libraries.some(file => file.includes('apack-inputs-') && file.endsWith('/lib/' + path.basename(supported.library)))).toBe(true);
     }
     const inputs = readPackBuildInputs(path.join(supported.pack, 'dist'));
     assertPackBuildInputsCurrent(supported.pack, inputs);
     const original = fs.readFileSync(supported.library);
-    fs.writeFileSync(supported.library, 'CHANGED');
+    const mode = fs.statSync(supported.library).mode & 0o777;
+    const replaceLibrary = (bytes: Buffer | string) => {
+      const replacement = supported.library + '.replacement';
+      fs.writeFileSync(replacement, bytes, { mode });
+      fs.renameSync(replacement, supported.library);
+    };
+    replaceLibrary('CHANGED');
     expect(() => assertPackBuildInputsCurrent(supported.pack, inputs)).toThrow();
-    fs.writeFileSync(supported.library, original);
+    replaceLibrary(original);
     assertPackBuildInputsCurrent(supported.pack, inputs);
     const revision = readPackBuild(path.join(supported.pack, 'dist')).revision;
     for (const fixture of refused) {
+      const ordinary = JSON.parse(execFileSync(process.execPath, ['-e', `const addon = require(${JSON.stringify(path.join(fixture.native, 'binding/addon.node'))});
+console.log(JSON.stringify({ value: addon.read(), libraries: process.report.getReport().sharedObjects.map(file => require('node:path').normalize(file)) }));`], {
+        encoding: 'utf8', env: { ...process.env, NODE_OPTIONS: previous }, timeout: 10_000,
+      })) as { value: number; libraries: string[] };
+      expect(ordinary.value).toBe(11);
+      expect(ordinary.libraries).toContain(fixture.library);
+      expect(fs.existsSync(fixture.marker)).toBe(true);
+      fs.rmSync(fixture.marker);
       fs.rmSync(proof, { force: true });
       writeLoader(fixture);
       await expect(builder.build({ args: ['--skip-fe'] })).rejects.toThrow();
