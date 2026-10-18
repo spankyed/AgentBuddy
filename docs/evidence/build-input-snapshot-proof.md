@@ -3900,3 +3900,98 @@ prove every concurrent first-capture ordering or resolve the separate activation
 bound-only import and search-state cases. Accepted isolated preload/thread and frontend proofs remain
 valid evidence, not cases to restart for diagnosis. Runtime/signing, remaining platform closure,
 converged acceptance and final committed-source strict `--all` remain required.
+
+### Strict app-profile Electron probe (2026-10-18)
+
+Source `55212d739` adds an opt-in disposable macOS fixture: copy the installed Electron app,
+import the existing Developer ID certificate into a temporary runner keychain, and sign the copy
+with the exact `build/resources/entitlements.mac.plist` and hardened runtime. The workflow compares
+the actual embedded entitlements against that plist and requires a real Team ID before invoking
+the captured-runtime probe. It does not notarize, publish, invoke release workflows or broaden
+entitlements. The signing dependency is declared explicitly; no dependency version was upgraded.
+CLI types/lint, 11 subprocess-inventory cases, three CI-header cases, YAML parsing and extracted
+shell/JavaScript syntax checks pass. No signing/native execution occurred locally.
+
+An inert filesystem check confirms Node's default `cpSync` rewrites relative symlinks toward the
+original tree. Source `704c6903b` preserves framework-relative links in the fixture copy instead.
+The first hosted run [39097801440](https://github.com/spankyed/AgentBuddy/actions/runs/39097801440)
+on `55212d739` stops earlier during signing: the keychain query finds an identity, but codesign
+reports `no identity found`. It never reaches runtime execution; no runtime failure is established.
+Its cleanup step passes. Log: `/private/tmp/apack-signed-runtime-39097801440.log`.
+
+Following [GitHub's certificate setup](https://docs.github.com/en/actions/how-tos/deploy/deploy-to-third-party-platforms/sign-xcode-applications),
+`0599041a5` adds the private keychain to the disposable runner's search list while preserving
+existing entries. Run [39097967959](https://github.com/spankyed/AgentBuddy/actions/runs/39097967959)
+on that source successfully signs the copied Electron with hardened runtime, a Developer ID Team ID
+and exact app entitlements. It does **not** accept runtime execution: all 25 cases were skipped because
+Vitest's object-table title interpolation quotes the string label and the selected filter matched none.
+Log: `/private/tmp/apack-signed-runtime-39097967959.log`.
+
+Source `6b9d2ff24` uses the string-table formatter and adds a JSON-result check requiring at least one
+passing selected case. A local inert-tooling proof accepts three selected header checks and refuses a
+zero-pass report; CLI types/lint, YAML parsing and diff checks pass. The actual signed-runtime retry is
+run [39098158270](https://github.com/spankyed/AgentBuddy/actions/runs/39098158270). The selected
+case executes and fails in 1.32 seconds: the original signed Electron bootstraps, but its captured
+child exits without a numeric exit code. That failure establishes a broken strict-runtime path,
+not its cause or a relation to the earlier developer-machine launch incident. Log:
+`/private/tmp/apack-signed-runtime-39098158270.log`.
+
+Diagnostic source `a1165891c` verifies the captured executable's signature before launching it and
+reports child signals. Hosted run [39098322426](https://github.com/spankyed/AgentBuddy/actions/runs/39098322426)
+fails before child launch with codesign's `invalid Info.plist (plist or signature have been modified)`.
+The reader copies only the main executable and Frameworks, omitting the app metadata/resources.
+Log: `/private/tmp/apack-signed-runtime-39098322426.log`.
+
+Source `3f9a5408e` captures the complete macOS Electron Contents distribution, matching the existing
+whole-distribution boundary on other Electron platforms. It preserves original signatures, paths,
+the executable and sealed metadata/resource bytes; it does not re-sign captured output or loosen
+permissions. An inert filesystem regression fails before this correction on the missing Info.plist;
+afterwards all four runtime-input cases pass, including metadata/resource replacement/restoration
+freshness. CLI types, focused lint and diff checks pass. Real strict signing/capture/launch acceptance
+is run [39098478634](https://github.com/spankyed/AgentBuddy/actions/runs/39098478634). The missing
+Info.plist defect is resolved, but strict codesign verification now reports unsealed contents in an
+embedded framework. Log: `/private/tmp/apack-signed-runtime-39098478634.log`.
+
+The actual copier reproducer in `compiler-runtime-copy.spec.ts` uses inert executable/library bytes
+and mocks only runtime selection. It fails before the link correction: the copied framework link's
+relative target is rewritten to an absolute private path. Source `d7832524e` retains the exact relative
+runtime link text and includes that text in the runtime identity. The regression now passes, including
+refusal when a link's spelling changes to an equivalent `./` path. All five runtime/copy cases, CLI
+types, focused lint and diff checks pass; nothing executable was copied and launched locally.
+Real signed-runtime run [39098719346](https://github.com/spankyed/AgentBuddy/actions/runs/39098719346)
+on that source resolves the framework-link verification failure, then reports added files beneath
+`Resources/default_app.asar/` and missing/invalid sealed resources. The runtime inventory used
+Electron's patched fs, which exposes ASAR archives as directories; capture expanded the archive.
+Log: `/private/tmp/apack-signed-runtime-39098719346.log`.
+
+Source `541149a7d` uses Electron's built-in `original-fs` for physical runtime inventory and file
+cloning/mode changes. Normal compiler-source reads keep their existing filesystem behavior. The
+same native archive bytes are copied; no extraction, signature rewriting or global `process.noAsar`
+change is introduced. This follows [Electron's physical-filesystem contract](https://www.electronjs.org/docs/latest/tutorial/asar-archives).
+All five inert runtime/copy checks, CLI types, focused lint and diff checks pass. Actual strict-profile
+runtime run [39098937466](https://github.com/spankyed/AgentBuddy/actions/runs/39098937466) reaches
+installation disposal, which fails with `ENOTEMPTY` at Contents/Resources. The disposal exception can
+mask an earlier exception, so this is not complete launch acceptance. Log:
+`/private/tmp/apack-signed-runtime-39098937466.log`.
+
+Source `ee1c76459` uses the same physical filesystem throughout installation ownership, including
+copying, path checks, permissions and recursive disposal. This removes the narrower copy helper and
+keeps one owner for the physical installation tree. Compiler input/source readers remain unchanged.
+All five inert runtime/copy checks, CLI types, focused lint and diff checks pass. The same strict-profile
+acceptance passes in hosted run [39099157645](https://github.com/spankyed/AgentBuddy/actions/runs/39099157645)
+on `ee1c76459`: 2.14 seconds for the case and 4.08 seconds Vitest total. The workflow checks exact
+app entitlements, hardened runtime and a real Developer ID Team ID. The captured executable passes
+strict codesign verification, starts Electron 37.2.4 through the shared launcher from the owned
+executable, remains current, and retires with its installation removed. The nonempty-selection check
+confirms one actual passing case (24 unrelated cases skipped), and private keychain/fixture cleanup
+passes. Log: `/private/tmp/apack-signed-runtime-39099157645.log`.
+
+This closes the demonstrated strict-profile runtime distribution and cleanup defects. It is a real
+signed Electron capture/launcher proof, not notarization, a complete packaged-app build, acceptance
+of every runtime/addon combination or evidence of the developer-machine launch incident's cause.
+Remaining platform/native combinations, B6, the whole-goal audit and final strict `--all` remain open. The original signature and strict entitlements
+remain unchanged; resource and link fixes use the existing installation owner.
+[Apple's library-validation policy](https://developer.apple.com/documentation/bundleresources/entitlements/com.apple.security.cs.disable-library-validation)
+requires Apple-signed or same-team libraries when this exception is absent, so the earlier default
+Electron result cannot stand in for the strict profile. Other native/profile requirements, B6 and
+final strict acceptance remain required.
