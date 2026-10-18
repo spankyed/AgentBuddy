@@ -49,7 +49,7 @@ export function createCompilerNativeInputs(original: ReturnType<typeof createCom
     }
   };
   const nativeModule = (file: string): string => {
-    if (process.platform !== 'darwin' && process.platform !== 'linux') return file;
+    if (process.platform !== 'darwin' && process.platform !== 'linux' && process.platform !== 'win32') return file;
     const known = options.findModule?.(file);
     if (known) {
       assertCapturedCompilerLibraries(known.captured, known.packageRoot, {

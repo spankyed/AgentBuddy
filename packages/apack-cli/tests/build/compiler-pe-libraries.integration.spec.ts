@@ -74,7 +74,9 @@ BOOL WINAPI DllMain(HINSTANCE module, DWORD reason, LPVOID reserved) {
     const proof = path.join(root, 'loaded.json');
     const preload = path.join(root, 'preload.cjs');
     fs.writeFileSync(preload, `if (globalThis[Symbol.for('apack.compiler.frontend')] && require('node:worker_threads').isMainThread) {
+      process.report.excludeEnv = true;
       const addon = require(${JSON.stringify(addon)});
+      if (!process.report.excludeEnv) throw new Error('Native admission changed report privacy policy');
       require('node:fs').writeFileSync(${JSON.stringify(proof)}, JSON.stringify({value:addon.read(),libraries:process.report.getReport().sharedObjects}));
     }`);
     compiler = await captureCompilerInstallation(compilerPackageDirectory(), { cwd: pack });

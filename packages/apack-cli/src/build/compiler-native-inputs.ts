@@ -217,7 +217,7 @@ export function createNativeInputReader(view: NativeInputView, initialPackages: 
         request(specifier, importer);
         // Namespace candidates may include unused native entrypoints. Check selected absolute images,
         // including repeated loads whose resolution namespace is already admitted.
-        if ((process.platform === 'darwin' || process.platform === 'linux') && path.isAbsolute(specifier) && specifier.endsWith('.node')) {
+        if ((process.platform === 'darwin' || process.platform === 'linux' || process.platform === 'win32') && path.isAbsolute(specifier) && specifier.endsWith('.node')) {
           assertCapturedCompilerLibraries(specifier, scope(path.dirname(specifier)).packageRoot ?? path.dirname(specifier), {
             arch: process.arch, environment,
             realpath: file => view.fileSystem.realpath(file),

@@ -1,8 +1,10 @@
-import { posix as path } from 'node:path';
+import { posix as path, win32 as windowsPath } from 'node:path';
 import fs from 'node:fs';
 import { assertCapturedElfLibraries } from './compiler-elf-libraries.ts';
 import { assertElfLaunchEnvironment, captureElfLibraryEnvironment, type CompilerElfEnvironment } from './compiler-elf-environment.ts';
 import { findElfCachedLibrary, parseElfLibraryCache } from './compiler-elf-cache.ts';
+import { assertCapturedPeLibraries } from './compiler-pe-admission.ts';
+import { capturePeLibraryEnvironment, readPeProcessState, type CompilerPeEnvironment } from './compiler-pe-environment.ts';
 
 interface NativeLibraryCommands {
   dependencies: string[];
@@ -21,11 +23,13 @@ export interface MachOLibraryEnvironment {
 export interface CompilerLibraryEnvironment {
   readonly macho: MachOLibraryEnvironment;
   readonly elf?: CompilerElfEnvironment;
+  readonly pe?: CompilerPeEnvironment;
 }
 
 export function captureCompilerLibraryEnvironment(env: NodeJS.ProcessEnv = process.env): CompilerLibraryEnvironment {
   return Object.freeze({ macho: captureMachOLibraryEnvironment(env),
-    elf: process.platform === 'linux' ? captureElfLibraryEnvironment(env) : undefined });
+    elf: process.platform === 'linux' ? captureElfLibraryEnvironment(env) : undefined,
+    pe: process.platform === 'win32' ? capturePeLibraryEnvironment() : undefined });
 }
 
 export function assertCapturedCompilerLibraries(entry: string, packageRoot: string, input: {
@@ -35,6 +39,13 @@ export function assertCapturedCompilerLibraries(entry: string, packageRoot: stri
   environment: CompilerLibraryEnvironment;
 }): void {
   if (process.platform === 'darwin') return assertCapturedMachOLibraries(entry, packageRoot, { ...input, environment: input.environment.macho });
+  if (process.platform === 'win32') {
+    const environment = input.environment.pe;
+    if (!environment) throw new Error('Compiler PE library admission requires OS loader metadata');
+    const state = readPeProcessState();
+    return assertCapturedPeLibraries(entry, packageRoot, { ...input, environment, executable: process.execPath,
+      cwd: process.cwd(), variables: state.environment, loadedLibraries: state.libraries });
+  }
   if (process.platform !== 'linux') return;
   const environment = input.environment.elf;
   if (!environment) throw new Error('Compiler ELF library admission requires launch-time loader metadata');
@@ -55,6 +66,13 @@ export function assertCapturedCompilerLibraries(entry: string, packageRoot: stri
 
 /** A new runtime resolves its linked libraries before JS; it cannot reuse the parent's loaded images. */
 export function assertCompilerRuntimeLibraries(executable: string, env: NodeJS.ProcessEnv, cwd: string): void {
+  if (process.platform === 'win32') {
+    return assertCapturedPeLibraries(executable, windowsPath.dirname(executable), {
+      arch: process.arch, environment: capturePeLibraryEnvironment(), executable, cwd, variables: env, loadedLibraries: [],
+      realpath: file => fs.realpathSync.native(file),
+      read: file => fs.statSync(file, { throwIfNoEntry: false })?.isFile() ? fs.readFileSync(file) : undefined,
+    });
+  }
   if (process.platform !== 'linux') return;
   const elf = captureElfLibraryEnvironment(env, executable, cwd);
   assertCapturedCompilerLibraries(executable, path.dirname(executable), {
