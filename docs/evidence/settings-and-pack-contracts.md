@@ -7799,3 +7799,43 @@ Source checkpoint: **`d0ab6dd6b`**, pushed under existing authorization. Hosted 
 on exactly that commit, with dependency installation active when checked. No passing strict result
 is claimed. The private diagnostic SSH observer also terminated with exit 1 and its saved stopped
 result; there is no remaining live diagnostic handle.
+
+## Packaged Windows query expectation — 2026-10-18
+
+Source `39352b2c7` fixes one stale pure unit expectation left by `11cb737e2`: the query now invokes
+the packaged `compiler-pe-process.ps1` with a JSON request rather than inline PowerShell. The old
+expectation fails in isolation; all 67 adjacent PE unit cases pass after correction (496ms), as do
+CLI types, focused lint and diff checks. This is a fixture mismatch, not a new runtime defect.
+The active strict run remains pinned to `d0ab6dd6b`; it has not been cancelled or restarted.
+
+## Runtime selection inputs reach compiler watches — 2026-10-18
+
+`readCompilerRuntimeInputs` already included selected Windows activation manifests/policies in runtime
+identity, but `readCompilerWatchTools` subscribed through its copy callback. OS selectors are intentionally
+not copied, so an event on a selected policy file could not invalidate tooling discovery. The existing
+helper already reads the selected [assembly policy path](https://learn.microsoft.com/en-us/windows/win32/api/winnt/ns-winnt-activation_context_assembly_detailed_information); no new selector engine is needed.
+
+The runtime reader now accepts the existing `BuildInputObserver` separately from `onFile`. Successful
+context inputs and failed-context repair observations feed the same tooling/watch owner, including
+uncopied OS files, missing candidates and directory membership. Copy selection, runtime identity,
+loader policy, deadlines and activation behavior remain unchanged. No registry watcher or global policy
+mutation is introduced.
+
+All **89** relevant pure runtime/watch/PE cases pass in 2.74s; five platform/live cases are deliberately
+skipped on the daily Mac. Restoring the previous runtime/watch implementation makes all three new
+selector regressions fail (`/private/tmp/apack-runtime-policy-mutation.log`). CLI types, focused
+correctness lint and diff checks pass. Inert Windows-path/metadata fixtures prove that OS selectors
+reach subscriptions while only executable bytes reach the copy callback.
+
+Real Windows acceptance uses exact base **`39352b2c7` plus the preserved source patch**, Windows Server
+2025 x64 / Node 23.11.1, matching package builds and two cores. The existing Node application-context
+case passes **22.610s**, one selected/executed test, 23 skipped, exit 0. Added assertions prove actual
+manifest/configuration/private-assembly/directory observations; existing ordinary-loader, copied-runtime,
+exact-DLL and refusal-before-initialization assertions remain. This is not a live installed publisher-policy
+mutation, a registry-notification guarantee or complete native/platform acceptance.
+
+Evidence: `/private/tmp/apack-runtime-selectors-39352b2c7.zip`, ten inspected entries with exact patch,
+command, source/platform, package log, test log, JSON report and exit code. VM overlay preserved in
+additional scoped stash **`b52b42dcd7013a1e5c36120149d7ef3eb1d808ec`**; prior stashes and the pre-existing
+launcher line-ending change are untouched. No compiler/test processes remained before deallocation.
+The existing hosted strict run is still pinned to `d0ab6dd6b`; this repair requires the later converged gate.

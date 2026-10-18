@@ -116,7 +116,16 @@ strict gate must exercise the independent producers and exact archive/app handof
 fork still fails, use its retained phase output; do not restart broad runs without a demonstrated repair.
 [Strict run `39172886664`](https://github.com/spankyed/AgentBuddy/actions/runs/39172886664) is in progress
 on exact source `d0ab6dd6b`. The run owns disposable two-core execution; no local compiler/native run or
-Windows VM work remains active. Await its authoritative result before another execution or acceptance claim.
+Windows VM work remains active. Await its authoritative result before another broad execution or acceptance claim.
+The pure helper-protocol expectation repair `39352b2c7` passes all 67 adjacent PE cases and CLI types;
+it is newer than the run's pinned source. The subsequent bounded B1/B2 repair separates runtime selector
+observations from copy callbacks, delivering selected OS policies and missing/failed-context probes to
+the existing tooling/watch owner. All 89 focused pure cases, mutation checks and CLI types/lint pass;
+the existing real Windows Node application-context case passes in 22.610s with added selector assertions.
+See [selector evidence](../evidence/settings-and-pack-contracts.md#runtime-selection-inputs-reach-compiler-watches--2026-10-18).
+Broader installed publisher-policy mutations and registry notifications are not proven by this check;
+retain the finite closure register and final platform/strict obligations. No new watcher framework,
+registry polling or profiling effort is authorized.
 A separate [Windows binder control](../evidence/build-input-snapshot-proof.md#windows-binder-ordinary-loader-control--2026-10-18)
 uses the OS-generated bound directory: ordinary/bound imports load, while removing the lookup table
 still fails in the ordinary loader. This changes neither admission nor the unresolved valid-input

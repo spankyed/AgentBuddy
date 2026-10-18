@@ -3,6 +3,7 @@ import { createRequire } from 'node:module';
 import path from 'node:path';
 import { createHash } from 'node:crypto';
 import type { PackageInputFile } from '@apackdev/host/build/package-inputs';
+import type { BuildInputObserver } from '@apackdev/host/build/pack-inputs';
 import { readPeActivationContext } from './compiler-pe-activation.ts';
 import { readPeSystemDirectory, readPeLoaderMetadata } from './compiler-pe-environment.ts';
 import { isPeSystemPath, pePath } from './compiler-pe-paths.ts';
@@ -20,11 +21,14 @@ interface CompilerRuntimeInputs {
   links: Array<{ source: string; target: string; text: string }>;
 }
 
-/** Node needs its executable; Electron also needs its distribution's native libraries and resources. */
+/** Node needs its executable; Electron also needs its distribution's native libraries and resources.
+ * onFile supplies copy bytes; observe also reports uncopied OS selectors and missing candidates.
+ */
 export function readCompilerRuntimeInputs(
   executable = process.execPath,
   electron = !!process.versions.electron,
   onFile?: (file: PackageInputFile, bytes: Buffer) => void,
+  observe?: BuildInputObserver,
 ): CompilerRuntimeInputs {
   executable = fs.realpathSync.native(executable);
   const root = path.dirname(executable);
@@ -80,7 +84,11 @@ export function readCompilerRuntimeInputs(
       const systemDirectory = readPeSystemDirectory();
       const { safeSearch, devOverride, knownDlls } = readPeLoaderMetadata(systemDirectory);
       const environment = { systemDirectory, windowsDirectory: path.dirname(systemDirectory) };
-      const context = readPeActivationContext(executable, { systemDirectory, application: executable, resource: 1 });
+      const context = readPeActivationContext(executable, { systemDirectory, application: executable, resource: 1,
+        observe: observe && { read: file => observe(file, 'file'), readEntries: file => observe(file, 'entries') } });
+      // Selection inputs include OS policy and missing candidates, independently of files copied below.
+      for (const input of context.inputs) observe?.(input.file,
+        input.kind === 'entries' ? 'entries' : input.kind === 'directory' ? 'directory' : 'file');
       const within = (file: string) => {
         const value = path.relative(pePath(root), pePath(file));
         return value === '' || (value !== '..' && !value.startsWith(`..${path.sep}`) && !path.isAbsolute(value));

@@ -64,7 +64,7 @@ function readCompilerWatchTools(root: string, observer?: BuildInputObserver) {
   };
   const tools = readPackageInputs([{ id: 'compiler', directory: compilerPackageDirectory(), contents: true }], { observe }).hash;
   observe(process.execPath, 'file');
-  const runtime = readCompilerRuntimeInputs(process.execPath, !!process.versions.electron, file => observe(file.source, 'file'));
+  const runtime = readCompilerRuntimeInputs(process.execPath, !!process.versions.electron, file => observe(file.source, 'file'), observe);
   for (const directory of runtime.directories) observe(directory, 'entries');
   for (const { source, target } of runtime.links) { observe(source, 'file'); observe(target, 'file'); }
   const override = readEsbuildOverride({ cwd: root });

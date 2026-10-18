@@ -77,6 +77,10 @@ The selected runtime executable is copied into that same owner and used for both
 workers. `compiler-runtime.ts` inventories runtime bytes, executable modes, links and directory
 membership; Electron includes its adjacent frameworks (or distribution directory outside macOS).
 Copied runtime bytes are verified before admission and included in compiler identity and reuse checks.
+Runtime selector observations feed the existing compiler watcher separately from copied bytes: selected
+Windows OS policy files and missing context candidates must remain subscribed without being copied.
+`compiler-runtime-pe.spec.ts` covers that boundary with inert metadata; the existing Windows application
+context integration case verifies actual selector observations and preserved native admission.
 Clone-capable runtime copies are still verified against the bytes read for identity. External linked
 runtime libraries and other-platform acceptance remain B1 work; the runtime version map alone does not
 close those requirements. A changed compiler/runtime or damaged copy is replaced.

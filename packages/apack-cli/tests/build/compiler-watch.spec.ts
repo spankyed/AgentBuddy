@@ -40,8 +40,8 @@ function fixture() {
   const override = path.join(physicalRoot, 'esbuild');
   vi.spyOn(installation, 'compilerPackageDirectory').mockReturnValue(compiler);
   const readRuntime = runtime.readCompilerRuntimeInputs;
-  vi.spyOn(runtime, 'readCompilerRuntimeInputs').mockImplementation((_executable, _electron, onFile) =>
-    readRuntime(executable, false, onFile));
+  vi.spyOn(runtime, 'readCompilerRuntimeInputs').mockImplementation((_executable, _electron, onFile, observe) =>
+    readRuntime(executable, false, onFile, observe));
   vi.stubEnv('ESBUILD_BINARY_PATH', path.relative(pack, override));
   return { root, pack, configure, compiler, entry, executable, override };
 }
@@ -69,6 +69,23 @@ it('retains tooling subscriptions when pack configuration is broken', () => {
   for (const file of [entry, executable, override]) expect(broken.paths.get(file)).toBe('file');
   fs.writeFileSync(executable, 'repaired runtime');
   expect(compilerWatchPaths(pack).signature).not.toBe(broken.signature);
+});
+
+it('refreshes tooling when a runtime policy changes outside its copied files', () => {
+  const { root, pack, executable } = fixture();
+  const policy = path.join(root, 'policy.manifest');
+  fs.writeFileSync(policy, 'first');
+  vi.mocked(runtime.readCompilerRuntimeInputs).mockImplementation((_executable, _electron, _onFile, observe) => {
+    observe?.(policy, 'file');
+    return { executable, directory: root, directories: [], links: [], hash: fs.readFileSync(policy, 'utf8') };
+  });
+  const tools = createCompilerWatchTools(pack);
+  const before = compilerWatchPaths(pack, tools);
+  expect(before.complete).toBe(true);
+  expect(before.paths.get(policy)).toBe('file');
+  fs.writeFileSync(policy, 'second');
+  tools.changed(policy, 'change');
+  expect(compilerWatchPaths(pack, tools).signature).not.toBe(before.signature);
 });
 
 it('keeps runtime probes distinct from the static fingerprint across refreshes', () => {

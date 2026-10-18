@@ -315,7 +315,12 @@ it.runIf(process.platform === 'win32').each([
       }
     }
     if (!electron && kind === 'application') {
-      const before = readCompilerRuntimeInputs(executable, false).hash;
+      const selectors = new Map<string, string>();
+      const before = readCompilerRuntimeInputs(executable, false, undefined, (file, kind) => selectors.set(file, kind)).hash;
+      expect(selectors.get(executable + '.manifest')).toBe('file');
+      expect(selectors.get(executable + '.config')).toBe('file');
+      expect(selectors.get(path.join(path.dirname(library), 'apack.fixture.value.manifest'))).toBe('file');
+      expect(selectors.get(runtime)).toBe('entries');
       const metadata = readPeLoaderMetadata(capturePeLibraryEnvironment(executable).systemDirectory);
       const policy = vi.spyOn(peEnvironment, 'readPeLoaderMetadata').mockReturnValue({ ...metadata, safeSearch: !metadata.safeSearch });
       try { expect(readCompilerRuntimeInputs(executable, false).hash).not.toBe(before); }
