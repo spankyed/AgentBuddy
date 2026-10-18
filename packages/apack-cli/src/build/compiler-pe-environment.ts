@@ -52,7 +52,10 @@ try {
   $known = $session.OpenSubKey('KnownDLLs')
   try {
     $dlls = @($known.GetValueNames() | ForEach-Object { $known.GetValue($_) } | Where-Object { $_ -is [string] -and $_ -match '\\.dll$' })
-    @{ libraries = $libraries; safeSearch = ($session.GetValue('SafeDllSearchMode', 1) -ne 0); knownDlls = $dlls } | ConvertTo-Json -Compress
+    $json = @{ libraries = $libraries; safeSearch = ($session.GetValue('SafeDllSearchMode', 1) -ne 0); knownDlls = $dlls } | ConvertTo-Json -Compress
+    $bytes = [System.Text.Encoding]::UTF8.GetBytes($json)
+    $output = [Console]::OpenStandardOutput()
+    $output.Write($bytes, 0, $bytes.Length)
   } finally { $known.Dispose() }
 } finally { $session.Dispose() }`;
   let metadata: { libraries: string[]; safeSearch: boolean; knownDlls: string[] };

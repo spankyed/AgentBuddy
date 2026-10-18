@@ -5,7 +5,7 @@ import { readPeLoaderMetadata } from '../../src/build/compiler-pe-environment.ts
 const query = vi.hoisted(() => vi.fn());
 vi.mock('node:child_process', () => ({ execFileSync: query }));
 
-const library = 'C:\\capture\\' + 'nested\\'.repeat(30) + 'value.dll';
+const library = 'C:\\capture\\' + 'nësted\\'.repeat(30) + 'value.dll';
 const metadata = { libraries: [library], safeSearch: true, knownDlls: ['kernel32.dll'] };
 beforeEach(() => {
   query.mockReset().mockReturnValue(JSON.stringify(metadata));
