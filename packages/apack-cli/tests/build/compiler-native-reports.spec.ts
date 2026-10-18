@@ -19,6 +19,11 @@ it('reuses only the declared source module and refuses changed captured bytes', 
     reports.write({ source: { root: sourceRoot, entries: [] }, copies: tree.observations(), modules: [module] });
     expect(reports.findModule(file)).toEqual(module);
     expect(reports.findModule(path.join(root, 'other/addon.node'))).toBeUndefined();
+    const alias = path.join(workspace, 'alias');
+    fs.symlinkSync(module.packageRoot, alias, 'junction');
+    const linked = { ...module, captured: path.join(alias, path.basename(module.captured)), packageRoot: alias };
+    reports.write({ source: { root: sourceRoot, entries: [] }, copies: tree.observations(), modules: [linked] });
+    expect(reports.findModule(file)).toEqual(linked);
     fs.chmodSync(module.captured, 0o644);
     fs.writeFileSync(module.captured, 'TAMPERED');
     expect(() => reports.findModule(file)).toThrow(/changed/i);
@@ -27,10 +32,27 @@ it('reuses only the declared source module and refuses changed captured bytes', 
   }
 });
 
+it('refuses a workspace alias whose physical target escapes the owned workspace', () => {
+  const root = fs.realpathSync.native(fs.mkdtempSync(path.join(os.tmpdir(), 'apack-native-report-')));
+  try {
+    const workspace = path.join(root, 'workspace');
+    fs.mkdirSync(workspace);
+    const outside = path.join(root, 'outside.node'), captured = path.join(workspace, 'copy.node');
+    fs.writeFileSync(outside, 'OUTSIDE');
+    fs.symlinkSync(outside, captured, 'file');
+    const reports = createCompilerNativeReports(workspace, workspace);
+    reports.write({ source: { root: workspace, entries: [] },
+      copies: { root: workspace, entries: [[JSON.stringify(['file', 'copy.node']), JSON.stringify('0'.repeat(64))]] },
+      modules: [{ source: path.join(workspace, 'source.node'), captured, packageRoot: workspace }] });
+    expect(() => reports.read()).toThrow('Cannot read compiler native inputs');
+  } finally { removeCompilerReadTree(root); }
+});
+
 it.each(['source-owner', 'capture-escape', 'missing-copies', 'unobserved-module'] as const)('refuses an invalid native report: %s', invalid => {
   const root = fs.realpathSync.native(fs.mkdtempSync(path.join(os.tmpdir(), 'apack-native-report-')));
   try {
     const reports = createCompilerNativeReports(root, root);
+    fs.writeFileSync(path.join(root, 'copy.node'), 'UNOBSERVED');
     reports.write({ source: { root: invalid === 'source-owner' ? path.dirname(root) : root, entries: [] },
       copies: invalid === 'missing-copies' ? undefined : { root, entries: [] },
       modules: [{ source: path.join(root, 'source.node'), captured: path.join(invalid === 'capture-escape' ? path.dirname(root) : root, 'copy.node'), packageRoot: root }] });

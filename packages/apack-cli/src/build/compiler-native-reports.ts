@@ -35,13 +35,16 @@ export function createCompilerNativeReports(sourceRoot: string, workspace: strin
           && absolute(module.captured) && owned(module.captured) && absolute(module.packageRoot) && owned(module.packageRoot))
         || (value.modules.length > 0 && !value.copies)) throw new Error('Invalid native input receipt');
       for (const module of value.modules) {
+        const captured = fs.realpathSync.native(module.captured);
+        if (!owned(captured) || !owned(fs.realpathSync.native(module.packageRoot))
+          || !owned(fs.realpathSync.native(value.copies!.root))) throw new Error('Native capture resolves outside its workspace');
         if (!value.copies!.entries.some(([query, result]) => {
           const [kind, file] = JSON.parse(query);
           if (kind !== 'file' || typeof file !== 'string') return false;
           const hash: unknown = JSON.parse(result);
           return typeof hash === 'string' && /^[a-f0-9]{64}$/.test(hash)
-            && relativeCompilerPath(module.captured, path.resolve(value.copies!.root, file)) === '';
-        })) throw new Error('Native module has no captured file observation');
+            && relativeCompilerPath(captured, fs.realpathSync.native(path.resolve(value.copies!.root, file))) === '';
+        })) throw new Error(`Native module "${module.captured}" (${captured}) has no captured file observation in "${value.copies!.root}"`);
       }
       return value;
     } catch (error) { throw new Error(`Cannot read compiler native inputs: ${file}`, { cause: error }); }
