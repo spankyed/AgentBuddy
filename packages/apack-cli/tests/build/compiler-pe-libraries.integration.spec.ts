@@ -402,7 +402,7 @@ it.runIf(process.platform === 'win32').each([
 
 // Ordinary Windows loader controls: these deliberately bypass compiler admission. A failed
 // control invalidates the fixture; it does not establish a production admission defect.
-it.runIf(process.platform === 'win32').each(['local', 'assembly', 'assembly-resource', 'image-assembly', 'image-assembly-api', 'image-assembly-transitive', 'image-assembly-localized', 'image-assembly-wildcard'] as const)(
+it.runIf(process.platform === 'win32').each(['local', 'assembly', 'assembly-resource', 'image-assembly', 'image-assembly-api', 'image-assembly-transitive', 'image-assembly-localized', 'image-assembly-wildcard', 'image-assembly-outside'] as const)(
   'identifies ordinary PE %s redirection while loading a native image', kind => {
     const root = fs.realpathSync.native(fs.mkdtempSync(path.join(os.tmpdir(), 'apack-pe-redirection-')));
     let completed = false;
@@ -468,10 +468,18 @@ int wmain(int argc, wchar_t **argv) {
       expect(observe()).toEqual({ value: 11, file: fs.realpathSync.native(library).toLowerCase() });
       const assemblyName = kind === 'assembly-resource' ? 'apack_value' : 'apack.fixture.value';
       const imageContext = kind.startsWith('image-assembly');
+      const outsideContext = kind === 'image-assembly-outside';
       const language = kind === 'image-assembly-localized' || kind === 'image-assembly-wildcard' ? ['en-US'] : [];
       const selected = path.join(imageContext ? path.dirname(entry) : runtime,
         ...language, ...(kind === 'local' ? [] : [assemblyName]), kind === 'image-assembly-api' ? 'psapi.dll' : 'apack_value.dll');
       buildLibrary(selected, 22);
+      if (outsideContext) {
+        const outside = path.join(root, 'outside-assembly');
+        fs.mkdirSync(outside);
+        const target = path.join(outside, path.basename(selected));
+        fs.renameSync(selected, target);
+        fs.symlinkSync(target, selected, 'file');
+      }
       // Merely placing a same-name DLL next to the executable must not change explicit loading.
       expect(observe()).toEqual({ value: 11, file: fs.realpathSync.native(library).toLowerCase() });
       let configured = executable;
@@ -528,13 +536,16 @@ int wmain(int argc, wchar_t **argv) {
         read: file => { reads.push(file); return view ? view.readDataBytes(file)
           : fs.statSync(file, { throwIfNoEntry: false })?.isFile() ? fs.readFileSync(file) : undefined; },
       });
-      if (imageContext) {
+      if (outsideContext) {
+        expect(() => check()).toThrow(fs.realpathSync.native(selected));
+        expect(reads).toContain(fs.realpathSync.native(selected));
+      } else if (imageContext) {
         expect(() => check()).not.toThrow();
         expect(reads).toContain(selected);
         expect(reads).toContain(entry + '.2.config');
       } else expect(() => check()).toThrow(fs.realpathSync.native(selected));
       expect(fs.existsSync(dllMarker)).toBe(false);
-      if (imageContext && kind !== 'image-assembly-api') {
+      if (imageContext && kind !== 'image-assembly-api' && !outsideContext) {
         const context = (image: string) => readPeActivationContext(image, {
           systemDirectory: environment.systemDirectory, application: configured, resource: 2,
         });
