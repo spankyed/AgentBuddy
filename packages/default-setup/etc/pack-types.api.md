@@ -1540,9 +1540,9 @@ declare const ClaudeNativePlanDialogSchema: z.ZodObject<{
             clearContext: boolean;
         }>, "many">;
     }, "strip", z.ZodTypeAny, {
+        plan: string;
         withheld: boolean;
         empty: boolean;
-        plan: string;
         initialChoice: string;
         choices: {
             value: string;
@@ -1552,9 +1552,9 @@ declare const ClaudeNativePlanDialogSchema: z.ZodObject<{
         }[];
         planFilePath?: string | undefined;
     }, {
+        plan: string;
         withheld: boolean;
         empty: boolean;
-        plan: string;
         initialChoice: string;
         choices: {
             value: string;
@@ -1564,9 +1564,9 @@ declare const ClaudeNativePlanDialogSchema: z.ZodObject<{
         }[];
         planFilePath?: string | undefined;
     }>, {
+        plan: string;
         withheld: boolean;
         empty: boolean;
-        plan: string;
         initialChoice: string;
         choices: {
             value: string;
@@ -1576,9 +1576,9 @@ declare const ClaudeNativePlanDialogSchema: z.ZodObject<{
         }[];
         planFilePath?: string | undefined;
     }, {
+        plan: string;
         withheld: boolean;
         empty: boolean;
-        plan: string;
         initialChoice: string;
         choices: {
             value: string;
@@ -1588,9 +1588,9 @@ declare const ClaudeNativePlanDialogSchema: z.ZodObject<{
         }[];
         planFilePath?: string | undefined;
     }>, {
+        plan: string;
         withheld: boolean;
         empty: boolean;
-        plan: string;
         initialChoice: string;
         choices: {
             value: string;
@@ -1600,9 +1600,9 @@ declare const ClaudeNativePlanDialogSchema: z.ZodObject<{
         }[];
         planFilePath?: string | undefined;
     }, {
+        plan: string;
         withheld: boolean;
         empty: boolean;
-        plan: string;
         initialChoice: string;
         choices: {
             value: string;
@@ -1622,9 +1622,9 @@ declare const ClaudeNativePlanDialogSchema: z.ZodObject<{
     requestId: string;
     toolName: "EnterPlanMode" | "ExitPlanMode";
     presentation: {
+        plan: string;
         withheld: boolean;
         empty: boolean;
-        plan: string;
         initialChoice: string;
         choices: {
             value: string;
@@ -1643,9 +1643,9 @@ declare const ClaudeNativePlanDialogSchema: z.ZodObject<{
     requestId: string;
     toolName: "EnterPlanMode" | "ExitPlanMode";
     presentation: {
+        plan: string;
         withheld: boolean;
         empty: boolean;
-        plan: string;
         initialChoice: string;
         choices: {
             value: string;
@@ -2852,7 +2852,11 @@ type ClaudeUiMountState = ({
     agentProblem?: string;
     agentInput?: {
         revision: number;
-        status: 'blocked' | 'command_done' | 'command_output' | 'confirmation' | 'deciding' | 'done' | 'error' | 'pending' | 'review';
+        status: 'blocked' | 'command_done' | 'command_output' | 'confirmation' | 'deciding' | 'done' | 'error' | 'panel' | 'panel_done' | 'pending' | 'review';
+        panel?: {
+            id: string;
+            commandName: string;
+        };
         output?: {
             messageId: string;
             commandName: string;
@@ -3135,6 +3139,13 @@ interface ClaudeUiTranscriptRowSource {
 }
 
 type ClaudeUiViewRequest = {
+    type: 'CLAUDE_UI_AGENT_PANEL';
+    threadId: string;
+    mountId: string;
+    revision: number;
+    panelId: string;
+    text?: string;
+} | {
     type: 'CLAUDE_UI_AGENT_COMMAND';
     threadId: string;
     mountId: string;
@@ -9014,6 +9025,10 @@ declare function createClaudeUiControls(initialized: Promise<Pick<ClaudeInitiali
         kind: "review";
         removed: number;
     } | {
+        id: string;
+        kind: "panel";
+        commandName: string;
+    } | {
         text: string;
         kind: "command_output";
         messageId: string;
@@ -9028,6 +9043,17 @@ declare function createClaudeUiControls(initialized: Promise<Pick<ClaudeInitiali
         kind: "confirmation";
         confirmLabel: string;
         commandName?: string | undefined;
+    }>;
+    agentPanel(options: {
+        client_id: string;
+        panel_id: string;
+    } & ({
+        operation: "close" | "read";
+    } | {
+        operation: "input";
+        text: string;
+    })): Promise<{
+        open: boolean;
     }>;
     answerAgentCommand(options: {
         client_id: string;
