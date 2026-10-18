@@ -5212,3 +5212,60 @@ private loader. The checkout fast-forwarded to `bdfd7f005` using a local bundle.
 launcher modification remains untouched. No owned Node process remained at terminal inspection;
 VM deallocation was requested after evidence export. No push, CI dispatch, security-setting change,
 production-data edit or daily-Mac captured-runtime execution occurred.
+
+
+## CommonJS native lookup observation checkpoint — 2026-10-18
+
+Source **`21389b608`** closes a demonstrated namespace omission in CommonJS loaded from the async
+loader. The original Node control returns value 42 and observes selected JavaScript but records zero
+missing direct or transitive package declarations. The fixed control records four file/namespace
+observations for each missing declaration, preserving value 42, `require:0,require:1`, and thread IDs
+`0,1`. Original and fixed fixtures are retained separately. No runtime copy or pack build is needed to
+reproduce that distinction.
+
+The startup read owner observes **`Module._findPath`**, the native CommonJS lookup called with actual
+search paths. This private Node dependency is explicit: async hooks omit createRequire, and public
+resolve contexts do not expose custom lookup paths. A scoped public sync-hook prototype works for
+ordinary calls, but one native lookup observer also covers standalone `require.resolve({ paths })`
+and modified `module.paths` without reconstructing that selection. The proxy forwards the original
+receiver, arguments and result; stop restores it if still owned. ESM keeps its existing public hooks.
+The same metadata probe reads the supplied CJS paths rather than inferring them from a fabricated
+parent. Node still resolves. No second resolution result cache or source projection is introduced.
+
+All **16** focused host models pass locally and on Windows, including custom absolute/relative search
+paths and modified module.paths. Review also reproduces a residual URI-filter error: a colon-spelled
+CommonJS name resolves successfully but adding a nearer candidate leaves freshness unchanged.
+CommonJS filesystem spelling is now separated from ESM URL grammar. The final model covers literal
+colons on POSIX and drive-relative spelling on Windows. Host/CLI types, focused lint and diff checks pass.
+The tiny actual-runtime controls pass on Windows x64 with **Node 23.11.1** and **Electron 37.2.4 /
+Node 22.17.1**, whose versions are read from the executed runtimes. The first direct PowerShell Electron
+invocation produced no observations; the awaited Node spawn with explicit pipes passes. The first
+shell result is not acceptance or evidence of a product defect.
+
+The real retained-Vite case passes in **100.161s**, one selected case, exit 0, under its unchanged 120s
+budget. It retains the prior ESM/preload checks and adds a CommonJS loader dependency with a transitive
+child: delivered missing-candidate probe, invalidation on nearer-child creation, restoration on removal,
+actual `NEARER_CJS` selection through programmatic registration in a replacement, and live Vue HMR.
+The full run precedes only the final colon/drive-relative grammar correction; the final 16-case models
+cover that branch. No whole build was repeated for that focused correction. No helper, freshness,
+worker-collection, test or aggregate deadline changed. Final committed-source acceptance remains open.
+
+VM base `bdfd7f005` plus the reviewed patch. Evidence under `C:\apack-setup`:
+`cjs-loader-original-4dada2d51` (retained original bootstrap control),
+`cjs-loader-fixed-node-4dada2d51`, `cjs-loader-fixed-electron-4dada2d51` (with awaited launch receipt
+and actual versions), `cjs-loader-audit-4dada2d51` (scoped-hook prototype), and
+**`runs\cjs-lookup-4dada2d51`** (real runtime). Final models:
+`cjs-lookup-models-final-4dada2d51.json`. Preserve scripts, raw observations, source hashes/patches,
+stdout/stderr and runtime versions. Package preparation ran once before the selected runtime case;
+no broad suite, copied runtime on the daily-use Mac, or previously accepted backend/watch lifecycle
+was repeated.
+
+Package import/export mapping targets remain the next unresolved namespace audit. Other named B1/B3
+platform/runtime requirements, converged B6 and whole-goal final strict `--all` remain required; this
+checkpoint is not universal Node resolution or security-isolation acceptance.
+
+Off-machine archive: `/private/tmp/apack-cjs-lookup-evidence-21389b608.zip` (83 files).
+VM overlay stash **`17169eb532fddf4771af821e7cf59dc5a714a3e3`** is preserved. The checkout
+fast-forwarded through a local bundle to `21389b608`, preserving the pre-existing launcher change.
+Terminal inspection found no owned Node/Electron processes. VM deallocation was requested after
+export; no push, CI dispatch, production data or security-setting change occurred.

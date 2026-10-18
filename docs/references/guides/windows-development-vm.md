@@ -354,6 +354,11 @@ does not pass acceptance. Other suites may require source-resolution conditions;
 current workflow step's conditions, not unrelated global environment. Do not leave `NODE_OPTIONS`
 pointing at a diagnostic preload for later tests.
 
+Launch Electron compiler probes through the existing Node process harness with explicit pipes and
+an awaited exit code. Shell success alone does not establish that the probe ran; retain its actual
+stdout/stderr, owned PID or launch receipt and runtime versions. See the
+[CommonJS control evidence](../../evidence/build-input-snapshot-proof.md#commonjs-native-lookup-observation-checkpoint-2026-10-18).
+
 Windows module inspection can help attribute DLL loading:
 
 ```powershell
