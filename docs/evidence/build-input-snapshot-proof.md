@@ -2960,3 +2960,24 @@ coverage and converged/final gates remain open. No native runtime batch was exec
 Shared-cache correction source `ef01842ed` is running as hosted run `39080870051` with only the extended
 launch-admission scenario selected. Platform/library/signature recording passed; test acceptance is
 pending. Follow this existing run rather than dispatching a replacement.
+
+### Shared-cache scenario timeout and exercised signing profile (2026-10-17)
+
+Run `39080870051` is terminal failure on `ef01842ed`: the scenario reaches normal build output at
+23:59:04, then expires its 60-second case budget at 23:59:15. No guard assertion failure is reported;
+the missing phase markers do not establish whether the baseline or subsequent duplicate compiler
+capture was still active. Log: `/private/tmp/apack-hosted-cache-39080870051.log`.
+
+Remove the extra installation capture by routing frontend refusal through the same builder's
+`serveFrontend`. Give the fixture a real frontend entry so it reaches the same prelaunch gate.
+Keep the 60-second budget and every constructor/refusal/incumbent assertion; add three phase timings
+to distinguish baseline cost from refusals if it fails again. CLI types, lint and diff checks pass;
+the revised real scenario still requires hosted execution. No product guard or deadline changes here.
+
+The runner's actual Node 23.11.1 ARM64 binary has Developer ID signature `HX7739G8FX`, runtime flag
+`0x10000`, and entitlements allowing dyld variables and disabling library validation. Its three listed
+linked libraries are normal OS images. Thus earlier acceptance on this hosted Node exercises that
+hardened profile. The repo's app entitlements omit those two exceptions; do not claim equivalent
+acceptance of the signed app profile from the Node result. No signing configuration was changed.
+The diagnostic adopts Apple's current `codesign --display --entitlements - --xml` syntax after the run
+reported deprecation of the colon prefix; see [Apple's entitlement inspection example](https://developer.apple.com/documentation/technotes/tn3125-inside-code-signing-provisioning-profiles).

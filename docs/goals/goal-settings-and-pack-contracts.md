@@ -123,8 +123,13 @@ path. The existing OS-library baseline/refusal scenario covers both build and fr
 and incumbent preservation. All 48 parser/environment checks, CLI types, lint and workflow syntax pass;
 its extended hosted scenario is still pending. CI now records Node's linked images and signing flags
 for the actual runtime; this does not certify another hardened profile or close ELF/PE/final gates.
-Shared-cache source `ef01842ed` is running as hosted macOS run `39080870051`, selecting only the
-extended launch-admission scenario. Platform/signature recording passed; follow this run for acceptance.
+Shared-cache source `ef01842ed`, hosted macOS run `39080870051`, selected only the extended
+launch-admission scenario. That run is terminal failure at its 60-second case budget after
+normal build output; no guard assertion failed, and the precise timed-out phase was not recorded.
+The revised scenario reuses the builder's compiler for frontend refusal, retains 60 seconds and all
+assertions, and records baseline/refusal timings. It still requires hosted acceptance. Node signing
+diagnostics establish the exercised hardened Node profile with dyld/library-validation exceptions;
+the app's stricter signing profile remains unverified. See [timeout and profile evidence](../evidence/build-input-snapshot-proof.md#shared-cache-scenario-timeout-and-exercised-signing-profile-2026-10-17).
 Source `e6ce60a78` awaits each detected watch build directly, retaining missing-event bounds and all
 behavior assertions. Its isolated hosted run `39079492068` passes in 98.76 seconds, including refusal,
 repair, incumbent preservation and retirement. Restore the original 120-second scenario budget; the

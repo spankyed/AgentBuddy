@@ -510,39 +510,42 @@ it.runIf(process.platform === 'darwin')('admits OS libraries and refuses outside
   const previousCache = process.env.DYLD_SHARED_CACHE_DIR;
   const marker = path.join(fixture.root, 'inserted');
   const outside = path.join(fixture.root, 'insert/libinit.dylib');
-  let compiler: CompilerInstallation | undefined;
+  const started = performance.now();
+  const checkpoint = (phase: string) => console.info(`Native launch admission: ${phase} (${Math.round(performance.now() - started)}ms)`);
   try {
     fixture.buildLibrary(outside, `#include <stdio.h>
 __attribute__((constructor)) static void initialize(void) {
   FILE *marker = fopen(${JSON.stringify(marker)}, "w"); if (marker) fclose(marker);
 }`, outside);
     packFixture({ at: fixture.pack, nodeModules: path.join(REPO_ROOT, 'node_modules'), manifest: { features: {} },
-      files: { 'tsconfig.json': JSON.stringify({ compilerOptions: { module: 'esnext', moduleResolution: 'bundler', skipLibCheck: true } }) } });
+      files: { 'src/pack-entry-fe.ts': 'export const plugins = [];',
+        'tsconfig.json': JSON.stringify({ compilerOptions: { module: 'esnext', moduleResolution: 'bundler', skipLibCheck: true } }) } });
     process.env.DYLD_INSERT_LIBRARIES = '/usr/lib/libSystem.B.dylib';
     await builder.build({ args: ['--skip-fe'] });
+    checkpoint('OS baseline built');
     const output = path.join(fixture.pack, 'dist');
     const revision = readPackBuild(output).revision;
-    compiler = await captureCompilerInstallation(compilerPackageDirectory(), { cwd: fixture.pack });
     for (const library of [outside, fixture.library]) {
       process.env.DYLD_INSERT_LIBRARIES = library;
       await expect(builder.build({ args: ['--skip-fe'] })).rejects.toThrow('DYLD_INSERT_LIBRARIES');
-      await expect(startPackFrontend(fixture.pack, compiler, new AbortController().signal)).rejects.toThrow('DYLD_INSERT_LIBRARIES');
+      await expect(builder.serveFrontend(() => {})).rejects.toThrow('DYLD_INSERT_LIBRARIES');
       expect(fs.existsSync(marker)).toBe(false);
       expect(readPackBuild(output).revision).toBe(revision);
     }
+    checkpoint('outside insertion refused');
     process.env.DYLD_INSERT_LIBRARIES = '/usr/lib/libSystem.B.dylib';
     process.env.DYLD_SHARED_CACHE_DIR = fixture.root;
     await expect(builder.build({ args: ['--skip-fe'] })).rejects.toThrow('DYLD_SHARED_CACHE_DIR');
-    await expect(startPackFrontend(fixture.pack, compiler, new AbortController().signal)).rejects.toThrow('DYLD_SHARED_CACHE_DIR');
+    await expect(builder.serveFrontend(() => {})).rejects.toThrow('DYLD_SHARED_CACHE_DIR');
     expect(fs.existsSync(marker)).toBe(false);
     expect(readPackBuild(output).revision).toBe(revision);
+    checkpoint('outside cache refused');
   } finally {
     if (previous === undefined) delete process.env.DYLD_INSERT_LIBRARIES;
     else process.env.DYLD_INSERT_LIBRARIES = previous;
     if (previousCache === undefined) delete process.env.DYLD_SHARED_CACHE_DIR;
     else process.env.DYLD_SHARED_CACHE_DIR = previousCache;
     await builder.close();
-    await compiler?.dispose();
     fs.rmSync(fixture.root, { recursive: true, force: true });
   }
 });

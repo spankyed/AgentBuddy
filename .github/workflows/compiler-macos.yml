@@ -41,7 +41,7 @@ jobs:
           clang --version
           compiler_node=$(command -v node)
           otool -L "$compiler_node"
-          codesign --display --verbose=2 --entitlements :- "$compiler_node"
+          codesign --display --verbose=2 --entitlements - --xml "$compiler_node"
       - name: Install dependencies
         env:
           GITHUB_TOKEN: ${{ github.token }}
