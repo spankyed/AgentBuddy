@@ -3711,3 +3711,15 @@ constructors. Establish a small ordinary-loader/shared-launcher constructor cont
 before changing this path. Account for Electron's framework distribution and the selected executable's
 `@executable_path`; do not transplant a dirname-only Node boundary onto Electron or claim a reproduced
 OS defect from this source audit alone. The stricter signing-profile obligation remains separate.
+
+### macOS runtime constructor prototype (2026-10-17)
+
+Source `52a8bb16b` adds the bounded control identified by the launcher audit. It compiles a minimal
+executable and an absolute outside dylib in one private temporary directory. A library constructor
+writes a marker before main; ordinary execution must return 11 and initialize it. The same executable
+then passes through the real `spawnCompilerWorker` boundary. The prototype currently expects the
+observed source behavior (no macOS preflight), and is not a desired-behavior regression or closure.
+Its next step is actual hosted execution, then replacing that expectation with pre-initialization
+refusal through the existing owner. No extra Node copy, installed-app modification, environment
+override or signing permission is involved. It does not establish Node/Electron ABI or signing-profile
+acceptance. CLI types, focused correctness lint and diff checks pass; no local native code ran.
