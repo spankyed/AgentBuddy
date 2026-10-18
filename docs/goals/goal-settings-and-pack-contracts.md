@@ -171,10 +171,17 @@ the matching Windows runtime case passes in 47.23s, including bare require/impor
 invalidation/restoration, replacement selection and live Vue. Cold attempts before the async repair
 blocked the test worker; the one startup scenario now has a measured 120s budget, with helper/freshness
 bounds unchanged. See the [namespace and capture checkpoint](../evidence/build-input-snapshot-proof.md#startup-namespace-and-responsive-capture-checkpoint-2026-10-18).
-Next audit the asynchronous loader's own resolution graph and package import/export mappings against
-existing observations before adding machinery. They are not proven by this checkpoint. Broader
-cold/aggregate budgets, remaining native/platform cases, B6 and final strict acceptance remain open.
-Preserve accepted paths without repeating them for reassurance.
+Sources `348862f30` and `bdfd7f005` close the reproduced async-loader ESM lookup omission through
+the same startup read owner. Explicit loader flags get an observer before their graph loads;
+programmatic registration waits for the user's first call. Plain launches do not gain a loader thread.
+The real Windows retained-Vite case passes in 102.37s, and the exact-order two-build backend case passes
+in 170.88s. Final focused controls prove lazy registration, retirement of cached registration references,
+and refusal without a startup owner. See the [async-loader checkpoint](../evidence/build-input-snapshot-proof.md#async-loader-namespace-observation-checkpoint-2026-10-18).
+Next audit loader-local CommonJS/createRequire lookups and package import/export mappings against
+existing observations before adding machinery. These paths remain unverified; ESM acceptance is not
+universal resolution coverage. Broader cold/aggregate budgets, remaining native/platform cases, B6
+and final committed-source strict acceptance remain open. Preserve accepted paths without repeating
+them for reassurance.
 Transitive/localized/outside-image probing and publisher/system-policy
 changes remain required beyond the recognized root-dependency prefixes closed here. Then close
 Electron application-context/`.local` and remaining runtime acceptance. Preserve helper

@@ -5141,3 +5141,74 @@ VM overlay stash `291cb3c7d14b9a8bc56157aade7f4905a42a6f91` remains preserved, i
 helper. The VM checkout fast-forwarded to `1e023b29f` through a local bundle; its pre-existing launcher
 modification was left untouched. No pushes or CI dispatches were needed. VM deallocation was requested
 after terminal process inspection and evidence export.
+
+
+## Async-loader namespace observation checkpoint — 2026-10-18
+
+Sources **`348862f30`** and **`bdfd7f005`** address a reproduced omission in the async loader's own
+ESM dependency lookup. A tiny Windows Node 23.11.1 control uses the real host startup/file view:
+selected JavaScript is observed, but the absent nearer package declaration has zero observations.
+The same request with the private async observer has four file/namespace observations. Both flag-based
+and programmatic registration preserve value 42, exactly `require:0,require:1`, and thread IDs `0,1`.
+The existing synchronous hook cannot run in Node 23's internal loader worker; this control does not
+remove that necessary boundary or substitute a new resolver.
+
+The private `compiler-startup-loader.mjs` calls the same startup resolver observer. Its callback and
+`module.register` interception belong to `beginCompilerStartupReads` and are released with that owner.
+CLI flags and explicit worker arguments share one argument builder. Only an existing loader flag gets
+the private observer flag; ordinary launches remain loader-free. Programmatic interception waits for
+the user's first registration, preserves its arguments/data, installs observation once, and restores
+the original API on stop. Cached references also check ownership before enrollment. The loader refuses
+initialization without an active input owner; after legitimate retirement its callback becomes inactive.
+No pack module activation, second catalog, module-result cache or general request framework is added.
+
+Real Windows acceptance, one expensive owner, two-core budget, one worker:
+
+- `tracks retained Vite ESM preload and loader inputs without freezing Vue sources`: **102.370s**, exit 0,
+  one selected case. It observes the loader dependency's bytes and missing nearer declaration, delivers
+  rename probes, invalidates on creation, restores freshness on removal, then starts a replacement
+  through `module.register()` that actually selects `NEARER_LOADER`. Existing bare preloads, CommonJS
+  namespace checks, source paths, replacement selection and live Vue assertions remain.
+- `compiles content through the captured worker and invalidates changed loader inputs`: **170.884s**,
+  exit 0, one selected case. Exact `require:0,require:1,loader:1,import:0` ordering and original source
+  identities pass. A second real build consumes changed loader data and changes the output revision.
+  The fixture uses file URLs for ESM flags on Windows and owns its setup directly rather than in a
+  separate single-test `beforeEach`. Its explicit 180s budget covers both real builds.
+- Final focused checks: all **12** host resolution/registration models pass locally and on Windows;
+  **three** pure CLI metadata/options/missing-owner cases pass; host/CLI and scripts types, focused lint,
+  syntax and diff checks pass. All 53 timeout/subprocess checks passed, and the timeout guard's 42 cases
+  pass after the final named allowance. Daily-use Mac execution stayed limited to inert/pure checks.
+
+Budget evidence is retained rather than attributed to a functional regression: the backend setup twice
+reaches compilation but exceeds 60s before assertions. One attempted CLI diagnostic timeout override
+was ignored by the project's configuration and repeated that cutoff; it is not a new root cause.
+A single 120s test then passes the ordering/source assertions but times out during the second build.
+The final 180s two-build case passes. Frontend retains its existing 120s allowance; helper, freshness,
+worker-collection and other production/test deadlines are unchanged. Underlying Windows filesystem
+latency and converged aggregate budgets are not explained by these selected passes.
+
+The full runtime runs precede the final cached-reference ownership guard and missing-owner assertion.
+The final 12-case model run and four tiny actual-Node controls exercise the guarded source; the pure
+CLI refusal case fires without an owner. No additional full build was repeated for those local guards.
+This distinction preserves the evidence boundary; final committed-source acceptance remains required.
+
+VM base `1e023b29f` plus the reviewed overlay. Runs under `C:\apack-setup\runs`:
+`async-loader-2720338d1` (frontend accepted), `async-loader-backend-2720338d1` (setup cutoff),
+`async-loader-backend-diagnostic-2720338d1` (ignored CLI override),
+`async-loader-backend-final-2720338d1` (120s cutoff after first assertions), and
+**`async-loader-backend-accepted-2720338d1`** (both builds accepted). Logs, patches, source hashes,
+private helper and JSON/exit status are preserved. The tiny controls retain their source, bundled
+bootstrap, raw observations, ordering and stdout/stderr in `C:\apack-setup\loader-audit-2720338d1`.
+Final model report: `C:\apack-setup\async-loader-models-final-2720338d1.json`.
+
+Unverified startup namespace cases remain loader-local CommonJS/createRequire and package
+import/export mappings; no unsupported boundary is inferred from them. Other B1/B3 platform/runtime
+requirements, B6 and the complete goal's final strict `--all` are still open. Preserve the accepted
+frontend and backend paths rather than restarting them for reassurance.
+
+Off-machine archive: `/private/tmp/apack-async-loader-evidence-bdfd7f005.zip` (66 files).
+VM overlay stash **`6802f953c395f8fd13892e0aa14ffb33d7aabce0`** remains preserved, including the new
+private loader. The checkout fast-forwarded to `bdfd7f005` using a local bundle. Its pre-existing
+launcher modification remains untouched. No owned Node process remained at terminal inspection;
+VM deallocation was requested after evidence export. No push, CI dispatch, security-setting change,
+production-data edit or daily-Mac captured-runtime execution occurred.

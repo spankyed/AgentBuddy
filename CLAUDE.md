@@ -282,6 +282,10 @@ silently turn validation into a tooling or performance project. Do not change de
 input scope merely to obtain a pass. A focused pass does not establish a required broad gate; run the
 required final gate once fixes converge, and retain any unresolved acceptance explicitly.
 
+With Vitest projects, verify the effective deadline: project test/hook settings can override CLI
+flags. Keep diagnostic overrides scoped to the selected case and preserve their exact source. See the
+[async-loader budget evidence](docs/evidence/build-input-snapshot-proof.md#async-loader-namespace-observation-checkpoint-2026-10-18).
+
 Keep direct pool output live and integration fail-fast. Collect additional failures only in a deliberate
 diagnostic run; see [the early-failure checkpoint](docs/evidence/settings-and-pack-contracts.md#bounded-compiler-cost-and-early-failure-checkpoint-2026-10-17).
 
