@@ -1329,6 +1329,13 @@ declare const ClaudeModelCatalogSchema: z.ZodObject<{
     }, z.ZodTypeAny, "passthrough">>, "many">;
 }, z.ZodTypeAny, "passthrough">>;
 
+interface ClaudeNativeAgentCommandConfirmation {
+    id: string;
+    title: string;
+    confirmLabel: string;
+    commandName?: string;
+}
+
 interface ClaudeNativeAgentInputReview {
     text: string;
     removed: number;
@@ -2845,8 +2852,12 @@ type ClaudeUiMountState = ({
     agentProblem?: string;
     agentInput?: {
         revision: number;
-        status: 'done' | 'error' | 'pending' | 'review';
-        receipt?: ClaudeNativeTaskInputReceipt;
+        status: 'blocked' | 'command_done' | 'confirmation' | 'deciding' | 'done' | 'error' | 'pending' | 'review';
+        receipt?: {
+            messageId: string;
+        };
+        command?: ClaudeNativeAgentCommandConfirmation;
+        decision?: 'cancel' | 'confirm';
         review?: ClaudeNativeAgentInputReview;
         problem?: string;
     };
@@ -3118,6 +3129,13 @@ interface ClaudeUiTranscriptRowSource {
 }
 
 type ClaudeUiViewRequest = {
+    type: 'CLAUDE_UI_AGENT_COMMAND';
+    threadId: string;
+    mountId: string;
+    revision: number;
+    commandId: string;
+    decision: 'cancel' | 'confirm';
+} | {
     type: 'CLAUDE_UI_AGENT_INPUT';
     threadId: string;
     mountId: string;
@@ -8982,15 +9000,29 @@ declare function createClaudeUiControls(initialized: Promise<Pick<ClaudeInitiali
         client_id: string;
         text: string;
     }): Promise<{
-        input: {
-            messageId: string;
-            mode: "queued" | "resumed";
-        };
+        kind: "input";
+        messageId: string;
+        previousStatus: string;
     } | {
-        review: {
-            text: string;
-            removed: number;
-        };
+        text: string;
+        kind: "review";
+        removed: number;
+    } | {
+        message: string;
+        kind: "blocked";
+    } | {
+        id: string;
+        title: string;
+        kind: "confirmation";
+        confirmLabel: string;
+        commandName?: string | undefined;
+    }>;
+    answerAgentCommand(options: {
+        client_id: string;
+        command_id: string;
+        decision: "cancel" | "confirm";
+    }): Promise<{
+        answered: true;
     }>;
     clientEvent(options: {
         client_id: string;
