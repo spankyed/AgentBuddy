@@ -90,7 +90,7 @@ jobs:
           const require = createRequire(import.meta.url);
           const original = require('electron');
           const app = path.join(process.env.RUNNER_TEMP, 'apack-signed-runtime', 'Electron.app');
-          fs.cpSync(path.resolve(original, '../../..'), app, {recursive:true});
+          fs.cpSync(path.resolve(original, '../../..'), app, {recursive:true,verbatimSymlinks:true});
           const keychain = process.env.APACK_TEST_SIGNING_KEYCHAIN;
           const identities = execFileSync('security', ['find-identity', '-v', '-p', 'codesigning', keychain], {encoding:'utf8'});
           const matches = [...identities.matchAll(/\b([A-F0-9]{40}) "Developer ID Application:[^"\n]+"/g)];
