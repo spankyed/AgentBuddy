@@ -120,13 +120,17 @@ outside library before initialization, then executes captured value-22 code once
 package-contained. A loaded-System32/private-`psapi.dll` collision also preserves exact selection
 without helper-side initialization. See the [DLL checkpoint](../evidence/build-input-snapshot-proof.md#windows-dll-activation-context-checkpoint-2026-10-18)
 and [earlier four-point review](../evidence/build-input-snapshot-proof.md#windows-default-application-context-admission-checkpoint-2026-10-18).
-Next audit helper descendant ownership against the existing Windows owners, then close Electron,
-module-specific configuration/policy and remaining runtime/watch acceptance. Do not reschedule the
+The [helper/launcher audit](../evidence/build-input-snapshot-proof.md#windows-helper-and-launcher-checkpoint-2026-10-18)
+observes both the live metadata helper and its actual C# compiler in a Windows job; this does not prove
+timeout or parent-loss cleanup of that compiler. Source `8e93dc4f4` repairs a missing runtime-directory
+input in the existing launcher proof; all six native lifetime scenarios pass. No speculative job
+bootstrap was added. Next close module-specific configuration/policy, Electron and remaining
+runtime/watch acceptance, retaining the helper cleanup proof obligation. Do not reschedule the
 accepted basic Node/DLL controls. The unaccepted module-configuration draft is stashed; it is not an
 exclusion. Configured Node `.local` public-build acceptance remains `9d25152aa`; the separate full-CLI
 SxS timeout is preserved and not a passing gate. All other closure-register and final-gate requirements
-remain open. The VM is at `8c7c960ae`, its validated overlay is stashed, evidence is saved off-machine,
-and Azure confirms `VM deallocated`; no execution owner remains.
+remain open. The VM is at `44db25ef2` with the validated launcher-proof overlay; earlier overlays remain
+stashed. Evidence is saved off-machine; Azure confirms `VM deallocated`, with no execution owner remaining.
 
 | Area | Current source and acceptance | Remaining obligation |
 |---|---|---|

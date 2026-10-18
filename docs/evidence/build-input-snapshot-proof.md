@@ -4565,3 +4565,44 @@ The validated overlay is stashed on the VM as
 `Validated DLL activation-context overlay on e880d9507`; its checkout is fast-forwarded to
 `8c7c960ae`. The pre-existing launcher change and other sessions' saved work are untouched.
 No Node/MSVC compiler process remains; Azure confirms `VM deallocated`.
+
+## Windows helper and launcher checkpoint (2026-10-18)
+
+Source: `44db25ef2` plus the launcher-fixture repair committed as `8e93dc4f4`.
+The matching fixture blob on both machines is `feac26c70f1aa44d5c1f86111903059226ab95a0`.
+One execution owner, two-core budget, Windows Server 2025 x64, Node 23.11.1 / libuv 1.50.0.
+
+The existing native launcher proof failed before startup because its loosely typed CJS compiler
+fixture omitted `runtimeDirectory`, now required by production runtime admission. Supplying the actual
+Node installation directory repairs the fixture without bypassing admission. The unchanged 30-second
+proof then passes all six scenarios: exit 0, exit 7, cancellation, previous/current replacement and
+parent loss. Each asserts the compiler and its descendant have stopped. No deadline changed.
+
+A separate read-only observer captured the production metadata helper and its actual `csc.exe`
+child while both process handles remained live. `IsProcessInJob(NULL)` returned true for both; the
+metadata owner exited 0 and selected the expected DLL-local private assembly. This disproves the
+assumption that the observed compiler is necessarily outside every job. It does **not** establish
+which job owns it, its limits, or cleanup after helper timeout/parent loss. No orphan was demonstrated,
+and no speculative Reflection.Emit/bootstrap owner was added. Those cleanup cases remain unproven.
+
+The requested four-point checkpoint review distinguishes existing evidence from remaining work:
+
+| Question | Current evidence | Still unproven |
+|---|---|---|
+| Same DLL as the real compiler? | `8c7c960ae` compares exact OS-reported paths in real Node application/DLL contexts; the ordinary loader and loaded-System32/private-name control agree. | Electron parity and other helper/target loaded-module combinations. |
+| Cache invalidation for selecting inputs? | Context inputs flow through the existing input observer; application-context controls cover changed assembly manifests, absent configuration becoming present, changed probing selection, and selected DLL removal/restoration. | DLL-specific configuration/policy, broader publisher/culture policy and newly appearing higher-priority watch candidates. The callback being present is not runtime proof of every case. |
+| Complete copied runtime? | The runtime inventory copies selecting application manifests/configuration, private assembly data and selected DLLs; copied ordinary probes preserve exact value/path selection. Real Node startup runs from a fresh owned workspace. | Electron and broader runtime dependency closure; a passing application-context copy does not prove every DLL-specific policy file is retained. |
+| Allowed success and refusal before initialization? | Real Node controls first establish ordinary loading, then protected refusal before DLL/NAPI markers; package-contained repair succeeds with value 22 and both markers. | Equivalent Electron/addon combinations and the separately required platform controls. |
+
+`node --check`, focused oxlint and `git diff --check` pass. An initial direct ESLint invocation had no
+root configuration; the repository uses oxlint for this file, which passes. The native launcher proof
+is the affected executable check; no product source or TypeScript contract changed. The chain dry plan
+is retained separately; it executes no validation and is not a strict-gate pass. Broader native and final
+committed-source strict acceptance remain outstanding.
+
+VM logs: `C:\apack-setup\runs\helper-ownership-44db25ef2` (`job-baseline.log`, `job-fixed.log`,
+`observation.json`, owner stdout/stderr and the diagnostic owner module). Evidence is saved off-machine
+in `/private/tmp/apack-helper-ownership-44db25ef2.zip`; the observer script is preserved at
+`/private/tmp/apack-helper-ownership-observe.ps1`. No Node/MSVC compiler remained at the final process
+inspection. The VM retains its existing launcher change, earlier stashes and the validated proof overlay;
+none was reset or deleted.
