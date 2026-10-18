@@ -10,7 +10,9 @@ export function physicalWatchPath(file: string, cache = new Map<string, string>(
   const query = /^\\\\\?\\[a-z]:\\$/i.test(file) ? file.slice(4) : file;
   try { resolved = fs.realpathSync.native(query); }
   catch (error) {
-    if (!['ENOENT', 'ENOTDIR'].includes((error as NodeJS.ErrnoException).code ?? '')) throw error;
+    if (!['ENOENT', 'ENOTDIR'].includes((error as NodeJS.ErrnoException).code ?? '')) {
+      throw new Error(`Cannot resolve compiler input path ${JSON.stringify(file)} using ${JSON.stringify(query)}`, { cause: error });
+    }
     const parent = path.dirname(file);
     if (parent === file) throw error;
     let link: fs.Stats | undefined;

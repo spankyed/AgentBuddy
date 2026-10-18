@@ -18,6 +18,11 @@ it('preserves non-root realpath errors instead of treating them as missing input
   const native = vi.spyOn(fs.realpathSync, 'native').mockImplementation(() => {
     throw Object.assign(new Error('non-root failure'), { code: 'EISDIR' });
   });
-  try { expect(() => physicalWatchPath(path.join(process.cwd(), 'value'))).toThrow('non-root failure'); }
+  try {
+    const file = path.join(process.cwd(), 'value');
+    expect(() => physicalWatchPath(file)).toThrow(`Cannot resolve compiler input path ${JSON.stringify(file)}`);
+    try { physicalWatchPath(file); }
+    catch (error) { expect((error as Error).cause).toMatchObject({ message: 'non-root failure', code: 'EISDIR' }); }
+  }
   finally { native.mockRestore(); }
 });
