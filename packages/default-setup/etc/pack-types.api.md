@@ -3105,6 +3105,7 @@ interface ClaudeUiTextStyle {
 
 type ClaudeUiTranscriptFrame = ClaudeUiTranscriptRow & {
     displayText: string;
+    outputRewritten?: boolean;
     body: {
         status: 'error' | 'rendering';
     } | {
@@ -3122,6 +3123,13 @@ type ClaudeUiTranscriptRow = ClaudeUiTranscriptRowSource & ({
     isFirstOfReply: boolean;
     isSummary: true;
     blockIndex: number;
+} | {
+    component: 'ToolResult';
+    blockIndex: number;
+    assistantUuid: string;
+    resultUuid: string;
+    tool: string;
+    isErrored: boolean;
 } | {
     component: 'CommandOutput';
     isErrored: boolean;
@@ -3200,7 +3208,7 @@ type ClaudeUiViewRequest = {
     nativeView?: ClaudeNativeAgentUiTarget;
     messageIds?: string[];
     userExpansion?: Record<string, boolean>;
-    thinkingExpansion?: Record<string, number[]>;
+    blockExpansion?: Record<string, number[]>;
 } | {
     type: 'CLAUDE_UI_UNMOUNT';
     threadId: string;
@@ -10444,6 +10452,7 @@ declare const renderResult: z.ZodEffects<z.ZodObject<{
     props: z.ZodRecord<z.ZodString, z.ZodUnknown>;
     rewritten: z.ZodBoolean;
     hooked: z.ZodBoolean;
+    output_rewritten: z.ZodOptional<z.ZodBoolean>;
     drawn_by: z.ZodOptional<z.ZodArray<z.ZodString, "many">>;
     client_modules: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodString>>;
 }, "passthrough", z.ZodTypeAny, z.objectOutputType<{
@@ -10451,6 +10460,7 @@ declare const renderResult: z.ZodEffects<z.ZodObject<{
     props: z.ZodRecord<z.ZodString, z.ZodUnknown>;
     rewritten: z.ZodBoolean;
     hooked: z.ZodBoolean;
+    output_rewritten: z.ZodOptional<z.ZodBoolean>;
     drawn_by: z.ZodOptional<z.ZodArray<z.ZodString, "many">>;
     client_modules: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodString>>;
 }, z.ZodTypeAny, "passthrough">, z.objectInputType<{
@@ -10458,6 +10468,7 @@ declare const renderResult: z.ZodEffects<z.ZodObject<{
     props: z.ZodRecord<z.ZodString, z.ZodUnknown>;
     rewritten: z.ZodBoolean;
     hooked: z.ZodBoolean;
+    output_rewritten: z.ZodOptional<z.ZodBoolean>;
     drawn_by: z.ZodOptional<z.ZodArray<z.ZodString, "many">>;
     client_modules: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodString>>;
 }, z.ZodTypeAny, "passthrough">>, z.objectOutputType<{
@@ -10465,6 +10476,7 @@ declare const renderResult: z.ZodEffects<z.ZodObject<{
     props: z.ZodRecord<z.ZodString, z.ZodUnknown>;
     rewritten: z.ZodBoolean;
     hooked: z.ZodBoolean;
+    output_rewritten: z.ZodOptional<z.ZodBoolean>;
     drawn_by: z.ZodOptional<z.ZodArray<z.ZodString, "many">>;
     client_modules: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodString>>;
 }, z.ZodTypeAny, "passthrough">, z.objectInputType<{
@@ -10472,6 +10484,7 @@ declare const renderResult: z.ZodEffects<z.ZodObject<{
     props: z.ZodRecord<z.ZodString, z.ZodUnknown>;
     rewritten: z.ZodBoolean;
     hooked: z.ZodBoolean;
+    output_rewritten: z.ZodOptional<z.ZodBoolean>;
     drawn_by: z.ZodOptional<z.ZodArray<z.ZodString, "many">>;
     client_modules: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodString>>;
 }, z.ZodTypeAny, "passthrough">>;
