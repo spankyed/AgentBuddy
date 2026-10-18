@@ -205,6 +205,61 @@ function copyPeRuntimeFixture(executable: string, destination: string, electron 
   return copied;
 }
 
+it.runIf(process.platform === 'win32')('preserves Windows system assembly selection and manifest freshness in copied runtimes', () => {
+  const root = fs.realpathSync.native(fs.mkdtempSync(path.join(os.tmpdir(), 'apack-system-assembly-')));
+  let completed = false;
+  try {
+    const executable = path.join(root, 'probe.exe'), source = path.join(root, 'probe.c');
+    fs.writeFileSync(source, `#include <windows.h>
+#include <commctrl.h>
+#include <stdio.h>
+int wmain(void) {
+  InitCommonControls();
+  HMODULE module; WCHAR file[32768]; char utf8[131072];
+  if (!GetModuleHandleExW(GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS | GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT,
+      (LPCWSTR)&InitCommonControls, &module)) return 2;
+  DWORD length = GetModuleFileNameW(module, file, 32768);
+  if (!length || length >= 32768) return 3;
+  int bytes = WideCharToMultiByte(CP_UTF8, WC_ERR_INVALID_CHARS, file, length, utf8, sizeof(utf8), NULL, NULL);
+  if (!bytes) return 4;
+  fwrite(utf8, 1, bytes, stdout); return 0;
+}`);
+    execFileSync('cl.exe', ['/nologo', '/MT', source, '/Fo' + path.join(root, 'probe.obj'),
+      '/link', '/MANIFEST:NO', '/OUT:' + executable, 'comctl32.lib'], { cwd: root, timeout: 15_000 });
+    const observe = (program = executable) => pePath(fs.realpathSync.native(execFileSync(program, [], {
+      cwd: root, encoding: 'utf8', timeout: 5_000,
+    }))).toLowerCase();
+    const baseline = readCompilerRuntimeInputs(executable);
+    const ordinary = observe();
+    const manifest = executable + '.manifest';
+    // The OS supplies Common Controls 6; no system installation or policy mutation is involved.
+    fs.writeFileSync(manifest, `<?xml version="1.0"?><assembly xmlns="urn:schemas-microsoft-com:asm.v1" manifestVersion="1.0"><assemblyIdentity type="win32" name="apack.fixture.controls" version="1.0.0.0" processorArchitecture="amd64"/><dependency><dependentAssembly><assemblyIdentity type="win32" name="Microsoft.Windows.Common-Controls" version="6.0.0.0" processorArchitecture="amd64" publicKeyToken="6595b64144ccf1df" language="*"/></dependentAssembly></dependency></assembly>`);
+    const environment = capturePeLibraryEnvironment(executable);
+    const selected = environment.applicationContext.redirections.find(item => item.name.toLowerCase() === 'comctl32.dll')?.file;
+    expect(selected).toBeTruthy();
+    // Windows can retain a launched image's context. A compiler launches its fresh captured copy.
+    const actual = observe(copyPeRuntimeFixture(executable, path.join(root, 'copy')));
+    expect(actual).toBe(pePath(fs.realpathSync.native(selected!)).toLowerCase());
+    expect(actual).not.toBe(ordinary);
+    const selectors = new Set<string>(), copied = new Set<string>();
+    const configured = readCompilerRuntimeInputs(executable, false, file => copied.add(file.source), file => selectors.add(file));
+    expect(configured.hash).not.toBe(baseline.hash);
+    const systemManifests = environment.applicationContext.inputs.filter(input => input.file.toLowerCase().includes('\\winsxs\\') && input.kind === 'file');
+    expect(systemManifests.length).toBeGreaterThan(0);
+    for (const input of systemManifests) {
+      expect(selectors.has(input.file)).toBe(true);
+      expect(copied.has(input.file)).toBe(false);
+    }
+    fs.rmSync(manifest);
+    expect(readCompilerRuntimeInputs(executable).hash).toBe(baseline.hash);
+    expect(observe()).toBe(ordinary);
+    completed = true;
+  } finally {
+    if (completed) fs.rmSync(root, { recursive: true, force: true });
+    else console.error(`Retained system assembly control: ${root}`);
+  }
+});
+
 it.runIf(process.platform === 'win32')('refuses Node .local overrides through the captured compiler runtime before initialization', async ({ onTestFinished }) => {
   const root = fs.realpathSync.native(fs.mkdtempSync(path.join(os.tmpdir(), 'apack-node-local-')));
   let completed = false;

@@ -5880,3 +5880,50 @@ query; explicit CIM selection/formatting supplied the authoritative process iden
 Azure subsequently confirmed `VM deallocated`. No security settings, installed applications,
 shared temporary directories, stashes or repository source were changed by this diagnostic.
 Do not repeat the inspector helper or infer a worker hotspot from supervisor samples.
+
+## Windows system-assembly selection and copied runtime — 2026-10-18
+
+Before implementation, the named acceptance question was whether the current metadata helper and
+fresh runtime copy select the same OS-provided assembly as the actual loader, and whether its
+manifest selectors affect identity and observation without being copied. Existing private-assembly
+controls did not establish that OS path. No new production owner or policy mechanism was proposed.
+
+On Windows Server 2025 x64, source `3827993ba` plus the recorded test-only patch, the focused
+`preserves Windows system assembly selection and manifest freshness in copied runtimes` case
+**passes in 4.287s**, 1 executed / 24 filtered cases, unchanged deadline. The exact tested file blob
+is `456b8fcd7fb7b5e1daf3e21913d84808686ba79d`, matching the local committed candidate. A small private
+MSVC executable imports Common Controls and reports the actual DLL by the imported function's
+address. Adding the [documented Common Controls 6 manifest](https://learn.microsoft.com/en-us/windows/win32/controls/cookbook-overview)
+changes selected OS assembly and runtime identity. The fresh copy made by existing
+`copyPeRuntimeFixture`/`readCompilerRuntimeInputs` preserves identity and loads exactly the helper's
+selected DLL. Every selected OS assembly manifest is observed and excluded from copy callbacks.
+Removing the application manifest restores both baseline identity and ordinary loader selection.
+
+The separate retained context query records both selected OS manifests: Common Controls
+`6.0.26100.33648` and its English resource assembly `6.0.26100.32995`. The first control intentionally
+retained its failed workspace: re-executing the same source image after editing its manifest still
+loaded the earlier `5.82.26100.32860` context. The final fixture uses a fresh captured executable, as
+the compiler already does; this is not a production defect or a reason to weaken path equality.
+No registry, installed app, system assembly, security setting or global policy was changed.
+
+This closes the concrete normal OS-assembly selection/copy/manifest-freshness path, including the
+actually selected language-resource manifest. It does not prove publisher-policy mutation, a valid
+bound-only PE image, arbitrary native resource I/O or every mapped/runtime combination. Existing
+pre-initialization refusal controls remain required and unchanged. No production change was needed.
+
+CLI types and focused lint pass. The subprocess-inventory guard independently detects the two added
+MSVC/ordinary-loader call sites (13 to 15); after recording their necessity, all 11 guard checks pass.
+The focused test-only change neither weakens native assertions nor raises a timeout.
+
+Evidence exports checked locally:
+
+- `/private/tmp/apack-system-assembly-3827993ba.zip` (17 files): first control, failed fixture, initial
+  passing result, selected OS context and test patch.
+- `/private/tmp/apack-system-assembly-3827993ba-complete.zip` (8 files): final passing result, exact
+  patch/blob, source, run command, zero remaining native/compiler processes.
+- VM runs: `C:\apack-setup\runs\system-assembly-3827993ba{,-fresh,-complete}`. The original failed
+  fixture remains retained; all prior stashes are preserved. Idle deallocation is requested after
+  successful off-machine export.
+
+The already-running strict run `39177912229` remains pinned to production source `3827993ba`; it
+does not contain this new acceptance case. Keep that distinction in final committed-source reporting.
