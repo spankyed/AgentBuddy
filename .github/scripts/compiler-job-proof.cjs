@@ -10,7 +10,11 @@ if (process.platform !== 'win32') throw new Error('This proof requires Windows')
 const parentController = process.argv[2] === '--parent-loss';
 const root = parentController ? process.argv[3] : fs.mkdtempSync(path.join(os.tmpdir(), 'apack-job-proof-'));
 const { spawnCompilerWorker } = require('../../packages/apack-cli/src/build/compiler-process.ts');
-const compiler = { executable: process.execPath, bin: path.resolve(__dirname, '../../packages/apack-cli/bin/apack.mjs') };
+const compiler = {
+  executable: process.execPath,
+  runtimeDirectory: path.dirname(process.execPath),
+  bin: path.resolve(__dirname, '../../packages/apack-cli/bin/apack.mjs'),
+};
 const worker = path.join(root, 'worker with spaces 雪.cjs');
 fs.writeFileSync(worker, `
 const {spawn} = require('node:child_process');
