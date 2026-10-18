@@ -4,7 +4,8 @@ const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
 const { once } = require('node:events');
-const { fork } = require('node:child_process');
+const { fork, spawn } = require('node:child_process');
+const { createInterface } = require('node:readline');
 
 if (process.platform !== 'win32') throw new Error('This proof requires Windows');
 const parentController = process.argv[2] === '--parent-loss';
@@ -75,6 +76,48 @@ async function stop(session, code) {
   assert.match(session.output().stderr, /inherited-stderr/);
   console.log(JSON.stringify({ scenario: name, exit, signal, root: ready.pid, child: ready.childPid, stopped: true }));
 }
+async function helperBootstrap() {
+  const script = path.join(root, 'helper.ps1'), child = path.join(root, 'helper-child.cjs');
+  // The finite child also bounds a failed proof without a PID-only cleanup operation.
+  fs.writeFileSync(child, 'setTimeout(() => {}, 5000);');
+  const literal = value => "'" + value.replaceAll("'", "''") + "'";
+  fs.writeFileSync(script, `
+$ErrorActionPreference = 'Stop'
+. ${literal(path.resolve(__dirname, '../../packages/apack-cli/bin/compiler-helper-job.ps1'))}
+$start = New-Object Diagnostics.ProcessStartInfo
+$start.FileName = ${literal(process.execPath)}
+$start.Arguments = ${literal('"' + child + '"')}
+$start.UseShellExecute = $false
+$start.RedirectStandardOutput = $true
+$start.RedirectStandardError = $true
+$child = [Diagnostics.Process]::Start($start)
+[Console]::Out.WriteLine($child.Id)
+[Threading.Thread]::Sleep(-1)
+`);
+  const helper = spawn(path.join(process.env.SystemRoot, 'System32/WindowsPowerShell/v1.0/powershell.exe'),
+    ['-NoProfile', '-NonInteractive', '-File', script], { stdio: ['ignore', 'pipe', 'pipe'], windowsHide: true });
+  const closed = track(helper);
+  let stderr = '';
+  helper.stderr.on('data', bytes => stderr += bytes);
+  const lines = createInterface({ input: helper.stdout });
+  try {
+    const childPid = await Promise.race([
+      once(lines, 'line').then(([line]) => Number(line)),
+      closed.then(([code]) => { throw new Error(`Helper exited before readiness: ${code}\n${stderr}`); }),
+    ]);
+    assert.ok(Number.isInteger(childPid) && childPid > 0, 'Missing helper child PID');
+    assert.equal(gone(childPid), false);
+    // Descendants can retain inherited pipe handles after helper exit; don't wait for stdio closure.
+    const exited = once(helper, 'exit');
+    helper.kill('SIGKILL');
+    await exited;
+    const deadline = performance.now() + 2000;
+    while (!gone(childPid) && performance.now() < deadline) await new Promise(resolve => setTimeout(resolve, 10));
+    assert.equal(gone(childPid), true, 'Compiler helper descendant survived helper loss');
+    await closed;
+    console.log(JSON.stringify({ scenario: 'helper-bootstrap', child: childPid, stopped: true }));
+  } finally { lines.close(); }
+}
 async function parentLoss() {
   const controller = fork(__filename, ['--parent-loss', root], { stdio: ['ignore', 'pipe', 'pipe', 'ipc'] });
   let stderr = '';
@@ -105,6 +148,7 @@ async function run() {
     process.send({ ...session.ready, ownerPid: session.launcher.pid });
     await new Promise(() => {});
   }
+  await helperBootstrap();
   for (const code of [0, 7, 'cancel']) await stop(await start(String(code)), code);
   const previous = await start('replacement-previous');
   const replacement = await start('replacement-current');

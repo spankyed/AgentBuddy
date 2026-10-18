@@ -1,5 +1,6 @@
 param([Parameter(Mandatory=$true)][string]$Configuration)
 $ErrorActionPreference = 'Stop'
+. (Join-Path $PSScriptRoot 'compiler-helper-job.ps1')
 
 # Preserve libuv IPC/stdio while assigning the suspended compiler to its own lifetime job.
 Add-Type -TypeDefinition @'

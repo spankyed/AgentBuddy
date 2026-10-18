@@ -1,4 +1,5 @@
 $ErrorActionPreference = 'Stop'
+. (Join-Path $PSScriptRoot 'compiler-helper-job.ps1')
 
 function Read-Manifest([byte[]]$bytes) {
   $settings = New-Object System.Xml.XmlReaderSettings

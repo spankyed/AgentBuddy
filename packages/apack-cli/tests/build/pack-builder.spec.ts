@@ -33,6 +33,7 @@ function fixture() {
   fs.mkdirSync(path.join(compiler, 'bin'), { recursive: true });
   fs.mkdirSync(path.join(compiler, 'dist'));
   fs.copyFileSync(fileURLToPath(new URL('../../bin/compiler-windows.ps1', import.meta.url)), path.join(compiler, 'bin/compiler-windows.ps1'));
+  fs.copyFileSync(fileURLToPath(new URL('../../bin/compiler-helper-job.ps1', import.meta.url)), path.join(compiler, 'bin/compiler-helper-job.ps1'));
   fs.writeFileSync(path.join(compiler, 'dist/compiler-startup.cjs'), '// Fixture worker implements only candidate/process handoff.\n');
   fs.mkdirSync(path.join(pack, '.apack'), { recursive: true });
   const manifest = { id: 'builder', name: 'Builder', version: '1.0.0' };
