@@ -92,78 +92,36 @@ preloads (`bbf05ec00`). These are source evidence, not a claim that the full str
 
 #### Current compiler checkpoint (2026-10-17)
 
-**Machine recovery and execution boundary (2026-10-17):** the user confirmed recovery after a
-restart, reporting a roughly ten-minute restart and unusual initial app loading. Cause remains
-unproven; do not describe this as M1 capacity exhaustion or a confirmed daemon deadlock. Sustained
-native, captured-runtime and startup/cancellation batches stay off the daily-use Mac. Use the focused
-`compiler_macos=true` / `compiler_windows=true` GitHub dispatch routes. Source `6e19d17b8` adds the macOS
-route; run `39079072090` is terminal failure on that source: all 76 selected unit checks and five native
-cases pass, then the watch case's console wait expires during a detected rebuild. Later native cases
-were not executed. Preserve required acceptance rather
-than silently skipping it. No security settings or
-system databases were changed by this session. See [incident evidence](../evidence/build-input-snapshot-proof.md#macos-launch-policy-investigation-2026-10-17).
+**Execution boundary:** the user recovered the daily-use Mac by restarting after unrelated apps
+stopped launching. Cause remains unproven. Keep sustained native, captured-runtime and cancellation
+batches on disposable GitHub runners through `compiler_macos`, `compiler_windows` or `compiler_linux`.
+Do not change macOS security settings or repeat local native batches. Preserve the
+[incident evidence](../evidence/build-input-snapshot-proof.md#macos-launch-policy-investigation-2026-10-17).
 
-Source `0275df801` adds the real retained Vite ESM preload/custom-loader/transitive-resolution case.
-CLI types, focused lint and workflow checks pass. Run `39079253353` fails in 12.39 seconds: loader and
-transitive module bytes invalidate, but package export metadata changes do not. The shared native
-startup data owner now observes enclosing package declarations through the existing file view; no
-resolver or loader is added (`6d482e79f`). Run `39079716622` passes the exact reproducer in 17.90 seconds,
-including restored-byte reuse and live Vue edits. This closes the demonstrated metadata omission.
-Versioned-loader proof `99c910914`, run `39079991483`, confirms an external library override bypass:
-ordinary Node selects the override, and captured frontend startup unexpectedly succeeds. The common
-launch guard now permits versioned directories only in physical OS library locations; other configured
-directories refuse before execution, including unused ones. Public docs and the ADR state this
-configuration policy rather than claiming a dyld resolver (`0f0f6a43c`). Refinement `b7385c0bb` refuses
-outside roots before filesystem probes; all 46 parser/environment cases, CLI types and lint pass.
-Hosted run `39080454772` passes both real versioned cases on that source (9.24 and 6.78 seconds),
-including actual override selection, attributed prelaunch refusal and no addon initialization.
-Shared-cache and restricted-runtime policy remain separate open cases.
-The shared-cache audit now extends that same prelaunch policy to the single `DYLD_SHARED_CACHE_DIR`
-path. The existing OS-library baseline/refusal scenario covers both build and frontend entry points
-and incumbent preservation. All 48 parser/environment checks, CLI types, lint and workflow syntax pass;
-its extended hosted scenario is still pending. CI now records Node's linked images and signing flags
-for the actual runtime; this does not certify another hardened profile or close ELF/PE/final gates.
-Shared-cache source `ef01842ed`, hosted macOS run `39080870051`, selected only the extended
-launch-admission scenario. That run is terminal failure at its 60-second case budget after
-normal build output; no guard assertion failed, and the precise timed-out phase was not recorded.
-The revised scenario reuses the builder's compiler for frontend refusal, retains 60 seconds and all
-assertions, and records baseline/refusal timings. It still requires hosted acceptance. Node signing
-diagnostics establish the exercised hardened Node profile with dyld/library-validation exceptions;
-the app's stricter signing profile remains unverified. See [timeout and profile evidence](../evidence/build-input-snapshot-proof.md#shared-cache-scenario-timeout-and-exercised-signing-profile-2026-10-17).
-Revised source `baf461618`, hosted macOS run `39081394988`, passes the scenario in 27.62 seconds:
-normal OS baseline, both launch refusals, no constructor execution and preserved incumbent. The
-60-second deadline remains unchanged. The first Linux proof is bounded in the evidence record before
-implementation: actual retained Vite package-relative copies/Vue freshness and absolute-library
-refusal on Ubuntu x64/Node 23.11.1. No ELF/PE acceptance is inferred from macOS results.
-Source `e6ce60a78` awaits each detected watch build directly, retaining missing-event bounds and all
-behavior assertions. Its isolated hosted run `39079492068` passes in 98.76 seconds, including refusal,
-repair, incumbent preservation and retirement. Restore the original 120-second scenario budget; the
-provisional 180-second allowance is unnecessary. CLI types, lint and 42 timeout-policy checks pass.
-This accepts watch on that source, not the subsequent metadata correction or full B6/final gates.
-See [failure and correction evidence](../evidence/build-input-snapshot-proof.md#first-hosted-macos-result-and-watch-completion-boundary-2026-10-17).
+**Current handoff:** preserve the implemented compiler/input owners and close the finite native/platform
+cases below. Earlier source-specific failures are history, not instructions to rerun accepted checks.
 
-**Current handoff:** source `ccaa809a8` delivers retained frontend native discoveries into live watch
-subscriptions and retains failed-candidate probes for repair. Native copies and receipts belong to the
-whole frontend process, so late workers reuse admitted bytes after the original library changes.
-Unresponsive frontend freshness requests now refuse within five seconds instead of holding the builder
-queue indefinitely. The real unchanged-touch/refusal/incumbent/recovery/retirement case passes in
-72.76 seconds; four existing backend/Vite preload/worker cases pass. Forty focused checks, copied-file
-mode/integrity checks, CLI/scripts types and lint pass. The strict two-core checkpoint stopped at three
-repository bookkeeping failures after passing external packaged authoring, external-pack contracts,
-default-pack build, facade/schema/import checks and typechecks. The input/subprocess declarations are
-corrected in this source; all 951 checks in the affected repository suite pass. This is not a complete
-strict-gate pass. Do not rerun the broad gate to rediscover those corrected bookkeeping failures.
-Windows run `39075394015`, attempt 2, is fully green on `4b4d820fa`: native job lifetime, 170 unit
-checks (eight platform skips), descendant/cancellation, independent Vite owners and startup/repeated
-build/cache/archive identity. This accepts those paths on the live-watch/preload source; it does not
-close native PE admission or the full strict gate. Follow-up `c85f3fd95` captures
-frontend startup reads before the actual CLI entry releases ordinary authored-source reads. The real
-CommonJS preload-byte change/restoration cases pass for both direct and explicit-worker native loading,
-Vue remains live, and the complete native watch recovery still passes. Worker startup observations join
-frontend freshness through the existing coordinator, retaining bounded refusal for unresponsive checks.
-Next: shared-cache/restricted-runtime acceptance and remaining named native-platform cases, preserving the
-accepted ESM/loader/transitive metadata and Vue behavior above; then B6 and final committed-source
-strict `--all`. Preserve the full scope below. See [checkpoint evidence](../evidence/build-input-snapshot-proof.md#live-frontend-native-watch-and-shared-copies-2026-10-17).
+| Area | Current source and acceptance | Remaining obligation |
+|---|---|---|
+| Live native/frontend input ownership | `ccaa809a8` retains process-wide copies, worker receipts and failed-candidate repair probes; unresponsive freshness checks refuse within five seconds. Actual watch refusal/recovery/retirement passes on `e6ce60a78` in hosted run `39079492068`, within the restored 120-second scenario budget. | Preserve this behavior through converged native and final gates; no new watch coordinator. |
+| Frontend startup JavaScript | `c85f3fd95` captures ordinary preloads. `6d482e79f` captures enclosing package metadata; real ESM/custom-loader/transitive export selection and live Vue pass in hosted run `39079716622`. | Preserve accepted byte restoration, source paths and HMR; do not infer universal resolution coverage from one case. |
+| macOS launch environment | `b7385c0bb` accepts only physical OS directories for versioned overrides; both real versioned cases pass in `39080454772`. `ef01842ed` applies the same policy to the single shared-cache directory. The revised one-builder OS baseline/refusal case passes on `baf461618` in `39081394988` in 27.62 seconds with its original 60-second deadline. All 48 parser/environment checks pass. | Preserve ordinary package-relative/OS loading and attributed refusal. Converged native-file acceptance on final source remains required; selected runs do not cover every case. |
+| Runtime/signing | Hosted Node 23.11.1 ARM64 has hardened runtime, normal OS linked images and dyld/library-validation exceptions. Earlier Node/Electron runtime-copy ownership is accepted in `e369d3cb9`. | The app's stricter signing profile and other externally linked runtime/native combinations still need the bounded audit/acceptance; do not broaden permissions or claim isolation. |
+| Windows process ownership | Run `39075394015`, attempt 2, passes on `4b4d820fa`: complete native Job Object matrix, 170 unit checks (eight skips), descendant/cancellation, independent Vite owners and startup/repeated-build/cache/archive identity. | Preserve this implementation. PE library admission remains required; process lifetime acceptance does not prove it. |
+| Linux native ownership | Current `createCompilerNativeInputs` skips non-Darwin admission. The Ubuntu 24.04 x64/Node 23.11.1 retained-Vite proof is prepared: real ELF selection, owned package libraries, byte restoration, live Vue and outside-library refusal. Types, lint, subprocess inventory and workflow routing pass. | Execute the bounded proof on disposable Linux CI, fix demonstrated omissions through existing owners, and accept applicable Linux lifetime paths. Do not infer ELF behavior from macOS. |
+
+The strict two-core checkpoint on `ccaa809a8` stopped at three repository bookkeeping failures after
+passing packaged authoring, external-pack contracts, default-pack build, facade/schema/import checks
+and typechecks. Corrections pass all 951 affected repository checks; this is not a full strict pass.
+Do not repeat that broad run to diagnose already-corrected bookkeeping. Finish the named native/platform
+work, then B6 and final committed-source strict `--all`, preserving every phase below.
+See [compiler evidence](../evidence/build-input-snapshot-proof.md#shared-cache-acceptance-and-linux-proof-boundary-2026-10-17)
+for exact source commits, commands, failures and passed runs.
+
+#### Earlier compiler checkpoints
+
+These paragraphs retain historical source-specific results and unresolved requirements. The live ledger
+and current handoff above own status; an old “pending” statement is not a second current backlog.
 
 Source `525350813` applies native canonical path identity consistently, preserving authored metadata
 query semantics and root-link observations. Corrections `672645cf4` / `329cfbd89` preserve fixture and

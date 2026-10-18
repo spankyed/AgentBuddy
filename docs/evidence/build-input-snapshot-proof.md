@@ -3009,3 +3009,11 @@ fixture source across the macOS/Linux compilers. Replace library files atomicall
 potentially loaded image. Do not implement an ELF parser, new resolver or Windows policy until actual
 proof evidence identifies the next correction. Windows PE and remaining signed-profile acceptance
 remain required, as do B6 and the final committed-source strict `--all`.
+
+Linux proof implementation is prepared in `compiler-elf-libraries.integration.spec.ts` with shared
+`tests/_support/native-addon.ts` source. It checks actual ordinary-Node selection before retained Vite,
+owned relative-library paths, atomic original-byte/mode restoration, Vue HMR and absolute outside
+refusal while retaining the incumbent. The macOS fixture uses the identical extracted NAPI C body.
+No production native owner or parser changed. CLI types, focused lint, all 11 subprocess-inventory
+checks, Linux-only YAML routing, platform-script syntax and diff checks pass. Native acceptance is
+pending on the disposable Ubuntu runner; no native fixture or captured runtime ran locally.

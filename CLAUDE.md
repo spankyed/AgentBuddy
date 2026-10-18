@@ -254,7 +254,7 @@ The condition is the machine, which is a fact a run can check.
 
 Run sustained compiler/native validation on disposable GitHub-hosted runners, not the developer's
 daily-use Mac: `gh workflow run ci.yml --ref <branch> -f compiler_macos=true` (or
-`compiler_windows=true`). This includes native fixtures, repeated captured-runtime execution and
+`compiler_windows=true` / `compiler_linux=true`). This includes native fixtures, repeated captured-runtime execution and
 startup/cancellation batches. Stop local testing immediately if unrelated apps stop launching; preserve
 evidence without changing macOS security settings. Cause remains unproven in the
 [launch incident](docs/evidence/build-input-snapshot-proof.md#macos-launch-policy-investigation-2026-10-17).

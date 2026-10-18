@@ -17,6 +17,7 @@ import { captureCompilerInstallation, compilerPackageDirectory, type CompilerIns
 import { startPackFrontend, type PackFrontend } from '../../src/build/frontend-process.ts';
 import { assertCapturedMachOLibraries, captureMachOLibraryEnvironment } from '../../src/build/compiler-native-libraries.ts';
 import { startPackBuildWatcher } from '../../src/build/watch.ts';
+import { nativeAddonSource } from '../_support/native-addon.ts';
 
 function nativeFixture(mode: 'relative' | 'absolute' | 'transitive' | 'fallback' | 'framework', sdk?: string) {
   const root = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'apack-native-libraries-')));
@@ -43,17 +44,7 @@ function nativeFixture(mode: 'relative' | 'absolute' | 'transitive' | 'fallback'
       : 'int native_value(void) { return 11; }',
     mode === 'absolute' ? library : mode === 'fallback' ? 'libvalue.dylib' : '@loader_path/../' + path.relative(native, library), mode === 'transitive' ? [outside] : []);
     const addonSource = path.join(native, 'binding/addon.c');
-    fs.writeFileSync(addonSource, `#include <node_api.h>
-#include <stdio.h>
-extern int native_value(void);
-static napi_value read_value(napi_env env, napi_callback_info info) {
-  napi_value value; napi_create_int32(env, native_value(), &value); return value;
-}
-NAPI_MODULE_INIT() {
-  FILE *marker = fopen(${JSON.stringify(marker)}, "w"); if (marker) fclose(marker);
-  napi_value read; napi_create_function(env, "read", NAPI_AUTO_LENGTH, read_value, 0, &read);
-  napi_set_named_property(env, exports, "read", read); return exports;
-}`);
+    fs.writeFileSync(addonSource, nativeAddonSource(marker));
     execFileSync('clang', [...architecture, '-bundle', '-undefined', 'dynamic_lookup',
       '-I', path.resolve(path.dirname(process.execPath), '../include/node'), addonSource, library,
       ...(sdk ? ['-mmacosx-version-min=11.0', `-Wl,-platform_version,macos,11.0,${sdk}`] : []),

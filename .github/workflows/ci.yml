@@ -38,19 +38,23 @@ on:
         description: Optional native integration test name pattern (skips compiler unit checks)
         type: string
         default: ''
+      compiler_linux:
+        description: Run focused compiler native checks on a disposable Linux runner
+        type: boolean
+        default: false
   # push:
   #   branches: [master]
   # pull_request:
   #   branches: [master]
 
 concurrency:
-  group: ci-${{ github.ref }}-${{ inputs.compiler_windows && 'windows' || '' }}-${{ inputs.compiler_macos && 'macos' || '' }}
+  group: ci-${{ github.ref }}-${{ inputs.compiler_windows && 'windows' || '' }}-${{ inputs.compiler_macos && 'macos' || '' }}-${{ inputs.compiler_linux && 'linux' || '' }}
   # Native diagnostic results must finish; full CI still supersedes older runs.
-  cancel-in-progress: ${{ !inputs.compiler_windows && !inputs.compiler_macos }}
+  cancel-in-progress: ${{ !inputs.compiler_windows && !inputs.compiler_macos && !inputs.compiler_linux }}
 
 jobs:
   check:
-    if: ${{ !inputs.compiler_windows && !inputs.compiler_macos }}
+    if: ${{ !inputs.compiler_windows && !inputs.compiler_macos && !inputs.compiler_linux }}
     runs-on: macos-14
     timeout-minutes: 25
 
@@ -140,7 +144,7 @@ jobs:
   # Builds tests/packs/external-pack with the apack CLI and runs its Playwright
   # suite from the pack dir against the built app — the third-party pack path.
   external-pack-e2e:
-    if: ${{ !inputs.compiler_windows && !inputs.compiler_macos }}
+    if: ${{ !inputs.compiler_windows && !inputs.compiler_macos && !inputs.compiler_linux }}
     runs-on: macos-14
     timeout-minutes: 30
 
@@ -189,3 +193,9 @@ jobs:
     uses: ./.github/workflows/compiler-macos.yml
     with:
       test_name: ${{ inputs.compiler_macos_test || '' }}
+
+  compiler-linux:
+    if: ${{ inputs.compiler_linux }}
+    permissions:
+      contents: read
+    uses: ./.github/workflows/compiler-linux.yml
