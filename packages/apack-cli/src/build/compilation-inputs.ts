@@ -25,6 +25,7 @@ import {
   type PackCompilerInputView,
 } from '@apackdev/host/build/compiler-inputs';
 
+import { captureCompilerLibraryEnvironment } from './compiler-native-libraries.ts';
 import { createNativeInputReader } from './compiler-native-inputs.ts';
 import { BUILD_INPUTS_DIRECTORY_ENV, createCompilerReadTree, type CompilerReadTree } from './compiler-read-tree.ts';
 import { compilerExecutionIdentity, compilerStartupInputs } from './compiler-startup-inputs.ts';
@@ -80,7 +81,8 @@ export function captureCompilationInputs(packRoot: string, view?: PackCompilerIn
   const cliRoot = cliPackageDirectory();
   const compiler = readCompilerInstallationInputs();
   if (compiler && !compiler.packages.includes(cliRoot)) throw new Error('Captured compiler inputs do not belong to this CLI');
-  const executionIdentity = startup?.executionIdentity ?? compilerExecutionIdentity(undefined, compiler?.paths);
+  const nativeEnvironment = startup?.nativeEnvironment ?? captureCompilerLibraryEnvironment();
+  const executionIdentity = startup?.executionIdentity ?? compilerExecutionIdentity(nativeEnvironment, undefined, compiler?.paths);
   const capturedPackages = new Set(compiler?.packages);
   const modules = readCompilerModuleInputs(packRoot, undefined, view);
   let startupObservations: CompilerInputObservations[] = [];
@@ -128,7 +130,7 @@ export function captureCompilationInputs(packRoot: string, view?: PackCompilerIn
   });
   const ownsToolPath = (file: string) => !!compiler && isOwnedCompilerPath(file, compiler.directory);
   const native = createNativeInputReader(modules, packages, sourcePath, snapshot => readTree().include(snapshot), {
-    environment: startup?.nativeEnvironment, admitNative: startup?.nativeModule,
+    environment: nativeEnvironment, admitNative: startup?.nativeModule,
   });
   const workspace = process.env[BUILD_INPUTS_DIRECTORY_ENV];
   const assertCurrent = () => {

@@ -21,6 +21,7 @@ import { parsePeLibraryMetadata } from '../../src/build/compiler-pe-libraries.ts
 import { assertCapturedPeLibraries } from '../../src/build/compiler-pe-admission.ts';
 import { BUILD_INPUTS_DIRECTORY_ENV } from '../../src/build/compiler-read-tree.ts';
 import type { CapturedNativeModule } from '../../src/build/compiler-native-input-owner.ts';
+import * as peEnvironment from '../../src/build/compiler-pe-environment.ts';
 import { readPeLoaderMetadata, capturePeLibraryEnvironment } from '../../src/build/compiler-pe-environment.ts';
 import { readPeActivationContext, readPeDirectoryEntries } from '../../src/build/compiler-pe-activation.ts';
 import { pePath } from '../../src/build/compiler-pe-paths.ts';
@@ -253,6 +254,11 @@ it.runIf(process.platform === 'win32').each([
     }
     if (!electron && kind === 'application') {
       const before = readCompilerRuntimeInputs(executable, false).hash;
+      const metadata = readPeLoaderMetadata(capturePeLibraryEnvironment(executable).systemDirectory);
+      const policy = vi.spyOn(peEnvironment, 'readPeLoaderMetadata').mockReturnValue({ ...metadata, safeSearch: !metadata.safeSearch });
+      try { expect(readCompilerRuntimeInputs(executable, false).hash).not.toBe(before); }
+      finally { policy.mockRestore(); }
+      expect(readCompilerRuntimeInputs(executable, false).hash).toBe(before);
       const unrelated = path.join(runtime, 'unrelated.txt');
       fs.writeFileSync(unrelated, 'not a runtime input');
       expect(readCompilerRuntimeInputs(executable, false).hash).toBe(before);

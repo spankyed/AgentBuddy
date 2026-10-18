@@ -15,7 +15,7 @@ import { createCompilerNativeInputs } from './compiler-native-input-owner.ts';
 import { createCompilerNativeReports } from './compiler-native-reports.ts';
 
 import { parseNodeOptions } from '@apackdev/host/build/source-resolution';
-import { compilerEnvironmentIdentity } from './compiler-environment.ts';
+import { compilerEnvironmentIdentity, compilerLibraryEnvironmentIdentity } from './compiler-environment.ts';
 import { createCompilerWatchRecorder } from './build-watch-inputs.ts';
 import { isOwnedCompilerPath, type CompilerInstallationInputs } from './compiler-installation-inputs.ts';
 
@@ -36,9 +36,10 @@ export interface CompilerStartupInputs {
 }
 
 /** Capture launch state before user initialization can rewrite the ambient process values. */
-export function compilerExecutionIdentity(nodeOptions = process.env.NODE_OPTIONS, paths: readonly CompilerPathMapping[] = []): string {
+export function compilerExecutionIdentity(nativeEnvironment: CompilerLibraryEnvironment, nodeOptions = process.env.NODE_OPTIONS, paths: readonly CompilerPathMapping[] = []): string {
   return JSON.stringify([Object.entries(process.versions).sort(), process.platform, process.arch,
-    process.execArgv, parseNodeOptions(nodeOptions), compilerEnvironmentIdentity(process.env, paths)]);
+    process.execArgv, parseNodeOptions(nodeOptions), compilerEnvironmentIdentity(process.env, paths),
+    compilerLibraryEnvironmentIdentity(nativeEnvironment, paths)]);
 }
 
 export function compilerStartupInputs(): CompilerStartupInputs | undefined {
@@ -51,7 +52,7 @@ export function beginCompilerStartupInputs(root: string, workspace: string, comp
   if (compilerStartupInputs()) throw new Error('Compiler startup inputs already have an owner');
   const { paths } = compiler;
   const canonicalRoot = fs.realpathSync.native(root);
-  const executionIdentity = compilerExecutionIdentity(nodeOptions, paths);
+  const executionIdentity = compilerExecutionIdentity(nativeEnvironment, nodeOptions, paths);
   const within = (parent: string, file: string) => {
     const relative = relativeCompilerPath(parent, file);
     return relative === '' || (relative !== '..' && !relative.startsWith(`..${path.sep}`) && !path.isAbsolute(relative));

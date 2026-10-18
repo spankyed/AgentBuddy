@@ -5543,3 +5543,44 @@ publisher/system policy. Audit effective selection context in producer/cache ide
 outside-image/policy cases and MUI-related requirements against the approved native-I/O boundary before
 adding more implementation. Remaining platform obligations, repeated-build identity, B6 and final strict
 `--all` stay required. Native resource I/O is not a new implicit capture guarantee.
+
+## Captured native policy in compiler identity — 2026-10-18
+
+A pure three-case counterexample on `ea45ff599` proves changing captured PE `safeSearch`,
+`devOverride` or `knownDlls` leaves the phase input identity unchanged (three failures in 39ms).
+The native environment already exists before user initialization; its policy was omitted from the
+execution key. The repair hashes that same captured snapshot rather than querying a second state.
+Canonical object keys and unordered PE descriptors use source-path projection; ordered search paths
+retain precedence. No raw environment or loader snapshot is persisted in the build record.
+
+The retained compiler also needs invalidation when OS policy changes. Runtime inventory now includes
+the same three policy facts from the existing bounded metadata reader. Its identity excludes the
+reader's changing loaded-module inventory. This adds an OS metadata query to each Windows runtime
+inventory; no persistent policy cache or registry mutation is introduced.
+
+The earlier whole-installation ownership repair missed three input-test fixtures: placing their
+metadata at the temporary root classified authored/external inputs as compiler-owned. The retained-input
+case fails unchanged on the committed baseline in 52ms. Fixtures now give the compiler its own directory,
+keep authored/external paths outside it and put tool-owned paths inside it. Mutation assertions remain.
+
+Windows x64, Node 23.11.1, base `ea45ff599` plus the recorded seven-file repair:
+**57 focused checks pass** in 6.68s (environment identity, compilation inputs and PE admission).
+The two actual application startup cases pass with unchanged 60s bounds: **Node 17.997s,
+Electron 21.795s**. Exact DLL paths, copied-runtime identity, contained loading and refusal before
+DLL/addon/entry initialization remain asserted. A scoped metadata-reader spy changes SafeDllSearchMode
+only in memory and proves runtime identity changes and restores; the OS policy is never edited.
+CLI types, focused correctness lint and diff checks pass. No native execution ran on the daily-use Mac.
+
+The separate repeated-build case retains all identity, archive, source-path and cleanup assertions
+with its existing Windows 240s bound. It fails after **129.548s**, after content compilation but before
+the first build completes, with native exit **3221226356 (`0xC0000374`)**. This reproduces the earlier
+heap-corruption status; it is not a timeout or evidence that the policy key is unstable. No corresponding
+Windows Application Error/WER crash record was found for this interval. The worker is terminal and no
+Node/Electron process remains. Repeated-build identity is still unaccepted; capture an owned-process
+crash dump before another acceptance attempt. Focused policy checks do not establish arbitrary
+publisher/system policy coverage, other-platform convergence, B6 or final committed-source strict `--all`.
+
+VM evidence: `C:\apack-setup\runs\native-policy-ea45ff599` (source patch, preparation log, model/runtime
+JSON reports and logs). Original inert failures are retained locally at
+`/private/tmp/apack-native-policy-original-ea45ff599.log` and
+`/private/tmp/apack-retained-fixture-baseline-ea45ff599.log`.

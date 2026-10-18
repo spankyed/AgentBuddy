@@ -147,6 +147,14 @@ requirements as actual assembly selection or native resource I/O; the latter is 
 user-approved boundary and must not silently expand this goal. No required assembly-selection case is
 excluded by this classification.
 
+The [captured-policy checkpoint](../evidence/build-input-snapshot-proof.md#captured-native-policy-in-compiler-identity--2026-10-18)
+repairs omitted native loader state in phase identity and Windows policy invalidation in retained
+runtime identity. All 57 focused Windows checks and actual Node/Electron application startup controls
+pass; source paths, copied-runtime identity and refusal before initialization remain asserted. The
+single public repeated-build case fails at 129.548s with `0xC0000374`, matching the earlier native crash,
+not its 240s deadline. Preserve this failure, obtain a scoped owned-worker dump, and diagnose before
+another acceptance attempt. Remaining policy/platform cases, B6 and final strict acceptance stay open.
+
 **Execution boundary:** the user recovered the daily-use Mac by restarting after unrelated apps
 stopped launching. Cause remains unproven. Use the approved
 [Windows development VM](../references/guides/windows-development-vm.md) for interactive Windows

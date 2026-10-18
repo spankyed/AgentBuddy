@@ -4,7 +4,7 @@ import path from 'node:path';
 import { createHash } from 'node:crypto';
 import type { PackageInputFile } from '@apackdev/host/build/package-inputs';
 import { readPeActivationContext } from './compiler-pe-activation.ts';
-import { readPeSystemDirectory } from './compiler-pe-environment.ts';
+import { readPeSystemDirectory, readPeLoaderMetadata } from './compiler-pe-environment.ts';
 import { isPeSystemPath, pePath } from './compiler-pe-paths.ts';
 
 // Runtime distributions contain physical ASAR files; Electron's patched fs expands them as directories.
@@ -78,6 +78,7 @@ export function readCompilerRuntimeInputs(
     // Inventory still fingerprints opaque/damaged files; launch admission validates executable format.
     if (bytes.length >= 2 && bytes.readUInt16LE(0) === 0x5a4d) {
       const systemDirectory = readPeSystemDirectory();
+      const { safeSearch, devOverride, knownDlls } = readPeLoaderMetadata(systemDirectory);
       const environment = { systemDirectory, windowsDirectory: path.dirname(systemDirectory) };
       const context = readPeActivationContext(executable, { systemDirectory, application: executable, resource: 1 });
       const within = (file: string) => {
@@ -101,7 +102,8 @@ export function readCompilerRuntimeInputs(
       // Full listings guard inspection; named candidates and owned directories define copy identity.
       // A selective Node runtime does not copy unrelated source-directory files.
       activation = [ordered(context.inputs.map(input => [identity(input.file), input.kind, input.kind === 'entries' ? null : input.hash])),
-        ordered(context.redirections.map(binding => [binding.name.toLowerCase(), binding.file ? identity(binding.file) : null]))];
+        ordered(context.redirections.map(binding => [binding.name.toLowerCase(), binding.file ? identity(binding.file) : null])),
+        [safeSearch, devOverride, knownDlls.map(name => name.toLowerCase()).sort()]];
     }
   }
   // The macOS executable is inside Contents/MacOS. Keep the signed distribution together,

@@ -4,6 +4,7 @@ import path from 'node:path';
 import { cliPackageDirectory } from '../../src/build/tool-identity.ts';
 import { createCompilerInputObservations } from '@apackdev/host/build/compiler-inputs';
 import { expect, it, vi } from 'vitest';
+import * as nativeLibraries from '../../src/build/compiler-native-libraries.ts';
 import { compilationConditions, captureCompilationInputs } from '../../src/build/compilation-inputs.ts';
 
 it('normalizes equivalent launch paths while retaining custom export selectors', () => {
@@ -24,7 +25,9 @@ it("retains skipped phases' consumed inputs and refuses changes before completin
   fs.mkdirSync(root);
   fs.writeFileSync(path.join(root, 'tsconfig.json'), JSON.stringify({ compilerOptions: { noLib: true, types: [] } }));
   fs.writeFileSync(path.join(root, 'value.ts'), 'export const value = 1;');
-  const metadata = path.join(temporary, 'compiler.json');
+  const installation = path.join(temporary, 'compiler');
+  fs.mkdirSync(installation);
+  const metadata = path.join(installation, 'inputs.json');
   fs.writeFileSync(metadata, JSON.stringify({ hash: 'a'.repeat(64), packages: [cliPackageDirectory()], paths: [] }));
   vi.stubEnv('APACK_COMPILER_INPUTS', metadata);
   const file = path.join(temporary, 'external.txt');
@@ -66,12 +69,14 @@ it("retains skipped phases' consumed inputs and refuses changes before completin
 it.runIf(process.platform === 'win32').each(['tool', 'workspace'] as const)(
   'preserves compiler ownership for extended Windows paths: %s', owner => {
     const temporary = fs.realpathSync.native(fs.mkdtempSync(path.join(os.tmpdir(), 'apack-owned-inputs-')));
-    const root = path.join(temporary, 'pack'), owned = path.join(temporary, 'owned');
+    const installation = path.join(temporary, 'compiler');
+    fs.mkdirSync(installation);
+    const root = path.join(temporary, 'pack'), owned = path.join(owner === 'tool' ? installation : temporary, 'owned');
     fs.mkdirSync(root); fs.mkdirSync(owned);
     fs.writeFileSync(path.join(root, 'tsconfig.json'), '{"compilerOptions":{"noLib":true,"types":[]}}');
     const file = path.join(owned, 'native.node');
     fs.writeFileSync(file, 'INERT');
-    const metadata = path.join(temporary, 'compiler.json');
+    const metadata = path.join(installation, 'inputs.json');
     fs.writeFileSync(metadata, JSON.stringify({ hash: 'a'.repeat(64), packages: [cliPackageDirectory()],
       paths: owner === 'tool' ? [{ captured: owned, source: path.join(temporary, 'original') }] : [] }));
     vi.stubEnv('APACK_COMPILER_INPUTS', metadata);
@@ -89,3 +94,31 @@ it.runIf(process.platform === 'win32').each(['tool', 'workspace'] as const)(
     }
   },
 );
+
+
+it.each(['safeSearch', 'devOverride', 'knownDlls'] as const)('includes captured native %s policy in the phase input identity', policy => {
+  const root = fs.realpathSync.native(fs.mkdtempSync(path.join(os.tmpdir(), 'apack-native-policy-')));
+  const pack = path.join(root, 'pack');
+  fs.mkdirSync(pack);
+  fs.writeFileSync(path.join(pack, 'package.json'), '{"name":"native-policy","version":"1.0.0"}');
+  fs.writeFileSync(path.join(pack, 'tsconfig.json'), '{"compilerOptions":{"noLib":true,"types":[]}}');
+  const installation = path.join(root, 'compiler');
+  fs.mkdirSync(installation);
+  const metadata = path.join(installation, 'inputs.json');
+  fs.writeFileSync(metadata, JSON.stringify({ hash: 'a'.repeat(64), packages: [cliPackageDirectory()], paths: [] }));
+  vi.stubEnv('APACK_COMPILER_INPUTS', metadata);
+  let environment: nativeLibraries.CompilerLibraryEnvironment = { macho: {
+    libraryPaths: [], fallbackLibraryPaths: undefined, frameworkPaths: [], fallbackFrameworkPaths: undefined, imageSuffixes: [],
+  }, pe: { systemDirectory: 'C:\\Windows\\System32', windowsDirectory: 'C:\\Windows', safeSearch: true,
+    devOverride: false, knownDlls: [], apiSets: [], schema: 'C:\\Windows\\System32\\apisetschema.dll', nodeApiExports: [],
+    applicationContext: { image: 'C:\\compiler\\node.exe', inputs: [], redirections: [] } } };
+  const capture = vi.spyOn(nativeLibraries, 'captureCompilerLibraryEnvironment').mockImplementation(() => environment);
+  const identity = () => { const input = captureCompilationInputs(pack); try { return input.hash; } finally { input.dispose(); } };
+  try {
+    const first = identity();
+    if (policy === 'safeSearch') environment = { ...environment, pe: { ...environment.pe!, safeSearch: false } };
+    else if (policy === 'devOverride') environment = { ...environment, pe: { ...environment.pe!, devOverride: true } };
+    else environment = { ...environment, pe: { ...environment.pe!, knownDlls: ['value.dll'] } };
+    expect(identity()).not.toBe(first);
+  } finally { capture.mockRestore(); vi.unstubAllEnvs(); fs.rmSync(root, { recursive: true, force: true }); }
+});
