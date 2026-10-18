@@ -3407,3 +3407,25 @@ then rerun the same control on the correction. Keep API sets/KnownDLLs, loaded-m
 semantics, meaningful activation data and selected forwarders explicit. This metadata-only source
 checkpoint does not fix copying or close PE admission, and must not be cited as runtime acceptance.
 The accepted Windows Job Object owner is unchanged. Other profile and final gates remain required.
+
+### Local compiler integration guard (2026-10-17)
+
+Source `a808d2c3a` enforces the launch-incident precaution at CLI integration configuration loading.
+On macOS both `GITHUB_ACTIONS=true` and `RUNNER_ENVIRONMENT=github-hosted` are required. A generic
+`CI=true`, missing runner metadata or a self-hosted runner refuses with disposable-runner guidance.
+The guard executes before test-module collection, including when the root integration project loads
+the CLI config. It deliberately refuses the entire CLI integration suite on local Macs, rather than
+maintaining a drifting list of cases that indirectly launch captured compilers. It is an accidental-run
+guard, not protection against deliberately fabricated environment variables.
+
+Eight pure policy cases pass (167 ms Vitest invocation). The actual local `vitest list --config
+packages/apack-cli/vitest.integration.config.ts` exits 1 at configuration loading with the intended
+refusal, before importing specs. CLI TypeScript, focused three-file correctness lint and diff checks
+pass. No native fixtures or captured runtimes executed locally. Hosted-runner acceptance of this guard
+is covered synthetically here; the next existing native CI run must exercise that path in practice.
+
+Normal product commands, development builds and the unit config are unchanged. Other packages and
+ad hoc native launches are not mechanically guarded by this CLI test-config change; the root guide's
+disposable-runner requirement still applies to them. No security settings, installed apps or system
+services were changed. The incident's cause remains unproven. Windows lookup/admission/copying and
+the other recorded compiler completion requirements remain unfinished.

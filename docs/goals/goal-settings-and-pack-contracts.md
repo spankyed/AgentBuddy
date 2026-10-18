@@ -332,6 +332,15 @@ retained failures from exact reproducers before the required converged strict ch
 restart accepted implementation or require repeated broad runs for diagnosis. Phase 7 still owns the
 final whole-goal strict `--all` on committed source. These details clarify existing scope, not new phases.
 
+Local-machine prevention checkpoint `a808d2c3a` makes the CLI integration config refuse macOS execution
+outside GitHub-hosted runners before importing specs. It covers direct Vitest and root-project/chain
+selection; unit checks and normal product commands are unchanged. Eight policy cases, an actual local
+configuration refusal, CLI types and focused lint pass. This is an operational boundary, not a finding
+about the launch incident's cause or acceptance of the remaining compiler work. See
+[guard evidence](../evidence/build-input-snapshot-proof.md#local-compiler-integration-guard-2026-10-17).
+Continue Windows loader admission/capture from the confirmed PE ownership failure; the full B1–B6,
+platform and final strict `--all` requirements remain open and must execute in disposable CI.
+
 The latest strict run, `2026-10-17T00-23-23Z-27374`, failed in integration after `ENOSPC` errors and
 its existing 600-second aggregate deadline. Both unit pools, typechecks, builds and both packaged-authoring
 halves passed. A dependent-runtime fixture omission found in that run is repaired (all five cases pass).
