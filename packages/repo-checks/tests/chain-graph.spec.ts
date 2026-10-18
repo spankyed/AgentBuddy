@@ -14,6 +14,7 @@ import { declaredAt } from '../../../scripts/lib/chain-output.ts';
 import { reachableText, rootScripts, withoutComments } from '../../../scripts/lib/npm-scripts.ts';
 import { population } from '@apackdev/sdk/testing';
 import { machineText, POOL_WIDTH, thisMachine } from '../../../scripts/lib/core-budget.ts';
+import { TYPECHECK_LEGS } from '../../../scripts/lib/typecheck-legs.ts';
 import { declaredShare, rungForKind, timedOutBecause, TIMEOUT_CLASSES, TIMEOUT_MS } from '../../../scripts/lib/step-timeouts.ts';
 import e2eConfig from '../../../playwright.config.ts';
 
@@ -372,7 +373,7 @@ describe('every spawn an orchestrator makes is bounded', () => {
    * 60s, and nothing would have said a word.
    *
    * The three facts are gathered here and the criterion is `rungForKind`'s, beside the ladder it formalizes.
-   * `fansOut` is whether a `POOL_WIDTH` entry is *declared*, never what `coresFor` returns — that resolves
+   * `fansOut` uses declared pool widths, excluding flattened compiler legs, never what `coresFor` returns — that resolves
    * against the running machine, so on a one-core box every width-declaring step reads as one core and this
    * answer would change with the hardware.
    */
@@ -392,7 +393,8 @@ describe('every spawn an orchestrator makes is bounded', () => {
     const installs = (name: string): boolean => /npm (ci|install)\b/.test(reachableText(name, all).text);
     const factsFor = (step: ChainStep) => ({
       installs: installs(step.name),
-      fansOut: POOL_WIDTH[step.name] !== undefined,
+      // Flattened compiler legs can use background CPU without running independent tasks.
+      fansOut: POOL_WIDTH[step.name] !== undefined && !TYPECHECK_LEGS.some(leg => leg.name === step.name),
       builds: (step.outputs ?? []).length > 0,
     });
 
@@ -407,6 +409,13 @@ describe('every spawn an orchestrator makes is bounded', () => {
       expect(misdeclared(CHAIN_STEPS), 'a rung is chosen by kind of work (`step-timeouts.ts`), so one of '
         + 'these is a step bounded as something it is not — a bundle on `quick` dies too early, one compiler '
         + 'on `suite` takes ten minutes to die').toEqual([]);
+    });
+
+    it('keeps the pack typecheck on quick when its compiler reserves background CPU', () => {
+      const step = CHAIN_STEPS.find(step => step.name === 'typecheck:pack')!;
+      expect(POOL_WIDTH[step.name]).toEqual({ cores: 2 });
+      expect(factsFor(step).fansOut).toBe(false);
+      expect(step.timeout).toBe('quick');
     });
 
     it('asks it of every step, so the rule passes over nothing', () => {

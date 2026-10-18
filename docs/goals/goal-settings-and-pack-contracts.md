@@ -130,15 +130,18 @@ the remaining runtime/integration/app legs on the corrected source. Its whole-jo
 this cold run consumed 28m before those legs; individual step bounds remain unchanged. Windows is
 deallocated and no earlier hosted gate remains running.
 Cold-import checkpoint **`9b056f4ab`** is pushed. [Strict run `39175530615`](https://github.com/spankyed/AgentBuddy/actions/runs/39175530615)
-is active on exactly that source, including the fixture fix, selector repair and fork core reservation.
-Await its retained results rather than dispatching another broad gate. The finite native closure
-register and full Phase 7 audit remain required; this active run is not a passing acceptance claim.
+finished with a pack-typecheck timeout (62s including cleanup; no type diagnostic). Independent
+producer contracts passed again; later runtime/integration/app legs were not reached. Two isolated
+cold Vue typechecks measured 24.72s CPU / 14.66s wall and 24.95s / 14.65s: about 1.7 cores,
+while admission reserved one. The repair reserves two cores and retains the quick 60s deadline.
+Scheduler/graph checks preserve that distinction; hosted acceptance remains outstanding.
+The finite native closure register and full Phase 7 audit remain required.
 The pure helper-protocol expectation repair `39352b2c7` passes all 67 adjacent PE cases and CLI types;
 it is newer than the run's pinned source. B1/B2 checkpoint `2a0e9efc0` separates runtime selector
 observations from copy callbacks, delivering selected OS policies and missing/failed-context probes to
 the existing tooling/watch owner. All 89 focused pure cases, mutation checks and CLI types/lint pass;
 the existing real Windows Node application-context case passes in 22.610s with added selector assertions.
-The Windows VM is confirmed deallocated; its useful overlay is preserved in a scoped stash.
+That Windows selector run was deallocated afterward; its useful overlay is preserved in a scoped stash.
 See [selector evidence](../evidence/settings-and-pack-contracts.md#runtime-selection-inputs-reach-compiler-watches--2026-10-18).
 Broader installed publisher-policy mutations and registry notifications are not proven by this check;
 retain the finite closure register and final platform/strict obligations. No new watcher framework,
@@ -1411,3 +1414,18 @@ It corrects stale roadmap claims without completing Phase 7. API-report checking
 published output; matching-output CI verification, the remaining native/platform work and final strict
 `--all` remain required. At completion, record each phase's results, evidence, design corrections,
 final naming completion SHA and any genuinely out-of-scope follow-ups.
+
+### Pack typecheck admission evidence — 2026-10-18
+
+Strict run `39175530615`, source `9b056f4ab`, stopped at the quick pack-typecheck bound.
+The preceding run passed the same check in 51.6s. Ordinary local cold compiler commands
+(`node node_modules/vue-tsc/bin/vue-tsc.js --noEmit --incremental false -p packages/default-setup/tsconfig.json`)
+measured approximately 1.7 cores twice. The second `/usr/bin/time -p` command exited zero; the
+first emitted no type diagnostics but its `time -l` observer failed on sandboxed `sysctl`.
+This supports the two-core reservation, not a claim about the exact hosted slowdown's cause.
+No deadline was increased. Logs: `/private/tmp/apack-pack-typecheck-isolated{,-2}{,-time}.log`.
+
+A separate retained Windows public-CLI proof at `e5ffd9468` successfully scaffolded and built a
+real pack under Electron 37.2.4 / Node 22.17.1. Archive refused a recorded stat outcome; this
+is being investigated, not accepted as a complete runtime path. Evidence remains under
+`C:\apack-setup\runs\electron-cli-e5ffd9468`; the VM is currently running for that investigation.

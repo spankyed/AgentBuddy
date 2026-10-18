@@ -70,6 +70,9 @@ export const POOL_WIDTH: Readonly<Record<string, PoolWidth>> = {
   'test:unit:host': UNCAPPED,
   'test:unit:pack': UNCAPPED,
   'test:integration': { share: 0.5 },
+  // Cold vue-tsc, 2026-10-18: 24.72s CPU / 14.66s wall and 24.95s / 14.65s.
+  // One compiler uses about 1.7 cores; reserve two without widening its quick deadline.
+  'typecheck:pack': { cores: 2 },
   // **Measured as CPU time over wall time, 2026-10-02, two runs each**: `build:default-setup` 21.5s of CPU in 13.6s
   // and 21.2s in 13.1s, so 1.6 cores; `build:runtime` 62.9s in 29.0s and 61.2s in 27.6s, so 2.2. Both round
   // to two.
