@@ -2,7 +2,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { createRequire } from 'node:module';
 import { createHash } from 'node:crypto';
-import { readPackageInputs } from '@apackdev/host/build/package-inputs';
+import { readPackageInputs, readPackageInputsAsync } from '@apackdev/host/build/package-inputs';
 import { cliPackageDirectory } from './tool-identity.ts';
 import { compilerRuntimeFileSystem as fs, readCompilerRuntimeInputs } from './compiler-runtime.ts';
 
@@ -20,6 +20,7 @@ export interface CompilerInstallation {
 interface CompilerInstallationOptions {
   cwd?: string;
   env?: NodeJS.ProcessEnv;
+  signal?: AbortSignal;
 }
 
 function compilerPackagesHash(directory: string): string {
@@ -100,7 +101,8 @@ export async function captureCompilerInstallation(directory = compilerPackageDir
       fs.chmodSync(target, mode & ~0o222);
       copied.set(source, identity);
     };
-    const inputs = readPackageInputs([{ id: 'compiler', directory, contents: true }], { onFile: copy });
+    const inputs = await readPackageInputsAsync([{ id: 'compiler', directory, contents: true }], { onFile: copy, signal: options.signal });
+    options.signal?.throwIfAborted();
     const runtime = readCompilerRuntimeInputs(process.execPath, !!process.versions.electron, (file, bytes) => copy(file, bytes, true));
     for (const directory of runtime.directories) mkdir(capturedPath(directory));
     const executable = readEsbuildOverride(options);
@@ -153,7 +155,7 @@ export async function captureCompilerInstallation(directory = compilerPackageDir
       }
     }
     const root = capturedPath(inputs.nodes[inputs.roots[0]!.node]!.directory);
-    const verified = readPackageInputs([{ id: 'compiler', directory: root, contents: true }]);
+    const verified = await readPackageInputsAsync([{ id: 'compiler', directory: root, contents: true }], { signal: options.signal });
     if (verified.hash !== inputs.hash || verified.nodes.some(node => !node.directory.startsWith(`${temporary}${path.sep}`))) {
       throw new Error('Captured compiler installation differs from its inputs');
     }

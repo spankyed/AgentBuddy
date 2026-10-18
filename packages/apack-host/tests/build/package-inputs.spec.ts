@@ -3,7 +3,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { createRequire } from 'node:module';
 import { afterEach, expect, it } from 'vitest';
-import { readPackageInputs } from '../../src/build/package-inputs.ts';
+import { readPackageInputs, readPackageInputsAsync } from '../../src/build/package-inputs.ts';
 
 const roots: string[] = [];
 afterEach(() => roots.splice(0).forEach(root => fs.rmSync(root, { recursive: true, force: true })));
@@ -22,6 +22,35 @@ function tree() {
   write('node_modules/helper/index.js', 'export const value = 1;');
   return { root, write, manifest, hash: () => readPackageInputs([{ id: 'pack', directory: root, development: true }]).hash };
 }
+
+it('keeps async inventory, bytes, probes and callback order identical to synchronous reads', async () => {
+  const pack = tree();
+  const owners = [{ id: 'compiler', directory: pack.root, development: true, contents: true }];
+  const capture = () => {
+    const events: unknown[] = [];
+    return { events, options: {
+      observe: (file: string, kind: string) => { events.push(['probe', file, kind]); },
+      onDirectory: (file: string, names: readonly string[]) => { events.push(['directory', file, [...names]]); },
+      onFile: (file: unknown, bytes: Buffer) => { events.push(['file', file, bytes.toString('hex')]); },
+    } };
+  };
+  const sync = capture(), asynchronous = capture();
+  const expected = readPackageInputs(owners, sync.options);
+  expect(await readPackageInputsAsync(owners, asynchronous.options)).toEqual(expected);
+  expect(asynchronous.events).toEqual(sync.events);
+});
+
+it('accepts cancellation between async file reads instead of blocking through the inventory', async () => {
+  const pack = tree();
+  const stopped = new AbortController();
+  let files = 0;
+  const reading = readPackageInputsAsync([{ id: 'compiler', directory: pack.root, contents: true }], {
+    signal: stopped.signal,
+    onFile() { if (++files === 1) setImmediate(() => stopped.abort()); },
+  });
+  await expect(reading).rejects.toMatchObject({ name: 'AbortError' });
+  expect(files).toBe(1);
+});
 
 it('hashes blocked package metadata and transitive helper bytes without loading code', () => {
   const pack = tree();

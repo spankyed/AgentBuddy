@@ -118,7 +118,7 @@ export function createPackBuilder(root: string): PackBuilder {
         const reusable = compiler && (!current?.frontend
           || (current.configuration === configuration && await current.frontend.isCurrent(options.signal)));
         const candidate: Generation = current && reusable ? current
-          : { compiler: compiler ?? await captureCompilerInstallation(directory, { cwd: root }) };
+          : { compiler: compiler ?? await captureCompilerInstallation(directory, { cwd: root, signal: options.signal }) };
         owned.add(candidate);
         try {
           options.signal.throwIfAborted();

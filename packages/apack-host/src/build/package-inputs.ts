@@ -72,7 +72,7 @@ export function findPackageDirectory(owner: string, name: string, observe?: Buil
   }
 }
 
-function readPackageFiles(node: PackageInputNode, targets: readonly string[], owners: ReadonlyMap<string, unknown>, { observe, onFile, onDirectory }: PackageInputOptions): void {
+function* readPackageFiles(node: PackageInputNode, targets: readonly string[], owners: ReadonlyMap<string, unknown>, { observe, onFile, onDirectory }: PackageInputOptions): Generator<string, void, Buffer> {
   const root = node.directory;
   const ancestors = new Set<string>();
   const files = new Map<string, { source: string; mode?: number }>();
@@ -110,7 +110,7 @@ function readPackageFiles(node: PackageInputNode, targets: readonly string[], ow
   for (const [file, physical] of [...files].sort(([a], [b]) => a < b ? -1 : a > b ? 1 : 0)) {
     const { source } = physical;
     const mode = physical.mode ?? (fs.statSync(source).mode & 0o777);
-    const bytes = fs.readFileSync(source);
+    const bytes = yield source;
     const input = { path: file, source, mode, hash: createHash('sha256').update(bytes).digest('hex') };
     node.files.push(input);
     onFile?.(input, bytes);
@@ -145,7 +145,7 @@ function packageTargets(manifest: Record<string, unknown>): string[] {
 }
 
 /** Declared and compiler-discovered package scopes, including their transitive resolution edges. */
-export function readPackageInputs(owners: readonly PackageInputOwner[], options: PackageInputOptions = {}): PackageInputs {
+function* packageInputReads(owners: readonly PackageInputOwner[], options: PackageInputOptions): Generator<string, PackageInputs, Buffer> {
   const { discovered = [], observe, onFile } = options;
   const seen = new Map<string, number>();
   const rootInputs = new Map<string, { development: boolean; contents: boolean }>();
@@ -155,7 +155,7 @@ export function readPackageInputs(owners: readonly PackageInputOwner[], options:
     rootInputs.set(root, { development: previous?.development || !!owner.development, contents: previous?.contents || !!owner.contents });
   }
   const nodes: PackageInputNode[] = [];
-  function register(directory: string, contents: boolean): number {
+  function* register(directory: string, contents: boolean): Generator<string, number, Buffer> {
     const root = fs.realpathSync.native(directory);
     const existing = seen.get(root);
     if (existing !== undefined) return existing;
@@ -163,7 +163,7 @@ export function readPackageInputs(owners: readonly PackageInputOwner[], options:
     seen.set(root, index);
     const file = path.join(root, 'package.json');
     observe?.(file, 'file');
-    const bytes = fs.existsSync(file) ? fs.readFileSync(file) : null;
+    const bytes = fs.existsSync(file) ? (yield file) : null;
     const metadata = bytes?.toString('utf8') ?? null;
     const manifest = metadata ? JSON.parse(metadata) : {};
     const node: PackageInputNode = { directory: root, metadata, files: [], directories: [], links: [],
@@ -171,11 +171,11 @@ export function readPackageInputs(owners: readonly PackageInputOwner[], options:
     nodes.push(node);
     if (bytes && onFile) onFile({ path: 'package.json', source: fs.realpathSync.native(file), mode: fs.statSync(file).mode & 0o777,
       hash: createHash('sha256').update(bytes).digest('hex') }, bytes);
-    if (contents) readPackageFiles(node, packageTargets(manifest), rootInputs, options);
+    if (contents) yield* readPackageFiles(node, packageTargets(manifest), rootInputs, options);
     return index;
   }
   const populated = new Set<number>();
-  function populate(index: number, development: boolean): void {
+  function* populate(index: number, development: boolean): Generator<string, void, Buffer> {
     if (populated.has(index)) return;
     populated.add(index);
     const node = nodes[index]!;
@@ -186,21 +186,24 @@ export function readPackageInputs(owners: readonly PackageInputOwner[], options:
     for (const name of names) {
       const dependency = findPackageDirectory(node.directory, name, observe);
       if (!dependency) { node.dependencies[name] = null; continue; }
-      const child = register(dependency.directory, true);
+      const child = yield* register(dependency.directory, true);
       node.dependencies[name] = child;
       node.lookups[name] = dependency.lookup;
-      populate(child, false);
+      yield* populate(child, false);
     }
   }
   // Consumer roots normally have their own authored scope. Pre-register roots so cycles cannot
   // accidentally include their build output in their own input key.
-  const roots = owners.map(owner => ({ id: owner.id, node: register(owner.directory, rootInputs.get(fs.realpathSync.native(owner.directory))!.contents) }));
-  owners.forEach((owner, index) => populate(roots[index]!.node, owner.development ?? false));
-  const imported = discovered.map(directory => {
-    const index = register(directory, true);
-    populate(index, false);
-    return index;
-  });
+  const roots: Array<{ id: string; node: number }> = [];
+  for (const owner of owners) roots.push({ id: owner.id,
+    node: yield* register(owner.directory, rootInputs.get(fs.realpathSync.native(owner.directory))!.contents) });
+  for (const [index, owner] of owners.entries()) yield* populate(roots[index]!.node, owner.development ?? false);
+  const imported: number[] = [];
+  for (const directory of discovered) {
+    const index = yield* register(directory, true);
+    yield* populate(index, false);
+    imported.push(index);
+  }
   const identity = nodes.map(node => ({
     metadata: node.metadata,
     files: node.files.map(file => [file.path, file.hash, file.mode & 0o111, path.relative(node.directory, file.source)]),
@@ -209,4 +212,25 @@ export function readPackageInputs(owners: readonly PackageInputOwner[], options:
     dependencies: node.dependencies,
   }));
   return { hash: createHash('sha256').update(JSON.stringify({ roots, imported, nodes: identity })).digest('hex'), roots, imported, nodes };
+}
+
+/** Synchronous consumers and capture share the same traversal, callbacks and content identity. */
+export function readPackageInputs(owners: readonly PackageInputOwner[], options: PackageInputOptions = {}): PackageInputs {
+  const reads = packageInputReads(owners, options);
+  let next = reads.next();
+  while (!next.done) next = reads.next(fs.readFileSync(next.value));
+  return next.value;
+}
+
+/** Yield filesystem work during installation capture without weakening byte verification. */
+export async function readPackageInputsAsync(owners: readonly PackageInputOwner[],
+  options: PackageInputOptions & { signal?: AbortSignal } = {}): Promise<PackageInputs> {
+  options.signal?.throwIfAborted();
+  const reads = packageInputReads(owners, options);
+  let next = reads.next();
+  while (!next.done) {
+    options.signal?.throwIfAborted();
+    next = reads.next(await fs.promises.readFile(next.value, { signal: options.signal }));
+  }
+  return next.value;
 }
