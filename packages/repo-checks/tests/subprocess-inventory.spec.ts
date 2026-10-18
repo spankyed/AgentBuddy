@@ -48,6 +48,8 @@ const loadedByThePool = (): string[] => reachableFrom(
  * exists to catch, and a file-level list would wave it through.
  */
 const INVENTORY: Record<string, { calls: number; why: string }> = {
+  'packages/apack-cli/tests/build/fe-bundler-dev-server.integration.spec.ts': { calls: 1,
+    why: 'Separate Vite processes scan a live pack while its output is published. The Windows directory-sharing failure does not reproduce in a same-process server; each child owns a private cache and closes with the test' },
   'packages/apack-cli/tests/build/compiler-pe-libraries.integration.spec.ts': { calls: 13,
     why: 'MSVC builds private NAPI/DLL, manifest-editing and ordinary loader fixtures. Real Node and compiler-startup processes prove selected paths, copied-runtime SxS selection and refusal before initialization; these OS loader boundaries cannot be proved in-process' },
   'packages/apack-cli/tests/build/compiler-elf-libraries.integration.spec.ts': { calls: 3,

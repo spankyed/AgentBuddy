@@ -11,7 +11,7 @@ import { errorMessage } from '@apackdev/sdk/utils/pure';
 import type { BuildWatchInputs } from './build-watch-inputs.ts';
 import { globWatchPlugin } from './glob-watch.ts';
 import type { CompilationInputs } from './compilation-inputs.ts';
-import { withCompilerFileReads } from '@apackdev/host/build/compiler-inputs';
+import { relativeCompilerPath, withCompilerFileReads } from '@apackdev/host/build/compiler-inputs';
 import { findPackageDirectory } from '@apackdev/host/build/package-inputs';
 import { parseNodeOptions, withoutSourceCondition } from '@apackdev/host/build/source-resolution';
 
@@ -365,7 +365,11 @@ export async function packDevServerConfig(root: string, feEntry: string): Promis
         },
       },
     ],
-    server: { port: 5199, strictPort: false, cors: true, hmr: { protocol: 'ws', host: 'localhost' } },
+    server: {
+      port: 5199, strictPort: false, cors: true, hmr: { protocol: 'ws', host: 'localhost' },
+      // Scanning private build candidates can prevent their publication on Windows.
+      watch: { ignored: file => relativeCompilerPath(root, file).split(path.sep)[0] === '.apack' },
+    },
     logLevel: 'info',
     optimizeDeps: { exclude: packSharedSpecifiers(root) },
   };
