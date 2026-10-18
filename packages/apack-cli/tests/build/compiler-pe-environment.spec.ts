@@ -17,8 +17,8 @@ it('retains full module paths from the bounded OS query', () => {
   expect(library.length).toBeGreaterThan(130);
   expect(readPeLoaderMetadata('C:\\Windows\\System32', 123)).toEqual(metadata);
   expect(query).toHaveBeenCalledWith('C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe',
-    ['-NoProfile', '-NonInteractive', '-Command', expect.stringContaining('GetProcessById(123)')],
-    expect.objectContaining({ timeout: 5_000, windowsHide: true }));
+    ['-NoProfile', '-NonInteractive', '-File', expect.stringMatching(/\\bin\\compiler-pe-process\.ps1$/)],
+    expect.objectContaining({ input: JSON.stringify({ pid: 123, environment: false }), timeout: 5_000, windowsHide: true }));
 });
 
 it('refuses module paths that identify a directory instead of a complete image filename', () => {
