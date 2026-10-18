@@ -55,7 +55,7 @@ it.each(['configured', 'on-demand', 'stopped'])('observes loader registration la
   }
 });
 
-it.each(['selected', 'missing', 'package-less', 'relative', 'index', 'main', 'subpath', 'symlink'])('observes %s native resolution inputs', kind => {
+it.each(['selected', 'missing', 'package-less', 'relative', 'index', 'main', 'subpath', 'symlink', 'resolve-paths', 'resolve-relative', 'module-paths', 'literal-colon'])('observes %s native resolution inputs', kind => {
   const root = fs.realpathSync.native(fs.mkdtempSync(path.join(os.tmpdir(), 'apack-module-probes-')));
   const parent = path.join(root, 'sub');
   fs.mkdirSync(parent);
@@ -65,6 +65,12 @@ it.each(['selected', 'missing', 'package-less', 'relative', 'index', 'main', 'su
     fs.writeFileSync(path.join(directory, 'index.js'), 'module.exports = 42;');
   };
   if (kind === 'selected' || kind === 'package-less') declare(path.join(root, 'node_modules/probe-package'), kind !== 'package-less');
+  const custom = path.join(root, 'custom');
+  const colonRequest = process.platform === 'win32' ? path.parse(root).root.slice(0, 2) + 'probe-package' : 'literal:probe-package';
+  const colonPackage = process.platform === 'win32' ? 'probe-package' : colonRequest;
+  if (kind === 'literal-colon') declare(path.join(root, 'node_modules', colonPackage));
+  if (kind === 'resolve-paths' || kind === 'module-paths') declare(path.join(root, 'node_modules/probe-package'));
+  if (kind === 'resolve-relative') declare(path.join(custom, 'value'));
   if (kind === 'package-less') fs.mkdirSync(path.join(parent, 'node_modules/probe-package'), { recursive: true });
   if (kind === 'index') fs.mkdirSync(path.join(parent, 'value'));
   if (kind === 'symlink') {
@@ -95,7 +101,18 @@ it.each(['selected', 'missing', 'package-less', 'relative', 'index', 'main', 'su
   try {
     const request = kind === 'subpath' ? 'probe-package/sub' : ['relative', 'index', 'main', 'symlink'].includes(kind) ? './value' : 'probe-package';
     const resolve = () => require(request);
-    if (['selected', 'package-less', 'main', 'subpath', 'symlink'].includes(kind)) expect(resolve()).toBe(42);
+    if (kind === 'literal-colon') {
+      expect(require.resolve(colonRequest, { paths: [custom] })).toBe(path.join(root, 'node_modules', colonPackage, 'index.js'));
+    } else if (kind === 'resolve-paths') {
+      expect(require.resolve('probe-package', { paths: [custom] })).toBe(path.join(root, 'node_modules/probe-package/index.js'));
+    } else if (kind === 'resolve-relative') {
+      expect(require.resolve('./value', { paths: [custom] })).toBe(path.join(custom, 'value/index.js'));
+    } else if (kind === 'module-paths') {
+      const owner = new module.Module(path.join(parent, 'entry.cjs'));
+      owner.filename = owner.id;
+      owner.paths = [path.join(custom, 'node_modules'), path.join(root, 'node_modules')];
+      expect(owner.require('probe-package')).toBe(42);
+    } else if (['selected', 'package-less', 'main', 'subpath', 'symlink'].includes(kind)) expect(resolve()).toBe(42);
     else expect(resolve).toThrow('Cannot find module');
     stop();
     expect(release).toHaveBeenCalledTimes(1);
@@ -103,7 +120,10 @@ it.each(['selected', 'missing', 'package-less', 'relative', 'index', 'main', 'su
       expect(observed.has(path.join(parent, 'node_modules/probe-package/package.json'))).toBe(true);
     }
     expect(() => view.assertCurrent()).not.toThrow();
-    if (kind === 'symlink') {
+    if (kind === 'literal-colon') declare(path.join(custom, 'node_modules', colonPackage));
+    else if (kind === 'resolve-paths' || kind === 'module-paths') declare(path.join(custom, 'node_modules/probe-package'));
+    else if (kind === 'resolve-relative') fs.writeFileSync(path.join(custom, 'value.js'), 'module.exports = 43;');
+    else if (kind === 'symlink') {
       fs.unlinkSync(path.join(parent, 'value'));
       fs.symlinkSync(path.join(parent, 'after.js'), path.join(parent, 'value'), 'file');
     } else if (kind === 'main' || kind === 'subpath') fs.writeFileSync(path.join(main, 'missing.js'), 'module.exports = 43;');

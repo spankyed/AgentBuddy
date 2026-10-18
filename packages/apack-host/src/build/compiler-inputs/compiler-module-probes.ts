@@ -7,16 +7,16 @@ import type { CompilerFileReadInputs } from './compiler-file-reads.ts';
 
 /** Record possible lookup inputs; Node retains module selection and its errors. */
 export function observeCompilerModuleResolution(inputs: CompilerFileReadInputs, specifier: string,
-  context: Pick<ResolveHookContext, 'parentURL' | 'conditions'>): void {
+  context: Pick<ResolveHookContext, 'parentURL' | 'conditions'> & { lookupPaths?: readonly string[] }): void {
   const parent = context.parentURL;
   if (!parent?.startsWith('file:') || isBuiltin(specifier) || specifier.startsWith('#')) return;
   const parentFile = fileURLToPath(parent);
-  if (!inputs.isInput(parentFile)) return;
+  if (context.lookupPaths === undefined && !inputs.isInput(parentFile)) return;
   const directory = parentFile.endsWith(path.sep) ? parentFile : path.dirname(parentFile);
   const require = createRequire(parent);
   const commonJS = Array.from(context.conditions).includes('require');
-  if (!path.isAbsolute(specifier) && /^[a-z][\w+.-]*:/i.test(specifier)
-    && (commonJS || !specifier.startsWith('file:'))) return;
+  if (!commonJS && !path.isAbsolute(specifier) && /^[a-z][\w+.-]*:/i.test(specifier)
+    && !specifier.startsWith('file:')) return;
   const extensions = Object.keys(require.extensions);
   const probeType = (file: string) => {
     if (!inputs.isInput(file)) return;
@@ -53,10 +53,12 @@ export function observeCompilerModuleResolution(inputs: CompilerFileReadInputs, 
     }
   };
   const relative = specifier === '.' || specifier === '..' || /^\.\.?[\\/]/.test(specifier);
-  if (relative || path.isAbsolute(specifier) || specifier.startsWith('file:')) {
+  if (relative || path.isAbsolute(specifier) || (!commonJS && specifier.startsWith('file:'))) {
     if (commonJS) {
-      const target = path.resolve(directory, specifier);
-      probeCommonJS(target, readDeclaration(target));
+      for (const base of context.lookupPaths ?? [directory]) {
+        const target = path.resolve(base, specifier);
+        probeCommonJS(target, readDeclaration(target));
+      }
     } else {
       let target: string;
       try { target = fileURLToPath(new URL(specifier, parent)); }
@@ -65,19 +67,18 @@ export function observeCompilerModuleResolution(inputs: CompilerFileReadInputs, 
     }
     return;
   }
-  if (/^[a-z][\w+.-]*:/i.test(specifier)) return;
   const name = specifier.split('/').slice(0, specifier.startsWith('@') ? 2 : 1).join('/');
   if (!name.split('/').every(part => part && part !== '.' && part !== '..')) return;
-  for (const lookup of require.resolve.paths(specifier) ?? []) {
+  for (const lookup of context.lookupPaths ?? require.resolve.paths(specifier) ?? []) {
     if (!commonJS) {
       const relative = relativeCompilerPath(path.dirname(lookup), directory);
       if (path.basename(lookup) !== 'node_modules' || relative === '..'
         || relative.startsWith(`..${path.sep}`) || path.isAbsolute(relative)) continue;
     }
-    const root = path.join(lookup, name);
+    const root = path.resolve(lookup, name);
     const metadata = readDeclaration(root);
     if (commonJS) {
-      const target = path.join(lookup, specifier);
+      const target = path.resolve(lookup, specifier);
       probeCommonJS(target, target === root ? metadata : readDeclaration(target));
     }
   }

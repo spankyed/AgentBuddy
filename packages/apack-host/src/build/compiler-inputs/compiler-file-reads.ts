@@ -331,13 +331,31 @@ export function beginCompilerStartupReads(scope: CompilerFileReadScope): () => v
   const preloadParent = pathToFileURL(process.cwd() + path.sep).href;
   const observeResolution = (specifier: string, context: ResolveHookContext) => {
     const current = currentScope();
-    if (current && current === state.startup) {
+    if (current && current === state.startup && !Array.from(context.conditions).includes('require')) {
       withoutCompilerFileReads(() => observeCompilerModuleResolution(current.compilation, specifier, {
         parentURL: context.parentURL ?? preloadParent, conditions: context.conditions,
       }));
     }
   };
   state.observeResolution = observeResolution;
+  // Async loader hooks omit createRequire; this native CJS lookup also supplies resolve({ paths }).
+  const commonjs = module as typeof module & { _findPath: (...args: unknown[]) => unknown };
+  const findPath = commonjs._findPath;
+  const findObserved = new Proxy(findPath, {
+    apply(target, receiver, args) {
+      const [specifier, lookupPaths] = args;
+      const current = currentScope();
+      if (current && current === state.startup && typeof specifier === 'string'
+        && (lookupPaths == null || (Array.isArray(lookupPaths) && lookupPaths.every(file => typeof file === 'string')))) {
+        withoutCompilerFileReads(() => observeCompilerModuleResolution(current.compilation, specifier, {
+          parentURL: preloadParent, conditions: ['require'],
+          lookupPaths: path.isAbsolute(specifier) ? [process.cwd()] : lookupPaths ?? [],
+        }));
+      }
+      return Reflect.apply(target, receiver, args);
+    },
+  });
+  commonjs._findPath = findObserved;
   // Node reads package declarations internally, bypassing the public fs adapters.
   // Observe lookup candidates, including missing nearer packages, without replacing resolution.
   // Node's asynchronous loader worker has no synchronous resolve implementation.
@@ -363,6 +381,7 @@ export function beginCompilerStartupReads(scope: CompilerFileReadScope): () => v
     if (state.startup === scope) {
       state.startup = undefined;
       state.observeResolution = undefined;
+      if (commonjs._findPath === findObserved) commonjs._findPath = findPath;
       hooks?.deregister();
       if (module.register === registerObserved) { module.register = register; syncBuiltinESMExports(); }
     }

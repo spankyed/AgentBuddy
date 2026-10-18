@@ -245,7 +245,7 @@ it('tracks retained Vite ESM preload and loader inputs without freezing Vue sour
       import { isMainThread } from 'node:worker_threads';
       if (globalThis[Symbol.for('apack.compiler.frontend')] && isMainThread)
         fs.writeFileSync(${JSON.stringify(proof)}, JSON.stringify({ value, required: globalThis.requiredValue, loader: globalThis.loaderValue,
-          loaderDependency: globalThis.loaderDependency, origin: import.meta.url }));`);
+          loaderDependency: globalThis.loaderDependency, loaderCommonJS: globalThis.loaderCommonJS, origin: import.meta.url }));`);
     const loader = path.join(root, 'loader/sub/loader.mjs');
     fs.mkdirSync(path.dirname(loader), { recursive: true });
     const loaderDependency = path.join(root, 'node_modules/loader-dependency');
@@ -255,12 +255,22 @@ it('tracks retained Vite ESM preload and loader inputs without freezing Vue sour
       fs.writeFileSync(path.join(directory, 'index.mjs'), `export default ${JSON.stringify(value)};`);
     };
     declareLoaderDependency(loaderDependency, 'LOADER_DEP');
+    const commonjsDependency = path.join(root, 'node_modules/loader-cjs-dependency');
+    const declareCommonJS = (directory: string, source: string) => {
+      fs.mkdirSync(directory, { recursive: true });
+      fs.writeFileSync(path.join(directory, 'package.json'), '{"main":"index.cjs"}');
+      fs.writeFileSync(path.join(directory, 'index.cjs'), source);
+    };
+    declareCommonJS(commonjsDependency, "module.exports = require('loader-cjs-child');");
+    declareCommonJS(path.join(root, 'node_modules/loader-cjs-child'), "module.exports = 'LOADER_CJS';");
     fs.writeFileSync(loader, `import fs from 'node:fs'; import dependency from 'loader-dependency';
+      import { createRequire } from 'node:module'; const commonjs = createRequire(import.meta.url)('loader-cjs-dependency');
       const value = fs.readFileSync(${JSON.stringify(payload)}, 'utf8');
       export async function load(url, context, next) {
         const result = await next(url, context);
         return url === ${JSON.stringify(pathToFileURL(imported).href)}
-          ? { ...result, source: 'globalThis.loaderValue = ' + JSON.stringify(value) + ';globalThis.loaderDependency = ' + JSON.stringify(dependency) + ';\\n' + result.source } : result;
+          ? { ...result, source: 'globalThis.loaderValue = ' + JSON.stringify(value) + ';globalThis.loaderDependency = ' + JSON.stringify(dependency)
+            + ';globalThis.loaderCommonJS = ' + JSON.stringify(commonjs) + ';\\n' + result.source } : result;
       }`);
     const required = path.join(root, 'sub/required');
     fs.mkdirSync(required);
@@ -287,7 +297,7 @@ it('tracks retained Vite ESM preload and loader inputs without freezing Vue sour
     frontend = await startPackFrontend(pack, compiler, signal, inputs => {
       observed = mergeCompilerWatchPaths(observed, inputs.paths);
     });
-    expect(JSON.parse(fs.readFileSync(proof, 'utf8'))).toEqual({ value: 'FIRST', required: 42, loader: 'LOADER', loaderDependency: 'LOADER_DEP', origin: pathToFileURL(imported).href });
+    expect(JSON.parse(fs.readFileSync(proof, 'utf8'))).toEqual({ value: 'FIRST', required: 42, loader: 'LOADER', loaderDependency: 'LOADER_DEP', loaderCommonJS: 'LOADER_CJS', origin: pathToFileURL(imported).href });
     expect(await frontend.isCurrent(signal)).toBe(true);
     for (const [file, original, changed] of [
       [payload, 'LOADER', 'CHANGED'],
@@ -315,6 +325,12 @@ it('tracks retained Vite ESM preload and loader inputs without freezing Vue sour
     expect(await frontend.isCurrent(signal), 'New nearer loader dependency must invalidate startup resolution').toBe(false);
     fs.rmSync(path.join(path.dirname(loader), 'node_modules'), { recursive: true });
     expect(await frontend.isCurrent(signal)).toBe(true);
+    const nearerCommonJS = path.join(commonjsDependency, 'node_modules/loader-cjs-child');
+    expect(createCompilerWatchMatcher(observed)(path.join(nearerCommonJS, 'package.json'), 'rename')).toBe(true);
+    declareCommonJS(nearerCommonJS, "module.exports = 'NEARER_CJS';");
+    expect(await frontend.isCurrent(signal), 'New nearer CommonJS loader dependency must invalidate startup resolution').toBe(false);
+    fs.rmSync(path.join(commonjsDependency, 'node_modules'), { recursive: true });
+    expect(await frontend.isCurrent(signal)).toBe(true);
     const nearer = path.join(root, 'sub/node_modules/preload-dependency');
     expect(createCompilerWatchMatcher(observed)(path.join(nearer, 'package.json'), 'rename')).toBe(true);
     fs.mkdirSync(nearer, { recursive: true });
@@ -322,16 +338,18 @@ it('tracks retained Vite ESM preload and loader inputs without freezing Vue sour
     fs.writeFileSync(path.join(nearer, 'first.mjs'), "export default 'NEARER';");
     expect(await frontend.isCurrent(signal), 'New nearer package must invalidate startup resolution').toBe(false);
     declareLoaderDependency(nearerLoader, 'NEARER_LOADER');
+    declareCommonJS(nearerCommonJS, "module.exports = 'NEARER_CJS';");
     const registration = path.join(root, 'register-loader.mjs');
     fs.writeFileSync(registration, `import { register } from 'node:module'; register(${JSON.stringify(pathToFileURL(loader).href)});`);
     process.env.NODE_OPTIONS = formatNodeOptions([...parseNodeOptions(previous), '--require', 'startup-require-fixture',
       '--import', pathToFileURL(registration).href, '--import', 'startup-import-fixture']);
     const replacement = await startPackFrontend(pack, compiler, signal);
     try {
-      expect(JSON.parse(fs.readFileSync(proof, 'utf8'))).toMatchObject({ value: 'NEARER', loaderDependency: 'NEARER_LOADER' });
+      expect(JSON.parse(fs.readFileSync(proof, 'utf8'))).toMatchObject({ value: 'NEARER', loaderDependency: 'NEARER_LOADER', loaderCommonJS: 'NEARER_CJS' });
       expect(await replacement.isCurrent(signal)).toBe(true);
     }
     finally { await replacement.close(); }
+    fs.rmSync(path.join(commonjsDependency, 'node_modules'), { recursive: true });
     fs.rmSync(path.join(path.dirname(loader), 'node_modules'), { recursive: true });
     fs.rmSync(path.join(root, 'sub/node_modules'), { recursive: true });
     expect(await frontend.isCurrent(signal)).toBe(true);
