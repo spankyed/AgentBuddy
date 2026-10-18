@@ -138,8 +138,8 @@ live compiler-side validation remain in place.
 Pack and outside-module inputs are rechecked before publication; the already captured compiler fingerprint is reused within its immutable lifetime.
 
 The runtime capture declares `runtimeDirectory`; the shared launcher uses it for linked-library
-admission before native constructors can run. On macOS, Electron includes its sibling Frameworks
-directory. The optional CI input `compiler_macos_signing=true` prepares a private Electron copy with
+admission before native constructors can run. On macOS, Electron includes the complete Contents
+directory: its signature binds Info.plist and sealed resources as well as the executable/frameworks. The optional CI input `compiler_macos_signing=true` prepares a private Electron copy with
 our Developer ID certificate and the exact app entitlements, then runs only its captured-runtime probe
 unless another filter is supplied. Signing and keychain cleanup happen on the disposable runner; no
 notarization, release workflow, installed-app change or signing exception is involved.

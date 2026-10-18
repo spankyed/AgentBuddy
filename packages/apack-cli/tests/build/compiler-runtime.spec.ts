@@ -53,3 +53,23 @@ it.skipIf(process.platform !== 'darwin')('includes Electron framework bytes, lin
   fs.mkdirSync(path.join(framework, 'empty'));
   expect(readCompilerRuntimeInputs(executable, true).hash).not.toBe(initial.hash);
 });
+
+it.skipIf(process.platform !== 'darwin')('captures Electron bundle metadata and sealed resources with the runtime', () => {
+  const { root, executable } = fixture();
+  const files = ['Info.plist', '_CodeSignature/CodeResources', 'Resources/app.asar'];
+  for (const file of files) {
+    fs.mkdirSync(path.dirname(path.join(root, file)), { recursive: true });
+    fs.writeFileSync(path.join(root, file), file);
+  }
+  fs.mkdirSync(path.join(root, 'Frameworks'));
+  const copied = new Map<string, Buffer>();
+  const initial = readCompilerRuntimeInputs(executable, true, (file, bytes) => copied.set(file.source, bytes));
+  for (const file of files) {
+    const source = path.join(root, file);
+    expect(copied.get(source)?.toString()).toBe(file);
+    fs.writeFileSync(source, 'CHANGED');
+    expect(readCompilerRuntimeInputs(executable, true).hash).not.toBe(initial.hash);
+    fs.writeFileSync(source, file);
+    expect(readCompilerRuntimeInputs(executable, true).hash).toBe(initial.hash);
+  }
+});

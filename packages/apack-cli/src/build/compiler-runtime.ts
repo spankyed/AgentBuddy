@@ -46,10 +46,9 @@ export function readCompilerRuntimeInputs(
     }
   };
   walk(executable);
-  if (electron) {
-    if (process.platform === 'darwin') walk(path.resolve(root, '../Frameworks'));
-    else walk(root);
-  }
+  // The macOS executable is inside Contents/MacOS. Keep the signed distribution together,
+  // including Info.plist and sealed resources, as on the other Electron platforms.
+  if (electron) walk(process.platform === 'darwin' ? path.dirname(root) : root);
   const identity = [relative(executable), files.sort(([a], [b]) => a < b ? -1 : a > b ? 1 : 0),
     directories.map(relative).sort(), links.map(({ source, target }) => [relative(source), relative(target)]).sort()];
   return { executable, directory: electron && process.platform === 'darwin' ? path.dirname(root) : root,
