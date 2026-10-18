@@ -4335,3 +4335,48 @@ manifests), helper versus target loaded-module precedence, device-path identity 
 for selecting manifests/policies. Reuse the existing native input/admission owner. Preserve the
 expected-failing regression and require contained/OS support, pre-initialization refusal and actual
 selected-runtime acceptance; this prototype closes none of those remaining requirements by itself.
+
+## Windows .local redirection admission checkpoint (2026-10-18)
+
+Source `113116791` adds `.local` selection to the existing PE predicate, including direct native-image
+requests, both marker forms, embedded/external application-manifest suppression and the read-only
+`DevOverrideEnable` policy query. Selected paths retain lexical and physical ownership checks.
+Missing marker/candidate probes use the existing input observer; captured runtime probes stay with
+their installation owner. Windows Node runtime inventory now captures an existing marker and its
+participants: a directory's subtree or executable-directory files for a file marker. It detects later
+marker/library additions and byte changes without capturing unrelated directory contents.
+
+The final VM run uses `83c83c53a` plus `apack-pe-local-admission-v3.patch`; all eleven normalized source
+and test blobs were verified against committed `113116791`. Matching CLI output was rebuilt through
+`packages:ensure`. Exactly two real cases pass: `.local` exact selected-path refusal with no DLL
+initialization during admission (1.616s), and existing retained compiler DLL ownership, privacy,
+freshness restoration, Vue HMR and outside-PATH refusal/incumbent retention (39.519s). Six cases remain
+deliberately unselected. Total Vitest duration is 43.36s. One worker, `APACK_CHAIN_CORES=2` and
+`GOMAXPROCS=2`; no deadline or assertion changed.
+
+The first existing retained-compiler attempt hit its 60s test deadline, reported 95.84s case time and
+an `onTaskUpdate` RPC timeout. Its owned processes exited. A diagnostic with stage timestamps passes
+at the unchanged deadline in 41.62s: capture takes 31.13s and initial frontend startup 5.26s. Those
+timestamps describe the passing diagnostic, not the earlier failure's cause. Diagnostic logging is
+preserved outside product source. The final uninstrumented source also passes as above; no performance
+fix, baseline failure diagnosis or increased capacity is claimed.
+
+Focused inert checks pass: 57 local cases across PE parsing/API sets/admission/metadata and native
+ownership; Windows runs 32 cases with three platform skips, including both Node marker inventories.
+CLI typecheck, correctness lint and diff checks pass. Restoring the old predicate makes four selected
+`.local` checks fail (two pass, seventeen unselected); source is restored afterward. Mutation log:
+`/private/tmp/apack-pe-local-mutation.log`. No native fixture ran on the daily-use Mac.
+
+VM records: `C:\apack-setup\runs\pe-local-final-83c83c53a`,
+`pe-local-runtime-83c83c53a` (failure), and `pe-local-runtime-stages-83c83c53a` (diagnostic), including
+commands, patches, reports and exits. Copies: `/private/tmp/apack-pe-local-final-vm/`,
+`/private/tmp/apack-pe-local-runtime-failed-vm/` and `/private/tmp/apack-pe-local-runtime-stages-vm/`.
+The validated VM overlay is stashed before fast-forwarding to exact `113116791`; existing launcher
+bytes and prior stashes remain untouched. No native/compiler process remains.
+After evidence preservation, Azure confirms `VM deallocated`.
+
+This closes the implemented `.local` predicate/inventory gap, not configured Node/Electron redirection
+acceptance or SxS support. Next use the retained SxS counterexample and metadata/resource prototype to
+reconcile actual executable/image contexts, selecting manifest/policy inputs and loader precedence.
+Keep actual configured-runtime acceptance, valid bound-only behavior, remaining native/platform cases,
+B6 and the final committed-source strict gate required. No CI dispatch, push or system-policy change.
