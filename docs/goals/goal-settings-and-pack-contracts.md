@@ -118,9 +118,17 @@ pass; the new regression reproduces the old one-core reservation and proves seri
 See [reservation evidence](../evidence/settings-and-pack-contracts.md#fork-producer-core-reservation--2026-10-18). The required hosted
 strict gate must exercise the independent producers and exact archive/app handoff. If the standalone
 fork still fails, use its retained phase output; do not restart broad runs without a demonstrated repair.
-[Strict run `39172886664`](https://github.com/spankyed/AgentBuddy/actions/runs/39172886664) is in progress
-on exact source `d0ab6dd6b`. The run owns disposable two-core execution; no local compiler/native run or
-Windows VM work remains active. Await its authoritative result before another broad execution or acceptance claim.
+[Strict run `39172886664`](https://github.com/spankyed/AgentBuddy/actions/runs/39172886664) finished on
+exact source `d0ab6dd6b`: both fixture contracts (340.6s) and fork build/archive (497.2s) pass under their
+unchanged suite bounds; packaged authoring's author half passes in 431.6s. Host units then fail on the
+already-repaired helper expectation plus eager host validation during driver/session imports and a
+real-checkout-dependent spawning unit. The latter repair defers host validation to actual fixture setup
+and gives the spawning test its own inert checkout; all 70 focused checks pass with an unusable pinned
+host. See [accepted producers and cold-import repair](../evidence/settings-and-pack-contracts.md#independent-producers-accepted-cold-helper-imports-repaired--2026-10-18).
+No further performance profiling follows from the accepted producers. The next strict gate must cover
+the remaining runtime/integration/app legs on the corrected source. Its whole-job cap is 60m because
+this cold run consumed 28m before those legs; individual step bounds remain unchanged. Windows is
+deallocated and no earlier hosted gate remains running.
 The pure helper-protocol expectation repair `39352b2c7` passes all 67 adjacent PE cases and CLI types;
 it is newer than the run's pinned source. B1/B2 checkpoint `2a0e9efc0` separates runtime selector
 observations from copy callbacks, delivering selected OS policies and missing/failed-context probes to

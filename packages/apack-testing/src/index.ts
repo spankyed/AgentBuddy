@@ -377,7 +377,6 @@ export function createAppDriver(page: Page, screenshotDir: string): AppDriver {
 }
 
 export function createTest(options: CreateTestOptions = {}) {
-  const appLaunch = resolveTestHost(options);
   const screenshotDir = resolveScreenshotDir(options.screenshotDir);
 
   const test = base.extend<
@@ -388,6 +387,7 @@ export function createTest(options: CreateTestOptions = {}) {
     // dropping the parameter would change the fixture's arity.
     // eslint-disable-next-line no-empty-pattern
     electronApp: [async ({}, use, workerInfo) => {
+      const appLaunch = resolveTestHost(options);
       // From a checkout this fixture is built on demand, and a stale build tests the previous app
       assertCheckoutPackagesFresh();
       // Every worker gets a fresh data dir: no data, installed packs or onboarding state leak

@@ -368,6 +368,10 @@ Every non-Playwright arg is forwarded (`apack pack test -g "renders"`, `apack pa
 
 ## How the fixture finds apack
 
+Importing helpers and registering fixtures does not require a built app. The `electronApp` worker
+resolves and validates its host before creating test data or launching; `fixture-registration.spec.ts`
+checks both registration without a host and refusal before launch.
+
 The fixture honors the CLI's resolved `APACK_HOST_EXECUTABLE` or `APACK_HOST_ROOT`. Explicit `createTest({ appExecutable })` / `createTest({ appRoot })` options must identify that same host when a handoff is present. Standalone fixtures can select a host through those options, then fall back to the monorepo enclosing `@apackdev/testing` (auto-detected by walking up to `packages/entry-point.mjs`). A checkout is validated first (`packages/entry-point.mjs`, `node_modules/electron`, `packages/main/dist`, `packages/renderer/dist`) so a stale or unbuilt checkout gets a clear list of what's missing.
 
 ## Fixture lifecycle

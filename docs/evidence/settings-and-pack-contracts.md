@@ -7855,3 +7855,38 @@ graph and core-budget cases pass in 962ms; scripts/repo-checks types, focused li
 diff checks pass. The dry plan reports the fork as two cores. No timeout class or deadline changes.
 The in-progress strict run remains pinned to `d0ab6dd6b`; its cause/results remain unproven until
 retained output is available. This correction does not attribute that run's elapsed time to contention.
+
+## Independent producers accepted; cold helper imports repaired — 2026-10-18
+
+[Strict run `39172886664`](https://github.com/spankyed/AgentBuddy/actions/runs/39172886664), exact source
+**`d0ab6dd6b`**, finished with a host-unit failure after 1675.0s. Both fixture contracts (**340.6s**)
+and the independent fork build/archive (**497.2s**) pass under their unchanged 600s bounds. The fork
+archive SHA256 is `f80902ee3ee8464f7fc72984a3562de6aa1b9b8f09635cae4ef0db1ae743d17e`.
+Packaged authoring's full author half passes in **431.6s**, archive SHA256
+`1ed726ebece2bfd89841c782944195ecd556601b71eab13625b9b9eb2a38704a`. Its local dry-run/install
+evidence boundaries still apply; neither app half starts in this failed run. Default-setup build,
+facade (33.6s), schema/API/export agreement, all reached typechecks, specifiers, tiers and lint pass.
+The former aggregate fork timeout no longer reproduces. No compiler-performance repair or another
+profile is justified by this result. The later two-core reservation correction remains separately tested.
+
+Host units report 470 passing files/5586 passing tests, three suite-collection errors and two failed
+tests. One is the packaged-query expectation already repaired in `39352b2c7`. Three collection errors
+share eager `createTest()` host validation: importing a driver/session helper constructs the default
+Playwright fixture and requires app output before any app is requested. Host resolution now occurs
+inside `electronApp`, before freshness checks, data setup or launch. All existing host validation and
+identity-conflict rules remain. The spawning unit also used the real checkout despite mocking spawn;
+it now owns a minimal inert checkout with its required files. Production spawn validation is unchanged.
+
+The new registration regression fails against the eager implementation during collection. After the
+repair, **70** affected tests pass in 3.64s with `APACK_HOST_ROOT` deliberately pointing to an unusable
+path, exercising source session imports and the freshly rebuilt distribution's `createAppDriver`.
+No app launches. Testing/CLI types, focused lint and diff checks pass. This avoids turning pure helper
+imports into app-dependent tests or adding app build outputs to the unit pool.
+
+Retained evidence: `/private/tmp/apack-strict-39172886664.log`, cleaned console
+`/private/tmp/apack-strict-39172886664-clean.log`, and the complete downloaded per-step logs beneath
+`/private/tmp/apack-strict-39172886664/`. The next required committed-source gate must include the
+unreached runtime/app/integration legs. The workflow's whole-job cap becomes 60m because this cold
+run consumed 28m before those legs; all individual step budgets remain unchanged. No fresh broad run
+starts until this focused checkpoint is reviewed and committed. Native/platform closure still follows
+the preserved goal register.
