@@ -4042,3 +4042,58 @@ is weakened. The finite remaining platform/native obligations, converged accepta
 confirms normal versus `\\?\` spelling returns an absolute result for the same directory. Compilation
 ownership still uses plain `path.relative()` in two guards; audit those actual call sites against the
 existing `relativeCompilerPath` contract next rather than inventing a second comparison helper.
+
+### Windows namespace ownership audit (2026-10-18)
+
+The inert Windows path comparison from the prior checkpoint exposed remaining ownership guards
+that used plain `path.relative()`. Source `28385676c` adds actual compilation-input tool/workspace
+classification cases and lets the existing Windows name filter select these unit checks. The filter
+now checks combined unit/native JSON results, refusing a zero-pass selection.
+
+Hosted run [39100566892](https://github.com/spankyed/AgentBuddy/actions/runs/39100566892) on that
+source fails the tool case in 2.78 seconds: the ordinary filename is correctly excluded, but the same
+file in extended spelling becomes a new input. Fail-fast stops before the workspace case and native
+SDK/tests. Log: `/private/tmp/apack-windows-ownership-39100566892.log`. This confirms actual API
+impact beyond the path primitive.
+
+Source `aee3a18ab` uses the existing `relativeCompilerPath` for eight remaining ownership decisions:
+compilation tool/workspace, CommonJS resolution/loading, read-tree binding, startup authored-input
+classification and the two watch classifications. Native Mach-O/ELF path rules and PE's own canonical
+path comparison remain purpose-specific; import rewriting and serialized relative-path fields are
+unchanged. No new filesystem comparison abstraction is introduced.
+
+CommonJS/ESM inspection also finds raw `split('?')`/`indexOf('?')` operations that mistake the Windows
+device-prefix question mark for a tsx scope query. The shared `splitCompilerModulePath` preserves that
+prefix and separates the scope suffix. Seven pure examples cover ordinary, device, UNC, scoped and
+file-URL inputs. The Windows watch regression checks authored alias paths do not acquire duplicate
+external subscriptions.
+
+Local verification passes 51 distinct pure checks: ten compilation/read-tree, eleven shared Windows
+path, seven module-query, eight runner-guard and fifteen watch-planning/matcher cases. CLI types,
+ten-file lint, workflow YAML parsing and diff checks pass. Hosted Windows run [39101205268](https://github.com/spankyed/AgentBuddy/actions/runs/39101205268)
+on `aee3a18ab` passes all eleven selected cases: tool/workspace aliases, authored watch classification,
+seven query forms and the real filesystem-event rebuild case. The live case takes 1.11 seconds;
+selected unit execution totals 8.27 seconds. The aggregate guard confirms eleven actual passes;
+unrelated native cases are skipped. Log: `/private/tmp/apack-windows-ownership-39101205268.log`.
+
+The initial local selection accidentally included `compiler-watch.spec.ts`'s real filesystem-event
+case. It fails at the 2-second event wait with 17 unhandled `EMFILE: too many open files, watch`
+errors; the test process exits. This is not a passing watcher check, an established system-wide failure,
+or evidence about the earlier app-launch incident. That live case now calls the existing hosted-runner
+guard before creating fixtures/watchers, and root guidance explicitly includes live watcher cases
+even inside unit files. Remaining pure watch cases are rerun separately and pass without unhandled
+errors. No file-limit/security settings were changed and no native fixture/captured executable ran
+locally. The existing macOS filter now selects unit and native cases consistently, checking their
+combined pass count. Hosted macOS run [39101209244](https://github.com/spankyed/AgentBuddy/actions/runs/39101209244)
+on the same source accepts that exact live-event case in 1.09 seconds, with its unchanged event deadline.
+The aggregate result confirms one actual pass; unrelated native cases are skipped. Log:
+`/private/tmp/apack-live-watch-39101209244.log`. Do not repeat it locally or change resource limits.
+This does not establish why the daily-use Mac reached EMFILE or any link to its prior launch incident.
+
+The error output also exposes a remaining B3 behavior to address directly: `watch.ts` subscribes to
+FSWatchers without error listeners. Async resource failure therefore has no attributed terminal
+result for its owner; the public/dev callers currently wait indefinitely for signals after startup.
+Use the existing watcher owner and cancellation/disposal path to report and terminate this failure,
+with an inert emitted-error regression before another live run. Do not add a generic resource manager,
+retry loop, polling fallback or increase limits. This source finding remains required even though the
+ordinary hosted live-event controls pass.
