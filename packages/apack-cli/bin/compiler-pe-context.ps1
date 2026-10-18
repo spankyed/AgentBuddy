@@ -103,16 +103,21 @@ public static class ApackPeActivationContext {
     if (handle.IsInvalid) { int error = Marshal.GetLastWin32Error(); handle.Dispose(); throw new Win32Exception(error); }
     return new FileStream(handle, FileAccess.Read);
   }
-  static object Input(string file) {
+  sealed class InputInfo {
+    public string file { get; set; }
+    public string kind { get; set; }
+    public string hash { get; set; }
+  }
+  static InputInfo Input(string file) {
     uint attributes = GetFileAttributesW(NativePath(file));
     if (attributes == uint.MaxValue) {
       int error = Marshal.GetLastWin32Error();
       if (error != 2 && error != 3) throw new Win32Exception(error);
-      return new { file = file, kind = "missing", hash = (string)null };
+      return new InputInfo { file = file, kind = "missing", hash = null };
     }
-    if ((attributes & 16) != 0) return new { file = file, kind = "directory", hash = (string)null };
+    if ((attributes & 16) != 0) return new InputInfo { file = file, kind = "directory", hash = null };
     using (FileStream stream = ReadFile(file)) using (SHA256 hash = SHA256.Create())
-      return new { file = file, kind = "file", hash = BitConverter.ToString(hash.ComputeHash(stream)).Replace("-", "").ToLowerInvariant() };
+      return new InputInfo { file = file, kind = "file", hash = BitConverter.ToString(hash.ComputeHash(stream)).Replace("-", "").ToLowerInvariant() };
   }
   static XmlDocument ReadXml(Stream stream) {
     XmlReaderSettings settings = new XmlReaderSettings { DtdProcessing = DtdProcessing.Prohibit, XmlResolver = null };
@@ -172,7 +177,34 @@ public static class ApackPeActivationContext {
       }
     } finally { FreeLibrary(module); }
   }
-  public static object Read(string image, string application, int resourceId, bool external) {
+  static List<List<string>> ReadPrivateCandidates(string image, string configuration, XmlDocument manifest) {
+    string directory = Path.GetDirectoryName(image);
+    List<string> roots = new List<string> { directory };
+    if (File.Exists(configuration)) using (FileStream stream = ReadFile(configuration)) {
+      XmlDocument config = ReadXml(stream);
+      foreach (XmlNode probing in config.SelectNodes("//*[local-name()='probing' and namespace-uri()='urn:schemas-microsoft-com:asm.v1']")) {
+        foreach (string relative in probing.Attributes["privatePath"].Value.Split(';')) {
+          string root = Path.GetFullPath(Path.Combine(directory, relative));
+          if (root.StartsWith(directory.TrimEnd('\\') + "\\", StringComparison.OrdinalIgnoreCase)) roots.Add(root);
+        }
+      }
+    }
+    List<List<string>> result = new List<List<string>>();
+    foreach (XmlNode dependency in manifest.SelectNodes("/*[local-name()='assembly']/*[local-name()='dependency']/*[local-name()='dependentAssembly']/*[local-name()='assemblyIdentity']")) {
+      string name = dependency.Attributes["name"].Value;
+      string language = dependency.Attributes["language"] == null ? "" : dependency.Attributes["language"].Value;
+      if (Path.GetFileName(name) != name || (language != "" && language != "*")) continue;
+      List<string> candidates = new List<string>();
+      foreach (string root in roots) foreach (string parent in new string[] { root, Path.Combine(root, name) }) {
+        candidates.Add(Path.Combine(parent, name + ".dll"));
+        candidates.Add(Path.Combine(parent, name + ".manifest"));
+      }
+      result.Add(candidates);
+    }
+    return result;
+  }
+  public static object Read(string image, string application, int resourceId, bool external, string configuration) {
+    var candidates = ReadPrivateCandidates(image, configuration, ReadManifest(external ? image + ".manifest" : image, resourceId));
     ContextSpec spec = new ContextSpec();
     spec.Size = (uint)Marshal.SizeOf(typeof(ContextSpec));
     spec.Source = NativePath(external ? image + ".manifest" : image);
@@ -184,8 +216,25 @@ public static class ApackPeActivationContext {
     IntPtr index = Marshal.AllocHGlobal(4);
     UIntPtr cookie = UIntPtr.Zero; bool active = false;
     try {
+      // Discover relevant private prefixes first; shared assemblies never probe these local paths.
+      Dictionary<string, InputInfo> probes = new Dictionary<string, InputInfo>(StringComparer.OrdinalIgnoreCase);
+      ContextInfo initial = Query<ContextInfo>(context, IntPtr.Zero, 2);
+      for (uint assembly = 1; assembly <= initial.Assemblies; assembly++) {
+        Marshal.WriteInt32(index, unchecked((int)assembly));
+        string selected = DosPath(Query<AssemblyInfo>(context, index, 3).Manifest);
+        foreach (var paths in candidates) {
+          int found = paths.FindIndex(file => String.Equals(file, selected, StringComparison.OrdinalIgnoreCase));
+          for (int candidate = 0; candidate <= found; candidate++) probes[paths[candidate]] = Input(paths[candidate]);
+        }
+      }
+      if (probes.Count != 0) {
+        // Bind after capturing the namespace; refuse if it changes before inspection finishes.
+        IntPtr next = CreateActCtxW(ref spec);
+        if (next == new IntPtr(-1)) throw new Win32Exception(Marshal.GetLastWin32Error());
+        ReleaseActCtx(context); context = next;
+      }
       ContextInfo detail = Query<ContextInfo>(context, IntPtr.Zero, 2);
-      Dictionary<string, object> inputs = new Dictionary<string, object>(StringComparer.OrdinalIgnoreCase);
+      Dictionary<string, InputInfo> inputs = new Dictionary<string, InputInfo>(StringComparer.OrdinalIgnoreCase);
       HashSet<string> names = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
       if (!String.IsNullOrEmpty(detail.Config)) inputs[DosPath(detail.Config)] = Input(DosPath(detail.Config));
       for (uint assembly = 1; assembly <= detail.Assemblies; assembly++) {
@@ -205,7 +254,14 @@ public static class ApackPeActivationContext {
       active = true;
       List<object> redirections = new List<object>();
       foreach (string name in names) redirections.Add(new { name = name, file = MapFile(name) });
-      return new { inputs = new List<object>(inputs.Values).ToArray(), redirections = redirections.ToArray() };
+      foreach (InputInfo before in probes.Values) {
+        InputInfo after = Input(before.file), selected;
+        if (before.kind != after.kind || before.hash != after.hash
+          || (inputs.TryGetValue(before.file, out selected) && (before.kind != selected.kind || before.hash != selected.hash)))
+          throw new Win32Exception(1237);
+        inputs[before.file] = before;
+      }
+      return new { inputs = new List<InputInfo>(inputs.Values).ToArray(), redirections = redirections.ToArray() };
     } finally {
       if (active) DeactivateActCtx(0, cookie);
       Marshal.FreeHGlobal(index); ReleaseActCtx(context);
@@ -213,7 +269,7 @@ public static class ApackPeActivationContext {
   }
 }
 '@
-    $context = [ApackPeActivationContext]::Read($payload.image, $payload.application, $payload.resource, $external)
+    $context = [ApackPeActivationContext]::Read($payload.image, $payload.application, $payload.resource, $external, $payload.configuration)
     $known = @{}
     foreach ($inputFile in $payload.inputs) { $known[$inputFile.file] = $inputFile }
     foreach ($inputFile in $context.inputs) {

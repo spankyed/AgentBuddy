@@ -94,7 +94,8 @@ export function readCompilerRuntimeInputs(
         if (stat?.isDirectory()) directories.add(file);
         else if (stat) walk(file);
       };
-      for (const input of context.inputs) own(input.file);
+      // Absent candidates affect identity without inventing directories in the copied runtime.
+      for (const input of context.inputs) if (input.kind !== 'missing') own(input.file);
       for (const binding of context.redirections) if (binding.file) own(binding.file);
       const identity = (file: string) => system(file) ? ['system', pePath(file).toLowerCase()] : ['runtime', relative(file)];
       const ordered = (rows: unknown[]) => rows.sort((a, b) => JSON.stringify(a).localeCompare(JSON.stringify(b), 'en'));

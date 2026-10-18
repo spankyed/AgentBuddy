@@ -10,7 +10,7 @@ import { REPO_ROOT } from '@apackdev/host/build/packages-built';
 import { readPackBuild } from '@apackdev/host/packs';
 import { readPackBuildInputs, assertPackBuildInputsCurrent } from '@apackdev/host/build/pack-build-inputs';
 import { createPackBuilder } from '../../src/build/build-process.ts';
-import { relativeCompilerPath } from '@apackdev/host/build/compiler-inputs';
+import { createCompilerFileView, relativeCompilerPath } from '@apackdev/host/build/compiler-inputs';
 import { formatNodeOptions, parseNodeOptions } from '@apackdev/host/build/source-resolution';
 import { captureCompilerInstallation, compilerPackageDirectory, type CompilerInstallation } from '../../src/build/compiler-installation.ts';
 import { startPackFrontend, type PackFrontend } from '../../src/build/frontend-process.ts';
@@ -403,14 +403,16 @@ int wmain(int argc, wchar_t **argv) {
       fs.rmSync(dllMarker);
       const reads: string[] = [];
       const environment = capturePeLibraryEnvironment(configured);
-      const check = (image = entry) => assertCapturedPeLibraries(image, path.dirname(library), {
+      const check = (image = entry, view?: ReturnType<typeof createCompilerFileView>) => assertCapturedPeLibraries(image, path.dirname(library), {
         environment, executable: configured,
         moduleContext: image => readPeActivationContext(image, { systemDirectory: environment.systemDirectory, application: configured, resource: 2 }), cwd: root,
         variables: process.env,
         loadedLibraries: kind === 'image-assembly-api' ? [path.join(environment.systemDirectory, 'psapi.dll')] : [], arch: process.arch,
-        realpath: file => fs.realpathSync.native(file),
-        directoryExists: file => fs.statSync(file, { throwIfNoEntry: false })?.isDirectory() ?? false,
-        read: file => { reads.push(file); return fs.statSync(file, { throwIfNoEntry: false })?.isFile() ? fs.readFileSync(file) : undefined; },
+        realpath: file => view ? view.fileSystem.realpath(file) : fs.realpathSync.native(file),
+        directoryExists: file => view ? view.captureDataLocation(file, 'directory')?.kind === 'directory'
+          : fs.statSync(file, { throwIfNoEntry: false })?.isDirectory() ?? false,
+        read: file => { reads.push(file); return view ? view.readDataBytes(file)
+          : fs.statSync(file, { throwIfNoEntry: false })?.isFile() ? fs.readFileSync(file) : undefined; },
       });
       if (imageContext) {
         expect(() => check()).not.toThrow();
@@ -448,6 +450,29 @@ int wmain(int argc, wchar_t **argv) {
         fs.appendFileSync(configuration, '<!-- changed -->');
         expect(context(configuredImage).inputs.find(input => input.file === configuration)?.hash)
           .not.toBe(after.inputs.find(input => input.file === configuration)?.hash);
+        const observed: string[] = [];
+        const view = createCompilerFileView(pack, { observe: file => { observed.push(file); } });
+        try {
+          check(configuredImage, view);
+          expect(() => view.assertCurrent()).not.toThrow();
+          const preferred = path.join(path.dirname(entry), assemblyName);
+          expect(observed).toContain(path.join(preferred, assemblyName + '.manifest'));
+          fs.mkdirSync(preferred);
+          fs.copyFileSync(path.join(alternate, assemblyName + '.manifest'), path.join(preferred, assemblyName + '.manifest'));
+          const preferredLibrary = path.join(preferred, path.basename(selected));
+          buildLibrary(preferredLibrary, 33);
+          // Use a fresh image for the next process, as a new compiler snapshot does.
+          const nextImage = path.join(path.dirname(entry), 'next.dll');
+          fs.copyFileSync(configuration, nextImage + '.2.config');
+          fs.copyFileSync(configuredImage, nextImage);
+          expect(observe(executable, nextImage)).toEqual({ value: 33, file: fs.realpathSync.native(preferredLibrary).toLowerCase() });
+          fs.rmSync(dllMarker);
+          expect(context(nextImage).redirections).toContainEqual({ name: 'apack_value.dll', file: preferredLibrary });
+          expect(context(configuredImage).redirections).toContainEqual({ name: 'apack_value.dll', file: preferredLibrary });
+          expect(() => view.assertCurrent()).toThrow(assemblyName);
+          fs.rmSync(preferred, { recursive: true });
+          expect(() => view.assertCurrent()).not.toThrow();
+        } finally { view.dispose(); }
       }
       if (kind === 'assembly') {
         const before = readCompilerRuntimeInputs(configured, false);
