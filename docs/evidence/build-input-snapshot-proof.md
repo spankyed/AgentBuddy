@@ -4659,3 +4659,50 @@ the goal is not complete.
 The validated VM overlay is preserved in stash `Validated DLL configuration overlay on 8c388fdf7`,
 then the checkout is fast-forwarded to `61431e063`. The pre-existing launcher change and all earlier
 stashes remain untouched. Azure confirms `VM deallocated`; no execution owner remains.
+
+## Windows helper compiler lifetime repair (2026-10-18)
+
+Source: `f6cd78014`; six final source blobs match the Windows checkout. Windows Server 2025 x64,
+Node 23.11.1, one execution owner and two-core budget. This resolves the previously unproven helper
+cleanup boundary; it does not complete B1/B3 or the goal's final acceptance.
+
+The actual metadata helper's `csc.exe` was observed with held process handles, its threads suspended
+and its continued liveness confirmed. On baseline `0f4381dd8`, the helper's existing five-second timeout
+stops the helper but leaves that compiler alive. Forced loss of the Node owner does the same. Both
+processes reporting job membership was therefore insufficient evidence. Diagnostic cleanup terminates
+only the held original process handles in `finally`; no global sweep or PID-only termination is used.
+
+The shared PowerShell bootstrap now creates and joins a non-breakaway kill-on-close job before
+`Add-Type`. It emits only its native declarations in-process, avoiding another compiler while
+establishing ownership. Its non-inheritable handle stays open until process teardown. Metadata and
+worker launchers share this bootstrap; the existing worker job still drains its worker subtree before
+returning a result. The CLI distribution and the builder fixture include the new file. This follows
+Windows' [job inheritance and lifetime contract](https://learn.microsoft.com/en-us/windows/win32/procthread/job-objects),
+not a stronger security-isolation claim.
+
+Both suspended real-compiler probes now confirm helper and compiler termination under the original
+timeout and parent-loss bounds. The existing launcher proof adds a finite helper descendant and passes
+all seven scenarios under its unchanged 30-second deadline. Removing ownership deliberately makes that
+regression fail at `Compiler helper descendant survived helper loss`; restoring it passes. The initial
+regression waited for stdio closure and failed this mutation check. Its corrected version observes
+helper exit first, since a surviving descendant can retain pipe handles until natural expiry.
+
+Matching packages build successfully; the published bootstrap matches source. All seven affected
+ordinary-loader/real Node startup cases pass (42.55s total, 34.05s tests), preserving exact selection,
+configuration, allowed execution and refusal before initialization. The production builder's existing
+descendant-before-publication case passes in 2.905s (5.08s total). PowerShell parsing, CJS syntax,
+CLI/scripts types, focused oxlint and diff checks pass. No deadline or admission assertion changed.
+
+VM evidence directories under `C:\apack-setup\runs`: `helper-lifetime-0f4381dd8-{timeout,parent-loss}`
+for baseline failures, `helper-lifetime-fixed-0f4381dd8-{timeout,parent-loss}` for repaired probes,
+`helper-context-0f4381dd8`, `helper-job-mutation[-v2]-0f4381dd8` and `helper-final-0f4381dd8`.
+Logs, reports, diagnostic scripts and final source hashes are saved off-machine in
+`/private/tmp/apack-helper-lifetime-evidence-0f4381dd8.zip`.
+
+Broader selection-policy and higher-priority watch inputs, Electron, the other named platform/runtime
+cases, B6 and final committed-source strict `--all` remain required. The earlier settings, discovery,
+manifest and all three Phase 6 deliverables retain their existing acceptance requirements.
+
+The validated VM overlay is preserved in scoped stash `Validated helper lifetime overlay on 0f4381dd8`
+before fast-forwarding to `f6cd78014`. The pre-existing launcher change and all saved work remain
+untouched. No Node/C#/MSVC test process remains; Azure confirms `VM deallocated`.

@@ -121,14 +121,16 @@ package-contained. A loaded-System32/private-`psapi.dll` collision also preserve
 without helper-side initialization. See the [DLL checkpoint](../evidence/build-input-snapshot-proof.md#windows-dll-activation-context-checkpoint-2026-10-18)
 and [earlier four-point review](../evidence/build-input-snapshot-proof.md#windows-default-application-context-admission-checkpoint-2026-10-18).
 The [helper/launcher audit](../evidence/build-input-snapshot-proof.md#windows-helper-and-launcher-checkpoint-2026-10-18)
-observes both the live metadata helper and its actual C# compiler in a Windows job; this does not prove
-timeout or parent-loss cleanup of that compiler. Source `8e93dc4f4` repairs a missing runtime-directory
-input in the existing launcher proof; all six native lifetime scenarios pass. No speculative job
-bootstrap was added. Source `61431e063` accepts
+observed both the live metadata helper and its actual C# compiler in a Windows job. A subsequent
+[lifetime probe and repair](../evidence/build-input-snapshot-proof.md#windows-helper-compiler-lifetime-repair-2026-10-18)
+in `f6cd78014` reproduces compiler survival after helper timeout and parent loss, then closes both paths
+with a shared job established before compilation. The suspended real-compiler probes, mutation-checked
+regression, seven launcher scenarios, seven DLL/startup controls and builder publication boundary pass.
+Source `8e93dc4f4` repairs the launcher proof's runtime-directory input. Source `61431e063` accepts
 [DLL-specific configuration](../evidence/build-input-snapshot-proof.md#windows-dll-configuration-acceptance-2026-10-18):
 ordinary selection, observed configuration bytes and actual Node refusal/allowed snapshot startup.
-Next close broader selection policy, Electron and remaining runtime/watch acceptance, retaining the
-helper cleanup proof obligation. Do not reschedule the
+Next close broader selection policy, Electron and remaining runtime/watch acceptance. Preserve helper
+cleanup through clean-platform/converged acceptance; do not reschedule the
 accepted basic Node/DLL controls. The unaccepted module-configuration draft is stashed; it is not an
 exclusion. Configured Node `.local` public-build acceptance remains `9d25152aa`; the separate full-CLI
 SxS timeout is preserved and not a passing gate. All other closure-register and final-gate requirements
