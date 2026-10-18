@@ -4176,3 +4176,50 @@ it does not establish the selected Node/Electron runtime's manifest/policy behav
 admission, native freshness or full runtime acceptance. Compare the actual selected runtime next,
 then select any necessary admission correction from that evidence. Do not treat this fixture commit
 as completion of the Windows resolution requirement.
+
+
+## Hosted watcher acceptance and PE control result (2026-10-18)
+
+The user pushed source `167722d1f`; remote verification confirms that exact branch tip, resolving the
+prior push-approval blocker for this source. Focused macOS run
+[39103783217](https://github.com/spankyed/AgentBuddy/actions/runs/39103783217) passes ten selected
+checks in 5.94s (the real backend event case takes 1.074s). Focused Windows run
+[39103780229](https://github.com/spankyed/AgentBuddy/actions/runs/39103780229) also passes the same
+ten watcher checks (backend event case 1.190s), before its separate native-control step fails.
+
+The ten checks cover actual backend event rebuilding, three actual frontend subscription/repair/
+closure controls, frontend emitted resource/guard errors, pre-ready refusal, awaiting retirement
+already in progress, frontend-input replacement failure and dev-profile disposal after fatal watcher
+failure. The macOS aggregate confirms ten real passes; unrelated native cases are deliberately skipped.
+Windows unit JSON/logs also report ten passes, but its later aggregate step never executes because the
+ordinary PE control fails. Do not call that whole Windows run green. Logs are preserved at
+`/private/tmp/apack-watcher-macos-39103783217.log` and
+`/private/tmp/apack-watcher-windows-39103780229.log`.
+
+The new Windows `.local` ordinary-loader control fails in 7.239s: after its redirection file is created,
+it still loads the original DLL/value 11 rather than the executable-local DLL/value 22. Baseline and
+unconfigured same-name controls pass. This does **not** establish a compiler-admission defect; diagnose
+the ordinary fixture/runtime policy before implementing `.local` resolution. No deadline, assertion,
+registry/security setting or production behavior is changed. Fail-fast leaves the independent SxS
+case unexecuted; a separate filter selects only that existing control rather than repeating `.local`
+or rerunning the broader native matrix. Its result remains pending.
+
+The attributed watcher error ownership repair in `6d6a8e9e1` has now passed its focused hosted
+backend/frontend acceptance on both configured platforms. Preserve it through B6 and final strict
+acceptance. Remaining Windows/native/platform requirements and the full goal remain open.
+
+
+The independent SxS-only run [39104000631](https://github.com/spankyed/AgentBuddy/actions/runs/39104000631)
+on the same source also fails its ordinary control in 7.978s: original value/path 11 remains selected
+after the application manifest is embedded. Its baseline/unconfigured controls and manifest-resource
+presence assertion pass. The log is `/private/tmp/apack-sxs-control-39104000631.log`. No admission code
+runs in either failing control, so neither failure establishes a production defect.
+
+The next candidate corrects the probe's subject: both cases now load an explicit bridge image whose
+checked import table names `apack_value.dll`, matching the dependency lookup admission implements.
+The probe reads that dependency's exact loaded path, and asserts its initial executable has no embedded
+manifest before `.local` or SxS configuration. The prior probes instead requested the value DLL itself
+by full path. The failed runs do not establish why that direct-image redirection did not occur; the
+new dependency-shaped control remains unexecuted and must demonstrate its expected selection before
+any production change. Existing value/path assertions, timeout budgets and private-file-only boundaries
+remain. No further broad native run is justified by these failures.

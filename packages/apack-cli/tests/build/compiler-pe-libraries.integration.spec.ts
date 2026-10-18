@@ -83,12 +83,19 @@ BOOL WINAPI DllMain(HINSTANCE module, DWORD reason, LPVOID reserved) {
 // Ordinary Windows loader controls: these deliberately bypass compiler admission. A failed
 // control invalidates the fixture; it does not establish a production admission defect.
 it.runIf(process.platform === 'win32').each(['local', 'assembly'] as const)(
-  'identifies ordinary PE %s redirection ahead of an explicit DLL path', kind => {
+  'identifies ordinary PE %s redirection while loading a native image', kind => {
     const root = fs.realpathSync.native(fs.mkdtempSync(path.join(os.tmpdir(), 'apack-pe-redirection-')));
     try {
       const pack = path.join(root, 'pack');
       fs.mkdirSync(pack);
       const { library, buildLibrary } = createPeNativeFixture(root, pack);
+      // Admission resolves named dependencies of an explicitly loaded image.
+      const entry = path.join(path.dirname(library), 'bridge.dll');
+      const bridge = path.join(root, 'bridge.c');
+      fs.writeFileSync(bridge, '__declspec(dllimport) int native_value(void); __declspec(dllexport) int probe_value(void) { return native_value(); }');
+      execFileSync('cl.exe', ['/nologo', '/MT', '/LD', bridge, '/Fo' + path.join(root, 'bridge.obj'), '/link',
+        '/INCREMENTAL:NO', '/OUT:' + entry, path.join(root, 'value.lib')], { cwd: root, timeout: 15_000 });
+      expect(parsePeLibraryMetadata(fs.readFileSync(entry)).imports.map(imported => imported.name)).toContain('apack_value.dll');
       const runtime = path.join(root, 'runtime');
       fs.mkdirSync(runtime);
       const executable = path.join(runtime, 'probe.exe');
@@ -99,10 +106,12 @@ int wmain(int argc, wchar_t **argv) {
   if (argc != 2) return 2;
   HMODULE module = LoadLibraryExW(argv[1], NULL, LOAD_WITH_ALTERED_SEARCH_PATH);
   if (!module) { fprintf(stderr, "LoadLibraryExW: %lu", GetLastError()); return 3; }
-  int (*value)(void) = (int (*)(void))GetProcAddress(module, "native_value");
+  int (*value)(void) = (int (*)(void))GetProcAddress(module, "probe_value");
   if (!value) return 4;
+  HMODULE dependency = GetModuleHandleW(L"apack_value.dll");
+  if (!dependency) return 5;
   WCHAR file[32768];
-  DWORD length = GetModuleFileNameW(module, file, sizeof(file) / sizeof(file[0]));
+  DWORD length = GetModuleFileNameW(dependency, file, sizeof(file) / sizeof(file[0]));
   if (!length || length >= sizeof(file) / sizeof(file[0])) return 5;
   char utf8[131072];
   int bytes = WideCharToMultiByte(CP_UTF8, WC_ERR_INVALID_CHARS, file, length, utf8, sizeof(utf8), NULL, NULL);
@@ -116,10 +125,11 @@ int wmain(int argc, wchar_t **argv) {
         ...(manifest ? ['/MANIFEST:EMBED', '/MANIFESTINPUT:' + manifest] : ['/MANIFEST:NO'])],
       { cwd: root, timeout: 15_000 });
       const observe = () => {
-        const [value, file] = execFileSync(executable, [library], { encoding: 'utf8', timeout: 5_000, cwd: root }).split(/\r?\n/);
+        const [value, file] = execFileSync(executable, [entry], { encoding: 'utf8', timeout: 5_000, cwd: root }).split(/\r?\n/);
         return { value: Number(value), file: fs.realpathSync.native(file!).toLowerCase() };
       };
       compile();
+      expect(parsePeLibraryMetadata(fs.readFileSync(executable)).manifests).toEqual([]);
       expect(observe()).toEqual({ value: 11, file: fs.realpathSync.native(library).toLowerCase() });
       const selected = path.join(runtime, ...(kind === 'assembly' ? ['apack.fixture.value'] : []), 'apack_value.dll');
       buildLibrary(selected, 22);
