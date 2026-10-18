@@ -4265,3 +4265,11 @@ This accepts the ordinary Windows controls only. Next compare admission with tho
 selections, then implement/accept the required policy and actual selected-runtime paths. Bound-only,
 other remaining native/platform cases, B6 and final strict acceptance remain required. No support
 exclusion is inferred from the earlier invalid controls or from this helper executable.
+
+
+Source checkpoint: `d8ac9486c` commits the accepted test blob and evidence. The VM was fast-forwarded
+to that exact commit after saving its validated overlay in a scoped stash (`Validated Windows
+first-launch control overlay from 30ebaf8e2`); the pre-existing launcher bytes remain untouched.
+`checkpoint.json` records source, matching test blob, stash and no live native/compiler processes.
+All small evidence files were copied off the VM. Azure subsequently confirms `VM deallocated`.
+Next use must verify/start the existing VM and source again; no current VM execution owner remains.

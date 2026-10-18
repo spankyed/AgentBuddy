@@ -102,7 +102,11 @@ Do not change macOS security settings or repeat local native batches. Preserve t
 [incident evidence](../evidence/build-input-snapshot-proof.md#macos-launch-policy-investigation-2026-10-17).
 
 **Current handoff:** preserve the implemented compiler/input owners and close the finite native/platform
-cases below. Earlier source-specific failures are history, not instructions to rerun accepted checks.
+cases below. Source checkpoint `d8ac9486c` accepts both ordinary Windows dependency-redirection controls;
+the corrected test blob and exact VM evidence are recorded below. Next compare admission with these
+established selections before implementing activation/search-state handling. The VM is deallocated,
+with source at that checkpoint, useful overlays stashed and evidence preserved on both machines.
+Earlier source-specific failures are history, not instructions to rerun accepted checks.
 
 | Area | Current source and acceptance | Remaining obligation |
 |---|---|---|
