@@ -17,6 +17,7 @@ import { createCompilerNativeReports } from './compiler-native-reports.ts';
 import { parseNodeOptions } from '@apackdev/host/build/source-resolution';
 import { compilerEnvironmentIdentity } from './compiler-environment.ts';
 import { createCompilerWatchRecorder } from './build-watch-inputs.ts';
+import { isOwnedCompilerPath, type CompilerInstallationInputs } from './compiler-installation-inputs.ts';
 
 const STARTUP = Symbol.for('apack.compiler.startup');
 
@@ -45,16 +46,17 @@ export function compilerStartupInputs(): CompilerStartupInputs | undefined {
 }
 
 /** Native-only owner shared with the later compiler, including the early data-read tree's lifetime. */
-export function beginCompilerStartupInputs(root: string, workspace: string, paths: readonly CompilerPathMapping[], nodeOptions = process.env.NODE_OPTIONS,
+export function beginCompilerStartupInputs(root: string, workspace: string, compiler: Pick<CompilerInstallationInputs, 'directory' | 'paths'>, nodeOptions = process.env.NODE_OPTIONS,
   nativeEnvironment = captureCompilerLibraryEnvironment(), asyncLoader?: string): CompilerStartupInputs {
   if (compilerStartupInputs()) throw new Error('Compiler startup inputs already have an owner');
+  const { paths } = compiler;
   const canonicalRoot = fs.realpathSync.native(root);
   const executionIdentity = compilerExecutionIdentity(nodeOptions, paths);
   const within = (parent: string, file: string) => {
     const relative = relativeCompilerPath(parent, file);
     return relative === '' || (relative !== '..' && !relative.startsWith(`..${path.sep}`) && !path.isAbsolute(relative));
   };
-  const includes = (file: string) => !within(workspace, file) && !paths.some(({ captured }) => within(captured, file));
+  const includes = (file: string) => !isOwnedCompilerPath(file, workspace, compiler.directory);
   const recordWatchInput = createCompilerWatchRecorder(workspace);
   const known = new Set<string>();
   let initializing = true;
@@ -72,7 +74,7 @@ export function beginCompilerStartupInputs(root: string, workspace: string, path
   const save = () => withoutCompilerFileReads(() => reports.write({
     source: original.observations(file => !native.includes(file)), copies: native.copies(), modules: native.modules(),
   }));
-  const native = createCompilerNativeInputs(original, workspace, paths, nativeEnvironment, {
+  const native = createCompilerNativeInputs(original, workspace, compiler, nativeEnvironment, {
     capture: 'package', onCapture: save, findModule: file => reports.findModule(file),
   });
   save();

@@ -5,7 +5,7 @@ import { buildToolHash, cliPackageDirectory } from './tool-identity.ts';
 import { readPackageInputs } from '@apackdev/host/build/package-inputs';
 import { parseNodeOptions, SOURCE_CONDITION } from '@apackdev/host/build/source-resolution';
 import { readCompilerModuleInputs } from './compiler-module-inputs.ts';
-import { readCompilerInstallationInputs } from './compiler-installation-inputs.ts';
+import { isOwnedCompilerPath, readCompilerInstallationInputs } from './compiler-installation-inputs.ts';
 import type { PackCompilerConfiguration } from './compiler-configuration.ts';
 import fs from 'node:fs';
 import path from 'node:path';
@@ -126,10 +126,7 @@ export function captureCompilationInputs(packRoot: string, view?: PackCompilerIn
     }
     return tree;
   });
-  const ownsToolPath = (file: string) => !!compiler?.paths.some(({ captured }) => {
-    const relative = relativeCompilerPath(captured, file);
-    return relative !== '..' && !relative.startsWith(`..${path.sep}`) && !path.isAbsolute(relative);
-  });
+  const ownsToolPath = (file: string) => !!compiler && isOwnedCompilerPath(file, compiler.directory);
   const native = createNativeInputReader(modules, packages, sourcePath, snapshot => readTree().include(snapshot), {
     environment: startup?.nativeEnvironment, admitNative: startup?.nativeModule,
   });

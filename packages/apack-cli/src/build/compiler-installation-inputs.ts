@@ -1,10 +1,11 @@
 import fs from 'node:fs';
 import path from 'node:path';
-import { parseCompilerPaths, withoutCompilerFileReads, type CompilerPathMapping } from '@apackdev/host/build/compiler-inputs';
+import { parseCompilerPaths, relativeCompilerPath, withoutCompilerFileReads, type CompilerPathMapping } from '@apackdev/host/build/compiler-inputs';
 
 export const COMPILER_INPUTS_ENV = 'APACK_COMPILER_INPUTS';
 
-interface CompilerInstallationInputs {
+export interface CompilerInstallationInputs {
+  readonly directory: string;
   readonly hash: string;
   readonly packages: readonly string[];
   readonly paths: readonly CompilerPathMapping[];
@@ -20,5 +21,14 @@ export function readCompilerInstallationInputs(): CompilerInstallationInputs | u
     || !Array.isArray(data.packages) || !data.packages.every((directory: unknown) => typeof directory === 'string' && path.isAbsolute(directory) && !directory.includes('\0'))) {
     throw new Error(`Invalid captured compiler inputs: ${file}`);
   }
-  return { hash: data.hash, packages: data.packages, paths: parseCompilerPaths(data.paths) };
+  return { directory: withoutCompilerFileReads(() => path.dirname(fs.realpathSync.native(file))),
+    hash: data.hash, packages: data.packages, paths: parseCompilerPaths(data.paths) };
+}
+
+/** Installation and workspace namespaces belong to their compiler owners, not the source read-set. */
+export function isOwnedCompilerPath(file: string, ...directories: readonly string[]): boolean {
+  return directories.some(directory => {
+    const relative = relativeCompilerPath(directory, file);
+    return relative === '' || (relative !== '..' && !relative.startsWith(`..${path.sep}`) && !path.isAbsolute(relative));
+  });
 }

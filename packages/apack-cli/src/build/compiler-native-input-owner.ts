@@ -1,27 +1,29 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { beginCompilerNativeModules, compilerDiagnostic, compilerSourcePath, relativeCompilerPath, withoutCompilerFileReads,
-  type createCompilerFileView, type CompilerPathMapping } from '@apackdev/host/build/compiler-inputs';
+  type createCompilerFileView } from '@apackdev/host/build/compiler-inputs';
 import { captureCompilerPackage } from './compiler-package-inputs.ts';
 import { assertCapturedCompilerLibraries, type CompilerLibraryEnvironment } from './compiler-native-libraries.ts';
 import { createCompilerReadTree, type CompilerReadTree } from './compiler-read-tree.ts';
+import { isOwnedCompilerPath, type CompilerInstallationInputs } from './compiler-installation-inputs.ts';
 
 export interface CapturedNativeModule { readonly source: string; readonly captured: string; readonly packageRoot: string }
 
 /** Owned native bytes; Vite captures selected images so authored sources remain live. */
 export function createCompilerNativeInputs(original: ReturnType<typeof createCompilerFileView>, workspace: string,
-  paths: readonly CompilerPathMapping[], nativeEnvironment: CompilerLibraryEnvironment, options: {
+  compiler: Pick<CompilerInstallationInputs, 'directory' | 'paths'>, nativeEnvironment: CompilerLibraryEnvironment, options: {
     capture: 'package' | 'images';
     findModule?(file: string): CapturedNativeModule | undefined;
     onCapture?(): void;
   }) {
+  const { paths } = compiler;
   const modules = new Map<string, CapturedNativeModule>();
   const packRoot = original.observations().root;
   const within = (parent: string, file: string) => {
     const relative = relativeCompilerPath(parent, file);
     return relative === '' || (relative !== '..' && !relative.startsWith(`..${path.sep}`) && !path.isAbsolute(relative));
   };
-  const includes = (file: string) => !within(workspace, file) && !paths.some(({ captured }) => within(captured, file));
+  const includes = (file: string) => !isOwnedCompilerPath(file, workspace, compiler.directory);
   let tree: CompilerReadTree | undefined;
   const sourcePath = (file: string) => tree?.sourcePath(file) ?? compilerSourcePath(file, paths);
   const readDataPath = (file: string) => withoutCompilerFileReads(() => {

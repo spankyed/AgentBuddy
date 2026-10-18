@@ -38,8 +38,8 @@ if ((isMainThread && (process.env.APACK_BUILD_WORKER === '1' || process.env.APAC
   for (const key of ['TMPDIR', 'TMP', 'TEMP']) process.env[key] = temporary;
   const environment = inherited?.pid === process.pid ? inherited.nativeEnvironment : undefined;
   const loader = compilerStartupLoader(__filename);
-  const buildInputs = mode === 'build' ? beginCompilerStartupInputs(process.cwd(), workspace, compiler.paths, userOptions, environment, loader) : undefined;
-  const frontendInputs = mode === 'frontend' ? beginFrontendNativeInputs(process.cwd(), workspace, compiler.paths, environment, loader) : undefined;
+  const buildInputs = mode === 'build' ? beginCompilerStartupInputs(process.cwd(), workspace, compiler, userOptions, environment, loader) : undefined;
+  const frontendInputs = mode === 'frontend' ? beginFrontendNativeInputs(process.cwd(), workspace, compiler, environment, loader) : undefined;
   const startup = buildInputs ?? frontendInputs!;
   const ready = new Int32Array(primaryLoader ? inherited.loader : new SharedArrayBuffer(4));
   if (primaryLoader) Atomics.store(ready, 0, 1);

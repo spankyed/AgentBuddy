@@ -29,7 +29,7 @@ it('reads owned compiler metadata without capturing it as authored input', () =>
     diagnostic: (message: string) => message,
     requireParent: (file: string) => file,
   } };
-  expect(withCompilerFileReads(scope, () => readCompilerInstallationInputs())).toMatchObject({ packages: [root] });
+  expect(withCompilerFileReads(scope, () => readCompilerInstallationInputs())).toMatchObject({ directory: fs.realpathSync.native(root), packages: [root] });
   expect(() => withCompilerFileReads(scope, () => fs.readFileSync(file))).toThrow('Authored input captured');
 });
 
