@@ -1364,10 +1364,10 @@ declare const ClaudeNativeBashDialogSchema: z.ZodObject<{
     command: string;
     id: string;
     revision: string;
+    input: Record<string, unknown>;
     sessionId: string;
     requestId: string;
     toolName: "Bash";
-    input: Record<string, unknown>;
     description?: string | undefined;
     reason?: string | undefined;
 }, {
@@ -1375,10 +1375,10 @@ declare const ClaudeNativeBashDialogSchema: z.ZodObject<{
     command: string;
     id: string;
     revision: string;
+    input: Record<string, unknown>;
     sessionId: string;
     requestId: string;
     toolName: "Bash";
-    input: Record<string, unknown>;
     description?: string | undefined;
     reason?: string | undefined;
 }>;
@@ -1440,10 +1440,10 @@ declare const ClaudeNativeFileDialogSchema: z.ZodObject<{
     title: string;
     question: string;
     revision: string;
+    input: Record<string, unknown>;
     sessionId: string;
     requestId: string;
     toolName: "Edit" | "Read" | "Write";
-    input: Record<string, unknown>;
     review?: {
         withheld: boolean;
         replaceAll?: boolean | undefined;
@@ -1457,10 +1457,10 @@ declare const ClaudeNativeFileDialogSchema: z.ZodObject<{
     title: string;
     question: string;
     revision: string;
+    input: Record<string, unknown>;
     sessionId: string;
     requestId: string;
     toolName: "Edit" | "Read" | "Write";
-    input: Record<string, unknown>;
     review?: {
         withheld: boolean;
         replaceAll?: boolean | undefined;
@@ -1528,9 +1528,9 @@ declare const ClaudeNativePlanDialogSchema: z.ZodObject<{
             clearContext: boolean;
         }>, "many">;
     }, "strip", z.ZodTypeAny, {
+        plan: string;
         withheld: boolean;
         empty: boolean;
-        plan: string;
         initialChoice: string;
         choices: {
             value: string;
@@ -1540,9 +1540,9 @@ declare const ClaudeNativePlanDialogSchema: z.ZodObject<{
         }[];
         planFilePath?: string | undefined;
     }, {
+        plan: string;
         withheld: boolean;
         empty: boolean;
-        plan: string;
         initialChoice: string;
         choices: {
             value: string;
@@ -1552,9 +1552,9 @@ declare const ClaudeNativePlanDialogSchema: z.ZodObject<{
         }[];
         planFilePath?: string | undefined;
     }>, {
+        plan: string;
         withheld: boolean;
         empty: boolean;
-        plan: string;
         initialChoice: string;
         choices: {
             value: string;
@@ -1564,9 +1564,9 @@ declare const ClaudeNativePlanDialogSchema: z.ZodObject<{
         }[];
         planFilePath?: string | undefined;
     }, {
+        plan: string;
         withheld: boolean;
         empty: boolean;
-        plan: string;
         initialChoice: string;
         choices: {
             value: string;
@@ -1576,9 +1576,9 @@ declare const ClaudeNativePlanDialogSchema: z.ZodObject<{
         }[];
         planFilePath?: string | undefined;
     }>, {
+        plan: string;
         withheld: boolean;
         empty: boolean;
-        plan: string;
         initialChoice: string;
         choices: {
             value: string;
@@ -1588,9 +1588,9 @@ declare const ClaudeNativePlanDialogSchema: z.ZodObject<{
         }[];
         planFilePath?: string | undefined;
     }, {
+        plan: string;
         withheld: boolean;
         empty: boolean;
-        plan: string;
         initialChoice: string;
         choices: {
             value: string;
@@ -1605,14 +1605,14 @@ declare const ClaudeNativePlanDialogSchema: z.ZodObject<{
 }, "strip", z.ZodTypeAny, {
     id: string;
     revision: string;
+    input: Record<string, unknown>;
     sessionId: string;
     requestId: string;
     toolName: "EnterPlanMode" | "ExitPlanMode";
-    input: Record<string, unknown>;
     presentation: {
+        plan: string;
         withheld: boolean;
         empty: boolean;
-        plan: string;
         initialChoice: string;
         choices: {
             value: string;
@@ -1626,14 +1626,14 @@ declare const ClaudeNativePlanDialogSchema: z.ZodObject<{
 }, {
     id: string;
     revision: string;
+    input: Record<string, unknown>;
     sessionId: string;
     requestId: string;
     toolName: "EnterPlanMode" | "ExitPlanMode";
-    input: Record<string, unknown>;
     presentation: {
+        plan: string;
         withheld: boolean;
         empty: boolean;
-        plan: string;
         initialChoice: string;
         choices: {
             value: string;
@@ -2263,8 +2263,17 @@ interface ClaudeNativeTaskDetails {
         errorTruncated: boolean;
     };
     messages: {
+        uuid: string;
         role: 'assistant' | 'user';
         text: string;
+        renderText?: string;
+        apiMessageId?: string;
+        origin?: {
+            kind: string;
+            name?: string;
+            asUser?: boolean;
+            server?: string;
+        };
     }[];
     truncated: boolean;
 }
@@ -2827,6 +2836,14 @@ type ClaudeUiMountState = ({
     status: 'error';
     message: string;
 }) & {
+    agent?: ClaudeNativeTaskDetails;
+    agentProblem?: string;
+    agentInput?: {
+        revision: number;
+        status: 'done' | 'error' | 'pending';
+        receipt?: ClaudeNativeTaskInputReceipt;
+        problem?: string;
+    };
     panes?: ClaudeUiPanePresentation;
     scroll?: ClaudeUiScrollState;
     notices?: ClaudeUiNotices;
@@ -3077,7 +3094,10 @@ type ClaudeUiTranscriptRow = ClaudeUiTranscriptRowSource & ({
 } | {
     component: 'UserMessage';
     origin: {
-        kind: 'composer' | 'unclassified';
+        kind: string;
+        name?: string;
+        asUser?: boolean;
+        server?: string;
     };
     isExpanded: boolean;
 });
@@ -3091,7 +3111,13 @@ interface ClaudeUiTranscriptRowSource {
     end: number;
 }
 
-type ClaudeUiViewRequest = ({
+type ClaudeUiViewRequest = {
+    type: 'CLAUDE_UI_AGENT_INPUT';
+    threadId: string;
+    mountId: string;
+    revision: number;
+    text: string;
+} | ({
     type: 'CLAUDE_PROMPT_HOST_RESPONSE';
     threadId: string;
     mountId: string;
@@ -8946,6 +8972,15 @@ declare function createClaudePromptHosts(write: (value: unknown) => boolean): {
 
 /** Native UI transport only. A renderer must validate tree nodes before displaying them. */
 declare function createClaudeUiControls(initialized: Promise<Pick<ClaudeInitialization, 'capabilities'>>, controls: Pick<ReturnType<typeof createHostControls>, 'request'>, promptHosts?: Pick<ReturnType<typeof createClaudePromptHosts>, 'answers' | 'detach' | 'register'>): {
+    submitAgent(options: {
+        client_id: string;
+        text: string;
+    }): Promise<{
+        input: {
+            messageId: string;
+            mode: "queued" | "resumed";
+        };
+    }>;
     clientEvent(options: {
         client_id: string;
         id: string;

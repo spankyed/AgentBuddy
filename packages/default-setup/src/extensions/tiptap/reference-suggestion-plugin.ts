@@ -1,3 +1,4 @@
+import { nativePromptEditors } from './native-prompt-scope.ts'
 import { Plugin } from '@tiptap/pm/state'
 import type { Editor } from '@tiptap/core'
 import { referenceSuggestionPluginKey, type ReferenceSuggestionState } from './reference-plugin-key.ts'
@@ -24,6 +25,7 @@ export function referenceSuggestionPlugin(editor: Editor): Plugin<ReferenceSugge
       },
 
       apply(tr, prev) {
+        if (nativePromptEditors.has(editor)) return { ...defaultState }
         const meta = tr.getMeta(referenceSuggestionPluginKey)
         if (meta) {
           if (meta.deactivate) return { ...defaultState }

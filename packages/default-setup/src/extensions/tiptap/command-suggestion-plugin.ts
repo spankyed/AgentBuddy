@@ -1,3 +1,4 @@
+import { nativePromptEditors } from './native-prompt-scope.ts'
 import { Plugin, PluginKey, TextSelection } from '@tiptap/pm/state'
 import { Decoration, DecorationSet } from '@tiptap/pm/view'
 import type { Editor } from '@tiptap/core'
@@ -63,6 +64,7 @@ export function commandSuggestionPlugin(
       },
 
       apply(tr, prev) {
+        if (nativePromptEditors.has(editor)) return { ...defaultState }
         const deactivateIf = (active: boolean) => active ? { ...defaultState } : prev
 
         // Handle explicit meta updates (from popup interactions)
