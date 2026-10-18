@@ -3868,3 +3868,17 @@ or the app's stricter signing profile. It runs only on disposable macOS through 
 config. No certificate values were read, installed binaries modified or signing policies changed.
 CLI types, focused lint/diff checks and all 11 subprocess-inventory checks pass. The next hosted checks
 are the same Windows composition case and this new Electron probe.
+
+### Default Electron runtime acceptance (2026-10-18)
+
+Hosted macOS run [39097385010](https://github.com/spankyed/AgentBuddy/actions/runs/39097385010)
+on `cbbee04d9` passes the captured Electron launcher probe in 1.65 seconds (3.50 seconds Vitest
+total). The original Electron 37.2.4 successfully imports the compiler owner; its report API is
+available. The child runs the same Electron version from a distinct private executable with captured
+frameworks. Input freshness remains valid, and awaited disposal removes that executable. Log:
+`/private/tmp/apack-electron-runtime-39097385010.log`.
+
+This closes the default Electron capture/shared-launch path after macOS preflight. It does not prove
+full pack compilation under Electron or the application's stricter signing profile. No native
+execution or signing operation ran on the developer's Mac. Windows combined preload/thread run
+`39097382309` is tracked separately; its outcome does not follow from this macOS pass.
