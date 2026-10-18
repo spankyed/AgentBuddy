@@ -2981,3 +2981,6 @@ hardened profile. The repo's app entitlements omit those two exceptions; do not 
 acceptance of the signed app profile from the Node result. No signing configuration was changed.
 The diagnostic adopts Apple's current `codesign --display --entitlements - --xml` syntax after the run
 reported deprecation of the colon prefix; see [Apple's entitlement inspection example](https://developer.apple.com/documentation/technotes/tn3125-inside-code-signing-provisioning-profiles).
+
+Revised source `baf461618` is running in hosted macOS run `39081394988`, selecting the same single
+scenario with its unchanged 60-second budget. Do not dispatch a duplicate while this run is live.
