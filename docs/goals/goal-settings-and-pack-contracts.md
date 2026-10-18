@@ -94,6 +94,17 @@ preloads (`bbf05ec00`). These are source evidence, not a claim that the full str
 
 #### Current compiler checkpoint (2026-10-18)
 
+Source `c27e78a06` and its [ownership evidence](../evidence/build-input-snapshot-proof.md#compiler-installation-namespace-ownership--2026-10-18)
+exclude private installation ancestor probes from replayable source identity. Inert owner regression,
+mutation, types and lint are accepted; the public two-installation check instead ended with native
+exit 3221226356 before completed-build assertions. The scoped Windows diagnostic accepts
+first-build replay and archive verification; both workers exit 0 without an unhandled exception, but
+the test reaches its unchanged 240s budget during the second build and fixture cleanup races. The
+original native failure remains unexplained, and repeated-build identity is unaccepted. Preserve the
+owned-process receipts and avoid another uninstrumented rerun or deadline increase. Neither run is a
+complete public-build acceptance result. Import/export mapping targets remain the next namespace audit after this checkpoint;
+preserve all other B1/B3, B6 and whole-goal requirements below.
+
 **Execution boundary:** the user recovered the daily-use Mac by restarting after unrelated apps
 stopped launching. Cause remains unproven. Use the approved
 [Windows development VM](../references/guides/windows-development-vm.md) for interactive Windows

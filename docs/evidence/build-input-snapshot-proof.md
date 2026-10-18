@@ -5269,3 +5269,48 @@ VM overlay stash **`17169eb532fddf4771af821e7cf59dc5a714a3e3`** is preserved. Th
 fast-forwarded through a local bundle to `21389b608`, preserving the pre-existing launcher change.
 Terminal inspection found no owned Node/Electron processes. VM deallocation was requested after
 export; no push, CI dispatch, production data or security-setting change occurred.
+
+
+## Compiler installation namespace ownership — 2026-10-18
+
+The CommonJS lookup observer exposed a source-identity defect: searches above a captured package's
+mapped root still lie inside its private compiler installation. Recording those directories as authored
+inputs includes random installation paths in the receipt and makes replay fail after disposal.
+A focused regression through the real native-input owner reproduces this with inert JavaScript,
+two distinct installation directories and replay after deletion. Restoring the old mapped-root-only
+predicate fails in 42ms with `Compiler startup input changed: ["namespace","../compiler-a"]`.
+Mutation evidence: `/private/tmp/apack-compiler-scope-regression-b8d487f53.log`.
+
+Source **`c27e78a06`** derives the canonical installation directory from its existing metadata file; no serialized
+field or format stamp changes. Startup, frontend, native and final compilation readers share that
+ownership boundary. Source projection still uses the existing captured/source mappings. Six focused
+CLI models pass (two unrelated subprocess cases filtered out), CLI types, focused lint and diff checks
+pass. Actual native admission is mocked in these inert models; they do not prove Windows runtime
+acceptance.
+
+One existing public two-installation build/cache acceptance case was run on Windows base `21389b608`
+plus the reviewed eight-file repair, one worker and two cores, unchanged 240s budget. It ended at
+119.03s with native exit code **3221226356**, after content compilation and before the first completed
+build assertion. This is not a timeout and does not identify the faulting process or module. No matching
+Application crash event or WER report was found. An older PowerShell report predates this run and is
+not attributed to it. Preserve `C:\apack-setup\runs\compiler-scope-b8d487f53` and its exact patches,
+JSON report and logs. This failed case is not acceptance.
+
+A single diagnostic execution uses Microsoft-signed portable ProcDump, attached only to launcher and
+captured-runtime descendants of that test's owned runner, with one unhandled-exception minidump per
+process. It does not install a global debugger or change security policy. Diagnostic evidence lives in
+`C:\apack-setup\runs\compiler-scope-crash-b8d487f53`. It reaches first-build completion
+at 155.171s, successful passive input replay at 160.044s and archive verification at 169.288s.
+Both compiler workers are observed exiting with code 0; no unhandled-exception dump is produced.
+The case itself reaches its unchanged 240s deadline during the second build, with a subsequent EPERM
+fixture-cleanup failure. Repeated-build identity assertions are therefore **not accepted**. Debugger
+attachment changes execution conditions; this run neither explains nor disproves the earlier native
+failure. Do not infer a launcher defect from a handled CLR exception in a successful launcher.
+No Node or ProcDump process remains after terminal inspection. Preserve both failures rather than
+retrying for warmth or increasing a deadline without a demonstrated cause.
+Package import/export target auditing, remaining B1/B3 platform work, B6 and final strict acceptance
+remain open. Previously accepted frontend/backend/watch lifecycles are not repeated for reassurance.
+
+Off-machine diagnostic archive: `/private/tmp/apack-compiler-scope-evidence-b8d487f53.zip`.
+VM overlay stash `885f4c1f86a4becd433ff2611d87bc5b269909e6` retains only this repair; the
+pre-existing launcher change remains untouched. Deallocation was requested after export.
