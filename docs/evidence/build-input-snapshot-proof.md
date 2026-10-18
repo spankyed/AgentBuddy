@@ -4493,3 +4493,75 @@ The validated VM overlay is preserved in the scoped stash
 `Validated default application context overlay on 980fce3ae` before fast-forwarding the VM to
 `267fa8117`. The pre-existing launcher change and earlier stashes remain untouched. No Node/MSVC
 compiler process remains; Azure confirms `VM deallocated`.
+
+
+## Windows DLL activation-context checkpoint (2026-10-18)
+
+Source checkpoint: `8c7c960ae`. All nine changed source blobs match the Windows acceptance checkout.
+
+The resource-2 control first reproduces a real input omission on `e880d9507`: Windows executes
+DLL-local `apack_value.dll` value 22, but admission reads only the adjacent value-11 image. The
+valid failure is `pe-image-context-v4-e880d9507` (2.30s); earlier failures were invalid controls.
+The C probe now identifies the library through the imported function address, matching the existing
+NAPI fixture. A bare-name module lookup cannot identify an isolated DLL reliably.
+
+The existing activation-context reader now takes an explicit resource and application. Executable
+resource 1 retains its external-manifest behavior; DLL resource 2 reads its embedded declaration and
+probes `.2.config`. The OS query uses the requested image's root roster entry for its resource ID;
+dependent assemblies use resource 1, without relying on the root filename's spelling. Admission
+observes context inputs through its current input owner, carries active bindings through imports and
+export forwarders, and replaces them when a dependency declares its own resource 2. Resource 3 is
+not a static-import context. The query callback belongs to the IO adapter, keeping inherited native
+environment data cloneable; no new runtime loader or compatibility path is introduced.
+
+Actual Node startup proves both sides. An unguarded copied Node executes the DLL-local assembly and
+its PATH-selected transitive dependency, value 22. Protected startup refuses the exact outside DLL
+before its attach marker or the NAPI initializer marker appears. Moving that dependency inside the
+package permits protected startup: value 22 executes and the reported library is under the fresh
+owned input workspace, with both initialization markers present. Each startup has its own workspace;
+no full compiler-installation copy is repeated. Node's reported namespace-prefixed path is compared
+by native filesystem identity using the existing PE path normalization, not raw spelling.
+
+The same-name control loads System32 `psapi.dll` before loading a DLL that declares a private
+`psapi.dll`. Windows and admission select the exact private value-22 image despite the loaded system
+copy. Metadata inspection leaves its constructor marker absent. The helper's existing API lookup
+passes this control; no speculative API replacement was made. This establishes that case, not every
+possible helper/runtime loaded-module combination.
+
+The converged scope includes both Node contexts, both private-manifest encodings, `.local`, DLL-local
+selection and the loaded-system-name collision. Focused inert checks pass 61 locally (two skips) and
+60 on Windows (three skips); four new model cases cover context inheritance/replacement, outside
+selection and resource-3 static-import behavior. Subprocess/timeout policy checks pass 53 cases;
+CLI/repo-checks types, focused lint and diff checks pass. Existing deadlines remain unchanged.
+
+Preserved diagnostics distinguish control failures from product failures: a junction-based assembly
+and an application-directory-only DLL-context layout failed ordinary loading; a concrete DLL-local
+layout loaded but its old bare-name measurement exited 5. An outside `.2.config` trial failed ordinary
+Node loading with `ERR_DLOPEN_FAILED`/14001, so it does not prove configuration support or a guard
+failure. Its useful draft is saved in stash `4fc71560e7c203d3cfd54bd7583583fe9ac3d3c4`.
+An export-forwarding fixture failed linking with LNK2001; the accepted refusal control uses a real
+linked transitive dependency instead. That does not establish the abandoned forwarding fixture.
+All selecting-path and initialization assertions are retained; no timeout was enlarged.
+
+Remaining acceptance includes module-specific configuration/policy behavior, Electron, broader
+runtime dependency closure/identity and newly appearing higher-priority watch inputs. Helper timeout
+and parent-loss descendant ownership, the valid bound-only control, concurrent first capture and
+other platform/converged gates remain required. Do not infer full B1/B3 closure or a final strict
+`--all` pass from these focused cases; the larger settings/manifest/consumer goal is unchanged.
+
+Final frozen-source acceptance: `C:\apack-setup\runs\pe-module-context-checkpoint-e880d9507`,
+base `e880d9507` plus the verified repair. Seven native cases pass in 33.64s total (31.13s test time):
+application Node 6.964s, module Node including refusal/allowed capture 6.479s, `.local` 1.547s,
+XML/configuration/copy 8.791s, embedded private manifest 2.648s, DLL-local selection 2.196s,
+loaded-system-name collision 2.502s. One worker, two cores; Node 23.11.1 / Windows Server 2025 x64.
+These are affected-checkpoint passes, not the whole integration pool or strict `--all`.
+Evidence and failed-control patches are saved off-machine in
+`/private/tmp/apack-pe-module-checkpoint-evidence.zip`; exact source hashes are
+`/private/tmp/apack-pe-module-source-blobs.json` and
+`/private/tmp/apack-pe-module-windows-blobs.json`. Existing stashes and failed fixture directories
+remain preserved. The source checkpoint adds no new runtime-version/platform exclusions.
+
+The validated overlay is stashed on the VM as
+`Validated DLL activation-context overlay on e880d9507`; its checkout is fast-forwarded to
+`8c7c960ae`. The pre-existing launcher change and other sessions' saved work are untouched.
+No Node/MSVC compiler process remains; Azure confirms `VM deallocated`.
