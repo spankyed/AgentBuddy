@@ -4428,3 +4428,68 @@ Next close SxS admission/input capture using the retained counterexample and OS 
 prototype. Keep executable versus image contexts, loaded-module precedence, manifest/policy freshness,
 actual Node/Electron SxS and Electron `.local` acceptance explicit. No scope exclusion or security
 isolation claim follows from this fixture. Other native/platform obligations and final gates remain.
+
+
+## Windows default application context admission checkpoint (2026-10-18)
+
+Source checkpoint: `267fa8117`. All eleven changed source-file blobs match the Windows checkout
+used for the focused acceptance below.
+
+The existing PE admission owner now receives a default application-context snapshot captured before
+user preloads. A metadata-only helper uses `CreateActCtxW`/`QueryActCtxW`, parses the reported manifest
+resources/XML with DTDs disabled, and resource-maps declared files under that context. It never requests
+executable loading or resolves native entry points. Shared path normalization preserves existing OS
+and physical-package ownership checks. Runtime inventory copies selecting files and hashes the context;
+installation reuse re-queries it. The helper ships in the CLI's existing `bin` inventory/build identity.
+Actual CommonJS startup exposed an ESM-only owner lookup; the corrected lookup uses its real filename.
+Private assembly manifests embedded as PE resources are read as resources, rather than XML files.
+
+| Requested review | Evidence and boundary |
+|---|---|
+| Same DLL as the compiler | A private copy of Node 23.11.1 with application resource 1 removed and an external SxS manifest selects the exact private DLL/value 22 after copying. Actual published `compiler-startup.cjs` then refuses that same selected library through the production native owner. Ordinary C controls verify XML and embedded private manifests; an application configuration's relative `privatePath` selects the exact alternate DLL/value 33. This proves those default-context paths, not unmodified Node/Electron or every SxS policy. |
+| Cache invalidation | Runtime identities change for manifest bytes, missing-to-present configuration, configuration-selected assemblies, DLL removal and restoration. Exact restoration recovers the identity. Admission observes context file/directory/missing probes through the existing reader and refuses changed snapshots. Implementation and helper changes affect existing tool/package hashes. Runtime reuse refreshes OS selection; global registry mutation and every higher-priority/culture/policy candidate's live-watch delivery are not yet proved. No system policy was changed. |
+| Runtime preservation | The same production runtime inventory drives private fixture copies. Both the base assembly and configuration-selected alternate retain their fingerprint and actual DLL selection after relocation, including configuration, external manifest and private assembly files. An outside-runtime selecting path refuses rather than being silently relocated. No universal relocation claim follows. |
+| Initialization boundary | Ordinary controls prove the libraries really execute. Metadata queries and policy-copy inventory leave the DLL marker absent. Actual compiler startup exits 1 with the exact outside-library refusal; both the DLL attach marker and NAPI initialization marker remain absent. Earlier retained package-contained/OS loading acceptance remains recorded, not rerun for reassurance. DLL-owned contexts and Electron still need acceptance. |
+
+Final focused Windows run: `C:\apack-setup\runs\pe-application-context-final-980fce3ae`, based on
+`980fce3ae` plus the recorded repair. One Vitest worker, `APACK_CHAIN_CORES=2`, `GOMAXPROCS=2`;
+Node 23.11.1 / Windows Server 2025 x64. Three cases pass in 18.34 seconds total: Node startup
+6.201s, XML/configuration/freshness 7.859s, embedded private manifest 2.099s. Existing deadlines
+are unchanged. Local inert checks pass 57 cases (two platform skips), and the same Windows suites pass 56 (three skips); subprocess/timeout policy
+checks pass 53 cases. CLI, scripts and repo-checks types, focused lint and diff checks pass.
+The chain's dry plan is preserved; it is not checkpoint-wide or final strict acceptance.
+
+Failures were diagnosed separately. The first helper lacked the PowerShell `System.Xml` compiler
+reference. The first parameterized test used an unsupported context callback. The first real startup
+check exposed the CommonJS owner lookup defect. The first embedded fixture contained a forbidden UAC
+`requestedPrivileges` element; Windows' SideBySide event names that defect, fixed with
+`/MANIFESTUAC:NO`. Removing a previously queried private manifest left Windows reporting its old
+path while ordinary loading used the alternate; the helper refused the unreadable reported input.
+Removing only its DLL made the ordinary control fail. Neither is evidence of successful coherent
+capture. The accepted configuration proof uses a fresh declared assembly identity with all reported
+manifest inputs available, keeping both actual-loader and helper exact-path assertions.
+
+A full public-CLI SxS draft timed out at its existing 120-second bound before a worker proof was
+written. The useful draft is preserved in stash `bf2ea546644036fa7f933fad935a56e4c03f8e08`.
+A separate 20-second stage trace reaches package capture; direct runtime inventory and copying of the
+retained Node fixture finish in approximately 0.7 seconds with equal source/copy identities. This does
+not diagnose every stage of the original timeout or establish a full-CLI SxS pass. The focused accepted
+case uses the actual published startup hook and production runtime inventory, while existing full
+installation/public-build acceptance remains separate. No deadline or assertion was relaxed.
+
+Remaining: Electron SxS/`.local`, DLL-owned resource-2 contexts, helper/target loaded-module-name
+parity, broader publisher/culture/selection-policy and newly appearing higher-priority watch cases,
+and helper descendant cleanup on timeout. Preserve the existing valid bound-only-control,
+concurrent-first-capture, other-platform and converged/final gate requirements. No new exclusion,
+security isolation guarantee, whole-goal completion or strict `--all` pass is claimed.
+
+Focused Windows logs and diagnostic patches are saved off the VM in
+`/private/tmp/apack-pe-context-checkpoint-evidence.zip`; source hashes are in
+`/private/tmp/apack-pe-context-source-blobs.json` and
+`/private/tmp/apack-pe-context-windows-blobs.json`. The chain dry plan is
+`/private/tmp/apack-pe-context-chain-dry.log`. Failed fixtures and the original stash remain preserved.
+
+The validated VM overlay is preserved in the scoped stash
+`Validated default application context overlay on 980fce3ae` before fast-forwarding the VM to
+`267fa8117`. The pre-existing launcher change and earlier stashes remain untouched. No Node/MSVC
+compiler process remains; Azure confirms `VM deallocated`.
