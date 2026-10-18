@@ -4302,3 +4302,36 @@ native input/copy owner and collect the manifests/policies that selected a DLL a
 Then repair admission, prove no initialization on refusal, support contained/OS cases and exercise
 the actual selected runtime paths. `.local`, valid bound-only and search-state obligations remain;
 this SxS result does not close them or authorize exclusions. Broader/final gates remain required.
+
+## Windows activation-context prototype (2026-10-18)
+
+On the verified VM source `3f20531a1`, a private PowerShell/C# prototype queries the retained SxS
+fixture through `CreateActCtxW` and `QueryActCtxW`. The initial prototype omitted three DWORD fields
+from `ACTIVATION_CONTEXT_DETAILED_INFORMATION` and its helper exited with access violation
+`-1073741819`. Correcting the interop layout against the public Windows definition fixes that crash.
+The corrected query returns both application and private-assembly manifest paths, no policy, and
+zero file entries. Explicitly querying file zero returns invalid parameter. Do not use this metadata
+alone to infer a DLL path or interpret the assembly-directory identifier as an absolute directory.
+
+A separate prototype activates that context and uses `LoadLibraryExW` with
+`LOAD_LIBRARY_AS_DATAFILE_EXCLUSIVE | LOAD_LIBRARY_AS_IMAGE_RESOURCE`, then `GetMappedFileNameW`.
+It returns the exact private-assembly `apack_value.dll` device path selected by the accepted ordinary
+control. Exit is zero, and the fixture's `dll-initialized` marker remains absent. Every context,
+mapping and allocation is released. No pack export or ordinary DLL load is invoked. This establishes
+a viable selection query for this fixture, not equivalence to every compiler process's loader state.
+See the public [context layout](https://learn.microsoft.com/en-us/windows/win32/api/winnt/ns-winnt-activation_context_detailed_information),
+[resource mapping contract](https://learn.microsoft.com/en-us/windows/win32/api/libloaderapi/nf-libloaderapi-loadlibraryexw)
+and [mapped-file query](https://learn.microsoft.com/en-us/windows/win32/api/psapi/nf-psapi-getmappedfilenamew).
+
+Scripts, logs, exit codes and source/process checkpoint are retained in
+`C:\apack-setup\runs\actctx-metadata-3f20531a1` and copied to
+`/private/tmp/apack-actctx-metadata-vm-3f20531a1/`. The original initializer marker is preserved in
+the VM evidence directory. No native/compiler process remains. No product source, system policy,
+timeout, resource size or network boundary changed. No new CI run was dispatched.
+After evidence preservation, Azure confirms `VM deallocated`.
+
+Before integration, establish the actual compiler context (including executable versus image
+manifests), helper versus target loaded-module precedence, device-path identity and freshness inputs
+for selecting manifests/policies. Reuse the existing native input/admission owner. Preserve the
+expected-failing regression and require contained/OS support, pre-initialization refusal and actual
+selected-runtime acceptance; this prototype closes none of those remaining requirements by itself.

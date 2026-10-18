@@ -105,9 +105,13 @@ Do not change macOS security settings or repeat local native batches. Preserve t
 cases below. Source checkpoint `d8ac9486c` accepts both ordinary Windows dependency-redirection controls;
 the corrected test blob and exact VM evidence are recorded below. The [SxS admission counterexample](../evidence/build-input-snapshot-proof.md#windows-sxs-admission-counterexample-2026-10-18)
 now confirms the low-level predicate misses the OS-selected private assembly. Its expected-failing
-regression is stashed locally and on the VM. Next prototype an OS metadata query without pack-library
-initialization, then repair the existing admission/input owner and accept actual runtime paths. The VM is deallocated,
-with source at that checkpoint, useful overlays stashed and evidence preserved on both machines.
+regression is stashed locally and on the VM. The [activation-context prototype](../evidence/build-input-snapshot-proof.md#windows-activation-context-prototype-2026-10-18)
+identifies the manifests and resource-maps the exact selected DLL without its initializer running;
+metadata enumeration alone does not supply file paths. Next reconcile that query with the actual
+compiler's activation context and loader state, then repair the existing admission/input owner and
+accept actual runtime paths. This is a prototype, not production acceptance. VM source remains
+`3f20531a1`, useful overlays are stashed and evidence is preserved on both machines. Azure confirms
+`VM deallocated`; no execution owner remains.
 Earlier source-specific failures are history, not instructions to rerun accepted checks.
 
 | Area | Current source and acceptance | Remaining obligation |
