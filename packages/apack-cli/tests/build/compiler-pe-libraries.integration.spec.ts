@@ -85,9 +85,12 @@ BOOL WINAPI DllMain(HINSTANCE module, DWORD reason, LPVOID reserved) {
   buildLibrary(library, 11);
   const source = path.join(root, 'addon.c');
   fs.writeFileSync(source, nativeAddonSource(addonMarker));
-  compile(['/LD', '/I' + headers!, source, '/Fo' + path.join(root, 'addon.obj'), '/link', '/INCREMENTAL:NO',
-    '/OUT:' + addon, path.join(root, 'value.lib'), importLibrary!]);
-  return { library, addon, dllMarker, addonMarker, buildLibrary };
+  const buildAddon = (manifest?: string, hostLink: readonly string[] = []) => compile([
+    '/LD', '/I' + headers!, source, '/Fo' + path.join(root, 'addon.obj'), '/link', '/INCREMENTAL:NO',
+    ...(manifest ? ['/MANIFEST:EMBED,ID=2', '/MANIFESTUAC:NO', '/MANIFESTINPUT:' + manifest] : []),
+    '/OUT:' + addon, path.join(root, 'value.lib'), importLibrary!, ...hostLink]);
+  buildAddon();
+  return { library, addon, dllMarker, addonMarker, buildLibrary, buildAddon };
 }
 
 /** Change only a private copy: DotLocal is suppressed by Node's embedded application manifest. */
@@ -199,7 +202,7 @@ it.runIf(process.platform === 'win32').each([
     const pack = path.join(root, 'pack'), runtime = path.join(root, 'runtime'), copied = path.join(root, 'copied');
     fs.mkdirSync(runtime);
     packFixture({ at: pack, nodeModules: path.join(REPO_ROOT, 'node_modules'), manifest: { features: {} } });
-    const { addon, dllMarker, addonMarker, buildLibrary } = createPeNativeFixture(root, pack);
+    const { addon, dllMarker, addonMarker, buildLibrary, buildAddon } = createPeNativeFixture(root, pack);
     const executable = electron ? createRequire(import.meta.url)('electron') as string : createNodeWithoutApplicationManifest(runtime);
     const runtimeSource = electron ? path.dirname(executable) : runtime;
     const library = path.join(kind === 'application' ? runtime : path.join(path.dirname(addon), 'alternate'), 'apack.fixture.value/apack_value.dll');
@@ -221,10 +224,7 @@ it.runIf(process.platform === 'win32').each([
           '/DHOST_BINARY="node.exe"', '/Fo' + hook], { cwd: root, timeout: 15_000 });
         hostLink.push(hook, 'delayimp.lib', '/DELAYLOAD:node.exe');
       }
-      execFileSync('cl.exe', ['/nologo', '/MT', '/LD', '/I' + process.env.APACK_TEST_NODE_HEADERS!, path.join(root, 'addon.c'),
-        '/Fo' + path.join(root, 'addon.obj'), '/link', '/INCREMENTAL:NO', '/MANIFEST:EMBED,ID=2', '/MANIFESTUAC:NO',
-        '/MANIFESTINPUT:' + manifestFile, '/OUT:' + addon, path.join(root, 'value.lib'), process.env.APACK_TEST_NODE_IMPORT_LIBRARY!, ...hostLink],
-      { cwd: root, timeout: 15_000 });
+      buildAddon(manifestFile, hostLink);
       buildLibrary(outsideLibrary, 22, { symbol: 'outside_value' });
       const dependencySource = path.join(root, 'dependency.c');
       fs.writeFileSync(dependencySource, '__declspec(dllimport) int outside_value(void); __declspec(dllexport) int native_value(void) { return outside_value(); }');
@@ -405,7 +405,7 @@ int wmain(int argc, wchar_t **argv) {
       const environment = capturePeLibraryEnvironment(configured);
       const check = (image = entry, view?: ReturnType<typeof createCompilerFileView>) => assertCapturedPeLibraries(image, path.dirname(library), {
         environment, executable: configured,
-        moduleContext: image => readPeActivationContext(image, { systemDirectory: environment.systemDirectory, application: configured, resource: 2 }), cwd: root,
+        moduleContext: (image, observe) => readPeActivationContext(image, { systemDirectory: environment.systemDirectory, application: configured, resource: 2, observe }), cwd: root,
         variables: process.env,
         loadedLibraries: kind === 'image-assembly-api' ? [path.join(environment.systemDirectory, 'psapi.dll')] : [], arch: process.arch,
         realpath: file => view ? view.fileSystem.realpath(file) : fs.realpathSync.native(file),
@@ -473,6 +473,21 @@ int wmain(int argc, wchar_t **argv) {
           fs.rmSync(preferred, { recursive: true });
           expect(() => view.assertCurrent()).not.toThrow();
         } finally { view.dispose(); }
+        const repair = path.join(path.dirname(entry), 'repair', assemblyName);
+        fs.writeFileSync(configuration, fs.readFileSync(configuration, 'utf8').replace('privatePath="alternate"', 'privatePath="repair"'));
+        const failedReads: string[] = [];
+        const failed = createCompilerFileView(pack, { observe: file => { failedReads.push(file); } });
+        try {
+          expect(() => check(configuredImage, failed)).toThrow('Cannot inspect Windows activation context');
+          const repairedManifest = path.join(repair, assemblyName + '.manifest');
+          expect(failedReads).toContain(configuration);
+          expect(failedReads).toContain(repairedManifest);
+          expect(() => failed.assertCurrent()).not.toThrow();
+          expect(fs.existsSync(dllMarker)).toBe(false);
+          fs.mkdirSync(repair, { recursive: true });
+          fs.copyFileSync(path.join(alternate, assemblyName + '.manifest'), repairedManifest);
+          expect(() => failed.assertCurrent()).toThrow(assemblyName);
+        } finally { failed.dispose(); }
       }
       if (kind === 'assembly') {
         const before = readCompilerRuntimeInputs(configured, false);

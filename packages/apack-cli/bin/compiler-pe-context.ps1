@@ -211,11 +211,12 @@ public static class ApackPeActivationContext {
     spec.Flags = external ? 0x24u : 0x2cu;
     spec.Resource = external ? IntPtr.Zero : new IntPtr(resourceId);
     spec.AssemblyDirectory = NativePath(image.Substring(0, image.LastIndexOf('\\') + 1)); spec.Application = application;
-    IntPtr context = CreateActCtxW(ref spec);
-    if (context == new IntPtr(-1)) throw new Win32Exception(Marshal.GetLastWin32Error());
-    IntPtr index = Marshal.AllocHGlobal(4);
+    IntPtr context = IntPtr.Zero, index = IntPtr.Zero;
     UIntPtr cookie = UIntPtr.Zero; bool active = false;
     try {
+      context = CreateActCtxW(ref spec);
+      if (context == new IntPtr(-1)) throw new Win32Exception(Marshal.GetLastWin32Error());
+      index = Marshal.AllocHGlobal(4);
       // Discover relevant private prefixes first; shared assemblies never probe these local paths.
       Dictionary<string, InputInfo> probes = new Dictionary<string, InputInfo>(StringComparer.OrdinalIgnoreCase);
       ContextInfo initial = Query<ContextInfo>(context, IntPtr.Zero, 2);
@@ -262,9 +263,15 @@ public static class ApackPeActivationContext {
         inputs[before.file] = before;
       }
       return new { inputs = new List<InputInfo>(inputs.Values).ToArray(), redirections = redirections.ToArray() };
+    } catch (Exception failure) {
+      HashSet<string> paths = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+      foreach (var group in candidates) foreach (string file in group) paths.Add(file);
+      failure.Data["candidates"] = new List<string>(paths).ToArray();
+      throw;
     } finally {
       if (active) DeactivateActCtx(0, cookie);
-      Marshal.FreeHGlobal(index); ReleaseActCtx(context);
+      if (index != IntPtr.Zero) Marshal.FreeHGlobal(index);
+      if (context != IntPtr.Zero && context != new IntPtr(-1)) ReleaseActCtx(context);
     }
   }
 }
@@ -282,7 +289,8 @@ public static class ApackPeActivationContext {
 } catch {
   $failure = $_.Exception
   while ($null -ne $failure.InnerException) { $failure = $failure.InnerException }
-  $result = @{ error = $(if ($failure -is [System.ComponentModel.Win32Exception]) { $failure.NativeErrorCode } else { 13 }) }
+  $result = @{ error = $(if ($failure -is [System.ComponentModel.Win32Exception]) { $failure.NativeErrorCode } else { 13 }); candidates = @() }
+  if ($failure.Data.Contains('candidates')) { $result.candidates = @($failure.Data['candidates']) }
 }
 $json = $result | ConvertTo-Json -Depth 7 -Compress
 $bytes = [System.Text.Encoding]::UTF8.GetBytes($json)

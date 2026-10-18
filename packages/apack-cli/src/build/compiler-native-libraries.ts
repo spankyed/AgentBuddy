@@ -47,7 +47,7 @@ export function assertCapturedCompilerLibraries(entry: string, packageRoot: stri
     const state = readPeProcessState();
     return assertCapturedPeLibraries(entry, packageRoot, { ...input, environment, executable: process.execPath,
       cwd: process.cwd(), variables: state.environment, loadedLibraries: state.libraries,
-      moduleContext: image => readPeActivationContext(image, { systemDirectory: environment.systemDirectory, application: process.execPath, resource: 2 }) });
+      moduleContext: (image, observe) => readPeActivationContext(image, { systemDirectory: environment.systemDirectory, application: process.execPath, resource: 2, observe }) });
   }
   if (process.platform !== 'linux') return;
   const environment = input.environment.elf;
@@ -80,7 +80,7 @@ export function assertCompilerRuntimeLibraries(executable: string, runtimeDirect
     const environment = capturePeLibraryEnvironment(executable);
     return assertCapturedPeLibraries(executable, runtimeDirectory, {
       arch: process.arch, environment, executable, cwd, variables: env, loadedLibraries: [],
-      moduleContext: image => readPeActivationContext(image, { systemDirectory: environment.systemDirectory, application: executable, resource: 2 }),
+      moduleContext: (image, observe) => readPeActivationContext(image, { systemDirectory: environment.systemDirectory, application: executable, resource: 2, observe }),
       directoryExists: file => fs.statSync(file, { throwIfNoEntry: false })?.isDirectory() ?? false,
       realpath: file => fs.realpathSync.native(file),
       read: file => fs.statSync(file, { throwIfNoEntry: false })?.isFile() ? fs.readFileSync(file) : undefined,

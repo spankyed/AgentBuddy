@@ -22,7 +22,7 @@ export function assertCapturedPeLibraries(entry: string, packageRoot: string, in
   read(file: string): Buffer | undefined;
   directoryExists(file: string): boolean;
   realpath(file: string): string;
-  moduleContext(image: string): CompilerPeActivationContext;
+  moduleContext(image: string, observe: (file: string) => void): CompilerPeActivationContext;
 }): void {
   const environment = input.environment;
   const within = (file: string, root: string) => {
@@ -84,7 +84,7 @@ export function assertCapturedPeLibraries(entry: string, packageRoot: string, in
     const machine = input.arch === 'x64' ? 0x8664 : input.arch === 'arm64' ? 0xaa64 : input.arch === 'ia32' ? 0x14c : undefined;
     if (metadata.machine !== machine) throw new Error(`Native compiler image "${file}" has no PE code for ${input.arch}`);
     const active = metadata.manifests.some(manifest => manifest.path[1] === 2)
-      ? contextBindings(input.moduleContext(file), file) : inherited;
+      ? contextBindings(input.moduleContext(file, candidate => { input.read(candidate); }), file) : inherited;
     const image = { metadata, bindings: active };
     images.set(identity, image);
     for (const imported of metadata.imports) {

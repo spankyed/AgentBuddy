@@ -20,12 +20,13 @@ export interface CompilerPeActivationContext {
 }
 
 /** Query an executable or DLL context without initializing native pack code. */
-export function readPeActivationContext(image: string, { systemDirectory, application, resource }: {
-  systemDirectory: string; application: string; resource: 1 | 2;
+export function readPeActivationContext(image: string, { systemDirectory, application, resource, observe }: {
+  systemDirectory: string; application: string; resource: 1 | 2; observe?: (file: string) => void;
 }): CompilerPeActivationContext {
   image = pePath(image);
   const inputs: CompilerPeActivationInput[] = [];
   const read = (file: string) => {
+    observe?.(file);
     const stat = fs.statSync(file, { throwIfNoEntry: false });
     const bytes = stat?.isFile() ? fs.readFileSync(file) : undefined;
     inputs.push({ file, kind: bytes !== undefined ? 'file' : stat?.isDirectory() ? 'directory' : 'missing',
@@ -46,8 +47,14 @@ export function readPeActivationContext(image: string, { systemDirectory, applic
     const text = execFileSync(path.join(systemDirectory, 'WindowsPowerShell/v1.0/powershell.exe'),
       ['-NoProfile', '-NonInteractive', '-File', path.join(owner, 'bin/compiler-pe-context.ps1')],
       { input: payload, encoding: 'utf8', timeout: 5_000, maxBuffer: 1024 * 1024, windowsHide: true });
-    const value = JSON.parse(text.replace(/^\ufeff/, '')) as CompilerPeActivationContext & { error?: number };
-    if (typeof value.error === 'number') throw Object.assign(new Error('OS context refusal'), { code: `Win32 ${value.error}` });
+    const value = JSON.parse(text.replace(/^\ufeff/, '')) as CompilerPeActivationContext & { error?: number; candidates?: string[] };
+    if (typeof value.error === 'number') {
+      if (!Array.isArray(value.candidates) || value.candidates.some(file => typeof file !== 'string' || !path.isAbsolute(file) || file.includes('\0'))) {
+        throw new Error('Invalid OS refusal metadata');
+      }
+      for (const file of value.candidates) observe?.(file);
+      throw Object.assign(new Error('OS context refusal'), { code: `Win32 ${value.error}` });
+    }
     if (value.image !== image || !Array.isArray(value.inputs) || !Array.isArray(value.redirections)
       || value.inputs.some(item => !item || typeof item.file !== 'string' || !path.isAbsolute(item.file)
         || !['file', 'directory', 'missing'].includes(item.kind)
