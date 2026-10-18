@@ -749,7 +749,7 @@ export const chatCommands = {
 
   updateMessageState: (params: {
     messageId: EARS.EntityId;
-    updates: Partial<Pick<MessageEntity, 'text' | 'blocks' | 'blockResponse' | 'responseTimestamp' | 'forkable' | 'status' | 'context' | 'compacted'>>;
+    updates: Partial<Pick<MessageEntity, 'text' | 'blocks' | 'blockResponse' | 'responseTimestamp' | 'forkable' | 'status' | 'context' | 'compacted' | 'references'>>;
   }): {
     messageId: EARS.EntityId;
     updatedAt: number;
