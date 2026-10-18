@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
     inputs:
       test_name:
-        description: Optional PE native test name pattern (skips accepted platform stages)
+        description: Optional compiler test name pattern (skips accepted platform stages)
         type: string
         default: ''
   workflow_call:
@@ -47,6 +47,18 @@ jobs:
         run: npm ci
       - name: Build matching packages
         run: npm run packages:ensure
+      - name: Focused compiler input checks
+        if: ${{ inputs.test_name }}
+        env:
+          NODE_OPTIONS: --conditions=@apackdev/source
+          APACK_TEST_NAME: ${{ inputs.test_name }}
+        run: >-
+          node node_modules/vitest/vitest.mjs run --project @apackdev/cli --project @apackdev/host
+          packages/apack-cli/tests/build/compilation-inputs.spec.ts
+          packages/apack-host/tests/build/compiler-paths.windows.spec.ts
+          --testNamePattern "$env:APACK_TEST_NAME"
+          --reporter=default --reporter=json --outputFile="$env:RUNNER_TEMP/apack-compiler-input-tests.json"
+          --bail=1 --poolOptions.threads.maxThreads=1 --poolOptions.threads.minThreads=1 --no-file-parallelism
       - name: Prepare matching Node native SDK and MSVC
         timeout-minutes: 3
         run: ./.github/scripts/setup-node-native-sdk.ps1
@@ -57,7 +69,21 @@ jobs:
           node node_modules/vitest/vitest.mjs run --config vitest.integration.config.ts --project @apackdev/cli
           packages/apack-cli/tests/build/compiler-pe-libraries.integration.spec.ts
           --testNamePattern "$env:APACK_TEST_NAME"
+          --reporter=default --reporter=json --outputFile="$env:RUNNER_TEMP/apack-compiler-native-tests.json"
           --bail=1 --poolOptions.threads.maxThreads=1 --poolOptions.threads.minThreads=1 --no-file-parallelism
+      - name: Verify selected compiler cases executed
+        run: |
+          @'
+          const fs = require('node:fs'), path = require('node:path'), assert = require('node:assert/strict');
+          const native = path.join(process.env.RUNNER_TEMP, 'apack-compiler-native-tests.json');
+          const inputs = path.join(process.env.RUNNER_TEMP, 'apack-compiler-input-tests.json');
+          const reports = [native, ...(fs.existsSync(inputs) ? [inputs] : [])]
+            .map(file => JSON.parse(fs.readFileSync(file, 'utf8')));
+          const passed = reports.reduce((sum, report) => sum + report.numPassedTests, 0);
+          assert.ok(passed > 0, 'Compiler filter selected no passing cases');
+          assert.ok(reports.every(report => report.numFailedTests === 0));
+          console.log({passed});
+          '@ | node
       - name: Compiler input and installation checks
         if: ${{ !inputs.test_name }}
         env:
@@ -66,12 +92,14 @@ jobs:
           node node_modules/vitest/vitest.mjs run --project @apackdev/cli --project @apackdev/host --project @apackdev/ui
           packages/apack-host/tests/build/published-manifest.spec.ts
           packages/apack-host/tests/build/compiler-inputs.spec.ts
+          packages/apack-host/tests/build/compiler-paths.windows.spec.ts
           packages/apack-host/tests/build/package-inputs.spec.ts
           packages/apack-host/tests/build/pack-inputs.spec.ts
           packages/apack-host/tests/build/pack-build-inputs.spec.ts
           packages/apack-ui/tests/exports.spec.ts
           packages/apack-cli/tests/build/compiler-read-tree.spec.ts
           packages/apack-cli/tests/build/compiler-module-inputs.spec.ts
+          packages/apack-cli/tests/build/compilation-inputs.spec.ts
           packages/apack-cli/tests/build/compiler-watch.spec.ts
           packages/apack-cli/tests/build/checkout-packages.spec.ts
           packages/apack-cli/tests/build/tool-identity.spec.ts

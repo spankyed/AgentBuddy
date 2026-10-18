@@ -36,7 +36,7 @@ on:
         type: boolean
         default: false
       compiler_windows_test:
-        description: Optional PE native test name pattern (skips accepted platform stages)
+        description: Optional compiler test name pattern (skips accepted platform stages)
         type: string
         default: ''
       compiler_macos:

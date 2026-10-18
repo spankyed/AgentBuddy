@@ -62,3 +62,30 @@ it("retains skipped phases' consumed inputs and refuses changes before completin
     fs.rmSync(temporary, { recursive: true, force: true });
   }
 });
+
+it.runIf(process.platform === 'win32').each(['tool', 'workspace'] as const)(
+  'preserves compiler ownership for extended Windows paths: %s', owner => {
+    const temporary = fs.realpathSync.native(fs.mkdtempSync(path.join(os.tmpdir(), 'apack-owned-inputs-')));
+    const root = path.join(temporary, 'pack'), owned = path.join(temporary, 'owned');
+    fs.mkdirSync(root); fs.mkdirSync(owned);
+    fs.writeFileSync(path.join(root, 'tsconfig.json'), '{"compilerOptions":{"noLib":true,"types":[]}}');
+    const file = path.join(owned, 'native.node');
+    fs.writeFileSync(file, 'INERT');
+    const metadata = path.join(temporary, 'compiler.json');
+    fs.writeFileSync(metadata, JSON.stringify({ hash: 'a'.repeat(64), packages: [cliPackageDirectory()],
+      paths: owner === 'tool' ? [{ captured: owned, source: path.join(temporary, 'original') }] : [] }));
+    vi.stubEnv('APACK_COMPILER_INPUTS', metadata);
+    if (owner === 'workspace') vi.stubEnv('APACK_BUILD_INPUTS_DIRECTORY', owned);
+    let inputs: ReturnType<typeof captureCompilationInputs> | undefined;
+    try {
+      inputs = captureCompilationInputs(root);
+      expect(inputs.isInput(file)).toBe(false);
+      const extended = path.toNamespacedPath(file);
+      expect(inputs.isInput(extended)).toBe(false);
+      expect(inputs.isInput(path.join(temporary, 'owned-sibling/native.node'))).toBe(true);
+      if (owner === 'tool') expect(inputs.readDataPath(extended)).toBe(extended);
+    } finally {
+      inputs?.dispose(); vi.unstubAllEnvs(); fs.rmSync(temporary, { recursive: true, force: true });
+    }
+  },
+);
