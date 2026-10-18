@@ -3154,3 +3154,27 @@ The corrected focused checks pass (112 cases across the four metadata/admission 
 execution ran locally. The ongoing Linux lifecycle run `39083965583` remains pinned to `80578dd4a`;
 its evidence does not claim acceptance of this subsequent source correction. Preserve that run and
 include the correction in converged/final source acceptance.
+
+### Linux lifetime and backend baseline acceptance (2026-10-17)
+
+Run [`39083965583`](https://github.com/spankyed/AgentBuddy/actions/runs/39083965583) succeeds on
+`80578dd4a`, Ubuntu 24.04 x64 / Node 23.11.1, with sequential stages and one Vitest worker:
+
+- Metadata/admission: 101 pass; ten macOS-only cases skip as declared (0.69-second wall).
+- Complete retained ELF library case passes again (3.99-second case, 5.12-second wall).
+- Five existing startup/cancellation/descendant/retirement cases pass (6.38-second cases, 8.65-second wall).
+- Real independent Vite owners retain the survivor and stop their own descendants (4.22-second case,
+  6.53-second wall).
+- Both selected real backend launch/repeated-build cases pass, including unchanged cache/archive
+  identity (40.68-second cases, 43.15-second wall).
+
+Log: `/private/tmp/apack-linux-lifetimes-39083965583.log`. These are the existing portable ownership
+paths, not newly invented test-only owners. This closes their Linux acceptance on the recorded source;
+do not schedule them again as missing implementation. The run did not include subsequent correction
+`4dd1f087c`, whose empty-list regression/type/lint evidence is recorded above and remains included in
+converged source acceptance. No remote native job remains active.
+
+Next reuse the existing ELF fixture with the public backend build owner for native initialization,
+outside refusal and published-incumbent preservation. The successful generic backend baseline does
+not establish that native-specific boundary. Keep remaining real loader-selection/mapped-image
+checks, PE, stricter app signing, B6 and final strict `--all` acceptance explicit.
