@@ -47,6 +47,11 @@ it('keeps private startup options separate from child options and preserves user
   }
 });
 
+it('refuses a startup loader without its active input owner', async () => {
+  await expect(import(new URL('../../bin/compiler-startup-loader.mjs', import.meta.url).href))
+    .rejects.toThrow('Compiler loader requires its active startup input owner');
+});
+
 it.each([false, true])('refuses an uncaptured worker with parent IPC (unrelated metadata: %s)', async unrelated => {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'apack-worker-inputs-'));
   roots.push(root);
