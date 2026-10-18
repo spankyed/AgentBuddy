@@ -3017,3 +3017,23 @@ refusal while retaining the incumbent. The macOS fixture uses the identical extr
 No production native owner or parser changed. CLI types, focused lint, all 11 subprocess-inventory
 checks, Linux-only YAML routing, platform-script syntax and diff checks pass. Native acceptance is
 pending on the disposable Ubuntu runner; no native fixture or captured runtime ran locally.
+
+### First Linux execution: native loader argument-count defect (2026-10-17)
+
+Run `39081997952` on `16c60c09d` passes Ubuntu setup, headers, installation, package preparation and
+the fixture's ordinary-Node control, then fails captured frontend startup in 2.57 seconds with
+`invalid mode for dlopen()`. It has not reached owned-copy or outside-library assertions. Log:
+`/private/tmp/apack-elf-proof-39081997952.log`.
+
+The common host filesystem adapter always forwarded three arguments to `process.dlopen`, adding
+explicit `undefined` when Node called it with two. [Node v23.11.1's native implementation](https://github.com/nodejs/node/blob/v23.11.1/src/node_binding.cc#L458)
+uses argument count to decide whether to replace its default flags. The wrapper now preserves the
+optional argument tail and changes only the admitted filename; it does not invent platform defaults.
+Other filesystem forwarding sites already preserve their option tails or call JavaScript defaults.
+
+The focused host regression fails before the correction (the extra undefined appears in the actual
+mocked native call) and passes afterward, covering omitted flags, an explicit value and explicit
+undefined. Host TypeScript, focused lint and diff checks pass. This local regression calls only a
+mocked native function; it launches no compiler or addon. The same real Linux proof must now run on
+the correction before attributing any later failure to ELF ownership. No ELF parser/admission change
+or timeout increase has been made.
