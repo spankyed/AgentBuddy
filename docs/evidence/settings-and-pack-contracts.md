@@ -7894,3 +7894,54 @@ the preserved goal register.
 Source checkpoint: **`9b056f4ab`**, pushed. The required strict run
 [`39175530615`](https://github.com/spankyed/AgentBuddy/actions/runs/39175530615) is confirmed active
 on that exact source. No earlier run remains active, and no passing final gate is claimed.
+
+## Windows Electron build/archive and typecheck admission — 2026-10-18
+
+Source checkpoints `04a876675` and `3827993ba` are pushed. Strict run `39175530615` on
+`9b056f4ab` stopped at the quick pack-typecheck bound (62s including teardown), without a type
+diagnostic; the preceding run passed in 51.6s. Two ordinary local cold Vue compiler runs measured
+24.72s CPU / 14.66s wall and 24.95s / 14.65s wall, approximately 1.7 cores. The second `time -p`
+command exited zero; the first had no type diagnostics but `time -l` failed collecting sandboxed
+`sysctl` statistics. Reservation now uses two cores; the quick 60s deadline is unchanged. All 86
+scheduler/core/graph checks, scripts/repo/publish/E2E types and focused lint pass. This is admission
+evidence, not proof of the exact hosted slowdown's cause. Local measurement logs are
+`/private/tmp/apack-pack-typecheck-isolated{,-2}{,-time}.log`.
+
+A real public-CLI scaffold/feature/build/archive proof on Windows Server 2025 x64 first exposed an
+archive defect after a successful Electron build. The missing filesystem probe
+`path.join(root, root)` contains a second Windows drive prefix. `path.relative` shortened it into
+a drive-prefixed suffix, which replay resolved as the existing pack root. The native missing query
+was correct; its serialized identity was wrong. A focused Windows regression reproduces precisely
+that refusal before the fix. `relativeCompilerPath` now preserves the original absolute location
+whenever a relative suffix would itself be absolute. No observation, allowance or refusal is relaxed.
+All seven adjacent real Windows replay checks pass; 34 local focused checks pass (one Windows-only
+case skipped), along with host types and lint.
+
+The existing owned proof was reused against exact committed source `3827993ba9398f570c5cafda9ba25d3ec9f8cbfc`.
+It preserves the previous failed dist, uses the same scaffolded source and public `apack pack build`
+and `pack archive` paths, and runs sequentially with two cores. Build **passes in 178.554s**; archive
+**passes in 13.294s**. Actual worker metadata proves captured **Electron 37.2.4 / Node 22.17.1**,
+ABI 136, distinct captured executable and executable retirement. Backend and frontend output are
+present. The successful input record retains the complete double-drive missing query rather than
+aliasing the real root. All Node/Electron/esbuild/MSVC processes are absent afterward. This closes
+the named full Windows Electron compilation gap, not arbitrary native I/O or every runtime/addon
+combination.
+
+- Revision: `5e53205bd6393785cc4cfba5d9329267afee07bf862945ba2850c8970cff24d2`.
+- Archive SHA-256: `b6190a4f3e7428ba80b8ef222a898be69d892a32ed6cf5ca7607a0218ce5c023`.
+- Export: `/private/tmp/apack-electron-cli-3827993ba.zip`, 58 files, checked after download. Includes
+  control scripts, runtime/source/OS metadata, accepted and original failed dist, logs, red/green
+  regression and archive. The workspace's node_modules junction is excluded.
+- VM evidence: `C:\apack-setup\runs\electron-cli-3827993ba`; original retained workspace at
+  `C:\apack-setup\runs\electron-cli-e5ffd9468`.
+- Scoped validated overlay remains stashed as `01790727e69a9ffb5b2e91e1607076e4fe69c297`; all prior
+  saved work is preserved. Only the preexisting CLI-bin line-ending status remains on the VM.
+
+Required strict run [39177912229](https://github.com/spankyed/AgentBuddy/actions/runs/39177912229)
+is dispatched on `3827993ba`, after both demonstrated causes were fixed and focused checks passed.
+It must prove the unchanged deadlines, remaining integration/runtime/app stages and exact archive
+consumption; dispatch is not acceptance. The finite native closure register and all goal phases
+remain required.
+
+The Windows VM is confirmed `PowerState/deallocated` after the export. Strict job
+`117824308867` is live on the pinned source; setup succeeded and dependency installation is running.
