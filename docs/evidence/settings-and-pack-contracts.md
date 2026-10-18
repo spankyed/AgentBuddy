@@ -7705,3 +7705,35 @@ lint and `git diff --check` pass. Actual hosted authoring/app and converged acce
 
 Failure log: `/private/tmp/apack-strict-39163655338.log`. The run retains the chain log and per-step
 reports in its uploaded validation evidence. No compiler/native test ran on the developer's Mac.
+
+
+## Read-only facade verification after publication (2026-10-18)
+
+Strict run [39166185325](https://github.com/spankyed/AgentBuddy/actions/runs/39166185325), source
+`31cb54f4d`, stopped after 597.0s. Package builds/checks, API/schema/exports checks and listed typechecks
+passed; default-setup built in 291.5s. `facade:check` exceeded its unchanged 60s quick budget (62.0s
+wall time). The concurrent external-contract step passed 38 memo-pack cases, then default-fork
+preparation correctly refused changed `src/__generated__` directory observations. The retained logs
+do not identify the differing entry; do not claim a particular leftover lock or file was proven.
+
+Source `ccf86ad3a` removes the known shared writer from the chain's facade check. Explicit
+`facade-report --from-build` verifies the sealed build and replays its common input record, then
+normalizes the snapshot facade consumed by dependent packs. The root script and graph select that
+read-only mode after `build:default-setup`, declaring built outputs as inputs. It neither regenerates
+entries nor substitutes its inspecting compiler's generation stamp. Missing/stale/modified builds
+refuse; there is no fallback. `--from-build` cannot combine with `--update` or `--skip-generate`.
+Pack-local source derivation and deliberate report updates remain available; temporary bundle/diff
+files are now disposed in all command exit paths. No timeout or validation assertion is weakened.
+
+All 115 focused facade/graph/input cases pass in 2.14s, including real sealed filesystem data, throwing
+runtime bytes, changed authored/generated inputs, changed generated-directory membership, output
+integrity, CLI dispatch and conflicting flags. CLI, scripts and repo-checks typechecks and focused
+correctness lint pass. An attempted wider `chain-table` run hits the existing daily-Mac guard when it
+imports the compiler integration configuration; this is not bypassed or claimed passing. Existing real
+facade integration coverage now also checks the read-only command and poisoned output, but its hosted
+execution and converged strict acceptance remain required. No captured compiler/native batch ran locally.
+
+Logs and per-step reports are preserved under `/private/tmp/apack-strict-39166185325/`; console log is
+`/private/tmp/apack-strict-39166185325.log`. The exact cause of the facade's derivation cost remains
+unprofiled; repeating that compilation is unnecessary for checking an already verified current build.
+The next strict run must prove the facade read and dependent fork preparation stay coherent together.

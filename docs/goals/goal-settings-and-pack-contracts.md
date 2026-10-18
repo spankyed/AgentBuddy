@@ -87,8 +87,13 @@ inputs, restoring ordering and cache invalidation through the existing graph. Th
 fails before the repair; all 68 focused authoring/graph/scheduler cases, repo/scripts types and lint
 pass afterward. See [checkpoint evidence](../evidence/settings-and-pack-contracts.md#external-authoring-host-build-dependency-2026-10-18).
 Push authorization is resolved. [Strict run `39166185325`](https://github.com/spankyed/AgentBuddy/actions/runs/39166185325)
-is running on exact checkpoint `31cb54f4d`. Hosted acceptance, remaining native/platform obligations
-and Phase 7 stay open. A separate [Windows binder control](../evidence/build-input-snapshot-proof.md#windows-binder-ordinary-loader-control--2026-10-18)
+tested exact checkpoint `31cb54f4d` and stopped at the facade's unchanged 60s budget; the concurrent
+external-contract consumer refused changed generated-directory observations after 38 passing cases.
+Source `ccf86ad3a` makes the chain facade check a verified current-build reader through the existing
+input record, removing regeneration beside consumers. All 115 focused facade/graph/input cases,
+CLI/scripts/repo types and lint pass. [Evidence and remaining acceptance](../evidence/settings-and-pack-contracts.md#read-only-facade-verification-after-publication-2026-10-18)
+retain the exact failure boundaries. Hosted acceptance of that source, remaining native/platform
+obligations and Phase 7 stay open. A separate [Windows binder control](../evidence/build-input-snapshot-proof.md#windows-binder-ordinary-loader-control--2026-10-18)
 uses the OS-generated bound directory: ordinary/bound imports load, while removing the lookup table
 still fails in the ordinary loader. This changes neither admission nor the unresolved valid-input
 question; preserve the result instead of repeating the failed construction.
