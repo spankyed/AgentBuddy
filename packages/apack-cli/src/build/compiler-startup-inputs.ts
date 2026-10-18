@@ -9,7 +9,7 @@ import {
   type CompilerPathMapping,
   type CompilerInputObservations,
 } from '@apackdev/host/build/compiler-inputs';
-import { captureMachOLibraryEnvironment, type MachOLibraryEnvironment } from './compiler-native-libraries.ts';
+import { captureCompilerLibraryEnvironment, type CompilerLibraryEnvironment } from './compiler-native-libraries.ts';
 import { createCompilerNativeInputs } from './compiler-native-input-owner.ts';
 
 import { parseNodeOptions } from '@apackdev/host/build/source-resolution';
@@ -22,7 +22,7 @@ export interface CompilerStartupInputs {
   readonly root: string;
   readonly executionIdentity: string;
   readonly view: PackCompilerInputView;
-  readonly nativeEnvironment: MachOLibraryEnvironment;
+  readonly nativeEnvironment: CompilerLibraryEnvironment;
   stopReads(): void;
   disposeLocal(): void;
   nativeModule(file: string): string;
@@ -44,7 +44,7 @@ export function compilerStartupInputs(): CompilerStartupInputs | undefined {
 
 /** Native-only owner shared with the later compiler, including the early data-read tree's lifetime. */
 export function beginCompilerStartupInputs(root: string, workspace: string, paths: readonly CompilerPathMapping[], nodeOptions = process.env.NODE_OPTIONS,
-  nativeEnvironment = captureMachOLibraryEnvironment()): CompilerStartupInputs {
+  nativeEnvironment = captureCompilerLibraryEnvironment()): CompilerStartupInputs {
   if (compilerStartupInputs()) throw new Error('Compiler startup inputs already have an owner');
   const canonicalRoot = fs.realpathSync.native(root);
   const executionIdentity = compilerExecutionIdentity(nodeOptions, paths);

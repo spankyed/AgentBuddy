@@ -3087,3 +3087,37 @@ open: next implement ELF dependency selection/admission and copying through
 `createCompilerNativeInputs`, including launch-state capture and relevant OS lookup observations,
 then run the existing Linux proof on committed source. This checkpoint does not establish runtime
 ownership, Linux lifetime acceptance, or the final strict gate.
+
+### ELF admission candidate through the existing owner (2026-10-17)
+
+The candidate now routes Linux native modules through `createCompilerNativeInputs` for both backend
+and retained Vite loading. It reuses selected-image versus whole-package capture, the original file
+view, receipts, watch reporting and disposal. The launch/thread handoff now carries a platform-neutral
+`CompilerLibraryEnvironment`, preserving the existing Mach-O environment under its own field.
+
+ELF admission walks dependency declarations breadth first, preserves dependency order and checks
+transitive package ownership. It distinguishes inherited RPATH from noninherited RUNPATH, launch
+overrides, loaded OS libraries, cache ABI/hardware/ISA selection and NODEFLIB. `$LIB` and `$PLATFORM`
+come from OS loader diagnostics rather than architecture guesses. Static OS cache parsing handles
+its original/new/combined ABIs; these are existing OS formats, not an apack compatibility path.
+Filter, auxiliary and audit declarations remain visible to admission. Absolute live-package paths,
+selected outside libraries and physical link escapes refuse with the declaring image's identity.
+
+The selected runtime's PT_INTERP identifies the OS loader. A single bounded `--list-diagnostics`
+invocation obtains launch metadata without a pack image argument, before user preloads; descendant
+threads reuse the existing handoff. No additional executable inspection tool is required. Diagnostic
+stdout contains an environment dump, so invocation errors deliberately discard captured stdout rather
+than log it. Parent launch checks reject non-OS LD_PRELOAD/LD_AUDIT and system-wide preload entries.
+Loader/cache/preload inputs use the existing input reader; selected package libraries use the same
+owned data tree that already preserves frontend Vue updates.
+
+Focused local evidence: all 111 synthetic/mocked/native-metadata cases across four files pass; CLI
+TypeScript and correctness lint over all 12 changed/new TypeScript files pass. No actual native module,
+captured runtime or OS-loader diagnostic process was executed locally. A cache magic-length mistake
+was caught and corrected before committing. Runtime acceptance is pending the unchanged real Linux
+case, and other loader versions/configurations, mapped-image precedence, platform lifetime, PE,
+stricter app signing and final gates remain unverified. This is a source candidate, not ELF closure.
+
+Implementation references: [glibc dynamic loading](https://github.com/bminor/glibc/blob/master/elf/dl-load.c),
+[loader diagnostics](https://github.com/bminor/glibc/blob/master/elf/dl-diagnostics.c), and
+[OS cache ABI](https://github.com/bminor/glibc/blob/master/sysdeps/generic/dl-cache.h).

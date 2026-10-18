@@ -3,14 +3,14 @@ import path from 'node:path';
 import { beginCompilerNativeModules, compilerDiagnostic, compilerSourcePath, withoutCompilerFileReads,
   type createCompilerFileView, type CompilerPathMapping } from '@apackdev/host/build/compiler-inputs';
 import { captureCompilerPackage } from './compiler-package-inputs.ts';
-import { assertCapturedMachOLibraries, type MachOLibraryEnvironment } from './compiler-native-libraries.ts';
+import { assertCapturedCompilerLibraries, type CompilerLibraryEnvironment } from './compiler-native-libraries.ts';
 import { createCompilerReadTree, type CompilerReadTree } from './compiler-read-tree.ts';
 
 export interface CapturedNativeModule { readonly source: string; readonly captured: string; readonly packageRoot: string }
 
 /** Owned native bytes; Vite captures selected images so authored sources remain live. */
 export function createCompilerNativeInputs(original: ReturnType<typeof createCompilerFileView>, workspace: string,
-  paths: readonly CompilerPathMapping[], nativeEnvironment: MachOLibraryEnvironment, options: {
+  paths: readonly CompilerPathMapping[], nativeEnvironment: CompilerLibraryEnvironment, options: {
     capture: 'package' | 'images';
     retainTree?: boolean;
     findModule?(file: string): CapturedNativeModule | undefined;
@@ -49,10 +49,10 @@ export function createCompilerNativeInputs(original: ReturnType<typeof createCom
     }
   };
   const nativeModule = (file: string): string => {
-    if (process.platform !== 'darwin') return file;
+    if (process.platform !== 'darwin' && process.platform !== 'linux') return file;
     const known = options.findModule?.(file);
     if (known) {
-      assertCapturedMachOLibraries(known.captured, known.packageRoot, {
+      assertCapturedCompilerLibraries(known.captured, known.packageRoot, {
         arch: process.arch, environment: nativeEnvironment, realpath: file => fs.realpathSync.native(file),
         read: file => fs.statSync(file, { throwIfNoEntry: false })?.isFile() ? fs.readFileSync(file) : undefined,
       });
@@ -61,7 +61,7 @@ export function createCompilerNativeInputs(original: ReturnType<typeof createCom
     // Compiler-installation and earlier read-tree copies already have an input owner. Inspect their
     // actual images without recording ephemeral private paths as new source inputs.
     if (!includes(file) || sourcePath(file) !== file) {
-      assertCapturedMachOLibraries(file, packageRoot(file, fs.existsSync), {
+      assertCapturedCompilerLibraries(file, packageRoot(file, fs.existsSync), {
         arch: process.arch, environment: nativeEnvironment,
         realpath: file => fs.realpathSync.native(file),
         read: file => includes(file) && sourcePath(file) === file ? original.readDataBytes(file)
@@ -77,7 +77,7 @@ export function createCompilerNativeInputs(original: ReturnType<typeof createCom
       tree.includeData(snapshot);
       nativePackages.add(owner);
     }
-    assertCapturedMachOLibraries(file, owner, {
+    assertCapturedCompilerLibraries(file, owner, {
       arch: process.arch, environment: nativeEnvironment, realpath: original.fileSystem.realpath,
       read(candidate) {
         const bytes = original.readDataBytes(candidate);

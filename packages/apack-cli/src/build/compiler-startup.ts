@@ -11,13 +11,13 @@ import { type CompilerInputObservations } from '@apackdev/host/build/compiler-in
 import { COMPILER_NODE_OPTIONS_ENV } from './compiler-startup-options.ts';
 import { compilerThreadHandoff, ownCompilerThreads, serveCompilerThread } from './compiler-threads.ts';
 import { BUILD_INPUTS_IPC_ENV } from './build-watch-inputs.ts';
-import type { MachOLibraryEnvironment } from './compiler-native-libraries.ts';
+import type { CompilerLibraryEnvironment } from './compiler-native-libraries.ts';
 
 interface CompilerThreadLineage {
   readonly pid: number;
   readonly mode: 'build' | 'frontend';
   readonly loader: SharedArrayBuffer;
-  readonly nativeEnvironment: MachOLibraryEnvironment;
+  readonly nativeEnvironment: CompilerLibraryEnvironment;
 }
 const LINEAGE = 'apack.compiler.thread';
 const inherited = getEnvironmentData(LINEAGE) as CompilerThreadLineage | undefined;

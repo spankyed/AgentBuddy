@@ -1,5 +1,5 @@
 import { expect, it } from 'vitest';
-import { parseElfLibraryCommands } from '../../src/build/compiler-elf-libraries.ts';
+import { assertCapturedElfLibraries, parseElfInterpreter, parseElfLibraryCommands, type ElfLibraryEnvironment } from '../../src/build/compiler-elf-libraries.ts';
 
 /** Program headers only: real shared objects need no section table for loader discovery. */
 function image(wide = true, little = true, entries: [number, string | number][] = []) {
@@ -40,7 +40,7 @@ it.each([[true, true], [true, false], [false, true], [false, false]])(
       [15, '$ORIGIN/old'], [29, '$ORIGIN/new:'], [0x6ffffffb, 0x800]]);
     expect(parseElfLibraryCommands(bytes)).toEqual({ machine: wide ? 62 : 3,
       dependencies: ['$ORIGIN/../lib/libvalue.so', 'libc.so.6'],
-      rpath: '$ORIGIN/old', runpath: '$ORIGIN/new:', flags1: 0x800,
+      soname: undefined, rpath: '$ORIGIN/old', runpath: '$ORIGIN/new:', flags1: 0x800,
       auxiliary: [], filters: [], audit: undefined, dependencyAudit: undefined });
   },
 );
@@ -74,6 +74,16 @@ it('ignores unknown signed tags instead of treating their values as loading decl
   expect(parseElfLibraryCommands(bytes).dependencies).toEqual([]);
 });
 
+it.each([true, false])('reads the runtime interpreter without requiring a section table (64-bit %s)', wide => {
+  const { bytes, uint32, word, dynamic } = image(wide);
+  const interpreter = '/lib64/ld-linux-x86-64.so.2';
+  uint32(dynamic, 3);
+  word(dynamic + (wide ? 32 : 16), Buffer.byteLength(interpreter) + 1);
+  word(dynamic + (wide ? 40 : 20), Buffer.byteLength(interpreter) + 1);
+  bytes.write(interpreter + '\0', 0x100);
+  expect(parseElfInterpreter(bytes)).toBe(interpreter);
+});
+
 it.each([
   ['magic', (value: ReturnType<typeof image>) => { value.bytes[0] = 0; }],
   ['encoding', (value: ReturnType<typeof image>) => { value.bytes[5] = 3; }],
@@ -103,4 +113,148 @@ it('refuses every truncated header without leaking Buffer range errors', () => {
   for (let length = 0; length < 64; length++) {
     expect(() => parseElfLibraryCommands(bytes.subarray(0, length))).toThrow('Invalid ELF native library commands');
   }
+});
+
+const entry = '/pack/binding/addon.node';
+const environment: ElfLibraryEnvironment = {
+  cwd: '/work', executable: '/compiler/bin/node', libraryPaths: [], libraryToken: 'lib/x86_64-linux-gnu',
+  platformToken: 'haswell', hardwareCapabilities: [], systemDirectories: ['/lib/x86_64-linux-gnu'], executableRpath: [],
+};
+
+function admission(entries: [number, string | number][], files: [string, [number, string | number][]][] = [],
+  options: { environment?: Partial<ElfLibraryEnvironment>; cached?: string; loaded?: string; physical?: (file: string) => string } = {}) {
+  const images = new Map([[entry, image(true, true, entries).bytes],
+    ...files.map(([file, entries]): [string, Buffer] => [file, image(true, true, entries).bytes])]);
+  const reads: string[] = [], cache: string[] = [];
+  const check = () => assertCapturedElfLibraries(entry, '/pack', {
+    environment: { ...environment, ...options.environment },
+    read(file) { reads.push(file); return images.get(file); },
+    realpath: options.physical ?? (file => file),
+    cachedLibrary(name) { cache.push(name); return options.cached; },
+    loadedLibrary: () => options.loaded,
+  });
+  return { check, reads, cache };
+}
+
+it('reads a transitive ORIGIN graph and terminates cycles without initializing images', () => {
+  const { check, reads } = admission([[1, '$ORIGIN/../lib/first.so']], [
+    ['/pack/lib/first.so', [[1, '${ORIGIN}/second.so']]],
+    ['/pack/lib/second.so', [[1, '$ORIGIN/first.so']]],
+  ]);
+  expect(check).not.toThrow();
+  expect(reads).toContain('/pack/lib/second.so');
+  expect(reads.length).toBeLessThan(10);
+});
+
+it.each(['/outside/value.so', '/pack/lib/value.so', '../pack/lib/value.so'])(
+  'refuses nonrelocatable dependency %s', reference => {
+    const { check } = admission([[1, reference]], [['/pack/lib/value.so', []]]);
+    expect(check).toThrow(`image "${entry}" references "${reference}" outside its captured package`);
+  },
+);
+
+it('attributes transitive escapes to the image that declares them', () => {
+  const { check } = admission([[1, '$ORIGIN/../lib/value.so']], [
+    ['/pack/lib/value.so', [[1, '/outside/second.so']]],
+  ]);
+  expect(check).toThrow('image "/pack/lib/value.so" references "/outside/second.so"');
+});
+
+it('refuses package-relative links whose physical target escapes the owner', () => {
+  const { check } = admission([[1, '$ORIGIN/../lib/value.so']], [['/pack/lib/value.so', []]], {
+    physical: file => file === '/pack/lib/value.so' ? '/outside/value.so' : file,
+  });
+  expect(check).toThrow('outside its captured package');
+});
+
+it('inherits RPATH for transitive lookup before LD_LIBRARY_PATH', () => {
+  const { check, reads, cache } = admission([[15, '$ORIGIN/../lib'], [1, 'first.so']], [
+    ['/pack/lib/first.so', [[1, 'second.so']]], ['/pack/lib/second.so', []], ['/outside/first.so', []],
+  ], { environment: { libraryPaths: ['/outside'] } });
+  expect(check).not.toThrow();
+  expect(reads).not.toContain('/outside/first.so');
+  expect(cache).toEqual([]);
+});
+
+it('does not inherit RUNPATH for grandchildren', () => {
+  const { check } = admission([[29, '$ORIGIN/../lib'], [1, 'first.so']], [
+    ['/pack/lib/first.so', [[1, 'second.so']]], ['/pack/lib/second.so', []], ['/outside/second.so', []],
+  ], { environment: { libraryPaths: ['/outside'] } });
+  expect(check).toThrow('image "/pack/lib/first.so" references "second.so" selects "/outside/second.so"');
+});
+
+it('checks environment overrides before RUNPATH and observes earlier missing lookups', () => {
+  const { check, reads } = admission([[29, '$ORIGIN/../lib'], [1, 'value.so']], [
+    ['/pack/lib/value.so', []], ['/outside/value.so', []],
+  ], { environment: { libraryPaths: ['/missing', '/outside'] } });
+  expect(check).toThrow('selects "/outside/value.so"');
+  expect(reads).toContain('/missing/value.so');
+  expect(reads).not.toContain('/pack/lib/value.so');
+});
+
+it('suppresses an image RPATH when RUNPATH is declared, including an empty RUNPATH', () => {
+  const { check, reads } = admission([[15, '$ORIGIN/../lib'], [29, ''], [1, 'value.so']], [
+    ['/pack/lib/value.so', []], ['/work/value.so', []],
+  ]);
+  expect(check).toThrow('selects "/work/value.so"');
+  expect(reads).not.toContain('/pack/lib/value.so');
+});
+
+it('expands LIB and PLATFORM using loader metadata and prioritizes active hardware directories', () => {
+  const { check, reads } = admission([[29, '${ORIGIN}/../$LIB/${PLATFORM}'], [1, 'value.so']], [
+    ['/pack/lib/x86_64-linux-gnu/haswell/glibc-hwcaps/x86-64-v3/value.so', []],
+    ['/pack/lib/x86_64-linux-gnu/haswell/value.so', [[1, '/outside/unused.so']]],
+  ], { environment: { hardwareCapabilities: ['x86-64-v4', 'x86-64-v3'] } });
+  expect(check).not.toThrow();
+  expect(reads).toContain('/pack/lib/x86_64-linux-gnu/haswell/glibc-hwcaps/x86-64-v4/value.so');
+  expect(reads).not.toContain('/pack/lib/x86_64-linux-gnu/haswell/value.so');
+});
+
+it('uses a selected OS cache entry before default directories', () => {
+  const { check, cache, reads } = admission([[1, 'libvalue.so']], [['/usr/lib/libvalue.so', []]], {
+    cached: '/usr/lib/libvalue.so',
+  });
+  expect(check).not.toThrow();
+  expect(cache).toEqual(['libvalue.so']);
+  expect(reads).not.toContain('/lib/x86_64-linux-gnu/libvalue.so');
+});
+
+it('refuses a selected external cache entry instead of treating its name as an OS library', () => {
+  const { check } = admission([[1, 'libc.so.6']], [['/outside/libc.so.6', []]], { cached: '/outside/libc.so.6' });
+  expect(check).toThrow('selects "/outside/libc.so.6" outside its captured package');
+});
+
+it('honors NODEFLIB for both cache selections and default search', () => {
+  const { check, reads } = admission([[1, 'value.so'], [0x6ffffffb, 0x800]], [['/lib/x86_64-linux-gnu/value.so', []]], {
+    cached: '/lib/x86_64-linux-gnu/value.so',
+  });
+  expect(check).toThrow('cannot be resolved before native initialization');
+  expect(reads).not.toContain('/lib/x86_64-linux-gnu/value.so');
+});
+
+it('checks physical OS selections rather than trusting their lexical prefix', () => {
+  const { check } = admission([[1, '/usr/lib/value.so']], [['/usr/lib/value.so', []]], {
+    physical: file => file === '/usr/lib/value.so' ? '/outside/value.so' : file,
+  });
+  expect(check).toThrow('outside its captured package');
+});
+
+it('uses already loaded OS images without searching unused external overrides', () => {
+  const { check, reads } = admission([[1, 'value.so']], [], {
+    loaded: '/usr/lib/value.so', environment: { libraryPaths: ['/outside'] },
+  });
+  expect(check).not.toThrow();
+  expect(reads).not.toContain('/outside/value.so');
+});
+
+it('ignores missing optional auxiliary images but refuses a selected outside auxiliary image', () => {
+  expect(admission([[0x7ffffffd, 'missing.so']]).check).not.toThrow();
+  expect(admission([[0x7ffffffd, '/outside/aux.so']], [['/outside/aux.so', []]]).check).toThrow('outside its captured package');
+});
+
+it.each([0x7fffffff, 0x6ffffefb, 0x6ffffefc])('checks declared filter/audit images for tag %i', tag => {
+  const { check } = admission([[tag, '$ORIGIN/../lib/value.so']], [
+    ['/pack/lib/value.so', [[1, '/outside/transitive.so']]],
+  ]);
+  expect(check).toThrow('references "/outside/transitive.so"');
 });

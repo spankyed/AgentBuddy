@@ -174,6 +174,13 @@ variables and use captured package-relative dependencies for package libraries.
 `DYLD_SHARED_CACHE_DIR` selects a single directory and follows the same OS-directory policy. The normal
 OS shared cache remains supported; custom caches outside OS library locations are refused before launch.
 
+On Linux, ELF admission checks declared dependencies before addon initialization. Package libraries
+must resolve through captured `$ORIGIN` paths; absolute paths back to a source package are refused.
+Search uses launch-time loader tokens, RPATH/RUNPATH, `LD_LIBRARY_PATH`, the OS library cache and
+default directories. `LD_PRELOAD`, `LD_AUDIT` and system-wide preload entries accept normal OS library
+paths only. The installed ELF interpreter supplies its own search metadata; no `readelf` or `ldd`
+installation is required. Failure to obtain that metadata is explicit.
+
 `apack pack build --watch` watches authored inputs throughout the pack, including `apack.json`,
 modules outside `src/`, JSON schemas, assets and help. The authored watcher excludes generated,
 build, dependency and Git trees. Compiler configuration, resolved TypeScript files and unresolved

@@ -1,5 +1,8 @@
 import { posix as path } from 'node:path';
 import fs from 'node:fs';
+import { assertCapturedElfLibraries } from './compiler-elf-libraries.ts';
+import { assertElfLaunchEnvironment, captureElfLibraryEnvironment, type CompilerElfEnvironment } from './compiler-elf-environment.ts';
+import { findElfCachedLibrary, parseElfLibraryCache } from './compiler-elf-cache.ts';
 
 interface NativeLibraryCommands {
   dependencies: string[];
@@ -13,6 +16,41 @@ export interface MachOLibraryEnvironment {
   readonly frameworkPaths: readonly string[];
   readonly fallbackFrameworkPaths: readonly string[] | undefined;
   readonly imageSuffixes: readonly string[];
+}
+
+export interface CompilerLibraryEnvironment {
+  readonly macho: MachOLibraryEnvironment;
+  readonly elf?: CompilerElfEnvironment;
+}
+
+export function captureCompilerLibraryEnvironment(env: NodeJS.ProcessEnv = process.env): CompilerLibraryEnvironment {
+  return Object.freeze({ macho: captureMachOLibraryEnvironment(env),
+    elf: process.platform === 'linux' ? captureElfLibraryEnvironment(env) : undefined });
+}
+
+export function assertCapturedCompilerLibraries(entry: string, packageRoot: string, input: {
+  read(file: string): Buffer | undefined;
+  realpath(file: string): string;
+  arch: string;
+  environment: CompilerLibraryEnvironment;
+}): void {
+  if (process.platform === 'darwin') return assertCapturedMachOLibraries(entry, packageRoot, { ...input, environment: input.environment.macho });
+  if (process.platform !== 'linux') return;
+  const environment = input.environment.elf;
+  if (!environment) throw new Error('Compiler ELF library admission requires launch-time loader metadata');
+  input.read(environment.loader);
+  input.read('/etc/ld.so.preload');
+  let cache: ReturnType<typeof parseElfLibraryCache> | undefined;
+  assertCapturedElfLibraries(entry, packageRoot, { ...input, environment,
+    cachedLibrary(name, machine) {
+      if (!cache) {
+        const bytes = input.read('/etc/ld.so.cache');
+        cache = bytes === undefined ? [] : parseElfLibraryCache(bytes, environment.littleEndian);
+      }
+      return findElfCachedLibrary(cache, name, machine, environment.hardwareCapabilities, environment.isaLevels);
+    },
+    loadedLibrary: name => environment.loadedLibraries.find(library => library.name === name)?.file,
+  });
 }
 
 /** dyld reads these settings at process launch, before user preloads can change process.env. */
@@ -31,6 +69,7 @@ const systemLibrary = (file: string) => file.startsWith('/usr/lib/') || file.sta
 
 /** Launch-time overrides run outside JS admission; non-OS libraries must use captured package paths. */
 export function assertCompilerLibraryEnvironment(env: NodeJS.ProcessEnv = process.env): void {
+  if (process.platform === 'linux') return assertElfLaunchEnvironment(env);
   if (process.platform !== 'darwin') return;
   for (const variable of ['DYLD_VERSIONED_LIBRARY_PATH', 'DYLD_VERSIONED_FRAMEWORK_PATH', 'DYLD_SHARED_CACHE_DIR'] as const) {
     const value = env[variable];

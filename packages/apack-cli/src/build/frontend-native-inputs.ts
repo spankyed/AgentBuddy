@@ -3,7 +3,7 @@ import path from 'node:path';
 import { threadId } from 'node:worker_threads';
 import { assertNativeCompilerObservations, beginCompilerStartupReads, createCompilerFileView, withoutCompilerFileReads, type CompilerInputObservations,
   type CompilerPathMapping } from '@apackdev/host/build/compiler-inputs';
-import { captureMachOLibraryEnvironment, type MachOLibraryEnvironment } from './compiler-native-libraries.ts';
+import { captureCompilerLibraryEnvironment, type CompilerLibraryEnvironment } from './compiler-native-libraries.ts';
 import { createCompilerNativeInputs, type CapturedNativeModule } from './compiler-native-input-owner.ts';
 import { createCompilerWatchRecorder } from './build-watch-inputs.ts';
 
@@ -17,7 +17,7 @@ interface NativeInputsReport {
 }
 
 export interface FrontendNativeInputs {
-  readonly nativeEnvironment: MachOLibraryEnvironment;
+  readonly nativeEnvironment: CompilerLibraryEnvironment;
   finishLocal(): CompilerInputObservations;
   stopReads(): void;
   disposeLocal(): void;
@@ -31,7 +31,7 @@ export function frontendNativeInputs(): FrontendNativeInputs | undefined {
 
 /** Native admission precedes execution; receipts and copies live with the whole frontend process. */
 export function beginFrontendNativeInputs(root: string, workspace: string, paths: readonly CompilerPathMapping[],
-  nativeEnvironment = captureMachOLibraryEnvironment()): FrontendNativeInputs {
+  nativeEnvironment = captureCompilerLibraryEnvironment()): FrontendNativeInputs {
   if (frontendNativeInputs()) throw new Error('Frontend native inputs already have an owner');
   const view = createCompilerFileView(root, { paths, observe: createCompilerWatchRecorder(workspace) });
   const sourceRoot = view.observations().root;

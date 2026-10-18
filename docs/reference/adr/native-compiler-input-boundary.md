@@ -42,6 +42,16 @@ Apply the same location policy to `DYLD_SHARED_CACHE_DIR`, which names one direc
 list. Normal OS shared-cache use remains supported; outside custom caches refuse before execution.
 The shared cache is an OS input, not another compiler-owned library tree to copy or rewrite.
 
+The ELF implementation reads program headers and the OS library cache without executing pack images.
+Its selected OS interpreter supplies tokens, hardware capabilities and default directories through
+`--list-diagnostics`, with no pack image argument. This is an invocation of the runtime's own loader,
+not a requirement to install `readelf`, `ldd` or another inspection tool. Capture once before user
+preloads and share that state through the existing thread handoff. The native owner remains responsible
+for copied package bytes, source/cache observations and lifetime. Launch-time insertion/auditing accepts
+only physical OS library paths, including `/etc/ld.so.preload`; selected ordinary overrides remain
+subject to per-image admission. Runtime acceptance and environments without those diagnostics still
+require evidence; this implementation is not a new approval to exclude configured platform targets.
+
 Static inspection alone cannot establish complete capture: dynamic library loading and native file
 reads may bypass JavaScript observation. Neither an input declaration nor a scanner establishes
 that execution used captured bytes. Do not claim complete capture from those mechanisms alone.

@@ -110,10 +110,11 @@ cases below. Earlier source-specific failures are history, not instructions to r
 | Windows process ownership | Run `39075394015`, attempt 2, passes on `4b4d820fa`: complete native Job Object matrix, 170 unit checks (eight skips), descendant/cancellation, independent Vite owners and startup/repeated-build/cache/archive identity. | Preserve this implementation. PE library admission remains required; process lifetime acceptance does not prove it. |
 | Linux native ownership | Current `createCompilerNativeInputs` skips non-Darwin admission. `5d2178a6a` fixes omitted native flags; focused before/after regression and host types/lint pass. Run `39082546636` accepts actual loading, then demonstrates the next omission in 4.29 seconds: retained Vite executes the original library. | Implement the bounded ELF metadata/admission correction in the evidence record through existing copies/observations/lifetimes, then rerun the same proof and applicable portable Linux lifetime cases. Freshness/Vue/outside assertions were not reached; no ELF completion is claimed. |
 
-The static ELF metadata reader is now implemented, with 23 synthetic binary cases, CLI types and
-focused lint passing; see the [metadata checkpoint](../evidence/build-input-snapshot-proof.md#static-elf-metadata-checkpoint-2026-10-17).
-Dependency selection/admission and wiring into the existing copy owner remain next. No local native
-execution or additional Linux CI run was performed for this reader-only checkpoint.
+ELF metadata, selection/admission and Linux wiring through the existing native copy owner are now a
+source candidate, with 111 focused cases, CLI types and lint passing; see the
+[admission candidate](../evidence/build-input-snapshot-proof.md#elf-admission-candidate-through-the-existing-owner-2026-10-17).
+Next run the unchanged real Linux proof on committed source. No local native execution occurred.
+Runtime acceptance, remaining loader/platform cases and the final gates remain open.
 
 The strict two-core checkpoint on `ccaa809a8` stopped at three repository bookkeeping failures after
 passing packaged authoring, external-pack contracts, default-pack build, facade/schema/import checks
