@@ -3121,3 +3121,21 @@ stricter app signing and final gates remain unverified. This is a source candida
 Implementation references: [glibc dynamic loading](https://github.com/bminor/glibc/blob/master/elf/dl-load.c),
 [loader diagnostics](https://github.com/bminor/glibc/blob/master/elf/dl-diagnostics.c), and
 [OS cache ABI](https://github.com/bminor/glibc/blob/master/sysdeps/generic/dl-cache.h).
+
+### Retained ELF library acceptance (2026-10-17)
+
+Run [`39083763519`](https://github.com/spankyed/AgentBuddy/actions/runs/39083763519) succeeds on
+`b02217703` using Ubuntu 24.04 x64 / Node 23.11.1. The unchanged real case passes in 3.97 seconds
+(5.14-second Vitest wall time). It proves the addon loads its owned library rather than the live
+original; library replacement invalidates freshness and exact byte/mode restoration restores it;
+authored Vue updates remain live; an absolute outside-library candidate refuses with the declaring
+addon/dependency paths, before its initialization marker, while the accepted incumbent continues.
+Log: `/private/tmp/apack-elf-proof-39083763519.log`.
+
+This accepts the demonstrated non-Darwin bypass repair. The next run adds existing portable checks
+for interrupted startup, cancellation, descendant cleanup, independent Vite owner retirement and the
+two actual backend launch/repeated-build cases already used on Windows. Those are named missing
+coverage, not another broad suite for reassurance. The focused ELF/Mach-O metadata cases also run
+on Linux. Keep one worker and sequential stages; preserve the same native proof without weakening
+its assertions or changing deadlines. Other ELF configurations/mapped-image behavior, PE, stricter
+app signing and converged/final gates are still open.

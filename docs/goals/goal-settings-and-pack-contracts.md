@@ -108,13 +108,13 @@ cases below. Earlier source-specific failures are history, not instructions to r
 | macOS launch environment | `b7385c0bb` accepts only physical OS directories for versioned overrides; both real versioned cases pass in `39080454772`. `ef01842ed` applies the same policy to the single shared-cache directory. The revised one-builder OS baseline/refusal case passes on `baf461618` in `39081394988` in 27.62 seconds with its original 60-second deadline. All 48 parser/environment checks pass. | Preserve ordinary package-relative/OS loading and attributed refusal. Converged native-file acceptance on final source remains required; selected runs do not cover every case. |
 | Runtime/signing | Hosted Node 23.11.1 ARM64 has hardened runtime, normal OS linked images and dyld/library-validation exceptions. Earlier Node/Electron runtime-copy ownership is accepted in `e369d3cb9`. | The app's stricter signing profile and other externally linked runtime/native combinations still need the bounded audit/acceptance; do not broaden permissions or claim isolation. |
 | Windows process ownership | Run `39075394015`, attempt 2, passes on `4b4d820fa`: complete native Job Object matrix, 170 unit checks (eight skips), descendant/cancellation, independent Vite owners and startup/repeated-build/cache/archive identity. | Preserve this implementation. PE library admission remains required; process lifetime acceptance does not prove it. |
-| Linux native ownership | Current `createCompilerNativeInputs` skips non-Darwin admission. `5d2178a6a` fixes omitted native flags; focused before/after regression and host types/lint pass. Run `39082546636` accepts actual loading, then demonstrates the next omission in 4.29 seconds: retained Vite executes the original library. | Implement the bounded ELF metadata/admission correction in the evidence record through existing copies/observations/lifetimes, then rerun the same proof and applicable portable Linux lifetime cases. Freshness/Vue/outside assertions were not reached; no ELF completion is claimed. |
+| Linux native ownership | `b02217703` implements ELF admission through the existing native owner. Run `39083763519` passes the complete real Linux case in 3.97 seconds: captured library execution, replacement/restoration freshness, live Vue updates and attributed outside refusal with incumbent retention. CLI types/lint and 111 focused checks pass. | Accept portable Linux cancellation, descendant ownership and repeated/public build paths next. Remaining loader configurations/mapped-image precedence, PE and converged/final acceptance remain open; one direct-library proof is not full ELF closure. |
 
-ELF metadata, selection/admission and Linux wiring through the existing native copy owner are now a
-source candidate, with 111 focused cases, CLI types and lint passing; see the
-[admission candidate](../evidence/build-input-snapshot-proof.md#elf-admission-candidate-through-the-existing-owner-2026-10-17).
-Next run the unchanged real Linux proof on committed source. No local native execution occurred.
-Runtime acceptance, remaining loader/platform cases and the final gates remain open.
+The Linux retained-library counterexample is repaired and accepted on `b02217703`; see
+[Linux acceptance](../evidence/build-input-snapshot-proof.md#retained-elf-library-acceptance-2026-10-17).
+The next bounded Linux run adds existing portable lifetime/build cases because library admission
+alone does not prove process cleanup or backend publication. No local native execution occurred.
+Remaining loader/platform cases and the final gates remain open.
 
 The strict two-core checkpoint on `ccaa809a8` stopped at three repository bookkeeping failures after
 passing packaged authoring, external-pack contracts, default-pack build, facade/schema/import checks
