@@ -1,7 +1,16 @@
-import fs from 'node:fs';
+import nodeFs from 'node:fs';
+import { createRequire } from 'node:module';
 import path from 'node:path';
 import { createHash } from 'node:crypto';
 import type { PackageInputFile } from '@apackdev/host/build/package-inputs';
+
+// Runtime distributions contain physical ASAR files; Electron's patched fs expands them as directories.
+const fs: typeof nodeFs = process.versions.electron ? createRequire(import.meta.url)('original-fs') : nodeFs;
+
+export function copyCompilerRuntimeFile(source: string, target: string, mode: number): void {
+  fs.copyFileSync(source, target, fs.constants.COPYFILE_EXCL | fs.constants.COPYFILE_FICLONE);
+  fs.chmodSync(target, mode & ~0o222);
+}
 
 interface CompilerRuntimeInputs {
   executable: string;

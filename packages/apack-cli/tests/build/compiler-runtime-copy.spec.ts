@@ -7,7 +7,7 @@ import { captureCompilerInstallation } from '../../src/build/compiler-installati
 const runtime = vi.hoisted(() => ({ executable: '' }));
 vi.mock('../../src/build/compiler-runtime.ts', async importOriginal => {
   const original = await importOriginal<typeof import('../../src/build/compiler-runtime.ts')>();
-  return { readCompilerRuntimeInputs(executable = process.execPath, _electron?: boolean, onFile?: Parameters<typeof original.readCompilerRuntimeInputs>[2]) {
+  return { ...original, readCompilerRuntimeInputs(executable = process.execPath, _electron?: boolean, onFile?: Parameters<typeof original.readCompilerRuntimeInputs>[2]) {
     return original.readCompilerRuntimeInputs(executable === process.execPath ? runtime.executable : executable, true, onFile);
   } };
 });

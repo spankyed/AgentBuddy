@@ -5,7 +5,7 @@ import { createRequire } from 'node:module';
 import { createHash } from 'node:crypto';
 import { readPackageInputs } from '@apackdev/host/build/package-inputs';
 import { cliPackageDirectory } from './tool-identity.ts';
-import { readCompilerRuntimeInputs } from './compiler-runtime.ts';
+import { copyCompilerRuntimeFile, readCompilerRuntimeInputs } from './compiler-runtime.ts';
 
 export interface CompilerInstallation {
   readonly bin: string;
@@ -96,9 +96,11 @@ export async function captureCompilerInstallation(directory = compilerPackageDir
       }
       const target = capturedPath(source);
       mkdir(path.dirname(target));
-      if (clone) fs.copyFileSync(source, target, fs.constants.COPYFILE_EXCL | fs.constants.COPYFILE_FICLONE);
-      else fs.writeFileSync(target, bytes, { flag: 'wx', mode: mode & ~0o222 });
-      fs.chmodSync(target, mode & ~0o222);
+      if (clone) copyCompilerRuntimeFile(source, target, mode);
+      else {
+        fs.writeFileSync(target, bytes, { flag: 'wx', mode: mode & ~0o222 });
+        fs.chmodSync(target, mode & ~0o222);
+      }
       copied.set(source, identity);
     };
     const inputs = readPackageInputs([{ id: 'compiler', directory, contents: true }], { onFile: copy });

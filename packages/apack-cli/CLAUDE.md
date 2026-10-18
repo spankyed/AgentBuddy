@@ -140,6 +140,7 @@ Pack and outside-module inputs are rechecked before publication; the already cap
 The runtime capture declares `runtimeDirectory`; the shared launcher uses it for linked-library
 admission before native constructors can run. On macOS, Electron includes the complete Contents
 directory: its signature binds Info.plist and sealed resources as well as the executable/frameworks.
+Use Electron’s `original-fs` for physical runtime inventory/copying so ASAR files stay archives.
 Keep relative framework link text verbatim and include it in runtime identity; resolving to the same
 file does not preserve the signature seal. `compiler-runtime-copy.spec.ts` exercises the real copier
 with inert runtime bytes, so it can verify this locally without executing a copied runtime. The optional CI input `compiler_macos_signing=true` prepares a private Electron copy with
