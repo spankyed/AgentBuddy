@@ -27,6 +27,8 @@ import { overrideKey, sizeOf, specFilesUnder, timeoutOverrides, type TimeoutOver
  * fails on an entry whose override has gone, so the list shrinks when the reason does.
  */
 const TIMEOUT_EXCEPTIONS: Record<string, string> = {
+  'packages/apack-cli/tests/build/build-worker.integration.spec.ts > compiles content through the captured worker and invalidates changed loader inputs':
+    'This scenario owns installation capture and two sequential real content builds. Two Windows attempts exceeded the former 60s setup hook after codegen and while compiling, before ordering assertions. The single 120s case then completed its first build and exact ordering/source assertions but expired during the second real build. A 180s case budget covers these sequential builds without a separate setup hook; retain exact require/loader/import ordering, source identities, changed payload and revision checks. Other cases and production deadlines are unchanged.',
   'packages/apack-cli/tests/build/compiler-native-libraries.integration.spec.ts > tracks retained Vite ESM preload and loader inputs without freezing Vue sources':
     'Two separate cold Windows attempts exceeded 60s during installation capture and terminated at 91.0s and 95.6s before assertions. This single startup scenario allows 120s for capture, two frontends and namespace/HMR checks; warm full acceptance measured 44.5s. Async byte reads separately address event-loop starvation. Keep five-second freshness/helper bounds and every invalidation, restoration, selection and live-source assertion.',
   'packages/apack-cli/tests/build/compiler-pe-libraries.integration.spec.ts > repairs a failed Vite assembly context through newly discovered watch inputs':

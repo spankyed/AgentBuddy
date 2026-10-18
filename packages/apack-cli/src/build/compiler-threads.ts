@@ -4,6 +4,7 @@ import { randomUUID } from 'node:crypto';
 import { syncBuiltinESMExports } from 'node:module';
 import threads, { BroadcastChannel, getEnvironmentData, setEnvironmentData, type WorkerOptions } from 'node:worker_threads';
 import { withoutCompilerFileReads, type CompilerInputObservations } from '@apackdev/host/build/compiler-inputs';
+import { compilerStartupArguments } from './compiler-startup-options.ts';
 
 const HANDOFF = 'apack.compiler.worker';
 interface ThreadHandoff { pid: number; channel: string; report: string; environment: Record<string, string> }
@@ -32,7 +33,7 @@ export function ownCompilerThreads(bootstrap: string, workspace: string, environ
       let worker: InstanceType<typeof NativeWorker>;
       try {
         // Explicit execArgv replaces inherited preloads; keep capture ahead of those user flags.
-        worker = Reflect.construct(target, [filename, { ...options, ...(options.execArgv === undefined ? {} : { execArgv: ['--require', bootstrap, ...options.execArgv] }) }], newTarget);
+        worker = Reflect.construct(target, [filename, { ...options, ...(options.execArgv === undefined ? {} : { execArgv: compilerStartupArguments(bootstrap, options.execArgv) }) }], newTarget);
       } catch (error) { channel.close(); throw error; }
       finally { setEnvironmentData(HANDOFF, previous); }
       const terminate = worker.terminate.bind(worker);

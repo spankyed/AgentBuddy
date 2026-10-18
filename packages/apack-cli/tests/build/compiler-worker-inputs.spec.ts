@@ -7,7 +7,7 @@ import { cliBin } from '../../src/utils.ts';
 import { COMPILER_INPUTS_ENV, readCompilerInstallationInputs } from '../../src/build/compiler-installation-inputs.ts';
 import { withCompilerFileReads } from '@apackdev/host/build/compiler-inputs';
 import { _byDeadline } from '@apackdev/sdk/testing/waiting';
-import { compilerStartupOptions } from '../../src/build/compiler-startup-options.ts';
+import { compilerStartupOptions, compilerStartupLoader } from '../../src/build/compiler-startup-options.ts';
 import { parseNodeOptions } from '@apackdev/host/build/source-resolution';
 
 const roots: string[] = [];
@@ -41,6 +41,7 @@ it('keeps private startup options separate from child options and preserves user
   for (const flag of ['--loader', '--experimental-loader']) {
     const options = compilerStartupOptions(bin, `${flag}="/custom loader.mjs" --conditions=@apackdev/source`);
     expect(parseNodeOptions(options.worker)).toEqual(['--require', path.resolve('compiler/dist/compiler-startup.cjs'),
+      '--experimental-loader', compilerStartupLoader(path.resolve('compiler/dist/compiler-startup.cjs')),
       `${flag}=/custom loader.mjs`]);
     expect(parseNodeOptions(options.user)).toEqual([`${flag}=/custom loader.mjs`]);
   }

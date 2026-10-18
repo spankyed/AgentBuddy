@@ -7,7 +7,7 @@ import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { execFileSync, fork, spawn, type ChildProcess } from 'node:child_process';
 import { createRequire } from 'node:module';
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, expect, it, vi } from 'vitest';
 import { packFixture } from '@apackdev/sdk/testing/pack-fixture';
 import { REPO_ROOT } from '@apackdev/host/build/packages-built';
 import { readPackBuild } from '@apackdev/host/packs';
@@ -247,76 +247,71 @@ it('refuses publication when a compiler worker cannot return its observations', 
   expect(fs.readdirSync(path.dirname(marker))).toEqual(['incumbent.txt']);
 });
 
-describe('native compiler startup', () => {
-  let root: string, preload: string, imported: string, payload: string, trace: string, builder: PackBuilder;
-  beforeEach(async () => {
-    root = fixture({
-      'tsconfig.json': JSON.stringify({ compilerOptions: { module: 'esnext', moduleResolution: 'bundler', jsx: 'react', jsxFactory: 'h', skipLibCheck: true }, include: ['src/**/*'] }),
-      'src/compiler.tsx': `import fs from 'node:fs'; const h = () => 'JSX';
-        export default ({path}: {path: string}) => {
-          const payload = Reflect.get(globalThis, 'apackPayloadPath') as string;
-          const original = Reflect.get(globalThis, 'apackPayload') as string;
-          const cachedRead = Reflect.get(globalThis, 'apackCachedRead') as typeof fs.readFileSync;
-          fs.writeFileSync(payload, 'TRANSIENT');
-          let value;
-          try { value = cachedRead(payload, 'utf8'); } finally { fs.writeFileSync(payload, original); }
-          if (value !== original) throw new Error('Cached preload read escaped its compiler frame');
-          return [{entity: 'Relation', name: [fs.readFileSync(path, 'utf8'), <marker />, Reflect.get(globalThis, 'apackPreloadProbe'), Reflect.get(globalThis, 'apackImportProbe'), Reflect.get(globalThis, 'apackLoaderProbe')].join(':'), source: import.meta.filename, origin: import.meta.url, requireSource: Reflect.get(globalThis, 'apackRequireSource'), importSource: Reflect.get(globalThis, 'apackImportSource')}];
-        }`,
-      'src/value.txt': 'OWNED',
-    }, { formats: { rows: { compiler: 'src/compiler.tsx', entity: 'Relation', identity: ['name'] } },
-      sources: { rows: { path: 'src/value.txt', format: 'rows' } } });
-    preload = path.join(root, '.apack/pre load  file.cjs');
-    imported = path.join(root, '.apack/preload.mjs');
-    const loader = path.join(root, '.apack/loader.mjs');
-    const outside = fs.mkdtempSync(path.join(os.tmpdir(), 'apack-worker-preload-'));
-    roots.push(outside);
-    payload = path.join(outside, 'payload.txt');
-    fs.writeFileSync(payload, 'LOADED');
-    fs.mkdirSync(path.dirname(preload), { recursive: true });
-    trace = path.join(root, '.apack/preload-order.jsonl');
-    fs.writeFileSync(trace, '');
-    fs.writeFileSync(preload, `if (process.env.APACK_BUILD_WORKER === '1') {
-      if (!globalThis[Symbol.for('apack.compiler.startup')]) throw new Error('Preload has no input owner');
-      if (Object.keys(require.cache).some(file => /typescript[\\/]lib/.test(file))) throw new Error('Compiler activated before preload');
-    }
-    if (globalThis[Symbol.for('apack.compiler.startup')]) require('node:fs').appendFileSync(${JSON.stringify(trace)}, 'require:' + require('node:worker_threads').threadId + '\\n');
-    globalThis.apackCachedRead = require('node:fs').readFileSync;
-    globalThis.apackPayloadPath = ${JSON.stringify(payload)}; globalThis.apackPayload = globalThis.apackCachedRead(globalThis.apackPayloadPath, 'utf8');
-    globalThis.apackPreloadProbe = 'PRELOADED'; globalThis.apackRequireSource = __filename;`);
-    fs.writeFileSync(path.join(root, '.apack/preload-child.mjs'), `export default 'IMPORTED';`);
-    fs.writeFileSync(imported, `import value from './preload-child.mjs'; if (!globalThis.apackPreloadProbe) throw new Error('Preload order changed');
-      if (globalThis[Symbol.for('apack.compiler.startup')]) (await import('node:fs')).appendFileSync(${JSON.stringify(trace)}, 'import:0\\n');
-      globalThis.apackImportProbe = value; globalThis.apackImportSource = import.meta.url;`);
-    fs.writeFileSync(loader, `import fs from 'node:fs'; const marker = fs.readFileSync(${JSON.stringify(payload)}, 'utf8');
-      if (globalThis[Symbol.for('apack.compiler.startup')]) fs.appendFileSync(${JSON.stringify(trace)}, 'loader:1\\n');
-      export async function load(url, context, next) {
-        const result = await next(url, context);
-        return url === ${JSON.stringify(pathToFileURL(fs.realpathSync(imported)).href)}
-          ? {...result, source: 'globalThis.apackLoaderProbe = ' + JSON.stringify(marker) + ';\\n' + result.source} : result;
-      }`);
-    vi.stubEnv('NODE_OPTIONS', formatNodeOptions([...parseNodeOptions(process.env.NODE_OPTIONS), '--require', preload, '--import', imported, '--experimental-loader', loader]));
-    builder = createPackBuilder(root);
-    builders.push(builder);
-    await builder.build({ args: ['--skip-fe'] });
-  });
+it('compiles content through the captured worker and invalidates changed loader inputs', async () => {
+  const root = fixture({
+    'tsconfig.json': JSON.stringify({ compilerOptions: { module: 'esnext', moduleResolution: 'bundler', jsx: 'react', jsxFactory: 'h', skipLibCheck: true }, include: ['src/**/*'] }),
+    'src/compiler.tsx': `import fs from 'node:fs'; const h = () => 'JSX';
+      export default ({path}: {path: string}) => {
+        const payload = Reflect.get(globalThis, 'apackPayloadPath') as string;
+        const original = Reflect.get(globalThis, 'apackPayload') as string;
+        const cachedRead = Reflect.get(globalThis, 'apackCachedRead') as typeof fs.readFileSync;
+        fs.writeFileSync(payload, 'TRANSIENT');
+        let value;
+        try { value = cachedRead(payload, 'utf8'); } finally { fs.writeFileSync(payload, original); }
+        if (value !== original) throw new Error('Cached preload read escaped its compiler frame');
+        return [{entity: 'Relation', name: [fs.readFileSync(path, 'utf8'), <marker />, Reflect.get(globalThis, 'apackPreloadProbe'), Reflect.get(globalThis, 'apackImportProbe'), Reflect.get(globalThis, 'apackLoaderProbe')].join(':'), source: import.meta.filename, origin: import.meta.url, requireSource: Reflect.get(globalThis, 'apackRequireSource'), importSource: Reflect.get(globalThis, 'apackImportSource')}];
+      }`,
+    'src/value.txt': 'OWNED',
+  }, { formats: { rows: { compiler: 'src/compiler.tsx', entity: 'Relation', identity: ['name'] } },
+    sources: { rows: { path: 'src/value.txt', format: 'rows' } } });
+  const preload = path.join(root, '.apack/pre load  file.cjs');
+  const imported = path.join(root, '.apack/preload.mjs');
+  const loader = path.join(root, '.apack/loader.mjs');
+  const outside = fs.mkdtempSync(path.join(os.tmpdir(), 'apack-worker-preload-'));
+  roots.push(outside);
+  const payload = path.join(outside, 'payload.txt');
+  fs.writeFileSync(payload, 'LOADED');
+  fs.mkdirSync(path.dirname(preload), { recursive: true });
+  const trace = path.join(root, '.apack/preload-order.jsonl');
+  fs.writeFileSync(trace, '');
+  fs.writeFileSync(preload, `if (process.env.APACK_BUILD_WORKER === '1') {
+    if (!globalThis[Symbol.for('apack.compiler.startup')]) throw new Error('Preload has no input owner');
+    if (Object.keys(require.cache).some(file => /typescript[\\/]lib/.test(file))) throw new Error('Compiler activated before preload');
+  }
+  if (globalThis[Symbol.for('apack.compiler.startup')]) require('node:fs').appendFileSync(${JSON.stringify(trace)}, 'require:' + require('node:worker_threads').threadId + '\\n');
+  globalThis.apackCachedRead = require('node:fs').readFileSync;
+  globalThis.apackPayloadPath = ${JSON.stringify(payload)}; globalThis.apackPayload = globalThis.apackCachedRead(globalThis.apackPayloadPath, 'utf8');
+  globalThis.apackPreloadProbe = 'PRELOADED'; globalThis.apackRequireSource = __filename;`);
+  fs.writeFileSync(path.join(root, '.apack/preload-child.mjs'), `export default 'IMPORTED';`);
+  fs.writeFileSync(imported, `import value from './preload-child.mjs'; if (!globalThis.apackPreloadProbe) throw new Error('Preload order changed');
+    if (globalThis[Symbol.for('apack.compiler.startup')]) (await import('node:fs')).appendFileSync(${JSON.stringify(trace)}, 'import:0\\n');
+    globalThis.apackImportProbe = value; globalThis.apackImportSource = import.meta.url;`);
+  fs.writeFileSync(loader, `import fs from 'node:fs'; const marker = fs.readFileSync(${JSON.stringify(payload)}, 'utf8');
+    if (globalThis[Symbol.for('apack.compiler.startup')]) fs.appendFileSync(${JSON.stringify(trace)}, 'loader:1\\n');
+    export async function load(url, context, next) {
+      const result = await next(url, context);
+      return url === ${JSON.stringify(pathToFileURL(fs.realpathSync(imported)).href)}
+        ? {...result, source: 'globalThis.apackLoaderProbe = ' + JSON.stringify(marker) + ';\\n' + result.source} : result;
+    }`);
+  vi.stubEnv('NODE_OPTIONS', formatNodeOptions([...parseNodeOptions(process.env.NODE_OPTIONS), '--require', preload, '--import', pathToFileURL(imported).href, '--experimental-loader', pathToFileURL(loader).href]));
+  const builder = createPackBuilder(root);
+  builders.push(builder);
+  await builder.build({ args: ['--skip-fe'] });
 
-  it('compiles content through the captured worker and invalidates changed loader inputs', async () => {
-    const output = JSON.parse(fs.readFileSync(path.join(root, 'dist/runtime/content/rows.content.json'), 'utf8'));
-    expect(output.records[0].name).toBe('OWNED:JSX:PRELOADED:IMPORTED:LOADED');
-    expect(output.records[0].requireSource).toBe(fs.realpathSync(preload));
-    expect(output.records[0].importSource).toBe(pathToFileURL(fs.realpathSync(imported)).href);
-    expect(output.records[0].source).toBe(path.join(fs.realpathSync.native(root), 'src/compiler.tsx'));
-    expect(output.records[0].origin).toBe(pathToFileURL(path.join(fs.realpathSync.native(root), 'src/compiler.tsx')).href + '?tsx-namespace=apack-build-1');
-    expect(fs.readFileSync(trace, 'utf8').trim().split('\n')).toEqual(['require:0', 'require:1', 'loader:1', 'import:0']);
-    const revision = readPackBuild(path.join(root, 'dist')).revision;
-    fs.writeFileSync(payload, 'UPDATED');
-    await builder.build({ args: ['--skip-fe'] });
-    const rebuilt = JSON.parse(fs.readFileSync(path.join(root, 'dist/runtime/content/rows.content.json'), 'utf8'));
-    expect(rebuilt.records[0].name).toBe('OWNED:JSX:PRELOADED:IMPORTED:UPDATED');
-    expect(readPackBuild(path.join(root, 'dist')).revision).not.toBe(revision);
-  });
-});
+  const output = JSON.parse(fs.readFileSync(path.join(root, 'dist/runtime/content/rows.content.json'), 'utf8'));
+  expect(output.records[0].name).toBe('OWNED:JSX:PRELOADED:IMPORTED:LOADED');
+  expect(output.records[0].requireSource).toBe(fs.realpathSync(preload));
+  expect(output.records[0].importSource).toBe(pathToFileURL(fs.realpathSync(imported)).href);
+  expect(output.records[0].source).toBe(path.join(fs.realpathSync.native(root), 'src/compiler.tsx'));
+  expect(output.records[0].origin).toBe(pathToFileURL(path.join(fs.realpathSync.native(root), 'src/compiler.tsx')).href + '?tsx-namespace=apack-build-1');
+  expect(fs.readFileSync(trace, 'utf8').trim().split('\n')).toEqual(['require:0', 'require:1', 'loader:1', 'import:0']);
+  const revision = readPackBuild(path.join(root, 'dist')).revision;
+  fs.writeFileSync(payload, 'UPDATED');
+  await builder.build({ args: ['--skip-fe'] });
+  const rebuilt = JSON.parse(fs.readFileSync(path.join(root, 'dist/runtime/content/rows.content.json'), 'utf8'));
+  expect(rebuilt.records[0].name).toBe('OWNED:JSX:PRELOADED:IMPORTED:UPDATED');
+  expect(readPackBuild(path.join(root, 'dist')).revision).not.toBe(revision);
+}, 180_000);
 
 it('refuses publication when a loader-only external input changes during compilation', async () => {
   const outside = fs.mkdtempSync(path.join(os.tmpdir(), 'apack-loader-input-'));
@@ -334,7 +329,7 @@ it('refuses publication when a loader-only external input changes during compila
   fs.writeFileSync(loader, `import fs from 'node:fs'; fs.readFileSync(${JSON.stringify(payload)}, 'utf8');
     export async function load(url, context, next) { return next(url, context); }`);
   const child = spawn(process.execPath, [cliBin(), 'pack', 'build', '--skip-fe'], { cwd: root,
-    env: { ...process.env, NODE_OPTIONS: formatNodeOptions([...parseNodeOptions(process.env.NODE_OPTIONS), '--experimental-loader', loader]) }, stdio: ['ignore', 'pipe', 'pipe'] });
+    env: { ...process.env, NODE_OPTIONS: formatNodeOptions([...parseNodeOptions(process.env.NODE_OPTIONS), '--experimental-loader', pathToFileURL(loader).href]) }, stdio: ['ignore', 'pipe', 'pipe'] });
   let output = '';
   child.stdout.on('data', chunk => { output += chunk; });
   child.stderr.on('data', chunk => { output += chunk; });

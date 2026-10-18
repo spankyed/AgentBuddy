@@ -46,7 +46,7 @@ export function compilerStartupInputs(): CompilerStartupInputs | undefined {
 
 /** Native-only owner shared with the later compiler, including the early data-read tree's lifetime. */
 export function beginCompilerStartupInputs(root: string, workspace: string, paths: readonly CompilerPathMapping[], nodeOptions = process.env.NODE_OPTIONS,
-  nativeEnvironment = captureCompilerLibraryEnvironment()): CompilerStartupInputs {
+  nativeEnvironment = captureCompilerLibraryEnvironment(), asyncLoader?: string): CompilerStartupInputs {
   if (compilerStartupInputs()) throw new Error('Compiler startup inputs already have an owner');
   const canonicalRoot = fs.realpathSync.native(root);
   const executionIdentity = compilerExecutionIdentity(nodeOptions, paths);
@@ -78,7 +78,7 @@ export function beginCompilerStartupInputs(root: string, workspace: string, path
   save();
   const { sourcePath, readDataPath, nativeModule } = native;
   const view: PackCompilerInputView = { ...original, dispose: native.dispose, assertCurrent: native.assertCurrent };
-  const stopReads = beginCompilerStartupReads({ outputDirectory: workspace, compilation: {
+  const stopReads = beginCompilerStartupReads({ outputDirectory: workspace, asyncLoader, compilation: {
     isInput: includes,
     readDataPath, sourcePath,
     diagnostic: native.diagnostic,

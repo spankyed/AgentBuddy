@@ -244,14 +244,23 @@ it('tracks retained Vite ESM preload and loader inputs without freezing Vue sour
     fs.writeFileSync(imported, `import value from './sub/child.mjs'; import fs from 'node:fs';
       import { isMainThread } from 'node:worker_threads';
       if (globalThis[Symbol.for('apack.compiler.frontend')] && isMainThread)
-        fs.writeFileSync(${JSON.stringify(proof)}, JSON.stringify({ value, required: globalThis.requiredValue, loader: globalThis.loaderValue, origin: import.meta.url }));`);
-    const loader = path.join(root, 'loader.mjs');
-    fs.writeFileSync(loader, `import fs from 'node:fs';
+        fs.writeFileSync(${JSON.stringify(proof)}, JSON.stringify({ value, required: globalThis.requiredValue, loader: globalThis.loaderValue,
+          loaderDependency: globalThis.loaderDependency, origin: import.meta.url }));`);
+    const loader = path.join(root, 'loader/sub/loader.mjs');
+    fs.mkdirSync(path.dirname(loader), { recursive: true });
+    const loaderDependency = path.join(root, 'node_modules/loader-dependency');
+    const declareLoaderDependency = (directory: string, value: string) => {
+      fs.mkdirSync(directory, { recursive: true });
+      fs.writeFileSync(path.join(directory, 'package.json'), '{"type":"module","exports":"./index.mjs"}');
+      fs.writeFileSync(path.join(directory, 'index.mjs'), `export default ${JSON.stringify(value)};`);
+    };
+    declareLoaderDependency(loaderDependency, 'LOADER_DEP');
+    fs.writeFileSync(loader, `import fs from 'node:fs'; import dependency from 'loader-dependency';
       const value = fs.readFileSync(${JSON.stringify(payload)}, 'utf8');
       export async function load(url, context, next) {
         const result = await next(url, context);
         return url === ${JSON.stringify(pathToFileURL(imported).href)}
-          ? { ...result, source: 'globalThis.loaderValue = ' + JSON.stringify(value) + ';\\n' + result.source } : result;
+          ? { ...result, source: 'globalThis.loaderValue = ' + JSON.stringify(value) + ';globalThis.loaderDependency = ' + JSON.stringify(dependency) + ';\\n' + result.source } : result;
       }`);
     const required = path.join(root, 'sub/required');
     fs.mkdirSync(required);
@@ -278,10 +287,11 @@ it('tracks retained Vite ESM preload and loader inputs without freezing Vue sour
     frontend = await startPackFrontend(pack, compiler, signal, inputs => {
       observed = mergeCompilerWatchPaths(observed, inputs.paths);
     });
-    expect(JSON.parse(fs.readFileSync(proof, 'utf8'))).toEqual({ value: 'FIRST', required: 42, loader: 'LOADER', origin: pathToFileURL(imported).href });
+    expect(JSON.parse(fs.readFileSync(proof, 'utf8'))).toEqual({ value: 'FIRST', required: 42, loader: 'LOADER', loaderDependency: 'LOADER_DEP', origin: pathToFileURL(imported).href });
     expect(await frontend.isCurrent(signal)).toBe(true);
     for (const [file, original, changed] of [
       [payload, 'LOADER', 'CHANGED'],
+      [path.join(loaderDependency, 'index.mjs'), 'export default "LOADER_DEP";', "export default 'CHANGED';"],
       [child, childSource, "export default 'CHANGED';"],
       [path.join(dependency, 'first.mjs'), "export default 'FIRST';", "export default 'CHANGED';"],
       [metadata, declaration, JSON.stringify({ name: 'preload-dependency', type: 'module', exports: './second.mjs' })],
@@ -299,15 +309,30 @@ it('tracks retained Vite ESM preload and loader inputs without freezing Vue sour
       fs.rmSync(candidate);
       expect(await frontend.isCurrent(signal), candidate).toBe(true);
     }
+    const nearerLoader = path.join(path.dirname(loader), 'node_modules/loader-dependency');
+    expect(createCompilerWatchMatcher(observed)(path.join(nearerLoader, 'package.json'), 'rename')).toBe(true);
+    declareLoaderDependency(nearerLoader, 'NEARER_LOADER');
+    expect(await frontend.isCurrent(signal), 'New nearer loader dependency must invalidate startup resolution').toBe(false);
+    fs.rmSync(path.join(path.dirname(loader), 'node_modules'), { recursive: true });
+    expect(await frontend.isCurrent(signal)).toBe(true);
     const nearer = path.join(root, 'sub/node_modules/preload-dependency');
     expect(createCompilerWatchMatcher(observed)(path.join(nearer, 'package.json'), 'rename')).toBe(true);
     fs.mkdirSync(nearer, { recursive: true });
     fs.writeFileSync(path.join(nearer, 'package.json'), declaration);
     fs.writeFileSync(path.join(nearer, 'first.mjs'), "export default 'NEARER';");
     expect(await frontend.isCurrent(signal), 'New nearer package must invalidate startup resolution').toBe(false);
+    declareLoaderDependency(nearerLoader, 'NEARER_LOADER');
+    const registration = path.join(root, 'register-loader.mjs');
+    fs.writeFileSync(registration, `import { register } from 'node:module'; register(${JSON.stringify(pathToFileURL(loader).href)});`);
+    process.env.NODE_OPTIONS = formatNodeOptions([...parseNodeOptions(previous), '--require', 'startup-require-fixture',
+      '--import', pathToFileURL(registration).href, '--import', 'startup-import-fixture']);
     const replacement = await startPackFrontend(pack, compiler, signal);
-    try { expect(JSON.parse(fs.readFileSync(proof, 'utf8')).value).toBe('NEARER'); }
+    try {
+      expect(JSON.parse(fs.readFileSync(proof, 'utf8'))).toMatchObject({ value: 'NEARER', loaderDependency: 'NEARER_LOADER' });
+      expect(await replacement.isCurrent(signal)).toBe(true);
+    }
     finally { await replacement.close(); }
+    fs.rmSync(path.join(path.dirname(loader), 'node_modules'), { recursive: true });
     fs.rmSync(path.join(root, 'sub/node_modules'), { recursive: true });
     expect(await frontend.isCurrent(signal)).toBe(true);
     const view = `http://localhost:${frontend.address.port}/src/View.vue`;

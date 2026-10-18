@@ -27,6 +27,34 @@ it('preserves omitted and explicit dlopen flags while replacing only the admitte
   }
 });
 
+it.each(['configured', 'on-demand', 'stopped'])('observes loader registration lazily and restores it on stop (%s)', mode => {
+  const loader = 'file:///compiler/bin/compiler-startup-loader.mjs';
+  const register = vi.spyOn(module, 'register').mockImplementation(() => {});
+  vi.stubEnv('NODE_OPTIONS', mode === 'configured' ? `--experimental-loader ${loader}` : '');
+  const stop = beginCompilerStartupReads({ asyncLoader: loader, compilation: {
+    isInput: () => false, readDataPath: file => file, sourcePath: file => file,
+    requireParent: file => file, diagnostic: value => value,
+    readMetadata: () => undefined, readDirectory: () => [],
+    openDirectory: () => { throw new Error('Unexpected directory read'); },
+  } });
+  try {
+    expect(register).not.toHaveBeenCalled();
+    const cached = module.register;
+    if (mode === 'stopped') stop();
+    cached('first-loader', { data: { value: 42 } });
+    cached('second-loader');
+    expect(register.mock.calls).toEqual([
+      ...(mode === 'on-demand' ? [[loader]] : []), ['first-loader', { data: { value: 42 } }], ['second-loader'],
+    ]);
+    stop();
+    expect(module.register).toBe(register);
+    module.register('after-startup');
+    expect(register.mock.calls.at(-1)).toEqual(['after-startup']);
+  } finally {
+    stop(); register.mockRestore(); module.syncBuiltinESMExports(); vi.unstubAllEnvs();
+  }
+});
+
 it.each(['selected', 'missing', 'package-less', 'relative', 'index', 'main', 'subpath', 'symlink'])('observes %s native resolution inputs', kind => {
   const root = fs.realpathSync.native(fs.mkdtempSync(path.join(os.tmpdir(), 'apack-module-probes-')));
   const parent = path.join(root, 'sub');

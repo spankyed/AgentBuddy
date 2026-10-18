@@ -40,7 +40,7 @@ const CONFIGS: Record<string, BundleConfig> = {
   '@apackdev/cli': {
     entries: { cli: 'src/index.ts', 'build-worker': 'src/build/build-worker.ts', 'frontend-worker': 'src/build/frontend-worker.ts' },
     commonjsEntries: { 'compiler-startup': 'src/build/compiler-startup.ts' },
-    copy: ['bin/apack.mjs', 'bin/compiler-windows.ps1', 'bin/compiler-helper-job.ps1', 'bin/compiler-pe-context.ps1', 'bin/compiler-source-hooks.mjs', 'bin/compiler-startup-coordinator.mjs', 'bin/compiler-import.cjs', 'templates'],
+    copy: ['bin/apack.mjs', 'bin/compiler-windows.ps1', 'bin/compiler-helper-job.ps1', 'bin/compiler-pe-context.ps1', 'bin/compiler-source-hooks.mjs', 'bin/compiler-startup-coordinator.mjs', 'bin/compiler-startup-loader.mjs', 'bin/compiler-import.cjs', 'templates'],
     manifest: { bin: { apack: 'bin/apack.mjs' } },
   },
   '@apackdev/testing': {

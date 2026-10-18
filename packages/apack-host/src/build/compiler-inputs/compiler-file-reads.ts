@@ -1,7 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { AsyncLocalStorage } from 'node:async_hooks';
-import module, { syncBuiltinESMExports } from 'node:module';
+import module, { syncBuiltinESMExports, type ResolveHookContext } from 'node:module';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { isInternalThread } from 'node:worker_threads';
 import { openCapturedDirectory } from './compiler-directories.ts';
@@ -10,6 +10,7 @@ import { compilerMetadataOperations, type CompilerMetadataKind } from './compile
 import type { CompilerDirectoryCursor } from './compiler-directories.ts';
 import type { CompilerDirectoryResult } from './compiler-file-view.ts';
 import { observeCompilerModuleResolution } from './compiler-module-probes.ts';
+import { parseNodeOptions } from '../node-options.js';
 
 /** Filesystem interception is usable before compiler configuration or module activation. */
 export interface CompilerFileReadInputs {
@@ -28,12 +29,14 @@ export interface CompilerFileReadInputs {
 interface CompilerFileReadScope {
   compilation: CompilerFileReadInputs;
   outputDirectory?: string;
+  asyncLoader?: string;
 }
 
 interface CompilerReadState {
   readonly scopes: AsyncLocalStorage<CompilerFileReadScope | null>;
   startup?: CompilerFileReadScope;
   nativeModule?: (file: string) => string;
+  observeResolution?: (specifier: string, context: ResolveHookContext) => void;
   installed: boolean;
 }
 // The native bootstrap and ESM compiler bundle must share interception, including cached preload APIs.
@@ -326,24 +329,42 @@ export function beginCompilerStartupReads(scope: CompilerFileReadScope): () => v
   install();
   state.startup = scope;
   const preloadParent = pathToFileURL(process.cwd() + path.sep).href;
+  const observeResolution = (specifier: string, context: ResolveHookContext) => {
+    const current = currentScope();
+    if (current && current === state.startup) {
+      withoutCompilerFileReads(() => observeCompilerModuleResolution(current.compilation, specifier, {
+        parentURL: context.parentURL ?? preloadParent, conditions: context.conditions,
+      }));
+    }
+  };
+  state.observeResolution = observeResolution;
   // Node reads package declarations internally, bypassing the public fs adapters.
   // Observe lookup candidates, including missing nearer packages, without replacing resolution.
   // Node's asynchronous loader worker has no synchronous resolve implementation.
   const hooks = !isInternalThread ? module.registerHooks({
     resolve(specifier, context, next) {
-      const scope = currentScope();
-      if (scope && scope === state.startup) {
-        withoutCompilerFileReads(() => observeCompilerModuleResolution(scope.compilation, specifier, {
-          parentURL: context.parentURL ?? preloadParent, conditions: context.conditions,
-        }));
-      }
+      observeResolution(specifier, context);
       return next(specifier, context);
     },
   }) : undefined;
+  const register = module.register;
+  const loader = scope.asyncLoader;
+  let observingLoader = !!loader && [...process.execArgv, ...parseNodeOptions(process.env.NODE_OPTIONS)].includes(loader);
+  const registerObserved: typeof register = (...args) => {
+    if (state.startup === scope && loader && !observingLoader) { register(loader); observingLoader = true; }
+    return Reflect.apply(register, module, args);
+  };
+  if (loader && !isInternalThread) {
+    // Wait for the user's first registration: creating an earlier loader replays require preloads.
+    module.register = registerObserved;
+    syncBuiltinESMExports();
+  }
   return () => {
     if (state.startup === scope) {
       state.startup = undefined;
+      state.observeResolution = undefined;
       hooks?.deregister();
+      if (module.register === registerObserved) { module.register = register; syncBuiltinESMExports(); }
     }
   };
 }

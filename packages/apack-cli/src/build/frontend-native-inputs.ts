@@ -21,7 +21,7 @@ export function frontendNativeInputs(): FrontendNativeInputs | undefined {
 
 /** Native admission precedes execution; receipts and copies live with the whole frontend process. */
 export function beginFrontendNativeInputs(root: string, workspace: string, paths: readonly CompilerPathMapping[],
-  nativeEnvironment = captureCompilerLibraryEnvironment()): FrontendNativeInputs {
+  nativeEnvironment = captureCompilerLibraryEnvironment(), asyncLoader?: string): FrontendNativeInputs {
   if (frontendNativeInputs()) throw new Error('Frontend native inputs already have an owner');
   const view = createCompilerFileView(root, { paths, observe: createCompilerWatchRecorder(workspace) });
   const reports = createCompilerNativeReports(view.observations().root, workspace);
@@ -33,7 +33,7 @@ export function beginFrontendNativeInputs(root: string, workspace: string, paths
     capture: 'images', onCapture: save,
     findModule: file => reports.findModule(file),
   });
-  const stopReads = beginCompilerStartupReads({ outputDirectory: workspace, compilation: {
+  const stopReads = beginCompilerStartupReads({ outputDirectory: workspace, asyncLoader, compilation: {
     isInput: native.includes, readDataPath: native.readDataPath, sourcePath: native.sourcePath,
     diagnostic: native.diagnostic,
     readMetadata: (kind, file, args) => view.readMetadata(kind, native.sourcePath(file), args),
