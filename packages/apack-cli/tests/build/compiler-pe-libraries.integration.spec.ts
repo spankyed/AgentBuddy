@@ -200,47 +200,52 @@ it.runIf(process.platform === 'win32').each([
   ['Node', 'module'],
   ['Electron', 'module'],
   ['Electron', 'application'],
-] as const)('preserves %s %s-context assembly selection and refuses it through compiler startup before initialization', async (runtimeName, kind) => {
+  ['Electron', 'local'],
+] as const)('preserves %s %s native selection and refuses it through compiler startup before initialization', async (runtimeName, kind) => {
   const electron = runtimeName === 'Electron';
-  const root = fs.realpathSync.native(fs.mkdtempSync(path.join(os.tmpdir(), `apack-${runtimeName.toLowerCase()}-assembly-`)));
+  const root = fs.realpathSync.native(fs.mkdtempSync(path.join(os.tmpdir(), `apack-${runtimeName.toLowerCase()}-${kind}-`)));
   let completed = false;
   try {
     const pack = path.join(root, 'pack'), runtime = path.join(root, 'runtime'), copied = path.join(root, 'copied');
     fs.mkdirSync(runtime);
     packFixture({ at: pack, nodeModules: path.join(REPO_ROOT, 'node_modules'), manifest: { features: {} } });
     const { addon, dllMarker, addonMarker, buildLibrary, buildAddon } = createPeNativeFixture(root, pack);
-    const executable = kind === 'application' ? createPeRuntimeWithoutApplicationManifest(runtime, runtimeName)
+    const executable = kind !== 'module' ? createPeRuntimeWithoutApplicationManifest(runtime, runtimeName)
       : electron ? createRequire(import.meta.url)('electron') as string : createPeRuntimeWithoutApplicationManifest(runtime);
     const runtimeSource = electron ? path.dirname(executable) : runtime;
-    const library = path.join(kind === 'application' ? runtime : path.join(path.dirname(addon), 'alternate'), 'apack.fixture.value/apack_value.dll');
-    const outsideLibrary = kind === 'application' ? library : path.join(root, 'outside/apack_outside.dll');
+    const library = kind === 'local' ? path.join(runtime, 'apack_value.dll')
+      : path.join(kind === 'application' ? runtime : path.join(path.dirname(addon), 'alternate'), 'apack.fixture.value/apack_value.dll');
+    const outsideLibrary = kind !== 'module' ? library : path.join(root, 'outside/apack_outside.dll');
     const hostLink: string[] = [];
     if (electron) {
       const hook = path.join(root, 'host-hook.obj');
       execFileSync('cl.exe', ['/nologo', '/MT', '/c', path.join(REPO_ROOT, 'node_modules/node-gyp/src/win_delay_load_hook.cc'),
         '/DHOST_BINARY="node.exe"', '/Fo' + hook], { cwd: root, timeout: 15_000 });
       hostLink.push(hook, 'delayimp.lib', '/DELAYLOAD:node.exe');
-      if (kind === 'application') buildAddon(undefined, hostLink);
+      if (kind !== 'module') buildAddon(undefined, hostLink);
     }
 
     buildLibrary(library, 22);
-    const identity = '<assemblyIdentity type="win32" name="apack.fixture.value" version="1.0.0.0" processorArchitecture="amd64"/>';
-    fs.writeFileSync(path.join(path.dirname(library), 'apack.fixture.value.manifest'),
-      `<?xml version="1.0"?><assembly xmlns="urn:schemas-microsoft-com:asm.v1" manifestVersion="1.0">${identity}<file name="apack_value.dll"/></assembly>`);
-    const ownerIdentity = `<assemblyIdentity type="win32" name="apack.fixture.${kind}" version="1.0.0.0" processorArchitecture="amd64"/>`;
-    const manifest = `<?xml version="1.0"?><assembly xmlns="urn:schemas-microsoft-com:asm.v1" manifestVersion="1.0">${ownerIdentity}<dependency><dependentAssembly>${identity}</dependentAssembly></dependency></assembly>`;
-    if (kind === 'application') fs.writeFileSync(executable + '.manifest', manifest);
+    if (kind === 'local') fs.writeFileSync(executable + '.local', '');
     else {
-      const manifestFile = path.join(root, 'addon.manifest');
-      fs.writeFileSync(manifestFile, manifest);
-      buildAddon(manifestFile, hostLink);
-      buildLibrary(outsideLibrary, 22, { symbol: 'outside_value' });
-      const dependencySource = path.join(root, 'dependency.c');
-      fs.writeFileSync(dependencySource, '__declspec(dllimport) int outside_value(void); __declspec(dllexport) int native_value(void) { return outside_value(); }');
-      execFileSync('cl.exe', ['/nologo', '/MT', '/LD', dependencySource, '/Fo' + path.join(root, 'dependency.obj'),
-        '/link', '/INCREMENTAL:NO', '/OUT:' + library, path.join(root, 'value.lib')], { cwd: root, timeout: 15_000 });
-      // Successful captured startup must retain this selector, not just the DLL it selects.
-      fs.writeFileSync(addon + '.2.config', `<?xml version="1.0"?><configuration><windows><assemblyBinding xmlns="urn:schemas-microsoft-com:asm.v1">${ownerIdentity}<probing privatePath="alternate"/></assemblyBinding></windows></configuration>`);
+      const identity = '<assemblyIdentity type="win32" name="apack.fixture.value" version="1.0.0.0" processorArchitecture="amd64"/>';
+      fs.writeFileSync(path.join(path.dirname(library), 'apack.fixture.value.manifest'),
+        `<?xml version="1.0"?><assembly xmlns="urn:schemas-microsoft-com:asm.v1" manifestVersion="1.0">${identity}<file name="apack_value.dll"/></assembly>`);
+      const ownerIdentity = `<assemblyIdentity type="win32" name="apack.fixture.${kind}" version="1.0.0.0" processorArchitecture="amd64"/>`;
+      const manifest = `<?xml version="1.0"?><assembly xmlns="urn:schemas-microsoft-com:asm.v1" manifestVersion="1.0">${ownerIdentity}<dependency><dependentAssembly>${identity}</dependentAssembly></dependency></assembly>`;
+      if (kind === 'application') fs.writeFileSync(executable + '.manifest', manifest);
+      else {
+        const manifestFile = path.join(root, 'addon.manifest');
+        fs.writeFileSync(manifestFile, manifest);
+        buildAddon(manifestFile, hostLink);
+        buildLibrary(outsideLibrary, 22, { symbol: 'outside_value' });
+        const dependencySource = path.join(root, 'dependency.c');
+        fs.writeFileSync(dependencySource, '__declspec(dllimport) int outside_value(void); __declspec(dllexport) int native_value(void) { return outside_value(); }');
+        execFileSync('cl.exe', ['/nologo', '/MT', '/LD', dependencySource, '/Fo' + path.join(root, 'dependency.obj'),
+          '/link', '/INCREMENTAL:NO', '/OUT:' + library, path.join(root, 'value.lib')], { cwd: root, timeout: 15_000 });
+        // Successful captured startup must retain this selector, not just the DLL it selects.
+        fs.writeFileSync(addon + '.2.config', `<?xml version="1.0"?><configuration><windows><assemblyBinding xmlns="urn:schemas-microsoft-com:asm.v1">${ownerIdentity}<probing privatePath="alternate"/></assemblyBinding></windows></configuration>`);
+      }
     }
     const copiedExecutable = copyPeRuntimeFixture(executable, copied, electron);
     // The private manifest-less Node retains the existing supported-runner platform-check override.
@@ -254,7 +259,7 @@ it.runIf(process.platform === 'win32').each([
       `const addon = require(${JSON.stringify(addon)}); console.log(JSON.stringify({value:addon.read(),file:addon.libraryPath(),electron:process.versions.electron ?? null}));`],
     { cwd: pack, env: environment, encoding: 'utf8', timeout: 5_000 })) as { value: number; file: string; electron: string | null };
     expect(ordinary.electron).toBe(electron ? createRequire(import.meta.url)('electron/package.json').version : null);
-    const copiedLibrary = kind === 'application' ? path.join(copied, path.relative(runtime, library)) : library;
+    const copiedLibrary = kind !== 'module' ? path.join(copied, path.relative(runtime, library)) : library;
     expect(ordinary.value).toBe(22);
     expect(pePath(fs.realpathSync.native(ordinary.file)).toLowerCase())
       .toBe(pePath(fs.realpathSync.native(copiedLibrary)).toLowerCase());
@@ -307,7 +312,7 @@ it.runIf(process.platform === 'win32').each([
     completed = true;
   } finally {
     if (completed) fs.rmSync(root, { recursive: true, force: true });
-    else console.error(`Retained ${runtimeName} assembly startup: ${root}`);
+    else console.error(`Retained ${runtimeName} ${kind} startup: ${root}`);
   }
 });
 
