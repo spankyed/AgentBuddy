@@ -4118,3 +4118,40 @@ pass (2.79s total); CLI `tsc --noEmit`, focused correctness lint and diff checks
 mocked subscriptions/builders and inert files, with no native fixture or real filesystem watcher.
 The focused hosted workflow now selects these cases and live frontend watcher controls alongside the
 existing backend live-event case. Hosted acceptance is pending; this is not B6 or final strict acceptance.
+
+
+## Remaining Windows resolution audit (2026-10-18)
+
+Inspected committed source `6d6a8e9e1`; no native execution was performed. This audit separates
+implemented parsing from loader-semantic acceptance:
+
+- `compiler-pe-libraries.ts` extracts raw RT_MANIFEST resources, but `compiler-pe-admission.ts`
+  never reads `metadata.manifests`. Parsing the declaration therefore does not implement activation
+  context or SxS resolution. Its resolver starts with API sets, loaded images and KnownDLLs, then
+  synthesizes the altered-search-path directory list.
+- Neither `compiler-pe-admission.ts` nor `compiler-pe-environment.ts` observes executable `.local`
+  files/directories or redirection policy. Microsoft's [search order](https://learn.microsoft.com/en-us/windows/win32/dlls/dynamic-link-library-search-order)
+  puts redirection and SxS ahead of loaded-image/ordinary-directory lookup; [redirection guidance](https://learn.microsoft.com/en-us/windows/win32/dlls/dynamic-link-library-redirection)
+  also distinguishes executable manifest and policy effects. The missing implementation is confirmed;
+  which concrete supported runtime cases it changes still requires a Windows ordinary-loader control.
+- `compiler-pe-environment.ts` captures loaded-image names, registry safe-search/KnownDLL state,
+  API-set metadata and the report environment. It does not capture a thread activation context or
+  process DLL-directory API state. Registry safe-search mode alone is not evidence of those states.
+- Bound-address-only import tables are parsed, but admission deliberately throws rather than
+  resolving their symbols. The accepted bound-with-lookup-fallback case retains its name table and
+  does not exercise this branch. The earlier hand-edited controls that failed in ordinary Node
+  remain invalid acceptance fixtures, not justification for a production refusal or guessed mapping.
+
+Next Windows checkpoint: establish a valid ordinary-loader control for private SxS/manifest and
+`.local` selection using the existing fixture/runtime, with distinct same-name DLL values proving
+which image ran. Keep generated files and registry/system changes private or absent; no installed-app
+modification. Compare admission against that control before selecting implementation. Any selected
+OS metadata query must avoid initializing pack images and preserve package-contained/OS loading,
+outside-library refusal before initialization, freshness and incumbent retention. Reconcile supported
+search-state changes against the actual Node/Electron loading path; do not assume every Win32 loading
+API is used or silently exclude a demonstrated path. Valid bound-only behavior remains a separate
+control prerequisite. Reuse the existing native owner; no new capture or loader framework is selected.
+
+Hosted validation of watcher source `6d6a8e9e1` is pending: automatic approval review rejected its
+push as not authorized, and explicit push approval was requested. Do not dispatch a run against the
+older remote tip and describe it as acceptance of this source. This does not block static audits.
