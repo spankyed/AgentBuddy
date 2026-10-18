@@ -4273,3 +4273,32 @@ first-launch control overlay from 30ebaf8e2`); the pre-existing launcher bytes r
 `checkpoint.json` records source, matching test blob, stash and no live native/compiler processes.
 All small evidence files were copied off the VM. Azure subsequently confirms `VM deallocated`.
 Next use must verify/start the existing VM and source again; no current VM execution owner remains.
+
+
+## Windows SxS admission counterexample (2026-10-18)
+
+Verified VM source `3f20531a1` plus `reproducer.patch` extends the accepted ordinary controls by
+checking the current low-level `assertCapturedPeLibraries` predicate with that executable, entry,
+package root and normal OS metadata. The existing SxS control first proves the original baseline,
+then the exact private-assembly DLL/value 22 outside the native package directory. Admission does
+not refuse that selected path: the new assertion fails with “expected function to throw.” This is
+now a reproduced admission omission, rather than an inference from an unexecuted manifest field.
+It is not yet an actual Node/Electron compiler launch or a claim of general security isolation.
+
+One selected Windows case fails in 7.06s (18.45s Vitest including cold module import); seven other
+cases remain unselected. The source test blob is `950fca0fcb46321af53ec04616637b850fe8ce67`.
+Logs/JSON/command/source patch/context: `C:\apack-setup\runs\pe-admission-3f20531a1`, copied to
+`/private/tmp/apack-pe-admission-vm-3f20531a1/`. Its failed ordinary fixture is retained at
+`C:\Users\apackdev\AppData\Local\Temp\apack-pe-redirection-npRzvy` for direct inspection.
+The expected-failing regression is preserved in local stash
+`16db6ecebbac0c40e123e32d8643f74841b5024a` and a scoped VM stash named
+`Reproduced SxS admission mismatch on 3f20531a1`; neither replaces earlier saved work. It is not
+committed as a passing source checkpoint. CLI types, focused lint and diff checks pass for that patch.
+No native process remains, and Azure confirms VM deallocated after evidence preservation.
+
+Next: prototype a documented OS activation-context metadata query against this retained fixture,
+without initializing pack libraries, before choosing production integration. Preserve the existing
+native input/copy owner and collect the manifests/policies that selected a DLL as freshness inputs.
+Then repair admission, prove no initialization on refusal, support contained/OS cases and exercise
+the actual selected runtime paths. `.local`, valid bound-only and search-state obligations remain;
+this SxS result does not close them or authorize exclusions. Broader/final gates remain required.
