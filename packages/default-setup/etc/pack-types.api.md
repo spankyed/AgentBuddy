@@ -2237,6 +2237,17 @@ interface ClaudeNativeSubmissionReceipt {
     text: string;
 }
 
+interface ClaudeNativeTaskDetails {
+    taskId: string;
+    name: string;
+    status: string;
+    messages: {
+        role: 'assistant' | 'user';
+        text: string;
+    }[];
+    truncated: boolean;
+}
+
 type ClaudeNativeTerminalHandoffOptions = Pick<ClaudeNativeTerminalOptions, 'cliPath' | 'columns' | 'env' | 'rows'>;
 
 interface ClaudeNativeTerminalOptions {
@@ -2289,6 +2300,10 @@ interface ClaudeNativeTerminalOwner {
     answerPlanDialog(response: ClaudeNativePlanDialogResponse): Promise<void>;
     getFileDialogs(): Promise<ClaudeNativeFileDialog[]>;
     answerFileDialog(response: ClaudeNativeFileDialogResponse): Promise<void>;
+    operateTask(taskId: string, operation: 'inspect' | 'stop'): Promise<{
+        stopped?: boolean;
+        details?: ClaudeNativeTaskDetails;
+    }>;
     getMcpStatus(): Promise<ClaudeMcpStatus>;
     controlMcpServer(serverName: string, operation: 'disable' | 'enable' | 'reconnect'): Promise<ClaudeMcpStatus>;
     getModels(options?: {
@@ -2584,6 +2599,16 @@ interface ClaudeTerminalSubmissionState {
     problem?: string;
 }
 
+interface ClaudeTerminalTaskState {
+    ownerId: string;
+    taskId: string;
+    revision: number;
+    operation: 'inspect' | 'stop';
+    status: 'done' | 'error' | 'pending';
+    details?: ClaudeNativeTaskDetails;
+    problem?: string;
+}
+
 interface ClaudeTerminalUiTransport {
     readonly promptHosts: Pick<ReturnType<typeof createClaudePromptHosts>, 'answers' | 'detach' | 'register'>;
     request(value: Record<string, unknown> & {
@@ -2623,11 +2648,18 @@ type ClaudeTerminalViewRequest = {
     columns: number;
     rows: number;
 } | {
+    type: 'CLAUDE_TERMINAL_TASK';
+    ownerId: string;
+    revision: number;
+    taskId: string;
+    operation: 'inspect' | 'stop';
+} | {
     type: 'CLAUDE_TERMINAL_CLOSE';
     ownerId: string;
 });
 
 type ClaudeTerminalViewSnapshot = {
+    task?: ClaudeTerminalTaskState;
     submission?: ClaudeTerminalSubmissionState;
     state?: ClaudeNativeTerminalState;
     opening: boolean;
