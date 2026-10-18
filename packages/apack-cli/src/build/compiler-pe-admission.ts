@@ -29,6 +29,9 @@ export function assertCapturedPeLibraries(entry: string, packageRoot: string, in
     throw new Error(`Native compiler image "${requester}" selects "${file}" outside its captured package. Use package-contained DLLs or operating-system libraries.`);
   };
   const read = (file: string, requester: string): PeLibraryMetadata | undefined => {
+    // NAPI imports resolve against the running executable, already owned by the installation.
+    // Do not record its private copy as another package's source input.
+    if (file !== entry && pePath(file).toLowerCase() === pePath(input.executable).toLowerCase()) return;
     const identity = file.toLowerCase();
     const known = images.get(identity);
     if (known) return known;
@@ -36,7 +39,6 @@ export function assertCapturedPeLibraries(entry: string, packageRoot: string, in
     if (bytes === undefined) return;
     const physical = input.realpath(file);
     if (system(file) && system(physical)) return;
-    if (file !== entry && physical.toLowerCase() === input.realpath(input.executable).toLowerCase()) return;
     if (!within(file, packageRoot) || !within(physical, root)) refuse(requester, file);
     let metadata: PeLibraryMetadata;
     try { metadata = parsePeLibraryMetadata(bytes); }

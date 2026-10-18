@@ -72,6 +72,12 @@ it('uses KnownDLLs before adjacent images and accepts physical OS libraries', ()
   expect(value.reads).not.toContain(library);
 });
 
+it('delegates the running Node image to its installation owner without recording private executable bytes', () => {
+  const value = admission([[entry, image('node.exe')], ['C:\\compiler\\node.exe', Buffer.from('owned runtime')]]);
+  expect(value.check).not.toThrow();
+  expect(value.reads).not.toContain('C:\\compiler\\node.exe');
+});
+
 it('does not trust a System32 link to an outside DLL', () => {
   const value = admission([['C:\\Windows\\System32\\value.dll', image()]], { environment: { knownDlls: ['value.dll'] },
     realpath: file => file.endsWith('value.dll') ? 'C:\\outside\\value.dll' : file });
