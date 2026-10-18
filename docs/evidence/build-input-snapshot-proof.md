@@ -5546,7 +5546,8 @@ adding more implementation. Remaining platform obligations, repeated-build ident
 
 ## Captured native policy in compiler identity — 2026-10-18
 
-A pure three-case counterexample on `ea45ff599` proves changing captured PE `safeSearch`,
+Source **`2dc550a5b`** implements this checkpoint. A pure three-case counterexample on `ea45ff599`
+proves changing captured PE `safeSearch`,
 `devOverride` or `knownDlls` leaves the phase input identity unchanged (three failures in 39ms).
 The native environment already exists before user initialization; its policy was omitted from the
 execution key. The repair hashes that same captured snapshot rather than querying a second state.
@@ -5584,3 +5585,58 @@ VM evidence: `C:\apack-setup\runs\native-policy-ea45ff599` (source patch, prepar
 JSON reports and logs). Original inert failures are retained locally at
 `/private/tmp/apack-native-policy-original-ea45ff599.log` and
 `/private/tmp/apack-retained-fixture-baseline-ea45ff599.log`.
+
+Off-machine evidence: `/private/tmp/apack-native-policy-evidence-2dc550a5b.zip` (14 entries, logs/reports
+and source patch only). VM stash **`9ef7d1eb1c844e4c6aa3695baf2da31d7991a321`** preserves the executed
+seven-file overlay; prior stashes and the pre-existing launcher line-ending change remain untouched.
+The VM was then advanced by fast-forward to committed `2dc550a5b` for the scoped crash investigation.
+
+## Windows report API race: short reproducer and rejected lock — 2026-10-18
+
+The next diagnostic runs committed `2dc550a5b`, with Microsoft-signed ProcDump attached only to the
+first owned captured Node worker. First-chance heap-corruption and termination triggers produce at
+most one dump. No global debugger, security setting or installed runtime changes. That worker exits
+**0**, with a successful termination dump: first build **116.944s**, passive input replay **122.519s**,
+archive **133.017s**. The second build reaches compilation but the test hits its unchanged **240s**
+bound, followed by the already known EPERM fixture-cleanup race. No repeat-build assertion is accepted.
+The normal-exit dump identifies Node and the captured Rollup addon as the non-OS modules; it does not
+identify a corrupting module or explain the earlier failure. No Node/Electron/ProcDump process remains
+at terminal inspection; retained failed directories are not swept.
+
+A narrower lead comes from the installed Rollup source's Windows `getReportHeader`: it runs
+`process.report.getReport()` in a subprocess because the call can crash Windows processes. The
+[upstream Angular report](https://github.com/angular/angular-cli/issues/31973) also records this API and
+status. This is a lead, not evidence blaming Rollup. Our own `readPeReport` invokes the same native API.
+
+Three standalone Node 23.11.1 controls, eight reports per participating thread, one worker at most,
+no pack compilation, copied runtime or native addon:
+
+- Plain reporting: exit 0, **268ms**.
+- Main reporting with an idle worker: exit 0, **502ms**.
+- Main and worker reporting concurrently: **3221226356 (`0xC0000374`)**, **184ms**.
+
+Excluding network diagnostics still fails in **134ms**. A shared-lock control passes in **507ms**,
+but that does not prove the approach works with Node's own worker-report collection. An actual-reader
+regression imports `readPeSystemDirectory` in a main thread and its worker, calls it eight times each,
+and requires restoration of `excludeEnv`. Original source fails in **461ms**; the shared-lock candidate
+still fails in **652ms**. A final attributed run confirms **`0xC0000374` in 681ms**, not a setup error.
+The failed candidate is not committed. Local stash **`e2e9ba9f1c7f46d7a8e284dd810d4c8e0f93d183`**
+and VM stash **`818146d21a9e62e8820bb557b1fedc6227a45636`** preserve the regression and candidate.
+CLI types and focused lint pass on the candidate; neither establishes runtime correctness.
+
+This establishes a sub-second native report-API failure through our actual reader. It does not yet
+prove the earlier full-build crash has no additional cause. Do not repeat the full two-build case
+until the short actual-reader case is fixed. Do not ship the rejected lock or substitute `process.env`
+blindly: Node's [report implementation](https://github.com/nodejs/node/blob/v23.11.1/src/node_report.cc)
+reads OS environment values through `uv_os_environ`, which is different from a replaced JavaScript
+`process.env` or a worker's private environment. The next repair must preserve that live environment
+meaning and exact OS-loaded DLL ownership while avoiding unsafe report generation. Reuse the existing
+bounded Windows metadata reader and lifetime owner; no new general compiler isolation framework.
+
+Diagnostic evidence: `C:\apack-setup\runs\native-policy-crash-2dc550a5b` and
+`pe-report-{original,fixed,attributed}-2dc550a5b`. Off-machine archives:
+`/private/tmp/apack-native-policy-crash-2dc550a5b.zip` (successful termination dump and logs) and
+`/private/tmp/apack-windows-report-race-2dc550a5b.zip` (short controls, patches, runner and scripts).
+Both exports were inspected: 14 diagnostic entries and 27 short-control entries, no dependency trees.
+The VM remains at `2dc550a5b`, with only the pre-existing launcher line-ending change unstashed.
+Azure instance view confirms **VM deallocated** after terminal-process inspection and export.

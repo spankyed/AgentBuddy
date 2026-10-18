@@ -148,12 +148,19 @@ user-approved boundary and must not silently expand this goal. No required assem
 excluded by this classification.
 
 The [captured-policy checkpoint](../evidence/build-input-snapshot-proof.md#captured-native-policy-in-compiler-identity--2026-10-18)
-repairs omitted native loader state in phase identity and Windows policy invalidation in retained
+(`2dc550a5b`) repairs omitted native loader state in phase identity and Windows policy invalidation in retained
 runtime identity. All 57 focused Windows checks and actual Node/Electron application startup controls
 pass; source paths, copied-runtime identity and refusal before initialization remain asserted. The
 single public repeated-build case fails at 129.548s with `0xC0000374`, matching the earlier native crash,
-not its 240s deadline. Preserve this failure, obtain a scoped owned-worker dump, and diagnose before
-another acceptance attempt. Remaining policy/platform cases, B6 and final strict acceptance stay open.
+not its 240s deadline. The [follow-up report-API controls](../evidence/build-input-snapshot-proof.md#windows-report-api-race-short-reproducer-and-rejected-lock--2026-10-18)
+reproduce the same native status without pack compilation in 184ms, and through the actual Windows
+metadata reader in 461ms. Excluding network diagnostics and a shared-lock candidate do not fix the
+actual reader; the rejected candidate and regression are stashed, not shipped. Next replace the unsafe
+Windows report path while preserving live OS environment and exact loaded-DLL meaning through the
+existing metadata/lifetime owner. Fix the short actual-reader case before another full build run;
+retain repeated-build identity as unaccepted. The scoped diagnostic's first worker exits 0, but its
+second build hits 240s, so it neither closes acceptance nor disproves the uninstrumented crash.
+Remaining policy/platform cases, B6 and final strict acceptance stay open.
 
 **Execution boundary:** the user recovered the daily-use Mac by restarting after unrelated apps
 stopped launching. Cause remains unproven. Use the approved
