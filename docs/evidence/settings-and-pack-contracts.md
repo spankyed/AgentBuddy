@@ -7737,3 +7737,30 @@ Logs and per-step reports are preserved under `/private/tmp/apack-strict-3916618
 `/private/tmp/apack-strict-39166185325.log`. The exact cause of the facade's derivation cost remains
 unprofiled; repeating that compilation is unnecessary for checking an already verified current build.
 The next strict run must prove the facade read and dependent fork preparation stay coherent together.
+
+
+### Hosted facade and author-half acceptance (2026-10-18)
+
+Strict run [39167659691](https://github.com/spankyed/AgentBuddy/actions/runs/39167659691) tests exact
+`fcb037442` on disposable macOS 26 ARM64 / Node 23.11.1, two cores. The repaired facade check passes
+in **27.7s**, within its unchanged 60s bound. Default-setup builds in 359.9s; package/API/schema/export,
+listed typechecks, tier/specifier checks and lint pass. The full packaged-authoring **author half passes
+in 690.1s**, including real installed tarballs, scaffold/build, harness/types, verified archive and isolated
+installation. Its archive SHA256 is `cb0ee3449aae2942a7e1e1f60cba8aff3ec7b9e692c93c450c0038f4435be92e`.
+The app half has not run in this checkpoint.
+
+Release preparation is not public release readiness: dry-run reports missing GitHub credentials and
+conflicting local/workflow publish ownership. Isolated installation reports default-setup not yet
+installed and hostVersion not yet recorded before first app startup. These are retained observations,
+not instructions to publish or modify credentials/workflows. The local archive and author handoff pass.
+
+The chain stops after 1295.6s because `test:external-pack:contract` exceeds its unchanged 600s suite
+bound. Both ordinary fixture builds and 38 memo contract cases pass; it reaches `Building pack:
+Acceptance fork` without the earlier freshness refusal. No assertion failure is recorded there, but
+this does not prove the fork build was making progress. No timeout is increased and no broad run is
+repeated. The next bounded diagnostic profiles one real build through the existing owner on the
+Windows VM to identify shared compiler hotspots; that cannot establish macOS timings. Final convergence,
+the exact archive/app handoff and all still-open native/platform requirements remain required.
+
+Console and per-step logs: `/private/tmp/apack-strict-39167659691{.log,/}`. Preserve this source/run
+identity and the successful facade/author evidence instead of scheduling those as new implementation.
