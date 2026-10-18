@@ -7654,3 +7654,33 @@ passes in 224.648s, retaining cache/output identity, source paths, archive and d
 CLI types, focused lint and all 42 timeout-policy checks pass. Evidence is exported off the VM;
 no native fixture ran on the daily-use Mac. Remaining policy/platform obligations, B6 and final
 committed-source strict acceptance remain open across the full preserved goal.
+
+### Explicit content declarations in schema and resolution (2026-10-18)
+
+Current-source Phase 7 review finds inherited object properties counted as declarations in three
+manifest checks. An undeclared `constructor` format/dependency passes validation, while a dataset
+named `constructor` is falsely reported as colliding with a source. Three regressions fail on the
+baseline in 13ms. The build resolver has the same inherited format lookup for both local and
+dependency formats: a source gets the misleading "declares no entity" error, and a dataset can receive
+a function as its resolved format. These are declaration-existence defects, not invalid authored names.
+
+Source **`dcf2493e5`** uses the existing own-property helper in schema checks and both resolver paths.
+Unknown formats/dependencies now refuse at their actual declarations; explicitly declared
+`constructor` formats/dependencies and dataset names remain supported. No naming restriction,
+compatibility path, new inventory, schema shape or public API is added. The SDK contributor guide's
+stale claim that Settings belongs to default-setup is corrected to host ownership.
+
+All **72** checks across manifest schema, own-key preservation, relation declarations and direct content
+resolution pass (460ms runner). The existing dependency-format codegen consumer passes separately in
+335ms. SDK typechecking, focused correctness lint, diff checks and schema generation/check pass;
+`apack.schema.json` remains unchanged. The schema check uses `node --import tsx scripts/generate-schema.ts --check`
+from `packages/apack-sdk`, because the tsx CLI's IPC listener is denied by the local sandbox.
+No captured runtime/native fixture or broad suite runs on the daily-use Mac.
+
+Evidence: `/private/tmp/apack-manifest-own-claims-red.log`,
+`/private/tmp/apack-manifest-content-own-claims-{green,types,generator}.log` and
+`/private/tmp/apack-manifest-own-claims-schema.log`. The converged strict checkpoint remains pending:
+automatic approval review rejected the remote push as lacking separate authorization, and the
+approval question is pending. Do not claim the focused checks satisfy that gate or retry the denied
+push through another route. The full goal, native-policy questions and final committed-source `--all`
+remain open.

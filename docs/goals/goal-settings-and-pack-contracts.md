@@ -75,6 +75,14 @@ so completed implementation is not repeatedly scheduled as new work.
 | Shipped-pack replacement (Phase 6) | Implemented ownership/suppression/replacement/source updates; refreshed complete external app and normal fork lifecycle acceptance passes | Local restart/reload, two-window fork preservation, disable/remove/restore and settings preservation are accepted on current source. Preserve existing managed-update and failure-retention cases for the final gate; no replacement redesign remains identified. |
 | Final review/acceptance (Phase 7) | Outstanding | Audit every phase and reconciled manifest requirement on committed source, run final strict `--all`, record evidence and archive only completed work. |
 
+Current-source review `dcf2493e5` repairs [content declaration existence](../evidence/settings-and-pack-contracts.md#explicit-content-declarations-in-schema-and-resolution-2026-10-18)
+in both schema validation and local/dependency resolution. Inherited object names cannot masquerade as
+formats/dependencies or cause false source/dataset collisions; explicitly declared names remain valid.
+All 72 focused declaration/resolution checks, the existing codegen consumer, SDK types, schema check
+and lint pass. The converged strict run still needs a remote branch update: automatic approval review
+rejected the push as lacking separate authorization; explicit approval is pending. No required gate
+is waived and no remote run against an older tip counts as acceptance of this checkpoint.
+
 ### Bounded build-input and freshness checkpoints
 
 Completed prerequisites: captured compiler installation/session reuse (`aba660aed`), shared authored
