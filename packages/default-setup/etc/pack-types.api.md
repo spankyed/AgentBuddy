@@ -1353,8 +1353,8 @@ declare const ClaudeNativeBashDialogSchema: z.ZodObject<{
     input: z.ZodRecord<z.ZodString, z.ZodUnknown>;
 }, "strip", z.ZodTypeAny, {
     cwd: string;
-    command: string;
     id: string;
+    command: string;
     revision: string;
     sessionId: string;
     requestId: string;
@@ -1364,8 +1364,8 @@ declare const ClaudeNativeBashDialogSchema: z.ZodObject<{
     reason?: string | undefined;
 }, {
     cwd: string;
-    command: string;
     id: string;
+    command: string;
     revision: string;
     sessionId: string;
     requestId: string;
@@ -2242,6 +2242,17 @@ interface ClaudeNativeTaskDetails {
     name: string;
     status: string;
     canMessage: boolean;
+    metadata?: {
+        prompt?: string;
+        promptTruncated: boolean;
+        model?: string;
+        effort?: string;
+        elapsedMs?: number;
+        tokenCount?: number;
+        toolUseCount?: number;
+        error?: string;
+        errorTruncated: boolean;
+    };
     messages: {
         role: 'assistant' | 'user';
         text: string;
