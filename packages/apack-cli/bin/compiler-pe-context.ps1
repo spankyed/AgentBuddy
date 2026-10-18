@@ -177,7 +177,7 @@ public static class ApackPeActivationContext {
       }
     } finally { FreeLibrary(module); }
   }
-  static List<List<string>> ReadPrivateCandidates(string image, string configuration, XmlDocument manifest) {
+  static void ReadPrivateCandidates(string image, string configuration, XmlDocument manifest, Dictionary<string, InputInfo> reads) {
     string directory = Path.GetDirectoryName(image);
     List<string> roots = new List<string> { directory };
     if (File.Exists(configuration)) using (FileStream stream = ReadFile(configuration)) {
@@ -189,22 +189,35 @@ public static class ApackPeActivationContext {
         }
       }
     }
-    List<List<string>> result = new List<List<string>>();
-    foreach (XmlNode dependency in manifest.SelectNodes("/*[local-name()='assembly']/*[local-name()='dependency']/*[local-name()='dependentAssembly']/*[local-name()='assemblyIdentity']")) {
+    Queue<XmlDocument> pending = new Queue<XmlDocument>(); pending.Enqueue(manifest);
+    while (pending.Count != 0) foreach (XmlNode dependency in pending.Dequeue().SelectNodes("/*[local-name()='assembly']/*[local-name()='dependency']/*[local-name()='dependentAssembly']/*[local-name()='assemblyIdentity']")) {
+      if (dependency.Attributes["name"] == null) continue;
       string name = dependency.Attributes["name"].Value;
       string language = dependency.Attributes["language"] == null ? "" : dependency.Attributes["language"].Value;
-      if (Path.GetFileName(name) != name || (language != "" && language != "*")) continue;
+      if (String.IsNullOrEmpty(name) || name == "." || name == ".." || name.IndexOfAny(Path.GetInvalidFileNameChars()) >= 0
+        || (language != "" && language != "*")) continue;
       List<string> candidates = new List<string>();
       foreach (string root in roots) foreach (string parent in new string[] { root, Path.Combine(root, name) }) {
         candidates.Add(Path.Combine(parent, name + ".dll"));
         candidates.Add(Path.Combine(parent, name + ".manifest"));
       }
-      result.Add(candidates);
+      // Follow possible private declarations so failed contexts retain transitive repair probes too.
+      // This observes candidates; CreateActCtx still owns selection and manifest validation.
+      foreach (string file in candidates) {
+        if (reads.ContainsKey(file)) continue;
+        InputInfo input = Input(file);
+        reads[file] = input;
+        if (input.kind != "file") continue;
+        try { pending.Enqueue(ReadManifest(file, 1)); }
+        catch (XmlException) { } // An unselected invalid candidate must not replace the OS result.
+        catch (Win32Exception failure) {
+          if (failure.NativeErrorCode != 193 && (failure.NativeErrorCode < 1812 || failure.NativeErrorCode > 1815)) throw;
+        }
+      }
     }
-    return result;
   }
   public static object Read(string image, string application, int resourceId, bool external, string configuration) {
-    var candidates = ReadPrivateCandidates(image, configuration, ReadManifest(external ? image + ".manifest" : image, resourceId));
+    Dictionary<string, InputInfo> probes = new Dictionary<string, InputInfo>(StringComparer.OrdinalIgnoreCase);
     ContextSpec spec = new ContextSpec();
     spec.Size = (uint)Marshal.SizeOf(typeof(ContextSpec));
     spec.Source = NativePath(external ? image + ".manifest" : image);
@@ -214,26 +227,11 @@ public static class ApackPeActivationContext {
     IntPtr context = IntPtr.Zero, index = IntPtr.Zero;
     UIntPtr cookie = UIntPtr.Zero; bool active = false;
     try {
+      ReadPrivateCandidates(image, configuration, ReadManifest(external ? image + ".manifest" : image, resourceId), probes);
       context = CreateActCtxW(ref spec);
       if (context == new IntPtr(-1)) throw new Win32Exception(Marshal.GetLastWin32Error());
       index = Marshal.AllocHGlobal(4);
-      // Discover relevant private prefixes first; shared assemblies never probe these local paths.
-      Dictionary<string, InputInfo> probes = new Dictionary<string, InputInfo>(StringComparer.OrdinalIgnoreCase);
-      ContextInfo initial = Query<ContextInfo>(context, IntPtr.Zero, 2);
-      for (uint assembly = 1; assembly <= initial.Assemblies; assembly++) {
-        Marshal.WriteInt32(index, unchecked((int)assembly));
-        string selected = DosPath(Query<AssemblyInfo>(context, index, 3).Manifest);
-        foreach (var paths in candidates) {
-          int found = paths.FindIndex(file => String.Equals(file, selected, StringComparison.OrdinalIgnoreCase));
-          for (int candidate = 0; candidate <= found; candidate++) probes[paths[candidate]] = Input(paths[candidate]);
-        }
-      }
-      if (probes.Count != 0) {
-        // Bind after capturing the namespace; refuse if it changes before inspection finishes.
-        IntPtr next = CreateActCtxW(ref spec);
-        if (next == new IntPtr(-1)) throw new Win32Exception(Marshal.GetLastWin32Error());
-        ReleaseActCtx(context); context = next;
-      }
+      // Candidates were captured before binding; validate that same namespace after inspection.
       ContextInfo detail = Query<ContextInfo>(context, IntPtr.Zero, 2);
       Dictionary<string, InputInfo> inputs = new Dictionary<string, InputInfo>(StringComparer.OrdinalIgnoreCase);
       HashSet<string> names = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
@@ -264,9 +262,7 @@ public static class ApackPeActivationContext {
       }
       return new { inputs = new List<InputInfo>(inputs.Values).ToArray(), redirections = redirections.ToArray() };
     } catch (Exception failure) {
-      HashSet<string> paths = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-      foreach (var group in candidates) foreach (string file in group) paths.Add(file);
-      failure.Data["candidates"] = new List<string>(paths).ToArray();
+      failure.Data["candidates"] = new List<string>(probes.Keys).ToArray();
       throw;
     } finally {
       if (active) DeactivateActCtx(0, cookie);
