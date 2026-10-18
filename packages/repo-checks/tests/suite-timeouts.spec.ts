@@ -27,6 +27,8 @@ import { overrideKey, sizeOf, specFilesUnder, timeoutOverrides, type TimeoutOver
  * fails on an entry whose override has gone, so the list shrinks when the reason does.
  */
 const TIMEOUT_EXCEPTIONS: Record<string, string> = {
+  'packages/apack-cli/tests/build/compiler-pe-libraries.integration.spec.ts > captures PE %s inputs and preserves publication after outside-library refusal':
+    'Windows run 39094144526 emits its first actual backend runtime near the 60-second deadline, before freshness/restoration and the refused second build complete. This Windows-only publication scenario has a 120-second bound with phase timings; its inputs and assertions are unchanged. Complete runtime acceptance remains pending.',
   'packages/apack-cli/tests/build/compiler-native-libraries.integration.spec.ts > watches external Vite native changes and repairs a failed generation through newly discovered inputs':
     'Initial backend/Vite publication, native dependency refusal and watched repair are sequential. Hosted macOS run 39079072090 detects the rebuild but expires its separate console wait. Awaiting the actual builds passes in 98.76 seconds on run 39079492068. Retain the original 120-second scenario budget, separate 20-second missing-event bounds and every incumbent/value/retirement assertion.',
   'packages/apack-cli/tests/commands/scaffold.integration.spec.ts > adds a step (declared, shipped in build/steps.build.mjs) and a service that build':

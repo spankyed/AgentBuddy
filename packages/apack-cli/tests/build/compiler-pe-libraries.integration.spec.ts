@@ -192,6 +192,8 @@ it.runIf(process.platform === 'win32').each(['preload', 'thread'] as const)(
     const pathKey = Object.keys(process.env).sort().find(key => key.toUpperCase() === 'PATH') ?? 'PATH';
     const previousPath = process.env[pathKey];
     let builder: ReturnType<typeof createPackBuilder> | undefined;
+    const started = performance.now();
+    const checkpoint = (phase: string) => console.info(`[PE ${site}] ${phase}: ${((performance.now() - started) / 1000).toFixed(2)}s`);
     try {
       packFixture({ at: pack, nodeModules: path.join(REPO_ROOT, 'node_modules'), manifest: { features: {},
         ...(site === 'thread' ? { content: { formats: { rows: { compiler: 'src/compiler.ts', entity: 'Relation', identity: ['name'] } },
@@ -204,6 +206,7 @@ it.runIf(process.platform === 'win32').each(['preload', 'thread'] as const)(
       const baseline = ordinary();
       expect(baseline.value).toBe(11);
       expect(fs.realpathSync.native(baseline.library).toLowerCase()).toBe(fs.realpathSync.native(library).toLowerCase());
+      checkpoint('ordinary loader control');
       fs.rmSync(dllMarker); fs.rmSync(addonMarker);
       const proof = path.join(root, 'loaded.jsonl');
       const load = `const addon = require(${JSON.stringify(addon)});
@@ -226,6 +229,7 @@ require('node:worker_threads').parentPort.postMessage('NATIVE');`)}, {eval:true}
       }
       builder = createPackBuilder(pack);
       await builder.build({ args: ['--skip-fe'] });
+      checkpoint('initial build completed');
       const results = fs.readFileSync(proof, 'utf8').trim().split('\n').map(line => JSON.parse(line)) as {
         thread: number; value: number; library: string; workspace: string;
       }[];
@@ -250,6 +254,7 @@ require('node:worker_threads').parentPort.postMessage('NATIVE');`)}, {eval:true}
       expect(() => assertPackBuildInputsCurrent(pack, inputs)).toThrow();
       replace(original);
       assertPackBuildInputsCurrent(pack, inputs);
+      checkpoint('source replacement and restoration checked');
       const revision = readPackBuild(path.join(pack, 'dist')).revision;
       const outside = path.join(root, 'outside');
       fs.mkdirSync(outside);
@@ -259,12 +264,14 @@ require('node:worker_threads').parentPort.postMessage('NATIVE');`)}, {eval:true}
       const escaped = ordinary();
       expect(escaped.value).toBe(11);
       expect(fs.realpathSync.native(escaped.library).toLowerCase()).toBe(fs.realpathSync.native(selected).toLowerCase());
+      checkpoint('outside loader control');
       fs.rmSync(dllMarker); fs.rmSync(addonMarker); fs.rmSync(proof);
       await expect(builder.build({ args: ['--skip-fe'] })).rejects.toThrow();
       expect(fs.existsSync(dllMarker)).toBe(false);
       expect(fs.existsSync(addonMarker)).toBe(false);
       expect(fs.existsSync(proof)).toBe(false);
       expect(readPackBuild(path.join(pack, 'dist')).revision).toBe(revision);
+      checkpoint('refused candidate retained publication');
     } finally {
       if (previousOptions === undefined) delete process.env.NODE_OPTIONS;
       else process.env.NODE_OPTIONS = previousOptions;
@@ -274,4 +281,5 @@ require('node:worker_threads').parentPort.postMessage('NATIVE');`)}, {eval:true}
       finally { fs.rmSync(root, { recursive: true, force: true }); }
     }
   },
+  120_000,
 );
