@@ -4969,3 +4969,59 @@ The latter retains the failed fixture `apack-pe-watch-8euHgh`. Off-machine evide
 `/private/tmp/apack-publication-evidence-595a7d8e1.zip`. Native Node/C++/C# processes were absent after
 the terminal report; Azure confirms `VM deallocated`. All remaining B1/B3, B6 and final strict gates
 remain open.
+
+## Verified compiler reuse and Windows recovery — 2026-10-18
+
+A startup-only inspector profile on `147df3291` with the preserved lifecycle fixture identifies
+**69.8s** reading the compiler package/dependency inventory and **33.4s** capturing the installation.
+The dominant samples are synchronous file opens. Initial watch readiness takes 213.5s in that
+instrumented run; its runner communication failure remains a failed diagnostic, not acceptance.
+This attributes the blocked phase, not the cause of the underlying filesystem latency.
+
+Source **`72ad6bae9`** makes `createPackBuilder` distinguish compiler-installation freshness from
+frontend freshness. Configuration, metadata, environment or observed-input replacement can share the unchanged verified
+installation. Frontend workspaces remain private. Disposal first stops the generation's frontend,
+then releases the compiler only when no remaining generation owns it. Changed/damaged compiler
+installations still require recapture. No cross-session cache, trust shortcut or new coordinator is
+introduced. Existing replacement coverage is divided into configuration/refusal, metadata and
+environment cases, preserving the 15s case budget. All three pass on Windows (11.25s, 13.58s, 7.19s).
+They verify a single capture, failed-candidate workspace cleanup, incumbent survival, replacement and
+final compiler removal. The existing changed/damaged-copy case also passes (12.54s).
+
+The existing startup cancellation case fails its one-second readiness wait on the exact committed
+baseline too (`builder-baseline-startup.json`). That case and the two worker-start checks now allow
+five seconds for readiness; case deadlines and cancellation assertions remain unchanged. The complete
+affected file reaches nine passing cases before the remaining worker-start boundary fails. Its next
+assertion also exposed a POSIX-only SIGTERM marker assumption: Windows terminates the owned job.
+The test now directly observes disposal on both platforms, proving the worker has exited while its
+compiler files still exist, then verifies removal and exactly one disposal. POSIX retains its handler
+marker assertion. All four remaining cases pass in 11.86s (`builder-lifetime.json`); combined with the
+nine accepted cases this covers all 13 builder cases. No whole-file rerun or converged-gate pass is
+claimed from those focused results. These fixture corrections are distinct from compiler reuse.
+The native lifecycle yields after synchronous fixture setup so pending runner messages can drain
+before cold inventory work; no worker RPC deadline is changed.
+
+The actual Windows native watch case now **passes in 232.414s**, with its existing 300s scenario,
+20s event bounds and five-second helper bounds. Watch readiness is 105.698s, frontend readiness
+112.932s, missing-assembly refusal 136.033s and repair publication 230.689s. It proves no initialization
+on refusal, continued incumbent service, discovery of newly created repair-only inputs, captured main
+thread values `[11, 22]`, one publication notification and retirement of the old frontend. There is
+no unhandled runner error. An absent running test app is reported explicitly; this case proves build
+publication and frontend replacement, not an app reload. Package preparation is recorded separately.
+
+Source: VM `147df3291` plus the preserved reviewed patch in each run directory; source blobs and
+commands are retained with those reports. CLI types, focused lint and 53 tooling checks pass locally.
+No native execution ran on the daily Mac. Reports are under
+`C:\apack-setup\runs\startup-profile-147df3291` (CPU profile and builder checks) and
+`C:\apack-setup\runs\assembly-watch-reuse-147df3291` (preparation, patch, source, log, JSON and exit code).
+Validated source blobs match the commit and VM exactly: builder
+`3eab61f455b786ea79301b7ae59802f50e3ebeeb`, builder tests
+`860a35aa9b800f1a50542f511d0d943ee15f2cc7`, native lifecycle tests
+`2a0a6a649a8e751320ea3efb1ccee19853781b50`.
+The complete native lifecycle draft is now accepted; its original stash remains preserved.
+Converged platform/native coverage and final committed-source strict `--all` remain required.
+
+Off-machine evidence: `/private/tmp/apack-reuse-evidence-72ad6bae9.zip`. The accepted VM overlay
+is also retained in stash `Accepted compiler reuse and native watch recovery on 147df3291`.
+Its checkout was fast-forwarded to `72ad6bae9`; pre-existing launcher state remains untouched.
+No owned native processes remained after the terminal checks; VM deallocation was requested.

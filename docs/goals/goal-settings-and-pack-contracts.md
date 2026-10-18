@@ -141,28 +141,30 @@ the existing observer. The [refusal-input checkpoint](../evidence/build-input-sn
 repair invalidation and four real Node/Electron/helper cases on identical VM source. Source `9bbe9e505`
 repairs the next demonstrated defect: extended drive-root probes made subscription construction throw
 `EISDIR` and terminate the watcher. The [watch-root checkpoint](../evidence/build-input-snapshot-proof.md#windows-watch-root-checkpoint-2026-10-18)
-accepts all 18 watcher checks and a real frontend-report subscription replay. The actual lifecycle now
-detects configuration changes, refuses a missing assembly without initialization, retains the incumbent,
-and detects repair-only file creation; the new captured frontend executes value 22. Full recovery is
-still unaccepted. Source `595a7d8e1` fixes the reproduced publication boundary: separate retained Vite
-processes scan private staged output during Windows rename. The focused regression fails against the
-old code in 2.4s and passes with private `.apack` watching excluded; authored generated files and
-external dependency inputs remain watched. See the
+accepts all 18 watcher checks and a real frontend-report subscription replay.
+Source `595a7d8e1` fixes the reproduced publication boundary: separate retained Vite processes scan
+private staged output during Windows rename. The focused regression fails against the old code in
+2.4s and passes with private `.apack` watching excluded; authored generated files and external
+dependency inputs remain watched. See the
 [publication checkpoint](../evidence/build-input-snapshot-proof.md#windows-private-output-publication-checkpoint-2026-10-18).
-The subsequent complete native lifecycle times out at 300s: initial readiness takes 200.5s and the
-missing-assembly refusal arrives at 254.1s. Vitest also reports its worker communication timeout.
-It does not reach accepted repair publication. Do not count this as a pass or as another reproduced
-`EPERM`. Preserve local stash `540fa3cc844918afe1c634c00d24857451c5506f` and the current two-file draft.
-Before rerunning that lifecycle, attribute the actual slow setup with bounded phase/process evidence;
-standalone scans previously took about eight seconds and do not explain the slow integrated path.
-Do not raise deadlines or start a general compiler redesign on that evidence alone. Its 20s event
-checks and five-second helper bounds remain unchanged.
+The subsequent slow lifecycle was profiled: initial compiler dependency inventory takes 69.8s in
+synchronous reads; capture takes 33.4s. That attributes the blocked phase without claiming its underlying
+filesystem latency is explained. Source `72ad6bae9` makes frontend replacement share an unchanged,
+verified compiler installation; each frontend retains its private workspace, and the last owner releases the compiler.
+The complete Windows native watch lifecycle **passes in 232.4s**, under its unchanged 300s budget:
+missing-assembly refusal before initialization, incumbent service, failed-input repair subscription,
+repair-only creation, values 11 then 22, successful publication, one notification and old-frontend
+retirement. See the [reuse and recovery checkpoint](../evidence/build-input-snapshot-proof.md#verified-compiler-reuse-and-windows-recovery-2026-10-18).
+Preserve stash `540fa3cc844918afe1c634c00d24857451c5506f` and earlier failed reports as history.
+Do not repeat this accepted lifecycle for reassurance or infer acceptance for other loader paths.
+Next audit frontend startup JavaScript observations against the existing live subscription owner;
+preserve the accepted native repair path and ordinary ESM/custom-loader controls.
 Transitive/localized/outside-image probing and publisher/system-policy
 changes remain required beyond the recognized root-dependency prefixes closed here. Then close
 Electron application-context/`.local` and remaining runtime acceptance. Preserve helper
 cleanup through clean-platform/converged acceptance; do not reschedule the
-accepted basic Node/DLL controls. The unaccepted module-configuration draft is stashed; it is not an
-exclusion. Configured Node `.local` public-build acceptance remains `9d25152aa`; the separate full-CLI
+accepted basic Node/DLL controls. Earlier stashed controls remain preserved as evidence. Configured
+Node `.local` public-build acceptance remains `9d25152aa`; the separate full-CLI
 SxS timeout is preserved and not a passing gate. All other closure-register and final-gate requirements
 remain open. Preserve the validated VM overlays and failed controls, save evidence off-machine and
 deallocate after focused execution; the linked checkpoint records its exact source and power state.
