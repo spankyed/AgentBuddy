@@ -19,13 +19,18 @@ name: CI
 # one — two of the three borrowing a figure measured for the third. The jobs below reach two of the three
 # rungs, and between them that is both borrowed rows: `quick` through `npm run typecheck`'s legs, and
 # `scenario` through `external-pack-e2e`'s two steps, which `scripts/bounded.ts` bounds at that class. What
-# they do not reach is `suite` — the pool deadlines come from `npm run chain`, which nothing here runs, and
+# the regular jobs do not reach is `suite` — the pool deadlines come from `npm run chain`, and
 # `npm test --workspace <each>` bypasses the pool runner. `suite` is also the one rung whose factor was
-# measured, so nothing is waiting on it.
+# measured, so nothing is waiting on it. The explicit strict_chain route runs the complete chain,
+# including suite deadlines, on a disposable runner.
 
 on:
   workflow_dispatch:
     inputs:
+      strict_chain:
+        description: Run only the full strict chain with two cores on a disposable macOS runner
+        type: boolean
+        default: false
       compiler_windows:
         description: Run only the focused Windows compiler checks
         type: boolean
@@ -58,11 +63,11 @@ on:
 concurrency:
   group: ci-${{ github.ref }}-${{ inputs.compiler_windows && 'windows' || '' }}-${{ inputs.compiler_macos && 'macos' || '' }}-${{ inputs.compiler_linux && 'linux' || '' }}
   # Native diagnostic results must finish; full CI still supersedes older runs.
-  cancel-in-progress: ${{ !inputs.compiler_windows && !inputs.compiler_macos && !inputs.compiler_linux }}
+  cancel-in-progress: ${{ !inputs.strict_chain && !inputs.compiler_windows && !inputs.compiler_macos && !inputs.compiler_linux }}
 
 jobs:
   check:
-    if: ${{ !inputs.compiler_windows && !inputs.compiler_macos && !inputs.compiler_linux }}
+    if: ${{ !inputs.strict_chain && !inputs.compiler_windows && !inputs.compiler_macos && !inputs.compiler_linux }}
     runs-on: macos-14
     timeout-minutes: 25
 
@@ -152,7 +157,7 @@ jobs:
   # Builds tests/packs/external-pack with the apack CLI and runs its Playwright
   # suite from the pack dir against the built app — the third-party pack path.
   external-pack-e2e:
-    if: ${{ !inputs.compiler_windows && !inputs.compiler_macos && !inputs.compiler_linux }}
+    if: ${{ !inputs.strict_chain && !inputs.compiler_windows && !inputs.compiler_macos && !inputs.compiler_linux }}
     runs-on: macos-14
     timeout-minutes: 30
 
@@ -187,6 +192,12 @@ jobs:
           path: |
             tests/packs/external-pack/tests/results/
             tests/packs/external-pack/tests/screenshots/
+
+  strict-chain:
+    if: ${{ inputs.strict_chain }}
+    permissions:
+      contents: read
+    uses: ./.github/workflows/strict-chain.yml
 
   compiler-windows:
     if: ${{ inputs.compiler_windows }}

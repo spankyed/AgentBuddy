@@ -261,7 +261,7 @@ evidence without changing macOS security settings. Cause remains unproven in the
 The CLI integration config refuses macOS runs outside GitHub-hosted runners before loading test
 modules. Do not bypass that guard with fabricated runner variables; use disposable CI. This also applies
 when the root integration project or chain selects the CLI suite. Pure unit checks remain local.
-Run required final strict acceptance with `gh workflow run strict-chain.yml --ref <branch>`: the
+Run required final strict acceptance with `gh workflow run ci.yml --ref <branch> -f strict_chain=true`: the
 disposable macOS runner runs strict `--all` with two cores and retains per-step evidence.
 
 Before a checkpoint's broad run, state what it must prove and which required checks cover it. Run the

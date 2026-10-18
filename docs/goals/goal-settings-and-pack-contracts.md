@@ -1057,7 +1057,7 @@ Run focused checks as changes are made, `npm run chain` at validated checkpoints
 chain on the final committed tree. Include the affected real app/external-pack/packaged-authoring checks
 from the linked plans and current repository instructions; do not substitute schema acceptance for behavior.
 Record the final commit, exact commands/results and naming completion SHA.
-Use `gh workflow run strict-chain.yml --ref session/settings-pack-contracts` for disposable macOS
+Use `gh workflow run ci.yml --ref session/settings-pack-contracts -f strict_chain=true` for disposable macOS
 execution of `npm run chain -- --strict --all --cores 2 --no-classify`. The workflow preserves the
 console and per-step evidence even on failure. Launch it after the outstanding implementation and
 focused acceptance converge; adding the workflow does not establish a passed final gate.
