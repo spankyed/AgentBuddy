@@ -163,11 +163,18 @@ now goes through the existing file view while Node retains resolution. The real 
 passes in 44.54s under its original 60s bound, including probe delivery, actual nearer-package selection
 by a replacement, restoration and live Vue. The resolver hook is released with startup read ownership. See the
 [startup lookup checkpoint](../evidence/build-input-snapshot-proof.md#startup-package-lookup-observation-2026-10-18).
-Next audit the unresolved startup namespace cases against existing observations before implementing: dependencies of the asynchronous loader itself,
-initial bare launch requests/directory-parent URLs, and package-less or missing relative/index inputs.
-Do not infer those cases from the accepted transitive bare-package test. Keep the failed cold-capture
-and prototype reports; broader budget/converged acceptance remains open. Preserve the accepted native
-repair path without repeating it for reassurance.
+Source `ce0b5e00b` makes installation capture/verification yield between byte reads and accept the builder's
+cancellation signal; synchronous consumers retain the same traversal and content identity. Source
+`1e023b29f` observes initial bare launch requests, package-less CommonJS candidates, missing relative/index/main
+inputs and symlink targets through the existing startup owner. Nine focused resolution models pass;
+the matching Windows runtime case passes in 47.23s, including bare require/import flags, probe delivery,
+invalidation/restoration, replacement selection and live Vue. Cold attempts before the async repair
+blocked the test worker; the one startup scenario now has a measured 120s budget, with helper/freshness
+bounds unchanged. See the [namespace and capture checkpoint](../evidence/build-input-snapshot-proof.md#startup-namespace-and-responsive-capture-checkpoint-2026-10-18).
+Next audit the asynchronous loader's own resolution graph and package import/export mappings against
+existing observations before adding machinery. They are not proven by this checkpoint. Broader
+cold/aggregate budgets, remaining native/platform cases, B6 and final strict acceptance remain open.
+Preserve accepted paths without repeating them for reassurance.
 Transitive/localized/outside-image probing and publisher/system-policy
 changes remain required beyond the recognized root-dependency prefixes closed here. Then close
 Electron application-context/`.local` and remaining runtime acceptance. Preserve helper

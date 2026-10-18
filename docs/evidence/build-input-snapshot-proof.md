@@ -5086,3 +5086,58 @@ Off-machine evidence: `/private/tmp/apack-startup-lookup-evidence-47387a502.zip`
 also retained in stash `Accepted startup lookup and resolver lifetime on 201e56259`; no saved work was
 dropped. Its checkout was fast-forwarded to `47387a502`, preserving pre-existing launcher state.
 No owned native processes remained; VM deallocation was requested.
+
+
+## Startup namespace and responsive capture checkpoint — 2026-10-18
+
+Sources **`ce0b5e00b`** and **`1e023b29f`** close demonstrated startup lookup omissions and the
+installation capture phase's event-loop starvation. A small native Node-resolution model reproduces
+unchanged freshness after a missing relative module, directory index or package-less nearer index
+appears. The existing startup resolver observer now records file/directory classification, candidate
+package declarations (including beneath missing directories), main/index/registered-extension probes,
+and realpath targets through the common file view. Initial preload requests without a parent use the
+captured startup working directory. Node still resolves the original request; the observer neither
+chooses an export nor installs a resolver hook in the asynchronous loader worker.
+
+Installation capture and verification use asynchronous byte reads, sharing one private generator with
+the existing synchronous inventory reader. Graph identity, bytes, callbacks and ordering remain the
+same. The builder forwards its cancellation signal. Traversal metadata, copying and synchronous
+freshness consumers are not claimed to be fully asynchronous. Models prove exact sync/async parity
+and cancellation between reads; this is not a new cache or a weaker integrity check.
+
+Validation: all 23 package-input models passed locally; Windows accepts 22 with its POSIX mode case
+skipped. The final nine resolution models pass locally. The preceding Windows overlay also passed
+all nine resolution cases. Host/CLI types, focused lint/diff checks and all 53 timeout/subprocess
+inventory checks pass. No copied runtime or native fixture was executed on the daily-use Mac.
+The Windows runtime case `tracks retained Vite ESM preload and loader inputs without freezing Vue sources`
+passes in **47.230s**, one selected case, exit 0. Reviewed local and VM source hashes match. It exercises
+bare `--require`/`--import`, directory-main fallback, package-less CommonJS resolution, delivered rename
+probes, candidate creation/removal, transitive JS/data/declaration invalidation and restoration,
+actual nearer-package selection by a replacement, and live Vue HMR. Both frontends and the captured
+compiler close through their owners; no owned Node process remained at terminal inspection.
+
+Preserved failures distinguish causes: the original namespace attempt ended after 91.019s with the
+60s test deadline and worker RPC timeout before functional assertions. After async capture, the next
+attempt reached assertions in 70.775s without that RPC failure and exposed a regression: skipping a
+missing package directory also skipped its child declaration watch input. The corrected observer
+retains missing declarations while avoiding declarations beneath existing files. A focused model now
+asserts the delivered missing declaration. The same full runtime case then passes. The single scenario
+has a justified 120s allowance based on two earlier cold 91–96s attempts; five-second helper/freshness
+bounds and other scenarios are unchanged. The warm pass does not establish a cold performance bound.
+
+VM base was `b327210c2` with the reviewed source overlay. Retained runs under `C:\apack-setup\runs`:
+`startup-namespace-b327210c2` (cold failure), `startup-namespace-async-b327210c2` (functional
+counterexample), and **`startup-namespace-fixed-b327210c2`** (accepted). Each preserves logs,
+source identity/patch and result; the new helper is saved separately because untracked files do not
+appear in an ordinary diff. Model report: `C:\apack-setup\namespace-async-models-b327210c2.json`.
+
+Still unproven: the asynchronous loader's own resolution namespace, import/export-mapped candidates,
+other named platform/runtime cases and converged/final strict acceptance. These remain in the active
+goal; no support boundary or phase is removed. Do not rerun the accepted native recovery lifecycle
+as reassurance for this independent namespace repair.
+
+Off-machine archive: `/private/tmp/apack-startup-namespace-evidence-1e023b29f.zip` (22 retained files).
+VM overlay stash `291cb3c7d14b9a8bc56157aade7f4905a42a6f91` remains preserved, including the new
+helper. The VM checkout fast-forwarded to `1e023b29f` through a local bundle; its pre-existing launcher
+modification was left untouched. No pushes or CI dispatches were needed. VM deallocation was requested
+after terminal process inspection and evidence export.
