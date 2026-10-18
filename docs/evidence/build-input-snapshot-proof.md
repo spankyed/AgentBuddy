@@ -3616,9 +3616,28 @@ requires the lookup table for fallback when those addresses cannot be reused. Re
 provides a normal bound-import control; the parser must continue reading names and ordinals rather
 than cached addresses. A focused synthetic regression establishes that distinction.
 
-The corrected bound-import control still needs actual Windows execution. Bound-only behavior remains
-unverified: neither failing raw-loader fixture proves a valid supported case or authorizes an exclusion.
+Run [39093260230](https://github.com/spankyed/AgentBuddy/actions/runs/39093260230) on `d4e66555f`
+passes the corrected bound-import control in 38.81 seconds (40.58 seconds Vitest total), within the
+unchanged 60-second deadline. Ordinary loading, exact captured DLL ownership, freshness replacement/
+restoration, Vue updates and outside-library refusal all pass. Log:
+`/private/tmp/apack-pe-binding-39093260230.log`. Bound-only behavior remains unverified: neither failing raw-loader fixture proves a valid supported case or authorizes an exclusion.
 Do not implement address-to-export recovery based on these malformed controls. The existing explicit
 refusal remains; activation/SxS/.local, search-state reconciliation, preload/thread/publication and the
 other platform/final requirements remain open. All 24 focused metadata/OS-query tests, CLI types and
 focused lint/diff checks pass; no native code ran on the daily-use Mac.
+
+### Windows backend native publication checkpoint (2026-10-17)
+
+The PE fixture setup is shared by frontend and backend acceptance. Two additional cases exercise a
+backend startup preload and a content compiler's actual Worker. The fixture's Windows-only NAPI
+`libraryPath()` reads the full DLL filename with GetModuleHandleExW/GetModuleFileNameW; its ordinary
+control verifies that this identifies the value DLL, not the addon. This avoids Node's truncated report
+module inventory and adds no production helper or copied executable.
+
+Each case requires value 11 from a DLL inside the advertised input workspace, changed source bytes
+invalidating the sealed build record, exact byte/mode restoration restoring freshness, and an ordinary
+outside-PATH control. A subsequent captured build must refuse before DLL/NAPI initialization or proof
+publication while preserving the accepted output revision. The thread case requires a non-main thread
+and the existing startup input owner. No new coordinator, timeout increase or production admission
+change is introduced. These cases are pending disposable Windows execution; local CLI types and
+focused lint/diff checks pass.

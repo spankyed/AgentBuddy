@@ -5,6 +5,9 @@ import { execFileSync } from 'node:child_process';
 import { expect, it, vi } from 'vitest';
 import { packFixture } from '@apackdev/sdk/testing/pack-fixture';
 import { REPO_ROOT } from '@apackdev/host/build/packages-built';
+import { readPackBuild } from '@apackdev/host/packs';
+import { readPackBuildInputs, assertPackBuildInputsCurrent } from '@apackdev/host/build/pack-build-inputs';
+import { createPackBuilder } from '../../src/build/build-process.ts';
 import { relativeCompilerPath } from '@apackdev/host/build/compiler-inputs';
 import { formatNodeOptions, parseNodeOptions } from '@apackdev/host/build/source-resolution';
 import { captureCompilerInstallation, compilerPackageDirectory, type CompilerInstallation } from '../../src/build/compiler-installation.ts';
@@ -40,6 +43,43 @@ function bindValueImport(bytes: Buffer, address: bigint, timeStamp: number) {
   throw new Error('Fixture has no value DLL import');
 }
 
+function createPeNativeFixture(root: string, pack: string, bound = false) {
+  const compile = (args: string[]) => execFileSync('cl.exe', ['/nologo', '/MT', ...args], { cwd: root, timeout: 15_000 });
+  const headers = process.env.APACK_TEST_NODE_HEADERS;
+  const importLibrary = process.env.APACK_TEST_NODE_IMPORT_LIBRARY;
+  expect(headers, 'run the disposable Windows native SDK setup').toBeTruthy();
+  expect(importLibrary).toBeTruthy();
+  const binding = path.join(pack, 'binding');
+  fs.mkdirSync(binding);
+  const library = path.join(binding, 'apack_value.dll');
+  const addon = path.join(binding, 'addon.node');
+  const dllMarker = path.join(root, 'dll-initialized');
+  const addonMarker = path.join(root, 'addon-initialized');
+  const buildLibrary = (file: string, value: number) => {
+    fs.mkdirSync(path.dirname(file), { recursive: true });
+    const source = file + '.c';
+    fs.writeFileSync(source, `#include <windows.h>
+__declspec(dllexport) int native_value(void) { return ${value}; }
+BOOL WINAPI DllMain(HINSTANCE module, DWORD reason, LPVOID reserved) {
+  if (reason == DLL_PROCESS_ATTACH) {
+    HANDLE marker = CreateFileW(L${JSON.stringify(dllMarker)}, GENERIC_WRITE,
+      FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE, NULL, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
+    if (marker != INVALID_HANDLE_VALUE) CloseHandle(marker);
+  }
+  return TRUE;
+}`);
+    compile(['/LD', source, '/Fo' + path.join(root, 'value.obj'), '/link', '/INCREMENTAL:NO',
+      ...(bound ? ['/DYNAMICBASE:NO', '/FIXED'] : []),
+      '/OUT:' + file, '/IMPLIB:' + path.join(root, 'value.lib')]);
+  };
+  buildLibrary(library, 11);
+  const source = path.join(root, 'addon.c');
+  fs.writeFileSync(source, nativeAddonSource(addonMarker));
+  compile(['/LD', '/I' + headers!, source, '/Fo' + path.join(root, 'addon.obj'), '/link', '/INCREMENTAL:NO',
+    '/OUT:' + addon, path.join(root, 'value.lib'), importLibrary!]);
+  return { library, addon, dllMarker, addonMarker, buildLibrary };
+}
+
 it.runIf(process.platform === 'win32').each([
   { bound: false, label: 'named imports, Unicode paths' },
   { bound: true, label: 'bound imports with lookup fallback' },
@@ -54,42 +94,10 @@ it.runIf(process.platform === 'win32').each([
   let candidate: PackFrontend | undefined;
   const signal = new AbortController().signal;
   const normalize = (file: string) => fs.realpathSync.native(file).toLowerCase();
-  const compile = (args: string[]) => execFileSync('cl.exe', ['/nologo', '/MT', ...args], { cwd: root, timeout: 15_000 });
   try {
-    const headers = process.env.APACK_TEST_NODE_HEADERS;
-    const importLibrary = process.env.APACK_TEST_NODE_IMPORT_LIBRARY;
-    expect(headers, 'run the disposable Windows native SDK setup').toBeTruthy();
-    expect(importLibrary).toBeTruthy();
     packFixture({ at: pack, nodeModules: path.join(REPO_ROOT, 'node_modules'), manifest: { features: {} },
       files: { 'src/pack-entry-fe.ts': "export { default } from './View.vue';", 'src/View.vue': '<template>PE_BEFORE</template>' } });
-    const binding = path.join(pack, 'binding');
-    fs.mkdirSync(binding);
-    const library = path.join(binding, 'apack_value.dll');
-    const addon = path.join(binding, 'addon.node');
-    const dllMarker = path.join(root, 'dll-initialized');
-    const addonMarker = path.join(root, 'addon-initialized');
-    const buildLibrary = (file: string, value: number) => {
-      fs.mkdirSync(path.dirname(file), { recursive: true });
-      const source = file + '.c';
-      fs.writeFileSync(source, `#include <windows.h>
-__declspec(dllexport) int native_value(void) { return ${value}; }
-BOOL WINAPI DllMain(HINSTANCE module, DWORD reason, LPVOID reserved) {
-  if (reason == DLL_PROCESS_ATTACH) {
-    HANDLE marker = CreateFileW(L${JSON.stringify(dllMarker)}, GENERIC_WRITE,
-      FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE, NULL, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
-    if (marker != INVALID_HANDLE_VALUE) CloseHandle(marker);
-  }
-  return TRUE;
-}`);
-      compile(['/LD', source, '/Fo' + path.join(root, 'value.obj'), '/link', '/INCREMENTAL:NO',
-        ...(bound ? ['/DYNAMICBASE:NO', '/FIXED'] : []),
-        '/OUT:' + file, '/IMPLIB:' + path.join(root, 'value.lib')]);
-    };
-    buildLibrary(library, 11);
-    const source = path.join(root, 'addon.c');
-    fs.writeFileSync(source, nativeAddonSource(addonMarker));
-    compile(['/LD', '/I' + headers!, source, '/Fo' + path.join(root, 'addon.obj'), '/link', '/INCREMENTAL:NO',
-      '/OUT:' + addon, path.join(root, 'value.lib'), importLibrary!]);
+    const { library, addon, dllMarker, addonMarker, buildLibrary } = createPeNativeFixture(root, pack, bound);
     const metadata = parsePeLibraryMetadata(fs.readFileSync(addon));
     expect(metadata.machine).toBe(0x8664);
     expect(metadata.imports.map(imported => imported.name.toLowerCase())).toContain('apack_value.dll');
@@ -175,3 +183,94 @@ BOOL WINAPI DllMain(HINSTANCE module, DWORD reason, LPVOID reserved) {
     finally { await compiler?.dispose(); fs.rmSync(root, { recursive: true, force: true }); }
   }
 });
+
+it.runIf(process.platform === 'win32').each(['preload', 'thread'] as const)(
+  'captures PE %s inputs and preserves publication after outside-library refusal', async site => {
+    const root = fs.realpathSync.native(fs.mkdtempSync(path.join(os.tmpdir(), 'apack-pe-publication-')));
+    const pack = path.join(root, 'pack');
+    const previousOptions = process.env.NODE_OPTIONS;
+    const pathKey = Object.keys(process.env).sort().find(key => key.toUpperCase() === 'PATH') ?? 'PATH';
+    const previousPath = process.env[pathKey];
+    let builder: ReturnType<typeof createPackBuilder> | undefined;
+    try {
+      packFixture({ at: pack, nodeModules: path.join(REPO_ROOT, 'node_modules'), manifest: { features: {},
+        ...(site === 'thread' ? { content: { formats: { rows: { compiler: 'src/compiler.ts', entity: 'Relation', identity: ['name'] } },
+          sources: { rows: { path: 'src/value.txt', format: 'rows' } } } } : {}) },
+        files: { 'src/value.txt': 'input', 'tsconfig.json': JSON.stringify({ compilerOptions: { module: 'esnext', moduleResolution: 'bundler', skipLibCheck: true } }) } });
+      const { library, addon, dllMarker, addonMarker } = createPeNativeFixture(root, pack);
+      const ordinary = () => JSON.parse(execFileSync(process.execPath, ['-e',
+        `const addon = require(${JSON.stringify(addon)}); console.log(JSON.stringify({value:addon.read(),library:addon.libraryPath()}));`],
+      { encoding: 'utf8', timeout: 10_000, env: { ...process.env, NODE_OPTIONS: previousOptions } })) as { value: number; library: string };
+      const baseline = ordinary();
+      expect(baseline.value).toBe(11);
+      expect(fs.realpathSync.native(baseline.library).toLowerCase()).toBe(fs.realpathSync.native(library).toLowerCase());
+      fs.rmSync(dllMarker); fs.rmSync(addonMarker);
+      const proof = path.join(root, 'loaded.jsonl');
+      const load = `const addon = require(${JSON.stringify(addon)});
+const {threadId} = require('node:worker_threads');
+require('node:fs').appendFileSync(${JSON.stringify(proof)}, JSON.stringify({thread:threadId,value:addon.read(),library:addon.libraryPath(),workspace:process.env[${JSON.stringify(BUILD_INPUTS_DIRECTORY_ENV)}]}) + '\\n');`;
+      if (site === 'preload') {
+        const preload = path.join(root, 'preload.cjs');
+        fs.writeFileSync(preload, `if (globalThis[Symbol.for('apack.compiler.startup')]) { ${load} }`);
+        process.env.NODE_OPTIONS = formatNodeOptions([...parseNodeOptions(previousOptions), '--require', preload]);
+      } else {
+        fs.writeFileSync(path.join(pack, 'src/compiler.ts'), `import { Worker } from 'node:worker_threads';
+export default () => new Promise((resolve, reject) => {
+  const worker = new Worker(${JSON.stringify(`if (!globalThis[Symbol.for('apack.compiler.startup')]) throw new Error('Native thread has no input owner');
+${load}
+require('node:worker_threads').parentPort.postMessage('NATIVE');`)}, {eval:true});
+  worker.once('message', name => resolve([{entity:'Relation',name}]));
+  worker.once('error', reject);
+  worker.once('exit', code => { if (code) reject(new Error('Native thread exited with ' + code)); });
+});`);
+      }
+      builder = createPackBuilder(pack);
+      await builder.build({ args: ['--skip-fe'] });
+      const results = fs.readFileSync(proof, 'utf8').trim().split('\n').map(line => JSON.parse(line)) as {
+        thread: number; value: number; library: string; workspace: string;
+      }[];
+      expect(results.length).toBeGreaterThan(0);
+      for (const result of results) {
+        if (site === 'thread') expect(result.thread).toBeGreaterThan(0);
+        expect(result.value).toBe(11);
+        expect(path.basename(result.library)).toBe('apack_value.dll');
+        const relative = relativeCompilerPath(result.workspace, result.library);
+        expect(path.isAbsolute(relative)).toBe(false);
+        expect(relative).not.toMatch(/^\.\.(?:\\|\/|$)/);
+      }
+      const inputs = readPackBuildInputs(path.join(pack, 'dist'));
+      assertPackBuildInputsCurrent(pack, inputs);
+      const original = fs.readFileSync(library), mode = fs.statSync(library).mode & 0o777;
+      const replace = (bytes: Buffer | string) => {
+        const file = path.join(root, 'replacement.dll');
+        fs.writeFileSync(file, bytes, { mode }); fs.renameSync(file, library);
+      };
+      replace('CHANGED');
+      expect(() => assertPackBuildInputsCurrent(pack, inputs)).toThrow();
+      replace(original);
+      assertPackBuildInputsCurrent(pack, inputs);
+      const revision = readPackBuild(path.join(pack, 'dist')).revision;
+      const outside = path.join(root, 'outside');
+      fs.mkdirSync(outside);
+      const selected = path.join(outside, 'apack_value.dll');
+      fs.renameSync(library, selected);
+      process.env[pathKey] = [outside, previousPath].filter(Boolean).join(path.delimiter);
+      const escaped = ordinary();
+      expect(escaped.value).toBe(11);
+      expect(fs.realpathSync.native(escaped.library).toLowerCase()).toBe(fs.realpathSync.native(selected).toLowerCase());
+      fs.rmSync(dllMarker); fs.rmSync(addonMarker); fs.rmSync(proof);
+      await expect(builder.build({ args: ['--skip-fe'] })).rejects.toThrow();
+      expect(fs.existsSync(dllMarker)).toBe(false);
+      expect(fs.existsSync(addonMarker)).toBe(false);
+      expect(fs.existsSync(proof)).toBe(false);
+      expect(readPackBuild(path.join(pack, 'dist')).revision).toBe(revision);
+    } finally {
+      if (previousOptions === undefined) delete process.env.NODE_OPTIONS;
+      else process.env.NODE_OPTIONS = previousOptions;
+      if (previousPath === undefined) delete process.env[pathKey];
+      else process.env[pathKey] = previousPath;
+      try { await builder?.close(); }
+      finally { fs.rmSync(root, { recursive: true, force: true }); }
+    }
+  },
+);
