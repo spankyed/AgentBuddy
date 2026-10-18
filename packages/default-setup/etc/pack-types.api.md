@@ -2241,6 +2241,7 @@ interface ClaudeNativeTaskDetails {
     taskId: string;
     name: string;
     status: string;
+    canMessage: boolean;
     messages: {
         role: 'assistant' | 'user';
         text: string;
@@ -2300,7 +2301,8 @@ interface ClaudeNativeTerminalOwner {
     answerPlanDialog(response: ClaudeNativePlanDialogResponse): Promise<void>;
     getFileDialogs(): Promise<ClaudeNativeFileDialog[]>;
     answerFileDialog(response: ClaudeNativeFileDialogResponse): Promise<void>;
-    operateTask(taskId: string, operation: 'inspect' | 'stop'): Promise<{
+    operateTask(taskId: string, operation: 'inspect' | 'send' | 'stop', text?: string): Promise<{
+        sent?: boolean;
         stopped?: boolean;
         details?: ClaudeNativeTaskDetails;
     }>;
@@ -2603,8 +2605,9 @@ interface ClaudeTerminalTaskState {
     ownerId: string;
     taskId: string;
     revision: number;
-    operation: 'inspect' | 'stop';
+    operation: 'inspect' | 'send' | 'stop';
     status: 'done' | 'error' | 'pending';
+    sent?: boolean;
     details?: ClaudeNativeTaskDetails;
     problem?: string;
 }
@@ -2647,13 +2650,17 @@ type ClaudeTerminalViewRequest = {
     ownerId: string;
     columns: number;
     rows: number;
-} | {
+} | ({
     type: 'CLAUDE_TERMINAL_TASK';
     ownerId: string;
     revision: number;
     taskId: string;
+} & ({
     operation: 'inspect' | 'stop';
 } | {
+    operation: 'send';
+    text: string;
+})) | {
     type: 'CLAUDE_TERMINAL_CLOSE';
     ownerId: string;
 });
