@@ -7641,3 +7641,16 @@ proxy-construction error. Target creation now uses the intrinsic `Function.proto
 the callable's custom `bind` as an ordinary guarded service member. All 15 binding checks, host types,
 focused correctness lint and diff checks pass. This is a one-line correction to the same lifetime
 owner; it adds no service restriction, new public surface or native execution.
+
+### Windows process reader and repeated-build checkpoint (2026-10-18)
+
+Source `11cb737e2` replaces unsafe Windows diagnostic-report queries while retaining native PATH,
+actual loaded-DLL ownership and bounded helper lifetime. Short concurrency/native-environment regressions,
+57 Windows models and actual Node/Electron application startup controls pass; see the
+[reader evidence](build-input-snapshot-proof.md#windows-process-metadata-reader-without-diagnostic-reports--2026-10-18).
+Follow-up `9adb9073f` owns both fresh builders in test teardown and records the measured Windows
+two-capture budget. The [complete repeated-build case](build-input-snapshot-proof.md#windows-repeated-build-identity-and-owned-teardown--2026-10-18)
+passes in 224.648s, retaining cache/output identity, source paths, archive and disposal assertions.
+CLI types, focused lint and all 42 timeout-policy checks pass. Evidence is exported off the VM;
+no native fixture ran on the daily-use Mac. Remaining policy/platform obligations, B6 and final
+committed-source strict acceptance remain open across the full preserved goal.

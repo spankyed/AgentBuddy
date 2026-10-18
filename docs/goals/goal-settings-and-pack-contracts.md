@@ -94,6 +94,13 @@ preloads (`bbf05ec00`). These are source evidence, not a claim that the full str
 
 #### Current compiler checkpoint (2026-10-18)
 
+**Current outcome:** the Windows report-reader repair is committed as `11cb737e2`; the two-build
+lifecycle/budget repair is `9adb9073f`. The [public repeated-build case](../evidence/build-input-snapshot-proof.md#windows-repeated-build-identity-and-owned-teardown--2026-10-18)
+now passes in **224.65s**, preserving both fresh installations, source paths, stable cache/output
+identity, archive acceptance and complete disposal. This closes that named failure; it does not close
+the remaining policy/platform cases, B6 or final strict acceptance. Earlier failure states below are
+checkpoint history, superseded by this outcome rather than instructions to repeat accepted work.
+
 Source `c27e78a06` and its [ownership evidence](../evidence/build-input-snapshot-proof.md#compiler-installation-namespace-ownership--2026-10-18)
 exclude private installation ancestor probes from replayable source identity. Inert owner regression,
 mutation, types and lint are accepted; the public two-installation check instead ended with native
@@ -159,9 +166,11 @@ actual reader; the rejected candidate remains stashed. The [replacement process-
 now removes Windows report calls, retaining native PATH and exact loaded-DLL meaning through the existing
 metadata/lifetime owner. Both short regressions, 57 models and actual packaged Node/Electron startup
 controls pass. The uninstrumented public build now completes its first build/replay/archive without
-heap corruption; its second fresh build reaches the 240s limit. Repeated-build identity remains unaccepted.
-Next fix that case's owned teardown and measured two-capture Windows budget, retaining every assertion,
-then close the remaining policy/platform cases, B6 and final strict acceptance. No other phase is waived.
+heap corruption; its second fresh build reaches the 240s limit. Follow-up `9adb9073f` fixes that case's
+owned teardown and measured two-capture Windows budget; the complete repeated-build case now passes
+as linked above. Next reconcile the remaining policy/platform obligations against current code and
+recorded acceptance before adding implementation, then B6 and final strict acceptance. No other phase
+is waived.
 
 **Execution boundary:** the user recovered the daily-use Mac by restarting after unrelated apps
 stopped launching. Cause remains unproven. Use the approved

@@ -5688,3 +5688,43 @@ helper's bytes, focused/runtime/model/repeat JSON reports and logs, and package 
 unsafe-report reproducer and rejected-lock stashes remain preserved. No native execution ran on the
 lead developer's Mac. Remaining policy/platform cases, repeated-build completion, B6 and final strict
 committed-source `--all` remain open; no goal phase is excluded.
+
+## Windows repeated-build identity and owned teardown — 2026-10-18
+
+Source **`11cb737e2`** removes the unsafe diagnostic-report calls. Follow-up **`9adb9073f`** owns
+each independent builder in the existing test teardown before starting it. Each build still creates
+and closes a fresh builder; timeout teardown can now cancel and drain the active builder before
+deleting fixture roots. `close()` is idempotent and awaited. No production API or compiler behavior
+changes in this follow-up.
+
+Only this two-cold-installation Windows scenario gets a **360s** budget. The preceding observed
+first build took 155.705s and archive acceptance reached 169.409s, leaving too little of 240s for a
+second complete capture/build and cleanup. macOS retains 120s, helper/watch/query limits are unchanged,
+and every identity, source-path, archive and disposal assertion remains. The named timeout exception
+records those measurements rather than raising the suite's budget.
+
+On Windows Server 2025 x64 / Node 23.11.1, base `11cb737e2` plus the exact two-file patch committed
+as `9adb9073f`, one worker/two cores:
+
+- The selected public repeated-build case **passes in 224.648s**; 15 unrelated cases are skipped.
+- First build completes at **101.541s**, input replay at **106.141s**, archive at **115.002s**,
+  and the second fresh build at **220.093s**.
+- Both private compiler installations are removed; generated source paths, cache stamp and sealed
+  output revision retain their assertions. There is no native crash or EPERM cleanup failure.
+- All **42** timeout-policy checks pass. CLI typechecking, focused correctness lint and diff checks pass.
+
+This accepts the named repeated-build behavior on the repaired Windows source. It is not a full
+integration run, a cold-run performance guarantee, proof that the timeout-cancellation branch executed,
+or the final strict gate. Existing builder cancellation checks remain required through convergence.
+
+VM evidence: `C:\apack-setup\runs\two-build-owned-11cb737e2` (source SHA, exact patch, log, JSON report
+and exit 0). Off-machine export: `/private/tmp/apack-two-build-owned-11cb737e2.zip`, inspected as five
+entries with one passing selected test and no failures. The prior process-reader proof is also exported
+as `/private/tmp/apack-pe-process-evidence-11cb737e2.zip` (18 entries, no dependency trees). VM stash
+**`1e6fcf2c5911d21ba6c51c00601c1d6774856b07`** preserves the executed reader overlay before its
+fast-forward to `11cb737e2`; earlier stashes remain untouched. Terminal inspection found no remaining
+Node/Electron process. No native/compiler fixture ran on the developer's Mac.
+
+The next action is to reconcile the finite policy/platform obligations against current implementation
+and accepted cases, then close actual omissions before B6 and final committed-source strict `--all`.
+No goal phase, original manifest requirement or required acceptance gate is excluded.
