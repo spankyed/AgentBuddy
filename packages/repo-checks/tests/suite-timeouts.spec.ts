@@ -28,7 +28,7 @@ import { overrideKey, sizeOf, specFilesUnder, timeoutOverrides, type TimeoutOver
  */
 const TIMEOUT_EXCEPTIONS: Record<string, string> = {
   'packages/apack-cli/tests/build/compiler-pe-libraries.integration.spec.ts > captures PE %s inputs and preserves publication after outside-library refusal':
-    'Windows run 39094144526 emits its first actual backend runtime near the 60-second deadline, before freshness/restoration and the refused second build complete. This Windows-only publication scenario has a 120-second bound with phase timings; its inputs and assertions are unchanged. Complete runtime acceptance remains pending.',
+    'Windows run 39094144526 emits its first backend runtime near the 60-second deadline, before freshness/restoration and refusal complete. Run 39095177818 passes the preload/thread scenarios in 62.55s/61.63s. Keep the 120-second scenario bound and phase timings; the combined preload/thread case additionally verifies process-wide DLL reuse.',
   'packages/apack-cli/tests/build/compiler-native-libraries.integration.spec.ts > watches external Vite native changes and repairs a failed generation through newly discovered inputs':
     'Initial backend/Vite publication, native dependency refusal and watched repair are sequential. Hosted macOS run 39079072090 detects the rebuild but expires its separate console wait. Awaiting the actual builds passes in 98.76 seconds on run 39079492068. Retain the original 120-second scenario budget, separate 20-second missing-event bounds and every incumbent/value/retirement assertion.',
   'packages/apack-cli/tests/commands/scaffold.integration.spec.ts > adds a step (declared, shipped in build/steps.build.mjs) and a service that build':
