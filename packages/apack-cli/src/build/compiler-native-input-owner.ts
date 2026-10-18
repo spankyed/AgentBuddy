@@ -12,7 +12,6 @@ export interface CapturedNativeModule { readonly source: string; readonly captur
 export function createCompilerNativeInputs(original: ReturnType<typeof createCompilerFileView>, workspace: string,
   paths: readonly CompilerPathMapping[], nativeEnvironment: CompilerLibraryEnvironment, options: {
     capture: 'package' | 'images';
-    retainTree?: boolean;
     findModule?(file: string): CapturedNativeModule | undefined;
     onCapture?(): void;
   }) {
@@ -102,7 +101,7 @@ export function createCompilerNativeInputs(original: ReturnType<typeof createCom
     dispose() {
       withoutCompilerFileReads(() => {
         stopNativeModules();
-        try { original.dispose(); } finally { if (!options.retainTree) tree?.dispose(); }
+        try { original.dispose(); } finally { tree?.dispose(); }
       });
     },
   };

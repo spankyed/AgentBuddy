@@ -37,7 +37,8 @@ type ProjectMetadata = (file: string, bytes: Buffer, readPath: (file: string) =>
 
 /** Owned queries can admit a new namespace; previously captured source bytes cannot change. */
 export function createCompilerReadTree(snapshot: CompilerReadSnapshot, paths: readonly CompilerPathMapping[], projectMetadata?: ProjectMetadata) {
-  const parent = process.env[BUILD_INPUTS_DIRECTORY_ENV] ?? os.tmpdir();
+  const workspace = process.env[BUILD_INPUTS_DIRECTORY_ENV];
+  const parent = workspace ?? os.tmpdir();
   if (!path.isAbsolute(parent)) throw new Error('Compiler input workspace must be absolute');
   const directory = fs.realpathSync.native(fs.mkdtempSync(path.join(parent, 'apack-inputs-')));
   const roots = new Map<string, string>();
@@ -53,7 +54,9 @@ export function createCompilerReadTree(snapshot: CompilerReadSnapshot, paths: re
   const dispose = () => {
     if (disposed) return;
     disposed = true;
-    try { removeCompilerReadTree(directory); }
+    // Loaded DLLs cannot be unlinked on Windows. A worker's parent removes the entire
+    // input workspace after the process settles; local disposal only closes this frame.
+    try { if (!workspace) removeCompilerReadTree(directory); }
     finally { for (const state of [directories, entries, files, links, locations]) state.clear(); }
   };
   const mappings = () => [...roots, ...dataRoots].map(([source, captured]) => ({ source, captured }));

@@ -68,7 +68,7 @@ export function beginFrontendNativeInputs(root: string, workspace: string, paths
     previous = contents;
   });
   const native = createCompilerNativeInputs(view, workspace, paths, nativeEnvironment, {
-    capture: 'images', retainTree: true, onCapture: save,
+    capture: 'images', onCapture: save,
     findModule(file) {
       for (const context of reports()) {
         const module = context.modules.find(module => module.source === file);

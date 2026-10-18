@@ -237,6 +237,7 @@ require('node:worker_threads').parentPort.postMessage('NATIVE');`)}, {eval:true}
         const relative = relativeCompilerPath(result.workspace, result.library);
         expect(path.isAbsolute(relative)).toBe(false);
         expect(relative).not.toMatch(/^\.\.(?:\\|\/|$)/);
+        expect(fs.existsSync(result.workspace)).toBe(false);
       }
       const inputs = readPackBuildInputs(path.join(pack, 'dist'));
       assertPackBuildInputsCurrent(pack, inputs);

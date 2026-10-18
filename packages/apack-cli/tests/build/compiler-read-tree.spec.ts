@@ -59,6 +59,22 @@ it('lets the parent remove an abandoned read-only workspace without following fo
   expect(chmod.mock.calls.map(([file]) => file)).not.toContain(link);
 });
 
+it('closes a worker frame while retaining its bytes until the parent removes the workspace', () => {
+  const workspace = fs.realpathSync.native(fs.mkdtempSync(path.join(os.tmpdir(), 'apack-worker-inputs-')));
+  roots.push(workspace);
+  vi.stubEnv(BUILD_INPUTS_DIRECTORY_ENV, workspace);
+  const file = path.join(workspace, 'source.node');
+  const tree = createCompilerReadTree({ files: [{ file, bytes: Buffer.from('OWNED'), mode: 0o644 }], locations: [], links: [] }, []);
+  trees.push(tree);
+  const copy = tree.path(file);
+  tree.dispose();
+  expect(() => tree.assertCurrent()).toThrow(/outlived/);
+  expect(fs.readFileSync(copy, 'utf8')).toBe('OWNED');
+  removeCompilerReadTree(workspace);
+  expect(fs.existsSync(copy)).toBe(false);
+  expect(fs.existsSync(workspace)).toBe(false);
+});
+
 it('preserves owned file/directory links, dangling links and executable bits after originals disappear', () => {
   const root = fs.realpathSync.native(fs.mkdtempSync(path.join(os.tmpdir(), 'apack-read-tree-source-')));
   roots.push(root);
