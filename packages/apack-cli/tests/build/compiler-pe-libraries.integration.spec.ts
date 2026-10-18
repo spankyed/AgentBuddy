@@ -95,10 +95,13 @@ BOOL WINAPI DllMain(HINSTANCE module, DWORD reason, LPVOID reserved) {
   return { library, addon, dllMarker, addonMarker, buildLibrary, buildAddon };
 }
 
-/** Change only a private copy: DotLocal is suppressed by Node's embedded application manifest. */
-function createNodeWithoutApplicationManifest(root: string) {
-  const executable = path.join(root, 'node.exe');
-  fs.copyFileSync(process.execPath, executable);
+/** Change only a private runtime: an embedded application manifest takes precedence over sidecars. */
+function createPeRuntimeWithoutApplicationManifest(root: string, runtime: 'Node' | 'Electron' = 'Node') {
+  const electron = runtime === 'Electron';
+  const executable = electron ? copyPeRuntimeFixture(createRequire(import.meta.url)('electron') as string, root, true)
+    : path.join(root, 'node.exe');
+  if (!electron) fs.copyFileSync(process.execPath, executable);
+  expect(path.dirname(executable)).toBe(root);
   const manifests = parsePeLibraryMetadata(fs.readFileSync(executable)).manifests.filter(item => item.path[1] === 1);
   expect(manifests.length).toBeGreaterThan(0);
   const source = path.join(root, 'remove-manifest.c'), tool = path.join(root, 'remove-manifest.exe');
@@ -144,7 +147,7 @@ it.runIf(process.platform === 'win32')('refuses Node .local overrides through th
     packFixture({ at: pack, nodeModules: path.join(REPO_ROOT, 'node_modules'), manifest: { features: {} },
       files: { 'src/pack-entry-fe.ts': "export { default } from './View.vue';", 'src/View.vue': '<template>LOCAL</template>' } });
     const { addon, dllMarker, addonMarker, buildLibrary } = createPeNativeFixture(root, pack);
-    const executable = createNodeWithoutApplicationManifest(runtime);
+    const executable = createPeRuntimeWithoutApplicationManifest(runtime);
     const library = path.join(runtime, 'apack_value.dll');
     buildLibrary(library, 22);
     fs.writeFileSync(executable + '.local', '');
@@ -196,6 +199,7 @@ it.runIf(process.platform === 'win32').each([
   ['Node', 'application'],
   ['Node', 'module'],
   ['Electron', 'module'],
+  ['Electron', 'application'],
 ] as const)('preserves %s %s-context assembly selection and refuses it through compiler startup before initialization', async (runtimeName, kind) => {
   const electron = runtimeName === 'Electron';
   const root = fs.realpathSync.native(fs.mkdtempSync(path.join(os.tmpdir(), `apack-${runtimeName.toLowerCase()}-assembly-`)));
@@ -205,10 +209,20 @@ it.runIf(process.platform === 'win32').each([
     fs.mkdirSync(runtime);
     packFixture({ at: pack, nodeModules: path.join(REPO_ROOT, 'node_modules'), manifest: { features: {} } });
     const { addon, dllMarker, addonMarker, buildLibrary, buildAddon } = createPeNativeFixture(root, pack);
-    const executable = electron ? createRequire(import.meta.url)('electron') as string : createNodeWithoutApplicationManifest(runtime);
+    const executable = kind === 'application' ? createPeRuntimeWithoutApplicationManifest(runtime, runtimeName)
+      : electron ? createRequire(import.meta.url)('electron') as string : createPeRuntimeWithoutApplicationManifest(runtime);
     const runtimeSource = electron ? path.dirname(executable) : runtime;
     const library = path.join(kind === 'application' ? runtime : path.join(path.dirname(addon), 'alternate'), 'apack.fixture.value/apack_value.dll');
     const outsideLibrary = kind === 'application' ? library : path.join(root, 'outside/apack_outside.dll');
+    const hostLink: string[] = [];
+    if (electron) {
+      const hook = path.join(root, 'host-hook.obj');
+      execFileSync('cl.exe', ['/nologo', '/MT', '/c', path.join(REPO_ROOT, 'node_modules/node-gyp/src/win_delay_load_hook.cc'),
+        '/DHOST_BINARY="node.exe"', '/Fo' + hook], { cwd: root, timeout: 15_000 });
+      hostLink.push(hook, 'delayimp.lib', '/DELAYLOAD:node.exe');
+      if (kind === 'application') buildAddon(undefined, hostLink);
+    }
+
     buildLibrary(library, 22);
     const identity = '<assemblyIdentity type="win32" name="apack.fixture.value" version="1.0.0.0" processorArchitecture="amd64"/>';
     fs.writeFileSync(path.join(path.dirname(library), 'apack.fixture.value.manifest'),
@@ -219,13 +233,6 @@ it.runIf(process.platform === 'win32').each([
     else {
       const manifestFile = path.join(root, 'addon.manifest');
       fs.writeFileSync(manifestFile, manifest);
-      const hostLink: string[] = [];
-      if (electron) {
-        const hook = path.join(root, 'host-hook.obj');
-        execFileSync('cl.exe', ['/nologo', '/MT', '/c', path.join(REPO_ROOT, 'node_modules/node-gyp/src/win_delay_load_hook.cc'),
-          '/DHOST_BINARY="node.exe"', '/Fo' + hook], { cwd: root, timeout: 15_000 });
-        hostLink.push(hook, 'delayimp.lib', '/DELAYLOAD:node.exe');
-      }
       buildAddon(manifestFile, hostLink);
       buildLibrary(outsideLibrary, 22, { symbol: 'outside_value' });
       const dependencySource = path.join(root, 'dependency.c');
