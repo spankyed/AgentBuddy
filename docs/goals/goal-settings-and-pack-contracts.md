@@ -127,6 +127,14 @@ One dictionary owns candidate traversal and validation; the extra context rebind
 and outside-image private probing, publisher/system-policy acceptance, other platform cases, B6 and
 final strict `--all` remain required; this does not close all Windows policy behavior.
 
+Source `604981200` repairs the [explicit localized-candidate omission](../evidence/build-input-snapshot-proof.md#declared-localized-private-candidate-ownership--2026-10-18):
+original missing-probe failure in 9.586s; final direct/transitive/localized cases pass in
+6.327s/5.951s/5.967s with unchanged budgets. Explicit `en-US` selection, candidate appearance/restoration
+and refused-context repair inputs are accepted. Wildcard/user/system fallback and MUI satellite
+behavior remain unverified within the existing localized/policy obligation, alongside outside-image
+probing, publisher/system-policy inputs, other platform cases, B6 and final strict `--all`. No exclusion
+or reduction of the full goal is made.
+
 **Execution boundary:** the user recovered the daily-use Mac by restarting after unrelated apps
 stopped launching. Cause remains unproven. Use the approved
 [Windows development VM](../references/guides/windows-development-vm.md) for interactive Windows

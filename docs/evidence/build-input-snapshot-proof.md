@@ -5449,3 +5449,42 @@ launcher change and earlier stashes remain untouched. Terminal inspection finds 
 deallocation is requested after export. Localized and outside-image probing, publisher/system-policy
 input acceptance, other named platform cases, repeated-build identity, B6 and final strict `--all` remain
 required. Previously accepted full watch/startup lifecycles were not repeated to diagnose this omission.
+
+
+## Declared localized private candidate ownership — 2026-10-18
+
+Source **`604981200`** repairs the explicit-language omission in the existing private candidate traversal.
+The helper previously skipped every dependency with a nonempty, non-wildcard language. A localized
+variant of the existing DLL-context control uses an `en-US` declaration and language-specific private
+folders. Against unchanged production code, Windows selects the configured assembly correctly, but the
+expected missing preferred localized manifest is absent from observations: **9.586s**, one selected
+failing case. This fails before candidate creation; it is evidence of an omitted probe, not execution
+of a later stale-view assertion.
+
+The same traversal now observes the declared culture, its tag prefixes and neutral paths. Windows
+continues to choose the assembly; this is conservative candidate observation, not a language resolver.
+No new input format, policy setting, scanner or process owner is introduced. Existing XML/resource
+inspection, transitive traversal and final candidate validation remain shared.
+
+Matching-source Windows x64 acceptance passes the three affected cases: **direct 6.327s; transitive
+5.951s; localized 5.967s**. The localized case proves actual Windows path/value selection changes from
+22 to 33 when the preferred assembly appears, source freshness invalidates/restores, configuration
+changes are tracked and refused contexts deliver the missing localized repair manifest. Resource/admission
+inspection leaves the DLL initialization marker absent. Each keeps its original 60s budget, one worker
+and two cores. CLI types, focused correctness lint and diff checks pass. The only post-run source edit
+is indentation of the candidate loop. No extra run follows that formatting change.
+
+This accepts the explicit `en-US` scenario. Tag-prefix observation alone does not establish Windows'
+full wildcard/user/system language fallback or MUI satellite behavior. Those remain unverified under
+the existing localized/policy obligation; no support exclusion is made. Outside-image probing,
+publisher/system-policy changes, remaining platform combinations, repeated-build identity, B6 and final
+committed-source strict `--all` remain required.
+
+Base `225af016f` plus executed patches. VM evidence under `C:\apack-setup\runs`:
+`localized-original-225af016f` and `localized-fixed-225af016f`; original failed fixture:
+`C:\Users\apackdev\AppData\Local\Temp\apack-pe-redirection-bK3Z8S`.
+Export, including fixture, scripts, source, preparation, reports and logs:
+`/private/tmp/apack-localized-context-evidence-225af016f.zip`.
+VM stash **`930efe5d0bb960ca67264f533e5f058a105a30c2`** preserves the executed repair. Earlier stashes
+and the pre-existing launcher change are untouched. No Node/Electron process remained at terminal
+inspection; deallocation is requested after export. No native execution occurred on the daily-use Mac.
