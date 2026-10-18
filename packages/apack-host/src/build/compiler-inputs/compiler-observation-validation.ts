@@ -46,7 +46,11 @@ export function assertNativeCompilerObservations(observations: CompilerInputObse
     const current = new Map(createCompilerInputObservations(observations.root,
       [view.observations(), packages.snapshot()]).snapshot().entries);
     for (const [query, expected] of observations.entries) {
-      if (current.get(query) !== expected) throw new Error(`Compiler startup input changed: ${query}`);
+      const actual = current.get(query);
+      if (actual !== expected) {
+        const details = JSON.parse(query)[0] === 'namespace' ? ` (expected ${expected}; observed ${actual ?? 'unrecorded'})` : '';
+        throw new Error(`Compiler startup input changed: ${query}${details}`);
+      }
     }
   } finally { view.dispose(); }
 }

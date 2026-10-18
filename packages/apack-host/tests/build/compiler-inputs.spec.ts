@@ -5,6 +5,18 @@ import { spawnSync } from 'node:child_process';
 import { expect, it } from 'vitest';
 import { createCompilerFileView, assertNativeCompilerObservations } from '../../src/build/compiler-inputs/index.ts';
 
+it('attributes namespace refusals with recorded and replayed states', () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'apack-namespace-refusal-'));
+  const file = path.join(root, 'added');
+  const view = createCompilerFileView(root);
+  try {
+    view.captureDataLocation(file, 'file');
+    const observations = view.observations();
+    fs.mkdirSync(file);
+    expect(() => assertNativeCompilerObservations(observations)).toThrow(/expected .*missing.*; observed .*directory/);
+  } finally { view.dispose(); fs.rmSync(root, { recursive: true, force: true }); }
+});
+
 it('keeps native, authored and extended root spellings in one input identity', () => {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'apack-root-spellings-'));
   const canonical = fs.realpathSync.native(root);
