@@ -184,7 +184,7 @@ it.runIf(process.platform === 'win32').each([
   }
 });
 
-it.runIf(process.platform === 'win32').each(['preload', 'thread', 'preload-and-thread'] as const)(
+it.runIf(process.platform === 'win32').each(['preload', 'thread', 'preload-and-thread', 'preload-and-module'] as const)(
   'captures PE %s inputs and preserves publication after outside-library refusal', async site => {
     const root = fs.realpathSync.native(fs.mkdtempSync(path.join(os.tmpdir(), 'apack-pe-publication-')));
     const pack = path.join(root, 'pack');
@@ -204,10 +204,12 @@ it.runIf(process.platform === 'win32').each(['preload', 'thread', 'preload-and-t
       const ordinaryScript = site === 'preload-and-thread'
         ? `${ordinaryLoad} new (require('node:worker_threads').Worker)(${JSON.stringify(ordinaryLoad + " require('node:worker_threads').parentPort.postMessage(result);")}, {eval:true})
             .once('message', worker => console.log(JSON.stringify({...result, worker})));`
-        : ordinaryLoad + ' console.log(JSON.stringify(result));';
+        : site === 'preload-and-module'
+          ? ordinaryLoad + ` const compiler = require(${JSON.stringify(addon)}); console.log(JSON.stringify({...result,compiler:{value:compiler.read(),library:compiler.libraryPath()}}));`
+          : ordinaryLoad + ' console.log(JSON.stringify(result));';
       const ordinary = () => JSON.parse(execFileSync(process.execPath, ['-e',
         ordinaryScript], { encoding: 'utf8', timeout: 10_000, env: { ...process.env, NODE_OPTIONS: previousOptions } })) as {
-        value: number; library: string; worker?: { value: number; library: string };
+        value: number; library: string; worker?: { value: number; library: string }; compiler?: { value: number; library: string };
       };
       const baseline = ordinary();
       expect(baseline.value).toBe(11);
@@ -216,22 +218,30 @@ it.runIf(process.platform === 'win32').each(['preload', 'thread', 'preload-and-t
         expect(baseline.worker?.value).toBe(11);
         expect(fs.realpathSync.native(baseline.worker!.library).toLowerCase()).toBe(fs.realpathSync.native(library).toLowerCase());
       }
+      if (site === 'preload-and-module') expect(baseline.compiler).toEqual({value:11,library:baseline.library});
       checkpoint('ordinary loader control');
       fs.rmSync(dllMarker); fs.rmSync(addonMarker);
       const proof = path.join(root, 'loaded.jsonl');
-      const load = `const addon = require(${JSON.stringify(addon)});
+      const load = (phase: 'startup' | 'compiler') => `const addon = require(${JSON.stringify(addon)});
 const {threadId} = require('node:worker_threads');
-require('node:fs').appendFileSync(${JSON.stringify(proof)}, JSON.stringify({thread:threadId,value:addon.read(),library:addon.libraryPath(),workspace:process.env[${JSON.stringify(BUILD_INPUTS_DIRECTORY_ENV)}]}) + '\\n');`;
+require('node:fs').appendFileSync(${JSON.stringify(proof)}, JSON.stringify({phase:${JSON.stringify(phase)},thread:threadId,value:addon.read(),library:addon.libraryPath(),workspace:process.env[${JSON.stringify(BUILD_INPUTS_DIRECTORY_ENV)}]}) + '\\n');`;
       if (site !== 'thread') {
         const preload = path.join(root, 'preload.cjs');
-        fs.writeFileSync(preload, `if (globalThis[Symbol.for('apack.compiler.startup')]) { ${load} }`);
+        fs.writeFileSync(preload, `if (globalThis[Symbol.for('apack.compiler.startup')]) { ${load('startup')} }`);
         process.env.NODE_OPTIONS = formatNodeOptions([...parseNodeOptions(previousOptions), '--require', preload]);
       }
-      if (site !== 'preload') {
+      if (site === 'preload-and-module') {
+        fs.writeFileSync(path.join(pack, 'src/compiler.ts'), `import { createRequire } from 'node:module';
+const require = createRequire(import.meta.url);
+export default () => {
+  ${load('compiler')}
+  return [{entity:'Relation',name:'NATIVE'}];
+};`);
+      } else if (site !== 'preload') {
         fs.writeFileSync(path.join(pack, 'src/compiler.ts'), `import { Worker } from 'node:worker_threads';
 export default () => new Promise((resolve, reject) => {
   const worker = new Worker(${JSON.stringify(`if (!globalThis[Symbol.for('apack.compiler.startup')]) throw new Error('Native thread has no input owner');
-${load}
+${load('compiler')}
 require('node:worker_threads').parentPort.postMessage('NATIVE');`)}, {eval:true});
   worker.once('message', name => resolve([{entity:'Relation',name}]));
   worker.once('error', reject);
@@ -242,12 +252,17 @@ require('node:worker_threads').parentPort.postMessage('NATIVE');`)}, {eval:true}
       await builder.build({ args: ['--skip-fe'] });
       checkpoint('initial build completed');
       const results = fs.readFileSync(proof, 'utf8').trim().split('\n').map(line => JSON.parse(line)) as {
-        thread: number; value: number; library: string; workspace: string;
+        phase: 'startup' | 'compiler'; thread: number; value: number; library: string; workspace: string;
       }[];
       expect(results.length).toBeGreaterThan(0);
       if (site === 'preload-and-thread') {
         expect(results.some(result => result.thread === 0)).toBe(true);
         expect(results.some(result => result.thread > 0)).toBe(true);
+      }
+      if (site === 'preload-and-module') {
+        expect(results.some(result => result.phase === 'startup')).toBe(true);
+        expect(results.some(result => result.phase === 'compiler' && result.thread === 0)).toBe(true);
+        expect(new Set(results.map(result => result.library.toLowerCase())).size).toBe(1);
       }
       for (const result of results) {
         if (site === 'thread') expect(result.thread).toBeGreaterThan(0);
@@ -283,6 +298,7 @@ require('node:worker_threads').parentPort.postMessage('NATIVE');`)}, {eval:true}
         expect(escaped.worker?.value).toBe(11);
         expect(fs.realpathSync.native(escaped.worker!.library).toLowerCase()).toBe(fs.realpathSync.native(selected).toLowerCase());
       }
+      if (site === 'preload-and-module') expect(escaped.compiler).toEqual({value:11,library:escaped.library});
       checkpoint('outside loader control');
       fs.rmSync(dllMarker); fs.rmSync(addonMarker); fs.rmSync(proof);
       await expect(builder.build({ args: ['--skip-fe'] })).rejects.toThrow();
