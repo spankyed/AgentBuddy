@@ -6,7 +6,7 @@ const query = vi.hoisted(() => vi.fn());
 vi.mock('node:child_process', () => ({ execFileSync: query }));
 
 const library = 'C:\\capture\\' + 'nësted\\'.repeat(30) + 'value.dll';
-const metadata = { libraries: [library], safeSearch: true, knownDlls: ['kernel32.dll'] };
+const metadata = { libraries: [library], safeSearch: true, devOverride: false, knownDlls: ['kernel32.dll'] };
 beforeEach(() => {
   query.mockReset().mockReturnValue(JSON.stringify(metadata));
   vi.spyOn(fs, 'statSync').mockReturnValue({ isFile: () => true } as fs.Stats);

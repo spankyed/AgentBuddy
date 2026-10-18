@@ -12,6 +12,7 @@ export function assertCapturedPeLibraries(entry: string, packageRoot: string, in
   loadedLibraries: readonly string[];
   arch: string;
   read(file: string): Buffer | undefined;
+  directoryExists(file: string): boolean;
   realpath(file: string): string;
 }): void {
   const environment = input.environment;
@@ -28,6 +29,25 @@ export function assertCapturedPeLibraries(entry: string, packageRoot: string, in
   const refuse = (requester: string, file: string): never => {
     throw new Error(`Native compiler image "${requester}" selects "${file}" outside its captured package. Use package-contained DLLs or operating-system libraries.`);
   };
+  const marker = input.executable + '.local';
+  const markerFile = input.read(marker);
+  const markerDirectory = input.directoryExists(marker);
+  let redirectionDirectory: string | undefined;
+  if (markerFile !== undefined || markerDirectory) {
+    const externalManifest = input.read(input.executable + '.manifest');
+    const executable = input.read(input.executable);
+    if (!executable) throw new Error(`Cannot inspect Windows redirection for "${input.executable}"`);
+    const embeddedManifest = parsePeLibraryMetadata(executable).manifests.some(manifest => manifest.path[1] === 1);
+    if (environment.devOverride || (!embeddedManifest && externalManifest === undefined)) {
+      redirectionDirectory = markerDirectory ? marker : path.dirname(input.executable);
+    }
+  }
+  const redirected = (name: string) => {
+    if (!redirectionDirectory) return;
+    const file = path.join(redirectionDirectory, path.basename(name));
+    return input.read(file) !== undefined ? file : undefined;
+  };
+  const selectedEntry = pePath(entry).toLowerCase() === pePath(input.executable).toLowerCase() ? entry : redirected(entry) ?? entry;
   const read = (file: string, requester: string): PeLibraryMetadata | undefined => {
     // NAPI imports resolve against the running executable, already owned by the installation.
     // Do not record its private copy as another package's source input.
@@ -55,6 +75,8 @@ export function assertCapturedPeLibraries(entry: string, packageRoot: string, in
   const resolve = (reference: string, requester: string): string | undefined => {
     let name = reference.replace(/ +$/, '');
     if (!path.extname(name)) name += '.dll';
+    const local = redirected(name);
+    if (local) return local;
     const mapped = resolvePeApiSet(environment.apiSets, name, path.basename(requester));
     if (mapped !== undefined) {
       if (!mapped) throw new Error(`Native compiler image "${requester}" references unavailable Windows API set "${name}"`);
@@ -67,7 +89,7 @@ export function assertCapturedPeLibraries(entry: string, packageRoot: string, in
     if (loaded) return loaded;
     if (bare && environment.knownDlls.includes(name.toLowerCase())) return path.join(environment.systemDirectory, name);
     const systemDirectories = [environment.systemDirectory, path.join(environment.windowsDirectory, 'System'), environment.windowsDirectory];
-    const directories = [path.dirname(entry), ...(environment.safeSearch ? systemDirectories : [input.cwd, ...systemDirectories]),
+    const directories = [path.dirname(selectedEntry), ...(environment.safeSearch ? systemDirectories : [input.cwd, ...systemDirectories]),
       ...(environment.safeSearch ? [input.cwd] : []), ...peLibraryPaths(input.variables)];
     const candidates = path.isAbsolute(name) ? [name] : directories.map(directory => path.resolve(input.cwd, directory, name));
     return candidates.find(file => input.read(file) !== undefined);
@@ -91,5 +113,5 @@ export function assertCapturedPeLibraries(entry: string, packageRoot: string, in
   };
   // The schema is an input even when this particular addon uses only ordinary DLL names.
   input.read(environment.schema);
-  inspect(entry, [{ name: 'napi_register_module_v1' }, { name: `node_register_module_v${process.versions.modules}` }], entry);
+  inspect(selectedEntry, [{ name: 'napi_register_module_v1' }, { name: `node_register_module_v${process.versions.modules}` }], entry);
 }

@@ -29,6 +29,30 @@ it('identifies runtime bytes independently of the capture location', () => {
   expect(readCompilerRuntimeInputs(first.executable, false).hash).toBe(read.hash);
 });
 
+it.skipIf(process.platform !== 'win32').each(['file', 'directory'] as const)('captures Node .local %s participants and invalidates additions', kind => {
+  const { executable } = fixture();
+  const initial = readCompilerRuntimeInputs(executable, false).hash;
+  const marker = executable + '.local';
+  if (kind === 'file') fs.writeFileSync(marker, '');
+  else fs.mkdirSync(marker);
+  const library = path.join(kind === 'file' ? path.dirname(executable) : marker, 'value.dll');
+  fs.writeFileSync(library, 'FIRST');
+  const copied = new Map<string, Buffer>();
+  const captured = readCompilerRuntimeInputs(executable, false, (file, bytes) => copied.set(file.source, bytes));
+  expect(captured.hash).not.toBe(initial);
+  expect(copied.get(library)?.toString()).toBe('FIRST');
+  fs.writeFileSync(library, 'SECOND');
+  expect(readCompilerRuntimeInputs(executable, false).hash).not.toBe(captured.hash);
+  fs.writeFileSync(library, 'FIRST');
+  expect(readCompilerRuntimeInputs(executable, false).hash).toBe(captured.hash);
+  const unrelated = path.join(path.dirname(executable), 'unrelated');
+  fs.mkdirSync(unrelated);
+  fs.writeFileSync(path.join(unrelated, 'ignored.txt'), 'not a runtime input');
+  expect(readCompilerRuntimeInputs(executable, false).hash).toBe(captured.hash);
+  fs.writeFileSync(path.join(path.dirname(library), 'later.dll'), 'ADDED');
+  expect(readCompilerRuntimeInputs(executable, false).hash).not.toBe(captured.hash);
+});
+
 it.skipIf(process.platform === 'win32')('tracks changes to POSIX runtime executable permissions', () => {
   const { executable } = fixture();
   const initial = readCompilerRuntimeInputs(executable, false).hash;

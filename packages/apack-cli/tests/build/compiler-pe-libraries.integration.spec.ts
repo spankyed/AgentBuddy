@@ -14,6 +14,7 @@ import { captureCompilerInstallation, compilerPackageDirectory, type CompilerIns
 import { startPackFrontend, type PackFrontend } from '../../src/build/frontend-process.ts';
 import { nativeAddonSource } from '../_support/native-addon.ts';
 import { parsePeLibraryMetadata } from '../../src/build/compiler-pe-libraries.ts';
+import { assertCapturedPeLibraries } from '../../src/build/compiler-pe-admission.ts';
 import { BUILD_INPUTS_DIRECTORY_ENV } from '../../src/build/compiler-read-tree.ts';
 import type { CapturedNativeModule } from '../../src/build/compiler-native-input-owner.ts';
 import { readPeLoaderMetadata, capturePeLibraryEnvironment } from '../../src/build/compiler-pe-environment.ts';
@@ -89,7 +90,7 @@ it.runIf(process.platform === 'win32').each(['local', 'assembly'] as const)(
     try {
       const pack = path.join(root, 'pack');
       fs.mkdirSync(pack);
-      const { library, buildLibrary } = createPeNativeFixture(root, pack);
+      const { library, dllMarker, buildLibrary } = createPeNativeFixture(root, pack);
       // Admission resolves named dependencies of an explicitly loaded image.
       const entry = path.join(path.dirname(library), 'bridge.dll');
       const bridge = path.join(root, 'bridge.c');
@@ -153,6 +154,17 @@ int wmain(int argc, wchar_t **argv) {
         expect(parsePeLibraryMetadata(fs.readFileSync(executable)).manifests.length).toBeGreaterThan(0);
       }
       expect(observe(configured)).toEqual({ value: 22, file: fs.realpathSync.native(selected).toLowerCase() });
+      if (kind === 'local') {
+        fs.rmSync(dllMarker);
+        expect(() => assertCapturedPeLibraries(entry, path.dirname(library), {
+          environment: capturePeLibraryEnvironment(), executable: configured, cwd: root,
+          variables: process.env, loadedLibraries: [], arch: process.arch,
+          realpath: file => fs.realpathSync.native(file),
+          directoryExists: file => fs.statSync(file, { throwIfNoEntry: false })?.isDirectory() ?? false,
+          read: file => fs.statSync(file, { throwIfNoEntry: false })?.isFile() ? fs.readFileSync(file) : undefined,
+        })).toThrow(selected);
+        expect(fs.existsSync(dllMarker)).toBe(false);
+      }
       completed = true;
     } finally {
       if (completed) fs.rmSync(root, { recursive: true, force: true });

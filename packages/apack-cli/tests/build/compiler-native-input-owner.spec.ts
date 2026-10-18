@@ -7,10 +7,14 @@ import { createCompilerNativeInputs } from '../../src/build/compiler-native-inpu
 import { BUILD_INPUTS_DIRECTORY_ENV, removeCompilerReadTree } from '../../src/build/compiler-read-tree.ts';
 
 // Exercise capture ownership with inert bytes; actual native loading belongs on disposable runners.
+const runtimeProbe = vi.hoisted(() => ({ file: undefined as string | undefined }));
 vi.mock('../../src/build/compiler-native-libraries.ts', () => ({
-  assertCapturedCompilerLibraries(file: string, _root: string, input: { read(file: string): unknown }) {
+  assertCapturedCompilerLibraries(file: string, _root: string, input: {
+    read(file: string): unknown; directoryExists(file: string): boolean;
+  }) {
     input.read(file);
     input.read(file.replace('addon.node', 'value.dll'));
+    if (runtimeProbe.file) { input.read(runtimeProbe.file); input.directoryExists(runtimeProbe.file); }
   },
 }));
 
@@ -31,14 +35,20 @@ it.each(['author', 'dependency'] as const)('keeps generated-output ownership wit
     libraryPaths: [], fallbackLibraryPaths: undefined, frameworkPaths: [], fallbackFrameworkPaths: undefined, imageSuffixes: [],
   } }, { capture: 'package' });
   try {
+    runtimeProbe.file = path.join(workspace, 'node.exe.local');
+    fs.mkdirSync(runtimeProbe.file);
     const captured = native.nativeModule(path.join(directory, 'addon.node'));
     expect(fs.readFileSync(captured, 'utf8')).toBe('ADDON');
     expect(fs.readFileSync(path.join(path.dirname(captured), 'value.dll'), 'utf8')).toBe('VALUE');
+    // Runtime distribution membership belongs to the installation, not this pack's source receipt.
+    fs.rmdirSync(runtimeProbe.file);
+    expect(() => native.assertCurrent()).not.toThrow();
     fs.writeFileSync(generated, 'AFTER');
     const captureGenerated = () => view.captureFile(generated, Buffer.from('AFTER'));
     if (owner === 'author') expect(captureGenerated).not.toThrow();
     else expect(captureGenerated).toThrow('Compiler input changed during capture');
   } finally {
+    runtimeProbe.file = undefined;
     native.dispose();
     vi.unstubAllEnvs();
     removeCompilerReadTree(root);

@@ -222,6 +222,7 @@ export function createNativeInputReader(view: NativeInputView, initialPackages: 
           // Startup owns process-wide native copies, including images already loaded by preloads.
           if (options.admitNative) options.admitNative(specifier);
           else assertCapturedCompilerLibraries(specifier, scope(path.dirname(specifier)).packageRoot ?? path.dirname(specifier), {
+            directoryExists(file) { location(file, 'directory'); return view.fileSystem.directoryExists(file); },
             arch: process.arch, environment,
             realpath: file => view.fileSystem.realpath(file),
             read(file) {

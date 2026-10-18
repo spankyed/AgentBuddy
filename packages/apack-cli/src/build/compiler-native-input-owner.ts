@@ -53,6 +53,7 @@ export function createCompilerNativeInputs(original: ReturnType<typeof createCom
     const known = options.findModule?.(file);
     if (known) {
       assertCapturedCompilerLibraries(known.captured, known.packageRoot, {
+        directoryExists: file => fs.statSync(file, { throwIfNoEntry: false })?.isDirectory() ?? false,
         arch: process.arch, environment: nativeEnvironment, realpath: file => fs.realpathSync.native(file),
         read: file => fs.statSync(file, { throwIfNoEntry: false })?.isFile() ? fs.readFileSync(file) : undefined,
       });
@@ -62,6 +63,9 @@ export function createCompilerNativeInputs(original: ReturnType<typeof createCom
     // actual images without recording ephemeral private paths as new source inputs.
     if (!includes(file) || sourcePath(file) !== file) {
       assertCapturedCompilerLibraries(file, packageRoot(file, fs.existsSync), {
+        directoryExists: file => includes(file) && sourcePath(file) === file
+          ? original.captureDataLocation(file, 'directory')?.kind === 'directory'
+          : fs.statSync(file, { throwIfNoEntry: false })?.isDirectory() ?? false,
         arch: process.arch, environment: nativeEnvironment,
         realpath: file => fs.realpathSync.native(file),
         read: file => includes(file) && sourcePath(file) === file ? original.readDataBytes(file)
@@ -81,8 +85,14 @@ export function createCompilerNativeInputs(original: ReturnType<typeof createCom
       nativePackages.add(owner);
     }
     assertCapturedCompilerLibraries(file, owner, {
+      directoryExists: file => !includes(file) || sourcePath(file) !== file
+        ? fs.statSync(file, { throwIfNoEntry: false })?.isDirectory() ?? false
+        : original.captureDataLocation(file, 'directory')?.kind === 'directory',
       arch: process.arch, environment: nativeEnvironment, realpath: original.fileSystem.realpath,
       read(candidate) {
+        if (!includes(candidate) || sourcePath(candidate) !== candidate) {
+          return fs.statSync(candidate, { throwIfNoEntry: false })?.isFile() ? fs.readFileSync(candidate) : undefined;
+        }
         const bytes = original.readDataBytes(candidate);
         if (!capturePackage && bytes && within(owner, candidate)) readDataPath(candidate);
         return bytes;

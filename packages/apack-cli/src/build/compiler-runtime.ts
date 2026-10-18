@@ -53,6 +53,22 @@ export function readCompilerRuntimeInputs(
     }
   };
   walk(executable);
+  if (!electron && process.platform === 'win32') {
+    const marker = executable + '.local';
+    const stat = fs.statSync(marker, { throwIfNoEntry: false });
+    if (stat) {
+      walk(marker);
+      // A file marker redirects any requested basename to the executable directory.
+      // A directory marker instead owns its own subtree; unrelated directories are not runtime inputs.
+      if (stat.isFile()) {
+        directories.push(root);
+        for (const entry of fs.readdirSync(root, { withFileTypes: true })) {
+          const file = path.join(root, entry.name);
+          if (entry.isFile() || (entry.isSymbolicLink() && !fs.statSync(file, { throwIfNoEntry: false })?.isDirectory())) walk(file);
+        }
+      }
+    }
+  }
   // The macOS executable is inside Contents/MacOS. Keep the signed distribution together,
   // including Info.plist and sealed resources, as on the other Electron platforms.
   if (electron) walk(process.platform === 'darwin' ? path.dirname(root) : root);

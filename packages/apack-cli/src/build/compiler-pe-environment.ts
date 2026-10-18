@@ -8,6 +8,7 @@ export interface CompilerPeEnvironment {
   readonly systemDirectory: string;
   readonly windowsDirectory: string;
   readonly safeSearch: boolean;
+  readonly devOverride: boolean;
   readonly knownDlls: readonly string[];
   readonly apiSets: readonly PeApiSet[];
   readonly schema: string;
@@ -52,19 +53,22 @@ try {
   $known = $session.OpenSubKey('KnownDLLs')
   try {
     $dlls = @($known.GetValueNames() | ForEach-Object { $known.GetValue($_) } | Where-Object { $_ -is [string] -and $_ -match '\\.dll$' })
-    $json = @{ libraries = $libraries; safeSearch = ($session.GetValue('SafeDllSearchMode', 1) -ne 0); knownDlls = $dlls } | ConvertTo-Json -Compress
+    $options = [Microsoft.Win32.Registry]::LocalMachine.OpenSubKey('SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\Image File Execution Options')
+    try { $devOverride = $null -ne $options -and $options.GetValue('DevOverrideEnable', 0) -eq 1 }
+    finally { if ($null -ne $options) { $options.Dispose() } }
+    $json = @{ libraries = $libraries; safeSearch = ($session.GetValue('SafeDllSearchMode', 1) -ne 0); devOverride = $devOverride; knownDlls = $dlls } | ConvertTo-Json -Compress
     $bytes = [System.Text.Encoding]::UTF8.GetBytes($json)
     $output = [Console]::OpenStandardOutput()
     $output.Write($bytes, 0, $bytes.Length)
   } finally { $known.Dispose() }
 } finally { $session.Dispose() }`;
-  let metadata: { libraries: string[]; safeSearch: boolean; knownDlls: string[] };
+  let metadata: { libraries: string[]; safeSearch: boolean; devOverride: boolean; knownDlls: string[] };
   try {
     const text = execFileSync(path.join(systemDirectory, 'WindowsPowerShell/v1.0/powershell.exe'),
       ['-NoProfile', '-NonInteractive', '-Command', script],
       { encoding: 'utf8', timeout: 5_000, maxBuffer: 1024 * 1024, windowsHide: true });
     metadata = JSON.parse(text.replace(/^\ufeff/, ''));
-    if (typeof metadata.safeSearch !== 'boolean' || !Array.isArray(metadata.knownDlls)
+    if (typeof metadata.safeSearch !== 'boolean' || typeof metadata.devOverride !== 'boolean' || !Array.isArray(metadata.knownDlls)
       || metadata.knownDlls.some(name => typeof name !== 'string' || path.basename(name) !== name)
       || !Array.isArray(metadata.libraries) || !metadata.libraries.length
       || metadata.libraries.some(file => typeof file !== 'string' || !path.isAbsolute(file)
@@ -85,11 +89,11 @@ export function readPeProcessState() {
 /** Only OS metadata is queried; no pack image is passed to a loader or helper. */
 export function capturePeLibraryEnvironment(): CompilerPeEnvironment {
   const systemDirectory = peSystemDirectory(readPeReport().libraries);
-  const { safeSearch, knownDlls } = readPeLoaderMetadata(systemDirectory);
+  const { safeSearch, devOverride, knownDlls } = readPeLoaderMetadata(systemDirectory);
   const schema = path.join(systemDirectory, 'apisetschema.dll');
   const section = readPeSection(fs.readFileSync(schema), '.apiset');
   if (!section) throw new Error('Windows API-set schema has no .apiset section');
-  return Object.freeze({ systemDirectory, windowsDirectory: path.dirname(systemDirectory), safeSearch,
+  return Object.freeze({ systemDirectory, windowsDirectory: path.dirname(systemDirectory), safeSearch, devOverride,
     knownDlls: Object.freeze(knownDlls.map(name => name.toLowerCase())), schema, apiSets: parsePeApiSets(section) });
 }
 

@@ -6,7 +6,7 @@ import { peImage } from '../_support/pe-image.ts';
 const entry = 'C:\\pack\\binding\\addon.node';
 const library = 'C:\\pack\\binding\\value.dll';
 const environment: CompilerPeEnvironment = { systemDirectory: 'C:\\Windows\\System32', windowsDirectory: 'C:\\Windows',
-  safeSearch: true, knownDlls: [], apiSets: [], schema: 'C:\\Windows\\System32\\apisetschema.dll' };
+  safeSearch: true, devOverride: false, knownDlls: [], apiSets: [], schema: 'C:\\Windows\\System32\\apisetschema.dll' };
 
 function image(dependency?: string, forwarder?: string) {
   const image = peImage();
@@ -21,13 +21,15 @@ function image(dependency?: string, forwarder?: string) {
 }
 
 function admission(files: [string, Buffer][], options: { environment?: Partial<CompilerPeEnvironment>;
-  variables?: NodeJS.ProcessEnv; loaded?: string[]; realpath?: (file: string) => string } = {}) {
+  variables?: NodeJS.ProcessEnv; loaded?: string[]; directories?: string[]; executable?: string;
+  realpath?: (file: string) => string } = {}) {
   const entries: [string, Buffer][] = [[entry, image('value.dll')], ...files];
   const images = new Map(entries.map(([file, bytes]) => [file.toLowerCase(), bytes]));
   const reads: string[] = [];
   return { reads, check: () => assertCapturedPeLibraries(entry, 'C:\\pack', {
-    environment: { ...environment, ...options.environment }, executable: 'C:\\compiler\\node.exe', cwd: 'C:\\work',
+    environment: { ...environment, ...options.environment }, executable: options.executable ?? 'C:\\compiler\\node.exe', cwd: 'C:\\work',
     variables: options.variables ?? {}, loadedLibraries: options.loaded ?? [], arch: 'x64',
+    directoryExists: file => options.directories?.includes(file) ?? false,
     read(file) { reads.push(file); return images.get(file.toLowerCase()); }, realpath: options.realpath ?? (file => file),
   }) };
 }
@@ -114,4 +116,71 @@ it('follows selected named and ordinal export forwarders before initialization',
 
 it('attributes malformed package DLL metadata', () => {
   expect(admission([[library, Buffer.from('invalid')]]).check).toThrow(`Cannot inspect native compiler image "${library}"`);
+});
+
+const executable = 'C:\\compiler\\node.exe';
+
+it.each(['file', 'directory'] as const)('refuses an outside DLL selected by a .local %s before loaded and known DLLs', kind => {
+  const selected = kind === 'file' ? 'C:\\compiler\\value.dll' : executable + '.local\\value.dll';
+  const value = admission([[library, image()], [executable, image()], [selected, image()],
+    ...(kind === 'file' ? [[executable + '.local', Buffer.alloc(0)] as [string, Buffer]] : [])], {
+    loaded: [library], environment: { knownDlls: ['value.dll'] },
+    directories: kind === 'directory' ? [executable + '.local'] : [],
+  });
+  expect(value.check).toThrow(selected);
+});
+
+it('checks redirection of the explicitly requested native image itself', () => {
+  const selected = 'C:\\compiler\\addon.node';
+  const value = admission([[executable, image()], [executable + '.local', Buffer.alloc(0)], [selected, image()]]);
+  expect(value.check).toThrow(selected);
+});
+
+it('accepts package-contained redirection and observes missing candidates before normal lookup', () => {
+  const contained = 'C:\\pack\\runtime\\node.exe';
+  const selected = contained + '.local\\value.dll';
+  const value = admission([[library, Buffer.from('unused')], [contained, image()], [selected, image()]], {
+    executable: contained, directories: [contained + '.local'],
+  });
+  expect(value.check).not.toThrow();
+  expect(value.reads).toContain(selected);
+  const missing = admission([[library, image()], [executable, image()], [executable + '.local', Buffer.alloc(0)]]);
+  expect(missing.check).not.toThrow();
+  expect(missing.reads).toContain('C:\\compiler\\value.dll');
+});
+
+it('does not trust a contained .local directory that links to an outside DLL', () => {
+  const contained = 'C:\\pack\\runtime\\node.exe';
+  const selected = contained + '.local\\value.dll';
+  const value = admission([[contained, image()], [selected, image()]], {
+    executable: contained, directories: [contained + '.local'],
+    realpath: file => file === selected ? 'C:\\outside\\value.dll' : file,
+  });
+  expect(value.check).toThrow(selected);
+});
+
+it('suppresses .local for an embedded application manifest', () => {
+  const executableImage = peImage();
+  executableImage.directory(2, 0x1d00, 0x400);
+  for (const [level, name] of [24, 1, 1033].entries()) {
+    const at = 0x1d00 + level * 32;
+    executableImage.bytes.writeUInt16LE(1, executableImage.offset(at + 14));
+    executableImage.uint(at + 16, name);
+    executableImage.uint(at + 20, level === 2 ? 0x60 : 0x80000000 + (level + 1) * 32);
+  }
+  executableImage.uint(0x1d60, 0x1f00); executableImage.uint(0x1d64, 11);
+  executableImage.text(0x1f00, '<assembly/>');
+  const value = admission([[library, image()], [executable, executableImage.bytes],
+    [executable + '.local', Buffer.alloc(0)], ['C:\\compiler\\value.dll', image()]]);
+  expect(value.check).not.toThrow();
+});
+
+it.each([false, true])('respects manifest suppression of .local unless DevOverrideEnable is set (%s)', devOverride => {
+  const selected = 'C:\\compiler\\value.dll';
+  const value = admission([[library, image()], [executable, image()], [selected, image()],
+    [executable + '.local', Buffer.alloc(0)], [executable + '.manifest', Buffer.from('<assembly/>')]], {
+    environment: { devOverride },
+  });
+  if (devOverride) expect(value.check).toThrow(selected);
+  else expect(value.check).not.toThrow();
 });

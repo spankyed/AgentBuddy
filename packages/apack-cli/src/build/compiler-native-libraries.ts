@@ -34,6 +34,7 @@ export function captureCompilerLibraryEnvironment(env: NodeJS.ProcessEnv = proce
 
 export function assertCapturedCompilerLibraries(entry: string, packageRoot: string, input: {
   read(file: string): Buffer | undefined;
+  directoryExists(file: string): boolean;
   realpath(file: string): string;
   arch: string;
   environment: CompilerLibraryEnvironment;
@@ -76,6 +77,7 @@ export function assertCompilerRuntimeLibraries(executable: string, runtimeDirect
   if (process.platform === 'win32') {
     return assertCapturedPeLibraries(executable, runtimeDirectory, {
       arch: process.arch, environment: capturePeLibraryEnvironment(), executable, cwd, variables: env, loadedLibraries: [],
+      directoryExists: file => fs.statSync(file, { throwIfNoEntry: false })?.isDirectory() ?? false,
       realpath: file => fs.realpathSync.native(file),
       read: file => fs.statSync(file, { throwIfNoEntry: false })?.isFile() ? fs.readFileSync(file) : undefined,
     });
@@ -83,6 +85,7 @@ export function assertCompilerRuntimeLibraries(executable: string, runtimeDirect
   if (process.platform !== 'linux') return;
   const elf = captureElfLibraryEnvironment(env, executable, cwd);
   assertCapturedCompilerLibraries(executable, runtimeDirectory, {
+    directoryExists: file => fs.statSync(file, { throwIfNoEntry: false })?.isDirectory() ?? false,
     arch: process.arch, environment: { macho: captureMachOLibraryEnvironment(env), elf: { ...elf, loadedLibraries: [] } },
     realpath: file => fs.realpathSync.native(file),
     read: file => fs.statSync(file, { throwIfNoEntry: false })?.isFile() ? fs.readFileSync(file) : undefined,
