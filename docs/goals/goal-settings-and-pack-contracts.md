@@ -81,8 +81,13 @@ formats/dependencies or cause false source/dataset collisions; explicitly declar
 All 72 focused declaration/resolution checks, the existing codegen consumer, SDK types, schema check
 and lint pass. The user explicitly authorized pushing; checkpoint `a74bbd88a` is pushed and
 [strict run `39163655338`](https://github.com/spankyed/AgentBuddy/actions/runs/39163655338)
-is queued on that exact source with the two-core budget. Push authorization is resolved. Record its
-result before claiming B6 acceptance; remaining native/platform obligations and Phase 7 stay open.
+failed after 411.1s at external authoring: its declared inputs omitted the selected host pack's built
+snapshot, allowing authoring before that producer. Source `268533807` declares `PACK_OUTPUTS` as
+inputs, restoring ordering and cache invalidation through the existing graph. The new regression
+fails before the repair; all 68 focused authoring/graph/scheduler cases, repo/scripts types and lint
+pass afterward. See [checkpoint evidence](../evidence/settings-and-pack-contracts.md#external-authoring-host-build-dependency-2026-10-18).
+Push authorization is resolved. Hosted acceptance of the repair, remaining native/platform obligations
+and Phase 7 stay open.
 
 ### Bounded build-input and freshness checkpoints
 

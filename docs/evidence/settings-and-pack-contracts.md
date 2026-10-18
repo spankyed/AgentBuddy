@@ -7684,3 +7684,24 @@ automatic approval review rejected the remote push as lacking separate authoriza
 approval question is pending. Do not claim the focused checks satisfy that gate or retry the denied
 push through another route. The full goal, native-policy questions and final committed-source `--all`
 remain open.
+
+
+## External authoring host build dependency (2026-10-18)
+
+The user subsequently authorized pushing. Strict run
+[39163655338](https://github.com/spankyed/AgentBuddy/actions/runs/39163655338) tested committed
+source `a74bbd88a` on disposable macOS 26 / Node 23.11.1 with two cores. It stopped after 411.1s
+at `test:packaged-authoring:author`: the external pack selected the checkout through `APACK_HOST`,
+but `default-setup` had no built snapshot. The step declared only publishable-package inputs and
+therefore depended on `packages:ensure`, not `build:default-setup`. This is a missing graph input,
+not evidence of a compiler deadline failure or another checkout deleting temporary output.
+
+Source `268533807` adds the existing `PACK_OUTPUTS` to the author's inputs. The common graph now
+orders the producer first and fingerprints its output for authoring reuse. No new scheduling rule,
+timeout change or dependency fallback is added. A regression against `dependsOn(author)` fails
+before the repair, reporting only `packages:ensure`; afterward all 68 tests across authoring output,
+chain graph and scheduling pass in 978ms. Repo-checks and scripts typechecks, focused correctness
+lint and `git diff --check` pass. Actual hosted authoring/app and converged acceptance remain pending.
+
+Failure log: `/private/tmp/apack-strict-39163655338.log`. The run retains the chain log and per-step
+reports in its uploaded validation evidence. No compiler/native test ran on the developer's Mac.
