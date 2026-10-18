@@ -101,6 +101,13 @@ identity, archive acceptance and complete disposal. This closes that named failu
 the remaining policy/platform cases, B6 or final strict acceptance. Earlier failure states below are
 checkpoint history, superseded by this outcome rather than instructions to repeat accepted work.
 
+The [remaining-obligation audit](../evidence/build-input-snapshot-proof.md#remaining-native-obligations-and-bound-only-control--2026-10-18)
+corrects stale lifetime labels against existing Windows/Linux acceptance. Its bounded ordinary-loader
+control still fails after removing the bound import's lookup table, including with a fixed-base importer;
+it proves no product defect or valid unsupported image. Keep valid bound-only acceptance open without
+repeating that invalid fixture. Next resolve outside-image/publisher-policy and remaining mapped/runtime
+acceptance against actual supported paths; B6 and the full Phase 7 audit remain required.
+
 Source `c27e78a06` and its [ownership evidence](../evidence/build-input-snapshot-proof.md#compiler-installation-namespace-ownership--2026-10-18)
 exclude private installation ancestor probes from replayable source identity. Inert owner regression,
 mutation, types and lint are accepted; the public two-installation check instead ended with native
@@ -421,18 +428,19 @@ dev/watch execution and relevant platform differences; do not invent a broader r
 
 #### B1/B3 closure register and decisions
 
-The remaining work distinguishes a reproduced defect, missing acceptance evidence and a support
-boundary decision. None alone authorizes a new general capture or confinement framework.
-The [proposed native compiler input boundary ADR](../reference/adr/native-compiler-input-boundary.md)
+This register distinguishes implemented owners, demonstrated defects and missing acceptance.
+The [native compiler input boundary ADR](../reference/adr/native-compiler-input-boundary.md)
 records the user-approved bounded contract (2026-10-17): captured package-contained and OS libraries,
-with attributed refusal of identifiable outside-library dependencies. Implementation/acceptance remain open;
-arbitrary external native capture and native I/O are excluded by that explicit approval.
+with attributed refusal of identifiable outside-library dependencies. Arbitrary external native capture
+and native file I/O retain their explicitly approved boundary. Computed runtime loading remains an
+explicit detection limit, not a claim of stronger security isolation. Historical counterexamples below do not describe current source.
 
-| Item | Current evidence | Required closure |
+| Item | Current implementation and acceptance | Required closure |
 |---|---|---|
-| Absolute external-library loading | A real addon executes the original external library; changing it does not invalidate freshness. Package-relative capture in `6710e3026` does not fix this. The [search-path prototype](../evidence/build-input-snapshot-proof.md#external-native-library-search-path-prototype-2026-10-17) rejects a tempting shortcut: two distinct absolute libraries with the same basename collapse to one captured library. Exact identity must remain preserved. `cc186a0d0` implements selected macOS module admission with direct/transitive pre-initialization refusal and captured relative-loading proof. | Implement the approved bounded contract through the existing compiler owners. Refuse identifiable outside-library dependencies; preserve captured package-relative and OS loading. Prove the known counterexample refuses before native initialization, public-build incumbent retention, transitive cases and startup/thread/Vite path coverage. Static inspection is not universal native-I/O detection. |
-| Native/background lifetime | The [finite resource audit](../evidence/build-input-snapshot-proof.md#remaining-resource-lifetime-audit-2026-10-17) reconciles local loader, JS worker, process-group, Vite and installation ownership with existing proof. The common build/frontend launcher now implements a Windows Job Object owner after the native prototype passed (`62f6a03b8`); the descendant-publication check is enabled for Windows. The complete native helper lifetime matrix passes on `519ac2a16`; actual build/frontend integration and final acceptance remain open. | Preserve accepted macOS cases. Accept the integrated Windows owner through native build/frontend execution and success/failure/cancellation/parent-loss/replacement checks, following the passed suspended-launch/IPC prototype. The user authorized branch pushes and focused Windows CI on 2026-10-17; release workflows remain prohibited. Native acceptance requires passing execution of the committed source. Linux runtime acceptance remains unverified. Do not substitute PID-only termination, mocked calls or a new general resource framework for this missing platform guarantee. |
-| Platform coverage | Release/build configuration establishes targets, not acceptance of compiler capture or cleanup guarantees. | Record exact OS/architecture/runtime combinations, relevant cases and results. Mark missing evidence as unverified, not broken or implicitly unsupported. |
+| Outside-library admission | Common module/startup/worker/frontend owners use Mach-O, ELF and PE admission. Actual macOS direct/transitive/preload/thread/Vite cases, Linux native backend/runtime cases (`39085132469`, `39085739556`) and Windows backend/thread/content-compiler controls (`39095177818`, `39097382309`, `39100052114`) accept captured loading and refusal before initialization. Windows Node/Electron application/module/DotLocal controls additionally accept exact copied selection. | Preserve all existing refusal, source/copy identity, freshness and incumbent-retention assertions. Reconcile the finite loader-selection gaps below, then accept the converged source. The original absolute-library counterexample is repaired; do not restart its implementation. |
+| Native/background lifetime | Windows Job Object ownership passes in `39075394015` attempt 2; Linux startup/cancellation/descendant/retirement and independent Vite ownership pass in `39083965583`. The Windows native watch replacement/refusal/repair lifecycle passes on `72ad6bae9`. The helper compiler timeout/parent-loss defect is repaired in `f6cd78014`, with real suspended-compiler controls. `9adb9073f` accepts two fresh builders and complete disposal on Windows. | These named owner paths have implementation and runtime evidence. Preserve them through clean-platform/B6/final acceptance; do not schedule them again as missing implementation. A new lifetime defect requires a specific counterexample through an existing owner, not a general resource framework. |
+| Remaining loader-selection evidence | Current PE helper reads selected assembly manifests and publisher policy through `QueryActCtx`, probes private candidates, delegates binding to Windows, and maps resources without initialization. Runtime inventory includes selected context and captured OS policy. Existing checks cover transitive/declared/wildcard language candidates, configuration changes and creation/removal. | Valid bound-only PE behavior, outside-image assembly selection, publisher/system-policy changes and the remaining linked/mapped-image combinations still need explicit disposition against current code and ordinary-loader controls. Do not infer a defect from the old partial labels, omit required cases, or implement address recovery from a malformed fixture. |
+| Platform coverage | Exact recorded runs cover macOS ARM64, Windows x64 and Linux x64 on their documented Node/Electron versions; packaging alone is not acceptance. | Preserve exact OS/architecture/runtime evidence, close the finite unresolved combinations and run converged/final gates. A version range is not a requirement to invent an unlimited version matrix; unverified configured targets are not implicitly excluded. |
 
 Configured targets, inspected 2026-10-17:
 

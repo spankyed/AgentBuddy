@@ -5728,3 +5728,37 @@ Node/Electron process. No native/compiler fixture ran on the developer's Mac.
 The next action is to reconcile the finite policy/platform obligations against current implementation
 and accepted cases, then close actual omissions before B6 and final committed-source strict `--all`.
 No goal phase, original manifest requirement or required acceptance gate is excluded.
+
+## Remaining native obligations and bound-only control — 2026-10-18
+
+Source audit at **`f78056f13`** confirms the B1/B3 register still called Windows integrated lifetime
+and Linux runtime acceptance unverified despite the recorded passes. The register now distinguishes
+these implemented/accepted owner paths from final convergence. PE context inspection already records
+selected assembly/publisher-policy files through `QueryActCtx`, delegates selection to Windows and
+observes private candidate membership. No additional policy implementation is justified from an old
+partial label alone. Outside-image assembly, publisher/system-policy and remaining linked/mapped-image
+acceptance still need current evidence; no requirement is removed.
+
+The next bound-only control uses three private MSVC-compiled images, without pack building or apack
+admission. Its value DLL is fixed at **`0x190000000`**, avoiding the earlier possible preferred-base
+collision. Actual ordinary loading returns value **22**, that exact base and the exact private DLL path.
+Binding its sole value import to the matching timestamp/address while retaining the lookup table also
+returns 22. Clearing only that table causes **`3221225477` (`0xC0000005`)** before probe output.
+One follow-up uses a fixed **`0x180000000`** importer with dynamic-base and no-bind flags unset:
+ordinary and bound-with-lookup succeed, while the table-less variant still has the same native failure.
+Each child has a five-second bound and each compilation a fifteen-second bound; no broad suite ran.
+
+This is not a valid bound-only acceptance fixture or a product counterexample. It does not authorize
+excluding a valid supported image, accepting arbitrary addresses, or implementing guessed export
+recovery. [Microsoft's binding explanation](https://devblogs.microsoft.com/oldnewthing/20231129-00/?p=109077)
+requires the lookup table for fallback; its [linker flag reference](https://learn.microsoft.com/en-us/cpp/build/reference/allowbind-prevent-dll-binding)
+distinguishes binding permission. Neither proves all table-less images invalid. Keep the valid-control
+question open; do not rerun this failed manual construction or change product admission from it.
+
+VM source is exactly `f78056f13`, Node 23.11.1 / Windows Server 2025 x64; only the pre-existing launcher
+line-ending change remains. The accepted two-test overlay was preserved in VM stash
+**`de4f0246a7fead45f1797f1a2ade63324b6d6077`** before fast-forwarding. Evidence directories are
+`C:\apack-setup\runs\bound-only-f78056f13{,-v2,-fixed}`; the first records a proof-script file-URL
+setup error, corrected before compilation. Source, compiler inputs, binaries, exact statuses, hashes
+and logs are exported in `/private/tmp/apack-bound-only-f78056f13.zip`. Terminal inspection finds no
+Node/Electron/MSVC/linker process. No compiler/native execution ran on the developer's Mac.
