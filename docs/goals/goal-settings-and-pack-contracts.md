@@ -130,8 +130,11 @@ The revised scenario reuses the builder's compiler for frontend refusal, retains
 assertions, and records baseline/refusal timings. It still requires hosted acceptance. Node signing
 diagnostics establish the exercised hardened Node profile with dyld/library-validation exceptions;
 the app's stricter signing profile remains unverified. See [timeout and profile evidence](../evidence/build-input-snapshot-proof.md#shared-cache-scenario-timeout-and-exercised-signing-profile-2026-10-17).
-Revised source `baf461618` is running as hosted macOS run `39081394988`, selecting only that scenario.
-Follow this run; the 60-second case deadline is unchanged.
+Revised source `baf461618`, hosted macOS run `39081394988`, passes the scenario in 27.62 seconds:
+normal OS baseline, both launch refusals, no constructor execution and preserved incumbent. The
+60-second deadline remains unchanged. The first Linux proof is bounded in the evidence record before
+implementation: actual retained Vite package-relative copies/Vue freshness and absolute-library
+refusal on Ubuntu x64/Node 23.11.1. No ELF/PE acceptance is inferred from macOS results.
 Source `e6ce60a78` awaits each detected watch build directly, retaining missing-event bounds and all
 behavior assertions. Its isolated hosted run `39079492068` passes in 98.76 seconds, including refusal,
 repair, incumbent preservation and retirement. Restore the original 120-second scenario budget; the

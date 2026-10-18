@@ -2984,3 +2984,28 @@ reported deprecation of the colon prefix; see [Apple's entitlement inspection ex
 
 Revised source `baf461618` is running in hosted macOS run `39081394988`, selecting the same single
 scenario with its unchanged 60-second budget. Do not dispatch a duplicate while this run is live.
+
+### Shared-cache acceptance and Linux proof boundary (2026-10-17)
+
+Run `39081394988` is terminal success on `baf461618`: OS baseline built at 26.42 seconds, outside
+insertion refused at 26.45 and outside cache refused at 26.46. The case passes in 27.62 seconds
+(runner 29.93), within its original 60-second budget. Both build/frontend refusals preserve the
+incumbent revision and prevent the library constructor. Log: `/private/tmp/apack-hosted-cache-39081394988.log`.
+This accepts shared-cache environment admission, not custom-cache execution or the app's stricter
+signing profile. Do not rerun this case solely for reassurance.
+
+Before expanding the native owner to Linux, inspect its actual branch: `createCompilerNativeInputs`
+currently returns the incoming filename on every non-Darwin platform. This is missing ownership,
+not evidence that any particular Linux loader path has already failed. The
+[Linux loader manual](https://man7.org/linux/man-pages/man8/ld.so.8.html) distinguishes pathname
+dependencies and `$ORIGIN` expansion from RPATH/RUNPATH, environment and cache searches.
+
+| First Linux proof | Current owner / question | Pass criteria |
+|---|---|---|
+| Official Node 23.11.1, Ubuntu 24.04 x64; native Vite preload inside the authored pack | Reuse captured compiler/frontend ownership; exercise ELF rather than invent a new runtime | Real Node selects the fixture; package-relative addon/library execution uses owned copies, original-library replacement invalidates freshness, and authored Vue remains live. Absolute outside-library loading refuses before addon initialization. Keep an accepted frontend alive after refusal. |
+
+Run this proof only on a disposable Linux GitHub runner with one test worker. Share the existing NAPI
+fixture source across the macOS/Linux compilers. Replace library files atomically; never truncate a
+potentially loaded image. Do not implement an ELF parser, new resolver or Windows policy until actual
+proof evidence identifies the next correction. Windows PE and remaining signed-profile acceptance
+remain required, as do B6 and the final committed-source strict `--all`.
