@@ -7945,3 +7945,21 @@ remain required.
 
 The Windows VM is confirmed `PowerState/deallocated` after the export. Strict job
 `117824308867` is live on the pinned source; setup succeeded and dependency installation is running.
+
+## Final contract audit continuity — 2026-10-18
+
+Inspected current `3827993ba` against manifest audit `a74bbd88a` and field-classification checkpoint
+`031e3a521`. SDK declarations, host catalog/registration readers, entity/shape generation, validation,
+authoring and canonical writer retain their audited blobs. The later host service-binding change is
+the separately reviewed callable-retirement repair, with its 14 binding and 81 settings checks already
+recorded. No dependency provenance or shipped replacement implementation changed. Current entity
+normalization uses one Map across pack/feature homes, names both owners, and derives flat identities;
+module-reference parsing still separates type declarations from executable binding purpose.
+
+The only later CLI public-doc delta documents the verified read-only facade report path; source review
+confirms its incompatible-option refusal and required common input/integrity validation. The final
+acceptance register now reflects already accepted editor, discovery and replacement work rather than
+rescheduling those migrations from stale labels. This does not re-prove historical EARS/content byte
+identity or replace current strict schema/API/external runtime acceptance. Remaining native selection
+requirements retain their explicit open disposition; no new counterexample or policy exclusion was
+established by this audit. Strict run `39177912229` remains the sole active broad gate.
