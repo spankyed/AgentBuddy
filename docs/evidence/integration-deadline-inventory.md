@@ -1140,3 +1140,12 @@ That required gate covers all integration projects, their concurrency and remain
 previous normal bail; a focused two-file pass cannot substitute for it. If it passes, run main's final
 committed-source strict `--all`, then finish the requirement audit and documentation closure. Do not
 resume unrelated research or the separate validation redesign.
+
+
+Normal unfiltered gate [39312954386](https://github.com/spankyed/AgentBuddy/actions/runs/39312954386)
+is dispatched on workflow-only **`cc0ae42b4e0e99e37fbf1a87800530bf2d7f9ced`**, branch
+`session/integration-normal-scaffold-acceptance`, directly based on main **`f0405e436`**. The only
+difference is its workflow: existing typecheck/pack/external-output prerequisites, then unchanged
+`npm run test:integration -- --all` with `APACK_CHAIN_CORES=2`. Committed per-case and pool bounds,
+normal fail-fast behavior and report collection are preserved. This covers the required full-pool gap;
+no strict run is dispatched concurrently. Main's untracked Wireit plan is unrelated and untouched.

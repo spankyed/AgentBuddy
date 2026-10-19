@@ -8616,3 +8616,38 @@ committed-source pool/final strict acceptance. Do not merge private collect-all/
 limits or report this as a normal strict gate. No source/compiler redesign, local native batch,
 Windows VM startup or repeated prerequisite run is authorized by this diagnostic itself. Preserve all
 existing source checkpoints and diagnostic branches; the complete active goal and final gates remain.
+
+
+## Final source audit: default-plugin schema guidance — 2026-10-19
+
+The current-source pass rechecks consolidated entities/relations, type-only shape export generation,
+lifecycle membership/callability, strict authored fields, canonical writer call sites and deterministic
+plugin selection. `_packEntities` preserves flat wire names and both collision owners;
+`entityShapeEntries` skips null shapes and uses `hasTypeExport` plus generated `import type`.
+`lifecycleBindingProblem` checks declared callable membership without invoking hooks. Init, every
+manifest-writing add command and release use the schema-derived `writeManifest`. Production/source
+searches find no `entityShapes`, `settingsSections`, `typesEntry`, `$manifestVersion` or checks-sidecar
+reader. This supplements the [17-decision audit](../plans/manifest-consolidation.md#current-source-consolidation-review-2026-10-18),
+not a replacement for final runtime acceptance.
+
+Compared with that audit's source `a74bbd88a`, the consolidated framework contracts, entry generator,
+manifest writer and plugin-selection implementation are unchanged through `14de022f8`. The reviewed
+service-binding delta retains Array identity/its nonconfigurable length descriptor while preserving
+provider/caller generation checks. No production `packages/*/src` or `packages/*/bin` changes occur
+between accepted native/worker checkpoint `f17d2e286` and `14de022f8`; later repairs affect test execution
+and deadlines. Existing platform/runtime evidence remains relevant, with final gates still required.
+
+One concrete M6/decision-12 omission is found: `PluginSchema.default` and generated JSON Schema still
+claim the first registered pack wins. Actual `selectDefaultPluginDeclaration` filters enabled runtime
+owners, prioritizes native claims and sorts qualified feature refs with locale `en`; public feature and
+manifest docs already explain this policy. Correct the schema help and regenerate `apack.schema.json`.
+Only that description changes; no validation, runtime selection, API type, format stamp or release
+metadata changes. No new test duplicates a prose literal.
+
+Validation: **61 existing manifest-schema/editor checks pass**, generated-schema check passes and lint
+passes. The npm `tsx` wrapper first refuses its sandbox IPC socket (`EPERM`); running the same generator
+with `node --conditions=@apackdev/source --import tsx ...` succeeds, without changing permissions or
+executing a pack/compiler/native fixture. This is a tooling invocation refusal, not a schema defect.
+Normal integration `39312954386` retains its immutable earlier checkpoint; do not cancel/restart it for
+this help-only correction. Final strict `--all` must run on the committed tree including the correction
+and prove schema/API report agreement along with every required runtime gate. Acceptance remains open.
