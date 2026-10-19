@@ -102,7 +102,7 @@ export function captureCompilationInputs(packRoot: string, view?: PackCompilerIn
     const compilerIdentity = compiler?.hash ?? buildToolHash();
     const hash = createHash('sha256').update(compilerIdentity).update(inputs.hash).update(modules.hash)
       // Preload order and native flags can change behavior while reading identical files.
-      .update(executionIdentity)
+      .update(startup ? executionIdentity : compilerExecutionIdentity(nativeEnvironment, undefined, compiler?.paths))
       .update(JSON.stringify(startup?.initial?.map(hashCompilerInputObservations) ?? []))
       .digest('hex');
     return { hash, packages: inputs, compilerIdentity };
