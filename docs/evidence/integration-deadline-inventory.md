@@ -821,3 +821,10 @@ leave this job intact and recheck its final status. No native work runs on the d
 Evidence: `/private/tmp/apack-native-worker-39275701481/` and
 `/private/tmp/apack-native-worker-39275701481-live-response.txt` (complete retained job log).
 The required normal and final main strict gates remain outstanding.
+
+Normal [39281108805](https://github.com/spankyed/AgentBuddy/actions/runs/39281108805) is dispatched
+on workflow-only **`97ea3af4b`**, containing main **`2bdfa9e7a`** and accepted source **`f17d2e286`**.
+Only the normal workflow differs from main. The ordinary unfiltered command, two cores, effective
+case/operation deadlines, 120m aggregate and prerequisite preparation are unchanged. The earlier
+41-case command has exited; its GitHub finalization remains separately unresolved and is not cancelled.
+Await the normal command's result before the required main strict gate.

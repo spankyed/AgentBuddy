@@ -47,6 +47,11 @@ Lazy activation is deferred.
 
 ## Live execution ledger (reconciled 2026-10-16)
 
+Current normal gate: **39281108805** on workflow-only `97ea3af4b` / main `2bdfa9e7a`, containing
+accepted repair `f17d2e286`. Both complete affected files have 41/41 passes and exit 0. Preserve the
+earlier job's unresolved GitHub finalization separately; await this unchanged normal command before
+main final strict `--all`. No further source changes are planned while it validates this checkpoint.
+
 Latest normal **39269209929** finishes with 425 actual passes and a native-thread **whole-scenario
 120s timeout**. All 16 worker bodies now pass, including three previously inherited-60s scenarios
 that take 62.879s, 61.599s and 78.318s. Native thread refusal/cleanup completes at 126.668s; no value,
