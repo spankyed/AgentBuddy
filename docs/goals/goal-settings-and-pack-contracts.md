@@ -77,6 +77,11 @@ then accepted all 40,731 observations in about 55s. A measured 180s private cont
 20.599s; no repository deadline or production source changed. See [Windows consumer evidence](../evidence/build-input-snapshot-proof.md#windows-node-consumer-of-the-retained-electron-build--2026-10-19).
 The VM has no remaining compiler processes; its evidence is exported and Azure confirms it is deallocated.
 
+The [publisher-policy fixture preflight](../evidence/build-input-snapshot-proof.md#publisher-policy-fixture-feasibility--2026-10-19)
+finds the documented OS cache queries work, but Windows refuses the owned fixture installation before
+apack runs (`0x800736fd`); a short stopped SxS trace has no diagnostic entries. Fixture absence and
+cleanup are verified and exported. This proves no product defect or policy acceptance. Establish a valid
+manifest/catalog installation control before production edits; do not repeat the rejected DLL control.
 The bound-only Windows import support decision is pending the user's explicit answer; no exclusion
 has been applied. Remaining native-policy/platform requirements, B6 and every Phase 7 obligation
 remain required. The strict run above is active; diagnose any failure from its retained evidence before

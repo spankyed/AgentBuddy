@@ -6084,3 +6084,44 @@ and replay diagnostics are exported as `/private/tmp/apack-node23-archive-382799
 with no workspace dependency junctions. Windows evidence root is
 `C:\apack-setup\runs\node23-archive-accepted-3827993ba`. Azure confirms **VM deallocated** after export. The running strict gate, unresolved native
 policy/bound-only dispositions and full Phase 7 audit remain open.
+
+
+## Publisher-policy fixture feasibility — 2026-10-19
+
+Reviewed current `compiler-pe-context.ps1`, admission and runtime inventory against Microsoft's native
+[publisher configuration](https://learn.microsoft.com/en-us/windows/win32/sbscs/publisher-configuration-files)
+and [configuration installation](https://learn.microsoft.com/en-us/windows/win32/sbscs/publisher-configuration)
+contracts. Publisher policy is a shared WinSxS contribution, not the private `.config` redirect already
+accepted. Current code observes the selected policy path returned by `QueryActCtx`; private-candidate
+membership checks do not by themselves prove newly installed global-policy detection. Keep that named
+acceptance open. This source audit is not a demonstrated incorrect DLL selection or stale-build result.
+
+A bounded ordinary-OS preflight on the existing Windows VM at `3827993ba` uses the installed SDK's
+`winsxs.h` and documented `CreateAssemblyCache` / `IAssemblyCache` APIs. Querying the installed
+Common Controls 6.0.26100.33648 assembly succeeds; querying a newly generated fixture identity returns
+`0x80070490` (not found). The first control expected the wrong missing-assembly HRESULT and stopped
+without installation; the corrected paired control establishes present/absent behavior through native
+argument arrays. No apack executable or compiler participates in those queries.
+
+The unique fixture `apack.fixture.publisher.ae5504ae3dddf4cb7bb08ae43570889a0` is confirmed absent
+before its attempted installation. Its small DLL embeds its assembly manifest at resource 1.
+`InstallAssembly` refuses it with **`0x800736fd`**. Windows translates that code to “An HRESULT could
+not be translated to a corresponding Win32 error code.” The matching uninstall attempt returns the
+same code; subsequent exact-argument query still reports absent. A single short owned
+[`sxstrace`](https://learn.microsoft.com/en-us/windows-server/administration/windows-commands/sxstrace)
+session starts/stops/parses successfully but has no diagnostic entries. This does **not** establish a
+catalog, signing, privilege or apack defect, and is not a valid publisher-policy fixture or exclusion.
+No policy is installed; no existing assembly, trust store, security setting or registry policy changes.
+
+Final cleanup establishes no fixture cache entry, WinSxS assembly directory or manifest, no active SxS
+trace and no Node/Electron/esbuild/cl/link processes. A PowerShell 5.1 export-side argument-quoting
+refusal is preserved separately; the final absence check uses Node's exact argument array, just like
+the paired control. Export `/private/tmp/apack-policy-preflight-3827993ba.zip` (224,783 bytes) contains
+the exact source, controls, compiled fixture, HRESULTs, traces and cleanup checks. All prior source,
+stashes and retained builds remain intact. Azure confirms **VM deallocated** after export.
+
+Next establish a valid installable native policy fixture through its documented manifest/catalog
+installation contract before any production change or repeat of these failed DLL arguments. Do not
+infer publisher-policy support, universal refusal or a product bug from this setup failure. The native
+closure register and running strict gate retain their existing obligations; this investigation adds no
+new runtime or installer subsystem to apack.
