@@ -8182,3 +8182,37 @@ The completed broad gate does not contain `31ed0dcad` or `eb552cf65`; their focu
 separate. Required final current-source strict acceptance, app handoffs and the pending bound-only
 support disposition remain open. The archive-reference audit finds no affected links outside `docs/`,
 so the planned documentation moves need not alter captured pack-owned input files.
+
+
+### Native watch recovery: isolated deadline and bounded completion probe
+
+Focused [39194487906](https://github.com/spankyed/AgentBuddy/actions/runs/39194487906) is terminal
+on `b51556f8e`, selecting exactly the native-watch case. It also fails at the unchanged **120s** limit:
+watch ready **72.453s**, frontend ready **78.327s**, unchanged touch **80.872s**, expected refusal
+**93.492s**, dependency repair **93.507s**. The final frontend/backend rebuild starts and prints reused
+facade output; only 26.5s remains for its completion. Isolation therefore does not establish a pass or
+prove cross-file contention caused the broad failure. Log:
+`/private/tmp/apack-native-watch-39194487906-failed.log`. No JSON archive was uploaded by this workflow;
+use the complete retained job log, not a nonexistent passing report.
+
+Vitest's outer timeout does not throw into the pending async test body, so its `finally` cannot be
+relied on to close active owners at that boundary. GitHub's final cleanup terminates Node/esbuild
+processes after this isolated failure. This justifies registering the existing watcher/builder teardown
+with `onTestFinished`; it does not establish a new product lifetime defect or justify a resource framework.
+
+One isolated diagnostic is committed as **`146bc2b6e`** on
+`session/native-watch-recovery-diagnostic`, with its own worktree at
+`/private/tmp/apack-native-watch-recovery-diagnostic`. It shares no dependencies, generated output,
+staging index or profiles with the main checkout. Main source remains unchanged. The diagnostic
+extends only this case's outer envelope to **240s**, retains all assertions and both 20s missing-event
+waits, logs rebuild start/completion and closes existing owners through one idempotent teardown used
+by both `finally` and `onTestFinished`. Failed fixture files are retained; successful fixtures are
+removed after assertions/closure. This is observation source, not approved final timeout policy.
+
+[39195118565](https://github.com/spankyed/AgentBuddy/actions/runs/39195118565) is the single live
+reproducer on that exact diagnostic commit. Its terminal result must establish whether repair actually
+finishes and which phase consumes the remaining time. Do not count an eventual longer-envelope pass
+as acceptance of the original 120s check or merge the diagnostic blindly. Keep further validation
+focused until the demonstrated cause or measured sequential-scenario cost is understood. The pending
+bound-only decision, remaining integration cases/app halves and final current-source strict gate remain
+required. No local native execution, VM startup, production-data operation or new broad run occurs.

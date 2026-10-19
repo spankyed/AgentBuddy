@@ -78,9 +78,15 @@ stops at one macOS native-watch recovery case's unchanged **120s** limit after 4
 The repair rebuild starts; whether its late stage is slow or stuck is unproven. No authoring/runtime/
 smoke/app acceptance is claimed for unreached stages. Logs and next action are recorded in
 [terminal gate evidence](../evidence/settings-and-pack-contracts.md#strict-convergence-reaches-pack-tests-native-watch-recovery-timeout--2026-10-19).
-Focused run [39194487906](https://github.com/spankyed/AgentBuddy/actions/runs/39194487906) is active
-on `b51556f8e`, selecting only that exact case on disposable macOS with two cores and the same 120s
-limit. No broad rerun, timeout increase or compiler/watch redesign is justified before its evidence.
+Focused run [39194487906](https://github.com/spankyed/AgentBuddy/actions/runs/39194487906) also
+fails at 120s on `b51556f8e`: initial watch readiness takes 72.453s, and dependency repair begins at
+93.507s. The final rebuild starts; its completion remains unproven. An isolated **diagnostic-only**
+branch/worktree, `session/native-watch-recovery-diagnostic` / `/private/tmp/apack-native-watch-recovery-diagnostic`,
+retains source `146bc2b6e`. Run [39195118565](https://github.com/spankyed/AgentBuddy/actions/runs/39195118565)
+measures that same case with a 240s outer observation envelope, unchanged assertions/20s event bounds,
+phase checkpoints and timeout-safe owned teardown. This is not an accepted main-branch deadline change;
+inspect completion and phase evidence before selecting a repair or justified scenario budget. No broad
+rerun or compiler/watch redesign is authorized by the timeout alone.
 The completed broad run predates `31ed0dcad` and `eb552cf65`; final accepted source must include them.
 
 Windows **Node 23.11.1** also archives the retained Electron-built pack successfully (20.599s), with
