@@ -794,3 +794,9 @@ variants and the unreached tail need complete affected-file acceptance beside th
 another normal gate. Local deadline/inventory checks (53), CLI TypeScript and correctness lint pass.
 Raw evidence: `/private/tmp/apack-normal-integration-39269209929/` and
 `/private/tmp/apack-normal-integration-39269209929-full.log`. Final strict acceptance remains open.
+
+Source **`f17d2e286`** is committed/pushed. Complete affected-file run
+[39275701481](https://github.com/spankyed/AgentBuddy/actions/runs/39275701481) is dispatched on
+workflow-only **`449aac628`**: both entire native/worker files, two workers, `bail=0`, and an explicit
+41-body execution check. No test-name filter or per-test default change. The private checkout differs
+only in the workflow; package/output isolation remains intact. No acceptance result is claimed yet.
