@@ -677,4 +677,14 @@ describe('every spawn an orchestrator makes is bounded', () => {
 
     expect(dependsOn(step!)).toContain('build:default-setup');
   });
+
+  it('prepares external fixture frontends before integration reads their module graph', () => {
+    const integration = CHAIN_STEPS.find(step => step.name === 'test:integration')!;
+    const producer = CHAIN_STEPS.find(step => step.name === 'test:external-pack:contract')!;
+    expect(producer.outputs?.length).toBeGreaterThan(0);
+    expect(dependsOn(integration)).toContain(producer.name);
+    const excluded = { ...integration, excludes: [...integration.excludes ?? [], ...producer.outputs!] };
+    expect(dependsOn(excluded, CHAIN_STEPS.map(step => step === integration ? excluded : step)))
+      .not.toContain(producer.name);
+  });
 });

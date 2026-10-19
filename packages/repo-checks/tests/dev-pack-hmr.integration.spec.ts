@@ -23,7 +23,7 @@
  */
 import * as fs from 'node:fs';
 import * as path from 'node:path';
-import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 import { createServer, type ViteDevServer } from 'vite';
 import { REPO_ROOT } from '@apackdev/host/build/packages-built';
 
@@ -37,12 +37,15 @@ let server: ViteDevServer;
 let walked = 0;
 
 beforeAll(async () => {
+  const external = path.join(REPO_ROOT, 'tests', 'packs', 'external-pack');
+  expect(fs.existsSync(path.join(external, 'src', '__generated__', 'pack-entry-fe.ts')),
+    'External fixture frontend is missing; run npm run test:external-pack:contract first').toBe(true);
   // How a pack outside `packages/` joins the loop. The workspace packs need no naming.
   // **Absolute**, because the variable is resolved against `process.cwd()` and this suite has two runners:
   // the pooled config from the repo root, and `npm run spec`, which runs it with the package as cwd. A
   // relative path is the repo's from one and names nothing from the other, so the pack went undiscovered
   // and the case read as "its pack is fetched over pack://" — a true sentence about the wrong cause.
-  process.env.APACK_DEV_PACK_DIRS = path.join(REPO_ROOT, 'tests', 'packs', 'external-pack');
+  vi.stubEnv('APACK_DEV_PACK_DIRS', external);
   server = await createServer({ mode: 'development', root: path.join(REPO_ROOT, 'packages', 'renderer'), logLevel: 'error' });
   await server.listen();
 
@@ -66,7 +69,10 @@ beforeAll(async () => {
   walked = seen.size;
 });
 
-afterAll(async () => { await server?.close(); });
+afterAll(async () => {
+  try { await server?.close(); }
+  finally { vi.unstubAllEnvs(); }
+});
 
 describe('a pack whose source this machine has', () => {
   it('walks a graph, so the cases below are not asking about nothing', () => {

@@ -8,8 +8,7 @@
 // The normalisation those reports go through is `tests/build/facade-report.spec.ts`, over text, because a pack
 // cannot be asked to emit its declarations in the wrong order on purpose.
 //
-// **One pack, built once, and the cases run in declaration order**: each states the premise the one before it
-// leaves, which is what keeps this to a single build rather than eight.
+// The shared pack evolves in declaration order; each case establishes the state the next consumes.
 import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
@@ -91,6 +90,8 @@ describe.skipIf(!PACKAGES_BUILT)('apack pack facade-report', () => {
   });
 
   it('checks the verified current build without changing generated files', async () => {
+    // Recording the report adds an authored input; publish that state before inspecting it passively.
+    await buildPack(pack, ID);
     const directory = path.join(pack, 'src/__generated__');
     const before = fs.readdirSync(directory);
     const stamp = fs.readFileSync(path.join(pack, '.apack/generate-entries.json'), 'utf8');

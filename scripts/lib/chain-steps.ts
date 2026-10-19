@@ -692,7 +692,7 @@ const FIXTURE_TEST_OUTPUT = FIXTURE_PACKS.flatMap((name) => [`tests/packs/${name
  * `repo` says the suite holds a guard whose subject is the whole tree, so its inputs are the whole tree.
  * Without it the pool skips the project while the thing it checks moves — see `EVERY_SOURCE`.
  */
-export const SUITE_READS: Record<string, { packages?: true; pack?: true; repo?: true; inputs?: readonly string[] }> = {
+export const SUITE_READS: Record<string, { packages?: true; pack?: true; repo?: true; inputs?: readonly string[]; integrationInputs?: readonly string[] }> = {
   // `pretest: ensure-packages-built`, `@apackdev/testing`'s bundle, and its own compiled content under `dist/`
   'default-setup': { packages: true, pack: true },
   // `pretest: ensure-packages-built`; it packs and installs the published packages, and `dependency-runtime`
@@ -707,7 +707,8 @@ export const SUITE_READS: Record<string, { packages?: true; pack?: true; repo?: 
   // `pretest: ensure-packages-built`; `published-sdk-peers` reads the built `dist` and skips without it.
   // `repo`: six of its specs ask git what the repo holds — the chain's input coverage, spec placement,
   // the lint's scope, the import rules — so every one of them is about files this package does not own
-  'repo-checks': { packages: true, repo: true },
+  // The integration HMR check traverses the fixture packs' generated frontend entries.
+  'repo-checks': { packages: true, repo: true, integrationInputs: FIXTURE_OUTPUTS },
   // `pretest: ensure-packages-built`; it npm-packs the built packages into a consumer and compiles it
   'publish-checks': { packages: true },
 };
@@ -780,6 +781,7 @@ export function suiteInputs(suite: UnitSuite, half: Half): string[] {
     ...suiteWorkspace(suite.dir),
     ...workspaceDeps(suite.dir).flatMap(dependencySource),
     ...(reads.inputs ?? []),
+    ...(half === 'integration' ? reads.integrationInputs ?? [] : []),
     ...(reads.packages ? PACKAGE_BUILD_READS : []),
     ...(reads.pack ? PACK_OUTPUTS : []),
     ...(reads.repo ? EVERY_SOURCE : []),
@@ -805,16 +807,14 @@ export const INTEGRATION_SUITES = UNIT_SUITES.filter((suite) => hasSplit(path.jo
  * `suite-reads.spec.ts` cannot see it, because that compares each suite against `suiteInputs`, not against
  * whatever its step declared.
  *
- * The exclusion goes with it. A `repo` suite declares every source tree, `tests/packs` among them, and
- * what it wants there is the fixture packs' sources: the guards read what a pack author writes, never what
- * building one produces. Same reason `typecheck` reads around them, and the alternative — depending on the
- * step that writes them — would put a pool behind a build it does not need.
+ * The exclusion goes with it. Repository guards read fixture sources; the integration HMR check also
+ * traverses generated frontend entries and must follow their producer. App test results remain excluded.
  */
 function inputsForSuites(suites: readonly UnitSuite[], half: Half): Pick<ChainStep, 'inputs' | 'excludes'> {
   return {
     inputs: [...new Set(suites.flatMap((suite) => suiteInputs(suite, half)))].sort(),
     ...(suites.some((suite) => SUITE_READS[suite.dir]?.repo)
-      ? { excludes: [...FIXTURE_OUTPUTS, ...FIXTURE_TEST_OUTPUT] }
+      ? { excludes: [...(half === 'integration' ? [] : FIXTURE_OUTPUTS), ...FIXTURE_TEST_OUTPUT] }
       : {}),
   };
 }

@@ -635,6 +635,16 @@ describe("a suite's half declares the config that runs it", () => {
     expect(suiteInputs(pack, 'fast'), 'its own config is what it runs under, through its workspace')
       .toContain(path.join('packages', pack.dir, 'vitest.config.ts'));
   });
+
+  it('declares generated fixture inputs only for the repository integration half', () => {
+    const suite = UNIT_SUITES.find(suite => suite.dir === 'repo-checks')!;
+    const outputs = CHAIN_STEPS.find(step => step.name === 'test:external-pack:contract')!.outputs!;
+    expect(outputs.length).toBeGreaterThan(0);
+    for (const output of outputs) {
+      expect(suiteInputs(suite, 'integration')).toContain(output);
+      expect(suiteInputs(suite, 'fast')).not.toContain(output);
+    }
+  });
 });
 
 describe('a gitignored input belongs to someone', () => {
