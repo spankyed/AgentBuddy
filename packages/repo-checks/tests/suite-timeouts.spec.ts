@@ -28,6 +28,8 @@ import { repoFiles } from './_support/repo-files.ts';
  * fails on an entry whose override has gone, so the list shrinks when the reason does.
  */
 const TIMEOUT_EXCEPTIONS: Record<string, string> = {
+  'packages/apack-cli/tests/build/compiler-native-libraries.integration.spec.ts > uses the %s Electron runtime through the shared compiler launcher':
+    'Runtime capture (60s), captured launch (unchanged 15s), verification/retirement (20s) compose the driver allowance; the 120s case includes fixture setup/cleanup. Normal gate 39248035810 exceeded the former 30s nested driver limit. The asynchronous driver preserves runner updates and records phase completion without relaxing identity or retirement assertions.',
   'packages/apack-cli/tests/build/build-worker.integration.spec.ts > refuses candidate output changed by a compiler exit handler and retains the incumbent':
     'One cold captured build precedes sealed-output mutation/refusal and incumbent verification. The owner uses test cancellation and is drained before fixture deletion; the scenario allows 180s for the public build and 20s for verification/disposal. This is the earlier normal-run 60s timeout, not a new value failure.',
   'packages/apack-cli/tests/build/types-bundler-determinism.integration.spec.ts > is identical from the workspace and from the packed tarballs a consumer installs':
