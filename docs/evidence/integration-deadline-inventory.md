@@ -961,3 +961,31 @@ Normal [39297729330](https://github.com/spankyed/AgentBuddy/actions/runs/3929772
 on workflow-only `7582e2a5a`, main `a2465bff1` / source repair `d29612b7a`. The only difference from
 main is the existing acceptance workflow: required preparation and ordinary unfiltered
 `npm run test:integration -- --all`, two cores, no per-test override. Await the same run before strict.
+
+## Cross-check remaining full-build deadline composition — 2026-10-19
+
+While immutable normal run `39297729330` executes, a read-only TypeScript AST survey identifies
+40 test declarations directly calling full-build entry points (helper-only watcher/worker cases remain
+covered by their existing ownership audit). Thirteen inherit the integration default. Inspecting their
+bodies and the preserved complete-batch reports distinguishes real compilation from early refusal
+and a fake-child cancellation test; call names alone are not evidence of equal work.
+
+One concrete composition omission remains: `dsl-snapshot.integration.spec.ts` performs **two real
+builds**, then verifies source-free installed discovery, integrity and build-input records, under one
+60s outer timer. The preserved batch passes it in **50.806s**. Assign only this scenario
+`2 * 60_000 + 20_000`, consistent with neighboring two-build scenarios, with a named policy reason.
+No body, assertion, individual wait, cleanup limit, helper or production implementation changes.
+This is an overall allowance, not an independently cancellable in-process operation or a measured
+speed improvement. All 53 policy/inventory checks, CLI types and lint pass.
+
+The remaining inherited cases inspected here include single successful/late-refusal builds in
+`build-output-swap` and shared-fixture rebuilds in `facade-report` (preserved durations about 25–48s),
+early generated-code refusals, and a bounded fake-child cancellation check (0.474s). Keep these limits;
+this survey does not prove a timeout defect or justify a blanket increase. Full report remains at
+`/private/tmp/apack-full-build-scenario-audit.json`; preserved six-batch JSON is unchanged.
+
+Current normal source retains the original stricter DSL deadline. If its unchanged DSL body executes
+and passes, use that stronger timing evidence for the focused case; do not repeat normal integration
+solely to test a larger outer allowance. If bail leaves it unexecuted, include it in the next necessary
+focused run. Final strict `--all` must include the committed correction. The broader validation-budget
+restructuring remains after this goal, as clarified by user documentation commit `abbf93853`.

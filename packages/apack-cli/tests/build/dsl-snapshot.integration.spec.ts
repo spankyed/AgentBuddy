@@ -46,4 +46,4 @@ it('publishes and reuses editor definitions without globals or frontend activati
     expect(stagedFileHashes(repeated.integrity)).toEqual(stagedFileHashes(first.integrity));
     expect(readPackBuildInputs(path.join(author, 'dist'), repeated.integrity).options).toEqual(['--skip-generate']);
   } finally { process.chdir(cwd); }
-});
+}, 2 * 60_000 + 20_000);

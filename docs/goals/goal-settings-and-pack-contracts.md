@@ -50,7 +50,12 @@ Lazy activation is deferred.
 Current normal integration [39297729330](https://github.com/spankyed/AgentBuddy/actions/runs/39297729330)
 is dispatched on workflow-only `7582e2a5a`, containing main `a2465bff1` / repair `d29612b7a`.
 It runs the ordinary unfiltered command with two cores after required preparation. Await this existing
-run before final committed-source strict `--all`; no additional source repair is currently identified.
+run before final committed-source strict `--all`. The later read-only composition audit found one
+remaining two-build DSL case sharing an inherited 60s timer; only its outer allowance and policy reason
+change. If this immutable normal run executes that unchanged body successfully under its stricter
+original limit, reuse that evidence rather than rerunning the pool solely for a larger allowance. If
+bail prevents execution, include the DSL case in the next necessary focused check. Final strict must
+include the committed correction; production code and assertions remain unchanged.
 
 Focused configuration acceptance **39296758415** succeeds on workflow-only `952a6dd02`,
 containing repair **`d29612b7a`**: all **15/15** cases pass, zero pending, exit 0, 239.315s.
