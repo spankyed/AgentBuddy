@@ -76,9 +76,8 @@ it.runIf(process.platform === 'darwin' || process.platform === 'linux').each(ele
   const electron = executable ?? (require('electron') as string);
   const version = (require('electron/package.json') as { version: string }).version;
   const runtimeDirectory = readCompilerRuntimeInputs(electron, true).directory;
-  const proof = path.join(root, 'runtime.json'), preload = path.join(root, 'runtime.cjs');
+  const proof = path.join(root, 'runtime.json');
   fs.symlinkSync(path.join(REPO_ROOT, 'node_modules'), path.join(root, 'node_modules'), 'dir');
-  fs.writeFileSync(preload, `if (process.env.APACK_BUILD_WORKER === '1') require('node:fs').writeFileSync(${JSON.stringify(proof)}, JSON.stringify({versions:process.versions,executable:process.execPath}));`);
   const bin = path.join(compilerPackageDirectory(), 'bin/apack.mjs');
   const stop = new AbortController();
   let closed: Promise<void> = Promise.resolve(), completed = false;
@@ -88,13 +87,13 @@ it.runIf(process.platform === 'darwin' || process.platform === 'linux').each(ele
     if (completed) fs.rmSync(root, { recursive: true, force: true });
     else console.error(`Retained Electron pack control: ${root}`);
   });
-  const command = async (cwd: string, args: string[], runtime = { executable: electron, runtimeDirectory }) => {
+  const command = async (cwd: string, args: string[], { runtime = { executable: electron, runtimeDirectory }, timeoutMs = 60_000 } = {}) => {
     const started = Date.now();
     console.log('Electron pack phase started', args[0]);
     const child = spawnCompilerWorker({ ...runtime, bin }, [bin, 'pack', ...args], {
       cwd, env: { ...process.env, ELECTRON_RUN_AS_NODE: '1',
-        NODE_OPTIONS: formatNodeOptions(['--conditions=@apackdev/source', '--require', preload]) },
-      stdio: ['ignore', 'pipe', 'pipe', 'ipc'], signal: AbortSignal.any([stop.signal, AbortSignal.timeout(60_000)]),
+        NODE_OPTIONS: formatNodeOptions(['--conditions=@apackdev/source']) },
+      stdio: ['ignore', 'pipe', 'pipe', 'ipc'], signal: AbortSignal.any([stop.signal, AbortSignal.timeout(timeoutMs)]),
     }, root);
     let output = '';
     child.stdout!.on('data', bytes => { output += bytes; });
@@ -109,8 +108,18 @@ it.runIf(process.platform === 'darwin' || process.platform === 'linux').each(ele
   };
   const pack = path.join(root, 'electron-proof');
   await command(root, ['init', 'electron-proof']);
+  const manifestFile = path.join(pack, 'apack.json');
+  const manifest = JSON.parse(fs.readFileSync(manifestFile, 'utf8'));
+  manifest.content.formats.runtimeProof = { compiler: 'src/runtime-proof.ts', entity: 'ElectronProof', identity: ['name'] };
+  manifest.content.sources.runtimeProof = { path: 'src/runtime-proof.ts', format: 'runtimeProof' };
+  fs.writeFileSync(manifestFile, JSON.stringify(manifest));
+  fs.writeFileSync(path.join(pack, 'src/runtime-proof.ts'), `import fs from 'node:fs';
+    export default () => {
+      fs.writeFileSync(${JSON.stringify(proof)}, JSON.stringify({versions:process.versions,executable:process.execPath}));
+      return [{entity:'ElectronProof',name:'runtime'}];
+    }`);
   await command(pack, ['add', 'feature', 'sample', '--description', 'Verify Electron compilation.']);
-  await command(pack, ['build']);
+  await command(pack, ['build'], { timeoutMs: 120_000 });
   const runtime = JSON.parse(fs.readFileSync(proof, 'utf8')) as { versions: { electron: string; node: string }; executable: string };
   expect(runtime.versions.electron).toBe(version);
   expect(runtime.executable).not.toBe(fs.realpathSync.native(electron));
@@ -118,14 +127,16 @@ it.runIf(process.platform === 'darwin' || process.platform === 'linux').each(ele
   const built = readPackBuild(path.join(pack, 'dist'));
   expect(built.snapshot.manifest.id).toBe('electron-proof');
   for (const file of ['runtime/index.cjs', 'runtime/fe.js']) expect(fs.statSync(path.join(pack, 'dist', file)).size).toBeGreaterThan(0);
+  fs.rmSync(proof);
   // Passive inspection uses the recorded build context, even under a different Node runtime.
   await command(pack, ['archive', '--out', path.join(root, 'archive')], {
-    executable: process.execPath, runtimeDirectory: path.dirname(process.execPath),
+    runtime: { executable: process.execPath, runtimeDirectory: path.dirname(process.execPath) },
   });
   expect(fs.statSync(path.join(root, 'archive/electron-proof-0.1.0.tgz')).size).toBeGreaterThan(0);
+  expect(fs.existsSync(proof), 'archive must not execute the content compiler').toBe(false);
   console.log('Electron pack compilation accepted', JSON.stringify({ runtime, revision: built.revision }));
   completed = true;
-}, 240_000);
+}, 300_000);
 
 it.runIf(process.platform === 'darwin')('refuses outside runtime-linked Mach-O constructors and accepts contained runtime libraries', async () => {
   const root = fs.realpathSync.native(fs.mkdtempSync(path.join(os.tmpdir(), 'apack-macho-runtime-')));

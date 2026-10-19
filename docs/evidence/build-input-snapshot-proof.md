@@ -5977,3 +5977,34 @@ no package/global, compiler/helper or chain deadline changes. All 53 existing su
 guards, CLI types, lint and diff checks pass. Runtime acceptance on signed macOS remains next.
 The valid Linux result remains accepted: its entire original workflow already completed within
 59.141s, tighter than each newly explicit per-command bound.
+
+### Signed Electron receipt diagnosis and direct compiler observation — 2026-10-19
+
+Run [39180841694](https://github.com/spankyed/AgentBuddy/actions/runs/39180841694), exact
+`cb7fb8e83`, is terminal failure at receipt reading, **not compilation**. Public init completes in
+25.722s, feature generation 9.813s and build 59.735s. `runtime.json` is absent, so this run does not
+establish captured runtime identity or archive acceptance. Logs are retained at
+`/private/tmp/apack-electron-macos-39180841694{,-clean}.log`.
+
+The exact [Electron 37.2.4 Node entry](https://github.com/electron/electron/blob/v37.2.4/shell/app/node_main.cc)
+checks the parent's app signature on macOS and clears NODE_OPTIONS for a foreign parent. That is the
+Node test-runner-to-signed-Electron boundary; an environment preload is therefore not a reliable
+observer here. Apack must preserve the selected runtime's actual startup behavior. Do not force
+ignored environment options to execute or alter the app's permissions/signing profile to make a
+fixture pass. The primary file was inspected through GitHub's contents API and retained as
+`/private/tmp/apack-electron-node-main.cc` (relevant logic lines 87–100 and 132–148).
+
+The fixture instead declares a small real content compiler under the scaffold's existing null/untyped
+entity. Its function writes runtime metadata outside the authored pack and returns a constant record;
+no shape is added or widened. This measures the code path the build actually invokes. The same
+version/captured-executable/retirement and verified backend/frontend assertions remain. Deleting the
+receipt before the Node archive call additionally proves passive inspection does not execute that
+compiler. No preload transport, runtime policy or production code is changed.
+
+The observed 59.735s full build has less than a second of margin at 60s. That single cold-compile
+phase receives 120s; init, feature generation and archive remain explicitly bounded at 60s each.
+The one composed-workflow exception is 300s, matching those four bounds. This is a measured, scoped
+fixture allowance; global/package, helper and chain deadlines stay unchanged. All 53 existing
+subprocess/deadline guards, CLI types, focused lint and diff checks pass. Focused signed macOS and
+Linux runs must now execute the new direct-compiler/passive-archive assertions; the earlier Linux
+result remains valid for its original observed worker path, not this added boundary.

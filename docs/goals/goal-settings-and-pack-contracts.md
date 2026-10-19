@@ -61,16 +61,16 @@ reservation. All 88 scheduler/core/graph checks, scripts types, lint and the old
 pass. Hosted acceptance remains required. Typecheck-pack reservation `04a876675` retains 60s;
 that leg and the later fork/unit/integration/runtime/app legs were not reached in this run.
 
-Signed macOS complete compilation remains open. Runs
-[39179708329](https://github.com/spankyed/AgentBuddy/actions/runs/39179708329) and
-[39180215930](https://github.com/spankyed/AgentBuddy/actions/runs/39180215930) exhausted aggregate
-60s clocks before compilation. The second identifies successful init at 53.797s, leaving only five
-seconds for feature generation. The current correction restores one simple workflow: each of four
-public commands has an explicit 60s abort signal; only their composition receives 240s. Phase timing,
-all runtime/output/archive assertions and awaited cleanup remain. CLI types/lint and all 53
-subprocess/deadline checks pass. Focused signed run
-[39180841694](https://github.com/spankyed/AgentBuddy/actions/runs/39180841694) is active on
-**`cb7fb8e83`**. Inspect its command timings and actual result before any retry or broad gate.
+Signed macOS complete compilation remains open. Runs `39179708329` / `39180215930` exposed
+aggregate fixture clocks; run `39180841694` on `cb7fb8e83` then completes init (25.722s), feature
+generation (9.813s) and build (59.735s), but the environment-preload runtime receipt is absent.
+Electron 37.2.4 source confirms macOS removes NODE_OPTIONS from differently signed parents; do
+not restore ignored options or change permissions. The fixture now records versions/executable
+from an actual content compiler, checks retirement and both bundles, deletes its receipt and
+proves Node archive does not re-execute it. Authoring/archive keep 60s; the measured full cold
+compile gets 120s, with a 300s combined workflow budget. Types/lint and all 53 subprocess/deadline
+guards pass. This stronger content-compiler/archive boundary needs focused signed macOS and Linux
+acceptance; the previous Linux pass remains valid for its original boundary. No broad job is active.
 
 The bound-only Windows import support decision is pending the user's explicit answer; no exclusion
 has been applied. Remaining native-policy/platform requirements, B6 and every Phase 7 obligation
