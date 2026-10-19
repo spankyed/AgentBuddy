@@ -8265,3 +8265,17 @@ production compiler/watch path remains the one measured by the probe. Diagnostic
 is preserved, with no shared dependencies/generated output or blind merge. Required whole affected
 integration/current-source strict acceptance and authoring/app handoffs remain open; the pending
 bound-only scope question is not resolved or excluded by this timing repair.
+
+### Current-source strict acceptance dispatched — 2026-10-19
+
+Run [39196299955](https://github.com/spankyed/AgentBuddy/actions/runs/39196299955) targets exact
+committed source **`55c9e1f54f057bbd637e389db619bbba59886871`**. The main tree is clean and the
+remote branch matches. No earlier main-branch validation run was active when dispatched.
+
+Command: `gh workflow run ci.yml --ref session/settings-pack-contracts -f strict_chain=true`.
+This selects the disposable macOS strict chain with two cores, including the affected integration
+suite, packaged-authoring handoffs, runtime build and app checks that earlier fail-fast runs did not
+reach. It includes the reviewed authoring/service-array fixes and the scoped native-watch repair.
+Dispatch and queued-job metadata prove only that acceptance is scheduled; no passing result is claimed.
+The unresolved bound-only disposition remains independently required. No local native process,
+Windows VM startup or duplicate diagnostic run is needed for this gate.

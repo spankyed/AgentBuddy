@@ -88,8 +88,9 @@ stalled repair, on that control. Main checkpoint **`bc53fed70`** assigns only th
 and adds idempotent `onTestFinished` teardown through the existing owners. All 53 timeout/inventory
 checks, CLI types and lint pass. The diagnostic branch/worktree remains preserved; it is not merged
 wholesale. No production watcher/compiler logic or general suite deadline changes.
-Next run the required current-source strict gate, including the native cases stopped by fail-fast and
-the unreached authoring/runtime/app halves. The pending bound-only scope decision remains separate.
+Current-source strict run [39196299955](https://github.com/spankyed/AgentBuddy/actions/runs/39196299955)
+is dispatched on **`55c9e1f54`**, including the native cases stopped by fail-fast and the unreached
+authoring/runtime/app halves. Its result remains unproven. The pending bound-only scope decision remains separate.
 The completed broad run predates `31ed0dcad` and `eb552cf65`; final accepted source must include them.
 
 Windows **Node 23.11.1** also archives the retained Electron-built pack successfully (20.599s), with
@@ -139,9 +140,10 @@ startup remain live. All five owner tests, CLI types and lint pass. This in-proc
 not replaces, existing real frontend/native/HMR acceptance. See [preload evidence](../evidence/build-input-snapshot-proof.md#frontend-javascript-preload-ownership-audit--2026-10-19).
 
 The bound-only Windows import support decision is also pending; no exclusion has been applied.
-Remaining native requirements, B6 and every Phase 7 obligation remain required. Both broad gates above are terminal; the native-watch reproducer is the current live run. Complete
-its diagnosis, any scoped repair and remaining requirement dispositions before final committed-source
-acceptance. No native execution runs on the daily-use Mac.
+Remaining native requirements, B6 and every Phase 7 obligation remain required. The earlier broad gates
+and native-watch reproducer are terminal; the measured repair and current strict run are identified
+above. Complete remaining requirement dispositions and committed-source acceptance.
+No native execution runs on the daily-use Mac.
 
 Completion review finds and repairs an authoring ownership defect in **`31ed0dcad`**: valid
 `constructor` declarations no longer collide with inherited properties, inherited features cannot
@@ -164,7 +166,8 @@ owner identity. No additional demonstrated defect is found in those inspected pa
 replace poisoned/source-free discovery, navigation races or actual pane/window acceptance in the
 existing evidence and final gates. Primary PE documentation and preserved ordinary-loader failures
 still do not settle valid bound-only support; the explicit-refusal scope question remains unanswered,
-with no exclusion or guessed symbol recovery applied. Its failed strict gate and current focused reproducer are identified above.
+with no exclusion or guessed symbol recovery applied. The completed focused reproducer and current
+strict gate are identified above.
 
 This ledger owns current execution status and ordering. The phases below retain all completion
 requirements; subsystem plans retain detailed contracts and acceptance cases. Dated checkpoint notes
