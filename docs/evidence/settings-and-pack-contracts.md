@@ -8556,3 +8556,30 @@ occurs. Workflow-only integration checkpoint **`b552b950a`** contains exact sour
 [39207375977](https://github.com/spankyed/AgentBuddy/actions/runs/39207375977) verifies both scoped
 repairs and remaining integration under the real pool concurrency. Full integration and final main
 strict authoring/runtime/app acceptance remain open. Preserve diagnostic source and prior evidence.
+
+### Repaired controls accepted in pool; worker lifecycle coverage isolated — 2026-10-19
+
+[39207375977](https://github.com/spankyed/AgentBuddy/actions/runs/39207375977), source `b552b950a`,
+passes normal prerequisites and **419** integration assertions before failing the worker exit-handler
+candidate-mutation case at its default **60s** (60.078s reported). The pool ends after **422.29s**;
+its aggregate limit did not fire. The repaired repeat-build case passes in **90.799s**, and the
+complete Electron pack control passes in **106.523s** (build **74.242s**, archive **8.905s**).
+Exactly **15** native cases are listed as completed before fail-fast, including watch recovery
+**102.177s** and preload refusal/owner closure **91.955s**. The 25-test file header is not proof that
+its remaining cases ran. Preserve earlier ten-case tail evidence; complete pool acceptance stays open.
+Console: `/private/tmp/apack-integration-39207375977-failed.log`.
+
+Current worker-file inspection shows the failed case deliberately mutates sealed staging output from
+the compiler's exit handler, requiring refusal, unchanged incumbent and removed staging. It performs
+one actual build; no refusal/value assertion has completed in this attempt. The file also has eight
+unreached later lifecycle cases, including frontend read identities, parent loss and four public-command
+cancellation states. Do not describe their absence as a product defect or assume a larger bound fixes it.
+
+Isolated **`428014c11`**, branch `session/worker-closeout-diagnostic`, runs the **complete 16-case
+worker file** after normal package preparation, with at most two workers and a 20m job envelope.
+Only that private project's default observation bound becomes 180s; explicit 360s/180s scenario
+bounds, short readiness/termination assertions and all bodies remain unchanged. No main budget is
+changed. A verifier requires exactly 16 actual passes. Run
+[39209331600](https://github.com/spankyed/AgentBuddy/actions/runs/39209331600) must establish
+refusal/incumbent behavior and later lifecycle evidence before any repair or another broad pool.
+Preserve its private workflow/configuration separately; no native execution runs on the daily-use Mac.

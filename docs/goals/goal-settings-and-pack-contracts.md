@@ -149,7 +149,15 @@ unattributed. Main **`27e9e4109`** applies the existing 360s Windows repeated-bu
 scenario on all platforms and changes only the Electron build-command bound to 180s; its 300s outer
 and other command bounds stay unchanged. All 53 timeout/inventory checks, CLI types and lint pass.
 Complete integration [39207375977](https://github.com/spankyed/AgentBuddy/actions/runs/39207375977)
-on workflow-only **`b552b950a`** verifies these scopes under actual pool concurrency. Full integration,
+on workflow-only **`b552b950a`** accepts both repaired controls (repeat **90.799s**, Electron control
+**106.523s**) and 419 assertions, then stops at the exit-handler candidate-mutation case's 60s
+default. Fifteen actual native cases complete, including recovery and preload refusal; the file's
+25-test header does not establish execution of its fail-fast remainder. No mutation/refusal assertion
+result is available for the timed-out worker case. Isolated **`428014c11`** runs the complete 16-case
+worker file in [39209331600](https://github.com/spankyed/AgentBuddy/actions/runs/39209331600), with
+a private 180s default observation window and all existing explicit/inner bounds unchanged. This
+covers the currently unreached lifecycle cases together; main's 60s default remains unchanged.
+Inspect completed refusal/incumbent/cleanup evidence before selecting a repair. Full integration,
 authoring/runtime/app acceptance and final main strict `--all` remain required.
 None of these probes is a strict-chain result, despite using the existing `strict_chain` dispatch route. Main's
 full strict workflow is unchanged and remains required after integration converges. See
