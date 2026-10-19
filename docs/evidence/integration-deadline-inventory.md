@@ -942,3 +942,17 @@ workflow-only `952a6dd02`, whose only difference from that source checkpoint is 
 It selects all 15 configuration cases, bail disabled, two-worker limits and an explicit 15-executed-case
 assertion; no workflow test-timeout override. Normal integration is on hold until affected-file
 completion and reporting are accepted.
+
+## Complete esbuild configuration file accepted — 2026-10-19
+
+[39296758415](https://github.com/spankyed/AgentBuddy/actions/runs/39296758415) finishes
+**completed/success** on workflow-only `952a6dd02`, source repair `d29612b7a`.
+The actual status report records **15 passes, zero failures, zero pending, exit 0**, 239.315s.
+Every file body executes, including all transient-edit cases: configuration 32.603s, sources
+30.442s, declarations **26.195s**, resolution 31.320s. The final output contains no unhandled runner
+error or reported cleanup failure. Assertions and workflow test deadlines remain unchanged.
+This proves affected-file completion and reporting on the focused runner; it does not explain the
+normal run's slowdown or certify the whole integration pool. Resume normal integration, then strict.
+
+Preserved reports: `/private/tmp/apack-esbuild-configuration-39296758415/` (JSON, status, console);
+full log `/private/tmp/apack-esbuild-configuration-39296758415-full.log`.
