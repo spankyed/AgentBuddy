@@ -141,6 +141,15 @@ ownership review identifies no additional demonstrated implementation gap. See [
 The live strict run predates both review repairs; final committed-source and external-runtime acceptance
 remain required, and no unresolved requirement is waived.
 
+Completion source review on `eb552cf65` also rechecks Phase 3–5 boundaries: catalog metadata is
+separate from executable availability; typed field inventories cover current registration contracts;
+entity delivery rechecks destination/binding/actor readiness; frontend retry requires the current
+owner identity. No additional demonstrated defect is found in those inspected paths. This does not
+replace poisoned/source-free discovery, navigation races or actual pane/window acceptance in the
+existing evidence and final gates. Primary PE documentation and preserved ordinary-loader failures
+still do not settle valid bound-only support; the explicit-refusal scope question remains unanswered,
+with no exclusion or guessed symbol recovery applied. Strict run `39191666077` remains live.
+
 This ledger owns current execution status and ordering. The phases below retain all completion
 requirements; subsystem plans retain detailed contracts and acceptance cases. Dated checkpoint notes
 are historical evidence, not additional live backlogs. Their old “next,” “remaining” and prerequisite
