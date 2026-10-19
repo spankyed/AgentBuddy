@@ -8345,3 +8345,29 @@ Focused [39199767205](https://github.com/spankyed/AgentBuddy/actions/runs/391997
 Its result remains unproven; the exact executed count must be checked. This closes a named coverage
 gap before another full gate. Final strict `--all`, remaining integration and authoring/runtime/app
 acceptance stay required. No local native execution or Windows VM startup occurs.
+
+### Native tail accepted; complete integration isolated — 2026-10-19
+
+[39199767205](https://github.com/spankyed/AgentBuddy/actions/runs/39199767205) passes **ten actual
+native cases** on `24dc840c1` (15 filtered); the workflow confirms `{ passed: 10 }`. Preload/thread
+take **36.625s/45.141s**, launch-environment retention **41.570s**, OS/override admission **24.490s**,
+the three changed fallback/framework controls **26.137s/23.837s/24.066s**, versioned library/framework
+refusals **7.144s/6.611s**, and suffix selection/transitive refusal **30.912s**. Each retains its value,
+freshness, initialization and ownership assertions. No further native implementation defect is found.
+Logs: `/private/tmp/apack-native-tail-39199767205{,-clean}.log`.
+
+The remaining coverage gap is the entire 68-file integration pool: earlier broad runs stop before
+most files execute. To avoid repeating accepted prerequisite gates for diagnosis, isolated branch
+`session/integration-acceptance-probe`, worktree `/private/tmp/apack-integration-acceptance-probe`,
+adds only workflow checkpoint **`fffcc1254`** over main `6dcbfdd88`. The exact diff is solely
+`.github/workflows/strict-chain.yml`; all product/test code is identical. No dependencies, generated
+output, index or profiles are shared with the main checkout.
+
+Probe [39200409842](https://github.com/spankyed/AgentBuddy/actions/runs/39200409842) runs
+`npm run build:default-setup`, then **`APACK_CHAIN_CORES=2 npm run test:integration`**, retaining
+the existing suite deadline and console evidence. The isolated workflow is named Integration acceptance
+probe and has a 20-minute job envelope. Dispatch uses the existing `ci.yml` `strict_chain=true` route,
+but its altered workflow runs **integration only**, so success must not be reported as a strict `--all`
+pass. The probe is execution-only and is not intended for merging. Main's required full strict workflow
+is unchanged, with final schema/API/unit/authoring/runtime/app gates still required. No broad retry,
+local native execution or VM startup occurs during this probe.
