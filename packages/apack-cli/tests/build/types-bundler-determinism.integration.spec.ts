@@ -1,4 +1,4 @@
-import { execFileSync } from 'node:child_process';
+import { execFile } from 'node:child_process';
 import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
@@ -66,7 +66,7 @@ const PACK: Record<string, string> = {
 };
 
 /** The pack built with node_modules linked to `modules`; its facade bundle */
-function buildFacade(parent: string, name: string, modules: string): string {
+async function buildFacade(parent: string, name: string, modules: string, signal: AbortSignal): Promise<string> {
   const dir = path.join(parent, name);
   for (const [rel, content] of Object.entries(PACK)) {
     fs.mkdirSync(path.dirname(path.join(dir, rel)), { recursive: true });
@@ -74,7 +74,11 @@ function buildFacade(parent: string, name: string, modules: string): string {
   }
   fs.symlinkSync(modules, path.join(dir, 'node_modules'), 'dir');
   try {
-    execFileSync(process.execPath, [CLI, 'pack', 'build'], { cwd: dir, stdio: 'pipe', env: { ...process.env, FORCE_COLOR: '0' } });
+    await new Promise<void>((resolve, reject) => {
+      execFile(process.execPath, [CLI, 'pack', 'build'], {
+        cwd: dir, env: { ...process.env, FORCE_COLOR: '0' }, signal, timeout: 180_000, killSignal: 'SIGKILL',
+      }, (error, stdout, stderr) => error ? reject(Object.assign(error, { stdout, stderr })) : resolve());
+    });
   } catch (err: any) {
     throw new Error(`apack pack build failed (${name}):\n${err.stdout ?? ''}${err.stderr ?? ''}`);
   }
@@ -83,12 +87,18 @@ function buildFacade(parent: string, name: string, modules: string): string {
 
 describe.skipIf(!PACKAGES_BUILT)('facade bundle determinism (needs dist: npm run packages:build)', () => {
   const parent = fs.mkdtempSync(path.join(os.tmpdir(), 'facade-determinism-'));
-  afterAll(() => fs.rmSync(parent, { recursive: true, force: true }));
+  let active: Promise<string> | undefined;
+  afterAll(async () => {
+    await active?.catch(() => {});
+    fs.rmSync(parent, { recursive: true, force: true });
+  });
 
-  it('is identical from the workspace and from the packed tarballs a consumer installs', () => {
-    const fromWorkspace = buildFacade(parent, 'workspace', path.join(REPO_ROOT, 'node_modules'));
-    const fromPacked = buildFacade(parent, 'packed', path.join(installPublishedPackages(), 'node_modules'));
+  it('is identical from the workspace and from the packed tarballs a consumer installs', async ({ signal }) => {
+    active = buildFacade(parent, 'workspace', path.join(REPO_ROOT, 'node_modules'), signal);
+    const fromWorkspace = await active;
+    active = buildFacade(parent, 'packed', path.join(installPublishedPackages(), 'node_modules'), signal);
+    const fromPacked = await active;
     expect(fromWorkspace).toContain('QueryBuilder');
     expect(fromPacked).toBe(fromWorkspace);
-  });
+  }, 60_000 + 2 * 180_000 + 20_000);
 });

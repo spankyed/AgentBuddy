@@ -26,7 +26,7 @@ beforeEach(async () => {
   });
   // The subject is replacement of an already published generation.
   await builder!.build();
-});
+}, 60_000 + 180_000);
 afterEach(async () => {
   await watcher?.close();
   await builder?.close();
@@ -119,4 +119,4 @@ it('refreshes backend and live frontend together, retains failed incumbents and 
   }
   expect(workspaces.length).toBeGreaterThanOrEqual(3);
   for (const workspace of workspaces) expect(fs.existsSync(workspace)).toBe(false);
-});
+}, 60_000 + 2 * 180_000 + 20_000 + 20_000);

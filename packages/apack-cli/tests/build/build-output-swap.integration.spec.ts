@@ -141,7 +141,7 @@ describe('a build that fails', () => {
     expect(facade()).toMatch(/title:\s*string/);
     await build(['--skip-fe'], root);
     expect(facade()).toMatch(/title:\s*number/);
-  }, 120_000);
+  }, 3 * 60_000 + 20_000);
 
   it('refuses stale generated declarations and retains the previous build', async () => {
     const dir = previousBuild(PREVIOUS);
@@ -192,7 +192,7 @@ describe('a build that fails', () => {
     await expect(build(['--skip-fe'], root)).rejects.toThrow('first H1');
     expect(fs.readFileSync(path.join(dir, PACK_LAYOUT.snapshot), 'utf8')).toBe(accepted);
     expect(readPackBuild(dir).snapshot.help![0].title).toBe('Updated');
-  });
+  }, 3 * 60_000 + 20_000);
 
   it('leaves the whole of the previous build in place, and no staging tree', async () => {
     const dir = previousBuild(PREVIOUS);

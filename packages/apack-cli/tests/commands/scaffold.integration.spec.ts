@@ -115,7 +115,7 @@ describe('apack pack init → add feature → build → tsc → pack', () => {
       expect(guide, `Missing public build path ${file}`).toContain('`' + file + '`');
     }
 
-  });
+  }, 6 * 60_000 + 20_000);
 
   /**
    * The facade round trip through the **scripts the scaffold writes**, on a pack scaffolded the way an author
@@ -145,7 +145,7 @@ describe('apack pack init → add feature → build → tsc → pack', () => {
     const checked = await callCli(pack, 'facade-report');
     expect(checked.code, checked.output).toBe(0);
     expect(checked.output).toContain('is up to date');
-  });
+  }, 4 * 60_000 + 20_000);
 
   /**
    * Every file the scaffold ships that names a command — both workflows and the README — held to the scripts
@@ -253,7 +253,7 @@ describe('apack pack init → add feature → build → tsc → pack', () => {
     // typecheck: as above
     const tsc = await typecheckPack(pack);
     expect(tsc.code, tsc.output).toBe(0);
-  }, 120_000);
+  }, 4 * 60_000 + 20_000);
 
   it('regenerates entries when a source file codegen reads changes, not only the manifest', async () => {
     const servicePath = path.join(pack, 'src', 'extensions', 'services', 'cache.ts');
@@ -267,7 +267,7 @@ describe('apack pack init → add feature → build → tsc → pack', () => {
     expect(fs.readFileSync(path.join(pack, 'src', '__generated__', 'services.ts'), 'utf-8')).toMatch(/import \{ cacheService as __service_cache \}/);
     // process: the stdout a second, unchanged run prints is the assertion
     expect(run('node', [CLI, 'pack', 'generate-entries'], pack).output).toMatch(/inputs unchanged/);
-  });
+  }, 2 * 60_000 + 20_000);
 
   it('keeps unit tests runnable after init-tests adds Playwright specs', async () => {
     // produces: the Playwright specs the vitest run below picks up

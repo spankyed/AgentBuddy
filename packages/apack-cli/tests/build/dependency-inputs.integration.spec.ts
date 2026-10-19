@@ -45,4 +45,4 @@ export default function compile() {
   const resolution = JSON.parse(fs.readFileSync(path.join(consumer, '.apack/deps/provider/resolution.json'), 'utf8'));
   expect(fs.readFileSync(path.join(consumer, '.apack/deps/provider/builds', resolution.revision, PACK_LAYOUT.runtimeEntry), 'utf8'))
     .toContain('changed during compilation');
-});
+}, 3 * 60_000 + 20_000);

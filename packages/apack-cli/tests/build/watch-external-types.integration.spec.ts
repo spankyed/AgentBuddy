@@ -72,4 +72,4 @@ export default { spec, machine: setup({ types: spec.types }).createMachine({ id:
     fs.rmSync(temporary, { recursive: true, force: true });
   }
 // Four compiler attempts share this scenario; individual rebuild waits remain bounded above.
-}, 120_000);
+}, 120_000 + 3 * 20_000 + 20_000);

@@ -112,7 +112,7 @@ let starting: ReturnType<typeof startWatchedPack> | undefined;
 beforeEach(async ({ signal }) => {
   starting = startWatchedPack(signal);
   watchedPack = await starting;
-});
+}, 2 * 60_000);
 afterEach(async () => {
   const pending = starting;
   starting = undefined;

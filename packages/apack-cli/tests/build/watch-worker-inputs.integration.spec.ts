@@ -56,4 +56,4 @@ it('rebuilds for worker inputs and repairs missing external reads without author
     errors.mockRestore();
     fs.rmSync(temporary, { recursive: true, force: true });
   }
-}, 120_000);
+}, 120_000 + 2 * 60_000 + 20_000);

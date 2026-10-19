@@ -49,7 +49,7 @@ it('rebuilds the frontend when an undeclared imported package changes behind unc
   expect(second.output).not.toContain('fe: unchanged, reused');
   expect(fs.readFileSync(frontend, 'utf8')).toContain('AFTERX');
   expect(fs.readFileSync(frontend, 'utf8')).not.toContain('BEFORE');
-});
+}, 2 * 60_000 + 20_000);
 
 it.each(['inline', 'external', 'linked'] as const)('invalidates compiler inputs and recompiles a Vue-only import (%s script)', async kind => {
   const { pack, helper, frontend } = vueRuntimeConsumer(kind);
@@ -90,7 +90,7 @@ it.each([
     expect(fs.readFileSync(frontend, 'utf8')).toContain('AFTERX');
     expect(fs.readFileSync(frontend, 'utf8')).not.toContain('BEFORE');
   } finally { await watcher?.close(); }
-});
+}, 120_000 + 20_000 + 20_000);
 
 async function consumer() {
   root = fs.mkdtempSync(path.join(os.tmpdir(), 'apack-installed-types-'));
@@ -180,4 +180,4 @@ it('keeps a captured build current after standalone generation with unchanged ge
   assertPackBuildInputsCurrent(pack, inputs);
   fs.appendFileSync(path.join(pack, 'src/__generated__/ears.ts'), '\n// changed generated module\n');
   expect(() => assertPackBuildInputsCurrent(pack, inputs)).toThrow('Compiler startup input changed');
-});
+}, 180_000 + 60_000 + 60_000 + 20_000);

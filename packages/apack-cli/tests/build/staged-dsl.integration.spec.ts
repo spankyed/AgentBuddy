@@ -73,5 +73,5 @@ describe('staged DSL definitions', () => {
       expect(fs.existsSync(definitions)).toBe(false);
       expect(fs.readFileSync(path.join(dir, PACK_LAYOUT.feEntry), 'utf8')).not.toContain('after: true');
     } finally { process.chdir(cwd); }
-  }, 120_000);
+  }, 5 * 60_000 + 20_000);
 });

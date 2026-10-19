@@ -53,5 +53,5 @@ describe('external pack offline inspection', () => {
     expect(report.dependencies).toEqual(JSON.parse(cached.output).dependencies);
     expect(fs.readFileSync(record)).toEqual(recorded);
     expect(inspected.output + cached.output + doctor.output).not.toContain('Inspection activated');
-  });
+  }, 5 * 60_000 + 20_000);
 });

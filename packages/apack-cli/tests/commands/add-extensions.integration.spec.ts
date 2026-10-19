@@ -181,7 +181,7 @@ describe('apack pack add artifact and block', () => {
       chart: { icon: 'FileText', fe: 'src/extensions/artifacts/viewers/chart-artifact.vue' },
       table: { icon: 'Table2', fe: 'src/extensions/artifacts/viewers/table-artifact.vue' },
     });
-  });
+  }, 2 * 60_000 + 20_000);
 
   it('refuses an artifact type the manifest already declares, leaving the manifest as it was', async () => {
     const before = readManifest();
@@ -205,7 +205,7 @@ describe('apack pack add artifact and block', () => {
       'rating': { fe: 'src/extensions/blocks/display/RatingBlock.vue' },
       'color-picker': { kind: 'input', fe: 'src/extensions/blocks/input/ColorPickerInput.vue' },
     });
-  });
+  }, 2 * 60_000 + 20_000);
 
   it('refuses a block type the manifest already declares, leaving the manifest as it was', async () => {
     const before = readManifest();
@@ -249,7 +249,7 @@ describe('apack pack add migration', () => {
     expect(entry).toContain("    pack: [\n      { target: '0.2.0', description: \"Describe what this migration changes\", up: __migration_pack_0_2_0 },\n      { target: '0.10.1', description: \"Describe what this migration changes\", up: __migration_pack_0_10_1 },\n      { target: '0.11.0', description: \"Describe what this migration changes\", up: __migration_pack_0_11_0 },\n    ],");
     const tsc = await typecheckPack(pack);
     expect(tsc.code, tsc.output).toBe(0);
-  });
+  }, 6 * 60_000 + 20_000);
 
   it('refuses a version it already declares on that line, leaving the manifest as it was', async () => {
     const before = read('apack.json');

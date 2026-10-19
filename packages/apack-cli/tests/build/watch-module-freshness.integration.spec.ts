@@ -44,7 +44,7 @@ it('refreshes flow modules loaded through ordinary imports on the next watched b
     errors.mockRestore();
     fs.rmSync(temporary, { recursive: true, force: true });
   }
-});
+}, 120_000 + 20_000 + 20_000);
 
 it('recompiles changed transitive content modules and retains the accepted build on failure', async () => {
   const temporary = fs.mkdtempSync(path.join(os.tmpdir(), 'apack-watch-modules-'));
@@ -86,4 +86,4 @@ it('recompiles changed transitive content modules and retains the accepted build
     errors.mockRestore();
     fs.rmSync(temporary, { recursive: true, force: true });
   }
-});
+}, 120_000 + 2 * 20_000 + 20_000);

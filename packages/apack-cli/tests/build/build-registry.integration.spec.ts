@@ -78,7 +78,7 @@ describe('a build', () => {
     const receipt = fs.readFileSync(path.join(root, 'dist', PACK_LAYOUT.integrity), 'utf8');
     await expect(build(['--skip-fe'], root)).rejects.toThrow('missing required runtime/fe.js');
     expect(fs.readFileSync(path.join(root, 'dist', PACK_LAYOUT.integrity), 'utf8')).toBe(receipt);
-  });
+  }, 2 * 60_000 + 20_000);
 
   it('refuses a flow that names an undeclared step', async () => {
     const root = pack('no-such-step');

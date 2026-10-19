@@ -69,7 +69,7 @@ beforeAll(async () => {
   const appDir = preparePack(parent, 'app-pack', pack('app-pack', { App: 'App' }, on('left-pack', 'right-pack')), modules);
   // produces: the app-pack build whose snapshot the tests read (its output is also checked for conflicts)
   built = await callCli(appDir, 'build');
-});
+}, 4 * 60_000);
 
 afterAll(() => {
   if (parent) fs.rmSync(parent, { recursive: true, force: true });

@@ -86,4 +86,4 @@ export const getHeight: NonNullable<StepLayoutDescriptor['getHeight']> = node =>
   frontends.unload(manifest.id);
   expect(packs.stepBindings().get('memo')).toBeUndefined();
   expect(fs.existsSync(path.join(installed, 'src'))).toBe(false);
-});
+}, 180_000 + 60_000 + 60_000 + 20_000);

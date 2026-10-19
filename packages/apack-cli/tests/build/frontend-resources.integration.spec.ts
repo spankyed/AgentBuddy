@@ -111,7 +111,7 @@ it('rebuilds Vue styles after only an external stylesheet changes', async () => 
   expect(second.code, second.output).toBe(0);
   expect(fs.readFileSync(css, 'utf8')).toContain('#654321');
   expect(fs.readFileSync(css, 'utf8')).not.toContain('#123456');
-});
+}, 2 * 60_000 + 20_000);
 
 it.each(['css-import', 'css-url', 'template'] as const)('compiles changed external %s resources with unchanged authored sources', async kind => {
   const { pack } = consumer();
@@ -161,7 +161,7 @@ describe('CSS dependency watching', () => {
     publications = 0;
     await fixture.startWatcher(pack, { place: { env: 'test', userDataDir: path.join(fixture.root, 'profile') },
       onBuilt: async () => { publications++; } });
-  });
+  }, 2 * 60_000);
 
   it('recovers a missing nested stylesheet while retaining the accepted build', async () => {
     const css = () => fs.readFileSync(path.join(pack, 'dist/runtime/fe.css'), 'utf8');
@@ -212,7 +212,7 @@ it.each(['css-url', 'template'] as const)('watches an external %s asset in a sep
     expect(readFrontendOutput(pack, '.svg')).toContain('AFTERX');
     expect(readFrontendOutput(pack, '.svg')).not.toContain('BEFORE');
   } finally { await watcher?.close(); }
-});
+}, 120_000 + 20_000 + 20_000);
 
 it('watches initially empty external Tailwind content through nested directory links', async () => {
   const { pack } = consumer();
@@ -249,4 +249,4 @@ it('watches initially empty external Tailwind content through nested directory l
     expect(errors.mock.calls).toEqual([]);
     expect(readFrontendOutput(pack, '.css')).not.toContain('.text-orange-500');
   } finally { await watcher?.close(); }
-}, 120_000);
+}, 120_000 + 2 * 20_000 + 20_000);

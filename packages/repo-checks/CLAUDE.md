@@ -112,6 +112,9 @@ checks in three other places.
 
 ## Conventions
 
+`suite-timeouts` also reviews deadlines in shared test helpers. A helper has no runnable target size,
+so every explicit override needs a named reason in the existing exception table.
+
 - **Find the repo root with `REPO_ROOT`** (`@apackdev/host/build/packages-built`), never by counting `..`
   from `import.meta.dirname`. Two specs arrived here with a hard-coded depth and broke on the move; the
   exported one is derived from a marker file and cannot.

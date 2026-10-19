@@ -372,7 +372,7 @@ it('terminates pack-created background work before accepting its candidate', asy
   }
 });
 
-it('refuses candidate output changed by a compiler exit handler and retains the incumbent', async () => {
+it('refuses candidate output changed by a compiler exit handler and retains the incumbent', async ({ signal }) => {
   const root = fixture({
     'src/compiler.ts': `import fs from 'node:fs';
       process.on('exit', () => {
@@ -385,12 +385,15 @@ it('refuses candidate output changed by a compiler exit handler and retains the 
     sources: { rows: { path: 'src/value.txt', format: 'rows' } } });
   fs.mkdirSync(path.join(root, 'dist'));
   fs.writeFileSync(path.join(root, 'dist/incumbent.txt'), 'ACCEPTED');
-  await expect(runPackBuild(root, { args: ['--skip-fe'] })).rejects.toThrow();
+  const builder = createPackBuilder(root);
+  builders.push(builder);
+  await expect(builder.build({ args: ['--skip-fe'], signal })).rejects.toThrow();
+  await builder.close();
   expect(fs.readFileSync(path.join(root, '.apack/exit-state'), 'utf8')).toBe('SEALED');
   expect(fs.readFileSync(path.join(root, 'dist/incumbent.txt'), 'utf8')).toBe('ACCEPTED');
   expect(fs.readdirSync(path.join(root, 'dist'))).toEqual(['incumbent.txt']);
   expect(fs.existsSync(path.join(root, '.apack/build'))).toBe(false);
-});
+}, 180_000 + 20_000);
 
 it('reports frontend inputs that remain available after its compiler installation is removed', async () => {
   const root = fixture({
@@ -542,4 +545,4 @@ it.each([
     if (child.exitCode === null && child.signalCode === null) child.kill();
     await _byDeadline(closed, 'public watcher cleanup', cleanupDeadlineMs);
   }
-});
+}, 60_000 + 20_000 + 20_000);

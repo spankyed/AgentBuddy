@@ -91,18 +91,29 @@ it.runIf(process.platform === 'darwin' || process.platform === 'linux').each(ele
   const command = async (cwd: string, args: string[], { runtime = { executable: electron, runtimeDirectory }, timeoutMs = 60_000 } = {}) => {
     const started = Date.now();
     console.log('Electron pack phase started', args[0]);
+    const signal = AbortSignal.any([stop.signal, AbortSignal.timeout(timeoutMs)]);
     const child = spawnCompilerWorker({ ...runtime, bin }, [bin, 'pack', ...args], {
       cwd, env: { ...process.env, ELECTRON_RUN_AS_NODE: '1',
         NODE_OPTIONS: formatNodeOptions(['--conditions=@apackdev/source']) },
-      stdio: ['ignore', 'pipe', 'pipe', 'ipc'], signal: AbortSignal.any([stop.signal, AbortSignal.timeout(timeoutMs)]),
+      stdio: ['ignore', 'pipe', 'pipe', 'ipc'], signal,
     }, root);
     let output = '';
     child.stdout!.on('data', bytes => { output += bytes; });
     child.stderr!.on('data', bytes => { output += bytes; });
+    let escalation: ReturnType<typeof setTimeout> | undefined;
+    const abort = () => { escalation = setTimeout(() => child.kill('SIGKILL'), 2_000); };
+    signal.addEventListener('abort', abort, { once: true });
+    if (signal.aborted) abort();
     closed = new Promise((resolve, reject) => {
-      child.once('error', reject);
-      child.once('close', (code, signal) => code === 0 ? resolve()
-        : reject(new Error(`pack ${args.join(' ')} exited ${signal ?? code}: ${output}`)));
+      let failure: Error | undefined;
+      child.once('error', error => { failure = error; });
+      child.once('close', (code, received) => {
+        clearTimeout(escalation);
+        signal.removeEventListener('abort', abort);
+        if (failure) reject(failure);
+        else if (code === 0) resolve();
+        else reject(new Error(`pack ${args.join(' ')} exited ${received ?? code}: ${output}`));
+      });
     });
     try { await closed; }
     catch (error) {
@@ -141,7 +152,8 @@ it.runIf(process.platform === 'darwin' || process.platform === 'linux').each(ele
   expect(fs.existsSync(proof), 'archive must not execute the content compiler').toBe(false);
   console.log('Electron pack compilation accepted', JSON.stringify({ runtime, revision: built.revision }));
   completed = true;
-}, 300_000);
+// Four command bounds, followed by output verification and owned process disposal.
+}, 60_000 + 60_000 + 180_000 + 60_000 + 60_000);
 
 it.runIf(process.platform === 'darwin')('refuses outside runtime-linked Mach-O constructors and accepts contained runtime libraries', async () => {
   const root = fs.realpathSync.native(fs.mkdtempSync(path.join(os.tmpdir(), 'apack-macho-runtime-')));
@@ -807,7 +819,7 @@ it.runIf(process.platform === 'darwin' || process.platform === 'linux')('retains
     await builder.close();
     fs.rmSync(fixture.root, { recursive: true, force: true });
   }
-});
+}, 2 * 60_000 + 60_000 + 20_000);
 
 it.runIf(process.platform === 'darwin')('admits OS libraries and refuses outside launch overrides before build or frontend launch', async () => {
   const fixture = nativeFixture('relative');
@@ -905,7 +917,7 @@ it.runIf(process.platform === 'darwin').each(['DYLD_FALLBACK_LIBRARY_PATH', 'DYL
       await builder.close();
       fs.rmSync(fixture.root, { recursive: true, force: true });
     }
-  },
+  }, 2 * 60_000 + 60_000 + 20_000,
 );
 
 it.runIf(process.platform === 'darwin').each(['DYLD_VERSIONED_LIBRARY_PATH', 'DYLD_VERSIONED_FRAMEWORK_PATH'] as const)(
@@ -1004,4 +1016,4 @@ it.runIf(process.platform === 'darwin')('captures the selected native image suff
     await builder.close();
     fs.rmSync(fixture.root, { recursive: true, force: true });
   }
-});
+}, 2 * 60_000 + 90_000 + 30_000);

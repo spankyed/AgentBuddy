@@ -83,6 +83,8 @@ export async function callCli(dir: string, command: keyof typeof COMMANDS, args:
     process.chdir(cwd);
     Object.assign(console, console_);
     process.exit = exit;
+    // Receive runner updates between completed compiler operations, after restoring process globals.
+    await new Promise<void>(resolve => { setImmediate(resolve); });
   }
 }
 
@@ -114,6 +116,7 @@ export async function typecheckPack(dir: string, tsconfigName = 'tsconfig.json')
       : '';
     return `${where}: error TS${d.code}: ${ts.flattenDiagnosticMessageText(d.messageText, ' ')}`;
   }).join('\n');
+  await new Promise<void>(resolve => { setImmediate(resolve); });
   return { code: diagnostics.length > 0 ? 1 : 0, output };
 }
 

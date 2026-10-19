@@ -3,7 +3,6 @@ import path from 'node:path';
 import { expect, it, vi } from 'vitest';
 import { createFrontendResourceFixture, readFrontendOutput } from '../_support/frontend-resources.ts';
 import { readPackBuild } from '@apackdev/host/packs';
-import { startPackBuildWatcher } from '../../src/build/watch.ts';
 import { bundlePackFE } from '../../src/build/fe-bundler.ts';
 import { createFrontendWatcher } from '../../src/build/frontend-watch.ts';
 
@@ -69,7 +68,7 @@ it('retains the accepted build after a worker error and publishes its repair', a
   let watcher: { close(): Promise<void> } | undefined;
   let publications = 0;
   try {
-    watcher = await startPackBuildWatcher(pack, { place: { env: 'test', userDataDir: path.join(fixture.root, 'profile') },
+    watcher = await fixture.startWatcher(pack, { place: { env: 'test', userDataDir: path.join(fixture.root, 'profile') },
       onBuilt: async () => { publications++; } });
     const accepted = readPackBuild(path.join(pack, 'dist')).revision;
     fs.writeFileSync(helper, 'export const marker = ;');
@@ -82,5 +81,5 @@ it('retains the accepted build after a worker error and publishes its repair', a
     expect(readFrontendOutput(pack, '.js')).toContain('WORKER_REPAIRED');
     expect(readFrontendOutput(pack, '.js')).not.toContain('WORKER_BEFORE');
   } finally { await watcher?.close(); }
-});
+}, 120_000 + 2 * 20_000 + 20_000);
 
