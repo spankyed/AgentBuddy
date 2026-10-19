@@ -47,15 +47,15 @@ Lazy activation is deferred.
 
 ## Live execution ledger (reconciled 2026-10-16)
 
-Current normal gate **39281108805** finished: **505 actual passes**, one whole-scenario
-60s timeout in the trigger scaffold/add/typecheck case. All preparation passes, as do all 41 native
-and worker cases together. The unfiltered pool stopped early; full integration is still unaccepted.
-Compose this remaining three-operation scenario's deadline consistently with adjacent cases, then
-accept the full affected scaffold file before another normal run. Repair **`d07ccae99`** is committed and pushed; all 53 timeout/inventory checks, CLI types and
-lint pass. Focused [39288218287](https://github.com/spankyed/AgentBuddy/actions/runs/39288218287)
-is queued on workflow-only `36ea8055a`, selecting all 18 scaffold cases plus two facade typecheck
-controls with two workers and bail disabled. Await this existing run. Final committed-source strict
-`--all` remains required. See [latest classification](../evidence/integration-deadline-inventory.md#normal-gate-trigger-scaffold-scenario-deadline--2026-10-19).
+Focused trigger-scaffold acceptance **39288218287** succeeds on workflow-only `36ea8055a`,
+containing repair **`d07ccae99`**: all 18 scaffold cases and two facade typecheck controls pass
+(20 actual passes, exit 0, 377.704s; two workers). The repaired trigger case takes 27.020s;
+eight other facade cases are intentionally filtered, not accepted by this focused run. No reported
+cleanup/runtime error. Resume normal unfiltered integration, then final committed-source strict
+`--all`. See [focused evidence](../evidence/integration-deadline-inventory.md#trigger-scaffold-file-and-facade-controls-accepted--2026-10-19).
+
+Previous normal **39281108805** finishes with 505 actual passes, one trigger whole-scenario timeout,
+and 26 Windows skips; all 41 native/worker bodies pass. Its unreached cases remain unaccepted.
 
 Latest normal **39269209929** finishes with 425 actual passes and a native-thread **whole-scenario
 120s timeout**. All 16 worker bodies now pass, including three previously inherited-60s scenarios
