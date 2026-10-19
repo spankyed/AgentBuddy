@@ -21,6 +21,7 @@ import { mergeCompilerWatchPaths, type CompilerWatchPaths } from './compiler-wat
 
 // Give worker SIGTERM handlers a short cleanup phase before forced termination.
 const STOP_GRACE_MS = 2_000;
+const buildProof = (root: string, phase: string, detail: object = {}) => console.log(JSON.stringify({ watchProof: phase, at: Date.now(), root, ...detail }));
 
 export interface PackBuildOptions {
   readonly args?: readonly string[];
@@ -107,19 +108,23 @@ export function createPackBuilder(root: string): PackBuilder {
     build({ args = [], onInputs, signal }: PackBuildOptions = {}) {
       const options = { args: [...args], onInputs, signal: signal ? AbortSignal.any([signal, stopped.signal]) : stopped.signal };
       return enqueue(async () => {
+        buildProof(root, 'builder:prepare');
         options.signal.throwIfAborted();
         assertCompilerLibraryEnvironment();
         ensureCheckoutPackages(root);
         const cli = cliPackageDirectory();
         if (checkoutFor(cli) !== checkoutFor(root)) ensureCheckoutPackages(cli);
+        buildProof(root, 'builder:packages');
         const directory = compilerPackageDirectory();
         const configuration = frontendChanged ? readPackDevServerInputs(root) : undefined;
         const compiler = current?.compiler.isCurrent(directory, { cwd: root }) ? current.compiler : undefined;
+        buildProof(root, 'builder:compiler-current', { compilerRetained: !!compiler });
         const reusable = compiler && (!current?.frontend
           || (current.configuration === configuration && await current.frontend.isCurrent(options.signal)));
         const candidate: Generation = current && reusable ? current
           : { compiler: compiler ?? await captureCompilerInstallation(directory, { cwd: root, signal: options.signal }) };
         owned.add(candidate);
+        buildProof(root, 'builder:candidate', { generationRetained: candidate === current });
         try {
           options.signal.throwIfAborted();
           // A replacement must be ready before its backend can replace the accepted build.
@@ -130,6 +135,7 @@ export function createPackBuilder(root: string): PackBuilder {
           });
           try { await buildWithCompiler(root, candidate.compiler, options); }
           finally { lock.release(); }
+          buildProof(root, 'builder:published');
           if (frontendChanged) {
             const before = current?.frontend?.address;
             const address = await ensureFrontend(candidate, options.signal);
@@ -189,6 +195,7 @@ export async function runPackBuild(root: string, options: PackBuildOptions = {})
 }
 
 async function buildWithCompiler(root: string, compiler: CompilerInstallation, { args = [], onInputs, signal }: PackBuildOptions): Promise<void> {
+  buildProof(root, 'worker:prepare');
   const inputsDirectory = fs.realpathSync.native(fs.mkdtempSync(path.join(os.tmpdir(), 'apack-build-inputs-')));
   try {
     assertCompilerLibraryEnvironment();
@@ -212,6 +219,7 @@ async function buildWithCompiler(root: string, compiler: CompilerInstallation, {
           [BUILD_INPUTS_IPC_ENV]: onInputs ? '1' : '0', [COMPILER_NODE_OPTIONS_ENV]: nodeOptions.user,
           NODE_OPTIONS: nodeOptions.worker, ELECTRON_RUN_AS_NODE: '1' },
       }, inputsDirectory);
+      buildProof(root, 'worker:spawned');
       const stop = () => {
         if (stopping) return;
         stopping = grouped && child.pid ? stopCompilerProcessGroup(child.pid)
@@ -241,9 +249,11 @@ async function buildWithCompiler(root: string, compiler: CompilerInstallation, {
       child.once('error', error => { processError = error; });
       child.once('exit', () => { clearStop(); if (grouped) stop(); });
       child.once('close', async (code, exitSignal) => {
+        buildProof(root, 'worker:closed', { code, exitSignal });
         clearStop();
         try { await stopping; } catch (error) { reject(error); return; }
         await observing;
+        buildProof(root, 'worker:observed');
         try {
           if (onInputs) for (const inputs of readCompilerWatchReports(inputsDirectory)) await onInputs(inputs);
         } catch (error) { observationError ??= error instanceof Error ? error : new Error(String(error)); }
@@ -254,7 +264,9 @@ async function buildWithCompiler(root: string, compiler: CompilerInstallation, {
       });
     });
     signal?.throwIfAborted();
+    buildProof(root, 'publication:start');
     publishPackBuild(root, candidate);
+    buildProof(root, 'publication:complete');
   } finally {
     fs.rmSync(buildStagingDir(root), { recursive: true, force: true });
     removeCompilerReadTree(inputsDirectory);

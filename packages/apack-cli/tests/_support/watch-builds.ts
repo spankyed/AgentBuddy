@@ -17,10 +17,26 @@ export async function startTestPackBuildWatcher(root: string, options: Omit<Watc
   const build = builder.build.bind(builder);
   const builds: Promise<{ interrupted: boolean; error?: unknown }>[] = [];
   builder.build = input => {
-    const deadline = AbortSignal.timeout(builds.length ? BUILD_TIMEOUT_MS : 120_000);
+    const index = builds.length;
+    const started = Date.now();
+    const trace = (phase: string, detail: object = {}) => console.log(JSON.stringify({ publicationProof: phase, at: Date.now(), root, index, ...detail }));
+    trace('request');
+    // Diagnostic only: observe up to 120s, retaining failure of the original 60s rebuild allowance.
+    const originalLimit = index ? BUILD_TIMEOUT_MS : 120_000;
+    const boundary = setTimeout(() => trace('original-deadline', { originalLimit }), originalLimit);
+    const deadline = AbortSignal.timeout(120_000);
     const signal = input?.signal ? AbortSignal.any([input.signal, deadline]) : deadline;
     const running = build({ ...input, signal });
-    builds.push(running.then(() => ({ interrupted: false }), error => ({ interrupted: signal.aborted, error })));
+    builds.push(running.then(() => {
+      const elapsed = Date.now() - started;
+      trace('complete', { elapsed });
+      return elapsed >= originalLimit
+        ? { interrupted: true, error: new Error(`Observed build ${index} exceeded its original ${originalLimit}ms allowance (${elapsed}ms)`) }
+        : { interrupted: false };
+    }, error => {
+      trace('refused', { elapsed: Date.now() - started, error: String(error), aborted: signal.aborted });
+      return { interrupted: signal.aborted, error };
+    }).finally(() => clearTimeout(boundary)));
     return running;
   };
   try {
