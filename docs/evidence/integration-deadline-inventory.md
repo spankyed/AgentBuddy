@@ -215,6 +215,16 @@ changes invalidate, change the next identity, and accept exact restoration. No c
 native fixture is launched. CLI `tsc --noEmit` and focused correctness lint pass. The existing three
 integration assertions remain unchanged and still need affected-suite/final acceptance.
 
+Source **`ac45e89a5`** closes two fixture-premise defects. Repository integration reads the external
+packs' generated frontend entries, so its existing suite input declaration now includes fixture outputs
+and follows `test:external-pack:contract`; the fast half retains its source-only exclusions. The HMR
+setup refuses missing generation explicitly and restores its environment override. Passive facade
+inspection now builds after the prior case creates the authored report, before capturing the files
+it promises not to modify. Production freshness/refusal rules and result assertions are unchanged.
+The 105 graph/input checks pass, including removing the fixture dependency through an exclusion
+mutation. Scripts, repo-checks and CLI typechecks and focused lint pass. Real HMR/facade execution
+remains part of the affected-case run after the repair pass; no broad run was started.
+
 1. Compose named multi-step case and setup budgets from inspected operations, preserving their inner
    event, operation and cleanup limits. Fix awaited cancellation/teardown where timed-out work can
    retain global state, locks or watchers; do not delete live locks or retry through them.
