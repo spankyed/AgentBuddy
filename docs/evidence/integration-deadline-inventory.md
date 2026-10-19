@@ -1204,3 +1204,40 @@ Local safe validation: all seven mocked watcher ownership/deadline cases, 53 tim
 subprocess-inventory checks, CLI TypeScript and focused correctness lint pass. The mocked operation
 still aborts and reports its own deadline independently of request and cleanup failure checks.
 Real affected watcher acceptance remains required after the diagnostic result; no broad pass is claimed.
+
+### Reporting failure attributed to synchronous case sequences — 2026-10-19
+
+Focused **39325170997**, workflow-only **`e3956518c`**, completes all **93/93 bodies in four files**,
+zero failed/pending, 586.50s, but exits **1** with one unhandled `onTaskUpdate` error. Its JSON
+`success: true` describes the test bodies; it does **not** establish successful process/reporting
+acceptance. The two module-freshness cases pass under the original bound in 137.089s and 142.909s;
+this focused timing does not erase the normal run's attributed 60s rebuild timeout.
+
+The existing probe attributes long blocks to exact worker processes/files:
+
+| Process/file | Measured loop gap | Interpretation |
+|---|---:|---|
+| `38267`, feature authoring/validation | 69,728ms | Consecutive synchronous generation/validation cases run without a macrotask turn; each body is under 29s |
+| `36646`, output swap | 90,280ms | Gap grows from process wall 226,032ms to 316,312ms, crossing the late facade-replacement and following early-refusal scenarios |
+| `36645`, database commands | 9,629ms | No reporting-window block demonstrated; leave this file unchanged |
+| `41322`, watched module freshness | 13,303ms | No reporting-window block demonstrated |
+| `36641`, Vitest coordinator | 189ms histogram maximum, 1,045ms tick gap | Responsive coordinator; the long blocks are in workers |
+
+The two long blocks exceed Vitest's 60s reply window. This reproduces the worker-starvation condition;
+the serialized unhandled error does not identify which individual RPC expired. Add one `setImmediate`
+turn **after restoring globals and removing fixture output** in the two affected files' existing
+`afterEach`, matching neighboring synchronous-toolchain suites. Do not alter assertions, timeouts,
+database tests, production compilation or the runner protocol. All 53 policy/inventory checks, CLI
+TypeScript and focused correctness lint pass locally.
+
+Raw evidence: `/private/tmp/apack-watch-reporting-39325170997/_temp/` contains the verbose log,
+per-body JSON and `event-loops.jsonl`; full timestamped job log is
+`/private/tmp/apack-watch-reporting-39325170997-full.log`. Retain process/file identity and the sample
+where a gap grows rather than attributing cumulative maxima to a later worker file.
+
+Required next acceptance: both reporting files and all six actual watcher-helper consumers, two
+workers, complete bodies, exit 0 with no unhandled reporting/cleanup error. `frontend-outputs` and
+`frontend-globs` only use the resource fixture's consumer creation, never its watcher; their build
+behavior is unaffected. The focused runner needs published packages and default-setup output, not
+the separate external-contract fixture outputs or all-project typechecks. Final normal and strict
+gates retain every original prerequisite.
