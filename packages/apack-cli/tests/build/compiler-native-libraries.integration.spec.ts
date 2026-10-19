@@ -8,6 +8,7 @@ import { expect, it, onTestFinished, vi } from 'vitest';
 import { captureCompilationInputs } from '../../src/build/compilation-inputs.ts';
 import { createCompilerModuleLoader } from '../../src/build/compiler-modules.ts';
 import { packFixture } from '@apackdev/sdk/testing/pack-fixture';
+import { ManifestSchema } from '@apackdev/sdk/build';
 import { REPO_ROOT } from '@apackdev/host/build/packages-built';
 import { readPackBuild } from '@apackdev/host/packs';
 import { readPackBuildInputs, assertPackBuildInputsCurrent } from '@apackdev/host/build/pack-build-inputs';
@@ -110,9 +111,9 @@ it.runIf(process.platform === 'darwin' || process.platform === 'linux').each(ele
   await command(root, ['init', 'electron-proof']);
   const manifestFile = path.join(pack, 'apack.json');
   const manifest = JSON.parse(fs.readFileSync(manifestFile, 'utf8'));
-  manifest.content.formats.runtimeProof = { compiler: 'src/runtime-proof.ts', entity: 'ElectronProof', identity: ['name'] };
-  manifest.content.sources.runtimeProof = { path: 'src/runtime-proof.ts', format: 'runtimeProof' };
-  fs.writeFileSync(manifestFile, JSON.stringify(manifest));
+  manifest.content.formats['runtime-proof'] = { compiler: 'src/runtime-proof.ts', entity: 'ElectronProof', identity: ['name'] };
+  manifest.content.sources['runtime-proof'] = { path: 'src/runtime-proof.ts', format: 'runtime-proof' };
+  fs.writeFileSync(manifestFile, JSON.stringify(ManifestSchema.parse(manifest)));
   fs.writeFileSync(path.join(pack, 'src/runtime-proof.ts'), `import fs from 'node:fs';
     export default () => {
       fs.writeFileSync(${JSON.stringify(proof)}, JSON.stringify({versions:process.versions,executable:process.execPath}));

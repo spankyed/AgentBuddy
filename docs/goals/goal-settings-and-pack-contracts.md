@@ -70,7 +70,11 @@ from an actual content compiler, checks retirement and both bundles, deletes its
 proves Node archive does not re-execute it. Authoring/archive keep 60s; the measured full cold
 compile gets 120s, with a 300s combined workflow budget. Types/lint and all 53 subprocess/deadline
 guards pass. This stronger content-compiler/archive boundary needs focused signed macOS and Linux
-acceptance; the previous Linux pass remains valid for its original boundary. No broad job is active.
+acceptance. Runs `39181815312` / `39181815305` on `f6c83989a` both refuse the fixture's
+camel-case content key before compilation. The fixture now uses `runtime-proof` and passes its
+augmented declaration through ManifestSchema. A local pure schema check rejects the old key and
+accepts the corrected declaration; types/lint and all 53 policy checks pass. The earlier Linux pass
+remains valid for its original boundary. No broad job is active.
 
 The bound-only Windows import support decision is pending the user's explicit answer; no exclusion
 has been applied. Remaining native-policy/platform requirements, B6 and every Phase 7 obligation

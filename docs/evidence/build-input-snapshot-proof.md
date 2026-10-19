@@ -6008,3 +6008,15 @@ fixture allowance; global/package, helper and chain deadlines stay unchanged. Al
 subprocess/deadline guards, CLI types, focused lint and diff checks pass. Focused signed macOS and
 Linux runs must now execute the new direct-compiler/passive-archive assertions; the earlier Linux
 result remains valid for its original observed worker path, not this added boundary.
+
+### Direct compiler declaration grammar correction — 2026-10-19
+
+Both direct-observer runs on `f6c83989a` are terminal failures before compilation: Linux
+[39181815305](https://github.com/spankyed/AgentBuddy/actions/runs/39181815305) and signed macOS
+[39181815312](https://github.com/spankyed/AgentBuddy/actions/runs/39181815312) reject `runtimeProof`
+because content keys permit lowercase letters, digits and hyphens. This was a fixture mistake; no
+production validator is relaxed. Use `runtime-proof` and validate the augmented declaration through
+the existing public ManifestSchema before writing it. A local pure schema check proves old-key
+refusal and corrected-declaration acceptance; CLI types/lint and all 53 existing policy checks pass.
+The compiler module, runtime assertions, passive archive check and deadlines are unchanged.
+Logs: `/private/tmp/apack-electron-{linux-39181815305,macos-39181815312}{,-clean}.log`.
