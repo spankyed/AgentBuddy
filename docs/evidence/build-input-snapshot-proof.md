@@ -5930,3 +5930,31 @@ does not contain this new acceptance case. Keep that distinction in final commit
 
 Acceptance source is committed and pushed as `b2972112d`. The VM retains source `3827993ba` plus
 the exact exported test overlay; preserve that overlay before any future checkout update.
+
+## Linux real Electron build/archive and macOS phase ownership — 2026-10-19
+
+Source `50d11c39d5f595be2c8fed50726e92213973f070`, focused Linux run
+[39179710434](https://github.com/spankyed/AgentBuddy/actions/runs/39179710434), executes exactly one
+`builds and archives a real pack under the captured Electron runtime` case and passes in **59.141s**.
+It uses public scaffold/feature/build commands under Electron, actual captured **Electron 37.2.4 /
+Node 22.17.1** (ABI 136), verifies nonempty backend and Vue frontend output and captured executable
+retirement, and successfully archives under the supervising **Node 23.11.1**. Verified revision:
+`ca6289fef3f1f4af27997f594b440ffa6fca2c025aadeb5918fadd9602ab396e`. Full logs are preserved at
+`/private/tmp/apack-electron-linux-39179710434{,-clean}.log`. This is the named complete Linux
+Electron build/consumer path; no claim about arbitrary native loading follows.
+
+The signed macOS companion run
+[39179708329](https://github.com/spankyed/AgentBuddy/actions/runs/39179708329) fails at the 60s
+aggregate test bound, with no compiler diagnostic. Existing source combined init, feature generation,
+build and archive in one test; it did not report phase timing. The failure cannot establish which
+operation was still active. Logs are preserved at
+`/private/tmp/apack-electron-macos-39179708329{,-clean}.log`; no new broad run diagnoses it.
+
+The correction separates fixture authoring and actual compilation into normal nested `beforeAll`
+hooks, then independently verifies output/runtime retirement and archives the shared built fixture.
+Both checks work when individually filtered because their prerequisite build is fixture setup, not
+another test's side effect. Every hook/test retains the existing 60s deadline; the same AbortController
+and awaited close own cancellation/cleanup. Each public command now logs start/completion elapsed
+time. No product code, permission, signing profile or timeout changes. CLI types/lint pass; focused
+subprocess/deadline guards retain their existing assertions. Signed macOS execution remains pending
+on the corrected topology; the accepted Linux behavior does not need a reassurance repeat.

@@ -65,11 +65,16 @@ verified build output and passive cross-runtime archive acceptance are asserted.
 and all 53 subprocess/deadline policy checks pass; runtime acceptance is pending. No deadline
 is widened and no native execution runs on the daily-use Mac. The strict run above retains its
 original pin; it is not replaced by these focused platform checks.
-Candidate `50d11c39d` is committed and pushed. Focused signed macOS run
-[39179708329](https://github.com/spankyed/AgentBuddy/actions/runs/39179708329) and Linux run
-[39179710434](https://github.com/spankyed/AgentBuddy/actions/runs/39179710434) are active on that
-exact source. Check their actual selected case/result before claiming runtime acceptance; do not
-repeat the accepted Windows build/archive or signing-only probes.
+Candidate `50d11c39d` is committed and pushed. Linux run
+[39179710434](https://github.com/spankyed/AgentBuddy/actions/runs/39179710434) accepts the real
+Electron 37.2.4 / Node 22.17.1 backend/frontend build, captured-worker retirement and archive under
+Node 23.11.1 in 59.141s. Signed macOS run
+[39179708329](https://github.com/spankyed/AgentBuddy/actions/runs/39179708329) reaches the 60s
+aggregate test bound, without a compiler diagnostic. Four public operations shared that clock;
+setup and compilation now have separate standard Vitest hooks, followed by output and archive
+checks. Each hook/test retains 60s. Phase start/completion timing makes any next failure attributable.
+The failed control is preserved; signed macOS acceptance remains open. Do not repeat accepted Linux
+or Windows runtime paths merely because this test topology changed. The strict run keeps its original pin.
 
 
 
