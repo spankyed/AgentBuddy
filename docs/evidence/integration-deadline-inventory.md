@@ -1073,3 +1073,38 @@ Repair **`7c24806e7`** is committed and pushed. Focused acceptance
 workflow-only **`5956cc394`**, branch `session/scaffold-async-acceptance`, directly based on that
 repair. It selects exactly 30 bodies with two workers and unchanged per-operation limits; it requires
 30 passes, zero failures/pending and command exit 0. No normal/strict broad replacement is dispatched.
+
+
+## Focused async acceptance: full-build boundary correction — 2026-10-19
+
+[39309152812](https://github.com/spankyed/AgentBuddy/actions/runs/39309152812) completes in
+552.211s, exit 1: **23 passed, seven reported failed, zero pending**, no unhandled reporting error.
+The seven failures are **one individual-operation timeout** plus **six subsequent shared-fixture
+setup refusals**; they are not seven assertion defects. The afterAll failure repeats that same rejected
+operation to preserve its fixture, not a separately expired cleanup limit. No whole-scenario,
+20s cleanup, failed value assertion or reporting timeout is reported.
+
+All 18 add-extension bodies pass. The unchanged DSL body passes in **71.572s**, completing the real
+acceptance missing after normal bail and proving its former 60s total insufficient. Preserve that
+acceptance; do not repeat DSL merely for another deadline change elsewhere.
+
+Scaffold initialization takes 13.195s, feature add 18.321s, validate 5.826s, doctor 5.006s,
+first full public build **108.377s**, archive 10.674s. That entire feature case passes in 150.976s.
+The next full public build reaches backend and frontend output, then its **incorrect 120s operation
+limit** expires; cancellation/forced closure completes at 122.090s. Subsequent bodies never start.
+This demonstrates that the new boundary is responsive to operation cancellation and does not confuse
+it with an expected CLI refusal; it does not accept the whole scaffold file or fully prove reporting
+under the later successful toolchain phases.
+
+Correction: this boundary runs the **full public CLI**, not the inner backend build. Reuse the existing
+full-command composition from the actual Electron authoring proof in
+`compiler-native-libraries.integration.spec.ts`: **180s captured backend + 120s cold frontend**.
+Apply it to all three successful public build calls and compose their enclosing case budgets once.
+Other CLI operations stay at 60s; cancellation grace remains 2s and cleanup 20s. No assertion, global
+suite limit or compiler implementation changes. The original 120s selection in `7c24806e7` was a
+mistake; this is a boundary correction, not evidence of another compiler defect.
+
+Next run both complete scaffold files together (29 bodies, two workers), preserving the independently
+accepted DSL result. Require all 29 passes and exit 0 without reporting errors before normal integration.
+Raw JSON/status/log: `/private/tmp/apack-scaffold-async-39309152812/`; full runner log:
+`/private/tmp/apack-scaffold-async-39309152812-full.log`.

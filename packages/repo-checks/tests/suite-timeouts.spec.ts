@@ -70,7 +70,7 @@ const TIMEOUT_EXCEPTIONS: Record<string, string> = {
   'packages/apack-cli/tests/build/compiler-native-libraries.integration.spec.ts > captures native %s libraries and retains the incumbent after outside-library refusal':
     'A successful cold build (120s), two refused attempts (60s each), fixture creation, ordinary-loader controls, freshness/retention checks and cleanup (60s) compose a 300s scenario. Normal run 39269209929 completes the thread case at 126.668s beyond the former 120s outer limit; its initial build alone takes 73.232s. Each refusal must occur before its own abort signal. Preserve all initialization, copy, freshness and incumbent assertions; ordinary-loader and suite bounds remain unchanged.',
   'packages/apack-cli/tests/commands/scaffold.integration.spec.ts > adds a step (declared, shipped in build/steps.build.mjs) and a service that build':
-    "Step generation (60s), service generation (60s), public cold build (120s), typecheck (60s) and cleanup (20s) are sequential. Diagnostic 39306120746 measures the build at 116.345s and the two generators at 23.120s/49.270s; separate command bounds remain cancellable.",
+    "Step generation (60s), service generation (60s), public backend/frontend build (180s + 120s), typecheck (60s) and cleanup (20s) are sequential. Diagnostic 39306120746 measures the build at 116.345s and the two generators at 23.120s/49.270s; Run 39309152812 proves a full public build exceeds the mistaken backend-only 120s limit after emitting its frontend. Match the existing Electron public-build composition; separate command bounds remain cancellable.",
   'packages/apack-cli/tests/build/frontend-resources.integration.spec.ts > watches initially empty external Tailwind content through nested directory links':
     "Initial capture precedes two directory-membership/link-retarget builds, with separate request, compiler and notification bounds from watch-builds.",
   'packages/apack-cli/tests/build/staged-dsl.integration.spec.ts > preserves a verified build on a later failure, then publishes and reuses the current definitions with its frontend':
@@ -94,9 +94,9 @@ const TIMEOUT_EXCEPTIONS: Record<string, string> = {
   "packages/apack-cli/tests/build/package-inputs.integration.spec.ts > rebuilds the frontend when an undeclared imported package changes behind unchanged types":
     "Two real builds verify changed runtime bytes behind unchanged declarations.",
   "packages/apack-cli/tests/commands/scaffold.integration.spec.ts > adds a feature, builds, typechecks and packs a verified archive":
-    "Feature generation, validate, doctor, typecheck and archive have 60s allowances, the cold public build has 120s, and extraction/verification/cleanup have 20s. Commands run asynchronously with independent cancellation.",
+    "Feature generation, validate, doctor, typecheck and archive have 60s allowances, the full public build has 180s backend + 120s frontend, and extraction/verification/cleanup have 20s. Commands run asynchronously with independent cancellation.",
   "packages/apack-cli/tests/commands/scaffold.integration.spec.ts > records the facade dependents compile against, and then reports it up to date":
-    "A cold public build (120s) and three source-facade derivations (60s each) precede verification/cleanup (20s); keep missing, update and current-report assertions.",
+    "A full public build (180s backend + 120s frontend) and three source-facade derivations (60s each) precede verification/cleanup (20s); keep missing, update and current-report assertions.",
   "packages/apack-cli/tests/commands/scaffold.integration.spec.ts > keeps unit tests runnable after init-tests adds Playwright specs":
     "Test scaffolding and the pack's nested Vitest process each retain a 60s operation bound; compose those with 20s verification/cleanup.",
   "packages/apack-cli/tests/commands/scaffold.integration.spec.ts > refuses to build, pack or generate entries for a manifest the installer would reject":

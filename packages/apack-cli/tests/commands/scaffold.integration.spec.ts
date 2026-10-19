@@ -39,8 +39,8 @@ function run(cmd: string, args: string[], cwd: string, timeout = 60_000) {
 }
 
 function callCli(cwd: string, command: string, args: string[] = []) {
-  // A full public build owns a cold compiler capture and frontend; keep its 120s operation bound.
-  return run(process.execPath, [CLI, 'pack', command, ...args], cwd, command === 'build' ? 120_000 : 60_000);
+  // Match the existing full CLI build allowance: captured backend (180s) plus cold frontend (120s).
+  return run(process.execPath, [CLI, 'pack', command, ...args], cwd, command === 'build' ? 180_000 + 120_000 : 60_000);
 }
 
 beforeAll(async () => {
@@ -122,7 +122,7 @@ describe('apack pack init → add feature → build → tsc → pack', () => {
       expect(guide, `Missing public build path ${file}`).toContain('`' + file + '`');
     }
 
-  }, 5 * 60_000 + 120_000 + 20_000);
+  }, 5 * 60_000 + (180_000 + 120_000) + 20_000);
 
   /**
    * The facade round trip through the **scripts the scaffold writes**, on a pack scaffolded the way an author
@@ -152,7 +152,7 @@ describe('apack pack init → add feature → build → tsc → pack', () => {
     const checked = await callCli(pack, 'facade-report');
     expect(checked.code, checked.output).toBe(0);
     expect(checked.output).toContain('is up to date');
-  }, 3 * 60_000 + 120_000 + 20_000);
+  }, 3 * 60_000 + (180_000 + 120_000) + 20_000);
 
   /**
    * Every file the scaffold ships that names a command — both workflows and the README — held to the scripts
@@ -260,7 +260,7 @@ describe('apack pack init → add feature → build → tsc → pack', () => {
     // typecheck: as above
     const tsc = await typecheckPack(pack);
     expect(tsc.code, tsc.output).toBe(0);
-  }, 3 * 60_000 + 120_000 + 20_000);
+  }, 3 * 60_000 + (180_000 + 120_000) + 20_000);
 
   it('regenerates entries when a source file codegen reads changes, not only the manifest', async () => {
     const servicePath = path.join(pack, 'src', 'extensions', 'services', 'cache.ts');

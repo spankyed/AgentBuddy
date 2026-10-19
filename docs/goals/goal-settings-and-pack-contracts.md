@@ -47,23 +47,25 @@ Lazy activation is deferred.
 
 ## Live execution ledger (reconciled 2026-10-16)
 
-Current checkpoint: diagnostic **39306120746** executes all **29 scaffold/add-extension bodies**
-with their existing deadlines: **29 pass, zero fail**, but exit **1** for an unhandled `onTaskUpdate`
-reporting error. In-process scaffold builds take **59/92/116 seconds**; TypeScript takes about **3s**.
-The earlier normal **39297729330** retains **507 actual passes**, one whole-scenario scaffold 260s
-failure and a separate reporting error. Neither run is a passing normal gate.
+Current checkpoint: focused async acceptance **39309152812** finishes **23 passed, seven reported
+failed**, exit 1, with no unhandled reporting error. This is one **individual-operation timeout**
+on the second full public build plus **six shared-fixture setup refusals**; no whole-scenario,
+value assertion or cleanup deadline fails. All 18 add-extension cases pass. DSL passes in **71.572s**,
+closing its previously missing real acceptance and proving the old inherited 60s insufficient.
 
-The focused repair moves scaffold CLI/nested-runner work to asynchronous owned processes; it keeps
-TypeScript in process, all assertions and actual CLI dispatch. CLI operations are separately bounded,
-cancellation drains before fixture reuse/removal, and timeouts cannot be mistaken for expected CLI
-refusals. Multistep case budgets compose those allowances. Eight mocked lifecycle checks, 53 policy/
-inventory checks, CLI types and lint pass; real process-boundary acceptance remains pending.
-Next run the complete two scaffold files plus the unreached DSL case (**30 bodies**, two workers),
-requiring exit 0 and no unhandled reporting errors. Repair **`7c24806e7`** is committed; focused
-[39309152812](https://github.com/spankyed/AgentBuddy/actions/runs/39309152812) is running on
-workflow-only **`5956cc394`**, directly based on that repair. Then resume normal unfiltered integration and
-final committed-source strict `--all`. Do not repeat a broad gate to diagnose this repair or begin the
-separate validation-budget/Nx proposals. See [current evidence](../evidence/integration-deadline-inventory.md#scaffold-process-boundary-checkpoint--2026-10-19).
+Repair **`7c24806e7`** moves scaffold CLI/nested-runner work to asynchronous owned processes,
+preserves all assertions, awaits cancellation/closure and prevents timeout-as-refusal mistakes.
+The full public build's 120s limit was incorrectly selected as a backend-only allowance: its first
+build takes 108.377s; its second emits backend/frontend output but exceeds 120s. Correct all three
+full public commands to the existing **180s captured backend + 120s cold frontend** composition;
+compose their outer budgets, retaining other commands at 60s, cancellation grace 2s and cleanup 20s.
+Eight mocked lifecycle checks, policy/inventory checks, CLI types and lint pass for the process owner.
+
+Next run both complete scaffold files together (**29 bodies**, two workers), requiring exit 0 and no
+unhandled reporting errors. Preserve the separately accepted DSL result; no additional DSL run is
+needed for this composition-only correction. Then resume normal unfiltered integration and final
+committed-source strict `--all`. Do not use another broad gate to diagnose this repair or begin the
+separate validation-budget/Nx proposals. See [classified evidence](../evidence/integration-deadline-inventory.md#focused-async-acceptance-full-build-boundary-correction--2026-10-19).
 
 Focused configuration acceptance **39296758415** succeeds on workflow-only `952a6dd02`,
 containing repair **`d29612b7a`**: all **15/15** cases pass, zero pending, exit 0, 239.315s.
