@@ -878,3 +878,67 @@ A current-source delta review also confirms the SDK framework/build declarations
 default-setup feature implementation and canonical writer are unchanged since consolidation audit
 `a74bbd88a`. Subsequent authoring changes use own-key collision checks and validate service claims
 before writing files. No new manifest implementation omission is identified; final gates remain open.
+
+Normal integration [39289719265](https://github.com/spankyed/AgentBuddy/actions/runs/39289719265)
+is dispatched on workflow-only `44cbdcdd4` containing main `affcdf644`. Its only source difference
+is the existing acceptance workflow: required preparation followed by ordinary
+`npm run test:integration -- --all`, two cores, no selected-case filtering or deadline overrides.
+Await the existing run, preserving its reports, before final strict `--all`.
+
+### Closeout source review while normal acceptance runs
+
+Reviewed committed source through `b1b09598b`; normal run `39289719265` is still in preparation.
+This is source evidence, not a passing gate:
+
+- SDK `framework/data-declaration.ts` normalizes feature/data entity ownership once, rejects duplicate
+  homes naming both owners, retains flat entity identities and derives relation constants from wire values.
+- SDK `build/generate-entries.ts:entityShapeEntries` skips null shapes, checks exported TypeScript types
+  through the shared module reader and emits only type imports for shapes.
+- CLI `manifest-writer.ts` derives structural order from the current schema and preserves declaration
+  member order; the writer and SDK framework/build declarations have not changed since `a74bbd88a`.
+- Host `packs/lifecycle-binding.ts` verifies exact declared hook membership and callable values without
+  invoking hooks. Host settings implementation under `features/settings`, its service and frontend
+  runtime, and SDK settings handles/drafts are unchanged since that source audit.
+- Host settings authority still uses connection-bound issued credentials and accepted runtime identities;
+  an event property cannot establish host or another pack's authority.
+- `scripts/lib/chain-steps.ts` retains full integration with forced `--all`, external app/runtime/smoke
+  checks and both packaged-authoring halves. The author half requires the external readiness/archive
+  references; its app half consumes the retained exact archive and compares installed integrity.
+
+No new omission is identified by these checks. Preserve every cross-phase acceptance row and existing
+window/platform evidence; final integration, strict acceptance and completed-only archival remain open.
+
+## Normal gate: esbuild captured-declaration scenario and reporting — 2026-10-19
+
+[39289719265](https://github.com/spankyed/AgentBuddy/actions/runs/39289719265), workflow-only
+`44cbdcdd4` / main `affcdf644`, finishes after **1508.04s** with **493 actual passes, one failure,
+26 Windows skips**, and one unhandled runner error. All preparation passes. The failure inventory is:
+
+- **Whole-scenario timeout:** `compiler-esbuild-configuration.integration.spec.ts`'s parameterized
+  transient **declarations** case inherits 60s and takes 64.214s. It runs a complete backend build
+  (generation/runtime/facade), then stages and executes the result. Build-output logging completes;
+  post-build assertion completion is not established by that log. No value assertion is reported failed.
+- **Reporting failure:** Vitest reports `Timeout calling "onTaskUpdate"`. Keep this independently
+  unresolved until the focused runner exits without an unhandled error. The report does not identify
+  its exact blocking operation. This is not an established cleanup or compiler-hang diagnosis.
+- No individual-operation timeout, whole-pool deadline or explicit cleanup failure is reported.
+
+Scoped repair: only the four full-build transient variants receive `120_000 + 20_000`, allowing
+cold build plus staging/runtime verification. These are in-process instrumented builds; replacing
+with a worker would bypass the spies that prove the transient-source contract. No independently
+cancellable build-operation bound is claimed. The other cases exercise partial native bundlers and
+retain their existing limits. Same-file teardown yields once after cleanup, matching the existing
+runner-reporting repair for synchronous toolchain tests. No assertion, RPC limit, production compiler
+or general suite deadline changes. All 53 policy/inventory checks, CLI types and lint pass.
+
+Required next evidence: complete 15-case file on a disposable runner, bail disabled, two workers,
+zero failures and no unhandled reporting error; then normal integration and final strict `--all`.
+Raw reports: `/private/tmp/apack-normal-integration-39289719265/`; full log:
+`/private/tmp/apack-normal-integration-39289719265-full.log`. Earlier results remain preserved.
+
+Repair `d29612b7a` is committed/pushed. Focused
+[39296758415](https://github.com/spankyed/AgentBuddy/actions/runs/39296758415) is dispatched on
+workflow-only `952a6dd02`, whose only difference from that source checkpoint is the acceptance workflow.
+It selects all 15 configuration cases, bail disabled, two-worker limits and an explicit 15-executed-case
+assertion; no workflow test-timeout override. Normal integration is on hold until affected-file
+completion and reporting are accepted.

@@ -21,9 +21,11 @@ import { createPackRegistry, stagePack } from '@apackdev/host/packs';
 startTestRuntime({ appVersion: '1.0.0' });
 
 const roots: string[] = [];
-afterEach(() => {
+afterEach(async () => {
   vi.restoreAllMocks();
   for (const root of roots.splice(0)) fs.rmSync(root, { recursive: true, force: true });
+  // Let the runner acknowledge task updates between synchronous compiler/verification phases.
+  await new Promise<void>(resolve => { setImmediate(resolve); });
 });
 
 function fixture(baseUrl: boolean) {
@@ -215,7 +217,7 @@ it.each(['configuration', 'sources', 'declarations', 'resolution'])('publishes c
   if ('problem' in loaded) throw new Error(loaded.problem);
   expect(loaded.registration.lifecycle?.onInit?.())
     .toBe(JSON.stringify({ calls: [7], label: 'PACKAGE', value: 'ALIASED', jsx: 'div' }));
-});
+}, 120_000 + 20_000);
 
 it('keeps implicit absolute configuration inheritance owned while originals are absent', async () => {
   const { root, pack, write } = fixture(false);

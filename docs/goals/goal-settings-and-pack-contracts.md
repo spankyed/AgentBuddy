@@ -47,6 +47,17 @@ Lazy activation is deferred.
 
 ## Live execution ledger (reconciled 2026-10-16)
 
+Normal integration **39289719265** finishes with **493 actual passes**, one whole-scenario
+60s timeout in the esbuild transient-declaration capture case, and one separate unhandled
+`onTaskUpdate` reporting timeout. All preparation passes. No failed value assertion or explicit
+cleanup failure is reported; unreached cases remain unaccepted. The full-build parameterized family
+now has a scoped cold-build/verification allowance, and same-file teardown yields for runner replies.
+Repair **`d29612b7a`** is committed/pushed. All 53 timeout/inventory checks, CLI types and lint pass.
+Focused [39296758415](https://github.com/spankyed/AgentBuddy/actions/runs/39296758415) is dispatched
+on workflow-only `952a6dd02`, selecting the complete 15-case file with bail disabled and a 15-executed-case
+assertion. Await this existing run before another normal run; final committed-source strict `--all` remains required. See
+[classification](../evidence/integration-deadline-inventory.md#normal-gate-esbuild-captured-declaration-scenario-and-reporting--2026-10-19).
+
 Focused trigger-scaffold acceptance **39288218287** succeeds on workflow-only `36ea8055a`,
 containing repair **`d07ccae99`**: all 18 scaffold cases and two facade typecheck controls pass
 (20 actual passes, exit 0, 377.704s; two workers). The repaired trigger case takes 27.020s;

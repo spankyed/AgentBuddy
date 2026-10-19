@@ -97,6 +97,8 @@ const TIMEOUT_EXCEPTIONS: Record<string, string> = {
     "A build and three source-facade derivations are sequential; keep missing, update and current-report assertions.",
   "packages/apack-cli/tests/commands/scaffold.integration.spec.ts > regenerates entries when a source file codegen reads changes, not only the manifest":
     "Two separate CLI generation commands prove invalidation and subsequent unchanged reuse.",
+  "packages/apack-cli/tests/build/compiler-esbuild-configuration.integration.spec.ts > publishes captured %s despite a transient live edit restored during bundling":
+    "A complete cold backend build generates and bundles declarations before staging, source-path checks and actual runtime execution; verification follows its 120s build allowance.",
   "packages/apack-cli/tests/commands/add-extensions.integration.spec.ts > scaffolds a hyphenated trigger with declared track metadata and checked callbacks":
     "Pack initialization, trigger scaffolding with code generation and TypeScript checking are three sequential toolchain operations.",
   "packages/apack-cli/tests/commands/add-extensions.integration.spec.ts > scaffolds an artifact viewer taking artifact, declared with its icon and viewer":
