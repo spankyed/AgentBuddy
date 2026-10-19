@@ -4,12 +4,13 @@ import path from 'node:path';
 import { afterEach, beforeEach, vi } from 'vitest';
 import { vueRuntimePack } from './frontend-pack.ts';
 import { filesUnder } from '../../src/build/phase-cache.ts';
-import { startPackBuildWatcher, type WatchOptions } from '../../src/build/watch.ts';
+import type { WatchOptions } from '../../src/build/watch.ts';
+import { startTestPackBuildWatcher } from './watch-builds.ts';
 
 export function createFrontendResourceFixture() {
   let root: string | undefined;
   let signal: AbortSignal | undefined;
-  const watchers: ReturnType<typeof startPackBuildWatcher>[] = [];
+  const watchers: ReturnType<typeof startTestPackBuildWatcher>[] = [];
   beforeEach(context => { signal = context.signal; });
   afterEach(async () => {
     try {
@@ -24,8 +25,8 @@ export function createFrontendResourceFixture() {
     root = undefined;
   });
   return {
-    startWatcher(pack: string, options: Omit<WatchOptions, 'signal'> = {}) {
-      const starting = startPackBuildWatcher(pack, { ...options, signal });
+    startWatcher(pack: string, options: Omit<WatchOptions, 'signal' | 'builder'> = {}) {
+      const starting = startTestPackBuildWatcher(pack, { ...options, signal });
       watchers.push(starting);
       return starting;
     },

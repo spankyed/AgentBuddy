@@ -2,6 +2,11 @@ import { expect, vi } from 'vitest';
 import { createPackBuilder } from '../../src/build/build-process.ts';
 import { startPackBuildWatcher, type WatchOptions } from '../../src/build/watch.ts';
 
+const REQUEST_TIMEOUT_MS = 20_000;
+const BUILD_TIMEOUT_MS = 60_000;
+/** Request, compilation and the caller's existing 20s notification check. */
+export const WATCH_REBUILD_BUDGET_MS = REQUEST_TIMEOUT_MS + BUILD_TIMEOUT_MS + 20_000;
+
 export type TestPackBuildWatcher = Awaited<ReturnType<typeof startPackBuildWatcher>> & {
   rebuildAfter(edit: () => void): Promise<void>;
 };
@@ -12,7 +17,7 @@ export async function startTestPackBuildWatcher(root: string, options: Omit<Watc
   const build = builder.build.bind(builder);
   const builds: Promise<{ interrupted: boolean; error?: unknown }>[] = [];
   builder.build = input => {
-    const deadline = AbortSignal.timeout(builds.length ? 60_000 : 120_000);
+    const deadline = AbortSignal.timeout(builds.length ? BUILD_TIMEOUT_MS : 120_000);
     const signal = input?.signal ? AbortSignal.any([input.signal, deadline]) : deadline;
     const running = build({ ...input, signal });
     builds.push(running.then(() => ({ interrupted: false }), error => ({ interrupted: signal.aborted, error })));
@@ -22,16 +27,24 @@ export async function startTestPackBuildWatcher(root: string, options: Omit<Watc
     const watcher = await startPackBuildWatcher(root, { ...options, builder });
     const done = watcher.done.finally(() => builder.close());
     void done.catch(() => {});
+    let closing: Promise<void> | undefined;
     return {
       done,
-      async close() {
-        try { await watcher.close(); }
-        finally { await done; }
+      close() {
+        return closing ??= (async () => {
+          let result: PromiseSettledResult<void> | undefined;
+          void watcher.close().finally(() => done).then(
+            value => { result = { status: 'fulfilled', value }; },
+            reason => { result = { status: 'rejected', reason }; },
+          );
+          await vi.waitFor(() => expect(result, 'watcher cleanup did not settle').toBeDefined(), { timeout: 20_000 });
+          if (result?.status === 'rejected') throw result.reason;
+        })();
       },
       async rebuildAfter(edit) {
         const before = builds.length;
         edit();
-        await vi.waitFor(() => expect(builds.length, 'watch request did not start a rebuild').toBeGreaterThan(before), { timeout: 20_000 });
+        await vi.waitFor(() => expect(builds.length, 'watch request did not start a rebuild').toBeGreaterThan(before), { timeout: REQUEST_TIMEOUT_MS });
         const result = await builds[before]!;
         if (result.interrupted) throw result.error;
       },

@@ -333,6 +333,12 @@ drains disposal. Both the public watch command and dev session await `done`. Syn
 remain recoverable on a later edit; a broken subscription cancels the operation with its input path and
 cause. Frontend replacement retains retiring subscriptions until asynchronous disposal settles.
 
+Real watcher integration edits use `tests/_support/watch-builds.ts`: wait at most 20s for a rebuild
+request, bound its compiler operation at 60s, then retain the original 20s notification/output checks.
+Initial capture keeps its 120s bound and cleanup has its own 20s bound. `rebuildAfter` does not replace assertions; preflight refusals
+before a builder is invoked keep their direct notification check. Compose case budgets from these
+phases; do not time the whole compilation as a missing-event wait.
+
 **How many specs each half holds and what they cost is a command, not a line here**:
 `npm run spec:dry -- packages/apack-cli/tests` answers both halves and prints the date it measured them.
 A count written out here drifts with nothing to catch it, and re-counting only makes the next drift

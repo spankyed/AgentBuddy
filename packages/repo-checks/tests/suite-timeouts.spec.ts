@@ -54,7 +54,7 @@ const TIMEOUT_EXCEPTIONS: Record<string, string> = {
   'packages/apack-cli/tests/commands/scaffold.integration.spec.ts > adds a step (declared, shipped in build/steps.build.mjs) and a service that build':
     "Step generation, service generation, real build and typecheck share this case.",
   'packages/apack-cli/tests/build/frontend-resources.integration.spec.ts > watches initially empty external Tailwind content through nested directory links':
-    "Initial capture/publication precedes two unchanged 20s rebuild waits for directory membership and link retargeting.",
+    "Initial capture precedes two directory-membership/link-retarget builds, with separate request, compiler and notification bounds from watch-builds.",
   'packages/apack-cli/tests/build/staged-dsl.integration.spec.ts > preserves a verified build on a later failure, then publishes and reuses the current definitions with its frontend':
     "Five real builds cover publication, refusal, repair, reuse and removal, followed by verification and disposal.",
   'packages/apack-cli/tests/build/watch-worker-inputs.integration.spec.ts > rebuilds for worker inputs and repairs missing external reads without authored edits':
@@ -62,7 +62,7 @@ const TIMEOUT_EXCEPTIONS: Record<string, string> = {
   'packages/apack-cli/tests/build/build-output-swap.integration.spec.ts > does not reuse facade files from an incumbent with stamps from a refused replacement':
     "Three sequential real builds, including refusal and recovery, followed by integrity verification and disposal.",
   'packages/apack-cli/tests/build/watch-external-types.integration.spec.ts > rebuilds external contracts and recovers a retargeted missing input without an authored edit':
-    "Initial capture/publication precedes three unchanged 20s replacement, refusal and recovery waits and disposal.",
+    "Initial capture precedes replacement, refusal and recovery builds; watch-builds bounds each request/compiler operation before the unchanged notification checks.",
   'packages/apack-cli/tests/build/build-worker.integration.spec.ts > uses the captured compiler and retains unchanged build/cache identity on repeat builds':
     'Two independent cold compiler installations/builds plus archive and reuse verification. On the two-core Windows VM, the first build takes 155.705 seconds and 240 seconds expires during the second. Two-worker macOS control 39206807491 completes the second build at 111.034 seconds; the broad pool expires at its former 120s outer bound after the first build. The same sequential scenario gets 360 seconds on every platform. Both builders are teardown-owned and all source-path, cache, output and disposal assertions remain.',
   "packages/apack-cli/tests/build/build-output-swap.integration.spec.ts > publishes help as snapshot data and retains accepted articles after an invalid edit":
@@ -88,15 +88,15 @@ const TIMEOUT_EXCEPTIONS: Record<string, string> = {
   "packages/apack-cli/tests/commands/add-extensions.integration.spec.ts > declares each migration under its version line and the version it targets, which the pack entry registers and tsc accepts":
     "Four migration scaffolds, explicit generation and a real TypeScript program run sequentially.",
   "packages/apack-cli/tests/build/watch-module-freshness.integration.spec.ts > refreshes flow modules loaded through ordinary imports on the next watched build":
-    "Initial compiler capture/publication precedes one existing 20s rebuild wait and disposal.",
+    "Initial capture precedes a real flow rebuild; its request, compiler operation and original notification check have separate bounds.",
   "packages/apack-cli/tests/build/watch-module-freshness.integration.spec.ts > recompiles changed transitive content modules and retains the accepted build on failure":
-    "Initial capture/publication precedes two unchanged 20s rebuild/refusal waits and disposal.",
+    "Initial capture precedes a replacement and a refused content build, each with separate request/compiler bounds and the original notification check.",
   "packages/apack-cli/tests/build/frontend-workers.integration.spec.ts > retains the accepted build after a worker error and publishes its repair":
-    "Initial compiler capture/publication precedes unchanged 20s refusal and repair waits and disposal.",
+    "Initial capture precedes refused and repaired worker builds, bounded separately from their unchanged notification checks.",
   "packages/apack-cli/tests/build/frontend-resources.integration.spec.ts > watches an external %s asset in a separate directory":
-    "Initial compiler capture/publication precedes the existing 20s asset rebuild wait and disposal.",
+    "Initial capture precedes an asset rebuild; watch-builds separates the request/compiler limits from the original notification check.",
   "packages/apack-cli/tests/build/package-inputs.integration.spec.ts > automatically rebuilds an undeclared runtime imported by $name without a type or authored edit":
-    "Initial compiler capture/publication precedes the existing 20s runtime rebuild wait and disposal.",
+    "Initial capture precedes an imported-runtime rebuild with separate request/compiler bounds and the original notification check.",
   "packages/apack-cli/tests/build/editor-declarations.integration.spec.ts > builds declared editor members and step presentation, then discovers a copied source-free build":
     "A cold captured public build precedes source-free inspection, actual frontend loading and disposal.",
   "packages/apack-cli/tests/build/package-inputs.integration.spec.ts > keeps a captured build current after standalone generation with unchanged generated code":
@@ -133,6 +133,12 @@ const TIMEOUT_EXCEPTIONS: Record<string, string> = {
     "After the immediate duplicate refusal, app-line migration scaffolding/regeneration, explicit generation and a separate typecheck run sequentially.",
   "packages/apack-cli/tests/commands/facade-report.integration.spec.ts > checks the verified current build without changing generated files":
     "Publishing the newly authored report requires a cold build before passive from-build inspection and unchanged-file assertions.",
+  "packages/apack-cli/tests/build/frontend-resources.integration.spec.ts > recovers a missing nested stylesheet while retaining the accepted build":
+    "After the separate startup hook, replacement, missing-input refusal and repair each need a bounded request/build followed by the unchanged notification check.",
+  "packages/apack-cli/tests/build/watch-publication.integration.spec.ts > publishes source and manifest edits together and retains the incumbent after refusal":
+    "After initial setup, changed, refused and repaired builds each have separate request/compiler/notification bounds, retaining host reload and incumbent assertions.",
+  "packages/apack-cli/tests/build/watch-publication.integration.spec.ts > follows retargeted manifest links through refusal, repair and atomic replacement":
+    "A malformed-manifest preflight refusal keeps its original 20s bound; repair and atomic replacement then use separate request/build/notification bounds.",
 };
 
 /** Every override in the repo's spec files, with the size it has to fit inside */

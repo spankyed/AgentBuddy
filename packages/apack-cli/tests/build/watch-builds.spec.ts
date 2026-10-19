@@ -32,7 +32,7 @@ beforeEach(() => {
     return { done, close: async () => { fixture.finish(); } };
   });
 });
-afterEach(() => { vi.restoreAllMocks(); vi.useRealTimers(); });
+afterEach(() => { vi.restoreAllMocks(); });
 
 it.each(['accepted', 'refused'] as const)('waits for a requested %s build before caller notification checks', async state => {
   const watcher = await startTestPackBuildWatcher('/fixture');
@@ -47,13 +47,14 @@ it.each(['accepted', 'refused'] as const)('waits for a requested %s build before
 
 it('fails a missing watch request at the request deadline without starting a compiler', async () => {
   const waitFor = vi.waitFor;
-  vi.spyOn(vi, 'waitFor').mockImplementation((callback, options) => {
+  const shortened = vi.spyOn(vi, 'waitFor').mockImplementation((callback, options) => {
     expect(options).toEqual({ timeout: 20_000 });
     return waitFor(callback, { timeout: 1 });
   });
   const watcher = await startTestPackBuildWatcher('/fixture');
   await expect(watcher.rebuildAfter(() => {})).rejects.toThrow('watch request did not start a rebuild');
   expect(fixture.build).toHaveBeenCalledTimes(1);
+  shortened.mockRestore();
   await watcher.close();
 });
 
@@ -86,4 +87,17 @@ it('closes its builder when watcher startup refuses before returning a handle', 
   fixture.start.mockRejectedValueOnce(new Error('Startup refused'));
   await expect(startTestPackBuildWatcher('/fixture')).rejects.toThrow('Startup refused');
   expect(fixture.close).toHaveBeenCalledTimes(1);
+});
+
+it('reports a stuck cleanup at its own deadline while retaining the pending owner', async () => {
+  const watcher = await startTestPackBuildWatcher('/fixture');
+  let finish!: () => void;
+  fixture.close.mockReturnValueOnce(new Promise<void>(resolve => { finish = resolve; }));
+  const waitFor = vi.waitFor;
+  vi.spyOn(vi, 'waitFor').mockImplementation((callback, options) => {
+    expect(options).toEqual({ timeout: 20_000 });
+    return waitFor(callback, { timeout: 1 });
+  });
+  try { await expect(watcher.close()).rejects.toThrow('watcher cleanup did not settle'); }
+  finally { finish(); await watcher.done; }
 });

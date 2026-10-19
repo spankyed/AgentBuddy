@@ -7,7 +7,7 @@ import { REPO_ROOT } from '@apackdev/host/build/packages-built';
 import { callCli, preparePack, packageJson, tsconfig } from '../_support/pack-builds.ts';
 import { assertGeneratedCurrent } from '../../src/commands/generate-entries.ts';
 import { dependencyTypes } from '../../src/commands/generate.ts';
-import { startPackBuildWatcher } from '../../src/build/watch.ts';
+import { startTestPackBuildWatcher, WATCH_REBUILD_BUDGET_MS, type TestPackBuildWatcher } from '../_support/watch-builds.ts';
 import { runtimePack, vueRuntimePack } from '../_support/frontend-pack.ts';
 import { captureCompilationInputs } from '../../src/build/compilation-inputs.ts';
 import { bundlePackFE } from '../../src/build/fe-bundler.ts';
@@ -17,7 +17,7 @@ import { packInputFiles } from '@apackdev/host/build/pack-inputs';
 
 let root: string | undefined;
 let signal: AbortSignal;
-let starting: ReturnType<typeof startPackBuildWatcher> | undefined;
+let starting: ReturnType<typeof startTestPackBuildWatcher> | undefined;
 beforeEach(context => { signal = context.signal; });
 afterEach(async () => {
   const pending = starting;
@@ -73,24 +73,24 @@ it.each([
   { name: 'Vue canvas', create: vueRuntimeConsumer },
 ])('automatically rebuilds an undeclared runtime imported by $name without a type or authored edit', async ({ create }) => {
   const { pack, helper, frontend } = create();
-  let watcher: { close(): Promise<void> } | undefined;
+  let watcher: TestPackBuildWatcher | undefined;
   const errors = vi.spyOn(console, 'error').mockImplementation(() => {});
   let publications = 0;
   try {
-    starting = startPackBuildWatcher(pack, {
+    starting = startTestPackBuildWatcher(pack, {
       signal,
       place: { env: 'test', userDataDir: path.join(root!, 'profile') },
       onBuilt: async () => { publications++; },
     });
     watcher = await starting;
     expect(fs.readFileSync(frontend, 'utf8')).toContain('BEFORE');
-    fs.writeFileSync(helper, "export const marker = 'AFTERX';");
+    await watcher.rebuildAfter(() => { fs.writeFileSync(helper, "export const marker = 'AFTERX';"); });
     await vi.waitFor(() => expect(publications > 0 || errors.mock.calls.length > 0).toBe(true), { timeout: 20_000 });
     expect(errors.mock.calls).toEqual([]);
     expect(fs.readFileSync(frontend, 'utf8')).toContain('AFTERX');
     expect(fs.readFileSync(frontend, 'utf8')).not.toContain('BEFORE');
   } finally { await watcher?.close(); }
-}, 120_000 + 20_000 + 20_000);
+}, 120_000 + WATCH_REBUILD_BUDGET_MS + 20_000);
 
 async function consumer() {
   root = fs.mkdtempSync(path.join(os.tmpdir(), 'apack-installed-types-'));
