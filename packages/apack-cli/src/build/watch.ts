@@ -74,6 +74,8 @@ export function coalescingRunner(run: () => Promise<void>, delayMs: number = DEB
 
 /** Every edit publishes a complete build. done reports terminal failure after cleanup; close drains disposal. */
 export async function startPackBuildWatcher(root: string, options: WatchOptions = {}): Promise<{ close: () => Promise<void>; readonly done: Promise<void> }> {
+  const proof = (phase: string, detail: object = {}) => console.log(JSON.stringify({ watchProof: phase, at: Date.now(), root, ...detail }));
+  let proofRequests = 0;
   const controller = new AbortController();
   const signal = options.signal ? AbortSignal.any([options.signal, controller.signal]) : controller.signal;
   signal.throwIfAborted();
@@ -115,11 +117,14 @@ export async function startPackBuildWatcher(root: string, options: WatchOptions 
   const frontend = createFrontendWatcher(root, dataDirectory,
     file => request(path.relative(root, file)), fail);
   const publish = async (): Promise<boolean> => {
+    proof('publish:start', { ready, closed });
     const compiler = refreshInputs();
+    proof('publish:inputs');
     const authored = packInputsHash(root) + JSON.stringify(compiler.authored);
     const beforeFrontend = frontend.snapshot();
     if (compiler.signature === compilerSignature && authored === authoredSignature && beforeFrontend.hash === frontendSignature
-      && observedInputsCurrent() && await builder.isFrontendCurrent(signal)) return false;
+      && observedInputsCurrent() && await builder.isFrontendCurrent(signal)) { proof('publish:reuse'); return false; }
+    proof('build:start');
     compilerSignature = compiler.signature;
     authoredSignature = authored;
     frontendSignature = beforeFrontend.hash;
@@ -132,6 +137,7 @@ export async function startPackBuildWatcher(root: string, options: WatchOptions 
         if (inputs.probes) { nativeReported = true; observed = mergeCompilerWatchPaths(observed, new Map(inputs.probes)); return; }
         reported = { inputs, snapshot: await frontend.observe(inputs) };
       } });
+      proof('build:complete', { closed });
       if (closed) return false;
       acceptedObservations = nativeReported ? additionalCompilerObservations({
         root: fs.realpathSync(root), entries: readPackBuildInputs(path.join(root, 'dist')).observations,
@@ -157,6 +163,7 @@ export async function startPackBuildWatcher(root: string, options: WatchOptions 
     if (frontendChanged || !observedInputsCurrent() || after.signature !== compiler.signature || packInputsHash(root) + JSON.stringify(after.authored) !== authored) {
       request('inputs changed during the build');
     }
+    proof('publish:complete', { closed });
     return true;
   };
   const runs = coalescingRunner(async () => {
@@ -165,7 +172,9 @@ export async function startPackBuildWatcher(root: string, options: WatchOptions 
     try {
       if (!await publish()) return;
       if (closed) return;
+      proof('delivery:start');
       await options.onBuilt?.();
+      proof('delivery:complete');
       if (closed) return;
       const reload = await reloadPack(packId, options.place);
       if (reload.status === 'reloaded') console.log(`[watch] ${changed} — reloaded`);
@@ -181,6 +190,7 @@ export async function startPackBuildWatcher(root: string, options: WatchOptions 
   });
   const request = (relative: string) => {
     if (closed) return;
+    if (ready && proofRequests++ < 32) proof('request', { relative });
     lastChange = relative;
     if (ready) runs.request();
     else pending = true;
@@ -239,6 +249,7 @@ export async function startPackBuildWatcher(root: string, options: WatchOptions 
   }
   const close = () => {
     if (!stopping) {
+      proof('close');
       signal.removeEventListener('abort', abort);
       closed = true;
       const cleanup: Array<() => unknown> = [
@@ -284,6 +295,7 @@ export async function startPackBuildWatcher(root: string, options: WatchOptions 
     signal.throwIfAborted();
     options.onFirstBuild?.();
     ready = true;
+    proof('ready', { pending });
     if (pending) runs.request();
     console.log('[watch] Watching build inputs; each successful build publishes verified dist/');
     return { close, done };
