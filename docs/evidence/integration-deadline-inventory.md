@@ -236,9 +236,34 @@ coalescing checks also pass. CLI types and focused lint pass. No event/build/sce
 is changed here. Real fixture execution and the three 20s wait failures remain unaccepted until the
 affected run; do not treat this source repair as proof that every observed watcher failure is resolved.
 
-1. Compose named multi-step case and setup budgets from inspected operations, preserving their inner
-   event, operation and cleanup limits. Fix awaited cancellation/teardown where timed-out work can
-   retain global state, locks or watchers; do not delete live locks or retry through them.
+Source **`b57d81cc1`** composes 38 named case/setup declarations from their inspected phases, including
+the five-build DSL case, four-build diamond setup, shared facade setup, watcher startup plus existing
+event waits, and the earlier exit-handler timeout. The existing exception table records each sequence.
+Global test/config defaults and all existing `vi.waitFor` calls remain unchanged. Shared-helper overrides
+are now inventoried too: helpers have no runnable target budget, so each explicit deadline needs review.
+The two public facade-comparison commands are asynchronous, each bounded at 180s with test cancellation;
+their owner waits for the active command before deleting inputs. In-process CLI/TypeScript helpers yield
+a loop turn after completing their work and restoring globals, allowing pending runner updates through.
+
+The Electron command owner records `error` but settles only after `close`; abort retains its existing
+command limit and escalates termination after two seconds. An inert Node control evaluates the actual
+command function from old/current source: the old promise rejects while the child remains live
+(`closedBeforeRejection: false`, signal null); the repair rejects only after closure with `SIGKILL`.
+Both probe children are reaped. This is lifecycle evidence, not native/Electron execution acceptance;
+no captured runtime or addon runs locally. The existing exit-handler case now explicitly retains its
+builder, uses test cancellation and drains it through the existing fixture owner.
+
+Validation: all **57** timeout-policy, subprocess-inventory and wait checks pass; CLI and repo-checks
+`tsc --noEmit` and correctness lint over all 23 changed TypeScript files pass. An AST comparison confirms
+the 20 changed CLI specs retain their assertion calls and event waits before the explicit exit-handler
+owner adjustment; its refusal, seal, incumbent and staging assertions remain. No normal integration or
+strict acceptance is claimed. Next run the affected files and the changed native/worker cases on one
+prepared disposable runner with two workers and the committed per-test limits; retain every result.
+Then settle normal grouping/aggregate allowance from the complete measurements, pass normal integration
+and run the final strict gate. Do not rerun the completed prefix as another diagnostic inventory.
+
+1. Validate the committed composition and lifetime repairs against the affected cases. Preserve inner
+   event/operation/cleanup limits and never delete live locks or retry through them.
 2. Diagnose assertion cases independently: runtime execution-option invalidation, passive facade
    authored-input freshness, external-pack HMR graph membership, and reported watcher errors. Separate
    failures caused by earlier abandoned operations from independently reproducible defects.

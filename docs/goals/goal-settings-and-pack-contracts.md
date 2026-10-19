@@ -200,6 +200,15 @@ Source **`401ec05be`** connects frontend/package/publication watcher fixtures to
 drains retained startup before deleting inputs. The pending-startup regression and all 19 mocked
 watcher lifecycle cases pass, as do five coalescing cases, CLI types and lint. No deadline changes or
 new remote run. Real fixture/event-wait acceptance remains pending alongside the composition repair.
+Source **`b57d81cc1`** completes the inspected case/setup composition pass without changing global
+defaults or event waits. It also makes facade-comparison commands asynchronous and bounded, yields
+between completed in-process compiler operations, and awaits actual Electron command closure with
+two-second abort escalation. An inert old/current Node control proves the early-rejection defect and
+repair; no captured runtime/addon runs locally. All 57 policy/inventory/wait checks, CLI/repo types and
+focused lint pass. The [inventory](../evidence/integration-deadline-inventory.md#repair-boundaries-and-next-action)
+records scope and proof limits. Next validate the affected files and changed native/worker cases on
+one prepared disposable runner, then settle normal grouping/aggregate allowance, pass normal integration
+and run final strict `--all`. No requirement or gate is waived by these focused repairs.
 None of these probes is a strict-chain result, despite using the existing `strict_chain` dispatch route. Main's
 full strict workflow is unchanged and remains required after integration converges. See
 [measured acceptance](../evidence/settings-and-pack-contracts.md#sequential-preloadthread-completion-and-scoped-budget--2026-10-19).
