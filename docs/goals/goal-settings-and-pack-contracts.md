@@ -276,6 +276,8 @@ those 38 passes. Isolated two-case [39247182439](https://github.com/spankyed/Age
 on `b6b3de3e0` now diagnoses only the timed publication rebuild beside CSS recovery. Its bounded
 completion observer retains failure against the original 60s allowance; temporary tracing and extended
 observation are not main source changes. See the [classified results](../evidence/integration-deadline-inventory.md#committed-repair-acceptance-dispatched--2026-10-19).
+Source `dbba1429f` adds pack/allowance/cause attribution to the helper's generic timeout; its seven
+mocked checks, CLI types and correctness lint pass. Main deadline values and cancellation stay unchanged.
 Source **`21ed07fe7`** gives complete integration its own 120-minute aggregate class. The pool runner
 reads its owning chain step's deadline; ordinary unit pools remain at 600s. The measured file work
 already exceeds 53 minutes at an ideal two-worker balance, without blocked setup/preparation, so the

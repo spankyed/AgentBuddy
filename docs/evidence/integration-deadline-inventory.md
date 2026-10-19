@@ -508,3 +508,8 @@ observations and publication. The probe observes a rebuild for at most 120s, rec
 original 60s boundary and still refuses that original allowance if completion arrives late. No main
 deadline changes; no broad diagnostic or overlapping heavy run. This probe is not normal or strict
 acceptance. Preserve the 38 passing focused cases while diagnosing this one remaining operation.
+
+Source `dbba1429f` attributes a watched-build deadline error to its pack root and operation allowance,
+retaining the original error as `cause`. The existing hung-operation regression now checks that context
+and cause. All seven mocked helper cases, CLI typechecking and correctness lint pass. No deadline or
+cancellation behavior changes; this improves the generic `AbortError` report, not the underlying timing.
