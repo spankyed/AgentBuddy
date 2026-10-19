@@ -479,3 +479,16 @@ The earlier eight-file results and complete six-batch inventory remain authorita
 run must converge before normal full integration; final main strict `--all` and requirement-by-requirement
 closure remain outstanding. Temporary tracing and extended diagnostic observers are absent from
 the acceptance source. No captured runtime/native/watch execution runs on the daily-use Mac.
+
+The watcher group completed in **1017.609s**: **18 passed, one failed**, ten deliberately filtered.
+All 19 selected bodies executed; no setup, cleanup, aggregate or unhandled-reporting failure is
+reported. External types, both runtime-import variants, both module-freshness cases, all 11 frontend
+resource/cache cases and the worker repair pass. The retargeted publication case also passes.
+The sole failure is `publishes source and manifest edits together and retains the incumbent after
+refusal`: an **individual compiler-operation timeout**, with `AbortError` caused by the helper's
+timeout signal, at 147.746s including setup. No output/value assertion fails. The last completed
+publication in its console is initial readiness; the timed operation's internal phase is not established.
+Do not turn that unknown into a compiler defect or increase all build limits. Preserve the 18 passes;
+next diagnose this case with bounded phase observations beside the frontend CSS recovery case that
+shared its worker period. The independent scaffold group remains live. Raw JSON, console and status
+are saved at `/private/tmp/apack-watch-phase-39243953202/` and in the run's early upload.
