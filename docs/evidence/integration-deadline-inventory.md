@@ -828,3 +828,8 @@ Only the normal workflow differs from main. The ordinary unfiltered command, two
 case/operation deadlines, 120m aggregate and prerequisite preparation are unchanged. The earlier
 41-case command has exited; its GitHub finalization remains separately unresolved and is not cancelled.
 Await the normal command's result before the required main strict gate.
+
+GitHub finalization subsequently resolves: the run API reports **39275701481 completed/success**,
+updated **2026-10-19T15:54:31Z**. This agrees with the preserved 41-pass report and completed log.
+The earlier discrepancy is historical evidence, not an outstanding cleanup or deadline defect. No
+process/tooling repair was made. Normal run **39281108805** remains queued at that observation.
