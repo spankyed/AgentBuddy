@@ -671,6 +671,8 @@ it.runIf(process.platform === 'darwin').each(['relative', 'absolute', 'transitiv
 });
 
 it.runIf(process.platform === 'darwin' || process.platform === 'linux').each(['preload', 'thread'] as const)('captures native %s libraries and retains the incumbent after outside-library refusal', async site => {
+  const started = performance.now();
+  const checkpoint = (phase: string) => console.info(`Native ${site}: ${phase} (${Math.round(performance.now() - started)}ms)`);
   const supported = nativeFixture('relative');
   const refused = [nativeFixture('absolute'), nativeFixture('transitive')];
   const builder = createPackBuilder(supported.pack);
@@ -682,6 +684,21 @@ it.runIf(process.platform === 'darwin' || process.platform === 'linux').each(['p
     if (site === 'preload') fs.writeFileSync(preload, `if (globalThis[Symbol.for('apack.compiler.startup')]) { ${load} }`);
     else fs.writeFileSync(path.join(supported.pack, 'src/compiler.ts'), nativeWorkerCompiler(load));
   };
+  let completed = false;
+  let closing: Promise<void> | undefined;
+  const close = () => closing ??= (async () => {
+    if (previous === undefined) delete process.env.NODE_OPTIONS;
+    else process.env.NODE_OPTIONS = previous;
+    let closed = false;
+    try { await builder.close(); closed = true; }
+    finally {
+      if (completed && closed) for (const fixture of [supported, ...refused]) fs.rmSync(fixture.root, { recursive: true, force: true });
+      else console.info(`Retained native ${site} fixtures:`, [supported, ...refused].map(fixture => fixture.root));
+      checkpoint(closed ? 'owner closed' : 'owner teardown failed');
+    }
+  })();
+  onTestFinished(close);
+  checkpoint('fixtures ready');
   try {
     packFixture({ at: supported.pack, nodeModules: path.join(REPO_ROOT, 'node_modules'), manifest: { features: {},
       ...(site === 'thread' ? { content: { formats: { rows: { compiler: 'src/compiler.ts', entity: 'Relation', identity: ['name'] } },
@@ -689,7 +706,9 @@ it.runIf(process.platform === 'darwin' || process.platform === 'linux').each(['p
       files: { 'src/value.txt': 'input', 'tsconfig.json': JSON.stringify({ compilerOptions: { module: 'esnext', moduleResolution: 'bundler', skipLibCheck: true } }) } });
     writeLoader(supported);
     if (site === 'preload') process.env.NODE_OPTIONS = formatNodeOptions([...parseNodeOptions(previous), '--require', preload]);
+    checkpoint('initial build started');
     await builder.build({ args: ['--skip-fe'] });
+    checkpoint('initial build completed');
     const results = fs.readFileSync(proof, 'utf8').trim().split('\n').map(line => JSON.parse(line)) as { thread: number; value: number; libraries: string[] }[];
     for (const result of results) {
       if (site === 'thread') expect(result.thread).toBeGreaterThan(0);
@@ -710,27 +729,27 @@ it.runIf(process.platform === 'darwin' || process.platform === 'linux').each(['p
     expect(() => assertPackBuildInputsCurrent(supported.pack, inputs)).toThrow();
     replaceLibrary(original);
     assertPackBuildInputsCurrent(supported.pack, inputs);
+    checkpoint('freshness and restoration checked');
     const revision = readPackBuild(path.join(supported.pack, 'dist')).revision;
-    for (const fixture of refused) {
+    for (const [index, fixture] of refused.entries()) {
       const ordinary = ordinaryNativeLoad(fixture, { ...process.env, NODE_OPTIONS: previous });
+      checkpoint(`refusal ${index + 1} ordinary control completed`);
       expect(ordinary.value).toBe(11);
       expect(ordinary.libraries).toContain(fixture.library);
       expect(fs.existsSync(fixture.marker)).toBe(true);
       fs.rmSync(fixture.marker);
       fs.rmSync(proof, { force: true });
       writeLoader(fixture);
+      checkpoint(`refusal ${index + 1} build started`);
       await expect(builder.build({ args: ['--skip-fe'] })).rejects.toThrow();
+      checkpoint(`refusal ${index + 1} build completed`);
       expect(fs.existsSync(fixture.marker)).toBe(false);
       expect(fs.existsSync(proof)).toBe(false);
       expect(readPackBuild(path.join(supported.pack, 'dist')).revision).toBe(revision);
     }
-  } finally {
-    if (previous === undefined) delete process.env.NODE_OPTIONS;
-    else process.env.NODE_OPTIONS = previous;
-    await builder.close();
-    for (const fixture of [supported, ...refused]) fs.rmSync(fixture.root, { recursive: true, force: true });
-  }
-});
+    completed = true;
+  } finally { await close(); }
+}, 240_000);
 
 it.runIf(process.platform === 'darwin' || process.platform === 'linux')('retains launch-time native search paths across preload changes and compiler workers', async () => {
   const fixture = nativeFixture(process.platform === 'linux' ? 'runpath' : 'relative');
