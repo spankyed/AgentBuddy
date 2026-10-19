@@ -2,7 +2,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { createRequire } from 'node:module';
-import { afterAll, beforeEach, describe, expect, it, vi, type MockInstance } from 'vitest';
+import { beforeEach, describe, expect, it, vi, type MockInstance } from 'vitest';
 import { createFrontendResourceFixture, readFrontendOutput } from '../_support/frontend-resources.ts';
 import { readPackBuild } from '@apackdev/host/packs';
 import { callCli } from '../_support/pack-builds.ts';
@@ -13,7 +13,8 @@ import { captureCompilationInputs } from '../../src/build/compilation-inputs.ts'
 const fixture = createFrontendResourceFixture();
 const { consumer } = fixture;
 let inputWorkspace: string | undefined;
-afterAll(() => { if (inputWorkspace) fs.rmSync(inputWorkspace, { recursive: true, force: true }); });
+// Tailwind's Jiti instance retains this cache path across files in the same worker.
+process.once('exit', () => { if (inputWorkspace) fs.rmSync(inputWorkspace, { recursive: true, force: true }); });
 
 it.each(['unchanged', 'edited'] as const)('uses one input view across frontend compiler paths with %s originals', async mode => {
   const { pack, helper } = consumer();
@@ -48,7 +49,6 @@ it.each(['unchanged', 'edited'] as const)('uses one input view across frontend c
   for (const [file, body] of Object.entries(files)) write(file, body);
   fs.writeFileSync(helper, `export const marker = 'DEPENDENCY_CAPTURED';`);
   const outputDir = path.join(pack, 'dist/runtime');
-  // Tailwind retains its jiti cache directory for the process lifetime, across these builds.
   const workspace = inputWorkspace ??= fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'apack-frontend-inputs-')));
   fs.mkdirSync(outputDir, { recursive: true });
   fs.mkdirSync(path.join(workspace, 'tmp'), { recursive: true });
