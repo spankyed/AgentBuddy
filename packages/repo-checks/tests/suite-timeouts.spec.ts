@@ -27,6 +27,9 @@ import { overrideKey, sizeOf, specFilesUnder, timeoutOverrides, type TimeoutOver
  * fails on an entry whose override has gone, so the list shrinks when the reason does.
  */
 const TIMEOUT_EXCEPTIONS: Record<string, string> = {
+  'packages/apack-cli/tests/build/compiler-native-libraries.integration.spec.ts > builds and archives a real pack under the %s Electron runtime':
+    'Four sequential public CLI commands exercise scaffold, feature generation, Electron build and Node archive. Linux completed the whole workflow in 59.141s; signed macOS init alone completed in 53.797s, exhausting the former 60s aggregate authoring clock during feature generation. Each command retains an explicit 60s AbortSignal; only their composed workflow gets 240s. Phase timing, exact captured runtime/output and cross-runtime archive assertions remain.',
+
   'packages/apack-cli/tests/build/build-worker.integration.spec.ts > compiles content through the captured worker and invalidates changed loader inputs':
     'This scenario owns installation capture and two sequential real content builds. Two Windows attempts exceeded the former 60s setup hook after codegen and while compiling, before ordering assertions. The single 120s case then completed its first build and exact ordering/source assertions but expired during the second real build. A 180s case budget covers these sequential builds without a separate setup hook; retain exact require/loader/import ordering, source identities, changed payload and revision checks. Other cases and production deadlines are unchanged.',
   'packages/apack-cli/tests/build/compiler-native-libraries.integration.spec.ts > tracks retained Vite ESM preload and loader inputs without freezing Vue sources':

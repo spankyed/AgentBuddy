@@ -5958,3 +5958,22 @@ and awaited close own cancellation/cleanup. Each public command now logs start/c
 time. No product code, permission, signing profile or timeout changes. CLI types/lint pass; focused
 subprocess/deadline guards retain their existing assertions. Signed macOS execution remains pending
 on the corrected topology; the accepted Linux behavior does not need a reassurance repeat.
+
+### Signed macOS phase timing and bounded workflow correction — 2026-10-19
+
+Focused run [39180215930](https://github.com/spankyed/AgentBuddy/actions/runs/39180215930) on
+`c9bb04446` is terminal failure before compilation: init completes in **53.797s**, feature generation
+starts, and the shared authoring hook expires about five seconds later. Phase logs isolate this
+aggregate-clock problem; no compiler error or signing failure is shown. Retained logs:
+`/private/tmp/apack-electron-macos-39180215930{,-clean}.log`.
+
+The final fixture correction removes the nested deadline-only scaffolding. One case runs the same
+four public commands, each with an explicit **60s** AbortSignal combined with the fixture's cleanup
+signal. Its total budget is **240s**, the four composed command bounds; a stuck command still
+refuses within one minute rather than consuming the workflow budget. Existing exact runtime,
+retirement, verified backend/frontend and Node archive assertions remain. The one reviewed
+`TIMEOUT_EXCEPTIONS` entry records actual Linux/initialization measurements and this composition;
+no package/global, compiler/helper or chain deadline changes. All 53 existing subprocess/deadline
+guards, CLI types, lint and diff checks pass. Runtime acceptance on signed macOS remains next.
+The valid Linux result remains accepted: its entire original workflow already completed within
+59.141s, tighter than each newly explicit per-command bound.

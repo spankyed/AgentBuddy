@@ -47,43 +47,33 @@ Lazy activation is deferred.
 
 ## Live execution ledger (reconciled 2026-10-16)
 
-Current production-source checkpoint: **`3827993ba`**, pushed. Latest acceptance checkpoint
-**`b2972112d`** adds the real Windows OS-assembly/copy/manifest-freshness case (4.287s),
-with CLI types/lint and all 11 subprocess-inventory checks passing. It changes no production code. The pack typecheck now reserves its measured
-two-core width (`04a876675`), retaining its 60s deadline. Windows replay preserves missing probes
-containing an embedded drive (`3827993ba`); the real Electron backend/frontend build and archive
-now pass on that commit in 178.554s and 13.294s. See [checkpoint evidence](../evidence/settings-and-pack-contracts.md#windows-electron-buildarchive-and-typecheck-admission--2026-10-18).
+App/compiler implementation checkpoint **`3827993ba`** is pushed. Windows real Electron
+backend/frontend build and archive pass on that source; OS-assembly/copy/manifest-freshness
+acceptance is `b2972112d`. Linux real Electron build plus cross-runtime Node archive passes on
+`50d11c39d` in 59.141s. Evidence remains in the owning records; these accepted paths need no
+reassurance repeats. Windows is confirmed deallocated; all useful overlays/exports are preserved.
+
 [Strict run `39177912229`](https://github.com/spankyed/AgentBuddy/actions/runs/39177912229)
-finished at the packaged-authoring author half: its successful phases consumed about 898 of
-the 900s scenario budget; timeout fired as archive installation started. This is not evidence of
-an installation stall. Both authoring and external contract producers ran real pack builds while
-reserving one core; they now share the existing measured two-core pack-build class. All 88
-scheduler/core/graph checks, scripts types, lint and the old-weight mutation pass. Hosted
-acceptance remains required; no deadline is increased. Inspect the retained evidence before any
-further broad run.
-Remaining native-policy/platform obligations, B6 and the complete Phase 7 audit remain open; this
-is not final acceptance. The Windows proof is terminal, evidence exported and VM confirmed
-deallocated after checking that no compiler processes remain. No active Windows build needs resuming.
-The next named runtime check builds a real public scaffold (backend and Vue frontend) under
-Electron on disposable macOS/Linux, then archives under the supervising Node runtime. It reuses
-the existing native integration file and launcher; actual captured-worker version/retirement,
-verified build output and passive cross-runtime archive acceptance are asserted. CLI types/lint
-and all 53 subprocess/deadline policy checks pass; runtime acceptance is pending. No deadline
-is widened and no native execution runs on the daily-use Mac. The strict run above retains its
-original pin; it is not replaced by these focused platform checks.
-Candidate `50d11c39d` is committed and pushed. Linux run
-[39179710434](https://github.com/spankyed/AgentBuddy/actions/runs/39179710434) accepts the real
-Electron 37.2.4 / Node 22.17.1 backend/frontend build, captured-worker retirement and archive under
-Node 23.11.1 in 59.141s. Signed macOS run
-[39179708329](https://github.com/spankyed/AgentBuddy/actions/runs/39179708329) reaches the 60s
-aggregate test bound, without a compiler diagnostic. Four public operations shared that clock;
-setup and compilation now have separate standard Vitest hooks, followed by output and archive
-checks. Each hook/test retains 60s. Phase start/completion timing makes any next failure attributable.
-The failed control is preserved; signed macOS acceptance remains open. Corrected focused run
-[39180215930](https://github.com/spankyed/AgentBuddy/actions/runs/39180215930) uses source `c9bb04446`. Do not repeat accepted Linux
-or Windows runtime paths merely because this test topology changed. The strict run keeps its original pin.
+failed at the authoring producer after its completed phases consumed about 898 of the unchanged
+900s budget. Timeout fired as archive installation started, not after a demonstrated install stall.
+Source **`8f6a5f187`** gives authoring and external contracts the existing two-core pack-build
+reservation. All 88 scheduler/core/graph checks, scripts types, lint and the old-weight mutation
+pass. Hosted acceptance remains required. Typecheck-pack reservation `04a876675` retains 60s;
+that leg and the later fork/unit/integration/runtime/app legs were not reached in this run.
 
+Signed macOS complete compilation remains open. Runs
+[39179708329](https://github.com/spankyed/AgentBuddy/actions/runs/39179708329) and
+[39180215930](https://github.com/spankyed/AgentBuddy/actions/runs/39180215930) exhausted aggregate
+60s clocks before compilation. The second identifies successful init at 53.797s, leaving only five
+seconds for feature generation. The current correction restores one simple workflow: each of four
+public commands has an explicit 60s abort signal; only their composition receives 240s. Phase timing,
+all runtime/output/archive assertions and awaited cleanup remain. CLI types/lint and all 53
+subprocess/deadline checks pass; focused signed execution on the corrected source is next.
 
+The bound-only Windows import support decision is pending the user's explicit answer; no exclusion
+has been applied. Remaining native-policy/platform requirements, B6 and every Phase 7 obligation
+remain required. No broad run is currently active; diagnose from retained evidence and converge the
+focused checks before the next required strict gate. No native execution runs on the daily-use Mac.
 
 This ledger owns current execution status and ordering. The phases below retain all completion
 requirements; subsystem plans retain detailed contracts and acceptance cases. Dated checkpoint notes
