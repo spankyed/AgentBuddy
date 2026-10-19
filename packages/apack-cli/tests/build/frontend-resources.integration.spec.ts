@@ -2,11 +2,10 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { createRequire } from 'node:module';
-import { afterAll, afterEach, beforeEach, describe, expect, it, vi, type MockInstance } from 'vitest';
+import { afterAll, beforeEach, describe, expect, it, vi, type MockInstance } from 'vitest';
 import { createFrontendResourceFixture, readFrontendOutput } from '../_support/frontend-resources.ts';
 import { readPackBuild } from '@apackdev/host/packs';
 import { callCli } from '../_support/pack-builds.ts';
-import { startPackBuildWatcher } from '../../src/build/watch.ts';
 import { bundlePackFE } from '../../src/build/fe-bundler.ts';
 import { createBuildOutputs } from '../../src/build/build-outputs.ts';
 import { captureCompilationInputs } from '../../src/build/compilation-inputs.ts';
@@ -150,7 +149,6 @@ describe('CSS dependency watching', () => {
   let leaf: string;
   let publications: number;
   let errors: MockInstance<typeof console.error>;
-  let starting: ReturnType<typeof startPackBuildWatcher> | undefined;
 
   beforeEach(async () => {
     ({ pack } = consumer());
@@ -161,16 +159,8 @@ describe('CSS dependency watching', () => {
     fs.appendFileSync(path.join(pack, 'src/canvas.vue'), '<style src="../../outside.css"></style>');
     errors = vi.spyOn(console, 'error').mockImplementation(() => {});
     publications = 0;
-    starting = startPackBuildWatcher(pack, { place: { env: 'test', userDataDir: path.join(fixture.root, 'profile') },
+    await fixture.startWatcher(pack, { place: { env: 'test', userDataDir: path.join(fixture.root, 'profile') },
       onBuilt: async () => { publications++; } });
-    await starting;
-  });
-
-  afterEach(async () => {
-    const pending = starting;
-    starting = undefined;
-    // A failed startup closes its resources and is already reported by beforeEach.
-    await pending?.then(watcher => watcher.close(), () => {});
   });
 
   it('recovers a missing nested stylesheet while retaining the accepted build', async () => {
@@ -212,7 +202,7 @@ it.each(['css-url', 'template'] as const)('watches an external %s asset in a sep
   let watcher: { close(): Promise<void> } | undefined;
   let publications = 0;
   try {
-    watcher = await startPackBuildWatcher(pack, { place: { env: 'test', userDataDir: path.join(fixture.root, 'profile') },
+    watcher = await fixture.startWatcher(pack, { place: { env: 'test', userDataDir: path.join(fixture.root, 'profile') },
       onBuilt: async () => { publications++; } });
     expect(readFrontendOutput(pack, '.svg')).toContain('BEFORE');
     if (kind === 'template') expect(fs.existsSync(path.join(pack, '.apack/reads.json'))).toBe(false);
@@ -239,7 +229,7 @@ it('watches initially empty external Tailwind content through nested directory l
   let watcher: { close(): Promise<void> } | undefined;
   let publications = 0;
   try {
-    watcher = await startPackBuildWatcher(pack, { place: { env: 'test', userDataDir: path.join(fixture.root, 'profile') },
+    watcher = await fixture.startWatcher(pack, { place: { env: 'test', userDataDir: path.join(fixture.root, 'profile') },
       onBuilt: async () => { publications++; } });
     expect(readFrontendOutput(pack, '.css')).not.toContain('.text-orange-500');
     expect(readFrontendOutput(pack, '.css')).not.toContain('.text-indigo-500');

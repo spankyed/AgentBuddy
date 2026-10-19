@@ -1,18 +1,34 @@
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { afterEach, vi } from 'vitest';
+import { afterEach, beforeEach, vi } from 'vitest';
 import { vueRuntimePack } from './frontend-pack.ts';
 import { filesUnder } from '../../src/build/phase-cache.ts';
+import { startPackBuildWatcher, type WatchOptions } from '../../src/build/watch.ts';
 
 export function createFrontendResourceFixture() {
   let root: string | undefined;
-  afterEach(() => {
-    vi.unstubAllEnvs(); vi.restoreAllMocks();
+  let signal: AbortSignal | undefined;
+  const watchers: ReturnType<typeof startPackBuildWatcher>[] = [];
+  beforeEach(context => { signal = context.signal; });
+  afterEach(async () => {
+    try {
+      const results = await Promise.allSettled(watchers.splice(0)
+        .map(starting => starting.then(watcher => watcher.close(), () => {})));
+      const failures = results.flatMap(result => result.status === 'rejected' ? [result.reason] : []);
+      if (failures.length) throw new AggregateError(failures, 'Could not close frontend fixture watchers');
+    } finally {
+      vi.unstubAllEnvs(); vi.restoreAllMocks();
+    }
     if (root) fs.rmSync(root, { recursive: true, force: true });
     root = undefined;
   });
   return {
+    startWatcher(pack: string, options: Omit<WatchOptions, 'signal'> = {}) {
+      const starting = startPackBuildWatcher(pack, { ...options, signal });
+      watchers.push(starting);
+      return starting;
+    },
     consumer() {
       root = fs.mkdtempSync(path.join(os.tmpdir(), 'apack-frontend-resources-'));
       return vueRuntimePack(root);

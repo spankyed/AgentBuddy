@@ -1,7 +1,7 @@
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { afterEach, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import * as sdkBuild from '@apackdev/sdk/build';
 import { REPO_ROOT } from '@apackdev/host/build/packages-built';
 import { callCli, preparePack, packageJson, tsconfig } from '../_support/pack-builds.ts';
@@ -16,7 +16,17 @@ import { readPackBuildInputs, assertPackBuildInputsCurrent } from '@apackdev/hos
 import { packInputFiles } from '@apackdev/host/build/pack-inputs';
 
 let root: string | undefined;
-afterEach(() => { vi.restoreAllMocks(); if (root) fs.rmSync(root, { recursive: true, force: true }); root = undefined; });
+let signal: AbortSignal;
+let starting: ReturnType<typeof startPackBuildWatcher> | undefined;
+beforeEach(context => { signal = context.signal; });
+afterEach(async () => {
+  const pending = starting;
+  starting = undefined;
+  try { await pending?.then(watcher => watcher.close(), () => {}); }
+  finally { vi.restoreAllMocks(); }
+  if (root) fs.rmSync(root, { recursive: true, force: true });
+  root = undefined;
+});
 
 function runtimeConsumer() {
   root = fs.mkdtempSync(path.join(os.tmpdir(), 'apack-imported-runtime-'));
@@ -67,10 +77,12 @@ it.each([
   const errors = vi.spyOn(console, 'error').mockImplementation(() => {});
   let publications = 0;
   try {
-    watcher = await startPackBuildWatcher(pack, {
+    starting = startPackBuildWatcher(pack, {
+      signal,
       place: { env: 'test', userDataDir: path.join(root!, 'profile') },
       onBuilt: async () => { publications++; },
     });
+    watcher = await starting;
     expect(fs.readFileSync(frontend, 'utf8')).toContain('BEFORE');
     fs.writeFileSync(helper, "export const marker = 'AFTERX';");
     await vi.waitFor(() => expect(publications > 0 || errors.mock.calls.length > 0).toBe(true), { timeout: 20_000 });

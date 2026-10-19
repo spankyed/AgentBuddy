@@ -139,6 +139,27 @@ it('does not recreate input subscriptions when an active build fails during clos
   expect(fs.watch).toHaveBeenCalledTimes(subscriptions);
 });
 
+it('cancels pending startup and drains its owner before rejecting without a watcher handle', async () => {
+  const controller = new AbortController();
+  fixture.build.mockImplementationOnce(options => new Promise<void>((_resolve, reject) => {
+    options!.signal!.addEventListener('abort', () => reject(options!.signal!.reason), { once: true });
+  }));
+  let finish!: () => void;
+  fixture.close.mockImplementationOnce(() => new Promise<void>(resolve => { finish = resolve; }));
+  let settled = false;
+  const starting = startPackBuildWatcher('/fixture', { signal: controller.signal }).then(
+    () => { settled = true; },
+    error => { settled = true; return error; },
+  );
+  controller.abort();
+  await vi.advanceTimersByTimeAsync(0);
+  expect(fixture.close).toHaveBeenCalledTimes(1);
+  expect(settled).toBe(false);
+  finish();
+  expect(await starting).toBe(controller.signal.reason);
+  for (const entry of fixture.watches) expect(entry.watcher.close).toHaveBeenCalledTimes(1);
+});
+
 it.each(['root', 'dependency', 'authored'] as const)('drains and attributes an asynchronous %s watch failure', async kind => {
   if (kind === 'dependency') vi.spyOn(compilerWatch, 'compilerWatchTargets').mockReturnValue(new Map([
     ['/outside', { paths: new Map([['/outside/value', 'file']]), recursive: false }],

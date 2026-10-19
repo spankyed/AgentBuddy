@@ -4,7 +4,7 @@ import * as os from 'node:os';
 import * as path from 'node:path';
 import { createServer } from 'node:http';
 import { createActor, createMachine } from 'xstate';
-import { beforeEach, expect, it, vi, type MockInstance } from 'vitest';
+import { afterEach, beforeEach, expect, it, vi, type MockInstance } from 'vitest';
 import { packFixture } from '@apackdev/sdk/testing/pack-fixture';
 import { installedEngine } from '@apackdev/ears';
 import { createSettingsStore, createSettingsService } from '@apackdev/host/settings';
@@ -33,7 +33,7 @@ interface WatchedPack {
   state: { reloads: number; publications: number };
 }
 
-async function startWatchedPack(): Promise<WatchedPack & { close(): Promise<void> }> {
+async function startWatchedPack(signal: AbortSignal): Promise<WatchedPack & { close(): Promise<void> }> {
   const temporary = fs.mkdtempSync(path.join(os.tmpdir(), 'apack-watch-publication-'));
   const root = path.join(temporary, 'source');
   const marker = path.join(temporary, 'activated');
@@ -90,6 +90,7 @@ async function startWatchedPack(): Promise<WatchedPack & { close(): Promise<void
     fs.writeFileSync(environment.apiPortFile, JSON.stringify({ port: address.port, pid: process.pid }));
     fs.writeFileSync(environment.apiTokenFile, 'watch-test-token');
     watcher = await startPackBuildWatcher(root, {
+      signal,
       place: { env: 'test', userDataDir: environment.userDataDir },
       onBuilt: async () => { stagePack(root, installed); state.publications++; },
     });
@@ -107,11 +108,15 @@ async function startWatchedPack(): Promise<WatchedPack & { close(): Promise<void
 }
 
 let watchedPack: WatchedPack;
-beforeEach(async () => {
-  const started = await startWatchedPack();
-  watchedPack = started;
-  // Vitest awaits hook cleanup after a test timeout before starting the next test.
-  return () => started.close();
+let starting: ReturnType<typeof startWatchedPack> | undefined;
+beforeEach(async ({ signal }) => {
+  starting = startWatchedPack(signal);
+  watchedPack = await starting;
+});
+afterEach(async () => {
+  const pending = starting;
+  starting = undefined;
+  await pending?.then(started => started.close(), () => {});
 });
 
 it.skipIf(!built)('publishes source and manifest edits together and retains the incumbent after refusal', async () => {
