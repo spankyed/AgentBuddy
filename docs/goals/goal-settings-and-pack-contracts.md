@@ -54,7 +54,13 @@ two-core width (`04a876675`), retaining its 60s deadline. Windows replay preserv
 containing an embedded drive (`3827993ba`); the real Electron backend/frontend build and archive
 now pass on that commit in 178.554s and 13.294s. See [checkpoint evidence](../evidence/settings-and-pack-contracts.md#windows-electron-buildarchive-and-typecheck-admission--2026-10-18).
 [Strict run `39177912229`](https://github.com/spankyed/AgentBuddy/actions/runs/39177912229)
-is running on exactly that source. Inspect its retained result before any further broad run.
+finished at the packaged-authoring author half: its successful phases consumed about 898 of
+the 900s scenario budget; timeout fired as archive installation started. This is not evidence of
+an installation stall. Both authoring and external contract producers ran real pack builds while
+reserving one core; they now share the existing measured two-core pack-build class. All 88
+scheduler/core/graph checks, scripts types, lint and the old-weight mutation pass. Hosted
+acceptance remains required; no deadline is increased. Inspect the retained evidence before any
+further broad run.
 Remaining native-policy/platform obligations, B6 and the complete Phase 7 audit remain open; this
 is not final acceptance. The Windows proof is terminal, evidence exported and VM confirmed
 deallocated after checking that no compiler processes remain. No active Windows build needs resuming.
@@ -73,7 +79,8 @@ Node 23.11.1 in 59.141s. Signed macOS run
 aggregate test bound, without a compiler diagnostic. Four public operations shared that clock;
 setup and compilation now have separate standard Vitest hooks, followed by output and archive
 checks. Each hook/test retains 60s. Phase start/completion timing makes any next failure attributable.
-The failed control is preserved; signed macOS acceptance remains open. Do not repeat accepted Linux
+The failed control is preserved; signed macOS acceptance remains open. Corrected focused run
+[39180215930](https://github.com/spankyed/AgentBuddy/actions/runs/39180215930) uses source `c9bb04446`. Do not repeat accepted Linux
 or Windows runtime paths merely because this test topology changed. The strict run keeps its original pin.
 
 

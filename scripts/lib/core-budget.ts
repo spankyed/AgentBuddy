@@ -85,6 +85,9 @@ export const POOL_WIDTH: Readonly<Record<string, PoolWidth>> = {
   'build:default-setup': PACK_BUILD_WIDTH,
   // Preparation builds the same shipped pack with fixture edits, then archives it serially.
   'test:external-pack:fork': PACK_BUILD_WIDTH,
+  // Both producers run actual pack builds; authoring also repeats one for release preflight.
+  'test:external-pack:contract': PACK_BUILD_WIDTH,
+  'test:packaged-authoring:author': PACK_BUILD_WIDTH,
   // **`build:runtime` was re-measured on 2026-10-06, when it stopped running its four builds in series**:
   // 2.57, 2.57, 2.56, 2.49, 2.44 cores over five readings, median 2.56, against 2.2 when it was serial.
   //

@@ -7963,3 +7963,39 @@ rescheduling those migrations from stale labels. This does not re-prove historic
 identity or replace current strict schema/API/external runtime acceptance. Remaining native selection
 requirements retain their explicit open disposition; no new counterexample or policy exclusion was
 established by this audit. Strict run `39177912229` remains the sole active broad gate.
+
+## Packaged authoring clock exhaustion and producer reservation — 2026-10-19
+
+Strict run [39177912229](https://github.com/spankyed/AgentBuddy/actions/runs/39177912229), exact
+source `3827993ba`, is terminal failure after 1776.0s. The authoring producer reaches its unchanged
+900s scenario budget (902s including group cleanup). Its phase reports account for about **898s**
+before the archive-install phase: packages 9s, initial install 26s, init/feature authoring 236s,
+fixture augmentation 7s, first real build 319s, harness 13s, published types 11s and release dry-run
+277s. Both build and release archive/checksum succeeded. The timer fires just after install starts;
+it does not demonstrate a stuck install, missing handoff or a compiler error.
+
+The external-contract producer finished at 00:09:32Z after 521.6s, implying start near 00:00:50Z.
+Authoring's 902s ends at 00:17:37Z, implying start near 00:02:35Z: the two real pack-building producers
+overlap for about seven minutes while each reserves one core. Both execute the existing backend/Vue
+compiler pipeline; authoring repeats it for release. They now use the existing `PACK_BUILD_WIDTH`
+two-core class, already measured for full pack compilation and reused by fork preparation. This is
+not a new direct CPU measurement of either entire producer. It corrects admission without claiming
+to explain all hosted latency or increasing the scenario deadline.
+
+All **88** scheduler/core/graph checks pass in 731ms. The actual scheduler refuses co-admission for
+each producer on a two-core budget; temporarily restoring their old weights fails both new rows,
+with the fork row still passing. Source is restored afterward. Scripts types, focused lint and diff
+checks pass. No broad rerun diagnoses this failure; converged hosted acceptance remains required.
+Other reached passes include default-setup build (553.4s), external contracts (521.6s), facade/report
+and the recorded schema/API/export/typecheck legs. Pack typecheck, fork preparation, host/pack unit
+pools, integration/runtime and app halves were not reached; do not claim their acceptance.
+
+Retained evidence:
+
+- `/private/tmp/apack-strict-39177912229{,-clean}.log`.
+- `/private/tmp/apack-strict-39177912229/`, including hidden per-step logs and the complete author log.
+- `/private/tmp/apack-authoring-core-{reservation,mutation}.log` and
+  `/private/tmp/apack-authoring-core-scripts-types.log`.
+
+This repair does not change release scripts, compiler semantics, output integrity, handoff ownership
+or any per-step timeout. Keep the separate signed Electron runtime proof and full goal obligations.

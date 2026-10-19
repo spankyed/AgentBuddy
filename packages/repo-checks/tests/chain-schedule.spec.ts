@@ -65,16 +65,17 @@ describe('schedule', () => {
     expect(r.order.sort()).toEqual(['a', 'b', 'c', 'd']);
   });
 
-  it('reserves the full pack-build width for fork preparation on a two-core budget', async () => {
-    const r = runner();
-    const cores = coresFor('test:external-pack:fork', 10);
-    expect(cores).toBe(coresFor('build:default-setup', 10));
-    const done = schedule({ steps: [step('test:external-pack:fork', [], { cores }), step('other')],
-      budget: 2, skip: never, run: r.run });
-    await r.drain();
-    await done;
-    expect(r.peak()).toBe(1);
-  });
+  it.each(['test:external-pack:fork', 'test:external-pack:contract', 'test:packaged-authoring:author'])(
+    'reserves the full pack-build width for %s on a two-core budget', async name => {
+      const r = runner();
+      const cores = coresFor(name, 10);
+      expect(cores).toBe(coresFor('build:default-setup', 10));
+      const done = schedule({ steps: [step(name, [], { cores }), step('other')],
+        budget: 2, skip: never, run: r.run });
+      await r.drain();
+      await done;
+      expect(r.peak()).toBe(1);
+    });
 
   it('reserves both cores for the pack typecheck', async () => {
     const r = runner();
