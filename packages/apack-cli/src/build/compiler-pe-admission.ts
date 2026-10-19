@@ -94,20 +94,24 @@ export function assertCapturedPeLibraries(entry: string, packageRoot: string, in
     const image = { metadata, bindings: active };
     images.set(identity, image);
     for (const imported of metadata.imports) {
+      const requested = imported.symbols.map(symbol => {
+        if ('boundAddress' in symbol) throw new Error(`Cannot inspect bound-only PE import from "${file}" into "${imported.name}" without its import names`);
+        return symbol;
+      });
       // node-gyp's delay hook binds this Node-API reference to the running host, even when renamed.
       // A shared libnode host still needs ownership checks; other symbols use ordinary resolution.
-      if (imported.delayed && imported.name.toLowerCase() === 'node.exe' && imported.symbols.length
-        && imported.symbols.every(symbol => 'name' in symbol && /^(napi_|node_api_)/.test(symbol.name))) {
+      if (imported.delayed && imported.name.toLowerCase() === 'node.exe' && requested.length
+        && requested.every(symbol => 'name' in symbol && /^(napi_|node_api_)/.test(symbol.name))) {
         const sharedHost = input.loadedLibraries.find(file => path.basename(file).toLowerCase() === 'libnode.dll');
-        if (sharedHost) inspect(sharedHost, imported.symbols, file, active);
+        if (sharedHost) inspect(sharedHost, requested, file, active);
         else {
-          const missing = imported.symbols.find(symbol => 'name' in symbol && !environment.nodeApiExports.includes(symbol.name));
+          const missing = requested.find(symbol => 'name' in symbol && !environment.nodeApiExports.includes(symbol.name));
           if (missing && 'name' in missing) throw new Error(`Windows compiler host "${input.executable}" does not export Node-API symbol "${missing.name}" requested by "${file}"`);
         }
         continue;
       }
       const target = resolve(imported.name, file, active);
-      if (target) inspect(target, imported.symbols, file, active);
+      if (target) inspect(target, requested, file, active);
     }
     return image;
   };
@@ -138,12 +142,11 @@ export function assertCapturedPeLibraries(entry: string, packageRoot: string, in
     const candidates = path.isAbsolute(name) ? [name] : directories.map(directory => path.resolve(input.cwd, directory, name));
     return candidates.find(file => input.read(file) !== undefined);
   };
-  const inspect = (file: string, requested: readonly PeImportedSymbol[], requester: string, active: ReadonlyMap<string, string | null>) => {
+  const inspect = (file: string, requested: readonly Exclude<PeImportedSymbol, { boundAddress: bigint }>[], requester: string, active: ReadonlyMap<string, string | null>) => {
     const image = read(file, requester, active);
     if (!image) return;
     const { metadata } = image;
     for (const symbol of requested) {
-      if ('boundAddress' in symbol) throw new Error(`Cannot inspect bound-only PE import from "${requester}" into "${file}" without its import names`);
       const key = `${file.toLowerCase()}\0${'name' in symbol ? symbol.name : '#' + symbol.ordinal}`;
       if (symbols.has(key)) continue;
       symbols.add(key);

@@ -6,11 +6,12 @@ import module, { createRequire } from 'node:module';
 import { beginCompilerNativeModules, beginCompilerStartupReads, type CompilerFileReadInputs } from '../../../src/build/compiler-inputs/compiler-file-reads.ts';
 import { createCompilerFileView } from '../../../src/build/compiler-inputs/compiler-file-view.ts';
 
-it('preserves omitted and explicit dlopen flags while replacing only the admitted filename', () => {
+it('preserves dlopen flags and refuses native initialization when admission fails', () => {
   const original = process.dlopen;
   const native = vi.fn<typeof process.dlopen>();
   process.dlopen = native;
-  const dispose = beginCompilerNativeModules(file => file + '.captured');
+  const admit = vi.fn((file: string) => file + '.captured');
+  const dispose = beginCompilerNativeModules(admit);
   try {
     const module = { exports: {} };
     process.dlopen(module, 'addon.node');
@@ -21,6 +22,10 @@ it('preserves omitted and explicit dlopen flags while replacing only the admitte
       [module, 'addon.node.captured', 2],
       [module, 'addon.node.captured', undefined],
     ]);
+    const refusal = new Error('Native dependency refused');
+    admit.mockImplementation(() => { throw refusal; });
+    expect(() => process.dlopen(module, 'refused.node')).toThrow(refusal);
+    expect(native).toHaveBeenCalledTimes(3);
   } finally {
     dispose();
     process.dlopen = original;

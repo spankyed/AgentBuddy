@@ -57,6 +57,16 @@ it('observes a package DLL graph and terminates import cycles', () => {
   expect(value.reads).toContain(environment.schema);
 });
 
+it.each(['package', 'system', 'missing'] as const)('refuses bound-only imports before %s dependency admission', target => {
+  const addon = peImage(); addon.imports();
+  addon.uint(0x1000, 0); addon.uint(0x1004, 5678);
+  addon.pointer(0x1300, 0x180001234n);
+  const files: [string, Buffer][] = [[entry, addon.bytes]];
+  if (target !== 'missing') files.push([target === 'system' ? 'C:\\Windows\\System32\\value.dll' : library, image()]);
+  const value = admission(files, { environment: { knownDlls: target === 'system' ? ['value.dll'] : [] } });
+  expect(value.check).toThrow(`Cannot inspect bound-only PE import from "${entry}" into "value.dll" without its import names`);
+});
+
 it('keeps the top image directory for transitive altered-search-path lookup', () => {
   const value = admission([[library, image('deeper.dll')], ['C:\\pack\\binding\\deeper.dll', image()]]);
   expect(value.check).not.toThrow();
