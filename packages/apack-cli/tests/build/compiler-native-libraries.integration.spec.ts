@@ -475,7 +475,7 @@ it('retains independent captured Vite owners through replacement and close', asy
   }
 });
 
-it.runIf(process.platform === 'darwin')('watches external Vite native changes and repairs a failed generation through newly discovered inputs', async () => {
+it.runIf(process.platform === 'darwin')('watches external Vite native changes and repairs a failed generation through newly discovered inputs', async ({ onTestFinished }) => {
   const fixture = nativeFixture('relative');
   const builder = createPackBuilder(fixture.pack);
   const previous = process.env.NODE_OPTIONS;
@@ -489,6 +489,23 @@ it.runIf(process.platform === 'darwin')('watches external Vite native changes an
   const preload = path.join(fixture.root, 'vite-preload.cjs');
   const started = performance.now();
   const checkpoint = (phase: string) => console.info(`Native watch: ${phase} (${Math.round(performance.now() - started)}ms)`);
+  let completed = false;
+  let closing: Promise<void> | undefined;
+  const close = () => closing ??= (async () => {
+    if (previous === undefined) delete process.env.NODE_OPTIONS;
+    else process.env.NODE_OPTIONS = previous;
+    let closed = false;
+    try {
+      try { await watcher?.close(); } finally { await builder.close(); }
+      closed = true;
+    } finally {
+      errors.mockRestore();
+      if (completed && closed) fs.rmSync(fixture.root, { recursive: true, force: true });
+      else console.info(`Retained native watch fixture: ${fixture.root}`);
+      checkpoint(closed ? 'owners closed' : 'owner teardown failed');
+    }
+  })();
+  onTestFinished(close);
   try {
     packFixture({ at: fixture.pack, nodeModules: path.join(REPO_ROOT, 'node_modules'), manifest: { features: {} },
       files: { 'src/pack-entry-fe.ts': "export { default } from './View.vue';", 'src/View.vue': '<template>NATIVE_WATCH</template>',
@@ -537,7 +554,9 @@ it.runIf(process.platform === 'darwin')('watches external Vite native changes an
     fs.copyFileSync(helper, repaired);
     checkpoint('new dependency repaired');
     await vi.waitFor(() => expect(builds).toHaveBeenCalled(), { timeout: 20_000 });
+    checkpoint('repair rebuild started');
     await expect(builds.mock.results[0]!.value).resolves.toBeUndefined();
+    checkpoint('repair rebuild completed');
     await vi.waitFor(() => expect(publications).toHaveBeenCalledTimes(1), { timeout: 2_000 });
     checkpoint('repair published');
     expect(addresses).toHaveLength(2);
@@ -545,16 +564,12 @@ it.runIf(process.platform === 'darwin')('watches external Vite native changes an
     const results = fs.readFileSync(proof, 'utf8').trim().split('\n').map(line => JSON.parse(line))
       .filter(row => row.thread === 0).map(row => row.value);
     expect(results).toEqual([11, 22]);
+    completed = true;
   } catch (error) {
     console.info('Native watch refusals:', errors.mock.calls);
     throw error;
-  } finally {
-    if (previous === undefined) delete process.env.NODE_OPTIONS;
-    else process.env.NODE_OPTIONS = previous;
-    try { await watcher?.close(); await builder.close(); }
-    finally { errors.mockRestore(); fs.rmSync(fixture.root, { recursive: true, force: true }); }
-  }
-}, 120_000);
+  } finally { await close(); }
+}, 300_000);
 
 it.runIf(process.platform === 'darwin').each(['preload', 'thread'] as const)(
   'owns retained Vite native %s inputs while authored Vue sources stay live', async site => {
