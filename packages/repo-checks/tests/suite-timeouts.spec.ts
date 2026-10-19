@@ -28,6 +28,8 @@ import { repoFiles } from './_support/repo-files.ts';
  * fails on an entry whose override has gone, so the list shrinks when the reason does.
  */
 const TIMEOUT_EXCEPTIONS: Record<string, string> = {
+  'packages/apack-cli/tests/build/build-worker.integration.spec.ts > records external inputs read by content compiler worker threads':
+    'A cold captured build runs four compiler-thread lifecycles before external-input verification. Its build is explicitly bounded at 120s, then 20s covers receipt/freshness assertions; fixture teardown drains the registered builder. Normal run 39253013877 exceeded the former 60s complete-case limit. Other operation/event/cleanup limits remain unchanged.',
   'packages/apack-cli/tests/build/compiler-native-libraries.integration.spec.ts > uses the %s Electron runtime through the shared compiler launcher':
     'Runtime capture (60s), captured launch (unchanged 15s), verification/retirement (20s) compose the driver allowance; the 120s case includes fixture setup/cleanup. Normal gate 39248035810 exceeded the former 30s nested driver limit. The asynchronous driver preserves runner updates and records phase completion without relaxing identity or retirement assertions.',
   'packages/apack-cli/tests/build/build-worker.integration.spec.ts > refuses candidate output changed by a compiler exit handler and retains the incumbent':
