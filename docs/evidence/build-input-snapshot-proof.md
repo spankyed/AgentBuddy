@@ -6321,3 +6321,26 @@ cleanup receipt: **zero compiler processes**, Node **23.11.1**, Windows **10.0.2
 logs are `/private/tmp/apack-runtime-selection-profile{,-stages}.log`; local pure/type/lint/inventory
 logs use `/private/tmp/apack-runtime-selection-*`. Azure confirms the VM is **deallocated** after evidence export. The broader Windows/native
 requirements, independent bound-only disposition, B6 and final strict/app gates remain open.
+
+
+## Frontend JavaScript preload ownership audit — 2026-10-19
+
+Source **`387555312`** adds one regression to the existing native/startup-owner suite; no production
+code changes. Inspection confirms that `beginFrontendNativeInputs` already captures ordinary JS reads
+through the common startup filesystem/module-resolution hooks. `bin/apack.mjs` stops that interception
+before entering Vite, and the retained owner saves source/copy observations for frontend freshness.
+Its `includes` predicate means external startup inputs, not merely files with native-image extensions.
+The source observation filter excludes owned compiler paths, not ordinary JavaScript preloads.
+
+The case uses an actual CJS preload requiring another CJS file, with the existing frontend owner and
+watch recorder. It proves both files appear as byte observations **and** file probes in the persisted
+watch reports. Edits to each file make the owner's snapshot refuse with the changed path; exact byte
+restoration succeeds. Reads and edits of an authored Vue source after `stopReads` remain live and do
+not invalidate the preload baseline. This closes the suspected CJS capture/reporting gap without
+another scanner, cache, frontend owner or whole-pack freeze.
+
+All **five** owner tests pass in 127ms (366ms process), CLI TypeScript passes and correctness lint
+reports zero warnings/errors. This is an in-process owner proof, not a new public launch, ESM-loader
+or browser-HMR acceptance run. Existing real frontend/native preload/thread and HMR proofs remain
+separate and must survive convergence. Logs: `/private/tmp/apack-frontend-preload-{owner,types,lint}.log`.
+No VM/native build, daily-use Mac captured executable, broad suite or deadline change is involved.
