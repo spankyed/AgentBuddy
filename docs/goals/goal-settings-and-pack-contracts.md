@@ -52,8 +52,10 @@ Normal integration **39289719265** finishes with **493 actual passes**, one whol
 `onTaskUpdate` reporting timeout. All preparation passes. No failed value assertion or explicit
 cleanup failure is reported; unreached cases remain unaccepted. The full-build parameterized family
 now has a scoped cold-build/verification allowance, and same-file teardown yields for runner replies.
-All 53 timeout/inventory checks, CLI types and lint pass. Accept the complete 15-case affected file
-before another normal run; final committed-source strict `--all` remains required. See
+Repair **`d29612b7a`** is committed/pushed. All 53 timeout/inventory checks, CLI types and lint pass.
+Focused [39296758415](https://github.com/spankyed/AgentBuddy/actions/runs/39296758415) is dispatched
+on workflow-only `952a6dd02`, selecting the complete 15-case file with bail disabled and a 15-executed-case
+assertion. Await this existing run before another normal run; final committed-source strict `--all` remains required. See
 [classification](../evidence/integration-deadline-inventory.md#normal-gate-esbuild-captured-declaration-scenario-and-reporting--2026-10-19).
 
 Focused trigger-scaffold acceptance **39288218287** succeeds on workflow-only `36ea8055a`,

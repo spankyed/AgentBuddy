@@ -935,3 +935,10 @@ Required next evidence: complete 15-case file on a disposable runner, bail disab
 zero failures and no unhandled reporting error; then normal integration and final strict `--all`.
 Raw reports: `/private/tmp/apack-normal-integration-39289719265/`; full log:
 `/private/tmp/apack-normal-integration-39289719265-full.log`. Earlier results remain preserved.
+
+Repair `d29612b7a` is committed/pushed. Focused
+[39296758415](https://github.com/spankyed/AgentBuddy/actions/runs/39296758415) is dispatched on
+workflow-only `952a6dd02`, whose only difference from that source checkpoint is the acceptance workflow.
+It selects all 15 configuration cases, bail disabled, two-worker limits and an explicit 15-executed-case
+assertion; no workflow test-timeout override. Normal integration is on hold until affected-file
+completion and reporting are accepted.
