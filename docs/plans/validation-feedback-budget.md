@@ -3,6 +3,9 @@
 Status: proposed; no implementation has started.
 Date: 2026-10-19.
 
+Schedule this work after the settings and pack contracts goal completes. During that goal's closeout,
+make only demonstrated blocker repairs and preserve timing evidence; do not begin this restructuring.
+
 ## Goal
 
 Get ordinary changes through `npm run chain` in **3–4 minutes**, preferably below **5 minutes**,
@@ -60,6 +63,9 @@ Use existing config discovery and graph checks rather than building a general na
 
 A new test normally joins an existing group. A new group needs a distinct execution boundary; a new
 helper needs demonstrated duplication. These are review rules, not reasons to add more metadata.
+For each added full-build scenario, explain the new behavior it proves, why a smaller test is
+insufficient, and its measured cost under stated conditions. Record cost as pending until measured;
+do not present an allowance as a duration. Use the existing review and timing reports, not a new registry.
 
 ### Separate ordinary integration from expensive acceptance
 
@@ -117,10 +123,24 @@ that each assume the whole machine. Increase concurrency only after measuring th
 Bound individual operations and give multi-step scenarios an explicit total allowance that fits their
 operations and cleanup. Preserve short event/readiness waits and bounded teardown. Use existing
 classes and process owners; do not build automatic deadline algebra or a workflow framework.
+For expensive scenarios, make operation bounds, cancellation where supported, awaited cleanup and
+phase timings explicit through those existing helpers. An outer timer cannot interrupt synchronous
+in-process work; do not describe it as an independently cancellable operation.
 
 Record phase timings on expensive scenarios. Distinguish operation timeout, scenario timeout and
 cleanup failure. A larger allowance prevents premature termination; it does not make execution faster.
 Do not use blanket increases, retry-to-green or relaxed diagnostic limits as normal acceptance.
+
+### Keep the runner responsive
+
+Distinguish slow execution from synchronous work blocking test-runner communication. A reporting
+timeout alone does not identify the blocking phase. Inspect the affected path before choosing a fix.
+
+Use existing subprocess boundaries for long toolchain work where the test permits it. Some tests need
+in-process instrumentation to prove their claim; keep those exceptions explicit and limited. Yielding
+with `setImmediate` between phases may let pending updates proceed, but cannot make a long synchronous
+phase responsive. Verify runner reporting and exit status as well as assertions. Do not add another
+worker framework or weaken reporting limits to hide the problem.
 
 ## Implementation order
 
@@ -129,7 +149,8 @@ Do not use blanket increases, retry-to-green or relaxed diagnostic limits as nor
    the expensive completed prefix. Apply the vocabulary and ownership rules above, then move clearly
    expensive scenarios using existing configs and runners. Extend existing completeness checks.
 2. **Remove demonstrated waste.** Share suitable preparation, retain necessary fresh scenarios, and
-   correct resource/deadline ownership. Validate each changed boundary with focused checks.
+   correct resource/deadline ownership. Address demonstrated runner blocking through existing execution
+   boundaries. Validate each changed boundary with focused checks, including reporting and cleanup.
 3. **Measure and adjust.** Record machine, cores, source, cache state, preparation and total time for
    representative ordinary host/pack and shared SDK changes. Measure affected compiler changes
    separately. Fix only selection or performance gaps those results demonstrate. Report timing
@@ -156,6 +177,9 @@ runner purchase or automatic CI schedule is required by this plan.
 - Shared preparation preserves integrity, freshness, archive handoff and test isolation.
 - Scheduling and deadlines fit actual work; terminated or diagnostically relaxed runs cannot count as
   normal acceptance.
+- Expensive scenarios have explicit operation/cancellation/cleanup ownership and phase timings.
+  Affected runs complete without unhandled reporting errors; an event-loop yield alone is not proof
+  that synchronous blocking is resolved. New full-build scenarios justify their coverage and cost.
 - Commands and documentation agree. The [settings and pack contracts goal](../goals/goal-settings-and-pack-contracts.md)
   keeps its existing requirements and final gate until an explicit migration checkpoint reconciles them.
   Writing this plan does not waive any current obligation.
