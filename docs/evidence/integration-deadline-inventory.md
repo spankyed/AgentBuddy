@@ -853,3 +853,10 @@ CLI typecheck, lint and 42 timeout-policy checks pass. Focused full-file runner 
 
 Preserved evidence: `/private/tmp/apack-normal-integration-39281108805-full.log` and
 `/private/tmp/apack-normal-integration-39281108805/`, including the raw pool JSON reports.
+
+Repair checkpoint: `d07ccae99`; all 53 timeout/inventory checks, CLI types and lint pass.
+Focused [39288218287](https://github.com/spankyed/AgentBuddy/actions/runs/39288218287)
+is queued on workflow-only `36ea8055a`, whose only difference from the repair checkpoint is
+`.github/workflows/strict-chain.yml`. It selects the complete 18-case scaffold file and two
+existing facade typecheck controls, two workers, bail disabled and a 20-executed-case assertion.
+No test deadline is overridden by the workflow. No real compiler/native integration ran locally.
