@@ -878,3 +878,9 @@ A current-source delta review also confirms the SDK framework/build declarations
 default-setup feature implementation and canonical writer are unchanged since consolidation audit
 `a74bbd88a`. Subsequent authoring changes use own-key collision checks and validate service claims
 before writing files. No new manifest implementation omission is identified; final gates remain open.
+
+Normal integration [39289719265](https://github.com/spankyed/AgentBuddy/actions/runs/39289719265)
+is dispatched on workflow-only `44cbdcdd4` containing main `affcdf644`. Its only source difference
+is the existing acceptance workflow: required preparation followed by ordinary
+`npm run test:integration -- --all`, two cores, no selected-case filtering or deadline overrides.
+Await the existing run, preserving its reports, before final strict `--all`.

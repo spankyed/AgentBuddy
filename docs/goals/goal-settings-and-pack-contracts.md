@@ -47,6 +47,12 @@ Lazy activation is deferred.
 
 ## Live execution ledger (reconciled 2026-10-16)
 
+Current normal integration [39289719265](https://github.com/spankyed/AgentBuddy/actions/runs/39289719265)
+is dispatched on workflow-only `44cbdcdd4`, containing main `affcdf644` / repair `d07ccae99`.
+It runs the ordinary unfiltered integration command with two cores and required preparation. Await
+this existing run before the final committed-source strict `--all`; no further source repair is
+currently identified.
+
 Focused trigger-scaffold acceptance **39288218287** succeeds on workflow-only `36ea8055a`,
 containing repair **`d07ccae99`**: all 18 scaffold cases and two facade typecheck controls pass
 (20 actual passes, exit 0, 377.704s; two workers). The repaired trigger case takes 27.020s;
