@@ -47,6 +47,17 @@ Lazy activation is deferred.
 
 ## Live execution ledger (reconciled 2026-10-16)
 
+Latest normal run **39262109257** finishes with 409 passing tests and one inherited-60s worker
+observation-refusal scenario timeout; all preparation passes. Its cancellation and earlier passing
+controls are preserved. The same-file audit repairs the remaining four cold-build scenario budgets
+and bounds their operations without changing production code or assertions. See the
+[classification and repair](../evidence/integration-deadline-inventory.md#normal-gate-worker-observation-refusal-deadline--2026-10-19).
+Repair **`f93015282`** is pushed; focused run **39267061814** succeeds on workflow-only
+`25f51cf98`: all 16 worker cases plus four native controls pass (20/20, exit 0, 611.202s; two workers).
+No cleanup/reporting error. Resume normal integration, then final committed-source strict `--all`.
+The [focused result](../evidence/integration-deadline-inventory.md#remaining-worker-cold-build-cases-accepted)
+records exact durations and preserved evidence.
+
 Runtime identity/publisher-policy repair is committed as **`7ce19661f`**, with focused acceptance
 recorded below. Earlier app/compiler implementation checkpoint **`3827993ba`** is pushed. Windows real Electron
 backend/frontend build and archive pass on that source; OS-assembly/copy/manifest-freshness
@@ -348,6 +359,10 @@ concurrent thread-input case 38.328s, without cleanup/reporting errors. All focu
 passing behavioral evidence; resume normal unfiltered integration on their combined committed
 source, then final main strict `--all` and complete requirement audit/archival. Do not turn these
 focused passes into a whole-suite completion claim.
+Normal [39262109257](https://github.com/spankyed/AgentBuddy/actions/runs/39262109257) is now dispatched
+on workflow-only `8d7776bc1` over exact main `a5e0d89ee`, with all accepted repairs, complete
+prerequisites and the unfiltered two-core repository command. Final strict and full closure remain
+required; no diagnostic source or private deadline overrides are present.
 Source **`21ed07fe7`** gives complete integration its own 120-minute aggregate class. The pool runner
 reads its owning chain step's deadline; ordinary unit pools remain at 600s. The measured file work
 already exceeds 53 minutes at an ideal two-worker balance, without blocked setup/preparation, so the

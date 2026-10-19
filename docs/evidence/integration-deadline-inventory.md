@@ -696,3 +696,63 @@ Reports are in `/private/tmp/apack-declaration-build-39261544678/`, with the ful
 The complete affected inventory and both subsequent focused repairs now have passing behavioral
 evidence. Return to the required normal unfiltered gate with the combined committed repairs; final
 main strict `--all` and requirement audit/archival remain outstanding.
+
+Normal [39262109257](https://github.com/spankyed/AgentBuddy/actions/runs/39262109257) is dispatched
+on workflow-only `8d7776bc1` over exact main `a5e0d89ee`. It includes all accepted worker/phase and
+declaration-fixture repairs, preserves complete preparation, and runs the ordinary unfiltered
+`npm run test:integration -- --all` with two cores. No diagnostic tracing, filters or private deadline
+overrides are merged. Require this normal gate before final main strict acceptance and closure.
+
+## Normal gate: worker-observation refusal deadline — 2026-10-19
+
+Normal run [39262109257](https://github.com/spankyed/AgentBuddy/actions/runs/39262109257)
+uses workflow-only `8d7776bc1` on main source `a5e0d89ee`. All preparation passes: typecheck
+374s, default pack 534s and external contract preparation 354s. Integration fails in **505.66s**:
+**409 actual passes, one failure, 26 platform skips**. Global bail leaves later cases unexecuted;
+passing file labels do not establish their entire declared population ran.
+
+The only failure is a **whole-scenario timeout**: `refuses publication when a compiler worker cannot
+return its observations` inherits 60s and reports 65.969s including cancellation/cleanup. No assertion
+mismatch, individual-operation timeout, cleanup failure or reporting error is reported. Earlier full
+worker acceptance completed this case in 53.701s. The underlying refusal is not newly disproven; its
+completion on this combined normal run is unverified. The four-mode thread case now passes in
+109.235s, repeated build/archive in 151.688s, actual Electron launch in 4.786s and actual Electron
+build/archive in 219.555s. Native watch repair passes in 178.944s, including retirement. Preserve these
+reached controls without claiming the unreached native tail passed.
+
+The prior cold-build audit missed the refusal and three remaining same-file cold scenarios: loader
+input refusal, background-process cleanup and frontend input reporting. Their focused durations were
+53.434s, 44.269s and 49.737s respectively. Repair them together using the same explicit 120s cold-build
+operation allowance already used for the thread case, with 20s enclosing verification/cleanup. The
+existing test helper requires the test cancellation signal and combines it with that operation bound;
+its registered builder still closes before source deletion. The public loader-refusal child receives
+a bounded completion wait and an awaited, separately bounded 20s cleanup. All original refusal,
+incumbent, value, input-source and process-cleanup assertions remain. Bootstrap/IPC/event waits,
+compiling-phase startup, other scenario limits and production code are unchanged.
+
+Local checks pass: 53 timeout-policy/subprocess-inventory cases, CLI TypeScript and correctness lint.
+Disposable two-worker affected-file acceptance is required before another normal run; the final main
+strict gate remains outstanding. Evidence: `/private/tmp/apack-normal-integration-39262109257/` and
+`/private/tmp/apack-normal-integration-39262109257-full.log`.
+
+Repair source **`f93015282`** is pushed. Focused run
+[39267061814](https://github.com/spankyed/AgentBuddy/actions/runs/39267061814) uses workflow-only
+`25f51cf98` on that checkpoint: all 16 worker cases beside four existing native compiler controls,
+two workers, original assertions, `bail=0` and an explicit 20-case execution check. The private
+checkout differs only in its workflow; no dependencies/generated output are shared. This run must
+finish before normal integration is attempted again. No acceptance result is claimed at dispatch.
+
+### Remaining worker cold-build cases accepted
+
+Focused **39267061814** succeeds: **20 passes, zero failures, exit 0**, 21 intentionally filtered
+native cases, **611.202s** complete invocation. All 16 worker bodies and four selected native controls
+execute. The observation refusal passes in 47.452s, loader refusal in 34.407s, background cleanup in
+27.468s and frontend input ownership in 26.367s. Repeated build/archive passes in 180.340s, thread
+observations in 91.891s, actual Electron build/archive in 285.819s, and all four public-stop variants
+pass. No cleanup, reporting or unhandled-runner failure is reported. The earlier normal slowdown is
+not attributed or presented as a compiler-performance repair. Source remains `f93015282`; only
+validation/doc bookkeeping follows. Raw evidence: `/private/tmp/apack-worker-cold-build-39267061814/`
+and `/private/tmp/apack-worker-cold-build-39267061814-full.log`.
+
+The affected source has converged again. Resume the unchanged normal unfiltered integration gate;
+final main strict `--all` still follows a passing normal result, not this selected acceptance.

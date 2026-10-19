@@ -48,10 +48,11 @@ afterEach(async () => {
   roots.splice(0).forEach(root => fs.rmSync(root, { recursive: true, force: true }));
 });
 
-async function buildFixture(root: string, options: PackBuildOptions): Promise<void> {
+async function buildFixture(root: string, options: PackBuildOptions & { signal: AbortSignal }): Promise<void> {
   const builder = createPackBuilder(root);
   builders.push(builder);
-  try { await builder.build(options); }
+  const signal = AbortSignal.any([options.signal, AbortSignal.timeout(120_000)]);
+  try { await builder.build({ ...options, signal }); }
   finally { await builder.close(); }
 }
 
@@ -227,7 +228,7 @@ it('records external inputs read by content compiler worker threads', async ({ s
   }, { formats: { rows: { compiler: 'src/compiler.cjs', entity: 'Relation', identity: ['name'] } },
     sources: { rows: { path: 'src/value.txt', format: 'rows' } } });
   vi.spyOn(process, 'cwd').mockReturnValue(root);
-  await buildFixture(root, { args: ['--skip-fe'], signal: AbortSignal.any([signal, AbortSignal.timeout(120_000)]) });
+  await buildFixture(root, { args: ['--skip-fe'], signal });
   console.info('Worker input build completed', Math.round(performance.now() - started));
   const content = JSON.parse(fs.readFileSync(path.join(root, 'dist/runtime/content/rows.content.json'), 'utf8'));
   expect(content.records.map((record: {name: string}) => record.name)).toEqual(modes);
@@ -261,7 +262,7 @@ it('refuses publication when a compiler worker cannot return its observations', 
   await expect(buildFixture(root, { args: ['--skip-fe'], signal })).rejects.toThrow(/Pack build process exited/);
   expect(fs.readFileSync(marker, 'utf8')).toBe('KEEP');
   expect(fs.readdirSync(path.dirname(marker))).toEqual(['incumbent.txt']);
-});
+}, 120_000 + 20_000);
 
 it('compiles content through the captured worker and invalidates changed loader inputs', async () => {
   const root = fixture({
@@ -349,13 +350,17 @@ it('refuses publication when a loader-only external input changes during compila
   let output = '';
   child.stdout.on('data', chunk => { output += chunk; });
   child.stderr.on('data', chunk => { output += chunk; });
+  const closed = finished(child);
   try {
-    expect(await finished(child), output).toBe(1);
+    expect(await _byDeadline(closed, 'loader-input build refusal', 120_000), output).toBe(1);
     expect(output).toContain(`Compiler resolution namespace changed during discovery: ${fs.realpathSync(payload)}`);
     expect(fs.readFileSync(payload, 'utf8')).toBe('CHANGED');
     expect(fs.existsSync(path.join(root, 'dist'))).toBe(false);
-  } finally { if (child.exitCode === null && child.signalCode === null) child.kill('SIGKILL'); }
-});
+  } finally {
+    if (child.exitCode === null && child.signalCode === null) child.kill('SIGKILL');
+    await _byDeadline(closed, 'loader-input build cleanup', 20_000);
+  }
+}, 120_000 + 20_000);
 
 it('terminates pack-created background work before accepting its candidate', async ({ signal }) => {
   const root = fixture({
@@ -380,7 +385,7 @@ it('terminates pack-created background work before accepting its candidate', asy
     catch (error) { if ((error as { status?: number }).status !== 1) throw error; }
     expect(state === '' || state.startsWith('Z'), `Compiler subprocess ${pid} is still ${state}`).toBe(true);
   }
-});
+}, 120_000 + 20_000);
 
 it('refuses candidate output changed by a compiler exit handler and retains the incumbent', async ({ signal }) => {
   const root = fixture({
@@ -423,7 +428,7 @@ it('reports frontend inputs that remain available after its compiler installatio
     expect(file).not.toMatch(/apack-compiler-[^/]+\//);
     expect(fs.existsSync(path.resolve(fs.realpathSync(root), file)), file).toBe(true);
   }
-});
+}, 120_000 + 20_000);
 
 function finished(child: ChildProcess, event: 'exit' | 'close' = 'close'): Promise<number | null> {
   return new Promise((resolve, reject) => { child.once('error', reject); child.once(event, resolve); });
