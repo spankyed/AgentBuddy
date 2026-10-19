@@ -47,16 +47,16 @@ Lazy activation is deferred.
 
 ## Live execution ledger (reconciled 2026-10-16)
 
-Normal integration **39289719265** finishes with **493 actual passes**, one whole-scenario
-60s timeout in the esbuild transient-declaration capture case, and one separate unhandled
-`onTaskUpdate` reporting timeout. All preparation passes. No failed value assertion or explicit
-cleanup failure is reported; unreached cases remain unaccepted. The full-build parameterized family
-now has a scoped cold-build/verification allowance, and same-file teardown yields for runner replies.
-Repair **`d29612b7a`** is committed/pushed. All 53 timeout/inventory checks, CLI types and lint pass.
-Focused [39296758415](https://github.com/spankyed/AgentBuddy/actions/runs/39296758415) is dispatched
-on workflow-only `952a6dd02`, selecting the complete 15-case file with bail disabled and a 15-executed-case
-assertion. Await this existing run before another normal run; final committed-source strict `--all` remains required. See
-[classification](../evidence/integration-deadline-inventory.md#normal-gate-esbuild-captured-declaration-scenario-and-reporting--2026-10-19).
+Focused configuration acceptance **39296758415** succeeds on workflow-only `952a6dd02`,
+containing repair **`d29612b7a`**: all **15/15** cases pass, zero pending, exit 0, 239.315s.
+All four transient-edit variants complete; declarations takes 26.195s. No unhandled reporting or
+cleanup error is reported. Resume normal unfiltered integration, then final committed-source strict
+`--all`. See [complete affected-file evidence](../evidence/integration-deadline-inventory.md#complete-esbuild-configuration-file-accepted--2026-10-19).
+
+Previous normal **39289719265** finishes with 493 actual passes, one whole-scenario 60s declaration
+case timeout and one separate `onTaskUpdate` error. Its full-build scenario family and reporting
+boundary repair is `d29612b7a`; assertions and production code are unchanged. Unreached cases remain
+unaccepted until the normal gate finishes.
 
 Focused trigger-scaffold acceptance **39288218287** succeeds on workflow-only `36ea8055a`,
 containing repair **`d07ccae99`**: all 18 scaffold cases and two facade typecheck controls pass
