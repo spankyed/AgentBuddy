@@ -55,7 +55,11 @@ with no unhandled reporting/cleanup error. Feature-validation/output-swap worker
 69.7/90.3s to **30.9/36.6s**; the largest sampled test-worker gap is 36.6s. All six actual watcher
 consumers complete on the consistent operation bound. Preserve exact logs and samples; no broad gate
 is implied. Published package/default-setup preparation is separately bounded; unrelated prerequisites
-are omitted only from this focused run. Resume normal unfiltered integration, then final strict
+are omitted only from this focused run. Normal unfiltered integration
+[39333769307](https://github.com/spankyed/AgentBuddy/actions/runs/39333769307) is now dispatched
+on workflow-only **`06638811d`**, directly containing main **`1ba85b976`**: all normal prerequisites,
+`npm run test:integration -- --all`, two cores, no filters/probe or case overrides. Await this same
+run, then final strict
 `--all`, requirement audit and documentation closure. No normal or strict run is concurrent.
 
 Earlier focused [39311095507](https://github.com/spankyed/AgentBuddy/actions/runs/39311095507)

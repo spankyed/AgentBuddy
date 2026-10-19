@@ -1282,3 +1282,11 @@ Next run normal unfiltered integration with all normal prerequisites and no prob
 the committed case/operation/pool bounds and fail-fast behavior. Then run main's committed-source
 strict `--all`, finish the requirement audit and archive only completed documents. The focused pass
 does not substitute for either gate; do not repeat already accepted focused files independently.
+
+Normal unfiltered [39333769307](https://github.com/spankyed/AgentBuddy/actions/runs/39333769307)
+is dispatched on workflow-only **`06638811d`**, containing accepted main **`1ba85b976`**. The only
+difference from main is the same normal acceptance workflow used previously: required typecheck,
+default-setup and external-contract preparation, then `npm run test:integration -- --all` with two
+cores, committed pool/case bounds and fail-fast. No loop probe, selected-file list or timeout override.
+All previous logs and the unrelated untracked Wireit proposal are preserved. Await this immutable run;
+the final main strict `--all` follows only after normal acceptance.
