@@ -272,5 +272,5 @@ describe('a completed build', () => {
     const stage = path.join(root, 'stage');
     stagePack(root, stage);
     expect(verifyPack(stage).id).toBe('sealed-build');
-  });
+  }, 2 * 60_000 + 20_000);
 });

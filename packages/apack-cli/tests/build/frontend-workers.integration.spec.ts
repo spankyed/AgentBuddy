@@ -2,6 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { expect, it, vi } from 'vitest';
 import { createFrontendResourceFixture, readFrontendOutput } from '../_support/frontend-resources.ts';
+import { WATCH_REBUILD_BUDGET_MS, type TestPackBuildWatcher } from '../_support/watch-builds.ts';
 import { readPackBuild } from '@apackdev/host/packs';
 import { bundlePackFE } from '../../src/build/fe-bundler.ts';
 import { createFrontendWatcher } from '../../src/build/frontend-watch.ts';
@@ -65,21 +66,21 @@ it('retains the accepted build after a worker error and publishes its repair', a
   fs.writeFileSync(path.join(fixture.root, 'worker.ts'), 'import { marker } from "./worker-value.ts"; self.postMessage(marker);');
   fs.writeFileSync(path.join(pack, 'src/canvas.vue'), '<script setup>const worker = new Worker(new URL("../../worker.ts", import.meta.url), { type: "module" });</script><template><div>{{ worker }}</div></template>');
   const errors = vi.spyOn(console, 'error').mockImplementation(() => {});
-  let watcher: { close(): Promise<void> } | undefined;
+  let watcher: TestPackBuildWatcher | undefined;
   let publications = 0;
   try {
     watcher = await fixture.startWatcher(pack, { place: { env: 'test', userDataDir: path.join(fixture.root, 'profile') },
       onBuilt: async () => { publications++; } });
     const accepted = readPackBuild(path.join(pack, 'dist')).revision;
-    fs.writeFileSync(helper, 'export const marker = ;');
+    await watcher.rebuildAfter(() => { fs.writeFileSync(helper, 'export const marker = ;'); });
     await vi.waitFor(() => expect(errors).toHaveBeenCalledWith(expect.stringContaining('Build/reload failed')), { timeout: 20_000 });
     expect(publications).toBe(0);
     expect(readPackBuild(path.join(pack, 'dist')).revision).toBe(accepted);
-    fs.writeFileSync(helper, 'export const marker = "WORKER_REPAIRED";');
+    await watcher.rebuildAfter(() => { fs.writeFileSync(helper, 'export const marker = "WORKER_REPAIRED";'); });
     await vi.waitFor(() => expect(publications).toBeGreaterThan(0), { timeout: 20_000 });
     expect(readPackBuild(path.join(pack, 'dist')).revision).not.toBe(accepted);
     expect(readFrontendOutput(pack, '.js')).toContain('WORKER_REPAIRED');
     expect(readFrontendOutput(pack, '.js')).not.toContain('WORKER_BEFORE');
   } finally { await watcher?.close(); }
-}, 120_000 + 2 * 20_000 + 20_000);
+}, 120_000 + 2 * WATCH_REBUILD_BUDGET_MS + 20_000);
 

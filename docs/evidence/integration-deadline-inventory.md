@@ -311,7 +311,171 @@ gate must exercise it. No local native/runtime execution or guard bypass was use
 run `39227491937` predates this aggregate checkpoint and is not normal integration or final strict
 acceptance. Inspect its reports before dispatching either remaining gate.
 
+Follow-up **`4750ad766`** closes the preparation boundary: the normal pool previously called
+`npm run packages:ensure` through unbounded `execFileSync`, outside its inner suite deadline. It now
+uses the existing `boundedSpawn` owner and the preparation step's declared 600s allowance, with an
+attributed timeout/failure. The integration aggregate remains separate. The 121 graph/pool/orchestrator
+checks pass, as do script types, lint and four existing bounded-process lifecycle checks (ordinary Node
+only). An inert Node timer control reaches initialization, times out with code 124, and returns in
+3,006ms: its 1,000ms test allowance plus the existing two-second process-group grace. This establishes
+the reused timeout/cleanup path; the actual pool preparation still needs normal-gate acceptance.
+
+The normal gate is prepared and pushed on `session/integration-normal-acceptance`: **`2769be3cc`**
+differs from exact implementation source `4750ad766` only in its workflow. It invokes the committed
+`npm run test:integration -- --all`, after typecheck records, shipped output and external contract
+fixtures, with a two-core budget. It retains stderr/stdout, raw pool reports and duration caches even on
+failure. Its 190-minute envelope accommodates the 120-minute pool allowance and individually bounded
+preparation. It remains undispatched until affected acceptance is inspected and converges; afterward,
+the unchanged main strict command remains required. No subset verdict substitutes for either gate.
+
+
+### Affected acceptance result — 2026-10-19
+
+Run [39227491937](https://github.com/spankyed/AgentBuddy/actions/runs/39227491937), source **`8036d3014`**
+(workflow-only on main `1f31d38fd`), is terminal failure. All 24 selected files report:
+**127 passed, 24 failed, zero pending**. Unlike the first inventory, no setup hook blocks bodies.
+All **six native controls and five worker controls pass**. Their 30 pending cases are deliberate name-filter
+exclusions, not accepted whole-suite coverage. Every group finished before its aggregate cutoff.
+
+| Group | Passed | Failed | Duration |
+|---|---:|---:|---:|
+| Affected 1 | 54 | 8 | 1,055.397s |
+| Affected 2 | 35 | 7 | 858.774s |
+| Affected 3 | 38 | 9 | 691.781s |
+| Native controls | 6 | 0 | 332.704s |
+| Worker controls | 5 | 0 | 123.322s |
+
+Every failed case is classified below. JSON represents the four test timeouts as `STACK_TRACE_ERROR`;
+the retained console confirms their unchanged 60s scenario deadline. Event waits remain 20s.
+
+| File | Case | Classification |
+|---|---|---|
+| `build/build-output-swap.integration.spec.ts` | rebuilds damaged facade data instead of renewing its checksums | Whole-scenario timeout |
+| `build/build-output-swap.integration.spec.ts` | rebuilds damaged cache data instead of renewing its checksums | Whole-scenario timeout |
+| `build/facade-type-data.integration.spec.ts` | typechecks own and dependency types under moduleResolution bundler | Assertion failure |
+| `build/facade-type-data.integration.spec.ts` | typechecks own and dependency types under moduleResolution node16 | Assertion failure |
+| `build/facade-type-data.integration.spec.ts` | typechecks own and dependency types under moduleResolution bundler | Assertion failure |
+| `build/facade-type-data.integration.spec.ts` | typechecks own and dependency types under moduleResolution node16 | Assertion failure |
+| `build/watch-publication.integration.spec.ts` | publishes source and manifest edits together and retains the incumbent after refusal | Individual event-wait timeout |
+| `build/watch-publication.integration.spec.ts` | follows retargeted manifest links through refusal, repair and atomic replacement | Individual event-wait timeout |
+| `build/dependency-graph.integration.spec.ts` | still fails when two independent packs declare the same entity | Whole-scenario timeout |
+| `build/facade-typing.integration.spec.ts` | typechecks own and dependency types under moduleResolution bundler | Assertion failure |
+| `build/facade-typing.integration.spec.ts` | typechecks own and dependency types under moduleResolution node16 | Assertion failure |
+| `build/frontend-workers.integration.spec.ts` | retains the accepted build after a worker error and publishes its repair | Individual event-wait timeout |
+| `build/package-inputs.integration.spec.ts` | automatically rebuilds an undeclared runtime imported by 'TypeScript state' without a type or authored edit | Individual event-wait timeout |
+| `build/package-inputs.integration.spec.ts` | automatically rebuilds an undeclared runtime imported by 'Vue canvas' without a type or authored edit | Individual event-wait timeout |
+| `commands/scaffold.integration.spec.ts` | fails the build on an unresolvable dependency | Whole-scenario timeout |
+| `build/facade-typing-published.integration.spec.ts` | typechecks own and dependency types under moduleResolution bundler | Assertion failure |
+| `build/facade-typing-published.integration.spec.ts` | typechecks own and dependency types under moduleResolution node16 | Assertion failure |
+| `build/frontend-resources.integration.spec.ts` | recovers a missing nested stylesheet while retaining the accepted build | Individual event-wait timeout |
+| `build/frontend-resources.integration.spec.ts` | watches an external css-url asset in a separate directory | Individual event-wait timeout |
+| `build/frontend-resources.integration.spec.ts` | watches an external template asset in a separate directory | Individual event-wait timeout |
+| `build/frontend-resources.integration.spec.ts` | watches initially empty external Tailwind content through nested directory links | Individual event-wait timeout |
+| `build/watch-external-types.integration.spec.ts` | rebuilds external contracts and recovers a retargeted missing input without an authored edit | Individual event-wait timeout |
+| `build/watch-module-freshness.integration.spec.ts` | refreshes flow modules loaded through ordinary imports on the next watched build | Individual event-wait timeout |
+| `build/watch-module-freshness.integration.spec.ts` | recompiles changed transitive content modules and retains the accepted build on failure | Individual event-wait timeout |
+
+Additional failures: one `frontend-resources` afterAll cleanup refuses `ENOTEMPTY`; two Vitest
+`onTaskUpdate` reporting-operation timeouts occur in groups 1 and 3. No batch aggregate cutoff or failed
+setup hook occurred. The collector failure follows the nonzero group results; it is not a new product defect.
+
+Finite next work: correct the shared facade fixture's undeclared `base-pack/search` consumption while
+preserving its type assertions; compose the four remaining multistep cases; diagnose the 12 event waits
+with a small disposable two-case watch proof that distinguishes event receipt, build start and publication.
+Trace the retained workspace cleanup and reporting failures to their owners. Do not increase event
+waits or launch another broad run to diagnose these groups. Update the prepared normal-gate source
+with validated repairs before dispatch; normal integration and final main strict `--all` remain required.
+
+Complete reports and console/status records are retained under
+`/private/tmp/apack-affected-39227491937/`; full stdout/stderr job output is
+`/private/tmp/apack-affected-39227491937-full.log`. The machine-readable classification is
+`/private/tmp/apack-affected-39227491937-classification.json`. The earlier eight-file and six-batch
+evidence remains preserved; this affected run is not either remaining gate.
+
+Source **`6e0e52f23`** adds the missing `consumes.services: ['base-pack/search']` to the shared facade
+consumer fixture. All eight failing type assertions are retained. Sixteen existing service-selection
+checks and CLI types/lint pass. An inert TypeScript-AST control reads the actual base/app fixture
+manifests and feeds the common selector: the old declaration exposes no search; the corrected one
+selects the declared `base-pack/search`. This is direct declaration/selection evidence, not a claim that
+the eight full generated consumer typechecks have already passed.
+
+Source **`55ebfc7bc`** composes the four previously missed whole-case timeouts: both damaged-output
+variants perform two builds then verify; the collision case builds a rival before a public CLI refusal;
+the unresolved-dependency case runs separate build/archive refusals. Their cases use two 60s operation
+allowances plus 20s verification. Auditing default-bound callbacks in all 24 files also finds two
+scaffold/regenerate/typecheck sequences (three 60s phases plus 20s verification) and one cold publish
+before passive report inspection (60s plus 20s). These are six named declarations covering seven actual
+cases. Pure capture checks, immediate preflight refusals and ordinary source-only metadata reports keep
+their existing limits; there is no blanket default change. All assertion bodies and event waits remain
+unchanged. The 57 policy/inventory/wait checks, CLI/repo types and lint pass. Focused real acceptance
+remains required; do not dispatch the prepared normal branch without these validated repairs.
+
+### Watch completion clocks and focused repair evidence — 2026-10-19
+
+The first two-case timeline, [39237809409](https://github.com/spankyed/AgentBuddy/actions/runs/39237809409)
+on private `2fcf5fe85`, reports one pass/one failure. Both filesystem edits are received and start builds;
+the frontend delivers at 19.690s, while the backend is cancelled by its original 20s completion wait.
+This does not demonstrate missed subscriptions or a hung compiler.
+
+Follow-up [39239365441](https://github.com/spankyed/AgentBuddy/actions/runs/39239365441), private
+`6b204e94d`, retains the original failed assertion and observes the backend for up to 40s more. It
+completes successfully using its retained compiler and generation. Measured backend phases are:
+
+| Phase | Duration |
+|---|---:|
+| Edit request to successful notification | 34.373s |
+| Compiler-current verification | 4.570s |
+| Hot worker lifetime | 22.099s |
+| Parent publication verification | 0.014s |
+| Final watcher refresh after builder completion | 3.893s |
+
+The 20s predicate was timing compiler work too. Source `ca68206b6` adds dedicated real-watcher test
+support; `4f63277f0` migrates all six affected watcher files. Each edit now proves a request within
+20s, bounds the actual build at 60s, then retains its original 20s notification predicate and every
+output/incumbent/refusal assertion. Startup stays bounded at 120s and cleanup independently at 20s.
+Malformed-manifest preflight refusals keep their direct 20s check. Case allowances compose these
+phases through the helper's shared rebuild budget; no production watcher, compiler reuse, freshness
+check, global test default or RPC limit changes. AST comparison proves original assertions and
+`vi.waitFor` calls unchanged. Seven helper boundary cases plus retry/policy/inventory/wait coverage
+pass (83 total), as do CLI/repo types and lint. Real phase acceptance remains required.
+
+The follow-up's independent repair step executes exactly 13 selected cases, including necessary fixture
+prefix cases. All 13 assertions pass; 56 other cases are deliberately filtered. Its 574.270s command
+still exits 1 for one `onTaskUpdate` reporting timeout, so it is not a passed gate. The long migration
+case takes 144.081s and invokes synchronous generation commands directly between resolved awaits.
+Source `22aeef628` routes that sequence through the existing yielding `callCli` helper, keeping migration
+assertions and adding per-command success guards. Types/lint pass; real reporting acceptance remains.
+
+Source `a2a5a057a` gives the frontend input/cache workspace its actual worker lifetime instead of file
+teardown. A small ordinary-Node Jiti control proves that deleting its retained cache directory makes a
+later module load fail `ENOENT`. This independently establishes the ownership defect; it does not identify
+the concurrent writer behind the earlier `ENOTEMPTY` or certify real cleanup. No captured runtime or
+native fixture runs locally. Reports are preserved at `/private/tmp/apack-watch-timeline-39237809409/`,
+`/private/tmp/apack-watch-completion-39239365441/`, and `/private/tmp/apack-repair-proof-39239365441/`,
+with the full logs alongside them. Early timeline upload permits diagnosis while other selected checks
+continue; it does not create another acceptance framework or substitute for normal/strict gates.
+
 Raw evidence is preserved in `/private/tmp/apack-integration-remaining-39214676663-original/` (all JSON/console/
 status reports), `/private/tmp/apack-integration-remaining-39214676663-full.log` (complete GHA output,
 including stderr), and the run's retained upload. The per-batch `tee` files contain stdout only; use
 the full log for failure messages and unhandled errors.
+
+### Committed repair acceptance dispatched — 2026-10-19
+
+Source `7110c2632` routes all scaffold commands in `add-extensions.integration.spec.ts` through
+the existing yielding CLI helper, extending `22aeef628` beyond the four-migration sequence. The
+adapter requires an explicit pack root and rejects nonzero command status; existing generated-code,
+manifest and refusal assertions remain. CLI types/lint and the subprocess/wait checks pass locally;
+real reporting acceptance is still required.
+
+[Run 39243953202](https://github.com/spankyed/AgentBuddy/actions/runs/39243953202), workflow-only
+`99ffd7bfa` on that exact source, runs two sequential groups with two workers: 19 watcher/frontend
+cache cases across six files, then all 18 scaffold cases plus two workspace dependency typechecks.
+Existing source deadlines are unchanged by the workflow. Each group retains JSON, verbose output
+and exit status immediately; the second group runs even if the first fails. A passing assertion count
+alone does not establish success when Vitest reports an unhandled reporting or cleanup error.
+
+The earlier eight-file results and complete six-batch inventory remain authoritative. This focused
+run must converge before normal full integration; final main strict `--all` and requirement-by-requirement
+closure remain outstanding. Temporary tracing and extended diagnostic observers are absent from
+the acceptance source. No captured runtime/native/watch execution runs on the daily-use Mac.

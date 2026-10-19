@@ -5,10 +5,10 @@ import { expect, it, vi } from 'vitest';
 import { packFixture } from '@apackdev/sdk/testing/pack-fixture';
 import { REPO_ROOT } from '@apackdev/host/build/packages-built';
 import { readPackBuild } from '@apackdev/host/packs';
-import { startPackBuildWatcher } from '../../src/build/watch.ts';
+import { startTestPackBuildWatcher, WATCH_REBUILD_BUDGET_MS, type TestPackBuildWatcher } from '../_support/watch-builds.ts';
 import { tsconfig } from '../_support/pack-builds.ts';
 
-it('rebuilds external contracts and recovers a retargeted missing input without an authored edit', async () => {
+it('rebuilds external contracts and recovers a retargeted missing input without an authored edit', async ({ signal }) => {
   const temporary = fs.mkdtempSync(path.join(os.tmpdir(), 'apack-watch-external-types-'));
   const root = path.join(temporary, 'pack');
   const parent = path.join(temporary, 'base.json');
@@ -17,7 +17,7 @@ it('rebuilds external contracts and recovers a retargeted missing input without 
     baseUrl: '.', paths: { outside: [file] },
   } }));
   const errors = vi.spyOn(console, 'error').mockImplementation(() => {});
-  let watcher: { close(): Promise<void> } | undefined;
+  let watcher: TestPackBuildWatcher | undefined;
   let publications = 0;
   try {
     configure('contract.d.ts');
@@ -40,13 +40,16 @@ export default { spec, machine: setup({ types: spec.types }).createMachine({ id:
     fs.writeFileSync(configPath, JSON.stringify({ ...config, extends: '../base.json' }));
     const authored = fs.readFileSync(configPath);
     const entry = () => fs.readFileSync(path.join(root, 'src/__generated__/pack-entry.ts'), 'utf8');
-    watcher = await startPackBuildWatcher(root, {
+    watcher = await startTestPackBuildWatcher(root, {
+      signal,
       place: { env: 'test', userDataDir: path.join(temporary, 'profile') },
       onBuilt: async () => { publications++; },
     });
     expect(entry()).toContain('FIRST');
-    fs.writeFileSync(path.join(temporary, 'replacement.d.ts'), contract('OTHER'));
-    fs.renameSync(path.join(temporary, 'replacement.d.ts'), path.join(temporary, 'contract.d.ts'));
+    await watcher.rebuildAfter(() => {
+      fs.writeFileSync(path.join(temporary, 'replacement.d.ts'), contract('OTHER'));
+      fs.renameSync(path.join(temporary, 'replacement.d.ts'), path.join(temporary, 'contract.d.ts'));
+    });
     await vi.waitFor(() => expect(publications > 0 || errors.mock.calls.length > 0).toBe(true), { timeout: 20_000 });
     expect(errors.mock.calls).toEqual([]);
     expect(entry()).toContain('OTHER');
@@ -55,13 +58,15 @@ export default { spec, machine: setup({ types: spec.types }).createMachine({ id:
     expect(facade()).not.toMatch(/from ['"]outside['"]/);
     const accepted = readPackBuild(path.join(root, 'dist')).revision;
     const count = publications;
-    configure('future/contract.d.ts');
+    await watcher.rebuildAfter(() => { configure('future/contract.d.ts'); });
     await vi.waitFor(() => expect(errors).toHaveBeenCalledWith(expect.stringContaining('Build/reload failed')), { timeout: 20_000 });
     expect(publications).toBe(count);
     expect(readPackBuild(path.join(root, 'dist')).revision).toBe(accepted);
     expect(entry()).toContain('OTHER');
-    fs.mkdirSync(path.join(temporary, 'future'));
-    fs.writeFileSync(path.join(temporary, 'future/contract.d.ts'), contract('THIRD'));
+    await watcher.rebuildAfter(() => {
+      fs.mkdirSync(path.join(temporary, 'future'));
+      fs.writeFileSync(path.join(temporary, 'future/contract.d.ts'), contract('THIRD'));
+    });
     await vi.waitFor(() => expect(publications).toBeGreaterThan(count), { timeout: 20_000 });
     expect(entry()).toContain('THIRD');
     expect(facade()).toContain('THIRD');
@@ -72,4 +77,4 @@ export default { spec, machine: setup({ types: spec.types }).createMachine({ id:
     fs.rmSync(temporary, { recursive: true, force: true });
   }
 // Four compiler attempts share this scenario; individual rebuild waits remain bounded above.
-}, 120_000 + 3 * 20_000 + 20_000);
+}, 120_000 + 3 * WATCH_REBUILD_BUDGET_MS + 20_000);

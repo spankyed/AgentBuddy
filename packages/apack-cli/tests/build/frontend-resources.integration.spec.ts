@@ -2,18 +2,20 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { createRequire } from 'node:module';
-import { afterAll, beforeEach, describe, expect, it, vi, type MockInstance } from 'vitest';
+import { beforeEach, describe, expect, it, vi, type MockInstance } from 'vitest';
 import { createFrontendResourceFixture, readFrontendOutput } from '../_support/frontend-resources.ts';
 import { readPackBuild } from '@apackdev/host/packs';
 import { callCli } from '../_support/pack-builds.ts';
 import { bundlePackFE } from '../../src/build/fe-bundler.ts';
 import { createBuildOutputs } from '../../src/build/build-outputs.ts';
 import { captureCompilationInputs } from '../../src/build/compilation-inputs.ts';
+import { WATCH_REBUILD_BUDGET_MS, type TestPackBuildWatcher } from '../_support/watch-builds.ts';
 
 const fixture = createFrontendResourceFixture();
 const { consumer } = fixture;
 let inputWorkspace: string | undefined;
-afterAll(() => { if (inputWorkspace) fs.rmSync(inputWorkspace, { recursive: true, force: true }); });
+// Tailwind's Jiti instance retains this cache path across files in the same worker.
+process.once('exit', () => { if (inputWorkspace) fs.rmSync(inputWorkspace, { recursive: true, force: true }); });
 
 it.each(['unchanged', 'edited'] as const)('uses one input view across frontend compiler paths with %s originals', async mode => {
   const { pack, helper } = consumer();
@@ -48,7 +50,6 @@ it.each(['unchanged', 'edited'] as const)('uses one input view across frontend c
   for (const [file, body] of Object.entries(files)) write(file, body);
   fs.writeFileSync(helper, `export const marker = 'DEPENDENCY_CAPTURED';`);
   const outputDir = path.join(pack, 'dist/runtime');
-  // Tailwind retains its jiti cache directory for the process lifetime, across these builds.
   const workspace = inputWorkspace ??= fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'apack-frontend-inputs-')));
   fs.mkdirSync(outputDir, { recursive: true });
   fs.mkdirSync(path.join(workspace, 'tmp'), { recursive: true });
@@ -149,6 +150,7 @@ describe('CSS dependency watching', () => {
   let leaf: string;
   let publications: number;
   let errors: MockInstance<typeof console.error>;
+  let watcher: TestPackBuildWatcher;
 
   beforeEach(async () => {
     ({ pack } = consumer());
@@ -159,29 +161,33 @@ describe('CSS dependency watching', () => {
     fs.appendFileSync(path.join(pack, 'src/canvas.vue'), '<style src="../../outside.css"></style>');
     errors = vi.spyOn(console, 'error').mockImplementation(() => {});
     publications = 0;
-    await fixture.startWatcher(pack, { place: { env: 'test', userDataDir: path.join(fixture.root, 'profile') },
+    watcher = await fixture.startWatcher(pack, { place: { env: 'test', userDataDir: path.join(fixture.root, 'profile') },
       onBuilt: async () => { publications++; } });
   }, 2 * 60_000);
 
   it('recovers a missing nested stylesheet while retaining the accepted build', async () => {
     const css = () => fs.readFileSync(path.join(pack, 'dist/runtime/fe.css'), 'utf8');
     const replacement = path.join(fixture.root, 'replacement.css');
-    fs.writeFileSync(replacement, '.theme { color: #654321; }');
-    fs.renameSync(replacement, leaf);
+    await watcher.rebuildAfter(() => {
+      fs.writeFileSync(replacement, '.theme { color: #654321; }');
+      fs.renameSync(replacement, leaf);
+    });
     await vi.waitFor(() => expect(publications > 0 || errors.mock.calls.length > 0).toBe(true), { timeout: 20_000 });
     expect(errors.mock.calls).toEqual([]);
     expect(css()).toContain('#654321');
     const accepted = readPackBuild(path.join(pack, 'dist')).revision;
     const count = publications;
-    fs.writeFileSync(stylesheet, '@import "./future/theme.css";');
+    await watcher.rebuildAfter(() => { fs.writeFileSync(stylesheet, '@import "./future/theme.css";'); });
     await vi.waitFor(() => expect(errors).toHaveBeenCalledWith(expect.stringContaining('Build/reload failed')), { timeout: 20_000 });
     expect(publications).toBe(count);
     expect(readPackBuild(path.join(pack, 'dist')).revision).toBe(accepted);
-    fs.mkdirSync(path.join(fixture.root, 'future'));
-    fs.writeFileSync(path.join(fixture.root, 'future/theme.css'), '.theme { color: #abcdef; }');
+    await watcher.rebuildAfter(() => {
+      fs.mkdirSync(path.join(fixture.root, 'future'));
+      fs.writeFileSync(path.join(fixture.root, 'future/theme.css'), '.theme { color: #abcdef; }');
+    });
     await vi.waitFor(() => expect(publications).toBeGreaterThan(count), { timeout: 20_000 });
     expect(css()).toContain('#abcdef');
-  });
+  }, 3 * WATCH_REBUILD_BUDGET_MS + 20_000);
 });
 
 it.each(['css-url', 'template'] as const)('watches an external %s asset in a separate directory', async kind => {
@@ -199,20 +205,20 @@ it.each(['css-url', 'template'] as const)('watches an external %s asset in a sep
     fs.appendFileSync(canvas, '<style src="../../styles/main.css"></style>');
   }
   const errors = vi.spyOn(console, 'error').mockImplementation(() => {});
-  let watcher: { close(): Promise<void> } | undefined;
+  let watcher: TestPackBuildWatcher | undefined;
   let publications = 0;
   try {
     watcher = await fixture.startWatcher(pack, { place: { env: 'test', userDataDir: path.join(fixture.root, 'profile') },
       onBuilt: async () => { publications++; } });
     expect(readFrontendOutput(pack, '.svg')).toContain('BEFORE');
     if (kind === 'template') expect(fs.existsSync(path.join(pack, '.apack/reads.json'))).toBe(false);
-    fs.writeFileSync(asset, '<svg xmlns="http://www.w3.org/2000/svg"><text>AFTERX</text></svg>');
+    await watcher.rebuildAfter(() => { fs.writeFileSync(asset, '<svg xmlns="http://www.w3.org/2000/svg"><text>AFTERX</text></svg>'); });
     await vi.waitFor(() => expect(publications > 0 || errors.mock.calls.length > 0).toBe(true), { timeout: 20_000 });
     expect(errors.mock.calls).toEqual([]);
     expect(readFrontendOutput(pack, '.svg')).toContain('AFTERX');
     expect(readFrontendOutput(pack, '.svg')).not.toContain('BEFORE');
   } finally { await watcher?.close(); }
-}, 120_000 + 20_000 + 20_000);
+}, 120_000 + WATCH_REBUILD_BUDGET_MS + 20_000);
 
 it('watches initially empty external Tailwind content through nested directory links', async () => {
   const { pack } = consumer();
@@ -226,22 +232,26 @@ it('watches initially empty external Tailwind content through nested directory l
   fs.writeFileSync(path.join(authored, 'page.html'), '<div class="text-indigo-500" />');
   fs.writeFileSync(path.join(pack, 'tailwind.config.js'), `export default { content: [${JSON.stringify(`${content}/**/*.html`)}] };`);
   const errors = vi.spyOn(console, 'error').mockImplementation(() => {});
-  let watcher: { close(): Promise<void> } | undefined;
+  let watcher: TestPackBuildWatcher | undefined;
   let publications = 0;
   try {
     watcher = await fixture.startWatcher(pack, { place: { env: 'test', userDataDir: path.join(fixture.root, 'profile') },
       onBuilt: async () => { publications++; } });
     expect(readFrontendOutput(pack, '.css')).not.toContain('.text-orange-500');
     expect(readFrontendOutput(pack, '.css')).not.toContain('.text-indigo-500');
-    fs.mkdirSync(path.join(sources, 'nested'));
-    fs.writeFileSync(path.join(sources, 'nested/page.html'), '<div class="text-orange-500" />');
+    await watcher.rebuildAfter(() => {
+      fs.mkdirSync(path.join(sources, 'nested'));
+      fs.writeFileSync(path.join(sources, 'nested/page.html'), '<div class="text-orange-500" />');
+    });
     await vi.waitFor(() => expect(publications > 0 || errors.mock.calls.length > 0).toBe(true), { timeout: 20_000 });
     expect(errors.mock.calls).toEqual([]);
     expect(readFrontendOutput(pack, '.css')).toContain('.text-orange-500');
     const count = publications;
     const replacement = path.join(fixture.root, 'replacement');
-    fs.symlinkSync(authored, replacement, 'dir');
-    fs.renameSync(replacement, path.join(content, 'linked'));
+    await watcher.rebuildAfter(() => {
+      fs.symlinkSync(authored, replacement, 'dir');
+      fs.renameSync(replacement, path.join(content, 'linked'));
+    });
     await vi.waitFor(() => {
       expect(publications).toBeGreaterThan(count);
       expect(readFrontendOutput(pack, '.css')).toContain('.text-indigo-500');
@@ -249,4 +259,4 @@ it('watches initially empty external Tailwind content through nested directory l
     expect(errors.mock.calls).toEqual([]);
     expect(readFrontendOutput(pack, '.css')).not.toContain('.text-orange-500');
   } finally { await watcher?.close(); }
-}, 120_000 + 2 * 20_000 + 20_000);
+}, 120_000 + 2 * WATCH_REBUILD_BUDGET_MS + 20_000);

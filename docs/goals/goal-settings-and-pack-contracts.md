@@ -209,11 +209,67 @@ focused lint pass. The [inventory](../evidence/integration-deadline-inventory.md
 records scope and proof limits. Next validate the affected files and changed native/worker cases on
 one prepared disposable runner, then settle normal grouping/aggregate allowance, pass normal integration
 and run final strict `--all`. No requirement or gate is waived by these focused repairs.
-Affected acceptance is now [39227491937](https://github.com/spankyed/AgentBuddy/actions/runs/39227491937),
+Affected acceptance [39227491937](https://github.com/spankyed/AgentBuddy/actions/runs/39227491937) is terminal failure,
 workflow-only **`8036d3014`** on exact main **`1f31d38fd`**. It prepares records/default-setup/external
 fixtures once, runs the 24 failed files in three eight-file batches, then selected changed native and
 worker controls, all with two workers and committed test limits. It retains every group even on failure.
-Inspect its reports before another broad run; this is neither normal integration nor strict acceptance.
+All 24 files report **127 passed, 24 failed, zero pending**; six native controls and five worker controls
+pass. The complete [classification](../evidence/integration-deadline-inventory.md#affected-acceptance-result--2026-10-19)
+identifies four remaining 60s scenario timeouts, eight shared facade type assertions and twelve unchanged
+20s event waits, plus one retained-workspace cleanup failure and two runner reporting timeouts.
+No setup or aggregate cutoff blocked bodies. Next correct the shared undeclared service consumption,
+compose the four omitted multistep cases, and run a small disposable watch proof to distinguish missed
+events from slow builds/publication. Trace the cleanup/reporting owners; preserve inner wait limits.
+Do not launch another broad diagnostic. This is neither normal integration nor strict acceptance.
+Source **`6e0e52f23`** repairs the shared facade fixture's missing `base-pack/search` consumption,
+preserving all generated-type assertions and strict provider selection. Sixteen selection checks pass;
+an inert control reads the actual two fixture declarations and proves the old manifest excludes search
+while the declared consumption selects it. CLI types/lint pass; the eight real typechecks still need
+focused remote acceptance. Source **`55ebfc7bc`** composes the four missed timeout cases plus three
+additional sequential cases found by auditing default-bound callbacks in all 24 affected files. It
+changes six named declarations and their reasons, preserving all assertions and wait calls. All 57
+policy/inventory/wait checks, CLI/repo types and lint pass. Next diagnose two representative watcher
+cases on one disposable runner with phase timestamps; do not enlarge their event waits. Cleanup and
+runner-reporting ownership remain open, followed by focused repair acceptance and both final gates.
+The two-case watch diagnostic is [39237809409](https://github.com/spankyed/AgentBuddy/actions/runs/39237809409),
+private **`2fcf5fe85`** on main `39f525b4d`. Only its workflow and temporary watcher timestamp logging
+differ. It selects backend flow-module and external CSS-asset rebuilds with two workers, unchanged
+20s waits and a seven-minute aggregate. It prepares published packages and typechecks the diagnostic
+source without building the unrelated shipped pack. Logs/JSON/status are retained on failure. This
+is diagnosis, not normal integration or strict acceptance; no tracing is added to the goal branch.
+It is terminal: one case passes, one reaches the original 20s completion wait while its worker is still
+building. Both edits are received promptly. Follow-up [39239365441](https://github.com/spankyed/AgentBuddy/actions/runs/39239365441),
+private **`6b204e94d`**, retains that original failure while observing the running backend to completion.
+It proves retained compiler/generation reuse and successful delivery **34.373s** after the edit request;
+the hot worker takes **22.099s**, compiler-current checking **4.570s**, and final watcher refresh **3.893s**.
+This is a full-build completion wait misclassified as a missing-event wait, not demonstrated lost
+subscriptions. The same runner executes 13 selected repaired cases: **all 13 assertions pass**, including
+workspace bundler/node16 service types and the four timed-out scenarios, but a Vitest `onTaskUpdate`
+reporting timeout keeps its command and the run failed. No normal/strict gate is claimed.
+
+Source **`a2a5a057a`** moves the retained frontend input/cache workspace from file teardown to worker
+exit, matching Tailwind's process-retained Jiti cache. An ordinary-Node Jiti control proves deleting that
+directory while its loader lives causes a subsequent load to refuse `ENOENT`; types/lint pass. The
+specific concurrent writer behind the prior `ENOTEMPTY` is unproven, and real cleanup acceptance remains.
+Source **`ca68206b6`** introduces the real-builder test helper; **`4f63277f0`** migrates the affected
+watch scenarios to separate 20s request, 60s compiler, original 20s notification, and 20s cleanup bounds.
+Initial capture remains 120s. Existing output/incumbent/error assertions and `vi.waitFor` predicates
+and limits are AST-checked unchanged across all six watcher specs. Seven helper boundary tests plus
+the existing retry/policy/inventory/wait checks pass (**83 total**); CLI/repo types and lint pass.
+No production watcher/compiler contract or validation is relaxed. Real phase/cleanup acceptance is next.
+Source **`22aeef628`** routes the long migration-scaffold command sequence through the existing
+`callCli` helper so completed commands yield before the next synchronous generation. Its 144s direct
+sequence previously had no deliberate loop turn before the final typecheck. Existing migration
+assertions remain, with command-success guards added; types/lint pass. The reporting repair requires
+focused concurrency acceptance before normal integration. Update the prepared normal source with all
+validated repairs; it remains undispatched, and final main strict `--all` remains required.
+Source **`7110c2632`** extends that yielding CLI path to all scaffold commands in the affected file,
+with explicit pack roots and unchanged generated-code/refusal assertions. Focused acceptance
+[39243953202](https://github.com/spankyed/AgentBuddy/actions/runs/39243953202) is now running on
+workflow-only `99ffd7bfa` over that exact source: 19 watcher/cache cases, then the entire 18-case
+scaffold file and two dependency typechecks, two workers per sequential group. Each group saves its
+evidence immediately. This is acceptance of the demonstrated repairs, not another broad diagnostic;
+normal integration and final main strict `--all` still follow only after convergence.
 Source **`21ed07fe7`** gives complete integration its own 120-minute aggregate class. The pool runner
 reads its owning chain step's deadline; ordinary unit pools remain at 600s. The measured file work
 already exceeds 53 minutes at an ideal two-worker balance, without blocked setup/preparation, so the
@@ -224,6 +280,15 @@ backstop, not a healthy-run measurement or an increase to operation/event/cleanu
 graph/pool/input checks, scripts/repo types, lint and workflow YAML parsing pass. One earlier chain-table
 metadata-import check reaches the compiler-runner guard on this daily-use Mac; leave that check for
 disposable CI rather than bypassing the guard. Normal integration and final strict gates remain required.
+Follow-up source **`4750ad766`** bounds the pool's package preparation independently with the existing
+`packages:ensure` deadline (600s). It replaces an unbounded synchronous subprocess with the existing
+bounded process owner; the 120-minute integration aggregate does not become its hang limit. All 121
+graph/pool/orchestrator checks, four existing ordinary-Node process-lifecycle checks, script types and
+lint pass. An inert timed-termination control returns code 124 after its 1s allowance plus 2s cleanup.
+The prepared normal gate is workflow-only **`2769be3cc`** against exact main source `4750ad766`, on
+`session/integration-normal-acceptance`; it is not dispatched. Update it with the validated remaining
+repairs before using the normal pool with declared prerequisites and two-core budget, followed by main
+strict `--all`. The current affected reports above keep both gates open.
 None of these probes is a strict-chain result, despite using the existing `strict_chain` dispatch route. Main's
 full strict command is unchanged and remains required after integration converges. See
 [measured acceptance](../evidence/settings-and-pack-contracts.md#sequential-preloadthread-completion-and-scoped-budget--2026-10-19).

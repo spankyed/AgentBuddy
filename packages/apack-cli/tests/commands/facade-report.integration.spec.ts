@@ -100,7 +100,7 @@ describe.skipIf(!PACKAGES_BUILT)('apack pack facade-report', () => {
     expect(output).toContain('is up to date');
     expect(fs.readdirSync(directory)).toEqual(before);
     expect(fs.readFileSync(path.join(pack, '.apack/generate-entries.json'), 'utf8')).toBe(stamp);
-  });
+  }, 60_000 + 20_000);
 
   it('refuses edited generated files on the skip path without updating the report', async () => {
     const entry = path.join(pack, 'src/__generated__/pack-types.ts');
