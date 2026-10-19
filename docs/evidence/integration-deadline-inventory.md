@@ -687,3 +687,12 @@ remain. All 53 policy/inventory checks, CLI types, correctness lint and diff che
 `b1e703d18`, verifies that exact case beside the accepted compiler-thread case, two workers. This
 named concurrency/ownership check must finish before normal; no general test framework, product
 compiler change or default deadline increase is introduced.
+
+Run `39261544678` passes **both selected cases with exit 0**, 40.670s: own-declaration build,
+source-free inspection and runtime loading **32.033s**, concurrent compiler-thread input capture
+**38.328s**. All owned-key/shape/provenance/no-activation/source-removal/runtime assertions pass;
+no reporting or cleanup error is reported. This accepts `526255eee`'s fixture ownership repair.
+Reports are in `/private/tmp/apack-declaration-build-39261544678/`, with the full log alongside.
+The complete affected inventory and both subsequent focused repairs now have passing behavioral
+evidence. Return to the required normal unfiltered gate with the combined committed repairs; final
+main strict `--all` and requirement audit/archival remain outstanding.

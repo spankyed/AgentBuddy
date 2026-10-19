@@ -343,6 +343,11 @@ registers/drains its builder, propagates cancellation and composes cold build pl
 inspection without changing assertions. All 53 policy/inventory checks, CLI types and lint pass.
 Focused [39261544678](https://github.com/spankyed/AgentBuddy/actions/runs/39261544678), workflow-only
 `b1e703d18`, checks that fixture with concurrent compiler-thread capture before another normal gate.
+That acceptance now passes 2/2 with exit 0: own-declaration source-free/runtime case 32.033s and
+concurrent thread-input case 38.328s, without cleanup/reporting errors. All focused repairs have
+passing behavioral evidence; resume normal unfiltered integration on their combined committed
+source, then final main strict `--all` and complete requirement audit/archival. Do not turn these
+focused passes into a whole-suite completion claim.
 Source **`21ed07fe7`** gives complete integration its own 120-minute aggregate class. The pool runner
 reads its owning chain step's deadline; ordinary unit pools remain at 600s. The measured file work
 already exceeds 53 minutes at an ideal two-worker balance, without blocked setup/preparation, so the
