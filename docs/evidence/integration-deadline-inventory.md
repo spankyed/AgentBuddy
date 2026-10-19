@@ -741,3 +741,18 @@ Repair source **`f93015282`** is pushed. Focused run
 two workers, original assertions, `bail=0` and an explicit 20-case execution check. The private
 checkout differs only in its workflow; no dependencies/generated output are shared. This run must
 finish before normal integration is attempted again. No acceptance result is claimed at dispatch.
+
+### Remaining worker cold-build cases accepted
+
+Focused **39267061814** succeeds: **20 passes, zero failures, exit 0**, 21 intentionally filtered
+native cases, **611.202s** complete invocation. All 16 worker bodies and four selected native controls
+execute. The observation refusal passes in 47.452s, loader refusal in 34.407s, background cleanup in
+27.468s and frontend input ownership in 26.367s. Repeated build/archive passes in 180.340s, thread
+observations in 91.891s, actual Electron build/archive in 285.819s, and all four public-stop variants
+pass. No cleanup, reporting or unhandled-runner failure is reported. The earlier normal slowdown is
+not attributed or presented as a compiler-performance repair. Source remains `f93015282`; only
+validation/doc bookkeeping follows. Raw evidence: `/private/tmp/apack-worker-cold-build-39267061814/`
+and `/private/tmp/apack-worker-cold-build-39267061814-full.log`.
+
+The affected source has converged again. Resume the unchanged normal unfiltered integration gate;
+final main strict `--all` still follows a passing normal result, not this selected acceptance.
