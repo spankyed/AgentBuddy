@@ -58,6 +58,14 @@ is running on exactly that source. Inspect its retained result before any furthe
 Remaining native-policy/platform obligations, B6 and the complete Phase 7 audit remain open; this
 is not final acceptance. The Windows proof is terminal, evidence exported and VM confirmed
 deallocated after checking that no compiler processes remain. No active Windows build needs resuming.
+The next named runtime check builds a real public scaffold (backend and Vue frontend) under
+Electron on disposable macOS/Linux, then archives under the supervising Node runtime. It reuses
+the existing native integration file and launcher; actual captured-worker version/retirement,
+verified build output and passive cross-runtime archive acceptance are asserted. CLI types/lint
+and all 53 subprocess/deadline policy checks pass; runtime acceptance is pending. No deadline
+is widened and no native execution runs on the daily-use Mac. The strict run above retains its
+original pin; it is not replaced by these focused platform checks.
+
 
 This ledger owns current execution status and ordering. The phases below retain all completion
 requirements; subsystem plans retain detailed contracts and acceptance cases. Dated checkpoint notes
