@@ -98,7 +98,7 @@ describe('apack pack add step', () => {
     const tsc = await typecheckPack(pack);
     fs.rmSync(path.join(pack, 'src/flow-helpers-usage.ts'));
     expect(tsc.code, tsc.output).toBe(0);
-  });
+  }, 3 * 60_000 + 20_000);
 });
 
 describe('apack pack add step in a pack without steps', () => {
@@ -268,7 +268,7 @@ describe('apack pack add migration', () => {
     expect(entry).toContain("import { up as __migration_pack_0_2_0 } from '../migrations/0.2.0.ts';");
     const tsc = await typecheckPack(pack);
     expect(tsc.code, tsc.output).toBe(0);
-  });
+  }, 3 * 60_000 + 20_000);
 
   it('refuses a version that is not one a migration can target, before writing anything', async () => {
     const before = read('apack.json');

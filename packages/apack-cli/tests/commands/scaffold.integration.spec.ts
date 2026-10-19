@@ -328,5 +328,5 @@ describe('apack pack init → add feature → build → tsc → pack', () => {
       'Compiler startup input changed: ["authored-files"]',
       'Compiler startup input changed: ["file","apack.json"]',
     ]).toContain(packed.output.trim());
-  });
+  }, 2 * 60_000 + 20_000);
 });

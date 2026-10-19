@@ -121,6 +121,18 @@ const TIMEOUT_EXCEPTIONS: Record<string, string> = {
     "Initial compiler capture/publication, installation, static catalog inspection and actual host reload precede the case.",
   "packages/apack-cli/tests/build/frontend-generation.integration.spec.ts > beforeEach":
     "The setup copies a private compiler then publishes its initial captured generation before replacement assertions.",
+  "packages/apack-cli/tests/build/build-output-swap.integration.spec.ts > rebuilds damaged %s data instead of renewing its checksums":
+    "Two sequential captured builds precede checksum, facade restoration and staged-build verification; both variants exceeded the former 60s case limit.",
+  "packages/apack-cli/tests/build/dependency-graph.integration.spec.ts > still fails when two independent packs declare the same entity":
+    "A rival pack build precedes a separate public CLI collision refusal and its diagnostic assertions; the combined case exceeded 60s.",
+  "packages/apack-cli/tests/commands/scaffold.integration.spec.ts > fails the build on an unresolvable dependency":
+    "Separate public build and archive refusals verify the diagnostic and retained incumbent; their combined case exceeded 60s.",
+  "packages/apack-cli/tests/commands/add-extensions.integration.spec.ts > generates flow helpers for the kebab-case step that typecheck with tsc":
+    "Step scaffolding/regeneration, explicit code generation and a separate TypeScript program run sequentially; affected acceptance measured 51.5s against the old 60s aggregate.",
+  "packages/apack-cli/tests/commands/add-extensions.integration.spec.ts > refuses a version it already declares on that line, leaving the manifest as it was":
+    "After the immediate duplicate refusal, app-line migration scaffolding/regeneration, explicit generation and a separate typecheck run sequentially.",
+  "packages/apack-cli/tests/commands/facade-report.integration.spec.ts > checks the verified current build without changing generated files":
+    "Publishing the newly authored report requires a cold build before passive from-build inspection and unchanged-file assertions.",
 };
 
 /** Every override in the repo's spec files, with the size it has to fit inside */
