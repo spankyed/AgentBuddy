@@ -1,4 +1,4 @@
-name: Strict chain
+name: Integration coverage diagnostic
 
 on:
   workflow_dispatch:
@@ -8,15 +8,14 @@ permissions:
   contents: read
 
 concurrency:
-  group: strict-chain-${{ github.ref }}
+  group: integration-coverage-${{ github.ref }}
   cancel-in-progress: false
 
 jobs:
   check:
     runs-on: macos-26
-    # Cold source/producers and host units took 28m before the remaining integration/app gates.
-    # Each step retains its own bound; this envelope covers the complete strict chain.
-    timeout-minutes: 60
+    # Cold pack preparation measured 9m55s; typecheck and the existing 10m pool need separate room.
+    timeout-minutes: 40
     env:
       APACK_CHAIN_CORES: 2
     defaults:
@@ -37,14 +36,36 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ github.token }}
         run: npm ci
-      - name: Full strict acceptance
-        run: npm run chain -- --strict --all --cores 2 --no-classify | tee "$RUNNER_TEMP/strict-chain.log"
+      - name: Produce typecheck dependency-read evidence
+        run: npm run typecheck -- --cores 2
+      - name: Build required pack output
+        run: npm run build:default-setup
+      - name: Observe complete integration coverage with two cores
+        run: |
+          node --import tsx --input-type=module <<'JS' | tee "$RUNNER_TEMP/integration.log"
+          import assert from 'node:assert/strict';
+          import fs from 'node:fs';
+          import { boundedSpawn } from './scripts/lib/bounded-spawn.ts';
+          const report = `${process.env.RUNNER_TEMP}/integration.json`;
+          const result = await boundedSpawn('node', ['node_modules/vitest/vitest.mjs', 'run',
+            '--config', 'vitest.integration.config.ts', '--bail=0',
+            '--poolOptions.threads.maxThreads=2', '--poolOptions.threads.minThreads=1',
+            '--poolOptions.forks.maxForks=2', '--poolOptions.forks.minForks=1',
+            '--reporter=default', '--reporter=json', `--outputFile=${report}`], 1_200_000, {stream:true});
+          console.log(JSON.stringify({code:result.code,ms:result.ms,timedOut:result.timedOut}));
+          assert.equal(result.code,0);
+          const tests = JSON.parse(fs.readFileSync(report,'utf8'));
+          assert.equal(tests.testResults.length,68);
+          assert.equal(tests.numFailedTests,0);
+          assert.equal(tests.numFailedTestSuites,0);
+          console.log({files:tests.testResults.length,passed:tests.numPassedTests,pending:tests.numPendingTests});
+          JS
       - name: Retain validation evidence
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: strict-chain-${{ github.sha }}
+          name: integration-coverage-${{ github.sha }}
           include-hidden-files: true
           path: |
-            ${{ runner.temp }}/strict-chain.log
-            node_modules/.cache/apack-chain/runs/
+            ${{ runner.temp }}/integration.log
+            ${{ runner.temp }}/integration.json
