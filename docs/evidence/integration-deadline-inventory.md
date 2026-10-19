@@ -1018,3 +1018,11 @@ pending real acceptance. Required final normal and strict gates remain open.
 
 Raw evidence: `/private/tmp/apack-normal-integration-39297729330/`; full runner log
 `/private/tmp/apack-normal-integration-39297729330-full.log`. All earlier reports remain preserved.
+
+Diagnostic [39306120746](https://github.com/spankyed/AgentBuddy/actions/runs/39306120746)
+is dispatched on `be7080780`, branch `session/scaffold-phase-diagnostic`, based on main `3315ce178`.
+Its only differences are scaffold phase/start/end/RSS/heap readings and the focused workflow. The
+29 selected bodies retain existing per-test deadlines, two-worker limits and bail disabled. Phase
+markers sit outside the existing CLI console capture. Runner exit status and unhandled errors remain
+part of the result; logging itself is not a repair or acceptance. Main's unrelated staged
+`validation-feedback-budget.md` edits are preserved and excluded from these evidence commits.

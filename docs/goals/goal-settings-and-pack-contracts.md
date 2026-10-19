@@ -53,8 +53,11 @@ all 15 configuration cases and all 18 add-extension cases pass; the trigger take
 its composed allowance matters. No failed value assertion or explicit cleanup failure is reported.
 The failing step/service scenario already has four-operation composition, so do not merely increase
 its allowance. Diagnose its actual phase/runner blocking with the existing two co-running scaffold
-files, unchanged per-test limits and explicit timing evidence before selecting a repair. No replacement
-broad run is dispatched. DSL is unreached here; include its unchanged body in the next necessary
+files, unchanged per-test limits and explicit timing evidence before selecting a repair. Diagnostic
+[39306120746](https://github.com/spankyed/AgentBuddy/actions/runs/39306120746) is dispatched on
+`be7080780` (`session/scaffold-phase-diagnostic`), selecting all 29 cases with two workers and no
+per-test overrides. It adds only phase/memory logging plus its workflow to main `3315ce178`; no
+replacement broad run is dispatched. DSL is unreached here; include its unchanged body in the next necessary
 focused acceptance or final gate. See [classified evidence](../evidence/integration-deadline-inventory.md#normal-gate-scaffold-composed-deadline-and-recurring-reporting--2026-10-19).
 
 Focused configuration acceptance **39296758415** succeeds on workflow-only `952a6dd02`,
