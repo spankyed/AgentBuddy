@@ -14,9 +14,8 @@ concurrency:
 jobs:
   check:
     runs-on: macos-26
-    # Cold source/producers and host units took 28m before the remaining integration/app gates.
-    # Each step retains its own bound; this envelope covers the complete strict chain.
-    timeout-minutes: 60
+    # Complete acceptance owns up to 120m; preparation and app gates retain their own bounds.
+    timeout-minutes: 180
     env:
       APACK_CHAIN_CORES: 2
     defaults:

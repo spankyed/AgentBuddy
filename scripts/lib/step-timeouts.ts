@@ -68,36 +68,25 @@ export interface Rung {
 }
 
 /**
- * The ladder. Three rungs, and each names a kind of work rather than a span of measurements.
- *
- * **Three, against `SIZE_MS`' argument for two.** That constant says "two buckets, because two is what has
- * consumers", and it is right to refuse a rung that only exists to sit between others. Three survive it
- * because three kinds are nameable, and what distinguishes them is not how long they take but what they
- * start:
+ * Declared classes distinguish the work a process owns; individual test/operation limits are separate.
  *
  * - `quick` — one compiler, one linter, one codegen pass. Most of the table, and all of it already sat on
  *   the old 60s floor, so this rung changes nothing for those steps.
  * - `suite` — a test suite or a bundle: it fans out across workers or processes, which makes it the rung
  *   that stretches most on a smaller box. A step that *builds* is a bundle and not one compiler.
  * - `scenario` — runs an install: `npm install`, a packed tarball, mostly serial and mostly waiting.
+ * - `acceptance` — the complete compiler/runtime integration pool, with repeated cold builds,
+ *   watchers, archive verification and lifecycle combinations across all its projects.
  *
- * **Which steps are on which rung is `rungForKind`'s answer and not a list here.** It used to be a list, and
- * all three rows had drifted from the table by 2026-10-05: `quick` claimed eighteen of twenty-nine where it
- * was seventeen, `suite` named eight of its ten, and `scenario` said "the external-pack pair" when only
- * `:app` is on it. A membership anyone can derive is one nobody should copy.
+ * `rungForKind` classifies common work; reviewed exceptions live in `chain-graph.spec.ts`.
+ * Each class declares its own scaling factor. The ordinary suite factor is measured; the others
+ * explicitly record their conservative assumption and the evidence needed to replace it.
  *
- * **One `stretches` per rung, because one number was answering three questions.** The 4× is a measurement of
- * a *pool* losing workers, which is `suite` and nothing else; `quick` is single compilers losing CPU share
- * and `scenario` is mostly waiting on a disk and a network. Those two borrow the pool figure and say so, and
- * `declaredShare` reads each rung's own, so the asymmetry below is arithmetic rather than a sentence a reader
- * has to trust.
- *
- * A suite has a 600s aggregate budget: the complete integration pool outgrew 300s while its tests were
- * still passing. Both the pool runner and its parent use this limit; individual test deadlines are separate.
- * `scenario` retains a 900s budget for install-based workflows.
+ * Ordinary suites/bundles retain 600s and install scenarios retain 900s. Complete acceptance has its
+ * own aggregate allowance; the pool runner and its chain parent use the same declaration.
  */
 /**
- * Which rung a step's *kind of work* puts it on — the criterion the three rows above state, as something a
+ * Which common rung a step's *kind of work* puts it on — the criteria above, as something a
  * check can run rather than prose a reader has to apply.
  *
  * **The facts come in rather than being read here**, which is the same reason `timedOutBecause` takes
@@ -112,8 +101,7 @@ export interface Rung {
  *
  * It is a check and not the declaration: `ChainStep.timeout` stays written down, because a rung is a kill
  * deadline and deriving it from `POOL_WIDTH` would let a change to what a step *costs* silently move when it
- * is *killed*. Those are two facts, and the redundancy is cheaper than the coupling. One step disagrees on
- * purpose, and `chain-graph.spec.ts` carries it with its reason.
+ * is *killed*. Reviewed exceptions in `chain-graph.spec.ts` state where those common facts are insufficient.
  */
 export const rungForKind = (work: { installs: boolean; fansOut: boolean; builds: boolean }): TimeoutClass =>
   work.installs ? 'scenario' : (work.fansOut || work.builds) ? 'suite' : 'quick';
@@ -157,6 +145,13 @@ export const TIMEOUT_MS = {
     until: '`npm run test:external-pack` or `npm run test:packaged-authoring` on a smaller machine — each '
       + 'bounded here through `scripts/bounded.ts`, so a direct run at a terminal reaches this rung, and so '
       + 'does CI\'s `external-pack-e2e` job, which runs both',
+  },
+  acceptance: {
+    ms: 7_200_000,
+    stretches: SLOWER_MACHINE,
+    measured: undefined,
+    until: 'measure complete compiler/runtime acceptance at different worker counts; its existing '
+      + 'operation, event and cleanup deadlines remain independent of this aggregate allowance',
   },
 } as const satisfies Record<string, Rung>;
 

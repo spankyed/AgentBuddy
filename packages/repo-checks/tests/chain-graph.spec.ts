@@ -331,14 +331,13 @@ describe('every spawn an orchestrator makes is bounded', () => {
    * **The fraction is derived, not picked, and since 2026-10-03 it is derived per rung.** A rung declares how
    * much its kind of work stretches on a smaller box, so a step at a fraction `f` of its class here sits at
    * `f × stretches` there; `declaredShare` is that product and 1 is exactly on the deadline. One global
-   * fraction was answering three questions at once — the 4× is a measurement of a *pool* losing workers,
-   * which describes `suite` and not the single compilers in `quick` — and two of the three rungs now say
-   * outright that they are borrowing it (`ASSUMED_RUNGS`, and the case below).
+   * fraction cannot describe both a pool losing workers and a single compiler losing CPU share.
+   * `ASSUMED_RUNGS` makes borrowed factors explicit rather than treating them as measurements.
    *
    * **It is a creep detector and it found nothing the day it was written, which is worth being honest
    * about.** A rung's own factor still permits a step to reach its deadline *exactly* on the machine that
    * rung is sized for, so this is the loosest useful bound rather than a comfortable one. It cannot be
-   * tightened on the two borrowed rows without first measuring them, and a margin on top of today's figures
+   * tightened on assumed rows without first measuring them, and a margin on top of today's figures
    * fails five steps, most of them single compilers the pool measurement does not describe.
    *
    * So the two steps that were genuinely tight — `packages:ensure` at 93% of its deadline four times slower,
@@ -380,6 +379,9 @@ describe('every spawn an orchestrator makes is bounded', () => {
   describe('the rung matches the kind of work', () => {
     /** A step whose rung the facts cannot derive, and why. An entry that stops applying is reported. */
     const DECLARED_AGAINST_THE_FACTS: Record<string, string> = {
+      'test:integration': 'complete compiler/runtime acceptance includes repeated cold builds, watchers '
+        + 'and lifecycle combinations across projects; generic fan-out facts cannot distinguish that '
+        + 'workload from an ordinary unit suite. Only this pool uses the acceptance aggregate bound',
       'test:external-pack:app': 'drives the built app once per fixture pack, where `test:smoke` also launches '
         + 'an app and is a suite — no fact in the table separates them, so this is a judgement rather than a '
         + 'rule to widen',

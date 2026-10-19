@@ -1100,7 +1100,7 @@ export const CHAIN_STEPS: readonly ChainStep[] = [
   // they found first
   // 1.94x, measured 2026-10-04: five workers to two is 42.5s -> 82.5s, median of 3 (`suite`'s own note).
   // It caps itself at half the cores, so it loses far fewer workers than the pool the rung's 4x was taken on
-  { name: 'test:integration', timeout: 'suite', stretches: 1.94, seconds: POOL_SECONDS.integration,
+  { name: 'test:integration', timeout: 'acceptance', stretches: 1.94, seconds: POOL_SECONDS.integration,
     // It keeps a cache of its own now, like the two unit pools, so `--all` has to reach inside it
     forceArgs: ['--all'],
     ...inputsForSuites(INTEGRATION_SUITES, 'integration') },

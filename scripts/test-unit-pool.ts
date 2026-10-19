@@ -22,7 +22,7 @@ import type { UnitSuite } from './lib/unit-suites.ts';
 import { holdPoolLock, poolWorkers, POOLS, poolStampFor, poolUnitFor, projectsThatDidNotRun, provenanceOf, prunePoolStamps, recordRun, recordsVerdict, whyItRuns, type Pool, type Provenance } from './lib/unit-pool.ts';
 import type { ReportedRun } from './lib/spec-durations-reporter.ts';
 import { boundedSpawn } from './lib/bounded-spawn.ts';
-import { POOL_SECONDS, poolStepName } from './lib/chain-steps.ts';
+import { CHAIN_STEPS, POOL_SECONDS, poolStepName } from './lib/chain-steps.ts';
 import { MEASURED_ON } from './lib/core-budget.ts';
 import { timeoutMsFor, timedOutBecause } from './lib/step-timeouts.ts';
 import { exitOnEpipe } from './lib/exit-on-epipe.ts';
@@ -155,6 +155,8 @@ async function main(): Promise<void> {
   const asked = process.argv[2] ?? '';
   if (!(asked in POOLS)) throw new Error(`no pool named '${asked}' — one of ${Object.keys(POOLS).join(', ')}`);
   const kind = asked as Pool;
+  const step = CHAIN_STEPS.find(step => step.name === poolStepName(kind));
+  if (!step) throw new Error(`No chain step declares the ${kind} pool's deadline`);
   const workers = poolWorkers(kind);
   // npm `pretest` hooks do not fire under a root run, so the freshness guard the suites share has nothing
   // to rebuild them. Without this, editing anything a published package is built from — this repo's own
@@ -210,7 +212,7 @@ async function main(): Promise<void> {
       covered.map((suite) => ({ label: `${suite.dir} (${half}, ${provenance})`, unit: poolUnitFor(suite, kind, provenance, workers), stamp: poolStampFor(suite, half, provenance) })),
       async () => {
         const reportFile = path.join(reports, `${covered.map((suite) => suite.dir).join('+')}.json`);
-        const { code, timedOut } = await boundedSpawn(command, [...args], timeoutMsFor('suite'),
+        const { code, timedOut } = await boundedSpawn(command, [...args], timeoutMsFor(step.timeout),
           { stream: true, env: { ...process.env, [SPEC_DURATIONS_FILE]: reportFile } });
         if (code !== 0) {
           // `POOL_SECONDS` only where this run is the whole pool, which is the one thing that cost describes
@@ -219,7 +221,7 @@ async function main(): Promise<void> {
           throw new Error(timedOut
             ? timedOutBecause({
               what: poolStepName(kind),
-              timeout: 'suite',
+              timeout: step.timeout,
               measuredOn: MEASURED_ON,
               ...covered.length === suites.length ? { seconds: POOL_SECONDS[kind] } : {},
             })
