@@ -2,7 +2,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { execFileSync } from 'node:child_process';
+import { execFile, execFileSync } from 'node:child_process';
 import { createRequire } from 'node:module';
 import { expect, it, onTestFinished, vi } from 'vitest';
 import { captureCompilationInputs } from '../../src/build/compilation-inputs.ts';
@@ -27,7 +27,7 @@ import { readCompilerRuntimeInputs } from '../../src/build/compiler-runtime.ts';
 const electronRuntimes: Array<[string, string | undefined]> = [['captured', undefined]];
 if (process.env.APACK_TEST_SIGNED_ELECTRON) electronRuntimes.push(['strictly signed captured', process.env.APACK_TEST_SIGNED_ELECTRON]);
 
-it.runIf(process.platform === 'darwin').each(electronRuntimes)('uses the %s Electron runtime through the shared compiler launcher', (_label, executable) => {
+it.runIf(process.platform === 'darwin').each(electronRuntimes)('uses the %s Electron runtime through the shared compiler launcher', async (_label, executable) => {
   const root = fs.realpathSync.native(fs.mkdtempSync(path.join(os.tmpdir(), 'apack-electron-runtime-')));
   try {
     const require = createRequire(import.meta.url);
@@ -39,10 +39,14 @@ it.runIf(process.platform === 'darwin').each(electronRuntimes)('uses the %s Elec
     fs.writeFileSync(path.join(compiler, 'bin/apack.mjs'), 'console.log(JSON.stringify({electron:process.versions.electron,executable:process.execPath}));');
     const driver = path.join(root, 'driver.mjs');
     fs.writeFileSync(driver, `import fs from 'node:fs';
+const started = Date.now();
+const phase = name => console.error('[electron runtime]', name, Date.now() - started);
 console.error('[electron runtime] ordinary bootstrap', JSON.stringify({electron:process.versions.electron,report:typeof process.report?.getReport}));
 const {captureCompilerInstallation} = await import(${JSON.stringify(new URL('../../src/build/compiler-installation.ts', import.meta.url).href)});
 const {spawnCompilerWorker} = await import(${JSON.stringify(new URL('../../src/build/compiler-process.ts', import.meta.url).href)});
-const installation = await captureCompilerInstallation(${JSON.stringify(compiler)});
+phase('capture');
+const installation = await captureCompilerInstallation(${JSON.stringify(compiler)}, {signal:AbortSignal.timeout(60000)});
+phase('captured');
 let output;
 try {
   if (process.env.APACK_TEST_SIGNED_ELECTRON) {
@@ -57,19 +61,30 @@ try {
   await new Promise((resolve, reject) => {
     child.once('error', reject); child.once('close', (code, signal) => code === 0 ? resolve() : reject(new Error('Captured Electron exited with ' + (signal ?? code) + ': ' + stderr)));
   });
+  phase('launched');
   output = {value:JSON.parse(stdout),captured:installation.executable,current:installation.isCurrent(${JSON.stringify(compiler)})};
+  phase('verified');
 } finally { await installation.dispose(); }
+phase('retired');
 console.log(JSON.stringify({...output,retired:!fs.existsSync(installation.executable)}));`);
-    const result = JSON.parse(execFileSync(electron, ['--import', 'tsx', '--conditions=@apackdev/source', driver], {
-      cwd: REPO_ROOT, env: { ...process.env, ELECTRON_RUN_AS_NODE: '1' }, encoding: 'utf8', timeout: 30_000,
-    })) as { value: { electron: string; executable: string }; captured: string; current: boolean; retired: boolean };
+    const stdout = await new Promise<string>((resolve, reject) => {
+      execFile(electron, ['--import', 'tsx', '--conditions=@apackdev/source', driver], {
+        // Capture, launch and verification/retirement have distinct work; the driver bounds their sum.
+        cwd: REPO_ROOT, env: { ...process.env, ELECTRON_RUN_AS_NODE: '1' }, encoding: 'utf8', timeout: 60_000 + 15_000 + 20_000,
+      }, (error, stdout, stderr) => {
+        if (stderr) console.error(stderr.trim());
+        if (error) reject(error);
+        else resolve(stdout);
+      });
+    });
+    const result = JSON.parse(stdout) as { value: { electron: string; executable: string }; captured: string; current: boolean; retired: boolean };
     expect(result.value.electron).toBe(version);
     expect(result.value.executable).toBe(result.captured);
     expect(result.captured).not.toBe(fs.realpathSync.native(electron));
     expect(result.current).toBe(true);
     expect(result.retired).toBe(true);
   } finally { fs.rmSync(root, { recursive: true, force: true }); }
-});
+}, 2 * 60_000);
 
 it.runIf(process.platform === 'darwin' || process.platform === 'linux').each(electronRuntimes)('builds and archives a real pack under the %s Electron runtime', async (_label, executable) => {
   const root = fs.realpathSync.native(fs.mkdtempSync(path.join(os.tmpdir(), 'apack-electron-pack-')));

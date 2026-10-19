@@ -533,3 +533,57 @@ Raw reports/events and the full log are at `/private/tmp/apack-publication-phase
 `/private/tmp/apack-publication-phase-39247182439-full.log`. Diagnostic tracing/extended observation
 remain isolated and are not merged. The next broad run is the required normal integration gate,
 covering full-queue scheduling and previously filtered variants, rather than another failure inventory.
+
+Normal integration [39248035810](https://github.com/spankyed/AgentBuddy/actions/runs/39248035810)
+is dispatched on `41b9a6c8e`, which differs from main `f1c1052ce` only in its acceptance workflow.
+It prepares typecheck records, default-setup and declared external outputs, then runs the unfiltered
+`npm run test:integration -- --all` with `APACK_CHAIN_CORES=2`. No selected-file patterns, diagnostic
+logging or deadline overrides are present. The committed pool's 120-minute total remains independent
+of bounded package preparation and per-case/operation/event/cleanup limits. This is the required normal
+gate; final main committed-source strict `--all` still follows only after it passes.
+
+### Normal gate stops at nested Electron-control deadline — 2026-10-19
+
+Run `39248035810` is terminal and failed. Dependency installation, complete typecheck preparation
+(363s), default-setup build (423s) and external fixture preparation pass. Normal integration starts
+unfiltered, then stops after 35.51s with 350 reported passing assertions, one failure and 26 platform
+skips; the rest of the 68-file pool is unreached. Its sole failure is **individual-operation timeout**:
+`uses the captured Electron runtime through the shared compiler launcher` exceeds the outer driver's
+30s `execFileSync` limit. The driver logs ordinary Electron bootstrap, then performs installation capture,
+captured launch (separately bounded at 15s), identity verification and retirement. No value assertion,
+whole-scenario/aggregate timeout, reporting error or cleanup error is reported. Do not claim the
+unreached native cases or remaining suite pass.
+
+This is a missed nested deadline in the earlier inventory, not evidence of a runtime compiler defect.
+Inspect/compose that driver's bounded phases, retaining its 15s launch limit and original assertions,
+and verify the actual Electron control beside its normal database-file workload before another broad
+gate. Preserve `/private/tmp/apack-normal-integration-39248035810/` (console and pool report) and
+`/private/tmp/apack-normal-integration-39248035810-full.log` (complete terminal output).
+
+Source `646abdd3a` bounds capture at 60s, preserves the captured child's 15s launch limit, and composes
+the driver as 60+15+20 seconds for capture/launch/verification-retirement. Its 120s case includes fixture
+setup and cleanup. The driver uses asynchronous `execFile`, avoiding a synchronous runner block while
+these phases execute, and logs capture/launch/verification/retirement completion. Identity, captured
+executable, currentness and disposal assertions are unchanged. All 53 timeout/subprocess-inventory
+checks, CLI types, correctness lint and generated driver syntax checks pass. The inventory still sees
+the same 11 subprocess call sites; no check was weakened. Other native loader/clang/event deadlines
+retain their existing limits.
+
+Focused [39250994872](https://github.com/spankyed/AgentBuddy/actions/runs/39250994872), workflow-only
+`5ead60321` over that source, runs the actual Electron control and all 64 database cases together with
+two workers, retaining counts, exit status, phases and all assertions. It must pass before another normal
+gate. No compiler/runtime production code or general timeout default changes in this checkpoint.
+
+That focused run is terminal but **not accepted**: the Electron control passes in **5.357s**, including
+capture/launch/currentness/retirement; five database metadata cases pass and **59 database cases fail
+with missing `packages/default-setup/dist`**. All 65 selected bodies run. These are fixture-preparation
+assertion failures, not further operation timeouts or demonstrated product failures. The isolated
+workflow omitted the pack build consumed by `db.integration.spec.ts:appDataDir`; its concurrency
+claim is therefore unproven. Preserve reports at `/private/tmp/apack-electron-driver-39250994872/`
+and the full log alongside them.
+
+Workflow-only `0e7ac97da` adds the existing `npm run build:default-setup` prerequisite, and makes the
+65-case check conditional on that prerequisite's success. Corrected focused
+[39251438405](https://github.com/spankyed/AgentBuddy/actions/runs/39251438405) is now running on the
+same `646abdd3a` product/test repair. No assertion, driver limit or production code changes follow
+from the setup omission; successful actual database concurrency remains required before normal.

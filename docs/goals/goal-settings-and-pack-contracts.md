@@ -284,6 +284,29 @@ compiler generation. CSS recovery also passes. The earlier abort's slowdown rema
 no compiler/performance fix or main timeout increase is claimed. Preserve that failed evidence.
 Focused behavior now has passing evidence under the original limits; proceed to required normal
 integration for full-queue/remaining-variant acceptance, then final main strict `--all`.
+Normal integration [39248035810](https://github.com/spankyed/AgentBuddy/actions/runs/39248035810)
+is dispatched on workflow-only `41b9a6c8e` over exact main `f1c1052ce`: normal unfiltered
+`npm run test:integration -- --all`, two cores, original source deadlines, with required typecheck,
+pack and external-output preparation. No diagnostic source is merged. Final main strict acceptance
+and the complete requirement audit/archival remain outstanding.
+That normal run is now terminal and failed: all preparation passes, then integration stops after
+350 reported passes at the captured-Electron control's nested 30s driver deadline. Capture, 15s
+launch, verification and retirement share that parent; no value/cleanup/aggregate failure is reported.
+This missed nested boundary requires focused phase composition and real Electron/database concurrency
+acceptance before another normal gate. Preserve the earlier 38 focused passes and successful
+publication control; final strict `--all` and all remaining completion requirements stay open.
+Source `646abdd3a` composes only that Electron driver: capture 60s, unchanged launch 15s,
+verification/retirement 20s, with a 120s complete case. Asynchronous `execFile` preserves runner
+updates; completion phases and original identity/disposal assertions remain. All 53 policy/inventory
+checks, CLI types, correctness lint and embedded-driver syntax pass. Focused
+[39250994872](https://github.com/spankyed/AgentBuddy/actions/runs/39250994872), workflow-only
+`5ead60321`, now verifies the actual driver beside all 64 database cases on two workers before another
+normal gate. No production compiler/runtime or blanket deadline changes.
+That first focused workflow omitted default-setup's build: Electron passes in 5.357s, but 59 database
+fixture assertions fail for missing `dist`; five metadata cases pass. This is not accepted concurrency.
+Corrected [39251438405](https://github.com/spankyed/AgentBuddy/actions/runs/39251438405), workflow-only
+`0e7ac97da`, adds the actual pack prerequisite and refuses to run acceptance if it fails. Source
+`646abdd3a` is unchanged. Preserve the setup failure and require all 65 cases before another normal run.
 Source **`21ed07fe7`** gives complete integration its own 120-minute aggregate class. The pool runner
 reads its owning chain step's deadline; ordinary unit pools remain at 600s. The measured file work
 already exceeds 53 minutes at an ideal two-worker balance, without blocked setup/preparation, so the
