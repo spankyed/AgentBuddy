@@ -1,194 +1,212 @@
 # Restore fast validation
 
-Status: proposed; no implementation has started.
+Status: proposed; implementation follows completion of the settings and pack contracts goal.
 Date: 2026-10-19.
 
-Schedule this work after the settings and pack contracts goal completes. During that goal's closeout,
-make only demonstrated blocker repairs and preserve timing evidence; do not begin this restructuring.
+During the current goal's closeout, fix demonstrated blockers and retain timing evidence. Its
+existing requirements and final strict gate remain unchanged.
 
-## Goal
+## Goal and measurement
 
-Get ordinary changes through `npm run chain` in **3–4 minutes**, preferably below **5 minutes**,
-on a recorded reference machine. Include required builds and preparation in that measurement.
-Dependencies may already be installed; a cached no-op is not evidence of meeting the target.
+Target **3–4 minutes** for ordinary affected-change validation through `npm run chain`, with
+**5 minutes** as the acceptance ceiling on an agreed reference machine. Compiler, platform and
+other cross-cutting changes may select longer mandatory acceptance; explain that cost before running.
 
-Compiler or platform changes can require longer checks. Keep those checks mandatory and make their
-cost clear before execution. Preserve exhaustive acceptance.
+Choose representative host, pack, SDK and compiler changes before optimizing. SDK changes are not
+assumed cheap: their dependency impact determines required work. Record machine, OS/runtime, core
+budget, source revision and selected targets for each measurement.
+
+Measure these conditions separately:
+
+- **Cold test results:** dependencies installed, no reusable test verdicts. Include required fixture
+  generation and builds; record whether build outputs were already available.
+- **Warm incremental:** valid unchanged outputs and results available.
+- **Exhaustive:** all required targets, bypassing verdict caches, with platform results identified.
+
+Report dependency installation and remote queue/provisioning time separately. Do not use a cached
+no-op or a change in machine size as proof of meeting the ordinary-change target. Retain repeated
+measurements and variation. Report regressions initially; add hard performance gates only after
+measurements are stable.
 
 ## Problem
 
-The user reports an earlier full-chain duration near 150 seconds. Recent failed strict runs took
-roughly 29–34 minutes without reaching every stage. Hardware, cache state and coverage differ, so
-this is not a controlled performance comparison.
+The user reports an earlier chain duration near 150 seconds. Recent failed strict runs took roughly
+29–34 minutes without reaching every stage. These are not controlled comparisons, but they expose
+an unsustainable feedback loop.
 
-Expensive compiler scenarios now share a broadly selected integration pool. They repeatedly capture
-installations, build packs, exercise watchers and native loading, and verify archives. Fail-fast runs
-repeat successful work while leaving later tests unexecuted. Some multi-step scenarios also inherit
-deadlines that do not fit their work.
+Real compiler scenarios repeatedly capture installations, build packs, exercise watchers and native
+loading, and verify archives. Broad package-level selection reaches many of them together. Fail-fast
+retries repeat an expensive prefix while leaving later coverage unknown. Some scenario deadlines do
+not accommodate their sequential operations; synchronous work can also block runner communication.
 
-The repository already has dependency selection, caching, duration reports, resource scheduling and
-process cleanup. Improve the workload within that system before adding infrastructure.
+The repository already has a dependency graph, caches, timing reports, resource scheduling and
+process owners. Extend those foundations. The objective is less necessary work on the ordinary path,
+not simply larger deadlines or tests moved into another folder.
 
-## Design
+## Execution structure
 
-### Use familiar names and clear owners
+### Vocabulary and ownership
 
 | Term | Meaning |
 |---|---|
 | Unit | Tests an isolated owner's behavior |
 | Integration | Tests collaboration between real components |
-| Acceptance | Tests a complete supported workflow through public interfaces |
-| Platform | Required execution environment, such as Windows, macOS or Linux |
-| Resources and timeout | Execution constraints, separate from test purpose |
+| Acceptance | Tests a supported workflow through public interfaces |
+| Platform | Required environment, such as Windows, macOS or Linux |
+| Target | An independently selectable group with declared prerequisites and execution bounds |
 
-Use these terms consistently in group names, commands and documentation. Do not add
-"qualification" as another category alongside acceptance. Avoid speed-based group names such as
-`fast`, `slow` or `heavy`, and temporary investigation names such as `native-tail`. Name groups by
-their stable responsibility. Align changed classifications and their consumers in the same
-checkpoint; this is not a separate repository-wide naming project.
+Name targets by stable responsibility, such as compiler behavior, native runtime or external
+authoring. Test purpose does not determine resource needs: a parser check and an OS-loader probe
+may both be integration tests while requiring different execution.
 
 Keep three owners:
 
-- Test configuration owns file discovery through existing Vitest/Playwright configs.
-- The chain owns prerequisites, outputs, selection, caching, resource reservations and process bounds.
+- Vitest/Playwright configuration owns test discovery.
+- The chain owns target dependencies, selection, cache validity, resource reservations and process bounds.
 - Tests own assertions and use existing fixture/lifecycle helpers.
 
-Package scripts and CI invoke those owners. They must not maintain competing file lists, selection
-rules or retry policies. Existing declarations remain authoritative; no new per-test registry.
+Scripts and CI invoke these owners without competing file lists or selection policies. Reuse existing
+config and graph checks to enforce complete discovery, no accidental duplicate execution within an
+intended environment, required producer edges and reachability through exhaustive validation.
 
-Extend existing structural checks to reject undiscovered files, accidental duplicate discovery within
-an environment, groups absent from exhaustive execution, missing producer dependencies and missing
-execution requirements. Check representative source changes select the required acceptance groups.
-Use existing config discovery and graph checks rather than building a general naming linter.
+A test normally joins an existing target. A new target needs a distinct execution boundary; a helper
+needs demonstrated duplication. Keep review guidance in prose rather than creating per-test metadata
+or a naming linter. Apply settled names to changed boundaries without a repository-wide rename.
 
-A new test normally joins an existing group. A new group needs a distinct execution boundary; a new
-helper needs demonstrated duplication. These are review rules, not reasons to add more metadata.
-For each added full-build scenario, explain the new behavior it proves, why a smaller test is
-insufficient, and its measured cost under stated conditions. Record cost as pending until measured;
-do not present an allowance as a duration. Use the existing review and timing reports, not a new registry.
+### Commands and selection
 
-### Separate ordinary integration from expensive acceptance
+These are intended contracts; the affected-target selection below still needs implementation.
 
-Use a few executable groups in the existing runner. Keep command, inputs, outputs, environment,
-resource reservation and deadline together in the existing declarations. Do not add per-test labels
-or a second classification system.
-
-| Ordinary checks | Expensive acceptance |
+| Command | Guarantee |
 |---|---|
-| Types, lint, schema/API agreement | Native loader and runtime matrices |
-| Settings, catalog, navigation and service behavior | Repeated cold capture/builds and watch recovery |
-| Fast compiler parsing and bookkeeping | Real parent-loss, cancellation and replacement scenarios |
-| Ordinary filesystem/process integration | Full external authoring and installed-app workflows |
-| Representative real build/archive/app smoke coverage | Additional platform and lifecycle combinations |
+| `npm run spec` | Focused development checks, retaining notices about uncovered build edges |
+| `npm run chain` | Routine checks and all acceptance required by the selected change; valid results may be reused |
+| `npm run chain -- --dry` | Explains comparison base, selected targets, prerequisites, platforms, cache decisions and expected cost |
+| `npm run chain -- --strict --all --no-classify` | Exhaustive execution for the current environment, bypassing verdict caches |
 
-Classify by what the test proves. Do not move an ordinary test merely because it is slow. Split mixed
-files only along clear responsibilities, preserving their assertions and setup. Every existing case
-must remain discoverable and have an execution home.
+Preserve `--all` as exhaustive and `--strict` as verdict policy. Platform guards remain intact.
+Whole-product exhaustive acceptance requires the recorded results from all required environments;
+a single machine's successful command cannot certify platforms it did not execute. Keep unavailable
+or required-but-unexecuted coverage pending. Use existing platform workflows and VM procedures.
 
-Keep the existing command meanings:
+Separate **selection** from **cache validity**. Source impact determines required targets; current
+input/output/environment records determine whether results can be reused. A cold verdict cache must
+not select unrelated acceptance. Missing or modified required build output must still trigger its
+producer and invalidate consumers.
 
-- `npm run spec`: focused development checks, with existing notices about uncovered build edges.
-- `npm run chain`: checks required for the change, including affected expensive acceptance.
-- `npm run chain -- --dry`: explain selected work, prerequisites and cache decisions.
-- `npm run chain -- --strict --all --no-classify`: exhaustive acceptance; `--all` remains exhaustive.
+Extend the existing input/dependency graph. Current package-level workspace/dependency inputs are
+broad, so splitting configs alone may leave selection unchanged. Narrow ownership only where the
+target's actual reads support it; retain dependency-read checks and conservative coverage for dynamic
+inputs that cannot be bounded.
 
-A compiler change may therefore make `chain` take longer than five minutes. Do not advertise the
-ordinary-change target as a universal guarantee. A missing required platform result stays pending;
-a local pass must not imply that every platform passed.
+Pin and print the comparison base and head. Before integration, compare the full branch change
+against the target branch's appropriate base, not only the last commit. Local selection also covers
+staged, unstaged and relevant untracked inputs, deletions and renames. Missing bases or unclassified
+relevant inputs expand coverage with an explanation. Do not promise five minutes for that fallback.
 
-Use the existing input/dependency graph to select groups. Verify required compiler, authoring and app
-checks still run for relevant changes. Add selection machinery only when a concrete missed check or
-unnecessary execution demonstrates the need. Do not start with a new merge-base engine, receipt store,
-command family or platform orchestration layer.
+### Required validation boundaries
 
-### Remove repeated work
+| When | Required checks |
+|---|---|
+| During implementation | Focused checks for changed behavior |
+| Before integration | Routine checks plus affected acceptance |
+| Before closing a substantial cross-cutting goal | Exhaustive acceptance on the converged committed candidate |
+| Before release | Exhaustive acceptance and verification of the actual candidate packages/installers |
+| Impact cannot be bounded confidently | Exhaustive acceptance, such as for broad toolchain or selection changes |
 
-Share verified immutable fixture output through existing producer/consumer steps. Consumers must not
-regenerate shared inputs. Missing or changed output must invalidate reuse; author/app halves must
-consume the same verified archive.
+A compiler edit selects affected compiler/platform targets, not automatically unrelated app workflows.
+Do not run exhaustive acceptance after every commit. An occasional manual full run can check selector
+soundness; new schedules or automatic workflow triggers require separate authorization.
 
-Give mutating consumers private working copies and profiles. Keep fresh installations and builds
-where independent capture, startup, watch replacement, corruption or cleanup is the assertion.
-Do not create a fixture service or new cache protocol.
+After failure, repair and validate the failed boundary before repeating broad execution. Reuse
+unaffected evidence only where existing input and environment records establish validity. Relaxed
+diagnostics never count as normal acceptance. A required uncached final gate still needs complete
+execution after relevant repairs converge; assembling earlier focused passes does not replace it.
 
-Use focused owner-level tests for combinations that do not need another complete public build.
-Retain real CLI/app cases proving the owners connect correctly. Removing a redundant build requires
-identifying the retained coverage; mocks cannot replace claims about actual OS behavior.
+## Reduce execution cost
 
-### Correct scheduling and deadlines
+Keep ordinary behavior checks and representative real build/archive/app smoke coverage in the
+routine path. Independently select exhaustive native/runtime matrices, repeated cold builds and
+full external-authoring/lifecycle scenarios when their dependencies change or full acceptance runs.
+An ordinary test becoming slow is a performance finding, not permission to relabel it.
 
-Reserve resources for nested compiler work through the existing scheduler. Avoid overlapping builds
-that each assume the whole machine. Increase concurrency only after measuring the result.
+Preserve each distinct behavioral guarantee. Account for existing cases, then consolidate redundant
+executions where retained coverage proves the same claim. Use focused owner-level tests for branch
+combinations and real public workflows to prove the owners connect. Mocks cannot replace actual OS
+behavior claims.
 
-Bound individual operations and give multi-step scenarios an explicit total allowance that fits their
-operations and cleanup. Preserve short event/readiness waits and bounded teardown. Use existing
-classes and process owners; do not build automatic deadline algebra or a workflow framework.
-For expensive scenarios, make operation bounds, cancellation where supported, awaited cleanup and
-phase timings explicit through those existing helpers. An outer timer cannot interrupt synchronous
-in-process work; do not describe it as an independently cancellable operation.
+Share verified immutable preparation through existing producers. Consumers must not regenerate shared
+inputs. Give mutating consumers private copies and profiles. Keep fresh builds where capture,
+independent installations, watcher replacement, corruption or cleanup is the assertion. Preserve exact
+archive identity between author and app halves. No fixture service or new cache protocol is needed.
 
-Record phase timings on expensive scenarios. Distinguish operation timeout, scenario timeout and
-cleanup failure. A larger allowance prevents premature termination; it does not make execution faster.
-Do not use blanket increases, retry-to-green or relaxed diagnostic limits as normal acceptance.
+For every added full-build scenario, explain the new guarantee, why a smaller test is insufficient
+and measured cost under stated conditions. Mark cost pending until measured; an allowance is not a
+duration. Review this through existing reports and descriptions.
 
-### Keep the runner responsive
+## Scheduling, deadlines and responsiveness
 
-Distinguish slow execution from synchronous work blocking test-runner communication. A reporting
-timeout alone does not identify the blocking phase. Inspect the affected path before choosing a fix.
+Reserve resources for nested compiler work through the existing scheduler. Measure before increasing
+concurrency. Refresh obsolete cost estimates from completed runs; keep expected duration separate
+from timeout allowances. Use existing reports rather than another timing store.
 
-Use existing subprocess boundaries for long toolchain work where the test permits it. Some tests need
-in-process instrumentation to prove their claim; keep those exceptions explicit and limited. Yielding
-with `setImmediate` between phases may let pending updates proceed, but cannot make a long synchronous
-phase responsive. Verify runner reporting and exit status as well as assertions. Do not add another
-worker framework or weaken reporting limits to hide the problem.
+Bound expensive operations through existing process owners. Give sequential scenarios an enclosing
+budget that accommodates their operations and awaited cleanup. Preserve short event/readiness waits.
+Record phase timings and distinguish operation timeout, scenario timeout, reporting error and cleanup
+failure. Timeout changes prevent premature termination; they do not reduce execution cost.
 
-## Implementation order
+Investigate demonstrated runner blocking separately from slow execution. Use existing subprocess
+boundaries for long toolchain work where the test permits it. Keep necessary in-process instrumentation
+explicit. An outer timer cannot interrupt synchronous work; `setImmediate` between phases cannot make
+that work responsive. Verify reporting and process exit as well as assertions. Avoid blanket increases,
+retry-to-green, new worker frameworks and weakened reporting limits.
 
-1. **Separate the groups.** Reuse current logs and diagnostics. Make a small table of existing cases,
-   proposed group and required trigger. Complete missing inventory in bounded batches without repeating
-   the expensive completed prefix. Apply the vocabulary and ownership rules above, then move clearly
-   expensive scenarios using existing configs and runners. Extend existing completeness checks.
-2. **Remove demonstrated waste.** Share suitable preparation, retain necessary fresh scenarios, and
-   correct resource/deadline ownership. Address demonstrated runner blocking through existing execution
-   boundaries. Validate each changed boundary with focused checks, including reporting and cleanup.
-3. **Measure and adjust.** Record machine, cores, source, cache state, preparation and total time for
-   representative ordinary host/pack and shared SDK changes. Measure affected compiler changes
-   separately. Fix only selection or performance gaps those results demonstrate. Report timing
-   regressions first; do not introduce a noisy hard performance gate during this cleanup.
-4. **Prove coverage and finish.** Account for every existing case, run exhaustive acceptance on
-   committed source, and update CLAUDE.md, help, test configuration guidance and workflows together.
-   Remove replaced rules. Record results and remaining limitations before closing this plan.
+For incomplete diagnostics, record passed, failed, skipped and unstarted cases. Resume missing coverage
+in bounded batches with required setup, rather than rerunning the expensive prefix. Diagnostic bounds
+and collect-all execution are not normal acceptance policy.
 
-Use existing reports and runners throughout. No compiler redesign, new validation framework, larger
-runner purchase or automatic CI schedule is required by this plan.
+## Implementation checkpoints
 
-## Acceptance
+1. **Agree the execution map.** Reuse current evidence and complete only missing inventory. Produce:
+   - A before/after selection table for representative host, pack, SDK and compiler changes, naming
+     targets, prerequisites, platform obligations and expected critical path.
+   - A build-reduction table naming repeated work, retained guarantees, removed execution and expected
+     savings. Separate actual work reduction from narrower selection and cache reuse.
+   Confirm the proposed map can meet the budget before moving files.
+2. **Implement targets and selection.** Split mixed files along responsibilities using existing configs
+   and runners. Extend the graph and discovery checks. Verify cold-cache selection, changed/deleted/
+   untracked inputs, missing bases, shared dependencies and missing producer output. All required
+   acceptance must remain reachable; uncertain impact must expand coverage visibly.
+3. **Remove demonstrated waste and measure.** Share suitable preparation, consolidate redundant builds,
+   correct resource/deadline ownership and fix demonstrated reporting problems. Validate affected
+   boundaries first, then measure the agreed change scenarios. If the budget is missed, identify the
+   remaining critical path rather than silently moving more tests out of routine execution.
+4. **Prove coverage and finish.** Reconcile every retained or replaced guarantee and run exhaustive
+   acceptance on committed source. Update CLAUDE.md, command help, configs and workflow guidance in
+   the same checkpoints as their behavior changes. Remove replaced rules and record results before
+   closing this plan.
 
-- Representative ordinary changes meet the 3–4 minute target, preferably below 5 minutes, with
-  dependencies installed and cold validation caches on the stated reference machine. Report repeated
-  measurements and variation; do not hide required preparation or use no-op timings.
-- Relevant changes select their required expensive groups. Exhaustive execution accounts for every
-  existing test, with skips and unavailable platforms explicit.
-- Group names describe test purpose; platform and execution constraints remain separate. Configs own
-  discovery, the chain owns orchestration, and structural checks enforce complete, nonduplicated
-  discovery within each environment. Scripts and CI do not duplicate those rules.
-- Representative real build/archive/app coverage stays in the ordinary path. Moving exhaustive cases
-  does not weaken their assertions or remove required execution.
-- Shared preparation preserves integrity, freshness, archive handoff and test isolation.
-- Scheduling and deadlines fit actual work; terminated or diagnostically relaxed runs cannot count as
-  normal acceptance.
-- Expensive scenarios have explicit operation/cancellation/cleanup ownership and phase timings.
-  Affected runs complete without unhandled reporting errors; an event-loop yield alone is not proof
-  that synchronous blocking is resolved. New full-build scenarios justify their coverage and cost.
-- Commands and documentation agree. The [settings and pack contracts goal](../goals/goal-settings-and-pack-contracts.md)
-  keeps its existing requirements and final gate until an explicit migration checkpoint reconciles them.
-  Writing this plan does not waive any current obligation.
+No compiler redesign, new runner, cloud purchase, release or publication is authorized by this plan.
 
-## Reference
+## Completion criteria
+
+- Ordinary reference changes target 180–240 seconds and complete below 300 seconds under the stated
+  cold-result conditions. Slower cross-cutting acceptance is required and explicitly reported.
+- Before/after selection and build counts demonstrate less necessary work, not only regrouping,
+  larger deadlines or cached no-ops.
+- Every distinct guarantee has retained coverage; skipped and unavailable-platform cases are explicit.
+  Structural checks protect discovery, selection and producer dependencies.
+- Shared output preserves freshness, integrity, archive handoff and isolation. Lifecycle/cold-capture
+  assertions still use fresh owned execution where needed.
+- Expensive scenarios have bounded ownership, cancellation where supported, phase timings and awaited
+  cleanup. Normal runs finish without unhandled reporting errors.
+- Command guarantees and documentation agree. The
+  [settings and pack contracts goal](../goals/goal-settings-and-pack-contracts.md) retains its existing
+  requirements until explicitly reconciled; this plan waives none of its acceptance.
+
+## References
 
 [Bazel test definitions](https://bazel.build/versions/7.4.0/reference/be/common-definitions)
-distinguish resource size from timeout and define target timeouts over the tests they contain.
-Apply that distinction within our runner; adopting Bazel is not proposed.
-
-[Vitest projects](https://vitest.dev/guide/projects) provide native grouping and file discovery.
-Use the installed version's supported configuration; no tool upgrade is implied by this plan.
+separate resource size from timeout. [Vitest projects](https://vitest.dev/guide/projects) provide native
+grouping and discovery. Apply these principles within the installed tools; neither adopting Bazel nor
+upgrading Vitest is implied.
