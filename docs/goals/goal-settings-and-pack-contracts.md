@@ -295,6 +295,13 @@ launch, verification and retirement share that parent; no value/cleanup/aggregat
 This missed nested boundary requires focused phase composition and real Electron/database concurrency
 acceptance before another normal gate. Preserve the earlier 38 focused passes and successful
 publication control; final strict `--all` and all remaining completion requirements stay open.
+Source `646abdd3a` composes only that Electron driver: capture 60s, unchanged launch 15s,
+verification/retirement 20s, with a 120s complete case. Asynchronous `execFile` preserves runner
+updates; completion phases and original identity/disposal assertions remain. All 53 policy/inventory
+checks, CLI types, correctness lint and embedded-driver syntax pass. Focused
+[39250994872](https://github.com/spankyed/AgentBuddy/actions/runs/39250994872), workflow-only
+`5ead60321`, now verifies the actual driver beside all 64 database cases on two workers before another
+normal gate. No production compiler/runtime or blanket deadline changes.
 Source **`21ed07fe7`** gives complete integration its own 120-minute aggregate class. The pool runner
 reads its owning chain step's deadline; ordinary unit pools remain at 600s. The measured file work
 already exceeds 53 minutes at an ideal two-worker balance, without blocked setup/preparation, so the

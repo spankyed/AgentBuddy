@@ -559,3 +559,17 @@ Inspect/compose that driver's bounded phases, retaining its 15s launch limit and
 and verify the actual Electron control beside its normal database-file workload before another broad
 gate. Preserve `/private/tmp/apack-normal-integration-39248035810/` (console and pool report) and
 `/private/tmp/apack-normal-integration-39248035810-full.log` (complete terminal output).
+
+Source `646abdd3a` bounds capture at 60s, preserves the captured child's 15s launch limit, and composes
+the driver as 60+15+20 seconds for capture/launch/verification-retirement. Its 120s case includes fixture
+setup and cleanup. The driver uses asynchronous `execFile`, avoiding a synchronous runner block while
+these phases execute, and logs capture/launch/verification/retirement completion. Identity, captured
+executable, currentness and disposal assertions are unchanged. All 53 timeout/subprocess-inventory
+checks, CLI types, correctness lint and generated driver syntax checks pass. The inventory still sees
+the same 11 subprocess call sites; no check was weakened. Other native loader/clang/event deadlines
+retain their existing limits.
+
+Focused [39250994872](https://github.com/spankyed/AgentBuddy/actions/runs/39250994872), workflow-only
+`5ead60321` over that source, runs the actual Electron control and all 64 database cases together with
+two workers, retaining counts, exit status, phases and all assertions. It must pass before another normal
+gate. No compiler/runtime production code or general timeout default changes in this checkpoint.
