@@ -348,6 +348,10 @@ concurrent thread-input case 38.328s, without cleanup/reporting errors. All focu
 passing behavioral evidence; resume normal unfiltered integration on their combined committed
 source, then final main strict `--all` and complete requirement audit/archival. Do not turn these
 focused passes into a whole-suite completion claim.
+Normal [39262109257](https://github.com/spankyed/AgentBuddy/actions/runs/39262109257) is now dispatched
+on workflow-only `8d7776bc1` over exact main `a5e0d89ee`, with all accepted repairs, complete
+prerequisites and the unfiltered two-core repository command. Final strict and full closure remain
+required; no diagnostic source or private deadline overrides are present.
 Source **`21ed07fe7`** gives complete integration its own 120-minute aggregate class. The pool runner
 reads its owning chain step's deadline; ordinary unit pools remain at 600s. The measured file work
 already exceeds 53 minutes at an ideal two-worker balance, without blocked setup/preparation, so the

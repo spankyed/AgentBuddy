@@ -696,3 +696,9 @@ Reports are in `/private/tmp/apack-declaration-build-39261544678/`, with the ful
 The complete affected inventory and both subsequent focused repairs now have passing behavioral
 evidence. Return to the required normal unfiltered gate with the combined committed repairs; final
 main strict `--all` and requirement audit/archival remain outstanding.
+
+Normal [39262109257](https://github.com/spankyed/AgentBuddy/actions/runs/39262109257) is dispatched
+on workflow-only `8d7776bc1` over exact main `a5e0d89ee`. It includes all accepted worker/phase and
+declaration-fixture repairs, preserves complete preparation, and runs the ordinary unfiltered
+`npm run test:integration -- --all` with two cores. No diagnostic tracing, filters or private deadline
+overrides are merged. Require this normal gate before final main strict acceptance and closure.
