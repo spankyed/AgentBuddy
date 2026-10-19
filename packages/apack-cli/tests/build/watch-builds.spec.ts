@@ -64,8 +64,9 @@ it('cancels a hung rebuild through its operation signal and reports the interrup
     signal!.addEventListener('abort', () => reject(signal!.reason), { once: true });
   }));
   const rebuilding = watcher.rebuildAfter(() => { void fixture.builder.build().catch(() => {}); });
-  const failure = expect(rebuilding).rejects.toThrow('Rebuild deadline');
-  fixture.deadlines[1]!.controller.abort(new Error('Rebuild deadline'));
+  const cause = new Error('Rebuild deadline');
+  const failure = expect(rebuilding).rejects.toMatchObject({ message: 'Pack build for "/fixture" exceeded 60000ms', cause });
+  fixture.deadlines[1]!.controller.abort(cause);
   await failure;
   await watcher.close();
 });
