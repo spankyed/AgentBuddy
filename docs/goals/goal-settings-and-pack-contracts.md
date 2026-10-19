@@ -214,8 +214,18 @@ workflow-only **`8036d3014`** on exact main **`1f31d38fd`**. It prepares records
 fixtures once, runs the 24 failed files in three eight-file batches, then selected changed native and
 worker controls, all with two workers and committed test limits. It retains every group even on failure.
 Inspect its reports before another broad run; this is neither normal integration nor strict acceptance.
+Source **`21ed07fe7`** gives complete integration its own 120-minute aggregate class. The pool runner
+reads its owning chain step's deadline; ordinary unit pools remain at 600s. The measured file work
+already exceeds 53 minutes at an ideal two-worker balance, without blocked setup/preparation, so the
+former ten-minute aggregate cannot accommodate this workload. Retain one two-worker queue: the longest
+file does not exceed half the observed total, so splitting it is not justified by the current evidence.
+The strict job envelope is 180 minutes for preparation, acceptance and app checks. This is an aggregate
+backstop, not a healthy-run measurement or an increase to operation/event/cleanup limits. All 167 focused
+graph/pool/input checks, scripts/repo types, lint and workflow YAML parsing pass. One earlier chain-table
+metadata-import check reaches the compiler-runner guard on this daily-use Mac; leave that check for
+disposable CI rather than bypassing the guard. Normal integration and final strict gates remain required.
 None of these probes is a strict-chain result, despite using the existing `strict_chain` dispatch route. Main's
-full strict workflow is unchanged and remains required after integration converges. See
+full strict command is unchanged and remains required after integration converges. See
 [measured acceptance](../evidence/settings-and-pack-contracts.md#sequential-preloadthread-completion-and-scoped-budget--2026-10-19).
 The bound-only refusal boundary is user-approved and repaired separately below.
 Earlier broad run `39191666077` predates `31ed0dcad` and `eb552cf65`; run `39196299955` includes

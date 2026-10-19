@@ -286,6 +286,31 @@ or strict `--all`; both remain required after convergence. Prior diagnostic bran
 5. Validate affected cases, pass normal integration, then final strict `--all`. Setup-blocked bodies
    remain required. This diagnostic is neither gate and does not complete the active goal.
 
+### Normal aggregate repair — 2026-10-19
+
+Source **`21ed07fe7`** retains the normal two-worker queue and gives only complete integration the
+`acceptance` aggregate class (120 minutes). Its pool runner reads the deadline from its owning chain
+step instead of independently hardcoding `suite`; unit pools remain at 600 seconds. The strict job's
+180-minute envelope includes preparation and app gates. Individual case, operation, event and cleanup
+limits are unchanged by this checkpoint.
+
+The eight earlier completed files contribute 2,024.100 seconds of file work. The remaining 59 reports
+contribute 4,367.487 seconds, including zero-duration files with failed setup. Their combined 6,391.587
+seconds imply an ideal two-worker floor of 3,195.794 seconds (53 minutes 16 seconds), before blocked
+setup and shared preparation. The longest file, 906.983 seconds, does not dominate that floor. Keep the
+common queue; the private batches are for diagnosis, not a new normal grouping. The new aggregate is
+a backstop with room for required blocked cases, not a measured healthy-run duration. Replacing stale
+historical local cost records with CI timings would misrepresent their machine/worker conditions;
+the separate validation-feedback proposal remains proposed.
+
+Validation: 167 graph/pool/input tests, scripts and repo-checks typechecks, correctness lint over four
+changed TypeScript files, workflow YAML parsing and diff whitespace checks pass. An earlier 217-case
+tooling run passed 216 and refused one chain-table metadata import through the existing compiler-runner
+guard on this daily-use Mac. It is not a proved regression or an accepted skip: the full disposable
+gate must exercise it. No local native/runtime execution or guard bypass was used. Current affected
+run `39227491937` predates this aggregate checkpoint and is not normal integration or final strict
+acceptance. Inspect its reports before dispatching either remaining gate.
+
 Raw evidence is preserved in `/private/tmp/apack-integration-remaining-39214676663-original/` (all JSON/console/
 status reports), `/private/tmp/apack-integration-remaining-39214676663-full.log` (complete GHA output,
 including stderr), and the run's retained upload. The per-batch `tee` files contain stdout only; use
