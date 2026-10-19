@@ -8457,3 +8457,31 @@ source **`28b06add1`**, contains that exact main source and differs solely in
 the existing two-core full integration command and the 30m job envelope. Real coordinator and
 complete integration acceptance remain required before the unchanged main strict `--all` gate.
 The diagnostic branches and their committed workflow variants remain preserved separately.
+
+### Standalone source facade budget ownership — 2026-10-19
+
+[39203941398](https://github.com/spankyed/AgentBuddy/actions/runs/39203941398), source `28b06add1`,
+accepts generation in **88.0s**, all 15 reached compiler/lint/schema/export/specifier/tier reader legs,
+and package preparation. It stops at `facade:check` after **62.0s** including termination; no stale-input
+refusal is reported. API report and integration are not accepted by this run. Console:
+`/private/tmp/apack-integration-39203941398-failed.log`.
+
+Current-source inspection identifies a distinct execution-mode mismatch: chain `facade:check` uses
+`--from-build` to read a verified published report; standalone typechecking uses `--skip-generate`
+to verify generation and **bundle declarations from source**. Borrowing the chain's passive-reader
+class for the source bundle misclassifies its work. Source **`ec5943f65`** adds an optional declared
+class to standalone command descriptors and assigns this source bundle `suite`. Chain ownership,
+inputs, passive-report classification and all freshness assertions remain unchanged. No global budget,
+compiler behavior, assertion or integration-test deadline changes.
+
+All **24** affected typecheck-leg/subprocess-inventory tests, scripts TypeScript, correctness lint
+and diff checks pass; logs `/private/tmp/apack-source-report-budget-{checks,types,lint}.log`.
+The earlier isolated actual source report completed in 25.191s; whether this loaded coordinator would
+complete past 60s remains to be verified rather than inferred from its timeout.
+
+Isolated workflow-only **`2bf51ac08`**, branch `session/typecheck-source-diagnostic`, is based on
+exact `ec5943f65` and runs only normal `npm run typecheck -- --cores 2` after dependency installation.
+[39204669699](https://github.com/spankyed/AgentBuddy/actions/runs/39204669699) must accept that
+complete coordinator before repeating pack preparation or integration. It retains its console with
+a 20m job envelope; this envelope changes neither command deadlines nor main workflow. The preceding
+integration and generation diagnostic branches remain preserved. No local native run or VM startup occurs.

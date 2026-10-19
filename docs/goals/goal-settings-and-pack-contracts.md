@@ -128,8 +128,13 @@ passes both actual commands in **59.688s/25.191s**, preserving the compiler-cont
 **`8f81806a6`** classifies only the captured pack-generation prerequisite as `suite`, leaving individual
 reader legs and every test deadline unchanged. All 127 focused tooling checks, scripts types and lint
 pass. Updated isolated probe [39203941398](https://github.com/spankyed/AgentBuddy/actions/runs/39203941398),
-source **`28b06add1`**, must accept the real standalone coordinator and complete
-integration before the final full gate; its sole source difference remains the workflow.
+source **`28b06add1`**, accepts generation in **88.0s** and all reached reader legs but stops at the
+source facade report's inherited 60s passive-check limit. Inspection distinguishes the standalone
+declaration bundle from the chain's `--from-build` reader. Source **`ec5943f65`** lets that different
+mode declare `suite`, leaving the chain's passive check unchanged; 24 affected tooling tests, scripts
+types and lint pass. Coordinator-only [39204669699](https://github.com/spankyed/AgentBuddy/actions/runs/39204669699)
+on **`2bf51ac08`** must establish the real complete coordinator before another pack preparation or
+integration attempt. Complete integration and final strict acceptance remain required.
 None of these probes is a strict-chain result, despite using the existing `strict_chain` dispatch route. Main's
 full strict workflow is unchanged and remains required after integration converges. See
 [measured acceptance](../evidence/settings-and-pack-contracts.md#sequential-preloadthread-completion-and-scoped-budget--2026-10-19).
