@@ -84,6 +84,7 @@ public static class ApackPeActivationContext {
   [DllImport("kernel32.dll")] static extern IntPtr GetCurrentProcess();
   [DllImport("psapi.dll", CharSet=CharSet.Unicode, SetLastError=true)] static extern uint GetMappedFileNameW(IntPtr process, IntPtr address, StringBuilder name, uint size);
   [DllImport("kernel32.dll", CharSet=CharSet.Unicode, SetLastError=true)] static extern uint GetFileAttributesW(string file);
+  [DllImport("kernel32.dll", CharSet=CharSet.Unicode, SetLastError=true)] static extern uint GetSystemWindowsDirectoryW(StringBuilder directory, uint size);
   [DllImport("kernel32.dll", CharSet=CharSet.Unicode, SetLastError=true)] static extern SafeFileHandle CreateFileW(string file, uint access, uint share, IntPtr security, uint creation, uint flags, IntPtr template);
   [DllImport("kernel32.dll", CharSet=CharSet.Unicode, SetLastError=true)] static extern uint GetFinalPathNameByHandleW(SafeFileHandle handle, StringBuilder path, uint size, uint flags);
 
@@ -109,14 +110,13 @@ public static class ApackPeActivationContext {
     public string hash { get; set; }
   }
   static string DirectoryHash(string file) {
-    string[] entries = Directory.GetFileSystemEntries(NativePath(file));
-    Array.Sort(entries, StringComparer.Ordinal);
+    FileSystemInfo[] entries = new DirectoryInfo(NativePath(file)).GetFileSystemInfos();
+    Array.Sort(entries, (left, right) => StringComparer.Ordinal.Compare(left.Name, right.Name));
     StringBuilder value = new StringBuilder();
-    foreach (string entry in entries) {
-      uint attributes = GetFileAttributesW(entry);
-      if (attributes == uint.MaxValue) throw new Win32Exception(Marshal.GetLastWin32Error());
+    foreach (FileSystemInfo entry in entries) {
+      uint attributes = (uint)entry.Attributes;
       string kind = (attributes & 1024) != 0 ? "link" : (attributes & 16) != 0 ? "directory" : "file";
-      value.Append(kind).Append('\0').Append(Path.GetFileName(entry)).Append('\0');
+      value.Append(kind).Append('\0').Append(entry.Name).Append('\0');
     }
     using (SHA256 hash = SHA256.Create()) return BitConverter.ToString(hash.ComputeHash(Encoding.UTF8.GetBytes(value.ToString()))).Replace("-", "").ToLowerInvariant();
   }
@@ -188,6 +188,38 @@ public static class ApackPeActivationContext {
         return DosPath(final.ToString());
       }
     } finally { FreeLibrary(module); }
+  }
+  static void ReadPolicyDirectory(string directory, Dictionary<string, InputInfo> reads) {
+    reads[directory] = Input(directory, true);
+    foreach (string path in Directory.GetFiles(NativePath(directory))) {
+      string file = DosPath(path), extension = Path.GetExtension(file);
+      if (extension.Equals(".manifest", StringComparison.OrdinalIgnoreCase)
+        || extension.Equals(".policy", StringComparison.OrdinalIgnoreCase)
+        || extension.Equals(".cat", StringComparison.OrdinalIgnoreCase)) reads[file] = Input(file);
+    }
+  }
+  static void ReadPolicyCandidates(Dictionary<string, InputInfo> reads) {
+    StringBuilder windows = new StringBuilder(32768);
+    uint size = GetSystemWindowsDirectoryW(windows, (uint)windows.Capacity);
+    if (size == 0 || size >= windows.Capacity) throw new Win32Exception(size == 0 ? Marshal.GetLastWin32Error() : 122);
+    string store = Path.Combine(windows.ToString(), "WinSxS");
+    // QueryActCtx can omit the policy path for Fusion assemblies. Observe candidates, not just
+    // the selected manifest; Windows still owns binding and catalog verification.
+    foreach (string directory in new string[] { Path.Combine(store, "Manifests"), Path.Combine(store, "Policies"), Path.Combine(store, "Fusion") }) {
+      InputInfo listing = Input(directory, true); reads[directory] = listing;
+      if (listing.kind != "entries") continue;
+      foreach (string path in Directory.GetFileSystemEntries(NativePath(directory))) {
+        string name = Path.GetFileName(path);
+        if (!name.StartsWith("policy.", StringComparison.OrdinalIgnoreCase)
+          && name.IndexOf("_policy.", StringComparison.OrdinalIgnoreCase) < 0) continue;
+        string file = DosPath(path);
+        InputInfo candidate = Input(file); reads[file] = candidate;
+        if (candidate.kind != "directory") continue;
+        ReadPolicyDirectory(file, reads);
+        foreach (string version in Directory.GetDirectories(NativePath(file)))
+          if (Path.GetFileName(version) != ".metadata") ReadPolicyDirectory(DosPath(version), reads);
+      }
+    }
   }
   static void ReadPrivateCandidates(string image, string configuration, XmlDocument manifest, Dictionary<string, InputInfo> reads) {
     string directory = Path.GetDirectoryName(image);
@@ -265,6 +297,7 @@ public static class ApackPeActivationContext {
     IntPtr context = IntPtr.Zero, index = IntPtr.Zero;
     UIntPtr cookie = UIntPtr.Zero; bool active = false;
     try {
+      ReadPolicyCandidates(probes);
       ReadPrivateCandidates(image, configuration, ReadManifest(external ? image + ".manifest" : image, resourceId), probes);
       context = CreateActCtxW(ref spec);
       if (context == new IntPtr(-1)) throw new Win32Exception(Marshal.GetLastWin32Error());

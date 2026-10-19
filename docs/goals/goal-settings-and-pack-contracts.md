@@ -88,15 +88,30 @@ reproducer now invalidates. Batched directory attributes retain the existing fiv
 The durable regression exposes a separate identity-contract boundary: source/copy files and owned
 directories are identical, but Windows runs the original executable with DLL v1 and the fresh copy
 with v2. The current `runtime.hash` combines distribution integrity with effective OS binding state.
-**Stop dependent implementation and test edits pending the user's single design choice:** fresh
-captured compilers follow current OS policy (recommended, with separate byte/selection identities),
-or capture refuses when original cached bindings differ. Keep the failing assertion and exact data;
-do not drop selection facts to make equality pass. See [identity evidence](../evidence/build-input-snapshot-proof.md#publisher-policy-freshness-and-runtime-identity-boundary--2026-10-19).
-The [runtime-identity caller audit](../evidence/build-input-snapshot-proof.md#runtime-identity-caller-audit--2026-10-19) also identifies an unproven reuse boundary: capture does not retain the new selection observations, and its composite hash omits directory-listing hashes. Close direct installation reuse as well as common-record replay; frontend readiness only echoes the generation hash and is not independent DLL-selection evidence.
+The existing accepted [native boundary ADR](../reference/adr/native-compiler-input-boundary.md)
+already requires normal OS resolution for the actual fresh process, distinct from the supervisor's
+loaded libraries. The earlier request for a new user choice was unnecessary; no exclusion or narrowed
+contract is introduced. The implementation candidate separates copied distribution integrity from
+executable-specific selection, records the fresh runtime in the compiler identity and includes OS
+namespace membership in reuse freshness. Original and copied selection baselines remain independent.
+The durable regression retains its stale-record and actual selected-DLL assertions; its copy check
+now compares distribution integrity. See [identity evidence](../evidence/build-input-snapshot-proof.md#publisher-policy-freshness-and-runtime-identity-boundary--2026-10-19).
+The [runtime-identity caller audit](../evidence/build-input-snapshot-proof.md#runtime-identity-caller-audit--2026-10-19)
+identified a reuse gap: capture did not retain selection observations, and its hash omitted directory
+listings. The repair closes direct reuse with OS listing hashes and separate runtime baselines;
+preserve common-record replay too. Frontend readiness echoes the generation hash and is not an
+independent DLL-selection proof.
 The existing Node/Electron native proofs remain separate; this new ordinary-loader case does not
-replace them. Current WIP source is retained in the main checkout and matching VM overlay. All 69
-focused pure PE cases, 11 subprocess checks, CLI types and focused lint pass; the durable case fails
-only at source/copy hash equality. Source `31a8e5a24` remains the last committed source checkpoint.
+replace them. Current WIP source is retained in the main checkout. Earlier evidence accepted 69 pure PE cases,
+11 subprocess checks, CLI types and focused lint, and diagnosed the durable failure at combined-hash
+equality. The new separation now passes 76 pure cases (two declared platform skips), all 11 subprocess checks,
+CLI types and correctness lint. On the exact seven-file Windows overlay, Common Controls passes in
+5.228s and publisher-policy invalidation/copy selection in 9.255s (17.32s total). Evidence is exported
+as `/private/tmp/apack-runtime-selection-evidence-365d3ae15.zip`; all seven file hashes match this
+checkout, no compiler processes remain, and Azure confirms the VM is deallocated. The first Common Controls query timed out at the unchanged
+five-second helper limit; isolated timings and the subsequent focused pass are preserved without
+claiming that startup variability is fixed. No deadline/assertion or native support boundary changed.
+This is focused source acceptance, not converged B6 or final strict acceptance.
 
 The bound-only Windows import support decision is also pending; no exclusion has been applied.
 Remaining native requirements, B6 and every Phase 7 obligation remain required. The strict gate above

@@ -1,8 +1,11 @@
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { expect, it, vi } from 'vitest';
+import { afterEach, expect, it, vi } from 'vitest';
+import * as runtimeInputs from '../../src/build/compiler-runtime.ts';
 import { captureCompilerInstallation } from '../../src/build/compiler-installation.ts';
+
+afterEach(() => vi.restoreAllMocks());
 
 const runtime = vi.hoisted(() => ({ executable: '' }));
 vi.mock('../../src/build/compiler-runtime.ts', async importOriginal => {
@@ -39,6 +42,43 @@ it.skipIf(process.platform !== 'darwin')('preserves signed framework link text a
     expect(installation.isCurrent(compiler)).toBe(false);
   } finally {
     await installation?.dispose();
+    fs.rmSync(root, { recursive: true, force: true });
+  }
+});
+
+// Selection is executable-specific; these inert files never launch a captured runtime.
+it('owns the fresh runtime selection and invalidates either runtime baseline independently', async () => {
+  const root = fs.realpathSync.native(fs.mkdtempSync(path.join(os.tmpdir(), 'apack-runtime-selection-')));
+  const installations: Awaited<ReturnType<typeof captureCompilerInstallation>>[] = [];
+  try {
+    const compiler = path.join(root, 'compiler');
+    fs.mkdirSync(path.join(compiler, 'bin'), { recursive: true });
+    fs.writeFileSync(path.join(compiler, 'package.json'), '{"name":"compiler","version":"1.0.0"}');
+    fs.writeFileSync(path.join(compiler, 'bin/apack.mjs'), '');
+    runtime.executable = path.join(root, 'Runtime.app/Contents/MacOS/runtime');
+    fs.mkdirSync(path.dirname(runtime.executable), { recursive: true });
+    fs.writeFileSync(runtime.executable, 'INERT', { mode: 0o755 });
+    const read = runtimeInputs.readCompilerRuntimeInputs;
+    let sourceSelection = 'original', copiedSelection = 'fresh';
+    vi.spyOn(runtimeInputs, 'readCompilerRuntimeInputs').mockImplementation((...args) => {
+      const inputs = read(...args);
+      return { ...inputs, hash: inputs.hash + ':' + (inputs.executable === runtime.executable ? sourceSelection : copiedSelection) };
+    });
+    const captured = await captureCompilerInstallation(compiler);
+    installations.push(captured);
+    expect(captured.isCurrent(compiler)).toBe(true);
+    copiedSelection = 'new-policy';
+    expect(captured.isCurrent(compiler)).toBe(false);
+    const replacement = await captureCompilerInstallation(compiler);
+    installations.push(replacement);
+    expect(replacement.hash).not.toBe(captured.hash);
+    expect(replacement.isCurrent(compiler)).toBe(true);
+    copiedSelection = 'fresh';
+    expect(captured.isCurrent(compiler)).toBe(true);
+    sourceSelection = 'changed-original';
+    expect(captured.isCurrent(compiler)).toBe(false);
+  } finally {
+    await Promise.all(installations.map(installation => installation.dispose()));
     fs.rmSync(root, { recursive: true, force: true });
   }
 });

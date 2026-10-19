@@ -77,7 +77,7 @@ it('refreshes tooling when a runtime policy changes outside its copied files', (
   fs.writeFileSync(policy, 'first');
   vi.mocked(runtime.readCompilerRuntimeInputs).mockImplementation((_executable, _electron, _onFile, observe) => {
     observe?.(policy, 'file');
-    return { executable, directory: root, directories: [], links: [], hash: fs.readFileSync(policy, 'utf8') };
+    return { executable, directory: root, directories: [], links: [], contentsHash: 'inert', hash: fs.readFileSync(policy, 'utf8') };
   });
   const tools = createCompilerWatchTools(pack);
   const before = compilerWatchPaths(pack, tools);

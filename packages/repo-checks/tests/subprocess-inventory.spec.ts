@@ -50,8 +50,10 @@ const loadedByThePool = (): string[] => reachableFrom(
 const INVENTORY: Record<string, { calls: number; why: string }> = {
   'packages/apack-cli/tests/build/fe-bundler-dev-server.integration.spec.ts': { calls: 1,
     why: 'Separate Vite processes scan a live pack while its output is published. The Windows directory-sharing failure does not reproduce in a same-process server; each child owns a private cache and closes with the test' },
-  'packages/apack-cli/tests/build/compiler-pe-libraries.integration.spec.ts': { calls: 15,
-    why: 'MSVC builds private NAPI/DLL, manifest-editing and ordinary loader fixtures. Real Node and compiler-startup processes prove selected paths, copied-runtime SxS selection and refusal before initialization; a private Common Controls executable additionally proves actual OS assembly selection and manifest freshness. These loader boundaries cannot be proved in-process' },
+  'packages/apack-cli/tests/build/compiler-pe-libraries.integration.spec.ts': { calls: 17,
+    why: 'MSVC and ordinary loader fixtures prove actual DLL selection, copied-runtime SxS, pre-initialization refusal, OS assemblies and publisher-policy invalidation. Real Node/compiler processes retain their separate runtime proofs; these loader boundaries cannot be proved in-process' },
+  'packages/apack-cli/tests/_support/windows-publisher-policy.ts': { calls: 3,
+    why: 'The Windows SDK builds signed fixture assemblies with a process-owned test key. A compiled COM cache utility installs and removes only their unique identities; real OS publication and cleanup cannot be replaced by mocks' },
   'packages/apack-cli/tests/build/compiler-elf-libraries.integration.spec.ts': { calls: 3,
     why: 'the Linux proofs compile private NAPI/shared-library fixtures; ordinary Node controls establish actual addon and pre-JavaScript runtime library selection before captured ownership and pre-initialization refusal' },
   'packages/apack-cli/tests/build/compiler-native-libraries.integration.spec.ts': { calls: 11,

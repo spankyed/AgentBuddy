@@ -12,11 +12,12 @@ import { readPackBuildInputs, assertPackBuildInputsCurrent } from '@apackdev/hos
 import { startPackBuildWatcher } from '../../src/build/watch.ts';
 import { createCompilerWatchMatcher, type CompilerWatchPaths } from '../../src/build/compiler-watch.ts';
 import { createPackBuilder } from '../../src/build/build-process.ts';
-import { createCompilerFileView, relativeCompilerPath } from '@apackdev/host/build/compiler-inputs';
+import { assertNativeCompilerObservations, createCompilerFileView, relativeCompilerPath } from '@apackdev/host/build/compiler-inputs';
 import { formatNodeOptions, parseNodeOptions } from '@apackdev/host/build/source-resolution';
 import { captureCompilerInstallation, compilerPackageDirectory, type CompilerInstallation } from '../../src/build/compiler-installation.ts';
 import { startPackFrontend, type PackFrontend } from '../../src/build/frontend-process.ts';
 import { nativeAddonSource } from '../_support/native-addon.ts';
+import { createWindowsPublisherPolicyFixture } from '../_support/windows-publisher-policy.ts';
 import { parsePeLibraryMetadata } from '../../src/build/compiler-pe-libraries.ts';
 import { assertCapturedPeLibraries } from '../../src/build/compiler-pe-admission.ts';
 import { BUILD_INPUTS_DIRECTORY_ENV } from '../../src/build/compiler-read-tree.ts';
@@ -201,7 +202,7 @@ function copyPeRuntimeFixture(executable: string, destination: string, electron 
     fs.mkdirSync(path.join(destination, relative), { recursive: true });
   }
   const copied = path.join(destination, path.relative(inputs.directory, executable));
-  expect(readCompilerRuntimeInputs(copied, electron).hash).toBe(inputs.hash);
+  expect(readCompilerRuntimeInputs(copied, electron).contentsHash).toBe(inputs.contentsHash);
   return copied;
 }
 
@@ -258,6 +259,69 @@ int wmain(void) {
     if (completed) fs.rmSync(root, { recursive: true, force: true });
     else console.error(`Retained system assembly control: ${root}`);
   }
+});
+
+it.runIf(process.platform === 'win32')('invalidates recorded inputs when Windows installs a publisher policy', () => {
+  const root = fs.realpathSync.native(fs.mkdtempSync(path.join(os.tmpdir(), 'apack-publisher-policy-')));
+  let fixture: ReturnType<typeof createWindowsPublisherPolicyFixture> | undefined;
+  let view: ReturnType<typeof createCompilerFileView> | undefined;
+  let completed = false;
+  onTestFinished(() => {
+    try {
+      try { view?.dispose(); } finally { fixture?.dispose(); }
+    } catch (error) {
+      console.error(`Retained publisher-policy fixture: ${root}`);
+      throw error;
+    }
+    if (completed) fs.rmSync(root, { recursive: true, force: true });
+    else console.error(`Retained publisher-policy fixture: ${root}`);
+  });
+  fixture = createWindowsPublisherPolicyFixture(root);
+  fixture.install('v1'); fixture.install('v2');
+  const source = path.join(root, 'probe.c');
+  fs.writeFileSync(source, `#include <windows.h>
+#include <stdio.h>
+int wmain(void) {
+  HMODULE module = LoadLibraryW(L"apack_policy_value.dll");
+  if (!module) return 2;
+  int (*value)(void) = (int (*)(void))GetProcAddress(module, "native_value");
+  WCHAR file[32768];
+  DWORD length = GetModuleFileNameW(module, file, 32768);
+  if (!value || !length || length >= 32768) return 3;
+  printf("%d\\n", value()); wprintf(L"%ls\\n", file);
+  FreeLibrary(module); return 0;
+}`);
+  const runtime = path.join(root, 'runtime'); fs.mkdirSync(runtime);
+  const executable = path.join(runtime, 'app.exe');
+  execFileSync('cl.exe', ['/nologo', '/MT', source, '/Fo' + path.join(root, 'probe.obj'),
+    '/link', '/MANIFEST:NO', '/OUT:' + executable], { cwd: root, timeout: 15_000 });
+  fs.writeFileSync(executable + '.manifest', `<?xml version="1.0"?><assembly xmlns="urn:schemas-microsoft-com:asm.v1" manifestVersion="1.0"><assemblyIdentity type="win32" name="apack.fixture.probe" version="1.0.0.0" processorArchitecture="amd64"/><dependency><dependentAssembly><assemblyIdentity type="win32" name="${fixture.name}" version="1.0.0.0" processorArchitecture="amd64" publicKeyToken="${fixture.token}"/></dependentAssembly></dependency></assembly>`);
+  const actual = (program: string) => {
+    const [value, file] = execFileSync(program, [], { encoding: 'utf8', timeout: 5_000 }).trim().split(/\r?\n/);
+    return { value: Number(value), file: fs.realpathSync.native(file!).toLowerCase() };
+  };
+  const before = actual(executable);
+  expect(before.value).toBe(11);
+  view = createCompilerFileView(runtime, { authoredFiles: ['app.exe', 'app.exe.manifest'] });
+  const beforeHash = readCompilerRuntimeInputs(executable, false, undefined, (file, kind) => {
+    view!.captureDataLocation(file, kind);
+    if (kind === 'entries') view!.captureLocation(file, kind);
+    else if (kind === 'file') view!.readDataBytes(file);
+  }).hash;
+  const observations = view.observations();
+  expect(() => assertNativeCompilerObservations(observations)).not.toThrow();
+  fixture.install('policy');
+  expect(() => assertNativeCompilerObservations(observations)).toThrow('Compiler startup input changed');
+  const copied = copyPeRuntimeFixture(executable, path.join(root, 'copied'));
+  const after = actual(copied);
+  expect(after.value).toBe(22);
+  expect(after.file).not.toBe(before.file);
+  expect(readCompilerRuntimeInputs(copied).hash).not.toBe(beforeHash);
+  const context = readPeActivationContext(copied, { systemDirectory: peEnvironment.readPeSystemDirectory(), application: copied, resource: 1 });
+  const selected = context.redirections.find(binding => binding.name.toLowerCase() === 'apack_policy_value.dll')?.file;
+  expect(selected).toBeTruthy();
+  expect(fs.realpathSync.native(selected!).toLowerCase()).toBe(after.file);
+  completed = true;
 });
 
 it.runIf(process.platform === 'win32')('refuses Node .local overrides through the captured compiler runtime before initialization', async ({ onTestFinished }) => {

@@ -159,7 +159,11 @@ export async function captureCompilerInstallation(directory = compilerPackageDir
     if (verified.hash !== inputs.hash || verified.nodes.some(node => !node.directory.startsWith(`${temporary}${path.sep}`))) {
       throw new Error('Captured compiler installation differs from its inputs');
     }
-    const hash = createHash('sha256').update(JSON.stringify([inputs.hash, executableId, runtime.hash])).digest('hex');
+    const capturedExecutable = capturedPath(runtime.executable);
+    const capturedRuntime = readCompilerRuntimeInputs(capturedExecutable);
+    if (capturedRuntime.contentsHash !== runtime.contentsHash) throw new Error('Captured compiler runtime differs from its input');
+    if (readCompilerRuntimeInputs(process.execPath).hash !== runtime.hash) throw new Error('Compiler runtime changed during capture');
+    const hash = createHash('sha256').update(JSON.stringify([inputs.hash, executableId, capturedRuntime.hash])).digest('hex');
     const inputsFile = path.join(temporary, 'compiler-inputs.json');
     fs.writeFileSync(inputsFile, JSON.stringify({ hash,
       packages: inputs.nodes.map(node => capturedPath(node.directory)),
@@ -176,7 +180,7 @@ export async function captureCompilerInstallation(directory = compilerPackageDir
     if (!executableCurrent()) throw new Error('Captured esbuild executable differs from its input');
     const capturedRuntimeCurrent = () => !!fs.lstatSync(capturedPath(runtime.executable), { throwIfNoEntry: false })?.isFile()
       && fs.realpathSync.native(capturedPath(runtime.executable)) === capturedPath(runtime.executable)
-      && readCompilerRuntimeInputs(capturedPath(runtime.executable)).hash === runtime.hash;
+      && readCompilerRuntimeInputs(capturedExecutable).hash === capturedRuntime.hash;
     if (!capturedRuntimeCurrent()) throw new Error('Captured compiler runtime differs from its input');
     return { bin: path.join(root, 'bin/apack.mjs'), executable: capturedPath(runtime.executable), runtimeDirectory: capturedPath(runtime.directory), hash, inputsFile, environment, dispose,
       isCurrent(source, options = {}) {

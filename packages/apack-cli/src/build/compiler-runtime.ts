@@ -16,6 +16,9 @@ export { fs as compilerRuntimeFileSystem };
 interface CompilerRuntimeInputs {
   executable: string;
   directory: string;
+  /** Copied files and topology, independent of live OS bindings. */
+  contentsHash: string;
+  /** Distribution plus this executable's effective selection and OS policy inputs. */
   hash: string;
   directories: string[];
   links: Array<{ source: string; target: string; text: string }>;
@@ -107,9 +110,9 @@ export function readCompilerRuntimeInputs(
       for (const binding of context.redirections) if (binding.file) own(binding.file);
       const identity = (file: string) => system(file) ? ['system', pePath(file).toLowerCase()] : ['runtime', relative(file)];
       const ordered = (rows: unknown[]) => rows.sort((a, b) => JSON.stringify(a).localeCompare(JSON.stringify(b), 'en'));
-      // Full listings guard inspection; named candidates and owned directories define copy identity.
-      // A selective Node runtime does not copy unrelated source-directory files.
-      activation = [ordered(context.inputs.map(input => [identity(input.file), input.kind, input.kind === 'entries' ? null : input.hash])),
+      // OS namespace membership invalidates selection even when Windows retains an older binding.
+      // Private listings guard inspection; selective copies omit unrelated installation files.
+      activation = [ordered(context.inputs.map(input => [identity(input.file), input.kind, input.kind === 'entries' && !system(input.file) ? null : input.hash])),
         ordered(context.redirections.map(binding => [binding.name.toLowerCase(), binding.file ? identity(binding.file) : null])),
         [safeSearch, devOverride, knownDlls.map(name => name.toLowerCase()).sort()]];
     }
@@ -120,7 +123,8 @@ export function readCompilerRuntimeInputs(
   const identity: unknown[] = [relative(executable), files.sort(([a], [b]) => a < b ? -1 : a > b ? 1 : 0),
     [...directories].map(relative).sort(), links.map(({ source, target, text }) => [relative(source), relative(target),
       process.platform === 'win32' || path.isAbsolute(text) ? null : text]).sort()];
+  const contentsHash = createHash('sha256').update(JSON.stringify(identity)).digest('hex');
   if (activation !== undefined) identity.push(activation);
   return { executable, directory: electron && process.platform === 'darwin' ? path.dirname(root) : root,
-    directories: [...directories], links, hash: createHash('sha256').update(JSON.stringify(identity)).digest('hex') };
+    directories: [...directories], links, contentsHash, hash: createHash('sha256').update(JSON.stringify(identity)).digest('hex') };
 }

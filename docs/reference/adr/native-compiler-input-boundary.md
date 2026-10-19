@@ -96,6 +96,14 @@ to main-image selection. Its minimal hosted refusal/contained-loading control pa
 supervisor's already loaded libraries; that optimization applies only to admission within an existing
 process. Reuse the same metadata/admission implementation, with no second runtime or copy owner.
 
+Copied distribution integrity and effective runtime selection are distinct. Verify captured files,
+modes, directories and links against the source distribution. A fresh executable follows normal OS
+policy, even when Windows retains an older binding for the original path. Its compiler identity must
+include its own effective bindings; source and captured runtime freshness retain separate baselines.
+Observe relevant OS policy/catalog files and directory membership so new candidates invalidate reuse
+even when a cached binding stays unchanged. Do not copy the OS store or erase selection metadata to
+make source/copy hashes equal. See the [policy proof and caller audit](../../evidence/build-input-snapshot-proof.md#publisher-policy-freshness-and-runtime-identity-boundary--2026-10-19).
+
 Static inspection alone cannot establish complete capture: dynamic library loading and native file
 reads may bypass JavaScript observation. Neither an input declaration nor a scanner establishes
 that execution used captured bytes. Do not claim complete capture from those mechanisms alone.

@@ -6207,6 +6207,7 @@ Metadata classification for the pending design:
 - Effective binding state: selected assembly manifests/DLL paths for a particular executable context.
   The new copy can demonstrably differ from the original despite equal distribution bytes.
 
+**Historical decision request, superseded by the contract reconciliation below.**
 The user has been asked one choice: a fresh captured compiler follows current OS policy, tracking byte
 integrity and its own effective selection separately (recommended), or capture refuses to diverge from
 the original cached bindings. **No choice is assumed.** Do not change tests, drop selection fields or
@@ -6259,3 +6260,62 @@ owned distribution projection for copy integrity, then retain the fresh executab
 observation baseline for execution/reuse. For exact-original-binding capture, preserve the refusal and
 make that supported boundary explicit. Neither path may fix equality by dropping DLL-selection facts,
 replace OS binding with a guessed resolver, or claim source/copy binding equivalence from equal bytes.
+
+
+### Fresh-process contract reconciliation and candidate repair — 2026-10-19
+
+The caller audit resolves the apparent design ambiguity against the existing accepted contract,
+without assuming an answer to the earlier question. The native boundary ADR already requires normal
+OS-library resolution and explicitly separates a fresh runtime launch from the supervisor's loaded
+libraries. `assertCompilerRuntimeLibraries` admits the actual captured executable with an empty
+loaded-module set. The accepted Common Controls test also explicitly runs a fresh captured path
+because Windows can retain the original path's context. Requiring identical original cached bindings
+would impose a new refusal on supported normal OS resolution; no existing requirement asks for it.
+The earlier request for user approval was unnecessary. This is not approval of the separate bound-only
+import exclusion, which remains unresolved.
+
+The candidate adds one distribution projection, `contentsHash`, alongside the existing combined
+`hash`. Copy integrity compares distribution bytes/topology. The installation fingerprint includes
+the **captured executable's** combined hash; original and captured runtimes retain their own selection
+baselines for reuse checks. A final original-runtime comparison refuses changed inputs during capture.
+System directory-entry hashes now remain in the combined identity, closing the direct-reuse gap when
+new policy candidates appear without changing a cached binding. Private full-listing hashes remain
+inspection observations: copying unrelated files from a selective Node installation is still unnecessary.
+DLL-selection facts, private configuration/ownership, runtime admission and passive observation replay
+remain intact; no parallel cache, runtime loader or lifetime owner is introduced.
+
+The durable policy case still checks stale-record refusal, actual value 22, changed DLL path and helper
+agreement with the DLL Windows loaded. Its common copy helper now compares the distribution projection
+rather than asserting identical effective selection for different physical executable contexts. An inert
+installation case proves distinct original/copy selections are accepted, either baseline can invalidate
+reuse, and a changed captured selection changes the next compiler identity. A pure PE case proves OS
+policy-directory membership invalidates identity with unchanged copied bytes and bindings.
+
+Focused local validation passes: **76 tests**, two declared platform skips, all **11** subprocess
+inventory checks, CLI TypeScript and correctness lint (zero warnings/errors). These checks launch no
+captured executable on the daily-use Mac. Real policy/copy acceptance uses the approved Windows VM with two cores against base `3827993ba`
+plus the exact owned overlay; its terminal outcome is recorded below. Old VM edits and fixtures are preserved in the new run's
+`before.patch` / `before-fixtures.tar.gz`, and no stashes or research worktree are modified.
+
+
+The first two-case run stops at the Common Controls activation query's unchanged **five-second**
+limit, before the policy case starts. Preserve that failure rather than relabeling the run as accepted.
+A private diagnostic against its retained image takes 4.738s overall, then a phase-attributed control
+measures helper compilation at 194ms, policy inventory 146ms, complete context work 236ms and total
+710ms. Those measurements are consistent with startup variability but do not isolate the initial
+cause or prove the five-second budget universally sufficient. No timeout is changed.
+
+The following focused run executes exactly **two cases**, both pass: Common Controls **5.228s** and
+publisher-policy freshness/copy **9.255s**, **17.32s** for the process including collection. The policy
+case proves that the existing record becomes stale, copied distribution integrity is retained, the
+fresh copy actually returns 22 from a different DLL, and the helper identifies that exact DLL. The
+fixture's final owner queries all attempted assemblies after removal; a failed cleanup fails the test.
+Existing real Node/Electron admission and pre-initialization refusal proofs remain separately required.
+
+Evidence archive `/private/tmp/apack-runtime-selection-evidence-365d3ae15.zip` is **73,102 bytes** and
+passes ZIP integrity verification. Every one of its seven source hashes matches the current checkout.
+It retains the original failure, successful report, exact overlay, commands, prior overlay/fixtures and
+cleanup receipt: **zero compiler processes**, Node **23.11.1**, Windows **10.0.26100**. Diagnostic timing
+logs are `/private/tmp/apack-runtime-selection-profile{,-stages}.log`; local pure/type/lint/inventory
+logs use `/private/tmp/apack-runtime-selection-*`. Azure confirms the VM is **deallocated** after evidence export. The broader Windows/native
+requirements, independent bound-only disposition, B6 and final strict/app gates remain open.

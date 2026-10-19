@@ -48,7 +48,9 @@ it('observes policy files and repair candidates without copying OS selectors', (
   expect(copied.mock.calls.map(([file]) => file.source)).toEqual([executable]);
   expect(before.directories).toEqual(['C:\\compiler']);
   vi.mocked(readPeActivationContext).mockReturnValue(context('c'.repeat(64)));
-  expect(readCompilerRuntimeInputs(executable, false).hash).not.toBe(before.hash);
+  const changed = readCompilerRuntimeInputs(executable, false);
+  expect(changed.hash).not.toBe(before.hash);
+  expect(changed.contentsHash).toBe(before.contentsHash);
 });
 
 it('retains selector observations when Windows refuses a context', () => {
@@ -61,4 +63,14 @@ it('retains selector observations when Windows refuses a context', () => {
   expect(() => readCompilerRuntimeInputs(executable, false, undefined, observe)).toThrow('OS context refusal');
   expect(observe).toHaveBeenCalledWith(missing, 'file');
   expect(observe).toHaveBeenCalledWith(directory, 'entries');
+});
+
+it('invalidates OS policy membership without changing copied bytes or selected bindings', () => {
+  const before = readCompilerRuntimeInputs(executable, false);
+  const changed = context();
+  vi.mocked(readPeActivationContext).mockReturnValue({ ...changed, inputs: changed.inputs.map(input =>
+    input.file === directory ? { ...input, hash: 'd'.repeat(64) } : input) });
+  const after = readCompilerRuntimeInputs(executable, false);
+  expect(after.hash).not.toBe(before.hash);
+  expect(after.contentsHash).toBe(before.contentsHash);
 });
