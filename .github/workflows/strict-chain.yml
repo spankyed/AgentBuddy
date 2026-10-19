@@ -1,4 +1,4 @@
-name: Strict chain
+name: Scaffold phase diagnostic
 
 on:
   workflow_dispatch:
@@ -8,14 +8,13 @@ permissions:
   contents: read
 
 concurrency:
-  group: strict-chain-${{ github.ref }}
+  group: scaffold-phase-diagnostic-${{ github.ref }}
   cancel-in-progress: false
 
 jobs:
   check:
     runs-on: macos-26
-    # Complete acceptance owns up to 120m; preparation and app gates retain their own bounds.
-    timeout-minutes: 180
+    timeout-minutes: 50
     env:
       APACK_CHAIN_CORES: 2
     defaults:
@@ -27,23 +26,43 @@ jobs:
         with:
           node-version: 23.11.1
           cache: npm
-      - name: Record source and platform
+      - name: Record source and runner
         run: |
           git rev-parse HEAD
-          sw_vers
-          node -p 'JSON.stringify({platform:process.platform,arch:process.arch,versions:process.versions})'
+          node -p 'JSON.stringify({platform:process.platform,arch:process.arch,cores:require("node:os").availableParallelism(),versions:process.versions})'
       - name: Install dependencies
+        timeout-minutes: 15
         env:
           GITHUB_TOKEN: ${{ github.token }}
         run: npm ci
-      - name: Full strict acceptance
-        run: npm run chain -- --strict --all --cores 2 --no-classify | tee "$RUNNER_TEMP/strict-chain.log"
-      - name: Retain validation evidence
+      - name: Prepare published packages
+        timeout-minutes: 10
+        run: npm run packages:ensure
+      - name: Typecheck repaired CLI
+        id: types
+        timeout-minutes: 5
+        run: npx tsc -p packages/apack-cli --noEmit
+      - name: Diagnose both scaffold files (29 cases)
+        if: ${{ !cancelled() && steps.types.outcome == 'success' }}
+        run: |
+          node --import tsx --input-type=module <<'JS' 2>&1 | tee "$RUNNER_TEMP/scaffold-phase.log"
+          import fs from 'node:fs';
+          import assert from 'node:assert/strict';
+          import { boundedSpawn } from './scripts/lib/bounded-spawn.ts';
+          const prefix=process.env.RUNNER_TEMP+'/scaffold-phase';
+          const args=["node_modules/vitest/vitest.mjs", "run", "--config", "vitest.integration.config.ts", "packages/apack-cli/tests/commands/scaffold.integration.spec.ts", "packages/apack-cli/tests/commands/add-extensions.integration.spec.ts", "--bail=0", "--poolOptions.threads.maxThreads=2", "--poolOptions.threads.minThreads=1", "--poolOptions.forks.maxForks=2", "--poolOptions.forks.minForks=1", "--reporter=verbose", "--reporter=json"];
+          args.push('--outputFile='+prefix+'.json');
+          const result=await boundedSpawn('node',args,1800000,{stream:true});
+          const report=fs.existsSync(prefix+'.json')?JSON.parse(fs.readFileSync(prefix+'.json','utf8')):undefined;
+          const status={code:result.code,ms:result.ms,timedOut:result.timedOut,passed:report?.numPassedTests,failed:report?.numFailedTests,pending:report?.numPendingTests,errors:report?.numRuntimeErrorTestSuites};
+          fs.writeFileSync(prefix+'-status.json',JSON.stringify(status,null,2));
+          console.log(JSON.stringify(status));
+          assert.equal((status.passed??0)+(status.failed??0),29,'Every selected case must execute');
+          process.exitCode=result.code;
+          JS
+      - name: Preserve scaffold phase evidence
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: strict-chain-${{ github.sha }}
-          include-hidden-files: true
-          path: |
-            ${{ runner.temp }}/strict-chain.log
-            node_modules/.cache/apack-chain/runs/
+          name: scaffold-phase-${{ github.sha }}
+          path: ${{ runner.temp }}/scaffold-phase*

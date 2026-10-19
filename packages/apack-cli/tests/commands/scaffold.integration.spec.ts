@@ -10,7 +10,7 @@ import * as path from 'node:path';
 import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest';
 import { extractPackArchive, verifyPack, PACK_LAYOUT } from '@apackdev/host/packs';
 import { parse as parseYaml } from 'yaml';
-import { callCli, typecheckPack } from '../_support/pack-builds';
+import { callCli as originalCallCli, typecheckPack as originalTypecheckPack } from '../_support/pack-builds';
 
 import { COMMANDS, type Command } from '../../src/command-tree.ts';
 
@@ -29,13 +29,31 @@ let initOutput: string;
 // Synchronous toolchain cases must let Vitest receive task-update replies between tests.
 afterEach(() => new Promise<void>(resolve => { setImmediate(resolve); }));
 
+function phase(label: string): () => void {
+  const started = performance.now();
+  const memory = () => Object.fromEntries(Object.entries(process.memoryUsage()).map(([key, value]) => [key, Math.round(value / 1024 / 1024)]));
+  console.info('[scaffold phase]', label, 'start', memory());
+  return () => console.info('[scaffold phase]', label, 'done', Math.round(performance.now() - started), 'ms', memory());
+}
+
+async function callCli(...args: Parameters<typeof originalCallCli>) {
+  const finished = phase(`CLI ${args[1]} ${(args[2] ?? []).join(' ')}`);
+  try { return await originalCallCli(...args); } finally { finished(); }
+}
+
+async function typecheckPack(...args: Parameters<typeof originalTypecheckPack>) {
+  const finished = phase('TypeScript');
+  try { return await originalTypecheckPack(...args); } finally { finished(); }
+}
+
 function run(cmd: string, args: string[], cwd: string): { code: number; output: string } {
+  const finished = phase(`process ${path.basename(cmd)} ${args.join(" ")}`);
   try {
     const output = execFileSync(cmd, args, { cwd, stdio: ['ignore', 'pipe', 'pipe'], env: { ...process.env, FORCE_COLOR: '0' } }).toString();
     return { code: 0, output };
   } catch (err: any) {
     return { code: err.status ?? 1, output: `${err.stdout ?? ''}${err.stderr ?? ''}` };
-  }
+  } finally { finished(); }
 }
 
 beforeAll(async () => {
