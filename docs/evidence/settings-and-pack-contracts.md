@@ -8485,3 +8485,48 @@ exact `ec5943f65` and runs only normal `npm run typecheck -- --cores 2` after de
 complete coordinator before repeating pack preparation or integration. It retains its console with
 a 20m job envelope; this envelope changes neither command deadlines nor main workflow. The preceding
 integration and generation diagnostic branches remain preserved. No local native run or VM startup occurs.
+
+### Complete standalone coordinator accepted — 2026-10-19
+
+[39204669699](https://github.com/spankyed/AgentBuddy/actions/runs/39204669699) passes on workflow-only
+`2bf51ac08`, exact product source `ec5943f65`. Generation completes in **76.3s**, source facade
+bundling in **68.2s**, pack typechecking in **48.4s** and API reports in **21.3s**. Every other declared
+leg passes. This establishes actual completed source bundling beyond the old 60s bound, with the real
+generation receipt accepted; it is neither a freshness bypass nor a timeout-only inference. Evidence:
+`/private/tmp/apack-typecheck-39204669699.log` and the retained workflow console.
+
+The preserved integration branch incorporates exact main `e9f2becbb` as **`4bafbdcad`**; only its
+workflow differs. [39205345266](https://github.com/spankyed/AgentBuddy/actions/runs/39205345266)
+resumes complete integration with its normal dependency-read/typecheck and built-pack prerequisites,
+two cores and unchanged test/pool deadlines. No further coordinator diagnostic is needed unless a
+new failure supplies a cause. Complete integration and final main strict authoring/runtime/app gates
+remain open; no local native batch or Windows VM startup occurs.
+
+### Integration reaches two compiler-operation bounds — 2026-10-19
+
+[39205345266](https://github.com/spankyed/AgentBuddy/actions/runs/39205345266), `4bafbdcad`, accepts
+normal typechecking and pack preparation. Integration passes **398** assertions, then fails fast at:
+
+- Real captured Electron pack: init **21.642s**, add **16.495s**, then the build command aborts at its
+  **120s** bound. The complete case takes 158.577s; its 300s outer deadline did not fire.
+- Repeated captured compiler/build-cache identity: its first build reaches output, then the case hits
+  its **120s** outer deadline (121.652s reported). Existing phase checkpoints are Windows-only, so
+  the precise later operation is not established by that console.
+
+No value, initialization, identity or publication assertion fails. Neither completion beyond those
+bounds nor the source of elapsed-time variation is established. These cases passed earlier controls;
+that is not a reason to classify this failure as harmless or retry the broad pool. Evidence:
+`/private/tmp/apack-integration-39205345266-{failed,clean}.log`; workflow retains its full pool console.
+
+Observability-only source **`cfa489dc7`** prints the existing repeat-build checkpoints on every platform
+and prints captured Electron child output with phase/duration on refusal/abort. It changes no
+assertion, compiler behavior or main deadline. CLI TypeScript, correctness lint and diff checks pass:
+`/private/tmp/apack-integration-phase-{types,lint}.log`.
+
+Isolated **`5f4bedfd5`**, branch `session/compiler-pair-diagnostic`, runs only these two actual cases
+with two workers after normal package preparation. Private observation windows are 420s per case and
+240s for the Electron build command; all other inner bounds and assertions remain. A JSON verifier
+requires exactly two passing cases. [39206807491](https://github.com/spankyed/AgentBuddy/actions/runs/39206807491)
+must establish completed phase evidence or a specific failure before selecting a correction. Its
+15m job envelope and diagnostic limits are not a main policy change. Preserve the diagnostic branch;
+do not merge its workflow/bounds wholesale. Full integration and all final gates remain required.

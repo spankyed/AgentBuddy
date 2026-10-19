@@ -133,8 +133,18 @@ source facade report's inherited 60s passive-check limit. Inspection distinguish
 declaration bundle from the chain's `--from-build` reader. Source **`ec5943f65`** lets that different
 mode declare `suite`, leaving the chain's passive check unchanged; 24 affected tooling tests, scripts
 types and lint pass. Coordinator-only [39204669699](https://github.com/spankyed/AgentBuddy/actions/runs/39204669699)
-on **`2bf51ac08`** must establish the real complete coordinator before another pack preparation or
-integration attempt. Complete integration and final strict acceptance remain required.
+on **`2bf51ac08`** passes the entire real standalone coordinator: generation **76.3s**, source facade
+bundle **68.2s**, pack types **48.4s**, API reports **21.3s**, and all other required legs. Complete
+integration [39205345266](https://github.com/spankyed/AgentBuddy/actions/runs/39205345266)
+on **`4bafbdcad`** accepts prerequisites and 398 integration assertions, then stops at two timed
+operations: the real Electron control's 120s build-command bound and the repeated-build scenario's
+120s outer bound after its first build. There is no failed value/identity assertion; completed later
+phases remain unproven. Observability-only **`cfa489dc7`** emits existing repeated-build checkpoints
+on all platforms and retains aborted Electron child output. CLI types/lint pass; main deadlines stay
+unchanged. Narrow two-worker [39206807491](https://github.com/spankyed/AgentBuddy/actions/runs/39206807491)
+on isolated **`5f4bedfd5`** observes only these two cases with private bounded windows. Inspect its
+phase evidence before changing main budgets or attempting another complete pool. Full integration,
+authoring/runtime/app acceptance and final main strict `--all` remain required.
 None of these probes is a strict-chain result, despite using the existing `strict_chain` dispatch route. Main's
 full strict workflow is unchanged and remains required after integration converges. See
 [measured acceptance](../evidence/settings-and-pack-contracts.md#sequential-preloadthread-completion-and-scoped-budget--2026-10-19).

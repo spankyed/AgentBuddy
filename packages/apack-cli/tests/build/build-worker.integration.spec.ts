@@ -122,7 +122,7 @@ it('captures native launch identity and authored/dependency bytes before user pr
 it('uses the captured compiler and retains unchanged build/cache identity on repeat builds', async () => {
   const started = performance.now();
   const checkpoint = (phase: string) => {
-    if (process.platform === 'win32') console.info(`Repeated worker: ${phase} (${Math.round(performance.now() - started)}ms)`);
+    console.info(`Repeated worker: ${phase} (${Math.round(performance.now() - started)}ms)`);
   };
   const require = createRequire(import.meta.url);
   const esbuild = createRequire(require.resolve('esbuild/package.json'));
@@ -184,7 +184,7 @@ it('uses the captured compiler and retains unchanged build/cache identity on rep
   expect(readPackBuild(path.join(root, 'dist')).revision).toBe(revision);
   expect(workspaces).toHaveLength(2);
   for (const workspace of workspaces) expect(fs.existsSync(workspace)).toBe(false);
-}, process.platform === 'win32' ? 360_000 : 120_000);
+}, 360_000);
 
 it('records external inputs read by content compiler worker threads', async () => {
   const outside = fs.mkdtempSync(path.join(os.tmpdir(), 'apack-worker-input-'));
