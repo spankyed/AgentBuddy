@@ -328,6 +328,70 @@ failure. Its 190-minute envelope accommodates the 120-minute pool allowance and 
 preparation. It remains undispatched until affected acceptance is inspected and converges; afterward,
 the unchanged main strict command remains required. No subset verdict substitutes for either gate.
 
+
+### Affected acceptance result — 2026-10-19
+
+Run [39227491937](https://github.com/spankyed/AgentBuddy/actions/runs/39227491937), source **`8036d3014`**
+(workflow-only on main `1f31d38fd`), is terminal failure. All 24 selected files report:
+**127 passed, 24 failed, zero pending**. Unlike the first inventory, no setup hook blocks bodies.
+All **six native controls and five worker controls pass**. Their 30 pending cases are deliberate name-filter
+exclusions, not accepted whole-suite coverage. Every group finished before its aggregate cutoff.
+
+| Group | Passed | Failed | Duration |
+|---|---:|---:|---:|
+| Affected 1 | 54 | 8 | 1,055.397s |
+| Affected 2 | 35 | 7 | 858.774s |
+| Affected 3 | 38 | 9 | 691.781s |
+| Native controls | 6 | 0 | 332.704s |
+| Worker controls | 5 | 0 | 123.322s |
+
+Every failed case is classified below. JSON represents the four test timeouts as `STACK_TRACE_ERROR`;
+the retained console confirms their unchanged 60s scenario deadline. Event waits remain 20s.
+
+| File | Case | Classification |
+|---|---|---|
+| `build/build-output-swap.integration.spec.ts` | rebuilds damaged facade data instead of renewing its checksums | Whole-scenario timeout |
+| `build/build-output-swap.integration.spec.ts` | rebuilds damaged cache data instead of renewing its checksums | Whole-scenario timeout |
+| `build/facade-type-data.integration.spec.ts` | typechecks own and dependency types under moduleResolution bundler | Assertion failure |
+| `build/facade-type-data.integration.spec.ts` | typechecks own and dependency types under moduleResolution node16 | Assertion failure |
+| `build/facade-type-data.integration.spec.ts` | typechecks own and dependency types under moduleResolution bundler | Assertion failure |
+| `build/facade-type-data.integration.spec.ts` | typechecks own and dependency types under moduleResolution node16 | Assertion failure |
+| `build/watch-publication.integration.spec.ts` | publishes source and manifest edits together and retains the incumbent after refusal | Individual event-wait timeout |
+| `build/watch-publication.integration.spec.ts` | follows retargeted manifest links through refusal, repair and atomic replacement | Individual event-wait timeout |
+| `build/dependency-graph.integration.spec.ts` | still fails when two independent packs declare the same entity | Whole-scenario timeout |
+| `build/facade-typing.integration.spec.ts` | typechecks own and dependency types under moduleResolution bundler | Assertion failure |
+| `build/facade-typing.integration.spec.ts` | typechecks own and dependency types under moduleResolution node16 | Assertion failure |
+| `build/frontend-workers.integration.spec.ts` | retains the accepted build after a worker error and publishes its repair | Individual event-wait timeout |
+| `build/package-inputs.integration.spec.ts` | automatically rebuilds an undeclared runtime imported by 'TypeScript state' without a type or authored edit | Individual event-wait timeout |
+| `build/package-inputs.integration.spec.ts` | automatically rebuilds an undeclared runtime imported by 'Vue canvas' without a type or authored edit | Individual event-wait timeout |
+| `commands/scaffold.integration.spec.ts` | fails the build on an unresolvable dependency | Whole-scenario timeout |
+| `build/facade-typing-published.integration.spec.ts` | typechecks own and dependency types under moduleResolution bundler | Assertion failure |
+| `build/facade-typing-published.integration.spec.ts` | typechecks own and dependency types under moduleResolution node16 | Assertion failure |
+| `build/frontend-resources.integration.spec.ts` | recovers a missing nested stylesheet while retaining the accepted build | Individual event-wait timeout |
+| `build/frontend-resources.integration.spec.ts` | watches an external css-url asset in a separate directory | Individual event-wait timeout |
+| `build/frontend-resources.integration.spec.ts` | watches an external template asset in a separate directory | Individual event-wait timeout |
+| `build/frontend-resources.integration.spec.ts` | watches initially empty external Tailwind content through nested directory links | Individual event-wait timeout |
+| `build/watch-external-types.integration.spec.ts` | rebuilds external contracts and recovers a retargeted missing input without an authored edit | Individual event-wait timeout |
+| `build/watch-module-freshness.integration.spec.ts` | refreshes flow modules loaded through ordinary imports on the next watched build | Individual event-wait timeout |
+| `build/watch-module-freshness.integration.spec.ts` | recompiles changed transitive content modules and retains the accepted build on failure | Individual event-wait timeout |
+
+Additional failures: one `frontend-resources` afterAll cleanup refuses `ENOTEMPTY`; two Vitest
+`onTaskUpdate` reporting-operation timeouts occur in groups 1 and 3. No batch aggregate cutoff or failed
+setup hook occurred. The collector failure follows the nonzero group results; it is not a new product defect.
+
+Finite next work: correct the shared facade fixture's undeclared `base-pack/search` consumption while
+preserving its type assertions; compose the four remaining multistep cases; diagnose the 12 event waits
+with a small disposable two-case watch proof that distinguishes event receipt, build start and publication.
+Trace the retained workspace cleanup and reporting failures to their owners. Do not increase event
+waits or launch another broad run to diagnose these groups. Update the prepared normal-gate source
+with validated repairs before dispatch; normal integration and final main strict `--all` remain required.
+
+Complete reports and console/status records are retained under
+`/private/tmp/apack-affected-39227491937/`; full stdout/stderr job output is
+`/private/tmp/apack-affected-39227491937-full.log`. The machine-readable classification is
+`/private/tmp/apack-affected-39227491937-classification.json`. The earlier eight-file and six-batch
+evidence remains preserved; this affected run is not either remaining gate.
+
 Raw evidence is preserved in `/private/tmp/apack-integration-remaining-39214676663-original/` (all JSON/console/
 status reports), `/private/tmp/apack-integration-remaining-39214676663-full.log` (complete GHA output,
 including stderr), and the run's retained upload. The per-batch `tee` files contain stdout only; use

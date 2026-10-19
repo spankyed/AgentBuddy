@@ -209,11 +209,18 @@ focused lint pass. The [inventory](../evidence/integration-deadline-inventory.md
 records scope and proof limits. Next validate the affected files and changed native/worker cases on
 one prepared disposable runner, then settle normal grouping/aggregate allowance, pass normal integration
 and run final strict `--all`. No requirement or gate is waived by these focused repairs.
-Affected acceptance is now [39227491937](https://github.com/spankyed/AgentBuddy/actions/runs/39227491937),
+Affected acceptance [39227491937](https://github.com/spankyed/AgentBuddy/actions/runs/39227491937) is terminal failure,
 workflow-only **`8036d3014`** on exact main **`1f31d38fd`**. It prepares records/default-setup/external
 fixtures once, runs the 24 failed files in three eight-file batches, then selected changed native and
 worker controls, all with two workers and committed test limits. It retains every group even on failure.
-Inspect its reports before another broad run; this is neither normal integration nor strict acceptance.
+All 24 files report **127 passed, 24 failed, zero pending**; six native controls and five worker controls
+pass. The complete [classification](../evidence/integration-deadline-inventory.md#affected-acceptance-result--2026-10-19)
+identifies four remaining 60s scenario timeouts, eight shared facade type assertions and twelve unchanged
+20s event waits, plus one retained-workspace cleanup failure and two runner reporting timeouts.
+No setup or aggregate cutoff blocked bodies. Next correct the shared undeclared service consumption,
+compose the four omitted multistep cases, and run a small disposable watch proof to distinguish missed
+events from slow builds/publication. Trace the cleanup/reporting owners; preserve inner wait limits.
+Do not launch another broad diagnostic. This is neither normal integration nor strict acceptance.
 Source **`21ed07fe7`** gives complete integration its own 120-minute aggregate class. The pool runner
 reads its owning chain step's deadline; ordinary unit pools remain at 600s. The measured file work
 already exceeds 53 minutes at an ideal two-worker balance, without blocked setup/preparation, so the
@@ -230,8 +237,9 @@ bounded process owner; the 120-minute integration aggregate does not become its 
 graph/pool/orchestrator checks, four existing ordinary-Node process-lifecycle checks, script types and
 lint pass. An inert timed-termination control returns code 124 after its 1s allowance plus 2s cleanup.
 The prepared normal gate is workflow-only **`2769be3cc`** against exact main source `4750ad766`, on
-`session/integration-normal-acceptance`; it is not dispatched. Inspect current affected reports first,
-then use the normal pool with declared prerequisites and two-core budget, followed by main strict `--all`.
+`session/integration-normal-acceptance`; it is not dispatched. Update it with the validated remaining
+repairs before using the normal pool with declared prerequisites and two-core budget, followed by main
+strict `--all`. The current affected reports above keep both gates open.
 None of these probes is a strict-chain result, despite using the existing `strict_chain` dispatch route. Main's
 full strict command is unchanged and remains required after integration converges. See
 [measured acceptance](../evidence/settings-and-pack-contracts.md#sequential-preloadthread-completion-and-scoped-budget--2026-10-19).
