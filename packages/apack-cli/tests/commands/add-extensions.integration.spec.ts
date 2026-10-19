@@ -16,7 +16,7 @@ import { addPrompt } from '../../src/commands/add/prompt';
 import { addFlow } from '../../src/commands/add/flow';
 import { generateEntries } from '../../src/commands/generate-entries';
 import { packRuleProblems } from '../../src/build/pack-rules.ts';
-import { typecheckPack } from '../_support/pack-builds.ts';
+import { callCli, typecheckPack } from '../_support/pack-builds.ts';
 
 const REPO_ROOT = path.resolve(__dirname, '..', '..', '..', '..');
 const BIN = path.join(REPO_ROOT, 'node_modules', '.bin');
@@ -222,11 +222,14 @@ describe('apack pack add artifact and block', () => {
 
 describe('apack pack add migration', () => {
   it('declares each migration under its version line and the version it targets, which the pack entry registers and tsc accepts', async () => {
-    await addMigration(['0.2.0'], pack);
-    await addMigration(['--version', '0.10.1'], pack);
-    // A migration targets a release on either line, so a prerelease files under the release it belongs to
-    await addMigration(['0.11.0-beta.1'], pack);
-    await addMigration(['0.3.16-beta.1', '--app'], pack);
+    for (const args of [
+      ['0.2.0'], ['--version', '0.10.1'],
+      // A migration targets a release, so a prerelease files under the release it belongs to.
+      ['0.11.0-beta.1'], ['0.3.16-beta.1', '--app'],
+    ]) {
+      const result = await callCli(pack, 'add', ['migration', ...args]);
+      expect(result.code, result.output).toBe(0);
+    }
 
     const migration = read('src/migrations/0.2.0.ts');
     expect(migration).toContain('export function up(): void');
