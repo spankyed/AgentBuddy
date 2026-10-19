@@ -311,6 +311,23 @@ gate must exercise it. No local native/runtime execution or guard bypass was use
 run `39227491937` predates this aggregate checkpoint and is not normal integration or final strict
 acceptance. Inspect its reports before dispatching either remaining gate.
 
+Follow-up **`4750ad766`** closes the preparation boundary: the normal pool previously called
+`npm run packages:ensure` through unbounded `execFileSync`, outside its inner suite deadline. It now
+uses the existing `boundedSpawn` owner and the preparation step's declared 600s allowance, with an
+attributed timeout/failure. The integration aggregate remains separate. The 121 graph/pool/orchestrator
+checks pass, as do script types, lint and four existing bounded-process lifecycle checks (ordinary Node
+only). An inert Node timer control reaches initialization, times out with code 124, and returns in
+3,006ms: its 1,000ms test allowance plus the existing two-second process-group grace. This establishes
+the reused timeout/cleanup path; the actual pool preparation still needs normal-gate acceptance.
+
+The normal gate is prepared and pushed on `session/integration-normal-acceptance`: **`2769be3cc`**
+differs from exact implementation source `4750ad766` only in its workflow. It invokes the committed
+`npm run test:integration -- --all`, after typecheck records, shipped output and external contract
+fixtures, with a two-core budget. It retains stderr/stdout, raw pool reports and duration caches even on
+failure. Its 190-minute envelope accommodates the 120-minute pool allowance and individually bounded
+preparation. It remains undispatched until affected acceptance is inspected and converges; afterward,
+the unchanged main strict command remains required. No subset verdict substitutes for either gate.
+
 Raw evidence is preserved in `/private/tmp/apack-integration-remaining-39214676663-original/` (all JSON/console/
 status reports), `/private/tmp/apack-integration-remaining-39214676663-full.log` (complete GHA output,
 including stderr), and the run's retained upload. The per-batch `tee` files contain stdout only; use

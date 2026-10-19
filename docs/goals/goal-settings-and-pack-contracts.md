@@ -224,6 +224,14 @@ backstop, not a healthy-run measurement or an increase to operation/event/cleanu
 graph/pool/input checks, scripts/repo types, lint and workflow YAML parsing pass. One earlier chain-table
 metadata-import check reaches the compiler-runner guard on this daily-use Mac; leave that check for
 disposable CI rather than bypassing the guard. Normal integration and final strict gates remain required.
+Follow-up source **`4750ad766`** bounds the pool's package preparation independently with the existing
+`packages:ensure` deadline (600s). It replaces an unbounded synchronous subprocess with the existing
+bounded process owner; the 120-minute integration aggregate does not become its hang limit. All 121
+graph/pool/orchestrator checks, four existing ordinary-Node process-lifecycle checks, script types and
+lint pass. An inert timed-termination control returns code 124 after its 1s allowance plus 2s cleanup.
+The prepared normal gate is workflow-only **`2769be3cc`** against exact main source `4750ad766`, on
+`session/integration-normal-acceptance`; it is not dispatched. Inspect current affected reports first,
+then use the normal pool with declared prerequisites and two-core budget, followed by main strict `--all`.
 None of these probes is a strict-chain result, despite using the existing `strict_chain` dispatch route. Main's
 full strict command is unchanged and remains required after integration converges. See
 [measured acceptance](../evidence/settings-and-pack-contracts.md#sequential-preloadthread-completion-and-scoped-budget--2026-10-19).
