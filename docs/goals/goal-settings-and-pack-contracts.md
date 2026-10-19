@@ -335,6 +335,14 @@ All 53 policy/inventory checks, CLI types and correctness lint pass. Focused
 [39260287200](https://github.com/spankyed/AgentBuddy/actions/runs/39260287200), workflow-only
 `bbb5e06b8`, now runs exactly the two failures on two workers. Preserve the 18 passes; no broad gate
 until these converge, and no compiler-performance fix is claimed.
+Both cases in `39260287200` now pass with exit 0: full readiness 88.967s and real Electron build/archive
+170.275s. Preserve the previous 18 passes; these are scoped behavioral acceptance, not a whole-suite
+pass. A static audit of remaining default-bound direct build/capture cases identifies one additional
+untracked declaration-fixture build whose timeout can race fixture deletion. Source `526255eee`
+registers/drains its builder, propagates cancellation and composes cold build plus source-free/runtime
+inspection without changing assertions. All 53 policy/inventory checks, CLI types and lint pass.
+Focused [39261544678](https://github.com/spankyed/AgentBuddy/actions/runs/39261544678), workflow-only
+`b1e703d18`, checks that fixture with concurrent compiler-thread capture before another normal gate.
 Source **`21ed07fe7`** gives complete integration its own 120-minute aggregate class. The pool runner
 reads its owning chain step's deadline; ordinary unit pools remain at 600s. The measured file work
 already exceeds 53 minutes at an ideal two-worker balance, without blocked setup/preparation, so the

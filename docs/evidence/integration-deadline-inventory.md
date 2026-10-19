@@ -657,5 +657,33 @@ that the broad slowdown has been attributed or that compiler performance improve
 Focused [39260287200](https://github.com/spankyed/AgentBuddy/actions/runs/39260287200), workflow-only
 `bbb5e06b8` over that source, runs exactly the two failed case names read from the preserved report,
 two workers, no bail. Preserve the other 18 passes; require both repaired cases before normal and
-final strict acceptance. Main source push encountered a transient network timeout; the focused source
-branch was pushed successfully and its run is live. Retry the main push without restarting validation.
+final strict acceptance. Main source push encountered a transient network timeout; its retry succeeded
+at `43fdc6c09`. Both source branches are preserved remotely; validation was not restarted.
+
+### Phase acceptance and remaining fixture-owner audit — 2026-10-19
+
+Run `39260287200` passes **both exact cases with exit 0**, 174.573s. Full public watch readiness,
+shutdown and cleanup complete in **88.967s**, confirming that its old 60s full-readiness allowance
+was insufficient. The real Electron build/archive case passes in **170.275s**: init 29.736s,
+add 22.984s, full build 103.364s, passive archive 13.236s. Executable/runtime/output/disposal and
+non-executing archive assertions remain. The earlier slower build is not retrospectively attributed;
+no compiler-performance improvement is claimed. Combined with the previous complete affected run's
+18 passes, every selected worker/native behavior now has passing evidence. This is not a normal or
+strict whole-suite pass. Reports are in `/private/tmp/apack-compiler-phase-39260287200/`, with the
+full terminal log alongside.
+
+A static pass over remaining default-bound direct build/capture integration cases identifies ten
+cases for inspection. Existing owned lifetimes, intentional early refusals, mocked cancellation and
+platform-specific capture controls retain their bounds. One source-visible owner gap remains in
+`own-declarations.integration.spec.ts`: an untracked cold backend/frontend build can outlive the
+test while unconditional fixture teardown deletes its inputs. Its historical 42.247s pass is preserved;
+this is not a newly observed assertion failure.
+
+Source `526255eee` registers that builder with teardown, propagates test cancellation with a 120s
+build bound, closes it before source-free inspection, and composes 20s for declaration/runtime
+verification. All original owned-key, shape, provenance, source-removal and activation assertions
+remain. All 53 policy/inventory checks, CLI types, correctness lint and diff checks pass. Focused
+[39261544678](https://github.com/spankyed/AgentBuddy/actions/runs/39261544678), workflow-only
+`b1e703d18`, verifies that exact case beside the accepted compiler-thread case, two workers. This
+named concurrency/ownership check must finish before normal; no general test framework, product
+compiler change or default deadline increase is introduced.
