@@ -1290,3 +1290,14 @@ default-setup and external-contract preparation, then `npm run test:integration 
 cores, committed pool/case bounds and fail-fast. No loop probe, selected-file list or timeout override.
 All previous logs and the unrelated untracked Wireit proposal are preserved. Await this immutable run;
 the final main strict `--all` follows only after normal acceptance.
+
+### User-approved final acceptance change — 2026-10-19
+
+While normal **39333769307** remains live, the user asks to avoid repeating the entire strict gate
+after it passes, explaining that another approximately 90-minute wait repeats accepted validation,
+and confirms the revised path. This is an explicit change to this goal's acceptance procedure.
+Require the normal unfiltered result, then audit source/requirements against actual preserved evidence,
+reuse unchanged accepted checks, and close only genuinely uncovered affected checks before documentation
+closure. No new full strict dispatch. Do not relabel an earlier failed strict run successful, omit
+unproven behavior, or apply this exception as a general repository policy. The owning goal's live
+decision and Phase 7 now state this; older chronological strict-rerun instructions are superseded.

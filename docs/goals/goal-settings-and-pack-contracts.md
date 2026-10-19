@@ -47,6 +47,14 @@ Lazy activation is deferred.
 
 ## Live execution ledger (reconciled 2026-10-16)
 
+**Final acceptance decision, 2026-10-19:** the user approved omitting another complete strict-chain
+rerun if the current normal integration gate passes. Complete the requirement/evidence audit, reuse
+accepted checks whose covered behavior is unchanged, and run only genuinely uncovered affected
+checks. Record exact source and evidence, then close the documentation. This supersedes older
+instructions below and in linked subsystem plans to repeat final strict `--all` for this goal; it
+does not claim that an earlier failed or partial strict run passed, waive behavior requirements, or
+change the repository's general validation policy. Do not dispatch another broad strict gate.
+
 Current checkpoint: watcher operation correction **`fa21a17ba`** and measured reporting repair
 **`19c1c9716`** are committed/pushed. Focused acceptance
 [39329992884](https://github.com/spankyed/AgentBuddy/actions/runs/39329992884) on workflow-only
@@ -59,8 +67,8 @@ are omitted only from this focused run. Normal unfiltered integration
 [39333769307](https://github.com/spankyed/AgentBuddy/actions/runs/39333769307) is now dispatched
 on workflow-only **`06638811d`**, directly containing main **`1ba85b976`**: all normal prerequisites,
 `npm run test:integration -- --all`, two cores, no filters/probe or case overrides. Await this same
-run, then final strict
-`--all`, requirement audit and documentation closure. No normal or strict run is concurrent.
+run, then the evidence audit and documentation closure under the acceptance decision above.
+No second broad run is concurrent.
 
 Earlier focused [39311095507](https://github.com/spankyed/AgentBuddy/actions/runs/39311095507)
 accepts **29/29 scaffold/add-extension bodies**, zero failed/pending, **exit 0**, 604.571s, with no
@@ -1591,7 +1599,8 @@ This is the cross-phase closure checklist. Subsystem plans retain their detailed
 coverage and source evidence here as each row converges, recording missing checks explicitly. A row
 with missing or indirect evidence remains open. Existing local passes need not be rerun separately
 before the final gate unless their inputs or asserted behavior change. This register does not replace
-required checkpoint validation or the final committed-source strict `--all`.
+required checkpoint validation. The final acceptance decision above governs remaining validation;
+historical strict-gate references in this register retain their original evidence boundaries.
 
 | Scope | Required closure evidence | Current disposition |
 |---|---|---|
@@ -1605,7 +1614,7 @@ required checkpoint validation or the final committed-source strict `--all`.
 | API consumption | Audited declaration granularity, generated/runtime facade agreement, undeclared/unavailable API diagnostics, content/dependency contracts and settings policy | A1–A4 service routes are implemented through `bb6df4a45`; A4 content checks already exist. Refreshed authoring/harness and complete external app/fork acceptance pass; A5 schema/API/export agreement passes on `b62da5c72`, with public guides and templates reconciled; see [agreement evidence](../evidence/settings-and-pack-contracts.md#a5-schema-and-api-agreement-2026-10-17). Converged and final strict acceptance remain open. |
 | Provenance/replacement | Exact origin/version/content through reuse/inspection; explicit linked development; fork restart/reload, managed updates, disable/remove/restore, override retention and failed-publication incumbent | Locally accepted real external app/fork lifecycle and cache/resolution/inspection cases remain the authority. No provenance or replacement code changed after their accepted checkpoint; retain exact producer/archive/app consumption in the strict gate. |
 | External package consumer and release preparation | Real CLI/SDK/testing package tarballs installed outside the monorepo; real scaffold/build, release preparation, verified archive and exact archive execution against isolated host data; preserve relevant release-sequence checks | Use the existing packaged-authoring author/app halves and release tests. Apply the evidence boundaries below; local success is not public release readiness. |
-| Final committed tree | Requirement-by-requirement audit, reviewed schema/API/docs/templates, required strict `--all` and real authoring/app checks on recorded committed source | Outstanding; archive only after every row is proven. |
+| Final committed tree | Requirement-by-requirement audit, reviewed schema/API/docs/templates, passing normal integration and mapped prior/focused checks on recorded committed source; actual authoring/app evidence | Outstanding; the user waived repeating the full strict gate, not the audit or uncovered behavior. Archive only after every row is proven. |
 
 ### External authoring and release evidence
 
@@ -1888,16 +1897,18 @@ Review the entire implemented diff for correctness and completeness
 against the inventory, all reconciled original requirements in manifest consolidation, and each plan's acceptance criteria. Fix omissions and bugs, and commit them. Check failure paths, build revisions, dependency ownership, import
 migration, multiple windows, disable/uninstall/reinstall, and external authoring.
 
-Run focused checks as changes are made, `npm run chain` at validated checkpoints, and the full strict
-chain on the final committed tree. Include the affected real app/external-pack/packaged-authoring checks
-from the linked plans and current repository instructions; do not substitute schema acceptance for behavior.
+Run focused checks as changes are made and `npm run chain` at validated checkpoints. For final
+acceptance, follow the user-approved decision in the live ledger: require the current complete normal
+integration pass, audit prior/focused evidence against the committed tree, and close only actual
+uncovered checks. Include affected real app/external-pack/packaged-authoring behavior from the linked
+plans; do not substitute schema acceptance for behavior or repeat unchanged accepted checks.
 Record the final commit, exact commands/results and naming completion SHA.
 Apply the external-authoring/release evidence boundaries above when reporting the packaged-authoring
 result; public publishing is not a substitute for, or prerequisite to, the required local behavior.
-Use `gh workflow run ci.yml --ref session/settings-pack-contracts -f strict_chain=true` for disposable macOS
-execution of `npm run chain -- --strict --all --cores 2 --no-classify`. The workflow preserves the
-console and per-step evidence even on failure. Launch it after the outstanding implementation and
-focused acceptance converge; adding the workflow does not establish a passed final gate.
+The earlier final-gate route was `gh workflow run ci.yml --ref session/settings-pack-contracts
+-f strict_chain=true`, executing `npm run chain -- --strict --all --cores 2 --no-classify` on disposable
+macOS. Preserve its historical console/per-step results without treating partial runs as passes.
+The user subsequently waived another execution; do not launch it for this closeout.
 
 **Done when:** all required implemented behavior and checks pass; the tree is clean; naming is complete
 and integrated; every phase has evidence. Add Outcome, archive this goal and completed subsystem plans,
