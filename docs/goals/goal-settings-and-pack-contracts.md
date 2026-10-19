@@ -53,9 +53,13 @@ that take 62.879s, 61.599s and 78.318s. Native thread refusal/cleanup completes 
 cleanup or reporting failure is reported. Correct the enclosing budget from its three separately
 bounded attempts and cover the remaining cold OS-admission baseline. See
 [native composition evidence](../evidence/integration-deadline-inventory.md#normal-gate-compose-native-capture-and-refusal-attempts--2026-10-19).
-Repair **`f17d2e286`** is pushed. Run **39275701481** on workflow-only `449aac628` now validates
-both entire native/worker files (41 bodies, two workers, no filter, `bail=0`). Await that result before
-normal integration, then final strict `--all`.
+Repair **`f17d2e286`** is pushed. Run **39275701481** on workflow-only `449aac628` publishes
+41/41 passes, exit 0, 1199.532s, including both complete native/worker files and their cleanup checks.
+The downloaded log records completed upload/final runner cleanup, while GitHub's status API still
+reports the test step running. Preserve that unresolved finalization separately; do not change the
+working deadline implementation from the stale phase label. The acceptance command is complete:
+resume normal integration on its own disposable runner, then final strict `--all`. See the
+[verified report and status discrepancy](../evidence/integration-deadline-inventory.md#complete-native-and-worker-commands-accepted-github-status-unresolved).
 
 Latest normal run **39262109257** finishes with 409 passing tests and one inherited-60s worker
 observation-refusal scenario timeout; all preparation passes. Its cancellation and earlier passing

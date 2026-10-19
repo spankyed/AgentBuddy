@@ -800,3 +800,24 @@ Source **`f17d2e286`** is committed/pushed. Complete affected-file run
 workflow-only **`449aac628`**: both entire native/worker files, two workers, `bail=0`, and an explicit
 41-body execution check. No test-name filter or per-test default change. The private checkout differs
 only in the workflow; package/output isolation remains intact. No acceptance result is claimed yet.
+
+### Complete native and worker commands accepted; GitHub status unresolved
+
+The published report from **39275701481** proves **41 passes, zero failures, zero skips, exit 0**
+on `f17d2e286` / workflow-only `449aac628`. Complete command duration is **1199.532s**. All 16 worker
+and all 25 native bodies execute. Native preload/thread capture-refusal passes in 102.742s/108.705s,
+including pre-deadline refusal and owner closure. The formerly unreached native tail also passes;
+OS-admission takes 44.465s. Observation/loader refusal, background cleanup and frontend input ownership
+pass in 53.204s/50.583s/49.254s/46.335s. No test cleanup or unhandled reporting failure is reported.
+
+GitHub's run/jobs APIs still say the acceptance step is running, even though the downloaded job log
+records command exit, successful result upload, cache save and final runner cleanup at **15:33:38Z**.
+The job-log endpoint returned this evidence at 15:49Z. Preserve this discrepancy: the 30m test deadline
+was not exceeded, and no timeout/process implementation change is justified by the stale phase label.
+Whole-job finalization remains unverified; do not claim a green GitHub job from the report alone.
+The completed acceptance command permits the next normal gate on a separate disposable runner;
+leave this job intact and recheck its final status. No native work runs on the developer Mac.
+
+Evidence: `/private/tmp/apack-native-worker-39275701481/` and
+`/private/tmp/apack-native-worker-39275701481-live-response.txt` (complete retained job log).
+The required normal and final main strict gates remain outstanding.
