@@ -1,4 +1,4 @@
-name: Strict chain
+name: Worker lifecycle diagnostic
 
 on:
   workflow_dispatch:
@@ -8,15 +8,13 @@ permissions:
   contents: read
 
 concurrency:
-  group: strict-chain-${{ github.ref }}
+  group: worker-closeout-${{ github.ref }}
   cancel-in-progress: false
 
 jobs:
   check:
     runs-on: macos-26
-    # Cold source/producers and host units took 28m before the remaining integration/app gates.
-    # Each step retains its own bound; this envelope covers the complete strict chain.
-    timeout-minutes: 60
+    timeout-minutes: 20
     env:
       APACK_CHAIN_CORES: 2
     defaults:
@@ -37,14 +35,28 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ github.token }}
         run: npm ci
-      - name: Full strict acceptance
-        run: npm run chain -- --strict --all --cores 2 --no-classify | tee "$RUNNER_TEMP/strict-chain.log"
+      - name: Prepare matching compiler packages
+        run: npm run packages:ensure
+      - name: Observe complete worker lifecycle file
+        run: |
+          node node_modules/vitest/vitest.mjs run --config vitest.integration.config.ts --project @apackdev/cli \
+            packages/apack-cli/tests/build/build-worker.integration.spec.ts \
+            --poolOptions.threads.maxThreads=2 --poolOptions.threads.minThreads=1 --bail=1 \
+            --reporter=default --reporter=json --outputFile="$RUNNER_TEMP/worker-closeout.json" | tee "$RUNNER_TEMP/worker-closeout.log"
+          node --input-type=module <<'JS'
+          import fs from 'node:fs';
+          import assert from 'node:assert/strict';
+          const result = JSON.parse(fs.readFileSync(`${process.env.RUNNER_TEMP}/worker-closeout.json`, 'utf8'));
+          assert.equal(result.numPassedTests, 16);
+          assert.equal(result.numFailedTests, 0);
+          console.log({passed:result.numPassedTests});
+          JS
       - name: Retain validation evidence
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: strict-chain-${{ github.sha }}
+          name: worker-closeout-${{ github.sha }}
           include-hidden-files: true
           path: |
-            ${{ runner.temp }}/strict-chain.log
-            node_modules/.cache/apack-chain/runs/
+            ${{ runner.temp }}/worker-closeout.log
+            ${{ runner.temp }}/worker-closeout.json

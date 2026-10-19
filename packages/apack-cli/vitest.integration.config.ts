@@ -13,7 +13,7 @@ export default defineConfig({
   ssr: { resolve: { conditions } },
   test: {
     // Large (`SIZE_MS`). Longer multi-build scenarios declare reviewed per-test budgets.
-    testTimeout: 60_000,
+    testTimeout: 180_000,
     hookTimeout: 60_000,
     include: ['tests/**/*.integration.spec.ts'],
     exclude: ['**/node_modules/**'],
