@@ -9,8 +9,15 @@
 import path from 'node:path';
 import { REPO_ROOT } from '@apackdev/host/build/packages-built';
 import { ENSURE } from './typecheck-legs.ts';
+import type { TimeoutClass } from './step-timeouts.ts';
 
-export interface TypecheckCommand { readonly name: string; readonly command: string; readonly cwd?: string }
+export interface TypecheckCommand {
+  readonly name: string;
+  readonly command: string;
+  readonly cwd?: string;
+  /** A source derivation can do different work from the chain's built-output check. */
+  readonly timeout?: TimeoutClass;
+}
 const defaultSetupDirectory = path.join(REPO_ROOT, 'packages/default-setup');
 
 /**
@@ -34,8 +41,8 @@ export const GENERATE_ENTRIES: TypecheckCommand = {
  *
  * **They are borrowed, not moved.** `api:check` as a leg would need five hand-written fields on a table whose
  * point is deriving them, and would drop nine declared inputs — six with nothing to catch it, since the
- * modules deciding what a report says are spawned through npm rather than imported. Borrowing takes each
- * step's own class, cost and width and leaves its cache key alone.
+ * modules deciding what a report says are spawned through npm rather than imported. Borrowing retains
+ * chain ownership and cache inputs. A different derivation mode declares its own timeout class.
  *
  * Why they are here at all: `exports:check` and `schema:check` are legs, so a green `npm run typecheck` used
  * to say nothing about the other two recorded files — the trap root `CLAUDE.md` warned about in prose.
@@ -44,7 +51,9 @@ export const RECORDED_FILE_CHECKS: readonly TypecheckCommand[] = [
   { name: 'api:check', command: 'npm run api:check' },
   // `--skip-generate`, because `CODEGEN` above has just done it. Without the flag this writes into the pack
   // while the legs read it, which is the one reason it is not a leg itself
-  { name: 'facade:check', command: 'node ../apack-cli/bin/apack.mjs pack facade-report --skip-generate', cwd: defaultSetupDirectory },
+  // The chain reads a verified build; standalone typechecking bundles declarations from source.
+  { name: 'facade:check', command: 'node ../apack-cli/bin/apack.mjs pack facade-report --skip-generate',
+    cwd: defaultSetupDirectory, timeout: 'suite' },
 ];
 
 /** Both prerequisites, in the order they must run: each writes what every job after it reads */

@@ -77,12 +77,12 @@ interface Job {
   readonly dependsOn: readonly string[];
 }
 
-/** A chain step this runner borrows: its own timeout class, declared cost and core width, none restated here */
-function borrowed({ name, command, cwd }: TypecheckCommand): Job {
+/** Borrow chain ownership, allowing a different derivation mode to declare its own deadline class. */
+function borrowed({ name, command, cwd, timeout }: TypecheckCommand): Job {
   const step = CHAIN_STEPS.find((candidate) => candidate.name === name);
   if (!step) throw new Error(`${name} is not a chain step, so there is no class or cost to borrow — `
     + 'either it was renamed or it belongs in TYPECHECK_LEGS');
-  return { name, command, cwd, timeout: step.timeout, seconds: step.seconds ?? 0, cores: coresFor(name),
+  return { name, command, cwd, timeout: timeout ?? step.timeout, seconds: step.seconds ?? 0, cores: coresFor(name),
     dependsOn: [ENSURE, CODEGEN] };
 }
 

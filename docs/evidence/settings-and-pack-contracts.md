@@ -8423,3 +8423,65 @@ is `.github/workflows/strict-chain.yml`. Existing isolated workflow prerequisite
 [39203080601](https://github.com/spankyed/AgentBuddy/actions/runs/39203080601) must establish actual
 standalone coordinator and full integration acceptance. The inert regression is not substituted for
 that real control. Final main strict `--all` and app/authoring gates remain required.
+
+### Generation/report handoff accepted; standalone generation classification — 2026-10-19
+
+[39203080601](https://github.com/spankyed/AgentBuddy/actions/runs/39203080601) stops on
+`40a5b8e1f` before the repaired report command executes: generation reaches its existing 60s
+`quick` limit and exits after 62.0s including termination. This neither disproves the context repair
+nor establishes a stalled compiler. The preceding real generation completed in 58.7s.
+Evidence: `/private/tmp/apack-integration-39203080601-failed.log`.
+
+Isolated workflow-only **`b83e7c2c5`**, branch `session/codegen-context-diagnostic`, measures only
+actual declared generation and report commands after normal package preparation, inheriting one
+parent environment and their explicit workspace. Its observation limits are 180s and 60s; no main
+policy changes are part of this control. Run
+[39203581047](https://github.com/spankyed/AgentBuddy/actions/runs/39203581047) passes generation
+in **59.688s** and the read-only facade report in **25.191s**. The report accepts the generated receipt
+without skipping freshness validation. This proves the real two-process handoff, not the entire
+standalone coordinator or integration pool. Console:
+`/private/tmp/apack-generation-39203581047.log`; the workflow also retains its generation log.
+
+Source **`8f81806a6`** assigns only standalone generation the existing `suite` compilation class.
+The prerequisite captures compiler/dependency installation inputs and compiles pack declarations;
+it is distinct from the individual single-tsc reader legs. The existing class, rather than a new
+scalar derived from these timings, bounds it. Reader-leg, report, test and full-pool deadlines remain
+unchanged. All **127** focused typecheck-leg, graph/input and subprocess-inventory checks pass;
+scripts TypeScript, correctness lint and diff checks pass. Logs:
+`/private/tmp/apack-generation-budget-{checks,types,lint}.log`. No local native/captured-runtime run
+or VM startup occurs.
+
+Isolated integration probe [39203941398](https://github.com/spankyed/AgentBuddy/actions/runs/39203941398),
+source **`28b06add1`**, contains that exact main source and differs solely in
+`.github/workflows/strict-chain.yml`. It retains normal standalone typechecking, pack preparation,
+the existing two-core full integration command and the 30m job envelope. Real coordinator and
+complete integration acceptance remain required before the unchanged main strict `--all` gate.
+The diagnostic branches and their committed workflow variants remain preserved separately.
+
+### Standalone source facade budget ownership — 2026-10-19
+
+[39203941398](https://github.com/spankyed/AgentBuddy/actions/runs/39203941398), source `28b06add1`,
+accepts generation in **88.0s**, all 15 reached compiler/lint/schema/export/specifier/tier reader legs,
+and package preparation. It stops at `facade:check` after **62.0s** including termination; no stale-input
+refusal is reported. API report and integration are not accepted by this run. Console:
+`/private/tmp/apack-integration-39203941398-failed.log`.
+
+Current-source inspection identifies a distinct execution-mode mismatch: chain `facade:check` uses
+`--from-build` to read a verified published report; standalone typechecking uses `--skip-generate`
+to verify generation and **bundle declarations from source**. Borrowing the chain's passive-reader
+class for the source bundle misclassifies its work. Source **`ec5943f65`** adds an optional declared
+class to standalone command descriptors and assigns this source bundle `suite`. Chain ownership,
+inputs, passive-report classification and all freshness assertions remain unchanged. No global budget,
+compiler behavior, assertion or integration-test deadline changes.
+
+All **24** affected typecheck-leg/subprocess-inventory tests, scripts TypeScript, correctness lint
+and diff checks pass; logs `/private/tmp/apack-source-report-budget-{checks,types,lint}.log`.
+The earlier isolated actual source report completed in 25.191s; whether this loaded coordinator would
+complete past 60s remains to be verified rather than inferred from its timeout.
+
+Isolated workflow-only **`2bf51ac08`**, branch `session/typecheck-source-diagnostic`, is based on
+exact `ec5943f65` and runs only normal `npm run typecheck -- --cores 2` after dependency installation.
+[39204669699](https://github.com/spankyed/AgentBuddy/actions/runs/39204669699) must accept that
+complete coordinator before repeating pack preparation or integration. It retains its console with
+a 20m job envelope; this envelope changes neither command deadlines nor main workflow. The preceding
+integration and generation diagnostic branches remain preserved. No local native run or VM startup occurs.

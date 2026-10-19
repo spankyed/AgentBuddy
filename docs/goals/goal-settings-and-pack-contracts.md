@@ -121,7 +121,20 @@ subprocess regression fails with the old npm wrappers and passes with the repair
 checks, scripts/repo types and lint pass. See [handoff evidence](../evidence/settings-and-pack-contracts.md#standalone-typecheck-compiler-context-handoff--2026-10-19).
 Updated probe [39203080601](https://github.com/spankyed/AgentBuddy/actions/runs/39203080601),
 source **`40a5b8e1f`**, includes that exact main repair and differs from it only in the isolated workflow.
-It must accept the real coordinator and complete integration before the final full gate.
+It stops before the report phase: generation exceeds its existing 60s reader-leg budget (62.0s
+including termination). The separate bounded generation/report control
+[39203581047](https://github.com/spankyed/AgentBuddy/actions/runs/39203581047), on **`b83e7c2c5`**,
+passes both actual commands in **59.688s/25.191s**, preserving the compiler-context check. Source
+**`8f81806a6`** classifies only the captured pack-generation prerequisite as `suite`, leaving individual
+reader legs and every test deadline unchanged. All 127 focused tooling checks, scripts types and lint
+pass. Updated isolated probe [39203941398](https://github.com/spankyed/AgentBuddy/actions/runs/39203941398),
+source **`28b06add1`**, accepts generation in **88.0s** and all reached reader legs but stops at the
+source facade report's inherited 60s passive-check limit. Inspection distinguishes the standalone
+declaration bundle from the chain's `--from-build` reader. Source **`ec5943f65`** lets that different
+mode declare `suite`, leaving the chain's passive check unchanged; 24 affected tooling tests, scripts
+types and lint pass. Coordinator-only [39204669699](https://github.com/spankyed/AgentBuddy/actions/runs/39204669699)
+on **`2bf51ac08`** must establish the real complete coordinator before another pack preparation or
+integration attempt. Complete integration and final strict acceptance remain required.
 None of these probes is a strict-chain result, despite using the existing `strict_chain` dispatch route. Main's
 full strict workflow is unchanged and remains required after integration converges. See
 [measured acceptance](../evidence/settings-and-pack-contracts.md#sequential-preloadthread-completion-and-scoped-budget--2026-10-19).
