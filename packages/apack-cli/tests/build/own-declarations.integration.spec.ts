@@ -7,18 +7,21 @@ import { startTestRuntime } from '@apackdev/sdk/testing';
 import { REPO_ROOT } from '@apackdev/host/build/packages-built';
 import { createPackRegistry, readPackBuild, stagePack } from '@apackdev/host/packs';
 import { loadSingleExternalPack } from '@apackdev/host/packs/runtime';
-import { buildCommand } from '../../src/commands/build.ts';
+import { createPackBuilder, type PackBuilder } from '../../src/build/build-process.ts';
 import { inspectPack } from '../../src/commands/info.ts';
 
 startTestRuntime({ appVersion: '1.0.0' });
 const roots: string[] = [];
-afterEach(() => {
+let builder: PackBuilder | undefined;
+afterEach(async () => {
+  await builder?.close();
+  builder = undefined;
   vi.restoreAllMocks();
   roots.splice(0).forEach(root => fs.rmSync(root, { recursive: true, force: true }));
   delete (globalThis as Record<string, unknown>).__ownDeclarationsLoaded;
 });
 
-it('preserves owned names through authoring, compiled snapshots, source-free discovery and runtime loading', async () => {
+it('preserves owned names through authoring, compiled snapshots, source-free discovery and runtime loading', async ({ signal }) => {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'apack-own-declarations-')); roots.push(root);
   const own = <T>(value: T) => Object.fromEntries([['__proto__', value]]);
   packFixture({ at: root, nodeModules: path.join(REPO_ROOT, 'node_modules'),
@@ -33,7 +36,9 @@ it('preserves owned names through authoring, compiled snapshots, source-free dis
       'src/View.vue': '<template><div>Owned view</div></template>',
     } });
   vi.spyOn(process, 'cwd').mockReturnValue(root);
-  await buildCommand([]);
+  builder = createPackBuilder(root);
+  await builder.build({ signal: AbortSignal.any([signal, AbortSignal.timeout(120_000)]) });
+  await builder.close();
   const built = readPackBuild(path.join(root, 'dist'));
   expect(Object.hasOwn(built.snapshot.types.entities, '__proto__')).toBe(true);
   expect(built.snapshot.provenance?.entities?.['__proto__']).toBe('own-declarations');
@@ -54,4 +59,4 @@ it('preserves owned names through authoring, compiled snapshots, source-free dis
   expect(Object.hasOwn(loaded.registration.services!, '__proto__')).toBe(true);
   expect(loaded.registration.services!['__proto__']).toMatchObject({ marker: 'owned service' });
   expect(fs.existsSync(path.join(installed, 'src'))).toBe(false);
-});
+}, 120_000 + 20_000);
