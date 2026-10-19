@@ -513,3 +513,23 @@ Source `dbba1429f` attributes a watched-build deadline error to its pack root an
 retaining the original error as `cause`. The existing hung-operation regression now checks that context
 and cause. All seven mocked helper cases, CLI typechecking and correctness lint pass. No deadline or
 cancellation behavior changes; this improves the generic `AbortError` report, not the underlying timing.
+
+### Publication phase control completed — 2026-10-19
+
+[39247182439](https://github.com/spankyed/AgentBuddy/actions/runs/39247182439) completes successfully:
+**two passed, zero failed, exit 0**, 188.766s. All eight startup/rebuild attempts settle within their
+original limits; **zero original-deadline crossings** occur, so the diagnostic's extra observation
+allowance does not enable either pass. Publication startup takes 54.736s; its accepted edit,
+intentional syntax refusal and accepted repair take **43.465s / 10.712s / 38.742s**. Both accepted
+rebuilds retain the compiler and generation. Their worker lifetimes are 36.776s / 30.901s;
+compiler-current checks take 4.527s / 5.442s; publication takes 34ms / 50ms. CSS recovery also passes,
+including refusal/incumbent retention and cleanup.
+
+This proves the complete publication behavior under the original operation limits beside its observed
+concurrent frontend workload. It does **not** attribute the earlier 60s abort or establish a performance
+fix. Do not invent one or raise limits from this control. Preserve the earlier failed evidence and
+the attribution repair; retain the exact source deadlines for the required normal full-queue acceptance.
+Raw reports/events and the full log are at `/private/tmp/apack-publication-phase-39247182439/` and
+`/private/tmp/apack-publication-phase-39247182439-full.log`. Diagnostic tracing/extended observation
+remain isolated and are not merged. The next broad run is the required normal integration gate,
+covering full-queue scheduling and previously filtered variants, rather than another failure inventory.
