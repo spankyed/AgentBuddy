@@ -61,8 +61,9 @@ lifecycle cases, 53 policy/inventory checks, CLI types and lint pass. No product
 introduced. Earlier normal **39297729330** retains 507 passes but failed scaffold scenario/reporting
 and is not a passing gate.
 
-Next **normal unfiltered integration**, two cores on an immutable source checkpoint, must cover all
-integration projects and bodies after prior normal bail. Then run final committed-source strict
+**Normal unfiltered integration [39312954386](https://github.com/spankyed/AgentBuddy/actions/runs/39312954386)**
+is now running with two cores on workflow-only **`cc0ae42b4`**, directly based on main **`f0405e436`**.
+It must cover all integration projects and bodies after prior normal bail. Then run final committed-source strict
 `--all`, finish the full requirement audit and archive only completed work. The separate validation-
 budget/Nx/Wireit proposals remain outside this goal. See [accepted focused evidence](../evidence/integration-deadline-inventory.md#complete-scaffold-files-accepted--2026-10-19).
 
