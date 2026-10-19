@@ -1149,3 +1149,38 @@ difference is its workflow: existing typecheck/pack/external-output prerequisite
 `npm run test:integration -- --all` with `APACK_CHAIN_CORES=2`. Committed per-case and pool bounds,
 normal fail-fast behavior and report collection are preserved. This covers the required full-pool gap;
 no strict run is dispatched concurrently. Main's untracked Wireit plan is unrelated and untouched.
+
+### Normal gate result and focused attribution — 2026-10-19
+
+Run **39312954386** finishes with **741 passed, one failed, 29 skipped, two unhandled reporting
+errors**, 3610.59s. The report lists 40 passing files, one failing and two skipped out of 68;
+fail-fast leaves other files and bodies unexecuted. This is not normal integration acceptance.
+All preparation succeeds. All 11 scaffold cases pass, preserving the focused asynchronous CLI result.
+
+Failure classification:
+
+| Boundary | Evidence | Classification |
+|---|---|---|
+| Flow-module freshness | `watch-module-freshness.integration.spec.ts`, first case, 156.668s; helper attributes an abort to its 60,000ms rebuild signal | Individual-operation timeout |
+| Vitest reporting, twice | Final error summary says `Timeout calling "onTaskUpdate"`; no file attribution in the log | Reporting failure; event-loop starvation remains a hypothesis |
+| Assertions, scenario and cleanup | No independent value assertion, whole-scenario timeout or cleanup error reported | No demonstrated failure in these categories |
+
+The watched rebuild is requested and runs. Timestamped output records backend compilation at
+20:58:42 UTC and frontend emission at 20:59:10, before failure at 20:59:37. This rules out a missing
+watch request for this case; it does not establish the duration needed to finish verified publication
+or the cause of the reporting errors. No limit or input selection has been changed.
+
+Raw evidence: `/private/tmp/apack-normal-integration-39312954386/_temp/normal-integration.log`,
+`/private/tmp/apack-normal-integration-39312954386-full.log`, and its retained
+`pool-reports/spec-durations-7VJSgL/apack-cli+repo-checks+publish-checks.json`. The latter records file
+durations, not individual test verdicts; the complete log is authoritative for executed bodies.
+
+Focused diagnostic [39325170997](https://github.com/spankyed/AgentBuddy/actions/runs/39325170997)
+uses workflow-only **`e3956518cabaf0c1751347f7157e5ac08a1e228c`**, containing source **`5ce394268`**.
+It selects four complete files: module freshness (actual failure), output swap (long direct builds),
+feature authoring/validation and database commands (possible long synchronous/microtask sequences).
+The last three are suspects, not attributed causes. The existing `loop-sample.mjs` probe records
+worker/process identity and loop gaps; JSON and verbose reports retain actual case outcomes. Two
+workers, existing per-test/operation/cleanup deadlines, no fail-fast for this explicit diagnostic,
+40-minute selected-test envelope. No normal or strict gate runs concurrently. Inspect measured gaps
+at the time they grow: a cumulative gap attributed only to a worker's last file would be misleading.
