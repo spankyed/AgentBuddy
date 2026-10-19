@@ -231,6 +231,12 @@ changes six named declarations and their reasons, preserving all assertions and 
 policy/inventory/wait checks, CLI/repo types and lint pass. Next diagnose two representative watcher
 cases on one disposable runner with phase timestamps; do not enlarge their event waits. Cleanup and
 runner-reporting ownership remain open, followed by focused repair acceptance and both final gates.
+The two-case watch diagnostic is [39237809409](https://github.com/spankyed/AgentBuddy/actions/runs/39237809409),
+private **`2fcf5fe85`** on main `39f525b4d`. Only its workflow and temporary watcher timestamp logging
+differ. It selects backend flow-module and external CSS-asset rebuilds with two workers, unchanged
+20s waits and a seven-minute aggregate. It prepares published packages and typechecks the diagnostic
+source without building the unrelated shipped pack. Logs/JSON/status are retained on failure. This
+is diagnosis, not normal integration or strict acceptance; no tracing is added to the goal branch.
 Source **`21ed07fe7`** gives complete integration its own 120-minute aggregate class. The pool runner
 reads its owning chain step's deadline; ordinary unit pools remain at 600s. The measured file work
 already exceeds 53 minutes at an ideal two-worker balance, without blocked setup/preparation, so the
