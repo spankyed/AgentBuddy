@@ -46,6 +46,11 @@ that these acceptance checks pass. Do not introduce an override, speculative add
 another fixture-construction campaign. Reconsider broader support when a real required dependency
 supplies an independently Windows-loadable reproducer.
 
+Checkpoint `12447893a` checks this encoding before dependency resolution, including OS and missing
+targets. Its [focused acceptance](../../evidence/build-input-snapshot-proof.md#bound-only-refusal-before-resolution--2026-10-19)
+records diagnostic/native-loader checks and the unchanged incumbent-publication boundary; final
+committed-source convergence remains separately required.
+
 Preserved ordinary-loader experiments failed after import lookup information was removed, including
 from OS-bound images. They do not establish that every address-only binary is invalid or demonstrate
 a valid required dependency rejected by apack. Synthetic cases establish parsing/refusal behavior only.

@@ -6374,3 +6374,36 @@ and dependency diagnostic, refusal before affected native initialization and inc
 retention, while preserving ordinary bound-import support. Reuse sufficient existing evidence and add
 only missing focused coverage. No override or speculative recovery is authorized. The approval closes
 scope only; broader native obligations, B6 and final committed-source strict/app acceptance remain open.
+
+## Bound-only refusal before resolution — 2026-10-19
+
+On approved decision `c38c36301`, inspection found that `inspect()` returned early for OS libraries
+and was never called for unresolved dependencies. The bound-only guard was below those exits.
+The new inert regression fails against prior source: OS/missing targets return without refusal;
+package targets refuse but report their resolved path. Source **`12447893a`** checks each declared
+import's symbol encoding before resolution and narrows the symbols passed to ordinary admission.
+The error now consistently names the requesting image and declared dependency, without loading it.
+Named/ordinal imports and bound imports retaining their lookup information keep their existing path.
+
+All **68** CLI checks pass across `compiler-pe-admission.spec.ts`, `compiler-pe-libraries.spec.ts`
+and `compiler-native-inputs.spec.ts`. This includes the three package/OS/missing-target controls,
+ordinary bound-lookup parsing and existing owner refusal propagation. The existing loader-hook case
+now also makes admission throw and proves the mocked native loader receives no additional call;
+all **22** `compiler-file-reads.spec.ts` checks pass. CLI/host types, correctness lint and whitespace
+checks pass. Logs: `/private/tmp/apack-bound-only-admission-{red,green,types,lint}.log`,
+`/private/tmp/apack-bound-only-before-init.log`, `/private/tmp/apack-bound-only-host-types.log`.
+No native executable or library is launched by these checks.
+
+The existing accepted Windows `owns retained PE libraries and refuses outside DLLs before
+initialization` control preserves normal bound-lookup support. The backend native preload/thread
+cases assert absent addon/DLL initialization markers and an unchanged published revision after
+refusal. The publication owner is unchanged: `buildWithCompiler()` rejects a failed worker before
+`publishPackBuild()` and removes staging in `finally`; `createPackBuilder()` retains its current
+generation on refusal. Those shared boundaries apply to this synchronous admission error too;
+no new error-specific publication path is introduced. This is composed refusal evidence, not a claim
+that a synthetic address-only image is independently Windows-loadable. No new OS fixture campaign is
+needed for the approved unsupported encoding.
+
+Strict run `39196299955` targets `55c9e1f54`, so it cannot certify this later repair. Preserve its
+unreached-suite/app coverage and diagnose any actual failures; final strict `--all` must include
+`12447893a`. No active run is cancelled or duplicate broad gate launched during this checkpoint.
