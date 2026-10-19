@@ -2981,6 +2981,7 @@ type ClaudeUiNode = {
     plugin?: string;
 } | {
     kind: 'markdown';
+    nativeAnsi?: string;
     color?: string;
     text: string;
     dim: boolean;
