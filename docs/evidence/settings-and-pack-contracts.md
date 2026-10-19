@@ -8583,3 +8583,36 @@ changed. A verifier requires exactly 16 actual passes. Run
 [39209331600](https://github.com/spankyed/AgentBuddy/actions/runs/39209331600) must establish
 refusal/incumbent behavior and later lifecycle evidence before any repair or another broad pool.
 Preserve its private workflow/configuration separately; no native execution runs on the daily-use Mac.
+
+### Complete worker lifecycle accepted; finite full-coverage diagnostic — 2026-10-19
+
+[39209331600](https://github.com/spankyed/AgentBuddy/actions/runs/39209331600), `428014c11`, passes
+**all 16 actual worker lifecycle cases** in **333.405s** (335.75s invocation). The exit-handler
+candidate mutation is refused, its sealed-state/incumbent/staging assertions pass in **22.030s**.
+Frontend read identities pass in **24.361s**; parent loss **12.128s**; the four public-command
+cancellation/worker/installation cleanup cases **35.061/14.599/11.224/11.770s**. Startup identity,
+observations, loader ordering, background retirement and private-bootstrap refusal also pass. Its
+JSON verifier confirms `{passed:16}`. Log: `/private/tmp/apack-worker-closeout-39209331600.log`.
+
+No new runtime defect or completed duration exceeding the main default is demonstrated by this
+isolated control. The earlier loaded 60s refusal-case timeout remains unattributed. Main source and
+default budgets stay unchanged. This control closes the named later-worker coverage gap; it does
+not accept full-pool concurrency or justify a blanket timeout increase.
+
+Repeated fail-fast pools have left most of the 68 files unexecuted. Isolated **`4d4014241`**, branch
+`session/integration-coverage-diagnostic`, now performs **one deliberate complete-coverage diagnostic**
+on exact committed main `ca021a5bb` after normal typecheck dependency-read and pack-build prerequisites.
+It uses exactly two workers, retains every assertion and explicit/inner deadline, and changes only
+the private CLI project's default observation window to 180s. Direct Vitest collects additional
+failures (`--bail=0`) only in this diagnostic; the existing process-group owner enforces a **20m**
+aggregate observation limit, with a 40m workflow envelope for preparation and evidence retention.
+JSON/console are retained on failure. The success verifier requires all **68** file results, no
+failed assertions/suites, and reports actual pass/pending counts.
+
+[39210359774](https://github.com/spankyed/AgentBuddy/actions/runs/39210359774) supplies the complete
+failure/timing inventory. Next: distinguish failed behavior from exceeded observation bounds, inspect
+named failing phases, make only supported focused repairs and validate those cases before normal
+committed-source pool/final strict acceptance. Do not merge private collect-all/default/aggregate
+limits or report this as a normal strict gate. No source/compiler redesign, local native batch,
+Windows VM startup or repeated prerequisite run is authorized by this diagnostic itself. Preserve all
+existing source checkpoints and diagnostic branches; the complete active goal and final gates remain.

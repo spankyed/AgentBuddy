@@ -156,8 +156,16 @@ default. Fifteen actual native cases complete, including recovery and preload re
 result is available for the timed-out worker case. Isolated **`428014c11`** runs the complete 16-case
 worker file in [39209331600](https://github.com/spankyed/AgentBuddy/actions/runs/39209331600), with
 a private 180s default observation window and all existing explicit/inner bounds unchanged. This
-covers the currently unreached lifecycle cases together; main's 60s default remains unchanged.
-Inspect completed refusal/incumbent/cleanup evidence before selecting a repair. Full integration,
+covers the currently unreached lifecycle cases together and passes **all 16** in **333.405s**.
+Exit-mutation refusal/incumbent checks pass in **22.030s**; frontend read identities, parent loss and
+all four public cancellation/cleanup states pass. This does not attribute the pool's 60s timeout;
+main's default remains unchanged. One deliberate full-coverage diagnostic
+[39210359774](https://github.com/spankyed/AgentBuddy/actions/runs/39210359774), isolated **`4d4014241`**,
+collects all 68 files with two workers, unchanged assertions/inner and explicit bounds, a private
+180s CLI default and 20m aggregate observation bound. It disables fail-fast only in that private
+control and retains JSON timings, avoiding another partial coverage inventory. Inspect every
+failure and completed duration before selecting named repairs; do not merge diagnostic limits or
+claim a normal/final gate from this control. Full integration,
 authoring/runtime/app acceptance and final main strict `--all` remain required.
 None of these probes is a strict-chain result, despite using the existing `strict_chain` dispatch route. Main's
 full strict workflow is unchanged and remains required after integration converges. See
