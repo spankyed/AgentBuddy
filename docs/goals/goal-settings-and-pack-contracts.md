@@ -52,13 +52,15 @@ backend/frontend build and archive pass on that source; OS-assembly/copy/manifes
 acceptance is `b2972112d`. Evidence remains in the owning records; these accepted paths need no
 reassurance repeats. All useful Windows overlays/exports are preserved.
 
-[Strict run `39177912229`](https://github.com/spankyed/AgentBuddy/actions/runs/39177912229)
-failed at the authoring producer after its completed phases consumed about 898 of the unchanged
-900s budget. Timeout fired as archive installation started, not after a demonstrated install stall.
-Source **`8f6a5f187`** gives authoring and external contracts the existing two-core pack-build
-reservation. All 88 scheduler/core/graph checks, scripts types, lint and the old-weight mutation
-pass. Hosted acceptance remains required. Typecheck-pack reservation `04a876675` retains 60s;
-that leg and the later fork/unit/integration/runtime/app legs were not reached in this run.
+[Strict run `39182963669`](https://github.com/spankyed/AgentBuddy/actions/runs/39182963669) finished
+on **`bc0a4e91c`** after 1748.1s. The external contract (400.3s), fork producer (537.5s), pack typecheck
+(37.9s), schema/API/exports and other reached gates pass. All **5,654 host tests** pass (477 files;
+7 declared skips), but the pool fails on one obsolete LMDB `@slow` annotation. Source **`31a8e5a24`**
+removes only that seven-line header; all imports and test bodies remain byte-identical. The 70 marker
+scanner/placement checks and actual scan pass; the unchanged 48 LMDB cases passed in the hosted run.
+See [gate evidence](../evidence/settings-and-pack-contracts.md#strict-host-tests-accepted-obsolete-annotation-removed--2026-10-19).
+The packaged author half, pack unit pool, integration/runtime/app halves were not reached. Authoring's
+new two-core reservation therefore still needs real acceptance. No deadline, assertion or gate changes.
 
 Complete direct Electron content-compiler/build/archive acceptance now passes on source
 **`f37315483`**: signed macOS ARM64 [39182253220](https://github.com/spankyed/AgentBuddy/actions/runs/39182253220)
@@ -68,8 +70,8 @@ verified backend/Vue output and Node 23.11.1 archive without compiler-function i
 [direct runtime evidence](../evidence/build-input-snapshot-proof.md#direct-electron-content-compiler-and-passive-archive-accepted--2026-10-19).
 The invocation receipt complements existing passive-reader/poisoned-import checks. Signed-runtime
 environment filtering remains intact. No repeat of these accepted runtime paths is needed.
-[Strict run `39182963669`](https://github.com/spankyed/AgentBuddy/actions/runs/39182963669) is running on committed source **`bc0a4e91c`** with the producer reservation repair. Preserve its exact
-archive/app handoff; observe this run rather than dispatch another broad gate.
+No broad run remains active. Converge the remaining native proof and this focused metadata repair
+before the next required strict gate; preserve exact producer/archive/app handoffs.
 
 Windows **Node 23.11.1** also archives the retained Electron-built pack successfully (20.599s), with
 the exact previous archive checksum. The first private 60s control timed out; the diagnostic verifier
@@ -82,10 +84,14 @@ finds the documented OS cache queries work, but Windows refuses the owned fixtur
 apack runs (`0x800736fd`); a short stopped SxS trace has no diagnostic entries. Fixture absence and
 cleanup are verified and exported. This proves no product defect or policy acceptance. Establish a valid
 manifest/catalog installation control before production edits; do not repeat the rejected DLL control.
+The next signed-catalog preparation finds all SDK tools, but CurrentUser certificate enrollment refuses
+with `0x80090010` before compilation/signing/installation. No fixture certificate entry remains; evidence
+is exported and the VM is deallocated. Follow the SDK's valid catalog procedure using a process-owned
+test key rather than changing VM permissions or trust. See [signed preparation evidence](../evidence/build-input-snapshot-proof.md#signed-policy-preparation-enrollment-refusal--2026-10-19).
 The bound-only Windows import support decision is pending the user's explicit answer; no exclusion
 has been applied. Remaining native-policy/platform requirements, B6 and every Phase 7 obligation
-remain required. The strict run above is active; diagnose any failure from its retained evidence before
-considering another gate. No native execution runs on the daily-use Mac.
+remain required. The completed strict failure is diagnosed above; retain its passed stages and converge
+the remaining requirements before the next required gate. No native execution runs on the daily-use Mac.
 
 This ledger owns current execution status and ordering. The phases below retain all completion
 requirements; subsystem plans retain detailed contracts and acceptance cases. Dated checkpoint notes

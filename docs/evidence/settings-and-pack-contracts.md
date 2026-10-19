@@ -7999,3 +7999,45 @@ Retained evidence:
 
 This repair does not change release scripts, compiler semantics, output integrity, handoff ownership
 or any per-step timeout. Keep the separate signed Electron runtime proof and full goal obligations.
+
+
+## Strict host tests accepted, obsolete annotation removed — 2026-10-19
+
+[Strict run `39182963669`](https://github.com/spankyed/AgentBuddy/actions/runs/39182963669) is a terminal
+failure on exact **`bc0a4e91c379cb4c5edbdb3dfe4a853039617f46`**, after **1748.1s** on two cores.
+All 5,654 host tests in 477 files pass, with seven declared skips. The host pool then rejects the LMDB
+persistence file's obsolete `@slow` header: the file runs in 1.129s, below its whole-half 1.2s p90 and
+the existing absolute floor. There is no failed functional assertion or step timeout in this run.
+
+Source **`31a8e5a24`** removes that seven-line historical performance header. Byte comparison proves
+all imports and all 48 test bodies are unchanged; the reader-slot regression still performs 200
+transactions and retains its local explanation. Those 48 cases pass in the hosted run. All **70**
+scanner/placement checks pass locally, and an actual `markedSpecs` scan confirms that file is no longer
+marked. Neither the placement gate nor any test/deadline is weakened. Two unnecessary local LMDB
+attempts did not establish acceptance (fork IPC closed; thread process exited 134 without a diagnostic).
+They are retained, not claimed as passes or retried as a new native-debugging task. The isolated pure
+scanner invocation exits successfully; the hosted unchanged-body result owns LMDB acceptance.
+
+Reached evidence:
+
+| Stage | Outcome |
+|---|---|
+| Packages, API reports, schema, exports, lint, tiers, specifiers and reached host types | Pass |
+| Default pack build | Pass, 287.9s |
+| Facade verification | Pass, 32.7s |
+| External contract producer | Pass, 400.3s |
+| Default-fork producer | Pass, 537.5s |
+| Pack typecheck | Pass, 37.9s under unchanged 60s bound |
+| Host unit assertions | 5,654 pass; 7 declared skips; pool fails only on stale annotation |
+| Packaged-authoring author, pack unit pool, integration, runtime, smoke and app consumers | Not reached; no acceptance claimed |
+
+The scheduler repairs now have real contract/fork/pack-typecheck acceptance. The author producer's
+two-core reservation still lacks current real author/app acceptance because that step was not admitted
+before failure. Preserve that distinction and the unchanged scenario bounds. No further compiler or
+scheduling redesign follows from this annotation failure. Finish the remaining focused requirements,
+then run the required converged/final strict gates on committed source.
+
+Evidence: `/private/tmp/apack-strict-39182963669{,-chain}-clean.log`, the retained per-step tree at
+`/private/tmp/apack-strict-39182963669/`, and
+`/private/tmp/apack-persistence-marker-{39182963669,focused,scanner}.log`. The original failed-run
+console is `/private/tmp/apack-strict-39182963669-failed.log`.

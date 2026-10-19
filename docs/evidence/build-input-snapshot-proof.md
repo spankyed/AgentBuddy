@@ -6125,3 +6125,27 @@ installation contract before any production change or repeat of these failed DLL
 infer publisher-policy support, universal refusal or a product bug from this setup failure. The native
 closure register and running strict gate retain their existing obligations; this investigation adds no
 new runtime or installer subsystem to apack.
+
+
+## Signed policy preparation: enrollment refusal — 2026-10-19
+
+Microsoft's [assembly signing procedure](https://learn.microsoft.com/en-us/windows/win32/sbscs/assembly-signing-example)
+requires the manifest, catalog and assembly files, using an RSA certificate of at least 2048 bits;
+it explicitly does not require a trusted certificate. The documented SDK sequence is Pktextract for
+the certificate's token, MT `-hashupdate -makecdfs`, Makecat and SignTool. This provides a concrete valid
+fixture path without installing a trust root or inferring a cause from the previous unsigned refusal.
+
+The approved VM at `3827993ba` has all required SDK tools, including Pktextract. A preparation-only
+control plans two versions and one policy, signing before any assembly installation and removing its
+single owned certificate/key in `finally`. Its process owner retains a 60s outer bound, with a 45s
+preparation child. CurrentUser enrollment instead fails immediately with **`0x80090010 / NTE_PERM`**
+at `New-SelfSignedCertificate`. Compilation, signing and assembly installation never start. No fixture
+certificate entries or native/compiler processes remain; no Windows permission, trust root, security
+setting or existing certificate is changed to bypass the refusal. Source/stashes/builds are preserved.
+The failure does not establish why enrollment is denied, a product defect or a policy exclusion.
+
+Exact scripts, SDK extractor paths, enrollment refusal and terminal cleanup are exported as
+`/private/tmp/apack-policy-signed-preflight-3827993ba.zip` (6,205 bytes). Azure confirms **VM deallocated**.
+Continue the same documented signing contract with a process-owned test key instead of changing
+persistent enrollment permissions. Establish a valid ordinary policy control before production edits;
+the named policy acceptance, pending bound-only decision and full execution goal remain open.
