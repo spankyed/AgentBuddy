@@ -170,14 +170,20 @@ claim a normal/final gate from this control. That run reaches its 1,200s aggrega
 The completed native file alone takes **906.983s**, exceeding main's 600s aggregate. No test
 assertion, individual-operation or cleanup failure is reported before termination; the driver's
 exit-code assertion is consequential. The [deadline inventory](../evidence/integration-deadline-inventory.md)
-owns the full per-file coverage and failure classification. The remaining 59 files run in six explicit
-sequential batches in [39214676663](https://github.com/spankyed/AgentBuddy/actions/runs/39214676663),
-workflow-only **`32ec489cf`** on main `1a6304827`. They use two workers and **unchanged main per-test
-deadlines**, preserving a report/status for every batch and continuing after a failed batch. Completed
-files are excluded. Finish this inventory, then make one evidence-based composition/grouping/aggregate
-budget repair, preserving operation/event/cleanup limits.
-Validate affected cases, pass normal integration, then run final strict acceptance. Do not run another
-fail-fast full pool to discover each undersized enclosing deadline. Full integration,
+owns the full per-file coverage and failure classification. All 59 remaining file reports are collected from six sequential batches in
+[39214676663](https://github.com/spankyed/AgentBuddy/actions/runs/39214676663), workflow-only
+**`32ec489cf`** on main `1a6304827`. Every batch completed within 900s with two workers and unchanged
+main per-test deadlines: **251 passed, 38 failed, 50 pending**. Failed setup hooks blocked 47 pending
+bodies; three are declared platform/configuration skips. Preserve the eight earlier passing files.
+The complete [failure inventory](../evidence/integration-deadline-inventory.md#completed-six-batch-inventory-2026-10-19)
+classifies every case failure, additional setup failures, one cleanup failure and five Vitest reporting
+timeouts. The six complete invocations total 2,942.322s excluding shared preparation; this failed-run
+measurement does not certify a completed normal-suite budget.
+Next make one evidence-based repair pass: compose multistep/setup deadlines while preserving inner
+limits; diagnose execution-input, facade-freshness, HMR and watcher assertions; repair demonstrated
+abandoned-operation cleanup. Repair normal grouping and its own aggregate budget from the inventory.
+Validate affected cases, pass normal integration, then final strict acceptance. No broad diagnostic
+rerun or outer timeout increases to hide assertion/event/cleanup failures. Full integration,
 authoring/runtime/app acceptance and final main strict `--all` remain required.
 None of these probes is a strict-chain result, despite using the existing `strict_chain` dispatch route. Main's
 full strict workflow is unchanged and remains required after integration converges. See
