@@ -156,7 +156,7 @@ describe('apack pack add step in a pack without steps', () => {
       .toContain('export function heartBeat(heartBeat: string');
     const tsc = await typecheckPack(triggerPack);
     expect(tsc.code, tsc.output).toBe(0);
-  });
+  }, 3 * 60_000 + 20_000);
 
   it('refuses a step type the manifest already declares, leaving the manifest as it was', async () => {
     const bare = path.join(tmp, 'bare-pack');

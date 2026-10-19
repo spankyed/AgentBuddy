@@ -833,3 +833,23 @@ GitHub finalization subsequently resolves: the run API reports **39275701481 com
 updated **2026-10-19T15:54:31Z**. This agrees with the preserved 41-pass report and completed log.
 The earlier discrepancy is historical evidence, not an outstanding cleanup or deadline defect. No
 process/tooling repair was made. Normal run **39281108805** remains queued at that observation.
+
+## Normal gate: trigger scaffold scenario deadline — 2026-10-19
+
+Normal run [39281108805](https://github.com/spankyed/AgentBuddy/actions/runs/39281108805)
+on workflow-only `97ea3af4b` / main `2bdfa9e7a` finishes in 1603.52s with 505 actual
+passes, one failure and 26 Windows skips. All 16 worker and 25 native bodies pass in this run.
+The failure is a **whole-scenario timeout**, not an assertion or reported operation/cleanup failure:
+`add-extensions.integration.spec.ts`'s hyphenated-trigger scenario inherits 60s despite initializing
+a separate pack, scaffolding a trigger (including generation), and checking its TypeScript program.
+Vitest reports 72.300s elapsed. Remaining files/cases skipped by bail are not accepted.
+
+The focused repair assigns only that scenario `3 * 60_000 + 20_000`, matching adjacent
+multistep allowances. Helpers, assertions and production code are unchanged. These helpers perform
+in-process operations; this allowance does not establish independently cancellable operation bounds.
+No general timeout, event-wait or cleanup limit is increased. Same-file review finds the other
+multistep scaffolding/generation/typecheck scenarios already have explicit composed allowances.
+CLI typecheck, lint and 42 timeout-policy checks pass. Focused full-file runner acceptance is pending.
+
+Preserved evidence: `/private/tmp/apack-normal-integration-39281108805-full.log` and
+`/private/tmp/apack-normal-integration-39281108805/`, including the raw pool JSON reports.

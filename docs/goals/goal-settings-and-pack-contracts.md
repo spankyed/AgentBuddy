@@ -47,11 +47,12 @@ Lazy activation is deferred.
 
 ## Live execution ledger (reconciled 2026-10-16)
 
-Current normal gate: **39281108805** on workflow-only `97ea3af4b` / main `2bdfa9e7a`, containing
-accepted repair `f17d2e286`. Both complete affected files have 41/41 passes and exit 0; GitHub now
-also reports **39275701481 completed/success** (15:54:31Z), resolving the earlier status discrepancy.
-Await the existing queued normal command before main final strict `--all`. No further source
-changes are planned while it validates this checkpoint.
+Current normal gate **39281108805** finished: **505 actual passes**, one whole-scenario
+60s timeout in the trigger scaffold/add/typecheck case. All preparation passes, as do all 41 native
+and worker cases together. The unfiltered pool stopped early; full integration is still unaccepted.
+Compose this remaining three-operation scenario's deadline consistently with adjacent cases, then
+accept the full affected scaffold file before another normal run. Final committed-source strict
+`--all` remains required. See [latest classification](../evidence/integration-deadline-inventory.md#normal-gate-trigger-scaffold-scenario-deadline--2026-10-19).
 
 Latest normal **39269209929** finishes with 425 actual passes and a native-thread **whole-scenario
 120s timeout**. All 16 worker bodies now pass, including three previously inherited-60s scenarios
