@@ -6149,3 +6149,82 @@ Exact scripts, SDK extractor paths, enrollment refusal and terminal cleanup are 
 Continue the same documented signing contract with a process-owned test key instead of changing
 persistent enrollment permissions. Establish a valid ordinary policy control before production edits;
 the named policy acceptance, pending bound-only decision and full execution goal remain open.
+
+
+## Publisher-policy freshness and runtime identity boundary — 2026-10-19
+
+Current usable source checkpoint is `31a8e5a24`, with evidence at `5ae3afdda`. The following source
+candidate and durable regression remain **uncommitted**; the new design question is not settled.
+
+A valid native fixture now uses the SDK's x64 Pktextract, MT and Makecat, with a process-owned RSA
+certificate and standard .NET CMS signing. SignTool's PFX import also returned `NTE_PERM`; in-process
+signing avoids persistent certificate enrollment/import, creates no private-key file and verifies the
+signature/content before installation. No certificate is added to a trust store. Correct COM
+initialization and the complete signed manifest/catalog allow the documented native cache API to
+install, query and uninstall both versioned assemblies and their policy. These successful controls do
+not isolate the cause of the earlier incomplete fixture's HRESULT.
+
+Ordinary Windows loading returns **11** before the policy and **22** afterward. `QueryActCtx` omits the
+selected Fusion policy path, although its manifest/DLL selection is correct. The original common
+observation record still passes after that real policy installation: a demonstrated freshness defect.
+The current helper candidate observes Manifests/Policies/Fusion directory membership and policy
+manifest/catalog bytes through the existing typed input callbacks. The exact reproducer now refuses
+old observations at `entries: Windows/WinSxS/Fusion`; actual DLL selection remains correct.
+
+The first candidate's per-entry attribute queries exceeded the unchanged five-second helper bound.
+`DirectoryInfo.GetFileSystemInfos` supplies [pre-populated attributes](https://learn.microsoft.com/en-us/dotnet/api/system.io.directoryinfo.getfilesysteminfos?view=netframework-4.8.1),
+allowing the same sorted name/kind hash without a separate lookup per entry. The second candidate
+passes that bound and the complete ordinary policy/input regression. No deadline is raised, namespace
+is omitted or OS binding logic replaced.
+
+The durable integration case adds copy validation and fails at the existing source/copy hash equality
+assertion in **6.570s**, not at freshness, installation or cleanup. A subsequent bounded diagnostic
+freezes repository edits and compares the complete file projection and normalized context inputs:
+
+| Metadata | Source versus fresh copy |
+|---|---|
+| Captured file bytes, executable modes and relative file names | Identical |
+| Owned directory topology | Identical; no links |
+| Other normalized activation inputs | Identical |
+| Selected assembly manifest | Source v1; copy v2 |
+| Helper's DLL binding | Source v1; copy v2 |
+| Actual execution after the same policy update | Source returns 11; copy returns 22 |
+| Composite runtime hash | Source `68493ec6aca4608926ac801ed1c5b2997aac55b81dde3a9ad633d70e5f48a35c`; copy `c93ab7569517b90cc520974f98019ae89a6935648110704eb09d518fa5a1fba0` |
+
+Thus the helper agrees with each executable; the mismatch is real live activation state rather than
+corrupted copy data. Windows retaining activation state associated with an existing executable path
+is consistent with the result; this is not a claim about its undocumented cache implementation.
+The fingerprint currently mixes two roles. `captureCompilerInstallation` uses it for copy integrity,
+execution identity and both original/captured `isCurrent` checks. Those callers need a coherent contract
+before any field or assertion changes.
+
+Metadata classification for the pending design:
+
+- Distribution data: copied executable/resources, owned private configuration, file modes, directories
+  and links. Relocation integrity must preserve these.
+- Live selection inputs: OS policy/catalog bytes and namespace membership, plus relevant loader policy.
+  Keep them in the common observation/freshness path; they are not copied distribution files.
+- Effective binding state: selected assembly manifests/DLL paths for a particular executable context.
+  The new copy can demonstrably differ from the original despite equal distribution bytes.
+
+The user has been asked one choice: a fresh captured compiler follows current OS policy, tracking byte
+integrity and its own effective selection separately (recommended), or capture refuses to diverge from
+the original cached bindings. **No choice is assumed.** Do not change tests, drop selection fields or
+change the capture contract until it is settled. The existing fresh-copy system-assembly control and
+actual Node/Electron proofs remain relevant; this C-loader case does not replace those runtime paths.
+Whichever choice is made, preserve private SxS/DotLocal ownership, source paths, deterministic generation
+identity, signing/distribution guarantees and common passive-consumer freshness. No goal scope is waived.
+
+Current verification: 69 pure PE cases, all 11 subprocess inventory checks, CLI TypeScript and correctness
+lint pass. The new durable case remains red at copy equality and retains its fixture; no broad suite was
+restarted. Helpers/fixtures and the 39-line observation repair remain visible in the main checkout.
+Windows uses base `3827993ba` plus the exact owned overlay; the current helper SHA-256 is
+`daa6612bbdab1a8d734a03f18deeac164635b7373accc49691313ba7e21b53de`.
+
+Evidence export `/private/tmp/apack-policy-contract-5ae3afdda.zip` (2,445,350 bytes) contains the signed
+public fixture, SDK preparation failures, red/green observation proofs, store layout, timed-out first
+candidate, durable failure, exact source/copy comparison and source overlays. No PFX/private-key file
+is exported. Current patch/untracked-source backups are `/private/tmp/apack-policy-contract-current.patch`
+and `/private/tmp/apack-policy-contract-fixture.{ts,ps1,cpp}`. Final exact-argument absence queries are
+`/private/tmp/apack-policy-final-absence.json`. Preserve all originals/stashes and the retained fixture;
+no broad cleanup or installed-app changes occur. Azure confirms **VM deallocated** after export.

@@ -79,19 +79,28 @@ then accepted all 40,731 observations in about 55s. A measured 180s private cont
 20.599s; no repository deadline or production source changed. See [Windows consumer evidence](../evidence/build-input-snapshot-proof.md#windows-node-consumer-of-the-retained-electron-build--2026-10-19).
 The VM has no remaining compiler processes; its evidence is exported and Azure confirms it is deallocated.
 
-The [publisher-policy fixture preflight](../evidence/build-input-snapshot-proof.md#publisher-policy-fixture-feasibility--2026-10-19)
-finds the documented OS cache queries work, but Windows refuses the owned fixture installation before
-apack runs (`0x800736fd`); a short stopped SxS trace has no diagnostic entries. Fixture absence and
-cleanup are verified and exported. This proves no product defect or policy acceptance. Establish a valid
-manifest/catalog installation control before production edits; do not repeat the rejected DLL control.
-The next signed-catalog preparation finds all SDK tools, but CurrentUser certificate enrollment refuses
-with `0x80090010` before compilation/signing/installation. No fixture certificate entry remains; evidence
-is exported and the VM is deallocated. Follow the SDK's valid catalog procedure using a process-owned
-test key rather than changing VM permissions or trust. See [signed preparation evidence](../evidence/build-input-snapshot-proof.md#signed-policy-preparation-enrollment-refusal--2026-10-19).
-The bound-only Windows import support decision is pending the user's explicit answer; no exclusion
-has been applied. Remaining native-policy/platform requirements, B6 and every Phase 7 obligation
-remain required. The completed strict failure is diagnosed above; retain its passed stages and converge
-the remaining requirements before the next required gate. No native execution runs on the daily-use Mac.
+The publisher-policy fixture is now valid: process-owned signing and the documented SDK/cache APIs
+install, query and remove its unique identities. Its real DLL changes 11→22 after policy installation.
+The helper matches that selection, but the original observation record incorrectly stays valid.
+The uncommitted helper candidate records policy-store membership and policy/catalog bytes; the same
+reproducer now invalidates. Batched directory attributes retain the existing five-second query bound.
+
+The durable regression exposes a separate identity-contract boundary: source/copy files and owned
+directories are identical, but Windows runs the original executable with DLL v1 and the fresh copy
+with v2. The current `runtime.hash` combines distribution integrity with effective OS binding state.
+**Stop dependent implementation and test edits pending the user's single design choice:** fresh
+captured compilers follow current OS policy (recommended, with separate byte/selection identities),
+or capture refuses when original cached bindings differ. Keep the failing assertion and exact data;
+do not drop selection facts to make equality pass. See [identity evidence](../evidence/build-input-snapshot-proof.md#publisher-policy-freshness-and-runtime-identity-boundary--2026-10-19).
+The existing Node/Electron native proofs remain separate; this new ordinary-loader case does not
+replace them. Current WIP source is retained in the main checkout and matching VM overlay. All 69
+focused pure PE cases, 11 subprocess checks, CLI types and focused lint pass; the durable case fails
+only at source/copy hash equality. Source `31a8e5a24` remains the last committed source checkpoint.
+
+The bound-only Windows import support decision is also pending; no exclusion has been applied.
+Remaining native requirements, B6 and every Phase 7 obligation remain required. The strict gate above
+is terminal and diagnosed; no replacement broad gate was dispatched. Finish this contract checkpoint
+and focused verification before the next required gate. No native execution runs on the daily-use Mac.
 
 This ledger owns current execution status and ordering. The phases below retain all completion
 requirements; subsystem plans retain detailed contracts and acceptance cases. Dated checkpoint notes
