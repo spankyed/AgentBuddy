@@ -221,6 +221,16 @@ No setup or aggregate cutoff blocked bodies. Next correct the shared undeclared 
 compose the four omitted multistep cases, and run a small disposable watch proof to distinguish missed
 events from slow builds/publication. Trace the cleanup/reporting owners; preserve inner wait limits.
 Do not launch another broad diagnostic. This is neither normal integration nor strict acceptance.
+Source **`6e0e52f23`** repairs the shared facade fixture's missing `base-pack/search` consumption,
+preserving all generated-type assertions and strict provider selection. Sixteen selection checks pass;
+an inert control reads the actual two fixture declarations and proves the old manifest excludes search
+while the declared consumption selects it. CLI types/lint pass; the eight real typechecks still need
+focused remote acceptance. Source **`55ebfc7bc`** composes the four missed timeout cases plus three
+additional sequential cases found by auditing default-bound callbacks in all 24 affected files. It
+changes six named declarations and their reasons, preserving all assertions and wait calls. All 57
+policy/inventory/wait checks, CLI/repo types and lint pass. Next diagnose two representative watcher
+cases on one disposable runner with phase timestamps; do not enlarge their event waits. Cleanup and
+runner-reporting ownership remain open, followed by focused repair acceptance and both final gates.
 Source **`21ed07fe7`** gives complete integration its own 120-minute aggregate class. The pool runner
 reads its owning chain step's deadline; ordinary unit pools remain at 600s. The measured file work
 already exceeds 53 minutes at an ideal two-worker balance, without blocked setup/preparation, so the

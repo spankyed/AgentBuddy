@@ -392,6 +392,24 @@ Complete reports and console/status records are retained under
 `/private/tmp/apack-affected-39227491937-classification.json`. The earlier eight-file and six-batch
 evidence remains preserved; this affected run is not either remaining gate.
 
+Source **`6e0e52f23`** adds the missing `consumes.services: ['base-pack/search']` to the shared facade
+consumer fixture. All eight failing type assertions are retained. Sixteen existing service-selection
+checks and CLI types/lint pass. An inert TypeScript-AST control reads the actual base/app fixture
+manifests and feeds the common selector: the old declaration exposes no search; the corrected one
+selects the declared `base-pack/search`. This is direct declaration/selection evidence, not a claim that
+the eight full generated consumer typechecks have already passed.
+
+Source **`55ebfc7bc`** composes the four previously missed whole-case timeouts: both damaged-output
+variants perform two builds then verify; the collision case builds a rival before a public CLI refusal;
+the unresolved-dependency case runs separate build/archive refusals. Their cases use two 60s operation
+allowances plus 20s verification. Auditing default-bound callbacks in all 24 files also finds two
+scaffold/regenerate/typecheck sequences (three 60s phases plus 20s verification) and one cold publish
+before passive report inspection (60s plus 20s). These are six named declarations covering seven actual
+cases. Pure capture checks, immediate preflight refusals and ordinary source-only metadata reports keep
+their existing limits; there is no blanket default change. All assertion bodies and event waits remain
+unchanged. The 57 policy/inventory/wait checks, CLI/repo types and lint pass. Focused real acceptance
+remains required; do not dispatch the prepared normal branch without these validated repairs.
+
 Raw evidence is preserved in `/private/tmp/apack-integration-remaining-39214676663-original/` (all JSON/console/
 status reports), `/private/tmp/apack-integration-remaining-39214676663-full.log` (complete GHA output,
 including stderr), and the run's retained upload. The per-batch `tee` files contain stdout only; use
