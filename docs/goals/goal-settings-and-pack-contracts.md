@@ -92,6 +92,7 @@ with v2. The current `runtime.hash` combines distribution integrity with effecti
 captured compilers follow current OS policy (recommended, with separate byte/selection identities),
 or capture refuses when original cached bindings differ. Keep the failing assertion and exact data;
 do not drop selection facts to make equality pass. See [identity evidence](../evidence/build-input-snapshot-proof.md#publisher-policy-freshness-and-runtime-identity-boundary--2026-10-19).
+The [runtime-identity caller audit](../evidence/build-input-snapshot-proof.md#runtime-identity-caller-audit--2026-10-19) also identifies an unproven reuse boundary: capture does not retain the new selection observations, and its composite hash omits directory-listing hashes. Close direct installation reuse as well as common-record replay; frontend readiness only echoes the generation hash and is not independent DLL-selection evidence.
 The existing Node/Electron native proofs remain separate; this new ordinary-loader case does not
 replace them. Current WIP source is retained in the main checkout and matching VM overlay. All 69
 focused pure PE cases, 11 subprocess checks, CLI types and focused lint pass; the durable case fails

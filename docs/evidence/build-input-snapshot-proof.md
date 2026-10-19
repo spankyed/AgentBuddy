@@ -6228,3 +6228,34 @@ is exported. Current patch/untracked-source backups are `/private/tmp/apack-poli
 and `/private/tmp/apack-policy-contract-fixture.{ts,ps1,cpp}`. Final exact-argument absence queries are
 `/private/tmp/apack-policy-final-absence.json`. Preserve all originals/stashes and the retained fixture;
 no broad cleanup or installed-app changes occur. Azure confirms **VM deallocated** after export.
+
+### Runtime-identity caller audit — 2026-10-19
+
+Read-only audit after the copy mismatch; no executable/test contract was changed and no native run
+was started. The preceding choice remains pending. Current callers establish the repair boundary:
+
+| Caller | Actual use | Required distinction |
+|---|---|---|
+| `compiler-runtime.ts`, `readCompilerRuntimeInputs` | Appends effective activation inputs/redirections and loader policy to the copied file/topology identity | Owned bytes/topology and executable-specific bindings are different projections. Keep both; do not classify system store directories as copied data. |
+| `compiler-installation.ts`, capture and `capturedRuntimeCurrent` | Requires the fresh copy's combined hash to equal the original's, before returning any installation | This is the demonstrated refusal. A copy-integrity comparison cannot alone establish selection equivalence. |
+| `compiler-installation.ts`, `isCurrent` | Re-reads original and captured runtimes against the same original combined hash | Any approved separation must still invalidate source changes, captured-file tampering and relevant selection changes. |
+| `build-process.ts`, generation selection | Calls `isCurrent` before reusing the compiler; owns replacement and disposal | Keep one existing generation owner; no extra runtime cache or lifecycle framework. |
+| `compiler-watch.ts`, `readCompilerWatchTools` | Collects runtime observations and folds `runtime.hash` into tooling signature | Preserve policy-store membership watches, including absent/new candidates, independently of copy equality. |
+| `compilation-inputs.ts`, `current` and publication | Includes the captured installation hash in the build fingerprint and persists it as `compiler` | An execution identity must describe the compiler that actually produced the build, not silently omit its effective bindings. |
+| `frontend-worker.ts` / `frontend-process.ts`, readiness | Worker echoes the persisted installation hash; parent compares it | This checks generation association, not independently measured DLL selection. Do not cite the handshake as a loader proof. |
+| `compiler-native-libraries.ts`, runtime admission | Uses the copied executable, an empty loaded-library set and that executable's activation context before launch | Already admits the new runtime independently of the parent's loaded DLLs. Preserve pre-initialization refusal. |
+| `compiler-native-libraries.ts`, addon admission | Uses the running process executable/context and live loaded-library inventory | Keep the distinction between a fresh runtime launch and an addon entering an existing process. |
+
+One important limit is explicit in current source: runtime identity replaces **all directory-entry
+hashes with `null`** while the observation callback records their full listings. The new OS-store
+observations therefore repair common-record replay, but that alone does **not** prove direct
+`CompilerInstallation.isCurrent` detects a policy installation when its cached effective binding stays
+unchanged. Capture currently supplies no observation callback. The approved implementation must give
+runtime reuse its own retained/replayed selection observations, or demonstrate an equivalent complete
+identity check; a passing callback regression is insufficient evidence for that caller.
+
+These findings constrain either pending design choice. For fresh-current-policy capture, compare the
+owned distribution projection for copy integrity, then retain the fresh executable's selection and
+observation baseline for execution/reuse. For exact-original-binding capture, preserve the refusal and
+make that supported boundary explicit. Neither path may fix equality by dropping DLL-selection facts,
+replace OS binding with a guessed resolver, or claim source/copy binding equivalence from equal bytes.
