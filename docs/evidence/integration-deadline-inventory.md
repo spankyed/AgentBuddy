@@ -1115,3 +1115,28 @@ lint pass. Focused [39311095507](https://github.com/spankyed/AgentBuddy/actions/
 runs on workflow-only **`4dc9c393d`**, directly based on that correction. Exactly the two complete
 scaffold files (29 bodies) run with two workers; DSL's 71.572s acceptance is preserved separately.
 No broader run is dispatched. The user's documentation-only `752c7bf32` remains intact.
+
+
+## Complete scaffold files accepted — 2026-10-19
+
+Focused [39311095507](https://github.com/spankyed/AgentBuddy/actions/runs/39311095507) on
+workflow-only **`4dc9c393d`**, source **`14de022f8`**, accepts **29/29 bodies**, zero failed/pending,
+**exit 0**, 604.571s. Both complete files execute with two workers, without an unhandled reporting
+or cleanup error. The previously blocked seven scaffold bodies all execute and pass. Source differs
+from the main checkpoint only in the focused workflow.
+
+Actual successful public builds take **75.020s, 94.537s and 179.485s**. The step/service case takes
+**233.410s**; facade roundtrip 156.527s. This establishes that 120s is insufficient for the full public
+build boundary and that the asynchronous process repair survives the complete later sequence without
+blocking task reporting. It does not prove normal unfiltered integration or strict `--all`.
+Other command limits, cancellation/cleanup limits and every value assertion are unchanged. The separate
+DSL acceptance **71.572s** from `39309152812` remains preserved rather than repeated here.
+Raw: `/private/tmp/apack-scaffold-full-39311095507/`; full job log:
+`/private/tmp/apack-scaffold-full-39311095507-full.log`.
+
+The affected repair has converged. Next run **normal unfiltered `npm run test:integration -- --all`**
+on an immutable workflow-only branch from current main, two cores and the committed pool/case limits.
+That required gate covers all integration projects, their concurrency and remaining bodies after
+previous normal bail; a focused two-file pass cannot substitute for it. If it passes, run main's final
+committed-source strict `--all`, then finish the requirement audit and documentation closure. Do not
+resume unrelated research or the separate validation redesign.

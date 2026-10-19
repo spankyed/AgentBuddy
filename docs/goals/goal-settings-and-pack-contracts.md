@@ -47,27 +47,24 @@ Lazy activation is deferred.
 
 ## Live execution ledger (reconciled 2026-10-16)
 
-Current checkpoint: focused async acceptance **39309152812** finishes **23 passed, seven reported
-failed**, exit 1, with no unhandled reporting error. This is one **individual-operation timeout**
-on the second full public build plus **six shared-fixture setup refusals**; no whole-scenario,
-value assertion or cleanup deadline fails. All 18 add-extension cases pass. DSL passes in **71.572s**,
-closing its previously missing real acceptance and proving the old inherited 60s insufficient.
+Current checkpoint: focused [39311095507](https://github.com/spankyed/AgentBuddy/actions/runs/39311095507)
+accepts **29/29 scaffold/add-extension bodies**, zero failed/pending, **exit 0**, 604.571s, with no
+unhandled reporting or cleanup error. Workflow-only **`4dc9c393d`** contains source **`14de022f8`**.
+All previously blocked scaffold cases execute and pass. Full public builds take **75/95/179 seconds**,
+confirming the need for the existing backend/frontend command composition instead of the former 120s
+backend-only selection. The unchanged DSL body separately passes in **71.572s** (`39309152812`);
+its former inherited 60s deadline was insufficient. Preserve both evidence sets.
 
-Repair **`7c24806e7`** moves scaffold CLI/nested-runner work to asynchronous owned processes,
-preserves all assertions, awaits cancellation/closure and prevents timeout-as-refusal mistakes.
-The full public build's 120s limit was incorrectly selected as a backend-only allowance: its first
-build takes 108.377s; its second emits backend/frontend output but exceeds 120s. Correct all three
-full public commands to the existing **180s captured backend + 120s cold frontend** composition;
-compose their outer budgets, retaining other commands at 60s, cancellation grace 2s and cleanup 20s.
-Eight mocked lifecycle checks, policy/inventory checks, CLI types and lint pass for the process owner.
+Source **`7c24806e7`** owns the asynchronous CLI/nested-runner boundary, cancellation, awaited closure,
+and timeout/refusal distinction; **`14de022f8`** corrects full public build composition. Eight mocked
+lifecycle cases, 53 policy/inventory checks, CLI types and lint pass. No product/compiler redesign is
+introduced. Earlier normal **39297729330** retains 507 passes but failed scaffold scenario/reporting
+and is not a passing gate.
 
-Correction **`14de022f8`** is committed; 42 policy checks, CLI types and lint pass. Focused
-[39311095507](https://github.com/spankyed/AgentBuddy/actions/runs/39311095507) is running on
-workflow-only **`4dc9c393d`**, directly based on that correction: both complete scaffold files
-(**29 bodies**, two workers), requiring exit 0 and no unhandled reporting errors. Preserve the separately accepted DSL result; no additional DSL run is
-needed for this composition-only correction. Then resume normal unfiltered integration and final
-committed-source strict `--all`. Do not use another broad gate to diagnose this repair or begin the
-separate validation-budget/Nx proposals. See [classified evidence](../evidence/integration-deadline-inventory.md#focused-async-acceptance-full-build-boundary-correction--2026-10-19).
+Next **normal unfiltered integration**, two cores on an immutable source checkpoint, must cover all
+integration projects and bodies after prior normal bail. Then run final committed-source strict
+`--all`, finish the full requirement audit and archive only completed work. The separate validation-
+budget/Nx/Wireit proposals remain outside this goal. See [accepted focused evidence](../evidence/integration-deadline-inventory.md#complete-scaffold-files-accepted--2026-10-19).
 
 Focused configuration acceptance **39296758415** succeeds on workflow-only `952a6dd02`,
 containing repair **`d29612b7a`**: all **15/15** cases pass, zero pending, exit 0, 239.315s.
