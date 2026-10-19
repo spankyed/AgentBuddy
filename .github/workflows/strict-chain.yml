@@ -14,7 +14,7 @@ concurrency:
 jobs:
   check:
     runs-on: macos-26
-    timeout-minutes: 40
+    timeout-minutes: 75
     env:
       APACK_CHAIN_CORES: 2
     defaults:
@@ -39,6 +39,7 @@ jobs:
         timeout-minutes: 10
         run: npm run packages:ensure
       - name: Typecheck diagnostic source
+        id: types
         timeout-minutes: 5
         run: npx tsc -p packages/apack-cli --noEmit
       - name: Trace two real watcher rebuilds
@@ -69,3 +70,27 @@ jobs:
         with:
           name: watch-timeline-${{ github.sha }}
           path: ${{ runner.temp }}/watch-proof*
+      - name: Validate repaired declarations and composed cases
+        if: ${{ !cancelled() && steps.types.outcome == 'success' }}
+        run: |
+          node --import tsx --input-type=module <<'JS' 2>&1 | tee "$RUNNER_TEMP/repair-proof.log"
+          import fs from 'node:fs';
+          import assert from 'node:assert/strict';
+          import { boundedSpawn } from './scripts/lib/bounded-spawn.ts';
+          const prefix=process.env.RUNNER_TEMP+'/repair-proof';
+          const args=["node_modules/vitest/vitest.mjs", "run", "--config", "vitest.integration.config.ts", "packages/apack-cli/tests/build/build-output-swap.integration.spec.ts", "packages/apack-cli/tests/build/dependency-graph.integration.spec.ts", "packages/apack-cli/tests/commands/scaffold.integration.spec.ts", "packages/apack-cli/tests/commands/add-extensions.integration.spec.ts", "packages/apack-cli/tests/commands/facade-report.integration.spec.ts", "packages/apack-cli/tests/build/facade-typing.integration.spec.ts", "--testNamePattern", "^(?:a\\ completed\\ build\\ rebuilds\\ damaged\\ facade\\ data\\ instead\\ of\\ renewing\\ its\\ checksums|a\\ completed\\ build\\ rebuilds\\ damaged\\ cache\\ data\\ instead\\ of\\ renewing\\ its\\ checksums|apack\\ pack\\ facade\\-report\\ records\\ the\\ facade\\ dependents\\ compile\\ against,\\ and\\ then\\ reports\\ it\\ up\\ to\\ date|apack\\ pack\\ facade\\-report\\ checks\\ the\\ verified\\ current\\ build\\ without\\ changing\\ generated\\ files|a\\ collision\\ that\\ is\\ real\\ still\\ fails\\ when\\ two\\ independent\\ packs\\ declare\\ the\\ same\\ entity|generated\\ facades\\ with\\ a\\ dependency\\ \\('workspace\\ source'\\)\\ typechecks\\ own\\ and\\ dependency\\ types\\ under\\ moduleResolution\\ bundler|generated\\ facades\\ with\\ a\\ dependency\\ \\('workspace\\ source'\\)\\ typechecks\\ own\\ and\\ dependency\\ types\\ under\\ moduleResolution\\ node16|apack\\ pack\\ init\\ \u2192\\ add\\ feature\\ \u2192\\ build\\ \u2192\\ tsc\\ \u2192\\ pack\\ adds\\ a\\ feature,\\ builds,\\ typechecks\\ and\\ packs\\ a\\ verified\\ archive|apack\\ pack\\ init\\ \u2192\\ add\\ feature\\ \u2192\\ build\\ \u2192\\ tsc\\ \u2192\\ pack\\ fails\\ the\\ build\\ on\\ an\\ unresolvable\\ dependency|apack\\ pack\\ add\\ step\\ names\\ the\\ DSL\\ node\\ interface\\ DSL<Type>Node\\ and\\ the\\ form\\ takes\\ node/resources,\\ emitting\\ update\\-node\\ and\\ close|apack\\ pack\\ add\\ step\\ generates\\ flow\\ helpers\\ for\\ the\\ kebab\\-case\\ step\\ that\\ typecheck\\ with\\ tsc|apack\\ pack\\ add\\ migration\\ declares\\ each\\ migration\\ under\\ its\\ version\\ line\\ and\\ the\\ version\\ it\\ targets,\\ which\\ the\\ pack\\ entry\\ registers\\ and\\ tsc\\ accepts|apack\\ pack\\ add\\ migration\\ refuses\\ a\\ version\\ it\\ already\\ declares\\ on\\ that\\ line,\\ leaving\\ the\\ manifest\\ as\\ it\\ was)$", "--bail=0", "--poolOptions.threads.maxThreads=2", "--poolOptions.threads.minThreads=1", "--poolOptions.forks.maxForks=2", "--poolOptions.forks.minForks=1", "--reporter=verbose", "--reporter=json"];
+          args.push('--outputFile='+prefix+'.json');
+          const result=await boundedSpawn('node',args,1800000,{stream:true});
+          const report=fs.existsSync(prefix+'.json')?JSON.parse(fs.readFileSync(prefix+'.json','utf8')):undefined;
+          const status={code:result.code,ms:result.ms,timedOut:result.timedOut,passed:report?.numPassedTests,failed:report?.numFailedTests,pending:report?.numPendingTests};
+          fs.writeFileSync(prefix+'-status.json',JSON.stringify(status,null,2));
+          console.log(JSON.stringify(status));
+          assert.equal((status.passed??0)+(status.failed??0),13,'All thirteen selected cases must execute');
+          process.exitCode=result.code;
+          JS
+      - name: Preserve focused repair evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: repair-proof-${{ github.sha }}
+          path: ${{ runner.temp }}/repair-proof*

@@ -35,7 +35,15 @@ it('refreshes flow modules loaded through ordinary imports on the next watched b
     });
     expect(output()).toContain('First');
     fs.writeFileSync(flow, declaration('Other'));
-    await vi.waitFor(() => expect(publications > 0 || errors.mock.calls.length > 0).toBe(true), { timeout: 20_000 });
+    try {
+      await vi.waitFor(() => expect(publications > 0 || errors.mock.calls.length > 0).toBe(true), { timeout: 20_000 });
+    } catch (error) {
+      console.log(JSON.stringify({ watchProof: 'original-wait:failed', at: Date.now(), root }));
+      // Observe the already-running build, then retain the original 20s assertion failure.
+      await vi.waitFor(() => expect(publications > 0 || errors.mock.calls.length > 0).toBe(true), { timeout: 40_000 })
+        .catch(observation => console.log(JSON.stringify({ watchProof: 'observation:failed', at: Date.now(), root, error: String(observation) })));
+      throw error;
+    }
     expect(errors.mock.calls).toEqual([]);
     expect(output()).toContain('Other');
     expect(output()).not.toContain('First');
