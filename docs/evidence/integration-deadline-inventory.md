@@ -763,3 +763,34 @@ now dispatched on workflow-only **`e8c813028`**, containing main **`d45a03faf`**
 unchanged `npm run test:integration -- --all`, ordinary grouping/bail, two cores, existing per-operation
 and case bounds, and the measured 120m aggregate. Its prerequisites and all reports remain preserved.
 No second expensive run is active. Wait for this result before the main final strict gate.
+
+## Normal gate: compose native capture and refusal attempts — 2026-10-19
+
+[39269209929](https://github.com/spankyed/AgentBuddy/actions/runs/39269209929) on workflow-only
+`e8c813028` / main `d45a03faf` finishes in **867.55s**: **425 actual passes, one failure, 26 platform
+skips**. All prerequisites pass. The complete worker file passes all 16 bodies, including observation
+refusal 62.879s, background cleanup 61.599s and frontend input reporting 78.318s. These actual normal
+results validate repairing the remaining worker cases together rather than only the first failure.
+
+The sole failure is a **whole-scenario 120s timeout** in native thread capture/refusal. Its phase log
+shows the successful build at 73.232s, freshness/restoration at 90.469s, first refusal at 115.035s,
+second refusal at 125.310s and owner closure at 126.668s. No assertion mismatch, individual-operation
+timeout, cleanup or reporting failure is reported. Completion after the test deadline is useful timing
+evidence, not a passed case. Preload passes in 97.002s; actual Electron build/archive and watch repair
+also pass. The eight later native cases and other globally bailed files remain unexecuted here.
+
+The earlier 120s native scenario was not properly composed from its three builds. Correct it to one
+explicit 120s cold build, two separately bounded 60s refusal attempts, and 60s for native fixture
+creation, two existing 10s ordinary-loader controls, freshness/retention verification and cleanup:
+300s enclosing allowance. A refusal additionally asserts that its operation signal has not expired,
+so a timeout cannot satisfy the existing rejection assertion. Keep every constructor, copy, value,
+restoration, incumbent and retirement check. No product/compiler behavior changes.
+
+The same-file audit identifies one remaining cold OS-admission baseline inheriting a 60s whole-case
+limit. Its successful baseline now has the same 120s build bound, with 60s for subsequent pre-capture
+admission checks and 20s verification/cleanup. Existing search/fallback/suffix scenarios already have
+composed bounds; primitive loader and retained-frontend cases keep their current limits. Both native
+variants and the unreached tail need complete affected-file acceptance beside the worker file before
+another normal gate. Local deadline/inventory checks (53), CLI TypeScript and correctness lint pass.
+Raw evidence: `/private/tmp/apack-normal-integration-39269209929/` and
+`/private/tmp/apack-normal-integration-39269209929-full.log`. Final strict acceptance remains open.

@@ -47,6 +47,14 @@ Lazy activation is deferred.
 
 ## Live execution ledger (reconciled 2026-10-16)
 
+Latest normal **39269209929** finishes with 425 actual passes and a native-thread **whole-scenario
+120s timeout**. All 16 worker bodies now pass, including three previously inherited-60s scenarios
+that take 62.879s, 61.599s and 78.318s. Native thread refusal/cleanup completes at 126.668s; no value,
+cleanup or reporting failure is reported. Correct the enclosing budget from its three separately
+bounded attempts and cover the remaining cold OS-admission baseline. See
+[native composition evidence](../evidence/integration-deadline-inventory.md#normal-gate-compose-native-capture-and-refusal-attempts--2026-10-19).
+Next: complete native/worker files with two workers, normal integration, then final strict `--all`.
+
 Latest normal run **39262109257** finishes with 409 passing tests and one inherited-60s worker
 observation-refusal scenario timeout; all preparation passes. Its cancellation and earlier passing
 controls are preserved. The same-file audit repairs the remaining four cold-build scenario budgets
