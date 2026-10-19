@@ -3127,6 +3127,12 @@ type ClaudeUiTranscriptRow = ClaudeUiTranscriptRowSource & ({
     isSummary: true;
     blockIndex: number;
 } | {
+    component: 'ToolUse';
+    blockIndex: number;
+    assistantUuid: string;
+    activityStatus: string;
+    resultUuid?: string;
+} | {
     component: 'ToolResult';
     blockIndex: number;
     assistantUuid: string;
