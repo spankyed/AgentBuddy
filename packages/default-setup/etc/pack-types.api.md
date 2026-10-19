@@ -1373,8 +1373,8 @@ declare const ClaudeNativeBashDialogSchema: z.ZodObject<{
     input: z.ZodRecord<z.ZodString, z.ZodUnknown>;
 }, "strip", z.ZodTypeAny, {
     cwd: string;
-    id: string;
     command: string;
+    id: string;
     revision: string;
     input: Record<string, unknown>;
     sessionId: string;
@@ -1384,8 +1384,8 @@ declare const ClaudeNativeBashDialogSchema: z.ZodObject<{
     reason?: string | undefined;
 }, {
     cwd: string;
-    id: string;
     command: string;
+    id: string;
     revision: string;
     input: Record<string, unknown>;
     sessionId: string;
@@ -1688,14 +1688,14 @@ declare const ClaudeNativeQuestionDialogSchema: z.ZodObject<{
             markdown: z.ZodOptional<z.ZodString>;
             html: z.ZodOptional<z.ZodString>;
         }, "strip", z.ZodTypeAny, {
-            question: string;
             kind: "empty" | "full" | "withheld";
+            question: string;
             option: string;
             markdown?: string | undefined;
             html?: string | undefined;
         }, {
-            question: string;
             kind: "empty" | "full" | "withheld";
+            question: string;
             option: string;
             markdown?: string | undefined;
             html?: string | undefined;
@@ -1705,8 +1705,8 @@ declare const ClaudeNativeQuestionDialogSchema: z.ZodObject<{
         extendedQuestions: boolean;
         optionalDescriptions: boolean;
         previews: {
-            question: string;
             kind: "empty" | "full" | "withheld";
+            question: string;
             option: string;
             markdown?: string | undefined;
             html?: string | undefined;
@@ -1716,8 +1716,8 @@ declare const ClaudeNativeQuestionDialogSchema: z.ZodObject<{
         extendedQuestions: boolean;
         optionalDescriptions: boolean;
         previews: {
-            question: string;
             kind: "empty" | "full" | "withheld";
+            question: string;
             option: string;
             markdown?: string | undefined;
             html?: string | undefined;
@@ -1735,8 +1735,8 @@ declare const ClaudeNativeQuestionDialogSchema: z.ZodObject<{
         extendedQuestions: boolean;
         optionalDescriptions: boolean;
         previews: {
-            question: string;
             kind: "empty" | "full" | "withheld";
+            question: string;
             option: string;
             markdown?: string | undefined;
             html?: string | undefined;
@@ -1754,8 +1754,8 @@ declare const ClaudeNativeQuestionDialogSchema: z.ZodObject<{
         extendedQuestions: boolean;
         optionalDescriptions: boolean;
         previews: {
-            question: string;
             kind: "empty" | "full" | "withheld";
+            question: string;
             option: string;
             markdown?: string | undefined;
             html?: string | undefined;
@@ -1806,14 +1806,14 @@ declare const ClaudeNativeQuestionRenderSchema: z.ZodEffects<z.ZodObject<{
                 markdown: z.ZodOptional<z.ZodString>;
                 html: z.ZodOptional<z.ZodString>;
             }, "strip", z.ZodTypeAny, {
-                question: string;
                 kind: "empty" | "full" | "withheld";
+                question: string;
                 option: string;
                 markdown?: string | undefined;
                 html?: string | undefined;
             }, {
-                question: string;
                 kind: "empty" | "full" | "withheld";
+                question: string;
                 option: string;
                 markdown?: string | undefined;
                 html?: string | undefined;
@@ -1823,8 +1823,8 @@ declare const ClaudeNativeQuestionRenderSchema: z.ZodEffects<z.ZodObject<{
             extendedQuestions: boolean;
             optionalDescriptions: boolean;
             previews: {
-                question: string;
                 kind: "empty" | "full" | "withheld";
+                question: string;
                 option: string;
                 markdown?: string | undefined;
                 html?: string | undefined;
@@ -1834,8 +1834,8 @@ declare const ClaudeNativeQuestionRenderSchema: z.ZodEffects<z.ZodObject<{
             extendedQuestions: boolean;
             optionalDescriptions: boolean;
             previews: {
-                question: string;
                 kind: "empty" | "full" | "withheld";
+                question: string;
                 option: string;
                 markdown?: string | undefined;
                 html?: string | undefined;
@@ -1849,8 +1849,8 @@ declare const ClaudeNativeQuestionRenderSchema: z.ZodEffects<z.ZodObject<{
             extendedQuestions: boolean;
             optionalDescriptions: boolean;
             previews: {
-                question: string;
                 kind: "empty" | "full" | "withheld";
+                question: string;
                 option: string;
                 markdown?: string | undefined;
                 html?: string | undefined;
@@ -1866,8 +1866,8 @@ declare const ClaudeNativeQuestionRenderSchema: z.ZodEffects<z.ZodObject<{
             extendedQuestions: boolean;
             optionalDescriptions: boolean;
             previews: {
-                question: string;
                 kind: "empty" | "full" | "withheld";
+                question: string;
                 option: string;
                 markdown?: string | undefined;
                 html?: string | undefined;
@@ -1897,14 +1897,14 @@ declare const ClaudeNativeQuestionRenderSchema: z.ZodEffects<z.ZodObject<{
                 markdown: z.ZodOptional<z.ZodString>;
                 html: z.ZodOptional<z.ZodString>;
             }, "strip", z.ZodTypeAny, {
-                question: string;
                 kind: "empty" | "full" | "withheld";
+                question: string;
                 option: string;
                 markdown?: string | undefined;
                 html?: string | undefined;
             }, {
-                question: string;
                 kind: "empty" | "full" | "withheld";
+                question: string;
                 option: string;
                 markdown?: string | undefined;
                 html?: string | undefined;
@@ -1914,8 +1914,8 @@ declare const ClaudeNativeQuestionRenderSchema: z.ZodEffects<z.ZodObject<{
             extendedQuestions: boolean;
             optionalDescriptions: boolean;
             previews: {
-                question: string;
                 kind: "empty" | "full" | "withheld";
+                question: string;
                 option: string;
                 markdown?: string | undefined;
                 html?: string | undefined;
@@ -1925,8 +1925,8 @@ declare const ClaudeNativeQuestionRenderSchema: z.ZodEffects<z.ZodObject<{
             extendedQuestions: boolean;
             optionalDescriptions: boolean;
             previews: {
-                question: string;
                 kind: "empty" | "full" | "withheld";
+                question: string;
                 option: string;
                 markdown?: string | undefined;
                 html?: string | undefined;
@@ -1940,8 +1940,8 @@ declare const ClaudeNativeQuestionRenderSchema: z.ZodEffects<z.ZodObject<{
             extendedQuestions: boolean;
             optionalDescriptions: boolean;
             previews: {
-                question: string;
                 kind: "empty" | "full" | "withheld";
+                question: string;
                 option: string;
                 markdown?: string | undefined;
                 html?: string | undefined;
@@ -1957,8 +1957,8 @@ declare const ClaudeNativeQuestionRenderSchema: z.ZodEffects<z.ZodObject<{
             extendedQuestions: boolean;
             optionalDescriptions: boolean;
             previews: {
-                question: string;
                 kind: "empty" | "full" | "withheld";
+                question: string;
                 option: string;
                 markdown?: string | undefined;
                 html?: string | undefined;
@@ -1988,14 +1988,14 @@ declare const ClaudeNativeQuestionRenderSchema: z.ZodEffects<z.ZodObject<{
                 markdown: z.ZodOptional<z.ZodString>;
                 html: z.ZodOptional<z.ZodString>;
             }, "strip", z.ZodTypeAny, {
-                question: string;
                 kind: "empty" | "full" | "withheld";
+                question: string;
                 option: string;
                 markdown?: string | undefined;
                 html?: string | undefined;
             }, {
-                question: string;
                 kind: "empty" | "full" | "withheld";
+                question: string;
                 option: string;
                 markdown?: string | undefined;
                 html?: string | undefined;
@@ -2005,8 +2005,8 @@ declare const ClaudeNativeQuestionRenderSchema: z.ZodEffects<z.ZodObject<{
             extendedQuestions: boolean;
             optionalDescriptions: boolean;
             previews: {
-                question: string;
                 kind: "empty" | "full" | "withheld";
+                question: string;
                 option: string;
                 markdown?: string | undefined;
                 html?: string | undefined;
@@ -2016,8 +2016,8 @@ declare const ClaudeNativeQuestionRenderSchema: z.ZodEffects<z.ZodObject<{
             extendedQuestions: boolean;
             optionalDescriptions: boolean;
             previews: {
-                question: string;
                 kind: "empty" | "full" | "withheld";
+                question: string;
                 option: string;
                 markdown?: string | undefined;
                 html?: string | undefined;
@@ -2031,8 +2031,8 @@ declare const ClaudeNativeQuestionRenderSchema: z.ZodEffects<z.ZodObject<{
             extendedQuestions: boolean;
             optionalDescriptions: boolean;
             previews: {
-                question: string;
                 kind: "empty" | "full" | "withheld";
+                question: string;
                 option: string;
                 markdown?: string | undefined;
                 html?: string | undefined;
@@ -2048,8 +2048,8 @@ declare const ClaudeNativeQuestionRenderSchema: z.ZodEffects<z.ZodObject<{
             extendedQuestions: boolean;
             optionalDescriptions: boolean;
             previews: {
-                question: string;
                 kind: "empty" | "full" | "withheld";
+                question: string;
                 option: string;
                 markdown?: string | undefined;
                 html?: string | undefined;
@@ -2079,14 +2079,14 @@ declare const ClaudeNativeQuestionRenderSchema: z.ZodEffects<z.ZodObject<{
                 markdown: z.ZodOptional<z.ZodString>;
                 html: z.ZodOptional<z.ZodString>;
             }, "strip", z.ZodTypeAny, {
-                question: string;
                 kind: "empty" | "full" | "withheld";
+                question: string;
                 option: string;
                 markdown?: string | undefined;
                 html?: string | undefined;
             }, {
-                question: string;
                 kind: "empty" | "full" | "withheld";
+                question: string;
                 option: string;
                 markdown?: string | undefined;
                 html?: string | undefined;
@@ -2096,8 +2096,8 @@ declare const ClaudeNativeQuestionRenderSchema: z.ZodEffects<z.ZodObject<{
             extendedQuestions: boolean;
             optionalDescriptions: boolean;
             previews: {
-                question: string;
                 kind: "empty" | "full" | "withheld";
+                question: string;
                 option: string;
                 markdown?: string | undefined;
                 html?: string | undefined;
@@ -2107,8 +2107,8 @@ declare const ClaudeNativeQuestionRenderSchema: z.ZodEffects<z.ZodObject<{
             extendedQuestions: boolean;
             optionalDescriptions: boolean;
             previews: {
-                question: string;
                 kind: "empty" | "full" | "withheld";
+                question: string;
                 option: string;
                 markdown?: string | undefined;
                 html?: string | undefined;
@@ -2122,8 +2122,8 @@ declare const ClaudeNativeQuestionRenderSchema: z.ZodEffects<z.ZodObject<{
             extendedQuestions: boolean;
             optionalDescriptions: boolean;
             previews: {
-                question: string;
                 kind: "empty" | "full" | "withheld";
+                question: string;
                 option: string;
                 markdown?: string | undefined;
                 html?: string | undefined;
@@ -2139,8 +2139,8 @@ declare const ClaudeNativeQuestionRenderSchema: z.ZodEffects<z.ZodObject<{
             extendedQuestions: boolean;
             optionalDescriptions: boolean;
             previews: {
-                question: string;
                 kind: "empty" | "full" | "withheld";
+                question: string;
                 option: string;
                 markdown?: string | undefined;
                 html?: string | undefined;
@@ -2170,14 +2170,14 @@ declare const ClaudeNativeQuestionRenderSchema: z.ZodEffects<z.ZodObject<{
                 markdown: z.ZodOptional<z.ZodString>;
                 html: z.ZodOptional<z.ZodString>;
             }, "strip", z.ZodTypeAny, {
-                question: string;
                 kind: "empty" | "full" | "withheld";
+                question: string;
                 option: string;
                 markdown?: string | undefined;
                 html?: string | undefined;
             }, {
-                question: string;
                 kind: "empty" | "full" | "withheld";
+                question: string;
                 option: string;
                 markdown?: string | undefined;
                 html?: string | undefined;
@@ -2187,8 +2187,8 @@ declare const ClaudeNativeQuestionRenderSchema: z.ZodEffects<z.ZodObject<{
             extendedQuestions: boolean;
             optionalDescriptions: boolean;
             previews: {
-                question: string;
                 kind: "empty" | "full" | "withheld";
+                question: string;
                 option: string;
                 markdown?: string | undefined;
                 html?: string | undefined;
@@ -2198,8 +2198,8 @@ declare const ClaudeNativeQuestionRenderSchema: z.ZodEffects<z.ZodObject<{
             extendedQuestions: boolean;
             optionalDescriptions: boolean;
             previews: {
-                question: string;
                 kind: "empty" | "full" | "withheld";
+                question: string;
                 option: string;
                 markdown?: string | undefined;
                 html?: string | undefined;
@@ -2213,8 +2213,8 @@ declare const ClaudeNativeQuestionRenderSchema: z.ZodEffects<z.ZodObject<{
             extendedQuestions: boolean;
             optionalDescriptions: boolean;
             previews: {
-                question: string;
                 kind: "empty" | "full" | "withheld";
+                question: string;
                 option: string;
                 markdown?: string | undefined;
                 html?: string | undefined;
@@ -2230,8 +2230,8 @@ declare const ClaudeNativeQuestionRenderSchema: z.ZodEffects<z.ZodObject<{
             extendedQuestions: boolean;
             optionalDescriptions: boolean;
             previews: {
-                question: string;
                 kind: "empty" | "full" | "withheld";
+                question: string;
                 option: string;
                 markdown?: string | undefined;
                 html?: string | undefined;
@@ -2555,14 +2555,14 @@ declare const ClaudeQuestionPresentationSchema: z.ZodObject<{
         markdown: z.ZodOptional<z.ZodString>;
         html: z.ZodOptional<z.ZodString>;
     }, "strip", z.ZodTypeAny, {
-        question: string;
         kind: "empty" | "full" | "withheld";
+        question: string;
         option: string;
         markdown?: string | undefined;
         html?: string | undefined;
     }, {
-        question: string;
         kind: "empty" | "full" | "withheld";
+        question: string;
         option: string;
         markdown?: string | undefined;
         html?: string | undefined;
@@ -2572,8 +2572,8 @@ declare const ClaudeQuestionPresentationSchema: z.ZodObject<{
     extendedQuestions: boolean;
     optionalDescriptions: boolean;
     previews: {
-        question: string;
         kind: "empty" | "full" | "withheld";
+        question: string;
         option: string;
         markdown?: string | undefined;
         html?: string | undefined;
@@ -2583,8 +2583,8 @@ declare const ClaudeQuestionPresentationSchema: z.ZodObject<{
     extendedQuestions: boolean;
     optionalDescriptions: boolean;
     previews: {
-        question: string;
         kind: "empty" | "full" | "withheld";
+        question: string;
         option: string;
         markdown?: string | undefined;
         html?: string | undefined;
@@ -2803,6 +2803,8 @@ interface ClaudeUiClientEvent {
 
 type ClaudeUiClientInput = z.infer<typeof clientInput>;
 
+type ClaudeUiComposerPlacement = z.infer<typeof composerPlacement>;
+
 type ClaudeUiControls = ReturnType<typeof createClaudeUiControls>;
 
 type ClaudeUiFieldEvent = {
@@ -2902,6 +2904,7 @@ type ClaudeUiMountState = ({
         review?: ClaudeNativeAgentInputReview;
         problem?: string;
     };
+    composer?: ClaudeUiTranscriptFrame[];
     panes?: ClaudeUiPanePresentation;
     scroll?: ClaudeUiScrollState;
     notices?: ClaudeUiNotices;
@@ -3144,6 +3147,7 @@ interface ClaudeUiTextStyle {
 type ClaudeUiToolGroup = z.infer<typeof toolGroup>;
 
 type ClaudeUiTranscriptFrame = ClaudeUiTranscriptRow & {
+    nativeHint?: boolean;
     groupExpanded?: boolean;
     displayText: string;
     outputRewritten?: boolean;
@@ -3199,6 +3203,9 @@ type ClaudeUiTranscriptRow = ClaudeUiTranscriptRowSource & ({
 } | {
     component: 'CommandOutput';
     isErrored: boolean;
+} | {
+    component: 'PromptHint' | 'SessionMode' | 'Spinner';
+    sourceRevision: string;
 } | {
     component: 'UserMessage';
     origin: {
@@ -9059,6 +9066,20 @@ declare const clientInput: z.ZodDiscriminatedUnion<"kind", [z.ZodObject<{
     alt?: true | undefined;
 }>]>;
 
+declare const composerPlacement: z.ZodObject<{
+    component: z.ZodEnum<["Spinner", "SessionMode", "PromptHint"]>;
+    id: z.ZodString;
+    revision: z.ZodString;
+}, "strict", z.ZodTypeAny, {
+    id: string;
+    component: "PromptHint" | "SessionMode" | "Spinner";
+    revision: string;
+}, {
+    id: string;
+    component: "PromptHint" | "SessionMode" | "Spinner";
+    revision: string;
+}>;
+
 /**
  * Create a new artifact and notify the frontend (with side effects)
  *
@@ -9095,6 +9116,7 @@ declare function createClaudePromptHosts(write: (value: unknown) => boolean): {
 
 /** Native UI transport only. A renderer must validate tree nodes before displaying them. */
 declare function createClaudeUiControls(initialized: Promise<Pick<ClaudeInitialization, 'capabilities'>>, controls: Pick<ReturnType<typeof createHostControls>, 'request'>, promptHosts?: Pick<ReturnType<typeof createClaudePromptHosts>, 'answers' | 'detach' | 'register'>): {
+    composerPlacements(id: string): Promise<ClaudeUiComposerPlacement[]>;
     toolGroups(id: string): Promise<ClaudeUiToolGroup[]>;
     releaseInstance(options: z.infer<typeof instanceRelease>): Promise<{
         released: boolean;
@@ -9127,8 +9149,8 @@ declare function createClaudeUiControls(initialized: Promise<Pick<ClaudeInitiali
         kind: "blocked";
     } | {
         id: string;
-        title: string;
         kind: "confirmation";
+        title: string;
         confirmLabel: string;
         commandName?: string | undefined;
     } | {
@@ -9177,8 +9199,8 @@ declare function createClaudeUiControls(initialized: Promise<Pick<ClaudeInitiali
             kind: "blocked";
         } | {
             id: string;
-            title: string;
             kind: "confirmation";
+            title: string;
             confirmLabel: string;
             commandName?: string | undefined;
         } | {
@@ -9221,8 +9243,8 @@ declare function createClaudeUiControls(initialized: Promise<Pick<ClaudeInitiali
         kind: "blocked";
     } | {
         id: string;
-        title: string;
         kind: "confirmation";
+        title: string;
         confirmLabel: string;
         commandName?: string | undefined;
     }>;
@@ -10083,14 +10105,14 @@ declare const parentCommandResult: z.ZodDiscriminatedUnion<"kind", [z.ZodObject<
     commandName: z.ZodOptional<z.ZodString>;
 }, "strict", z.ZodTypeAny, {
     id: string;
-    title: string;
     kind: "confirmation";
+    title: string;
     confirmLabel: string;
     commandName?: string | undefined;
 }, {
     id: string;
-    title: string;
     kind: "confirmation";
+    title: string;
     confirmLabel: string;
     commandName?: string | undefined;
 }>, z.ZodObject<{
@@ -10554,6 +10576,7 @@ declare const render: z.ZodObject<{
 }>;
 
 declare const renderResult: z.ZodEffects<z.ZodObject<{
+    native_hint: z.ZodOptional<z.ZodBoolean>;
     group_engine: z.ZodOptional<z.ZodBoolean>;
     tree: z.ZodUnknown;
     props: z.ZodRecord<z.ZodString, z.ZodUnknown>;
@@ -10564,6 +10587,7 @@ declare const renderResult: z.ZodEffects<z.ZodObject<{
     drawn_by: z.ZodOptional<z.ZodArray<z.ZodString, "many">>;
     client_modules: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodString>>;
 }, "passthrough", z.ZodTypeAny, z.objectOutputType<{
+    native_hint: z.ZodOptional<z.ZodBoolean>;
     group_engine: z.ZodOptional<z.ZodBoolean>;
     tree: z.ZodUnknown;
     props: z.ZodRecord<z.ZodString, z.ZodUnknown>;
@@ -10574,6 +10598,7 @@ declare const renderResult: z.ZodEffects<z.ZodObject<{
     drawn_by: z.ZodOptional<z.ZodArray<z.ZodString, "many">>;
     client_modules: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodString>>;
 }, z.ZodTypeAny, "passthrough">, z.objectInputType<{
+    native_hint: z.ZodOptional<z.ZodBoolean>;
     group_engine: z.ZodOptional<z.ZodBoolean>;
     tree: z.ZodUnknown;
     props: z.ZodRecord<z.ZodString, z.ZodUnknown>;
@@ -10584,6 +10609,7 @@ declare const renderResult: z.ZodEffects<z.ZodObject<{
     drawn_by: z.ZodOptional<z.ZodArray<z.ZodString, "many">>;
     client_modules: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodString>>;
 }, z.ZodTypeAny, "passthrough">>, z.objectOutputType<{
+    native_hint: z.ZodOptional<z.ZodBoolean>;
     group_engine: z.ZodOptional<z.ZodBoolean>;
     tree: z.ZodUnknown;
     props: z.ZodRecord<z.ZodString, z.ZodUnknown>;
@@ -10594,6 +10620,7 @@ declare const renderResult: z.ZodEffects<z.ZodObject<{
     drawn_by: z.ZodOptional<z.ZodArray<z.ZodString, "many">>;
     client_modules: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodString>>;
 }, z.ZodTypeAny, "passthrough">, z.objectInputType<{
+    native_hint: z.ZodOptional<z.ZodBoolean>;
     group_engine: z.ZodOptional<z.ZodBoolean>;
     tree: z.ZodUnknown;
     props: z.ZodRecord<z.ZodString, z.ZodUnknown>;
@@ -10868,11 +10895,11 @@ declare const toolGroup: z.ZodObject<{
         toolUseId: z.ZodString;
         revision: z.ZodString;
     }, "strict", z.ZodTypeAny, {
-        toolUseId: string;
         revision: string;
+        toolUseId: string;
     }, {
-        toolUseId: string;
         revision: string;
+        toolUseId: string;
     }>, "many">;
     usesEngine: z.ZodBoolean;
     isActive: z.ZodBoolean;
@@ -10883,8 +10910,8 @@ declare const toolGroup: z.ZodObject<{
     id: string;
     revision: string;
     members: {
-        toolUseId: string;
         revision: string;
+        toolUseId: string;
     }[];
     usesEngine: boolean;
     isActive: boolean;
@@ -10894,8 +10921,8 @@ declare const toolGroup: z.ZodObject<{
     id: string;
     revision: string;
     members: {
-        toolUseId: string;
         revision: string;
+        toolUseId: string;
     }[];
     usesEngine: boolean;
     isActive: boolean;
