@@ -165,7 +165,15 @@ collects all 68 files with two workers, unchanged assertions/inner and explicit 
 180s CLI default and 20m aggregate observation bound. It disables fail-fast only in that private
 control and retains JSON timings, avoiding another partial coverage inventory. Inspect every
 failure and completed duration before selecting named repairs; do not merge diagnostic limits or
-claim a normal/final gate from this control. Full integration,
+claim a normal/final gate from this control. That run reaches its 1,200s aggregate limit after
+**495 actual passes in eight files**, plus one Windows-only skipped file; **59 files remain unproven**.
+The completed native file alone takes **906.983s**, exceeding main's 600s aggregate. No test
+assertion, individual-operation or cleanup failure is reported before termination; the driver's
+exit-code assertion is consequential. The [deadline inventory](../evidence/integration-deadline-inventory.md)
+owns the full per-file coverage and failure classification. Complete the unexecuted files in bounded
+batches, then make one evidence-based composition repair, preserving operation/event/cleanup limits.
+Validate affected cases, pass normal integration, then run final strict acceptance. Do not run another
+fail-fast full pool to discover each undersized enclosing deadline. Full integration,
 authoring/runtime/app acceptance and final main strict `--all` remain required.
 None of these probes is a strict-chain result, despite using the existing `strict_chain` dispatch route. Main's
 full strict workflow is unchanged and remains required after integration converges. See
