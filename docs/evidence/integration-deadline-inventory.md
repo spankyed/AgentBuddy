@@ -1066,3 +1066,10 @@ snapshot case (30 bodies total), with two workers. Require **exit 0**, all bodie
 reporting errors. Only after that passes resume the normal unfiltered gate, then committed-source
 strict `--all`; the broader validation-budget/Nx proposals remain separate. Real process-boundary
 acceptance is pending, including whether the full public cold build fits its independent bound.
+
+
+Repair **`7c24806e7`** is committed and pushed. Focused acceptance
+[39309152812](https://github.com/spankyed/AgentBuddy/actions/runs/39309152812) runs on
+workflow-only **`5956cc394`**, branch `session/scaffold-async-acceptance`, directly based on that
+repair. It selects exactly 30 bodies with two workers and unchanged per-operation limits; it requires
+30 passes, zero failures/pending and command exit 0. No normal/strict broad replacement is dispatched.

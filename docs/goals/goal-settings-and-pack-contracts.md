@@ -59,7 +59,9 @@ cancellation drains before fixture reuse/removal, and timeouts cannot be mistake
 refusals. Multistep case budgets compose those allowances. Eight mocked lifecycle checks, 53 policy/
 inventory checks, CLI types and lint pass; real process-boundary acceptance remains pending.
 Next run the complete two scaffold files plus the unreached DSL case (**30 bodies**, two workers),
-requiring exit 0 and no unhandled reporting errors. Then resume normal unfiltered integration and
+requiring exit 0 and no unhandled reporting errors. Repair **`7c24806e7`** is committed; focused
+[39309152812](https://github.com/spankyed/AgentBuddy/actions/runs/39309152812) is running on
+workflow-only **`5956cc394`**, directly based on that repair. Then resume normal unfiltered integration and
 final committed-source strict `--all`. Do not repeat a broad gate to diagnose this repair or begin the
 separate validation-budget/Nx proposals. See [current evidence](../evidence/integration-deadline-inventory.md#scaffold-process-boundary-checkpoint--2026-10-19).
 
