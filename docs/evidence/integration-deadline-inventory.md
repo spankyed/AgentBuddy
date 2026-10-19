@@ -587,3 +587,13 @@ Workflow-only `0e7ac97da` adds the existing `npm run build:default-setup` prereq
 [39251438405](https://github.com/spankyed/AgentBuddy/actions/runs/39251438405) is now running on the
 same `646abdd3a` product/test repair. No assertion, driver limit or production code changes follow
 from the setup omission; successful actual database concurrency remains required before normal.
+
+Corrected `39251438405` **passes all 65 selected cases with exit 0**, 54.218s. The prerequisite pack
+build passes; all 64 real database cases execute alongside the captured-Electron control. That control
+takes 4.174s, retaining executable identity, currentness and retirement assertions. Its driver reports
+capture complete at 2.153s, launch at 2.401s, verification at 2.815s and retirement at 2.854s; no phase,
+RPC or cleanup failure is reported. This accepts `646abdd3a` under the required concurrency. The
+earlier 30s slowdown is not reproduced or retrospectively attributed. Preserve the failed evidence;
+the repair composes explicit bounded work rather than claiming a compiler-performance fix.
+Reports are at `/private/tmp/apack-electron-driver-39251438405/`, with the full log alongside.
+Resume the required normal unfiltered integration gate on this committed repair, then final strict.
