@@ -302,6 +302,11 @@ checks, CLI types, correctness lint and embedded-driver syntax pass. Focused
 [39250994872](https://github.com/spankyed/AgentBuddy/actions/runs/39250994872), workflow-only
 `5ead60321`, now verifies the actual driver beside all 64 database cases on two workers before another
 normal gate. No production compiler/runtime or blanket deadline changes.
+That first focused workflow omitted default-setup's build: Electron passes in 5.357s, but 59 database
+fixture assertions fail for missing `dist`; five metadata cases pass. This is not accepted concurrency.
+Corrected [39251438405](https://github.com/spankyed/AgentBuddy/actions/runs/39251438405), workflow-only
+`0e7ac97da`, adds the actual pack prerequisite and refuses to run acceptance if it fails. Source
+`646abdd3a` is unchanged. Preserve the setup failure and require all 65 cases before another normal run.
 Source **`21ed07fe7`** gives complete integration its own 120-minute aggregate class. The pool runner
 reads its owning chain step's deadline; ordinary unit pools remain at 600s. The measured file work
 already exceeds 53 minutes at an ideal two-worker balance, without blocked setup/preparation, so the

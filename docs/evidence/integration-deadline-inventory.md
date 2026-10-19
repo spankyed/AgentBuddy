@@ -573,3 +573,17 @@ Focused [39250994872](https://github.com/spankyed/AgentBuddy/actions/runs/392509
 `5ead60321` over that source, runs the actual Electron control and all 64 database cases together with
 two workers, retaining counts, exit status, phases and all assertions. It must pass before another normal
 gate. No compiler/runtime production code or general timeout default changes in this checkpoint.
+
+That focused run is terminal but **not accepted**: the Electron control passes in **5.357s**, including
+capture/launch/currentness/retirement; five database metadata cases pass and **59 database cases fail
+with missing `packages/default-setup/dist`**. All 65 selected bodies run. These are fixture-preparation
+assertion failures, not further operation timeouts or demonstrated product failures. The isolated
+workflow omitted the pack build consumed by `db.integration.spec.ts:appDataDir`; its concurrency
+claim is therefore unproven. Preserve reports at `/private/tmp/apack-electron-driver-39250994872/`
+and the full log alongside them.
+
+Workflow-only `0e7ac97da` adds the existing `npm run build:default-setup` prerequisite, and makes the
+65-case check conditional on that prerequisite's success. Corrected focused
+[39251438405](https://github.com/spankyed/AgentBuddy/actions/runs/39251438405) is now running on the
+same `646abdd3a` product/test repair. No assertion, driver limit or production code changes follow
+from the setup omission; successful actual database concurrency remains required before normal.
