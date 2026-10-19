@@ -64,7 +64,8 @@ export function createPackServiceBinding({ caller, selection, settings, provider
       return bound;
     };
     // A bound target preserves call/construct capability without the source's frozen own properties.
-    const facade: object = new Proxy(callable ? Function.prototype.bind.call(callable, undefined) : Object.create(null), {
+    const target = callable ? Function.prototype.bind.call(callable, undefined) : Array.isArray(value) ? [] : Object.create(null);
+    const facade: object = new Proxy(target, {
       apply(_, receiver, args) { check(); return Reflect.apply(callable!, receiver, args); },
       construct(_, args, constructor) {
         check();
@@ -76,6 +77,8 @@ export function createPackServiceBinding({ caller, selection, settings, provider
       ownKeys() { check(); return Reflect.ownKeys(value); },
       getOwnPropertyDescriptor(_, key) {
         check();
+        // Array targets must retain their non-configurable length descriptor.
+        if (Array.isArray(value) && key === 'length') return { ...Reflect.getOwnPropertyDescriptor(target, key)!, value: value.length };
         const descriptor = Reflect.getOwnPropertyDescriptor(value, key);
         return descriptor && { configurable: true, enumerable: descriptor.enumerable, value: member(key), writable: 'writable' in descriptor ? descriptor.writable : false };
       },

@@ -54,6 +54,27 @@ describe('accepted service bindings', () => {
     expect(() => nestedRead()).toThrow('revoked');
   });
 
+  it.each(['caller', 'provider'] as const)('preserves nested arrays while retiring %s access', retired => {
+    const metadata = Object.freeze(['notes', 'threads']);
+    const registration = { id: 'provider', services: { search: Object.freeze({ metadata }) } };
+    register(provider, registration);
+    const generated = caller();
+    const retained = (generated.services.search as { metadata: readonly string[] }).metadata;
+    expect(Array.isArray(retained)).toBe(true);
+    expect(JSON.stringify(retained)).toBe('["notes","threads"]');
+    expect(Object.keys(retained)).toEqual(['0', '1']);
+    expect(Object.getOwnPropertyDescriptor(retained, 'length')?.value).toBe(2);
+    expect([...retained]).toEqual(metadata);
+    const map = retained.map;
+    expect(map(value => value.toUpperCase())).toEqual(['NOTES', 'THREADS']);
+    expect(Reflect.set(retained, 0, 'changed')).toBe(false);
+    if (retired === 'caller') packs.unregisterPack('consumer');
+    else packs.replacePack(registration);
+    expect(() => map(value => value)).toThrow(retired === 'caller' ? 'revoked' : 'retired provider');
+    expect(() => retained[0]).toThrow(retired === 'caller' ? 'revoked' : 'retired provider');
+    expect(metadata).toEqual(['notes', 'threads']);
+  });
+
   it('retires provider handles even when the same registration and service object are reused', () => {
     const registration = { id: 'provider', services: { search: new Search() } };
     register(provider, registration);
