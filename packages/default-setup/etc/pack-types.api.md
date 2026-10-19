@@ -1356,10 +1356,13 @@ interface ClaudeNativeBashDialogResponse {
     revision: string;
     sessionId: string;
     decision: 'allow' | 'deny';
+    choice?: string;
+    choiceToken?: string;
+    prefix?: string;
     feedback?: string;
 }
 
-/** A one-time native Bash decision; command and working directory are presentation only. */
+/** Native-owned Bash decisions; standing choices retain original callbacks and policy gates. */
 declare const ClaudeNativeBashDialogSchema: z.ZodObject<{
     id: z.ZodString;
     revision: z.ZodString;
@@ -1368,13 +1371,27 @@ declare const ClaudeNativeBashDialogSchema: z.ZodObject<{
     toolName: z.ZodLiteral<"Bash">;
     command: z.ZodString;
     cwd: z.ZodString;
+    choices: z.ZodOptional<z.ZodArray<z.ZodObject<{
+        value: z.ZodString;
+        label: z.ZodString;
+        prefix: z.ZodOptional<z.ZodString>;
+    }, "strip", z.ZodTypeAny, {
+        value: string;
+        label: string;
+        prefix?: string | undefined;
+    }, {
+        value: string;
+        label: string;
+        prefix?: string | undefined;
+    }>, "many">>;
+    choiceToken: z.ZodOptional<z.ZodString>;
     description: z.ZodOptional<z.ZodString>;
     reason: z.ZodOptional<z.ZodString>;
     input: z.ZodRecord<z.ZodString, z.ZodUnknown>;
 }, "strip", z.ZodTypeAny, {
     cwd: string;
-    command: string;
     id: string;
+    command: string;
     revision: string;
     input: Record<string, unknown>;
     sessionId: string;
@@ -1382,10 +1399,16 @@ declare const ClaudeNativeBashDialogSchema: z.ZodObject<{
     toolName: "Bash";
     description?: string | undefined;
     reason?: string | undefined;
+    choices?: {
+        value: string;
+        label: string;
+        prefix?: string | undefined;
+    }[] | undefined;
+    choiceToken?: string | undefined;
 }, {
     cwd: string;
-    command: string;
     id: string;
+    command: string;
     revision: string;
     input: Record<string, unknown>;
     sessionId: string;
@@ -1393,6 +1416,12 @@ declare const ClaudeNativeBashDialogSchema: z.ZodObject<{
     toolName: "Bash";
     description?: string | undefined;
     reason?: string | undefined;
+    choices?: {
+        value: string;
+        label: string;
+        prefix?: string | undefined;
+    }[] | undefined;
+    choiceToken?: string | undefined;
 }>;
 
 type ClaudeNativeFileDialog = z.infer<typeof ClaudeNativeFileDialogSchema>;
@@ -1543,73 +1572,73 @@ declare const ClaudeNativePlanDialogSchema: z.ZodObject<{
         withheld: boolean;
         empty: boolean;
         plan: string;
-        initialChoice: string;
         choices: {
             value: string;
             label: string;
             mode: "acceptEdits" | "auto" | "bypassPermissions" | "default" | "plan";
             clearContext: boolean;
         }[];
+        initialChoice: string;
         planFilePath?: string | undefined;
     }, {
         withheld: boolean;
         empty: boolean;
         plan: string;
-        initialChoice: string;
         choices: {
             value: string;
             label: string;
             mode: "acceptEdits" | "auto" | "bypassPermissions" | "default" | "plan";
             clearContext: boolean;
         }[];
+        initialChoice: string;
         planFilePath?: string | undefined;
     }>, {
         withheld: boolean;
         empty: boolean;
         plan: string;
-        initialChoice: string;
         choices: {
             value: string;
             label: string;
             mode: "acceptEdits" | "auto" | "bypassPermissions" | "default" | "plan";
             clearContext: boolean;
         }[];
+        initialChoice: string;
         planFilePath?: string | undefined;
     }, {
         withheld: boolean;
         empty: boolean;
         plan: string;
-        initialChoice: string;
         choices: {
             value: string;
             label: string;
             mode: "acceptEdits" | "auto" | "bypassPermissions" | "default" | "plan";
             clearContext: boolean;
         }[];
+        initialChoice: string;
         planFilePath?: string | undefined;
     }>, {
         withheld: boolean;
         empty: boolean;
         plan: string;
-        initialChoice: string;
         choices: {
             value: string;
             label: string;
             mode: "acceptEdits" | "auto" | "bypassPermissions" | "default" | "plan";
             clearContext: boolean;
         }[];
+        initialChoice: string;
         planFilePath?: string | undefined;
     }, {
         withheld: boolean;
         empty: boolean;
         plan: string;
-        initialChoice: string;
         choices: {
             value: string;
             label: string;
             mode: "acceptEdits" | "auto" | "bypassPermissions" | "default" | "plan";
             clearContext: boolean;
         }[];
+        initialChoice: string;
         planFilePath?: string | undefined;
     }>;
     reason: z.ZodOptional<z.ZodString>;
@@ -1625,13 +1654,13 @@ declare const ClaudeNativePlanDialogSchema: z.ZodObject<{
         withheld: boolean;
         empty: boolean;
         plan: string;
-        initialChoice: string;
         choices: {
             value: string;
             label: string;
             mode: "acceptEdits" | "auto" | "bypassPermissions" | "default" | "plan";
             clearContext: boolean;
         }[];
+        initialChoice: string;
         planFilePath?: string | undefined;
     };
     reason?: string | undefined;
@@ -1646,13 +1675,13 @@ declare const ClaudeNativePlanDialogSchema: z.ZodObject<{
         withheld: boolean;
         empty: boolean;
         plan: string;
-        initialChoice: string;
         choices: {
             value: string;
             label: string;
             mode: "acceptEdits" | "auto" | "bypassPermissions" | "default" | "plan";
             clearContext: boolean;
         }[];
+        initialChoice: string;
         planFilePath?: string | undefined;
     };
     reason?: string | undefined;
