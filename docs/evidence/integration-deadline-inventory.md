@@ -860,3 +860,21 @@ is queued on workflow-only `36ea8055a`, whose only difference from the repair ch
 `.github/workflows/strict-chain.yml`. It selects the complete 18-case scaffold file and two
 existing facade typecheck controls, two workers, bail disabled and a 20-executed-case assertion.
 No test deadline is overridden by the workflow. No real compiler/native integration ran locally.
+
+## Trigger scaffold file and facade controls accepted — 2026-10-19
+
+[39288218287](https://github.com/spankyed/AgentBuddy/actions/runs/39288218287) finishes
+**completed/success** on workflow-only `36ea8055a`, containing source repair `d07ccae99`.
+The status report records exit 0, **20 actual passes, zero failures**, 377.704s. All 18 scaffold
+bodies execute, including the repaired trigger in **27.020s**. Both selected facade typechecks pass;
+eight unselected facade bodies are filtered rather than accepted. Two workers, bail disabled, unchanged
+assertions and no workflow deadline overrides. No unhandled or cleanup error is reported.
+This focused run proves complete affected-file behavior, not full integration. Resume the normal
+unfiltered gate before final strict acceptance.
+
+Raw evidence: `/private/tmp/apack-trigger-scaffold-39288218287/` (`reporting-acceptance.json`,
+status JSON and log); full runner log `/private/tmp/apack-trigger-scaffold-39288218287-full.log`.
+A current-source delta review also confirms the SDK framework/build declarations, host settings,
+default-setup feature implementation and canonical writer are unchanged since consolidation audit
+`a74bbd88a`. Subsequent authoring changes use own-key collision checks and validate service claims
+before writing files. No new manifest implementation omission is identified; final gates remain open.
