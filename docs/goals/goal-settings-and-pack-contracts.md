@@ -49,9 +49,8 @@ Lazy activation is deferred.
 
 App/compiler implementation checkpoint **`3827993ba`** is pushed. Windows real Electron
 backend/frontend build and archive pass on that source; OS-assembly/copy/manifest-freshness
-acceptance is `b2972112d`. Linux real Electron build plus cross-runtime Node archive passes on
-`50d11c39d` in 59.141s. Evidence remains in the owning records; these accepted paths need no
-reassurance repeats. Windows is confirmed deallocated; all useful overlays/exports are preserved.
+acceptance is `b2972112d`. Evidence remains in the owning records; these accepted paths need no
+reassurance repeats. All useful Windows overlays/exports are preserved.
 
 [Strict run `39177912229`](https://github.com/spankyed/AgentBuddy/actions/runs/39177912229)
 failed at the authoring producer after its completed phases consumed about 898 of the unchanged
@@ -68,13 +67,20 @@ Complete direct Electron content-compiler/build/archive acceptance now passes on
 verified backend/Vue output and Node 23.11.1 archive without compiler-function invocation. See
 [direct runtime evidence](../evidence/build-input-snapshot-proof.md#direct-electron-content-compiler-and-passive-archive-accepted--2026-10-19).
 The invocation receipt complements existing passive-reader/poisoned-import checks. Signed-runtime
-environment filtering remains intact. No repeat of these accepted runtime paths is needed; next run
-the required strict gate on the producer reservation repair and preserve its exact archive/app handoff.
+environment filtering remains intact. No repeat of these accepted runtime paths is needed.
+[Strict run `39182963669`](https://github.com/spankyed/AgentBuddy/actions/runs/39182963669) is running on committed source **`bc0a4e91c`** with the producer reservation repair. Preserve its exact
+archive/app handoff; observe this run rather than dispatch another broad gate.
+
+Windows **Node 23.11.1** also archives the retained Electron-built pack successfully (20.599s), with
+the exact previous archive checksum. The first private 60s control timed out; the diagnostic verifier
+then accepted all 40,731 observations in about 55s. A measured 180s private control completed in
+20.599s; no repository deadline or production source changed. See [Windows consumer evidence](../evidence/build-input-snapshot-proof.md#windows-node-consumer-of-the-retained-electron-build--2026-10-19).
+The VM has no remaining compiler processes; its evidence is exported and Azure confirms it is deallocated.
 
 The bound-only Windows import support decision is pending the user's explicit answer; no exclusion
 has been applied. Remaining native-policy/platform requirements, B6 and every Phase 7 obligation
-remain required. No broad run is currently active; diagnose from retained evidence and converge the
-focused checks before the next required strict gate. No native execution runs on the daily-use Mac.
+remain required. The strict run above is active; diagnose any failure from its retained evidence before
+considering another gate. No native execution runs on the daily-use Mac.
 
 This ledger owns current execution status and ordering. The phases below retain all completion
 requirements; subsystem plans retain detailed contracts and acceptance cases. Dated checkpoint notes

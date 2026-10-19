@@ -6052,3 +6052,35 @@ Windows complete compilation/archive remains accepted at `3827993ba`. Preserve t
 preload/thread/refusal/selection proofs and remaining explicit policy/bound-only dispositions; this
 does not claim arbitrary native capture or stronger isolation. Converged B6 and final strict source
 acceptance remain required.
+
+
+## Windows Node consumer of the retained Electron build — 2026-10-19
+
+The VM remains at **`3827993ba9398f570c5cafda9ba25d3ec9f8cbfc`**. Its CLI/host/SDK source and
+CLI bin match current checkpoint `bc0a4e91c`; the normalized preexisting bin line-ending change has
+no content diff. The accepted system-assembly test overlay is preserved, not discarded, in scoped
+stash **`6c795ef737b51941885af0e59a0f0eb400a6d2fa`** before verifying retained producer inputs.
+No rebuild, package installation, native compilation, app launch or policy change is performed.
+
+Public `apack pack archive` under **Node 23.11.1 / Windows x64** successfully consumes the existing
+Electron 37.2.4 / Node 22.17.1 build in **20.599s**. The verified producer revision is
+`5e53205bd6393785cc4cfba5d9329267afee07bf862945ba2850c8970cff24d2`. The resulting archive has
+11 files, 7,352 bytes and checksum
+`b6190a4f3e7428ba80b8ef222a898be69d892a32ed6cf5ca7607a0218ce5c023`, exactly matching the previous
+Electron archive. Both output bytes and the published checksum are checked. This proves cross-runtime
+passive consumption of this retained build, not a new compiler-invocation or universal no-import proof.
+
+The initial private 60s archive control exited by its deadline without output. A separate help control
+passes in 1.336s. The existing sealed-input verifier imports, reads the receipt and replays all **40,731**
+observations successfully (55.038s replay; 56.482s complete control). Archive invokes that verifier twice.
+The next private control therefore allows 180s, and completes in 20.599s. The observed timings do not
+establish why the first run was slower; no compiler defect, indefinite hang or OS scanning explanation
+is inferred. Repository test, helper and chain deadlines are unchanged. Unused filesystem-profiling
+scripts were not transferred or executed; no performance project follows from this accepted consumer.
+
+All commands use the existing Windows Job Object owner and await process close. Terminal CIM inspection
+finds zero Node/Electron/esbuild/cl/link processes. Evidence, exact controls, initial failure, startup
+and replay diagnostics are exported as `/private/tmp/apack-node23-archive-3827993ba.zip` (26,200 bytes),
+with no workspace dependency junctions. Windows evidence root is
+`C:\apack-setup\runs\node23-archive-accepted-3827993ba`. Azure confirms **VM deallocated** after export. The running strict gate, unresolved native
+policy/bound-only dispositions and full Phase 7 audit remain open.
