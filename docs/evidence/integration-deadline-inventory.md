@@ -225,6 +225,17 @@ The 105 graph/input checks pass, including removing the fixture dependency throu
 mutation. Scripts, repo-checks and CLI typechecks and focused lint pass. Real HMR/facade execution
 remains part of the affected-case run after the repair pass; no broad run was started.
 
+Source **`401ec05be`** fixes watcher fixture ownership in frontend-resources, package-inputs and
+watch-publication. Pending startup is retained before awaiting it, uses Vitest's existing cancellation
+signal, and settles before directory deletion. Frontend fixtures drain every returned owner before
+reporting close failures. Inspection of installed Vitest 3.2.4 confirms `afterEach` precedes
+`onTestFinished`, so a late finished hook cannot protect a directory deleted by `afterEach`.
+The new mocked regression proves cancellation during startup waits for owner closure before rejecting
+without a returned watcher handle. All 19 mocked watcher lifecycle checks pass; the five unchanged
+coalescing checks also pass. CLI types and focused lint pass. No event/build/scenario/cleanup deadline
+is changed here. Real fixture execution and the three 20s wait failures remain unaccepted until the
+affected run; do not treat this source repair as proof that every observed watcher failure is resolved.
+
 1. Compose named multi-step case and setup budgets from inspected operations, preserving their inner
    event, operation and cleanup limits. Fix awaited cancellation/teardown where timed-out work can
    retain global state, locks or watchers; do not delete live locks or retry through them.

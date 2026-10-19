@@ -196,6 +196,10 @@ producer dependency required by the HMR graph check while leaving fast guards in
 publishes the facade fixture after recording its authored report before read-only inspection. All 105
 graph/input checks, scripts/repo/CLI types and focused lint pass. Actual HMR/facade acceptance joins
 the affected cases after the complete repair pass; freshness checks and final obligations remain intact.
+Source **`401ec05be`** connects frontend/package/publication watcher fixtures to test cancellation and
+drains retained startup before deleting inputs. The pending-startup regression and all 19 mocked
+watcher lifecycle cases pass, as do five coalescing cases, CLI types and lint. No deadline changes or
+new remote run. Real fixture/event-wait acceptance remains pending alongside the composition repair.
 None of these probes is a strict-chain result, despite using the existing `strict_chain` dispatch route. Main's
 full strict workflow is unchanged and remains required after integration converges. See
 [measured acceptance](../evidence/settings-and-pack-contracts.md#sequential-preloadthread-completion-and-scoped-budget--2026-10-19).
