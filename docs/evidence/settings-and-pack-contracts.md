@@ -8279,3 +8279,36 @@ reach. It includes the reviewed authoring/service-array fixes and the scoped nat
 Dispatch and queued-job metadata prove only that acceptance is scheduled; no passing result is claimed.
 The unresolved bound-only disposition remains independently required. No local native process,
 Windows VM startup or duplicate diagnostic run is needed for this gate.
+
+### Strict watch recovery accepted; next preload case times out — 2026-10-19
+
+[39196299955](https://github.com/spankyed/AgentBuddy/actions/runs/39196299955) fails on exact
+`55c9e1f54` after **2039.2s**. All **5,667 host** tests pass (478 files, seven declared skips), as do
+**889 pack** tests (120 passing files, two declared test skips), schema/API/exports/types/lint,
+external contract (229.3s), fork (474.9s) and pack typecheck (37.9s). Native-watch recovery passes in
+**113.668s**: repair starts at 77.671s, completes at 108.939s, publishes at 112.408s and existing
+owners close at 113.371s. Its demonstrated timeout is resolved on main source `bc53fed70`.
+
+Integration stops after **420 passing assertions** at the next backend native-preload case's
+unchanged **60s** outer limit (60.911s reported). The initial build completes, followed by two
+package-ensure messages, but the current log has no phase attribution for the remaining control,
+refusal and cleanup work. Do not infer a stalled build or raise a deadline from that alone.
+The thread variant and later native cases are not executed after fail-fast; most integration files,
+authoring halves, runtime build and smoke/app stages remain unreached. The 68-file/463-case totals
+are discovered inventory, not executed coverage.
+
+Evidence: `/private/tmp/apack-strict-39196299955-failed.log`, metadata
+`/private/tmp/apack-strict-39196299955-status.json`, extracted console and 26 per-step logs under
+`/private/tmp/apack-strict-39196299955/`, and cleaned integration output
+`/private/tmp/apack-strict-39196299955-integration-clean.log`. Preserve interleaved stderr without
+attributing another fixture's collection error to the failing preload case.
+
+Diagnostic source **`9414d4f4e`** is isolated on `session/native-preload-diagnostic` in
+`/private/tmp/apack-native-preload-diagnostic`, with no shared dependencies/generated output/profile.
+Only the two existing preload/thread refusal cases gain phase checkpoints, idempotent owner closure,
+failed-fixture retention and a **240s diagnostic envelope**. All assertions remain unchanged; this is
+not a main-branch timeout policy. Run
+[39199301017](https://github.com/spankyed/AgentBuddy/actions/runs/39199301017) selects exactly that
+pair through the existing filtered workflow and must prove actual execution/completion before any
+deadline disposition. No local native execution, fixture campaign, duplicate broad run or VM startup
+occurs. Main bound-only repair `12447893a` still requires final committed-source strict acceptance.
