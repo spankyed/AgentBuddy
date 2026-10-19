@@ -6020,3 +6020,35 @@ the existing public ManifestSchema before writing it. A local pure schema check 
 refusal and corrected-declaration acceptance; CLI types/lint and all 53 existing policy checks pass.
 The compiler module, runtime assertions, passive archive check and deadlines are unchanged.
 Logs: `/private/tmp/apack-electron-{linux-39181815305,macos-39181815312}{,-clean}.log`.
+
+## Direct Electron content compiler and passive archive accepted — 2026-10-19
+
+Exact source **`f373154834a0e514d2aeabd3ba8c5609bcda06ab`** passes the corrected real public
+scaffold/feature/build/archive control on both configured disposable targets:
+
+| Target / run | Executed case | Init / feature / build / archive | Total case | Verified revision |
+|---|---|---|---|---|
+| Signed macOS ARM64 [39182253220](https://github.com/spankyed/AgentBuddy/actions/runs/39182253220) | 1 passed, 26 filtered | 25.316s / 17.626s / 72.158s / 18.238s | 133.956s | `0c997f4fb97bf5989bf2fe1cf8188ec2db6ddd7505cd8147d9b19487aa423b2b` |
+| Linux x64 [39182255120](https://github.com/spankyed/AgentBuddy/actions/runs/39182255120) | 1 passed, 24 filtered | 11.123s / 10.955s / 42.575s / 6.718s | 71.738s | `2b9f0a53693443682813f06efd91d9dcb4c09366a53995e1d72df238a81d1e85` |
+
+The actual declared content compiler reports **Electron 37.2.4 / Node 22.17.1**, ABI 136, from an
+owned captured executable distinct from the source distribution. The executable is absent after
+build retirement; verified nonempty backend and Vue frontend bundles are present. Removing the
+receipt before archiving under **Node 23.11.1** proves that operation does not invoke the compiler
+function again, while freshness replay succeeds across runtimes. Existing poisoned-import/passive
+reader tests still own the stronger no-module-import assertion; this receipt alone proves invocation,
+not every possible module evaluation. No test shape or EARS type was widened to make this work.
+
+The macOS workflow validates the fixture's app entitlements, Developer ID identity and hardened
+runtime profile before execution. The complete build now complements the earlier exact captured
+signature/resource/cleanup probe; no environment-filtering rule, signing profile or permission is
+changed. Normal public commands retain 60s; the measured cold compile has 120s; the composed test
+has 300s. All passed within those bounds, including the previously unmeasured 72.158s signed build.
+The first environment-preload observer and invalid-key fixture failures remain preserved as history.
+
+Logs are exported as `/private/tmp/apack-electron-{macos-39182253220,linux-39182255120}{,-clean}.log`.
+These results close the named complete signed-macOS and Linux Electron compilation/consumer gaps.
+Windows complete compilation/archive remains accepted at `3827993ba`. Preserve the separate native
+preload/thread/refusal/selection proofs and remaining explicit policy/bound-only dispositions; this
+does not claim arbitrary native capture or stronger isolation. Converged B6 and final strict source
+acceptance remain required.
