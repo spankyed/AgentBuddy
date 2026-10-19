@@ -47,15 +47,15 @@ Lazy activation is deferred.
 
 ## Live execution ledger (reconciled 2026-10-16)
 
-Current normal integration [39297729330](https://github.com/spankyed/AgentBuddy/actions/runs/39297729330)
-is dispatched on workflow-only `7582e2a5a`, containing main `a2465bff1` / repair `d29612b7a`.
-It runs the ordinary unfiltered command with two cores after required preparation. Await this existing
-run before final committed-source strict `--all`. The later read-only composition audit found one
-remaining two-build DSL case sharing an inherited 60s timer; only its outer allowance and policy reason
-change. If this immutable normal run executes that unchanged body successfully under its stricter
-original limit, reuse that evidence rather than rerunning the pool solely for a larger allowance. If
-bail prevents execution, include the DSL case in the next necessary focused check. Final strict must
-include the committed correction; production code and assertions remain unchanged.
+Normal integration **39297729330** finishes with **507 actual passes**, one scaffold whole-scenario
+**260s timeout**, and one separate unhandled `onTaskUpdate` reporting error (2016.71s). All preparation,
+all 15 configuration cases and all 18 add-extension cases pass; the trigger takes 96.415s, confirming
+its composed allowance matters. No failed value assertion or explicit cleanup failure is reported.
+The failing step/service scenario already has four-operation composition, so do not merely increase
+its allowance. Diagnose its actual phase/runner blocking with the existing two co-running scaffold
+files, unchanged per-test limits and explicit timing evidence before selecting a repair. No replacement
+broad run is dispatched. DSL is unreached here; include its unchanged body in the next necessary
+focused acceptance or final gate. See [classified evidence](../evidence/integration-deadline-inventory.md#normal-gate-scaffold-composed-deadline-and-recurring-reporting--2026-10-19).
 
 Focused configuration acceptance **39296758415** succeeds on workflow-only `952a6dd02`,
 containing repair **`d29612b7a`**: all **15/15** cases pass, zero pending, exit 0, 239.315s.

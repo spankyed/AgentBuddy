@@ -989,3 +989,32 @@ and passes, use that stronger timing evidence for the focused case; do not repea
 solely to test a larger outer allowance. If bail leaves it unexecuted, include it in the next necessary
 focused run. Final strict `--all` must include the committed correction. The broader validation-budget
 restructuring remains after this goal, as clarified by user documentation commit `abbf93853`.
+
+## Normal gate: scaffold composed deadline and recurring reporting — 2026-10-19
+
+[39297729330](https://github.com/spankyed/AgentBuddy/actions/runs/39297729330) finishes
+completed/failure on workflow-only `7582e2a5a`, main `a2465bff1`, after **2016.71s**:
+**507 actual passes, one failure, 26 Windows skips**, one unhandled runner error. All preparation
+passes. All 15 configuration and all 18 add-extension bodies pass; transient declarations takes
+38.658s, and trigger scaffold 96.415s (its old inherited 60s would be insufficient).
+
+Failure classification:
+- **Whole-scenario timeout:** scaffold step/service case reaches its already composed **260s**
+  limit, 260.734s elapsed. It performs step add, service add, build and TypeScript checking; current
+  capture hides individual command timings. The report does not establish which phase timed out,
+  whether work completed late, or whether an operation stalled. Do not infer these from the total.
+- **Reporting failure:** one `Timeout calling "onTaskUpdate"`. This is not an identified assertion,
+  individual-operation timeout or proven cleanup defect. Between-test yielding alone has not closed
+  reporting under this normal workload.
+- No whole-pool timeout, failed value assertion or explicit cleanup failure is reported.
+
+Preserve the 507 passes and earlier complete inventory; do not use another broad run to diagnose.
+Next diagnostic: the complete scaffold and add-extension files together (29 cases, two workers),
+unchanged test limits, with scaffold phase timing and memory readings on a separate diagnostic
+branch. Determine the blocking/slow operation before choosing an existing async process boundary
+or correcting operation composition. This does not begin the deferred validation-budget redesign.
+The current normal bail leaves DSL unexecuted; its main-only allowance correction `fc006bcce` remains
+pending real acceptance. Required final normal and strict gates remain open.
+
+Raw evidence: `/private/tmp/apack-normal-integration-39297729330/`; full runner log
+`/private/tmp/apack-normal-integration-39297729330-full.log`. All earlier reports remain preserved.
