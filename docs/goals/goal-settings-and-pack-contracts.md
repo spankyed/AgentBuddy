@@ -47,7 +47,9 @@ Lazy activation is deferred.
 
 ## Live execution ledger (reconciled 2026-10-16)
 
-Current source checkpoint: **`3827993ba`**, pushed. The pack typecheck now reserves its measured
+Current production-source checkpoint: **`3827993ba`**, pushed. Latest acceptance checkpoint
+**`b2972112d`** adds the real Windows OS-assembly/copy/manifest-freshness case (4.287s),
+with CLI types/lint and all 11 subprocess-inventory checks passing. It changes no production code. The pack typecheck now reserves its measured
 two-core width (`04a876675`), retaining its 60s deadline. Windows replay preserves missing probes
 containing an embedded drive (`3827993ba`); the real Electron backend/frontend build and archive
 now pass on that commit in 178.554s and 13.294s. See [checkpoint evidence](../evidence/settings-and-pack-contracts.md#windows-electron-buildarchive-and-typecheck-admission--2026-10-18).

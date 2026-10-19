@@ -5922,8 +5922,11 @@ Evidence exports checked locally:
 - `/private/tmp/apack-system-assembly-3827993ba-complete.zip` (8 files): final passing result, exact
   patch/blob, source, run command, zero remaining native/compiler processes.
 - VM runs: `C:\apack-setup\runs\system-assembly-3827993ba{,-fresh,-complete}`. The original failed
-  fixture remains retained; all prior stashes are preserved. Idle deallocation is requested after
+  fixture remains retained; all prior stashes are preserved. Idle deallocation is confirmed after
   successful off-machine export.
 
 The already-running strict run `39177912229` remains pinned to production source `3827993ba`; it
 does not contain this new acceptance case. Keep that distinction in final committed-source reporting.
+
+Acceptance source is committed and pushed as `b2972112d`. The VM retains source `3827993ba` plus
+the exact exported test overlay; preserve that overlay before any future checkout update.
