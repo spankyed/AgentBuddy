@@ -96,11 +96,16 @@ case, `captures native preload libraries and retains the incumbent after outside
 which reaches its unchanged **60s** outer limit. Its first build completes; later phase completion is
 unproven. The authoring/runtime/app halves remain unreached. Preserve [terminal evidence](../evidence/settings-and-pack-contracts.md#strict-watch-recovery-accepted-next-preload-case-times-out--2026-10-19).
 Isolated diagnostic [39199301017](https://github.com/spankyed/AgentBuddy/actions/runs/39199301017)
-on **`9414d4f4e`** selects only this preload case and its thread variant, with phase timings and a
-private 240s observation envelope. It retains all assertions and failed fixtures, adds idempotent
-owner teardown, and shares no dependencies/output/profile with the main checkout. Its result must
-establish completion or locate a stalled phase before a main deadline change. No new broad run is
-started. The bound-only refusal boundary is user-approved and repaired separately below.
+on **`9414d4f4e`** executes and passes both preload/thread cases in **44.652s/53.334s**, including
+all initialization, freshness/restoration, refusal, incumbent and teardown assertions. It establishes
+completion; the broad run's slowdown remains unattributed. Main **`24dc840c1`** gives only this
+three-attempt scenario **120s**, retaining the phase timings and idempotent cleanup. All 53 tooling
+checks, CLI types and lint pass. The diagnostic branch/worktree remains preserved and isolated.
+Run [39199767205](https://github.com/spankyed/AgentBuddy/actions/runs/39199767205) now selects these
+two repaired cases plus the previously unreached native tail on that exact main checkpoint. This closes
+a specific coverage gap before the next required full gate; no new broad run is started. See
+[measured acceptance](../evidence/settings-and-pack-contracts.md#sequential-preloadthread-completion-and-scoped-budget--2026-10-19).
+The bound-only refusal boundary is user-approved and repaired separately below.
 Earlier broad run `39191666077` predates `31ed0dcad` and `eb552cf65`; run `39196299955` includes
 both repairs. Final accepted source must additionally include the later bound-only repair below.
 
@@ -165,8 +170,8 @@ Do not restart address-recovery research or invalid fixture
 construction. Revisit only for a real required dependency with an independently Windows-loadable
 reproducer. This approval closes the support decision, not B6 or final validation.
 Remaining native requirements, B6 and every Phase 7 obligation remain required. The broad gates and
-native-watch reproducer are terminal; the next preload/thread diagnostic is identified above.
-Complete its diagnosis and committed-source acceptance.
+native-watch and preload/thread reproducers are terminal; the native-tail acceptance run is identified
+above. Complete its acceptance and the required committed-source gate.
 No native execution runs on the daily-use Mac.
 
 Completion review finds and repairs an authoring ownership defect in **`31ed0dcad`**: valid
@@ -1216,7 +1221,7 @@ required checkpoint validation or the final committed-source strict `--all`.
 | Settings | Host, pack and feature ownership; same-name groups, shared/restricted policy, disabled/failed owners, reset/import, custom forms and multiple windows | Current five host-only window cases and complete 27-case external app suite pass, including import, two assistant groups, restricted dependency credentials, custom forms and cross-window edits. Preserve the existing unit/failure cases for final strict acceptance. |
 | Discovery | Every supported kind/native field and static asset; source-free poisoned pack/dependency inspection, inactive owners, collisions, atomic updates and checked bindings; no activation/user-data writes | Registration-field classification is closed in `031e3a521`; its catalog/declaration readers remain unchanged. Preserve poisoned/source-free/inactive-owner and exact-binding coverage through the strict gate. No additional reader implementation gap is identified. |
 | Editor and content | Actual Monaco worker/cold document and typing through replacement; shared-library disposal; static flow edges, rename/missing-target diagnostics and honest dynamic status | Real cold-worker/typed replacement/shared lifetime cases pass in `d1c38bc58`; no-activation marker `9b7d112cf`, five-build DSL case `3913fe196` and source-free flow checks `415228f0c` are accepted. Preserve this evidence through the final gate; these are not unimplemented migrations. |
-| Build ownership/freshness | Finite B1/B3 path matrices, frontend generation replacement/HMR, atomic successful input/output association, four passive consumers, preserved failure retention and deterministic reuse | B2/B4/B5 are implemented and locally accepted. B1/B3 retain their recorded platform, runtime, admission and lifetime evidence; bound-only refusal is user-approved in `c38c36301` and has focused verification in `12447893a`. Main native-watch repair `bc53fed70` passes in strict run `39196299955`; that run stops at the later preload case's 60s limit. Focused diagnostic `39199301017` owns its cause/completion proof. The strict run predates the PE repair and does not reach authoring/runtime/app halves; final committed-source acceptance remains required. Preserve the complete closure register and every required final gate. |
+| Build ownership/freshness | Finite B1/B3 path matrices, frontend generation replacement/HMR, atomic successful input/output association, four passive consumers, preserved failure retention and deterministic reuse | B2/B4/B5 are implemented and locally accepted. B1/B3 retain their recorded platform, runtime, admission and lifetime evidence; bound-only refusal is user-approved in `c38c36301` and has focused verification in `12447893a`. Main native-watch repair `bc53fed70` passes in strict run `39196299955`; that run stops at the later preload case's 60s limit. Diagnostic `39199301017` proves both cases complete; main scoped repair is `24dc840c1`, with previously unreached native-tail acceptance in `39199767205`. The strict run predates the PE repair and does not reach authoring/runtime/app halves; final committed-source acceptance remains required. Preserve the complete closure register and every required final gate. |
 | Entity navigation | Build-checked destinations, conflicts/disabled/missing/retired delivery, typed guard, complete caller migration and stored-reference Electron case | Locally accepted through `95ff95ab3`; retain the complete handler, cancellation and real-window evidence for final acceptance. |
 | Frontend containment | Pane/form failures preserve other panes, host settings/defaults; retries reject retired instances in main/popout paths | Locally accepted in `713a6c1fd`; preserve through final gate. |
 | API consumption | Audited declaration granularity, generated/runtime facade agreement, undeclared/unavailable API diagnostics, content/dependency contracts and settings policy | A1–A4 service routes are implemented through `bb6df4a45`; A4 content checks already exist. Refreshed authoring/harness and complete external app/fork acceptance pass; A5 schema/API/export agreement passes on `b62da5c72`, with public guides and templates reconciled; see [agreement evidence](../evidence/settings-and-pack-contracts.md#a5-schema-and-api-agreement-2026-10-17). Converged and final strict acceptance remain open. |

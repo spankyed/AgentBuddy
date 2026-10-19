@@ -8312,3 +8312,36 @@ not a main-branch timeout policy. Run
 pair through the existing filtered workflow and must prove actual execution/completion before any
 deadline disposition. No local native execution, fixture campaign, duplicate broad run or VM startup
 occurs. Main bound-only repair `12447893a` still requires final committed-source strict acceptance.
+
+### Sequential preload/thread completion and scoped budget — 2026-10-19
+
+[39199301017](https://github.com/spankyed/AgentBuddy/actions/runs/39199301017) succeeds on exact
+diagnostic **`9414d4f4e`**, with **two executed passing cases** (23 filtered native cases). The workflow
+verifies actual passing cases, not just a successful empty selection. Phase timings:
+
+| Phase | Preload | Thread |
+|---|---:|---:|
+| Initial build completes | 32.435s | 30.846s |
+| Freshness/restoration checked | 37.343s | 35.468s |
+| First expected refusal completes | 41.692s | 45.451s |
+| Second expected refusal completes | 44.022s | 52.700s |
+| Owner closes | 44.651s | 53.333s |
+| Entire passing case | 44.652s | 53.334s |
+
+Every original assertion passes: actual captured value/path, mutation/restoration, ordinary loading
+of each refused candidate, absent initialization markers/proof after refusal and unchanged published
+revision. This control proves completion, not the machine-level cause of the broader 60s failure.
+Logs: `/private/tmp/apack-native-preload-39199301017{,-clean}.log`.
+
+Main **`24dc840c1`** adopts only the reviewed test changes with a **120s** outer scenario bound,
+rather than the diagnostic 240s. This covers the composition of one real build, freshness/replay,
+two ordinary-loader controls, two refused compiler attempts and disposal. Phase timings, idempotent
+`finally`/`onTestFinished` cleanup and failed-fixture retention remain. No assertion, operation/helper
+deadline, suite budget or production compiler code changes. All **53** timeout-policy/inventory cases,
+CLI types and correctness lint pass; logs `/private/tmp/apack-native-preload-budget-{checks,types,lint}.log`.
+
+Focused [39199767205](https://github.com/spankyed/AgentBuddy/actions/runs/39199767205) targets
+`24dc840c1` and selects both repaired scenarios plus the native cases fail-fast had not reached.
+Its result remains unproven; the exact executed count must be checked. This closes a named coverage
+gap before another full gate. Final strict `--all`, remaining integration and authoring/runtime/app
+acceptance stay required. No local native execution or Windows VM startup occurs.
