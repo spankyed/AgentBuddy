@@ -734,3 +734,10 @@ Local checks pass: 53 timeout-policy/subprocess-inventory cases, CLI TypeScript 
 Disposable two-worker affected-file acceptance is required before another normal run; the final main
 strict gate remains outstanding. Evidence: `/private/tmp/apack-normal-integration-39262109257/` and
 `/private/tmp/apack-normal-integration-39262109257-full.log`.
+
+Repair source **`f93015282`** is pushed. Focused run
+[39267061814](https://github.com/spankyed/AgentBuddy/actions/runs/39267061814) uses workflow-only
+`25f51cf98` on that checkpoint: all 16 worker cases beside four existing native compiler controls,
+two workers, original assertions, `bail=0` and an explicit 20-case execution check. The private
+checkout differs only in its workflow; no dependencies/generated output are shared. This run must
+finish before normal integration is attempted again. No acceptance result is claimed at dispatch.

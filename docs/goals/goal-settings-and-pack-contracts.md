@@ -52,7 +52,9 @@ observation-refusal scenario timeout; all preparation passes. Its cancellation a
 controls are preserved. The same-file audit repairs the remaining four cold-build scenario budgets
 and bounds their operations without changing production code or assertions. See the
 [classification and repair](../evidence/integration-deadline-inventory.md#normal-gate-worker-observation-refusal-deadline--2026-10-19).
-Next: affected two-worker acceptance, normal integration, then final committed-source strict `--all`.
+Repair **`f93015282`** is pushed; focused run **39267061814** is dispatched on workflow-only
+`25f51cf98` (all 16 worker cases plus four native controls; two workers). Await that result before
+normal integration, then final committed-source strict `--all`.
 
 Runtime identity/publisher-policy repair is committed as **`7ce19661f`**, with focused acceptance
 recorded below. Earlier app/compiler implementation checkpoint **`3827993ba`** is pushed. Windows real Electron
