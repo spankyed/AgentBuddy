@@ -4,6 +4,8 @@ import path from 'node:path';
 import { createRequire } from 'node:module';
 import { expect, it, vi } from 'vitest';
 import { assertNativeCompilerObservations, beginCompilerStartupReads, createCompilerFileView } from '@apackdev/host/build/compiler-inputs';
+import { BUILD_INPUTS_IPC_ENV, readCompilerWatchReports } from '../../src/build/build-watch-inputs.ts';
+import { beginFrontendNativeInputs } from '../../src/build/frontend-native-inputs.ts';
 import { createCompilerNativeInputs } from '../../src/build/compiler-native-input-owner.ts';
 import { BUILD_INPUTS_DIRECTORY_ENV, removeCompilerReadTree } from '../../src/build/compiler-read-tree.ts';
 
@@ -118,4 +120,47 @@ it('retains directory membership for native language lookup and replays it after
     fs.rmdirSync(path.join(pack, 'fr-BE'));
     expect(() => assertNativeCompilerObservations(observations)).not.toThrow();
   } finally { runtimeProbe.directory = undefined; native.dispose(); vi.unstubAllEnvs(); removeCompilerReadTree(root); }
+});
+
+it('retains frontend JavaScript preload inputs without pinning later authored reads', async () => {
+  const root = fs.realpathSync.native(fs.mkdtempSync(path.join(os.tmpdir(), 'apack-frontend-preload-')));
+  const pack = path.join(root, 'pack'), workspace = path.join(root, 'workspace');
+  fs.mkdirSync(pack); fs.mkdirSync(workspace);
+  const preload = path.join(root, 'preload.cjs'), dependency = path.join(root, 'dependency.cjs');
+  const authored = path.join(pack, 'View.vue');
+  fs.writeFileSync(preload, "module.exports = require('./dependency.cjs');");
+  fs.writeFileSync(dependency, 'module.exports = 41;');
+  fs.writeFileSync(authored, '<template>before</template>');
+  vi.stubEnv(BUILD_INPUTS_DIRECTORY_ENV, workspace);
+  vi.stubEnv(BUILD_INPUTS_IPC_ENV, '1');
+  const inputs = beginFrontendNativeInputs(pack, workspace, { directory: path.join(root, 'compiler'), paths: [] }, { macho: {
+    libraryPaths: [], fallbackLibraryPaths: undefined, frameworkPaths: [], fallbackFrameworkPaths: undefined, imageSuffixes: [],
+  } });
+  try {
+    expect(createRequire(import.meta.url)(preload)).toBe(41);
+    inputs.stopReads();
+    const observations = await inputs.snapshot();
+    const probes = readCompilerWatchReports(workspace).flatMap(report => report.probes);
+    for (const file of [preload, dependency]) {
+      expect(probes).toContainEqual([file, 'file']);
+      expect(observations.some(record => record.entries.some(([query]) => {
+        const [kind, relative] = JSON.parse(query);
+        return kind === 'file' && path.resolve(record.root, relative) === file;
+      }))).toBe(true);
+      const bytes = fs.readFileSync(file);
+      fs.appendFileSync(file, '\n// changed preload input');
+      await expect(inputs.snapshot()).rejects.toThrow(file);
+      fs.writeFileSync(file, bytes);
+      await expect(inputs.snapshot()).resolves.toBeDefined();
+    }
+    expect(() => observations.forEach(assertNativeCompilerObservations)).not.toThrow();
+    expect(fs.readFileSync(authored, 'utf8')).toContain('before');
+    fs.writeFileSync(authored, '<template>after</template>');
+    expect(fs.readFileSync(authored, 'utf8')).toContain('after');
+    await expect(inputs.snapshot()).resolves.toBeDefined();
+  } finally {
+    inputs.disposeLocal();
+    vi.unstubAllEnvs();
+    removeCompilerReadTree(root);
+  }
 });
