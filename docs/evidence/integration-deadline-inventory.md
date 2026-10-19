@@ -1149,3 +1149,95 @@ difference is its workflow: existing typecheck/pack/external-output prerequisite
 `npm run test:integration -- --all` with `APACK_CHAIN_CORES=2`. Committed per-case and pool bounds,
 normal fail-fast behavior and report collection are preserved. This covers the required full-pool gap;
 no strict run is dispatched concurrently. Main's untracked Wireit plan is unrelated and untouched.
+
+### Normal gate result and focused attribution — 2026-10-19
+
+Run **39312954386** finishes with **741 passed, one failed, 29 skipped, two unhandled reporting
+errors**, 3610.59s. The report lists 40 passing files, one failing and two skipped out of 68;
+fail-fast leaves other files and bodies unexecuted. This is not normal integration acceptance.
+All preparation succeeds. All 11 scaffold cases pass, preserving the focused asynchronous CLI result.
+
+Failure classification:
+
+| Boundary | Evidence | Classification |
+|---|---|---|
+| Flow-module freshness | `watch-module-freshness.integration.spec.ts`, first case, 156.668s; helper attributes an abort to its 60,000ms rebuild signal | Individual-operation timeout |
+| Vitest reporting, twice | Final error summary says `Timeout calling "onTaskUpdate"`; no file attribution in the log | Reporting failure; event-loop starvation remains a hypothesis |
+| Assertions, scenario and cleanup | No independent value assertion, whole-scenario timeout or cleanup error reported | No demonstrated failure in these categories |
+
+The watched rebuild is requested and runs. Timestamped output records backend compilation at
+20:58:42 UTC and frontend emission at 20:59:10, before failure at 20:59:37. This rules out a missing
+watch request for this case; it does not establish the duration needed to finish verified publication
+or the cause of the reporting errors. No limit or input selection has been changed.
+
+Raw evidence: `/private/tmp/apack-normal-integration-39312954386/_temp/normal-integration.log`,
+`/private/tmp/apack-normal-integration-39312954386-full.log`, and its retained
+`pool-reports/spec-durations-7VJSgL/apack-cli+repo-checks+publish-checks.json`. The latter records file
+durations, not individual test verdicts; the complete log is authoritative for executed bodies.
+
+Focused diagnostic [39325170997](https://github.com/spankyed/AgentBuddy/actions/runs/39325170997)
+uses workflow-only **`e3956518cabaf0c1751347f7157e5ac08a1e228c`**, containing source **`5ce394268`**.
+It selects four complete files: module freshness (actual failure), output swap (long direct builds),
+feature authoring/validation and database commands (possible long synchronous/microtask sequences).
+The last three are suspects, not attributed causes. The existing `loop-sample.mjs` probe records
+worker/process identity and loop gaps; JSON and verbose reports retain actual case outcomes. Two
+workers, existing per-test/operation/cleanup deadlines, no fail-fast for this explicit diagnostic,
+40-minute selected-test envelope. No normal or strict gate runs concurrently. Inspect measured gaps
+at the time they grow: a cumulative gap attributed only to a worker's last file would be misleading.
+
+### Watcher operation contract correction — 2026-10-19
+
+Inspection of `createPackBuilder.build()` and `buildWithCompiler()` confirms that every watch build
+starts a fresh worker, executes the selected compilation phases, seals its output and verifies
+publication. A retained compiler installation can save capture work; it does not remove these phases
+or impose a smaller work limit on a source edit. The test helper nevertheless assigned 120s to the
+first build and 60s to every later one. The normal run demonstrates that the latter limit expires
+after the changed flow and frontend compile, before publication finishes.
+
+Use the **existing 120s build-operation bound for every request**, removing the first/subsequent
+branch. This preserves the full input scope and all value assertions. Request/notification bounds
+remain 20s each, cleanup remains 20s, and the helper's exported scenario allowance composes those
+with the actual operation bound. No default suite limit, RPC timeout or production compiler changes.
+The diagnostic remains immutable on the original 60s rebuild bound, to preserve cause/timing evidence.
+
+Local safe validation: all seven mocked watcher ownership/deadline cases, 53 timeout-policy and
+subprocess-inventory checks, CLI TypeScript and focused correctness lint pass. The mocked operation
+still aborts and reports its own deadline independently of request and cleanup failure checks.
+Real affected watcher acceptance remains required after the diagnostic result; no broad pass is claimed.
+
+### Reporting failure attributed to synchronous case sequences — 2026-10-19
+
+Focused **39325170997**, workflow-only **`e3956518c`**, completes all **93/93 bodies in four files**,
+zero failed/pending, 586.50s, but exits **1** with one unhandled `onTaskUpdate` error. Its JSON
+`success: true` describes the test bodies; it does **not** establish successful process/reporting
+acceptance. The two module-freshness cases pass under the original bound in 137.089s and 142.909s;
+this focused timing does not erase the normal run's attributed 60s rebuild timeout.
+
+The existing probe attributes long blocks to exact worker processes/files:
+
+| Process/file | Measured loop gap | Interpretation |
+|---|---:|---|
+| `38267`, feature authoring/validation | 69,728ms | Consecutive synchronous generation/validation cases run without a macrotask turn; each body is under 29s |
+| `36646`, output swap | 90,280ms | Gap grows from process wall 226,032ms to 316,312ms, crossing the late facade-replacement and following early-refusal scenarios |
+| `36645`, database commands | 9,629ms | No reporting-window block demonstrated; leave this file unchanged |
+| `41322`, watched module freshness | 13,303ms | No reporting-window block demonstrated |
+| `36641`, Vitest coordinator | 189ms histogram maximum, 1,045ms tick gap | Responsive coordinator; the long blocks are in workers |
+
+The two long blocks exceed Vitest's 60s reply window. This reproduces the worker-starvation condition;
+the serialized unhandled error does not identify which individual RPC expired. Add one `setImmediate`
+turn **after restoring globals and removing fixture output** in the two affected files' existing
+`afterEach`, matching neighboring synchronous-toolchain suites. Do not alter assertions, timeouts,
+database tests, production compilation or the runner protocol. All 53 policy/inventory checks, CLI
+TypeScript and focused correctness lint pass locally.
+
+Raw evidence: `/private/tmp/apack-watch-reporting-39325170997/_temp/` contains the verbose log,
+per-body JSON and `event-loops.jsonl`; full timestamped job log is
+`/private/tmp/apack-watch-reporting-39325170997-full.log`. Retain process/file identity and the sample
+where a gap grows rather than attributing cumulative maxima to a later worker file.
+
+Required next acceptance: both reporting files and all six actual watcher-helper consumers, two
+workers, complete bodies, exit 0 with no unhandled reporting/cleanup error. `frontend-outputs` and
+`frontend-globs` only use the resource fixture's consumer creation, never its watcher; their build
+behavior is unaffected. The focused runner needs published packages and default-setup output, not
+the separate external-contract fixture outputs or all-project typechecks. Final normal and strict
+gates retain every original prerequisite.

@@ -25,10 +25,12 @@ beforeEach(async () => {
   pack = path.join(tmp, 'demo-pack');
 });
 
-afterEach(() => {
+afterEach(async () => {
   process.chdir(origCwd);
   vi.restoreAllMocks();
   fs.rmSync(tmp, { recursive: true, force: true });
+  // Receive runner replies between synchronous generation/validation scenarios.
+  await new Promise<void>(resolve => setImmediate(resolve));
 });
 
 const readManifest = () => JSON.parse(fs.readFileSync(path.join(pack, 'apack.json'), 'utf-8'));

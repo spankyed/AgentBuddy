@@ -25,7 +25,12 @@ import * as replacement from '@apackdev/host/replace-dir';
  * successful build of a fixture pack to re-establish what one rename already guarantees.
  */
 let dist: string;
-afterEach(() => { vi.restoreAllMocks(); fs.rmSync(path.dirname(dist), { recursive: true, force: true }); });
+afterEach(async () => {
+  vi.restoreAllMocks();
+  fs.rmSync(path.dirname(dist), { recursive: true, force: true });
+  // Early refusals can finish synchronously; receive runner replies before the next scenario.
+  await new Promise<void>(resolve => setImmediate(resolve));
+});
 
 function previousBuild(files: string[]): string {
   dist = path.join(fs.mkdtempSync(path.join(os.tmpdir(), 'apack-clear-output-')), 'dist');

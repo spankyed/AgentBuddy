@@ -62,8 +62,29 @@ introduced. Earlier normal **39297729330** retains 507 passes but failed scaffol
 and is not a passing gate.
 
 **Normal unfiltered integration [39312954386](https://github.com/spankyed/AgentBuddy/actions/runs/39312954386)**
-is now running with two cores on workflow-only **`cc0ae42b4`**, directly based on main **`f0405e436`**.
-It must cover all integration projects and bodies after prior normal bail. Then run final committed-source strict
+failed after 3610.59s with **741 passing bodies, one watched-build operation timeout, 29 skipped bodies
+and two unhandled `onTaskUpdate` reporting errors**. All preparation passes and all 11 scaffold bodies
+pass. Bail leaves remaining bodies unexecuted; this is not full integration acceptance. Workflow-only
+**`cc0ae42b4`** is directly based on main **`f0405e436`**. Preserve its complete log and pool report.
+The flow-module watcher starts its rebuild and emits backend/frontend output before its 60s build
+deadline aborts; neither a missing watch event nor a whole-scenario timeout is demonstrated. Reporting
+errors remain unattributed. Focused diagnostic [39325170997](https://github.com/spankyed/AgentBuddy/actions/runs/39325170997)
+on workflow-only **`e3956518c`**, containing main **`5ce394268`**, selects only module freshness,
+output swap, feature authoring/validation and database integration. Two workers, unchanged per-test
+deadlines and the existing event-loop probe must distinguish operation cost from worker reporting
+starvation. No broad rerun until the demonstrated failures are repaired and affected checks pass.
+Source inspection identifies an unjustified first/subsequent build split: every watch request uses a
+fresh worker through verified publication. The helper now consistently uses its existing 120s build
+bound instead of reducing later builds to 60s; request, notification and cleanup bounds remain 20s.
+Seven mocked watcher cases, 53 policy/inventory checks, CLI types and lint pass. The diagnostic keeps
+the old bound for immutable evidence. It finishes **93/93 bodies passing**, zero pending, but exits 1
+with one unhandled reporting error. Loop measurements identify **69.7s feature-validation and 90.3s
+output-swap worker blocks spanning consecutive synchronous cases**; the coordinator stays responsive.
+Both files now yield once after their existing cleanup, matching neighboring toolchain tests. No
+database change, assertion change or RPC/deadline increase is needed. Policy/inventory checks, CLI
+types and lint pass. Accept both reporting files plus all six actual watcher-helper consumers before
+normal integration; the eight-file focused check needs only published packages/default-setup output.
+Then pass normal unfiltered integration and run final committed-source strict
 `--all`, finish the full requirement audit and archive only completed work. The separate validation-
 budget/Nx/Wireit proposals remain outside this goal. A concurrent final-source audit finds one stale
 `plugin.default` schema description claiming registration-order selection; runtime and public docs

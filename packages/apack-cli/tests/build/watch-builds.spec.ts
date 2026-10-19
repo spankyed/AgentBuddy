@@ -41,7 +41,7 @@ it.each(['accepted', 'refused'] as const)('waits for a requested %s build before
   await expect(watcher.rebuildAfter(() => {
     void fixture.builder.build().catch(() => {});
   })).resolves.toBeUndefined();
-  expect(fixture.deadlines.map(deadline => deadline.ms)).toEqual([120_000, 60_000]);
+  expect(fixture.deadlines.map(deadline => deadline.ms)).toEqual([120_000, 120_000]);
   await watcher.close();
 });
 
@@ -65,7 +65,7 @@ it('cancels a hung rebuild through its operation signal and reports the interrup
   }));
   const rebuilding = watcher.rebuildAfter(() => { void fixture.builder.build().catch(() => {}); });
   const cause = new Error('Rebuild deadline');
-  const failure = expect(rebuilding).rejects.toMatchObject({ message: 'Pack build for "/fixture" exceeded 60000ms', cause });
+  const failure = expect(rebuilding).rejects.toMatchObject({ message: 'Pack build for "/fixture" exceeded 120000ms', cause });
   fixture.deadlines[1]!.controller.abort(cause);
   await failure;
   await watcher.close();
