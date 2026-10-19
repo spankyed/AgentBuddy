@@ -533,3 +533,11 @@ Raw reports/events and the full log are at `/private/tmp/apack-publication-phase
 `/private/tmp/apack-publication-phase-39247182439-full.log`. Diagnostic tracing/extended observation
 remain isolated and are not merged. The next broad run is the required normal integration gate,
 covering full-queue scheduling and previously filtered variants, rather than another failure inventory.
+
+Normal integration [39248035810](https://github.com/spankyed/AgentBuddy/actions/runs/39248035810)
+is dispatched on `41b9a6c8e`, which differs from main `f1c1052ce` only in its acceptance workflow.
+It prepares typecheck records, default-setup and declared external outputs, then runs the unfiltered
+`npm run test:integration -- --all` with `APACK_CHAIN_CORES=2`. No selected-file patterns, diagnostic
+logging or deadline overrides are present. The committed pool's 120-minute total remains independent
+of bounded package preparation and per-case/operation/event/cleanup limits. This is the required normal
+gate; final main committed-source strict `--all` still follows only after it passes.

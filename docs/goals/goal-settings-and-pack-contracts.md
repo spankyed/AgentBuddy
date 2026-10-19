@@ -284,6 +284,11 @@ compiler generation. CSS recovery also passes. The earlier abort's slowdown rema
 no compiler/performance fix or main timeout increase is claimed. Preserve that failed evidence.
 Focused behavior now has passing evidence under the original limits; proceed to required normal
 integration for full-queue/remaining-variant acceptance, then final main strict `--all`.
+Normal integration [39248035810](https://github.com/spankyed/AgentBuddy/actions/runs/39248035810)
+is dispatched on workflow-only `41b9a6c8e` over exact main `f1c1052ce`: normal unfiltered
+`npm run test:integration -- --all`, two cores, original source deadlines, with required typecheck,
+pack and external-output preparation. No diagnostic source is merged. Final main strict acceptance
+and the complete requirement audit/archival remain outstanding.
 Source **`21ed07fe7`** gives complete integration its own 120-minute aggregate class. The pool runner
 reads its owning chain step's deadline; ordinary unit pools remain at 600s. The measured file work
 already exceeds 53 minutes at an ideal two-worker balance, without blocked setup/preparation, so the
