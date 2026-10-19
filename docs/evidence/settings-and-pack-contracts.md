@@ -8141,3 +8141,44 @@ current committed-source producer/app/window acceptance. Strict run `39191666077
 `945e80c15` and contains neither this repair nor `31ed0dcad`. Preserve that run and its evidence; finish
 the remaining audit/dispositions before the required final-source strict gate. No additional broad or
 native suite was launched for this review, and the Windows VM remains deallocated.
+
+
+## Strict convergence reaches pack tests; native watch recovery timeout — 2026-10-19
+
+[Run `39191666077`](https://github.com/spankyed/AgentBuddy/actions/runs/39191666077) is terminal on
+exact source **`945e80c150b63d761ecf45434bc1d1bbe29cc1db`**, failing integration after **1877.8s**
+with two cores. The old host annotation failure is resolved: all **5,657** host cases (477 files,
+7 declared skips) and **889** pack cases (120 passing files, 2 declared test skips) pass. Reached
+schema/API/exports/type/lint checks, external contract **225.1s**, fork producer **315.8s**, pack types
+**23.2s**, default build **430.6s** and facade reader **30.8s** also pass. No unreached authoring,
+app-runtime, smoke or app-consumer stage is accepted.
+
+Integration runs **333.1s**, with 410 passing assertions before fail-fast. Its single failure is
+`watches external Vite native changes and repairs a failed generation through newly discovered inputs`
+at the unchanged **120-second case deadline**, not the suite deadline. Its checkpoints are watch ready
+42.018s, frontend ready 44.295s, unchanged-touch verification 48.587s, expected missing-dependency
+refusal 64.743s and new dependency copied 64.757s. Subsequent frontend/backend build output shows the
+repair rebuild did start. There is no `repair published` checkpoint before expiry. The specific late
+stage and slowdown-versus-stall cause remain unproven; do not assert a missed watch event or raise
+deadlines from this log alone. Interleaved raw child stderr from other integration cases must not be
+attributed to the watch owner without matching fixture/process evidence.
+
+The same run accepts actual Electron compilation/archive in **111.603s**, retained Vite ESM preload/
+loader tracking in **31.059s**, repeated public builds in **101.381s**, content-worker external reads
+in **43.867s** and changed loader-input compilation in **95.069s**. Preserve those exact accepted paths;
+the later native cases/files stopped by fail-fast remain unaccepted by this run.
+
+Retained per-step evidence is `/private/tmp/apack-strict-39191666077/`, uploaded archive ID
+`12161660363`, zip SHA-256 `b0bca4fc2c1283941e90feb939242727c8c2f7fbd0a6b1ddb6cc9f735e49373a`.
+Clean extracted logs use `/private/tmp/apack-strict-39191666077-{chain-clean,test-integration,test-unit-host,test-unit-pack}.log`;
+full failure output is `/private/tmp/apack-strict-39191666077-failed.log`.
+
+Focused macOS [run `39194487906`](https://github.com/spankyed/AgentBuddy/actions/runs/39194487906)
+is active on **`b51556f8e01fe950e81ad345b823d3607ffd8c54`**, selecting only that exact recovery case
+with the unchanged 120s bound. This is the existing disposable macOS route, one Vitest thread and a
+two-core budget, with no local native execution or Windows VM start. Inspect its terminal case count,
+phase timings and result before choosing the next diagnostic or fix. No new broad run is dispatched.
+The completed broad gate does not contain `31ed0dcad` or `eb552cf65`; their focused checks remain
+separate. Required final current-source strict acceptance, app handoffs and the pending bound-only
+support disposition remain open. The archive-reference audit finds no affected links outside `docs/`,
+so the planned documentation moves need not alter captured pack-owned input files.

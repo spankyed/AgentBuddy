@@ -72,9 +72,16 @@ verified backend/Vue output and Node 23.11.1 archive without compiler-function i
 The invocation receipt complements existing passive-reader/poisoned-import checks. Signed-runtime
 environment filtering remains intact. No repeat of these accepted runtime paths is needed.
 Strict convergence run [39191666077](https://github.com/spankyed/AgentBuddy/actions/runs/39191666077)
-is active on `945e80c15` with two cores. Preserve its exact producer/archive/app handoffs. It predates
-the authoring repair `31ed0dcad` below and cannot be the final gate for that later source; keep it running,
-use its evidence, and complete review before the final committed-source run.
+finished on `945e80c15` after **1877.8s**. All **5,657 host** and **889 pack** tests pass, as do
+API/schema/exports/types/lint, the external contract, fork producer and pack typecheck. Integration
+stops at one macOS native-watch recovery case's unchanged **120s** limit after 410 assertions pass.
+The repair rebuild starts; whether its late stage is slow or stuck is unproven. No authoring/runtime/
+smoke/app acceptance is claimed for unreached stages. Logs and next action are recorded in
+[terminal gate evidence](../evidence/settings-and-pack-contracts.md#strict-convergence-reaches-pack-tests-native-watch-recovery-timeout--2026-10-19).
+Focused run [39194487906](https://github.com/spankyed/AgentBuddy/actions/runs/39194487906) is active
+on `b51556f8e`, selecting only that exact case on disposable macOS with two cores and the same 120s
+limit. No broad rerun, timeout increase or compiler/watch redesign is justified before its evidence.
+The completed broad run predates `31ed0dcad` and `eb552cf65`; final accepted source must include them.
 
 Windows **Node 23.11.1** also archives the retained Electron-built pack successfully (20.599s), with
 the exact previous archive checksum. The first private 60s control timed out; the diagnostic verifier
@@ -123,9 +130,9 @@ startup remain live. All five owner tests, CLI types and lint pass. This in-proc
 not replaces, existing real frontend/native/HMR acceptance. See [preload evidence](../evidence/build-input-snapshot-proof.md#frontend-javascript-preload-ownership-audit--2026-10-19).
 
 The bound-only Windows import support decision is also pending; no exclusion has been applied.
-Remaining native requirements, B6 and every Phase 7 obligation remain required. The strict gate above
-is terminal and diagnosed; its replacement convergence run is identified above. Complete the remaining
-source audit and requirement dispositions before final committed-source acceptance. No native execution runs on the daily-use Mac.
+Remaining native requirements, B6 and every Phase 7 obligation remain required. Both broad gates above are terminal; the native-watch reproducer is the current live run. Complete
+its diagnosis, any scoped repair and remaining requirement dispositions before final committed-source
+acceptance. No native execution runs on the daily-use Mac.
 
 Completion review finds and repairs an authoring ownership defect in **`31ed0dcad`**: valid
 `constructor` declarations no longer collide with inherited properties, inherited features cannot
@@ -138,7 +145,7 @@ Phase 6 source review repairs nested service-array semantics in **`eb552cf65`** 
 caller/provider retirement, private receivers and ordinary result/stream settlement. All 46 focused
 binding/cache/replacement cases, host types and lint pass. Current provenance publication and shipped
 ownership review identifies no additional demonstrated implementation gap. See [Phase 6 review](../evidence/settings-and-pack-contracts.md#completion-review-consumed-apis-provenance-and-shipped-ownership--2026-10-19).
-The live strict run predates both review repairs; final committed-source and external-runtime acceptance
+The completed strict run predates both review repairs; final committed-source and external-runtime acceptance
 remain required, and no unresolved requirement is waived.
 
 Completion source review on `eb552cf65` also rechecks Phase 3–5 boundaries: catalog metadata is
@@ -148,7 +155,7 @@ owner identity. No additional demonstrated defect is found in those inspected pa
 replace poisoned/source-free discovery, navigation races or actual pane/window acceptance in the
 existing evidence and final gates. Primary PE documentation and preserved ordinary-loader failures
 still do not settle valid bound-only support; the explicit-refusal scope question remains unanswered,
-with no exclusion or guessed symbol recovery applied. Strict run `39191666077` remains live.
+with no exclusion or guessed symbol recovery applied. Its failed strict gate and current focused reproducer are identified above.
 
 This ledger owns current execution status and ordering. The phases below retain all completion
 requirements; subsystem plans retain detailed contracts and acceptance cases. Dated checkpoint notes
