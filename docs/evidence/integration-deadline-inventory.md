@@ -1241,3 +1241,11 @@ workers, complete bodies, exit 0 with no unhandled reporting/cleanup error. `fro
 behavior is unaffected. The focused runner needs published packages and default-setup output, not
 the separate external-contract fixture outputs or all-project typechecks. Final normal and strict
 gates retain every original prerequisite.
+
+The two reporting hooks are committed/pushed as **`19c1c9716`**; the watcher operation correction is
+**`fa21a17ba`**. Focused acceptance
+[39329992884](https://github.com/spankyed/AgentBuddy/actions/runs/39329992884) on workflow-only
+**`3ca1a45fc`** contains both. It selects the eight complete files, two workers, no per-test overrides,
+the existing loop probe, verbose/JSON evidence and process exit status. Package preparation and
+default-setup compilation have separate bounds. No broad gate runs concurrently. Await this exact
+run; its dispatch is not acceptance.
