@@ -1,4 +1,4 @@
-name: Integration acceptance probe
+name: Generation context diagnostic
 
 on:
   workflow_dispatch:
@@ -8,14 +8,13 @@ permissions:
   contents: read
 
 concurrency:
-  group: integration-probe-${{ github.ref }}
+  group: generation-context-${{ github.ref }}
   cancel-in-progress: false
 
 jobs:
   check:
     runs-on: macos-26
-    # Cold pack preparation measured 9m55s; typecheck and the existing 10m pool need separate room.
-    timeout-minutes: 30
+    timeout-minutes: 10
     env:
       APACK_CHAIN_CORES: 2
     defaults:
@@ -36,17 +35,29 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ github.token }}
         run: npm ci
-      - name: Produce typecheck dependency-read evidence
-        run: npm run typecheck -- --cores 2
-      - name: Build required pack output
-        run: npm run build:default-setup
-      - name: Complete integration pool with two cores
-        run: npm run test:integration | tee "$RUNNER_TEMP/integration.log"
+      - name: Build matching compiler packages
+        run: npm run packages:ensure
+      - name: Measure generation and verify its report handoff
+        run: |
+          node --import tsx --conditions=@apackdev/source --input-type=module <<'JS' | tee "$RUNNER_TEMP/generation.log"
+          import assert from 'node:assert/strict';
+          import { GENERATE_ENTRIES, RECORDED_FILE_CHECKS } from './scripts/lib/typecheck-jobs.ts';
+          import { boundedSpawn } from './scripts/lib/bounded-spawn.ts';
+          const report = RECORDED_FILE_CHECKS.find(job => job.name === 'facade:check');
+          assert.ok(report);
+          for (const [job, deadline] of [[GENERATE_ENTRIES,180_000],[report,60_000]]) {
+            const [command,...args] = job.command.split(' ');
+            console.log('Generation diagnostic phase starts:',job.name);
+            const result = await boundedSpawn(command,args,deadline,{cwd:job.cwd,stream:true});
+            console.log(JSON.stringify({phase:job.name,code:result.code,ms:result.ms,timedOut:result.timedOut}));
+            assert.equal(result.code,0,job.name);
+          }
+          JS
       - name: Retain validation evidence
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: integration-probe-${{ github.sha }}
+          name: generation-context-${{ github.sha }}
           include-hidden-files: true
           path: |
-            ${{ runner.temp }}/integration.log
+            ${{ runner.temp }}/generation.log
