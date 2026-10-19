@@ -65,6 +65,12 @@ verified build output and passive cross-runtime archive acceptance are asserted.
 and all 53 subprocess/deadline policy checks pass; runtime acceptance is pending. No deadline
 is widened and no native execution runs on the daily-use Mac. The strict run above retains its
 original pin; it is not replaced by these focused platform checks.
+Candidate `50d11c39d` is committed and pushed. Focused signed macOS run
+[39179708329](https://github.com/spankyed/AgentBuddy/actions/runs/39179708329) and Linux run
+[39179710434](https://github.com/spankyed/AgentBuddy/actions/runs/39179710434) are active on that
+exact source. Check their actual selected case/result before claiming runtime acceptance; do not
+repeat the accepted Windows build/archive or signing-only probes.
+
 
 
 This ledger owns current execution status and ordering. The phases below retain all completion
