@@ -10,7 +10,7 @@ concurrency:
 jobs:
   check:
     runs-on: macos-26
-    timeout-minutes: 45
+    timeout-minutes: 55
     env:
       APACK_CHAIN_CORES: 2
     defaults:
@@ -38,8 +38,12 @@ jobs:
         id: types
         timeout-minutes: 5
         run: npx tsc -p packages/apack-cli --noEmit
+      - name: Build database fixture pack
+        id: pack
+        timeout-minutes: 10
+        run: npm run build:default-setup
       - name: Accept Electron driver beside the complete database file
-        if: ${{ !cancelled() && steps.types.outcome == 'success' }}
+        if: ${{ !cancelled() && steps.pack.outcome == 'success' }}
         run: |
           node --import tsx --input-type=module <<'JS' 2>&1 | tee "$RUNNER_TEMP/electron-driver.log"
           import fs from 'node:fs';
