@@ -263,6 +263,13 @@ sequence previously had no deliberate loop turn before the final typecheck. Exis
 assertions remain, with command-success guards added; types/lint pass. The reporting repair requires
 focused concurrency acceptance before normal integration. Update the prepared normal source with all
 validated repairs; it remains undispatched, and final main strict `--all` remains required.
+Source **`7110c2632`** extends that yielding CLI path to all scaffold commands in the affected file,
+with explicit pack roots and unchanged generated-code/refusal assertions. Focused acceptance
+[39243953202](https://github.com/spankyed/AgentBuddy/actions/runs/39243953202) is now running on
+workflow-only `99ffd7bfa` over that exact source: 19 watcher/cache cases, then the entire 18-case
+scaffold file and two dependency typechecks, two workers per sequential group. Each group saves its
+evidence immediately. This is acceptance of the demonstrated repairs, not another broad diagnostic;
+normal integration and final main strict `--all` still follow only after convergence.
 Source **`21ed07fe7`** gives complete integration its own 120-minute aggregate class. The pool runner
 reads its owning chain step's deadline; ordinary unit pools remain at 600s. The measured file work
 already exceeds 53 minutes at an ideal two-worker balance, without blocked setup/preparation, so the

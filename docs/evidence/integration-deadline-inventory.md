@@ -459,3 +459,23 @@ Raw evidence is preserved in `/private/tmp/apack-integration-remaining-392146766
 status reports), `/private/tmp/apack-integration-remaining-39214676663-full.log` (complete GHA output,
 including stderr), and the run's retained upload. The per-batch `tee` files contain stdout only; use
 the full log for failure messages and unhandled errors.
+
+### Committed repair acceptance dispatched — 2026-10-19
+
+Source `7110c2632` routes all scaffold commands in `add-extensions.integration.spec.ts` through
+the existing yielding CLI helper, extending `22aeef628` beyond the four-migration sequence. The
+adapter requires an explicit pack root and rejects nonzero command status; existing generated-code,
+manifest and refusal assertions remain. CLI types/lint and the subprocess/wait checks pass locally;
+real reporting acceptance is still required.
+
+[Run 39243953202](https://github.com/spankyed/AgentBuddy/actions/runs/39243953202), workflow-only
+`99ffd7bfa` on that exact source, runs two sequential groups with two workers: 19 watcher/frontend
+cache cases across six files, then all 18 scaffold cases plus two workspace dependency typechecks.
+Existing source deadlines are unchanged by the workflow. Each group retains JSON, verbose output
+and exit status immediately; the second group runs even if the first fails. A passing assertion count
+alone does not establish success when Vitest reports an unhandled reporting or cleanup error.
+
+The earlier eight-file results and complete six-batch inventory remain authoritative. This focused
+run must converge before normal full integration; final main strict `--all` and requirement-by-requirement
+closure remain outstanding. Temporary tracing and extended diagnostic observers are absent from
+the acceptance source. No captured runtime/native/watch execution runs on the daily-use Mac.
