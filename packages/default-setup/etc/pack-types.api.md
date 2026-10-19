@@ -1540,9 +1540,9 @@ declare const ClaudeNativePlanDialogSchema: z.ZodObject<{
             clearContext: boolean;
         }>, "many">;
     }, "strip", z.ZodTypeAny, {
+        plan: string;
         withheld: boolean;
         empty: boolean;
-        plan: string;
         initialChoice: string;
         choices: {
             value: string;
@@ -1552,9 +1552,9 @@ declare const ClaudeNativePlanDialogSchema: z.ZodObject<{
         }[];
         planFilePath?: string | undefined;
     }, {
+        plan: string;
         withheld: boolean;
         empty: boolean;
-        plan: string;
         initialChoice: string;
         choices: {
             value: string;
@@ -1564,9 +1564,9 @@ declare const ClaudeNativePlanDialogSchema: z.ZodObject<{
         }[];
         planFilePath?: string | undefined;
     }>, {
+        plan: string;
         withheld: boolean;
         empty: boolean;
-        plan: string;
         initialChoice: string;
         choices: {
             value: string;
@@ -1576,9 +1576,9 @@ declare const ClaudeNativePlanDialogSchema: z.ZodObject<{
         }[];
         planFilePath?: string | undefined;
     }, {
+        plan: string;
         withheld: boolean;
         empty: boolean;
-        plan: string;
         initialChoice: string;
         choices: {
             value: string;
@@ -1588,9 +1588,9 @@ declare const ClaudeNativePlanDialogSchema: z.ZodObject<{
         }[];
         planFilePath?: string | undefined;
     }>, {
+        plan: string;
         withheld: boolean;
         empty: boolean;
-        plan: string;
         initialChoice: string;
         choices: {
             value: string;
@@ -1600,9 +1600,9 @@ declare const ClaudeNativePlanDialogSchema: z.ZodObject<{
         }[];
         planFilePath?: string | undefined;
     }, {
+        plan: string;
         withheld: boolean;
         empty: boolean;
-        plan: string;
         initialChoice: string;
         choices: {
             value: string;
@@ -1622,9 +1622,9 @@ declare const ClaudeNativePlanDialogSchema: z.ZodObject<{
     requestId: string;
     toolName: "EnterPlanMode" | "ExitPlanMode";
     presentation: {
+        plan: string;
         withheld: boolean;
         empty: boolean;
-        plan: string;
         initialChoice: string;
         choices: {
             value: string;
@@ -1643,9 +1643,9 @@ declare const ClaudeNativePlanDialogSchema: z.ZodObject<{
     requestId: string;
     toolName: "EnterPlanMode" | "ExitPlanMode";
     presentation: {
+        plan: string;
         withheld: boolean;
         empty: boolean;
-        plan: string;
         initialChoice: string;
         choices: {
             value: string;
@@ -9028,6 +9028,9 @@ declare function createClaudePromptHosts(write: (value: unknown) => boolean): {
 
 /** Native UI transport only. A renderer must validate tree nodes before displaying them. */
 declare function createClaudeUiControls(initialized: Promise<Pick<ClaudeInitialization, 'capabilities'>>, controls: Pick<ReturnType<typeof createHostControls>, 'request'>, promptHosts?: Pick<ReturnType<typeof createClaudePromptHosts>, 'answers' | 'detach' | 'register'>): {
+    releaseInstance(options: z.infer<typeof instanceRelease>): Promise<{
+        released: boolean;
+    }>;
     prepareParentCommand(options: {
         client_id: string;
         text: string;
@@ -9083,7 +9086,6 @@ declare function createClaudeUiControls(initialized: Promise<Pick<ClaudeInitiali
         kind: "prepared" | "running";
     } | {
         id: string;
-        kind: "finished";
         result: {
             kind: "not_command";
         } | {
@@ -9118,6 +9120,7 @@ declare function createClaudeUiControls(initialized: Promise<Pick<ClaudeInitiali
             sessionId?: string | undefined;
             conversationId?: string | undefined;
         };
+        kind: "finished";
     } | {
         message: string;
         id: string;
@@ -9393,6 +9396,7 @@ declare const field: z.ZodObject<{
     key: z.ZodOptional<z.ZodString>;
     component: z.ZodOptional<z.ZodString>;
     instance_id: z.ZodOptional<z.ZodString>;
+    instance_revision: z.ZodOptional<z.ZodNumber>;
     value: z.ZodString;
 }, "strict", z.ZodTypeAny, {
     client_id: string;
@@ -9403,6 +9407,7 @@ declare const field: z.ZodObject<{
     key?: string | undefined;
     component?: string | undefined;
     instance_id?: string | undefined;
+    instance_revision?: number | undefined;
 }, {
     client_id: string;
     surface: "desktop" | "mobile" | "vscode";
@@ -9412,6 +9417,7 @@ declare const field: z.ZodObject<{
     key?: string | undefined;
     component?: string | undefined;
     instance_id?: string | undefined;
+    instance_revision?: number | undefined;
 }>;
 
 declare const fill: z.ZodEffects<z.ZodObject<{
@@ -9662,6 +9668,7 @@ declare const input: z.ZodObject<{
     key: z.ZodOptional<z.ZodString>;
     component: z.ZodOptional<z.ZodString>;
     instance_id: z.ZodOptional<z.ZodString>;
+    instance_revision: z.ZodOptional<z.ZodNumber>;
     value: z.ZodString;
 } & {
     kind: z.ZodEnum<["change", "submit"]>;
@@ -9675,6 +9682,7 @@ declare const input: z.ZodObject<{
     key?: string | undefined;
     component?: string | undefined;
     instance_id?: string | undefined;
+    instance_revision?: number | undefined;
 }, {
     client_id: string;
     surface: "desktop" | "mobile" | "vscode";
@@ -9685,6 +9693,24 @@ declare const input: z.ZodObject<{
     key?: string | undefined;
     component?: string | undefined;
     instance_id?: string | undefined;
+    instance_revision?: number | undefined;
+}>;
+
+declare const instanceRelease: z.ZodObject<{
+    client_id: z.ZodString;
+    component: z.ZodString;
+    instance_id: z.ZodString;
+    instance_revision: z.ZodNumber;
+}, "strict", z.ZodTypeAny, {
+    client_id: string;
+    component: string;
+    instance_id: string;
+    instance_revision: number;
+}, {
+    client_id: string;
+    component: string;
+    instance_id: string;
+    instance_revision: number;
 }>;
 
 declare const libraryCommands: {
@@ -10029,12 +10055,18 @@ declare const press: z.ZodObject<{
     handle: z.ZodNumber;
     key: z.ZodOptional<z.ZodString>;
     href: z.ZodOptional<z.ZodString>;
+    component: z.ZodOptional<z.ZodString>;
+    instance_id: z.ZodOptional<z.ZodString>;
+    instance_revision: z.ZodOptional<z.ZodNumber>;
 }, "strict", z.ZodTypeAny, {
     client_id: string;
     surface: "desktop" | "mobile" | "vscode";
     plugin: string;
     handle: number;
     key?: string | undefined;
+    component?: string | undefined;
+    instance_id?: string | undefined;
+    instance_revision?: number | undefined;
     href?: string | undefined;
 }, {
     client_id: string;
@@ -10042,6 +10074,9 @@ declare const press: z.ZodObject<{
     plugin: string;
     handle: number;
     key?: string | undefined;
+    component?: string | undefined;
+    instance_id?: string | undefined;
+    instance_revision?: number | undefined;
     href?: string | undefined;
 }>;
 
@@ -10410,6 +10445,7 @@ declare const render: z.ZodObject<{
     component: z.ZodString;
     instance_id: z.ZodString;
     props: z.ZodRecord<z.ZodString, z.ZodUnknown>;
+    instance_revision: z.ZodOptional<z.ZodNumber>;
     viewport: z.ZodOptional<z.ZodObject<{
         columns: z.ZodNumber;
         rows: z.ZodNumber;
@@ -10426,9 +10462,10 @@ declare const render: z.ZodObject<{
 }, "strict", z.ZodTypeAny, {
     client_id: string;
     surface: "desktop" | "mobile" | "vscode";
-    props: Record<string, unknown>;
     component: string;
     instance_id: string;
+    props: Record<string, unknown>;
+    instance_revision?: number | undefined;
     viewport?: {
         columns: number;
         rows: number;
@@ -10437,9 +10474,10 @@ declare const render: z.ZodObject<{
 }, {
     client_id: string;
     surface: "desktop" | "mobile" | "vscode";
-    props: Record<string, unknown>;
     component: string;
     instance_id: string;
+    props: Record<string, unknown>;
+    instance_revision?: number | undefined;
     viewport?: {
         columns: number;
         rows: number;
