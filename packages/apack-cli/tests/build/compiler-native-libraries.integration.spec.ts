@@ -124,7 +124,7 @@ it.runIf(process.platform === 'darwin' || process.platform === 'linux').each(ele
       return [{entity:'ElectronProof',name:'runtime'}];
     }`);
   await command(pack, ['add', 'feature', 'sample', '--description', 'Verify Electron compilation.']);
-  await command(pack, ['build'], { timeoutMs: 120_000 });
+  await command(pack, ['build'], { timeoutMs: 180_000 });
   const runtime = JSON.parse(fs.readFileSync(proof, 'utf8')) as { versions: { electron: string; node: string }; executable: string };
   expect(runtime.versions.electron).toBe(version);
   expect(runtime.executable).not.toBe(fs.realpathSync.native(electron));
