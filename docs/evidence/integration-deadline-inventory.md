@@ -492,3 +492,19 @@ Do not turn that unknown into a compiler defect or increase all build limits. Pr
 next diagnose this case with bounded phase observations beside the frontend CSS recovery case that
 shared its worker period. The independent scaffold group remains live. Raw JSON, console and status
 are saved at `/private/tmp/apack-watch-phase-39243953202/` and in the run's early upload.
+
+The independent reporting group then completes successfully in **417.164s**: **20 passed, zero
+failed**, eight deliberately filtered, **exit 0**. All 18 scaffold cases and both workspace dependency
+typechecks pass, with no unhandled RPC or cleanup error. This accepts `7110c2632`'s shared CLI
+sequencing and the workspace variants of the service-selection fixture repair. It does not reclassify
+the other group's operation timeout as a pass. Reporting reports are retained at
+`/private/tmp/apack-reporting-phase-39243953202/`; the complete terminal job output is
+`/private/tmp/apack-watch-and-reporting-39243953202-full.log`.
+
+After that job becomes terminal, [39247182439](https://github.com/spankyed/AgentBuddy/actions/runs/39247182439)
+starts on isolated `b6b3de3e0`: the single failing publication case beside CSS recovery, two workers.
+Temporary phase logging separates package verification, compiler-current/capture, worker lifetime,
+observations and publication. The probe observes a rebuild for at most 120s, records crossing the
+original 60s boundary and still refuses that original allowance if completion arrives late. No main
+deadline changes; no broad diagnostic or overlapping heavy run. This probe is not normal or strict
+acceptance. Preserve the 38 passing focused cases while diagnosing this one remaining operation.
