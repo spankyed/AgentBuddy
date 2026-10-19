@@ -47,6 +47,13 @@ Lazy activation is deferred.
 
 ## Live execution ledger (reconciled 2026-10-16)
 
+Latest normal run **39262109257** finishes with 409 passing tests and one inherited-60s worker
+observation-refusal scenario timeout; all preparation passes. Its cancellation and earlier passing
+controls are preserved. The same-file audit repairs the remaining four cold-build scenario budgets
+and bounds their operations without changing production code or assertions. See the
+[classification and repair](../evidence/integration-deadline-inventory.md#normal-gate-worker-observation-refusal-deadline--2026-10-19).
+Next: affected two-worker acceptance, normal integration, then final committed-source strict `--all`.
+
 Runtime identity/publisher-policy repair is committed as **`7ce19661f`**, with focused acceptance
 recorded below. Earlier app/compiler implementation checkpoint **`3827993ba`** is pushed. Windows real Electron
 backend/frontend build and archive pass on that source; OS-assembly/copy/manifest-freshness

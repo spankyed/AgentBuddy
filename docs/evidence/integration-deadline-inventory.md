@@ -702,3 +702,35 @@ on workflow-only `8d7776bc1` over exact main `a5e0d89ee`. It includes all accept
 declaration-fixture repairs, preserves complete preparation, and runs the ordinary unfiltered
 `npm run test:integration -- --all` with two cores. No diagnostic tracing, filters or private deadline
 overrides are merged. Require this normal gate before final main strict acceptance and closure.
+
+## Normal gate: worker-observation refusal deadline — 2026-10-19
+
+Normal run [39262109257](https://github.com/spankyed/AgentBuddy/actions/runs/39262109257)
+uses workflow-only `8d7776bc1` on main source `a5e0d89ee`. All preparation passes: typecheck
+374s, default pack 534s and external contract preparation 354s. Integration fails in **505.66s**:
+**409 actual passes, one failure, 26 platform skips**. Global bail leaves later cases unexecuted;
+passing file labels do not establish their entire declared population ran.
+
+The only failure is a **whole-scenario timeout**: `refuses publication when a compiler worker cannot
+return its observations` inherits 60s and reports 65.969s including cancellation/cleanup. No assertion
+mismatch, individual-operation timeout, cleanup failure or reporting error is reported. Earlier full
+worker acceptance completed this case in 53.701s. The underlying refusal is not newly disproven; its
+completion on this combined normal run is unverified. The four-mode thread case now passes in
+109.235s, repeated build/archive in 151.688s, actual Electron launch in 4.786s and actual Electron
+build/archive in 219.555s. Native watch repair passes in 178.944s, including retirement. Preserve these
+reached controls without claiming the unreached native tail passed.
+
+The prior cold-build audit missed the refusal and three remaining same-file cold scenarios: loader
+input refusal, background-process cleanup and frontend input reporting. Their focused durations were
+53.434s, 44.269s and 49.737s respectively. Repair them together using the same explicit 120s cold-build
+operation allowance already used for the thread case, with 20s enclosing verification/cleanup. The
+existing test helper requires the test cancellation signal and combines it with that operation bound;
+its registered builder still closes before source deletion. The public loader-refusal child receives
+a bounded completion wait and an awaited, separately bounded 20s cleanup. All original refusal,
+incumbent, value, input-source and process-cleanup assertions remain. Bootstrap/IPC/event waits,
+compiling-phase startup, other scenario limits and production code are unchanged.
+
+Local checks pass: 53 timeout-policy/subprocess-inventory cases, CLI TypeScript and correctness lint.
+Disposable two-worker affected-file acceptance is required before another normal run; the final main
+strict gate remains outstanding. Evidence: `/private/tmp/apack-normal-integration-39262109257/` and
+`/private/tmp/apack-normal-integration-39262109257-full.log`.
