@@ -71,8 +71,10 @@ verified backend/Vue output and Node 23.11.1 archive without compiler-function i
 [direct runtime evidence](../evidence/build-input-snapshot-proof.md#direct-electron-content-compiler-and-passive-archive-accepted--2026-10-19).
 The invocation receipt complements existing passive-reader/poisoned-import checks. Signed-runtime
 environment filtering remains intact. No repeat of these accepted runtime paths is needed.
-No broad run remains active. Converge the remaining native proof and this focused metadata repair
-before the next required strict gate; preserve exact producer/archive/app handoffs.
+Strict convergence run [39191666077](https://github.com/spankyed/AgentBuddy/actions/runs/39191666077)
+is active on `945e80c15` with two cores. Preserve its exact producer/archive/app handoffs. It predates
+the authoring repair `31ed0dcad` below and cannot be the final gate for that later source; keep it running,
+use its evidence, and complete review before the final committed-source run.
 
 Windows **Node 23.11.1** also archives the retained Electron-built pack successfully (20.599s), with
 the exact previous archive checksum. The first private 60s control timed out; the diagnostic verifier
@@ -83,7 +85,7 @@ The VM has no remaining compiler processes; its evidence is exported and Azure c
 The publisher-policy fixture is now valid: process-owned signing and the documented SDK/cache APIs
 install, query and remove its unique identities. Its real DLL changes 11→22 after policy installation.
 The helper matches that selection, but the original observation record incorrectly stays valid.
-The uncommitted helper candidate records policy-store membership and policy/catalog bytes; the same
+The committed helper repair records policy-store membership and policy/catalog bytes; the same
 reproducer now invalidates. Batched directory attributes retain the existing five-second query bound.
 
 The durable regression exposes a separate identity-contract boundary: source/copy files and owned
@@ -122,8 +124,15 @@ not replaces, existing real frontend/native/HMR acceptance. See [preload evidenc
 
 The bound-only Windows import support decision is also pending; no exclusion has been applied.
 Remaining native requirements, B6 and every Phase 7 obligation remain required. The strict gate above
-is terminal and diagnosed; no replacement broad gate was dispatched. Finish this contract checkpoint
-and focused verification before the next required gate. No native execution runs on the daily-use Mac.
+is terminal and diagnosed; its replacement convergence run is identified above. Complete the remaining
+source audit and requirement dispositions before final committed-source acceptance. No native execution runs on the daily-use Mac.
+
+Completion review finds and repairs an authoring ownership defect in **`31ed0dcad`**: valid
+`constructor` declarations no longer collide with inherited properties, inherited features cannot
+receive services, and refused feature-service scaffolding writes no source files. All nine focused
+authoring/writer checks, CLI types and lint pass. The first manifest/settings source review is recorded
+[here](../evidence/settings-and-pack-contracts.md#completion-review-manifest-and-settings-source-contracts--2026-10-19);
+no whole-goal completion, final runtime acceptance or requirement exclusion is claimed.
 
 This ledger owns current execution status and ordering. The phases below retain all completion
 requirements; subsystem plans retain detailed contracts and acceptance cases. Dated checkpoint notes

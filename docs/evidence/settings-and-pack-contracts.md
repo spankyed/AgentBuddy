@@ -8041,3 +8041,59 @@ Evidence: `/private/tmp/apack-strict-39182963669{,-chain}-clean.log`, the retain
 `/private/tmp/apack-strict-39182963669/`, and
 `/private/tmp/apack-persistence-marker-{39182963669,focused,scanner}.log`. The original failed-run
 console is `/private/tmp/apack-strict-39182963669-failed.log`.
+
+## Completion review: manifest and settings source contracts — 2026-10-19
+
+Review baseline `945e80c15`; usable repair checkpoint **`31ed0dcad`**. This is a current-source audit,
+not a declaration of whole-goal completion. The complete 17-decision/two-question inventory remains
+[manifest consolidation](../plans/manifest-consolidation.md); no phase, check or unfinished requirement
+is removed here.
+
+| Decisions inspected | Current source evidence / result |
+|---|---|
+| 1, 7, 16 — authoring and canonical writing | `manifest-writer.ts` derives structural ordering from the current schema, preserving declaration/data order. Init, every add writer and release use it. Found and repaired inherited-property collisions in add helpers; the exact defect and acceptance are below. |
+| 2, 3, 4 — references, entities and relations | SDK `data-declaration.ts` supplies `_packEntities`, `_packEntityTypes`, `_packRelationTypes`; module targets, generators, provenance, CLI inspection and host binding checks consume those projections. `entityShapeEntries` checks `hasTypeExport` and emits type-only imports; null shapes emit no shape import. Ownership does not qualify entity wires. Source inspection does not replace final typed/untyped/generated/EARS acceptance. |
+| 5 — removed pack storage policy | No policy is restored. Found a deleted partition-policy API's prose attached to `getLifecycleHooks`; corrected it to describe the actual registered lifecycle hook list. This changes no storage behavior. |
+| 6, 8, 9, 10, 12, 13 — declarations and bindings | Current schema uses required feature descriptions, explicit contribution targets, extensions and lifecycle. Host `declaration-binding.ts` checks entity/relation identities, feature/designation membership, APIs, content, commands, events, migrations and lifecycle against accepted declarations. `lifecycle-binding.ts` checks exact names/callability without invoking hooks. Existing registration tests include nonmatching designation/id and attributed cross-pack collisions. Runtime order/readiness and real external paths still require their final acceptance. |
+| 11, 14, 15, 17 — assistance, format, naming and checks | `declaration-schema.ts` declares purpose-specific descriptions, `hostVersion`, direct editor/app extension fields and inline checks; `pack-checks.ts` owns the allowable check vocabulary. Current code search across packages/scripts/tests finds no old settings section APIs, entity-shape map, manifest format key or check sidecar references. Build-format stamps/release metadata are untouched. Schema/API/editor derivation and external authoring remain required gates, not consequences of this search. |
+| Both naming questions | Current authored schema uses `extensions.tiptapPlugins`, `extensions.appExtensions` and `hostVersion`. No frontend wrapper or alternative range key is introduced. |
+
+Settings source review confirms fixed app/pack/feature ownership in `document.ts`, host-owned app
+definitions, pack-scoped service callers and declaration-aware authorization in the store. Transport
+access uses host-issued connection/runtime leases rather than event-supplied identities. Backup validation
+uses the current declarative catalog without importing an obsolete settings assembly. The prior accepted
+three-owner, lifecycle, reset/import, restrictions, forms and window cases remain required; the review
+alone does not establish their final runtime acceptance.
+
+### Demonstrated authoring defect and repair
+
+Add helpers used `record[name]` to detect existing declarations. A valid name `constructor` therefore
+collided with inherited properties for features, steps, artifacts, blocks, pack services and feature
+services. Missing-feature lookup could also select an inherited object. Seven focused regressions fail
+on the original implementation; the repaired helpers use the existing shared `hasOwn` operation and
+require an owned target feature. They retain real duplicate refusal and schema acceptance of each
+new declaration.
+
+An additional real command regression shows `add service --feature constructor` leaves source files
+behind even when its now-correct manifest lookup refuses the missing feature. Moving the shared manifest
+operation ahead of file creation repairs that refusal boundary and removes duplicated pack/feature
+service writing. The manifest stays byte-identical and no source directory appears on refusal. This
+is not general filesystem transaction machinery or a new security/isolation claim.
+
+All **nine** focused authoring/writer checks pass after both fixes; CLI TypeScript and correctness lint
+pass. Red/green evidence is `/private/tmp/apack-authoring-{ownership-red,ownership-green,refusal-red,ownership-final,ownership-types,ownership-lint}.log`.
+No runtime storage, release metadata, schema or public API changes are made.
+
+### Live convergence gate and proof boundary
+
+Required strict run [39191666077](https://github.com/spankyed/AgentBuddy/actions/runs/39191666077)
+is live on exact committed baseline **`945e80c150b63d761ecf45434bc1d1bbe29cc1db`**. It runs the existing
+strict `--all --cores 2 --no-classify` command on a disposable macOS runner. It must reach producer,
+packaged-authoring and app-consumer stages not reached by the previous host-pool failure; no earlier
+partial result is promoted to their acceptance. It does **not** contain `31ed0dcad`, so its result cannot
+certify that later repair or serve as the final gate for changed source. Do not cancel/restart it for
+that reason; preserve its stage evidence and finish source review before the final committed-source run.
+The chain's ordinary smoke/external/authoring app steps are gates; general root E2E remains opt-in.
+Preserve the separately recorded affected real-window checks rather than claiming `--all` selects every
+browser case. Bound-only PE disposition, any specifically named outstanding native combination and
+all final completion/archive obligations remain open.
