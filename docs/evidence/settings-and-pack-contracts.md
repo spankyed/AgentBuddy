@@ -8393,3 +8393,33 @@ against main source `6dcbfdd88` remains solely `.github/workflows/strict-chain.y
 probe. This retry supplies a demonstrated missing prerequisite, not another unexplained broad rerun.
 It is still not a final strict `--all` result. Main source remains unchanged and final strict/app gates
 stay required; no local native execution or VM startup occurs.
+
+### Standalone typecheck compiler-context handoff — 2026-10-19
+
+[39201821813](https://github.com/spankyed/AgentBuddy/actions/runs/39201821813) fails on `c51408d15`
+before integration. Package preparation, generation and the reached typecheck legs pass; the source
+facade check refuses generated entries as stale. Console: `/private/tmp/apack-integration-39201821813-failed.log`.
+
+Inspection finds a real coordinator handoff problem. Generation runs through `npm run generate:entries`
+and the read-only report through `npm run facade:check`; npm changes `npm_lifecycle_event` and
+`npm_lifecycle_script`. `compilerExecutionIdentity()` hashes the environment, and those meaningful
+inputs are deliberately not excluded. An inert subprocess regression reproduces the exact mismatch:
+the reporter receives `facade:check` metadata while generation recorded `generate:entries` metadata.
+No pack modules, native libraries or captured executables are needed for that reproduction.
+
+Main **`25a15d3de`** declares both commands with the default-setup working directory and launches the
+existing CLI entry directly, inheriting the coordinator's same environment. The runner forwards the
+declared working directory through `boundedSpawn`. Generation still precedes readers; the report keeps
+`--skip-generate`; every recorded-file check remains. No environment value is ignored, replayed or
+stored, no freshness assertion is weakened, and no full build is added to standalone typecheck.
+
+The regression changes from an actual subprocess refusal to success. All **127** typecheck-leg,
+chain-graph/input and subprocess-inventory checks pass, as do scripts/repo TypeScript and correctness
+lint. Logs: `/private/tmp/apack-typecheck-context-{red,green,types,repo-types,lint}.log`. Only inert
+fixture scripts execute locally; the daily-use Mac runs no native/captured-runtime batch.
+
+Probe branch checkpoint **`40a5b8e1f`** incorporates exact main `25a15d3de`; its sole diff against main
+is `.github/workflows/strict-chain.yml`. Existing isolated workflow prerequisites and bounds remain.
+[39203080601](https://github.com/spankyed/AgentBuddy/actions/runs/39203080601) must establish actual
+standalone coordinator and full integration acceptance. The inert regression is not substituted for
+that real control. Final main strict `--all` and app/authoring gates remain required.

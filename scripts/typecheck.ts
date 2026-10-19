@@ -102,7 +102,9 @@ const JOBS: readonly Job[] = [
     cores: coresFor(leg.name),
     dependsOn: leg.name === ENSURE ? [] : [ENSURE, CODEGEN],
   })),
-  { ...GENERATE_ENTRIES, timeout: LEG_TIMEOUT, seconds: 2,
+  // Generation captures the compiler/dependency installation before compiling declarations; it is a
+  // pack compilation prerequisite, rather than one of the single-tsc reader legs.
+  { ...GENERATE_ENTRIES, timeout: 'suite', seconds: 2,
     cores: 1, dependsOn: [ENSURE] },
   ...RECORDED_FILE_CHECKS.map(borrowed),
 ];

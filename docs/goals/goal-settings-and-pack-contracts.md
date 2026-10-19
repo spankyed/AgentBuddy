@@ -113,7 +113,16 @@ This is not a demonstrated product defect or a reason to change the test. Correc
 supplies `npm run typecheck -- --cores 2` first. Its job envelope is 30m because measured cold pack
 preparation takes 9m55s before the unchanged 10m suite; no test/suite deadline is changed. The probe
 still differs from main `6dcbfdd88` only in its workflow; no product or test code differs.
-Neither run is a strict-chain result, despite using the existing `strict_chain` dispatch route. Main's
+Run `39201821813` then fails the real standalone coordinator's `facade:check`: npm gives generation
+and report different lifecycle metadata, which correctly participates in compiler identity. Source
+**`25a15d3de`** launches these two existing CLI phases directly from one parent environment and
+explicit workspace, preserving freshness checks rather than filtering environment inputs. A real inert
+subprocess regression fails with the old npm wrappers and passes with the repair; all **127** focused
+checks, scripts/repo types and lint pass. See [handoff evidence](../evidence/settings-and-pack-contracts.md#standalone-typecheck-compiler-context-handoff--2026-10-19).
+Updated probe [39203080601](https://github.com/spankyed/AgentBuddy/actions/runs/39203080601),
+source **`40a5b8e1f`**, includes that exact main repair and differs from it only in the isolated workflow.
+It must accept the real coordinator and complete integration before the final full gate.
+None of these probes is a strict-chain result, despite using the existing `strict_chain` dispatch route. Main's
 full strict workflow is unchanged and remains required after integration converges. See
 [measured acceptance](../evidence/settings-and-pack-contracts.md#sequential-preloadthread-completion-and-scoped-budget--2026-10-19).
 The bound-only refusal boundary is user-approved and repaired separately below.
