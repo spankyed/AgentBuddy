@@ -13,7 +13,6 @@
  * `--all` is read here, from argv, because the chain overriding its own stamps says nothing to a cache it
  * does not know about: the pool steps declare `forceArgs` so the flag arrives.
  */
-import { execFileSync } from 'node:child_process';
 import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
@@ -157,12 +156,19 @@ async function main(): Promise<void> {
   const kind = asked as Pool;
   const step = CHAIN_STEPS.find(step => step.name === poolStepName(kind));
   if (!step) throw new Error(`No chain step declares the ${kind} pool's deadline`);
+  const preparation = CHAIN_STEPS.find(step => step.name === 'packages:ensure');
+  if (!preparation) throw new Error('No chain step declares the packages:ensure deadline');
   const workers = poolWorkers(kind);
   // npm `pretest` hooks do not fire under a root run, so the freshness guard the suites share has nothing
   // to rebuild them. Without this, editing anything a published package is built from — this repo's own
   // package.json included — fails a dozen specs at that guard rather than running them, and the pool
   // quietly collects 162 fewer tests. It is a stat and a return when nothing is stale.
-  execFileSync('npm', ['run', 'packages:ensure'], { stdio: 'inherit' });
+  const prepared = await boundedSpawn('npm', ['run', preparation.name], timeoutMsFor(preparation.timeout), { stream: true });
+  if (prepared.code !== 0) {
+    throw new Error(prepared.timedOut
+      ? timedOutBecause({ what: preparation.name, timeout: preparation.timeout, measuredOn: MEASURED_ON, seconds: preparation.seconds })
+      : `${preparation.name} failed (exit ${prepared.code})`);
+  }
   // One run of this pool at a time, from here on: everything below stamps the projects it runs, and two runs
   // would each record what the other's vitest was still doing. Released by `exclusive-lock.ts`'s own exit and
   // interrupt handlers, so a Ctrl-C'd pool leaves no lock behind
