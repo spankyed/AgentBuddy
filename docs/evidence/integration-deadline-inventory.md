@@ -597,3 +597,9 @@ earlier 30s slowdown is not reproduced or retrospectively attributed. Preserve t
 the repair composes explicit bounded work rather than claiming a compiler-performance fix.
 Reports are at `/private/tmp/apack-electron-driver-39251438405/`, with the full log alongside.
 Resume the required normal unfiltered integration gate on this committed repair, then final strict.
+
+Normal [39253013877](https://github.com/spankyed/AgentBuddy/actions/runs/39253013877) is dispatched
+on workflow-only `92fe30ef6` over main `9783f52e2`. It retains the same complete preparation and
+unfiltered `npm run test:integration -- --all`, two cores, source operation/event/cleanup limits and
+120-minute pool aggregate. No focused selection or temporary compiler tracing is present. Require
+this normal gate, final main strict `--all`, and complete requirement audit/archival before closure.

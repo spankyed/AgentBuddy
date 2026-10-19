@@ -312,6 +312,10 @@ Electron control plus all 64 database cases on two workers. The Electron control
 verifies identity/currentness/retirement without RPC or cleanup errors. The prior 30s slowdown remains
 unattributed; the composed driver repair is accepted, not a claimed performance fix. Resume required
 normal unfiltered integration with this committed source, then final main strict `--all`.
+Normal [39253013877](https://github.com/spankyed/AgentBuddy/actions/runs/39253013877) is now dispatched
+on workflow-only `92fe30ef6` over exact main `9783f52e2`, retaining required preparation, unfiltered
+repository command and two-core budget. Final strict, requirement audit and completed-only archival
+remain required; no diagnostic source is merged.
 Source **`21ed07fe7`** gives complete integration its own 120-minute aggregate class. The pool runner
 reads its owning chain step's deadline; ordinary unit pools remain at 600s. The measured file work
 already exceeds 53 minutes at an ideal two-worker balance, without blocked setup/preparation, so the
