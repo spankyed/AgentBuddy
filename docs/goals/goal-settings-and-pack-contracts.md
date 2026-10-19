@@ -68,7 +68,9 @@ Signed macOS complete compilation remains open. Runs
 seconds for feature generation. The current correction restores one simple workflow: each of four
 public commands has an explicit 60s abort signal; only their composition receives 240s. Phase timing,
 all runtime/output/archive assertions and awaited cleanup remain. CLI types/lint and all 53
-subprocess/deadline checks pass; focused signed execution on the corrected source is next.
+subprocess/deadline checks pass. Focused signed run
+[39180841694](https://github.com/spankyed/AgentBuddy/actions/runs/39180841694) is active on
+**`cb7fb8e83`**. Inspect its command timings and actual result before any retry or broad gate.
 
 The bound-only Windows import support decision is pending the user's explicit answer; no exclusion
 has been applied. Remaining native-policy/platform requirements, B6 and every Phase 7 obligation
