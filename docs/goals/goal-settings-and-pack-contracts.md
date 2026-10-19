@@ -47,6 +47,16 @@ Lazy activation is deferred.
 
 ## Live execution ledger (reconciled 2026-10-16)
 
+Current normal gate **39281108805** finished: **505 actual passes**, one whole-scenario
+60s timeout in the trigger scaffold/add/typecheck case. All preparation passes, as do all 41 native
+and worker cases together. The unfiltered pool stopped early; full integration is still unaccepted.
+Compose this remaining three-operation scenario's deadline consistently with adjacent cases, then
+accept the full affected scaffold file before another normal run. Repair **`d07ccae99`** is committed and pushed; all 53 timeout/inventory checks, CLI types and
+lint pass. Focused [39288218287](https://github.com/spankyed/AgentBuddy/actions/runs/39288218287)
+is queued on workflow-only `36ea8055a`, selecting all 18 scaffold cases plus two facade typecheck
+controls with two workers and bail disabled. Await this existing run. Final committed-source strict
+`--all` remains required. See [latest classification](../evidence/integration-deadline-inventory.md#normal-gate-trigger-scaffold-scenario-deadline--2026-10-19).
+
 Latest normal **39269209929** finishes with 425 actual passes and a native-thread **whole-scenario
 120s timeout**. All 16 worker bodies now pass, including three previously inherited-60s scenarios
 that take 62.879s, 61.599s and 78.318s. Native thread refusal/cleanup completes at 126.668s; no value,
