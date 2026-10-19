@@ -410,6 +410,51 @@ their existing limits; there is no blanket default change. All assertion bodies 
 unchanged. The 57 policy/inventory/wait checks, CLI/repo types and lint pass. Focused real acceptance
 remains required; do not dispatch the prepared normal branch without these validated repairs.
 
+### Watch completion clocks and focused repair evidence — 2026-10-19
+
+The first two-case timeline, [39237809409](https://github.com/spankyed/AgentBuddy/actions/runs/39237809409)
+on private `2fcf5fe85`, reports one pass/one failure. Both filesystem edits are received and start builds;
+the frontend delivers at 19.690s, while the backend is cancelled by its original 20s completion wait.
+This does not demonstrate missed subscriptions or a hung compiler.
+
+Follow-up [39239365441](https://github.com/spankyed/AgentBuddy/actions/runs/39239365441), private
+`6b204e94d`, retains the original failed assertion and observes the backend for up to 40s more. It
+completes successfully using its retained compiler and generation. Measured backend phases are:
+
+| Phase | Duration |
+|---|---:|
+| Edit request to successful notification | 34.373s |
+| Compiler-current verification | 4.570s |
+| Hot worker lifetime | 22.099s |
+| Parent publication verification | 0.014s |
+| Final watcher refresh after builder completion | 3.893s |
+
+The 20s predicate was timing compiler work too. Source `ca68206b6` adds dedicated real-watcher test
+support; `4f63277f0` migrates all six affected watcher files. Each edit now proves a request within
+20s, bounds the actual build at 60s, then retains its original 20s notification predicate and every
+output/incumbent/refusal assertion. Startup stays bounded at 120s and cleanup independently at 20s.
+Malformed-manifest preflight refusals keep their direct 20s check. Case allowances compose these
+phases through the helper's shared rebuild budget; no production watcher, compiler reuse, freshness
+check, global test default or RPC limit changes. AST comparison proves original assertions and
+`vi.waitFor` calls unchanged. Seven helper boundary cases plus retry/policy/inventory/wait coverage
+pass (83 total), as do CLI/repo types and lint. Real phase acceptance remains required.
+
+The follow-up's independent repair step executes exactly 13 selected cases, including necessary fixture
+prefix cases. All 13 assertions pass; 56 other cases are deliberately filtered. Its 574.270s command
+still exits 1 for one `onTaskUpdate` reporting timeout, so it is not a passed gate. The long migration
+case takes 144.081s and invokes synchronous generation commands directly between resolved awaits.
+Source `22aeef628` routes that sequence through the existing yielding `callCli` helper, keeping migration
+assertions and adding per-command success guards. Types/lint pass; real reporting acceptance remains.
+
+Source `a2a5a057a` gives the frontend input/cache workspace its actual worker lifetime instead of file
+teardown. A small ordinary-Node Jiti control proves that deleting its retained cache directory makes a
+later module load fail `ENOENT`. This independently establishes the ownership defect; it does not identify
+the concurrent writer behind the earlier `ENOTEMPTY` or certify real cleanup. No captured runtime or
+native fixture runs locally. Reports are preserved at `/private/tmp/apack-watch-timeline-39237809409/`,
+`/private/tmp/apack-watch-completion-39239365441/`, and `/private/tmp/apack-repair-proof-39239365441/`,
+with the full logs alongside them. Early timeline upload permits diagnosis while other selected checks
+continue; it does not create another acceptance framework or substitute for normal/strict gates.
+
 Raw evidence is preserved in `/private/tmp/apack-integration-remaining-39214676663-original/` (all JSON/console/
 status reports), `/private/tmp/apack-integration-remaining-39214676663-full.log` (complete GHA output,
 including stderr), and the run's retained upload. The per-batch `tee` files contain stdout only; use

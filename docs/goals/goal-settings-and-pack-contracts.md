@@ -237,6 +237,32 @@ differ. It selects backend flow-module and external CSS-asset rebuilds with two 
 20s waits and a seven-minute aggregate. It prepares published packages and typechecks the diagnostic
 source without building the unrelated shipped pack. Logs/JSON/status are retained on failure. This
 is diagnosis, not normal integration or strict acceptance; no tracing is added to the goal branch.
+It is terminal: one case passes, one reaches the original 20s completion wait while its worker is still
+building. Both edits are received promptly. Follow-up [39239365441](https://github.com/spankyed/AgentBuddy/actions/runs/39239365441),
+private **`6b204e94d`**, retains that original failure while observing the running backend to completion.
+It proves retained compiler/generation reuse and successful delivery **34.373s** after the edit request;
+the hot worker takes **22.099s**, compiler-current checking **4.570s**, and final watcher refresh **3.893s**.
+This is a full-build completion wait misclassified as a missing-event wait, not demonstrated lost
+subscriptions. The same runner executes 13 selected repaired cases: **all 13 assertions pass**, including
+workspace bundler/node16 service types and the four timed-out scenarios, but a Vitest `onTaskUpdate`
+reporting timeout keeps its command and the run failed. No normal/strict gate is claimed.
+
+Source **`a2a5a057a`** moves the retained frontend input/cache workspace from file teardown to worker
+exit, matching Tailwind's process-retained Jiti cache. An ordinary-Node Jiti control proves deleting that
+directory while its loader lives causes a subsequent load to refuse `ENOENT`; types/lint pass. The
+specific concurrent writer behind the prior `ENOTEMPTY` is unproven, and real cleanup acceptance remains.
+Source **`ca68206b6`** introduces the real-builder test helper; **`4f63277f0`** migrates the affected
+watch scenarios to separate 20s request, 60s compiler, original 20s notification, and 20s cleanup bounds.
+Initial capture remains 120s. Existing output/incumbent/error assertions and `vi.waitFor` predicates
+and limits are AST-checked unchanged across all six watcher specs. Seven helper boundary tests plus
+the existing retry/policy/inventory/wait checks pass (**83 total**); CLI/repo types and lint pass.
+No production watcher/compiler contract or validation is relaxed. Real phase/cleanup acceptance is next.
+Source **`22aeef628`** routes the long migration-scaffold command sequence through the existing
+`callCli` helper so completed commands yield before the next synchronous generation. Its 144s direct
+sequence previously had no deliberate loop turn before the final typecheck. Existing migration
+assertions remain, with command-success guards added; types/lint pass. The reporting repair requires
+focused concurrency acceptance before normal integration. Update the prepared normal source with all
+validated repairs; it remains undispatched, and final main strict `--all` remains required.
 Source **`21ed07fe7`** gives complete integration its own 120-minute aggregate class. The pool runner
 reads its owning chain step's deadline; ordinary unit pools remain at 600s. The measured file work
 already exceeds 53 minutes at an ideal two-worker balance, without blocked setup/preparation, so the
