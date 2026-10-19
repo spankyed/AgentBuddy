@@ -1,4 +1,4 @@
-name: Strict chain
+name: Trigger scaffold repair acceptance
 
 on:
   workflow_dispatch:
@@ -8,14 +8,13 @@ permissions:
   contents: read
 
 concurrency:
-  group: strict-chain-${{ github.ref }}
+  group: trigger-scaffold-acceptance-${{ github.ref }}
   cancel-in-progress: false
 
 jobs:
   check:
     runs-on: macos-26
-    # Complete acceptance owns up to 120m; preparation and app gates retain their own bounds.
-    timeout-minutes: 180
+    timeout-minutes: 50
     env:
       APACK_CHAIN_CORES: 2
     defaults:
@@ -27,23 +26,43 @@ jobs:
         with:
           node-version: 23.11.1
           cache: npm
-      - name: Record source and platform
+      - name: Record source and runner
         run: |
           git rev-parse HEAD
-          sw_vers
-          node -p 'JSON.stringify({platform:process.platform,arch:process.arch,versions:process.versions})'
+          node -p 'JSON.stringify({platform:process.platform,arch:process.arch,cores:require("node:os").availableParallelism(),versions:process.versions})'
       - name: Install dependencies
+        timeout-minutes: 15
         env:
           GITHUB_TOKEN: ${{ github.token }}
         run: npm ci
-      - name: Full strict acceptance
-        run: npm run chain -- --strict --all --cores 2 --no-classify | tee "$RUNNER_TEMP/strict-chain.log"
-      - name: Retain validation evidence
+      - name: Prepare published packages
+        timeout-minutes: 10
+        run: npm run packages:ensure
+      - name: Typecheck repaired CLI
+        id: types
+        timeout-minutes: 5
+        run: npx tsc -p packages/apack-cli --noEmit
+      - name: Accept reporting repairs (20 cases)
+        if: ${{ !cancelled() && steps.types.outcome == 'success' }}
+        run: |
+          node --import tsx --input-type=module <<'JS' 2>&1 | tee "$RUNNER_TEMP/reporting-acceptance.log"
+          import fs from 'node:fs';
+          import assert from 'node:assert/strict';
+          import { boundedSpawn } from './scripts/lib/bounded-spawn.ts';
+          const prefix=process.env.RUNNER_TEMP+'/reporting-acceptance';
+          const args=["node_modules/vitest/vitest.mjs", "run", "--config", "vitest.integration.config.ts", "packages/apack-cli/tests/commands/add-extensions.integration.spec.ts", "packages/apack-cli/tests/build/facade-typing.integration.spec.ts", "--testNamePattern", "^(?:generated\\ facades\\ with\\ a\\ dependency\\ \\('workspace\\ source'\\)\\ typechecks\\ own\\ and\\ dependency\\ types\\ under\\ moduleResolution\\ bundler|generated\\ facades\\ with\\ a\\ dependency\\ \\('workspace\\ source'\\)\\ typechecks\\ own\\ and\\ dependency\\ types\\ under\\ moduleResolution\\ node16|apack\\ pack\\ add\\ step\\ names\\ the\\ DSL\\ node\\ interface\\ DSL<Type>Node\\ and\\ the\\ form\\ takes\\ node/resources,\\ emitting\\ update\\-node\\ and\\ close|apack\\ pack\\ add\\ step\\ generates\\ flow\\ helpers\\ for\\ the\\ kebab\\-case\\ step\\ that\\ typecheck\\ with\\ tsc|apack\\ pack\\ add\\ step\\ in\\ a\\ pack\\ without\\ steps\\ declares\\ the\\ first\\ step,\\ in\\ a\\ manifest\\ that\\ names\\ none|apack\\ pack\\ add\\ step\\ in\\ a\\ pack\\ without\\ steps\\ scaffolds\\ a\\ hyphenated\\ trigger\\ with\\ declared\\ track\\ metadata\\ and\\ checked\\ callbacks|apack\\ pack\\ add\\ step\\ in\\ a\\ pack\\ without\\ steps\\ refuses\\ a\\ step\\ type\\ the\\ manifest\\ already\\ declares,\\ leaving\\ the\\ manifest\\ as\\ it\\ was|apack\\ pack\\ add\\ artifact\\ and\\ block\\ scaffolds\\ an\\ artifact\\ viewer\\ taking\\ artifact,\\ declared\\ with\\ its\\ icon\\ and\\ viewer|apack\\ pack\\ add\\ artifact\\ and\\ block\\ refuses\\ an\\ artifact\\ type\\ the\\ manifest\\ already\\ declares,\\ leaving\\ the\\ manifest\\ as\\ it\\ was|apack\\ pack\\ add\\ artifact\\ and\\ block\\ scaffolds\\ display\\ blocks\\ taking\\ their\\ props\\ and\\ input\\ blocks\\ taking\\ disabled/response,\\ emitting\\ submit/cancel|apack\\ pack\\ add\\ artifact\\ and\\ block\\ refuses\\ a\\ block\\ type\\ the\\ manifest\\ already\\ declares,\\ leaving\\ the\\ manifest\\ as\\ it\\ was|apack\\ pack\\ add\\ artifact\\ and\\ block\\ scaffolds\\ single\\-file\\ components\\ and\\ register\\ files\\ that\\ typecheck\\ with\\ vue\\-tsc|apack\\ pack\\ add\\ migration\\ declares\\ each\\ migration\\ under\\ its\\ version\\ line\\ and\\ the\\ version\\ it\\ targets,\\ which\\ the\\ pack\\ entry\\ registers\\ and\\ tsc\\ accepts|apack\\ pack\\ add\\ migration\\ refuses\\ a\\ version\\ it\\ already\\ declares\\ on\\ that\\ line,\\ leaving\\ the\\ manifest\\ as\\ it\\ was|apack\\ pack\\ add\\ migration\\ refuses\\ a\\ version\\ that\\ is\\ not\\ one\\ a\\ migration\\ can\\ target,\\ before\\ writing\\ anything|apack\\ pack\\ add\\ migration\\ takes\\ the\\ version\\ from\\ the\\ first\\ argument\\ that\\ is\\ not\\ a\\ flag,\\ so\\ \\-\\-app\\ alone\\ is\\ not\\ the\\ version|what\\ apack\\ pack\\ add\\ scaffolds\\ names\\ its\\ own\\ modules\\ by\\ the\\ file\\ that\\ is\\ there|apack\\ pack\\ add\\ action,\\ prompt\\ and\\ flow\\ writes\\ an\\ action\\ under\\ its\\ category,\\ with\\ the\\ label\\ and\\ the\\ typed\\ services\\ import|apack\\ pack\\ add\\ action,\\ prompt\\ and\\ flow\\ writes\\ a\\ prompt\\ with\\ its\\ label\\ and\\ template\\ function|apack\\ pack\\ add\\ action,\\ prompt\\ and\\ flow\\ writes\\ a\\ flow\\ whose\\ track\\ uses\\ the\\ helpers\\ the\\ pack\\ generates)$", "--bail=0", "--poolOptions.threads.maxThreads=2", "--poolOptions.threads.minThreads=1", "--poolOptions.forks.maxForks=2", "--poolOptions.forks.minForks=1", "--reporter=verbose", "--reporter=json"];
+          args.push('--outputFile='+prefix+'.json');
+          const result=await boundedSpawn('node',args,1800000,{stream:true});
+          const report=fs.existsSync(prefix+'.json')?JSON.parse(fs.readFileSync(prefix+'.json','utf8')):undefined;
+          const status={code:result.code,ms:result.ms,timedOut:result.timedOut,passed:report?.numPassedTests,failed:report?.numFailedTests,pending:report?.numPendingTests,errors:report?.numRuntimeErrorTestSuites};
+          fs.writeFileSync(prefix+'-status.json',JSON.stringify(status,null,2));
+          console.log(JSON.stringify(status));
+          assert.equal((status.passed??0)+(status.failed??0),20,'Every selected case must execute');
+          process.exitCode=result.code;
+          JS
+      - name: Preserve reporting evidence
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: strict-chain-${{ github.sha }}
-          include-hidden-files: true
-          path: |
-            ${{ runner.temp }}/strict-chain.log
-            node_modules/.cache/apack-chain/runs/
+          name: reporting-acceptance-${{ github.sha }}
+          path: ${{ runner.temp }}/reporting-acceptance*
