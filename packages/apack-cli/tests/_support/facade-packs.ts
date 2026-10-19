@@ -128,6 +128,7 @@ const APP_PACK = {
   'apack.json': JSON.stringify({
     id: 'app-pack', name: 'App', version: '1.0.0',
     dependencies: { 'base-pack': 'file:../base-pack' },
+    consumes: { services: ['base-pack/search'] },
     data: { entities: { Memo: "src/types.ts#ItemEntity" } },
     // Same type name as the dependency's Item shape
 
