@@ -65,7 +65,12 @@ and is not a passing gate.
 is now running with two cores on workflow-only **`cc0ae42b4`**, directly based on main **`f0405e436`**.
 It must cover all integration projects and bodies after prior normal bail. Then run final committed-source strict
 `--all`, finish the full requirement audit and archive only completed work. The separate validation-
-budget/Nx/Wireit proposals remain outside this goal. See [accepted focused evidence](../evidence/integration-deadline-inventory.md#complete-scaffold-files-accepted--2026-10-19).
+budget/Nx/Wireit proposals remain outside this goal. A concurrent final-source audit finds one stale
+`plugin.default` schema description claiming registration-order selection; runtime and public docs
+already use deterministic catalog selection. The help-only source/generated-schema correction passes
+61 existing editor/schema checks, generation check and lint. Final strict must include it; the current
+normal run stays immutable. See [source audit](../evidence/settings-and-pack-contracts.md#final-source-audit-default-plugin-schema-guidance--2026-10-19)
+and [accepted focused evidence](../evidence/integration-deadline-inventory.md#complete-scaffold-files-accepted--2026-10-19).
 
 Focused configuration acceptance **39296758415** succeeds on workflow-only `952a6dd02`,
 containing repair **`d29612b7a`**: all **15/15** cases pass, zero pending, exit 0, 239.315s.

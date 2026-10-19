@@ -527,7 +527,7 @@ const PluginSchema: z.ZodType<PluginDeclaration> = z.object({
   }).strict().describe('Offer this plugin panel to plugins without their own panel, with a toggle event and visibility predicate.').optional(),
   defaultVisible: z.boolean().describe('Default navigation visibility, independent of settings values and the startup default claim.').optional(),
   contract: ExportTargetSchema.describe('"path#exportName" of this plugin\'s contract: a declared type holding the state it publishes and the inbox other plugins may send to (PluginInbox, @apackdev/sdk/fe). It lives in a leaf module of its own (fe/contract.ts), which the plugin\'s machine does not import, so codegen can read it without resolving the machine. Omit it for a plugin that publishes nothing: it still receives its own feature\'s system events.').optional(),
-  default: z.boolean().describe('Show this plugin when the app starts. At most one of a pack\'s features may claim it; the first pack to register one across the app wins.').optional(),
+  default: z.boolean().describe('Claim initial navigation for this plugin. At most one feature per pack may claim it. Enabled native claims precede installed claims, then qualified feature references sort in English lexical order; frontend loading order does not affect selection.').optional(),
 } satisfies Record<keyof PluginDeclaration, z.ZodTypeAny>).strict();
 
 

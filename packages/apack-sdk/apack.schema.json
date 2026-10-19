@@ -527,7 +527,7 @@
               },
               "default": {
                 "type": "boolean",
-                "description": "Show this plugin when the app starts. At most one of a pack's features may claim it; the first pack to register one across the app wins."
+                "description": "Claim initial navigation for this plugin. At most one feature per pack may claim it. Enabled native claims precede installed claims, then qualified feature references sort in English lexical order; frontend loading order does not affect selection."
               }
             },
             "required": [
