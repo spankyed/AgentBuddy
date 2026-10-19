@@ -1,4 +1,4 @@
-name: Normal integration acceptance
+name: Focused watch and reporting diagnosis
 
 on:
   workflow_dispatch:
@@ -8,14 +8,14 @@ permissions:
   contents: read
 
 concurrency:
-  group: normal-integration-${{ github.ref }}
+  group: watch-reporting-diagnostic-${{ github.ref }}
   cancel-in-progress: false
 
 jobs:
   check:
     runs-on: macos-26
     # The committed pool owns its 120m limit; this envelope includes prerequisite preparation.
-    timeout-minutes: 190
+    timeout-minutes: 75
     env:
       APACK_CHAIN_CORES: 2
     defaults:
@@ -46,8 +46,20 @@ jobs:
       - name: Prepare declared external fixture outputs
         timeout-minutes: 15
         run: npm run test:external-pack:contract
-      - name: Normal integration
-        run: npm run test:integration -- --all 2>&1 | tee "$RUNNER_TEMP/normal-integration.log"
+      - name: Focused watch and reporting diagnosis
+        timeout-minutes: 40
+        run: |
+          export LOOP_SAMPLES="$RUNNER_TEMP/event-loops.jsonl"
+          export NODE_OPTIONS="${NODE_OPTIONS:-} --import=$GITHUB_WORKSPACE/scripts/lib/loop-sample.mjs"
+          node --conditions=@apackdev/source node_modules/vitest/vitest.mjs run \
+            --config vitest.integration.config.ts --project @apackdev/cli \
+            packages/apack-cli/tests/build/watch-module-freshness.integration.spec.ts \
+            packages/apack-cli/tests/build/build-output-swap.integration.spec.ts \
+            packages/apack-cli/tests/commands/add-feature-validate.integration.spec.ts \
+            packages/apack-cli/tests/commands/db.integration.spec.ts \
+            --maxWorkers 2 --minWorkers 2 --bail 0 \
+            --reporter verbose --reporter json --outputFile.json="$RUNNER_TEMP/focused-results.json" \
+            2>&1 | tee "$RUNNER_TEMP/focused-diagnostic.log"
       - name: Collect pool reports
         if: always()
         run: |
@@ -63,10 +75,12 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: normal-integration-${{ github.sha }}
+          name: watch-reporting-${{ github.sha }}
           include-hidden-files: true
           path: |
-            ${{ runner.temp }}/normal-integration.log
+            ${{ runner.temp }}/focused-diagnostic.log
+            ${{ runner.temp }}/focused-results.json
+            ${{ runner.temp }}/event-loops.jsonl
             node_modules/.cache/apack-chain/runs/
             node_modules/.cache/apack-unit-pool/
             node_modules/.cache/apack-spec-durations/
