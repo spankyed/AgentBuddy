@@ -1,4 +1,4 @@
-name: Strict chain
+name: Normal integration acceptance
 
 on:
   workflow_dispatch:
@@ -8,14 +8,14 @@ permissions:
   contents: read
 
 concurrency:
-  group: strict-chain-${{ github.ref }}
+  group: normal-integration-${{ github.ref }}
   cancel-in-progress: false
 
 jobs:
   check:
     runs-on: macos-26
-    # Complete acceptance owns up to 120m; preparation and app gates retain their own bounds.
-    timeout-minutes: 180
+    # The committed pool owns its 120m limit; this envelope includes prerequisite preparation.
+    timeout-minutes: 190
     env:
       APACK_CHAIN_CORES: 2
     defaults:
@@ -33,17 +33,41 @@ jobs:
           sw_vers
           node -p 'JSON.stringify({platform:process.platform,arch:process.arch,versions:process.versions})'
       - name: Install dependencies
+        timeout-minutes: 15
         env:
           GITHUB_TOKEN: ${{ github.token }}
         run: npm ci
-      - name: Full strict acceptance
-        run: npm run chain -- --strict --all --cores 2 --no-classify | tee "$RUNNER_TEMP/strict-chain.log"
+      - name: Prepare typecheck records
+        timeout-minutes: 20
+        run: npm run typecheck -- --cores 2
+      - name: Build required pack output
+        timeout-minutes: 10
+        run: npm run build:default-setup
+      - name: Prepare declared external fixture outputs
+        timeout-minutes: 15
+        run: npm run test:external-pack:contract
+      - name: Normal integration
+        run: npm run test:integration -- --all 2>&1 | tee "$RUNNER_TEMP/normal-integration.log"
+      - name: Collect pool reports
+        if: always()
+        run: |
+          node --input-type=module <<'JS'
+          import fs from 'node:fs';
+          import os from 'node:os';
+          import path from 'node:path';
+          for (const name of fs.readdirSync(os.tmpdir()).filter(name => name.startsWith('spec-durations-'))) {
+            fs.cpSync(path.join(os.tmpdir(), name), path.join(process.env.RUNNER_TEMP, 'pool-reports', name), {recursive:true});
+          }
+          JS
       - name: Retain validation evidence
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: strict-chain-${{ github.sha }}
+          name: normal-integration-${{ github.sha }}
           include-hidden-files: true
           path: |
-            ${{ runner.temp }}/strict-chain.log
+            ${{ runner.temp }}/normal-integration.log
             node_modules/.cache/apack-chain/runs/
+            node_modules/.cache/apack-unit-pool/
+            node_modules/.cache/apack-spec-durations/
+            ${{ runner.temp }}/pool-reports/
