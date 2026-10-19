@@ -1,4 +1,4 @@
-name: Focused watch and reporting diagnosis
+name: Watch and reporting repair acceptance
 
 on:
   workflow_dispatch:
@@ -8,14 +8,14 @@ permissions:
   contents: read
 
 concurrency:
-  group: watch-reporting-diagnostic-${{ github.ref }}
+  group: watch-reporting-acceptance-${{ github.ref }}
   cancel-in-progress: false
 
 jobs:
   check:
     runs-on: macos-26
-    # The committed pool owns its 120m limit; this envelope includes prerequisite preparation.
-    timeout-minutes: 75
+    # Eight affected files with unchanged case bounds; preparation builds their actual dependencies.
+    timeout-minutes: 90
     env:
       APACK_CHAIN_CORES: 2
     defaults:
@@ -37,17 +37,14 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ github.token }}
         run: npm ci
-      - name: Prepare typecheck records
-        timeout-minutes: 20
-        run: npm run typecheck -- --cores 2
+      - name: Build published package dependencies
+        timeout-minutes: 10
+        run: npm run packages:ensure
       - name: Build required pack output
         timeout-minutes: 10
         run: npm run build:default-setup
-      - name: Prepare declared external fixture outputs
-        timeout-minutes: 15
-        run: npm run test:external-pack:contract
-      - name: Focused watch and reporting diagnosis
-        timeout-minutes: 40
+      - name: Watch and reporting repair acceptance
+        timeout-minutes: 55
         run: |
           export LOOP_SAMPLES="$RUNNER_TEMP/event-loops.jsonl"
           export NODE_OPTIONS="${NODE_OPTIONS:-} --import=$GITHUB_WORKSPACE/scripts/lib/loop-sample.mjs"
@@ -56,7 +53,11 @@ jobs:
             packages/apack-cli/tests/build/watch-module-freshness.integration.spec.ts \
             packages/apack-cli/tests/build/build-output-swap.integration.spec.ts \
             packages/apack-cli/tests/commands/add-feature-validate.integration.spec.ts \
-            packages/apack-cli/tests/commands/db.integration.spec.ts \
+            packages/apack-cli/tests/build/frontend-resources.integration.spec.ts \
+            packages/apack-cli/tests/build/frontend-workers.integration.spec.ts \
+            packages/apack-cli/tests/build/package-inputs.integration.spec.ts \
+            packages/apack-cli/tests/build/watch-external-types.integration.spec.ts \
+            packages/apack-cli/tests/build/watch-publication.integration.spec.ts \
             --maxWorkers 2 --minWorkers 2 --bail 0 \
             --reporter verbose --reporter json --outputFile.json="$RUNNER_TEMP/focused-results.json" \
             2>&1 | tee "$RUNNER_TEMP/focused-diagnostic.log"
@@ -75,7 +76,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: watch-reporting-${{ github.sha }}
+          name: watch-reporting-acceptance-${{ github.sha }}
           include-hidden-files: true
           path: |
             ${{ runner.temp }}/focused-diagnostic.log
