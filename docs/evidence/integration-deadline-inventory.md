@@ -46,85 +46,95 @@ unattributed; no runtime assertion or cleanup defect has been demonstrated.
 An authored `it.each` body represents several runtime cases. The source inventory is used to inspect
 operations and declarations; completed console case counts are the execution evidence.
 
-| File | Current execution evidence |
-|---|---|
-| [packages/apack-cli/tests/build/build-output-swap.integration.spec.ts](../../packages/apack-cli/tests/build/build-output-swap.integration.spec.ts) | Unexecuted; source operations inventoried. |
-| [packages/apack-cli/tests/build/build-registry.integration.spec.ts](../../packages/apack-cli/tests/build/build-registry.integration.spec.ts) | Unexecuted; source operations inventoried. |
-| [packages/apack-cli/tests/build/build-worker.integration.spec.ts](../../packages/apack-cli/tests/build/build-worker.integration.spec.ts) | 16 passed; 574.740s. |
-| [packages/apack-cli/tests/build/compilation-inputs.integration.spec.ts](../../packages/apack-cli/tests/build/compilation-inputs.integration.spec.ts) | Unexecuted; source operations inventoried. |
-| [packages/apack-cli/tests/build/compiler-configuration.integration.spec.ts](../../packages/apack-cli/tests/build/compiler-configuration.integration.spec.ts) | Unexecuted; source operations inventoried. |
-| [packages/apack-cli/tests/build/compiler-elf-libraries.integration.spec.ts](../../packages/apack-cli/tests/build/compiler-elf-libraries.integration.spec.ts) | Unexecuted; source operations inventoried. |
-| [packages/apack-cli/tests/build/compiler-esbuild-configuration.integration.spec.ts](../../packages/apack-cli/tests/build/compiler-esbuild-configuration.integration.spec.ts) | 15 passed; 232.409s. |
-| [packages/apack-cli/tests/build/compiler-file-reads.integration.spec.ts](../../packages/apack-cli/tests/build/compiler-file-reads.integration.spec.ts) | 12 passed; 243.862s. |
-| [packages/apack-cli/tests/build/compiler-native-libraries.integration.spec.ts](../../packages/apack-cli/tests/build/compiler-native-libraries.integration.spec.ts) | 25 passed; 906.983s. |
-| [packages/apack-cli/tests/build/compiler-pe-libraries.integration.spec.ts](../../packages/apack-cli/tests/build/compiler-pe-libraries.integration.spec.ts) | 26 Windows-only cases skipped; retain the owning goal’s Windows evidence. |
-| [packages/apack-cli/tests/build/declaration-aliases.integration.spec.ts](../../packages/apack-cli/tests/build/declaration-aliases.integration.spec.ts) | Unexecuted; source operations inventoried. |
-| [packages/apack-cli/tests/build/dependency-flow-helpers.integration.spec.ts](../../packages/apack-cli/tests/build/dependency-flow-helpers.integration.spec.ts) | Unexecuted; source operations inventoried. |
-| [packages/apack-cli/tests/build/dependency-graph.integration.spec.ts](../../packages/apack-cli/tests/build/dependency-graph.integration.spec.ts) | Unexecuted; source operations inventoried. |
-| [packages/apack-cli/tests/build/dependency-inputs.integration.spec.ts](../../packages/apack-cli/tests/build/dependency-inputs.integration.spec.ts) | Unexecuted; source operations inventoried. |
-| [packages/apack-cli/tests/build/dsl-defs.integration.spec.ts](../../packages/apack-cli/tests/build/dsl-defs.integration.spec.ts) | Unexecuted; source operations inventoried. |
-| [packages/apack-cli/tests/build/dsl-snapshot.integration.spec.ts](../../packages/apack-cli/tests/build/dsl-snapshot.integration.spec.ts) | Unexecuted; source operations inventoried. |
-| [packages/apack-cli/tests/build/editor-declarations.integration.spec.ts](../../packages/apack-cli/tests/build/editor-declarations.integration.spec.ts) | Unexecuted; source operations inventoried. |
-| [packages/apack-cli/tests/build/facade-gate-system-contract.integration.spec.ts](../../packages/apack-cli/tests/build/facade-gate-system-contract.integration.spec.ts) | Unexecuted; source operations inventoried. |
-| [packages/apack-cli/tests/build/facade-gate.integration.spec.ts](../../packages/apack-cli/tests/build/facade-gate.integration.spec.ts) | Unexecuted; source operations inventoried. |
-| [packages/apack-cli/tests/build/facade-type-data.integration.spec.ts](../../packages/apack-cli/tests/build/facade-type-data.integration.spec.ts) | Unexecuted; source operations inventoried. |
-| [packages/apack-cli/tests/build/facade-typing-published.integration.spec.ts](../../packages/apack-cli/tests/build/facade-typing-published.integration.spec.ts) | Unexecuted; source operations inventoried. |
-| [packages/apack-cli/tests/build/facade-typing.integration.spec.ts](../../packages/apack-cli/tests/build/facade-typing.integration.spec.ts) | Unexecuted; source operations inventoried. |
-| [packages/apack-cli/tests/build/fe-bundler-dev-server.integration.spec.ts](../../packages/apack-cli/tests/build/fe-bundler-dev-server.integration.spec.ts) | Unexecuted; source operations inventoried. |
-| [packages/apack-cli/tests/build/fe-bundler-host-registry.integration.spec.ts](../../packages/apack-cli/tests/build/fe-bundler-host-registry.integration.spec.ts) | Unexecuted; source operations inventoried. |
-| [packages/apack-cli/tests/build/fe-bundler-opaque-deps.integration.spec.ts](../../packages/apack-cli/tests/build/fe-bundler-opaque-deps.integration.spec.ts) | Unexecuted; source operations inventoried. |
-| [packages/apack-cli/tests/build/frontend-generation.integration.spec.ts](../../packages/apack-cli/tests/build/frontend-generation.integration.spec.ts) | Unexecuted; source operations inventoried. |
-| [packages/apack-cli/tests/build/frontend-globs.integration.spec.ts](../../packages/apack-cli/tests/build/frontend-globs.integration.spec.ts) | Unexecuted; source operations inventoried. |
-| [packages/apack-cli/tests/build/frontend-outputs.integration.spec.ts](../../packages/apack-cli/tests/build/frontend-outputs.integration.spec.ts) | Unexecuted; source operations inventoried. |
-| [packages/apack-cli/tests/build/frontend-resources.integration.spec.ts](../../packages/apack-cli/tests/build/frontend-resources.integration.spec.ts) | Unexecuted; source operations inventoried. |
-| [packages/apack-cli/tests/build/frontend-workers.integration.spec.ts](../../packages/apack-cli/tests/build/frontend-workers.integration.spec.ts) | Unexecuted; source operations inventoried. |
-| [packages/apack-cli/tests/build/own-declarations.integration.spec.ts](../../packages/apack-cli/tests/build/own-declarations.integration.spec.ts) | Unexecuted; source operations inventoried. |
-| [packages/apack-cli/tests/build/package-inputs.integration.spec.ts](../../packages/apack-cli/tests/build/package-inputs.integration.spec.ts) | Unexecuted; source operations inventoried. |
-| [packages/apack-cli/tests/build/staged-dsl.integration.spec.ts](../../packages/apack-cli/tests/build/staged-dsl.integration.spec.ts) | Unexecuted; source operations inventoried. |
-| [packages/apack-cli/tests/build/tool-identity.integration.spec.ts](../../packages/apack-cli/tests/build/tool-identity.integration.spec.ts) | Unexecuted; source operations inventoried. |
-| [packages/apack-cli/tests/build/types-bundler-determinism.integration.spec.ts](../../packages/apack-cli/tests/build/types-bundler-determinism.integration.spec.ts) | Unexecuted; source operations inventoried. |
-| [packages/apack-cli/tests/build/watch-external-types.integration.spec.ts](../../packages/apack-cli/tests/build/watch-external-types.integration.spec.ts) | Unexecuted; source operations inventoried. |
-| [packages/apack-cli/tests/build/watch-module-freshness.integration.spec.ts](../../packages/apack-cli/tests/build/watch-module-freshness.integration.spec.ts) | Unexecuted; source operations inventoried. |
-| [packages/apack-cli/tests/build/watch-publication.integration.spec.ts](../../packages/apack-cli/tests/build/watch-publication.integration.spec.ts) | Unexecuted; source operations inventoried. |
-| [packages/apack-cli/tests/build/watch-worker-inputs.integration.spec.ts](../../packages/apack-cli/tests/build/watch-worker-inputs.integration.spec.ts) | Unexecuted; source operations inventoried. |
-| [packages/apack-cli/tests/commands/add-extensions.integration.spec.ts](../../packages/apack-cli/tests/commands/add-extensions.integration.spec.ts) | Unexecuted; source operations inventoried. |
-| [packages/apack-cli/tests/commands/add-feature-validate.integration.spec.ts](../../packages/apack-cli/tests/commands/add-feature-validate.integration.spec.ts) | Unexecuted; source operations inventoried. |
-| [packages/apack-cli/tests/commands/app-install.integration.spec.ts](../../packages/apack-cli/tests/commands/app-install.integration.spec.ts) | Unexecuted; source operations inventoried. |
-| [packages/apack-cli/tests/commands/db.integration.spec.ts](../../packages/apack-cli/tests/commands/db.integration.spec.ts) | 64 passed; 46.855s. |
-| [packages/apack-cli/tests/commands/default-pack-archive.integration.spec.ts](../../packages/apack-cli/tests/commands/default-pack-archive.integration.spec.ts) | Unexecuted; source operations inventoried. |
-| [packages/apack-cli/tests/commands/dev-build.integration.spec.ts](../../packages/apack-cli/tests/commands/dev-build.integration.spec.ts) | Unexecuted; source operations inventoried. |
-| [packages/apack-cli/tests/commands/doctor.integration.spec.ts](../../packages/apack-cli/tests/commands/doctor.integration.spec.ts) | Unexecuted; source operations inventoried. |
-| [packages/apack-cli/tests/commands/facade-report.integration.spec.ts](../../packages/apack-cli/tests/commands/facade-report.integration.spec.ts) | Unexecuted; source operations inventoried. |
-| [packages/apack-cli/tests/commands/info.integration.spec.ts](../../packages/apack-cli/tests/commands/info.integration.spec.ts) | Unexecuted; source operations inventoried. |
-| [packages/apack-cli/tests/commands/pack-doctor.integration.spec.ts](../../packages/apack-cli/tests/commands/pack-doctor.integration.spec.ts) | Unexecuted; source operations inventoried. |
-| [packages/apack-cli/tests/commands/release.integration.spec.ts](../../packages/apack-cli/tests/commands/release.integration.spec.ts) | 31 passed; 5.375s. |
-| [packages/apack-cli/tests/commands/scaffold.integration.spec.ts](../../packages/apack-cli/tests/commands/scaffold.integration.spec.ts) | Unexecuted; source operations inventoried. |
-| [packages/apack-cli/tests/harness/dependency-runtime.integration.spec.ts](../../packages/apack-cli/tests/harness/dependency-runtime.integration.spec.ts) | Unexecuted; source operations inventoried. |
-| [packages/apack-cli/tests/harness/harness-setup.integration.spec.ts](../../packages/apack-cli/tests/harness/harness-setup.integration.spec.ts) | Unexecuted; source operations inventoried. |
-| [packages/repo-checks/tests/bounded-spawn.integration.spec.ts](../../packages/repo-checks/tests/bounded-spawn.integration.spec.ts) | Unexecuted; source operations inventoried. |
-| [packages/repo-checks/tests/component-contracts.integration.spec.ts](../../packages/repo-checks/tests/component-contracts.integration.spec.ts) | Unexecuted; source operations inventoried. |
-| [packages/repo-checks/tests/dep-files.integration.spec.ts](../../packages/repo-checks/tests/dep-files.integration.spec.ts) | 30 passed; 2.598s. |
-| [packages/repo-checks/tests/dev-pack-hmr.integration.spec.ts](../../packages/repo-checks/tests/dev-pack-hmr.integration.spec.ts) | Unexecuted; source operations inventoried. |
-| [packages/repo-checks/tests/fingerprint-scope.integration.spec.ts](../../packages/repo-checks/tests/fingerprint-scope.integration.spec.ts) | Unexecuted; source operations inventoried. |
-| [packages/repo-checks/tests/import-specifiers-script.integration.spec.ts](../../packages/repo-checks/tests/import-specifiers-script.integration.spec.ts) | Unexecuted; source operations inventoried. |
-| [packages/repo-checks/tests/import-specifiers.integration.spec.ts](../../packages/repo-checks/tests/import-specifiers.integration.spec.ts) | 302 passed; 11.278s. |
-| [packages/repo-checks/tests/session.integration.spec.ts](../../packages/repo-checks/tests/session.integration.spec.ts) | Unexecuted; source operations inventoried. |
-| [packages/repo-checks/tests/spec-durations-reporter.integration.spec.ts](../../packages/repo-checks/tests/spec-durations-reporter.integration.spec.ts) | Unexecuted; source operations inventoried. |
-| [packages/publish-checks/tests/published-declarations.integration.spec.ts](../../packages/publish-checks/tests/published-declarations.integration.spec.ts) | Unexecuted; source operations inventoried. |
-| [packages/publish-checks/tests/published-exports.integration.spec.ts](../../packages/publish-checks/tests/published-exports.integration.spec.ts) | Unexecuted; source operations inventoried. |
-| [packages/publish-checks/tests/published-manifest-paths.integration.spec.ts](../../packages/publish-checks/tests/published-manifest-paths.integration.spec.ts) | Unexecuted; source operations inventoried. |
-| [packages/publish-checks/tests/published-sdk-any.integration.spec.ts](../../packages/publish-checks/tests/published-sdk-any.integration.spec.ts) | Unexecuted; source operations inventoried. |
-| [packages/publish-checks/tests/published-sdk-types.integration.spec.ts](../../packages/publish-checks/tests/published-sdk-types.integration.spec.ts) | Unexecuted; source operations inventoried. |
-| [packages/publish-checks/tests/published-ui-types.integration.spec.ts](../../packages/publish-checks/tests/published-ui-types.integration.spec.ts) | Unexecuted; source operations inventoried. |
+| File | Current execution evidence | Remaining batch |
+|---|---|---|
+| [packages/apack-cli/tests/build/build-output-swap.integration.spec.ts](../../packages/apack-cli/tests/build/build-output-swap.integration.spec.ts) | Unexecuted; source operations inventoried. | 1 |
+| [packages/apack-cli/tests/build/build-registry.integration.spec.ts](../../packages/apack-cli/tests/build/build-registry.integration.spec.ts) | Unexecuted; source operations inventoried. | 4 |
+| [packages/apack-cli/tests/build/build-worker.integration.spec.ts](../../packages/apack-cli/tests/build/build-worker.integration.spec.ts) | 16 passed; 574.740s. | — |
+| [packages/apack-cli/tests/build/compilation-inputs.integration.spec.ts](../../packages/apack-cli/tests/build/compilation-inputs.integration.spec.ts) | Unexecuted; source operations inventoried. | 6 |
+| [packages/apack-cli/tests/build/compiler-configuration.integration.spec.ts](../../packages/apack-cli/tests/build/compiler-configuration.integration.spec.ts) | Unexecuted; source operations inventoried. | 1 |
+| [packages/apack-cli/tests/build/compiler-elf-libraries.integration.spec.ts](../../packages/apack-cli/tests/build/compiler-elf-libraries.integration.spec.ts) | Unexecuted; source operations inventoried. | 4 |
+| [packages/apack-cli/tests/build/compiler-esbuild-configuration.integration.spec.ts](../../packages/apack-cli/tests/build/compiler-esbuild-configuration.integration.spec.ts) | 15 passed; 232.409s. | — |
+| [packages/apack-cli/tests/build/compiler-file-reads.integration.spec.ts](../../packages/apack-cli/tests/build/compiler-file-reads.integration.spec.ts) | 12 passed; 243.862s. | — |
+| [packages/apack-cli/tests/build/compiler-native-libraries.integration.spec.ts](../../packages/apack-cli/tests/build/compiler-native-libraries.integration.spec.ts) | 25 passed; 906.983s. | — |
+| [packages/apack-cli/tests/build/compiler-pe-libraries.integration.spec.ts](../../packages/apack-cli/tests/build/compiler-pe-libraries.integration.spec.ts) | 26 Windows-only cases skipped; retain the owning goal’s Windows evidence. | — |
+| [packages/apack-cli/tests/build/declaration-aliases.integration.spec.ts](../../packages/apack-cli/tests/build/declaration-aliases.integration.spec.ts) | Unexecuted; source operations inventoried. | 2 |
+| [packages/apack-cli/tests/build/dependency-flow-helpers.integration.spec.ts](../../packages/apack-cli/tests/build/dependency-flow-helpers.integration.spec.ts) | Unexecuted; source operations inventoried. | 2 |
+| [packages/apack-cli/tests/build/dependency-graph.integration.spec.ts](../../packages/apack-cli/tests/build/dependency-graph.integration.spec.ts) | Unexecuted; source operations inventoried. | 1 |
+| [packages/apack-cli/tests/build/dependency-inputs.integration.spec.ts](../../packages/apack-cli/tests/build/dependency-inputs.integration.spec.ts) | Unexecuted; source operations inventoried. | 2 |
+| [packages/apack-cli/tests/build/dsl-defs.integration.spec.ts](../../packages/apack-cli/tests/build/dsl-defs.integration.spec.ts) | Unexecuted; source operations inventoried. | 1 |
+| [packages/apack-cli/tests/build/dsl-snapshot.integration.spec.ts](../../packages/apack-cli/tests/build/dsl-snapshot.integration.spec.ts) | Unexecuted; source operations inventoried. | 6 |
+| [packages/apack-cli/tests/build/editor-declarations.integration.spec.ts](../../packages/apack-cli/tests/build/editor-declarations.integration.spec.ts) | Unexecuted; source operations inventoried. | 4 |
+| [packages/apack-cli/tests/build/facade-gate-system-contract.integration.spec.ts](../../packages/apack-cli/tests/build/facade-gate-system-contract.integration.spec.ts) | Unexecuted; source operations inventoried. | 6 |
+| [packages/apack-cli/tests/build/facade-gate.integration.spec.ts](../../packages/apack-cli/tests/build/facade-gate.integration.spec.ts) | Unexecuted; source operations inventoried. | 6 |
+| [packages/apack-cli/tests/build/facade-type-data.integration.spec.ts](../../packages/apack-cli/tests/build/facade-type-data.integration.spec.ts) | Unexecuted; source operations inventoried. | 3 |
+| [packages/apack-cli/tests/build/facade-typing-published.integration.spec.ts](../../packages/apack-cli/tests/build/facade-typing-published.integration.spec.ts) | Unexecuted; source operations inventoried. | 3 |
+| [packages/apack-cli/tests/build/facade-typing.integration.spec.ts](../../packages/apack-cli/tests/build/facade-typing.integration.spec.ts) | Unexecuted; source operations inventoried. | 1 |
+| [packages/apack-cli/tests/build/fe-bundler-dev-server.integration.spec.ts](../../packages/apack-cli/tests/build/fe-bundler-dev-server.integration.spec.ts) | Unexecuted; source operations inventoried. | 5 |
+| [packages/apack-cli/tests/build/fe-bundler-host-registry.integration.spec.ts](../../packages/apack-cli/tests/build/fe-bundler-host-registry.integration.spec.ts) | Unexecuted; source operations inventoried. | 4 |
+| [packages/apack-cli/tests/build/fe-bundler-opaque-deps.integration.spec.ts](../../packages/apack-cli/tests/build/fe-bundler-opaque-deps.integration.spec.ts) | Unexecuted; source operations inventoried. | 6 |
+| [packages/apack-cli/tests/build/frontend-generation.integration.spec.ts](../../packages/apack-cli/tests/build/frontend-generation.integration.spec.ts) | Unexecuted; source operations inventoried. | 5 |
+| [packages/apack-cli/tests/build/frontend-globs.integration.spec.ts](../../packages/apack-cli/tests/build/frontend-globs.integration.spec.ts) | Unexecuted; source operations inventoried. | 6 |
+| [packages/apack-cli/tests/build/frontend-outputs.integration.spec.ts](../../packages/apack-cli/tests/build/frontend-outputs.integration.spec.ts) | Unexecuted; source operations inventoried. | 2 |
+| [packages/apack-cli/tests/build/frontend-resources.integration.spec.ts](../../packages/apack-cli/tests/build/frontend-resources.integration.spec.ts) | Unexecuted; source operations inventoried. | 3 |
+| [packages/apack-cli/tests/build/frontend-workers.integration.spec.ts](../../packages/apack-cli/tests/build/frontend-workers.integration.spec.ts) | Unexecuted; source operations inventoried. | 2 |
+| [packages/apack-cli/tests/build/own-declarations.integration.spec.ts](../../packages/apack-cli/tests/build/own-declarations.integration.spec.ts) | Unexecuted; source operations inventoried. | 2 |
+| [packages/apack-cli/tests/build/package-inputs.integration.spec.ts](../../packages/apack-cli/tests/build/package-inputs.integration.spec.ts) | Unexecuted; source operations inventoried. | 4 |
+| [packages/apack-cli/tests/build/staged-dsl.integration.spec.ts](../../packages/apack-cli/tests/build/staged-dsl.integration.spec.ts) | Unexecuted; source operations inventoried. | 5 |
+| [packages/apack-cli/tests/build/tool-identity.integration.spec.ts](../../packages/apack-cli/tests/build/tool-identity.integration.spec.ts) | Unexecuted; source operations inventoried. | 5 |
+| [packages/apack-cli/tests/build/types-bundler-determinism.integration.spec.ts](../../packages/apack-cli/tests/build/types-bundler-determinism.integration.spec.ts) | Unexecuted; source operations inventoried. | 1 |
+| [packages/apack-cli/tests/build/watch-external-types.integration.spec.ts](../../packages/apack-cli/tests/build/watch-external-types.integration.spec.ts) | Unexecuted; source operations inventoried. | 3 |
+| [packages/apack-cli/tests/build/watch-module-freshness.integration.spec.ts](../../packages/apack-cli/tests/build/watch-module-freshness.integration.spec.ts) | Unexecuted; source operations inventoried. | 2 |
+| [packages/apack-cli/tests/build/watch-publication.integration.spec.ts](../../packages/apack-cli/tests/build/watch-publication.integration.spec.ts) | Unexecuted; source operations inventoried. | 6 |
+| [packages/apack-cli/tests/build/watch-worker-inputs.integration.spec.ts](../../packages/apack-cli/tests/build/watch-worker-inputs.integration.spec.ts) | Unexecuted; source operations inventoried. | 4 |
+| [packages/apack-cli/tests/commands/add-extensions.integration.spec.ts](../../packages/apack-cli/tests/commands/add-extensions.integration.spec.ts) | Unexecuted; source operations inventoried. | 5 |
+| [packages/apack-cli/tests/commands/add-feature-validate.integration.spec.ts](../../packages/apack-cli/tests/commands/add-feature-validate.integration.spec.ts) | Unexecuted; source operations inventoried. | 1 |
+| [packages/apack-cli/tests/commands/app-install.integration.spec.ts](../../packages/apack-cli/tests/commands/app-install.integration.spec.ts) | Unexecuted; source operations inventoried. | 1 |
+| [packages/apack-cli/tests/commands/db.integration.spec.ts](../../packages/apack-cli/tests/commands/db.integration.spec.ts) | 64 passed; 46.855s. | — |
+| [packages/apack-cli/tests/commands/default-pack-archive.integration.spec.ts](../../packages/apack-cli/tests/commands/default-pack-archive.integration.spec.ts) | Unexecuted; source operations inventoried. | 4 |
+| [packages/apack-cli/tests/commands/dev-build.integration.spec.ts](../../packages/apack-cli/tests/commands/dev-build.integration.spec.ts) | Unexecuted; source operations inventoried. | 3 |
+| [packages/apack-cli/tests/commands/doctor.integration.spec.ts](../../packages/apack-cli/tests/commands/doctor.integration.spec.ts) | Unexecuted; source operations inventoried. | 3 |
+| [packages/apack-cli/tests/commands/facade-report.integration.spec.ts](../../packages/apack-cli/tests/commands/facade-report.integration.spec.ts) | Unexecuted; source operations inventoried. | 5 |
+| [packages/apack-cli/tests/commands/info.integration.spec.ts](../../packages/apack-cli/tests/commands/info.integration.spec.ts) | Unexecuted; source operations inventoried. | 4 |
+| [packages/apack-cli/tests/commands/pack-doctor.integration.spec.ts](../../packages/apack-cli/tests/commands/pack-doctor.integration.spec.ts) | Unexecuted; source operations inventoried. | 3 |
+| [packages/apack-cli/tests/commands/release.integration.spec.ts](../../packages/apack-cli/tests/commands/release.integration.spec.ts) | 31 passed; 5.375s. | — |
+| [packages/apack-cli/tests/commands/scaffold.integration.spec.ts](../../packages/apack-cli/tests/commands/scaffold.integration.spec.ts) | Unexecuted; source operations inventoried. | 2 |
+| [packages/apack-cli/tests/harness/dependency-runtime.integration.spec.ts](../../packages/apack-cli/tests/harness/dependency-runtime.integration.spec.ts) | Unexecuted; source operations inventoried. | 6 |
+| [packages/apack-cli/tests/harness/harness-setup.integration.spec.ts](../../packages/apack-cli/tests/harness/harness-setup.integration.spec.ts) | Unexecuted; source operations inventoried. | 6 |
+| [packages/repo-checks/tests/bounded-spawn.integration.spec.ts](../../packages/repo-checks/tests/bounded-spawn.integration.spec.ts) | Unexecuted; source operations inventoried. | 2 |
+| [packages/repo-checks/tests/component-contracts.integration.spec.ts](../../packages/repo-checks/tests/component-contracts.integration.spec.ts) | Unexecuted; source operations inventoried. | 5 |
+| [packages/repo-checks/tests/dep-files.integration.spec.ts](../../packages/repo-checks/tests/dep-files.integration.spec.ts) | 30 passed; 2.598s. | — |
+| [packages/repo-checks/tests/dev-pack-hmr.integration.spec.ts](../../packages/repo-checks/tests/dev-pack-hmr.integration.spec.ts) | Unexecuted; source operations inventoried. | 3 |
+| [packages/repo-checks/tests/fingerprint-scope.integration.spec.ts](../../packages/repo-checks/tests/fingerprint-scope.integration.spec.ts) | Unexecuted; source operations inventoried. | 2 |
+| [packages/repo-checks/tests/import-specifiers-script.integration.spec.ts](../../packages/repo-checks/tests/import-specifiers-script.integration.spec.ts) | Unexecuted; source operations inventoried. | 4 |
+| [packages/repo-checks/tests/import-specifiers.integration.spec.ts](../../packages/repo-checks/tests/import-specifiers.integration.spec.ts) | 302 passed; 11.278s. | — |
+| [packages/repo-checks/tests/session.integration.spec.ts](../../packages/repo-checks/tests/session.integration.spec.ts) | Unexecuted; source operations inventoried. | 3 |
+| [packages/repo-checks/tests/spec-durations-reporter.integration.spec.ts](../../packages/repo-checks/tests/spec-durations-reporter.integration.spec.ts) | Unexecuted; source operations inventoried. | 6 |
+| [packages/publish-checks/tests/published-declarations.integration.spec.ts](../../packages/publish-checks/tests/published-declarations.integration.spec.ts) | Unexecuted; source operations inventoried. | 3 |
+| [packages/publish-checks/tests/published-exports.integration.spec.ts](../../packages/publish-checks/tests/published-exports.integration.spec.ts) | Unexecuted; source operations inventoried. | 5 |
+| [packages/publish-checks/tests/published-manifest-paths.integration.spec.ts](../../packages/publish-checks/tests/published-manifest-paths.integration.spec.ts) | Unexecuted; source operations inventoried. | 5 |
+| [packages/publish-checks/tests/published-sdk-any.integration.spec.ts](../../packages/publish-checks/tests/published-sdk-any.integration.spec.ts) | Unexecuted; source operations inventoried. | 3 |
+| [packages/publish-checks/tests/published-sdk-types.integration.spec.ts](../../packages/publish-checks/tests/published-sdk-types.integration.spec.ts) | Unexecuted; source operations inventoried. | 4 |
+| [packages/publish-checks/tests/published-ui-types.integration.spec.ts](../../packages/publish-checks/tests/published-ui-types.integration.spec.ts) | Unexecuted; source operations inventoried. | 5 |
 
 ## Next bounded work
 
 Complete only the 59 unexecuted files in focused batches, retaining a report per batch and continuing
 to the next batch after an attributed failure. Reuse one prepared disposable checkout and two workers;
-do not rerun the 495 completed cases merely to rediscover the cutoff. Private observation limits remain
-separate from main. Classify every new failure into the four categories above, recording an incomplete
+do not rerun the 495 completed cases merely to rediscover the cutoff. The six explicit batches use **unchanged main per-test deadlines**, including existing overrides;
+no private 180s CLI default is used for these remaining files. Classify every new failure into the four categories above, recording an incomplete
 batch explicitly if its aggregate limit fires.
 
 Then make one composition repair from the complete inventory, validate affected cases, pass **normal**
 integration with assertions and operation/event/cleanup bounds preserved, and run the final strict gate.
 The complete active goal, every required acceptance boundary and archival conditions remain unchanged.
+
+The batch workflow is isolated in `session/integration-remaining-diagnostic`, checkpoint `32ec489cf`,
+running as [39214676663](https://github.com/spankyed/AgentBuddy/actions/runs/39214676663).
+Its only diff from main `1a6304827` is the workflow. One prepared disposable checkout runs the six
+batches sequentially, each with exactly two workers and a 15m aggregate cutoff. The 120m job envelope
+accommodates all six cutoffs plus preparation; it does not alter test, operation, event or cleanup
+limits. Every batch preserves verbose console, JSON results and an exit/timing record. A failing batch
+does not suppress the later batches. The final collector requires 59 completed file reports and retains
+all statuses even when the inventory contains failures. The eight completed files and Windows skip
+are excluded and remain preserved above. No normal grouping or budget repair has been applied yet.

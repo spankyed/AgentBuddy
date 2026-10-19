@@ -170,8 +170,12 @@ claim a normal/final gate from this control. That run reaches its 1,200s aggrega
 The completed native file alone takes **906.983s**, exceeding main's 600s aggregate. No test
 assertion, individual-operation or cleanup failure is reported before termination; the driver's
 exit-code assertion is consequential. The [deadline inventory](../evidence/integration-deadline-inventory.md)
-owns the full per-file coverage and failure classification. Complete the unexecuted files in bounded
-batches, then make one evidence-based composition repair, preserving operation/event/cleanup limits.
+owns the full per-file coverage and failure classification. The remaining 59 files run in six explicit
+sequential batches in [39214676663](https://github.com/spankyed/AgentBuddy/actions/runs/39214676663),
+workflow-only **`32ec489cf`** on main `1a6304827`. They use two workers and **unchanged main per-test
+deadlines**, preserving a report/status for every batch and continuing after a failed batch. Completed
+files are excluded. Finish this inventory, then make one evidence-based composition/grouping/aggregate
+budget repair, preserving operation/event/cleanup limits.
 Validate affected cases, pass normal integration, then run final strict acceptance. Do not run another
 fail-fast full pool to discover each undersized enclosing deadline. Full integration,
 authoring/runtime/app acceptance and final main strict `--all` remain required.
