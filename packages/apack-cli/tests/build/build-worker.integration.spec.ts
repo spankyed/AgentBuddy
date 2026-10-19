@@ -122,7 +122,7 @@ it('captures native launch identity and authored/dependency bytes before user pr
 it('uses the captured compiler and retains unchanged build/cache identity on repeat builds', async () => {
   const started = performance.now();
   const checkpoint = (phase: string) => {
-    if (process.platform === 'win32') console.info(`Repeated worker: ${phase} (${Math.round(performance.now() - started)}ms)`);
+    console.info(`Repeated worker: ${phase} (${Math.round(performance.now() - started)}ms)`);
   };
   const require = createRequire(import.meta.url);
   const esbuild = createRequire(require.resolve('esbuild/package.json'));

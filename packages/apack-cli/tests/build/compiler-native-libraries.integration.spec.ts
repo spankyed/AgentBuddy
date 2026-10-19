@@ -104,7 +104,11 @@ it.runIf(process.platform === 'darwin' || process.platform === 'linux').each(ele
       child.once('close', (code, signal) => code === 0 ? resolve()
         : reject(new Error(`pack ${args.join(' ')} exited ${signal ?? code}: ${output}`)));
     });
-    await closed;
+    try { await closed; }
+    catch (error) {
+      console.error(`Electron pack phase failed: ${args[0]} (${Date.now() - started}ms)\n${output}`);
+      throw error;
+    }
     console.log('Electron pack phase completed', JSON.stringify({ phase: args[0], ms: Date.now() - started }));
   };
   const pack = path.join(root, 'electron-proof');
