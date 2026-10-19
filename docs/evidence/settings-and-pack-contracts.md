@@ -8530,3 +8530,29 @@ requires exactly two passing cases. [39206807491](https://github.com/spankyed/Ag
 must establish completed phase evidence or a specific failure before selecting a correction. Its
 15m job envelope and diagnostic limits are not a main policy change. Preserve the diagnostic branch;
 do not merge its workflow/bounds wholesale. Full integration and all final gates remain required.
+
+### Two compiler scenarios complete; scoped main budgets — 2026-10-19
+
+[39206807491](https://github.com/spankyed/AgentBuddy/actions/runs/39206807491) passes exactly **two**
+actual cases on `5f4bedfd5` with two workers, confirmed by its JSON verifier. The repeated build's
+first completion is **47.055s**, replay **50.034s**, archive **55.714s** and second completion
+**111.034s**. Both captured installations retire; exact source paths, cache stamps and build revision
+remain correct. The Electron control completes init/add/build/archive in
+**28.761/18.270/85.716/8.683s**; the whole case is **142.149s**. Its content compiler runs under
+Electron 37.2.4 / Node 22.17.1, owned runtime retires, backend/Vue files exist and Node archive does
+not execute content compilation. Console: `/private/tmp/apack-compiler-pair-39206807491.log`.
+
+This establishes completion with all assertions intact; it does **not** attribute the prior full-pool
+slowdown or reproduce its elapsed times. The repeated-build composition nearly consumes the old
+120s macOS ceiling even in this passing control; the same case's accepted Windows proof already
+requires 360s for its two cold builds. Main **`27e9e4109`** uses that existing **360s** scenario bound
+across platforms. Only the Electron **build command** changes to **180s**; its overall 300s bound and
+60s authoring/archive commands stay unchanged. No other case or aggregate deadline changes. The
+private 420s/240s observation windows are not merged.
+
+All **53** timeout-policy/inventory checks, CLI types, correctness lint and diff checks pass; logs
+`/private/tmp/apack-compiler-pair-budget-{checks,types,lint}.log`. No local native batch or VM startup
+occurs. Workflow-only integration checkpoint **`b552b950a`** contains exact source `27e9e4109`;
+[39207375977](https://github.com/spankyed/AgentBuddy/actions/runs/39207375977) verifies both scoped
+repairs and remaining integration under the real pool concurrency. Full integration and final main
+strict authoring/runtime/app acceptance remain open. Preserve diagnostic source and prior evidence.

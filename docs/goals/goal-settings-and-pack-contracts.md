@@ -142,8 +142,14 @@ operations: the real Electron control's 120s build-command bound and the repeate
 phases remain unproven. Observability-only **`cfa489dc7`** emits existing repeated-build checkpoints
 on all platforms and retains aborted Electron child output. CLI types/lint pass; main deadlines stay
 unchanged. Narrow two-worker [39206807491](https://github.com/spankyed/AgentBuddy/actions/runs/39206807491)
-on isolated **`5f4bedfd5`** observes only these two cases with private bounded windows. Inspect its
-phase evidence before changing main budgets or attempting another complete pool. Full integration,
+on isolated **`5f4bedfd5`** passes exactly both cases: repeated-build completion at **111.034s**;
+Electron init/add/build/archive **28.761/18.270/85.716/8.683s**, complete case **142.149s**.
+Every identity/cache/output/retirement assertion passes; the earlier broad slowdown remains
+unattributed. Main **`27e9e4109`** applies the existing 360s Windows repeated-build budget to the same
+scenario on all platforms and changes only the Electron build-command bound to 180s; its 300s outer
+and other command bounds stay unchanged. All 53 timeout/inventory checks, CLI types and lint pass.
+Complete integration [39207375977](https://github.com/spankyed/AgentBuddy/actions/runs/39207375977)
+on workflow-only **`b552b950a`** verifies these scopes under actual pool concurrency. Full integration,
 authoring/runtime/app acceptance and final main strict `--all` remain required.
 None of these probes is a strict-chain result, despite using the existing `strict_chain` dispatch route. Main's
 full strict workflow is unchanged and remains required after integration converges. See
