@@ -235,12 +235,7 @@ export interface PackRegistry extends PackRegistryView {
   getPluginEventValidationMap(): Map<string, PluginEventTypes>;
   /** The SDK's entity types, the host's and the registered packs' */
   getRegisteredEntityTypes(): ReadonlySet<string>;
-  /**
-   * The app's partition policy, from the registered packs' EARS policies: an entity type any of them
-   * excludes lives in the volatile partition. It's one object for the registry's lifetime, which the LMDB store
-   * is opened with, and each call reads the policy of the packs registered then (cached until a pack
-   * registers or unregisters).
-   */
+  /** Lifecycle hooks of the currently registered packs, in registration order. */
   getLifecycleHooks(): PackLifecycleHooks[];
   /** A registered pack's registration, as it was registered */
   getPackRegistration(packId: string): PackRegistration | null;

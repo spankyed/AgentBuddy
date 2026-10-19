@@ -34,23 +34,16 @@ export async function addService(args: string[], root: string) {
   const feature = parseFlag(args, '--feature');
   const camel = toCamelCase(name);
 
+  const manifest = readManifest(root);
+  const relative = feature ? `src/features/${feature}/be/services/${name}.ts` : `src/extensions/services/${name}.ts`;
+  const target = `${relative}#${serviceExport(camel)}`;
+  if (feature) addFeatureService(manifest, feature, camel, target);
+  else addPackService(manifest, camel, target);
+
   const created: string[] = [];
-
-  if (feature) {
-    const filePath = path.join(root, 'src', 'features', feature, 'be', 'services', `${name}.ts`);
-    if (writeIfNotExists(filePath, renderTemplate('pack/src/extensions/services/service.ts', { SERVICE_EXPORT: serviceExport(camel), CAMEL: camel }))) created.push(filePath);
-
-    const manifest = readManifest(root);
-    addFeatureService(manifest, feature, camel, `src/features/${feature}/be/services/${name}.ts#${serviceExport(camel)}`);
-    writeManifest(root, manifest);
-  } else {
-    const filePath = path.join(root, 'src', 'extensions', 'services', `${name}.ts`);
-    if (writeIfNotExists(filePath, renderTemplate('pack/src/extensions/services/service.ts', { SERVICE_EXPORT: serviceExport(camel), CAMEL: camel }))) created.push(filePath);
-
-    const manifest = readManifest(root);
-    addPackService(manifest, camel, `src/extensions/services/${name}.ts#${serviceExport(camel)}`);
-    writeManifest(root, manifest);
-  }
+  const filePath = path.join(root, relative);
+  if (writeIfNotExists(filePath, renderTemplate('pack/src/extensions/services/service.ts', { SERVICE_EXPORT: serviceExport(camel), CAMEL: camel }))) created.push(filePath);
+  writeManifest(root, manifest);
 
   const regenerated = await regenerateAfterScaffold(root);
 

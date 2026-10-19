@@ -1,10 +1,11 @@
+import { hasOwn } from '@apackdev/sdk/utils/pure';
 import type { PackManifest, PackFeatureEntry, StepEntry, MigrationLine, PackMigrationDeclaration } from '@apackdev/sdk/build';
 
 export { readManifest } from '../../utils';
 
 export function addFeature(manifest: PackManifest, id: string, entry: PackFeatureEntry): void {
   if (!manifest.features) manifest.features = {};
-  if (manifest.features[id]) throw new Error(`Feature "${id}" already exists in manifest`);
+  if (hasOwn(manifest.features, id)) throw new Error(`Feature "${id}" already exists in manifest`);
   manifest.features[id] = entry;
 }
 
@@ -18,7 +19,7 @@ function extensions(manifest: PackManifest): NonNullable<PackManifest['extension
 export function addStep(manifest: PackManifest, type: string, entry: StepEntry): void {
   const ext = extensions(manifest);
   ext.steps ??= {};
-  if (ext.steps[type]) throw new Error(`Step "${type}" already exists in manifest`);
+  if (hasOwn(ext.steps, type)) throw new Error(`Step "${type}" already exists in manifest`);
   ext.steps[type] = entry;
 }
 
@@ -30,7 +31,7 @@ export function addArtifact(
 ): void {
   const ext = extensions(manifest);
   ext.artifacts ??= {};
-  if (ext.artifacts[type]) throw new Error(`Artifact "${type}" already exists in manifest`);
+  if (hasOwn(ext.artifacts, type)) throw new Error(`Artifact "${type}" already exists in manifest`);
   ext.artifacts[type] = { icon: entry.icon, fe: entry.component };
 }
 
@@ -42,7 +43,7 @@ export function addBlock(
 ): void {
   const ext = extensions(manifest);
   ext.blocks ??= {};
-  if (ext.blocks[type]) throw new Error(`Block "${type}" already exists in manifest`);
+  if (hasOwn(ext.blocks, type)) throw new Error(`Block "${type}" already exists in manifest`);
   ext.blocks[type] = { ...(entry.kind ? { kind: entry.kind } : {}), fe: entry.component };
 }
 
@@ -50,7 +51,7 @@ export function addBlock(
 export function addMigration(manifest: PackManifest, line: MigrationLine, version: string, declaration: PackMigrationDeclaration): void {
   const migrations = manifest.migrations ?? (manifest.migrations = {});
   const onLine = migrations[line] ?? (migrations[line] = {});
-  if (onLine[version]) throw new Error(`Migration "${version}" already exists in manifest under "${line}"`);
+  if (hasOwn(onLine, version)) throw new Error(`Migration "${version}" already exists in manifest under "${line}"`);
   onLine[version] = declaration;
 }
 
@@ -58,7 +59,7 @@ export function addMigration(manifest: PackManifest, line: MigrationLine, versio
 export function addPackService(manifest: PackManifest, key: string, target: string): void {
   const ext = extensions(manifest);
   ext.services ??= {};
-  if (ext.services[key]) {
+  if (hasOwn(ext.services, key)) {
     throw new Error(`Pack service "${key}" already exists in manifest`);
   }
   ext.services[key] = target;
@@ -66,10 +67,10 @@ export function addPackService(manifest: PackManifest, key: string, target: stri
 
 /** Adds a feature service: `target` is "path#exportName" of the service object */
 export function addFeatureService(manifest: PackManifest, featureId: string, key: string, target: string): void {
-  const feature = manifest.features?.[featureId];
+  const feature = manifest.features && hasOwn(manifest.features, featureId) ? manifest.features[featureId] : undefined;
   if (!feature) throw new Error(`Feature "${featureId}" not found in manifest`);
   if (!feature.services) feature.services = {};
-  if (feature.services[key]) {
+  if (hasOwn(feature.services, key)) {
     throw new Error(`Service "${key}" already exists on feature "${featureId}"`);
   }
   feature.services[key] = target;
