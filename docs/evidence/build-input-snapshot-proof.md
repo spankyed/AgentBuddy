@@ -6264,6 +6264,8 @@ replace OS binding with a guessed resolver, or claim source/copy binding equival
 
 ### Fresh-process contract reconciliation and candidate repair — 2026-10-19
 
+Source checkpoint: **`7ce19661f`**.
+
 The caller audit resolves the apparent design ambiguity against the existing accepted contract,
 without assuming an answer to the earlier question. The native boundary ADR already requires normal
 OS-library resolution and explicitly separates a fresh runtime launch from the supervisor's loaded

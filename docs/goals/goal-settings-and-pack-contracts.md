@@ -47,7 +47,8 @@ Lazy activation is deferred.
 
 ## Live execution ledger (reconciled 2026-10-16)
 
-App/compiler implementation checkpoint **`3827993ba`** is pushed. Windows real Electron
+Runtime identity/publisher-policy repair is committed as **`7ce19661f`**, with focused acceptance
+recorded below. Earlier app/compiler implementation checkpoint **`3827993ba`** is pushed. Windows real Electron
 backend/frontend build and archive pass on that source; OS-assembly/copy/manifest-freshness
 acceptance is `b2972112d`. Evidence remains in the owning records; these accepted paths need no
 reassurance repeats. All useful Windows overlays/exports are preserved.
@@ -102,7 +103,7 @@ listings. The repair closes direct reuse with OS listing hashes and separate run
 preserve common-record replay too. Frontend readiness echoes the generation hash and is not an
 independent DLL-selection proof.
 The existing Node/Electron native proofs remain separate; this new ordinary-loader case does not
-replace them. Current WIP source is retained in the main checkout. Earlier evidence accepted 69 pure PE cases,
+replace them. The repair is source checkpoint `7ce19661f`; its earlier WIP has been committed. Earlier evidence accepted 69 pure PE cases,
 11 subprocess checks, CLI types and focused lint, and diagnosed the durable failure at combined-hash
 equality. The new separation now passes 76 pure cases (two declared platform skips), all 11 subprocess checks,
 CLI types and correctness lint. On the exact seven-file Windows overlay, Common Controls passes in
