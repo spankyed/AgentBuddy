@@ -8371,3 +8371,25 @@ but its altered workflow runs **integration only**, so success must not be repor
 pass. The probe is execution-only and is not intended for merging. Main's required full strict workflow
 is unchanged, with final schema/API/unit/authoring/runtime/app gates still required. No broad retry,
 local native execution or VM startup occurs during this probe.
+
+### Integration probe prerequisite correction — 2026-10-19
+
+[39200409842](https://github.com/spankyed/AgentBuddy/actions/runs/39200409842) fails on `fffcc1254`
+at `dep-files.integration.spec.ts`: the test requires dependency-read records for the normal typecheck
+legs, while the isolated workflow built only packages/default-setup. Missing records correctly fail
+its expected coverage assertion. This is a probe-setup omission, not a product regression. The test
+itself documents the prerequisite; neither its assertion nor production code changes.
+
+Preparation succeeds in **9m55s** (04:38:38–04:48:33 UTC). The integration attempt ends after
+**190.66s** with 368 passing assertions and the one prerequisite failure; most of the pool remains
+unexecuted after fail-fast. Evidence is retained in `/private/tmp/apack-integration-39200409842/`,
+`/private/tmp/apack-integration-39200409842-failed.log` and the matching `-status.json`.
+
+Isolated workflow-only **`c51408d15`** adds `npm run typecheck -- --cores 2` before pack preparation.
+Its job envelope becomes **30m**, accommodating measured preparation plus typecheck and the existing
+ten-minute integration-pool limit; all test/suite deadlines stay unchanged. The exact branch diff
+against main source `6dcbfdd88` remains solely `.github/workflows/strict-chain.yml`.
+[39201821813](https://github.com/spankyed/AgentBuddy/actions/runs/39201821813) executes that corrected
+probe. This retry supplies a demonstrated missing prerequisite, not another unexplained broad rerun.
+It is still not a final strict `--all` result. Main source remains unchanged and final strict/app gates
+stay required; no local native execution or VM startup occurs.

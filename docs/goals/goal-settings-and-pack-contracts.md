@@ -106,9 +106,14 @@ selected cases** on that exact main checkpoint, including the repaired pair and 
 native tail. Main preload/thread cases take **36.625s/45.141s**. No additional native defect is identified.
 The complete 68-file integration pool remains unaccepted. Isolated execution-only probe
 [39200409842](https://github.com/spankyed/AgentBuddy/actions/runs/39200409842) runs its normal
-two-core command and existing suite deadline after building required pack output. Probe source
-**`fffcc1254`** differs from main `6dcbfdd88` only in its workflow; no product or test code differs.
-Its run is not a strict-chain result, despite using the existing `strict_chain` dispatch route. Main's
+two-core command and existing suite deadline after building required pack output. It fails at a probe
+setup omission: dependency-read coverage requires records from `npm run typecheck`, which was not run.
+This is not a demonstrated product defect or a reason to change the test. Corrected probe
+[39201821813](https://github.com/spankyed/AgentBuddy/actions/runs/39201821813), source **`c51408d15`**,
+supplies `npm run typecheck -- --cores 2` first. Its job envelope is 30m because measured cold pack
+preparation takes 9m55s before the unchanged 10m suite; no test/suite deadline is changed. The probe
+still differs from main `6dcbfdd88` only in its workflow; no product or test code differs.
+Neither run is a strict-chain result, despite using the existing `strict_chain` dispatch route. Main's
 full strict workflow is unchanged and remains required after integration converges. See
 [measured acceptance](../evidence/settings-and-pack-contracts.md#sequential-preloadthread-completion-and-scoped-budget--2026-10-19).
 The bound-only refusal boundary is user-approved and repaired separately below.
