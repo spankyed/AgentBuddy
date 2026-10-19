@@ -289,6 +289,12 @@ is dispatched on workflow-only `41b9a6c8e` over exact main `f1c1052ce`: normal u
 `npm run test:integration -- --all`, two cores, original source deadlines, with required typecheck,
 pack and external-output preparation. No diagnostic source is merged. Final main strict acceptance
 and the complete requirement audit/archival remain outstanding.
+That normal run is now terminal and failed: all preparation passes, then integration stops after
+350 reported passes at the captured-Electron control's nested 30s driver deadline. Capture, 15s
+launch, verification and retirement share that parent; no value/cleanup/aggregate failure is reported.
+This missed nested boundary requires focused phase composition and real Electron/database concurrency
+acceptance before another normal gate. Preserve the earlier 38 focused passes and successful
+publication control; final strict `--all` and all remaining completion requirements stay open.
 Source **`21ed07fe7`** gives complete integration its own 120-minute aggregate class. The pool runner
 reads its owning chain step's deadline; ordinary unit pools remain at 600s. The measured file work
 already exceeds 53 minutes at an ideal two-worker balance, without blocked setup/preparation, so the

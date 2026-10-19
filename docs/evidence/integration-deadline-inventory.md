@@ -541,3 +541,21 @@ It prepares typecheck records, default-setup and declared external outputs, then
 logging or deadline overrides are present. The committed pool's 120-minute total remains independent
 of bounded package preparation and per-case/operation/event/cleanup limits. This is the required normal
 gate; final main committed-source strict `--all` still follows only after it passes.
+
+### Normal gate stops at nested Electron-control deadline — 2026-10-19
+
+Run `39248035810` is terminal and failed. Dependency installation, complete typecheck preparation
+(363s), default-setup build (423s) and external fixture preparation pass. Normal integration starts
+unfiltered, then stops after 35.51s with 350 reported passing assertions, one failure and 26 platform
+skips; the rest of the 68-file pool is unreached. Its sole failure is **individual-operation timeout**:
+`uses the captured Electron runtime through the shared compiler launcher` exceeds the outer driver's
+30s `execFileSync` limit. The driver logs ordinary Electron bootstrap, then performs installation capture,
+captured launch (separately bounded at 15s), identity verification and retirement. No value assertion,
+whole-scenario/aggregate timeout, reporting error or cleanup error is reported. Do not claim the
+unreached native cases or remaining suite pass.
+
+This is a missed nested deadline in the earlier inventory, not evidence of a runtime compiler defect.
+Inspect/compose that driver's bounded phases, retaining its 15s launch limit and original assertions,
+and verify the actual Electron control beside its normal database-file workload before another broad
+gate. Preserve `/private/tmp/apack-normal-integration-39248035810/` (console and pool report) and
+`/private/tmp/apack-normal-integration-39248035810-full.log` (complete terminal output).
