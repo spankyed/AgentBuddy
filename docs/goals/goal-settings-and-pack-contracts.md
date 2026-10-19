@@ -134,6 +134,13 @@ authoring/writer checks, CLI types and lint pass. The first manifest/settings so
 [here](../evidence/settings-and-pack-contracts.md#completion-review-manifest-and-settings-source-contracts--2026-10-19);
 no whole-goal completion, final runtime acceptance or requirement exclusion is claimed.
 
+Phase 6 source review repairs nested service-array semantics in **`eb552cf65`** while preserving
+caller/provider retirement, private receivers and ordinary result/stream settlement. All 46 focused
+binding/cache/replacement cases, host types and lint pass. Current provenance publication and shipped
+ownership review identifies no additional demonstrated implementation gap. See [Phase 6 review](../evidence/settings-and-pack-contracts.md#completion-review-consumed-apis-provenance-and-shipped-ownership--2026-10-19).
+The live strict run predates both review repairs; final committed-source and external-runtime acceptance
+remain required, and no unresolved requirement is waived.
+
 This ledger owns current execution status and ordering. The phases below retain all completion
 requirements; subsystem plans retain detailed contracts and acceptance cases. Dated checkpoint notes
 are historical evidence, not additional live backlogs. Their old “next,” “remaining” and prerequisite

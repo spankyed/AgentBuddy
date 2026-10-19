@@ -8097,3 +8097,47 @@ The chain's ordinary smoke/external/authoring app steps are gates; general root 
 Preserve the separately recorded affected real-window checks rather than claiming `--all` selects every
 browser case. Bound-only PE disposition, any specifically named outstanding native combination and
 all final completion/archive obligations remain open.
+
+## Completion review: consumed APIs, provenance and shipped ownership — 2026-10-19
+
+Source **`eb552cf65`** repairs a concrete A3 service-facade defect found during the current-source
+Phase 6 review. The review preserves all three workstreams and their final external runtime gates.
+
+`createPackServiceBinding` used a non-array object target for every nested service object, including
+arrays. A provider exposing frozen array metadata therefore produced `Array.isArray(...) === false`
+and object-shaped JSON. The new regression fails at array detection on the prior source. Reusing the
+same facade with an array target preserves array detection, serialization, iteration, keys and length
+reflection. Its non-configurable length descriptor remains consistent with the target. Calls/property
+access still check the accepted caller/provider generation; this is not a new security membrane or a
+promise of transparent behavior for every native JavaScript object.
+
+Two cases cover caller retirement and provider replacement reusing the exact same frozen service and
+array. Destructured array methods work while accepted, refuse after retirement, and cannot mutate the
+frozen provider metadata. Existing private-receiver, callable/constructor, agent/stream and independent
+host binding cases remain intact. All **46** focused cases pass: service binding **17**, dependency
+cache **14**, replacement **15**, in 2.58s total. Host TypeScript and correctness lint pass. Evidence:
+`/private/tmp/apack-service-array-{red,green}.log` and `/private/tmp/apack-phase6-review-{focused,types,lint}.log`.
+No public signature/schema, stored data, release metadata, process owner or platform configuration changes.
+
+The remaining inspected Phase 6 paths show no additional demonstrated defect:
+
+- Consumed providers resolve through accepted declaration selection, with separate caller and provider
+  generations. Retained functions validate both before invoking the original receiver; started ordinary
+  results/streams retain their explicit settlement behavior. Settings use the caller-scoped writer and
+  subscription owner, while administration/onboarding remain distinct declared host APIs.
+- Dependency cache publication validates the captured snapshot and producer receipt against the exact
+  ID/version/content identity, copies into a private incoming directory, validates the copy, and switches
+  its resolution record only under the existing publication lock. Snapshot-only caches admit type data
+  without executable files. Existing tests cover same-version/different-content reuse, malformed receipts,
+  wrong IDs, poisoned additions and incumbent retention on copy/record failures.
+- Shipped installation reads explicit app/user ownership and removal suppression, preserving a user fork
+  without hash-based adoption. Restore checks the requested ID/source revision and explicitly enables app
+  ownership. Ordinary app refresh retains disablement. Candidate files and installation-record rollback
+  use existing publication owners; failure is not represented as rollback of arbitrary activation effects.
+  Existing external tests exercise two-window reload, normal boot, removal and restoration.
+
+These source checks and focused tests complement the existing external evidence; they do not replace
+current committed-source producer/app/window acceptance. Strict run `39191666077` remains live on
+`945e80c15` and contains neither this repair nor `31ed0dcad`. Preserve that run and its evidence; finish
+the remaining audit/dispositions before the required final-source strict gate. No additional broad or
+native suite was launched for this review, and the Windows VM remains deallocated.
