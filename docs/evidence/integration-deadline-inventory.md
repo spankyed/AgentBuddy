@@ -756,3 +756,68 @@ and `/private/tmp/apack-worker-cold-build-39267061814-full.log`.
 
 The affected source has converged again. Resume the unchanged normal unfiltered integration gate;
 final main strict `--all` still follows a passing normal result, not this selected acceptance.
+
+Normal run [39269209929](https://github.com/spankyed/AgentBuddy/actions/runs/39269209929) is
+now dispatched on workflow-only **`e8c813028`**, containing main **`d45a03faf`** and accepted source
+**`f93015282`**. The private tree differs only in `.github/workflows/strict-chain.yml`. It uses the
+unchanged `npm run test:integration -- --all`, ordinary grouping/bail, two cores, existing per-operation
+and case bounds, and the measured 120m aggregate. Its prerequisites and all reports remain preserved.
+No second expensive run is active. Wait for this result before the main final strict gate.
+
+## Normal gate: compose native capture and refusal attempts — 2026-10-19
+
+[39269209929](https://github.com/spankyed/AgentBuddy/actions/runs/39269209929) on workflow-only
+`e8c813028` / main `d45a03faf` finishes in **867.55s**: **425 actual passes, one failure, 26 platform
+skips**. All prerequisites pass. The complete worker file passes all 16 bodies, including observation
+refusal 62.879s, background cleanup 61.599s and frontend input reporting 78.318s. These actual normal
+results validate repairing the remaining worker cases together rather than only the first failure.
+
+The sole failure is a **whole-scenario 120s timeout** in native thread capture/refusal. Its phase log
+shows the successful build at 73.232s, freshness/restoration at 90.469s, first refusal at 115.035s,
+second refusal at 125.310s and owner closure at 126.668s. No assertion mismatch, individual-operation
+timeout, cleanup or reporting failure is reported. Completion after the test deadline is useful timing
+evidence, not a passed case. Preload passes in 97.002s; actual Electron build/archive and watch repair
+also pass. The eight later native cases and other globally bailed files remain unexecuted here.
+
+The earlier 120s native scenario was not properly composed from its three builds. Correct it to one
+explicit 120s cold build, two separately bounded 60s refusal attempts, and 60s for native fixture
+creation, two existing 10s ordinary-loader controls, freshness/retention verification and cleanup:
+300s enclosing allowance. A refusal additionally asserts that its operation signal has not expired,
+so a timeout cannot satisfy the existing rejection assertion. Keep every constructor, copy, value,
+restoration, incumbent and retirement check. No product/compiler behavior changes.
+
+The same-file audit identifies one remaining cold OS-admission baseline inheriting a 60s whole-case
+limit. Its successful baseline now has the same 120s build bound, with 60s for subsequent pre-capture
+admission checks and 20s verification/cleanup. Existing search/fallback/suffix scenarios already have
+composed bounds; primitive loader and retained-frontend cases keep their current limits. Both native
+variants and the unreached tail need complete affected-file acceptance beside the worker file before
+another normal gate. Local deadline/inventory checks (53), CLI TypeScript and correctness lint pass.
+Raw evidence: `/private/tmp/apack-normal-integration-39269209929/` and
+`/private/tmp/apack-normal-integration-39269209929-full.log`. Final strict acceptance remains open.
+
+Source **`f17d2e286`** is committed/pushed. Complete affected-file run
+[39275701481](https://github.com/spankyed/AgentBuddy/actions/runs/39275701481) is dispatched on
+workflow-only **`449aac628`**: both entire native/worker files, two workers, `bail=0`, and an explicit
+41-body execution check. No test-name filter or per-test default change. The private checkout differs
+only in the workflow; package/output isolation remains intact. No acceptance result is claimed yet.
+
+### Complete native and worker commands accepted; GitHub status unresolved
+
+The published report from **39275701481** proves **41 passes, zero failures, zero skips, exit 0**
+on `f17d2e286` / workflow-only `449aac628`. Complete command duration is **1199.532s**. All 16 worker
+and all 25 native bodies execute. Native preload/thread capture-refusal passes in 102.742s/108.705s,
+including pre-deadline refusal and owner closure. The formerly unreached native tail also passes;
+OS-admission takes 44.465s. Observation/loader refusal, background cleanup and frontend input ownership
+pass in 53.204s/50.583s/49.254s/46.335s. No test cleanup or unhandled reporting failure is reported.
+
+GitHub's run/jobs APIs still say the acceptance step is running, even though the downloaded job log
+records command exit, successful result upload, cache save and final runner cleanup at **15:33:38Z**.
+The job-log endpoint returned this evidence at 15:49Z. Preserve this discrepancy: the 30m test deadline
+was not exceeded, and no timeout/process implementation change is justified by the stale phase label.
+Whole-job finalization remains unverified; do not claim a green GitHub job from the report alone.
+The completed acceptance command permits the next normal gate on a separate disposable runner;
+leave this job intact and recheck its final status. No native work runs on the developer Mac.
+
+Evidence: `/private/tmp/apack-native-worker-39275701481/` and
+`/private/tmp/apack-native-worker-39275701481-live-response.txt` (complete retained job log).
+The required normal and final main strict gates remain outstanding.

@@ -739,7 +739,7 @@ it.runIf(process.platform === 'darwin' || process.platform === 'linux').each(['p
     writeLoader(supported);
     if (site === 'preload') process.env.NODE_OPTIONS = formatNodeOptions([...parseNodeOptions(previous), '--require', preload]);
     checkpoint('initial build started');
-    await builder.build({ args: ['--skip-fe'] });
+    await builder.build({ args: ['--skip-fe'], signal: AbortSignal.timeout(120_000) });
     checkpoint('initial build completed');
     const results = fs.readFileSync(proof, 'utf8').trim().split('\n').map(line => JSON.parse(line)) as { thread: number; value: number; libraries: string[] }[];
     for (const result of results) {
@@ -773,7 +773,9 @@ it.runIf(process.platform === 'darwin' || process.platform === 'linux').each(['p
       fs.rmSync(proof, { force: true });
       writeLoader(fixture);
       checkpoint(`refusal ${index + 1} build started`);
-      await expect(builder.build({ args: ['--skip-fe'] })).rejects.toThrow();
+      const signal = AbortSignal.timeout(60_000);
+      await expect(builder.build({ args: ['--skip-fe'], signal })).rejects.toThrow();
+      expect(signal.aborted, 'Native refusal must precede the build deadline').toBe(false);
       checkpoint(`refusal ${index + 1} build completed`);
       expect(fs.existsSync(fixture.marker)).toBe(false);
       expect(fs.existsSync(proof)).toBe(false);
@@ -781,7 +783,7 @@ it.runIf(process.platform === 'darwin' || process.platform === 'linux').each(['p
     }
     completed = true;
   } finally { await close(); }
-}, 120_000);
+}, 120_000 + 2 * 60_000 + 60_000);
 
 it.runIf(process.platform === 'darwin' || process.platform === 'linux')('retains launch-time native search paths across preload changes and compiler workers', async () => {
   const fixture = nativeFixture(process.platform === 'linux' ? 'runpath' : 'relative');
@@ -855,7 +857,7 @@ __attribute__((constructor)) static void initialize(void) {
       files: { 'src/pack-entry-fe.ts': 'export const plugins = [];',
         'tsconfig.json': JSON.stringify({ compilerOptions: { module: 'esnext', moduleResolution: 'bundler', skipLibCheck: true } }) } });
     process.env.DYLD_INSERT_LIBRARIES = '/usr/lib/libSystem.B.dylib';
-    await builder.build({ args: ['--skip-fe'] });
+    await builder.build({ args: ['--skip-fe'], signal: AbortSignal.timeout(120_000) });
     checkpoint('OS baseline built');
     const output = path.join(fixture.pack, 'dist');
     const revision = readPackBuild(output).revision;
@@ -882,7 +884,7 @@ __attribute__((constructor)) static void initialize(void) {
     await builder.close();
     fs.rmSync(fixture.root, { recursive: true, force: true });
   }
-});
+}, 120_000 + 60_000 + 20_000);
 
 it.runIf(process.platform === 'darwin').each(['DYLD_FALLBACK_LIBRARY_PATH', 'DYLD_FRAMEWORK_PATH', 'DYLD_FALLBACK_FRAMEWORK_PATH'] as const)(
   'refuses external %s before native initialization after preload mutation', async variable => {
