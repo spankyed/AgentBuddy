@@ -1398,12 +1398,12 @@ declare const ClaudeNativeBashDialogSchema: z.ZodObject<{
     requestId: string;
     toolName: "Bash";
     description?: string | undefined;
-    reason?: string | undefined;
     choices?: {
         value: string;
         label: string;
         prefix?: string | undefined;
     }[] | undefined;
+    reason?: string | undefined;
     choiceToken?: string | undefined;
 }, {
     cwd: string;
@@ -1415,18 +1415,20 @@ declare const ClaudeNativeBashDialogSchema: z.ZodObject<{
     requestId: string;
     toolName: "Bash";
     description?: string | undefined;
-    reason?: string | undefined;
     choices?: {
         value: string;
         label: string;
         prefix?: string | undefined;
     }[] | undefined;
+    reason?: string | undefined;
     choiceToken?: string | undefined;
 }>;
 
 type ClaudeNativeFileDialog = z.infer<typeof ClaudeNativeFileDialogSchema>;
 
 interface ClaudeNativeFileDialogResponse {
+    choice?: string;
+    choiceToken?: string;
     id: string;
     revision: string;
     sessionId: string;
@@ -1472,6 +1474,44 @@ declare const ClaudeNativeFileDialogSchema: z.ZodObject<{
         before?: string | undefined;
         after?: string | undefined;
     }>>;
+    approval: z.ZodOptional<z.ZodObject<{
+        token: z.ZodString;
+        ready: z.ZodBoolean;
+        choices: z.ZodArray<z.ZodObject<{
+            value: z.ZodString;
+            label: z.ZodString;
+            decision: z.ZodEnum<["allow", "deny"]>;
+            feedback: z.ZodBoolean;
+        }, "strip", z.ZodTypeAny, {
+            value: string;
+            label: string;
+            decision: "allow" | "deny";
+            feedback: boolean;
+        }, {
+            value: string;
+            label: string;
+            decision: "allow" | "deny";
+            feedback: boolean;
+        }>, "many">;
+    }, "strip", z.ZodTypeAny, {
+        ready: boolean;
+        token: string;
+        choices: {
+            value: string;
+            label: string;
+            decision: "allow" | "deny";
+            feedback: boolean;
+        }[];
+    }, {
+        ready: boolean;
+        token: string;
+        choices: {
+            value: string;
+            label: string;
+            decision: "allow" | "deny";
+            feedback: boolean;
+        }[];
+    }>>;
     title: z.ZodString;
     question: z.ZodString;
     reason: z.ZodOptional<z.ZodString>;
@@ -1492,6 +1532,16 @@ declare const ClaudeNativeFileDialogSchema: z.ZodObject<{
         before?: string | undefined;
         after?: string | undefined;
     } | undefined;
+    approval?: {
+        ready: boolean;
+        token: string;
+        choices: {
+            value: string;
+            label: string;
+            decision: "allow" | "deny";
+            feedback: boolean;
+        }[];
+    } | undefined;
     reason?: string | undefined;
 }, {
     id: string;
@@ -1508,6 +1558,16 @@ declare const ClaudeNativeFileDialogSchema: z.ZodObject<{
         notice?: string | undefined;
         before?: string | undefined;
         after?: string | undefined;
+    } | undefined;
+    approval?: {
+        ready: boolean;
+        token: string;
+        choices: {
+            value: string;
+            label: string;
+            decision: "allow" | "deny";
+            feedback: boolean;
+        }[];
     } | undefined;
     reason?: string | undefined;
 }>;
@@ -1569,9 +1629,9 @@ declare const ClaudeNativePlanDialogSchema: z.ZodObject<{
             clearContext: boolean;
         }>, "many">;
     }, "strip", z.ZodTypeAny, {
+        plan: string;
         withheld: boolean;
         empty: boolean;
-        plan: string;
         choices: {
             value: string;
             label: string;
@@ -1581,9 +1641,9 @@ declare const ClaudeNativePlanDialogSchema: z.ZodObject<{
         initialChoice: string;
         planFilePath?: string | undefined;
     }, {
+        plan: string;
         withheld: boolean;
         empty: boolean;
-        plan: string;
         choices: {
             value: string;
             label: string;
@@ -1593,9 +1653,9 @@ declare const ClaudeNativePlanDialogSchema: z.ZodObject<{
         initialChoice: string;
         planFilePath?: string | undefined;
     }>, {
+        plan: string;
         withheld: boolean;
         empty: boolean;
-        plan: string;
         choices: {
             value: string;
             label: string;
@@ -1605,9 +1665,9 @@ declare const ClaudeNativePlanDialogSchema: z.ZodObject<{
         initialChoice: string;
         planFilePath?: string | undefined;
     }, {
+        plan: string;
         withheld: boolean;
         empty: boolean;
-        plan: string;
         choices: {
             value: string;
             label: string;
@@ -1617,9 +1677,9 @@ declare const ClaudeNativePlanDialogSchema: z.ZodObject<{
         initialChoice: string;
         planFilePath?: string | undefined;
     }>, {
+        plan: string;
         withheld: boolean;
         empty: boolean;
-        plan: string;
         choices: {
             value: string;
             label: string;
@@ -1629,9 +1689,9 @@ declare const ClaudeNativePlanDialogSchema: z.ZodObject<{
         initialChoice: string;
         planFilePath?: string | undefined;
     }, {
+        plan: string;
         withheld: boolean;
         empty: boolean;
-        plan: string;
         choices: {
             value: string;
             label: string;
@@ -1651,9 +1711,9 @@ declare const ClaudeNativePlanDialogSchema: z.ZodObject<{
     requestId: string;
     toolName: "EnterPlanMode" | "ExitPlanMode";
     presentation: {
+        plan: string;
         withheld: boolean;
         empty: boolean;
-        plan: string;
         choices: {
             value: string;
             label: string;
@@ -1672,9 +1732,9 @@ declare const ClaudeNativePlanDialogSchema: z.ZodObject<{
     requestId: string;
     toolName: "EnterPlanMode" | "ExitPlanMode";
     presentation: {
+        plan: string;
         withheld: boolean;
         empty: boolean;
-        plan: string;
         choices: {
             value: string;
             label: string;
@@ -1872,6 +1932,7 @@ declare const ClaudeNativeQuestionRenderSchema: z.ZodEffects<z.ZodObject<{
         }>;
     }, "strip", z.ZodTypeAny, {
         revision: string;
+        token: string;
         shownInput: Record<string, unknown>;
         presentation: {
             previewFormat: string | null;
@@ -1885,10 +1946,10 @@ declare const ClaudeNativeQuestionRenderSchema: z.ZodEffects<z.ZodObject<{
                 html?: string | undefined;
             }[];
         };
-        token: string;
         dialogId: string;
     }, {
         revision: string;
+        token: string;
         shownInput: Record<string, unknown>;
         presentation: {
             previewFormat: string | null;
@@ -1902,7 +1963,6 @@ declare const ClaudeNativeQuestionRenderSchema: z.ZodEffects<z.ZodObject<{
                 html?: string | undefined;
             }[];
         };
-        token: string;
         dialogId: string;
     }>;
 }, "passthrough", z.ZodTypeAny, z.objectOutputType<{
@@ -1963,6 +2023,7 @@ declare const ClaudeNativeQuestionRenderSchema: z.ZodEffects<z.ZodObject<{
         }>;
     }, "strip", z.ZodTypeAny, {
         revision: string;
+        token: string;
         shownInput: Record<string, unknown>;
         presentation: {
             previewFormat: string | null;
@@ -1976,10 +2037,10 @@ declare const ClaudeNativeQuestionRenderSchema: z.ZodEffects<z.ZodObject<{
                 html?: string | undefined;
             }[];
         };
-        token: string;
         dialogId: string;
     }, {
         revision: string;
+        token: string;
         shownInput: Record<string, unknown>;
         presentation: {
             previewFormat: string | null;
@@ -1993,7 +2054,6 @@ declare const ClaudeNativeQuestionRenderSchema: z.ZodEffects<z.ZodObject<{
                 html?: string | undefined;
             }[];
         };
-        token: string;
         dialogId: string;
     }>;
 }, z.ZodTypeAny, "passthrough">, z.objectInputType<{
@@ -2054,6 +2114,7 @@ declare const ClaudeNativeQuestionRenderSchema: z.ZodEffects<z.ZodObject<{
         }>;
     }, "strip", z.ZodTypeAny, {
         revision: string;
+        token: string;
         shownInput: Record<string, unknown>;
         presentation: {
             previewFormat: string | null;
@@ -2067,10 +2128,10 @@ declare const ClaudeNativeQuestionRenderSchema: z.ZodEffects<z.ZodObject<{
                 html?: string | undefined;
             }[];
         };
-        token: string;
         dialogId: string;
     }, {
         revision: string;
+        token: string;
         shownInput: Record<string, unknown>;
         presentation: {
             previewFormat: string | null;
@@ -2084,7 +2145,6 @@ declare const ClaudeNativeQuestionRenderSchema: z.ZodEffects<z.ZodObject<{
                 html?: string | undefined;
             }[];
         };
-        token: string;
         dialogId: string;
     }>;
 }, z.ZodTypeAny, "passthrough">>, z.objectOutputType<{
@@ -2145,6 +2205,7 @@ declare const ClaudeNativeQuestionRenderSchema: z.ZodEffects<z.ZodObject<{
         }>;
     }, "strip", z.ZodTypeAny, {
         revision: string;
+        token: string;
         shownInput: Record<string, unknown>;
         presentation: {
             previewFormat: string | null;
@@ -2158,10 +2219,10 @@ declare const ClaudeNativeQuestionRenderSchema: z.ZodEffects<z.ZodObject<{
                 html?: string | undefined;
             }[];
         };
-        token: string;
         dialogId: string;
     }, {
         revision: string;
+        token: string;
         shownInput: Record<string, unknown>;
         presentation: {
             previewFormat: string | null;
@@ -2175,7 +2236,6 @@ declare const ClaudeNativeQuestionRenderSchema: z.ZodEffects<z.ZodObject<{
                 html?: string | undefined;
             }[];
         };
-        token: string;
         dialogId: string;
     }>;
 }, z.ZodTypeAny, "passthrough">, z.objectInputType<{
@@ -2236,6 +2296,7 @@ declare const ClaudeNativeQuestionRenderSchema: z.ZodEffects<z.ZodObject<{
         }>;
     }, "strip", z.ZodTypeAny, {
         revision: string;
+        token: string;
         shownInput: Record<string, unknown>;
         presentation: {
             previewFormat: string | null;
@@ -2249,10 +2310,10 @@ declare const ClaudeNativeQuestionRenderSchema: z.ZodEffects<z.ZodObject<{
                 html?: string | undefined;
             }[];
         };
-        token: string;
         dialogId: string;
     }, {
         revision: string;
+        token: string;
         shownInput: Record<string, unknown>;
         presentation: {
             previewFormat: string | null;
@@ -2266,7 +2327,6 @@ declare const ClaudeNativeQuestionRenderSchema: z.ZodEffects<z.ZodObject<{
                 html?: string | undefined;
             }[];
         };
-        token: string;
         dialogId: string;
     }>;
 }, z.ZodTypeAny, "passthrough">>;
@@ -9216,7 +9276,6 @@ declare function createClaudeUiControls(initialized: Promise<Pick<ClaudeInitiali
         kind: "prepared" | "running";
     } | {
         id: string;
-        kind: "finished";
         result: {
             kind: "not_command";
         } | {
@@ -9251,6 +9310,7 @@ declare function createClaudeUiControls(initialized: Promise<Pick<ClaudeInitiali
             sessionId?: string | undefined;
             conversationId?: string | undefined;
         };
+        kind: "finished";
     } | {
         message: string;
         id: string;
