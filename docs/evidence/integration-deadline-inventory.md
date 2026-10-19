@@ -956,3 +956,8 @@ normal run's slowdown or certify the whole integration pool. Resume normal integ
 
 Preserved reports: `/private/tmp/apack-esbuild-configuration-39296758415/` (JSON, status, console);
 full log `/private/tmp/apack-esbuild-configuration-39296758415-full.log`.
+
+Normal [39297729330](https://github.com/spankyed/AgentBuddy/actions/runs/39297729330) is dispatched
+on workflow-only `7582e2a5a`, main `a2465bff1` / source repair `d29612b7a`. The only difference from
+main is the existing acceptance workflow: required preparation and ordinary unfiltered
+`npm run test:integration -- --all`, two cores, no per-test override. Await the same run before strict.

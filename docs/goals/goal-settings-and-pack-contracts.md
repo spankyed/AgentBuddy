@@ -47,6 +47,11 @@ Lazy activation is deferred.
 
 ## Live execution ledger (reconciled 2026-10-16)
 
+Current normal integration [39297729330](https://github.com/spankyed/AgentBuddy/actions/runs/39297729330)
+is dispatched on workflow-only `7582e2a5a`, containing main `a2465bff1` / repair `d29612b7a`.
+It runs the ordinary unfiltered command with two cores after required preparation. Await this existing
+run before final committed-source strict `--all`; no additional source repair is currently identified.
+
 Focused configuration acceptance **39296758415** succeeds on workflow-only `952a6dd02`,
 containing repair **`d29612b7a`**: all **15/15** cases pass, zero pending, exit 0, 239.315s.
 All four transient-edit variants complete; declarations takes 26.195s. No unhandled reporting or
