@@ -262,6 +262,18 @@ prepared disposable runner with two workers and the committed per-test limits; r
 Then settle normal grouping/aggregate allowance from the complete measurements, pass normal integration
 and run the final strict gate. Do not rerun the completed prefix as another diagnostic inventory.
 
+Affected acceptance [39227491937](https://github.com/spankyed/AgentBuddy/actions/runs/39227491937)
+is dispatched on workflow-only **`8036d3014`**, based on main **`1f31d38fd`**. One prepared disposable
+macOS checkout runs typecheck records, default-setup and the declared external fixture producer first.
+Then three explicit eight-file batches cover all **24 failing files** from the inventory. Selected
+native command/search/suffix controls and five changed worker mutation/cancellation cases follow.
+All use exactly two workers and committed per-test deadlines, with no private overrides. Batch
+cutoffs are 30m; the selected control groups each have 15m. The 150m envelope includes all five
+cutoffs and preparation. Later groups run after a failed group; stdout and stderr, JSON and exit/timing
+records are retained. YAML, six embedded scripts, exact file coverage, prerequisite gating and the
+workflow-only diff are checked before dispatch. This is affected acceptance, not normal integration
+or strict `--all`; both remain required after convergence. Prior diagnostic branches are preserved.
+
 1. Validate the committed composition and lifetime repairs against the affected cases. Preserve inner
    event/operation/cleanup limits and never delete live locks or retry through them.
 2. Diagnose assertion cases independently: runtime execution-option invalidation, passive facade

@@ -209,6 +209,11 @@ focused lint pass. The [inventory](../evidence/integration-deadline-inventory.md
 records scope and proof limits. Next validate the affected files and changed native/worker cases on
 one prepared disposable runner, then settle normal grouping/aggregate allowance, pass normal integration
 and run final strict `--all`. No requirement or gate is waived by these focused repairs.
+Affected acceptance is now [39227491937](https://github.com/spankyed/AgentBuddy/actions/runs/39227491937),
+workflow-only **`8036d3014`** on exact main **`1f31d38fd`**. It prepares records/default-setup/external
+fixtures once, runs the 24 failed files in three eight-file batches, then selected changed native and
+worker controls, all with two workers and committed test limits. It retains every group even on failure.
+Inspect its reports before another broad run; this is neither normal integration nor strict acceptance.
 None of these probes is a strict-chain result, despite using the existing `strict_chain` dispatch route. Main's
 full strict workflow is unchanged and remains required after integration converges. See
 [measured acceptance](../evidence/settings-and-pack-contracts.md#sequential-preloadthread-completion-and-scoped-budget--2026-10-19).
