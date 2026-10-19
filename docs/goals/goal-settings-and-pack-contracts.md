@@ -185,6 +185,12 @@ abandoned-operation cleanup. Repair normal grouping and its own aggregate budget
 Validate affected cases, pass normal integration, then final strict acceptance. No broad diagnostic
 rerun or outer timeout increases to hide assertion/event/cleanup failures. Full integration,
 authoring/runtime/app acceptance and final main strict `--all` remain required.
+Inventory checkpoint **`89898080c`** preserves every batch and failure classification. Source
+**`1e6e7aea7`** repairs the three execution-option failures: direct compilation rechecks ambient
+execution identity while owned workers retain their captured startup identity. Three inert Node/tsx
+controls prove invalidation, changed identities and exact restoration for conditions, preload order
+and execution flags; CLI types and focused lint pass. No native/captured-runtime execution ran locally.
+Existing integration assertions are unchanged; affected-suite and full acceptance remain pending.
 None of these probes is a strict-chain result, despite using the existing `strict_chain` dispatch route. Main's
 full strict workflow is unchanged and remains required after integration converges. See
 [measured acceptance](../evidence/settings-and-pack-contracts.md#sequential-preloadthread-completion-and-scoped-budget--2026-10-19).

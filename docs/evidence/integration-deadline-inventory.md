@@ -1,7 +1,7 @@
 # Integration deadline inventory
 
-Status: complete failure inventory across all 68 source files; setup-blocked cases remain unverified. Main source `27e9e4109`;
-latest owning-goal checkpoint `9d0dde3e3`. No further normal integration or strict run until the
+Status: complete failure inventory across all 68 source files; setup-blocked cases remain unverified.
+Inventoried source `27e9e4109`; inventory checkpoint `89898080c`. No further normal integration or strict run until the
 classification, composition repair and affected checks below converge.
 
 ## Failure classification before further execution
@@ -206,6 +206,14 @@ Additional failures outside individual case results:
   exits after confirming 59 file reports. This is not a missing-report or aggregate-timeout failure.
 
 ### Repair boundaries and next action
+
+Source **`1e6e7aea7`** repairs direct compilation's execution-input freshness. Its `current()` hash
+reused an identity captured once, so later environment/flag changes were invisible. Direct compilation
+now rechecks that identity; an owned worker continues to use its actual captured startup identity.
+Three inert Node/tsx controls pass: export-condition changes, preload reordering and execution-flag
+changes invalidate, change the next identity, and accept exact restoration. No compiler runtime or
+native fixture is launched. CLI `tsc --noEmit` and focused correctness lint pass. The existing three
+integration assertions remain unchanged and still need affected-suite/final acceptance.
 
 1. Compose named multi-step case and setup budgets from inspected operations, preserving their inner
    event, operation and cleanup limits. Fix awaited cancellation/teardown where timed-out work can
