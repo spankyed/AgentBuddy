@@ -1565,13 +1565,13 @@
         "shortCode": "ACT-61"
       },
       "Collection:commands": {
-        "contentHash": "4ae68f9f5dcd2ac9",
+        "contentHash": "65e5941f33ea72ff",
         "displayOrder": 1000,
         "entityType": "Collection",
         "name": "commands"
       },
       "Collection:internal": {
-        "contentHash": "18e6be05e82b0ef2",
+        "contentHash": "7b38951ddcff6079",
         "displayOrder": 1000,
         "entityType": "Collection",
         "name": "internal"
@@ -1626,6 +1626,10 @@
                 "value": "Custom instructions (optional, summarize context)"
               },
               {
+                "key": "cc-reset",
+                "value": "Disconnect this thread from its idle native session; preserves saved history. Pause a running turn first."
+              },
+              {
                 "key": "cc-resume",
                 "value": "Session ID (optional, lists sessions if omitted)"
               },
@@ -1659,7 +1663,7 @@
               },
               {
                 "key": "cc-mcp",
-                "value": "Manage MCP servers"
+                "value": "[status|list] shows the live owner’s connections when running; list otherwise reads saved configuration. Other arguments manage saved MCP configuration."
               },
               {
                 "key": "cc-agents",
@@ -1676,7 +1680,7 @@
             ]
           }
         ],
-        "contentHash": "fa79554b5a3ced90",
+        "contentHash": "6bdb4151f3605584",
         "displayOrder": 1000,
         "entityType": "Document",
         "name": "Claude Code commands",
