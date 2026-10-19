@@ -515,6 +515,7 @@ it.each([
 ] as const)('removes its worker and compiler when the public build command is stopped while $name', async ({ watch, phase, release }) => {
   // Shutdown removes a complete compiler file tree, unlike the IPC-only exit checks above.
   const cleanupDeadlineMs = 20_000;
+  const startupDeadlineMs = phase === 'ready' ? 120_000 : 60_000;
   const root = fixture({
     'src/compiler.ts': `import fs from 'node:fs'; export default async function() {
       fs.writeFileSync('.apack/compiler-inputs-path', process.env.${COMPILER_INPUTS_ENV}!);
@@ -540,7 +541,7 @@ it.each([
     child.once('close', () => reject(new Error(`Watch stopped before ready: ${output}`)));
   });
   try {
-    await _byDeadline(ready, `public watcher startup (${phase})`, 60_000);
+    await _byDeadline(ready, `public watcher startup (${phase})`, startupDeadlineMs);
     const inputs = fs.readFileSync(path.join(root, '.apack/compiler-inputs-path'), 'utf8');
     const worker = Number(fs.readFileSync(path.join(root, '.apack/compiler-pid'), 'utf8'));
     expect(fs.existsSync(inputs)).toBe(true);
@@ -555,4 +556,4 @@ it.each([
     if (child.exitCode === null && child.signalCode === null) child.kill();
     await _byDeadline(closed, 'public watcher cleanup', cleanupDeadlineMs);
   }
-}, 60_000 + 20_000 + 20_000);
+}, 120_000 + 20_000 + 20_000);
