@@ -316,6 +316,15 @@ Normal [39253013877](https://github.com/spankyed/AgentBuddy/actions/runs/3925301
 on workflow-only `92fe30ef6` over exact main `9783f52e2`, retaining required preparation, unfiltered
 repository command and two-core budget. Final strict, requirement audit and completed-only archival
 remain required; no diagnostic source is merged.
+That normal run is terminal and failed after 408 reported passes: one 60s whole-scenario timeout in
+the worker-thread external-input case. Both Electron controls pass, including actual build/archive;
+global bail leaves later cases unaccepted despite the native file's “25 tests” declaration label.
+Source `f9cb91f38` bounds the cold thread build at 120s plus 20s verification, registers/drains fixture
+build owners on cancellation and preserves every content/input assertion. Other case deadlines stay.
+All 53 policy/inventory checks, CLI types and correctness lint pass. Focused
+[39257458780](https://github.com/spankyed/AgentBuddy/actions/runs/39257458780), workflow-only
+`3412e646b`, now runs all 16 worker cases beside four native/Electron counterparts on two workers,
+without bail, before another normal gate. Required strict and complete closure remain outstanding.
 Source **`21ed07fe7`** gives complete integration its own 120-minute aggregate class. The pool runner
 reads its owning chain step's deadline; ordinary unit pools remain at 600s. The measured file work
 already exceeds 53 minutes at an ideal two-worker balance, without blocked setup/preparation, so the

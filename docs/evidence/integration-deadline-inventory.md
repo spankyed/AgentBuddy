@@ -603,3 +603,31 @@ on workflow-only `92fe30ef6` over main `9783f52e2`. It retains the same complete
 unfiltered `npm run test:integration -- --all`, two cores, source operation/event/cleanup limits and
 120-minute pool aggregate. No focused selection or temporary compiler tracing is present. Require
 this normal gate, final main strict `--all`, and complete requirement audit/archival before closure.
+
+### Normal gate reaches worker-thread verification — 2026-10-19
+
+Run `39253013877` is terminal and failed after **408 reported passes**, one **whole-scenario 60s
+timeout**, and 26 platform skips; integration takes 379.50s. The failure is `records external inputs
+read by content compiler worker threads`, reported at 70.922s including completion/cleanup. The
+console shows four compiled rows and published output before the refusal, not a value assertion.
+All prerequisite stages pass. Both actual Electron controls pass, including build/archive at 189.987s.
+The native file's “25 tests” label is its declared population, **not proof all 25 bodies ran** after
+global bail. Preserve the reported aggregate and reached controls without counting unreached native
+or worker bodies as accepted. Complete earlier eight-file results remain preserved separately.
+
+Raw output and duration records are under `/private/tmp/apack-normal-integration-39253013877/`;
+the complete terminal log is `/private/tmp/apack-normal-integration-39253013877-full.log`.
+
+Source `f9cb91f38` gives the demonstrated thread scenario a 120s bounded cold build plus 20s input
+verification allowance. Its four thread modes, content/receipt/freshness assertions and other cases'
+deadlines remain. A local fixture-build owner registers the four formerly untracked one-shot builds;
+they receive test cancellation and close before fixture deletion. Teardown now drains owners before
+restoring mocked process/environment state. This closes a source-visible timeout/cleanup race rather
+than changing production build APIs. Existing public CLI stop/IPC cases remain intact. All 53
+timeout/subprocess-inventory checks, CLI types, correctness lint and diff checks pass.
+
+Focused [39257458780](https://github.com/spankyed/AgentBuddy/actions/runs/39257458780), workflow-only
+`3412e646b` on that source, executes the **entire 16-case worker file** beside four actual native/Electron
+counterparts with two workers and bail disabled. This provides the affected file's complete post-repair
+inventory before another normal gate; do not repeat broad integration to discover its next boundary.
+The existing 60s/15s/etc. native operation/event limits are not changed by this workflow.
