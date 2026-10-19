@@ -907,3 +907,31 @@ This is source evidence, not a passing gate:
 
 No new omission is identified by these checks. Preserve every cross-phase acceptance row and existing
 window/platform evidence; final integration, strict acceptance and completed-only archival remain open.
+
+## Normal gate: esbuild captured-declaration scenario and reporting — 2026-10-19
+
+[39289719265](https://github.com/spankyed/AgentBuddy/actions/runs/39289719265), workflow-only
+`44cbdcdd4` / main `affcdf644`, finishes after **1508.04s** with **493 actual passes, one failure,
+26 Windows skips**, and one unhandled runner error. All preparation passes. The failure inventory is:
+
+- **Whole-scenario timeout:** `compiler-esbuild-configuration.integration.spec.ts`'s parameterized
+  transient **declarations** case inherits 60s and takes 64.214s. It runs a complete backend build
+  (generation/runtime/facade), then stages and executes the result. Build-output logging completes;
+  post-build assertion completion is not established by that log. No value assertion is reported failed.
+- **Reporting failure:** Vitest reports `Timeout calling "onTaskUpdate"`. Keep this independently
+  unresolved until the focused runner exits without an unhandled error. The report does not identify
+  its exact blocking operation. This is not an established cleanup or compiler-hang diagnosis.
+- No individual-operation timeout, whole-pool deadline or explicit cleanup failure is reported.
+
+Scoped repair: only the four full-build transient variants receive `120_000 + 20_000`, allowing
+cold build plus staging/runtime verification. These are in-process instrumented builds; replacing
+with a worker would bypass the spies that prove the transient-source contract. No independently
+cancellable build-operation bound is claimed. The other cases exercise partial native bundlers and
+retain their existing limits. Same-file teardown yields once after cleanup, matching the existing
+runner-reporting repair for synchronous toolchain tests. No assertion, RPC limit, production compiler
+or general suite deadline changes. All 53 policy/inventory checks, CLI types and lint pass.
+
+Required next evidence: complete 15-case file on a disposable runner, bail disabled, two workers,
+zero failures and no unhandled reporting error; then normal integration and final strict `--all`.
+Raw reports: `/private/tmp/apack-normal-integration-39289719265/`; full log:
+`/private/tmp/apack-normal-integration-39289719265-full.log`. Earlier results remain preserved.
