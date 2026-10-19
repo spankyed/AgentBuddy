@@ -756,3 +756,10 @@ and `/private/tmp/apack-worker-cold-build-39267061814-full.log`.
 
 The affected source has converged again. Resume the unchanged normal unfiltered integration gate;
 final main strict `--all` still follows a passing normal result, not this selected acceptance.
+
+Normal run [39269209929](https://github.com/spankyed/AgentBuddy/actions/runs/39269209929) is
+now dispatched on workflow-only **`e8c813028`**, containing main **`d45a03faf`** and accepted source
+**`f93015282`**. The private tree differs only in `.github/workflows/strict-chain.yml`. It uses the
+unchanged `npm run test:integration -- --all`, ordinary grouping/bail, two cores, existing per-operation
+and case bounds, and the measured 120m aggregate. Its prerequisites and all reports remain preserved.
+No second expensive run is active. Wait for this result before the main final strict gate.

@@ -54,7 +54,9 @@ and bounds their operations without changing production code or assertions. See 
 [classification and repair](../evidence/integration-deadline-inventory.md#normal-gate-worker-observation-refusal-deadline--2026-10-19).
 Repair **`f93015282`** is pushed; focused run **39267061814** succeeds on workflow-only
 `25f51cf98`: all 16 worker cases plus four native controls pass (20/20, exit 0, 611.202s; two workers).
-No cleanup/reporting error. Resume normal integration, then final committed-source strict `--all`.
+No cleanup/reporting error. Normal run **39269209929** is now dispatched on workflow-only
+`e8c813028` containing main `d45a03faf`; it retains the ordinary unfiltered command and two cores.
+Await its result, then final committed-source strict `--all`.
 The [focused result](../evidence/integration-deadline-inventory.md#remaining-worker-cold-build-cases-accepted)
 records exact durations and preserved evidence.
 
