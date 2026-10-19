@@ -8485,3 +8485,19 @@ exact `ec5943f65` and runs only normal `npm run typecheck -- --cores 2` after de
 complete coordinator before repeating pack preparation or integration. It retains its console with
 a 20m job envelope; this envelope changes neither command deadlines nor main workflow. The preceding
 integration and generation diagnostic branches remain preserved. No local native run or VM startup occurs.
+
+### Complete standalone coordinator accepted — 2026-10-19
+
+[39204669699](https://github.com/spankyed/AgentBuddy/actions/runs/39204669699) passes on workflow-only
+`2bf51ac08`, exact product source `ec5943f65`. Generation completes in **76.3s**, source facade
+bundling in **68.2s**, pack typechecking in **48.4s** and API reports in **21.3s**. Every other declared
+leg passes. This establishes actual completed source bundling beyond the old 60s bound, with the real
+generation receipt accepted; it is neither a freshness bypass nor a timeout-only inference. Evidence:
+`/private/tmp/apack-typecheck-39204669699.log` and the retained workflow console.
+
+The preserved integration branch incorporates exact main `e9f2becbb` as **`4bafbdcad`**; only its
+workflow differs. [39205345266](https://github.com/spankyed/AgentBuddy/actions/runs/39205345266)
+resumes complete integration with its normal dependency-read/typecheck and built-pack prerequisites,
+two cores and unchanged test/pool deadlines. No further coordinator diagnostic is needed unless a
+new failure supplies a cause. Complete integration and final main strict authoring/runtime/app gates
+remain open; no local native batch or Windows VM startup occurs.

@@ -133,8 +133,11 @@ source facade report's inherited 60s passive-check limit. Inspection distinguish
 declaration bundle from the chain's `--from-build` reader. Source **`ec5943f65`** lets that different
 mode declare `suite`, leaving the chain's passive check unchanged; 24 affected tooling tests, scripts
 types and lint pass. Coordinator-only [39204669699](https://github.com/spankyed/AgentBuddy/actions/runs/39204669699)
-on **`2bf51ac08`** must establish the real complete coordinator before another pack preparation or
-integration attempt. Complete integration and final strict acceptance remain required.
+on **`2bf51ac08`** passes the entire real standalone coordinator: generation **76.3s**, source facade
+bundle **68.2s**, pack types **48.4s**, API reports **21.3s**, and all other required legs. Complete
+integration now runs in [39205345266](https://github.com/spankyed/AgentBuddy/actions/runs/39205345266)
+on **`4bafbdcad`**, whose sole diff from main source is the isolated workflow. Full integration,
+authoring/runtime/app acceptance and final main strict `--all` remain required.
 None of these probes is a strict-chain result, despite using the existing `strict_chain` dispatch route. Main's
 full strict workflow is unchanged and remains required after integration converges. See
 [measured acceptance](../evidence/settings-and-pack-contracts.md#sequential-preloadthread-completion-and-scoped-budget--2026-10-19).
