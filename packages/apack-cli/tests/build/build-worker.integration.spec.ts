@@ -20,8 +20,7 @@ vi.mock('../../src/build/be-bundler', async importOriginal => ({
   bundlePackRuntime: vi.fn(() => { throw new Error('Supervisor retained its old compiler'); }),
 }));
 import { bundlePackRuntime } from '../../src/build/be-bundler';
-import { buildCommand } from '../../src/commands/build.ts';
-import { createPackBuilder, runPackBuild, type PackBuilder } from '../../src/build/build-process.ts';
+import { createPackBuilder, type PackBuilder, type PackBuildOptions } from '../../src/build/build-process.ts';
 import { compilerStartupOptions, COMPILER_NODE_OPTIONS_ENV } from '../../src/build/compiler-startup-options.ts';
 import type { BuildWatchInputs } from '../../src/build/build-watch-inputs.ts';
 import { readPhaseCache } from '../../src/build/phase-cache.ts';
@@ -35,8 +34,6 @@ const roots: string[] = [];
 const compilers: CompilerInstallation[] = [];
 const builders: PackBuilder[] = [];
 afterEach(async () => {
-  vi.restoreAllMocks();
-  vi.unstubAllEnvs();
   for (const root of roots) {
     const record = path.join(root, '.apack/compiler-child-pid');
     if (fs.existsSync(record)) {
@@ -46,8 +43,17 @@ afterEach(async () => {
   }
   await Promise.all(builders.splice(0).map(builder => builder.close()));
   await Promise.all(compilers.splice(0).map(compiler => compiler.dispose()));
+  vi.restoreAllMocks();
+  vi.unstubAllEnvs();
   roots.splice(0).forEach(root => fs.rmSync(root, { recursive: true, force: true }));
 });
+
+async function buildFixture(root: string, options: PackBuildOptions): Promise<void> {
+  const builder = createPackBuilder(root);
+  builders.push(builder);
+  try { await builder.build(options); }
+  finally { await builder.close(); }
+}
 
 function fixture(files: Record<string, string> = {}, content = {}) {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'apack-build-worker-'));
@@ -186,7 +192,8 @@ it('uses the captured compiler and retains unchanged build/cache identity on rep
   for (const workspace of workspaces) expect(fs.existsSync(workspace)).toBe(false);
 }, 360_000);
 
-it('records external inputs read by content compiler worker threads', async () => {
+it('records external inputs read by content compiler worker threads', async ({ signal }) => {
+  const started = performance.now();
   const outside = fs.mkdtempSync(path.join(os.tmpdir(), 'apack-worker-input-'));
   roots.push(outside);
   const modes = ['terminated', 'natural', 'nested', 'background'];
@@ -209,6 +216,7 @@ it('records external inputs read by content compiler worker threads', async () =
           try {
             const [name] = await once(worker, 'message');
             rows.push({entity: 'Relation', name});
+            console.info('Worker input mode completed', mode);
           } finally {
             if (mode === 'natural') await exited;
             else if (mode !== 'background') await worker.terminate();
@@ -219,7 +227,8 @@ it('records external inputs read by content compiler worker threads', async () =
   }, { formats: { rows: { compiler: 'src/compiler.cjs', entity: 'Relation', identity: ['name'] } },
     sources: { rows: { path: 'src/value.txt', format: 'rows' } } });
   vi.spyOn(process, 'cwd').mockReturnValue(root);
-  await buildCommand(['--skip-fe']);
+  await buildFixture(root, { args: ['--skip-fe'], signal: AbortSignal.any([signal, AbortSignal.timeout(120_000)]) });
+  console.info('Worker input build completed', Math.round(performance.now() - started));
   const content = JSON.parse(fs.readFileSync(path.join(root, 'dist/runtime/content/rows.content.json'), 'utf8'));
   expect(content.records.map((record: {name: string}) => record.name)).toEqual(modes);
   const inputs = readPackBuildInputs(path.join(root, 'dist'));
@@ -229,9 +238,10 @@ it('records external inputs read by content compiler worker threads', async () =
     expect(() => assertPackBuildInputsCurrent(root, inputs), modes[index]).toThrow(/changed/i);
     fs.writeFileSync(file, modes[index]!);
   }
-});
+  console.info('Worker input verification completed', Math.round(performance.now() - started));
+}, 120_000 + 20_000);
 
-it('refuses publication when a compiler worker cannot return its observations', async () => {
+it('refuses publication when a compiler worker cannot return its observations', async ({ signal }) => {
   const root = fixture({
     'src/value.txt': 'rows',
     'src/compiler.cjs': `const {Worker} = require('node:worker_threads');
@@ -248,7 +258,7 @@ it('refuses publication when a compiler worker cannot return its observations', 
   fs.mkdirSync(path.dirname(marker));
   fs.writeFileSync(marker, 'KEEP');
   vi.spyOn(process, 'cwd').mockReturnValue(root);
-  await expect(buildCommand(['--skip-fe'])).rejects.toThrow(/Pack build process exited/);
+  await expect(buildFixture(root, { args: ['--skip-fe'], signal })).rejects.toThrow(/Pack build process exited/);
   expect(fs.readFileSync(marker, 'utf8')).toBe('KEEP');
   expect(fs.readdirSync(path.dirname(marker))).toEqual(['incumbent.txt']);
 });
@@ -347,7 +357,7 @@ it('refuses publication when a loader-only external input changes during compila
   } finally { if (child.exitCode === null && child.signalCode === null) child.kill('SIGKILL'); }
 });
 
-it('terminates pack-created background work before accepting its candidate', async () => {
+it('terminates pack-created background work before accepting its candidate', async ({ signal }) => {
   const root = fixture({
     'src/compiler.ts': `import fs from 'node:fs'; import {spawn} from 'node:child_process';
       if (process.platform !== 'win32') {
@@ -360,7 +370,7 @@ it('terminates pack-created background work before accepting its candidate', asy
     'src/value.txt': 'DATA',
   }, { formats: { rows: { compiler: 'src/compiler.ts', entity: 'Relation', identity: ['name'] } },
     sources: { rows: { path: 'src/value.txt', format: 'rows' } } });
-  await runPackBuild(root, { args: ['--skip-fe'] });
+  await buildFixture(root, { args: ['--skip-fe'], signal });
   const output = JSON.parse(fs.readFileSync(path.join(root, 'dist/runtime/content/rows.content.json'), 'utf8'));
   expect(output.records[0].name).toBe('COMPLETE');
   if (process.platform !== 'win32') {
@@ -395,13 +405,13 @@ it('refuses candidate output changed by a compiler exit handler and retains the 
   expect(fs.existsSync(path.join(root, '.apack/build'))).toBe(false);
 }, 180_000 + 20_000);
 
-it('reports frontend inputs that remain available after its compiler installation is removed', async () => {
+it('reports frontend inputs that remain available after its compiler installation is removed', async ({ signal }) => {
   const root = fixture({
     'src/pack-entry-fe.ts': 'import "./Panel.vue"; export { default } from "./__generated__/pack-entry-fe.ts";',
     'src/Panel.vue': '<script setup lang="ts">import { computed } from "vue"; const label = computed(() => "Hello");</script><template><div>{{ label }}</div></template>',
   });
   const reports: BuildWatchInputs[] = [];
-  await runPackBuild(root, { onInputs: inputs => { reports.push(inputs); } });
+  await buildFixture(root, { signal, onInputs: inputs => { reports.push(inputs); } });
   expect(reports.some(report => report.successful && report.files.some(file => file.endsWith('Panel.vue')))).toBe(true);
   for (const report of reports) {
     expect([...report.files, ...report.directories, ...(report.probes?.map(([file]) => file) ?? [])]
@@ -505,6 +515,7 @@ it.each([
 ] as const)('removes its worker and compiler when the public build command is stopped while $name', async ({ watch, phase, release }) => {
   // Shutdown removes a complete compiler file tree, unlike the IPC-only exit checks above.
   const cleanupDeadlineMs = 20_000;
+  const startupDeadlineMs = phase === 'ready' ? 120_000 : 60_000;
   const root = fixture({
     'src/compiler.ts': `import fs from 'node:fs'; export default async function() {
       fs.writeFileSync('.apack/compiler-inputs-path', process.env.${COMPILER_INPUTS_ENV}!);
@@ -530,7 +541,7 @@ it.each([
     child.once('close', () => reject(new Error(`Watch stopped before ready: ${output}`)));
   });
   try {
-    await _byDeadline(ready, `public watcher startup (${phase})`, 60_000);
+    await _byDeadline(ready, `public watcher startup (${phase})`, startupDeadlineMs);
     const inputs = fs.readFileSync(path.join(root, '.apack/compiler-inputs-path'), 'utf8');
     const worker = Number(fs.readFileSync(path.join(root, '.apack/compiler-pid'), 'utf8'));
     expect(fs.existsSync(inputs)).toBe(true);
@@ -545,4 +556,4 @@ it.each([
     if (child.exitCode === null && child.signalCode === null) child.kill();
     await _byDeadline(closed, 'public watcher cleanup', cleanupDeadlineMs);
   }
-}, 60_000 + 20_000 + 20_000);
+}, 120_000 + 20_000 + 20_000);

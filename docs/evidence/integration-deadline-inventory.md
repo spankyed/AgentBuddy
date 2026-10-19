@@ -597,3 +597,102 @@ earlier 30s slowdown is not reproduced or retrospectively attributed. Preserve t
 the repair composes explicit bounded work rather than claiming a compiler-performance fix.
 Reports are at `/private/tmp/apack-electron-driver-39251438405/`, with the full log alongside.
 Resume the required normal unfiltered integration gate on this committed repair, then final strict.
+
+Normal [39253013877](https://github.com/spankyed/AgentBuddy/actions/runs/39253013877) is dispatched
+on workflow-only `92fe30ef6` over main `9783f52e2`. It retains the same complete preparation and
+unfiltered `npm run test:integration -- --all`, two cores, source operation/event/cleanup limits and
+120-minute pool aggregate. No focused selection or temporary compiler tracing is present. Require
+this normal gate, final main strict `--all`, and complete requirement audit/archival before closure.
+
+### Normal gate reaches worker-thread verification — 2026-10-19
+
+Run `39253013877` is terminal and failed after **408 reported passes**, one **whole-scenario 60s
+timeout**, and 26 platform skips; integration takes 379.50s. The failure is `records external inputs
+read by content compiler worker threads`, reported at 70.922s including completion/cleanup. The
+console shows four compiled rows and published output before the refusal, not a value assertion.
+All prerequisite stages pass. Both actual Electron controls pass, including build/archive at 189.987s.
+The native file's “25 tests” label is its declared population, **not proof all 25 bodies ran** after
+global bail. Preserve the reported aggregate and reached controls without counting unreached native
+or worker bodies as accepted. Complete earlier eight-file results remain preserved separately.
+
+Raw output and duration records are under `/private/tmp/apack-normal-integration-39253013877/`;
+the complete terminal log is `/private/tmp/apack-normal-integration-39253013877-full.log`.
+
+Source `f9cb91f38` gives the demonstrated thread scenario a 120s bounded cold build plus 20s input
+verification allowance. Its four thread modes, content/receipt/freshness assertions and other cases'
+deadlines remain. A local fixture-build owner registers the four formerly untracked one-shot builds;
+they receive test cancellation and close before fixture deletion. Teardown now drains owners before
+restoring mocked process/environment state. This closes a source-visible timeout/cleanup race rather
+than changing production build APIs. Existing public CLI stop/IPC cases remain intact. All 53
+timeout/subprocess-inventory checks, CLI types, correctness lint and diff checks pass.
+
+Focused [39257458780](https://github.com/spankyed/AgentBuddy/actions/runs/39257458780), workflow-only
+`3412e646b` on that source, executes the **entire 16-case worker file** beside four actual native/Electron
+counterparts with two workers and bail disabled. This provides the affected file's complete post-repair
+inventory before another normal gate; do not repeat broad integration to discover its next boundary.
+The existing 60s/15s/etc. native operation/event limits are not changed by this workflow.
+
+The full-file run completes in **767.840s**: **18 passed, two failed**, 21 deliberately filtered.
+All 20 selected bodies execute. The repaired thread case passes in **107.986s**, with all four modes,
+build completion at 89.190s and final receipt/freshness verification at 107.952s. Observation refusal,
+background retirement, exit-handler incumbent retention, source-free frontend paths, IPC shutdown,
+bootstrap refusal and the three compiling-phase cancellation variants also pass. Captured Electron
+launch and both retained-Vite cases pass. No cleanup or unhandled reporting error is reported.
+
+Both failures are **individual-operation timeouts**: full public watch readiness exceeds its 60s
+startup wait (66.620s including cleanup); the real Electron full-build command exceeds 180s
+(182.168s including forced-close grace, 259.220s for the case). That command completes content and
+backend output and reaches cold frontend compilation before interruption. Init/add finish at
+53.064s/23.554s. These are not value assertions or whole-scenario/aggregate timeouts. Reports are
+at `/private/tmp/apack-worker-build-39257458780/`, with the full terminal log alongside.
+
+Source `4f20bab39` distinguishes completed cold-build readiness (120s) from merely reaching compiler
+entry (unchanged 60s); shutdown/cleanup remain 20s each and the longest case composes to 160s.
+Only the full Electron build command combines its backend 180s allowance with cold frontend 120s;
+init/add/archive retain 60s, and the total case composes to 540s including verification/retirement.
+All 53 policy/inventory checks, CLI types, correctness lint and diff checks pass. Assertions and
+production compiler/runtime code are unchanged. This is a scoped phase-budget repair, not a claim
+that the broad slowdown has been attributed or that compiler performance improved.
+
+Focused [39260287200](https://github.com/spankyed/AgentBuddy/actions/runs/39260287200), workflow-only
+`bbb5e06b8` over that source, runs exactly the two failed case names read from the preserved report,
+two workers, no bail. Preserve the other 18 passes; require both repaired cases before normal and
+final strict acceptance. Main source push encountered a transient network timeout; its retry succeeded
+at `43fdc6c09`. Both source branches are preserved remotely; validation was not restarted.
+
+### Phase acceptance and remaining fixture-owner audit — 2026-10-19
+
+Run `39260287200` passes **both exact cases with exit 0**, 174.573s. Full public watch readiness,
+shutdown and cleanup complete in **88.967s**, confirming that its old 60s full-readiness allowance
+was insufficient. The real Electron build/archive case passes in **170.275s**: init 29.736s,
+add 22.984s, full build 103.364s, passive archive 13.236s. Executable/runtime/output/disposal and
+non-executing archive assertions remain. The earlier slower build is not retrospectively attributed;
+no compiler-performance improvement is claimed. Combined with the previous complete affected run's
+18 passes, every selected worker/native behavior now has passing evidence. This is not a normal or
+strict whole-suite pass. Reports are in `/private/tmp/apack-compiler-phase-39260287200/`, with the
+full terminal log alongside.
+
+A static pass over remaining default-bound direct build/capture integration cases identifies ten
+cases for inspection. Existing owned lifetimes, intentional early refusals, mocked cancellation and
+platform-specific capture controls retain their bounds. One source-visible owner gap remains in
+`own-declarations.integration.spec.ts`: an untracked cold backend/frontend build can outlive the
+test while unconditional fixture teardown deletes its inputs. Its historical 42.247s pass is preserved;
+this is not a newly observed assertion failure.
+
+Source `526255eee` registers that builder with teardown, propagates test cancellation with a 120s
+build bound, closes it before source-free inspection, and composes 20s for declaration/runtime
+verification. All original owned-key, shape, provenance, source-removal and activation assertions
+remain. All 53 policy/inventory checks, CLI types, correctness lint and diff checks pass. Focused
+[39261544678](https://github.com/spankyed/AgentBuddy/actions/runs/39261544678), workflow-only
+`b1e703d18`, verifies that exact case beside the accepted compiler-thread case, two workers. This
+named concurrency/ownership check must finish before normal; no general test framework, product
+compiler change or default deadline increase is introduced.
+
+Run `39261544678` passes **both selected cases with exit 0**, 40.670s: own-declaration build,
+source-free inspection and runtime loading **32.033s**, concurrent compiler-thread input capture
+**38.328s**. All owned-key/shape/provenance/no-activation/source-removal/runtime assertions pass;
+no reporting or cleanup error is reported. This accepts `526255eee`'s fixture ownership repair.
+Reports are in `/private/tmp/apack-declaration-build-39261544678/`, with the full log alongside.
+The complete affected inventory and both subsequent focused repairs now have passing behavioral
+evidence. Return to the required normal unfiltered gate with the combined committed repairs; final
+main strict `--all` and requirement audit/archival remain outstanding.

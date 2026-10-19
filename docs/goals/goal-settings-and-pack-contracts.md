@@ -312,6 +312,42 @@ Electron control plus all 64 database cases on two workers. The Electron control
 verifies identity/currentness/retirement without RPC or cleanup errors. The prior 30s slowdown remains
 unattributed; the composed driver repair is accepted, not a claimed performance fix. Resume required
 normal unfiltered integration with this committed source, then final main strict `--all`.
+Normal [39253013877](https://github.com/spankyed/AgentBuddy/actions/runs/39253013877) is now dispatched
+on workflow-only `92fe30ef6` over exact main `9783f52e2`, retaining required preparation, unfiltered
+repository command and two-core budget. Final strict, requirement audit and completed-only archival
+remain required; no diagnostic source is merged.
+That normal run is terminal and failed after 408 reported passes: one 60s whole-scenario timeout in
+the worker-thread external-input case. Both Electron controls pass, including actual build/archive;
+global bail leaves later cases unaccepted despite the native file's “25 tests” declaration label.
+Source `f9cb91f38` bounds the cold thread build at 120s plus 20s verification, registers/drains fixture
+build owners on cancellation and preserves every content/input assertion. Other case deadlines stay.
+All 53 policy/inventory checks, CLI types and correctness lint pass. Focused
+[39257458780](https://github.com/spankyed/AgentBuddy/actions/runs/39257458780), workflow-only
+`3412e646b`, now runs all 16 worker cases beside four native/Electron counterparts on two workers,
+without bail, before another normal gate. Required strict and complete closure remain outstanding.
+That complete affected run reports 18 passes and two individual-operation timeouts, all 20 bodies
+executed. The repaired thread case passes in 107.986s, including build at 89.190s and verification at
+107.952s; no cleanup/reporting error. Remaining failures are full watch readiness at 60s and real
+Electron backend/frontend build at 180s, after backend output is produced. Source `4f20bab39`
+separates full readiness (120s) from compiler entry (unchanged 60s), and composes Electron backend
+plus cold frontend in only that command (300s); other command/shutdown/cleanup bounds remain.
+All 53 policy/inventory checks, CLI types and correctness lint pass. Focused
+[39260287200](https://github.com/spankyed/AgentBuddy/actions/runs/39260287200), workflow-only
+`bbb5e06b8`, now runs exactly the two failures on two workers. Preserve the 18 passes; no broad gate
+until these converge, and no compiler-performance fix is claimed.
+Both cases in `39260287200` now pass with exit 0: full readiness 88.967s and real Electron build/archive
+170.275s. Preserve the previous 18 passes; these are scoped behavioral acceptance, not a whole-suite
+pass. A static audit of remaining default-bound direct build/capture cases identifies one additional
+untracked declaration-fixture build whose timeout can race fixture deletion. Source `526255eee`
+registers/drains its builder, propagates cancellation and composes cold build plus source-free/runtime
+inspection without changing assertions. All 53 policy/inventory checks, CLI types and lint pass.
+Focused [39261544678](https://github.com/spankyed/AgentBuddy/actions/runs/39261544678), workflow-only
+`b1e703d18`, checks that fixture with concurrent compiler-thread capture before another normal gate.
+That acceptance now passes 2/2 with exit 0: own-declaration source-free/runtime case 32.033s and
+concurrent thread-input case 38.328s, without cleanup/reporting errors. All focused repairs have
+passing behavioral evidence; resume normal unfiltered integration on their combined committed
+source, then final main strict `--all` and complete requirement audit/archival. Do not turn these
+focused passes into a whole-suite completion claim.
 Source **`21ed07fe7`** gives complete integration its own 120-minute aggregate class. The pool runner
 reads its owning chain step's deadline; ordinary unit pools remain at 600s. The measured file work
 already exceeds 53 minutes at an ideal two-worker balance, without blocked setup/preparation, so the

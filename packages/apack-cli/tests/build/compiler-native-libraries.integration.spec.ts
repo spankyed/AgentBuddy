@@ -150,7 +150,8 @@ it.runIf(process.platform === 'darwin' || process.platform === 'linux').each(ele
       return [{entity:'ElectronProof',name:'runtime'}];
     }`);
   await command(pack, ['add', 'feature', 'sample', '--description', 'Verify Electron compilation.']);
-  await command(pack, ['build'], { timeoutMs: 180_000 });
+  // This command includes both the captured backend and the cold frontend build.
+  await command(pack, ['build'], { timeoutMs: 180_000 + 120_000 });
   const runtime = JSON.parse(fs.readFileSync(proof, 'utf8')) as { versions: { electron: string; node: string }; executable: string };
   expect(runtime.versions.electron).toBe(version);
   expect(runtime.executable).not.toBe(fs.realpathSync.native(electron));
@@ -168,7 +169,7 @@ it.runIf(process.platform === 'darwin' || process.platform === 'linux').each(ele
   console.log('Electron pack compilation accepted', JSON.stringify({ runtime, revision: built.revision }));
   completed = true;
 // Four command bounds, followed by output verification and owned process disposal.
-}, 60_000 + 60_000 + 180_000 + 60_000 + 60_000);
+}, 60_000 + 60_000 + (180_000 + 120_000) + 60_000 + 60_000);
 
 it.runIf(process.platform === 'darwin')('refuses outside runtime-linked Mach-O constructors and accepts contained runtime libraries', async () => {
   const root = fs.realpathSync.native(fs.mkdtempSync(path.join(os.tmpdir(), 'apack-macho-runtime-')));
