@@ -325,6 +325,16 @@ All 53 policy/inventory checks, CLI types and correctness lint pass. Focused
 [39257458780](https://github.com/spankyed/AgentBuddy/actions/runs/39257458780), workflow-only
 `3412e646b`, now runs all 16 worker cases beside four native/Electron counterparts on two workers,
 without bail, before another normal gate. Required strict and complete closure remain outstanding.
+That complete affected run reports 18 passes and two individual-operation timeouts, all 20 bodies
+executed. The repaired thread case passes in 107.986s, including build at 89.190s and verification at
+107.952s; no cleanup/reporting error. Remaining failures are full watch readiness at 60s and real
+Electron backend/frontend build at 180s, after backend output is produced. Source `4f20bab39`
+separates full readiness (120s) from compiler entry (unchanged 60s), and composes Electron backend
+plus cold frontend in only that command (300s); other command/shutdown/cleanup bounds remain.
+All 53 policy/inventory checks, CLI types and correctness lint pass. Focused
+[39260287200](https://github.com/spankyed/AgentBuddy/actions/runs/39260287200), workflow-only
+`bbb5e06b8`, now runs exactly the two failures on two workers. Preserve the 18 passes; no broad gate
+until these converge, and no compiler-performance fix is claimed.
 Source **`21ed07fe7`** gives complete integration its own 120-minute aggregate class. The pool runner
 reads its owning chain step's deadline; ordinary unit pools remain at 600s. The measured file work
 already exceeds 53 minutes at an ideal two-worker balance, without blocked setup/preparation, so the

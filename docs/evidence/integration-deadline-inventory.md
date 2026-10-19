@@ -631,3 +631,31 @@ Focused [39257458780](https://github.com/spankyed/AgentBuddy/actions/runs/392574
 counterparts with two workers and bail disabled. This provides the affected file's complete post-repair
 inventory before another normal gate; do not repeat broad integration to discover its next boundary.
 The existing 60s/15s/etc. native operation/event limits are not changed by this workflow.
+
+The full-file run completes in **767.840s**: **18 passed, two failed**, 21 deliberately filtered.
+All 20 selected bodies execute. The repaired thread case passes in **107.986s**, with all four modes,
+build completion at 89.190s and final receipt/freshness verification at 107.952s. Observation refusal,
+background retirement, exit-handler incumbent retention, source-free frontend paths, IPC shutdown,
+bootstrap refusal and the three compiling-phase cancellation variants also pass. Captured Electron
+launch and both retained-Vite cases pass. No cleanup or unhandled reporting error is reported.
+
+Both failures are **individual-operation timeouts**: full public watch readiness exceeds its 60s
+startup wait (66.620s including cleanup); the real Electron full-build command exceeds 180s
+(182.168s including forced-close grace, 259.220s for the case). That command completes content and
+backend output and reaches cold frontend compilation before interruption. Init/add finish at
+53.064s/23.554s. These are not value assertions or whole-scenario/aggregate timeouts. Reports are
+at `/private/tmp/apack-worker-build-39257458780/`, with the full terminal log alongside.
+
+Source `4f20bab39` distinguishes completed cold-build readiness (120s) from merely reaching compiler
+entry (unchanged 60s); shutdown/cleanup remain 20s each and the longest case composes to 160s.
+Only the full Electron build command combines its backend 180s allowance with cold frontend 120s;
+init/add/archive retain 60s, and the total case composes to 540s including verification/retirement.
+All 53 policy/inventory checks, CLI types, correctness lint and diff checks pass. Assertions and
+production compiler/runtime code are unchanged. This is a scoped phase-budget repair, not a claim
+that the broad slowdown has been attributed or that compiler performance improved.
+
+Focused [39260287200](https://github.com/spankyed/AgentBuddy/actions/runs/39260287200), workflow-only
+`bbb5e06b8` over that source, runs exactly the two failed case names read from the preserved report,
+two workers, no bail. Preserve the other 18 passes; require both repaired cases before normal and
+final strict acceptance. Main source push encountered a transient network timeout; the focused source
+branch was pushed successfully and its run is live. Retry the main push without restarting validation.
