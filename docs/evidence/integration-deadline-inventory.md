@@ -1184,3 +1184,23 @@ worker/process identity and loop gaps; JSON and verbose reports retain actual ca
 workers, existing per-test/operation/cleanup deadlines, no fail-fast for this explicit diagnostic,
 40-minute selected-test envelope. No normal or strict gate runs concurrently. Inspect measured gaps
 at the time they grow: a cumulative gap attributed only to a worker's last file would be misleading.
+
+### Watcher operation contract correction — 2026-10-19
+
+Inspection of `createPackBuilder.build()` and `buildWithCompiler()` confirms that every watch build
+starts a fresh worker, executes the selected compilation phases, seals its output and verifies
+publication. A retained compiler installation can save capture work; it does not remove these phases
+or impose a smaller work limit on a source edit. The test helper nevertheless assigned 120s to the
+first build and 60s to every later one. The normal run demonstrates that the latter limit expires
+after the changed flow and frontend compile, before publication finishes.
+
+Use the **existing 120s build-operation bound for every request**, removing the first/subsequent
+branch. This preserves the full input scope and all value assertions. Request/notification bounds
+remain 20s each, cleanup remains 20s, and the helper's exported scenario allowance composes those
+with the actual operation bound. No default suite limit, RPC timeout or production compiler changes.
+The diagnostic remains immutable on the original 60s rebuild bound, to preserve cause/timing evidence.
+
+Local safe validation: all seven mocked watcher ownership/deadline cases, 53 timeout-policy and
+subprocess-inventory checks, CLI TypeScript and focused correctness lint pass. The mocked operation
+still aborts and reports its own deadline independently of request and cleanup failure checks.
+Real affected watcher acceptance remains required after the diagnostic result; no broad pass is claimed.

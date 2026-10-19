@@ -73,6 +73,11 @@ on workflow-only **`e3956518c`**, containing main **`5ce394268`**, selects only 
 output swap, feature authoring/validation and database integration. Two workers, unchanged per-test
 deadlines and the existing event-loop probe must distinguish operation cost from worker reporting
 starvation. No broad rerun until the demonstrated failures are repaired and affected checks pass.
+Source inspection identifies an unjustified first/subsequent build split: every watch request uses a
+fresh worker through verified publication. The helper now consistently uses its existing 120s build
+bound instead of reducing later builds to 60s; request, notification and cleanup bounds remain 20s.
+Seven mocked watcher cases, 53 policy/inventory checks, CLI types and lint pass. The diagnostic keeps
+the old bound for immutable evidence; real affected watcher acceptance and reporting attribution remain.
 Then pass normal unfiltered integration and run final committed-source strict
 `--all`, finish the full requirement audit and archive only completed work. The separate validation-
 budget/Nx/Wireit proposals remain outside this goal. A concurrent final-source audit finds one stale
