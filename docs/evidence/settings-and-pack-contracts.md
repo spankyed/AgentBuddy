@@ -8216,3 +8216,52 @@ as acceptance of the original 120s check or merge the diagnostic blindly. Keep f
 focused until the demonstrated cause or measured sequential-scenario cost is understood. The pending
 bound-only decision, remaining integration cases/app halves and final current-source strict gate remain
 required. No local native execution, VM startup, production-data operation or new broad run occurs.
+
+
+### Native watch completion measured; single-scenario budget repaired
+
+Diagnostic [39195118565](https://github.com/spankyed/AgentBuddy/actions/runs/39195118565) succeeds
+on exact source **`146bc2b6e7695125e9f282ccbb22d68c4a24d3d1`**. Its verifier confirms **one executed
+passing case**, not a filter selecting nothing. The entire case takes **239.827s** under its diagnostic
+240s envelope, with the following elapsed phase checkpoints:
+
+| Phase | Elapsed |
+|---|---|
+| Initial watch/backend ready | 103.138s |
+| Initial frontend ready | 111.360s |
+| Unchanged-touch check | 118.447s |
+| Expected missing-dependency refusal | 146.231s |
+| New dependency repaired | 146.269s |
+| Detected repair rebuild starts | 163.999s |
+| Repair rebuild completes | 229.790s |
+| Repair published | 236.952s |
+| Existing owners close | 238.580s |
+
+All original assertions pass: the incumbent stays usable on refusal, repair outside authored inputs
+is detected, one successful publication replaces the old frontend, the old PID retires and actual
+native values are exactly `[11, 22]`. Thus this control establishes completed recovery and measured
+sequential work; it is not evidence of a missed event or a deadlocked final build. Variation in setup
+cost is observed across the three runs; its machine/OS-level cause is not established and no general
+compiler/performance redesign is inferred. Log: `/private/tmp/apack-native-watch-39195118565.log`;
+clean copy: `/private/tmp/apack-native-watch-39195118565-clean.log`.
+
+Reviewed main checkpoint **`bc53fed70`** keeps every assertion, both **20s missing-event waits** and
+the **2s publication observation wait**. Only this complete sequential scenario gets **300s**; the
+240s probe had less than one second of outer headroom after fixture construction. The documented
+exception now cites this actual control instead of the earlier 98.76s implementation. No suite,
+worker, product-operation or unrelated case deadline is increased.
+
+The same checkpoint registers one idempotent cleanup with both `finally` and `onTestFinished`, using
+the existing watcher and builder owners. It attempts builder cleanup even if watcher closure fails,
+restores the environment/console spy, and retains failed fixtures. Main additionally keeps fixture
+files when cleanup fails and reports that failure accurately; successful cleanup deletes them only
+after body assertions and both owners finish. The positive control measures successful teardown;
+no separate forced-timeout teardown control is claimed.
+
+All **53** timeout-policy/subprocess-inventory checks, CLI TypeScript, correctness lint and whitespace
+checks pass. Logs: `/private/tmp/apack-native-watch-budget-{checks,types,lint}.log`. The unmodified
+production compiler/watch path remains the one measured by the probe. Diagnostic branch/worktree
+`session/native-watch-recovery-diagnostic` / `/private/tmp/apack-native-watch-recovery-diagnostic`
+is preserved, with no shared dependencies/generated output or blind merge. Required whole affected
+integration/current-source strict acceptance and authoring/app handoffs remain open; the pending
+bound-only scope question is not resolved or excluded by this timing repair.
