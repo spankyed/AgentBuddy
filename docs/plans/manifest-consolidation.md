@@ -331,8 +331,9 @@ The own-property repair passes 72 focused schema/declaration/resolution cases, t
 format codegen consumer, SDK types, schema check and lint. See its
 [evidence](../evidence/settings-and-pack-contracts.md#explicit-content-declarations-in-schema-and-resolution-2026-10-18).
 The converged/final strict gates, all-kind discovery and the complete execution goal remain required.
-Remote execution is waiting for the explicit push authorization requested after automatic review
-rejected that action; do not substitute historical-source CI or these static checks for the gate.
+The user subsequently authorized pushes and remote validation. Current affected acceptance and the
+remaining normal integration/strict gates are tracked in the active goal's live ledger; this earlier
+source audit is not a substitute for those gates.
 
 ## Facade handoff correction (2026-10-14)
 
