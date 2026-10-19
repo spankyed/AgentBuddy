@@ -1026,3 +1026,43 @@ Its only differences are scaffold phase/start/end/RSS/heap readings and the focu
 markers sit outside the existing CLI console capture. Runner exit status and unhandled errors remain
 part of the result; logging itself is not a repair or acceptance. Main's unrelated staged
 `validation-feedback-budget.md` edits are preserved and excluded from these evidence commits.
+
+
+## Scaffold process-boundary checkpoint — 2026-10-19
+
+Diagnostic [39306120746](https://github.com/spankyed/AgentBuddy/actions/runs/39306120746)
+completes **29 actual passes, zero failed or pending bodies**, but **exit 1** for one unhandled
+`Timeout calling "onTaskUpdate"`. The command takes 608.819s. This is a reporting failure, not a
+passing acceptance gate. Preserve the unchanged-deadline report and prior normal 260s scenario failure.
+
+Scaffold phase measurements: initialization 13.287s; feature add 21.485s; builds **59.253s,
+92.025s and 116.345s**; TypeScript checks **3.322s and 3.398s**; archive 18.243s; step add 23.120s;
+service add 49.270s; generated-entry subprocesses 38.401s/16.722s. TypeScript is not the measured
+bottleneck. RSS readings alone do not establish a memory leak, GC cause or operating-system fault.
+Raw evidence: `/private/tmp/apack-scaffold-phase-39306120746/` and
+`/private/tmp/apack-scaffold-phase-39306120746-full.log`.
+
+Replace only this scaffold file's toolchain boundary: actual CLI commands and nested Vitest execute
+in asynchronous owned processes, preserving command assertions and shared pack evolution. Each CLI
+operation keeps an independent 60s limit; successful full cold builds use 120s. Test cancellation sends
+SIGTERM so public build owners drain their compiler workers, escalates after two seconds using the
+existing POSIX process-group owner (direct-child termination on Windows), and bounds process closure
+at 20s. A deadline or cancellation throws an attributed error rather than returning a nonzero status
+that a refusal assertion could accidentally accept. Wait for closure and group retirement before
+continuing; a failed operation prevents subsequent shared-fixture cases and preserves the directory.
+The existing compiler's Windows Job Object/IPC ownership remains responsible for compiler descendants;
+this change does not introduce a general Windows process-tree supervisor for arbitrary nested tools.
+
+Compose affected case limits from these CLI allowances, the existing TypeScript allowance and 20s
+verification/cleanup. Keep TypeScript in process: its measured three seconds do not justify moving it.
+No product compiler, watcher, settings, input contract or assertion changes. The subprocess inventory
+moves its single scaffold spawn site to the scoped helper rather than concealing a new site.
+Eight pure mocked lifecycle checks cover refusal versus timeout, cancellation, no spawn after abort,
+awaited closure/retirement, escalation, bounded cleanup failure and spawn errors. All 53 policy/inventory
+checks, CLI typecheck and changed-file lint pass. No native/compiler execution occurs on the daily Mac.
+
+Next acceptance must run the same complete two scaffold files together, plus the unreached DSL
+snapshot case (30 bodies total), with two workers. Require **exit 0**, all bodies and no unhandled
+reporting errors. Only after that passes resume the normal unfiltered gate, then committed-source
+strict `--all`; the broader validation-budget/Nx proposals remain separate. Real process-boundary
+acceptance is pending, including whether the full public cold build fits its independent bound.

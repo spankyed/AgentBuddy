@@ -1,0 +1,104 @@
+import { EventEmitter } from 'node:events';
+import { PassThrough } from 'node:stream';
+import type { ChildProcess } from 'node:child_process';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { runScaffoldCommand } from '../_support/scaffold-process.ts';
+
+const { spawn, stopGroup } = vi.hoisted(() => ({ spawn: vi.fn(), stopGroup: vi.fn() }));
+vi.mock('node:child_process', () => ({ spawn }));
+vi.mock('../../src/build/compiler-process-group.ts', () => ({ stopCompilerProcessGroup: stopGroup }));
+
+let child: EventEmitter & { pid: number; stdout: PassThrough; stderr: PassThrough; kill: ReturnType<typeof vi.fn> };
+beforeEach(() => {
+  vi.useFakeTimers();
+  vi.spyOn(console, 'info').mockImplementation(() => {});
+  child = Object.assign(new EventEmitter(), { pid: 12345, stdout: new PassThrough(), stderr: new PassThrough(), kill: vi.fn() });
+  spawn.mockReturnValue(child as unknown as ChildProcess);
+  stopGroup.mockResolvedValue(undefined);
+});
+afterEach(() => { vi.useRealTimers(); vi.restoreAllMocks(); vi.clearAllMocks(); });
+
+describe('scaffold toolchain process ownership', () => {
+  it('keeps a real command refusal distinct from a timeout and waits for close', async () => {
+    const run = runScaffoldCommand('node', ['apack.mjs', 'pack', 'validate'], '/pack');
+    child.stdout.write('checking\n');
+    child.stderr.write('invalid manifest\n');
+    let settled = false;
+    void run.then(() => { settled = true; });
+    child.emit('exit', 1);
+    await Promise.resolve();
+    expect(settled).toBe(false);
+    child.emit('close', 1);
+    await expect(run).resolves.toEqual({ code: 1, output: 'checking\ninvalid manifest\n' });
+    expect(child.kill).not.toHaveBeenCalled();
+    expect(vi.getTimerCount()).toBe(0);
+  });
+
+  it('attributes an operation timeout after graceful shutdown rather than accepting its exit code', async () => {
+    const run = runScaffoldCommand('node', ['apack.mjs', 'pack', 'build'], '/pack', { timeout: 100 });
+    const refused = expect(run).rejects.toThrow('node apack.mjs pack build: operation exceeded 100ms');
+    await vi.advanceTimersByTimeAsync(100);
+    expect(child.kill).toHaveBeenCalledWith('SIGTERM');
+    child.emit('close', 1);
+    await refused;
+    expect(vi.getTimerCount()).toBe(0);
+  });
+
+  it('aborts a running command but waits for closure before settling', async () => {
+    const controller = new AbortController();
+    const run = runScaffoldCommand('node', ['apack.mjs'], '/pack', { signal: controller.signal });
+    const refused = expect(run).rejects.toThrow('node apack.mjs: cancelled');
+    controller.abort();
+    expect(child.kill).toHaveBeenCalledWith('SIGTERM');
+    child.emit('close', null);
+    await refused;
+    expect(vi.getTimerCount()).toBe(0);
+  });
+
+  it('does not start a command after its test has been cancelled', async () => {
+    await expect(runScaffoldCommand('node', [], '/pack', { signal: AbortSignal.abort() })).rejects.toThrow();
+    expect(spawn).not.toHaveBeenCalled();
+  });
+
+  it.skipIf(process.platform === 'win32')('awaits descendant retirement after the direct child closes', async () => {
+    let retire!: () => void;
+    stopGroup.mockReturnValueOnce(new Promise<void>(resolve => { retire = resolve; }));
+    const run = runScaffoldCommand('node', [], '/pack');
+    let settled = false;
+    void run.then(() => { settled = true; });
+    child.emit('close', 0);
+    await vi.advanceTimersByTimeAsync(0);
+    expect(stopGroup).toHaveBeenCalledWith(child.pid);
+    expect(settled).toBe(false);
+    retire();
+    await expect(run).resolves.toEqual({ code: 0, output: '' });
+  });
+
+  it('escalates a stuck command through the existing process owner, then awaits closure', async () => {
+    const run = runScaffoldCommand('node', [], '/pack', { timeout: 100 });
+    const refused = expect(run).rejects.toThrow('operation exceeded 100ms');
+    await vi.advanceTimersByTimeAsync(2_100);
+    if (process.platform === 'win32') expect(child.kill).toHaveBeenCalledWith('SIGKILL');
+    else expect(stopGroup).toHaveBeenCalledWith(child.pid);
+    child.emit('close', null);
+    await refused;
+    expect(vi.getTimerCount()).toBe(0);
+  });
+
+  it('reports a separate bounded cleanup failure if the process never closes', async () => {
+    const run = runScaffoldCommand('node', [], '/pack', { timeout: 100 });
+    const refused = expect(run).rejects.toThrow('process did not close within the 20s cleanup limit');
+    await vi.advanceTimersByTimeAsync(20_100);
+    await refused;
+    expect(vi.getTimerCount()).toBe(0);
+  });
+
+  it('attributes a missing executable rather than returning a normal CLI refusal', async () => {
+    const run = runScaffoldCommand('missing', [], '/pack');
+    const refused = expect(run).rejects.toThrow('ENOENT');
+    child.emit('error', new Error('ENOENT'));
+    child.emit('close', -2);
+    await refused;
+    expect(vi.getTimerCount()).toBe(0);
+  });
+});

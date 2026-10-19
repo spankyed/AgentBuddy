@@ -28,6 +28,8 @@ import { repoFiles } from './_support/repo-files.ts';
  * fails on an entry whose override has gone, so the list shrinks when the reason does.
  */
 const TIMEOUT_EXCEPTIONS: Record<string, string> = {
+  'packages/apack-cli/tests/commands/scaffold.integration.spec.ts > beforeAll':
+    'Real CLI initialization has its own 60s operation bound; the setup hook additionally allows 20s for cancellation and awaited shutdown.',
   'packages/apack-cli/tests/build/own-declarations.integration.spec.ts > preserves owned names through authoring, compiled snapshots, source-free discovery and runtime loading':
     'One explicitly bounded cold backend/frontend build (120s) precedes snapshot checks, source-free inspection and runtime admission (20s). Its registered builder receives test cancellation and drains before inputs are deleted; all declaration/shape/provenance/activation assertions remain.',
   'packages/apack-cli/tests/build/build-worker.integration.spec.ts > refuses publication when a compiler worker cannot return its observations':
@@ -68,7 +70,7 @@ const TIMEOUT_EXCEPTIONS: Record<string, string> = {
   'packages/apack-cli/tests/build/compiler-native-libraries.integration.spec.ts > captures native %s libraries and retains the incumbent after outside-library refusal':
     'A successful cold build (120s), two refused attempts (60s each), fixture creation, ordinary-loader controls, freshness/retention checks and cleanup (60s) compose a 300s scenario. Normal run 39269209929 completes the thread case at 126.668s beyond the former 120s outer limit; its initial build alone takes 73.232s. Each refusal must occur before its own abort signal. Preserve all initialization, copy, freshness and incumbent assertions; ordinary-loader and suite bounds remain unchanged.',
   'packages/apack-cli/tests/commands/scaffold.integration.spec.ts > adds a step (declared, shipped in build/steps.build.mjs) and a service that build':
-    "Step generation, service generation, real build and typecheck share this case.",
+    "Step generation (60s), service generation (60s), public cold build (120s), typecheck (60s) and cleanup (20s) are sequential. Diagnostic 39306120746 measures the build at 116.345s and the two generators at 23.120s/49.270s; separate command bounds remain cancellable.",
   'packages/apack-cli/tests/build/frontend-resources.integration.spec.ts > watches initially empty external Tailwind content through nested directory links':
     "Initial capture precedes two directory-membership/link-retarget builds, with separate request, compiler and notification bounds from watch-builds.",
   'packages/apack-cli/tests/build/staged-dsl.integration.spec.ts > preserves a verified build on a later failure, then publishes and reuses the current definitions with its frontend':
@@ -92,9 +94,13 @@ const TIMEOUT_EXCEPTIONS: Record<string, string> = {
   "packages/apack-cli/tests/build/package-inputs.integration.spec.ts > rebuilds the frontend when an undeclared imported package changes behind unchanged types":
     "Two real builds verify changed runtime bytes behind unchanged declarations.",
   "packages/apack-cli/tests/commands/scaffold.integration.spec.ts > adds a feature, builds, typechecks and packs a verified archive":
-    "Feature generation, validate, doctor, build, typecheck and archive are six sequential toolchain operations; extraction and verification follow.",
+    "Feature generation, validate, doctor, typecheck and archive have 60s allowances, the cold public build has 120s, and extraction/verification/cleanup have 20s. Commands run asynchronously with independent cancellation.",
   "packages/apack-cli/tests/commands/scaffold.integration.spec.ts > records the facade dependents compile against, and then reports it up to date":
-    "A build and three source-facade derivations are sequential; keep missing, update and current-report assertions.",
+    "A cold public build (120s) and three source-facade derivations (60s each) precede verification/cleanup (20s); keep missing, update and current-report assertions.",
+  "packages/apack-cli/tests/commands/scaffold.integration.spec.ts > keeps unit tests runnable after init-tests adds Playwright specs":
+    "Test scaffolding and the pack's nested Vitest process each retain a 60s operation bound; compose those with 20s verification/cleanup.",
+  "packages/apack-cli/tests/commands/scaffold.integration.spec.ts > refuses to build, pack or generate entries for a manifest the installer would reject":
+    "Three distinct CLI refusals each retain a 60s operation bound; compose them with 20s verification/cleanup rather than timing their sum as one operation.",
   "packages/apack-cli/tests/commands/scaffold.integration.spec.ts > regenerates entries when a source file codegen reads changes, not only the manifest":
     "Two separate CLI generation commands prove invalidation and subsequent unchanged reuse.",
   "packages/apack-cli/tests/build/dsl-snapshot.integration.spec.ts > publishes and reuses editor definitions without globals or frontend activation, readable from an installed copy without source":

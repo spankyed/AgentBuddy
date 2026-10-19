@@ -47,18 +47,21 @@ Lazy activation is deferred.
 
 ## Live execution ledger (reconciled 2026-10-16)
 
-Normal integration **39297729330** finishes with **507 actual passes**, one scaffold whole-scenario
-**260s timeout**, and one separate unhandled `onTaskUpdate` reporting error (2016.71s). All preparation,
-all 15 configuration cases and all 18 add-extension cases pass; the trigger takes 96.415s, confirming
-its composed allowance matters. No failed value assertion or explicit cleanup failure is reported.
-The failing step/service scenario already has four-operation composition, so do not merely increase
-its allowance. Diagnose its actual phase/runner blocking with the existing two co-running scaffold
-files, unchanged per-test limits and explicit timing evidence before selecting a repair. Diagnostic
-[39306120746](https://github.com/spankyed/AgentBuddy/actions/runs/39306120746) is dispatched on
-`be7080780` (`session/scaffold-phase-diagnostic`), selecting all 29 cases with two workers and no
-per-test overrides. It adds only phase/memory logging plus its workflow to main `3315ce178`; no
-replacement broad run is dispatched. DSL is unreached here; include its unchanged body in the next necessary
-focused acceptance or final gate. See [classified evidence](../evidence/integration-deadline-inventory.md#normal-gate-scaffold-composed-deadline-and-recurring-reporting--2026-10-19).
+Current checkpoint: diagnostic **39306120746** executes all **29 scaffold/add-extension bodies**
+with their existing deadlines: **29 pass, zero fail**, but exit **1** for an unhandled `onTaskUpdate`
+reporting error. In-process scaffold builds take **59/92/116 seconds**; TypeScript takes about **3s**.
+The earlier normal **39297729330** retains **507 actual passes**, one whole-scenario scaffold 260s
+failure and a separate reporting error. Neither run is a passing normal gate.
+
+The focused repair moves scaffold CLI/nested-runner work to asynchronous owned processes; it keeps
+TypeScript in process, all assertions and actual CLI dispatch. CLI operations are separately bounded,
+cancellation drains before fixture reuse/removal, and timeouts cannot be mistaken for expected CLI
+refusals. Multistep case budgets compose those allowances. Eight mocked lifecycle checks, 53 policy/
+inventory checks, CLI types and lint pass; real process-boundary acceptance remains pending.
+Next run the complete two scaffold files plus the unreached DSL case (**30 bodies**, two workers),
+requiring exit 0 and no unhandled reporting errors. Then resume normal unfiltered integration and
+final committed-source strict `--all`. Do not repeat a broad gate to diagnose this repair or begin the
+separate validation-budget/Nx proposals. See [current evidence](../evidence/integration-deadline-inventory.md#scaffold-process-boundary-checkpoint--2026-10-19).
 
 Focused configuration acceptance **39296758415** succeeds on workflow-only `952a6dd02`,
 containing repair **`d29612b7a`**: all **15/15** cases pass, zero pending, exit 0, 239.315s.
