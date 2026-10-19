@@ -1249,3 +1249,36 @@ The two reporting hooks are committed/pushed as **`19c1c9716`**; the watcher ope
 the existing loop probe, verbose/JSON evidence and process exit status. Package preparation and
 default-setup compilation have separate bounds. No broad gate runs concurrently. Await this exact
 run; its dispatch is not acceptance.
+
+### Complete watcher/reporting repair accepted — 2026-10-19
+
+[39329992884](https://github.com/spankyed/AgentBuddy/actions/runs/39329992884) is terminal
+**completed/success** on **`3ca1a45fcac51dd1f28cae054717dce8db000dab`**, containing main repairs
+**`fa21a17ba`** and **`19c1c9716`**. Actual report: **56 passed, zero failed/pending, eight complete
+files, exit 0**, 1267.88s, with no unhandled reporting or cleanup error. All original assertions run.
+
+| File | Passed bodies | Duration |
+|---|---:|---:|
+| Feature authoring/validation | 13 | 125.287s |
+| Output swap | 14 | 508.919s |
+| Frontend resources | 11 | 480.082s |
+| Frontend workers | 4 | 156.544s |
+| Package inputs | 9 | 361.343s |
+| External types watch | 1 | 178.061s |
+| Module freshness watch | 2 | 228.078s |
+| Watch publication | 2 | 344.572s |
+
+The same probe measures feature-validation's largest loop gap at **30,860ms**, output-swap at
+**36,584ms**, versus 69,728/90,280ms before the yields. No sampled test-worker gap exceeds 36,584ms.
+This accepts both affected reporting files and every actual watcher-helper consumer, including refusal,
+repair, publication and teardown. Database's 64 unchanged bodies separately pass in the earlier diagnostic;
+that earlier run's global error remains recorded rather than being relabeled successful.
+
+Raw: `/private/tmp/apack-watch-reporting-39329992884/_temp/` (verbose/JSON/loop samples) and
+`/private/tmp/apack-watch-reporting-39329992884-full.log`. The actual terminal job status and process
+exit are accepted alongside the per-body JSON, which alone was insufficient in the preceding diagnostic.
+
+Next run normal unfiltered integration with all normal prerequisites and no probe/filter, two cores,
+the committed case/operation/pool bounds and fail-fast behavior. Then run main's committed-source
+strict `--all`, finish the requirement audit and archive only completed documents. The focused pass
+does not substitute for either gate; do not repeat already accepted focused files independently.

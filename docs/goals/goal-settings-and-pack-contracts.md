@@ -50,10 +50,12 @@ Lazy activation is deferred.
 Current checkpoint: watcher operation correction **`fa21a17ba`** and measured reporting repair
 **`19c1c9716`** are committed/pushed. Focused acceptance
 [39329992884](https://github.com/spankyed/AgentBuddy/actions/runs/39329992884) on workflow-only
-**`3ca1a45fc`** runs the two reporting files and all six watcher-helper consumers with two workers,
-complete bodies and loop measurements. Published package/default-setup preparation is separately
-bounded; unrelated typecheck/external-contract prerequisites are omitted only from this focused run.
-Require exit 0 and no unhandled reporting/cleanup error before normal integration, then final strict
+**`3ca1a45fc`** accepts **56/56 bodies in all eight files**, zero pending, **exit 0**, 1267.88s,
+with no unhandled reporting/cleanup error. Feature-validation/output-swap worker gaps fall from
+69.7/90.3s to **30.9/36.6s**; the largest sampled test-worker gap is 36.6s. All six actual watcher
+consumers complete on the consistent operation bound. Preserve exact logs and samples; no broad gate
+is implied. Published package/default-setup preparation is separately bounded; unrelated prerequisites
+are omitted only from this focused run. Resume normal unfiltered integration, then final strict
 `--all`, requirement audit and documentation closure. No normal or strict run is concurrent.
 
 Earlier focused [39311095507](https://github.com/spankyed/AgentBuddy/actions/runs/39311095507)
