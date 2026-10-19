@@ -1108,3 +1108,10 @@ Next run both complete scaffold files together (29 bodies, two workers), preserv
 accepted DSL result. Require all 29 passes and exit 0 without reporting errors before normal integration.
 Raw JSON/status/log: `/private/tmp/apack-scaffold-async-39309152812/`; full runner log:
 `/private/tmp/apack-scaffold-async-39309152812-full.log`.
+
+
+Correction **`14de022f8`** is committed and pushed; 42 timeout-policy cases, CLI types and changed-file
+lint pass. Focused [39311095507](https://github.com/spankyed/AgentBuddy/actions/runs/39311095507)
+runs on workflow-only **`4dc9c393d`**, directly based on that correction. Exactly the two complete
+scaffold files (29 bodies) run with two workers; DSL's 71.572s acceptance is preserved separately.
+No broader run is dispatched. The user's documentation-only `752c7bf32` remains intact.

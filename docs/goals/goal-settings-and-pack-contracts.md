@@ -61,8 +61,10 @@ full public commands to the existing **180s captured backend + 120s cold fronten
 compose their outer budgets, retaining other commands at 60s, cancellation grace 2s and cleanup 20s.
 Eight mocked lifecycle checks, policy/inventory checks, CLI types and lint pass for the process owner.
 
-Next run both complete scaffold files together (**29 bodies**, two workers), requiring exit 0 and no
-unhandled reporting errors. Preserve the separately accepted DSL result; no additional DSL run is
+Correction **`14de022f8`** is committed; 42 policy checks, CLI types and lint pass. Focused
+[39311095507](https://github.com/spankyed/AgentBuddy/actions/runs/39311095507) is running on
+workflow-only **`4dc9c393d`**, directly based on that correction: both complete scaffold files
+(**29 bodies**, two workers), requiring exit 0 and no unhandled reporting errors. Preserve the separately accepted DSL result; no additional DSL run is
 needed for this composition-only correction. Then resume normal unfiltered integration and final
 committed-source strict `--all`. Do not use another broad gate to diagnose this repair or begin the
 separate validation-budget/Nx proposals. See [classified evidence](../evidence/integration-deadline-inventory.md#focused-async-acceptance-full-build-boundary-correction--2026-10-19).
