@@ -101,9 +101,20 @@ all initialization, freshness/restoration, refusal, incumbent and teardown asser
 completion; the broad run's slowdown remains unattributed. Main **`24dc840c1`** gives only this
 three-attempt scenario **120s**, retaining the phase timings and idempotent cleanup. All 53 tooling
 checks, CLI types and lint pass. The diagnostic branch/worktree remains preserved and isolated.
-Run [39199767205](https://github.com/spankyed/AgentBuddy/actions/runs/39199767205) now selects these
-two repaired cases plus the previously unreached native tail on that exact main checkpoint. This closes
-a specific coverage gap before the next required full gate; no new broad run is started. See
+Run [39199767205](https://github.com/spankyed/AgentBuddy/actions/runs/39199767205) passes **all ten
+selected cases** on that exact main checkpoint, including the repaired pair and previously unreached
+native tail. Main preload/thread cases take **36.625s/45.141s**. No additional native defect is identified.
+The complete 68-file integration pool remains unaccepted. Isolated execution-only probe
+[39200409842](https://github.com/spankyed/AgentBuddy/actions/runs/39200409842) runs its normal
+two-core command and existing suite deadline after building required pack output. It fails at a probe
+setup omission: dependency-read coverage requires records from `npm run typecheck`, which was not run.
+This is not a demonstrated product defect or a reason to change the test. Corrected probe
+[39201821813](https://github.com/spankyed/AgentBuddy/actions/runs/39201821813), source **`c51408d15`**,
+supplies `npm run typecheck -- --cores 2` first. Its job envelope is 30m because measured cold pack
+preparation takes 9m55s before the unchanged 10m suite; no test/suite deadline is changed. The probe
+still differs from main `6dcbfdd88` only in its workflow; no product or test code differs.
+Neither run is a strict-chain result, despite using the existing `strict_chain` dispatch route. Main's
+full strict workflow is unchanged and remains required after integration converges. See
 [measured acceptance](../evidence/settings-and-pack-contracts.md#sequential-preloadthread-completion-and-scoped-budget--2026-10-19).
 The bound-only refusal boundary is user-approved and repaired separately below.
 Earlier broad run `39191666077` predates `31ed0dcad` and `eb552cf65`; run `39196299955` includes
@@ -170,8 +181,8 @@ Do not restart address-recovery research or invalid fixture
 construction. Revisit only for a real required dependency with an independently Windows-loadable
 reproducer. This approval closes the support decision, not B6 or final validation.
 Remaining native requirements, B6 and every Phase 7 obligation remain required. The broad gates and
-native-watch and preload/thread reproducers are terminal; the native-tail acceptance run is identified
-above. Complete its acceptance and the required committed-source gate.
+native-watch/preload reproducers and native-tail acceptance are terminal; the full integration probe
+is identified above. Complete integration acceptance and the required committed-source gate.
 No native execution runs on the daily-use Mac.
 
 Completion review finds and repairs an authoring ownership defect in **`31ed0dcad`**: valid
