@@ -1,6 +1,6 @@
 # Native compiler input boundary
 
-Status: Accepted — bounded native support approved by the user on 2026-10-17; implementation and acceptance remain open.
+Status: Accepted — bounded native support approved on 2026-10-17; bound-only PE refusal explicitly approved on 2026-10-18. Implementation and acceptance remain separately tracked.
 Date: 2026-10-17.
 
 ## Context and evidence
@@ -31,6 +31,25 @@ The user explicitly approved this boundary on 2026-10-17. Universal capture of a
 native libraries and native file I/O is outside this contract; do not claim universal detection.
 An absolute reference back to a live original package is not captured loading, even if that original
 library sits beside its addon. Supported package-relative loading must actually use the owned copy.
+
+Windows native compiler imports containing only precomputed bound addresses, without recoverable
+import names or ordinals, are unsupported and must receive an attributed refusal. The user explicitly
+approved this narrow boundary on 2026-10-18. Ordinary imports and ordinary bound imports retaining
+usable lookup information remain supported. Static admission needs symbol identity to follow export
+forwarders and inspect dependencies; guessing names from addresses or admitting uninspectable imports
+would weaken that contract. This is a compiler-input restriction, not a restriction to Windows Server.
+
+The existing refusal must name the requesting image and dependency, prevent affected native
+initialization and preserve incumbent output when a build is refused. Verify these through existing
+checks where sufficient, adding only missing coverage. Approval settles scope; it does not establish
+that these acceptance checks pass. Do not introduce an override, speculative address recovery or
+another fixture-construction campaign. Reconsider broader support when a real required dependency
+supplies an independently Windows-loadable reproducer.
+
+Preserved ordinary-loader experiments failed after import lookup information was removed, including
+from OS-bound images. They do not establish that every address-only binary is invalid or demonstrate
+a valid required dependency rejected by apack. Synthetic cases establish parsing/refusal behavior only.
+See the [decision record](../../evidence/build-input-snapshot-proof.md#bound-only-pe-support-decision--2026-10-18).
 
 Versioned macOS override directories select original filesystem paths at launch, before JavaScript
 admission. Accept these directories only within normal OS library locations, verifying their physical

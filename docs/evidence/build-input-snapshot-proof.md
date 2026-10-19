@@ -6344,3 +6344,33 @@ reports zero warnings/errors. This is an in-process owner proof, not a new publi
 or browser-HMR acceptance run. Existing real frontend/native preload/thread and HMR proofs remain
 separate and must survive convergence. Logs: `/private/tmp/apack-frontend-preload-{owner,types,lint}.log`.
 No VM/native build, daily-use Mac captured executable, broad suite or deadline change is involved.
+
+
+## Bound-only PE support decision — 2026-10-18
+
+The user explicitly approved refusing Windows native compiler imports containing only bound
+addresses when import names or ordinals cannot be recovered. Ordinary imports and ordinary bound
+imports retaining usable lookup information remain supported. The
+[native-boundary ADR](../reference/adr/native-compiler-input-boundary.md#decision) owns this contract;
+the [active goal](../goals/goal-settings-and-pack-contracts.md) owns remaining verification.
+
+Rationale: admission needs symbol identity to follow forwarded exports and inspect native dependency
+ownership before execution. No real required dependency needing the address-only encoding was
+identified in the recorded investigation. Speculative address recovery has no demonstrated product
+requirement; silently allowing uninspectable imports would weaken the approved dependency contract.
+The tradeoff is explicit: a dependency using this unsupported encoding cannot participate in pack
+compilation, even if Windows can load it. Reconsider only when a real required dependency supplies
+an independently Windows-loadable reproducer.
+
+Earlier hand-edited and OS-binder-based controls failed under the ordinary Windows loader after
+lookup information was removed. These observations neither prove every address-only binary invalid
+nor establish a valid required dependency refused by apack. Preserve those experiments as history;
+do not repeat failed fixture construction to close this decision. Synthetic parser/refusal cases
+must not be reported as acceptance of a valid OS-loadable binary.
+
+Source inspection finds an existing attributed refusal in `compiler-pe-admission.ts`; this decision
+adds no source behavior and runs no validation suites. Remaining checks must establish the requester
+and dependency diagnostic, refusal before affected native initialization and incumbent-output
+retention, while preserving ordinary bound-import support. Reuse sufficient existing evidence and add
+only missing focused coverage. No override or speculative recovery is authorized. The approval closes
+scope only; broader native obligations, B6 and final committed-source strict/app acceptance remain open.
