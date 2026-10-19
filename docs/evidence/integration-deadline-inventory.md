@@ -479,3 +479,57 @@ The earlier eight-file results and complete six-batch inventory remain authorita
 run must converge before normal full integration; final main strict `--all` and requirement-by-requirement
 closure remain outstanding. Temporary tracing and extended diagnostic observers are absent from
 the acceptance source. No captured runtime/native/watch execution runs on the daily-use Mac.
+
+The watcher group completed in **1017.609s**: **18 passed, one failed**, ten deliberately filtered.
+All 19 selected bodies executed; no setup, cleanup, aggregate or unhandled-reporting failure is
+reported. External types, both runtime-import variants, both module-freshness cases, all 11 frontend
+resource/cache cases and the worker repair pass. The retargeted publication case also passes.
+The sole failure is `publishes source and manifest edits together and retains the incumbent after
+refusal`: an **individual compiler-operation timeout**, with `AbortError` caused by the helper's
+timeout signal, at 147.746s including setup. No output/value assertion fails. The last completed
+publication in its console is initial readiness; the timed operation's internal phase is not established.
+Do not turn that unknown into a compiler defect or increase all build limits. Preserve the 18 passes;
+next diagnose this case with bounded phase observations beside the frontend CSS recovery case that
+shared its worker period. The independent scaffold group remains live. Raw JSON, console and status
+are saved at `/private/tmp/apack-watch-phase-39243953202/` and in the run's early upload.
+
+The independent reporting group then completes successfully in **417.164s**: **20 passed, zero
+failed**, eight deliberately filtered, **exit 0**. All 18 scaffold cases and both workspace dependency
+typechecks pass, with no unhandled RPC or cleanup error. This accepts `7110c2632`'s shared CLI
+sequencing and the workspace variants of the service-selection fixture repair. It does not reclassify
+the other group's operation timeout as a pass. Reporting reports are retained at
+`/private/tmp/apack-reporting-phase-39243953202/`; the complete terminal job output is
+`/private/tmp/apack-watch-and-reporting-39243953202-full.log`.
+
+After that job becomes terminal, [39247182439](https://github.com/spankyed/AgentBuddy/actions/runs/39247182439)
+starts on isolated `b6b3de3e0`: the single failing publication case beside CSS recovery, two workers.
+Temporary phase logging separates package verification, compiler-current/capture, worker lifetime,
+observations and publication. The probe observes a rebuild for at most 120s, records crossing the
+original 60s boundary and still refuses that original allowance if completion arrives late. No main
+deadline changes; no broad diagnostic or overlapping heavy run. This probe is not normal or strict
+acceptance. Preserve the 38 passing focused cases while diagnosing this one remaining operation.
+
+Source `dbba1429f` attributes a watched-build deadline error to its pack root and operation allowance,
+retaining the original error as `cause`. The existing hung-operation regression now checks that context
+and cause. All seven mocked helper cases, CLI typechecking and correctness lint pass. No deadline or
+cancellation behavior changes; this improves the generic `AbortError` report, not the underlying timing.
+
+### Publication phase control completed — 2026-10-19
+
+[39247182439](https://github.com/spankyed/AgentBuddy/actions/runs/39247182439) completes successfully:
+**two passed, zero failed, exit 0**, 188.766s. All eight startup/rebuild attempts settle within their
+original limits; **zero original-deadline crossings** occur, so the diagnostic's extra observation
+allowance does not enable either pass. Publication startup takes 54.736s; its accepted edit,
+intentional syntax refusal and accepted repair take **43.465s / 10.712s / 38.742s**. Both accepted
+rebuilds retain the compiler and generation. Their worker lifetimes are 36.776s / 30.901s;
+compiler-current checks take 4.527s / 5.442s; publication takes 34ms / 50ms. CSS recovery also passes,
+including refusal/incumbent retention and cleanup.
+
+This proves the complete publication behavior under the original operation limits beside its observed
+concurrent frontend workload. It does **not** attribute the earlier 60s abort or establish a performance
+fix. Do not invent one or raise limits from this control. Preserve the earlier failed evidence and
+the attribution repair; retain the exact source deadlines for the required normal full-queue acceptance.
+Raw reports/events and the full log are at `/private/tmp/apack-publication-phase-39247182439/` and
+`/private/tmp/apack-publication-phase-39247182439-full.log`. Diagnostic tracing/extended observation
+remain isolated and are not merged. The next broad run is the required normal integration gate,
+covering full-queue scheduling and previously filtered variants, rather than another failure inventory.

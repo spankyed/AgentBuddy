@@ -265,11 +265,25 @@ focused concurrency acceptance before normal integration. Update the prepared no
 validated repairs; it remains undispatched, and final main strict `--all` remains required.
 Source **`7110c2632`** extends that yielding CLI path to all scaffold commands in the affected file,
 with explicit pack roots and unchanged generated-code/refusal assertions. Focused acceptance
-[39243953202](https://github.com/spankyed/AgentBuddy/actions/runs/39243953202) is now running on
+[39243953202](https://github.com/spankyed/AgentBuddy/actions/runs/39243953202) is terminal on
 workflow-only `99ffd7bfa` over that exact source: 19 watcher/cache cases, then the entire 18-case
 scaffold file and two dependency typechecks, two workers per sequential group. Each group saves its
 evidence immediately. This is acceptance of the demonstrated repairs, not another broad diagnostic;
-normal integration and final main strict `--all` still follow only after convergence.
+normal integration and final main strict `--all` still follow only after convergence. The watcher group
+reports 18 passes and one compiler-operation timeout; no cleanup or reporting error. The independent
+scaffold/dependency group passes all 20 cases with exit 0, accepting the CLI sequencing repair. Preserve
+those 38 passes. Isolated two-case [39247182439](https://github.com/spankyed/AgentBuddy/actions/runs/39247182439)
+on `b6b3de3e0` now diagnoses only the timed publication rebuild beside CSS recovery. Its bounded
+completion observer retains failure against the original 60s allowance; temporary tracing and extended
+observation are not main source changes. See the [classified results](../evidence/integration-deadline-inventory.md#committed-repair-acceptance-dispatched--2026-10-19).
+Source `dbba1429f` adds pack/allowance/cause attribution to the helper's generic timeout; its seven
+mocked checks, CLI types and correctness lint pass. Main deadline values and cancellation stay unchanged.
+The two-case phase control `39247182439` passes with exit 0 and zero original-deadline crossings:
+publication rebuilds complete in 43.465s/38.742s and expected refusal in 10.712s, retaining the
+compiler generation. CSS recovery also passes. The earlier abort's slowdown remains unattributed;
+no compiler/performance fix or main timeout increase is claimed. Preserve that failed evidence.
+Focused behavior now has passing evidence under the original limits; proceed to required normal
+integration for full-queue/remaining-variant acceptance, then final main strict `--all`.
 Source **`21ed07fe7`** gives complete integration its own 120-minute aggregate class. The pool runner
 reads its owning chain step's deadline; ordinary unit pools remain at 600s. The measured file work
 already exceeds 53 minutes at an ideal two-worker balance, without blocked setup/preparation, so the

@@ -17,10 +17,14 @@ export async function startTestPackBuildWatcher(root: string, options: Omit<Watc
   const build = builder.build.bind(builder);
   const builds: Promise<{ interrupted: boolean; error?: unknown }>[] = [];
   builder.build = input => {
-    const deadline = AbortSignal.timeout(builds.length ? BUILD_TIMEOUT_MS : 120_000);
+    const timeout = builds.length ? BUILD_TIMEOUT_MS : 120_000;
+    const deadline = AbortSignal.timeout(timeout);
     const signal = input?.signal ? AbortSignal.any([input.signal, deadline]) : deadline;
     const running = build({ ...input, signal });
-    builds.push(running.then(() => ({ interrupted: false }), error => ({ interrupted: signal.aborted, error })));
+    builds.push(running.then(() => ({ interrupted: false }), error => ({
+      interrupted: signal.aborted,
+      error: deadline.aborted ? new Error(`Pack build for "${root}" exceeded ${timeout}ms`, { cause: error }) : error,
+    })));
     return running;
   };
   try {
