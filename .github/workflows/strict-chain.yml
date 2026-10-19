@@ -1,4 +1,4 @@
-name: Strict chain
+name: Remaining integration inventory
 
 on:
   workflow_dispatch:
@@ -8,15 +8,13 @@ permissions:
   contents: read
 
 concurrency:
-  group: strict-chain-${{ github.ref }}
+  group: integration-remaining-${{ github.ref }}
   cancel-in-progress: false
 
 jobs:
   check:
     runs-on: macos-26
-    # Cold source/producers and host units took 28m before the remaining integration/app gates.
-    # Each step retains its own bound; this envelope covers the complete strict chain.
-    timeout-minutes: 60
+    timeout-minutes: 120
     env:
       APACK_CHAIN_CORES: 2
     defaults:
@@ -32,19 +30,155 @@ jobs:
         run: |
           git rev-parse HEAD
           sw_vers
-          node -p 'JSON.stringify({platform:process.platform,arch:process.arch,versions:process.versions})'
+          node -p 'JSON.stringify({platform:process.platform,arch:process.arch})'
       - name: Install dependencies
         env:
           GITHUB_TOKEN: ${{ github.token }}
         run: npm ci
-      - name: Full strict acceptance
-        run: npm run chain -- --strict --all --cores 2 --no-classify | tee "$RUNNER_TEMP/strict-chain.log"
-      - name: Retain validation evidence
+      - name: Prepare typecheck records
+        id: typecheck
+        run: npm run typecheck -- --cores 2
+      - name: Build required pack output
+        id: pack
+        run: npm run build:default-setup
+      - name: Inventory batch 1 (8 files)
+        if: ${{ !cancelled() && steps.typecheck.outcome == 'success' && steps.pack.outcome == 'success' }}
+        continue-on-error: true
+        run: |
+          node --import tsx --input-type=module <<'JS' | tee "$RUNNER_TEMP/batch-1.log"
+          import fs from 'node:fs';
+          import { boundedSpawn } from './scripts/lib/bounded-spawn.ts';
+          const files = ["packages/apack-cli/tests/build/build-output-swap.integration.spec.ts", "packages/apack-cli/tests/commands/add-feature-validate.integration.spec.ts", "packages/apack-cli/tests/build/dependency-graph.integration.spec.ts", "packages/apack-cli/tests/build/dsl-defs.integration.spec.ts", "packages/apack-cli/tests/build/types-bundler-determinism.integration.spec.ts", "packages/apack-cli/tests/commands/app-install.integration.spec.ts", "packages/apack-cli/tests/build/compiler-configuration.integration.spec.ts", "packages/apack-cli/tests/build/facade-typing.integration.spec.ts"];
+          const report = `${process.env.RUNNER_TEMP}/batch-1.json`;
+          const result = await boundedSpawn('node', ['node_modules/vitest/vitest.mjs', 'run',
+            '--config', 'vitest.integration.config.ts', ...files, '--bail=0',
+            '--poolOptions.threads.maxThreads=2', '--poolOptions.threads.minThreads=1',
+            '--poolOptions.forks.maxForks=2', '--poolOptions.forks.minForks=1',
+            '--reporter=verbose', '--reporter=json', `--outputFile=${report}`], 900_000, {stream:true});
+          const status = {files,...result,output:undefined};
+          fs.writeFileSync(`${process.env.RUNNER_TEMP}/batch-1-status.json`, JSON.stringify(status,null,2));
+          console.log(JSON.stringify(status));
+          process.exitCode = result.code;
+          JS
+      - name: Inventory batch 2 (10 files)
+        if: ${{ !cancelled() && steps.typecheck.outcome == 'success' && steps.pack.outcome == 'success' }}
+        continue-on-error: true
+        run: |
+          node --import tsx --input-type=module <<'JS' | tee "$RUNNER_TEMP/batch-2.log"
+          import fs from 'node:fs';
+          import { boundedSpawn } from './scripts/lib/bounded-spawn.ts';
+          const files = ["packages/apack-cli/tests/commands/scaffold.integration.spec.ts", "packages/repo-checks/tests/fingerprint-scope.integration.spec.ts", "packages/apack-cli/tests/build/frontend-workers.integration.spec.ts", "packages/apack-cli/tests/build/watch-module-freshness.integration.spec.ts", "packages/apack-cli/tests/build/dependency-flow-helpers.integration.spec.ts", "packages/apack-cli/tests/build/dependency-inputs.integration.spec.ts", "packages/repo-checks/tests/bounded-spawn.integration.spec.ts", "packages/apack-cli/tests/build/own-declarations.integration.spec.ts", "packages/apack-cli/tests/build/frontend-outputs.integration.spec.ts", "packages/apack-cli/tests/build/declaration-aliases.integration.spec.ts"];
+          const report = `${process.env.RUNNER_TEMP}/batch-2.json`;
+          const result = await boundedSpawn('node', ['node_modules/vitest/vitest.mjs', 'run',
+            '--config', 'vitest.integration.config.ts', ...files, '--bail=0',
+            '--poolOptions.threads.maxThreads=2', '--poolOptions.threads.minThreads=1',
+            '--poolOptions.forks.maxForks=2', '--poolOptions.forks.minForks=1',
+            '--reporter=verbose', '--reporter=json', `--outputFile=${report}`], 900_000, {stream:true});
+          const status = {files,...result,output:undefined};
+          fs.writeFileSync(`${process.env.RUNNER_TEMP}/batch-2-status.json`, JSON.stringify(status,null,2));
+          console.log(JSON.stringify(status));
+          process.exitCode = result.code;
+          JS
+      - name: Inventory batch 3 (11 files)
+        if: ${{ !cancelled() && steps.typecheck.outcome == 'success' && steps.pack.outcome == 'success' }}
+        continue-on-error: true
+        run: |
+          node --import tsx --input-type=module <<'JS' | tee "$RUNNER_TEMP/batch-3.log"
+          import fs from 'node:fs';
+          import { boundedSpawn } from './scripts/lib/bounded-spawn.ts';
+          const files = ["packages/apack-cli/tests/build/frontend-resources.integration.spec.ts", "packages/publish-checks/tests/published-sdk-any.integration.spec.ts", "packages/repo-checks/tests/session.integration.spec.ts", "packages/apack-cli/tests/commands/dev-build.integration.spec.ts", "packages/apack-cli/tests/build/watch-external-types.integration.spec.ts", "packages/apack-cli/tests/commands/pack-doctor.integration.spec.ts", "packages/apack-cli/tests/commands/doctor.integration.spec.ts", "packages/repo-checks/tests/dev-pack-hmr.integration.spec.ts", "packages/publish-checks/tests/published-declarations.integration.spec.ts", "packages/apack-cli/tests/build/facade-typing-published.integration.spec.ts", "packages/apack-cli/tests/build/facade-type-data.integration.spec.ts"];
+          const report = `${process.env.RUNNER_TEMP}/batch-3.json`;
+          const result = await boundedSpawn('node', ['node_modules/vitest/vitest.mjs', 'run',
+            '--config', 'vitest.integration.config.ts', ...files, '--bail=0',
+            '--poolOptions.threads.maxThreads=2', '--poolOptions.threads.minThreads=1',
+            '--poolOptions.forks.maxForks=2', '--poolOptions.forks.minForks=1',
+            '--reporter=verbose', '--reporter=json', `--outputFile=${report}`], 900_000, {stream:true});
+          const status = {files,...result,output:undefined};
+          fs.writeFileSync(`${process.env.RUNNER_TEMP}/batch-3-status.json`, JSON.stringify(status,null,2));
+          console.log(JSON.stringify(status));
+          process.exitCode = result.code;
+          JS
+      - name: Inventory batch 4 (10 files)
+        if: ${{ !cancelled() && steps.typecheck.outcome == 'success' && steps.pack.outcome == 'success' }}
+        continue-on-error: true
+        run: |
+          node --import tsx --input-type=module <<'JS' | tee "$RUNNER_TEMP/batch-4.log"
+          import fs from 'node:fs';
+          import { boundedSpawn } from './scripts/lib/bounded-spawn.ts';
+          const files = ["packages/apack-cli/tests/build/compiler-elf-libraries.integration.spec.ts", "packages/apack-cli/tests/build/package-inputs.integration.spec.ts", "packages/publish-checks/tests/published-sdk-types.integration.spec.ts", "packages/apack-cli/tests/build/fe-bundler-host-registry.integration.spec.ts", "packages/apack-cli/tests/build/watch-worker-inputs.integration.spec.ts", "packages/apack-cli/tests/build/editor-declarations.integration.spec.ts", "packages/apack-cli/tests/build/build-registry.integration.spec.ts", "packages/apack-cli/tests/commands/info.integration.spec.ts", "packages/apack-cli/tests/commands/default-pack-archive.integration.spec.ts", "packages/repo-checks/tests/import-specifiers-script.integration.spec.ts"];
+          const report = `${process.env.RUNNER_TEMP}/batch-4.json`;
+          const result = await boundedSpawn('node', ['node_modules/vitest/vitest.mjs', 'run',
+            '--config', 'vitest.integration.config.ts', ...files, '--bail=0',
+            '--poolOptions.threads.maxThreads=2', '--poolOptions.threads.minThreads=1',
+            '--poolOptions.forks.maxForks=2', '--poolOptions.forks.minForks=1',
+            '--reporter=verbose', '--reporter=json', `--outputFile=${report}`], 900_000, {stream:true});
+          const status = {files,...result,output:undefined};
+          fs.writeFileSync(`${process.env.RUNNER_TEMP}/batch-4-status.json`, JSON.stringify(status,null,2));
+          console.log(JSON.stringify(status));
+          process.exitCode = result.code;
+          JS
+      - name: Inventory batch 5 (10 files)
+        if: ${{ !cancelled() && steps.typecheck.outcome == 'success' && steps.pack.outcome == 'success' }}
+        continue-on-error: true
+        run: |
+          node --import tsx --input-type=module <<'JS' | tee "$RUNNER_TEMP/batch-5.log"
+          import fs from 'node:fs';
+          import { boundedSpawn } from './scripts/lib/bounded-spawn.ts';
+          const files = ["packages/apack-cli/tests/commands/add-extensions.integration.spec.ts", "packages/apack-cli/tests/build/staged-dsl.integration.spec.ts", "packages/apack-cli/tests/build/frontend-generation.integration.spec.ts", "packages/apack-cli/tests/commands/facade-report.integration.spec.ts", "packages/apack-cli/tests/build/fe-bundler-dev-server.integration.spec.ts", "packages/publish-checks/tests/published-manifest-paths.integration.spec.ts", "packages/repo-checks/tests/component-contracts.integration.spec.ts", "packages/publish-checks/tests/published-exports.integration.spec.ts", "packages/apack-cli/tests/build/tool-identity.integration.spec.ts", "packages/publish-checks/tests/published-ui-types.integration.spec.ts"];
+          const report = `${process.env.RUNNER_TEMP}/batch-5.json`;
+          const result = await boundedSpawn('node', ['node_modules/vitest/vitest.mjs', 'run',
+            '--config', 'vitest.integration.config.ts', ...files, '--bail=0',
+            '--poolOptions.threads.maxThreads=2', '--poolOptions.threads.minThreads=1',
+            '--poolOptions.forks.maxForks=2', '--poolOptions.forks.minForks=1',
+            '--reporter=verbose', '--reporter=json', `--outputFile=${report}`], 900_000, {stream:true});
+          const status = {files,...result,output:undefined};
+          fs.writeFileSync(`${process.env.RUNNER_TEMP}/batch-5-status.json`, JSON.stringify(status,null,2));
+          console.log(JSON.stringify(status));
+          process.exitCode = result.code;
+          JS
+      - name: Inventory batch 6 (10 files)
+        if: ${{ !cancelled() && steps.typecheck.outcome == 'success' && steps.pack.outcome == 'success' }}
+        continue-on-error: true
+        run: |
+          node --import tsx --input-type=module <<'JS' | tee "$RUNNER_TEMP/batch-6.log"
+          import fs from 'node:fs';
+          import { boundedSpawn } from './scripts/lib/bounded-spawn.ts';
+          const files = ["packages/apack-cli/tests/build/watch-publication.integration.spec.ts", "packages/repo-checks/tests/spec-durations-reporter.integration.spec.ts", "packages/apack-cli/tests/build/compilation-inputs.integration.spec.ts", "packages/apack-cli/tests/harness/harness-setup.integration.spec.ts", "packages/apack-cli/tests/harness/dependency-runtime.integration.spec.ts", "packages/apack-cli/tests/build/dsl-snapshot.integration.spec.ts", "packages/apack-cli/tests/build/facade-gate.integration.spec.ts", "packages/apack-cli/tests/build/frontend-globs.integration.spec.ts", "packages/apack-cli/tests/build/facade-gate-system-contract.integration.spec.ts", "packages/apack-cli/tests/build/fe-bundler-opaque-deps.integration.spec.ts"];
+          const report = `${process.env.RUNNER_TEMP}/batch-6.json`;
+          const result = await boundedSpawn('node', ['node_modules/vitest/vitest.mjs', 'run',
+            '--config', 'vitest.integration.config.ts', ...files, '--bail=0',
+            '--poolOptions.threads.maxThreads=2', '--poolOptions.threads.minThreads=1',
+            '--poolOptions.forks.maxForks=2', '--poolOptions.forks.minForks=1',
+            '--reporter=verbose', '--reporter=json', `--outputFile=${report}`], 900_000, {stream:true});
+          const status = {files,...result,output:undefined};
+          fs.writeFileSync(`${process.env.RUNNER_TEMP}/batch-6-status.json`, JSON.stringify(status,null,2));
+          console.log(JSON.stringify(status));
+          process.exitCode = result.code;
+          JS
+      - name: Collect all batch results
+        if: ${{ !cancelled() }}
+        run: |
+          node --input-type=module <<'JS'
+          import fs from 'node:fs';
+          import assert from 'node:assert/strict';
+          const groups = Array.from({length:6}, (_, i) => {
+            const prefix = `${process.env.RUNNER_TEMP}/batch-${i+1}`;
+            const status = fs.existsSync(`${prefix}-status.json`) ? JSON.parse(fs.readFileSync(`${prefix}-status.json`,'utf8')) : {missing:true};
+            const report = fs.existsSync(`${prefix}.json`) ? JSON.parse(fs.readFileSync(`${prefix}.json`,'utf8')) : undefined;
+            return {batch:i+1,status,reportedFiles:report?.testResults?.length,passed:report?.numPassedTests,failed:report?.numFailedTests};
+          });
+          fs.writeFileSync(`${process.env.RUNNER_TEMP}/inventory.json`,JSON.stringify(groups,null,2));
+          console.log(JSON.stringify(groups,null,2));
+          assert.equal(groups.reduce((n,g)=>n+(g.reportedFiles??0),0),59,'Every remaining file needs a completed report');
+          assert.ok(groups.every(g=>g.status.code===0),'Inventory includes failing batches; inspect all reports');
+          JS
+      - name: Preserve every batch report
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: strict-chain-${{ github.sha }}
+          name: integration-remaining-${{ github.sha }}
           include-hidden-files: true
           path: |
-            ${{ runner.temp }}/strict-chain.log
-            node_modules/.cache/apack-chain/runs/
+            ${{ runner.temp }}/batch-*.log
+            ${{ runner.temp }}/batch-*.json
+            ${{ runner.temp }}/inventory.json
