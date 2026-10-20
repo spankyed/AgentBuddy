@@ -6,6 +6,8 @@ import { test, expect, type ElectronApplication } from '@playwright/test';
 import { waitForAppReady } from '@apackdev/testing';
 import { appLaunchEnv } from '../../../packages/apack-testing/src/launch-env.ts';
 import { readSettingsOverrides } from '@apackdev/host/database';
+import { installPackFromLocal } from '@apackdev/host/packs';
+import { resolveAppEnvironment } from '@apackdev/sdk/env';
 import { untypedTx, type EARS } from '@apackdev/ears';
 import { writeData } from '../../../packages/apack-host/tests/database/fixtures.ts';
 import { assertCompilerTestRunner } from '../../../packages/apack-cli/tests/_support/compiler-test-runner.ts';
@@ -24,9 +26,15 @@ test('repairs invalid persisted settings in the app and starts packs only after 
     app.process().stdout?.pipe(log, { end: false });
     app.process().stderr?.pipe(log, { end: false });
     app.once('close', () => log.end());
-    return app.firstWindow();
+    await expect.poll(() => app!.windows().some(page => page.url().includes('/renderer/dist/index.html')),
+      { timeout: 30_000, message: 'main renderer, rather than the splash window' }).toBe(true);
+    return app.windows().find(page => page.url().includes('/renderer/dist/index.html'))!;
   };
   try {
+    // Model an existing profile: its installed declaration must be discoverable even when saved
+    // preferences make refreshing the shipped pack refuse before startup recovery.
+    await installPackFromLocal(path.join(root, 'packages/default-setup'),
+      resolveAppEnvironment({ env: 'test', userDataDir }).packsDir);
     await writeData(userDataDir, () => {
       untypedTx('Settings-app' as EARS.EntityId, true).put('entityType', 'Settings').put('data', {
         app: { projects: 'invalid' },

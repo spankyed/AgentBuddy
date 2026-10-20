@@ -220,11 +220,11 @@ test('accepted dependency credentials enforce shared, owner-only and reload boun
     subscription = client.subscription('bus.sub', undefined, { onStarted: () => resolve(), onError: reject,
       onData: message => messages.push(message as (typeof messages)[number]) });
   });
-  const loaded = async () => await client.query('packs.loaded') as { id: string; runtimeRevision: string; declarationRevision: string; buildRevision: string }[];
+  const loaded = async () => await client.query('packs.loaded') as { id: string; registrationId: string; declarationRevision: string; buildRevision: string }[];
   const credential = async (packId: string) => {
     const origin = (await loaded()).find(pack => pack.id === packId)!;
     return await client.mutation('settings.openPack', {
-      id: origin.id, runtimeRevision: origin.runtimeRevision, declarationRevision: origin.declarationRevision, buildRevision: origin.buildRevision,
+      id: origin.id, registrationId: origin.registrationId, declarationRevision: origin.declarationRevision, buildRevision: origin.buildRevision,
     }) as string;
   };
   const ask = async (settingsCredential: string, event: Record<string, unknown>) => {
@@ -323,9 +323,9 @@ shared.set({ path: ['name'], value: 2 });
     await expect.poll(async () => (await loaded()).map(pack => pack.id)).toContain(id);
     const replacementRuntime = (await loaded()).find(pack => pack.id === id)!;
     expect(replacementRuntime.buildRevision).toBe(previousRuntime.buildRevision);
-    expect(replacementRuntime.runtimeRevision).not.toBe(previousRuntime.runtimeRevision);
+    expect(replacementRuntime.registrationId).not.toBe(previousRuntime.registrationId);
     await expect(client.mutation('settings.openPack', {
-      id, runtimeRevision: previousRuntime.runtimeRevision,
+      id, registrationId: previousRuntime.registrationId,
       declarationRevision: previousRuntime.declarationRevision, buildRevision: previousRuntime.buildRevision,
     })).rejects.toThrow('Settings access is unavailable');
     const fresh = await credential(id);
