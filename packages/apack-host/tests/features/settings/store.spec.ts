@@ -247,12 +247,20 @@ describe('draft comparisons', () => {
 });
 
 
-it('refuses pack mutations during data replacement through the service writer', async () => {
-  await store.whileReplacingData(async () => {
+it('permits replacement initialization while refusing unrelated pack writers', async () => {
+  let finish!: () => void;
+  const wait = new Promise<void>(resolve => { finish = resolve; });
+  const replacing = store.whileReplacingData(async () => {
+    await wait;
+    store.set(assistant, ['name'], 'Initialized', 'default-setup');
+    expect(store.get(assistant)).toEqual({ name: 'Initialized' });
+    store.reset(assistant, 'default-setup');
+  });
+  try {
     expect(() => store.set(assistant, ['name'], 'Racing', 'default-setup')).toThrow('Data is being replaced');
     expect(() => store.reset(assistant, 'default-setup')).toThrow('Data is being replaced');
-  });
-  expect(store.getOverrides()).toEqual({});
+  } finally { finish(); await replacing; }
+  expect(store.getOverrides()).toEqual({ packs: { 'default-setup': {} } });
 });
 
 

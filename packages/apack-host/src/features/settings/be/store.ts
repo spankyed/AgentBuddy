@@ -1,4 +1,5 @@
 import { randomUUID } from 'node:crypto';
+import { AsyncLocalStorage } from 'node:async_hooks';
 import { createLogger } from '@apackdev/sdk/logger';
 // One host writer composes declarations beneath explicit choices for every preference owner.
 import type { EarsQuery } from '@apackdev/ears';
@@ -27,6 +28,7 @@ export type SettingsStore = ReturnType<typeof createSettingsStore>;
 export function createSettingsStore({ ears, catalog, onCatalogChanged }: SettingsStoreOptions) {
   const listeners = new Set<(change: SettingsChange) => void>();
   let replacingData = 0;
+  const replacement = new AsyncLocalStorage<boolean>();
   let replacementSnapshot: Pick<SettingsSnapshot, 'values' | 'catalog'> | undefined;
   const runId = randomUUID();
   let revision = 0;
@@ -76,7 +78,7 @@ export function createSettingsStore({ ears, catalog, onCatalogChanged }: Setting
     const definition = targetDefinition(target);
     if (!definition) throw new SettingsRefusedError(['This settings definition is unavailable']);
     if (caller === undefined) return; // Only host administration receives an unscoped writer.
-    if (mutation && replacingData) throw new SettingsRefusedError(['Data is being replaced. Wait before changing settings.']);
+    if (mutation && replacingData && !replacement.getStore()) throw new SettingsRefusedError(['Data is being replaced. Wait before changing settings.']);
     const { dependencies } = declarations();
     if (!hasOwn(dependencies, caller)) throw new SettingsRefusedError([`Settings caller "${caller}" is not declared`]);
     if (target.kind === 'app') return;
@@ -155,7 +157,8 @@ export function createSettingsStore({ ears, catalog, onCatalogChanged }: Setting
       // Database hydration bypasses the writer. Readers retain the published view until replacement settles.
       if (replacingData === 0) replacementSnapshot = { values: effective(), catalog: declarations() };
       if (replacingData++ === 0) { revision++; tell('replacing'); }
-      try { return await replace(); }
+      // Host-owned initialization/migrations may write; unrelated async callers still wait.
+      try { return await replacement.run(true, replace); }
       finally {
         if (--replacingData === 0) { replacementSnapshot = undefined; revision++; tell('replaced'); }
       }

@@ -148,7 +148,7 @@ export const settingsSystem = setup({
 
     refuseResetWhileReplacing: () => broadcastToPlugin('settings', {
       type: 'APP_RESET_FAILED',
-      error: 'A backup is being imported. Reset the app once it has finished.',
+      error: 'App data is being replaced. Reset the app once it has finished.',
     }),
 
     /**
@@ -294,7 +294,7 @@ export const settingsSystem = setup({
     replacingData: {
       entry: 'sendSettingsUpdate',
       on: {
-        ...whileBusy('A backup is being imported. Change the settings once it has finished.'),
+        ...whileBusy('App data is being replaced. Change the settings once it has finished.'),
         DATA_REPLACED: { target: 'idle', actions: ['sendSettingsUpdate', 'tellEveryFeature'] },
         RESET_APP: { actions: 'refuseResetWhileReplacing' },
       },

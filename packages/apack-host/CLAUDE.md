@@ -303,9 +303,11 @@ through the supplied provider because a test reset replaces it.
   instead leaves a sender that is not that plugin learning nothing — a drive session's `/set-setting` then
   reports success for every refused write. A refusal is the sender's to fix, so only
   an unexpected error is reported as a system error.
-- **`whileReplacingData`** brackets a wholesale replacement (a backup import): the writer tells listeners that one
+- **`whileReplacingData`** brackets a wholesale replacement (reset or backup import): the writer tells listeners that one
   is running and, once it settles, that it ended, so those arrive in order with the writes they bracket and nothing
   is told a change in between. While one runs the system takes no pack change and refuses an app reset.
+  The host-owned replacement callback retains settings write access for initialization and migrations;
+  unrelated asynchronous pack writers are refused until replacement settles.
 - **The frontend reaches it through the SDK, never through the Settings view actor.** Each window establishes
   its validated `SettingsPort` before loading pack frontends. Host forms use that window resource; pack forms
   and consumers use generated owner-bound handles. A form emits an edit to its host-owned presenter,
