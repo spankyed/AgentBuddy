@@ -1,0 +1,67 @@
+name: App acceptance
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: app-acceptance-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  check:
+    runs-on: macos-26
+    timeout-minutes: 30
+    env:
+      APACK_CHAIN_CORES: 2
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 23.11.1
+          cache: npm
+      - name: Record source
+        run: git rev-parse HEAD
+      - name: Install dependencies
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: npm ci
+      - name: Build app and fixture contracts
+        id: preparation
+        run: |
+          npm run build:default-setup
+          npm run build:runtime
+          npm run test:external-pack:contract
+      - name: External step services through the running flow executor
+        working-directory: tests/packs/external-pack
+        run: ../../../node_modules/.bin/apack pack test --host "$GITHUB_WORKSPACE" --prebuilt tests/e2e/step-services.spec.ts
+      - name: App suites including settings recovery
+        if: ${{ !cancelled() && steps.preparation.outcome == 'success' }}
+        run: npm run test:e2e
+      - name: Source pack dev install and rebuild
+        if: ${{ !cancelled() && steps.preparation.outcome == 'success' }}
+        run: node scripts/with-source.mjs tsx tests/scripts/test-pack-dev.ts
+      # This exercises real release selection; no release is manufactured or published for validation.
+      # An unavailable beta remains an explicit unproven acceptance item, not a source-host substitute.
+      - name: Published beta host availability
+        if: ${{ !cancelled() && steps.preparation.outcome == 'success' }}
+        continue-on-error: true
+        timeout-minutes: 2
+        working-directory: tests/packs/external-pack
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: ../../../node_modules/.bin/apack pack dev --host beta --fresh
+      - name: Retain app evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: app-acceptance-${{ github.sha }}
+          include-hidden-files: true
+          path: |
+            .apack/tests/results/
+            tests/packs/*/.apack/tests/results/

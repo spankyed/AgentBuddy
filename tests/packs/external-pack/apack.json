@@ -58,7 +58,9 @@
           "load": "lazy"
         }
       },
-      "services": {},
+      "services": {
+        "memoStamp": "src/features/memos/be/stamp-service.ts#memoStamp"
+      },
       "repositories": {
         "memoQueries": "src/features/memos/be/repository.ts#memoQueries",
         "memoCommands": "src/features/memos/be/repository.ts#memoCommands"

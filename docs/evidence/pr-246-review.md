@@ -93,8 +93,8 @@ focused verification; remaining application/native acceptance is listed separate
    filesystem tests do not close this gate.
 2. **7.2 and completeness — application verification:** exercise step-owner service injection through
    the actual flow executor, and obtain fresh application/integrated acceptance for repaired committed
-   source. Historical runs are preserved but do not cover these changes. No runs are triggered by this
-   documentation update; the user's no-CI instruction remains in effect.
+   source. Historical runs are preserved but do not cover these changes. The user authorized fresh
+   disposable CI on 2026-10-20; see [current acceptance evidence](pr-246-acceptance.md).
 
 
 ## Area 5: settings
