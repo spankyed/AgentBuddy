@@ -160,6 +160,11 @@ export function loadExternalPacks(registry: LoadProblemSink & Pick<PackRegistry,
       registry.recordLoadProblem(entry.id, entry.problem);
       continue;
     }
+    const problem = registry.catalog.getSnapshot().problems.find(problem => problem.id === entry.id);
+    if (problem) {
+      registry.recordLoadProblem(entry.id, problem.message);
+      continue;
+    }
     const { dir, build: { snapshot: { manifest } } } = entry;
     const pack = loadSingleExternalPack(registry, dir);
     if ('problem' in pack) registry.recordLoadProblem(manifest.id, pack.problem);

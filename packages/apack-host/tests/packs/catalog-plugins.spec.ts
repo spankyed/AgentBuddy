@@ -82,7 +82,7 @@ it('refuses a conflicting verified candidate before importing its executable ent
 });
 
 
-it('validates the complete installed claim set before boot imports any runtime', () => {
+it('reports every competing installed owner without stopping boot or importing its runtime', () => {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'apack-destination-boot-'));
   vi.stubEnv('APACK_ENV', 'test'); vi.stubEnv('APACK_USER_DATA_DIR', root);
   try {
@@ -94,8 +94,17 @@ it('validates the complete installed claim set before boot imports any runtime',
       fs.writeFileSync(path.join(dir, PACK_LAYOUT.runtimeEntry), `require('node:fs').writeFileSync(${JSON.stringify(path.join(root, id))}, 'executed');`);
       sealPack(dir);
     }
-    expect(() => loadExternalPacks(createPackRegistry())).toThrow(/Action.*first\/view.*second\/view/);
+    const registry = createPackRegistry();
+    expect(loadExternalPacks(registry)).toEqual([]);
+    expect(registry.loadProblem('first')).toMatch(/Action.*first\/view.*second\/view/);
+    expect(registry.loadProblem('second')).toMatch(/Action.*first\/view.*second\/view/);
+    expect(registry.catalog.getSnapshot().problems.map(problem => problem.id)).toEqual(['first', 'second']);
+    expect(loadSingleExternalPack(registry, path.join(packsDir, 'first'))).toMatchObject({ problem: expect.stringContaining('second/view') });
     expect(fs.existsSync(path.join(root, 'first'))).toBe(false);
     expect(fs.existsSync(path.join(root, 'second'))).toBe(false);
+    registry.refreshCatalog(packsDir, new Set(['second']));
+    expect(registry.catalog.getSnapshot().problems).toEqual([]);
+    expect(registry.catalog.get('first')?.enabled).toBe(true);
+    expect(registry.catalog.get('second')?.enabled).toBe(false);
   } finally { vi.unstubAllEnvs(); fs.rmSync(root, { recursive: true, force: true }); }
 });

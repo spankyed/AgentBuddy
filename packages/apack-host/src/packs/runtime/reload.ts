@@ -4,6 +4,7 @@ import { createLogger } from '@apackdev/sdk/logger';
 import { resolveAppEnvironment, getAppVersion } from '@apackdev/sdk/env';
 import { packSystemIds, type PackRegistry } from '../registry.ts';
 import { installShippedPacks } from '../installer.ts';
+import { disabledPackIds } from '../installed.ts';
 import { PACK_SNAPSHOT_FORMAT } from '@apackdev/sdk/build';
 import { loadSingleExternalPack, clearPackRequireCache, registerExternalPacks } from './loader.ts';
 import { runPackMigrations } from '../../migrations/index.ts';
@@ -97,7 +98,7 @@ export async function reloadPackById(
       hostVersion: getAppVersion(),
       packFormat: PACK_SNAPSHOT_FORMAT,
       accept: candidate => {
-        startInstalled = acceptInstalledPack(registry, candidate.id, backendActor);
+        if (!disabledPackIds().has(candidate.id)) startInstalled = acceptInstalledPack(registry, candidate.id, backendActor);
       },
     })) {
       // The author's edit is the point of the reload, so a refresh that failed is the answer rather than a
@@ -105,6 +106,12 @@ export async function reloadPackById(
       if (result.outcome === 'failed') throw new Error(`Could not refresh the installed copy of ${packId}, which this app ships: ${result.error}`);
       if (result.outcome === 'installed' || result.outcome === 'updated') logger.info(`Refreshed the installed copy of ${packId} from ${shippedDir}`);
     }
+  }
+
+  if (disabledPackIds().has(packId)) {
+    registry.refreshCatalog(packsDir);
+    backendActor.send({ type: 'PACK_CHANGED', packId });
+    return;
   }
 
   if (startInstalled) {

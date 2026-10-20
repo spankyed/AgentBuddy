@@ -2,7 +2,7 @@ import { dslCatalogEntries } from './catalog-dsl.ts';
 import { eventCatalogEntries } from './catalog-events.ts';
 import { _parseEventContracts, type PackEventContracts } from '@apackdev/sdk/framework';
 import { captureData } from './captured-data.ts';
-import { assertEntityDestinationClaims, pluginCatalogEntries } from './catalog-plugins.ts';
+import { assertEntityDestinationClaims, entityDestinationConflicts, pluginCatalogEntries } from './catalog-plugins.ts';
 import { stepCatalogEntries } from './catalog-steps.ts';
 import { commandCatalogEntries } from './catalog-commands.ts';
 import { artifactCatalogEntries } from './catalog-artifacts.ts';
@@ -100,19 +100,22 @@ export function createContributionCatalog(appSettings: SettingsDefinition) {
   _compileSettingsDefinition(app);
   let current: PackCatalogSnapshot = immutable({ revision: 0, appSettings: app, packs: [], problems: [], native: [], sourcePacks: [], appPackSources: [], appPackSourceProblems: [] });
   let byId = new Map<string, PackCatalogEntry>();
+  let refusedDestinations: PackCatalogEntry[] = [];
   const listeners = new Set<() => void>();
   const commandOrder = new Map<string, number>();
   const emptySettings: CatalogData<Record<string, SettingsDefinition>> = Object.freeze({});
   let settings: SettingsCatalog = immutable({ revision: 0, app, packs: {}, features: {}, dependencies: {} });
   let help: CatalogData<HelpCatalog> = immutable({ articles: [], problems: [] });
 
-  function publish(changes: Partial<Omit<PackCatalogSnapshot, 'revision' | 'appSettings'>>): void {
+  function publish(changes: Partial<Omit<PackCatalogSnapshot, 'revision' | 'appSettings'>>,
+    refused = refusedDestinations): void {
     const { packs, native, sourcePacks, problems: catalogProblems, appPackSources, appPackSourceProblems } = { ...current, ...changes };
     const declarationsChanged = !isDeepStrictEqual(current.packs, packs)
       || !isDeepStrictEqual(current.native, native) || !isDeepStrictEqual(current.sourcePacks, sourcePacks);
     if (!declarationsChanged && isDeepStrictEqual(current.problems, catalogProblems)
       && isDeepStrictEqual(current.appPackSources, appPackSources)
-      && isDeepStrictEqual(current.appPackSourceProblems, appPackSourceProblems)) return;
+      && isDeepStrictEqual(current.appPackSourceProblems, appPackSourceProblems)
+      && isDeepStrictEqual(refusedDestinations, refused)) return;
     const manifests = [...packs.map(({ snapshot }) => snapshot.manifest), ...sourcePacks.map(source => source.manifest)];
     const definitions = [...native, ...manifests.map(manifest => ({
       id: manifest.id, dependencies: manifest.dependencies,
@@ -164,6 +167,7 @@ export function createContributionCatalog(appSettings: SettingsDefinition) {
     const helpProjection = immutable({ articles, problems });
     byId = new Map(next.packs.map(entry => [entry.snapshot.manifest.id, entry]));
     current = next;
+    refusedDestinations = refused;
     for (const command of commandCatalogEntries(next)) {
       if (!commandOrder.has(command.packId)) commandOrder.set(command.packId, commandOrder.size);
     }
@@ -232,7 +236,7 @@ export function createContributionCatalog(appSettings: SettingsDefinition) {
 
     /** Check a verified executable candidate before importing it or replacing incumbent bindings. */
     assertPackDestinations(candidate: Pick<PackCatalogEntry, 'dir' | 'snapshot'>): void {
-      const packs = current.packs.filter(pack => pack.snapshot.manifest.id !== candidate.snapshot.manifest.id);
+      const packs = [...current.packs, ...refusedDestinations].filter(pack => pack.snapshot.manifest.id !== candidate.snapshot.manifest.id);
       assertEntityDestinationClaims({ ...current, packs: [...packs, { ...candidate, enabled: true }] });
     },
 
@@ -243,8 +247,9 @@ export function createContributionCatalog(appSettings: SettingsDefinition) {
         pack.snapshot.manifest.id === packId ? { ...pack, enabled } : pack) });
     },
 
-    /** Validate the whole candidate before publication; a refusal leaves the previous revision intact. */
-    replace(sources: readonly PackCatalogSource[], problems: readonly PackCatalogProblem[] = []): void {
+    /** Explicit admission is atomic; discovery may instead report and withhold all conflicting owners. */
+    replace(sources: readonly PackCatalogSource[], problems: readonly PackCatalogProblem[] = [],
+      { reportConflicts = false }: { reportConflicts?: boolean } = {}): void {
       const next = new Map<string, PackCatalogEntry>();
       for (const source of sources) {
         const candidate = immutable(source);
@@ -259,7 +264,18 @@ export function createContributionCatalog(appSettings: SettingsDefinition) {
         next.set(id, { ...candidate, snapshot: result.snapshot,
           ...(candidate.integrity && { buildRevision: packBuildRevision(candidate.integrity) }) });
       }
-      publish({ packs: [...next.values()], problems });
+      let packs = [...next.values()];
+      let refused: PackCatalogEntry[] = [];
+      if (reportConflicts) {
+        const conflicts = entityDestinationConflicts({ ...current, packs });
+        problems = [...problems, ...packs.flatMap(pack => {
+          const message = conflicts.get(pack.snapshot.manifest.id);
+          return message ? [{ id: pack.snapshot.manifest.id, dir: pack.dir, enabled: pack.enabled, message }] : [];
+        })];
+        refused = packs.filter(pack => conflicts.has(pack.snapshot.manifest.id));
+        packs = packs.filter(pack => !conflicts.has(pack.snapshot.manifest.id));
+      }
+      publish({ packs, problems }, refused);
     },
 
     onChanged(listener: () => void): () => void {

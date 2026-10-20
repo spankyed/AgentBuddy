@@ -378,3 +378,27 @@ it('refuses an app update when ownership changes during preparation, retaining i
   expect(readPackBuild(path.join(packsDir, 'shipped-pack')).revision).toBe(before);
   expect(readInstalledPacks(installedPacksFile, { strict: true })).toEqual([{ id: 'shipped-pack', enabled: false, updatesWith: 'user' }]);
 });
+
+
+it('refreshes a disabled app-owned build without loading or initializing its runtime', async () => {
+  vi.stubEnv('APACK_ENV', 'test');
+  vi.stubEnv('APACK_USER_DATA_DIR', path.join(tmp, 'disabled-profile'));
+  vi.stubEnv('SHIPPED_PACKS_DIR', shipped);
+  try {
+    const context = resolveAppEnvironment();
+    packsDir = context.packsDir;
+    installedPacksFile = context.installedPacksFile;
+    shipPack('disabled-pack');
+    await outcomes();
+    writeInstalledPacks(readInstalledPacks(recordsFile()).map(record => ({ ...record, enabled: false })), recordsFile());
+    const marker = path.join(tmp, 'executed');
+    shipPack('disabled-pack', `require('node:fs').writeFileSync(${JSON.stringify(marker)}, 'executed'); exports.registration = { id: 'disabled-pack' };`);
+    const bus = { send: vi.fn() };
+    await reloadPackById(registry, 'disabled-pack', bus as never);
+    expect(fs.readFileSync(path.join(packsDir, 'disabled-pack', PACK_LAYOUT.runtimeEntry), 'utf8')).toContain(marker);
+    expect(fs.existsSync(marker)).toBe(false);
+    expect(registry.getPackRegistration('disabled-pack')).toBeNull();
+    expect(registry.catalog.get('disabled-pack')?.enabled).toBe(false);
+    expect(bus.send.mock.calls.map(([event]) => event.type)).toEqual(['PACK_CHANGED']);
+  } finally { vi.unstubAllEnvs(); }
+});

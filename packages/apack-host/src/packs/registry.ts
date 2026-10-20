@@ -425,7 +425,7 @@ export function createPackRegistry({ installedPacksDir, appPackSourcesDir, setti
         if (previous) sources.push({ snapshot: previous.snapshot, integrity: previous.integrity, dir, enabled: !disabled.has(id) });
       }
     }
-    catalog.replace(sources, problems);
+    catalog.replace(sources, problems, { reportConflicts: true });
     catalogDir = packsDir;
   }
 

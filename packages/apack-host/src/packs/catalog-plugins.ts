@@ -48,14 +48,31 @@ export function assertEntityDestinationClaims(snapshot: PackCatalogSnapshot): vo
   assertPluginDestinationClaims(pluginCatalogEntries(snapshot));
 }
 
-function assertPluginDestinationClaims(entries: readonly PluginCatalogEntry[]): void {
-  const owners = new Map<string, string>();
+/** All competing owners are refused; discovery never chooses a winner by directory order. */
+export function entityDestinationConflicts(snapshot: PackCatalogSnapshot): ReadonlyMap<string, string> {
+  return pluginDestinationConflicts(pluginCatalogEntries(snapshot));
+}
+
+function pluginDestinationConflicts(entries: readonly PluginCatalogEntry[]): Map<string, string> {
+  const owners = new Map<string, PluginCatalogEntry[]>();
   for (const plugin of entries) {
     if (plugin.origin === 'source' || plugin.enabled !== true) continue;
     for (const entity of plugin.opens ?? []) {
-      const previous = owners.get(entity);
-      if (previous !== undefined) throw new Error(`Entity destination "${entity}" claimed by both "${previous}" and "${plugin.featureRef}"`);
-      owners.set(entity, plugin.featureRef);
+      const claims = owners.get(entity) ?? [];
+      claims.push(plugin);
+      owners.set(entity, claims);
     }
   }
+  const conflicts = new Map<string, string>();
+  for (const [entity, claims] of owners) {
+    if (claims.length < 2) continue;
+    const message = `Entity destination "${entity}" claimed by both ${claims.map(owner => `"${owner.featureRef}"`).join(' and ')}`;
+    for (const owner of claims) conflicts.set(owner.packId, message);
+  }
+  return conflicts;
+}
+
+function assertPluginDestinationClaims(entries: readonly PluginCatalogEntry[]): void {
+  const problem = pluginDestinationConflicts(entries).values().next().value;
+  if (problem) throw new Error(problem);
 }
