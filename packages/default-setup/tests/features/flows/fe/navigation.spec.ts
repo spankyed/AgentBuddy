@@ -114,3 +114,34 @@ it('refreshes only the current graph and preserves its node editor', () => {
   actor.send({ ...selected('Flow-first', 'Node-first'), type: 'FLOW_REFRESHED' });
   expect(actor.getSnapshot().context.editingNodeId).toBe('Node-first');
 });
+
+const connected = (flowIds: `Flow-${string}`[], selectedFlowId: `Flow-${string}`, nodeId: `Node-${string}`) => ({
+  type: 'FLOWS_CONNECTED' as const,
+  data: { flows: flowIds.map(id => ({ id, entityType: 'Flow', label: id })), prompts: [], models: [], actions: [],
+    selectedFlowId, graph: graph(nodeId), rootFlow: { id: selectedFlowId }, settings: {} },
+}) as never;
+
+it('asks for the shown flow again when the backend publishes, keeping the open node editor', () => {
+  const actor = view();
+  actor.send({ type: 'NODE.REVEAL', flowId: 'Flow-first', nodeId: 'Node-first' });
+  actor.send(answerTo(sentCall(sendToSystem, 'FLOW_SELECT'), selected('Flow-first', 'Node-first')));
+  expect(actor.getSnapshot().context.editingNodeId).toBe('Node-first');
+  // Published after data was replaced: the flow still exists, but its graph may not be the one on screen
+  actor.send(connected(['Flow-first', 'Flow-root'], 'Flow-root', 'Node-root'));
+  const refresh = sentCall(sendToSystem, 'FLOW_SELECT', 1);
+  expect(actor.getSnapshot().context.selectedFlowId).toBe('Flow-first');
+  actor.send(answerTo(refresh, selected('Flow-first', 'Node-first')));
+  expect(actor.getSnapshot().context.editingNodeId).toBe('Node-first');
+  expect(actor.getSnapshot().context.pendingFlow).toBeUndefined();
+});
+
+it('shows the root flow the backend publishes when the shown flow is gone', () => {
+  const actor = view();
+  actor.send({ type: 'NODE.REVEAL', flowId: 'Flow-first', nodeId: 'Node-first' });
+  actor.send(answerTo(sentCall(sendToSystem, 'FLOW_SELECT'), selected('Flow-first', 'Node-first')));
+  actor.send(connected(['Flow-root'], 'Flow-root', 'Node-root'));
+  expect(actor.getSnapshot().context.selectedFlowId).toBe('Flow-root');
+  expect(actor.getSnapshot().context.graph.nodes.map(node => node.id)).toEqual(['Node-root']);
+  expect(actor.getSnapshot().context.editingNodeId).toBeUndefined();
+  expect(sendToSystem.mock.calls.filter(([, event]) => (event as { type: string }).type === 'FLOW_SELECT')).toHaveLength(1);
+});

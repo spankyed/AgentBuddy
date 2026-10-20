@@ -1520,11 +1520,13 @@ interface FlowsConnectedData {
 }
 
 interface FlowsContext {
+    /** `refresh`: asked again for the flow already shown, so its node selection and editor stay where their node does */
     pendingFlow?: {
         call: string;
         flowId: EARS.EntityId;
         nodeId?: string;
         recordHistory: boolean;
+        refresh?: true;
     };
     selectedNodeId?: EARS.EntityId;
     editingNodeId?: EARS.EntityId;

@@ -77,7 +77,7 @@ focused verification; remaining application/native acceptance is listed separate
 | 3b.1, 3b.4 | Open: judgement calls | — |
 | 4.1, 4.2, 4.3, 4.4 | Completed: guide examples and names match the schema and exports; every whole-manifest fence parses | "docs: align public pack guides with the manifest schema and exports" |
 | 9.1, 9.3, 9.4 | Completed: symlinked documents open; reopening refetches; a rebuilt graph keeps its layout | "fix(default-setup): open symlinked documents, refetch reopened items, keep layouts of rebuilt graphs" |
-| 9.2 | Open: judgement call | — |
+| 9.2 | Completed: each `FLOWS_CONNECTED` asks for the shown flow again, keeping its node selection and editor while the node exists; a flow that is gone gives way to the published root flow | "fix(flows): refresh the shown flow when the backend republishes, falling back to the root flow" |
 | 10.1, 10.2, 10.7 | Deferred: deadline and declared-cost decisions; no change until measured | [Validation feedback budget](../plans/validation-feedback-budget.md#review-findings-this-plan-owns) |
 | 10.3–10.6 | Completed: strict runs keep their own group; each filtered step's report is verified; the fixture build precedes repo-checks integration; uploads point at `.apack` output | "ci: keep strict runs, verify each filtered step, build fixtures first, upload .apack output" |
 | S.1, S.2 | Completed for startup-invalid settings: persisted-row preflight and host-only recovery | `3a6b649b5`; [evidence](settings-recovery.md) |

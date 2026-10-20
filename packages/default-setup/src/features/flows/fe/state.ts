@@ -168,20 +168,34 @@ const flowsState = setup({
   },
   actions: {
     /* ── bootstrap ─────────────────────────────────────── */
-    setPluginData: assign(({ context, event, self }) => {
+    setPluginData: enqueueActions(({ context, event, self, enqueue }) => {
       const ev = typeOf('FLOWS_CONNECTED', event);
-
-      const keepGraph = !!context.selectedFlowId || !!context.pendingFlow;
-      return {
-        flows: (ev.data.flows || []) as FlowEntity[],
+      const flows = (ev.data.flows || []) as FlowEntity[];
+      enqueue.assign({
+        flows,
         prompts: ev.data.prompts || [],
         models: ev.data.models || [],
         actions: ev.data.actions || [],
-        selectedFlowId: keepGraph ? context.selectedFlowId : ev.data.selectedFlowId,
-        graph: keepGraph ? context.graph : layoutGraph(ev.data.graph, {}, event => self.send(event)),
         rootFlowId: ev.data.rootFlow?.id,
         settings: ev.data.settings || {},
+      });
+      // A selection under way decides what is shown once it answers
+      if (context.pendingFlow) return;
+      const selected = context.selectedFlowId;
+      if (selected && flows.some(flow => flow.id === selected)) {
+        // Whatever made the backend publish (a reconnect, a pack change, data replaced) may have changed this
+        // flow, so the graph on screen is asked for again rather than kept
+        const call = newCall();
+        enqueue.assign({ pendingFlow: { call, flowId: selected, recordHistory: false, refresh: true } });
+        enqueue(() => sendToSystem(id, { type: 'FLOW_SELECT', flowId: selected }, { call }));
+        return;
       }
+      // Nothing selected yet, or the selected flow is gone (a reset or an import): show what the backend sent
+      enqueue.assign({
+        selectedFlowId: ev.data.selectedFlowId,
+        graph: layoutGraph(ev.data.graph, {}, event => self.send(event)),
+        ...(selected && { selectedNodeId: undefined, editingNodeId: undefined }),
+      });
     }),
     
     handleSettingsUpdate: assign(({ event }) => {
@@ -219,12 +233,15 @@ const flowsState = setup({
       const request = event.type === 'FLOW_SELECTED' ? context.pendingFlow : undefined;
       const nodeId = request?.nodeId;
       const found = nodeId && ev.data.nodes.some(node => node.id === nodeId);
+      // A refresh keeps what the user had selected and open, for as long as its node is still in the flow
+      const refresh = ev.type === 'FLOW_REFRESHED' || request?.refresh;
+      const kept = (node: EARS.EntityId | undefined) => node && ev.data.nodes.some(each => each.id === node) ? node : undefined;
       return {
         pendingFlow: undefined,
         selectedFlowId: ev.flowId,
-        selectedNodeId: ev.type === 'FLOW_REFRESHED' ? context.selectedNodeId : found ? nodeId as EARS.EntityId : undefined,
-        editingNodeId: ev.type === 'FLOW_REFRESHED' ? context.editingNodeId : found ? nodeId as EARS.EntityId : undefined,
-        canvasError: ev.type === 'FLOW_REFRESHED' ? context.canvasError : nodeId && !found ? `Node "${nodeId}" is no longer in flow "${ev.flowId}".` : undefined,
+        selectedNodeId: refresh ? kept(context.selectedNodeId) : found ? nodeId as EARS.EntityId : undefined,
+        editingNodeId: refresh ? kept(context.editingNodeId) : found ? nodeId as EARS.EntityId : undefined,
+        canvasError: refresh ? context.canvasError : nodeId && !found ? `Node "${nodeId}" is no longer in flow "${ev.flowId}".` : undefined,
         graph: layoutGraph(ev.data, context.selectedFlowId === ev.flowId ? context.graph.positions : {}, event => self.send(event)),
         navHistory: request?.recordHistory ? pushNavHistory(context.navHistory, ev.flowId) : context.navHistory,
       };
