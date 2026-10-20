@@ -74,7 +74,7 @@ export interface ThreadsContext {
 
 /** What the artifact viewers, the dashboard and the tiptap command items ask of the threads plugin */
 export type ThreadsInboxEvent =
-  | { type: 'SET_CLAUDE_PERMISSION_MODE'; threadId: string; mode: import('../../code/be/services/claude-code/types.ts').PermissionMode }
+  | { type: 'SET_CLAUDE_PERMISSION_MODE'; threadId: string; mode: NonNullable<import('#generated/types.ts').ClaudeSessionArtifactContent['permissionMode']> }
   | { type: 'SELECT_ARTIFACT'; artifactId: string }
   | { type: 'OPEN_THREAD_CHAT'; threadId: string }
   | { type: 'VIEW_THREAD'; threadId: string }
