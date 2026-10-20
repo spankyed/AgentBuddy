@@ -189,13 +189,14 @@ review rules using existing reports, not new per-test metadata.
 ### Review findings this plan owns
 
 The [PR 246 review](../evidence/pr-246-review.md) recorded four findings that are budget decisions, not
-defects with one fix. They stay as they are until this plan resolves them:
+defects with one fix, and its acceptance runs surfaced a fifth (R-F1). They stay as they are until this plan resolves them:
 
 | Finding | Current state | Resolve by |
 |---|---|---|
 | 10.1 | The `suite` rung is 600s (`scripts/lib/step-timeouts.ts`), double its earlier 300s. The reason recorded for raising it, the integration pool, now has its own `acceptance` class | Measure the remaining `suite` members, then set the rung from that measurement or return it to 300s. No change before then |
 | 10.2 | `TIMEOUT_EXCEPTIONS` (`packages/repo-checks/tests/suite-timeouts.spec.ts`) holds 69 per-test overrides of 120–540s, many justified only by a run that hit the old limit | Apply "reduce title-keyed timeout exceptions" above: move recurring patterns to a fitting project, keep reviewed overrides for genuinely different scenarios |
 | 10.7 | `test:external-pack:app` declares `seconds: 18` but now also runs the default-fork lifecycle (four app launches, four `apack pack` commands) | Refresh the declared cost from a completed run |
+| R-F1 | A cold `apack pack build` of default-setup took 522s on the two-core hosted macOS runner (strict run `39430263642`) against a declared `seconds: 28`. Its finalization alone was 175s: compiler-input recording 125.4s and source validation 49.7s (diagnostic run `39427595920`). `build:default-setup` and `test:external-pack:fork` were moved from `suite` (600s) to `scenario` (900s) to fit it | Profile `compilation.finish()` and the final source checks on a cold build (`node --cpu-prof`), reduce that work, then return both steps to `suite` and refresh their declared cost. Keep the 900s classification until then |
 | 3a.1 | `test:smoke` and `test:e2e` both declare `.apack/tests/results` as an output, and output digests are now part of a step's cache key, so any E2E run makes `test:smoke` stale with no input moved | Decide what a check step's declared outputs mean for cache validity, in the chain target and planner, rather than special-casing one step |
 
 ## Implementation checkpoints
