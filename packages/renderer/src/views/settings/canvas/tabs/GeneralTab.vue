@@ -41,6 +41,7 @@
       <component
         :is="componentMap[generalNavItem]"
         :settings="currentSettings"
+        v-bind="generalNavItem === 'personal' ? { saveSetting: handleUpdateSetting } : {}"
         @update-setting="handleUpdateSetting"
       />
 
@@ -137,11 +138,11 @@ const handleUpdateSetting = (event: SettingUpdate) => {
   if (!backendLabel) {
     console.error(`[GeneralTab] Invalid generalNavItem value: "${generalNavItem.value}". Expected one of: ${Object.keys(labelMap).join(', ')}`)
     console.error('[GeneralTab] Skipping settings update to prevent data corruption')
-    return
+    return Promise.resolve({ status: 'refused' as const, problems: ['This settings form is no longer selected.'] })
   }
 
   // Application displays the hotkeys form; personal and projects select their app fields.
-  updateSettings({
+  return updateSettings({
     target: { kind: 'app' },
     path: backendLabel === 'application' ? event.path : [backendLabel, ...event.path],
     value: event.value,

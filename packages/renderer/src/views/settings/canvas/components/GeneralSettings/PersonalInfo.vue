@@ -66,46 +66,45 @@
         <h3 class="text-sm font-medium text-neutral-300 uppercase tracking-wider">Address Information</h3>
       </div>
 
-      <AddressInput v-model="formData.address" @update:modelValue="debouncedSave" />
+      <AddressInput v-model="formData.address" @update:modelValue="edited" />
     </div>
 
   </div>
 </template>
 
 <script setup lang="ts">
-import { watch } from 'vue'
-import { useSettingsDraft } from '@apackdev/sdk/fe'
+import { ref, watch, onScopeDispose } from 'vue'
+import { isEqual } from '@apackdev/host/fe'
 import { useWindowSettingsSnapshot } from '@/runtime/settings'
 import { useDebounce } from '@apackdev/ui/composables/useDebounce'
 import { User, MapPin } from 'lucide-vue-next'
 import AddressInput from './AddressInput.vue'
-import type { AppPersonalInfo } from '@apackdev/sdk/types'
+import type { AppPersonalInfo, SettingsWriteResult } from '@apackdev/sdk/types'
 import type { SettingUpdate } from '@apackdev/sdk/fe'
 
 interface Props {
   settings?: AppPersonalInfo
+  saveSetting: (update: SettingUpdate) => Promise<SettingsWriteResult>
 }
 
 const props = defineProps<Props>()
 const snapshot = useWindowSettingsSnapshot()
 
-const emit = defineEmits<{
-  'update-setting': [SettingUpdate]
-}>()
-
-const formData = useSettingsDraft(() => ({
+const readForm = () => JSON.parse(JSON.stringify({
   ...props.settings,
   name: props.settings?.name || '',
   phoneNumber: props.settings?.phoneNumber || '',
   address: props.settings?.address || {
-    street: '',
-    street2: '',
-    city: '',
-    state: '',
-    postalCode: '',
-    country: 'US'
+    street: '', street2: '', city: '', state: '', postalCode: '', country: 'US'
   },
-}))
+})) as Required<AppPersonalInfo>
+let persisted = readForm()
+const formData = ref(readForm())
+let version = 0
+let submitted: { value: AppPersonalInfo; version: number; cancelled: boolean } | undefined
+let disposed = false
+onScopeDispose(() => { disposed = true })
+function edited() { version++; debouncedSave() }
 
 // Format phone number as user types
 const formatPhoneNumber = (value: string) => {
@@ -132,26 +131,38 @@ const handlePhoneInput = (event: Event) => {
   const formatted = formatPhoneNumber(input.value)
   formData.value.phoneNumber = formatted
   input.value = formatted
-  debouncedSave()
+  edited()
 }
 
 // Handle name input
 const handleNameInput = () => {
-  debouncedSave()
+  edited()
 }
 
-// Use the debounce composable
-const { debounced: debouncedSave, cancel } = useDebounce(() => {
-  emit('update-setting', {
-    path: [],
-    value: JSON.parse(JSON.stringify(formData.value)),
-    condition: snapshot.value ? {
-      runId: snapshot.value.runId,
-      expected: { exists: true, value: JSON.parse(JSON.stringify(props.settings ?? {})) }
-    } : undefined
-  })
+// One in-flight save lets an echo acknowledge its own draft without discarding later typing.
+const { debounced: debouncedSave, cancel } = useDebounce(async () => {
+  if (submitted || disposed) return
+  const pending = { value: JSON.parse(JSON.stringify(formData.value)) as AppPersonalInfo, version, cancelled: false }
+  submitted = pending
+  try {
+    const result = await props.saveSetting({
+      path: [], value: pending.value,
+      condition: snapshot.value ? {
+        runId: snapshot.value.runId,
+        expected: { exists: true, value: JSON.parse(JSON.stringify(props.settings ?? {})) }
+      } : undefined
+    })
+    if (result.status === 'saved' && !pending.cancelled && version > pending.version && !disposed) debouncedSave()
+  } finally { submitted = undefined }
 }, 500)
-// An accepted reset/import/remote edit supersedes a pending draft save.
-watch(() => JSON.stringify(props.settings), cancel)
+watch(() => props.settings, () => {
+  const next = readForm()
+  if (isEqual(next, persisted)) return
+  persisted = next
+  if (submitted && isEqual(next, submitted.value)) return
+  cancel()
+  if (submitted) submitted.cancelled = true
+  formData.value = next
+}, { deep: true })
 </script>
 

@@ -10,10 +10,10 @@ afterEach(() => { app?.unmount(); app = undefined; vi.useRealTimers(); });
 
 function render(value: AppPersonalInfo) {
   const settings = ref(value);
-  const saved = vi.fn();
+  const saved = vi.fn(async (_update: SettingUpdate) => ({ status: 'saved' as const }));
   const el = document.createElement('div');
   app = createApp(defineComponent({
-    setup: () => () => h(PersonalInfo, { settings: settings.value, 'onUpdate-setting': saved }),
+    setup: () => () => h(PersonalInfo, { settings: settings.value, saveSetting: saved }),
   }));
   app.mount(el);
   return { el, settings, saved };
@@ -65,4 +65,52 @@ it('does not save after the form is disposed', async () => {
   app!.unmount(); app = undefined;
   vi.advanceTimersByTime(500);
   expect(saved).not.toHaveBeenCalled();
+});
+
+
+it('preserves newer typing when the previous save is echoed and then submits it against that saved value', async () => {
+  vi.useFakeTimers();
+  const { el, settings, saved } = render({ name: 'Ada' });
+  let finish!: (result: { status: 'saved' }) => void;
+  saved.mockImplementationOnce(() => new Promise(resolve => { finish = resolve; }));
+  await input(el, 'name', 'Grace');
+  await vi.advanceTimersByTimeAsync(500);
+  const first = saved.mock.calls[0][0];
+  await input(el, 'name', 'Grace Hopper');
+  settings.value = first.value as AppPersonalInfo;
+  await nextTick();
+  expect(el.querySelector<HTMLInputElement>('#name')!.value).toBe('Grace Hopper');
+  finish({ status: 'saved' });
+  await vi.advanceTimersByTimeAsync(500);
+  expect(saved).toHaveBeenCalledTimes(2);
+  expect(saved.mock.calls[1][0]).toMatchObject({ value: { name: 'Grace Hopper' },
+    condition: { expected: { exists: true, value: first.value } } });
+});
+
+it('discards queued typing when a remote reset supersedes an in-flight save', async () => {
+  vi.useFakeTimers();
+  const { el, settings, saved } = render({ name: 'Ada' });
+  let finish!: (result: { status: 'saved' }) => void;
+  saved.mockImplementationOnce(() => new Promise(resolve => { finish = resolve; }));
+  await input(el, 'name', 'Grace');
+  await vi.advanceTimersByTimeAsync(500);
+  await input(el, 'name', 'New draft');
+  settings.value = {};
+  await nextTick();
+  finish({ status: 'saved' });
+  await vi.advanceTimersByTimeAsync(500);
+  expect(el.querySelector<HTMLInputElement>('#name')!.value).toBe('');
+  expect(saved).toHaveBeenCalledTimes(1);
+});
+
+
+it('preserves pending typing across an equivalent snapshot from an unrelated settings write', async () => {
+  vi.useFakeTimers();
+  const { el, settings, saved } = render({ name: 'Ada' });
+  await input(el, 'name', 'Pending');
+  settings.value = { name: 'Ada' };
+  await nextTick();
+  expect(el.querySelector<HTMLInputElement>('#name')!.value).toBe('Pending');
+  await vi.advanceTimersByTimeAsync(500);
+  expect(saved.mock.calls[0][0]).toMatchObject({ value: { name: 'Pending' } });
 });

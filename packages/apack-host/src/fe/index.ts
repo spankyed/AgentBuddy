@@ -31,7 +31,7 @@ export { installFromProtocol, packInstallRequest, requestPackInstall, type PackI
 export { createSettingsMachine, type SettingsContext, type SettingsEvents, type SettingsIO, type SettingsState } from '../features/settings/fe/machine.ts';
 
 export { createWindowSettingsRuntime, type WindowSettingsIO } from './settings-runtime.ts';
-export { settingsProblems } from '../features/settings/document.ts';
+export { settingsProblems, isEqual } from '../features/settings/document.ts';
 export { compileSettingsCatalog } from '../features/settings/validation.ts';
 
 export { createWindowPackCatalog, type WindowPackCatalogIO } from './pack-catalog.ts';
