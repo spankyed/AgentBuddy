@@ -224,6 +224,13 @@ export interface PackRegistry extends PackRegistryView {
    */
   claimPackOperation(key: string): boolean;
   releasePackOperation(key: string): void;
+  /**
+   * Claims every pack at once, for replacing the app's data (a reset or a backup import). False while any
+   * operation holds a pack; while held, `claimPackOperation` refuses every key. Release with
+   * `releaseAllPackOperations`.
+   */
+  claimAllPackOperations(): boolean;
+  releaseAllPackOperations(): void;
   /** Host systems and every registered pack's that the bus runs, by id: all but the early ones */
   getRegisteredSystems(): Map<string, AnyStateMachine>;
   /** The refs of a registered pack's systems, `<packId>/<featureId>` */
@@ -398,6 +405,7 @@ export function createPackRegistry({ installedPacksDir, appPackSourcesDir, setti
   /** Pack id → why it failed to load. Only for packs not in `registrations`: registering one removes its entry */
   const loadProblems = new Map<string, string>();
   const operations = new Set<string>();
+  let allClaimed = false;
   let admitted = new Map<string, AdmittedPackContributions>();
   let tables = buildContributionTables(admitted.values());
   const bindings = new Map<string, ReturnType<typeof createPackServiceBinding>>();
@@ -769,11 +777,17 @@ export function createPackRegistry({ installedPacksDir, appPackSourcesDir, setti
       loadProblems.set(packId, problem);
     },
     claimPackOperation(key) {
-      if (operations.has(key)) return false;
+      if (allClaimed || operations.has(key)) return false;
       operations.add(key);
       return true;
     },
     releasePackOperation: key => { operations.delete(key); },
+    claimAllPackOperations() {
+      if (allClaimed || operations.size > 0) return false;
+      allClaimed = true;
+      return true;
+    },
+    releaseAllPackOperations: () => { allClaimed = false; },
     loadProblem: (packId) => catalog.getSnapshot().problems.find(problem => problem.id === packId)?.message ?? loadProblems.get(packId),
     clearLoadProblem(packId) {
       loadProblems.delete(packId);

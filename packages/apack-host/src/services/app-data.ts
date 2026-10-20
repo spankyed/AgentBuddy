@@ -20,11 +20,16 @@ export function createAppData({ store, engine, registry, settings, onReplaced }:
   store: LmdbStore; engine: EarsAdmin; registry: PackRegistry; settings: SettingsAdmin; onReplaced: () => void;
 }): AppDataService {
   let replacing = false;
+  /** One replacement at a time, and none while a pack is being installed or changed: both write the same data */
   async function exclusive<T>(operation: () => Promise<T>): Promise<T> {
     if (replacing) throw new Error('App data is already being replaced. Wait for it to finish.');
+    if (!registry.claimAllPackOperations()) throw new Error('A pack is being installed or changed. Try again once it finishes.');
     replacing = true;
     try { return await operation(); }
-    finally { replacing = false; }
+    finally {
+      replacing = false;
+      registry.releaseAllPackOperations();
+    }
   }
 
   async function reloadMemory(includeVolatile = false): Promise<void> {
