@@ -55,6 +55,10 @@ const coverageOf = (step: { inputs: readonly string[]; excludes?: readonly strin
   };
 };
 
+/** No dep file means no typecheck has run here, which is missing evidence rather than a finding about coverage */
+const NO_EVIDENCE = 'no dep file in node_modules/.cache/tsbuildinfo: run npm run typecheck once, '
+  + 'then this can check what the compiler read. An empty run is not a passing one.';
+
 describe('the compiler says what it read', () => {
   /**
    * Which legs this can speak for, named rather than implied.
@@ -65,6 +69,7 @@ describe('the compiler says what it read', () => {
    * quietly losing its dep file shows up here, and so does one gaining it.
    */
   it('says which legs it can speak for, so the gate is not wider than its evidence', () => {
+    if (depFileNames().length === 0) expect.fail(NO_EVIDENCE);
     const owners = new Set(depFileNames()
       .map((file) => PACKAGE_DIRS.find((dir) => file === dir)
         ?? PACKAGE_DIRS.filter((dir) => file.startsWith(`${dir}-`)).sort((a, b) => b.length - a.length)[0])
@@ -80,10 +85,7 @@ describe('the compiler says what it read', () => {
 
   it('finds dep files to read, or says plainly that there is no evidence here', () => {
     const found = depFileNames();
-    if (found.length === 0) {
-      expect.fail('no dep file in node_modules/.cache/tsbuildinfo: run npm run typecheck once, '
-        + 'then this can check what the compiler read. An empty run is not a passing one.');
-    }
+    if (found.length === 0) expect.fail(NO_EVIDENCE);
     population('dep files', found, { atLeast: 10 });
     expect(found.flatMap((name) => readsOf(name) ?? []).length, 'every dep file is empty of repo files')
       .toBeGreaterThan(100);
