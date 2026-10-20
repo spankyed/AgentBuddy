@@ -207,7 +207,10 @@ it.each(['configuration', 'sources', 'declarations', 'resolution'])('publishes c
   if (change === 'resolution') {
     // A dependency package is captured when the bundler first resolves into it, here during the edit, so the
     // restored package.json differs from what that capture saw: refused, never published from live bytes
-    await expect(build(['--skip-fe'], pack)).rejects.toThrow(/Compiler input changed during capture: .*node_modules\/bare\/package\.json/);
+    // The thrown summary keeps each failure's first line; the build prints the bundler's reason in full
+    const printed = vi.spyOn(console, 'error');
+    await expect(build(['--skip-fe'], pack)).rejects.toThrow(/Runtime bundle failed/);
+    expect(printed.mock.calls.flat().join('\n')).toMatch(/Compiler input changed during capture: .*node_modules\/bare\/package\.json/);
     expect(transient).toHaveBeenCalledOnce();
     return;
   }
