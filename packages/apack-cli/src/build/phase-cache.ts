@@ -1,10 +1,11 @@
 /**
  * Content-keyed reuse of facade types and DSL definitions.
  *
- * Keys cover authored pack files, generated entries, the phase's additional inputs, tools and options.
+ * Keys cover authored pack files, generated entries, the phase's additional inputs and tools.
  * Diagnostic build-read records do not define this scope: additions must invalidate reuse even when
  * no previous build read them. Reused output is copied into the staged tree before publication, so
- * reuse produces the same output as running the phase. Release and development keys stay distinct.
+ * reuse produces the same output as running the phase. Neither cached phase reads `--release`, so a
+ * release build reuses development output; a phase whose output depends on it must add it to its key.
  */
 import * as fs from 'node:fs';
 import * as path from 'node:path';
@@ -22,7 +23,7 @@ import { readPackBuildInputs, assertPackBuildInputsCurrent, type PackBuildInputs
 const CACHE_FILE = 'phase-cache.json';
 
 export interface PhaseStamp {
-  /** What the phase read, and the options that change what it writes */
+  /** What the phase read: its inputs and the implementation that produces it */
   readonly hash: string;
   /**
    * What it wrote, relative to `dist`. The output set follows the pack's declarations, so membership
@@ -150,7 +151,7 @@ export function dslInputsHash(root: string, apackDirs: readonly string[], depend
 
 /**
  * One hash for every gated phase: the pack's own sources and build inputs, whatever else the phase reaches,
- * the implementation that produces it, and the options that change what it writes.
+ * and the implementation that produces it.
  */
 function phaseInputsHash(root: string, o: {
   readonly bundler: string;
