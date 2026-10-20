@@ -26,6 +26,10 @@ on:
         description: Run the app suites and focused recovery, service and pack dev acceptance on disposable macOS
         type: boolean
         default: false
+      app_acceptance_test:
+        description: Optional app test name pattern (skips external-pack and CLI acceptance)
+        type: string
+        default: ''
       strict_chain:
         description: Run only the full strict chain with two cores on a disposable macOS runner
         type: boolean
@@ -206,6 +210,8 @@ jobs:
     permissions:
       contents: read
     uses: ./.github/workflows/app-acceptance.yml
+    with:
+      test: ${{ inputs.app_acceptance_test }}
 
   strict-chain:
     if: ${{ inputs.strict_chain }}
