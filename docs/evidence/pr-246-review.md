@@ -74,7 +74,8 @@ focused verification; remaining application/native acceptance is listed separate
 | 6.2 | Completed: reference-name conflicts go through the catalog like destination conflicts; every enabled owner is refused and shown in the Packs view, independent of load order | "fix(packs): refuse every owner of a shared reference name, as destination conflicts are" |
 | 3b.2 | Completed: a published build whose dev server fails re-verification restarts the server; covered by reading only, its specs need a disposable runner | "fix(build): resolve dangling watch links physically, name broken authored links, restart dev servers after publication" |
 | 3b.3 | Completed for the read-tree leak. The build path's lock release is unchanged: the next build's verification still blocks a stale publish | "fix(build): resolve dangling watch links physically, name broken authored links, restart dev servers after publication" |
-| 3b.1, 3b.4 | Open: judgement calls | — |
+| 3b.1 | Completed: Linux reads process-group state from `/proc`; other POSIX hosts keep `/bin/ps` and name it when missing | "fix(build): read process-group state from /proc on Linux instead of requiring ps" |
+| 3b.4 | Open: judgement call | — |
 | 4.1, 4.2, 4.3, 4.4 | Completed: guide examples and names match the schema and exports; every whole-manifest fence parses | "docs: align public pack guides with the manifest schema and exports" |
 | 9.1, 9.3, 9.4 | Completed: symlinked documents open; reopening refetches; a rebuilt graph keeps its layout | "fix(default-setup): open symlinked documents, refetch reopened items, keep layouts of rebuilt graphs" |
 | 9.2 | Completed: each `FLOWS_CONNECTED` asks for the shown flow again, keeping its node selection and editor while the node exists; a flow that is gone gives way to the published root flow | "fix(flows): refresh the shown flow when the backend republishes, falling back to the root flow" |
