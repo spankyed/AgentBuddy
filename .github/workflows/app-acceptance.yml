@@ -6,7 +6,7 @@ on:
       suite:
         description: App acceptance suite; all also exercises the source CLI
         type: choice
-        options: [all, app, external, cli, build, integration]
+        options: [all, app, external, cli, build, integration, packaged]
         default: all
       test:
         description: Playwright name pattern; integration requires space-separated spec file paths
@@ -66,6 +66,15 @@ jobs:
         id: runtime
         # The renderer leg's heap ceiling is declared on the leg (RUNTIME_BUILD_LEGS).
         run: npm run build:runtime -- --cores 2
+      - name: Runtime smoke
+        if: ${{ inputs.suite == 'packaged' }}
+        run: npm run test:smoke
+      - name: Packaged authoring producer
+        if: ${{ inputs.suite == 'packaged' }}
+        run: npm run test:packaged-authoring:author
+      - name: Packaged authoring app consumer
+        if: ${{ inputs.suite == 'packaged' }}
+        run: npm run test:packaged-authoring:app
       - name: Build fixture contracts
         id: preparation
         if: ${{ inputs.suite == 'all' || inputs.suite == 'external' || inputs.suite == 'cli' || inputs.suite == 'integration' }}

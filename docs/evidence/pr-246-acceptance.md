@@ -14,14 +14,14 @@ updates after that pin do not imply a newer source tree has passed.
 
 | Boundary | Inspected evidence | Remaining limit |
 |---|---|---|
-| Static checks and both unit pools | `39436045862`: 487 host files and 121 pack files pass | Earlier source; current strict run must finish |
-| Normal integration | Previous strict run: 553 cases in thirteen files pass before reporter timeout; repaired reporter: eleven focused cases pass | Full integration has not yet passed on repaired source |
+| Static checks and both unit pools | `39450690425`: both complete pools pass again | Current app/runtime changes still need application acceptance |
+| Normal integration | `39450690425`: 684 cases across 27 files pass; `39465321192`: all eleven facade-report cases pass | 38 applicable files are running in `39468282848`; two platform files are skipped |
 | 7.2 actual step-owner service | `39400009119`: external step runs through the actual brain | Full external suite still needs its fresh gate |
 | 8.1/8.2 actual LMDB import/rollback | All six cases pass repeatedly on disposable macOS | Not dependent on the developer-Mac native crash |
 | 5.1/S.1/S.2 settings recovery | Real Electron recovery, reopen and multi-window cases pass | General app evidence is composed across runs, not one fresh 32/32 run |
 | S.5 source host | `39414905716`: actual CLI install, manifest rebuild, frontend acceptance and shutdown pass; fourteen builder lifecycle cases pass | Packaged beta half lacks a suitable published release |
 | Fork replacement/restoration | `39420977378`: complete case passes in 48.9s | Fresh strict external gate still pending |
-| Runtime, smoke and packaged authoring | Not reached in the preceding strict run | Current strict gate must supply fresh results |
+| Runtime, smoke and packaged authoring | Not reached in the preceding strict run | Explicit packaged acceptance still required |
 
 ## Runs
 
@@ -379,3 +379,24 @@ The existing acceptance workflow gains explicit integration-file selection with 
 limits and project test deadlines; it skips unrelated runtime and fork builds. This enables focused
 verification and the 39 uncompleted files without restarting all 27 already-passing files. Two of the
 41 files without a pass are intentionally platform-skipped on macOS. No full-gate pass is claimed.
+
+## Focused facade acceptance passes; finish the remaining inventory
+
+[Run `39465321192`](https://github.com/spankyed/apack/actions/runs/39465321192), pinned to
+`77a7efecd`, passes all eleven facade-report cases with unchanged test deadlines. The setup build's
+no-report output is asserted before a report exists. The passive-build check takes 26.2s and the real
+stale-report build 22.5s; no RPC error is reported. Preparation also passes. The inspected JSON and logs
+are preserved under `/private/tmp/apack-facade-39465321192/` and its `.log`.
+
+[Run `39468282848`](https://github.com/spankyed/apack/actions/runs/39468282848) selects the 38 remaining
+applicable integration files explicitly, retaining two workers and the project-specific deadlines.
+The 27 earlier passing files and this focused facade pass are retained. The ELF and PE native library
+files intentionally skip on macOS. This is composed integration evidence, not a single normal-suite
+or strict-gate pass.
+
+To complete the app gates without replaying the unit/integration pools, the existing acceptance
+workflow also offers a `packaged` selection: build the runtime, run smoke, then the existing separately
+bounded packaged-authoring producer and app consumer. It uses the same disposable runner, two-core
+budget and 45-minute job bound. The normal `all` selection remains unchanged. YAML parsing and every
+workflow shell block pass syntax checks. These app gates and the complete app/external selection are
+still pending execution; no result is inferred from merely adding the route.
