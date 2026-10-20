@@ -1,4 +1,4 @@
-import { hasOwn } from '../utils/shared.ts';
+import { hasOwn, isPlainObject } from '../utils/shared.ts';
 // In-memory settings port for component tests; no Settings view is required.
 import type { SettingsPort, SettingsTarget } from '../fe/settings.ts';
 import type { SettingsWriteResult } from '../types/index.ts';
@@ -27,14 +27,14 @@ export interface FakeSettings extends SettingsPort {
   answer(result: SettingsWriteResult): void;
 }
 
-/** Sets `value` at `path`, copying only the objects along it and taking every key as data */
+/** Sets `value` at `path`, copying only the objects along it and taking every key as data; arrays are values, as in the app's store */
 function setIn(node: Record<string, unknown>, path: readonly string[], value: unknown): Record<string, unknown> {
   if (path.length === 0) return value as Record<string, unknown>;
   const [key, ...rest] = path;
   const child = node[key];
   const next = { ...node };
   Object.defineProperty(next, key, {
-    value: setIn(typeof child === 'object' && child !== null ? { ...(child as Record<string, unknown>) } : {}, rest, value),
+    value: setIn(isPlainObject(child) ? { ...child } : {}, rest, value),
     writable: true, enumerable: true, configurable: true,
   });
   return next;
@@ -62,7 +62,7 @@ export function fakeSettings(document: Record<string, unknown> = {}): FakeSettin
     updates,
     resets,
     get: <T,>(target: SettingsTarget) => settingsTargetPath(target).reduce<unknown>((value, key) =>
-      value && typeof value === 'object' && hasOwn(value, key) ? (value as Record<string, unknown>)[key] : undefined,
+      isPlainObject(value) && hasOwn(value, key) ? value[key] : undefined,
       doc) as T | undefined,
     status: () => 'ready',
     subscribe(listener) {
@@ -86,7 +86,7 @@ export function fakeSettings(document: Record<string, unknown> = {}): FakeSettin
         if (!hasOwn(value, key)) return value;
         if (rest.length === 0) return Object.fromEntries(Object.entries(value).filter(([name]) => name !== key));
         const child = value[key];
-        return child && typeof child === 'object' ? { ...value, [key]: remove(child as Record<string, unknown>, rest) } : value;
+        return isPlainObject(child) ? { ...value, [key]: remove(child, rest) } : value;
       };
       doc = remove(doc, settingsTargetPath(target));
       tell();

@@ -1,9 +1,9 @@
-import { hasOwn } from '@apackdev/sdk/utils/pure';
 import { newCall, type Message } from '@apackdev/sdk/events';
 import { _settingsJsonProblems } from '@apackdev/sdk/framework';
 import type { SettingsPort } from '@apackdev/sdk/fe';
 import { settingsTargetPath, type SettingsSnapshot, type SettingsWriteCondition, type SettingsWriteResult } from '@apackdev/sdk/types';
 import type { IncomingSettingsEvents } from '../features/settings/be/types.ts';
+import { getIn } from '../features/settings/document.ts';
 import { HOST } from '../refs.ts';
 import { createLogger } from '@apackdev/sdk/logger';
 import { createSettingsSnapshotReader } from './settings-snapshot.ts';
@@ -15,8 +15,6 @@ export interface WindowSettingsIO {
 }
 
 const refused = (message: string): SettingsWriteResult => ({ status: 'refused', problems: [message] });
-const valueAt = (value: unknown, path: readonly string[]): unknown => path.reduce<unknown>((node, key) =>
-  node && typeof node === 'object' && hasOwn(node, key) ? (node as Record<string, unknown>)[key] : undefined, value);
 
 /** One window owns this resource; the Settings view is an ordinary subscriber. */
 export function createWindowSettingsRuntime(io: WindowSettingsIO) {
@@ -83,12 +81,12 @@ export function createWindowSettingsRuntime(io: WindowSettingsIO) {
   function createPort(write: (event: IncomingSettingsEvents) => Promise<SettingsWriteResult>): SettingsPort {
     return {
       get: <T,>(target: import('@apackdev/sdk/types').SettingsTarget) =>
-        structuredClone(valueAt(snapshot?.values, settingsTargetPath(target))) as T | undefined,
+        structuredClone(getIn(snapshot?.values, settingsTargetPath(target))) as T | undefined,
       status: () => status,
       subscribe(listener) { listeners.add(listener); return () => { listeners.delete(listener); }; },
       update(target, path, value, condition) {
         if (!snapshot) return Promise.resolve(refused('Settings have not loaded.'));
-        const previous = valueAt(snapshot.values, [...settingsTargetPath(target), ...path]);
+        const previous = getIn(snapshot.values, [...settingsTargetPath(target), ...path]);
         const comparison: SettingsWriteCondition = condition ?? {
           runId: snapshot.runId,
           expected: previous === undefined ? { exists: false } : { exists: true, value: structuredClone(previous) },
