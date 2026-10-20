@@ -69,9 +69,11 @@ export async function startPackFrontend(root: string, compiler: CompilerInstalla
       if (child.connected) child.send('frontend-close', () => {});
       else child.kill('SIGKILL');
       await closed;
-      if (grouped && child.pid) await stopCompilerProcessGroup(child.pid);
-      try { deliverInputs(); }
-      finally { removeCompilerReadTree(directory); }
+      // The private read tree goes whether or not the group stopped, so a refused stop cannot leak it
+      try {
+        if (grouped && child.pid) await stopCompilerProcessGroup(child.pid);
+        deliverInputs();
+      } finally { removeCompilerReadTree(directory); }
     } finally { clearTimeout(timer); }
   })();
   const abort = () => { void close().catch(() => {}); };

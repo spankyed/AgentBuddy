@@ -132,7 +132,20 @@ export function createPackBuilder(root: string): PackBuilder {
           finally { lock.release(); }
           if (frontendChanged) {
             const before = current?.frontend?.address;
-            const address = await ensureFrontend(candidate, options.signal);
+            let address: PackFrontendAddress | undefined;
+            try { address = await ensureFrontend(candidate, options.signal); }
+            catch (error) {
+              // The build is already published, so a dev server that cannot be re-verified is restarted rather
+              // than turning a published build into a reported failure
+              options.signal.throwIfAborted();
+              await candidate.frontend?.close();
+              candidate.frontend = undefined;
+              try { address = await ensureFrontend(candidate, options.signal); }
+              catch (restart) {
+                throw new Error(`The build was published, but its dev server could not restart: ${restart instanceof Error ? restart.message : String(restart)}`,
+                  { cause: new AggregateError([error, restart]) });
+              }
+            }
             if (address !== before) frontendChanged(address);
           }
           const previous = current;

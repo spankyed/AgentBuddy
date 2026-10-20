@@ -18,7 +18,8 @@ export function physicalWatchPath(file: string, cache = new Map<string, string>(
     let link: fs.Stats | undefined;
     try { link = fs.lstatSync(file, { throwIfNoEntry: false }); }
     catch (failure) { if ((failure as NodeJS.ErrnoException).code !== 'ENOTDIR') throw failure; }
-    resolved = link?.isSymbolicLink() ? physicalWatchPath(path.resolve(parent, fs.readlinkSync(file)), cache)
+    // The kernel resolves a relative target from the link's physical directory, not the path that reached it
+    resolved = link?.isSymbolicLink() ? physicalWatchPath(path.resolve(physicalWatchPath(parent, cache), fs.readlinkSync(file)), cache)
       : path.join(physicalWatchPath(parent, cache), path.basename(file));
   }
   cache.set(file, resolved);

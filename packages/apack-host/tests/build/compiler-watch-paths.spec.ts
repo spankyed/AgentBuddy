@@ -1,4 +1,5 @@
 import fs from 'node:fs';
+import os from 'node:os';
 import path from 'node:path';
 import { expect, it, vi } from 'vitest';
 import { physicalWatchPath } from '../../src/build/compiler-inputs/watch-paths.ts';
@@ -33,4 +34,17 @@ it('preserves non-root realpath errors instead of treating them as missing input
     catch (error) { expect((error as Error).cause).toMatchObject({ message: 'non-root failure', code: 'EISDIR' }); }
   }
   finally { native.mockRestore(); }
+});
+
+it('resolves a dangling relative link inside a linked directory from its physical directory', () => {
+  const root = fs.mkdtempSync(path.join(fs.realpathSync(os.tmpdir()), 'apack-watch-link-'));
+  try {
+    const store = path.join(root, 'store');
+    fs.mkdirSync(path.join(store, 'x'), { recursive: true });
+    fs.mkdirSync(path.join(root, 'pack'));
+    fs.symlinkSync(path.join(store, 'x'), path.join(root, 'pack', 'deps'), 'dir');
+    fs.symlinkSync('../b', path.join(store, 'x', 'a'));
+    // The kernel resolves `../b` from store/x, so a later store/b is what the compiler would see
+    expect(physicalWatchPath(path.join(root, 'pack', 'deps', 'a'))).toBe(path.join(store, 'b'));
+  } finally { fs.rmSync(root, { recursive: true, force: true }); }
 });

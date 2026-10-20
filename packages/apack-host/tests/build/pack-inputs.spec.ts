@@ -44,6 +44,12 @@ describe('pack input identity', () => {
     expect(() => packInputsHash(root)).toThrow('Cyclic source directory');
   });
 
+  it('names a broken symbolic link in the authored tree rather than failing on a bare ENOENT', () => {
+    const root = pack('entry.ts', 'source');
+    fs.symlinkSync('../removed.ts', path.join(root, 'old.ts'));
+    expect(() => packInputsHash(root)).toThrow('Broken symbolic link in pack source: old.ts -> ../removed.ts');
+  });
+
   it('compares bytes and membership independently of filesystem timestamps', () => {
     const root = pack('entry.ts', 'before');
     const file = path.join(root, 'entry.ts');

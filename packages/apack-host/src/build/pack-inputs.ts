@@ -25,7 +25,8 @@ export function packInputFiles(root: string, { generated = false, modulesOnly = 
       const file = path.join(dir, name);
       const relative = path.relative(root, file).split(path.sep).join('/');
       if (!isPackInputPath(relative, generated)) continue;
-      const stat = fs.statSync(file);
+      const stat = fs.statSync(file, { throwIfNoEntry: false });
+      if (!stat) throw new Error(`Broken symbolic link in pack source: ${relative} -> ${fs.readlinkSync(file)}`);
       if (onLink && fs.lstatSync(file).isSymbolicLink()) onLink(file, stat.isDirectory());
       if (stat.isDirectory()) walk(file);
       else if (stat.isFile() && (!modulesOnly || /\.(ts|tsx|mts|cts|js|jsx|mjs|cjs|vue|json)$/.test(name))) files.push(relative);
