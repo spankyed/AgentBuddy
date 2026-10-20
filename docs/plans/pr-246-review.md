@@ -1,7 +1,7 @@
 # Review PR #246 before merge
 
 Status: proposed. Date: 2026-10-19.
-Subject: [#246](https://github.com/spankyed/AgentBuddy/pull/246), `session/settings-pack-contracts` against
+Subject: [#246](https://github.com/spankyed/apack/pull/246), `session/settings-pack-contracts` against
 `master` (merge base `d7e77829a`), the delivery of the
 [settings and pack contracts goal](../archive/goals/goal-settings-and-pack-contracts.md).
 

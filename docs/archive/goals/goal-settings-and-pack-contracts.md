@@ -67,7 +67,7 @@ actual external/runtime evidence, public contracts and final source deltas.
 | 6: APIs, provenance, replacement | All three complete; A1–A5, explicit consumer contracts, retired credentials, exact origin/content, fork restart/reload, disable/remove/restore and failure retention |
 | 7: review and acceptance | Complete under the user's revised acceptance decision: current normal integration and prerequisites pass, prior/focused evidence maps to remaining unchanged behavior, public/schema/API/docs agree |
 
-Normal unfiltered [39333769307](https://github.com/spankyed/AgentBuddy/actions/runs/39333769307)
+Normal unfiltered [39333769307](https://github.com/spankyed/apack/actions/runs/39333769307)
 passes on workflow-only **`06638811d`**, matching main **`1ba85b976`** except its workflow:
 **831 tests passed, zero failures, 29 platform skips, 66 passed files and two skipped files of 68**,
 exit 0, 4896.31s. All normal prerequisites pass, with no unhandled reporting or cleanup error.
@@ -97,20 +97,20 @@ change the repository's general validation policy. Do not dispatch another broad
 
 Current checkpoint: watcher operation correction **`fa21a17ba`** and measured reporting repair
 **`19c1c9716`** are committed/pushed. Focused acceptance
-[39329992884](https://github.com/spankyed/AgentBuddy/actions/runs/39329992884) on workflow-only
+[39329992884](https://github.com/spankyed/apack/actions/runs/39329992884) on workflow-only
 **`3ca1a45fc`** accepts **56/56 bodies in all eight files**, zero pending, **exit 0**, 1267.88s,
 with no unhandled reporting/cleanup error. Feature-validation/output-swap worker gaps fall from
 69.7/90.3s to **30.9/36.6s**; the largest sampled test-worker gap is 36.6s. All six actual watcher
 consumers complete on the consistent operation bound. Preserve exact logs and samples; no broad gate
 is implied. Published package/default-setup preparation is separately bounded; unrelated prerequisites
 are omitted only from this focused run. Normal unfiltered integration
-[39333769307](https://github.com/spankyed/AgentBuddy/actions/runs/39333769307) is now dispatched
+[39333769307](https://github.com/spankyed/apack/actions/runs/39333769307) is now dispatched
 on workflow-only **`06638811d`**, directly containing main **`1ba85b976`**: all normal prerequisites,
 `npm run test:integration -- --all`, two cores, no filters/probe or case overrides. Await this same
 run, then the evidence audit and documentation closure under the acceptance decision above.
 No second broad run is concurrent.
 
-Earlier focused [39311095507](https://github.com/spankyed/AgentBuddy/actions/runs/39311095507)
+Earlier focused [39311095507](https://github.com/spankyed/apack/actions/runs/39311095507)
 accepts **29/29 scaffold/add-extension bodies**, zero failed/pending, **exit 0**, 604.571s, with no
 unhandled reporting or cleanup error. Workflow-only **`4dc9c393d`** contains source **`14de022f8`**.
 All previously blocked scaffold cases execute and pass. Full public builds take **75/95/179 seconds**,
@@ -124,14 +124,14 @@ lifecycle cases, 53 policy/inventory checks, CLI types and lint pass. No product
 introduced. Earlier normal **39297729330** retains 507 passes but failed scaffold scenario/reporting
 and is not a passing gate.
 
-**Normal unfiltered integration [39312954386](https://github.com/spankyed/AgentBuddy/actions/runs/39312954386)**
+**Normal unfiltered integration [39312954386](https://github.com/spankyed/apack/actions/runs/39312954386)**
 failed after 3610.59s with **741 passing bodies, one watched-build operation timeout, 29 skipped bodies
 and two unhandled `onTaskUpdate` reporting errors**. All preparation passes and all 11 scaffold bodies
 pass. Bail leaves remaining bodies unexecuted; this is not full integration acceptance. Workflow-only
 **`cc0ae42b4`** is directly based on main **`f0405e436`**. Preserve its complete log and pool report.
 The flow-module watcher starts its rebuild and emits backend/frontend output before its 60s build
 deadline aborts; neither a missing watch event nor a whole-scenario timeout is demonstrated. Reporting
-errors remain unattributed. Focused diagnostic [39325170997](https://github.com/spankyed/AgentBuddy/actions/runs/39325170997)
+errors remain unattributed. Focused diagnostic [39325170997](https://github.com/spankyed/apack/actions/runs/39325170997)
 on workflow-only **`e3956518c`**, containing main **`5ce394268`**, selects only module freshness,
 output swap, feature authoring/validation and database integration. Two workers, unchanged per-test
 deadlines and the existing event-loop probe must distinguish operation cost from worker reporting
@@ -210,7 +210,7 @@ backend/frontend build and archive pass on that source; OS-assembly/copy/manifes
 acceptance is `b2972112d`. Evidence remains in the owning records; these accepted paths need no
 reassurance repeats. All useful Windows overlays/exports are preserved.
 
-[Strict run `39182963669`](https://github.com/spankyed/AgentBuddy/actions/runs/39182963669) finished
+[Strict run `39182963669`](https://github.com/spankyed/apack/actions/runs/39182963669) finished
 on **`bc0a4e91c`** after 1748.1s. The external contract (400.3s), fork producer (537.5s), pack typecheck
 (37.9s), schema/API/exports and other reached gates pass. All **5,654 host tests** pass (477 files;
 7 declared skips), but the pool fails on one obsolete LMDB `@slow` annotation. Source **`31a8e5a24`**
@@ -221,52 +221,52 @@ The packaged author half, pack unit pool, integration/runtime/app halves were no
 new two-core reservation therefore still needs real acceptance. No deadline, assertion or gate changes.
 
 Complete direct Electron content-compiler/build/archive acceptance now passes on source
-**`f37315483`**: signed macOS ARM64 [39182253220](https://github.com/spankyed/AgentBuddy/actions/runs/39182253220)
-(133.956s) and Linux x64 [39182255120](https://github.com/spankyed/AgentBuddy/actions/runs/39182255120)
+**`f37315483`**: signed macOS ARM64 [39182253220](https://github.com/spankyed/apack/actions/runs/39182253220)
+(133.956s) and Linux x64 [39182255120](https://github.com/spankyed/apack/actions/runs/39182255120)
 (71.738s). Both prove actual Electron 37.2.4 / Node 22.17.1 execution, owned-runtime retirement,
 verified backend/Vue output and Node 23.11.1 archive without compiler-function invocation. See
 [direct runtime evidence](../../evidence/build-input-snapshot-proof.md#direct-electron-content-compiler-and-passive-archive-accepted--2026-10-19).
 The invocation receipt complements existing passive-reader/poisoned-import checks. Signed-runtime
 environment filtering remains intact. No repeat of these accepted runtime paths is needed.
-Strict convergence run [39191666077](https://github.com/spankyed/AgentBuddy/actions/runs/39191666077)
+Strict convergence run [39191666077](https://github.com/spankyed/apack/actions/runs/39191666077)
 finished on `945e80c15` after **1877.8s**. All **5,657 host** and **889 pack** tests pass, as do
 API/schema/exports/types/lint, the external contract, fork producer and pack typecheck. Integration
 stops at one macOS native-watch recovery case's unchanged **120s** limit after 410 assertions pass.
 The repair rebuild starts; whether its late stage is slow or stuck is unproven. No authoring/runtime/
 smoke/app acceptance is claimed for unreached stages. Logs and next action are recorded in
 [terminal gate evidence](../../evidence/settings-and-pack-contracts.md#strict-convergence-reaches-pack-tests-native-watch-recovery-timeout--2026-10-19).
-Focused run [39194487906](https://github.com/spankyed/AgentBuddy/actions/runs/39194487906) also
+Focused run [39194487906](https://github.com/spankyed/apack/actions/runs/39194487906) also
 fails at 120s on `b51556f8e`: initial watch readiness takes 72.453s, and dependency repair begins at
 93.507s. The final rebuild starts; its completion remains unproven. An isolated diagnostic on `146bc2b6e` completes every assertion in
-**239.827s** ([39195118565](https://github.com/spankyed/AgentBuddy/actions/runs/39195118565)); the
+**239.827s** ([39195118565](https://github.com/spankyed/apack/actions/runs/39195118565)); the
 last owner-close checkpoint is 238.580s. It proves completed recovery, rather than a missed event or
 stalled repair, on that control. Main checkpoint **`bc53fed70`** assigns only this sequential scenario
 **300s**, preserves both 20s event waits and all value/incumbent/publication/retirement assertions,
 and adds idempotent `onTestFinished` teardown through the existing owners. All 53 timeout/inventory
 checks, CLI types and lint pass. The diagnostic branch/worktree remains preserved; it is not merged
 wholesale. No production watcher/compiler logic or general suite deadline changes.
-Current-source strict run [39196299955](https://github.com/spankyed/AgentBuddy/actions/runs/39196299955)
+Current-source strict run [39196299955](https://github.com/spankyed/apack/actions/runs/39196299955)
 finishes on **`55c9e1f54`** after **2039.2s**. All **5,667 host** and **889 pack** tests pass;
 schema/API/exports/types/lint, external contract and fork checks pass. Native-watch recovery now passes
 in **113.668s**, including owner closure. Integration stops after 420 passing assertions at the next
 case, `captures native preload libraries and retains the incumbent after outside-library refusal`,
 which reaches its unchanged **60s** outer limit. Its first build completes; later phase completion is
 unproven. The authoring/runtime/app halves remain unreached. Preserve [terminal evidence](../../evidence/settings-and-pack-contracts.md#strict-watch-recovery-accepted-next-preload-case-times-out--2026-10-19).
-Isolated diagnostic [39199301017](https://github.com/spankyed/AgentBuddy/actions/runs/39199301017)
+Isolated diagnostic [39199301017](https://github.com/spankyed/apack/actions/runs/39199301017)
 on **`9414d4f4e`** executes and passes both preload/thread cases in **44.652s/53.334s**, including
 all initialization, freshness/restoration, refusal, incumbent and teardown assertions. It establishes
 completion; the broad run's slowdown remains unattributed. Main **`24dc840c1`** gives only this
 three-attempt scenario **120s**, retaining the phase timings and idempotent cleanup. All 53 tooling
 checks, CLI types and lint pass. The diagnostic branch/worktree remains preserved and isolated.
-Run [39199767205](https://github.com/spankyed/AgentBuddy/actions/runs/39199767205) passes **all ten
+Run [39199767205](https://github.com/spankyed/apack/actions/runs/39199767205) passes **all ten
 selected cases** on that exact main checkpoint, including the repaired pair and previously unreached
 native tail. Main preload/thread cases take **36.625s/45.141s**. No additional native defect is identified.
 The complete 68-file integration pool remains unaccepted. Isolated execution-only probe
-[39200409842](https://github.com/spankyed/AgentBuddy/actions/runs/39200409842) runs its normal
+[39200409842](https://github.com/spankyed/apack/actions/runs/39200409842) runs its normal
 two-core command and existing suite deadline after building required pack output. It fails at a probe
 setup omission: dependency-read coverage requires records from `npm run typecheck`, which was not run.
 This is not a demonstrated product defect or a reason to change the test. Corrected probe
-[39201821813](https://github.com/spankyed/AgentBuddy/actions/runs/39201821813), source **`c51408d15`**,
+[39201821813](https://github.com/spankyed/apack/actions/runs/39201821813), source **`c51408d15`**,
 supplies `npm run typecheck -- --cores 2` first. Its job envelope is 30m because measured cold pack
 preparation takes 9m55s before the unchanged 10m suite; no test/suite deadline is changed. The probe
 still differs from main `6dcbfdd88` only in its workflow; no product or test code differs.
@@ -276,48 +276,48 @@ and report different lifecycle metadata, which correctly participates in compile
 explicit workspace, preserving freshness checks rather than filtering environment inputs. A real inert
 subprocess regression fails with the old npm wrappers and passes with the repair; all **127** focused
 checks, scripts/repo types and lint pass. See [handoff evidence](../../evidence/settings-and-pack-contracts.md#standalone-typecheck-compiler-context-handoff--2026-10-19).
-Updated probe [39203080601](https://github.com/spankyed/AgentBuddy/actions/runs/39203080601),
+Updated probe [39203080601](https://github.com/spankyed/apack/actions/runs/39203080601),
 source **`40a5b8e1f`**, includes that exact main repair and differs from it only in the isolated workflow.
 It stops before the report phase: generation exceeds its existing 60s reader-leg budget (62.0s
 including termination). The separate bounded generation/report control
-[39203581047](https://github.com/spankyed/AgentBuddy/actions/runs/39203581047), on **`b83e7c2c5`**,
+[39203581047](https://github.com/spankyed/apack/actions/runs/39203581047), on **`b83e7c2c5`**,
 passes both actual commands in **59.688s/25.191s**, preserving the compiler-context check. Source
 **`8f81806a6`** classifies only the captured pack-generation prerequisite as `suite`, leaving individual
 reader legs and every test deadline unchanged. All 127 focused tooling checks, scripts types and lint
-pass. Updated isolated probe [39203941398](https://github.com/spankyed/AgentBuddy/actions/runs/39203941398),
+pass. Updated isolated probe [39203941398](https://github.com/spankyed/apack/actions/runs/39203941398),
 source **`28b06add1`**, accepts generation in **88.0s** and all reached reader legs but stops at the
 source facade report's inherited 60s passive-check limit. Inspection distinguishes the standalone
 declaration bundle from the chain's `--from-build` reader. Source **`ec5943f65`** lets that different
 mode declare `suite`, leaving the chain's passive check unchanged; 24 affected tooling tests, scripts
-types and lint pass. Coordinator-only [39204669699](https://github.com/spankyed/AgentBuddy/actions/runs/39204669699)
+types and lint pass. Coordinator-only [39204669699](https://github.com/spankyed/apack/actions/runs/39204669699)
 on **`2bf51ac08`** passes the entire real standalone coordinator: generation **76.3s**, source facade
 bundle **68.2s**, pack types **48.4s**, API reports **21.3s**, and all other required legs. Complete
-integration [39205345266](https://github.com/spankyed/AgentBuddy/actions/runs/39205345266)
+integration [39205345266](https://github.com/spankyed/apack/actions/runs/39205345266)
 on **`4bafbdcad`** accepts prerequisites and 398 integration assertions, then stops at two timed
 operations: the real Electron control's 120s build-command bound and the repeated-build scenario's
 120s outer bound after its first build. There is no failed value/identity assertion; completed later
 phases remain unproven. Observability-only **`cfa489dc7`** emits existing repeated-build checkpoints
 on all platforms and retains aborted Electron child output. CLI types/lint pass; main deadlines stay
-unchanged. Narrow two-worker [39206807491](https://github.com/spankyed/AgentBuddy/actions/runs/39206807491)
+unchanged. Narrow two-worker [39206807491](https://github.com/spankyed/apack/actions/runs/39206807491)
 on isolated **`5f4bedfd5`** passes exactly both cases: repeated-build completion at **111.034s**;
 Electron init/add/build/archive **28.761/18.270/85.716/8.683s**, complete case **142.149s**.
 Every identity/cache/output/retirement assertion passes; the earlier broad slowdown remains
 unattributed. Main **`27e9e4109`** applies the existing 360s Windows repeated-build budget to the same
 scenario on all platforms and changes only the Electron build-command bound to 180s; its 300s outer
 and other command bounds stay unchanged. All 53 timeout/inventory checks, CLI types and lint pass.
-Complete integration [39207375977](https://github.com/spankyed/AgentBuddy/actions/runs/39207375977)
+Complete integration [39207375977](https://github.com/spankyed/apack/actions/runs/39207375977)
 on workflow-only **`b552b950a`** accepts both repaired controls (repeat **90.799s**, Electron control
 **106.523s**) and 419 assertions, then stops at the exit-handler candidate-mutation case's 60s
 default. Fifteen actual native cases complete, including recovery and preload refusal; the file's
 25-test header does not establish execution of its fail-fast remainder. No mutation/refusal assertion
 result is available for the timed-out worker case. Isolated **`428014c11`** runs the complete 16-case
-worker file in [39209331600](https://github.com/spankyed/AgentBuddy/actions/runs/39209331600), with
+worker file in [39209331600](https://github.com/spankyed/apack/actions/runs/39209331600), with
 a private 180s default observation window and all existing explicit/inner bounds unchanged. This
 covers the currently unreached lifecycle cases together and passes **all 16** in **333.405s**.
 Exit-mutation refusal/incumbent checks pass in **22.030s**; frontend read identities, parent loss and
 all four public cancellation/cleanup states pass. This does not attribute the pool's 60s timeout;
 main's default remains unchanged. One deliberate full-coverage diagnostic
-[39210359774](https://github.com/spankyed/AgentBuddy/actions/runs/39210359774), isolated **`4d4014241`**,
+[39210359774](https://github.com/spankyed/apack/actions/runs/39210359774), isolated **`4d4014241`**,
 collects all 68 files with two workers, unchanged assertions/inner and explicit bounds, a private
 180s CLI default and 20m aggregate observation bound. It disables fail-fast only in that private
 control and retains JSON timings, avoiding another partial coverage inventory. Inspect every
@@ -328,7 +328,7 @@ The completed native file alone takes **906.983s**, exceeding main's 600s aggreg
 assertion, individual-operation or cleanup failure is reported before termination; the driver's
 exit-code assertion is consequential. The [deadline inventory](../../evidence/integration-deadline-inventory.md)
 owns the full per-file coverage and failure classification. All 59 remaining file reports are collected from six sequential batches in
-[39214676663](https://github.com/spankyed/AgentBuddy/actions/runs/39214676663), workflow-only
+[39214676663](https://github.com/spankyed/apack/actions/runs/39214676663), workflow-only
 **`32ec489cf`** on main `1a6304827`. Every batch completed within 900s with two workers and unchanged
 main per-test deadlines: **251 passed, 38 failed, 50 pending**. Failed setup hooks blocked 47 pending
 bodies; three are declared platform/configuration skips. Preserve the eight earlier passing files.
@@ -366,7 +366,7 @@ focused lint pass. The [inventory](../../evidence/integration-deadline-inventory
 records scope and proof limits. Next validate the affected files and changed native/worker cases on
 one prepared disposable runner, then settle normal grouping/aggregate allowance, pass normal integration
 and run final strict `--all`. No requirement or gate is waived by these focused repairs.
-Affected acceptance [39227491937](https://github.com/spankyed/AgentBuddy/actions/runs/39227491937) is terminal failure,
+Affected acceptance [39227491937](https://github.com/spankyed/apack/actions/runs/39227491937) is terminal failure,
 workflow-only **`8036d3014`** on exact main **`1f31d38fd`**. It prepares records/default-setup/external
 fixtures once, runs the 24 failed files in three eight-file batches, then selected changed native and
 worker controls, all with two workers and committed test limits. It retains every group even on failure.
@@ -388,14 +388,14 @@ changes six named declarations and their reasons, preserving all assertions and 
 policy/inventory/wait checks, CLI/repo types and lint pass. Next diagnose two representative watcher
 cases on one disposable runner with phase timestamps; do not enlarge their event waits. Cleanup and
 runner-reporting ownership remain open, followed by focused repair acceptance and both final gates.
-The two-case watch diagnostic is [39237809409](https://github.com/spankyed/AgentBuddy/actions/runs/39237809409),
+The two-case watch diagnostic is [39237809409](https://github.com/spankyed/apack/actions/runs/39237809409),
 private **`2fcf5fe85`** on main `39f525b4d`. Only its workflow and temporary watcher timestamp logging
 differ. It selects backend flow-module and external CSS-asset rebuilds with two workers, unchanged
 20s waits and a seven-minute aggregate. It prepares published packages and typechecks the diagnostic
 source without building the unrelated shipped pack. Logs/JSON/status are retained on failure. This
 is diagnosis, not normal integration or strict acceptance; no tracing is added to the goal branch.
 It is terminal: one case passes, one reaches the original 20s completion wait while its worker is still
-building. Both edits are received promptly. Follow-up [39239365441](https://github.com/spankyed/AgentBuddy/actions/runs/39239365441),
+building. Both edits are received promptly. Follow-up [39239365441](https://github.com/spankyed/apack/actions/runs/39239365441),
 private **`6b204e94d`**, retains that original failure while observing the running backend to completion.
 It proves retained compiler/generation reuse and successful delivery **34.373s** after the edit request;
 the hot worker takes **22.099s**, compiler-current checking **4.570s**, and final watcher refresh **3.893s**.
@@ -422,14 +422,14 @@ focused concurrency acceptance before normal integration. Update the prepared no
 validated repairs; it remains undispatched, and final main strict `--all` remains required.
 Source **`7110c2632`** extends that yielding CLI path to all scaffold commands in the affected file,
 with explicit pack roots and unchanged generated-code/refusal assertions. Focused acceptance
-[39243953202](https://github.com/spankyed/AgentBuddy/actions/runs/39243953202) is terminal on
+[39243953202](https://github.com/spankyed/apack/actions/runs/39243953202) is terminal on
 workflow-only `99ffd7bfa` over that exact source: 19 watcher/cache cases, then the entire 18-case
 scaffold file and two dependency typechecks, two workers per sequential group. Each group saves its
 evidence immediately. This is acceptance of the demonstrated repairs, not another broad diagnostic;
 normal integration and final main strict `--all` still follow only after convergence. The watcher group
 reports 18 passes and one compiler-operation timeout; no cleanup or reporting error. The independent
 scaffold/dependency group passes all 20 cases with exit 0, accepting the CLI sequencing repair. Preserve
-those 38 passes. Isolated two-case [39247182439](https://github.com/spankyed/AgentBuddy/actions/runs/39247182439)
+those 38 passes. Isolated two-case [39247182439](https://github.com/spankyed/apack/actions/runs/39247182439)
 on `b6b3de3e0` now diagnoses only the timed publication rebuild beside CSS recovery. Its bounded
 completion observer retains failure against the original 60s allowance; temporary tracing and extended
 observation are not main source changes. See the [classified results](../../evidence/integration-deadline-inventory.md#committed-repair-acceptance-dispatched--2026-10-19).
@@ -441,7 +441,7 @@ compiler generation. CSS recovery also passes. The earlier abort's slowdown rema
 no compiler/performance fix or main timeout increase is claimed. Preserve that failed evidence.
 Focused behavior now has passing evidence under the original limits; proceed to required normal
 integration for full-queue/remaining-variant acceptance, then final main strict `--all`.
-Normal integration [39248035810](https://github.com/spankyed/AgentBuddy/actions/runs/39248035810)
+Normal integration [39248035810](https://github.com/spankyed/apack/actions/runs/39248035810)
 is dispatched on workflow-only `41b9a6c8e` over exact main `f1c1052ce`: normal unfiltered
 `npm run test:integration -- --all`, two cores, original source deadlines, with required typecheck,
 pack and external-output preparation. No diagnostic source is merged. Final main strict acceptance
@@ -456,12 +456,12 @@ Source `646abdd3a` composes only that Electron driver: capture 60s, unchanged la
 verification/retirement 20s, with a 120s complete case. Asynchronous `execFile` preserves runner
 updates; completion phases and original identity/disposal assertions remain. All 53 policy/inventory
 checks, CLI types, correctness lint and embedded-driver syntax pass. Focused
-[39250994872](https://github.com/spankyed/AgentBuddy/actions/runs/39250994872), workflow-only
+[39250994872](https://github.com/spankyed/apack/actions/runs/39250994872), workflow-only
 `5ead60321`, now verifies the actual driver beside all 64 database cases on two workers before another
 normal gate. No production compiler/runtime or blanket deadline changes.
 That first focused workflow omitted default-setup's build: Electron passes in 5.357s, but 59 database
 fixture assertions fail for missing `dist`; five metadata cases pass. This is not accepted concurrency.
-Corrected [39251438405](https://github.com/spankyed/AgentBuddy/actions/runs/39251438405), workflow-only
+Corrected [39251438405](https://github.com/spankyed/apack/actions/runs/39251438405), workflow-only
 `0e7ac97da`, adds the actual pack prerequisite and refuses to run acceptance if it fails. Source
 `646abdd3a` is unchanged. Preserve the setup failure and require all 65 cases before another normal run.
 Corrected `39251438405` now **passes 65/65 with exit 0** after the actual pack prerequisite succeeds:
@@ -469,7 +469,7 @@ Electron control plus all 64 database cases on two workers. The Electron control
 verifies identity/currentness/retirement without RPC or cleanup errors. The prior 30s slowdown remains
 unattributed; the composed driver repair is accepted, not a claimed performance fix. Resume required
 normal unfiltered integration with this committed source, then final main strict `--all`.
-Normal [39253013877](https://github.com/spankyed/AgentBuddy/actions/runs/39253013877) is now dispatched
+Normal [39253013877](https://github.com/spankyed/apack/actions/runs/39253013877) is now dispatched
 on workflow-only `92fe30ef6` over exact main `9783f52e2`, retaining required preparation, unfiltered
 repository command and two-core budget. Final strict, requirement audit and completed-only archival
 remain required; no diagnostic source is merged.
@@ -479,7 +479,7 @@ global bail leaves later cases unaccepted despite the native file's “25 tests�
 Source `f9cb91f38` bounds the cold thread build at 120s plus 20s verification, registers/drains fixture
 build owners on cancellation and preserves every content/input assertion. Other case deadlines stay.
 All 53 policy/inventory checks, CLI types and correctness lint pass. Focused
-[39257458780](https://github.com/spankyed/AgentBuddy/actions/runs/39257458780), workflow-only
+[39257458780](https://github.com/spankyed/apack/actions/runs/39257458780), workflow-only
 `3412e646b`, now runs all 16 worker cases beside four native/Electron counterparts on two workers,
 without bail, before another normal gate. Required strict and complete closure remain outstanding.
 That complete affected run reports 18 passes and two individual-operation timeouts, all 20 bodies
@@ -489,7 +489,7 @@ Electron backend/frontend build at 180s, after backend output is produced. Sourc
 separates full readiness (120s) from compiler entry (unchanged 60s), and composes Electron backend
 plus cold frontend in only that command (300s); other command/shutdown/cleanup bounds remain.
 All 53 policy/inventory checks, CLI types and correctness lint pass. Focused
-[39260287200](https://github.com/spankyed/AgentBuddy/actions/runs/39260287200), workflow-only
+[39260287200](https://github.com/spankyed/apack/actions/runs/39260287200), workflow-only
 `bbb5e06b8`, now runs exactly the two failures on two workers. Preserve the 18 passes; no broad gate
 until these converge, and no compiler-performance fix is claimed.
 Both cases in `39260287200` now pass with exit 0: full readiness 88.967s and real Electron build/archive
@@ -498,14 +498,14 @@ pass. A static audit of remaining default-bound direct build/capture cases ident
 untracked declaration-fixture build whose timeout can race fixture deletion. Source `526255eee`
 registers/drains its builder, propagates cancellation and composes cold build plus source-free/runtime
 inspection without changing assertions. All 53 policy/inventory checks, CLI types and lint pass.
-Focused [39261544678](https://github.com/spankyed/AgentBuddy/actions/runs/39261544678), workflow-only
+Focused [39261544678](https://github.com/spankyed/apack/actions/runs/39261544678), workflow-only
 `b1e703d18`, checks that fixture with concurrent compiler-thread capture before another normal gate.
 That acceptance now passes 2/2 with exit 0: own-declaration source-free/runtime case 32.033s and
 concurrent thread-input case 38.328s, without cleanup/reporting errors. All focused repairs have
 passing behavioral evidence; resume normal unfiltered integration on their combined committed
 source, then final main strict `--all` and complete requirement audit/archival. Do not turn these
 focused passes into a whole-suite completion claim.
-Normal [39262109257](https://github.com/spankyed/AgentBuddy/actions/runs/39262109257) is now dispatched
+Normal [39262109257](https://github.com/spankyed/apack/actions/runs/39262109257) is now dispatched
 on workflow-only `8d7776bc1` over exact main `a5e0d89ee`, with all accepted repairs, complete
 prerequisites and the unfiltered two-core repository command. Final strict and full closure remain
 required; no diagnostic source or private deadline overrides are present.
@@ -657,20 +657,20 @@ in both schema validation and local/dependency resolution. Inherited object name
 formats/dependencies or cause false source/dataset collisions; explicitly declared names remain valid.
 All 72 focused declaration/resolution checks, the existing codegen consumer, SDK types, schema check
 and lint pass. The user explicitly authorized pushing; checkpoint `a74bbd88a` is pushed and
-[strict run `39163655338`](https://github.com/spankyed/AgentBuddy/actions/runs/39163655338)
+[strict run `39163655338`](https://github.com/spankyed/apack/actions/runs/39163655338)
 failed after 411.1s at external authoring: its declared inputs omitted the selected host pack's built
 snapshot, allowing authoring before that producer. Source `268533807` declares `PACK_OUTPUTS` as
 inputs, restoring ordering and cache invalidation through the existing graph. The new regression
 fails before the repair; all 68 focused authoring/graph/scheduler cases, repo/scripts types and lint
 pass afterward. See [checkpoint evidence](../../evidence/settings-and-pack-contracts.md#external-authoring-host-build-dependency-2026-10-18).
-Push authorization is resolved. [Strict run `39166185325`](https://github.com/spankyed/AgentBuddy/actions/runs/39166185325)
+Push authorization is resolved. [Strict run `39166185325`](https://github.com/spankyed/apack/actions/runs/39166185325)
 tested exact checkpoint `31cb54f4d` and stopped at the facade's unchanged 60s budget; the concurrent
 external-contract consumer refused changed generated-directory observations after 38 passing cases.
 Source `ccf86ad3a` makes the chain facade check a verified current-build reader through the existing
 input record, removing regeneration beside consumers. All 115 focused facade/graph/input cases,
 CLI/scripts/repo types and lint pass. [Evidence and remaining acceptance](../../evidence/settings-and-pack-contracts.md#read-only-facade-verification-after-publication-2026-10-18)
 retain the exact failure boundaries. Hosted acceptance of that source, remaining native/platform
-obligations and Phase 7 stay open. [Strict run `39167659691`](https://github.com/spankyed/AgentBuddy/actions/runs/39167659691)
+obligations and Phase 7 stay open. [Strict run `39167659691`](https://github.com/spankyed/apack/actions/runs/39167659691)
 tested exact checkpoint `fcb037442`: the facade passes in 27.7s under its unchanged 60s bound, and
 the full packaged-authoring author half passes in 690.1s. The external-contract suite instead reaches
 its unchanged 600s bound while building the default-pack fork, after both ordinary fixture builds and
@@ -695,7 +695,7 @@ pass; the new regression reproduces the old one-core reservation and proves seri
 See [reservation evidence](../../evidence/settings-and-pack-contracts.md#fork-producer-core-reservation--2026-10-18). The required hosted
 strict gate must exercise the independent producers and exact archive/app handoff. If the standalone
 fork still fails, use its retained phase output; do not restart broad runs without a demonstrated repair.
-[Strict run `39172886664`](https://github.com/spankyed/AgentBuddy/actions/runs/39172886664) finished on
+[Strict run `39172886664`](https://github.com/spankyed/apack/actions/runs/39172886664) finished on
 exact source `d0ab6dd6b`: both fixture contracts (340.6s) and fork build/archive (497.2s) pass under their
 unchanged suite bounds; packaged authoring's author half passes in 431.6s. Host units then fail on the
 already-repaired helper expectation plus eager host validation during driver/session imports and a
@@ -706,7 +706,7 @@ No further performance profiling follows from the accepted producers. The next s
 the remaining runtime/integration/app legs on the corrected source. Its whole-job cap is 60m because
 this cold run consumed 28m before those legs; individual step bounds remain unchanged. Windows is
 deallocated and no earlier hosted gate remains running.
-Cold-import checkpoint **`9b056f4ab`** is pushed. [Strict run `39175530615`](https://github.com/spankyed/AgentBuddy/actions/runs/39175530615)
+Cold-import checkpoint **`9b056f4ab`** is pushed. [Strict run `39175530615`](https://github.com/spankyed/apack/actions/runs/39175530615)
 finished with a pack-typecheck timeout (62s including cleanup; no type diagnostic). Independent
 producer contracts passed again; later runtime/integration/app legs were not reached. Two isolated
 cold Vue typechecks measured 24.72s CPU / 14.66s wall and 24.95s / 14.65s: about 1.7 cores,
@@ -1574,8 +1574,8 @@ Then finish retained-frontend initialization without freezing HMR. ELF/PE, Windo
 lifetime/native execution and the converged/final strict gates remain open.
 The user authorized branch pushes and focused Windows CI. Packaging launch/exports and unit
 portability repairs now pass all seven original focused files on Windows (81 cases, seven platform
-skips) in [run 39059985521](https://github.com/spankyed/AgentBuddy/actions/runs/39059985521).
-`71e862359` preserves worker stacks; [run 39060486872](https://github.com/spankyed/AgentBuddy/actions/runs/39060486872)
+skips) in [run 39059985521](https://github.com/spankyed/apack/actions/runs/39059985521).
+`71e862359` preserves worker stacks; [run 39060486872](https://github.com/spankyed/apack/actions/runs/39060486872)
 identifies ordinary realpath failing on Windows extended paths. The current coherent correction
 uses native identity across roots, package inputs, captured trees and passive readers while preserving
 root-link metadata and authored-root watch exclusions. `f42e77db9` separately isolates a pack's esbuild

@@ -6,7 +6,7 @@ classification, composition repair and affected checks below converge.
 
 ## Failure classification before further execution
 
-Diagnostic [39210359774](https://github.com/spankyed/AgentBuddy/actions/runs/39210359774),
+Diagnostic [39210359774](https://github.com/spankyed/apack/actions/runs/39210359774),
 isolated `4d4014241`, stops after 1,202.034 seconds. Its console is preserved locally at
 `/private/tmp/apack-integration-coverage-39210359774.log` and in the run’s retained output.
 
@@ -125,7 +125,7 @@ Failures did not suppress later batches. The earlier eight passing files and Win
 
 ## Completed six-batch inventory (2026-10-19)
 
-Run [39214676663](https://github.com/spankyed/AgentBuddy/actions/runs/39214676663) is terminal.
+Run [39214676663](https://github.com/spankyed/apack/actions/runs/39214676663) is terminal.
 All six batches completed normally under their existing test limits; none hit its 900s aggregate bound.
 All **59 unique file reports** are retained. They report **251 passed, 38 failed and 50 pending cases**.
 Of the pending cases, **47** were blocked by failed facade/dependency setup hooks; two ELF cases skip
@@ -262,7 +262,7 @@ prepared disposable runner with two workers and the committed per-test limits; r
 Then settle normal grouping/aggregate allowance from the complete measurements, pass normal integration
 and run the final strict gate. Do not rerun the completed prefix as another diagnostic inventory.
 
-Affected acceptance [39227491937](https://github.com/spankyed/AgentBuddy/actions/runs/39227491937)
+Affected acceptance [39227491937](https://github.com/spankyed/apack/actions/runs/39227491937)
 is dispatched on workflow-only **`8036d3014`**, based on main **`1f31d38fd`**. One prepared disposable
 macOS checkout runs typecheck records, default-setup and the declared external fixture producer first.
 Then three explicit eight-file batches cover all **24 failing files** from the inventory. Selected
@@ -331,7 +331,7 @@ the unchanged main strict command remains required. No subset verdict substitute
 
 ### Affected acceptance result — 2026-10-19
 
-Run [39227491937](https://github.com/spankyed/AgentBuddy/actions/runs/39227491937), source **`8036d3014`**
+Run [39227491937](https://github.com/spankyed/apack/actions/runs/39227491937), source **`8036d3014`**
 (workflow-only on main `1f31d38fd`), is terminal failure. All 24 selected files report:
 **127 passed, 24 failed, zero pending**. Unlike the first inventory, no setup hook blocks bodies.
 All **six native controls and five worker controls pass**. Their 30 pending cases are deliberate name-filter
@@ -412,12 +412,12 @@ remains required; do not dispatch the prepared normal branch without these valid
 
 ### Watch completion clocks and focused repair evidence — 2026-10-19
 
-The first two-case timeline, [39237809409](https://github.com/spankyed/AgentBuddy/actions/runs/39237809409)
+The first two-case timeline, [39237809409](https://github.com/spankyed/apack/actions/runs/39237809409)
 on private `2fcf5fe85`, reports one pass/one failure. Both filesystem edits are received and start builds;
 the frontend delivers at 19.690s, while the backend is cancelled by its original 20s completion wait.
 This does not demonstrate missed subscriptions or a hung compiler.
 
-Follow-up [39239365441](https://github.com/spankyed/AgentBuddy/actions/runs/39239365441), private
+Follow-up [39239365441](https://github.com/spankyed/apack/actions/runs/39239365441), private
 `6b204e94d`, retains the original failed assertion and observes the backend for up to 40s more. It
 completes successfully using its retained compiler and generation. Measured backend phases are:
 
@@ -468,7 +468,7 @@ adapter requires an explicit pack root and rejects nonzero command status; exist
 manifest and refusal assertions remain. CLI types/lint and the subprocess/wait checks pass locally;
 real reporting acceptance is still required.
 
-[Run 39243953202](https://github.com/spankyed/AgentBuddy/actions/runs/39243953202), workflow-only
+[Run 39243953202](https://github.com/spankyed/apack/actions/runs/39243953202), workflow-only
 `99ffd7bfa` on that exact source, runs two sequential groups with two workers: 19 watcher/frontend
 cache cases across six files, then all 18 scaffold cases plus two workspace dependency typechecks.
 Existing source deadlines are unchanged by the workflow. Each group retains JSON, verbose output
@@ -501,7 +501,7 @@ the other group's operation timeout as a pass. Reporting reports are retained at
 `/private/tmp/apack-reporting-phase-39243953202/`; the complete terminal job output is
 `/private/tmp/apack-watch-and-reporting-39243953202-full.log`.
 
-After that job becomes terminal, [39247182439](https://github.com/spankyed/AgentBuddy/actions/runs/39247182439)
+After that job becomes terminal, [39247182439](https://github.com/spankyed/apack/actions/runs/39247182439)
 starts on isolated `b6b3de3e0`: the single failing publication case beside CSS recovery, two workers.
 Temporary phase logging separates package verification, compiler-current/capture, worker lifetime,
 observations and publication. The probe observes a rebuild for at most 120s, records crossing the
@@ -516,7 +516,7 @@ cancellation behavior changes; this improves the generic `AbortError` report, no
 
 ### Publication phase control completed — 2026-10-19
 
-[39247182439](https://github.com/spankyed/AgentBuddy/actions/runs/39247182439) completes successfully:
+[39247182439](https://github.com/spankyed/apack/actions/runs/39247182439) completes successfully:
 **two passed, zero failed, exit 0**, 188.766s. All eight startup/rebuild attempts settle within their
 original limits; **zero original-deadline crossings** occur, so the diagnostic's extra observation
 allowance does not enable either pass. Publication startup takes 54.736s; its accepted edit,
@@ -534,7 +534,7 @@ Raw reports/events and the full log are at `/private/tmp/apack-publication-phase
 remain isolated and are not merged. The next broad run is the required normal integration gate,
 covering full-queue scheduling and previously filtered variants, rather than another failure inventory.
 
-Normal integration [39248035810](https://github.com/spankyed/AgentBuddy/actions/runs/39248035810)
+Normal integration [39248035810](https://github.com/spankyed/apack/actions/runs/39248035810)
 is dispatched on `41b9a6c8e`, which differs from main `f1c1052ce` only in its acceptance workflow.
 It prepares typecheck records, default-setup and declared external outputs, then runs the unfiltered
 `npm run test:integration -- --all` with `APACK_CHAIN_CORES=2`. No selected-file patterns, diagnostic
@@ -569,7 +569,7 @@ checks, CLI types, correctness lint and generated driver syntax checks pass. The
 the same 11 subprocess call sites; no check was weakened. Other native loader/clang/event deadlines
 retain their existing limits.
 
-Focused [39250994872](https://github.com/spankyed/AgentBuddy/actions/runs/39250994872), workflow-only
+Focused [39250994872](https://github.com/spankyed/apack/actions/runs/39250994872), workflow-only
 `5ead60321` over that source, runs the actual Electron control and all 64 database cases together with
 two workers, retaining counts, exit status, phases and all assertions. It must pass before another normal
 gate. No compiler/runtime production code or general timeout default changes in this checkpoint.
@@ -584,7 +584,7 @@ and the full log alongside them.
 
 Workflow-only `0e7ac97da` adds the existing `npm run build:default-setup` prerequisite, and makes the
 65-case check conditional on that prerequisite's success. Corrected focused
-[39251438405](https://github.com/spankyed/AgentBuddy/actions/runs/39251438405) is now running on the
+[39251438405](https://github.com/spankyed/apack/actions/runs/39251438405) is now running on the
 same `646abdd3a` product/test repair. No assertion, driver limit or production code changes follow
 from the setup omission; successful actual database concurrency remains required before normal.
 
@@ -598,7 +598,7 @@ the repair composes explicit bounded work rather than claiming a compiler-perfor
 Reports are at `/private/tmp/apack-electron-driver-39251438405/`, with the full log alongside.
 Resume the required normal unfiltered integration gate on this committed repair, then final strict.
 
-Normal [39253013877](https://github.com/spankyed/AgentBuddy/actions/runs/39253013877) is dispatched
+Normal [39253013877](https://github.com/spankyed/apack/actions/runs/39253013877) is dispatched
 on workflow-only `92fe30ef6` over main `9783f52e2`. It retains the same complete preparation and
 unfiltered `npm run test:integration -- --all`, two cores, source operation/event/cleanup limits and
 120-minute pool aggregate. No focused selection or temporary compiler tracing is present. Require
@@ -626,7 +626,7 @@ restoring mocked process/environment state. This closes a source-visible timeout
 than changing production build APIs. Existing public CLI stop/IPC cases remain intact. All 53
 timeout/subprocess-inventory checks, CLI types, correctness lint and diff checks pass.
 
-Focused [39257458780](https://github.com/spankyed/AgentBuddy/actions/runs/39257458780), workflow-only
+Focused [39257458780](https://github.com/spankyed/apack/actions/runs/39257458780), workflow-only
 `3412e646b` on that source, executes the **entire 16-case worker file** beside four actual native/Electron
 counterparts with two workers and bail disabled. This provides the affected file's complete post-repair
 inventory before another normal gate; do not repeat broad integration to discover its next boundary.
@@ -654,7 +654,7 @@ All 53 policy/inventory checks, CLI types, correctness lint and diff checks pass
 production compiler/runtime code are unchanged. This is a scoped phase-budget repair, not a claim
 that the broad slowdown has been attributed or that compiler performance improved.
 
-Focused [39260287200](https://github.com/spankyed/AgentBuddy/actions/runs/39260287200), workflow-only
+Focused [39260287200](https://github.com/spankyed/apack/actions/runs/39260287200), workflow-only
 `bbb5e06b8` over that source, runs exactly the two failed case names read from the preserved report,
 two workers, no bail. Preserve the other 18 passes; require both repaired cases before normal and
 final strict acceptance. Main source push encountered a transient network timeout; its retry succeeded
@@ -683,7 +683,7 @@ Source `526255eee` registers that builder with teardown, propagates test cancell
 build bound, closes it before source-free inspection, and composes 20s for declaration/runtime
 verification. All original owned-key, shape, provenance, source-removal and activation assertions
 remain. All 53 policy/inventory checks, CLI types, correctness lint and diff checks pass. Focused
-[39261544678](https://github.com/spankyed/AgentBuddy/actions/runs/39261544678), workflow-only
+[39261544678](https://github.com/spankyed/apack/actions/runs/39261544678), workflow-only
 `b1e703d18`, verifies that exact case beside the accepted compiler-thread case, two workers. This
 named concurrency/ownership check must finish before normal; no general test framework, product
 compiler change or default deadline increase is introduced.
@@ -697,7 +697,7 @@ The complete affected inventory and both subsequent focused repairs now have pas
 evidence. Return to the required normal unfiltered gate with the combined committed repairs; final
 main strict `--all` and requirement audit/archival remain outstanding.
 
-Normal [39262109257](https://github.com/spankyed/AgentBuddy/actions/runs/39262109257) is dispatched
+Normal [39262109257](https://github.com/spankyed/apack/actions/runs/39262109257) is dispatched
 on workflow-only `8d7776bc1` over exact main `a5e0d89ee`. It includes all accepted worker/phase and
 declaration-fixture repairs, preserves complete preparation, and runs the ordinary unfiltered
 `npm run test:integration -- --all` with two cores. No diagnostic tracing, filters or private deadline
@@ -705,7 +705,7 @@ overrides are merged. Require this normal gate before final main strict acceptan
 
 ## Normal gate: worker-observation refusal deadline — 2026-10-19
 
-Normal run [39262109257](https://github.com/spankyed/AgentBuddy/actions/runs/39262109257)
+Normal run [39262109257](https://github.com/spankyed/apack/actions/runs/39262109257)
 uses workflow-only `8d7776bc1` on main source `a5e0d89ee`. All preparation passes: typecheck
 374s, default pack 534s and external contract preparation 354s. Integration fails in **505.66s**:
 **409 actual passes, one failure, 26 platform skips**. Global bail leaves later cases unexecuted;
@@ -736,7 +736,7 @@ strict gate remains outstanding. Evidence: `/private/tmp/apack-normal-integratio
 `/private/tmp/apack-normal-integration-39262109257-full.log`.
 
 Repair source **`f93015282`** is pushed. Focused run
-[39267061814](https://github.com/spankyed/AgentBuddy/actions/runs/39267061814) uses workflow-only
+[39267061814](https://github.com/spankyed/apack/actions/runs/39267061814) uses workflow-only
 `25f51cf98` on that checkpoint: all 16 worker cases beside four existing native compiler controls,
 two workers, original assertions, `bail=0` and an explicit 20-case execution check. The private
 checkout differs only in its workflow; no dependencies/generated output are shared. This run must
@@ -757,7 +757,7 @@ and `/private/tmp/apack-worker-cold-build-39267061814-full.log`.
 The affected source has converged again. Resume the unchanged normal unfiltered integration gate;
 final main strict `--all` still follows a passing normal result, not this selected acceptance.
 
-Normal run [39269209929](https://github.com/spankyed/AgentBuddy/actions/runs/39269209929) is
+Normal run [39269209929](https://github.com/spankyed/apack/actions/runs/39269209929) is
 now dispatched on workflow-only **`e8c813028`**, containing main **`d45a03faf`** and accepted source
 **`f93015282`**. The private tree differs only in `.github/workflows/strict-chain.yml`. It uses the
 unchanged `npm run test:integration -- --all`, ordinary grouping/bail, two cores, existing per-operation
@@ -766,7 +766,7 @@ No second expensive run is active. Wait for this result before the main final st
 
 ## Normal gate: compose native capture and refusal attempts — 2026-10-19
 
-[39269209929](https://github.com/spankyed/AgentBuddy/actions/runs/39269209929) on workflow-only
+[39269209929](https://github.com/spankyed/apack/actions/runs/39269209929) on workflow-only
 `e8c813028` / main `d45a03faf` finishes in **867.55s**: **425 actual passes, one failure, 26 platform
 skips**. All prerequisites pass. The complete worker file passes all 16 bodies, including observation
 refusal 62.879s, background cleanup 61.599s and frontend input reporting 78.318s. These actual normal
@@ -796,7 +796,7 @@ Raw evidence: `/private/tmp/apack-normal-integration-39269209929/` and
 `/private/tmp/apack-normal-integration-39269209929-full.log`. Final strict acceptance remains open.
 
 Source **`f17d2e286`** is committed/pushed. Complete affected-file run
-[39275701481](https://github.com/spankyed/AgentBuddy/actions/runs/39275701481) is dispatched on
+[39275701481](https://github.com/spankyed/apack/actions/runs/39275701481) is dispatched on
 workflow-only **`449aac628`**: both entire native/worker files, two workers, `bail=0`, and an explicit
 41-body execution check. No test-name filter or per-test default change. The private checkout differs
 only in the workflow; package/output isolation remains intact. No acceptance result is claimed yet.
@@ -822,7 +822,7 @@ Evidence: `/private/tmp/apack-native-worker-39275701481/` and
 `/private/tmp/apack-native-worker-39275701481-live-response.txt` (complete retained job log).
 The required normal and final main strict gates remain outstanding.
 
-Normal [39281108805](https://github.com/spankyed/AgentBuddy/actions/runs/39281108805) is dispatched
+Normal [39281108805](https://github.com/spankyed/apack/actions/runs/39281108805) is dispatched
 on workflow-only **`97ea3af4b`**, containing main **`2bdfa9e7a`** and accepted source **`f17d2e286`**.
 Only the normal workflow differs from main. The ordinary unfiltered command, two cores, effective
 case/operation deadlines, 120m aggregate and prerequisite preparation are unchanged. The earlier
@@ -836,7 +836,7 @@ process/tooling repair was made. Normal run **39281108805** remains queued at th
 
 ## Normal gate: trigger scaffold scenario deadline — 2026-10-19
 
-Normal run [39281108805](https://github.com/spankyed/AgentBuddy/actions/runs/39281108805)
+Normal run [39281108805](https://github.com/spankyed/apack/actions/runs/39281108805)
 on workflow-only `97ea3af4b` / main `2bdfa9e7a` finishes in 1603.52s with 505 actual
 passes, one failure and 26 Windows skips. All 16 worker and 25 native bodies pass in this run.
 The failure is a **whole-scenario timeout**, not an assertion or reported operation/cleanup failure:
@@ -855,7 +855,7 @@ Preserved evidence: `/private/tmp/apack-normal-integration-39281108805-full.log`
 `/private/tmp/apack-normal-integration-39281108805/`, including the raw pool JSON reports.
 
 Repair checkpoint: `d07ccae99`; all 53 timeout/inventory checks, CLI types and lint pass.
-Focused [39288218287](https://github.com/spankyed/AgentBuddy/actions/runs/39288218287)
+Focused [39288218287](https://github.com/spankyed/apack/actions/runs/39288218287)
 is queued on workflow-only `36ea8055a`, whose only difference from the repair checkpoint is
 `.github/workflows/strict-chain.yml`. It selects the complete 18-case scaffold file and two
 existing facade typecheck controls, two workers, bail disabled and a 20-executed-case assertion.
@@ -863,7 +863,7 @@ No test deadline is overridden by the workflow. No real compiler/native integrat
 
 ## Trigger scaffold file and facade controls accepted — 2026-10-19
 
-[39288218287](https://github.com/spankyed/AgentBuddy/actions/runs/39288218287) finishes
+[39288218287](https://github.com/spankyed/apack/actions/runs/39288218287) finishes
 **completed/success** on workflow-only `36ea8055a`, containing source repair `d07ccae99`.
 The status report records exit 0, **20 actual passes, zero failures**, 377.704s. All 18 scaffold
 bodies execute, including the repaired trigger in **27.020s**. Both selected facade typechecks pass;
@@ -879,7 +879,7 @@ default-setup feature implementation and canonical writer are unchanged since co
 `a74bbd88a`. Subsequent authoring changes use own-key collision checks and validate service claims
 before writing files. No new manifest implementation omission is identified; final gates remain open.
 
-Normal integration [39289719265](https://github.com/spankyed/AgentBuddy/actions/runs/39289719265)
+Normal integration [39289719265](https://github.com/spankyed/apack/actions/runs/39289719265)
 is dispatched on workflow-only `44cbdcdd4` containing main `affcdf644`. Its only source difference
 is the existing acceptance workflow: required preparation followed by ordinary
 `npm run test:integration -- --all`, two cores, no selected-case filtering or deadline overrides.
@@ -910,7 +910,7 @@ window/platform evidence; final integration, strict acceptance and completed-onl
 
 ## Normal gate: esbuild captured-declaration scenario and reporting — 2026-10-19
 
-[39289719265](https://github.com/spankyed/AgentBuddy/actions/runs/39289719265), workflow-only
+[39289719265](https://github.com/spankyed/apack/actions/runs/39289719265), workflow-only
 `44cbdcdd4` / main `affcdf644`, finishes after **1508.04s** with **493 actual passes, one failure,
 26 Windows skips**, and one unhandled runner error. All preparation passes. The failure inventory is:
 
@@ -937,7 +937,7 @@ Raw reports: `/private/tmp/apack-normal-integration-39289719265/`; full log:
 `/private/tmp/apack-normal-integration-39289719265-full.log`. Earlier results remain preserved.
 
 Repair `d29612b7a` is committed/pushed. Focused
-[39296758415](https://github.com/spankyed/AgentBuddy/actions/runs/39296758415) is dispatched on
+[39296758415](https://github.com/spankyed/apack/actions/runs/39296758415) is dispatched on
 workflow-only `952a6dd02`, whose only difference from that source checkpoint is the acceptance workflow.
 It selects all 15 configuration cases, bail disabled, two-worker limits and an explicit 15-executed-case
 assertion; no workflow test-timeout override. Normal integration is on hold until affected-file
@@ -945,7 +945,7 @@ completion and reporting are accepted.
 
 ## Complete esbuild configuration file accepted — 2026-10-19
 
-[39296758415](https://github.com/spankyed/AgentBuddy/actions/runs/39296758415) finishes
+[39296758415](https://github.com/spankyed/apack/actions/runs/39296758415) finishes
 **completed/success** on workflow-only `952a6dd02`, source repair `d29612b7a`.
 The actual status report records **15 passes, zero failures, zero pending, exit 0**, 239.315s.
 Every file body executes, including all transient-edit cases: configuration 32.603s, sources
@@ -957,7 +957,7 @@ normal run's slowdown or certify the whole integration pool. Resume normal integ
 Preserved reports: `/private/tmp/apack-esbuild-configuration-39296758415/` (JSON, status, console);
 full log `/private/tmp/apack-esbuild-configuration-39296758415-full.log`.
 
-Normal [39297729330](https://github.com/spankyed/AgentBuddy/actions/runs/39297729330) is dispatched
+Normal [39297729330](https://github.com/spankyed/apack/actions/runs/39297729330) is dispatched
 on workflow-only `7582e2a5a`, main `a2465bff1` / source repair `d29612b7a`. The only difference from
 main is the existing acceptance workflow: required preparation and ordinary unfiltered
 `npm run test:integration -- --all`, two cores, no per-test override. Await the same run before strict.
@@ -992,7 +992,7 @@ restructuring remains after this goal, as clarified by user documentation commit
 
 ## Normal gate: scaffold composed deadline and recurring reporting — 2026-10-19
 
-[39297729330](https://github.com/spankyed/AgentBuddy/actions/runs/39297729330) finishes
+[39297729330](https://github.com/spankyed/apack/actions/runs/39297729330) finishes
 completed/failure on workflow-only `7582e2a5a`, main `a2465bff1`, after **2016.71s**:
 **507 actual passes, one failure, 26 Windows skips**, one unhandled runner error. All preparation
 passes. All 15 configuration and all 18 add-extension bodies pass; transient declarations takes
@@ -1019,7 +1019,7 @@ pending real acceptance. Required final normal and strict gates remain open.
 Raw evidence: `/private/tmp/apack-normal-integration-39297729330/`; full runner log
 `/private/tmp/apack-normal-integration-39297729330-full.log`. All earlier reports remain preserved.
 
-Diagnostic [39306120746](https://github.com/spankyed/AgentBuddy/actions/runs/39306120746)
+Diagnostic [39306120746](https://github.com/spankyed/apack/actions/runs/39306120746)
 is dispatched on `be7080780`, branch `session/scaffold-phase-diagnostic`, based on main `3315ce178`.
 Its only differences are scaffold phase/start/end/RSS/heap readings and the focused workflow. The
 29 selected bodies retain existing per-test deadlines, two-worker limits and bail disabled. Phase
@@ -1030,7 +1030,7 @@ part of the result; logging itself is not a repair or acceptance. Main's unrelat
 
 ## Scaffold process-boundary checkpoint — 2026-10-19
 
-Diagnostic [39306120746](https://github.com/spankyed/AgentBuddy/actions/runs/39306120746)
+Diagnostic [39306120746](https://github.com/spankyed/apack/actions/runs/39306120746)
 completes **29 actual passes, zero failed or pending bodies**, but **exit 1** for one unhandled
 `Timeout calling "onTaskUpdate"`. The command takes 608.819s. This is a reporting failure, not a
 passing acceptance gate. Preserve the unchanged-deadline report and prior normal 260s scenario failure.
@@ -1069,7 +1069,7 @@ acceptance is pending, including whether the full public cold build fits its ind
 
 
 Repair **`7c24806e7`** is committed and pushed. Focused acceptance
-[39309152812](https://github.com/spankyed/AgentBuddy/actions/runs/39309152812) runs on
+[39309152812](https://github.com/spankyed/apack/actions/runs/39309152812) runs on
 workflow-only **`5956cc394`**, branch `session/scaffold-async-acceptance`, directly based on that
 repair. It selects exactly 30 bodies with two workers and unchanged per-operation limits; it requires
 30 passes, zero failures/pending and command exit 0. No normal/strict broad replacement is dispatched.
@@ -1077,7 +1077,7 @@ repair. It selects exactly 30 bodies with two workers and unchanged per-operatio
 
 ## Focused async acceptance: full-build boundary correction — 2026-10-19
 
-[39309152812](https://github.com/spankyed/AgentBuddy/actions/runs/39309152812) completes in
+[39309152812](https://github.com/spankyed/apack/actions/runs/39309152812) completes in
 552.211s, exit 1: **23 passed, seven reported failed, zero pending**, no unhandled reporting error.
 The seven failures are **one individual-operation timeout** plus **six subsequent shared-fixture
 setup refusals**; they are not seven assertion defects. The afterAll failure repeats that same rejected
@@ -1111,7 +1111,7 @@ Raw JSON/status/log: `/private/tmp/apack-scaffold-async-39309152812/`; full runn
 
 
 Correction **`14de022f8`** is committed and pushed; 42 timeout-policy cases, CLI types and changed-file
-lint pass. Focused [39311095507](https://github.com/spankyed/AgentBuddy/actions/runs/39311095507)
+lint pass. Focused [39311095507](https://github.com/spankyed/apack/actions/runs/39311095507)
 runs on workflow-only **`4dc9c393d`**, directly based on that correction. Exactly the two complete
 scaffold files (29 bodies) run with two workers; DSL's 71.572s acceptance is preserved separately.
 No broader run is dispatched. The user's documentation-only `752c7bf32` remains intact.
@@ -1119,7 +1119,7 @@ No broader run is dispatched. The user's documentation-only `752c7bf32` remains 
 
 ## Complete scaffold files accepted — 2026-10-19
 
-Focused [39311095507](https://github.com/spankyed/AgentBuddy/actions/runs/39311095507) on
+Focused [39311095507](https://github.com/spankyed/apack/actions/runs/39311095507) on
 workflow-only **`4dc9c393d`**, source **`14de022f8`**, accepts **29/29 bodies**, zero failed/pending,
 **exit 0**, 604.571s. Both complete files execute with two workers, without an unhandled reporting
 or cleanup error. The previously blocked seven scaffold bodies all execute and pass. Source differs
@@ -1142,7 +1142,7 @@ committed-source strict `--all`, then finish the requirement audit and documenta
 resume unrelated research or the separate validation redesign.
 
 
-Normal unfiltered gate [39312954386](https://github.com/spankyed/AgentBuddy/actions/runs/39312954386)
+Normal unfiltered gate [39312954386](https://github.com/spankyed/apack/actions/runs/39312954386)
 is dispatched on workflow-only **`cc0ae42b4e0e99e37fbf1a87800530bf2d7f9ced`**, branch
 `session/integration-normal-scaffold-acceptance`, directly based on main **`f0405e436`**. The only
 difference is its workflow: existing typecheck/pack/external-output prerequisites, then unchanged
@@ -1175,7 +1175,7 @@ Raw evidence: `/private/tmp/apack-normal-integration-39312954386/_temp/normal-in
 `pool-reports/spec-durations-7VJSgL/apack-cli+repo-checks+publish-checks.json`. The latter records file
 durations, not individual test verdicts; the complete log is authoritative for executed bodies.
 
-Focused diagnostic [39325170997](https://github.com/spankyed/AgentBuddy/actions/runs/39325170997)
+Focused diagnostic [39325170997](https://github.com/spankyed/apack/actions/runs/39325170997)
 uses workflow-only **`e3956518cabaf0c1751347f7157e5ac08a1e228c`**, containing source **`5ce394268`**.
 It selects four complete files: module freshness (actual failure), output swap (long direct builds),
 feature authoring/validation and database commands (possible long synchronous/microtask sequences).
@@ -1244,7 +1244,7 @@ gates retain every original prerequisite.
 
 The two reporting hooks are committed/pushed as **`19c1c9716`**; the watcher operation correction is
 **`fa21a17ba`**. Focused acceptance
-[39329992884](https://github.com/spankyed/AgentBuddy/actions/runs/39329992884) on workflow-only
+[39329992884](https://github.com/spankyed/apack/actions/runs/39329992884) on workflow-only
 **`3ca1a45fc`** contains both. It selects the eight complete files, two workers, no per-test overrides,
 the existing loop probe, verbose/JSON evidence and process exit status. Package preparation and
 default-setup compilation have separate bounds. No broad gate runs concurrently. Await this exact
@@ -1252,7 +1252,7 @@ run; its dispatch is not acceptance.
 
 ### Complete watcher/reporting repair accepted — 2026-10-19
 
-[39329992884](https://github.com/spankyed/AgentBuddy/actions/runs/39329992884) is terminal
+[39329992884](https://github.com/spankyed/apack/actions/runs/39329992884) is terminal
 **completed/success** on **`3ca1a45fcac51dd1f28cae054717dce8db000dab`**, containing main repairs
 **`fa21a17ba`** and **`19c1c9716`**. Actual report: **56 passed, zero failed/pending, eight complete
 files, exit 0**, 1267.88s, with no unhandled reporting or cleanup error. All original assertions run.
@@ -1283,7 +1283,7 @@ the committed case/operation/pool bounds and fail-fast behavior. Then run main's
 strict `--all`, finish the requirement audit and archive only completed documents. The focused pass
 does not substitute for either gate; do not repeat already accepted focused files independently.
 
-Normal unfiltered [39333769307](https://github.com/spankyed/AgentBuddy/actions/runs/39333769307)
+Normal unfiltered [39333769307](https://github.com/spankyed/apack/actions/runs/39333769307)
 is dispatched on workflow-only **`06638811d`**, containing accepted main **`1ba85b976`**. The only
 difference from main is the same normal acceptance workflow used previously: required typecheck,
 default-setup and external-contract preparation, then `npm run test:integration -- --all` with two
@@ -1304,7 +1304,7 @@ decision and Phase 7 now state this; older chronological strict-rerun instructio
 
 ### Normal unfiltered integration accepted — 2026-10-19
 
-[39333769307](https://github.com/spankyed/AgentBuddy/actions/runs/39333769307) finishes
+[39333769307](https://github.com/spankyed/apack/actions/runs/39333769307) finishes
 **completed/success**, exact workflow-only **`06638811d2d7e4162ca50101283aa352b60c48b3`**, main source
 **`1ba85b976`**. Every normal prerequisite passes, followed by unchanged
 `npm run test:integration -- --all` with two workers: **831 passed, zero failures, 29 declared

@@ -1971,7 +1971,7 @@ and the converged/final strict gates remain open in the owning goal.
 ## Windows package launcher and local integration checkpoint (2026-10-17)
 
 The user authorized branch pushes and focused Windows CI and pushed `e8940bb6d`.
-[Run 39057355477](https://github.com/spankyed/AgentBuddy/actions/runs/39057355477)
+[Run 39057355477](https://github.com/spankyed/apack/actions/runs/39057355477)
 on Windows x64 / Node 23.11.1 installed dependencies successfully, then failed before tests:
 `spawnSync npm ENOENT`, from `published-manifest.ts` during the EARS package build.
 The package-list/archive helper invoked npm without the Windows command-wrapper handling present
@@ -2002,7 +2002,7 @@ diagnosis or silently widen its deadline. B6 and final strict acceptance remain 
 ### First repaired Windows run: launcher accepted, UI paths exposed
 
 Source `d7dc7f224` was pushed and tested by
-[run 39058353468](https://github.com/spankyed/AgentBuddy/actions/runs/39058353468).
+[run 39058353468](https://github.com/spankyed/apack/actions/runs/39058353468).
 The runner confirmed the adjacent npm JavaScript entry exists. Both EARS and SDK built and staged
 successfully, establishing the repaired npm launch through the original failing path. Preparation
 then failed at UI's export-map check, before compiler tests. Full log:
@@ -2023,7 +2023,7 @@ full-pool acceptance remain open.
 
 ### Windows package preparation passes; module identity diagnostic
 
-[Run 39058623655](https://github.com/spankyed/AgentBuddy/actions/runs/39058623655), source
+[Run 39058623655](https://github.com/spankyed/apack/actions/runs/39058623655), source
 `6a8a514cf`, passes complete package preparation. All 15 real packaging tests pass on Windows,
 including the source/destination metacharacter case. Compiler tests then stop at the pre-existing
 checkout-location identity assertion in `compiler-module-inputs.spec.ts`: two equivalent fixture
@@ -2041,7 +2041,7 @@ checkpoints remain open.
 
 ### Windows observation diff identifies inconsistent realpath policy
 
-Diagnostic source `8fb57ac5e`, [run 39058844360](https://github.com/spankyed/AgentBuddy/actions/runs/39058844360),
+Diagnostic source `8fb57ac5e`, [run 39058844360](https://github.com/spankyed/apack/actions/runs/39058844360),
 shows matching file hashes but different relative query paths containing
 `../../../../../../runneradmin/AppData/Local/Temp/apack-module-inputs-<random>/...`.
 The namespace resolver uses `fs.realpathSync.native`, which expands Windows short names differently
@@ -2062,7 +2062,7 @@ platform and descendant-lifetime completion are not claimed by these local check
 
 ### Windows path identity accepted; portable cleanup permissions
 
-Source `707b17837`, [run 39059173727](https://github.com/spankyed/AgentBuddy/actions/runs/39059173727),
+Source `707b17837`, [run 39059173727](https://github.com/spankyed/apack/actions/runs/39059173727),
 passes all 24 module-input cases on Windows, including equivalent-checkout identity and captured
 source identity. Preparation continues to pass. The next failure is the read-tree cleanup fixture's
 POSIX-only `0755` directory assertion: Windows reports `0666` after chmod. Sixty cases pass before
@@ -2078,7 +2078,7 @@ cleanup. All five local read-tree cases and focused lint pass:
 
 ### Windows cleanup accepted; isolate POSIX executable-bit assertions
 
-Source `caf9a29c0`, [run 39059442652](https://github.com/spankyed/AgentBuddy/actions/runs/39059442652),
+Source `caf9a29c0`, [run 39059442652](https://github.com/spankyed/apack/actions/runs/39059442652),
 passes all five read-tree cases on Windows and all six other files reached before fail-fast.
 It stops at runtime identity's POSIX chmod assertion: Windows has no executable bits to remove.
 69 cases pass, six platform cases skip, one fails. Log:
@@ -2094,7 +2094,7 @@ All 17 local runtime/installation cases pass (12.25s runner), with focused lint 
 
 ### Windows runtime permission checks accepted; repair fault-injection path
 
-Source `75be5b00b`, [run 39059751459](https://github.com/spankyed/AgentBuddy/actions/runs/39059751459),
+Source `75be5b00b`, [run 39059751459](https://github.com/spankyed/apack/actions/runs/39059751459),
 passes all six other selected files. Its only reported failure is installation corruption refusal:
 the test matches `/nested/index.cjs`, so its mutation never runs on Windows. 79 cases pass and seven
 platform cases skip. Log: `/private/tmp/apack-windows-39059751459-failed.log`.
@@ -2106,7 +2106,7 @@ fail-fast for the expensive real worker baseline. No test selection or deadline 
 
 ### Windows focused units accepted; real worker drive-root failure
 
-Source `22739f676`, [run 39059985521](https://github.com/spankyed/AgentBuddy/actions/runs/39059985521),
+Source `22739f676`, [run 39059985521](https://github.com/spankyed/apack/actions/runs/39059985521),
 passes all seven focused files: 81 cases pass, seven platform-specific cases skip. Preparation and
 the native startup probe pass. The real repeated-build case then fails while compiling content:
 `EISDIR: illegal operation on a directory, lstat 'C:'`. Its 93.46s result is a failure, not a timeout.
@@ -2121,7 +2121,7 @@ real Windows compilation or descendant-lifetime acceptance.
 
 ### Native-path policy correction and checkout setup prerequisite
 
-Source `71e862359`, [run 39060486872](https://github.com/spankyed/AgentBuddy/actions/runs/39060486872),
+Source `71e862359`, [run 39060486872](https://github.com/spankyed/apack/actions/runs/39060486872),
 passes focused units and preserves the real failure stack. `physicalWatchPath()` calls ordinary
 `fs.realpathSync()`, which fails while probing a namespaced Windows drive root. This matches
 [Node's documented realpath defect](https://github.com/nodejs/node/pull/65378). The earlier ordinary-
@@ -2188,7 +2188,7 @@ Apple dyld manual was inspected for the remaining control audit; its text is ret
 ### Windows native-path fixture correction (2026-10-17)
 
 Source `525350813` passes matching package preparation and 148 focused Windows checks in
-[run 39062528890](https://github.com/spankyed/AgentBuddy/actions/runs/39062528890).
+[run 39062528890](https://github.com/spankyed/apack/actions/runs/39062528890).
 Three assertions fail because two fixture factories still use ordinary realpath: their expected
 `RUNNER~1` paths differ from native canonical `runneradmin` paths. The runtime callback correctly
 reports the canonical source; its map lookup uses the other spelling. Correct those fixture origins
@@ -2205,7 +2205,7 @@ An independent, disposable macOS prototype confirms the next loader gap: a nativ
 case; it does not establish a repair or justify treating every dyld control as equivalent.
 
 Windows follow-up on `672645cf4`: all 14 focused files pass (151 cases, eight platform skips).
-[Run 39062755440](https://github.com/spankyed/AgentBuddy/actions/runs/39062755440) reaches and completes
+[Run 39062755440](https://github.com/spankyed/apack/actions/runs/39062755440) reaches and completes
 the first real pack build, then its useful-source-path assertion compares short and native spellings.
 `compiler-commonjs.ts` intentionally passes the logical source path to `_compile` while retaining its
 owned module identity. The assertion now resolves the returned source file and directory natively and
@@ -2286,7 +2286,7 @@ convergence is retained rather than repeating an already completed migration.
 
 ### Windows repeated-build timing diagnosis (2026-10-17)
 
-[Run 39063156389](https://github.com/spankyed/AgentBuddy/actions/runs/39063156389) on `59b890dcb`
+[Run 39063156389](https://github.com/spankyed/apack/actions/runs/39063156389) on `59b890dcb`
 passes all 14 unit files (154 cases, eight platform skips). The repeated-worker case completes the
 first actual build, useful-source-path checks, input replay and archive, then reaches its second
 checkout setup before the unchanged 120-second case deadline expires. The first output handoff takes
@@ -2355,7 +2355,7 @@ not claimed. Windows timing run `39063657523` continues against its pinned `0c25
 
 ### Windows repeated-build forward progress (2026-10-17)
 
-[Run 39063657523](https://github.com/spankyed/AgentBuddy/actions/runs/39063657523), pinned to
+[Run 39063657523](https://github.com/spankyed/apack/actions/runs/39063657523), pinned to
 `0c259a570`, passes all 157 focused unit cases (eight platform skips). Phase milestones report first
 build completion at 77.735s, input replay at 82.085s and archive at 90.275s. The second compiler
 reuses facade types, emits compiled output and reports `Output: dist/` around 174s. The 180s test
@@ -2408,7 +2408,7 @@ merely to observe newer source; wait for terminal evidence. Run `39064447097` re
 
 ### Windows Job owner integration checkpoint (2026-10-17)
 
-[Run 39064447097](https://github.com/spankyed/AgentBuddy/actions/runs/39064447097) on `62f6a03b8`
+[Run 39064447097](https://github.com/spankyed/apack/actions/runs/39064447097) on `62f6a03b8`
 passes all three actual native Job Object scenarios: exit 0, exit 7 and forced launcher cancellation.
 Both root/descendant processes are stopped; exit codes, JSON IPC, stdout/stderr, cwd, environment and
 quoted arguments are preserved. The proof takes about two seconds across the three scenarios.
@@ -2463,7 +2463,7 @@ native diagnostics; no new dispatch is made until the preceding run is terminal.
 
 ### Windows environment and final lifetime cases (2026-10-17)
 
-[Run 39065375155](https://github.com/spankyed/AgentBuddy/actions/runs/39065375155) on `b1c1c87c6`
+[Run 39065375155](https://github.com/spankyed/apack/actions/runs/39065375155) on `b1c1c87c6`
 passes the production helper's three native launch cases, including Unicode, and all 162 focused unit
 cases (eight platform skips). Its publication command runs 17 files rather than the requested one:
 `with-source.mjs` uses `shell: true` on Windows, splitting the quoted multiword filter. An unintended
@@ -2509,7 +2509,7 @@ The preceding Windows run is terminal. The next focused run must first pass the 
 proof, then the exact descendant-publication case and actual repeated-build baseline. Other native
 input/platform cases, B6 and the final full strict gate remain open.
 
-Native result update: [run 39066744863](https://github.com/spankyed/AgentBuddy/actions/runs/39066744863)
+Native result update: [run 39066744863](https://github.com/spankyed/apack/actions/runs/39066744863)
 on committed source `519ac2a16` passes the complete `Windows compiler job ownership` step on Windows
 x64 / Node 23.11.1. The source proof runs success, nonzero exit, forced owner cancellation, two live
 replacement owners and forced independent-controller loss; environment/module-policy/Unicode/absence,
@@ -2524,7 +2524,7 @@ This closes the helper's native cases, not the complete Windows producer/fronten
 
 ### Windows producer baseline acceptance (2026-10-17)
 
-[Run 39067640431](https://github.com/spankyed/AgentBuddy/actions/runs/39067640431) on committed source
+[Run 39067640431](https://github.com/spankyed/apack/actions/runs/39067640431) on committed source
 `1dacb59ec` completes successfully on Windows x64 / Node 23.11.1, using two test workers. Full log:
 `/private/tmp/apack-windows-39067640431.log`.
 
@@ -2619,7 +2619,7 @@ loading retain the user-approved bounded contract; this checkpoint is not securi
 
 ### Compiler preload boundary correction (2026-10-17)
 
-[Windows run 39069433335](https://github.com/spankyed/AgentBuddy/actions/runs/39069433335) on
+[Windows run 39069433335](https://github.com/spankyed/apack/actions/runs/39069433335) on
 `0ac839c94` passes the full native job-owner proof, 169 focused checks (eight platform skips), both
 real descendant-publication/pending-check-cancellation cases, and actual Vite replacement with
 independent descendant cleanup (21.485 seconds test time). Log:
@@ -3124,7 +3124,7 @@ Implementation references: [glibc dynamic loading](https://github.com/bminor/gli
 
 ### Retained ELF library acceptance (2026-10-17)
 
-Run [`39083763519`](https://github.com/spankyed/AgentBuddy/actions/runs/39083763519) succeeds on
+Run [`39083763519`](https://github.com/spankyed/apack/actions/runs/39083763519) succeeds on
 `b02217703` using Ubuntu 24.04 x64 / Node 23.11.1. The unchanged real case passes in 3.97 seconds
 (5.14-second Vitest wall time). It proves the addon loads its owned library rather than the live
 original; library replacement invalidates freshness and exact byte/mode restoration restores it;
@@ -3157,7 +3157,7 @@ include the correction in converged/final source acceptance.
 
 ### Linux lifetime and backend baseline acceptance (2026-10-17)
 
-Run [`39083965583`](https://github.com/spankyed/AgentBuddy/actions/runs/39083965583) succeeds on
+Run [`39083965583`](https://github.com/spankyed/apack/actions/runs/39083965583) succeeds on
 `80578dd4a`, Ubuntu 24.04 x64 / Node 23.11.1, with sequential stages and one Vitest worker:
 
 - Metadata/admission: 101 pass; ten macOS-only cases skip as declared (0.69-second wall).
@@ -3200,7 +3200,7 @@ production code are unchanged. Their real Linux result remains pending.
 
 ### Linux native backend publication acceptance (2026-10-17)
 
-Run [`39084414891`](https://github.com/spankyed/AgentBuddy/actions/runs/39084414891) succeeds on
+Run [`39084414891`](https://github.com/spankyed/apack/actions/runs/39084414891) succeeds on
 `1fbf12216`, Ubuntu 24.04 x64 / Node 23.11.1. The reused native preload case passes in 19.52 seconds
 and compiler-thread case in 27.16 seconds (48.75-second stage wall). Each proves captured library
 execution, changed/restored input freshness, ordinary-Node validity of both refused fixtures,
@@ -3264,7 +3264,7 @@ stricter app signing and converged/final acceptance remain open.
 
 ### Runtime-linked ELF launcher acceptance (2026-10-17)
 
-Run [`39085132469`](https://github.com/spankyed/AgentBuddy/actions/runs/39085132469) succeeds on
+Run [`39085132469`](https://github.com/spankyed/apack/actions/runs/39085132469) succeeds on
 `3ec217669`, Ubuntu 24.04 x64 / Node 23.11.1. The same ordinary Node control still loads the outside
 runtime shim and executes its constructor; the captured runtime now refuses before that constructor,
 and the refusal names the actual selected shim. The case passes in 2.82 seconds, compared with the
@@ -3302,7 +3302,7 @@ of the new RUNPATH case is pending.
 
 ### ELF RUNPATH and launch-state acceptance (2026-10-17)
 
-Filtered run [`39085739556`](https://github.com/spankyed/AgentBuddy/actions/runs/39085739556) succeeds
+Filtered run [`39085739556`](https://github.com/spankyed/apack/actions/runs/39085739556) succeeds
 on `b310e9a0b`, containing source case `6fd081b13`, Ubuntu 24.04 x64 / Node 23.11.1. All three affected
 shared backend cases pass: preload 26.29 seconds, thread 36.60 seconds and launch-time RUNPATH
 26.94 seconds (92.46-second stage wall). The RUNPATH case proves a bare SONAME selects owned bytes
@@ -3380,7 +3380,7 @@ establish a working SDK/ordinary DLL control; a setup failure is not evidence of
 
 ### Confirmed Windows DLL ownership bypass (2026-10-17)
 
-Run [`39086491464`](https://github.com/spankyed/AgentBuddy/actions/runs/39086491464) on `4df331dc9`
+Run [`39086491464`](https://github.com/spankyed/apack/actions/runs/39086491464) on `4df331dc9`
 passes SDK download/checksums, MSVC setup and ordinary NAPI/DLL loading. The captured frontend also
 executes value 11, then fails the ownership assertion in 29.64 seconds: its module report contains
 the original `binding/apack_value.dll`. This confirms the Windows bypass in the existing native owner;
@@ -3461,7 +3461,7 @@ These are implementation gaps, not approved exclusions or a closure of Windows s
 Local acceptance: the seven synthetic Mach-O/ELF/PE files passed 152 cases; after the final absolute-import
 regression the three PE files pass 41 cases. CLI TypeScript, eleven-file correctness lint and diff checks
 pass. No native fixture or captured runtime ran locally. The original 60-second Windows control
-[`39088038495`](https://github.com/spankyed/AgentBuddy/actions/runs/39088038495) fails on this source
+[`39088038495`](https://github.com/spankyed/apack/actions/runs/39088038495) fails on this source
 in 30.60 seconds before frontend readiness: filesystem observation calls native realpath on the Windows
 drive root and receives EISDIR (`path: C:`). SDK setup, real compiled PE metadata assertions and ordinary
 Node loading complete before that failure; ownership/freshness/refusal are not accepted. Preserved log:
@@ -3474,7 +3474,7 @@ retain native realpath for Windows extended paths. The root-specific injected EI
 before the correction and passes afterward; a second case preserves non-root failures. Both and the
 five existing compiler-file-view cases pass, along with host TypeScript, focused lint and diff checks.
 The same original-deadline control
-[`39088334914`](https://github.com/spankyed/AgentBuddy/actions/runs/39088334914) disproves that workaround:
+[`39088334914`](https://github.com/spankyed/apack/actions/runs/39088334914) disproves that workaround:
 portable realpath also fails before readiness (28.96 seconds), now through lstat with the same `C:`
 error. Log: `/private/tmp/apack-pe-proof-39088334914.log`. The first generic root regression was too weak
 to establish Windows behavior and is replaced rather than retained as supposed acceptance.
@@ -3486,7 +3486,7 @@ realpath unchanged. This addresses the root-prefix/separator problem documented 
 [upstream correction](https://github.com/nodejs/node/pull/65378), without upgrading the runtime or
 stripping meaningful namespace semantics from arbitrary files. The exact-spelling injected regression
 fails before and passes after; seven host checks, host types and focused lint/diff checks pass. Actual
-Windows run [`39088648163`](https://github.com/spankyed/AgentBuddy/actions/runs/39088648163) still fails
+Windows run [`39088648163`](https://github.com/spankyed/apack/actions/runs/39088648163) still fails
 before frontend readiness in 43.11 seconds. The stack moves from missing-file resolution into
 `ancestors()` and still reports native realpath EISDIR with `path: C:`. This is partial progress through
 observation, not proof that root handling or DLL capture is correct. Log:
@@ -3494,14 +3494,14 @@ observation, not proof that root handling or DLL capture is correct. Log:
 
 Source `acf82888c` attributes unexpected physical-path errors with the original and queried path
 spellings, preserving the native cause. The existing two root/error cases and focused lint/diff checks
-pass. Diagnostic run [`39088919972`](https://github.com/spankyed/AgentBuddy/actions/runs/39088919972)
+pass. Diagnostic run [`39088919972`](https://github.com/spankyed/apack/actions/runs/39088919972)
 is pinned to this source. Inspect those exact path values before another behavior change; the injected
 root cases alone have twice been insufficient to establish actual Windows behavior. No native
 fixture/captured runtime ran locally, and the full Windows/goal acceptance remains open.
 
 ### Confirmed input-resolution root loss (2026-10-17)
 
-Diagnostic [`39088919972`](https://github.com/spankyed/AgentBuddy/actions/runs/39088919972) fails in
+Diagnostic [`39088919972`](https://github.com/spankyed/apack/actions/runs/39088919972) fails in
 26.19 seconds and identifies the actual input/query as `\\?\C:` without a trailing separator. Log:
 `/private/tmp/apack-pe-proof-39088919972.log`. A local Node 23.11.1 path-only reproduction confirms
 `path.win32.resolve()` turns the complete extended drive root into that volume-handle spelling.
@@ -3516,26 +3516,26 @@ and a package must not record that private executable as its own source. Its fif
 CLI types and focused lint pass. No runtime version, deadline or Windows process-owner change.
 
 The same Windows control now runs as
-[`39089261502`](https://github.com/spankyed/AgentBuddy/actions/runs/39089261502) on `1768018fa`.
+[`39089261502`](https://github.com/spankyed/apack/actions/runs/39089261502) on `1768018fa`.
 Run `39089261502` gets past realpath but fails startup consistency in 31.81 seconds for a synthetic
 root namespace entry ending `C:`. A local path-only reproduction confirms that Node returns `C:` as
 the basename of the complete extended root, producing a slot `C:\C:`. Source `a0dde9f74` therefore
 canonicalizes that complete root to its equivalent DOS root at the input boundary, rather than merely
 preserving its separator. Eight host cases, host types and focused lint/diff checks pass. Its control
-[`39089547141`](https://github.com/spankyed/AgentBuddy/actions/runs/39089547141) gets past root consistency
+[`39089547141`](https://github.com/spankyed/apack/actions/runs/39089547141) gets past root consistency
 but fails a different namespace entry, the checkout's `package.json`, in 30.52 seconds. Logs:
 `/private/tmp/apack-pe-proof-39089261502.log` and `/private/tmp/apack-pe-proof-39089547141.log`.
 
 Source `7294ae0d5` adds expected/observed values to namespace consistency refusals (paths/kind/mode
 only, not file contents or arbitrary metadata results). Six file-view cases and focused lint/diff checks
 pass, including an actual missing-to-directory refusal proving the attribution. Diagnostic
-[`39089857543`](https://github.com/spankyed/AgentBuddy/actions/runs/39089857543) is pinned to that source;
+[`39089857543`](https://github.com/spankyed/apack/actions/runs/39089857543) is pinned to that source;
 inspect those values before changing namespace ownership or replay. The initial DLL control still
 has not completed, and other Windows lookup/whole-goal gaps remain required.
 
 ### Windows native copy path identity (2026-10-17)
 
-Diagnostic [`39089857543`](https://github.com/spankyed/AgentBuddy/actions/runs/39089857543) identifies
+Diagnostic [`39089857543`](https://github.com/spankyed/apack/actions/runs/39089857543) identifies
 the checkout package.json mismatch precisely: recorded missing, replayed file. Log:
 `/private/tmp/apack-pe-proof-39089857543.log`. Extended Windows native filenames bypassed DOS-spelled
 copy-owner boundaries and source mappings; a private copy's missing parent metadata was projected to
@@ -3548,7 +3548,7 @@ Four Windows-flavor path cases, nine adjacent host cases, one dlopen adapter cas
 read-tree/module cases pass (44 total), along with host/CLI types, six-file lint and diff checks.
 Only synthetic/filesystem/mocked checks ran locally.
 
-Windows [`39090358782`](https://github.com/spankyed/AgentBuddy/actions/runs/39090358782) on that source
+Windows [`39090358782`](https://github.com/spankyed/apack/actions/runs/39090358782) on that source
 gets through frontend readiness and addon execution, with the original DLL absent from loaded modules.
 It fails in 23.41 seconds on an opaque boolean assertion requiring a particular temporary prefix and
 suffix. This result does not yet prove the exact native copy owner, freshness or outside-PATH refusal.
@@ -3559,13 +3559,13 @@ existing receipt, checking the captured addon belongs to the advertised frontend
 loaded DLL is its adjacent captured dependency. Assertion failures now expose actual/expected paths.
 The preload reads the existing receipt; it adds no production declarations or alternative owner.
 CLI types and focused lint/diff checks pass. Run
-[`39090745973`](https://github.com/spankyed/AgentBuddy/actions/runs/39090745973) is pinned to that source;
+[`39090745973`](https://github.com/spankyed/apack/actions/runs/39090745973) is pinned to that source;
 follow it to terminal before accepting the complete control. No timeout or production admission was
 changed in this fixture checkpoint.
 
 ### Accepted Windows DLL ownership and full-path module metadata (2026-10-17)
 
-Run [`39090745973`](https://github.com/spankyed/AgentBuddy/actions/runs/39090745973) reaches the exact
+Run [`39090745973`](https://github.com/spankyed/apack/actions/runs/39090745973) reaches the exact
 receipt assertion but Node's report does not contain the full captured DLL filename. The upstream
 [Node 23.11.1 Windows implementation](https://github.com/nodejs/node/blob/v23.11.1/src/debug_utils.cc)
 passes `arraysize(module_name) / sizeof(WCHAR)` to GetModuleFileNameExW for a MAX_PATH WCHAR buffer,
@@ -3582,7 +3582,7 @@ Windows loaded-module authority. Report privacy is restored in finally. The test
 frontend PID through this reader and compares its value DLL to the existing native owner receipt.
 All 46 focused PE metadata/admission/OS-query cases, CLI types, focused lint and diff checks pass.
 
-Actual Windows run [`39091568546`](https://github.com/spankyed/AgentBuddy/actions/runs/39091568546)
+Actual Windows run [`39091568546`](https://github.com/spankyed/apack/actions/runs/39091568546)
 **passes** on `b70228539`: one case in 44.38 seconds, 46.02 seconds Vitest total, within the unchanged
 60-second case deadline. It proves matching SDK/ordinary loading and real PE-header assertions;
 preserved report privacy; frontend readiness; an exact owned DLL and no original DLL in the live
@@ -3601,14 +3601,14 @@ archive follows from this focused pass.
 
 Source `52e77402b` writes the Windows metadata query's JSON as explicit UTF-8 bytes to its
 standard-output stream. It does not change console encoding or the shared terminal code page.
-Run [39092975820](https://github.com/spankyed/AgentBuddy/actions/runs/39092975820) on `2e1cde9bb`
+Run [39092975820](https://github.com/spankyed/apack/actions/runs/39092975820) on `2e1cde9bb`
 passes the complete named-import control with a Unicode package path in 37.18 seconds: exact captured
 DLL ownership, freshness replacement/restoration, Vue updates, privacy preservation and outside-PATH
 refusal before initialization, with the incumbent retained. The unchanged per-case deadline is 60 seconds.
 Log: `/private/tmp/apack-pe-proof-39092975820.log`.
 
 The second case fails in ordinary Node with access violation `3221225477` before captured execution.
-The prior run [39092534862](https://github.com/spankyed/AgentBuddy/actions/runs/39092534862) has the
+The prior run [39092534862](https://github.com/spankyed/apack/actions/runs/39092534862) has the
 same raw-loader failure. These failures establish an invalid control, not an apack loader defect.
 The hand-edited image removed its lookup table after filling its IAT with preferred addresses.
 [Microsoft's binding explanation](https://devblogs.microsoft.com/oldnewthing/20231129-00/?p=109077)
@@ -3616,7 +3616,7 @@ requires the lookup table for fallback when those addresses cannot be reused. Re
 provides a normal bound-import control; the parser must continue reading names and ordinals rather
 than cached addresses. A focused synthetic regression establishes that distinction.
 
-Run [39093260230](https://github.com/spankyed/AgentBuddy/actions/runs/39093260230) on `d4e66555f`
+Run [39093260230](https://github.com/spankyed/apack/actions/runs/39093260230) on `d4e66555f`
 passes the corrected bound-import control in 38.81 seconds (40.58 seconds Vitest total), within the
 unchanged 60-second deadline. Ordinary loading, exact captured DLL ownership, freshness replacement/
 restoration, Vue updates and outside-library refusal all pass. Log:
@@ -3644,7 +3644,7 @@ focused lint/diff checks pass.
 
 ### Windows loaded-DLL workspace cleanup correction (2026-10-17)
 
-Run [39093514651](https://github.com/spankyed/AgentBuddy/actions/runs/39093514651) on `6fed2f4c4`
+Run [39093514651](https://github.com/spankyed/apack/actions/runs/39093514651) on `6fed2f4c4`
 compiles the Windows addon and passes its ordinary value/path control. Its first backend build reaches
 code generation, then fails disposing the startup native tree: `removeCompilerReadTree` reports EPERM
 while the copied DLL is still loaded by that worker. The preload case fails in 36.00 seconds; fail-fast
@@ -3666,7 +3666,7 @@ source still needs disposable execution; no native fixture ran locally.
 
 ### Author codegen ownership during native capture (2026-10-17)
 
-Run [39093828420](https://github.com/spankyed/AgentBuddy/actions/runs/39093828420) on `4e1cda2f3`
+Run [39093828420](https://github.com/spankyed/apack/actions/runs/39093828420) on `4e1cda2f3`
 passes the earlier cleanup point but its first backend build refuses a generated `events.ts` rewrite
 after codegen. The fixture places a native addon inside the authored pack. Startup's whole-native-package
 capture had frozen that pack's initial `src/__generated__` bytes before the build's existing codegen
@@ -3690,7 +3690,7 @@ all three affected CI-header checks pass. The final gate has not been launched a
 
 ### Windows publication scenario progress and deadline (2026-10-17)
 
-Run [39094144526](https://github.com/spankyed/AgentBuddy/actions/runs/39094144526) on `d9cbbac35`
+Run [39094144526](https://github.com/spankyed/apack/actions/runs/39094144526) on `d9cbbac35`
 gets beyond the generated-file refusal. Its preload case emits generated entries at 03:38:02, starts
 compilation at 03:38:03 and emits content/backend runtime output at 03:38:27, then reaches the 60-second
 case deadline at 03:38:29. This establishes build progress, not completed publication or a pass for the
@@ -3726,7 +3726,7 @@ acceptance. CLI types, focused correctness lint and diff checks pass; no local n
 
 ### Cross-drive Windows observation repair and macOS constructor result (2026-10-17)
 
-Windows run [39094465491](https://github.com/spankyed/AgentBuddy/actions/runs/39094465491) on
+Windows run [39094465491](https://github.com/spankyed/apack/actions/runs/39094465491) on
 `ba2113bc2` completes its first real backend build at the 76.31-second checkpoint. The full-path native
 DLL/workspace assertions pass, including parent workspace removal, so the earlier cleanup and author
 codegen corrections now reach publication. Initial sealed-input freshness fails on an `entries` query
@@ -3744,7 +3744,7 @@ filesystem input cases, all 16 pass. Host types, focused lint/diff checks pass. 
 owner, not a receipt-only rewrite, drive-specific fixture or relaxed freshness assertion. Actual Windows
 publication acceptance of the repair remains pending.
 
-macOS run [39094566233](https://github.com/spankyed/AgentBuddy/actions/runs/39094566233) on
+macOS run [39094566233](https://github.com/spankyed/apack/actions/runs/39094566233) on
 `1f4c8b67c` passes the ordinary/shared-launcher constructor prototype in 0.904 seconds (4.16 seconds
 Vitest total). Both executions initialize the outside absolute dylib and return 11. This confirms the
 missing shared-launcher admission boundary for that minimal executable; it is not Node/Electron ABI,
@@ -3780,7 +3780,7 @@ gates remain required; the minimal executable control cannot establish those.
 
 ### Windows publication and macOS runtime admission accepted (2026-10-18)
 
-Windows run [39095177818](https://github.com/spankyed/AgentBuddy/actions/runs/39095177818) on
+Windows run [39095177818](https://github.com/spankyed/apack/actions/runs/39095177818) on
 `994bb37cb` passes both publication cases: startup preload in 62.55 seconds and compiler thread in
 61.63 seconds, within their existing 120-second scenario bound (126.71 seconds Vitest total). Each
 proves its ordinary DLL value/path control, real backend publication, captured DLL inside the reported
@@ -3791,7 +3791,7 @@ thread case executes in a non-main thread. Log: `/private/tmp/apack-pe-publicati
 This accepts the earlier loaded-DLL cleanup, author-codegen ownership and cross-drive repairs through
 those real paths; do not keep scheduling them as unresolved defects.
 
-macOS run [39095180283](https://github.com/spankyed/AgentBuddy/actions/runs/39095180283) on the same
+macOS run [39095180283](https://github.com/spankyed/apack/actions/runs/39095180283) on the same
 source passes the repaired runtime constructor control in 1.13 seconds (5.12 seconds Vitest total).
 Ordinary execution initializes the outside absolute dylib; the shared compiler launcher refuses it
 before its constructor. A contained executable-relative library then succeeds through both ordinary
@@ -3810,14 +3810,14 @@ Linux mapped-image closure, B6 and final strict acceptance remain open.
 
 ### Shared Windows preload/thread ownership repair (2026-10-18)
 
-macOS run [39095878658](https://github.com/spankyed/AgentBuddy/actions/runs/39095878658) on
+macOS run [39095878658](https://github.com/spankyed/apack/actions/runs/39095878658) on
 `468eaecf1` passes the existing retained-Node/Vite ownership case in 10.77 seconds (13.06 seconds
 Vitest total). Two actual captured Node frontends start through the new launcher admission; retirement
 settles each descendant independently while the other frontend remains current and serves Vue. This
 closes that real Node path after the guard, not the Electron/signed-app obligations. Log:
 `/private/tmp/apack-node-runtime-39095878658.log`.
 
-Windows run [39095875703](https://github.com/spankyed/AgentBuddy/actions/runs/39095875703) on the same
+Windows run [39095875703](https://github.com/spankyed/apack/actions/runs/39095875703) on the same
 source passes ordinary Node's combined main/thread DLL control, then fails the captured build in
 45.01 seconds. The thread sees the DLL already loaded from the startup preload's owned input tree,
 but treats it as an outside dependency relative to the authored package. Log:
@@ -3841,12 +3841,12 @@ preload/thread cases need acceptance on the refactored source. No native executi
 
 ### Native report alias validation and Electron runtime probe (2026-10-18)
 
-macOS run [39096671311](https://github.com/spankyed/AgentBuddy/actions/runs/39096671311) on
+macOS run [39096671311](https://github.com/spankyed/apack/actions/runs/39096671311) on
 `1176303bf` passes the refactored frontend-native preload/thread cases in 15.93s/9.53s (27.68s Vitest
 total), preserving captured native ownership, freshness/restoration, live Vue and refused outside-library
 replacement with the incumbent retained. Log: `/private/tmp/apack-native-reports-39096671311.log`.
 
-Windows run [39096668957](https://github.com/spankyed/AgentBuddy/actions/runs/39096668957) passes
+Windows run [39096668957](https://github.com/spankyed/apack/actions/runs/39096668957) passes
 the ordinary combined control and reaches the shared receipt, then fails its new captured-file presence
 check in 50.01 seconds. The cause is `Native module has no captured file observation`; the report does
 not expose enough path details to claim the exact alias pair. Log:
@@ -3871,7 +3871,7 @@ are the same Windows composition case and this new Electron probe.
 
 ### Default Electron runtime acceptance (2026-10-18)
 
-Hosted macOS run [39097385010](https://github.com/spankyed/AgentBuddy/actions/runs/39097385010)
+Hosted macOS run [39097385010](https://github.com/spankyed/apack/actions/runs/39097385010)
 on `cbbee04d9` passes the captured Electron launcher probe in 1.65 seconds (3.50 seconds Vitest
 total). The original Electron 37.2.4 successfully imports the compiler owner; its report API is
 available. The child runs the same Electron version from a distinct private executable with captured
@@ -3885,7 +3885,7 @@ execution or signing operation ran on the developer's Mac. Windows combined prel
 
 ### Combined Windows preload/thread acceptance (2026-10-18)
 
-Hosted Windows run [39097382309](https://github.com/spankyed/AgentBuddy/actions/runs/39097382309)
+Hosted Windows run [39097382309](https://github.com/spankyed/apack/actions/runs/39097382309)
 on `cbbee04d9` passes the combined native main-preload/compiler-thread publication case in 74.49
 seconds (77.83 seconds Vitest total), under the unchanged 120-second per-case budget. Ordinary Node
 loads the same DLL successfully in both frames. Captured execution shares the owned module across
@@ -3914,14 +3914,14 @@ shell/JavaScript syntax checks pass. No signing/native execution occurred locall
 
 An inert filesystem check confirms Node's default `cpSync` rewrites relative symlinks toward the
 original tree. Source `704c6903b` preserves framework-relative links in the fixture copy instead.
-The first hosted run [39097801440](https://github.com/spankyed/AgentBuddy/actions/runs/39097801440)
+The first hosted run [39097801440](https://github.com/spankyed/apack/actions/runs/39097801440)
 on `55212d739` stops earlier during signing: the keychain query finds an identity, but codesign
 reports `no identity found`. It never reaches runtime execution; no runtime failure is established.
 Its cleanup step passes. Log: `/private/tmp/apack-signed-runtime-39097801440.log`.
 
 Following [GitHub's certificate setup](https://docs.github.com/en/actions/how-tos/deploy/deploy-to-third-party-platforms/sign-xcode-applications),
 `0599041a5` adds the private keychain to the disposable runner's search list while preserving
-existing entries. Run [39097967959](https://github.com/spankyed/AgentBuddy/actions/runs/39097967959)
+existing entries. Run [39097967959](https://github.com/spankyed/apack/actions/runs/39097967959)
 on that source successfully signs the copied Electron with hardened runtime, a Developer ID Team ID
 and exact app entitlements. It does **not** accept runtime execution: all 25 cases were skipped because
 Vitest's object-table title interpolation quotes the string label and the selected filter matched none.
@@ -3930,14 +3930,14 @@ Log: `/private/tmp/apack-signed-runtime-39097967959.log`.
 Source `6b9d2ff24` uses the string-table formatter and adds a JSON-result check requiring at least one
 passing selected case. A local inert-tooling proof accepts three selected header checks and refuses a
 zero-pass report; CLI types/lint, YAML parsing and diff checks pass. The actual signed-runtime retry is
-run [39098158270](https://github.com/spankyed/AgentBuddy/actions/runs/39098158270). The selected
+run [39098158270](https://github.com/spankyed/apack/actions/runs/39098158270). The selected
 case executes and fails in 1.32 seconds: the original signed Electron bootstraps, but its captured
 child exits without a numeric exit code. That failure establishes a broken strict-runtime path,
 not its cause or a relation to the earlier developer-machine launch incident. Log:
 `/private/tmp/apack-signed-runtime-39098158270.log`.
 
 Diagnostic source `a1165891c` verifies the captured executable's signature before launching it and
-reports child signals. Hosted run [39098322426](https://github.com/spankyed/AgentBuddy/actions/runs/39098322426)
+reports child signals. Hosted run [39098322426](https://github.com/spankyed/apack/actions/runs/39098322426)
 fails before child launch with codesign's `invalid Info.plist (plist or signature have been modified)`.
 The reader copies only the main executable and Frameworks, omitting the app metadata/resources.
 Log: `/private/tmp/apack-signed-runtime-39098322426.log`.
@@ -3948,7 +3948,7 @@ the executable and sealed metadata/resource bytes; it does not re-sign captured 
 permissions. An inert filesystem regression fails before this correction on the missing Info.plist;
 afterwards all four runtime-input cases pass, including metadata/resource replacement/restoration
 freshness. CLI types, focused lint and diff checks pass. Real strict signing/capture/launch acceptance
-is run [39098478634](https://github.com/spankyed/AgentBuddy/actions/runs/39098478634). The missing
+is run [39098478634](https://github.com/spankyed/apack/actions/runs/39098478634). The missing
 Info.plist defect is resolved, but strict codesign verification now reports unsealed contents in an
 embedded framework. Log: `/private/tmp/apack-signed-runtime-39098478634.log`.
 
@@ -3958,7 +3958,7 @@ relative target is rewritten to an absolute private path. Source `d7832524e` ret
 runtime link text and includes that text in the runtime identity. The regression now passes, including
 refusal when a link's spelling changes to an equivalent `./` path. All five runtime/copy cases, CLI
 types, focused lint and diff checks pass; nothing executable was copied and launched locally.
-Real signed-runtime run [39098719346](https://github.com/spankyed/AgentBuddy/actions/runs/39098719346)
+Real signed-runtime run [39098719346](https://github.com/spankyed/apack/actions/runs/39098719346)
 on that source resolves the framework-link verification failure, then reports added files beneath
 `Resources/default_app.asar/` and missing/invalid sealed resources. The runtime inventory used
 Electron's patched fs, which exposes ASAR archives as directories; capture expanded the archive.
@@ -3969,7 +3969,7 @@ cloning/mode changes. Normal compiler-source reads keep their existing filesyste
 same native archive bytes are copied; no extraction, signature rewriting or global `process.noAsar`
 change is introduced. This follows [Electron's physical-filesystem contract](https://www.electronjs.org/docs/latest/tutorial/asar-archives).
 All five inert runtime/copy checks, CLI types, focused lint and diff checks pass. Actual strict-profile
-runtime run [39098937466](https://github.com/spankyed/AgentBuddy/actions/runs/39098937466) reaches
+runtime run [39098937466](https://github.com/spankyed/apack/actions/runs/39098937466) reaches
 installation disposal, which fails with `ENOTEMPTY` at Contents/Resources. The disposal exception can
 mask an earlier exception, so this is not complete launch acceptance. Log:
 `/private/tmp/apack-signed-runtime-39098937466.log`.
@@ -3978,7 +3978,7 @@ Source `ee1c76459` uses the same physical filesystem throughout installation own
 copying, path checks, permissions and recursive disposal. This removes the narrower copy helper and
 keeps one owner for the physical installation tree. Compiler input/source readers remain unchanged.
 All five inert runtime/copy checks, CLI types, focused lint and diff checks pass. The same strict-profile
-acceptance passes in hosted run [39099157645](https://github.com/spankyed/AgentBuddy/actions/runs/39099157645)
+acceptance passes in hosted run [39099157645](https://github.com/spankyed/apack/actions/runs/39099157645)
 on `ee1c76459`: 2.14 seconds for the case and 4.08 seconds Vitest total. The workflow checks exact
 app entitlements, hardened runtime and a real Developer ID Team ID. The captured executable passes
 strict codesign verification, starts Electron 37.2.4 through the shared launcher from the owned
@@ -4004,7 +4004,7 @@ variant to the existing Windows publication case, with explicit startup/compiler
 The CommonJS path deliberately participates in captured resolution; ESM `createRequire()` can take a
 different route. Ordinary Node proves repeated same-module loading before captured execution.
 
-Hosted run [39099421891](https://github.com/spankyed/AgentBuddy/actions/runs/39099421891) on
+Hosted run [39099421891](https://github.com/spankyed/apack/actions/runs/39099421891) on
 `84f347c92` passes that ordinary control, then fails captured compilation in 44.08 seconds. The
 compiler reader rejects the DLL already loaded from the startup owner's private tree as outside the
 authored package. The stack names `createNativeInputReader.prepare()`, rather than a timeout or
@@ -4020,7 +4020,7 @@ The inert reader regression fails before the correction and passes afterwards, i
 propagation, repeated-image revalidation and standalone outside-dependency enforcement. All 10
 reader/owner/report cases and the three affected compilation-input retention cases pass, as do CLI
 types, focused lint and diff checks. No native code or copied runtime executed locally. Actual
-Windows run [39099755751](https://github.com/spankyed/AgentBuddy/actions/runs/39099755751) on that
+Windows run [39099755751](https://github.com/spankyed/apack/actions/runs/39099755751) on that
 source gets past native ownership admission, then stops in 47.51 seconds at the fixture's literal
 `.node` import: esbuild has no native-file bundling loader. This is not complete publication acceptance.
 Log: `/private/tmp/apack-pe-module-39099755751.log`.
@@ -4028,7 +4028,7 @@ Log: `/private/tmp/apack-pe-module-39099755751.log`.
 Fixture correction `965b914b4` uses a runtime native-module path, preserving the same CommonJS
 parent/resolver and admission boundary while avoiding an unsupported static native-bundle request.
 All ownership, exact selected DLL, source replacement/restoration, disposal and pre-initialization
-outside-refusal assertions remain. Hosted run [39100052114](https://github.com/spankyed/AgentBuddy/actions/runs/39100052114) on
+outside-refusal assertions remain. Hosted run [39100052114](https://github.com/spankyed/apack/actions/runs/39100052114) on
 `965b914b4` passes the complete case in 106.17 seconds (109.64 seconds Vitest total), under the
 unchanged 120-second bound. Startup and the CommonJS compiler report the same private DLL; source
 replacement invalidates the published input record and exact restoration makes it current again.
@@ -4050,7 +4050,7 @@ that used plain `path.relative()`. Source `28385676c` adds actual compilation-in
 classification cases and lets the existing Windows name filter select these unit checks. The filter
 now checks combined unit/native JSON results, refusing a zero-pass selection.
 
-Hosted run [39100566892](https://github.com/spankyed/AgentBuddy/actions/runs/39100566892) on that
+Hosted run [39100566892](https://github.com/spankyed/apack/actions/runs/39100566892) on that
 source fails the tool case in 2.78 seconds: the ordinary filename is correctly excluded, but the same
 file in extended spelling becomes a new input. Fail-fast stops before the workspace case and native
 SDK/tests. Log: `/private/tmp/apack-windows-ownership-39100566892.log`. This confirms actual API
@@ -4070,7 +4070,7 @@ external subscriptions.
 
 Local verification passes 51 distinct pure checks: ten compilation/read-tree, eleven shared Windows
 path, seven module-query, eight runner-guard and fifteen watch-planning/matcher cases. CLI types,
-ten-file lint, workflow YAML parsing and diff checks pass. Hosted Windows run [39101205268](https://github.com/spankyed/AgentBuddy/actions/runs/39101205268)
+ten-file lint, workflow YAML parsing and diff checks pass. Hosted Windows run [39101205268](https://github.com/spankyed/apack/actions/runs/39101205268)
 on `aee3a18ab` passes all eleven selected cases: tool/workspace aliases, authored watch classification,
 seven query forms and the real filesystem-event rebuild case. The live case takes 1.11 seconds;
 selected unit execution totals 8.27 seconds. The aggregate guard confirms eleven actual passes;
@@ -4084,7 +4084,7 @@ guard before creating fixtures/watchers, and root guidance explicitly includes l
 even inside unit files. Remaining pure watch cases are rerun separately and pass without unhandled
 errors. No file-limit/security settings were changed and no native fixture/captured executable ran
 locally. The existing macOS filter now selects unit and native cases consistently, checking their
-combined pass count. Hosted macOS run [39101209244](https://github.com/spankyed/AgentBuddy/actions/runs/39101209244)
+combined pass count. Hosted macOS run [39101209244](https://github.com/spankyed/apack/actions/runs/39101209244)
 on the same source accepts that exact live-event case in 1.09 seconds, with its unchanged event deadline.
 The aggregate result confirms one actual pass; unrelated native cases are skipped. Log:
 `/private/tmp/apack-live-watch-39101209244.log`. Do not repeat it locally or change resource limits.
@@ -4182,9 +4182,9 @@ as completion of the Windows resolution requirement.
 
 The user pushed source `167722d1f`; remote verification confirms that exact branch tip, resolving the
 prior push-approval blocker for this source. Focused macOS run
-[39103783217](https://github.com/spankyed/AgentBuddy/actions/runs/39103783217) passes ten selected
+[39103783217](https://github.com/spankyed/apack/actions/runs/39103783217) passes ten selected
 checks in 5.94s (the real backend event case takes 1.074s). Focused Windows run
-[39103780229](https://github.com/spankyed/AgentBuddy/actions/runs/39103780229) also passes the same
+[39103780229](https://github.com/spankyed/apack/actions/runs/39103780229) also passes the same
 ten watcher checks (backend event case 1.190s), before its separate native-control step fails.
 
 The ten checks cover actual backend event rebuilding, three actual frontend subscription/repair/
@@ -4209,7 +4209,7 @@ backend/frontend acceptance on both configured platforms. Preserve it through B6
 acceptance. Remaining Windows/native/platform requirements and the full goal remain open.
 
 
-The independent SxS-only run [39104000631](https://github.com/spankyed/AgentBuddy/actions/runs/39104000631)
+The independent SxS-only run [39104000631](https://github.com/spankyed/apack/actions/runs/39104000631)
 on the same source also fails its ordinary control in 7.978s: original value/path 11 remains selected
 after the application manifest is embedded. Its baseline/unconfigured controls and manifest-resource
 presence assertion pass. The log is `/private/tmp/apack-sxs-control-39104000631.log`. No admission code
@@ -5934,7 +5934,7 @@ the exact exported test overlay; preserve that overlay before any future checkou
 ## Linux real Electron build/archive and macOS phase ownership — 2026-10-19
 
 Source `50d11c39d5f595be2c8fed50726e92213973f070`, focused Linux run
-[39179710434](https://github.com/spankyed/AgentBuddy/actions/runs/39179710434), executes exactly one
+[39179710434](https://github.com/spankyed/apack/actions/runs/39179710434), executes exactly one
 `builds and archives a real pack under the captured Electron runtime` case and passes in **59.141s**.
 It uses public scaffold/feature/build commands under Electron, actual captured **Electron 37.2.4 /
 Node 22.17.1** (ABI 136), verifies nonempty backend and Vue frontend output and captured executable
@@ -5944,7 +5944,7 @@ retirement, and successfully archives under the supervising **Node 23.11.1**. Ve
 Electron build/consumer path; no claim about arbitrary native loading follows.
 
 The signed macOS companion run
-[39179708329](https://github.com/spankyed/AgentBuddy/actions/runs/39179708329) fails at the 60s
+[39179708329](https://github.com/spankyed/apack/actions/runs/39179708329) fails at the 60s
 aggregate test bound, with no compiler diagnostic. Existing source combined init, feature generation,
 build and archive in one test; it did not report phase timing. The failure cannot establish which
 operation was still active. Logs are preserved at
@@ -5961,7 +5961,7 @@ on the corrected topology; the accepted Linux behavior does not need a reassuran
 
 ### Signed macOS phase timing and bounded workflow correction — 2026-10-19
 
-Focused run [39180215930](https://github.com/spankyed/AgentBuddy/actions/runs/39180215930) on
+Focused run [39180215930](https://github.com/spankyed/apack/actions/runs/39180215930) on
 `c9bb04446` is terminal failure before compilation: init completes in **53.797s**, feature generation
 starts, and the shared authoring hook expires about five seconds later. Phase logs isolate this
 aggregate-clock problem; no compiler error or signing failure is shown. Retained logs:
@@ -5980,7 +5980,7 @@ The valid Linux result remains accepted: its entire original workflow already co
 
 ### Signed Electron receipt diagnosis and direct compiler observation — 2026-10-19
 
-Run [39180841694](https://github.com/spankyed/AgentBuddy/actions/runs/39180841694), exact
+Run [39180841694](https://github.com/spankyed/apack/actions/runs/39180841694), exact
 `cb7fb8e83`, is terminal failure at receipt reading, **not compilation**. Public init completes in
 25.722s, feature generation 9.813s and build 59.735s. `runtime.json` is absent, so this run does not
 establish captured runtime identity or archive acceptance. Logs are retained at
@@ -6012,8 +6012,8 @@ result remains valid for its original observed worker path, not this added bound
 ### Direct compiler declaration grammar correction — 2026-10-19
 
 Both direct-observer runs on `f6c83989a` are terminal failures before compilation: Linux
-[39181815305](https://github.com/spankyed/AgentBuddy/actions/runs/39181815305) and signed macOS
-[39181815312](https://github.com/spankyed/AgentBuddy/actions/runs/39181815312) reject `runtimeProof`
+[39181815305](https://github.com/spankyed/apack/actions/runs/39181815305) and signed macOS
+[39181815312](https://github.com/spankyed/apack/actions/runs/39181815312) reject `runtimeProof`
 because content keys permit lowercase letters, digits and hyphens. This was a fixture mistake; no
 production validator is relaxed. Use `runtime-proof` and validate the augmented declaration through
 the existing public ManifestSchema before writing it. A local pure schema check proves old-key
@@ -6028,8 +6028,8 @@ scaffold/feature/build/archive control on both configured disposable targets:
 
 | Target / run | Executed case | Init / feature / build / archive | Total case | Verified revision |
 |---|---|---|---|---|
-| Signed macOS ARM64 [39182253220](https://github.com/spankyed/AgentBuddy/actions/runs/39182253220) | 1 passed, 26 filtered | 25.316s / 17.626s / 72.158s / 18.238s | 133.956s | `0c997f4fb97bf5989bf2fe1cf8188ec2db6ddd7505cd8147d9b19487aa423b2b` |
-| Linux x64 [39182255120](https://github.com/spankyed/AgentBuddy/actions/runs/39182255120) | 1 passed, 24 filtered | 11.123s / 10.955s / 42.575s / 6.718s | 71.738s | `2b9f0a53693443682813f06efd91d9dcb4c09366a53995e1d72df238a81d1e85` |
+| Signed macOS ARM64 [39182253220](https://github.com/spankyed/apack/actions/runs/39182253220) | 1 passed, 26 filtered | 25.316s / 17.626s / 72.158s / 18.238s | 133.956s | `0c997f4fb97bf5989bf2fe1cf8188ec2db6ddd7505cd8147d9b19487aa423b2b` |
+| Linux x64 [39182255120](https://github.com/spankyed/apack/actions/runs/39182255120) | 1 passed, 24 filtered | 11.123s / 10.955s / 42.575s / 6.718s | 71.738s | `2b9f0a53693443682813f06efd91d9dcb4c09366a53995e1d72df238a81d1e85` |
 
 The actual declared content compiler reports **Electron 37.2.4 / Node 22.17.1**, ABI 136, from an
 owned captured executable distinct from the source distribution. The executable is absent after
