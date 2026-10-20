@@ -6,10 +6,10 @@ on:
       suite:
         description: App acceptance suite; all also exercises the source CLI
         type: choice
-        options: [all, app, external, cli, build]
+        options: [all, app, external, cli, build, integration]
         default: all
       test:
-        description: Optional Playwright test name pattern in the selected suite
+        description: Playwright name pattern; integration requires space-separated spec file paths
         type: string
         default: ''
   workflow_call:
@@ -62,14 +62,28 @@ jobs:
             npm run build:default-setup
           fi
       - name: Build app runtime
-        if: ${{ inputs.suite != 'build' }}
+        if: ${{ inputs.suite != 'build' && inputs.suite != 'integration' }}
         id: runtime
         # The renderer leg's heap ceiling is declared on the leg (RUNTIME_BUILD_LEGS).
         run: npm run build:runtime -- --cores 2
       - name: Build fixture contracts
         id: preparation
-        if: ${{ inputs.suite == 'all' || inputs.suite == 'external' || inputs.suite == 'cli' }}
+        if: ${{ inputs.suite == 'all' || inputs.suite == 'external' || inputs.suite == 'cli' || inputs.suite == 'integration' }}
         run: npm run test:external-pack:contract
+      - name: Selected integration files
+        if: ${{ inputs.suite == 'integration' }}
+        env:
+          APACK_INTEGRATION_FILES: ${{ inputs.test }}
+        run: |
+          read -r -a files <<< "$APACK_INTEGRATION_FILES"
+          if (( ${#files[@]} == 0 )); then echo 'Name explicit integration spec files'; exit 1; fi
+          for file in "${files[@]}"; do
+            if [[ "$file" != packages/*/*.integration.spec.ts || ! -f "$file" ]]; then
+              echo "Not an integration spec: $file"; exit 1
+            fi
+          done
+          mkdir -p .apack/tests/results
+          node scripts/with-source.mjs node node_modules/vitest/vitest.mjs run --config vitest.integration.config.ts "${files[@]}" --poolOptions.threads.maxThreads=2 --poolOptions.threads.minThreads=1 --poolOptions.forks.maxForks=2 --poolOptions.forks.minForks=1 --bail=1 --reporter=default --reporter=json --outputFile=.apack/tests/results/integration.json
       - name: Prepare external default fork
         if: ${{ inputs.suite == 'all' || inputs.suite == 'external' }}
         run: npm run test:external-pack:fork

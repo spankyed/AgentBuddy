@@ -17,7 +17,7 @@ Do not interpret the historical acceptance register at the end as the current de
 
 Implementation repairs are complete for the findings marked completed below. Remaining validation
 is tracked in [current acceptance evidence](pr-246-acceptance.md): the strict run on
-`1dc65f096716afd79ec3e4064cb4cf5ff2bb0dce` is still in progress. The preceding strict run passed
+`1dc65f096716afd79ec3e4064cb4cf5ff2bb0dce` failed at an individual facade-report deadline. The preceding strict run passed
 both complete unit pools, but failed in a reporter metatest before completing integration or app gates.
 That metatest now uses owned real-Vitest fixtures and passes all eleven focused cases.
 
@@ -76,7 +76,7 @@ focused verification; remaining application/native acceptance is listed separate
 
 ### Remaining work
 
-1. Finish and inspect strict run `39450690425` on committed source: complete normal integration,
+1. Preserve strict run `39450690425`'s completed results, verify the facade repair, then complete remaining integration,
    runtime/smoke and external-app/packaged-authoring gates. Preserve completed results and diagnose any
    failure with focused checks before another broad run.
 2. Exercise the packaged beta-host half of S.5 when a suitable beta release exists. Source-host

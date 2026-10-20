@@ -29,10 +29,10 @@ on:
       app_acceptance_suite:
         description: App acceptance suite; all also exercises the source CLI
         type: choice
-        options: [all, app, external, cli, build]
+        options: [all, app, external, cli, build, integration]
         default: all
       app_acceptance_test:
-        description: Optional Playwright test name pattern in the selected suite
+        description: Playwright name pattern; integration requires space-separated spec file paths
         type: string
         default: ''
       strict_chain:

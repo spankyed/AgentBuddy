@@ -8,8 +8,8 @@ The temporary root-listing filter in the chronological checkpoints below was rem
 
 ## Current coverage, 2026-10-20
 
-The [active strict run `39450690425`](https://github.com/spankyed/apack/actions/runs/39450690425)
-is pinned to `1dc65f096716afd79ec3e4064cb4cf5ff2bb0dce`; it is still in progress. Documentation
+The [latest strict run `39450690425`](https://github.com/spankyed/apack/actions/runs/39450690425)
+was pinned to `1dc65f096716afd79ec3e4064cb4cf5ff2bb0dce` and failed at the facade-report case below. Documentation
 updates after that pin do not imply a newer source tree has passed.
 
 | Boundary | Inspected evidence | Remaining limit |
@@ -357,3 +357,25 @@ All eleven reporter cases pass in 3.4s of test time locally, including actual np
 Repo-checks typechecking and correctness lint pass. All fifteen wait/subprocess-guard cases pass separately
 before another normal/strict acceptance run. The required remaining coverage is the rest of normal
 integration and the smoke, external-app and packaged-authoring gates; completed results remain retained.
+
+## Strict run 39450690425: preserved integration passes; redundant facade build
+
+The strict run passes all preparation/static checks and both unit pools again. Integration passes
+684 cases across 27 files (including all eleven repaired reporter cases), with two platform-specific
+files skipped, before a facade-report case reaches its **individual 60s deadline**. The parent
+integration aggregate does not time out. A separate Vitest `onTaskUpdate` RPC timeout is also reported;
+this is not an assertion or a cleanup failure. Runtime/smoke and application gates are not reached.
+Full logs and all 26 step logs are preserved under `/private/tmp/apack-strict-39450690425/`.
+
+The case removes the report and recompiles only to assert that no missing-report warning is printed.
+The required initial setup already builds this same real pack without a report. Capture that successful
+build's output and assert its absent-report state before subsequent tests author a report. Keep all
+other actual build/report operations and assertions, all eleven cases and existing deadlines. This
+removes one redundant native/compiler capture, not coverage of the build's missing-report behavior.
+
+Local CLI typechecking, correctness lint, YAML parsing and workflow shell syntax pass. All 96 focused
+wait/deadline/chain-table guards pass. The real facade file still requires disposable macOS verification.
+The existing acceptance workflow gains explicit integration-file selection with the same two-worker
+limits and project test deadlines; it skips unrelated runtime and fork builds. This enables focused
+verification and the 39 uncompleted files without restarting all 27 already-passing files. Two of the
+41 files without a pass are intentionally platform-skipped on macOS. No full-gate pass is claimed.

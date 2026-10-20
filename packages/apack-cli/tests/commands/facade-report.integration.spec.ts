@@ -40,6 +40,7 @@ const manifest = (...entities: string[]) => JSON.stringify({
 
 let parent: string;
 let pack: string;
+let initialBuildOutput: string;
 
 beforeAll(async () => {
   if (!PACKAGES_BUILT) return;
@@ -60,7 +61,7 @@ beforeAll(async () => {
     ].join('\n'),
   }, path.join(REPO_ROOT, 'node_modules'));
   // produces: dist/, which three cases below go on to corrupt, remove and have rebuilt
-  await buildPack(pack, ID);
+  initialBuildOutput = await buildPack(pack, ID);
 });
 
 afterAll(() => {
@@ -70,6 +71,14 @@ afterAll(() => {
 const reportFile = () => path.join(pack, 'etc', 'pack-types.api.md');
 const bundleFile = () => path.join(pack, 'dist', PACK_LAYOUT.typesDir, 'pack-types.d.ts');
 const readReport = () => fs.readFileSync(reportFile(), 'utf-8');
+
+// The setup build already exercises an absent report; do not compile the same pack again for it.
+describe.skipIf(!PACKAGES_BUILT)('apack pack build without a report', () => {
+  it('says nothing about a pack that has no report to be stale against', () => {
+    expect(fs.existsSync(reportFile())).toBe(false);
+    expect(initialBuildOutput).not.toContain('facade:update');
+  });
+});
 
 describe.skipIf(!PACKAGES_BUILT)('apack pack facade-report', () => {
   /** Nothing is recorded before the first update: there is no report to be stale against */
@@ -186,13 +195,5 @@ describe.skipIf(!PACKAGES_BUILT)('apack pack build', () => {
     const { code, output } = await callCli(pack, 'build');
     expect(code, output).toBe(0);
     expect(output).toContain('facade:update');
-  });
-
-  it('says nothing about a pack that has no report to be stale against', async () => {
-    fs.rmSync(path.join(pack, 'etc'), { recursive: true, force: true });
-
-    const { code, output } = await callCli(pack, 'build');
-    expect(code, output).toBe(0);
-    expect(output).not.toContain('facade:update');
   });
 });
