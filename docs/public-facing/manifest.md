@@ -295,7 +295,9 @@ entity ID to `openEntity`; the destination comes from `Contract.opens`, independ
 
 Reference type and category names have global identities. Duplicate claims within a pack or
 across its dependency tree fail validation/build; a shared ancestor arriving through two dependencies
-retains its actual owner. A type may use a category declared by its pack or a dependency. Each category
+retains its actual owner. Between independently installed packs, the app checks the same thing: if two
+enabled packs claim one name, both are refused and the Packs view names the shared claim, as it does
+for two plugins opening one entity. Disabling either one resolves it. A type may use a category declared by its pack or a dependency. Each category
 owns one provider. Icons name Lucide exports or use `{ "entry": "src/icon.vue", "load": "lazy" }` for a
 custom component. SVG geometry supports path, rect and circle tuples.
 

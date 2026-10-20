@@ -3,7 +3,7 @@ import { dslCatalogEntries } from './catalog-dsl.ts';
 import { eventCatalogEntries } from './catalog-events.ts';
 import { _parseEventContracts, type PackEventContracts } from '@apackdev/sdk/framework';
 import { captureData } from './captured-data.ts';
-import { assertEntityDestinationClaims, entityDestinationConflicts, pluginCatalogEntries } from './catalog-plugins.ts';
+import { assertCatalogClaims, catalogClaimConflicts, pluginCatalogEntries } from './catalog-plugins.ts';
 import { stepCatalogEntries } from './catalog-steps.ts';
 import { commandCatalogEntries } from './catalog-commands.ts';
 import { artifactCatalogEntries } from './catalog-artifacts.ts';
@@ -124,7 +124,7 @@ export function createContributionCatalog(appSettings: SettingsDefinition) {
       settings: manifest.extensions?.settings, features: manifest.features,
     }))];
     const next = immutable({ revision: current.revision + 1, appSettings: app, packs, problems: catalogProblems, native, sourcePacks, appPackSources, appPackSourceProblems });
-    assertEntityDestinationClaims(next);
+    assertCatalogClaims(next);
     // Diagnostics and source offers leave accepted settings definitions and their identity intact.
     const projection = declarationsChanged ? immutable(settingsForDeclarations(app, definitions, next.revision)) : settings;
     if (declarationsChanged) checkSettings?.(projection);
@@ -228,13 +228,13 @@ export function createContributionCatalog(appSettings: SettingsDefinition) {
     /** Check a verified executable candidate before importing it or replacing incumbent bindings. */
     assertPackDestinations(candidate: Pick<PackCatalogEntry, 'dir' | 'snapshot'>): void {
       const packs = [...current.packs, ...refusedDestinations].filter(pack => pack.snapshot.manifest.id !== candidate.snapshot.manifest.id);
-      assertEntityDestinationClaims({ ...current, packs: [...packs, { ...candidate, enabled: true }] });
+      assertCatalogClaims({ ...current, packs: [...packs, { ...candidate, enabled: true }] });
     },
 
     /** Check enablement before persisting it or constructing an executable provider. */
     assertPackEnabled(packId: string, enabled: boolean): void {
       if (!byId.has(packId)) throw new Error(`No accepted installed declarations for pack "${packId}"`);
-      assertEntityDestinationClaims({ ...current, packs: current.packs.map(pack =>
+      assertCatalogClaims({ ...current, packs: current.packs.map(pack =>
         pack.snapshot.manifest.id === packId ? { ...pack, enabled } : pack) });
     },
 
@@ -258,7 +258,7 @@ export function createContributionCatalog(appSettings: SettingsDefinition) {
       let packs = [...next.values()];
       let refused: PackCatalogEntry[] = [];
       if (reportConflicts) {
-        const conflicts = entityDestinationConflicts({ ...current, packs });
+        const conflicts = catalogClaimConflicts({ ...current, packs });
         problems = [...problems, ...packs.flatMap(pack => {
           const message = conflicts.get(pack.snapshot.manifest.id);
           return message ? [{ id: pack.snapshot.manifest.id, dir: pack.dir, enabled: pack.enabled, message }] : [];

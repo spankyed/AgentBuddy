@@ -2,6 +2,7 @@ import { SDK_ENTITIES } from '@apackdev/sdk/types';
 import { _entityDestinationsProblem, _packEntityTypes } from '@apackdev/sdk/framework';
 import { resolveName } from '@apackdev/sdk/ids';
 import type { PackCatalogSnapshot, PluginCatalogEntry } from './catalog.ts';
+import { referenceNameConflicts } from './catalog-references.ts';
 import type { DeclarationData, PluginDeclaration, NativePackDeclaration } from '@apackdev/sdk/framework';
 
 const collect = (packId: string, features: Record<string, { plugin?: DeclarationData<PluginDeclaration> }> | undefined,
@@ -32,7 +33,7 @@ export function pluginCatalogEntries(snapshot: PackCatalogSnapshot): readonly Pl
 
 
 /** Refuse the whole candidate before publication; disabled claims remain discoverable. */
-export function assertEntityDestinationClaims(snapshot: PackCatalogSnapshot): void {
+export function assertCatalogClaims(snapshot: PackCatalogSnapshot): void {
   const entities = new Set([...Object.values(SDK_ENTITIES),
     ...snapshot.packs.flatMap(pack => Object.keys(pack.snapshot.types.entities)),
     ...snapshot.native.flatMap(pack => Object.keys(_packEntityTypes(pack)))]);
@@ -46,11 +47,16 @@ export function assertEntityDestinationClaims(snapshot: PackCatalogSnapshot): vo
     if (problem) throw new Error(`Pack "${pack.id}": ${problem}`);
   }
   assertPluginDestinationClaims(pluginCatalogEntries(snapshot));
+  const reference = referenceNameConflicts(snapshot).values().next().value;
+  if (reference) throw new Error(reference);
 }
 
-/** All competing owners are refused; discovery never chooses a winner by directory order. */
-export function entityDestinationConflicts(snapshot: PackCatalogSnapshot): ReadonlyMap<string, string> {
-  return pluginDestinationConflicts(pluginCatalogEntries(snapshot));
+/**
+ * Every pack whose global claims compete with another's, with the reason: entity destinations and reference
+ * names. All competing owners are refused; discovery never chooses a winner by directory order.
+ */
+export function catalogClaimConflicts(snapshot: PackCatalogSnapshot): ReadonlyMap<string, string> {
+  return new Map([...referenceNameConflicts(snapshot), ...pluginDestinationConflicts(pluginCatalogEntries(snapshot))]);
 }
 
 function pluginDestinationConflicts(entries: readonly PluginCatalogEntry[]): Map<string, string> {

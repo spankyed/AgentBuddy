@@ -50,7 +50,7 @@ profile's installation record file and runs before installed-pack discovery.
 1. Reads visible installed directories through `readInstalledPackBuilds()`: validated snapshots, complete asset receipts and directory/manifest owner agreement, or an explicit refusal; no executable imports
 2. Prunes records only when their directories are gone (`forgetPacksExcept()`); invalid builds retain user choices and update provenance. Takes enabled directories in pack-id order
 3. Loads each enabled pack with `loadSingleExternalPack(registry, dir)`:
-   - the verified candidate must preserve unique enabled entity destinations against the committed catalog, before its runtime can execute
+   - the verified candidate must preserve unique enabled entity destinations and reference type and category names against the committed catalog, before its runtime can execute; at discovery every competing owner is withheld with a load problem
    - `hostVersion` check (`isHostCompatible`), pack layout format check, warning on an SDK major version mismatch
    - `runtime/index.cjs` through `withHostResolution()`; the registration id must match the manifest. A directory without a `integrity.json` and a `runtime/index.cjs` isn't an installed pack: it's skipped with a warning pointing at `apack pack install` or `apack pack dev`
    - a pack it can't admit or load comes back with a problem, which `loadExternalPacks` records in the registry it's given (`recordLoadProblem`), so the Packs view says why the pack isn't running
