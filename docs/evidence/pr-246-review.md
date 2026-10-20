@@ -66,12 +66,14 @@ focused verification; remaining application/native acceptance is listed separate
 | 8.5, 8.6 | Completed: correct import lifecycle documentation and reset/import refusal text | `c960deca3` |
 | Completeness: source-coverage claim | Completed: historical acceptance is explicitly bounded to its tested source | `278661695` |
 | Completeness: fresh integrated acceptance | Pending; no CI or broad application suites run during these repairs | [Acceptance limits](pr-246-repairs.md#remaining-acceptance-limits) |
-| 3a.1, 3a.2, 3a.3 | Open: recorded after this reconciliation | — |
+| 3a.1 | Deferred: a cache-validity decision for check steps | [Validation feedback budget](../plans/validation-feedback-budget.md#review-findings-this-plan-owns) |
+| 3a.2, 3a.3 | Open: recorded after this reconciliation | — |
 | 6.1, 6.2, 6.3, 6.4 | Open: recorded after this reconciliation | — |
 | 3b.1, 3b.2, 3b.3, 3b.4 | Open: recorded after this reconciliation | — |
 | 4.1, 4.2, 4.3, 4.4 | Open: recorded after this reconciliation | — |
 | 9.1, 9.2, 9.3, 9.4 | Open: recorded after this reconciliation | — |
-| 10.1–10.7 | Open: recorded after this reconciliation | — |
+| 10.1, 10.2, 10.7 | Deferred: deadline and declared-cost decisions; no change until measured | [Validation feedback budget](../plans/validation-feedback-budget.md#review-findings-this-plan-owns) |
+| 10.3–10.6 | Open: recorded after this reconciliation | — |
 | S.1, S.2 | Completed for startup-invalid settings: persisted-row preflight and host-only recovery | `3a6b649b5`; [evidence](settings-recovery.md) |
 | S.3–S.5 | Open: cross-area pass, recorded after this reconciliation | — |
 

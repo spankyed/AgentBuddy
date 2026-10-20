@@ -186,6 +186,18 @@ helper needs demonstrated duplication. Added full-build scenarios must explain t
 why a smaller test is insufficient and measured cost. Mark cost pending until measured. These are
 review rules using existing reports, not new per-test metadata.
 
+### Review findings this plan owns
+
+The [PR 246 review](../evidence/pr-246-review.md) recorded four findings that are budget decisions, not
+defects with one fix. They stay as they are until this plan resolves them:
+
+| Finding | Current state | Resolve by |
+|---|---|---|
+| 10.1 | The `suite` rung is 600s (`scripts/lib/step-timeouts.ts`), double its earlier 300s. The reason recorded for raising it, the integration pool, now has its own `acceptance` class | Measure the remaining `suite` members, then set the rung from that measurement or return it to 300s. No change before then |
+| 10.2 | `TIMEOUT_EXCEPTIONS` (`packages/repo-checks/tests/suite-timeouts.spec.ts`) holds 69 per-test overrides of 120–540s, many justified only by a run that hit the old limit | Apply "reduce title-keyed timeout exceptions" above: move recurring patterns to a fitting project, keep reviewed overrides for genuinely different scenarios |
+| 10.7 | `test:external-pack:app` declares `seconds: 18` but now also runs the default-fork lifecycle (four app launches, four `apack pack` commands) | Refresh the declared cost from a completed run |
+| 3a.1 | `test:smoke` and `test:e2e` both declare `.apack/tests/results` as an output, and output digests are now part of a step's cache key, so any E2E run makes `test:smoke` stale with no input moved | Decide what a check step's declared outputs mean for cache validity, in the chain target and planner, rather than special-casing one step |
+
 ## Implementation checkpoints
 
 1. **Map execution before moving tests.** Reuse current evidence and complete only missing inventory.
