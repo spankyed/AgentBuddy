@@ -3096,6 +3096,7 @@ type ClaudeUiNode = {
     plugin?: string;
 } | {
     kind: 'markdown';
+    formattingFallback?: boolean;
     nativeAnsi?: string;
     color?: string;
     text: string;
@@ -3105,6 +3106,7 @@ type ClaudeUiNode = {
     plugin?: string;
 } | {
     kind: 'code';
+    formattingFallback?: boolean;
     color?: string;
     nativeAnsi?: string;
     source: string;
