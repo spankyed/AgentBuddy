@@ -69,13 +69,25 @@ try {
 } finally {
   try { await browser?.close(); }
   finally {
+    console.log(`Stopping pack dev supervisor ${child.pid} (exit=${child.exitCode}, signal=${child.signalCode})`);
     if (child.exitCode === null && child.signalCode === null) child.kill('SIGTERM');
+    // Capture the owned supervisor's stack before the existing shutdown bound expires.
+    const diagnostic = setTimeout(() => {
+      if (process.platform === 'darwin' && child.pid && child.exitCode === null && child.signalCode === null) {
+        const sample = spawn('/usr/bin/sample', [String(child.pid), '1', '1', '-file', `${output}.shutdown.txt`], { stdio: 'ignore' });
+        const stop = setTimeout(() => sample.kill('SIGKILL'), 3_000);
+        sample.once('error', () => clearTimeout(stop));
+        sample.once('exit', () => clearTimeout(stop));
+      }
+    }, 10_000);
+    diagnostic.unref();
     try {
       await Promise.race([closed, new Promise<never>((_, reject) => {
         const timer = setTimeout(() => reject(new Error(`pack dev cleanup exceeded 15s; see ${output}`)), 15_000);
         timer.unref();
       })]);
     } finally {
+      clearTimeout(diagnostic);
       log.end();
       fs.writeFileSync(manifestFile, original);
       // A failed cleanup retains its private data for evidence; never remove a running app's database.

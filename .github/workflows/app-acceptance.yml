@@ -6,7 +6,7 @@ on:
       suite:
         description: App acceptance suite; all also exercises the source CLI
         type: choice
-        options: [all, app, external]
+        options: [all, app, external, cli]
         default: all
       test:
         description: Optional Playwright test name pattern in the selected suite
@@ -64,10 +64,10 @@ jobs:
         if: ${{ inputs.suite != 'app' }}
         run: npm run test:external-pack:contract
       - name: Prepare external default fork
-        if: ${{ inputs.suite != 'app' }}
+        if: ${{ inputs.suite == 'all' || inputs.suite == 'external' }}
         run: npm run test:external-pack:fork
       - name: External pack app suite including step services and settings ownership
-        if: ${{ inputs.suite != 'app' }}
+        if: ${{ inputs.suite == 'all' || inputs.suite == 'external' }}
         working-directory: tests/packs/external-pack
         env:
           APACK_E2E_GREP: ${{ inputs.test }}
@@ -76,7 +76,7 @@ jobs:
           if [[ -n "$APACK_E2E_GREP" ]]; then args+=(--grep "$APACK_E2E_GREP"); fi
           ../../../node_modules/.bin/apack pack test "${args[@]}"
       - name: App suites including settings recovery
-        if: ${{ !cancelled() && inputs.suite != 'external' && steps.runtime.outcome == 'success' }}
+        if: ${{ !cancelled() && (inputs.suite == 'all' || inputs.suite == 'app') && steps.runtime.outcome == 'success' }}
         env:
           APACK_E2E_GREP: ${{ inputs.test }}
         run: |
@@ -96,7 +96,7 @@ jobs:
             tests/packs/*/.apack/tests/results/
             tests/packs/*/dist/build-inputs.json
       - name: Source pack dev install and rebuild
-        if: ${{ !cancelled() && inputs.suite == 'all' && steps.preparation.outcome == 'success' }}
+        if: ${{ !cancelled() && (inputs.suite == 'all' || inputs.suite == 'cli') && steps.preparation.outcome == 'success' }}
         run: node scripts/with-source.mjs tsx tests/scripts/test-pack-dev.ts
       - name: Real LMDB import and rollback
         if: ${{ !cancelled() && inputs.suite == 'all' && steps.preparation.outcome == 'success' }}

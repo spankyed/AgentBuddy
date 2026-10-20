@@ -184,3 +184,18 @@ cleanup generation requirement. Process cleanup limits are unchanged. The comple
 
 Early evidence: `/private/tmp/apack-app-39405960363-suites/`. The source CLI result and final strict gate
 are still pending; the trace does not claim restoration complete.
+
+## Completed focused run 39405960363
+
+The source CLI's initial installation, manifest-triggered rebuild, installation and changed frontend
+acknowledgment all passed. Its remaining failure is **cleanup**, not a build or delivery timeout:
+the supervisor's inherited output had not closed within 15s after SIGTERM. The log does not yet
+distinguish a live supervisor from a surviving pipe owner. It also shows a further checkout-package
+freshness invocation around shutdown; that is evidence to investigate, not proof of the cause.
+All six real LMDB import/rollback cases passed again.
+
+Retain the existing cleanup bound. A focused `cli` dispatch avoids rebuilding the default fork or
+rerunning unrelated app cases and captures a one-second stack sample of the owned supervisor if it is
+still alive ten seconds into cleanup. The sample has its own three-second process limit and remains
+inside the runner evidence directory. No compiler/native workload runs on the developer's machine.
+The restoration synchronization fix is committed as `e86fcb3ba`; final strict acceptance remains pending.
