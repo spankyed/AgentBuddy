@@ -98,7 +98,7 @@ function validateNode(node: FlowNode, accepted: StepBackendBinding): void {
     throw new RepositoryError('A node\'s type cannot be changed', RepositoryErrorCode.VALIDATION_ERROR);
   }
   const current = getStepBinding(nodeType);
-  if (!current || current.runtimeRevision !== accepted.runtimeRevision || current.packId !== accepted.packId) {
+  if (!current || current.registrationId !== accepted.registrationId || current.packId !== accepted.packId) {
     throw new RepositoryError(`Step "${nodeType}" backend changed while validating the node`, RepositoryErrorCode.VALIDATION_ERROR);
   }
 }

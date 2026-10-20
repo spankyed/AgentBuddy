@@ -30,7 +30,7 @@ function fixture() {
   const candidate = (id: string, isDefault = false, enabled = true) => {
     const declaration = { label: id, state: 'src/state.ts', canvas: 'src/view.vue', ...(isDefault && { default: true as const }) };
     const manifest = { id, name: id, version: '1.0.0', features: { view: { description: 'External view.', plugin: declaration } } };
-    const pack = { id, name: id, version: '1.0.0', manifest, declarationRevision: `declaration-${id}`, runtimeRevision: `runtime-${id}`, buildRevision: 'a'.repeat(64) };
+    const pack = { id, name: id, version: '1.0.0', manifest, declarationRevision: `declaration-${id}`, registrationId: `runtime-${id}`, buildRevision: 'a'.repeat(64) };
     const entry: PluginCatalogEntry = { featureRef: resolveName('view', id), packId: id, declaration, origin: 'installed', enabled,
       declarationRevision: pack.declarationRevision, buildRevision: pack.buildRevision };
     const registration = { id, declarationRevision: pack.declarationRevision, features: { view: {
@@ -38,7 +38,7 @@ function fixture() {
     } } };
     return { entry, pack, registration, declare() { entries.push(entry); publish(); },
       accept() { const plugins = packs.registerPackFE({ kind: 'loaded', pack }, registration);
-        app!.send({ type: 'PACK_FRONTEND_LOADED', packId: id, runtimeRevision: pack.runtimeRevision, plugins }); return plugins; } };
+        app!.send({ type: 'PACK_FRONTEND_LOADED', packId: id, registrationId: pack.registrationId, plugins }); return plugins; } };
   };
   return { packs, shell, entries, catalog, listeners, candidate, publish };
 }
@@ -88,9 +88,9 @@ it('reconciles admission before the catalog frame and rejects a stale completion
   f.entries.push(next.entry); f.catalog.status.mockReturnValue('ready'); f.publish();
   const actor = app!.system.get('external/view'); expect(actor).toBeDefined();
   expect(app!.getSnapshot().context.activePlugin.id).toBe('external/view');
-  app!.send({ type: 'PACK_FRONTEND_LOADED', packId: 'external', runtimeRevision: 'retired', plugins });
+  app!.send({ type: 'PACK_FRONTEND_LOADED', packId: 'external', registrationId: 'retired', plugins });
   expect(app!.system.get('external/view')).toBe(actor);
-  expect(app!.getSnapshot().context.acceptedPackRuntimes.external).toBe(next.pack.runtimeRevision);
+  expect(app!.getSnapshot().context.acceptedPackRuntimes.external).toBe(next.pack.registrationId);
   f.catalog.status.mockReturnValue('disconnected'); f.publish();
   app!.send({ type: 'SELECT_PLUGIN', plugin: 'host/settings' });
   expect(app!.getSnapshot().context.activePlugin.id).toBe('host/settings');
@@ -101,7 +101,7 @@ it('reconciles admission before the catalog frame and rejects a stale completion
 it('does not route new requests to an actor while its replacement binding awaits shell admission', () => {
   const f = fixture(); const next = f.candidate('external'); next.declare(); next.accept();
   const old = app!.system.get('external/view')!; const sent = vi.spyOn(old, 'send');
-  f.packs.replacePackFE({ kind: 'loaded', pack: { ...next.pack, runtimeRevision: 'replacement' } }, next.registration);
+  f.packs.replacePackFE({ kind: 'loaded', pack: { ...next.pack, registrationId: 'replacement' } }, next.registration);
   app!.send({ type: 'SELECT_PLUGIN', plugin: 'external/view' });
   expect(app!.getSnapshot().context.activePlugin.id).toBe('host/settings');
   app!.send({ type: 'SEND_TO_PLUGIN', plugin: 'external/view', events: [{ type: 'DO_WORK' }] });

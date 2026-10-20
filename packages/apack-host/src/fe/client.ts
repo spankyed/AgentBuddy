@@ -38,7 +38,7 @@ export interface ShellClient extends FeClient {
   /** Subscribes to what the backend sends this window; returns the unsubscribe */
   subscribe(connection: ShellConnection): () => void;
   /** Acknowledges this window's accepted frontend lifetime before requesting startup data. */
-  packClientReady(packId: string, runtimeRevision: string): Promise<void>;
+  packClientReady(packId: string, registrationId: string): Promise<void>;
   /** The packs the backend loaded, the built-in ones first */
   loadedPacks(): Promise<LoadedPackEntry[]>;
   /** What the platform knows about the backend, for the error page when it doesn't answer */

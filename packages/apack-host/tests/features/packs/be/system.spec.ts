@@ -253,11 +253,11 @@ describe('app-default installation intent and lifecycle', () => {
       system.send({ type: 'RESTORE_PACK', packId: PACK_ID, sourceRevision: source.sourceRevision });
       await vi.waitFor(() => expect(emitted(system.sent).filter(e => e.type === 'PACK_INSTALL_COMPLETE')).toHaveLength(1));
       expect(readInstalledPacks().find(record => record.id === PACK_ID)).toMatchObject({ updatesWith: 'app', enabled: true });
-      const initialRevision = registry.getPackRuntime(PACK_ID)!.runtimeRevision;
+      const initialRevision = registry.getPackRuntime(PACK_ID)!.registrationId;
       system.send({ type: 'REPLACE_PACK', packId: PACK_ID, packSlug: packSource('2.0.0'), sourceKind: 'local' });
       await vi.waitFor(() => expect(emitted(system.sent).filter(e => e.type === 'PACK_INSTALL_COMPLETE')).toHaveLength(2));
       expect(readInstalledPacks().find(record => record.id === PACK_ID)?.updatesWith).toBe('user');
-      expect(registry.getPackRuntime(PACK_ID)!.runtimeRevision).not.toBe(initialRevision);
+      expect(registry.getPackRuntime(PACK_ID)!.registrationId).not.toBe(initialRevision);
       expect(readPackBuild(path.join(resolveAppEnvironment().packsDir, PACK_ID)).snapshot.manifest.version).toBe('2.0.0');
       system.send({ type: 'RESTORE_PACK', packId: PACK_ID, sourceRevision: source.sourceRevision });
       await vi.waitFor(() => expect(emitted(system.sent).filter(e => e.type === 'PACK_INSTALL_COMPLETE')).toHaveLength(3));

@@ -107,26 +107,26 @@ describe('frontend reference admission', () => {
     const registration = { ...first.registration, declarationRevision: 'declaration-one' };
     const identity = { id: first.declaration.id, name: 'Fixture', version: '1.0.0',
       manifest: { id: first.declaration.id, features: first.declaration.features, name: 'Fixture', version: '1.0.0' },
-      runtimeRevision: 'runtime-one', buildRevision: 'a'.repeat(64), declarationRevision: 'declaration-one' };
+      registrationId: 'runtime-one', buildRevision: 'a'.repeat(64), declarationRevision: 'declaration-one' };
     const prepared = packs.preparePackFE({ kind: 'loaded', pack: identity }, registration);
     prepared.commit(); prepared.dispose();
     const type = packs.referenceTypes().get('note')!;
     const category = packs.referenceCategories().get('notes')!;
-    expect(type).toMatchObject({ featureRef: 'first-pack/view', declarationRevision: 'declaration-one', runtimeRevision: 'runtime-one', buildRevision: 'a'.repeat(64) });
+    expect(type).toMatchObject({ featureRef: 'first-pack/view', declarationRevision: 'declaration-one', registrationId: 'runtime-one', buildRevision: 'a'.repeat(64) });
     expect(category.featureRef).toBe('first-pack/view');
-    identity.runtimeRevision = 'changed caller';
-    expect(type.runtimeRevision).toBe('runtime-one');
+    identity.registrationId = 'changed caller';
+    expect(type.registrationId).toBe('runtime-one');
     packs.registerFixture(fixture('second-pack', 'other', 'other').registration);
     expect(packs.referenceTypes().get('note')).toBe(type);
     expect(packs.referenceCategories().get('notes')).toBe(category);
     expect(Reflect.set(type, 'featureRef', 'other/view')).toBe(false);
     const replacement = fixture('first-pack');
     const next = packs.preparePackFE({ kind: 'loaded', pack: { ...identity, declarationRevision: 'declaration-two',
-      runtimeRevision: 'runtime-two', buildRevision: 'b'.repeat(64) } },
+      registrationId: 'runtime-two', buildRevision: 'b'.repeat(64) } },
       { ...replacement.registration, declarationRevision: 'declaration-two' }, undefined, true);
     next.commit(); next.dispose();
     expect(packs.referenceTypes().get('note')).not.toBe(type);
-    expect(packs.referenceTypes().get('note')?.runtimeRevision).toBe('runtime-two');
+    expect(packs.referenceTypes().get('note')?.registrationId).toBe('runtime-two');
     expect(packs.referenceTypes().get('note')?.binding.icon).toBe(replacement.icon);
   });
 
@@ -137,7 +137,7 @@ describe('frontend reference admission', () => {
     const binding = packs.referenceTypes().get('note')!;
     expect(binding.featureRef).toBe('notes-pack/view');
     expect(binding).not.toHaveProperty('buildRevision');
-    expect(binding).not.toHaveProperty('runtimeRevision');
+    expect(binding).not.toHaveProperty('registrationId');
     expect(binding).not.toHaveProperty('declarationRevision');
   });
 

@@ -38,7 +38,7 @@ export interface ReferenceBindings {
 export interface ReferenceBinding<T> {
   readonly featureRef: FeatureRef
   readonly declarationRevision?: string
-  readonly runtimeRevision?: string
+  readonly registrationId?: string
   readonly buildRevision?: string
   readonly binding: Readonly<T>
 }

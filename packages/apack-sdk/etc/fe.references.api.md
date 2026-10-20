@@ -49,7 +49,7 @@ export interface ReferenceBinding<T> {
     // (undocumented)
     readonly featureRef: FeatureRef;
     // (undocumented)
-    readonly runtimeRevision?: string;
+    readonly registrationId?: string;
 }
 
 // @public

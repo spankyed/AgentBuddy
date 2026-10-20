@@ -150,7 +150,7 @@ describe('E2E: pack loading pipeline', () => {
 
   it('lists the pack as one whose frontend a client loads', () => {
     const testPack = packs.find(p => p.origin.id === TEST_PACK_ID)!;
-    const loaded = { loadedPacks: () => [testPack.origin], getPackRuntime: () => ({ origin: testPack.origin, runtimeRevision: 'runtime' }) };
+    const loaded = { loadedPacks: () => [testPack.origin], getPackRuntime: () => ({ origin: testPack.origin, registrationId: 'runtime' }) };
 
     expect(getPacksWithClientLoadedFrontends(loaded)).toEqual([TEST_PACK_ID]);
   });

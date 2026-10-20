@@ -15,7 +15,7 @@ export interface AcceptedFrontendAdmission {
   /** Native claims have no build stamp; bind their accepted data to this frontend instance. */
   entityDestinations?: DeclarationData<Record<string, string>>;
   declarationRevision?: string;
-  runtimeRevision?: string;
+  registrationId?: string;
   buildRevision?: string;
 }
 
@@ -32,14 +32,14 @@ export function captureFrontendAdmission(admission: FrontendAdmission): Accepted
   if (admission.kind !== 'loaded') throw new Error('Frontend registration requires accepted native or loaded declarations');
   const pack = admission.pack;
   if (!pack) throw new Error('Frontend registration requires an accepted backend entry');
-  const { id, manifest, declarationRevision, runtimeRevision, buildRevision } = pack;
+  const { id, manifest, declarationRevision, registrationId, buildRevision } = pack;
   if (manifest && _settingsJsonProblems(manifest).length) throw new Error(`Pack "${id}" declarations must contain JSON data properties`);
   if (!manifest || manifest.id !== id || typeof declarationRevision !== 'string' || !declarationRevision.trim()
-    || typeof runtimeRevision !== 'string' || !runtimeRevision.trim()) {
+    || typeof registrationId !== 'string' || !registrationId.trim()) {
     throw new Error(`Pack "${id}" frontend has no matching accepted declarations`);
   }
   if (buildRevision !== undefined && !/^[a-f0-9]{64}$/.test(buildRevision)) throw new Error(`Pack "${id}" frontend has no accepted build identity`);
-  return { declarations: ownData(manifest), declarationRevision, runtimeRevision,
+  return { declarations: ownData(manifest), declarationRevision, registrationId,
     ...(buildRevision !== undefined && { buildRevision }) };
 }
 

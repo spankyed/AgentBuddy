@@ -125,7 +125,7 @@ it('retains native declaration defaults after runtime unload without invoking th
   registry.catalog.setNative([declaration]);
   registry.registerPack({ id: 'author', steps: [f.step] });
   const binding = getStepBinding('memo')!;
-  expect(binding.packId).toBe('author'); expect(binding.runtimeRevision).toBeTruthy();
+  expect(binding.packId).toBe('author'); expect(binding.registrationId).toBeTruthy();
   expect(binding.declarationRevision).toBeUndefined(); expect(binding.buildRevision).toBeUndefined();
   registry.unregisterPack('author');
   expect(getStepDeclaration('memo')?.declaration.node.label).toBe('Memo');
@@ -147,7 +147,7 @@ it('publishes a replacement runtime atomically and preserves the accepted provid
   const next = provider();
   registry.replacePack({ id: 'author', steps: [next.step] });
   const replaced = getStepBinding('memo')!;
-  expect(replaced.runtimeRevision).not.toBe(original.runtimeRevision);
+  expect(replaced.registrationId).not.toBe(original.registrationId);
   expect(replaced.binding.runtime!.handler).toBe(next.handler);
   const flow = flowRepository.createFlow();
   expect(flowRepository.createNode(flow.id, { nodeType: 'memo' })).toMatchObject({ label: 'Memo', conditions: [{ label: 'First' }] });

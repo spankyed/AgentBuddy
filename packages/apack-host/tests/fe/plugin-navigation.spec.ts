@@ -25,7 +25,7 @@ it('lists declared tabs in catalog order before loading, preserving defaults and
   // Runtime delivery order cannot reorder metadata, and a stale runtime cannot supply an icon.
   for (const owner of [...entries].reverse()) bindings.set(owner.featureRef, {
     packId: owner.packId, declaration: owner.declaration, binding: { ...plugin(owner.featureRef), icon: {} },
-    declarationRevision: 'declaration', buildRevision: 'build', runtimeRevision: 'runtime',
+    declarationRevision: 'declaration', buildRevision: 'build', registrationId: 'runtime',
   });
   expect(items().map(item => item.id)).toEqual(['second/view', 'first/view', 'host/view']);
   expect(items()[0].icon).toBeDefined();

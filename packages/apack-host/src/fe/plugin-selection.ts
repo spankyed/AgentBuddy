@@ -32,8 +32,8 @@ export function getEligiblePlugin(catalog: ShellPluginCatalog, bindings: Readonl
     || accepted.packId !== owner.packId || accepted.binding.id !== ref
     || !isEqual(owner.declaration, accepted.declaration)) return undefined;
   if (owner.origin === 'native') return isEqual(owner.opens ?? [], accepted.opens ?? []) && accepted.declarationRevision === undefined && accepted.buildRevision === undefined
-    && accepted.runtimeRevision === undefined ? accepted.binding : undefined;
-  return owner.declarationRevision && owner.buildRevision && accepted.runtimeRevision
+    && accepted.registrationId === undefined ? accepted.binding : undefined;
+  return owner.declarationRevision && owner.buildRevision && accepted.registrationId
     && owner.declarationRevision === accepted.declarationRevision && owner.buildRevision === accepted.buildRevision
     ? accepted.binding : undefined;
 }

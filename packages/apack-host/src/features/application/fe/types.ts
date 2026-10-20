@@ -208,5 +208,5 @@ export type ShellEvent =
    * A pack's frontend was accepted, with its plugins, or null for a pack without frontend code.
    * Refused candidates do not emit this event.
    */
-  | { type: 'PACK_FRONTEND_LOADED'; packId: string; runtimeRevision: string; plugins: Plugin[] | null }
+  | { type: 'PACK_FRONTEND_LOADED'; packId: string; registrationId: string; plugins: Plugin[] | null }
   | { type: 'PACK_PLUGINS_UNLOADED'; packId: string };

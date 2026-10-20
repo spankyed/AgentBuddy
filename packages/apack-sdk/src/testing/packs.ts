@@ -98,7 +98,7 @@ function ownStepBinding(definition: StepDefinition, entry: StepCatalogEntry): St
   if (!binding) {
     binding = Object.freeze({ packId: entry.packId, declaration: structuredClone(entry.declaration),
       declarationRevision: entry.declarationRevision, buildRevision: entry.buildRevision,
-      runtimeRevision: `test-step-${++nextStepIdentity}`, binding: definition,
+      registrationId: `test-step-${++nextStepIdentity}`, binding: definition,
       servicesForAction: () => { throw new Error(`Standalone step "${definition.type}" has no accepted service binding`); } });
     ownBindings.set(definition, binding);
   }

@@ -59,7 +59,7 @@ export function hasBuiltPackSections(packRoot: string): boolean {
 export interface LoadedPackEntry {
   id: string;
   /** Host-issued accepted runtime identity, independent of build content identity. */
-  runtimeRevision: string;
+  registrationId: string;
   /** Declaration identity of the active backend; frontend bindings must match it. */
   declarationRevision: string;
   /** Accepted declarations of the active backend, used to validate frontend binding membership. */
@@ -97,16 +97,16 @@ export function getLoadedPackEntries(registry: Pick<PackRegistry, 'loadedPacks' 
   return registry.loadedPacks().map(({ id, name, version, declarationRevision, buildRevision, buildFiles, manifest }) => {
     const runtime = registry.getPackRuntime(id);
     if (!runtime) throw new Error(`Pack "${id}" has no accepted runtime identity`);
-    const runtimeRevision = runtime.runtimeRevision;
+    const registrationId = runtime.registrationId;
     const entry = buildFiles && Object.hasOwn(buildFiles, PACK_LAYOUT.feEntry) ? PACK_LAYOUT.feEntry : undefined;
     const styles = buildFiles && Object.hasOwn(buildFiles, PACK_LAYOUT.feStyles) ? PACK_LAYOUT.feStyles : undefined;
     // A pack with no frontend files at all was left out of this list entirely, and its systems were told
     // about the client by the bus instead. Listing it keeps one answer to "which packs are running" rather
     // than two that can disagree
-    if (!entry && !styles) return { id, name, version, runtimeRevision, declarationRevision, buildRevision };
+    if (!entry && !styles) return { id, name, version, registrationId, declarationRevision, buildRevision };
     if (!buildRevision) throw new Error(`Pack "${id}" frontend has no accepted build identity`);
     if (!manifest) throw new Error(`Pack "${id}" frontend has no accepted declarations`);
-    return { id, name, version, runtimeRevision, declarationRevision, buildRevision, manifest: structuredClone(manifest), feEntry: entry, feStyles: styles };
+    return { id, name, version, registrationId, declarationRevision, buildRevision, manifest: structuredClone(manifest), feEntry: entry, feStyles: styles };
   });
 }
 

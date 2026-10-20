@@ -384,7 +384,7 @@ it('publishes new plugin definitions without duplicate actors or changing tab or
 
 
 it('refreshes only changed runtimes and leaves unrelated actors and selection intact', async () => {
-  const entries = [{ id: 'ext', runtimeRevision: 'first' }, { id: 'other', runtimeRevision: 'unchanged' }];
+  const entries = [{ id: 'ext', registrationId: 'first' }, { id: 'other', registrationId: 'unchanged' }];
   loadedPacksQuery.mockResolvedValue(entries);
   loadPackFrontend.mockImplementation(pack => Promise.resolve([plugin(`${pack.id}/own`)]));
   connect();
@@ -394,7 +394,7 @@ it('refreshes only changed runtimes and leaves unrelated actors and selection in
   const previous = app.system.get('ext/own');
   loadPackFrontend.mockClear();
   packClientReady.mockClear();
-  loadedPacksQuery.mockResolvedValue([{ ...entries[0], runtimeRevision: 'second' }, entries[1]]);
+  loadedPacksQuery.mockResolvedValue([{ ...entries[0], registrationId: 'second' }, entries[1]]);
   fake.receive({ to: 'host/application', event: { type: 'PACK_RUNTIMES_UPDATED', runtimes: { ext: 'second', other: 'unchanged' } } });
   await settle();
   expect(loadPackFrontend.mock.calls.map(([pack]) => pack.id)).toEqual(['ext']);
@@ -408,12 +408,12 @@ it('refreshes only changed runtimes and leaves unrelated actors and selection in
 });
 
 it('keeps the accepted epoch on refusal and retries a changed runtime on the next request', async () => {
-  loadedPacksQuery.mockResolvedValue([{ id: 'ext', runtimeRevision: 'first' }]);
+  loadedPacksQuery.mockResolvedValue([{ id: 'ext', registrationId: 'first' }]);
   loadPackFrontend.mockResolvedValue([plugin('ext/own')]);
   connect();
   await settle();
   const previous = app.system.get('ext/own');
-  loadedPacksQuery.mockResolvedValue([{ id: 'ext', runtimeRevision: 'second' }]);
+  loadedPacksQuery.mockResolvedValue([{ id: 'ext', registrationId: 'second' }]);
   loadPackFrontend.mockRejectedValueOnce(new Error('candidate refused'));
   fake.receive({ to: 'host/application', event: { type: 'PACK_RUNTIMES_UPDATED', runtimes: { ext: 'second' } } });
   await settle();
@@ -427,7 +427,7 @@ it('keeps the accepted epoch on refusal and retries a changed runtime on the nex
 });
 
 it('uses runtime publication as a reconciliation hint and ignores unchanged revisions', async () => {
-  loadedPacksQuery.mockResolvedValue([{ id: 'ext', runtimeRevision: 'current' }]);
+  loadedPacksQuery.mockResolvedValue([{ id: 'ext', registrationId: 'current' }]);
   loadPackFrontend.mockResolvedValue([plugin('ext/own')]);
   connect();
   await settle();
@@ -446,13 +446,13 @@ it('uses runtime publication as a reconciliation hint and ignores unchanged revi
 });
 
 it('queues a newer runtime received during preparation and accepts the latest revision afterward', async () => {
-  loadedPacksQuery.mockResolvedValue([{ id: 'ext', runtimeRevision: 'first' }]);
+  loadedPacksQuery.mockResolvedValue([{ id: 'ext', registrationId: 'first' }]);
   let release!: (plugins: Plugin[]) => void;
   loadPackFrontend.mockReturnValueOnce(new Promise(resolve => { release = resolve; }));
   loadPackFrontend.mockResolvedValue([plugin('ext/own')]);
   connect();
   await settle();
-  loadedPacksQuery.mockResolvedValue([{ id: 'ext', runtimeRevision: 'second' }]);
+  loadedPacksQuery.mockResolvedValue([{ id: 'ext', registrationId: 'second' }]);
   fake.receive({ to: 'host/application', event: { type: 'PACK_RUNTIMES_UPDATED', runtimes: { ext: 'second' } } });
   expect(app.getSnapshot().context.packLoadQueued).toBe(true);
   release([plugin('ext/own')]);

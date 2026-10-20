@@ -78,7 +78,7 @@ describe('installed runtime acceptance', () => {
     if ('problem' in loaded) throw new Error(loaded.problem);
     const isolated = createNativePackTestRegistry();
     isolated.registerPack(loaded.registration, loaded.origin);
-    const previousRevision = isolated.getPackRuntime(id)?.runtimeRevision;
+    const previousRevision = isolated.getPackRuntime(id)?.registrationId;
     const shutdown = vi.fn();
     isolated.registerShutdownHook(shutdown, id);
     const bus = { send: vi.fn() };
@@ -93,7 +93,7 @@ describe('installed runtime acceptance', () => {
         expect(shutdown).not.toHaveBeenCalled();
         expect(bus.send).not.toHaveBeenCalled();
       } });
-      expect(isolated.getPackRuntime(id)?.runtimeRevision).not.toBe(previousRevision);
+      expect(isolated.getPackRuntime(id)?.registrationId).not.toBe(previousRevision);
       expect(start()).toBe(!fails);
       expect(shutdown).toHaveBeenCalledOnce();
       expect(bus.send.mock.calls.map(([event]) => event.type)).toEqual([

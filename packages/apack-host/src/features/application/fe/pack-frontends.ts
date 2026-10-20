@@ -30,12 +30,12 @@ export function packFrontendLoader(client: ShellClient, packFrontends: ShellPack
       }
       for (const pack of loadedPacks) {
         if (stopped) return;
-        if (!input.refresh && input.acceptedPackRuntimes[pack.id] === pack.runtimeRevision) continue;
+        if (!input.refresh && input.acceptedPackRuntimes[pack.id] === pack.registrationId) continue;
         try {
           // null: the pack has no frontend code, so there's nothing to merge or ask startup data for
           const plugins = await packFrontends.load(pack, controller.signal);
           if (stopped) return;
-          sendBack({ type: 'PACK_FRONTEND_LOADED', packId: pack.id, runtimeRevision: pack.runtimeRevision, plugins });
+          sendBack({ type: 'PACK_FRONTEND_LOADED', packId: pack.id, registrationId: pack.registrationId, plugins });
         } catch (err: unknown) {
           if (stopped) return;
           failedPacks.push({ packId: pack.id, error: messageOf(err) });
@@ -55,8 +55,8 @@ export function packFrontendLoader(client: ShellClient, packFrontends: ShellPack
  * with frontend code, the ones the app ships included, since that frontend loads after it; each is asked for once
  * its load finished, whether it added plugins or not, so its systems without plugins get it too.
  */
-export function announcePackClientReady(client: ShellClient, packId: string, runtimeRevision: string): void {
-  client.packClientReady(packId, runtimeRevision).catch((err: unknown) => {
+export function announcePackClientReady(client: ShellClient, packId: string, registrationId: string): void {
+  client.packClientReady(packId, registrationId).catch((err: unknown) => {
     console.warn(`[shell] Couldn't request startup data for pack ${packId}:`, err);
   });
 }

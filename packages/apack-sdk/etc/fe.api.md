@@ -862,7 +862,7 @@ export interface StepFrontendBinding {
     readonly declarationRevision?: string;
     // (undocumented)
     readonly packId: string;
-    readonly runtimeRevision?: string;
+    readonly registrationId?: string;
 }
 
 // @public (undocumented)

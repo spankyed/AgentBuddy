@@ -171,14 +171,14 @@ export function createShellMachine({ packs, catalog, client, packFrontends, stor
         // A frontend may be admitted before its declaration frame reaches this window. Reconcile
         // from accepted bindings when that frame arrives, without keeping a second pending inventory.
         const bindings = packs.pluginBindings();
-        const changedOwners = new Set([...bindings].filter(([ref, accepted]) => accepted.runtimeRevision
+        const changedOwners = new Set([...bindings].filter(([ref, accepted]) => accepted.registrationId
           && getEligiblePlugin(catalog, bindings, ref) && !context.plugins.includes(accepted.binding)).map(([, accepted]) => accepted.packId));
         const pending = new Set<string>();
         for (const packId of changedOwners) {
           const accepted = [...bindings.values()].filter(binding => binding.packId === packId);
           if (!accepted.every(binding => getEligiblePlugin(catalog, bindings, binding.binding.id))) continue;
           pending.add(packId);
-          enqueue.raise({ type: 'PACK_FRONTEND_LOADED', packId, runtimeRevision: accepted[0]!.runtimeRevision!, plugins: accepted.map(binding => binding.binding) });
+          enqueue.raise({ type: 'PACK_FRONTEND_LOADED', packId, registrationId: accepted[0]!.registrationId!, plugins: accepted.map(binding => binding.binding) });
         }
         const waiting = [];
         for (const request of context.awaitingPlugin) {
@@ -199,7 +199,7 @@ export function createShellMachine({ packs, catalog, client, packFrontends, stor
       updateHotkeys: assign(({ event }) => ({ hotkeys: typeOf('APPLICATION_HOTKEYS', event).hotkeys })),
 
       mergePackPlugins: enqueueActions(({ event, context, system, enqueue }) => {
-        const { packId, runtimeRevision, plugins: packPlugins } = typeOf('PACK_FRONTEND_LOADED', event);
+        const { packId, registrationId, plugins: packPlugins } = typeOf('PACK_FRONTEND_LOADED', event);
 
         // The pack was unloaded while its frontend was loading: keep its plugins out, since nothing would ever take
         // them out again, and undo what the load registered
@@ -212,10 +212,10 @@ export function createShellMachine({ packs, catalog, client, packFrontends, stor
         if (packPlugins?.some(plugin => {
           const accepted = packs.pluginBindings().get(plugin.id);
           return getEligiblePlugin(catalog, packs.pluginBindings(), plugin.id) !== plugin
-            || (accepted?.runtimeRevision !== undefined && accepted.runtimeRevision !== runtimeRevision);
+            || (accepted?.registrationId !== undefined && accepted.registrationId !== registrationId);
         })) return;
 
-        const acceptedPackRuntimes = { ...context.acceptedPackRuntimes, [packId]: runtimeRevision };
+        const acceptedPackRuntimes = { ...context.acceptedPackRuntimes, [packId]: registrationId };
 
         // Only an accepted load reaches this action. Replace this owner's actors and view together;
         // failed candidates never retire the incumbent or disturb its selection.
@@ -280,7 +280,7 @@ export function createShellMachine({ packs, catalog, client, packFrontends, stor
             if (actor) notifyPluginActor(actor, activePlugin.id, { type: 'PLUGIN_ACTIVATED' });
           });
         }
-        if (packPlugins !== null && context.busSubscribed) enqueue(() => announcePackClientReady(client, packId, runtimeRevision));
+        if (packPlugins !== null && context.busSubscribed) enqueue(() => announcePackClientReady(client, packId, registrationId));
       }),
 
       // This window's subscription (re)connected: its CLIENT_CONNECTED skipped the packs whose frontends load after

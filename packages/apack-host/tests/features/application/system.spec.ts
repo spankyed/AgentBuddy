@@ -93,13 +93,13 @@ it('publishes accepted runtime lifetimes through ordinary state requests without
     const before = structuredClone(appState.get());
     actor.send({ type: 'SEND_STATE' });
     expect(sent.find(message => message.event.type === 'PACK_RUNTIMES_UPDATED')?.event).toEqual({
-      type: 'PACK_RUNTIMES_UPDATED', runtimes: { [id]: registry.getPackRuntime(id)!.runtimeRevision },
+      type: 'PACK_RUNTIMES_UPDATED', runtimes: { [id]: registry.getPackRuntime(id)!.registrationId },
     });
-    const first = registry.getPackRuntime(id)!.runtimeRevision;
+    const first = registry.getPackRuntime(id)!.registrationId;
     registry.replacePack({ id }, origin);
     sent.length = 0;
     actor.send({ type: 'SEND_STATE' });
-    const current = registry.getPackRuntime(id)!.runtimeRevision;
+    const current = registry.getPackRuntime(id)!.registrationId;
     expect(current).not.toBe(first);
     expect(sent.find(message => message.event.type === 'PACK_RUNTIMES_UPDATED')?.event).toEqual({
       type: 'PACK_RUNTIMES_UPDATED', runtimes: { [id]: current },

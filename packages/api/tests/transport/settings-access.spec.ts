@@ -25,7 +25,7 @@ const admin = createSettingsService(createSettingsStore({ ears: installedEngine,
 startTestRuntime({ packs, settings: admin, entityTypes: HOST_ENTITY_TYPES });
 packs.registerPack(hostRegistration({ settings: { machine: createSettingsSystem(), receives: [...settingsEvents] } }));
 const origins = new Map<string, PackOrigin>();
-const stamp = { runtimeRevision: 'runtime', id: 'consumer', declarationRevision: 'declarations', buildRevision: 'build' };
+const stamp = { registrationId: 'runtime', id: 'consumer', declarationRevision: 'declarations', buildRevision: 'build' };
 const origin = (): PackOrigin => ({ ...stamp, name: 'Consumer', version: '1.0.0', dir: '/fixture/consumer' });
 const target = (groupId: string) => ({ kind: 'pack' as const, packId: 'owner', groupId });
 let bus: ReturnType<typeof createActor<ReturnType<typeof createAppBus>>>;
@@ -44,7 +44,7 @@ beforeEach(() => {
   packs.registerPack({ id: 'consumer', dependencies: { owner: '*' } });
   origins.set('consumer', origin());
   live.packs = packs;
-  live.access = createSettingsAccess(admin, id => { const origin = origins.get(id); return origin ? { origin, runtimeRevision: 'runtime' } : null; });
+  live.access = createSettingsAccess(admin, id => { const origin = origins.get(id); return origin ? { origin, registrationId: 'runtime' } : null; });
   messages = [];
   stop = testRootEvents.onOutgoing(message => { messages.push(message); });
   bus = createActor(createAppBus(packs), { systemId: HOST.bus }).start();
@@ -181,15 +181,15 @@ it('accepts frontend readiness only for the current installed runtime, including
   const acceptedOrigin = origin();
   const registration = { id: 'consumer', dependencies: { owner: '*' } };
   packs.registerPack(registration, acceptedOrigin);
-  const first = packs.getPackRuntime('consumer')!.runtimeRevision;
+  const first = packs.getPackRuntime('consumer')!.registrationId;
   const ready = connection();
   try {
-    await expect(ready.bus.packClientReady({ packId: 'consumer', runtimeRevision: first })).resolves.toBeUndefined();
+    await expect(ready.bus.packClientReady({ packId: 'consumer', registrationId: first })).resolves.toBeUndefined();
     packs.replacePack(registration, acceptedOrigin);
-    await expect(ready.bus.packClientReady({ packId: 'consumer', runtimeRevision: first })).rejects.toThrow('unavailable pack runtime');
-    const current = packs.getPackRuntime('consumer')!.runtimeRevision;
+    await expect(ready.bus.packClientReady({ packId: 'consumer', registrationId: first })).rejects.toThrow('unavailable pack runtime');
+    const current = packs.getPackRuntime('consumer')!.registrationId;
     expect(current).not.toBe(first);
-    await expect(ready.bus.packClientReady({ packId: 'consumer', runtimeRevision: current })).resolves.toBeUndefined();
-    await expect(ready.bus.packClientReady({ packId: 'missing', runtimeRevision: current })).rejects.toThrow('unavailable pack runtime');
+    await expect(ready.bus.packClientReady({ packId: 'consumer', registrationId: current })).resolves.toBeUndefined();
+    await expect(ready.bus.packClientReady({ packId: 'missing', registrationId: current })).rejects.toThrow('unavailable pack runtime');
   } finally { ready.closed.abort(); }
 });

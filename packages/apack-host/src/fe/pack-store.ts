@@ -45,7 +45,7 @@ export interface FePackRegistry extends FePackRegistryView {
   getRegisteredPlugins(): Plugin[];
   pluginBindings(): ReadonlyMap<string, PluginFrontendBinding>;
   /** Identity of this accepted frontend instance; replacement changes it even when components are reused. */
-  frontendIdentity(packId: string): Readonly<Pick<AcceptedFrontendAdmission, 'declarationRevision' | 'runtimeRevision' | 'buildRevision'>> | undefined;
+  frontendIdentity(packId: string): Readonly<Pick<AcceptedFrontendAdmission, 'declarationRevision' | 'registrationId' | 'buildRevision'>> | undefined;
   getAppExtension(slot: string): ReturnType<FePackRegistryView['appExtension']>;
   /** Lookup of an accepted form; installed declarations remain separate from executable availability. */
   settingsForm(target: SettingsTarget): SettingsForm | undefined;
@@ -95,7 +95,7 @@ export interface PluginFrontendBinding {
   readonly packId: string;
   readonly declaration: DeclarationData<PluginDeclaration>;
   readonly declarationRevision?: string;
-  readonly runtimeRevision?: string;
+  readonly registrationId?: string;
   readonly buildRevision?: string;
   readonly binding: Plugin;
 }
@@ -103,7 +103,7 @@ export interface PluginFrontendBinding {
 type DefinitionEntry<T> = readonly [string, T];
 interface FrontendContributions {
   id: string;
-  identity: Readonly<Pick<AcceptedFrontendAdmission, 'declarationRevision' | 'runtimeRevision' | 'buildRevision'>>;
+  identity: Readonly<Pick<AcceptedFrontendAdmission, 'declarationRevision' | 'registrationId' | 'buildRevision'>>;
   addressed: AddressedRegistration['addressed'];
   pluginBindings: PluginFrontendBinding[];
   roles: Record<string, FeatureRef>;
@@ -127,7 +127,7 @@ function capture(registration: PackFERegistration, identity: AcceptedFrontendAdm
   const reg = addressed({ ...registration });
   const revisions = {
     ...(identity.declarationRevision !== undefined && { declarationRevision: identity.declarationRevision }),
-    ...(identity.runtimeRevision !== undefined && { runtimeRevision: identity.runtimeRevision }),
+    ...(identity.registrationId !== undefined && { registrationId: identity.registrationId }),
     ...(identity.buildRevision !== undefined && { buildRevision: identity.buildRevision }),
   };
   checkFeatureIds(reg.id, Object.keys(reg.features ?? {}));

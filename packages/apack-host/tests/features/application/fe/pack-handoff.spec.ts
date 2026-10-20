@@ -28,7 +28,7 @@ it.each(['reconnect', 'live publication'] as const)('rebinds the real shell, loa
     settingsForPack: async () => { const index = attempt++; return { port: sources[index], dispose: disposed[index] }; },
   }, packs);
   const shell = fakeShell({ plugins: packs.getRegisteredPlugins() });
-  const entry = { runtimeRevision: 'first', id: 'ext', feEntry: 'runtime/fe.js', buildRevision: 'a'.repeat(64),
+  const entry = { registrationId: 'first', id: 'ext', feEntry: 'runtime/fe.js', buildRevision: 'a'.repeat(64),
     declarationRevision: 'current', manifest: { id: 'ext', name: 'Example', version: '1.0.0',
       features: { own: { description: 'Feature declaration fixture.', plugin: { label: 'ext/own', state: 'src/state.ts', icon: 'Zap', canvas: 'src/canvas.vue' } } } } };
   shell.catalog.status.mockReturnValue('ready');
@@ -49,7 +49,7 @@ it.each(['reconnect', 'live publication'] as const)('rebinds the real shell, loa
     const actor = app.system.get('ext/own');
     expect(actor).toBeDefined();
     const old = scope.run(() => generated.useSettings<{ limit: number }>(target))!;
-    shell.client.loadedPacks.mockResolvedValue([{ ...entry, runtimeRevision: 'second' }]);
+    shell.client.loadedPacks.mockResolvedValue([{ ...entry, registrationId: 'second' }]);
     if (mode === 'reconnect') {
       shell.client.dropConnection();
       expect(app.system.get('ext/own')).toBe(actor);

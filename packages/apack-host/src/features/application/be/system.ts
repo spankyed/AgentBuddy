@@ -33,7 +33,7 @@ export function createApplicationSystem(registry: Pick<PackRegistry, 'pluginDefa
         const runtimes = Object.fromEntries(registry.loadedPacks().map(({ id }) => {
           const runtime = registry.getPackRuntime(id);
           if (!runtime) throw new Error(`Pack "${id}" has no accepted runtime identity`);
-          return [id, runtime.runtimeRevision];
+          return [id, runtime.registrationId];
         }));
         broadcastToPlugin('application', { type: 'PACK_RUNTIMES_UPDATED', runtimes });
       },

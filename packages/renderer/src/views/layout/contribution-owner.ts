@@ -8,11 +8,11 @@ export function currentFrontendIdentity(packId: string) {
   if (!identity) return undefined;
   const snapshot = windowCatalog.getSnapshot();
   if (packId === hostDeclaration.id || snapshot?.native.some(pack => pack.id === packId)) {
-    return identity.declarationRevision === undefined && identity.runtimeRevision === undefined && identity.buildRevision === undefined
+    return identity.declarationRevision === undefined && identity.registrationId === undefined && identity.buildRevision === undefined
       ? identity : undefined;
   }
   const owner = snapshot?.packs.find(pack => pack.snapshot.manifest.id === packId);
-  return windowCatalog.status() === 'ready' && owner?.enabled && identity.runtimeRevision
+  return windowCatalog.status() === 'ready' && owner?.enabled && identity.registrationId
     && identity.declarationRevision === owner.snapshot.declarationRevision && identity.buildRevision
     && identity.buildRevision === owner.buildRevision ? identity : undefined;
 }

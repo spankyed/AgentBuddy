@@ -35,7 +35,7 @@ it('releases provisional settings when capture throws before binding', () => {
 it('compares loaded declarations before granting settings and refuses installed identities on native bindings', () => {
   const registry = createFePackRegistry();
   const bindSettings = vi.fn();
-  const pack = { id: 'owner', name: 'Owner', version: '1.0.0', runtimeRevision: 'runtime', declarationRevision: 'accepted',
+  const pack = { id: 'owner', name: 'Owner', version: '1.0.0', registrationId: 'runtime', declarationRevision: 'accepted',
     manifest: { id: 'owner', name: 'Owner', version: '1.0.0' } };
   for (const [authority, declarationRevision] of [
     [{ kind: 'loaded', pack }, 'stale'], [{ kind: 'native', declaration: { id: 'owner' } }, 'accepted'],
@@ -97,7 +97,7 @@ it('captures every metadata container while retaining machines, components and c
   expect(registry.block('answer')?.fe?.component).toBe(component);
   const row = registry.stepBindings().get('memo')!;
   expect(row).toMatchObject({ packId: 'owner', declaration: { node: { label: 'Memo' } }, binding: { node: { label: 'Memo' } } });
-  expect(row.runtimeRevision).toBeUndefined(); expect(row.buildRevision).toBeUndefined(); expect(row.declarationRevision).toBeUndefined();
+  expect(row.registrationId).toBeUndefined(); expect(row.buildRevision).toBeUndefined(); expect(row.declarationRevision).toBeUndefined();
   expect(Reflect.set(row, 'packId', 'other')).toBe(false);
   expect(Reflect.set(row.declaration.node, 'label', 'Other')).toBe(false);
   expect(Reflect.set(accepted.options!, 'headerClass', 'Other')).toBe(false);
@@ -107,24 +107,24 @@ it('captures every metadata container while retaining machines, components and c
 
 it('retains accepted backend identities for source-delivered frontends and stable rows until replacement', () => {
   const registry = createFePackRegistry();
-  const pack = { id: 'owner', name: 'Owner', version: '1.0.0', runtimeRevision: 'runtime-one', declarationRevision: 'declaration',
+  const pack = { id: 'owner', name: 'Owner', version: '1.0.0', registrationId: 'runtime-one', declarationRevision: 'declaration',
     buildRevision: 'a'.repeat(64), developmentBaseUrl: 'http://127.0.0.1:1',
     manifest: { id: 'owner', name: 'Owner', version: '1.0.0', extensions: { steps: { memo: { node: { label: 'Memo' } } } } } };
   const registration = { id: 'owner', declarationRevision: 'declaration', steps: [{ type: 'memo', node: { label: 'Memo' } }] };
   registry.registerPackFE({ kind: 'loaded', pack }, registration);
   const row = registry.stepBindings().get('memo')!;
-  expect(row).toMatchObject({ packId: 'owner', runtimeRevision: 'runtime-one', declarationRevision: 'declaration', buildRevision: 'a'.repeat(64) });
-  pack.runtimeRevision = 'runtime-two';
+  expect(row).toMatchObject({ packId: 'owner', registrationId: 'runtime-one', declarationRevision: 'declaration', buildRevision: 'a'.repeat(64) });
+  pack.registrationId = 'runtime-two';
   registry.registerPackFE({ kind: 'native', declaration: { id: 'other' } }, { id: 'other' });
   expect(registry.stepBindings().get('memo')).toBe(row);
   const copy = registry.stepBindings();
-  expect(Reflect.set(row, 'runtimeRevision', 'forged')).toBe(false);
+  expect(Reflect.set(row, 'registrationId', 'forged')).toBe(false);
   expect(copy.get('memo')).toBe(row);
   Map.prototype.clear.call(copy);
   expect(registry.stepBindings().get('memo')).toBe(row);
   registry.replacePackFE({ kind: 'loaded', pack }, registration);
   expect(registry.stepBindings().get('memo')).not.toBe(row);
-  expect(registry.stepBindings().get('memo')?.runtimeRevision).toBe('runtime-two');
+  expect(registry.stepBindings().get('memo')?.registrationId).toBe('runtime-two');
   registry.unregisterPackFE('owner');
   expect(registry.stepBindings().size).toBe(0);
 });
@@ -133,7 +133,7 @@ it('validates loaded declaration data before reading its declarative identity ac
   const registry = createFePackRegistry();
   const id = vi.fn(() => 'owner');
   const resource = settings();
-  const pack = { id: 'owner', name: 'Owner', version: '1.0.0', declarationRevision: 'accepted', runtimeRevision: 'runtime',
+  const pack = { id: 'owner', name: 'Owner', version: '1.0.0', declarationRevision: 'accepted', registrationId: 'runtime',
     manifest: { get id() { return id(); }, name: 'Owner', version: '1.0.0' } };
   expect(() => registry.registerPackFE({ kind: 'loaded', pack }, { id: 'owner', declarationRevision: 'accepted' }, resource))
     .toThrow('JSON data properties');

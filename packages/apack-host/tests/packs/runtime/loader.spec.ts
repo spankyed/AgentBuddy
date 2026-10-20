@@ -1128,7 +1128,7 @@ describe('loaded packs: accepted frontend assets', () => {
     const [accepted] = loadExternalPacks(registry);
     expect(accepted.origin.buildRevision).toMatch(/^[a-f0-9]{64}$/);
     expect(accepted.origin.buildFiles?.[PACK_LAYOUT.feEntry]).toMatch(/^[a-f0-9]{64}$/);
-    expect(getLoadedPackEntries({ loadedPacks: () => [accepted.origin], getPackRuntime: () => ({ origin: accepted.origin, runtimeRevision: 'runtime' }) })[0]).toMatchObject({
+    expect(getLoadedPackEntries({ loadedPacks: () => [accepted.origin], getPackRuntime: () => ({ origin: accepted.origin, registrationId: 'runtime' }) })[0]).toMatchObject({
       id: 'identity', declarationRevision: accepted.origin.declarationRevision, buildRevision: accepted.origin.buildRevision,
       feEntry: PACK_LAYOUT.feEntry,
     });
@@ -1141,10 +1141,10 @@ describe('loaded packs: accepted frontend assets', () => {
       manifest: { id, name: id, version: '2.0.0' },
       id, name: id, version: '2.0.0', dir: '/not-an-installed-directory' });
     const origins = [pack('with-fe', [PACK_LAYOUT.feEntry, PACK_LAYOUT.feStyles]), pack('be-only', [])];
-    const loaded = { loadedPacks: () => origins, getPackRuntime: (id: string) => { const origin = origins.find(pack => pack.id === id); return origin ? { origin, runtimeRevision: 'runtime' } : null; } };
+    const loaded = { loadedPacks: () => origins, getPackRuntime: (id: string) => { const origin = origins.find(pack => pack.id === id); return origin ? { origin, registrationId: 'runtime' } : null; } };
     expect(getLoadedPackEntries(loaded)).toEqual([
-      { id: 'with-fe', runtimeRevision: 'runtime', declarationRevision: 'fixture-revision', buildRevision: revision, name: 'with-fe', version: '2.0.0', manifest: { id: 'with-fe', name: 'with-fe', version: '2.0.0' }, feEntry: PACK_LAYOUT.feEntry, feStyles: PACK_LAYOUT.feStyles },
-      { id: 'be-only', runtimeRevision: 'runtime', declarationRevision: 'fixture-revision', buildRevision: revision, name: 'be-only', version: '2.0.0' },
+      { id: 'with-fe', registrationId: 'runtime', declarationRevision: 'fixture-revision', buildRevision: revision, name: 'with-fe', version: '2.0.0', manifest: { id: 'with-fe', name: 'with-fe', version: '2.0.0' }, feEntry: PACK_LAYOUT.feEntry, feStyles: PACK_LAYOUT.feStyles },
+      { id: 'be-only', registrationId: 'runtime', declarationRevision: 'fixture-revision', buildRevision: revision, name: 'be-only', version: '2.0.0' },
     ]);
   });
 
@@ -1153,7 +1153,7 @@ describe('loaded packs: accepted frontend assets', () => {
     const origin = { id: manifest.id, name: manifest.name, version: manifest.version, manifest,
       declarationRevision: _declarationRevision(manifest), buildRevision: 'a'.repeat(64),
       buildFiles: { [PACK_LAYOUT.feEntry]: 'b'.repeat(64) }, dir: '/packs/copy' };
-    const loaded = { loadedPacks: () => [origin], getPackRuntime: () => ({ origin, runtimeRevision: 'runtime' }) };
+    const loaded = { loadedPacks: () => [origin], getPackRuntime: () => ({ origin, registrationId: 'runtime' }) };
     getLoadedPackEntries(loaded)[0].manifest!.name = 'Changed by reader';
     expect(manifest.name).toBe('Copy');
     expect(getLoadedPackEntries(loaded)[0].manifest?.name).toBe('Copy');
@@ -1164,7 +1164,7 @@ describe('loaded packs: accepted frontend assets', () => {
     fs.writeFileSync(path.join(dir, PACK_LAYOUT.feEntry), 'export default {};');
     sealPack(dir);
     const [accepted] = loadExternalPacks(registry);
-    const loaded = { loadedPacks: () => [accepted.origin], getPackRuntime: () => ({ origin: accepted.origin, runtimeRevision: 'runtime' }) };
+    const loaded = { loadedPacks: () => [accepted.origin], getPackRuntime: () => ({ origin: accepted.origin, registrationId: 'runtime' }) };
     const previous = getLoadedPackEntries(loaded);
     fs.writeFileSync(path.join(dir, PACK_LAYOUT.feEntry), 'export default { changed: true };');
     fs.writeFileSync(path.join(dir, PACK_LAYOUT.feStyles), 'body {}');
@@ -1172,7 +1172,7 @@ describe('loaded packs: accepted frontend assets', () => {
     sealPack(dir);
     const [replacement] = loadExternalPacks(registry);
     expect(replacement.origin.buildRevision).not.toBe(accepted.origin.buildRevision);
-    expect(getLoadedPackEntries({ loadedPacks: () => [replacement.origin], getPackRuntime: () => ({ origin: replacement.origin, runtimeRevision: 'replacement' }) })[0].feStyles).toBe(PACK_LAYOUT.feStyles);
+    expect(getLoadedPackEntries({ loadedPacks: () => [replacement.origin], getPackRuntime: () => ({ origin: replacement.origin, registrationId: 'replacement' }) })[0].feStyles).toBe(PACK_LAYOUT.feStyles);
     fs.rmSync(path.join(dir, PACK_LAYOUT.feEntry));
     expect(getLoadedPackEntries(loaded)).toEqual(previous);
   });

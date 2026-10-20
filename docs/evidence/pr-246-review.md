@@ -161,7 +161,7 @@ reverts and the newer save is dropped.
 - App preferences belong to the host.
 - Frontend validation imports only the pure modules.
 - A host reset removes orphan fields, and a pack write to an orphan is refused.
-- Mutations need host-issued credentials per connection and runtime revision.
+- Mutations need host-issued credentials per connection and registration ID.
 - No compatibility reads. No assertion was loosened.
 
 ## Area 7: service consumption
@@ -336,7 +336,7 @@ for is covered elsewhere:
 **Checked clean.**
 - `registerContributions` runs every refusal before the commit (`registry.ts:651-661`), and nothing in the
   commit block can throw.
-- `replacePack` keeps the incumbent's position, issues a new runtime revision, and retires the old binding
+- `replacePack` keeps the incumbent's position, issues a new registration ID, and retires the old binding
   after its actors stop.
 - `unregisterPack` removes exactly the admitted keys.
 - Load problems are cleared on register and teardown, and kept on a refused reload.
@@ -517,7 +517,7 @@ next reload repairs it.
 **Checked clean.**
 - **Catalog × settings:** a settings write cannot be validated against one catalog and published with
   another. The store recompiles when the catalog revision moves.
-- **Install × frontend:** pack settings credentials are bound to client, runtime revision, declaration and
+- **Install × frontend:** pack settings credentials are bound to client, registration ID, declaration and
   build, and re-checked per request. Replacement retires the old window binding at commit.
 - **Build records × discovery:** `readPackBuild` ties snapshot, manifest and content index to one verified
   receipt, and staging keeps the producer's checksums.
@@ -790,7 +790,7 @@ the backend refuses every competing owner and the window repeats the same check 
 **6.3. Startup data stalls after a refused replacement.** On reconnect or a runtime update,
 `announceLoadedPacks` (`machine.ts:288-292`) announces nothing while `packFrontendsNeedRefresh` is set,
 and a failed refresh keeps it set (`:309`). The refused candidate's predecessor stays eligible, because
-eligibility compares declaration and build revisions, not the runtime revision. But no `packClientReady`
+eligibility compares declaration and build revisions, not the registration ID. But no `packClientReady`
 is sent for it on this connection, and the backend skipped it in that connection's `CLIENT_CONNECTED`. The
 plugin looks loaded and never receives its startup data until another load succeeds. The runtime guide
 says *"A failed frontend remains unloaded."* Keeping the old frontend may be intended, but then its
@@ -805,7 +805,7 @@ authority. Reachable only when the freshness check or the style commit fails ins
 nothing awaits between prepare and commit.
 
 **Checked clean.**
-- Admission requires the backend's declarations, declaration revision, runtime revision and build revision.
+- Admission requires the backend's declarations, declaration revision, registration ID and build revision.
 - Prepare and commit compare the registry revision.
 - A refused candidate's settings binding is disposed, and a grant arriving after unload is disposed.
 - Style leases are per attempt and never remove the accepted owner's stylesheet.

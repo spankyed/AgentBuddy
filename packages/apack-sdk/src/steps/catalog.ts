@@ -11,7 +11,7 @@ export interface StepBackendBinding {
   readonly declaration: DeclarationData<StepEntry>;
   readonly declarationRevision?: string;
   readonly buildRevision?: string;
-  readonly runtimeRevision: string;
+  readonly registrationId: string;
   readonly binding: StepDefinition;
   /** The accepted step owner's selection and identity, independent of the flow runner. */
   readonly servicesForAction: import('../services/index.ts').PackServiceAccess['servicesForAction'];
@@ -31,7 +31,7 @@ export function getStepBinding(type: string): StepBackendBinding | undefined {
   const owner = getStepDeclaration(type);
   if (!owner || (owner.origin === 'source' ? owner.enabled === false : owner.enabled !== true)) return undefined;
   const accepted = boundHost().packs.stepBindings().get(type);
-  if (!accepted || !accepted.runtimeRevision || accepted.packId !== owner.packId || accepted.binding.type !== type
+  if (!accepted || !accepted.registrationId || accepted.packId !== owner.packId || accepted.binding.type !== type
     || declarationJson(owner.declaration) !== declarationJson(accepted.declaration)
     || owner.buildRevision !== accepted.buildRevision) return undefined;
   if (owner.origin === 'native') return accepted.declarationRevision === undefined ? accepted : undefined;

@@ -1081,13 +1081,13 @@ Phase 6 streams remain required before final `--all` acceptance and archival.
 
 ### Accepted runtime identity and grant freshness (2026-10-13)
 
-`244dd5380` gives captured backend registrations a host-issued runtime revision. `getPackRuntime`
+`244dd5380` gives captured backend registrations a host-issued registration ID. `getPackRuntime`
 projects that revision with installed provenance; `packs.loaded` carries it with declaration and build
 identities. It changes on acceptance, including identical-byte reloads, remains unchanged after refused
 binding, and disappears on removal. Native registrations without installed provenance return no installed
 runtime. No manifest, snapshot, build hash or author-supplied revision owns this lifecycle identity.
 
-Settings grant issuance now checks the caller's expected runtime revision as well as declaration/build
+Settings grant issuance now checks the caller's expected registration ID as well as declaration/build
 identity. Resolution checks the current revision, so reusing an origin object cannot preserve an obsolete
 grant. Renderer issuance and all owned transport/fixture callers use the required current contract.
 This is request freshness over trusted host-issued access; it does not confine arbitrary JavaScript.
@@ -1138,14 +1138,14 @@ one demonstrated source-contract defect; full `--all` acceptance and archival re
 
 ### Live frontend refresh, readiness and mounted lifetimes (2026-10-13)
 
-`ed8904dd1` publishes accepted runtime revisions through the application system's normal `SEND_STATE`
+`ed8904dd1` publishes accepted registration IDs through the application system's normal `SEND_STATE`
 path, using a private host event and checked host inbox. The shell retains accepted revisions instead of
 an ID-only loaded list. Publication is a reconciliation hint: the loader reads authoritative entries,
 refreshes changed owners, skips matching lifetimes, and removes absent owners only after a successful
 read. Failure preserves the prior accepted revision/resources; later requests retry the changed owner.
 Revisions received during preparation queue another read. Unchanged owners retain actors and selection.
 
-Frontend readiness now names the accepted runtime revision. The API refuses stale/unavailable owners,
+Frontend readiness now names the accepted registration ID. The API refuses stale/unavailable owners,
 including identical-origin replacements. The bus records awaiting frontend owners per actor instance:
 reload/activation wait, readiness releases them, and removal clears them. Both `CLIENT_CONNECTED` and
 `SEND_STATE` requests wait; `PACK_CHANGED` and `DATA_REPLACED` facts still reach their systems. Review

@@ -50,7 +50,7 @@ it('stays where it is when the plugin last open is not one it has', () => {
 const memos = plugin('memo-pack/memos');
 const loadMemoPack = (target = app) => {
   shell.acceptPlugin(memos);
-  target.send({ type: 'PACK_FRONTEND_LOADED', runtimeRevision: 'runtime', packId: 'memo-pack', plugins: [memos] });
+  target.send({ type: 'PACK_FRONTEND_LOADED', registrationId: 'runtime', packId: 'memo-pack', plugins: [memos] });
 };
 
 it("opens on the plugin last open once its pack's frontend adds it", () => {

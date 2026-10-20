@@ -14,7 +14,7 @@ function fixture() {
     } };
   const handler = vi.fn();
   const accepted: StepBackendBinding = { servicesForAction: () => ({}), packId: entry.packId, declaration: entry.declaration,
-    declarationRevision: entry.declarationRevision, buildRevision: entry.buildRevision, runtimeRevision: 'runtime-one',
+    declarationRevision: entry.declarationRevision, buildRevision: entry.buildRevision, registrationId: 'runtime-one',
     binding: { type: 'memo', node: { label: 'Memo', defaults: { tags: ['draft'] } }, runtime: { handler } } };
   const state = { entries: [entry] };
   const bindings = new Map([['memo', accepted]]);
@@ -48,7 +48,7 @@ it.each([
 
 it('refuses missing runtime identity, foreign wire identity and changed declaration data', () => {
   const f = fixture();
-  for (const binding of [ { ...f.accepted, runtimeRevision: '' },
+  for (const binding of [ { ...f.accepted, registrationId: '' },
     { ...f.accepted, binding: { ...f.accepted.binding, type: 'other' } },
     { ...f.accepted, declaration: { node: { label: 'Changed' } } } ]) {
     f.bindings.set('memo', binding); expect(getStepBinding('memo')).toBeUndefined();

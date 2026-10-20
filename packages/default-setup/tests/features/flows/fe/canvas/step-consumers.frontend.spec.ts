@@ -24,7 +24,7 @@ function fixture() {
   const icon = { render: () => h('span', { class: 'custom-icon' }, 'Icon') };
   const height = vi.fn(() => 100);
   const accepted: StepFrontendBinding = { packId: entry.packId, declaration: entry.declaration,
-    declarationRevision: entry.declarationRevision, buildRevision: entry.buildRevision, runtimeRevision: 'runtime-one',
+    declarationRevision: entry.declarationRevision, buildRevision: entry.buildRevision, registrationId: 'runtime-one',
     binding: { type: entry.type, node: { label: 'Memo', defaults: { tags: ['draft'] } }, fe: { nodeConfig: {
       icon, category: 'data', connectionRules: { inputs: 1, outputs: 1 }, isImplemented: true,
     }, colorKey: 'blue', layout: { getHeight: height, hasInput: false } } } };

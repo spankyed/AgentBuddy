@@ -36,9 +36,9 @@ export function getReferenceCategoryDeclarations(): readonly ReferenceCategoryMe
 function matches<T>(owner: ReferenceCatalogEntry, accepted: ReferenceBinding<T>): boolean {
   if (owner.featureRef !== accepted.featureRef || owner.enabled !== true) return false;
   if (owner.origin === 'native') {
-    return accepted.declarationRevision === undefined && accepted.buildRevision === undefined && accepted.runtimeRevision === undefined;
+    return accepted.declarationRevision === undefined && accepted.buildRevision === undefined && accepted.registrationId === undefined;
   }
-  return owner.origin === 'installed' && !!owner.declarationRevision && !!owner.buildRevision && !!accepted.runtimeRevision
+  return owner.origin === 'installed' && !!owner.declarationRevision && !!owner.buildRevision && !!accepted.registrationId
     && owner.declarationRevision === accepted.declarationRevision && owner.buildRevision === accepted.buildRevision;
 }
 

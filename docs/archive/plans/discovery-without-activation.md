@@ -125,7 +125,7 @@ compiler input/lifetime requirements or final all-kind acceptance.
 
 | Registration field | Static authority / binding boundary | Current finding |
 |---|---|---|
-| `id`, `declarationRevision` | Accepted snapshot/native owner; installed runtime revision checks in `declaration-binding.ts` | Implemented. Native composition has no installed revision. |
+| `id`, `declarationRevision` | Accepted snapshot/native owner; installed registration ID checks in `declaration-binding.ts` | Implemented. Native composition has no installed revision. |
 | `name`, `version`, `dependencies` | Authored manifest; native declarations have dependencies and optional own version | Native version is implemented for pack-line migration caps in `f72cb8756`. Display readers use manifest/origin names or feature labels; none reads `PackRegistration.name`. `123efbd6f` removes that redundant registration field and generated assignment; native name metadata has no demonstrated consumer. |
 | `features` membership | Manifest/native keyed features; backend and frontend admission | Both admit against declarations; the native backend nested checks below are implemented. |
 | `features.*.designation` | Feature declaration; runtime designation lookup is execution | Native parity repaired in `b268fac86`: changed/added/omitted claims refuse atomically; fixtures retain declarations, including explicit candidate admission before role replacement. Authored backend and shared frontend already compare it. |

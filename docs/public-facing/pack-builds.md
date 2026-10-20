@@ -50,7 +50,7 @@ Three identities serve different boundaries:
 
 - **Declaration revision:** identifies the declared contract shared by snapshot and generated bindings.
 - **Build revision:** identifies the verified file inventory of that layout; copying or replacing bytes must preserve or change this identity accordingly.
-- **Runtime revision:** host-issued identity for a particular accepted runtime. Reloading identical files can create a new runtime revision.
+- **Registration ID:** host-issued identity for one accepted registration of a runtime. Reloading identical files creates a new registration ID.
 
 Metadata availability does not imply execution readiness. Disabled or failed packs can retain readable
 declarations; executable use requires eligible owners and matching accepted bindings. Native and source

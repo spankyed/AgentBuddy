@@ -17,7 +17,7 @@ function fixture() {
       categories: { notes: { label: 'Notes', icon: 'NotebookText', useItems: 'src/ref.ts#useItems' } },
     } };
   const icon = { render: vi.fn() }; const useItems = vi.fn(() => shallowRef([]));
-  const identity = { featureRef, declarationRevision: entry.declarationRevision, buildRevision: entry.buildRevision, runtimeRevision: 'runtime-one' };
+  const identity = { featureRef, declarationRevision: entry.declarationRevision, buildRevision: entry.buildRevision, registrationId: 'runtime-one' };
   const type: ReferenceBinding<ReferenceTypeConfig> = { ...identity, binding: { category: 'notes', svgElements: [], icon } };
   const category: ReferenceBinding<ReferenceBindings['categories'][string]> = { ...identity, binding: { label: 'Notes', icon, useItems } };
   const state: { status: ReturnType<PackCatalogView['status']>; entries: ReferenceCatalogEntry[] } = { status: 'ready', entries: [entry] };
@@ -60,14 +60,14 @@ it.each([
 });
 
 it('refuses installed bindings without a runtime identity', () => {
-  const f = fixture(); f.types.set('note', { ...f.type, runtimeRevision: undefined }); f.categories.set('notes', { ...f.category, runtimeRevision: undefined });
+  const f = fixture(); f.types.set('note', { ...f.type, registrationId: undefined }); f.categories.set('notes', { ...f.category, registrationId: undefined });
   expect(getReferenceTypeBinding('note')).toBeUndefined(); expect(getReferenceCategoryBinding('notes')).toBeUndefined();
 });
 
 it('admits native bindings without manufacturing installed receipts and refuses stamped impostors', () => {
   const f = fixture(); f.state.entries = [{ ...f.entry, origin: 'native', declarationRevision: undefined, buildRevision: undefined }];
-  const type = { ...f.type, declarationRevision: undefined, buildRevision: undefined, runtimeRevision: undefined };
-  const category = { ...f.category, declarationRevision: undefined, buildRevision: undefined, runtimeRevision: undefined };
+  const type = { ...f.type, declarationRevision: undefined, buildRevision: undefined, registrationId: undefined };
+  const category = { ...f.category, declarationRevision: undefined, buildRevision: undefined, registrationId: undefined };
   f.types.set('note', type); f.categories.set('notes', category);
   expect(getReferenceTypeBinding('note')).toBe(type); expect(getReferenceCategoryBinding('notes')).toBe(category);
   f.types.set('note', f.type); f.categories.set('notes', f.category);
@@ -105,7 +105,7 @@ it('drops removed declarations or bindings and follows the replacement entry', (
   expect(getReferenceTypeBinding('note')).toBeUndefined(); expect(getReferenceCategoryDeclarations()).toEqual([]);
   f.state.entries = [f.entry]; f.types.clear(); f.categories.clear();
   expect(getReferenceTypeBinding('note')).toBeUndefined(); expect(getReferenceCategoryBinding('notes')).toBeUndefined();
-  const replacement = { ...f.type, runtimeRevision: 'runtime-two' }; f.types.set('note', replacement);
+  const replacement = { ...f.type, registrationId: 'runtime-two' }; f.types.set('note', replacement);
   expect(getReferenceTypeBinding('note')).toBe(replacement);
   expect(getReferenceTypeBinding('unknown')).toBeUndefined(); expect(getReferenceCategoryBinding('toString')).toBeUndefined();
 });

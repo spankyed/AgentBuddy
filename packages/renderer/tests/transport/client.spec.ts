@@ -141,7 +141,7 @@ it('reports an API process that stopped, message and stack apart', async () => {
 
 it('acknowledges the accepted frontend lifetime rather than its pack name alone', async () => {
   await feClient.packClientReady('example', 'accepted-runtime');
-  expect(ready).toHaveBeenCalledWith({ packId: 'example', runtimeRevision: 'accepted-runtime' });
+  expect(ready).toHaveBeenCalledWith({ packId: 'example', registrationId: 'accepted-runtime' });
 });
 
 it('ignores callbacks from a stopped bus lifetime and closes its catalog subscription', async () => {

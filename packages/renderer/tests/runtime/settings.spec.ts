@@ -54,12 +54,12 @@ it('writes directly through the transport and resolves only the correlated resul
   expect(settingsPort.get({ kind: 'app' })).toEqual(snapshot.values.app);
 });
 
-const acceptedPack = { runtimeRevision: 'runtime', id: 'example', name: 'Example', version: '1.0.0', declarationRevision: 'declarations', buildRevision: 'build' };
+const acceptedPack = { registrationId: 'runtime', id: 'example', name: 'Example', version: '1.0.0', declarationRevision: 'declarations', buildRevision: 'build' };
 
 it('issues loader-bound pack access from accepted identities and sends its credential outside the event', async () => {
   await connect();
   const binding = await settingsForPack(acceptedPack);
-  expect(openPack).toHaveBeenCalledWith({ id: 'example', runtimeRevision: 'runtime', declarationRevision: 'declarations', buildRevision: 'build' });
+  expect(openPack).toHaveBeenCalledWith({ id: 'example', registrationId: 'runtime', declarationRevision: 'declarations', buildRevision: 'build' });
   const write = binding.port.reset({ kind: 'feature', featureRef: 'example/code' });
   await flush();
   const request = send.mock.calls.at(-1)![0];

@@ -7,15 +7,15 @@ const origin = (): PackOrigin => ({
   id: 'owner-pack', declarationRevision: 'declarations', buildRevision: 'build',
   name: 'Owner', version: '1.0.0', dir: '/packs/owner-pack',
 });
-const expected = { runtimeRevision: 'runtime', id: 'owner-pack', declarationRevision: 'declarations', buildRevision: 'build' };
+const expected = { registrationId: 'runtime', id: 'owner-pack', declarationRevision: 'declarations', buildRevision: 'build' };
 
 function setup() {
   const scoped = { get: vi.fn(), set: vi.fn(), reset: vi.fn(), onChange: vi.fn() } as SettingsService;
   const settings = { forPack: vi.fn(() => scoped) } as unknown as SettingsAdmin;
   let accepted: PackOrigin | null = origin();
-  let runtimeRevision = 'runtime';
-  const access = createSettingsAccess(settings, () => accepted ? { origin: accepted, runtimeRevision } : null);
-  return { access, settings, scoped, replace: (value: PackOrigin | null) => { accepted = value; }, reload: () => { runtimeRevision = 'replacement'; } };
+  let registrationId = 'runtime';
+  const access = createSettingsAccess(settings, () => accepted ? { origin: accepted, registrationId } : null);
+  return { access, settings, scoped, replace: (value: PackOrigin | null) => { accepted = value; }, reload: () => { registrationId = 'replacement'; } };
 }
 
 describe('settings transport authority', () => {
@@ -34,8 +34,8 @@ describe('settings transport authority', () => {
     { ...expected, buildRevision: '' },
     { ...expected, declarationRevision: 'stale' },
     { ...expected, buildRevision: 'stale' },
-    { ...expected, runtimeRevision: 'stale' },
-    { ...expected, runtimeRevision: '' },
+    { ...expected, registrationId: 'stale' },
+    { ...expected, registrationId: '' },
   ])('refuses a stale frontend without supplying a service', candidate => {
     const { access, settings } = setup();
     expect(() => access.issuePack('window', candidate)).toThrow('Settings access is unavailable');
@@ -91,7 +91,7 @@ it('refuses a stale runtime list and existing grant when identical bytes reload 
   reload();
   expect(() => access.resolve('window', credential)).toThrow('Settings access is unavailable');
   expect(() => access.issuePack('window', expected)).toThrow('Settings access is unavailable');
-  const replacement = access.issuePack('window', { ...expected, runtimeRevision: 'replacement' });
+  const replacement = access.issuePack('window', { ...expected, registrationId: 'replacement' });
   expect(access.resolve('window', replacement).kind).toBe('pack');
 });
 

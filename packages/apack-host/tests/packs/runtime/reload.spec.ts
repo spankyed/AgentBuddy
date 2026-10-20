@@ -191,12 +191,12 @@ if (module.exports.registration) module.exports.registration.declarationRevision
     writeShipped();
     loadAppPacks(registry);
     const previous = registry.getPackRuntime(SHIPPED_ID)!;
-    expect(previous.runtimeRevision).toMatch(/^[a-f0-9-]{36}$/);
+    expect(previous.registrationId).toMatch(/^[a-f0-9-]{36}$/);
     await reloadPackById(registry, SHIPPED_ID, bus as never);
     const current = registry.getPackRuntime(SHIPPED_ID)!;
-    expect(current.runtimeRevision).not.toBe(previous.runtimeRevision);
+    expect(current.registrationId).not.toBe(previous.registrationId);
     expect(current.origin.buildRevision).toBe(previous.origin.buildRevision);
-    expect(getLoadedPackEntries(registry).find(pack => pack.id === SHIPPED_ID)?.runtimeRevision).toBe(current.runtimeRevision);
+    expect(getLoadedPackEntries(registry).find(pack => pack.id === SHIPPED_ID)?.registrationId).toBe(current.registrationId);
     unregisterPack(SHIPPED_ID);
     expect(registry.getPackRuntime(SHIPPED_ID)).toBeNull();
   });

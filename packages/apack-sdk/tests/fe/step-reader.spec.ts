@@ -14,7 +14,7 @@ function fixture() {
     } };
   const render = vi.fn();
   const accepted: StepFrontendBinding = { packId: entry.packId, declaration: entry.declaration,
-    declarationRevision: entry.declarationRevision, buildRevision: entry.buildRevision, runtimeRevision: 'runtime-one',
+    declarationRevision: entry.declarationRevision, buildRevision: entry.buildRevision, registrationId: 'runtime-one',
     binding: { type: entry.type, node: { label: 'Memo', defaults: { tags: ['draft'] } }, fe: { nodeConfig: { icon: { render }, category: 'data', connectionRules: { inputs: 1, outputs: 1 } } } } };
   const state: { status: ReturnType<PackCatalogView['status']>; entries: StepCatalogEntry[] } = { status: 'ready', entries: [entry] };
   const bindings = new Map([['memo', accepted]]);
@@ -55,7 +55,7 @@ it.each([
 
 it('refuses missing runtime identity, changed declared data, foreign types and removed implementations', () => {
   const f = fixture();
-  for (const accepted of [ { ...f.accepted, runtimeRevision: undefined },
+  for (const accepted of [ { ...f.accepted, registrationId: undefined },
     { ...f.accepted, declaration: { node: { label: 'Changed' } } },
     { ...f.accepted, binding: { ...f.accepted.binding, type: 'other' } } ]) {
     f.bindings.set('memo', accepted); expect(getStepBinding('memo')).toBeUndefined();
@@ -66,7 +66,7 @@ it('refuses missing runtime identity, changed declared data, foreign types and r
 
 it('matches native data without fabricated stamps and ignores object field order', () => {
   const f = fixture(); f.state.entries = [{ ...f.entry, origin: 'native', declarationRevision: undefined, buildRevision: undefined }];
-  const native = { ...f.accepted, declarationRevision: undefined, buildRevision: undefined, runtimeRevision: undefined };
+  const native = { ...f.accepted, declarationRevision: undefined, buildRevision: undefined, registrationId: undefined };
   f.bindings.set('memo', native); expect(getStepBinding('memo')).toBe(native);
   f.state.entries = [{ ...f.state.entries[0], declaration: { fe: f.entry.declaration.fe, node: f.entry.declaration.node } }];
   expect(getStepBinding('memo')).toBe(native);
@@ -107,9 +107,9 @@ it('supports explicit subscription disposal', () => {
 });
 
 
-it.each(['declarationRevision', 'buildRevision', 'runtimeRevision'] as const)('refuses fabricated native %s', stamp => {
+it.each(['declarationRevision', 'buildRevision', 'registrationId'] as const)('refuses fabricated native %s', stamp => {
   const f = fixture(); f.state.entries = [{ ...f.entry, origin: 'native', declarationRevision: undefined, buildRevision: undefined }];
-  f.bindings.set('memo', { ...f.accepted, declarationRevision: undefined, buildRevision: undefined, runtimeRevision: undefined, [stamp]: 'fabricated' });
+  f.bindings.set('memo', { ...f.accepted, declarationRevision: undefined, buildRevision: undefined, registrationId: undefined, [stamp]: 'fabricated' });
   expect(getStepBinding('memo')).toBeUndefined();
 });
 

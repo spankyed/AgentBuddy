@@ -7,7 +7,7 @@ interface ViewerFrontendBinding<Declaration, Binding> {
   readonly packId: string;
   readonly declaration: DeclarationData<Declaration>;
   readonly declarationRevision?: string;
-  readonly runtimeRevision?: string;
+  readonly registrationId?: string;
   readonly buildRevision?: string;
   readonly binding: Binding;
 }

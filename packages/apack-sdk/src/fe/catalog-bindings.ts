@@ -15,9 +15,9 @@ export function matchesFrontendDeclaration(
     || declarationJson(owner.declaration) !== declarationJson(accepted.declaration)) return false;
   if (owner.origin === 'native') {
     return accepted.declarationRevision === undefined && accepted.buildRevision === undefined
-      && accepted.runtimeRevision === undefined;
+      && accepted.registrationId === undefined;
   }
-  return !!(owner.declarationRevision && owner.buildRevision && accepted.runtimeRevision
+  return !!(owner.declarationRevision && owner.buildRevision && accepted.registrationId
     && owner.declarationRevision === accepted.declarationRevision && owner.buildRevision === accepted.buildRevision);
 }
 

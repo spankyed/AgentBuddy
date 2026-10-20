@@ -112,7 +112,7 @@ export interface StepBackendBinding {
     // (undocumented)
     readonly packId: string;
     // (undocumented)
-    readonly runtimeRevision: string;
+    readonly registrationId: string;
     readonly servicesForAction: PackServiceAccess['servicesForAction'];
 }
 

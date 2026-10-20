@@ -242,7 +242,7 @@ export interface PackRegistry extends PackRegistryView {
   /** Where a registered pack came from, or `null` for one registered without an origin (a test's) */
   packOrigin(packId: string): PackOrigin | null;
   /** Accepted installed runtime identity; replacement changes it even when build bytes do not. */
-  getPackRuntime(packId: string): { origin: PackOrigin; runtimeRevision: string } | null;
+  getPackRuntime(packId: string): { origin: PackOrigin; registrationId: string } | null;
   /** The packs this app loaded, in registration order */
   loadedPacks(): PackOrigin[];
   /**
@@ -282,19 +282,19 @@ function admitContributions(registration: PackRegistration, { steps: declaration
   eventContracts?: Readonly<PackEventContracts>;
   migrationOwner?: { version?: string; dependencies?: Readonly<Record<string, string>> };
 }, origin?: PackOrigin) {
-  const runtimeRevision = randomUUID();
+  const registrationId = randomUUID();
   const migrations = (line: MigrationLine) => registration.migrations?.[line]?.map(({ target, description, up }) =>
     Object.freeze({ target, description, up }));
   const steps = (registration.steps ?? []).map(binding => {
     if (!declarations || !Object.hasOwn(declarations, binding.type)) throw new Error(`Pack "${registration.id}" needs accepted declarations for step "${binding.type}"`);
-    return [binding.type, Object.freeze({ packId: registration.id, runtimeRevision, servicesForAction,
+    return [binding.type, Object.freeze({ packId: registration.id, registrationId, servicesForAction,
       declaration: captureStepDeclaration(declarations[binding.type]), binding,
       ...(origin && { declarationRevision: origin.declarationRevision, buildRevision: origin.buildRevision }),
     })] as const;
   });
   return {
     id: registration.id,
-    runtimeRevision,
+    registrationId,
     serviceOwner,
     migrationOwner: migrationOwner && { id: registration.id, version: migrationOwner.version,
       dependencies: migrationOwner.dependencies, migrations: { app: migrations('app'), pack: migrations('pack') } },
@@ -778,7 +778,7 @@ export function createPackRegistry({ installedPacksDir, appPackSourcesDir, setti
     getPackRuntime(packId) {
       const origin = origins.get(packId);
       const contribution = admitted.get(packId);
-      return origin && contribution ? { origin, runtimeRevision: contribution.runtimeRevision } : null;
+      return origin && contribution ? { origin, registrationId: contribution.registrationId } : null;
     },
     loadedPacks: () => [...origins.values()],
     packMigrationTargets,

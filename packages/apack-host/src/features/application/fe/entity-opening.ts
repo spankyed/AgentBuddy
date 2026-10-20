@@ -94,7 +94,7 @@ export function createEntityOpeningMachine(options: EntityOpeningOptions) {
       RUNTIMES_UPDATED: {
         guard: ({ context, event }) => {
           const binding = context.request?.target?.binding;
-          return !!binding?.runtimeRevision && event.runtimes[binding.packId] !== binding.runtimeRevision;
+          return !!binding?.registrationId && event.runtimes[binding.packId] !== binding.registrationId;
         },
         target: '.idle', actions: ({ context }) => refuse(context.request, 'Its destination was replaced. Open it again.'),
       },

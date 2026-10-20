@@ -17,7 +17,7 @@ function fixture() {
   const manifest = { id: 'author', name: 'Author', version: '1.0.0',
     extensions: { artifacts: { card: artifact }, blocks: { answer: block } } };
   const pack = { id: 'author', name: manifest.name, version: manifest.version, manifest, declarationRevision: 'declaration-one',
-    buildRevision: 'a'.repeat(64), runtimeRevision: 'runtime-one' };
+    buildRevision: 'a'.repeat(64), registrationId: 'runtime-one' };
   const registration = { id: 'author', declarationRevision: pack.declarationRevision,
     artifacts: [{ type: 'card', fe: { icon: component, component } }],
     blocks: [{ type: 'answer', kind: 'input' as const, fe: { component } }] };
@@ -43,7 +43,7 @@ it('discovers viewers and input kinds before admission and keeps accepted identi
   expect(getArtifactBinding('card')).toBeUndefined();
   expect(getBlockBinding('answer')).toBeUndefined();
   f.admit();
-  expect(getArtifactBinding('card')).toMatchObject({ packId: 'author', runtimeRevision: 'runtime-one', buildRevision: f.pack.buildRevision });
+  expect(getArtifactBinding('card')).toMatchObject({ packId: 'author', registrationId: 'runtime-one', buildRevision: f.pack.buildRevision });
   expect(getArtifactBinding('card')?.binding.fe?.component).toBe(f.component);
   expect(getBlockBinding('answer')?.binding.fe?.component).toBe(f.component);
   expect(f.component.render).not.toHaveBeenCalled();
@@ -83,7 +83,7 @@ it('reacts to binding-only readiness, replacement and catalog-only disablement, 
   });
   f.admit(); await nextTick();
   const replacement = { render: vi.fn() };
-  f.registry.replacePackFE({ kind: 'loaded', pack: { ...f.pack, runtimeRevision: 'runtime-two' } }, {
+  f.registry.replacePackFE({ kind: 'loaded', pack: { ...f.pack, registrationId: 'runtime-two' } }, {
     ...f.registration, artifacts: [{ type: 'card', fe: { icon: replacement, component: replacement } }],
     blocks: [{ type: 'answer', kind: 'input', fe: { component: replacement } }],
   });

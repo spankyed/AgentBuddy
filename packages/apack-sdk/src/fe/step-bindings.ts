@@ -10,7 +10,7 @@ export interface StepFrontendBinding {
   /** Accepted backend declaration revision; absent for native composition. */
   readonly declarationRevision?: string;
   /** Accepted backend runtime identity; absent for native composition. */
-  readonly runtimeRevision?: string;
+  readonly registrationId?: string;
   /** Accepted backend build identity, including when frontend delivery uses a development server. */
   readonly buildRevision?: string;
   readonly binding: StepDefinition;
