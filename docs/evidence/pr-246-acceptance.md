@@ -82,3 +82,9 @@ output. The fixture now seals the changed output through the normal build helper
 manifest and integrity bytes after every outcome. E2E typechecking and focused lint pass; its running-app
 confirmation remains pending. App run `39396277423` is pinned to the preceding repair checkpoint
 `103e62df1`, so it does not include this subsequent fixture correction.
+
+The remaining static audit corrected the CLI-path case's save acknowledgment: CLI Providers owns its
+save state, so the containing General form cannot display that request's success. The test now waits
+for the accepted override in the Code actor, then remounts the Settings canvas and checks its value.
+Twenty-four additional pure file-view/input-record checks pass across three affected files. No native
+compiler or app execution ran on the developer Mac.

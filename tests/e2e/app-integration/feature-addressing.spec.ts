@@ -53,7 +53,9 @@ test('a plugin setting changed in Settings is what its canvas reads', async ({ a
   const claude = appPage.locator('div').filter({ has: appPage.getByText('Claude Code CLI', { exact: true }) })
     .filter({ has: inputs }).last().getByPlaceholder('Path override (auto-detected if empty)');
   await claude.fill(override);
-  await expect(appPage.getByText('Settings saved', { exact: true })).toBeVisible();
+  // CLI Providers owns its save feedback; observe the accepted value at the receiving feature.
+  await expect.poll(() => appPage.evaluate(() => (window as any).applicationState.system
+    .get('default-setup/code').getSnapshot().context.settings.cliPaths?.['claude-code'])).toBe(override);
   await app.navigate('default-setup/code');
   await app.navigate('host/settings');
   await expect(claude).toHaveValue(override);
