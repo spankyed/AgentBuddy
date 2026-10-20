@@ -55,13 +55,16 @@ describe('verified dependency cache', () => {
     expect(fs.readFileSync(path.join(first.directory, PACK_LAYOUT.runtimeEntry), 'utf8')).toContain('Discovery executed');
   });
 
-  it.each(['changed', 'missing', 'extra'])('refuses %s cached executable files before exposing paths', mode => {
-    const cached = publish(producer());
+  it.each(['changed', 'missing', 'extra'])('refuses %s cached files and repairs them only from a verified source', mode => {
+    const source = producer();
+    const cached = publish(source);
     const entry = path.join(cached.directory, PACK_LAYOUT.runtimeEntry);
     if (mode === 'changed') fs.writeFileSync(entry, 'tampered');
     else if (mode === 'missing') fs.rmSync(entry);
     else fs.writeFileSync(path.join(cached.directory, 'extra.js'), 'extra');
     expect(() => readCachedDependency(root, 'dep-pack')).toThrow('failed verification');
+    expect(publish(source)).toEqual(cached);
+    expect(readCachedDependency(root, 'dep-pack')).toEqual(cached);
   });
 
   it('copies snapshot-only type data without copying executable files that have no producer receipt', () => {

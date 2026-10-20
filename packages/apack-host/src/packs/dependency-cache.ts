@@ -5,6 +5,7 @@ import { isDeepStrictEqual } from 'node:util';
 import { z } from 'zod';
 import { parseDependencySnapshot, type PackDependencySnapshot } from '@apackdev/sdk/build';
 import { PACK_ID_PATTERN } from '@apackdev/sdk/ids';
+import { replaceDir } from '../replace-dir.ts';
 import { holdExclusiveLock } from '../exclusive-lock.ts';
 import { PACK_LAYOUT, verifyPack, packBuildRevision, type PackIntegrity } from './layout.ts';
 
@@ -138,8 +139,10 @@ export function cacheDependency(root: string, id: string, source: string,
       what: `Publishing dependency ${id}`, refuse: holder => new Error(`Dependency ${id} cache is held by ${holder}; retry resolution`) });
     try {
       const destination = path.join(builds, resolution.revision);
-      if (fs.existsSync(destination)) checkBuild(destination, resolution);
-      else fs.renameSync(staged, destination);
+      if (fs.existsSync(destination)) {
+        try { checkBuild(destination, resolution); }
+        catch { replaceDir(staged, destination); }
+      } else fs.renameSync(staged, destination);
       fs.writeFileSync(temporaryRecord, JSON.stringify(resolution, null, 2) + '\n', { flag: 'wx' });
       fs.renameSync(temporaryRecord, path.join(directory, 'resolution.json'));
       return { directory: destination, snapshot, resolution };

@@ -28,7 +28,7 @@ export function recordCliInstall(file: string, id: string, installedFrom?: strin
   const records = readInstalledPacks(file, { strict: true });
   const old = records.find(record => record.id === id);
   const next: PackRecord = {
-    id, enabled: old?.enabled ?? true, updatesWith: 'user', installedAt: old?.installedAt ?? new Date().toISOString(),
+    id, enabled: old?.suppressAppInstall ? true : old?.enabled ?? true, updatesWith: 'user', installedAt: old?.installedAt ?? new Date().toISOString(),
     ...(installedFrom !== undefined && { installedFrom }),
     ...(old?.lastError !== undefined && { lastError: old.lastError }),
   };

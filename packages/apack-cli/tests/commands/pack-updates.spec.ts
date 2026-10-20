@@ -3,7 +3,7 @@ import * as os from 'node:os';
 import * as path from 'node:path';
 import { expect, it, vi } from 'vitest';
 import { resolveAppEnvironment } from '@apackdev/sdk/env';
-import { recordHostCompatibility, readInstalledPacks, uninstallPack } from '@apackdev/host/packs';
+import { recordHostCompatibility, readInstalledPacks, writeInstalledPacks, uninstallPack } from '@apackdev/host/packs';
 import { recordCliInstall } from '../../src/app/installed-packs';
 import { packUpdates } from '../../src/app/pack-updates';
 
@@ -53,4 +53,21 @@ it('uses installation ownership to choose GitHub updates independently of the pa
     { hostVersion: '0.4.0', includePrerelease: false }, find))
     .toMatchObject({ status: 'unmanaged', reason: 'updates with the app' });
   expect(find).not.toHaveBeenCalled();
+});
+
+it('enables an explicitly reinstalled pack but preserves enablement on an ordinary update', async () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'apack-reinstall-'));
+  try {
+    const context = resolveAppEnvironment({ env: 'test', userDataDir: root });
+    fs.mkdirSync(path.join(context.packsDir, 'demo'), { recursive: true });
+    writeInstalledPacks([{ id: 'demo', enabled: false }], context.installedPacksFile);
+    recordCliInstall(context.installedPacksFile, 'demo');
+    expect(readInstalledPacks(context.installedPacksFile)).toMatchObject([{ id: 'demo', enabled: false }]);
+    await uninstallPack('demo', context.packsDir, { installedPacksFile: context.installedPacksFile });
+    recordCliInstall(context.installedPacksFile, 'demo', 'owner/repo');
+    expect(readInstalledPacks(context.installedPacksFile)).toEqual([
+      expect.objectContaining({ id: 'demo', enabled: true, installedFrom: 'owner/repo', updatesWith: 'user' }),
+    ]);
+    expect(readInstalledPacks(context.installedPacksFile)[0]).not.toHaveProperty('suppressAppInstall');
+  } finally { fs.rmSync(root, { recursive: true, force: true }); }
 });
