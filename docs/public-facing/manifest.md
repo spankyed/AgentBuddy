@@ -219,6 +219,17 @@ The declaration owns only this feature's settings; it does not repeat the featur
 
 Defaults must pass the schema before the pack builds or registers. Navigation visibility is separate: `plugin.defaultVisible: false` needs no settings declaration. Settings may also declare presentation metadata and a custom `form` path. Writes must satisfy the current schema; unchanged invalid values are not exempt. A disabled pack retains its user overrides, but its schema must be loaded before those values can be edited.
 
+Installation, replacement, shipped-pack updates and live reload validate stored overrides against the
+candidate settings declarations before replacing accepted state. Incompatible changes are refused with
+the settings owner, field and reason; the incumbent remains accepted. This also checks overrides whose
+pack was previously unavailable when its declaration becomes available again.
+
+If preferences are already invalid at startup, the host opens a recovery screen before loading
+external packs. Recovery can explicitly reset selected affected groups in one transaction, preserving
+other choices, or reset all preferences. Malformed document structure requires the complete reset.
+Nothing is converted or silently discarded. After repair, restart apack to initialize its packs;
+reconnecting a window preserves that restart requirement. App data and API keys are not reset.
+
 Declare a custom form at `features.<id>.settings.form`, for example
 `"form": "src/features/bookmarks/fe/settings.vue"`. The module default-exports a Vue
 component that receives `settings` and emits `update-setting` with `{ path, value, condition? }`.

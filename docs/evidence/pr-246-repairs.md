@@ -25,13 +25,12 @@ No CI, broad integration suite, packaged application, or native compiler fixture
 
 ## Findings that require distinguishing a contract from a defect
 
-**5.1: keep the current strict contract.** The repository explicitly prohibits invalid-value
-grandfathering and normal-runtime conversion of developer data. This repair does not restore master's
-"unchanged invalid value" allowance. Incompatible stored values remain refused under the current schema;
-a deliberate migration or separate developer-data operation must repair them. The review overstates
-that *every* reset/replacement is refused: the existing store test demonstrates replacing an invalid
-slice, and a host reset to valid defaults removes invalid overrides. An invalid initial window snapshot
-still refuses connection; this is not claimed to be a schema-evolution recovery UI.
+**5.1: admission and explicit recovery implemented.** `8d31bdccc` checks candidate declarations
+before placement/publication; `3a6b649b5` checks persisted preferences before executable boot and
+provides host-only recovery with an atomic explicit reset and relaunch. Typed settings remain strictly
+validated. No grandfathering, conversion or implicit discard is added. The host retains a repaired
+recovery state across window reconnects until relaunch. See [settings recovery evidence](settings-recovery.md)
+for focused checks, the startup-related S.1/S.2 resolution, and native/packaged acceptance limits.
 
 **5.2: preserve explicit intent; correct the guide.** The
 [settings plan](../archive/plans/settings-architecture.md) expressly requires whole-document replacement

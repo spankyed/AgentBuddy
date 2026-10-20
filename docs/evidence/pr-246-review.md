@@ -11,23 +11,24 @@ pre-repair behavior are not claims that the defect remains in current source.
 
 ## Verdict
 
-Reviewed at `HEAD` = `8d31bdccc`, 2026-10-19.
+Review baseline: `8d31bdccc`, 2026-10-19. Settings 5.1 and startup-related S.1/S.2 are
+reconciled against `3a6b649b5` and the focused evidence; other areas have not been re-reviewed here.
 
 **Not ready to merge.** Ten of the eleven rows in the goal's acceptance register are delivered; nine of them have
 open defects (see [the row-by-row register](#acceptance-register-row-by-row)). The "final committed tree"
 row is not delivered: no application-level or integrated run covers the current source.
 
 Open, by severity:
-- **Blocker:** 5.1.
-- **High:** S.1, 4.1, 4.2, 9.1, 9.2.
-- **Medium:** 3a.1, 3b.1, 3b.2, 6.1, 6.2, 6.3, 9.3, 9.4, 10.1–10.5, S.2, S.3, S.4.
+- **Blocker:** none remaining from this recorded list; 5.1 has a focused repair.
+- **High:** 4.1, 4.2, 9.1, 9.2.
+- **Medium:** 3a.1, 3b.1, 3b.2, 6.1, 6.2, 6.3, 9.3, 9.4, 10.1–10.5, S.3, S.4.
 - **Low:** 3a.2, 3a.3, 3b.3, 3b.4, 4.3, 4.4, 6.4, 10.6, 10.7, S.5.
-- **Implemented, awaiting acceptance:** 7.2, 8.1, 8.2.
+- **Implemented, awaiting application/native acceptance:** 5.1, S.1, S.2, 7.2, 8.1, 8.2.
 
 **What closes it, in order:**
-1. Resolve 5.1 together with S.1 and S.2. They are one problem: a stored value that current declarations
-   reject. It currently locks settings (5.1), blocks every later catalog change (S.1), and goes undetected
-   at boot because admission runs before hydration (S.2). Fixing one alone leaves the others reachable.
+1. Settings 5.1 and its startup-related S.1/S.2 paths are repaired in `8d31bdccc` and `3a6b649b5`.
+   Strict validation remains; host-only recovery provides explicit atomic reset and requires relaunch.
+   See [settings recovery evidence](settings-recovery.md) for focused checks and acceptance limits.
 2. Fix the High findings that break shipped behaviour or a pack author's first steps: 9.1, 9.2, 4.1, 4.2.
 3. Decide 10.1 and 10.2 (the doubled `suite` rung and the 69 per-test deadline exceptions): restore the
    limits or record a measurement for each. Then fix 10.3 and 10.4, so the run below cannot be cancelled
@@ -38,7 +39,8 @@ Open, by severity:
    That run also gives 7.2, 8.1 and 8.2 their application checks.
 5. The remaining Mediums and Lows can follow the merge, each as its own change.
 
-Nothing has been dispatched. Repair evidence records that runs stay off unless the user starts them.
+No CI or broad acceptance run has been dispatched. The settings repair has focused local evidence;
+the remaining acceptance run is still pending.
 
 ## Status — reconciled 2026-10-19
 
@@ -52,7 +54,7 @@ focused verification; remaining application/native acceptance is listed separate
 | 1.3, 2.5 | Completed: correct host module/hash/recovery documentation | `278661695`; the claim that `packFileHashes` was absent was incorrect |
 | 2.1, 2.3, 2.4 | Completed: enable explicit reinstalls, repair damaged caches, correct CLI documentation | `46ef9a95e`, `88be3f633` |
 | 2.2 | Completed: recover interrupted acceptance and prior installation decisions | `88be3f633`; filesystem recovery cases pass |
-| 5.1 | Open: schema-change admission/recovery behavior still needs a resolution | Strict validation remains; grandfathering/conversion is excluded. See remaining work below |
+| 5.1 | Completed: admission protection, host-only recovery, atomic reset and explicit relaunch | `8d31bdccc`, `3a6b649b5`; [focused evidence and limits](settings-recovery.md) |
 | 5.2 | Closed: intentional explicit-override contract; conflicting guide corrected | [Decided contract](../archive/plans/settings-architecture.md), `278661695` |
 | 5.3, 5.4 | Completed: apply committed save snapshots and share frontend/backend read authorization | `d3f3e1765`, `f6eceeeda` |
 | 5.5 | Completed: preserve typing through save echoes and edits after a superseding reset | `8ec60b1e5`, `f6eceeeda`; seven component cases pass |
@@ -70,21 +72,15 @@ focused verification; remaining application/native acceptance is listed separate
 | 4.1, 4.2, 4.3, 4.4 | Open: recorded after this reconciliation | — |
 | 9.1, 9.2, 9.3, 9.4 | Open: recorded after this reconciliation | — |
 | 10.1–10.7 | Open: recorded after this reconciliation | — |
-| S.1–S.5 | Open: cross-area pass, recorded after this reconciliation | — |
+| S.1, S.2 | Completed for startup-invalid settings: persisted-row preflight and host-only recovery | `3a6b649b5`; [evidence](settings-recovery.md) |
+| S.3–S.5 | Open: cross-area pass, recorded after this reconciliation | — |
 
 ### Remaining work
 
-1. **5.1 — schema changes and recovery:** decide and implement how an incompatible declaration change
-   is refused before it invalidates the running settings view, or how recovery remains accessible while
-   values stay strictly refused. Do not restore invalid-value grandfathering or implicit data conversion.
-   The original claim that every reset/replacement fails is too broad: replacing the invalid slice or
-   resetting to valid defaults can succeed. The invalid initial snapshot still disconnects the window,
-   so that part is not marked completed merely because strict validation is intentional. The settings
-   admission added in `8d31bdccc` does not close it, and it introduces S.1 and S.2. See [Verdict](#verdict).
-2. **8.1/8.2 — native verification:** verify actual LMDB import, failed hydration and rollback on a
+1. **8.1/8.2 — native verification:** verify actual LMDB import, failed hydration and rollback on a
    suitable environment. The local native allocator abort is recorded; mocked inspection plus real
    filesystem tests do not close this gate.
-3. **7.2 and completeness — application verification:** exercise step-owner service injection through
+2. **7.2 and completeness — application verification:** exercise step-owner service injection through
    the actual flow executor, and obtain fresh application/integrated acceptance for repaired committed
    source. Historical runs are preserved but do not cover these changes. No runs are triggered by this
    documentation update; the user's no-CI instruction remains in effect.
@@ -98,7 +94,7 @@ views, and their specs.
 
 | # | Severity | Finding | Status |
 |---|---|---|---|
-| 5.1 | Blocker | A stored override the current schema rejects blocks every settings write and every window | Open — admission/recovery |
+| 5.1 | Blocker | A stored override the current schema rejects blocks every settings write and every window | Completed — admission and recovery; see evidence |
 | 5.2 | Medium | Replacing the whole document stores every default as a user choice | Closed — intentional; docs fixed |
 | 5.3 | Medium (plausible) | A second write right after the first is refused as a conflict | Completed |
 | 5.4 | Medium | Frontend readers read any owner's settings; the backend refuses the same read | Completed |
@@ -469,8 +465,8 @@ commit.
 
 | # | Severity | Seam | Finding | Status |
 |---|---|---|---|---|
-| S.1 | High | Catalog × settings | Once any stored value is invalid, every catalog change is refused, including the refresh after a toggle or uninstall has already happened | Open |
-| S.2 | Medium | Catalog × settings × boot | At boot, settings admission validates against empty settings, because packs load before the store is hydrated | Open |
+| S.1 | High | Catalog × settings | Once any stored value is invalid, every catalog change is refused, including the refresh after a toggle or uninstall has already happened | Completed for startup invalidity: host-only recovery prevents pack mutations |
+| S.2 | Medium | Catalog × settings × boot | At boot, settings admission validates against empty settings, because packs load before the store is hydrated | Completed: persisted-row preflight before runtime loading |
 | S.3 | Medium (plausible) | Install × frontend | A pack disabled while its frontend first loads stays registered in the window | Open |
 | S.4 | Medium (plausible) | Settings × window | A reconnect revokes every frontend's settings binding, and a failed re-load leaves the pack reading `undefined` | Open |
 | S.5 | Low (plausible) | Build records × discovery | Under `apack pack dev`, the runtime loaded can be a newer build than the receipt just verified | Open |
@@ -884,7 +880,7 @@ fix.
 | Register row | Verdict | Open findings |
 |---|---|---|
 | Foundation and manifest | Delivered with open defects | 4.1, 4.2: the public manifest and content guides' examples fail the schema, so the row's "external authoring" half does not hold for a pack author following them. 4.3, 4.4 |
-| Settings | Delivered with open defects | 5.1 (blocker), S.1 (high), S.2, S.4. Ownership, validation, forms and multi-window editing are implemented. Declaration changes against stored values are not resolved |
+| Settings | Delivered with open defects | S.4 remains open. 5.1 and startup-related S.1/S.2 paths have admission/recovery repairs with focused checks; packaged/native acceptance remains pending |
 | Discovery | Delivered with open defects | 6.2: reference name conflicts are refused in the window only, by load order. S.5 (development only) |
 | Editor and content | Delivered | Not reviewed beyond area 9's checks. No finding |
 | Build ownership/freshness | Delivered with open defects | 3a.1–3a.3, 3b.1–3b.4. None publishes a stale build. `b5362528e` preserves behaviour |
