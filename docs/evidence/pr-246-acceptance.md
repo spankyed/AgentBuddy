@@ -75,3 +75,10 @@ Its child output is streamed as well as retained so the phase reached is visible
 
 Host and E2E typechecks and focused correctness lint pass. App validation remains pending on a
 disposable runner; this checkpoint does not mark any unrun acceptance case complete.
+
+The follow-up audit also found that the reload E2E edited compiled content without renewing its
+integrity seal. This no longer models a completed build: reload admission correctly refuses altered
+output. The fixture now seals the changed output through the normal build helper and restores content,
+manifest and integrity bytes after every outcome. E2E typechecking and focused lint pass; its running-app
+confirmation remains pending. App run `39396277423` is pinned to the preceding repair checkpoint
+`103e62df1`, so it does not include this subsequent fixture correction.
