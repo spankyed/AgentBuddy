@@ -114,3 +114,22 @@ it('preserves pending typing across an equivalent snapshot from an unrelated set
   await vi.advanceTimersByTimeAsync(500);
   expect(saved.mock.calls[0][0]).toMatchObject({ value: { name: 'Pending' } });
 });
+
+
+it('still saves edits made after a remote reset while the superseded request is settling', async () => {
+  vi.useFakeTimers();
+  const { el, settings, saved } = render({ name: 'Ada' });
+  let finish!: (result: { status: 'saved' }) => void;
+  saved.mockImplementationOnce(() => new Promise(resolve => { finish = resolve; }));
+  await input(el, 'name', 'Previous');
+  await vi.advanceTimersByTimeAsync(500);
+  settings.value = {};
+  await nextTick();
+  await input(el, 'name', 'After reset');
+  await vi.advanceTimersByTimeAsync(500);
+  expect(saved).toHaveBeenCalledTimes(1);
+  finish({ status: 'saved' });
+  await vi.advanceTimersByTimeAsync(500);
+  expect(saved.mock.calls[1][0]).toMatchObject({ value: { name: 'After reset' },
+    condition: { expected: { exists: true, value: {} } } });
+});

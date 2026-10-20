@@ -101,7 +101,8 @@ const readForm = () => JSON.parse(JSON.stringify({
 let persisted = readForm()
 const formData = ref(readForm())
 let version = 0
-let submitted: { value: AppPersonalInfo; version: number; cancelled: boolean } | undefined
+type PersonalSave = { value: AppPersonalInfo; version: number; supersededAt?: number }
+let submitted: PersonalSave | undefined
 let disposed = false
 onScopeDispose(() => { disposed = true })
 function edited() { version++; debouncedSave() }
@@ -142,18 +143,20 @@ const handleNameInput = () => {
 // One in-flight save lets an echo acknowledge its own draft without discarding later typing.
 const { debounced: debouncedSave, cancel } = useDebounce(async () => {
   if (submitted || disposed) return
-  const pending = { value: JSON.parse(JSON.stringify(formData.value)) as AppPersonalInfo, version, cancelled: false }
+  const pending: PersonalSave = { value: JSON.parse(JSON.stringify(formData.value)) as AppPersonalInfo, version }
   submitted = pending
   try {
-    const result = await props.saveSetting({
+    await props.saveSetting({
       path: [], value: pending.value,
       condition: snapshot.value ? {
         runId: snapshot.value.runId,
         expected: { exists: true, value: JSON.parse(JSON.stringify(props.settings ?? {})) }
       } : undefined
     })
-    if (result.status === 'saved' && !pending.cancelled && version > pending.version && !disposed) debouncedSave()
-  } finally { submitted = undefined }
+  } finally {
+    submitted = undefined
+    if (version > (pending.supersededAt ?? pending.version) && !disposed) debouncedSave()
+  }
 }, 500)
 watch(() => props.settings, () => {
   const next = readForm()
@@ -161,7 +164,7 @@ watch(() => props.settings, () => {
   persisted = next
   if (submitted && isEqual(next, submitted.value)) return
   cancel()
-  if (submitted) submitted.cancelled = true
+  if (submitted) submitted.supersededAt = ++version
   formData.value = next
 }, { deep: true })
 </script>

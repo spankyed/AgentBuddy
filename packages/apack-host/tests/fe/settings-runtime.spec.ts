@@ -405,3 +405,17 @@ it('applies backend dependency read policy to an accepted frontend binding', asy
   expect(runtime.port.get({ kind: 'pack', packId: 'unrelated', groupId: 'preferences' })).toEqual({ name: 'unrelated' });
   runtime.dispose();
 });
+
+it('refuses a malformed save acknowledgement without discarding accepted window state', async () => {
+  const { runtime, messages } = await windowRuntime();
+  const report = vi.spyOn(console, 'error').mockImplementation(() => {});
+  try {
+    const write = runtime.port.update(target, ['personal', 'name'], 'Ada');
+    await flush();
+    runtime.receive({ to: 'host/settings', answering: messages[1].call,
+      event: { type: 'SETTINGS_SAVED', snapshot: {} } });
+    expect(await write).toMatchObject({ status: 'refused', problems: [expect.stringContaining('invalid settings save snapshot')] });
+    expect(runtime.port.status()).toBe('ready');
+    expect(runtime.getSnapshot()).toEqual(snapshot());
+  } finally { report.mockRestore(); runtime.dispose(); }
+});
