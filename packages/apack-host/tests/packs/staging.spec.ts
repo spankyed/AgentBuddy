@@ -188,3 +188,23 @@ it('keeps an incumbent when recovery fails and never sweeps it as litter', () =>
   expect(fs.existsSync(path.join(packsDir, previous))).toBe(true);
   expect(() => readInstalledPackBuild(path.join(packsDir, 'demo-pack'))).toThrow('Interrupted replacement');
 });
+
+it('leaves the restored build verifiable when a refused install cannot restore its record', async () => {
+  const { installPackFromLocal } = await import('../../src/packs/installer.ts');
+  const { verifyPack } = await import('../../src/packs/assets.ts');
+  const source = path.join(root, 'source');
+  writeInstalledPackFixture(source, { id: 'demo-pack', name: 'Demo', version: '1.0.0' });
+  const recordsDir = path.join(root, 'records');
+  fs.mkdirSync(recordsDir);
+  const installedPacksFile = path.join(recordsDir, 'installed-packs.json');
+  await installPackFromLocal(source, packsDir, { installedPacksFile });
+  try {
+    await expect(installPackFromLocal(source, packsDir, { installedPacksFile, accept: () => {
+      // Restoring the record now fails, as a full or read-only disk would make it
+      fs.chmodSync(recordsDir, 0o555);
+      throw new Error('acceptance refused');
+    } })).rejects.toThrow('record rollback failed');
+  } finally { fs.chmodSync(recordsDir, 0o755); }
+  expect(() => verifyPack(path.join(packsDir, 'demo-pack'))).not.toThrow();
+  expect(remaining()).toEqual(['demo-pack']);
+});

@@ -296,13 +296,16 @@ function withInstallationRecord(
   }
   try { return accept(); }
   catch (error) {
+    const rollback: unknown[] = [];
     try {
       if (!existed) fs.rmSync(file, { force: true });
       else if (!writeInstalledPacks(previous, file)) throw new Error(`Cannot restore installation decisions: ${file}`);
-      if (recovery) fs.rmSync(recovery);
-    } catch (rollback) {
-      throw new AggregateError([error, rollback], 'Installation was refused and record rollback failed');
-    }
+    } catch (failure) { rollback.push(failure); }
+    // Removed even when the record could not be restored: the previous build is about to be put back where the
+    // pack runs from, and verification refuses a file its receipt doesn't list
+    try { if (recovery) fs.rmSync(recovery, { force: true }); }
+    catch (failure) { rollback.push(failure); }
+    if (rollback.length) throw new AggregateError([error, ...rollback], 'Installation was refused and record rollback failed');
     throw error;
   }
 }

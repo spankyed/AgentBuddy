@@ -69,7 +69,8 @@ export function createAppData({ store, engine, registry, settings, onReplaced }:
             // Run declared versioned data changes after restore, before notifying consumers.
             if (runAppMigrations(registry)) runPackMigrations(registry.packMigrationTargets('pack'));
           },
-          restored: () => reloadMemory(true),
+          // The data before the import, hydrated as boot hydrates it: the run history stays on disk
+          restored: () => reloadMemory(),
         });
       });
     },
