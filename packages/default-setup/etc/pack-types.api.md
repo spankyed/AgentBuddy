@@ -2439,7 +2439,7 @@ interface ClaudeNativeTaskInputReceipt {
     mode: 'queued' | 'resumed';
 }
 
-type ClaudeNativeTerminalHandoffOptions = Pick<ClaudeNativeTerminalOptions, 'cliPath' | 'columns' | 'env' | 'rows'> & {
+type ClaudeNativeTerminalHandoffOptions = Pick<ClaudeNativeTerminalOptions, 'cliPath' | 'columns' | 'env' | 'rows' | 'signal'> & {
     resume?: ClaudeNativeLaunch;
 };
 
@@ -2854,6 +2854,9 @@ type ClaudeTerminalViewRequest = {
 } | {
     type: 'CLAUDE_TERMINAL_OPEN';
 } | {
+    type: 'CLAUDE_TERMINAL_CANCEL_OPEN';
+    openingId: string;
+} | {
     type: 'CLAUDE_TERMINAL_SUBMIT';
     ownerId: string;
     revision: number;
@@ -2898,6 +2901,8 @@ type ClaudeTerminalViewSnapshot = {
     submission?: ClaudeTerminalSubmissionState;
     state?: ClaudeNativeTerminalState;
     opening: boolean;
+    openingId?: string;
+    cancelling?: boolean;
     problem?: string;
     output: {
         sequence: number;
