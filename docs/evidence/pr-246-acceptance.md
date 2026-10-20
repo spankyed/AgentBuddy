@@ -3,6 +3,9 @@
 The user authorized fresh disposable macOS validation on 2026-10-20. No native/compiler or
 Electron acceptance is run on the developer's Mac.
 
+Current repair preserves compiler dependency observations and moves runner caches to `.apack/tests/vite`.
+The temporary root-listing filter in the chronological checkpoints below was removed after diagnosis.
+
 ## Runs
 
 - [Strict acceptance 39387174436](https://github.com/spankyed/apack/actions/runs/39387174436):
@@ -115,3 +118,13 @@ Saved evidence: `/private/tmp/apack-app-39396277423.log` and
 `/private/tmp/apack-app-39396277423/`. No beta release exists for packaged-host acceptance.
 The next runner check must exercise the external suite and source CLI with these repairs and the two
 already committed app fixture corrections; the final strict gate is still pending.
+
+### Keep the repair at the output owner
+
+The explicit namespace refusal establishes that the compiler correctly observed the missing dependency
+directory. Moving runner output is sufficient; hiding a subsequently appearing `node_modules` entry
+from an explicitly captured root listing is unnecessary and could change dependency discovery. Remove
+the earlier directory-filter relaxation and its permissive expectation. Keep the richer refusal details.
+The runner-cache regression now proves that `.apack` output preserves the complete recorded inputs,
+while both the original directory listing and the explicit negative dependency probe still detect an
+actual dependency-directory appearance. This replaces the earlier proposed listing exclusion above.

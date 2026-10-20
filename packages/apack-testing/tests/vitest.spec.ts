@@ -30,6 +30,9 @@ it('keeps runner cache writes outside recorded source and missing-dependency inp
     expect(() => assertNativeCompilerObservations(observations)).not.toThrow();
     // A real dependency namespace appearing still invalidates the recorded negative lookup.
     fs.mkdirSync(path.join(root, 'node_modules'));
-    expect(() => assertNativeCompilerObservations(observations)).toThrow(/namespace.*node_modules/);
+    expect(() => assertNativeCompilerObservations(observations)).toThrow(/input changed/);
+    const dependencyProbe = observations.entries.filter(([query]) => query === '["namespace","node_modules"]');
+    expect(dependencyProbe).toHaveLength(1);
+    expect(() => assertNativeCompilerObservations({ root, entries: dependencyProbe })).toThrow(/namespace.*node_modules/);
   } finally { view.dispose(); }
 });

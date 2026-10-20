@@ -127,27 +127,6 @@ it('keeps source directory observations current when a fresh build publishes out
   } finally { view.dispose(); fs.rmSync(root, { recursive: true, force: true }); }
 });
 
-it('ignores a newly created dependency directory in authored listings while tracking explicit dependency reads', () => {
-  const root = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'apack-dependency-directory-')));
-  fs.writeFileSync(path.join(root, 'source.txt'), 'SOURCE');
-  const view = createCompilerFileView(root, { authoredFiles: ['source.txt'] });
-  try {
-    view.captureLocation(root, 'entries');
-    const observations = view.observations();
-    const dependency = path.join(root, 'node_modules/dependency');
-    fs.mkdirSync(dependency, { recursive: true });
-    fs.writeFileSync(path.join(dependency, 'index.js'), 'FIRST');
-    expect(() => view.assertCurrent()).not.toThrow();
-    expect(() => assertNativeCompilerObservations(observations)).not.toThrow();
-    expect(view.readDirectoryData(path.join(root, 'node_modules'), undefined)).toEqual(['dependency']);
-    expect(view.readBytes(path.join(dependency, 'index.js'))?.toString()).toBe('FIRST');
-    const withDependency = view.observations();
-    expect(() => assertNativeCompilerObservations(withDependency)).not.toThrow();
-    fs.writeFileSync(path.join(dependency, 'index.js'), 'OTHER');
-    expect(() => assertNativeCompilerObservations(withDependency)).toThrow(/input changed/);
-  } finally { view.dispose(); fs.rmSync(root, { recursive: true, force: true }); }
-});
-
 it('replays pack input facts without activating a compiler or installing filesystem interception', () => {
   const temporary = fs.mkdtempSync(path.join(os.tmpdir(), 'apack-passive-inputs-'));
   const root = path.join(temporary, 'pack');
