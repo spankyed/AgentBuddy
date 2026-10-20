@@ -26,8 +26,13 @@ on:
         description: Run the app suites and focused recovery, service and pack dev acceptance on disposable macOS
         type: boolean
         default: false
+      app_acceptance_suite:
+        description: App acceptance suite; all also exercises the source CLI
+        type: choice
+        options: [all, app, external]
+        default: all
       app_acceptance_test:
-        description: Optional app test name pattern (skips external-pack and CLI acceptance)
+        description: Optional Playwright test name pattern in the selected suite
         type: string
         default: ''
       strict_chain:
@@ -211,6 +216,7 @@ jobs:
       contents: read
     uses: ./.github/workflows/app-acceptance.yml
     with:
+      suite: ${{ inputs.app_acceptance_suite }}
       test: ${{ inputs.app_acceptance_test }}
 
   strict-chain:
