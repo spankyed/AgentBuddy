@@ -120,7 +120,7 @@ and guides. *Confirmed* findings were checked against the code; *plausible* ones
 | R-B3 | Low (plausible) | `a47ec923b` | Uninstall and disable release the claim when `TEARDOWN_PACK` is sent, before the bus's teardown unregisters the pack; a dev install in that gap is registered and then unregistered by it | Fixed — "fix(packs): hold a pack's claim through teardown, report refused operations, exclude them during data replacement" |
 | R-B6 | Low (plausible) | `88be3f633` | A refused acceptance whose record restore also fails leaves `.apack-install-record.json` inside the restored build, which verification then refuses | Fixed — "fix(packs): keep rollbacks from leaving install records in builds or loading run history" |
 | R-E4 | Low (plausible) | `1f3e6123b` | A refresh answer computed before an in-flight `CREATE_NODE` drops the temporary node and its edges | Fixed — "fix(flows): give the publish refresh its own slot, fall back when an opening flow is gone, keep nodes being added" |
-| R-D2 | Low (plausible) | `7182c952d` | 3a.2 is partly open: `..` in a dangling link's own text is still collapsed lexically, not through intermediate symlinks | Open |
+| R-D2 | Low (plausible) | `7182c952d` | 3a.2 is partly open: `..` in a dangling link's own text is still collapsed lexically, not through intermediate symlinks | Accepted — known limit, stated on `physicalWatchPath` |
 
 Checked clean: settings array paths, replacement write scopes, save acknowledgement, autosave, recovery
 requests and boot preflight; claim release on every path, packaged restart, install records, staging
