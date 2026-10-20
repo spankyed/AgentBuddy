@@ -40,7 +40,7 @@ import { withCompilerFileReads } from '@apackdev/host/build/compiler-inputs';
 import { createCompilerModuleLoader } from '../build/compiler-modules.ts';
 import { holdPackBuildLock } from '../build/build-lock.ts';
 import { dependencyTypes, resolveDependencyFiles } from './generate';
-import { assertGeneratedCurrent, generateEntries, warnStaleDepTypes } from './generate-entries';
+import { assertGeneratedCurrent, assertGeneratedStampCurrent, generateEntries, warnStaleDepTypes } from './generate-entries';
 import { findPackRoot, readValidManifest, sdkVersion } from '../utils';
 
 /**
@@ -273,7 +273,8 @@ async function buildIntoStaging(args: string[], root: string) {
     const finish = async () => {
       // Finish asynchronous loader teardown before validating and sealing the final read-set.
       await modules.dispose();
-      try { assertGeneratedCurrent(root, manifest, resolvedDependencies, compilation); }
+      // compilation.finish() below re-checks the captured inputs before anything is published.
+      try { assertGeneratedStampCurrent(root, manifest, resolvedDependencies, compilation); }
       catch (error) { failures.push(error instanceof Error ? error.message : String(error)); }
       if (packInputsHash(root) !== inputsHash) failures.push('Pack inputs changed during the build; retry before publishing');
       failures.push(...generatedDeclarationProblems(root, snapshot.declarationRevision, !args.includes('--skip-fe')));

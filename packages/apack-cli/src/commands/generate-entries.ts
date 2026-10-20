@@ -70,9 +70,16 @@ function staleReason(hashPath: string, root: string, currentHash: string): strin
 
 /** Skipping generation requires the same evidence that permits normal generation to reuse its files. */
 export function assertGeneratedCurrent(root: string, manifest: PackManifest, dependencies: ResolvedDeps, compilation?: CompilationInputs): void {
-  const scope = compilation ?? captureCompilationInputs(root);
   if (compilation) compilation.assertCurrent();
-  const problem = staleReason(path.join(root, STAMP_FILE), root, computeInputsHash(root, manifest, dependencies, scope));
+  assertGeneratedStampCurrent(root, manifest, dependencies, compilation ?? captureCompilationInputs(root));
+}
+
+/**
+ * The generated files and the stamp of the inputs they were generated from, without re-checking the compilation's
+ * captured inputs: for a caller that runs `compilation.assertCurrent()` itself before publishing.
+ */
+export function assertGeneratedStampCurrent(root: string, manifest: PackManifest, dependencies: ResolvedDeps, compilation: CompilationInputs): void {
+  const problem = staleReason(path.join(root, STAMP_FILE), root, computeInputsHash(root, manifest, dependencies, compilation));
   if (problem) throw new Error(`Generated pack files are stale: ${problem}. Run "apack pack generate-entries" or build without --skip-generate.`);
 }
 
