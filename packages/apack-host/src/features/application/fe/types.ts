@@ -163,7 +163,11 @@ export interface ShellContext {
 export type ShellEvent =
   | OpenEntity
   | { type: 'ENTITY_OPEN_FINISHED'; token: string }
-  | { type: 'SELECT_OPENED_PLUGIN'; plugin: string }
+  /**
+   * A selection the shell makes itself: an open whose plugin is here, the default plugin, the last-active plugin
+   * restored. Unlike `SELECT_PLUGIN`, a person's choice, it cancels no entity open and supersedes no waiting open.
+   */
+  | { type: 'SELECT_PLUGIN_BY_SHELL'; plugin: string }
   | ApplicationPluginEvents
   | { type: 'PLUGIN_DECLARATIONS_CHANGED' }
   | { type: 'SELECT_PLUGIN'; plugin: string; historyIndex?: number }

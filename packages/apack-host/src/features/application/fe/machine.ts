@@ -121,6 +121,15 @@ export function createShellMachine({ packs, catalog, client, packFrontends, stor
    * still add it (finishPackFrontendLoad refuses whatever is still waiting), or refuse it now. Both requests ask
    * the same question and answer it the same way, so `false` means the caller has nothing left to do but return.
    */
+  /**
+   * The waiting queue once a person navigates or opens something else: an open still waiting for its pack no longer
+   * selects it, so the user stays where they went, but its events are still delivered when it arrives. An open with
+   * nothing to deliver is dropped; an entity open is the entity opener's, which cancels it on its own.
+   */
+  const supersedeWaitingOpens = (context: ShellContext): ShellContext['awaitingPlugin'] => context.awaitingPlugin
+    .filter(request => !request.select || request.entityToken || request.events.length > 0)
+    .map(request => request.select && !request.entityToken ? { ...request, select: false } : request);
+
   const readyFor = (context: ShellContext, request: PluginRequest & { events: PluginEvent[] }, enqueue: Enqueue): boolean => {
     if (request.entityToken) {
       const opening = checkEntityOpening(context.entityOpening, request.entityToken, entityOptions);
@@ -163,11 +172,12 @@ export function createShellMachine({ packs, catalog, client, packFrontends, stor
         enqueue.sendTo(context.entityOpening, typeOf('OPEN_ENTITY', event));
       }),
       cancelEntityOpen: enqueueActions(({ context, enqueue }) => { enqueue.sendTo(context.entityOpening, { type: 'CANCEL' }); }),
+      supersedeWaitingOpens: assign(({ context }) => ({ awaitingPlugin: supersedeWaitingOpens(context) })),
       updateEntityDestination: enqueueActions(({ context, enqueue }) => { enqueue.sendTo(context.entityOpening, { type: 'CHANGED' }); }),
       refreshPluginDeclarations: enqueueActions(({ context, enqueue }) => {
         const claimed = selectedDefaultPlugin(context.plugins) ?? null;
         enqueue.assign({ defaultPlugin: claimed });
-        if (context.wantsDefaultPlugin && !context.pendingPluginId && claimed) enqueue.raise({ type: 'SELECT_PLUGIN', plugin: claimed.id });
+        if (context.wantsDefaultPlugin && !context.pendingPluginId && claimed) enqueue.raise({ type: 'SELECT_PLUGIN_BY_SHELL', plugin: claimed.id });
         // A frontend may be admitted before its declaration frame reaches this window. Reconcile
         // from accepted bindings when that frame arrives, without keeping a second pending inventory.
         const bindings = packs.pluginBindings();
@@ -192,7 +202,7 @@ export function createShellMachine({ packs, catalog, client, packFrontends, stor
         enqueue.assign({ awaitingPlugin: waiting });
         if (context.pendingPluginId) {
           if (unavailable(context.pendingPluginId)) enqueue.assign({ pendingPluginId: null });
-          else if (currentPlugin(context, context.pendingPluginId)) enqueue.raise({ type: 'SELECT_PLUGIN', plugin: context.pendingPluginId });
+          else if (currentPlugin(context, context.pendingPluginId)) enqueue.raise({ type: 'SELECT_PLUGIN_BY_SHELL', plugin: context.pendingPluginId });
         }
       }),
 
@@ -258,11 +268,11 @@ export function createShellMachine({ packs, catalog, client, packFrontends, stor
           if (claimed && added.has(claimed.id)) {
             enqueue.assign({ defaultPlugin: claimed, wantsDefaultPlugin: false });
             if (context.wantsDefaultPlugin && !context.pendingPluginId) {
-              enqueue.raise({ type: 'SELECT_PLUGIN', plugin: claimed.id });
+              enqueue.raise({ type: 'SELECT_PLUGIN_BY_SHELL', plugin: claimed.id });
             }
           }
           const pending = context.pendingPluginId;
-          if (pending && added.has(pending)) enqueue.raise({ type: 'SELECT_PLUGIN', plugin: pending });
+          if (pending && added.has(pending)) enqueue.raise({ type: 'SELECT_PLUGIN_BY_SHELL', plugin: pending });
           // Plugins asked to open while their pack loaded open now, with their events
           const arrived = context.awaitingPlugin.filter((work) => added.has(work.plugin));
           if (arrived.length > 0) {
@@ -443,7 +453,7 @@ export function createShellMachine({ packs, catalog, client, packFrontends, stor
         if (context.ownsLastActivePlugin && lastActivePlugin) enqueue.assign({ wantsDefaultPlugin: false });
         if (!context.ownsLastActivePlugin || !lastActivePlugin || lastActivePlugin === context.activePlugin.id) return;
         if (context.plugins.some((p) => p.id === lastActivePlugin)) {
-          enqueue(() => self.send({ type: 'SELECT_PLUGIN', plugin: lastActivePlugin }));
+          enqueue(() => self.send({ type: 'SELECT_PLUGIN_BY_SHELL', plugin: lastActivePlugin }));
         } else {
           enqueue.assign({ pendingPluginId: lastActivePlugin });
         }
@@ -464,9 +474,12 @@ export function createShellMachine({ packs, catalog, client, packFrontends, stor
       selectAndDeliver: enqueueActions(({ context, event, enqueue }) => {
         const { plugin, events, entityToken } = typeOf('OPEN_PLUGIN', event);
         if (!entityToken) enqueue.sendTo(context.entityOpening, { type: 'CANCEL' });
-        if (!readyFor(context, { plugin, events, entityToken, select: true, sender: {} }, enqueue)) return;
+        // The latest open is the one that selects
+        const awaitingPlugin = supersedeWaitingOpens(context);
+        enqueue.assign({ awaitingPlugin });
+        if (!readyFor({ ...context, awaitingPlugin }, { plugin, events, entityToken, select: true, sender: {} }, enqueue)) return;
         if (entityToken) enqueue.sendTo(context.entityOpening, { type: 'READY', token: entityToken });
-        if (context.activePlugin.id !== plugin) enqueue.raise({ type: 'SELECT_OPENED_PLUGIN', plugin });
+        if (context.activePlugin.id !== plugin) enqueue.raise({ type: 'SELECT_PLUGIN_BY_SHELL', plugin });
         if (context.defaultToggles.canvas) enqueue.raise({ type: 'DEFAULT_TOGGLE', area: 'canvas' });
         if (events.length > 0 || entityToken) enqueue(({ self }) => self.send({ type: 'DELIVER_PLUGIN_EVENTS', plugin, events, entityToken }));
       }),
@@ -568,7 +581,7 @@ export function createShellMachine({ packs, catalog, client, packFrontends, stor
       })),
 
       setActivePlugin: enqueueActions(({ context, event, enqueue, system }) => {
-        const selection = typeOf(['SELECT_PLUGIN', 'SELECT_OPENED_PLUGIN'], event);
+        const selection = typeOf(['SELECT_PLUGIN', 'SELECT_PLUGIN_BY_SHELL'], event);
         const { plugin } = selection;
         const historyIndex = 'historyIndex' in selection ? selection.historyIndex : undefined;
         const newPlugin = currentPlugin(context, plugin);
@@ -604,7 +617,7 @@ export function createShellMachine({ packs, catalog, client, packFrontends, stor
       trailNewPlugin: enqueueActions(({ enqueue, context, event }) => {
         const pluginId = event.type === 'DEFAULT_TOGGLE'
           ? (!context.defaultToggles.canvas ? (context.defaultPlugin?.id ?? context.activePlugin.id) : context.activePlugin.id)
-          : typeOf(['SELECT_PLUGIN', 'SELECT_OPENED_PLUGIN'], event).plugin;
+          : typeOf(['SELECT_PLUGIN', 'SELECT_PLUGIN_BY_SHELL'], event).plugin;
         enqueue.sendTo('pluginTrailer', { type: 'TRAIL_NEW_PLUGIN', id: pluginId });
         enqueue.assign(({ system }) => {
           const pluginActor = system.get(pluginId);
@@ -788,8 +801,8 @@ export function createShellMachine({ packs, catalog, client, packFrontends, stor
       TRAIL_UPDATE: { actions: ['setBreadcrumbs', 'setTargetView'] },
       TRAIL_CLICK: { actions: ['cancelEntityOpen', 'setTargetView', 'sendRouteClick'] },
       DEFAULT_TOGGLE: { actions: ['trailNewPlugin', 'toggleCanvas'] },
-      SELECT_PLUGIN: { actions: ['cancelEntityOpen', 'setActivePlugin', 'trailNewPlugin'] },
-      SELECT_OPENED_PLUGIN: { actions: ['setActivePlugin', 'trailNewPlugin'] },
+      SELECT_PLUGIN: { actions: ['cancelEntityOpen', 'supersedeWaitingOpens', 'setActivePlugin', 'trailNewPlugin'] },
+      SELECT_PLUGIN_BY_SHELL: { actions: ['setActivePlugin', 'trailNewPlugin'] },
       RESIZE_PANEL: { actions: 'resizePanel' },
       TOGGLE_INSPECTION_PANEL: { actions: 'toggleInspectionPanel' },
       MAXIMIZE_CHAT: { actions: 'maximizeChat' },
