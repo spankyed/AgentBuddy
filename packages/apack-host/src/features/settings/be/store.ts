@@ -5,8 +5,8 @@ import { createLogger } from '@apackdev/sdk/logger';
 import type { EarsQuery } from '@apackdev/ears';
 import type { EARS } from '@apackdev/sdk';
 import { _settingsJsonProblems, type SettingsCatalog } from '@apackdev/sdk/framework';
-import { deepMerge, hasOwn, isPlainObject } from '@apackdev/sdk/utils/pure';
-import { settingsTargetPath, type SettingsDocument, type SettingsOverrides, type SettingsTarget, type SettingsSnapshot, type SettingsProblem, type SettingsRecovery, type SettingsRecoveryRequest, type SettingsWriteCondition } from '@apackdev/sdk/types';
+import { deepMerge, isPlainObject } from '@apackdev/sdk/utils/pure';
+import { settingsTargetPath, type SettingsDocument, type SettingsOverrides, type SettingsTarget, type SettingsSnapshot, type SettingsRecovery, type SettingsRecoveryRequest, type SettingsWriteCondition } from '@apackdev/sdk/types';
 import type { SettingsChange } from '@apackdev/sdk/services';
 import { authorizeSettings, settingsDefinition } from '../authorization.ts';
 import { getIn, isEqual, removeIn, SettingsRefusedError, setIn } from '../document.ts';
@@ -57,32 +57,16 @@ export function createSettingsStore({ ears, catalog, onCatalogChanged }: Setting
     return value as SettingsOverrides;
   }
   function effective(): SettingsDocument {
-    // Boot and catalog admission keep stored values valid; in recovery they are not, so nothing may read them typed.
     if (recovering) throw new SettingsRefusedError(['Settings require recovery. Reset the invalid values and restart.']);
-    return structuredClone(deepMerge(defaults(), stored())) as SettingsDocument;
+    const base = defaults();
+    const overrides = stored();
+    validation.validate(overrides);
+    return structuredClone(deepMerge(base, overrides)) as SettingsDocument;
   }
   function getRecovery(): SettingsRecovery | undefined {
     if (!recovering) return undefined;
     declarations();
     return { version: { runId, revision }, problems: validation.inspect(rawStored()) };
-  }
-  /** The stored path to an invalid value, stopped at the first non-object: an array is replaced whole. */
-  function storedPath(overrides: unknown, owner: readonly string[], path: readonly string[]): string[] {
-    const found: string[] = [];
-    let node = overrides;
-    for (const key of [...owner, ...path]) {
-      if (!isPlainObject(node) || !hasOwn(node, key)) break;
-      found.push(key);
-      node = node[key];
-    }
-    return found.length < owner.length ? [...owner] : found;
-  }
-  /** Removes each invalid value so its default applies; an owner that still fails is reset whole. */
-  function withoutInvalid(overrides: unknown, problems: readonly SettingsProblem[]): unknown {
-    let next = overrides;
-    for (const { target, path } of problems) next = removeIn(next, storedPath(next, settingsTargetPath(target!), path));
-    for (const { target } of validation.inspect(next)) if (target) next = removeIn(next, settingsTargetPath(target));
-    return next;
   }
   const tell = (change: SettingsChange) => {
     for (const listener of listeners) {
@@ -130,15 +114,23 @@ export function createSettingsStore({ ears, catalog, onCatalogChanged }: Setting
     enterRecovery: () => { recovering = true; },
     getRecovery,
     recover(request: SettingsRecoveryRequest): void {
+      if (replacingData) throw new SettingsRefusedError(['Data is being replaced. Wait before repairing settings.']);
       const current = getRecovery();
       if (!current?.problems.length || !isPlainObject(request) || _settingsJsonProblems(request).length || !isEqual(request.version, current.version)) {
         throw new SettingsRefusedError(['Settings changed. Review the current problems before resetting.']);
       }
-      if (request.scope === 'all') { write({}); return; }
-      if (request.scope !== 'invalid' || current.problems.some(problem => !problem.target)) {
-        throw new SettingsRefusedError(['The preferences document is malformed. Reset all preferences to continue.']);
+      if (request.reset === 'all') { write({}); return; }
+      if (!Array.isArray(request.reset) || !request.reset.length || current.problems.some(problem => !problem.target)) {
+        throw new SettingsRefusedError(['Select affected settings groups, or reset all preferences for a malformed document.']);
       }
-      write(withoutInvalid(rawStored(), current.problems));
+      const affected = new Set(current.problems.map(problem => JSON.stringify(settingsTargetPath(problem.target!))));
+      let next = rawStored();
+      for (const target of request.reset) {
+        targetDefinition(target);
+        if (!affected.has(JSON.stringify(settingsTargetPath(target)))) throw new SettingsRefusedError(['Only affected settings groups can be reset during recovery.']);
+        next = removeIn(next, settingsTargetPath(target));
+      }
+      write(next);
     },
     getSnapshot(): SettingsSnapshot {
       const published = replacementSnapshot ?? { values: effective(), catalog: declarations() };
@@ -152,7 +144,7 @@ export function createSettingsStore({ ears, catalog, onCatalogChanged }: Setting
     set(target: SettingsTarget, path: readonly string[], value: unknown, caller?: string, condition?: SettingsWriteCondition): void {
       authorize(target, caller, true);
       if (!Array.isArray(path) || path.some(key => typeof key !== 'string')) throw new SettingsRefusedError(['Settings paths contain strings']);
-      compare(condition, getIn(effective(), [...settingsTargetPath(target), ...path]));
+      if (condition) compare(condition, getIn(effective(), [...settingsTargetPath(target), ...path]));
       write(setIn(stored(), [...settingsTargetPath(target), ...path], value));
     },
     reset(target: SettingsTarget, caller?: string): void {
@@ -162,7 +154,8 @@ export function createSettingsStore({ ears, catalog, onCatalogChanged }: Setting
       removeOverrides(settingsTargetPath(target));
     },
     replaceAll(next: unknown, condition?: SettingsWriteCondition): void {
-      compare(condition, effective());
+      declarations();
+      if (condition) compare(condition, effective());
       validation.validateEffective(next);
       write(next);
     },

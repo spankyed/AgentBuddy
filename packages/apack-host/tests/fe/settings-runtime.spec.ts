@@ -434,9 +434,9 @@ it('keeps invalid settings distinct from a broken connection and supports an ack
   expect(runtime.getRecovery()).toEqual(recovery);
   expect(() => runtime.bindPort('owner', async () => {})).toThrow('must be ready');
   expect(await runtime.port.reset(target)).toMatchObject({ status: 'refused' });
-  const write = runtime.recover({ version: recovery.version, scope: 'invalid' });
+  const write = runtime.recover({ version: recovery.version, reset: [target] });
   await flush();
-  expect(messages[1].event).toEqual({ type: 'RECOVER_SETTINGS', request: { version: recovery.version, scope: 'invalid' } });
+  expect(messages[1].event).toEqual({ type: 'RECOVER_SETTINGS', request: { version: recovery.version, reset: [target] } });
   const settled = vi.fn();
   void write.then(settled);
   const repaired = { version: { ...recovery.version, revision: 1 }, problems: [] };

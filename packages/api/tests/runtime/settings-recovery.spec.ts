@@ -67,7 +67,7 @@ it('boots host recovery before loading external modules, repairs, and starts nor
   const outgoing: Message[] = [];
   const stop = rootEvents.onOutgoing(message => { outgoing.push(message); });
   rootEvents.emitConnected();
-  const event = { type: 'RECOVER_SETTINGS' as const, request: { version: recovery.version, scope: 'invalid' as const } };
+  const event = { type: 'RECOVER_SETTINGS' as const, request: { version: recovery.version, reset: [{ kind: 'app' as const }, { kind: 'feature' as const, featureRef: 'memo/notes' as const }] } };
   const credential = backend.appSettingsAccess.issueHost('recovery-window');
   bindSettingsRequest(event, () => backend.appSettingsAccess.resolve('recovery-window', credential));
   rootEvents.emitIncoming({ to: 'host/settings', sender: 'host/settings', from: 'host', client: 'recovery-window', call: 'repair', event });

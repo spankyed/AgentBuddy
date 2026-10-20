@@ -353,7 +353,7 @@ export interface SettingsRecovery {
 // @public
 export interface SettingsRecoveryRequest {
     // (undocumented)
-    scope: 'invalid' | 'all';
+    reset: 'all' | readonly SettingsTarget[];
     // (undocumented)
     version: SettingsRecoveryVersion;
 }

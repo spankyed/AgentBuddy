@@ -81,10 +81,10 @@ export interface SettingsRecovery {
   problems: readonly SettingsProblem[];
 }
 
-/** `invalid` resets only the values that fail; `all` resets every preference. */
+/** Reset only the explicitly selected affected owners, or all preferences. */
 export interface SettingsRecoveryRequest {
   version: SettingsRecoveryVersion;
-  scope: 'invalid' | 'all';
+  reset: 'all' | readonly SettingsTarget[];
 }
 
 /** Complete window data, with independent declaration and value revisions. */
