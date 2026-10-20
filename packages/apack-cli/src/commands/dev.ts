@@ -1,3 +1,4 @@
+import { readSettingsOverrides } from '@apackdev/host/database';
 import { recordCliInstall } from '../app/installed-packs';
 import * as path from 'node:path';
 import { spawn, type ChildProcess } from 'node:child_process';
@@ -72,6 +73,7 @@ export function installToApp(root: string, place: AppPlace = { env: 'development
   const { packsDir, userDataDir, installedPacksFile } = resolveAppEnvironment(place);
   const { version: hostVersion, packFormat } = readHostCompatibility(userDataDir);
   return installPackFromLocal(root, packsDir, { hostVersion, packFormat, installedPacksFile,
+    settingsOverrides: () => readSettingsOverrides(userDataDir),
     accept: candidate => { recordCliInstall(installedPacksFile, candidate.id); },
   });
 }

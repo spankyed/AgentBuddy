@@ -4,7 +4,7 @@ import { bindHost, type HostRuntime } from '@apackdev/sdk/runtime';
 import { _getLmdbPath, _getVolatileLmdbPath } from '@apackdev/sdk/utils';
 import type { EarsEngine } from '@apackdev/ears';
 import type { LmdbStore, WriteFailure } from '@apackdev/ears/lmdb';
-import { assertNoDatabaseWriter, openDatabaseStore } from '@apackdev/host/database';
+import { assertNoDatabaseWriter, openDatabaseStore, storedSettings } from '@apackdev/host/database';
 import { createPackRegistry, installShippedPacks, prepareHostDataDirs, type PackRegistry } from '@apackdev/host/packs';
 import { resolveAppEnvironment } from '@apackdev/sdk/env';
 import { PACK_SNAPSHOT_FORMAT } from '@apackdev/sdk/build';
@@ -168,7 +168,7 @@ export async function setupBackend(): Promise<void> {
     // nothing looks the same either way: on a fresh data dir both give an app with no plugins
     console.warn('[packs] SHIPPED_PACKS_DIR is not set, so no pack the app ships is installed');
   } else {
-    const results = await installShippedPacks(shippedDir, appContext.packsDir, { installedPacksFile: appContext.installedPacksFile, hostVersion: APP_VERSION, packFormat: PACK_SNAPSHOT_FORMAT });
+    const results = await installShippedPacks(shippedDir, appContext.packsDir, { installedPacksFile: appContext.installedPacksFile, hostVersion: APP_VERSION, packFormat: PACK_SNAPSHOT_FORMAT, settingsOverrides: () => storedSettings(store) });
     if (results.length === 0) console.warn(`[packs] ${shippedDir} holds no pack to install`);
     for (const result of results) {
       if (result.outcome === 'failed') console.error(`[packs] Could not install ${result.id}, which this app ships: ${result.error}`);

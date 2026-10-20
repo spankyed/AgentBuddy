@@ -1,3 +1,4 @@
+import { _settingsAdmin } from '@apackdev/sdk/services';
 import { _packEntityTypes, _packRelationTypes } from '@apackdev/sdk/framework';
 import type { Contract } from './contract.ts';
 import * as path from 'path';
@@ -295,6 +296,7 @@ export function createPacksSystem(registry: PackRegistry) {
           sha256: ev.sha256,
           hostVersion: getAppVersion(),
           packFormat: PACK_SNAPSHOT_FORMAT,
+          settingsOverrides: () => _settingsAdmin().getOverrides(),
           beforePlace: manifest => {
             if (manifest.id === HOST_PACK_ID) throw new Error('The host is not an installable pack');
             if (ev.type === 'REPLACE_PACK') {
@@ -389,6 +391,7 @@ export function createPacksSystem(registry: PackRegistry) {
           return restoreShippedPack(packId, source.dir, packsDir, {
             installedPacksFile, expectedSourceRevision: sourceRevision,
             hostVersion: getAppVersion(), packFormat: PACK_SNAPSHOT_FORMAT,
+          settingsOverrides: () => _settingsAdmin().getOverrides(),
             accept: candidate => { startAccepted = acceptInstalledPack(registry, candidate.id, system.get(HOST.bus)); },
           });
         }).then(result => {
@@ -474,6 +477,7 @@ export function createPacksSystem(registry: PackRegistry) {
           return updateShippedPack(packId, source.dir, packsDir, {
             installedPacksFile, expectedSourceRevision: sourceRevision,
             hostVersion: getAppVersion(), packFormat: PACK_SNAPSHOT_FORMAT,
+          settingsOverrides: () => _settingsAdmin().getOverrides(),
             accept: candidate => {
               enabled = packRecord(packId).enabled;
               if (enabled) startAccepted = acceptInstalledPack(registry, candidate.id, system.get(HOST.bus));
@@ -521,6 +525,7 @@ export function createPacksSystem(registry: PackRegistry) {
         installPackFromGitHub(target, undefined, {
           hostVersion: getAppVersion(),
           packFormat: PACK_SNAPSHOT_FORMAT,
+          settingsOverrides: () => _settingsAdmin().getOverrides(),
           beforePlace: manifest => {
             if (manifest.id !== packId) throw new Error(`${target} holds the pack "${manifest.id}", not "${packId}"`);
           },

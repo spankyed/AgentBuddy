@@ -60,3 +60,5 @@ export {
 export type { PackIntegrity, PackBuild, LoadedPackEntry } from './layout.ts';
 export { cacheDependency, readCachedDependency, readDependencyBuild } from './dependency-cache.ts';
 export type { DependencyOrigin, DependencyResolution, CachedDependencyBuild } from './dependency-cache.ts';
+
+export { assertPackSettings } from './settings-admission.ts';

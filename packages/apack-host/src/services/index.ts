@@ -1,3 +1,4 @@
+import { compileSettingsCatalog } from '../features/settings/validation.ts';
 // The host's implementations of the services packs reach through `services` (contracts in @apackdev/sdk/services),
 // and the one place the app's HostRuntime is assembled.
 import { secretRedaction } from '../secrets/redaction.ts';
@@ -35,6 +36,7 @@ export function createHostRuntime({ transport, appVersion, store, engine, packs 
     catalog: packs.settingsCatalog,
     onCatalogChanged: packs.onCatalogChanged,
   }));
+  packs.catalog.setSettingsAdmission(candidate => compileSettingsCatalog(candidate).validate(settings.getOverrides()));
   return {
     transport,
     ears: engine.query,

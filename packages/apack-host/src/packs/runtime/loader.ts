@@ -72,6 +72,7 @@ export function loadSingleExternalPack(
   const { snapshot, integrity, revision: buildRevision } = build;
   const { manifest, declarationRevision } = snapshot;
   try {
+    registry.catalog.assertPackSettings(manifest);
     registry.catalog.assertPackDestinations({ dir, snapshot });
     assertPackServiceRequirements(registry.catalog.getSnapshot(), { origin: 'installed', declaration: manifest });
   }

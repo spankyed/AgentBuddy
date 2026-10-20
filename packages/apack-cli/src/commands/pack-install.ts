@@ -1,3 +1,4 @@
+import { readSettingsOverrides } from '@apackdev/host/database';
 import { HOST_PACK_ID } from '@apackdev/sdk/ids';
 import { cliDirs, parseHostFlags, selectedHostPackages } from '../app/pack-host';
 import type { AppEnvironment } from '@apackdev/sdk/env';
@@ -77,7 +78,7 @@ export async function installPackSource(
     const { version: hostVersion, packFormat } = readHostCompatibility(userDataDir);
     const sourceKind = detectSourceKind(source);
     const resolvedInput = sourceKind === 'registry' ? await resolveFromRemoteRegistry(source) : source;
-    const options = { hostVersion, packFormat, installedPacksFile,
+    const options = { hostVersion, packFormat, installedPacksFile, settingsOverrides: () => readSettingsOverrides(userDataDir),
       beforePlace: (manifest: { id: string }) => {
         if (manifest.id === HOST_PACK_ID) throw new Error('The native host is not an installable pack');
         if (action.kind === 'replace') {

@@ -1,3 +1,4 @@
+import { assertPackSettings } from './settings-admission.ts';
 import * as fs from 'fs';
 import { INSTALL_RECORD_RECOVERY } from './staging.ts';
 import { readAppPackSources } from './app-sources.ts';
@@ -41,6 +42,8 @@ export interface InstallResult {
 }
 
 export interface InstallOptions {
+  /** Supplied by the profile owner; evaluated against the verified candidate before placement. */
+  settingsOverrides?: () => unknown;
   /** When supplied, accept user ownership in this target profile before publishing the candidate. */
   installedPacksFile?: string;
   /**
@@ -353,6 +356,7 @@ async function installFromDirectory(dir: string, packsDir: string, options: Inst
       log.warn(`Pack "${integrity.id}" may not load: ${buildProblem.message}; which one apack reads isn't recorded in its data dir. The app checks the build before loading it and reports refusals in its Packs view`);
     }
 
+    if (options.settingsOverrides) assertPackSettings(manifest, options.settingsOverrides());
     options.beforePlace?.(structuredClone(manifest));
     const destDir = path.join(packsDir, manifest.id);
     const result: InstallResult = {

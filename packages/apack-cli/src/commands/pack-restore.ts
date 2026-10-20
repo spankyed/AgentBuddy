@@ -1,3 +1,4 @@
+import { readSettingsOverrides } from '@apackdev/host/database';
 import { PACK_ID_PATTERN, HOST_PACK_ID } from '@apackdev/sdk/ids';
 import { readHostCompatibility, readInstalledPacks, restoreShippedPack, readAppPackSources } from '@apackdev/host/packs';
 import { cliDirs, selectedHostPackages, parseHostFlags } from '../app/pack-host';
@@ -23,6 +24,7 @@ export async function restore(args: string[]): Promise<void> {
     const { version: hostVersion, packFormat } = readHostCompatibility(context.userDataDir);
     return restoreShippedPack(id, sources[0]!.dir, context.packsDir, {
       installedPacksFile: context.installedPacksFile, hostVersion, packFormat,
+      settingsOverrides: () => readSettingsOverrides(context.userDataDir),
       expectedSourceRevision: sources[0]!.sourceRevision,
     });
   });

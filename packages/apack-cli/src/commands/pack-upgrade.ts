@@ -1,3 +1,4 @@
+import { readSettingsOverrides } from '@apackdev/host/database';
 import semver from 'semver';
 import type { AppEnvironment } from '@apackdev/sdk/env';
 import { PACK_ID_PATTERN } from '@apackdev/sdk/ids';
@@ -33,6 +34,7 @@ export async function upgradePack(context: AppEnvironment, id: string, options: 
     }
     const result = await (options.install ?? installPackFromGitHub)(source, context.packsDir, {
       hostVersion: host.version, packFormat: host.packFormat,
+      settingsOverrides: () => readSettingsOverrides(context.userDataDir),
       installedPacksFile: context.installedPacksFile,
       accept: candidate => { recordCliInstall(context.installedPacksFile, candidate.id, source); },
       beforePlace: manifest => {

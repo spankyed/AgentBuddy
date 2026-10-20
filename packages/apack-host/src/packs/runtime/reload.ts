@@ -1,3 +1,4 @@
+import { _settingsAdmin } from '@apackdev/sdk/services';
 import * as fs from 'fs';
 import * as path from 'path';
 import { createLogger } from '@apackdev/sdk/logger';
@@ -95,6 +96,7 @@ export async function reloadPackById(
     for (const result of await installShippedPacks(shippedDir, packsDir, {
       installedPacksFile: resolveAppEnvironment().installedPacksFile,
       only: packId,
+      settingsOverrides: () => _settingsAdmin().getOverrides(),
       hostVersion: getAppVersion(),
       packFormat: PACK_SNAPSHOT_FORMAT,
       accept: candidate => {

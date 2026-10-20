@@ -4,3 +4,5 @@ export { readInstalledSchema, type DatabaseSchema, type InstalledSchema, type Sc
 export { findAppDataPaths } from './layout.ts';
 export { findRunningApp, publishRunningApp, appLockFile } from './running.ts';
 export { assertNoDatabaseWriter, findDatabaseWriter, holdDatabaseWriteLock, type DatabaseWriteLock } from './write-lock.ts';
+
+export { storedSettings, readSettingsOverrides } from './settings.ts';

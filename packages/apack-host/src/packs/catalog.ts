@@ -1,3 +1,4 @@
+import { settingsForDeclarations } from './catalog-settings.ts';
 import { dslCatalogEntries } from './catalog-dsl.ts';
 import { eventCatalogEntries } from './catalog-events.ts';
 import { _parseEventContracts, type PackEventContracts } from '@apackdev/sdk/framework';
@@ -17,7 +18,7 @@ import { hasOwn } from '@apackdev/sdk/utils/pure';
 import { isDeepStrictEqual } from 'node:util';
 import { parseSnapshot, ManifestSchema, _declarationRevision, _helpDataProblem, type PackSnapshot, type PackManifest } from '@apackdev/sdk/build';
 import { _compileSettingsDefinition, _settingsJsonProblems, _nativePackDeclarationProblem, type SettingsDefinition, type SettingsCatalog, type HelpDocument, type HelpCatalog, type NativePackDeclaration, type PluginDeclaration } from '@apackdev/sdk/framework';
-import { resolveName, PACK_ID_PATTERN, FEATURE_ID_PATTERN, type FeatureRef } from '@apackdev/sdk/ids';
+import type { FeatureRef } from '@apackdev/sdk/ids';
 import { createLogger } from '@apackdev/sdk/logger';
 
 type CatalogData<T> = T extends object ? { readonly [K in keyof T]: CatalogData<T[K]> } : T;
@@ -102,6 +103,7 @@ export function createContributionCatalog(appSettings: SettingsDefinition) {
   let byId = new Map<string, PackCatalogEntry>();
   let refusedDestinations: PackCatalogEntry[] = [];
   const listeners = new Set<() => void>();
+  let checkSettings: ((catalog: SettingsCatalog) => void) | undefined;
   const commandOrder = new Map<string, number>();
   const emptySettings: CatalogData<Record<string, SettingsDefinition>> = Object.freeze({});
   let settings: SettingsCatalog = immutable({ revision: 0, app, packs: {}, features: {}, dependencies: {} });
@@ -121,32 +123,11 @@ export function createContributionCatalog(appSettings: SettingsDefinition) {
       id: manifest.id, dependencies: manifest.dependencies,
       settings: manifest.extensions?.settings, features: manifest.features,
     }))];
-    const ids = new Set<string>();
-    const groups: Record<string, Record<string, SettingsDefinition>> = {};
-    const features: Record<string, SettingsDefinition> = {};
-    const dependencies: Record<string, string[]> = {};
-    for (const pack of definitions) {
-      if (!PACK_ID_PATTERN.test(pack.id) || ids.has(pack.id)) throw new Error(`Duplicate or invalid declaration owner "${pack.id}"`);
-      ids.add(pack.id);
-      groups[pack.id] = {};
-      dependencies[pack.id] = Object.keys(pack.dependencies ?? {});
-      for (const [id, definition] of Object.entries(pack.settings ?? {})) {
-        if (!FEATURE_ID_PATTERN.test(id)) throw new Error(`Invalid settings group "${pack.id}/${id}"`);
-        _compileSettingsDefinition(definition);
-        groups[pack.id][id] = definition;
-      }
-      for (const [id, feature] of Object.entries(pack.features ?? {})) {
-        if (!FEATURE_ID_PATTERN.test(id)) throw new Error(`Invalid feature "${pack.id}/${id}"`);
-        if (feature.settings) {
-          _compileSettingsDefinition(feature.settings);
-          features[resolveName(id, pack.id)] = feature.settings;
-        }
-      }
-    }
     const next = immutable({ revision: current.revision + 1, appSettings: app, packs, problems: catalogProblems, native, sourcePacks, appPackSources, appPackSourceProblems });
     assertEntityDestinationClaims(next);
     // Diagnostics and source offers leave accepted settings definitions and their identity intact.
-    const projection = declarationsChanged ? immutable({ revision: next.revision, app, packs: groups, features, dependencies }) : settings;
+    const projection = declarationsChanged ? immutable(settingsForDeclarations(app, definitions, next.revision)) : settings;
+    if (declarationsChanged) checkSettings?.(projection);
     const helpOwners = [
       ...packs.map(({ snapshot }) => ({ manifest: snapshot.manifest, help: snapshot.help })),
       ...sourcePacks.map(source => ({ manifest: source.manifest, help: source.help })),
@@ -180,6 +161,16 @@ export function createContributionCatalog(appSettings: SettingsDefinition) {
   }
 
   return {
+    setSettingsAdmission(check: (catalog: SettingsCatalog) => void): void { checkSettings = check; },
+    assertPackSettings(manifest: Readonly<PackManifest>): void {
+      const declarations = [
+        ...current.native.filter(pack => pack.id !== manifest.id),
+        ...[...current.packs.map(pack => pack.snapshot.manifest), ...current.sourcePacks.map(pack => pack.manifest)]
+          .filter(pack => pack.id !== manifest.id).map(pack => ({ ...pack, settings: pack.extensions?.settings })),
+        { ...manifest, settings: manifest.extensions?.settings },
+      ];
+      checkSettings?.(settingsForDeclarations(app, declarations, settings.revision));
+    },
     getSnapshot: (): PackCatalogSnapshot => current,
     plugins: () => pluginCatalogEntries(current),
     references: () => referenceCatalogEntries(current),
