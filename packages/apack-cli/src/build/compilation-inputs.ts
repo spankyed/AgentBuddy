@@ -133,13 +133,14 @@ export function captureCompilationInputs(packRoot: string, view?: PackCompilerIn
     environment: nativeEnvironment, admitNative: startup?.nativeModule,
   });
   const workspace = process.env[BUILD_INPUTS_DIRECTORY_ENV];
-  const assertCurrent = () => {
+  /** `replayStartup: false` only where the startup threads have just asserted their own observations. */
+  const check = (replayStartup: boolean) => {
     assertOpen();
     withoutCompilerFileReads(() => {
       try {
         tree?.assertCurrent();
         modules.assertCurrent();
-        for (const observations of startupObservations) assertNativeCompilerObservations(observations);
+        if (replayStartup) for (const observations of startupObservations) assertNativeCompilerObservations(observations);
         for (const inputs of retained) assertNativeCompilerObservations({ root: observationRoot, entries: inputs.observations });
         if (current().hash !== hash) throw new Error('Implementation, package or execution options differ');
       } catch (cause) {
@@ -147,6 +148,7 @@ export function captureCompilationInputs(packRoot: string, view?: PackCompilerIn
       }
     });
   };
+  const assertCurrent = () => check(true);
   return {
     isInput(file) {
       if (ownsToolPath(file)) return false;
@@ -225,8 +227,9 @@ export function captureCompilationInputs(packRoot: string, view?: PackCompilerIn
     },
     async finish(options) {
       assertOpen();
+      // Each startup thread asserts its own view as it returns these, so they are not replayed from disk here.
       if (startup) startupObservations = await startup.finish();
-      assertCurrent();
+      check(false);
       // The immutable installation owns its namespace, including paths absent from the copy.
       // Projecting those absences back onto the original machine would misidentify source changes.
       const observed = modules.observations(ownsToolPath);
