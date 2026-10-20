@@ -37,7 +37,7 @@ import { installedEngine } from '@apackdev/ears';
 import { HOST_ENTITY_TYPES } from '../app-state/index.ts';
 import { readInstalledPackBuilds, packContentOrder } from './discovery.ts';
 import type { PackContentTarget } from './runtime/apply.ts';
-import { createOwnedStore, createOwnedStepStore, createDesignationStore } from './extensions.ts';
+import { createOwnedStepStore, createDesignationStore } from './extensions.ts';
 import { createContentWriterStore, createApplierStore, createShutdownHooks } from './backend-extensions.ts';
 import { checkFeatureIds } from './feature-ids.ts';
 import { readAppPackSources } from './app-sources.ts';
@@ -314,14 +314,14 @@ function admitContributions(registration: PackRegistration, { steps: declaration
 }
 type AdmittedPackContributions = ReturnType<typeof admitContributions>;
 
-/** Candidate indexes contain no executable binding or engine writes. */
+/** Build candidate lookups without binding services or writing to the engine. */
 function buildContributionTables(packs: Iterable<AdmittedPackContributions>) {
   const commandOwners = new Map<string, string>();
   const tables = {
     designations: createDesignationStore(),
     steps: createOwnedStepStore<StepBackendBinding>(),
-    artifacts: createOwnedStore<ArtifactDefinition>(),
-    blocks: createOwnedStore<BlockDefinition>(),
+    artifacts: new Map<string, ArtifactDefinition>(),
+    blocks: new Map<string, BlockDefinition>(),
     contentWriters: createContentWriterStore(),
     appliers: createApplierStore(),
     repositories: new Map<string, unknown>(),
@@ -329,8 +329,8 @@ function buildContributionTables(packs: Iterable<AdmittedPackContributions>) {
   for (const pack of packs) {
     tables.designations.register(pack.designations);
     for (const [type, value] of pack.steps) tables.steps.set(type, value, pack.id);
-    for (const [type, value] of pack.artifacts) tables.artifacts.set(type, value, pack.id);
-    for (const [type, value] of pack.blocks) tables.blocks.set(type, value, pack.id);
+    for (const [type, value] of pack.artifacts) tables.artifacts.set(type, value);
+    for (const [type, value] of pack.blocks) tables.blocks.set(type, value);
     for (const [name, value] of pack.contentWriters) tables.contentWriters.register(name, value, pack.id);
     tables.appliers.register(pack.id, pack.appliers);
     for (const { name } of pack.commands) {
@@ -824,9 +824,9 @@ export function createPackRegistry({ installedPacksDir, appPackSourcesDir, setti
     step: key => tables.steps.get(key)?.binding,
     steps: () => tables.steps.all().map(row => row.binding),
     artifact: key => tables.artifacts.get(key),
-    artifacts: () => tables.artifacts.all(),
+    artifacts: () => [...tables.artifacts.values()],
     block: key => tables.blocks.get(key),
-    blocks: () => tables.blocks.all(),
+    blocks: () => [...tables.blocks.values()],
     contentWriters: key => tables.contentWriters.get(key),
     appliers: key => tables.appliers.get(key),
     settingsCatalog: catalog.settings,

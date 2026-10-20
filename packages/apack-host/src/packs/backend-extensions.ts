@@ -13,11 +13,6 @@ export function createContentWriterStore() {
       }
       byEntity.set(entity, { hooks, packId });
     },
-    unregisterAll(packId: string): void {
-      for (const [entity, entry] of byEntity) {
-        if (entry.packId === packId) byEntity.delete(entity);
-      }
-    },
     get: (entity: string): ContentWriter | undefined => byEntity.get(entity)?.hooks,
   };
 }
@@ -33,9 +28,6 @@ export function createApplierStore() {
         keys.add(key);
       }
       if (appliers.length > 0) byPack.set(packId, appliers);
-    },
-    unregister(packId: string): void {
-      byPack.delete(packId);
     },
     get: (packId: string): readonly ContentApplier[] => byPack.get(packId) ?? [],
   };

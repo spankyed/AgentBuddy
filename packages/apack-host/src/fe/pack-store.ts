@@ -4,7 +4,7 @@ import type { DeclarationData, PluginDeclaration } from '@apackdev/sdk/framework
 import type { ReferenceTypeConfig, ReferenceBindings, ReferenceBinding } from '@apackdev/sdk/fe/references';
 import type { Plugin, PackFERegistration, TiptapPlugin, TiptapPluginBinding, SettingsPort, StepFrontendBinding, ArtifactFrontendBinding, BlockFrontendBinding } from '@apackdev/sdk/fe';
 import type { FePackRegistryView } from '@apackdev/sdk/runtime';
-import { createDesignationStore, createOwnedStore, createOwnedStepStore } from '../packs/extensions.ts';
+import { createDesignationStore, createOwnedStepStore } from '../packs/extensions.ts';
 import { resolveName, type FeatureRef } from '@apackdev/sdk/ids';
 import { createFrontendSettingsBinding } from './settings-binding.ts';
 import { checkFeatureIds } from '../packs/feature-ids.ts';
@@ -170,9 +170,9 @@ function buildTables(packs: Iterable<FrontendContributions>) {
   const pluginBindings = new Map<string, PluginFrontendBinding>();
   const designations = createDesignationStore();
   const steps = createOwnedStepStore<StepFrontendBinding>();
-  const artifacts = createOwnedStore<ArtifactFrontendBinding>();
-  const blocks = createOwnedStore<BlockFrontendBinding>();
-  const appExtensions = createOwnedStore<SettingsForm>();
+  const artifacts = new Map<string, ArtifactFrontendBinding>();
+  const blocks = new Map<string, BlockFrontendBinding>();
+  const appExtensions = new Map<string, SettingsForm>();
   const forms = new Map<string, SettingsForm>();
   const tiptapPlugins: TiptapPluginBinding[] = [];
   const editorOwners = new Map<string, string>();
@@ -200,9 +200,9 @@ function buildTables(packs: Iterable<FrontendContributions>) {
     for (const binding of pack.pluginBindings) pluginBindings.set(binding.binding.id, binding);
     for (const [key, value] of pack.forms) forms.set(key, value);
     for (const [key, value] of pack.steps) { steps.set(key, value, pack.id); }
-    for (const [key, value] of pack.artifacts) artifacts.set(key, value, pack.id);
-    for (const [key, value] of pack.blocks) blocks.set(key, value, pack.id);
-    for (const [key, value] of pack.appExtensions) appExtensions.set(key, value, pack.id);
+    for (const [key, value] of pack.artifacts) artifacts.set(key, value);
+    for (const [key, value] of pack.blocks) blocks.set(key, value);
+    for (const [key, value] of pack.appExtensions) appExtensions.set(key, value);
     for (const [id, plugin] of pack.tiptapPlugins) {
       const owner = `${pack.id}/${id}`;
       for (const name of Object.keys(plugin.extensions ?? {})) {
@@ -330,9 +330,9 @@ export function createFePackRegistry(): FePackRegistry {
     designation: key => tables.designations.get(key),
     stepBindings: () => new Map(tables.steps.entries()),
     artifactBindings: () => new Map(tables.artifacts.entries()),
-    artifact: key => tables.artifacts.get(key)?.binding, artifacts: () => tables.artifacts.all().map(entry => entry.binding),
+    artifact: key => tables.artifacts.get(key)?.binding, artifacts: () => [...tables.artifacts.values()].map(entry => entry.binding),
     blockBindings: () => new Map(tables.blocks.entries()),
-    block: key => tables.blocks.get(key)?.binding, blocks: () => tables.blocks.all().map(entry => entry.binding),
+    block: key => tables.blocks.get(key)?.binding, blocks: () => [...tables.blocks.values()].map(entry => entry.binding),
     pluginBindings: () => new Map(tables.pluginBindings),
     frontendIdentity: packId => accepted.get(packId)?.identity,
     plugins: () => [...tables.plugins],

@@ -171,7 +171,7 @@ those errors as candidate refusal or restore a disposed runtime. Ordinary unregi
 state and disposes its binding even when binding cleanup throws. Reentrant registry changes during
 admission/retirement are refused. Command order is retained across replacements and reloads.
 
-Step facets still merge, and artifact/block definitions still follow registration precedence. Runtime
+Step wires have one active owner; artifact/block definitions follow registration precedence. Runtime
 initialization, migrations and content effects are separate from this registry transaction. The focused
 checks are `registration.spec.ts`, `replacement.spec.ts`, `registered-lookups.spec.ts` and runtime reload.
 
@@ -240,8 +240,8 @@ register. Only successful registration reports `PACK_FRONTEND_LOADED`; styles-on
 and do not announce frontend readiness.
 
 External modules contribute through the host's `registerPackFE()`; they do not access the renderer's
-registry directly. The SDK exposes its read view. The registry undo log releases contributions and
-settings bindings, and unloading removes styles even if a contribution's cleanup throws.
+registry directly. The SDK exposes its read view. Unregistering rebuilds lookups from the remaining
+accepted owners and retires settings bindings; unloading removes styles even if resource cleanup throws.
 
 ## Tests
 
