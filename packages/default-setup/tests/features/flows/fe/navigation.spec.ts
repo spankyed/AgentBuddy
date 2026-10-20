@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { createActor } from 'xstate';
-import { answerTo } from '@apackdev/sdk/testing';
+import { answerTo, startFeTestRuntime } from '@apackdev/sdk/testing';
 import type { NodeEntity } from '#generated/types.ts';
 import { sentCall } from '../../../_support/calls.ts';
 
@@ -77,8 +77,10 @@ it('keeps a requested blueprint target when startup metadata arrives', () => {
   const actor = view();
   actor.send({ type: 'NODE.REVEAL', flowId: 'Flow-first', nodeId: 'Node-first' });
   const call = sentCall(sendToSystem, 'FLOW_SELECT');
+  // Startup metadata lists every flow, the requested one among them
   actor.send({ type: 'FLOWS_CONNECTED', data: { selectedFlowId: 'Flow-root', graph: graph('Node-root'),
-    flows: [], prompts: [], models: [], actions: [] } });
+    flows: [{ id: 'Flow-first', entityType: 'Flow', label: 'Flow-first' }, { id: 'Flow-root', entityType: 'Flow', label: 'Flow-root' }],
+    prompts: [], models: [], actions: [] } } as never);
   actor.send(answerTo(call, selected('Flow-first', 'Node-first')));
   expect(actor.getSnapshot().context).toMatchObject({ selectedFlowId: 'Flow-first', editingNodeId: 'Node-first' });
 });
@@ -144,4 +146,60 @@ it('shows the root flow the backend publishes when the shown flow is gone', () =
   expect(actor.getSnapshot().context.graph.nodes.map(node => node.id)).toEqual(['Node-root']);
   expect(actor.getSnapshot().context.editingNodeId).toBeUndefined();
   expect(sendToSystem.mock.calls.filter(([, event]) => (event as { type: string }).type === 'FLOW_SELECT')).toHaveLength(1);
+});
+
+/** The shown flow, answered, then published again: the refresh it asked for is the second FLOW_SELECT */
+function refreshing() {
+  const actor = view();
+  actor.send({ type: 'OPEN_ENTITY', id: 'Flow-first' });
+  actor.send(answerTo(sentCall(sendToSystem, 'FLOW_SELECT'), selected('Flow-first', 'Node-first')));
+  actor.send(connected(['Flow-first', 'Flow-root'], 'Flow-root', 'Node-root'));
+  return { actor, refresh: sentCall(sendToSystem, 'FLOW_SELECT', 1) };
+}
+const nodesOf = (actor: ReturnType<typeof view>) => actor.getSnapshot().context.graph.nodes.map(node => node.id);
+const withAdded = { type: 'FLOW_SELECTED' as const, flowId: 'Flow-first' as const,
+  data: { nodes: [...graph('Node-first').nodes, ...graph('Node-added').nodes], edges: [] } };
+
+it.each(['double-click a node', 'reselect the shown flow', 'leave the plugin'] as const)(
+  'applies a refresh in flight after the user does %s', where => {
+    const { actor, refresh } = refreshing();
+    if (where === 'double-click a node') actor.send({ type: 'NODE.DOUBLE_CLICK', nodeId: 'Node-first' } as never);
+    else if (where === 'reselect the shown flow') actor.send({ type: 'FLOW.SELECT', flowId: 'Flow-first' });
+    else actor.send({ type: 'PLUGIN_DEACTIVATED' });
+    actor.send(answerTo(refresh, withAdded));
+    expect(nodesOf(actor)).toEqual(['Node-first', 'Node-added']);
+  });
+
+it('gives up opening a flow the published data no longer has, and shows the root flow', () => {
+  const actor = view();
+  actor.send({ type: 'OPEN_ENTITY', id: 'Flow-first' });
+  actor.send(answerTo(sentCall(sendToSystem, 'FLOW_SELECT'), selected('Flow-first', 'Node-first')));
+  actor.send({ type: 'FLOW.SELECT', flowId: 'Flow-second' });
+  const opening = sentCall(sendToSystem, 'FLOW_SELECT', 1);
+  // A reset removed both flows while the second was being opened
+  actor.send(connected(['Flow-root'], 'Flow-root', 'Node-root'));
+  expect(actor.getSnapshot().context.selectedFlowId).toBe('Flow-root');
+  expect(nodesOf(actor)).toEqual(['Node-root']);
+  // The backend answers for the deleted flow with an empty graph, which is not shown
+  actor.send(answerTo(opening, { type: 'FLOW_SELECTED', flowId: 'Flow-second', data: { nodes: [], edges: [] } }));
+  expect(actor.getSnapshot().context.selectedFlowId).toBe('Flow-root');
+  expect(nodesOf(actor)).toEqual(['Node-root']);
+});
+
+it.each([false, true])('keeps a node being added across a refresh (already in the answer: %s)', inAnswer => {
+  // Creating a node reads the step palette, which the window's frontend host holds
+  const stopFe = startFeTestRuntime({ catalog: { status: () => 'ready', problem: () => undefined, references: () => [],
+    frontend: () => [], artifacts: () => [], blocks: () => [], events: () => [], dsl: () => [], steps: () => [], subscribe: () => () => {} } });
+  try {
+    const { actor, refresh } = refreshing();
+    actor.send({ type: 'NODE.CREATE', nodeType: 'transform' });
+    const tempId = sendToSystem.mock.calls.map(([, event]) => event as { type: string; tempId?: string })
+      .find(event => event.type === 'CREATE_NODE')!.tempId!;
+    const node = { ...graph('Node-new').nodes[0], nodeType: 'transform' };
+    actor.send(answerTo(refresh, { type: 'FLOW_SELECTED', flowId: 'Flow-first',
+      data: { nodes: [...graph('Node-first').nodes, ...(inAnswer ? [node] : [])], edges: [] } } as never));
+    expect(nodesOf(actor)).toContain(inAnswer ? 'Node-new' : tempId);
+    actor.send({ type: 'NODE_CREATED', tempId, nodeId: 'Node-new', node } as never);
+    expect(nodesOf(actor)).toEqual(['Node-first', 'Node-new']);
+  } finally { stopFe(); }
 });
