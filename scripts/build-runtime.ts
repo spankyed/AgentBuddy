@@ -77,7 +77,11 @@ const result = await schedule({
     const [command, ...args] = leg.command.split(' ');
     // Not `leg.seconds`: a deadline from a measurement is a deadline from this machine. The class is
     // `BUILD_TIMEOUT`, declared beside the legs so the chain's copy of this step reads the same one.
-    const outcome = await boundedSpawn(command!, args, TIMEOUT_MS[BUILD_TIMEOUT].ms);
+    const env = leg.heapMb === undefined ? process.env : {
+      ...process.env,
+      NODE_OPTIONS: [process.env.NODE_OPTIONS, `--max-old-space-size=${leg.heapMb}`].filter(Boolean).join(' '),
+    };
+    const outcome = await boundedSpawn(command!, args, TIMEOUT_MS[BUILD_TIMEOUT].ms, { env });
     done.set(leg.name, outcome);
     // One line as each finishes, so four concurrent bundlers are not one silence. Completion order, since
     // that is what progress is; the failures below are in declared order, which is what reading wants.

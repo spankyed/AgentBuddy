@@ -20,7 +20,7 @@ test('opens every plugin, and every plugin\'s settings, without a renderer error
   await app.navigate(settings);
   await appPage.evaluate((ref) => (window as any).applicationState.system.get(ref).send({ type: 'TAB.SELECT', tab: 'features' }), settings);
   // Read the declared preferences rendered by Settings, rather than removed plugin metadata.
-  const choices = appPage.locator('button[data-active]');
+  const choices = appPage.getByTestId('feature-settings-list').locator('button[data-active]');
   await expect.poll(() => choices.count()).toBeGreaterThan(5);
   const featureIds = await choices.locator('span').allTextContents();
   for (const featureId of featureIds) {

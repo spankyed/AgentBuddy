@@ -37,9 +37,6 @@ jobs:
           GITHUB_TOKEN: ${{ github.token }}
         run: npm ci
       - name: Full strict acceptance
-        # Cold renderer builds exceed V8's ~2 GiB default on the hosted Apple Silicon runner.
-        env:
-          NODE_OPTIONS: --max-old-space-size=4096
         run: npm run chain -- --strict --all --cores 2 --no-classify | tee "$RUNNER_TEMP/strict-chain.log"
       - name: Retain validation evidence
         if: always()

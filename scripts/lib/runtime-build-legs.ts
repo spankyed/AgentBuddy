@@ -23,6 +23,12 @@ export interface RuntimeBuildLeg {
    * Measured 2026-10-06 with `npm run measure --runs 3`, each workspace run alone.
    */
   readonly seconds: number;
+  /**
+   * A V8 heap ceiling for this leg's process tree, appended to `NODE_OPTIONS`. A ceiling, not an allocation,
+   * so it costs nothing where the default suffices; set only where a cold build on a hosted runner exceeded
+   * the ~2 GiB default.
+   */
+  readonly heapMb?: number;
 }
 
 /**
@@ -61,7 +67,7 @@ export const BUILD_TIMEOUT: TimeoutClass = 'suite';
  * rewrites the `dist` five steps read.
  */
 export const RUNTIME_BUILD_LEGS: readonly RuntimeBuildLeg[] = [
-  { name: '@app/renderer', command: 'npm run build-only -w @app/renderer', seconds: 16 },
+  { name: '@app/renderer', command: 'npm run build-only -w @app/renderer', seconds: 16, heapMb: 4096 },
   { name: '@app/api', command: 'npm run build -w @app/api', seconds: 7 },
   { name: '@app/main', command: 'npm run build -w @app/main', seconds: 1 },
   { name: '@app/preload', command: 'npm run build -w @app/preload', seconds: 1 },

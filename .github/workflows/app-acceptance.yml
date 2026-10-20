@@ -57,17 +57,14 @@ jobs:
           if [[ "$APACK_ACCEPTANCE_SUITE" == 'build' ]]; then
             # Diagnostic only: observe build phase costs without running the application suites.
             mkdir -p .apack/tests/results
-            NODE_OPTIONS=--max-old-space-size=4096 node_modules/.bin/tsx scripts/bounded.ts scenario npm run build:default-setup | tee .apack/tests/results/default-build.log
+            node_modules/.bin/tsx scripts/bounded.ts scenario npm run build:default-setup | tee .apack/tests/results/default-build.log
           else
             npm run build:default-setup
           fi
       - name: Build app runtime
         if: ${{ inputs.suite != 'build' }}
         id: runtime
-        # The first cold macos-26 run exhausted V8's default ~2 GiB renderer-build heap.
-        # Scope the larger heap to building the app, rather than changing test/compiler process limits.
-        env:
-          NODE_OPTIONS: --max-old-space-size=4096
+        # The renderer leg's heap ceiling is declared on the leg (RUNTIME_BUILD_LEGS).
         run: npm run build:runtime -- --cores 2
       - name: Build fixture contracts
         id: preparation

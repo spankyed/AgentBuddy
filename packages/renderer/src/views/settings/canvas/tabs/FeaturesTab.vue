@@ -1,6 +1,6 @@
 <template>
   <div class="flex h-full">
-    <div ref="sidebar" class="w-64 p-2 bg-neutral-900 border-r border-neutral-800 overflow-auto">
+    <div ref="sidebar" data-testid="feature-settings-list" class="w-64 p-2 bg-neutral-900 border-r border-neutral-800 overflow-auto">
       <h3 class="px-3 py-2 text-xs font-semibold text-neutral-500 uppercase">Feature preferences</h3>
       <div v-for="feature in features" :key="feature.id" class="flex items-center gap-1 mb-0.5">
         <button @click="selectFeature(feature.id)" :data-active="selected?.id === feature.id"

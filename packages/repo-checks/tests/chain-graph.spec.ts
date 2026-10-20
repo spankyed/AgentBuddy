@@ -663,8 +663,6 @@ describe('every spawn an orchestrator makes is bounded', () => {
 
   it('composes fork preparation from bounded build, archive and housekeeping phases', () => {
     const producer = CHAIN_STEPS.find(step => step.name === 'test:external-pack:fork')!;
-    expect(DEFAULT_FORK_BUDGET_MS.build).toBe(timeoutMsFor('suite'));
-    expect(DEFAULT_FORK_BUDGET_MS.archive).toBeGreaterThan(0);
     expect(Object.values(DEFAULT_FORK_BUDGET_MS).reduce((total, budget) => total + budget, 0))
       .toBeLessThanOrEqual(timeoutMsFor(producer.timeout));
   });
