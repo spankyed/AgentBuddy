@@ -400,3 +400,20 @@ bounded packaged-authoring producer and app consumer. It uses the same disposabl
 budget and 45-minute job bound. The normal `all` selection remains unchanged. YAML parsing and every
 workflow shell block pass syntax checks. These app gates and the complete app/external selection are
 still pending execution; no result is inferred from merely adding the route.
+
+## Remaining integration inventory: 35 more passing files, one composed archive deadline
+
+[Run `39468282848`](https://github.com/spankyed/apack/actions/runs/39468282848), source `77a7efecd`,
+passes 35 files and 98 cases before failing `default-pack-archive.integration.spec.ts` at its individual
+60s case deadline (67.9s observed). No assertion, aggregate or cleanup failure is reported. The two
+facade type-data/published-layout files were collected but did not execute after fail-fast; their empty
+JSON assertion lists must not be mistaken for passes. Evidence is retained under
+`/private/tmp/apack-integration-39468282848/` and its `.log`.
+
+Archive production performs input replay before and after staging/compression; extraction and integrity
+verification follow. Move production into its own setup hook with the existing fork producer's 180s
+archive-operation allowance. Keep extraction/assertions and cleanup on their separate ordinary limits.
+No product change, compiler redesign, global timeout increase or assertion removal. All 46 deadline/wait
+guards, CLI typechecking and correctness lint pass. The next disposable run selects only that archive
+file and the two unexecuted facade files. The prior 27 + 35 file passes and focused facade-report result
+remain preserved; a single complete normal-suite/strict pass is still not claimed.

@@ -28,6 +28,8 @@ import { repoFiles } from './_support/repo-files.ts';
  * fails on an entry whose override has gone, so the list shrinks when the reason does.
  */
 const TIMEOUT_EXCEPTIONS: Record<string, string> = {
+  'packages/apack-cli/tests/commands/default-pack-archive.integration.spec.ts > beforeAll':
+    'The real shipped-pack archive replays all captured inputs twice, stages and compresses output; its former combined case exceeded 60s in 39468282848 (67.9s). Give preparation the existing fork producer archive-operation allowance (180s); extraction/integrity assertions and cleanup retain their separate ordinary deadlines.',
   'packages/apack-cli/tests/commands/scaffold.integration.spec.ts > beforeAll':
     'Real CLI initialization has its own 60s operation bound; the setup hook additionally allows 20s for cancellation and awaited shutdown.',
   'packages/apack-cli/tests/build/own-declarations.integration.spec.ts > preserves owned names through authoring, compiled snapshots, source-free discovery and runtime loading':
