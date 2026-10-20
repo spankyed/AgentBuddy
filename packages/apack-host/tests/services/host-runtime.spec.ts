@@ -44,6 +44,21 @@ const externalOrigin = (id: string, name: string) => ({ declarationRevision: 'fi
 });
 
 describe('createHostRuntime', () => {
+  it('refuses overlapping resets and imports before either can touch the store', async () => {
+    let finish!: () => void;
+    const reset = vi.fn(() => new Promise<void>(resolve => { finish = resolve; }));
+    const store = { reset } as unknown as LmdbStore;
+    const runtime = createHostRuntime({ store, engine: newEngine(), transport: { rootEvents: testRootEvents },
+      appVersion: '1.2.3', packs: createNativePackTestRegistry() });
+    const first = runtime.services.appData.reset();
+    try {
+      await expect(runtime.services.appData.reset()).rejects.toThrow('already being replaced');
+      await expect(runtime.services.appData.importBackup('/not-a-backup')).rejects.toThrow('already being replaced');
+      expect(reset).toHaveBeenCalledOnce();
+    } finally { finish(); await first; }
+    order.length = 0;
+  });
+
   it('keeps settings and onboarding on the owning engine when another engine is installed', () => {
     const firstEngine = newEngine();
     const secondEngine = newEngine();

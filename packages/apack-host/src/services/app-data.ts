@@ -19,6 +19,14 @@ import { createSettingsBackupValidator } from '../features/settings/be/backup.ts
 export function createAppData({ store, engine, registry, settings, onReplaced }: {
   store: LmdbStore; engine: EarsAdmin; registry: PackRegistry; settings: SettingsAdmin; onReplaced: () => void;
 }): AppDataService {
+  let replacing = false;
+  async function exclusive<T>(operation: () => Promise<T>): Promise<T> {
+    if (replacing) throw new Error('App data is already being replaced. Wait for it to finish.');
+    replacing = true;
+    try { return await operation(); }
+    finally { replacing = false; }
+  }
+
   async function reloadMemory(includeVolatile = false): Promise<void> {
     engine.clear();
     await store.hydrate({ includeVolatile });
@@ -33,35 +41,31 @@ export function createAppData({ store, engine, registry, settings, onReplaced }:
     // The app as a fresh boot leaves it: the packs stop as when the app exits, the stores empty, then the packs
     // start as a boot starts them (onInit, migrations, content). Their systems keep running.
     async reset() {
-      await replaceData(async () => {
+      await exclusive(() => replaceData(async () => {
         registry.runShutdownHooks();
         engine.clear();
         await store.reset();
         // Stored API keys go too, with their data keys; after the database reopens, since the settings system hears of it
         secretsStore.clearAll();
         startPacks(registry);
-      });
+      }));
     },
     exportBackup: (targetPath, name, databases) =>
       exportDatabase(store, targetPath, { name, databases, mediaPath: _getMediaPath(), appVersion: getAppVersion() }),
     async importBackup(backupPath, options) {
-      const entityTypes = registry.getRegisteredEntityTypes();
-      const validate = createSettingsBackupValidator(registry.settingsCatalog());
-      return importDatabase(store, backupPath, _getMediaPath(), {
-        ...options, entityTypes, validate,
-        withReplacement: replace => replaceData(async () => {
-          try {
-            const result = await replace();
+      return exclusive(async () => {
+        const entityTypes = registry.getRegisteredEntityTypes();
+        const validate = createSettingsBackupValidator(registry.settingsCatalog());
+        return importDatabase(store, backupPath, _getMediaPath(), {
+          ...options, entityTypes, validate,
+          withReplacement: replaceData,
+          accept: async result => {
             await reloadMemory(result.databases.includes('volatileLmdb'));
             // Run declared versioned data changes after restore, before notifying consumers.
             if (runAppMigrations(registry)) runPackMigrations(registry.packMigrationTargets('pack'));
-            return result;
-          } catch (error) {
-            // A failed file replacement has restored the previous files; reload them.
-            await reloadMemory();
-            throw error;
-          }
-        }),
+          },
+          restored: () => reloadMemory(true),
+        });
       });
     },
     async readBackupSummary(backupPath) {

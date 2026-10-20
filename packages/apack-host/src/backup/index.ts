@@ -1,6 +1,5 @@
 import fs from 'fs-extra';
 import path from 'node:path';
-import os from 'node:os';
 import { createLogger } from '@apackdev/sdk/logger';
 import { closeEnv, openEnvAt, LmdbQuery, LMDB_FORMAT_VERSION, type LmdbStore } from '@apackdev/ears/lmdb';
 import { UnknownBackupDatabasesError } from '@apackdev/sdk/services';
@@ -85,20 +84,24 @@ export async function exportDatabase(
 
 export type DatabaseImportResult = Pick<BackupContents, 'databases' | 'missingDatabases' | 'unknownEntityTypes'>;
 
-/** Validate a private copy before replacement; restore the previous files if installing it fails. */
+/** Keep previous files until both installation and the caller's acceptance succeed. */
 export async function importDatabase(
   store: LmdbStore,
   backupPath: string,
   mediaPath: string,
-  { skipUnknownDatabases = false, entityTypes = [], log = defaultLog, validate, withReplacement = replace => replace() }:
+  { skipUnknownDatabases = false, entityTypes = [], log = defaultLog, validate, accept, restored, withReplacement = replace => replace() }:
     {
       skipUnknownDatabases?: boolean; entityTypes?: Iterable<string>; log?: BackupLog;
       validate?: (query: LmdbQuery) => void;
+      /** Hydrate and accept the installed data before the rollback copy can be removed. */
+      accept?: (result: DatabaseImportResult) => Promise<void>;
+      /** Reload the previous data after a refused installation has been restored. */
+      restored?: () => Promise<void>;
       /** Runs only after the candidate validates; the app uses this to suspend and refresh settings. */
       withReplacement?: (replace: () => Promise<DatabaseImportResult>) => Promise<DatabaseImportResult>;
     } = {},
 ): Promise<DatabaseImportResult> {
-  const temporary = await fs.mkdtemp(path.join(os.tmpdir(), 'apack-import-'));
+  const temporary = await fs.mkdtemp(path.join(path.dirname(store.paths.primary), '.apack-import-'));
   const candidate = path.join(temporary, 'candidate');
   const rollback = path.join(temporary, 'rollback');
   let preserveRollback = false;
@@ -139,8 +142,10 @@ export async function importDatabase(
           log.info('Restored media assets');
         }
         store.reopen();
+        const result = { databases, missingDatabases, unknownEntityTypes };
+        await accept?.(result);
         log.info('Import completed');
-        return { databases, missingDatabases, unknownEntityTypes };
+        return result;
       } catch (error) {
         try {
           store.close();
@@ -155,6 +160,7 @@ export async function importDatabase(
             if (await fs.pathExists(previousMedia)) await fs.copy(previousMedia, mediaPath);
           }
           store.reopen();
+          await restored?.();
         } catch (restoreError) {
           preserveRollback = true;
           throw new AggregateError([error, restoreError], `Import and rollback failed; previous data is retained at ${rollback}`);

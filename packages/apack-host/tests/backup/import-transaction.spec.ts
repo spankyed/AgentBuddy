@@ -1,0 +1,67 @@
+import fs from 'fs-extra';
+import os from 'node:os';
+import path from 'node:path';
+import { afterEach, expect, it, vi } from 'vitest';
+import type { LmdbStore } from '@apackdev/ears/lmdb';
+import { importDatabase } from '../../src/backup/index.ts';
+
+// Exercise filesystem rollback without opening native environments; import.spec covers real LMDB.
+vi.mock('@apackdev/ears/lmdb', async importOriginal => ({
+  ...await importOriginal<typeof import('@apackdev/ears/lmdb')>(),
+  openEnvAt: () => ({ entities: { getRange: () => [] } }),
+  closeEnv: () => {},
+}));
+
+const roots: string[] = [];
+afterEach(() => { for (const root of roots.splice(0)) fs.removeSync(root); });
+const log = { info: () => {}, warn: () => {} };
+function fixture() {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'apack-import-transaction-'));
+  roots.push(root);
+  const primary = path.join(root, 'lmdb');
+  const backup = path.join(root, 'backup');
+  const media = path.join(root, 'media');
+  fs.outputFileSync(path.join(primary, 'data.mdb'), 'incumbent');
+  fs.outputFileSync(path.join(backup, 'lmdb', 'data.mdb'), 'candidate');
+  fs.outputFileSync(path.join(backup, 'media', 'asset'), 'candidate media');
+  fs.writeJsonSync(path.join(backup, 'metadata.json'), { databases: ['lmdb'] });
+  const store = {
+    paths: { primary, volatileBackup: path.join(root, 'volatile') },
+    copyTo: (_partition: string, dest: string) => fs.copy(primary, dest),
+    close: vi.fn(), reopen: vi.fn(),
+  } as unknown as LmdbStore;
+  return { root, primary, backup, media, store };
+}
+
+it('retains incumbent files through acceptance and restores them before rehydrating after refusal', async () => {
+  const { root, primary, backup, media, store } = fixture();
+  const read = () => fs.readFileSync(path.join(primary, 'data.mdb'), 'utf8');
+  const restored = vi.fn(async () => { expect(read()).toBe('incumbent'); });
+  await expect(importDatabase(store, backup, media, { log, restored, accept: async () => {
+    expect(read()).toBe('candidate');
+    const pending = fs.readdirSync(root).find(name => name.startsWith('.apack-import-'))!;
+    expect(fs.readFileSync(path.join(root, pending, 'rollback/lmdb/data.mdb'), 'utf8')).toBe('incumbent');
+    throw new Error('hydration refused');
+  } })).rejects.toThrow('hydration refused');
+  expect(restored).toHaveBeenCalledOnce();
+  expect(read()).toBe('incumbent');
+  expect(fs.existsSync(media)).toBe(false);
+  expect(fs.readdirSync(root).some(name => name.startsWith('.apack-import-'))).toBe(false);
+});
+
+it('preserves both failures and the durable recovery path if restored data cannot be hydrated', async () => {
+  const { root, backup, media, store } = fixture();
+  let failure: unknown;
+  try {
+    await importDatabase(store, backup, media, { log,
+      accept: async () => { throw new Error('candidate hydration'); },
+      restored: async () => { throw new Error('incumbent hydration'); },
+    });
+  } catch (error) { failure = error; }
+  expect(failure).toBeInstanceOf(AggregateError);
+  const aggregate = failure as AggregateError;
+  expect(aggregate.errors.map(error => error.message)).toEqual(['candidate hydration', 'incumbent hydration']);
+  const recovery = aggregate.message.split('retained at ')[1];
+  expect(path.dirname(path.dirname(recovery))).toBe(root);
+  expect(fs.readFileSync(path.join(recovery, 'lmdb/data.mdb'), 'utf8')).toBe('incumbent');
+});

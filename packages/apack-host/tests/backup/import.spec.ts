@@ -9,12 +9,16 @@ import { openDatabaseStore } from '../../src/database/open.ts';
 import { readInstalledSchema } from '../../src/database/schema.ts';
 import { createSettingsBackupValidator } from '../../src/features/settings/be/backup.ts';
 import { appSettingsDefinition } from '../../src/features/settings/be/app-definition.ts';
+import { createHostRuntime } from '../../src/services/index.ts';
+import { createNativePackTestRegistry } from '../../src/testing/pack-registry.ts';
+import { testRootEvents } from '@apackdev/sdk/testing';
 import { tempDir, removeTempDirs, schemaContext, writeData } from '../database/fixtures.ts';
 
 const stores: LmdbStore[] = [];
 const retained: string[] = [];
 afterEach(() => {
   vi.restoreAllMocks();
+  vi.unstubAllEnvs();
   for (const store of stores.splice(0)) store.close();
   for (const dir of retained.splice(0)) fs.rmSync(dir, { recursive: true, force: true });
   removeTempDirs();
@@ -36,14 +40,49 @@ async function fixture(settings: unknown = {}) {
   fs.writeFileSync(path.join(backup, 'media', 'asset.txt'), 'candidate');
   const current = tempDir('settings-backup-current-');
   const paths = _appDataPaths(current);
-  const { store } = openDatabaseStore({
+  const { store, engine } = openDatabaseStore({
     paths: { primary: paths.lmdb, volatileBackup: paths.volatileLmdb },
     schema: readInstalledSchema(schemaContext(current)), log: () => {},
   });
   stores.push(store);
   store.envs.primary.entities.putSync('Note-current', { type: 'Note' });
-  return { backup, store, media: paths.media };
+  return { backup, store, engine, current, media: paths.media };
 }
+
+function appData(f: Awaited<ReturnType<typeof fixture>>) {
+  vi.stubEnv('APACK_ENV', 'test');
+  vi.stubEnv('APACK_USER_DATA_DIR', f.current);
+  return createHostRuntime({ store: f.store, engine: f.engine, packs: createNativePackTestRegistry(),
+    appVersion: '1.0.0', transport: { rootEvents: testRootEvents } }).services.appData;
+}
+
+it('restores and hydrates the incumbent when imported data fails hydration', async () => {
+  const f = await fixture();
+  const service = appData(f);
+  vi.spyOn(f.store, 'hydrate').mockRejectedValueOnce(new Error('candidate hydration failed'));
+  await expect(service.importBackup(f.backup)).rejects.toThrow('candidate hydration failed');
+  expect(f.store.envs.primary.entities.get('Note-current')).toEqual({ type: 'Note' });
+  expect(f.store.envs.primary.entities.get('Note-candidate')).toBeUndefined();
+  expect(f.engine.query.qx('Note-current').pickOne(['entityType'])).not.toBeNull();
+  expect(fs.existsSync(f.media)).toBe(false);
+  expect(fs.readdirSync(path.dirname(f.store.paths.primary)).filter(name => name.startsWith('.apack-import-'))).toEqual([]);
+});
+
+it('preserves the recovery error and a durable copy when import and reopening both fail', async () => {
+  const f = await fixture();
+  const service = appData(f);
+  const reopen = vi.spyOn(f.store, 'reopen').mockImplementation(() => { throw new Error('open failed'); });
+  let failure: unknown;
+  try { await service.importBackup(f.backup); } catch (error) { failure = error; }
+  expect(failure).toBeInstanceOf(AggregateError);
+  const rollback = (failure as AggregateError).message.split('retained at ')[1];
+  expect(path.dirname(path.dirname(rollback))).toBe(path.dirname(f.store.paths.primary));
+  const copy = openEnvAt(path.join(rollback, 'lmdb'), { readOnly: true });
+  try { expect(copy.entities.get('Note-current')).toEqual({ type: 'Note' }); }
+  finally { closeEnv(copy, () => {}); }
+  reopen.mockRestore();
+  f.store.reopen();
+});
 
 it('refuses invalid settings before entering replacement or closing the live database', async () => {
   const { backup, store, media } = await fixture({ app: { projects: 'invalid' } });
