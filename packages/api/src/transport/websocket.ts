@@ -9,14 +9,13 @@ import { jsonSafeEncoder } from './encoder.ts';
 import { createLogger } from '@apackdev/sdk/logger';
 import { SERVER_CONFIG, apiToken, apiTokenIsOwn, isApiToken } from '../boot/config.ts';
 import { appPacks, appStore, backendActor } from '../runtime/index.ts';
-import { reloadPackById } from '@apackdev/host/packs/runtime';
+import { installDevPack, reloadPackById } from '@apackdev/host/packs/runtime';
 import { writePrivateFile } from '@apackdev/host/private-file';
 import { resolveAppEnvironment } from '@apackdev/sdk/env';
 import type { ApiEndpoint } from '@apackdev/host/process-liveness';
 import { API_HOST, API_TOKEN_HEADER } from '@apackdev/sdk/utils/pure';
 
 const logger = createLogger('backend');
-const reloadingPacks = new Set<string>();
 
 /**
  * The WebSocket subprotocol the app's windows speak, the one the server answers with. They send the API token as a
@@ -34,52 +33,64 @@ export function acceptsConnection(offeredProtocols: string | undefined, token = 
 }
 
 /**
- * Why a pack reload request is refused, or null to take it. Only a development or test app reloads packs, and only
- * for a caller with the API token: `apack pack dev` and the built-in pack's watcher read it from the development app's
+ * Why a development request (a pack reload or install) is refused, or null to take it. Only a development or test
+ * app takes them, and only from a caller with the API token: `apack pack dev` and the built-in pack's watcher read it from the development app's
  * token file, the E2E tests from the app's window. A web page has no way to learn it.
  */
-export function devReloadRefusal(headers: http.IncomingHttpHeaders, env = resolveAppEnvironment().env, token = apiToken()): string | null {
-  if (env !== 'development' && env !== 'test') return `pack reloads are for development builds (this one is ${env})`;
+export function devRequestRefusal(headers: http.IncomingHttpHeaders, env = resolveAppEnvironment().env, token = apiToken()): string | null {
+  if (env !== 'development' && env !== 'test') return `pack development requests are for development builds (this one is ${env})`;
   const given = headers[API_TOKEN_HEADER];
   if (!isApiToken(Array.isArray(given) ? given[0] : given, token)) return 'the API token is missing or wrong';
   return null;
 }
 
+function answer(res: http.ServerResponse, status: number, body: object): void {
+  res.writeHead(status, { 'Content-Type': 'application/json' });
+  res.end(JSON.stringify(body));
+}
+
+/**
+ * The development endpoints `apack pack dev` and the built-in pack's watcher call: `POST /dev/reload { packId }`
+ * reloads a pack the app already has, and `POST /dev/install { root }` installs and starts the build in a pack's
+ * source directory. Each takes the registry's claim on its pack, so neither overlaps an install, toggle or
+ * reload of the same pack.
+ */
+const DEV_ENDPOINTS: Record<string, { field: string; run: (value: string) => Promise<object> }> = {
+  '/dev/reload': {
+    field: 'packId',
+    run: async packId => {
+      if (!appPacks.claimPackOperation(packId)) throw Object.assign(new Error('another operation on this pack is in progress'), { status: 409 });
+      try { await reloadPackById(appPacks, packId, backendActor); }
+      finally { appPacks.releasePackOperation(packId); }
+      return { ok: true };
+    },
+  },
+  '/dev/install': {
+    field: 'root',
+    run: async root => {
+      if (!path.isAbsolute(root)) throw Object.assign(new Error('root must be an absolute path'), { status: 400 });
+      const installed = await installDevPack(appPacks, root, backendActor);
+      return { ok: true, ...installed };
+    },
+  },
+};
+
 function handleHttpRequest(req: http.IncomingMessage, res: http.ServerResponse) {
-  if (req.method === 'POST' && req.url === '/dev/reload') {
-    const refusal = devReloadRefusal(req.headers);
-    if (refusal) {
-      res.writeHead(403, { 'Content-Type': 'application/json' });
-      res.end(JSON.stringify({ error: refusal }));
-      return;
-    }
+  const endpoint = req.method === 'POST' && req.url ? DEV_ENDPOINTS[req.url] : undefined;
+  if (endpoint) {
+    const refusal = devRequestRefusal(req.headers);
+    if (refusal) return answer(res, 403, { error: refusal });
     let body = '';
     req.on('data', (chunk) => { body += chunk; });
     req.on('end', async () => {
       try {
-        const { packId } = JSON.parse(body);
-        if (!packId || typeof packId !== 'string') {
-          res.writeHead(400, { 'Content-Type': 'application/json' });
-          res.end(JSON.stringify({ error: 'packId required' }));
-          return;
-        }
-        if (reloadingPacks.has(packId)) {
-          res.writeHead(409, { 'Content-Type': 'application/json' });
-          res.end(JSON.stringify({ error: 'reload already in progress' }));
-          return;
-        }
-        reloadingPacks.add(packId);
-        try {
-          await reloadPackById(appPacks, packId, backendActor);
-        } finally {
-          reloadingPacks.delete(packId);
-        }
-        res.writeHead(200, { 'Content-Type': 'application/json' });
-        res.end(JSON.stringify({ ok: true }));
+        const value = (JSON.parse(body) as Record<string, unknown>)[endpoint.field];
+        if (!value || typeof value !== 'string') return answer(res, 400, { error: `${endpoint.field} required` });
+        answer(res, 200, await endpoint.run(value));
       } catch (err) {
-        logger.error('Pack reload failed:', err as Error);
-        res.writeHead(500, { 'Content-Type': 'application/json' });
-        res.end(JSON.stringify({ error: (err as Error).message }));
+        const status = (err as { status?: number }).status ?? 500;
+        if (status === 500) logger.error(`${req.url} failed:`, err as Error);
+        answer(res, status, { error: (err as Error).message });
       }
     });
     return;

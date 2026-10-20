@@ -84,6 +84,20 @@ describe('apack pack dev reloads', () => {
     }
   });
 
+  it('ask the app to install the build at the pack\'s absolute root, which the app copies and starts itself', async () => {
+    const api = await fakeApi(200);
+    try {
+      fs.writeFileSync(path.join(userDataDir, 'api-port'), JSON.stringify({ port: api.port, pid: process.pid }));
+      fs.writeFileSync(path.join(userDataDir, 'api-token'), 'the-dev-token');
+      const { installPackInApp } = await import('../../src/build/dev-reload.ts');
+
+      expect(await installPackInApp('relative/pack')).toEqual({ status: 'reloaded' });
+      expect(api.requests).toEqual([{ url: '/dev/install', token: 'the-dev-token', body: JSON.stringify({ root: path.resolve('relative/pack') }) }]);
+    } finally {
+      api.close();
+    }
+  });
+
   // Each of these needs something different of the author — start the app, read its logs, look at what
   // holds the port — so the status alone was not enough to act on
   it('report a refused reload, a missing port or token file, and an app that no longer answers, and say which', async () => {
@@ -104,6 +118,29 @@ describe('apack pack dev reloads', () => {
       api.close();
     }
     expect(await reloadPack('my-pack')).toMatchObject({ status: 'unreachable', detail: expect.stringContaining(`127.0.0.1:${api.port}`) });
+  });
+});
+
+describe('what restarts a packaged app', () => {
+  /** A completed build's receipt, as `apack pack build` seals it */
+  function writeReceipt(root: string, files: Record<string, string>) {
+    fs.mkdirSync(path.join(root, 'dist'), { recursive: true });
+    fs.writeFileSync(path.join(root, 'dist', 'integrity.json'), JSON.stringify({ files }));
+  }
+
+  it('is a change to what its backend loads, not to the frontend Vite serves', async () => {
+    const { backendRevision } = await import('../../src/commands/dev');
+    const root = path.join(userDataDir, 'pack');
+    const build = { 'apack.json': 'm1', 'runtime/index.cjs': 'b1', 'runtime/content/notes.content.json': 'c1', 'runtime/fe.js': 'f1', 'runtime/canvas-x.js': 'k1' };
+    writeReceipt(root, build);
+    const first = backendRevision(root);
+
+    writeReceipt(root, { ...build, 'runtime/fe.js': 'f2', 'runtime/canvas-y.js': 'k2', 'build-inputs.json': 'i2' });
+    expect(backendRevision(root), 'a frontend-only rebuild').toBe(first);
+    writeReceipt(root, { ...build, 'runtime/index.cjs': 'b2' });
+    expect(backendRevision(root), 'a backend rebuild').not.toBe(first);
+    writeReceipt(root, { ...build, 'runtime/content/notes.content.json': 'c2' });
+    expect(backendRevision(root), 'a content rebuild').not.toBe(first);
   });
 });
 

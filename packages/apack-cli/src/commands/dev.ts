@@ -1,6 +1,7 @@
 import { readSettingsOverrides } from '@apackdev/host/database';
-import { recordCliInstall } from '../app/installed-packs';
+import * as fs from 'node:fs';
 import * as path from 'node:path';
+import { createHash } from 'node:crypto';
 import { spawn, type ChildProcess } from 'node:child_process';
 import { createRequire } from 'node:module';
 import { createPackBuilder } from '../build/build-process.ts';
@@ -9,19 +10,19 @@ import {
   debugPortArgsFor, lastAttachedAt, publishSession, readDevToolsPort, readSession, startedByFromEnv,
   type DevSession,
 } from '@apackdev/host/dev-session';
-import type { AppPlace } from '../build/dev-reload.ts';
+import { installPackInApp, type AppPlace, type DevReload } from '../build/dev-reload.ts';
 import { startPackBuildWatcher } from '../build/watch.ts';
 import { cliDirs, parseHostFlags, resolvePackHost, resolveRepositoryHost, packagedHostChannel, hostLabel, setHostHandoff, type PackHost } from '../app/pack-host';
 import { endAppHolding, profileFor, parseProfileFlags, removeProfile, PROFILE_USAGE } from '../app/profiles';
 import { verifySessionHost } from '../app/drive-attach';
 import { copySecretsInto } from '../app/profile-secrets.ts';
-import { createDevHold } from '../app/dev-hold.ts';
+import { createDevHold, exited } from '../app/dev-hold.ts';
 import { resolveAppEnvironment } from '@apackdev/sdk/env';
 import { errorMessage } from '@apackdev/sdk/utils/pure';
 import type { AppEnv } from '@apackdev/sdk/env';
 import { readApiEndpoint } from '@apackdev/host/process-liveness';
 import { withoutSourceCondition } from '@apackdev/host/build/source-resolution';
-import { installPackFromLocal, readHostCompatibility } from '@apackdev/host/packs';
+import { installPackFromLocal, readHostCompatibility, recordUserInstall } from '@apackdev/host/packs';
 import { removeDevServerMarker, writeDevServerMarker } from '@apackdev/host/packs/dev-server';
 
 const HELP = `
@@ -47,8 +48,9 @@ Production bundles are refused. Other packaged hosts never enable development de
 Named profiles must be custom. A source host also accepts --profile development for its shared data.
 For a checkout with no profile named, the shared development data dir is used.
 
-Packaged hosts refuse in-place backend reloads. After a backend rebuild, restart the
-pack development command to apply it. Frontend changes still use Vite HMR.
+A checkout installs each build through its running app. A packaged app cannot be asked to, so
+its builds are copied in while it is stopped: a backend rebuild restarts the app this command
+started. Frontend changes use Vite HMR on either.
 `.trim();
 
 /**
@@ -68,14 +70,29 @@ export function developmentHostEnv(app: PackHost, isolated: boolean): AppEnv {
   return env;
 }
 
-/** Installs into the app's data dir, checking hostVersion and the build format against the app that last used it. */
+/**
+ * Copies the build into the app's data dir, checking hostVersion and the build format against the app that last
+ * used it. Only while no app runs on that dir: a running app may load a pack while its files are being replaced,
+ * so a running checkout is asked to install instead (`installPackInApp`).
+ */
 export function installToApp(root: string, place: AppPlace = { env: 'development' }) {
   const { packsDir, userDataDir, installedPacksFile } = resolveAppEnvironment(place);
   const { version: hostVersion, packFormat } = readHostCompatibility(userDataDir);
   return installPackFromLocal(root, packsDir, { hostVersion, packFormat, installedPacksFile,
     settingsOverrides: () => readSettingsOverrides(userDataDir),
-    accept: candidate => { recordCliInstall(installedPacksFile, candidate.id); },
+    accept: candidate => { recordUserInstall(installedPacksFile, candidate.id); },
   });
+}
+
+/**
+ * What a build hands the app's backend: everything in its receipt but the frontend bundle and the build-only
+ * records. Vite serves the frontend during development, so a build that moves only that needs no restart.
+ */
+export function backendRevision(root: string): string {
+  const { files } = JSON.parse(fs.readFileSync(path.join(root, 'dist', 'integrity.json'), 'utf-8')) as { files: Record<string, string> };
+  const backend = Object.entries(files).filter(([file]) => file === 'apack.json' || file === 'runtime/index.cjs'
+    || file.startsWith('runtime/content/') || file.startsWith('build/') || file.startsWith('types/'));
+  return createHash('sha256').update(JSON.stringify(backend.sort(([a], [b]) => a.localeCompare(b)))).digest('hex');
 }
 
 /**
@@ -304,6 +321,12 @@ async function session(args: string[], hooks: SessionHooks, target: 'app' | 'pac
   });
   const releaseNow = () => { buildLifetime.abort(); hold.releaseNow(); };
   const release = () => { buildLifetime.abort(); return hold.release(); };
+  /** The app this command started and holds now; a restart replaces it */
+  let held: ChildProcess | undefined;
+  /** The backend of the build last copied into a packaged app (`backendRevision`) */
+  let installedBackend: string | undefined;
+  /** The session ends with the app it holds, unless that app was closed to restart it */
+  const endWith = (child: ChildProcess) => child.once('exit', () => { if (child === held) void release().then(() => process.exit(0)); });
 
   /**
    * Publishes `<dataDir>/session.json`, so something can attach to the app this command holds.
@@ -427,17 +450,25 @@ async function session(args: string[], hooks: SessionHooks, target: 'app' | 'pac
     verifyRunningSession();
     console.log(`Using the ${env} app already running.\n`);
   } else {
+    if (pack && app.kind === 'packaged') {
+      // Before the launch: a packaged app takes no install request, so its build is copied while nothing runs
+      console.log(`Installing pack into ${userDataDir}...`);
+      console.log(`  ${(await installToApp(pack.root, place)).dir}\n`);
+      installedBackend = backendRevision(pack.root);
+    }
     console.log(`Starting ${hostLabel(app)}...`);
     // Before the launch, so the port file this waits for is the one this app writes rather than whatever a
     // previous app on this data dir left behind
     const launchedAt = Date.now();
     const spawned = launchApp(app, place);
     hold.holdsApp(spawned);
+    held = spawned;
     const whose = await waitForApi(apiPortFile, spawned);
     if (whose === 'other') {
       // Ours was refused the data dir and another app has it. Forgetting it is what keeps the release
       // honest: it closes an app this command started, and this one started none that lived
       hold.forgetApp();
+      held = undefined;
       verifyRunningSession();
       console.log(`Using the ${env} app that took the directory first.\n`);
     } else {
@@ -446,7 +477,7 @@ async function session(args: string[], hooks: SessionHooks, target: 'app' | 'pac
       // port a driver needs. An app that was already here has a session of its own or is not attachable,
       // and either way is not this command's to describe.
       await publish(launchedAt);
-      spawned.once('exit', () => void release().then(() => process.exit(0)));
+      endWith(spawned);
     }
   }
 
@@ -458,17 +489,55 @@ async function session(args: string[], hooks: SessionHooks, target: 'app' | 'pac
     return;
   }
 
-  // After the app has started, so `readHostCompatibility` reads what this app records rather than a previous one's
-  console.log(`Installing pack to the ${env} app...`);
-  const result = await installToApp(pack.root, place);
-  console.log(`  ${result.dir}\n`);
+  if (app.kind === 'source') {
+    // The running app installs and starts it, so nothing it does meanwhile loads a half-copied build
+    console.log(`Installing pack to the ${env} app...`);
+    const installed = await installPackInApp(pack.root, place);
+    if (installed.status !== 'reloaded') throw new Error(`The app did not install the pack (${'detail' in installed ? installed.detail : installed.status})`);
+    console.log('');
+  }
+
+  /**
+   * Delivers a packaged app a backend rebuild: close the app this command started, copy the build in, start it
+   * again. The relaunch runs even when the copy fails, since a refused install leaves the previous build in place.
+   */
+  async function restartWithBuild(): Promise<DevReload> {
+    const revision = backendRevision(pack!.root);
+    if (revision === installedBackend) return { status: 'current' };
+    const previous = held;
+    if (!previous) return { status: 'failed', detail: 'this command did not start the app, so it cannot restart it' };
+    console.log('[watch] backend rebuilt — restarting the app with it');
+    held = undefined;
+    hold.forgetApp();
+    previous.kill();
+    await exited(previous);
+    let failure: unknown;
+    try {
+      await installToApp(pack!.root, place);
+      installedBackend = revision;
+    } catch (error) { failure = error; }
+    if (buildLifetime.signal.aborted) return { status: 'failed', detail: 'the session is closing' };
+    const next = launchApp(app, place);
+    hold.holdsApp(next);
+    held = next;
+    if (await waitForApi(apiPortFile, next) === 'other') {
+      hold.forgetApp();
+      held = undefined;
+      throw new Error('Another app took the data dir while this one restarted');
+    }
+    endWith(next);
+    if (failure) throw failure;
+    return { status: 'reloaded' };
+  }
 
   const watch = async () => {
     watching = startPackBuildWatcher(pack.root, {
       place,
       signal: buildLifetime.signal,
       builder: builder!,
-      onBuilt: async () => { await installToApp(pack.root, place); },
+      ...(app.kind === 'packaged'
+        ? { onBuilt: restartWithBuild }
+        : { onBuilt: () => installPackInApp(pack.root, place) }),
     });
     try { await (await watching).done; }
     finally { await release(); }

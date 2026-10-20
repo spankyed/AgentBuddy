@@ -177,6 +177,25 @@ export function setPackEnabled(id: string, enabled: boolean): boolean {
   return changeRecord(id, record => ({ ...record, enabled }));
 }
 
+/**
+ * Records a user-owned install into one profile's records, leaving the others alone: the CLI's installs, and a
+ * development build the app installs for `apack pack dev`. An ordinary reinstall keeps the user's enabled
+ * choice; one after a deliberate removal enables the pack again. Returns whether it ends up enabled.
+ */
+export function recordUserInstall(file: string, id: string, installedFrom?: string): boolean {
+  const records = readInstalledPacks(file, { strict: true });
+  const old = records.find(record => record.id === id);
+  const next: PackRecord = {
+    id, enabled: old?.suppressAppInstall ? true : old?.enabled ?? true, updatesWith: 'user', installedAt: old?.installedAt ?? new Date().toISOString(),
+    ...(installedFrom !== undefined && { installedFrom }),
+    ...(old?.lastError !== undefined && { lastError: old.lastError }),
+  };
+  if (!writeInstalledPacks([...records.filter(record => record.id !== id), next], file)) {
+    throw new Error(`Pack files were installed, but recording their source failed: ${file}`);
+  }
+  return next.enabled;
+}
+
 /** Records what an update check found for a pack, or why it couldn't say. */
 export function recordUpdateCheck(id: string, found: Pick<PackRecord, 'availableVersion' | 'availableTag' | 'updateCheckError'>): boolean {
   return changeRecord(id, record => ({ ...record, ...found }));

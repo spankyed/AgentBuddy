@@ -20,7 +20,7 @@ export type { AppPackSource, AppPackSourceProblem, AppPackSources } from './app-
 // Installed packs (JSON file CRUD)
 export {
   readInstalledPacks, writeInstalledPacks, packRecord, packRecords, disabledPackIds,
-  recordInstalled, setPackEnabled, recordUpdateCheck, recordUpdateInstalled, recordApplyOutcomes,
+  recordInstalled, recordUserInstall, setPackEnabled, recordUpdateCheck, recordUpdateInstalled, recordApplyOutcomes,
 } from './installed.ts';
 export type { PackRecord } from './installed.ts';
 

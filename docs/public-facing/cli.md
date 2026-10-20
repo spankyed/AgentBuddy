@@ -236,7 +236,7 @@ build. Closing `dev` closes the app it started. It then:
 
 - serves the FE entry from a Vite dev server (port 5199, or the next free one) with HMR, recording its port in `pack-dev-servers/<id>.json` in the app's data dir so the app's `pack://` requests go to it. The marker sits outside the installed pack, which stays exactly the verified files, and is removed when `apack pack dev` exits
 - on `apack.json` changes, regenerates `src/__generated__/`
-- on authored input changes, rebuilds, reinstalls and asks the running app to reload the verified pack
+- on authored input changes, rebuilds and has the app install the verified pack. A checkout's app installs and starts each build itself. A packaged app (`--host beta`) cannot be asked to, so `dev` copies the build in while the app is stopped: a rebuild that changes the backend restarts the app `dev` started, and one that changes only the frontend leaves it to Vite
 
 Backend builds and Vite use the same captured compiler generation. A compiler refresh starts a ready
 replacement server, updates its marker and retires the old server; a failed replacement startup keeps

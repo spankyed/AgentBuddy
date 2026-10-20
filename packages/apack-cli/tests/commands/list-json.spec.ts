@@ -3,7 +3,7 @@ import * as os from 'node:os';
 import * as path from 'node:path';
 import { expect, it, vi } from 'vitest';
 import { resolveAppEnvironment } from '@apackdev/sdk/env';
-import { recordCliInstall } from '../../src/app/installed-packs';
+import { recordUserInstall } from '@apackdev/host/packs';
 import { list } from '../../src/commands/list';
 
 it('prints one structured inventory for the selected data directory', async () => {
@@ -19,7 +19,7 @@ it('prints one structured inventory for the selected data directory', async () =
     const dir = path.join(context.packsDir, 'demo');
     fs.mkdirSync(dir, { recursive: true });
     fs.writeFileSync(path.join(dir, 'apack.json'), JSON.stringify({ id: 'demo', name: 'Demo', version: '1.0.0', features: {} }));
-    recordCliInstall(context.installedPacksFile, 'demo', 'owner/repo');
+    recordUserInstall(context.installedPacksFile, 'demo', 'owner/repo');
     output.mockClear();
     await list(['--json']);
     expect(output).toHaveBeenCalledTimes(1);

@@ -4,7 +4,7 @@ import { createPackBuilder, type PackBuilder } from './build-process.ts';
 import { withBuildSignals } from './build-signals.ts';
 import { readValidManifest } from '../utils.ts';
 import { isPackInputPath, packInputWatchTargets, packInputsHash } from '@apackdev/host/build/pack-inputs';
-import { reloadPack, type AppPlace } from './dev-reload.ts';
+import { reloadPack, type AppPlace, type DevReload } from './dev-reload.ts';
 import { compilerWatchPaths, createCompilerWatchTools, compilerWatchTargets, createCompilerWatchMatcher, mergeCompilerWatchPaths, additionalCompilerObservations, type CompilerWatchPaths } from './compiler-watch.ts';
 import { createFrontendWatcher, type FrontendInputSnapshot } from './frontend-watch.ts';
 import type { BuildWatchInputs } from './build-watch-inputs.ts';
@@ -19,8 +19,11 @@ export interface WatchOptions {
   readonly place?: AppPlace;
   /** Initial verified publication is ready for an app to boot against. */
   readonly onFirstBuild?: () => void;
-  /** Install an external pack's verified output before asking its host to reload it. */
-  readonly onBuilt?: () => Promise<void>;
+  /**
+   * Runs after each verified publication. Returning an outcome means it delivered the build to the app
+   * itself (installed and started it, or restarted the app), so the watcher asks for no reload.
+   */
+  readonly onBuilt?: () => Promise<DevReload | void>;
   /** A dev session owns its shared compiler; standalone watchers own their builder. */
   readonly builder?: Pick<PackBuilder, 'build' | 'subscribeFrontendInputs' | 'isFrontendCurrent'>;
   readonly buildArgs?: readonly string[];
@@ -165,10 +168,11 @@ export async function startPackBuildWatcher(root: string, options: WatchOptions 
     try {
       if (!await publish()) return;
       if (closed) return;
-      await options.onBuilt?.();
+      const delivered = await options.onBuilt?.();
       if (closed) return;
-      const reload = await reloadPack(packId, options.place);
+      const reload = delivered ?? await reloadPack(packId, options.place);
       if (reload.status === 'reloaded') console.log(`[watch] ${changed} — reloaded`);
+      else if (reload.status === 'current') console.log(`[watch] ${changed} — built; the backend is unchanged`);
       else {
         if (reload.status === 'failed' || reload.status === 'unreachable') invalidateInputs();
         console.warn(`[watch] ${changed} — built, but the app did not reload (${reload.detail})`);

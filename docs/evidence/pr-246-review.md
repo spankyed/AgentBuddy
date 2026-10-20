@@ -84,7 +84,7 @@ focused verification; remaining application/native acceptance is listed separate
 | S.1, S.2 | Completed for startup-invalid settings: persisted-row preflight and host-only recovery | `3a6b649b5`; [evidence](settings-recovery.md) |
 | S.4 | Closed by 6.3: no kept frontend is left with a dropped settings binding | "fix(shell): unload refused frontend replacements and route unloaded tabs through the shell" |
 | S.3 | Completed: a frontend whose pack the ready catalog withdrew during loading is taken back out | "fix(shell): take back a frontend whose pack was withdrawn while it loaded" |
-| S.5 | Open: judgement call | — |
+| S.5 | Completed: a checkout's app installs each `apack pack dev` build itself (`POST /dev/install`) under the registry's per-pack claim, which every pack operation now takes; a packaged app gets builds copied only while stopped, restarting after a backend rebuild | "fix(packs): install apack pack dev builds through the app, restarting packaged hosts" |
 
 ### Remaining work
 
@@ -480,7 +480,7 @@ commit.
 | S.2 | Medium | Catalog × settings × boot | At boot, settings admission validates against empty settings, because packs load before the store is hydrated | Completed: persisted-row preflight before runtime loading |
 | S.3 | Medium (plausible) | Install × frontend | A pack disabled while its frontend first loads stays registered in the window | Open |
 | S.4 | Medium (plausible) | Settings × window | A reconnect revokes every frontend's settings binding, and a failed re-load leaves the pack reading `undefined` | Closed by 6.3 |
-| S.5 | Low (plausible) | Build records × discovery | Under `apack pack dev`, the runtime loaded can be a newer build than the receipt just verified | Open |
+| S.5 | Low (plausible) | Build records × discovery | Under `apack pack dev`, the runtime loaded can be a newer build than the receipt just verified | Fixed |
 
 **S.1. Settings admission blocks every catalog change once one value is invalid.**
 `apack-host/src/packs/catalog.ts:130` runs `checkSettings` whenever declarations change, and

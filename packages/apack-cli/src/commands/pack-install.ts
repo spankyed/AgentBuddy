@@ -3,10 +3,9 @@ import { HOST_PACK_ID } from '@apackdev/sdk/ids';
 import { cliDirs, parseHostFlags, selectedHostPackages } from '../app/pack-host';
 import type { AppEnvironment } from '@apackdev/sdk/env';
 import { withPackMutation } from '../app/pack-mutation';
-import { recordCliInstall } from '../app/installed-packs';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
-import { installPack, installPackFromLocal, readHostCompatibility, readInstalledPacks, readAppPackSources } from '@apackdev/host/packs';
+import { installPack, installPackFromLocal, readHostCompatibility, readInstalledPacks, readAppPackSources, recordUserInstall } from '@apackdev/host/packs';
 import { parseStorageProfile, targetDataContext, profileLabel, TARGET_ENV_USAGE } from '../utils';
 
 /** `registry` is a bare pack name, resolvable only through apack.dev; `undefined` is a GitHub slug. */
@@ -93,7 +92,7 @@ export async function installPackSource(
         }
       },
       accept: (candidate: Awaited<ReturnType<typeof installPack>>) => {
-        recordCliInstall(installedPacksFile, candidate.id, sourceKind === undefined ? source : undefined);
+        recordUserInstall(installedPacksFile, candidate.id, sourceKind === undefined ? source : undefined);
         return undefined;
       },
     };

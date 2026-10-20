@@ -4,8 +4,7 @@ import * as path from 'node:path';
 import { expect, it, vi } from 'vitest';
 import { _declarationRevision, PACK_SNAPSHOT_FORMAT } from '@apackdev/sdk/build';
 import { resolveAppEnvironment } from '@apackdev/sdk/env';
-import { recordHostCompatibility, readInstalledPacks, writeInstalledPacks, uninstallPack, installPackFromLocal, sealPackBuild } from '@apackdev/host/packs';
-import { recordCliInstall } from '../../src/app/installed-packs';
+import { recordHostCompatibility, readInstalledPacks, writeInstalledPacks, uninstallPack, installPackFromLocal, sealPackBuild, recordUserInstall } from '@apackdev/host/packs';
 import { packUpdates } from '../../src/app/pack-updates';
 
 it('checks recorded sources against the explicit host and leaves records untouched', async () => {
@@ -17,7 +16,7 @@ it('checks recorded sources against the explicit host and leaves records untouch
       fs.mkdirSync(dir, { recursive: true });
       fs.writeFileSync(path.join(dir, 'apack.json'), JSON.stringify({ id, name: id, version: '1.0.0', features: {} }));
     }
-    recordCliInstall(context.installedPacksFile, 'remote', 'owner/repo@release/v1.0.0');
+    recordUserInstall(context.installedPacksFile, 'remote', 'owner/repo@release/v1.0.0');
     recordHostCompatibility(root, { version: '0.4.0', packFormat: 1 });
     const before = fs.readFileSync(context.installedPacksFile, 'utf8');
     const find = vi.fn().mockResolvedValue({ version: '1.1.0', tag: 'v1.1.0' });
@@ -62,7 +61,7 @@ it('enables an explicitly reinstalled pack but preserves enablement on an ordina
     const context = resolveAppEnvironment({ env: 'test', userDataDir: root });
     fs.mkdirSync(path.join(context.packsDir, 'demo'), { recursive: true });
     writeInstalledPacks([{ id: 'demo', enabled: false }], context.installedPacksFile);
-    recordCliInstall(context.installedPacksFile, 'demo');
+    recordUserInstall(context.installedPacksFile, 'demo');
     expect(readInstalledPacks(context.installedPacksFile)).toMatchObject([{ id: 'demo', enabled: false }]);
     await uninstallPack('demo', context.packsDir, { installedPacksFile: context.installedPacksFile });
     const source = path.join(root, 'source');
@@ -78,7 +77,7 @@ it('enables an explicitly reinstalled pack but preserves enablement on an ordina
     sealPackBuild(source, manifest);
     await installPackFromLocal(source, context.packsDir, {
       installedPacksFile: context.installedPacksFile,
-      accept: candidate => { recordCliInstall(context.installedPacksFile, candidate.id, 'owner/repo'); },
+      accept: candidate => { recordUserInstall(context.installedPacksFile, candidate.id, 'owner/repo'); },
     });
     expect(readInstalledPacks(context.installedPacksFile)).toEqual([
       expect.objectContaining({ id: 'demo', enabled: true, installedFrom: 'owner/repo', updatesWith: 'user' }),

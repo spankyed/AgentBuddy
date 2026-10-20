@@ -107,6 +107,17 @@ it.each(['build', 'install', 'reload', 'failed', 'unreachable'] as const)('retri
   } finally { await watcher.close(); }
 });
 
+it('asks for no reload when onBuilt delivered the build itself', async () => {
+  const watcher = await startPackBuildWatcher('/fixture', { onBuilt: async () => ({ status: 'reloaded' as const }) });
+  try {
+    fixture.authored = 'second';
+    fixture.changed!('change', 'apack.json');
+    await vi.advanceTimersByTimeAsync(300);
+    expect(fixture.build).toHaveBeenCalledTimes(2);
+    expect(fixture.reload).not.toHaveBeenCalled();
+  } finally { await watcher.close(); }
+});
+
 it('keeps duplicate-save suppression when building without a running app', async () => {
   const watcher = await startPackBuildWatcher('/fixture');
   try {

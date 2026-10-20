@@ -8,6 +8,7 @@ export { withHostResolution, getBridgedSdkSpecifiers, getHostProvidedPackages } 
 export type { LoadedPack, LoadProblemSink, PackLoadProblem } from './loader.ts';
 export { activatePack, teardownPack } from './lifecycle.ts';
 export { reloadPackById } from './reload.ts';
+export { installDevPack } from './dev-install.ts';
 export { contentRevision, applyPacks, type PackContentTarget } from './apply.ts';
 export type { PackApplyFailure } from './apply.ts';
 export { startPacks } from './start.ts';

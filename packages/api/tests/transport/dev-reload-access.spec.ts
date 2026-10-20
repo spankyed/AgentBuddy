@@ -10,7 +10,7 @@ const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'api-dev-reload-'));
 process.env.APACK_ENV = 'test';
 process.env.APACK_USER_DATA_DIR = dataDir;
 process.env.APACK_API_TOKEN = 'the-run-token';
-const { API_PROTOCOL, acceptsConnection, devReloadRefusal, publishApiFiles } = await import('../../src/transport/websocket.ts');
+const { API_PROTOCOL, acceptsConnection, devRequestRefusal, publishApiFiles } = await import('../../src/transport/websocket.ts');
 const { API_HOST } = await import('@apackdev/sdk/utils/pure');
 const { apiToken, apiTokenIsOwn, isApiToken } = await import('../../src/boot/config.ts');
 const { resolveAppEnvironment } = await import('@apackdev/sdk/env');
@@ -69,20 +69,20 @@ describe('WebSocket connections', () => {
 
 describe('POST /dev/reload', () => {
   it('is taken with the token by a development or test app', () => {
-    expect(devReloadRefusal(withToken(TOKEN), 'development', TOKEN)).toBeNull();
-    expect(devReloadRefusal(withToken(TOKEN), 'test', TOKEN)).toBeNull();
+    expect(devRequestRefusal(withToken(TOKEN), 'development', TOKEN)).toBeNull();
+    expect(devRequestRefusal(withToken(TOKEN), 'test', TOKEN)).toBeNull();
     // The app environment and the token default to the process's
-    expect(devReloadRefusal(withToken(TOKEN))).toBeNull();
+    expect(devRequestRefusal(withToken(TOKEN))).toBeNull();
   });
 
   it('is refused without the token, or with another', () => {
-    expect(devReloadRefusal({}, 'development', TOKEN)).toMatch(/token is missing or wrong/);
-    expect(devReloadRefusal(withToken('guess'), 'development', TOKEN)).toMatch(/token is missing or wrong/);
+    expect(devRequestRefusal({}, 'development', TOKEN)).toMatch(/token is missing or wrong/);
+    expect(devRequestRefusal(withToken('guess'), 'development', TOKEN)).toMatch(/token is missing or wrong/);
   });
 
   it('is refused by a production or beta app, token or not', () => {
-    expect(devReloadRefusal(withToken(TOKEN), 'production', TOKEN)).toMatch(/development builds \(this one is production\)/);
-    expect(devReloadRefusal(withToken(TOKEN), 'beta', TOKEN)).toMatch(/this one is beta/);
+    expect(devRequestRefusal(withToken(TOKEN), 'production', TOKEN)).toMatch(/development builds \(this one is production\)/);
+    expect(devRequestRefusal(withToken(TOKEN), 'beta', TOKEN)).toMatch(/this one is beta/);
   });
 });
 
