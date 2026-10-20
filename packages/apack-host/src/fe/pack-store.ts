@@ -256,6 +256,9 @@ export function createFePackRegistry(): FePackRegistry {
         try { return mutate(() => {
           if (state !== 'pending') throw new Error('Only a pending frontend may commit');
           if (revision !== before) throw new Error('The frontend registry changed while this candidate was prepared');
+          // Before beforePublish, which commits the stylesheet irreversibly: activation runs pack code that may
+          // throw, and must do so while the incumbent's styles are still in place. A refusal after it revokes the
+          // binding in this same turn, so nothing the candidate wrote while activating is sent.
           binding?.activate();
           beforePublish?.();
           if (state !== 'pending') throw new Error('Frontend preparation was disposed before publication');

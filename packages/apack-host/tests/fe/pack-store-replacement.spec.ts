@@ -4,6 +4,11 @@ import { describe, expect, it, vi } from 'vitest';
 import type { PackFERegistration, SettingsPort } from '@apackdev/sdk/fe';
 import type { StepDefinition } from '@apackdev/sdk/steps';
 import { fakeSettings } from '@apackdev/sdk/testing';
+import type { Message } from '@apackdev/sdk/events';
+import type { SettingsSnapshot } from '@apackdev/sdk/types';
+import { createWindowSettingsRuntime } from '../../src/fe/settings-runtime.ts';
+import { createContributionCatalog } from '../../src/packs/catalog.ts';
+import { appSettingsDefinition } from '../../src/features/settings/be/app-definition.ts';
 
 const target = { kind: 'feature', featureRef: 'owner/code' } as const;
 const formTarget = { kind: 'pack', packId: 'owner', groupId: 'preferences' } as const;
@@ -123,6 +128,37 @@ describe('prepared frontend replacement', () => {
     expect(next.dispose).toHaveBeenCalledOnce();
     candidate.dispose();
     expect(next.dispose).toHaveBeenCalledOnce();
+  });
+
+  // Activation runs before the irreversible stylesheet commit, so a refusal there can follow it. The window
+  // runtime queues a binding's write for a microtask and drops it once the binding is disposed in the same turn.
+  it.each([
+    ['refused', () => { throw new Error('style commit refused'); }, 0],
+    ['accepted', () => {}, 1],
+  ] as const)('sends a write made while activating only when the commit is %s', async (_outcome, beforePublish, sent) => {
+    const messages: Message[] = [];
+    const window = createWindowSettingsRuntime({ send: async message => { messages.push(message); } });
+    window.connected();
+    await Promise.resolve(); await Promise.resolve();
+    const snapshot: SettingsSnapshot = { runId: 'run', revision: 0, status: 'ready',
+      catalog: createContributionCatalog(appSettingsDefinition).settings(),
+      values: { app: structuredClone(appSettingsDefinition.defaults) as unknown as SettingsSnapshot['values']['app'], packs: {}, features: {} } };
+    window.receive({ to: 'host/settings', event: { type: 'SETTINGS_LOADED', snapshot }, answering: messages[0].call });
+    const writes: Message[] = [];
+    const bound = window.bindPort('owner', async message => { writes.push(message); });
+    const packs = createNativeFrontendTestRegistry();
+    packs.registerFixture(registration('Old'));
+    const candidate = packs.prepareFixture(registration('New', port => ({
+      activate() { void port.update({ kind: 'app' }, ['personal', 'name'], 'Written while activating'); },
+      dispose() {},
+    })), { port: bound.port, dispose: bound.dispose }, true);
+    if (sent) candidate.commit(beforePublish);
+    else expect(() => candidate.commit(beforePublish)).toThrow('style commit refused');
+    await Promise.resolve(); await Promise.resolve();
+    expect(writes.filter(message => message.event.type === 'UPDATE_SETTINGS')).toHaveLength(sent);
+    expect(packs.getRegisteredPlugins()[0].label).toBe(sent ? 'New' : 'Old');
+    candidate.dispose();
+    window.dispose();
   });
 
   it('blocks reentrant admission while preparing executable bindings', () => {
