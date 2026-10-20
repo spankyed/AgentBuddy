@@ -108,3 +108,14 @@ it('does not route new requests to an actor while its replacement binding awaits
   expect(sent).not.toHaveBeenCalled();
   expect(app!.getSnapshot().context.awaitingPlugin).toHaveLength(1);
 });
+
+it('steps the switch-plugin hotkeys over a declared tab whose frontend has not loaded', () => {
+  const f = fixture(); const alpha = f.candidate('alpha'); const beta = f.candidate('beta'); const gamma = f.candidate('gamma');
+  alpha.declare(); beta.declare(); gamma.declare();
+  alpha.accept(); gamma.accept();
+  app!.send({ type: 'SELECT_PLUGIN', plugin: 'alpha/view' });
+  app!.send({ type: 'SWITCH_PLUGIN_DOWN' });
+  expect(app!.getSnapshot().context.activePlugin.id).toBe('gamma/view');
+  app!.send({ type: 'SWITCH_PLUGIN_UP' });
+  expect(app!.getSnapshot().context.activePlugin.id).toBe('alpha/view');
+});

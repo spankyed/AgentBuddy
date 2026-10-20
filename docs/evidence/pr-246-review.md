@@ -68,14 +68,17 @@ focused verification; remaining application/native acceptance is listed separate
 | Completeness: fresh integrated acceptance | Pending; no CI or broad application suites run during these repairs | [Acceptance limits](pr-246-repairs.md#remaining-acceptance-limits) |
 | 3a.1 | Deferred: a cache-validity decision for check steps | [Validation feedback budget](../plans/validation-feedback-budget.md#review-findings-this-plan-owns) |
 | 3a.2, 3a.3 | Open: recorded after this reconciliation | — |
-| 6.1, 6.2, 6.3, 6.4 | Open: recorded after this reconciliation | — |
+| 6.1 | Completed: unloaded tabs open through the shell's wait, are dimmed, and the switch hotkeys skip them | "fix(shell): unload refused frontend replacements and route unloaded tabs through the shell" |
+| 6.3 | Completed: a refused replacement unloads the frontend it would have replaced | "fix(shell): unload refused frontend replacements and route unloaded tabs through the shell" |
+| 6.2, 6.4 | Open: recorded after this reconciliation | — |
 | 3b.1, 3b.2, 3b.3, 3b.4 | Open: recorded after this reconciliation | — |
 | 4.1, 4.2, 4.3, 4.4 | Open: recorded after this reconciliation | — |
 | 9.1, 9.2, 9.3, 9.4 | Open: recorded after this reconciliation | — |
 | 10.1, 10.2, 10.7 | Deferred: deadline and declared-cost decisions; no change until measured | [Validation feedback budget](../plans/validation-feedback-budget.md#review-findings-this-plan-owns) |
 | 10.3–10.6 | Open: recorded after this reconciliation | — |
 | S.1, S.2 | Completed for startup-invalid settings: persisted-row preflight and host-only recovery | `3a6b649b5`; [evidence](settings-recovery.md) |
-| S.3–S.5 | Open: cross-area pass, recorded after this reconciliation | — |
+| S.4 | Closed by 6.3: no kept frontend is left with a dropped settings binding | "fix(shell): unload refused frontend replacements and route unloaded tabs through the shell" |
+| S.3, S.5 | Open: cross-area pass, recorded after this reconciliation | — |
 
 ### Remaining work
 
@@ -470,7 +473,7 @@ commit.
 | S.1 | High | Catalog × settings | Once any stored value is invalid, every catalog change is refused, including the refresh after a toggle or uninstall has already happened | Completed for startup invalidity: host-only recovery prevents pack mutations |
 | S.2 | Medium | Catalog × settings × boot | At boot, settings admission validates against empty settings, because packs load before the store is hydrated | Completed: persisted-row preflight before runtime loading |
 | S.3 | Medium (plausible) | Install × frontend | A pack disabled while its frontend first loads stays registered in the window | Open |
-| S.4 | Medium (plausible) | Settings × window | A reconnect revokes every frontend's settings binding, and a failed re-load leaves the pack reading `undefined` | Open |
+| S.4 | Medium (plausible) | Settings × window | A reconnect revokes every frontend's settings binding, and a failed re-load leaves the pack reading `undefined` | Closed by 6.3 |
 | S.5 | Low (plausible) | Build records × discovery | Under `apack pack dev`, the runtime loaded can be a newer build than the receipt just verified | Open |
 
 **S.1. Settings admission blocks every catalog change once one value is invalid.**
@@ -766,9 +769,9 @@ Scope: host `fe/` (not the settings runtime), `features/application/fe/`, `featu
 
 | # | Severity | Finding | Status |
 |---|---|---|---|
-| 6.1 | Medium | A tab whose frontend is loading or was refused does nothing when chosen, and traps the switch hotkeys | Open |
+| 6.1 | Medium | A tab whose frontend is loading or was refused does nothing when chosen, and traps the switch hotkeys | Completed |
 | 6.2 | Medium | Two packs declaring one reference name: the second loses its whole frontend, by load order | Open |
-| 6.3 | Medium | After a refused replacement, the kept frontend's systems never get startup data on that connection | Open |
+| 6.3 | Medium | After a refused replacement, the kept frontend's systems never get startup data on that connection | Completed: the frontend is unloaded instead |
 | 6.4 | Low | A candidate's settings lifecycle activates before its last freshness check | Open |
 
 **6.1. Declared but unaccepted tabs.** The toolbar and the plugin-switch hotkeys now list every enabled

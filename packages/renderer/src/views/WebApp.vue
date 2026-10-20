@@ -10,6 +10,7 @@
         :plugins="plugins"
         :active-plugin="activePlugin"
         @select-plugin="(id: string) => send({ type: 'SELECT_PLUGIN', plugin: id })"
+        @open-plugin="(id: string) => send({ type: 'OPEN_PLUGIN', plugin: id, events: [] })"
     />
 
     <!-- Main Area -->

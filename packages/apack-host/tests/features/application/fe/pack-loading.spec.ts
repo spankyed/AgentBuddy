@@ -294,7 +294,7 @@ it('keeps the accepted frontend and selection when a reconnect read fails', asyn
   expect(unloadPackFrontend).not.toHaveBeenCalled();
 });
 
-it('keeps accepted actors while preparing a replacement and after its refusal', async () => {
+it('keeps accepted actors while preparing a replacement, and unloads them when it is refused', async () => {
   loadedPacksQuery.mockResolvedValue([{ id: 'ext', feEntry: 'runtime/fe.js' }]);
   loadPackFrontend.mockResolvedValueOnce([plugin('ext/own')]);
   connect();
@@ -311,11 +311,19 @@ it('keeps accepted actors while preparing a replacement and after its refusal', 
   expect(packClientReady).not.toHaveBeenCalled();
   refuse(new Error('candidate refused'));
   await settle();
-  expect(app.system.get('ext/own')).toBe(previous);
-  expect(previous?.getSnapshot().status).toBe('active');
-  expect(app.getSnapshot().context.activePlugin.id).toBe('ext/own');
-  expect(unloadPackFrontend).not.toHaveBeenCalled();
-  expect(toastError).toHaveBeenCalledWith("Couldn't load ext", 'candidate refused');
+  // Kept, it would never be announced ready on this connection and its settings binding is gone
+  expect(previous?.getSnapshot().status).toBe('stopped');
+  expect(app.system.get('ext/own')).toBeUndefined();
+  expect(app.getSnapshot().context.activePlugin.id).toBe('notes');
+  expect(app.getSnapshot().context.acceptedPackRuntimes).toEqual({});
+  expect(unloadPackFrontend.mock.calls).toEqual([['ext']]);
+  expect(packClientReady).not.toHaveBeenCalled();
+  expect(toastError).toHaveBeenCalledWith("Couldn't load ext", 'candidate refused Its previous frontend was unloaded.');
+  loadPackFrontend.mockResolvedValueOnce([plugin('ext/own')]);
+  app.send({ type: 'LOAD_PACK_FRONTENDS' });
+  await settle();
+  expect(app.system.get('ext/own')).toBeDefined();
+  expect(packClientReady).toHaveBeenCalledWith('ext', 'runtime');
 });
 
 it('removes an absent owner only after an authoritative reconnect read', async () => {
@@ -407,7 +415,28 @@ it('refreshes only changed runtimes and leaves unrelated actors and selection in
   expect(unloadPackFrontend).not.toHaveBeenCalled();
 });
 
-it('keeps the accepted epoch on refusal and retries a changed runtime on the next request', async () => {
+it('loads a refused incumbent again in a run queued while the refusal was handled', async () => {
+  loadedPacksQuery.mockResolvedValue([{ id: 'ext', registrationId: 'first' }]);
+  loadPackFrontend.mockResolvedValueOnce([plugin('ext/own')]);
+  connect();
+  await settle();
+  loadedPacksQuery.mockResolvedValue([{ id: 'ext', registrationId: 'second' }]);
+  let refuse!: (error: Error) => void;
+  loadPackFrontend.mockReturnValueOnce(new Promise((_resolve, reject) => { refuse = reject; }));
+  loadPackFrontend.mockResolvedValueOnce([plugin('ext/own')]);
+  fake.receive({ to: 'host/application', event: { type: 'PACK_RUNTIMES_UPDATED', runtimes: { ext: 'second' } } });
+  await settle();
+  // Queued behind the run whose candidate is about to be refused
+  app.send({ type: 'LOAD_PACK_FRONTENDS' });
+  refuse(new Error('candidate refused'));
+  await settle();
+  // The unload is not one "while loading": the queued run's acceptance must not be discarded
+  expect(app.getSnapshot().context.acceptedPackRuntimes).toEqual({ ext: 'second' });
+  expect(app.system.get('ext/own')).toBeDefined();
+  expect(unloadPackFrontend.mock.calls).toEqual([['ext']]);
+});
+
+it('unloads the incumbent when a changed runtime is refused, and loads it on the next request', async () => {
   loadedPacksQuery.mockResolvedValue([{ id: 'ext', registrationId: 'first' }]);
   loadPackFrontend.mockResolvedValue([plugin('ext/own')]);
   connect();
@@ -417,8 +446,8 @@ it('keeps the accepted epoch on refusal and retries a changed runtime on the nex
   loadPackFrontend.mockRejectedValueOnce(new Error('candidate refused'));
   fake.receive({ to: 'host/application', event: { type: 'PACK_RUNTIMES_UPDATED', runtimes: { ext: 'second' } } });
   await settle();
-  expect(app.system.get('ext/own')).toBe(previous);
-  expect(app.getSnapshot().context.acceptedPackRuntimes).toEqual({ ext: 'first' });
+  expect(previous?.getSnapshot().status).toBe('stopped');
+  expect(app.getSnapshot().context.acceptedPackRuntimes).toEqual({});
   app.send({ type: 'LOAD_PACK_FRONTENDS' });
   await settle();
   expect(loadPackFrontend).toHaveBeenCalledTimes(3);

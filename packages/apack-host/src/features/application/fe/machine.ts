@@ -309,13 +309,21 @@ export function createShellMachine({ packs, catalog, client, packFrontends, stor
         const refresh = context.packFrontendsNeedRefresh && (!!loadedPacksError || !!failedPacks?.length);
         enqueue.assign({ packFrontendsNeedRefresh: refresh });
 
+        // A refused replacement unloads the frontend it would have replaced: that one no longer matches what this
+        // connection runs, its systems were never told it is ready, and its settings binding ended with the
+        // previous connection. The next run loads the pack afresh.
+        const refusedIncumbents = (failedPacks ?? []).map(failed => failed.packId).filter(id => id in context.acceptedPackRuntimes);
+        const acceptedPackRuntimes = Object.fromEntries(Object.entries(context.acceptedPackRuntimes)
+          .filter(([id]) => !refusedIncumbents.includes(id)));
+        for (const packId of refusedIncumbents) enqueue.raise({ type: 'PACK_PLUGINS_UNLOADED', packId, refused: true });
+
         // Every result of the run that finished has arrived, so nothing is left to drop
         if (context.packsUnloadedWhileLoading.length > 0) enqueue.assign({ packsUnloadedWhileLoading: [] });
 
         if (context.packLoadQueued) {
           enqueue.assign({ packLoadQueued: false });
           // The packs this run loaded are in context already: the loader sends its results before settling
-          enqueue.spawnChild('packFrontendLoader', { id: PACK_FRONTEND_LOADER_ID, input: { acceptedPackRuntimes: context.acceptedPackRuntimes, refresh } });
+          enqueue.spawnChild('packFrontendLoader', { id: PACK_FRONTEND_LOADER_ID, input: { acceptedPackRuntimes, refresh } });
         } else {
           enqueue.assign({ packLoadRunning: false });
           // Loading has settled: a plugin still asked for is one no loaded pack provides
@@ -340,12 +348,14 @@ export function createShellMachine({ packs, catalog, client, packFrontends, stor
         }
 
         if (failedPacks?.length) {
-          // A refused candidate may still have a working incumbent; report the refusal without removing it.
+          // Name each refusal, and say when it also cost the pack its previous frontend.
           const names = failedPacks.map(p => p.packId).join(', ');
-          const details = failedPacks.map(p => `${p.packId}: ${p.error}`).join('\n');
+          const reason = (p: { packId: string; error: string }) =>
+            refusedIncumbents.includes(p.packId) ? `${p.error} Its previous frontend was unloaded.` : p.error;
+          const details = failedPacks.map(p => `${p.packId}: ${reason(p)}`).join('\n');
           enqueue(() => {
             console.warn(`[shell] Failed to load the frontend of ${names}:\n${details}`);
-            notify.error(`Couldn't load ${names}`, failedPacks.map(p => p.error).join('\n'));
+            notify.error(`Couldn't load ${names}`, failedPacks.map(reason).join('\n'));
           });
         }
       }),
@@ -359,7 +369,7 @@ export function createShellMachine({ packs, catalog, client, packFrontends, stor
       }),
 
       removePackPlugins: enqueueActions(({ event, context, system, enqueue }) => {
-        const { packId } = typeOf('PACK_PLUGINS_UNLOADED', event);
+        const { packId, refused } = typeOf('PACK_PLUGINS_UNLOADED', event);
         enqueue.sendTo(context.entityOpening, { type: 'UNLOADED', packId });
         // A plugin runs under its feature's ref, `<packId>/<featureId>`, and a pack id holds no `/`, so the pack's
         // plugins are the ones this window has under that prefix. Matched rather than parsed: a plugin left here
@@ -376,7 +386,7 @@ export function createShellMachine({ packs, catalog, client, packFrontends, stor
           enqueue.assign({ packsWithFrontend: context.packsWithFrontend.filter(id => id !== packId) });
         }
         enqueue.assign({ acceptedPackRuntimes: Object.fromEntries(Object.entries(context.acceptedPackRuntimes).filter(([id]) => id !== packId)) });
-        if (context.packLoadRunning && !context.packsUnloadedWhileLoading.includes(packId)) {
+        if (!refused && context.packLoadRunning && !context.packsUnloadedWhileLoading.includes(packId)) {
           // It's being loaded right now: its result is dropped instead of adding plugins nothing removes
           enqueue.assign({ packsUnloadedWhileLoading: [...context.packsUnloadedWhileLoading, packId] });
         }
@@ -521,7 +531,7 @@ export function createShellMachine({ packs, catalog, client, packFrontends, stor
 
       switchPluginByDirection: ({ context, event, self }) => {
         const next = neighbourOf(pluginNavigationItems(catalog, packs.pluginBindings(), context.pluginVisibility)
-          .filter(plugin => plugin.visible), context.activePlugin.id, event.type === 'SWITCH_PLUGIN_UP' ? 'up' : 'down');
+          .filter(plugin => plugin.visible && plugin.loaded), context.activePlugin.id, event.type === 'SWITCH_PLUGIN_UP' ? 'up' : 'down');
         if (next) self.send({ type: 'SELECT_PLUGIN', plugin: next.id });
       },
 

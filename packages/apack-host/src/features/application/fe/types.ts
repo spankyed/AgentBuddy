@@ -209,4 +209,8 @@ export type ShellEvent =
    * Refused candidates do not emit this event.
    */
   | { type: 'PACK_FRONTEND_LOADED'; packId: string; registrationId: string; plugins: Plugin[] | null }
-  | { type: 'PACK_PLUGINS_UNLOADED'; packId: string };
+  /**
+   * A pack's frontend is gone from this window. `refused`: its replacement was refused, so the incumbent it
+   * would have replaced is unloaded too, and no load of it is in flight to discard.
+   */
+  | { type: 'PACK_PLUGINS_UNLOADED'; packId: string; refused?: true };

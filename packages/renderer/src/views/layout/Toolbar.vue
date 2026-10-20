@@ -14,14 +14,14 @@
             :key="item.id"
             :data-onboarding-id="`plugin-${item.id}`"
             :class="[
-              'p-2 rounded-lg transition-all duration-200 ease-in-out',
+              'p-2 rounded-lg transition-all duration-200 ease-in-out', item.loaded ? '' : 'opacity-50',
               activePlugin.id === item.id
                 ? 'bg-primary-600 text-white'
                 : 'text-neutral-400 hover:text-white hover:bg-primary-700'
             ]"
             @click="onPluginClick($event, item)"
             @contextmenu.stop.prevent="onPluginContextMenu($event, item)"
-            :title="item.label"
+            :title="item.loaded ? item.label : `${item.label} (not loaded yet)`"
           >
             <component :is="item.icon ?? Puzzle" :size="24" />
           </button>
@@ -35,14 +35,14 @@
           :key="item.id"
           :data-onboarding-id="`plugin-${item.id}`"
           :class="[
-            'p-2 rounded-lg transition-all duration-200 ease-in-out',
+            'p-2 rounded-lg transition-all duration-200 ease-in-out', item.loaded ? '' : 'opacity-50',
             activePlugin.id === item.id
               ? 'bg-primary-600 text-white'
               : 'text-neutral-400 hover:text-white hover:bg-primary-700'
           ]"
           @click="onPluginClick($event, item)"
           @contextmenu.stop.prevent="onPluginContextMenu($event, item)"
-          :title="item.label"
+          :title="item.loaded ? item.label : `${item.label} (not loaded yet)`"
         >
           <component :is="item.icon ?? Puzzle" :size="24" />
         </button>
@@ -72,7 +72,7 @@ import { Puzzle } from 'lucide-vue-next';
 import { useContextMenu, type MenuItem } from '@apackdev/ui/composables/useContextMenu';
 import { applicationState } from '@/main';
 
-const emit = defineEmits<(e: 'select-plugin', id: string) => void>();
+const emit = defineEmits<{ 'select-plugin': [id: string]; 'open-plugin': [id: string] }>();
 
 const props = defineProps<{
   activePlugin: Plugin;
@@ -132,7 +132,9 @@ const onPluginClick = (e: MouseEvent, plugin: PluginNavigationItem) => {
     return;
   }
 
-  emit('select-plugin', plugin.id);
+  // An unloaded tab opens through the shell, which waits for its pack or says why it can't
+  if (plugin.loaded) emit('select-plugin', plugin.id);
+  else emit('open-plugin', plugin.id);
 };
 
 const isDev = import.meta.env.DEV;

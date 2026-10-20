@@ -222,8 +222,8 @@ receipt retained with each accepted backend runtime. It does not rediscover file
 `CLIENT_CONNECTED`, until this window accepts their frontend.
 
 After successful frontend acceptance, the renderer calls `trpc.bus.packClientReady({ packId })`, which
-sends the pack's systems `CLIENT_CONNECTED` and asks them to publish. A failed frontend remains unloaded
-and may retry on a later load request; it is never announced ready. Reconnection accepts fresh bindings.
+sends the pack's systems `CLIENT_CONNECTED` and asks them to publish. A failed frontend remains unloaded,
+including one whose replacement was refused, and may retry on a later load request; it is never announced ready. Reconnection accepts fresh bindings.
 
 ## External pack FE entry convention
 

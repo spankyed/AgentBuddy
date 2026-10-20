@@ -10,6 +10,8 @@ export interface PluginNavigationItem {
   icon?: Plugin['icon'];
   isPinned?: boolean;
   visible: boolean;
+  /** Whether this window accepted the plugin's frontend; an unloaded tab opens through the shell's wait */
+  loaded: boolean;
 }
 
 /** Catalog order and visibility are independent of frontend delivery; only accepted bindings supply icons. */
@@ -24,8 +26,9 @@ export function pluginNavigationItems(
   const items = owners.flatMap(owner => {
     if (owner.enabled !== true || claims.get(owner.featureRef) !== 1) return [];
     const declaration = owner.declaration;
+    const accepted = getEligiblePlugin(catalog, bindings, owner.featureRef);
     return [{ id: owner.featureRef, label: declaration.label,
-      icon: getEligiblePlugin(catalog, bindings, owner.featureRef)?.icon,
+      icon: accepted?.icon, loaded: accepted !== undefined,
       isPinned: declaration.isPinned,
       visible: visibility[owner.featureRef] ?? declaration.defaultVisible ?? true }];
   });
