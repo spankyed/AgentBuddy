@@ -53,7 +53,7 @@ focused verification; remaining application/native acceptance is listed separate
 | 8.4 | Completed: refuse overlapping app-data replacement requests | `53da4c140` |
 | 8.5, 8.6 | Completed: correct import lifecycle documentation and reset/import refusal text | `c960deca3` |
 | Completeness: source-coverage claim | Completed: historical acceptance is explicitly bounded to its tested source | `278661695` |
-| Completeness: fresh integrated acceptance | In progress; both unit pools passed previously, full integration and subsequent app gates remain | [Current acceptance runs and exact source pins](pr-246-acceptance.md) |
+| Completeness: fresh integrated acceptance | In progress; both unit pools and all applicable integration files pass across retained runs; app gates remain | [Current acceptance runs and exact source pins](pr-246-acceptance.md) |
 | 3a.1 | Deferred: a cache-validity decision for check steps | [Validation feedback budget](../plans/validation-feedback-budget.md#review-findings-this-plan-owns) |
 | 3a.2, 3a.3 | Completed: resolve a dangling link from its physical directory; name a broken authored link | "fix(build): resolve dangling watch links physically, name broken authored links, restart dev servers after publication" |
 | 6.1 | Completed: unloaded tabs open through the shell's wait, are dimmed, and the switch hotkeys skip them | "fix(shell): unload refused frontend replacements and route unloaded tabs through the shell" |
@@ -76,9 +76,9 @@ focused verification; remaining application/native acceptance is listed separate
 
 ### Remaining work
 
-1. Preserve strict run `39450690425`'s completed results, verify the facade repair, then complete remaining integration,
-   runtime/smoke and external-app/packaged-authoring gates. Preserve completed results and diagnose any
-   failure with focused checks before another broad run.
+1. The complete integration file inventory now passes across retained runs (66 applicable files, two
+   platform skips), including the facade and archive repairs. Finish current general/external app
+   acceptance, then smoke and packaged authoring. This does not claim a single full strict pass.
 2. Exercise the packaged beta-host half of S.5 when a suitable beta release exists. Source-host
    install, manifest rebuild, accepted frontend delivery and shutdown passed in `39414905716`.
 3. Reconcile final acceptance against the exact tested commit; do not equate composed focused

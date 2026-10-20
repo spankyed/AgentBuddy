@@ -15,7 +15,7 @@ updates after that pin do not imply a newer source tree has passed.
 | Boundary | Inspected evidence | Remaining limit |
 |---|---|---|
 | Static checks and both unit pools | `39450690425`: both complete pools pass again | Current app/runtime changes still need application acceptance |
-| Normal integration | `39450690425`: 684 cases across 27 files pass; `39465321192`: all eleven facade-report cases pass | 38 applicable files are running in `39468282848`; two platform files are skipped |
+| Integration file inventory | All 66 applicable files have passing results across `39450690425`, `39465321192`, `39468282848` and `39473740323` | Composed runs, not a single normal-suite/strict pass; two platform-specific skips |
 | 7.2 actual step-owner service | `39400009119`: external step runs through the actual brain | Full external suite still needs its fresh gate |
 | 8.1/8.2 actual LMDB import/rollback | All six cases pass repeatedly on disposable macOS | Not dependent on the developer-Mac native crash |
 | 5.1/S.1/S.2 settings recovery | Real Electron recovery, reopen and multi-window cases pass | General app evidence is composed across runs, not one fresh 32/32 run |
@@ -417,3 +417,23 @@ No product change, compiler redesign, global timeout increase or assertion remov
 guards, CLI typechecking and correctness lint pass. The next disposable run selects only that archive
 file and the two unexecuted facade files. The prior 27 + 35 file passes and focused facade-report result
 remain preserved; a single complete normal-suite/strict pass is still not claimed.
+
+## Complete applicable integration inventory; application acceptance next
+
+[Run `39473740323`](https://github.com/spankyed/apack/actions/runs/39473740323), source
+`f5312107eb9e9b329cd3d4d163c0c3e1c5b546d4`, passes all three selected files and 33 cases. The archive
+file completes in 42.9s including production; extraction and assertions take 295ms. Both previously
+unexecuted facade files pass their actual producer/consumer builds, published-package typing and
+language-service completion cases. No deadline, RPC or cleanup error is reported. Evidence is retained
+under `/private/tmp/apack-integration-39473740323/` and its `.log`.
+
+All 66 applicable integration files now have an inspected passing result: 27 in the strict run,
+one focused facade-report file, 35 in the remainder and these final three. The two ELF/PE files
+intentionally skip on macOS. This completes the file inventory through composed evidence, not a fresh
+single normal-suite or full strict pass. Tests and fixture preparation were repaired; product input
+validation and native admission were not loosened.
+
+[Application acceptance `39477143294`](https://github.com/spankyed/apack/actions/runs/39477143294)
+is dispatched on the same source for the complete general and external app suites, source CLI lifecycle
+and real LMDB cases. Runtime/smoke and the two packaged-authoring halves remain required; the explicit
+`packaged` route will cover smoke/authoring separately. No application result is inferred yet.
