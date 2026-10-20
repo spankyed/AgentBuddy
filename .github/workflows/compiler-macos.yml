@@ -153,19 +153,9 @@ jobs:
           --reporter=default --reporter=json --outputFile="$RUNNER_TEMP/apack-native-tests.json"
           --bail=1 --poolOptions.threads.maxThreads=1 --poolOptions.threads.minThreads=1 --no-file-parallelism
       - name: Verify selected compiler cases executed
-        run: |
-          node --input-type=module <<'JS'
-          import fs from 'node:fs';
-          import assert from 'node:assert/strict';
-          const native = `${process.env.RUNNER_TEMP}/apack-native-tests.json`;
-          const inputs = `${process.env.RUNNER_TEMP}/apack-compiler-input-tests.json`;
-          const reports = [native, ...(fs.existsSync(inputs) ? [inputs] : [])]
-            .map(file => JSON.parse(fs.readFileSync(file, 'utf8')));
-          const passed = reports.reduce((sum, report) => sum + report.numPassedTests, 0);
-          assert.ok(passed > 0, 'Compiler filter selected no passing cases');
-          assert.ok(reports.every(report => report.numFailedTests === 0));
-          console.log({passed});
-          JS
+        run: >-
+          node .github/scripts/verify-filtered-tests.cjs
+          ${{ inputs.test_name && 'apack-compiler-input-tests+apack-native-tests' || 'apack-native-tests' }}
       - name: Remove signing keychain and fixture
         if: ${{ always() && inputs.sign_runtime }}
         run: |

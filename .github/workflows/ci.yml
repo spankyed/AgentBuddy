@@ -60,7 +60,7 @@ on:
   #   branches: [master]
 
 concurrency:
-  group: ci-${{ github.ref }}-${{ inputs.compiler_windows && 'windows' || '' }}-${{ inputs.compiler_macos && 'macos' || '' }}-${{ inputs.compiler_linux && 'linux' || '' }}
+  group: ci-${{ github.ref }}-${{ inputs.strict_chain && 'strict' || '' }}-${{ inputs.compiler_windows && 'windows' || '' }}-${{ inputs.compiler_macos && 'macos' || '' }}-${{ inputs.compiler_linux && 'linux' || '' }}
   # Native diagnostic results must finish; full CI still supersedes older runs.
   cancel-in-progress: ${{ !inputs.strict_chain && !inputs.compiler_windows && !inputs.compiler_macos && !inputs.compiler_linux }}
 
@@ -147,6 +147,10 @@ jobs:
       - name: Unit tests (repo checks)
         run: npm test --workspace @app/repo-checks -- --reporter=verbose
 
+      # Repo-checks' integration half reads the fixture packs' generated frontend entries, which are gitignored
+      - name: Prepare declared external fixture outputs
+        run: npm run test:external-pack:contract
+
       - name: Integration tests (repo checks)
         run: npm run test:integration --workspace @app/repo-checks -- --reporter=verbose
 
@@ -188,9 +192,10 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: external-pack-e2e
+          include-hidden-files: true
           path: |
-            tests/packs/external-pack/tests/results/
-            tests/packs/external-pack/tests/screenshots/
+            tests/packs/*/.apack/tests/
+            tests/packs/*/.apack/drive/
 
   strict-chain:
     if: ${{ inputs.strict_chain }}

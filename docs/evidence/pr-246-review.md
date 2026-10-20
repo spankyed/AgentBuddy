@@ -67,18 +67,23 @@ focused verification; remaining application/native acceptance is listed separate
 | Completeness: source-coverage claim | Completed: historical acceptance is explicitly bounded to its tested source | `278661695` |
 | Completeness: fresh integrated acceptance | Pending; no CI or broad application suites run during these repairs | [Acceptance limits](pr-246-repairs.md#remaining-acceptance-limits) |
 | 3a.1 | Deferred: a cache-validity decision for check steps | [Validation feedback budget](../plans/validation-feedback-budget.md#review-findings-this-plan-owns) |
-| 3a.2, 3a.3 | Open: recorded after this reconciliation | — |
+| 3a.2, 3a.3 | Completed: resolve a dangling link from its physical directory; name a broken authored link | "fix(build): resolve dangling watch links physically, name broken authored links, restart dev servers after publication" |
 | 6.1 | Completed: unloaded tabs open through the shell's wait, are dimmed, and the switch hotkeys skip them | "fix(shell): unload refused frontend replacements and route unloaded tabs through the shell" |
 | 6.3 | Completed: a refused replacement unloads the frontend it would have replaced | "fix(shell): unload refused frontend replacements and route unloaded tabs through the shell" |
-| 6.2, 6.4 | Open: recorded after this reconciliation | — |
-| 3b.1, 3b.2, 3b.3, 3b.4 | Open: recorded after this reconciliation | — |
-| 4.1, 4.2, 4.3, 4.4 | Open: recorded after this reconciliation | — |
-| 9.1, 9.2, 9.3, 9.4 | Open: recorded after this reconciliation | — |
+| 6.4 | No change: activation precedes the irreversible style commit on purpose ("preserves the incumbent when candidate activation throws before host resource publication"), and the freshness check already runs synchronously before `commit` | — |
+| 6.2 | Open: judgement call | — |
+| 3b.2 | Completed: a published build whose dev server fails re-verification restarts the server; covered by reading only, its specs need a disposable runner | "fix(build): resolve dangling watch links physically, name broken authored links, restart dev servers after publication" |
+| 3b.3 | Completed for the read-tree leak. The build path's lock release is unchanged: the next build's verification still blocks a stale publish | "fix(build): resolve dangling watch links physically, name broken authored links, restart dev servers after publication" |
+| 3b.1, 3b.4 | Open: judgement calls | — |
+| 4.1, 4.2, 4.3, 4.4 | Completed: guide examples and names match the schema and exports; every whole-manifest fence parses | "docs: align public pack guides with the manifest schema and exports" |
+| 9.1, 9.3, 9.4 | Completed: symlinked documents open; reopening refetches; a rebuilt graph keeps its layout | "fix(default-setup): open symlinked documents, refetch reopened items, keep layouts of rebuilt graphs" |
+| 9.2 | Open: judgement call | — |
 | 10.1, 10.2, 10.7 | Deferred: deadline and declared-cost decisions; no change until measured | [Validation feedback budget](../plans/validation-feedback-budget.md#review-findings-this-plan-owns) |
-| 10.3–10.6 | Open: recorded after this reconciliation | — |
+| 10.3–10.6 | Completed: strict runs keep their own group; each filtered step's report is verified; the fixture build precedes repo-checks integration; uploads point at `.apack` output | "ci: keep strict runs, verify each filtered step, build fixtures first, upload .apack output" |
 | S.1, S.2 | Completed for startup-invalid settings: persisted-row preflight and host-only recovery | `3a6b649b5`; [evidence](settings-recovery.md) |
 | S.4 | Closed by 6.3: no kept frontend is left with a dropped settings binding | "fix(shell): unload refused frontend replacements and route unloaded tabs through the shell" |
-| S.3, S.5 | Open: cross-area pass, recorded after this reconciliation | — |
+| S.3 | Completed: a frontend whose pack the ready catalog withdrew during loading is taken back out | "fix(shell): take back a frontend whose pack was withdrawn while it loaded" |
+| S.5 | Open: judgement call | — |
 
 ### Remaining work
 
