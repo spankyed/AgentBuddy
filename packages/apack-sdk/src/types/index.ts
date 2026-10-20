@@ -9,4 +9,4 @@ export { SDK_ENTITIES, SDK_REL_KINDS, SDK_EXCLUDED_ENTITY_TYPES } from './sdk-en
 export { _reservedEntries } from './reserved-names.ts';
 export type { AppSettings, AppAddress, AppPersonalInfo, AppProject, KeyboardShortcut, CustomHotkey, ApplicationHotkeys } from './app-settings.ts';
 export { settingsTargetPath } from './settings.ts';
-export type { SettingUpdate, SettingsPath, SettingsValue, ReadonlySettingsHandle, SettingsHandle, SettingsTarget, SettingsDocument, SettingsOverrides, SettingsWriteCondition, SettingsSnapshot, SettingsWriteResult } from './settings.ts';
+export type { SettingUpdate, SettingsPath, SettingsValue, ReadonlySettingsHandle, SettingsHandle, SettingsTarget, SettingsDocument, SettingsOverrides, SettingsWriteCondition, SettingsSnapshot, SettingsProblem, SettingsRecovery, SettingsRecoveryVersion, SettingsRecoveryRequest, SettingsWriteResult } from './settings.ts';

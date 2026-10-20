@@ -64,7 +64,7 @@ export const packsEvents = eventTypes<IncomingPacksEvents>()(
 );
 
 export const settingsEvents = eventTypes<IncomingSettingsEvents | IncomingSecretsEvents>()(
-  'GET_SETTINGS', 'UPDATE_SETTINGS', 'RESET_SETTINGS', 'RESET_ALL_SETTINGS', 'REPLACE_SETTINGS', 'RESET_APP', 'SECRETS_CHANGED',
+  'GET_SETTINGS', 'RECOVER_SETTINGS', 'UPDATE_SETTINGS', 'RESET_SETTINGS', 'RESET_ALL_SETTINGS', 'REPLACE_SETTINGS', 'RESET_APP', 'SECRETS_CHANGED',
 );
 
 /** What the settings system sends its own plugin: everything outgoing but the shell's hotkeys */
@@ -72,6 +72,8 @@ export type SettingsPluginEvents = Exclude<OutgoingSettingsEvents, { type: 'APPL
 
 /** The event types the `settings` plugin receives; the host's to send, and no pack's */
 export const SETTINGS_PLUGIN_EVENT_TYPES = eventTypes<SettingsPluginEvents>()(
+  'SETTINGS_RECOVERY',
+  'SETTINGS_RECOVERED',
   'SETTINGS_LOADED',
   'SETTINGS_UPDATED',
   'SETTINGS_SAVED',

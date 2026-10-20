@@ -1,7 +1,8 @@
+import { assertSettingsTarget } from '../features/settings/authorization.ts';
 import { _settingsJsonProblems, type SettingsCatalog } from '@apackdev/sdk/framework';
 import { FEATURE_ID_PATTERN, PACK_ID_PATTERN, splitRef } from '@apackdev/sdk/ids';
 import { hasOwn, isPlainObject } from '@apackdev/sdk/utils/pure';
-import type { SettingsSnapshot } from '@apackdev/sdk/types';
+import type { SettingsSnapshot, SettingsRecovery } from '@apackdev/sdk/types';
 import { isEqual } from '../features/settings/document.ts';
 import { compileSettingsCatalog } from '../features/settings/validation.ts';
 
@@ -46,4 +47,22 @@ export function createSettingsSnapshotReader() {
     compiled = { runId: snapshot.runId, catalog: snapshot.catalog, validator };
     return snapshot;
   };
+}
+
+
+/** Invalid settings travel as diagnostics, without values that typed readers could mistake for valid data. */
+export function readSettingsRecovery(value: unknown): SettingsRecovery {
+  if (_settingsJsonProblems(value).length || !isPlainObject(value) || !isPlainObject(value.version)
+    || typeof value.version.runId !== 'string' || !value.version.runId || !revision(value.version.revision)
+    || !revision(value.version.catalogRevision) || !['invalid', 'repaired'].includes(value.status as string)
+    || !Array.isArray(value.problems) || (value.status === 'invalid' ? !value.problems.length : value.problems.length !== 0)) {
+    throw new Error('Invalid settings recovery response');
+  }
+  for (const problem of value.problems) {
+    if (!isPlainObject(problem) || typeof problem.message !== 'string' || !Array.isArray(problem.path)
+      || problem.path.some(part => typeof part !== 'string')) throw new Error('Invalid settings recovery problem');
+    const target = problem.target;
+    if (target !== undefined) assertSettingsTarget(target);
+  }
+  return structuredClone(value) as unknown as SettingsRecovery;
 }

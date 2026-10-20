@@ -32,7 +32,7 @@ export function settingsRequestAdmin(event: object): SettingsAdmin {
   return access.service;
 }
 
-export const SETTINGS_MUTATIONS = new Set(['UPDATE_SETTINGS', 'RESET_SETTINGS', 'REPLACE_SETTINGS', 'RESET_ALL_SETTINGS', 'RESET_APP']);
+export const SETTINGS_MUTATIONS = new Set(['RECOVER_SETTINGS', 'UPDATE_SETTINGS', 'RESET_SETTINGS', 'REPLACE_SETTINGS', 'RESET_ALL_SETTINGS', 'RESET_APP']);
 
 interface Lease {
   client: string;

@@ -35,7 +35,7 @@ function releaseCredential(credential: string): void {
   void trpc.settings.close.mutate({ credential }).catch(error => console.error('Could not release settings access', error));
 }
 
-function snapshotReady(accepted: SettingsConnection): Promise<void> {
+function snapshotReady(accepted: SettingsConnection, allowRecovery = false): Promise<void> {
   return new Promise((resolve, reject) => {
     const stop = settingsPort.subscribe(check);
     const signal = accepted.closed.signal;
@@ -45,7 +45,7 @@ function snapshotReady(accepted: SettingsConnection): Promise<void> {
       if (!signal.aborted && connection === accepted && (status === 'loading' || status === 'replacing')) return;
       stop();
       signal.removeEventListener('abort', check);
-      if (!signal.aborted && connection === accepted && status === 'ready') resolve();
+      if (!signal.aborted && connection === accepted && (status === 'ready' || allowRecovery && status === 'recovery')) resolve();
       else reject(new Error('The settings connection is unavailable.'));
     }
     check();
@@ -59,7 +59,7 @@ export async function connectWindowSettings(): Promise<boolean> {
   connection = accepted;
   windowSettings.connected();
   try {
-    await Promise.all([accepted.credential, snapshotReady(accepted)]);
+    await Promise.all([accepted.credential, snapshotReady(accepted, true)]);
     assertConnected(accepted);
     return true;
   } catch (error) {
@@ -116,4 +116,17 @@ export function useWindowSettingsSnapshot() {
   const stop = settingsPort.subscribe(() => { snapshot.value = windowSettings.getSnapshot(); });
   onScopeDispose(stop);
   return readonly(snapshot);
+}
+
+
+/** Recovery is host-owned and remains visible until the repaired app is relaunched. */
+export function useSettingsRecovery() {
+  const recovery = shallowRef(windowSettings.getRecovery());
+  const status = shallowRef(settingsPort.status());
+  const stop = settingsPort.subscribe(() => {
+    recovery.value = windowSettings.getRecovery();
+    status.value = settingsPort.status();
+  });
+  onScopeDispose(stop);
+  return { recovery: readonly(recovery), status: readonly(status) };
 }

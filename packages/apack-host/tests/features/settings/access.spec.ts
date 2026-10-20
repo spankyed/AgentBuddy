@@ -94,3 +94,18 @@ it('refuses a stale runtime list and existing grant when identical bytes reload 
   const replacement = access.issuePack('window', { ...expected, runtimeRevision: 'replacement' });
   expect(access.resolve('window', replacement).kind).toBe('pack');
 });
+
+it('requires host-issued authority for recovery and never exposes repair on a pack service', async () => {
+  const { bindSettingsRequest, settingsRequestAdmin, SETTINGS_MUTATIONS } = await import('../../../src/features/settings/be/access.ts');
+  const { access, settings, scoped } = setup();
+  const event = { type: 'RECOVER_SETTINGS', from: 'host', settingsCredential: 'invented' };
+  expect(SETTINGS_MUTATIONS.has(event.type)).toBe(true);
+  expect(() => settingsRequestAdmin(event)).toThrow('host-issued');
+  const pack = access.issuePack('window', expected);
+  bindSettingsRequest(event, () => access.resolve('window', pack));
+  expect(() => settingsRequestAdmin(event)).toThrow('host settings administration');
+  expect(scoped).not.toHaveProperty('recover');
+  const host = access.issueHost('window');
+  bindSettingsRequest(event, () => access.resolve('window', host));
+  expect(settingsRequestAdmin(event)).toBe(settings);
+});

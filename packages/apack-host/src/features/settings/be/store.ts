@@ -6,7 +6,7 @@ import type { EarsQuery } from '@apackdev/ears';
 import type { EARS } from '@apackdev/sdk';
 import { _settingsJsonProblems, type SettingsCatalog } from '@apackdev/sdk/framework';
 import { deepMerge, isPlainObject } from '@apackdev/sdk/utils/pure';
-import { settingsTargetPath, type SettingsDocument, type SettingsOverrides, type SettingsTarget, type SettingsSnapshot, type SettingsWriteCondition } from '@apackdev/sdk/types';
+import { settingsTargetPath, type SettingsDocument, type SettingsOverrides, type SettingsTarget, type SettingsSnapshot, type SettingsRecovery, type SettingsRecoveryRequest, type SettingsWriteCondition } from '@apackdev/sdk/types';
 import type { SettingsChange } from '@apackdev/sdk/services';
 import { authorizeSettings, settingsDefinition } from '../authorization.ts';
 import { getIn, isEqual, removeIn, SettingsRefusedError, setIn } from '../document.ts';
@@ -28,6 +28,7 @@ export type SettingsStore = ReturnType<typeof createSettingsStore>;
 export function createSettingsStore({ ears, catalog, onCatalogChanged }: SettingsStoreOptions) {
   const listeners = new Set<(change: SettingsChange) => void>();
   let replacingData = 0;
+  let recoveryRequired = false;
   const replacement = new AsyncLocalStorage<{ active: boolean }>();
   let replacementSnapshot: Pick<SettingsSnapshot, 'values' | 'catalog'> | undefined;
   const runId = randomUUID();
@@ -45,13 +46,30 @@ export function createSettingsStore({ ears, catalog, onCatalogChanged }: Setting
   }
 
   function defaults(): SettingsDocument { declarations(); return validation.defaults; }
-  function stored(): SettingsOverrides {
+  function rawStored(): unknown {
     const row = ears().qx(SETTINGS_ID).pickOne(['data']);
     if (row === null) return {};
-    if (!isPlainObject(row.data)) throw new SettingsRefusedError(['Stored settings must be a JSON object']);
-    return structuredClone(row.data) as SettingsOverrides;
+    return structuredClone(row.data);
   }
-  const effective = (): SettingsDocument => structuredClone(deepMerge(defaults(), stored())) as SettingsDocument;
+  function stored(): SettingsOverrides {
+    const value = rawStored();
+    if (!isPlainObject(value)) throw new SettingsRefusedError(['Stored settings must be a JSON object']);
+    return value as SettingsOverrides;
+  }
+  function effective(): SettingsDocument {
+    const base = defaults();
+    const overrides = stored();
+    validation.validate(overrides);
+    return structuredClone(deepMerge(base, overrides)) as SettingsDocument;
+  }
+  function getRecovery(): SettingsRecovery | undefined {
+    if (replacingData) return undefined;
+    const catalog = declarations();
+    const problems = validation.inspect(rawStored());
+    if (problems.length) recoveryRequired = true;
+    return recoveryRequired ? { status: problems.length ? 'invalid' : 'repaired',
+      version: { runId, revision, catalogRevision: catalog.revision }, problems } : undefined;
+  }
   const tell = (change: SettingsChange) => {
     for (const listener of listeners) {
       try { listener(change); }
@@ -78,7 +96,7 @@ export function createSettingsStore({ ears, catalog, onCatalogChanged }: Setting
 
   function write(next: unknown): void {
     declarations();
-    validation.validate(next, stored());
+    validation.validate(next, rawStored());
     const database = ears();
     const exists = database.qx(SETTINGS_ID).pickOne(['data']) !== null;
     (exists ? database.tx(SETTINGS_ID) : database.tx(SETTINGS_ID, true).put('entityType', SETTINGS_ENTITY))
@@ -95,6 +113,26 @@ export function createSettingsStore({ ears, catalog, onCatalogChanged }: Setting
 
   return {
     getAll: effective,
+    getRecovery,
+    recover(request: SettingsRecoveryRequest): void {
+      if (replacingData) throw new SettingsRefusedError(['Data is being replaced. Wait before repairing settings.']);
+      const current = getRecovery();
+      if (!current || current.status !== 'invalid' || !request || _settingsJsonProblems(request).length || !isEqual(request.version, current.version)) {
+        throw new SettingsRefusedError(['Settings or declarations changed. Review the current problems before resetting.']);
+      }
+      if (request.reset === 'all') { write({}); return; }
+      if (!Array.isArray(request.reset) || request.reset.length === 0 || current.problems.some(problem => !problem.target)) {
+        throw new SettingsRefusedError(['Select affected settings groups, or reset all preferences for a malformed document.']);
+      }
+      const affected = new Set(current.problems.map(problem => JSON.stringify(settingsTargetPath(problem.target!))));
+      let next = rawStored();
+      for (const target of request.reset) {
+        targetDefinition(target);
+        if (!affected.has(JSON.stringify(settingsTargetPath(target)))) throw new SettingsRefusedError(['Only affected settings groups can be reset during recovery.']);
+        next = removeIn(next, settingsTargetPath(target));
+      }
+      write(next);
+    },
     getSnapshot(): SettingsSnapshot {
       const published = replacementSnapshot ?? { values: effective(), catalog: declarations() };
       return { runId, revision, status: replacingData ? 'replacing' : 'ready', ...structuredClone(published) };
@@ -107,7 +145,7 @@ export function createSettingsStore({ ears, catalog, onCatalogChanged }: Setting
     set(target: SettingsTarget, path: readonly string[], value: unknown, caller?: string, condition?: SettingsWriteCondition): void {
       authorize(target, caller, true);
       if (!Array.isArray(path) || path.some(key => typeof key !== 'string')) throw new SettingsRefusedError(['Settings paths contain strings']);
-      compare(condition, getIn(effective(), [...settingsTargetPath(target), ...path]));
+      if (condition) compare(condition, getIn(effective(), [...settingsTargetPath(target), ...path]));
       write(setIn(stored(), [...settingsTargetPath(target), ...path], value));
     },
     reset(target: SettingsTarget, caller?: string): void {
@@ -117,7 +155,8 @@ export function createSettingsStore({ ears, catalog, onCatalogChanged }: Setting
       removeOverrides(settingsTargetPath(target));
     },
     replaceAll(next: unknown, condition?: SettingsWriteCondition): void {
-      compare(condition, effective());
+      declarations();
+      if (condition) compare(condition, effective());
       validation.validateEffective(next);
       write(next);
     },

@@ -15,7 +15,7 @@ import {
 } from '@apackdev/host/features';
 import { createAppBus, createParticipantClaims, HOST } from '@apackdev/host/bus';
 import { createHostRuntime } from '@apackdev/host/services';
-import { createSettingsAccess } from '@apackdev/host/settings';
+import { compileSettingsCatalog, createSettingsAccess } from '@apackdev/host/settings';
 import { forwardSecretsChanges } from '@apackdev/host/secrets';
 import { assertSourceResolution } from '@apackdev/host/build/source-resolution';
 import { rootEvents } from '../transport/emitter.ts';
@@ -143,15 +143,6 @@ export async function setupBackend(): Promise<void> {
     assertSourceResolution(createRequire(import.meta.url).resolve, 'The API server');
   }
 
-  // ── The app's own features, as the pack `host` (before any pack loading) ──────────
-  packs.registerPack(hostRegistration({
-    // The app shell's own state (which tabs show, the last plugin open), which the application plugin reads
-    application: { machine: createApplicationSystem(packs), receives: APPLICATION_SYSTEM_EVENTS },
-    packs: { machine: createPacksSystem(packs), receives: [...packsEvents] },
-    // The app's settings: one row, one writer, and what every feature reads its own from
-    settings: { machine: createSettingsSystem(), receives: [...settingsEvents] },
-  }));
-
   // Before discovery: a pack an interrupted install left only as its moved-aside copy is restored,
   // and apack pack install learns which apack uses this data dir
   prepareHostDataDirs({ userDataDir: appContext.userDataDir, packsDir: appContext.packsDir, version: APP_VERSION });
@@ -176,8 +167,26 @@ export async function setupBackend(): Promise<void> {
     }
   }
 
-  // ── Load packs ────────────
-  const { loaded: loadedPacks } = loadAppPacks(packs);
+  // Static discovery and a direct stored-row read precede executable pack loading and hydration.
+  packs.refreshCatalog(appContext.packsDir);
+  const settingsProblems = compileSettingsCatalog(packs.settingsCatalog()).inspect(storedSettings(store));
+  const recoveringSettings = settingsProblems.length > 0;
+  if (recoveringSettings) {
+    console.error('[settings] Preferences require an explicit reset before normal startup:', settingsProblems);
+    // This process remains host-only even after repair. Relaunch owns normal initialization.
+    packs.catalog.setSettingsAdmission(() => { throw new Error('Restart the app after repairing settings before changing packs.'); });
+  }
+
+  packs.registerPack(hostRegistration({
+    settings: { machine: createSettingsSystem(), receives: [...settingsEvents] },
+    ...(!recoveringSettings && {
+      application: { machine: createApplicationSystem(packs), receives: APPLICATION_SYSTEM_EVENTS },
+      packs: { machine: createPacksSystem(packs), receives: [...packsEvents] },
+    }),
+  }));
+
+  // Recovery starts only host actors; no executable external pack is imported.
+  const loadedPacks = recoveringSettings ? [] : loadAppPacks(packs).loaded;
 
   console.log(`[app] apack v${APP_VERSION} startupId=${process.env.APACK_STARTUP_ID ?? 'unknown'}`);
 
@@ -192,7 +201,7 @@ export async function setupBackend(): Promise<void> {
   await store.hydrate();
 
   // ── Start the packs: each one's onInit, the migrations (the app's, then external packs'), the content
-  startPacks(packs);
+  if (!recoveringSettings) startPacks(packs);
 
   // ── Start backend actor ──────────────────────────────────────────────
   backendActor = createActor(createAppBus(packs, appClaims), {

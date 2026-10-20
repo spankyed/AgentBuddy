@@ -1,13 +1,13 @@
 import { newCall, type Message } from '@apackdev/sdk/events';
 import { _settingsJsonProblems } from '@apackdev/sdk/framework';
 import type { SettingsPort } from '@apackdev/sdk/fe';
-import { settingsTargetPath, type SettingsSnapshot, type SettingsWriteCondition, type SettingsWriteResult } from '@apackdev/sdk/types';
+import { settingsTargetPath, type SettingsSnapshot, type SettingsRecovery, type SettingsRecoveryRequest, type SettingsWriteCondition, type SettingsWriteResult } from '@apackdev/sdk/types';
 import type { IncomingSettingsEvents } from '../features/settings/be/types.ts';
-import { getIn } from '../features/settings/document.ts';
+import { getIn, isEqual } from '../features/settings/document.ts';
 import { authorizeSettings } from '../features/settings/authorization.ts';
 import { HOST } from '../refs.ts';
 import { createLogger } from '@apackdev/sdk/logger';
-import { createSettingsSnapshotReader } from './settings-snapshot.ts';
+import { createSettingsSnapshotReader, readSettingsRecovery } from './settings-snapshot.ts';
 
 export interface WindowSettingsIO {
   send(message: Message): Promise<void>;
@@ -23,10 +23,11 @@ export function createWindowSettingsRuntime(io: WindowSettingsIO) {
   const readSnapshot = createSettingsSnapshotReader();
   let status: ReturnType<SettingsPort['status']> = 'loading';
   let snapshot: SettingsSnapshot | undefined;
+  let recovery: SettingsRecovery | undefined;
   let readCall: string | undefined;
   let readTimer: ReturnType<typeof setTimeout> | undefined;
   const listeners = new Set<() => void>();
-  const pending = new Map<string, { resolve: (result: SettingsWriteResult) => void; timer: ReturnType<typeof setTimeout>; owner?: object }>();
+  const pending = new Map<string, { resolve: (result: SettingsWriteResult) => void; timer: ReturnType<typeof setTimeout>; owner?: object; repair: boolean }>();
   const bindings = new Set<() => void>();
   const report = (error: unknown) => logger.error('Settings window failed', error instanceof Error ? error : new Error(String(error)));
   const tell = () => {
@@ -50,6 +51,7 @@ export function createWindowSettingsRuntime(io: WindowSettingsIO) {
     clearTimeout(readTimer);
     readCall = undefined;
     snapshot = undefined;
+    recovery = undefined;
     status = next;
     for (const dispose of bindings) dispose();
     for (const call of pending.keys()) settle(call, refused(reason));
@@ -62,7 +64,7 @@ export function createWindowSettingsRuntime(io: WindowSettingsIO) {
   }
 
   function change(event: IncomingSettingsEvents, transport = io.send, owner?: object): Promise<SettingsWriteResult> {
-    if (status !== 'ready') return Promise.resolve(refused('Settings are not ready. Wait for the backend to reconnect.'));
+    if (status !== 'ready' && !(status === 'recovery' && event.type === 'RECOVER_SETTINGS' && !owner)) return Promise.resolve(refused('Settings are not ready. Wait for the backend to reconnect.'));
     let request: IncomingSettingsEvents;
     try {
       if (_settingsJsonProblems(event).length) return Promise.resolve(refused('Settings changes must contain ordinary JSON data.'));
@@ -72,7 +74,7 @@ export function createWindowSettingsRuntime(io: WindowSettingsIO) {
     const call = newCall();
     return new Promise(resolve => {
       const timer = setTimeout(() => settle(call, refused('The backend did not answer this settings change.')), timeout);
-      pending.set(call, { resolve, timer, owner });
+      pending.set(call, { resolve, timer, owner, repair: request.type === 'RECOVER_SETTINGS' });
       Promise.resolve().then(() => pending.has(call)
         ? send(request, call, transport) : undefined)
         .catch(error => settle(call, refused(String(error))));
@@ -87,6 +89,7 @@ export function createWindowSettingsRuntime(io: WindowSettingsIO) {
       if (!snapshot) end('disconnected', 'The backend returned an invalid settings snapshot.');
       return false;
     }
+    if (recovery) return false; // This host requires relaunch before normal settings consumption.
     if (!snapshot) {
       clearTimeout(readTimer);
       readCall = undefined;
@@ -164,6 +167,9 @@ export function createWindowSettingsRuntime(io: WindowSettingsIO) {
       };
     },
     getSnapshot: (): SettingsSnapshot | undefined => snapshot && structuredClone(snapshot),
+    /** The host retains recovery, including completed repair, across window reconnects until app relaunch. */
+    getRecovery: (): SettingsRecovery | undefined => recovery && structuredClone(recovery),
+    recover: (request: SettingsRecoveryRequest) => change({ type: 'RECOVER_SETTINGS', request }),
     connected(): void {
       if (status === 'disposed') return;
       end('disconnected', 'The connection changed before this settings change was answered.');
@@ -187,6 +193,39 @@ export function createWindowSettingsRuntime(io: WindowSettingsIO) {
     receive(message: Message): boolean {
       if (message.to !== HOST.settings) return false;
       const event = message.event;
+      if (event.type === 'SETTINGS_RECOVERY' || event.type === 'SETTINGS_RECOVERED') {
+        if (status === 'disposed' || status === 'disconnected') return true;
+        if (!snapshot && !recovery && (!readCall || message.answering !== readCall)) return true;
+        try {
+          const next = readSettingsRecovery(event.recovery);
+          const previous = snapshot ? { runId: snapshot.runId, revision: snapshot.revision, catalogRevision: snapshot.catalog.revision } : recovery?.version;
+          if (previous && (next.version.runId !== previous.runId || next.version.revision < previous.revision
+            || next.version.catalogRevision < previous.catalogRevision)) return true;
+          if (snapshot && next.version.revision === snapshot.revision && next.version.catalogRevision === snapshot.catalog.revision) {
+            throw new Error('Settings became invalid without a value or catalog revision');
+          }
+          if (recovery && isEqual(next.version, recovery.version) && !isEqual(next, recovery)) {
+            throw new Error('Settings recovery changed without a value or catalog revision');
+          }
+          if (recovery && isEqual(next, recovery) && status === 'recovery' && event.type !== 'SETTINGS_RECOVERED') return true;
+          clearTimeout(readTimer);
+          readCall = undefined;
+          snapshot = undefined;
+          recovery = next;
+          status = 'recovery';
+          for (const dispose of bindings) dispose();
+          for (const [call, request] of pending) {
+            if (event.type === 'SETTINGS_RECOVERED' && call === message.answering) {
+              settle(call, next.status === 'repaired' ? { status: 'saved' } : refused('The settings were not repaired.'));
+            } else if (!request.repair) settle(call, refused('Settings require recovery.'));
+          }
+          tell();
+        } catch (error) {
+          report(error);
+          if (!snapshot) end('disconnected', 'The backend returned invalid settings recovery data.');
+        }
+        return true;
+      }
       if (event.type === 'SETTINGS_SAVED' || event.type === 'SETTINGS_REFUSED') {
         const result: SettingsWriteResult = event.type === 'SETTINGS_SAVED' ? { status: 'saved' }
           : Array.isArray(event.problems) && event.problems.length > 0 && event.problems.every(problem => typeof problem === 'string')
@@ -200,7 +239,7 @@ export function createWindowSettingsRuntime(io: WindowSettingsIO) {
       }
       if (!['SETTINGS_LOADED', 'SETTINGS_UPDATED', 'SETTINGS_RESET'].includes(event.type)) return false;
       if (status === 'disposed' || status === 'disconnected') return true;
-      if (!snapshot && (!readCall || message.answering !== readCall)) return true;
+      if (!snapshot && !recovery && (!readCall || message.answering !== readCall)) return true;
       acceptSnapshot(event.snapshot);
       return true;
     },

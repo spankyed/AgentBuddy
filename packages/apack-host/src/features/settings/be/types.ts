@@ -1,4 +1,4 @@
-import type { ApplicationHotkeys, SettingsTarget, SettingsSnapshot, SettingsWriteCondition } from '@apackdev/sdk/types';
+import type { ApplicationHotkeys, SettingsTarget, SettingsSnapshot, SettingsRecovery, SettingsRecoveryRequest, SettingsWriteCondition } from '@apackdev/sdk/types';
 import type { ApplyResult } from '@apackdev/sdk/utils';
 import type { PackContentPreview } from '@apackdev/sdk/content';
 import type { SecretMetadata, SecretsStatus } from '@apackdev/sdk/services';
@@ -7,6 +7,7 @@ import type { SecretMetadata, SecretsStatus } from '@apackdev/sdk/services';
 
 export type IncomingSettingsEvents =
   | { type: 'GET_SETTINGS' }
+  | { type: 'RECOVER_SETTINGS'; request: SettingsRecoveryRequest }
   // No correlation field on any of the three writes: addressing says which connection an answer came back on,
   // and the envelope's `call` says which request it answers — `reply` stamps it, so a sender with several
   // writes in flight (a drive session) tells its own answer from another's without either side declaring a
@@ -32,6 +33,8 @@ export type SettingsInternalEvents =
   | { type: 'DATA_REPLACED' }
 
 export type OutgoingSettingsEvents =
+  | { type: 'SETTINGS_RECOVERY'; recovery: SettingsRecovery }
+  | { type: 'SETTINGS_RECOVERED'; recovery: SettingsRecovery }
   | { type: 'SETTINGS_LOADED'; snapshot: SettingsSnapshot }
   /** The installed packs changed, so what they answer with in Help has too */
   | { type: 'SETTINGS_UPDATED'; snapshot: SettingsSnapshot }

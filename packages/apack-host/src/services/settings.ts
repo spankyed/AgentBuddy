@@ -15,6 +15,8 @@ export function createSettingsService(store: SettingsStore): SettingsAdmin {
     reset: (target) => store.reset(target),
     getAll: store.getAll,
     getSnapshot: store.getSnapshot,
+    getRecovery: store.getRecovery,
+    recover: store.recover,
     getOverrides: store.getOverrides,
     replaceAll: store.replaceAll,
     removeOverrides: store.removeOverrides,

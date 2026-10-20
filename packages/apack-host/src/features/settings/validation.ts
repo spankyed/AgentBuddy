@@ -1,15 +1,8 @@
 import { _compileSettingsDefinition, type SettingsCatalog, type SettingsDefinition } from '@apackdev/sdk/framework';
 import { deepMerge, hasOwn, isPlainObject } from '@apackdev/sdk/utils/pure';
-import { settingsTargetPath, type AppSettings, type SettingsDocument, type SettingsTarget } from '@apackdev/sdk/types';
+import { settingsTargetPath, type AppSettings, type SettingsDocument, type SettingsTarget, type SettingsProblem } from '@apackdev/sdk/types';
 import type { FeatureRef } from '@apackdev/sdk/ids';
 import { getIn, isEqual, settingsProblems, SettingsRefusedError } from './document.ts';
-
-/** Schema problems identify a resettable owner; document problems do not. */
-export interface SettingsProblem {
-  target?: SettingsTarget;
-  path: readonly string[];
-  message: string;
-}
 
 /** Compile one accepted revision; live writes and backup preflight validate through the same rules. */
 export function compileSettingsCatalog(catalog: SettingsCatalog) {

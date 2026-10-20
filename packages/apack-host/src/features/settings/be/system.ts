@@ -39,7 +39,7 @@ function refusal(error: unknown, what: string): Extract<SettingsAnswer, { type: 
 }
 
 /** Each plugin's settings as they apply: what features were last told */
-const appliedFeatureSettings = (): Record<string, unknown> => ({ ...preferences().getAll().features });
+const appliedFeatureSettings = (): Record<string, unknown> => preferences().getRecovery() ? {} : { ...preferences().getAll().features };
 
 /** What each feature was last told of its settings, by feature ref */
 /**
@@ -54,6 +54,7 @@ const whileBusy = (reason: string) => ({
   UPDATE_SETTINGS: { actions: { type: 'refuseChange' as const, params: { reason } } },
   REPLACE_SETTINGS: { actions: { type: 'refuseChange' as const, params: { reason } } },
   RESET_SETTINGS: { actions: { type: 'refuseChange' as const, params: { reason } } },
+  RECOVER_SETTINGS: { actions: { type: 'refuseChange' as const, params: { reason } } },
   RESET_ALL_SETTINGS: { actions: { type: 'refuseChange' as const, params: { reason } } },
 });
 
@@ -64,6 +65,8 @@ export const settingsSpec = defineSystem<Contract>();
  * in them: whatever changed the settings, both views follow.
  */
 function broadcastSettings(type: 'SETTINGS_LOADED' | 'SETTINGS_UPDATED' | 'SETTINGS_RESET'): void {
+  const recovery = preferences().getRecovery();
+  if (recovery) { broadcastToPlugin('settings', { type: 'SETTINGS_RECOVERY', recovery }); return; }
   const snapshot = preferences().getSnapshot();
   broadcastToPlugin('settings', { type, snapshot });
   const data = snapshot.values;
@@ -162,7 +165,8 @@ export const settingsSystem = setup({
       answerSettings(reply, { type: 'SETTINGS_REFUSED', problems: [reason] }),
 
     getSettings: ({ reply }) => {
-      if (reply) reply({ type: 'SETTINGS_LOADED', snapshot: preferences().getSnapshot() });
+      const recovery = preferences().getRecovery();
+      if (reply) reply(recovery ? { type: 'SETTINGS_RECOVERY', recovery } : { type: 'SETTINGS_LOADED', snapshot: preferences().getSnapshot() });
       else broadcastSettings('SETTINGS_LOADED');
     },
     
@@ -175,6 +179,16 @@ export const settingsSystem = setup({
      * which would answer again and throw out of the action. default-setup's database system says the same
      * thing where it does the same thing.
      */
+    recoverSettings: ({ event, reply }) => {
+      const { request } = settingsSpec.typeOf('RECOVER_SETTINGS', event);
+      let outcome: SettingsAnswer;
+      try {
+        settingsRequestAdmin(event).recover(request);
+        outcome = { type: 'SETTINGS_RECOVERED', recovery: preferences().getRecovery()! };
+      } catch (error) { outcome = refusal(error, "The settings weren't repaired"); }
+      answerSettings(reply, outcome);
+    },
+
     updateSettings: ({ event, reply }) => {
       const ev = settingsSpec.typeOf('UPDATE_SETTINGS', event);
       // A plugin's settings are keyed by its ref, which the frontend resolves before sending and the store checks
@@ -280,6 +294,7 @@ export const settingsSystem = setup({
         RESET_SETTINGS: {
           actions: 'resetSettings',
         },
+        RECOVER_SETTINGS: { actions: 'recoverSettings' },
         RESET_ALL_SETTINGS: { actions: 'resetAllSettings' },
         RESET_APP: [
           { guard: 'canResetApp', target: 'resetting' },

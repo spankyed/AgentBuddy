@@ -333,6 +333,44 @@ export type SettingsPath<T, Depth extends unknown[] = []> = Depth['length'] exte
 }[keyof T & string];
 
 // @public
+export interface SettingsProblem {
+    // (undocumented)
+    message: string;
+    // (undocumented)
+    path: readonly string[];
+    // (undocumented)
+    target?: SettingsTarget;
+}
+
+// @public
+export interface SettingsRecovery {
+    // (undocumented)
+    problems: readonly SettingsProblem[];
+    // (undocumented)
+    status: 'invalid' | 'repaired';
+    // (undocumented)
+    version: SettingsRecoveryVersion;
+}
+
+// @public (undocumented)
+export interface SettingsRecoveryRequest {
+    // (undocumented)
+    reset: 'all' | readonly SettingsTarget[];
+    // (undocumented)
+    version: SettingsRecoveryVersion;
+}
+
+// @public
+export interface SettingsRecoveryVersion {
+    // (undocumented)
+    catalogRevision: number;
+    // (undocumented)
+    revision: number;
+    // (undocumented)
+    runId: string;
+}
+
+// @public
 export interface SettingsSnapshot {
     // (undocumented)
     catalog: SettingsCatalog;

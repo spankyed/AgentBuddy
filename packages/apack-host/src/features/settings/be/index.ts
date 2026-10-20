@@ -6,3 +6,5 @@ export { settingsProblems, SettingsRefusedError } from '../document.ts';
 export { createSettingsService } from '../../../services/settings.ts';
 export { createSettingsBackupValidator } from './backup.ts';
 export { createSettingsAccess, bindSettingsRequest, settingsRequestAccess, SETTINGS_MUTATIONS, type SettingsAccess } from './access.ts';
+
+export { compileSettingsCatalog } from '../validation.ts';

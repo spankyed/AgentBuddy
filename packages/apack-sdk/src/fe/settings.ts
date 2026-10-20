@@ -14,7 +14,7 @@ export interface SettingsSaveStatus {
 /** The renderer binds one settings port per window, independently of the Settings view. */
 export interface SettingsPort {
   get<T = unknown>(target: SettingsTarget): T | undefined;
-  status(): 'loading' | 'ready' | 'replacing' | 'disconnected' | 'disposed';
+  status(): 'loading' | 'recovery' | 'ready' | 'replacing' | 'disconnected' | 'disposed';
   /** Calls `listener` whenever any of the above may have changed; returns the unsubscribe */
   subscribe(listener: () => void): () => void;
   /** Sets a relative path within an explicit owner. */

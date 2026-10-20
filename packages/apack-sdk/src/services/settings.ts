@@ -1,4 +1,4 @@
-import type { SettingsTarget, SettingsDocument, SettingsOverrides, SettingsSnapshot, SettingsWriteCondition } from '../types/settings.ts';
+import type { SettingsTarget, SettingsDocument, SettingsOverrides, SettingsSnapshot, SettingsRecovery, SettingsRecoveryRequest, SettingsWriteCondition } from '../types/settings.ts';
 
 /** Caller-bound preference access. A target never supplies the caller's identity. */
 export interface SettingsService {
@@ -12,6 +12,8 @@ export interface SettingsService {
 export interface SettingsAdmin extends SettingsService {
   getAll(): SettingsDocument;
   getSnapshot(): SettingsSnapshot;
+  getRecovery(): SettingsRecovery | undefined;
+  recover(request: SettingsRecoveryRequest): void;
   getOverrides(): SettingsOverrides;
   replaceAll(document: unknown, condition?: SettingsWriteCondition): void;
   removeOverrides(path: readonly string[]): void;

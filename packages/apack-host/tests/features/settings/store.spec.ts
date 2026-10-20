@@ -302,3 +302,71 @@ it('does not let detached initialization work retain write access during a later
     await expect(detached).rejects.toThrow('Data is being replaced');
   } finally { finish(); await replacing; }
 });
+
+
+describe('explicit settings recovery', () => {
+  function corrupt(data: unknown) {
+    untypedTx(SETTINGS_ID, true).put('entityType', SETTINGS_ENTITY).put('data', data);
+    return store.getRecovery()!;
+  }
+
+  it('attributes schema problems without exposing invalid typed values', () => {
+    const recovery = corrupt({ features: { [THREADS]: { limit: 'invalid' } } });
+    expect(recovery.problems).toContainEqual({ target: feature, path: ['limit'], message: 'must be integer' });
+    expect(() => store.get(feature)).toThrow('limit');
+    expect(() => store.getAll()).toThrow('limit');
+    expect(() => store.getSnapshot()).toThrow('limit');
+    expect(rowData()).toEqual({ features: { [THREADS]: { limit: 'invalid' } } });
+  });
+
+  it('resets multiple affected owners once, preserving unrelated and unavailable-owner choices', () => {
+    const recovery = corrupt({ app: { personal: { name: 'Keep' } },
+      features: { [THREADS]: { limit: 'invalid' }, 'absent/feature': { keep: true } },
+      packs: { 'default-setup': { assistant: { name: 42 } } },
+    });
+    const heard = vi.fn();
+    store.onChange(heard);
+    expect(() => store.recover({ version: recovery.version, reset: [feature] })).toThrow('assistant');
+    expect(heard).not.toHaveBeenCalled();
+    expect(rowData()).toHaveProperty('features');
+    store.recover({ version: recovery.version, reset: [feature, assistant] });
+    expect(heard).toHaveBeenCalledTimes(1);
+    expect(store.getRecovery()?.status).toBe('repaired');
+    expect(store.getSnapshot().revision).toBe(recovery.version.revision + 1);
+    expect(store.get(app)).toMatchObject({ personal: { name: 'Keep' } });
+    expect(store.getOverrides().features?.['absent/feature']).toEqual({ keep: true });
+    expect(store.get(feature)).toEqual({ limit: 10, sort: 'newest' });
+  });
+
+  it.each([null, [], 'broken', { features: null }])('requires an explicit complete reset for malformed data %j', data => {
+    const recovery = corrupt(data);
+    expect(recovery.problems.every(problem => !problem.target)).toBe(true);
+    expect(() => store.recover({ version: recovery.version, reset: [feature] })).toThrow('malformed');
+    expect(rowData()).toEqual(data);
+    store.recover({ version: recovery.version, reset: 'all' });
+    expect(store.getOverrides()).toEqual({});
+    expect(store.getRecovery()?.status).toBe('repaired');
+  });
+
+  it('refuses stale process, value and declaration tokens without writing', () => {
+    const recovery = corrupt({ features: { [THREADS]: { limit: 'invalid' } } });
+    const before = rowData();
+    for (const version of [
+      { ...recovery.version, runId: 'another-process' },
+      { ...recovery.version, revision: recovery.version.revision + 1 },
+      { ...recovery.version, catalogRevision: recovery.version.catalogRevision + 1 },
+    ]) expect(() => store.recover({ version, reset: 'all' })).toThrow('changed');
+    expect(rowData()).toEqual(before);
+    expect(() => store.recover({ version: recovery.version, reset: [assistant] })).toThrow('Only affected');
+    expect(() => store.recover({ version: recovery.version, reset: [] })).toThrow('Select affected');
+  });
+
+  it('refuses recovery throughout data replacement, including trusted initialization', async () => {
+    await store.whileReplacingData(async () => {
+      untypedTx(SETTINGS_ID, true).put('entityType', SETTINGS_ENTITY).put('data', { features: { [THREADS]: { limit: 'invalid' } } });
+      expect(store.getRecovery()).toBeUndefined();
+      expect(() => store.recover({ version: { runId: 'irrelevant', revision: 0, catalogRevision: 0 }, reset: 'all' })).toThrow('being replaced');
+      store.resetAll();
+    });
+  });
+});

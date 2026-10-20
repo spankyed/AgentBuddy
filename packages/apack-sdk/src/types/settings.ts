@@ -62,6 +62,32 @@ export interface SettingsWriteCondition {
   expected: { exists: boolean; value?: unknown };
 }
 
+/** Schema problems identify a resettable owner; document problems do not. */
+export interface SettingsProblem {
+  target?: SettingsTarget;
+  path: readonly string[];
+  message: string;
+}
+
+/** A recovery action must refer to the exact settings and declarations shown by the host. */
+export interface SettingsRecoveryVersion {
+  runId: string;
+  revision: number;
+  catalogRevision: number;
+}
+
+/** Recovery diagnostics and the restart requirement are separate from typed settings snapshots. */
+export interface SettingsRecovery {
+  status: 'invalid' | 'repaired';
+  version: SettingsRecoveryVersion;
+  problems: readonly SettingsProblem[];
+}
+
+export interface SettingsRecoveryRequest {
+  version: SettingsRecoveryVersion;
+  reset: 'all' | readonly SettingsTarget[];
+}
+
 /** Complete window data, with independent declaration and value revisions. */
 export interface SettingsSnapshot {
   runId: string;

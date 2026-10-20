@@ -3,7 +3,7 @@ import { broadcastToPlugin } from '../../../events.ts';
 import type { OutgoingSettingsEvents } from './types.ts';
 
 /** What a write answers with: it was stored, or it was refused and stored nothing */
-export type SettingsAnswer = Extract<OutgoingSettingsEvents, { type: 'SETTINGS_SAVED' | 'SETTINGS_REFUSED' }>;
+export type SettingsAnswer = Extract<OutgoingSettingsEvents, { type: 'SETTINGS_SAVED' | 'SETTINGS_RECOVERED' | 'SETTINGS_REFUSED' }>;
 
 /**
  * Answers whoever asked for a write, and tells every Settings view when nobody did.

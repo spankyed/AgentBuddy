@@ -286,7 +286,11 @@ export interface SettingsAdmin extends SettingsService {
     // (undocumented)
     getOverrides(): SettingsOverrides;
     // (undocumented)
+    getRecovery(): SettingsRecovery | undefined;
+    // (undocumented)
     getSnapshot(): SettingsSnapshot;
+    // (undocumented)
+    recover(request: SettingsRecoveryRequest): void;
     // (undocumented)
     removeOverrides(path: readonly string[]): void;
     // (undocumented)

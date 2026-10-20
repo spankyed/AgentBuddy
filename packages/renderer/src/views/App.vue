@@ -1,10 +1,13 @@
 <script setup lang="ts">
 import WebApp from './WebApp.vue';
+import SettingsRecovery from './settings/SettingsRecovery.vue';
+import { useSettingsRecovery } from '@/runtime/settings';
 import PluginPopoutApp from './PluginPopoutApp.vue';
 import { applicationState } from '@/main'
 import { useSelector } from '@xstate/vue';
 import { fePacks } from '@/runtime/packs';
 
+const { recovery, status } = useSettingsRecovery();
 const WelcomeComponent = fePacks.getAppExtension('welcome');
 const isWelcome = useSelector(applicationState, (s) => s.hasTag('welcome'));
 const isConnecting = useSelector(applicationState, (s) => s.hasTag('connecting'));
@@ -12,16 +15,19 @@ const isPluginPopout = new URLSearchParams(window.location.search).get('popout')
 </script>
 
 <template>
-  <!-- Welcome modal overlay (first-time users) -->
-  <component v-if="isWelcome && !isPluginPopout && WelcomeComponent" :is="WelcomeComponent" />
-  <!-- Main web app component (always rendered, plugins show own loading states) -->
-  <PluginPopoutApp v-if="isPluginPopout" />
-  <WebApp v-else />
+  <SettingsRecovery v-if="recovery" :recovery="recovery" :status="status" />
+  <template v-else>
+    <!-- Welcome modal overlay (first-time users) -->
+    <component v-if="isWelcome && !isPluginPopout && WelcomeComponent" :is="WelcomeComponent" />
+    <!-- Main web app component (always rendered, plugins show own loading states) -->
+    <PluginPopoutApp v-if="isPluginPopout" />
+    <WebApp v-else />
 
-  <!-- Loading overlay while waiting for backend connection -->
-  <Transition name="fade">
-    <div v-if="isConnecting" class="loading-overlay" />
-  </Transition>
+    <!-- Loading overlay while waiting for backend connection -->
+    <Transition name="fade">
+      <div v-if="isConnecting" class="loading-overlay" />
+    </Transition>
+  </template>
 </template>
 
 <style>
