@@ -222,3 +222,23 @@ it('asks for an action again when it is reopened from the list, so a changed act
     expect(sentTypes().filter(type => type === 'ACTION_SELECT')).toHaveLength(2);
   } finally { actor.stop(); }
 });
+
+/**
+ * `ACTION_CREATED` is news every window hears, whoever created it. It adds the action to the list and selects
+ * nothing: selecting it here would skip the fetch when the user then opens it, and the form would keep the
+ * previous action's fields under the new one's name.
+ */
+it('fetches an action created elsewhere when it is opened', () => {
+  const actor = listed();
+  actor.send({ type: 'ACTION.SELECT', actionId: 'Action-a1' });
+  actor.send(answerTo(selectCall(0), { type: 'ACTION_SELECTED', actionId: 'Action-a1', data: anAction('Action-a1') }));
+  actor.send({ type: 'VIEW_LIST' });
+
+  actor.send({ type: 'ACTION_CREATED', actionId: 'Action-x', action: anAction('Action-x') });
+  expect(actor.getSnapshot().context.actions.map((a) => a.id)).toContain('Action-x');
+  actor.send({ type: 'ACTION.SELECT', actionId: 'Action-x' });
+
+  expect(sentTypes().filter((type) => type === 'ACTION_SELECT')).toHaveLength(2);
+  actor.send(answerTo(selectCall(1), { type: 'ACTION_SELECTED', actionId: 'Action-x', data: anAction('Action-x') }));
+  expect(actor.getSnapshot().context.selectedAction?.id).toBe('Action-x');
+});

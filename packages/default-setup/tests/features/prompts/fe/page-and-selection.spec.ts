@@ -215,3 +215,19 @@ it('asks for a prompt again when it is reopened from the list, so a changed prom
     expect(sentTypes().filter(type => type === 'PROMPT_SELECT')).toHaveLength(2);
   } finally { actor.stop(); }
 });
+
+/** `PROMPT_CREATED` reaches every window: it adds the prompt and selects nothing, so opening it fetches it */
+it('fetches a prompt created elsewhere when it is opened', () => {
+  const actor = connected();
+  actor.send({ type: 'PROMPT.SELECT', promptId: 'Prompt-p1' });
+  actor.send(answerTo(selectCall(0), { type: 'PROMPT_SELECTED', promptId: 'Prompt-p1', data: aPrompt('Prompt-p1') }));
+  actor.send({ type: 'VIEW_LIST' });
+
+  actor.send({ type: 'PROMPT_CREATED', promptId: 'Prompt-x', prompt: aPrompt('Prompt-x') });
+  expect(actor.getSnapshot().context.prompts.map((p) => p.id)).toContain('Prompt-x');
+  actor.send({ type: 'PROMPT.SELECT', promptId: 'Prompt-x' });
+
+  expect(sentTypes().filter((type) => type === 'PROMPT_SELECT')).toHaveLength(2);
+  actor.send(answerTo(selectCall(1), { type: 'PROMPT_SELECTED', promptId: 'Prompt-x', data: aPrompt('Prompt-x') }));
+  expect(actor.getSnapshot().context.selectedPrompt?.id).toBe('Prompt-x');
+});
