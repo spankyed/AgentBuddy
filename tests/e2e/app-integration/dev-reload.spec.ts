@@ -66,7 +66,9 @@ test('a rebuilt built-in pack reloads with the content the rebuild changed', asy
   expect(renameWrittenDocument(content.records, WRITTEN_DOCUMENT, REBUILT_DOCUMENT), `${CONTENT_FILE} holds "${WRITTEN_DOCUMENT}"`).toBe(true);
   fs.writeFileSync(CONTENT_FILE, JSON.stringify(content, null, 2));
   // Model completed output: a real build seals its changed content before reload can admit it.
-  sealPackBuild(DIST, build.snapshot.manifest, build.integrity.sdkVersion);
+  // Preserve the authored declaration and its key order; the parsed snapshot is normalized.
+  const manifest = JSON.parse(originalFiles.get(path.join(DIST, PACK_LAYOUT.manifest))!.toString());
+  sealPackBuild(DIST, manifest, build.integrity.sdkVersion);
 
   const response = await fetch(`http://127.0.0.1:${apiPort}/dev/reload`, {
     method: 'POST',
