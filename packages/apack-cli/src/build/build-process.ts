@@ -2,6 +2,7 @@ import { COMPILER_INPUTS_ENV } from './compiler-installation-inputs.ts';
 import path from 'node:path';
 import fs from 'node:fs';
 import os from 'node:os';
+import { setImmediate as yieldToEventLoop } from 'node:timers/promises';
 import { spawnCompilerWorker } from './compiler-process.ts';
 import { COMPILER_PROCESS_GROUP_ENV, stopCompilerProcessGroup } from './compiler-process-group.ts';
 import { checkoutFor, ensureCheckoutPackages } from './checkout-packages.ts';
@@ -55,7 +56,9 @@ export function createPackBuilder(root: string): PackBuilder {
   const stopped = new AbortController();
   const enqueue = <T>(operation: () => Promise<T>): Promise<T> => {
     if (stopped.signal.aborted) return Promise.reject(new Error('Pack builder is closed'));
-    const result = active.then(() => {
+    const result = active.then(async () => {
+      // Let pending shutdown signals run before another synchronous compiler-input scan.
+      await yieldToEventLoop();
       stopped.signal.throwIfAborted();
       return operation();
     });

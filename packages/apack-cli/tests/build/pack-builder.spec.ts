@@ -392,3 +392,17 @@ it('force-stops a compiler that ignores cancellation before releasing its inputs
   expect(fs.existsSync(fileURLToPath(active.bin))).toBe(false);
   expect(fs.existsSync(path.join(pack, 'dist'))).toBe(false);
 });
+
+it('processes pending cancellation before starting queued compiler preflight', async () => {
+  const { builder } = fixture();
+  const controller = new AbortController();
+  const reason = new Error('The development session is closing');
+  const capture = vi.spyOn(installation, 'captureCompilerInstallation');
+  vi.mocked(checkout.ensureCheckoutPackages).mockImplementation(() => { throw new Error('Preflight ran before pending shutdown'); });
+  const cancellation = setImmediate(() => controller.abort(reason));
+  try {
+    await expect(builder.build({ signal: controller.signal })).rejects.toBe(reason);
+    expect(checkout.ensureCheckoutPackages).not.toHaveBeenCalled();
+    expect(capture).not.toHaveBeenCalled();
+  } finally { clearImmediate(cancellation); }
+});

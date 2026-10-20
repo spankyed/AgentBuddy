@@ -199,3 +199,22 @@ rerunning unrelated app cases and captures a one-second stack sample of the owne
 still alive ten seconds into cleanup. The sample has its own three-second process limit and remains
 inside the runner evidence directory. No compiler/native workload runs on the developer's machine.
 The restoration synchronization fix is committed as `e86fcb3ba`; final strict acceptance remains pending.
+
+## Focused shutdown diagnostic 39411189367
+
+Source `6676b9b1a`, CLI-only disposable run: initial install, manifest rebuild and new accepted frontend
+runtime pass again. Cleanup again exceeds 15s. The retained `/usr/bin/sample` capture proves the
+supervisor is alive ten seconds after SIGTERM and executing synchronous filesystem reads/directory
+walks inside a promise microtask; this is not merely an already-exited supervisor's inherited pipe.
+The capture does not resolve optimized JavaScript frames to individual source functions.
+Evidence: `/private/tmp/apack-cli-39411189367.log` and
+`/private/tmp/apack-cli-39411189367/.apack/tests/results/pack-dev.log.shutdown.txt`.
+
+The builder's serialized operations previously began immediately as promise reactions, letting another
+expensive compiler-input scan run before pending shutdown signals. Yield once to the event loop at
+that queue boundary, then recheck cancellation before preflight. This does not change input selection,
+capture, publication, disposal ordering or any timeout. A pure regression schedules cancellation before
+queued build preflight: it fails before the repair (preflight runs), passes afterward (original
+cancellation reason retained, no package refresh or compiler capture). Twelve adjacent dev-hold and
+mocked cancellation cases pass; CLI typecheck and focused correctness lint pass. The full builder
+lifecycle fixture and real CLI scenario still require the next disposable check.
