@@ -119,3 +119,16 @@ it('steps the switch-plugin hotkeys over a declared tab whose frontend has not l
   app!.send({ type: 'SWITCH_PLUGIN_UP' });
   expect(app!.getSnapshot().context.activePlugin.id).toBe('alpha/view');
 });
+
+it('takes back a frontend whose pack the catalog disabled while it loaded, and ignores one only while the catalog settles', () => {
+  const f = fixture(); const disabled = f.candidate('gone', false, false); const settling = f.candidate('later');
+  disabled.declare();
+  disabled.accept();
+  expect(f.shell.packFrontends.unload).toHaveBeenCalledWith('gone');
+  expect(app!.system.get('gone/view')).toBeUndefined();
+  expect(app!.getSnapshot().context.acceptedPackRuntimes).not.toHaveProperty('gone');
+  f.catalog.status.mockReturnValue('loading');
+  settling.declare();
+  settling.accept();
+  expect(f.shell.packFrontends.unload).not.toHaveBeenCalledWith('later');
+});

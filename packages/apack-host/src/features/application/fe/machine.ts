@@ -209,11 +209,19 @@ export function createShellMachine({ packs, catalog, client, packFrontends, stor
           return;
         }
 
+        // A newer acceptance already replaced this one: the event is stale, and its successor merges instead
         if (packPlugins?.some(plugin => {
           const accepted = packs.pluginBindings().get(plugin.id);
-          return getEligiblePlugin(catalog, packs.pluginBindings(), plugin.id) !== plugin
-            || (accepted?.registrationId !== undefined && accepted.registrationId !== registrationId);
+          return accepted?.registrationId !== undefined && accepted.registrationId !== registrationId;
         })) return;
+        if (packPlugins?.some(plugin => getEligiblePlugin(catalog, packs.pluginBindings(), plugin.id) !== plugin)) {
+          // The catalog disabled or removed the pack while its frontend loaded: take the committed frontend back
+          // out, since nothing else would. While the catalog is still settling, eligibility says nothing yet.
+          const withdrawn = catalog.status() === 'ready'
+            && packPlugins.some(plugin => selectPluginDeclaration(catalog, plugin.id)?.enabled !== true);
+          if (withdrawn) enqueue.raise({ type: 'PACK_PLUGINS_UNLOADED', packId, refused: true });
+          return;
+        }
 
         const acceptedPackRuntimes = { ...context.acceptedPackRuntimes, [packId]: registrationId };
 
