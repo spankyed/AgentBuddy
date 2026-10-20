@@ -1047,7 +1047,9 @@ export const CHAIN_STEPS: readonly ChainStep[] = [
       'packages/apack-host/src/replace-dir.ts'] },
   // Build the built-in pack before build:runtime reads its outputs.
   // Includes cold compiler capture, codegen, all bundles and final source/input verification.
-  { name: 'build:default-setup', timeout: 'scenario', seconds: 28, outputs: PACK_OUTPUTS,
+  // 120s warm or cold (118-122s, 4 runs, 71-76% idle, 2026-10-20): capturing and re-checking the
+  // dependency inputs dominates, so the phase cache saves little.
+  { name: 'build:default-setup', timeout: 'scenario', seconds: 120, outputs: PACK_OUTPUTS,
     // Its sources and its manifest, not its tests: `apack pack build` never reads those
     //
     // The CLI's sources reach here through `PACKAGE_BUILD_OUTPUTS`, since an edit to them makes the
@@ -1083,9 +1085,9 @@ export const CHAIN_STEPS: readonly ChainStep[] = [
     inputs: [...ROOT, ...BOUNDED_RUNNER, 'tests/packs', 'tests/scripts/test-external-pack-contract.sh',
       'tests/scripts/lib', ...PACKAGE_BUILD_READS, ...PACK_OUTPUTS] },
   // A full shipped-pack fork is a separate producer, not work charged to the fixture contract suite.
-  // Initial cost borrows the shipped build's 28s estimate; measure this producer separately.
+  // Its cost borrows the shipped build's measured 120s; its archive phase is not measured separately yet.
   // A 600s build, 180s archive and 120s housekeeping compose the existing 900s scenario bound.
-  { name: 'test:external-pack:fork', timeout: 'scenario', seconds: 28, outputs: [DEFAULT_FORK_OUTPUT],
+  { name: 'test:external-pack:fork', timeout: 'scenario', seconds: 120, outputs: [DEFAULT_FORK_OUTPUT],
     inputs: [...PACK_DERIVED_READS, ...BOUNDED_RUNNER, 'tests/scripts/prepare-default-pack-fork.ts',
       ...['apack-host', ...workspaceDeps('apack-host')].flatMap(dependencySource), ...PACK_OUTPUTS] },
   // The widest inputs in the table, and honestly so: it compiles every workspace, the scripts and the
