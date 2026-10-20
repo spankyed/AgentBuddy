@@ -30,9 +30,10 @@ test('a reloaded pack is left running', async ({ app, appPage }) => {
   expect(response.status, await response.text()).toBe(200);
 
   // The endpoint commits the backend; frontend acceptance and actor handoff follow asynchronously.
-  await expect.poll(() => appPage.evaluate(packId =>
-    (window as any).applicationState.getSnapshot().context.acceptedPackRuntimes[packId], PACK_ID))
-    .not.toBe(previous.runtime);
+  await expect.poll(() => appPage.evaluate(({ packId, previous }) => {
+    const current = (window as any).applicationState.getSnapshot().context.acceptedPackRuntimes[packId];
+    return !!current && current !== previous;
+  }, { packId: PACK_ID, previous: previous.runtime })).toBe(true);
   const actor = await appPage.evaluate(packId =>
     (window as any).applicationState.system.get(`${packId}/memos`).sessionId, PACK_ID);
   expect(actor).not.toBe(previous.actor);

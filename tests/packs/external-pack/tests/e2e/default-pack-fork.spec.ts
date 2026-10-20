@@ -62,8 +62,10 @@ if (!restarting) test('an externally built default fork refreshes both windows a
       headers: { 'Content-Type': 'application/json', [API_TOKEN_HEADER]: api.token }, body: JSON.stringify({ packId: 'default-setup' }),
     });
     expect(response.status, await response.text()).toBe(200);
-    await expect.poll(() => appPage.evaluate(() => (window as any).applicationState.getSnapshot()
-      .context.acceptedPackRuntimes['default-setup'])).not.toBe(previous);
+    await expect.poll(() => appPage.evaluate(previous => {
+      const current = (window as any).applicationState.getSnapshot().context.acceptedPackRuntimes['default-setup'];
+      return !!current && current !== previous;
+    }, previous)).toBe(true);
     await expect.poll(() => label(appPage)).toBe('Fork Notes');
     await expect.poll(() => label(second)).toBe('Fork Notes');
     await expect.poll(() => appPage.evaluate(() => (window as any).applicationState.system.get('host/packs')

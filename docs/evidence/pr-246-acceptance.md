@@ -128,3 +128,8 @@ the earlier directory-filter relaxation and its permissive expectation. Keep the
 The runner-cache regression now proves that `.apack` output preserves the complete recorded inputs,
 while both the original directory listing and the explicit negative dependency probe still detect an
 actual dependency-directory appearance. This replaces the earlier proposed listing exclusion above.
+
+The remaining reload assertion audit found two external cases accepting a temporarily absent frontend
+runtime as "different". They now require a present, different accepted runtime, matching the source CLI
+case. Fixture typechecking and correctness lint pass. Their stronger assertions belong to the final
+committed-source acceptance, rather than being claimed from the already running earlier checkpoint.
