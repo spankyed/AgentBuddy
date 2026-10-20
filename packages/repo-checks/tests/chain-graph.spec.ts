@@ -381,6 +381,8 @@ describe('every spawn an orchestrator makes is bounded', () => {
   describe('the rung matches the kind of work', () => {
     /** A step whose rung the facts cannot derive, and why. An entry that stops applying is reported. */
     const DECLARED_AGAINST_THE_FACTS: Record<string, string> = {
+      'build:default-setup': 'the first cold shipped-pack compiler capture, codegen and serial bundle phases '
+        + 'are followed by source verification and compiler-input recording; this whole pipeline is a scenario',
       'test:external-pack:fork': 'composes a cold shipped-pack build, separately bounded archive verification '
         + 'and owned temporary-tree cleanup; a single bundle deadline does not cover these serial operations',
       'test:integration': 'complete compiler/runtime acceptance includes repeated cold builds, watchers '

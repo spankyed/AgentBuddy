@@ -1046,7 +1046,8 @@ export const CHAIN_STEPS: readonly ChainStep[] = [
       'packages/apack-host/src/build/node-options.js', 'packages/apack-host/src/build/node-options.d.ts',
       'packages/apack-host/src/replace-dir.ts'] },
   // Build the built-in pack before build:runtime reads its outputs.
-  { name: 'build:default-setup', timeout: 'suite', seconds: 28, outputs: PACK_OUTPUTS,
+  // Includes cold compiler capture, codegen, all bundles and final source/input verification.
+  { name: 'build:default-setup', timeout: 'scenario', seconds: 28, outputs: PACK_OUTPUTS,
     // Its sources and its manifest, not its tests: `apack pack build` never reads those
     //
     // The CLI's sources reach here through `PACKAGE_BUILD_OUTPUTS`, since an edit to them makes the

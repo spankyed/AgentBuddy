@@ -271,3 +271,25 @@ timings to the existing build progress, then select a build-only disposable diag
 strict run's 4GiB Node heap and two-core budget, with a **diagnostic-only 900s bound**, retaining its
 streamed build log. Normal strict builds keep their 600s bound. Runtime builds, fixture suites and app
 launches are skipped. CLI typechecking, correctness lint and workflow YAML/shell syntax pass.
+
+## Cold-build diagnostic completed: 39427595920
+
+[Isolated disposable build](https://github.com/spankyed/apack/actions/runs/39427595920), source
+`b77c2e64b4bf52826aa1d1455c1d4fb7f01c89c2`, completes and publishes verified output. Finalization reports
+source validation 49.7s, compiler-input recording 125.4s, output verification 0.3s and input cleanup 0.0s.
+This diagnostic demonstrates completed finalization, rather than a deadlock or failed cleanup. It does
+not prove exactly where the previous killed run stopped, nor does one completed run guarantee a
+machine-independent duration. Evidence: `/private/tmp/apack-build-39427595920.log` and its download.
+
+Classify **only the cold shipped-pack pipeline** as the existing 900s scenario: compiler capture,
+codegen, serial declaration/content/backend/frontend bundles, then independent final source and input
+verification. Keep all checks and native-worker/event/cleanup handling. No global timeout class is
+changed; the separately verified fork's build still keeps its 600s cap, archive 180s and parent 900s.
+The diagnostic already exercises this same 900s aggregate limit. Its 600s strict predecessor was too
+close to the completed cold pipeline to accommodate the observed runner variation.
+
+Correction to earlier budget prose: the CLI does **not** enforce independent backend-180s/frontend-120s
+compiler deadlines. Those figures described earlier test allowances and should not have been called
+public compiler limits. The source CLI acceptance test retains its existing 300s **whole fixture build**
+wait per build, along with separate startup/runtime/delivery/cleanup bounds; its misleading comment is
+corrected. None of those test waits is changed by this shipped-pack chain classification.

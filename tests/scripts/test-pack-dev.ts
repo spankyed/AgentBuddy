@@ -29,7 +29,7 @@ for (const stream of [child.stdout, child.stderr]) stream.on('data', data => {
 });
 // Register before signalling; even a fast successful exit must be observed.
 const closed = once(child, 'close');
-// A public build includes the backend (180s) and frontend (120s); startup performs two.
+// Bound each complete fixture build separately; startup performs two builds.
 const BUILD_TIMEOUT_MS = 300_000;
 async function waitForPhase(marker: string, timeout: number, message: string): Promise<void> {
   await expect.poll(() => {
