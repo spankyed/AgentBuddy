@@ -32,15 +32,20 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ github.token }}
         run: npm ci
-      - name: Build app and fixture contracts
+      - name: Build shipped pack
+        run: npm run build:default-setup
+      - name: Build app runtime
+        # The first cold macos-26 run exhausted V8's default ~2 GiB renderer-build heap.
+        # Scope the larger heap to building the app, rather than changing test/compiler process limits.
+        env:
+          NODE_OPTIONS: --max-old-space-size=4096
+        run: npm run build:runtime -- --cores 2
+      - name: Build fixture contracts
         id: preparation
-        run: |
-          npm run build:default-setup
-          npm run build:runtime
-          npm run test:external-pack:contract
-      - name: External step services through the running flow executor
+        run: npm run test:external-pack:contract
+      - name: External pack app suite including step services and settings ownership
         working-directory: tests/packs/external-pack
-        run: ../../../node_modules/.bin/apack pack test --host "$GITHUB_WORKSPACE" --prebuilt tests/e2e/step-services.spec.ts
+        run: ../../../node_modules/.bin/apack pack test --host "$GITHUB_WORKSPACE" --prebuilt
       - name: App suites including settings recovery
         if: ${{ !cancelled() && steps.preparation.outcome == 'success' }}
         run: npm run test:e2e
@@ -57,6 +62,10 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ github.token }}
         run: ../../../node_modules/.bin/apack pack dev --host beta --fresh
+      - name: Real LMDB import and rollback
+        if: ${{ !cancelled() && steps.preparation.outcome == 'success' }}
+        working-directory: packages/apack-host
+        run: node ../../scripts/with-source.mjs node ../../node_modules/vitest/vitest.mjs run tests/backup/import.spec.ts --maxWorkers 2
       - name: Retain app evidence
         if: always()
         uses: actions/upload-artifact@v4

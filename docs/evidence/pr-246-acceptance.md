@@ -8,7 +8,11 @@ Electron acceptance is run on the developer's Mac.
 - [Strict acceptance 39387174436](https://github.com/spankyed/AgentBuddy/actions/runs/39387174436):
   product checkpoint `1f92ce805c4d2c2168e08558ba0d050332eb11e1`, `--strict --all --cores 2`.
   Pending. Includes the real LMDB import/hydration/rollback tests and external-pack application gates.
-- Supplemental `app-acceptance.yml`: pending dispatch. Runs the general app suite, a foreign step's
+- [Supplemental app run 39388281465](https://github.com/spankyed/AgentBuddy/actions/runs/39388281465):
+  checkpoint `faba06f60`; preparation failed before any app tests. The renderer's Vite build aborted
+  at V8's approximately 2 GiB heap limit. This was an out-of-memory failure, not an assertion or timeout.
+  Follow-up gives only the runtime build a 4 GiB heap and explicitly uses two build workers.
+- Supplemental follow-up: pending dispatch. Runs the general app suite, a foreign step's
   own service through the running brain, persisted-settings recovery/reopen, and the real source
   `apack pack dev` supervisor with initial install and watched replacement. These acceptance additions
   change fixtures and validation only; the product source is the strict run's checkpoint.

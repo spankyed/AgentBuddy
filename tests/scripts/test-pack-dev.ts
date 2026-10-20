@@ -29,7 +29,7 @@ let browser: Browser | undefined;
 try {
   await expect.poll(() => {
     if (child.exitCode !== null || child.signalCode !== null) throw new Error(`pack dev exited early: ${text}`);
-    return text.includes('Frontend changes reload through Vite');
+    return text.includes('[watch] Watching build inputs');
   }, { timeout: 60_000, message: 'initial build, app launch, install and watcher startup' }).toBe(true);
   const session = JSON.parse(fs.readFileSync(sessionFile(userDataDir), 'utf8'));
   browser = await chromium.connectOverCDP(`http://127.0.0.1:${session.debugPort}`, { timeout: 15_000 });
@@ -51,16 +51,18 @@ try {
   console.log('PASS: source pack dev initially installs, watches a manifest edit, and delivers a new accepted runtime without restarting the app');
 } finally {
   try { await browser?.close(); }
-  finally { if (child.exitCode === null && child.signalCode === null) child.kill('SIGTERM'); }
-  try {
-    await Promise.race([closed, new Promise<never>((_, reject) => {
-      const timer = setTimeout(() => reject(new Error(`pack dev cleanup exceeded 15s; see ${output}`)), 15_000);
-      timer.unref();
-    })]);
-  } finally {
-    log.end();
-    fs.writeFileSync(manifestFile, original);
-    // A failed cleanup retains its private data for evidence; never remove a running app's database.
-    if (child.exitCode !== null || child.signalCode !== null) fs.rmSync(userDataDir, { recursive: true, force: true });
+  finally {
+    if (child.exitCode === null && child.signalCode === null) child.kill('SIGTERM');
+    try {
+      await Promise.race([closed, new Promise<never>((_, reject) => {
+        const timer = setTimeout(() => reject(new Error(`pack dev cleanup exceeded 15s; see ${output}`)), 15_000);
+        timer.unref();
+      })]);
+    } finally {
+      log.end();
+      fs.writeFileSync(manifestFile, original);
+      // A failed cleanup retains its private data for evidence; never remove a running app's database.
+      if (child.exitCode !== null || child.signalCode !== null) fs.rmSync(userDataDir, { recursive: true, force: true });
+    }
   }
 }
