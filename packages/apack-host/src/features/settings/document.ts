@@ -6,6 +6,11 @@ import { hasOwn, isPlainObject } from '@apackdev/sdk/utils/pure';
 const ownValue = (object: unknown, key: string): unknown =>
   isPlainObject(object) && hasOwn(object, key) ? object[key] : undefined;
 
+/** Read own object properties only; arrays remain atomic settings values. */
+export function getIn(node: unknown, path: readonly string[]): unknown {
+  return path.reduce<unknown>(ownValue, node);
+}
+
 /** Whether two JSON values are equal, objects key by key whatever their order */
 export function isEqual(a: unknown, b: unknown): boolean {
   if (a === b) return true;

@@ -8,7 +8,7 @@ import { deepMerge, hasOwn, isPlainObject } from '@apackdev/sdk/utils/pure';
 import { splitRef, PACK_ID_PATTERN, FEATURE_ID_PATTERN } from '@apackdev/sdk/ids';
 import { settingsTargetPath, type SettingsDocument, type SettingsOverrides, type SettingsTarget, type SettingsSnapshot, type SettingsWriteCondition } from '@apackdev/sdk/types';
 import type { SettingsChange } from '@apackdev/sdk/services';
-import { isEqual, removeIn, SettingsRefusedError, setIn } from '../document.ts';
+import { getIn, isEqual, removeIn, SettingsRefusedError, setIn } from '../document.ts';
 import { compileSettingsCatalog } from '../validation.ts';
 export type { SettingsChange, SettingsDocument };
 
@@ -56,9 +56,6 @@ export function createSettingsStore({ ears, catalog, onCatalogChanged }: Setting
       catch (error) { logger.error('Settings subscriber failed', error instanceof Error ? error : new Error(String(error))); }
     }
   };
-  const valueAt = (value: unknown, path: readonly string[]): unknown => path.reduce<unknown>((node, key) =>
-    isPlainObject(node) && hasOwn(node, key) ? node[key] : undefined, value);
-
   function targetDefinition(target: SettingsTarget): SettingsDefinition | undefined {
     const definitions = declarations();
     if (!isPlainObject(target)) throw new SettingsRefusedError(['A settings target must identify its owner']);
@@ -128,12 +125,12 @@ export function createSettingsStore({ ears, catalog, onCatalogChanged }: Setting
     getOverrides: stored,
     get<T = unknown>(target: SettingsTarget, caller?: string): T {
       authorize(target, caller);
-      return valueAt(effective(), settingsTargetPath(target)) as T;
+      return getIn(effective(), settingsTargetPath(target)) as T;
     },
     set(target: SettingsTarget, path: readonly string[], value: unknown, caller?: string, condition?: SettingsWriteCondition): void {
       authorize(target, caller, true);
       if (!Array.isArray(path) || path.some(key => typeof key !== 'string')) throw new SettingsRefusedError(['Settings paths contain strings']);
-      compare(condition, valueAt(effective(), [...settingsTargetPath(target), ...path]));
+      compare(condition, getIn(effective(), [...settingsTargetPath(target), ...path]));
       write(setIn(stored(), [...settingsTargetPath(target), ...path], value));
     },
     reset(target: SettingsTarget, caller?: string): void {

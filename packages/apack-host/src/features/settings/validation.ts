@@ -1,17 +1,17 @@
-import { _compileSettingsDefinition, type SettingsCatalog, type SettingsDefinition, type SettingsValidator } from '@apackdev/sdk/framework';
+import { _compileSettingsDefinition, type SettingsCatalog, type SettingsDefinition } from '@apackdev/sdk/framework';
 import { deepMerge, hasOwn, isPlainObject } from '@apackdev/sdk/utils/pure';
 import { settingsTargetPath, type AppSettings, type SettingsDocument, type SettingsTarget } from '@apackdev/sdk/types';
 import type { FeatureRef } from '@apackdev/sdk/ids';
-import { isEqual, settingsProblems, SettingsRefusedError } from './document.ts';
-
-const valueAt = (value: unknown, path: readonly string[]): unknown => path.reduce<unknown>((node, key) =>
-  isPlainObject(node) && hasOwn(node, key) ? node[key] : undefined, value);
+import { getIn, isEqual, settingsProblems, SettingsRefusedError } from './document.ts';
 
 /** Compile one accepted revision; live writes and backup preflight validate through the same rules. */
 export function compileSettingsCatalog(catalog: SettingsCatalog) {
-  const validators = new Map<string, SettingsValidator>();
+  const validators = new Map<string, { path: readonly string[]; problems(value: unknown): string[] }>();
   const compile = (target: SettingsTarget, definition: SettingsDefinition) => {
-    validators.set(JSON.stringify(settingsTargetPath(target)), _compileSettingsDefinition(definition));
+    const path = settingsTargetPath(target);
+    const validator = _compileSettingsDefinition(definition);
+    validators.set(JSON.stringify(path), { path, problems: value => validator.validate(value)
+      .map(issue => `${path.join('/')} ${issue.path.join('.') || 'settings'}: ${issue.message}`) });
     return structuredClone(definition.defaults);
   };
   const defaults: SettingsDocument = {
@@ -31,12 +31,7 @@ export function compileSettingsCatalog(catalog: SettingsCatalog) {
       for (const owner of ['app', 'packs', 'features']) {
         if (!hasOwn(value, owner)) problems.push(`Missing settings owner ${owner}`);
       }
-      for (const [key, validator] of validators) {
-        const path = JSON.parse(key) as string[];
-        for (const issue of validator.validate(valueAt(value, path))) {
-          problems.push(`${path.join('/')} ${issue.path.join('.') || 'settings'}: ${issue.message}`);
-        }
-      }
+      for (const validator of validators.values()) problems.push(...validator.problems(getIn(value, validator.path)));
       if (problems.length) throw new SettingsRefusedError(problems);
     },
     /** Import retains well-formed unavailable owners; edits may only retain their prior values. */
@@ -49,10 +44,10 @@ export function compileSettingsCatalog(catalog: SettingsCatalog) {
         const path = settingsTargetPath(target);
         const validator = validators.get(JSON.stringify(path));
         if (!validator) {
-          if (before !== undefined && !isEqual(value, valueAt(before, path))) problems.push(`Unavailable settings owner ${path.join('/')}`);
+          if (before !== undefined && !isEqual(value, getIn(before, path))) problems.push(`Unavailable settings owner ${path.join('/')}`);
           return;
         }
-        for (const issue of validator.validate(value)) problems.push(`${path.join('/')} ${issue.path.join('.') || 'settings'}: ${issue.message}`);
+        problems.push(...validator.problems(value));
       };
       check({ kind: 'app' }, candidate.app);
       for (const [packId, groups] of Object.entries(candidate.packs)) {
