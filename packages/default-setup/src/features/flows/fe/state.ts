@@ -179,14 +179,17 @@ const flowsState = setup({
         rootFlowId: ev.data.rootFlow?.id,
         settings: ev.data.settings || {},
       });
-      // A selection under way decides what is shown once it answers
-      if (context.pendingFlow) return;
+      const exists = (flowId: EARS.EntityId) => flows.some(flow => flow.id === flowId);
+      if (context.pendingFlow) {
+        // A selection under way decides what is shown once it answers, unless its flow is gone
+        if (exists(context.pendingFlow.flowId)) return;
+        enqueue.assign({ pendingFlow: undefined });
+      }
       const selected = context.selectedFlowId;
-      if (selected && flows.some(flow => flow.id === selected)) {
-        // Whatever made the backend publish (a reconnect, a pack change, data replaced) may have changed this
-        // flow, so the graph on screen is asked for again rather than kept
+      if (selected && exists(selected)) {
+        // Whatever made the backend publish may have changed this flow, so the graph on screen is asked for again
         const call = newCall();
-        enqueue.assign({ pendingFlow: { call, flowId: selected, recordHistory: false, refresh: true } });
+        enqueue.assign({ pendingRefresh: { call, flowId: selected } });
         enqueue(() => sendToSystem(id, { type: 'FLOW_SELECT', flowId: selected }, { call }));
         return;
       }
@@ -194,6 +197,7 @@ const flowsState = setup({
       enqueue.assign({
         selectedFlowId: ev.data.selectedFlowId,
         graph: layoutGraph(ev.data.graph, {}, event => self.send(event)),
+        pendingRefresh: undefined,
         ...(selected && { selectedNodeId: undefined, editingNodeId: undefined }),
       });
     }),
@@ -229,21 +233,38 @@ const flowsState = setup({
     }),
 
     loadFlowData: assign(({ context, event, self }) => {
-      const ev = typeOf(['FLOW_SELECTED', 'FLOW_REFRESHED'], event);
-      const request = event.type === 'FLOW_SELECTED' ? context.pendingFlow : undefined;
+      const ev = typeOf('FLOW_SELECTED', event);
+      const request = context.pendingFlow;
       const nodeId = request?.nodeId;
       const found = nodeId && ev.data.nodes.some(node => node.id === nodeId);
-      // A refresh keeps what the user had selected and open, for as long as its node is still in the flow
-      const refresh = ev.type === 'FLOW_REFRESHED' || request?.refresh;
-      const kept = (node: EARS.EntityId | undefined) => node && ev.data.nodes.some(each => each.id === node) ? node : undefined;
       return {
         pendingFlow: undefined,
+        pendingRefresh: undefined,
         selectedFlowId: ev.flowId,
-        selectedNodeId: refresh ? kept(context.selectedNodeId) : found ? nodeId as EARS.EntityId : undefined,
-        editingNodeId: refresh ? kept(context.editingNodeId) : found ? nodeId as EARS.EntityId : undefined,
-        canvasError: refresh ? context.canvasError : nodeId && !found ? `Node "${nodeId}" is no longer in flow "${ev.flowId}".` : undefined,
+        selectedNodeId: found ? nodeId as EARS.EntityId : undefined,
+        editingNodeId: found ? nodeId as EARS.EntityId : undefined,
+        canvasError: nodeId && !found ? `Node "${nodeId}" is no longer in flow "${ev.flowId}".` : undefined,
         graph: layoutGraph(ev.data, context.selectedFlowId === ev.flowId ? context.graph.positions : {}, event => self.send(event)),
         navHistory: request?.recordHistory ? pushNavHistory(context.navHistory, ev.flowId) : context.navHistory,
+      };
+    }),
+
+    /**
+     * The shown flow again, as the backend now has it: the node selection and editor stay where their node does,
+     * and a node still being added (its `CREATE_NODE` not yet answered) stays with its edges, for `NODE_CREATED`
+     * to reconcile.
+     */
+    loadRefreshedFlow: assign(({ context, event, self }) => {
+      const ev = typeOf(['FLOW_SELECTED', 'FLOW_REFRESHED'], event);
+      const kept = (node: EARS.EntityId | undefined) => node && ev.data.nodes.some(each => each.id === node) ? node : undefined;
+      const adding = new Set(context.graph.nodes.filter(node => context.tempIdMap[node.id] === node.id).map(node => node.id));
+      const data = { nodes: [...ev.data.nodes, ...context.graph.nodes.filter(node => adding.has(node.id))],
+        edges: [...ev.data.edges, ...context.graph.edges.filter(edge => adding.has(edge.source) || adding.has(edge.target))] };
+      return {
+        pendingRefresh: event.type === 'FLOW_SELECTED' ? undefined : context.pendingRefresh,
+        selectedNodeId: kept(context.selectedNodeId) ?? (context.selectedNodeId && adding.has(context.selectedNodeId) ? context.selectedNodeId : undefined),
+        editingNodeId: kept(context.editingNodeId) ?? (context.editingNodeId && adding.has(context.editingNodeId) ? context.editingNodeId : undefined),
+        graph: layoutGraph(data, context.graph.positions, event => self.send(event)),
       };
     }),
 
@@ -890,10 +911,11 @@ const flowsState = setup({
       const ev = typeOf('NODE_CREATED', event);
       const { tempId, nodeId: permanentId, node } = ev;
       
-      // The node from backend already has the permanent ID, just replace the temp node
-      const updatedNodes = context.graph.nodes.map(n => 
-        n.id === tempId ? node : n
-      );
+      // The node from backend already has the permanent ID, just replace the temp node. A refresh may already
+      // have brought the permanent node, and then the temp one is only dropped
+      const arrived = context.graph.nodes.some(n => n.id === permanentId);
+      const updatedNodes = arrived ? context.graph.nodes.filter(n => n.id !== tempId)
+        : context.graph.nodes.map(n => n.id === tempId ? node : n);
       
       // Update selected node ID if it was the temp one
       const newSelectedNodeId = context.selectedNodeId === tempId 
@@ -1107,6 +1129,9 @@ const flowsState = setup({
     targetIs,
     answersFlowSelection: ({ context, event }) => event.type === 'FLOW_SELECTED'
       && context.pendingFlow?.flowId === event.flowId && answersCall(event, context.pendingFlow.call),
+    // Applied only while that flow is still the one shown: a selection answered since has replaced it
+    answersFlowRefresh: ({ context, event }) => event.type === 'FLOW_SELECTED' && context.selectedFlowId === event.flowId
+      && context.pendingRefresh?.flowId === event.flowId && answersCall(event, context.pendingRefresh.call),
     isDeletedFlowSelected: ({ context, event }) => {
       const ev = typeOf('FLOW_DELETED', event);
       return context.selectedFlowId === ev.flowId;
@@ -1159,8 +1184,11 @@ const flowsState = setup({
     'ROOT_FLOW.SET': {
       actions: ({ event }) => sendToSystem(id, { type: 'SET_ROOT_FLOW', flowId: typeOf('ROOT_FLOW.SET', event).flowId }),
     },
-    FLOW_SELECTED: { guard: 'answersFlowSelection', actions: 'loadFlowData' },
-    FLOW_REFRESHED: { guard: ({ context, event }) => !context.pendingFlow && context.selectedFlowId === event.flowId, actions: 'loadFlowData' },
+    FLOW_SELECTED: [
+      { guard: 'answersFlowSelection', actions: 'loadFlowData' },
+      { guard: 'answersFlowRefresh', actions: 'loadRefreshedFlow' },
+    ],
+    FLOW_REFRESHED: { guard: ({ context, event }) => !context.pendingFlow && context.selectedFlowId === event.flowId, actions: 'loadRefreshedFlow' },
     LAYOUT_COMPUTED: {
       // Node ids are unique to a flow, so a shared node means the same flow, however often its graph was rebuilt
       // since the layout was asked for; another flow's late layout shares none and is dropped

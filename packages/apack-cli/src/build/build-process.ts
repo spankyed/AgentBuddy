@@ -133,20 +133,26 @@ export function createPackBuilder(root: string): PackBuilder {
           if (frontendChanged) {
             const before = current?.frontend?.address;
             let address: PackFrontendAddress | undefined;
+            let retired: Generation['frontend'];
             try { address = await ensureFrontend(candidate, options.signal); }
             catch (error) {
               // The build is already published, so a dev server that cannot be re-verified is restarted rather
-              // than turning a published build into a reported failure
+              // than turning a published build into a reported failure. The old server keeps serving until its
+              // replacement is ready, and stays when the replacement fails, so the dev-server marker never
+              // names a port nothing listens on
               options.signal.throwIfAborted();
-              await candidate.frontend?.close();
+              const stale = candidate.frontend;
               candidate.frontend = undefined;
               try { address = await ensureFrontend(candidate, options.signal); }
               catch (restart) {
+                candidate.frontend = stale;
                 throw new Error(`The build was published, but its dev server could not restart: ${restart instanceof Error ? restart.message : String(restart)}`,
                   { cause: new AggregateError([error, restart]) });
               }
+              retired = stale;
             }
             if (address !== before) frontendChanged(address);
+            await retired?.close();
           }
           const previous = current;
           current = candidate;

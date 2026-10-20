@@ -493,7 +493,10 @@ async function session(args: string[], hooks: SessionHooks, target: 'app' | 'pac
     // The running app installs and starts it, so nothing it does meanwhile loads a half-copied build
     console.log(`Installing pack to the ${env} app...`);
     const installed = await installPackInApp(pack.root, place);
-    if (installed.status !== 'delivered') throw new Error(`The app did not install the pack (${'detail' in installed ? installed.detail : installed.status})`);
+    // A pack that fails to load is the author's to fix, so the watcher keeps running and the next save retries
+    if (installed.status !== 'delivered') {
+      console.warn(`  The app did not install the pack (${'detail' in installed ? installed.detail : installed.status}). Fix it and save; the watcher keeps running.`);
+    }
     console.log('');
   }
 

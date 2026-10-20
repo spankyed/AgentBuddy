@@ -63,6 +63,10 @@ export function createSettingsStore({ ears, catalog, onCatalogChanged }: Setting
     validation.validate(overrides);
     return structuredClone(deepMerge(base, overrides)) as SettingsDocument;
   }
+  /** In recovery the stored row is invalid, and only `recover()` may change it. */
+  function refuseDuringRecovery(): void {
+    if (recovering) throw new SettingsRefusedError(['Settings require recovery. Reset the invalid values and restart.']);
+  }
   function getRecovery(): SettingsRecovery | undefined {
     if (!recovering) return undefined;
     declarations();
@@ -143,6 +147,7 @@ export function createSettingsStore({ ears, catalog, onCatalogChanged }: Setting
     },
     set(target: SettingsTarget, path: readonly string[], value: unknown, caller?: string, condition?: SettingsWriteCondition): void {
       authorize(target, caller, true);
+      refuseDuringRecovery();
       if (!Array.isArray(path) || path.some(key => typeof key !== 'string')) throw new SettingsRefusedError(['Settings paths contain strings']);
       if (condition) compare(condition, getIn(effective(), [...settingsTargetPath(target), ...path]));
       write(setIn(stored(), [...settingsTargetPath(target), ...path], value));
@@ -151,16 +156,24 @@ export function createSettingsStore({ ears, catalog, onCatalogChanged }: Setting
       // Host reset may remove an orphan; pack code requires a current authorized declaration.
       if (caller !== undefined) authorize(target, caller, true);
       else targetDefinition(target);
+      refuseDuringRecovery();
       removeOverrides(settingsTargetPath(target));
     },
     replaceAll(next: unknown, condition?: SettingsWriteCondition): void {
+      refuseDuringRecovery();
       declarations();
       if (condition) compare(condition, effective());
       validation.validateEffective(next);
       write(next);
     },
-    removeOverrides,
-    resetAll: () => write({}),
+    removeOverrides(path: readonly string[]): void {
+      refuseDuringRecovery();
+      removeOverrides(path);
+    },
+    resetAll: () => {
+      refuseDuringRecovery();
+      write({});
+    },
     onChange(listener: (change: SettingsChange) => void): () => void {
       listeners.add(listener);
       const stopCatalog = onCatalogChanged?.(() => listener('written'));

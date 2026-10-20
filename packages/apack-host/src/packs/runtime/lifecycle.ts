@@ -10,12 +10,15 @@ import { errorMessage } from '@apackdev/sdk/utils/pure';
 
 const logger = createLogger('pack-lifecycle');
 
-/** Unregister and revoke a pack only after the bus finishes stopping its actors and subscriptions. */
+/**
+ * Unregister and revoke a pack only after the bus finishes stopping its actors and subscriptions. Resolves once
+ * that has happened, so a caller holding the pack's claim can keep it until the pack is gone.
+ */
 export function teardownPack(
   registry: PackRegistry,
   packId: string,
   busActor: import('xstate').AnyActorRef,
-): void {
+): Promise<void> {
   const systemIds = registry.getRegisteredPackSystemIds(packId);
 
   logger.info(`Tearing down pack: ${packId}`);
@@ -48,8 +51,11 @@ export function teardownPack(
 
     logger.info(`Pack torn down: ${packId} (${systemIds.length} systems stopped)`);
   };
-  if (systemIds.length > 0) busActor.send({ type: 'TEARDOWN_PACK', packId, systemIds, afterStop: finish });
-  else finish();
+  return new Promise(resolve => {
+    const finished = () => { try { finish(); } finally { resolve(); } };
+    if (systemIds.length > 0) busActor.send({ type: 'TEARDOWN_PACK', packId, systemIds, afterStop: finished });
+    else finished();
+  });
 }
 
 /** Publish checked bindings first; revoke the incumbent only after its actors finish cleanup. */

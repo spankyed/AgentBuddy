@@ -78,6 +78,11 @@ it('selects a unique runtime owner before previews and refuses ambiguous ownersh
   expect(getStepBinding('memo')).toBeUndefined();
 });
 
+it('runs the enabled owner when a disabled pack declares the same step', () => {
+  const f = fixture(); f.state.entries.push({ ...f.entry, packId: 'other', enabled: false });
+  expect(getStepBinding('memo')).toBe(f.accepted);
+});
+
 it('keeps backend lookups on the backend when a frontend is also bound', () => {
   const f = fixture(); bindFeHost({} as never);
   expect(stepRegistry.get('memo')).toBe(f.accepted.binding); expect(getStepDeclaration('memo')).toBe(f.entry);

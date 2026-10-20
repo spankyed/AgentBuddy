@@ -184,14 +184,8 @@ const actionsState = setup({
       });
     },
 
-    addCreatedAction: assign(({ context, event }) => {
-      const ev = typeOf('ACTION_CREATED', event);
-      return {
-        actions: [...context.actions, ev.action],
-        selectedActionId: ev.actionId,
-        selectedAction: ev.action,
-      };
-    }),
+    // News every window hears, whoever created it: it adds the action and selects nothing, so opening it fetches it
+    addCreatedAction: assign(({ context, event }) => ({ actions: [...context.actions, typeOf('ACTION_CREATED', event).action] })),
 
     updateActionInList: assign(({ context, event }) => {
       const ev = typeOf('ACTION_UPDATED', event);

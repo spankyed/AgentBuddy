@@ -1,6 +1,14 @@
 import fs from 'node:fs';
 import path from 'node:path';
 
+/**
+ * The path the kernel would watch for `file`: symlinks resolved, and a missing file placed under its parent's
+ * physical directory. A dangling symlink is followed to its target, resolved from the link's physical directory.
+ *
+ * Known limit: `..` in a dangling link's own text is collapsed lexically, not through a symlink earlier in that
+ * text. For `a -> sub/../b` with `sub` a symlink, the kernel looks beside `sub`'s target and this looks beside the
+ * link. Nothing checks it; a link target that appears later there is not seen until something else changes.
+ */
 export function physicalWatchPath(file: string, cache = new Map<string, string>()): string {
   const known = cache.get(file);
   if (known) return known;

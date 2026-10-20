@@ -3,7 +3,8 @@ import os from 'node:os';
 import path from 'node:path';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 
-const state = vi.hoisted(() => ({ root: '', stage: 'build' as 'build' | 'watch' | 'ready', aborted: false, finish: () => {}, fail: (_error: Error) => {} }));
+const state = vi.hoisted(() => ({ root: '', stage: 'build' as 'build' | 'watch' | 'ready', aborted: false, finish: () => {}, fail: (_error: Error) => {},
+  install: { status: 'delivered' } as { status: string; detail?: string } }));
 
 function pending(signal: AbortSignal): Promise<never> {
   const resource = path.join(state.root, 'compiler');
@@ -57,7 +58,7 @@ vi.mock('@apackdev/host/dev-session', async importOriginal => ({
   readSession: () => ({ startedBy: 'dev' }),
 }));
 vi.mock('../../src/app/drive-attach', () => ({ verifySessionHost: () => {} }));
-vi.mock('../../src/build/dev-reload.ts', () => ({ installPackInApp: async () => ({ status: 'delivered' }) }));
+vi.mock('../../src/build/dev-reload.ts', () => ({ installPackInApp: async () => state.install }));
 
 import { dev } from '../../src/commands/dev';
 
@@ -65,6 +66,7 @@ let terminate: () => void;
 beforeEach(() => {
   state.root = fs.mkdtempSync(path.join(os.tmpdir(), 'apack-dev-cancellation-'));
   state.aborted = false;
+  state.install = { status: 'delivered' };
   fs.writeFileSync(path.join(state.root, 'apack.json'), JSON.stringify({ id: 'cancel-test', name: 'Cancel test', version: '1.0.0', features: {} }));
   vi.spyOn(process, 'cwd').mockReturnValue(state.root);
   vi.spyOn(process, 'exit').mockImplementation(() => undefined as never);
@@ -112,4 +114,16 @@ it('drains a failed running watcher before removing its dev profile', async () =
   await watching;
   expect(fs.existsSync(resource)).toBe(false);
   expect(fs.existsSync(path.join(state.root, 'profile'))).toBe(false);
+});
+
+it('keeps watching after the app refuses the first install, so the author can fix it and save', async () => {
+  state.stage = 'ready';
+  state.install = { status: 'failed', detail: '500 Internal Server Error: Failed to load pack cancel-test' };
+  const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+  const failure = new Error('stop watching');
+  const watching = expect(dev(['--fresh'])).rejects.toBe(failure);
+  await vi.waitFor(() => expect(fs.existsSync(path.join(state.root, 'watcher'))).toBe(true));
+  expect(warn.mock.calls.flat().join(' ')).toContain('Failed to load pack cancel-test');
+  state.fail(failure);
+  await watching;
 });

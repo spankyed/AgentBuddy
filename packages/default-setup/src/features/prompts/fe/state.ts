@@ -185,14 +185,8 @@ const promptsState = setup({
       });
     },
 
-    addCreatedPrompt: assign(({ context, event }) => {
-      const ev = typeOf('PROMPT_CREATED', event);
-      return {
-        prompts: [...context.prompts, ev.prompt],
-        selectedPromptId: ev.promptId,
-        selectedPrompt: ev.prompt,
-      };
-    }),
+    // News every window hears, whoever created it: it adds the prompt and selects nothing, so opening it fetches it
+    addCreatedPrompt: assign(({ context, event }) => ({ prompts: [...context.prompts, typeOf('PROMPT_CREATED', event).prompt] })),
 
     updatePromptInList: assign(({ context, event }) => {
       const ev = typeOf('PROMPT_UPDATED', event);

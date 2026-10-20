@@ -9,7 +9,7 @@ import { createActor, setup, type AnyEventObject } from 'xstate';
 import { HOST } from '../../../../src/refs.ts';
 import { _appDirOf, resolveAppEnvironment } from '@apackdev/sdk/env';
 import { startTestRuntime, resetTestData, takeSystemErrors, testRootEvents } from '@apackdev/sdk/testing';
-import { readInstalledPacks, setPackEnabled } from '../../../../src/packs/installed.ts';
+import { readInstalledPacks, recordUserInstall, setPackEnabled } from '../../../../src/packs/installed.ts';
 import { registry } from '../../../packs/runtime/test-host.ts';
 import { appliedContent, appState } from '../../../../src/app-state/index.ts';
 import { installPackFromLocal, restoreShippedPack } from '../../../../src/packs/installer.ts';
@@ -92,11 +92,21 @@ async function stubRelease(source: string) {
   return sha256;
 }
 
-/** The packs system running next to a bus that records what it is sent, and what it sends its plugin. */
-function runPacksSystem() {
+/**
+ * The packs system running next to a bus that records what it is sent, and what it sends its plugin. A bus told
+ * to `deferStops` holds each teardown's completion in `stops`, as a real one does until the actors have stopped.
+ */
+function runPacksSystem({ deferStops = false } = {}) {
   const sent: AnyEventObject[] = [];
+  const stops: Array<() => void> = [];
   const busStub = setup({ types: {} as { events: AnyEventObject } }).createMachine({
-    on: { '*': { actions: ({ event }) => { sent.push(event); if (typeof event.afterStop === 'function') event.afterStop(); } } },
+    on: { '*': { actions: ({ event }) => {
+      sent.push(event);
+      if (typeof event.afterStop === 'function') {
+        if (deferStops) stops.push(event.afterStop);
+        else event.afterStop();
+      }
+    } } },
   });
   const stopListening = testRootEvents.onPluginSend((message) => void sent.push({ type: 'OUTGOING', message }));
   const root = setup({ actors: { bus: busStub, packs: createPacksSystem(registry) } }).createMachine({
@@ -110,7 +120,7 @@ function runPacksSystem() {
     actor.stop();
     stopListening();
   };
-  return { sent, send: (event: AnyEventObject) => actor.system.get(HOST.packs).send(event), stop };
+  return { sent, stops, send: (event: AnyEventObject) => actor.system.get(HOST.packs).send(event), stop };
 }
 
 /** The pack-scoped events the system emitted, unwrapped from the bus envelope */
@@ -236,6 +246,9 @@ describe('app-default installation intent and lifecycle', () => {
       expect(registry.catalog.get(PACK_ID)?.enabled).toBe(false);
       expect(registry.getPackRegistration(PACK_ID)).toBeNull();
       expect(fs.existsSync(path.join(resolveAppEnvironment().packsDir, PACK_ID))).toBe(true);
+      // The disable holds the pack until its teardown has settled
+      await vi.waitFor(() => expect(emitted(system.sent).map(e => e.type)).toContain('PACKS_LIST'));
+      await new Promise(resolve => setTimeout(resolve, 0));
       system.send({ type: 'UNINSTALL_PACK', packId: PACK_ID });
       await vi.waitFor(() => expect(emitted(system.sent).map(e => e.type)).toContain('PACK_UNINSTALL_COMPLETE'));
       expect(fs.existsSync(path.join(resolveAppEnvironment().packsDir, PACK_ID))).toBe(false);
@@ -601,7 +614,7 @@ describe('installing over a pack that is already running', () => {
         expect(emitted(system.sent).map(e => e.type)).toContain('PACK_INSTALL_FAILED');
       });
       expect(emitted(system.sent).find(e => e.type === 'PACK_INSTALL_FAILED')).toMatchObject({
-        packSlug: b, error: expect.stringContaining('Operation already in progress'),
+        packSlug: b, error: expect.stringContaining('Another operation on reinstall-pack is in progress'),
       });
       expect(registry.packOrigin(PACK_ID)?.version).toBe('2.0.0');
       expect(readPackBuild(path.join(resolveAppEnvironment().packsDir, PACK_ID)).integrity.version).toBe('2.0.0');
@@ -632,22 +645,16 @@ describe('installing over a pack that is already running', () => {
   it('refuses a second install of the same slug while one is in flight', async () => {
     const system = runPacksSystem();
     try {
-      const warned: string[] = [];
-      const realWarn = console.warn;
-      console.warn = (...args: unknown[]) => void warned.push(args.map(String).join(' '));
-      try {
-        system.send({ type: 'INSTALL_PACK', packSlug: packSource('1.0.0'), sourceKind: 'local' });
-        system.send({ type: 'INSTALL_PACK', packSlug: packSource('1.0.0'), sourceKind: 'local' });
-      } finally {
-        console.warn = realWarn;
-      }
+      const slug = packSource('1.0.0');
+      system.send({ type: 'INSTALL_PACK', packSlug: slug, sourceKind: 'local' });
+      system.send({ type: 'INSTALL_PACK', packSlug: slug, sourceKind: 'local' });
 
       await vi.waitFor(() => {
         expect(emitted(system.sent).map(e => e.type)).toContain('PACK_INSTALL_COMPLETE');
       });
-      // One install started, not two
+      // One install started, not two, and the second is told why
       expect(emitted(system.sent).filter(e => e.type === 'PACK_INSTALL_STARTED')).toHaveLength(1);
-      expect(warned.join('\n')).toMatch(/Operation already in progress/);
+      expect(emitted(system.sent)).toContainEqual({ type: 'PACK_INSTALL_FAILED', packSlug: slug, error: expect.stringContaining('in progress') });
     } finally {
       system.stop();
     }
@@ -1239,5 +1246,51 @@ describe('catalog refresh refusal after a completed pack mutation', () => {
       expect(emitted(system.sent).filter(event => event.type === 'PACKS_LIST')).toHaveLength(2);
       expect(takeSystemErrors().map(error => error.message)).toEqual(['Refresh refused']);
     } finally { refresh.mockRestore(); system.stop(); }
+  });
+});
+
+
+describe('the claim on a pack', () => {
+  /** Whether a claim is free now, taking nothing */
+  const probeClaim = (key: string) => {
+    const free = registry.claimPackOperation(key);
+    if (free) registry.releasePackOperation(key);
+    return free;
+  };
+  const withSystem = {
+    manifest: { features: { widget: { description: 'Widget.', system: { entry: 'src/system.ts' } } } },
+    runtime: "module.exports.registration.features = { widget: { system: { machine: { id: 'widget', config: {} }, receives: [] } } };",
+  };
+
+  it.each(['disable', 'uninstall'] as const)('is held until the bus has torn the pack down after %s', async operation => {
+    await installPackFromLocal(packSource('1.0.0', withSystem));
+    expect(activatePack(registry, PACK_ID, { send: () => {} } as never)).toBe(true);
+    const system = runPacksSystem({ deferStops: true });
+    try {
+      system.send({ type: operation === 'disable' ? 'TOGGLE_PACK_ENABLED' : 'UNINSTALL_PACK', packId: PACK_ID });
+      await vi.waitFor(() => expect(system.stops).toHaveLength(1));
+      await new Promise(resolve => setTimeout(resolve, 20));
+      // The pack is still registered until the bus finishes, so another operation may not start on it yet
+      expect(registry.getPackRegistration(PACK_ID)).not.toBeNull();
+      expect(probeClaim(PACK_ID)).toBe(false);
+      system.stops.splice(0).forEach(finish => finish());
+      await vi.waitFor(() => expect(probeClaim(PACK_ID)).toBe(true));
+      expect(registry.getPackRegistration(PACK_ID)).toBeNull();
+    } finally { system.stop(); }
+  });
+
+  it.each(['uninstall', 'update'] as const)('refused for %s is reported to the Packs view', async operation => {
+    await installPackFromLocal(packSource('1.0.0'));
+    // An update needs a source to update from before it asks for the claim
+    recordUserInstall(resolveAppEnvironment().installedPacksFile, PACK_ID, 'owner/repo');
+    const system = runPacksSystem();
+    expect(registry.claimPackOperation(PACK_ID)).toBe(true);
+    try {
+      system.send(operation === 'uninstall' ? { type: 'UNINSTALL_PACK', packId: PACK_ID } : { type: 'UPDATE_PACK', packId: PACK_ID });
+      await vi.waitFor(() => expect(emitted(system.sent)).toContainEqual({
+        type: operation === 'uninstall' ? 'PACK_UNINSTALL_FAILED' : 'PACK_UPDATE_FAILED',
+        packId: PACK_ID, error: expect.stringContaining('in progress'),
+      }));
+    } finally { registry.releasePackOperation(PACK_ID); system.stop(); }
   });
 });

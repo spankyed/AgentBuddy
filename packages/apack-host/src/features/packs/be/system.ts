@@ -129,6 +129,11 @@ function emitPacksList(registry: PackRegistry) {
 }
 
 /** The host `packs` system, installing, updating and toggling the packs in `registry` */
+/** Why an operation on a pack was refused: another holds it, or the app's data is being replaced */
+function operationInProgress(key: string): string {
+  return `Another operation on ${key} is in progress (an install, update, removal or app data replacement). Try again once it finishes.`;
+}
+
 export function createPacksSystem(registry: PackRegistry) {
   const isInstalled = (id: string) => PACK_ID_PATTERN.test(id)
     && discoverPackDirectories(resolveAppEnvironment().packsDir).some(dir => path.basename(dir) === id);
@@ -280,7 +285,7 @@ export function createPacksSystem(registry: PackRegistry) {
 
         // Reserve the source while downloading, then the resolved owner before publication.
         if (!registry.claimPackOperation(packSlug)) {
-          console.warn(`[packs] Operation already in progress for ${packSlug}, skipping install`);
+          broadcastToPlugin('packs', { type: 'PACK_INSTALL_FAILED' as const, packSlug, error: operationInProgress(packSlug) });
           return;
         }
         console.log(`[packs] Install requested: ${packSlug} (source kind: ${ev.sourceKind ?? 'default'})`);
@@ -310,7 +315,7 @@ export function createPacksSystem(registry: PackRegistry) {
               }
             }
             if (manifest.id !== packSlug && !registry.claimPackOperation(manifest.id)) {
-              throw new Error(`Operation already in progress for ${manifest.id}`);
+              throw new Error(operationInProgress(manifest.id));
             }
             installingId = manifest.id;
           },
@@ -369,7 +374,7 @@ export function createPacksSystem(registry: PackRegistry) {
           return;
         }
         if (!registry.claimPackOperation(packId)) {
-          fail(new Error(`Operation already in progress for ${packId}`));
+          fail(new Error(operationInProgress(packId)));
           return;
         }
         broadcastToPlugin('packs', { type: 'PACK_INSTALL_STARTED' as const, packSlug: packId });
@@ -418,7 +423,7 @@ export function createPacksSystem(registry: PackRegistry) {
         }
 
         if (!registry.claimPackOperation(packId)) {
-          console.warn(`[packs] Operation already in progress for ${packId}, skipping uninstall`);
+          broadcastToPlugin('packs', { type: 'PACK_UNINSTALL_FAILED' as const, packId, error: operationInProgress(packId) });
           return;
         }
         console.log(`[packs] Uninstall requested: ${packId}`);
@@ -427,8 +432,7 @@ export function createPacksSystem(registry: PackRegistry) {
         Promise.resolve().then(() => {
           cacheDir = fs.realpathSync(path.join(resolveAppEnvironment().packsDir, packId));
           return runUninstall(packId, undefined, { installedPacksFile: resolveAppEnvironment().installedPacksFile });
-        }).then(() => {
-          teardownPack(registry, packId, system.get(HOST.bus));
+        }).then(() => teardownPack(registry, packId, system.get(HOST.bus))).then(() => {
           clearPackRequireCache(cacheDir);
           broadcastToPlugin('packs', { type: 'PACK_DEACTIVATED' as const, packId });
 
@@ -456,7 +460,7 @@ export function createPacksSystem(registry: PackRegistry) {
           type: 'PACK_UPDATE_FAILED' as const, packId, error: errorMessage(error),
         });
         if (!registry.claimPackOperation(packId)) {
-          fail(new Error(`Operation already in progress for ${packId}`));
+          fail(new Error(operationInProgress(packId)));
           return;
         }
         let startAccepted: (() => boolean) | undefined;
@@ -504,7 +508,7 @@ export function createPacksSystem(registry: PackRegistry) {
         }
 
         if (!registry.claimPackOperation(packId)) {
-          console.warn(`[packs] Operation already in progress for ${packId}, skipping update`);
+          broadcastToPlugin('packs', { type: 'PACK_UPDATE_FAILED' as const, packId, error: operationInProgress(packId) });
           return;
         }
 
@@ -581,9 +585,11 @@ export function createPacksSystem(registry: PackRegistry) {
         if (packId === HOST_PACK_ID) return;
         // Claimed like any other operation on the pack, so a development install cannot land mid-toggle
         if (!registry.claimPackOperation(packId)) {
-          console.warn(`[packs] Operation already in progress for ${packId}, skipping toggle`);
+          console.warn(`[packs] ${operationInProgress(packId)}; the toggle was skipped`);
           return;
         }
+        // Held until a disable's teardown finishes, since the pack is registered until then
+        let tearingDown: Promise<void> | undefined;
         try {
           if (!isInstalled(packId)) {
             console.warn(`[packs] Pack not found: ${packId}`);
@@ -613,7 +619,7 @@ export function createPacksSystem(registry: PackRegistry) {
           }
 
           if (!newEnabled) {
-            teardownPack(registry, packId, system.get(HOST.bus));
+            tearingDown = teardownPack(registry, packId, system.get(HOST.bus));
             broadcastToPlugin('packs', { type: 'PACK_DEACTIVATED' as const, packId });
           } else {
             if (activatePack(registry, packId, system.get(HOST.bus))) {
@@ -627,7 +633,10 @@ export function createPacksSystem(registry: PackRegistry) {
             enabled: newEnabled,
           });
           emitPacksList(registry);
-        } finally { registry.releasePackOperation(packId); }
+        } finally {
+          if (tearingDown) void tearingDown.finally(() => registry.releasePackOperation(packId));
+          else registry.releasePackOperation(packId);
+        }
       },
     }),
   }).createMachine({

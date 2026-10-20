@@ -59,6 +59,26 @@ describe('createHostRuntime', () => {
     order.length = 0;
   });
 
+  it('excludes pack operations while app data is replaced, and refuses to replace it under one', async () => {
+    let finish!: () => void;
+    const store = { reset: vi.fn(() => new Promise<void>(resolve => { finish = resolve; })) } as unknown as LmdbStore;
+    const packs = createNativePackTestRegistry();
+    const runtime = createHostRuntime({ store, engine: newEngine(), transport: { rootEvents: testRootEvents },
+      appVersion: '1.2.3', packs });
+    const resetting = runtime.services.appData.reset();
+    try {
+      const free = packs.claimPackOperation('any-pack');
+      if (free) packs.releasePackOperation('any-pack');
+      expect(free).toBe(false);
+    } finally { finish(); await resetting; }
+    expect(packs.claimPackOperation('any-pack')).toBe(true);
+    try {
+      await expect(runtime.services.appData.reset()).rejects.toThrow('A pack is being installed or changed');
+      expect(store.reset).toHaveBeenCalledOnce();
+    } finally { packs.releasePackOperation('any-pack'); }
+    order.length = 0;
+  });
+
   it('keeps settings and onboarding on the owning engine when another engine is installed', () => {
     const firstEngine = newEngine();
     const secondEngine = newEngine();

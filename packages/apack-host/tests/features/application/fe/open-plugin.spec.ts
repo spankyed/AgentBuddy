@@ -300,3 +300,37 @@ describe('a request from the app to open a plugin', () => {
   });
 });
 
+
+describe('a later navigation supersedes an open still waiting for its pack', () => {
+  async function waiting() {
+    let loaded!: () => void;
+    const release = new Promise<void>((resolve) => { loaded = resolve; });
+    await connectLoading([{ id: 'memo-pack', plugins: [recording('memo-pack/memos'), recording('memo-pack/drafts')] }], release);
+    return loaded;
+  }
+
+  it('stays where the user went, and still delivers the waiting open its events', async () => {
+    const loaded = await waiting();
+    app.send({ type: 'OPEN_PLUGIN', plugin: 'memo-pack/memos', events: [{ type: 'MEMO.OPEN', id: 'm1' }] });
+    app.send({ type: 'SELECT_PLUGIN', plugin: 'default-setup/settings' });
+
+    loaded();
+    await settle();
+
+    expect(opened()).toBe('default-setup/settings');
+    expect(eventsOf('memo-pack/memos')).toEqual([{ plugin: 'memo-pack/memos', type: 'MEMO.OPEN', open: false }]);
+  });
+
+  it('opens only the last of several waiting opens', async () => {
+    const loaded = await waiting();
+    app.send({ type: 'OPEN_PLUGIN', plugin: 'memo-pack/memos', events: [] });
+    app.send({ type: 'OPEN_PLUGIN', plugin: 'memo-pack/drafts', events: [] });
+    const before = heard.length;
+
+    loaded();
+    await settle();
+
+    expect(opened()).toBe('memo-pack/drafts');
+    expect(heard.slice(before).filter((h) => h.type === 'PLUGIN_ACTIVATED').map((h) => h.plugin)).toEqual(['memo-pack/drafts']);
+  });
+});
