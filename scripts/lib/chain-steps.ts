@@ -1083,8 +1083,8 @@ export const CHAIN_STEPS: readonly ChainStep[] = [
       'tests/scripts/lib', ...PACKAGE_BUILD_READS, ...PACK_OUTPUTS] },
   // A full shipped-pack fork is a separate producer, not work charged to the fixture contract suite.
   // Initial cost borrows the shipped build's 28s estimate; measure this producer separately.
-  // Both the step and its build/archive operations retain the existing suite bound.
-  { name: 'test:external-pack:fork', timeout: 'suite', seconds: 28, outputs: [DEFAULT_FORK_OUTPUT],
+  // A 600s build, 180s archive and 120s housekeeping compose the existing 900s scenario bound.
+  { name: 'test:external-pack:fork', timeout: 'scenario', seconds: 28, outputs: [DEFAULT_FORK_OUTPUT],
     inputs: [...PACK_DERIVED_READS, ...BOUNDED_RUNNER, 'tests/scripts/prepare-default-pack-fork.ts',
       ...['apack-host', ...workspaceDeps('apack-host')].flatMap(dependencySource), ...PACK_OUTPUTS] },
   // The widest inputs in the table, and honestly so: it compiles every workspace, the scripts and the

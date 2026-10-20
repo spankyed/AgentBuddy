@@ -218,3 +218,33 @@ queued build preflight: it fails before the repair (preflight runs), passes afte
 cancellation reason retained, no package refresh or compiler capture). Twelve adjacent dev-hold and
 mocked cancellation cases pass; CLI typecheck and focused correctness lint pass. The full builder
 lifecycle fixture and real CLI scenario still require the next disposable check.
+
+## Source CLI acceptance passed: 39414905716
+
+[Disposable acceptance](https://github.com/spankyed/apack/actions/runs/39414905716), source
+`f9fdbdef4971b4355b1f8e9ab3ac2c7275ebd99e`: all fourteen builder lifecycle cases pass; the real CLI
+initially installs, publishes the manifest edit, receives a different accepted frontend runtime, and
+exits within the unchanged 15s shutdown limit. No shutdown sample was needed. Fixture contracts pass
+(38 external harness cases). Saved logs and reports: `/private/tmp/apack-cli-39414905716.log` and
+`/private/tmp/apack-cli-39414905716/`. This is source-host evidence, not packaged beta acceptance.
+
+## Strict run 39416637186: fork producer aggregate timeout
+
+[Strict gate](https://github.com/spankyed/apack/actions/runs/39416637186), same source: 21 completed steps
+pass, including typechecks, lint, schema/API/facade/package validation, the shipped build and fixture
+contracts. The fork producer reaches `Output: dist/`, then its **whole-step 600s deadline** kills the
+process group. That marker precedes compiler disposal and archiving, so it does not prove either finished.
+No assertion failure is reported; unit/integration/app acceptance are not reached. Evidence is retained
+in `/private/tmp/apack-strict-39416637186/` and its `.log`.
+
+The producer allotted 600s separately to build and archive but also only 600s to their parent. Correct
+this one composition using the existing 900s scenario class: retain the build's 600s cap, narrow archive
+from 600s to 180s, and reserve 120s for package freshness, copy, verification and owned-tree cleanup.
+Prior completed archive paths took 35s and 57s after the build output marker (including remaining build
+cleanup), so the archive limit has measured headroom. Phase start/end logs distinguish those operations
+on the next runner. No global timeout class or compiler implementation changes.
+
+A regression checks the sum of the producer's actual operation bounds against its chain deadline; it
+fails before the repair (1,320s of phases under 600s), passes afterward (900s under 900s). All 68 graph
+and scheduler cases pass, as do scripts/repo-checks typechecking and focused correctness lint. Before
+another strict run, validate this producer and the restored-fork app case together on disposable macOS.

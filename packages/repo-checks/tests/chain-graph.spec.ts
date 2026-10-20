@@ -16,6 +16,8 @@ import { population } from '@apackdev/sdk/testing';
 import { machineText, POOL_WIDTH, thisMachine } from '../../../scripts/lib/core-budget.ts';
 import { TYPECHECK_LEGS } from '../../../scripts/lib/typecheck-legs.ts';
 import { declaredShare, rungForKind, timedOutBecause, TIMEOUT_CLASSES, TIMEOUT_MS } from '../../../scripts/lib/step-timeouts.ts';
+import { DEFAULT_FORK_BUDGET_MS } from '../../../tests/scripts/prepare-default-pack-fork.ts';
+import { timeoutMsFor } from '../../../scripts/lib/step-timeouts.ts';
 import e2eConfig from '../../../playwright.config.ts';
 
 describe('the chain graph', () => {
@@ -379,6 +381,8 @@ describe('every spawn an orchestrator makes is bounded', () => {
   describe('the rung matches the kind of work', () => {
     /** A step whose rung the facts cannot derive, and why. An entry that stops applying is reported. */
     const DECLARED_AGAINST_THE_FACTS: Record<string, string> = {
+      'test:external-pack:fork': 'composes a cold shipped-pack build, separately bounded archive verification '
+        + 'and owned temporary-tree cleanup; a single bundle deadline does not cover these serial operations',
       'test:integration': 'complete compiler/runtime acceptance includes repeated cold builds, watchers '
         + 'and lifecycle combinations across projects; generic fan-out facts cannot distinguish that '
         + 'workload from an ordinary unit suite. Only this pool uses the acceptance aggregate bound',
@@ -655,6 +659,14 @@ describe('every spawn an orchestrator makes is bounded', () => {
       + 'the graph does not support — they would refuse on a package it is still building').toEqual([]);
   });
 
+  it('composes fork preparation from bounded build, archive and housekeeping phases', () => {
+    const producer = CHAIN_STEPS.find(step => step.name === 'test:external-pack:fork')!;
+    expect(DEFAULT_FORK_BUDGET_MS.build).toBe(timeoutMsFor('suite'));
+    expect(DEFAULT_FORK_BUDGET_MS.archive).toBeGreaterThan(0);
+    expect(Object.values(DEFAULT_FORK_BUDGET_MS).reduce((total, budget) => total + budget, 0))
+      .toBeLessThanOrEqual(timeoutMsFor(producer.timeout));
+  });
+
   it('prepares the default fork independently of fixture contracts before app consumption', () => {
     const output = 'node_modules/.cache/apack-fixtures/default-fork';
     const producer = CHAIN_STEPS.find(step => step.name === 'test:external-pack:fork')!;
@@ -666,7 +678,7 @@ describe('every spawn an orchestrator makes is bounded', () => {
     expect(dependsOn(app)).toEqual(expect.arrayContaining([producer.name, 'test:external-pack:contract']));
     const scripts = rootScripts();
     expect(reachableText('test:external-pack:contract', scripts).text).not.toContain('prepare-default-pack-fork');
-    expect(scripts[producer.name]).toContain('bounded.ts suite tsx tests/scripts/prepare-default-pack-fork.ts');
+    expect(scripts[producer.name]).toContain('bounded.ts scenario tsx tests/scripts/prepare-default-pack-fork.ts');
     const combined = read('tests/scripts/test-external-pack.sh');
     expect(combined.indexOf('test-external-pack-contract.sh')).toBeLessThan(combined.indexOf('prepare-default-pack-fork.ts'));
     expect(combined.indexOf('prepare-default-pack-fork.ts')).toBeLessThan(combined.indexOf('test-external-pack-app.sh'));

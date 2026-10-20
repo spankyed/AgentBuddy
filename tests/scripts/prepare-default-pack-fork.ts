@@ -13,6 +13,14 @@ const source = path.join(root, 'packages/default-setup');
 const output = path.join(root, 'node_modules/.cache/apack-fixtures/default-fork');
 const remedy = 'Run npm run test:external-pack:fork to prepare the default fork.';
 
+export const DEFAULT_FORK_BUDGET_MS = {
+  build: timeoutMsFor('suite'),
+  // Two input replays plus archive staging/verification.
+  archive: 3 * timeoutMsFor('quick'),
+  // Package freshness, source copying, final verification and removal of owned temporary trees.
+  housekeeping: 2 * timeoutMsFor('quick'),
+} as const;
+
 function shippedRevision(): string {
   const dist = path.join(source, 'dist');
   const build = readPackBuild(dist);
@@ -56,10 +64,12 @@ async function prepare(): Promise<void> {
     const config = path.join(fork, 'tsconfig.json');
     fs.writeFileSync(config, fs.readFileSync(config, 'utf8').replace(
       '../../node_modules/.cache/tsbuildinfo/default-setup.tsbuildinfo', '.apack/typecheck.tsbuildinfo'));
-    for (const args of [['build'], ['archive', '--out', staged]]) {
-      const result = await boundedSpawn(process.execPath, [path.join(root, 'node_modules/.bin/apack'), 'pack', ...args], timeoutMsFor('suite'),
+    for (const [phase, args] of [['build', ['build']], ['archive', ['archive', '--out', staged]]] as const) {
+      console.log(`Default fork ${phase}: starting (${DEFAULT_FORK_BUDGET_MS[phase] / 1000}s limit)`);
+      const result = await boundedSpawn(process.execPath, [path.join(root, 'node_modules/.bin/apack'), 'pack', ...args], DEFAULT_FORK_BUDGET_MS[phase],
         { cwd: fork, env: { ...process.env, APACK_HOST: root }, stream: true });
-      if (result.code !== 0) throw new Error(`Default fork ${args[0]} ${result.timedOut ? 'timed out' : `failed (exit ${result.code})`}`);
+      if (result.code !== 0) throw new Error(`Default fork ${phase} ${result.timedOut ? 'timed out' : `failed (exit ${result.code})`}`);
+      console.log(`Default fork ${phase}: completed in ${(result.ms / 1000).toFixed(1)}s`);
     }
     if (shippedRevision() !== shippedBuildRevision) throw new Error('The shipped pack changed during fork preparation');
     const archive = `${manifest.id}-${manifest.version}.tgz`;
