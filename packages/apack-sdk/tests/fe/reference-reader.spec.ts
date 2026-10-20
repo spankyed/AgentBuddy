@@ -77,7 +77,20 @@ it('admits native bindings without manufacturing installed receipts and refuses 
 it('does not treat a source advertisement as a second runtime claim', () => {
   const f = fixture(); f.state.entries.push({ ...f.entry, origin: 'source', enabled: undefined, buildRevision: undefined });
   expect(getReferenceTypeBinding('note')).toBe(f.type); expect(getReferenceCategoryBinding('notes')).toBe(f.category);
-  expect(getReferenceCategoryDeclarations()).toHaveLength(2);
+  expect(getReferenceCategoryDeclarations()).toMatchObject([{ id: 'notes', declaration: { label: 'Notes' } }]);
+  expect(getReferenceCategoryDeclarations()).toHaveLength(1);
+});
+
+it('prefers installed category metadata to an earlier source advertisement', () => {
+  const f = fixture();
+  f.state.entries.unshift({ ...f.entry, origin: 'source', enabled: undefined, buildRevision: undefined,
+    declaration: { ...f.entry.declaration, categories: {
+      notes: { ...f.entry.declaration.categories.notes, label: 'Preview Notes' },
+      drafts: { ...f.entry.declaration.categories.notes, label: 'Drafts' },
+    } } });
+  expect(getReferenceCategoryDeclarations().map(({ id, declaration }) => [id, declaration.label]))
+    .toEqual([['drafts', 'Drafts'], ['notes', 'Notes']]);
+  expect(f.useItems).not.toHaveBeenCalled();
 });
 
 it('preserves category owners and refuses ambiguous runtime names instead of silently choosing a pack', () => {

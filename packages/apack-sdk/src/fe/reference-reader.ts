@@ -23,9 +23,13 @@ export function getReferenceTypeDeclaration(name: string): DeclarationData<Refer
   return ownerOf(name, 'types')?.declaration.types[name];
 }
 
-/** Category labels remain discoverable when their providers are disabled or unavailable. */
+/** Category labels remain discoverable when unavailable; runtime claims supersede source previews. */
 export function getReferenceCategoryDeclarations(): readonly ReferenceCategoryMetadata[] {
-  return Object.freeze(boundFeHost().catalog.references().flatMap(entry => Object.entries(entry.declaration.categories)
+  const entries = boundFeHost().catalog.references();
+  const runtimeNames = new Set(entries.filter(entry => entry.origin !== 'source')
+    .flatMap(entry => Object.keys(entry.declaration.categories)));
+  return Object.freeze(entries.flatMap(entry => Object.entries(entry.declaration.categories)
+    .filter(([id]) => entry.origin !== 'source' || !runtimeNames.has(id))
     .map(([id, declaration]) => Object.freeze({ id, featureRef: entry.featureRef, declaration }))));
 }
 
