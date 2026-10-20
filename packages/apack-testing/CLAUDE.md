@@ -54,6 +54,10 @@ so there is no third kind of run for a helper to own.
 
 ## Vitest: isolated data dirs (`@apackdev/testing/vitest`)
 
+`definePackTestConfig` writes Vite/Vitest cache output under `.apack/tests/vite`. Keep runner output
+there: creating `node_modules` after a build changes recorded negative dependency lookups and makes a
+prebuilt pack correctly refuse freshness validation.
+
 Unit tests that open EARS or the media store need `APACK_ENV` and `APACK_USER_DATA_DIR`. `isolatedDataDir(prefix)` creates a throwaway data dir for the run and returns the vitest settings that use it:
 
 ```ts
