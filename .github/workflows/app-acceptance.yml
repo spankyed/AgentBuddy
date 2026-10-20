@@ -52,16 +52,6 @@ jobs:
       - name: Source pack dev install and rebuild
         if: ${{ !cancelled() && steps.preparation.outcome == 'success' }}
         run: node scripts/with-source.mjs tsx tests/scripts/test-pack-dev.ts
-      # This exercises real release selection; no release is manufactured or published for validation.
-      # An unavailable beta remains an explicit unproven acceptance item, not a source-host substitute.
-      - name: Published beta host availability
-        if: ${{ !cancelled() && steps.preparation.outcome == 'success' }}
-        continue-on-error: true
-        timeout-minutes: 2
-        working-directory: tests/packs/external-pack
-        env:
-          GITHUB_TOKEN: ${{ github.token }}
-        run: ../../../node_modules/.bin/apack pack dev --host beta --fresh
       - name: Real LMDB import and rollback
         if: ${{ !cancelled() && steps.preparation.outcome == 'success' }}
         working-directory: packages/apack-host

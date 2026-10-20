@@ -33,9 +33,8 @@ Electron acceptance is run on the developer's Mac.
 - **S.5:** the standalone source-host scenario runs the actual CLI/watcher, observes a manifest
   change become a different accepted frontend runtime, and checks the installed declaration.
   Individual startup/rebuild waits remain bounded; cleanup signals only the owned supervisor.
-- **Beta:** GitHub's release API returned no published prereleases on 2026-10-20. A real
-  `--host beta --fresh` invocation is recorded separately; absence of a compatible beta cannot prove
-  packaged install/restart behavior. No release is created, metadata changed, or source host
-  substituted for this acceptance item.
+- **Beta:** GitHub's release API returned no published prereleases on 2026-10-20, so the packaged
+  half of S.5 (install while stopped, restart after a backend rebuild) has no host to run against and
+  remains unproven. No release is created, metadata changed, or source host substituted for it.
 
 No pending item above is claimed passed until its runner evidence is inspected.

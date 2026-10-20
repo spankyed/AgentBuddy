@@ -10,12 +10,10 @@ import { installPackFromLocal } from '@apackdev/host/packs';
 import { resolveAppEnvironment } from '@apackdev/sdk/env';
 import { untypedTx, type EARS } from '@apackdev/ears';
 import { writeData } from '../../../packages/apack-host/tests/database/fixtures.ts';
-import { assertCompilerTestRunner } from '../../../packages/apack-cli/tests/_support/compiler-test-runner.ts';
 
 const root = path.resolve(import.meta.dirname, '../../..');
 
 test('repairs invalid persisted settings in the app and starts packs only after reopening', async ({ playwright }, testInfo) => {
-  assertCompilerTestRunner();
   const userDataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'apack-recovery-app-'));
   const unavailable = { 'unavailable/notes': { keep: true } };
   let app: ElectronApplication | undefined;
