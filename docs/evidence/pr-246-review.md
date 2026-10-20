@@ -97,6 +97,37 @@ focused verification; remaining application/native acceptance is listed separate
    disposable CI on 2026-10-20; see [current acceptance evidence](pr-246-acceptance.md).
 
 
+## Repair-diff review (2026-10-20)
+
+The 39 commits from the first review's source (`dc8573b7b`) to `1f92ce805`, read by commit in five groups:
+settings; pack install, runtime, catalog and backup; services and shell; build, CLI and CI; default-setup
+and guides. *Confirmed* findings were checked against the code; *plausible* ones are argued from it.
+
+| # | Severity | Commit | Finding | Status |
+|---|---|---|---|---|
+| R-C1 | Medium (confirmed) | `7b68cad48` | The flow runner finds a step's handler through `getStepBinding`, which returns nothing when two catalog owners claim a step type, a disabled installed pack included. The runner then completes the step as a silent success, so a disabled pack declaring `llm` makes every `llm` node do nothing. The same skip happens briefly while a pack reloads | Open |
+| R-E1 | Medium (confirmed) | `7294d6853` | 9.3 is not closed: `ACTION_CREATED`/`PROMPT_CREATED`, broadcast to every window, select the new item while the list shows. Clicking it then skips the fetch, the form keeps the previous item's fields, and a save overwrites the new item with them | Open |
+| R-B1 | Medium (confirmed) | `36608fe9c` | The rename missed `tests/packs/external-pack/tests/e2e/settings-ownership.spec.ts`, which still sends `runtimeRevision`; `settings.openPack`'s strict schema refuses it, so `test:external-pack:app` fails | Fixed — "test(app): align persisted-profile and settings credential acceptance fixtures" |
+| R-B2 | Medium (confirmed) | `a47ec923b` | On a checkout host, a first build that fails to load or initialise makes `apack pack dev` exit and close its app, where the watcher used to keep running so the author could fix it | Open |
+| R-D1 | Medium (confirmed) | `7182c952d` | When the reused generation's dev server fails re-verification, it is closed before its replacement starts; if the restart fails, the `pack-dev-servers` marker is left naming a dead port. Before, the old server stayed up | Open |
+| R-A2 | Medium (plausible) | `8d31bdccc` | A pack install or update during a backup import is admitted against the engine mid-replacement; an imported row that breaches the new declaration then makes every settings read, and App reset, fail until relaunch | Open |
+| R-E2 | Low–Medium (confirmed) | `1f3e6123b` | The 9.2 refresh shares the `pendingFlow` slot with user selections, which a node double-click, re-selecting the shown flow, leaving the view or switching tabs clears; the refreshed graph is then dropped and the stale one stays | Open |
+| R-C2 | Low–Medium (plausible) | `47f153de5` | A click on a dimmed tab queues an open that later navigation does not cancel, so the window switches to it when its pack loads | Open |
+| R-A1 | Low (confirmed) | `3a6b649b5`, `0336dc203`, `d3f3e1765` | In recovery mode the store fences only `recover()`: an unconditioned set, reset, replace-all or reset-all from a non-window client commits, then building the reply throws (crashing the settings system) or reports a refusal after reset-all wiped every preference | Open |
+| R-B4 | Low (confirmed) | `a47ec923b` | Uninstall and update refused by the claim only log, so the Packs view's prompt or spinner never clears; the claim now also contends with dev installs and reloads | Open |
+| R-B5 | Low (confirmed) | `53da4c140` | A rolled-back import reloads memory with the volatile partition, which boot never hydrates | Open |
+| R-E3 | Low (plausible) | `1f3e6123b` | While any flow request is pending, a `FLOWS_CONNECTED` after a reset skips the root-flow fallback, and a deleted flow's empty answer is shown | Open |
+| R-B3 | Low (plausible) | `a47ec923b` | Uninstall and disable release the claim when `TEARDOWN_PACK` is sent, before the bus's teardown unregisters the pack; a dev install in that gap is registered and then unregistered by it | Open |
+| R-B6 | Low (plausible) | `88be3f633` | A refused acceptance whose record restore also fails leaves `.apack-install-record.json` inside the restored build, which verification then refuses | Open |
+| R-E4 | Low (plausible) | `1f3e6123b` | A refresh answer computed before an in-flight `CREATE_NODE` drops the temporary node and its edges | Open |
+| R-D2 | Low (plausible) | `7182c952d` | 3a.2 is partly open: `..` in a dangling link's own text is still collapsed lexically, not through intermediate symlinks | Open |
+
+Checked clean: settings array paths, replacement write scopes, save acknowledgement, autosave, recovery
+requests and boot preflight; claim release on every path, packaged restart, install records, staging
+recovery, dependency cache, catalog conflicts and backup rollback retention; frontend unload, withdrawn
+frontends and service facades; `/proc` parsing, the read-tree close, the CLI runner guard and every CI
+change; Library symlinks, layout merging and every changed guide fence.
+
 ## Area 5: settings
 
 Scope: `apack-host/src/features/settings/`, `services/settings.ts`, `fe/settings-{runtime,snapshot}.ts`,
