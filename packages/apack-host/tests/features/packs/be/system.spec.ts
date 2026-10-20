@@ -1215,3 +1215,29 @@ it('refuses a conflicting destination before saving enablement or importing its 
     expect(emitted(system.sent).find(event => event.type === 'PACK_ENABLED_CHANGED')).toMatchObject({ enabled: false });
   } finally { system.stop(); }
 });
+
+
+describe('catalog refresh refusal after a completed pack mutation', () => {
+  it.each(['disable', 'uninstall'] as const)('reports a failed refresh once and still publishes the completed %s', async operation => {
+    await installPackFromLocal(packSource('1.0.0'));
+    expect(activatePack(registry, PACK_ID, { send: () => {} } as never)).toBe(true);
+    const system = runPacksSystem();
+    const refresh = vi.spyOn(registry, 'refreshCatalog').mockImplementation(() => { throw new Error('Refresh refused'); });
+    takeSystemErrors();
+    try {
+      system.send({ type: operation === 'disable' ? 'TOGGLE_PACK_ENABLED' : 'UNINSTALL_PACK', packId: PACK_ID });
+      await vi.waitFor(() => expect(emitted(system.sent).map(event => event.type)).toContain('PACKS_LIST'));
+      const events = emitted(system.sent);
+      expect(events).toContainEqual(expect.objectContaining(operation === 'disable'
+        ? { type: 'PACK_ENABLED_CHANGED', packId: PACK_ID, enabled: false }
+        : { type: 'PACK_UNINSTALL_COMPLETE', packId: PACK_ID }));
+      expect(events.map(event => event.type)).not.toContain('PACK_UNINSTALL_FAILED');
+      expect(registry.getPackRegistration(PACK_ID)).toBeNull();
+      expect(refresh).toHaveBeenCalledTimes(1);
+      expect(takeSystemErrors().map(error => error.message)).toEqual(['Refresh refused']);
+      system.send({ type: 'GET_INSTALLED_PACKS' });
+      expect(emitted(system.sent).filter(event => event.type === 'PACKS_LIST')).toHaveLength(2);
+      expect(takeSystemErrors().map(error => error.message)).toEqual(['Refresh refused']);
+    } finally { refresh.mockRestore(); system.stop(); }
+  });
+});
