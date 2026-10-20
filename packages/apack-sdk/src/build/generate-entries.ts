@@ -236,7 +236,7 @@ export function getCompiledDir(): string {
 // ── Helpers ─────────────────────────────────────────────────────
 
 /** Extensions a manifest path can name a module by; anything else (`memo.types`) is part of the name */
-const MODULE_EXTENSIONS = new Set(['.ts', '.tsx', '.mts', '.cts', '.js', '.mjs', '.cjs', '.vue', '.json', '.css']);
+const MODULE_EXTENSIONS = new Set([...SCRIPT_MODULE_EXTENSIONS, '.vue', '.json', '.css']);
 
 /**
  * The module codegen writes the build-time step facets into, which `apack pack build` bundles to

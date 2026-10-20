@@ -20,6 +20,12 @@ import { setupPackFixture, dependency, generate, system, facade, withPluginState
 
 setupPackFixture();
 
+it('preserves JSX module paths after validating their exports', async () => {
+  write('src/search.jsx', 'export const search = { find() { return []; } };\n');
+  const files = await generate({ extensions: { services: { search: 'src/search.jsx#search' } } });
+  expect(files['src/__generated__/services.ts']).toContain("from '../search.jsx'");
+});
+
 it('checks consumption against direct provider declarations rather than intersected facade members', async () => {
   const provider = dependency({ id: 'provider', services: { declared: 'missing.ts#declared' } },
     facade({ Services: '{ declared: {}; transitive: {} }' }));
