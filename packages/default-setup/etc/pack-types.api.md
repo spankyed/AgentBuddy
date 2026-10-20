@@ -1520,13 +1520,21 @@ interface FlowsConnectedData {
 }
 
 interface FlowsContext {
-    /** `refresh`: asked again for the flow already shown, so its node selection and editor stay where their node does */
+    /** A flow the user asked to open; what the user does next (open another, edit a node, leave) cancels it */
     pendingFlow?: {
         call: string;
         flowId: EARS.EntityId;
         nodeId?: string;
         recordHistory: boolean;
-        refresh?: true;
+    };
+    /**
+     * The shown flow asked for again because the backend published (a reconnect, a pack change, data replaced).
+     * Its own slot, so nothing that cancels a user's selection drops it; its answer keeps the node selection, the
+     * editor and any node still being added.
+     */
+    pendingRefresh?: {
+        call: string;
+        flowId: EARS.EntityId;
     };
     selectedNodeId?: EARS.EntityId;
     editingNodeId?: EARS.EntityId;
