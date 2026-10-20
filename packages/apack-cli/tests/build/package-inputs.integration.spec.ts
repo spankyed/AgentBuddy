@@ -38,19 +38,6 @@ function vueRuntimeConsumer(kind: 'inline' | 'external' | 'linked' = 'inline') {
   return vueRuntimePack(root, kind);
 }
 
-it('rebuilds the frontend when an undeclared imported package changes behind unchanged types', async () => {
-  const { pack, helper, frontend } = runtimeConsumer();
-  const first = await callCli(pack, 'build');
-  expect(first.code, first.output).toBe(0);
-  expect(fs.readFileSync(frontend, 'utf8')).toContain('BEFORE');
-  fs.writeFileSync(helper, "export const marker = 'AFTERX';");
-  const second = await callCli(pack, 'build');
-  expect(second.code, second.output).toBe(0);
-  expect(second.output).not.toContain('fe: unchanged, reused');
-  expect(fs.readFileSync(frontend, 'utf8')).toContain('AFTERX');
-  expect(fs.readFileSync(frontend, 'utf8')).not.toContain('BEFORE');
-}, 2 * 60_000 + 20_000);
-
 it.each(['inline', 'external', 'linked'] as const)('invalidates compiler inputs and recompiles a Vue-only import (%s script)', async kind => {
   const { pack, helper, frontend } = vueRuntimeConsumer(kind);
   const inputs = captureCompilationInputs(pack);

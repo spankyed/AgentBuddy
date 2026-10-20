@@ -93,12 +93,10 @@ const TIMEOUT_EXCEPTIONS: Record<string, string> = {
     "One successful compilation and one refused replacement share the scenario; retain registry and receipt assertions.",
   "packages/apack-cli/tests/build/frontend-resources.integration.spec.ts > rebuilds Vue styles after only an external stylesheet changes":
     "Initial publication and stylesheet-only rebuild are sequential; verification and disposal follow.",
-  "packages/apack-cli/tests/build/package-inputs.integration.spec.ts > rebuilds the frontend when an undeclared imported package changes behind unchanged types":
-    "Two real builds verify changed runtime bytes behind unchanged declarations.",
   "packages/apack-cli/tests/commands/scaffold.integration.spec.ts > adds a feature, builds, typechecks and packs a verified archive":
     "Feature generation, validate, doctor, typecheck and archive have 60s allowances, the full public build has 180s backend + 120s frontend, and extraction/verification/cleanup have 20s. Commands run asynchronously with independent cancellation.",
   "packages/apack-cli/tests/commands/scaffold.integration.spec.ts > records the facade dependents compile against, and then reports it up to date":
-    "A full public build (180s backend + 120s frontend) and three source-facade derivations (60s each) precede verification/cleanup (20s); keep missing, update and current-report assertions.",
+    "Three source-facade derivations (60s each) on the pack the preceding case built precede verification/cleanup (20s); keep missing, update and current-report assertions.",
   "packages/apack-cli/tests/commands/scaffold.integration.spec.ts > keeps unit tests runnable after init-tests adds Playwright specs":
     "Test scaffolding and the pack's nested Vitest process each retain a 60s operation bound; compose those with 20s verification/cleanup.",
   "packages/apack-cli/tests/commands/scaffold.integration.spec.ts > refuses to build, pack or generate entries for a manifest the installer would reject":

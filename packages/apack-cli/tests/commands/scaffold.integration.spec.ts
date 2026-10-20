@@ -130,14 +130,10 @@ describe('apack pack init → add feature → build → tsc → pack', () => {
    * what this holds is that the two scripts it ships work in that order on a pack nobody has edited.
    *
    * What the command decides — that it re-bundles the facade rather than reading `dist`, and so needs no
-   * build — is `tests/commands/facade-report.integration.spec.ts`. The build here is this file's subject
-   * rather than that one's precondition.
+   * build — is `tests/commands/facade-report.integration.spec.ts`, so this runs on the pack the case above
+   * built: the cases here share one pack in declaration order.
    */
   it('records the facade dependents compile against, and then reports it up to date', async () => {
-    // No feature added: every pack has a facade, and the cases here share one pack in declaration order
-    const build = await callCli(pack, 'build');
-    expect(build.code, build.output).toBe(0);
-
     const report = path.join(pack, 'etc', 'pack-types.api.md');
     // Nothing is recorded before the first update: there is no report to be stale against
     expect(fs.existsSync(report)).toBe(false);
@@ -152,7 +148,7 @@ describe('apack pack init → add feature → build → tsc → pack', () => {
     const checked = await callCli(pack, 'facade-report');
     expect(checked.code, checked.output).toBe(0);
     expect(checked.output).toContain('is up to date');
-  }, 3 * 60_000 + (180_000 + 120_000) + 20_000);
+  }, 3 * 60_000 + 20_000);
 
   /**
    * Every file the scaffold ships that names a command — both workflows and the README — held to the scripts

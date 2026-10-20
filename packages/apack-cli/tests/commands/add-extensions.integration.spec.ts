@@ -52,6 +52,8 @@ beforeAll(async () => {
     process.chdir(cwd);
   }
   pack = path.join(tmp, 'demo-pack');
+  // The trigger case's own pristine scaffold, copied before any case adds to the shared one
+  fs.cpSync(pack, path.join(tmp, 'trigger-pack'), { recursive: true, verbatimSymlinks: true });
   fs.symlinkSync(path.join(REPO_ROOT, 'node_modules'), path.join(pack, 'node_modules'), 'dir');
 });
 
@@ -127,13 +129,6 @@ describe('apack pack add step in a pack without steps', () => {
   it('scaffolds a hyphenated trigger with declared track metadata and checked callbacks', async () => {
     // Its own scaffolded pack rather than the shared one: `init` is what writes the tsconfig `typecheckPack`
     // needs, and a trigger added to the shared pack would join the `NodeEntity` union another case pins
-    const cwd = process.cwd();
-    process.chdir(tmp);
-    try {
-      await init(['trigger-pack']);
-    } finally {
-      process.chdir(cwd);
-    }
     const triggerPack = path.join(tmp, 'trigger-pack');
     fs.symlinkSync(path.join(REPO_ROOT, 'node_modules'), path.join(triggerPack, 'node_modules'), 'dir');
 
