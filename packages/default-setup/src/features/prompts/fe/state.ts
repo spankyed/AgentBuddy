@@ -79,6 +79,8 @@ const promptsState = setup({
     }),
 
     cancelSelection: assign({ pendingPromptCall: null }),
+    // The list shows no prompt, so reopening one asks for it again rather than showing a form that may be stale
+    clearSelectedPrompt: assign({ selectedPromptId: undefined, selectedPrompt: undefined }),
 
     /* ── prompt interactions ────────────────────────────── */
     /**
@@ -556,6 +558,7 @@ const promptsState = setup({
   },
   states: {
     list: {
+      entry: 'clearSelectedPrompt',
       tags: ['list-prompts'],
       meta: { ...breadcrumb('list', 'Prompts', true) },
       on: {

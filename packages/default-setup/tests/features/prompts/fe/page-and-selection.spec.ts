@@ -202,3 +202,16 @@ it('opens its entity from the create view and refuses unrelated entity types', (
     expect(actor.getSnapshot().context.selectedPromptId).toBe('Prompt-p1');
   } finally { actor.stop(); }
 });
+
+it('asks for a prompt again when it is reopened from the list, so a changed prompt is not shown stale', () => {
+  const actor = connected();
+  try {
+    actor.send({ type: 'PROMPT.SELECT', promptId: 'Prompt-p1' });
+    actor.send(answerTo(selectCall(0), { type: 'PROMPT_SELECTED', promptId: 'Prompt-p1', data: aPrompt('Prompt-p1') }));
+    actor.send({ type: 'VIEW_LIST' });
+    expect(actor.getSnapshot().context.selectedPromptId).toBeUndefined();
+    actor.send({ type: 'PROMPT_UPDATED', promptId: 'Prompt-p1', prompt: aPrompt('Prompt-p1') });
+    actor.send({ type: 'PROMPT.SELECT', promptId: 'Prompt-p1' });
+    expect(sentTypes().filter(type => type === 'PROMPT_SELECT')).toHaveLength(2);
+  } finally { actor.stop(); }
+});

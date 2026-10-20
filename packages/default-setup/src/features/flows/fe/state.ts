@@ -1145,13 +1145,16 @@ const flowsState = setup({
     FLOW_SELECTED: { guard: 'answersFlowSelection', actions: 'loadFlowData' },
     FLOW_REFRESHED: { guard: ({ context, event }) => !context.pendingFlow && context.selectedFlowId === event.flowId, actions: 'loadFlowData' },
     LAYOUT_COMPUTED: {
-      guard: ({ context, event }) => context.graph === event.graph,
+      // Node ids are unique to a flow, so a shared node means the same flow, however often its graph was rebuilt
+      // since the layout was asked for; another flow's late layout shares none and is dropped
+      guard: ({ context, event }) => event.graph.nodes.some(node => context.graph.nodes.some(current => current.id === node.id)),
       actions: assign(({ context, event }) => {
         const ev = typeOf('LAYOUT_COMPUTED', event)
+        const computed = Object.fromEntries(context.graph.nodes.flatMap(node => ev.positions[node.id] ? [[node.id, ev.positions[node.id]]] : []))
         return {
           graph: {
             ...context.graph,
-            positions: ev.positions,
+            positions: { ...computed, ...context.graph.positions },
           },
         }
       }),

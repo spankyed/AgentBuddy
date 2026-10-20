@@ -56,3 +56,14 @@ it('keeps the document available to a save while retiring its editor target', ()
   actor.send(loaded('Document-first'));
   expect(actor.getSnapshot().matches('browser')).toBe(true);
 });
+
+it('opens a symlinked document from a double-click once the backend answers with its content', () => {
+  const actor = view();
+  const id = 'Document-symlink' as const;
+  const item = { id, type: 'document', name: 'linked.md', isSymlinked: true } as unknown as DocumentItem;
+  actor.send({ type: 'DOUBLE_CLICK_ITEM', item });
+  expect(actor.getSnapshot().matches('edit')).toBe(true);
+  expect(sendToSystem).toHaveBeenCalledWith('library', { type: 'GET_DOCUMENT', id });
+  actor.send(loaded(id));
+  expect(actor.getSnapshot().context.editingDocument?.id).toBe(id);
+});

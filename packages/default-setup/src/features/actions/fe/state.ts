@@ -78,6 +78,8 @@ const actionsState = setup({
     }),
 
     cancelSelection: assign({ pendingActionCall: null }),
+    // The list shows no action, so reopening one asks for it again rather than showing a form that may be stale
+    clearSelectedAction: assign({ selectedActionId: undefined, selectedAction: undefined }),
 
     /* ── action interactions ────────────────────────────── */
     /**
@@ -560,6 +562,7 @@ const actionsState = setup({
   },
   states: {
     list: {
+      entry: 'clearSelectedAction',
       tags: ['list-actions'],
       meta: { ...breadcrumb('list', 'Actions', true) },
       on: {

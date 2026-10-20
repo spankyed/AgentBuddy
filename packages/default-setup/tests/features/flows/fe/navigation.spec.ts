@@ -95,6 +95,16 @@ it('does not apply a late layout to a different graph', async () => {
   expect(actor.getSnapshot().context.graph.positions).toEqual({ 'Node-second': { x: 30, y: 40 } });
 });
 
+it('applies a layout to the same flow even when its graph was rebuilt while the layout ran', async () => {
+  const actor = view();
+  actor.send({ type: 'NODE.REVEAL', flowId: 'Flow-first', nodeId: 'Node-first' });
+  actor.send(answerTo(sentCall(sendToSystem, 'FLOW_SELECT'), selected('Flow-first', 'Node-first')));
+  actor.send({ type: 'NODE.UPDATE', nodeId: 'Node-first', updates: { label: 'Renamed' } });
+  layouts[0]({ 'Node-first': { x: 10, y: 20 } }); await Promise.resolve();
+  expect(actor.getSnapshot().context.graph.positions).toEqual({ 'Node-first': { x: 10, y: 20 } });
+  expect(actor.getSnapshot().context.graph.nodes[0].label).toBe('Renamed');
+});
+
 it('refreshes only the current graph and preserves its node editor', () => {
   const actor = view();
   actor.send({ type: 'NODE.REVEAL', flowId: 'Flow-first', nodeId: 'Node-first' });

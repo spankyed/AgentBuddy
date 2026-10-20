@@ -155,17 +155,8 @@ export const librarySystem = setup({
             folderId: event.item.id,
           })
         } else if (event.item.type === 'document') {
-          const docItem = event.item as DocumentItem
-          // Symlink documents: fetch from backend (routes to filesystem)
-          if (docItem.isSymlinked || event.item.id.startsWith('symlink:')) {
-            sendToSystem(id, {
-              type: 'GET_DOCUMENT',
-              id: event.item.id,
-            })
-          } else {
-            // Open edit view for regular documents
-            self.send({ type: 'EDIT_DOCUMENT', documentId: event.item.id })
-          }
+          // A symlinked document's content comes from the backend, which setEditingDocument leaves it to fetch
+          self.send({ type: 'EDIT_DOCUMENT', documentId: event.item.id })
         }
       }
     },
@@ -413,8 +404,10 @@ export const librarySystem = setup({
       if (event.type !== 'EDIT_DOCUMENT' && event.type !== 'OPEN_ENTITY') return {};
       const documentId = event.type === 'OPEN_ENTITY' ? event.id : event.documentId;
       const item = findItemById(context, documentId);
+      // A symlinked document's tree item has no content: the backend reads it from the filesystem
+      const symlinked = documentId.startsWith('symlink:') || (item?.type === 'document' && (item as DocumentItem).isSymlinked);
       return { editingDocumentId: documentId,
-        editingDocument: item?.type === 'document' ? documentItemToDTO(item) : undefined };
+        editingDocument: item?.type === 'document' && !symlinked ? documentItemToDTO(item) : undefined };
     }),
     /** Fill the current editor from the backend only when its document is not already cached. */
     requestEditingDocument: ({ context }) => {

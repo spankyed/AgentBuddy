@@ -209,3 +209,16 @@ it('opens its entity from the create view and refuses unrelated entity types', (
     expect(actor.getSnapshot().context.selectedActionId).toBe('Action-a1');
   } finally { actor.stop(); }
 });
+
+it('asks for an action again when it is reopened from the list, so a changed action is not shown stale', () => {
+  const actor = listed();
+  try {
+    actor.send({ type: 'ACTION.SELECT', actionId: 'Action-a1' });
+    actor.send(answerTo(selectCall(0), { type: 'ACTION_SELECTED', actionId: 'Action-a1', data: anAction('Action-a1') }));
+    actor.send({ type: 'VIEW_LIST' });
+    expect(actor.getSnapshot().context.selectedActionId).toBeUndefined();
+    actor.send({ type: 'ACTION_UPDATED', actionId: 'Action-a1', action: anAction('Action-a1') as never });
+    actor.send({ type: 'ACTION.SELECT', actionId: 'Action-a1' });
+    expect(sentTypes().filter(type => type === 'ACTION_SELECT')).toHaveLength(2);
+  } finally { actor.stop(); }
+});
