@@ -1269,7 +1269,8 @@ describe('the claim on a pack', () => {
     try {
       system.send({ type: operation === 'disable' ? 'TOGGLE_PACK_ENABLED' : 'UNINSTALL_PACK', packId: PACK_ID });
       await vi.waitFor(() => expect(system.stops).toHaveLength(1));
-      await new Promise(resolve => setTimeout(resolve, 20));
+      // Drain queued continuations while the bus completion remains explicitly held.
+      await new Promise<void>(resolve => setImmediate(resolve));
       // The pack is still registered until the bus finishes, so another operation may not start on it yet
       expect(registry.getPackRegistration(PACK_ID)).not.toBeNull();
       expect(probeClaim(PACK_ID)).toBe(false);

@@ -293,3 +293,22 @@ compiler deadlines. Those figures described earlier test allowances and should n
 public compiler limits. The source CLI acceptance test retains its existing 300s **whole fixture build**
 wait per build, along with separate startup/runtime/delivery/cleanup bounds; its misleading comment is
 corrected. None of those test waits is changed by this shipped-pack chain classification.
+
+## Strict run 39430263642: completed preparation and host units
+
+[Strict gate](https://github.com/spankyed/apack/actions/runs/39430263642), source
+`cadc8994e58cb7fab842654fc668833e1f82e5d9`: shipped build passes in 522.2s, fixture contracts in 316.6s,
+and fork preparation in 528.5s. All typecheck, lint, schema/API/facade/package checks pass. Host units
+reach 486 passing files and 5,769 passing cases (seven skips); the sole failure is an **assertion in the
+repository's arbitrary-wait guard**, reporting a 20ms sleep in the pack-claim regression introduced by
+`c65a66e8a`. Pack units, normal integration and app gates are not reached. Evidence is retained in
+`/private/tmp/apack-strict-39430263642/` and its `.log`.
+
+The regression already holds the bus's teardown callback explicitly. Replace its arbitrary 20ms
+delay with one event-loop turn, allowing queued promise continuations to settle while that completion
+remains held. Assertions still require both registration and operation claim to survive until bus
+completion, and both to release afterward. No runtime behavior, deadline or guard exclusion changes.
+All 60 pack-system cases and all four wait-guard cases pass locally; host typechecking and correctness
+lint pass. A broader local tooling audit passes 953 cases, with two environmental refusals: stale local
+published-package output and sandbox-denied `ps` in a private packaged-app fixture. Those files passed
+in the disposable host pool; no product change or local rebuild is needed for those environment limits.
