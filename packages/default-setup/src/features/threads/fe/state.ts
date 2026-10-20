@@ -65,6 +65,10 @@ function loadTabsFromStorage(): StoredTabData | null {
   } catch { return null; }
 }
 
+function claudePhaseForNativeMode(mode: string | undefined, phase: string | undefined): string | undefined {
+  return !mode ? phase : mode === 'plan' ? 'Plan' : !phase || phase === 'Plan' ? 'Edit' : phase;
+}
+
 function extractChatSettings(chatSettings: AgentSettings) {
   const hotkeys: HotkeysMap = {};
   if (chatSettings.hotkeys) {
@@ -888,7 +892,12 @@ const threadsState = setup({
       }
 
       const chatState: ChatState = (thread.chatState as ChatState) ?? 'idle';
+      const nativeMode = thread.context?.claudeCode?.permissionMode;
+      const nativePhase = claudePhaseForNativeMode(nativeMode, context.phase);
+      const adoptNativePhase = nativeMode && (thread.id !== context.currentThread?.id
+        || !Object.hasOwn(context.phaseByModeName, thread.forcedMode ?? context.mode));
       const base = {
+        ...(adoptNativePhase ? {phase: nativePhase} : {}),
         currentThread: thread,
         messagePagination: {
           hasMore: thread.hasMore ?? false,
@@ -922,7 +931,7 @@ const threadsState = setup({
         const newPhase = modeConfig?.phases?.length
           ? (modeName in context.phaseByModeName ? context.phaseByModeName[modeName] : modeConfig.phases[0].name)
           : undefined;
-        return { ...base, mode: modeName, phase: newPhase };
+        return { ...base, mode: modeName, phase: adoptNativePhase ? claudePhaseForNativeMode(nativeMode, newPhase) : newPhase };
       }
 
       return base;
@@ -947,7 +956,7 @@ const threadsState = setup({
       const currentThread = typedEvent.data.currentThread;
       const startupChatState: ChatState = (currentThread as any)?.chatState ?? 'idle';
       const forcedMode = currentThread?.forcedMode;
-      let modeUpdate = {};
+      let modeUpdate: {mode?: string; phase?: string} = {};
       if (forcedMode) {
         const modeName = forcedMode;
         const modeConfig = extracted.modes.find(m => m.name === modeName);
@@ -963,6 +972,11 @@ const threadsState = setup({
           extracted.chatSettings, extracted.modes, fallbackMode, fallbackPhase,
         );
         modeUpdate = { mode, phase };
+      }
+
+      if (currentThread && (currentThread.id !== context.currentThread?.id
+        || !Object.hasOwn(context.phaseByModeName, modeUpdate.mode ?? context.mode))) {
+        modeUpdate.phase = claudePhaseForNativeMode(currentThread.context?.claudeCode?.permissionMode, modeUpdate.phase);
       }
 
       // Restore previously open tabs from localStorage
