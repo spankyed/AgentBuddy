@@ -225,8 +225,8 @@ the settings owner, field and reason; the incumbent remains accepted. This also 
 pack was previously unavailable when its declaration becomes available again.
 
 If preferences are already invalid at startup, the host opens a recovery screen before loading
-external packs. Recovery can reset the invalid values to their defaults in one transaction, keeping every
-other choice, or reset all preferences. Malformed document structure requires the complete reset.
+external packs. Recovery can explicitly reset selected affected groups in one transaction, preserving
+unselected groups, or reset all preferences. Every preference in a selected group returns to its default. Malformed document structure requires the complete reset.
 Nothing is converted or silently discarded. After repair, restart apack to initialize its packs;
 reconnecting a window preserves that restart requirement. App data and API keys are not reset.
 

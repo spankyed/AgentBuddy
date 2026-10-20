@@ -53,17 +53,19 @@
 
 ## Simplification checkpoint — 2026-10-20
 
-Follows the review of `3a6b649b5`. The contract is narrower, and the design (detect at boot, host-only
-recovery, explicit reset, relaunch) is unchanged.
+The cleanup is `0336dc203`. Follow-up `57f0e6300` restores explicit reset scope and validated reads;
+`3b4c0fe2b` fixes list refresh error handling. Detection at boot, host-only recovery and relaunch
+remain unchanged.
 
-- **Repair resets invalid values, not owners.** `RECOVER_SETTINGS` takes `{ version, scope: 'invalid' | 'all' }`.
-  `invalid` removes each failing stored value at its path, stopping at the first array (arrays are one
-  value), so only that key falls back to its default. An owner that still fails afterwards is reset whole.
-  A malformed document refuses `invalid` and needs `all`. A bad hotkey no longer costs the projects list.
+- **Repair resets explicitly selected owners.** `RECOVER_SETTINGS` takes `{ version, reset }`, where
+  `reset` is an array of affected settings targets or `'all'`. The confirmation states that every
+  preference within each selected group resets. Other groups and unavailable-owner overrides are
+  preserved. Validation errors are never interpreted as instructions for implicit field deletion.
+  Malformed document structure requires an explicit complete reset.
 - **Recovery is a state boot sets.** Boot calls `enterRecovery()` when its pre-hydration inspection finds
   problems. `getRecovery()` returns nothing outside recovery, and in recovery re-inspects the stored row,
-  so no problems means repaired. Normal reads no longer validate the whole document. In recovery they
-  refuse, because no pack runs then and the invalid values must not be read typed.
+  so no problems means repaired. Typed reads still validate the current document outside recovery;
+  during recovery they refuse until relaunch. A missed recovery-mode call cannot expose invalid typed values.
 - **One recovery shape and event.** `SettingsRecovery` is `{ version: { runId, revision }, problems }`. The
   `status` field, `catalogRevision` (the catalog is frozen in recovery) and the `SETTINGS_RECOVERED`
   event are gone. A repair is answered with `SETTINGS_RECOVERY` for that call, and other windows hear the
@@ -71,18 +73,25 @@ recovery, explicit reset, relaunch) is unchanged.
 - **Packs no longer see recovery.** `SettingsPort.status()` lost `'recovery'`; the window runtime keeps it
   internally and reports `loading`. The recovery types stay in the SDK because `SettingsAdmin`, the host's
   admin contract, carries the recovery methods.
-- **S.1's post-change refresh is isolated.** After a toggle or uninstall has taken effect, a refused catalog
-  refresh is reported (`refreshAfterChange`) instead of turning the completed change into a failure.
+- **List publication owns its refresh.** `emitPacksList` makes one guarded catalog refresh and reports a
+  refusal before publishing from accepted declarations. Toggle and uninstall do not trigger a second,
+  unguarded refresh after success, and list requests remain available when refresh is refused.
 
 Verification:
-- Passing: the recovery cases in `store.spec.ts`, `settings-runtime.spec.ts`, the API boot
-  `settings-recovery.spec.ts` and the renderer `recovery.spec.ts`. One case keeps a valid projects list
-  through resetting an invalid hotkey.
-- The full `npm run typecheck` passes, including `api:check`. The three regenerated SDK reports differ
-  only by this change. API Extractor wrote them with CRLF line endings, and they were converted back to LF.
+- Follow-up: 96 focused cases passed across the settings store, window runtime, API boot/settings
+  transport and Vue recovery view. Two additional mutation regressions pass for disable and uninstall:
+  refresh is attempted once, refusal is reported, success/list events still publish and the actor
+  handles another list request. The UI sends plain serializable targets and version data across its
+  transport boundary, including when its props are Vue proxies.
+- Host, API test/source and renderer typechecks and scoped lint pass. Workspace packages and SDK API
+  reports were refreshed after the explicit-reset contract was restored; reports retain LF endings.
+- The cleanup author previously recorded a full `npm run typecheck` pass, including `api:check`.
+  The follow-up does not claim another full aggregate run.
 - `tests/runtime/unbound.spec.ts`' admin stub lacked the recovery methods, so `typecheck:sdk` was already
-  failing at `a05b5748a`. The stub was completed.
-- Failing here and at `a05b5748a` alike, so not caused by this change: `tests/features/packs/be/system.spec.ts`
-  (the SDK test runtime has no settings for install admission), `tests/backup/import.spec.ts` and
-  `tests/packs/shipped-packs.spec.ts`. `compiler-watch.spec.ts`' live watcher case refuses by design on
-  this Mac. No CI was dispatched.
+  failing at `a05b5748a`. The cleanup completed that stub, which is retained.
+- A run of the packs-system file passed 36 existing/new cases and failed 20 install/update cases with
+  missing settings on its SDK test runtime, matching the earlier cleanup audit's recorded baseline.
+  The two targeted refresh regressions pass independently; the broader file is not claimed green.
+- The earlier cleanup audit also records baseline failures in `tests/backup/import.spec.ts` and
+  `tests/packs/shipped-packs.spec.ts`; those files were not rerun during the follow-up. No CI, native
+  compiler fixtures or packaged app were launched.
