@@ -704,6 +704,7 @@ For each entry with a `monaco` target, `apack pack build` writes `dist/defs/mona
 
 ```json
 {
+  "id": "bookmarks",
   "name": "Bookmarks",
   "version": "0.1.0",
   "hostVersion": ">=0.3.0",
@@ -769,7 +770,7 @@ For each entry with a `monaco` target, `apack pack build` writes `dist/defs/mona
       }
     }
   },
-  "lifecycle": {
+  "content": {
     "sources": {
       "actions": "src/content/actions",
       "flows": "src/content/flows"

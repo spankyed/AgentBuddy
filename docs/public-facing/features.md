@@ -367,20 +367,25 @@ The host's raw `services.settings` and frontend settings port support migrations
 
 ```json
 {
+  "description": "Save and organize bookmarks.",
   "settings": {
     "schema": { "type": "object", "additionalProperties": false },
-    "defaults": {}
+    "defaults": {},
+    "form": "src/features/bookmarks/fe/settings.vue"
   },
   "system": {
-    "entry": "src/features/bookmarks/be/system.ts"
+    "entry": "src/features/bookmarks/be/system.ts",
+    "contract": "src/features/bookmarks/be/contract.ts#Contract"
   },
   "plugin": {
     "label": "Bookmarks",
-        "icon": "Bookmark",
-        "state": "src/features/bookmarks/fe/state.ts",
-        "canvas": "src/features/bookmarks/fe/canvas/list.vue",
-    "defaultVisible": true
+    "icon": "Bookmark",
+    "state": "src/features/bookmarks/fe/state.ts",
+    "canvas": "src/features/bookmarks/fe/canvas/list.vue",
+    "defaultVisible": true,
+    "contract": "src/features/bookmarks/fe/contract.ts#Contract"
   },
+  "types": "src/features/bookmarks/be/types.ts",
   "services": {},
   "repositories": {
     "bookmarksQueries": "src/features/bookmarks/be/repository/index.ts#bookmarksQueries",

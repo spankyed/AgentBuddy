@@ -450,7 +450,7 @@ Point your manifest at the content directories:
 
 ```json
 {
-  "lifecycle": {
+  "content": {
     "sources": {
       "actions": "src/content/actions",
       "prompts": "src/content/prompts",
@@ -481,22 +481,27 @@ Content rows of an entity type from markdown or JSON in two parts of `apack.json
 
 ```json
 {
-  "entities": { "Memo": "Memo" },
-  "content.formats": {
+  "features": {
     "memos": {
-      "format": "markdown-tree",
-      "entity": "Memo",
-      "identity": ["title", "parent"],
-      "tree": { "branch": "index.md", "relKind": "contains" },
-      "fields": {
-        "title": { "from": "frontmatter.title", "default": "filename", "type": "string" },
-        "pinned": { "from": "frontmatter.pinned" },
-        "text": { "from": "body" }
-      },
-      "media": "media"
+      "description": "Short notes the pack ships.",
+      "entities": { "Memo": "src/features/memos/be/types.ts#MemoAttributes" }
     }
   },
-  "lifecycle": {
+  "content": {
+    "formats": {
+      "memos": {
+        "format": "markdown-tree",
+        "entity": "Memo",
+        "identity": ["title", "parent"],
+        "tree": { "branch": "index.md", "relKind": "contains" },
+        "fields": {
+          "title": { "from": "frontmatter.title", "default": "filename", "type": "string" },
+          "pinned": { "from": "frontmatter.pinned" },
+          "text": { "from": "body" }
+        },
+        "media": "media"
+      }
+    },
     "sources": {
       "memos": { "path": "src/content/memos", "format": "memos" }
     }
@@ -527,8 +532,10 @@ An entry can't set or change any format settings; a pack that needs different se
 ### JSON
 
 ```json
-"content.formats": { "tags": { "format": "json", "entity": "Tag", "identity": ["name"] } },
-"content": { "sources": { "tags": { "path": "src/content/tags.json", "format": "tags" } } }
+"content": {
+  "formats": { "tags": { "format": "json", "entity": "Tag", "identity": ["name"] } },
+  "sources": { "tags": { "path": "src/content/tags.json", "format": "tags" } }
+}
 ```
 
 The file holds an array of records (or `{ "records": [...] }`); a record may carry its own `entity` and `children`.
@@ -552,8 +559,10 @@ export default function compileGlossary({ path, format }: ContentCompileContext)
 ```
 
 ```json
-"content.formats": { "glossary": { "compiler": "src/content/compilers/glossary.ts", "entity": "Term", "identity": ["term"] } },
-"content": { "sources": { "glossary": { "path": "src/content/glossary", "format": "glossary" } } }
+"content": {
+  "formats": { "glossary": { "compiler": "src/content/compilers/glossary.ts", "entity": "Term", "identity": ["term"] } },
+  "sources": { "glossary": { "path": "src/content/glossary", "format": "glossary" } }
+}
 ```
 
 The build loads TypeScript compiler modules itself, and bundles every compiler module your formats name into `dist/build/content-compilers.mjs` so packs depending on yours can use those formats. A record's `contentHash` defaults to a hash of its fields (and its children's hashes); set it yourself to decide what counts as a change. A format without `entity` is compiled but not written: pack code reads `<key>.content.json` (default-setup's FAQs work this way).
@@ -590,7 +599,7 @@ An entry can name a format of a pack it depends on as `"<pack id>:<name>"`. It c
 ```json
 {
   "dependencies": { "default-setup": "*" },
-  "lifecycle": {
+  "content": {
     "sources": {
       "team-notes": { "path": "src/content/notes", "format": "default-setup:notes" },
       "team-docs": { "path": "src/content/docs", "format": "default-setup:library" }
@@ -615,8 +624,15 @@ Without hooks, the applier writes rows directly: it matches existing rows on the
 
 ```json
 {
-  "entities": { "Memo": "Memo" },
-  "content.writers": { "Memo": "src/content/writers/memos.ts#memoContentWriter" }
+  "features": {
+    "memos": {
+      "description": "Short notes the pack ships.",
+      "entities": { "Memo": "src/features/memos/be/types.ts#MemoAttributes" }
+    }
+  },
+  "content": {
+    "writers": { "Memo": "src/content/writers/memos.ts#memoContentWriter" }
+  }
 }
 ```
 
@@ -690,7 +706,7 @@ Every outcome above leaves the user's edit alone. What `onUserEdit` decides is w
 {
   "content": {
     "sources": {
-      "notes": { "path": "src/content/notes", "format": "notes" },
+      "prompts": { "path": "src/content/prompts" },
       "actions": { "path": "src/content/actions", "onUserEdit": "offer" }
     }
   }
