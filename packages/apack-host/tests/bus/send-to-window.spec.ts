@@ -1,3 +1,4 @@
+import { createNativePackTestRegistry } from '@apackdev/host/testing';
 // A system can ask one window as well as all of them, which is the other half of being answerable.
 //
 // `reply` let a window answer a system. Asking was still a broadcast, so one question collected one answer
@@ -14,10 +15,9 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { untypedBroadcastToPlugin, untypedSendToWindow, type Message } from '@apackdev/sdk/events';
 import { startTestRuntime, testRootEvents } from '@apackdev/sdk/testing';
 import { HOST_ENTITY_TYPES } from '../../src/app-state/index.ts';
-import { createPackRegistry } from '../../src/packs/registry.ts';
 import { deliverAs } from '../../src/bus/delivery.ts';
 
-startTestRuntime({ entityTypes: HOST_ENTITY_TYPES, packs: createPackRegistry() });
+startTestRuntime({ entityTypes: HOST_ENTITY_TYPES, packs: createNativePackTestRegistry() });
 
 const MEMOS = 'memo-pack/memos';
 /** A window's ask: the API stamps the connection it arrived on, which is what makes it addressable */

@@ -1,12 +1,13 @@
+import { installedEngine } from '@apackdev/ears';
 // The app shell in a pack's unit tests: the host's own shell machine, run over the in-memory bus the harness's test
 // apps use, with the test pack's plugins registered, so a pack's frontend (navigation, the shell's state, sends to
 // its systems) is tested as the app runs it rather than against a stand-in.
 import { createActor, type AnyActorRef, type AnyStateMachine } from 'xstate';
 import { createFePackRegistry, createShellMachine, describeFailure, HOST, type ShellClient, type ShellConnection } from '@apackdev/host/fe';
 import type { Message } from '@apackdev/sdk/events';
-import { resolveName } from '@apackdev/sdk/ids';
-import type { HostShell, PluginDefinition } from '@apackdev/sdk/fe';
-import { startFeTestRuntime, testRootEvents } from '@apackdev/sdk/testing';
+import { resolveName, type FeatureRef } from '@apackdev/sdk/ids';
+import type { HostShell, PluginDefinition, PackFERegistration } from '@apackdev/sdk/fe';
+import { nativeFrontendDeclarationFixture, startFeTestRuntime, testRootEvents } from '@apackdev/sdk/testing';
 import { _isFeHostBound, type FePackRegistryView, type PackExtensionsView } from '@apackdev/sdk/runtime';
 
 /** One of the pack's plugins, as a test registers it: its state machine, and whatever else of its definition it needs */
@@ -43,21 +44,23 @@ export interface TestShell {
 const running = new Set<TestShell>();
 
 /**
- * `frontend`, with the lookups it shares with the backend (roles, steps, artifacts, blocks) answered by `backend`
+ * `frontend`, with the lookups it shares with the backend (roles, artifacts, blocks) answered by `backend`
  * first. The SDK reads those through a bound frontend host whenever one is bound, which in the renderer is right; in
- * a test that also runs the pack's systems, it would hide from them every role and step the pack registered, the
- * brain and the `llm` step included. The frontend's own come second, for a role only a plugin in this test plays.
+ * a test that also runs the pack's systems, it would hide their shared contributions. Backend steps use the
+ * backend host directly. The frontend comes second, for a role only a plugin in this test plays.
  */
 function backendFirst(frontend: FePackRegistryView, backend: PackExtensionsView): FePackRegistryView {
   return {
+    onChanged: listener => frontend.onChanged(listener),
     plugins: () => frontend.plugins(),
-    defaultPlugin: () => frontend.defaultPlugin(),
     tiptapPlugins: () => frontend.tiptapPlugins(),
+    stepBindings: () => frontend.stepBindings(),
+    artifactBindings: () => frontend.artifactBindings(),
+    blockBindings: () => frontend.blockBindings(),
+    referenceTypes: () => frontend.referenceTypes(),
+    referenceCategories: () => frontend.referenceCategories(),
     appExtension: (slot) => frontend.appExtension(slot),
-    dslTypes: () => frontend.dslTypes(),
     designation: (role) => backend.designation(role) ?? frontend.designation(role),
-    step: (type) => backend.step(type) ?? frontend.step(type),
-    steps: () => byType(backend.steps(), frontend.steps()),
     artifact: (type) => backend.artifact(type) ?? frontend.artifact(type),
     artifacts: () => byType(backend.artifacts(), frontend.artifacts()),
     block: (type) => backend.block(type) ?? frontend.block(type),
@@ -91,10 +94,10 @@ export function stopRunningShells(): void {
  * Starts the app shell with `options.plugins` registered as `packId`'s and binds the frontend host to it, so
  * `openPlugin`, `untypedOpenPlugin` and `useShell()` reach it. Its client is the harness's bus: what the shell and
  * `sendToSystem` send reaches a test app's systems, and what those systems send plugins reaches the plugins' actors.
- * Lookups the backend shares with it (roles, steps, artifacts, blocks) read `backend` first. Resolves once the shell
+ * Lookups the backend shares with it (roles, artifacts, blocks) read `backend` first. Resolves once the shell
  * is connected and has read the (empty) loaded packs, as a window is once the app is up.
  */
-export async function startShell(packId: string, options: StartShellOptions, backend: PackExtensionsView): Promise<TestShell> {
+export async function startShell(packId: string, options: StartShellOptions, backend: PackExtensionsView, entityDestinations: Readonly<Record<string, string>>): Promise<TestShell> {
   if (_isFeHostBound()) {
     throw new Error(
       'A frontend host is already bound in this test file: startShell() binds its own, so use it in place of '
@@ -107,14 +110,16 @@ export async function startShell(packId: string, options: StartShellOptions, bac
   if (!ids.includes(defaultPlugin)) throw new Error(`defaultPlugin "${defaultPlugin}" isn't one of the plugins: ${ids.join(', ')}`);
 
   const packs = createFePackRegistry();
-  packs.registerPackFE({
+  const registration: PackFERegistration = {
     id: packId,
     features: Object.fromEntries(ids.map((id) => [id, {
-      plugin: { label: id, icon: 'Zap', canvas: {}, ...options.plugins[id] } as PluginDefinition,
+      plugin: { label: id, icon: {}, canvas: {}, ...options.plugins[id] },
       ...(options.designations?.[id] && { designation: options.designations[id] }),
       ...(id === defaultPlugin && { default: true as const }),
     }])),
-  });
+  };
+  packs.registerPackFE({ kind: 'native', declaration: { ...nativeFrontendDeclarationFixture(registration),
+    entityDestinations: Object.fromEntries(Object.entries(entityDestinations).filter(([, feature]) => ids.includes(feature))) } }, registration);
 
   const stops: Array<() => void> = [];
   // What the systems send while the shell is starting (a plugin asking for its data as it's spawned is answered at
@@ -140,12 +145,16 @@ export async function startShell(packId: string, options: StartShellOptions, bac
     packClientReady: async (id) => testRootEvents.emitPackClientConnected(id),
     // The test's plugins are registered up front, as a built-in pack's are: no external pack frontends to load
     loadedPacks: async () => [],
+    entityExists: async (id, signal) => { signal.throwIfAborted(); return installedEngine().findById(id) !== undefined; },
     describeConnection: async () => 'A unit test\'s shell: its client is the harness\'s in-memory bus',
   };
 
   const notices: TestShell['notices'] = [];
   const actor = createActor(createShellMachine({
     packs,
+    catalog: { status: () => 'ready', subscribe: () => () => {}, plugins: () => [...packs.pluginBindings()].map(([featureRef, accepted]) => ({
+      featureRef: featureRef as FeatureRef, packId: accepted.packId, origin: 'native' as const, enabled: true, declaration: accepted.declaration, opens: accepted.opens,
+    })) },
     client,
     packFrontends: { load: async () => null, unload: () => {} },
     storage: { loadPanelSizes: () => undefined, savePanelSizes: () => {} },

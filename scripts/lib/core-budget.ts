@@ -45,6 +45,8 @@ export const UNCAPPED = Symbol('vitest default: one less than the box');
  */
 export type PoolWidth = { readonly share: number } | { readonly cores: number } | typeof UNCAPPED;
 
+const PACK_BUILD_WIDTH: PoolWidth = { cores: 2 };
+
 /**
  * What each step's inner pool takes. A step with no entry takes one core.
  *
@@ -68,6 +70,9 @@ export const POOL_WIDTH: Readonly<Record<string, PoolWidth>> = {
   'test:unit:host': UNCAPPED,
   'test:unit:pack': UNCAPPED,
   'test:integration': { share: 0.5 },
+  // Cold vue-tsc, 2026-10-18: 24.72s CPU / 14.66s wall and 24.95s / 14.65s.
+  // One compiler uses about 1.7 cores; reserve two without widening its quick deadline.
+  'typecheck:pack': { cores: 2 },
   // **Measured as CPU time over wall time, 2026-10-02, two runs each**: `build:default-setup` 21.5s of CPU in 13.6s
   // and 21.2s in 13.1s, so 1.6 cores; `build:runtime` 62.9s in 29.0s and 61.2s in 27.6s, so 2.2. Both round
   // to two.
@@ -77,7 +82,12 @@ export const POOL_WIDTH: Readonly<Record<string, PoolWidth>> = {
   // gave `build:default-setup` 1.8 cores on one run and 2.7 on the next. A process's own CPU time does not care what
   // else is running. It does assume the work is awaited — a step that detaches a child would read low,
   // and neither of these does.
-  'build:default-setup': { cores: 2 },
+  'build:default-setup': PACK_BUILD_WIDTH,
+  // Preparation builds the same shipped pack with fixture edits, then archives it serially.
+  'test:external-pack:fork': PACK_BUILD_WIDTH,
+  // Both producers run actual pack builds; authoring also repeats one for release preflight.
+  'test:external-pack:contract': PACK_BUILD_WIDTH,
+  'test:packaged-authoring:author': PACK_BUILD_WIDTH,
   // **`build:runtime` was re-measured on 2026-10-06, when it stopped running its four builds in series**:
   // 2.57, 2.57, 2.56, 2.49, 2.44 cores over five readings, median 2.56, against 2.2 when it was serial.
   //

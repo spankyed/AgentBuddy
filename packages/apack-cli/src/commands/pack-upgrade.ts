@@ -1,9 +1,10 @@
+import { readSettingsOverrides } from '@apackdev/host/database';
 import semver from 'semver';
 import type { AppEnvironment } from '@apackdev/sdk/env';
 import { PACK_ID_PATTERN } from '@apackdev/sdk/ids';
 import { withPackMutation } from '../app/pack-mutation';
-import { findLatestRelease, installPackFromGitHub, readHostCompatibility } from '@apackdev/host/packs';
-import { packInventory, recordCliInstall } from '../app/installed-packs';
+import { findLatestRelease, installPackFromGitHub, readHostCompatibility, recordUserInstall } from '@apackdev/host/packs';
+import { packInventory } from '../app/installed-packs';
 import { parseStorageProfile, targetDataContext } from '../utils';
 import { packUpdate } from '../app/pack-updates';
 
@@ -33,8 +34,11 @@ export async function upgradePack(context: AppEnvironment, id: string, options: 
     }
     const result = await (options.install ?? installPackFromGitHub)(source, context.packsDir, {
       hostVersion: host.version, packFormat: host.packFormat,
+      settingsOverrides: () => readSettingsOverrides(context.userDataDir),
+      installedPacksFile: context.installedPacksFile,
+      accept: candidate => { recordUserInstall(context.installedPacksFile, candidate.id, source); },
       beforePlace: manifest => {
-        if (manifest.id !== id || manifest.version !== version || manifest.builtIn) {
+        if (manifest.id !== id || manifest.version !== version) {
           throw new Error(`Expected external pack ${id} v${version}, received ${manifest.id} v${manifest.version}.`);
         }
         for (const [dependency, range] of Object.entries(manifest.dependencies ?? {})) {
@@ -45,7 +49,6 @@ export async function upgradePack(context: AppEnvironment, id: string, options: 
         }
       },
     });
-    recordCliInstall(context.installedPacksFile, id, source);
     return { id, version: result.version, upgraded: true };
   });
 }

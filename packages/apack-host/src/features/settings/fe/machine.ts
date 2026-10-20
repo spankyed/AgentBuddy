@@ -1,8 +1,7 @@
-import { assign, enqueueActions, setup, type ActorRefFrom } from 'xstate'
+import { assign, setup, type ActorRefFrom } from 'xstate'
 import breadcrumb from '@apackdev/sdk/fe'
 import { safeEvents } from '@apackdev/sdk/fe'
 import { type TrailClickEvent } from '@apackdev/sdk/fe'
-import type { SettingsDocument } from '../be/store.ts'
 import type { OutgoingSettingsEvents } from '../be/types.ts'
 import type { SecretMetadata, SecretsStatus } from '@apackdev/sdk/services'
 import { sendToSystem } from '../../../events.ts'
@@ -53,47 +52,25 @@ function freshContentImport(): PackContentImport {
   };
 }
 
-/** The store's answer to the last settings change sent */
-export interface SettingsSave {
-  status: 'idle' | 'saving' | 'saved' | 'refused'
-  problems: string[]
-}
-
 export interface SettingsContext {
-  settings: SettingsDocument | null;
   /** The stored API keys, without values */
   secrets: SecretMetadata[];
   secretsStatus: SecretsStatus | null;
   cliTestResults: Record<string, { status: 'idle' | 'testing' | 'success' | 'error'; resolvedPath?: string; error?: string }>;
   packContentImport: PackContentImport;
-  activeTab: 'general' | 'features' | 'help';
+  activeTab: 'general' | 'packs' | 'features' | 'help';
   help: HelpContext;
   generalNavItem: 'personal' | 'secrets' | 'projects' | 'application' | 'json';
   selectedFeatureId: string | null;
-  isLoading: boolean;
   /** True while a RESET_APP mutation is in flight; used to disable the reset button. */
   resetting: boolean;
-  /** The last change sent to the store: in flight, stored, or refused with why */
-  save: SettingsSave;
 }
-/** What a settings change is to: a feature's settings by their key (its ref), or a general section */
-/**
- * What a change names: an installed feature's own settings by its ref, or a registered section by the name whoever
- * registered it gave. `label` is the whole address at its level — a section's sub-key belongs in `path`, so that one
- * target means one place in the document whoever builds it.
- */
-export type SettingsTarget = { entityType: 'feature'; label: FeatureRef } | { entityType: 'section'; label: string };
 
 type UIEvent =
-  | { type: 'TAB.SELECT'; tab: 'general' | 'features' | 'help' }
+  | { type: 'TAB.SELECT'; tab: 'general' | 'packs' | 'features' | 'help' }
   | { type: 'GENERAL_NAV.SELECT'; item: 'personal' | 'secrets' | 'projects' | 'application' | 'json' }
   // A plugin by its ref: other packs send it too, so a bare name would be read as this pack's
   | { type: 'FEATURE.SELECT'; featureId: FeatureRef }
-  | ({ type: 'SETTINGS.UPDATE'; path: string[]; value: any } & SettingsTarget)
-  | { type: 'SETTINGS.REPLACE'; data: unknown }
-  /** With no `target`, every change the user made; with one, that section's or that feature's alone */
-  | { type: 'SETTINGS.RESET'; target?: { entityType: 'section' | 'feature'; label: string } }
-  | { type: 'SETTINGS.LOAD' }
   | { type: 'CLI.TEST'; provider: string }
   | { type: 'PACK_CONTENT.PREVIEW'; directory: string }
   | { type: 'PACK_CONTENT.TOGGLE_EXPAND'; key: string }
@@ -106,7 +83,7 @@ type UIEvent =
   | { type: 'PACK_CONTENT.RESET_STATUS' }
   | { type: 'APP.RESET' }
 
-export type SettingsEvents = UIEvent | OutgoingSettingsEvents | TrailClickEvent | HelpEvent
+export type SettingsEvents = UIEvent | Exclude<OutgoingSettingsEvents, { type: 'SETTINGS_LOADED' | 'SETTINGS_UPDATED' | 'SETTINGS_RESET' | 'SETTINGS_SAVED' | 'SETTINGS_REFUSED' }> | TrailClickEvent | HelpEvent
   | { type: 'PACK_CONTENT_IMPORTED'; result: Record<string, { created: number; updated: number; skipped: number }>; errors: string[] }
   | { type: 'PACK_CONTENT_IMPORT_FAILED'; error: string }
   | { type: 'PACK_CONTENT_PREVIEW'; preview: PackContentPreview }
@@ -116,8 +93,10 @@ export type SettingsEvents = UIEvent | OutgoingSettingsEvents | TrailClickEvent 
   | { type: 'CLI_TEST_RESULT'; provider: string; success: boolean; error?: string; resolvedPath?: string }
 const typeOf = safeEvents<SettingsEvents>()
 
-/** The two acts only a window can do, which this machine asks for rather than reaching a browser global */
+/** Window operations, including explicitly authorized host administration. */
 export interface SettingsIO {
+  /** Submit an app reset through the trusted window connection. Completion arrives from the backend. */
+  reset(): Promise<void>;
   /** Start the app over, once a reset has finished */
   restart(): void;
   /** Tell the user something went wrong */
@@ -131,31 +110,9 @@ export function createSettingsMachine(io: SettingsIO) {
     events: {} as SettingsEvents,
   },
   actions: {
-    /* ── bootstrap ─────────────────────────────────────── */
-    loadSettings: () => {
-      sendToSystem('settings', {
-        type: 'GET_SETTINGS',
-      });
-    },
-
-    setSettingsData: assign(({ event }) => {
-      const ev = typeOf('SETTINGS_LOADED', event);
-      return {
-        settings: ev.data,
-        isLoading: false,
-      };
-    }),
-
     setSecrets: assign(({ event }) => {
       const ev = typeOf('SECRETS_UPDATED', event);
       return { secrets: ev.secrets, secretsStatus: ev.status };
-    }),
-
-    updateSettingsData: assign(({ event }) => {
-      const ev = typeOf(['SETTINGS_UPDATED', 'SETTINGS_RESET'] as const, event);
-      return {
-        settings: ev.data,
-      }
     }),
 
     updateHelp: assign(({ context, event }) => ({ help: reduceHelp(context.help, event as HelpEvent) })),
@@ -184,43 +141,6 @@ export function createSettingsMachine(io: SettingsIO) {
       }
       return { selectedFeatureId: ev.featureId };
     }),
-
-    /* ── settings updates ────────────────────────────── */
-    updateSettings: enqueueActions(({ event: _event, enqueue }) => {
-      enqueue.assign({ save: { status: 'saving', problems: [] } })
-      enqueue('sendUpdate')
-    }),
-
-    sendUpdate: ({ event }) => {
-      const ev = typeOf('SETTINGS.UPDATE', event);
-      sendToSystem('settings', {
-        type: 'UPDATE_SETTINGS',
-        entityType: ev.entityType,
-        label: ev.label,
-        path: ev.path,
-        value: ev.value,
-      });
-    },
-
-    replaceSettings: enqueueActions(({ event, enqueue }) => {
-      const { data } = typeOf('SETTINGS.REPLACE', event)
-      enqueue.assign({ save: { status: 'saving', problems: [] } })
-      enqueue(() => sendToSystem('settings', { type: 'REPLACE_SETTINGS', data }))
-    }),
-
-    settingsSaved: assign({ save: { status: 'saved', problems: [] } }),
-
-    settingsRefused: assign(({ event }) => ({
-      save: { status: 'refused' as const, problems: typeOf('SETTINGS_REFUSED', event).problems },
-    })),
-
-    resetSettings: ({ event }) => {
-      const { target } = typeOf('SETTINGS.RESET', event);
-      sendToSystem('settings', {
-        type: 'RESET_SETTINGS',
-        ...(target && { target }),
-      });
-    },
 
     testCliProvider: assign(({ context, event }) => {
       const ev = typeOf('CLI.TEST', event);
@@ -418,7 +338,7 @@ export function createSettingsMachine(io: SettingsIO) {
   }).createMachine({
   id,
   
-  initial: 'loading',
+  initial: 'ready',
   entry: () => sendToSystem('help', { type: 'GET_HELP' }),
   on: {
     HELP_CATALOG: { actions: 'updateHelp' },
@@ -428,7 +348,6 @@ export function createSettingsMachine(io: SettingsIO) {
     'HELP.SEARCH': { actions: 'updateHelp' },
   },
   context: () => ({
-    settings: null,
     secrets: [],
     secretsStatus: null,
     cliTestResults: {},
@@ -437,20 +356,9 @@ export function createSettingsMachine(io: SettingsIO) {
     help: createHelpContext(),
     generalNavItem: 'application',
     selectedFeatureId: null as string | null,
-    isLoading: true,
     resetting: false,
-    save: { status: 'idle', problems: [] },
   }),
   states: {
-    loading: {
-      entry: 'loadSettings',
-      on: {
-        SETTINGS_LOADED: {
-          target: 'ready',
-          actions: 'setSettingsData',
-        },
-      },
-    },
     ready: {
       meta: breadcrumb('settings', 'Settings', true),
       on: {
@@ -462,30 +370,6 @@ export function createSettingsMachine(io: SettingsIO) {
         },
         'FEATURE.SELECT': {
           actions: 'selectFeature',
-        },
-        'SETTINGS.UPDATE': {
-          actions: 'updateSettings',
-        },
-        'SETTINGS.REPLACE': {
-          actions: 'replaceSettings',
-        },
-        SETTINGS_SAVED: {
-          actions: 'settingsSaved',
-        },
-        SETTINGS_REFUSED: {
-          actions: 'settingsRefused',
-        },
-        'SETTINGS.RESET': {
-          actions: 'resetSettings',
-        },
-        'SETTINGS.LOAD': {
-          target: 'loading',
-        },
-        SETTINGS_UPDATED: {
-          actions: 'updateSettingsData',
-        },
-        SETTINGS_RESET: {
-          actions: 'updateSettingsData',
         },
         SECRETS_UPDATED: {
           actions: 'setSecrets',
@@ -549,8 +433,8 @@ export function createSettingsMachine(io: SettingsIO) {
           guard: ({ context }) => !context.resetting,
           actions: [
             assign({ resetting: true }),
-            () => {
-              sendToSystem('settings', { type: 'RESET_APP' });
+            ({ self }) => {
+              void io.reset().catch(error => self.send({ type: 'APP_RESET_FAILED', error: String(error) }));
             },
           ],
         },

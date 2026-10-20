@@ -157,7 +157,7 @@ describe('how far each send reaches', () => {
 
     expect(main.shell.notify.error).toHaveBeenCalledWith(
       "Couldn't reach memo-pack/memoz",
-      'No plugin is registered at "memo-pack/memoz". Sent by "memo-pack".',
+      'No plugin is declared at "memo-pack/memoz". Sent by "memo-pack".',
     );
   });
 
@@ -170,7 +170,7 @@ describe('how far each send reaches', () => {
 
     expect(main.shell.notify.error).toHaveBeenCalledWith(
       "Couldn't reach memo-pack/memoz",
-      'No plugin is registered at "memo-pack/memoz". Sent by "memo-pack" (action:Add Memo).',
+      'No plugin is declared at "memo-pack/memoz". Sent by "memo-pack" (action:Add Memo).',
     );
   });
 
@@ -183,7 +183,7 @@ describe('how far each send reaches', () => {
 
     expect(main.shell.notify.error).toHaveBeenCalledWith(
       "Couldn't reach memo-pack/memoz",
-      'No plugin is registered at "memo-pack/memoz".',
+      'No plugin is declared at "memo-pack/memoz".',
     );
   });
 

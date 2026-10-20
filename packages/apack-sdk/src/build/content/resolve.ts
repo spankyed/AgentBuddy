@@ -1,7 +1,8 @@
 import * as path from 'node:path';
-import { SPECIALTY_CONTENT_KEYS } from '../manifest-schema.ts';
+import { hasOwn } from '../../utils/shared.ts';
+import { SPECIALTY_CONTENT_KEYS } from '../../framework/declaration-schema.ts';
 import { CONTENT_COMPILERS_FILE, type PackManifest, type ContentFormatConfig } from '../manifest.ts';
-import type { ContentEditPolicy } from '../manifest-schema.ts';
+import type { ContentEditPolicy } from '../../framework/declaration-schema.ts';
 
 /** What resolving a dependency's formats needs: its manifest, and its build dir for compiler modules */
 export interface ContentDependency {
@@ -95,14 +96,16 @@ function resolveFormat(
   if (!name) throw new Error(`Content "${key}": "${ref}" isn't a format name or "<dependency id>:<name>"`);
 
   if (pack === undefined) {
-    const format = manifest.content?.formats?.[name];
+    const formats = manifest.content?.formats ?? {};
+    const format = hasOwn(formats, name) ? formats[name] : undefined;
     if (!format) throw new Error(`Content "${key}": no format "${name}" in content.formats`);
     return { format, ...(format.compiler && { compiler: { module: path.resolve(packDir, format.compiler), exportName: 'default' } }) };
   }
 
   const dependency = dependencies.get(pack);
   if (!dependency) throw new Error(`Content "${key}": format "${ref}" names "${pack}", which isn't a resolved dependency`);
-  const format = dependency.manifest.content?.formats?.[name];
+  const formats = dependency.manifest.content?.formats ?? {};
+  const format = hasOwn(formats, name) ? formats[name] : undefined;
   if (!format) throw new Error(`Content "${key}": dependency "${pack}" has no format "${name}"`);
   if (!format.compiler) return { format };
   return { format, compiler: { ...(dependency.buildDir && { module: path.join(dependency.buildDir, CONTENT_COMPILERS_FILE) }), exportName: name } };

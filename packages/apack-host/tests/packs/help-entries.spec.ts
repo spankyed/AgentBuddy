@@ -1,36 +1,44 @@
+import { createNativePackTestRegistry } from '@apackdev/host/testing';
 import { describe, expect, it } from 'vitest';
 import type { HelpDocument } from '@apackdev/sdk/framework';
-import { createPackRegistry } from '../../src/packs/registry.ts';
+import { ManifestSchema, _declarationRevision } from '@apackdev/sdk/build';
 
 const article = (id: string): HelpDocument => ({ id, title: id, body: `About ${id}` });
+function declaration(id: string, name: string, help?: HelpDocument[]) {
+  const manifest = ManifestSchema.parse({ id, name, version: '1.0.0', extensions: { help: { path: 'help' } } });
+  return { manifest, declarationRevision: _declarationRevision(manifest), dir: `/sources/${id}`, help };
+}
 describe('the pack-qualified help catalog', () => {
   it('keeps identical article IDs distinct across packs and sorts by display name', () => {
-    const registry = createPackRegistry();
-    registry.registerPack({ id: 'second', name: 'Zebra', help: [article('start')] });
-    registry.registerPack({ id: 'first', name: 'Alpha', help: [article('start')] });
+    const registry = createNativePackTestRegistry();
+    registry.catalog.setSources([declaration('second', 'Zebra', [article('start')]), declaration('first', 'Alpha', [article('start')])]);
     expect(registry.help().articles.map(a => [a.packId, a.id])).toEqual([['first', 'start'], ['second', 'start']]);
   });
-  it('updates a reloaded pack and removes its articles on unregister', () => {
-    const registry = createPackRegistry();
-    registry.registerPack({ id: 'pack', help: [article('old')] });
-    registry.unregisterPack('pack');
-    registry.registerPack({ id: 'pack', help: [article('new')] });
+  it('updates declaration data and removes articles only when the declaration is removed', () => {
+    const registry = createNativePackTestRegistry();
+    registry.catalog.setSources([declaration('pack', 'Pack', [article('old')])]);
+    registry.catalog.setSources([declaration('pack', 'Pack', [article('new')])]);
     expect(registry.help().articles.map(a => a.id)).toEqual(['new']);
-    registry.unregisterPack('pack');
+    registry.catalog.setSources([]);
     expect(registry.help()).toEqual({ articles: [], problems: [] });
   });
-  it('reports a malformed contribution without losing other articles', () => {
-    const registry = createPackRegistry();
-    registry.registerPack({ id: 'good', help: [article('valid')] });
-    registry.registerPack({ id: 'broken', help: [article('duplicate'), article('duplicate')] });
+  it('refuses a malformed update without losing accepted articles', () => {
+    const registry = createNativePackTestRegistry();
+    const good = declaration('good', 'Good', [article('valid')]);
+    registry.catalog.setSources([good]);
+    expect(() => registry.catalog.setSources([good, declaration('broken', 'Broken', [article('duplicate'), article('duplicate')])])).toThrow('Duplicate help article');
     expect(registry.help().articles.map(a => a.packId)).toEqual(['good']);
-    expect(registry.help().problems[0].packId).toBe('broken');
-    registry.unregisterPack('broken');
     expect(registry.help().problems).toEqual([]);
   });
   it('orders articles by explicit order, then title', () => {
-    const registry = createPackRegistry();
-    registry.registerPack({ id: 'pack', help: [article('z'), article('a'), { ...article('first'), order: 1 }] });
+    const registry = createNativePackTestRegistry();
+    registry.catalog.setSources([declaration('pack', 'Pack', [article('z'), article('a'), { ...article('first'), order: 1 }])]);
     expect(registry.help().articles.map(a => a.id)).toEqual(['first', 'a', 'z']);
+  });
+  it('reports unbuilt source help without trying to load an implementation', () => {
+    const registry = createNativePackTestRegistry();
+    registry.catalog.setSources([declaration('unbuilt', 'Unbuilt')]);
+    expect(registry.help()).toEqual({ articles: [], problems: [{ packId: 'unbuilt', message: 'Help data is unavailable; build the complete pack.' }] });
+    expect(registry.getPackRegistration('unbuilt')).toBeNull();
   });
 });

@@ -177,7 +177,7 @@ describe('findRawPackHelpers', () => {
   it.each([
     ["import { untypedBroadcastToPlugin as toPlugin } from '@apackdev/sdk/events';", 'untypedBroadcastToPlugin from @apackdev/sdk/events'],
     ["import onConnected, { untypedSendToSystem } from '@apackdev/sdk/events';", 'untypedSendToSystem from @apackdev/sdk/events'],
-    ["import { untypedBroadcastToPlugin, services } from '@apackdev/sdk/services';", 'untypedBroadcastToPlugin from @apackdev/sdk/services'],
+    ["import { untypedBroadcastToPlugin, createActionEmitter } from '@apackdev/sdk/services';", 'untypedBroadcastToPlugin from @apackdev/sdk/services'],
     ["import { registerRepository, untypedTx } from '@apackdev/ears';", 'registerRepository from @apackdev/ears'],
     ["import { unregisterRepository } from '@apackdev/ears';", 'unregisterRepository from @apackdev/ears'],
     ["export type { untypedBroadcastToPlugin } from '@apackdev/sdk/events';", 'untypedBroadcastToPlugin from @apackdev/sdk/events'],
@@ -321,7 +321,7 @@ describe('findUpwardImports', () => {
       'src/index.ts': "import { untypedTx } from '@apackdev/ears';\nexport type { Q } from '@apackdev/ears/lmdb';\nexport * from '@apackdev/sdk/events';\n",
     });
     layer('layers/host', { dependencies: { '@apackdev/ears': '*', '@apackdev/sdk': '*' } }, {
-      'src/index.ts': "import { services } from '@apackdev/sdk/services';\nimport { untypedQx } from '@apackdev/ears';\nimport { x } from '../x.ts';\n",
+      'src/index.ts': "import { createActionEmitter } from '@apackdev/sdk/services';\nimport { untypedQx } from '@apackdev/ears';\nimport { x } from '../x.ts';\n",
       'tests/a.spec.ts': "vi.mock('@apackdev/ears');\n",
     });
     layer('layers/api', { devDependencies: { '@apackdev/ears': '*', '@apackdev/host': '*', '@apackdev/sdk': '*' } }, {
@@ -662,7 +662,7 @@ const FIRES: Record<ImportRuleId, () => string[]> = {
     const layers = LAYERS.filter((l) => modelled.includes(path.basename(l.dir)))
       .map((l) => ({ ...l, dir: `layers/${path.basename(l.dir).replace(/^apack-/, '')}` }));
     // Every layer has to be there, since the rule walks all of them; only the lowest one imports upward
-    const upward = { 'src/index.ts': "import { services } from '@apackdev/sdk/services';\n" };
+    const upward = { 'src/index.ts': "import { createActionEmitter } from '@apackdev/sdk/services';\n" };
     for (const { dir } of layers) layer(dir, {}, dir === 'layers/ears' ? upward : {});
     return findUpwardImports(layers, root);
   },
@@ -1065,7 +1065,7 @@ describe('CHECKS', () => {
   it('reports a leaf reaching another feature under both rules, running one rule at a time', () => {
     writeAt('pack/apack.json', JSON.stringify({
       id: 'demo-pack', name: 'Demo', version: '1.0.0',
-      features: { memos: { plugin: { entry: 'src/features/memos/fe/plugin.ts', contract: 'src/features/memos/fe/contract.ts#Contract' } } },
+      features: { memos: { plugin: { label: 'Fixture', state: 'src/features/memos/fe/plugin.ts', contract: 'src/features/memos/fe/contract.ts#Contract' } } },
     }));
     writeAt('pack/src/features/memos/fe/contract.ts', "import type { T } from '../../calendar/fe/state.ts';\nexport type Contract = { state: { t: T } };");
     writeAt('pack/src/features/memos/fe/plugin.ts', 'export type P = { id: string };');
@@ -1559,8 +1559,8 @@ describe('findContractLeafImports', () => {
 
   /**
    * The plugin and system definitions, which the manifest names outright. The machine rule beside this one is a
-   * guess at a filename — no manifest field names the machine, since `Plugin.state` is a value — so `./plugin`
-   * matched nothing before this, and a leaf importing it was reported only as whatever its closure reached.
+   * guess at a filename; plugin.state now names the machine explicitly. This case deliberately gives it
+   * an unconventional filename, so the declaration must determine the forbidden import.
    */
   it("flags a leaf that imports an entry apack.json names, whatever the file is called", () => {
     pack({
@@ -1568,6 +1568,10 @@ describe('findContractLeafImports', () => {
       'features/memos/be/contract.ts': 'export type Contract = { outgoing: { type: "A" } };',
       'features/memos/fe/plugin.ts': 'export type P = { id: string };',
     });
+    const manifestFile = path.join(root, 'pack', 'apack.json');
+    const manifest = JSON.parse(fs.readFileSync(manifestFile, 'utf8'));
+    manifest.features.memos.plugin.state = 'src/features/memos/fe/plugin.ts';
+    fs.writeFileSync(manifestFile, JSON.stringify(manifest));
     expect(findContractLeafImports([src], root)).toEqual([`${src}/features/memos/fe/contract.ts:1: ./plugin`]);
   });
 
@@ -1576,7 +1580,7 @@ describe('findContractLeafImports', () => {
     writeAt('pack/apack.json', JSON.stringify({
       id: 'demo-pack', name: 'Demo', version: '1.0.0',
       features: {
-        memos: { plugin: { entry: 'src/features/memos/fe/machine.ts', contract: 'src/features/memos/fe/contract.ts#Contract' } },
+        memos: { plugin: { label: 'Fixture', state: 'src/features/memos/fe/machine.ts', contract: 'src/features/memos/fe/contract.ts#Contract' } },
       },
     }));
     writeAt(`${src}/features/memos/fe/contract.ts`, "import type { M } from './machine';");
@@ -1955,7 +1959,8 @@ describe('findMissingSourceConditions', () => {
     expect(sourceConditionPackages(root)).toEqual(['@apackdev/lib']);
     // @apackdev/testing is not among them: its entries resolve its built bundle whoever loads them, so a
     // config importing it selects nothing and needs no condition
-    expect(sourceConditionPackages()).toEqual(['@apackdev/ears', '@apackdev/sdk', '@apackdev/ui']);
+    // The API participates for TypeScript; its runtime entry still resolves the compiled server.
+    expect(sourceConditionPackages()).toEqual(['@apackdev/ears', '@apackdev/sdk', '@apackdev/ui', '@app/api']);
   });
 
   // Every config-file name the check recognises, with the option each kind declares the condition in

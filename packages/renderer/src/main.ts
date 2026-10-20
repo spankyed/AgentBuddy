@@ -1,9 +1,11 @@
+import { hostDeclaration } from '@apackdev/host/fe';
 import { createApp } from 'vue'
 import { createActor } from 'xstate';
 // import { createBrowserInspector } from '@statelyai/inspect';
 import type { Actor } from 'xstate';
 import App from './views/App.vue'
 import './style.css'
+import './boot/monaco';
 // highlight.js's stylesheet is global (.hljs, pre code.hljs), so the app owns it: imported from
 // @apackdev/ui it would ship again inside every build.bundleUi pack and restyle code everywhere.
 import 'highlight.js/styles/github-dark.css'
@@ -13,7 +15,7 @@ import { HOST, installFromProtocol, runFrontendMigrations } from '@apackdev/host
 import 'virtual:host-shared-modules';
 import { bindRendererHost } from '@/runtime';
 import { fePacks } from '@/runtime/packs';
-import { installGlobalErrorHandling, reportRendererError } from '@/boot/errors';
+import { handleVueError, installGlobalErrorHandling, reportRendererError } from '@/boot/errors';
 import { untypedSendToSystem } from '@apackdev/sdk/events';
 
 declare const __APP_VERSION__: string;
@@ -51,7 +53,7 @@ runFrontendMigrations(localStorage, __APP_VERSION__);
 
 // The only frontend registered before the shell starts. Every *pack's* frontend — the one the app ships
 // among them — is loaded by the shell once the bus says which packs are running, through one path.
-fePacks.registerPackFE(hostFrontend);
+fePacks.registerPackFE({ kind: 'native', declaration: hostDeclaration }, hostFrontend);
 
 // The SDK's frontend code (lookups, navigation, sends, the secrets client) reaches this window's app from here on:
 // bound before the application actor is created, since creating it builds its plugins' state, and before any
@@ -103,12 +105,7 @@ window.electronAPI?.protocolAction?.onAction(({ action, params }) => {
 const app = createApp(App);
 
 app.config.errorHandler = (err, _instance, info) => {
-  console.error('Vue error:', err, info);
-  reportRendererError('vue', err, { info });
-  window.__showErrorPage?.(
-    'Something went wrong',
-    err instanceof Error ? err.stack || err.message : String(err)
-  );
+  handleVueError(err, info);
 };
 
 app.mount('#app');

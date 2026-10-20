@@ -8,7 +8,7 @@
  * that "output is newer than sources" reads as fresh forever; output mtimes also move for reasons that
  * aren't a build, never move when a source is deleted, and tie on coarse filesystems. So each build
  * runs through `runPackageBuild`, which writes a fingerprint of its inputs only once the build
- * returns, and fresh means that fingerprint still matches.
+ * returns, and fresh means both the input fingerprint and the recorded output bytes still match.
  *
  * A unit's `inputs` need only cover what no other unit does, since any stale unit rebuilds all of
  * them. `tests/helpers/published-packages.ts` reads the same verdict, so the specs accept exactly
@@ -20,6 +20,7 @@ import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { isDeepStrictEqual } from 'node:util';
 import { PUBLISH_TREE } from './published-manifest.ts';
 import { SHARED_INSTANCE_PACKAGES } from './shared-deps.ts';
 // The signal list, not a second copy of it: `exclusive-lock.ts` owns which interruptions a release has
@@ -130,8 +131,12 @@ function compiled(pkg: string, ...extraInputs: string[]): BuildUnit {
       pkgFile('apack-host', 'src', 'build', 'published-manifest.ts'),
       pkgFile('apack-host', 'src', 'build', 'specifiers.ts'),
       pkgFile('apack-host', 'src', 'build', 'source-resolution.ts'),
+      pkgFile('apack-host', 'src', 'build', 'node-options.js'),
+      pkgFile('apack-host', 'src', 'build', 'node-options.d.ts'),
       // Reached through this module: it is where the list of inlined packages comes from
       pkgFile('apack-host', 'src', 'build', 'shared-deps.ts'),
+      pkgFile('apack-host', 'src', 'build', 'package-inputs.ts'),
+      pkgFile('apack-host', 'src', 'build', 'pack-inputs.ts'),
       // How the built tree is published: assembled under `.temp/` and renamed over `dist`, so it decides where
       // the output lands rather than merely whether the build runs — which is what `NOT_A_BUILD_INPUT` is for,
       // and why this is declared instead
@@ -161,14 +166,15 @@ const INLINED_SOURCE_DIRS = SHARED_INSTANCE_PACKAGES.map((name) => name.replace(
  * that emitted it. `chain-inputs.spec.ts` walks a build script's own imports, which these are not: the
  * bundler reaches them through the package being bundled.
  */
-function bundled(pkg: string, ...extraInputs: string[]): BuildUnit {
+function bundled(pkg: string, ...copiedPaths: string[]): BuildUnit {
   return {
     inputs: [...SHARED_INPUTS, repoFile('scripts', 'bundle-package.ts'),
-      repoFile('scripts', 'lib', 'published-imports.ts'), ...extraInputs,
+      repoFile('scripts', 'lib', 'published-imports.ts'), ...copiedPaths.map(file => pkgFile(pkg, file)),
       pkgFile(pkg, 'src'), pkgFile(pkg, 'package.json'), pkgFile(pkg, 'tsconfig.json'),
       pkgFile('apack-host', 'src'), pkgFile('apack-host', 'package.json'),
       ...INLINED_SOURCE_DIRS.flatMap((dir) => [pkgFile(dir, 'src'), pkgFile(dir, 'package.json')])],
-    outputs: [pkgFile(pkg, 'dist', 'package', 'package.json'), pkgFile(pkg, 'dist', 'package', 'dist')],
+    outputs: [pkgFile(pkg, 'dist', 'package', 'package.json'), pkgFile(pkg, 'dist', 'package', 'dist'),
+      ...copiedPaths.map(file => pkgFile(pkg, 'dist', 'package', file))],
   };
 }
 
@@ -179,7 +185,7 @@ export const BUILD_UNITS: Record<string, BuildUnit> = {
   '@apackdev/ui': compiled('apack-ui', pkgFile('apack-ui', 'tsdown.config.ts'), repoFile('scripts', 'build-ui-package.ts'),
     pkgFile('apack-ui', 'scripts', 'exports.ts')),
   '@apackdev/testing': bundled('apack-testing'),
-  '@apackdev/cli': bundled('apack-cli', pkgFile('apack-cli', 'bin')),
+  '@apackdev/cli': bundled('apack-cli', 'bin', 'templates'),
 };
 
 /**
@@ -368,6 +374,18 @@ export function inputFiles(target: string, out: string[] = []): string[] {
   return out;
 }
 
+/** Every produced file, including hidden files, metadata, prose and nested modules. */
+export function outputFiles(target: string, out: string[] = [], ancestors = new Set<string>()): string[] {
+  const stat = fs.statSync(target);
+  if (stat.isFile()) return (out.push(repoRelative(target)), out);
+  if (!stat.isDirectory()) throw new Error(`Build output is not a regular file or directory: ${target}`);
+  const real = fs.realpathSync(target);
+  if (ancestors.has(real)) throw new Error(`Build output contains a directory cycle: ${target}`);
+  const nested = new Set(ancestors).add(real);
+  for (const entry of fs.readdirSync(target)) outputFiles(path.join(target, entry), out, nested);
+  return out;
+}
+
 /** What stands in for a digest where the file was not there to read — never a hash of nothing */
 export const ABSENT = 'absent';
 
@@ -380,7 +398,9 @@ export const ABSENT = 'absent';
  */
 export interface TreeReader {
   /** The files under a declared target, absolute path in, repo-relative paths out. Defaults to `inputFiles`. */
-  readonly list: (target: string) => string[];
+  readonly listInputs: (target: string) => string[];
+  /** Complete produced files; source filters never apply to output evidence. */
+  readonly listOutputs: (target: string) => string[];
   /** One input's bytes, repo-relative path in, `null` for a file that is not there. Defaults to `readInput`. */
   readonly read: (file: string) => Buffer | null;
   /**
@@ -403,7 +423,8 @@ export interface TreeReader {
  * four of them died reading one. They ask `repoFiles()` now. Keep this branch.
  */
 export const readTree: TreeReader = {
-  list: (target) => inputFiles(target),
+  listInputs: (target) => inputFiles(target),
+  listOutputs: (target) => outputFiles(target),
   read: (file) => {
     try {
       return fs.readFileSync(repoFile(file));
@@ -561,7 +582,7 @@ export function fingerprintInputs(
   const isExcluded = (file: string): boolean => skipsFingerprint(file)
     || excludedBySuffix(excludeSuffixes, file)
     || excluded.some((out) => covers(out, file));
-  for (const file of [...new Set(inputs.flatMap((target) => tree.list(target)))].sort().filter((f) => !isExcluded(f))) {
+  for (const file of [...new Set(inputs.flatMap((target) => tree.listInputs(target)))].sort().filter((f) => !isExcluded(f))) {
     // A hash over each file's digest rather than over its bytes — the same thing Bazel and Buck2 build an
     // action key from, and the reason a file declared by several units is read and hashed once rather than
     // once per unit. Measured 2026-10-01 over the 13 chain steps: 24 618 file-slots over 3 706 distinct
@@ -613,6 +634,17 @@ export function fingerprintWithDigests(unit: BuildUnit, tree?: TreeReader): { fi
   const files: Record<string, string> = {};
   const fingerprint = fingerprintUnit(unit, (file, digest) => { files[file] = digest; }, tree);
   return { fingerprint, files };
+}
+
+/** Capture exact output membership and bytes separately from the inputs that produced them. */
+export function outputDigests(unit: BuildUnit, tree: TreeReader = readTree): Record<string, string> {
+  const files: Record<string, string> = {};
+  for (const file of [...new Set(unit.outputs.flatMap(target => tree.listOutputs(target)))].sort()) {
+    const digest = tree.digest(file);
+    if (digest === ABSENT) throw new Error(`Build output disappeared while recording it: ${file}`);
+    files[file] = digest;
+  }
+  return files;
 }
 
 /** What a stale unit's inputs did, against what a run recorded about them */
@@ -713,6 +745,7 @@ export interface StampRecord {
   readonly builtAt?: unknown;
   readonly declared?: unknown;
   readonly files?: unknown;
+  readonly outputFiles?: unknown;
 }
 
 /** A stamp as it was written, or undefined when there is none to read — the one place this file is parsed */
@@ -788,14 +821,16 @@ export function unitStaleReason(unit: BuildUnit, stamp: string, tree?: TreeReade
   const missing = unit.outputs.filter((output) => !fs.existsSync(output)).map(repoRelative);
   if (missing.length > 0) return `not built (no ${missing.join(', ')})`;
   const record = stampRecord(stamp) ?? {};
-  // The same predicate `diffableStamp` opens with, so a verdict and an explanation never disagree about
-  // whether a stamp has run. Nothing else on the record is consulted: the comparison below recomputes its own
-  // side, which is why no version is read here or written there
-  if (typeof record.fingerprint !== 'string') return 'no stamp — it has not run yet, or the last run failed or was interrupted';
+  if (!diffableStamp(record).stamp || !isDigestMap(record.outputFiles)
+    || !Object.values(record.outputFiles).every(value => /^[a-f0-9]{64}$/.test(value))) {
+    return 'no stamp — no valid successful input/output record';
+  }
   try {
-    return record.fingerprint === fingerprintUnit(unit, undefined, tree) ? null : INPUTS_CHANGED;
+    if (record.fingerprint !== fingerprintUnit(unit, undefined, tree)) return INPUTS_CHANGED;
+    return isDeepStrictEqual(record.outputFiles, outputDigests(unit, tree))
+      ? null : 'its outputs changed since the last successful run';
   } catch (err) {
-    return `its sources could not be read (${(err as Error).message})`;
+    return `its inputs or outputs could not be read (${(err as Error).message})`;
   }
 }
 
@@ -840,12 +875,17 @@ export function freshnessSweep(): {
   forget: (paths: readonly string[]) => void;
 } {
   const walked = new Map<string, string[]>();
+  const outputWalked = new Map<string, string[]>();
   const seen = new Map<string, Buffer | null>();
   const digests = new Map<string, string>();
   const tree: TreeReader = {
-    list: (target) => {
-      if (!walked.has(target)) walked.set(target, readTree.list(target));
+    listInputs: (target) => {
+      if (!walked.has(target)) walked.set(target, readTree.listInputs(target));
       return walked.get(target)!;
+    },
+    listOutputs: (target) => {
+      if (!outputWalked.has(target)) outputWalked.set(target, readTree.listOutputs(target));
+      return outputWalked.get(target)!;
     },
     // `has`, not a truthy check: `null` is an answer — the file was not there when this sweep looked
     read: (file) => {
@@ -882,6 +922,7 @@ export function freshnessSweep(): {
       for (const target of paths) {
         const relative = repoRelative(target);
         for (const key of under(walked, target, path.sep)) walked.delete(key);
+        for (const key of under(outputWalked, target, path.sep)) outputWalked.delete(key);
         for (const key of under(seen, relative, '/')) seen.delete(key);
         for (const key of under(digests, relative, '/')) digests.delete(key);
       }
@@ -1247,48 +1288,28 @@ export async function stampedRunAll(
   /**
    * Whether `run` replaces its outputs by renaming rather than writing over them — see the run below.
    *
-   * It is not fully atomic across *several* outputs: a build that swaps two trees can be killed between them
-   * and leave a matched-looking pair that is half of two builds, stamped fresh. What is left of that window is
-   * a `SIGKILL` between two renames, and what it costs is a `packages:check` reading the previous publish tree
-   * until the next source edit — where before this the same kill left no stamp at all. A throw is covered.
+   * Several output swaps are not one filesystem transaction. If interrupted between swaps,
+   * the retained prior record rejects the partial replacement through its output digests.
    */
   { atomic = false }: { atomic?: boolean } = {},
 ): Promise<void> {
   const takenAt = new Date().toISOString();
-  const taken = units.map(({ label, unit, stamp }) => ({ label, stamp, declared: declaredPaths(unit), ...fingerprintWithDigests(unit) }));
-  // **Removed first unless the caller replaces its outputs atomically**, and the difference is not a
-  // preference. A run that mutates its outputs in place — a chain step, a unit pool — leaves a half-done tree
-  // when it is killed, and the only thing that stops the next run trusting it is the stamp being gone;
-  // `chain.ts`'s `StepFailed` exists to produce exactly that ("a failed step must read as never run").
-  //
-  // A run that stages its work and renames it into place cannot leave a half-done tree, so removing its stamp
-  // only publishes a window in which the tree is whole and unstamped — which `unitStaleReason` answers with
-  // `'no stamp'`, so a reader mid-build still waits for the lock and the rename bought it nothing. Both
-  // outcomes of a kill stay consistent there: before the rename, the old tree and the old stamp; after it, the
-  // new tree and the old stamp, whose fingerprint is of inputs that have not moved.
+  const taken = units.map(({ label, unit, stamp }) => ({ label, unit, stamp, declared: declaredPaths(unit), ...fingerprintWithDigests(unit) }));
   const drop = () => { for (const { stamp } of taken) fs.rmSync(stamp, { force: true }); };
+  // Atomic writers may retain the prior record during publication. Output evidence makes a
+  // partial replacement stale even if inputs are unchanged and the process never reaches catch.
   if (!atomic) drop();
   try {
     await run();
+    const completed = taken.map(record => ({ ...record, outputFiles: outputDigests(record.unit) }));
+    const builtAt = new Date().toISOString();
+    for (const { label, stamp, fingerprint, declared, files, outputFiles } of completed) {
+      fs.mkdirSync(path.dirname(stamp), { recursive: true });
+      fs.writeFileSync(stamp, `${JSON.stringify({ workspace: label, fingerprint, takenAt, builtAt, declared, files, outputFiles }, null, 2)}\n`);
+    }
   } catch (err) {
-    // An atomic run keeps its stamp *while it goes well*, and drops it the moment it does not. A build with
-    // more than one output swaps them one after another, so a throw between two swaps leaves a mismatched set
-    // — complete, so it reads as built, and stamped, so it would read as fresh. Dropping the stamp is what
-    // makes the next run rebuild it.
-    if (atomic) drop();
+    drop();
     throw err;
-  }
-  const builtAt = new Date().toISOString();
-  for (const { label, stamp, fingerprint, declared, files } of taken) {
-    fs.mkdirSync(path.dirname(stamp), { recursive: true });
-    // `declared` and `files` are what the next run needs to say *which* input moved, taken in the same pass as
-    // the fingerprint so the diagnosis and the verdict describe one reading of the tree. Additive: a stamp
-    // without them is still a valid stamp, it just cannot explain itself.
-    //
-    // `takenAt` and `builtAt` bracket the run, which is what places a change inside it or after it. Without the
-    // opening bracket a report cannot tell a file rewritten while the run was going from one last touched a
-    // month ago, so it would call every untouched input a rewrite.
-    fs.writeFileSync(stamp, `${JSON.stringify({ workspace: label, fingerprint, takenAt, builtAt, declared, files }, null, 2)}\n`);
   }
 }
 

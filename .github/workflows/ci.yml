@@ -14,28 +14,72 @@ name: CI
 # Turn it on when the repo has other contributors. Uncomment both triggers; the jobs below are current and
 # ready to run as they are. Until then it can still be run by hand from the Actions tab (workflow_dispatch).
 #
-# **What enabling it settles about the timeout ladder.** A runner here is the smaller machine `TIMEOUT_MS`
-# (scripts/lib/step-timeouts.ts) is sized for, and each rung declares how much its kind of work stretches on
-# one — two of the three borrowing a figure measured for the third. The jobs below reach two of the three
-# rungs, and between them that is both borrowed rows: `quick` through `npm run typecheck`'s legs, and
-# `scenario` through `external-pack-e2e`'s two steps, which `scripts/bounded.ts` bounds at that class. What
-# they do not reach is `suite` — the pool deadlines come from `npm run chain`, which nothing here runs, and
-# `npm test --workspace <each>` bypasses the pool runner. `suite` is also the one rung whose factor was
-# measured, so nothing is waiting on it.
+# Timeout classes declare their scaling assumptions in scripts/lib/step-timeouts.ts. `suite` has a
+# measured worker-scaling factor; `quick`, `scenario` and `acceptance` borrow a conservative factor.
+# Regular jobs reach quick compiler legs and install scenarios. The manual strict_chain route also
+# reaches ordinary suite limits and the complete acceptance aggregate on a disposable runner.
 
 on:
   workflow_dispatch:
+    inputs:
+      app_acceptance:
+        description: Run the app suites and focused recovery, service and pack dev acceptance on disposable macOS
+        type: boolean
+        default: false
+      app_acceptance_suite:
+        description: App acceptance suite; all also exercises the source CLI
+        type: choice
+        options: [all, app, external, cli, build, integration, packaged]
+        default: all
+      app_acceptance_test:
+        description: Playwright name pattern; integration requires space-separated spec file paths
+        type: string
+        default: ''
+      strict_chain:
+        description: Run only the full strict chain with two cores on a disposable macOS runner
+        type: boolean
+        default: false
+      compiler_windows:
+        description: Run only the focused Windows compiler checks
+        type: boolean
+        default: false
+      compiler_windows_test:
+        description: Optional compiler test name pattern (skips accepted platform stages)
+        type: string
+        default: ''
+      compiler_macos:
+        description: Run focused compiler and native checks on a disposable macOS runner
+        type: boolean
+        default: false
+      compiler_macos_test:
+        description: Optional compiler test name pattern (skips other compiler checks)
+        type: string
+        default: ''
+      compiler_macos_signing:
+        description: Exercise a private Electron copy with the app's strict signing profile
+        type: boolean
+        default: false
+      compiler_linux:
+        description: Run focused compiler native checks on a disposable Linux runner
+        type: boolean
+        default: false
+      compiler_linux_test:
+        description: Optional shared native integration test name pattern (skips other acceptance stages)
+        type: string
+        default: ''
   # push:
   #   branches: [master]
   # pull_request:
   #   branches: [master]
 
 concurrency:
-  group: ci-${{ github.ref }}
-  cancel-in-progress: true
+  group: ci-${{ github.ref }}-${{ inputs.app_acceptance && 'app' || '' }}-${{ inputs.strict_chain && 'strict' || '' }}-${{ inputs.compiler_windows && 'windows' || '' }}-${{ inputs.compiler_macos && 'macos' || '' }}-${{ inputs.compiler_linux && 'linux' || '' }}
+  # Native diagnostic results must finish; full CI still supersedes older runs.
+  cancel-in-progress: ${{ !inputs.app_acceptance && !inputs.strict_chain && !inputs.compiler_windows && !inputs.compiler_macos && !inputs.compiler_linux }}
 
 jobs:
   check:
+    if: ${{ !inputs.app_acceptance && !inputs.strict_chain && !inputs.compiler_windows && !inputs.compiler_macos && !inputs.compiler_linux }}
     runs-on: macos-14
     timeout-minutes: 25
 
@@ -64,7 +108,7 @@ jobs:
 
       # Compiled content, snapshot, build/ (content compilers, content runtime) and the backend runtime: read by the
       # content parity, dependent-pack, SDK bridge drift and content runtime tests
-      - name: Build default-setup pack artifacts
+      - name: Build default-setup pack output
         working-directory: packages/default-setup
         run: npx apack pack build
 
@@ -116,6 +160,10 @@ jobs:
       - name: Unit tests (repo checks)
         run: npm test --workspace @app/repo-checks -- --reporter=verbose
 
+      # Repo-checks' integration half reads the fixture packs' generated frontend entries, which are gitignored
+      - name: Prepare declared external fixture outputs
+        run: npm run test:external-pack:contract
+
       - name: Integration tests (repo checks)
         run: npm run test:integration --workspace @app/repo-checks -- --reporter=verbose
 
@@ -125,6 +173,7 @@ jobs:
   # Builds tests/packs/external-pack with the apack CLI and runs its Playwright
   # suite from the pack dir against the built app — the third-party pack path.
   external-pack-e2e:
+    if: ${{ !inputs.app_acceptance && !inputs.strict_chain && !inputs.compiler_windows && !inputs.compiler_macos && !inputs.compiler_linux }}
     runs-on: macos-14
     timeout-minutes: 30
 
@@ -156,6 +205,50 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: external-pack-e2e
+          include-hidden-files: true
           path: |
-            tests/packs/external-pack/tests/results/
-            tests/packs/external-pack/tests/screenshots/
+            tests/packs/*/.apack/tests/
+            tests/packs/*/.apack/drive/
+
+  app-acceptance:
+    if: ${{ inputs.app_acceptance }}
+    permissions:
+      contents: read
+    uses: ./.github/workflows/app-acceptance.yml
+    with:
+      suite: ${{ inputs.app_acceptance_suite }}
+      test: ${{ inputs.app_acceptance_test }}
+
+  strict-chain:
+    if: ${{ inputs.strict_chain }}
+    permissions:
+      contents: read
+    uses: ./.github/workflows/strict-chain.yml
+
+  compiler-windows:
+    if: ${{ inputs.compiler_windows }}
+    permissions:
+      contents: read
+    uses: ./.github/workflows/compiler-windows.yml
+    with:
+      test_name: ${{ inputs.compiler_windows_test || '' }}
+
+  compiler-macos:
+    if: ${{ inputs.compiler_macos }}
+    permissions:
+      contents: read
+    uses: ./.github/workflows/compiler-macos.yml
+    with:
+      test_name: ${{ inputs.compiler_macos_test || '' }}
+      sign_runtime: ${{ inputs.compiler_macos_signing || false }}
+    secrets:
+      certificate: ${{ secrets.MAC_CERTIFICATE_P12_BASE64 }}
+      certificate_password: ${{ secrets.MAC_CERTIFICATE_PASSWORD }}
+
+  compiler-linux:
+    if: ${{ inputs.compiler_linux }}
+    permissions:
+      contents: read
+    uses: ./.github/workflows/compiler-linux.yml
+    with:
+      test_name: ${{ inputs.compiler_linux_test || '' }}

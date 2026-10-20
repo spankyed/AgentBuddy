@@ -1,10 +1,13 @@
 import { stepRegistry, type StepDefinition } from '@apackdev/sdk/steps';
 import { testPacks } from '@apackdev/sdk/testing';
 import { steps as buildSteps } from '#generated/steps-build.ts';
-import { listenerTriggerFE } from '#extensions/steps/listener/fe.ts';
-import { scheduleTriggerFE } from '#extensions/steps/schedule/fe.ts';
-import { listenerTriggerNode } from '#extensions/steps/listener/build.ts';
-import { scheduleTriggerNode } from '#extensions/steps/schedule/build.ts';
+import { readFileSync } from 'node:fs';
+import { registration } from '#generated/pack-entry.ts';
+import { getPorts as firePorts } from '#extensions/steps/fire/layout.ts';
+import { getHeight as switchHeight, getPorts as switchPorts } from '#extensions/steps/switch/layout.ts';
+
+const { listener: { fe: listenerFrontend }, schedule: { fe: scheduleFrontend } } =
+  JSON.parse(readFileSync(new URL('../../../apack.json', import.meta.url), 'utf8')).extensions.steps;
 
 // Each facet is read from the module that declares it. No definition is composed here: a step's facets go
 // to different registrations — `build` and `node` to the backend's, `fe` and `node` to the frontend's — and
@@ -12,6 +15,8 @@ import { scheduleTriggerNode } from '#extensions/steps/schedule/build.ts';
 // against. The registry block below reads what the pack really registered instead.
 const listenerTrigger = buildSteps.find(s => s.type === 'listener')!;
 const scheduleTrigger = buildSteps.find(s => s.type === 'schedule')!;
+const listenerTriggerNode = registration.steps!.find(step => step.type === 'listener')!.node!;
+const scheduleTriggerNode = registration.steps!.find(step => step.type === 'schedule')!.node!;
 
 // Steps a test registers go in the test runtime's stand-in, over the pack's registered ones
 const register = (step: StepDefinition) => testPacks.steps.set(step.type, step);
@@ -112,12 +117,12 @@ describe('listener trigger definition', () => {
 
   describe('fe facet', () => {
     it('has trigger category and correct color', () => {
-      expect(listenerTriggerFE.nodeConfig.category).toBe('trigger');
-      expect(listenerTriggerFE.colorKey).toBe('blue');
+      expect(listenerFrontend.nodeConfig.category).toBe('trigger');
+      expect(listenerFrontend.colorKey).toBe('blue');
     });
 
     it('has no-input connection rules', () => {
-      expect(listenerTriggerFE.nodeConfig.connectionRules).toEqual({ inputs: 0, outputs: -1 });
+      expect(listenerFrontend.nodeConfig.connectionRules).toEqual({ inputs: 0, outputs: -1 });
     });
   });
 
@@ -214,8 +219,8 @@ describe('schedule trigger definition', () => {
 
   describe('fe facet', () => {
     it('has trigger category and cyan color', () => {
-      expect(scheduleTriggerFE.nodeConfig.category).toBe('trigger');
-      expect(scheduleTriggerFE.colorKey).toBe('cyan');
+      expect(scheduleFrontend.nodeConfig.category).toBe('trigger');
+      expect(scheduleFrontend.colorKey).toBe('cyan');
     });
   });
 
@@ -267,7 +272,6 @@ describe('step registry integration', () => {
 
     expect(stepRegistry.getNode('listener')?.label).toBe('Listener');
     expect(stepRegistry.getNode('schedule')?.defaults).toEqual({ cronExpression: '0 * * * *' });
-    expect(stepRegistry.getFE('schedule')).toBeUndefined();
   });
 
   it('compile/decompile roundtrip for listener', () => {
@@ -295,5 +299,21 @@ describe('step registry integration', () => {
     const scheduleFacet = stepRegistry.getTrigger('schedule')!;
     expect(listenerFacet.persistent).toBe(false);
     expect(scheduleFacet.persistent).toBe(true);
+  });
+});
+
+
+describe('declared calculated layouts', () => {
+  it('keeps fire input-only and switch branch heights and indexed output ports', () => {
+    expect(firePorts({ id: 'fire-1' }, {})).toEqual([
+      { id: 'fire-1-in', layoutOptions: { 'port.side': 'WEST' } },
+    ]);
+    expect(switchHeight({ conditions: [] }, {})).toBe(53);
+    expect(switchHeight({ conditions: [{}, {}, {}] }, {})).toBe(131);
+    expect(switchPorts({ id: 'switch-1', conditions: [{}, {}] }, {})).toEqual([
+      { id: 'switch-1-in', layoutOptions: { 'port.side': 'WEST' } },
+      { id: 'switch-1-out-branch-0', layoutOptions: { 'port.side': 'EAST', 'port.index': '0' } },
+      { id: 'switch-1-out-branch-1', layoutOptions: { 'port.side': 'EAST', 'port.index': '1' } },
+    ]);
   });
 });

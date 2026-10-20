@@ -1,6 +1,6 @@
 import { EventEmitter } from 'events';
 import { appendCappedLine } from '@apackdev/host/logs';
-import { encodeJsonSafely } from '@/transport/encoder';
+import { encodeJsonSafely } from './encoder.ts';
 import type { Message } from '@apackdev/sdk/events';
 import type { LogEvent } from '@apackdev/sdk/logger';
 import type { RootEvents } from '@apackdev/sdk/runtime';

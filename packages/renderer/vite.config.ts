@@ -22,7 +22,7 @@ const rendererSrcDir = fileURLToPath(new URL('./src/', import.meta.url));
  * and every pack's frontend is fetched over `pack://` from the bundle its own `apack pack build` wrote — which
  * is the path a pack takes in production whatever directory it lives in.
  *
- * The map is keyed by pack id and says nothing about `builtIn`: a pack is in it because its source is on
+ * The map is keyed by pack id and grants no manifest shipping privilege: a pack is in it because its source is on
  * this disk.
  */
 function devPackFrontendsPlugin(serving: boolean): Plugin {
@@ -195,6 +195,8 @@ export default defineConfig(({ command }) => ({
     outDir: appBuildOutput('renderer'),
     modulePreload: false,
     rollupOptions: {
+      // Preserve vendor provenance in cancellation stacks without hiding application errors.
+      output: { manualChunks: id => id.includes('/node_modules/monaco-editor/') ? 'monaco' : undefined },
       // **Only when building.** Naming `build.rollupOptions.input` also tells the dev server to crawl those
       // entries for dependency discovery in place of index.html, and a bare specifier is not something it
       // can crawl — dev would then discover nothing and pre-bundle nothing.

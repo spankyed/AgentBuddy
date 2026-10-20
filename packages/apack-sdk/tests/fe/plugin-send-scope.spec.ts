@@ -47,8 +47,8 @@ beforeEach(() => {
     'default-setup/notes': recording('default-setup/notes'),
     'memo-pack/counter': live,
   };
-  bindFeHost({
-    application: { system: { get: (ref: string) => running[ref] } } as never,
+  bindFeHost({ catalog: {} as never,
+    application: { system: { get: (ref: string) => running[ref] }, subscribe: () => ({ unsubscribe() {} }) } as never,
     secrets: {} as never,
     settings: {} as never,
     client: { send() {} },

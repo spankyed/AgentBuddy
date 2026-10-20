@@ -6,7 +6,7 @@
  * measured 2026-09-27 — and Node picks a matching condition and *then* requires the file, with no fallback to
  * the next branch. So a consumer that enables the condition (a pack copying a config, a monorepo using the
  * same trick for its own packages) fails to resolve at all, with a message naming neither the condition nor
- * the config. The condition is a checkout-only mechanism, so the artifact does not mention it rather than
+ * the config. The condition is a checkout-only mechanism, so the published package does not mention it rather than
  * mentioning it as a trap: `@apackdev/testing`'s manifest has never had a source branch, and enabling the
  * condition against it resolves the same `dist` path as not enabling it.
  *
@@ -123,7 +123,7 @@ function shipped(files: ReadonlySet<string>, target: string): boolean {
  * `<what names it> -> <target>` for every path the manifest names that is not in `files`, whose paths are
  * relative to the package root (what `npm pack --json` lists, and what `treeFiles()` walks).
  *
- * The one shared answer to "does this artifact name only what it holds", so the build's check on a staged tree
+ * The one shared answer to "does this package name only what it holds", so the build's check on a staged tree
  * and the spec's check on a tarball cannot come to different conclusions.
  */
 export function missingPublishedPaths(manifest: Manifest, files: ReadonlySet<string>): string[] {
@@ -176,7 +176,15 @@ export function packTree(dir: string, destDir: string): string {
  * npm reads a relative one as a git shorthand and fails in `git ls-remote`.
  */
 function npmPack<T>(dir: string, args: readonly string[]): [T] {
-  const out = execFileSync('npm', ['pack', '--json', '--ignore-scripts', ...args, path.resolve(dir)],
+  const packArgs = ['pack', '--json', '--ignore-scripts', ...args, path.resolve(dir)];
+  const windows = process.platform === 'win32';
+  if (windows) {
+    // Launch the JS entry directly: npm.cmd requires a shell, which would reinterpret package paths.
+    const entry = process.env.npm_execpath;
+    packArgs.unshift(entry && path.basename(entry) === 'npm-cli.js'
+      ? entry : path.join(path.dirname(process.execPath), 'node_modules', 'npm', 'bin', 'npm-cli.js'));
+  }
+  const out = execFileSync(windows ? process.execPath : 'npm', packArgs,
     { stdio: ['ignore', 'pipe', 'ignore'] }).toString();
   if (!out.trimStart().startsWith('[')) {
     throw new Error(`npm pack printed something other than JSON for ${dir}:\n${out}`);

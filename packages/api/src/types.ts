@@ -1,4 +1,4 @@
-export type { AppRouter } from '@/transport';
+export type { AppRouter } from './transport/index.ts';
 export { EARS } from '@apackdev/sdk';
 export type { BaseEntity } from '@apackdev/ears';
 

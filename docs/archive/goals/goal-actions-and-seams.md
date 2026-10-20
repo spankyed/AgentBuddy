@@ -101,7 +101,7 @@ packs feature implements it (`createPackFrontends(io, packs): ShellPackFrontends
 - `Message.from`'s comment (`apack-sdk/src/events/index.ts`) says a sender is "absent … on one an action
   makes through `services.emitter`". Phase 1 makes that false.
 - The root `CLAUDE.md` envelope bullet describes a message as `{ to, event, from? }`.
-- `docs/goals/wont-do/goal-sender-enforced-audiences.md` records "an action's sends can't stamp" as
+- `docs/archive/goals/goal-sender-enforced-audiences.md` records "an action's sends can't stamp" as
   objection 1 and "61 call sites can't stamp" as objection 2. Both are answered once Phase 1 lands. The
   user's decision on this, recorded in the plan's Open Questions: **update the doc, don't reassess the
   goal** — its other reasons (the snapshot-format break, designing a policy with no third-party pack in
@@ -171,7 +171,7 @@ import in the host is reported, with no exception left to excuse it.
 
 ### Phase 3 — The invariant, and the docs that outlived their reason
 
-- Update `docs/goals/wont-do/goal-sender-enforced-audiences.md`: its objections 1 and 2 are answered.
+- Update `docs/archive/goals/goal-sender-enforced-audiences.md`: its objections 1 and 2 are answered.
   Say so and say what still stands; do not reopen the goal (the user's decision).
 - Update `docs/archive/plans/host-seams.md`: steps 3 and 4 landed, with the commits.
 - **A spec pinning which modules send unbound.** After Phase 1 that set is one —

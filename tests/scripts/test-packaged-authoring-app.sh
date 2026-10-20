@@ -33,7 +33,7 @@ cd "$PACK"
 step "8. apack pack test on the packed archive (the app named on the command line)"
 # --host, and nothing in the environment: `apack pack test` is pinned to what it is given, so that a run
 # means the same thing on a fresh machine as on one someone has developed on
-# PACK_ARCHIVE installs step 6's .tgz as it is, so this runs the artifact a release ships rather than
+# PACK_ARCHIVE installs step 6's .tgz as it is, so this runs the build a release ships rather than
 # another build of the same source — the one thing the rest of the script cannot check.
 # The app's data dir is kept for step 9: the app written the installed demo pack into it
 # `if !` so the pipeline's exit status is this script's to report: under `set -e` a failure would otherwise end it

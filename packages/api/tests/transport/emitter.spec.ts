@@ -13,7 +13,7 @@ import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import type { LogEvent } from '@apackdev/sdk/logger';
-import { rootEvents } from '@/transport/emitter';
+import { rootEvents } from '../../src/transport/emitter.ts';
 
 let logDir: string;
 let previous: string | undefined;

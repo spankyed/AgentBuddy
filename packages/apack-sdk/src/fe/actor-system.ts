@@ -1,4 +1,4 @@
-import { computed, defineComponent, inject, provide, type ComputedRef, type InjectionKey } from 'vue'
+import { computed, defineComponent, Fragment, h, inject, onScopeDispose, provide, shallowRef, watch, type ComputedRef, type InjectionKey } from 'vue'
 import type { AnyActorRef } from 'xstate'
 import { splitRef } from '../ids/refs.ts'
 import { _runDelivery } from '../events/delivery.ts'
@@ -103,7 +103,13 @@ export const PluginScope = defineComponent({
   name: 'PluginScope',
   props: { plugin: { type: String, required: true } },
   setup(props, { slots }) {
-    provide(PLUGIN, computed(() => pluginActor(props.plugin)))
-    return () => slots.default?.()
+    const actor = shallowRef<AnyActorRef | undefined>(pluginActor(props.plugin))
+    const follow = () => { actor.value = pluginActorIfRunning(props.plugin) }
+    watch(() => props.plugin, follow, { flush: 'sync' })
+    const subscription = boundFeHost().application.subscribe(follow)
+    onScopeDispose(() => subscription.unsubscribe())
+    provide(PLUGIN, computed(() => actor.value ?? pluginActor(props.plugin)))
+    // A component may capture its actor during setup. Its subtree belongs to that actor's lifetime.
+    return () => actor.value ? h(Fragment, { key: actor.value.sessionId }, slots.default?.()) : null
   },
 })

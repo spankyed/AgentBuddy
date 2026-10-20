@@ -1,3 +1,4 @@
+import { createNativePackTestRegistry } from '@apackdev/host/testing';
 // Who hears the outcome of a settings write, which is the one branch the change rests on.
 //
 // `SETTINGS_SAVED` and `SETTINGS_REFUSED` were only ever broadcast to the `settings` plugin, so a sender that
@@ -13,10 +14,12 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import type { Reply } from '@apackdev/sdk/events';
 import { startTestRuntime, testRootEvents } from '@apackdev/sdk/testing';
 import { HOST_ENTITY_TYPES } from '../../../src/app-state/index.ts';
-import { createPackRegistry } from '../../../src/packs/registry.ts';
+import { createContributionCatalog } from '../../../src/packs/catalog.ts';
+import { appSettingsDefinition } from '../../../src/features/settings/be/app-definition.ts';
+import { compileSettingsCatalog } from '../../../src/features/settings/validation.ts';
 import { answerSettings } from '../../../src/features/settings/be/answer.ts';
 
-startTestRuntime({ entityTypes: HOST_ENTITY_TYPES, packs: createPackRegistry() });
+startTestRuntime({ entityTypes: HOST_ENTITY_TYPES, packs: createNativePackTestRegistry() });
 
 /** Every message the bus would have carried, which is where both arms end up and so where they are told apart */
 let sent: Array<{ to?: string; type: string }>;
@@ -32,11 +35,13 @@ afterEach(() => stopListening());
 
 /** The ref a drive session claims on its connection — a participant, which is deliberately not a plugin */
 const DRIVER = 'host/drive';
+const catalog = createContributionCatalog(appSettingsDefinition).settings();
+const snapshot = { runId: 'test', revision: 0, status: 'ready' as const, catalog, values: compileSettingsCatalog(catalog).defaults };
 const toTheDriver: Reply = (event) => { sent.push({ to: DRIVER, type: event.type }); };
 
 describe('the outcome of a settings write', () => {
   it('goes to whoever asked, when there is an answer to give', () => {
-    answerSettings(toTheDriver, { type: 'SETTINGS_SAVED' });
+    answerSettings(toTheDriver, { type: 'SETTINGS_SAVED', snapshot });
 
     expect(sent).toEqual([{ to: DRIVER, type: 'SETTINGS_SAVED' }]);
   });
@@ -54,14 +59,14 @@ describe('the outcome of a settings write', () => {
    * has to hear it either way, so the broadcast stays as the answer for an ask that named nobody.
    */
   it('tells every Settings view when nobody asked', () => {
-    answerSettings(undefined, { type: 'SETTINGS_SAVED' });
+    answerSettings(undefined, { type: 'SETTINGS_SAVED', snapshot });
 
     expect(sent).toEqual([{ to: 'host/settings', type: 'SETTINGS_SAVED' }]);
   });
 
   // Never both: the Settings view would otherwise see two saves for one write
   it('does not also broadcast when it answered the asker', () => {
-    answerSettings(toTheDriver, { type: 'SETTINGS_SAVED' });
+    answerSettings(toTheDriver, { type: 'SETTINGS_SAVED', snapshot });
 
     expect(sent.filter((m) => m.to === 'host/settings')).toEqual([]);
   });

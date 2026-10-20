@@ -5,7 +5,7 @@
 // message, never what a name means.
 import * as os from 'node:os';
 import { describe, expect, it } from 'vitest';
-import { createActionEmitter, services } from '../../src/services/index.ts';
+import { createActionEmitter } from '../../src/services/index.ts';
 import { startTestRuntime, testRootEvents } from '../../src/testing/index.ts';
 import { testPacks } from '../../src/testing/packs.ts';
 
@@ -30,15 +30,15 @@ function sent(send: () => void): unknown[] {
 describe('services.emitter', () => {
   it('sends to the system a <packId>/<featureId> name resolves to', () => {
     expect(sent(() => {
-      services.emitter.sendToSystem('default-setup/notes', { type: 'GET_NOTES' });
-      services.emitter.sendToSystem('ext/notes', { type: 'GET_NOTES' });
+      createActionEmitter().sendToSystem('default-setup/notes', { type: 'GET_NOTES' });
+      createActionEmitter().sendToSystem('ext/notes', { type: 'GET_NOTES' });
     })).toEqual([{ to: 'default-setup/notes', call: expect.any(String), event: { type: 'GET_NOTES' } }, { to: 'ext/notes', call: expect.any(String), event: { type: 'GET_NOTES' } }]);
   });
 
   it("sends to the plugin a <packId>/<featureId> name is, the host's included", () => {
     expect(sent(() => {
-      services.emitter.broadcastToPlugin('default-setup/threads', { type: 'SET_PHASE', phase: 'Edit' });
-      services.emitter.broadcastToPlugin('host/application', { type: 'APPLICATION_HOTKEYS', hotkeys: {} });
+      createActionEmitter().broadcastToPlugin('default-setup/threads', { type: 'SET_PHASE', phase: 'Edit' });
+      createActionEmitter().broadcastToPlugin('host/application', { type: 'APPLICATION_HOTKEYS', hotkeys: {} });
     })).toEqual([
       { to: 'default-setup/threads', call: expect.any(String), event: { type: 'SET_PHASE', phase: 'Edit' } },
       { to: 'host/application', call: expect.any(String), event: { type: 'APPLICATION_HOTKEYS', hotkeys: {} } },
@@ -47,31 +47,31 @@ describe('services.emitter', () => {
 
   // The host is a pack: its plugins are named like any other's
   it("throws for a host plugin's bare id, naming its ref", () => {
-    expect(() => services.emitter.broadcastToPlugin('application', { type: 'APPLICATION_HOTKEYS', hotkeys: {} }))
+    expect(() => createActionEmitter().broadcastToPlugin('application', { type: 'APPLICATION_HOTKEYS', hotkeys: {} }))
       .toThrow('No registered plugin is named "application": actions name a plugin "<packId>/<featureId>" — did you mean "host/application"?');
   });
 
   // The documented form before plugins were addressed per pack: an action a user wrote then still says this
   it('throws for a bare feature name, naming the pack it most likely means, and sends nothing', () => {
     expect(sent(() => {
-      expect(() => services.emitter.broadcastToPlugin('threads', { type: 'SET_PHASE', phase: 'Edit' }))
+      expect(() => createActionEmitter().broadcastToPlugin('threads', { type: 'SET_PHASE', phase: 'Edit' }))
         .toThrow('No registered plugin is named "threads": actions name a plugin "<packId>/<featureId>" — did you mean "default-setup/threads"?');
-      expect(() => services.emitter.sendToSystem('notes', { type: 'GET_NOTES' }))
+      expect(() => createActionEmitter().sendToSystem('notes', { type: 'GET_NOTES' }))
         .toThrow('No registered system is named "notes": actions name a system "<packId>/<featureId>"');
     })).toEqual([]);
   });
 
   it('throws for a name no pack registered', () => {
-    expect(() => services.emitter.broadcastToPlugin('ext/threads', { type: 'X' })).toThrow('No registered plugin is named "ext/threads"');
-    expect(() => services.emitter.sendToSystem('other/notes', { type: 'X' })).toThrow('No registered system is named "other/notes"');
+    expect(() => createActionEmitter().broadcastToPlugin('ext/threads', { type: 'X' })).toThrow('No registered plugin is named "ext/threads"');
+    expect(() => createActionEmitter().sendToSystem('other/notes', { type: 'X' })).toThrow('No registered system is named "other/notes"');
   });
 
   // `services.emitter` is what pack code reaches through `services`: only the pack that ran an action knows which
   // action it was, so reached this way there is nothing to stamp
   it('stamps nothing when no action is running', () => {
     const [plugin, system] = sent(() => {
-      services.emitter.broadcastToPlugin('default-setup/threads', { type: 'SET_PHASE', phase: 'Edit' });
-      services.emitter.sendToSystem('default-setup/notes', { type: 'GET_NOTES' });
+      createActionEmitter().broadcastToPlugin('default-setup/threads', { type: 'SET_PHASE', phase: 'Edit' });
+      createActionEmitter().sendToSystem('default-setup/notes', { type: 'GET_NOTES' });
     }) as Array<Record<string, unknown>>;
     expect(plugin).not.toHaveProperty('from');
     expect(plugin).not.toHaveProperty('via');

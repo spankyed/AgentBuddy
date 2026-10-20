@@ -1,8 +1,9 @@
+import { writeManifest } from '../../manifest-writer.ts';
 import * as path from 'node:path';
 import { regenerateAfterScaffold } from '../generate-entries';
 import { validateName, toPascalCase, writeIfNotExists, logCreated, hasFlag } from './write';
 import { renderTemplate } from '../../templates.ts';
-import { readManifest, writeManifest, addBlock as addBlockToManifest } from './manifest';
+import { readManifest, addBlock as addBlockToManifest } from './manifest';
 
 const HELP = `
 Usage: apack pack add block <type> [options]

@@ -8,8 +8,7 @@
 // The normalisation those reports go through is `tests/build/facade-report.spec.ts`, over text, because a pack
 // cannot be asked to emit its declarations in the wrong order on purpose.
 //
-// **One pack, built once, and the cases run in declaration order**: each states the premise the one before it
-// leaves, which is what keeps this to a single build rather than eight.
+// The shared pack evolves in declaration order; each case establishes the state the next consumes.
 import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
@@ -34,13 +33,14 @@ const CONTRACT = (extra = '') => [
  */
 const manifest = (...entities: string[]) => JSON.stringify({
   id: ID, name: ID, version: '1.0.0',
-  entities: Object.fromEntries(entities.map((name) => [name, name])),
-  entityShapes: Object.fromEntries(entities.map((name) => [name, { source: 'src/types.ts', type: `${name}Entity` }])),
-  features: { notifier: { system: { entry: 'src/system.ts', contract: 'src/system.contract.ts#Contract' } } },
+  data: { entities: Object.fromEntries(entities.map(name => [name, `src/types.ts#${name}Entity`])) },
+
+  features: { notifier: { description: 'Feature declaration fixture.', system: { entry: 'src/system.ts', contract: 'src/system.contract.ts#Contract' } } },
 });
 
 let parent: string;
 let pack: string;
+let initialBuildOutput: string;
 
 beforeAll(async () => {
   if (!PACKAGES_BUILT) return;
@@ -61,7 +61,7 @@ beforeAll(async () => {
     ].join('\n'),
   }, path.join(REPO_ROOT, 'node_modules'));
   // produces: dist/, which three cases below go on to corrupt, remove and have rebuilt
-  await buildPack(pack, ID);
+  initialBuildOutput = await buildPack(pack, ID);
 });
 
 afterAll(() => {
@@ -71,6 +71,14 @@ afterAll(() => {
 const reportFile = () => path.join(pack, 'etc', 'pack-types.api.md');
 const bundleFile = () => path.join(pack, 'dist', PACK_LAYOUT.typesDir, 'pack-types.d.ts');
 const readReport = () => fs.readFileSync(reportFile(), 'utf-8');
+
+// The setup build already exercises an absent report; do not compile the same pack again for it.
+describe.skipIf(!PACKAGES_BUILT)('apack pack build without a report', () => {
+  it('says nothing about a pack that has no report to be stale against', () => {
+    expect(fs.existsSync(reportFile())).toBe(false);
+    expect(initialBuildOutput).not.toContain('facade:update');
+  });
+});
 
 describe.skipIf(!PACKAGES_BUILT)('apack pack facade-report', () => {
   /** Nothing is recorded before the first update: there is no report to be stale against */
@@ -88,6 +96,33 @@ describe.skipIf(!PACKAGES_BUILT)('apack pack facade-report', () => {
     const { code, output } = await callCli(pack, 'facade-report');
     expect(code, output).toBe(0);
     expect(output).toContain('is up to date');
+  });
+
+  it('checks the verified current build without changing generated files', async () => {
+    // Recording the report adds an authored input; publish that state before inspecting it passively.
+    await buildPack(pack, ID);
+    const directory = path.join(pack, 'src/__generated__');
+    const before = fs.readdirSync(directory);
+    const stamp = fs.readFileSync(path.join(pack, '.apack/generate-entries.json'), 'utf8');
+    const { code, output } = await callCli(pack, 'facade-report', ['--from-build']);
+    expect(code, output).toBe(0);
+    expect(output).toContain('is up to date');
+    expect(fs.readdirSync(directory)).toEqual(before);
+    expect(fs.readFileSync(path.join(pack, '.apack/generate-entries.json'), 'utf8')).toBe(stamp);
+  }, 60_000 + 20_000);
+
+  it('refuses edited generated files on the skip path without updating the report', async () => {
+    const entry = path.join(pack, 'src/__generated__/pack-types.ts');
+    const original = fs.readFileSync(entry, 'utf8');
+    const report = readReport();
+    fs.appendFileSync(entry, '\n// edited facade\n');
+    try {
+      const { code, output } = await callCli(pack, 'facade-report', ['--skip-generate', '--update']);
+      expect(code).toBe(1);
+      expect(output).toContain('modified src/__generated__/pack-types.ts');
+      expect(readReport()).toBe(report);
+    } finally { fs.writeFileSync(entry, original); }
+    expect((await callCli(pack, 'facade-report', ['--skip-generate'])).code).toBe(0);
   });
 
   /** Up to date writes nothing, asserted on the bytes: the message would say so either way */
@@ -108,6 +143,7 @@ describe.skipIf(!PACKAGES_BUILT)('apack pack facade-report', () => {
   it('is not told anything by the built bundle: junk in dist does not move the verdict', async () => {
     fs.writeFileSync(bundleFile(), 'declare const nonsense: 1;\nexport { nonsense };\n');
 
+    expect((await callCli(pack, 'facade-report', ['--from-build'])).code).toBe(1);
     const { code, output } = await callCli(pack, 'facade-report');
     expect(code, output).toBe(0);
     expect(output).toContain('is up to date');
@@ -150,7 +186,7 @@ describe.skipIf(!PACKAGES_BUILT)('apack pack facade-report', () => {
  * The build holds the report to the bundle it has just produced — the one moment nothing can be stale about
  * it — and **warns**. It does not fail, because a report that has not caught up is not output a dependent
  * cannot use, and because failing would mean no pack author could start their app until they had rewritten a
- * reviewed artifact mid-change. `facade:check` is the gate that says so once: its own chain step, and CI.
+ * reviewed report mid-change. `facade:check` is the gate that says so once: its own chain step, and CI.
  */
 describe.skipIf(!PACKAGES_BUILT)('apack pack build', () => {
   it('warns about a report that has gone stale, and still succeeds', async () => {
@@ -159,13 +195,5 @@ describe.skipIf(!PACKAGES_BUILT)('apack pack build', () => {
     const { code, output } = await callCli(pack, 'build');
     expect(code, output).toBe(0);
     expect(output).toContain('facade:update');
-  });
-
-  it('says nothing about a pack that has no report to be stale against', async () => {
-    fs.rmSync(path.join(pack, 'etc'), { recursive: true, force: true });
-
-    const { code, output } = await callCli(pack, 'build');
-    expect(code, output).toBe(0);
-    expect(output).not.toContain('facade:update');
   });
 });

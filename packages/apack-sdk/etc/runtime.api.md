@@ -23,6 +23,7 @@ import type { InferSchema } from 'ai';
 import type { JSONSchema7 } from 'ai';
 import type { Output } from 'ai';
 import type { OutputInterface } from 'ai';
+import type { Ref } from 'vue';
 import type { rerank } from 'ai';
 import type { SnapshotFrom } from 'xstate';
 import type { streamText } from 'ai';
@@ -31,7 +32,6 @@ import type { ToolLoopAgentSettings } from 'ai';
 import type { ToolSet } from 'ai';
 import type { transcribe } from 'ai';
 import { z } from 'zod';
-import type { ZodType } from 'zod';
 
 // @public
 export function bindFeHost(runtime: FeHostRuntime): void;
@@ -52,6 +52,7 @@ export interface FeClient {
 // @public
 export interface FeHostRuntime {
     application: HostShell;
+    catalog: PackCatalogView;
     client: FeClient;
     packs: FePackRegistryView;
     secrets: SecretsClient;
@@ -61,11 +62,18 @@ export interface FeHostRuntime {
 // @public
 export interface FePackRegistryView extends PackExtensionsView {
     appExtension(slot: string): Component | undefined;
-    defaultPlugin(): Plugin_2 | undefined;
-    dslTypes(): ReadonlyMap<string, DslTypeConfig>;
+    // (undocumented)
+    artifactBindings(): ReadonlyMap<string, ArtifactFrontendBinding>;
+    // (undocumented)
+    blockBindings(): ReadonlyMap<string, BlockFrontendBinding>;
+    onChanged(listener: (packId: string) => void): () => void;
     plugins(): Plugin_2[];
     // (undocumented)
-    tiptapPlugins(): TiptapPlugin[];
+    referenceCategories(): ReadonlyMap<string, ReferenceBinding<ReferenceBindings['categories'][string]>>;
+    referenceTypes(): ReadonlyMap<string, ReferenceBinding<ReferenceTypeConfig>>;
+    stepBindings(): ReadonlyMap<string, StepFrontendBinding>;
+    // (undocumented)
+    tiptapPlugins(): TiptapPluginBinding[];
 }
 
 // @public
@@ -85,8 +93,9 @@ export interface HostRuntimeServices {
     appData: AppDataService;
     filesystem: FilesystemService;
     inference: InferenceService;
+    onboarding: OnboardingService;
     secrets: SecretsService;
-    settings: SettingsService;
+    settings: SettingsAdmin;
     traceStore: TraceStore;
 }
 
@@ -107,9 +116,6 @@ export interface PackExtensionsView {
     // (undocumented)
     blocks(): BlockDefinition[];
     designation(role: string): FeatureRef | undefined;
-    // (undocumented)
-    step(type: string): StepDefinition | undefined;
-    steps(): StepDefinition[];
 }
 
 // @public
@@ -118,12 +124,19 @@ export interface PackRegistryView extends PackExtensionsView {
     commands(): PackCommand[];
     contentWriters(entity: string): ContentWriter | undefined;
     earsNames(): EarsNames;
-    featuresWithSettings(): readonly FeatureRef[];
     getRegisteredServices(): Record<string, unknown>;
     help(): HelpCatalog;
-    onSettingsDefaultsChanged(listener: () => void): () => void;
+    // (undocumented)
+    onCatalogChanged(listener: () => void): () => void;
+    pluginDefaults(): Record<string, boolean>;
     pluginIds(): readonly FeatureRef[];
-    settingsDefaults(): PackSettingsDefaults;
+    // (undocumented)
+    settingsCatalog(): SettingsCatalog;
+    // (undocumented)
+    step(type: string): StepDefinition | undefined;
+    stepBindings(): ReadonlyMap<string, StepBackendBinding>;
+    stepDeclarations(): readonly StepCatalogEntry[];
+    steps(): StepDefinition[];
     systemIds(): readonly FeatureRef[];
 }
 

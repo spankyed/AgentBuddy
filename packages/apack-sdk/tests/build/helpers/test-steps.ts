@@ -17,6 +17,7 @@ function nodeEntity(nodeId: string, ts: number, nodeType: string, extra: Record<
 
 export const listenerTrigger: StepDefinition = {
   type: 'listener',
+  node: { label: 'Listener' },
   kind: 'trigger',
   trigger: {
     trackField: 'event',
@@ -65,6 +66,7 @@ export const scheduleTrigger: StepDefinition = {
 
 export const actionStep: StepDefinition = {
   type: 'action',
+  node: { label: 'Action' },
   build: {
     compile(node, nodeId, ts, ctx) {
       const actionId = ctx.actions.get(node.action as string);

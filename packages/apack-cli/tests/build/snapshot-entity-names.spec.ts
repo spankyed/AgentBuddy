@@ -1,3 +1,4 @@
+import { _packEntityTypes } from '@apackdev/sdk/framework';
 // A dependent reads only its *direct* dependencies' snapshots when it generates EntityName, so a chain
 // A → B → C used to leave C's names unknown in A even though B surfaces them. A snapshot therefore
 // records what its pack can surface — its own names and its dependencies' — which keeps resolution one
@@ -22,7 +23,8 @@ describe('a built pack\'s snapshot', () => {
   it.skipIf(!built)('records its own entity names', () => {
     const own = JSON.parse(fs.readFileSync(path.join(REPO_ROOT, 'packages/default-setup/apack.json'), 'utf-8'));
     const snapshot = snapshotAt('packages/default-setup');
-    for (const name of Object.keys(own.entities ?? {})) {
+    expect(Object.keys(_packEntityTypes(own))).toHaveLength(11);
+    for (const name of Object.keys(_packEntityTypes(own))) {
       expect(snapshot.types.entities, name).toHaveProperty(name);
     }
   });
@@ -48,7 +50,7 @@ describe('a built pack\'s snapshot', () => {
    * `apack pack build` a pack author runs.
    */
   it.skipIf(!fixtureBuilt || !built)("attributes an inherited entity to the pack that declares it, not the one it arrived through", () => {
-    const declared = Object.keys(JSON.parse(fs.readFileSync(path.join(REPO_ROOT, 'packages/default-setup/apack.json'), 'utf-8')).entities ?? {});
+    const declared = Object.keys(_packEntityTypes(JSON.parse(fs.readFileSync(path.join(REPO_ROOT, 'packages/default-setup/apack.json'), 'utf-8'))));
     const recorded = JSON.parse(fs.readFileSync(snapshotFile(fixture)!, 'utf-8')).provenance?.entities ?? {};
     expect(declared.length).toBeGreaterThan(0);
     for (const name of declared) {
@@ -75,7 +77,8 @@ describe('a built pack\'s snapshot', () => {
   it.skipIf(!fixtureBuilt)('keeps its own names when a dependency declares one with the same key', () => {
     const own = JSON.parse(fs.readFileSync(path.join(REPO_ROOT, fixture, 'apack.json'), 'utf-8'));
     const entities = snapshotAt(fixture).types.entities;
-    for (const [name, value] of Object.entries(own.entities ?? {})) {
+    expect(Object.keys(_packEntityTypes(own))).toEqual(['Memo']);
+    for (const [name, value] of Object.entries(_packEntityTypes(own))) {
       expect(entities[name], name).toBe(value);
     }
   });

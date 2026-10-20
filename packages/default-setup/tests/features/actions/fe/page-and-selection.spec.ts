@@ -167,3 +167,78 @@ it('refuses an uncorrelated answer once an ask has settled', () => {
 
   expect(actor.getSnapshot().context.selectedActionId, 'the settled answer still stands').toBe('Action-a1');
 });
+
+
+it('opening the cached action abandons a newer outstanding selection', () => {
+  const actor = listed();
+  try {
+    actor.send({ type: 'OPEN_ENTITY', id: 'Action-a1' });
+    actor.send(answerTo(selectCall(0), { type: 'ACTION_SELECTED', actionId: 'Action-a1', data: anAction('Action-a1') }));
+    actor.send({ type: 'OPEN_ENTITY', id: 'Action-a2' });
+    const abandoned = selectCall(1);
+    actor.send({ type: 'OPEN_ENTITY', id: 'Action-a1' });
+    actor.send(answerTo(abandoned, { type: 'ACTION_SELECTED', actionId: 'Action-a2', data: anAction('Action-a2') }));
+    expect(actor.getSnapshot().context.selectedActionId).toBe('Action-a1');
+    expect(actor.getSnapshot().context.pendingActionCall).toBeNull();
+  } finally { actor.stop(); }
+});
+
+it.each(['list', 'create', 'deactivate'] as const)('retires an entity selection on %s', destination => {
+  const actor = listed();
+  try {
+    actor.send({ type: 'OPEN_ENTITY', id: 'Action-a1' });
+    const abandoned = selectCall(0);
+    if (destination === 'deactivate') actor.send({ type: 'PLUGIN_DEACTIVATED' });
+    else actor.send({ type: 'TRAIL_CLICK', target: destination });
+    actor.send(answerTo(abandoned, { type: 'ACTION_SELECTED', actionId: 'Action-a1', data: anAction('Action-a1') }));
+    expect(actor.getSnapshot().context.selectedActionId).toBeUndefined();
+    expect(actor.getSnapshot().context.pendingActionCall).toBeNull();
+  } finally { actor.stop(); }
+});
+
+it('opens its entity from the create view and refuses unrelated entity types', () => {
+  const actor = listed();
+  try {
+    actor.send({ type: 'ACTION.CREATE' });
+    actor.send({ type: 'OPEN_ENTITY', id: 'Note-unrelated' });
+    expect(actor.getSnapshot().matches('create')).toBe(true);
+    expect(sentTypes()).not.toContain('ACTION_SELECT');
+    actor.send({ type: 'OPEN_ENTITY', id: 'Action-a1' });
+    actor.send(answerTo(selectCall(0), { type: 'ACTION_SELECTED', actionId: 'Action-a1', data: anAction('Action-a1') }));
+    expect(actor.getSnapshot().matches('detail')).toBe(true);
+    expect(actor.getSnapshot().context.selectedActionId).toBe('Action-a1');
+  } finally { actor.stop(); }
+});
+
+it('asks for an action again when it is reopened from the list, so a changed action is not shown stale', () => {
+  const actor = listed();
+  try {
+    actor.send({ type: 'ACTION.SELECT', actionId: 'Action-a1' });
+    actor.send(answerTo(selectCall(0), { type: 'ACTION_SELECTED', actionId: 'Action-a1', data: anAction('Action-a1') }));
+    actor.send({ type: 'VIEW_LIST' });
+    expect(actor.getSnapshot().context.selectedActionId).toBeUndefined();
+    actor.send({ type: 'ACTION_UPDATED', actionId: 'Action-a1', action: anAction('Action-a1') as never });
+    actor.send({ type: 'ACTION.SELECT', actionId: 'Action-a1' });
+    expect(sentTypes().filter(type => type === 'ACTION_SELECT')).toHaveLength(2);
+  } finally { actor.stop(); }
+});
+
+/**
+ * `ACTION_CREATED` is news every window hears, whoever created it. It adds the action to the list and selects
+ * nothing: selecting it here would skip the fetch when the user then opens it, and the form would keep the
+ * previous action's fields under the new one's name.
+ */
+it('fetches an action created elsewhere when it is opened', () => {
+  const actor = listed();
+  actor.send({ type: 'ACTION.SELECT', actionId: 'Action-a1' });
+  actor.send(answerTo(selectCall(0), { type: 'ACTION_SELECTED', actionId: 'Action-a1', data: anAction('Action-a1') }));
+  actor.send({ type: 'VIEW_LIST' });
+
+  actor.send({ type: 'ACTION_CREATED', actionId: 'Action-x', action: anAction('Action-x') });
+  expect(actor.getSnapshot().context.actions.map((a) => a.id)).toContain('Action-x');
+  actor.send({ type: 'ACTION.SELECT', actionId: 'Action-x' });
+
+  expect(sentTypes().filter((type) => type === 'ACTION_SELECT')).toHaveLength(2);
+  actor.send(answerTo(selectCall(1), { type: 'ACTION_SELECTED', actionId: 'Action-x', data: anAction('Action-x') }));
+  expect(actor.getSnapshot().context.selectedAction?.id).toBe('Action-x');
+});

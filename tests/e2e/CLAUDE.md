@@ -119,8 +119,8 @@ Three fixtures are provided, each at a different scope:
 ### AppDriver methods
 
 ```ts
-app.screenshot(name)             // Save a PNG where the caller said: drive/screenshots/ under
-                                 // `drive`, a pack's tests/screenshots/ under `apack pack test`
+app.screenshot(name)             // Save a PNG under .apack/drive/screenshots/ when driving,
+                                 // or .apack/tests/screenshots/ under `apack pack test`
 app.navigate(pluginId)           // Send SELECT_PLUGIN + wait for activePlugin match + 500ms render delay
 app.getState()                   // Returns snapshot.value (e.g. { running: 'connected' })
 app.getContext()                 // Returns { activePluginId, pluginIds }
@@ -310,7 +310,7 @@ The renderer exposes on `window`:
 |----------|-------------|
 | `PLAYWRIGHT_TEST=true` | Set automatically by the fixture; crashes on uncaught errors and runs headless (no window display) |
 | `DEBUG_E2E=1` | Pipes Electron stdout/stderr to the test terminal |
-| *(always)* | The same output is written to `tests/results/app-<workerIndex>.log`, wiped each run. `DEBUG_E2E=1` is for watching it live; the file is for reading it afterwards |
+| *(always)* | The same output is written to `.apack/tests/results/app-<workerIndex>.log`, wiped each run. `DEBUG_E2E=1` is for watching it live; the file is for reading it afterwards |
 | `PACK_DIR=/path/to/pack` | Builds the pack, installs it into the worker's isolated data dir, waits for plugins before tests run |
 | `E2E_KEEP_DATA=1` | Keep each worker's temp data dir (path is logged) |
 | `APACK_HOST_ROOT=/path/to/apack` | A built apack checkout to launch (auto-detected inside the monorepo) |
@@ -362,6 +362,7 @@ data dir, the pack loader: things no harness test can reach.
 |------|---------|
 | `ui/fallback-panel.spec.ts` | A plugin offering its panel for plugins without one (`fallbackPanel`), and saying itself when it shows: the brain's inspect mode |
 | `ui/navigation.spec.ts` | Opens every plugin and every plugin's settings without a renderer error — a component reaching for a plugin it isn't rendered in fails here |
+| `ui/entity-reference.spec.ts` | Imports a saved thread message, reloads it, and clicks its rendered reference to open the correct note and content in another feature |
 | `ui/popout.spec.ts` | A plugin popped out into its own window: main accepts the plugin's ref as its id and the popout renders its canvas as part of that plugin |
 | `ui/settings-help.spec.ts` | Settings Help: bundled pack articles, search, contextual settings navigation and unavailable targets |
 

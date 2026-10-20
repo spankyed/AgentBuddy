@@ -17,7 +17,7 @@ export interface LogsState {
 
 // ── This feature's settings ───────────────────────────────────────────────
 // Its own shape, which the app stores without knowing: the app owns the document, each feature its slice.
-export type LogsSettings = typeof import('../settings.ts').default.defaults;
+export type LogsSettings = import('#generated/settings.ts').SettingsOf<'logs'>;
 
 export type IncomingLogEvents =
   | { type: 'CLEAR_LOGS' }

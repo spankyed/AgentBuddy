@@ -39,11 +39,12 @@ export function* sourceFiles(dir: string, skip: (entryName: string) => boolean =
  * passed, so `block.content[i]` is `code[offset + i]`; `pack-sources.spec.ts` asserts that rather than trusting
  * it, because every splice `specifiers:fix` makes rests on it.
  */
-export function codeBlocks(file: string, code: string): { content: string; lineOffset: number; offset: number }[] {
+export function codeBlocks(file: string, code: string): { content: string; lineOffset: number; offset: number; src?: string; lang?: string }[] {
   if (!file.endsWith('.vue')) return [{ content: code, lineOffset: 0, offset: 0 }];
   const { descriptor } = parseSfc(code, { filename: file });
   return [descriptor.script, descriptor.scriptSetup].filter((block) => block !== null)
-    .map((block) => ({ content: block.content, lineOffset: block.loc.start.line - 1, offset: block.loc.start.offset }));
+    .map((block) => ({ content: block.content, lineOffset: block.loc.start.line - 1, offset: block.loc.start.offset,
+      ...(block.src && { src: block.src }), ...(block.lang && { lang: block.lang }) }));
 }
 
 /** One block of a pack's code as a syntax tree, with positions, so a caller can report a line */

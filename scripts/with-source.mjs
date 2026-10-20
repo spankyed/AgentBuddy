@@ -5,6 +5,7 @@
 //
 //   node scripts/with-source.mjs playwright test smoke
 import { spawn } from 'node:child_process';
+import { formatNodeOptions, parseNodeOptions } from '../packages/apack-host/src/build/node-options.js';
 import { realpathSync } from 'node:fs';
 import * as path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
@@ -27,8 +28,8 @@ export function withLocalBin(currentPath = '', root = path.dirname(fileURLToPath
 
 /** NODE_OPTIONS with the source condition appended once */
 export function withSourceCondition(nodeOptions = '') {
-  const options = nodeOptions.split(/\s+/).filter(Boolean);
-  return (options.includes(SOURCE_CONDITION) ? options : [...options, SOURCE_CONDITION]).join(' ');
+  const options = parseNodeOptions(nodeOptions);
+  return formatNodeOptions(options.includes(SOURCE_CONDITION) ? options : [...options, SOURCE_CONDITION]);
 }
 
 // Run as a script (tests import withSourceCondition)

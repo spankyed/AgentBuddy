@@ -13,6 +13,8 @@ export interface ModuleExport {
 }
 
 export interface ModuleExports {
+  /** Whether this export resolves to a usable declared TypeScript type. */
+  hasTypeExport(file: string, name: string): boolean;
   /** The export `name` of `file` (an absolute path the reader was created with); undefined when it has none */
   exportOf(file: string, name: string): ModuleExport | undefined;
   /**
@@ -24,6 +26,8 @@ export interface ModuleExports {
    * what left the reader unable to tell a broken install from a mistake, since a failed import reads as `any`.
    */
   outgoingEventTypesOf(file: string, name: string): string[];
+  /** External incoming events from a declared system contract; excludes private child events. */
+  incomingEventTypesOf(file: string, name: string): string[];
 
   /**
    * The `type` literals of the events a plugin's contract says *other* plugins may send it, read from the type
@@ -38,6 +42,8 @@ export interface ModuleExports {
    * through the generated events module this feeds.
    */
   inboxEventTypesOf(file: string, name: string): string[];
+  /** Literal entity names in a plugin contract's optional `opens` field; never evaluates its module. */
+  openedEntityTypesOf(file: string, name: string): string[];
 
 }
 
@@ -69,6 +75,9 @@ function compilerOptions(ts: typeof TS, packRoot: string): TS.CompilerOptions {
     },
   });
   if (!parsed) throw new Error(`${configPath} could not be read`);
+  const errors = parsed.errors.filter(diagnostic => diagnostic.category === ts.DiagnosticCategory.Error && diagnostic.code !== 18003);
+  if (errors.length) throw new Error(`${configPath}: ${errors.map(diagnostic =>
+    ts.flattenDiagnosticMessageText(diagnostic.messageText, ' ')).join('; ')}`);
   return parsed.options;
 }
 
@@ -79,21 +88,52 @@ function compilerOptions(ts: typeof TS, packRoot: string): TS.CompilerOptions {
  *
  * @internal Host-only: apack CLI build tooling.
  */
-export function createModuleExports(packRoot: string, files: string[]): ModuleExports {
+export function createModuleExports(packRoot: string, files: string[], sources: ReadonlyMap<string, string> = new Map()): ModuleExports {
   const ts = loadTypeScript();
-  const program = ts.createProgram({
-    rootNames: files,
-    // No ambient type packages (`types`): exports don't depend on them, and loading them is most of the program's cost
-    options: { ...compilerOptions(ts, packRoot), types: [], noEmit: true },
-  });
+  // Virtual bundled declarations take precedence over stale generated files on disk.
+  const options = { ...compilerOptions(ts, packRoot), allowJs: true, types: [], noEmit: true };
+  const host = ts.createCompilerHost(options);
+  if (sources.size) {
+    const canonical = (file: string) => ts.sys.useCaseSensitiveFileNames ? path.resolve(file) : path.resolve(file).toLowerCase();
+    const virtualSources = new Map([...sources].map(([file, source]) => [canonical(file), source]));
+    const directories = new Set<string>();
+    for (const file of virtualSources.keys()) {
+      for (let dir = path.dirname(file); ; dir = path.dirname(dir)) {
+        directories.add(dir);
+        if (path.dirname(dir) === dir) break;
+      }
+    }
+    const { getSourceFile, readFile, fileExists, directoryExists } = host;
+    host.readFile = file => virtualSources.get(canonical(file)) ?? readFile(file);
+    host.fileExists = file => virtualSources.has(canonical(file)) || fileExists(file);
+    host.directoryExists = dir => directories.has(canonical(dir)) || directoryExists?.(dir) === true;
+    host.getSourceFile = (file, version, onError, fresh) => {
+      const source = virtualSources.get(canonical(file));
+      return source === undefined ? getSourceFile(file, version, onError, fresh)
+        : ts.createSourceFile(file, source, version, true);
+    };
+  }
+  const program = ts.createProgram({ rootNames: files, options, host });
   const checker = program.getTypeChecker();
 
   /** The symbol `file` exports as `name`, before any alias is followed */
   function exportedSymbol(file: string, name: string): TS.Symbol | undefined {
     const sourceFile = program.getSourceFile(file);
     if (!sourceFile) throw new Error(`${file} is not part of the program reading pack exports`);
+    const syntax = program.getSyntacticDiagnostics(sourceFile);
+    if (syntax.length) throw new Error(`${path.basename(file)}: invalid TypeScript syntax: ${ts.flattenDiagnosticMessageText(syntax[0]!.messageText, '\n')}`);
+
     const moduleSymbol = checker.getSymbolAtLocation(sourceFile);
-    return moduleSymbol && checker.getExportsOfModule(moduleSymbol).find((symbol) => symbol.name === name);
+    if (!moduleSymbol) return undefined;
+    const exported = checker.getExportsOfModule(moduleSymbol).find((symbol) => symbol.name === name);
+    if (exported || name !== 'default') return exported;
+    // CommonJS default imports take module.exports itself; named ESM exports do not imply a default.
+    const exportEquals = sourceFile.statements.some(statement => ts.isExportAssignment(statement) && statement.isExportEquals);
+    const javascript = ['.js', '.jsx', '.cjs'].includes(path.extname(file));
+    const esm = sourceFile.statements.some(statement => ts.isImportDeclaration(statement) || ts.isExportDeclaration(statement)
+      || (ts.isExportAssignment(statement) && !statement.isExportEquals)
+      || (ts.canHaveModifiers(statement) && ts.getModifiers(statement)?.some(modifier => modifier.kind === ts.SyntaxKind.ExportKeyword)));
+    return exportEquals || (javascript && !esm) ? moduleSymbol : undefined;
   }
 
   /**
@@ -157,7 +197,7 @@ export function createModuleExports(packRoot: string, files: string[]): ModuleEx
     // `typeToString` prints the alias as written (`PluginInbox<{ pack: NotesInbox }>`), which reads as though it
     // resolved, so name what it collapsed to first and show the written form as corroboration
     const collapsed = type.flags & ts.TypeFlags.Any ? 'any' : 'unknown';
-    throw new Error(`${path.basename(file)}: ${what} resolves to \`${collapsed}\` — written as \`${checker.typeToString(type)}\` — so a type it names didn't resolve: an uninstalled dependency, or a name its module doesn't export${generatedCause(file)}. Read as it stands, it would contribute no events at all`);
+    throw new Error(`${path.basename(file)}: ${what} resolves to \`${collapsed}\` — written as \`${checker.typeToString(type)}\` — so a type it names didn't resolve: an uninstalled dependency, or a name its module doesn't export${generatedCause(file)}. Required type inspection cannot use an unresolved type`);
   }
 
   /**
@@ -179,6 +219,7 @@ export function createModuleExports(packRoot: string, files: string[]): ModuleEx
   }
 
   return {
+    hasTypeExport: (file, name) => declaredTypeOf(file, name) !== undefined,
     exportOf(file, name) {
       const exported = exportedSymbol(file, name);
       const resolved = exported && followAliases(exported);
@@ -192,6 +233,27 @@ export function createModuleExports(packRoot: string, files: string[]): ModuleEx
       return { value: callable ? 'function' : 'object', type };
     },
 
+    openedEntityTypesOf(file, name) {
+      const contract = declaredTypeOf(file, name);
+      if (!contract) throw new Error(`${path.basename(file)}: it declares no type "${name}"`);
+      const opens = propertyType(contract, 'opens');
+      if (!opens) return [];
+      checkResolved(opens, file, `${name}'s opens`);
+      const members = opens.isUnion() ? opens.types : [opens];
+      if (contract.getProperty('opens')!.flags & ts.SymbolFlags.Optional
+        || members.some(member => !member.isStringLiteral() || !member.value.trim())) {
+        throw new Error(`${path.basename(file)}: ${name}.opens must name one or more literal entity types`);
+      }
+      return [...new Set(members.flatMap(member => member.isStringLiteral() ? [member.value] : []))].sort();
+    },
+    incomingEventTypesOf(file, name) {
+      const contract = declaredTypeOf(file, name);
+      if (!contract) throw new Error(`${path.basename(file)}: it declares no type "${name}"`);
+      const incoming = propertyType(contract, 'incoming');
+      if (!incoming) return [];
+      checkResolved(incoming, file, `${name}'s incoming events`);
+      return eventTypeLiterals(incoming, file, "its system's incoming events");
+    },
     outgoingEventTypesOf(file, name) {
       const contract = declaredTypeOf(file, name);
       if (!contract) {

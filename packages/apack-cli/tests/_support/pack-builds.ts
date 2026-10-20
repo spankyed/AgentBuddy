@@ -22,8 +22,8 @@ export function run(cmd: string, args: string[], cwd: string): { code: number; o
 
 /**
  * The commands `callCli` can run, by the name the CLI's argv dispatch uses (`src/index.ts`). `build`
- * is the inner `build`, not `buildCommand`: the wrapper's only extra is `ensureCheckoutPackages`, a
- * freshness check the suite's own `pretest` already made once for the whole run.
+ * is the inner `build`, not `buildCommand`: focused compiler checks run in-process; process-boundary
+ * checks use the actual CLI or its private build runner.
  */
 const COMMANDS = {
   'init': async () => (await import('../../src/commands/init')).init,
@@ -83,6 +83,8 @@ export async function callCli(dir: string, command: keyof typeof COMMANDS, args:
     process.chdir(cwd);
     Object.assign(console, console_);
     process.exit = exit;
+    // Receive runner updates between completed compiler operations, after restoring process globals.
+    await new Promise<void>(resolve => { setImmediate(resolve); });
   }
 }
 
@@ -114,6 +116,7 @@ export async function typecheckPack(dir: string, tsconfigName = 'tsconfig.json')
       : '';
     return `${where}: error TS${d.code}: ${ts.flattenDiagnosticMessageText(d.messageText, ' ')}`;
   }).join('\n');
+  await new Promise<void>(resolve => { setImmediate(resolve); });
   return { code: diagnostics.length > 0 ? 1 : 0, output };
 }
 

@@ -1,5 +1,7 @@
 import { spawn, spawnSync, type ChildProcess } from 'node:child_process';
 import * as path from 'node:path';
+import * as fs from 'node:fs';
+import * as os from 'node:os';
 import { describe, expect, it } from 'vitest';
 import { _whenSatisfied } from '@apackdev/sdk/testing/waiting';
 import { REPO_ROOT } from '@apackdev/host/build/packages-built';
@@ -31,6 +33,17 @@ describe('with-source', () => {
     const bare = path.dirname(process.execPath);
 
     expect(run(['tsx', '--version'], undefined, { PATH: bare }).stdout).toMatch(/tsx/);
+  });
+
+  it('preserves repeated spaces in preload paths through nested wrappers', () => {
+    const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'apack-node-options-'));
+    try {
+      const preload = path.join(directory, 'pre load  file.cjs');
+      fs.writeFileSync(preload, 'globalThis.preloadProbe = "PRELOADED";');
+      const result = run(['node', WITH_SOURCE, 'node', '-p', 'globalThis.preloadProbe'], '--require=' + JSON.stringify(preload));
+      expect(result.status, result.stderr).toBe(0);
+      expect(result.stdout.trim()).toBe('PRELOADED');
+    } finally { fs.rmSync(directory, { recursive: true, force: true }); }
   });
 
   it('adds the condition once when nested', () => {

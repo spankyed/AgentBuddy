@@ -137,7 +137,9 @@ import { ref, computed } from 'vue';
 import { ChevronRight } from 'lucide-vue-next';
 import type { TrackTree, TNodeEntity } from '@apackdev/sdk/steps';
 import DataRenderer from './DataRenderer.vue';
-import { getNodeConfig, nodeConfigs, getInspectionItemClasses, getPaletteIconClasses, getPaletteIconComponentClasses, getPaletteGlowClasses, getNodeStatusClasses } from './node-styles.ts';
+import { useNodeStyles } from './node-styles.ts'
+
+const { getNodeConfig, getInspectionItemClasses, getPaletteIconClasses, getPaletteIconComponentClasses, getPaletteGlowClasses, getNodeStatusClasses } = useNodeStyles()
 
 interface Props {
   node: TNodeEntity | TrackTree;
@@ -190,7 +192,7 @@ const effectiveNodeType = computed((): string => {
 
 const nodeIcon = computed(() => {
   const config = getNodeConfig(effectiveNodeType.value);
-  return config?.icon || nodeConfigs.action?.icon;
+  return config?.icon || getNodeConfig('action')?.icon;
 });
 
 const itemClasses = computed(() => getInspectionItemClasses(effectiveNodeType.value));

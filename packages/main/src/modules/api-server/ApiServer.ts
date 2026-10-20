@@ -23,6 +23,8 @@ import { errorMessage } from '@apackdev/sdk/utils/pure';
 export class ApiServer implements AppModule {
   private processManager: ProcessManager;
   private isShuttingDown = false;
+  private shutdownComplete = false;
+  private shutdown?: Promise<void>;
   private restartAttempts = 0;
   private serverReady: Promise<void>;
   private serverReadyResolve?: () => void;
@@ -102,26 +104,29 @@ export class ApiServer implements AppModule {
     // Relaunch the entire Electron app
     ipcMain.handle('app:relaunch', () => {
       app.relaunch();
-      app.exit(0);
+      app.quit();
     });
 
     app.whenReady().then(() => this.startApiServer());
     
-    app.on('before-quit', () => {
+    app.on('before-quit', event => {
+      if (this.shutdownComplete) return;
+      event.preventDefault();
       this.isShuttingDown = true;
-      this.stopApiServer();
+      this.shutdown ??= this.processManager.stop('SIGTERM', API_CONFIG.SHUTDOWN_TIMEOUT)
+        .then(() => {
+          this.shutdownComplete = true;
+          app.quit();
+        }).catch(error => {
+          this.shutdown = undefined;
+          logError('[MAIN] API shutdown failed:', error);
+        });
     });
 
-    app.on('window-all-closed', () => {
-      if (process.platform !== 'darwin') {
-        this.isShuttingDown = true;
-        this.stopApiServer();
-      }
-    });
   }
 
   private async startApiServer(): Promise<void> {
-    if (this.processManager.isRunning()) return;
+    if (this.isShuttingDown || this.processManager.isRunning()) return;
 
     this.lastError = undefined; // Clear stale error so getStatus() doesn't report old crashes during restart
     this.serverReady = this.createReadyPromise(); // Reset promise so waitForReady() works across restarts
@@ -205,6 +210,7 @@ export class ApiServer implements AppModule {
     // the port is genuinely taken, get-port still moves on.
     clearLockedPorts();
     const port = await getPort({ port: this.preferredPort });
+    if (this.isShuttingDown) return;
     logInfo(`[MAIN] Selected port ${port} for API server`);
 
     // Spawn process
@@ -300,10 +306,6 @@ export class ApiServer implements AppModule {
         this.restartAttempts = 0;
       }
     }, API_CONFIG.SUCCESS_CHECK_DELAY);
-  }
-
-  private stopApiServer(): void {
-    this.processManager.kill('SIGTERM', API_CONFIG.SHUTDOWN_TIMEOUT);
   }
 
   /**

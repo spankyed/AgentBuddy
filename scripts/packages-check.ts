@@ -35,7 +35,7 @@ import { exitOnEpipe } from './lib/exit-on-epipe.ts';
 exitOnEpipe();
 
 /**
- * **A gate must not report success about an artifact it did not verify**, which is the whole of why this is
+ * **A gate must not report success about a package it did not verify**, which is the whole of why this is
  * here: publint and attw over a tree the sources have moved past say the published packages are fine about
  * output nobody would publish. Door 8 of the freshness doors (`packages/apack-testing/CLAUDE.md`, the only
  * record that a door exists — add a row before adding a caller).

@@ -1,24 +1,5 @@
 import { defineConfig } from 'tsup';
-import path from 'path';
-import fs from 'fs';
-import { fileURLToPath } from 'url';
 import { appBuildOutput } from '../../build/build-metadata.ts';
-
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const apiSrc = path.resolve(__dirname, 'src');
-
-function tryResolve(base: string, subpath: string): string | null {
-  const candidates = [
-    path.join(base, subpath + '.ts'),
-    path.join(base, subpath, 'index.ts'),
-    path.join(base, subpath + '.js'),
-    path.join(base, subpath, 'index.js'),
-  ];
-  for (const c of candidates) {
-    if (fs.existsSync(c)) return c;
-  }
-  return null;
-}
 
 export default defineConfig((options) => {
   const isDev = options.env?.NODE_ENV === 'development';
@@ -29,7 +10,7 @@ export default defineConfig((options) => {
     // chunks by content, so a bundle that stops importing one leaves it behind — and `electron-builder.mjs`
     // ships `packages/**/*`, so what is left behind is shipped. 47 `pack-entry-*.js` chunks were, from when
     // the api still bundled a pack's backend. The dev build must not clean: it emits no declarations, and
-    // `dist/types.d.ts` is what the renderer's typecheck resolves `@app/api` to.
+    // consumers without the workspace source condition need its compiled type entry.
     clean: !isDev,
     // **What to watch is on the command line, not here, and that is not a preference.** tsup watches a
     // *directory* rather than the module graph, so `@apackdev/host` and `@apackdev/sdk` — both inlined into
@@ -58,23 +39,6 @@ export default defineConfig((options) => {
       name: 'externalize-vue',
       setup(build) {
         build.onResolve({ filter: /\.vue$/ }, () => ({ path: '__vue_stub__', external: true }));
-      },
-    },
-    {
-      /**
-       * The API's own `@/`, and only the API's (`packages/api/tsconfig.json` maps it to `src/*`).
-       *
-       * It used to try the importer's built-in pack first, because a pack named its own modules that way too
-       * — a per-importer rule that this config, the renderer's, the pack's vitest config and `apack pack build`
-       * each implemented separately. Packs use `#` subpath imports now, and esbuild resolves those from the
-       * pack's own `package.json` with no help from here, since each names the file that is there.
-       */
-      name: 'resolve-at-aliases',
-      setup(build) {
-        build.onResolve({ filter: /^@\// }, (args) => {
-          const resolved = tryResolve(apiSrc, args.path.slice(2));
-          return resolved ? { path: resolved } : undefined;
-        });
       },
     },
     ],

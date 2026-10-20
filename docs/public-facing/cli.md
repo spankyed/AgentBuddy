@@ -6,9 +6,12 @@ Pack operations cover scaffolding, code generation, building, validation, testin
 
 ## Installing
 
+The npm CLI requires Node 22.15+ on the 22.x line, or Node 23.5+. The app-bundled CLI uses the app's included runtime.
+
 - From the app (macOS): **apack → Install 'apack' command in PATH**. It links `/usr/local/bin/apack` (`apack-beta` for apack Beta) to the CLI bundled with the app, which runs on the app's own Node runtime.
-- `npm i -g @apackdev/cli`
-- Homebrew: `build/homebrew/apack.rb`
+
+npm and Homebrew installation are not yet available. For app development, follow the
+[source checkout instructions](../../README.md#develop-apack).
 
 Packs pin `@apackdev/cli` in `devDependencies`. Any `apack` run inside a pack hands off to that pinned version.
 
@@ -46,7 +49,7 @@ For app contributors working in the apack source monorepo, see the
 
 `apack pack outdated [--profile <name>] [--json]` checks GitHub-installed packs for newer releases compatible with the profile’s recorded app version. Beta profiles include prereleases. Local/URL installs and app-shipped packs are reported as unmanaged. A failed check exits nonzero; finding an update alone does not. CLI GitHub installs record their source for subsequent checks; uninstall removes that record.
 
-`apack pack upgrade <id> [--profile <name>]` upgrades a GitHub-installed pack to its newest compatible release. Close the app first. The recorded app version and pack format are required. Checksums, pack identity/version, host compatibility, build format, enabled dependencies, and installed packs that depend on it are checked before replacement. Local/URL installs and app-shipped packs are not upgraded.
+`apack pack upgrade <id> [--profile <name>]` upgrades a GitHub-installed pack to its newest compatible release. Close the app first. The recorded app version and pack format are required. Checksums, pack identity/version, host compatibility, build format, enabled dependencies, and installed packs that depend on it are checked before replacement. Local/URL installs and app-managed packs are not upgraded by this command. A user-managed fork at an app-default ID can use its recorded GitHub source.
 
 `apack doctor --json` emits one object with `channel`, `healthy`, and individual `checks`. Failed checks remain in the JSON report and the command exits nonzero.
 
@@ -82,26 +85,25 @@ Add an entity to an existing pack. Run from inside a pack directory. Names other
 
 | Entity | Command | What it creates |
 |---|---|---|
-| Feature | `apack pack add feature <name> [--label <Label>] [--icon <Icon>] [--designation <role>]` | See below |
-| Step | `apack pack add step <type> [--trigger]` | `src/extensions/steps/<type>/{build.ts,fe.ts,types.ts,form.vue}` (`types.ts` declares `DSL<Type>Node` and `<Type>Node`); with `--trigger`, `trigger.ts` in place of `build.ts`, holding a `TriggerFacet` rather than a `StepBuildFacet`. Declares one `extensions.steps.<type>` entry naming each facet: its `node` (the label and field defaults both the backend and the canvas read), its `build` or `trigger`, and its `fe` |
+| Feature | `apack pack add feature <name> --description <purpose> [--label <Label>] [--icon <Icon>] [--designation <role>]` | See below |
+| Step | `apack pack add step <type> [--trigger]` | `src/extensions/steps/<type>/{build.ts,types.ts,form.vue}` (`types.ts` declares `DSL<Type>Node` and `<Type>Node`); with `--trigger`, `trigger.ts` in place of `build.ts`, holding a `TriggerFacet` rather than a `StepBuildFacet`. Declares one `extensions.steps.<type>` entry with inline `node` labels/defaults, an explicit `types` module, a `build` or `trigger` binding, and inline `fe` presentation with a lazy form target |
 | Artifact | `apack pack add artifact <type> [--icon <Icon>]` | `src/extensions/artifacts/viewers/<type>-artifact.vue`; when the manifest declares `artifacts`, adds `{ type, fe: { icon } }` to that register file and the viewer to its `-fe.ts` `componentMap` |
 | Block | `apack pack add block <type> [--input]` | `src/extensions/blocks/display/<Type>Block.vue` (or `input/<Type>Input.vue`); updates the `blocks` register file and its `-fe.ts` when the manifest declares `blocks` |
 | Action | `apack pack add action <name> [--category <cat>]` | `src/content/actions/<category>/<name>.ts` (category defaults to the pack id) |
 | Prompt | `apack pack add prompt <name>` | `src/content/prompts/<name>.ts` |
 | Flow | `apack pack add flow <name>` | `src/content/flows/<name>.ts`. Needs a dependency that provides flow steps (e.g. `default-setup`) |
 | Service | `apack pack add service <name> [--feature <feature>]` | `src/extensions/services/<name>.ts` in `extensions.services`, or `src/features/<feature>/be/services/<name>.ts` in that feature's `services`. The key is the camelCased name, the value `path#<camelName>Service` |
-| Migration | `apack pack add migration [version] [--version <ver>]` | `src/migrations/<version>.ts` exporting a `DeclaredMigration`, declared under `migrations.pack` (or `migrations.app` with `--app`). Version defaults to the manifest's |
+| Migration | `apack pack add migration [version] [--version <ver>]` | `src/migrations/<version>.ts` exporting `up()`, with a declarative description and function reference under `migrations.pack` (or `migrations.app` with `--app`). Version defaults to the manifest's |
 
 `add feature`, `add service`, `add step`, `add artifact` and `add block` each declare what they add in `apack.json` and then run `generate-entries`, because the manifest entry is the whole declaration and codegen is what carries it into the pack's entries — there is no barrel to edit. `add migration` declares its own entry too. `add action`, `add prompt` and `add flow` only write files, their content being found by the directory `content.sources` already names. In a pack whose dependencies aren't installed yet, `generate-entries` can't read a system's events through `@apackdev/sdk`: the files and `apack.json` are still written, and `npm install` regenerates the entries (the pack's `prepare` script).
 
-**`add feature`.** The name is the feature id: a lowercase letter, then letters and digits (`notes`, `calendarEvents`), because it becomes an identifier in generated code. `--designation`, if given, must equal the name. It creates:
+**`add feature`.** The name is the feature id: a lowercase letter, then letters and digits (`notes`, `calendarEvents`), because it becomes an identifier in generated code. `--designation`, if given, names the role it plays and may differ from the feature id. It creates:
 
-- `src/features/<name>/settings.ts`
 - `src/features/<name>/be/system.ts`, `be/contract.ts` (the system's contract, which `apack.json` names), `be/types.ts`, `be/repository/index.ts`
-- `src/features/<name>/fe/plugin.ts`, `fe/state.ts`, `fe/canvas/list.vue`, `fe/settings.vue`
+- `src/features/<name>/fe/state.ts`, `fe/contract.ts`, `fe/canvas/list.vue`, `fe/settings.vue`
 - `tests/features/<name>/be/system.spec.ts` (and `tests/setup.ts` with its devDependencies if the pack has none)
 
-and adds a `features[]` entry with `settings`, `system.entry`, `plugin` (`entry`, `label`, `icon`), empty `services`, and `repositories` `<name>Queries` and `<name>Commands` pointing at `be/repository/index.ts`.
+and adds a keyed `features.<name>` entry with its required `description`, explicit `types` pointing at `be/types.ts`, `settings` (including the custom `form` it writes), `system.entry`, `plugin` (`state`, `canvas`, `label`, `icon`), empty `services`, and `repositories` `<name>Queries` and `<name>Commands` pointing at `be/repository/index.ts`.
 
 ### Code generation
 
@@ -111,54 +113,90 @@ Read `apack.json` and generate all files in `src/__generated__/`. Uses input has
 
 #### `apack pack fetch-deps`
 
-Resolve every dependency and cache its snapshot, build code and backend runtime in `.apack/deps/<id>/`. Resolution order:
+Resolve every dependency into `.apack/deps/<id>/`: a resolution record retains the declared spec, exact version, origin and content revision; immutable builds retain the complete verified pack layout. Resolution order:
 
 1. Explicit `file:` dependencies: read directly, with no fallback
-2. A selected host's own dependency artifacts, when `APACK_HOST` or the CLI's resolved host handoff is present
+2. A selected host's own dependency builds, when `APACK_HOST` or the CLI's resolved host handoff is present
 3. The workspace: nearest ancestor first, `packages/<id>` then `<id>`
 4. The linked checkout when no host was explicitly selected
-5. Installed app packs, then cached artifacts or GitHub releases as applicable
+5. Installed app packs, then cached builds or GitHub releases as applicable
 
-Every source must satisfy the declared range and snapshot format. A selected host's unbuilt or
+Every source must satisfy the declared range and pack identity. Current type data can be inspected independently of its executable-format stamp. Executable files require a matching stamp and a verified complete build; type-only data exposes no executable paths. A selected host's unbuilt or
 incompatible dependency fails rather than being replaced by another workspace or app. Explicit
-`file:` dependencies remain authoritative. `apack pack build` uses the same resolution rules;
+`file:` dependencies remain authoritative and are copied into a verified cache build for builds and tests. A cache hit preserves its original provenance; changed GitHub origins cannot reuse another repository’s cached resolution. Publication keeps previously resolved build paths intact. `apack pack build` uses the same resolution rules;
 see [Manifest Reference — Dependencies](manifest.md#dependencies).
 
 ### Building
 
 #### `apack pack build [--skip-generate] [--skip-fe] [--release]`
 
-External packs build into `dist/` in the pack layout:
+A build writes a verified pack layout into a staging directory, then replaces `dist/` only after
+all phases succeed. A failed build preserves the previous complete `dist/`. See
+[pack builds](pack-builds.md) for the build, archive, installed and native layouts.
 
-```
-dist/
-  runtime/index.cjs          backend: systems, services, steps, boot hooks, migrations
-  runtime/fe.js, fe.css      frontend
-  runtime/content/             compiled content
-  build/steps.build.mjs      step build facets, for dependents' flow validation (with steps.build)
-  build/content-runtime.mjs     entity types, repositories and content writers, for dependents' unit tests
-  build/content-compilers.mjs   content format compiler modules (with content.formats[].compiler)
-  types/pack-types.d.ts      facade types for dependents
-  types/snapshot.json        types, facade types, flow helpers, manifest, SDK version
-  defs/monaco/<name>-defs.d.ts  editor definitions per dsl entry with a monaco target
-```
+The build:
 
-Steps:
+1. Validates `apack.json`, prepares staging, and resolves dependencies.
+2. Generates `src/__generated__/` from declarations and dependency snapshots (`--skip-generate` requires unchanged generation inputs and exact recorded output bytes; stale or missing files refuse before bundling). Declared settings schemas/defaults are inline; custom forms are separate declared modules.
+3. Enforces pack rules, including the manifest's `checks.allow`, and refuses unresolved dependencies. Warns if generated dependency types differ from the resolved versions.
+4. Compiles `content.sources` into `runtime/content/`, validating flows against dependency step build code, and bundles declared content compilers for dependents.
+5. Bundles and checks the standalone `types/pack-types.d.ts` facade. Its imports must resolve through `@apackdev/*`, SDK peers or Node built-ins; a committed facade report mismatch produces a warning (`apack pack facade-report`).
+6. Bundles flow helpers, step build facets and the content runtime used by dependents. Checks that the content runtime can load in a fresh Node process with the supported SDK dependencies.
+7. Builds declared Monaco DSL definitions, the backend runtime, and the frontend unless `--skip-fe`. The frontend entry is `src/pack-entry-fe.ts` (or `.js`) when present, otherwise the generated entry. `--skip-fe` is valid only for packs with no declared frontend bindings: plugins, designations, reference providers, custom settings forms, steps, artifacts, blocks, editor plugins or app extensions require the frontend entry. An incomplete build refuses publication and retains the existing `dist/`.
+8. Validates the snapshot and generated declaration identities, refuses inputs changed during the build, writes the manifest and integrity receipt, verifies the completed layout, and publishes staging as `dist/`.
 
-1. Validates `apack.json` and fails on an invalid manifest
-2. Clears `dist/`
-3. Runs `generate` + `generate-entries` (skip with `--skip-generate`)
-4. Checks each feature's `settings` file exists and declares only valid `schema`, `defaults` and `visible`
-5. Resolves every dependency (fails if one can't be), and warns when `src/__generated__` holds a dependency's types from a different version than the one the build resolved
-6. Compiles `content.sources` into `runtime/content/`, validating flows against the dependencies' step build code
-7. Bundles the facade types and **gates** them: `types/pack-types.d.ts` must type-check on its own and import only `@apackdev/*` packages, `@apackdev/sdk`'s peer dependencies and Node built-ins, with declarations; otherwise dependents would read the types as `any`. Warns, without failing, when a committed `etc/pack-types.api.md` no longer matches what it bundled (`apack pack facade-report`)
-8. Writes `types/snapshot.json`, and notes entity types with no `entityShapes` entry
-9. Bundles `steps.build`, the content runtime and any content compilers into `build/`. The content runtime is then loaded in a fresh Node process with only `@apackdev/sdk`, as a dependent's tests load it; it fails if repositories or content writers need native modules or `@apackdev/sdk`'s optional peers
-10. Bundles the backend runtime into `runtime/index.cjs`
-11. Bundles each `extensions.dsl` entry with a `monaco` target into `defs/monaco/<name>-defs.d.ts`, wrapped as `declare module "@app/defs/<name>"`, inlining the pack's own modules, `@apackdev/*` and the entry's `inline` packages
-12. Bundles the FE entry into `runtime/fe.js` (and `fe.css`) with Vite, unless `--skip-fe`. The entry is `src/pack-entry-fe.ts` (or `.js`) if present, else `src/__generated__/pack-entry-fe.ts`
+The snapshot includes declaration data, entity/relation types, facade declarations, compiled help,
+flow helpers and contribution provenance. Explicit `null` entity shapes remain untyped. Build-time
+compilers, helpers and content runtime may execute during building; inspecting the completed snapshot
+does not execute them. Discovery and executable bindings are separate contracts.
 
-Bundle and gate failures are all reported, and the command exits with code 1. `--release` minifies and drops source maps.
+Compiled content has a separate verified `runtime/content/content.json` index. The common build reader
+checks its owner, exact compiled source/dataset membership, written policy and required data files;
+`apack pack info` uses that captured inventory. An omitted index or data file fails validation even
+when an incomplete producer sealed the remaining files successfully.
+
+Bundle and gate failures are reported and exit with code 1. `--release` minifies and drops source maps.
+Files under `public/` are copied into the frontend output from the build's captured authored inputs.
+
+Compiler workers inherit Node options from `NODE_OPTIONS`, including ordered `--require` and `--import`
+preloads. Node arguments passed directly to the CLI configure its supervisor; custom export conditions
+are also forwarded to the worker. Use `NODE_OPTIONS` when configuring compiler execution.
+The separate published-content runtime check omits those options so compiler initialization cannot
+hide missing runtime dependencies or provide globals that dependent packs will not have.
+On macOS, native addon admission checks library dependencies and matching `DYLD_LIBRARY_PATH`
+candidates. A library selected outside the captured package or normal OS libraries is refused before
+addon initialization; an unused search directory is allowed.
+`DYLD_INSERT_LIBRARIES` executes before that module-loading boundary and accepts normal OS libraries.
+Load package libraries through captured compiler modules rather than inserting live package paths.
+`DYLD_VERSIONED_LIBRARY_PATH` and `DYLD_VERSIONED_FRAMEWORK_PATH` accept only absolute operating-system
+directories under `/usr/lib` or `/System/Library`, including their physical targets. Other configured
+directories are refused before worker launch, even if their entries might be unused. Unset these
+variables and use captured package-relative dependencies for package libraries.
+`DYLD_SHARED_CACHE_DIR` selects a single directory and follows the same OS-directory policy. The normal
+OS shared cache remains supported; custom caches outside OS library locations are refused before launch.
+
+On Linux, ELF admission checks declared dependencies before addon initialization. Package libraries
+must resolve through captured `$ORIGIN` paths; absolute paths back to a source package are refused.
+Search uses launch-time loader tokens, RPATH/RUNPATH, `LD_LIBRARY_PATH`, the OS library cache and
+default directories. `LD_PRELOAD`, `LD_AUDIT` and system-wide preload entries accept normal OS library
+paths only. The installed ELF interpreter supplies its own search metadata; no `readelf` or `ldd`
+installation is required. Failure to obtain that metadata is explicit.
+The runtime's own linked libraries are checked before launch using the child executable, environment
+and working directory. An unused `LD_LIBRARY_PATH` directory is allowed; a selected outside runtime
+library is refused before its initialization code can run.
+
+`apack pack build --watch` watches authored inputs throughout the pack, including `apack.json`,
+modules outside `src/`, JSON schemas, assets and help. The authored watcher excludes generated,
+build, dependency and Git trees. Compiler configuration, resolved TypeScript files and unresolved
+lookup candidates are watched separately, including outside the pack; repairing a missing target
+can rebuild without another authored edit. Linked authored data is watched through atomic replacement and retargeting; executable
+module references still must remain physically inside the pack. It publishes through the same staged
+build in a fresh CLI process before requesting development-host reload, so changed flow, step and
+compiler modules cannot reuse the previous build's module cache;
+invalid edits retain the previous verified build. Saves during a build schedule another run.
+`--watch` cannot be combined with other build flags. This builds the complete build and can take
+longer than rebundling only the runtime. `apack pack dev` uses this watcher and installs each successful
+publication before reloading; Vite continues serving frontend changes.
 
 A build also writes `.apack/reads.json`: the files each bundling phase read, as esbuild, Rollup and Vite report them, keyed by phase and relative to the pack. It is the build's own record of its inputs — what a build system calls a dep file — for a cache or a CI check that wants to know whether what it declared covers what the build touched; the build never reads it back, and a phase that didn't run is absent rather than empty. `APACK_NO_BUILD_READS=1` turns it off, for a read-only tree.
 
@@ -168,7 +206,7 @@ A build resolves the pack's `@apackdev` packages to the `dist` each published pa
 
 #### `apack pack archive [--out <dir>]`
 
-Stage the built `dist/` into a verified pack (`integrity.json` lists a sha256 per file) and write `<id>-<version>.tgz` and `<id>-<version>.tgz.sha256` to `--out` (default: the pack root). Run `apack pack build` first (`--release` for publishable output). Refuses built-in packs and invalid manifests.
+Verify the build-owned `dist/integrity.json` and stage its recorded files into a verified pack (`integrity.json` lists a sha256 per file) and write `<id>-<version>.tgz` and `<id>-<version>.tgz.sha256` to `--out` (default: `.apack/archives`). Run `apack pack build` first (`--release` for publishable output). Verifies sealed output and recorded source/dependency inputs under the build lock, using the selected build’s compiler/options context. Rechecks inputs before publishing the archive; changed inputs refuse without replacing the previous archive. Keep custom output under `.apack/` or outside the pack to avoid introducing generated files into authored inputs.
 
 #### `apack pack dev`
 
@@ -194,13 +232,18 @@ A profile is self-contained — its data, packs, logs and secrets are all inside
 
 A profile is a data dir and nothing else: the environment, the app's identity and the URL scheme are untouched, so `--host beta` and a local checkout can both run the same profile. **The word is `profile` rather than `instance` because an instance of an app is a running process** — which is what Electron's single-instance lock is about — where this is storage, and a named, disposable data dir that leaves the app's identity alone is what a browser calls a profile.
 
-An app already running on that data dir is used as it is; otherwise `dev` starts one, and closing `dev` closes the app it started. It then builds, installs the pack into that app's data dir, and:
+`dev` first builds the pack, then starts or reuses the app on that data dir and installs the verified
+build. Closing `dev` closes the app it started. It then:
 
 - serves the FE entry from a Vite dev server (port 5199, or the next free one) with HMR, recording its port in `pack-dev-servers/<id>.json` in the app's data dir so the app's `pack://` requests go to it. The marker sits outside the installed pack, which stays exactly the verified files, and is removed when `apack pack dev` exits
 - on `apack.json` changes, regenerates `src/__generated__/`
-- on `.ts` changes under `src/`, rebuilds, reinstalls and asks the running app to reload the pack's backend
+- on authored input changes, rebuilds and has the app install the verified pack. A checkout's app installs and starts each build itself. A packaged app (`--host beta`) cannot be asked to, so `dev` copies the build in while the app is stopped: a rebuild that changes the backend restarts the app `dev` started, and one that changes only the frontend leaves it to Vite
 
-Without an FE entry it rebuilds, reinstalls and reloads on any change instead.
+Backend builds and Vite use the same captured compiler generation. A compiler refresh starts a ready
+replacement server, updates its marker and retires the old server; a failed replacement startup keeps
+the incumbent. Each server owns its writable cache. Packs without an FE entry use the same build watcher.
+Development configuration changes replace the server with the next successful build; ordinary source
+edits continue through HMR.
 
 #### `apack pack drive [script | --eval <body>] [--host <path>] [profile flags]`
 
@@ -259,11 +302,11 @@ operation failed — a `4xx` means nothing ran at all.
 | `/press` | POST | `{ key, selector? }` | a key, to an element or to the page |
 | `/snapshot` | GET | — | the page as an accessibility tree |
 | `/logs` | POST | `{ since?, source? }` | the app's own log, after a line you saw and from one source |
-| `/settings` | GET | — | the settings as stored: what the user changed from the defaults |
+| `/settings` | GET | — | host settings snapshot: effective values, status and catalog metadata |
 | `/viewport` | GET | — | the size the app is rendering into |
 | `/set-viewport` | POST | `{ width, height }` | changes it |
-| `/set-setting` | POST | `{ feature } or { section }`, `{ path, value }` | writes one setting |
-| `/screenshot` | POST | `{ name }` | writes `drive/screenshots/<name>.png` |
+| `/set-setting` | POST | `{ target, path, value }` | writes one setting |
+| `/screenshot` | POST | `{ name }` | writes `.apack/drive/screenshots/<name>.png` |
 | `/reload` | POST | — | reloads the window and returns once it is connected again |
 | `/events` | POST | — | the app's events since you last asked, and how many were dropped |
 | `/drops` | POST | — | sends the bus dropped, and clears them |
@@ -275,17 +318,19 @@ diffable, cheap, and it says what a thing *is* rather than where it is. `/screen
 looking at the result afterwards.
 
 **`/settings` answers with the *stored* document**, not the effective one: it is what a write lands in, so
-it is what says whether your write landed. The defaults it is merged over are the registry's.
+it is what says whether your write landed. The defaults come from the host for app preferences and pack declarations for contributed values.
 
 **A refused write answers `ok: false`, with the reasons.** The settings store checks the whole next
-document and refuses what it will not take — an unknown feature ref, a section nobody registered, a change
+document and refuses what it will not take — an unknown feature ref, an undeclared pack group, a change
 while a backup is being imported — and `/set-setting` waits for that answer rather than for the send to be
 accepted. It used to resolve on the send, so every refusal read as success.
 
-**`/set-setting` writes either half of that document.** A feature's settings live under its ref
-(`{"feature":"default-setup/code"}`) and a pack's section lives at the top of it
-(`{"section":"general"}`) — one of the two, never both, as `/wait` takes one of its two. Writing only
-features left `general` and `assistant` readable and unwritable.
+**`/set-setting` uses an explicit settings owner.** Set `target` to `{"kind":"app"}`,
+`{"kind":"feature","featureRef":"default-setup/code"}`, or
+`{"kind":"pack","packId":"default-setup","groupId":"assistant"}`. `path` is a dotted string
+relative to that owner, such as `personal.name` for app settings or `name` for the assistant group.
+The writer validates the value and reports refusals. `/settings` reads the host's current snapshot,
+including composed defaults and stored choices, rather than reading the sparse database row directly.
 
 **`/set-viewport` resizes whichever thing the run actually has.** A session whose window is shown — a
 person watching `apack pack drive` — has its *window* resized, because a viewport Playwright sets is an
@@ -326,7 +371,7 @@ the app holds the write lock.
 operation was not, which is the common case while driving. A malformed request, a missing token or an
 unknown verb answers `4xx`, because nothing ran.
 
-The app's own output is in `drive/results/app-0.log` for the whole session, so there is nothing to stream.
+The app's own output is in `.apack/drive/results/app-0.log` for the whole session, so there is nothing to stream.
 
 ##### One question
 
@@ -407,11 +452,20 @@ when another caller wins the spawn race. `--with-secrets` refuses an existing pr
 
 ### Validation
 
-#### `apack pack validate`
+#### `apack pack validate [--json]`
+
+Read-only authoring checks. Exit codes are `0` for valid, `1` for invalid and `2` for incomplete
+validation (for example, unresolved dependencies prevent codegen checks). An incomplete report names
+the skipped checks and never claims the pack is valid. Build and installation remain strict gates.
+`--json` prints one report with `status`, `diagnostics` and `skippedChecks`; diagnostics carry a stable
+code, severity, manifest path, message and owner/source/suggestion when available. Text output renders
+the same report.
 
 Checks:
 - Manifest structure validation
-- Each `features[]` entry against the pack: its `settings`, `system.entry` and `plugin.entry` files exist, and no two features claim the same `designation`
+- Declared module files: feature types/contracts, systems, plugins, references and forms; entity shapes; services, repositories, steps, blocks, artifacts, DSL modules, frontend extensions, lifecycle hooks, migrations and content writers/compilers/appliers. Paths stay within the pack, including symlinks. File checks run even when dependencies are unresolved.
+- Feature designation ownership: no two features claim the same role
+- Static export and contract checks through in-memory codegen when source files and dependencies are available; modules are not activated
 - Dependency resolution (a warning when one can't be resolved)
 - **What your pack's code may say** — the same rules `apack pack build` refuses on, reported here without building:
 
@@ -432,11 +486,10 @@ Checks:
 | `repository-casts` | `repository as unknown as …`, reading a repository through a type its owner never declared. `repository` from `#generated/repository` is already typed with your own repositories and your dependencies' | yes |
 | `reserved-event-keys` | a property named `_call`, in `src` or `tests`. That key is the app's: a delivery door writes the call a message answers under it, so a field of yours by that name is overwritten on the way in and read as a correlation on the way out. Ask `answersCall(event, outstanding)` or `settleCall(pending, event)` from `@apackdev/sdk/events` instead of reading it, build an answer in a test with `answerTo` from `@apackdev/sdk/testing`, and rename a field of your own that collides | no |
 
-A rule marked switchable has no effect at run time, so a pack may switch it off in **`apack.checks.json`**
-at its root:
+A rule marked switchable is a development convention a pack may allow in **`apack.json`**:
 
 ```json
-{ "allow": ["backend-console", "untyped-sends"] }
+{ "checks": { "allow": ["backend-console", "untyped-sends"] } }
 ```
 
 The others report something that breaks — a specifier nothing resolves, an import the bundler refuses, a name
@@ -444,17 +497,16 @@ the next app version may rename — so there is nothing to allow, and naming one
 
 Exits with code 1 on errors.
 
-#### `apack pack doctor`
+#### `apack pack doctor [--json]`
 
-Health checks with pass/warn/fail output. Failures exit with code 1; warnings alone succeed.
+Read-only source health using the same manifest, target, static export, contract and source-rule checks
+as `apack pack validate`. Modules are inspected without activation; generated output is not written.
+Dependency details retain the declared spec, exact version, origin, delivery path and content revision. Data availability and executable availability are distinct. Missing generated files produce a reminder to run `apack pack generate-entries`. `--json` emits one validation report with the same dependency inspection frame used for static checks.
 
-- `apack.json` exists and parses
-- `id` and `hostVersion` are set
-- `src/__generated__/` exists (warn)
-- Each feature's `system.entry` and `plugin.entry` exist
-- Each facet path an `extensions.steps` entry names exists (its `node`, `build` or `trigger`, `runtime.handler` and `fe`)
+Exits 0 when validation is complete and valid, 1 for errors, and 2 when dependency resolution prevents
+complete checking. Unchecked work is listed explicitly; incomplete checks are never reported as valid.
 
-#### `apack pack facade-report [--update]`
+#### `apack pack facade-report`
 
 Reports your pack's **facade types** — what packs depending on yours compile against, the same bundle
 `apack pack build` writes to `dist/types/pack-types.d.ts` — as a reviewed file at `etc/pack-types.api.md`.
@@ -465,6 +517,13 @@ Without `--update` it fails, printing a diff, when the committed report differs;
 the report. Commit the result: the point is that a change to what dependents can see is visible in review
 rather than buried in a generated bundle.
 
+After a build, use `--from-build` to compare its verified facade without regeneration or compilation.
+It checks sealed output integrity and replays the build's recorded source/dependency inputs; missing,
+stale or modified builds fail. This is the root repository's `npm run facade:check` path. The pack-local
+script still derives from sources by default. `--skip-generate` instead derives from previously generated
+entries and checks their generation stamp. The read-only `--from-build` option cannot be combined
+with `--update` or `--skip-generate`.
+
 `apack pack build` warns when your committed report has fallen behind the bundle it just produced. The command
 above is what fails, which is why a pack's own CI runs it.
 
@@ -473,15 +532,17 @@ name order, literal unions sorted, and the pack's own path shortened to `.`. Tha
 for a reason worth knowing: TypeScript prints an inferred union's members in the order it created the member
 types, and that order varies between builds, so an unnormalised report would differ from itself.
 
-#### `apack pack info`
+#### `apack pack info [--json]`
 
-Print a summary of the current pack: id, version, host version, feature count, step count, pack service count, action/prompt/flow content file counts, dependency count, whether `dist/` exists, and the pack root.
+Inspect declared features, entities, steps and services, verified build metadata, compiled content item IDs/descriptions/counts, and dependency provenance. `--json` emits one structured report with the same data as text. Inspection never activates pack modules, downloads dependencies or populates caches.
+
+Build status distinguishes unbuilt, verified, invalid and stale declarations. Compiled content comes from a receipt-checked index; missing or invalid output is unavailable, rather than inferred from source file counts. A verified build proves its output bytes, not that every authored input is unchanged. Dependency details distinguish missing/invalid data from resolved type data whose execution is unavailable.
 
 ### Testing
 
 #### `apack pack init-tests`
 
-Scaffold Playwright E2E tests in the pack root: `playwright.config.ts` (tests in `tests/e2e`), `tests/e2e/smoke.spec.ts` (using the first feature with a plugin), `.gitignore` entries for `tests/screenshots/` and `tests/results/`, and `@apackdev/testing` and `@playwright/test` devDependencies. Existing files are kept.
+Scaffold Playwright E2E tests in the pack root: `playwright.config.ts` (tests in `tests/e2e`), `tests/e2e/smoke.spec.ts` (using the first feature with a plugin), a `.gitignore` entry for `.apack/`, and `@apackdev/testing` and `@playwright/test` devDependencies. Existing files are kept.
 
 #### `apack pack test [--host <path>] [--prebuilt] [playwright args...]`
 
@@ -501,11 +562,12 @@ newest; `--all` removes that one too, which is how you move to a newer Beta.
 **`apack pack test` never reads a stored app preference and never asks**, so a test run means the same thing on a fresh machine as on one you have been developing on. Neither command stores a host preference. The fixture builds the pack with the same CLI and installs it into a fresh data dir for each worker, so a run leaves nothing behind either.
 
 `--prebuilt` installs the build already in `dist/` instead of making a new one, for a pipeline that built the
-pack in an earlier step. The build is still held to being no older than the pack's sources and `apack.json`,
-naming the file that moved if it is not — so a stale build fails rather than being tested quietly, which is
-what the rebuild was there for. Reach for it when something else owns the build: a rebuild empties `dist`
-before its first phase and does not refill it until the last, so a second build of the same pack, or anything
-reading that directory meanwhile, sees a pack that is not built.
+pack in an earlier step. It verifies the sealed output and rechecks the recorded source, linked inputs,
+dependency bytes and resolution observations. Timestamp-only touches pass; changed or missing inputs
+and damaged output fail with a rebuild instruction. `--prebuilt --release` requires output made with
+`apack pack build --release`. The recorded compiler/execution context identifies the selected build;
+the Playwright runner's environment is not compared to the compiler's environment. Use this when an
+earlier pipeline step owns the build; the test fixture verifies it without rebuilding.
 
 ### Distribution
 
@@ -524,7 +586,7 @@ The scaffolded `.github/workflows/release.yml` publishes the GitHub release from
 
 Verify the pack in `<dir>` (default `.apack/release`) and create the GitHub release `v<version>` (a prerelease for prerelease versions), uploading `<id>-<version>.tgz`, `.sha256` and `.integrity.json`. The release workflow runs it. Needs `GITHUB_TOKEN` (or `GH_TOKEN`), and `GITHUB_REPOSITORY` or a GitHub `origin` remote.
 
-#### `apack pack install <source> [--profile <name>]`
+#### `apack pack install <source> --host <path|beta> [--profile <name>]`
 
 Install a pack into the app's data dir (`<userDataDir>/packs/<id>`). `<source>` is one of:
 
@@ -536,24 +598,65 @@ Install a pack into the app's data dir (`<userDataDir>/packs/<id>`). `<source>` 
 | GitHub release: `owner/repo`, or `owner/repo@tag` (default: latest) | `user/my-pack@v0.1.0` |
 
 ```bash
-apack pack install ./my-pack-0.1.0.tgz
-apack pack install ../my-pack
-apack pack install user/my-pack
+apack pack install ./my-pack-0.1.0.tgz --host /Applications/apack.app
+apack pack install ../my-pack --host /path/to/apack-checkout
+apack pack install user/my-pack --host /Applications/apack.app
 ```
+
+Ordinary install requires `--host` or an associated `APACK_HOST`, `APACK_HOST_ROOT` or
+`APACK_HOST_EXECUTABLE`. The source app's advertised default IDs are reserved even before first launch,
+when disabled/failed, or after removal. Use `pack replace <id> <source>` to choose your own pack in one
+of those slots. Cwd and `--profile` never choose the source app. Selection is offline and does not
+activate packs, download a beta, or launch an app. Explicit selection wins over an associated handoff.
 
 A GitHub release needs a `.tgz` asset and the `.sha256` asset published beside it (`apack pack release` writes both); a release without one is refused, since nothing would say the download is that release. A URL install is unverified, and says so. The pack is verified before it's placed, and `hostVersion` is checked against the version the app recorded in that data dir. A source directory must be built: one with neither a `integrity.json` nor a `dist/runtime/index.cjs` beside `dist/types/snapshot.json` is refused, with a note to run `apack pack build` first. Restart the app after installing.
 
+#### `apack pack replace <id> <source> [--profile <name>]`
+
+Deliberately replace the named pack using any source supported by `pack install`. The incoming
+manifest must claim that exact ID. The installed build becomes user-managed, so app refreshes
+preserve it. An advertised app-default ID or app-managed incumbent refuses ordinary `pack install` and points to this command.
+Replacement can also fill an explicitly named missing slot; it preserves stored database overrides.
+
+```bash
+apack pack replace default-setup ./my-default-setup
+```
+
+#### `apack pack restore <id> --host <path|beta> [--profile <name>]`
+
+Restore a pack from the selected app's shipped builds, re-enable it and resume app-managed updates.
+This clears deliberate-removal suppression and preserves stored settings/content overrides.
+
+```bash
+apack pack restore default-setup --host /Applications/apack.app
+apack pack restore default-setup --host /path/to/apack-checkout --profile my-work
+```
+
+`--host` selects the source app; `--profile` independently selects stored state. An associated
+`APACK_HOST_ROOT`, `APACK_HOST_EXECUTABLE` or `APACK_HOST` can supply the source when no flag is given.
+The current directory does not select a host. An explicit flag wins over an associated handoff.
+A checkout needs the pack's build output, not a running app. `--host beta` uses a compatible cached
+beta and refuses if none is cached. Restore never downloads or launches an app.
+
+The running app offers the same choices in **Packs**: disable or remove an installed pack, replace it
+from its detail view or use **Replace by ID**, and restore an available app default. Replacing chooses
+user-managed updates; restoring re-enables the default and resumes app updates. Both keep stored
+settings. Host settings remain available when the shipped default is disabled or removed.
+App-managed installations show **Update from app** when the verified app source changes, including
+a changed build with the same version. Updating preserves disabled state; restoring enables the pack.
+User-managed forks receive no app-source update offer.
+
 #### `apack pack uninstall <id> [--profile <name>]`
 
-Remove an installed pack by ID. Restart the app after uninstalling.
+Remove an installed pack by ID, retaining database settings and recording deliberate removal so boot does not put an app-shipped default back. Use `pack restore` to reinstate the default.
 
 #### `apack pack list [--profile <name>]`
 
 Show installed packs.
 
-`pack install`, `pack uninstall` and `pack list` select stored data with `--profile production|development|beta|preview|test`. The default follows the bundled CLI's channel, or production for a standalone CLI. These commands do not select or launch an executable.
+`pack install`, `pack replace`, `pack restore`, `pack uninstall` and `pack list` select stored data with `--profile production|development|beta|preview|test`. The default follows the bundled CLI's channel, or production for a standalone CLI. They do not launch an executable. Install and restore separately select source host builds with `--host` or an associated host. Explicit named replacement needs no source-host selection.
 
-Close the app using the selected profile before installing, uninstalling, or upgrading packs. These mutations share the app's storage lock with database operations, so concurrent changes are refused. Use `apack pack dev` for live development updates.
+Close the app using the selected profile before installing, replacing, restoring, uninstalling, or upgrading packs. These mutations share the app's storage lock with database operations, so concurrent changes are refused. Use `apack pack dev` for live development updates.
 
 ### App
 
@@ -599,6 +702,11 @@ apack db reset --profile production        # lists what it would delete
 ```
 
 **Which data.** `--profile production|development|beta|preview|test` selects an app data namespace, `--data-dir <path>` any data dir, such as a copy of the user's, or `--profile <name>` a profile `apack pack dev` made, by the name it printed. Name one of them, not two. `--schema-from <path>` names a pack snapshot for a data dir that publishes none of its own. Without it such a dir still opens to **read**, and the command says which entity types it could not name; a command that **changes** it is refused, because an incomplete schema makes a write land on the wrong rows. A command that only reads takes the production app's data without being told, and a dry run of `import`, `reset` or `clear-settings` counts as reading; **a change (`exec`, `repl --write`, and those three with `--force`) names its data dir**, so the user's own data is never what a forgotten flag hits. Each command prints the data dir it opens (on stderr, so results on stdout stay clean). A flag means that app's own data dir, whatever `APACK_USER_DATA_DIR` is set to in the shell; the variable applies only when nothing names a data dir.
+
+Installed schema sources must be complete verified pack builds, with matching manifest, snapshot,
+receipt and directory owner. `--schema-from` accepts a complete snapshot in the current format with a
+matching declaration revision; a bare manifest or partial fragment is refused. These reads never load
+pack runtimes.
 
 **While the app runs.** The commands open the database files themselves (offline); the app keeps the whole database in memory and is its only writer. So a change (`exec`, `repl --write`, and `import`, `reset` or `clear-settings` with `--force`) refuses while an apack app runs on the data dir: the API it published is running, or (on macOS and Linux) its single-instance lock is held by a live process. Files left behind by a crash name processes that have exited, so they don't stand in the way. Quit the app first. Reading commands work, with a warning that they miss what the app hasn't written yet, and so do the dry runs: they open the database without writing to it, so they also work against a copy you have no permission to change.
 
@@ -754,3 +862,17 @@ apack install --channel beta                    # Latest beta, installed separat
 These commands manage `/Applications/apack.app` (or `apack Beta.app` with `--channel beta`) on macOS Apple Silicon. App commands default to production even when invoked from the beta app. Pack installation is `apack pack install <source>`; pack removal is `apack pack uninstall <id>`.
 
 Downloads must have a matching published SHA-256 checksum. An incomplete latest release fails rather than silently installing an older version. The downloaded bundle's identity, executable and version are checked before the existing app is asked to quit. Replacement is staged on the destination filesystem and restores the previous bundle if the swap fails. A concurrent app operation is refused. `install` refuses any existing bundle without `--replace`; `upgrade` requires an existing app and skips a same-version or older release unless `--force` is supplied. `--relaunch` opens the installed app after install or upgrade. Uninstall never deletes databases, packs, profiles or settings.
+
+### Inspecting pack declarations
+
+`apack pack info` lists declared features and their systems, services, repositories and reference
+identities, plus extension kinds, lifecycle hooks, migrations, entities, relations and content keys.
+It reads verified compiled inventory separately and reports unbuilt, stale or invalid output without
+activating pack modules. Feature-owned services appear under their feature; pack services appear under
+extensions.
+
+`apack pack info --json` returns the complete validated manifest in `declared`, retaining its keyed
+maps, ownership, module targets and metadata. It does not replace declarations with a selected list of
+names. `build` describes verified output and compiled content; `dependencies` describes inspection of
+declared dependencies. Authored declarations and verified output may differ in a stale build, which
+is reported explicitly. Neither inspection mode executes pack code or creates user data.

@@ -3,19 +3,21 @@
 // brings the stored state; what the user changes here is sent back to be recorded, so every window agrees.
 import { afterEach, beforeEach, expect, it } from 'vitest';
 import { createActor, type Actor } from 'xstate';
-import { createShellMachine, visiblePluginsOf, withHostLast, type ShellMachine } from '../../../../src/fe/index.ts';
+import { createShellMachine, pluginNavigationItems, withHostLast, type ShellMachine } from '../../../../src/fe/index.ts';
 import { fakeShell, plugin } from './fakes.ts';
 
 const notes = plugin('default-setup/notes');
 const threads = plugin('default-setup/threads');
 // What the shell sends the host goes over this window's client: the fake's `send`
-const shell = fakeShell({ plugins: [notes, threads] });
-const fake = shell.client;
-const mutate = fake.send;
+let shell = fakeShell({ plugins: [notes, threads] });
+let fake = shell.client;
+let mutate = fake.send;
 let app: Actor<ShellMachine>;
 
 beforeEach(() => {
-  mutate.mockClear();
+  shell = fakeShell({ plugins: [notes, threads] });
+  fake = shell.client;
+  mutate = fake.send;
   app = createActor(createShellMachine(shell.options), {
     systemId: 'host/application',
     input: { ownsLastActivePlugin: true },
@@ -46,7 +48,10 @@ it('stays where it is when the plugin last open is not one it has', () => {
 
 // An external pack's frontend loads after the window connects, so its plugin arrives later
 const memos = plugin('memo-pack/memos');
-const loadMemoPack = (target = app) => target.send({ type: 'PACK_FRONTEND_LOADED', packId: 'memo-pack', plugins: [memos] });
+const loadMemoPack = (target = app) => {
+  shell.acceptPlugin(memos);
+  target.send({ type: 'PACK_FRONTEND_LOADED', registrationId: 'runtime', packId: 'memo-pack', plugins: [memos] });
+};
 
 it("opens on the plugin last open once its pack's frontend adds it", () => {
   connect({ lastActivePlugin: 'memo-pack/memos' });
@@ -82,13 +87,13 @@ it("opens a popout on an external pack's plugin once that pack's frontend adds i
 it("shows the tabs the host's state says to", () => {
   connect({ pluginVisibility: { 'default-setup/threads': false } });
 
-  expect(visiblePluginsOf(context()).map((p) => p.id)).toEqual(['default-setup/notes']);
+  expect(pluginNavigationItems(shell.options.catalog, shell.options.packs.pluginBindings(), context().pluginVisibility).filter(plugin => plugin.visible).map((p) => p.id)).toEqual(['default-setup/notes']);
 });
 
 it('hides a tab at once, and sends the host the choice to record', () => {
   app.send({ type: 'SET_PLUGIN_VISIBILITY', plugin: 'default-setup/threads', visible: false });
 
-  expect(visiblePluginsOf(context()).map((p) => p.id)).toEqual(['default-setup/notes']);
+  expect(pluginNavigationItems(shell.options.catalog, shell.options.packs.pluginBindings(), context().pluginVisibility).filter(plugin => plugin.visible).map((p) => p.id)).toEqual(['default-setup/notes']);
   expect(mutate).toHaveBeenCalledWith({ to: 'host/application', event: { type: 'SET_PLUGIN_VISIBILITY', plugin: 'default-setup/threads', visible: false } });
 });
 

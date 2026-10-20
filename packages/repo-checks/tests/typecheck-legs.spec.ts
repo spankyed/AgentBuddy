@@ -1,13 +1,44 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
+import os from 'node:os';
+import { execFileSync } from 'node:child_process';
 import { describe, expect, it } from 'vitest';
 import { REPO_ROOT } from '@apackdev/host/build/packages-built';
 import { scopeOf, TYPECHECK_LEGS, type Leg } from '../../../scripts/lib/typecheck-legs.ts';
-import { ARTIFACT_CHECKS } from '../../../scripts/lib/typecheck-jobs.ts';
+import { GENERATE_ENTRIES, RECORDED_FILE_CHECKS } from '../../../scripts/lib/typecheck-jobs.ts';
 import { rootScripts } from '../../../scripts/lib/npm-scripts.ts';
 import { PACKAGE_DIRS } from '../../../scripts/lib/workspace-deps.ts';
 import { CHAIN_STEPS } from '../../../scripts/lib/chain-steps.ts';
 import { population } from '@apackdev/sdk/testing';
+
+it('preserves the generation environment when checking its outputs in another process', () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'apack-typecheck-context-'));
+  const pack = path.join(root, 'packages/default-setup');
+  const cli = path.join(root, 'packages/apack-cli/bin');
+  try {
+    fs.mkdirSync(pack, { recursive: true }); fs.mkdirSync(cli, { recursive: true });
+    fs.writeFileSync(path.join(root, 'package.json'), JSON.stringify({ private: true, workspaces: ['packages/default-setup'] }));
+    fs.writeFileSync(path.join(pack, 'package.json'), JSON.stringify({ name: '@app/default-setup', scripts: {
+      'generate:entries': 'node ../apack-cli/bin/apack.mjs pack generate-entries',
+      'facade:check': 'node ../apack-cli/bin/apack.mjs pack facade-report',
+    } }));
+    fs.writeFileSync(path.join(cli, 'apack.mjs'), `import fs from 'node:fs';
+import assert from 'node:assert/strict';
+const context = {event:process.env.npm_lifecycle_event,script:process.env.npm_lifecycle_script};
+if (process.argv[3] === 'generate-entries') fs.writeFileSync('context.json',JSON.stringify(context));
+else assert.deepEqual(context,JSON.parse(fs.readFileSync('context.json','utf8')));`);
+    const check = RECORDED_FILE_CHECKS.find(check => check.name === 'facade:check')!;
+    for (const job of [GENERATE_ENTRIES, check]) {
+      const [command, ...args] = job.command.split(' ');
+      execFileSync(command!, args, { cwd: path.join(root, path.relative(REPO_ROOT, job.cwd ?? REPO_ROOT)),
+        env: { ...process.env, npm_lifecycle_event: 'typecheck', npm_lifecycle_script: 'tsx scripts/typecheck.ts' },
+        stdio: 'pipe', timeout: 2_000 });
+    }
+    expect(JSON.parse(fs.readFileSync(path.join(pack, 'context.json'), 'utf8'))).toEqual({
+      event: 'typecheck', script: 'tsx scripts/typecheck.ts',
+    });
+  } finally { fs.rmSync(root, { recursive: true, force: true }); }
+});
 
 /**
  * A leg's scope comes from its script, and a declared one has something the script cannot say.
@@ -101,7 +132,7 @@ describe('a typecheck leg takes its scope from its script', () => {
  * The two figures in `CLAUDE.md`'s `typecheck` entry that this table decides.
  *
  * **Written for a failure this repo keeps having**: a figure that sizes a design outlives its truth, because
- * prose is the only artifact nothing re-derives. Two were found stale in one session — `api:check`'s "55s"
+ * prose is the only recorded file nothing re-derives. Two were found stale in one session — `api:check`'s "55s"
  * four months after it became 13.1s, and this line's "29.3s in 11s" against a measured 63.1s in 18.0s — and
  * each was load-bearing, the first being the whole argument for a proxy that has since been deleted.
  *
@@ -136,20 +167,20 @@ describe("CLAUDE.md's figures for this table", () => {
 });
 
 /**
- * `npm run typecheck` answers for every recorded artifact, which is the trap it used to leave open: two of the
+ * `npm run typecheck` answers for every recorded file, which is the trap it used to leave open: two of the
  * four checks were legs and two were chain steps, so a green run said nothing about `etc/*.api.md` or
  * `etc/pack-types.api.md` and the guide warned about it in prose.
  *
- * Derived rather than restated. An artifact is a noun with both halves — the `<artifact>:check` /
- * `<artifact>:update` convention root `CLAUDE.md` gives and `chain-table.spec.ts` holds the other direction
+ * Derived rather than restated. A recorded file is a noun with both halves — the `<name>:check` /
+ * `<name>:update` convention root `CLAUDE.md` gives and `chain-table.spec.ts` holds the other direction
  * of. Of those, the ones the runner has to borrow are exactly the ones whose check is a chain step and not a
  * leg: a leg it already runs, and a check that is neither is covered by a spec instead
- * (`NOT_RUN_BY_THE_CHAIN`). So a fifth recorded artifact cannot arrive without either being a leg or landing
+ * (`NOT_RUN_BY_THE_CHAIN`). So a fifth recorded file cannot arrive without either being a leg or landing
  * here.
  */
-describe('the recorded artifacts npm run typecheck answers for', () => {
+describe('the recorded files npm run typecheck answers for', () => {
   /** Every `<noun>:check` that has an `<noun>:update` beside it, in the root manifest or a package's */
-  const artifactChecks = (): string[] => {
+  const recordedFileChecks = (): string[] => {
     const manifests = [path.join(REPO_ROOT, 'package.json'),
       ...PACKAGE_DIRS.map((dir) => path.join(REPO_ROOT, 'packages', dir, 'package.json'))]
       .filter((file) => fs.existsSync(file));
@@ -161,20 +192,20 @@ describe('the recorded artifacts npm run typecheck answers for', () => {
     }))].sort();
   };
 
-  it('are the artifact checks that are chain steps rather than legs', () => {
-    const artifacts = population('the recorded artifacts', artifactChecks(), { atLeast: 4 });
+  it('are the recorded file checks that are chain steps rather than legs', () => {
+    const recordedFiles = population('the recorded files', recordedFileChecks(), { atLeast: 4 });
     const legs = new Set(TYPECHECK_LEGS.map((leg) => leg.name));
     const steps = new Set(CHAIN_STEPS.map((step) => step.name));
 
-    const borrowable = artifacts.filter((name) => steps.has(name) && !legs.has(name)).sort();
+    const borrowable = recordedFiles.filter((name) => steps.has(name) && !legs.has(name)).sort();
 
-    expect(ARTIFACT_CHECKS.map((check) => check.name).sort()).toEqual(borrowable);
+    expect(RECORDED_FILE_CHECKS.map((check) => check.name).sort()).toEqual(borrowable);
   });
 
   // Each borrows a step's class, cost and width, so a name that is not a step has nothing to borrow and the
   // runner throws at startup rather than running a short command
   it('each name a chain step the runner can borrow from', () => {
-    for (const { name } of ARTIFACT_CHECKS) {
+    for (const { name } of RECORDED_FILE_CHECKS) {
       expect(CHAIN_STEPS.find((step) => step.name === name), name).toBeDefined();
     }
   });

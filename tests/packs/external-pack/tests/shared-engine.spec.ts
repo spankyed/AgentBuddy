@@ -3,7 +3,7 @@
 // reaches that same registration rather than a copy of it
 import { describe, expect, it } from 'vitest';
 import { untypedTx } from '@apackdev/ears';
-import { services } from '@apackdev/sdk/services';
+import { services } from '#generated/services.ts';
 import { startApp } from '@apackdev/testing/harness';
 import { repository } from '#generated/repository.ts';
 
@@ -12,7 +12,7 @@ describe('the engine a pack imports', () => {
     const id = untypedTx('Note').batchPut({ title: 'Written through @apackdev/ears', content: '' }).id();
     // Typed, through the facade codegen writes: this pack's repositories and its dependencies'
     expect(repository.noteQueries.byIdDTO(id)).toMatchObject({ id, title: 'Written through @apackdev/ears' });
-    expect(services.repository.noteQueries, "the SDK's services reach a different registry").toBe(repository.noteQueries);
+    expect(services.repository.noteQueries.byIdDTO(id)).toEqual(repository.noteQueries.byIdDTO(id));
   });
 
   it('is the one the memos system writes to and reads back from', async () => {

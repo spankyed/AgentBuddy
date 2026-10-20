@@ -101,7 +101,7 @@ import { useVueFlow } from '@vue-flow/core'
 import type { Connection, NodeMouseEvent, Node as VueFlowNode, EdgeUpdateEvent, EdgeMouseEvent } from '@vue-flow/core'
 import { calculateLayoutAsync, type LayoutDirection } from '#features/flows/fe/canvas/layout-utils.ts'
 import type { NodeEntity } from '#generated/types.ts'
-import { isTriggerNode } from '@apackdev/ui/components/node-styles'
+import { useNodeStyles } from '@apackdev/ui/components/node-styles'
 
 import '@vue-flow/core/dist/style.css'
 import '@vue-flow/core/dist/theme-default.css'
@@ -118,6 +118,8 @@ import FlowLabelDialog from './components/FlowLabelDialog.vue'
 import ConfirmationDialog from '@apackdev/ui/design/ConfirmationDialog'
 import ToastNotification from '@apackdev/ui/design/ToastNotification'
 import type { FlowEntity, EARS } from '@apackdev/sdk'
+
+const { isTriggerNode } = useNodeStyles()
 
 const { project, fitView, addSelectedEdges, getEdges } = useVueFlow()
 

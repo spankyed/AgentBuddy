@@ -35,7 +35,7 @@ export async function action(
     services.repository.threadCommands.destroyStale(existingBirthThreadId);
   }
 
-  // Create the birth thread (birthdate is set by startBirthFlow in threads system)
+  // Create the onboarding thread; progress lives in its context.
   const { id: threadId } = services.chat.createThreadAndNotify({
     topic: 'Getting Started',
     instructions: '',

@@ -12,33 +12,85 @@ import { EARS as EARS_2 } from '@apackdev/ears';
 import type { EventObject } from 'xstate';
 import type { MachineContext } from 'xstate';
 import type { Mapper } from 'xstate';
-import type { output } from 'zod';
 import type { ParameterizedObject } from 'xstate';
 import { z } from 'zod';
-import type { ZodType } from 'zod';
 
 // @public
 export type ArrayChanges = Record<string, DiffResult<DiffItem>>;
 
-// @public
-export function checkFeatureSettings(featureId: string, settings: unknown): string[];
+// @public (undocumented)
+export interface ArtifactCatalogEntry {
+    // (undocumented)
+    readonly buildRevision?: string;
+    // (undocumented)
+    readonly declaration: DeclarationData<ArtifactDeclaration>;
+    // (undocumented)
+    readonly declarationRevision?: string;
+    // (undocumented)
+    readonly enabled?: boolean;
+    // (undocumented)
+    readonly origin: 'native' | 'installed' | 'source';
+    // (undocumented)
+    readonly packId: string;
+    // (undocumented)
+    readonly type: string;
+}
+
+// @public (undocumented)
+export type ArtifactDeclaration = z.infer<typeof ArtifactEntrySchema>;
+
+// @internal
+export const _BASELINE_HOST_SERVICE_NAMES: readonly ["logger", "emitter", "repository", "settings"];
+
+// @public (undocumented)
+export interface BlockCatalogEntry {
+    // (undocumented)
+    readonly buildRevision?: string;
+    // (undocumented)
+    readonly declaration: DeclarationData<BlockDeclaration>;
+    // (undocumented)
+    readonly declarationRevision?: string;
+    // (undocumented)
+    readonly enabled?: boolean;
+    // (undocumented)
+    readonly origin: 'native' | 'installed' | 'source';
+    // (undocumented)
+    readonly packId: string;
+    // (undocumented)
+    readonly type: string;
+}
+
+// @public (undocumented)
+export type BlockDeclaration = z.infer<typeof BlockEntrySchema>;
+
+// @internal
+export function _compileSettingsDefinition(definition: SettingsDefinition): SettingsValidator;
 
 // @public
-export interface DeclaredMigration {
+export type ComponentTarget = string | {
+    entry: string;
+    load?: 'lazy';
+};
+
+// @public
+export interface ContentRuntime {
     // (undocumented)
-    description: string;
+    contentWriters: Record<string, ContentWriter>;
+    declarationRevision: string;
     // (undocumented)
-    up: () => void;
+    entities: Record<string, string>;
+    // (undocumented)
+    id: string;
+    // (undocumented)
+    relKinds: Record<string, string>;
+    // (undocumented)
+    repositories: Record<string, unknown>;
 }
 
 // @public
-export function defineFeatureSettings<S extends ZodType<Record<string, unknown>>>(definition: {
-    schema: S;
-    visible?: boolean;
-}): FeatureSettings<output<S>> & {
-    schema: ZodType<output<S>>;
-    defaults: output<S>;
-};
+export type DeclarationData<T> = T extends object ? {
+    readonly [K in keyof T]: DeclarationData<T[K]>;
+} : T;
 
 // @public
 export function defineHandlers<TContext extends MachineContext, TEvent extends EventObject, TOut extends {
@@ -62,17 +114,92 @@ export type DiffResult<T> = null | {
 };
 
 // @public
-export interface FeatureSettings<T extends Record<string, unknown> = Record<string, unknown>> {
+export interface DslCatalogEntry {
     // (undocumented)
-    defaults?: T;
+    readonly buildRevision?: string;
     // (undocumented)
-    schema?: ZodType<T>;
+    readonly declaration: DeclarationData<DslDeclaration>;
     // (undocumented)
-    visible?: boolean;
+    readonly declarationRevision?: string;
+    // (undocumented)
+    readonly definitions?: string;
+    // (undocumented)
+    readonly enabled?: boolean;
+    // (undocumented)
+    readonly origin: 'native' | 'installed' | 'source';
+    // (undocumented)
+    readonly packId: string;
+    // (undocumented)
+    readonly type: string;
+}
+
+// @public (undocumented)
+export type DslDeclaration = z.infer<typeof DslEntrySchema>;
+
+// @internal
+export function _entityDestinationsProblem(destinations: Readonly<Record<string, string>>, features: Readonly<Record<string, {
+    readonly plugin?: unknown;
+}>> | undefined, entities?: ReadonlySet<string>): string | undefined;
+
+// @internal
+export function _eventContractsProblem(contracts: PackEventContracts | undefined, features: Readonly<Record<string, {
+    system?: unknown;
+    plugin?: unknown;
+}>> | undefined, native?: boolean): string | undefined;
+
+// @public
+export type FeatureEventCatalogEntry = {
+    readonly featureRef: FeatureRef;
+    readonly packId: string;
+    readonly origin: 'native' | 'installed' | 'source';
+    readonly enabled?: boolean;
+    readonly declarationRevision?: string;
+    readonly buildRevision?: string;
+} & ({
+    readonly status: 'compiled';
+    readonly declaration: DeclarationData<FeatureEventContract>;
+} | {
+    readonly status: 'unavailable';
+    readonly declaration?: never;
+});
+
+// @public
+export interface FeatureEventContract {
+    plugin?: {
+        receives: readonly string[];
+    };
+    system?: {
+        incoming: readonly string[];
+        outgoing: readonly string[];
+    };
 }
 
 // @public
-export function getFeaturesWithSettings(): readonly FeatureRef[];
+export function formatReferenceHref(target: ReferenceTarget): string;
+
+// @public (undocumented)
+export interface FrontendCatalogEntry {
+    // (undocumented)
+    readonly buildRevision?: string;
+    // (undocumented)
+    readonly declaration: DeclarationData<FrontendDeclaration>;
+    // (undocumented)
+    readonly declarationRevision?: string;
+    // (undocumented)
+    readonly enabled?: boolean;
+    // (undocumented)
+    readonly origin: 'native' | 'installed' | 'source';
+    // (undocumented)
+    readonly packId: string;
+}
+
+// @public
+export interface FrontendDeclaration {
+    // (undocumented)
+    appExtensions?: Record<string, string>;
+    // (undocumented)
+    tiptapPlugins?: Record<string, TiptapPluginDeclaration>;
+}
 
 // @public
 export function getPackCommands(): PackCommand[];
@@ -80,8 +207,8 @@ export function getPackCommands(): PackCommand[];
 // @public (undocumented)
 export function getPackHelp(): HelpCatalog;
 
-// @public
-export function getPackSettingsDefaults(): PackSettingsDefaults;
+// @public (undocumented)
+export function getSettingsCatalog(): SettingsCatalog;
 
 // @public
 export interface Handlers<TContext extends MachineContext, TEvent extends EventObject, TOut extends {
@@ -152,20 +279,92 @@ export interface HelpTarget {
     packId?: string;
 }
 
+// @internal
+export const _HOST_SERVICE_NAMES: readonly ["logger", "emitter", "repository", "settings", "onboarding", "appData", "traceStore", "inference", "secrets", "filesystem"];
+
+// @public
+export const LIFECYCLE_HOOK_NAMES: readonly ["onInit", "onShutdown"];
+
 // @public
 export type MachineMatchesContract<Entry, C extends SystemContract> = Entry extends {
     spec: infer Spec;
 } ? [Spec, SystemSpec<C>] extends [SystemSpec<C>, Spec] ? true : 'this system\'s defineSystem<…> declares a contract that is not the one apack.json names for its feature' : 'this system\'s default export has no `spec` from defineSystem<…>';
 
 // @public
-export function onPackSettingsDefaultsChanged(listener: () => void): () => void;
+export interface NativePackDeclaration extends PackDataDeclarations, FrontendDeclaration {
+    // (undocumented)
+    artifacts?: Record<string, z.infer<typeof ArtifactEntrySchema>>;
+    // (undocumented)
+    blocks?: Record<string, z.infer<typeof BlockEntrySchema>>;
+    // (undocumented)
+    commands?: Record<string, z.infer<typeof CommandEntrySchema>>;
+    consumes?: PackConsumption;
+    content?: {
+        writers?: Record<string, string>;
+        sources?: Record<string, {
+            applier: string;
+        }>;
+    };
+    // (undocumented)
+    dependencies?: Record<string, string>;
+    // (undocumented)
+    dsl?: Record<string, DeclarationData<z.infer<typeof DslEntrySchema>>>;
+    dslDefinitions?: Record<string, string>;
+    entityDestinations?: Record<string, string>;
+    eventContracts?: PackEventContracts;
+    // (undocumented)
+    features?: Record<string, {
+        description: string;
+        entities?: Record<string, string | null>;
+        designation?: string;
+        settings?: SettingsDefinition;
+        plugin?: PluginDeclaration;
+        references?: ReferenceDeclarations;
+        services?: Record<string, string>;
+        repositories?: Record<string, string>;
+    }>;
+    // (undocumented)
+    id: string;
+    // (undocumented)
+    lifecycle?: PackLifecycleDeclaration;
+    migrations?: z.infer<typeof MigrationsSchema>;
+    // (undocumented)
+    repositories?: Record<string, string>;
+    services?: Record<string, string>;
+    // (undocumented)
+    settings?: Record<string, SettingsDefinition>;
+    // (undocumented)
+    steps?: Record<string, z.infer<typeof StepEntrySchema>>;
+    version?: string;
+}
+
+// @internal
+export function _nativePackDeclarationProblem(declaration: unknown): string | undefined;
 
 // @public
-export interface PackBootHooks {
+export function onPackCatalogChanged(listener: () => void): () => void;
+
+// @public
+export interface PackCatalogView {
     // (undocumented)
-    onInit?: () => void;
+    artifacts(): readonly ArtifactCatalogEntry[];
     // (undocumented)
-    onShutdown?: () => void;
+    blocks(): readonly BlockCatalogEntry[];
+    // (undocumented)
+    dsl(): readonly DslCatalogEntry[];
+    events(): readonly FeatureEventCatalogEntry[];
+    // (undocumented)
+    frontend(): readonly FrontendCatalogEntry[];
+    // (undocumented)
+    problem(): string | undefined;
+    // (undocumented)
+    references(): readonly ReferenceCatalogEntry[];
+    // (undocumented)
+    status(): 'loading' | 'ready' | 'disconnected' | 'error' | 'disposed';
+    // (undocumented)
+    steps(): readonly StepCatalogEntry[];
+    // (undocumented)
+    subscribe(listener: () => void): () => void;
 }
 
 // @public
@@ -176,6 +375,28 @@ export interface PackCommand {
     placeholder: string;
 }
 
+// @public
+export interface PackConsumption {
+    readonly services: readonly string[];
+}
+
+// @public
+export interface PackDataDeclarations {
+    // (undocumented)
+    data?: {
+        entities?: Readonly<Record<string, string | null>>;
+        relations?: readonly string[];
+    };
+    // (undocumented)
+    features?: Readonly<Record<string, object>>;
+}
+
+// @internal
+export function _packDeclarationProblem(expected: {
+    id: string;
+    declarationRevision: string;
+}, binding: unknown): string | undefined;
+
 // @public (undocumented)
 export interface PackEARS {
     // (undocumented)
@@ -184,6 +405,25 @@ export interface PackEARS {
     relKinds: Record<string, string>;
 }
 
+// @internal
+export function _packEntities(declaration: PackDataDeclarations): _PackEntityDeclaration[];
+
+// @internal
+export interface _PackEntityDeclaration {
+    // (undocumented)
+    name: string;
+    // (undocumented)
+    owner: string;
+    // (undocumented)
+    shape: string | null;
+}
+
+// @internal
+export function _packEntityTypes(declaration: PackDataDeclarations): Record<string, string>;
+
+// @public
+export type PackEventContracts = Record<string, FeatureEventContract>;
+
 // @public
 export interface PackFeature {
     // (undocumented)
@@ -191,7 +431,7 @@ export interface PackFeature {
     // (undocumented)
     plugin?: PackFeaturePlugin;
     services?: readonly string[];
-    settings?: FeatureSettings;
+    settings?: SettingsDefinition;
     // (undocumented)
     system?: PackFeatureSystem;
 }
@@ -209,9 +449,24 @@ export interface PackFeatureSystem {
 }
 
 // @public
-export interface PackMigration extends DeclaredMigration {
+export type PackLifecycleDeclaration = Partial<Record<typeof LIFECYCLE_HOOK_NAMES[number], string>>;
+
+// @public
+export interface PackLifecycleHooks {
+    // (undocumented)
+    onInit?: () => void;
+    // (undocumented)
+    onShutdown?: () => void;
+}
+
+// @public
+export interface PackMigration {
+    // (undocumented)
+    description: string;
     // (undocumented)
     target: string;
+    // (undocumented)
+    up: () => void;
 }
 
 // @public (undocumented)
@@ -219,47 +474,341 @@ export interface PackRegistration {
     appliers?: ContentApplier[];
     // (undocumented)
     artifacts?: ArtifactDefinition[];
+    bindServices?: (access: PackServiceAccess) => () => void;
     // (undocumented)
     blocks?: BlockDefinition[];
-    // (undocumented)
-    boot?: PackBootHooks;
     commands?: PackCommand[];
     contentWriters?: Record<string, ContentWriter>;
+    declarationRevision?: string;
+    // (undocumented)
+    dependencies?: Record<string, string>;
     // (undocumented)
     ears?: PackEARS;
     features?: Record<string, PackFeature>;
-    help?: HelpDocument[];
     // (undocumented)
     id: string;
+    // (undocumented)
+    lifecycle?: PackLifecycleHooks;
     migrations?: PackMigrations;
-    name?: string;
     repositories?: Record<string, unknown>;
     // (undocumented)
     services?: Record<string, unknown>;
-    settingsSections?: () => Record<string, unknown>;
+    settings?: Record<string, SettingsDefinition>;
     // (undocumented)
     steps?: StepDefinition[];
 }
 
+// @internal
+export function _packRelationTypes(declaration: PackDataDeclarations): Record<string, string>;
+
+// @internal
+export interface _PackServiceDeclaration {
+    // (undocumented)
+    readonly featureId?: string;
+    // (undocumented)
+    readonly name: string;
+    // (undocumented)
+    readonly packId: string;
+    // (undocumented)
+    readonly ref: string;
+    // (undocumented)
+    readonly target: string;
+}
+
+// @internal
+export interface _PackServiceDeclarations {
+    // (undocumented)
+    readonly consumes?: PackConsumption;
+    // (undocumented)
+    readonly dependencies?: Readonly<Record<string, unknown>>;
+    // (undocumented)
+    readonly features?: Readonly<Record<string, {
+        readonly services?: Readonly<Record<string, string>>;
+    }>>;
+    // (undocumented)
+    readonly id: string;
+    // (undocumented)
+    readonly services?: Readonly<Record<string, string>>;
+    // (undocumented)
+    readonly version?: string;
+}
+
+// @internal
+export function _packServiceDeclarations(pack: _PackServiceDeclarations): readonly _PackServiceDeclaration[];
+
+// @internal
+export function _packServiceSelection(pack: _PackServiceDeclarations, provider: (packId: string, ref: string) => _PackServiceDeclarations | undefined): readonly {
+    readonly ref: string;
+    readonly packId: string;
+    readonly name: string;
+}[];
+
 // @public
-export interface PackSettingsDefaults {
+export function packSystem(entry: SystemEntry, options: {
+    incoming: readonly string[];
+}): PackFeatureSystem;
+
+// @internal
+export function _parseEventContracts(data: unknown, features: Parameters<typeof _eventContractsProblem>[1], native?: boolean): PackEventContracts;
+
+// @public
+export function parseReferenceHref(href: string): ReferenceTarget | undefined;
+
+// @internal
+export function _parseServiceReference(ref: string): {
+    packId: string;
+    name: string;
+};
+
+// @public
+export interface PluginDeclaration {
     // (undocumented)
-    revision: number;
-    // (undocumented)
-    schemas: Record<string, ZodType<Record<string, unknown>>>;
-    // (undocumented)
-    settings: {
-        features: Record<string, unknown>;
-        [section: string]: unknown;
+    canvas?: ComponentTarget | {
+        routes: Record<string, ComponentTarget>;
     };
     // (undocumented)
-    visibility: Record<string, boolean>;
+    chat?: ComponentTarget;
+    // (undocumented)
+    contract?: string;
+    // (undocumented)
+    default?: boolean;
+    // (undocumented)
+    defaultVisible?: boolean;
+    // (undocumented)
+    fallbackPanel?: {
+        label: string;
+        toggle: {
+            type: string;
+        };
+        isShown: string;
+    };
+    // (undocumented)
+    hotkeys?: readonly {
+        action: string;
+        global?: boolean;
+    }[];
+    // (undocumented)
+    icon?: string | {
+        entry: string;
+        load?: 'lazy';
+    };
+    // (undocumented)
+    isPinned?: boolean;
+    // (undocumented)
+    label: string;
+    // (undocumented)
+    options?: {
+        headerClass?: string;
+    };
+    // (undocumented)
+    panel?: ComponentTarget;
+    // (undocumented)
+    state: string;
+}
+
+// @internal
+export function _pluginTargets(plugin: PluginDeclaration): [string, string][];
+
+// @public (undocumented)
+export interface ReferenceCatalogEntry {
+    // (undocumented)
+    readonly buildRevision?: string;
+    // (undocumented)
+    readonly declaration: DeclarationData<ReferenceDeclarations>;
+    // (undocumented)
+    readonly declarationRevision?: string;
+    // (undocumented)
+    readonly enabled?: boolean;
+    // (undocumented)
+    readonly featureRef: FeatureRef;
+    // (undocumented)
+    readonly origin: 'native' | 'installed' | 'source';
+    // (undocumented)
+    readonly packId: string;
+}
+
+// @public (undocumented)
+export interface ReferenceCategoryDeclaration {
+    // (undocumented)
+    icon: NonNullable<PluginDeclaration['icon']>;
+    // (undocumented)
+    label: string;
+    // (undocumented)
+    useItems: string;
 }
 
 // @public
-export function packSystem(entry: SystemEntry, options?: {
-    incoming?: readonly string[];
-}): PackFeatureSystem;
+export interface ReferenceDeclarations {
+    // (undocumented)
+    categories: Record<string, ReferenceCategoryDeclaration>;
+    // (undocumented)
+    types: Record<string, ReferenceTypeDeclaration>;
+}
+
+// @public
+export type ReferenceSvgElement = readonly ['path', {
+    readonly d: string;
+}] | readonly ['rect', Readonly<Record<string, string>>] | readonly ['circle', Readonly<Record<string, string>>];
+
+// @public
+export interface ReferenceTarget {
+    // (undocumented)
+    readonly id: string;
+    // (undocumented)
+    readonly type: string;
+}
+
+// @internal
+export function _referenceTargets(references: ReferenceDeclarations): [string, string][];
+
+// @public (undocumented)
+export interface ReferenceTypeDeclaration {
+    // (undocumented)
+    category: string;
+    // (undocumented)
+    icon: NonNullable<PluginDeclaration['icon']>;
+    // (undocumented)
+    svgElements: readonly ReferenceSvgElement[];
+}
+
+// @internal
+export function _serviceProviderProblem(pack: Pick<_PackServiceDeclarations, 'id' | 'dependencies'>, ref: string): string | undefined;
+
+// @public
+export interface SettingsCatalog {
+    // (undocumented)
+    readonly app: SettingsDefinition;
+    // (undocumented)
+    readonly dependencies: Readonly<Record<string, readonly string[]>>;
+    // (undocumented)
+    readonly features: Readonly<Record<string, SettingsDefinition>>;
+    // (undocumented)
+    readonly packs: Readonly<Record<string, Readonly<Record<string, SettingsDefinition>>>>;
+    // (undocumented)
+    readonly revision: number;
+}
+
+// @public
+export interface SettingsDefinition {
+    access?: 'shared' | 'owner';
+    // (undocumented)
+    defaults: Record<string, unknown>;
+    // (undocumented)
+    description?: string;
+    // (undocumented)
+    form?: string;
+    // (undocumented)
+    schema: SettingsSchema;
+    // (undocumented)
+    title?: string;
+}
+
+// @public
+export function _settingsJsonProblems(value: unknown): SettingsProblem[];
+
+// @public (undocumented)
+export interface SettingsProblem {
+    // (undocumented)
+    keyword: string;
+    // (undocumented)
+    message: string;
+    // (undocumented)
+    path: readonly string[];
+}
+
+// @public
+export type SettingsSchema = Record<string, unknown>;
+
+// @public (undocumented)
+export interface SettingsValidator {
+    // (undocumented)
+    validate(value: unknown): SettingsProblem[];
+}
+
+// @internal
+export function _stepBackendParts(entry: DeclarationData<Pick<StepEntry, 'build' | 'trigger'>>): {
+    trigger?: {
+        data: {
+            queryFields?: readonly string[] | undefined;
+            persistent?: boolean | undefined;
+            trackField: string;
+        };
+        callbacks: {
+            compile: string;
+            decompile: string;
+            validate?: string | undefined;
+            validateTrack?: string | undefined;
+            register?: string | undefined;
+        };
+    } | undefined;
+    build?: {
+        data: {
+            relation?: {
+                readonly field: string;
+                readonly targetEntity: string;
+            } | undefined;
+        };
+        callbacks: {
+            compile: string;
+            validate: string;
+            getLabel: string;
+            decompile?: string | undefined;
+            branches?: string | undefined;
+        };
+    } | undefined;
+};
+
+// @public
+export interface StepCatalogEntry {
+    // (undocumented)
+    readonly buildRevision?: string;
+    // (undocumented)
+    readonly declaration: DeclarationData<StepEntry>;
+    // (undocumented)
+    readonly declarationRevision?: string;
+    // (undocumented)
+    readonly enabled?: boolean;
+    // (undocumented)
+    readonly origin: 'native' | 'installed' | 'source';
+    // (undocumented)
+    readonly packId: string;
+    // (undocumented)
+    readonly type: string;
+}
+
+// @public
+export interface StepFrontendDeclaration {
+    // (undocumented)
+    colorKey?: string;
+    // (undocumented)
+    components?: {
+        node?: ComponentTarget;
+        form?: ComponentTarget;
+    };
+    // (undocumented)
+    handlePrefix?: string;
+    // (undocumented)
+    layout?: StepLayoutDeclaration;
+    // (undocumented)
+    nodeConfig: Omit<StepNodeConfig, 'icon'> & {
+        icon: NonNullable<PluginDeclaration['icon']>;
+    };
+}
+
+// @internal
+export function _stepFrontendTargets(frontend: StepFrontendDeclaration): [string, string, 'component' | 'script'][];
+
+// @public
+export interface StepLayoutDeclaration {
+    // (undocumented)
+    getHeight?: string;
+    // (undocumented)
+    getPorts?: string;
+    // (undocumented)
+    hasInput?: boolean;
+    // (undocumented)
+    usesExitCount?: boolean;
+}
 
 // @public
 export const SYSTEM_EVENT_TYPES: readonly ["SEND_STATE", "CLIENT_CONNECTED", "PACK_CHANGED", "FEATURE_SETTINGS_UPDATED", "DATA_REPLACED"];
@@ -363,6 +912,16 @@ export interface SystemSpec<C extends SystemContract> extends Handlers<ContractC
         context: ContractContext<C>;
         events: MachineEvents<C>;
     };
+}
+
+// @public
+export interface TiptapPluginDeclaration {
+    // (undocumented)
+    extensions?: Record<string, string>;
+    // (undocumented)
+    isSuggestionActive?: string;
+    // (undocumented)
+    popups?: Record<string, string>;
 }
 
 // (No @packageDocumentation comment for this package)

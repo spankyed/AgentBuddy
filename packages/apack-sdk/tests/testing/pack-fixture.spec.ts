@@ -5,6 +5,8 @@ import { describe, expect, it } from 'vitest';
 import { packFixture } from '../../src/testing/pack-fixture.ts';
 import * as testing from '../../src/testing/index.ts';
 import manifest from '../../package.json' with { type: 'json' };
+import type { PackManifest } from '../../src/build/manifest.ts';
+import { _pluginTargets } from '../../src/framework/plugin-declaration.ts';
 import { population } from '../../src/testing/population.ts';
 
 const read = (dir: string, file: string) => JSON.parse(fs.readFileSync(path.join(dir, file), 'utf-8'));
@@ -18,10 +20,12 @@ describe('packFixture', () => {
   it('declares a feature whose every entry and contract is a file that is there', () => {
     const dir = packFixture();
 
-    const features = read(dir, 'apack.json').features as Record<string, Record<string, { entry: string; contract: string }>>;
-    const declared = Object.values(features)
-      .flatMap((feature) => [feature.plugin!, feature.system!])
-      .flatMap((half) => [half.entry, half.contract.split('#')[0]!]);
+    const features = read(dir, 'apack.json').features as NonNullable<PackManifest['features']>;
+    const declared = Object.values(features).flatMap(feature => [
+      feature.system!.entry, feature.system!.contract!.split('#')[0]!,
+      ..._pluginTargets(feature.plugin!).map(([, target]) => target.split('#')[0]!),
+      feature.plugin!.contract!.split('#')[0]!,
+    ]);
 
     population('the paths the fixture manifest declares', declared, { atLeast: 4 });
     expect(declared.filter((rel) => !fs.existsSync(path.join(dir, rel)))).toEqual([]);

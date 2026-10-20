@@ -1,3 +1,4 @@
+import { nativePackDeclarationFixture } from '../../src/testing/index.ts';
 import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
@@ -12,6 +13,10 @@ const { listenerTrigger, actionStep } = await import('../build/helpers/test-step
 startTestRuntime();
 testPacks.steps.set(listenerTrigger.type, listenerTrigger);
 testPacks.steps.set(actionStep.type, actionStep);
+const declaration = nativePackDeclarationFixture({ id: 'repository-fixture', steps: [listenerTrigger, actionStep] });
+for (const [type, step] of Object.entries(declaration.steps ?? {})) testPacks.stepDeclarations.set(type, {
+  type, packId: declaration.id, origin: 'native', enabled: true, declaration: step,
+});
 const { contentPath } = await import('../../src/build/manifest.ts');
 
 let tmp: string | undefined;

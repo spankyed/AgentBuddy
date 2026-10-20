@@ -38,7 +38,7 @@ import { box, coresFor, MEASURED_ON } from './lib/core-budget.ts';
 import { pruneDepFiles } from './lib/dep-files.ts';
 import { asCount, parseFlags } from './lib/measure.ts';
 import { TIMEOUT_MS, timedOutBecause, type TimeoutClass } from './lib/step-timeouts.ts';
-import { ARTIFACT_CHECKS, CODEGEN } from './lib/typecheck-jobs.ts';
+import { RECORDED_FILE_CHECKS, CODEGEN, GENERATE_ENTRIES, type TypecheckCommand } from './lib/typecheck-jobs.ts';
 import { ENSURE, LEG_TIMEOUT, TYPECHECK_LEGS } from './lib/typecheck-legs.ts';
 
 /**
@@ -66,22 +66,23 @@ import { ENSURE, LEG_TIMEOUT, TYPECHECK_LEGS } from './lib/typecheck-legs.ts';
 const budgetFrom = (cores: string | undefined, jobs: number): number =>
   asCount(cores, 'cores') ?? Math.min(jobs, Math.max(2, box()));
 
-/** One thing this runner spawns: a leg, a prerequisite that writes, or a recorded artifact's check */
+/** One thing this runner spawns: a leg, a prerequisite that writes, or a recorded file's check */
 interface Job {
   readonly name: string;
   readonly command: string;
+  readonly cwd?: string;
   readonly timeout: TimeoutClass;
   readonly seconds: number;
   readonly cores: number;
   readonly dependsOn: readonly string[];
 }
 
-/** A chain step this runner borrows: its own timeout class, declared cost and core width, none restated here */
-function borrowed({ name, command }: { name: string; command: string }): Job {
+/** Borrow chain ownership, allowing a different derivation mode to declare its own deadline class. */
+function borrowed({ name, command, cwd, timeout }: TypecheckCommand): Job {
   const step = CHAIN_STEPS.find((candidate) => candidate.name === name);
   if (!step) throw new Error(`${name} is not a chain step, so there is no class or cost to borrow — `
     + 'either it was renamed or it belongs in TYPECHECK_LEGS');
-  return { name, command, timeout: step.timeout, seconds: step.seconds ?? 0, cores: coresFor(name),
+  return { name, command, cwd, timeout: timeout ?? step.timeout, seconds: step.seconds ?? 0, cores: coresFor(name),
     dependsOn: [ENSURE, CODEGEN] };
 }
 
@@ -101,9 +102,11 @@ const JOBS: readonly Job[] = [
     cores: coresFor(leg.name),
     dependsOn: leg.name === ENSURE ? [] : [ENSURE, CODEGEN],
   })),
-  { name: CODEGEN, command: `npm run ${CODEGEN} -w @app/default-setup`, timeout: LEG_TIMEOUT, seconds: 2,
+  // Generation captures the compiler/dependency installation before compiling declarations; it is a
+  // pack compilation prerequisite, rather than one of the single-tsc reader legs.
+  { ...GENERATE_ENTRIES, timeout: 'suite', seconds: 2,
     cores: 1, dependsOn: [ENSURE] },
-  ...ARTIFACT_CHECKS.map(borrowed),
+  ...RECORDED_FILE_CHECKS.map(borrowed),
 ];
 
 const secs = (ms: number) => `${(ms / 1000).toFixed(1)}s`;
@@ -131,7 +134,7 @@ const result = await schedule({
     // Not `leg.seconds`: a deadline from a measurement is a deadline from this machine. The class is the job's
     // own — `LEG_TIMEOUT` for a leg, and for a borrowed step the one its chain entry declares, so a step that
     // fans out keeps the rung sized for that rather than a leg's.
-    const outcome = await boundedSpawn(command!, args, TIMEOUT_MS[leg.timeout].ms);
+    const outcome = await boundedSpawn(command!, args, TIMEOUT_MS[leg.timeout].ms, { cwd: leg.cwd });
     done.set(leg.name, outcome);
     // One line as it finishes, so a ten-second command is not ten seconds of silence. Completion order, since
     // that is what progress *is*; the failures below are in declared order, which is what reading wants.

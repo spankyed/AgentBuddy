@@ -1,4 +1,4 @@
-import type { GeneralSettings } from '#app-settings/types.ts';
+import type { AppSettings } from '@apackdev/sdk/types';
 import type { ActionMeta } from '@apackdev/sdk/build';
 import type { EntityId, Services } from '#generated/services.ts';
 import { getOnboardingState, persistOnboardingState, flashState } from '../onboarding-helpers.ts';
@@ -100,7 +100,7 @@ export async function action(
     state.pendingMessageId = messageId;
   } else {
     // No sessions found — show file-picker as fallback
-    const projects = services.settings.getSection<GeneralSettings>('general').projects;
+    const projects = services.settings.get<AppSettings>({ kind: 'app' }).projects;
     const { messageId } = services.chat.sendBlockMessage({
       threadId,
       text: 'No existing sessions found. Pick a project directory to get started, or skip to set one up later.',

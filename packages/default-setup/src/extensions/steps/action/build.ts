@@ -1,4 +1,3 @@
-import type { StepBuildFacet, StepNodeFacet } from '@apackdev/sdk/steps';
 import type { StepCompileResult, StepCompileContext, StepValidationError, StepValidationContext, StepDecompileContext } from '@apackdev/sdk/steps';
 import { EARS } from '@apackdev/sdk';
 import { expandRecord, collapseRecord, mapProblems } from '@apackdev/sdk/steps';
@@ -87,12 +86,3 @@ export function decompile(node: Record<string, unknown>, ctx: StepDecompileConte
   if (node.params && Object.keys(node.params as any).length > 0) dsl.params = node.params;
   return dsl;
 }
-
-/** Build-time facets only (no runtime or FE imports); loaded by `apack pack build` in dependent packs. */
-export const actionStepBuild: StepBuildFacet = { compile, validate, getLabel, decompile, relation: { field: 'actionId', targetEntity: 'Action' } };
-
-/** What a node of this type starts with; the backend writes it and the canvas draws it */
-export const actionStepNode: StepNodeFacet = {
-  label: 'Action',
-  defaultLabel: 'Do action',
-};

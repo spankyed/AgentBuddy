@@ -1,12 +1,15 @@
+import type { StepFrontendBinding } from '../fe/step-bindings.ts';
+import type { ArtifactFrontendBinding, BlockFrontendBinding } from '../fe/viewer-bindings.ts';
+import type { PackCatalogView } from '../framework/catalog-view.ts';
 // The frontend's port: what the SDK's frontend code reaches in the renderer, bound once per window
+import type { ReferenceTypeConfig, ReferenceBindings, ReferenceBinding } from '../fe/reference-types.ts';
 import type { Message } from '../events/index.ts';
 import type { SecretsClient } from '../fe/secrets-client.ts';
 import type { SettingsPort } from '../fe/settings.ts';
 import type { Component } from 'vue';
 import type { Plugin } from '../fe/plugin.ts';
 import type { HostShell } from '../fe/shell.ts';
-import type { TiptapPlugin } from '../fe/tiptap-plugins.ts';
-import type { DslTypeConfig } from '../fe/dsl-types.ts';
+import type { TiptapPluginBinding } from '../fe/tiptap-plugins.ts';
 import type { PackExtensionsView } from './packs-view.ts';
 
 /**
@@ -20,19 +23,26 @@ export interface FeClient {
 
 /** The packs whose frontends the renderer registered, read-only */
 export interface FePackRegistryView extends PackExtensionsView {
+  /** Observe committed contribution changes; refused or disposed candidates publish nothing. */
+  onChanged(listener: (packId: string) => void): () => void;
   /** Every registered plugin, in registration order */
   plugins(): Plugin[];
-  /** The first registered default plugin */
-  defaultPlugin(): Plugin | undefined;
-  tiptapPlugins(): TiptapPlugin[];
+  tiptapPlugins(): TiptapPluginBinding[];
+  /** Accepted step bindings; catalog declarations can outlive their implementations. */
+  stepBindings(): ReadonlyMap<string, StepFrontendBinding>;
+  artifactBindings(): ReadonlyMap<string, ArtifactFrontendBinding>;
+  blockBindings(): ReadonlyMap<string, BlockFrontendBinding>;
+  /** Accepted executable reference bindings; declarations have a separate catalog lifetime. */
+  referenceTypes(): ReadonlyMap<string, ReferenceBinding<ReferenceTypeConfig>>;
+  referenceCategories(): ReadonlyMap<string, ReferenceBinding<ReferenceBindings['categories'][string]>>;
   /** The component a pack registered for an app extension slot */
   appExtension(slot: string): Component | undefined;
-  /** The DSL types packs registered for the code editors, by name */
-  dslTypes(): ReadonlyMap<string, DslTypeConfig>;
 }
 
 /** The running app, as the SDK reaches it in the renderer */
 export interface FeHostRuntime {
+  /** Common declarations, independent of the accepted executable frontend registry. */
+  catalog: PackCatalogView;
   /** The app shell, which spawns the plugins, holds which is open and lays out the panels */
   application: HostShell;
   /** The API's secrets procedures */

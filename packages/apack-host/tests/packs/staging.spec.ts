@@ -1,11 +1,12 @@
+import { writeInstalledPackFixture } from './runtime/build-fixture.ts';
 import { spawnSync } from 'node:child_process';
 import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { prepareHostDataDirs, recoverStagingDirs } from '../../src/packs/staging.ts';
+import { INSTALL_RECORD_RECOVERY, prepareHostDataDirs, recoverStagingDirs } from '../../src/packs/staging.ts';
 import { stagingDirName } from '../../src/replace-dir.ts';
-import { discoverPacks, enabledExternalPacks } from '../../src/packs/discovery.ts';
+import { readInstalledPackBuild, discoverPacks } from '../../src/packs/discovery.ts';
 import { readInstalledPacks, writeInstalledPacks } from '../../src/packs/installed.ts';
 
 const recordedPacks = () => readInstalledPacks();
@@ -38,8 +39,7 @@ const mkdir = (name: string) => fs.mkdirSync(path.join(packsDir, name));
 const remaining = () => fs.readdirSync(packsDir).sort();
 
 function writePack(name: string, id = 'demo-pack'): void {
-  fs.mkdirSync(path.join(packsDir, name), { recursive: true });
-  fs.writeFileSync(path.join(packsDir, name, 'apack.json'), JSON.stringify({ id, name: 'Demo', version: '1.0.0' }));
+  writeInstalledPackFixture(path.join(packsDir, name), { id, name: 'Demo', version: '1.0.0' });
 }
 
 describe('recoverStagingDirs', () => {
@@ -48,7 +48,7 @@ describe('recoverStagingDirs', () => {
     const running = process.ppid;
     mkdir('demo-pack');
     mkdir(`.demo-pack.installing-${exited}-a1B2c3`);
-    mkdir(`.demo-pack.previous-${exited}-9f8e7d6c`);
+    mkdir(`.demo-pack.retired-${exited}-9f8e7d6c`);
     mkdir(`.base-pack.installing-${exited}`);
     mkdir(`.other-pack.installing-${running}-d4E5f6`);
     mkdir(`.other-pack.previous-${process.pid}-0a1b2c3d`);
@@ -57,7 +57,7 @@ describe('recoverStagingDirs', () => {
     expect(result.removed.sort()).toEqual([
       `.base-pack.installing-${exited}`,
       `.demo-pack.installing-${exited}-a1B2c3`,
-      `.demo-pack.previous-${exited}-9f8e7d6c`,
+      `.demo-pack.retired-${exited}-9f8e7d6c`,
     ]);
     expect(result.restored).toEqual([]);
     expect(remaining()).toEqual([`.other-pack.installing-${running}-d4E5f6`, `.other-pack.previous-${process.pid}-0a1b2c3d`, 'demo-pack'].sort());
@@ -72,7 +72,7 @@ describe('recoverStagingDirs', () => {
 
     expect(recoverStagingDirs(packsDir)).toMatchObject({ restored: ['demo-pack'], failed: [] });
     expect(remaining()).toEqual(['demo-pack']);
-    expect(enabledExternalPacks(discoverPacks(packsDir), new Set()).map((p) => p.manifest.id)).toEqual(['demo-pack']);
+    expect(discoverPacks(packsDir).map((p) => p.manifest.id)).toEqual(['demo-pack']);
     expect(recordedPacks()).toMatchObject([{ id: 'demo-pack', enabled: true }]);
   });
 
@@ -94,9 +94,6 @@ describe('recoverStagingDirs', () => {
     expect(remaining()).toEqual([]);
   });
 
-  // Only placePack makes a `.previous`, and it removes it on success and on a failed rename, so one that
-  // survives means an install died part-way. What the app has recorded cannot change that: an uninstall
-  // needs the pack's directory to be there, and the interrupted install moved it aside.
   it("restores an interrupted install's copy whatever the record says about the pack", () => {
     writePack(`.demo-pack.previous-${exitedPid()}-1a2b3c4d`);
     writeInstalledPacks([]);
@@ -147,4 +144,67 @@ describe('prepareHostDataDirs', () => {
     expect(readHostCompatibility(root)).toEqual({ version: '2.1.0', packFormat: PACK_SNAPSHOT_FORMAT });
     expect(fs.readdirSync(root).filter((f) => f.endsWith('.tmp'))).toEqual([]);
   });
+});
+
+
+it('restores the previous build and its ownership after interrupted candidate acceptance', () => {
+  const previous = `.demo-pack.previous-${exitedPid()}-a1b2c3`;
+  writePack(previous);
+  writePack('demo-pack');
+  fs.writeFileSync(path.join(packsDir, 'demo-pack', 'candidate'), 'not accepted');
+  const file = path.join(root, 'installed-packs.json');
+  const old = { id: 'demo-pack', enabled: false, updatesWith: 'user' as const, installedFrom: 'old/source' };
+  writeInstalledPacks([old], path.join(packsDir, previous, INSTALL_RECORD_RECOVERY));
+  writeInstalledPacks([{ id: 'demo-pack', enabled: true, suppressAppInstall: true }, { id: 'other', enabled: false }], file);
+  expect(() => readInstalledPackBuild(path.join(packsDir, 'demo-pack'))).toThrow('Interrupted replacement');
+  expect(recoverStagingDirs(packsDir, file)).toMatchObject({ restored: ['demo-pack'], failed: [] });
+  expect(fs.existsSync(path.join(packsDir, 'demo-pack', 'candidate'))).toBe(false);
+  expect(readInstalledPackBuild(path.join(packsDir, 'demo-pack')).snapshot.manifest.id).toBe('demo-pack');
+  expect(readInstalledPacks(file)).toEqual([{ id: 'other', enabled: false }, old]);
+  expect(remaining()).toEqual(['demo-pack']);
+});
+
+it('preserves an ambiguous recovery and refuses to load its candidate', () => {
+  const pid = exitedPid();
+  const previous = [`.demo-pack.previous-${pid}-a1b2c3`, `.demo-pack.previous-${pid}-d4e5f6`];
+  for (const name of previous) writePack(name);
+  writePack('demo-pack');
+  const result = recoverStagingDirs(packsDir);
+  expect(result.failed).toHaveLength(2);
+  expect(result.removed).toEqual([]);
+  expect(remaining()).toEqual([...previous, 'demo-pack'].sort());
+  expect(() => readInstalledPackBuild(path.join(packsDir, 'demo-pack'))).toThrow('Interrupted replacement');
+});
+
+
+it('keeps an incumbent when recovery fails and never sweeps it as litter', () => {
+  const previous = `.demo-pack.previous-${exitedPid()}-a1b2c3`;
+  writePack(previous);
+  writePack('demo-pack');
+  fs.chmodSync(packsDir, 0o555);
+  const result = recoverStagingDirs(packsDir);
+  expect(result.failed).toMatchObject([{ name: previous }]);
+  expect(result.removed).toEqual([]);
+  expect(fs.existsSync(path.join(packsDir, previous))).toBe(true);
+  expect(() => readInstalledPackBuild(path.join(packsDir, 'demo-pack'))).toThrow('Interrupted replacement');
+});
+
+it('leaves the restored build verifiable when a refused install cannot restore its record', async () => {
+  const { installPackFromLocal } = await import('../../src/packs/installer.ts');
+  const { verifyPack } = await import('../../src/packs/assets.ts');
+  const source = path.join(root, 'source');
+  writeInstalledPackFixture(source, { id: 'demo-pack', name: 'Demo', version: '1.0.0' });
+  const recordsDir = path.join(root, 'records');
+  fs.mkdirSync(recordsDir);
+  const installedPacksFile = path.join(recordsDir, 'installed-packs.json');
+  await installPackFromLocal(source, packsDir, { installedPacksFile });
+  try {
+    await expect(installPackFromLocal(source, packsDir, { installedPacksFile, accept: () => {
+      // Restoring the record now fails, as a full or read-only disk would make it
+      fs.chmodSync(recordsDir, 0o555);
+      throw new Error('acceptance refused');
+    } })).rejects.toThrow('record rollback failed');
+  } finally { fs.chmodSync(recordsDir, 0o755); }
+  expect(() => verifyPack(path.join(packsDir, 'demo-pack'))).not.toThrow();
+  expect(remaining()).toEqual(['demo-pack']);
 });

@@ -1,7 +1,7 @@
-import type { StepBuildFacet, StepCompileResult, StepValidationError, StepValidationContext, StepCompileContext, StepDecompileContext, StepNodeFacet } from '@apackdev/sdk/steps';
+import type { StepCompileResult, StepValidationError, StepValidationContext, StepCompileContext, StepDecompileContext } from '@apackdev/sdk/steps';
 import { EARS } from '@apackdev/sdk';
 
-function compile(node: Record<string, unknown>, nodeId: string, ts: number, _ctx: StepCompileContext): StepCompileResult {
+export function compile(node: Record<string, unknown>, nodeId: string, ts: number, _ctx: StepCompileContext): StepCompileResult {
   return {
     entity: {
       id: nodeId,
@@ -16,28 +16,19 @@ function compile(node: Record<string, unknown>, nodeId: string, ts: number, _ctx
   };
 }
 
-function validate(_s: Record<string, unknown>, _path: string, _ctx: StepValidationContext): StepValidationError[] {
+export function validate(_s: Record<string, unknown>, _path: string, _ctx: StepValidationContext): StepValidationError[] {
   return [];
 }
 
-function getLabel(step: Record<string, unknown>, index: number): string {
+export function getLabel(step: Record<string, unknown>, index: number): string {
   if (typeof step.label === 'string') return step.label;
   return `Keep Alive ${index}`;
 }
 
-function decompile(node: Record<string, unknown>, _ctx: StepDecompileContext): Record<string, unknown> {
+export function decompile(node: Record<string, unknown>, _ctx: StepDecompileContext): Record<string, unknown> {
   const dsl: Record<string, unknown> = { type: 'keep_alive' };
   if (node.label) dsl.label = node.label;
   if (node.description) dsl.description = node.description;
   if (node.final) dsl.final = true;
   return dsl;
 }
-
-/** Build-time facets only (no runtime or FE imports); loaded by `apack pack build` in dependent packs. */
-export const keepAliveStepBuild: StepBuildFacet = { compile, validate, getLabel, decompile };
-
-/** What a node of this type starts with; the backend writes it and the canvas draws it */
-export const keepAliveStepNode: StepNodeFacet = {
-  label: 'Keep alive',
-  defaultLabel: 'Keep alive',
-};

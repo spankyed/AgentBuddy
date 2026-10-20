@@ -7,7 +7,7 @@ import type { TimeoutClass } from './step-timeouts.ts';
  * `API_CHECK_TIMEOUT` below read by both the runner's kill and the chain step's rung, so the two cannot name
  * different deadlines for the same work.
  *
- * **Not required by `chain-table.spec.ts`'s "the chain runs every artifact's check", though that looks like
+ * **Not required by `chain-table.spec.ts`'s "the chain runs every recorded file's check", though that looks like
  * the reason.** `reachableText` follows `npm run` one level out of a *script's* text and deliberately not out
  * of the files that script runs, so moving these commands into a module did take the three workspace-scoped
  * keys (`@apackdev/ui:api:check`) out of its invoked set — checked, they are absent. The check passes anyway

@@ -128,26 +128,22 @@ describe('where a chain run keeps its evidence', () => {
     /**
      * The files a failed step wrote, kept before the retry can overwrite them.
      *
-     * The paths are repo-relative, so this writes a tree under the repo root and names it — which is what
-     * the real callers are (`tests/results`, the fixture packs' own output).
+     * The paths are repo-relative. Use a private fixture tree so a concurrent Playwright run cannot
+     * clear it, and this check never writes into that run's output.
      */
     it('copies the files a failed step wrote in, named for the step', () => {
       const run = opened();
-      const left = path.join(REPO_ROOT, 'tests', 'results');
-      const existed = fs.existsSync(left);
-      fs.mkdirSync(left, { recursive: true });
+      fs.mkdirSync(path.join(REPO_ROOT, '.apack'), { recursive: true });
+      const left = fs.mkdtempSync(path.join(REPO_ROOT, '.apack', 'chain-evidence-'));
+      temps.push(left);
+      const target = path.relative(REPO_ROOT, left);
       fs.writeFileSync(path.join(left, 'kept-probe.log'), 'what the app said');
-      try {
-        expect(run.keepFiles('test:smoke', ['tests/results'])).toEqual(['tests/results']);
-        expect(fs.readFileSync(path.join(run.dir, 'test-smoke.files', 'results', 'kept-probe.log'), 'utf-8'))
-          .toBe('what the app said');
-        // A step and its retry do not share one, as their logs do not
-        run.keepFiles('test:smoke.retry', ['tests/results']);
-        expect(fs.existsSync(path.join(run.dir, 'test-smoke.retry.files', 'results'))).toBe(true);
-      } finally {
-        fs.rmSync(path.join(left, 'kept-probe.log'), { force: true });
-        if (!existed) fs.rmSync(left, { recursive: true, force: true });
-      }
+      expect(run.keepFiles('test:smoke', [target])).toEqual([target]);
+      expect(fs.readFileSync(path.join(run.dir, 'test-smoke.files', path.basename(left), 'kept-probe.log'), 'utf-8'))
+        .toBe('what the app said');
+      // A step and its retry do not share one, as their logs do not
+      run.keepFiles('test:smoke.retry', [target]);
+      expect(fs.existsSync(path.join(run.dir, 'test-smoke.retry.files', path.basename(left)))).toBe(true);
     });
 
     /** A step can fail before writing anything, which is not a second failure to report */

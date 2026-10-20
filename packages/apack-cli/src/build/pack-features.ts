@@ -244,7 +244,7 @@ export function contractLeafFindings(packDir: string): PackWideFinding[] {
   const manifestPath = path.join(packDir, 'apack.json');
   const manifest = fs.existsSync(manifestPath)
     ? JSON.parse(fs.readFileSync(manifestPath, 'utf-8')) as {
-      features?: Record<string, { plugin?: { contract?: string; entry?: string }; system?: { contract?: string; entry?: string } }>;
+      features?: Record<string, { plugin?: { contract?: string; state?: string }; system?: { contract?: string; entry?: string } }>;
     }
     : undefined;
   /** A `"path"` or `"path#Export"` the manifest names, as a file in the pack */
@@ -259,7 +259,7 @@ export function contractLeafFindings(packDir: string): PackWideFinding[] {
    * The actor modules `apack.json` names. Exact, where the machine rule below is a guess at a filename: these
    * are the two paths the manifest states outright, so a leaf reaching one is reported whatever it is called.
    */
-  const actorEntries = new Set(manifest ? files((f) => [f.plugin?.entry, f.system?.entry]) : []);
+  const actorEntries = new Set(manifest ? files((f) => [f.plugin?.state, f.system?.entry]) : []);
   // The pack's own `#` subpaths, which is how a pack names its own modules and so how its features reach each
   // other. Two of `default-setup`'s contract closures used to end at one of those imports — including
   // `threads/be/types.ts` reaching `code/`, a cross-feature hop the walk stopped at.

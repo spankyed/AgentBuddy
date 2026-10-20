@@ -20,8 +20,8 @@ import { GENERATED_BEHIND_A_CONTRACT } from '../../../scripts/check-import-speci
  * assert nothing.
  */
 const GENERATED_MODULES = [
-  'appliers', 'content-runtime', 'dsl-types-fe', 'ears', 'events', 'fe', 'flow-helpers', 'pack-entry', 'pack-entry-fe', 'pack-types',
-  'paths', 'ref', 'references', 'repositories', 'repository', 'services', 'settings', 'settings-fe',
+  'appliers', 'content-runtime', 'ears', 'events', 'fe', 'flow-helpers', 'pack-entry', 'pack-entry-fe', 'pack-types',
+  'paths', 'ref', 'references', 'repositories', 'repository', 'runtime-services', 'services', 'settings', 'settings-fe',
   'step-types', 'steps-build', 'system-specs', 'types',
 ];
 
@@ -38,14 +38,13 @@ function write(file: string, content: string): void {
   fs.writeFileSync(path.join(root, file), content);
 }
 
-const CONTRACTS = ['src/features/memos/be/contract.ts', 'src/features/memos/fe/contract.ts'];
-const ENTRIES = ['src/features/memos/be/system.ts', 'src/features/memos/fe/plugin.ts'];
+const CONTRACTS = ['src/features/memos/be/contract.ts', 'src/features/memos/fe/contract.ts'] as const;
+const ENTRIES = ['src/features/memos/be/system.ts', 'src/features/memos/fe/plugin.ts'] as const;
 
 /**
  * A pack that makes codegen emit **all** of `GENERATED_MODULES`. A minimal one-feature manifest emits fifteen, and
- * a module the fixture does not emit is a module this check never looks at — so the four conditional ones are
- * bought deliberately: `repositories` by a declared repository, `step-types` by a step whose folder has a
- * `types.ts`, `steps-build` by any declared step, `dsl-types-fe` by a `monaco` DSL target with globals.
+ * a module the fixture does not emit is a module this check never looks at — so the three conditional ones are
+ * bought deliberately: `repositories` by a declared repository, `step-types` by a step with a declared types module, `steps-build` by any declared step.
  *
  * The contracts are plain declared types with no imports, which is all codegen reads them as — the temp dir has no
  * `node_modules` for an import to resolve against.
@@ -57,28 +56,30 @@ function fixture(): PackManifest {
   write(ENTRIES[1]!, 'declare const plugin: { label: string };\nexport default plugin;\n');
   write('src/features/memos/be/repository/index.ts', 'export const memoQueries = { all: () => [] };\n');
   write('src/extensions/steps/tick/types.ts', "export type TickNode = { every: string };\n");
-  write('src/extensions/steps/tick/build.ts', "export const tickTrigger = { trackField: 'every' };\n");
+  write('src/defs/action.ts', 'export interface NoteDTO { text: string }');
+  write('src/extensions/steps/tick/build.ts', "export function compile() { return {}; } export function decompile() { return {}; }\n");
   return {
     id: 'demo-pack',
     name: 'Demo',
     version: '1.0.0',
     features: {
       memos: {
+        description: 'Manage memos.',
         system: { entry: ENTRIES[0], contract: `${CONTRACTS[0]}#Contract` },
-        plugin: { entry: ENTRIES[1], contract: `${CONTRACTS[1]}#Contract` },
+        plugin: { label: 'Fixture', state: ENTRIES[1], contract: `${CONTRACTS[1]}#Contract` },
         repositories: { memoQueries: 'src/features/memos/be/repository/index.ts#memoQueries' },
       },
     },
     extensions: {
-      steps: { tick: { kind: 'trigger', trigger: { facet: 'src/extensions/steps/tick/build.ts#tickTrigger' } } },
-      dsl: { action: { prefix: '@', targets: ['monaco'], globals: { memos: 'NoteDTO' } } },
+      steps: { tick: { node: { label: 'Tick' }, types: 'src/extensions/steps/tick/types.ts', kind: 'trigger', trigger: { trackField: 'every', compile: 'src/extensions/steps/tick/build.ts#compile', decompile: 'src/extensions/steps/tick/build.ts#decompile' } } },
+      dsl: { action: { entry: 'src/defs/action.ts', prefix: '@', targets: ['monaco'], globals: { memos: 'NoteDTO' } } },
     },
-  } as unknown as PackManifest;
+  };
 }
 
 /** The generated modules, by the basename the rule classifies them under */
-function generated(): Map<string, string> {
-  const files = generatePackFiles(fixture(), { packRoot: root });
+async function generated(): Promise<Map<string, string>> {
+  const files = await generatePackFiles(fixture(), { packRoot: root });
   return new Map(Object.entries(files)
     .filter(([file]) => /^src\/__generated__\/[^/]+\.ts$/.test(file))
     .map(([file, contents]) => [path.basename(file, '.ts'), contents]));
@@ -101,13 +102,13 @@ function specifiersOf(contents: string): string[] {
 const asSpecifier = (manifestPath: string) => `../${manifestPath.replace(/^src\//, '')}`;
 
 describe('the generated modules a contract is behind', () => {
-  it('is the whole set codegen emits, so a new one has to be classified', () => {
-    const emitted = [...generated().keys()].sort();
+  it('is the whole set codegen emits, so a new one has to be classified', async () => {
+    const emitted = [...(await generated()).keys()].sort();
     expect(emitted).toEqual([...GENERATED_MODULES].sort());
   });
 
-  it('is exactly the modules that import a contract or an actor entry', () => {
-    const behind = [...generated()]
+  it('is exactly the modules that import a contract or an actor entry', async () => {
+    const behind = [...(await generated())]
       .filter(([, contents]) => {
         const specifiers = new Set(specifiersOf(contents));
         return [...CONTRACTS, ...ENTRIES].some((declared) => specifiers.has(asSpecifier(declared)));
@@ -118,8 +119,8 @@ describe('the generated modules a contract is behind', () => {
 
   // The fixture is the subject of both cases above, so a fixture that stopped producing one would make them pass by
   // looking at nothing: `events` reads a contract and `pack-entry` an entry, one for each half of the claim.
-  it('reads a fixture that really does reach both', () => {
-    const modules = generated();
+  it('reads a fixture that really does reach both', async () => {
+    const modules = await generated();
     expect(specifiersOf(modules.get('events') ?? '')).toContain(asSpecifier(CONTRACTS[1]!));
     expect(specifiersOf(modules.get('pack-entry') ?? '')).toContain(asSpecifier(ENTRIES[0]!));
   });

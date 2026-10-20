@@ -48,6 +48,18 @@ const loadedByThePool = (): string[] => reachableFrom(
  * exists to catch, and a file-level list would wave it through.
  */
 const INVENTORY: Record<string, { calls: number; why: string }> = {
+  'packages/apack-cli/tests/build/fe-bundler-dev-server.integration.spec.ts': { calls: 1,
+    why: 'Separate Vite processes scan a live pack while its output is published. The Windows directory-sharing failure does not reproduce in a same-process server; each child owns a private cache and closes with the test' },
+  'packages/apack-cli/tests/build/compiler-pe-libraries.integration.spec.ts': { calls: 17,
+    why: 'MSVC and ordinary loader fixtures prove actual DLL selection, copied-runtime SxS, pre-initialization refusal, OS assemblies and publisher-policy invalidation. Real Node/compiler processes retain their separate runtime proofs; these loader boundaries cannot be proved in-process' },
+  'packages/apack-cli/tests/_support/windows-publisher-policy.ts': { calls: 3,
+    why: 'The Windows SDK builds signed fixture assemblies with a process-owned test key. A compiled COM cache utility installs and removes only their unique identities; real OS publication and cleanup cannot be replaced by mocks' },
+  'packages/apack-cli/tests/build/compiler-elf-libraries.integration.spec.ts': { calls: 3,
+    why: 'the Linux proofs compile private NAPI/shared-library fixtures; ordinary Node controls establish actual addon and pre-JavaScript runtime library selection before captured ownership and pre-initialization refusal' },
+  'packages/apack-cli/tests/build/compiler-native-libraries.integration.spec.ts': { calls: 11,
+    why: 'clang/cc and ordinary runtime controls prove actual native loading and pre-initialization refusal. The Electron driver must run under Electron to capture and launch its real framework distribution; Node cannot emulate it. The live-watch case compiles a replacement graph. In-process checks cannot establish OS loading, runtime identity or pre-initialization refusal' },
+  'packages/apack-cli/tests/build/build-worker.integration.spec.ts': { calls: 8,
+    why: 'private worker IPC lifetime and refusal, public shutdown, native preload identity, loader-startup refusal and natural shutdown under signal refusal require their own processes; two OS process-state queries verify inherited subprocess termination' },
   'packages/repo-checks/tests/bounded-spawn.integration.spec.ts': { calls: 1,
     why: 'a separate orchestrator process receives real signals so cancellation proves its whole child tree is reaped without signaling the test worker' },
   'packages/repo-checks/tests/session.integration.spec.ts': { calls: 2,
@@ -64,8 +76,8 @@ const INVENTORY: Record<string, { calls: number; why: string }> = {
     why: 'the CLI\'s db command against a data dir: it opens LMDB and exits, and neither survives being run in the worker' },
   'packages/apack-cli/tests/commands/release.integration.spec.ts': { calls: 1,
     why: 'git, in a throwaway repository' },
-  'packages/apack-cli/tests/commands/scaffold.integration.spec.ts': { calls: 1,
-    why: 'the scaffolded pack\'s own toolchain — the CLI bin and then its vitest — run as a pack author runs them, which is the fidelity the spec is for' },
+  'packages/apack-cli/tests/_support/scaffold-process.ts': { calls: 1,
+    why: 'the scaffolded pack\'s own toolchain — the CLI bin and then its vitest — run as a pack author runs them, which is the fidelity the spec is for. Async owned processes keep 59–116s compiler operations off the runner event loop' },
   'packages/apack-cli/tests/harness/dependency-runtime.integration.spec.ts': { calls: 1,
     why: 'a nested `vitest run`: the harness under test is what launches a run, so it cannot be the run that is launching it' },
   'packages/apack-cli/tests/harness/harness-setup.integration.spec.ts': { calls: 1,
@@ -76,7 +88,7 @@ const INVENTORY: Record<string, { calls: number; why: string }> = {
     why: 'node -e inside the consumer directory, so import.meta.resolve and the dynamic imports answer with the consumer\'s resolution and not this process\'s' },
   'packages/repo-checks/tests/_support/repo-files.ts': { calls: 1,
     why: 'git is the only thing that knows what is tracked, and tracked-ness is the subject: a walk of the '
-      + 'tree cannot tell a committed file from a build artifact, which is the distinction every repo-wide '
+      + 'tree cannot tell a committed file from a build output, which is the distinction every repo-wide '
       + 'guard reading this rests on. One call, shared by every spec that asks' },
   'packages/repo-checks/tests/component-contracts.integration.spec.ts': { calls: 1,
     why: 'vue-tsc again, and it emits declarations for the component reports rather than only checking them' },

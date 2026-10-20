@@ -16,7 +16,7 @@ import * as os from 'node:os';
 import * as path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import { PACK_BUILD_WAIT_MS, PackBuildLockHeld, holdPackBuildLock, packBuildLock, waitForPackBuild } from '../../src/build/build-lock';
-import { buildStagingDir } from '../../src/commands/build';
+import { buildStagingDir } from '../../src/build/build-publication.ts';
 
 let root: string;
 afterEach(() => { if (root) fs.rmSync(root, { recursive: true, force: true }); });
@@ -76,6 +76,16 @@ describe('a second build', () => {
     })).rejects.toThrow(PackBuildLockHeld);
     expect(tries, 'it refused at once instead of retrying while the holder ran').toBeGreaterThan(1);
     expect(waitedFor, 'a wait that prints nothing reads as a hang').toContain('apack pack build');
+  });
+
+  it('cancels a parent waiting for another build without touching its lock', async () => {
+    const file = packBuildLock(pack());
+    heldByAnother(file);
+    const signal = new AbortController();
+    await expect(holdPackBuildLock(root, { packId: 'demo', what: 'waiting build', signal: signal.signal,
+      onWait: () => signal.abort(new Error('Build cancelled')),
+    })).rejects.toThrow('Build cancelled');
+    expect(JSON.parse(fs.readFileSync(file, 'utf8')).pid).toBe(process.ppid);
   });
 
   it('names the holder, the pack and the file it is waiting on', async () => {

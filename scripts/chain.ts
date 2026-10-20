@@ -39,20 +39,20 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { changedInputs, diffableStamp, firstChange, freshnessSweep, INPUTS_CHANGED, PACKAGES_PREBUILT_ENV, REPO_ROOT, stampedRun, stampRecord, unitStaleReason } from '@apackdev/host/build/packages-built';
-import { CHAIN_STEPS, type ChainStep, chainSteps, needsApp, orderedSteps, poolStepName, STEP_TABLES } from './lib/chain-steps.ts';
+import { CHAIN_STEPS, type ChainStep, chainSteps, needsApp, orderedSteps, STEP_TABLES } from './lib/chain-steps.ts';
 import { stampFor, STAMP_DIR, unitFor } from './lib/chain-stamps.ts';
 import { evidenceLine, openRunEvidence, pruneRunEvidence, type RunEvidence } from './lib/chain-evidence.ts';
 import { CHAIN_FLAGS } from './lib/chain-flags.ts';
 import { CHAIN_WAIT_MS, ChainLockHeld, chainInvocation, holdChainLock } from './lib/chain-lock.ts';
 import type { ExclusiveLock } from '@apackdev/host/exclusive-lock';
-import { TIMEOUT_MS, timedOutBecause, type TimeoutClass } from './lib/step-timeouts.ts';
+import { timeoutMsFor, timedOutBecause, type TimeoutClass } from './lib/step-timeouts.ts';
 import { box, isMeasuredMachine, machineText, MEASURED_ON, thisMachine } from './lib/core-budget.ts';
 import { asCount, idleNow, parseFlags } from './lib/measure.ts';
 import { schedule } from './lib/chain-schedule.ts';
 import { driftedSteps, measurementsFrom, outgrownRungs, willNotCache } from './lib/step-timing.ts';
 import { briefly, classifyLine, criticalPathLine, pathSavingsLine, cores, declaredAt, dim, driftReport, outgrownReport, DRY_REASON_COLUMN, howLong, identicalRewrites, marker, movedWhileItRan, oneLine, REASON_COLUMN, shouldClassify, staleLines, STEP_NAME_WIDTH, TIME_COLUMN, voidedLine, whenChanged, wrapAt, writerOf } from './lib/chain-output.ts';
 import { slowestTests } from './lib/slow-tests.ts';
-import { CHAIN_RUN_ENV, DIAGNOSTIC_RUN_ENV, measureCommandFor, POOLS, poolDurationLines, type Pool } from './lib/unit-pool.ts';
+import { CHAIN_RUN_ENV, CHAIN_CORES_ENV, DIAGNOSTIC_RUN_ENV, poolWorkerLimit, measureCommandFor, poolForStep, poolDurationLines } from './lib/unit-pool.ts';
 import { exitOnEpipe } from './lib/exit-on-epipe.ts';
 
 exitOnEpipe();
@@ -81,11 +81,11 @@ import { boundedSpawn } from './lib/bounded-spawn.ts';
  *
  * Empty for every other step, and for a pool step this run skipped — `poolDurationLines` has why.
  */
-const poolLines = (name: string, ms: number): string[] => {
-  const pool = (Object.keys(POOLS) as Pool[]).find((kind) => poolStepName(kind) === name);
+const poolLines = (name: string, ms: number, budget: number): string[] => {
+  const pool = poolForStep(name);
   if (pool === undefined) return [];
   // When the step started, so records a previous run wrote are left out rather than printed as this one's
-  const measured = poolDurationLines(pool, 6, new Date(Date.now() - ms), { wallMs: ms });
+  const measured = poolDurationLines(pool, 6, new Date(Date.now() - ms), { wallMs: ms, workers: poolWorkerLimit(pool, budget) });
   if (measured.length > 0) return measured;
   // **A pool step that ran and measured nothing is the one line that otherwise reads as a mystery**: `ok`
   // in 0.7s with no ranking under it, for a step whose reason says its inputs changed. The step did its
@@ -156,6 +156,7 @@ function whatMoved(
   step: ChainStep,
   steps: readonly ChainStep[],
   asking: { changedInputs: typeof changedInputs },
+  budget: number,
 ): Omit<Parameters<typeof staleLines>[0], 'name' | 'nameWidth' | 'reason'> {
   const nothing = { gained: [], lost: [], files: [], identical: [] };
   // An undiffable stamp is required of the types and unreachable from here, which is worth saying rather than
@@ -166,7 +167,7 @@ function whatMoved(
   // where naming the files would pay next, and it would make this branch live.
   const { stamp: record, undiffable } = diffableStamp(stampRecord(stampFor(step.name)));
   if (record === undefined) return { ...nothing, undiffable };
-  const changes = asking.changedInputs(unitFor(step), record);
+  const changes = asking.changedInputs(unitFor(step, budget), record);
   const at = (file: string) => {
     try {
       return fs.statSync(path.join(REPO_ROOT, file)).mtimeMs;
@@ -207,8 +208,8 @@ async function run(step: string, timeout: TimeoutClass, force: readonly string[]
   const args = ['run', step];
   // npm forwards what follows `--` to the script's own command, which is how this chain was given `--all`
   const withForce = force.length === 0 ? args : [...args, '--', ...force];
-  // The bound is the step's declared class, so it carries no machine — see `step-timeouts.ts`
-  const { code, output, ms, timedOut } = await boundedSpawn('npm', withForce, TIMEOUT_MS[timeout].ms, { env });
+  // Explicit feedback limits may shorten the declared work class's ceiling.
+  const { code, output, ms, timedOut } = await boundedSpawn('npm', withForce, timeoutMsFor(timeout), { env });
   const result = { step, ms, code, output, timedOut };
   // Here rather than where a step's result is read, because this is the one place a step's bytes exist and
   // every caller passes through it — the never-cached steps, `runAndStamp`, and the classification retry,
@@ -249,9 +250,10 @@ const secs = (ms: number) => `${(ms / 1000).toFixed(1)}s`;
  * concurrency separately from one established alone, and the chain is the only thing that can say which
  * this is. The classification re-run gets it too and records nothing anyway, through `DIAGNOSTIC_RUN_ENV`.
  */
-const envFor = (step: ChainStep): NodeJS.ProcessEnv => ({
+const envFor = (step: ChainStep, budget: number): NodeJS.ProcessEnv => ({
   ...process.env,
   [CHAIN_RUN_ENV]: '1',
+  [CHAIN_CORES_ENV]: String(budget),
   ...(step.name === 'packages:ensure' ? {} : { [PACKAGES_PREBUILT_ENV]: '1' }),
 });
 
@@ -265,13 +267,13 @@ class StepFailed extends Error {
  * The step, with its stamp written only where it passed. The fingerprint is taken before it runs, so a
  * source edited mid-run records as not done rather than as covered.
  */
-async function runAndStamp(step: ChainStep, all: boolean): Promise<Result> {
+async function runAndStamp(step: ChainStep, all: boolean, budget: number): Promise<Result> {
   const force = all ? step.forceArgs ?? [] : [];
-  if (step.neverCachedBecause !== undefined) return run(step.name, step.timeout, force, envFor(step));
+  if (step.neverCachedBecause !== undefined) return run(step.name, step.timeout, force, envFor(step, budget));
   let result: Result | undefined;
   try {
-    await stampedRun(step.name, unitFor(step), stampFor(step.name), async () => {
-      result = await run(step.name, step.timeout, force, envFor(step));
+    await stampedRun(step.name, unitFor(step, budget), stampFor(step.name), async () => {
+      result = await run(step.name, step.timeout, force, envFor(step, budget));
       if (result.code !== 0) throw new StepFailed(result);
     });
   } catch (err) {
@@ -373,7 +375,7 @@ async function main(): Promise<void> {
   const staleReason = (step: ChainStep, asking = { staleReason: unitStaleReason }): string | null =>
     step.neverCachedBecause !== undefined
       ? `never cached: ${step.neverCachedBecause}`
-      : asking.staleReason(unitFor(step), stampFor(step.name));
+      : asking.staleReason(unitFor(step, budget), stampFor(step.name));
 
   if (dry) {
     // One question about every step, and nothing runs while it is asked, so one reading of the tree answers it all
@@ -394,7 +396,7 @@ async function main(): Promise<void> {
       // string and only the two record clauses are reachable — but it was a literal kept in step with
       // `diffableStamp`'s by nothing, and there were three of them in three files.
       if (record === undefined) return undiffable;
-      return firstChange(sweep.changedInputs(unitFor(step), record));
+      return firstChange(sweep.changedInputs(unitFor(step, budget), record));
     };
     // What the run would admit on, which is the half of the plan the per-step lines cannot carry. Only the
     // steps above one core are listed: the rest are a count, because nineteen lines reading `1` is the table
@@ -496,7 +498,7 @@ async function main(): Promise<void> {
       return false;
     },
     run: async (step) => {
-      const result = await runAndStamp(step, all);
+      const result = await runAndStamp(step, all, budget);
       // A net rather than the mechanism: the graph already orders every reader of these paths after this
       // step, so nothing has read them yet. It costs a map scan and it is what a step reading something it
       // is *not* ordered after would need — see `freshnessSweep`'s note on what it cannot distinguish.
@@ -515,7 +517,7 @@ async function main(): Promise<void> {
       // rather than its output: a step's output is buffered and printed only on failure, so until this
       // existed the pool's own ranking reached nobody running `npm run chain` or `npm run test:unit`.
       // Only for a step that *ran* — a cached step's records are older than the step.
-      for (const line of poolLines(step.name, result.ms)) {
+      for (const line of poolLines(step.name, result.ms, budget)) {
         console.log(dim(`${' '.repeat(TIME_COLUMN)}${line}`));
       }
       return result.code === 0;
@@ -581,14 +583,14 @@ async function main(): Promise<void> {
       // chain ran zero tests and called the step green. `recordsVerdict` (`scripts/lib/unit-pool.ts`) carries
       // the evidence and why a *build* under the same re-run still records.
       const retry = await run(step.name, step.timeout, all ? step.forceArgs ?? [] : [],
-        { ...envFor(step), [DIAGNOSTIC_RUN_ENV]: '1' }, `${step.name}.retry`);
+        { ...envFor(step, budget), [DIAGNOSTIC_RUN_ENV]: '1' }, `${step.name}.retry`);
       // The verdict reports what the chain cost. The retry is a diagnostic after it, so a 60s re-run must not
       // land on the one number a reader compares between runs.
       classifyMs = retry.ms;
       // The retry's own, beside the first attempt's rather than over them — a re-run that passed and one
       // that failed wrote different files, and which it was is the question being asked
       evidence?.keepFiles(`${step.name}.retry`, step.keepsOnFailure ?? []);
-      console.log(classifyLine(retry, MEASURED_ON, beside));
+      console.log(classifyLine(retry, beside));
     }
   }
 
@@ -644,7 +646,7 @@ async function main(): Promise<void> {
       // Hoisted out of the `staleLines` call it used to sit in, because the verdict needs it too: `when` is the
       // only thing in the system that tells a change *during* the run from one after it, and `willNotCache`
       // cannot see it — it compares fingerprints, which say that something moved and never when
-      const moved = whatMoved(step, steps, sweep);
+      const moved = whatMoved(step, steps, sweep, budget);
       for (const line of staleLines({ name, nameWidth, reason: unusual, ...moved })) console.log(line);
       if (movedWhileItRan(moved.files)) voided.push(name);
     }
@@ -690,7 +692,7 @@ async function main(): Promise<void> {
   // `all` goes in so the report can say the reading is an upper bound rather than a comparison; it is the
   // one comparability condition this reader skips, and `outgrownRungs` has why
   const outgrown = outgrownReport(outgrownRungs(steps, measuredMs, budget, MEASURED_ON, thisMachine(), all, outcome.peers)
-    .map((row) => ({ ...row, measureWith: measureCommandFor(row.name) })));
+    .map((row) => ({ ...row, measureWith: measureCommandFor(row.name, budget) })));
   if (outgrown !== '') console.log(outgrown);
 
   console.log(`\n${verdictText()} in ${secs(Date.now() - started - classifyMs)}${reran}${skipped}${` on ${cores(budget)}`}${floor}`);

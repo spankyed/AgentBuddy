@@ -24,7 +24,7 @@
 // still broadcasts the data beside the answer. The database's `reply-to-asker.spec.ts` is the same division for
 // the same reason.
 import { describe, expect, it } from 'vitest'
-import { startApp } from '@apackdev/testing/harness'
+import { getTestSettings, startApp } from '@apackdev/testing/harness'
 
 const SETTINGS = 'host/settings'
 /** The connection the ask arrived on, which is what makes an ask a window's rather than the backend's */
@@ -36,12 +36,11 @@ const WINDOW = 'c-window'
  * **No correlation field on any of the three write events**, and none is wanted: `app.send` returns the call
  * it sent under and `reply` stamps it on the answer, so a helper like this has nothing to supply.
  */
-const write = (label: string) => ({
+const write = (valid = true) => ({
   type: 'UPDATE_SETTINGS' as const,
-  entityType: 'section' as const,
-  label,
-  path: ['application', 'theme'],
-  value: 'dark',
+  target: valid ? { kind: 'app' as const } : { kind: 'pack' as const, packId: 'default-setup', groupId: 'missing' },
+  path: ['personal', 'name'],
+  value: 'Ada',
 })
 
 describe('a settings write from a window', () => {
@@ -49,7 +48,7 @@ describe('a settings write from a window', () => {
     const app = await startApp({ systems: ['host/settings'] })
     await app.connect()
 
-    const call = await app.send(SETTINGS, write('general'), { sender: SETTINGS, client: WINDOW })
+    const call = await app.send(SETTINGS, write(), { settingsAccess: { kind: 'host', service: getTestSettings() }, sender: SETTINGS, client: WINDOW })
     const answer = await app.nextEmit(SETTINGS, 'SETTINGS_SAVED', { answering: call })
 
     expect(answer).toMatchObject({ type: 'SETTINGS_SAVED' })
@@ -65,11 +64,12 @@ describe('a settings write from a window', () => {
     const app = await startApp({ systems: ['host/settings'] })
     await app.connect()
 
-    const call = await app.send(SETTINGS, write('not-a-section'), { sender: SETTINGS, client: WINDOW })
+    const call = await app.send(SETTINGS, write(false), { settingsAccess: { kind: 'host', service: getTestSettings() }, sender: SETTINGS, client: WINDOW })
     const answer = await app.nextEmit(SETTINGS, 'SETTINGS_REFUSED', { answering: call })
 
     expect(answer).toMatchObject({ type: 'SETTINGS_REFUSED' })
-    expect((answer as unknown as { problems: string[] }).problems.join(' ')).toContain('not-a-section')
+    expect((answer as unknown as { problems: string[] }).problems.join(' ')).toContain('settings definition is unavailable')
+    expect(getTestSettings().getOverrides()).toEqual({});
     expect(app.emitted(SETTINGS).filter((event) => event.type === 'SETTINGS_SAVED'), 'and not also a save')
       .toEqual([])
   })
@@ -80,7 +80,7 @@ describe('a settings write from a window', () => {
     const app = await startApp({ systems: ['host/settings'] })
     await app.connect()
 
-    const call = await app.send(SETTINGS, write('general'), { sender: SETTINGS, client: WINDOW })
+    const call = await app.send(SETTINGS, write(), { settingsAccess: { kind: 'host', service: getTestSettings() }, sender: SETTINGS, client: WINDOW })
     await app.nextEmit(SETTINGS, 'SETTINGS_SAVED', { answering: call })
     await app.settle()
 
@@ -100,7 +100,7 @@ describe('a settings write with no sender', () => {
     const app = await startApp({ systems: ['host/settings'] })
     await app.connect()
 
-    const call = await app.send(SETTINGS, write('general'))
+    const call = await app.send(SETTINGS, write(), { settingsAccess: { kind: 'host', service: getTestSettings() } })
     // Waited for by type alone, because this arm answers nothing — and then asserted to answer nothing, which
     // is what tells this case apart from the three above rather than leaving it to read the same
     const answer = await app.nextEmit(SETTINGS, 'SETTINGS_SAVED')

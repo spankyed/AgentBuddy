@@ -1,55 +1,14 @@
-/**
- * **Is the app you are about to drive the app you just built?**
- *
- * `drive/`'s whole purpose is looking at what you just changed, and the one thing nothing checked was that
- * you had built it. A stale app is the expensive failure here because it does not look like one: the window
- * opens, the plugins are there, and the behaviour is the *previous* build's. Measured 2026-10-08, that
- * shape cost five `app-integration` failures that read as code defects — the host had moved and
- * `packages/default-setup/dist` had not.
- *
- * **It reads mtimes, and not the chain's stamps, which is the opposite of what it looks like it should do.**
- * The stamps answer a different question: only `npm run chain` writes one, so `unitStaleReason` against a
- * step's stamp reports every tree that has moved since the last *chain* run — which during ordinary
- * development is all of them, however recently `npm run build:runtime` ran. That version of this check fired
- * immediately after a successful build, which is the failure mode a nudge can least afford.
- *
- * Mtimes are the right instrument *here* for the reason they are the wrong one for a cache key: a rebuild
- * that produced identical bytes bumps them, so this says "fresh" where a content hash would say "unchanged",
- * and an edit reverted to its original text says "stale" where a hash would not. Both errors are harmless in
- * a sentence nobody is gated on, and neither is harmless in a stamp.
- *
- * **What it shares with the chain is the declaration, not the comparison**: the inputs and outputs come from
- * `chain-steps.ts`, so there is no second account of what the app is built from.
- *
- * **A nudge, never a gate.** It exits 0 whatever it finds: driving a deliberately stale app is legitimate —
- * that is how you look at what a change did *to* the previous build — and it stays quiet when it cannot
- * tell, because an output it cannot read is not evidence of staleness.
- */
+/** Advisory only: driving an intentionally stale build remains supported. */
 import * as fs from 'node:fs';
-import { inputFiles, repoRelative, skipsFingerprint } from '@apackdev/host/build/packages-built';
+import path from 'node:path';
+import { readPackBuildInputs, assertPackBuildInputsCurrent } from '@apackdev/host/build/pack-build-inputs';
+import { inputFiles, repoRelative, skipsFingerprint, REPO_ROOT } from '@apackdev/host/build/packages-built';
 import { CHAIN_STEPS } from './lib/chain-steps.ts';
 import { unitFor } from './lib/chain-stamps.ts';
 
-/** The steps that produce the app a driving session opens, in the order the chain runs them */
-const BUILDS = [
-  { step: 'build:default-setup', what: "the pack the app ships" },
-  { step: 'build:runtime', what: 'the renderer, main, preload and the API' },
-] as const;
-
 interface Edge { readonly file: string; readonly at: number }
 
-/**
- * The most recently touched file under these targets.
- *
- * **Newest on both sides, which is the only pair that works.** For the inputs it is the obvious reading:
- * the latest edit. For the outputs it is *when the build last produced anything*, and the tempting
- * alternative — the oldest output, "has every product been refreshed" — is wrong because a build need not
- * rewrite all of them: `apack pack build` overwrites `dist/defs/` without clearing it, by design, so some of
- * `build:default-setup`'s outputs keep their mtime across builds and the oldest one reported the pack stale seconds
- * after a successful build.
- *
- * `prune` skips what a fingerprint skips, which is how a CLAUDE.md edit stays free here too.
- */
+/** Runtime builds retain their separate, best-effort timestamp nudge. */
 function newest(targets: readonly string[], prune = false): Edge | undefined {
   let found: Edge | undefined;
   for (const target of targets) {
@@ -62,26 +21,30 @@ function newest(targets: readonly string[], prune = false): Edge | undefined {
   return found;
 }
 
-/** One line per build whose output predates something it is built from, empty when all of them are current */
-export function stalenessWarnings(steps: readonly { step: string; what: string }[] = BUILDS): string[] {
-  return steps.flatMap(({ step, what }) => {
-    const found = CHAIN_STEPS.find((candidate) => candidate.name === step);
-    if (found === undefined) return [];
-    const unit = unitFor(found);
-    const source = newest(unit.inputs, true);
-    const built = newest(unit.outputs);
-    // Nothing built, or nothing to compare: not an answer, so not a warning
-    if (source === undefined || built === undefined || source.at <= built.at) return [];
-    return [`${what}: ${repoRelative(source.file)} is newer than the build — \`npm run ${step}\``];
-  });
+export function stalenessWarnings(): string[] {
+  const warnings: string[] = [];
+  const root = path.join(REPO_ROOT, 'packages/default-setup');
+  try {
+    assertPackBuildInputsCurrent(root, readPackBuildInputs(path.join(root, 'dist')));
+  } catch (error) {
+    warnings.push(`the pack the app ships: ${error instanceof Error ? error.message : String(error)} — \`npm run build:default-setup\``);
+  }
+  const runtime = CHAIN_STEPS.find(step => step.name === 'build:runtime')!;
+  const unit = unitFor(runtime);
+  const source = newest(unit.inputs, true);
+  const built = newest(unit.outputs);
+  if (source && built && source.at > built.at) {
+    warnings.push(`the renderer, main, preload and the API: ${repoRelative(source.file)} is newer than the build — \`npm run build:runtime\``);
+  }
+  return warnings;
 }
 
 function main(): void {
   const warnings = stalenessWarnings();
   if (warnings.length === 0) return;
-  console.warn('\n⚠ The app you are about to drive is older than its sources:');
+  console.warn('\n⚠ Build checks for the app you are about to drive:');
   for (const warning of warnings) console.warn(`    ${warning}`);
-  console.warn('  Driving it anyway shows you the previous build.\n');
+  console.warn('  Continuing with the selected build.\n');
 }
 
 if (import.meta.filename === process.argv[1]) main();

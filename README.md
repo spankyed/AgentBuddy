@@ -1,139 +1,128 @@
 # apack
 
-apack is an Electron desktop app for building and running AI agent workflows. It combines a Vue-based visual workspace with an actor-driven backend, plugin-defined tools, local persistence, and model integrations.
+**apack is a programmable desktop workspace for working with AI agents and building shared tools.**
 
-## Features
+Build tools and workflows around your own work, then share them as **packs**. A pack can contain
+reusable prompts and actions or add an entire feature with its own interface, services and data.
+Most of apack ships in the `default-setup` pack, using the same APIs available to pack authors.
 
-- **Actor-based runtime**: XState state machines coordinate frontend and backend behavior through a typed event bus.
-- **Packs**: Features (backend systems and frontend plugins), flow steps, content, artifacts and blocks ship as packs, built with the `apack` CLI. The app's own features are the built-in `default-setup` pack.
-- **Model integrations**: Anthropic, OpenAI, Google, Groq, Mistral and Cohere, through the Vercel AI SDK.
-- **Local graph store**: The EARS entity-attribute-relation store (`@apackdev/ears`) is backed by LMDB for fast local access.
-- **Visual flow editor**: Vue Flow powers drag-and-drop authoring for agent flows.
-- **Embedded terminal**: xterm.js and node-pty provide command execution inside the app.
-- **Rich text editing**: Tiptap supports prompt and documentation authoring.
-- **Desktop packaging**: Electron targets macOS, Windows, and Linux.
+Conversations, documents and automation work with a shared data layer. Write actions, save
+parameterized prompts and connect them in the visual flow editor. Flows can call models, run tools,
+query and update your data, and respond to events or schedules. Conversations can present interactive
+controls and results as plans, diffs, documents and other artifacts.
 
-## Tech Stack
+The included tools cover coding, notes, a document library and web browsing. In a code project, you
+can edit and review alongside your agents, use the terminal, and manage Git changes and pull requests.
+You can extend these tools or add your own through packs.
 
-- Electron
-- Vue 3
-- XState v5
-- tRPC v11
-- Tailwind CSS
-- Vite
-- LMDB
-- Monaco Editor
-- Vercel AI SDK
+Workspace data is stored locally, with backup and restore support. You choose the model providers
+and agent tools you connect.
 
-## Project Structure
+## Project status
 
-```
-packages/
-├── api/                  # Backend process: node:http + ws + tRPC transport, process boot and composition of the app runtime
-│   └── src/
-│       ├── core/         # tRPC routers, the root event emitter, log capture
-│       └── setup/        # Boot sequence and composition (opens the store, binds the app), websocket, config
-├── default-setup/        # The built-in pack: features, steps, content, migrations (apack.json)
-│   └── src/
-│       ├── features/     # One folder per feature: be/ (system) and fe/ (plugin)
-│       ├── extensions/   # Steps, artifacts, blocks, services, tiptap plugins
-│       ├── content/        # Actions, prompts, flows, library, notes, FAQs, settings
-│       ├── migrations/
-│       └── defs/         # Monaco DSL type definitions
-├── apack-ears/          # @apackdev/ears: the EARS engine (entity-attribute-relation store) and its LMDB store
-├── apack-sdk/           # @apackdev/sdk: pack-facing API (framework, events, services, steps, build pipeline, the HostRuntime port)
-├── apack-ui/            # @apackdev/ui: Vue components, editors and composables
-├── apack-cli/           # @apackdev/cli: the apack command
-├── apack-testing/       # @apackdev/testing: unit test harness and Playwright fixture
-├── apack-host/          # @apackdev/host (private): app runtime: registered packs, installer and pack runtime (loading, reload, applying), bus, migrations, app state, secrets, host services
-├── main/                 # Electron main process
-│   └── src/modules/      # Window manager, API server launcher, pack:// and media protocols, etc.
-├── preload/              # IPC bridge (contextBridge APIs)
-├── renderer/             # Frontend: Vue 3 + Tailwind CSS app shell
-│   └── src/
-│       ├── core/         # Application actor, components, tRPC client
-│       └── packs/        # Pack frontend loading and the packs plugin
-├── typescript-floor/     # TypeScript 5.7, the oldest @apackdev/sdk and @apackdev/ui support, for type tests
-└── electron-versions/    # Electron version management
-```
+apack is under active development. The instructions below run the project from source; packaged
+downloads are listed in [GitHub Releases](https://github.com/spankyed/apack/releases) when available.
+npm and Homebrew installation are not yet available. A published CLI is not required to develop
+this repository.
 
-## Prerequisites
+## Develop apack
 
-- Node.js 23 or newer
-- npm 10 or newer
+Run these commands from the root of the **apack source monorepo**. They develop the desktop app
+itself; external packs have a separate workflow described below.
 
-## Getting Started
+Requirements:
+
+- Node.js **23.5.0 or newer**, as declared in the root `package.json`.
+- npm and Git.
+- Native build tools required by Electron dependencies; see [CLAUDE.md](CLAUDE.md) for repository
+  setup and validation guidance, and the [Windows VM guide](docs/references/guides/windows-development-vm.md)
+  for the shared Windows development environment.
 
 ```sh
 git clone https://github.com/spankyed/apack.git
 cd apack
-npm install
+npm ci
+npm run dev
 ```
 
-The repository uses npm workspaces under `packages/*`. The root scripts coordinate builds, tests, type checking, DSL compilation, database tasks, and Electron development mode.
+`npm run dev` prepares the shipped pack and backend, starts the renderer development server and
+pack watcher, and launches Electron. Frontend edits use hot reload; backend and pack changes rebuild
+through the development workflow.
 
-### Development
+| Command | Purpose |
+|---|---|
+| `npm run dev` | Develop the app with builds and watchers |
+| `npm run dev:inspect` | Start development with Electron's Node debugger |
+| `npm run spec` | Run focused checks selected from uncommitted changes |
+| `npm run chain` | Run the repository validation chain, reusing valid cached steps |
+| `npm run build:default-setup` | Build the shipped pack and required package bundles |
+| `npm run build:runtime` | Build the renderer, API, main and preload workspaces |
 
-Run these scripts from the root of the apack source monorepo to develop the app itself.
-For external pack development, run `apack pack dev` in your pack repository.
+Some compiler/native checks require an approved disposable environment. Follow the current
+[repository validation rules](CLAUDE.md) rather than starting all suites on your daily-use machine.
+The [pipeline reference](docs/reference/pipeline-commands.md) describes validation commands and flags.
+
+### Build a local preview
 
 ```sh
-npm run dev              # Prepare the pack, then run dev mode with hot reload and drive support
-npm run dev:inspect      # Same workflow with Electron’s Node debugger
-npm run dev:open         # Hold the built source app; no builds or watchers
-npm run dev:drive        # Run app automation; see drive/README.md
+npm run build:preview -- --version 0.4.0
 ```
 
-### Build
+This builds unsigned **apack Preview** in `dist/preview`, with a separate app identity and data
+location. The version is a local build input; the command does not change release metadata or publish
+anything. See [preview builds](docs/reference/preview-builds.md) for details.
 
-```sh
-npm run build:default-setup          # Build the built-in pack and ensure package bundles
-npm run build:runtime    # Build the app runtime
-npm run build:api         # Build backend only
-npm run build:production       # Full production build
-npm run build:preview -- --version 0.4.0  # Unsigned local preview, separate app and data
-```
+For automation against existing source builds, use `npm run dev:open` and `npm run dev:drive`.
+They do not start the development build/watch workflow. See [drive](drive/README.md) for preparation
+and usage. Production packaging and signing are separate from local preview builds.
 
-### Test
+## Build a pack
 
-```sh
-npm test                 # Build and run every test suite
-npm run test:e2e         # Playwright E2E against existing builds
-npm run test:unit        # Unit tests (api, default-setup, host, ears)
-npm run typecheck        # Type checks for every workspace, plus import specifier and UI entry checks
-```
+A pack is an extension project with its own repository, manifest and tests. Its CLI commands live
+under **`apack pack`**; the root monorepo's `npm run dev` is for developing apack itself.
 
-### Default Setup
+Start with [pack authoring](docs/public-facing/getting-started.md). It covers CLI/package prerequisites,
+scaffolding and the `apack pack dev` loop. External development uses the SDK, UI components and testing
+helpers. npm/Homebrew availability and downloadable beta hosts are separate distribution prerequisites;
+check the guide before assuming those installation paths are available.
 
-The built-in pack's content (actions, prompts, flows, library, notes, FAQs, settings) are TypeScript and markdown sources that its build compiles.
+- [Manifest](docs/public-facing/manifest.md): declarations, settings, entities and contributions.
+- [Features](docs/public-facing/features.md): backend systems and frontend plugins.
+- [Content](docs/public-facing/content.md): actions, prompts, flows and entity rows.
+- [Testing](docs/public-facing/testing.md): pack unit tests and app acceptance.
+- [CLI reference](docs/public-facing/cli.md): app commands, pack commands and database tools.
 
-```sh
-npm run build:default-setup          # Build the default-setup pack (apack pack build, DSL defs, runtime)
-```
+## Architecture
 
-### Database Tools
+apack separates the desktop host from the features it runs:
 
-`apack db` on the development app's data (quit the app before changing it; see [the CLI reference](docs/public-facing/cli.md#database)):
+- **Actor-based coordination.** XState machines manage backend systems, frontend plugins and flow
+  execution. Typed events connect the two sides through a tRPC/WebSocket transport.
+- **Declarative pack contracts.** Manifests describe contributions and dependencies; build tooling
+  checks module bindings and generates typed access to services and repositories. Built declarations
+  support discovery and inspection without executing a pack's modules.
+- **Shared data and services.** EARS provides the entity-attribute-relation graph, persisted through
+  LMDB. Host services supply common facilities such as inference and filesystem access; packs declare
+  the additional services they consume.
+- **Extensible presentation.** Vue powers the shell and pack views. Packs contribute frontend plugins,
+  editors, message blocks and artifact viewers. Settings declarations define schemas and defaults,
+  while forms remain custom UI.
 
-```sh
-npm run db:query -- "return qx().count()"   # Run read-only query code
-npm run db:exec -- "<code>"                  # Run transaction code
-npm run db:repl                              # Console code, line by line
-npm run db:script -- <file> [-- <args>]      # Run a script file against the database
-npm run db:inspect -- <entity-id>            # An entity's relations
-npm run db:export -- --out <dir>             # Entities per type to files
-npm run db:import -- <backup-dir> --force    # Replace the database with a backup
-npm run db:reset -- --force                  # Delete all data
-npm run db:clear-settings -- --force         # Back to the default settings
-```
+| Area | Responsibility |
+|---|---|
+| `packages/main`, `packages/preload` | Desktop lifecycle, windows, protocols and IPC |
+| `packages/api`, `packages/renderer` | Backend process/transport and frontend shell |
+| `packages/apack-host` | Pack discovery, installation and runtime; host services and settings |
+| `packages/default-setup` | Shipped features, extensions and content |
+| `packages/apack-sdk`, `packages/apack-ui` | Pack-facing APIs, types, components and editors |
+| `packages/apack-cli`, `packages/apack-testing` | Pack tooling, build pipeline and test helpers |
+| `packages/apack-ears` | Entity-attribute-relation data engine and LMDB persistence |
+| `packages/repo-checks`, `packages/publish-checks` | Repository tooling and package-consumer checks |
 
-## Development Notes
-
-- `npm run dev` runs `packages/dev-mode.js`: it builds the backend, watches the default-setup pack, starts the renderer dev server and launches Electron.
-- Startup builds pack content, backend and DSL definitions; Vite serves the frontend from source.
-- Backend build output is produced by `@app/api`; frontend build output is produced by `@app/renderer`.
-- Production signing uses `.env.signing`; start from `.env.signing.example` when preparing signed builds.
+See [architecture](docs/public-facing/architecture.md) for pack lifecycle and runtime boundaries.
+For the documentation map, start at [docs/README.md](docs/README.md). Contributors should also read
+[CLAUDE.md](CLAUDE.md) before changing code or running validation.
 
 ## License
 
-MIT
+[MIT](LICENSE).

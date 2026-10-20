@@ -8,6 +8,7 @@ packages/*/publish/
 .data
 .DS_Store
 .claude
+.apack/
 
 # Stale tsc output in source dirs (preload has no outDir)
 packages/preload/src/**/*.js
@@ -15,7 +16,7 @@ packages/preload/src/**/*.js
 # Test output
 tests/results/
 
-# Build artifacts
+# Build output
 native/speech/macos/SpeechHelper
 build/prod/logs/
 

@@ -55,6 +55,7 @@ export interface DatabaseContext {
   backupResult: {
     operation: 'export' | 'import';
     error?: string;
+    message?: string;
     /** The backup holds these stores, which this apack doesn't have: importing it leaves them out */
     unknownDatabases?: string[];
   } | null;

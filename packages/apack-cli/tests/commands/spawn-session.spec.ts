@@ -20,7 +20,12 @@ it('spawns pack development through the CLI', async () => {
 });
 
 it('spawns app development through the repository entry point', async () => {
-  const checkout = path.resolve(import.meta.dirname, '../../../..');
+  const checkout = path.join(dataDir, 'checkout');
+  for (const relative of ['packages/main/dist', 'packages/renderer/dist', 'node_modules/electron', 'scripts']) {
+    fs.mkdirSync(path.join(checkout, relative), { recursive: true });
+  }
+  fs.writeFileSync(path.join(checkout, 'packages/entry-point.mjs'), '');
+  fs.writeFileSync(path.join(checkout, 'scripts/app-dev.mjs'), '');
   await spawnDevApp(checkout, dataDir, ['--profile', 'review'], 'app');
   expect(spawn).toHaveBeenCalledWith(process.execPath, [
     '--conditions=@apackdev/source', path.join(fs.realpathSync(checkout), 'scripts/app-dev.mjs'), 'open', '--profile', 'review',

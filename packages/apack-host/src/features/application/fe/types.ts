@@ -1,3 +1,5 @@
+import type { EntityOpeningActor } from './entity-opening.ts';
+import type { OpenEntity } from '@apackdev/sdk/events';
 // The app shell's state, events and the I/O it's given. Its machine (machine.ts) reads the rest of the app only
 // through these ports, so it runs the same in the renderer, over the API and the window, and in a pack's tests.
 import type { ContextMenuItem, HotkeyEvent, Plugin, PluginEvent, ShellPanelSizes } from '@apackdev/sdk/fe';
@@ -5,7 +7,9 @@ import type { HostPluginEvents, Message, _Asker } from '@apackdev/sdk/events';
 import type { ApplicationHotkeys } from '@apackdev/sdk/types';
 import type { ShellClient, ShellFailure } from '../../../fe/client.ts';
 import type { ShellPackFrontends } from '../../../fe/pack-frontends.ts';
+import type { ShellPluginCatalog } from '../../../fe/plugin-selection.ts';
 import type { FePackRegistry } from '../../../fe/pack-store.ts';
+import type { ApplicationPluginEvents } from '../events.ts';
 import type { BreadcrumbItem } from './trail.ts';
 
 /** Where the panel sizes the user sets are kept, so the next window opens with them */
@@ -25,7 +29,8 @@ export interface ShellNotify {
 /** The I/O the shell is given */
 export interface ShellOptions {
   /** This window's registered pack frontends: the plugins the shell starts with, and its default */
-  packs: Pick<FePackRegistry, 'getRegisteredPlugins' | 'defaultPlugin'>;
+  packs: Pick<FePackRegistry, 'getRegisteredPlugins' | 'pluginBindings' | 'designation'>;
+  catalog: ShellPluginCatalog;
   client: ShellClient;
   packFrontends: ShellPackFrontends;
   storage: ShellStorage;
@@ -70,6 +75,7 @@ export interface RequestSender extends MessageSender {
 
 /** Asking for a plugin: which one, whether to open it or only hand it its events, and who asked */
 export interface PluginRequest {
+  entityToken?: string;
   plugin: string;
   select: boolean;
   sender: RequestSender;
@@ -90,6 +96,7 @@ export interface PluginRequest {
 }
 
 export interface ShellContext {
+  entityOpening: EntityOpeningActor;
   defaultToggles: {
     canvas: boolean;
   };
@@ -137,14 +144,10 @@ export interface ShellContext {
   packLoadRunning: boolean;
   /** A load was asked for while one was running — the list it read may predate the request — so it runs again */
   packLoadQueued: boolean;
-  /**
-   * Every pack the loader has finished with, whatever its frontend added — plugins, styles alone, or
-   * nothing — so it's never loaded twice. A pack unloaded drops out and loads again when it comes back.
-   *
-   * Not the registered packs: one whose frontend is styles alone, exported nothing, or failed to load
-   * registers nothing and is still finished with.
-   */
-  packFrontendsLoaded: string[];
+  /** Accepted frontends need fresh backend-bound resources after reconnect. */
+  packFrontendsNeedRefresh: boolean;
+  /** Accepted frontend resources by backend lifetime; failed candidates retain the prior revision. */
+  acceptedPackRuntimes: Record<string, string>;
   /**
    * Of those, the packs whose frontend entry loaded — so their systems are waiting for the startup data this
    * window's CLIENT_CONNECTED held back. A pack with no frontend code isn't one: the bus sent its systems that
@@ -158,11 +161,20 @@ export interface ShellContext {
 }
 
 export type ShellEvent =
+  | OpenEntity
+  | { type: 'ENTITY_OPEN_FINISHED'; token: string }
+  /**
+   * A selection the shell makes itself: an open whose plugin is here, the default plugin, the last-active plugin
+   * restored. Unlike `SELECT_PLUGIN`, a person's choice, it cancels no entity open and supersedes no waiting open.
+   */
+  | { type: 'SELECT_PLUGIN_BY_SHELL'; plugin: string }
+  | ApplicationPluginEvents
+  | { type: 'PLUGIN_DECLARATIONS_CHANGED' }
   | { type: 'SELECT_PLUGIN'; plugin: string; historyIndex?: number }
-  | { type: 'OPEN_PLUGIN'; plugin: string; events: PluginEvent[] }
+  | { type: 'OPEN_PLUGIN'; plugin: string; events: PluginEvent[]; entityToken?: string }
   | ({ type: 'SEND_TO_PLUGIN'; plugin: string; events: PluginEvent[]; answering?: string; call?: string } & RequestSender)
   /** Hands an opened plugin its events, once the shell has selected it */
-  | { type: 'DELIVER_PLUGIN_EVENTS'; plugin: string; events: PluginEvent[]; asker?: RequestSender['asker']; answering?: string; call?: string }
+  | { type: 'DELIVER_PLUGIN_EVENTS'; plugin: string; events: PluginEvent[]; asker?: RequestSender['asker']; answering?: string; call?: string; entityToken?: string }
   | { type: 'DEFAULT_TOGGLE'; area: 'canvas' }
   | { type: 'TRAIL_UPDATE'; crumbs: BreadcrumbItem[]; target?: string; menuItems: ContextMenuItem[] }
   | { type: 'TRAIL_CLICK'; target: string; info?: unknown }
@@ -197,8 +209,12 @@ export type ShellEvent =
    */
   | { type: 'PACK_FRONTENDS_SETTLED'; loadedPacksError?: string; failedPacks?: { packId: string; error: string }[] }
   /**
-   * A pack's frontend load finished, with the plugins it exports: none when it failed to load, and null
-   * for a pack without frontend code, which is recorded as loaded and asked for nothing
+   * A pack's frontend was accepted, with its plugins, or null for a pack without frontend code.
+   * Refused candidates do not emit this event.
    */
-  | { type: 'PACK_FRONTEND_LOADED'; packId: string; plugins: Plugin[] | null }
-  | { type: 'PACK_PLUGINS_UNLOADED'; packId: string };
+  | { type: 'PACK_FRONTEND_LOADED'; packId: string; registrationId: string; plugins: Plugin[] | null }
+  /**
+   * A pack's frontend is gone from this window. `refused`: its replacement was refused, so the incumbent it
+   * would have replaced is unloaded too, and no load of it is in flight to discard.
+   */
+  | { type: 'PACK_PLUGINS_UNLOADED'; packId: string; refused?: true };

@@ -17,6 +17,7 @@ import { DefineComponent } from 'vue';
 import { EARS as EARS_2 } from '@apackdev/ears';
 import type { Editor } from '@tiptap/vue-3';
 import type { EditorState } from '@tiptap/pm/state';
+import { entityTypeOf } from '@apackdev/ears';
 import type { EventObject } from 'xstate';
 import { ExtractPropTypes } from 'vue';
 import type { InjectionKey } from 'vue';
@@ -33,6 +34,12 @@ import { z } from 'zod';
 
 // @public
 export const ALL_COLORS: readonly ["blue", "orange", "purple", "green", "red", "teal", "yellow", "pink", "gray"];
+
+// @public (undocumented)
+export type ArtifactFrontendBinding = ViewerFrontendBinding<ArtifactDeclaration, ArtifactDefinition>;
+
+// @public (undocumented)
+export type BlockFrontendBinding = ViewerFrontendBinding<BlockDeclaration, BlockDefinition>;
 
 // @public (undocumented)
 export interface BlockItem {
@@ -129,6 +136,15 @@ export interface ContextMenuItem {
 // @public (undocumented)
 export type ContextMenuMeta = ContextMenuItem[] | ((context: never) => ContextMenuItem[]);
 
+// @internal
+export function _createFeSettings(): {
+    bindSettings(source: SettingsPort): {
+        activate(): void;
+        dispose(): void;
+    };
+    useSettings<T>(target: SettingsTarget): FeSettingsHandle<T>;
+};
+
 // @public (undocumented)
 export function createHotkeyProcessor<const TMap extends Record<string, string>, TContext extends {
     hotkeys: HotkeysMap;
@@ -156,19 +172,16 @@ export function defineHandlers<TContext extends MachineContext, TEvent extends E
 }>(): Handlers<TContext, TEvent, TOut>;
 
 // @public
-export function definePlugin(definition: PluginDefinition): PluginDefinition;
+export function entityIs<E extends string>(input: {
+    event: {
+        type: string;
+        id?: unknown;
+    };
+}, params: {
+    entity: E;
+}): boolean;
 
-// @public (undocumented)
-export interface DslTypeConfig {
-    // (undocumented)
-    globals: Record<string, string>;
-    // (undocumented)
-    language?: 'javascript' | 'typescript' | 'json' | 'html' | 'css' | 'plaintext';
-    // (undocumented)
-    prefix: string;
-    // (undocumented)
-    schema: string;
-}
+export { entityTypeOf }
 
 // @public (undocumented)
 export const EXTRA_BLOCK_ITEMS_KEY: InjectionKey<BlockItem[]>;
@@ -181,13 +194,54 @@ export type ExtractEvent<TEvent extends {
 }>;
 
 // @public (undocumented)
-export function getDesignated(role: string): FeatureRef;
+export interface FeSettingsHandle<T> extends ReadonlyFeSettingsHandle<T> {
+    // (undocumented)
+    reset(): Promise<SettingsWriteResult>;
+    // (undocumented)
+    set(update: SettingUpdate<T>): Promise<SettingsWriteResult>;
+}
+
+// @public
+export function getArtifactBinding(type: string): ArtifactFrontendBinding | undefined;
 
 // @public (undocumented)
-export function getDslTypes(): ReadonlyMap<string, DslTypeConfig>;
+export function getArtifactDeclaration(type: string): ArtifactCatalogEntry | undefined;
+
+// @public
+export function getArtifactDeclarations(): readonly ArtifactCatalogEntry[];
+
+// @public
+export function getBlockBinding(type: string): BlockFrontendBinding | undefined;
+
+// @public (undocumented)
+export function getBlockDeclaration(type: string): BlockCatalogEntry | undefined;
+
+// @public
+export function getBlockDeclarations(): readonly BlockCatalogEntry[];
+
+// @public (undocumented)
+export function getDesignated(role: string): FeatureRef;
+
+// @public
+export function getDslDeclaration(type: string): DslCatalogEntry | undefined;
+
+// @public
+export function getDslDeclarations(): readonly DslCatalogEntry[];
 
 // @public (undocumented)
 export function getNextAvailableColor(tabGroups: TabGroup[], isPinned?: boolean): TabGroupColor;
+
+// @public
+export function getStepBinding(type: string): StepFrontendBinding | undefined;
+
+// @public
+export function getStepDeclaration(type: string): StepCatalogEntry | undefined;
+
+// @public
+export function getStepDeclarations(): readonly StepCatalogEntry[];
+
+// @public
+export function getStepFrontendBindings(): ReadonlyMap<string, StepFrontendBinding>;
 
 // @public (undocumented)
 export function goBack<T>(history: NavHistory<T>): {
@@ -381,12 +435,8 @@ export interface HostShell {
 }
 
 // @public
-export type HostShellEvent =
-/**
-* Opens the plugin at a ref and hands its actor `events`. The shell waits for a plugin whose pack's frontend is
-* still loading, and reports a ref no pack provides once loading has settled.
-*/
-    {
+export type HostShellEvent = OpenEntity
+| {
     type: 'OPEN_PLUGIN';
     plugin: string;
     events: PluginEvent[];
@@ -503,8 +553,17 @@ export interface NavHistory<T> {
     stack: T[];
 }
 
+// @public
+export function onDslDeclarationsChanged(listener: () => void): () => void;
+
 // @public (undocumented)
 export function onMenuOpenChange(open: boolean): void;
+
+// @public
+export function onStepsChanged(listener: () => void): () => void;
+
+// @public
+export function openEntity(id: EARS_2.EntityId): void;
 
 // @public
 export function openHelp(target?: HelpTarget): void;
@@ -518,6 +577,8 @@ export interface PackFEFeature {
     designation?: string;
     // (undocumented)
     plugin?: PluginDefinition;
+    references?: ReferenceBindings;
+    settingsForm?: Component;
 }
 
 // @public
@@ -526,15 +587,20 @@ export interface PackFERegistration {
     appExtensions?: Record<string, Component>;
     // (undocumented)
     artifacts?: ArtifactDefinition[];
+    bindSettings?: (settings: SettingsPort) => {
+        activate(): void;
+        dispose(): void;
+    };
     // (undocumented)
     blocks?: BlockDefinition[];
-    dslTypes?: Record<string, DslTypeConfig>;
+    declarationRevision?: string;
     features?: Record<string, PackFEFeature>;
     id: string;
+    settingsForms?: Record<string, Component>;
     // (undocumented)
     steps?: StepDefinition[];
     // (undocumented)
-    tiptapPlugins?: TiptapPlugin[];
+    tiptapPlugins?: Record<string, TiptapPlugin>;
 }
 
 // @public (undocumented)
@@ -568,8 +634,6 @@ interface Plugin_2 {
     };
     // (undocumented)
     panel?: Component;
-    // (undocumented)
-    settings?: Component;
     // (undocumented)
     state: AnyStateMachine;
 }
@@ -616,7 +680,7 @@ required: true;
 };
 }>, () => VNode<RendererNode, RendererElement, {
 [key: string]: any;
-}>[] | undefined, {}, {}, {}, ComponentOptionsMixin, ComponentOptionsMixin, {}, string, PublicProps, Readonly<ExtractPropTypes<    {
+}> | null, {}, {}, {}, ComponentOptionsMixin, ComponentOptionsMixin, {}, string, PublicProps, Readonly<ExtractPropTypes<    {
 plugin: {
 type: StringConstructor;
 required: true;
@@ -635,10 +699,13 @@ export function processHotkeys<const T extends Record<string, string>, H = unkno
 export function pushNavHistory<T>(history: NavHistory<T>, entry: T): NavHistory<T>;
 
 // @public
-export function readUntypedPluginState<TSnapshot, TSelected>(ref: string, selector: (snapshot: TSnapshot) => TSelected): TSelected | undefined;
+export interface ReadonlyFeSettingsHandle<T> {
+    // (undocumented)
+    value: Readonly<Ref<T | undefined>>;
+}
 
 // @public
-export function resetSettings(target?: SettingsTarget): void;
+export function readUntypedPluginState<TSnapshot, TSelected>(ref: string, selector: (snapshot: TSnapshot) => TSelected): TSelected | undefined;
 
 // @public (undocumented)
 export type RouteComponents = Record<RouteName, Component>;
@@ -683,36 +750,46 @@ export interface SecretsSnapshot {
 
 // @public
 export interface SettingsPort {
-    feature<T = unknown>(ref: FeatureRef): T | undefined;
-    reset(target?: SettingsTarget): void;
-    saveStatus(): SettingsSaveStatus;
-    section<T = unknown>(name: string): T | undefined;
+    // (undocumented)
+    get<T = unknown>(target: SettingsTarget): T | undefined;
+    // (undocumented)
+    reset(target: SettingsTarget): Promise<SettingsWriteResult>;
+    // (undocumented)
+    status(): 'loading' | 'ready' | 'replacing' | 'disconnected' | 'disposed';
     subscribe(listener: () => void): () => void;
-    update(target: SettingsTarget, path: readonly string[], value: unknown): void;
+    update(target: SettingsTarget, path: readonly string[], value: unknown, condition?: SettingsWriteCondition): Promise<SettingsWriteResult>;
 }
 
 // @public
 export interface SettingsSaveStatus {
     // (undocumented)
-    problems: string[];
+    problems: readonly string[];
     // (undocumented)
     status: 'idle' | 'saving' | 'saved' | 'refused';
 }
 
 // @public
 export type SettingsTarget = {
-    section: string;
+    kind: 'app';
 } | {
-    feature: FeatureRef;
+    kind: 'pack';
+    packId: string;
+    groupId: string;
+} | {
+    kind: 'feature';
+    featureRef: `${string}/${string}`;
 };
 
 // @public
-export interface SettingUpdate {
-    // (undocumented)
-    path: string[];
-    // (undocumented)
+export type SettingUpdate<T = unknown> = (unknown extends T ? {
+    path: readonly string[];
     value: unknown;
-}
+} : SettingsPath<T> extends infer P ? P extends readonly string[] ? {
+    path: P;
+    value: Exclude<SettingsValue<T, P>, undefined>;
+} : never : never) & {
+    condition?: SettingsWriteCondition;
+};
 
 // @public
 export interface Shell {
@@ -775,6 +852,19 @@ export function staticBreadcrumbList(crumbs: Array<{
     }[];
 };
 
+// @public
+export interface StepFrontendBinding {
+    // (undocumented)
+    readonly binding: StepDefinition;
+    readonly buildRevision?: string;
+    // (undocumented)
+    readonly declaration: DeclarationData<StepEntry>;
+    readonly declarationRevision?: string;
+    // (undocumented)
+    readonly packId: string;
+    readonly registrationId?: string;
+}
+
 // @public (undocumented)
 export interface TabGroup {
     // (undocumented)
@@ -806,16 +896,27 @@ export const targetIs: (input: {
 // @public (undocumented)
 export interface TiptapPlugin {
     // (undocumented)
-    extensions?: AnyExtension[];
+    readonly extensions?: Readonly<Record<string, AnyExtension>>;
     // (undocumented)
-    isSuggestionActive?: (state: EditorState) => boolean;
+    readonly isSuggestionActive?: (state: EditorState) => boolean;
     // (undocumented)
-    popups?: Component[];
+    readonly popups?: Readonly<Record<string, Component>>;
+}
+
+// @public
+export interface TiptapPluginBinding {
+    // (undocumented)
+    readonly binding: TiptapPlugin;
+    // (undocumented)
+    readonly groupId: string;
+    // (undocumented)
+    readonly packId: string;
 }
 
 // @public (undocumented)
 export const tiptapPluginRegistry: {
-    getAll(): TiptapPlugin[];
+    getAll(): TiptapPluginBinding[];
+    onChanged(listener: () => void): () => void;
 };
 
 // @public (undocumented)
@@ -842,17 +943,22 @@ export type TrailClickEvent<TInfo = unknown> = {
 export function untypedOpenPlugin(ref: string, event?: PluginEvent | PluginEvent[]): void;
 
 // @public
-export function updateSettings(target: SettingsTarget, path: readonly string[], value: unknown): void;
+export function useAppSettings(): Readonly<Ref<AppSettings | undefined>>;
 
 // @public
+export function useArtifactDeclarations(): ComputedRef<readonly ArtifactCatalogEntry[]>;
+
+// @public
+export function useBlockDeclarations(): ComputedRef<readonly BlockCatalogEntry[]>;
+
+// @public (undocumented)
+export function useDslDeclarations(): ComputedRef<readonly DslCatalogEntry[]>;
+
+// @public (undocumented)
 export function useFeatureSettings<T = unknown>(feature: FeatureRef): Readonly<Ref<T | undefined>>;
 
-// @public
-export function _useFeatureSettings<T>(feature: FeatureRef): {
-    value: Readonly<Ref<T | undefined>>;
-    set(update: FeatureSettingUpdate<T>): void;
-    reset(): void;
-};
+// @public (undocumented)
+export function usePackSettings<T = unknown>(packId: string, groupId: string): Readonly<Ref<T | undefined>>;
 
 // @public
 export function usePlugin<T>(): T;
@@ -861,17 +967,20 @@ export function usePlugin<T>(): T;
 export function useSettingsDraft<T>(read: () => T): Ref<T>;
 
 // @public
-export function useSettingsSave(): {
+export function useSettingsSave(writer: Pick<SettingsPort, 'update' | 'reset'>): {
     save: Readonly<Ref<SettingsSaveStatus>>;
     update: SettingsPort['update'];
     reset: SettingsPort['reset'];
 };
 
 // @public
-export function useSettingsSection<T = unknown>(name: string): Readonly<Ref<T | undefined>>;
+export function useSettingsStatus(): Readonly<Ref<ReturnType<SettingsPort['status']>>>;
 
 // @public
 export function useShell(): Shell;
+
+// @public
+export function useStepDeclarations(): ComputedRef<readonly StepCatalogEntry[]>;
 
 // @public (undocumented)
 export function useTrackedMenuOpen(menuOpen: Ref<boolean>): void;

@@ -1,8 +1,9 @@
+import { writeInstalledPackFixture } from './runtime/build-fixture.ts';
 import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { checkForUpdates, findLatestRelease } from '../../src/packs/updater.ts';
+import { checkForUpdates, findLatestRelease, getAvailableUpdates } from '../../src/packs/updater.ts';
 import { readInstalledPacks, writeInstalledPacks } from '../../src/packs/installed.ts';
 import { _appDirOf } from '@apackdev/sdk/env';
 
@@ -145,9 +146,18 @@ describe('checkForUpdates', () => {
   /** The pack on disk, which is what makes it installed and where its version comes from */
   function installed(id: string, version: string) {
     const dir = path.join(_appDirOf(userDataDir), 'packs', id);
-    fs.mkdirSync(dir, { recursive: true });
-    fs.writeFileSync(path.join(dir, 'apack.json'), JSON.stringify({ id, name: id, version }));
+    writeInstalledPackFixture(dir, { id, name: id, version });
   }
+
+  it('never fetches or offers remote releases for an app-managed record with a stray remote source', async () => {
+    installed('demo-pack', '1.0.0');
+    writeInstalledPacks([{ id: 'demo-pack', enabled: true, updatesWith: 'app', shippedRevision: 'a'.repeat(64),
+      installedFrom: 'acme/pack', availableVersion: '2.0.0' }]);
+    const fetch = mockReleases([{ tag_name: 'v2.0.0' }]);
+    expect(await checkForUpdates()).toEqual([]);
+    expect(getAvailableUpdates()).toEqual([]);
+    expect(fetch).not.toHaveBeenCalled();
+  });
 
   it('checks every time, replacing what an earlier check recorded', async () => {
     installed('demo-pack', '1.0.0');

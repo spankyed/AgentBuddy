@@ -10,6 +10,7 @@ export interface LibraryContext {
   // Core view state
   currentView: 'browser' | 'create' | 'edit' | 'create-index' | 'edit-index' | 'test-index'
   editingDocument?: DocumentDTO
+  editingDocumentId?: string
 
   // File browser fields
   items: LibraryItem[]
@@ -67,6 +68,7 @@ export type LibraryInboxEvent =
   | { type: 'NAVIGATE_TO_FOLDER'; folderId: string | null }
 
 export type Contract = {
+  opens: 'Document' | 'Collection'
   state: LibraryContext
   inbox: PluginInbox<{ pack: LibraryInboxEvent }>
 }

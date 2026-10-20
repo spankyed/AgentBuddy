@@ -6,22 +6,72 @@
 
 import type { Component } from 'vue';
 import type { Ref } from 'vue';
+import { z } from 'zod';
 
-// @public (undocumented)
-export interface CategoryConfig {
+// @public
+export function formatReferenceHref(target: ReferenceTarget): string;
+
+// @public
+export function getReferenceCatalogStatus(): ReturnType<PackCatalogView['status']>;
+
+// @public
+export function getReferenceCategoryBinding(name: string): ReferenceBinding<ReferenceBindings['categories'][string]> | undefined;
+
+// @public
+export function getReferenceCategoryDeclarations(): readonly ReferenceCategoryMetadata[];
+
+// @public
+export function getReferenceDeclarations(): readonly ReferenceCatalogEntry[];
+
+// @public
+export function getReferenceTypeBinding(name: string): ReferenceBinding<ReferenceTypeConfig> | undefined;
+
+// @public
+export function getReferenceTypeDeclaration(name: string): DeclarationData<ReferenceTypeDeclaration> | undefined;
+
+// @public
+export function onReferenceBindingsChanged(listener: () => void): () => void;
+
+// @public
+export function onReferenceDeclarationsChanged(listener: () => void): () => void;
+
+// @public
+export function parseReferenceHref(href: string): ReferenceTarget | undefined;
+
+// @public
+export interface ReferenceBinding<T> {
     // (undocumented)
-    id: string;
+    readonly binding: Readonly<T>;
     // (undocumented)
-    label: string;
+    readonly buildRevision?: string;
     // (undocumented)
-    primaryIcon: Component;
+    readonly declarationRevision?: string;
+    // (undocumented)
+    readonly featureRef: FeatureRef;
+    // (undocumented)
+    readonly registrationId?: string;
 }
 
 // @public
-export interface CategoryItemsProvider {
+export interface ReferenceBindings {
     // (undocumented)
-    category: string;
-    useItems(): Readonly<Ref<ReferenceItem[]>>;
+    categories: Record<string, {
+        label: string;
+        icon: Component;
+        useItems(): Readonly<Ref<ReferenceItem[]>>;
+    }>;
+    // (undocumented)
+    types: Record<string, ReferenceTypeConfig>;
+}
+
+// @public (undocumented)
+export interface ReferenceCategoryMetadata {
+    // (undocumented)
+    readonly declaration: DeclarationData<ReferenceCategoryDeclaration>;
+    // (undocumented)
+    readonly featureRef: FeatureRef;
+    // (undocumented)
+    readonly id: string;
 }
 
 // @public (undocumented)
@@ -37,16 +87,21 @@ export interface ReferenceItem {
 }
 
 // @public
+export interface ReferenceTarget {
+    // (undocumented)
+    readonly id: string;
+    // (undocumented)
+    readonly type: string;
+}
+
+// @public
 export interface ReferenceTypeConfig {
     // (undocumented)
     category: string;
     // (undocumented)
     icon: Component;
-    navigate: (refId: string) => void;
     // (undocumented)
-    protocol: string;
-    // (undocumented)
-    svgElements: SvgElement[];
+    svgElements: readonly ReferenceSvgElement[];
 }
 
 // (No @packageDocumentation comment for this package)

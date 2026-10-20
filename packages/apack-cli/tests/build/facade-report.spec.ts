@@ -10,8 +10,15 @@
 import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { compareFacadeReport, facadeReportFile, facadeReportText } from '../../src/build/facade-report';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { PACK_SNAPSHOT_FORMAT, PACK_TYPES_FACADE, _declarationRevision } from '@apackdev/sdk/build';
+import { PACK_LAYOUT, sealPackBuild } from '@apackdev/host/packs';
+import { createPackCompilerInputView } from '@apackdev/host/build/compiler-inputs';
+import { readPackageInputs } from '@apackdev/host/build/package-inputs';
+import { writePackBuildInputs } from '@apackdev/host/build/pack-build-inputs';
+import { compareFacadeReport, facadeReportFile, facadeReportText, readBuiltFacadeReport } from '../../src/build/facade-report';
+
+import { facadeReport } from '../../src/commands/facade-report.ts';
 
 const PACK = '/packs/demo';
 
@@ -105,5 +112,73 @@ describe('compareFacadeReport', () => {
     expect(comparison.state).toBe('stale');
     expect(comparison.problem).toContain('differs');
     expect(comparison.problem).toContain('facade:update');
+  });
+});
+
+
+describe('readBuiltFacadeReport', () => {
+  let root: string;
+  beforeEach(() => {
+    root = fs.realpathSync.native(fs.mkdtempSync(path.join(os.tmpdir(), 'built-facade-report-')));
+    const manifest = { id: 'report-pack', name: 'Report', version: '1.0.0' };
+    fs.writeFileSync(path.join(root, 'apack.json'), JSON.stringify(manifest));
+    fs.mkdirSync(path.join(root, 'src/__generated__'), { recursive: true });
+    fs.writeFileSync(path.join(root, 'src/types.ts'), 'export interface Memo { title: string }');
+    fs.writeFileSync(path.join(root, 'src/__generated__/pack-types.ts'), "export type { Memo } from '../types.ts';");
+    fs.mkdirSync(path.dirname(facadeReportFile(root)), { recursive: true });
+    fs.writeFileSync(facadeReportFile(root), facadeReportText('export interface Memo { title: string }', root, manifest.id));
+    const view = createPackCompilerInputView(root);
+    view.readBytes(path.join(root, 'src/types.ts'));
+    view.readDataBytes(path.join(root, 'src/__generated__/pack-types.ts'));
+    view.captureDataLocation(path.join(root, 'src/__generated__'), 'directory');
+    view.captureLocation(path.join(root, 'src/__generated__'), 'entries');
+    const observations = view.observations().entries;
+    view.dispose();
+    const directory = path.join(root, 'dist');
+    fs.mkdirSync(path.join(directory, 'types'), { recursive: true });
+    fs.mkdirSync(path.join(directory, 'runtime'));
+    fs.writeFileSync(path.join(directory, PACK_LAYOUT.runtimeEntry), 'throw new Error("Report activated runtime");');
+    fs.writeFileSync(path.join(directory, PACK_LAYOUT.snapshot), JSON.stringify({
+      manifest, declarationRevision: _declarationRevision(manifest), format: PACK_SNAPSHOT_FORMAT,
+      types: { entities: {}, relKinds: {} }, entityDestinations: {},
+      facades: { [PACK_TYPES_FACADE]: 'export interface Memo { title: string }' },
+    }));
+    writePackBuildInputs(directory, { compiler: 'a'.repeat(64), execution: 'b'.repeat(64), options: [], observations,
+      packages: { hash: readPackageInputs([{ id: 'pack', directory: root }]).hash,
+        owners: [{ id: 'pack', directory: '' }], discovered: [] } });
+    sealPackBuild(directory, manifest);
+  });
+  afterEach(() => fs.rmSync(root, { recursive: true, force: true }));
+
+  it('reads the verified facade without activating the runtime or changing generated entries', () => {
+    const directory = path.join(root, 'src/__generated__');
+    const before = fs.readdirSync(directory);
+    const stat = fs.statSync(path.join(directory, 'pack-types.ts'));
+    expect(readBuiltFacadeReport(root)).toContain('interface Memo');
+    expect(fs.readdirSync(directory)).toEqual(before);
+    expect(fs.statSync(path.join(directory, 'pack-types.ts')).mtimeMs).toBe(stat.mtimeMs);
+  });
+
+  it('checks through the built CLI path and refuses options that would regenerate inputs', async () => {
+    const cwd = vi.spyOn(process, 'cwd').mockReturnValue(root);
+    const log = vi.spyOn(console, 'log').mockImplementation(() => {});
+    try {
+      await facadeReport(['--from-build']);
+      expect(log).toHaveBeenLastCalledWith('etc/pack-types.api.md is up to date');
+      await expect(facadeReport(['--from-build', '--skip-generate'])).rejects.toThrow('Usage:');
+      await expect(facadeReport(['--from-build', '--update'])).rejects.toThrow('Usage:');
+    } finally { cwd.mockRestore(); log.mockRestore(); }
+  });
+
+  it.each(['src/types.ts', 'src/__generated__/pack-types.ts', 'src/__generated__/.generating.lock'])(
+    'refuses changed %s instead of regenerating or accepting the old build', file => {
+      fs.appendFileSync(path.join(root, file), '\n// changed');
+      expect(() => readBuiltFacadeReport(root)).toThrow(/input changed|package inputs changed/);
+    },
+  );
+
+  it('refuses modified output against its sealed receipt', () => {
+    fs.appendFileSync(path.join(root, 'dist', PACK_LAYOUT.snapshot), ' ');
+    expect(() => readBuiltFacadeReport(root)).toThrow(/verification/);
   });
 });

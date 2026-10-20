@@ -1,3 +1,4 @@
+import { createNativePackTestRegistry } from '@apackdev/host/testing';
 // A send to a system that declares no such event is reported, not ignored in silence.
 //
 // The bus has always checked the outgoing direction: a send to a plugin that declares no such event is
@@ -19,9 +20,8 @@ import { startTestRuntime, takeSystemErrors, testRootEvents } from '@apackdev/sd
 import { untypedSendToSystem, type Message } from '@apackdev/sdk/events';
 import { createAppBus } from '../../src/bus/index.ts';
 import { HOST_ENTITY_TYPES } from '../../src/app-state/index.ts';
-import { createPackRegistry } from '../../src/packs/registry.ts';
 
-const registry = createPackRegistry();
+const registry = createNativePackTestRegistry();
 startTestRuntime({ entityTypes: HOST_ENTITY_TYPES, packs: registry });
 
 const MEMOS = 'memo-pack/memos';

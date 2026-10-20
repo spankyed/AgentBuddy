@@ -27,7 +27,7 @@ export interface DescriptorContext {
     exitCount?: number;
 }
 
-// @public (undocumented)
+// @public
 export function getDescriptor(nodeType?: string): NodeLayoutDescriptor;
 
 // @public (undocumented)

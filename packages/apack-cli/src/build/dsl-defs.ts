@@ -1,26 +1,24 @@
-import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { builtinModules } from 'node:module';
-import ts from 'typescript';
 import type { PackManifest } from '@apackdev/sdk/build';
 import type { RecordReads } from './build-reads';
+import type { RecordBuildOutput } from './build-outputs.ts';
 import { bundleDeclarations, isPackageSpecifier } from './types-bundler';
+import { readPackCompilerConfiguration } from './compiler-configuration.ts';
+import type { CompilationInputs } from './compilation-inputs.ts';
+import type ts from 'typescript';
 
 /**
  * The pack's own compiler options, with its path aliases resolved. Its tsconfig's `include` covers the
  * whole pack (components and tests included), which a definitions bundle neither needs nor can afford:
  * these options let the bundler follow the entry's imports alone.
  */
-function packCompilerOptions(packDir: string): Record<string, unknown> {
-  const file = path.join(packDir, 'tsconfig.json');
-  if (!fs.existsSync(file)) return {};
-  const { config, error } = ts.readConfigFile(file, ts.sys.readFile);
-  if (error) return {};
-  const { options } = ts.parseJsonConfigFileContent(config, ts.sys, packDir, undefined, file);
+function packCompilerOptions(packDir: string, compilation?: CompilationInputs): ts.CompilerOptions {
+  const options = (compilation ? compilation.declarationConfiguration : readPackCompilerConfiguration(packDir))?.options ?? {};
   // Module resolution decides whether a package import resolves at all, and the path aliases whether the
   // pack's own modules do; everything else is the compiler's business, not the bundle's.
-  const { paths, baseUrl, module, moduleResolution, target, jsx } = options;
-  return { paths, baseUrl, module, moduleResolution, target, jsx };
+  const { paths, baseUrl, pathsBasePath, module, moduleResolution, target, jsx } = options;
+  return { paths, baseUrl, pathsBasePath, module, moduleResolution, target, jsx };
 }
 
 /**
@@ -38,11 +36,11 @@ export function withoutRenameSuffixes(code: string): string {
 }
 
 /** The build output holding the DSL editors' definitions, dist-relative */
-export const DEFS_DIR = 'defs';
+const DEFS_DIR = 'defs';
 
-/** The Monaco declarations of one DSL type, pack-relative: the generated DSL registration imports them */
+/** The Monaco declarations of one DSL type, relative to the build output directory. */
 export function monacoDefsFile(name: string): string {
-  return path.join('dist', DEFS_DIR, 'monaco', `${name}-defs.d.ts`);
+  return path.join(DEFS_DIR, 'monaco', `${name}-defs.d.ts`);
 }
 
 /**
@@ -55,16 +53,18 @@ export function monacoDefsFile(name: string): string {
  */
 export async function bundleDslDefs(
   packDir: string,
+  outputDir: string,
   manifest: PackManifest,
-  recordReads?: RecordReads,
+  options: { recordReads?: RecordReads; compilation?: CompilationInputs; recordOutput?: RecordBuildOutput } = {},
 ): Promise<{ success: true; files: string[] } | { success: false; error: string }> {
+  const { recordReads, compilation, recordOutput } = options;
   const entries = Object.entries(manifest.extensions?.dsl ?? {}).filter(([, def]) => def.targets.includes('monaco'));
   if (entries.length === 0) return { success: true, files: [] };
-  const compilerOptions = packCompilerOptions(packDir);
+  const compilerOptions = packCompilerOptions(packDir, compilation);
   const files: string[] = [];
 
   for (const [name, def] of entries) {
-    const outFile = path.join(packDir, monacoDefsFile(name));
+    const outFile = path.join(outputDir, monacoDefsFile(name));
     const inlined = (id: string) => (def.inline ?? []).some((pkg) => id === pkg || id.startsWith(`${pkg}/`));
     const result = await bundleDeclarations(packDir, path.join(packDir, def.entry), outFile, {
       isExternal: (id) =>
@@ -76,6 +76,8 @@ export async function bundleDslDefs(
       renderChunk: withoutRenameSuffixes,
       compilerOptions,
       recordReads,
+      compilation,
+      recordOutput,
     });
     if (!result.success) return { success: false, error: `${name}: ${result.error}` };
     files.push(monacoDefsFile(name));

@@ -1,7 +1,8 @@
+import { writeManifest } from '../../manifest-writer.ts';
 import * as path from 'node:path';
 import { regenerateAfterScaffold } from '../generate-entries';
 import { validateName, toPascalCase, toCamelCase, toLabel, writeIfNotExists, logCreated, hasFlag } from './write';
-import { readManifest, writeManifest, addStep as addStepToManifest } from './manifest';
+import { readManifest, addStep as addStepToManifest } from './manifest';
 import { renderTemplate } from '../../templates.ts';
 
 
@@ -38,14 +39,6 @@ export async function addStep(args: string[], root: string) {
   const pascal = toPascalCase(type);
   const stepDir = path.join(root, 'src', 'extensions', 'steps', type);
 
-  // A trigger is not a step with a flag set: it owns a DSL track rather than a node in one, so its
-  // build-time facet is a `TriggerFacet` and comes from its own template. Pointing its manifest entry at
-  // the step template's `StepBuildFacet` is a pack that does not typecheck.
-  const facetFile = isTrigger ? 'trigger' : 'build';
-  const facetExport = isTrigger ? `${camel}TriggerBuild` : `${camel}StepBuild`;
-  const nodeExport = isTrigger ? `${camel}TriggerNode` : `${camel}StepNode`;
-  const feExport = isTrigger ? `${camel}TriggerFE` : `${camel}StepFE`;
-
   const created: string[] = [];
   // Each branch names its templates literally, which is how `scaffold-templates.spec.ts` sees that a
   // template under `templates/` has a caller at all — a computed path is invisible to it. The two differ in
@@ -53,13 +46,11 @@ export async function addStep(args: string[], root: string) {
   const files: [string, string][] = isTrigger
     ? [
       [path.join(stepDir, 'trigger.ts'), renderTemplate('pack/src/extensions/steps/step/trigger.ts', { TYPE: type, CAMEL: camel, LABEL: toLabel(type) })],
-      [path.join(stepDir, 'fe.ts'), renderTemplate('pack/src/extensions/steps/step/trigger-fe.ts', { CAMEL: camel })],
       [path.join(stepDir, 'types.ts'), renderTemplate('pack/src/extensions/steps/step/types.ts', { PASCAL: pascal, TYPE: type })],
       [path.join(stepDir, 'form.vue'), renderTemplate('pack/src/extensions/steps/step/form.vue', { PASCAL: pascal })],
     ]
     : [
-      [path.join(stepDir, 'build.ts'), renderTemplate('pack/src/extensions/steps/step/build.ts', { TYPE: type, CAMEL: camel, PASCAL: pascal, LABEL: toLabel(type) })],
-      [path.join(stepDir, 'fe.ts'), renderTemplate('pack/src/extensions/steps/step/fe.ts', { CAMEL: camel })],
+      [path.join(stepDir, 'build.ts'), renderTemplate('pack/src/extensions/steps/step/build.ts', { TYPE: type, PASCAL: pascal, LABEL: toLabel(type) })],
       [path.join(stepDir, 'types.ts'), renderTemplate('pack/src/extensions/steps/step/types.ts', { PASCAL: pascal, TYPE: type })],
       [path.join(stepDir, 'form.vue'), renderTemplate('pack/src/extensions/steps/step/form.vue', { PASCAL: pascal })],
     ];
@@ -68,12 +59,27 @@ export async function addStep(args: string[], root: string) {
   const manifest = readManifest(root);
   addStepToManifest(manifest, type, {
     kind: isTrigger ? 'trigger' : 'step',
-    // Both halves read `node`, so it sits beside the build-time facet where no Vue import reaches it
-    node: `${dir}/${facetFile}.ts#${nodeExport}`,
+    node: {
+      label: toLabel(type),
+      defaultLabel: isTrigger ? `On ${type}` : toLabel(type),
+      ...(isTrigger && { defaults: { source: 'change me' } }),
+    },
     ...(isTrigger
-      ? { trigger: { facet: `${dir}/${facetFile}.ts#${facetExport}` } }
-      : { build: `${dir}/${facetFile}.ts#${facetExport}` }),
-    fe: `${dir}/fe.ts#${feExport}`,
+      ? { trigger: { trackField: camel, persistent: false, compile: `${dir}/trigger.ts#compile`,
+        decompile: `${dir}/trigger.ts#decompile`, validate: `${dir}/trigger.ts#validate` } }
+      : { build: { compile: `${dir}/build.ts#compile`, validate: `${dir}/build.ts#validate`,
+        getLabel: `${dir}/build.ts#getLabel` } }),
+    types: `${dir}/types.ts`,
+    fe: {
+      colorKey: isTrigger ? 'blue' : 'indigo',
+      nodeConfig: {
+        icon: isTrigger ? 'Radio' : 'Box',
+        connectionRules: { inputs: isTrigger ? 0 : -1, outputs: -1 },
+        category: isTrigger ? 'trigger' : 'logic',
+        isImplemented: true,
+      },
+      components: { form: { entry: `${dir}/form.vue`, load: 'lazy' } },
+    },
   });
   writeManifest(root, manifest);
 

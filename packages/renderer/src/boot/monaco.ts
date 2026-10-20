@@ -1,0 +1,24 @@
+import { loader } from '@guolao/vue-monaco-editor';
+import * as monaco from 'monaco-editor';
+import EditorWorker from 'monaco-editor/esm/vs/editor/editor.worker?worker';
+import JsonWorker from 'monaco-editor/esm/vs/language/json/json.worker?worker';
+import CssWorker from 'monaco-editor/esm/vs/language/css/css.worker?worker';
+import HtmlWorker from 'monaco-editor/esm/vs/language/html/html.worker?worker';
+import TypeScriptWorker from 'monaco-editor/esm/vs/language/typescript/ts.worker?worker';
+
+declare global {
+  interface Window { monaco: typeof monaco }
+}
+
+// The renderer owns the editor and its workers; pack components share this locally bundled instance.
+self.MonacoEnvironment = {
+  getWorker(_moduleId, label) {
+    if (label === 'json') return new JsonWorker();
+    if (['css', 'scss', 'less'].includes(label)) return new CssWorker();
+    if (['html', 'handlebars', 'razor'].includes(label)) return new HtmlWorker();
+    if (['typescript', 'javascript'].includes(label)) return new TypeScriptWorker();
+    return new EditorWorker();
+  },
+};
+window.monaco = monaco;
+loader.config({ monaco });

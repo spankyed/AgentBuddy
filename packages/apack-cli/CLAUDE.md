@@ -2,6 +2,12 @@
 
 The `apack` app and pack CLI: scaffold, generate, build, test, pack, release and install packs. Built-in packs (`packages/default-setup`, `npm run build:default-setup`) and external packs go through the same commands. User-facing reference: `docs/public-facing/cli.md` (flags, build output layout, dependency sources). This file is the contributor map. Paths below are relative to `packages/apack-cli`.
 
+Installed-pack mutations share `withPackMutation`, the selected profile's storage lock. `pack replace`
+checks the explicit target id and chooses user-managed updates; plain install requires an explicit/associated offline host and refuses its advertised defaults
+(including invalid advertisements) or an app-managed incumbent. Named replacement needs no host selection. `pack restore` reads the selected host packages without activation/download, restores the
+named shipped build, re-enables it and resumes app updates. Its `--host` source selection is independent
+of `--profile` storage. Both preserve database overrides. See `commands/pack-{install,replace,restore}.ts`.
+
 ## Layout
 
 ```
@@ -30,17 +36,17 @@ Desktop app `install [version]`, `upgrade [version]` and `uninstall` share `app/
 | `pack outdated`, `pack upgrade <id>` | `commands/pack-outdated.ts`, `pack-upgrade.ts` | Explicit profile paths; `app/pack-updates.ts` shares read-only GitHub release checks. `app/pack-mutation.ts` locks install/uninstall/upgrade while the app is closed; upgrade validates the selected pack and both dependency directions before replacement |
 | `db backup`, `db backup verify` | `commands/db/backup.ts`, `backup-verify.ts` | Full offline snapshot and standalone verification in the app’s backup format |
 | `pack init [name]` | `commands/init.ts` | Writes `apack.json`, `package.json`, `tsconfig.json`, `.github/workflows/release.yml` (`RELEASE_WORKFLOW_TEMPLATE`), a markdown content format example, then runs `generate-entries`. `scaffoldUnitTestSetup()` (also used by `add feature`) writes `vitest.config.ts`, `tests/setup.ts` and devDependencies |
-| `pack add <entity>` | `commands/add.ts` → `commands/add/*.ts` | Entities: `feature`, `step`, `artifact`, `block`, `action`, `prompt`, `flow`, `service`, `migration`. Shared helpers in `add/templates.ts` (naming, `writeIfNotExists`, `parseFlag`) and `add/manifest.ts` (manifest edits). `add feature` takes a `--designation` role (it need not be the feature name) and regenerates entries |
-| `pack generate-entries [--force]` | `commands/generate-entries.ts` | `generatePackFiles` (`@apackdev/sdk/build`) into `src/__generated__/`. Skips when `.inputs-hash` matches **and every file it recorded writing is still there** — `{ hash, files }`, the missing-output check first, as `unitStaleReason` (`@apackdev/host/build/packages-built`) does. Recording only the hash would let a deleted generated file go unnoticed, reporting "inputs unchanged, skipping" over a tree it had not made. The list is *recorded* rather than fixed because the output set follows the manifest: a pack with no plugins never writes `fe.ts`, and a hard-coded expectation would call it stale forever. Inputs hashed: manifest, `src/`, dependency snapshots and the SDK's codegen source. Deletes generated files it no longer emits; `warnStaleDepTypes` flags `deps/<id>.d.ts` from another version |
+| `pack add <entity>` | `commands/add.ts` → `commands/add/*.ts` | Entities: `feature`, `step`, `artifact`, `block`, `action`, `prompt`, `flow`, `service`, `migration`. Shared helpers in `add/write.ts` (naming, file/flag helpers), `add/manifest.ts` (declaration edits), and `src/manifest-writer.ts` (schema-ordered serialization used by init/add/release). `add feature` takes a `--designation` role (it need not be the feature name) and regenerates entries |
+| `pack generate-entries [--force]` | `commands/generate-entries.ts` | `generatePackFiles` (`@apackdev/sdk/build`) into `src/__generated__/`. Keeps compiler-specific cache metadata in `.apack/generate-entries.json`, outside generated module outputs. Skips when its input hash matches **and every recorded output has the same bytes** — `{ hash, files: { path: sha256 } }`, the missing-output check first, as `unitStaleReason` (`@apackdev/host/build/packages-built`) does. Recording only the hash would let a deleted generated file go unnoticed, reporting "inputs unchanged, skipping" over a tree it had not made. The list is *recorded* rather than fixed because the output set follows the manifest: a pack with no plugins never writes `fe.ts`, and a hard-coded expectation would call it stale forever. Inputs hashed: module sources throughout the pack, captured manifest data, dependency snapshots, the SDK implementation and the CLI generation implementation. Build and facade-report `--skip-generate` use the same input/output check and refuse stale files; builds recheck before publication. Generated entries, build output and dependency working trees are excluded. Deletes generated files it no longer emits; `warnStaleDepTypes` flags `deps/<id>.d.ts` from another version |
 | `pack fetch-deps` | `commands/fetch-deps.ts` | Resolution chain: `file:` path; else selected host for dependencies it provides (fail if incompatible/unbuilt); else workspace (`packages/<id>` or `<id>` in the nearest directory above the pack) → the app configured for `apack pack test` → installed apps (`resolveFromMachine`); else the `.apack/deps` cache; else GitHub releases (registry lookup is a stub). `resolveDepFiles` is what `build` uses |
-| `pack build [--skip-generate] [--skip-fe] [--release] [--watch]` | `commands/build.ts` | See Build pipeline. `--watch` is the backend edit loop instead: the first bundle, then `bundlePackRuntime` alone on every `.ts` change under `src/` and a `POST /dev/reload` to a running app (`build/watch.ts`, `build/dev-reload.ts`). It rebuilds that one output and says so — 40ms against a full build's 23.7s on default-setup, measured 2026-10-07 — and `npm run dev` forks it for the pack the app ships |
-| `pack archive [--out <dir>]` | `commands/archive.ts` | `pack buildPackArchive()`: `stagePack` into `.apack/staged/<id>`, `verifyPack`, `createPackArchive` (all `@apackdev/host/packs`). Records `gitProvenance()` with credentials stripped from the remote. Refuses built-in packs |
+| `pack build [--skip-generate] [--skip-fe] [--release] [--watch]` | `commands/build.ts` | See Build pipeline. `--watch` uses `build/build-process.ts` to run a fresh CLI build on every authored-input change, then asks the development API to reload after verified publication. Linked packages are checked before spawning, and flow/step/compiler imports cannot reuse the previous build's module cache. Build and watch share authored-input exclusions; compiler configuration and fresh TypeScript resolution probes add outside-file, missing-target and physical-link subscriptions. The current frontend compiler reports resource files and content directories over private worker IPC, independently of diagnostic records; failed builds retain repair subscriptions. Unchanged notifications skip publication; changes outside src/, manifests, JSON schemas, assets and help are included. Mid-build edits coalesce into another run; failures retain the accepted build. Watch cannot combine with other build flags. `npm run dev` waits for its first verified publication |
+| `pack archive [--out <dir>]` | `commands/archive.ts` | `pack buildPackArchive()`: `stagePack` into `.apack/staged/<id>`, `verifyPack`, `createPackArchive` (all `@apackdev/host/packs`). Records `gitProvenance()` with credentials stripped from the remote. Defaults to `.apack/archives`; verifies completed inputs under the build lock and rechecks before publishing. The default pack uses the same path |
 | `pack release [...]`, `release publish` | `commands/release.ts` | `runRelease`: `nextReleaseVersion` → `preflight` → write version → `verify` (`build --release`, `tsc`, `npm test`, `test`) → commit → pack into `.apack/release` → tag → push. `publishRelease` uses Octokit. The shell `Runner` and the Octokit client can be injected (tested in `tests/commands/release.integration.spec.ts`) |
-| `pack facade-report [--update]` | `commands/facade-report.ts` | The reviewed report of the pack's facade types (`etc/pack-types.api.md`), normalised so it moves only with the facade. Re-takes its subject — codegen, then `bundlePackTypes` into a temp dir — so it needs no build and `dist` is never what it compares against. Fails with a diff when the committed report is stale; `--update` rewrites it |
-| `pack validate` | `commands/validate.ts` | `pack validateManifest` + `validateFeatures`; unresolved dependencies are warnings only |
-| `pack install <source> [--profile <name>]` | `commands/pack-install.ts` | `detectSourceKind` → `installPackFromLocal` / `installPack`, checking the pack's `hostVersion` and build format against what `readHostCompatibility(userDataDir)` says the data dir's app is. CLI installs record their source in the selected profile; uninstall removes the record. Bare names go to `resolveFromRemoteRegistry`, which always throws (not implemented) |
+| `pack facade-report [--update]` | `commands/facade-report.ts` | The reviewed report of the pack's facade types (`etc/pack-types.api.md`), normalised so it moves only with the facade. Defaults to source derivation: codegen, then `bundlePackTypes` into a temporary directory. Explicit `--from-build` reads the verified snapshot facade after common input-record freshness checks, without regenerating shared entries; the root chain uses this path. Missing, changed or stale builds refuse. Fails with a diff when the committed report is stale; `--update` rewrites it |
+| `pack validate`, `pack doctor` | `commands/validate.ts`, `pack-doctor.ts` | Shared read-only manifest/file, static export/contract and source-rule checks; exits 0 for valid, 1 for errors, 2 for incomplete dependency checks. Doctor also reminds about absent generated output |
+| `pack install <source> --host <path|beta> [--profile <name>]` | `commands/pack-install.ts` | `detectSourceKind` → `installPackFromLocal` / `installPack`, checking the pack's `hostVersion` and build format against what `readHostCompatibility(userDataDir)` says the data dir's app is. CLI installs record their source in the selected profile; uninstall retains a deliberate-removal marker. An explicit reinstall clears that marker and enables the pack; ordinary updates preserve enablement. Bare names go to `resolveFromRemoteRegistry`, which always throws (not implemented) |
 | `pack uninstall <id>`, `pack list` | `commands/pack-uninstall.ts`, `commands/list.ts` | Stored profile from `parseStorageProfile`: production by default |
-| `pack dev [--host <path> \| --host beta] [--profile <name> [--rm] \| --fresh [--rm]] [--with-secrets]` | `commands/dev.ts`, `src/app/` | `resolvePackHost` with development policy (derived, never remembered), then build, then launch that app unless a verified source session from the selected checkout is already on its data dir — an app this command started is one it closes. The environment follows the app: a checkout is `development`, a packaged build stamps its own channel (`hostEnvironment`). Then `installToApp` (checked against that app's `readHostCompatibility`, as `install` is) and a Vite dev server (port 5199, `strictPort: false`) with `packExternalsPlugin`; writes the `pack-dev-servers` marker (`writeDevServerMarker`). `.ts` changes rebuild, reinstall and `POST /dev/reload` to that app's API (port from `apiPortFile`). Without an FE entry: `watchRebuildFallback`. **A profile** (`src/app/profiles.ts`) is a data dir and nothing else — `appName` and runtime environment are untouched, so `--host beta` works, and a profile is bound to no kind of app: a checkout and a packaged build keep their stores in the same place inside it, so a dir is a dir. `dev` threads one `AppPlace` (`{env, userDataDir?}`) through every `resolveAppEnvironment` and sets `APACK_USER_DATA_DIR` plus `APACK_SECRETS_VAULT=file` in the launch env, **only when a profile was named**: setting the first unconditionally would move a plain run's logs into the data dir and override the caller's own variable. **What the session holds is one owner** (`src/app/dev-hold.ts`), taken before the build rather than after the dev server, because that is when Ctrl-C actually arrives. It releases in two phases, and which phase a resource is in is the point: `releaseNow` is everything a synchronous `exit` handler can do — the records before the things they describe, then the server, then the app — and `release` is every other way a session ends, which waits for the app to have gone before removing a throwaway data dir from under its open files. `tests/app/dev-hold.spec.ts` is where that order is written down. **A spawned app on a profile closes itself when nothing attaches** (`reapsWhenIdle`, `IDLE_REAP_MS`): `startedBy: 'drive'` **and** a profile, because the development dir is `mayReclaim`'s and a person's app is nobody's to close on a timer. Each question bumps the session file's mtime (`touchSession`) and the wait is that deadline re-derived rather than an interval, so an idle app wakes the timer once. `--with-secrets` (`src/app/profile-secrets.ts`) copies the environment's stored secrets into a **newly created** profile by carrying its data key across rather than re-encrypting, into the profile's own file vault — so `rm -rf` still removes them and the keychain gains nothing. It addresses that store through `@apackdev/host/secrets`' `dataKeyAccount`/`dataKeyFile` rather than respelling either convention, and names the credential store's service with `resolveAppEnvironment({ env }).appName` — the accessor the app's own store reads, so no second copy of `APP_NAMES` exists to drift (deriving it from `basename(appDataDirFor(env))` instead would assume `platformDataDir` puts the app name last) |
+| `pack dev [--host <path> \| --host beta] [--profile <name> [--rm] \| --fresh [--rm]] [--with-secrets]` | `commands/dev.ts`, `src/app/` | `resolvePackHost` with development policy (derived, never remembered), then build, then launch that app unless a verified source session from the selected checkout is already on its data dir — an app this command started is one it closes. The environment follows the app: a checkout is `development`, a packaged build stamps its own channel (`hostEnvironment`). Then the install, and **who copies the files depends on the host, because an app may load a pack while its files are being replaced**. A checkout's running app is asked to (`installPackInApp`, `POST /dev/install` to its API, port from `apiPortFile`), and copies and starts the build under the registry's claim on the pack, so no install, toggle or reload in the Packs view overlaps it; each rebuild does the same. A packaged app takes no development request, so `installToApp` (checked against that app's `readHostCompatibility`, as `install` is) copies the build before the launch, and a rebuild whose backend moved (`backendRevision`: the receipt minus the frontend Vite serves) closes the app this command started, copies the build and starts it again — an app this command did not start is refused already. Then a Vite dev server (port 5199, `strictPort: false`) with `packExternalsPlugin`; writes the `pack-dev-servers` marker (`writeDevServerMarker`). Without an FE entry: `watchRebuildFallback`. **A profile** (`src/app/profiles.ts`) is a data dir and nothing else — `appName` and runtime environment are untouched, so `--host beta` works, and a profile is bound to no kind of app: a checkout and a packaged build keep their stores in the same place inside it, so a dir is a dir. `dev` threads one `AppPlace` (`{env, userDataDir?}`) through every `resolveAppEnvironment` and sets `APACK_USER_DATA_DIR` plus `APACK_SECRETS_VAULT=file` in the launch env, **only when a profile was named**: setting the first unconditionally would move a plain run's logs into the data dir and override the caller's own variable. **What the session holds is one owner** (`src/app/dev-hold.ts`), taken before the build rather than after the dev server, because that is when Ctrl-C actually arrives. It releases in two phases, and which phase a resource is in is the point: `releaseNow` is everything a synchronous `exit` handler can do — the records before the things they describe, then the server, then the app — and `release` is every other way a session ends, which waits for the app to have gone before removing a throwaway data dir from under its open files. `tests/app/dev-hold.spec.ts` is where that order is written down. **A spawned app on a profile closes itself when nothing attaches** (`reapsWhenIdle`, `IDLE_REAP_MS`): `startedBy: 'drive'` **and** a profile, because the development dir is `mayReclaim`'s and a person's app is nobody's to close on a timer. Each question bumps the session file's mtime (`touchSession`) and the wait is that deadline re-derived rather than an interval, so an idle app wakes the timer once. `--with-secrets` (`src/app/profile-secrets.ts`) copies the environment's stored secrets into a **newly created** profile by carrying its data key across rather than re-encrypting, into the profile's own file vault — so `rm -rf` still removes them and the keychain gains nothing. It addresses that store through `@apackdev/host/secrets`' `dataKeyAccount`/`dataKeyFile` rather than respelling either convention, and names the credential store's service with `resolveAppEnvironment({ env }).appName` — the accessor the app's own store reads, so no second copy of `APP_NAMES` exists to drift (deriving it from `basename(appDataDirFor(env))` instead would assume `platformDataDir` puts the app name last) |
 | `npm run dev:drive -- [script \| --eval <body>]` | `commands/drive.ts`, `src/app/drive-attach.ts` | **Mainly an agent's tool.** Two halves. **A question** — `--eval <body>`, `--query <code>`, `--state` — is asked of the app `npm run dev:open --` is holding, over the debug port in its session file (`@apackdev/host/dev-session`): `attachableApp` reads it, `askAttached` attaches and asks, and stdout carries one JSON object (`value`, `state`, `startedBy`, `supervisorPid`) with the exit code as the status — 0, 3 for no app, 1 for a failed verb. With no app it refuses rather than launching one, naming `--spawn`, which runs the repository app-session entry point **detached** (`spawnDevApp`) and keeps it; `--fresh` implies it. **`askTarget` answers both halves of "which data dir" at once** — the dir to wait on and the flags that make `dev` open it — because they were two functions that disagreed about `--fresh`, which either attached to the development dir ignoring the flag or waited out the two-minute deadline at a path nothing writes. `--fresh` is resolved to a *name* here, since a question must know the dir before the app exists; `dev`'s `openProfile` creates it, which is also what keeps `--with-secrets` meaningful and keeps an `--rm` dir out of `.ephemeral/<pid>-…`, where the pid would be this process's and the app outlives it. `profiles.spec.ts` holds the agreement as a round trip through the parser `dev` uses. `@apackdev/testing` is resolved at runtime from the pack, never imported — it is a devDependency and `bundle-package.ts` would refuse the bundle. **A script** still goes through the Playwright runner: `playwright test --config drive/playwright.config.ts` through `fixtureEnv` plus `PLAYWRIGHT_VISIBLE=1` (shown, so a person can watch) and `E2E_DATA_DIR` for a profile, launching its own app. A question attaches and a program gets a dir, which is a decision rather than a leftover: a script whose result depends on whatever plugin was left open has undeclared inputs. Scaffolds `drive/` on first use (config, README, a `*` gitignore with the two tracked files negated); a config that has stopped calling `defineDriveConfig` is reported once with the two lines that replace it (`DriveScaffold.keptStale`). **The repository drive entry point always drives the app itself; `pack drive` requires a pack** (`driveTarget`), which is what lets this repo's `drive*` npm scripts be thin calls to this command: `PACK_DIR` is unset so the fixture builds and installs nothing, and `fixtureEnv` keeps the `@apackdev/source` condition, since the subject is the checkout's own source |
 | `pack init-tests` | `commands/init-tests.ts` | Both halves. Playwright: `playwright.config.ts`, `tests/e2e/smoke.spec.ts`, `.gitignore` entries, `@apackdev/testing` (`^cliVersion()`) + `@playwright/test`. Contract: `scaffoldUnitTestSetup()` (`vitest.config.ts`, `tests/setup.ts`, devDependencies) unless `tests/setup.ts` is already there |
 | `pack test [--host <path> \| --host beta]`, `test --contract` | `commands/test.ts`, `src/app/` | Needs `playwright.config.ts`. Runs the pack's Playwright CLI with `fixtureEnv()`. Details in `packages/apack-testing/CLAUDE.md`. `--contract` runs the pack's vitest instead and starts no app — the checks that read compiled output, generated types and the harness; it is a no-op with a message in a pack with no vitest config, and `tests/scripts/test-external-pack-contract.sh` runs the fixtures through it |
@@ -64,23 +70,213 @@ Packaged channels come from `build-manifest.json`, never a release tag or execut
 
 ## Build pipeline (`commands/build.ts`)
 
+Public builds, release verification and development builds use `build/build-process.ts`.
+`createPackBuilder(root)` owns one compiler copy and serializes fresh worker processes. Before reuse it
+refreshes linked packages and verifies both the selected compiler's current inputs and its copied bytes.
+The selected runtime executable is copied into that same owner and used for both backend and Vite
+workers. `compiler-runtime.ts` inventories runtime bytes, executable modes, links and directory
+membership; Electron includes its adjacent frameworks (or distribution directory outside macOS).
+Copied runtime bytes are verified before admission and included in compiler identity and reuse checks.
+Runtime selector observations feed the existing compiler watcher separately from copied bytes: selected
+Windows OS policy files and missing context candidates must remain subscribed without being copied.
+`compiler-runtime-pe.spec.ts` covers that boundary with inert metadata; the existing Windows application
+context integration case verifies actual selector observations and preserved native admission.
+Clone-capable runtime copies are still verified against the bytes read for identity. External linked
+runtime libraries and other-platform acceptance remain B1 work; the runtime version map alone does not
+close those requirements. A changed compiler/runtime or damaged copy is replaced.
+`runPackBuild` closes this scope after a single build;
+a watcher retains it until close. Closing aborts active work, drains the worker and input observers,
+then removes the private installation.
+
+`pack dev` retains that builder across its initial build and watcher. `serveFrontend` runs the existing
+`packDevServerConfig` in `frontend-worker`, from the same captured compiler, with live authored sources
+and a private writable Vite/temp workspace. A ready replacement publishes its marker before the old
+frontend is retired; worker closure and its POSIX group precede compiler disposal. The watcher accepts
+the session's build operation and owns only its subscriptions; the session closes the shared builder.
+Pack/npm and shared SDK/UI metadata, module inventory and entry selection also identify the frontend
+configuration. Changes replace its generation after a successful build; ordinary source edits keep
+Vite's live graph. Metadata lookup reuses `findPackageDirectory`, avoiding Node's cached link resolution.
+The compiler watcher also fingerprints/subscribes to the selected distributable compiler graph,
+runtime inventory and configured esbuild override, including an absent override. These probes run
+before pack discovery so broken configuration retains tooling repair subscriptions. Existing physical
+link guards, signatures and coalescing handle those events; no pack edit is needed to trigger refresh.
+
+The parent holds the pack build lock through worker closure and publication. Workers only prepare and
+seal a candidate, report its authored-input hash and sealed revision, drain diagnostics, and exit.
+The parent waits for process closure, verifies the exact sealed output and authored hash, then replaces
+dist. POSIX workers own a process group: inherited subprocesses must be terminal before publication.
+Both build and Vite workers launch through `spawnCompilerWorker`. Windows uses the captured
+`bin/compiler-windows.ps1`: create the worker suspended, assign its private kill-on-close Job Object,
+then resume it with inherited Node IPC/stdio. Pass the requested Node environment in memory to
+`CreateProcessW`; PowerShell startup must not change compiler inputs or persist environment values. Normal completion terminates remaining descendants and
+waits for an empty job before the launcher exits; parent loss or forced launcher termination closes the
+job handle. Keep launcher/configuration temp files inside the existing worker workspace. Frontend
+readiness reports the actual Vite worker PID, independently of the platform lifetime owner.
+Cancellation permits two seconds for worker SIGTERM cleanup before forced termination; loss of parent
+IPC stops the owned group, and that listener stays active through final diagnostics. Exit-handler writes therefore cannot silently change an accepted candidate; aborts and refusals
+clean staging while preserving the incumbent. This handoff is not the complete source/compiler input
+receipt and must not authorize passive source freshness.
+
+`withBuildSignals` owns public one-shot/watch cancellation before startup and restores the original
+signal exit after cleanup. Development supplies its own build-lifetime signal and hands initial-build
+and watcher-startup promises to its hold before awaiting them; profile removal and exit wait for both.
+Release verification uses the same build owner and reports its existing recovery state before
+interrupted exit. Its synchronous test runners and later publishing phases keep their own signal behavior.
+
+`build/compiler-installation.ts` copies bytes supplied by the host's normalized package-input graph,
+preserves physical module/link resolution and executable bits, verifies the copy and makes its inputs
+read-only. Its private metadata records the compiler fingerprint, captured package directories and
+source-path mappings. Workers require this metadata to belong to their actual CLI; they keep the
+selected compiler rather than hand off to the project again. Module identity, diagnostic reads and
+frontend subscriptions use source origins. Initial execution context also includes the inherited
+environment digest from `compiler-environment.ts`, captured before user initialization. Raw environment
+maps are not recorded; private transport/temp/cache fields are excluded and owned paths use source
+origins. NODE_OPTIONS keeps its separate ordered-options contract. The same environment digest
+participates in frontend configuration and watcher signatures, including custom content/VITE keys.
+This is conservative: an included variable changes identity even if a particular compiler ignores it.
+Glob selection stays in TypeScript, but its serialized facts use the existing filesystem read scope:
+complete authored membership covers the source root, while outside/dependency enumeration records
+native directory/metadata observations. Native replay uses the same authored-output exclusions; it
+requires no TypeScript execution or second glob implementation. Local captured glob results and final
+live compiler-side validation remain in place.
+Pack and outside-module inputs are rechecked before publication; the already captured compiler fingerprint is reused within its immutable lifetime.
+
+Windows loader metadata is read by `bin/compiler-pe-process.ps1`, shipped with the captured CLI.
+It reuses the helper Job Object before optional C# compilation. The inspector reads actual loaded
+modules and native PATH; a worker's private or replaced `process.env` is not the OS loader state.
+Do not reintroduce `process.report.getReport()` for Windows queries: concurrent worker reports
+reproduce heap corruption. Only the immutable ntdll directory is cached; policy, modules and PATH stay
+live. See the [report-reader evidence](../../docs/evidence/build-input-snapshot-proof.md#windows-process-metadata-reader-without-diagnostic-reports--2026-10-18).
+
+The runtime capture declares `runtimeDirectory`; the shared launcher uses it for linked-library
+admission before native constructors can run. On macOS, Electron includes the complete Contents
+directory: its signature binds Info.plist and sealed resources as well as the executable/frameworks.
+Use Electron’s `original-fs` throughout runtime/installation ownership, including cleanup, so ASAR
+files stay physical archives. Compiler-source reads retain their existing filesystem behavior.
+Keep relative framework link text verbatim and include it in runtime identity; resolving to the same
+file does not preserve the signature seal. `compiler-runtime-copy.spec.ts` exercises the real copier
+with inert runtime bytes, so it can verify this locally without executing a copied runtime. The optional CI input `compiler_macos_signing=true` prepares a private Electron copy with
+our Developer ID certificate and the exact app entitlements, then runs only its captured-runtime probe
+unless another filter is supplied. Signing and keychain cleanup happen on the disposable runner; no
+notarization, release workflow, installed-app change or signing exception is involved.
+Resolve executable-relative paths against the selected child runtime and relative searches
+against its cwd, preserving main-image selection and signing permissions.
+
+Configured `ESBUILD_BINARY_PATH` executables belong to that installation too. Relative overrides resolve
+against the worker checkout; the worker receives the private copy. Missing overrides keep esbuild's
+package fallback. The installation's `isCurrent` checks selection, original/captured bytes and package
+graphs before reuse; its existing disposal removes the executable with the compiler.
+
+`bin/apack.mjs` selects `build-worker` only with its private worker handoff and parent IPC channel.
+It calls `stopReads()` before loading the worker bundle, ending preload filesystem interception while
+keeping the captured view and native admission alive. `disposeLocal()` ends both; these are distinct phases.
+That entry checks the compiler inputs before importing `build()`, avoiding recursive command dispatch;
+it ships beside `cli.js`. Internal compiler tests call `build()` in-process; process-boundary tests
+exercise the real bootstrap and runner.
+
+Read trees beneath `APACK_BUILD_INPUTS_DIRECTORY` retain their files until the parent settles the
+compiler process and removes the workspace. Disposing a frame closes its API and bookkeeping; it
+cannot unlink DLLs still mapped by the worker. Standalone trees own their own deletion.
+
+The macOS native-library regression compiles a small addon with `clang` and the selected Node
+installation's `include/node` headers. These are developer test requirements, not CLI runtime
+dependencies. It verifies package-relative loading from captured bytes and refuses direct/transitive
+absolute-library escapes before addon initialization. The binary reader is dependency-free; it does not
+run `otool` or require developer tools at CLI runtime. The approved native support boundary is in
+`docs/reference/adr/native-compiler-input-boundary.md`; startup/thread/Vite and other-platform closure
+remain separate from this module-reader checkpoint.
+
+Use `splitCompilerModulePath` for tsx filename scope queries; the `?` in a Windows device prefix
+is part of the path. Use `relativeCompilerPath` for compiler ownership comparisons and `compilerSourcePath` for source
+projection. Node passes extended Windows filenames to native loading; both sides of a comparison must
+use the same spelling. The common file view uses `resolveCompilerPath` for drive-root identity; see
+[Windows copy-path evidence](../../docs/evidence/build-input-snapshot-proof.md#windows-native-copy-path-identity-2026-10-17).
+
+Retained Vite uses the same early bootstrap and native admission as backend builds, with a lazy view
+that copies selected images rather than the authored package. Vue sources remain live for HMR.
+Backend and frontend frames share checked per-thread native reports within their input workspace.
+Reuse requires the exact source module and intact captured-file observations; loaded DLL names alone
+do not establish ownership. Content-compiler resolution and native loading delegate to this same
+startup owner; standalone in-process compilation retains direct admission. The inert
+`compiler-native-inputs.spec.ts` checks owner refusal propagation and standalone enforcement. Before reusing a frontend generation, its builder checks native inputs
+across the main thread, loader and owned workers. The check is cancellable, and retirement settles the process owner before removing
+its private read trees. Live watch subscription delivery and broader platform admission remain tracked
+in the owning goal; native input checks alone do not establish those guarantees.
+
+`@apackdev/host/build/compiler-inputs` owns metadata, bytes, physical bindings and directory/glob results
+for one compiler frame. Its `createPackCompilerInputView` captures authored and declared npm dependency bytes,
+filtered membership and missing lookups before user preloads; configuration, Vue extraction and the
+compiler host reuse that inventory and view. Repeated queries
+reuse captured data; a final check refuses changed bytes, missing targets, link changes or membership.
+Origin mappings and returned arrays cannot mutate its fingerprint. Root membership uses the shared
+pack-input walker. A captured pack root uses the same source projection as its files for fingerprints
+and discovered-package ordering; reads and validation still use its owned physical files.
+`captureCompilationInputs` retains the scan's validator, rechecking its read-set plus
+package/tool/options inputs without reconstructing the TypeScript program. It is scoped to one build.
+Authored files and package-graph callback bytes seed the same owned view. After codegen,
+`captureGenerated()` admits its completed bindings separately from authored membership. All five native
+bundle paths, including flow helpers, consume copied bytes from that view through esbuild's `onLoad`;
+callers cannot mutate the owned buffers. Native resolution still uses the original namespace. This
+owns native module bytes.
+
+Declaration bundles (facade, flow helpers and DSLs) materialize that view into one lazy
+`compiler-read-tree.ts` tree per build. Captured bytes, package links, positive/missing queries and
+executable file modes define it; source origins remain the record of reads. The input directories are
+read-only and verified before publication. A separate writable directory holds derived declaration
+configuration. Compiler option projection lives in `compiler-configuration.ts`, not in the filesystem.
+Declaration programs capture a nearest parent config when no explicit pack config exists; native
+per-file config discovery keeps its existing semantics. Normal cleanup precedes publication and also
+runs on failures. Each public worker's parent owns its workspace and removes abandoned read-only trees
+after child close without following aliases. Startup/preload, content and frontend reads now share
+captured input ownership. External native-library/platform lifetime acceptance, expected emitted/copied
+output completeness and passive-consumer policies remain in the discovery goal; the completed record
+alone does not close those requirements.
+
 1. `parseManifest`; then `buildStagingDir` (`.apack/build/`), where every phase below writes. `dist/` is
    left alone until the end, when the staged tree is renamed over it (`replaceDir`), so a reader finds the previous
    build whole or this one whole — every reader of a pack's output reads a missing output as *not built*,
    and clearing `dist` first published ~20s in which that was the answer. A build that throws anywhere
    removes the staged tree and leaves the previous build in place.
-2. Unless `--skip-generate`: `resolveDeps` → `generateEntries`.
-3. `featureSettingsProblems` (each `features.<id>.settings` through `checkFeatureSettings`).
-4. Dependencies' `steps.build.mjs` and manifests feed `buildPackConfigFromManifest`; its `loadDefinitions()` go into a registry of this build's own (`createPackRegistry()`, so a registry the process has bound is never touched: `tests/build/build-registry.spec.ts`), whose steps, artifacts and blocks `compilePack` compiles `content.sources` with (pack TypeScript loaded with tsx's `tsImport`), then `bundlePackContentCompilers` (`content.formats[].compiler`).
+2. Unless `--skip-generate`: `resolveDeps` → `generateEntries`. `@apackdev/host/build/pack-inputs` supplies the shared authored-file scope; facade/DSL cache keys include generated entries and all asset extensions. The build captures authored inputs before reading the manifest and refuses publication if their content identity changed by completion.
+3. Feature schemas and explicit defaults are validated by the common compiler during manifest decoding; no settings modules execute.
+4. Dependencies' `steps.build.mjs` and manifests feed `buildPackConfigFromManifest`. `compilePack` loads step definitions, flow modules and custom content compilers through the same `createCompilerModuleLoader` scope: Node resolves against owned paths while tsx transforms captured ESM bytes under logical source URLs, preserving import.meta paths. A private loader below tsx supplies those bytes using the same storage projection as the input tree. CommonJS retains per-tree filenames for cache isolation; its metadata projection remains unfinished. Scope disposal awaits tsx unregistration before input cleanup. `bundlePackContentCompilers` then builds the declared `content.formats[].compiler` exports for dependents.
 5. Facade types: `bundlePackTypes` (`build/types-bundler.ts`, rollup-plugin-dts) → `dist/types/pack-types.d.ts`, then the facade gate (below), then a **warning** when a committed `etc/pack-types.api.md` no longer matches the bundle in hand (`build/facade-report.ts`; nothing when the pack has no report). Then `bundlePackFlowHelpers` (`build/flow-helpers-bundler.ts`); the snapshot is written last, once every step succeeded.
 6. `bundlePackStepBuild` (`src/__generated__/steps-build.ts`, which codegen writes from the manifest's `steps`), `bundlePackContentRuntime` + `checkContentRuntimeLoads`, `bundleDslDefs` (`build/dsl-defs.ts`, manifest `dsl`).
 7. `bundlePackRuntime` → `dist/runtime/index.cjs`, then `bundlePackFE` (`build/fe-bundler.ts`, Vite library build) for `findFEEntry()` unless `--skip-fe`. Every pack, whoever ships it: the app loads a backend runtime and fetches a frontend bundle from the pack's own directory.
 
-A failing bundle or gate is reported and the build continues, so every failure shows; the build then throws before writing the snapshot (built-in packs after step 6, external packs after step 8), so a failed build never leaves a snapshot advertising its output. **The snapshot is written into the staged tree and the rename follows it**, in that order: the snapshot advertises what the build produced, so the tree it describes is what becomes `dist`. `bundleDslDefs` is the one phase that writes outside the staged tree, because the path its consumer uses is source text rather than an argument — codegen emits `'../../dist/defs/monaco/<name>-defs.d.ts?raw'`, which step 7's FE bundle resolves from the pack's real `dist` — so it writes there and the files are copied into the staged tree for the rename to publish. Those writes overwrite and never clear, so nothing reading `dist/defs/` finds a file absent. The apply-compiler bundle fails the build immediately. `PACK_LAYOUT` (`@apackdev/host/packs`) names every output path.
+A failing bundle or gate is reported and the build continues, so every failure shows; the build then throws before writing the snapshot (built-in packs after step 6, external packs after step 8), so a failed build never leaves a snapshot advertising its output. **The snapshot, canonical manifest and producer-owned `integrity.json` are written into the staged tree before the rename**, in that order: the snapshot advertises what the build produced, so the tree it describes is what becomes `dist`. Build reuse verifies the previous receipt first; corrupted output is rebuilt rather than reused and re-sealed. Staging verifies the receipt and copied bytes, retaining the previous stage on failure. `bundleDslDefs` writes directly into staged `defs/`; the frontend bundle resolves generated
+`dist/defs/... ?raw` imports against that staged directory. Frontends compile on every build; external
+styles/assets and compiler-driven inputs are resolved by Vite rather than an incomplete reuse key.
+The development server reads published `dist/defs` after the completed build. No DSL phase writes
+into live output before publication, and a missing staged definition never falls back to the old copy. The apply-compiler bundle fails the build immediately. `PACK_LAYOUT` (`@apackdev/host/packs`) names the shared layout paths.
 
-- **`build/be-bundler.ts`**: `bundlePackSource` is the shared esbuild setup (pack tsconfig, path aliases, `package.json` `imports`, `rejectHostImportsPlugin`, which fails an import of `@apackdev/host` or of an export only the app loads (`APP_ONLY_EXPORTS`, `@apackdev/ears/lmdb`; `tests/build/host-import-guard.spec.ts`), `stubFrontendAssetsPlugin`). `HOST_EXTERNALS` = `SHARED_DEPS` + the `SHARED_INSTANCE_PACKAGES` (`@apackdev/sdk`, `@apackdev/ears`) and their subpaths (`sharedInstanceExternals()`). The content runtime keeps only the shared-instance packages external.
-- **`build/build-reads.ts`**: what the build read, per phase, into `.apack/reads.json` — esbuild's `metafile.inputs`, Rollup's `watchFiles` and the FE bundle's module graph, which every bundler computed and discarded. A `RecordReads` per bundle, so a bundler reports what it read without knowing which phase it is and the phase is named where it is known (`commands/build.ts`); `BUILD_PHASES` is the list and `BuildPhase` is derived from it. Keyed by phase so a phase that didn't run is absent rather than empty, written with the snapshot so a failed build records nothing, and `APACK_NO_BUILD_READS=1` turns it off. It is read by the repo's chain checks (`scripts/lib/build-reads.ts`, `repo-checks`' `dep-files.integration.spec.ts`), never by the build.
-- **`build/content-runtime-check.ts`**: loads `dist/build/content-runtime.mjs` in a fresh Node process with the SDK's optional peers blocked by a resolve hook, as a dependent's harness would load it.
+`dist/build-inputs.json` records completed source/dependency observations, package graph scope, the
+selected compiler/runtime digest, initial execution-context digest and normalized build flags. It is
+written after loader/thread settlement and final input validation, then sealed with the output by the
+existing integrity receipt. Raw environment values and private compiler paths are not persisted.
+Compiler-installation facts stay under the installation identity; source facts replay against originals
+without importing compiler or pack code. Comparing another command's ambient environment is not replay.
+
+`build/build-outputs.ts` retains expected writer bytes until final sealing. Frontend expectations come
+from Vite's actual emitted graph and the existing public-file walk, including CSS, lazy/worker files,
+maps and copied public files. Final validation refuses missing/changed expected output before creating
+the receipt. Ordered emissions may replace public placeholders. This is an in-memory producer check,
+not another published manifest. `compilePack.recordOutput` feeds compiled JSON, the content index and
+regular media into the same check. Native bundles report their emitted bytes after source-map rewriting; facade/helper/DSL declarations
+report their final rendered text. Reused phase files must match the prior verified receipt before
+copying and retain the same final-byte expectations. Snapshot, cache and completed input metadata also
+join the check. Flow-helper module text stays covered by the snapshot that actually carries it.
+
+Private phase stamps live in `dist/phase-cache.json`, published with that completed record and output.
+Cache reads verify the receipt and current source/dependency inputs before considering phase keys.
+A reused phase retains its prior observations for final validation and the next completed record;
+skipping its execution cannot erase its external inputs. A refused replacement keeps the incumbent
+pair. Installation/archive staging omits both root build-only files. Missing, damaged or stale records
+cause a cold rebuild. Archive/test/drive freshness policy migration remains owned by B5 in the goal.
+
+- **`build/be-bundler.ts`**: `bundlePackSource` is the shared esbuild setup (captured pack tsconfig, path aliases, `package.json` `imports`, `rejectHostImportsPlugin`, which fails an import of `@apackdev/host` or of an export only the app loads (`APP_ONLY_EXPORTS`, `@apackdev/ears/lmdb`; `tests/build/host-import-guard.spec.ts`), `stubFrontendAssetsPlugin`). `HOST_EXTERNALS` = `SHARED_DEPS` + the `SHARED_INSTANCE_PACKAGES` (`@apackdev/sdk`, `@apackdev/ears`) and their subpaths (`sharedInstanceExternals()`). The content runtime keeps only the shared-instance packages external.
+- **`build/build-reads.ts`**: bundler-observed inputs by phase in `.apack/reads.json` (esbuild inputs, Rollup watch files and Vite watch files). Bundlers receive `RecordReads`; `BUILD_PHASES` defines `BuildPhase`. The build carries rows for reused phases, and chain checks (`scripts/lib/build-reads.ts`, `repo-checks`' `dep-files.integration.spec.ts`) compare observed inputs with declared coverage. Rows describe a validated candidate; placement failure can leave them ahead of accepted output. They do not authorize reuse or source freshness. `APACK_NO_BUILD_READS=1` disables this optional diagnostic record.
+- **`build/content-runtime-check.ts`**: loads `dist/build/content-runtime.mjs` in a fresh Node process with the SDK's optional peers blocked by a resolve hook, as a dependent's harness would load it. It omits compiler `NODE_OPTIONS`: initialization hooks must not supply globals or loaders that hide an unusable published runtime.
 - **`build/fe-bundler.ts`**: `packExternalsPlugin` leaves host-shared imports (`getSharedFeDeps`, `getSdkFeModules`, and every `@apackdev/ui` export from `getUiFeModules` unless `build.bundleUi`) **external**, so the bundle emits the bare specifier and the app's document resolves it through its import map to the host's module. `keepExternalsBarePlugin` holds the same for `apack pack dev`'s dev server, where `vite:import-analysis` would otherwise rewrite an external to `/@id/<specifier>` — a URL only that server could answer, and it has nothing to answer with. It fails the build when an inlined SDK module reaches the SDK's host bindings (`runtime/host-runtime`, `runtime/fe-host`: an inlined copy has no app bound) and rejects `@apackdev/host`. Tailwind: the pack's `tailwind.config.{ts,js}` or a generated one over `src/**`, plus `@apackdev/ui`'s files with `build.bundleUi`; `tailwindInjectPlugin` prepends `@tailwind utilities` to the entry. `opaqueVendorPlugin` resolves each `build.opaqueDeps` package with rollup's `moduleSideEffects: 'no-treeshake'`, so a prebuilt dependency is included as published rather than walked — the include pass is most of this phase's cost and removes almost nothing from such a module (`tests/build/fe-bundler-opaque-deps.integration.spec.ts`; the measurement is in the plugin's header).
 
 ## Facade gate
@@ -125,6 +321,23 @@ Two suites, split by what a spec costs:
 - **`npm run test:integration -w @apackdev/cli`** — the expensive half (`tests/**/*.integration.spec.ts`,
   `vitest.integration.config.ts`, which caps worker threads because many of these specs spawn compilers of
   their own).
+
+On macOS the integration config requires a GitHub-hosted runner and refuses before importing specs.
+Use the root guide's disposable compiler workflows for focused native checks; full integration and
+strict gates also belong on disposable CI. A generic `CI=true` or a self-hosted runner is insufficient.
+Live filesystem-watcher cases use the same runner guard even in unit files; mocked watcher-error
+and cancellation tests remain local. This guard does not restrict normal CLI use or development builds.
+
+`startPackBuildWatcher().done` reports terminal subscription failures after owned cleanup; `close()`
+drains disposal. Both the public watch command and dev session await `done`. Syntax/build/reload errors
+remain recoverable on a later edit; a broken subscription cancels the operation with its input path and
+cause. Frontend replacement retains retiring subscriptions until asynchronous disposal settles.
+
+Real watcher integration edits use `tests/_support/watch-builds.ts`: wait at most 20s for a rebuild
+request, bound its compiler operation at 60s, then retain the original 20s notification/output checks.
+Initial capture keeps its 120s bound and cleanup has its own 20s bound. `rebuildAfter` does not replace assertions; preflight refusals
+before a builder is invoked keep their direct notification check. Compose case budgets from these
+phases; do not time the whole compilation as a missing-event wait.
 
 **How many specs each half holds and what they cost is a command, not a line here**:
 `npm run spec:dry -- packages/apack-cli/tests` answers both halves and prints the date it measured them.
@@ -185,9 +398,11 @@ that reason. `_support/` is the prefix that says a directory claims to mirror no
 
 ### How a pack's own module paths are resolved
 
-**One mechanism: `#` subpath imports from the pack's own `package.json`.** A pack's
-`compilerOptions.paths` is TypeScript's business and no build here reads it — `tsconfig-aliases.ts` and
-`makeAliasPlugin` were deleted with the `@/` aliases they served
+**One mechanism: `#` subpath imports from the pack's own `package.json`.** Native esbuild phases reuse the resolved compiler configuration captured by the build input view;
+`esbuildTsconfig` projects its supported options and inherited alias targets without inventing a
+`baseUrl`. Standalone bundler calls resolve their own configuration. This owns explicit configuration,
+not all source reads or implicit ancestor-config discovery. There is no custom alias resolver:
+`tsconfig-aliases.ts` and `makeAliasPlugin` were deleted with the `@/` aliases they served
 ([`goal-one-way-to-name-your-own-modules.md`](../../docs/archive/goals/goal-one-way-to-name-your-own-modules.md)),
 because four separate bundler configs each had to re-implement a mapping no runtime reads. What follows is
 what the audit of 2026-09-26 cost to establish, so it needn't be established again.
@@ -236,3 +451,13 @@ call `scripts/app-dev.mjs` through source resolution; the app-only launch help a
 not under CLI command modules; detached app spawning calls that same entry point
 in the selected checkout. Pack spawning continues to call `apack pack dev`. Shared session lifecycle
 and automation implementation remain in this package so both callers use the same ownership rules.
+
+Dependency resolution caches complete verified builds by content revision under
+`.apack/deps/<id>/builds/<revision>/`. A separately published `resolution.json` retains spec,
+version and structured origin. CLI and harness use the shared host cache reader; snapshot-only type
+data never exposes executable paths. Explicit `file:` builds also cache coherent producer bytes,
+while read-only inspection writes nothing. Previously resolved paths remain valid after publication.
+
+`build/dependency-inspection.ts` captures one read-only dependency frame for validation and doctor
+presentation. `pack info --json` uses the same resolver and reads compiled content through the
+verified build receipt, not source file counts. Missing, invalid and stale declarations remain explicit.

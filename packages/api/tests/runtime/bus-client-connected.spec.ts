@@ -9,16 +9,16 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createActor, setup, type AnyActorRef } from 'xstate';
 import type { Message } from '@apackdev/sdk/events';
 
-vi.mock('@apackdev/host/app-state', () => ({
+vi.mock('@apackdev/host/app-state', async (importOriginal) => ({
+  ...await importOriginal<typeof import('@apackdev/host/app-state')>(),
   appState: { get: () => ({ hasOnboarded: true }) },
-  HOST_ENTITY_TYPES: ['AppState'],
 }));
 
-const { createPackRegistry } = await import('@apackdev/host/packs');
-const registry = createPackRegistry();
+const { createNativePackTestRegistry } = await import('@apackdev/host/testing');
+const registry = createNativePackTestRegistry();
 const { registerPack, unregisterPack } = registry;
 const { createAppBus, createBusMachine } = await import('@apackdev/host/bus');
-const { rootEvents } = await import('@/transport/emitter');
+const { rootEvents } = await import('../../src/transport/emitter.ts');
 
 // The app's bus on the api's transport, as setup/backend.ts binds it (the services reach the store only when called)
 const { bindHost } = await import('@apackdev/sdk/runtime');
@@ -48,14 +48,14 @@ function pack(id: string, label = id) {
 const packDirs: string[] = [];
 
 /** An installed pack's origin, with the frontend files `files` names (runtime/fe.js, runtime/fe.css) on disk */
-function loaded(id: string, files: string[]) {
+function loaded(id: string, files: string[], features: Record<string, { description: string; system: { entry: string } }> = { feature: { description: 'Record client connections.', system: { entry: 'system.ts' } } }) {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), `bus-client-connected-${id}-`));
   packDirs.push(dir);
   for (const file of files) {
     fs.mkdirSync(path.dirname(path.join(dir, file)), { recursive: true });
     fs.writeFileSync(path.join(dir, file), '');
   }
-  return { id, name: id, version: '1.0.0', dir, shipped: false, manifest: { id, name: id, version: '1.0.0' } };
+  return { eventContracts: Object.fromEntries(Object.keys(features).map(id => [id, { system: { incoming: [], outgoing: [] } }])), declarationRevision: 'fixture-revision', buildRevision: 'a'.repeat(64), buildFiles: Object.fromEntries(files.map(file => [file, 'b'.repeat(64)])), id, name: id, version: '1.0.0', dir, manifest: { id, name: id, version: '1.0.0', features } };
 }
 
 const withFrontend = ['runtime/fe.js'];
@@ -126,7 +126,7 @@ describe('CLIENT_CONNECTED on the bus', () => {
         feature: { system: { machine: recorder('with plugin'), receives: ['CLIENT_CONNECTED'] } },
         background: { system: { machine: recorder('without plugin'), receives: ['CLIENT_CONNECTED'] } },
       },
-    }, loaded('external-pack', withFrontend));
+    }, loaded('external-pack', withFrontend, { feature: { description: 'Publish client state.', system: { entry: 'system.ts' } }, background: { description: 'Run background work.', system: { entry: 'background.ts' } } }));
     registerPack(pack('second-pack'), loaded('second-pack', withFrontend));
     bus = createActor(backendSystem, { systemId: 'host/bus' }).start();
 
@@ -339,4 +339,37 @@ describe('pack lifecycle before a client connects', () => {
     await flush();
     expect(received).toEqual(['first-pack']);
   });
+});
+
+
+it('waits for frontend readiness before requesting state from a reloaded frontend-bearing pack', async () => {
+  const publishing = (label: string) => ({ id: 'first-pack', features: { feature: { system: {
+    machine: setup({}).createMachine({ on: {
+      CLIENT_CONNECTED: { actions: () => received.push(`${label}: connected`) },
+      SEND_STATE: { actions: () => received.push(`${label}: state`) },
+      PACK_CHANGED: { actions: () => received.push(`${label}: changed`) },
+    } }), receives: ['CLIENT_CONNECTED'],
+  } } } });
+  unregisterPack('first-pack');
+  const origin = loaded('first-pack', withFrontend);
+  registerPack(publishing('initial'), origin);
+  bus.stop();
+  bus = createActor(backendSystem, { systemId: 'host/bus' }).start();
+  rootEvents.emitConnected();
+  await flush();
+  expect(received).toEqual([]);
+  rootEvents.emitPackClientConnected('first-pack');
+  await flush();
+  expect(received).toEqual(['initial: connected', 'initial: state']);
+  received.length = 0;
+  unregisterPack('first-pack');
+  registerPack(publishing('replacement'), origin);
+  bus.send({ type: 'RELOAD_PACK', packId: 'first-pack', systemIds: ['first-pack/feature'] });
+  bus.send({ type: 'PACK_CHANGED', packId: 'first-pack' });
+  bus.send({ type: 'DATA_REPLACED' });
+  await flush();
+  expect(received).toEqual(['replacement: changed']);
+  rootEvents.emitPackClientConnected('first-pack');
+  await flush();
+  expect(received).toEqual(['replacement: changed', 'replacement: connected', 'replacement: state']);
 });

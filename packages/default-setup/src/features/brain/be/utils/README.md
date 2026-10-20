@@ -38,4 +38,4 @@ be/
 
 ## Adding a node type
 
-Node types are steps, not brain code. Add one under `src/extensions/steps/<name>/` (`build.ts`, `index.ts` with a `runtime.handler`, `fe.ts`, `types.ts`) and register it in `src/extensions/steps/register.ts` and `build.ts`. See the "Flow steps" section of `packages/default-setup/CLAUDE.md`.
+Node types are steps, not brain code. Declare a step under `extensions.steps` in `apack.json`: inline node and frontend data, explicit build/runtime bindings and a types module. See the "Flow steps" section of `packages/default-setup/CLAUDE.md`.

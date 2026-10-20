@@ -14,7 +14,11 @@ import { declaredAt } from '../../../scripts/lib/chain-output.ts';
 import { reachableText, rootScripts, withoutComments } from '../../../scripts/lib/npm-scripts.ts';
 import { population } from '@apackdev/sdk/testing';
 import { machineText, POOL_WIDTH, thisMachine } from '../../../scripts/lib/core-budget.ts';
-import { ASSUMED_RUNGS, declaredShare, rungForKind, timedOutBecause, TIMEOUT_CLASSES, TIMEOUT_MS, type TimeoutClass } from '../../../scripts/lib/step-timeouts.ts';
+import { TYPECHECK_LEGS } from '../../../scripts/lib/typecheck-legs.ts';
+import { declaredShare, rungForKind, timedOutBecause, TIMEOUT_CLASSES, TIMEOUT_MS } from '../../../scripts/lib/step-timeouts.ts';
+import { DEFAULT_FORK_BUDGET_MS } from '../../../tests/scripts/prepare-default-pack-fork.ts';
+import { timeoutMsFor } from '../../../scripts/lib/step-timeouts.ts';
+import e2eConfig from '../../../playwright.config.ts';
 
 describe('the chain graph', () => {
   it('orders every step after the steps it depends on', () => {
@@ -75,7 +79,7 @@ describe('the chain graph', () => {
    * A mutex has no direction, so this one is a preference — and it was held by nothing but the order the
    * two happen to sit in the table.
    *
-   * `test:smoke` and `test` both write `tests/results`, which makes them a derived mutex: the scheduler will
+   * `test:smoke` and `test` both write `.apack/tests/results`, which makes them a derived mutex: the scheduler will
    * not overlap them, and either order satisfies it. Running the six-second gate before the twenty-six
    * second harness is what anyone wants, and until this case existed, reordering the table would have
    * silently swapped them. Named here rather than declared on a step, because a preference between two
@@ -88,6 +92,16 @@ describe('the chain graph', () => {
     expect(conflictsOf(smoke), 'the two no longer share a path, so this preference has lost its subject')
       .toContain('test:e2e');
     expect(order.indexOf('test:smoke')).toBeLessThan(order.indexOf('test:e2e'));
+  });
+
+  it('declares and preserves the output directory used by the actual Playwright config', () => {
+    expect(e2eConfig.outputDir).toBeDefined();
+    const output = path.relative(REPO_ROOT, path.resolve(REPO_ROOT, e2eConfig.outputDir!)).split(path.sep).join('/');
+    for (const name of ['test:smoke', 'test:e2e']) {
+      const step = CHAIN_STEPS.find(step => step.name === name)!;
+      expect(step.outputs, name).toContain(output);
+      expect(step.keepsOnFailure, name).toContain(output);
+    }
   });
 
 
@@ -219,17 +233,6 @@ describe('every spawn an orchestrator makes is bounded', () => {
     Object.entries(scripts).flatMap(([name, command]) =>
       [...command.matchAll(/scripts\/bounded\.ts\s+(\S+)/g)].map((hit) => ({ name, className: hit[1]! })));
 
-  /**
-   * The rungs whose stretch factor is a borrow, asserted non-empty where a case indexes it.
-   *
-   * `population` rather than a length check of its own, which is how `chain-table.spec.ts` reads the same
-   * list: the claim is that the cases below are not asking about an empty set, and it belongs at the point
-   * of use rather than in the provenance case, whose subject is the pairing of `measured` and `until`. Held
-   * there it read as a third job that case does not have, and promised to survive an edit that empties the
-   * list. An all-measured ladder is that edit, and it retires this and `rungTerms`' assumed branch together.
-   */
-  const assumedRungs = (): readonly TimeoutClass[] => population('the assumed rungs', ASSUMED_RUNGS);
-
   // An unbounded run cannot fail — it waits until a person notices and kills it by pid, which is how this
   // repo collected an orphaned build at 99% CPU for a day. `boundedSpawn` bounds the wall clock and kills
   // the process group rather than the child, so nothing outlives the run that started it.
@@ -330,14 +333,13 @@ describe('every spawn an orchestrator makes is bounded', () => {
    * **The fraction is derived, not picked, and since 2026-10-03 it is derived per rung.** A rung declares how
    * much its kind of work stretches on a smaller box, so a step at a fraction `f` of its class here sits at
    * `f × stretches` there; `declaredShare` is that product and 1 is exactly on the deadline. One global
-   * fraction was answering three questions at once — the 4× is a measurement of a *pool* losing workers,
-   * which describes `suite` and not the single compilers in `quick` — and two of the three rungs now say
-   * outright that they are borrowing it (`ASSUMED_RUNGS`, and the case below).
+   * fraction cannot describe both a pool losing workers and a single compiler losing CPU share.
+   * `ASSUMED_RUNGS` makes borrowed factors explicit rather than treating them as measurements.
    *
    * **It is a creep detector and it found nothing the day it was written, which is worth being honest
    * about.** A rung's own factor still permits a step to reach its deadline *exactly* on the machine that
    * rung is sized for, so this is the loosest useful bound rather than a comfortable one. It cannot be
-   * tightened on the two borrowed rows without first measuring them, and a margin on top of today's figures
+   * tightened on assumed rows without first measuring them, and a margin on top of today's figures
    * fails five steps, most of them single compilers the pool measurement does not describe.
    *
    * So the two steps that were genuinely tight — `packages:ensure` at 93% of its deadline four times slower,
@@ -368,17 +370,24 @@ describe('every spawn an orchestrator makes is bounded', () => {
    * and whether a step is on the right kind was carried by prose. The comment above says so from the other
    * side: `packages:ensure` and `build:default-setup` sat on `quick` while being bundles, and were found *"by reading
    * the table, not by this"* — caught at 93% and 87% by proximity to a bound rather than by kind. The
-   * opposite direction was unwatched outright: one compiler declared `suite` gets 300s to die rather than
+   * opposite direction was unwatched outright: one compiler declared `suite` gets 600s to die rather than
    * 60s, and nothing would have said a word.
    *
    * The three facts are gathered here and the criterion is `rungForKind`'s, beside the ladder it formalizes.
-   * `fansOut` is whether a `POOL_WIDTH` entry is *declared*, never what `coresFor` returns — that resolves
+   * `fansOut` uses declared pool widths, excluding flattened compiler legs, never what `coresFor` returns — that resolves
    * against the running machine, so on a one-core box every width-declaring step reads as one core and this
    * answer would change with the hardware.
    */
   describe('the rung matches the kind of work', () => {
     /** A step whose rung the facts cannot derive, and why. An entry that stops applying is reported. */
     const DECLARED_AGAINST_THE_FACTS: Record<string, string> = {
+      'build:default-setup': 'the first cold shipped-pack compiler capture, codegen and serial bundle phases '
+        + 'are followed by source verification and compiler-input recording; this whole pipeline is a scenario',
+      'test:external-pack:fork': 'composes a cold shipped-pack build, separately bounded archive verification '
+        + 'and owned temporary-tree cleanup; a single bundle deadline does not cover these serial operations',
+      'test:integration': 'complete compiler/runtime acceptance includes repeated cold builds, watchers '
+        + 'and lifecycle combinations across projects; generic fan-out facts cannot distinguish that '
+        + 'workload from an ordinary unit suite. Only this pool uses the acceptance aggregate bound',
       'test:external-pack:app': 'drives the built app once per fixture pack, where `test:smoke` also launches '
         + 'an app and is a suite — no fact in the table separates them, so this is a judgement rather than a '
         + 'rule to widen',
@@ -392,7 +401,8 @@ describe('every spawn an orchestrator makes is bounded', () => {
     const installs = (name: string): boolean => /npm (ci|install)\b/.test(reachableText(name, all).text);
     const factsFor = (step: ChainStep) => ({
       installs: installs(step.name),
-      fansOut: POOL_WIDTH[step.name] !== undefined,
+      // Flattened compiler legs can use background CPU without running independent tasks.
+      fansOut: POOL_WIDTH[step.name] !== undefined && !TYPECHECK_LEGS.some(leg => leg.name === step.name),
       builds: (step.outputs ?? []).length > 0,
     });
 
@@ -406,7 +416,14 @@ describe('every spawn an orchestrator makes is bounded', () => {
     it('declares the rung its work implies', () => {
       expect(misdeclared(CHAIN_STEPS), 'a rung is chosen by kind of work (`step-timeouts.ts`), so one of '
         + 'these is a step bounded as something it is not — a bundle on `quick` dies too early, one compiler '
-        + 'on `suite` takes five minutes to die').toEqual([]);
+        + 'on `suite` takes ten minutes to die').toEqual([]);
+    });
+
+    it('keeps the pack typecheck on quick when its compiler reserves background CPU', () => {
+      const step = CHAIN_STEPS.find(step => step.name === 'typecheck:pack')!;
+      expect(POOL_WIDTH[step.name]).toEqual({ cores: 2 });
+      expect(factsFor(step).fansOut).toBe(false);
+      expect(step.timeout).toBe('quick');
     });
 
     it('asks it of every step, so the rule passes over nothing', () => {
@@ -495,150 +512,26 @@ describe('every spawn an orchestrator makes is bounded', () => {
     }
   });
 
-  /**
-   * What a step says when its class killed it — the one report in the repo whose subject is a deadline.
-   *
-   * **A kill truncates the measurement**, so the figure with information in it is the *rope*: the deadline
-   * over what the step costs healthy. Elapsed time is the deadline plus the grace period by construction
-   * (`bounded-spawn.ts`) and carries nothing, which is why none of these cases asks for it.
-   *
-   * **And the interpretation is machine-dependent.** "So it is wedged" is true where the costs were measured
-   * and an assertion the program cannot make anywhere else: on a smaller box a step can exceed its deadline
-   * by being slow, and that is exactly the evidence the assumed rungs are waiting for. The message used to
-   * state the conclusion flatly and then add *"overrunning one is not a stale number"* — the sentence that
-   * would stop a reader suspecting the rung's factor, which off the measured machine is the thing to suspect.
-   */
   describe('what a timed-out step reports', () => {
     const HERE = thisMachine();
     const SMALLER = { cpu: 'Some Smaller CPU', cores: 4 };
 
-    it('states the rope it got, which is its deadline over what it costs healthy', () => {
-      // 300s for a 13s step is 23x, and that is the number a kill proves a lower bound on
-      expect(timedOutBecause({ what: 'build:default-setup', timeout: 'suite', seconds: 13, measuredOn: HERE }))
-        .toContain('That is 23x the 13s it costs healthy here');
-    });
-
-    it('calls it wedged on the machine the costs were measured on', () => {
-      const why = timedOutBecause({ what: 'build:default-setup', timeout: 'suite', seconds: 13, measuredOn: HERE });
-      expect(why).toContain('so it is wedged rather than slow');
-      expect(why, 'the deadline and its class, so a reader need not look the rung up').toContain('300s (suite)');
-    });
-
-    /**
-     * The arm the whole change is for: off the measured machine the rope is evidence about the rung, and the
-     * message has to name the rung's factor rather than draw the conclusion that forecloses it.
-     */
-    it('names the rung and its factor on any other machine, and calls the rope the finding', () => {
-      const assumed = assumedRungs()[0]!;
-      const why = timedOutBecause({
-        what: 'typecheck:renderer', timeout: assumed, seconds: 10, measuredOn: HERE, machine: SMALLER,
-      });
-      expect(why, 'never the flat conclusion, which here is the half of the answer that is not knowable')
-        .not.toContain('so it is wedged rather than slow');
-      expect(why).toContain(`or ${assumed} stretches by more than`);
-      expect(why).toContain(`which its row assumes is ${TIMEOUT_MS[assumed].stretches}x and has never measured`);
-      expect(why, 'both machines, since the reader has to know which is which').toContain(machineText(SMALLER));
+    it.each([HERE, SMALLER])('reports the bound without diagnosing stalled work on %j', machine => {
+      const why = timedOutBecause({ what: 'test:integration', timeout: 'suite', seconds: 60, measuredOn: HERE, machine });
+      expect(why).toContain('600s (suite)');
+      expect(why).toContain('Recorded cost: 60s');
       expect(why).toContain(machineText(HERE));
+      expect(why).toContain(machineText(machine));
+      expect(why).toContain('does not distinguish slow progress from stalled work');
+      expect(why).not.toMatch(/wedged|deadlock|not a stale number|put the number on/);
     });
 
-    it('says a measured rung was measured, and by what', () => {
-      // `suite` is the one rung with a figure of its own, so off-machine it reports a recorded factor rather
-      // than an assumption — the same arm, a different claim, and getting those two the same way round is the
-      // point of carrying the provenance on the rung
-      const why = timedOutBecause({
-        what: 'test:integration', timeout: 'suite', seconds: 60, measuredOn: HERE, machine: SMALLER,
-      });
-      expect(why).toContain('where its row records');
-      expect(why, 'the provenance itself, not a copy of it').toContain(TIMEOUT_MS.suite.measured);
-    });
-
-    /**
-     * And the arm `scripts/bounded.ts` takes, which is the one that matters: that path has a class and an
-     * argv and no step record at all, so a rope is not a number it can compute. It says so rather than
-     * reaching for a `?` or a zero — the same refusal `priceSpecs` makes about an unrecorded spec.
-     *
-     * **It is gated on the machine like the other two, which the argument shape has to allow.** With the cost
-     * and the machine in one optional bundle, the arm with no cost has no machine either, so it cannot be gated
-     * and hands down a verdict on any box — in the arm four of the five call sites reach, and in the path most
-     * likely to be running on someone else's machine.
-     */
-    it('computes no rope where this run carries no recorded cost', () => {
-      const why = timedOutBecause({ what: 'bash tests/scripts/x.sh', timeout: 'scenario', measuredOn: HERE });
+    it.each([undefined, 0])('does not invent a recorded cost for %s', seconds => {
+      const why = timedOutBecause({ what: 'bash tests/scripts/x.sh', timeout: 'scenario', seconds, measuredOn: HERE });
       expect(why).toContain('900s (scenario)');
       expect(why).toContain('This run carries no recorded cost');
-      expect(why, 'no rope, and no invented operand to compute one from')
-        .not.toMatch(/That is \d+(?:\.\d+)?x/);
-    });
-
-    it('still calls an overrun wedged with no cost, on the machine the ladder is sized against', () => {
-      const why = timedOutBecause({ what: 'bash tests/scripts/x.sh', timeout: 'scenario', measuredOn: HERE });
-      expect(why).toContain('wedged rather than slow');
-      // **And it names what that rests on**, which is `declaredShare` holding every *declared* cost inside
-      // its rung. Without the premise the sentence denied a cost in one clause and reasoned from one in the
-      // next; with it, a reader whose run has no declared cost anywhere can see they are outside the
-      // guarantee rather than having to derive which callers it covers
-      expect(why, 'the premise, not the bare verdict').toContain('every step the chain declares');
-    });
-
-    it('draws no conclusion with no cost on any other machine, where being slow is the other answer', () => {
-      const why = timedOutBecause({
-        what: 'bash tests/scripts/x.sh', timeout: 'scenario', measuredOn: HERE, machine: SMALLER,
-      });
-      expect(why, 'the verdict this change exists to stop it making').not.toContain('wedged rather than slow');
-      expect(why).toContain('So it is wedged, or scenario work stretches more here than its row assumes');
-      expect(why, 'both machines, so the reader knows which is which').toContain(machineText(SMALLER));
-      expect(why).toContain(machineText(HERE));
-    });
-
-    /**
-     * The two things this arm must not do — and the case above was worded to permit both until 2026-10-04,
-     * while being named for the opposite.
-     *
-     * With no cost there is no rope, so the only figure available to quote is the rung's own `stretches`.
-     * That made "stretches by more than 4x" circular — it exceeded 4x, where 4x is what the row declares —
-     * and it gave `rungTerms`' edit a referent that was the assumption itself, so the message read as an
-     * instruction to record 4 as *measured* and flip `until` on the strength of a run that computed
-     * nothing. The provenance case accepts that edit, being well formed, so what it would delete is the
-     * only marker saying the factor is a guess.
-     */
-    it('quotes no stretch factor and asks for no edit where nothing records a cost', () => {
-      const why = timedOutBecause({
-        what: 'bash tests/scripts/x.sh', timeout: assumedRungs()[0]!, measuredOn: HERE, machine: SMALLER,
-      });
-      expect(why, 'no figure at all, since the only one available is the assumption being asked about')
-        .not.toMatch(/\d+(?:\.\d+)?x/);
-      expect(why, 'and no instruction to record it as measured').not.toContain('put the number on');
-      expect(why).not.toContain('this run is the evidence it waits for');
-    });
-
-    /**
-     * What an assumed rung tells the reader to do, which is to record the run rather than to make it.
-     *
-     * **It must not quote `until`, which the second assertion pins.** `until` names a run that reaches the
-     * rung; this arm prints only off the measured machine, so its reader is always on a box that can supply the
-     * evidence, and the message exists because a run just reached that rung — so quoting it would always name
-     * the run the reader had just made. The edit named instead is the one the provenance case polices as
-     * exactly one of `measured` and `until`, so the two cases cannot drift apart about what settling a rung
-     * means.
-     */
-    it('tells an assumed rung\'s reader to record this run, and names the edit that does', () => {
-      const assumed = assumedRungs()[0]!;
-      const why = timedOutBecause({
-        what: 'typecheck:renderer', timeout: assumed, seconds: 10, measuredOn: HERE, machine: SMALLER,
-      });
-      expect(why).toContain('so this run is the evidence it waits for');
-      expect(why, 'the edit, so the terms and the invariant say the same thing')
-        .toContain(`put the number on ${assumed}'s \`stretches\` and move its \`until\` to \`measured\``);
-      expect(why, '`until` names the run this reader has just made, so quoting it says "do what you just did"')
-        .not.toContain(TIMEOUT_MS[assumed].until);
-    });
-
-    it('asks a measured rung\'s reader to record nothing, having nothing outstanding', () => {
-      const why = timedOutBecause({
-        what: 'test:integration', timeout: 'suite', seconds: 60, measuredOn: HERE, machine: SMALLER,
-      });
-      expect(why).not.toContain('this run is the evidence');
-      expect(why, 'the finding, and no edit to make').toContain('That number is the finding.');
+      expect(why).not.toContain('Recorded cost:');
+      expect(why).not.toMatch(/wedged|deadlock|put the number on/);
     });
   });
 
@@ -768,26 +661,44 @@ describe('every spawn an orchestrator makes is bounded', () => {
       + 'the graph does not support — they would refuse on a package it is still building').toEqual([]);
   });
 
-  /**
-   * `facade:check` runs after `build:default-setup`, and that is what makes its one write safe rather than lucky.
-   *
-   * `apack pack facade-report` regenerates `src/__generated__` before it bundles — the chain's step passes no
-   * `--skip-generate`, where `npm run typecheck` does, having regenerated once ahead of its own pool. That
-   * tree is what `typecheck:pack` compiles and what the two repo-scope steps walk, so a step running beside
-   * it could read it mid-write. None does, because `build:default-setup` writes that tree and this one declares it as an
-   * input, so the edge derives; and `build:default-setup` runs the same codegen, so the `.inputs-hash` matches and the
-   * regenerate is a no-op by the time this runs. One declaration gives both the ordering and the quiet.
-   *
-   * **`chain-inputs`' "a step that reads what another writes depends on it" cannot hold this.** That rule
-   * fires on an overlap between one step's inputs and another's outputs, so narrowing this step's inputs
-   * until `packages/default-setup/src` is no longer among them takes the overlap away too — leaving the rule
-   * nothing to require, green, while the edge goes. Checked by hand at the time: `dependsOn` returns `[]`.
-   * So the edge is named here, where losing it fails.
-   */
-  it('orders facade:check after build:default-setup, which is what keeps its codegen a no-op', () => {
+  it('composes fork preparation from bounded build, archive and housekeeping phases', () => {
+    const producer = CHAIN_STEPS.find(step => step.name === 'test:external-pack:fork')!;
+    expect(Object.values(DEFAULT_FORK_BUDGET_MS).reduce((total, budget) => total + budget, 0))
+      .toBeLessThanOrEqual(timeoutMsFor(producer.timeout));
+  });
+
+  it('prepares the default fork independently of fixture contracts before app consumption', () => {
+    const output = 'node_modules/.cache/apack-fixtures/default-fork';
+    const producer = CHAIN_STEPS.find(step => step.name === 'test:external-pack:fork')!;
+    expect(producer).toBeDefined();
+    expect(CHAIN_STEPS.filter(step => step.outputs?.includes(output)).map(step => step.name))
+      .toEqual([producer.name]);
+    expect(dependsOn(producer)).toContain('build:default-setup');
+    const app = CHAIN_STEPS.find(step => step.name === 'test:external-pack:app')!;
+    expect(dependsOn(app)).toEqual(expect.arrayContaining([producer.name, 'test:external-pack:contract']));
+    const scripts = rootScripts();
+    expect(reachableText('test:external-pack:contract', scripts).text).not.toContain('prepare-default-pack-fork');
+    expect(scripts[producer.name]).toContain('bounded.ts scenario tsx tests/scripts/prepare-default-pack-fork.ts');
+    const combined = read('tests/scripts/test-external-pack.sh');
+    expect(combined.indexOf('test-external-pack-contract.sh')).toBeLessThan(combined.indexOf('prepare-default-pack-fork.ts'));
+    expect(combined.indexOf('prepare-default-pack-fork.ts')).toBeLessThan(combined.indexOf('test-external-pack-app.sh'));
+  });
+
+  it('checks the current built facade after its producer without running codegen', () => {
+    expect(rootScripts()['facade:check']).toContain('--from-build');
     const step = CHAIN_STEPS.find((candidate) => candidate.name === 'facade:check');
     expect(step, 'no facade:check step, so this would pass over nothing').toBeDefined();
 
     expect(dependsOn(step!)).toContain('build:default-setup');
+  });
+
+  it('prepares external fixture frontends before integration reads their module graph', () => {
+    const integration = CHAIN_STEPS.find(step => step.name === 'test:integration')!;
+    const producer = CHAIN_STEPS.find(step => step.name === 'test:external-pack:contract')!;
+    expect(producer.outputs?.length).toBeGreaterThan(0);
+    expect(dependsOn(integration)).toContain(producer.name);
+    const excluded = { ...integration, excludes: [...integration.excludes ?? [], ...producer.outputs!] };
+    expect(dependsOn(excluded, CHAIN_STEPS.map(step => step === integration ? excluded : step)))
+      .not.toContain(producer.name);
   });
 });

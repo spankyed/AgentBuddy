@@ -10,8 +10,8 @@ So: **the rule lives here in its imperative form with one citation; its evidence
 A paragraph of measurement, a list of what was tried first, or the history of something that no longer
 exists is the sign it belongs there — [`reference/pipeline-lessons.md`](docs/reference/pipeline-lessons.md)
 for what a rule cost to learn, [`reference/pipeline-commands.md`](docs/reference/pipeline-commands.md) for
-what a flag was measured against, [`reference/recorded-artifacts.md`](docs/reference/recorded-artifacts.md)
-for the two recorded artifacts that were built and deleted, and `docs/archive/goals/` for a goal that
+what a flag was measured against, [`reference/recorded-files.md`](docs/reference/recorded-files.md)
+for the two recorded files that were built and deleted, and `docs/archive/goals/` for a goal that
 closed. This is the repo's own comment rule — *"a comment is for whoever opens the file cold, not for
 whoever reads the diff"* — applied to the guide that states it, which is the easiest place to exempt.
 
@@ -26,10 +26,10 @@ apack is an Electron desktop app with an actor-based architecture. Both frontend
 - **Frontend** (`packages/renderer/`) — Vue 3 + Tailwind CSS plugin system, each plugin is an XState actor with designated UI areas (canvas, panel)
 - **Electron main** (`packages/main/`) — Module-based process manager that spawns the API server and manages windows
 - **Preload** (`packages/preload/`) — IPC bridge exposing safe APIs to renderer
-- **Default Setup** (`packages/default-setup/`) — the pack the app ships, installed into the data dir at first boot and loaded from there like any other: features, steps, and content sources (actions, prompts, flows, library, notes, settings) that `apack pack build` compiles into `packages/default-setup/dist/` from `apack.json` `content.sources` (see `packages/default-setup/CLAUDE.md` and `docs/public-facing/content.md`)
+- **Default Setup** (`packages/default-setup/`) — the pack the app ships, installed into the data dir at first boot and loaded from there like any other: features, steps, and content sources (actions, prompts, flows, library, notes) that `apack pack build` compiles into `packages/default-setup/dist/` from `apack.json` `content.sources` (see `packages/default-setup/CLAUDE.md` and `docs/public-facing/content.md`)
 - **Repo checks** (`packages/repo-checks/`) — the specs whose subject is the repo's own tooling: the chain's graph and cache keys, the recorded spec costs, and the scripts under `scripts/`. A workspace because a spec needs one, and because `npm run spec` routes a `scripts/` change here (see `packages/repo-checks/CLAUDE.md`)
 
-Monorepo using npm workspaces. Requires Node >= 23.0.0.
+Monorepo using npm workspaces. Requires Node >= 23.5.0.
 
 ## Parallel editing sessions
 
@@ -56,9 +56,13 @@ See [worktree development](docs/reference/worktree-development.md).
 - Name ambiguous inputs by what they hold: dispatch kind, input path and provenance are different contracts. Keep graph `source`/`target` and native/library APIs.
 - Review naming in context: the owner, operation and neighboring API family determine whether a name is clear. See [the naming goal](docs/archive/goals/goal-naming-conventions.md).
 
+Reserve **artifact** for app artifact contributions and viewers. Use **build** for compiled pack/app output,
+**release file** for downloads, and **recorded file** or **report** for checked-in generated files. Preserve
+third-party API names such as electron-builder’s `artifactName` and GitHub’s `upload-artifact`.
+
 ## Release metadata
 
-Do not edit release/version metadata unless the user explicitly asks for a release or version bump. This includes `package.json` version fields, `package-lock.json` root package versions, app version constants, release notes, changelogs, and generated release artifacts. The release process owns those changes.
+Do not edit release/version metadata unless the user explicitly asks for a release or version bump. This includes `package.json` version fields, `package-lock.json` root package versions, app version constants, release notes, changelogs, and generated release files. The release process owns those changes.
 
 ## Backward compatibility
 
@@ -72,9 +76,12 @@ for every name it is given — so every pack that exists is in this tree, where 
 proves you finished. Weighing a design against packs that might be installed weighs it against nothing, and that
 caution has a real cost: it is how a repo with no users takes on the constraints of one.
 
-**The exception is stored user data**, which does exist on disk. A renamed `AppState` field, settings key or entity
-attribute moves with a migration (`packages/apack-host/src/migrations/CLAUDE.md`); a renamed function or type does
-not, because nothing has one saved.
+**Stored developer data is not a compatibility requirement.** Normal boot, writes and imports use the
+current contract. Do not add fallback reads, invalid-value grandfathering, old-format conversion or new
+entities to preserve obsolete fields. The lead developer's backed-up data is a separate operational task:
+if conversion is necessary, perform it explicitly on a copy, outside normal runtime behavior. Preserve
+current-format overrides when a pack is disabled or uninstalled; that is supported lifecycle behavior.
+Versioned migrations for future deliberate data changes are separate from supporting obsolete formats.
 
 **Revisit this when a third-party pack can actually be installed from a registry.** That is the condition. Until it
 holds, "an installed pack might depend on this" has no subject, and a plan that treats it as a constraint should say
@@ -134,7 +141,7 @@ that pack's whole suite rather than a root `related` — nothing in the root pro
 `dist/*.content.json`, which `tests/content/` reads against its goldens; its **build inputs** — `apack.json`,
 which drives codegen into `src/__generated__/`, `package.json`, whose `imports` map is how those generated
 specifiers resolve and whose `prepare` runs the codegen, and `tsconfig.json`, which the build compiles with —
-are what every spec in the pack goes through. Both are `src -> apack pack build -> artifact -> spec`, so a
+are what every spec in the pack goes through. Both are `src -> apack pack build -> output -> spec`, so a
 *regenerated* tree is covered while editing what generates it reaches nothing. `npm run spec`
 names those specs beside whatever the walk did find, and `npm run spec:full` builds the pack and runs them.
 The routes are derived from the pack's own layout (`scripts/lib/spec-plan.ts`'s `packBuildEdge`), and
@@ -151,18 +158,15 @@ Three things the chain cannot work out for you, because they rewrite files you c
 - **default-setup's facade** — the types a dependent pack compiles against, bundled by `apack pack build` into
   `dist/types/pack-types.d.ts` and recorded in `etc/pack-types.api.md`. Run
   `npm run facade:update -w @app/default-setup` and commit the report. **`typecheck` fails until you do**, as
-  it does for all four recorded artifacts: `exports:check` and `schema:check` are legs, and `api:check` and
-  `facade:check` are chain steps the runner borrows (`ARTIFACT_CHECKS`, `scripts/lib/typecheck-jobs.ts`), so
+  it does for all four recorded files: `exports:check` and `schema:check` are legs, and `api:check` and
+  `facade:check` are chain steps the runner borrows (`RECORDED_FILE_CHECKS`, `scripts/lib/typecheck-jobs.ts`), so
   one command answers for every one of them. It did not until 2026-10-08, and a green typecheck over a stale
   report is what that cost.
-  The check needs no build: it re-bundles the facade from the pack's sources, as `api:check` re-extracts the
-  reports it compares, so what it holds the report to is what the pack describes now rather than whatever is
-  in `dist`. **That is why it is a step of its own rather than appended to `build:default-setup`**, which is where it sat
-  while it still read what the build wrote. `apack pack build` warns when the report has fallen behind the bundle
-  it just wrote, which is a nudge at the moment the information exists and not the gate — the gate is
-  `facade:check`. It is not a typecheck leg because it regenerates the pack's barrel, which a leg may not do
-  (`scripts/lib/typecheck-legs.ts`'s header says why); `npm run typecheck` borrows the step instead and passes
-  `--skip-generate`, having regenerated once ahead of its pool.
+  The root chain check uses `facade-report --from-build`: verify sealed output, replay the common
+  build-input record, then compare the published facade without regenerating shared files. It runs
+  after `build:default-setup`. Source edits, missing output or modified receipts refuse.
+  The pack-local command still derives from source without needing a build. `npm run typecheck`
+  uses that command with `--skip-generate` after regenerating once ahead of its pool.
 - **a pack's content source (`src/content/`)** — when only `contentHash`/`rowSha256` moved, re-record
   deliberately with `npm run content-parity:update -w @app/default-setup`, and never edit a hash by hand.
   Re-recording rewrites a test expectation, not user data; what reaches users is the new `contentHash`.
@@ -189,7 +193,7 @@ read fails and the next run passes.
 cost seconds together (its declared `seconds` is in `chain-steps.ts`, and the chain reports any run that
 contradicts it, on the machine that table was measured on), so there is nothing to build a proxy for, and
 its only other homes were the publish workflow
-and a CI file whose triggers are commented out — the artifact checks ran at the one moment they cannot be
+and a CI file whose triggers are commented out — the recorded-file checks ran at the one moment they cannot be
 cheap. **It takes no mutex, and that is a thing it had to stop needing**: `attw --pack <dir>` packs a tarball
 inside the tree it is checking, which made it a second writer of trees twenty-nine other steps read, so it ran
 alone — 6s of a cold run for a tool that takes a tarball path. `scripts/packages-check.ts` packs outside the
@@ -201,11 +205,11 @@ way: both of publint's input kinds converge on one `core()` with a different vir
 dangling-published-path check, which publint cannot be — it skips any target behind a custom condition, which
 is how 99 published paths named files no tarball held. `@app/publish-checks`' `published-manifest-paths` is
 that one.
-**Three kinds of recorded artifact, and the question to ask of a new one is which it is.** A
+**Three kinds of recorded file, and the question to ask of a new one is which it is.** A
 **derivation** re-takes its answer on every run and compares (`schema:check`, `exports:check`,
 `facade:check`, `content-parity:check`, `api:check`) — a missing input cannot happen to one. **Re-taking it
 means running whatever produces it**, which is the half that is easy to skip: a check that compares against
-an artifact some earlier command left on disk is a derivation in name only, and goes stale exactly as a proxy
+a file some earlier command left on disk is a derivation in name only, and goes stale exactly as a proxy
 does while reading like one that cannot. A **proxy**
 records a hash of what it *believes* the inputs are; **nothing here is one any more**, because a proxy can
 go stale from an input nobody listed and its remedy *writes*. A **sample** records a measurement, so
@@ -220,17 +224,18 @@ one number**, which no amount of hysteresis fixes: one spec read 2.8s in the fas
 integration half, 4.37x apart against a band of 2.5x. The half is a decision now, declared by a filename
 (`scripts/lib/spec-halves.ts`), and nothing re-derives it.
 
-[`docs/reference/recorded-artifacts.md`](docs/reference/recorded-artifacts.md) has what each of those cost,
+[`docs/reference/recorded-files.md`](docs/reference/recorded-files.md) has what each of those cost,
 measurement by measurement. **There are none left, and the chain's `seconds` table is the one that was.** It
 was recorded behind a band, a machine field, a budget check and an idle floor, and the quantity underneath
 was never one number — `test:smoke` read 11s, 16s, 20s, 21s and 24s across five runs that all passed that
 floor, because it is the cost beside whichever peers the schedule admitted. It is declared now, and its
 three readers all tolerate half-to-double, so nothing needed the apparatus the floor was defending.
 
-The chain is the whole gate: **CI does not run, on purpose.** `.github/workflows/ci.yml` has its `push`
-and `pull_request` triggers commented out while this is a single-contributor repo, so `gh run list` is empty
-and always will be. That is not a failure to report, and CI is not a check to cite — the local chain is the
-check. The workflow's header says when it goes back on.
+The chain is the normal repository gate. **Automatic CI is disabled, on purpose:**
+`.github/workflows/ci.yml` has its `push` and `pull_request` triggers commented out while this is a
+single-contributor repo. Do not report their absence as a failure or enable them. Manual platform and
+strict-chain dispatches remain available and are used where the execution boundary below or an active
+goal requires them; cite actual results, not an assumption that all CI runs or never runs.
 
 **And when it does: CI may fail a check, never a clock.** A runner is smaller and noisier than any
 developer's box, so anything gating on wall-clock there manufactures flakes that read as code failures.
@@ -242,6 +247,51 @@ nothing on a runner can produce a number that belongs in it. CI already does the
 **Do not gate any of this on `process.env.CI`**: a CI-gated refusal in this repo never fires, and the one
 that was cost thirteen spec files a silent green (`@apackdev/host/build/packages-built`, on `ALLOW_UNBUILT`).
 The condition is the machine, which is a fact a run can check.
+
+### Keep validation bounded
+
+Use the approved [Windows development VM](docs/references/guides/windows-development-vm.md) for
+interactive Windows compiler/native debugging and focused validation instead of dispatching CI for
+each experiment. Coordinate one expensive execution owner, use two cores and deallocate when idle.
+Keep macOS/Linux-specific execution on the corresponding disposable runners, not the developer's
+daily-use Mac: `gh workflow run ci.yml --ref <branch> -f compiler_macos=true` (or
+`compiler_windows=true` / `compiler_linux=true` for clean platform verification). This includes native
+fixtures, repeated captured-runtime execution and startup/cancellation batches. Stop local testing
+immediately if unrelated apps stop launching; preserve
+evidence without changing macOS security settings. Cause remains unproven in the
+[launch incident](docs/evidence/build-input-snapshot-proof.md#macos-launch-policy-investigation-2026-10-17).
+The CLI integration config refuses macOS runs outside GitHub-hosted runners before loading test
+modules. Do not bypass that guard with fabricated runner variables; use disposable CI. This also applies
+when the root integration project or chain selects the CLI suite. Live watcher cases share this boundary
+even inside a unit suite; use the runner guard before opening their watchers. Pure unit checks remain local.
+Run required final strict acceptance with `gh workflow run ci.yml --ref <branch> -f strict_chain=true`: the
+disposable macOS runner runs strict `--all` with two cores and retains per-step evidence.
+
+Before a checkpoint's broad run, state what it must prove and which required checks cover it. Run the
+chain after the focused checks converge. On failure, inspect the preserved evidence and reproduce the
+specific failing case; do not use another broad run to diagnose it. After a fix, run that case and the
+affected suite. Repeat or broaden only for a named coverage gap, such as concurrency that the isolated
+case cannot exercise. State that gap before launching the command.
+
+If a failure recurs without a diagnosis, stop broad reruns and report the blocker, evidence and next
+diagnostic action. Keep unrelated failures separate from the checkpoint's implementation scope; do not
+silently turn validation into a tooling or performance project. Do not change deadlines, assertions or
+input scope merely to obtain a pass. A focused pass does not establish a required broad gate; run the
+required final gate once fixes converge, and retain any unresolved acceptance explicitly.
+
+With Vitest projects, verify the effective deadline: project test/hook settings can override CLI
+flags. Keep diagnostic overrides scoped to the selected case and preserve their exact source. See the
+[async-loader budget evidence](docs/evidence/build-input-snapshot-proof.md#async-loader-namespace-observation-checkpoint-2026-10-18).
+
+Keep direct pool output live and integration fail-fast. Collect additional failures only in a deliberate
+diagnostic run; see [the early-failure checkpoint](docs/evidence/settings-and-pack-contracts.md#bounded-compiler-cost-and-early-failure-checkpoint-2026-10-17).
+
+Freeze every captured input while a pack build runs, including pack-local guides. The chain skipping a
+documentation change does not mean that file is outside the pack compiler's captured namespace.
+
+Commit validated logical checkpoints before expanding implementation. Keep one current handoff in the
+owning goal: source state, proven checks, unresolved failures and the next action. Historical run logs
+are evidence, not instructions to repeat the same runs. See [the validation-loop lesson](docs/reference/pipeline-lessons.md#validation-loops).
 
 Things that waste the most time, in order:
 
@@ -349,7 +399,7 @@ Rules that pay for themselves:
   marker gate is the worked example — while *measured slower* may be a fact about the machine and is only
   ever a report. Gating that direction is what cost the deleted subsystem its window, its band and its two
   idle floors. **The asymmetry holds for a thing's own time and not for a bar derived from it**, which is
-  the correction [`reference/recorded-artifacts.md`](docs/reference/recorded-artifacts.md) records: a
+  the correction [`reference/recorded-files.md`](docs/reference/recorded-files.md) records: a
   quantile moves with the load that moves the files under it.
 
 [`docs/reference/pipeline-lessons.md`](docs/reference/pipeline-lessons.md) has what each of these cost to
@@ -382,9 +432,9 @@ with its consumers: `docs/archive/plans/tier-split.md` has the evidence, and the
 `SIZE_MS` in `scripts/lib/unit-suites.ts`.
 
 `test:external-pack` is split at that boundary: `:contract` validates, builds and typechecks each fixture
-pack and runs its harness specs with no app, before `build:runtime`, and `:app` runs its Playwright suite after
-it. Two scripts rather than one with a flag, because the scan reads a step's scripts as text and a branch it
-never takes still reads as a reach.
+pack and runs its harness specs with no app. `:fork` builds and archives the shipped-pack fork as a separate
+producer. `:app` consumes both outputs and runs Playwright after `build:runtime`. Separate scripts keep
+app launches out of the producers: the scan reads scripts as text, including branches never taken.
 
 `test:packaged-authoring` is split the same way: `:author` authors, builds, tests and releases a pack with
 no app, `:app` runs that archive against one. They hand over a work dir through `tests/authoring-handoff`,
@@ -425,7 +475,7 @@ a causal claim is an argument and no check holds an argument.
 
 **Script names say whether they write.** Three shapes, and the second word tells them apart:
 
-- `<artifact>:check` / `<artifact>:update` — something recorded that can go stale, and the two halves
+- `<name>:check` / `<name>:update` — something recorded that can go stale, and the two halves
   carry the *same* noun: `api:*`, `facade:*`, `schema:*`, `exports:*`, `content-parity:*`. `check` and
   `update` are reserved as suffixes, so a name ending in `update` is the only kind that rewrites a file
   you would commit.
@@ -433,14 +483,14 @@ a causal claim is an argument and no check holds an argument.
   second word is a place, and nothing here writes a tracked file.
 - `<action>:<variant>` — a variant of one action: `build:dev`, `test:watch`, `lint:fix`.
 
-The point is that the name is derivable: knowing an artifact tells you both its scripts, without a grep.
-Put a new recorded artifact in the first shape and give it both halves, even when one half is trivial —
-an artifact with only an update is one nothing will notice has gone stale.
+The point is that the name is derivable: knowing a recorded file tells you both its scripts, without a grep.
+Put a new recorded file in the first shape and give it both halves, even when one half is trivial —
+a recorded file with only an update is one nothing will notice has gone stale.
 
 ```bash
 npm run dev              # Prepare the pack, then run dev mode with hot reload and drive support
                          # The pack's backend watcher rebuilds its runtime on source changes;
-                         # Vite serves frontend source. Use build:default-setup for all pack artifacts.
+                         # Vite serves frontend source. Use build:default-setup for all pack output.
 npm run dev:inspect      # Same workflow with Electron’s Node debugger
 npm run dev:open             # Open/reuse the built app and hold it; no builds or watchers
 npm run build:api         # Build backend only
@@ -455,8 +505,8 @@ npm run typecheck        # Every check below, plus check:specifiers — its 17 l
                          # and typecheck-legs.spec.ts holds this line to them, so a leg added or re-costed
                          # fails here rather than leaving the sentence to drift. The wall time is a
                          # measurement and can only be re-measured.
-                         # **It answers for every recorded artifact**: beside the legs it borrows the two
-                         # whose checks are chain steps (api:check, facade:check — ARTIFACT_CHECKS), taking
+                         # **It answers for every recorded file**: beside the legs it borrows the two
+                         # whose checks are chain steps (api:check, facade:check — RECORDED_FILE_CHECKS), taking
                          # each step's own timeout class, declared cost and core width rather than restating
                          # them. Borrowed, not moved: as legs they would need five hand-written fields each
                          # and would drop inputs that decide what a report says.
@@ -538,7 +588,8 @@ npm run chain            # Before a merge: every check in dependency order, cold
                          #              the cold chain's, since `--all` plans every step
                          #   --all      every step regardless of its stamp
                          #   --cores N  how much of the machine to spend; this machine's cores by default,
-                         #              and a step declares its own width (POOL_WIDTH, core-budget.ts)
+                         #              and a step declares its own width (POOL_WIDTH, core-budget.ts). The
+                         #              budget also caps Vitest workers; pool cache keys include that cap
                          #   --e2e      run the E2E suite with the chain, ordered after test:smoke
                          #   --no-classify  do not re-run a step that failed while the machine was busy
                          #   --strict   fail the run when a step's inputs moved **while it ran** — it read a
@@ -553,7 +604,7 @@ npm run chain            # Before a merge: every check in dependency order, cold
                          # docs/reference/pipeline-commands.md: what each flag replaced and what was
                          # measured to choose it, including the three guards that do not separate a
                          # correlated drift from one step's.
-npm test                 # Build fresh artifacts and run every test suite, without test-result caches
+npm test                 # Build fresh builds and run every test suite, without test-result caches
 npm run test:e2e         # Playwright E2E tests. **A harness, not a gate** — see below
 npm run test:unit        # Vitest, as two pools: the host suites as one root run under the
                          # @apackdev/source condition, and the pack suite on its own resolving the published
@@ -619,6 +670,7 @@ npm run test:unit:pack   # (--project per stale project, one process). Each is a
 npm run bench -w @apackdev/ears    # EARS engine benchmark (baseline and tolerance: packages/apack-ears/CLAUDE.md)
 npm run test:external-pack       # Both halves of the fixture-pack check, for running it by hand
 npm run test:external-pack:contract  # validate, build, typecheck, harness specs — no app needed
+npm run test:external-pack:fork  # build and archive the shipped-pack fork — no app needed
 npm run test:external-pack:app   # each pack's Playwright suite against this checkout (needs npm run build:default-setup && npm run build:runtime)
 npm run test:packaged-authoring  # Both halves, for running it by hand: author, build, test and install a pack
                                  # outside the monorepo from the packed @apackdev/* tarballs (needs npm run build:default-setup && npm run build:runtime)
@@ -639,26 +691,13 @@ npm run api:update       # Dev: regenerate etc/<entry>.api.md (and etc/<entry>.c
                          # before one API Extractor compiler state was shared across a package's entries.
                          # A chain step, so a merge runs it and an unchanged tree pays nothing for it
 
-# Built-in pack facade types (a root script; or from packages/default-setup, or -w @app/default-setup)
-npm run facade:check     # A chain step: fails if the facade the pack's sources describe isn't what
-                         # etc/pack-types.api.md records. **Needs no build**: it regenerates the pack's
-                         # barrels and re-bundles the facade itself (2.7s, median of 3, 2.7-2.8s, 86% idle,
-                         # 2026-10-07), so `dist` is never its subject and a build from older sources cannot
-                         # be mistaken for one. That is what makes it a step rather than a line appended to
-                         # `build:default-setup`, where it cost that step 2.7s in series for an ordering it stopped
-                         # needing. Not a typecheck leg either, for the one reason a leg may not: it writes,
-                         # regenerating the barrel it bundles. `--skip-generate` is for a caller that has
-                         # just done that — `npm run typecheck` ahead of its pool — and makes it a pure read
-npm run facade:update    # Dev: regenerate etc/pack-types.api.md, off that same re-bundle
-                         # Both are `apack pack facade-report [--update]`: it reads one pack's sources and writes
-                         # that pack's etc, so it is a CLI command like `validate` and `build`, not a repo
-                         # script. As a repo script its normalisation had to live in a third package to be
-                         # reachable from both it and the bundler, which is what the wrong home costs.
-                         # `apack pack build` warns when the report has fallen behind the bundle it just produced
-                         # — free there, and a nudge rather than the gate: failing would mean a pack author
-                         # could not start their app until they had rewritten a reviewed artifact mid-change.
-                         # `build:default-setup` declares etc/ because of that read, so the warning is keyed; what fails
-                         # on it is the facade:check step
+# Built-in pack facade types
+npm run facade:check     # Chain: compare the verified current build with etc/pack-types.api.md.
+                         # Requires build:default-setup; reads the common input record without codegen.
+npm run facade:check -w @app/default-setup
+                         # Standalone source derivation: regenerate entries and bundle the facade.
+npm run facade:update    # Derive from source and update the reviewed report; commit intentional changes.
+                         # apack pack build warns on a stale report; facade:check fails on it.
 
 # Manifest JSON schema (-w @apackdev/sdk)
 npm run schema:update    # Regenerate packages/apack-sdk/apack.schema.json from manifest-schema.ts
@@ -734,7 +773,7 @@ npm run lint:fix         # Rewrites what it can — oxlint has no fixer for no-u
 
 npm run packages:build   # Build dist/ for @apackdev/ears, @apackdev/sdk and @apackdev/ui, bundle @apackdev/cli and @apackdev/testing
 npm run packages:check   # publint + arethetypeswrong over a tarball packed from each of the five published
-                         # trees — the artifact npm ships, rather than the directory it is derived from, and
+                         # trees — the tarball npm ships, rather than the directory it is derived from, and
                          # one tarball per tree so the two tools cannot read different bytes of it. It
                          # refuses a tree the sources have moved past rather than checking it, so
                          # `after packages:build` is enforced rather than advised — door 8 in
@@ -819,7 +858,7 @@ Every backend **system** and frontend **plugin** is an XState state machine. The
 - **Frontend or backend → System**: `sendToSystem(systemId, event)`, typed with the events each system declares (own systems by feature id, a dependency's as `<dependency>/<feature>`; actions name every system `<pack>/<feature>`)
 - **System → System**: `sendToSystem(name, event)`, the same typed send a plugin uses; no pack code looks up another system's actor. `sendToSystem({ role }, event)` reaches whichever system plays a role (`{ role: 'brain' }` with `TRIGGER_BRAIN_EVENT` fires a flow event), and `host/bus` takes `PACK_CHANGED` (`HostSystemEvents`)
 - **Child actors are private**: a feature spawns its children with an `id` and no `systemId`, and reaches them through its own snapshot's `children`; another feature sends the feature an event, which it routes to the child (the code plugin routes `<child>.*` events by prefix)
-- **Frontend**: a component reaches its own plugin with `usePlugin()` (`@apackdev/sdk/fe`); the host renders each plugin's canvas, panel and chat in a `PluginScope` for it, and the app's Settings view renders each plugin's settings form in one. No pack code looks up another plugin's actor, and no feature imports another's frontend at all (the `cross-feature-imports` pack rule, run by `apack pack validate` for every pack and by `check:specifiers` for this repo's): what a feature offers the rest is its plugin's `Contract` — the state it publishes, read with the `usePluginState`/`readPluginState` its `#generated/fe` generates, and the inbox others may send, which types the sends. `openPlugin` (`#generated/fe`) takes only the names the pack can write (`PluginName`: its own features, its dependencies' `<pack>/<feature>`), so a misspelled target doesn't compile; a target that arrives as data (a link block's) opens through `untypedOpenPlugin(ref, event?)` (`@apackdev/sdk/fe`), which refuses a string that isn't a ref and asks the shell to open the rest: the shell waits for a plugin whose pack's frontend is still loading, and tells the user about a ref no pack provides once loading has settled
+- **Frontend**: a component reaches its own plugin with `usePlugin()` (`@apackdev/sdk/fe`); the host renders each plugin's canvas, panel and chat in a `PluginScope` for it, and the app's Settings view renders each plugin's settings form in one. No pack code looks up another plugin's actor, and no feature imports another's frontend at all (the `cross-feature-imports` pack rule, run by `apack pack validate` for every pack and by `check:specifiers` for this repo's): what a feature offers the rest is its plugin's `Contract` — the state it publishes, read with the `usePluginState`/`readPluginState` its `#generated/fe` generates, and the inbox others may send, which types the sends. `openPlugin` (`#generated/fe`) takes only the names the pack can write (`PluginName`: its own features, its dependencies' `<pack>/<feature>`), so a misspelled target doesn't compile; a target that arrives as data (a link block's) opens through `untypedOpenPlugin(ref, event?)` (`@apackdev/sdk/fe`), which refuses a string that isn't a ref and asks the shell to open the rest: the shell waits for a plugin whose pack's frontend is still loading, and tells the user about a ref no pack provides once loading has settled Actor replacement remounts the `PluginScope` subtree, so setup-time actor captures belong to one lifetime.
 - Pack code takes `broadcastToPlugin`/`sendToPlugin`/`sendToSystem` from `#generated/events`; `onConnected`/`onIncoming` come from `@apackdev/sdk/events`. `check:specifiers` rejects the host's raw event paths (its root event bus and API client) and the untyped sends in pack sources
 - **Addressing is an envelope**: a send is a message, `{ to, event, from?, via?, client?, sender?, call?, answering? }`, and `event` arrives exactly as the sender wrote it, so an event may carry any field, `pluginId` or `systemId` included. `from` is the id of the pack that sent it, stamped by the sends `#generated/events` builds; `via` is what within that pack made the send when the pack alone doesn't say — `action:<label>` for an action, stamped by the emitter `createActionEmitter` builds per run, the same string that names the action's logger. `from` keeps one meaning, the pack, so nothing parsing it as a `<packId>/<featureId>` ref gets a wrong answer; `via` names a source, of which an action is one — `reportError`'s sends carry the source they were given and no `from`, having no pack to name. Between them every send carries a pack, a source, or both, except `services.emitter` reached outside an action, where neither is in scope. Nothing routes or refuses on either: every diagnostic that reports an undeliverable message names them — the bus's drops, `receiveClientEvent`'s errors, the shell's toast for an in-window send that reaches no plugin (however long it waited for its pack), and the shell's warning for a backend send that does. All of them go through one `senderSuffix` (`@apackdev/sdk/events`), so they word it the same. `client` is the one field that routes, and so the one a sender never sets: it names the connection to deliver to, absent meaning every connection, and the API mints it per WebSocket connection and stamps it on the way in (`createContext`, `packages/api/src/transport/context.ts`) — which is what makes it a return address nobody can forge. `sender` is the other half of a return address: the ref of the participant that sent it, which is what an answer is addressed to. It is stamped where a send is *made* — during the handling of another message, from the delivery in scope — because a pack's generated sends know their pack and not which of its features called them, and it is accepted from the wire where `client` is not, since the client is the only party that knows which of its plugins asked and every caller already holds the API token anyway. A system answers with `reply(event)` from `@apackdev/sdk/events`, which names no address at all: it reads the message being handled and sends to its `sender` on its `client`. Nothing is stamped onto the event, so a return address is never a field of the event — the invariant `outgoing-events.spec.ts` pins. Three doors set the scope — the bus routing to a system, `sendToPluginActor` (the one function every send to a plugin's actor goes through) and `usePlugin`, so a component's own send is named too — which between them cover every send pack code makes; `reply` throws rather than broadcasting for a send made from nothing (a timer, a subscription, host plumbing). **`call` is the call a message *is* and `answering` the call it *answers*, and between them they are the app's one correlation.** Every send mints a call (`createSends`), `reply` stamps `answering` with the call it was entered under, and a delivery door puts that on the delivered event under a reserved key — which is the only channel to a transition guard, since a guard is handed `{ context, event }` and nothing else. **No event type declares a correlation field, and none should.** Pack code never reads the raw value: it asks `answersCall(event, outstanding)` where it holds one outstanding ask, or keys several with `recordCall`/`settleCall`, both from `@apackdev/sdk/events`; `newCall()` mints one where the id is needed before the send (an `enqueueActions` body). `_callOf` is host-only — a raw call invites `===` against a stored one, which answers *true* when both are absent, so a guard written the obvious way admits an answer nobody asked for. A spec driving a machine with no delivery door in front of it builds an answer with `answerTo` (`@apackdev/sdk/testing`), and the `reserved-event-keys` pack rule refuses a pack writing the key itself. The API's `bus.send` schema names `from`, `via`, `call` and `answering` so a client's send and a backend's answer both keep them, and omits `client` on purpose; every other field a client invents is still dropped there, so a field added to the envelope and not to that schema arrives as `undefined`. The bus, the API's `bus.send` and its subscription, and the renderer route on `to`; messages sent in go to systems, messages sent out to plugins. The subscription routes on `client` too, which is why a window never sees a message that was not for it.
 
@@ -847,7 +886,7 @@ whose whole point was to remove them.
 
 ### SDK packages
 
-`@apackdev/sdk` is the pack-facing API; host-only modules live in the private `@apackdev/host` (`packages/apack-host`). Packs, built-in or external, import only `@apackdev/sdk`, `@apackdev/ears` and `@apackdev/ui`; host code (api, renderer, CLI and testing) also uses `@apackdev/host`; default-setup, tests included, does not depend on it. `npm run check:specifiers` rejects `@apackdev/host` in pack sources and CLI templates, and `apack pack build` fails a pack bundle that imports it. Pack code reads relations with `findRelations`/`getRelationStats` and queries untyped with `untypedQx` (`@apackdev/ears`), reaches host-implemented data operations through `services.appData` (reset, backup export/import, whether the user finished onboarding), `services.traceStore` (the volatile trace store), `services.secrets` (the user's API keys as metadata: list, select, rename, delete; never values) and `services.filesystem` (files and folders on disk, as text), and calls models through `services.inference` (AI SDK 7's `generateText`/`streamText`, `createAgent`, `embed`/`embedMany`, `generateImage`, `generateSpeech`, `transcribe` and `rerank`, with `provider:model` ids checked against `providerCapabilities`, `output` as an `Output` or plain data like `{ type: 'object', schema }`, and the key the user selected per provider, never the environment; packs import pure pieces like `tool` from `ai`).
+`@apackdev/sdk` is the pack-facing API; host-only modules live in the private `@apackdev/host` (`packages/apack-host`). Packs, built-in or external, import only `@apackdev/sdk`, `@apackdev/ears` and `@apackdev/ui`; host code (api, renderer, CLI and testing) also uses `@apackdev/host`; default-setup, tests included, does not depend on it. `npm run check:specifiers` rejects `@apackdev/host` in pack sources and CLI templates, and `apack pack build` fails a pack bundle that imports it. Pack code reads relations with `findRelations`/`getRelationStats` and queries untyped with `untypedQx` (`@apackdev/ears`), reaches host-implemented data operations through `services.appData` (reset and backup export/import), `services.onboarding` (completion state), `services.traceStore` (the volatile trace store), `services.secrets` (the user's API keys as metadata: list, select, rename, delete; never values) and `services.filesystem` (files and folders on disk, as text), and calls models through `services.inference` (AI SDK 7's `generateText`/`streamText`, `createAgent`, `embed`/`embedMany`, `generateImage`, `generateSpeech`, `transcribe` and `rerank`, with `provider:model` ids checked against `providerCapabilities`, `output` as an `Output` or plain data like `{ type: 'object', schema }`, and the key the user selected per provider, never the environment; packs import pure pieces like `tool` from `ai`).
 
 Layers, each importing only the ones above it (`check:specifiers`, `findUpwardImports`, and each `package.json`'s `@apackdev` dependencies):
 
@@ -874,11 +913,11 @@ What crosses to the app follows one rule, **bind resources, derive behaviour**. 
 - What the SDK adds to the engine: its `EARS` (the engine's types plus `SDK_ENTITIES`/`SDK_REL_KINDS`) and the SDK entity shapes, from `@apackdev/sdk/types` (and the root), and the SDK entities' repositories from `@apackdev/sdk/repositories` (`flowRepository`, `tnodeRepository`, `actionRepository`, `promptRepository`; default-setup's flows, actions and prompts repositories build their views over them). Packs get typed `qx`/`tx`/`find*`/`createEntityWithDefaults`/`updateEntity`/`getAttr` from `#generated/ears` (a literal entity name must be one the pack or its dependencies declare, its `EntityName`; a name typed `string` passes unchecked; ids from typed queries carry their entity type, a plain `EARS.EntityId` is accepted anywhere; `tx` checks declared fields' values when it knows the entity; the SDK owns Relation and the flow model (Flow, Node, TNode, Action, Prompt), defined in `apack-sdk/src/types/sdk-entities.ts`, and no pack declares them; the host declares `AppState` and `Settings`, which packs reach only through `services.settings`), `repository` (typed with the repositories declared in `apack.json` `features.<id>.repositories`) from `#generated/repository`, and `broadcastToPlugin`/`sendToPlugin` (keyed by receiving plugin: its own feature's system's outgoing events, plus the inbox that plugin's `Contract` declares, which `apack.json` names at `features.<id>.plugin.contract`) and `sendToSystem` (keyed by receiving system; a pack without systems sends to its dependencies') from `#generated/events`. A system's events come from the contract `apack.json` names at `features.<id>.system.contract` — a declared type in a leaf module (`be/contract.ts`), read without resolving the machine — so how its entry is declared can't change them; the generated pack entry asserts that `defineSystem<Contract>()` names that same contract. `apack pack build` bundles a pack's facade types into `dist/types/pack-types.d.ts` (and its snapshot), so dependents' facades include them. `check:specifiers` rejects raw `broadcastToPlugin`/`sendToPlugin`/`sendToSystem` imports and `registerRepository` from `@apackdev/ears` in pack sources.
 - `@apackdev/ears` also holds the persistence port (`PersistenceSink`, `Partition`/`PartitionPolicy`/`makePolicy`, `makeShardedPersistence`). `@apackdev/ears/lmdb` is the LMDB store: `openLmdbStore({ paths, policy })` returns the store (`sink`, `envs`, `hydrate`, `query`, `close`, `reopen`, `reset`); nothing opens on import. `lmdb` is an optional peer of `@apackdev/ears` that the app installs (`packages/api` keeps it as a dependency for the packaged app). Only `/lmdb` imports `lmdb`: the api's composition (`openAppStore()` in `runtime/index.ts`) opens the store with the app's partition policy (`appPartitionPolicy()`, which takes no arguments — no pack contributes to it) and `engine: () => engine.admin` (, which the store hydrates into and reads relation details from), creates the engine with `store.sink` as its persistence, and binds `createHostRuntime({ store, engine, packs, … })`; host code (`@apackdev/host/services`, `/backup`) takes the store, and the engine's `admin` face, as arguments; packs, pack tests and the pack bridges never load it (`APP_ONLY_EXPORTS`); `check:specifiers` (`findLmdbImports`) enforces it. No code reaches engine state except through an engine's `admin`, which the package's exports enforce: an admin write is a member of an engine's admin face and no entry exports one, so `import { edgeStore } from '@apackdev/ears'` doesn't compile.
 - `@apackdev/sdk/events` — messaging: `sendToPlugin`, `sendToSystem` (a system by ref, or `{ role }`), `onConnected`, `onIncoming`, `defineEvents` and the event map types (`HostPluginEvents`, `HostSystemEvents`). Frontend-safe; shared with pack frontends as the `sdkEvents` global. It sends over the bound app's bus (`HostRuntime.transport`), or in the renderer over the frontend port's `client`. `broadcastToPlugin` (and `services.emitter.broadcastToPlugin`) goes through the bus actor, so it's dropped until a client connects, and reaches every window; the renderer's `sendToPlugin` goes straight to this window's actor.
-- `@apackdev/sdk/logger` — `createLogger(source, { debug? })` (debug gated per source by `setDebugEnabled`), `reportError` (a system error, sent to the app as `SYSTEM_ERROR`, or with `step` a flow step's error recorded on its TNode) and `onLog`. SDK code over the bound bus: a logger emits redacted log events there (the api prints each once), and with no app bound (the CLI, tooling) writes to the console. Backend pack code doesn't call `console.*` — a pack rule (`@apackdev/cli`'s `build/pack-rules.ts`), so `apack pack validate` and `apack pack build` refuse it for any pack and `check:specifiers` for this repo's; a pack may allow it in `apack.checks.json`.
+- `@apackdev/sdk/logger` — `createLogger(source, { debug? })` (debug gated per source by `setDebugEnabled`), `reportError` (a system error, sent to the app as `SYSTEM_ERROR`, or with `step` a flow step's error recorded on its TNode) and `onLog`. SDK code over the bound bus: a logger emits redacted log events there (the api prints each once), and with no app bound (the CLI, tooling) writes to the console. Backend pack code doesn't call `console.*` — a pack rule (`@apackdev/cli`'s `build/pack-rules.ts`), so `apack pack validate` and `apack pack build` refuse it for any pack and `check:specifiers` for this repo's; a pack may allow it through `apack.json` `checks.allow`.
 - `@apackdev/sdk/templates` — `executeTemplate`, `createTemplateResolver`. `@apackdev/sdk/env` — `resolveAppEnvironment`, `getAppVersion`. `@apackdev/sdk/runtime` — the one port to the app: `HostRuntime` (`transport.rootEvents`, `ears`, `packs`, `appVersion`, `services`: `appData`, `traceStore`, `inference`, `secrets`, `filesystem`, `settings`, and the optional `redaction`, which tells log redaction which runs of characters are key values this process used — absent in a runtime with no secrets of its own), bound once per process with `bindHost` (the api binds `createHostRuntime(...)`, `startTestRuntime` an in-memory one), and the renderer's `bindFeHost({ application, secrets, client, packs })`; an unbound use throws naming them. The registered packs are an instance too: the program that assembles an app creates one (the api's composition root `createPackRegistry()`, the renderer `createFePackRegistry()`, the harness one per test file, the CLI one per build) and binds its read face (`PackRegistryView`, `FePackRegistryView`); the SDK's registries of what packs registered (designations, steps, artifacts, blocks, content writers, appliers, feature settings defaults, commands, pack services, and in the renderer tiptap plugins and DSL types) read the bound one, and no SDK or host module keeps them at module scope. Everything a pack contributes arrives in its `PackRegistration`/`PackFERegistration` (appliers and DSL types included); there's no registry for pack code to write to. Contexts without an app (SDK specs, a pack test filling a registry directly) use `testPacks` from `@apackdev/sdk/testing`. Also the `@internal` `_rootEvents` (the bound bus). `secretsClient` (`@apackdev/sdk/fe`) reads the frontend port's `secrets`; no general API client reaches the SDK.
-- `@apackdev/sdk/fe` — pack-facing: `Plugin`, `PackFERegistration`, `safeEvents`, `usePlugin`/`PluginScope` (`fe/actor-system.ts`), `useUntypedPluginState`/`readUntypedPluginState` and `pluginIsRunning` (`fe/plugin-state.ts`: another plugin's state by ref, untyped — the escape hatch beside the typed readers `#generated/fe` generates from each plugin's contract, as `untypedQx` is beside `qx`. They hand back a value and never the actor, and `TSelected | undefined`, since a ref is a name and nothing about a name says the plugin is running; the reactive one follows the plugin arriving and reloading, not only changing), `useShell` (`fe/shell.ts`: the app shell's state and commands, typed by `HostShell`; no pack code holds the shell's actor), `untypedOpenPlugin` (`fe/navigation.ts`), `secretsClient`, the settings composables (`fe/settings.ts`: `useSettingsSection`, `useFeatureSettings`, `useSettingsSave` follow the settings until the calling scope is disposed, so they run in a component's setup and never inside a `computed`; `updateSettings` changes one from outside a scope, such as a machine's action). A change names a section by its own name or a feature by its ref, and the whole path is inside it, etc.
+- `@apackdev/sdk/fe` — pack-facing: `Plugin`, `PackFERegistration`, `safeEvents`, `usePlugin`/`PluginScope` (`fe/actor-system.ts`), `useUntypedPluginState`/`readUntypedPluginState` and `pluginIsRunning` (`fe/plugin-state.ts`: another plugin's state by ref, untyped — the escape hatch beside the typed readers `#generated/fe` generates from each plugin's contract, as `untypedQx` is beside `qx`. They hand back a value and never the actor, and `TSelected | undefined`, since a ref is a name and nothing about a name says the plugin is running; the reactive one follows the plugin arriving and reloading, not only changing), `useShell` (`fe/shell.ts`: the app shell's state and commands, typed by `HostShell`; no pack code holds the shell's actor), `untypedOpenPlugin` (`fe/navigation.ts`), `secretsClient`, the settings composables (`fe/settings.ts`: `useAppSettings`, `usePackSettings`, `useFeatureSettings`, `useSettingsDraft`, `useSettingsSave` and `useSettingsStatus` follow the settings until the calling scope is disposed, so they run in a component's setup and never inside a `computed`). A change names its owner explicitly (the app, a pack and group, or a feature by its ref), and the whole path is inside it, etc.
 - `@apackdev/host/fe` — host-only: `createFePackRegistry()`, the renderer's registered pack frontends (`registerPackFE`, `getRegisteredPlugins`, app extensions); `createShellMachine`, the app shell over the I/O it's given (`ShellClient`, pack frontends, storage, notify, the event target), which the renderer composes with the window's and a test with fakes; and the `host/packs` feature's frontend (`fe/packs/`), beside the system that answers it — the Packs plugin's machine, pack-frontend loading over `PackFrontendIO` (the window's `import()` and stylesheets), the install a deep link asks for, and `runFrontendMigrations`, the window-storage counterpart of the app's migrations. It re-exports the `host/settings` feature's frontend too (`features/settings/fe/machine.ts`: `createSettingsMachine(io)`, over the restart and report the renderer gives it). `src/fe/index.ts` is where all three features' frontends are named — the package's export surface, which is why naming them there isn't the cross-feature import `check:specifiers` refuses; a port both the shell and the packs feature need (`ShellPackFrontends`) lives at the seam in `src/fe/` rather than in either.
-- `@apackdev/host/settings` — the app's settings as a program composing the app needs them: `createSettingsStore({ defaults })` (the one row and its one writer, which checks each next document), `createSettingsService(store)` (what packs reach as `services.settings`), and `document.ts`'s pure operations. The host knows one section, `features`, keyed by feature ref; every other section is a pack's contribution (`PackRegistration.settingsSections`, `apack.json` `settingsSections`) and opaque to it. The system that answers the Settings view and the machine behind it live in `features/settings/{be,fe}`; the Vue is the renderer's (`packages/renderer/src/views/settings/`).
+- `@apackdev/host/settings` — host-owned app, pack-group and feature preferences: `createSettingsStore({ ears, catalog, onCatalogChanged })` owns the current overrides and their common validated writer. `createSettingsService(store)` supplies administration to host composition and caller-bound access to packs. Installed declarations remain available when executable pack code is disabled; default-setup supplies no app defaults or whole-document assembly. The per-window runtime precedes the shell, and the Settings view is a subscriber and editor. The backend system and view machine live in `features/settings/{be,fe}`; Vue forms live in `packages/renderer/src/views/settings/`.
 - `@apackdev/host/packs`, `/packs/runtime`, `/packs/dev-server`, `/backup`, `/build/discover`, `/build/shared-deps`, `/build/source-resolution` — pack registration (`createPackRegistry()`: the registered packs as an instance, with their partition policy and shutdown hooks), discovery, registry, installer, updater, pack layout and module bridge (the CLI imports this barrel, which never imports `/packs/runtime`); the pack runtime the app runs, on the registry it's given (loader, SDK bridge, lifecycle, reload, writing, the host `packs` system); the `apack pack dev` server marker the `pack://` handler proxies to; backups of the LMDB store; build-time pack discovery and host-shared dependency lists; the `@apackdev/source` condition helpers and the check that a process resolves workspace source, not `dist`.
 - `@apackdev/host/exclusive-lock` — one writer at a time for a file two processes would otherwise interleave on: `holdExclusiveLock({ file, what, refuse })`, `findLockHolder`, `readLock`, `INTERRUPTS`. The mechanism only — the lock file's name and the refusal's wording belong to whoever takes it, which `database/write-lock.ts` (a tool changing a data dir), the CLI's code generation and the chain's `holdChainLock` each do. `wx` is the acquisition, so two arriving together cannot both win; a lock whose holder has exited is taken over, and one that cannot be read or names another machine counts as held.
 - `@apackdev/host/process-liveness` — what a running process left on disk and whether it is still there: `lockIsHeld`, `recordIsStale`, and `readApiEndpoint` for the port file a running API publishes.
@@ -886,7 +925,7 @@ What crosses to the app follows one rule, **bind resources, derive behaviour**. 
 - `@apackdev/host/bus` — `createBusMachine`, the backend bus (spawns registered systems, routes events, pack activate/teardown/reload), `createAppBus()`, the app's composition of it, and `receiveClientEvent()`, the check, log and send behind the API's `bus.send`. It never imports the pack loader; the pack test harness runs the same machine.
 - `@apackdev/host/migrations` — the app's migrations runners (`runAppMigrations`, `runPackMigrations`; see Migrations below). Host-only, never bridged to packs.
 - `@apackdev/host/services` — the host's implementations of the services packs reach through `services` (`app-data.ts`, `trace-store.ts`, `inference.ts`, `secrets.ts`, `filesystem.ts`, `settings.ts`, each named after its contract and delegate in `@apackdev/sdk/services`). `createHostRuntime({ store, engine, transport, appVersion, packs })` (`services/index.ts`) is the only place the app's `HostRuntime` is assembled, over the LMDB store (`appData` and `traceStore` use it); the API's composition binds it. `appData.reset()` resets the whole app: stores and keys, each pack's `onInit` and boot apply, then the host's `runAppMigrations(registry)`. `src/services` holds only those six services and the index (`tests/boundaries.spec.ts`). A service's implementation never lives in the API, which keeps only transport, process boot and composition (`packages/api/tests/source-layout.spec.ts` lists its files); the API's tRPC procedures delegate to host (`receiveClientEvent`, `secretsStore`/`secretsSnapshot`, `getLoadedPackEntries`).
-- `@apackdev/host/app-state` — host-only: the app's own state, one `AppState` row (`hasOnboarded`, `version`, `packVersions`, `failedAgainst`, `pluginVisibility`, `lastActivePlugin`) that only host code reads and writes (`appState`), and each pack's applied content — the revision its content was applied from and, per item, a hash per part of what that apply wrote (`appliedContent`, `applied-content.ts`), which is the whole of what makes applying a pack's content a three-way merge rather than a hash comparison. The host registers all three entity types next to the SDK's, with `Settings` (`HOST_ENTITY_TYPES`), and no pack may declare any of them. Packs learn whether the user onboarded through `services.appData.hasOnboarded()`/`completeOnboarding()`, the renderer through the application plugin's `CLIENT_CONNECTED`. Resetting settings doesn't touch it; `appData.reset()` empties it with the rest.
+- `@apackdev/host/app-state` — host-only: the app's own state, one `AppState` row (`hasOnboarded`, `version`, `packVersions`, `failedAgainst`, `pluginVisibility`, `lastActivePlugin`) that only host code reads and writes (`appState`), and each pack's applied content — the revision its content was applied from and, per item, a hash per part of what that apply wrote (`appliedContent`, `applied-content.ts`), which is the whole of what makes applying a pack's content a three-way merge rather than a hash comparison. The host registers all three entity types next to the SDK's, with `Settings` (`HOST_ENTITY_TYPES`), and no pack may declare any of them. Packs learn whether the user onboarded through `services.onboarding.isComplete()`/`complete()`, the renderer through the application plugin's `CLIENT_CONNECTED`. Resetting settings doesn't touch it; `appData.reset()` empties it with the rest.
 - `@apackdev/host/secrets` — host-only, never bridged to packs: the store of the user's API keys (metadata plain, values AES-256-GCM encrypted in `secrets.json`, the data key in a `KeyVault`: the OS credential store via `@napi-rs/keyring`, or a file in the test environment or after the user allows unprotected storage). Values reach it only through the API's `secrets.*` tRPC procedures, off the event bus (`forwardSecretsChanges()` tells every system that declares it takes `SECRETS_CHANGED` that keys changed, never their values); inference reads them with `secretsStore.keyFor(provider)`. The API logger and error reports redact key-shaped strings.
 - `@apackdev/ui` (`packages/apack-ui`) — Vue components, editors and UI composables (`@apackdev/ui/design/button`, `@apackdev/ui/components/tiptap/TiptapEditor`, `@apackdev/ui/composables/useDebounce`). Published as compiled JS (tsdown, with vue-tsc declarations). Packs use the host's copy at runtime: the renderer serves every export as a build entry and names it in the document's import map, and the pack FE bundler leaves `@apackdev/ui` imports external, unless `apack.json` sets `fe.bundleUi`. Contracts and host-shared state (`useShell`, menu state, the tiptap plugin and DSL type lookups) stay in `@apackdev/sdk/fe`; `@apackdev/sdk` must not import `@apackdev/ui`.
 - `@apackdev/sdk/utils` — **Node-only**: re-exports everything (pure + Node-dependent). Backend code imports from here.
@@ -919,12 +958,12 @@ Custom entity-attribute-relation graph database (`@apackdev/ears`) backed by LMD
 
 ### Frontend plugin system
 
-Each plugin registers: `id`, `label`, `icon`, `state` (XState machine), `canvas` (required), `panel` (optional). Plugins are spawned on demand by the application actor. State selectors use `useSelector` from `@xstate/vue`. Plugin code lives in `packages/default-setup/src/features/<name>/fe/`. Plugins come from `apack.json` `features.<id>.plugin`: `generate-entries` writes them into `src/__generated__/pack-entry-fe.ts`, which `apack pack build` bundles into the pack's `dist/runtime/fe.js`. **Every** pack's frontend is loaded from `pack://<id>/runtime/fe.js` by the shell, the one the app ships included; a dev server serves it from that source file instead (`virtual:dev-pack-frontends`), which is what makes a `.vue` edit patch the component.
+Each plugin registers: `id`, `label`, `icon`, `state` (XState machine), `canvas` (required), `panel` (optional). Plugins are spawned on demand by the application actor. State selectors use `useSelector` from `@xstate/vue`. Plugin machines and views live in `packages/default-setup/src/features/<name>/fe/`. Presentation and binding targets are declared in `apack.json` `features.<id>.plugin`: `generate-entries` assembles them into `src/__generated__/pack-entry-fe.ts`, which `apack pack build` bundles into the pack's `dist/runtime/fe.js`. **Every** pack's frontend is loaded from `pack://<id>/runtime/fe.js` by the shell, the one the app ships included; a dev server serves it from that source file instead (`virtual:dev-pack-frontends`), which is what makes a `.vue` edit patch the component.
 
 ### Key patterns
 
-- **An event either carries data or asks for it, and exactly one asks.** A system handles `SEND_STATE` by broadcasting what its plugin starts from. The bus sends it after every fact that could have changed what a system holds — a client connected, a pack changed, the data was replaced, systems were spawned — so a system wires publishing once instead of once per cause, and a new cause costs it nothing. It is sent after the fact, so a system drops work held over rows that are gone before it describes itself, and only once a client has connected, since entering `clientSeen` asks everyone anyway
-- **A fact is for what publishing cannot fix, so handling one means a system does something special.** `CLIENT_CONNECTED` (the brain tracks whether a client is attached; threads starts onboarding), `PACK_CHANGED { packId }` (Help refreshes its catalog; Settings tells each feature whose defaults moved), `DATA_REPLACED` (the brain kills a flow running over rows that are gone). Every other system handles none of them. A client connection reaches the systems of any pack with frontend code — the ones the app ships included — once the renderer has loaded that frontend (`bus.packClientReady`), and again when its subscription reconnects
+- **An event either carries data or asks for it, and exactly one asks.** A system handles `SEND_STATE` by broadcasting what its plugin starts from. The bus sends it after every fact that could have changed what a system holds — a client connected, a pack changed, the data was replaced, systems were spawned — so a system wires publishing once instead of once per cause, and a new cause costs it nothing. It is sent after the fact, so a system drops work held over rows that are gone before it describes itself, and only once a client has connected, since entering `clientSeen` asks everyone anyway Frontend-bearing packs wait for acknowledgment of their current runtime before startup and state-publication requests; pack/data facts still reach their systems.
+- **A fact is for what publishing cannot fix, so handling one means a system does something special.** `CLIENT_CONNECTED` (the brain remembers frontend readiness; threads records sent commands), `PACK_CHANGED { packId }` (runtime lifecycle notifications; Help and Settings follow committed declaration changes directly), `DATA_REPLACED` (the brain kills a flow running over rows that are gone). Every other system handles none of them. A client connection reaches the systems of any pack with frontend code — the ones the app ships included — once the renderer has loaded that frontend (`bus.packClientReady`), and again when its subscription reconnects
 - When a feature's settings change (any way: a setting, the settings replaced or reset, a pack's defaults), the app's settings system (`host/settings`) sends its system `FEATURE_SETTINGS_UPDATED { settings, changes }` and its plugin `FEATURE_SETTINGS_UPDATED { settings }`. The SDK declares it for every system (`SystemEvents`) and plugin (`PLUGIN_EVENT_TYPES`), so no pack does, and the bus drops one to a feature running no such actor without a warning
 - Use `safeEvents<ReceivableEvents>()` for typed event handling
 - Use `breadcrumb()` / `breadcrumbWithParams()` for plugin navigation
@@ -946,14 +985,18 @@ Each plugin registers: `id`, `label`, `icon`, `state` (XState machine), `canvas`
 
 **A migration declares which version line it is on, and nothing infers it.** A pack files each one in
 `apack.json` under `migrations.app` or `migrations.pack`, keyed by the version it targets — because a bare
-version does not say what it is a version of. The module states only `description` and `up()`
-(`DeclaredMigration`, `@apackdev/sdk/framework`); codegen assembles the `PackMigration { target, … }` the
+version does not say what it is a version of. The manifest entry declares its description and `up` export target; the module exports only `up()`.
+Codegen assembles the `PackMigration { target, … }` the
 runners take from the manifest key, so a version is written in exactly one place and the line in exactly
 one. There is no `src/migrations/index.ts` — the manifest is the list.
 
-Migrations live with their pack; the host's own (the app's state) live in `packages/apack-host/src/migrations/app/`. default-setup's are in `packages/default-setup/src/migrations/`, all on the **app's** line, which is why they are named for apack's releases while the pack's own `version` is compared to nothing. `@apackdev/host/migrations` (`packages/apack-host/src/migrations/index.ts`) holds only the runners, which the API's boot and host's `services.appData.reset()` call through `startPacks()` (after the packs' `onInit`, before the content), and a backup import after reloading the data:
+Migrations live with their pack and are declared in its manifest or native composition data. Native app-line
+migrations use the app version; native pack-line migrations require the pack's own declared version.
+The host and default-setup currently declare none.
+`@apackdev/host/migrations` supplies runners used at boot, reset and backup import. Historical settings
+conversion is removed; the current settings contract applies throughout normal runtime behavior.
 
-- `runAppMigrations(registry)` — the host's own app migrations (moving the app's state, and every pack's stored feature settings into `features`, keyed by their refs), then every registered pack's `app`-line migrations, run when `stored app version < target <= app version` (`getAppVersion()`, the bound runtime's); records `AppState.version`. A prerelease counts as its release (`0.4.0-beta.2` runs the `0.4.0` migrations, again on each new beta), and a development build (`APACK_ENV=development`) runs every pending migration on every boot. A failed migration stops the rest and records nothing, and `startPacks()` then runs no pack migration or apply; the next boot retries. Data with no recorded version is new and at the app version (after the host's migrations moved any older one).
+- `runAppMigrations(registry)` — every registered pack's `app`-line migrations, run when `stored app version < target <= app version` (`getAppVersion()`, the bound runtime's); records `AppState.version`. A prerelease counts as its release (`0.4.0-beta.2` runs the `0.4.0` migrations, again on each new beta), and a development build (`APACK_ENV=development`) runs every pending migration on every boot. A failed migration stops the rest and records nothing, and `startPacks()` then runs no pack migration or apply; the next boot retries. Data with no recorded version is new and at the app version.
 - `runPackMigrations(targets)` — every registered pack's `pack`-line migrations, against that pack's own version (`stored < target <= manifest version`); records `AppState.packVersions[packId]`.
 
 Both read `registry.packMigrationTargets(line)`, so **neither asks where a pack came from**: a pack the app ships may be on either line and so may an external one. Routing on provenance instead is the trap — it makes one `0.4.0` mean the app's release in a pack the app ships and the pack's own version in every other, so a user's build installed at a shipped pack's id has its migrations compared against the wrong thing.
@@ -967,7 +1010,7 @@ Rules for default-setup migrations (details in `packages/apack-host/src/migratio
 
 ### Path aliases
 
-- Backend: `@/*` → `packages/api/src/*`
+- API imports use file-relative paths, so its workspace type entry resolves from source in other packages.
 
 ## Tech stack
 

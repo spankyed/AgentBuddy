@@ -25,7 +25,7 @@ beforeEach(() => {
     send: () => {},
     system: { get: () => undefined },
   }
-  bindFeHost({ application, secrets: {} as never,
+  bindFeHost({ catalog: {} as never, application, secrets: {} as never,
     settings: {} as never, client: { send() {} }, packs: {} as never })
 })
 

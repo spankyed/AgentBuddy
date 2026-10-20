@@ -151,9 +151,14 @@
       };
 
       window.addEventListener('unhandledrejection', function(e) {
-        var err = e.reason;
-        window.__showErrorPage('Something went wrong',
-          (err instanceof Error) ? (err.stack || err.message) : String(err));
+        // Filters installed by the app run later in listener order. Let them handle vendor
+        // cancellations before the bootstrap fallback decides that the window has failed.
+        setTimeout(function() {
+          if (e.defaultPrevented) return;
+          var err = e.reason;
+          window.__showErrorPage('Something went wrong',
+            (err instanceof Error) ? (err.stack || err.message) : String(err));
+        }, 0);
       });
     </script>
 

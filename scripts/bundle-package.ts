@@ -20,6 +20,8 @@ import { build, type BuildOptions, type Plugin } from 'esbuild';
 interface BundleConfig {
   /** Entry name (output dist/<name>.js) → source file, relative to the package */
   entries: Record<string, string>;
+  /** Native require preloads run before ESM/compiler activation. */
+  commonjsEntries?: Record<string, string>;
   /**
    * Entries bundled with the shared-instance packages external instead of inlined: they run inside a
    * pack's process and must share the pack's installed instances (the SDK's registries, the EARS
@@ -36,8 +38,9 @@ interface BundleConfig {
 
 const CONFIGS: Record<string, BundleConfig> = {
   '@apackdev/cli': {
-    entries: { cli: 'src/index.ts' },
-    copy: ['bin/apack.mjs', 'templates'],
+    entries: { cli: 'src/index.ts', 'build-worker': 'src/build/build-worker.ts', 'frontend-worker': 'src/build/frontend-worker.ts' },
+    commonjsEntries: { 'compiler-startup': 'src/build/compiler-startup.ts' },
+    copy: ['bin/apack.mjs', 'bin/compiler-windows.ps1', 'bin/compiler-helper-job.ps1', 'bin/compiler-pe-context.ps1', 'bin/compiler-pe-process.ps1', 'bin/compiler-source-hooks.mjs', 'bin/compiler-startup-coordinator.mjs', 'bin/compiler-startup-loader.mjs', 'bin/compiler-import.cjs', 'templates'],
     manifest: { bin: { apack: 'bin/apack.mjs' } },
   },
   '@apackdev/testing': {
@@ -210,6 +213,13 @@ async function main(): Promise<void> {
     plugins: [externalizeAllButInlined],
   });
 
+  const commonjs = config.commonjsEntries && await build({
+    entryPoints: Object.fromEntries(Object.entries(config.commonjsEntries).map(([name, src]) => [name, path.join(pkgDir, src)])),
+    outdir: path.join(stagedDir, 'dist'), outExtension: { '.js': '.cjs' },
+    bundle: true, format: 'cjs', platform: 'node', target: 'node22', metafile: true,
+    conditions: ['@apackdev/source'], plugins: [externalizeAllButInlined],
+  });
+
   // What the bundle read, for `dep-files.integration.spec.ts` to hold this unit's declaration to. An
   // observation and never a key: see `bundleReadsFile`.
   //
@@ -219,11 +229,11 @@ async function main(): Promise<void> {
   // is left out: those are covered by `package-lock.json`, which every unit declares.
   const repoRelative = (input: string): string => path.relative(repoRoot, path.resolve(pkgDir, input));
   recordBundleReads(pkg.name, [...new Set([
-    ...Object.keys(result.metafile.inputs), ...Object.keys(sharedExternal?.metafile?.inputs ?? {}),
+    ...Object.keys(result.metafile.inputs), ...Object.keys(sharedExternal?.metafile?.inputs ?? {}), ...Object.keys(commonjs?.metafile?.inputs ?? {}),
   ])].map(repoRelative).filter((file) => !file.startsWith('..') && !file.includes('node_modules/')));
 
   const imported = new Set<string>();
-  for (const output of [...Object.values(result.metafile.outputs), ...Object.values(sharedExternal?.metafile?.outputs ?? {})]) {
+  for (const output of [...Object.values(result.metafile.outputs), ...Object.values(sharedExternal?.metafile?.outputs ?? {}), ...Object.values(commonjs?.metafile?.outputs ?? {})]) {
     for (const imp of output.imports) {
       if (imp.external && !builtins.has(imp.path)) imported.add(packageName(imp.path));
     }

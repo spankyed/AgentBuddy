@@ -3,9 +3,8 @@ import * as os from 'node:os';
 import * as path from 'node:path';
 import { expect, it, vi } from 'vitest';
 import { resolveAppEnvironment } from '@apackdev/sdk/env';
-import { recordHostCompatibility, readInstalledPacks, writeInstalledPacks, type installPackFromGitHub } from '@apackdev/host/packs';
+import { recordHostCompatibility, readInstalledPacks, writeInstalledPacks, recordUserInstall, type installPackFromGitHub } from '@apackdev/host/packs';
 import { findDatabaseWriter, publishRunningApp } from '@apackdev/host/database';
-import { recordCliInstall } from '../../src/app/installed-packs';
 import { upgradePack } from '../../src/commands/pack-upgrade';
 
 it('pins the selected tag, validates before replacement, and records only a successful upgrade', async () => {
@@ -17,13 +16,15 @@ it('pins the selected tag, validates before replacement, and records only a succ
     const manifest = { id: 'demo', name: 'Demo', version: '1.0.0', features: {} };
     fs.writeFileSync(path.join(dir, 'apack.json'), JSON.stringify(manifest));
     recordHostCompatibility(root, { version: '0.4.0', packFormat: 1 });
-    recordCliInstall(context.installedPacksFile, 'demo', 'owner/repo@v1.0.0');
+    recordUserInstall(context.installedPacksFile, 'demo', 'owner/repo@v1.0.0');
     const find = vi.fn().mockResolvedValue({ version: '1.1.0', tag: 'release-1.1' });
     let incoming = { ...manifest, version: '1.1.0' };
     const install: typeof installPackFromGitHub = vi.fn(async (_source, _dir, options) => {
       options?.beforePlace?.(incoming);
       fs.writeFileSync(path.join(dir, 'apack.json'), JSON.stringify(incoming));
-      return { id: 'demo', name: 'Demo', version: incoming.version, dir, missingDependencies: [], integrity: { formatVersion: 1, id: 'demo', version: incoming.version, files: {} } };
+      const result = { id: 'demo', name: 'Demo', version: incoming.version, dir, missingDependencies: [], integrity: { formatVersion: 1, id: 'demo', version: incoming.version, files: {} } };
+      options?.accept?.(result);
+      return result;
     });
     incoming = { ...incoming, id: 'wrong' };
     await expect(upgradePack(context, 'demo', { find, install })).rejects.toThrow('Expected external pack');

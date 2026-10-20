@@ -1,4 +1,4 @@
-import { z } from 'zod';
+import { createNativePackTestRegistry } from '@apackdev/host/testing';
 // What a registered pack contributes, read through the functions packs call: each lookup sees a pack once it
 // registers, loses it when it unregisters, and sees nothing of a registration that was refused.
 import * as fs from 'node:fs';
@@ -6,22 +6,21 @@ import * as os from 'node:os';
 import * as path from 'node:path';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { startTestRuntime } from '@apackdev/sdk/testing';
-import { services } from '@apackdev/sdk/services';
+import { _createPackServices } from '@apackdev/sdk/services';
 import { getDesignated, hasDesignation } from '@apackdev/sdk/designations';
 import { stepRegistry, type StepDefinition } from '@apackdev/sdk/steps';
 import { artifactRegistry } from '@apackdev/sdk/artifacts';
 import { blockRegistry } from '@apackdev/sdk/blocks';
 import { _contentWriterRegistry } from '@apackdev/sdk/content';
-import { getPackCommands, getPackSettingsDefaults, onPackSettingsDefaultsChanged, type PackRegistration } from '@apackdev/sdk/framework';
+import { getPackCommands, getSettingsCatalog, onPackCatalogChanged, type PackRegistration } from '@apackdev/sdk/framework';
 import { importCompiledContent, type ContentApplier } from '@apackdev/sdk/utils';
-import { createPackRegistry } from '../../src/packs/registry.ts';
 import { PLUGIN_EVENT_TYPES } from '@apackdev/sdk/events';
 
 /** The events a pack's plugin receives: what its pack declares, and what the app sends every plugin */
 const receives = (...types: string[]) => new Set([...types, ...PLUGIN_EVENT_TYPES]);
 
 // How this spec registers and unregisters packs: a registry it creates, bound for the SDK's lookups
-const registry = createPackRegistry();
+const registry = createNativePackTestRegistry({ settingsForPack: () => ({ get: <T>() => ({} as T), set() {}, reset() {}, onChange: () => () => {} }) });
 startTestRuntime({ packs: registry });
 const register = (pack: PackRegistration) => registry.registerPack(pack);
 const unregister = (packId: string) => registry.unregisterPack(packId);
@@ -56,14 +55,24 @@ const noteStep: StepDefinition = {
 const tickTrigger: StepDefinition = {
   type: 'tick',
   kind: 'trigger',
-  trigger: { trackField: 'every' } as unknown as StepDefinition['trigger'],
+  node: { label: 'Tick' },
+  trigger: { trackField: 'every', compile: () => ({}), decompile: () => ({}) },
 };
 
 describe('steps', () => {
+  it('creates independent nested defaults without changing the declared baseline', () => {
+    const conditions = [{ label: 'Else' }];
+    add({ id: 'branch-pack', steps: [{ type: 'branch', node: { label: 'Branch', defaults: { conditions } } }] });
+    const first = stepRegistry.createNodeDefaults('branch');
+    (first.conditions as { label: string }[])[0].label = 'Edited';
+    expect(conditions).toEqual([{ label: 'Else' }]);
+    expect(stepRegistry.createNodeDefaults('branch')).toEqual({ nodeType: 'branch', label: 'Branch', conditions: [{ label: 'Else' }] });
+  });
   it("are found once their pack registers, and gone once it unregisters", () => {
     add({ id: 'note-pack', steps: [noteStep, tickTrigger] });
 
-    expect(stepRegistry.get('note')).toBe(noteStep);
+    expect(stepRegistry.get('note')).toEqual(noteStep);
+    expect(stepRegistry.get('note')?.build?.compile).toBe(noteStep.build?.compile);
     expect(stepRegistry.has('tick')).toBe(true);
     expect(stepRegistry.getBuild('note')?.getLabel({}, 0)).toBe('Note');
     expect(stepRegistry.isTrigger('tick')).toBe(true);
@@ -79,7 +88,7 @@ describe('steps', () => {
     expect(stepRegistry.createNodeDefaults('note')).toEqual({ nodeType: 'note' });
   });
 
-  it("aren't found when their pack's registration is refused later on", () => {
+  it("aren't found when their pack's content declarations are refused", () => {
     add({ id: 'first-pack', commands: [{ name: 'standup', placeholder: 'Topic' }] });
     expect(() => add({ id: 'second-pack', steps: [noteStep], commands: [{ name: 'standup', placeholder: 'Theirs' }] }))
       .toThrow('Command collision');
@@ -89,17 +98,18 @@ describe('steps', () => {
 });
 
 describe('artifacts and blocks', () => {
-  const cardView = { type: 'card-view', fe: { icon: 'card', component: 'CardView' } };
-  const choice = { type: 'choice', kind: 'input' as const, fe: { component: 'Choice' } };
+  const cardView = { type: 'card-view' };
+  const choice = { type: 'choice', kind: 'input' as const, be: { generateAsideText: () => 'Choice' } };
 
   it('are found once their pack registers, and gone once it unregisters', () => {
     add({ id: 'card-pack', artifacts: [cardView], blocks: [choice] });
     expect(artifactRegistry.get('card-view')).toBe(cardView);
-    expect(artifactRegistry.getComponent('card-view')).toBe('CardView');
-    expect(artifactRegistry.getIcon('card-view')).toBe('card');
+    expect(artifactRegistry.getComponent('card-view')).toBeUndefined();
+    expect(artifactRegistry.getIcon('card-view')).toBeUndefined();
     expect(artifactRegistry.all()).toEqual([cardView]);
     expect(blockRegistry.get('choice')).toBe(choice);
-    expect(blockRegistry.getComponent('choice')).toBe('Choice');
+    expect(blockRegistry.getComponent('choice')).toBeUndefined();
+    expect(blockRegistry.get('choice')?.be).toBe(choice.be);
     expect(blockRegistry.has('choice')).toBe(true);
     expect(blockRegistry.all()).toEqual([choice]);
 
@@ -110,9 +120,9 @@ describe('artifacts and blocks', () => {
     expect(blockRegistry.all()).toEqual([]);
   });
 
-  it("aren't found when their pack's registration is refused later on", () => {
-    add({ id: 'memo-pack', contentWriters: { Memo: {} } });
-    expect(() => add({ id: 'card-pack', artifacts: [cardView], blocks: [choice], contentWriters: { Memo: {} } })).toThrow('Content writers for "Memo"');
+  it("aren't found when their pack's content declarations are refused", () => {
+    add({ id: 'memo-pack', ears: { entities: { Memo: 'Memo' }, relKinds: {} }, contentWriters: { Memo: {} } });
+    expect(() => add({ id: 'card-pack', artifacts: [cardView], blocks: [choice], contentWriters: { Memo: {} } })).toThrow('A content writer for "Memo": only entity types this pack declares');
     expect(artifactRegistry.has('card-view')).toBe(false);
     expect(blockRegistry.has('choice')).toBe(false);
   });
@@ -121,18 +131,22 @@ describe('artifacts and blocks', () => {
 describe('services', () => {
   it("are reachable through services while their pack is registered", () => {
     const memos = { list: () => [] };
-    add({ id: 'memo-pack', services: { memos } });
-    expect(services.memos).toBe(memos);
-    expect(Object.keys(services)).toContain('memos');
+    const generated = _createPackServices();
+    add({ id: 'memo-pack', services: { memos }, bindServices: generated.bindServices });
+    expect((generated.services.memos as typeof memos).list()).toEqual([]);
+    expect(Object.keys(generated.services)).toContain('memos');
 
     remove('memo-pack');
-    expect(services.memos).toBeUndefined();
+    expect(() => generated.services.memos).toThrow('until the host accepts');
+    expect(registry.getRegisteredServices().memos).toBeUndefined();
   });
 
   it("aren't reachable when their pack collides with another's", () => {
     add({ id: 'first-pack', services: { memos: {} } });
-    expect(() => add({ id: 'second-pack', services: { memos: {}, cards: {} } })).toThrow('Service collision: key "memos"');
-    expect(services.cards).toBeUndefined();
+    const generated = _createPackServices();
+    expect(() => add({ id: 'second-pack', services: { memos: {}, cards: {} }, bindServices: generated.bindServices })).toThrow('Service collision: key "memos"');
+    expect(() => generated.services.cards).toThrow('until the host accepts');
+    expect(registry.getRegisteredServices().cards).toBeUndefined();
   });
 });
 
@@ -167,7 +181,7 @@ describe('appliers', () => {
   function compiledDir(packId: string): string {
     const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'registered-appliers-'));
     dirs.push(dir);
-    fs.writeFileSync(path.join(dir, 'content.json'), JSON.stringify({ version: 1, packId, content: [] }));
+    fs.writeFileSync(path.join(dir, 'content.json'), JSON.stringify({ version: 1, packId, entries: [] }));
     return dir;
   }
   const applier = (key: string, created: number): ContentApplier => ({ key, apply: () => ({ created, updated: 0, skipped: 0 }) });
@@ -184,7 +198,7 @@ describe('appliers', () => {
 
   it("refuse two appliers for one key in a pack, registering none of the pack", () => {
     expect(() => add({ id: 'pack-a', steps: [noteStep], appliers: [applier('notes', 1), applier('notes', 2)] }))
-      .toThrow('Pack "pack-a" registers two appliers for content key "notes"');
+      .toThrow('Native pack "pack-a" runtime appliers does not match its admitted declarations');
     expect(importCompiledContent({ compiledDir: compiledDir('pack-a') })).toEqual({});
     expect(stepRegistry.has('note')).toBe(false);
   });
@@ -196,60 +210,46 @@ describe('appliers', () => {
   });
 });
 
-// Teardown removes a pack's contributions one at a time, and one of them can fail. Stopping there would
-// leave the pack registered as well as half torn down — the worst of both — so the rest still come out and
-// the pack still goes; what failed is reported.
-describe('a contribution that cannot be taken back out', () => {
-  /** A step that registers, and whose type can't be read a second time, so its own undo throws */
-  function stepWithABrokenUndo(type: string): StepDefinition {
-    let read = false;
-    return {
-      get type() {
-        if (read) throw new Error(`cannot read the type of ${type}`);
-        read = true;
-        return type;
-      },
-      kind: 'step',
-    } as unknown as StepDefinition;
-  }
-
-  it("still takes out the rest, still unregisters the pack, and says what was left", () => {
-    registry.registerPack({
-      id: 'breaks-on-teardown',
-      steps: [stepWithABrokenUndo('stuck')],
-      commands: [{ name: 'leaves', placeholder: 'Cleanly' }],
+// Captured keys own removal; disposing a pack must not re-read authored getters.
+describe('captured contribution addresses', () => {
+  it('reads a definition address once, captures data and preserves executable identity across removal', async () => {
+    const { createPackRegistry } = await import('../../src/packs/registry.ts');
+    const isolated = createPackRegistry({ nativeDeclarations: [{ id: 'captured-address', commands: { leaves: { placeholder: 'Cleanly' } },
+      steps: { stuck: { node: { label: 'Stuck' } } } }] });
+    const readType = vi.fn(() => {
+      if (readType.mock.calls.length > 1) throw new Error('type cannot be read again');
+      return 'stuck';
     });
-
-    expect(() => registry.unregisterPack('breaks-on-teardown'))
-      .toThrow(/is unregistered, but 1 of its contributions could not be taken back out: cannot read the type of stuck/);
-
-    // The pack is gone, not half gone...
-    expect(registry.getPackRegistration('breaks-on-teardown')).toBeNull();
-    expect(() => registry.unregisterPack('breaks-on-teardown')).toThrow('is not registered');
-    // ...and the contributions that could come out did
-    expect(getPackCommands()).toEqual([]);
+    const step: StepDefinition = { get type() { return readType(); }, kind: 'step', node: { label: 'Stuck' } };
+    isolated.registerPack({ id: 'captured-address', steps: [step], commands: [{ name: 'leaves', placeholder: 'Cleanly' }] });
+    const accepted = isolated.step('stuck');
+    expect(accepted?.node?.label).toBe('Stuck');
+    step.node!.label = 'Caller mutation';
+    isolated.catalog.setNative([...isolated.catalog.getSnapshot().native, { id: 'another-pack' }]);
+    isolated.registerPack({ id: 'another-pack' });
+    expect(isolated.step('stuck')).toBe(accepted);
+    expect(isolated.step('stuck')?.node?.label).toBe('Stuck');
+    isolated.unregisterPack('captured-address');
+    expect(readType).toHaveBeenCalledOnce();
+    expect(isolated.getPackRegistration('captured-address')).toBeNull();
+    expect(isolated.step('stuck')).toBeUndefined();
+    expect(isolated.commands()).toEqual([]);
+    expect(() => isolated.unregisterPack('captured-address')).toThrow('is not registered');
   });
 });
 
-// The rollback's rule is that a refused pack leaves nothing of itself behind, and takes nothing of anyone
-// else's with it. registerPack registers every kind of contribution through one table whose entries hand
-// back their own undo, and the rollback and unregisterPack both run those — so what this pins is the rule,
-// across the kinds, rather than three hand-written lists agreeing.
-// A step type's build, runtime and frontend facets may come from different packs — that is what merging is
-// for. Removing one pack used to drop the merged type outright, so the other pack's facet went with it until
-// the app restarted. Reload is where that shows, being a teardown and a registration.
-describe('a type two packs contribute facets of', () => {
-  it("keeps the facets of the pack that stays when the other unregisters", () => {
-    add({ id: 'build-pack', steps: [{ type: 'shared', kind: 'step', build: build('Shared') }] });
-    add({ id: 'fe-pack', steps: [{ type: 'shared', kind: 'step', fe: { nodeConfig: { label: 'Shared' } } as never }] });
-    expect(stepRegistry.get('shared')?.build).toBeDefined();
-    expect(stepRegistry.get('shared')?.fe).toBeDefined();
-
-    remove('fe-pack');
-
-    expect(stepRegistry.get('shared'), "the remaining pack's step went with the one that left").toBeDefined();
-    expect(stepRegistry.get('shared')?.build).toBeDefined();
-    expect(stepRegistry.get('shared')?.fe).toBeUndefined();
+// A refused candidate leaves accepted lookups and ownership unchanged.
+describe('step wire ownership', () => {
+  it('refuses another active owner and allows reuse after the owner unregisters', () => {
+    const original = { type: 'shared', kind: 'step' as const, node: { label: 'Shared' }, build: build('Shared') };
+    add({ id: 'first-pack', steps: [original] });
+    expect(() => add({ id: 'second-pack', steps: [{ ...original, node: { label: 'Second' } }] }))
+      .toThrow(/Step "shared".*first-pack.*second-pack/);
+    expect(stepRegistry.get('shared')?.node?.label).toBe('Shared');
+    expect(stepRegistry.get('shared')?.build?.compile).toBe(original.build?.compile);
+    remove('first-pack');
+    add({ id: 'second-pack', steps: [{ ...original, node: { label: 'Second' } }] });
+    expect(stepRegistry.get('shared')?.node?.label).toBe('Second');
   });
 
   it('is gone once the last pack contributing it unregisters', () => {
@@ -267,8 +267,8 @@ describe('two packs naming the same feature', () => {
   const withPlugin = (id: string, featureId: string, receives: string[]) => ({ id, features: { [featureId]: { plugin: { receives } } } });
 
   it('both register, each addressing its own plugin', () => {
-    add(withPlugin('first-pack', 'memos', ['FIRST_EVENT']));
-    add({ ...withPlugin('second-pack', 'memos', ['SECOND_EVENT']), steps: [noteStep] });
+    add({ ...withPlugin('first-pack', 'memos', ['FIRST_EVENT']), steps: [noteStep] });
+    add(withPlugin('second-pack', 'memos', ['SECOND_EVENT']));
 
     const map = registry.getPluginEventValidationMap();
     expect(map.get('first-pack/memos')).toEqual(receives('FIRST_EVENT'));
@@ -294,7 +294,7 @@ describe('a pack whose registration is refused', () => {
   const contentOf = (packId: string) => {
     const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'refused-rollback-'));
     scratch.push(dir);
-    fs.writeFileSync(path.join(dir, 'content.json'), JSON.stringify({ version: 1, packId, content: [] }));
+    fs.writeFileSync(path.join(dir, 'content.json'), JSON.stringify({ version: 1, packId, entries: [] }));
     return dir;
   };
   const anApplier = (key: string): ContentApplier => ({ key, apply: () => ({ created: 1, updated: 0, skipped: 0 }) });
@@ -305,22 +305,24 @@ describe('a pack whose registration is refused', () => {
       steps: [noteStep],
       artifacts: [{ type: 'note-view' }],
       blocks: [{ type: 'note-block' }],
+      ears: { entities: { Note: 'Note' }, relKinds: {} },
       contentWriters: { Note: {} },
       appliers: [anApplier('notes')],
       commands: [{ name: 'standup', placeholder: 'Topic' }],
-      features: { notes: { plugin: { receives: [] }, settings: { defaults: { from: 'incumbent' }, schema: z.record(z.unknown()) } } },
+      features: { notes: { plugin: { receives: [] }, settings: { defaults: { from: 'incumbent' }, schema: { type: 'object' } } } },
     });
 
-    // Every kind of its own, and a command the incumbent already declares — refused after the rest registered
+    // Every kind of its own, and a command the incumbent already declares — the candidate is refused atomically
     expect(() => add({
       id: 'refused',
       steps: [tickTrigger],
       artifacts: [{ type: 'card-view' }],
       blocks: [{ type: 'card-block' }],
+      ears: { entities: { Card: 'Card' }, relKinds: {} },
       contentWriters: { Card: {} },
       appliers: [anApplier('cards')],
       commands: [{ name: 'standup', placeholder: 'Theirs' }],
-      features: { cards: { plugin: { receives: [] }, settings: { defaults: {}, schema: z.record(z.unknown()) } } },
+      features: { cards: { plugin: { receives: [] }, settings: { defaults: {}, schema: { type: 'object' } } } },
     })).toThrow('Command collision');
 
     // Nothing of the refused pack survives
@@ -329,7 +331,7 @@ describe('a pack whose registration is refused', () => {
     expect(blockRegistry.has('card-block')).toBe(false);
     expect(_contentWriterRegistry.get('Card')).toBeUndefined();
     expect(importCompiledContent({ compiledDir: contentOf('refused') })).toEqual({});
-    expect(getPackSettingsDefaults().settings.features).not.toHaveProperty('refused/cards');
+    expect(getSettingsCatalog().features).not.toHaveProperty('refused/cards');
 
     // ...and nothing of the incumbent's was taken with it
     expect(stepRegistry.has('note')).toBe(true);
@@ -337,12 +339,12 @@ describe('a pack whose registration is refused', () => {
     expect(blockRegistry.has('note-block')).toBe(true);
     expect(_contentWriterRegistry.get('Note')).toBeDefined();
     expect(getPackCommands().map((c) => c.name)).toEqual(['standup']);
-    expect(getPackSettingsDefaults().settings.features).toHaveProperty('incumbent/notes');
+    expect(getSettingsCatalog().features).toHaveProperty('incumbent/notes');
   });
 
   it('leaves no origin behind either', () => {
     add({ id: 'holder-pack', commands: [{ name: 'standup', placeholder: 'Topic' }] });
-    const origin = { id: 'refused-pack', name: 'Refused', version: '1.0.0', dir: '/packs/refused-pack', shipped: false };
+    const origin = { declarationRevision: 'fixture-revision', id: 'refused-pack', name: 'Refused', version: '1.0.0', dir: '/packs/refused-pack' };
 
     expect(() => registry.registerPack(
       { id: 'refused-pack', commands: [{ name: 'standup', placeholder: 'Theirs' }] },
@@ -354,27 +356,45 @@ describe('a pack whose registration is refused', () => {
   });
 });
 
+it('reads declared visibility before runtime registration and follows declaration replacement', () => {
+  const isolated = createNativePackTestRegistry({ settingsForPack: () => ({ get: <T>() => ({} as T), set() {}, reset() {}, onChange: () => () => {} }) });
+  isolated.catalog.setNative([{ id: 'static-pack', features: { view: {
+    description: 'A declared navigation destination.', plugin: {
+      label: 'View', state: 'unavailable.ts#state', defaultVisible: false,
+    },
+  } } }]);
+  expect(isolated.getPackRegistration('static-pack')).toBeNull();
+  expect(isolated.pluginDefaults()).toEqual({ 'static-pack/view': false });
+  isolated.catalog.setNative([]);
+  expect(isolated.pluginDefaults()).toEqual({});
+});
+
 describe('feature settings defaults', () => {
-  const memos = { plugin: { receives: [] }, settings: { defaults: { sort: 'newest' }, schema: z.record(z.unknown()) } };
-  const cards = { plugin: { receives: [] }, settings: { visible: false } };
+  const memos = { plugin: { receives: [] }, settings: { defaults: { sort: 'newest' }, schema: { type: 'object' } } };
+  const cards = { plugin: { receives: [] } };
 
   it('appear and disappear with their pack, each change announced with a new revision', () => {
     const changed = vi.fn();
-    const unsubscribe = onPackSettingsDefaultsChanged(changed);
-    const before = getPackSettingsDefaults().revision;
+    const unsubscribe = onPackCatalogChanged(changed);
+    const before = getSettingsCatalog().revision;
 
     add({ id: 'memo-pack', features: { memos } });
     add({ id: 'card-pack', features: { cards } });
-    expect(getPackSettingsDefaults().settings).toEqual({ features: { 'memo-pack/memos': { sort: 'newest' } } });
-    expect(getPackSettingsDefaults().visibility).toEqual({ 'card-pack/cards': false });
-    expect(getPackSettingsDefaults().revision).toBeGreaterThan(before);
+    registry.catalog.setNative(registry.catalog.getSnapshot().native.map(pack => pack.id !== 'card-pack' ? pack : {
+      ...pack, features: { cards: { ...pack.features!.cards!, plugin: {
+        label: 'Cards', state: 'fixtures/cards.ts#state', defaultVisible: false,
+      } } },
+    }));
+    expect(getSettingsCatalog().features).toEqual({ 'memo-pack/memos': memos.settings });
+    expect(registry.pluginDefaults()).toEqual({ 'card-pack/cards': false });
+    expect(getSettingsCatalog().revision).toBeGreaterThan(before);
     expect(changed).toHaveBeenCalled();
 
     remove('memo-pack');
-    expect(getPackSettingsDefaults().settings).toEqual({ features: {} });
-    expect(getPackSettingsDefaults().visibility).toEqual({ 'card-pack/cards': false });
+    expect(getSettingsCatalog().features).toEqual({});
+    expect(registry.pluginDefaults()).toEqual({ 'card-pack/cards': false });
     remove('card-pack');
-    expect(getPackSettingsDefaults().settings).toEqual({ features: {} });
+    expect(getSettingsCatalog().features).toEqual({});
 
     // after unsubscribing, a further change tells this listener nothing
     const afterRemoving = changed.mock.calls.length;

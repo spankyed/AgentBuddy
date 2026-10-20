@@ -9,8 +9,8 @@ vi.mock('../../src/app/pack-host', async importOriginal => ({
   cliDirs: () => ({ cache: path.join(root, 'cache'), data: path.join(root, 'data') }),
   resolvePackHost: () => ({ kind: 'packaged', executable: path.join(root, 'apack Beta.app/Contents/MacOS/apack Beta'), version: '0.4.0' }),
 }));
-vi.mock('../../src/build/checkout-packages.ts', () => ({ ensureCheckoutPackages: () => {} }));
-vi.mock('../../src/commands/build', () => ({ build: async () => {} }));
+const { build } = vi.hoisted(() => ({ build: vi.fn(async () => {}) }));
+vi.mock('../../src/build/build-process.ts', () => ({ createPackBuilder: () => ({ build, close: async () => {} }) }));
 vi.mock('@apackdev/host/process-liveness', async importOriginal => ({
   ...await importOriginal<typeof import('@apackdev/host/process-liveness')>(),
   readApiEndpoint: () => ({ port: 1234, pid: process.pid }),
@@ -52,6 +52,7 @@ afterEach(() => {
 
 it('refuses to reuse an unverified running app on a packaged host profile', async () => {
   await expect(dev(['--profile', 'owned'])).rejects.toThrow('cannot verify the app');
+  expect(build).toHaveBeenCalledWith({ signal: expect.any(AbortSignal) });
   expect(spawn).not.toHaveBeenCalled();
   expect(fs.existsSync(path.join(root, 'data/profiles/owned'))).toBe(true);
 });

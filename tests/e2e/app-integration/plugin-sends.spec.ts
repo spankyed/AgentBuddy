@@ -115,7 +115,7 @@ test("a restarted pack's browser system sends its startup data to the browser pl
       const response = await fetch(`http://127.0.0.1:${apiPort}/dev/reload`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', [API_TOKEN_HEADER]: apiToken },
-        body: JSON.stringify({ packId: 'default-setup', builtIn: true }),
+        body: JSON.stringify({ packId: 'default-setup' }),
       });
       return response.status;
     }, { timeout: 15_000 }).toBe(200);

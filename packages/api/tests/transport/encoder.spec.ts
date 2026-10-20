@@ -20,7 +20,7 @@ import {
   _answer,
   type _SerialisationInput,
 } from '@apackdev/sdk/testing/serialisation-matrix';
-import { jsonSafeEncoder } from '@/transport/encoder';
+import { jsonSafeEncoder } from '../../src/transport/encoder.ts';
 
 /** What a subscriber is told to emit, set per case before it subscribes */
 let payloads: unknown[] = [];

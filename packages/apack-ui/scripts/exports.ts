@@ -40,9 +40,9 @@ export function isPublicModule(rel: string): boolean {
 /** Public modules: export subpath (without `./`) → source file relative to the package. */
 export function computeEntries(src = srcDir): Record<string, string> {
   const entries: Record<string, string> = {};
-  for (const file of walk(src).sort()) {
-    const rel = path.relative(src, file);
-    if (isPublicModule(rel)) entries[rel.replace(/\.ts$/, '')] = `src/${rel}`;
+  const modules = walk(src).map(file => path.relative(src, file)).filter(isPublicModule);
+  for (const rel of modules.map(file => file.split(path.sep).join('/')).sort()) {
+    entries[rel.replace(/\.ts$/, '')] = `src/${rel}`;
   }
   return entries;
 }

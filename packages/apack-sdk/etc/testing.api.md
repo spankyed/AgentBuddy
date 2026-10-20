@@ -22,6 +22,7 @@ import type { InferSchema } from 'ai';
 import type { JSONSchema7 } from 'ai';
 import type { Output } from 'ai';
 import type { OutputInterface } from 'ai';
+import type { Ref } from 'vue';
 import type { rerank } from 'ai';
 import type { SnapshotFrom } from 'xstate';
 import type { streamText } from 'ai';
@@ -30,7 +31,6 @@ import type { ToolLoopAgentSettings } from 'ai';
 import type { ToolSet } from 'ai';
 import type { transcribe } from 'ai';
 import { z } from 'zod';
-import type { ZodType } from 'zod';
 
 // @public
 export function addTestSecret(provider: SecretProvider, label: string): SecretMetadata;
@@ -39,20 +39,6 @@ export function addTestSecret(provider: SecretProvider, label: string): SecretMe
 export function answerTo<E extends {
     type: string;
 }>(call: string, event: E): E;
-
-// @public
-export interface ContentRuntime {
-    // (undocumented)
-    contentWriters: Record<string, ContentWriter>;
-    // (undocumented)
-    entities: Record<string, string>;
-    // (undocumented)
-    id: string;
-    // (undocumented)
-    relKinds: Record<string, string>;
-    // (undocumented)
-    repositories: Record<string, unknown>;
-}
 
 // @public
 export function dropAttribute(id: EARS.EntityId, kind: string): void;
@@ -119,7 +105,7 @@ export type FakeInferenceReply = string | {
 
 // @public (undocumented)
 export interface FakeSettings extends SettingsPort {
-    answer(status: SettingsSaveStatus): void;
+    answer(result: SettingsWriteResult): void;
     readonly resets: readonly FakeSettingsReset[];
     set(document: Record<string, unknown>): void;
     readonly updates: readonly FakeSettingsUpdate[];
@@ -158,6 +144,12 @@ export interface FeTestRuntimeOptions extends Partial<FeHostRuntime> {
 }
 
 // @public
+export function nativeFrontendDeclarationFixture(fixture: PackFERegistration): NativePackDeclaration;
+
+// @public
+export function nativePackDeclarationFixture(fixture: PackRegistration, metadata?: Pick<NativePackDeclaration, 'version'>): NativePackDeclaration;
+
+// @public
 export function population<T>(what: string, xs: readonly T[], opts?: {
     atLeast?: number;
 }): readonly T[];
@@ -181,9 +173,6 @@ export function stopFeTestRuntime(): void;
 export function takeSystemErrors(): SystemErrorEvent[];
 
 // @public
-export type TestOnboarding = Pick<AppDataService, 'hasOnboarded' | 'completeOnboarding'>;
-
-// @public
 export interface TestPacks {
     readonly appliers: Map<string, ContentApplier[]>;
     readonly artifacts: Map<string, ArtifactDefinition>;
@@ -198,6 +187,7 @@ export interface TestPacks {
     readonly help: Map<string, HelpArticle[]>;
     readonly plugins: Set<string>;
     readonly services: Map<string, unknown>;
+    readonly stepDeclarations: Map<string, StepCatalogEntry>;
     readonly steps: Map<string, StepDefinition>;
     readonly systems: Set<string>;
 }
@@ -220,9 +210,10 @@ export const testRootEvents: TestRootEvents;
 export interface TestRuntimeStartOptions {
     appVersion?: string;
     entityTypes?: readonly string[];
-    onboarding?: TestOnboarding;
+    onboarding?: OnboardingService;
     packs?: PackRegistryView;
-    settings?: SettingsService;
+    serviceOverrides?: ReadonlyMap<string, unknown>;
+    settings?: SettingsAdmin;
 }
 
 // (No @packageDocumentation comment for this package)

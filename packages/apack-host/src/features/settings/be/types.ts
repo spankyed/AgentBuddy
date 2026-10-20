@@ -1,27 +1,22 @@
-import type { ApplicationHotkeys } from '@apackdev/sdk/types';
+import type { ApplicationHotkeys, SettingsTarget, SettingsSnapshot, SettingsRecovery, SettingsRecoveryRequest, SettingsWriteCondition } from '@apackdev/sdk/types';
 import type { ApplyResult } from '@apackdev/sdk/utils';
 import type { PackContentPreview } from '@apackdev/sdk/content';
 import type { SecretMetadata, SecretsStatus } from '@apackdev/sdk/services';
-import type { SettingsDocument } from './store.ts';
 // The settings feature's contract: what its system receives, what it sends its plugin, and its context.
 // A leaf the system module doesn't import back, so codegen reads it without resolving the machine.
 
 export type IncomingSettingsEvents =
   | { type: 'GET_SETTINGS' }
+  | { type: 'RECOVER_SETTINGS'; request: SettingsRecoveryRequest }
   // No correlation field on any of the three writes: addressing says which connection an answer came back on,
   // and the envelope's `call` says which request it answers — `reply` stamps it, so a sender with several
   // writes in flight (a drive session) tells its own answer from another's without either side declaring a
   // field. A field declared here would need a producer in every sender, which is the part a per-event
   // correlation gets wrong: declaring it is cheap and minting it everywhere is not.
-  | { type: 'UPDATE_SETTINGS'; entityType: 'section' | 'feature'; label: string; path: string[]; value: any }
-  /**
-   * Forgets the user's changes. With no `target`, every one of them; with one, that section's or that
-   * feature's alone — which is *removing* the user's slice, after which the registration's defaults apply on
-   * the next read. One optional object rather than two optional fields, so "a kind without a label" is not a
-   * shape anyone has to check for.
-   */
-  | { type: 'RESET_SETTINGS'; target?: { entityType: 'section' | 'feature'; label: string } }
-  | { type: 'REPLACE_SETTINGS'; data: unknown }
+  | { type: 'UPDATE_SETTINGS'; target: SettingsTarget; path: string[]; value: unknown; condition?: SettingsWriteCondition }
+  | { type: 'RESET_SETTINGS'; target: SettingsTarget }
+  | { type: 'RESET_ALL_SETTINGS' }
+  | { type: 'REPLACE_SETTINGS'; data: unknown; condition?: SettingsWriteCondition }
   | { type: 'RESET_APP' }
 
 // The host's secrets store sends this over the bus (`secrets/index.ts`, `forwardSecretsChanges`), so it arrives
@@ -31,7 +26,6 @@ export type IncomingSecretsEvents =
 
 // What this system's own `fromCallback` children send it. Nothing else sends these.
 export type SettingsInternalEvents =
-  | { type: 'PACK_SETTINGS_CHANGED' } // A pack's feature settings (defaults) registered or unregistered
   | { type: 'SETTINGS_WRITTEN' } // Something wrote the stored settings: this system, a feature's system, an action or an apply
   // The stored data is being replaced wholesale (a backup import), and has been: what each feature was told is then
   // stale either way, since a failed import may have migrated some of the data already
@@ -39,14 +33,15 @@ export type SettingsInternalEvents =
   | { type: 'DATA_REPLACED' }
 
 export type OutgoingSettingsEvents =
-  | { type: 'SETTINGS_LOADED'; data: SettingsDocument }
+  | { type: 'SETTINGS_RECOVERY'; recovery: SettingsRecovery }
+  | { type: 'SETTINGS_LOADED'; snapshot: SettingsSnapshot }
   /** The installed packs changed, so what they answer with in Help has too */
-  | { type: 'SETTINGS_UPDATED'; data: SettingsDocument }
+  | { type: 'SETTINGS_UPDATED'; snapshot: SettingsSnapshot }
   /** A change (`UPDATE_SETTINGS`, `REPLACE_SETTINGS`, `RESET_SETTINGS`) was stored */
-  | { type: 'SETTINGS_SAVED' }
+  | { type: 'SETTINGS_SAVED'; snapshot: SettingsSnapshot }
   /** A change was refused, and stored nothing */
   | { type: 'SETTINGS_REFUSED'; problems: string[] }
-  | { type: 'SETTINGS_RESET'; data: SettingsDocument }
+  | { type: 'SETTINGS_RESET'; snapshot: SettingsSnapshot }
   | { type: 'APPLICATION_HOTKEYS'; hotkeys: ApplicationHotkeys }
   // The four content events are sent by the `packs` system, not this one: the work is pack-level and lives
   // there, while the view that draws it is the settings plugin, whose inbox this type is.

@@ -1,3 +1,4 @@
+import { createNativePackTestRegistry } from '@apackdev/host/testing';
 // Answering whoever asked, without the handler being told who that is.
 //
 // A system's handler is given `{ context, event, self, system }` and nothing about the message's sender, so the
@@ -16,10 +17,9 @@ import { defineHandlers } from '@apackdev/sdk/framework';
 import { _whenSatisfied } from '@apackdev/sdk/testing/waiting';
 import { createAppBus } from '../../src/bus/index.ts';
 import { HOST_ENTITY_TYPES } from '../../src/app-state/index.ts';
-import { createPackRegistry } from '../../src/packs/registry.ts';
 import { hostRegistration } from '../../src/features/registration.ts';
 
-const registry = createPackRegistry();
+const registry = createNativePackTestRegistry();
 startTestRuntime({ entityTypes: HOST_ENTITY_TYPES, packs: registry });
 
 /**

@@ -32,7 +32,7 @@ Its static imports are evaluated first, `virtual:host-shared-modules` among them
    - `application` backs `@apackdev/sdk/fe`'s `untypedOpenPlugin` and its neighbours;
    - `secrets` is `src/transport/secrets.ts`, the API's secrets procedures behind `secretsClient` (the only ones pack frontends call directly);
    - `settings` is `src/runtime/settings.ts`, the `SettingsPort` behind `@apackdev/sdk/fe`'s settings composables. It reads the running Settings view's actor, found by the `settings` role rather than by name, so what a feature reads of its own settings doesn't name the view that draws them;
-   - `client` is `feClient` (`src/transport/client.ts`), the window's one client to the API: the `ShellClient` from `@apackdev/host/fe`. Its `send` is how `@apackdev/sdk/events`' `sendToSystem` sends here, over `bus.send`, reporting a rejected send to the console, the app's log (`fe-client` source) and a toast, without the payload. The shell (`createAppShell()`) subscribes through it, and reads the loaded packs and asks for packs' startup data through it; it follows the API across a restart on a new port (Electron's API status). No other renderer module calls `trpc.bus` or `trpc.packs`. Plugin sends and subscriptions throw (no backend app is bound in the renderer).
+   - `client` is `feClient` (`src/transport/client.ts`), the window's one client to the API: the `ShellClient` from `@apackdev/host/fe`. Its `send` is how `@apackdev/sdk/events`' `sendToSystem` sends here, over `bus.send`, reporting a rejected send to the console, the app's log (`fe-client` source) and a toast, without the payload. The shell (`createAppShell()`) subscribes through it, and reads the loaded packs and asks for packs' startup data through it; it follows the API across a restart on a new port (Electron's API status). Views do not call `trpc.bus` or `trpc.packs`. `runtime/catalog.ts` owns the independent `packs.catalog` declaration subscription; the shell client starts/stops its connection lifetime without gating pack activation on it. Plugin sends and subscriptions throw (no backend app is bound in the renderer).
 6. Sets the globals:
    - `window.applicationState` is the actor. The E2E fixture (`@apackdev/testing`) finds the main window by it and drives it.
    - `window.__disableOnboardingUI()` sends `ONBOARDING_COMPLETE`.
@@ -45,7 +45,7 @@ Its static imports are evaluated first, `virtual:host-shared-modules` among them
 ## Vite (`vite.config.ts`)
 
 - **`devPackFrontendsPlugin(command === 'serve')`**, over `discoverDevPackFrontends` (`@apackdev/host/build/discover`):
-  - `virtual:dev-pack-frontends` exports `{ [packId]: () => import('<abs path to pack-entry-fe.ts>') }` for each local pack whose codegen wrote that file — the packs under `packages/`, plus any directory `APACK_DEV_PACK_DIRS` names. **Serving a pack's frontend from source is the whole of what the dev server adds, and the only reason a `.vue` edit patches the component**: the pack's modules are in this graph, so Vite has an accepting importer to stop the update at. The map is empty for `vite build`, where each pack's frontend is fetched over `pack://` from the bundle its own `apack pack build` wrote. It asks nothing about `builtIn` — a pack is in it because its source is on this disk.
+  - `virtual:dev-pack-frontends` exports `{ [packId]: () => import('<abs path to pack-entry-fe.ts>') }` for each local pack whose codegen wrote that file — the packs under `packages/`, plus any directory `APACK_DEV_PACK_DIRS` names. **Serving a pack's frontend from source is the whole of what the dev server adds, and the only reason a `.vue` edit patches the component**: the pack's modules are in this graph, so Vite has an accepting importer to stop the update at. The map is empty for `vite build`, where each pack's frontend is fetched over `pack://` from the bundle its own `apack pack build` wrote. It grants no manifest shipping privilege — a pack is in it because its source is on this disk.
   - `@/…` resolves into `renderer/src/`, whoever imports it — the renderer's own alias and nothing else's (`tsconfig.app.json` maps it the same way). A pack names its own modules with `#` subpath imports, which Node, Vite and esbuild resolve from the pack's own `package.json` without this hook, so the alias is not per-importer and no other bundler config implements it; `check:specifiers`' `pack-own-aliases` refuses a `@/` in pack code, which would resolve for `tsc` and for nothing else.
 - **`hostSharedModulesPlugin`** is how a pack gets *this app's* Vue, XState and SDK instance (with the
   frontend host it binds): **by resolution**, not through a global. `sharedFeModules()`
@@ -129,3 +129,13 @@ in a `PluginScope` for that plugin, so a form's `usePlugin()` reaches the plugin
   - `tests/source-layout.spec.ts` keeps each folder to its job; `tests/views/packs/pack-detail.spec.ts` covers the Packs detail component.
   - The shell's specs, the Packs machine's and the pack-frontend loader's live with them, in `packages/apack-host/tests/fe/`.
 - `npm run typecheck:renderer` (root) runs `vue-tsc --app`. `npm run build -w @app/renderer` type-checks and runs `vite build` in parallel. `lint:check` runs oxlint and then eslint; `lint:fix` runs both with `--fix`. The bare-named one is the safe one, so nothing rewrites the tree unless you asked it to.
+
+
+## Local editor assets
+
+`src/boot/monaco.ts` configures the shared Vue editor loader with the bundled Monaco instance and
+Vite-built editor/JSON/CSS/HTML/TypeScript workers before any editor mounts. The renderer supplies
+`window.monaco` for the existing editor components. No editor or worker CDN request is needed.
+Vite gives Monaco its own vendor chunk so recoverable cancellation can be attributed to its origin
+frame; application errors called through Monaco still reach the fatal error reporter. The external
+settings JSON test blocks non-local HTTP and exercises real schema completion, validation and saving.

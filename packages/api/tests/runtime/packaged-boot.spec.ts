@@ -1,3 +1,4 @@
+import { _declarationRevision } from '@apackdev/sdk/build';
 // The app's boot, over the real packs it ships: each one installed into the data dir and then loaded from
 // there, which is the one path for every pack (`npm run build:default-setup` writes the build it is installed from). A
 // packaged app's api bundle carries no pack's backend, so this is the path in a packaged build and from
@@ -13,12 +14,12 @@ import * as os from 'node:os';
 import * as path from 'node:path';
 import { afterAll, beforeEach, expect, it } from 'vitest';
 import { PACK_SNAPSHOT_FORMAT } from '@apackdev/sdk/build';
-import { PACK_LAYOUT } from '@apackdev/host/packs';
+import { PACK_LAYOUT, sealPackBuild } from '@apackdev/host/packs';
 
 const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'api-packaged-boot-'));
 process.env.APACK_ENV = 'test';
 process.env.APACK_USER_DATA_DIR = dataDir;
-const { openAppStore } = await import('@/runtime');
+const { openAppStore } = await import('../../src/runtime/index.ts');
 const { loadAppPacks } = await import('@apackdev/host/packs/runtime');
 const { installPackFromLocal, installShippedPacks } = await import('@apackdev/host/packs');
 const { resolveAppEnvironment } = await import('@apackdev/sdk/env');
@@ -33,25 +34,28 @@ beforeEach(() => fs.rmSync(resolveAppEnvironment().packsDir, { recursive: true, 
 /** An installed pack that plays `role`, as `apack pack install` leaves one */
 async function installPackPlaying(id: string, role: string): Promise<void> {
   const source = fs.mkdtempSync(path.join(os.tmpdir(), `${id}-`));
-  fs.writeFileSync(path.join(source, 'apack.json'), JSON.stringify({ id, name: id, version: '1.0.0' }));
+  fs.writeFileSync(path.join(source, 'apack.json'), JSON.stringify({ id, name: id, version: '1.0.0', features: { taker: { description: 'Feature declaration fixture.', designation: role } } }));
   fs.mkdirSync(path.join(source, 'dist', 'runtime'), { recursive: true });
   fs.mkdirSync(path.join(source, 'dist', 'types'), { recursive: true });
-  fs.writeFileSync(path.join(source, 'dist', PACK_LAYOUT.snapshot), JSON.stringify({ format: PACK_SNAPSHOT_FORMAT }));
+  fs.writeFileSync(path.join(source, 'dist', PACK_LAYOUT.snapshot), JSON.stringify({ declarationRevision: _declarationRevision(JSON.parse(fs.readFileSync(path.join(source, 'apack.json'), 'utf-8'))), format: PACK_SNAPSHOT_FORMAT, manifest: JSON.parse(fs.readFileSync(path.join(source, 'apack.json'), 'utf-8')), types: { entities: {}, relKinds: {} }, entityDestinations: {}, facades: {} }));
   fs.writeFileSync(
     path.join(source, 'dist', 'runtime', 'index.cjs'),
-    `module.exports = { registration: { id: ${JSON.stringify(id)}, features: { taker: { designation: ${JSON.stringify(role)} } } } };`,
+    (`module.exports = { registration: { id: ${JSON.stringify(id)}, features: { taker: { designation: ${JSON.stringify(role)} } } } };`) + `
+if (module.exports.registration) module.exports.registration.declarationRevision = '${_declarationRevision(JSON.parse(fs.readFileSync(path.join(source, 'apack.json'), 'utf-8')))}';`,
   );
+  fs.writeFileSync(path.join(source, 'dist', PACK_LAYOUT.feEntry), 'export {};');
+  sealPackBuild(path.join(source, 'dist'), JSON.parse(fs.readFileSync(path.join(source, 'apack.json'), 'utf8')));
   await installPackFromLocal(source, resolveAppEnvironment().packsDir);
   fs.rmSync(source, { recursive: true, force: true });
 }
 
 /**
  * The pack half of the app's boot: the shipped packs installed into the data dir, then every installed pack
- * loaded — shipped ones first, which is what keeps a designation theirs
+ * loaded through the same admission path, without advertisement-based registration priority
  */
 async function bootPacks(app: ReturnType<typeof openAppStore>) {
-  const installed = await installShippedPacks(PACKAGES_DIR, resolveAppEnvironment().packsDir);
-  return loadAppPacks(app.packs, new Set(installed.map((result) => result.id)));
+  await installShippedPacks(PACKAGES_DIR, resolveAppEnvironment().packsDir, { installedPacksFile: resolveAppEnvironment().installedPacksFile });
+  return loadAppPacks(app.packs);
 }
 
 /** The app's boot, closed and unbound however the test ends */
@@ -60,6 +64,8 @@ async function packagedBoot(run: (app: ReturnType<typeof openAppStore>) => Promi
   try {
     await run(app);
   } finally {
+    app.packs.runShutdownHooks();
+    for (const pack of app.packs.loadedPacks()) app.packs.unregisterPack(pack.id);
     app.store.close();
     unbindHost();
   }

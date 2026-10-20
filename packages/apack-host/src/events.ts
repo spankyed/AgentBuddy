@@ -5,15 +5,17 @@
 // differs is where the maps come from. A pack's are generated from its manifest; the host has no codegen, so they
 // are assembled here from what its features already declare.
 //
-// The maps are the three `receives` expressions in `features/registration.ts`, as types. Those are the runtime
-// lists the bus checks a send against, so the two say the same thing about the same features — keep them together.
+// Static endpoint membership lives in `features/event-contracts.ts`; this module supplies payload types
+// for the same native inboxes. Pack code gets its corresponding maps from codegen.
 import { defineEvents, type HostPluginEvents, type HostSystemEvents, type IncomingEventsOf, type WithOwnNames } from '@apackdev/sdk/events';
-import type { Contract as HelpContract, HelpOutgoing } from './features/help/be/system.ts';
+import type { Contract as HelpContract } from './features/help/be/system.ts';
+import type { HelpOutgoing } from './features/event-contracts.ts';
 import { HOST_PACK_ID } from '@apackdev/sdk/ids';
 import type { Contract as PacksContract } from './features/packs/be/contract.ts';
 import type { Contract as SettingsContract } from './features/settings/be/contract.ts';
-import type { SettingsPluginEvents } from './features/settings/be/system.ts';
-import type { OutgoingPacksEvents } from './features/registration.ts';
+import type { SettingsPluginEvents } from './features/event-contracts.ts';
+import type { ApplicationPluginEvents } from './features/application/events.ts';
+import type { OutgoingPacksEvents } from './features/event-contracts.ts';
 
 /**
  * What each of the host's plugins receives. `HostPluginEvents` is the host's *published* inbox — what a pack may
@@ -21,7 +23,7 @@ import type { OutgoingPacksEvents } from './features/registration.ts';
  * pack may send. The Packs view takes only the latter.
  */
 type HostPlugins = WithOwnNames<typeof HOST_PACK_ID, {
-  'host/application': HostPluginEvents['host/application'];
+  'host/application': HostPluginEvents['host/application'] | ApplicationPluginEvents;
   'host/packs': OutgoingPacksEvents;
   'host/settings': HelpOutgoing | SettingsPluginEvents | HostPluginEvents['host/settings'];
 }>;

@@ -24,7 +24,7 @@ function pack(id: string, entities: Record<string, string>, dependencies: Record
     'package.json': packageJson(id),
     'tsconfig.json': tsconfig,
     'apack.json': JSON.stringify({
-      id, name: id, version: '1.0.0', entities,
+      id, name: id, version: '1.0.0', data: { entities: Object.fromEntries(Object.keys(entities).map(name => [name, null])) },
       ...(Object.keys(dependencies).length > 0 && { dependencies }),
       ...extra,
     }),
@@ -33,7 +33,7 @@ function pack(id: string, entities: Record<string, string>, dependencies: Record
 
 /** A feature with a system and a plugin, so dependents have something to send to */
 const NOTIFIER = {
-  features: { notifier: { system: { entry: 'src/system.ts', contract: 'src/system.contract.ts#Contract' }, plugin: { entry: 'src/plugin.ts' } } },
+  features: { notifier: { description: 'Notify subscribing features.', system: { entry: 'src/system.ts', contract: 'src/system.contract.ts#Contract' }, plugin: { label: 'Fixture', state: 'src/plugin.ts' } } },
 };
 const NOTIFIER_SOURCES = {
   'src/system.contract.ts': [
@@ -48,7 +48,7 @@ const NOTIFIER_SOURCES = {
     'const entry = { spec: notifierSpec, machine: setup({ types: notifierSpec.types }).createMachine({ id: "notifier" }) };',
     'export default entry;',
   ].join('\n'),
-  'src/plugin.ts': "import type { Plugin } from '@apackdev/sdk/fe';\nexport default { id: 'notifier' } as unknown as Plugin;\n",
+  'src/plugin.ts': "import type { AnyStateMachine } from 'xstate';\nexport default { id: 'notifier' } as unknown as AnyStateMachine;\n",
 };
 
 const DEEP = 'deep-pack';
@@ -69,7 +69,7 @@ beforeAll(async () => {
   const appDir = preparePack(parent, 'app-pack', pack('app-pack', { App: 'App' }, on('left-pack', 'right-pack')), modules);
   // produces: the app-pack build whose snapshot the tests read (its output is also checked for conflicts)
   built = await callCli(appDir, 'build');
-});
+}, 4 * 60_000);
 
 afterAll(() => {
   if (parent) fs.rmSync(parent, { recursive: true, force: true });
@@ -125,6 +125,6 @@ describe.skipIf(!PACKAGES_BUILT)('a collision that is real', () => {
 
     expect(clash.code, clash.output).not.toBe(0);
     expect(clash.output).toMatch(/entity "Memo" declared by both/);
-  });
+  }, 2 * 60_000 + 20_000);
 });
 

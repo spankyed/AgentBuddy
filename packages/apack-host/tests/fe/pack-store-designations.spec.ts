@@ -1,15 +1,16 @@
+import { createMachine } from 'xstate';
+import { createNativeFrontendTestRegistry } from '@apackdev/host/fe/testing';
 // The renderer resolves each role to the plugin that plays it; a pack claiming a role another plays is refused, as
 // the backend registry refuses it.
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { PluginDefinition } from '@apackdev/sdk/fe';
 import { getDesignated } from '@apackdev/sdk/designations';
 import { bindFeHost } from '@apackdev/sdk/runtime';
-import { createFePackRegistry } from '../../src/fe/pack-store.ts';
 
-const { registerPackFE, unregisterPackFE, ...registry } = createFePackRegistry();
-bindFeHost({ application: {} as never, secrets: {} as never, settings: {} as never, client: {} as never, packs: registry });
+const { registerFixture, unregisterPackFE, ...registry } = createNativeFrontendTestRegistry();
+bindFeHost({ catalog: {} as never, application: {} as never, secrets: {} as never, settings: {} as never, client: {} as never, packs: registry });
 
-const plugin = (label: string) => ({ label }) as unknown as PluginDefinition;
+const plugin = (label: string) => ({ label, state: createMachine({}) }) satisfies PluginDefinition;
 
 const packs: string[] = [];
 afterEach(() => {
@@ -19,7 +20,7 @@ afterEach(() => {
 
 /** A pack whose features each play a role: `register('p', [['main', 'notebook']])` */
 function register(packId: string, roles: Array<[featureId: string, role: string]>): void {
-  registerPackFE({
+  registerFixture({
     id: packId,
     features: Object.fromEntries(roles.map(([featureId, designation]) => [featureId, { plugin: plugin(featureId), designation }])),
   });
@@ -29,7 +30,7 @@ function register(packId: string, roles: Array<[featureId: string, role: string]
 describe('frontend designations', () => {
   // The backend resolves a role its feature plays with no plugin; the frontend has to agree
   it('resolve a role played by a feature with no plugin to its ref, adding no plugin', () => {
-    registerPackFE({ id: 'clock-pack', features: { scheduler: { designation: 'clock' } } });
+    registerFixture({ id: 'clock-pack', features: { scheduler: { designation: 'clock' } } });
     packs.push('clock-pack');
 
     expect(getDesignated('clock')).toBe('clock-pack/scheduler');

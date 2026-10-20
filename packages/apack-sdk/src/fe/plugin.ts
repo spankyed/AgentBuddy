@@ -6,11 +6,7 @@ import type { PluginHotkeyDefinition } from './hotkeys.ts';
 type RouteName = string;
 export type RouteComponents = Record<RouteName, Component>;
 
-/**
- * A pack's plugin module, as its author writes it. It has no id: the plugin is registered at its
- * feature's ref, `<packId>/<featureId>`; pack code opens it by name (`openPlugin` from `#generated/fe`),
- * and its components reach its actor with `usePlugin()`.
- */
+/** A bound plugin assembled by codegen; the host assigns its feature ref at registration. */
 export type PluginDefinition = Omit<Plugin, 'id'>;
 
 /** The audiences a plugin's contract may open its inbox to, and what each one means. */
@@ -53,11 +49,6 @@ export type PluginInbox<T extends PluginInboxAudiences> = T;
  */
 export type PluginStateOf<C> = C extends { state: infer State } ? State : never;
 
-/** Define a pack's plugin. What it publishes — its state and its inbox — is its `Contract` (`PluginInbox`). */
-export function definePlugin(definition: PluginDefinition): PluginDefinition {
-  return definition;
-}
-
 /** A registered plugin: its definition, at its ref */
 export interface Plugin {
   /** The plugin's ref, `<packId>/<featureId>` (the host's own under `host`) */
@@ -79,7 +70,6 @@ export interface Plugin {
     toggle: { type: string };
   };
   chat?: Component;
-  settings?: Component;
   hotkeys?: PluginHotkeyDefinition[];
   options?: {
     headerClass?: string;

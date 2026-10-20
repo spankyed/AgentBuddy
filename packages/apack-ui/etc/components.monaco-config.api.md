@@ -68,6 +68,8 @@ export function resetMonacoState(): void;
 // @public
 export interface SetupFileOptions {
     // (undocumented)
+    dslType?: string;
+    // (undocumented)
     enableSuggestions?: boolean;
     // (undocumented)
     enableTypeChecking?: boolean;
@@ -79,8 +81,8 @@ export interface SetupFileOptions {
     language?: string;
 }
 
-// @public (undocumented)
-export function setupMonacoForFile(monaco: Monaco, options: SetupFileOptions): void;
+// @public
+export function setupMonacoForFile(monaco: Monaco, options: SetupFileOptions): () => void;
 
 // @public (undocumented)
 export function updateDslParamsType(monaco: Monaco, _dslType: string, params: Record<string, {

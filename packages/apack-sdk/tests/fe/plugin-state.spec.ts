@@ -45,7 +45,7 @@ beforeEach(() => {
   // iteration — without it, one that re-subscribes loops forever.
   // eslint-disable-next-line no-useless-spread
   shellChanged = () => { for (const fn of [...shellListeners]) fn(); };
-  bindFeHost({
+  bindFeHost({ catalog: {} as never,
     application: {
       system: { get: (ref: string) => running[ref] },
       subscribe: (fn: () => void) => { shellListeners.add(fn); return { unsubscribe: () => shellListeners.delete(fn) }; },
@@ -193,7 +193,7 @@ describe('_sendToLocalPlugin', () => {
   it("asks the shell to hand this window's plugin the event, without opening it", () => {
     const sent: unknown[] = [];
     unbindFeHost();
-    bindFeHost({
+    bindFeHost({ catalog: {} as never,
       application: { send: (event: unknown) => sent.push(event), system: { get: () => undefined } } as never,
       secrets: {} as never,
       settings: {} as never,
@@ -239,7 +239,7 @@ describe('_sendToLocalPlugin', () => {
   it("names the sending plugin as a window asker, from the delivery it is sent inside", () => {
     const sent: unknown[] = [];
     unbindFeHost();
-    bindFeHost({
+    bindFeHost({ catalog: {} as never,
       application: { send: (event: unknown) => sent.push(event), system: { get: () => undefined } } as never,
       secrets: {} as never, settings: {} as never, client: { send() {} }, packs: {} as never,
     });
@@ -269,7 +269,7 @@ describe('_sendToLocalPlugin', () => {
   it('marks an answer as one, so a window can tell it from a command', () => {
     const sent: unknown[] = [];
     unbindFeHost();
-    bindFeHost({
+    bindFeHost({ catalog: {} as never,
       application: { send: (event: unknown) => sent.push(event), system: { get: () => undefined } } as never,
       secrets: {} as never, settings: {} as never, client: { send() {} }, packs: {} as never,
     });
@@ -294,7 +294,7 @@ describe('_sendToLocalPlugin', () => {
   it('leaves an ordinary in-window send unmarked', () => {
     const sent: Array<{ answering?: string }> = [];
     unbindFeHost();
-    bindFeHost({
+    bindFeHost({ catalog: {} as never,
       application: { send: (event: unknown) => sent.push(event as { answering?: string }), system: { get: () => undefined } } as never,
       secrets: {} as never, settings: {} as never, client: { send() {} }, packs: {} as never,
     });
@@ -310,7 +310,7 @@ describe('_sendToLocalPlugin', () => {
   it('hands the shell a ref no pack provides, rather than throwing on the caller', () => {
     const sent: unknown[] = [];
     unbindFeHost();
-    bindFeHost({
+    bindFeHost({ catalog: {} as never,
       application: { send: (event: unknown) => sent.push(event), system: { get: () => undefined } } as never,
       secrets: {} as never, settings: {} as never, client: { send() {} }, packs: {} as never,
     });

@@ -3,11 +3,13 @@
 // FeHostRuntime.packs (FePackRegistryView, fe-host.ts) in the renderer.
 import type { FeatureRef } from '../ids/refs.ts';
 import type { StepDefinition } from '../steps/types.ts';
+import type { StepBackendBinding } from '../steps/catalog.ts';
+import type { StepCatalogEntry } from '../framework/catalog-view.ts';
 import type { ArtifactDefinition } from '../artifacts/types.ts';
 import type { BlockDefinition } from '../blocks/types.ts';
 import type { ContentWriter } from '../content/writers.ts';
 import type { ContentApplier } from '../utils/apply.ts';
-import type { PackSettingsDefaults } from '../framework/pack-settings.ts';
+import type { SettingsCatalog } from '../framework/pack-settings.ts';
 import type { PackCommand } from '../framework/pack-commands.ts';
 import type { HelpCatalog } from '../framework/pack-help.ts';
 
@@ -23,9 +25,6 @@ import { _isFeHostBound, boundFeHost } from './fe-host.ts';
 export interface PackExtensionsView {
   /** The id of the system (backend) or plugin (frontend) that plays a role */
   designation(role: string): FeatureRef | undefined;
-  step(type: string): StepDefinition | undefined;
-  /** Every registered step definition, in registration order */
-  steps(): StepDefinition[];
   artifact(type: string): ArtifactDefinition | undefined;
   artifacts(): ArtifactDefinition[];
   block(type: string): BlockDefinition | undefined;
@@ -34,6 +33,13 @@ export interface PackExtensionsView {
 
 /** The registered packs, read-only: what the SDK looks up in them in a backend process */
 export interface PackRegistryView extends PackExtensionsView {
+  step(type: string): StepDefinition | undefined;
+  /** Every registered step definition, in registration order */
+  steps(): StepDefinition[];
+  /** Committed declarations, independent of backend activation. */
+  stepDeclarations(): readonly StepCatalogEntry[];
+  /** Accepted backend bindings; current declaration eligibility is checked separately. */
+  stepBindings(): ReadonlyMap<string, StepBackendBinding>;
   /** Every registered pack's services, by name */
   getRegisteredServices(): Record<string, unknown>;
   /** The refs of every registered system, the host's included */
@@ -44,17 +50,11 @@ export interface PackRegistryView extends PackExtensionsView {
   contentWriters(entity: string): ContentWriter | undefined;
   /** A registered pack's appliers */
   appliers(packId: string): readonly ContentApplier[];
-  /** Every registered pack's feature settings, merged */
-  settingsDefaults(): PackSettingsDefaults;
-  /** Calls `listener` whenever the feature settings defaults change; returns the unsubscribe */
-  onSettingsDefaultsChanged(listener: () => void): () => void;
-  /**
-   * The refs of every installed feature that can have settings — it declares defaults, or has a plugin, whose settings
-   * form writes them: the registered ones, and those of installed packs that aren't running (disabled, or failed to
-   * load), whose settings stay theirs
-   */
-  featuresWithSettings(): readonly FeatureRef[];
-  /** Every registered pack's declared commands, in the order the packs were first registered */
+  settingsCatalog(): SettingsCatalog;
+  onCatalogChanged(listener: () => void): () => void;
+  /** Navigation policy is separate from preference definitions. */
+  pluginDefaults(): Record<string, boolean>;
+  /** Enabled command declarations matching accepted active runtimes, in catalog admission order. */
   commands(): PackCommand[];
   /** Every registered pack's help entries, for the Settings view's Help list */
   help(): HelpCatalog;

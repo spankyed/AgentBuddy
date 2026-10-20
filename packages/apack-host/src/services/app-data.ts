@@ -1,5 +1,5 @@
-// services.appData: reset, back up and restore the app's stored data, and the user's onboarding (AppState)
-import type { AppDataService, BackupDatabase } from '@apackdev/sdk/services';
+// services.appData: reset, back up and restore the app's stored data
+import type { AppDataService, BackupDatabase, SettingsAdmin } from '@apackdev/sdk/services';
 import type { EarsAdmin } from '@apackdev/ears';
 import type { LmdbStore } from '@apackdev/ears/lmdb';
 import { exportDatabase, readBackupSummary, importDatabase } from '../backup/index.ts';
@@ -9,55 +9,70 @@ import { getAppVersion } from '@apackdev/sdk/env';
 import type { PackRegistry } from '../packs/registry.ts';
 import { startPacks } from '../packs/runtime/start.ts';
 import { runAppMigrations, runPackMigrations } from '../migrations/index.ts';
-import { appState } from '../app-state/index.ts';
+import { createSettingsBackupValidator } from '../features/settings/be/backup.ts';
 
 /**
  * `onReplaced` runs after either operation has rebuilt the world, and after a failed one too: a failed import
  * has already cleared the engine and reloaded what it put back. What it does with that is the caller's —
  * replacing the data is this service's job, and telling the app is not.
  */
-export function createAppData(store: LmdbStore, engine: EarsAdmin, registry: PackRegistry, onReplaced: () => void): AppDataService {
+export function createAppData({ store, engine, registry, settings, onReplaced }: {
+  store: LmdbStore; engine: EarsAdmin; registry: PackRegistry; settings: SettingsAdmin; onReplaced: () => void;
+}): AppDataService {
+  let replacing = false;
+  /** One replacement at a time, and none while a pack is being installed or changed: both write the same data */
+  async function exclusive<T>(operation: () => Promise<T>): Promise<T> {
+    if (replacing) throw new Error('App data is already being replaced. Wait for it to finish.');
+    if (!registry.claimAllPackOperations()) throw new Error('A pack is being installed or changed. Try again once it finishes.');
+    replacing = true;
+    try { return await operation(); }
+    finally {
+      replacing = false;
+      registry.releaseAllPackOperations();
+    }
+  }
+
   async function reloadMemory(includeVolatile = false): Promise<void> {
     engine.clear();
     await store.hydrate({ includeVolatile });
+  }
+
+  async function replaceData<T>(replace: () => Promise<T>): Promise<T> {
+    try { return await settings.whileReplacingData(replace); }
+    finally { onReplaced(); }
   }
 
   return {
     // The app as a fresh boot leaves it: the packs stop as when the app exits, the stores empty, then the packs
     // start as a boot starts them (onInit, migrations, content). Their systems keep running.
     async reset() {
-      try {
+      await exclusive(() => replaceData(async () => {
         registry.runShutdownHooks();
         engine.clear();
         await store.reset();
         // Stored API keys go too, with their data keys; after the database reopens, since the settings system hears of it
         secretsStore.clearAll();
         startPacks(registry);
-      } finally {
-        onReplaced();
-      }
+      }));
     },
-    hasOnboarded: () => appState.get().hasOnboarded,
-    completeOnboarding: () => appState.update({ hasOnboarded: true }),
     exportBackup: (targetPath, name, databases) =>
       exportDatabase(store, targetPath, { name, databases, mediaPath: _getMediaPath(), appVersion: getAppVersion() }),
     async importBackup(backupPath, options) {
-      try {
-        // The installed packs' types, so a backup holding rows of a type none of them declares is reported
-        const result = await importDatabase(store, backupPath, _getMediaPath(), { ...options, entityTypes: registry.getRegisteredEntityTypes() });
-        const databases = result.databases as BackupDatabase[];
-        await reloadMemory(databases.includes('volatileLmdb'));
-        // A backup from an earlier version is migrated now, not at the next boot (one from before AppState keeps
-        // the app's state in its settings)
-        if (runAppMigrations(registry)) runPackMigrations(registry.packMigrationTargets('pack'));
-        return { databases, missingDatabases: result.missingDatabases as BackupDatabase[], unknownEntityTypes: result.unknownEntityTypes };
-      } catch (error) {
-        // importDatabase has put the previous files back; reload them
-        await reloadMemory();
-        throw error;
-      } finally {
-        onReplaced();
-      }
+      return exclusive(async () => {
+        const entityTypes = registry.getRegisteredEntityTypes();
+        const validate = createSettingsBackupValidator(registry.settingsCatalog());
+        return importDatabase(store, backupPath, _getMediaPath(), {
+          ...options, entityTypes, validate,
+          withReplacement: replaceData,
+          accept: async result => {
+            await reloadMemory(result.databases.includes('volatileLmdb'));
+            // Run declared versioned data changes after restore, before notifying consumers.
+            if (runAppMigrations(registry)) runPackMigrations(registry.packMigrationTargets('pack'));
+          },
+          // The data before the import, hydrated as boot hydrates it: the run history stays on disk
+          restored: () => reloadMemory(),
+        });
+      });
     },
     async readBackupSummary(backupPath) {
       const info = await readBackupSummary(backupPath);

@@ -24,6 +24,7 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { SOURCE_CONDITION, SOURCE_PACKAGES } from '@apackdev/host/build/source-resolution';
 import ts from 'typescript';
+import { readPackCompilerConfiguration } from './compiler-configuration.ts';
 import { readSource } from './pack-sources.ts';
 import type { PackWideFinding } from './pack-rules.ts';
 
@@ -48,14 +49,6 @@ export interface PackResolution {
   readonly unreadable?: string;
 }
 
-/**
- * "No inputs were found in config file", which is about the file set and not about resolution.
- *
- * A pack with an empty `src/` raises it against the scaffold's `include` while resolving perfectly well, so
- * reporting it would make this rule fire on a pack with nothing in it yet.
- */
-const NO_INPUTS_FOUND = 18003;
-
 /** The package a file belongs to: the nearest directory at or above it holding a `package.json` */
 function packageRootOf(file: string): string | undefined {
   let dir = path.dirname(file);
@@ -79,20 +72,9 @@ function packageRootOf(file: string): string | undefined {
 export function packResolvesSource(packDir: string): PackResolution {
   const configFile = path.join(packDir, 'tsconfig.json');
   if (!fs.existsSync(configFile)) return { resolved: [] };
-  const flatten = (diagnostic: ts.Diagnostic) => ts.flattenDiagnosticMessageText(diagnostic.messageText, ' ');
-  // Two ways a config fails to be read, and both have to be caught: one that does not parse arrives here, and
-  // one whose `extends` names a missing file arrives in `parsed.errors` with the options still half-built
-  let fatal: string | undefined;
-  const host: ts.ParseConfigFileHost = { ...ts.sys, onUnRecoverableConfigFileDiagnostic: (d) => { fatal ??= flatten(d); } };
-  const parsed = ts.getParsedCommandLineOfConfigFile(configFile, {}, host);
-  const unreadable = (why: string): PackResolution => ({
-    resolved: [],
-    unreadable: `tsconfig.json could not be read, so this rule could not check it: ${why}`,
-  });
-  if (fatal !== undefined) return unreadable(fatal);
-  if (!parsed) return unreadable('TypeScript returned no configuration for it');
-  const errors = parsed.errors.filter((d) => d.category === ts.DiagnosticCategory.Error && d.code !== NO_INPUTS_FOUND);
-  if (errors.length > 0) return unreadable(errors.map(flatten).join('; '));
+  let options: ts.CompilerOptions;
+  try { options = readPackCompilerConfiguration(packDir)!.options; }
+  catch (error) { return { resolved: [], unreadable: `tsconfig.json could not be read, so this rule could not check it: ${error instanceof Error ? error.message : String(error)}` }; }
   // Any path under the pack's `src`: a bare specifier resolves from the containing file's directory outwards, and
   // the file itself is never read, so it need not exist
   const from = path.join(packDir, 'src', 'index.ts');
@@ -100,7 +82,7 @@ export function packResolvesSource(packDir: string): PackResolution {
   // reached through /var and realpaths to /private/var, and the difference climbed out of the pack entirely
   const base = fs.realpathSync(packDir);
   const resolved = SOURCE_PACKAGES.flatMap((specifier) => {
-    const file = ts.resolveModuleName(specifier, from, parsed.options, ts.sys).resolvedModule?.resolvedFileName;
+    const file = ts.resolveModuleName(specifier, from, options, ts.sys).resolvedModule?.resolvedFileName;
     if (file === undefined) return [];
     const root = packageRootOf(file);
     if (root === undefined || !file.startsWith(path.join(root, 'src') + path.sep)) return [];

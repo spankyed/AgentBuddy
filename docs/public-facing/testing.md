@@ -7,6 +7,11 @@ A pack has two kinds of tests:
 
 This page covers unit tests.
 
+Pack E2E results and screenshots default to `.apack/tests/`; driving logs, reports and screenshots use
+`.apack/drive/`. Keep custom generated output under `.apack/` too: this work directory is excluded from
+authored build inputs, so running a test does not invalidate the pack's source identity. Explicit
+Playwright output options and screenshot/report overrides still choose their own destinations.
+
 ## Setup
 
 `apack pack init` scaffolds `vitest.config.ts` and `tests/setup.ts`:
@@ -59,6 +64,10 @@ await setupPackTests({ contentRuntime, registration });
 - **The registered packs are the test file's own:** the harness registers your pack and its dependencies in a registry it creates for the file, which the SDK's lookups (`getDesignated`, `stepRegistry`, `getPackCommands`, `services`, …) read. To test how your pack reacts to another pack (its commands, feature settings or appliers), register one with `registerPack({ id, features: { … }, … })` from `@apackdev/testing/harness`, and `unregisterPack(id)` when done.
 - **A lookup filled directly:** for what no pack registers (a step type or designation only one test needs), fill `testPacks` from `@apackdev/sdk/testing` (`steps`, `designations`, `artifacts`, `blocks`, `services`, `content.writers`, `appliers`, `commands`); its entries are found before the registered packs'. Empty it with `testPacks.clear()`.
 - **Run `apack pack build` once first**, so dependencies are fetched into `.apack/deps/`.
+- **Source tests need current generated entries, not a bundle of the pack itself.** The harness validates
+  `apack.json` and checks its declaration identity against the generated registration and content runtime.
+  Run `apack pack generate-entries` after declarations change. Dependencies still use their checked cached
+  snapshots and compiled runtimes. Declared settings remain available independently of which systems a test starts.
 - **The pack is found** at or above the vitest project's root (`--root`, `test.root`, a workspace project's directory), which `isolatedDataDir()`'s `globalSetup` passes to the harness; pass `packDir` to `setupPackTests` to name it yourself.
 - **Each test starts from an empty database** (a fresh EARS engine, with your repositories registered; no secrets or media). Apps a test starts stop after it; service mocks last one test. `resetTestData()` does the same mid-test: a fresh engine, the secrets emptied and the media store cleared; registrations stay. `testMediaPath(entityId?)` names the media store (or one row's folder in it) for a test that asserts on written media.
 - **The engine is the harness's.** Everything your code reaches through `#generated/ears`, `#generated/repository` and `@apackdev/ears` acts on the engine the harness installed. Code tested without the harness (a helper over the engine) can create and install its own with `createEarsEngine`/`installEngine` from `@apackdev/ears` ([Engine instances](services-and-data.md#engine-instances)); don't do that in a harness test file, which would replace the harness's engine. Install `@apackdev/ears` at the version your `@apackdev/sdk` uses: when they differ, npm gives the SDK its own copy, and `setupPackTests` fails naming both.
@@ -79,6 +88,12 @@ it('content notes', async () => {
 ```
 
 `importContent({ keys?, mode? })` compiles your content sources (your formats and your dependencies') and writes them. Without `keys` it content every entry naming a format and no `applier`. Name `actions`, `prompts` and `flows` to write those, before running flows.
+
+Generated `ContentRuntime` types come from `@apackdev/sdk/framework`. Data-only setup binds the pack's
+content facet (entities, relations, repositories, writers and supplied source appliers), checked against
+its manifest. It activates no backend systems or services. Passing the generated backend `registration`
+selects backend testing; that binding must match the manifest's complete feature and provided-API list.
+Both modes retain settings declarations without opening the Settings page.
 
 ## Systems
 
@@ -144,18 +159,20 @@ it('reaches its system and hears back', async () => {
 
 | Member | What it does |
 |---|---|
-| `startShell({ plugins, defaultPlugin?, designations? })` | Starts the shell with `plugins` (by feature id: each one's `state`, and anything else of its definition the test needs) registered as your pack's, opens `defaultPlugin` (the first listed when unset), and binds the frontend host, so `openPlugin`, `openPlugin` and `useShell()` reach it. Its client is the harness's bus: what plugins send reaches a `startApp` app's systems, and what those systems send plugins reaches your plugins' actors. It resolves once the shell is connected |
+| `startShell({ plugins, defaultPlugin?, designations? })` | Starts the shell with `plugins` (by feature id: each one's `state`, and anything else of its definition the test needs) registered as your pack's, opens `defaultPlugin` (the first listed when unset), and binds the frontend host, so `openPlugin`, `openEntity` and `useShell()` reach it. Its client is the harness's bus: what plugins send reaches a `startApp` app's systems, and what those systems send plugins reaches your plugins' actors. It resolves once the shell is connected |
 | `opened()` | The ref of the plugin open |
 | `plugin(name)` | A plugin's running actor, named as your pack names it |
 | `notices` | What the shell told the user went wrong (a plugin it couldn't open, say), in order |
 | `actor` | The shell's actor |
 | `stop()` | Stops the shell and unbinds the frontend host; the harness stops shells after each test |
 
+`startShell()` verifies the built pack once per test-file setup and reuses its captured entity destinations. Missing builds or declarations that differ from the manifest fail explicitly; run `apack pack build` before shell tests.
+
 Start one shell per test, in place of `startFeTestRuntime`: it binds the frontend host itself, and refuses when one is already bound. Your systems' lookups (roles, steps) still see everything your pack registered while it runs. `useShell()` runs in a component's setup or an effect scope (`effectScope().run(() => useShell())` in a test).
 
 ## Services
 
-`services` (from `#generated/services`) holds your services and your dependencies'. `mockService` replaces one for the current test:
+`services` (from `#generated/services`) contains your pack's own services, the SDK baseline, and host/dependency APIs selected by `consumes.services`. `mockService` replaces one for the current test. The inference example requires `host/inference`:
 
 ```typescript
 import { mockService } from '@apackdev/testing/harness';
@@ -167,9 +184,17 @@ it('digests a note, with only the inference call it makes mocked', async () => {
 });
 ```
 
+When testing a dependency's internal use of its own service, type its mock with that provider's generated contract, for example `import type { Services as DefaultServices } from '#generated/deps/default-setup'` and `mockService<DefaultServices, 'scheduler'>(...)`. A test double does not grant the consuming pack access to that service.
+
 Give only the members the code under test uses. A mock lasts for the test it's made in: make it in the test or a `beforeEach` (`mockService` fails in `beforeAll` or at the top of a file). Code that imports a service module directly, instead of using `services`, isn't affected. Mock services that reach outside the process (CLIs, the network) in any test that runs code using them.
 
-`services.secrets` works in unit tests, in memory and emptied before each test: store a key's metadata as Settings → Secrets would with `addTestSecret(provider, label)` from `@apackdev/testing/harness` (the first key for a provider is selected). Keys have no values in tests.
+With `host/secrets` declared in `consumes.services`, `services.secrets` works in unit tests, in memory and emptied before each test: store a key's metadata as Settings → Secrets would with `addTestSecret(provider, label)` from `@apackdev/testing/harness` (the first key for a provider is selected). Keys have no values in tests.
+
+For host settings fixture setup and assertions, `getTestSettings()` from the harness returns the active
+test's settings administration. `getOverrides()` inspects explicit stored choices; `getAll()` reads
+effective values. Use `forPack(id)` when testing a fixture pack's read/write/reset policy. Pack source
+uses generated settings handles. A mocked reset or import that replaces data must run its replacement
+inside `getTestSettings().whileReplacingData(...)` to exercise the real notification lifecycle.
 
 ## Models
 
@@ -237,7 +262,7 @@ it('summarizes a note', async () => {
 - **Setup and data:** `setupPackTests` (`PackTestOptions`), `importContent` (`ImportContentOptions`), `importFlows`, `resetTestData`, `testMediaPath`, `ContentRuntime`, and `registerPack`/`unregisterPack` (another pack in the test file's registry).
 - **Frontend:** `startShell` (`StartShellOptions`, `TestShell`, `TestPlugin`).
 - **Apps:** `startApp` and its types `StartAppOptions`, `TestApp`, `FlowRun`, `FlowStepTrace`, `RunFlowOptions` and `PluginEvent` (what `emitted` and `nextEmit` return: the event exactly as sent) and `Message` (`{ to, event }`, what the test bus carries).
-- **Mocks and host state:** `mockService`, `mockInference`, `addTestSecret`, `takeSystemErrors`.
+- **Mocks and host state:** `mockService`, `mockInference`, `addTestSecret`, `takeSystemErrors`, `getTestSettings`.
 
 `@apackdev/testing/vitest`: `isolatedDataDir` (`IsolatedDataDir`).
 

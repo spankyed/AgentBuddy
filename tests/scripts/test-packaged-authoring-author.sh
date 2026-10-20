@@ -24,8 +24,8 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
 . "$ROOT/tests/scripts/lib/authoring.sh"
 # This run's work dir survives it: the chain caches a step on its declared `outputs` existing, and the app
-# half reads the archive out of here. Earlier runs' dirs are swept by `newWorkDir`, which can see every one
-# of them rather than only the one a surviving handoff happens to name.
+# half reads the archive out of here. newWorkDir sweeps dead owners in this checkout only;
+# the chain serializes this producer with its app consumer.
 rm -rf "$HANDOFF"
 WORK="$(newWorkDir)"
 echo "Work dir: $WORK"
@@ -66,7 +66,7 @@ for lib in @tiptap highlight.js lowlight @guolao/vue-monaco-editor; do
 done
 # From here on, `apack` is the pack's own pinned CLI
 APACK="$PACK/node_modules/.bin/apack"
-"$APACK" pack add feature notes --label Notes >/dev/null
+"$APACK" pack add feature notes --description "Manage notes." --label Notes >/dev/null
 # @apackdev/ui's heavier components must build in a pack, not only in the monorepo
 npm pkg set "dependencies.@apackdev/ui=file:$UI_TGZ"
 npm install --silent --prefer-offline --no-audit --no-fund
@@ -78,7 +78,7 @@ export const editors = { TiptapEditor, SimpleMonacoEditor };
 TS
 node -e '
   const fs = require("fs");
-  const file = "src/features/notes/fe/plugin.ts";
+  const file = "src/features/notes/fe/state.ts";
   fs.writeFileSync(file, "import { editors } from \"./editors.ts\";\nconsole.debug(Object.keys(editors));\n" + fs.readFileSync(file, "utf8"));
 '
 "$APACK" pack init-tests
@@ -89,7 +89,7 @@ step "Name the checkout the build resolves a shipped pack through"
 # `apack pack build` reads a dependency on a shipped pack out of an app's `packages/` (fetch-deps'
 # `configuredHostPackagesDir`), so something has to name an app before step 2 adds that dependency.
 #
-# **APACK_HOST, and only for the commands that build.** That function derives the apack checkout
+# **APACK_HOST for build commands; install selects the same host explicitly.** That function derives the apack checkout
 # *behind the pack* when nothing names an app — and this pack is deliberately outside any checkout,
 # installing the packages from packed tarballs, which is the population this script exists to represent.
 # So the derivation correctly finds nothing here and the checkout has to be named. It used to be named by
@@ -195,6 +195,7 @@ TS
 node -e '
   const fs = require("fs");
   const m = JSON.parse(fs.readFileSync("apack.json", "utf8"));
+  m.consumes = { services: ["host/inference"] };
   m.content.sources = { prompts: "src/content/prompts", ...m.content.sources };
   fs.writeFileSync("apack.json", JSON.stringify(m, null, 2) + "\n");
 '
@@ -281,7 +282,8 @@ describe('notes summary flow', () => {
   });
 });
 TS
-# Uncoloured, so the summary line below matches whatever FORCE_COLOR the caller set
+# Check authored types before execution; keep the unit summary uncoloured for the check below.
+node_modules/.bin/tsc --noEmit
 NO_COLOR=1 FORCE_COLOR=0 node_modules/.bin/vitest run 2>&1 | tee "$WORK/unit.log"
 # The scaffold's content test (2), the feature's system test, default-setup notes and library, the service and the flow
 grep -qE "Tests +7 passed" "$WORK/unit.log" || fail "unit tests through the harness failed"
@@ -291,7 +293,6 @@ node -e '
   const flow = flows["Notes Heartbeat"];
   if (!flow || !JSON.stringify(flow).includes("keep_alive")) throw new Error("the keepAlive flow was not compiled: " + JSON.stringify(flows));
 ' || fail "the keepAlive flow was not compiled"
-node_modules/.bin/tsc --noEmit
 
 step "5. @apackdev/testing's published types stand alone"
 # Its declarations may import only what a pack installs: an unpublished import (@apackdev/host) fails with lib checking
@@ -342,7 +343,7 @@ ARCHIVE="$(sed -n 's/^Pack: //p' "$WORK/release.log")"
 
 step "7. Install the packed archive into an isolated test data dir"
 DATA="$WORK/test-data"
-APACK_USER_DATA_DIR="$DATA" "$APACK" pack install "$ARCHIVE"
+APACK_USER_DATA_DIR="$DATA" "$APACK" pack install "$ARCHIVE" --host "$ROOT"
 INSTALLED="$(find "$DATA" -path '*/demo-pack/integrity.json' | head -n 1)"
 [ -n "$INSTALLED" ] || fail "the pack was not installed"
 node -e '
@@ -354,15 +355,9 @@ node -e '
 
 
 # What the app half needs, and nothing it can derive for itself. The archive's digest is in here so that
-# half's cache key moves when the artifact does: a re-authored pack is a different thing to test.
+# half's cache key moves when the build does: a re-authored pack is a different thing to test.
 step "Hand the archive to the app half"
-mkdir -p "$HANDOFF"
-node -e '
-  const fs = require("fs");
-  const [work, archive, pack, out] = process.argv.slice(1);
-  const sha = require("crypto").createHash("sha256").update(fs.readFileSync(archive)).digest("hex");
-  fs.writeFileSync(`${out}/work.json`, JSON.stringify({ work, archive, pack, sha }, null, 2) + "\n");
-' "$WORK" "$ARCHIVE" "$PACK" "$HANDOFF"
+writeAuthoringHandoff
 
 _step_report
 echo

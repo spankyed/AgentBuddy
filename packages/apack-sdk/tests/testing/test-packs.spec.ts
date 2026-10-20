@@ -65,7 +65,7 @@ describe('testPacksView', () => {
     const view = testPacksView();
     expect(view.steps()).toEqual([]);
     expect(view.designation('brain')).toBeUndefined();
-    expect(view.settingsDefaults()).toEqual({ revision: 0, settings: { features: {} }, schemas: {}, visibility: {} });
-    expect(view.onSettingsDefaultsChanged(() => {})).toBeTypeOf('function');
+    expect(view.settingsCatalog()).toEqual({ revision: 0, app: { schema: { type: 'object' }, defaults: {} }, packs: {}, features: {}, dependencies: {} });
+    expect(view.onCatalogChanged(() => {})).toBeTypeOf('function');
   });
 });

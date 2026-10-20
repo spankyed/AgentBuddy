@@ -1,6 +1,7 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import { boundHost } from '../runtime/host-runtime.ts';
+import { parseContentIndex } from '../build/content-index.ts';
 
 /**
  * What one content key's applier did. Not counts, despite three of its four fields: `errors` is what the run
@@ -157,15 +158,7 @@ export const CONTENT_INDEX_FILE = 'content.json';
  */
 export function contentPackId(compiledDir: string): string {
   const indexFile = path.join(compiledDir, CONTENT_INDEX_FILE);
-  return indexPackId(loadJSON<{ packId?: string }>(indexFile), indexFile);
-}
-
-/** The pack a parsed content index names; an index from before packs were recorded names none */
-export function indexPackId(index: { packId?: string } | null, indexFile: string): string {
-  if (!index?.packId) {
-    throw new Error(`${indexFile} doesn't name the pack that compiled this content: rebuild the pack with apack pack build`);
-  }
-  return index.packId;
+  return parseContentIndex(JSON.parse(fs.readFileSync(indexFile, 'utf8'))).packId;
 }
 
 /** Content a pack's compiled content directory with the appliers of the registered pack its content.json names */

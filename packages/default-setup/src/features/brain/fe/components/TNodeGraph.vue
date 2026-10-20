@@ -90,7 +90,9 @@ import BaseNode from '@apackdev/ui/components/BaseNode';
 import { Maximize } from 'lucide-vue-next';
 import { useNodeViewport } from '../useNodeViewport.ts';
 import { cronToHuman } from '@apackdev/sdk/cron';
-import { stepRegistry } from '@apackdev/sdk/steps';
+import { useStepDeclarations } from '@apackdev/sdk/fe';
+
+const stepDeclarations = useStepDeclarations();
 
 interface Props {
   tnodeTree?: TrackTree[];
@@ -164,7 +166,7 @@ const clearStalePan = (event: MouseEvent) => {
 
 // Helper functions
 const createVueFlowNode = (tnode: TrackTree, position: { x: number; y: number }): VueFlowNode => {
-  const isTrigger = tnode.triggerType ? stepRegistry.isTrigger(tnode.triggerType) : false;
+  const isTrigger = stepDeclarations.value.some(entry => entry.type === tnode.triggerType && entry.declaration.kind === 'trigger');
   return {
     id: tnode.id,
     type: 'tnode',

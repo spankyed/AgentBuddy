@@ -34,7 +34,7 @@
 import { computed } from 'vue';
 import { FileText } from 'lucide-vue-next';
 import type { ArtifactItem } from '@apackdev/sdk/artifacts';
-import { artifactRegistry } from '@apackdev/sdk/artifacts';
+import { getArtifactBinding, useArtifactDeclarations } from '@apackdev/sdk/fe';
 import ArtifactList from './artifact-list.vue';
 import TextArtifact from '#extensions/artifacts/viewers/text-artifact.vue';
 
@@ -52,7 +52,10 @@ const selectedArtifact = computed(() =>
   props.artifacts.find(a => a.id === props.selectedArtifactId)
 );
 
+const declarations = useArtifactDeclarations();
+
 function getArtifactComponent(type: string) {
-  return artifactRegistry.getComponent(type) || TextArtifact;
+  declarations.value;
+  return getArtifactBinding(type)?.binding.fe?.component || TextArtifact;
 }
 </script>

@@ -1,9 +1,9 @@
-import type { StepBuildFacet, StepCompileResult, StepCompileContext, StepValidationError, StepValidationContext, StepDecompileContext, StepNodeFacet } from '@apackdev/sdk/steps';
+import type { StepCompileResult, StepCompileContext, StepValidationError, StepValidationContext, StepDecompileContext } from '@apackdev/sdk/steps';
 import { EARS } from '@apackdev/sdk';
 import { expandRecord, collapseRecord, mapProblems } from '@apackdev/sdk/steps';
 import type { FieldMapping, MapEntry } from '@apackdev/sdk/steps';
 
-function compile(
+export function compile(
   node: Record<string, unknown>,
   nodeId: string,
   ts: number,
@@ -27,7 +27,7 @@ function compile(
   };
 }
 
-function validate(
+export function validate(
   s: Record<string, unknown>,
   path: string,
   ctx: StepValidationContext,
@@ -46,12 +46,12 @@ function validate(
   return [...errors, ...mapProblems(s.map, `${path}.map`)];
 }
 
-function getLabel(step: Record<string, unknown>, index: number): string {
+export function getLabel(step: Record<string, unknown>, index: number): string {
   if (typeof step.label === 'string') return step.label;
   return (step.flow as string) || `Flow ${index}`;
 }
 
-function decompile(node: Record<string, unknown>, ctx: StepDecompileContext): Record<string, unknown> {
+export function decompile(node: Record<string, unknown>, ctx: StepDecompileContext): Record<string, unknown> {
   const flowLabel = ctx.flowMap.get(node.flowRef as string) || node.flowRef;
   const dsl: Record<string, unknown> = { type: 'subflow', flow: flowLabel };
   if (node.label && node.label !== flowLabel) dsl.label = node.label;
@@ -62,13 +62,3 @@ function decompile(node: Record<string, unknown>, ctx: StepDecompileContext): Re
   if (map) dsl.map = map;
   return dsl;
 }
-
-/** Build-time facets only (no runtime or FE imports); loaded by `apack pack build` in dependent packs. */
-export const flowStepBuild: StepBuildFacet = { compile, validate, getLabel, decompile };
-
-/** What a node of this type starts with; the backend writes it and the canvas draws it */
-export const flowStepNode: StepNodeFacet = {
-  label: 'Flow',
-  defaultLabel: 'Handle flow',
-  defaults: { propagateCtx: true },
-};

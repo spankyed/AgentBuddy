@@ -14,7 +14,11 @@
   "exports": {
     "./app-state": "./src/app-state/index.ts",
     "./backup": "./src/backup/index.ts",
+    "./build/compiler-inputs": "./src/build/compiler-inputs/index.ts",
     "./build/discover": "./src/build/discover.ts",
+    "./build/package-inputs": "./src/build/package-inputs.ts",
+    "./build/pack-build-inputs": "./src/build/pack-build-inputs.ts",
+    "./build/pack-inputs": "./src/build/pack-inputs.ts",
     "./build/pack-workdir": "./src/build/pack-workdir.ts",
     "./build/own-module-specifiers": "./src/build/own-module-specifiers.ts",
     "./build/packages-built": "./src/build/packages-built.ts",
@@ -33,6 +37,7 @@
     "./logs": "./src/logs.ts",
     "./migrations": "./src/migrations/index.ts",
     "./packs": "./src/packs/index.ts",
+    "./packs/assets": "./src/packs/assets.ts",
     "./packs/dev-server": "./src/packs/dev-server.ts",
     "./packs/runtime": "./src/packs/runtime/index.ts",
     "./process-liveness": "./src/process-liveness.ts",
@@ -40,6 +45,8 @@
     "./secrets": "./src/secrets/index.ts",
     "./secrets/vault": "./src/secrets/vault.ts",
     "./services": "./src/services/index.ts",
+    "./testing": "./src/testing/pack-registry.ts",
+    "./fe/testing": "./src/testing/frontend-registry.ts",
     "./settings": "./src/features/settings/be/index.ts"
   },
   "dependencies": {

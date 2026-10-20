@@ -1,18 +1,9 @@
-// What a pack's code may say, as rules any pack is held to — not only the ones in this repo.
-//
-// Before this, an external pack got two of the nineteen rules that keep this repo's packs honest
-// (`docs/goals/goal-one-rule-set.md`): the other seventeen lived in `scripts/check-import-specifiers.ts`,
-// which only ever runs here. The rule is the same rule wherever it runs, so it lives once — here, in the
-// package that drives a pack's whole toolchain — and the repo's script applies these same functions to the
-// packs in this checkout while keeping its own rules about the repo's layout.
-//
-// **A rule is switchable only when a violation has no runtime effect.** `host-imports` is not: the bundler
-// refuses the import anyway, and the message is the point. `backend-console` is: `console.log` logs. The
-// switchable ones are named in `apack.checks.json`'s `allow` list, which is read at build time and never by
-// the app, so `apack.json` stays what the app loads.
+// Source rules shared by pack build, validation and the repository checks.
+// Only development conventions may be allowed through apack.json checks.allow.
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import ts from 'typescript';
+import { ALLOWABLE_PACK_CHECKS, PackChecksSchema } from '@apackdev/sdk/build';
 import { ownModuleFindings, type OwnModuleSpecifier } from '@apackdev/host/build/own-module-specifiers';
 import { readSubpathImports } from '@apackdev/host/build/subpath-imports';
 // The key itself, not a copy of it: one declaration, so a rename there renames what this refuses
@@ -97,7 +88,7 @@ export function formatPackWide(found: PackWideFinding, where: (file: string) => 
 
 export interface PackRule {
   /**
-   * The rule's name, which `apack.checks.json` and `--rule` take.
+   * The rule's name, which `apack.json checks.allow` and `--rule` take.
    *
    * `string` rather than `PackRuleKey`, because that union is derived from this list below and a rule cannot be
    * typed by a union it defines. So a misspelled key here does not fail at the declaration — it fails at the three
@@ -107,7 +98,7 @@ export interface PackRule {
   readonly key: string;
   /** The sentence reported when it fires, the same one `check:specifiers` prints */
   readonly rule: string;
-  /** Whether a pack may allow it in `apack.checks.json`: true only when a violation has no runtime effect */
+  /** Whether a pack may allow it in `apack.json checks.allow`: true only when a violation has no runtime effect */
   readonly switchable: boolean;
   /** Per file, over its parsed source. Most rules are this: an offence is something a file says */
   check?(view: SourceView, at: PackPlace): PackFinding[];
@@ -211,7 +202,6 @@ const reservedEventKey = (node: ts.Node): string[] | undefined => {
 const RULE_LIST = [
   {
     key: 'source-resolution',
-    switchable: false,
     rule: "A pack compiles against the @apackdev packages' published dist, the one layout a pack author has, so "
       + "neither its tsconfig nor its Vitest config may resolve a checkout's source: esbuild and Vite's pack "
       + 'bundler ignore the @apackdev/source condition, so a pack that declares it typechecks and tests against '
@@ -232,7 +222,6 @@ const RULE_LIST = [
   },
   {
     key: 'contract-leaves',
-    switchable: false,
     rule: 'A contract leaf is a leaf: no ./state or ./system, no other feature, and nothing generated but types '
       + "and ears — codegen reads a plugin's and a system's contract without resolving its actor, and an import "
       + 'that reaches one restores the cycle',
@@ -240,7 +229,6 @@ const RULE_LIST = [
   },
   {
     key: 'host-imports',
-    switchable: false,
     rule: "A pack doesn't import the host's private @apackdev/host package, which is not installed for a pack; "
       + 'use @apackdev/sdk',
     check(view, _place) {
@@ -250,7 +238,6 @@ const RULE_LIST = [
   },
   {
     key: 'lmdb-imports',
-    switchable: false,
     rule: 'A pack reaches its data through the engine the app installs: neither lmdb nor @apackdev/ears/lmdb is '
       + 'provided to a pack, so importing one fails at load',
     check(view, _place) {
@@ -260,14 +247,12 @@ const RULE_LIST = [
   },
   {
     key: 'cross-feature-imports',
-    switchable: true,
     rule: "A feature's frontend is its own: what it offers other features is its plugin's contract, read through "
       + '#generated/fe and #generated/events, never a module of its own',
     check: crossFeatureFindings,
   },
   {
     key: 'own-modules',
-    switchable: false,
     rule: 'A pack names its own modules by the file that is there, extension and all: no runtime resolves an '
       + 'extensionless specifier in ESM, so one works only while a build guesses the suffix and this one does not — '
       + 'and the .js a pack would otherwise name is a file it never emits, since it ships one bundle',
@@ -281,7 +266,6 @@ const RULE_LIST = [
   },
   {
     key: 'pack-own-aliases',
-    switchable: false,
     rule: 'A pack names its own modules with # subpath imports from its package.json (#generated/x, '
       + '#features/x): a @/ path is a TypeScript-only mapping and no runtime reads it',
     check(view, _place) {
@@ -290,7 +274,6 @@ const RULE_LIST = [
   },
   {
     key: 'internal-package-imports',
-    switchable: false,
     rule: "A pack imports only the @apackdev packages' public API: an export named `_x` is @internal, the app's "
       + 'alone, and an app update is free to rename it',
     check(view, place) {
@@ -304,7 +287,6 @@ const RULE_LIST = [
   },
   {
     key: 'untyped-sends',
-    switchable: true,
     rule: 'Pack code uses the typed facades: broadcastToPlugin, sendToPlugin and sendToSystem from '
       + '#generated/events, repositories declared in apack.json',
     check(view, place) {
@@ -328,7 +310,6 @@ const RULE_LIST = [
   },
   {
     key: 'component-sends',
-    switchable: false,
     rule: "A feature's component emits to its own plugin with usePlugin() rather than sending to another "
       + 'plugin: a component runs in no delivery, so sendToPlugin from one carries no Message.sender and the '
       + 'plugin it reaches cannot answer it',
@@ -340,7 +321,6 @@ const RULE_LIST = [
   },
   {
     key: 'raw-transport',
-    switchable: true,
     rule: 'Pack code sends with broadcastToPlugin, sendToPlugin and sendToSystem from #generated/events, and '
       + 'subscribes with onConnected and onIncoming from @apackdev/sdk/events',
     check(view, _place) {
@@ -356,7 +336,6 @@ const RULE_LIST = [
   },
   {
     key: 'backend-console',
-    switchable: true,
     rule: 'Pack backend code logs with createLogger from @apackdev/sdk/logger',
     check(view, place) {
       if (!BACKEND_PATH.test(place.inRoot) || FRONTEND_OR_TEST_PATH.test(place.inRoot)) return [];
@@ -370,7 +349,6 @@ const RULE_LIST = [
   },
   {
     key: 'repository-casts',
-    switchable: true,
     rule: "Read repositories through their owner's exports — a pack through `repository` from "
       + "#generated/repository, which types its own and its dependencies' — never through a cast of the engine's "
       + 'registry',
@@ -384,7 +362,6 @@ const RULE_LIST = [
   },
   {
     key: 'reserved-event-keys',
-    switchable: false,
     rule: "`_call` is the app's key on a delivered event: the delivery doors write the call an answer "
       + 'answers under it, so a property a pack writes under that name is overwritten on the way in and read '
       + 'as a correlation on the way out — ask answersCall or settleCall from @apackdev/sdk/events rather than '
@@ -397,7 +374,7 @@ const RULE_LIST = [
       return view.visit(reservedEventKey);
     },
   },
-] as const satisfies readonly PackRule[];
+] as const satisfies readonly Omit<PackRule, 'switchable'>[];
 
 /**
  * Every rule's name, derived from the list above rather than written beside it.
@@ -416,40 +393,10 @@ export type PackRuleKey = (typeof RULE_LIST)[number]['key'];
  * a `checkPack`. Widening to `PackRule` alone would take the key back to `string` with them, so the key is put
  * back: an assignment TypeScript checks, since each entry's key is one of the literals the union is made of.
  */
-export const PACK_RULES: readonly (PackRule & { readonly key: PackRuleKey })[] = RULE_LIST;
-
-const SWITCHABLE = PACK_RULES.filter((rule) => rule.switchable).map((rule) => rule.key);
-
-/**
- * `apack.checks.json`: the rules this pack allows.
- *
- * A file of its own rather than a manifest key, because it is read at build time and never by the app — and
- * an `allow` list rather than a map of booleans, so there is nothing to interpret and no way to write a
- * confusing `true`. A name that is not switchable, or not a rule at all, is an error naming what may be
- * allowed: a silent typo would leave a rule off for as long as nobody looked.
- */
-export function loadPackChecks(packDir: string): Set<PackRuleKey> {
-  const file = path.join(packDir, 'apack.checks.json');
-  if (!fs.existsSync(file)) return new Set();
-  let allow: unknown;
-  try {
-    ({ allow } = JSON.parse(fs.readFileSync(file, 'utf-8')) as { allow?: unknown });
-  } catch (err) {
-    throw new Error(`apack.checks.json does not parse: ${(err as Error).message}`);
-  }
-  if (allow === undefined) return new Set();
-  if (!Array.isArray(allow) || allow.some((key) => typeof key !== 'string')) {
-    throw new Error('apack.checks.json\'s "allow" is a list of rule names, e.g. { "allow": ["backend-console"] }');
-  }
-  const wrong = (allow as string[]).filter((key) => !SWITCHABLE.includes(key as PackRuleKey));
-  if (wrong.length > 0) {
-    throw new Error(`apack.checks.json allows ${wrong.map((key) => `"${key}"`).join(', ')}, which `
-      + `${wrong.length === 1 ? 'is not a rule a pack may switch off' : 'are not rules a pack may switch off'}. `
-      + `These are: ${SWITCHABLE.join(', ')}. The rest report something that breaks — a specifier nothing `
-      + 'resolves, an import the bundler refuses, a cycle codegen cannot read — so there is nothing to allow.');
-  }
-  return new Set(allow as PackRuleKey[]);
-}
+const SWITCHABLE: readonly PackRuleKey[] = ALLOWABLE_PACK_CHECKS;
+export const PACK_RULES: readonly (PackRule & { readonly key: PackRuleKey })[] = RULE_LIST.map(rule => ({
+  ...rule, switchable: SWITCHABLE.includes(rule.key),
+}));
 
 /**
  * Every source file under `within` — each a directory or a single file, relative to the pack — with where it sits.
@@ -506,7 +453,13 @@ export function packPlaces(packDir: string, within: readonly string[]): { view: 
  * reported. `pack-rules.spec.ts` holds the order to what it claims.
  */
 export function packRuleProblems(packDir: string, dirs: readonly string[] = ['src']): Map<PackRuleKey, string[]> {
-  const allowed = loadPackChecks(packDir);
+  // Source-only callers need no manifest; owned packs use the same checks schema as full validation.
+  const manifestFile = path.join(packDir, 'apack.json');
+  const checks: unknown = fs.existsSync(manifestFile) ? (JSON.parse(fs.readFileSync(manifestFile, 'utf8')) as { checks?: unknown }).checks : undefined;
+  const result = PackChecksSchema.safeParse(checks === undefined ? {} : checks);
+  if (!result.success) throw new Error(result.error.issues.map(issue =>
+    `apack.json checks${issue.path.length ? '.' + issue.path.join('.') : ''}: ${issue.message}`).join('\n'));
+  const allowed = new Set<PackRuleKey>(result.data.allow ?? []);
   const rules = PACK_RULES.filter((rule) => !allowed.has(rule.key));
   const problems = new Map<PackRuleKey, string[]>();
   /**
@@ -563,7 +516,7 @@ export function packRuleProblems(packDir: string, dirs: readonly string[] = ['sr
  *
  * Every rule, not the first: a pack author fixes them in one pass rather than in one build each. A switchable
  * rule's block ends with the line that allows it, and a rule that is not switchable does not offer one,
- * because `loadPackChecks` would refuse the key.
+ * because manifest validation refuses the key.
  */
 export function refusePackRuleViolations(packDir: string, dirs?: readonly string[]): void {
   const problems = packRuleProblems(packDir, dirs);
@@ -571,10 +524,7 @@ export function refusePackRuleViolations(packDir: string, dirs?: readonly string
   const blocks = [...problems].map(([key, found]) => {
     const rule = PACK_RULES.find((candidate) => candidate.key === key) as PackRule;
     const lines = [`  ${rule.rule}:`, ...found.map((problem) => `    - ${problem}`)];
-    // The whole file, not a key inside one: `apack.checks.json` holds `allow` at the top level, and advice
-    // that has to be re-nested to work is advice that silently does nothing (`loadPackChecks` reads no `checks`
-    // key, so a pasted `"checks": { … }` allows nothing). `allowLineWorks` in the spec pastes it and checks.
-    if (rule.switchable) lines.push(`    to allow this, put { "allow": ["${key}"] } in apack.checks.json`);
+    if (rule.switchable) lines.push(`    to allow this, put { "checks": { "allow": ["${key}"] } } in apack.json`);
     return lines.join('\n');
   });
   throw new Error(`${problems.size} pack rule${problems.size === 1 ? '' : 's'} failed.\n\n${blocks.join('\n\n')}`);

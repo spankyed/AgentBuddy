@@ -78,6 +78,7 @@ export type ThreadsInboxEvent =
   | { type: 'VIEW_DASHBOARD' }
 
 export type Contract = {
+  opens: 'Thread'
   state: ThreadsContext
   inbox: PluginInbox<{ pack: ThreadsInboxEvent }>
 }

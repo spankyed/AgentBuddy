@@ -1,3 +1,4 @@
+import { createNativePackTestRegistry } from '@apackdev/host/testing';
 // createHostRuntime assembles the app the SDK binds: the given bus and version, the engine, the registered packs,
 // and the host's services over the store. A reset leaves the app as a fresh boot does.
 import { secretRedaction } from '../../src/secrets/redaction.ts';
@@ -5,14 +6,13 @@ import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { afterAll, describe, expect, it, vi } from 'vitest';
-import { createEarsEngine } from '@apackdev/ears';
+import { createEarsEngine, installEngine } from '@apackdev/ears';
 import type { LmdbStore } from '@apackdev/ears/lmdb';
 import { testRootEvents } from '@apackdev/sdk/testing';
 import { createHostRuntime } from '../../src/services/index.ts';
 import { inference } from '../../src/services/inference.ts';
 import { secrets } from '../../src/services/secrets.ts';
 import { filesystem } from '../../src/services/filesystem.ts';
-import { createPackRegistry } from '../../src/packs/registry.ts';
 import { secretsStore } from '../../src/secrets/index.ts';
 import { startPacks } from '../../src/packs/runtime/start.ts';
 
@@ -21,13 +21,13 @@ const order = vi.hoisted((): string[] => []);
 const appMigrations = vi.hoisted(() => ({ succeed: true }));
 vi.mock('../../src/migrations/index.ts', () => ({
   runAppMigrations: () => { order.push('migrations'); return appMigrations.succeed; },
-  runPackMigrations: (packs: Array<{ manifest: { id: string } }>) => { order.push(`pack migrations (${packs.map((p) => p.manifest.id)})`); },
+  runPackMigrations: ((packs) => { order.push(`pack migrations (${Array.from(packs, p => p.packId)})`); }) satisfies typeof import('../../src/migrations/index.ts').runPackMigrations,
 }));
 vi.mock('../../src/packs/runtime/apply.ts', async (importOriginal) => ({
   ...await importOriginal<typeof import('../../src/packs/runtime/apply.ts')>(),
   // Sorted: which packs are in the one call is this file's claim, where their order among themselves is
   // `packContentOrder`'s and is held by the registry's own spec
-  applyPacks: (packs: Array<{ manifest: { id: string } }>) => { order.push(`pack content (${packs.map((p) => p.manifest.id).sort()})`); return []; },
+  applyPacks: ((packs) => { order.push(`pack content (${Array.from(packs, p => p.manifest.id).sort()})`); return []; }) satisfies typeof import('../../src/packs/runtime/apply.ts').applyPacks,
 }));
 
 const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'host-runtime-'));
@@ -38,16 +38,72 @@ afterAll(() => fs.rmSync(dataDir, { recursive: true, force: true }));
 const newEngine = () => createEarsEngine({ isEntityType: () => false });
 
 /** An external pack the app loaded: where it came from, as the loader records it */
-const externalOrigin = (id: string, name: string) => ({
-  id, name, version: '1.0.0', dir: '/nowhere', shipped: false,
+const externalOrigin = (id: string, name: string) => ({ declarationRevision: 'fixture-revision',
+  id, name, version: '1.0.0', dir: '/nowhere',
   manifest: { id, name, version: '1.0.0' },
 });
 
 describe('createHostRuntime', () => {
+  it('refuses overlapping resets and imports before either can touch the store', async () => {
+    let finish!: () => void;
+    const reset = vi.fn(() => new Promise<void>(resolve => { finish = resolve; }));
+    const store = { reset } as unknown as LmdbStore;
+    const runtime = createHostRuntime({ store, engine: newEngine(), transport: { rootEvents: testRootEvents },
+      appVersion: '1.2.3', packs: createNativePackTestRegistry() });
+    const first = runtime.services.appData.reset();
+    try {
+      await expect(runtime.services.appData.reset()).rejects.toThrow('already being replaced');
+      await expect(runtime.services.appData.importBackup('/not-a-backup')).rejects.toThrow('already being replaced');
+      expect(reset).toHaveBeenCalledOnce();
+    } finally { finish(); await first; }
+    order.length = 0;
+  });
+
+  it('excludes pack operations while app data is replaced, and refuses to replace it under one', async () => {
+    let finish!: () => void;
+    const store = { reset: vi.fn(() => new Promise<void>(resolve => { finish = resolve; })) } as unknown as LmdbStore;
+    const packs = createNativePackTestRegistry();
+    const runtime = createHostRuntime({ store, engine: newEngine(), transport: { rootEvents: testRootEvents },
+      appVersion: '1.2.3', packs });
+    const resetting = runtime.services.appData.reset();
+    try {
+      const free = packs.claimPackOperation('any-pack');
+      if (free) packs.releasePackOperation('any-pack');
+      expect(free).toBe(false);
+    } finally { finish(); await resetting; }
+    expect(packs.claimPackOperation('any-pack')).toBe(true);
+    try {
+      await expect(runtime.services.appData.reset()).rejects.toThrow('A pack is being installed or changed');
+      expect(store.reset).toHaveBeenCalledOnce();
+    } finally { packs.releasePackOperation('any-pack'); }
+    order.length = 0;
+  });
+
+  it('keeps settings and onboarding on the owning engine when another engine is installed', () => {
+    const firstEngine = newEngine();
+    const secondEngine = newEngine();
+    const runtime = (engine: ReturnType<typeof newEngine>) => createHostRuntime({
+      store: {} as LmdbStore, engine, transport: { rootEvents: testRootEvents },
+      appVersion: '1.2.3', packs: createNativePackTestRegistry(),
+    });
+    const first = runtime(firstEngine);
+    const second = runtime(secondEngine);
+    const previous = installEngine(secondEngine.query);
+    try {
+      first.services.settings.set({ kind: 'app' }, ['personal', 'name'], 'First');
+      second.services.settings.set({ kind: 'app' }, ['personal', 'name'], 'Second');
+      expect(first.services.settings.getAll().app.personal.name).toBe('First');
+      expect(second.services.settings.getAll().app.personal.name).toBe('Second');
+      first.services.onboarding.complete();
+      expect(first.services.onboarding.isComplete()).toBe(true);
+      expect(second.services.onboarding.isComplete()).toBe(false);
+    } finally { installEngine(previous); }
+  });
+
   it('holds the bus, version, engine, registered packs and host services', () => {
     // The services reach the store only when called
     const engine = newEngine();
-    const packs = createPackRegistry();
+    const packs = createNativePackTestRegistry();
     const runtime = createHostRuntime({ store: {} as LmdbStore, engine, transport: { rootEvents: testRootEvents }, appVersion: '1.2.3', packs });
     // What log redaction masks: the host's own check over the values its secrets store has handled
     expect(runtime.redaction).toBe(secretRedaction);
@@ -55,10 +111,12 @@ describe('createHostRuntime', () => {
     expect(runtime.appVersion).toBe('1.2.3');
     expect(runtime.ears).toBe(engine.query);
     expect(runtime.packs).toBe(packs);
-    expect(Object.keys(runtime.services).sort()).toEqual(['appData', 'filesystem', 'inference', 'secrets', 'settings', 'traceStore']);
+    expect(Object.keys(runtime.services).sort()).toEqual(['appData', 'filesystem', 'inference', 'onboarding', 'secrets', 'settings', 'traceStore']);
     expect(runtime.services.inference).toBe(inference);
     expect(runtime.services.secrets).toBe(secrets);
     expect(runtime.services.filesystem).toBe(filesystem);
+    expect(Object.keys(runtime.services.onboarding).sort()).toEqual(['complete', 'isComplete']);
+    expect(Object.keys(runtime.services.appData).sort()).toEqual(['exportBackup', 'importBackup', 'readBackupSummary', 'reset']);
 
     const service = { ping: () => 'pong' };
     packs.registerPack({ id: 'runtime-pack', features: { memos: { system: { machine: {} as never, receives: [] } } }, services: { memoService: service } });
@@ -76,15 +134,16 @@ describe('createHostRuntime', () => {
     const id = engine.query.tx('Memo-1').put('title', 'kept?').id();
     const clear = engine.admin.clear;
     engine.admin.clear = () => { order.push('engine cleared'); clear(); };
-    const packs = createPackRegistry();
+    const packs = createNativePackTestRegistry();
     const runtime = createHostRuntime({ store, engine, transport: { rootEvents: testRootEvents }, appVersion: '1.2.3', packs });
     secretsStore.add('openai', 'Work', 'sk-proj-resetspec1234567890');
     // An external pack the app loaded, holding something open between its onInit and onShutdown
     const boot = { onInit: () => order.push(`onInit (${secretsStore.list().length} keys)`), onShutdown: () => order.push('onShutdown') };
-    packs.registerPack({ id: 'reset-pack', boot }, externalOrigin('reset-pack', 'Reset'));
+    const origin = externalOrigin('reset-pack', 'Reset');
+    packs.registerPack({ id: 'reset-pack', lifecycle: boot }, { ...origin, manifest: { ...origin.manifest, lifecycle: { onInit: 'hooks.ts#onInit', onShutdown: 'hooks.ts#onShutdown' } } });
     // A pack the app ships, with a content policy — written by the same call as the installed one
     packs.registerPack({ id: 'written-pack' },
-      { id: 'written-pack', name: 'Written', version: '1.0.0', dir: '/packs/written-pack', shipped: true } as never);
+      { declarationRevision: 'fixture-revision', id: 'written-pack', name: 'Written', version: '1.0.0', dir: '/packs/written-pack' } as never);
     packs.registerShutdownHook(boot.onShutdown, 'reset-pack');
     try {
       await runtime.services.appData.reset();
@@ -106,7 +165,7 @@ describe('startPacks', () => {
   it("runs no pack migration or apply when the app's migrations failed", () => {
     order.length = 0;
     appMigrations.succeed = false;
-    const packs = createPackRegistry();
+    const packs = createNativePackTestRegistry();
     packs.registerPack({ id: 'late-written-pack' });
     packs.registerPack({ id: 'late-pack' }, externalOrigin('late-pack', 'Late'));
     try {

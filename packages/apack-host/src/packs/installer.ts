@@ -1,13 +1,18 @@
+import { assertPackSettings } from './settings-admission.ts';
 import * as fs from 'fs';
+import { INSTALL_RECORD_RECOVERY } from './staging.ts';
+import { readAppPackSources } from './app-sources.ts';
+import { readInstalledPacks, writeInstalledPacks, type PackRecord } from './installed.ts';
 import * as path from 'path';
 import * as os from 'os';
 import { execFileSync } from 'child_process';
+import { isDeepStrictEqual } from 'node:util';
 import { parse, satisfies } from 'semver';
 import { replaceDir } from '../replace-dir.ts';
 import { DOWNLOAD_TIMEOUT_MS, fetchReleaseAsset, githubFetch, type GitHubReleaseAsset } from './github.ts';
 import { resolveAppEnvironment } from '@apackdev/sdk/env';
 import { PACK_ID_PATTERN } from '@apackdev/sdk/ids';
-import { PACK_SNAPSHOT_FORMAT, parseManifest } from '@apackdev/sdk/build';
+import { parseManifest } from '@apackdev/sdk/build';
 import { createLogger } from '@apackdev/sdk/logger';
 import type { PackManifest } from '@apackdev/sdk/build';
 import {
@@ -18,9 +23,8 @@ import {
   isPackLayout,
   stagePack,
   verifyPack,
-  buildFormatProblem,
-  packFileHashes,
-  stagedFileHashes,
+  packBuildProblem,
+  shippedPackRevision,
   type PackIntegrity,
 } from './layout.ts';
 import { errorMessage as reason } from '@apackdev/sdk/utils/pure';
@@ -38,17 +42,28 @@ export interface InstallResult {
 }
 
 export interface InstallOptions {
+  /** Supplied by the profile owner; evaluated against the verified candidate before placement. */
+  settingsOverrides?: () => unknown;
+  /** When supplied, accept user ownership in this target profile before publishing the candidate. */
+  installedPacksFile?: string;
+  /**
+   * Accept the verified candidate at its final path before retiring the previous directory.
+   * Throw to restore the previous files. Keep initialization and other irreversible work outside
+   * this synchronous decision; filesystem rollback cannot undo callback effects.
+   */
+  accept?: (candidate: Readonly<InstallResult>, previousDirectory?: string) => undefined;
   /** Refuse packs whose manifest hostVersion this host doesn't satisfy (the app passes its version). */
   hostVersion?: string;
   /** Expected sha256 of a downloaded archive. */
   sha256?: string;
   /**
-   * Called with the verified manifest of what is about to be placed, before the pack's directory is
+   * Called after the private candidate copy, receipt, declarations and compatibility are verified,
+   * with the manifest of that candidate, before the pack's directory is
    * touched. The last moment a caller can act on the copy that is still there: the running app tears an
    * installed pack down here, so it is never left running on files that have been replaced underneath it.
    * The pack's id isn't known before this — a GitHub slug or a URL doesn't carry one.
    */
-  beforePlace?: (manifest: PackManifest) => void;
+  beforePlace?: (manifest: Readonly<PackManifest>) => void;
   /**
    * The pack snapshot format the app that will load the pack reads, so a build in any other is refused: the app
    * passes its own (`PACK_SNAPSHOT_FORMAT`), `apack pack install` and `apack pack dev` the one the app recorded in the data
@@ -71,21 +86,6 @@ function ensurePacksDir(targetDir?: string): string {
   return dir;
 }
 
-function copyDir(src: string, dest: string): void {
-  fs.mkdirSync(dest, { recursive: true });
-  for (const entry of fs.readdirSync(src, { withFileTypes: true })) {
-    if (entry.isSymbolicLink()) continue;
-    if (entry.name === 'node_modules' || entry.name === '.git') continue;
-    const srcPath = path.join(src, entry.name);
-    const destPath = path.join(dest, entry.name);
-    if (entry.isDirectory()) {
-      copyDir(srcPath, destPath);
-    } else {
-      fs.copyFileSync(srcPath, destPath);
-    }
-  }
-}
-
 function extractZip(zipPath: string, destDir: string): void {
   execFileSync('unzip', ['-o', zipPath, '-d', destDir], { stdio: 'pipe' });
 }
@@ -103,9 +103,9 @@ function readValidManifest(dir: string): PackManifest {
     throw new Error('apack.json is not valid JSON');
   }
 
-  const { errors } = parseManifest(raw);
-  if (errors.length > 0) {
-    throw new Error(`Invalid apack.json:\n${errors.map(e => `  - ${e}`).join('\n')}`);
+  const { diagnostics } = parseManifest(raw);
+  if (diagnostics.length > 0) {
+    throw new Error(`Invalid apack.json:\n${diagnostics.map(({ message }) => `  - ${message}`).join('\n')}`);
   }
   return raw as PackManifest;
 }
@@ -164,67 +164,61 @@ export function checkDependencies(
 /** What installing the packs the app ships came to, per pack */
 export interface ShippedPackInstall {
   id: string;
-  /** `installed` on a first install, `updated` when the shipped copy differs, `current` when it matches */
-  outcome: 'installed' | 'updated' | 'current' | 'failed';
+  /** Installation decisions; unchanged source identity does not certify the installed build's health. */
+  outcome: 'installed' | 'updated' | 'unchanged' | 'preserved' | 'suppressed' | 'failed';
   /** Why, when it failed */
   error?: string;
 }
 
-/**
- * Installs the packs the app ships into `packsDir`, so they are installed packs like any other.
- *
- * **Idempotent by content.** The hashes staging would write are computed from the shipped directory and
- * compared with the installed copy's `integrity.json`: equal means the installed copy is this build's, and
- * nothing is copied. A version bump makes them differ, and so does a user who edited an installed file —
- * a state that could not arise while the shipped pack was loaded from `resources/` in place.
- *
- * It does not fall back to loading a shipped pack from `resources/` when its install fails. A pack the app
- * could not install is a pack that is not there, which the Packs view reports like any other failure; a
- * read-only second load path is the thing this goal removed.
- */
+/** Install missing shipped packs and refresh only explicitly app-managed installations. */
 export interface ShippedInstallOptions extends InstallOptions {
-  /**
-   * One pack id rather than all of them, for a caller refreshing a single install: a reload after a rebuild
-   * (`reloadPackById`) asks for the pack it is about to re-require, so the copy it loads is the one the
-   * shipped directory holds now. The comparison already writes nothing when they agree, which is what makes
-   * asking on every reload affordable.
-   */
+  /** Installation decisions for the same target profile as packsDir. Always explicit. */
+  installedPacksFile: string;
+  /** Refresh only this declared pack id, using the same ownership decision as boot. */
   only?: string;
 }
 
-export async function installShippedPacks(shippedDir: string, packsDir: string, options: ShippedInstallOptions = {}): Promise<ShippedPackInstall[]> {
+export async function installShippedPacks(shippedDir: string, packsDir: string, options: ShippedInstallOptions): Promise<ShippedPackInstall[]> {
   if (!fs.existsSync(shippedDir)) return [];
   const results: ShippedPackInstall[] = [];
-  for (const entry of fs.readdirSync(shippedDir, { withFileTypes: true })) {
-    if (!entry.isDirectory() || entry.name.startsWith('.')) continue;
-    const source = path.join(shippedDir, entry.name);
-    if (!fs.existsSync(path.join(source, PACK_LAYOUT.manifest))) continue;
-
-    let id: string;
-    let shipped: Record<string, string>;
+  const catalog = readAppPackSources(shippedDir);
+  for (const problem of catalog.problems) {
+    if (options.only === undefined || problem.id === options.only) results.push({ id: problem.id, outcome: 'failed', error: problem.message });
+  }
+  for (const source of catalog.sources) {
+    const { id, sourceRevision: revision } = source;
     try {
-      id = (JSON.parse(fs.readFileSync(path.join(source, PACK_LAYOUT.manifest), 'utf-8')) as { id?: string }).id ?? entry.name;
-      // Read the manifest before this, never the directory name: the id is what the manifest says, and the
-      // two need not agree
       if (options.only !== undefined && id !== options.only) continue;
-      shipped = stagedFileHashes(source);
-    } catch (err) {
-      results.push({ id: entry.name, outcome: 'failed', error: `could not read the pack the app ships at ${source}: ${reason(err)}` });
-      continue;
-    }
-
-    // The installed copy's files as they are, which is what makes one comparison cover both causes: a
-    // different build was shipped, or something changed the installed copy. An absent directory hashes to
-    // nothing, which is a first boot
-    const installedDir = path.join(packsDir, id);
-    const wasInstalled = fs.existsSync(path.join(installedDir, PACK_LAYOUT.manifest));
-    if (wasInstalled && sameHashes(packFileHashes(installedDir), shipped)) {
-      results.push({ id, outcome: 'current' });
-      continue;
-    }
-
-    try {
-      await installPackFromLocal(source, packsDir, options);
+      const records = readInstalledPacks(options.installedPacksFile, { strict: true });
+      const record = records.find(record => record.id === id);
+      const installedDir = path.join(packsDir, id);
+      const wasInstalled = fs.existsSync(installedDir);
+      if (record?.suppressAppInstall) {
+        results.push({ id, outcome: 'suppressed' });
+        continue;
+      }
+      if (wasInstalled && !fs.statSync(installedDir).isDirectory()) {
+        throw new Error(`Installed pack path is not a directory: ${installedDir}`);
+      }
+      if (wasInstalled && record?.updatesWith !== 'app') {
+        results.push({ id, outcome: 'preserved' });
+        continue;
+      }
+      if (wasInstalled && record?.shippedRevision === revision) {
+        results.push({ id, outcome: 'unchanged' });
+        continue;
+      }
+      await installPackFromLocal(source.dir, packsDir, {
+        ...options,
+        installedPacksFile: undefined,
+        accept: (candidate, previousDirectory) => {
+          if (candidate.id !== id || shippedPackRevision(candidate.integrity.files) !== revision) {
+            throw new Error(`App source "${id}" changed before installation acceptance; retry the complete build`);
+          }
+          return withInstallationRecord(options.installedPacksFile, id,
+            previous => appInstallationRecord(previous, candidate, false), () => options.accept?.(candidate, previousDirectory), previousDirectory);
+        },
+      });
       results.push({ id, outcome: wasInstalled ? 'updated' : 'installed' });
     } catch (err) {
       results.push({ id, outcome: 'failed', error: reason(err) });
@@ -233,29 +227,102 @@ export async function installShippedPacks(shippedDir: string, packsDir: string, 
   return results;
 }
 
-function sameHashes(a: Record<string, string>, b: Record<string, string>): boolean {
-  const keys = Object.keys(a);
-  return keys.length === Object.keys(b).length && keys.every((key) => a[key] === b[key]);
+/** Deliberately restore the named shipped build, including a missing or user-owned installation. */
+export function restoreShippedPack(
+  id: string, source: string, packsDir: string,
+  options: InstallOptions & { installedPacksFile: string; expectedSourceRevision?: string },
+): Promise<InstallResult> {
+  return installAppPackSource(id, source, packsDir, options, 'restore');
 }
 
-/**
- * Replace <packsDir>/<id> with `sourceDir`'s contents without leaving a half-copied pack behind.
- *
- * What is this function's own is the copy: `sourceDir` is a staged pack in a temp dir that may be on another
- * filesystem, so it is copied into a sibling of the destination first — a rename out of `os.tmpdir()` would
- * fail with `EXDEV`. The swap itself is `replaceDir`, shared with the builds that publish a `dist`.
- */
-function placePack(sourceDir: string, packsDir: string, id: string): string {
-  const destDir = path.join(packsDir, id);
-  const incoming = fs.mkdtempSync(path.join(packsDir, `.${id}.installing-${process.pid}-`));
+/** Update selected app-owned bytes without enabling a disabled pack or adopting a user fork. */
+export async function updateShippedPack(
+  id: string, source: string, packsDir: string,
+  options: InstallOptions & { installedPacksFile: string; expectedSourceRevision: string },
+): Promise<InstallResult> {
+  const record = readInstalledPacks(options.installedPacksFile, { strict: true }).find(record => record.id === id);
+  if (record?.updatesWith !== 'app') throw new Error(`Pack "${id}" is user-managed; use Restore to resume app updates`);
+  if (!fs.existsSync(path.join(packsDir, id))) throw new Error(`Pack "${id}" is not installed; use Restore`);
+  if (record.shippedRevision === options.expectedSourceRevision) throw new Error(`App source "${id}" is unchanged; use Restore to reinstall`);
+  return installAppPackSource(id, source, packsDir, options, 'update');
+}
+
+function installAppPackSource(
+  id: string, source: string, packsDir: string,
+  options: InstallOptions & { installedPacksFile: string; expectedSourceRevision?: string }, operation: 'restore' | 'update',
+): Promise<InstallResult> {
+  return installPackFromLocal(source, packsDir, {
+    ...options, installedPacksFile: undefined,
+    beforePlace: manifest => {
+      if (manifest.id !== id) throw new Error(`${operation === 'restore' ? 'Restore' : 'Update'} expected pack "${id}", received "${manifest.id}"`);
+      options.beforePlace?.(manifest);
+    },
+    accept: (candidate, previousDirectory) => {
+      if (options.expectedSourceRevision !== undefined
+        && shippedPackRevision(candidate.integrity.files) !== options.expectedSourceRevision) {
+        throw new Error(`App source "${id}" changed before ${operation === 'restore' ? 'restoration' : 'update'} acceptance; retry the complete build`);
+      }
+      return withInstallationRecord(options.installedPacksFile, id,
+        previous => {
+          if (operation === 'update' && previous.updatesWith !== 'app') throw new Error(`Pack "${id}" is no longer app-managed`);
+          return appInstallationRecord(previous, candidate, operation === 'restore');
+        }, () => options.accept?.(candidate, previousDirectory), previousDirectory);
+    },
+  });
+}
+
+function appInstallationRecord(previous: PackRecord, candidate: Readonly<InstallResult>, enable: boolean): PackRecord {
+  const { installedFrom: _source, availableVersion: _version, availableTag: _tag,
+    updateCheckError: _check, suppressAppInstall: _suppression, ...record } = previous;
+  return { ...record, enabled: enable ? true : previous.enabled, updatesWith: 'app',
+    shippedRevision: shippedPackRevision(candidate.integrity.files),
+    installedAt: previous.installedAt ?? new Date().toISOString() };
+}
+
+/** Save installation intent before the synchronous filesystem/runtime decision, restoring it on refusal. */
+function withInstallationRecord(
+  file: string, id: string, update: (record: PackRecord) => PackRecord, accept: () => undefined, previousDirectory?: string,
+): undefined {
+  const existed = fs.existsSync(file);
+  const previous = readInstalledPacks(file, { strict: true });
+  const record = update(previous.find(record => record.id === id) ?? { id, enabled: true });
+  const next = previous.some(record => record.id === id)
+    ? previous.map(existing => existing.id === id ? record : existing) : [...previous, record];
+  const recovery = previousDirectory && path.join(previousDirectory, INSTALL_RECORD_RECOVERY);
+  if (recovery) fs.writeFileSync(recovery, JSON.stringify({ packs: previous.filter(record => record.id === id) }), { flag: 'wx' });
+  if (!writeInstalledPacks(next, file)) {
+    if (recovery) fs.rmSync(recovery);
+    throw new Error(`Cannot save installation decisions: ${file}`);
+  }
+  try { return accept(); }
+  catch (error) {
+    const rollback: unknown[] = [];
+    try {
+      if (!existed) fs.rmSync(file, { force: true });
+      else if (!writeInstalledPacks(previous, file)) throw new Error(`Cannot restore installation decisions: ${file}`);
+    } catch (failure) { rollback.push(failure); }
+    // Removed even when the record could not be restored: the previous build is about to be put back where the
+    // pack runs from, and verification refuses a file its receipt doesn't list
+    try { if (recovery) fs.rmSync(recovery, { force: true }); }
+    catch (failure) { rollback.push(failure); }
+    if (rollback.length) throw new AggregateError([error, ...rollback], 'Installation was refused and record rollback failed');
+    throw error;
+  }
+}
+
+/** Copy across filesystems into a private candidate, retaining the exact accepted receipt. */
+function preparePack(sourceDir: string, packsDir: string, expected: PackIntegrity): string {
+  const incoming = fs.mkdtempSync(path.join(packsDir, `.${expected.id}.installing-${process.pid}-`));
   try {
-    copyDir(sourceDir, incoming);
+    fs.cpSync(fs.realpathSync(sourceDir), incoming, { recursive: true });
+    if (!isDeepStrictEqual(verifyPack(incoming), expected)) {
+      throw new Error('Pack changed while preparing installation; retry with the complete pack');
+    }
+    return incoming;
   } catch (err) {
     fs.rmSync(incoming, { recursive: true, force: true });
     throw err;
   }
-  replaceDir(incoming, destDir);
-  return destDir;
 }
 
 /**
@@ -269,32 +336,50 @@ async function installFromDirectory(dir: string, packsDir: string, options: Inst
 
   let layoutDir = dir;
   let stageRoot: string | undefined;
-  if (!isPackLayout(dir) && hasBuiltPackSections(dir)) {
-    stageRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'apack-stage-'));
-    layoutDir = path.join(stageRoot, manifestSource.id);
-    stagePack(dir, layoutDir);
-  }
-
+  let incoming: string | undefined;
   try {
+    if (!isPackLayout(dir) && hasBuiltPackSections(dir)) {
+      stageRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'apack-stage-'));
+      layoutDir = path.join(stageRoot, manifestSource.id);
+      try { stagePack(dir, layoutDir, { packFormat: options.packFormat }); }
+      catch (error) { throw new Error(`Pack "${manifestSource.id}" can't be installed: ${reason(error)}`); }
+    }
     if (!isPackLayout(layoutDir)) {
       throw new Error(`Pack ${manifestSource.id} is not built: ${dir} has no ${PACK_LAYOUT.integrity} and no dist/${PACK_LAYOUT.runtimeEntry} with dist/${PACK_LAYOUT.snapshot}. Run "apack pack build" first.`);
     }
     const integrity = verifyPack(layoutDir);
+    if (integrity.id !== manifestSource.id) throw new Error('Pack identity changed while preparing installation; retry with the complete pack');
+    incoming = preparePack(layoutDir, packsDir, integrity);
+    const manifest = readValidManifest(incoming);
+    assertHostCompatible(manifest, options.hostVersion);
     // Refused here rather than at the app's next start, where the loader would skip it
-    if (options.packFormat !== undefined) {
-      const formatProblem = buildFormatProblem(layoutDir, options.packFormat);
-      if (formatProblem) throw new Error(`Pack "${integrity.id}" can't be installed: ${formatProblem}`);
-    } else if (buildFormatProblem(layoutDir)) {
-      log.warn(`Pack "${integrity.id}" may not load: its build format isn't the one this apack reads (${PACK_SNAPSHOT_FORMAT}), and which one apack reads isn't recorded in its data dir. apack loads it only if it reads the pack's format, and otherwise skips it at startup, saying why in its Packs view`);
+    const buildProblem = packBuildProblem(incoming, options.packFormat);
+    if (buildProblem) {
+      if (options.packFormat !== undefined || buildProblem.kind !== 'format') throw new Error(`Pack "${integrity.id}" can't be installed: ${buildProblem.message}`);
+      log.warn(`Pack "${integrity.id}" may not load: ${buildProblem.message}; which one apack reads isn't recorded in its data dir. The app checks the build before loading it and reports refusals in its Packs view`);
     }
 
-    const manifest = readValidManifest(layoutDir);
-    options.beforePlace?.(manifest);
-    const destDir = placePack(layoutDir, packsDir, manifest.id);
-    const missingDependencies = checkDependencies(manifest, packsDir);
+    if (options.settingsOverrides) assertPackSettings(manifest, options.settingsOverrides());
+    options.beforePlace?.(structuredClone(manifest));
+    const destDir = path.join(packsDir, manifest.id);
+    const result: InstallResult = {
+      id: manifest.id, name: manifest.name, version: manifest.version, dir: destDir,
+      missingDependencies: [], integrity,
+    };
+    replaceDir(incoming, destDir, previousDirectory => {
+      result.missingDependencies = checkDependencies(manifest, packsDir);
+      const accept = () => options.accept?.(structuredClone(result), previousDirectory);
+      if (!options.installedPacksFile) return accept();
+      return withInstallationRecord(options.installedPacksFile, manifest.id, previous => {
+        const { shippedRevision: _revision, suppressAppInstall: _suppression, ...record } = previous;
+        return { ...record, enabled: previous.suppressAppInstall ? true : previous.enabled, updatesWith: 'user' };
+      }, accept, previousDirectory);
+    });
+    incoming = undefined;
     log.info(`Installed "${manifest.name}" v${manifest.version} to ${destDir}`);
-    return { id: manifest.id, name: manifest.name, version: manifest.version, dir: destDir, missingDependencies, integrity };
+    return result;
   } finally {
+    if (incoming) fs.rmSync(incoming, { recursive: true, force: true });
     if (stageRoot) fs.rmSync(stageRoot, { recursive: true, force: true });
   }
 }
@@ -421,7 +506,7 @@ export async function installPack(packSlug: string, sourceKind?: string, targetP
   return installPackFromGitHub(packSlug, targetPacksDir, options);
 }
 
-export async function uninstallPack(packId: string, targetPacksDir?: string): Promise<void> {
+export async function uninstallPack(packId: string, targetPacksDir: string | undefined, { installedPacksFile }: { installedPacksFile: string }): Promise<void> {
   // The id becomes a path that is deleted recursively: `..` would be the data dir, and `''` every pack
   if (!PACK_ID_PATTERN.test(packId)) throw new Error(`"${packId}" is not a pack id`);
   const packsDir = path.resolve(targetPacksDir ?? resolveAppEnvironment().packsDir);
@@ -432,7 +517,9 @@ export async function uninstallPack(packId: string, targetPacksDir?: string): Pr
     throw new Error(`Pack "${packId}" is not installed`);
   }
 
-  fs.rmSync(packDir, { recursive: true, force: true });
+  withInstallationRecord(installedPacksFile, packId, previous => ({
+    id: packId, enabled: previous.enabled, suppressAppInstall: true,
+  }), () => { fs.rmSync(packDir, { recursive: true, force: true }); });
   log.info(`Uninstalled pack "${packId}"`);
 }
 

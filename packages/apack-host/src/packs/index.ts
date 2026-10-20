@@ -1,20 +1,26 @@
 // Registration: the registered packs, an instance per app (the composition root), test file or build
 export { createPackRegistry } from './registry.ts';
-export type { PackRegistry, PackRegistryOptions, PackRegistration, PackBootHooks, PackEARS, PackMigration, PackExtensions, InstalledPackSummary, PackOrigin } from './registry.ts';
+export type { PackRegistry, PackRegistryOptions, PackRegistration, PackLifecycleHooks, PackEARS, PackMigration, PackExtensions, InstalledPackSummary, PackOrigin } from './registry.ts';
 
 // Loading pack runtime code on the loader's own @apackdev/sdk
 export { withModuleBridge } from './module-bridge.ts';
 
 // Discovery
 export {
-  discoverPacks, enabledExternalPacks, installedPacks,
+  discoverPacks, installedPacks,
 } from './discovery.ts';
 export type { DiscoveredPack, InstalledPack, PackManifest } from './discovery.ts';
+export { createContributionCatalog, readInstalledContributionCatalog } from './catalog.ts';
+export type { PackCatalogEntry, PackCatalogSource, PackCatalogSnapshot, PackCatalogFrame, SourcePackDeclaration, PluginCatalogEntry } from './catalog.ts';
+export { assertPackServiceRequirements, packServiceContracts, type PackServiceContract, type PackServiceOwner } from './service-requirements.ts';
+
+export { readAppPackSources } from './app-sources.ts';
+export type { AppPackSource, AppPackSourceProblem, AppPackSources } from './app-sources.ts';
 
 // Installed packs (JSON file CRUD)
 export {
   readInstalledPacks, writeInstalledPacks, packRecord, packRecords, disabledPackIds,
-  recordInstalled, setPackEnabled, recordUpdateCheck, recordUpdateInstalled, recordApplyOutcomes, forgetPack,
+  recordInstalled, recordUserInstall, setPackEnabled, recordUpdateCheck, recordUpdateInstalled, recordApplyOutcomes,
 } from './installed.ts';
 export type { PackRecord } from './installed.ts';
 
@@ -31,7 +37,7 @@ export { PACK_LOAD_MESSAGES, packRegistered, packLoadFailed } from './load-messa
 
 // Installer
 export {
-  installPack, installPackFromLocal, installPackFromGitHub, installShippedPacks, type ShippedPackInstall,
+  installPack, installPackFromLocal, installPackFromGitHub, installShippedPacks, restoreShippedPack, updateShippedPack, type ShippedPackInstall,
   uninstallPack, isHostCompatible,
 } from './installer.ts';
 export { recordHostCompatibility, readHostCompatibility, type HostCompatibility } from './host-info.ts';
@@ -44,10 +50,15 @@ export type { ReleaseCandidate } from './updater.ts';
 // Pack layout (build output, release archive and installed layout)
 export {
   PACK_LAYOUT_VERSION, PACK_LAYOUT,
-  stagePack, verifyPack, readPackIntegrity, isPackLayout,
+  sealPackBuild, stagePack, verifyPack, readPackIntegrity, readPackBuild, isPackLayout,
+  stagedFileHashes,
   packFrontendFiles,
+  packBuildRevision, readPackAsset,
   createPackArchive, extractPackArchive, packArchiveName,
   getLoadedPackEntries, getPacksWithClientLoadedFrontends,
-  staleBuildOutput,
 } from './layout.ts';
-export type { PackIntegrity, LoadedPackEntry } from './layout.ts';
+export type { PackIntegrity, PackBuild, LoadedPackEntry } from './layout.ts';
+export { cacheDependency, readCachedDependency, readDependencyBuild } from './dependency-cache.ts';
+export type { DependencyOrigin, DependencyResolution, CachedDependencyBuild } from './dependency-cache.ts';
+
+export { assertPackSettings } from './settings-admission.ts';

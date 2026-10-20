@@ -1,6 +1,5 @@
 <script setup lang="ts">
-// The memos plugin's settings, which the app's settings plugin renders: a change goes up as `update-setting`, and the
-// settings plugin stores it under this plugin's ref
+// The host renders this feature's declared form and fixes the owner of each emitted update.
 const props = defineProps<{ settings?: { listTitle?: string } }>();
 const emit = defineEmits<{ 'update-setting': [{ path: string[]; value: unknown }] }>();
 

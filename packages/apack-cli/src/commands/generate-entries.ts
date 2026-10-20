@@ -1,55 +1,28 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { createHash } from 'node:crypto';
-import type { PackManifest, PackTypeManifest, PackSnapshot } from '@apackdev/sdk/build';
-import { _depTypesFile, _depTypesVersion, generatePackFiles, compileHelp } from '@apackdev/sdk/build';
+import { isDeepStrictEqual } from 'node:util';
+import type { PackManifest } from '@apackdev/sdk/build';
+import { _depTypesFile, _depTypesVersion, generatePackFiles } from '@apackdev/sdk/build';
 import { holdExclusiveLock } from '@apackdev/host/exclusive-lock';
-import { findPackRoot, readValidManifest, sdkPackageDir, sdkVersion } from '../utils';
-import { resolveDeps } from './generate';
+import { findPackRoot, readValidManifest } from '../utils';
+import { resolveDeps, type ResolvedDeps } from './generate';
+import { packInputsHash } from '@apackdev/host/build/pack-inputs';
+import { captureCompilationInputs, type CompilationInputs } from '../build/compilation-inputs.ts';
+import { assertDependencyInputsCurrent, dependencyInputsHash } from '../build/dependency-inputs.ts';
 
-const HASH_FILE = '.inputs-hash';
-// Hash the codegen implementation too, so SDK upgrades regenerate entries
-function codegenSource(): string {
-  const sdkDir = sdkPackageDir();
-  const sources = ['generate-entries', 'help', 'content/markdown-tree'];
-  for (const [dir, ext] of [['src', 'ts'], ['dist', 'js']]) {
-    const files = sources.map(source => path.join(sdkDir, dir, 'build', `${source}.${ext}`));
-    if (files.every(file => fs.existsSync(file))) return files.map(file => fs.readFileSync(file, 'utf8')).join('\n');
+const STAMP_FILE = '.apack/generate-entries.json';
+function computeInputsHash(root: string, manifest: PackManifest, dependencies: ResolvedDeps, compilation: CompilationInputs): string {
+  if (!isDeepStrictEqual(Object.keys(manifest.dependencies ?? {}).sort(), [...dependencies.files.keys()].sort())) {
+    throw new Error('Resolved dependencies differ from apack.json; retry generation');
   }
-  return sdkVersion() ?? '';
-}
-
-/**
- * Pack sources codegen reads besides the manifest: service export shapes, step build.ts /
- * index.ts / types.ts, which *-fe.ts and export-types.ts files exist, and so on. Hashing all
- * of src/ (not __generated__) is simpler than tracking each read and never misses one.
- */
-function sourceFiles(dir: string, out: string[] = []): string[] {
-  for (const entry of fs.readdirSync(dir, { withFileTypes: true }).sort((a, b) => a.name.localeCompare(b.name))) {
-    if (entry.name === '__generated__' || entry.name === 'node_modules') continue;
-    const full = path.join(dir, entry.name);
-    if (entry.isDirectory()) sourceFiles(full, out);
-    else if (/\.(ts|tsx|js|mjs|vue|json)$/.test(entry.name)) out.push(full);
-  }
-  return out;
-}
-
-function computeInputsHash(root: string, depSnapshots: Map<string, PackSnapshot>): string {
+  assertDependencyInputsCurrent(dependencies.files);
   const hash = createHash('sha256');
-  hash.update(fs.readFileSync(path.join(root, 'apack.json'), 'utf-8'));
-  hash.update(codegenSource());
-  const manifest = JSON.parse(fs.readFileSync(path.join(root, 'apack.json'), 'utf8')) as PackManifest;
-  if (manifest.extensions?.help) hash.update(JSON.stringify(compileHelp(root, manifest)));
-  const srcDir = path.join(root, 'src');
-  for (const file of fs.existsSync(srcDir) ? sourceFiles(srcDir) : []) {
-    hash.update(path.relative(root, file));
-    hash.update(fs.readFileSync(file));
-  }
-  // Generated flow helpers and types depend on every resolved dependency, wherever it came from
-  for (const depId of [...depSnapshots.keys()].sort()) {
-    hash.update(depId);
-    hash.update(JSON.stringify(depSnapshots.get(depId)));
-  }
+  hash.update(packInputsHash(root, { modulesOnly: true }));
+  // The parsed declarations used below are part of the identity, even if disk changes between reads.
+  hash.update(JSON.stringify(manifest));
+  hash.update(compilation.hash);
+  hash.update(dependencyInputsHash(dependencies.files));
   return hash.digest('hex');
 }
 
@@ -67,59 +40,66 @@ export function warnStaleDepTypes(root: string, runtimeVersions: Map<string, str
   }
 }
 
-/** What the last run recorded: the inputs it read, and the files it actually wrote. */
-interface InputsStamp { hash: string; files: string[] }
+/** Inputs and exact output bytes from a successful generation. */
+interface InputsStamp { hash: string; files: Record<string, string> }
+const digest = (content: string | Buffer): string => createHash('sha256').update(content).digest('hex');
 
 function readStamp(hashPath: string): InputsStamp | null {
   try {
     const parsed = JSON.parse(fs.readFileSync(hashPath, 'utf-8')) as InputsStamp;
-    return typeof parsed?.hash === 'string' && Array.isArray(parsed.files) ? parsed : null;
+    if (typeof parsed?.hash !== 'string' || !parsed.files || typeof parsed.files !== 'object' || Array.isArray(parsed.files)) return null;
+    return Object.keys(parsed.files).length > 0 && Object.entries(parsed.files).every(([file, hash]) =>
+      file.startsWith('src/__generated__/') && !file.split('/').some(part => part === '..')
+      && typeof hash === 'string' && /^[a-f0-9]{64}$/.test(hash)) ? parsed : null;
   } catch {
-    // Absent, unreadable, or the bare hex the stamp used to be — either way there is no record to trust
     return null;
   }
 }
 
-/**
- * Why the generated tree is stale, or `null` when it is current.
- *
- * **The missing-output check comes first, and it is the point.** The stamp used to record only the inputs,
- * so deleting a generated file left the hash matching and the command reported "inputs unchanged, skipping"
- * over a tree it had not made — measured: `rm src/__generated__/paths.ts` left the pack unbuildable until
- * someone thought to pass `--force`. Shape taken from `unitStaleReason` (`@apackdev/host/build/packages-built`),
- * which asks the same two questions in the same order.
- *
- * The file list is *recorded* rather than fixed because codegen's output set depends on the manifest: a pack
- * with no plugins never writes `fe.ts`, and a hard-coded expectation would call every such pack stale forever.
- */
+/** The recorded output set follows the manifest, including dependency facades. */
 function staleReason(hashPath: string, root: string, currentHash: string): string | null {
   const stamp = readStamp(hashPath);
   if (!stamp) return 'no record of the last run';
-  const missing = stamp.files.filter((file) => !fs.existsSync(path.join(root, file)));
-  if (missing.length > 0) return `missing ${missing.join(', ')}`;
+  for (const [file, hash] of Object.entries(stamp.files)) {
+    const target = path.join(root, file);
+    if (!fs.existsSync(target)) return `missing ${file}`;
+    if (!fs.statSync(target).isFile() || digest(fs.readFileSync(target)) !== hash) return `modified ${file}`;
+  }
   return stamp.hash === currentHash ? null : 'inputs changed';
+}
+
+/** Skipping generation requires the same evidence that permits normal generation to reuse its files. */
+export function assertGeneratedCurrent(root: string, manifest: PackManifest, dependencies: ResolvedDeps, compilation?: CompilationInputs): void {
+  if (compilation) compilation.assertCurrent();
+  assertGeneratedStampCurrent(root, manifest, dependencies, compilation ?? captureCompilationInputs(root));
+}
+
+/**
+ * The generated files and the stamp of the inputs they were generated from, without re-checking the compilation's
+ * captured inputs: for a caller that runs `compilation.assertCurrent()` itself before publishing.
+ */
+export function assertGeneratedStampCurrent(root: string, manifest: PackManifest, dependencies: ResolvedDeps, compilation: CompilationInputs): void {
+  const problem = staleReason(path.join(root, STAMP_FILE), root, computeInputsHash(root, manifest, dependencies, compilation));
+  if (problem) throw new Error(`Generated pack files are stale: ${problem}. Run "apack pack generate-entries" or build without --skip-generate.`);
 }
 
 export async function generateEntries(
   _args: string[],
   packRoot?: string,
-  depTypes?: Map<string, PackTypeManifest>,
-  depSnapshots?: Map<string, PackSnapshot>,
+  dependencies?: ResolvedDeps,
+  compilation?: CompilationInputs,
 ) {
   if (_args.some(arg => arg !== '--force')) throw new Error('Usage: apack pack generate-entries [--force]');
   const root = packRoot ?? findPackRoot(process.cwd());
   const outDir = path.join(root, 'src/__generated__');
-  const hashPath = path.join(outDir, HASH_FILE);
+  const hashPath = path.join(root, STAMP_FILE);
   const force = _args.includes('--force');
   // Code generated from a manifest the installer would reject would describe a pack that can't install
   const manifest = readValidManifest(root);
 
-  if (!depSnapshots) {
-    const resolved = await resolveDeps(root, manifest.dependencies);
-    depTypes = resolved.depTypes;
-    depSnapshots = resolved.depSnapshots;
-  }
-  const currentHash = computeInputsHash(root, depSnapshots);
+  dependencies ??= await resolveDeps(root, manifest.dependencies);
+  compilation ??= captureCompilationInputs(root);
+  const currentHash = computeInputsHash(root, manifest, dependencies, compilation);
 
   const stale = force ? 'forced' : staleReason(hashPath, root, currentHash);
   if (stale === null) {
@@ -142,7 +122,7 @@ export async function generateEntries(
     ),
   });
   try {
-    writeGenerated(root, outDir, hashPath, currentHash, manifest, depTypes, depSnapshots);
+    await writeGenerated(root, outDir, hashPath, currentHash, manifest, dependencies, compilation);
   } finally {
     lock.release();
   }
@@ -151,16 +131,20 @@ export async function generateEntries(
 /** The lock file, inside the directory it guards, so it travels with the output it protects */
 const GENERATE_LOCK = '.generating.lock';
 
-function writeGenerated(
+async function writeGenerated(
   root: string,
   outDir: string,
   hashPath: string,
   currentHash: string,
   manifest: PackManifest,
-  depTypes: Map<string, PackTypeManifest> | undefined,
-  depSnapshots: Map<string, PackSnapshot>,
+  dependencies: ResolvedDeps,
+  compilation: CompilationInputs,
 ) {
-  const files = generatePackFiles(manifest, { packRoot: root, depTypes, depSnapshots });
+  const files = await generatePackFiles(manifest, { packRoot: root, depTypes: dependencies.depTypes, depSnapshots: dependencies.depSnapshots });
+  compilation.assertCurrent();
+  if (computeInputsHash(root, manifest, dependencies, compilation) !== currentHash) {
+    throw new Error('Pack generation inputs changed; retry before publishing generated files');
+  }
 
   // Dependencies' facade types are rewritten from their snapshots each time
   fs.rmSync(path.join(outDir, 'deps'), { recursive: true, force: true });
@@ -174,12 +158,14 @@ function writeGenerated(
   for (const name of fs.readdirSync(outDir)) {
     if (name === GENERATE_LOCK) continue;
     const file = path.join(outDir, name);
-    if (produced.has(file) || name === HASH_FILE || !fs.statSync(file).isFile()) continue;
+    if (produced.has(file) || !fs.statSync(file).isFile()) continue;
     const head = fs.readFileSync(file, 'utf-8').slice(0, 120);
     if (/^\/\/ (@generated from apack\.json|Auto-generated by `apack pack generate-entries`)/.test(head)) fs.rmSync(file);
   }
 
-  fs.writeFileSync(hashPath, JSON.stringify({ hash: currentHash, files: Object.keys(files).sort() }, null, 2) + '\n');
+  // Compiler-specific cache metadata is not a generated module consumed by subsequent builds.
+  fs.mkdirSync(path.dirname(hashPath), { recursive: true });
+  fs.writeFileSync(hashPath, JSON.stringify({ hash: currentHash, files: Object.fromEntries(Object.keys(files).sort().map(file => [file, digest(files[file])])) }, null, 2) + '\n');
 
   console.log('Generated:');
   for (const filePath of Object.keys(files)) {

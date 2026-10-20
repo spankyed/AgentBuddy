@@ -1,3 +1,4 @@
+import { _declarationRevision } from '../../../../src/build/declaration-revision.ts';
 /**
  * The fixture every `generate-entries` spec shares: a temp pack root per case, and the helpers that write
  * manifests, dependencies and entries into it.
@@ -35,7 +36,7 @@ import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { afterEach, beforeEach } from 'vitest';
-import { PACK_TYPES_DEF, generatePackFiles } from '../../../../src/build/generate-entries.ts';
+import { PACK_TYPES_FACADE, generatePackFiles } from '../../../../src/build/generate-entries.ts';
 import { PACK_SNAPSHOT_FORMAT } from '../../../../src/build/manifest.ts';
 import type { PackManifest, PackSnapshot } from '../../../../src/build/manifest.ts';
 
@@ -43,7 +44,7 @@ import type { PackManifest, PackSnapshot } from '../../../../src/build/manifest.
  * Re-exported because the fixture already imports them for its own helpers, so a spec file that asserts on
  * codegen's output takes them from here rather than reaching past this module to the same source.
  */
-export { PACK_SNAPSHOT_FORMAT, PACK_TYPES_DEF, generatePackFiles };
+export { PACK_SNAPSHOT_FORMAT, PACK_TYPES_FACADE, generatePackFiles };
 
 /** The case's own pack root, reassigned per case below and read live by every helper here. */
 export let root: string;
@@ -75,7 +76,7 @@ export function write(file: string, content: string): void {
 }
 
 /** The contribution keys a manifest holds under `extensions`, which a case here may write flat */
-const EXTENSION_KEYS = ['steps', 'artifacts', 'blocks', 'commands', 'dsl', 'fe', 'services'] as const;
+const EXTENSION_KEYS = ['steps', 'artifacts', 'blocks', 'commands', 'dsl', 'tiptapPlugins', 'appExtensions', 'services'] as const;
 
 /**
  * A manifest for a case, over the minimum, with two conveniences the cases below are the reason for.
@@ -111,6 +112,7 @@ export const FACADE_DEFAULTS = {
   PackPluginEvents: '{}',
   PackSystemEvents: '{}',
   PackFeatureSettings: '{}',
+  PackGroupSettings: '{}',
   Services: '{}',
   Repositories: '{}',
 };
@@ -123,20 +125,21 @@ export function facade(overrides: Partial<Record<keyof typeof FACADE_DEFAULTS, s
   const body = Object.entries({ ...FACADE_DEFAULTS, ...overrides })
     .map(([name, type]) => `export type ${name} = ${type};`)
     .join('\n');
-  return { [PACK_TYPES_DEF]: body };
+  return { [PACK_TYPES_FACADE]: body };
 }
 
-/** A dependency facade that also publishes `PackPluginState`, as one built from a pack with plugins does */
-export function withPluginState(defs: Record<string, string>): Record<string, string> {
-  return { ...defs, [PACK_TYPES_DEF]: `${defs[PACK_TYPES_DEF]}\nexport type PackPluginState = {};` };
+/** A dependency facade whose plugins declare no state contract, so each publishes never. */
+export function withPluginState(facades: Record<string, string>, plugins: readonly string[]): Record<string, string> {
+  const state = plugins.map(id => `${JSON.stringify(id)}: never`).join('; ');
+  return { ...facades, [PACK_TYPES_FACADE]: `${facades[PACK_TYPES_FACADE]}\nexport type PackPluginState = { ${state} };` };
 }
 
-export function dependency(fields: Record<string, unknown>, defs: Record<string, string> = facade()): PackSnapshot {
-  return { types: { entities: {}, relKinds: {} }, defs, manifest: manifest({ id: 'base-pack', ...fields }), format: PACK_SNAPSHOT_FORMAT };
+export function dependency(fields: Record<string, unknown>, facades: Record<string, string> = facade()): PackSnapshot {
+  return { declarationRevision: _declarationRevision(manifest({ id: 'base-pack', ...fields })), types: { entities: {}, relKinds: {} }, entityDestinations: {}, facades, manifest: manifest({ id: 'base-pack', ...fields }), format: PACK_SNAPSHOT_FORMAT };
 }
 
-export function generate(fields: Record<string, unknown>, deps: Record<string, PackSnapshot> = {}): Record<string, string> {
-  return generatePackFiles(manifest(fields), { packRoot: root, depSnapshots: new Map(Object.entries(deps)) });
+export async function generate(fields: Record<string, unknown>, deps: Record<string, PackSnapshot> = {}): Promise<Record<string, string>> {
+  return await generatePackFiles(manifest(fields), { packRoot: root, depSnapshots: new Map(Object.entries(deps)) });
 }
 
 /**
@@ -148,8 +151,8 @@ export function generate(fields: Record<string, unknown>, deps: Record<string, P
  * type: these fixtures are bare temp dirs with no `@apackdev/sdk` to resolve, and a declared type needs no import to
  * read — which is the point of reading one rather than a value's phantom property.
  */
-export function writePluginEntry(file: string, inbox?: string): string {
-  write(file.endsWith('.ts') ? file : `${file}.ts`, ['declare const plugin: { label: string };', 'export default plugin;'].join('\n') + '\n');
+export function writePluginState(file: string, inbox?: string): string {
+  write(file.endsWith('.ts') ? file : `${file}.ts`, ['declare const state: import("xstate").AnyStateMachine;', 'export default state;'].join('\n') + '\n');
   if (inbox !== undefined) writeContract(`${file.replace(/(\.ts)?$/, '')}.types.ts`, inbox);
   return file;
 }
@@ -162,7 +165,7 @@ export function writeContract(file: string, inbox?: string, state = '{ ready: bo
 
 /** The manifest `plugin` object for a feature whose contract sits beside its entry */
 export const pluginWithContract = (entry: string, inbox?: string) => ({
-  entry: writePluginEntry(entry, inbox),
+  label: 'Fixture', state: writePluginState(entry, inbox),
   ...(inbox === undefined ? {} : { contract: `${entry.replace(/(\.ts)?$/, '')}.types.ts#Contract` }),
 });
 
@@ -202,7 +205,7 @@ export const system = (id: string, extra: Record<string, unknown> = {}) => {
   const contract = fs.existsSync(path.join(root, `src/features/${id}/be/contract.ts`))
     ? { contract: `src/features/${id}/be/contract.ts#Contract` }
     : {};
-  return { id, system: { entry, ...contract, ...extra } };
+  return { id, description: `Test system for ${id}.`, system: { entry, ...contract, ...extra } };
 };
 export const withPlugin = (feature: Record<string, unknown>, inbox?: string) => ({ ...feature, plugin: pluginWithContract(`src/features/${feature.id}/fe/index.ts`, inbox) });
 
@@ -211,5 +214,5 @@ export function receives(files: Record<string, string>, featureId: string): stri
   const entry = files['src/__generated__/pack-entry.ts'];
   const feature = entry.slice(entry.indexOf(`    '${featureId}': {`));
   const match = /^ {4}'[^']+': \{\n(?:(?! {4}\}).*\n)*? {6}plugin: \{ receives: \[(.*)\] \}/.exec(feature);
-  return match ? [...match[1].matchAll(/'([^']+)'/g)].map((m) => m[1]) : undefined;
+  return match ? JSON.parse(`[${match[1]}]`) as string[] : undefined;
 }

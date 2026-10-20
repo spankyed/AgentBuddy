@@ -14,16 +14,16 @@
             :key="item.id"
             :data-onboarding-id="`plugin-${item.id}`"
             :class="[
-              'p-2 rounded-lg transition-all duration-200 ease-in-out',
+              'p-2 rounded-lg transition-all duration-200 ease-in-out', item.loaded ? '' : 'opacity-50',
               activePlugin.id === item.id
                 ? 'bg-primary-600 text-white'
                 : 'text-neutral-400 hover:text-white hover:bg-primary-700'
             ]"
             @click="onPluginClick($event, item)"
             @contextmenu.stop.prevent="onPluginContextMenu($event, item)"
-            :title="item.label"
+            :title="item.loaded ? item.label : `${item.label} (not loaded yet)`"
           >
-            <component :is="item.icon" :size="24" />
+            <component :is="item.icon ?? Puzzle" :size="24" />
           </button>
         </div>
       </div>
@@ -35,16 +35,16 @@
           :key="item.id"
           :data-onboarding-id="`plugin-${item.id}`"
           :class="[
-            'p-2 rounded-lg transition-all duration-200 ease-in-out',
+            'p-2 rounded-lg transition-all duration-200 ease-in-out', item.loaded ? '' : 'opacity-50',
             activePlugin.id === item.id
               ? 'bg-primary-600 text-white'
               : 'text-neutral-400 hover:text-white hover:bg-primary-700'
           ]"
           @click="onPluginClick($event, item)"
           @contextmenu.stop.prevent="onPluginContextMenu($event, item)"
-          :title="item.label"
+          :title="item.loaded ? item.label : `${item.label} (not loaded yet)`"
         >
-          <component :is="item.icon" :size="24" />
+          <component :is="item.icon ?? Puzzle" :size="24" />
         </button>
       </div>
     </div>
@@ -64,49 +64,37 @@
 <script setup lang="ts">
 import type { Plugin } from '@/types';
 import { computed, ref, onMounted, onUnmounted } from 'vue';
-import { useSelector } from '@xstate/vue';
 import WindowControls from './WindowControls.vue';
 import ToolbarPluginContextMenu from './ToolbarPluginContextMenu.vue';
 import ContextMenuPopup from '@apackdev/ui/design/ContextMenuPopup';
-import { HOST } from '@apackdev/host/fe';
+import { HOST, type PluginNavigationItem } from '@apackdev/host/fe';
+import { Puzzle } from 'lucide-vue-next';
 import { useContextMenu, type MenuItem } from '@apackdev/ui/composables/useContextMenu';
 import { applicationState } from '@/main';
 
-const emit = defineEmits<(e: 'select-plugin', id: string) => void>();
+const emit = defineEmits<{ 'select-plugin': [id: string]; 'open-plugin': [id: string] }>();
 
 const props = defineProps<{
   activePlugin: Plugin;
-  plugins: Plugin[];
+  plugins: PluginNavigationItem[];
 }>();
 
-const pluginItems = computed(() => props.plugins.filter((item) => !item.isPinned));
-const pinnedItems = computed(() => props.plugins.filter((item) => item.isPinned));
+const pluginItems = computed(() => props.plugins.filter((item) => item.visible && !item.isPinned));
+const pinnedItems = computed(() => props.plugins.filter((item) => item.visible && item.isPinned));
 
 // --- Right-click menu: toggle plugin visibility ---
 const { showMenu, menuPos, open } = useContextMenu();
 const pluginContextMenu = ref<InstanceType<typeof ToolbarPluginContextMenu> | null>(null);
-const pluginVisibility = useSelector(
-  applicationState,
-  (state) => state.context.pluginVisibility,
-);
 
-const isVisible = (id: string) => pluginVisibility.value?.[id] !== false;
+const isVisible = (id: string) => props.plugins.find(plugin => plugin.id === id)?.visible ?? false;
 
 const togglePluginVisibility = (id: string) => {
   if (id === HOST.settings) return;
   applicationState.send({ type: 'SET_PLUGIN_VISIBILITY', plugin: id, visible: !isVisible(id) });
 };
 
-const allPlugins = useSelector(applicationState, (state) => state.context.plugins);
-
-const sortedPlugins = computed(() => {
-  const nonPinned = allPlugins.value.filter(p => p.icon && !p.isPinned);
-  const pinned = allPlugins.value.filter(p => p.icon && p.isPinned);
-  return { sorted: [...nonPinned, ...pinned], separatorIndex: nonPinned.length > 0 && pinned.length > 0 ? nonPinned.length - 1 : -1 };
-});
-
 const visibilityMenuItems = computed<MenuItem[]>(() =>
-  sortedPlugins.value.sorted.map((plugin) => {
+  props.plugins.map((plugin) => {
     const locked = plugin.id === HOST.settings;
     const visible = isVisible(plugin.id);
     const textClass = locked
@@ -116,7 +104,7 @@ const visibilityMenuItems = computed<MenuItem[]>(() =>
         : 'text-neutral-500';
     return {
       label: plugin.label,
-      icon: plugin.icon!,
+      icon: plugin.icon ?? Puzzle,
       class: textClass,
       iconClass: textClass,
       action: () => togglePluginVisibility(plugin.id),
@@ -125,23 +113,28 @@ const visibilityMenuItems = computed<MenuItem[]>(() =>
   }),
 );
 
-const separatorIndex = computed(() => sortedPlugins.value.separatorIndex);
+const separatorIndex = computed(() => {
+  const firstPinned = props.plugins.findIndex(plugin => plugin.isPinned);
+  return firstPinned > 0 ? firstPinned - 1 : -1;
+});
 
 const onContextMenu = (e: MouseEvent) => {
   open(e, visibilityMenuItems.value.length + (separatorIndex.value >= 0 ? 1 : 0));
 };
 
-const onPluginContextMenu = (e: MouseEvent, plugin: Plugin) => {
+const onPluginContextMenu = (e: MouseEvent, plugin: PluginNavigationItem) => {
   pluginContextMenu.value?.open(e, plugin);
 };
 
-const onPluginClick = (e: MouseEvent, plugin: Plugin) => {
+const onPluginClick = (e: MouseEvent, plugin: PluginNavigationItem) => {
   if (e.metaKey) {
     window.electronAPI?.plugins?.popout(plugin.id, plugin.label);
     return;
   }
 
-  emit('select-plugin', plugin.id);
+  // An unloaded tab opens through the shell, which waits for its pack or says why it can't
+  if (plugin.loaded) emit('select-plugin', plugin.id);
+  else emit('open-plugin', plugin.id);
 };
 
 const isDev = import.meta.env.DEV;

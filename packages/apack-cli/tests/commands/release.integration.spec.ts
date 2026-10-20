@@ -1,39 +1,56 @@
+import { _declarationRevision } from '@apackdev/sdk/build';
 import { execFileSync } from 'node:child_process';
 import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { defaultRunner, nextReleaseVersion, preflight, publishRelease, releaseStateReport, runRelease, type Runner } from '../../src/commands/release';
-import { readPackIntegrity } from '@apackdev/host/packs';
+import { readPackIntegrity, sealPackBuild } from '@apackdev/host/packs';
+import { runPackBuild } from '../../src/build/build-process.ts';
+import { createPackCompilerInputView } from '@apackdev/host/build/compiler-inputs';
+import { readPackageInputs } from '@apackdev/host/build/package-inputs';
+import { writePackBuildInputs } from '@apackdev/host/build/pack-build-inputs';
 
 /**
  * runRelease verifies with a release build; these tests use prebuilt packs, so the build is a stand-in.
  *
  * **It still has to leave what the steps after it read.** `writeVersion` rewrites `apack.json` immediately
- * before `verify`, and `apack pack archive` refuses a build older than the sources it came from — a build it cannot
+ * before `verify`, and `apack pack archive` refuses a build of different sources — a build it cannot
  * see having happened is exactly the stale build that check exists for. A stand-in returning nothing claimed
  * the build had run and left a tree it had not touched, which is the fidelity gap rather than the check being
  * wrong: a real `apack pack build` writes `dist` here.
  */
 const builtAt = vi.hoisted(() => ({ root: undefined as string | undefined }));
-vi.mock('../../src/commands/build', () => ({
-  build: vi.fn(async () => {
+vi.mock('../../src/build/build-process.ts', () => ({
+  runPackBuild: vi.fn(async () => {
     if (!builtAt.root) return;
     const [{ readFileSync, writeFileSync }, { join }] = await Promise.all([import('node:fs'), import('node:path')]);
-    // Rewritten rather than `utimesSync(new Date())`, which truncates to the millisecond and so can stamp a
-    // time *before* the sub-millisecond one the manifest was just written at — the stand-in then looks older
-    // than the sources it was supposedly built from. Writing the bytes is what a build does, and it takes the
-    // filesystem's own clock at its full precision
-    for (const file of ['dist/runtime/index.cjs', 'dist/types/snapshot.json']) {
-      const at = join(builtAt.root, file);
-      writeFileSync(at, readFileSync(at));
-    }
+    const manifest = JSON.parse(readFileSync(join(builtAt.root, 'apack.json'), 'utf8'));
+    const snapshotFile = join(builtAt.root, 'dist/types/snapshot.json');
+    const snapshot = JSON.parse(readFileSync(snapshotFile, 'utf8'));
+    snapshot.manifest = manifest;
+    snapshot.declarationRevision = _declarationRevision(manifest);
+    writeFileSync(snapshotFile, JSON.stringify(snapshot));
+    sealBuild(builtAt.root);
   }),
 }));
 import { buildPackArchive } from '../../src/commands/archive';
 import { PACK_SNAPSHOT_FORMAT } from '@apackdev/sdk/build';
 
 let tmp: string;
+
+/** The synthetic build still records the inputs and output its archive consumer requires. */
+function sealBuild(root: string): void {
+  const view = createPackCompilerInputView(root);
+  const observations = view.observations().entries;
+  view.dispose();
+  writePackBuildInputs(path.join(root, 'dist'), {
+    compiler: 'a'.repeat(64), execution: 'b'.repeat(64), options: ['--release'], observations,
+    packages: { hash: readPackageInputs([{ id: 'pack', directory: root }]).hash,
+      owners: [{ id: 'pack', directory: '' }], discovered: [] },
+  });
+  sealPackBuild(path.join(root, 'dist'), JSON.parse(fs.readFileSync(path.join(root, 'apack.json'), 'utf8')));
+}
 
 beforeEach(() => {
   tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'release-spec-'));
@@ -50,11 +67,12 @@ function builtPack(version = '1.2.3'): string {
     fs.writeFileSync(path.join(root, rel), content);
   };
   write('apack.json', JSON.stringify({ id: 'demo-pack', name: 'Demo Pack', version, hostVersion: '>=0.3.0' }));
-  write('.gitignore', '.apack/\n');
+  write('.gitignore', '.apack/\ndist/\n');
   write('package.json', JSON.stringify({ name: 'demo-pack', version }));
   write('package-lock.json', JSON.stringify({ name: 'demo-pack', version, lockfileVersion: 3, packages: { '': { name: 'demo-pack', version } } }));
   write('dist/runtime/index.cjs', 'module.exports = { registration: { id: "demo-pack" } };');
-  write('dist/types/snapshot.json', JSON.stringify({ format: PACK_SNAPSHOT_FORMAT }));
+  write('dist/types/snapshot.json', JSON.stringify({ declarationRevision: _declarationRevision(JSON.parse(fs.readFileSync(path.join(root, 'apack.json'), 'utf-8'))), format: PACK_SNAPSHOT_FORMAT, manifest: JSON.parse(fs.readFileSync(path.join(root, 'apack.json'), 'utf-8')), types: { entities: {}, relKinds: {} }, entityDestinations: {}, facades: {} }));
+  sealBuild(root);
   // Which pack the stand-in build above refreshes
   builtAt.root = root;
   return root;
@@ -72,6 +90,25 @@ function fakeGit(answers: Record<string, string | Error>): Runner & { calls: str
   };
   return Object.assign(run, { calls });
 }
+
+it('archives repeatedly outside the source inventory and refuses same-mtime input changes', async () => {
+  const root = builtPack();
+  const original = await buildPackArchive(root);
+  expect(path.dirname(original.file)).toBe(path.join(root, '.apack/archives'));
+  const source = path.join(root, 'apack.json');
+  const bytes = fs.readFileSync(source);
+  const stat = fs.statSync(source);
+  fs.utimesSync(source, new Date(), new Date());
+  expect((await buildPackArchive(root)).sha256).toBe(original.sha256);
+  const manifest = JSON.parse(bytes.toString());
+  manifest.name = 'Changed';
+  fs.writeFileSync(source, JSON.stringify(manifest));
+  fs.utimesSync(source, stat.atime, stat.mtime);
+  await expect(buildPackArchive(root)).rejects.toThrow(/input changed/);
+  expect(fs.readFileSync(original.checksumFile, 'utf8')).toContain(original.sha256);
+  fs.writeFileSync(source, bytes);
+  expect((await buildPackArchive(root)).sha256).toBe(original.sha256);
+});
 
 describe('nextReleaseVersion', () => {
   it.each([
@@ -280,10 +317,69 @@ describe('releaseStateReport', () => {
 });
 
 describe('runRelease', () => {
+  it('releases build signal ownership before running synchronous verification checks', async () => {
+    const root = builtPack();
+    fs.writeFileSync(path.join(root, 'tsconfig.json'), '{}');
+    const interrupt = process.listeners('SIGINT'), terminate = process.listeners('SIGTERM');
+    const gitRun = fakeGit({ 'git rev-parse --abbrev-ref HEAD': 'main' });
+    let checked = false;
+    const run: Runner = (command, args, cwd) => {
+      if (command !== 'npx') return gitRun(command, args, cwd);
+      checked = true;
+      expect(process.listeners('SIGINT')).toEqual(interrupt);
+      expect(process.listeners('SIGTERM')).toEqual(terminate);
+      return '';
+    };
+    await runRelease(root, { ...releaseOptions, dryRun: true, run, env: {} });
+    expect(checked).toBe(true);
+  });
+
+  it.each([false, true])('reports aborted verification before signal exit and stops the release (resuming: %s)', async resuming => {
+    const root = builtPack();
+    const run = fakeGit({
+      'git log -1 --format=%s': resuming ? 'release: v1.2.3' : '',
+      'git rev-parse --abbrev-ref HEAD': 'main',
+    });
+    const errors: string[] = [];
+    let reportedBeforeExit = '';
+    const errorLog = vi.spyOn(console, 'error').mockImplementation(message => { errors.push(String(message)); });
+    let terminate!: () => void;
+    const originalOn = process.on.bind(process);
+    const on = vi.spyOn(process, 'on').mockImplementation((event, listener) => {
+      if (event === 'SIGTERM') { terminate = listener; return process; }
+      if (event === 'SIGINT') return process;
+      return originalOn(event, listener);
+    });
+    const signalExit = new Error('Simulated signal exit');
+    const kill = vi.spyOn(process, 'kill').mockImplementation((pid, signal) => {
+      expect(pid).toBe(process.pid);
+      expect(signal).toBe('SIGTERM');
+      reportedBeforeExit = errors.join('\n');
+      throw signalExit;
+    });
+    vi.mocked(runPackBuild).mockImplementationOnce(async (_root, options) => {
+      if (!options?.signal) throw new Error('Build lifetime missing');
+      terminate();
+      options.signal.throwIfAborted();
+    });
+    try {
+      await expect(runRelease(root, { ...releaseOptions, run, env: {} })).rejects.toBe(signalExit);
+      expect(reportedBeforeExit).toContain(resuming ? 'Release v1.2.3 stopped part-way' : 'version files were bumped to 1.2.4');
+      expect(JSON.parse(fs.readFileSync(path.join(root, 'apack.json'), 'utf8')).version).toBe(resuming ? '1.2.3' : '1.2.4');
+      expect(fs.existsSync(path.join(root, '.apack/release'))).toBe(false);
+      expect(run.calls.filter(call => /^git (?:add |commit |tag -a|push(?: |$))/.test(call))).toEqual([]);
+    } finally {
+      on.mockRestore();
+      kill.mockRestore();
+      errorLog.mockRestore();
+    }
+  });
+
   it('packs after the version commit, so integrity.json records the tagged commit', async () => {
     const { root, origin, run } = packRepo();
     const { version } = await runRelease(root, { ...releaseOptions, run, env: {} });
 
+    expect(runPackBuild).toHaveBeenLastCalledWith(root, { args: ['--release'], signal: expect.any(AbortSignal) });
     expect(version).toBe('1.2.4');
     const tagged = git(root, 'rev-parse', 'v1.2.4^{commit}');
     expect(git(root, 'log', '-1', '--format=%s', tagged)).toBe('release: v1.2.4');
@@ -318,7 +414,7 @@ describe('runRelease', () => {
     expect(read('package-lock.json')).toMatchObject({ version: '1.2.4', packages: { '': { version: '1.2.4' } } });
     expect(git(root, 'show', '--name-only', '--format=', 'HEAD').split('\n').sort())
       .toEqual(['apack.json', 'package-lock.json', 'package.json']);
-    // no tracked file left behind modified (.apack/ build output is untracked, and gitignored in a real pack)
+    // No tracked file left modified; .apack/ and dist/ build output are ignored in generated packs.
     expect(git(root, 'status', '--porcelain', '--untracked-files=no')).toBe('');
   });
 

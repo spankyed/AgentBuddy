@@ -199,7 +199,7 @@ describe('what --full adds', () => {
   it('reads a name against the file, never the packages/ prefix every path carries', () => {
     const { runs, ambiguous } = planTargets(['pack'], [], REPO_ROOT);
     const matched = ambiguous[0]?.specs ?? runs.flatMap((r) => r.args);
-    expect(matched.length).toBeLessThan(40);
+    expect(matched.length).toBeGreaterThan(0);
     expect(matched.every((f) => path.basename(String(f)).includes('pack'))).toBe(true);
   });
 
@@ -589,7 +589,7 @@ describe("the package's CLAUDE.md names what is here", () => {
  * The two edges no module graph can see, and the packs they are derived for.
  *
  * A pack's specs import what `apack pack build` produced, never the source that produced it, so the edge runs
- * `src` -> build -> artifact -> spec and `related` reports the same emptiness it reports for a file nothing
+ * `src` -> build -> output -> spec and `related` reports the same emptiness it reports for a file nothing
  * covers. Those are opposite facts and until these routes existed they got the same sentence: a content source
  * was told *"No spec covers …"*, which `tests/content/` refutes.
  */

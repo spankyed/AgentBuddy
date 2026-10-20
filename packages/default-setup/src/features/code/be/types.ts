@@ -261,7 +261,7 @@ export interface TerminalScript {
 }
 
 // Settings types
-export type CodeSettings = typeof import('../settings.ts').default.defaults;
+export type CodeSettings = import('#generated/settings.ts').SettingsOf<'code'>;
 
 export type CodeConnectedData = {
   baseDirectory: string | null;

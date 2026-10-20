@@ -1,13 +1,12 @@
+import { featureSettings } from '#generated/settings.ts';
 // The root flow is the flow with the root role, and only that: the flows system reports it to its plugin and changes
 // it (SET_ROOT_FLOW), imports and content imports bring it with their flows, and no setting records it
-import { services } from '#generated/services.ts';
 import * as path from 'node:path'
 import { describe, expect, it } from 'vitest'
 import { compileFlowDSL } from '@apackdev/sdk/build'
 import { flowRepository } from '@apackdev/sdk/repositories'
 import { startApp } from '@apackdev/testing/harness'
 import { repository } from '#generated/repository.ts'
-import { ref } from '#generated/ref.ts'
 
 /** Where `apack pack build` writes this pack's compiled content */
 const DIST = path.resolve(import.meta.dirname, '../../../../dist', 'runtime', 'content')
@@ -22,7 +21,7 @@ describe('the root flow', () => {
     await app.connect()
 
     expect(reportedRoot(await app.nextEmit('flows', 'FLOWS_CONNECTED'))).toBe(rootId)
-    expect(services.settings.forFeature(ref('flows'))).not.toHaveProperty('rootFlowId')
+    expect(featureSettings.forFeature('flows').get()).not.toHaveProperty('rootFlowId')
   })
 
   it('changes with SET_ROOT_FLOW, taking the role from the previous root, and null leaves none', async () => {

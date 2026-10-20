@@ -113,7 +113,6 @@ export function createExtensions({ mode, variant = 'full', placeholder, injected
     Link.configure({
       openOnClick: false,
       autolink: true,
-      protocols: ['note', 'thread', 'doc'],
     }),
     CustomCode.configure({ HTMLAttributes: { spellcheck: 'false' } }),
     EmptyLinePreserver,

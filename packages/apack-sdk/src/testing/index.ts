@@ -1,17 +1,19 @@
-import type { SettingsService } from '../services/settings.ts';
+import type { SettingsAdmin } from '../services/settings.ts';
 // The runtime a pack's unit tests run against: the EARS engine in memory, without the app.
 // @apackdev/testing's harness drives it; it lives in the SDK so tests share the pack's SDK instance
 // (its query, repository and content-writer registries) instead of a copy.
 import { createEarsEngine, installEngine, type EarsEngine } from '@apackdev/ears';
-import type { ContentWriter } from '../content/writers.ts';
+import type { ContentRuntime } from '../framework/content-runtime.ts';
+export { nativePackDeclarationFixture } from './pack-declaration.ts';
 import { SDK_ENTITIES } from '../types/sdk-entities.ts';
 import type { EARS } from '../types/entities.ts';
 import type { PackRegistryView } from '../runtime/packs-view.ts';
 import { _isHostBound } from '../runtime/host-runtime.ts';
 import { testPacks } from './packs.ts';
-import { bindTestRuntime, resetTestHostState, type TestOnboarding } from './host.ts';
+import { bindTestRuntime, resetTestHostState } from './host.ts';
+import type { OnboardingService } from '../services/onboarding.ts';
 
-export { testRootEvents, takeSystemErrors, addTestSecret, type TestRootEvents, type TestOnboarding } from './host.ts';
+export { testRootEvents, takeSystemErrors, addTestSecret, type TestRootEvents } from './host.ts';
 export { testPacks, type TestPacks } from './packs.ts';
 export { fakeInference, type FakeInference, type FakeInferenceCall, type FakeInferenceReplies, type FakeInferenceReply, type FakeTextCall } from './fake-inference.ts';
 // A pack's own tests bind a frontend host for the file and forget it again; bindFeHost is the renderer's,
@@ -20,20 +22,6 @@ export { startFeTestRuntime, stopFeTestRuntime, type FeTestRuntimeOptions } from
 export { fakeSettings, type FakeSettings, type FakeSettingsUpdate } from './fake-settings.ts';
 // What a delivery door puts on an answer, for a spec that drives a machine with no door in front of it
 export { answerTo } from './answers.ts';
-
-/**
- * What a pack's content needs outside the app: its entity types and relation kinds, its repositories
- * and its content writers. `apack pack generate-entries` writes it as `contentRuntime` in
- * `src/__generated__/content-runtime.ts`; `apack pack build` bundles it into `build/content-runtime.mjs` for
- * packs that depend on this one.
- */
-export interface ContentRuntime {
-  id: string;
-  entities: Record<string, string>;
-  relKinds: Record<string, string>;
-  repositories: Record<string, unknown>;
-  contentWriters: Record<string, ContentWriter>;
-}
 
 /** What `startTestRuntime` starts the in-memory app with */
 export interface TestRuntimeStartOptions {
@@ -47,19 +35,21 @@ export interface TestRuntimeStartOptions {
   /** What `getAppVersion()` returns; `0.0.0-test` by default. First call only */
   appVersion?: string;
   /**
-   * Where `appData.hasOnboarded` and `completeOnboarding` keep their state (the harness passes the host's app state);
+   * Where `onboarding.isComplete` and `complete` keep their state (the harness passes the host's app state);
    * in memory by default. First call only
    */
-  onboarding?: TestOnboarding;
+  onboarding?: OnboardingService;
   /**
    * Backs `services.settings` (the harness passes the host's settings store, so a test writes settings the way the
    * app does); without one, reading or writing settings says to run on the harness. First call only
    */
-  settings?: SettingsService;
+  settings?: SettingsAdmin;
+  /** Per-test replacements for native host ports, read from this runtime's map. First call only. */
+  serviceOverrides?: ReadonlyMap<string, unknown>;
 }
 
 const entityTypes = new Set<string>(Object.values(SDK_ENTITIES));
-let started: Pick<TestRuntimeStartOptions, 'packs' | 'appVersion' | 'onboarding' | 'settings'> | undefined;
+let started: Pick<TestRuntimeStartOptions, 'packs' | 'appVersion' | 'onboarding' | 'settings' | 'serviceOverrides'> | undefined;
 let engine: EarsEngine | undefined;
 
 /** A new in-memory engine checking entity types against the test runtime's, and installed */
@@ -88,7 +78,7 @@ function testEngine(): EarsEngine {
 export function startTestRuntime(options: TestRuntimeStartOptions = {}): void {
   for (const type of options.entityTypes ?? []) entityTypes.add(type);
   if (started) {
-    for (const key of ['packs', 'appVersion', 'onboarding'] as const) {
+    for (const key of ['packs', 'appVersion', 'onboarding', 'serviceOverrides'] as const) {
       if (options[key] !== undefined && options[key] !== started[key]) {
         throw new Error(`startTestRuntime already bound the test app without this ${key}: pass ${key} on its first call`);
       }
@@ -96,7 +86,7 @@ export function startTestRuntime(options: TestRuntimeStartOptions = {}): void {
     // Still bound: nothing to start. Unbound since (a test unbound the host): bound again, as first started
     if (_isHostBound()) return;
   } else {
-    started = { packs: options.packs, appVersion: options.appVersion, onboarding: options.onboarding, settings: options.settings };
+    started = { packs: options.packs, appVersion: options.appVersion, onboarding: options.onboarding, settings: options.settings, serviceOverrides: options.serviceOverrides };
   }
   installFreshEngine();
   bindTestRuntime({ engine: testEngine, resetData: resetTestData, ...started });
@@ -130,3 +120,5 @@ export function dropAttribute(id: EARS.EntityId, kind: string): void {
 
 /** The subject a check asserted over, confirmed to be there — see its own doc comment for the rule */
 export { population } from './population.ts';
+
+export { nativeFrontendDeclarationFixture } from './frontend-declaration.ts';

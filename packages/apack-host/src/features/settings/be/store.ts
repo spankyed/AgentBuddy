@@ -1,211 +1,194 @@
-// The one Settings row, and the one writer to it. The app's settings are the host's: a feature reaches its own
-// through `services.settings` and never through another pack.
-//
-// The row stores only what the user changed. The settings in effect are the defaults with those changes over them,
-// so a changed default, or a pack's feature settings coming and going, applies to every key the user didn't set.
-//
-// The host owns the document's structure and not its content (`document.ts`): it knows `features`, one slice per
-// installed feature with settings keyed by its ref, and takes every other section as opaque. Which sections exist,
-// and what they default to, come from `defaults` — whoever composes the app supplies it, so no pack's shape reaches
-// this module.
-import { untypedTx, untypedQx } from '@apackdev/ears';
+import { randomUUID } from 'node:crypto';
+import { AsyncLocalStorage } from 'node:async_hooks';
+import { createLogger } from '@apackdev/sdk/logger';
+// One host writer composes declarations beneath explicit choices for every preference owner.
+import type { EarsQuery } from '@apackdev/ears';
 import type { EARS } from '@apackdev/sdk';
-import { deepMerge, hasOwn } from '@apackdev/sdk/utils/pure';
-import { refProblem, resolveName, type FeatureRef, type RefLookup } from '@apackdev/sdk/ids';
-import { getFeaturesWithSettings, getPackSettingsDefaults } from '@apackdev/sdk/framework';
-import { changesFrom, isEqual, FEATURES_SECTION, removeIn, SETTINGS_KIND, settingsProblems, SettingsRefusedError, setIn } from './document.ts';
-// The contract's own, not a copy of it: `services.settings.onChange` and this store's must be the same type
+import { _settingsJsonProblems, type SettingsCatalog } from '@apackdev/sdk/framework';
+import { deepMerge, isPlainObject } from '@apackdev/sdk/utils/pure';
+import { settingsTargetPath, type SettingsDocument, type SettingsOverrides, type SettingsTarget, type SettingsSnapshot, type SettingsRecovery, type SettingsRecoveryRequest, type SettingsWriteCondition } from '@apackdev/sdk/types';
 import type { SettingsChange } from '@apackdev/sdk/services';
-export type { SettingsChange };
+import { authorizeSettings, settingsDefinition } from '../authorization.ts';
+import { getIn, isEqual, removeIn, SettingsRefusedError, setIn } from '../document.ts';
+import { compileSettingsCatalog } from '../validation.ts';
+export type { SettingsChange, SettingsDocument };
 
-/** The entity type the host declares for the settings row */
 export const SETTINGS_ENTITY = 'Settings';
-
-// A fixed id without a hyphen: "Settings-app" with one had a bug where updates didn't persist
 const SETTINGS_ID = `${SETTINGS_ENTITY}-app` as EARS.EntityId;
-
-/** A settings document: the `features` slices the host knows, and whatever sections the app registered */
-export interface SettingsDocument {
-  [FEATURES_SECTION]: Record<string, unknown>;
-  [section: string]: unknown;
-}
-
-
+const logger = createLogger('settings');
 export interface SettingsStoreOptions {
-  /**
-   * The settings in effect before the user changed anything: the registered sections with their defaults, and the
-   * installed features' own under `features`. Read on each call, since a pack registering or unregistering changes it.
-   */
-  defaults: () => SettingsDocument;
+  /** The owning engine; test harnesses resolve the current engine after a reset. */
+  ears: () => Pick<EarsQuery, 'qx' | 'tx'>;
+  catalog: () => SettingsCatalog;
+  /** Omit only for a fixed catalog, such as a one-shot validator. */
+  onCatalogChanged?: (listener: () => void) => () => void;
 }
-
 export type SettingsStore = ReturnType<typeof createSettingsStore>;
 
-/** Own properties only: a settings path is data, including keys such as __proto__. */
-function at(value: unknown, path: readonly (string | number)[]): unknown {
-  for (const key of path) {
-    if (value === null || typeof value !== 'object' || !hasOwn(value, key)) return undefined;
-    value = (value as Record<string, unknown>)[key];
-  }
-  return value;
-}
-
-export function createSettingsStore({ defaults }: SettingsStoreOptions) {
+export function createSettingsStore({ ears, catalog, onCatalogChanged }: SettingsStoreOptions) {
   const listeners = new Set<(change: SettingsChange) => void>();
-  /** How many data replacements are running (`whileReplacingData`) */
   let replacingData = 0;
+  let recovering = false;
+  const replacement = new AsyncLocalStorage<{ active: boolean }>();
+  let replacementSnapshot: Pick<SettingsSnapshot, 'values' | 'catalog'> | undefined;
+  const runId = randomUUID();
+  let revision = 0;
+  let atRevision = -1;
+  let validation: ReturnType<typeof compileSettingsCatalog>;
 
-  const tell = (change: SettingsChange): void => {
-    for (const listener of listeners) listener(change);
-  };
-
-  /**
-   * Only what the user changed. A read, and only a read: an app still at its defaults has changed nothing, so it has
-   * no row, and asking what is stored must not be what creates one — `getAll()` runs wherever settings are read,
-   * including against a database opened read-only.
-   */
-  function stored(): Partial<SettingsDocument> {
-    const existing = untypedQx(SETTINGS_ID).pickOne(['data']) as { data?: unknown } | undefined;
-    return (existing?.data ?? {}) as Partial<SettingsDocument>;
+  function declarations(): SettingsCatalog {
+    const definitions = catalog();
+    if (definitions.revision !== atRevision) {
+      validation = compileSettingsCatalog(definitions);
+      atRevision = definitions.revision;
+    }
+    return definitions;
   }
 
-  /** The settings in effect: the defaults with the stored changes over them */
-  const effective = (): SettingsDocument => structuredClone(deepMerge(defaults(), stored())) as SettingsDocument;
-
-  /** The sections a document may hold besides `features`, as the defaults name them */
-  const sections = (): string[] => Object.keys(defaults()).filter((section) => section !== FEATURES_SECTION);
-
-  /** How a feature's name is looked up: among the installed features with settings, a disabled pack's included */
-  const lookup = (): RefLookup => ({ registered: getFeaturesWithSettings(), among: 'installed' });
-
-  /**
-   * Stores `next` as the user's changes and tells the listeners, once it passes `settingsProblems` against what is
-   * stored: every write goes through here, so none stores a document of the wrong shape.
-   */
-  function write(next: unknown): void {
-    const problems = settingsProblems(next, { before: stored(), sections: sections() });
-    if (problems.length > 0) throw new SettingsRefusedError(problems);
-    const current = effective();
-    const effectiveNext = deepMerge(defaults(), next) as SettingsDocument;
-    const schemas = getPackSettingsDefaults().schemas;
-    for (const [ref, slice] of Object.entries(effectiveNext.features ?? {})) {
-      if (isEqual(slice, current.features?.[ref])) continue;
-      const schema = schemas[ref];
-      if (!schema) {
-        problems.push(`Feature "${ref}" does not declare a settings schema`);
-        continue;
-      }
-      const checked = schema.safeParse(slice);
-      if (checked.success && !isEqual(checked.data, slice)) {
-        problems.push(`Feature "${ref}" settings schema must validate without transforming values`);
-      }
-      if (!checked.success) {
-        for (const issue of checked.error.issues) {
-          const paths = issue.code === 'unrecognized_keys'
-            ? issue.keys.map(key => [...issue.path, key]) : [issue.path];
-          // A declaration changing must not trap existing data: only new or changed invalid values are refused.
-          if (paths.every(path => isEqual(at(current.features?.[ref], path), at(slice, path)))) continue;
-          problems.push(`Feature "${ref}" ${issue.path.join('.') || 'settings'}: ${issue.message}`);
-        }
-      }
+  function defaults(): SettingsDocument { declarations(); return validation.defaults; }
+  function rawStored(): unknown {
+    const row = ears().qx(SETTINGS_ID).pickOne(['data']);
+    if (row === null) return {};
+    return structuredClone(row.data);
+  }
+  function stored(): SettingsOverrides {
+    const value = rawStored();
+    if (!isPlainObject(value)) throw new SettingsRefusedError(['Stored settings must be a JSON object']);
+    return value as SettingsOverrides;
+  }
+  function effective(): SettingsDocument {
+    if (recovering) throw new SettingsRefusedError(['Settings require recovery. Reset the invalid values and restart.']);
+    const base = defaults();
+    const overrides = stored();
+    validation.validate(overrides);
+    return structuredClone(deepMerge(base, overrides)) as SettingsDocument;
+  }
+  /** In recovery the stored row is invalid, and only `recover()` may change it. */
+  function refuseDuringRecovery(): void {
+    if (recovering) throw new SettingsRefusedError(['Settings require recovery. Reset the invalid values and restart.']);
+  }
+  function getRecovery(): SettingsRecovery | undefined {
+    if (!recovering) return undefined;
+    declarations();
+    return { version: { runId, revision }, problems: validation.inspect(rawStored()) };
+  }
+  const tell = (change: SettingsChange) => {
+    for (const listener of listeners) {
+      try { listener(change); }
+      catch (error) { logger.error('Settings subscriber failed', error instanceof Error ? error : new Error(String(error))); }
     }
-    if (problems.length > 0) throw new SettingsRefusedError(problems);
-    // The first change is what creates the row, so it is written here rather than by whoever read the settings first.
-    // treatAsNew gives it a createdAt, and the entity type is what makes it findable as a Settings row.
-    const exists = untypedQx(SETTINGS_ID).pickOne(['data']) !== null;
-    (exists ? untypedTx(SETTINGS_ID) : untypedTx(SETTINGS_ID, true).put('entityType', SETTINGS_ENTITY))
-      .put('data', next as Partial<SettingsDocument>)
-      .put('updatedAt', Date.now());
+  };
+  const targetDefinition = (target: SettingsTarget) => settingsDefinition(declarations(), target);
+  function authorize(target: SettingsTarget, caller?: string, mutation = false): void {
+    authorizeSettings(declarations(), target, caller, mutation);
+    if (caller !== undefined && mutation && replacingData && !replacement.getStore()?.active) {
+      throw new SettingsRefusedError(['Data is being replaced. Wait before changing settings.']);
+    }
+  }
+
+  function compare(condition: SettingsWriteCondition | undefined, value: unknown): void {
+    if (condition === undefined) return;
+    if (_settingsJsonProblems(condition).length || !isPlainObject(condition) || typeof condition.runId !== 'string' || !isPlainObject(condition.expected)
+      || typeof condition.expected.exists !== 'boolean') throw new SettingsRefusedError(['Invalid settings write comparison']);
+    if (condition.runId !== runId || condition.expected.exists !== (value !== undefined)
+      || (condition.expected.exists && !isEqual(value, condition.expected.value))) {
+      throw new SettingsRefusedError(['This setting changed since editing began. Review the current value before saving.']);
+    }
+  }
+
+  function write(next: unknown): void {
+    declarations();
+    validation.validate(next, rawStored());
+    const database = ears();
+    const exists = database.qx(SETTINGS_ID).pickOne(['data']) !== null;
+    (exists ? database.tx(SETTINGS_ID) : database.tx(SETTINGS_ID, true).put('entityType', SETTINGS_ENTITY))
+      .put('data', structuredClone(next)).put('updatedAt', Date.now());
+    revision++;
     tell('written');
   }
 
+  function removeOverrides(path: readonly string[]): void {
+    const before = stored();
+    const next = removeIn(before, path);
+    if (next !== before) write(next);
+  }
+
   return {
-    /** The settings in effect */
     getAll: effective,
-
-    /**
-     * Only what the user changed, without the defaults merged in — what a migration has to rewrite, since writing a
-     * merged copy back would freeze today's defaults into the user's stored settings.
-     */
-    getStored: stored,
-
-    /** One section of the settings in effect, by the name whoever registered it gave */
-    getSection: <T = unknown>(section: string): T => effective()[section] as T,
-
-    /** A feature's settings in effect, by its ref */
-    getFeatureSettings: <T = unknown>(feature: FeatureRef): T => (effective()[FEATURES_SECTION][feature] ?? {}) as T,
-
-    /**
-     * The ref of the installed feature with settings `name` stands for. Where a name arrives as a string — a client's
-     * send, an action's `services.settings` call — it is parsed here once and throws naming the ref it likely meant,
-     * so what the rest of the store takes is a `FeatureRef`.
-     */
-    featureRef(name: string): FeatureRef {
-      const problem = refProblem(SETTINGS_KIND, name, lookup());
-      if (problem) throw new SettingsRefusedError([problem]);
-      return resolveName(name);
+    enterRecovery: () => { recovering = true; },
+    getRecovery,
+    recover(request: SettingsRecoveryRequest): void {
+      if (replacingData) throw new SettingsRefusedError(['Data is being replaced. Wait before repairing settings.']);
+      const current = getRecovery();
+      if (!current?.problems.length || !isPlainObject(request) || _settingsJsonProblems(request).length || !isEqual(request.version, current.version)) {
+        throw new SettingsRefusedError(['Settings changed. Review the current problems before resetting.']);
+      }
+      if (request.reset === 'all') { write({}); return; }
+      if (!Array.isArray(request.reset) || !request.reset.length || current.problems.some(problem => !problem.target)) {
+        throw new SettingsRefusedError(['Select affected settings groups, or reset all preferences for a malformed document.']);
+      }
+      const affected = new Set(current.problems.map(problem => JSON.stringify(settingsTargetPath(problem.target!))));
+      let next = rawStored();
+      for (const target of request.reset) {
+        targetDefinition(target);
+        if (!affected.has(JSON.stringify(settingsTargetPath(target)))) throw new SettingsRefusedError(['Only affected settings groups can be reset during recovery.']);
+        next = removeIn(next, settingsTargetPath(target));
+      }
+      write(next);
     },
-
-    /** Sets `value` at `path` in a feature's settings, by its ref */
-    setFeatureSetting(feature: FeatureRef, path: readonly string[], value: unknown): void {
-      write(setIn(stored(), [FEATURES_SECTION, feature, ...path], value));
+    getSnapshot(): SettingsSnapshot {
+      const published = replacementSnapshot ?? { values: effective(), catalog: declarations() };
+      return { runId, revision, status: replacingData ? 'replacing' : 'ready', ...structuredClone(published) };
     },
-
-    /** Sets `value` at `path` in a registered section */
-    setSectionValue(section: string, path: readonly string[], value: unknown): void {
-      write(setIn(stored(), [section, ...path], value));
+    getOverrides: stored,
+    get<T = unknown>(target: SettingsTarget, caller?: string): T {
+      authorize(target, caller);
+      return getIn(effective(), settingsTargetPath(target)) as T;
     },
-
-    /**
-     * Makes `settings` the settings in effect: stores what they set that the defaults don't. A default they leave out
-     * keeps applying, since stored settings only set values. This is the one edge that carries arbitrary feature
-     * keys, so a changed slice must be an installed feature's.
-     */
-    replaceAll(settings: unknown): void {
-      const among = lookup();
-      const problems = settingsProblems(settings, {
-        before: effective(),
-        sections: sections(),
-        keyProblem: (key) => refProblem(SETTINGS_KIND, key, among),
-      });
-      if (problems.length > 0) throw new SettingsRefusedError(problems);
-      write(changesFrom(defaults(), settings) ?? {});
+    set(target: SettingsTarget, path: readonly string[], value: unknown, caller?: string, condition?: SettingsWriteCondition): void {
+      authorize(target, caller, true);
+      refuseDuringRecovery();
+      if (!Array.isArray(path) || path.some(key => typeof key !== 'string')) throw new SettingsRefusedError(['Settings paths contain strings']);
+      if (condition) compare(condition, getIn(effective(), [...settingsTargetPath(target), ...path]));
+      write(setIn(stored(), [...settingsTargetPath(target), ...path], value));
     },
-
-    /** Removes a stored value (its path in the stored data), so its default applies again */
-    removeStored(path: readonly string[]): void {
-      const before = stored();
-      const next = removeIn(before, path);
-      if (next !== before) write(next);
+    reset(target: SettingsTarget, caller?: string): void {
+      // Host reset may remove an orphan; pack code requires a current authorized declaration.
+      if (caller !== undefined) authorize(target, caller, true);
+      else targetDefinition(target);
+      refuseDuringRecovery();
+      removeOverrides(settingsTargetPath(target));
     },
-
-    /** Forgets every change the user made, so the defaults apply again */
-    reset: (): void => write({}),
-
-    /**
-     * Calls `listener` on each change to the stored settings, whoever made it; returns the unsubscribe. The settings
-     * system tells each feature whose settings changed from here, so a write made anywhere (a system, an action, a
-     * an apply) reaches the features it changed, and none is told a change twice. The changes arrive in the order they
-     * happened, so a write a replacement makes can't be taken for one of its own.
-     */
+    replaceAll(next: unknown, condition?: SettingsWriteCondition): void {
+      refuseDuringRecovery();
+      declarations();
+      if (condition) compare(condition, effective());
+      validation.validateEffective(next);
+      write(next);
+    },
+    removeOverrides(path: readonly string[]): void {
+      refuseDuringRecovery();
+      removeOverrides(path);
+    },
+    resetAll: () => {
+      refuseDuringRecovery();
+      write({});
+    },
     onChange(listener: (change: SettingsChange) => void): () => void {
       listeners.add(listener);
-      return () => listeners.delete(listener);
+      const stopCatalog = onCatalogChanged?.(() => listener('written'));
+      return () => { listeners.delete(listener); stopCatalog?.(); };
     },
-
-    /**
-     * Runs `replace`, which replaces the stored data wholesale (a backup import), telling the listeners it is running
-     * and, once it settles, that it ended — done or failed, since a failed import may have migrated some of the data
-     * already. The settings arrive past this writer, and the migrations the import runs write through it, so the
-     * listeners can tell a write made in between from one of the user's. Said here, at the writer, they cannot arrive
-     * out of order with the writes they bracket.
-     */
     async whileReplacingData<T>(replace: () => Promise<T>): Promise<T> {
-      if (replacingData++ === 0) tell('replacing');
-      try {
-        return await replace();
-      } finally {
-        if (--replacingData === 0) tell('replaced');
+      // Database hydration bypasses the writer. Readers retain the published view until replacement settles.
+      if (replacingData === 0) replacementSnapshot = { values: effective(), catalog: declarations() };
+      if (replacingData++ === 0) { revision++; tell('replacing'); }
+      // Host-owned initialization/migrations may write; unrelated async callers still wait.
+      const scope = { active: true };
+      try { return await replacement.run(scope, replace); }
+      finally {
+        scope.active = false;
+        if (--replacingData === 0) { replacementSnapshot = undefined; revision++; tell('replaced'); }
       }
     },
   };

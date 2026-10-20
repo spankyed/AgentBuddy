@@ -1,9 +1,11 @@
+import type { ContentReference } from './content-references.ts';
 import * as fs from 'fs';
 import * as path from 'path';
-import { pathToFileURL } from 'url';
-import type { PackConfig, CompilePackOptions, CompilePackResult } from './types.ts';
+import type { PackConfig, CompilePackOptions, CompilePackResult, PackModuleLoader } from './types.ts';
 import type { StepDefinition } from '../steps/types.ts';
 import type { PackContentPreviewItem } from './preview.ts';
+import { parseContentIndex } from './content-index.ts';
+import { importPackModule } from './module-loader.ts';
 import { SPECIALTY_COMPILERS } from './compilers/standard.ts';
 import { buildPackConfigFromManifest } from './manifest-bridge.ts';
 import { contentFile } from './manifest.ts';
@@ -36,6 +38,8 @@ export interface ValidationResult {
 
 export interface SpecialtyCompileContext {
   packDir: string;
+  /** The build owner's module loader, shared with formats and step definitions. */
+  importModule: PackModuleLoader;
 }
 
 /** The SDK's compiler for a specialty content key (actions, prompts, flows) */
@@ -53,6 +57,8 @@ export interface SpecialtyCompiler<T = unknown> {
   count(data: T): number;
   /** The items the import dialog lists, named as include sets name them */
   items(data: T): PackContentPreviewItem[];
+  /** Static dependency inspection; absence means analysis is unavailable, never that there are no references. */
+  references?(data: T, context: CompilationContext): ContentReference[];
 }
 
 /** `content.json` in the compiled directory: what each content key holds */
@@ -72,6 +78,8 @@ export interface ContentIndexEntry {
   count: number;
   /** Top-level items, named as include sets name them */
   items: PackContentPreviewItem[];
+  /** Known static/computed references. Omitted for compilers without an analyzer; static analysis is not exhaustive. */
+  references?: ContentReference[];
 }
 
 export { CONTENT_INDEX_FILE };
@@ -80,10 +88,25 @@ export { CONTENT_INDEX_FILE };
 // Orchestrator
 // ============================================================================
 
-const importFileModule = (file: string) => import(pathToFileURL(file).href) as Promise<Record<string, unknown>>;
-
 function countRecords(records: ContentItem[]): number {
   return records.reduce((sum, record) => sum + 1 + countRecords(record.children ?? []), 0);
+}
+
+/** Ordinary media bytes use the same scoped reads as records; native copying bypasses captured inputs. */
+function copyMedia(source: string, destination: string, writeFile: (file: string, bytes: Uint8Array) => void): void {
+  const stat = fs.lstatSync(source);
+  if (stat.isDirectory()) {
+    fs.mkdirSync(destination, { recursive: true });
+    for (const name of fs.readdirSync(source)) copyMedia(path.join(source, name), path.join(destination, name), writeFile);
+    fs.chmodSync(destination, stat.mode);
+  } else if (stat.isFile()) {
+    fs.mkdirSync(path.dirname(destination), { recursive: true });
+    writeFile(destination, fs.readFileSync(source));
+    fs.chmodSync(destination, stat.mode);
+  } else {
+    // Preserve native link/special-file behavior; installed builds still enforce their regular-file layout.
+    fs.cpSync(source, destination, { recursive: true });
+  }
 }
 
 async function loadPackConfig(options: CompilePackOptions): Promise<PackConfig> {
@@ -131,12 +154,16 @@ function recordShapeProblems(value: unknown, at: string): string[] {
  */
 export async function compilePack(options: CompilePackOptions): Promise<CompilePackResult> {
   const { packDir, outputDir } = options;
+  const writeFile = (file: string, bytes: string | Uint8Array) => {
+    fs.writeFileSync(file, bytes);
+    options.recordOutput?.(path.resolve(file), bytes);
+  };
   _clearCompiledContent(outputDir);
-  const importModule = options.importModule ?? importFileModule;
+  const importModule = options.importModule ?? importPackModule;
   const log = options.log ?? console.log;
   const packConfig = await loadPackConfig(options);
 
-  const definitions = options.definitions ?? await packConfig.loadDefinitions?.();
+  const definitions = options.definitions ?? await packConfig.loadDefinitions?.(importModule);
 
   log(`Compiling pack: ${packConfig.name}`);
   fs.mkdirSync(outputDir, { recursive: true });
@@ -151,8 +178,8 @@ export async function compilePack(options: CompilePackOptions): Promise<CompileP
     const sourcePath = path.resolve(packDir, source.path);
     if (source.kind === 'specialty') {
       const specialty = SPECIALTY_COMPILERS[key];
-      if (!fs.existsSync(sourcePath)) continue;
-      const data = await specialty.compile(sourcePath, { packDir });
+      if (!fs.existsSync(sourcePath)) throw new Error(`Content "${key}": source path does not exist: ${sourcePath}`);
+      const data = await specialty.compile(sourcePath, { packDir, importModule });
       for (const message of specialty.collectErrors?.(data) ?? []) errors.push(`${key}: ${message}`);
       specialtyData.set(key, data);
       compiled.push({
@@ -227,20 +254,23 @@ export async function compilePack(options: CompilePackOptions): Promise<CompileP
     steps: definitions?.steps ?? [],
   };
   for (const [key, data] of specialtyData) {
-    const result = SPECIALTY_COMPILERS[key].validate?.(data, context);
+    const compiler = SPECIALTY_COMPILERS[key];
+    const result = compiler.validate?.(data, context);
     if (result && !result.valid) {
       throw new Error(`${key} validation errors:\n${result.errors.map((e) => `  ${e.path}: ${e.message}`).join('\n')}`);
     }
+    if (compiler.references) compiled.find(entry => entry.key === key)!.index.references = compiler.references(data, context);
   }
 
+  const index: ContentIndex = { version: 1, packId: packConfig.name, entries: compiled.map(({ index }) => index) };
+  parseContentIndex(index);
   const mediaRoot = path.join(outputDir, 'media');
   for (const { key, media, output, index } of compiled) {
-    fs.writeFileSync(path.join(outputDir, contentFile(key)), `${JSON.stringify(output, null, 2)}\n`);
-    if (media && fs.existsSync(media)) fs.cpSync(media, path.join(mediaRoot, key), { recursive: true });
+    writeFile(path.join(outputDir, contentFile(key)), `${JSON.stringify(output, null, 2)}\n`);
+    if (media && fs.existsSync(media)) copyMedia(media, path.join(mediaRoot, key), writeFile);
     log(`  ${key}: ${index.count}`);
   }
-  const index: ContentIndex = { version: 1, packId: packConfig.name, entries: compiled.map(({ index }) => index) };
-  fs.writeFileSync(path.join(outputDir, CONTENT_INDEX_FILE), `${JSON.stringify(index, null, 2)}\n`);
+  writeFile(path.join(outputDir, CONTENT_INDEX_FILE), `${JSON.stringify(index, null, 2)}\n`);
 
   return { counts: Object.fromEntries(compiled.map(({ key, index }) => [key, index.count])), warnings: [] };
 }

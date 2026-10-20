@@ -3,6 +3,7 @@
 // never return. Each of those is a case here, and none of them is visible from a green `npm run chain`.
 import { describe, expect, it } from 'vitest';
 import { schedule, type SchedulableStep } from '../../../scripts/lib/chain-schedule.ts';
+import { coresFor } from '../../../scripts/lib/core-budget.ts';
 
 const step = (name: string, dependsOn: string[] = [], extra: Partial<SchedulableStep> = {}): SchedulableStep =>
   ({ name, dependsOn, ...extra });
@@ -62,6 +63,29 @@ describe('schedule', () => {
     await done;
     expect(r.peak()).toBe(2);
     expect(r.order.sort()).toEqual(['a', 'b', 'c', 'd']);
+  });
+
+  it.each(['test:external-pack:fork', 'test:external-pack:contract', 'test:packaged-authoring:author'])(
+    'reserves the full pack-build width for %s on a two-core budget', async name => {
+      const r = runner();
+      const cores = coresFor(name, 10);
+      expect(cores).toBe(coresFor('build:default-setup', 10));
+      const done = schedule({ steps: [step(name, [], { cores }), step('other')],
+        budget: 2, skip: never, run: r.run });
+      await r.drain();
+      await done;
+      expect(r.peak()).toBe(1);
+    });
+
+  it('reserves both cores for the pack typecheck', async () => {
+    const r = runner();
+    const cores = coresFor('typecheck:pack', 10);
+    expect(cores).toBe(2);
+    const done = schedule({ steps: [step('typecheck:pack', [], { cores }), step('other')],
+      budget: 2, skip: never, run: r.run });
+    await r.drain();
+    await done;
+    expect(r.peak()).toBe(1);
   });
 
   it('never runs a step beside one it conflicts with', async () => {

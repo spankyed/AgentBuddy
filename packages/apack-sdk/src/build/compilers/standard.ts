@@ -1,3 +1,4 @@
+import { flowContentReferences } from './flow-references.ts';
 import { compileSourceDir } from '../compile-utils.ts';
 import type { SpecialtyCompiler, CompilationContext, ValidationResult } from '../content-compiler.ts';
 import type { CompiledEntry, CompileResult } from '../compile-utils.ts';
@@ -59,8 +60,9 @@ export const promptsCompiler: SpecialtyCompiler<DslCompiled> = {
 };
 
 export const flowsCompiler: SpecialtyCompiler<FlowDSL> = {
-  async compile(dir) {
-    return (await loadFlowsFromDir(dir)).merged;
+  references: (flows, context) => flowContentReferences(flows, context.steps),
+  async compile(dir, { importModule }) {
+    return (await loadFlowsFromDir(dir, importModule)).merged;
   },
 
   validate(flows: FlowDSL, context: CompilationContext): ValidationResult {

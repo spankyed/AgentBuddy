@@ -59,7 +59,7 @@ export interface AppEnvironment {
    */
   appDir: string;
   packsDir: string;
-  /** Build-time artifacts (types/, build/) of the app's built-in packs, for pack authors' dependency resolution. */
+  /** Build output (types/, build/) of the app's built-in packs, for pack authors' dependency resolution. */
   installedPacksFile: string;
   /** Where a running API publishes its port and process id, so local tools find it (`@apackdev/host/process-liveness`) */
   apiPortFile: string;

@@ -43,7 +43,7 @@ export async function handler(t: TNodeEntity, node: unknown, ctx: ExecutionConte
       const result = await runActionCode(n.actionFn, {
         label: n.label,
         params,
-        services: ctx.runtime.getAppServices() as object,
+        servicesForAction: ctx.runtime.servicesForAction,
         flowId: ctx.flowTNodeId,
       });
 
@@ -75,7 +75,7 @@ export async function handler(t: TNodeEntity, node: unknown, ctx: ExecutionConte
     const result = await runActionCode(action.actionFn, {
       label: action.label,
       params,
-      services: ctx.runtime.getAppServices() as object,
+      servicesForAction: ctx.runtime.servicesForAction,
       flowId: ctx.flowTNodeId,
     });
 

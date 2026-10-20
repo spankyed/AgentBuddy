@@ -1,262 +1,421 @@
-import { z } from 'zod';
-// The one Settings row and the one writer to it. What the store guarantees: the row holds only the user's changes,
-// the settings in effect are the defaults with those over them, every write is checked once, and the listeners hear
-// each change in the order it happened — including the two that bracket a wholesale replacement.
-import { afterAll, beforeEach, describe, expect, it } from 'vitest';
-import { untypedQx, untypedTx } from '@apackdev/ears';
+import { afterAll, beforeEach, describe, expect, it, vi } from 'vitest';
+import { installedEngine, untypedQx, untypedTx } from '@apackdev/ears';
 import { resetTestData } from '@apackdev/sdk/testing';
 import type { EARS } from '@apackdev/sdk';
 import type { PackRegistration } from '@apackdev/sdk/framework';
+import type { SettingsTarget } from '@apackdev/sdk/types';
 import { registry } from '../../packs/runtime/test-host.ts';
-import { FEATURES_SECTION, SettingsRefusedError } from '../../../src/features/settings/be/document.ts';
-import { createSettingsStore, SETTINGS_ENTITY, type SettingsDocument } from '../../../src/features/settings/be/store.ts';
+import { SettingsRefusedError } from '../../../src/features/settings/document.ts';
+import { createSettingsStore, SETTINGS_ENTITY } from '../../../src/features/settings/be/store.ts';
 
 const SETTINGS_ID = `${SETTINGS_ENTITY}-app` as EARS.EntityId;
-const THREADS = 'default-setup/threads';
-
-// A feature key is checked against the installed features with settings, so the store needs a pack registered to
-// accept one — the same lookup the app uses (`getFeaturesWithSettings`)
+const THREADS = 'default-setup/threads' as import('@apackdev/sdk/ids').FeatureRef;
+const feature: SettingsTarget = { kind: 'feature', featureRef: THREADS };
+const assistant: SettingsTarget = { kind: 'pack', packId: 'default-setup', groupId: 'assistant' };
+const app: SettingsTarget = { kind: 'app' };
+const assistantDefinition = {
+  defaults: { name: '' },
+  schema: { type: 'object', properties: { name: { type: 'string' } }, required: ['name'], additionalProperties: false },
+};
 const pack: PackRegistration = {
   id: 'default-setup',
-  features: { threads: { plugin: { receives: [] }, settings: { defaults: { limit: 10, sort: 'newest' }, schema: z.object({ limit: z.number().int().positive(), sort: z.enum(['newest', 'oldest']) }).strict() } } },
+  settings: { assistant: assistantDefinition },
+  features: { threads: { settings: {
+    defaults: { limit: 10, sort: 'newest' },
+    schema: { type: 'object', properties: { limit: { type: 'integer', exclusiveMinimum: 0 }, sort: { type: 'string', enum: ['newest', 'oldest'] } }, required: ['limit', 'sort'], additionalProperties: false },
+  } } },
 };
 registry.registerPack(pack);
 afterAll(() => registry.unregisterPack(pack.id));
-
-/** The defaults the app composes: one registered section, and one feature's own settings */
-const DEFAULTS = (): SettingsDocument => ({
-  [FEATURES_SECTION]: { [THREADS]: { limit: 10, sort: 'newest' } },
-  general: { application: { hotkeys: {} } },
-});
-
 let store: ReturnType<typeof createSettingsStore>;
-
 beforeEach(() => {
   resetTestData();
-  store = createSettingsStore({ defaults: DEFAULTS });
+  store = createSettingsStore({ ears: installedEngine, catalog: () => registry.settingsCatalog() });
 });
+const rowData = () => untypedQx(SETTINGS_ID).pickOne(['data'])?.data;
 
-/** What is on disk, past the store */
-const rowData = () => (untypedQx(SETTINGS_ID).pickOne(['data']) as { data?: unknown } | undefined)?.data;
-
-describe('what is stored and what is in effect', () => {
-  it('reads as empty before the user has changed anything', () => {
-    expect(store.getStored()).toEqual({});
-  });
-
-  it('merges the defaults under the stored changes', () => {
-    store.setFeatureSetting(THREADS as never, ['sort'], 'oldest');
-
-    expect(store.getFeatureSettings(THREADS as never)).toEqual({ limit: 10, sort: 'oldest' });
-    // the row keeps only the change, so a changed default still applies to `limit`
-    expect(store.getStored()).toEqual({ [FEATURES_SECTION]: { [THREADS]: { sort: 'oldest' } } });
-  });
-
-  it('follows a default that changes for a key the user never set', () => {
-    let limit = 10;
-    const moving = createSettingsStore({ defaults: () => ({ [FEATURES_SECTION]: { [THREADS]: { limit } }, general: {} }) });
-    moving.setFeatureSetting(THREADS as never, ['sort'], 'oldest');
-
-    limit = 50;
-    expect(moving.getFeatureSettings(THREADS as never)).toEqual({ limit: 50, sort: 'oldest' });
-  });
-
-  it('answers a feature with no settings with an empty object', () => {
-    expect(store.getFeatureSettings('default-setup/nothing' as never)).toEqual({});
-  });
-
-  it('reads a registered section', () => {
-    expect(store.getSection('general')).toEqual({ application: { hotkeys: {} } });
-  });
-});
-
-describe('the one writer', () => {
-  it('refuses a section nothing registered, and stores nothing', () => {
-    expect(() => store.setSectionValue('nope', ['x'], 1)).toThrow(SettingsRefusedError);
-    expect(store.getStored()).toEqual({});
-  });
-
-  it('refuses a replacement whose feature key is not installed', () => {
-    expect(() => store.replaceAll({ [FEATURES_SECTION]: { 'gone/notes': { x: 1 } } })).toThrow(SettingsRefusedError);
-    expect(store.getStored()).toEqual({});
-  });
-
-  it('carries the reasons on the refusal', () => {
-    try {
-      store.setSectionValue('nope', ['x'], 1);
-      expect.unreachable('the write should have been refused');
-    } catch (error) {
-      expect((error as SettingsRefusedError).problems[0]).toContain("isn't a settings section");
-    }
-  });
-
-  it('keeps only what a replacement changes from the defaults', () => {
-    store.replaceAll({ [FEATURES_SECTION]: { [THREADS]: { limit: 10, sort: 'oldest' } }, general: { application: { hotkeys: {} } } });
-
-    expect(store.getStored()).toEqual({ [FEATURES_SECTION]: { [THREADS]: { sort: 'oldest' } } });
-  });
-
-  it('removes a stored value so its default applies again, and does nothing when there is none', () => {
-    store.setFeatureSetting(THREADS as never, ['sort'], 'oldest');
-    const changes: unknown[] = [];
-    store.onChange((change) => changes.push(change));
-
-    store.removeStored([FEATURES_SECTION, THREADS, 'missing']);
-    expect(changes).toEqual([]); // nothing was there, so nothing was written
-
-    store.removeStored([FEATURES_SECTION, THREADS, 'sort']);
-    expect(store.getFeatureSettings(THREADS as never)).toEqual({ limit: 10, sort: 'newest' });
-    expect(changes).toEqual(['written']);
-  });
-
-  it('forgets every change on reset', () => {
-    store.setFeatureSetting(THREADS as never, ['sort'], 'oldest');
-    store.reset();
-
-    expect(store.getStored()).toEqual({});
-    expect(store.getFeatureSettings(THREADS as never)).toEqual({ limit: 10, sort: 'newest' });
-  });
-});
-
-describe('naming a feature', () => {
-  it('throws on a bare name, naming the ref it likely meant', () => {
-    expect(() => store.featureRef('threads')).toThrow(/default-setup\/threads/);
-  });
-});
-
-describe('listeners', () => {
-  it('hears every write once, whoever made it', () => {
-    const heard: string[] = [];
-    store.onChange((change) => heard.push(change));
-
-    store.setFeatureSetting(THREADS as never, ['sort'], 'oldest');
-    store.setSectionValue('general', ['application', 'hotkeys', 'save'], 'mod+s');
-
-    expect(heard).toEqual(['written', 'written']);
-  });
-
-  it('stops after the unsubscribe', () => {
-    const heard: string[] = [];
-    const off = store.onChange((change) => heard.push(change));
-    off();
-
-    store.reset();
-    expect(heard).toEqual([]);
-  });
-
-  // The two that bracket a replacement have to arrive in order with the writes they enclose, which is why the
-  // writer says them rather than whoever started the replacement
-  it('brackets a replacement, with the writes it makes in between', async () => {
-    const heard: string[] = [];
-    store.onChange((change) => heard.push(change));
-
-    await store.whileReplacingData(async () => {
-      store.setFeatureSetting(THREADS as never, ['sort'], 'oldest');
-    });
-
-    expect(heard).toEqual(['replacing', 'written', 'replaced']);
-  });
-
-  it('says it ended even when the replacement throws', async () => {
-    const heard: string[] = [];
-    store.onChange((change) => heard.push(change));
-
-    await expect(store.whileReplacingData(async () => { throw new Error('import failed'); })).rejects.toThrow('import failed');
-    expect(heard).toEqual(['replacing', 'replaced']);
-  });
-
-  // A failed import may have migrated some data already, so nested replacements say it once, at the outermost
-  it('says it once for nested replacements', async () => {
-    const heard: string[] = [];
-    store.onChange((change) => heard.push(change));
-
-    await store.whileReplacingData(async () => {
-      await store.whileReplacingData(async () => {});
-    });
-
-    expect(heard).toEqual(['replacing', 'replaced']);
-  });
-
-  it('does not let one listener throwing stop the row from being written', () => {
-    store.onChange(() => { throw new Error('listener blew up'); });
-
-    expect(() => store.setFeatureSetting(THREADS as never, ['sort'], 'oldest')).toThrow('listener blew up');
-    expect(rowData()).toEqual({ [FEATURES_SECTION]: { [THREADS]: { sort: 'oldest' } } });
-  });
-});
-
-describe('the row', () => {
-  // Reading settings happens everywhere, including against a database opened read-only, so a read that wrote would
-  // make every reader a writer
-  it('is not created by reading the settings', () => {
-    expect(store.getStored()).toEqual({});
-    expect(store.getAll()).toMatchObject({ [FEATURES_SECTION]: {} });
-
+describe('definitions and explicit choices', () => {
+  it('reads all three owners without creating a row', () => {
+    expect(store.getOverrides()).toEqual({});
+    expect(store.get(app)).toMatchObject({ projects: [], personal: {} });
+    expect(store.get(assistant)).toEqual({ name: '' });
+    expect(store.get(feature)).toEqual({ limit: 10, sort: 'newest' });
     expect(untypedQx(SETTINGS_ID).pickOne(['data'])).toBeNull();
   });
 
-  it('is created by the first change, as a findable Settings row', () => {
-    store.setFeatureSetting(THREADS as never, ['sort'], 'oldest');
+  it('keeps an explicit default-equal value until reset while following untouched defaults', () => {
+    store.set(feature, ['limit'], 10);
+    let catalog = registry.settingsCatalog();
+    const moving = createSettingsStore({ ears: installedEngine, catalog: () => catalog });
+    const definition = catalog.features[THREADS];
+    catalog = { ...catalog, revision: catalog.revision + 1, features: { ...catalog.features, [THREADS]: { ...definition, defaults: { limit: 50, sort: 'oldest' } } } };
+    expect(moving.get(feature)).toEqual({ limit: 10, sort: 'oldest' });
+    expect(moving.getOverrides()).toEqual({ features: { [THREADS]: { limit: 10 } } });
+    moving.reset(feature);
+    expect(moving.get(feature)).toEqual({ limit: 50, sort: 'oldest' });
+  });
 
-    expect(untypedQx('Settings').ids()).toEqual([SETTINGS_ID]);
-    expect(rowData()).toEqual({ [FEATURES_SECTION]: { [THREADS]: { sort: 'oldest' } } });
+  it('keeps identically named groups independent across packs', () => {
+    registry.registerPack({ id: 'another', settings: { assistant: assistantDefinition } });
+    try {
+      const other: SettingsTarget = { kind: 'pack', packId: 'another', groupId: 'assistant' };
+      store.set(assistant, ['name'], 'Ada');
+      store.set(other, ['name'], 'Grace');
+      store.reset(assistant);
+      expect(store.get(assistant)).toEqual({ name: '' });
+      expect(store.get(other)).toEqual({ name: 'Grace' });
+    } finally { registry.unregisterPack('another'); }
+  });
+
+  it('stores replacements as explicit choices, including default-equal values', () => {
+    const replacement = store.getAll();
+    replacement.features[THREADS] = { limit: 10, sort: 'oldest' };
+    store.replaceAll(replacement);
+    expect(store.getOverrides()).toEqual(replacement);
+    store.resetAll();
+    expect(store.getOverrides()).toEqual({});
+  });
+
+  it('returns independent snapshots', () => {
+    store.get<{ limit: number }>(feature).limit = -1;
+    expect(store.get(feature)).toEqual({ limit: 10, sort: 'newest' });
+    expect(registry.settingsCatalog().features[THREADS].defaults.limit).toBe(10);
   });
 });
 
-
-describe('schema validation at every write', () => {
-  it.each([['limit', '10'], ['limit', -1], ['sort', 'random'], ['unknown', true]])('refuses invalid %s without writing or notifying', (key, value) => {
+describe('one validated writer', () => {
+  it.each([['limit', '10'], ['limit', -1], ['sort', 'random'], ['unknown', true], ['sort', undefined]])('refuses invalid %s atomically', (key, value) => {
     const heard: string[] = [];
     store.onChange(change => heard.push(change));
-    expect(() => store.setFeatureSetting(THREADS as never, [key], value)).toThrow(SettingsRefusedError);
+    expect(() => store.set(feature, [key], value)).toThrow(SettingsRefusedError);
     expect(rowData()).toBeUndefined();
     expect(heard).toEqual([]);
   });
 
-  it('refuses an invalid JSON replacement atomically', () => {
-    store.setFeatureSetting(THREADS as never, ['sort'], 'oldest');
-    const before = store.getStored();
-    expect(() => store.replaceAll({ features: { [THREADS]: { limit: 'bad' } }, general: { application: { hotkeys: {} } } })).toThrow(SettingsRefusedError);
-    expect(store.getStored()).toEqual(before);
+  it('validates every declared owner in whole-document replacement', () => {
+    store.set(feature, ['sort'], 'oldest');
+    const before = store.getOverrides();
+    const replacement = store.getAll();
+    replacement.packs['default-setup'].assistant = { name: 1 };
+    expect(() => store.replaceAll(replacement)).toThrow('packs/default-setup/assistant');
+    expect(store.getOverrides()).toEqual(before);
+    expect(() => store.replaceAll({ general: {} })).toThrow(SettingsRefusedError);
   });
 
-  it('allows unrelated edits and removal of untouched legacy fields, but refuses changing them', () => {
-    untypedTx(SETTINGS_ID, true).put('entityType', SETTINGS_ENTITY).put('data', { features: { [THREADS]: { legacy: true, limit: 'old invalid value' } } });
-    store.setFeatureSetting(THREADS as never, ['sort'], 'oldest');
-    expect(store.getFeatureSettings(THREADS as never)).toMatchObject({ legacy: true, limit: 'old invalid value', sort: 'oldest' });
-    expect(() => store.setFeatureSetting(THREADS as never, ['legacy'], false)).toThrow(SettingsRefusedError);
-    expect(() => store.setFeatureSetting(THREADS as never, ['limit'], 'new invalid value')).toThrow(SettingsRefusedError);
-    store.removeStored(['features', THREADS, 'legacy']);
-    store.removeStored(['features', THREADS, 'limit']);
-    expect(store.getFeatureSettings(THREADS as never)).toEqual({ limit: 10, sort: 'oldest' });
+  it('refuses incomplete replacement instead of silently restoring omitted defaults', () => {
+    const heard: string[] = [];
+    store.onChange(change => heard.push(change));
+    expect(() => store.replaceAll({ features: { [THREADS]: { limit: 10, sort: 'newest' } } })).toThrow('Missing settings owner app');
+    const replacement = store.getAll();
+    replacement.features[THREADS] = { limit: 10 };
+    expect(() => store.replaceAll(replacement)).toThrow('sort');
+    expect(store.getOverrides()).toEqual({});
+    expect(heard).toEqual([]);
+  });
+
+  it('retains current-format unavailable overrides but refuses edits and allows host removal', () => {
+    const orphan = { packs: { absent: { assistant: { name: 'Keep' } } }, features: { 'absent/code': { limit: 2 } } };
+    untypedTx(SETTINGS_ID, true).put('entityType', SETTINGS_ENTITY).put('data', orphan);
+    store.set(assistant, ['name'], 'Ada');
+    expect(store.getOverrides()).toMatchObject(orphan);
+    const replacement = store.getAll();
+    replacement.features['absent/code'] = { limit: 3 };
+    expect(() => store.replaceAll(replacement)).toThrow('Unavailable settings owner');
+    expect(() => store.get({ kind: 'pack', packId: 'absent', groupId: 'assistant' })).toThrow('unavailable');
+    store.reset({ kind: 'pack', packId: 'absent', groupId: 'assistant' });
+    expect(store.getOverrides().packs?.absent).toEqual({});
+  });
+
+  it('refuses retaining invalid declared data and permits replacing the invalid slice', () => {
+    const data = { features: { [THREADS]: { unknown: true, limit: 'invalid' } } };
+    untypedTx(SETTINGS_ID, true).put('entityType', SETTINGS_ENTITY).put('data', data);
+    expect(() => store.set(assistant, ['name'], 'Ada')).toThrow(SettingsRefusedError);
+    expect(store.getOverrides()).toEqual(data);
+    store.set(feature, [], { sort: 'oldest' });
+    expect(store.get(feature)).toEqual({ limit: 10, sort: 'oldest' });
+  });
+
+  it('rejects malformed untyped targets before addressing data', () => {
+    for (const target of [{}, { kind: 'app', packId: 'x' }, { kind: 'feature', featureRef: 'threads' }, { kind: 'pack', packId: 'default-setup', groupId: '../app' }]) {
+      expect(() => store.reset(target as SettingsTarget)).toThrow(SettingsRefusedError);
+    }
+    expect(store.getOverrides()).toEqual({});
   });
 });
 
-it('returns independent effective snapshots so a reader cannot mutate registered defaults', () => {
-  const defaults = DEFAULTS();
-  const snapshots = createSettingsStore({ defaults: () => defaults });
-  const first = snapshots.getFeatureSettings<{ limit: number }>(THREADS as never);
-  first.limit = -1;
-  expect(snapshots.getFeatureSettings(THREADS as never)).toEqual({ limit: 10, sort: 'newest' });
-  expect(defaults.features[THREADS]).toEqual({ limit: 10, sort: 'newest' });
-  expect(snapshots.getStored()).toEqual({});
+describe('caller policy', () => {
+  it('permits declared dependents by default, refuses unrelated and unknown callers', () => {
+    registry.registerPack({ id: 'dependent', dependencies: { 'default-setup': '*' } });
+    registry.registerPack({ id: 'unrelated' });
+    try {
+      store.set(assistant, ['name'], 'Ada', 'dependent');
+      expect(store.get(assistant, 'dependent')).toEqual({ name: 'Ada' });
+      expect(() => store.set(assistant, ['name'], 'No', 'unrelated')).toThrow('does not depend');
+      expect(() => store.reset(assistant, 'not-declared')).toThrow('not declared');
+      expect(store.get(assistant)).toEqual({ name: 'Ada' });
+    } finally { registry.unregisterPack('dependent'); registry.unregisterPack('unrelated'); }
+  });
+
+  it('restricts mutations by owner without restricting dependent reads', () => {
+    const catalog = registry.settingsCatalog();
+    const guarded = createSettingsStore({ ears: installedEngine, catalog: () => ({ ...catalog,
+      dependencies: { ...catalog.dependencies, dependent: ['default-setup'] },
+      packs: { ...catalog.packs, 'default-setup': { assistant: { ...assistantDefinition, access: 'owner' } } },
+    }) });
+    expect(guarded.get(assistant, 'dependent')).toEqual({ name: '' });
+    expect(() => guarded.set(assistant, ['name'], 'No', 'dependent')).toThrow('Only pack');
+    expect(() => guarded.reset(assistant, 'dependent')).toThrow('Only pack');
+    guarded.set(assistant, ['name'], 'Ada', 'default-setup');
+    expect(guarded.get(assistant)).toEqual({ name: 'Ada' });
+  });
 });
 
-it('updates one shortcut without losing another override or storing untouched defaults', () => {
-  const defaults = { hotkeys: { first: 'a', second: 'b', third: 'c' }, phase: 'Plan' };
-  const packId = 'shortcuts';
-  const ref = `${packId}/keys`;
-  registry.registerPack({ id: packId, features: { keys: { settings: {
-    defaults, schema: z.object({ hotkeys: z.record(z.string().nullable()), phase: z.string() }).strict(),
-  } } } });
+describe('notifications and data replacement', () => {
+  it('reports app, pack and feature writes once and unsubscribes', () => {
+    const heard: string[] = [];
+    const off = store.onChange(change => heard.push(change));
+    store.set(app, ['projects'], []);
+    store.set(assistant, ['name'], 'Ada');
+    store.set(feature, ['sort'], 'oldest');
+    off();
+    store.resetAll();
+    expect(heard).toEqual(['written', 'written', 'written']);
+  });
+
+  it('does not notify for removing an absent override', () => {
+    const heard: string[] = [];
+    store.onChange(change => heard.push(change));
+    store.removeOverrides(['features', THREADS, 'missing']);
+    expect(heard).toEqual([]);
+  });
+
+  it('brackets nested replacement and ends even after failure', async () => {
+    const heard: string[] = [];
+    store.onChange(change => heard.push(change));
+    await expect(store.whileReplacingData(async () => {
+      await store.whileReplacingData(async () => { store.set(assistant, ['name'], 'Ada'); });
+      throw new Error('import failed');
+    })).rejects.toThrow('import failed');
+    expect(heard).toEqual(['replacing', 'written', 'replaced']);
+  });
+
+  it('publishes hydrated values only after replacement settles', async () => {
+    store.set(assistant, ['name'], 'Published');
+    const before = store.getSnapshot();
+    await store.whileReplacingData(async () => {
+      const pending = store.getSnapshot();
+      untypedTx(SETTINGS_ID).put('data', { packs: { 'default-setup': { assistant: { name: 'Restored' } } } });
+      expect(store.getAll().packs['default-setup'].assistant).toEqual({ name: 'Restored' });
+      expect(store.getSnapshot()).toEqual(pending);
+      expect(pending.values).toEqual(before.values);
+      pending.values.packs['default-setup'].assistant = { name: 'Detached' };
+      expect(store.getSnapshot().values).toEqual(before.values);
+    });
+    const after = store.getSnapshot();
+    expect(after.status).toBe('ready');
+    expect(after.revision).toBeGreaterThan(before.revision);
+    expect(after.values.packs['default-setup'].assistant).toEqual({ name: 'Restored' });
+  });
+});
+
+
+describe('draft comparisons', () => {
+  it('refuses stale whole-array edits but permits unrelated preference changes', () => {
+    const initial = store.getSnapshot();
+    const condition = { runId: initial.runId, expected: { exists: true, value: [] } };
+    store.set(assistant, ['name'], 'Unrelated');
+    store.set(app, ['projects'], [{ name: 'First', directories: ['/first'], color: '#fff' }], undefined, condition);
+    const before = store.getOverrides();
+    expect(() => store.set(app, ['projects'], [], undefined, condition)).toThrow('changed since editing began');
+    expect(store.getOverrides()).toEqual(before);
+  });
+
+  it('refuses a draft from another backend run even if its value is unchanged', () => {
+    expect(() => store.set(app, ['projects'], [], undefined, { runId: 'stopped-run', expected: { exists: true, value: [] } })).toThrow('changed since editing began');
+    expect(store.getOverrides()).toEqual({});
+  });
+
+  it('increments value revision only after a write or data replacement and exposes replacement readiness', async () => {
+    const first = store.getSnapshot();
+    expect(() => store.set(assistant, ['name'], 1)).toThrow();
+    expect(store.getSnapshot().revision).toBe(first.revision);
+    store.set(assistant, ['name'], 'Ada');
+    expect(store.getSnapshot().revision).toBe(first.revision + 1);
+    await store.whileReplacingData(async () => { expect(store.getSnapshot().status).toBe('replacing'); });
+    expect(store.getSnapshot()).toMatchObject({ runId: first.runId, revision: first.revision + 3, status: 'ready' });
+  });
+});
+
+
+it('permits replacement initialization while refusing unrelated pack writers', async () => {
+  let finish!: () => void;
+  const wait = new Promise<void>(resolve => { finish = resolve; });
+  const replacing = store.whileReplacingData(async () => {
+    await wait;
+    store.set(assistant, ['name'], 'Initialized', 'default-setup');
+    expect(store.get(assistant)).toEqual({ name: 'Initialized' });
+    store.reset(assistant, 'default-setup');
+  });
   try {
-    const shortcuts = createSettingsStore({ defaults: () => ({ features: { [ref]: defaults } }) });
-    shortcuts.setFeatureSetting(ref as never, ['hotkeys', 'first'], 'x');
-    shortcuts.setFeatureSetting(ref as never, ['hotkeys', 'second'], null);
-    shortcuts.setFeatureSetting(ref as never, ['phase'], '');
-    expect(shortcuts.getFeatureSettings(ref as never)).toEqual({ hotkeys: { first: 'x', second: null, third: 'c' }, phase: '' });
-    expect(shortcuts.getStored()).toEqual({ features: { [ref]: { hotkeys: { first: 'x', second: null }, phase: '' } } });
-  } finally {
-    registry.unregisterPack(packId);
+    expect(() => store.set(assistant, ['name'], 'Racing', 'default-setup')).toThrow('Data is being replaced');
+    expect(() => store.reset(assistant, 'default-setup')).toThrow('Data is being replaced');
+  } finally { finish(); await replacing; }
+  expect(store.getOverrides()).toEqual({ packs: { 'default-setup': {} } });
+});
+
+
+it.each([null, undefined, [], 'invalid'])('refuses a malformed stored row rather than treating %j as missing preferences', data => {
+  untypedTx(SETTINGS_ID, true).put('entityType', SETTINGS_ENTITY).put('data', data);
+  const before = rowData();
+  expect(() => store.getAll()).toThrow('Stored settings must be a JSON object');
+  expect(() => store.set(app, ['personal', 'name'], 'Ada')).toThrow('Stored settings must be a JSON object');
+  expect(rowData()).toEqual(before);
+});
+
+it('keeps committed writes and replacement lifecycle independent of subscriber failures', async () => {
+  const heard: string[] = [];
+  const log = vi.spyOn(console, 'error').mockImplementation(() => {});
+  store.onChange(() => { throw new Error('broken subscriber'); });
+  store.onChange(change => heard.push(change));
+  try {
+    expect(() => store.set(app, ['personal', 'name'], 'Ada')).not.toThrow();
+    expect(store.get(app)).toMatchObject({ personal: { name: 'Ada' } });
+    await store.whileReplacingData(async () => {});
+    expect(store.getSnapshot().status).toBe('ready');
+    expect(heard).toEqual(['written', 'replacing', 'replaced']);
+  } finally { log.mockRestore(); }
+});
+
+
+it('does not let detached initialization work retain write access during a later replacement', async () => {
+  let release!: () => void;
+  const wait = new Promise<void>(resolve => { release = resolve; });
+  let detached!: Promise<void>;
+  await store.whileReplacingData(async () => {
+    detached = wait.then(() => { store.set(assistant, ['name'], 'Stale initialization', 'default-setup'); });
+  });
+  let finish!: () => void;
+  const pending = new Promise<void>(resolve => { finish = resolve; });
+  const replacing = store.whileReplacingData(() => pending);
+  try {
+    release();
+    await expect(detached).rejects.toThrow('Data is being replaced');
+  } finally { finish(); await replacing; }
+});
+
+
+describe('explicit settings recovery', () => {
+  function corrupt(data: unknown) {
+    untypedTx(SETTINGS_ID, true).put('entityType', SETTINGS_ENTITY).put('data', data);
+    store.enterRecovery();
+    return store.getRecovery()!;
   }
+
+  it('reports nothing and reads normally until boot enters recovery', () => {
+    untypedTx(SETTINGS_ID, true).put('entityType', SETTINGS_ENTITY).put('data', { features: { [THREADS]: { limit: 5 } } });
+    expect(store.getRecovery()).toBeUndefined();
+    expect(store.get(feature)).toMatchObject({ limit: 5 });
+  });
+
+  it('attributes schema problems and refuses typed reads of the invalid values', () => {
+    const recovery = corrupt({ features: { [THREADS]: { limit: 'invalid' } } });
+    expect(recovery.problems).toContainEqual({ target: feature, path: ['limit'], message: 'must be integer' });
+    expect(() => store.get(feature)).toThrow('recovery');
+    expect(() => store.getAll()).toThrow('recovery');
+    expect(() => store.getSnapshot()).toThrow('recovery');
+    expect(rowData()).toEqual({ features: { [THREADS]: { limit: 'invalid' } } });
+  });
+
+  it('refuses every write but the recovery reset, leaving the stored row as it was', () => {
+    const data = { features: { [THREADS]: { limit: 'invalid' } } };
+    corrupt(data);
+    expect(() => store.set(feature, ['sort'], 'oldest')).toThrow('recovery');
+    expect(() => store.reset(feature)).toThrow('recovery');
+    expect(() => store.replaceAll({})).toThrow('recovery');
+    expect(() => store.removeOverrides(['features', THREADS])).toThrow('recovery');
+    expect(() => store.resetAll()).toThrow('recovery');
+    expect(rowData()).toEqual(data);
+  });
+
+  it('validates typed reads even before boot explicitly enters recovery', () => {
+    untypedTx(SETTINGS_ID, true).put('entityType', SETTINGS_ENTITY).put('data', { features: { [THREADS]: { limit: 'invalid' } } });
+    expect(store.getRecovery()).toBeUndefined();
+    expect(() => store.get(feature)).toThrow('limit');
+    expect(() => store.getAll()).toThrow('limit');
+    expect(() => store.getSnapshot()).toThrow('limit');
+  });
+
+  it('resets selected affected owners atomically, preserving every unselected owner', () => {
+    const data = { app: { personal: { name: 'Keep' } },
+      features: { [THREADS]: { limit: 'invalid', sort: 'oldest' }, 'absent/feature': { keep: true } },
+      packs: { 'default-setup': { assistant: { name: 42 } } },
+    };
+    const recovery = corrupt(data);
+    const heard = vi.fn();
+    store.onChange(heard);
+    expect(() => store.recover({ version: recovery.version, reset: [feature] })).toThrow('assistant');
+    expect(rowData()).toEqual(data);
+    expect(heard).not.toHaveBeenCalled();
+    expect(() => store.recover({ version: recovery.version, reset: [app] })).toThrow('Only affected');
+    store.recover({ version: recovery.version, reset: [feature, assistant] });
+    expect(heard).toHaveBeenCalledTimes(1);
+    expect(store.getRecovery()).toEqual({ version: { ...recovery.version, revision: recovery.version.revision + 1 }, problems: [] });
+    expect(rowData()).toEqual({ app: data.app, features: { 'absent/feature': { keep: true } }, packs: { 'default-setup': {} } });
+    expect(() => store.getSnapshot()).toThrow('recovery'); // Normal reads still require a new app lifetime.
+  });
+
+  it('requires explicit owner selection for a conditional schema rather than inferring deletions from error paths', () => {
+    const id = 'conditional-settings';
+    registry.registerPack({ id, settings: { options: {
+      defaults: { mode: 'basic', keep: 'default' },
+      schema: { type: 'object', properties: { mode: { enum: ['basic', 'advanced'] }, keep: { type: 'string' } },
+        required: ['mode', 'keep'], if: { properties: { mode: { const: 'advanced' } } },
+        // oxlint-disable-next-line unicorn/no-thenable -- JSON Schema conditional, not a promise callback.
+        then: { properties: { details: { type: 'string' } }, required: ['details'] },
+      },
+    } } });
+    try {
+      const target: SettingsTarget = { kind: 'pack', packId: id, groupId: 'options' };
+      const data = { app: { personal: { name: 'Keep' } }, packs: { [id]: { options: { mode: 'advanced', keep: 'My choice' } } } };
+      const recovery = corrupt(data);
+      expect(recovery.problems).toContainEqual(expect.objectContaining({ target, path: ['details'] }));
+      expect(() => store.recover({ version: recovery.version, reset: [] })).toThrow('Select affected');
+      expect(rowData()).toEqual(data);
+      store.recover({ version: recovery.version, reset: [target] });
+      expect(rowData()).toEqual({ app: data.app, packs: { [id]: {} } });
+      expect(store.getRecovery()?.problems).toEqual([]);
+    } finally { registry.unregisterPack(id); }
+  });
+
+  it.each([null, [], 'broken', { features: null }])('requires a complete reset for malformed data %j', data => {
+    const recovery = corrupt(data);
+    expect(recovery.problems.every(problem => !problem.target)).toBe(true);
+    expect(() => store.recover({ version: recovery.version, reset: [feature] })).toThrow('malformed');
+    expect(rowData()).toEqual(data);
+    store.recover({ version: recovery.version, reset: 'all' });
+    expect(rowData()).toEqual({});
+    expect(store.getRecovery()?.problems).toEqual([]);
+  });
+
+  it('refuses recovery writes while app data is being replaced', async () => {
+    await store.whileReplacingData(async () => {
+      const recovery = corrupt({ features: { [THREADS]: { limit: 'invalid' } } });
+      const before = rowData();
+      expect(() => store.recover({ version: recovery.version, reset: 'all' })).toThrow('being replaced');
+      expect(rowData()).toEqual(before);
+      // The replacement's own data arrives by hydration, which bypasses the writer
+      untypedTx(SETTINGS_ID, true).put('entityType', SETTINGS_ENTITY).put('data', {});
+    });
+  });
+
+  it('refuses a request for another process or revision, and a repeat once repaired, without writing', () => {
+    const recovery = corrupt({ features: { [THREADS]: { limit: 'invalid' } } });
+    const before = rowData();
+    for (const version of [{ ...recovery.version, runId: 'another-process' }, { ...recovery.version, revision: recovery.version.revision + 1 }]) {
+      expect(() => store.recover({ version, reset: 'all' })).toThrow('changed');
+    }
+    expect(rowData()).toEqual(before);
+    store.recover({ version: recovery.version, reset: [feature] });
+    expect(() => store.recover({ version: store.getRecovery()!.version, reset: 'all' })).toThrow('changed');
+  });
 });

@@ -1,3 +1,5 @@
+import { sealPack } from './build-fixture.ts';
+import { _declarationRevision } from '@apackdev/sdk/build';
 // A pack declares which event types each of its plugins receives, and the bus checks every send against
 // that declaration. It reaches the app on the registration the pack's runtime bundle exports, so what this
 // pins is that loading a pack doesn't lose it: a plugin with no declaration is read as one whose pack was
@@ -12,7 +14,7 @@ import { loadExternalPacks, registerExternalPacks } from '../../../src/packs/run
 import { PLUGIN_EVENT_TYPES } from '@apackdev/sdk/events';
 import { PACK_SNAPSHOT_FORMAT } from '@apackdev/sdk/build';
 import { _appDirOf } from '@apackdev/sdk/env';
-import { PACK_LAYOUT, PACK_LAYOUT_VERSION } from '../../../src/packs/layout.ts';
+import { PACK_LAYOUT } from '../../../src/packs/layout.ts';
 
 /** The events a pack's plugin receives: what its pack declares, and what the app sends every plugin */
 const receives = (...types: string[]) => new Set([...types, ...PLUGIN_EVENT_TYPES]);
@@ -29,15 +31,17 @@ function installDeclaringPack(received: string[]) {
   fs.mkdirSync(path.join(packDir, 'runtime'), { recursive: true });
   fs.writeFileSync(path.join(packDir, 'apack.json'), JSON.stringify({
     id: PACK_ID, name: 'Declaring Pack', version: '1.0.0',
-    features: { memos: { plugin: { entry: 'fe/plugin.ts' } } },
+    features: { memos: { description: 'Feature declaration fixture.', plugin: { label: 'Fixture', state: 'fe/plugin.ts' } } },
   }));
-  fs.writeFileSync(path.join(packDir, PACK_LAYOUT.integrity), JSON.stringify({ formatVersion: PACK_LAYOUT_VERSION, id: PACK_ID, version: '1.0.0', files: {} }));
   fs.mkdirSync(path.join(packDir, 'types'), { recursive: true });
-  fs.writeFileSync(path.join(packDir, PACK_LAYOUT.snapshot), JSON.stringify({ format: PACK_SNAPSHOT_FORMAT }));
-  fs.writeFileSync(path.join(packDir, 'runtime', 'index.cjs'), `module.exports = { registration: ${JSON.stringify({
+  fs.writeFileSync(path.join(packDir, PACK_LAYOUT.snapshot), JSON.stringify({ declarationRevision: _declarationRevision(JSON.parse(fs.readFileSync(path.join(packDir, 'apack.json'), 'utf-8'))), format: PACK_SNAPSHOT_FORMAT, manifest: JSON.parse(fs.readFileSync(path.join(packDir, 'apack.json'), 'utf-8')), types: { entities: {}, relKinds: {} }, entityDestinations: {}, eventContracts: { memos: { plugin: { receives: received } } }, facades: {} }));
+  fs.writeFileSync(path.join(packDir, 'runtime', 'index.cjs'), (`module.exports = { registration: ${JSON.stringify({
     id: PACK_ID,
     features: { memos: { plugin: { receives: received } } },
-  })} };`);
+  })} };`) + `
+if (module.exports.registration) module.exports.registration.declarationRevision = '${_declarationRevision(JSON.parse(fs.readFileSync(path.join(packDir, 'apack.json'), 'utf-8')))}';`);
+  fs.writeFileSync(path.join(packDir, 'runtime', 'fe.js'), 'export default {};');
+  sealPack(packDir);
 }
 
 beforeEach(() => {
@@ -63,14 +67,14 @@ describe('where the registry says a pack came from', () => {
   it('records an external pack\'s manifest and directory, and drops them when it unregisters', () => {
     installDeclaringPack(RECEIVED);
 
-    expect(registerExternalPacks(registry, loadExternalPacks())).toHaveLength(1);
+    expect(registerExternalPacks(registry, loadExternalPacks(registry))).toHaveLength(1);
 
     const origin = registry.packOrigin(PACK_ID);
-    expect(origin).toMatchObject({ id: PACK_ID, name: 'Declaring Pack', version: '1.0.0', shipped: false });
+    expect(origin).toMatchObject({ id: PACK_ID, name: 'Declaring Pack', version: '1.0.0' });
     expect(origin?.dir).toBe(path.join(_appDirOf(tmpDir), 'packs', PACK_ID));
     expect(origin?.manifest?.id).toBe(PACK_ID);
     expect(registry.loadedPacks().map((o) => o.id)).toContain(PACK_ID);
-    expect(registry.shippedPacks().map((o) => o.id)).not.toContain(PACK_ID);
+    expect(registry.packOrigin(PACK_ID)?.buildRevision).toMatch(/^[a-f0-9]{64}$/);
 
     registry.unregisterPack(PACK_ID);
     expect(registry.packOrigin(PACK_ID)).toBeNull();
@@ -82,7 +86,7 @@ describe('the event types an external pack declares for its plugins', () => {
   it('reach the validation map the bus checks sends against', () => {
     installDeclaringPack(RECEIVED);
 
-    expect(registerExternalPacks(registry, loadExternalPacks())).toHaveLength(1);
+    expect(registerExternalPacks(registry, loadExternalPacks(registry))).toHaveLength(1);
 
     expect(registry.getPluginEventValidationMap().get(`${PACK_ID}/memos`)).toEqual(receives(...RECEIVED));
   });

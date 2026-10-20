@@ -1,65 +1,68 @@
-# Declarative contributions: current boundary and planned discovery
+# Declarative contributions and static discovery
 
-Status: current-code reference, revised 2026-10-12. The implementation target is
-[discovery without activation](../plans/discovery-without-activation.md); ordering and transferred
-manifest decisions live in [manifest maturity](../plans/manifest-maturity.md). Re-audit exact API names
-after the in-flight naming goal. This reference is not a competing implementation plan.
+Status: current-code reference, revised 2026-10-19. The
+[completed settings and pack contracts goal](../archive/goals/goal-settings-and-pack-contracts.md#outcome-2026-10-19)
+records implementation and acceptance. [Manifest maturity](../plans/manifest-maturity.md) remains the
+roadmap for future contract evolution and separate/deferred work.
 
-## What is already data
+## Declaration, catalog and binding
 
-`apack.json` names features, dependencies, host compatibility, entity/relation names and many keyed
-extensions: steps, artifacts, blocks, commands, services, DSL and frontend slots. Built snapshots carry
-manifests, facade/type artifacts and partial provenance. Compiled content and integrity indexes already
-exist. Offline database tooling reads schema data without pack runtime imports.
+`apack.json` declares contribution identities, ownership and static metadata. Features own their
+entities and optional shape references; `data.entities` holds entities without a feature owner.
+`data.relations` declares stable relation wires. Keyed extensions describe commands, services, steps,
+artifacts, blocks, references, help, settings, DSL and editor/app contributions. Features also declare
+purpose, systems/plugins, settings and destinations. Packs declare supported API consumption.
+Lifecycle hooks and migrations have explicit declarations. The public [manifest](../public-facing/manifest.md),
+[features](../public-facing/features.md) and [extensions](../public-facing/extensions.md) guides define
+the supported grammar.
 
-This is partial discovery, not an absence of discovery. A keyed declaration identifies a contribution;
-its executable path is a binding reference, not a reason to execute it when listing its existence.
-See [extension authoring](../public-facing/extensions.md) for the current manifest grammar.
+The build validates those declarations, checks module/export contracts and publishes snapshot data,
+generated bindings, facade/type declarations, provenance and indexed assets as one verified build.
+The shared entity projection preserves flat wire names and records ownership once. Shape references
+name TypeScript types: build checks them and generates type imports; offline discovery does not load
+their authored modules. Explicit null shapes remain untyped.
 
-## What still depends on executable registration
+The host catalog reads built declaration data without executing pack or dependency entry modules or
+requiring authored sources. It exposes contribution identities and static metadata for inactive or
+disabled owners as well as active ones. Settings, pack details/help, navigation destinations/default
+claims, references, palettes and editor inventories consume that data. Static flow/action dependency
+edges are published; dynamic references retain their explicit dynamic status.
 
-Generated backend/frontend entries import implementation modules and assemble registration objects.
-Some static facts are embedded in those objects rather than exposed in a complete data artifact:
+Activation binds executable implementations to the declared identities. Exact membership, ownership,
+callability and current build identity are checked before registration/publication. Native composition
+uses the same declaration/binding boundary. A binding cannot silently add a second inventory.
+Build-time execution of compilers is separate from discovery-time inspection.
 
-- Plugin labels, icons, default-navigation claims and pane metadata.
-- Feature settings schemas/defaults and globally merged `settingsSections`.
-- Reference protocols/categories and anonymous editor contribution lists.
-- Help articles, some step palette metadata and generated event contracts.
+## Settings and runtime behavior
 
-Current readers combine installed declarations with runtime registration: settings unions installed and
-registered feature refs, pack details lose extension information while inactive, and shell navigation
-learns destinations/default claims as frontend imports finish. The discovery plan records the exact
-consumer/refactor inventory. The old claim that events are the only remaining gap is incorrect.
+Host preferences, pack groups and feature settings share the schema/default/validation contract.
+Pack groups live under `extensions.settings`; feature definitions live with their feature. Owner-bound
+handles implement shared dependency access and optional owner-only mutation through trusted caller
+identity. Current documents, reset and import use the installed catalog. Custom forms remain executable
+presentation bindings; host settings and defaults remain usable without those forms or default-setup.
+See the [completed settings design](../archive/plans/settings-architecture.md) for its detailed contract.
 
-## The intended boundary, not yet implemented
+Static metadata availability does not start actors, providers, forms or handlers. Catalog entries keep
+declared, eligible and active state distinct. Queries still execute their actual providers; component
+rendering, migrations and user-specific applied content remain runtime behavior. Readiness delivery,
+cancellation, resource teardown and pane/form error boundaries retain their own lifecycle owners.
+Discovery does not imply lazy activation or a security sandbox; those remain separately scoped work.
 
-Build produces a complete validated descriptor plus indexed static data/assets. A host catalog exposes
-those facts for installed packs without importing executable modules. Activation binds implementations
-to already-known declarations; it cannot silently add another inventory. Definitions are authored once
-and generate both views. Build-time code evaluation is distinct from discovery-time execution.
+## Publication and lasting guards
 
-Settings use the common catalog with the ownership/schema/access contract from
-[settings architecture](../plans/settings-architecture.md). Static metadata is available while
-inactive; forms, actors, providers and handlers require actual execution. The catalog reports declared,
-eligible and active status separately.
+Declaration/codegen/runtime freshness must agree, including source/HMR workflows. Input observations
+and required output receipts authorize coherent publication and cache reuse. A failed rebuild retains
+the accepted build/view and reports the failure. Missing or malformed declaration data receives useful
+diagnostics; inspection never imports executable modules to fill a missing field.
 
-## Checks move earlier; rollback remains
+Ownership/collision checks and runtime binding validation remain necessary after static discovery.
+Pre-publication failure preserves the incumbent. Activation failure is separately attributed and does
+not promise rollback of arbitrary user-data effects. Owned stores, rollback and teardown remain part
+of registration; known addresses and event contracts do not replace readiness handshakes.
 
-Descriptor ownership and compatibility checks can run before activation. Runtime binding checks still
-protect against mismatched artifacts, and executable registration can fail after acquiring resources.
-Keep owned contribution stores, undo logs, teardown and replacement rollback. Knowing an actor's address
-or event contract does not make the actor ready; catalog discovery cannot replace delivery handshakes.
-
-Dynamic provider results, component rendering, migration effects and user-specific applied rows remain
-runtime behavior. In-process contract enforcement is not a security sandbox. Follow the separate
-[security design](../goals/goal-pack-security-isolation.md) for confinement and permissions.
-
-## Contracts to maintain
-
-Descriptor/codegen/runtime freshness must agree, including in source/HMR workflows. A failed rebuild
-retains the last valid committed view and reports staleness. Installed descriptor inspection must never
-activate code to fill a missing field. Unsupported/malformed artifacts receive explicit diagnostics.
-
-[Recorded artifacts](recorded-artifacts.md) documents artifact derivation rules. The discovery plan owns
-coverage fixtures, import-time-throw proof, consumer regressions and format/API checks. Historical plans
-in the archive preserve earlier proposals; their example manifests are not current schema instructions.
+The retained schema, generated-contract, catalog, poisoned-entry, source-free, lifetime, watch and
+external-consumer checks enforce this boundary. [Recorded files](recorded-files.md) describes schema/API
+report derivation; [the final audit](../evidence/settings-and-pack-contracts.md#final-requirement-and-source-audit--2026-10-19)
+links acceptance evidence. Historical plans preserve earlier proposals, while current public docs and
+schemas specify what authors write. See the [security goal](../goals/goal-pack-security-isolation.md)
+for deferred confinement work.

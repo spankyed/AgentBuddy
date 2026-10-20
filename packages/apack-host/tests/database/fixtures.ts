@@ -1,5 +1,6 @@
 // Data dirs for the database specs: a built-in pack published as the app publishes it, external packs installed,
 // and a database written through the composition the app uses
+import { writeInstalledPackFixture } from '../packs/runtime/build-fixture.ts';
 import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
@@ -34,14 +35,13 @@ function writeJSON(file: string, value: unknown): void {
  */
 export function dataDirWithPacks({ external = [] as Array<{ id: string; entities: Record<string, string>; enabled?: boolean }> } = {}): string {
   const dir = tempDir('host-database-');
-  writeJSON(path.join(_appDirOf(dir), 'packs', 'core', 'apack.json'), {
-    id: 'core', name: 'Core', version: '1.0.0', builtIn: true,
-    entities: { Note: 'Note', Trace: 'Trace' },
-    relKinds: { MENTIONS: 'mentions' },
+  writeInstalledPackFixture(path.join(_appDirOf(dir), 'packs', 'core'), {
+    id: 'core', name: 'Core', version: '1.0.0',
+    data: { entities: { Note: null, Trace: null }, relations: ['mentions'] },
   });
   for (const pack of external) {
-    writeJSON(path.join(_appDirOf(dir), 'packs', pack.id, 'apack.json'), {
-      id: pack.id, name: pack.id, version: '1.0.0', entities: pack.entities,
+    writeInstalledPackFixture(path.join(_appDirOf(dir), 'packs', pack.id), {
+      id: pack.id, name: pack.id, version: '1.0.0', data: { entities: Object.fromEntries(Object.keys(pack.entities).map(name => [name, null])) },
     });
   }
   const listed = external.filter((pack) => pack.enabled !== undefined);

@@ -5,22 +5,27 @@ import * as os from 'node:os';
 import * as path from 'node:path';
 import { afterEach, describe, expect, it, onTestFinished, vi } from 'vitest';
 import { createEarsEngine, untypedQx, untypedTx } from '@apackdev/ears';
-import { bindHost, unbindHost, type HostRuntime } from '../../src/runtime/host-runtime.ts';
+import { bindHost, unbindHost, boundHost, type HostRuntime } from '../../src/runtime/host-runtime.ts';
 import { _rootEvents } from '../../src/runtime/root-events.ts';
 import { onConnected, onIncoming, untypedBroadcastToPlugin, untypedSendToSystem } from '../../src/events/index.ts';
 import { createLogger, onLog, reportError } from '../../src/logger/index.ts';
-import { services } from '../../src/services/index.ts';
+import { _createPackServices, _settingsHandle } from '../../src/services/index.ts';
+import * as serviceModule from '../../src/services/index.ts';
+import type { PackServiceAccess } from '../../src/services/index.ts';
+import type { SettingsService } from '../../src/services/settings.ts';
 import { getAppVersion } from '../../src/env/index.ts';
 import { getDesignated, hasDesignation } from '../../src/designations/index.ts';
 import { stepRegistry } from '../../src/steps/registry.ts';
 import { artifactRegistry } from '../../src/artifacts/registry.ts';
 import { blockRegistry } from '../../src/blocks/registry.ts';
 import { _contentWriterRegistry } from '../../src/content/writers.ts';
-import { getPackCommands, getPackSettingsDefaults, onPackSettingsDefaultsChanged } from '../../src/framework/index.ts';
+import { getPackCommands, getSettingsCatalog, onPackCatalogChanged } from '../../src/framework/index.ts';
 import { importCompiledContent, registeredContentKeys } from '../../src/utils/apply.ts';
-import { getDslTypes } from '../../src/fe/dsl-types.ts';
+import { getDslDeclarations } from '../../src/fe/dsl-reader.ts';
 import { tiptapPluginRegistry } from '../../src/fe/tiptap-plugins.ts';
 import { testPacksView } from '../../src/testing/packs.ts';
+
+const serviceAccess = (settings: SettingsService): PackServiceAccess => ({ services: { settings }, servicesForAction: () => ({ settings }) });
 
 const unused = () => { throw new Error('unused'); };
 const engine = createEarsEngine({ isEntityType: (name) => name === 'Memo' });
@@ -30,7 +35,8 @@ const runtime: HostRuntime = {
   packs: testPacksView(),
   appVersion: '1.2.3',
   services: {
-    appData: { reset: unused, hasOnboarded: unused, completeOnboarding: unused, exportBackup: unused, importBackup: unused, readBackupSummary: unused },
+    onboarding: { isComplete: unused, complete: unused },
+    appData: { reset: unused, exportBackup: unused, importBackup: unused, readBackupSummary: unused },
     traceStore: { entities: unused, getEntityMeta: unused, getAttr: unused, relations: unused },
     inference: {
       generateText: unused, streamText: unused, createAgent: unused, embed: unused, embedMany: unused,
@@ -39,9 +45,10 @@ const runtime: HostRuntime = {
     secrets: { status: unused, list: unused, select: unused, rename: unused, delete: unused },
     filesystem: { writeFile: unused, readFile: unused, exists: unused, mkdir: unused, readDir: unused, remove: unused, rename: unused, stat: unused },
     settings: {
-      getAll: unused, getStored: unused, getSection: unused, forFeature: unused, setForFeature: unused,
-      setInSection: unused, replaceAll: unused, removeStored: unused, reset: unused, whileReplacingData: unused,
-      onChange: unused,
+      get: unused, set: unused, reset: unused, getAll: unused, getSnapshot: unused, getOverrides: unused,
+      enterRecovery: unused, getRecovery: unused, recover: unused,
+      replaceAll: unused, removeOverrides: unused, resetAll: unused, whileReplacingData: unused,
+      forPack: unused, onChange: unused,
     },
   },
 };
@@ -63,12 +70,13 @@ describe('with no app bound', () => {
       ['reportError', () => reportError({ error: new Error('boom'), source: 'memos' })],
       ['_rootEvents', () => _rootEvents.emitLog({ level: 'info', message: 'x' })],
       ['getAppVersion', () => getAppVersion()],
-      ['services.inference', () => services.inference.generateText({ model: 'openai:gpt-5', prompt: 'hi' })],
-      ['services.appData', () => services.appData.reset()],
-      ['services.traceStore', () => services.traceStore.entities()],
-      ['services.secrets', () => services.secrets.list()],
-      ['services.filesystem', () => services.filesystem.readFile('/tmp/x')],
-      ['services.repository', () => services.repository],
+      ['services.inference', () => boundHost().services.inference.generateText({ model: 'openai:gpt-5', prompt: 'hi' })],
+      ['services.appData', () => boundHost().services.appData.reset()],
+      ['services.onboarding', () => boundHost().services.onboarding.isComplete()],
+      ['services.traceStore', () => boundHost().services.traceStore.entities()],
+      ['services.secrets', () => boundHost().services.secrets.list()],
+      ['services.filesystem', () => boundHost().services.filesystem.readFile('/tmp/x')],
+      ['services.repository', () => boundHost().ears.repository],
     ];
     for (const [name, use] of [['qx', () => untypedQx('Memo')], ['untypedTx', () => untypedTx('Memo')]] as const) {
       expect(use, name).toThrow('No EARS engine is installed');
@@ -83,9 +91,6 @@ describe('with no app bound', () => {
     const lookups: Array<[string, () => unknown]> = [
       ['getDesignated', () => getDesignated('brain')],
       ['hasDesignation', () => hasDesignation('brain')],
-      ['stepRegistry.get', () => stepRegistry.get('action')],
-      ['stepRegistry.all', () => stepRegistry.all()],
-      ['stepRegistry.triggers', () => stepRegistry.triggers()],
       ['artifactRegistry.get', () => artifactRegistry.get('code')],
       ['artifactRegistry.all', () => artifactRegistry.all()],
       ['blockRegistry.get', () => blockRegistry.get('choice')],
@@ -95,15 +100,18 @@ describe('with no app bound', () => {
       expect(use, name).toThrow(/bindHost\(runtime\).*\(the renderer with bindFeHost\(runtime\)\)/);
     }
     const backendLookups: Array<[string, () => unknown]> = [
+      ['stepRegistry.get', () => stepRegistry.get('action')],
+      ['stepRegistry.all', () => stepRegistry.all()],
+      ['stepRegistry.triggers', () => stepRegistry.triggers()],
       ['_contentWriterRegistry.get', () => _contentWriterRegistry.get('Memo')],
       ['importCompiledContent', () => importCompiledContent({ compiledDir: contentDir })],
       ['registeredContentKeys', () => registeredContentKeys('memo-pack')],
-      ['getPackSettingsDefaults', () => getPackSettingsDefaults()],
-      ['onPackSettingsDefaultsChanged', () => onPackSettingsDefaultsChanged(() => {})],
+      ['getSettingsCatalog', () => getSettingsCatalog()],
+      ['onPackCatalogChanged', () => onPackCatalogChanged(() => {})],
       ['getPackCommands', () => getPackCommands()],
     ];
     for (const [name, use] of backendLookups) expect(use, name).toThrow('bindHost(runtime)');
-    for (const [name, use] of [['getDslTypes', () => getDslTypes()], ['tiptapPluginRegistry.getAll', () => tiptapPluginRegistry.getAll()]] as const) {
+    for (const [name, use] of [['getDslDeclarations', () => getDslDeclarations()], ['tiptapPluginRegistry.getAll', () => tiptapPluginRegistry.getAll()]] as const) {
       expect(use, name).toThrow('bindFeHost(runtime)');
     }
   });
@@ -119,6 +127,23 @@ describe('with no app bound', () => {
 });
 
 describe('bindHost', () => {
+  it('preserves the draft comparison through the caller-bound services facade', () => {
+    const preferences: SettingsService = {
+      get: vi.fn() as SettingsService['get'], set: vi.fn(), reset: vi.fn(), onChange: vi.fn(),
+    };
+
+    bindHost(runtime);
+    const target = { kind: 'pack', packId: 'memo-pack', groupId: 'assistant' } as const;
+    const condition = { runId: 'backend-run', expected: { exists: true, value: 'Ada' } };
+    const generated = _createPackServices();
+    const revoke = generated.bindServices(serviceAccess(preferences));
+    generated.services.settings.set(target, ['name'], 'Grace', condition);
+    revoke();
+    expect(() => generated.services.settings.reset(target)).toThrow('until the host accepts');
+    expect(preferences.set).toHaveBeenCalledWith(target, ['name'], 'Grace', condition);
+    expect(Object.hasOwn(serviceModule, 'services')).toBe(false);
+  });
+
   it('binds once: binding again throws', () => {
     bindHost(runtime);
     expect(getAppVersion()).toBe('1.2.3');
@@ -136,7 +161,85 @@ describe('bindHost', () => {
 
   it("reads the bound app's services on each call", () => {
     bindHost(runtime);
-    expect(services.repository).toBe(engine.query.repository);
-    expect(() => services.secrets.list()).toThrow('unused');
+    expect(boundHost().ears.repository).toBe(engine.query.repository);
+    expect(() => boundHost().services.secrets.list()).toThrow('unused');
+  });
+});
+
+
+describe('generated settings authority', () => {
+  const target = { kind: 'app' } as const;
+  const preferences = (): SettingsService => ({
+    get: vi.fn() as SettingsService['get'], set: vi.fn(), reset: vi.fn(), onChange: () => vi.fn(),
+  });
+
+  it('accepts a predeclared handle once and permanently revokes it across rebind', () => {
+    const generated = _createPackServices();
+    const handle = generated.settingsHandle(target);
+    for (const operation of [() => handle.get(), () => handle.set({ path: [], value: {} }),
+      () => handle.reset(), () => handle.onChange(() => {})]) {
+      expect(operation).toThrow('until the host accepts');
+    }
+    const first = preferences();
+    const revoke = generated.bindServices(serviceAccess(first));
+    handle.reset();
+    expect(first.reset).toHaveBeenCalledOnce();
+    revoke();
+    const next = preferences();
+    generated.bindServices(serviceAccess(next));
+    for (const operation of [() => handle.get(), () => handle.set({ path: [], value: {} }),
+      () => handle.reset(), () => handle.onChange(() => {})]) {
+      expect(operation).toThrow('revoked');
+    }
+    generated.settingsHandle(target).reset();
+    expect(next.reset).toHaveBeenCalledOnce();
+  });
+
+  it('permanently revokes retained services and handles across a new binding', () => {
+    const generated = _createPackServices();
+    expect(() => generated.services.settings).toThrow('until the host accepts');
+    const first = preferences();
+    const revoke = generated.bindServices(serviceAccess(first));
+    const retained = generated.services.settings;
+    const handle = _settingsHandle(target, retained);
+    expect(() => generated.bindServices(serviceAccess(first))).toThrow('already bound');
+    handle.reset();
+    expect(first.reset).toHaveBeenCalledOnce();
+    revoke();
+    const next = preferences();
+    const revokeNext = generated.bindServices(serviceAccess(next));
+    revoke();
+    for (const call of [() => retained.get(target), () => retained.set(target, [], {}),
+      () => retained.reset(target), () => retained.onChange(() => {}),
+      () => handle.get(), () => handle.set({ path: [], value: {} }), () => handle.reset()]) {
+      expect(call).toThrow('revoked');
+    }
+    generated.services.settings.reset(target);
+    expect(next.reset).toHaveBeenCalledOnce();
+    revokeNext();
+  });
+
+  it('attempts every unsubscribe, suppresses late notifications and makes revocation idempotent', () => {
+    const generated = _createPackServices();
+    const stopFirst = vi.fn(() => { throw new Error('broken unsubscribe'); });
+    const stopSecond = vi.fn();
+    const callbacks: Array<Parameters<SettingsService['onChange']>[0]> = [];
+    const first = preferences();
+    first.onChange = listener => { callbacks.push(listener); return callbacks.length === 1 ? stopFirst : stopSecond; };
+    const revoke = generated.bindServices(serviceAccess(first));
+    const listener = vi.fn();
+    const stop = generated.services.settings.onChange(listener);
+    generated.services.settings.onChange(listener);
+    callbacks[0]('written');
+    expect(listener).toHaveBeenCalledOnce();
+    expect(revoke).toThrow(AggregateError);
+    expect(stopFirst).toHaveBeenCalledOnce();
+    expect(stopSecond).toHaveBeenCalledOnce();
+    expect(stop).not.toThrow();
+    expect(revoke).not.toThrow();
+    callbacks[0]('written'); callbacks[1]('written');
+    expect(listener).toHaveBeenCalledOnce();
+    expect(() => generated.services.settings).toThrow('until the host accepts');
+    generated.bindServices(serviceAccess(preferences()))();
   });
 });

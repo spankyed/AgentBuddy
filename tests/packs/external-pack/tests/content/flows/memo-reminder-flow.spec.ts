@@ -4,7 +4,7 @@ import type { FlowDSL } from '@apackdev/sdk/build';
 import { importFlows, mockService, importContent, startApp } from '@apackdev/testing/harness';
 import { action, branch, entry, fire, keepAlive, on, schedule, subflow } from '#generated/flow-helpers.ts';
 import { repository } from '#generated/repository.ts';
-import type { Services } from '#generated/services.ts';
+import type { Services as DefaultServices } from '#generated/deps/default-setup';
 import memoReminderFlow from '../../../src/content/flows/memo-reminder-flow.ts';
 
 describe('memo reminder flow', () => {
@@ -12,7 +12,7 @@ describe('memo reminder flow', () => {
     let tick!: () => void;
     let registered!: () => void;
     const scheduled = new Promise<void>((resolve) => { registered = resolve; });
-    mockService<Services, 'scheduler'>('scheduler', {
+    mockService<DefaultServices, 'scheduler'>('scheduler', {
       registerSchedule: vi.fn((_key: string, _cron: string, onTick: () => void) => { tick = onTick; registered(); }),
       unregisterByPrefix: vi.fn(),
       clearAllSchedules: vi.fn(),

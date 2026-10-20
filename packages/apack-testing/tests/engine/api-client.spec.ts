@@ -23,6 +23,9 @@ const TOKEN = 'a-test-token';
 /** How the router behaves, set per case before the client connects */
 let behaviour: {
   claimRefuses?: boolean;
+  settingsRefuses?: boolean;
+  settingsOpens?: number;
+  sent?: unknown[];
   emit?: unknown[];
   completeSubscription?: boolean;
 } = {};
@@ -32,6 +35,13 @@ let offered: string | undefined;
 
 const t = initTRPC.create();
 const router = t.router({
+  settings: t.router({
+    openHost: t.procedure.mutation(() => {
+      behaviour.settingsOpens = (behaviour.settingsOpens ?? 0) + 1;
+      if (behaviour.settingsRefuses) throw new TRPCError({ code: 'FORBIDDEN', message: 'settings access refused' });
+      return 'tool-settings-access';
+    }),
+  }),
   bus: t.router({
     // Returns nothing, exactly as the real `bus.claim` and `bus.send` do: the success frame carries no `data`
     claim: t.procedure.mutation(() => {
@@ -39,7 +49,7 @@ const router = t.router({
         throw new TRPCError({ code: 'CONFLICT', message: '"host/drive" is already claimed by another connection.' });
       }
     }),
-    send: t.procedure.mutation(() => {}),
+    send: t.procedure.input((input: unknown) => input).mutation(({ input }) => { behaviour.sent?.push(input); }),
     sub: t.procedure.subscription(() => observable<unknown>((emit) => {
       for (const message of behaviour.emit ?? []) emit.next(message);
       if (behaviour.completeSubscription) emit.complete();
@@ -237,4 +247,34 @@ describe('keep-alive', () => {
     expect(client.failure, 'the socket was not terminated under us').toBeNull();
     await expect(client.send({ to: 'x/y', event: { type: 'PING' } })).resolves.toBeUndefined();
   });
+});
+
+
+it('opens settings authority once for explicit writes and leaves ordinary sends unprivileged', async () => {
+  behaviour.sent = [];
+  await serve(); client = await connect();
+  const read = { to: 'host/settings', event: { type: 'GET_SETTINGS' } };
+  await client.send(read);
+  expect(behaviour.settingsOpens).toBeUndefined();
+  const write = { to: 'host/settings', event: { type: 'UPDATE_SETTINGS' }, call: 'write-one' };
+  await Promise.all([client.sendSettings(write), client.sendSettings({ ...write, call: 'write-two' })]);
+  expect(behaviour.settingsOpens).toBe(1);
+  expect(behaviour.sent).toEqual([
+    read,
+    { ...write, settingsCredential: 'tool-settings-access' },
+    { ...write, call: 'write-two', settingsCredential: 'tool-settings-access' },
+  ]);
+  await client.send(read);
+  expect(behaviour.sent.at(-1)).toEqual(read);
+});
+
+it('refuses settings writes without issuing a bus mutation when bootstrap is refused', async () => {
+  behaviour.sent = []; behaviour.settingsRefuses = true;
+  await serve(); client = await connect();
+  await expect(client.sendSettings({ to: 'host/settings', event: { type: 'UPDATE_SETTINGS' } })).rejects.toThrow('settings access refused');
+  expect(behaviour.sent).toEqual([]);
+  await expect(client.sendSettings({ to: 'another/feature', event: { type: 'PING' } })).rejects.toThrow('only sends to host/settings');
+  await client.send({ to: 'another/feature', event: { type: 'PING' } });
+  expect(behaviour.sent).toHaveLength(1);
+  expect(behaviour.settingsOpens).toBe(1);
 });

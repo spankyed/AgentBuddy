@@ -1,72 +1,78 @@
-/**
- * Resetting settings has a target: one feature's, or one section's, rather than all of them.
- *
- * **It is a removal, not a write.** The row holds only what the user changed and the store composes the
- * registration's defaults underneath it, so forgetting a slice is the whole of a reset — which is why this
- * needed no new capability: `services.settings.removeStored` has always been the narrow door, reached until
- * now only by migrations. What the event gained is an address.
- *
- * **A destructive action belongs in the Settings view behind a confirmation**, not in an import dialog —
- * which is the other reason settings are not content: an import is the wrong place to offer one.
- */
-import { describe, expect, it } from 'vitest'
-import { startApp } from '@apackdev/testing/harness'
-import { services } from '#generated/services.ts'
-import { ref } from '#generated/ref.ts'
+// Scoped resets remove one owner's overrides; resetting everything is a separate host operation.
+import { describe, expect, it } from 'vitest';
+import { untypedQx } from '@apackdev/ears';
+import { getTestSettings, startApp } from '@apackdev/testing/harness';
+import { featureSettings, packSettings } from '#generated/settings.ts';
+import { services } from '#generated/services.ts';
+import { ref } from '#generated/ref.ts';
 
-const SETTINGS = 'host/settings'
-const WINDOW = 'c-window'
+const SETTINGS = 'host/settings';
+const WINDOW = 'c-window';
+const stored = () => untypedQx('Settings-app').pickOne(['data'])?.data;
 
-const sortOf = (feature: 'threads' | 'notes') =>
-  services.settings.forFeature<Record<string, unknown>>(ref(feature))?.[feature === 'threads' ? 'recentThreadsSortOrder' : 'tasklistPanelPosition']
+async function reset(target: unknown) {
+  const app = await startApp({ systems: [SETTINGS] });
+  await app.connect();
+  const call = await app.send(SETTINGS, { type: 'RESET_SETTINGS', target }, { settingsAccess: { kind: 'host', service: getTestSettings() }, sender: SETTINGS, client: WINDOW });
+  return app.nextEmit(SETTINGS, 'SETTINGS_SAVED', { answering: call });
+}
 
-describe('a reset naming one feature', () => {
-  it('forgets that feature\'s changes and leaves every other feature\'s alone', async () => {
-    const app = await startApp({ systems: [SETTINGS] })
-    await app.connect()
-    services.settings.setForFeature(ref('threads'), ['recentThreadsSortOrder'], 'created')
-    services.settings.setForFeature(ref('notes'), ['tasklistPanelPosition'], 'right')
-    const defaults = { threads: sortOf('threads'), notes: sortOf('notes') }
-    expect(defaults.threads, 'the change the case rests on was not stored').toBe('created')
+describe('settings reset ownership', () => {
+  it('resets one feature and keeps the others', async () => {
+    featureSettings.forFeature('threads').set({ path: ['recentThreadsSortOrder'], value: 'created' });
+    featureSettings.forFeature('notes').set({ path: ['tasklistPanelPosition'], value: 'right' });
 
-    const call = await app.send(SETTINGS, {
-      type: 'RESET_SETTINGS', target: { entityType: 'feature', label: ref('threads') },
-    }, { sender: SETTINGS, client: WINDOW })
-    const answer = await app.nextEmit(SETTINGS, 'SETTINGS_SAVED', { answering: call })
+    await reset({ kind: 'feature', featureRef: ref('threads') });
 
-    expect(answer).toMatchObject({ type: 'SETTINGS_SAVED' })
-    expect(sortOf('threads'), 'its default applies again').not.toBe('created')
-    expect(sortOf('notes'), 'another feature was reset too').toBe('right')
-  })
+    expect(featureSettings.forFeature('threads').get().recentThreadsSortOrder).not.toBe('created');
+    expect(featureSettings.forFeature('notes').get().tasklistPanelPosition).toBe('right');
+  });
 
-  /** With no target it is the reset it always was: every change the user made, whatever it was about */
-  it('forgets all of them when it names none', async () => {
-    const app = await startApp({ systems: [SETTINGS] })
-    await app.connect()
-    services.settings.setForFeature(ref('threads'), ['recentThreadsSortOrder'], 'created')
-    services.settings.setForFeature(ref('notes'), ['tasklistPanelPosition'], 'right')
+  it('resets app preferences without resetting feature or pack preferences', async () => {
+    services.settings.set({ kind: 'app' }, ['personal', 'name'], 'Ada');
+    featureSettings.forFeature('threads').set({ path: ['recentThreadsSortOrder'], value: 'created' });
+    packSettings.forGroup('assistant').set({ path: ['name'], value: 'Ada' });
 
-    const call = await app.send(SETTINGS, { type: 'RESET_SETTINGS' }, { sender: SETTINGS, client: WINDOW })
-    await app.nextEmit(SETTINGS, 'SETTINGS_SAVED', { answering: call })
+    await reset({ kind: 'app' });
 
-    expect(services.settings.getStored()).toEqual({})
-  })
-})
+    expect(stored()).not.toHaveProperty('app');
+    expect(featureSettings.forFeature('threads').get().recentThreadsSortOrder).toBe('created');
+    expect(packSettings.forGroup('assistant').get().name).toBe('Ada');
+  });
 
-describe('a reset naming one section', () => {
-  it('forgets that section and leaves the features alone', async () => {
-    const app = await startApp({ systems: [SETTINGS] })
-    await app.connect()
-    services.settings.setInSection('general', ['application', 'theme'], 'dark')
-    services.settings.setForFeature(ref('threads'), ['recentThreadsSortOrder'], 'created')
+  it('resets a pack group without resetting app or feature preferences', async () => {
+    services.settings.set({ kind: 'app' }, ['personal', 'name'], 'Ada');
+    featureSettings.forFeature('notes').set({ path: ['tasklistPanelPosition'], value: 'right' });
+    packSettings.forGroup('assistant').set({ path: ['name'], value: 'Assistant' });
 
-    const call = await app.send(SETTINGS, {
-      type: 'RESET_SETTINGS', target: { entityType: 'section', label: 'general' },
-    }, { sender: SETTINGS, client: WINDOW })
-    await app.nextEmit(SETTINGS, 'SETTINGS_SAVED', { answering: call })
+    await reset({ kind: 'pack', packId: 'default-setup', groupId: 'assistant' });
 
-    const stored = services.settings.getStored<{ general?: unknown }>()
-    expect(stored.general, 'the section the reset named').toBeUndefined()
-    expect(sortOf('threads'), 'a feature was reset with the section').toBe('created')
-  })
-})
+    expect(packSettings.forGroup('assistant').get()).toEqual({ name: '' });
+    expect(services.settings.get({ kind: 'app' })).toMatchObject({ personal: { name: 'Ada' } });
+    expect(featureSettings.forFeature('notes').get().tasklistPanelPosition).toBe('right');
+  });
+
+  it('requires an explicit whole-document reset', async () => {
+    const app = await startApp({ systems: [SETTINGS] });
+    await app.connect();
+    featureSettings.forFeature('threads').set({ path: ['recentThreadsSortOrder'], value: 'created' });
+    packSettings.forGroup('assistant').set({ path: ['name'], value: 'Assistant' });
+
+    const call = await app.send(SETTINGS, { type: 'RESET_ALL_SETTINGS' }, { settingsAccess: { kind: 'host', service: getTestSettings() }, sender: SETTINGS, client: WINDOW });
+    await app.nextEmit(SETTINGS, 'SETTINGS_SAVED', { answering: call });
+
+    expect(stored()).toEqual({});
+  });
+
+  it('refuses a missing target without clearing any preferences', async () => {
+    const app = await startApp({ systems: [SETTINGS] });
+    await app.connect();
+    featureSettings.forFeature('notes').set({ path: ['tasklistPanelPosition'], value: 'right' });
+    const before = structuredClone(stored());
+
+    const call = await app.send(SETTINGS, { type: 'RESET_SETTINGS' }, { settingsAccess: { kind: 'host', service: getTestSettings() }, sender: SETTINGS, client: WINDOW });
+    await app.nextEmit(SETTINGS, 'SETTINGS_REFUSED', { answering: call });
+
+    expect(stored()).toEqual(before);
+  });
+});

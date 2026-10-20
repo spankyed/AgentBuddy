@@ -110,7 +110,7 @@ export const coresBusy = (before: CpuTimes, after: CpuTimes, cores: number): num
  * **It is the only floor, and the two commands that ask it both print** — `npm run measure` and
  * `npm run measure:loop`, which also take `--idle` to move it per run and whose output carries its own
  * conditions (`citation`). There was a stricter one for a command that wrote a measurement into a committed
- * artifact; nothing writes one now, so what a reading leaves behind is a citation in a commit message and
+ * file; nothing writes one now, so what a reading leaves behind is a citation in a commit message and
  * this is the floor that has to hold for it.
  */
 export const IDLE_FLOOR = 0.7;

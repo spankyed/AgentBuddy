@@ -1,3 +1,5 @@
+import { sealPack } from './build-fixture.ts';
+import { _declarationRevision } from '@apackdev/sdk/build';
 // Reloading a pack loads and registers its rebuilt runtime before the running one shuts down: a rebuild that
 // fails to load, or whose registration is refused, leaves the running pack as it was.
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -5,9 +7,11 @@ import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { registry } from './test-host.ts';
+import { createNativePackTestRegistry } from '@apackdev/host/testing';
+import { _createPackServices, type SettingsService } from '@apackdev/sdk/services';
 import { PACK_SNAPSHOT_FORMAT } from '@apackdev/sdk/build';
 import { _appDirOf } from '@apackdev/sdk/env';
-import { PACK_LAYOUT, PACK_LAYOUT_VERSION } from '../../../src/packs/layout.ts';
+import { PACK_LAYOUT, getLoadedPackEntries } from '../../../src/packs/layout.ts';
 
 const { registerPack, unregisterPack, getPackRegistration, registerShutdownHook, removeShutdownHooksForKey } = registry;
 const { reloadPackById } = await import('../../../src/packs/runtime/reload.ts');
@@ -20,6 +24,7 @@ const { appliedContent, appState } = await import('../../../src/app-state/index.
 const { readInstalledPacks } = await import('../../../src/packs/installed.ts');
 
 const PACK_ID = 'reload-pack';
+const eventContracts = { widget: { system: { incoming: ['PING'], outgoing: [] } } };
 
 let tmpDir: string;
 let origEnv: { env?: string; userDataDir?: string };
@@ -28,14 +33,15 @@ const bus = { send: vi.fn() };
 const shutdown = vi.fn();
 
 /** Writes the rebuilt pack: a pack layout whose runtime entry is `runtimeSource` */
-function writeRebuild(runtimeSource: string) {
+function writeRebuild(runtimeSource: string, manifestExtra: Record<string, unknown> = {}) {
   const packDir = path.join(_appDirOf(tmpDir), 'packs', PACK_ID);
   fs.mkdirSync(path.join(packDir, 'runtime', 'content'), { recursive: true });
   fs.mkdirSync(path.join(packDir, 'types'), { recursive: true });
-  fs.writeFileSync(path.join(packDir, 'apack.json'), JSON.stringify({ id: PACK_ID, name: PACK_ID, version: '1.0.1' }));
-  fs.writeFileSync(path.join(packDir, PACK_LAYOUT.integrity), JSON.stringify({ formatVersion: PACK_LAYOUT_VERSION, id: PACK_ID, version: '1.0.1', files: {} }));
-  fs.writeFileSync(path.join(packDir, PACK_LAYOUT.snapshot), JSON.stringify({ format: PACK_SNAPSHOT_FORMAT }));
-  fs.writeFileSync(path.join(packDir, 'runtime', 'index.cjs'), runtimeSource);
+  fs.writeFileSync(path.join(packDir, 'apack.json'), JSON.stringify({ id: PACK_ID, name: PACK_ID, version: '1.0.1', features: { widget: { description: 'Feature declaration fixture.', system: { entry: 'system.ts' } } }, ...manifestExtra }));
+  fs.writeFileSync(path.join(packDir, PACK_LAYOUT.snapshot), JSON.stringify({ declarationRevision: _declarationRevision(JSON.parse(fs.readFileSync(path.join(packDir, 'apack.json'), 'utf-8'))), format: PACK_SNAPSHOT_FORMAT, manifest: JSON.parse(fs.readFileSync(path.join(packDir, 'apack.json'), 'utf-8')), types: { entities: {}, relKinds: {} }, entityDestinations: {}, eventContracts, facades: {} }));
+  fs.writeFileSync(path.join(packDir, 'runtime', 'index.cjs'), (runtimeSource) + `
+if (module.exports.registration) module.exports.registration.declarationRevision = '${_declarationRevision(JSON.parse(fs.readFileSync(path.join(packDir, 'apack.json'), 'utf-8')))}';`);
+  sealPack(packDir);
 }
 
 const runtime = (services = '') => `
@@ -61,7 +67,13 @@ beforeEach(() => {
   process.env.APACK_USER_DATA_DIR = tmpDir;
   bus.send.mockReset();
   shutdown.mockReset();
-  registerPack(running);
+  // The incumbent is an installed pack, not a host-native contribution with the same ID.
+  registry.refreshCatalog(resolveAppEnvironment().packsDir);
+  registerPack(running, {
+    id: PACK_ID, name: PACK_ID, version: '1.0.0',
+    eventContracts,
+    dir: path.join(resolveAppEnvironment().packsDir, PACK_ID), declarationRevision: 'fixture-revision',
+  });
   registerShutdownHook(shutdown, PACK_ID);
 });
 
@@ -84,19 +96,18 @@ describe('reloading a pack the app ships', () => {
 
   /**
    * A pack the app ships, installed as every pack is: its built runtime records the compiled dir it was
-   * pointed at, reads it in its onInit, and it declares an apply over one compiled artifact
+   * pointed at, reads it in its onInit, and it declares an apply over one compiled content file
    */
   function writeShipped(manifest: Record<string, unknown> = {}): string {
     const packDir = path.join(_appDirOf(tmpDir), 'packs', SHIPPED_ID);
     fs.mkdirSync(path.join(packDir, 'runtime'), { recursive: true });
     fs.mkdirSync(path.join(packDir, 'types'), { recursive: true });
-    fs.writeFileSync(path.join(packDir, 'apack.json'), JSON.stringify({ id: SHIPPED_ID, name: SHIPPED_ID, version: '1.0.0', ...manifest }));
-    fs.writeFileSync(path.join(packDir, PACK_LAYOUT.integrity), JSON.stringify({ formatVersion: PACK_LAYOUT_VERSION, id: SHIPPED_ID, version: '1.0.0', files: {} }));
-    fs.writeFileSync(path.join(packDir, PACK_LAYOUT.snapshot), JSON.stringify({ format: PACK_SNAPSHOT_FORMAT, types: {} }));
+    fs.writeFileSync(path.join(packDir, 'apack.json'), JSON.stringify({ id: SHIPPED_ID, name: SHIPPED_ID, version: '1.0.0', lifecycle: { onInit: 'hooks.ts#onInit' }, features: { widget: { description: 'Feature declaration fixture.', system: { entry: 'system.ts' } } }, ...manifest }));
+    fs.writeFileSync(path.join(packDir, PACK_LAYOUT.snapshot), JSON.stringify({ declarationRevision: _declarationRevision(JSON.parse(fs.readFileSync(path.join(packDir, 'apack.json'), 'utf-8'))), format: PACK_SNAPSHOT_FORMAT, manifest: JSON.parse(fs.readFileSync(path.join(packDir, 'apack.json'), 'utf-8')), types: { entities: {}, relKinds: {} }, entityDestinations: {}, eventContracts, facades: {} }));
     writeContent('[{ "label": "first" }]');
     // The index naming the pack, and the runtime built beside it
     fs.writeFileSync(path.join(packDir, PACK_LAYOUT.contentDir, 'content.json'), JSON.stringify({ version: 1, packId: SHIPPED_ID, entries: [] }));
-    fs.writeFileSync(path.join(packDir, 'runtime', 'index.cjs'), `
+    fs.writeFileSync(path.join(packDir, 'runtime', 'index.cjs'), (`
       let compiledDir = '';
       module.exports = {
         setCompiledDir(dir) { compiledDir = dir; },
@@ -108,12 +119,14 @@ describe('reloading a pack the app ships', () => {
         registration: {
           id: '${SHIPPED_ID}',
           features: { widget: { system: { machine: { id: 'widget', config: {} }, receives: ['PING'] } } },
-          boot: {
+          lifecycle: {
             onInit() { module.exports.compiledDirAtInit = module.exports.getCompiledDir(); },
           },
         },
       };
-    `);
+    `) + `
+if (module.exports.registration) module.exports.registration.declarationRevision = '${_declarationRevision(JSON.parse(fs.readFileSync(path.join(packDir, 'apack.json'), 'utf-8')))}';`);
+    sealPack(packDir);
     return packDir;
   }
 
@@ -122,6 +135,7 @@ describe('reloading a pack the app ships', () => {
     const contentDir = path.join(_appDirOf(tmpDir), 'packs', SHIPPED_ID, PACK_LAYOUT.contentDir);
     fs.mkdirSync(contentDir, { recursive: true });
     fs.writeFileSync(path.join(contentDir, 'actions.content.json'), content);
+    sealPack(path.dirname(path.dirname(contentDir)));
   }
 
   /** The pack as `applyPacks` takes it: a pack the app ships, with the policy its registration declares */
@@ -163,7 +177,7 @@ describe('reloading a pack the app ships', () => {
 
   it('points the rebuilt runtime at its compiled content, so onInit can read them', async () => {
     writeShipped();
-    loadAppPacks(registry, new Set([SHIPPED_ID]));
+    loadAppPacks(registry);
 
     await reloadPackById(registry, SHIPPED_ID, bus as never);
 
@@ -173,10 +187,24 @@ describe('reloading a pack the app ships', () => {
     expect(bus.send).toHaveBeenCalledWith({ type: 'RELOAD_PACK', packId: SHIPPED_ID, systemIds: [`${SHIPPED_ID}/widget`] });
   });
 
+  it('changes the accepted runtime identity when identical installed bytes reload', async () => {
+    writeShipped();
+    loadAppPacks(registry);
+    const previous = registry.getPackRuntime(SHIPPED_ID)!;
+    expect(previous.registrationId).toMatch(/^[a-f0-9-]{36}$/);
+    await reloadPackById(registry, SHIPPED_ID, bus as never);
+    const current = registry.getPackRuntime(SHIPPED_ID)!;
+    expect(current.registrationId).not.toBe(previous.registrationId);
+    expect(current.origin.buildRevision).toBe(previous.origin.buildRevision);
+    expect(getLoadedPackEntries(registry).find(pack => pack.id === SHIPPED_ID)?.registrationId).toBe(current.registrationId);
+    unregisterPack(SHIPPED_ID);
+    expect(registry.getPackRuntime(SHIPPED_ID)).toBeNull();
+  });
+
   // Only the reloaded pack's own systems restart; other packs' systems read what it registers and content
   it('tells the running systems the pack changed, after restarting its own', async () => {
     writeShipped();
-    loadAppPacks(registry, new Set([SHIPPED_ID]));
+    loadAppPacks(registry);
 
     await reloadPackById(registry, SHIPPED_ID, bus as never);
 
@@ -186,7 +214,7 @@ describe('reloading a pack the app ships', () => {
 
   it('content the compiled data a rebuild changed, and leaves unchanged data alone', async () => {
     writeShipped();
-    loadAppPacks(registry, new Set([SHIPPED_ID]));
+    loadAppPacks(registry);
     // Boot's own applying, which the reload picks up from
     applyPacks([contentTarget()]);
     expect(written).toEqual([path.join(_appDirOf(tmpDir), 'packs', SHIPPED_ID, PACK_LAYOUT.contentDir)]);
@@ -204,7 +232,7 @@ describe('reloading a pack the app ships', () => {
 
   it("records what it written per pack, so a second shipped pack's boot apply doesn't re-run this one", async () => {
     writeShipped();
-    loadAppPacks(registry, new Set([SHIPPED_ID]));
+    loadAppPacks(registry);
     applyPacks([contentTarget()]);
     expect(written).toEqual([path.join(_appDirOf(tmpDir), 'packs', SHIPPED_ID, PACK_LAYOUT.contentDir)]);
 
@@ -221,7 +249,7 @@ describe('reloading a pack the app ships', () => {
 
   it('reports the records an applier could not content, and still records the hash so they are retried on the next change', async () => {
     writeShipped();
-    loadAppPacks(registry, new Set([SHIPPED_ID]));
+    loadAppPacks(registry);
     recordsThatFail = ['Flow "Broken": step 2 names no action'];
     applyPacks([contentTarget()]);
 
@@ -244,9 +272,25 @@ describe('reloading a pack the app ships', () => {
     expect(loggedErrors).toEqual([]);
   });
 
+  it('restarts actors after a committed replacement even when its initialization throws', async () => {
+    const dir = writeShipped();
+    loadAppPacks(registry);
+    const entry = path.join(dir, PACK_LAYOUT.runtimeEntry);
+    fs.writeFileSync(entry, fs.readFileSync(entry, 'utf-8').replace(
+      'module.exports.compiledDirAtInit = module.exports.getCompiledDir();',
+      "throw new Error('initialization failed');",
+    ));
+    sealPack(dir);
+    bus.send.mockClear();
+    await reloadPackById(registry, SHIPPED_ID, bus as never);
+    expect(bus.send).toHaveBeenCalledWith({ type: 'RELOAD_PACK', packId: SHIPPED_ID, systemIds: [`${SHIPPED_ID}/widget`] });
+    expect(bus.send).toHaveBeenCalledWith({ type: 'PACK_CHANGED', packId: SHIPPED_ID });
+    expect(loggedErrors.join('\n')).toContain('initialization failed');
+  });
+
   it('still restarts the systems when the apply after registering throws, and says why', async () => {
     writeShipped();
-    loadAppPacks(registry, new Set([SHIPPED_ID]));
+    loadAppPacks(registry);
     bus.send.mockClear();
 
     // A rebuild running again mid-reload takes the compiled content out from under the applier
@@ -261,7 +305,7 @@ describe('reloading a pack the app ships', () => {
   // A rebuild can change the pack's version, and the list the Packs view shows reads the origin
   it("re-reads the pack's manifest, so a version a rebuild changed is the one listed", async () => {
     writeShipped();
-    loadAppPacks(registry, new Set([SHIPPED_ID]));
+    loadAppPacks(registry);
     expect(registry.packOrigin(SHIPPED_ID)?.version).toBe('1.0.0');
 
     writeShipped({ version: '2.0.0' });
@@ -278,6 +322,43 @@ describe('reloading a pack the app ships', () => {
 });
 
 describe('reloading a pack', () => {
+  it('retains incumbent generated handles and origin after a late candidate binding failure', async () => {
+    const listeners = new Set<() => void>();
+    const source: SettingsService = {
+      get: <T,>() => ({ retained: true }) as T,
+      set() {}, reset() {},
+      onChange(listener) { const notify = () => listener('written'); listeners.add(notify); return () => { listeners.delete(notify); }; },
+    };
+    const isolated = createNativePackTestRegistry({ settingsForPack: () => source });
+    const generated = _createPackServices();
+    const handle = generated.settingsHandle({ kind: 'app' });
+    const manifest = { id: PACK_ID, name: PACK_ID, version: '1.0.0', features: {
+      widget: { description: 'Reload authority fixture.', system: { entry: 'system.ts', events: { incoming: ['PING'] } } },
+    } };
+    const declarationRevision = _declarationRevision(manifest);
+    const old = { ...running, declarationRevision, bindServices: generated.bindServices };
+    const origin = { eventContracts, manifest, id: PACK_ID, name: PACK_ID, version: '1.0.0', declarationRevision,
+      dir: path.join(resolveAppEnvironment().packsDir, PACK_ID) };
+    isolated.registerPack(old, origin);
+    const acceptedOrigin = isolated.packOrigin(PACK_ID);
+    const acceptedRuntime = isolated.getPackRuntime(PACK_ID);
+    const heard = vi.fn();
+    handle.onChange(heard);
+    try {
+      writeRebuild(runtime("bindServices() { throw new Error('late binding refused'); },"));
+      await expect(reloadPackById(isolated, PACK_ID, bus as never)).rejects.toThrow(`Failed to register pack ${PACK_ID}`);
+      expect(isolated.getPackRegistration(PACK_ID)).toBe(old);
+      expect(isolated.packOrigin(PACK_ID)).toBe(acceptedOrigin);
+      expect(isolated.getPackRuntime(PACK_ID)).toEqual(acceptedRuntime);
+      expect(handle.get()).toEqual({ retained: true });
+      for (const notify of listeners) notify();
+      expect(heard).toHaveBeenCalledOnce();
+      expect(bus.send).not.toHaveBeenCalled();
+    } finally { isolated.unregisterPack(PACK_ID); }
+    expect(listeners.size).toBe(0);
+    expect(() => handle.get()).toThrow('revoked');
+  });
+
   it('leaves the running pack intact when the rebuilt runtime throws while loading', async () => {
     writeRebuild(`throw new Error('broken build');`);
     await expect(reloadPackById(registry, PACK_ID, bus as never)).rejects.toThrow(`Failed to load pack ${PACK_ID}`);
@@ -292,31 +373,42 @@ describe('reloading a pack', () => {
 
   // Its origin too: without it the registry forgets where the pack came from, and a built-in's next reload can't find it
   it('restores the running registration, and where it came from, when the rebuilt one is refused', async () => {
-    const origin = { id: PACK_ID, name: PACK_ID, version: '1.0.0', dir: path.join(_appDirOf(tmpDir), 'packs', PACK_ID), shipped: false };
+    const origin = { eventContracts, declarationRevision: 'fixture-revision', id: PACK_ID, name: PACK_ID, version: '1.0.0', dir: path.join(_appDirOf(tmpDir), 'packs', PACK_ID) };
     unregisterPack(PACK_ID);
     registerPack(running, origin);
+    const previous = registry.getPackRuntime(PACK_ID);
     registerPack({ id: 'service-owner', services: { taken: {} } });
-    writeRebuild(runtime(`services: { taken: {} },`));
+    writeRebuild(runtime(`services: { taken: {} },`), { extensions: { services: { taken: 'taken.ts#taken' } } });
     await expect(reloadPackById(registry, PACK_ID, bus as never)).rejects.toThrow(`Failed to register pack ${PACK_ID}`);
     expectRunningPackIntact();
     expect(registry.packOrigin(PACK_ID)).toEqual(origin);
+    expect(registry.getPackRuntime(PACK_ID)).toEqual(previous);
   });
 
-  // A pack the app is the first to load has no row in installed-packs.json, and an apply failure still has
-  // to reach it: the row is made when there is something to record on it.
-  it("records a first-time pack's apply failure", async () => {
-    resetTestData();
+  it('refuses malformed compiled content before replacing the running pack', async () => {
     writeRebuild(runtime());
-    // Compiled content from a pack built by an older CLI: importCompiledContent refuses them, which is a failed apply
     fs.writeFileSync(
       path.join(_appDirOf(tmpDir), 'packs', PACK_ID, 'runtime', 'content', 'content.json'),
       JSON.stringify({ version: 1, entries: [] }),
     );
+    sealPack(path.join(_appDirOf(tmpDir), 'packs', PACK_ID));
 
+    await expect(reloadPackById(registry, PACK_ID, bus as never)).rejects.toThrow('packId');
+    expectRunningPackIntact();
+  });
+
+  // A first apply has no installed-packs row yet; execution failures must still create its error record.
+  it("records a first-time pack's apply failure", async () => {
+    resetTestData();
+    writeRebuild(runtime(`appliers: [{ key: 'custom', apply() { throw new Error('content apply failed'); } }],`),
+      { content: { sources: { custom: { applier: 'src/custom.ts' } } } });
+    fs.writeFileSync(path.join(_appDirOf(tmpDir), 'packs', PACK_ID, 'runtime', 'content', 'content.json'),
+      JSON.stringify({ version: 1, packId: PACK_ID, entries: [] }));
+    sealPack(path.join(_appDirOf(tmpDir), 'packs', PACK_ID));
     await reloadPackById(registry, PACK_ID, bus as never);
 
     expect(readInstalledPacks()).toMatchObject([
-      expect.objectContaining({ id: PACK_ID, lastError: expect.stringContaining("doesn't name the pack that compiled this content") }),
+      expect.objectContaining({ id: PACK_ID, lastError: expect.stringContaining('content apply failed') }),
     ]);
   });
 
@@ -345,7 +437,7 @@ describe('reloading a pack', () => {
     appState.update({ packVersions: { [PACK_ID]: '1.0.0' } });
     const ran: string[] = [];
     Object.assign(globalThis, { reloadPackRuns: ran });
-    writeRebuild(runtime(`migrations: { pack: ['1.0.0', '1.0.1'].map((target) => ({ target, description: target, up: () => globalThis.reloadPackRuns.push(target) })) },`));
+    writeRebuild(runtime(`migrations: { pack: ['1.0.0', '1.0.1'].map((target) => ({ target, description: target, up: () => globalThis.reloadPackRuns.push(target) })) },`), { migrations: { pack: { '1.0.0': { description: '1.0.0', up: 'migration.ts#first' }, '1.0.1': { description: '1.0.1', up: 'migration.ts#next' } } } });
 
     await reloadPackById(registry, PACK_ID, bus as never);
 

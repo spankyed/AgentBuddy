@@ -4,7 +4,7 @@
 import { defineHandlers } from '@apackdev/sdk/framework';
 import type { MachineContext } from 'xstate';
 import { setup } from 'xstate';
-import { eventTypes } from '@apackdev/sdk/events';
+import type { ApplicationClientEvent } from '../../event-contracts.ts';
 import { broadcastToPlugin } from '../../../events.ts';
 import { splitRef } from '@apackdev/sdk/ids';
 import { appState } from '../../../app-state/index.ts';
@@ -15,29 +15,28 @@ import type { PackRegistry } from '../../../packs/registry.ts';
 const handlers = defineHandlers<MachineContext, ApplicationEvent>();
 
 /** Which plugins' tabs show, by ref: each feature's declared default, with the user's own choices over it */
-export function pluginVisibility(registry: Pick<PackRegistry, 'settingsDefaults'>): Record<string, boolean> {
-  return { ...registry.settingsDefaults().visibility, ...appState.get().pluginVisibility };
+export function pluginVisibility(registry: Pick<PackRegistry, 'pluginDefaults'>): Record<string, boolean> {
+  return { ...registry.pluginDefaults(), ...appState.get().pluginVisibility };
 }
 
-/** The events a client may send this system */
-type ApplicationClientEvent =
-  | { type: 'SET_PLUGIN_VISIBILITY'; plugin: string; visible: boolean }
-  | { type: 'SET_LAST_ACTIVE_PLUGIN'; plugin: string };
-
-/** What the system handles: a client's events, and the bus asking it to publish */
 type ApplicationEvent = ApplicationClientEvent | { type: 'SEND_STATE' };
-
-/** The events a client may send this system, which the bus checks a client's send against */
-export const APPLICATION_SYSTEM_EVENTS = eventTypes<ApplicationClientEvent>()('SET_PLUGIN_VISIBILITY', 'SET_LAST_ACTIVE_PLUGIN');
 
 /**
  * The host `application` system over the packs in `registry`. It records the user's choices, and sends the
  * application plugin the visibility again when a choice or a pack's defaults change, so every window agrees.
  */
-export function createApplicationSystem(registry: Pick<PackRegistry, 'settingsDefaults'>) {
+export function createApplicationSystem(registry: Pick<PackRegistry, 'pluginDefaults' | 'loadedPacks' | 'getPackRuntime'>) {
   return setup({
     types: { events: {} as ApplicationEvent },
     actions: handlers.actions({
+      sendRuntimes: () => {
+        const runtimes = Object.fromEntries(registry.loadedPacks().map(({ id }) => {
+          const runtime = registry.getPackRuntime(id);
+          if (!runtime) throw new Error(`Pack "${id}" has no accepted runtime identity`);
+          return [id, runtime.registrationId];
+        }));
+        broadcastToPlugin('application', { type: 'PACK_RUNTIMES_UPDATED', runtimes });
+      },
       sendVisibility: () => {
         broadcastToPlugin('application', { type: 'PLUGIN_VISIBILITY_UPDATED', pluginVisibility: pluginVisibility(registry) });
       },
@@ -58,7 +57,7 @@ export function createApplicationSystem(registry: Pick<PackRegistry, 'settingsDe
         actions: ({ event }) => appState.update({ lastActivePlugin: event.plugin }),
       },
       // A pack coming or going brings or takes its features' defaults
-      SEND_STATE: { actions: 'sendVisibility' },
+      SEND_STATE: { actions: ['sendVisibility', 'sendRuntimes'] },
     },
   });
 }

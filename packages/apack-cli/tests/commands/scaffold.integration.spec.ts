@@ -1,16 +1,13 @@
-// @slow: eleven cases, and the costly ones run the real CLI end to end — init, build, typecheck, pack
-// Measured 2026-10-06: 4.4s to add a feature and pack a verified archive, 3.4s to add a step and a service
-// that build, then 2.1s, 2.1s, 1.6s and 1.6s. What makes it slow is what it checks — that the generated
-// scaffold survives a real toolchain outside the monorepo — so the cost is the subject, and a faked CLI or
-// a skipped typecheck would check the fixture instead.
-import { execFileSync } from 'node:child_process';
+// @slow: the generated scaffold must survive the real authoring toolchain outside the monorepo.
+// CLI calls run in owned asynchronous processes so compiler work cannot block Vitest's reporting.
 import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
-import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { extractPackArchive, verifyPack } from '@apackdev/host/packs';
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from 'vitest';
+import { extractPackArchive, verifyPack, PACK_LAYOUT } from '@apackdev/host/packs';
 import { parse as parseYaml } from 'yaml';
-import { callCli, typecheckPack } from '../_support/pack-builds';
+import { typecheckPack } from '../_support/pack-builds';
+import { runScaffoldCommand } from '../_support/scaffold-process.ts';
 
 import { COMMANDS, type Command } from '../../src/command-tree.ts';
 
@@ -26,13 +23,24 @@ let pack: string;
 /** What `init` printed: it names scripts, so it is held to the same rule as the files it wrote */
 let initOutput: string;
 
-function run(cmd: string, args: string[], cwd: string): { code: number; output: string } {
-  try {
-    const output = execFileSync(cmd, args, { cwd, stdio: ['ignore', 'pipe', 'pipe'], env: { ...process.env, FORCE_COLOR: '0' } }).toString();
-    return { code: 0, output };
-  } catch (err: any) {
-    return { code: err.status ?? 1, output: `${err.stdout ?? ''}${err.stderr ?? ''}` };
-  }
+// Synchronous toolchain cases must let Vitest receive task-update replies between tests.
+afterEach(() => new Promise<void>(resolve => { setImmediate(resolve); }));
+
+let active: ReturnType<typeof runScaffoldCommand> | undefined;
+let testSignal: AbortSignal | undefined;
+
+beforeEach(async ({ signal }) => {
+  await active;
+  testSignal = signal;
+});
+
+function run(cmd: string, args: string[], cwd: string, timeout = 60_000) {
+  return active = runScaffoldCommand(cmd, args, cwd, { signal: testSignal, timeout });
+}
+
+function callCli(cwd: string, command: string, args: string[] = []) {
+  // Match the existing full CLI build allowance: captured backend (180s) plus cold frontend (120s).
+  return run(process.execPath, [CLI, 'pack', command, ...args], cwd, command === 'build' ? 180_000 + 120_000 : 60_000);
 }
 
 beforeAll(async () => {
@@ -43,9 +51,11 @@ beforeAll(async () => {
   initOutput = init.output;
   pack = path.join(tmp, 'demo-pack');
   fs.symlinkSync(path.join(REPO_ROOT, 'node_modules'), path.join(pack, 'node_modules'), 'dir');
-});
+}, 60_000 + 20_000);
 
-afterAll(() => {
+afterAll(async () => {
+  // A failed shutdown preserves the fixture rather than deleting files beneath a live toolchain.
+  await active;
   fs.rmSync(tmp, { recursive: true, force: true });
 });
 
@@ -59,24 +69,33 @@ describe('apack pack init → add feature → build → tsc → pack', () => {
     expect(workflow).toMatch(/APACK_HOST: beta/);
   });
 
-  it("explains instead of writing a flow the scaffold can't build (no dependency provides steps)", () => {
+  it("explains instead of writing a flow the scaffold can't build (no dependency provides steps)", async () => {
     // process: the exit code and the message an author reads are the assertion
-    const result = run('node', [CLI, 'pack', 'add', 'flow', 'heartbeat'], pack);
+    const result = await run('node', [CLI, 'pack', 'add', 'flow', 'heartbeat'], pack);
     expect(result.code).not.toBe(0);
     expect(result.output).toMatch(/"dependencies": \{ "default-setup": "\*" \}/);
     expect(fs.existsSync(path.join(pack, 'src', 'content', 'flows', 'heartbeat.ts'))).toBe(false);
   });
 
-  it('rejects a feature id that is not an identifier', () => {
+  it('rejects a feature id that is not an identifier', async () => {
     // process: the exit code and the message an author reads are the assertion
-    const result = run('node', [CLI, 'pack', 'add', 'feature', 'my-notes'], pack);
+    const result = await run('node', [CLI, 'pack', 'add', 'feature', 'my-notes'], pack);
     expect(result.code).not.toBe(0);
     expect(result.output).toMatch(/must start with a lowercase letter and contain only letters and digits/);
   });
 
   it('adds a feature, builds, typechecks and packs a verified archive', async () => {
     // produces: the feature the build below compiles
-    expect((await callCli(pack, 'add', ['feature', 'notes', '--label', 'Notes'])).code).toBe(0);
+    expect((await callCli(pack, 'add', ['feature', 'notes', '--description', 'Manage notes.', '--label', 'Notes', '--designation', 'notebook'])).code).toBe(0);
+    const manifest = JSON.parse(fs.readFileSync(path.join(pack, 'apack.json'), 'utf-8'));
+    expect(manifest.features.notes.types).toBe('src/features/notes/be/types.ts');
+    expect(manifest.features.notes.description).toBe('Manage notes.');
+    expect(manifest.features.notes.settings.form).toBe('src/features/notes/fe/settings.vue');
+    expect(manifest.features.notes.designation).toBe('notebook');
+    for (const command of ['validate', 'doctor']) {
+      const result = await run(process.execPath, [CLI, 'pack', command], pack);
+      expect(result.code, result.output).toBe(0);
+    }
 
     // produces: the dist files and apply JSON asserted just below
     const build = await callCli(pack, 'build');
@@ -97,7 +116,13 @@ describe('apack pack init → add feature → build → tsc → pack', () => {
     expect(packed.code, packed.output).toBe(0);
     const extracted = await extractPackArchive(path.join(out, 'demo-pack-0.1.0.tgz'), path.join(tmp, 'extract'));
     expect(verifyPack(extracted).id).toBe('demo-pack');
-  });
+    const guide = fs.readFileSync(path.join(REPO_ROOT, 'docs/public-facing/pack-builds.md'), 'utf8');
+    for (const file of [PACK_LAYOUT.manifest, PACK_LAYOUT.integrity, PACK_LAYOUT.runtimeEntry, PACK_LAYOUT.feEntry, PACK_LAYOUT.snapshot]) {
+      expect(fs.existsSync(path.join(extracted, file)), file).toBe(true);
+      expect(guide, `Missing public build path ${file}`).toContain('`' + file + '`');
+    }
+
+  }, 5 * 60_000 + (180_000 + 120_000) + 20_000);
 
   /**
    * The facade round trip through the **scripts the scaffold writes**, on a pack scaffolded the way an author
@@ -127,7 +152,7 @@ describe('apack pack init → add feature → build → tsc → pack', () => {
     const checked = await callCli(pack, 'facade-report');
     expect(checked.code, checked.output).toBe(0);
     expect(checked.output).toContain('is up to date');
-  });
+  }, 3 * 60_000 + (180_000 + 120_000) + 20_000);
 
   /**
    * Every file the scaffold ships that names a command — both workflows and the README — held to the scripts
@@ -217,9 +242,12 @@ describe('apack pack init → add feature → build → tsc → pack', () => {
     expect(manifest.extensions.steps).toEqual({
       ping: {
         kind: 'step',
-        node: 'src/extensions/steps/ping/build.ts#pingStepNode',
-        build: 'src/extensions/steps/ping/build.ts#pingStepBuild',
-        fe: 'src/extensions/steps/ping/fe.ts#pingStepFE',
+        node: { label: 'Ping', defaultLabel: 'Ping' },
+        build: { compile: 'src/extensions/steps/ping/build.ts#compile', validate: 'src/extensions/steps/ping/build.ts#validate', getLabel: 'src/extensions/steps/ping/build.ts#getLabel' },
+        types: 'src/extensions/steps/ping/types.ts',
+        fe: { colorKey: 'indigo', nodeConfig: { icon: 'Box',
+          connectionRules: { inputs: -1, outputs: -1 }, category: 'logic', isImplemented: true },
+          components: { form: { entry: 'src/extensions/steps/ping/form.vue', load: 'lazy' } } },
       },
     });
 
@@ -232,19 +260,21 @@ describe('apack pack init → add feature → build → tsc → pack', () => {
     // typecheck: as above
     const tsc = await typecheckPack(pack);
     expect(tsc.code, tsc.output).toBe(0);
-  });
+  }, 3 * 60_000 + (180_000 + 120_000) + 20_000);
 
   it('regenerates entries when a source file codegen reads changes, not only the manifest', async () => {
     const servicePath = path.join(pack, 'src', 'extensions', 'services', 'cache.ts');
     fs.writeFileSync(servicePath, 'export const cacheService = {};\n');
 
     // produces: regenerates services.ts, whose content is asserted below
-    const generate = await callCli(pack, 'generate-entries');
+    // Both runs use the actual CLI's conditions; Vitest's development condition is a different input.
+    const generate = await run('node', [CLI, 'pack', 'generate-entries'], pack);
+    expect(generate.code, generate.output).toBe(0);
     expect(generate.output).not.toMatch(/inputs unchanged/);
     expect(fs.readFileSync(path.join(pack, 'src', '__generated__', 'services.ts'), 'utf-8')).toMatch(/import \{ cacheService as __service_cache \}/);
     // process: the stdout a second, unchanged run prints is the assertion
-    expect(run('node', [CLI, 'pack', 'generate-entries'], pack).output).toMatch(/inputs unchanged/);
-  });
+    expect((await run('node', [CLI, 'pack', 'generate-entries'], pack)).output).toMatch(/inputs unchanged/);
+  }, 2 * 60_000 + 20_000);
 
   it('keeps unit tests runnable after init-tests adds Playwright specs', async () => {
     // produces: the Playwright specs the vitest run below picks up
@@ -252,7 +282,7 @@ describe('apack pack init → add feature → build → tsc → pack', () => {
     expect(fs.existsSync(path.join(pack, 'tests', 'e2e', 'smoke.spec.ts'))).toBe(true);
 
     // inherent: runs a pack's own vitest suite — the nested runner is the thing under test
-    const unit = run(path.join(REPO_ROOT, 'node_modules', '.bin', 'vitest'), ['run'], pack);
+    const unit = await run(path.join(REPO_ROOT, 'node_modules', '.bin', 'vitest'), ['run'], pack);
     expect(unit.code, unit.output).toBe(0);
     expect(unit.output).toMatch(/tests\/demo-pack\.spec\.ts/);
     // The scaffold's content test and the added feature's system test run through the harness
@@ -262,9 +292,9 @@ describe('apack pack init → add feature → build → tsc → pack', () => {
     const unitOutput = unit.output.replace(/\x1b\[[0-9;]*m/g, '');
     expect(unitOutput).toMatch(/Tests\s+\d+ passed/);
     expect(unitOutput).not.toMatch(/failed/);
-  });
+  }, 2 * 60_000 + 20_000);
 
-  it('refuses to build, pack or generate entries for a manifest the installer would reject', () => {
+  it('refuses to build, pack or generate entries for a manifest the installer would reject', async () => {
     const manifestPath = path.join(pack, 'apack.json');
     const original = fs.readFileSync(manifestPath, 'utf-8');
     const manifest = JSON.parse(original);
@@ -274,33 +304,36 @@ describe('apack pack init → add feature → build → tsc → pack', () => {
     try {
       for (const args of [['pack', 'build'], ['pack', 'archive', '--out', path.join(tmp, 'invalid-out')], ['pack', 'generate-entries', '--force']]) {
         // process: each command's exit code and message for an invalid manifest is the assertion
-        const result = run('node', [CLI, ...args], pack);
+        const result = await run('node', [CLI, ...args], pack);
         expect(result.code, args.join(' ')).not.toBe(0);
         expect(result.output).toMatch(/apack\.json is invalid/);
       }
     } finally {
       fs.writeFileSync(manifestPath, original);
     }
-  });
+  }, 3 * 60_000 + 20_000);
 
-  it('fails the build on an unresolvable dependency', () => {
+  it('fails the build on an unresolvable dependency', async () => {
     const manifestPath = path.join(pack, 'apack.json');
     const manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf-8'));
     manifest.dependencies = { 'nonexistent-pack': '*' };
     fs.writeFileSync(manifestPath, JSON.stringify(manifest, null, 2));
 
     // process: the exit code and the unresolved-dependency message are the assertion
-    const build = run('node', [CLI, 'pack', 'build'], pack);
+    const build = await run('node', [CLI, 'pack', 'build'], pack);
     expect(build.code).not.toBe(0);
     expect(build.output).toMatch(/Unresolved pack dependencies:[\s\S]*nonexistent-pack/);
     // The failed build left the previous one where it was: it assembles `dist` aside and renames it into
     // place, so a reader finds the build before this one rather than nothing
     expect(fs.existsSync(path.join(pack, 'dist', 'runtime', 'index.cjs'))).toBe(true);
-    // **Which is why `pack` asks whether that build is of these sources**, rather than failing for want of
-    // files as it used to. The manifest edited above is newer than the build, so this is refused and names it
+    // The incumbent build's captured manifest bytes no longer match, regardless of timestamps.
     // process: the exit code and the message are the assertion
-    const packed = run('node', [CLI, 'pack', 'archive', '--out', path.join(tmp, 'stale-out')], pack);
+    const packed = await run('node', [CLI, 'pack', 'archive', '--out', path.join(tmp, 'stale-out')], pack);
     expect(packed.code).not.toBe(0);
-    expect(packed.output).toMatch(/build is older than apack\.json/);
-  });
+    // Either the authored inventory or the manifest bytes may be the first differing observation.
+    expect([
+      'Compiler startup input changed: ["authored-files"]',
+      'Compiler startup input changed: ["file","apack.json"]',
+    ]).toContain(packed.output.trim());
+  }, 2 * 60_000 + 20_000);
 });

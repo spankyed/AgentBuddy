@@ -1,0 +1,152 @@
+import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
+import { afterEach, expect, it } from 'vitest';
+import ts from 'typescript';
+import {
+  createCompilerFileView,
+  createPackCompilerInputView,
+  createCompilerInputObservations,
+  hashCompilerInputObservations,
+  assertNativeCompilerObservations,
+} from '@apackdev/host/build/compiler-inputs';
+
+const roots: string[] = [];
+afterEach(() => { for (const root of roots.splice(0)) fs.rmSync(root, { recursive: true, force: true }); });
+function fixture() {
+  const root = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'apack-observations-')));
+  roots.push(root);
+  const file = path.join(root, 'value.txt');
+  fs.writeFileSync(file, 'ONE');
+  return { root, file };
+}
+
+it.each([false, true])('replays glob facts and detects deep outside additions (authored owner: %s)', authored => {
+  const { root } = fixture();
+  const pack = path.join(root, 'pack'), outside = path.join(root, 'outside/nested');
+  fs.mkdirSync(pack);
+  fs.mkdirSync(outside, { recursive: true });
+  const view = authored ? createPackCompilerInputView(pack) : createCompilerFileView(pack);
+  try {
+    expect(view.readGlob(ts.sys.readDirectory, pack, ['.ts'], undefined, ['../outside/**/*.ts'])).toEqual([]);
+    const observations = view.observations();
+    expect(() => assertNativeCompilerObservations(observations)).not.toThrow();
+    fs.writeFileSync(path.join(outside, 'added.ts'), 'export {};');
+    expect(() => assertNativeCompilerObservations(observations)).toThrow(/startup input changed/);
+    fs.rmSync(path.join(outside, 'added.ts'));
+    expect(() => assertNativeCompilerObservations(observations)).not.toThrow();
+  } finally { view.dispose(); }
+});
+
+it('combines consumed stat fields and rejects conflicting reads after the source is restored', () => {
+  const { root, file } = fixture();
+  const first = createCompilerFileView(root), second = createCompilerFileView(root);
+  expect((first.readMetadata('stat', file, []) as fs.Stats).size).toBe(3);
+  expect((second.readMetadata('stat', file, []) as fs.Stats).isFile()).toBe(true);
+  const a = first.observations(), b = structuredClone(second.observations());
+  const merged = createCompilerInputObservations(root, [a, b]).snapshot();
+  expect(() => assertNativeCompilerObservations(merged)).not.toThrow();
+  expect(merged.entries).toHaveLength(4);
+  expect(hashCompilerInputObservations(merged)).toBe(hashCompilerInputObservations(createCompilerInputObservations(root, [b, a]).snapshot()));
+  fs.writeFileSync(file, 'DIFFERENT');
+  const changed = createCompilerFileView(root);
+  expect((changed.readMetadata('stat', file, []) as fs.Stats).size).toBe(9);
+  expect(() => assertNativeCompilerObservations(merged)).toThrow(/startup input changed/);
+  fs.writeFileSync(file, 'ONE');
+  expect(() => first.assertCurrent()).not.toThrow();
+  expect(() => createCompilerInputObservations(root, [a, changed.observations()])).toThrow(/Conflicting.*size/);
+  expect(first.observations()).toEqual(a);
+});
+
+it('combines consumed directory prefixes and rejects an observed EOF versus a later entry', () => {
+  const { root } = fixture();
+  const first = createCompilerFileView(root), second = createCompilerFileView(root);
+  try {
+    expect(first.openDirectoryData(root, {}).read(0)?.name).toBe('value.txt');
+    const cursor = second.openDirectoryData(root, {});
+    expect(cursor.read(0)?.name).toBe('value.txt');
+    expect(cursor.read(1)).toBeNull();
+    const full = second.observations();
+    expect(() => assertNativeCompilerObservations(full)).not.toThrow();
+    expect(createCompilerInputObservations(root, [first.observations(), full]).snapshot()).toEqual(full);
+    fs.writeFileSync(path.join(root, 'later.txt'), 'LATER');
+    expect(() => assertNativeCompilerObservations(full)).toThrow(/startup input changed/);
+    const changed = createCompilerFileView(root);
+    try {
+      const next = changed.openDirectoryData(root, {});
+      for (let index = 0; next.read(index) !== null; index++);
+      expect(() => createCompilerInputObservations(root, [full, changed.observations()])).toThrow('Conflicting compiler input observation');
+    } finally { changed.dispose(); }
+  } finally { first.dispose(); second.dispose(); }
+});
+
+it('projects captured paths consistently and transfers only owned serialized values', () => {
+  const { root, file } = fixture();
+  const copy = path.join(root, 'copy');
+  fs.mkdirSync(copy);
+  fs.copyFileSync(file, path.join(copy, 'value.txt'));
+  const source = createCompilerFileView(root);
+  const captured = createCompilerFileView(copy, { paths: [{ captured: copy, source: root }] });
+  for (const [view, directory] of [[source, root], [captured, copy]] as const) {
+    view.readBytes(path.join(directory, 'value.txt'));
+    view.readMetadata('realpath', path.join(directory, 'value.txt'), [{ encoding: 'buffer' }]);
+    expect(() => view.readMetadata('stat', path.join(directory, 'missing'), [])).toThrow();
+  }
+  const before = source.observations();
+  expect(() => assertNativeCompilerObservations(before)).not.toThrow();
+  expect(createCompilerInputObservations(root, [before, structuredClone(captured.observations())]).snapshot()).toEqual(before);
+  expect(() => createCompilerInputObservations(copy, [before])).toThrow('roots differ');
+  const mutable = before.entries as Array<[string, string]>;
+  mutable[0]![1] = 'caller mutation';
+  expect(source.observations()).not.toEqual(before);
+});
+
+it('replays buffered directory results, long cursor prefixes, bigint fields and native refusals', () => {
+  const { root, file } = fixture();
+  for (let index = 0; index < 12; index++) fs.writeFileSync(path.join(root, `entry-${index}`), 'DATA');
+  const view = createCompilerFileView(root);
+  try {
+    view.readDirectoryData(root, { encoding: 'buffer', withFileTypes: true });
+    const cursor = view.openDirectoryData(root, { encoding: 'buffer', bufferSize: 1 });
+    for (let index = 0; cursor.read(index) !== null; index++);
+    expect((view.readMetadata('stat', file, [{ bigint: true }]) as fs.BigIntStats).size).toBe(3n);
+    expect(() => view.readMetadata('stat', path.join(root, 'missing'), [])).toThrow();
+    expect(() => assertNativeCompilerObservations(view.observations())).not.toThrow();
+  } finally { view.dispose(); }
+});
+
+
+it('keeps a captured installation namespace under its own owner when completing a source frame', () => {
+  const { root } = fixture();
+  const pack = path.join(root, 'pack'), source = path.join(root, 'runtime'), captured = path.join(root, 'compiler');
+  fs.mkdirSync(pack);
+  fs.mkdirSync(path.join(source, 'lib'), { recursive: true });
+  fs.mkdirSync(captured);
+  const view = createPackCompilerInputView(pack, { paths: [{ source, captured }] });
+  try {
+    expect(view.fileSystem.directoryExists(path.join(captured, 'lib'))).toBe(false);
+    expect(() => assertNativeCompilerObservations(view.observations())).toThrow(/input changed/);
+    const completed = view.observations(file => file === captured || file.startsWith(captured + path.sep));
+    expect(() => assertNativeCompilerObservations(completed)).not.toThrow();
+    expect(completed.entries).toContainEqual(['["authored-files"]', '[]']);
+    expect(view.observations().entries.length).toBeGreaterThan(completed.entries.length);
+  } finally { view.dispose(); }
+});
+
+
+it('replays explicitly entered generated resolution directories without expanding authored membership', () => {
+  const { root } = fixture();
+  const directory = path.join(root, 'src/__generated__');
+  fs.mkdirSync(directory, { recursive: true });
+  const file = path.join(directory, 'entry.ts');
+  fs.writeFileSync(file, 'export {};');
+  const view = createPackCompilerInputView(root);
+  try {
+    view.captureDataLocation(directory, 'directory');
+    expect(view.resolutionDirectory(directory).files.map(value => value.file)).toEqual([file]);
+    const observations = view.observations();
+    expect(() => assertNativeCompilerObservations(observations)).not.toThrow();
+    fs.writeFileSync(path.join(directory, 'added.ts'), 'export {};');
+    expect(() => assertNativeCompilerObservations(observations)).toThrow(/input changed/);
+  } finally { view.dispose(); }
+});

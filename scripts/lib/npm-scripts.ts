@@ -1,7 +1,7 @@
 // What an npm script actually runs: the text it reaches, and the scripts it invokes on the way.
 //
 // Two checks ask questions of that: `check:tiers` asks whether a chain step's script reaches the app, and
-// `chain-inputs.spec.ts` asks whether anything in the chain runs a given `<artifact>:check`. Both need the same
+// `chain-inputs.spec.ts` asks whether anything in the chain runs a given `<name>:check`. Both need the same
 // walk — a script's own text, the scripts it calls with and without `-w`, and the repo files it names — so it
 // lives once. Two walks would be two answers to one question, and the second would be the one nobody checked.
 //

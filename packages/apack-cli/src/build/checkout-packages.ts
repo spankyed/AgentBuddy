@@ -20,7 +20,7 @@ const CHECKOUT_PACKAGES = ['@apackdev/sdk', '@apackdev/ears', '@apackdev/ui', '@
 function checkoutOf(packDir: string, pkg: string): string | undefined {
   let dir: string;
   try {
-    dir = path.dirname(fs.realpathSync(createRequire(path.join(packDir, 'package.json')).resolve(`${pkg}/package.json`)));
+    dir = path.dirname(fs.realpathSync.native(createRequire(path.join(packDir, 'package.json')).resolve(`${pkg}/package.json`)));
   } catch {
     return undefined; // Not installed here, or it exports no package.json: nothing to build either way
   }
@@ -54,7 +54,11 @@ export function ensureCheckoutPackages(packDir: string, stdio: StdioOptions = 'i
   if (!checkout) return;
   // npm is a shell script on Windows, which spawn cannot launch without one
   const windows = process.platform === 'win32';
-  const result = spawnSync(windows ? 'npm.cmd' : 'npm', ['run', 'packages:ensure'], { cwd: checkout, stdio, shell: windows });
+  const result = spawnSync(windows ? 'npm.cmd' : 'npm', ['run', 'packages:ensure'], {
+    cwd: checkout, stdio, shell: windows,
+    // The selected pack compiler's binary need not match checkout tools' own esbuild versions.
+    env: { ...process.env, ESBUILD_BINARY_PATH: undefined },
+  });
   if (result.status === 0) return;
   // A spawn that never ran has no status and a reason of its own; a build that failed printed its own
   const why = result.error ? `: ${result.error.message}` : '';

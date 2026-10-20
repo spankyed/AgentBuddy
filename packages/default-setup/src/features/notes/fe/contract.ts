@@ -33,6 +33,7 @@ export interface NotesContext {
 export type NotesInboxEvent = { type: 'NOTE.OPEN'; noteId: string }
 
 export type Contract = {
+  opens: 'Note'
   state: NotesContext
   inbox: PluginInbox<{ pack: NotesInboxEvent }>
 }

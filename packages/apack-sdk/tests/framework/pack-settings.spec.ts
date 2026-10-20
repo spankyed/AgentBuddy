@@ -1,34 +1,36 @@
-import { z } from 'zod';
 import { describe, expect, it } from 'vitest';
-import { checkFeatureSettings, defineFeatureSettings } from '../../src/framework/pack-settings.ts';
+import { parseManifest } from '../../src/build/validate.ts';
 
-describe('feature settings declarations', () => {
-  it('derives defaults from the schema and validates declarations', () => {
-    const settings = defineFeatureSettings({ schema: z.object({ limit: z.number().int().min(1).default(10) }).strict(), visible: false });
-    expect(settings.defaults).toEqual({ limit: 10 });
-    expect(checkFeatureSettings('memos', settings)).toEqual([]);
-    expect(settings.schema.safeParse({ limit: -1 }).success).toBe(false);
-    expect(settings.schema.safeParse({ limit: 10, typo: true }).success).toBe(false);
-    expect(checkFeatureSettings('memos', { visible: false })).toEqual([]);
+const settings = { schema: { type: 'object', additionalProperties: false,
+  properties: { count: { type: 'integer', minimum: 1 } }, required: ['count'],
+}, defaults: { count: 10 } };
+const manifest = (declaration: unknown) => ({ id: 'memos', name: 'Memos', version: '1.0.0',
+  features: { memos: { description: 'Feature declaration fixture.', settings: declaration } },
+});
+
+describe('declarative feature settings', () => {
+  it('validates data without deriving defaults or transforming authored values', () => {
+    const raw = manifest(settings);
+    const before = structuredClone(raw);
+    expect(parseManifest(raw).status).toBe('valid');
+    expect(raw).toEqual(before);
   });
 
-  it('refuses undeclared sections, invalid defaults, and a missing schema', () => {
-    expect(checkFeatureSettings('memos', { general: {}, plugins: {} })).toEqual([
-      expect.stringContaining('set "general"'), expect.stringContaining('set "plugins"'),
-    ]);
-    expect(checkFeatureSettings('memos', { defaults: {} })).toEqual([expect.stringContaining('defaults require a schema')]);
-    expect(checkFeatureSettings('memos', { defaults: { count: 'oops' }, schema: z.object({ count: z.number() }) }))
-      .toEqual([expect.stringContaining('count: Expected number')]);
-    expect(checkFeatureSettings('memos', { visible: 'yes' })).toEqual([expect.stringContaining('"visible" must be true or false')]);
-    expect(checkFeatureSettings('memos', undefined)).toEqual([expect.stringContaining('must default-export an object')]);
+  it.each([
+    'src/settings.ts', { visible: false }, { defaults: {} },
+    { ...settings, defaults: { count: 'wrong' } },
+    { ...settings, defaults: { count: 0 } },
+    { ...settings, defaults: { count: 10, extra: true } },
+    { ...settings, plugins: {} },
+  ])('refuses invalid declarations: %j', declaration => {
+    const result = parseManifest(manifest(declaration));
+    expect(result.status).toBe('invalid');
+    expect(result.diagnostics.some(issue => issue.path.slice(0, 3).join('.') === 'features.memos.settings')).toBe(true);
   });
 
-  it('refuses defaults that are transformed or silently stripped', () => {
-    const transformed = defineFeatureSettings({ schema: z.object({ count: z.number().default(1).transform(n => n + 1) }) });
-    expect(checkFeatureSettings('memos', transformed)).toEqual([expect.stringContaining('without transforming or removing')]);
-    expect(checkFeatureSettings('memos', { schema: transformed.schema })).toEqual([expect.stringContaining('without transforming or removing')]);
-    expect(checkFeatureSettings('memos', { defaults: { count: 1, typo: true }, schema: z.object({ count: z.number() }) }))
-      .toEqual([expect.stringContaining('without transforming or removing')]);
-    expect(checkFeatureSettings('memos', { defaults: { count: 1 }, schema: z.object({ count: z.number() }) })).toEqual([]);
+  it('allows navigation visibility without inventing a settings definition', () => {
+    expect(parseManifest({ id: 'memos', name: 'Memos', version: '1.0.0',
+      features: { memos: { description: 'Feature declaration fixture.', plugin: { label: 'Fixture', state: 'src/plugin.ts', defaultVisible: false } } },
+    }).status).toBe('valid');
   });
 });

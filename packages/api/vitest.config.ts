@@ -8,15 +8,10 @@ import { config as dotenvConfig } from 'dotenv';
 // Load environment variables from .env file
 dotenvConfig();
 
-export default defineConfig(async () => {
-  const { default: tsconfigPaths } = await import('vite-tsconfig-paths');
-  return {
+export default defineConfig({
   /* Vite‑level plugins -------------------------------------------------- */
   // Workspace @apackdev/* packages resolve to source (see their package.json exports)
   ssr: { resolve: { conditions } },
-  plugins: [
-    tsconfigPaths({ projects: ['./tsconfig.test.json'] }),
-  ],
 
   /* Vitest‑specific options -------------------------------------------- */
   test: {
@@ -42,9 +37,5 @@ export default defineConfig(async () => {
 
   resolve: {
     conditions,
-    alias: [
-      { find: /^@\//, replacement: new URL('./src/', import.meta.url).pathname },
-    ],
   },
-  };
 });

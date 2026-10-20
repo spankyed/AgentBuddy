@@ -152,6 +152,8 @@ export interface PackTestConfig {
 export async function definePackTestConfig(options: PackTestConfig = {}): Promise<ViteUserConfig> {
   const dataDir = isolatedDataDir(options.dataDirPrefix);
   return {
+    // Test caches must not create a dependency namespace after a pack records its build inputs.
+    cacheDir: '.apack/tests/vite',
     plugins: [options.vue === true ? await vueSfcPlugin() : stubSfcPlugin(), ...(options.plugins ?? [])],
     test: {
       globals: true,

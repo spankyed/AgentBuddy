@@ -1,7 +1,6 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { withPackMutation } from '../app/pack-mutation';
-import { forgetCliInstall } from '../app/installed-packs';
 import { PACK_ID_PATTERN } from '@apackdev/sdk/ids';
 import { uninstallPack, readInstalledPacks } from '@apackdev/host/packs';
 import { parseStorageProfile, targetDataContext, profileLabel } from '../utils';
@@ -26,8 +25,7 @@ export async function uninstall(args: string[]) {
       } catch {}
     }
 
-    await uninstallPack(packId, packsDir);
-    forgetCliInstall(installedPacksFile, packId);
+    await uninstallPack(packId, packsDir, { installedPacksFile });
 
     return name;
   });

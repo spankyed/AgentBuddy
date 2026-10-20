@@ -1,3 +1,6 @@
+import * as path from 'node:path';
+import ts from 'typescript';
+import { REPO_ROOT } from '@apackdev/host/build/packages-built';
 // The table `build:runtime` schedules, and the two claims it rests on that a type cannot make.
 //
 // `scripts/build-runtime.ts` runs its work on import, so the table is its own module and this is a spec over
@@ -86,4 +89,19 @@ describe('the app build legs', () => {
     const crossed = [{ ...first!, command: `npm run build -w ${second!.name}` }];
     expect(problems(crossed)).toEqual([expect.stringContaining('wrong one')]);
   });
+});
+
+
+it('reads the workspace API type contract from source without needing an API build', () => {
+  const configFile = ts.readConfigFile(path.join(REPO_ROOT, 'packages/renderer/tsconfig.app.json'), ts.sys.readFile);
+  expect(configFile.error).toBeUndefined();
+  const config = ts.parseJsonConfigFileContent(configFile.config, ts.sys, path.join(REPO_ROOT, 'packages/renderer'));
+  expect(config.errors).toEqual([]);
+  const importer = path.join(REPO_ROOT, 'packages/renderer/src/transport/index.ts');
+  const apiOutput = path.join(REPO_ROOT, 'packages/api/dist') + path.sep;
+  const withoutBuild = { ...ts.sys, fileExists: (file: string) => ts.sys.fileExists(file)
+    && !(ts.sys.realpath?.(file) ?? file).toLowerCase().startsWith(apiOutput.toLowerCase()) };
+  const resolve = (options: ts.CompilerOptions) => ts.resolveModuleName('@app/api', importer, options, withoutBuild).resolvedModule?.resolvedFileName;
+  expect(resolve(config.options)).toBe(path.join(REPO_ROOT, 'packages/api/src/types.ts'));
+  expect(resolve({ ...config.options, customConditions: [] })).toBeUndefined();
 });

@@ -1,35 +1,35 @@
-import { z } from 'zod';
+import { createNativePackTestRegistry } from '@apackdev/host/testing';
 // Registries are instances: two in one process hold their own packs, and the SDK's lookups read the bound one.
 // "Their own packs" covers which packs are loaded, not only what those packs contributed: the loaded list used
 // to sit at module scope beside the registry, where a second registry in the process saw the first's.
 import { describe, expect, it } from 'vitest';
 import { startTestRuntime } from '@apackdev/sdk/testing';
-import { services } from '@apackdev/sdk/services';
+import { _createPackServices } from '@apackdev/sdk/services';
 import { getDesignated, hasDesignation } from '@apackdev/sdk/designations';
-import { stepRegistry, type StepDefinition } from '@apackdev/sdk/steps';
-import { getPackSettingsDefaults, type PackRegistration } from '@apackdev/sdk/framework';
-import { createPackRegistry } from '../../src/packs/registry.ts';
+import { stepRegistry } from '@apackdev/sdk/steps';
+import { getSettingsCatalog, type PackRegistration } from '@apackdev/sdk/framework';
 
 /** A pack whose feature `featureId` plays `role`, with a system and a plugin with settings */
 const pack = (id: string, role: string, step: string, service: string, featureId: string): PackRegistration => ({
   id,
-  steps: [{ type: step, kind: 'step' } as StepDefinition],
+  steps: [{ type: step, kind: 'step', node: { label: step } }],
   services: { [service]: { from: id } },
   features: {
     [featureId]: {
       designation: role,
       system: { machine: {} as never, receives: [] },
       plugin: { receives: [] },
-      settings: { defaults: { from: id }, schema: z.record(z.unknown()) },
+      settings: { defaults: { from: id }, schema: { type: 'object' } },
     },
   },
 });
 
 describe('two registries in one process', () => {
-  const bound = createPackRegistry();
-  const other = createPackRegistry();
+  const bound = createNativePackTestRegistry({ settingsForPack: () => ({ get: <T>() => ({} as T), set() {}, reset() {}, onChange: () => () => {} }) });
+  const other = createNativePackTestRegistry({ settingsForPack: () => ({ get: <T>() => ({} as T), set() {}, reset() {}, onChange: () => () => {} }) });
   startTestRuntime({ packs: bound });
-  bound.registerPack(pack('memo-pack', 'memos', 'memo_step', 'memoService', 'memos'));
+  const generated = _createPackServices();
+  bound.registerPack({ ...pack('memo-pack', 'memos', 'memo_step', 'memoService', 'memos'), bindServices: generated.bindServices });
   other.registerPack(pack('card-pack', 'cards', 'card_step', 'cardService', 'cards'));
 
   it("keep their own packs' designations, steps, services and settings defaults", () => {
@@ -44,8 +44,8 @@ describe('two registries in one process', () => {
     expect(Object.keys(bound.getRegisteredServices())).toEqual(['memoService']);
     expect(Object.keys(other.getRegisteredServices())).toEqual(['cardService']);
 
-    expect(bound.settingsDefaults().settings).toEqual({ features: { 'memo-pack/memos': { from: 'memo-pack' } } });
-    expect(other.settingsDefaults().settings).toEqual({ features: { 'card-pack/cards': { from: 'card-pack' } } });
+    expect(bound.settingsCatalog().features).toEqual({ 'memo-pack/memos': { defaults: { from: 'memo-pack' }, schema: { type: 'object' } } });
+    expect(other.settingsCatalog().features).toEqual({ 'card-pack/cards': { defaults: { from: 'card-pack' }, schema: { type: 'object' } } });
   });
 
   it('let the SDK read only the bound one', () => {
@@ -53,14 +53,14 @@ describe('two registries in one process', () => {
     expect(hasDesignation('cards')).toBe(false);
     expect(stepRegistry.has('memo_step')).toBe(true);
     expect(stepRegistry.has('card_step')).toBe(false);
-    expect(services.memoService).toEqual({ from: 'memo-pack' });
-    expect(services.cardService).toBeUndefined();
-    expect(getPackSettingsDefaults().settings).toEqual({ features: { 'memo-pack/memos': { from: 'memo-pack' } } });
+    expect(generated.services.memoService).toEqual({ from: 'memo-pack' });
+    expect(() => generated.services.cardService).toThrow(/cardService.*consumes.services/);
+    expect(getSettingsCatalog().features).toEqual(bound.settingsCatalog().features);
   });
 
   it("hold their own loaded packs, not one list between them", () => {
-    const origin = { id: 'memo-pack', name: 'Memo', version: '1.0.0', dir: '/packs/memo-pack', shipped: false };
-    bound.registerPack(pack('origin-pack', 'origins', 'origin_step', 'originService', 'origins'), { ...origin, id: 'origin-pack' });
+    const origin = { declarationRevision: 'fixture-revision', id: 'memo-pack', name: 'Memo', version: '1.0.0', dir: '/packs/memo-pack' };
+    bound.registerPack({ id: 'origin-pack' }, { ...origin, id: 'origin-pack' });
 
     expect(bound.loadedPacks().map((o) => o.id)).toContain('origin-pack');
     expect(other.loadedPacks()).toEqual([]);

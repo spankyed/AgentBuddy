@@ -1,8 +1,8 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
-import type { ContentIndex } from '../build/content-compiler.ts';
+import { parseContentIndex } from '../build/content-index.ts';
 import type { PackContentPreview } from '../build/preview.ts';
-import { indexPackId, registeredContentKeys, CONTENT_INDEX_FILE } from '../utils/apply.ts';
+import { registeredContentKeys, CONTENT_INDEX_FILE } from '../utils/apply.ts';
 
 export type { PackContentPreview, PackContentPreviewItem } from '../build/preview.ts';
 
@@ -16,8 +16,8 @@ export function previewPackContent(directory: string): PackContentPreview {
   if (!fs.existsSync(indexFile)) {
     throw new Error(`${directory} has no ${CONTENT_INDEX_FILE}: choose a pack's compiled content directory (built by apack pack build)`);
   }
-  const index = JSON.parse(fs.readFileSync(indexFile, 'utf-8')) as ContentIndex;
-  const packId = indexPackId(index, indexFile);
+  const index = parseContentIndex(JSON.parse(fs.readFileSync(indexFile, 'utf-8')));
+  const packId = index.packId;
   const registered = new Set(registeredContentKeys(packId));
   if (registered.size === 0) {
     throw new Error(`Pack "${packId}" isn't installed, so its content can't be imported: install the pack first`);

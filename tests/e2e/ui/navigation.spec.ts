@@ -18,13 +18,15 @@ test('opens every plugin, and every plugin\'s settings, without a renderer error
 
   const settings = 'host/settings';
   await app.navigate(settings);
-  const withSettings: string[] = await appPage.evaluate(() =>
-    (window as any).applicationState.getSnapshot().context.plugins.filter((p: any) => p.settings).map((p: any) => p.id));
-  expect(withSettings.length).toBeGreaterThan(5);
   await appPage.evaluate((ref) => (window as any).applicationState.system.get(ref).send({ type: 'TAB.SELECT', tab: 'features' }), settings);
-  for (const pluginId of withSettings) {
-    await appPage.evaluate(([ref, id]) => (window as any).applicationState.system.get(ref).send({ type: 'FEATURE.SELECT', featureId: id }), [settings, pluginId]);
-    await appPage.waitForTimeout(150);
+  // Read the declared preferences rendered by Settings, rather than removed plugin metadata.
+  const choices = appPage.getByTestId('feature-settings-list').locator('button[data-active]');
+  await expect.poll(() => choices.count()).toBeGreaterThan(5);
+  const featureIds = await choices.locator('span').allTextContents();
+  for (const featureId of featureIds) {
+    await choices.filter({ hasText: featureId }).click();
+    await expect(choices.filter({ hasText: featureId })).toHaveAttribute('data-active', 'true');
+    await expect(appPage.getByTitle('Reset to defaults')).toBeVisible();
   }
 
   await app.navigate(first);
@@ -44,7 +46,7 @@ test('an open feature form follows its settings being reset', async ({ app, appP
   await expect(restoreTerminals).toBeChecked();
   await restoreTerminals.uncheck();
   await expect(appPage.getByText('Settings saved', { exact: true })).toBeVisible();
-  await appPage.getByTitle("Reset this feature's settings to their defaults").click();
+  await appPage.getByTitle("Reset to defaults").click();
   await appPage.getByRole('button', { name: 'Reset', exact: true }).click();
   await expect(restoreTerminals).toBeChecked();
 });

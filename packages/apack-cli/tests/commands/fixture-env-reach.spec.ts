@@ -66,7 +66,7 @@ function envReads(files: readonly string[]): Map<string, string> {
 const PASSED_THROUGH: Record<string, string> = {
   DEBUG_E2E: "pipes the app's stdout and stderr to the terminal for one run",
   E2E_KEEP_DATA: "keeps the worker's temp data dir so a failure can be looked at",
-  PACK_ARCHIVE: 'installs a packed .tgz instead of building the pack, so a run can test the shipped artifact',
+  PACK_ARCHIVE: 'installs a packed .tgz instead of building the pack, so a run can test the shipped build',
 };
 
 /** Every shape the two commands call it in. A variable the shell decides in *any* of them is not decided. */

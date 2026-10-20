@@ -38,7 +38,7 @@ afterAll(() => {
 function compiled(changed: string[] = [], version = 'changed', { only, packId = 'default-setup' }: { only?: string[]; packId?: string } = {}): string {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'flow-content-'));
   dirs.push(dir);
-  fs.writeFileSync(path.join(dir, CONTENT_INDEX_FILE), JSON.stringify({ version: 1, packId, content: [] }));
+  fs.writeFileSync(path.join(dir, CONTENT_INDEX_FILE), JSON.stringify({ version: 1, packId, entries: [] }));
   const contentDir = path.join(PACK_DIR, 'dist', 'runtime', 'content');
   for (const key of ['actions', 'prompts']) fs.copyFileSync(path.join(contentDir, contentFile(key)), path.join(dir, contentFile(key)));
   const all = JSON.parse(fs.readFileSync(path.join(contentDir, contentFile('flows')), 'utf-8')) as Record<string, { contentHash?: string }>;

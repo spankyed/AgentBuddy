@@ -69,7 +69,7 @@ describe('sendToSystem', () => {
       sendToSystem('notes', { type: 'DELETE_NOTE', id: 'Note-1' });
       // System to system, as a backend system sends another: the same typed send
       sendToSystem('brain', { type: 'TRIGGER_BRAIN_EVENT', eventType: 'thread.fork' });
-      sendToSystem('threads', { type: 'BIRTH_FLOW_START' });
+      sendToSystem('threads', { type: 'REFRESH_THREADS' });
       // A role reaches whichever system plays it
       sendToSystem({ role: 'brain' }, { type: 'TRIGGER_BRAIN_EVENT', eventType: 'thread.fork' });
       // The host's systems, by ref
@@ -84,7 +84,7 @@ describe('sendToSystem', () => {
       // @ts-expect-error the settings system doesn't receive this event
       sendToSystem('settings', { type: 'DELETE_NOTE', id: 'Note-1' });
       // @ts-expect-error the brain doesn't receive what threads does, so a system can't send it one
-      sendToSystem('brain', { type: 'BIRTH_FLOW_START' });
+      sendToSystem('brain', { type: 'REFRESH_THREADS' });
       // @ts-expect-error DELETE_NOTE needs an id
       sendToSystem('notes', { type: 'DELETE_NOTE' });
       // @ts-expect-error one system per send

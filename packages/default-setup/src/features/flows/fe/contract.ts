@@ -11,6 +11,15 @@ import type { EARS } from '#generated/ears.ts'
 import type { EdgeEntity, NodeEntity } from '#generated/types.ts'
 
 export interface FlowsContext {
+  /** A flow the user asked to open; what the user does next (open another, edit a node, leave) cancels it */
+  pendingFlow?: { call: string; flowId: EARS.EntityId; nodeId?: string; recordHistory: boolean };
+  /**
+   * The shown flow asked for again because the backend published (a reconnect, a pack change, data replaced).
+   * Its own slot, so nothing that cancels a user's selection drops it; its answer keeps the node selection, the
+   * editor and any node still being added.
+   */
+  pendingRefresh?: { call: string; flowId: EARS.EntityId };
+
   selectedNodeId?: EARS.EntityId;
   editingNodeId?: EARS.EntityId; // Node currently being edited
   selectedFlowId?: EARS.EntityId;
@@ -65,8 +74,10 @@ export type FlowsInboxEvent =
   | { type: 'ACTION_DELETED'; actionId: EARS.EntityId }
   | { type: 'FLOW.SELECT'; flowId: EARS.EntityId }
   | { type: 'NODE.DOUBLE_CLICK'; nodeId: string }
+  | { type: 'NODE.REVEAL'; flowId: EARS.EntityId; nodeId: string }
 
 export type Contract = {
+  opens: 'Flow'
   state: FlowsContext
   inbox: PluginInbox<{ pack: FlowsInboxEvent }>
 }

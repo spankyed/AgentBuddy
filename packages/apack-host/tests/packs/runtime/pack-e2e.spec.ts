@@ -1,3 +1,6 @@
+import { eventContractsFixture } from './build-fixture.ts';
+import { sealPack } from './build-fixture.ts';
+import { _declarationRevision } from '@apackdev/sdk/build';
 /**
  * E2E test: exercises the real pack loading pipeline against an isolated
  * test data directory (resolved through @apackdev/sdk/env, never the user's
@@ -8,7 +11,7 @@
  * Cleans up after itself.
  */
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import './test-host.ts';
+import { registry } from './test-host.ts';
 import * as fs from 'fs';
 import * as path from 'path';
 import * as os from 'os';
@@ -17,7 +20,7 @@ import { getPacksWithClientLoadedFrontends } from '../../../src/packs/layout.ts'
 import type { LoadedPack } from '../../../src/packs/runtime/loader.ts';
 import { PACK_SNAPSHOT_FORMAT } from '@apackdev/sdk/build';
 import { _appDirOf } from '@apackdev/sdk/env';
-import { PACK_LAYOUT, PACK_LAYOUT_VERSION } from '../../../src/packs/layout.ts';
+import { PACK_LAYOUT } from '../../../src/packs/layout.ts';
 
 /** A loaded pack's system, by feature id */
 const systemOf = (pack: LoadedPack, featureId: string) => pack.registration.features?.[featureId]?.system;
@@ -36,29 +39,26 @@ function installTestPack() {
     name: 'E2E Test Pack',
     version: '1.0.0',
     features: {
-      hello: {
+      hello: { description: 'Feature declaration fixture.',
         system: {
           entry: 'src/features/hello/be/system.ts',
           events: { incoming: ['HELLO_PING'] },
         },
-        plugin: { entry: 'src/features/hello/fe/plugin.ts' },
+        plugin: { label: 'Fixture', state: 'src/features/hello/fe/plugin.ts' },
       },
       // No system — plugin only
-      dataOnly: { plugin: { entry: 'src/features/dataOnly/fe/plugin.ts' } },
+      dataOnly: { description: 'Feature declaration fixture.', plugin: { label: 'Fixture', state: 'src/features/dataOnly/fe/plugin.ts' } },
     },
   }, null, 2));
 
-  fs.writeFileSync(path.join(TEST_PACK_DIR, PACK_LAYOUT.integrity), JSON.stringify({
-    formatVersion: PACK_LAYOUT_VERSION, id: TEST_PACK_ID, version: '1.0.0', files: {},
-  }));
   fs.mkdirSync(path.join(TEST_PACK_DIR, 'types'), { recursive: true });
-  fs.writeFileSync(path.join(TEST_PACK_DIR, PACK_LAYOUT.snapshot), JSON.stringify({ format: PACK_SNAPSHOT_FORMAT }));
+  fs.writeFileSync(path.join(TEST_PACK_DIR, PACK_LAYOUT.snapshot), JSON.stringify({ declarationRevision: _declarationRevision(JSON.parse(fs.readFileSync(path.join(TEST_PACK_DIR, 'apack.json'), 'utf-8'))), format: PACK_SNAPSHOT_FORMAT, manifest: JSON.parse(fs.readFileSync(path.join(TEST_PACK_DIR, 'apack.json'), 'utf-8')), eventContracts: eventContractsFixture(JSON.parse(fs.readFileSync(path.join(TEST_PACK_DIR, 'apack.json'), 'utf-8'))), types: { entities: {}, relKinds: {} }, entityDestinations: {}, facades: {} }));
 
   // The pack's frontend, which the renderer loads from the installed pack
   fs.writeFileSync(path.join(TEST_PACK_DIR, 'runtime', 'fe.js'), 'export default { plugins: [] };');
 
   // A real runtime registration whose system machine requires xstate from the host
-  fs.writeFileSync(path.join(TEST_PACK_DIR, 'runtime', 'index.cjs'), `
+  fs.writeFileSync(path.join(TEST_PACK_DIR, 'runtime', 'index.cjs'), (`
     'use strict';
     const { setup } = require('xstate');
 
@@ -93,7 +93,9 @@ function installTestPack() {
         },
       },
     };
-  `);
+  `) + `
+if (module.exports.registration) module.exports.registration.declarationRevision = '${_declarationRevision(JSON.parse(fs.readFileSync(path.join(TEST_PACK_DIR, 'apack.json'), 'utf-8')))}';`);
+  sealPack(TEST_PACK_DIR);
 }
 
 function cleanupTestPack() {
@@ -124,7 +126,7 @@ describe('E2E: pack loading pipeline', () => {
   let packs: LoadedPack[];
 
   it('discovers the test pack from the resolved packs directory', () => {
-    packs = loadExternalPacks();
+    packs = loadExternalPacks(registry);
     const testPack = packs.find(p => p.origin.id === TEST_PACK_ID);
     expect(testPack).toBeDefined();
     expect(testPack!.origin.name).toBe('E2E Test Pack');
@@ -148,7 +150,7 @@ describe('E2E: pack loading pipeline', () => {
 
   it('lists the pack as one whose frontend a client loads', () => {
     const testPack = packs.find(p => p.origin.id === TEST_PACK_ID)!;
-    const loaded = { shippedPacks: () => [], loadedPacks: () => [{ id: TEST_PACK_ID, name: TEST_PACK_ID, version: '1.0.0', dir: testPack.origin.dir, shipped: false }] };
+    const loaded = { loadedPacks: () => [testPack.origin], getPackRuntime: () => ({ origin: testPack.origin, registrationId: 'runtime' }) };
 
     expect(getPacksWithClientLoadedFrontends(loaded)).toEqual([TEST_PACK_ID]);
   });

@@ -7,7 +7,7 @@ import { fromMarkdown } from 'mdast-util-from-markdown';
 import { toMarkdown } from 'mdast-util-to-markdown';
 import type { Nodes } from 'mdast';
 
-/** Build help into the registration; installed packs need neither Markdown sources nor a dataset loader. */
+/** Materialize snapshot articles; installed packs need neither Markdown sources nor executable help loaders. */
 export function compileHelp(root: string, manifest: PackManifest): HelpDocument[] {
   if (!manifest.extensions?.help) return [];
   const dir = path.resolve(root, manifest.extensions.help.path);

@@ -1,17 +1,12 @@
 import { z } from 'zod';
-import { createLogger } from '@apackdev/sdk/logger';
-import { createActionEmitter } from '@apackdev/sdk/services';
-import { packId } from '#generated/ref.ts';
+import type { PackServiceAccess } from '@apackdev/sdk/services';
 
 export interface ActionRun {
   /** Names the action's logger and stamps its sends: `action:<label>` */
   label: string;
   params: Record<string, unknown>;
-  /**
-   * The services the code receives; its `services.logger` and `services.emitter` are replaced with ones that know
-   * which action is running
-   */
-  services: object;
+  /** The accepted executing runtime supplies named views without expanding its API selection. */
+  servicesForAction: PackServiceAccess['servicesForAction'];
   /** The running flow's TNode, when a flow step runs the action */
   flowId?: string;
 }
@@ -24,19 +19,8 @@ export interface ActionRun {
  * can work out who wrote a message it sends; here both halves are in hand, and go on every message as the pack
  * (`Message.from`) and the action (`Message.via`).
  */
-export function runActionCode(actionFn: string, { label, params, services, flowId }: ActionRun): Promise<unknown> {
-  // One string names the action's logger and stamps its sends, so a dropped send and the action's own log lines
-  // are found by the same grep
-  const source = `action:${label}`;
-  const logger = createLogger(source);
-  const emitter = createActionEmitter({ from: packId, via: source });
-  const actionServices = new Proxy(services, {
-    get: (target, prop, receiver) => {
-      if (prop === 'logger') return logger;
-      if (prop === 'emitter') return emitter;
-      return Reflect.get(target, prop, receiver);
-    },
-  });
+export function runActionCode(actionFn: string, { label, params, servicesForAction, flowId }: ActionRun): Promise<unknown> {
+  const actionServices = servicesForAction(label);
   // `z` and `flowId` come from an enclosing scope, so the code can declare its own
   const scoped = new Function('z', 'flowId', `return async function (params, services) {\n${actionFn}\n};`);
   return scoped(z, flowId)(params, actionServices);

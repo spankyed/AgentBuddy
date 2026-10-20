@@ -1,9 +1,11 @@
+import { _declarationRevision } from '@apackdev/sdk/build';
 import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import ts from 'typescript';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { generatePackFiles, PACK_SNAPSHOT_FORMAT, type PackManifest, type PackSnapshot } from '@apackdev/sdk/build';
+import { generatePackFiles, PACK_SNAPSHOT_FORMAT, PACK_TYPES_FACADE, type PackManifest, type PackSnapshot } from '@apackdev/sdk/build';
+import { bundlePackTypes } from '../../src/build/types-bundler';
 import { bundlePackFlowHelpers } from '../../src/build/flow-helpers-bundler';
 
 /**
@@ -34,20 +36,20 @@ function writePack(name: string, files: Record<string, string>): string {
   return dir;
 }
 
-const baseManifest = {
+const baseManifest: PackManifest = {
   id: 'base-pack', name: 'Base', version: '1.0.0',
   extensions: {
     steps: {
       // A step's directory is the dirname of the first facet it names, which is where its `types.ts` and,
       // for a custom helper, its `helpers.ts` are read from
-      pour: { build: 'src/steps/pour/build.ts#pourStepBuild', dsl: { primaryField: 'cup' } },
-      choose: { build: 'src/steps/choose/build.ts#chooseStepBuild', dsl: { custom: true } },
-      tick: { kind: 'trigger', trigger: { facet: 'src/steps/tick/build.ts#tickTriggerBuild' } },
+      pour: { node: { label: 'Pour' }, build: { compile: 'src/steps/pour/build.ts#compile', validate: 'src/steps/pour/build.ts#validate', getLabel: 'src/steps/pour/build.ts#getLabel' }, types: 'src/steps/pour/types.ts', dsl: { primaryField: 'cup' } },
+      choose: { node: { label: 'Choose' }, build: { compile: 'src/steps/choose/build.ts#compile', validate: 'src/steps/choose/build.ts#validate', getLabel: 'src/steps/choose/build.ts#getLabel' }, types: 'src/steps/choose/types.ts', dsl: { helpers: 'src/steps/choose/helpers.ts' } },
+      tick: { node: { label: 'Tick' }, kind: 'trigger', trigger: { trackField: 'every', compile: 'src/steps/tick/build.ts#compile', decompile: 'src/steps/tick/build.ts#decompile' } },
     },
   },
-} as unknown as PackManifest;
+};
 
-const appManifest = { id: 'app-pack', name: 'App', version: '1.0.0', dependencies: { 'base-pack': '*' } } as unknown as PackManifest;
+const appManifest: PackManifest = { id: 'app-pack', name: 'App', version: '1.0.0', dependencies: { 'base-pack': '*' } };
 
 const CONSUMER = `
 import { choose, entry, every, pour } from './__generated__/flow-helpers.ts';
@@ -77,20 +79,22 @@ beforeAll(async () => {
       "import type { DSLChooseOption } from './types.ts';",
       "export function choose(options: DSLChooseOption[]): DSLStepNode { return { type: 'choose', options }; }",
     ].join('\n'),
-    'src/steps/pour/build.ts': 'export const pourStepBuild = { compile: () => ({}), validate: () => [], getLabel: () => \'\' };\n',
-    'src/steps/choose/build.ts': 'export const chooseStepBuild = { compile: () => ({}), validate: () => [], getLabel: () => \'\' };\n',
-    'src/steps/tick/build.ts': "export const tickTriggerBuild = { trackField: 'every' };\n",
+    'src/steps/pour/build.ts': "export const compile = () => ({});\nexport const validate = () => [];\nexport const getLabel = () => '';\n",
+    'src/steps/choose/build.ts': "export const compile = () => ({});\nexport const validate = () => [];\nexport const getLabel = () => '';\n",
+    'src/steps/tick/build.ts': "export function compile() { return {}; } export function decompile() { return {}; }\n",
   });
-  for (const [file, content] of Object.entries(generatePackFiles(baseManifest, { packRoot: base }))) {
+  for (const [file, content] of Object.entries(await generatePackFiles(baseManifest, { packRoot: base }))) {
     fs.mkdirSync(path.dirname(path.join(base, file)), { recursive: true });
     fs.writeFileSync(path.join(base, file), content);
   }
   const bundled = await bundlePackFlowHelpers(base, path.join(base, 'dist', 'types'));
   if (!bundled.success) throw new Error(bundled.error);
-  snapshot = { types: { entities: {}, relKinds: {} }, defs: {}, manifest: baseManifest, format: PACK_SNAPSHOT_FORMAT, flowHelpers: bundled.flowHelpers };
+  const facade = await bundlePackTypes(base, path.join(base, 'dist', 'types', 'pack-types.d.ts'));
+  if (!facade.success) throw new Error(facade.error);
+  snapshot = { declarationRevision: _declarationRevision(baseManifest), types: { entities: {}, relKinds: {} }, entityDestinations: {}, facades: { [PACK_TYPES_FACADE]: facade.content }, manifest: baseManifest, format: PACK_SNAPSHOT_FORMAT, flowHelpers: bundled.flowHelpers };
 
   app = writePack('app-pack', { 'src/consumer.ts': CONSUMER });
-  for (const [file, content] of Object.entries(generatePackFiles(appManifest, { packRoot: app, depSnapshots: new Map([['base-pack', snapshot]]) }))) {
+  for (const [file, content] of Object.entries(await generatePackFiles(appManifest, { packRoot: app, depSnapshots: new Map([['base-pack', snapshot]]) }))) {
     fs.mkdirSync(path.dirname(path.join(app, file)), { recursive: true });
     fs.writeFileSync(path.join(app, file), content);
   }

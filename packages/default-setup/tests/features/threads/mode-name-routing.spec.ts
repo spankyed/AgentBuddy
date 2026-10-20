@@ -1,11 +1,11 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { mockService, startApp, type TestApp } from '@apackdev/testing/harness'
 import type { Services } from '#generated/services.ts'
-import threadSettings from '#features/threads/settings.ts'
+import manifest from '../../../apack.json'
 import { actionLabel, writeDefaultFlows } from '../../_support/flows.ts'
 import { phaseTipPromptLabel } from '../../../src/content/actions/claude-code/chat.ts'
 
-const chat = threadSettings.defaults.chat
+const chat = manifest.features.threads.settings.defaults.chat
 
 describe('mode name routing', () => {
   it('uses display names for default mode and phase settings', () => {

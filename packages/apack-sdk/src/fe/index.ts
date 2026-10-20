@@ -10,15 +10,14 @@ export type { _HostBridge } from './electron-api.ts';
 // manifest could describe, so nothing could derive that they compile this file
 export type { SpeechEvent } from './speech-event.ts';
 export type { Plugin, PluginDefinition, PluginInbox, PluginInboxAudiences, PluginStateOf, RouteComponents } from './plugin.ts'
-export { definePlugin } from './plugin.ts'
 export type { PackFEFeature, PackFERegistration } from './pack-fe-registration.ts'
 export { pasteIntoElement } from './input-paste.ts'
 export { PluginScope, usePlugin } from './actor-system.ts'
 export { pluginIsRunning, readUntypedPluginState, useUntypedPluginState } from './plugin-state.ts'
 export { useShell, type Shell, type HostShell, type HostShellEvent, type HostShellSnapshot, type HostShellState, type ShellPanelSizes } from './shell.ts'
 export { isAnyMenuOpen, onMenuOpenChange, useTrackedMenuOpen } from './menu-state.ts'
-export { getDslTypes, type DslTypeConfig } from './dsl-types.ts'
-export { EXTRA_BLOCK_ITEMS_KEY, tiptapPluginRegistry, type BlockItem, type TiptapPlugin } from './tiptap-plugins.ts'
+export { getDslDeclaration, getDslDeclarations, onDslDeclarationsChanged, useDslDeclarations } from './dsl-reader.ts'
+export { EXTRA_BLOCK_ITEMS_KEY, tiptapPluginRegistry, type BlockItem, type TiptapPlugin, type TiptapPluginBinding } from './tiptap-plugins.ts'
 
 export { default, default as breadcrumb, breadcrumbWithParams, breadcrumbList, staticBreadcrumbList } from './breadcrumb.ts'
 export { safeEvents, safeEvents as feSafeEvents, type ExtractEvent } from './safe-events.ts'
@@ -32,12 +31,13 @@ export { getDesignated, hasDesignation } from '../designations/index.ts'
 export { secretsClient, type SecretsClient, type SecretsSnapshot } from './secrets-client.ts'
 export { useSettingsDraft } from './settings-draft.ts'
 export {
-  _useFeatureSettings, resetSettings, updateSettings, useFeatureSettings, useSettingsSave, useSettingsSection,
-  type SettingsPort, type SettingsSaveStatus, type SettingsTarget, type SettingUpdate,
+  _createFeSettings, useFeatureSettings, useSettingsSave, useSettingsStatus, useAppSettings, usePackSettings,
+  type FeSettingsHandle, type ReadonlyFeSettingsHandle, type SettingsPort, type SettingsSaveStatus, type SettingsTarget, type SettingUpdate,
 } from './settings.ts'
 
 export {
   untypedOpenPlugin,
+  openEntity, entityIs, entityTypeOf,
   openLink,
   openHelp,
   type PluginEvent,
@@ -58,3 +58,10 @@ export {
  * system's is bound by its contract's `outgoing`.
  */
 export { defineHandlers, type Handlers } from '../framework/define-system.ts'
+
+export { getStepFrontendBindings, type StepFrontendBinding } from './step-bindings.ts';
+export { getStepDeclarations, getStepDeclaration, getStepBinding, onStepsChanged, useStepDeclarations } from './step-reader.ts';
+
+export type { ArtifactFrontendBinding, BlockFrontendBinding } from './viewer-bindings.ts';
+export { getArtifactDeclarations, getArtifactDeclaration, getArtifactBinding, useArtifactDeclarations } from './artifact-reader.ts';
+export { getBlockDeclarations, getBlockDeclaration, getBlockBinding, useBlockDeclarations } from './block-reader.ts';

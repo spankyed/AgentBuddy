@@ -1,3 +1,5 @@
+import { entityIs } from '@apackdev/sdk/fe'
+import type { OpenEntity } from '@apackdev/sdk/events'
 import { assign, enqueueActions, setup, type ActorRefFrom } from 'xstate'
 import breadcrumb, { breadcrumbWithParams } from '@apackdev/sdk/fe'
 import { safeEvents } from '@apackdev/sdk/fe'
@@ -7,7 +9,7 @@ import {
   type TrailClickEvent,
 } from '@apackdev/sdk/fe'
 import type { PromptsSettings } from '#generated/types.ts'
-import type { PromptsContext, PromptsInboxEvent } from './contract.ts'
+import type { Contract, PromptsContext, PromptsInboxEvent } from './contract.ts'
 import type { OutgoingPromptEvents } from '#features/prompts/be/types.ts'
 import type { TemplateInput } from '@apackdev/sdk'
 import { sendToSystem } from '#generated/events.ts'
@@ -42,6 +44,7 @@ type UIEvent =
   | { type: 'FORM.UPDATE_TEMPLATE'; templateFn: string }
   | { type: 'FORM.UPDATE_OUTPUT_SCHEMA'; outputSchema: any }
   | { type: 'VIEW_LIST' }
+  | { type: 'PLUGIN_DEACTIVATED' }
   | { type: 'TOGGLE_INPUTS_SECTION'; show: boolean }
   | { type: 'TOGGLE_OUTPUT_SECTION'; show: boolean }
   | { type: 'TOGGLE_METADATA_SECTION'; show: boolean }
@@ -54,7 +57,7 @@ type UIEvent =
   | { type: 'PROMPTS.EXPORT'; directory: string }
   | { type: 'PROMPTS.RESET_EXPORT_STATUS' }
 
-export type PromptsEvents = UIEvent | SystemEvent | TrailClickEvent
+export type PromptsEvents = OpenEntity | UIEvent | SystemEvent | TrailClickEvent
 const typeOf = safeEvents<PromptsEvents>()
 
 const promptsState = setup({
@@ -75,6 +78,10 @@ const promptsState = setup({
       }
     }),
 
+    cancelSelection: assign({ pendingPromptCall: null }),
+    // The list shows no prompt, so reopening one asks for it again rather than showing a form that may be stale
+    clearSelectedPrompt: assign({ selectedPromptId: undefined, selectedPrompt: undefined }),
+
     /* ── prompt interactions ────────────────────────────── */
     /**
      * **`enqueueActions`, so the call is stored before the ask is sent.** A send made from inside an
@@ -83,12 +90,12 @@ const promptsState = setup({
      * never shows; against one that answers in the same turn it always does.
      */
     selectPrompt: enqueueActions(({ event, context, enqueue }) => {
-      const ev = typeOf('PROMPT.SELECT', event);
-      if (context.selectedPromptId === ev.promptId) return;
+      const promptId = event.type === 'OPEN_ENTITY' ? event.id : typeOf('PROMPT.SELECT', event).promptId;
+      if (context.selectedPromptId === promptId) return;
       const call = newCall();
       // Recorded before the ask, so the answer can be told from one for a selection since replaced
       enqueue.assign({ pendingPromptCall: call });
-      enqueue(() => sendToSystem(id, { type: 'PROMPT_SELECT', promptId: ev.promptId }, { call }));
+      enqueue(() => sendToSystem(id, { type: 'PROMPT_SELECT', promptId }, { call }));
     }),
 
     loadPromptData: assign(({ event }) => {
@@ -178,14 +185,8 @@ const promptsState = setup({
       });
     },
 
-    addCreatedPrompt: assign(({ context, event }) => {
-      const ev = typeOf('PROMPT_CREATED', event);
-      return {
-        prompts: [...context.prompts, ev.prompt],
-        selectedPromptId: ev.promptId,
-        selectedPrompt: ev.prompt,
-      };
-    }),
+    // News every window hears, whoever created it: it adds the prompt and selects nothing, so opening it fetches it
+    addCreatedPrompt: assign(({ context, event }) => ({ prompts: [...context.prompts, typeOf('PROMPT_CREATED', event).prompt] })),
 
     updatePromptInList: assign(({ context, event }) => {
       const ev = typeOf('PROMPT_UPDATED', event);
@@ -443,7 +444,7 @@ const promptsState = setup({
       selectedCategories: []
     }),
   },
-  guards: {
+  guards: { entityIs: entityIs<Contract['opens']>,
     targetIs,
     /** Whether this answer is the one the outstanding ask is waiting for, and false when none is */
     answersPendingPrompt: ({ context, event }) => answersCall(event, context.pendingPromptCall),
@@ -486,6 +487,9 @@ const promptsState = setup({
     },
   },
   on: {
+    PLUGIN_DEACTIVATED: { actions: 'cancelSelection' },
+    OPEN_ENTITY: { guard: { type: 'entityIs', params: { entity: 'Prompt' } }, target: '.detail', actions: 'selectPrompt' },
+    'PROMPT.SELECT': { target: '.detail', actions: 'selectPrompt' },
     'VIEW_LIST': {
       target: '.list',
     },
@@ -548,13 +552,10 @@ const promptsState = setup({
   },
   states: {
     list: {
+      entry: 'clearSelectedPrompt',
       tags: ['list-prompts'],
       meta: { ...breadcrumb('list', 'Prompts', true) },
       on: {
-        'PROMPT.SELECT': {
-          actions: 'selectPrompt',
-          target: 'detail',
-        },
         'PROMPT.CREATE': {
           actions: 'initCreateForm',
           target: 'create',
@@ -581,6 +582,7 @@ const promptsState = setup({
       },
     },
     detail: {
+      exit: 'cancelSelection',
       tags: ['detail-prompt'],
       meta: {
         ...breadcrumbWithParams<PromptsContext>({
@@ -594,10 +596,6 @@ const promptsState = setup({
         ]),
       },
       on: {
-        'PROMPT.SELECT': {
-          actions: 'selectPrompt',
-          target: 'detail',
-        },
         'FORM.UPDATE_LABEL': { actions: 'updateFormLabel' },
         'FORM.UPDATE_DESCRIPTION': { actions: 'updateFormDescription' },
         'FORM.UPDATE_INPUTS': { actions: 'updateFormInputs' },

@@ -28,8 +28,8 @@ export function definePackE2EConfig(options: PlaywrightTestConfig = {}): Playwri
     timeout: 60_000,
     // One app at a time — two workers would fight over one data dir, which Electron locks per dir
     workers: 1,
-    // Beside the suite rather than Playwright's default `test-results/` at the pack root
-    outputDir: 'tests/results',
+    // Generated run output stays outside the authored input scope.
+    outputDir: '.apack/tests/results',
     ...options,
   });
 }
@@ -56,9 +56,8 @@ export function defineDriveConfig(options: DriveConfigOptions = {}): PlaywrightT
     // No timeout: you are looking at it
     timeout: 0,
     reporter: 'list',
-    // Beside the scripts rather than `test-results/` at the pack root, which `drive/.gitignore` cannot
-    // reach: driving output is not test output, which is why the screenshots are here too
-    outputDir: 'results',
+    // The config lives in drive/; generated output belongs to the pack's private work directory.
+    outputDir: '../.apack/drive/results',
     ...options,
     testDir: '.',
     testIgnore: [DRIVE_CONFIG_FILE, ...ignored(options.testIgnore)],

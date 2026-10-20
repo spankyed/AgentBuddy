@@ -49,6 +49,10 @@ const UNBRIDGED_BY_POLICY = new Map<string, string>([
   // loaded pack's runtime code.
   ['@apackdev/host/build/shared-deps', 'build-time only'],
   ['@apackdev/host/build/discover', 'build-time only'],
+  ['@apackdev/host/build/compiler-inputs', 'source-build tooling: captured pack input facts and native replay, never a pack runtime API'],
+  ['@apackdev/host/build/package-inputs', 'source-build tooling: package input identity and dependency resolution, never pack runtime code'],
+  ['@apackdev/host/build/pack-build-inputs', 'source-build tooling: sealed input records and passive freshness, never a pack runtime API'],
+  ['@apackdev/host/build/pack-inputs', 'source-build tooling: authored input identity and watch targets, never pack runtime code'],
   ['@apackdev/host/build/source-resolution', 'host tooling only (CLI, fixture, API boot)'],
   ['@apackdev/host/build/published-manifest', 'build-time only: what a published tarball may say, for the scripts that stage it and the specs that check it'],
   ['@apackdev/host/build/specifiers', 'build-time only: what a module specifier names, for the scripts that pack the published packages and the packages that check them'],
@@ -82,6 +86,7 @@ const UNBRIDGED_BY_POLICY = new Map<string, string>([
   // The bus core: the API composes its bus from it, and the pack test harness runs it; packs don't require it
   ['@apackdev/host/bus', 'host bus core, composed by the API and the test harness'],
   ['@apackdev/host/features', "the app's own features (the pack `host`), registered by the API and the harness"],
+  ['@apackdev/host/testing', 'test fixture composition, never a pack runtime dependency'],
   // The pack runtime itself: the app loads packs with it; pack code never requires it
   ['@apackdev/host/packs/runtime', 'the pack loader and lifecycle, run by the app'],
   // Pack discovery, registration, install and bundles: the app and the CLI use them; packs never require them
@@ -91,6 +96,7 @@ const UNBRIDGED_BY_POLICY = new Map<string, string>([
   // Backups: packs reach export and import through services.appData
   ['@apackdev/host/backup', 'host backups, reached by packs through services.appData'],
   // The apack pack dev server marker: the CLI writes it and Electron main's pack:// handler reads it; packs never require it
+  ['@apackdev/host/packs/assets', 'verified asset byte delivery by Electron main, never a pack runtime API'],
   ['@apackdev/host/packs/dev-server', 'dev server marker for the CLI and the pack:// handler'],
   // One writer at a time for a file the app and its tooling share: the CLI's codegen and `apack db` take it, and
   // the API's boot checks it. Pack code has nothing of the app's to serialise, so it never requires this.

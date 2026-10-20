@@ -109,6 +109,8 @@ export interface HostLookupOptions {
 }
 
 export interface HostPackagesOptions extends HostLookupOptions {
+  /** Inspect cached host packages without downloading a beta. */
+  readOnly?: boolean;
   /** The pack whose checkout to look for, when nothing names an app. Absent means "do not derive" */
   from?: string;
   /** Injected for tests; defaults to `checkoutFor` */
@@ -161,7 +163,25 @@ export async function configuredHostPackagesDir(options: HostPackagesOptions = {
   }
 
   // Build/test are not upgrade commands: reuse a compatible cached beta before consulting the network.
-  return asPackages(cachedBetaApp(dirs, hostVersion) ?? await betaApp(hostVersion, dirs.cache));
+  const cached = cachedBetaApp(dirs, hostVersion);
+  if (!cached && options.readOnly) throw new Error('Selected beta host has no compatible cached build. Fetch the host before validating.');
+  return asPackages(cached ?? await betaApp(hostVersion, dirs.cache));
+}
+
+/** Source selection for offline mutations; storage/cwd never chooses an app or fetches a beta. */
+export async function selectedHostPackages(host?: string, dirs: CliDirs = cliDirs()): Promise<{ dir: string; label: string }> {
+  const env = { ...process.env };
+  if (host) {
+    delete env.APACK_HOST_ROOT;
+    delete env.APACK_HOST_EXECUTABLE;
+    env.APACK_HOST = host;
+  }
+  const selected = await configuredHostPackagesDir({ dirs, env, readOnly: true });
+  if (!selected) throw new Error('Select the source app with --host <path|beta>. Storage and the current directory do not select a host.');
+  if (!fs.existsSync(selected.dir) || !fs.statSync(selected.dir).isDirectory()) {
+    throw new Error(`${selected.label} has no packages directory: ${selected.dir}`);
+  }
+  return selected;
 }
 
 function cachedBetaApp(dirs: CliDirs, hostVersion: string): PackagedApp | null {
@@ -267,7 +287,7 @@ export async function resolvePackHost(options: HostResolutionOptions): Promise<P
   return target;
 }
 
-/** Pin dependency resolution and execution to one artifact; discard inherited selection requests. */
+/** Pin dependency resolution and execution to one build; discard inherited selection requests. */
 export function setHostHandoff(host: PackHost, env: NodeJS.ProcessEnv): void {
   for (const key of ['APACK_HOST', 'APACK_APP', 'APACK_BUILD', 'APACK_CHANNEL', 'APACK_HOST_ROOT', 'APACK_HOST_EXECUTABLE']) delete env[key];
   if (host.kind === 'source') env.APACK_HOST_ROOT = host.root;

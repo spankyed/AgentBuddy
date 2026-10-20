@@ -1,17 +1,27 @@
-import { z } from 'zod';
+import { eventContractsFixture } from './build-fixture.ts';
+import { createMachine } from 'xstate';
+import { createNativeFrontendTestRegistry } from '@apackdev/host/fe/testing';
+import { writeInstalledPackFixture } from './build-fixture.ts';
+import { sealBuild } from './build-fixture.ts';
+import { _declarationRevision } from '@apackdev/sdk/build';
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import * as os from 'node:os';
-import type { Plugin, PluginDefinition } from '@apackdev/sdk/fe';
+import type { PluginDefinition } from '@apackdev/sdk/fe';
 
 import { resetTestData } from '@apackdev/sdk/testing';
 import { registry } from './test-host.ts';
 import { appliedContent, appState } from '../../../src/app-state/index.ts';
-import { createFePackRegistry } from '../../../src/fe/pack-store.ts';
+
 import { PACK_SNAPSHOT_FORMAT } from '@apackdev/sdk/build';
 import { _appDirOf } from '@apackdev/sdk/env';
 import { PACK_LAYOUT } from '../../../src/packs/layout.ts';
+import { createNativePackTestRegistry } from '@apackdev/host/testing';
+import { _createPackServices, type SettingsService } from '@apackdev/sdk/services';
+import { acceptInstalledPack } from '../../../src/packs/runtime/lifecycle.ts';
+import { loadSingleExternalPack } from '../../../src/packs/runtime/loader.ts';
+import { readPackBuild } from '../../../src/packs/layout.ts';
 
 let tmpDir: string;
 let origEnv: { env?: string; userDataDir?: string };
@@ -42,15 +52,117 @@ function writeBuild(packDir: string, id: string, featuresSource = '{}', extraFil
     fs.mkdirSync(path.dirname(path.join(packDir, 'dist', rel)), { recursive: true });
     fs.writeFileSync(path.join(packDir, 'dist', rel), content);
   };
-  write('runtime/index.cjs', `module.exports = { registration: { id: ${JSON.stringify(id)}, features: ${featuresSource} } };`);
-  write(PACK_LAYOUT.snapshot, JSON.stringify({ format: PACK_SNAPSHOT_FORMAT }));
+  write('runtime/index.cjs', (`module.exports = { registration: { id: ${JSON.stringify(id)}, features: ${featuresSource} } };`) + `
+if (module.exports.registration) module.exports.registration.declarationRevision = '${_declarationRevision(JSON.parse(fs.readFileSync(path.join(packDir, 'apack.json'), 'utf-8')))}';`);
+  write(PACK_LAYOUT.snapshot, JSON.stringify({ declarationRevision: _declarationRevision(JSON.parse(fs.readFileSync(path.join(packDir, 'apack.json'), 'utf-8'))), format: PACK_SNAPSHOT_FORMAT, manifest: JSON.parse(fs.readFileSync(path.join(packDir, 'apack.json'), 'utf-8')), eventContracts: eventContractsFixture(JSON.parse(fs.readFileSync(path.join(packDir, 'apack.json'), 'utf-8'))), types: { entities: {}, relKinds: {} }, entityDestinations: {}, facades: {} }));
   for (const [rel, content] of Object.entries(extraFiles)) write(rel, content);
+  sealBuild(packDir);
 }
 
 function writeManifest(dir: string, manifest: Record<string, unknown>) {
   fs.mkdirSync(dir, { recursive: true });
   fs.writeFileSync(path.join(dir, 'apack.json'), JSON.stringify(manifest));
 }
+
+describe('installed runtime acceptance', () => {
+  it.each([false, true])('restarts or stops both old and new system ids after acceptance (init failure: %s)', async fails => {
+    const { installPackFromLocal } = await import('../../../src/packs/installer.ts');
+    const id = 'systems-pack';
+    const source = path.join(tmpDir, 'source');
+    const feature = (name: string) => ({ [name]: { description: `Exercise ${name} system.`, system: { entry: 'system.ts' } } });
+    const runtime = (name: string) => `{ ${name}: { system: { machine: { id: '${name}' }, receives: [] } } }`;
+    writeManifest(source, { id, name: id, version: '1.0.0', features: feature('old') });
+    writeBuild(source, id, runtime('old'));
+    const installed = await installPackFromLocal(source, packsDir());
+    const loaded = loadSingleExternalPack(registry, installed.dir);
+    if ('problem' in loaded) throw new Error(loaded.problem);
+    const isolated = createNativePackTestRegistry();
+    isolated.registerPack(loaded.registration, loaded.origin);
+    const previousRevision = isolated.getPackRuntime(id)?.registrationId;
+    const shutdown = vi.fn();
+    isolated.registerShutdownHook(shutdown, id);
+    const bus = { send: vi.fn() };
+    let start!: () => boolean;
+    try {
+      writeManifest(source, { id, name: id, version: '2.0.0', features: feature('replacement'),
+        ...(fails && { lifecycle: { onInit: 'init.ts#onInit' } }),
+      });
+      writeBuild(source, id, runtime('replacement') + (fails ? ', lifecycle: { onInit() { throw new Error("init failed"); } }' : ''));
+      await installPackFromLocal(source, packsDir(), { accept: candidate => {
+        start = acceptInstalledPack(isolated, candidate.id, bus as never);
+        expect(shutdown).not.toHaveBeenCalled();
+        expect(bus.send).not.toHaveBeenCalled();
+      } });
+      expect(isolated.getPackRuntime(id)?.registrationId).not.toBe(previousRevision);
+      expect(start()).toBe(!fails);
+      expect(shutdown).toHaveBeenCalledOnce();
+      expect(bus.send.mock.calls.map(([event]) => event.type)).toEqual([
+        fails ? 'TEARDOWN_PACK' : 'RELOAD_PACK', 'PACK_CHANGED',
+      ]);
+      expect(bus.send.mock.calls[0][0].systemIds).toEqual([`${id}/old`, `${id}/replacement`]);
+      expect(readPackBuild(installed.dir).integrity.version).toBe('2.0.0');
+      if (fails) expect(isolated.getPackRegistration(id)).toBeNull();
+      else expect(isolated.getRegisteredPackSystemIds(id)).toEqual([`${id}/replacement`]);
+    } finally {
+      if (isolated.getPackRegistration(id)) isolated.unregisterPack(id);
+    }
+  });
+
+  it('restores files and preserves generated settings authority after late binding refusal', async () => {
+    const { installPackFromLocal } = await import('../../../src/packs/installer.ts');
+    const id = 'binding-pack';
+    const source = path.join(tmpDir, 'source');
+    writeManifest(source, { id, name: id, version: '1.0.0' });
+    writeBuild(source, id);
+    const installed = await installPackFromLocal(source, packsDir());
+    const previousBuild = readPackBuild(installed.dir);
+    const loaded = loadSingleExternalPack(registry, installed.dir);
+    if ('problem' in loaded) throw new Error(loaded.problem);
+    const listeners = new Set<() => void>();
+    const settings: SettingsService = {
+      get: <T,>() => ({ retained: true }) as T,
+      set() {}, reset() {},
+      onChange(listener) {
+        const notify = () => listener('written');
+        listeners.add(notify);
+        return () => { listeners.delete(notify); };
+      },
+    };
+    const isolated = createNativePackTestRegistry({ settingsForPack: () => settings });
+    const generated = _createPackServices();
+    const handle = generated.settingsHandle({ kind: 'app' });
+    const registration = { ...loaded.registration, bindServices: generated.bindServices };
+    isolated.registerPack(registration, loaded.origin);
+    const previousRuntime = isolated.getPackRuntime(id);
+    const changed = vi.fn();
+    handle.onChange(changed);
+    const bus = { send: vi.fn() };
+    try {
+      writeManifest(source, { id, name: id, version: '2.0.0' });
+      writeBuild(source, id, '{}, bindServices() { throw new Error("late binding refused"); }');
+      await expect(installPackFromLocal(source, packsDir(), { accept: candidate => {
+        acceptInstalledPack(isolated, candidate.id, bus as never);
+      } })).rejects.toThrow('late binding refused');
+      expect(readPackBuild(installed.dir)).toEqual(previousBuild);
+      const restored = loadSingleExternalPack(registry, installed.dir);
+      expect(restored).not.toHaveProperty('problem');
+      if ('problem' in restored) throw new Error(restored.problem);
+      expect(restored.origin.version).toBe('1.0.0');
+      expect(isolated.getPackRegistration(id)).toBe(registration);
+      expect(isolated.getPackRuntime(id)).toEqual(previousRuntime);
+      expect(handle.get()).toEqual({ retained: true });
+      for (const listener of listeners) listener();
+      expect(changed).toHaveBeenCalledOnce();
+      expect(listeners.size).toBe(1);
+      expect(bus.send).not.toHaveBeenCalled();
+      expect(isolated.loadProblem(id)).toBeUndefined();
+    } finally {
+      if (isolated.getPackRegistration(id)) isolated.unregisterPack(id);
+    }
+    expect(listeners.size).toBe(0);
+    expect(() => handle.get()).toThrow();
+  });
+});
 
 describe('pack full lifecycle: install → discover', () => {
   it('update flow: reinstalling overwrites the previous version', async () => {
@@ -93,7 +205,7 @@ describe('pack full lifecycle: install → discover', () => {
     }
 
     const { loadExternalPacks } = await import('../../../src/packs/runtime/loader.ts');
-    const packs = loadExternalPacks();
+    const packs = loadExternalPacks(registry);
     const ids = packs.map(p => p.origin.id).sort();
     expect(ids).toEqual(['pack-alpha', 'pack-beta', 'pack-gamma']);
   });
@@ -113,8 +225,10 @@ describe('activating and tearing down a pack at runtime', () => {
       id: PACK_ID,
       name: 'Activate Pack',
       version: '1.0.0',
-      features: { main: { system: { entry: 'src/features/main/be/system.ts' } } },
+      features: { main: { description: 'Feature declaration fixture.', system: { entry: 'src/features/main/be/system.ts' } } },
       extensions: { commands: { 'activate-memo': { placeholder: 'Text' } } },
+      content: { sources: { memos: { applier: 'memos.ts' } } },
+      migrations: { pack: { '1.0.0': { description: 'memos', up: 'migration.ts#up' } } },
     });
     // The runtime carries what generate-entries writes from the manifest, commands and appliers included
     writeBuild(
@@ -140,8 +254,25 @@ describe('activating and tearing down a pack at runtime', () => {
   });
 
   afterEach(async () => {
-    if (registry.getPackExtensions(PACK_ID)) registry.unregisterPack(PACK_ID);
+    if (registry.getPackRegistration(PACK_ID)) registry.unregisterPack(PACK_ID);
     bus.send.mockReset();
+    bus.send.mockImplementation((event) => { if (typeof event.afterStop === 'function') event.afterStop(); });
+  });
+
+  it('removes a failed initialization binding while retaining installed declarations', async () => {
+    const { installPackFromLocal } = await import('../../../src/packs/installer.ts');
+    const { activatePack } = await import('../../../src/packs/runtime/lifecycle.ts');
+    const source = path.join(tmpDir, PACK_ID);
+    writeManifest(source, { id: PACK_ID, name: 'Failing Init', version: '1.0.0', lifecycle: { onInit: 'hooks.ts#onInit', onShutdown: 'hooks.ts#onShutdown' } });
+    writeBuild(source, PACK_ID, "{}, lifecycle: { onInit() { throw new Error('init refused'); }, onShutdown() { globalThis.activatePackRuns.push('shutdown'); } }");
+    await installPackFromLocal(source, packsDir());
+    expect(activatePack(registry, PACK_ID, bus as never)).toBe(false);
+    expect(registry.getPackRegistration(PACK_ID)).toBeNull();
+    expect(registry.loadProblem(PACK_ID)).toContain('init refused');
+    expect(registry.settingsCatalog().dependencies).toHaveProperty(PACK_ID);
+    expect(runs).toEqual(['shutdown']);
+    expect(bus.send).toHaveBeenCalledWith({ type: 'PACK_CHANGED', packId: PACK_ID });
+    expect(bus.send.mock.calls.map(([event]) => event.type)).not.toContain('ACTIVATE_PACK');
   });
 
   it('registers the commands its manifest declares, and tells the running systems before starting its own', async () => {
@@ -182,6 +313,7 @@ describe('activating and tearing down a pack at runtime', () => {
     fs.writeFileSync(path.join(compiledDir, 'content.json'), JSON.stringify({ version: 1, packId: PACK_ID, entries: [] }));
     expect(Object.keys(importCompiledContent({ compiledDir }))).toEqual(['memos']);
     bus.send.mockReset();
+    bus.send.mockImplementation((event) => { if (typeof event.afterStop === 'function') event.afterStop(); });
 
     teardownPack(registry, PACK_ID, bus as never);
 
@@ -191,25 +323,23 @@ describe('activating and tearing down a pack at runtime', () => {
     expect(bus.send).toHaveBeenCalledWith({ type: 'PACK_CHANGED', packId: PACK_ID });
   });
 
-  // Its contributions come out one at a time and one can fail — a settings listener that throws is enough.
-  // The pack is unregistered either way, so the rest of the teardown still has to run, its systems stopped
-  // and the systems still up told; and what failed has to be reported as that, not as a pack nobody had
-  // registered.
-  it('finishes tearing a pack down when one of its contributions will not come out', async () => {
+  // Subscriber failures cannot interrupt publication or pack teardown.
+  it('finishes teardown when a catalog subscriber throws', async () => {
     const { teardownPack } = await import('../../../src/packs/runtime/lifecycle.ts');
-    const { onPackSettingsDefaultsChanged } = await import('@apackdev/sdk/framework');
+    const { onPackCatalogChanged } = await import('@apackdev/sdk/framework');
     const { testRootEvents } = await import('@apackdev/sdk/testing');
 
     registry.registerPack({
       id: 'stuck-pack',
-      features: { stuck: { plugin: { receives: [] }, settings: { defaults: { a: 1 }, schema: z.record(z.unknown()) } } },
+      features: { stuck: { plugin: { receives: [] }, settings: { defaults: { a: 1 }, schema: { type: 'object' } } } },
     });
-    const stopListening = onPackSettingsDefaultsChanged(() => { throw new Error('a settings listener threw'); });
+    const stopListening = onPackCatalogChanged(() => { throw new Error('a settings listener threw'); });
 
     // The cause is on the event, not in its text: the logger puts an error in `stack`/`meta`
     const logged: string[] = [];
     const stopLogging = testRootEvents.onLog((event) => void logged.push(`${event.message} ${event.stack ?? ''} ${JSON.stringify(event.meta ?? {})}`));
     bus.send.mockReset();
+    bus.send.mockImplementation((event) => { if (typeof event.afterStop === 'function') event.afterStop(); });
     try {
       teardownPack(registry, 'stuck-pack', bus as never);
     } finally {
@@ -219,43 +349,9 @@ describe('activating and tearing down a pack at runtime', () => {
 
     expect(registry.getPackRegistration('stuck-pack')).toBeNull();
     expect(bus.send.mock.calls.map(([event]) => event.type)).toContain('PACK_CHANGED');
+    expect(logged.join('\n')).toContain('Contribution catalog listener failed');
     expect(logged.join('\n')).toContain('a settings listener threw');
     expect(logged.join('\n')).not.toContain('was not previously registered');
-  });
-
-  it("says nothing when torn down to be replaced, so the systems never see the updating pack missing", async () => {
-    await install();
-    const { activatePack, teardownPack } = await import('../../../src/packs/runtime/lifecycle.ts');
-    activatePack(registry, PACK_ID, bus as never);
-    bus.send.mockReset();
-
-    teardownPack(registry, PACK_ID, bus as never, { replacing: true });
-    expect(bus.send.mock.calls.map(([event]) => event.type)).toEqual(['TEARDOWN_PACK']);
-
-    // The activation that replaces it announces the change once
-    activatePack(registry, PACK_ID, bus as never);
-    expect(bus.send.mock.calls.map(([event]) => event.type)).toEqual(['TEARDOWN_PACK', 'PACK_CHANGED', 'ACTIVATE_PACK']);
-  });
-
-  // An update downloads between the two, so the pack's plugins belong to nobody for that whole time.
-  // Sends there are still dropped — nothing is running to receive them — but they are expected.
-  it("marks its plugins as expected to be missing while it is replaced, and not when it is torn down for good", async () => {
-    await install();
-    const { activatePack, teardownPack } = await import('../../../src/packs/runtime/lifecycle.ts');
-    // The marking has to happen while the pack is still registered, since that is what says which
-    // plugins are its own — so it is asserted on the call, not on this fixture, which has no plugin
-    const marked = vi.spyOn(registry, 'markPackReplacing');
-    activatePack(registry, PACK_ID, bus as never);
-
-    teardownPack(registry, PACK_ID, bus as never, { replacing: true });
-    expect(marked).toHaveBeenCalledWith(PACK_ID);
-    expect(registry.getPackRegistration(PACK_ID), 'marked before unregistering').toBeFalsy();
-
-    marked.mockClear();
-    activatePack(registry, PACK_ID, bus as never);
-    teardownPack(registry, PACK_ID, bus as never);
-    expect(marked, 'a teardown for good opens no window').not.toHaveBeenCalled();
-    marked.mockRestore();
   });
 });
 
@@ -263,8 +359,7 @@ describe('registry source and update tracking', () => {
   /** The pack on disk, which is what makes it installed and where its version comes from */
   function installed(id: string, version = '1.0.0') {
     const dir = path.join(packsDir(), id);
-    fs.mkdirSync(dir, { recursive: true });
-    fs.writeFileSync(path.join(dir, 'apack.json'), JSON.stringify({ id, name: id, version }));
+    writeInstalledPackFixture(dir, { id, name: id, version });
   }
 
   it('records where an install came from', async () => {
@@ -309,10 +404,10 @@ describe('registry source and update tracking', () => {
 
 describe('FE pack deregistration', () => {
   it('unregisterPackFE removes extensions and returns removed plugins', async () => {
-    const { registerPackFE, unregisterPackFE } = createFePackRegistry();
+    const { registerFixture, unregisterPackFE } = createNativeFrontendTestRegistry();
 
-    const testPlugin = { label: 'Test' } as unknown as PluginDefinition;
-    registerPackFE({ id: 'test-pack', features: { testPlugin: { plugin: testPlugin } } });
+    const testPlugin = { label: 'Test', state: createMachine({}) } satisfies PluginDefinition;
+    registerFixture({ id: 'test-pack', features: { testPlugin: { plugin: testPlugin } } });
 
     const removed = unregisterPackFE('test-pack');
     expect(removed).toHaveLength(1);
@@ -325,11 +420,10 @@ describe('FE pack deregistration', () => {
 
   // A shipped pack's registration carries its id like any other, so it comes out the same way
   it('takes a shipped pack\'s frontend back out like any other pack\'s', async () => {
-    const { registerPackFE, unregisterPackFE, getRegisteredPlugins } = createFePackRegistry();
-    const shipped = { label: 'Built-in', id: 'default-setup/main' } as unknown as Plugin;
-
-    registerPackFE({ id: 'default-setup', features: { main: { plugin: { label: 'Built-in' } as PluginDefinition } } });
-    expect(getRegisteredPlugins()).toEqual([shipped]);
+    const { registerFixture, unregisterPackFE, getRegisteredPlugins } = createNativeFrontendTestRegistry();
+    registerFixture({ id: 'default-setup', features: { main: { plugin: { label: 'Built-in', state: createMachine({}) } } } });
+    const shipped = getRegisteredPlugins()[0];
+    expect(shipped).toMatchObject({ label: 'Built-in', id: 'default-setup/main' });
 
     expect(unregisterPackFE('default-setup')).toEqual([shipped]);
     expect(getRegisteredPlugins()).toEqual([]);
@@ -337,7 +431,7 @@ describe('FE pack deregistration', () => {
 
   // Two packs with the same feature each have their own plugin; unregistering one leaves the other's
   it('unregisterPackFE handles pack with no extensions gracefully', async () => {
-    const { unregisterPackFE } = createFePackRegistry();
+    const { unregisterPackFE } = createNativeFrontendTestRegistry();
 
     const removed = unregisterPackFE('nonexistent-pack');
     expect(removed).toHaveLength(0);

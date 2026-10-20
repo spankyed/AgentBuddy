@@ -1,4 +1,3 @@
-import type { StepBuildFacet, StepNodeFacet } from '@apackdev/sdk/steps';
 import type { StepCompileResult, StepValidationError, StepValidationContext, StepCompileContext, StepDecompileContext, StepBranch } from '@apackdev/sdk/steps';
 import { BinaryOperator, BinaryOperator as Op } from '@apackdev/sdk/utils';
 import { EARS } from '@apackdev/sdk';
@@ -177,13 +176,3 @@ export function branches(node: Record<string, unknown>): StepBranch[] {
   }
   return result;
 }
-
-/** Build-time facets only (no runtime or FE imports); loaded by `apack pack build` in dependent packs. */
-export const switchStepBuild: StepBuildFacet = { compile, validate, getLabel, decompile, branches };
-
-/** What a node of this type starts with; the backend writes it and the canvas draws it */
-export const switchStepNode: StepNodeFacet = {
-  label: 'Switch',
-  defaultLabel: 'Choose path',
-  defaults: { conditions: [{ predicate: undefined, label: 'Else' }] },
-};

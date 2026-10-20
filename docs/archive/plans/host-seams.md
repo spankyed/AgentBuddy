@@ -26,7 +26,7 @@ not merely stamped.
 **3. Actions are the other half.** `services.emitter.broadcastToPlugin` is declared
 `typeof untypedBroadcastToPlugin` (`apack-sdk/src/services/index.ts:40`), the raw function, and an
 action runs outside any pack scope. Those two gaps are objections 1 and 2 in
-`docs/goals/wont-do/goal-sender-enforced-audiences.md`.
+`docs/archive/goals/goal-sender-enforced-audiences.md`.
 
 **4. `fe/public.ts` survives only in the host, for one type.** It is gone from default-setup, replaced by
 two mechanisms rather than renamed: the contract (`fe/contract.ts`, types only) and the readers

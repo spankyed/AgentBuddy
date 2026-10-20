@@ -23,6 +23,12 @@ export interface RuntimeBuildLeg {
    * Measured 2026-10-06 with `npm run measure --runs 3`, each workspace run alone.
    */
   readonly seconds: number;
+  /**
+   * A V8 heap ceiling for this leg's process tree, appended to `NODE_OPTIONS`. A ceiling, not an allocation,
+   * so it costs nothing where the default suffices; set only where a cold build on a hosted runner exceeded
+   * the ~2 GiB default.
+   */
+  readonly heapMb?: number;
 }
 
 /**
@@ -50,7 +56,7 @@ export const BUILD_TIMEOUT: TimeoutClass = 'suite';
  * build's 16.0s. Whoever runs `npm run build -w @app/renderer` directly still typechecks.
  *
  * **`@apackdev/sdk` is absent, and that is four facts rather than a speed choice.** Its `build` is
- * `tsc -p tsconfig.json` over a config setting `noEmit: true`: it emits nothing, so it adds no artifact to
+ * `tsc -p tsconfig.json` over a config setting `noEmit: true`: it emits nothing, so it adds no output to
  * a step whose product is `APP_OUTPUTS`; `typecheck:sdk` runs that identical compile; the `build:runtime`
  * step's `inputs` name `renderer, api, main, preload` and never `apack-sdk`, so dropping the leg makes
  * the declaration honest rather than narrower; and the step's key would not cover it — the four
@@ -61,7 +67,7 @@ export const BUILD_TIMEOUT: TimeoutClass = 'suite';
  * rewrites the `dist` five steps read.
  */
 export const RUNTIME_BUILD_LEGS: readonly RuntimeBuildLeg[] = [
-  { name: '@app/renderer', command: 'npm run build-only -w @app/renderer', seconds: 16 },
+  { name: '@app/renderer', command: 'npm run build-only -w @app/renderer', seconds: 16, heapMb: 4096 },
   { name: '@app/api', command: 'npm run build -w @app/api', seconds: 7 },
   { name: '@app/main', command: 'npm run build -w @app/main', seconds: 1 },
   { name: '@app/preload', command: 'npm run build -w @app/preload', seconds: 1 },

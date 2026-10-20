@@ -116,7 +116,7 @@ async function handleSessions(
   // Resolve effective cwd from thread context so sessions are scoped to the
   // correct project directory (e.g. thread created via "+ new thread" menu).
   const prior = threadId ? getClaudeState(services, threadId) : undefined;
-  const codeSettings = services.settings.forFeature('default-setup/code') as any;
+  const codeSettings = services.settings.get({ kind: 'feature', featureRef: 'default-setup/code' }) as any;
   const effectiveCwd = prior?.cwdOverride
     || prior?.cwd
     || codeSettings?.defaultBaseDirectory

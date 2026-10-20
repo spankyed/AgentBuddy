@@ -8,11 +8,11 @@ import { afterAll, describe, expect, it, vi } from 'vitest';
 const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'api-log-capture-'));
 process.env.APACK_ENV = 'test';
 process.env.APACK_USER_DATA_DIR = dataDir;
-const { openAppStore } = await import('@/runtime');
+const { openAppStore } = await import('../../src/runtime/index.ts');
 const { store } = openAppStore();
 const { createLogger, reportError } = await import('@apackdev/sdk/logger');
-const { rootEvents } = await import('@/transport/emitter');
-const { originalConsole, initializeLogCapture, restoreConsole } = await import('@/adapters/logging');
+const { rootEvents } = await import('../../src/transport/emitter.ts');
+const { originalConsole, initializeLogCapture, restoreConsole } = await import('../../src/adapters/logging.ts');
 
 afterAll(() => {
   store.close();

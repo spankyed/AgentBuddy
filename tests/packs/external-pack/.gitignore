@@ -5,8 +5,6 @@ src/__generated__/
 *.tgz
 
 # Test output
-tests/screenshots/
-tests/results/
 
 # `apack drive` scaffolds this on first use, which verifying the command against this fixture
 # does. Untracked files under a declared chain input fail `chain-inputs`' gitignored-input check,

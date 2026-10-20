@@ -42,7 +42,7 @@ import { compare, KNOWN_IRREPRODUCIBLE, partition, reproPaths, snapshot } from '
  *
  * `generate-entries --force` is here rather than left to `apack pack build`, and that is the point of the
  * function: `apack pack build` calls `generateEntries([])` with no `--force`, which skips on a matching
- * `.inputs-hash`. Without this line the second round would re-hash codegen output it never regenerated and
+ * `.apack/generate-entries.json`. Without this line the second round would re-hash codegen output it never regenerated and
  * report it identical — half the population passing for having been looked at, which is the failure this
  * whole check exists to catch. `repro.spec.ts` asserts the flag is still here.
  */

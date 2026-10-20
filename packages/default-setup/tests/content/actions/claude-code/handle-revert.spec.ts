@@ -24,15 +24,17 @@ async function createServices(viewSessionResult: unknown[] | Error = [], sendBlo
     } as never,
   });
   mockService<Services, 'chat'>('chat', { updateMessageState: vi.fn(), sendBlockMessage });
-  mockService<Services, 'threads'>('threads', { updateChatState: vi.fn() });
+  const updateChatState = vi.fn();
+  mockService<Services, 'threads'>('threads', { updateChatState });
   mockService<Services, 'artifact'>('artifact', { findOrCreateByType: vi.fn(() => ({ artifactId: 'Artifact-art-1' as EARS.EntityId, created: true })) });
-  mockService<Services, 'logger'>('logger', { debug: vi.fn(), info: vi.fn(), warn: vi.fn(), error: vi.fn() });
-  return { threadId, messageId: assistant.id };
+  const warn = vi.fn();
+  mockService<Services, 'logger'>('logger', { debug: vi.fn(), info: vi.fn(), warn, error: vi.fn() });
+  return { threadId, messageId: assistant.id, updateChatState, warn };
 }
 
 describe('CC: Handle Revert', () => {
   it('reverts with valid cliUuid when viewSession confirms it', async () => {
-    const { threadId, messageId } = await createServices([
+    const { threadId, messageId, updateChatState } = await createServices([
       { type: 'assistant', uuid: 'uuid-1' },
     ]);
 
@@ -42,11 +44,11 @@ describe('CC: Handle Revert', () => {
       success: true,
       cliUuid: 'uuid-1',
     });
-    expect(services.threads.updateChatState).toHaveBeenLastCalledWith(threadId, 'idle');
+    expect(updateChatState).toHaveBeenLastCalledWith(threadId, 'idle');
   });
 
   it('clears cliUuid when viewSession shows UUID not in session (post-compaction)', async () => {
-    const { threadId, messageId } = await createServices([]);
+    const { threadId, messageId, updateChatState } = await createServices([]);
 
     const result = await handleRevert({ threadId, messageId }, services);
 
@@ -54,11 +56,11 @@ describe('CC: Handle Revert', () => {
       success: true,
       cliUuid: undefined,
     });
-    expect(services.threads.updateChatState).toHaveBeenLastCalledWith(threadId, 'idle');
+    expect(updateChatState).toHaveBeenLastCalledWith(threadId, 'idle');
   });
 
   it('clears cliUuid when viewSession throws', async () => {
-    const { threadId, messageId } = await createServices(new Error('JSONL not found'));
+    const { threadId, messageId, warn } = await createServices(new Error('JSONL not found'));
 
     const result = await handleRevert({ threadId, messageId }, services);
 
@@ -66,7 +68,7 @@ describe('CC: Handle Revert', () => {
       success: true,
       cliUuid: undefined,
     });
-    expect(services.logger.warn).toHaveBeenCalledWith(
+    expect(warn).toHaveBeenCalledWith(
       '[revert] could not validate cliUuid against session JSONL',
       expect.objectContaining({ cliUuid: 'uuid-1' }),
     );

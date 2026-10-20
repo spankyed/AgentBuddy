@@ -1,7 +1,7 @@
 import * as fs from 'fs';
 import * as path from 'path';
-import { pathToFileURL } from 'url';
-import type { PackBuildDefinitions, PackConfig } from './types.ts';
+import { importPackModule } from './module-loader.ts';
+import type { PackBuildDefinitions, PackConfig, PackModuleLoader } from './types.ts';
 import type { PackManifest } from './manifest.ts';
 import type { StepDefinition } from '../steps/types.ts';
 import { _mergeStepDefinitions } from '../steps/merge.ts';
@@ -37,7 +37,7 @@ export async function buildPackConfigFromManifest(
       ...resolveContentSources(manifest, packDir, options.dependencies),
       ...resolveContentSources(manifest, packDir, options.dependencies, 'datasets'),
     },
-    loadDefinitions: () => loadPackDefinitions(manifest, packDir, options.dependencyStepModules ?? []),
+    loadDefinitions: (importModule = importPackModule) => loadPackDefinitions(manifest, packDir, options.dependencyStepModules ?? [], importModule),
   };
 }
 
@@ -51,13 +51,13 @@ function mergeStep(steps: Map<string, StepDefinition>, def: StepDefinition): voi
  * The definitions a pack compiles with: its dependencies' steps (their build/steps.build.mjs), then its own
  * steps, plus the artifacts and blocks its manifest declares. A pack step whose type a dependency defines throws.
  */
-async function loadPackDefinitions(manifest: PackManifest, packDir: string, dependencyStepModules: readonly string[]): Promise<PackBuildDefinitions> {
+async function loadPackDefinitions(manifest: PackManifest, packDir: string, dependencyStepModules: readonly string[], importModule: PackModuleLoader): Promise<PackBuildDefinitions> {
   const steps = new Map<string, StepDefinition>();
   // Step type → dependency module defining it; a pack step with the same type would silently
   // merge over the dependency's definition
   const dependencyStepTypes = new Map<string, string>();
   for (const modulePath of dependencyStepModules) {
-    const mod = await import(pathToFileURL(modulePath).href);
+    const mod = await importModule(modulePath);
     const items = findExportedArray(mod);
     if (!items) throw new Error(`${modulePath} does not export a step definition array`);
     for (const item of items as StepDefinition[]) {
@@ -79,7 +79,7 @@ async function loadPackDefinitions(manifest: PackManifest, packDir: string, depe
         + `(${declaredSteps.join(', ')}). Run "apack pack generate-entries".`,
       );
     }
-    for (const step of (findExportedArray(await import(pathToFileURL(generated).href)) ?? []) as StepDefinition[]) {
+    for (const step of (findExportedArray(await importModule(generated)) ?? []) as StepDefinition[]) {
       const dependency = dependencyStepTypes.get(step.type);
       if (dependency) {
         throw new Error(`Step type "${step.type}" is defined by this pack and by a dependency (${dependency}); rename this pack's step`);

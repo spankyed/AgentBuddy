@@ -4,12 +4,16 @@ A **pack** is a self-contained extension for apack. It can contribute backend sy
 
 ## Prerequisites
 
-- Node.js >= 22
-- apack installed
-- The `apack` CLI, from any of:
-  - the app: **apack → Install 'apack' command in PATH** (macOS; apack Beta installs `apack-beta`)
-  - npm: `npm i -g @apackdev/cli`
-  - Homebrew: the formula in `build/homebrew/apack.rb`
+- A compatible apack host and CLI. The standalone CLI supports Node 22.15+ on the 22.x line,
+  or Node 23.5+; the app-bundled CLI uses its included runtime.
+- When using a packaged macOS app: **apack → Install 'apack' command in PATH** installs the bundled
+  command (apack Beta installs `apack-beta`). This requires an actual available app build.
+
+npm and Homebrew installation are not yet available.
+For development of apack itself, use the [source checkout instructions](../../README.md#develop-apack).
+The pack-authoring commands below assume their CLI and package prerequisites are available.
+Beta-download examples also require a compatible published Beta; `--host <checkout>` selects an
+explicit local host for workflows that support it.
 
 Whichever `apack` you run, inside a pack it hands off to the `@apackdev/cli` version the pack pins in its `devDependencies`, so every pack builds with the CLI it was written against.
 
@@ -23,7 +27,7 @@ Whichever `apack` you run, inside a pack it hands off to the `@apackdev/cli` ver
 | `@apackdev/cli` | The `apack` command and build toolchain. A devDependency of every pack. |
 | `@apackdev/testing` | Pack tests: `@apackdev/testing/harness` runs a pack's content, systems, services and flows in unit tests without the app, `@apackdev/testing/vitest` configures Vitest for it (`isolatedDataDir`), and `@apackdev/testing` is the Playwright fixture for E2E tests in the app (`@playwright/test` is a peer). |
 
-The five are released together with the same version.
+These packages are versioned together.
 
 ## Create a pack
 
@@ -49,7 +53,7 @@ my-pack/
   src/
     env.d.ts
     features/
-      notes/                # added by `apack pack add feature notes`: settings.ts, be/, fe/
+      notes/                # added by `apack pack add feature notes`: be/, fe/ and inline settings
     extensions/             # added by `apack pack add step|artifact|block`: one directory each,
                             # declared in apack.json's `extensions` — there is no barrel
     content/
@@ -79,20 +83,11 @@ This launches apack with your pack installed and keeps it in step with your edit
 
 It works out which app to use rather than asking: the apack checkout your pack is built against if there is one, else a cached/downloaded Beta build your `hostVersion` accepts. `--host <path>` and `--host beta` name one outright, and it always says which it chose and why. A source app already using that data dir is reused only after its session verifies the selected checkout. Packaged hosts require an unused profile because their running app identity cannot be verified.
 
-The build pipeline (`apack pack build`):
-
-1. Validates `apack.json` and clears `dist/`
-2. `apack generate` and `apack pack generate-entries` — resolve dependencies, write their EARS types and generate `src/__generated__/`
-3. Checks each feature's settings file sets only its own plugin's settings
-4. Resolves dependencies, warning when the generated dependency types are from a different version
-5. Content compilation — compiles `content.sources` from `src/content/` to `dist/runtime/content/`, validating flows with the dependencies' step code
-6. Facade types — bundles `dist/types/pack-types.d.ts`, the types packs that depend on yours import, and fails unless it type-checks on its own and imports only `@apackdev/*` packages, `@apackdev/sdk`'s peers and Node built-ins. Warns if your committed `etc/pack-types.api.md` has fallen behind it
-7. Snapshot — writes `dist/types/snapshot.json` (types, facade types, flow helpers, manifest) for downstream packs
-8. Build code for dependents — `dist/build/steps.build.mjs` (step build code), `dist/build/content-runtime.mjs` (your entity types, repositories and content writers, for their unit tests) and `dist/build/content-compilers.mjs` (your content formats' compiler modules). The build loads the content runtime the way their tests do, and fails if it can't: repositories and content writers can't use native modules or optional `@apackdev/sdk` peers such as `@tiptap/pm`
-9. Backend bundling — `dist/runtime/index.cjs` (systems, services, steps, boot hooks, migrations)
-10. FE bundling — bundles `src/__generated__/pack-entry-fe.ts` into `dist/runtime/fe.js` via Vite
-
-See [CLI Reference](cli.md#building) for details.
+`apack pack build` validates declarations, generates entries, resolves dependencies, compiles content
+and bundles the runtime and dependent-facing types. Settings definitions are inline in `apack.json`;
+forms remain custom components. The build checks its output before publishing `dist/`, preserving the
+previous build on failure. See [the build command](cli.md#building) for its gates and
+[pack builds](pack-builds.md) for the files it produces and installs.
 
 ## Build and distribute
 
@@ -156,15 +151,15 @@ apack pack clean      # Remove dist/, .apack/, __generated__/
 ## Key concepts
 
 - **Manifest (`apack.json`)** — declares everything: features, steps, services, content, entities. See [Manifest Reference](manifest.md).
-- **Generated files (`__generated__/`)** — auto-generated from the manifest. Never edit these. They are regenerated on every build. The generated `pack-entry.ts` and `pack-entry-fe.ts` are your pack's registrations: everything it contributes (systems, services, repositories, steps, appliers, DSL types, …) reaches the app through them, never by writing to a registry when a module is imported.
+- **Generated files (`__generated__/`)** — auto-generated from the manifest. Never edit these. The build regenerates them when their declared inputs change. `pack-entry.ts` and `pack-entry-fe.ts` supply executable bindings for systems, services, repositories, steps and views. The sealed build snapshot supplies discoverable declarations, including DSL definitions, without activating those bindings. Modules never register contributions as an import side effect.
 - **Host dependencies** — packs share `vue`, `xstate`, tiptap, `lucide-vue-next` and other libraries, the SDK modules and `@apackdev/ui` with the host app. The build pipeline leaves those imports external and the app's document carries an import map naming its own copy of each, so your pack gets the app's instance.
 - **Content** — actions, prompts, flows and entity rows are compiled at build time and written when the pack loads. See [Content](content.md) for what action code may import.
-- **`pack://` protocol** — the host loads your pack's FE bundle at runtime via `pack://<id>/runtime/fe.js`. This is handled automatically.
+- **`pack://` protocol** — the host loads your pack's FE bundle at runtime via `pack://<id>/builds/<revision>/runtime/fe.js`. This is handled automatically.
 
 ## Constraints
 
-- Some manifest fields are for built-in packs only: validation rejects `content.sources.settings` in an external pack, and the app ignores an external pack's `features.<id>.references`.
-- Entity types, relation kinds and service keys must be unique across all installed packs, or the pack fails to load. Service keys also can't be the host's (`logger`, `emitter`, `repository`, `appData`, `traceStore`, `inference`, `secrets`).
+- External packs declare feature preferences in `features.<id>.settings`, pack preferences in `extensions.settings`, and references in `features.<id>.references`. Host preferences belong to the host; see [settings declarations](manifest.md#feature-settings).
+- Entity types, relation kinds and service keys must be unique across all installed packs, or the pack fails to load. Service keys also can't be the host's (`logger`, `emitter`, `repository`, `settings`, `onboarding`, `appData`, `traceStore`, `inference`, `secrets`, `filesystem`).
 - The app must be restarted after installing or uninstalling a pack.
 
 ## Next steps

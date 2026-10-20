@@ -12,10 +12,11 @@
 // the grounds that it "covers five packages whose builds read their own trees". That was not true: a build
 // script imports modules, and three units were missing the one their staging is derived from.
 import { execFileSync } from 'node:child_process';
+import { createHash } from 'node:crypto';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { BUILD_UNITS, covers, excludedBySuffix, fingerprintUnit, inputFiles, NOT_A_BUILD_INPUT, REPO_ROOT, repoRelative } from '@apackdev/host/build/packages-built';
+import { BUILD_UNITS, covers, excludedBySuffix, fingerprintUnit, inputFiles, NOT_A_BUILD_INPUT, REPO_ROOT, repoRelative, type TreeReader } from '@apackdev/host/build/packages-built';
 import { PUBLISH_TREE } from '@apackdev/host/build/published-manifest';
 import { CHAIN_STEPS, dependsOn, suiteInputs, SUITE_READS, WORKSPACE_PARTS, type ChainStep } from '../../../scripts/lib/chain-steps.ts';
 import { UNIT_SUITES } from '../../../scripts/lib/unit-suites.ts';
@@ -634,6 +635,16 @@ describe("a suite's half declares the config that runs it", () => {
     expect(suiteInputs(pack, 'fast'), 'its own config is what it runs under, through its workspace')
       .toContain(path.join('packages', pack.dir, 'vitest.config.ts'));
   });
+
+  it('declares generated fixture inputs only for the repository integration half', () => {
+    const suite = UNIT_SUITES.find(suite => suite.dir === 'repo-checks')!;
+    const outputs = CHAIN_STEPS.find(step => step.name === 'test:external-pack:contract')!.outputs!;
+    expect(outputs.length).toBeGreaterThan(0);
+    for (const output of outputs) {
+      expect(suiteInputs(suite, 'integration')).toContain(output);
+      expect(suiteInputs(suite, 'fast')).not.toContain(output);
+    }
+  });
 });
 
 describe('a gitignored input belongs to someone', () => {
@@ -788,4 +799,25 @@ describe('a step keys on the command it runs', () => {
         'lint:check', 'test:unit:host', 'test:integration', 'build:runtime',
       ]);
   });
+});
+
+
+describe('app checks observe separately loaded shipped-pack bytes', () => {
+  it.each(['test:external-pack:app', 'test:smoke', 'test:e2e', 'test:packaged-authoring:app'])(
+    '%s invalidates when a shipped frontend changes without an app-bundle change', name => {
+      const step = CHAIN_STEPS.find(step => step.name === name)!;
+      const file = 'packages/default-setup/dist/runtime/fe.js';
+      let bytes = 'old frontend';
+      const tree: TreeReader = {
+        listInputs: target => covers(repoRelative(path.resolve(REPO_ROOT, target)), file) ? [file] : [],
+        listOutputs: () => [],
+        read: () => Buffer.from(bytes),
+        digest: () => createHash('sha256').update(bytes).digest('hex'),
+      };
+      const unit = { ...step, outputs: step.outputs ?? [] };
+      const before = fingerprintUnit(unit, undefined, tree);
+      bytes = 'frontend with corrected node-view cleanup';
+      expect(fingerprintUnit(unit, undefined, tree)).not.toBe(before);
+    },
+  );
 });

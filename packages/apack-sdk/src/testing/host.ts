@@ -1,7 +1,7 @@
 // The app a pack's systems, services and steps reach in unit tests, in memory: what the app binds at boot
 // (openAppStore() in api/src/setup/backend.ts), minus persistence, clients and the filesystem.
 import { EventEmitter } from 'node:events';
-import type { SettingsService } from '../services/settings.ts';
+import type { SettingsAdmin } from '../services/settings.ts';
 import { bindHost, type HostRuntime } from '../runtime/host-runtime.ts';
 import type { PackRegistryView } from '../runtime/packs-view.ts';
 import { testPacksView } from './packs.ts';
@@ -11,7 +11,7 @@ import type { EarsEngine } from '@apackdev/ears';
 import type { EARS } from '../types/entities.ts';
 import type { LogEvent, SystemErrorEvent } from '../logger/index.ts';
 import type { TraceStore } from '../services/trace-store.ts';
-import type { AppDataService } from '../services/app-data.ts';
+import type { OnboardingService } from '../services/onboarding.ts';
 import type { SecretMetadata, SecretProvider, SecretsService } from '../services/secrets.ts';
 import { _secretRules } from '../services/secrets-rules.ts';
 
@@ -68,12 +68,9 @@ export function addTestSecret(provider: SecretProvider, label: string): SecretMe
 /** Whether the test app's user finished onboarding, unless the test app is given where the app keeps it */
 let onboarded = false;
 
-/** Where the test app keeps whether the user finished onboarding */
-export type TestOnboarding = Pick<AppDataService, 'hasOnboarded' | 'completeOnboarding'>;
-
-const memoryOnboarding: TestOnboarding = {
-  hasOnboarded: () => onboarded,
-  completeOnboarding: () => { onboarded = true; },
+const memoryOnboarding: OnboardingService = {
+  isComplete: () => onboarded,
+  complete: () => { onboarded = true; },
 };
 
 /** @internal Empties the test host's stored keys and starts onboarding over */
@@ -112,15 +109,16 @@ const unmockedFilesystem = () => Promise.reject(new Error(
 const unmockedSettings = () => {
   throw new Error(
     "The app's settings aren't available on the SDK's test runtime: run the test on @apackdev/testing/harness, which " +
-    "binds the host's settings store, or mock it with mockService('settings', { ... })",
+    "binds the host's settings store; the harness exposes getTestSettings() for test setup",
   );
 };
 
-const memorylessSettings: SettingsService = {
-  getAll: unmockedSettings, getStored: unmockedSettings, getSection: unmockedSettings, forFeature: unmockedSettings,
-  setForFeature: unmockedSettings, setInSection: unmockedSettings, replaceAll: unmockedSettings,
-  removeStored: unmockedSettings, reset: unmockedSettings, whileReplacingData: unmockedSettings,
-  onChange: unmockedSettings,
+const memorylessSettings: SettingsAdmin = {
+  get: unmockedSettings, set: unmockedSettings, reset: unmockedSettings,
+  enterRecovery: unmockedSettings, getRecovery: unmockedSettings, recover: unmockedSettings,
+  getAll: unmockedSettings, getSnapshot: unmockedSettings, getOverrides: unmockedSettings, replaceAll: unmockedSettings,
+  removeOverrides: unmockedSettings, resetAll: unmockedSettings, whileReplacingData: unmockedSettings,
+  forPack: unmockedSettings, onChange: unmockedSettings,
 };
 
 const unsupported = (name: string) => () => Promise.reject(new Error(`appData.${name} isn't supported in unit tests: there is no stored data to back up`));
@@ -156,17 +154,19 @@ export interface TestRuntimeOptions {
   packs?: PackRegistryView;
   /** `getAppVersion()`; `0.0.0-test` by default */
   appVersion?: string;
-  /** Backs `appData.hasOnboarded` and `completeOnboarding`; in memory by default, emptied with the database */
-  onboarding?: TestOnboarding;
+  /** Backs `onboarding.isComplete` and `complete`; in memory by default, emptied with the database */
+  onboarding?: OnboardingService;
   /** Backs `services.settings`; without one, reading or writing settings says to run on the harness */
-  settings?: SettingsService;
+  settings?: SettingsAdmin;
+  /** Host-port doubles owned by this test runtime; settings administration remains canonical. */
+  serviceOverrides?: ReadonlyMap<string, unknown>;
 }
 
 /**
  * Binds the in-memory app: `testRootEvents` as its bus, the in-memory engine, `testPacks` over `packs`, and the app's
  * services in memory.
  */
-export function bindTestRuntime({ engine, resetData, packs, appVersion = '0.0.0-test', onboarding = memoryOnboarding, settings = memorylessSettings }: TestRuntimeOptions): HostRuntime {
+export function bindTestRuntime({ engine, resetData, packs, appVersion = '0.0.0-test', onboarding = memoryOnboarding, settings = memorylessSettings, serviceOverrides }: TestRuntimeOptions): HostRuntime {
   const runtime: HostRuntime = {
     transport: { rootEvents: testRootEvents },
     // The current engine: a reset replaces it
@@ -174,10 +174,9 @@ export function bindTestRuntime({ engine, resetData, packs, appVersion = '0.0.0-
     packs: testPacksView(packs),
     appVersion,
     services: {
+      onboarding,
       appData: {
         reset: async () => { resetData(); },
-        hasOnboarded: () => onboarding.hasOnboarded(),
-        completeOnboarding: () => onboarding.completeOnboarding(),
         exportBackup: unsupported('exportBackup'),
         importBackup: unsupported('importBackup'),
         readBackupSummary: async () => null,
@@ -198,6 +197,12 @@ export function bindTestRuntime({ engine, resetData, packs, appVersion = '0.0.0-
       settings,
     },
   };
+  if (serviceOverrides) runtime.services = new Proxy(runtime.services, {
+    get(target, key, receiver) {
+      return key !== 'settings' && typeof key === 'string' && Object.hasOwn(target, key) && serviceOverrides.has(key)
+        ? serviceOverrides.get(key) : Reflect.get(target, key, receiver);
+    },
+  });
   bindHost(runtime);
   return runtime;
 }

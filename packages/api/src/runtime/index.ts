@@ -1,24 +1,26 @@
 import { createActor } from 'xstate';
 import { createLogger, reportError } from '@apackdev/sdk/logger';
-import { bindHost } from '@apackdev/sdk/runtime';
+import { bindHost, type HostRuntime } from '@apackdev/sdk/runtime';
 import { _getLmdbPath, _getVolatileLmdbPath } from '@apackdev/sdk/utils';
 import type { EarsEngine } from '@apackdev/ears';
 import type { LmdbStore, WriteFailure } from '@apackdev/ears/lmdb';
-import { assertNoDatabaseWriter, openDatabaseStore } from '@apackdev/host/database';
+import { assertNoDatabaseWriter, openDatabaseStore, storedSettings } from '@apackdev/host/database';
 import { createPackRegistry, installShippedPacks, prepareHostDataDirs, type PackRegistry } from '@apackdev/host/packs';
 import { resolveAppEnvironment } from '@apackdev/sdk/env';
 import { PACK_SNAPSHOT_FORMAT } from '@apackdev/sdk/build';
 import { loadAppPacks, startPacks } from '@apackdev/host/packs/runtime';
 // The app's own features: its registration, and the systems it runs for them
 import {
-  APPLICATION_SYSTEM_EVENTS, createApplicationSystem, createPacksSystem, createSettingsSystem, hostRegistration, packsEvents, settingsEvents,
+  APPLICATION_SYSTEM_EVENTS, createApplicationSystem, createPacksSystem, createSettingsSystem, hostRegistration, hostDeclaration, packsEvents, settingsEvents,
 } from '@apackdev/host/features';
 import { createAppBus, createParticipantClaims, HOST } from '@apackdev/host/bus';
 import { createHostRuntime } from '@apackdev/host/services';
+import { _settingsAdmin } from '@apackdev/sdk/services';
+import { compileSettingsCatalog, createSettingsAccess } from '@apackdev/host/settings';
 import { forwardSecretsChanges } from '@apackdev/host/secrets';
 import { assertSourceResolution } from '@apackdev/host/build/source-resolution';
-import { rootEvents } from '@/transport/emitter';
-import { initializeLogCapture, printLogEvents } from '@/adapters/logging';
+import { rootEvents } from '../transport/emitter.ts';
+import { initializeLogCapture, printLogEvents } from '../adapters/logging.ts';
 import { createRequire } from 'module';
 import pkg from '../../../../package.json';
 import { readFileSync } from 'node:fs';
@@ -51,6 +53,7 @@ export interface AppStore {
 
 /** The app's registered packs, which openAppStore creates: the transport's procedures and dev reload work on them */
 export let appPacks: PackRegistry;
+export let appSettingsAccess: ReturnType<typeof createSettingsAccess>;
 
 /**
  * The open store, so shutdown can flush it.
@@ -92,15 +95,23 @@ function reportDroppedWrite({ op, key, error }: WriteFailure): void {
 
 export function openAppStore(): AppStore {
   // Installed packs that aren't running keep their settings: the settings take writes for their features too
-  const packs = createPackRegistry({ installedPacksDir: () => resolveAppEnvironment().packsDir });
+  let runtime: HostRuntime;
+  const packs = createPackRegistry({
+    nativeDeclarations: [hostDeclaration],
+    installedPacksDir: () => resolveAppEnvironment().packsDir,
+    appPackSourcesDir: () => process.env.SHIPPED_PACKS_DIR,
+    settingsForPack: (packId) => runtime.services.settings.forPack(packId),
+  });
   const { store, engine } = openDatabaseStore({
     paths: { primary: _getLmdbPath(), volatileBackup: _getVolatileLmdbPath() },
     schema: packs,
     onWriteFailure: reportDroppedWrite,
   });
-  bindHost(createHostRuntime({ store, engine, transport: { rootEvents }, appVersion: APP_VERSION, packs }));
+  runtime = createHostRuntime({ store, engine, transport: { rootEvents }, appVersion: APP_VERSION, packs });
+  bindHost(runtime);
   printLogEvents();
   appPacks = packs;
+  appSettingsAccess = createSettingsAccess(runtime.services.settings, packs.getPackRuntime);
   appStore = store;
   return { store, engine, packs };
 }
@@ -133,15 +144,6 @@ export async function setupBackend(): Promise<void> {
     assertSourceResolution(createRequire(import.meta.url).resolve, 'The API server');
   }
 
-  // ── The app's own features, as the pack `host` (before any pack loading) ──────────
-  packs.registerPack(hostRegistration({
-    // The app shell's own state (which tabs show, the last plugin open), which the application plugin reads
-    application: { machine: createApplicationSystem(packs), receives: APPLICATION_SYSTEM_EVENTS },
-    packs: { machine: createPacksSystem(packs), receives: [...packsEvents] },
-    // The app's settings: one row, one writer, and what every feature reads its own from
-    settings: { machine: createSettingsSystem(), receives: [...settingsEvents] },
-  }));
-
   // Before discovery: a pack an interrupted install left only as its moved-aside copy is restored,
   // and apack pack install learns which apack uses this data dir
   prepareHostDataDirs({ userDataDir: appContext.userDataDir, packsDir: appContext.packsDir, version: APP_VERSION });
@@ -150,35 +152,50 @@ export async function setupBackend(): Promise<void> {
   forwardSecretsChanges(packs);
 
   // ── Install the packs the app ships, so every pack is an installed pack ────────────
-  // Before loading, not beside it: a pack has to be in the packs dir to be discovered there. A copy whose
-  // integrity matches this build's is left alone, so only a first boot and a version bump write anything
+  // Install before discovery. Ownership, shipped source revision and deliberate removal decide refresh;
+  // matching bytes never grant app ownership of an existing user build.
   const shippedDir = process.env.SHIPPED_PACKS_DIR;
-  const shippedIds = new Set<string>();
   if (!shippedDir) {
     // "This app ships no packs" and "nobody told me where they are" are different answers, and installing
     // nothing looks the same either way: on a fresh data dir both give an app with no plugins
     console.warn('[packs] SHIPPED_PACKS_DIR is not set, so no pack the app ships is installed');
   } else {
-    const results = await installShippedPacks(shippedDir, appContext.packsDir, { hostVersion: APP_VERSION, packFormat: PACK_SNAPSHOT_FORMAT });
+    const results = await installShippedPacks(shippedDir, appContext.packsDir, { installedPacksFile: appContext.installedPacksFile, hostVersion: APP_VERSION, packFormat: PACK_SNAPSHOT_FORMAT, settingsOverrides: () => storedSettings(store) });
     if (results.length === 0) console.warn(`[packs] ${shippedDir} holds no pack to install`);
     for (const result of results) {
-      // Shipped whatever the install came to: the app refuses to uninstall it either way, and a pack whose
-      // install failed is one the Packs view reports rather than one it offers to remove
-      shippedIds.add(result.id);
       if (result.outcome === 'failed') console.error(`[packs] Could not install ${result.id}, which this app ships: ${result.error}`);
-      else if (result.outcome !== 'current') console.log(`[packs] ${result.outcome === 'updated' ? 'Updated' : 'Installed'} ${result.id}, which this app ships`);
+      else if (result.outcome === 'installed' || result.outcome === 'updated') console.log(`[packs] ${result.outcome === 'updated' ? 'Updated' : 'Installed'} ${result.id}, which this app ships`);
     }
   }
 
-  // ── Load packs ────────────
-  const { loaded: loadedPacks } = loadAppPacks(packs, shippedIds);
+  // Static discovery and a direct stored-row read precede executable pack loading and hydration.
+  packs.refreshCatalog(appContext.packsDir);
+  const settingsProblems = compileSettingsCatalog(packs.settingsCatalog()).inspect(storedSettings(store));
+  const recoveringSettings = settingsProblems.length > 0;
+  if (recoveringSettings) {
+    console.error('[settings] Preferences require an explicit reset before normal startup:', settingsProblems);
+    _settingsAdmin().enterRecovery();
+    // This process remains host-only even after repair. Relaunch owns normal initialization.
+    packs.catalog.setSettingsAdmission(() => { throw new Error('Restart the app after repairing settings before changing packs.'); });
+  }
+
+  packs.registerPack(hostRegistration({
+    settings: { machine: createSettingsSystem(), receives: [...settingsEvents] },
+    ...(!recoveringSettings && {
+      application: { machine: createApplicationSystem(packs), receives: APPLICATION_SYSTEM_EVENTS },
+      packs: { machine: createPacksSystem(packs), receives: [...packsEvents] },
+    }),
+  }));
+
+  // Recovery starts only host actors; no executable external pack is imported.
+  const loadedPacks = recoveringSettings ? [] : loadAppPacks(packs).loaded;
 
   console.log(`[app] apack v${APP_VERSION} startupId=${process.env.APACK_STARTUP_ID ?? 'unknown'}`);
 
   // ── Wire shutdown hooks (keyed by pack ID for scoped reload teardown) ──
   for (const pack of loadedPacks) {
-    if (pack.registration.boot?.onShutdown) {
-      packs.registerShutdownHook(pack.registration.boot.onShutdown, pack.origin.id);
+    if (pack.registration.lifecycle?.onShutdown) {
+      packs.registerShutdownHook(pack.registration.lifecycle.onShutdown, pack.origin.id);
     }
   }
 
@@ -186,7 +203,7 @@ export async function setupBackend(): Promise<void> {
   await store.hydrate();
 
   // ── Start the packs: each one's onInit, the migrations (the app's, then external packs'), the content
-  startPacks(packs);
+  if (!recoveringSettings) startPacks(packs);
 
   // ── Start backend actor ──────────────────────────────────────────────
   backendActor = createActor(createAppBus(packs, appClaims), {

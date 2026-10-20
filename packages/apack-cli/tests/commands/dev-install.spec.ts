@@ -14,7 +14,7 @@ let userDataDir: string;
 vi.mock('@apackdev/sdk/env', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@apackdev/sdk/env')>()),
   resolveAppEnvironment: () => ({
-    env: 'development', userDataDir, packsDir: path.join(userDataDir, 'packs'),
+    env: 'development', userDataDir, packsDir: path.join(userDataDir, 'packs'), installedPacksFile: path.join(userDataDir, 'installed-packs.json'),
     apiPortFile: path.join(userDataDir, 'api-port'), apiTokenFile: path.join(userDataDir, 'api-token'),
   }),
 }));
@@ -35,7 +35,7 @@ describe('apack pack dev', () => {
 
     await installToApp('/pack');
 
-    expect(installPackFromLocal).toHaveBeenCalledWith('/pack', path.join(userDataDir, 'packs'), { hostVersion: '0.9.1', packFormat: 3 });
+    expect(installPackFromLocal).toHaveBeenCalledWith('/pack', path.join(userDataDir, 'packs'), expect.objectContaining({ hostVersion: '0.9.1', packFormat: 3, installedPacksFile: path.join(userDataDir, 'installed-packs.json'), accept: expect.any(Function) }));
   });
 
   it('reads the version at each install, as the dev app may start in between', async () => {
@@ -46,8 +46,8 @@ describe('apack pack dev', () => {
     await installToApp('/pack');
 
     expect(installPackFromLocal.mock.calls.map((call) => (call as unknown[])[2])).toEqual([
-      { hostVersion: undefined, packFormat: undefined },
-      { hostVersion: '1.0.0', packFormat: 1 },
+      expect.objectContaining({ hostVersion: undefined, packFormat: undefined, installedPacksFile: path.join(userDataDir, 'installed-packs.json') }),
+      expect.objectContaining({ hostVersion: '1.0.0', packFormat: 1, installedPacksFile: path.join(userDataDir, 'installed-packs.json') }),
     ]);
   });
 });
@@ -77,8 +77,22 @@ describe('apack pack dev reloads', () => {
       fs.writeFileSync(path.join(userDataDir, 'api-token'), 'the-dev-token\n');
       const { reloadPack } = await import('../../src/build/dev-reload.ts');
 
-      expect(await reloadPack('my-pack')).toEqual({ status: 'reloaded' });
+      expect(await reloadPack('my-pack')).toEqual({ status: 'delivered' });
       expect(api.requests).toEqual([{ url: '/dev/reload', token: 'the-dev-token', body: JSON.stringify({ packId: 'my-pack' }) }]);
+    } finally {
+      api.close();
+    }
+  });
+
+  it('ask the app to install the build at the pack\'s absolute root, which the app copies and starts itself', async () => {
+    const api = await fakeApi(200);
+    try {
+      fs.writeFileSync(path.join(userDataDir, 'api-port'), JSON.stringify({ port: api.port, pid: process.pid }));
+      fs.writeFileSync(path.join(userDataDir, 'api-token'), 'the-dev-token');
+      const { installPackInApp } = await import('../../src/build/dev-reload.ts');
+
+      expect(await installPackInApp('relative/pack')).toEqual({ status: 'delivered' });
+      expect(api.requests).toEqual([{ url: '/dev/install', token: 'the-dev-token', body: JSON.stringify({ root: path.resolve('relative/pack') }) }]);
     } finally {
       api.close();
     }
@@ -104,6 +118,29 @@ describe('apack pack dev reloads', () => {
       api.close();
     }
     expect(await reloadPack('my-pack')).toMatchObject({ status: 'unreachable', detail: expect.stringContaining(`127.0.0.1:${api.port}`) });
+  });
+});
+
+describe('what restarts a packaged app', () => {
+  /** A completed build's receipt, as `apack pack build` seals it */
+  function writeReceipt(root: string, files: Record<string, string>) {
+    fs.mkdirSync(path.join(root, 'dist'), { recursive: true });
+    fs.writeFileSync(path.join(root, 'dist', 'integrity.json'), JSON.stringify({ files }));
+  }
+
+  it('is a change to what its backend loads, not to the frontend Vite serves', async () => {
+    const { backendRevision } = await import('../../src/commands/dev');
+    const root = path.join(userDataDir, 'pack');
+    const build = { 'apack.json': 'm1', 'runtime/index.cjs': 'b1', 'runtime/content/notes.content.json': 'c1', 'runtime/fe.js': 'f1', 'runtime/canvas-x.js': 'k1' };
+    writeReceipt(root, build);
+    const first = backendRevision(root);
+
+    writeReceipt(root, { ...build, 'runtime/fe.js': 'f2', 'runtime/canvas-y.js': 'k2', 'build-inputs.json': 'i2' });
+    expect(backendRevision(root), 'a frontend-only rebuild').toBe(first);
+    writeReceipt(root, { ...build, 'runtime/index.cjs': 'b2' });
+    expect(backendRevision(root), 'a backend rebuild').not.toBe(first);
+    writeReceipt(root, { ...build, 'runtime/content/notes.content.json': 'c2' });
+    expect(backendRevision(root), 'a content rebuild').not.toBe(first);
   });
 });
 

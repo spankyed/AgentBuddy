@@ -8,7 +8,7 @@ import { downloadVerified, listAppReleases, type Download, type Release, type Re
 
 const PRODUCT_NAME = 'apack Beta';
 /** Release file names use the product name without spaces (electron-builder.mjs artifactName). */
-const BETA_ARTIFACT_PREFIX = 'apack-Beta';
+const BETA_RELEASE_PREFIX = 'apack-Beta';
 
 export interface BetaRelease {
   version: string;
@@ -38,7 +38,7 @@ export interface PackagedApp {
  * app's installer checks hostVersion against that version, not the tag's.
  */
 export function pickBetaRelease(releases: Release[], hostVersion: string): BetaRelease | null {
-  const zipPattern = new RegExp(`^${BETA_ARTIFACT_PREFIX}-(.+)-mac-arm64\\.zip$`);
+  const zipPattern = new RegExp(`^${BETA_RELEASE_PREFIX}-(.+)-mac-arm64\\.zip$`);
   const candidates = releases
     .filter(r => !r.draft && r.prerelease)
     .map(r => ({ release: r, version: semver.valid(r.tag_name.replace(/^v/, '')) }))

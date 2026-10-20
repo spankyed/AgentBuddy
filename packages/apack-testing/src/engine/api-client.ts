@@ -66,7 +66,9 @@ export interface ApiClient {
   /** Takes a name on this connection, so a system can be told to answer it. Rejects when another holds it. */
   claim(ref: string): Promise<void>;
   /** Sends to a system. Rejects on a refusal, where the page route used to drop it silently. */
-  send(message: { to: string; event: Record<string, unknown>; sender?: string }): Promise<void>;
+  send(message: { to: string; event: Record<string, unknown>; sender?: string; call?: string }): Promise<void>;
+  /** Explicit trusted-tool settings access; ordinary bus sends never borrow this authority. */
+  sendSettings: ApiClient['send'];
   /** Every message the subscription delivers; returns the unsubscribe */
   onMessage(listener: (message: BusMessage) => void): () => void;
   /**
@@ -219,10 +221,21 @@ export async function connectApiClient({ port, token, host = API_HOST }: ApiAddr
   socket.addEventListener('close', () => finish('the connection to the app closed'), { once: true });
 
   await openSubscription();
+  let settingsCredential: Promise<string> | undefined;
+  const openSettings = (): Promise<string> => settingsCredential ??= callMutation('settings.openHost', 'opening tool settings access', undefined)
+    .then(credential => {
+      if (typeof credential !== 'string' || !credential) throw new Error('The app returned no settings credential');
+      return credential;
+    });
 
   return {
     claim: (ref) => callMutation('bus.claim', `claiming ${ref}`, { as: ref }).then(() => undefined),
     send: (message) => callMutation('bus.send', `sending ${message.event.type} to ${message.to}`, message).then(() => undefined),
+    sendSettings: async message => {
+      if (message.to !== 'host/settings') throw new Error('Settings access only sends to host/settings');
+      const credential = await openSettings();
+      await callMutation('bus.send', `sending ${message.event.type} to ${message.to}`, { ...message, settingsCredential: credential });
+    },
     onMessage: (listener) => {
       listeners.add(listener);
       return () => listeners.delete(listener);

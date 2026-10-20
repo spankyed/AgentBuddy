@@ -10,6 +10,7 @@
           isItemInactive(item) && 'opacity-50 cursor-not-allowed'
         ]"
         :draggable="!isItemInactive(item)"
+        :disabled="isItemInactive(item)"
         @dragstart="(e) => !isItemInactive(item) && handleDragStart(e, item.type)"
         @click="!isItemInactive(item) && $emit('palette-click', item.type)"
       >
@@ -53,28 +54,29 @@
 </template>
 
 <script setup lang="ts">
-import {
-  getPaletteItems,
+import { computed, type Component } from 'vue'
+import { useNodeStyles } from '@apackdev/ui/components/node-styles'
+
+const { getNodeConfig, getPaletteItems,
   getPaletteItemClasses,
   getPaletteIconClasses,
   getPaletteIconComponentClasses,
   getPaletteGlowClasses,
-  getPaletteGradientClasses
-} from '@apackdev/ui/components/node-styles'
+  getPaletteGradientClasses } = useNodeStyles()
 
 interface PaletteItem {
   type: string
   label: string
-  icon: any
+  icon: Component
   isImplemented?: boolean
   isDisabled?: boolean
 }
 
-const props = withDefaults(defineProps<{
+const props = defineProps<{
   paletteItems?: PaletteItem[]
-}>(), {
-  paletteItems: () => getPaletteItems()
-})
+}>()
+
+const paletteItems = computed(() => props.paletteItems ?? getPaletteItems())
 
 const emit = defineEmits<{
   'palette-click': [nodeType: string]
@@ -82,7 +84,7 @@ const emit = defineEmits<{
 }>()
 
 function isItemInactive(item: PaletteItem): boolean {
-  return !item.isImplemented || Boolean(item.isDisabled)
+  return !item.isImplemented || Boolean(item.isDisabled) || getNodeConfig(item.type)?.isDisabled !== false
 }
 
 function handleDragStart(e: DragEvent, nodeType: string) {

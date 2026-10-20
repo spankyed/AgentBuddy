@@ -154,7 +154,9 @@ export interface BaseNodeProps extends NodeProps<BaseNodeData> {
 <script setup lang="ts">
 import { computed, inject, type Component } from 'vue'
 import { Handle, Position } from '@vue-flow/core'
-import { getNodeClasses, getNodeStatusClasses, getNodeIconTextColor, getNodeConfig, getNodeDividerClass } from './node-styles.ts'
+import { useNodeStyles } from './node-styles.ts'
+
+const { getNodeClasses, getNodeStatusClasses, getNodeIconTextColor, getNodeConfig, getNodeDividerClass } = useNodeStyles()
 
 const AddHandle = inject<Component | null>('BaseNodeAddHandle', null)
 

@@ -1,7 +1,7 @@
 import fs from 'fs-extra';
 import path from 'node:path';
 import { createLogger } from '@apackdev/sdk/logger';
-import { closeEnv, openEnvAt, LMDB_FORMAT_VERSION, type LmdbStore } from '@apackdev/ears/lmdb';
+import { closeEnv, openEnvAt, LmdbQuery, LMDB_FORMAT_VERSION, type LmdbStore } from '@apackdev/ears/lmdb';
 import { UnknownBackupDatabasesError } from '@apackdev/sdk/services';
 
 const logger = createLogger('database:backup');
@@ -82,91 +82,94 @@ export async function exportDatabase(
   return fullBackupPath;
 }
 
-/**
- * Replaces `store`'s files (and the media folder `mediaPath`) with the backup's, closing the store meanwhile; puts the
- * old files back if that fails
- */
+export type DatabaseImportResult = Pick<BackupContents, 'databases' | 'missingDatabases' | 'unknownEntityTypes'>;
+
+/** Keep previous files until both installation and the caller's acceptance succeed. */
 export async function importDatabase(
   store: LmdbStore,
   backupPath: string,
   mediaPath: string,
-  { skipUnknownDatabases = false, entityTypes = [], log = defaultLog }:
-    { skipUnknownDatabases?: boolean; entityTypes?: Iterable<string>; log?: BackupLog } = {},
-) {
-  // Checked before anything is replaced: a backup this app can't restore must not cost the user their data first
-  const { databases, unknownDatabases, missingDatabases, unknownEntityTypes } = readBackup(backupPath, entityTypes);
-  if (unknownDatabases.length > 0 && !skipUnknownDatabases) throw new UnknownBackupDatabasesError(unknownDatabases);
-  if (unknownDatabases.length > 0) log.warn('Importing without the stores this apack does not have', { unknownDatabases });
-  // Said rather than silently done: the folder may have been lost since, not just never written
-  if (missingDatabases.length > 0) log.warn('The backup lists stores it has no folder for; they are restored as empty', { missingDatabases });
-  // Restored, not dropped: the pack that declared them may be installed again
-  if (unknownEntityTypes.length > 0) {
-    log.warn('The backup holds entities of types no installed pack declares', { types: unknownEntityTypes.map(([type, count]) => `${type} (${count})`) });
-  }
-  const tempBackupPath = path.join(path.dirname(store.paths.primary), 'temp-backup-' + Date.now());
-
-  await fs.ensureDir(tempBackupPath);
-  for (const dbName of databases) {
-    const sourcePath = databasePath(store, dbName);
-    if (await fs.pathExists(sourcePath)) {
-      await fs.copy(sourcePath, path.join(tempBackupPath, dbName));
-    }
-  }
-
-  const backupMediaPath = path.join(backupPath, 'media');
-  const hasMediaInBackup = await fs.pathExists(backupMediaPath);
-
-  if (hasMediaInBackup && await fs.pathExists(mediaPath)) {
-    await fs.copy(mediaPath, path.join(tempBackupPath, 'media'));
-  }
-
+  { skipUnknownDatabases = false, entityTypes = [], log = defaultLog, validate, accept, restored, withReplacement = replace => replace() }:
+    {
+      skipUnknownDatabases?: boolean; entityTypes?: Iterable<string>; log?: BackupLog;
+      validate?: (query: LmdbQuery) => void;
+      /** Hydrate and accept the installed data before the rollback copy can be removed. */
+      accept?: (result: DatabaseImportResult) => Promise<void>;
+      /** Reload the previous data after a refused installation has been restored. */
+      restored?: () => Promise<void>;
+      /** Runs only after the candidate validates; the app uses this to suspend and refresh settings. */
+      withReplacement?: (replace: () => Promise<DatabaseImportResult>) => Promise<DatabaseImportResult>;
+    } = {},
+): Promise<DatabaseImportResult> {
+  const temporary = await fs.mkdtemp(path.join(path.dirname(store.paths.primary), '.apack-import-'));
+  const candidate = path.join(temporary, 'candidate');
+  const rollback = path.join(temporary, 'rollback');
+  let preserveRollback = false;
   try {
-    store.close();
-
-    for (const dbName of databases) {
-      const backupDbPath = path.join(backupPath, dbName);
-      const targetPath = databasePath(store, dbName);
-
-      if (await fs.pathExists(backupDbPath)) {
-        await fs.remove(targetPath);
-        await fs.copy(backupDbPath, targetPath);
-        log.info(`Imported ${dbName}`);
+    await fs.copy(backupPath, candidate);
+    let contents: BackupContents;
+    try {
+      contents = readBackup(candidate, entityTypes, validate);
+    } catch (error) {
+      if (error instanceof Error && error.message.includes(candidate)) {
+        throw new Error(error.message.replaceAll(candidate, backupPath), { cause: error });
       }
+      throw error;
     }
-
-    if (hasMediaInBackup) {
-      await fs.remove(mediaPath);
-      await fs.copy(backupMediaPath, mediaPath);
-      log.info('Restored media assets');
+    const { databases, unknownDatabases, missingDatabases, unknownEntityTypes } = contents;
+    if (unknownDatabases.length && !skipUnknownDatabases) throw new UnknownBackupDatabasesError(unknownDatabases);
+    if (unknownDatabases.length) log.warn('Importing without the stores this apack does not have', { unknownDatabases });
+    if (missingDatabases.length) log.warn('The backup lists stores it has no folder for; they are omitted from restore', { missingDatabases });
+    if (unknownEntityTypes.length) {
+      log.warn('The backup holds entities of types no installed pack declares', { types: unknownEntityTypes.map(([type, count]) => `${type} (${count})`) });
     }
-
-    store.reopen();
-
-    await fs.remove(tempBackupPath);
-    log.info('Import completed');
-    return { databases, missingDatabases, unknownEntityTypes };
-  } catch (error) {
-    store.close();
-
-    for (const dbName of databases) {
-      const tempDbPath = path.join(tempBackupPath, dbName);
-      const targetPath = databasePath(store, dbName);
-      if (await fs.pathExists(tempDbPath)) {
-        await fs.remove(targetPath);
-        await fs.copy(tempDbPath, targetPath);
+    return await withReplacement(async () => {
+      for (const name of databases) await store.copyTo(DATABASE_PARTITIONS[name], path.join(rollback, name));
+      const candidateMedia = path.join(candidate, 'media');
+      const hasMedia = await fs.pathExists(candidateMedia);
+      if (hasMedia && await fs.pathExists(mediaPath)) await fs.copy(mediaPath, path.join(rollback, 'media'));
+      try {
+        store.close();
+        for (const name of databases) {
+          const target = databasePath(store, name);
+          await fs.remove(target);
+          await fs.copy(path.join(candidate, name), target);
+          log.info(`Imported ${name}`);
+        }
+        if (hasMedia) {
+          await fs.remove(mediaPath);
+          await fs.copy(candidateMedia, mediaPath);
+          log.info('Restored media assets');
+        }
+        store.reopen();
+        const result = { databases, missingDatabases, unknownEntityTypes };
+        await accept?.(result);
+        log.info('Import completed');
+        return result;
+      } catch (error) {
+        try {
+          store.close();
+          for (const name of databases) {
+            const target = databasePath(store, name);
+            await fs.remove(target);
+            await fs.copy(path.join(rollback, name), target);
+          }
+          if (hasMedia) {
+            await fs.remove(mediaPath);
+            const previousMedia = path.join(rollback, 'media');
+            if (await fs.pathExists(previousMedia)) await fs.copy(previousMedia, mediaPath);
+          }
+          store.reopen();
+          await restored?.();
+        } catch (restoreError) {
+          preserveRollback = true;
+          throw new AggregateError([error, restoreError], `Import and rollback failed; previous data is retained at ${rollback}`);
+        }
+        throw error;
       }
-    }
-
-    const tempMediaPath = path.join(tempBackupPath, 'media');
-    if (await fs.pathExists(tempMediaPath)) {
-      await fs.remove(mediaPath);
-      await fs.copy(tempMediaPath, mediaPath);
-    }
-
-    store.reopen();
-
-    await fs.remove(tempBackupPath);
-    throw error;
+    });
+  } finally {
+    if (!preserveRollback) await fs.remove(temporary);
   }
 }
 
@@ -236,7 +239,7 @@ export interface BackupContents {
  * wrong. `entityTypes` are the types to count, and any type the backup holds that isn't among them comes back as
  * `unknownEntityTypes`.
  */
-export function readBackup(dir: string, entityTypes: Iterable<string> = []): BackupContents {
+export function readBackup(dir: string, entityTypes: Iterable<string> = [], validate?: (query: LmdbQuery) => void): BackupContents {
   const metadataFile = path.join(dir, 'metadata.json');
   if (!fs.existsSync(metadataFile)) throw new Error(`${dir} isn't a backup: it has no metadata.json`);
   let metadata: { timestamp?: unknown; databases?: unknown; appVersion?: unknown; storageFormat?: unknown };
@@ -270,6 +273,7 @@ export function readBackup(dir: string, entityTypes: Iterable<string> = []): Bac
   for (const name of databases.filter((name) => name !== 'lmdb')) closeEnv(open(name), () => {});
   const env = open('lmdb');
   try {
+    validate?.(new LmdbQuery(env));
     const perType = new Map<string, number>();
     for (const { value } of env.entities.getRange() as Iterable<{ value: { type?: string } }>) {
       if (value.type) perType.set(value.type, (perType.get(value.type) ?? 0) + 1);

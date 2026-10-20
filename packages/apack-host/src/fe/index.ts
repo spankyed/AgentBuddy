@@ -4,8 +4,9 @@
 // this is the package's export surface, which is why naming a feature's frontend from here is not the crossing
 // `check:specifiers` refuses. A feature's modules are otherwise its own, exactly as a pack's are.
 export type { Plugin } from '@apackdev/sdk/fe';
-export { createFePackRegistry, type FePackRegistry } from './pack-store.ts';
+export { createFePackRegistry, type FePackRegistry, type FrontendSettingsBinding, type PreparedFrontend } from './pack-store.ts';
 export { HOST } from '../refs.ts';
+export { hostDeclaration, hostPluginDeclarations } from '../features/declaration.ts';
 export type { PackFERegistration } from '@apackdev/sdk/fe';
 export { describeFailure, type ShellClient, type ShellConnection, type ShellFailure } from './client.ts';
 export type { LoadedPackEntry } from '../packs/layout.ts';
@@ -14,16 +15,26 @@ export type { ShellPackFrontends } from './pack-frontends.ts';
 
 // The app shell (`features/application/fe/`)
 export { createShellMachine, type ShellMachine } from '../features/application/fe/machine.ts';
-export { visiblePluginsOf, withHostLast } from '../features/application/fe/plugins.ts';
+export { withHostLast } from '../features/application/fe/plugins.ts';
+export { pluginNavigationItems, type PluginNavigationItem } from './plugin-navigation.ts';
 export { notifyPluginActor, sendToPluginActor } from './plugin-delivery.ts';
 export { computeCrumbs, type BreadcrumbItem } from '../features/application/fe/trail.ts';
 export type { ShellNotify, ShellOptions, ShellStorage } from '../features/application/fe/types.ts';
 
 // The Packs plugin, the pack-frontend loader the shell is given, and the install a deep link asks for
 // (`features/packs/fe/`)
-export { default as packsMachine, type PacksContext, type PacksState, type InstalledPackSummary } from '../features/packs/fe/machine.ts';
-export { createPackFrontends, loadPackFEEntry, type DevPackFrontends, type PackFrontendIO, type PackFrontendStyles } from '../features/packs/fe/frontends.ts';
+export { default as packsMachine, type PacksContext, type PacksState, type InstalledPackSummary, type AppPackSourceSummary } from '../features/packs/fe/machine.ts';
+export { createPackFrontends, loadPackFEEntry, type DevPackFrontends, type PackFrontendIO, type PackFrontendStyles, type PackFrontendStyle } from '../features/packs/fe/frontends.ts';
 export { installFromProtocol, packInstallRequest, requestPackInstall, type PackInstallRequest } from '../features/packs/fe/install-url.ts';
 
 // The Settings view's machine, as the renderer pairs it with the view's components (`features/settings/fe/`)
-export { createSettingsMachine, type SettingsContext, type SettingsEvents, type SettingsIO, type SettingsSave, type SettingsState, type SettingsTarget } from '../features/settings/fe/machine.ts';
+export { createSettingsMachine, type SettingsContext, type SettingsEvents, type SettingsIO, type SettingsState } from '../features/settings/fe/machine.ts';
+
+export { createWindowSettingsRuntime, type WindowSettingsIO } from './settings-runtime.ts';
+export { settingsProblems, isEqual } from '../features/settings/document.ts';
+export { compileSettingsCatalog } from '../features/settings/validation.ts';
+
+export { createWindowPackCatalog, type WindowPackCatalogIO } from './pack-catalog.ts';
+export type { PackCatalogFrame, PackCatalogSnapshot } from '../packs/catalog.ts';
+
+export type { FrontendAdmission } from './frontend-admission.ts';

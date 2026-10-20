@@ -41,6 +41,7 @@
       <component
         :is="componentMap[generalNavItem]"
         :settings="currentSettings"
+        v-bind="generalNavItem === 'personal' ? { saveSetting: handleUpdateSetting } : {}"
         @update-setting="handleUpdateSetting"
       />
 
@@ -69,30 +70,29 @@ import Secrets from '../components/GeneralSettings/Secrets.vue'
 import App from '../components/GeneralSettings/App.vue'
 import Projects from '../components/GeneralSettings/Projects.vue'
 import SettingsJsonEditor from '../components/GeneralSettings/SettingsJsonEditor.vue'
-import { usePlugin } from '@apackdev/sdk/fe'
+import { useAppSettings, usePlugin } from '@apackdev/sdk/fe'
 import { useSettingsSaveStatus } from '@/views/settings/save'
 import type { SettingsState } from '@apackdev/host/fe'
-import type { GeneralSection} from '@/views/settings/types'
 import type { SettingUpdate } from '@apackdev/sdk/fe'
 
 const actor: SettingsState = usePlugin()
 
 const generalNavItem = useSelector(actor, (state) => state.context.generalNavItem)
-const settings = useSelector(actor, (state) => state.context.settings)
+const appSettings = useAppSettings()
 
 // Use the settings save status composable
 const { saveStatus, problems, updateSettings } = useSettingsSaveStatus()
 
 // Compute current settings based on selected nav item
 const currentSettings = computed(() => {
-  // The one place this view says what it draws of a section the host stores opaquely
-  const general = settings.value?.general as GeneralSection | undefined
-  if (!general) return null
+  // App forms share the public host contract.
+  const app = appSettings.value
+  if (!app) return null
 
   const settingsMap = {
-    personal: general.personal,
-    projects: general.projects,
-    application: general.application
+    personal: app.personal,
+    projects: app.projects,
+    application: { hotkeys: app.hotkeys }
   }
 
   return settingsMap[generalNavItem.value as keyof typeof settingsMap]
@@ -138,15 +138,15 @@ const handleUpdateSetting = (event: SettingUpdate) => {
   if (!backendLabel) {
     console.error(`[GeneralTab] Invalid generalNavItem value: "${generalNavItem.value}". Expected one of: ${Object.keys(labelMap).join(', ')}`)
     console.error('[GeneralTab] Skipping settings update to prevent data corruption')
-    return
+    return Promise.resolve({ status: 'refused' as const, problems: ['This settings form is no longer selected.'] })
   }
 
-  // The nav item is a key inside the `general` section, so it leads the path rather than naming the target
-  updateSettings({
-    entityType: 'section',
-    label: 'general',
-    path: [backendLabel, ...event.path],
-    value: event.value
+  // Application displays the hotkeys form; personal and projects select their app fields.
+  return updateSettings({
+    target: { kind: 'app' },
+    path: backendLabel === 'application' ? event.path : [backendLabel, ...event.path],
+    value: event.value,
+    condition: event.condition
   })
 }
 </script>

@@ -51,15 +51,15 @@ import { TIMEOUT_MS, timedOutBecause } from './lib/step-timeouts.ts';
 exitOnEpipe();
 
 /**
- * What of the machine the builds may take: all of it, because the chain admits this step against the rest
- * of the budget and nothing inside it needs holding back.
+ * An explicit --cores wins; otherwise inherit the chain's budget, or use the box for a standalone build.
+ * A child build must not reset the parent's allocation to the machine's full core count.
  *
  * No leg declares a weight, so each counts as one and a budget of the box runs all four — which is why
  * this shares the chain's scheduler and its one unit rather than counting legs of its own. `box()` rather
  * than `os.cpus().length`, which reads the host's cores where this wants a container's quota.
  */
 const budgetFrom = (cores: string | undefined): number =>
-  asCount(cores, 'cores') ?? Math.max(2, box());
+  asCount(cores ?? process.env.APACK_CHAIN_CORES, 'cores') ?? Math.max(2, box());
 
 const secs = (ms: number) => `${(ms / 1000).toFixed(1)}s`;
 
@@ -77,7 +77,11 @@ const result = await schedule({
     const [command, ...args] = leg.command.split(' ');
     // Not `leg.seconds`: a deadline from a measurement is a deadline from this machine. The class is
     // `BUILD_TIMEOUT`, declared beside the legs so the chain's copy of this step reads the same one.
-    const outcome = await boundedSpawn(command!, args, TIMEOUT_MS[BUILD_TIMEOUT].ms);
+    const env = leg.heapMb === undefined ? process.env : {
+      ...process.env,
+      NODE_OPTIONS: [process.env.NODE_OPTIONS, `--max-old-space-size=${leg.heapMb}`].filter(Boolean).join(' '),
+    };
+    const outcome = await boundedSpawn(command!, args, TIMEOUT_MS[BUILD_TIMEOUT].ms, { env });
     done.set(leg.name, outcome);
     // One line as each finishes, so four concurrent bundlers are not one silence. Completion order, since
     // that is what progress is; the failures below are in declared order, which is what reading wants.

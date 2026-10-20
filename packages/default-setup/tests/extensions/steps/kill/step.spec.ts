@@ -1,15 +1,8 @@
-/**
- * The kill step, which had no test of any kind while `onboarding-flow.ts` shipped it to every user: two
- * `kill()` calls end that flow, so whether it stops the flow is the thing the onboarding run depends on.
- */
+// The kill step ends a running flow and must stop subsequent steps.
 import { describe, expect, it } from 'vitest'
 import { importFlows, startApp, type FlowRun } from '@apackdev/testing/harness'
 import { kill, on, transform } from '#generated/flow-helpers.ts'
-import { killStepBuild } from '#extensions/steps/kill/build.ts'
-
-const { compile, getLabel } = killStepBuild
-// `decompile` is optional on the facet; kill declares one, and these cases are what says so
-const decompile = killStepBuild.decompile!
+import { compile, getLabel, decompile } from '#extensions/steps/kill/build.ts'
 
 const run = async (label: string, steps: unknown[]): Promise<FlowRun> => {
   importFlows({ [label]: { root: true, tracks: [on('go', [steps as never])] } })

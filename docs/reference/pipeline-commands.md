@@ -4,6 +4,12 @@ The root `CLAUDE.md` has each command's purpose and its flag *names* — enough 
 rest: what a flag replaced, what was measured to choose it, and which cheaper thing was tried and did not
 work. Read it when you are about to change one of these commands, or when a flag's behaviour surprises you.
 
+Each pool uses the aggregate deadline declared by its owning chain step. Complete compiler/runtime
+integration uses `acceptance`; ordinary unit pools retain `suite`. The strict workflow's envelope also
+includes preparation and app checks. Individual test, operation, event and cleanup limits remain
+independent. [Timeout classes](../../scripts/lib/step-timeouts.ts) own the allowances; diagnostic batch
+cutoffs do not change them or establish a normal acceptance result.
+
 It is here rather than there because the guide is loaded into every session and this is consulted when
 someone reaches for a flag. Moving it was not a judgement that it stopped mattering: 1,095 lines of guide
 was 75% two sections, and a lesson's rule belongs in the guide while its evidence belongs here.
@@ -73,9 +79,10 @@ npm run chain            # Before a merge: every check in dependency order, cold
                          #             median 202.8s and a ten-core budget 169.4s with half the spread.
                          #             `--cores 1` is serial, which is what `--lanes 1` was for. It caps
                          #             what to spend of *this* box rather than describing a box of N: the
-                         #             widths stay machine-sized, so a value above the box is deliberate
-                         #             oversubscription and one below it is a cap a wide step cannot fit
-                         #             inside, where it runs alone
+                         #             declared widths stay machine-sized. Vitest pools additionally cap
+                         #             their actual workers at N, including minimum-worker overrides;
+                         #             both cache layers record the actual worker configuration. A value
+                         #             above the box does not raise an individual pool's configured width
                          #   --e2e     run the E2E suite with the chain, ordered after test:smoke
                          #   --no-classify  a step failing while the machine is busy is re-run alone, to
                          #             rule the code out — a pass there rules out nothing else, so the line
@@ -215,7 +222,7 @@ npm run spec -- <target> # You don't say what the target is; it works that out:
 ## Test commands
 
 - `npm test` builds the default pack and app runtime, then runs all unit tests, all integration tests, app E2E, external-pack checks and packaged-authoring checks. It stops at the first failure and does not use test-result caches.
-- `npm run test:e2e -- <filter>` runs app E2E against existing app artifacts. The full suite already includes smoke tests.
+- `npm run test:e2e -- <filter>` runs app E2E against existing app builds. The full suite already includes smoke tests.
 - `npm run chain` validates changed inputs with caching, builds, static checks and selected tests. `--e2e` adds the full app E2E suite.
 - `npm run spec -- <target>` runs focused tests during development.
 

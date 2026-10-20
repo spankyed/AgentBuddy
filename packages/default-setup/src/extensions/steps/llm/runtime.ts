@@ -4,7 +4,7 @@ import { EARS } from '@apackdev/sdk';
 import { repository } from '#generated/repository.ts';
 import { createLogger, reportError } from '@apackdev/sdk/logger';
 import { executeTemplate, createTemplateResolver } from '@apackdev/sdk/templates';
-import { services } from '@apackdev/sdk/services';
+import { services } from '#generated/services.ts';
 import { isModelId } from '@apackdev/sdk/models';
 import { DEFAULT_MODEL } from './model.ts';
 

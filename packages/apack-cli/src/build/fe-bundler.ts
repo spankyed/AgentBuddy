@@ -1,3 +1,4 @@
+import { compilerEnvironmentIdentity } from './compiler-environment.ts';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { createRequire } from 'node:module';
@@ -5,7 +6,14 @@ import { pathToFileURL } from 'node:url';
 import type { InlineConfig, Plugin as VitePlugin } from 'vite';
 import { getSharedFeDeps, unresolvedSubpathPackages, getSdkFeModules, getUiFeModules, sharedFeModules, sharedInstancePackage } from '@apackdev/host/build/shared-deps';
 import type { RecordReads } from './build-reads';
+import type { RecordBuildOutput } from './build-outputs.ts';
 import { errorMessage } from '@apackdev/sdk/utils/pure';
+import type { BuildWatchInputs } from './build-watch-inputs.ts';
+import { globWatchPlugin } from './glob-watch.ts';
+import type { CompilationInputs } from './compilation-inputs.ts';
+import { relativeCompilerPath, withCompilerFileReads } from '@apackdev/host/build/compiler-inputs';
+import { findPackageDirectory } from '@apackdev/host/build/package-inputs';
+import { parseNodeOptions, withoutSourceCondition } from '@apackdev/host/build/source-resolution';
 
 /**
  * The package names the pack declares opaque to the bundler (`build.opaqueDeps`). Unreadable is an error
@@ -105,11 +113,7 @@ function uiTailwindContent(packDir: string): string[] {
 
 /** A pack's @apackdev/ui, which is what depends on tiptap and may hold its own nested copy */
 function uiPackageDir(packDir: string): string | undefined {
-  try {
-    return path.dirname(fs.realpathSync(createRequire(path.join(packDir, 'package.json')).resolve('@apackdev/ui/package.json')));
-  } catch {
-    return undefined;
-  }
+  return findPackageDirectory(packDir, '@apackdev/ui')?.directory;
 }
 
 /**
@@ -361,35 +365,61 @@ export async function packDevServerConfig(root: string, feEntry: string): Promis
         },
       },
     ],
-    server: { port: 5199, strictPort: false, cors: true, hmr: { protocol: 'ws', host: 'localhost' } },
+    server: {
+      port: 5199, strictPort: false, cors: true, hmr: { protocol: 'ws', host: 'localhost' },
+      // Scanning private build candidates can prevent their publication on Windows.
+      watch: { ignored: file => relativeCompilerPath(root, file).split(path.sep)[0] === '.apack' },
+    },
     logLevel: 'info',
     optimizeDeps: { exclude: packSharedSpecifiers(root) },
   };
+}
+
+/** Startup configuration only: ordinary source edits stay in Vite's live module graph. */
+export function readPackDevServerInputs(root: string): string {
+  const manifest = fs.readFileSync(path.join(root, 'apack.json'), 'utf8');
+  const metadata = [path.join(root, 'package.json')];
+  const packages = new Set(Object.keys(getSdkFeModules()).flatMap(specifier => sharedInstancePackage(specifier) ?? []));
+  packages.add('@apackdev/ui');
+  for (const name of packages) {
+    const directory = findPackageDirectory(root, name)?.directory;
+    if (directory) metadata.push(path.join(directory, 'package.json'));
+  }
+  const directories = sharedResolveDirs(root);
+  return JSON.stringify([manifest, findFEEntry(root), directories, sharedFeModules(...directories), compilerEnvironmentIdentity(),
+    parseNodeOptions(withoutSourceCondition(process.env.NODE_OPTIONS)),
+    metadata.map(file => [file, fs.existsSync(file) ? fs.readFileSync(file, 'utf8') : null])]);
 }
 
 export interface BundleFEOptions {
   packDir: string;
   outputDir: string;
   entryPoint: string;
+  /** Use the build's captured file and namespace reads. */
+  compilation?: CompilationInputs;
   /** Minified, no source maps (release bundles). */
   release?: boolean;
   /** Where this bundle reports the files it read, for the build's record of its inputs */
   recordReads?: RecordReads;
+  /** Expected emitted/copied bytes, retained by the build until sealing. */
+  recordOutput?: RecordBuildOutput;
+  /** Live subscriptions for the worker's parent, independent of optional diagnostic recording. */
+  onInputs?: (inputs: BuildWatchInputs) => void | Promise<void>;
 }
 
-/**
- * Reports the module graph this bundle resolved — Rollup's own answer to what it read, which is the same
- * thing esbuild's `metafile.inputs` is for the backend bundles.
- *
- * Its own plugin rather than a hook on `packExternalsPlugin`, because it shares nothing with that plugin's
- * subject: what is external here is exactly what is *not* read, and the two would only ever be edited
- * apart. `buildEnd` is where the graph is complete and nothing has been written yet.
+/** Current compiler watch files include stylesheet and asset dependencies as well as modules.
+ * Diagnostics and live worker subscriptions consume the same observations before publication.
  */
-function recordReadsPlugin(record: RecordReads, version: string): VitePlugin {
+function inputReportPlugin(options: BundleFEOptions, directories: Set<string>, version: string, observedFiles: Set<string>): VitePlugin {
   return {
-    name: 'record-reads',
-    buildEnd() {
-      record({ bundler: 'vite', version, files: this.getModuleIds() });
+    name: 'report-build-inputs',
+    async buildEnd(error) {
+      for (const file of this.getWatchFiles()) observedFiles.add(file);
+      const files = [...observedFiles];
+      options.recordReads?.({ bundler: 'vite', version, files });
+      if (options.onInputs) await options.onInputs({ files: [...new Set(files.filter(file => !file.includes('\0'))
+        .map(file => path.resolve(options.packDir, fs.existsSync(file) ? file : file.replace(/[?#].*$/, ''))))],
+        directories: [...directories], successful: !error });
     },
   };
 }
@@ -510,7 +540,14 @@ async function tailwindPostcssPlugins(packDir: string): Promise<any[]> {
 }
 
 export async function bundlePackFE(options: BundleFEOptions): Promise<{ success: boolean; error?: string }> {
-  const { packDir, outputDir, entryPoint, release = false, recordReads } = options;
+  const bundle = () => bundleFrontend(options);
+  return options.compilation
+    ? withCompilerFileReads({ compilation: options.compilation, outputDirectory: options.outputDir }, bundle)
+    : bundle();
+}
+
+async function bundleFrontend(options: BundleFEOptions): Promise<{ success: boolean; error?: string }> {
+  const { packDir, outputDir, entryPoint, release = false, recordReads, compilation } = options;
 
   const vite = await import('vite');
   const vue = (await import('@vitejs/plugin-vue')).default;
@@ -525,6 +562,23 @@ export async function bundlePackFE(options: BundleFEOptions): Promise<{ success:
   // Inject @tailwind utilities so Tailwind generates classes found in templates. Vite's module ids
   // are real paths (a pack under a symlinked dir, like macOS's /var, has others)
   const entryFile = fs.realpathSync(path.resolve(packDir, entryPoint));
+  const directories = new Set<string>();
+  // Workers compile in separate Rollup builds. The final report must retain their inputs too.
+  const observedFiles = new Set<string>();
+  const inputPlugins = () => [
+    ...((recordReads || options.onInputs) ? [inputReportPlugin(options, directories, vite.version, observedFiles)] : []),
+    ...(options.onInputs ? [globWatchPlugin(packDir, directories)] : []),
+  ];
+  if (options.onInputs) postcssPlugins.push({
+    postcssPlugin: 'apack-watch-inputs',
+    OnceExit(_root: unknown, { result }: { result: { opts: { from?: string }; messages: Record<string, unknown>[] } }) {
+      for (const message of result.messages) {
+        if (message.type === 'dir-dependency' && typeof message.dir === 'string') {
+          directories.add(path.resolve(path.dirname(result.opts.from ?? entryFile), message.dir));
+        }
+      }
+    },
+  });
   const tailwindInjectPlugin: VitePlugin = {
     name: 'tailwind-inject',
     resolveId(id) { if (id === 'virtual:tailwind-utils.css') return '\0virtual:tailwind-utils.css'; },
@@ -538,8 +592,10 @@ export async function bundlePackFE(options: BundleFEOptions): Promise<{ success:
 
   try {
     const opaque = opaqueDeps(packDir);
-    await vite.build({
+    const publicDir = compilation?.readTree().path(path.join(packDir, 'public'));
+    const built = await vite.build({
       root: packDir,
+      publicDir,
       configFile: false,
       plugins: [
         {
@@ -555,10 +611,34 @@ export async function bundlePackFE(options: BundleFEOptions): Promise<{ success:
         },
         tailwindInjectPlugin,
         packExternalsPlugin(packDir),
-        ...(recordReads ? [recordReadsPlugin(recordReads, vite.version)] : []),
         ...(opaque.length > 0 ? [opaqueVendorPlugin(opaque)] : []),
         vue(),
+        ...inputPlugins(),
+        ...(compilation || options.recordOutput ? [{
+          name: 'captured-public-files',
+          generateBundle() {
+            // Vite has copied public files before generation; owned inputs are read-only.
+            const publicFiles = publicDir ?? path.join(packDir, 'public');
+            const capturePublic = (directory: string) => {
+              if (!fs.existsSync(directory)) return;
+              for (const name of fs.readdirSync(directory)) {
+                const file = path.join(directory, name);
+                if (fs.statSync(file).isDirectory()) capturePublic(file);
+                else {
+                  const target = path.join(outputDir, path.relative(publicFiles, file));
+                  options.recordOutput?.(target, fs.readFileSync(file));
+                  if (compilation) {
+                    const stat = compilation.readMetadata('stat', compilation.sourcePath(file), []) as fs.Stats;
+                    fs.chmodSync(target, stat.mode);
+                  }
+                }
+              }
+            };
+            capturePublic(publicFiles);
+          },
+        }] : []),
       ],
+      worker: { plugins: inputPlugins },
       css: {
         postcss: { plugins: postcssPlugins },
       },
@@ -597,11 +677,16 @@ export async function bundlePackFE(options: BundleFEOptions): Promise<{ success:
       },
       logLevel: 'warn',
     });
+    for (const output of Array.isArray(built) ? built : [built]) {
+      if (!('output' in output)) throw new Error('Frontend build did not return its written output');
+      for (const file of output.output) options.recordOutput?.(path.join(outputDir, file.fileName),
+        file.type === 'chunk' ? file.code : file.source);
+    }
     return { success: true };
   } catch (err) {
     return {
       success: false,
-      error: errorMessage(err),
+      error: compilation?.diagnostic(errorMessage(err)) ?? errorMessage(err),
     };
   }
 }

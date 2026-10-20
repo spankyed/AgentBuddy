@@ -7,13 +7,14 @@ import { describe, expect, it } from 'vitest';
 
 const SRC = path.resolve(import.meta.dirname, '../../src');
 const SCANNED = ['build', 'content'];
+const DECLARATION_SCHEMA = 'framework/declaration-schema.ts';
 
 /** Library, notes and FAQ entity types, their shapes, compiled content formats, repositories and content keys */
 const FORBIDDEN = /\b(Document|Collection|Note|Symlink|FAQ|DocumentEntity|CollectionEntity|NoteEntity|ContentSection|FieldContent|ListContent|MarkdownContent|TextContent|CodeContent|DocumentShortCode|Exported(Item|Document|Collection|Symlink|Library|Note|Notes)|CompiledFAQ|library(Commands|Queries)|note(Commands|Queries)|(compile|import)(Library|Notes|Faq)\w*|create(Library|Notes)ContentApplier|parseMarkdownSections|library|notes|faqs?)\b/gi;
 
 /** `file:line` substrings that name one of them for another reason */
 const ALLOWED: Record<string, string> = {
-  'build/manifest-schema.ts:(e.g. "notes", "calendarEvents")': 'an example feature id',
+  'framework/declaration-schema.ts:(e.g. "notes", "calendarEvents")': 'an example feature id',
 };
 
 function sourceFiles(dir: string): string[] {
@@ -25,7 +26,7 @@ function sourceFiles(dir: string): string[] {
 
 function findPackContentSpecifics(root: string = SRC): string[] {
   const found: string[] = [];
-  for (const file of SCANNED.flatMap((dir) => sourceFiles(path.join(root, dir)))) {
+  for (const file of [...SCANNED.flatMap((dir) => sourceFiles(path.join(root, dir))), path.join(root, DECLARATION_SCHEMA)]) {
     const relative = path.relative(root, file).split(path.sep).join('/');
     fs.readFileSync(file, 'utf-8').split('\n').forEach((line, index) => {
       if (!FORBIDDEN.test(line)) return;

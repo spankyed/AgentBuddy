@@ -32,7 +32,7 @@ const idsOf = (packagesRoot: string, extra?: string, cwd = tmp) =>
 describe('the packs a dev server serves from source', () => {
   it('takes a pack whether or not it is one the app ships', () => {
     const packages = path.join(tmp, 'packages');
-    writePack(packages, 'shipped', true, { builtIn: true });
+    writePack(packages, 'shipped', true);
     writePack(packages, 'installed', true);
 
     expect(idsOf(packages).sort()).toEqual(['installed', 'shipped']);

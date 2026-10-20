@@ -60,7 +60,9 @@ import { computed } from 'vue';
 import type { EventListenerEntity } from '#generated/types.ts';
 import { Radio } from 'lucide-vue-next';
 import { cronToHuman } from '@apackdev/sdk/cron';
-import { stepRegistry } from '@apackdev/sdk/steps';
+import { useNodeStyles } from '@apackdev/ui/components/node-styles';
+
+const { getNodeConfig } = useNodeStyles();
 
 interface Props {
   events: EventListenerEntity[];
@@ -93,11 +95,11 @@ const COLOR_ANIMATIONS: Record<string, {
 };
 
 function getTriggerTheme(triggerType: string) {
-  const fe = stepRegistry.getFE(triggerType);
-  const colorKey = fe?.colorKey || 'blue';
+  const config = getNodeConfig(triggerType);
+  const colorKey = config?.colorKey || 'blue';
   return {
     ...(COLOR_ANIMATIONS[colorKey] || COLOR_ANIMATIONS.blue),
-    icon: fe?.nodeConfig?.icon || Radio,
+    icon: config?.icon || Radio,
   };
 }
 
@@ -116,7 +118,7 @@ const displayEvents = computed(() =>
         : event.eventType,
       kindLabel: triggerType === 'listener'
         ? event.scope
-        : (stepRegistry.getNode(triggerType)?.label || triggerType),
+        : (getNodeConfig(triggerType)?.label || triggerType),
       iconClass: active ? theme.activeIconClass : theme.idleIconClass,
       iconBgClass: active ? theme.activeBgClass : theme.idleBgClass,
     };

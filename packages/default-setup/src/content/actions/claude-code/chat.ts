@@ -14,7 +14,7 @@
  * `mode === 'Claude Code'`.
  */
 
-import type { GeneralSettings } from '#app-settings/types.ts';
+import type { AppSettings } from '@apackdev/sdk/types';
 import type { ActionMeta } from '@apackdev/sdk/build';
 import type { Services, Z, EntityId } from '#generated/services.ts';
 import { createStreamWriter } from './_helpers/stream-writer.ts';
@@ -226,10 +226,10 @@ export async function action(
   const cwdOverride = params.cwdOverride as string | undefined;
   const forceDirectoryPicker = params.forceDirectoryPicker as boolean | undefined;
 
-  const codeSettings = services.settings.forFeature('default-setup/code') as any;
+  const codeSettings = services.settings.get({ kind: 'feature', featureRef: 'default-setup/code' }) as any;
   const hasCwd = codeSettings?.defaultBaseDirectory || codeSettings?.baseDirectory || prior?.cwd;
   if (forceDirectoryPicker || (!hasCwd && !cwdOverride)) {
-    const projects = services.settings.getSection<GeneralSettings>('general').projects;
+    const projects = services.settings.get<AppSettings>({ kind: 'app' }).projects;
     const blocks: any[] = [
       { type: 'prompt', props: { content: 'Select a project directory' } },
     ];

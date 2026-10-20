@@ -4,11 +4,12 @@ import { createLogger } from '@apackdev/sdk/logger';
 import { resolveAppEnvironment, getAppVersion } from '@apackdev/sdk/env';
 import { packSystemIds, type PackRegistry } from '../registry.ts';
 import { installShippedPacks } from '../installer.ts';
+import { disabledPackIds } from '../installed.ts';
 import { PACK_SNAPSHOT_FORMAT } from '@apackdev/sdk/build';
-import type { PackManifest } from '../discovery.ts';
 import { loadSingleExternalPack, clearPackRequireCache, registerExternalPacks } from './loader.ts';
 import { runPackMigrations } from '../../migrations/index.ts';
 import { applyPacks } from './apply.ts';
+import { acceptInstalledPack, replacePackRuntime } from './lifecycle.ts';
 
 const logger = createLogger('pack-reload');
 
@@ -16,10 +17,9 @@ const logger = createLogger('pack-reload');
 interface FreshPack {
   newSystemIds: string[];
   /** Registers the fresh runtime; throws when the registration is refused */
-  register(): void;
+  register(replacing: boolean): void;
   onShutdown?: () => void;
-  onInit?: () => void;
-  afterRegister?: () => void;
+  initialize(): void;
 }
 
 /**
@@ -35,9 +35,6 @@ async function reloadPack(
   cacheDir: string,
 ): Promise<void> {
   const previous = registry.getPackRegistration(packId);
-  // Restored with the registration if the fresh one is refused: without it the registry forgets where the pack came
-  // from, and a built-in pack's next reload can't find it
-  const previousOrigin = registry.packOrigin(packId) ?? undefined;
   const oldSystemIds = previous ? packSystemIds(previous) : [];
 
   logger.info(`Reloading pack: ${packId}`);
@@ -46,26 +43,19 @@ async function reloadPack(
   clearPackRequireCache(cacheDir);
   const fresh = loadFresh();
 
-  if (previous) registry.unregisterPack(packId);
-  else logger.info(`Pack ${packId} was not previously registered`);
-  try {
-    fresh.register();
-  } catch (err) {
-    if (previous) registry.registerPack(previous, previousOrigin);
-    throw err;
-  }
+  // Candidate refusal leaves the incumbent's accepted resources untouched.
+  fresh.register(!!previous);
 
   registry.runShutdownHooksForKey(packId);
   if (fresh.onShutdown) {
     registry.registerShutdownHook(fresh.onShutdown, packId);
   }
-  fresh.onInit?.();
   // Side work once the swap is done (applying content, publishing build output, the loaded-pack list). By here the old
   // registration is gone and its shutdown hooks have run, so the systems must be restarted whatever this
   // does: a throw that escaped would leave the fresh registration live, the old actors running but already
   // torn down, and nothing ever stopped or respawned.
   try {
-    fresh.afterRegister?.();
+    fresh.initialize();
   } catch (err) {
     logger.error(`Pack ${packId} reloaded, but the work after registering it failed:`, err as Error);
   }
@@ -97,23 +87,37 @@ export async function reloadPackById(
   const { packsDir } = resolveAppEnvironment();
   const packDir = path.join(packsDir, packId);
 
-  // A pack the app ships is rebuilt in the checkout and loaded from `packsDir`, so the rebuild reaches the
-  // app only once the installed copy carries it. `installShippedPacks` is the same comparison the boot
-  // makes and writes nothing when the two agree, so asking here costs a pack's worth of hashing on a
-  // reload that changed nothing — and a reload of any other pack matches no shipped id and does nothing.
-  // Without it `apack pack build --watch` rebuilds and the app re-requires the copy from before the edit.
+  // Refresh app-managed copies when the shipped source changes; user-owned forks stay in place.
+  // Acceptance couples filesystem/record rollback with registration before post-publication startup.
   const shippedDir = process.env.SHIPPED_PACKS_DIR;
+  let startInstalled: (() => boolean) | undefined;
   if (shippedDir) {
     for (const result of await installShippedPacks(shippedDir, packsDir, {
+      installedPacksFile: resolveAppEnvironment().installedPacksFile,
       only: packId,
+      beforePlace: manifest => registry.catalog.assertPackSettings(manifest),
       hostVersion: getAppVersion(),
       packFormat: PACK_SNAPSHOT_FORMAT,
+      accept: candidate => {
+        if (!disabledPackIds().has(candidate.id)) startInstalled = acceptInstalledPack(registry, candidate.id, backendActor);
+      },
     })) {
       // The author's edit is the point of the reload, so a refresh that failed is the answer rather than a
       // note beside a reload of the previous build
       if (result.outcome === 'failed') throw new Error(`Could not refresh the installed copy of ${packId}, which this app ships: ${result.error}`);
-      if (result.outcome !== 'current') logger.info(`Refreshed the installed copy of ${packId} from ${shippedDir}`);
+      if (result.outcome === 'installed' || result.outcome === 'updated') logger.info(`Refreshed the installed copy of ${packId} from ${shippedDir}`);
     }
+  }
+
+  if (disabledPackIds().has(packId)) {
+    registry.refreshCatalog(packsDir);
+    backendActor.send({ type: 'PACK_CHANGED', packId });
+    return;
+  }
+
+  if (startInstalled) {
+    if (!startInstalled()) throw new Error(`Accepted ${packId}, but ${registry.loadProblem(packId)}`);
+    return;
   }
 
   if (!fs.existsSync(packDir)) {
@@ -126,8 +130,7 @@ export async function reloadPackById(
   }
 
   await reloadPack(registry, packId, backendActor, () => {
-    const manifest: PackManifest = JSON.parse(fs.readFileSync(manifestPath, 'utf-8'));
-    const pack = loadSingleExternalPack(manifest, packDir);
+    const pack = loadSingleExternalPack(registry, packDir);
     if ('problem' in pack) {
       // A pack still running keeps its previous runtime, so only one that isn't has a load problem to show
       if (!registry.getPackRegistration(packId)) registry.recordLoadProblem(packId, pack.problem);
@@ -135,14 +138,24 @@ export async function reloadPackById(
     }
 
     return {
-      register: () => {
-        // registerExternalPacks logs why a registration was refused
-        if (registerExternalPacks(registry, [pack]).length === 0) throw new Error(`Failed to register pack ${packId}`);
+      register: (replacing) => {
+        if (replacing) {
+          try {
+            for (const problem of replacePackRuntime(registry, pack, backendActor)) {
+              logger.error(`Pack ${packId} replaced, but old binding cleanup failed: ${problem}`);
+            }
+          } catch (error) {
+            throw new Error(`Failed to register pack ${packId}`, { cause: error });
+          }
+        } else if (registerExternalPacks(registry, [pack]).length === 0) {
+          throw new Error(`Failed to register pack ${packId}`);
+        }
       },
       newSystemIds: packSystemIds(pack.registration),
-      onShutdown: pack.registration.boot?.onShutdown,
-      onInit: pack.registration.boot?.onInit,
-      afterRegister: () => {
+      onShutdown: pack.registration.lifecycle?.onShutdown,
+      initialize: () => {
+        registry.refreshCatalog(packsDir);
+        pack.registration.lifecycle?.onInit?.();
         runPackMigrations(registry.packMigrationTargets('pack', [packId]));
         applyPacks(registry.packContentTargets([packId]));
       },

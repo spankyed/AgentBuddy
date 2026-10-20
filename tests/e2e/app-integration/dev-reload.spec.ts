@@ -6,8 +6,10 @@ import * as path from 'node:path';
 import type { Page } from '@playwright/test';
 import { API_TOKEN_HEADER } from '@apackdev/sdk/utils/pure';
 import { test, expect } from '@apackdev/testing';
+import { PACK_LAYOUT, readPackBuild, sealPackBuild } from '@apackdev/host/packs';
 
-const CONTENT_FILE = path.resolve(import.meta.dirname, '../../../packages/default-setup/dist/runtime/content/library.content.json');
+const DIST = path.resolve(import.meta.dirname, '../../../packages/default-setup/dist');
+const CONTENT_FILE = path.join(DIST, 'runtime/content/library.content.json');
 const WRITTEN_DOCUMENT = 'Codex commands';
 const REBUILT_DOCUMENT = 'Codex commands after a rebuild';
 
@@ -38,10 +40,10 @@ function renameWrittenDocument(records: LibraryRecord[], from: string, to: strin
  * Playwright timeout rejects the test without unwinding it, and a `finally` left unrun would leave the
  * renamed document on disk, failing every later run on its first assertion. A hook runs either way.
  */
-let originalContentFile: Buffer | undefined;
+const originalFiles = new Map<string, Buffer>();
 test.afterEach(() => {
-  if (originalContentFile) fs.writeFileSync(CONTENT_FILE, originalContentFile);
-  originalContentFile = undefined;
+  for (const [file, bytes] of originalFiles) fs.writeFileSync(file, bytes);
+  originalFiles.clear();
 });
 
 test('a rebuilt built-in pack reloads with the content the rebuild changed', async ({ app, appPage }) => {
@@ -52,13 +54,21 @@ test('a rebuilt built-in pack reloads with the content the rebuild changed', asy
   expect(apiPort, 'the renderer knows the API port').toBeTruthy();
   expect(apiToken, 'the renderer knows the API token').toBeTruthy();
 
+  await app.waitForPlugin('default-setup/library');
   await app.navigate('default-setup/library');
   await expect.poll(() => libraryDocuments(appPage)).toContain(WRITTEN_DOCUMENT);
 
-  originalContentFile = fs.readFileSync(CONTENT_FILE);
-  const content = JSON.parse(originalContentFile.toString()) as { records: LibraryRecord[] };
+  const build = readPackBuild(DIST);
+  for (const file of [CONTENT_FILE, path.join(DIST, PACK_LAYOUT.integrity), path.join(DIST, PACK_LAYOUT.manifest)]) {
+    originalFiles.set(file, fs.readFileSync(file));
+  }
+  const content = JSON.parse(originalFiles.get(CONTENT_FILE)!.toString()) as { records: LibraryRecord[] };
   expect(renameWrittenDocument(content.records, WRITTEN_DOCUMENT, REBUILT_DOCUMENT), `${CONTENT_FILE} holds "${WRITTEN_DOCUMENT}"`).toBe(true);
   fs.writeFileSync(CONTENT_FILE, JSON.stringify(content, null, 2));
+  // Model completed output: a real build seals its changed content before reload can admit it.
+  // Preserve the authored declaration and its key order; the parsed snapshot is normalized.
+  const manifest = JSON.parse(originalFiles.get(path.join(DIST, PACK_LAYOUT.manifest))!.toString());
+  sealPackBuild(DIST, manifest, build.integrity.sdkVersion);
 
   const response = await fetch(`http://127.0.0.1:${apiPort}/dev/reload`, {
     method: 'POST',

@@ -18,7 +18,7 @@ describe("a pack's E2E config", () => {
       testDir: 'tests/e2e',
       timeout: 60_000,
       workers: 1,
-      outputDir: 'tests/results',
+      outputDir: '.apack/tests/results',
     });
   });
 
@@ -43,7 +43,7 @@ describe('a driving config', () => {
       testMatch: '**/*.ts',
       workers: 1,
       timeout: 0,
-      outputDir: 'results',
+      outputDir: '../.apack/drive/results',
     });
   });
 

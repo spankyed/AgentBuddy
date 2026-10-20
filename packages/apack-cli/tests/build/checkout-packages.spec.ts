@@ -3,13 +3,35 @@
 import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
-import { afterEach, describe, expect, it } from 'vitest';
-import { checkoutFor } from '../../src/build/checkout-packages';
-import { REPO_ROOT } from '@apackdev/host/build/packages-built';
+import { afterEach, describe, expect, it, vi } from 'vitest';
+import { checkoutFor, ensureCheckoutPackages } from '../../src/build/checkout-packages';
+import { CHECKOUT_MARKER, REPO_ROOT } from '@apackdev/host/build/packages-built';
 
 const tmpDirs: string[] = [];
 afterEach(() => {
+  vi.unstubAllEnvs();
   for (const dir of tmpDirs.splice(0)) fs.rmSync(dir, { recursive: true, force: true });
+});
+
+it('scopes a selected compiler binary to the pack rather than checkout setup', () => {
+  const dir = pack('none');
+  const checkout = path.join(dir, 'checkout');
+  const sdk = path.join(checkout, 'packages/sdk');
+  fs.mkdirSync(sdk, { recursive: true });
+  fs.writeFileSync(path.join(sdk, 'package.json'), JSON.stringify({ name: '@apackdev/sdk' }));
+  fs.mkdirSync(path.dirname(path.join(checkout, CHECKOUT_MARKER)), { recursive: true });
+  fs.writeFileSync(path.join(checkout, CHECKOUT_MARKER), '');
+  fs.writeFileSync(path.join(checkout, 'package.json'), JSON.stringify({ scripts: {
+    'packages:ensure': `node -e "require('node:fs').writeFileSync('environment.json', JSON.stringify({binary:process.env.ESBUILD_BINARY_PATH, marker:process.env.APACK_TEST_BOOTSTRAP_MARKER}))"`,
+  } }));
+  const modules = path.join(dir, 'node_modules/@apackdev');
+  fs.mkdirSync(modules, { recursive: true });
+  fs.symlinkSync(sdk, path.join(modules, 'sdk'), 'dir');
+  vi.stubEnv('ESBUILD_BINARY_PATH', 'selected-pack-binary');
+  vi.stubEnv('APACK_TEST_BOOTSTRAP_MARKER', 'preserved');
+  ensureCheckoutPackages(dir, 'pipe');
+  expect(JSON.parse(fs.readFileSync(path.join(checkout, 'environment.json'), 'utf8'))).toEqual({ marker: 'preserved' });
+  expect(process.env.ESBUILD_BINARY_PATH).toBe('selected-pack-binary');
 });
 
 function pack(link: 'checkout' | 'installed' | 'none'): string {
@@ -45,26 +67,14 @@ describe('the checkout a pack\'s @apackdev packages come from', () => {
 });
 
 /**
- * Which entry points bring a checkout's packages up to date. `apack pack dev` rebuilds the pack on every
- * file change through `build()`, and the freshness check reads every source of all five packages — so
- * the check belongs to the command a user runs, not to the function the watch loop calls.
+ * Test orchestration refreshes directly; builds refresh through the shared builder before capturing
+ * a compiler. pack-builder.spec.ts exercises that ordering with a real captured worker.
  */
 describe('the commands that refresh a checkout before loading its packages', () => {
   const source = (file: string) => fs.readFileSync(path.join(import.meta.dirname, '..', '..', 'src', file), 'utf-8');
 
-  it.each(['commands/test.ts', 'commands/dev.ts', 'commands/build.ts'])('%s asks the checkout to build', (file) => {
-    expect(source(file)).toContain('ensureCheckoutPackages(');
-  });
-
-  it('asks once per apack pack build, not once per rebuild in apack pack dev', () => {
-    const build = source('commands/build.ts');
-    // buildCommand is what the CLI dispatches; build() is what dev's watch loop calls
-    const command = build.indexOf('export async function buildCommand');
-    const reusable = build.indexOf('export async function build(');
-    expect(command).toBeGreaterThan(-1);
-    expect(reusable).toBeGreaterThan(command);
-    expect(build.slice(command, reusable)).toContain('ensureCheckoutPackages(');
-    expect(build.slice(reusable)).not.toContain('ensureCheckoutPackages(');
+  it('refreshes the test command’s checkout', () => {
+    expect(source('commands/test.ts')).toContain('ensureCheckoutPackages(');
   });
 
   it('dispatches apack pack build to the command that refreshes, not to the bare build', () => {

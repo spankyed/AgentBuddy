@@ -21,7 +21,7 @@ export interface ContentMatch {
 
 /**
  * How entities of one type are found, created, updated and removed when content is applied. The pack that
- * owns the entity type declares them (apack.json `contentWriters`), so any pack writing that type goes
+ * owns the entity type declares them (apack.json `content.writers`), so any pack writing that type goes
  * through its repository. Without hooks, the generic applier writes rows directly.
  */
 export interface ContentWriter<R extends ContentItem = ContentItem> {

@@ -1,4 +1,4 @@
-import { settings as featureSettings } from '#generated/settings.ts';
+import { featureSettings } from '#generated/settings.ts';
 
 import { qx } from '#generated/ears.ts';
 import { broadcastToPlugin } from '#generated/events.ts';

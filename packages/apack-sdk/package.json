@@ -216,7 +216,10 @@
     "vite": "^7.0.0",
     "vitest": "^3.2.4",
     "xstate": "^5.19.2",
-    "zod-to-json-schema": "^3.25.0"
+    "zod-to-json-schema": "^3.25.0",
+    "jsdom": "^26.1.0",
+    "@types/semver": "^7.8.0",
+    "vscode-json-languageservice": "^5.7.2"
   },
   "publishConfig": {
     "access": "public",
@@ -224,8 +227,11 @@
   },
   "dependencies": {
     "@apackdev/ears": "^0.1.0",
+    "ajv": "^8.20.0",
+    "json-schema-to-typescript": "^15.0.4",
     "mdast-util-from-markdown": "^2.0.2",
     "mdast-util-to-markdown": "^2.1.2",
+    "semver": "^7.8.5",
     "yaml": "^2.9.1"
   }
 }

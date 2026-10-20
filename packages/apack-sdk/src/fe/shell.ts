@@ -35,6 +35,7 @@ export interface HostShellState {
 
 /** The events frontend code may send the shell */
 export type HostShellEvent =
+  | import('../events/index.ts').OpenEntity
   /**
    * Opens the plugin at a ref and hands its actor `events`. The shell waits for a plugin whose pack's frontend is
    * still loading, and reports a ref no pack provides once loading has settled.

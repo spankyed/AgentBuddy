@@ -1,11 +1,13 @@
 import * as fs from 'node:fs';
+import * as path from 'node:path';
 import { resolveAppEnvironment } from '@apackdev/sdk/env';
 import type { AppEnv } from '@apackdev/sdk/env';
 import { readApiEndpoint } from '@apackdev/host/process-liveness';
 import { API_HOST, API_TOKEN_HEADER, errorMessage } from '@apackdev/sdk/utils/pure';
 
 /**
- * Asking a running app to reload a pack's backend: the `/dev/reload` client, and what one came to.
+ * Asking a running app to install or reload a pack: the `/dev/install` and `/dev/reload` client, and what
+ * one came to.
  *
  * It lives beside the bundlers rather than in `commands/dev`, because two commands ask it — `dev` after
  * reinstalling, and `build --watch` after rebuilding the runtime — and `dev` already imports `build`, so
@@ -44,32 +46,48 @@ function findAppApi(place: AppPlace): { api: { url: string; token: string } } | 
 }
 
 /**
- * What a reload came to. `detail` says which of the several ways it went wrong this was, since they need
+ * What handing a build to the app came to: an install, a reload or a restart. `detail` says which of the several ways it went wrong this was, since they need
  * different things of the author: start the app, look at its logs, or check what is holding the port.
  */
-export type DevReload =
-  | { status: 'reloaded' }
+export type DevDelivery =
+  /** The app has the build running (or installed, for a disabled pack) */
+  | { status: 'delivered' }
+  /** The app already runs this build's backend; Vite serves the rest */
+  | { status: 'current' }
   /** No port or token file to reach an app with */
   | { status: 'not-running'; detail: string }
-  /** The app answered and refused, or couldn't reload */
+  /** The app answered and refused, or couldn't install or reload */
   | { status: 'failed'; detail: string }
   /** Nothing answered on the port the app published */
   | { status: 'unreachable'; detail: string };
 
-/** Asks the running app to reload a pack's runtime, with its API token. */
-export async function reloadPack(packId: string, place: AppPlace = { env: 'development' }): Promise<DevReload> {
+/** Posts one development request to the running app's API, with its token. */
+async function devRequest(endpoint: string, body: object, place: AppPlace): Promise<DevDelivery> {
   const found = findAppApi(place);
   if ('problem' in found) return { status: 'not-running', detail: found.problem };
   try {
-    const res = await fetch(`${found.api.url}/dev/reload`, {
+    const res = await fetch(`${found.api.url}${endpoint}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', [API_TOKEN_HEADER]: found.api.token },
-      body: JSON.stringify({ packId }),
+      body: JSON.stringify(body),
     });
-    if (res.ok) return { status: 'reloaded' };
-    const body = await res.text().catch(() => '');
-    return { status: 'failed', detail: `${res.status} ${res.statusText}${body.trim() ? `: ${body.trim()}` : ''}` };
+    if (res.ok) return { status: 'delivered' };
+    const text = await res.text().catch(() => '');
+    return { status: 'failed', detail: `${res.status} ${res.statusText}${text.trim() ? `: ${text.trim()}` : ''}` };
   } catch (err) {
     return { status: 'unreachable', detail: `${found.api.url}: ${errorMessage(err)}` };
   }
+}
+
+/** Asks the running app to reload a pack's runtime. */
+export function reloadPack(packId: string, place: AppPlace = { env: 'development' }): Promise<DevDelivery> {
+  return devRequest('/dev/reload', { packId }, place);
+}
+
+/**
+ * Asks the running app to install the build in a pack's source directory and start it. The app copies the
+ * files and loads them itself, so nothing else it does can load a half-copied build.
+ */
+export function installPackInApp(root: string, place: AppPlace = { env: 'development' }): Promise<DevDelivery> {
+  return devRequest('/dev/install', { root: path.resolve(root) }, place);
 }

@@ -1,6 +1,6 @@
 import { sendToSystem } from '#generated/events.ts';
 import { untypedQx } from '@apackdev/ears';
-import { services as appServices } from '#generated/services.ts';
+import { services as appServices, servicesForAction as ownServicesForAction } from '#generated/services.ts';
 import { defineHandlers } from '@apackdev/sdk/framework';
 import { setup, sendParent, enqueueActions, raise, type AnyActorRef, type AnyStateMachine } from 'xstate';
 import type { NodeEntity } from '#generated/types.ts';
@@ -212,6 +212,7 @@ export function createFlowNodeSystem(
   hasParent: boolean = false,
   parentTNodeId?: EARS.EntityId,
 ) {
+  const servicesForAction = executionContext ? executionContext.runtime.servicesForAction : ownServicesForAction;
   const isRootFlow = !flowId;
 
   // Use ternary to determine which creation function to call
@@ -370,7 +371,7 @@ export function createFlowNodeSystem(
               ...(eventType === 'flow.entry' ? context.entrySteps : { steps: [], lastStep: undefined }),
               runtime: {
                 getFlowActor,
-                getAppServices: () => appServices,
+                servicesForAction,
               },
             };
 

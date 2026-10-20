@@ -4,7 +4,7 @@
 Status: retained; re-audit against the completed naming contracts. Current dev-mode has API/source watchers and a pack
 runtime watcher; this older survey must not be treated as their complete inventory. Separate package-dist
 freshness from descriptor/codegen/runtime freshness. The latter is required by
-[discovery](../plans/discovery-without-activation.md): declaration edits must refresh catalog metadata
+[discovery](../archive/plans/discovery-without-activation.md): declaration edits must refresh catalog metadata
 and bindings together, and failed rebuilds must retain/report the last valid view. Do not add a parallel
 watcher before checking the existing watch inputs and build locks.
 
@@ -71,7 +71,7 @@ re-derived:
 ## Handoff with discovery
 
 [Manifest maturity](../plans/manifest-maturity.md) owns the priority order. Discovery must solve coherent
-artifact publication for each migrated kind before switching its readers; it need not wait for this
+build publication for each migrated kind before switching its readers; it need not wait for this
 entire package-dist watcher follow-up. This goal supplies reusable freshness coordination, not an
 alternative catalog or permission to leave descriptor/codegen outputs stale. Update this goal’s measured
 survey only with new evidence; historical timings below are not promises for the renamed tree.

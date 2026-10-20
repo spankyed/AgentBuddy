@@ -10,6 +10,7 @@
         :plugins="plugins"
         :active-plugin="activePlugin"
         @select-plugin="(id: string) => send({ type: 'SELECT_PLUGIN', plugin: id })"
+        @open-plugin="(id: string) => send({ type: 'OPEN_PLUGIN', plugin: id, events: [] })"
     />
 
     <!-- Main Area -->
@@ -31,9 +32,7 @@
             :label="`${canvasPlugin.label} Canvas`"
             :header-class="canvasPlugin.options?.headerClass">
             <!-- Each plugin area renders as part of its plugin, which is what usePlugin() returns there -->
-            <PluginScope :plugin="currentPluginId" :key="currentPluginId">
-              <Router :views="canvasPlugin.canvas" :target="targetView" />
-            </PluginScope>
+            <PluginPane :plugin="canvasPlugin" area="canvas" :target="targetView" />
             </CanvasArea>
 
             <!-- Vertical Resizer (hidden during onboarding) -->
@@ -55,9 +54,7 @@
                     : { height: `calc(${100 - panelSizes.canvasHeight}% - 4px)` }"
             >
                 <!-- The chat is the default pack's, so there is none until a pack has claimed the default -->
-                <PluginScope v-if="defaultPlugin" :plugin="defaultPlugin.id" :key="defaultPlugin.id">
-                  <component :is="defaultPlugin.chat" />
-                </PluginScope>
+                <PluginPane v-if="defaultPlugin" :plugin="defaultPlugin" area="chat" />
             </ChatArea>
         </div>
 
@@ -76,12 +73,8 @@
             data-onboarding-id="inspection-panel"
 :style="{ width: `${panelSizes.inspectionWidth}px` }"
             :label="`${activePlugin.panel ? activePlugin.label : fallbackPlugin?.label} Inspection`">
-            <PluginScope v-if="activePlugin.panel" :plugin="activePlugin.id" :key="activePlugin.id">
-              <component :is="activePlugin.panel" />
-            </PluginScope>
-            <PluginScope v-else-if="fallbackShown && fallbackPlugin" :plugin="fallbackPlugin.id" key="fallback-panel">
-              <component :is="fallbackPlugin.panel" />
-            </PluginScope>
+            <PluginPane v-if="activePlugin.panel" :plugin="activePlugin" area="panel" />
+            <PluginPane v-else-if="fallbackShown && fallbackPlugin" :plugin="fallbackPlugin" area="panel" />
         </InspectionPanel>
     </div>
     </div>
@@ -94,14 +87,15 @@ import { useSelector } from '@xstate/vue'
 import type { ActorRefFrom, AnyStateMachine } from 'xstate'
 import { CircleHelp, Settings as SettingsIcon, ExternalLink, PanelRight, PanelTop, Terminal } from 'lucide-vue-next'
 import Toolbar from '@/views/layout/Toolbar.vue'
+import { usePluginNavigation } from '@/views/layout/plugin-navigation';
 import CanvasArea from '@/views/layout/CanvasArea.vue'
 import ChatArea from '@/views/layout/ChatArea.vue'
 import InspectionPanel from '@/views/layout/InspectionPanel.vue'
 import PanelResizer from '@apackdev/ui/layout/panel-resizer'
 import { applicationState } from '@/main'
-import { HOST, notifyPluginActor, visiblePluginsOf } from '@apackdev/host/fe'
-import { untypedOpenPlugin, PluginScope } from '@apackdev/sdk/fe'
-import Router from '@/views/layout/PluginRouter.vue'
+import { HOST, notifyPluginActor } from '@apackdev/host/fe'
+import { untypedOpenPlugin } from '@apackdev/sdk/fe'
+import PluginPane from '@/views/layout/PluginPane.vue'
 import { useContextualHelp } from '@/views/settings/contextual-help';
 const { hasHelp, openFeatureHelp } = useContextualHelp();
 import type { ContextMenuItem } from '@apackdev/sdk/fe'
@@ -117,7 +111,7 @@ onUnmounted(() => registerGlobalToast(null))
 const activePlugin = useSelector(applicationState, (state) => state.context.activePlugin)
 const defaultPlugin = useSelector(applicationState, (state) => state.context.defaultPlugin)
 const toggles = useSelector(applicationState, (state) => state.context.defaultToggles)
-const plugins = useSelector(applicationState, (state) => visiblePluginsOf(state.context))
+const plugins = usePluginNavigation()
 const breadcrumbs = useSelector(applicationState, (state) => state.context.breadcrumbs)
 const contextMenuItems = useSelector(applicationState, (state) => state.context.contextMenuItems)
 const targetView = useSelector(applicationState, (state) => state.context.targetView)
