@@ -5,7 +5,7 @@ This is a tracking list, not a new implementation plan. Revalidate the unverifie
 
 ## Work with an existing goal
 
-- Facade/DSL terminology: absorbed into the descriptor checkpoint in [discovery](discovery-without-activation.md); the original goal is archived.
+- Facade/DSL terminology: completed in the descriptor checkpoint in [discovery](../archive/plans/discovery-without-activation.md); the original goal is archived.
 - Advisory storage locks: [goal-write-lock-advisory.md](../goals/goal-write-lock-advisory.md).
 
 ## Release and platform follow-ups

@@ -6352,7 +6352,7 @@ The user explicitly approved refusing Windows native compiler imports containing
 addresses when import names or ordinals cannot be recovered. Ordinary imports and ordinary bound
 imports retaining usable lookup information remain supported. The
 [native-boundary ADR](../reference/adr/native-compiler-input-boundary.md#decision) owns this contract;
-the [active goal](../goals/goal-settings-and-pack-contracts.md) owns remaining verification.
+the [active goal](../archive/goals/goal-settings-and-pack-contracts.md) owns remaining verification.
 
 Rationale: admission needs symbol identity to follow forwarded exports and inspect native dependency
 ownership before execution. No real required dependency needing the address-only encoding was

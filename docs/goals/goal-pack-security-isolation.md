@@ -35,14 +35,14 @@ but do not contain arbitrary code sharing the host's execution environment. The 
 field is descriptive metadata, not an enforced grant.
 
 The [manifest maturity plan](../plans/manifest-maturity.md) separates declared consumed APIs from
-security permissions. [Settings extraction](../plans/settings-architecture.md) defines shared
+security permissions. [Settings extraction](../archive/plans/settings-architecture.md) defines shared
 cross-pack mutation by default, with optional owner-only mutation through the supported API. The
-[discovery plan](../plans/discovery-without-activation.md) makes declared surfaces inspectable without
+[discovery plan](../archive/plans/discovery-without-activation.md) makes declared surfaces inspectable without
 loading code. None establishes a sandbox for malicious pack code.
 
 Existing inputs must be reconciled rather than implemented independently:
 
-- [Declared capabilities](../plans/declared-capabilities.md): generated services and ambient access,
+- [Declared capabilities](../archive/plans/declared-capabilities.md): generated services and ambient access,
   including direct repositories, EARS queries/transactions and content appliers.
 - [Archived frontend isolation](../archive/goals/goal-pack-frontend-isolation.md): historical mechanism
   options and survey. Its unfinished requirements are owned by this goal below, not completed or waived.
@@ -99,7 +99,7 @@ process or an iframe alone is not proof of the required confinement; select mech
 
 ### API-contract handoff
 
-[API consumption](../plans/declared-capabilities.md) owns supported API identities/provider requirements,
+[API consumption](../archive/plans/declared-capabilities.md) owns supported API identities/provider requirements,
 generated/runtime facade agreement, accepted caller identity and lifetime/revocation, and separation of
 onboarding from backup/import/reset administration. It must inventory repositories, EARS and content
 execution alongside services and carry the accepted facade into user-authored actions.

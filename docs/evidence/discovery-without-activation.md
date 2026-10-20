@@ -1,7 +1,7 @@
 # Discovery without activation — checkpoint evidence
 
-Historical evidence for [the discovery plan](../plans/discovery-without-activation.md).
-Its current checklist and the [execution goal](../goals/goal-settings-and-pack-contracts.md) own
+Historical evidence for [the discovery plan](../archive/plans/discovery-without-activation.md).
+Its current checklist and the [execution goal](../archive/goals/goal-settings-and-pack-contracts.md) own
 current status and execution order. Dated surveys, proposals and “next” instructions below do not
 override them. Unmet acceptance remains required; this record is not an archive of completed work.
 
@@ -484,7 +484,7 @@ needed no broad validation. The separate root-identity source candidate and gate
 
 ## Historical foundation audits and checkpoint evidence
 
-Current progress is recorded in the [current discovery checklist](../plans/discovery-without-activation.md#current-discovery-checklist).
+Current progress is recorded in the [current discovery checklist](../archive/plans/discovery-without-activation.md#current-discovery-checklist).
 The following initial surveys and dated checkpoints preserve design and validation history.
 
 ### Implemented snapshot reader (2026-10-12)
@@ -699,7 +699,7 @@ bindings, full build revisions and trusted caller binding remain on the completi
 ### Initial descriptor gaps (historical)
 
 This starting inventory predates the settings, reference, editor and step migrations. Its remaining-work
-column is superseded for status by the [current discovery checklist](../plans/discovery-without-activation.md#current-discovery-checklist);
+column is superseded for status by the [current discovery checklist](../archive/plans/discovery-without-activation.md#current-discovery-checklist);
 retain it as the original coverage inventory, not a list of unimplemented consumers today.
 
 The manifest already names many contributions and implementation references. Codegen produces backend
@@ -1801,7 +1801,7 @@ reference is reduced to label text before its declaration arrives. The common UI
 three pack-owned schemes. Waiting for a particular pack or reparsing a whole document would preserve
 the wrong dependency and risk edits; discovery metadata must not be required to decode saved identity.
 
-Follow the [reference wire correction](../plans/open-entity.md#reference-wire-identity-correction-2026-10-14):
+Follow the [reference wire correction](../archive/plans/open-entity.md#reference-wire-identity-correction-2026-10-14):
 one explicit internal URI containing reference type and canonical entity id, with pure SDK parsing/
 formatting independent of declarations. Keep the existing node attributes and use declarations only
 for presentation/eligibility. Remove per-type protocol fields/claims/readers and hardcoded UI schemes
@@ -1817,7 +1817,7 @@ has not been implemented or validated yet.
 
 ### Metadata-independent reference identity implementation (2026-10-14)
 
-Follow the implemented [reference identity contract](../plans/open-entity.md#reference-identity-implementation-2026-10-14).
+Follow the implemented [reference identity contract](../archive/plans/open-entity.md#reference-identity-implementation-2026-10-14).
 The SDK has one pure URI formatter/parser usable by backend and frontend. Existing editor nodes
 preserve canonical identity before metadata arrives or after it disappears. Per-type protocols and
 their claims are removed rather than becoming aliases; category/type ownership remains unchanged.
@@ -1843,7 +1843,7 @@ whole-goal work above are still required.
 
 ### Restored manifest requirements and handoff (2026-10-14)
 
-[Manifest consolidation](../plans/manifest-consolidation.md) restores all 17 original redesign decisions,
+[Manifest consolidation](../archive/plans/manifest-consolidation.md) restores all 17 original redesign decisions,
 settles both naming questions and maps every original phase check. Complete its M1–M6 before
 extending additional consumers across the split root entity/shape declarations. Existing settings and
 reference checkpoints remain valid; they do not complete this restored scope. The roadmap and owning
@@ -2800,7 +2800,7 @@ execution requirements elsewhere in this plan remain required.
 
 
 The concurrent read-only own-key audit in
-[manifest consolidation](../plans/manifest-consolidation.md#required-own-key-preservation-correction-2026-10-15)
+[manifest consolidation](../archive/plans/manifest-consolidation.md#required-own-key-preservation-correction-2026-10-15)
 reproduced `__proto__` entity declarations disappearing during schema decoding. Source `29f0cc556`
 closes that preservation gap across authored/native parsing, snapshots, generated bindings and real
 source-free installed inspection/loading. The linked outcome and owning goal record its evidence.

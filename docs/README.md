@@ -23,10 +23,11 @@ its requirements are complete.
 
 ## Current work
 
-The [settings and pack contracts goal](goals/goal-settings-and-pack-contracts.md) owns its execution
-order and completion. [Manifest maturity](plans/manifest-maturity.md) maps the subsystem designs and
-their architectural dependencies. Consult their current status rather than treating historical handoffs
-as additional instructions. Other goals and plans carry their own status; this index is not a second backlog.
+The [completed settings and pack contracts goal](archive/goals/goal-settings-and-pack-contracts.md#outcome-2026-10-19)
+records the delivered architecture and acceptance. [Manifest maturity](plans/manifest-maturity.md) remains
+the roadmap for contract evolution and separate/deferred tracks. Consult document status rather than
+treating historical handoffs as additional instructions. Other goals and plans carry their own status;
+this index is not a second backlog.
 
 For interactive Windows development and native debugging, use the
 [Windows development VM guide](references/guides/windows-development-vm.md). It covers access, source

@@ -1,14 +1,19 @@
 # Complete the manifest consolidation
 
-Status: required, in progress. Reconciled 2026-10-14 after reference checkpoint `c776d1c5d`. M1 completed in `2fff8bb76`, M2 in `3ff590240`; M3 completed in `e063ec1a5`; M4 completed in `11bdc7faa`; M5 completed in `9374189e5`; M6 authored schema/writing/documentation checkpoints completed through `0994ae787`. Remaining cross-phase discovery requirements below stay required.
+Status: completed 2026-10-19. All 17 original decisions, both naming questions and M1–M6 deliverables are reconciled, implemented and accepted with preserved EARS/content identities.
+See the [completed goal](../goals/goal-settings-and-pack-contracts.md#outcome-2026-10-19) and
+[final requirement/source audit](../../evidence/settings-and-pack-contracts.md#final-requirement-and-source-audit--2026-10-19).
+Dated checkpoint notes below are historical; deferred work keeps its separate owner.
 
-This restores unfinished outcomes from the [manifest redesign](../archive/goals/goal-manifest-redesign.md),
-[convention-first plan](../archive/plans/manifest-convention-first.md),
-[declarative contributions](../archive/plans/declarative-contributions.md) and
-[facade naming](../archive/goals/goal-defs-naming.md). Archiving them did not authorize dropping their
+Historical checkpoint status: required, in progress. Reconciled 2026-10-14 after reference checkpoint `c776d1c5d`. M1 completed in `2fff8bb76`, M2 in `3ff590240`; M3 completed in `e063ec1a5`; M4 completed in `11bdc7faa`; M5 completed in `9374189e5`; M6 authored schema/writing/documentation checkpoints completed through `0994ae787`. Remaining cross-phase discovery requirements below stay required.
+
+This restores unfinished outcomes from the [manifest redesign](../goals/goal-manifest-redesign.md),
+[convention-first plan](manifest-convention-first.md),
+[declarative contributions](declarative-contributions.md) and
+[facade naming](../goals/goal-defs-naming.md). Archiving them did not authorize dropping their
 requirements. This plan owns the remaining authored-manifest redesign; the
 [execution goal](../goals/goal-settings-and-pack-contracts.md) owns commits and completion,
-[manifest maturity](manifest-maturity.md) owns ordering, and [discovery](discovery-without-activation.md)
+[manifest maturity](../../plans/manifest-maturity.md) owns ordering, and [discovery](discovery-without-activation.md)
 owns descriptors, bindings and consumers. Existing validated settings/reference work remains intact.
 
 ## Reconciliation of all 17 decisions
@@ -329,7 +334,7 @@ current implementations; it is a source review, not final runtime or strict-gate
 
 The own-property repair passes 72 focused schema/declaration/resolution cases, the existing dependency
 format codegen consumer, SDK types, schema check and lint. See its
-[evidence](../evidence/settings-and-pack-contracts.md#explicit-content-declarations-in-schema-and-resolution-2026-10-18).
+[evidence](../../evidence/settings-and-pack-contracts.md#explicit-content-declarations-in-schema-and-resolution-2026-10-18).
 The converged/final strict gates, all-kind discovery and the complete execution goal remain required.
 The user subsequently authorized pushes and remote validation. Current affected acceptance and the
 remaining normal integration/strict gates are tracked in the active goal's live ledger; this earlier

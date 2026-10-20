@@ -1,6 +1,11 @@
 # A shipped pack is replaceable, and nothing special-cases it
 
-Status: in progress, using [settings architecture](settings-architecture.md) and the
+Status: completed 2026-10-19. Shipped packs use the ordinary installation/catalog contract; explicit forks, managed updates, restoration, override retention and incumbent preservation are accepted.
+See the [completed goal](../goals/goal-settings-and-pack-contracts.md#outcome-2026-10-19) and
+[final requirement/source audit](../../evidence/settings-and-pack-contracts.md#final-requirement-and-source-audit--2026-10-19).
+Dated checkpoint notes below are historical; deferred work keeps its separate owner.
+
+Historical checkpoint status: in progress, using [settings architecture](settings-architecture.md) and the
 [discovery catalog](discovery-without-activation.md). Checkpoints below record implemented behavior;
 the original survey is historical evidence, not the current policy.
 Validate replacements before publishing one committed build/catalog revision. Pre-publication failure
@@ -144,7 +149,7 @@ contracts so no intermediate checkpoint silently overwrites a fork.
 - **Nothing stops a fork that drops a feature the app assumes.** With `canUninstall` gone there is no
   derived guard. Deliberate: it is the user's pack.
 - **Migrations no longer need a workaround here, and this is the one footgun that closed.**
-  [`migration-version-lines.md`](../archive/plans/migration-version-lines.md) landed first: a migration is
+  [`migration-version-lines.md`](migration-version-lines.md) landed first: a migration is
   declared under `migrations.app` or `migrations.pack` in its pack's manifest and the runners read one map
   each, so nothing routes on provenance. A fork at `default-setup`'s id has its migrations compared against
   whichever line it declared them on, which is the fork author's choice. **Do not add the `updatesWith`

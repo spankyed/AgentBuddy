@@ -226,8 +226,9 @@ No compiler redesign, new runner, cloud purchase, release or publication is auth
 - Expensive scenarios retain bounded operations, cancellation where supported, phase timings and
   awaited cleanup. Normal acceptance has no unhandled reporting errors.
 - Commands and documentation agree. The
-  [settings and pack contracts goal](../goals/goal-settings-and-pack-contracts.md) retains its existing
-  obligations until explicitly reconciled; this plan waives none of them.
+  [completed settings and pack contracts goal](../archive/goals/goal-settings-and-pack-contracts.md#outcome-2026-10-19)
+  records its final acceptance decision; this separate plan does not reopen that delivery or waive
+  other goals' validation requirements.
 
 ## References
 

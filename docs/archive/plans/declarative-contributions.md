@@ -1,4 +1,4 @@
-> **Absorbed, 2026-10-12.** [Discovery without activation](../../plans/discovery-without-activation.md) owns the complete inventory, catalog and checked binding. This historical survey is not current implementation guidance.
+> **Absorbed, 2026-10-12.** [Discovery without activation](discovery-without-activation.md) owns the complete inventory, catalog and checked binding. This historical survey is not current implementation guidance.
 
 # What a pack contributes should be readable without running it
 

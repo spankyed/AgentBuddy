@@ -6,9 +6,9 @@ can be inspected here. Fresh runners remain useful for clean reproduction and th
 final acceptance; this guide does not remove those gates.
 
 This is a development environment, not a production machine or a permanent CI runner. Guidance is
-current as of **2026-10-18**. Read [CLAUDE.md](../../../CLAUDE.md), the active task and the
-[settings and pack contracts goal](../../goals/goal-settings-and-pack-contracts.md) before running its
-checks. A guide supplies procedures, not authorization to resume unrelated work, change subscription
+current as of **2026-10-18**. Read [CLAUDE.md](../../../CLAUDE.md) and the active task before running
+checks. The [completed settings and pack contracts goal](../../archive/goals/goal-settings-and-pack-contracts.md#outcome-2026-10-19)
+is historical evidence, not an instruction to resume its checks. A guide supplies procedures, not authorization to resume unrelated work, change subscription
 permissions, push commits or run releases.
 
 ## Why this machine exists
@@ -357,7 +357,7 @@ pointing at a diagnostic preload for later tests.
 Launch Electron compiler probes through the existing Node process harness with explicit pipes and
 an awaited exit code. Shell success alone does not establish that the probe ran; retain its actual
 stdout/stderr, owned PID or launch receipt and runtime versions. See the
-[CommonJS control evidence](../../evidence/build-input-snapshot-proof.md#commonjs-native-lookup-observation-checkpoint-2026-10-18).
+[CommonJS control evidence](../../evidence/build-input-snapshot-proof.md#commonjs-native-lookup-observation-checkpoint--2026-10-18).
 
 Windows module inspection can help attribute DLL loading:
 

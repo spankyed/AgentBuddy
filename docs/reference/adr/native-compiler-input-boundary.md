@@ -15,7 +15,7 @@ native library capture (`6710e3026`) fixes a different case and does not close t
 [reproducer and acceptance evidence](../../evidence/build-input-snapshot-proof.md#package-relative-native-library-ownership).
 
 Platform packaging and release configuration are not proof of native compiler correctness. The
-[goal's B1/B3 closure register](../../goals/goal-settings-and-pack-contracts.md#b1b3-closure-register-and-decisions)
+[goal's B1/B3 closure register](../../archive/goals/goal-settings-and-pack-contracts.md#b1b3-closure-register-and-decisions)
 records configured targets, missing evidence and required decisions. Unverified behavior is not a
 reproduced defect.
 

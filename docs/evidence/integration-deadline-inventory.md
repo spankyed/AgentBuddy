@@ -1301,3 +1301,31 @@ reuse unchanged accepted checks, and close only genuinely uncovered affected che
 closure. No new full strict dispatch. Do not relabel an earlier failed strict run successful, omit
 unproven behavior, or apply this exception as a general repository policy. The owning goal's live
 decision and Phase 7 now state this; older chronological strict-rerun instructions are superseded.
+
+### Normal unfiltered integration accepted — 2026-10-19
+
+[39333769307](https://github.com/spankyed/AgentBuddy/actions/runs/39333769307) finishes
+**completed/success**, exact workflow-only **`06638811d2d7e4162ca50101283aa352b60c48b3`**, main source
+**`1ba85b976`**. Every normal prerequisite passes, followed by unchanged
+`npm run test:integration -- --all` with two workers: **831 passed, zero failures, 29 declared
+platform skips; 66 passed files and two skipped files out of 68**, **exit 0**, **4896.31s** (81m36s).
+Complete job time is 1h41m40s including preparation. There are no unhandled reporting errors or
+reported cleanup failures. All three integration projects execute; this is the first complete normal
+pool acceptance, not an aggregation of filtered runs.
+
+The skips are 26 Windows PE cases, two Linux ELF cases and one Windows retained-dev-server publication
+case. Their platform selectors are explicit in source; none is a fail-fast remainder. Preserve their
+earlier Windows VM/Linux acceptance in the native input evidence and goal's finite platform register.
+Linux ELF ownership/Vue/refusal and runtime-linked pre-initialization controls passed in
+`39083763519`/`39085132469`; Windows PE, selection and publication acceptance is recorded in the
+platform register. The normal macOS result does not claim to execute those platforms.
+
+Raw: `/private/tmp/apack-normal-integration-39333769307/_temp/normal-integration.log`, the retained
+pool-duration JSON, and `/private/tmp/apack-normal-integration-39333769307-full.log`.
+The measured complete pool is 9314.39s of file time, 4896.31s wall; earlier partial-file sums were
+not complete passing-run measurements. Existing aggregate and individual bounds accommodated it.
+No new grouping, orchestration or timeout project is introduced at closeout.
+
+After this source checkpoint only goal/evidence documentation changed. User-approved decision
+**`2c790624d`** replaces the repeated final full strict run with this pass plus the requirement/source
+evidence audit. Historical failed strict runs remain failed; no additional broad gate is dispatched.

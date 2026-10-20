@@ -2,7 +2,7 @@
 
 Status: deferred, 2026-10-18. Resume when the owner schedules this work; public execution requires
 separate authorization. This plan is not a prerequisite for completing the
-[settings and pack contracts goal](../goals/goal-settings-and-pack-contracts.md).
+[settings and pack contracts goal](../archive/goals/goal-settings-and-pack-contracts.md).
 
 ## Outcome and ownership
 

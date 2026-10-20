@@ -1,11 +1,16 @@
 # Finish the app settings extraction
 
-Sequencing: the [naming contracts goal](../archive/goals/goal-naming-conventions.md) is complete.
+Status: completed 2026-10-19. Host, pack and feature settings now share declarative schemas, owner-bound handles and current-document validation; forms remain custom.
+See the [completed goal](../goals/goal-settings-and-pack-contracts.md#outcome-2026-10-19) and
+[final requirement/source audit](../../evidence/settings-and-pack-contracts.md#final-requirement-and-source-audit--2026-10-19).
+Dated checkpoint notes below are historical; deferred work keeps its separate owner.
+
+Sequencing: the [naming contracts goal](../goals/goal-naming-conventions.md) is complete.
 Re-audit names against its result; settings-specific names remain owned here.
-The [manifest maturity roadmap](manifest-maturity.md) orders this work with the common discovery
+The [manifest maturity roadmap](../../plans/manifest-maturity.md) orders this work with the common discovery
 foundation. This plan must not introduce a separate settings-only catalog.
 
-Status: in progress on `session/settings-pack-contracts`. The integrated extraction passes checkpoint
+Historical checkpoint status: in progress on `session/settings-pack-contracts`. The integrated extraction passes checkpoint
 validation. Whole-data administration, onboarding separation and supported service selection are
 implemented through the [consumed-API checkpoints](declared-capabilities.md); preserve their runtime
 lifetime and external-consumer evidence for final strict acceptance. This is an API contract, not isolation.
@@ -497,7 +502,7 @@ acceptance of the current declaration/build rather than renewing a credential fr
 Validate these contracts in the real app too; mocked transport and shell tests alone do not prove it.
 
 Confining arbitrary pack code and enforcing resource grants belongs to the separate
-[pack security isolation goal](../goals/goal-pack-security-isolation.md), not this settings extraction.
+[pack security isolation goal](../../goals/goal-pack-security-isolation.md), not this settings extraction.
 That goal preserves this plan's shared-by-default collaboration policy while closing ambient bypasses.
 
 Route targeted writes/resets and whole-document replacement through the same policy. A bulk replacement
@@ -646,14 +651,14 @@ The current shape is `{ name, directories, color }[]`. Array order controls disp
 working directory; directory order makes the first entry primary. There is no Project entity, stored
 project ID, project relation or independent lifecycle in the audited declarations and consumers.
 
-- [Projects.vue](../../packages/renderer/src/views/settings/canvas/components/GeneralSettings/Projects.vue)
-  and Code's [useProjectActions.ts](../../packages/default-setup/src/features/code/fe/features/explorer/composables/useProjectActions.ts)
+- [Projects.vue](../../../packages/renderer/src/views/settings/canvas/components/GeneralSettings/Projects.vue)
+  and Code's [useProjectActions.ts](../../../packages/default-setup/src/features/code/fe/features/explorer/composables/useProjectActions.ts)
   create, rename, reorder and remove entries and write
   the complete array. Code sometimes removes an entry when its final directory is removed.
-- [Code startup](../../packages/default-setup/src/features/code/be/system.ts) picks the first configured
+- [Code startup](../../../packages/default-setup/src/features/code/be/system.ts) picks the first configured
   directory when no explicit/current directory wins.
 - Threads menus, project-select blocks and Claude Code/Codex actions select directory paths. The
-  [project-select block](../../packages/default-setup/src/extensions/blocks/input/ProjectSelectInput.vue)
+  [project-select block](../../../packages/default-setup/src/extensions/blocks/input/ProjectSelectInput.vue)
   submits a path, not a project reference.
 - Onboarding writes the configured list and sets Code's default directory separately. Its import actions
   use the directories to find sessions; project artifacts display the same configuration.
@@ -814,7 +819,7 @@ the shared route that those consumers will use rather than replacing their requi
 ## Delivery sequence
 
 These steps implement the shared-foundation and settings checkpoints in
-[manifest maturity](manifest-maturity.md). Start with discovery’s full inventory, then deliver a settings
+[manifest maturity](../../plans/manifest-maturity.md). Start with discovery’s full inventory, then deliver a settings
 projection of the common catalog. Before any reader switches, that kind’s descriptor, generated bindings
 and refresh path must agree. This does not require finishing other contribution kinds first.
 

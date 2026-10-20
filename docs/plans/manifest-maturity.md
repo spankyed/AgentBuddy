@@ -1,6 +1,10 @@
 # Make pack manifests dependable contracts
 
-Status: in progress; scope reconciled 2026-10-14. Originally written 2026-10-12 on `AS/feature-settings-rework`.
+Status: the settings/discovery/manifest contract delivery is completed 2026-10-19; see the
+[completed execution goal](../archive/goals/goal-settings-and-pack-contracts.md#outcome-2026-10-19). This roadmap
+remains maintained for contract evolution and explicitly separate/deferred tracks. The numbered
+sequence and dated handoffs below describe the delivered architecture, not a new implementation backlog.
+Originally written 2026-10-12 on `AS/feature-settings-rework`.
 
 ## Goal and sequence
 
@@ -14,25 +18,25 @@ adding fields because another ecosystem has them.
 
 Completed prerequisite: [naming contracts](../archive/goals/goal-naming-conventions.md), closed in
 `3d389b9c8`. Build on that result; no ongoing naming synchronization is required.
-The [execution goal](../goals/goal-settings-and-pack-contracts.md) owns checkpoints and completion.
+The [execution goal](../archive/goals/goal-settings-and-pack-contracts.md) owns checkpoints and completion.
 
 The list below records architectural dependencies, not a serial execution barrier. The execution
 goal’s live ledger owns current status and order, including independent entity navigation before
 remaining compiler work. Preserve each consumer’s actual prerequisites.
 
 1. Close the contribution inventory and establish the common descriptor/catalog foundation, using
-   [settings architecture](settings-architecture.md) as the first consumer. Include shared validation, diagnostics, checked binding and build freshness for each migrated kind. Do not create a temporary settings-only catalog.
+   [settings architecture](../archive/plans/settings-architecture.md) as the first consumer. Include shared validation, diagnostics, checked binding and build freshness for each migrated kind. Do not create a temporary settings-only catalog.
 2. Complete settings ownership, current-format stored data, typed access, shared/owner mutation policy,
    custom forms and the independent window runtime.
-3. Preserve the completed authored [manifest consolidation](manifest-consolidation.md), checkpoints
+3. Preserve the completed authored [manifest consolidation](../archive/plans/manifest-consolidation.md), checkpoints
    M1–M6 through `0994ae787`. Its remaining full-kind discovery, frontend naming and facade obligations
    continue in the next step. Preserve generated EARS/content identities and the shared declarations.
-4. Complete [discovery without activation](discovery-without-activation.md) and delete superseded glue.
+4. Complete [discovery without activation](../archive/plans/discovery-without-activation.md) and delete superseded glue.
    Extend the foundation’s descriptor/codegen freshness and checked binding to every supported kind.
-5. Deliver [entity navigation](open-entity.md) and frontend error boundaries from
+5. Deliver [entity navigation](../archive/plans/open-entity.md) and frontend error boundaries from
    [fault isolation](pack-fault-isolation.md), using catalog destinations and explicit readiness.
 6. Finish consumed-API contracts, dependency provenance and
-   [shipped-pack replacement](replaceable-shipped-packs.md) as separate workstreams. Replacement depends
+   [shipped-pack replacement](../archive/plans/replaceable-shipped-packs.md) as separate workstreams. Replacement depends
    on validated build publication and committed catalog updates; consumed APIs need not wait for replacement.
 
 Treat each item as a separately scoped change with its own evidence and validation. This plan is the
@@ -79,7 +83,7 @@ the settings plan, as that goal already specifies.
 | Complete generated inventory, event contracts and static assets | Adopt in discovery; declarations determine supported contributions, build materializes their complete descriptor. Step node labels/defaults are inline and checked in `324816421`; authored frontend metadata/bindings and explicit type/helper sources land in `cda9fa00e`. Native step grammar/catalog projections, captured data and active ownership land in `fdd967ec5`; mandatory frontend admission and accepted binding rows land in `e5dcdec63`; keyed-declaration preservation lands in `29f0cc556`; frontend live readers/caches land in `76df2f0e5`; backend defaults/obsolete lookup cleanup land in `71fad4013`; complete backend facet declarations and source-free trigger helpers land in `8ec5285ed`; node-update write eligibility lands in `f7d63434c`; generated run-output isolation lands in `ecbb2c6af`; content-based source freshness and the common input/output record are implemented (B2/B4/B5); the execution goal owns remaining B1/B3 native/platform closure, B6 and final all-kind/asset acceptance |
 | Conventional implementation paths | M4 completed in `11bdc7faa`: one scaffold path definition, declared-target validation/doctor and real external authoring agreement. No implicit existence or forced file renaming. M6 authored documentation/schema coverage is implemented through `0994ae787`; preserve it through final acceptance |
 | `provides` lists and filesystem-inferred existence | Reject as a second authority beside existing keyed declarations; do not implement the old feature grammar |
-| Entity names/shapes and feature ownership | M1 lands in `2fff8bb76`: owned feature/pack declarations, explicit null for untyped and one projection. Required [own-key preservation correction](manifest-consolidation.md#required-own-key-preservation-correction-2026-10-15) completed in `29f0cc556`: accepted own keys survive parsing, compiled bindings and source-free discovery; preserve this contract through reader migrations |
+| Entity names/shapes and feature ownership | M1 lands in `2fff8bb76`: owned feature/pack declarations, explicit null for untyped and one projection. Required [own-key preservation correction](../archive/plans/manifest-consolidation.md#required-own-key-preservation-correction-2026-10-15) completed in `29f0cc556`: accepted own keys survive parsing, compiled bindings and source-free discovery; preserve this contract through reader migrations |
 | Relation identity maps | M2 implemented in `3ff590240`: `data.relations` wire lists, unchanged generated EARS/content, validated names/uniqueness/reservations, native bindings and collision/provenance behavior |
 | `volatile` declarations | Do not resurrect removed partition policy without a real requirement; track storage semantics with the LMDB work |
 | `boot`/`lifecycle` metadata | M3 implemented in `e063ec1a5`: explicit lifecycle targets, shared native/installed checked hook bindings, preserved order and byte-identical compiled content |
@@ -92,7 +96,7 @@ the settings plan, as that goal already specifies.
 | Snapshot `defs` versus DSL definitions | Required `facades`, `PACK_TYPES_FACADE`, complete cached build types with no separate extracted facade inventory, named required-facade refusals and unchanged capability-based acceptance; keep actual DSL defs |
 | Format/version assumptions | Required M5 removes `$manifestVersion` and audits exact layout-stamp acceptance; preserve current snapshot/layout constants and release metadata, separately from facade capability acceptance |
 
-The [complete reconciliation](manifest-consolidation.md) accounts for every original decision, both
+The [complete reconciliation](../archive/plans/manifest-consolidation.md) accounts for every original decision, both
 naming questions, phase checks, flow/action dependency edges, CLI contribution inventory, authoring
 tool agreement and unchanged-content identity. Each active requirement needs implementation evidence;
 this ledger is not permission to downgrade an outcome to a survey.
@@ -118,7 +122,7 @@ behavior until the corresponding implementation lands, not merely because a plan
 ## 1. Complete discovery without activation
 
 The complete scope and acceptance criteria live in
-[discovery without activation](discovery-without-activation.md).
+[discovery without activation](../archive/plans/discovery-without-activation.md).
 
 Settings is the immediate example: app, pack and feature definitions become data that the host can read
 without importing an executable settings module. Follow the dedicated settings plan for that work.
@@ -184,7 +188,7 @@ owner-bound handles exposing the intended surface. Runtime binding and generated
 ambient SDK imports must not silently bypass an authoring contract. Reuse the existing generated services
 facade and module checks. Start with the APIs actually consumed by default-setup.
 
-Follow the [consumed-API plan](declared-capabilities.md), beginning with its inventory and granularity decision. EARS/repositories and direct Node access are separate surfaces; withholding a
+Follow the [consumed-API plan](../archive/plans/declared-capabilities.md), beginning with its inventory and granularity decision. EARS/repositories and direct Node access are separate surfaces; withholding a
 service object does not contain an in-process JavaScript pack. Call the feature an API dependency contract
 unless there is an enforcement boundary supporting a stronger claim.
 
@@ -339,7 +343,7 @@ foundation and settings checkpoints; use the handoffs above to scope subsequent 
 
 Authored consolidation M1–M6 is complete through `0994ae787`, including canonical writing, shared
 semantic validation, full field help, real editor assistance and current public build documentation.
-The [consolidation audit](manifest-consolidation.md#current-consolidation-acceptance-audit-2026-10-14)
+The [consolidation audit](../archive/plans/manifest-consolidation.md#current-consolidation-acceptance-audit-2026-10-14)
 accounts for all original decisions and both naming questions, separating implemented replacements
 from required remaining discovery work. The execution goal records source commits and strict evidence.
 
