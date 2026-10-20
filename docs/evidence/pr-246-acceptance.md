@@ -165,3 +165,22 @@ The dispatch now explicitly selects `app_acceptance_suite=all|app|external`; an 
 `app_acceptance_test` filters Playwright case names. `all` retains CLI/native acceptance even when its
 Playwright cases are filtered. Empty patterns retain the complete selected suite; no default gate is
 removed. Both the external fixture and the root app retain failure traces.
+
+## Focused run 39405960363: app report inspected while CLI continues
+
+Source `fe42a10b1`, four selected Playwright cases. The built-in content reload passes with the authored
+manifest repair. Both settings-ownership cases pass: real backup import updates the independent window
+and restored companion form, and the cold-build/typecheck/credential/reload scenario completes with its
+individual operation bounds intact.
+
+The default-fork trace proves replacement in both windows, its visible fork component, actual reload,
+user ownership and preserved personal preferences all pass. Its only failed test step is the final 5s
+restoration label check ("Fork Notes" instead of "Notes"). The backend accepted the restoration near
+that deadline. Restoration now waits for a changed accepted frontend, like replacement/reload, before
+retaining the original 5s label assertion. If the source frontend was already current following a refused
+candidate, no new runtime is required; this avoids obscuring a primary failure with an unnecessary
+cleanup generation requirement. Process cleanup limits are unchanged. The complete fork scenario's
+150s allowance covers three 30s publications and 60s for windows/UI.
+
+Early evidence: `/private/tmp/apack-app-39405960363-suites/`. The source CLI result and final strict gate
+are still pending; the trace does not claim restoration complete.

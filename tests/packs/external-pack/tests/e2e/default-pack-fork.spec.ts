@@ -22,8 +22,8 @@ test.beforeAll(() => {
 });
 
 if (!restarting) test('an externally built default fork refreshes both windows and survives actual dev reload', async ({ app, appPage, electronApp }) => {
-  // Replacement/reload each await a frontend publication (30s); windows, UI and restoration share 90s.
-  // Individual value assertions and the restoration assertion retain their existing 5s limits.
+  // Replacement, reload and restoration each await a frontend publication (30s), plus windows/UI (60s).
+  // Individual value assertions retain their existing 5s limits.
   test.setTimeout(150_000);
   await app.navigate('host/settings');
   await appPage.getByRole('button', { name: 'Personal', exact: true }).click();
@@ -90,8 +90,11 @@ if (!restarting) test('an externally built default fork refreshes both windows a
   } finally {
     await second.close();
     if (replaced && process.env.APACK_KEEP_FORK !== '1') {
+      const needsFrontendRestore = await label(appPage) !== 'Notes';
+      const beforeRestore = await runtime(appPage);
       await appPage.evaluate(source => (window as any).applicationState.system.get('host/packs')
         .send({ type: 'UI.RESTORE', packId: source.id, sourceRevision: source.sourceRevision }), source);
+      if (needsFrontendRestore) await waitForReplacement(appPage, beforeRestore);
       await expect.poll(() => label(appPage)).toBe('Notes');
     }
   }
