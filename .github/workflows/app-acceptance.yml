@@ -72,6 +72,16 @@ jobs:
           else
             npm run test:e2e
           fi
+      - name: Retain app suites before the CLI scenario
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: app-acceptance-${{ github.sha }}-suites
+          include-hidden-files: true
+          path: |
+            .apack/tests/results/
+            tests/packs/*/.apack/tests/results/
+            tests/packs/*/dist/build-inputs.json
       - name: Source pack dev install and rebuild
         if: ${{ !cancelled() && inputs.test == '' && steps.preparation.outcome == 'success' }}
         run: node scripts/with-source.mjs tsx tests/scripts/test-pack-dev.ts

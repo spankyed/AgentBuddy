@@ -47,11 +47,18 @@ try {
   const manifest = JSON.parse(original);
   manifest.features.memos.settings.defaults.listTitle = 'CLI rebuild memos';
   fs.writeFileSync(manifestFile, JSON.stringify(manifest, null, 2) + '\n');
+  const installed = path.join(resolveAppEnvironment({ env: 'development', userDataDir }).packsDir, manifest.id, 'apack.json');
+  // The retained generation's preceding build took 109s on this runner. Bound compilation/install
+  // separately from frontend acknowledgment, so a missing delivery still fails within 30s.
+  await expect.poll(() => {
+    if (child.exitCode !== null || child.signalCode !== null) throw new Error(`pack dev exited during rebuild: ${text}`);
+    try { return JSON.parse(fs.readFileSync(installed, 'utf8')).features.memos.settings.defaults.listTitle; }
+    catch (error) { if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error; }
+  }, { timeout: 180_000, message: 'watcher rebuilds and installs the changed declaration' }).toBe('CLI rebuild memos');
   await expect.poll(async () => {
     const current = await runtime();
     return !!current && current !== previous;
-  }, { timeout: 60_000, message: 'rebuilt pack accepted by the running app' }).toBe(true);
-  const installed = path.join(resolveAppEnvironment({ env: 'development', userDataDir }).packsDir, manifest.id, 'apack.json');
+  }, { timeout: 30_000, message: 'installed rebuild accepted by the running frontend' }).toBe(true);
   expect(JSON.parse(fs.readFileSync(installed, 'utf8')).features.memos.settings.defaults.listTitle).toBe('CLI rebuild memos');
   console.log('PASS: source pack dev initially installs, watches a manifest edit, and delivers a new accepted runtime');
 } finally {

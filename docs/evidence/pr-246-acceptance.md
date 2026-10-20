@@ -88,3 +88,30 @@ save state, so the containing General form cannot display that request's success
 for the accepted override in the Code actor, then remounts the Settings canvas and checks its value.
 Twenty-four additional pure file-view/input-record checks pass across three affected files. No native
 compiler or app execution ran on the developer Mac.
+
+## Follow-up run 39396277423
+
+[Disposable run](https://github.com/spankyed/apack/actions/runs/39396277423), source `103e62df1`:
+shipped build, runtime, fixture contracts and fork preparation passed. General app results are **30/32**;
+the two failures are exactly the later sealed-reload fixture repair (`405487108`, assertion 500 vs 200)
+and CLI-save acknowledgment repair (`a611eee3b`, 5s event/UI wait). Recovery/reopen and the other five
+previously failing app cases now pass. All six real LMDB cases passed again.
+
+External cases still refused before launch, now at the explicit missing `node_modules` namespace probe
+rather than the authored root listing. Vitest's native results cache creates that directory after build.
+Move its cache into `.apack/tests/vite`; do not weaken or discard the negative dependency observation.
+A private filesystem regression using the actual helper configuration reproduces the runner refusal
+before the change and passes afterward; creating an actual dependency namespace still refuses. That
+regression and all six prebuilt-pack cases pass, as do the testing/E2E typechecks and correctness lint.
+
+Source `pack dev` successfully built, launched, installed and reached watcher readiness after 256s.
+The retained compiler's preceding complete build took 109s. The requested manifest edit triggered
+another build (changed entries, content and backend output are logged), so this was a **composed
+build/delivery timeout**, not a demonstrated missed rebuild: the old 60s wait expired during compilation.
+The scenario now separately bounds rebuild/install at 180s and frontend acknowledgment at 30s;
+connection, initial runtime and cleanup limits remain unchanged. No cleanup failure was reported.
+
+Saved evidence: `/private/tmp/apack-app-39396277423.log` and
+`/private/tmp/apack-app-39396277423/`. No beta release exists for packaged-host acceptance.
+The next runner check must exercise the external suite and source CLI with these repairs and the two
+already committed app fixture corrections; the final strict gate is still pending.
