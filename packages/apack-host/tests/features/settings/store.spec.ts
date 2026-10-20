@@ -285,3 +285,20 @@ it('keeps committed writes and replacement lifecycle independent of subscriber f
     expect(heard).toEqual(['written', 'replacing', 'replaced']);
   } finally { log.mockRestore(); }
 });
+
+
+it('does not let detached initialization work retain write access during a later replacement', async () => {
+  let release!: () => void;
+  const wait = new Promise<void>(resolve => { release = resolve; });
+  let detached!: Promise<void>;
+  await store.whileReplacingData(async () => {
+    detached = wait.then(() => { store.set(assistant, ['name'], 'Stale initialization', 'default-setup'); });
+  });
+  let finish!: () => void;
+  const pending = new Promise<void>(resolve => { finish = resolve; });
+  const replacing = store.whileReplacingData(() => pending);
+  try {
+    release();
+    await expect(detached).rejects.toThrow('Data is being replaced');
+  } finally { finish(); await replacing; }
+});

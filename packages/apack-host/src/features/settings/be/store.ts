@@ -28,7 +28,7 @@ export type SettingsStore = ReturnType<typeof createSettingsStore>;
 export function createSettingsStore({ ears, catalog, onCatalogChanged }: SettingsStoreOptions) {
   const listeners = new Set<(change: SettingsChange) => void>();
   let replacingData = 0;
-  const replacement = new AsyncLocalStorage<boolean>();
+  const replacement = new AsyncLocalStorage<{ active: boolean }>();
   let replacementSnapshot: Pick<SettingsSnapshot, 'values' | 'catalog'> | undefined;
   const runId = randomUUID();
   let revision = 0;
@@ -78,7 +78,7 @@ export function createSettingsStore({ ears, catalog, onCatalogChanged }: Setting
     const definition = targetDefinition(target);
     if (!definition) throw new SettingsRefusedError(['This settings definition is unavailable']);
     if (caller === undefined) return; // Only host administration receives an unscoped writer.
-    if (mutation && replacingData && !replacement.getStore()) throw new SettingsRefusedError(['Data is being replaced. Wait before changing settings.']);
+    if (mutation && replacingData && !replacement.getStore()?.active) throw new SettingsRefusedError(['Data is being replaced. Wait before changing settings.']);
     const { dependencies } = declarations();
     if (!hasOwn(dependencies, caller)) throw new SettingsRefusedError([`Settings caller "${caller}" is not declared`]);
     if (target.kind === 'app') return;
@@ -158,8 +158,10 @@ export function createSettingsStore({ ears, catalog, onCatalogChanged }: Setting
       if (replacingData === 0) replacementSnapshot = { values: effective(), catalog: declarations() };
       if (replacingData++ === 0) { revision++; tell('replacing'); }
       // Host-owned initialization/migrations may write; unrelated async callers still wait.
-      try { return await replacement.run(true, replace); }
+      const scope = { active: true };
+      try { return await replacement.run(scope, replace); }
       finally {
+        scope.active = false;
         if (--replacingData === 0) { replacementSnapshot = undefined; revision++; tell('replaced'); }
       }
     },
