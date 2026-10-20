@@ -181,10 +181,17 @@ describe('a feature whose settings change', () => {
   // The import replaces the same stores a reset does, and a pack's defaults coming or going while it runs would be
   // diffed against what features were told before it
   describe('while a backup import runs', () => {
+    let endImport: (() => Promise<void>) | undefined;
+    afterEach(async () => {
+      try { await endImport?.(); }
+      finally { endImport = undefined; }
+    });
+
     /** Starts an import that settles when `finish` is called, and waits until the settings system has heard it start */
     async function importing(app: Awaited<ReturnType<typeof startApp>>) {
       let finish!: () => void;
       const done = new Promise<void>((resolve) => { finish = resolve; });
+      endImport = async () => { finish(); await app.settle(); };
       mockService('appData', { importBackup: () => getTestSettings().whileReplacingData(async () => { await done; return { databases: ['lmdb'], missingDatabases: [], unknownEntityTypes: [] }; }) });
       await app.send('database', { type: 'IMPORT_DATABASE', path: '/backups/1' });
       return { finish };
@@ -197,7 +204,7 @@ describe('a feature whose settings change', () => {
 
       await app.send('host/settings', { type: 'RESET_APP' }, { settingsAccess: { kind: 'host', service: getTestSettings() } });
 
-      expect(app.emitted('host/settings')).toContainEqual({ type: 'APP_RESET_FAILED', error: expect.stringContaining('backup is being imported') });
+      expect(app.emitted('host/settings')).toContainEqual({ type: 'APP_RESET_FAILED', error: 'App data is being replaced. Reset the app once it has finished.' });
       finish();
       await app.settle();
     });
@@ -230,7 +237,7 @@ describe('a feature whose settings change', () => {
 
       expect(app.emitted('host/settings')).toContainEqual({
         type: 'SETTINGS_REFUSED',
-        problems: [expect.stringContaining('backup is being imported')],
+        problems: ['App data is being replaced. Change the settings once it has finished.'],
       });
       finish();
       await app.settle();

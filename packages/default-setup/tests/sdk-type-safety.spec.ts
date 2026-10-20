@@ -174,8 +174,10 @@ describe('Generated services', () => {
   });
 
   it('rejects a service that is not registered', () => {
-    // @ts-expect-error not a service of this pack, its dependencies or the host
-    void services.notAService;
+    expect(() => {
+      // @ts-expect-error not a service of this pack, its dependencies or the host
+      void services.notAService;
+    }).toThrow('Pack "default-setup" has not selected service "notAService"; declare its reference in consumes.services');
   });
 });
 
