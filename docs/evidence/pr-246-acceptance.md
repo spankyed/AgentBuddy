@@ -6,6 +6,23 @@ Electron acceptance is run on the developer's Mac.
 Current repair preserves compiler dependency observations and moves runner caches to `.apack/tests/vite`.
 The temporary root-listing filter in the chronological checkpoints below was removed after diagnosis.
 
+## Current coverage, 2026-10-20
+
+The [active strict run `39450690425`](https://github.com/spankyed/apack/actions/runs/39450690425)
+is pinned to `1dc65f096716afd79ec3e4064cb4cf5ff2bb0dce`; it is still in progress. Documentation
+updates after that pin do not imply a newer source tree has passed.
+
+| Boundary | Inspected evidence | Remaining limit |
+|---|---|---|
+| Static checks and both unit pools | `39436045862`: 487 host files and 121 pack files pass | Earlier source; current strict run must finish |
+| Normal integration | Previous strict run: 553 cases in thirteen files pass before reporter timeout; repaired reporter: eleven focused cases pass | Full integration has not yet passed on repaired source |
+| 7.2 actual step-owner service | `39400009119`: external step runs through the actual brain | Full external suite still needs its fresh gate |
+| 8.1/8.2 actual LMDB import/rollback | All six cases pass repeatedly on disposable macOS | Not dependent on the developer-Mac native crash |
+| 5.1/S.1/S.2 settings recovery | Real Electron recovery, reopen and multi-window cases pass | General app evidence is composed across runs, not one fresh 32/32 run |
+| S.5 source host | `39414905716`: actual CLI install, manifest rebuild, frontend acceptance and shutdown pass; fourteen builder lifecycle cases pass | Packaged beta half lacks a suitable published release |
+| Fork replacement/restoration | `39420977378`: complete case passes in 48.9s | Fresh strict external gate still pending |
+| Runtime, smoke and packaged authoring | Not reached in the preceding strict run | Current strict gate must supply fresh results |
+
 ## Runs
 
 - [Strict acceptance 39387174436](https://github.com/spankyed/apack/actions/runs/39387174436):

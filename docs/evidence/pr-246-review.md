@@ -11,38 +11,26 @@ pre-repair behavior are not claims that the defect remains in current source.
 
 ## Verdict
 
-Review baseline: `8d31bdccc`, 2026-10-19. Settings 5.1 and startup-related S.1/S.2 are
-reconciled against `3a6b649b5` and the focused evidence; other areas have not been re-reviewed here.
+The original review baseline was `8d31bdccc` (2026-10-19). The descriptions and source
+locations below preserve that historical review; the disposition table records subsequent repairs.
+Do not interpret the historical acceptance register at the end as the current defect list.
 
-**Not ready to merge.** Ten of the eleven rows in the goal's acceptance register are delivered; nine of them have
-open defects (see [the row-by-row register](#acceptance-register-row-by-row)). The "final committed tree"
-row is not delivered: no application-level or integrated run covers the current source.
+Implementation repairs are complete for the findings marked completed below. Remaining validation
+is tracked in [current acceptance evidence](pr-246-acceptance.md): the strict run on
+`1dc65f096716afd79ec3e4064cb4cf5ff2bb0dce` is still in progress. The preceding strict run passed
+both complete unit pools, but failed in a reporter metatest before completing integration or app gates.
+That metatest now uses owned real-Vitest fixtures and passes all eleven focused cases.
 
-Open, by severity:
-- **Blocker:** none remaining from this recorded list; 5.1 has a focused repair.
-- **High:** 4.1, 4.2, 9.1, 9.2.
-- **Medium:** 3a.1, 3b.1, 3b.2, 6.1, 6.2, 6.3, 9.3, 9.4, 10.1–10.5, S.3, S.4.
-- **Low:** 3a.2, 3a.3, 3b.3, 3b.4, 4.3, 4.4, 6.4, 10.6, 10.7, S.5.
-- **Implemented, awaiting application/native acceptance:** 5.1, S.1, S.2, 7.2, 8.1, 8.2.
+Real application evidence now covers settings recovery/reopen and multi-window settings, a step
+calling its owning pack's service through the actual brain, source-host CLI rebuild/install/shutdown,
+and fork replacement/restoration. All six real LMDB import/rollback cases passed repeatedly on the
+disposable runner. These focused and composed results do not replace the remaining strict gate.
 
-**What closes it, in order:**
-1. Settings 5.1 and its startup-related S.1/S.2 paths are repaired in `8d31bdccc` and `3a6b649b5`.
-   Strict validation remains; host-only recovery provides explicit atomic reset and requires relaunch.
-   See [settings recovery evidence](settings-recovery.md) for focused checks and acceptance limits.
-2. Fix the High findings that break shipped behaviour or a pack author's first steps: 9.1, 9.2, 4.1, 4.2.
-3. Decide 10.1 and 10.2 (the doubled `suite` rung and the 69 per-test deadline exceptions): restore the
-   limits or record a measurement for each. Then fix 10.3 and 10.4, so the run below cannot be cancelled
-   or pass having run nothing.
-4. Run strict acceptance once on committed source, on a disposable macOS runner:
-   `gh workflow run ci.yml --ref <branch> -f strict_chain=true`. It must include the unit pools,
-   `build:runtime`, `test:smoke` and both `:app` halves, which the accepted run `39333769307` did not run.
-   That run also gives 7.2, 8.1 and 8.2 their application checks.
-5. The remaining Mediums and Lows can follow the merge, each as its own change.
+The packaged beta-host half of S.5 remains untested: no suitable beta release is published. No release
+has been created. Findings 3a.1, 10.1, 10.2 and 10.7 remain explicitly deferred to the validation-feedback
+budget plan; R-D2 remains an accepted documented limitation.
 
-No CI or broad acceptance run has been dispatched. The settings repair has focused local evidence;
-the remaining acceptance run is still pending.
-
-## Status — reconciled 2026-10-19
+## Status — reconciled 2026-10-20
 
 The settings and service findings added during repair work are included. There are no additional
 finding IDs in this version beyond those reconciled below. “Completed” means implementation and
@@ -54,18 +42,18 @@ focused verification; remaining application/native acceptance is listed separate
 | 1.3, 2.5 | Completed: correct host module/hash/recovery documentation | `278661695`; the claim that `packFileHashes` was absent was incorrect |
 | 2.1, 2.3, 2.4 | Completed: enable explicit reinstalls, repair damaged caches, correct CLI documentation | `46ef9a95e`, `88be3f633` |
 | 2.2 | Completed: recover interrupted acceptance and prior installation decisions | `88be3f633`; filesystem recovery cases pass |
-| 5.1 | Completed: admission protection, host-only recovery, atomic reset and explicit relaunch | `8d31bdccc`, `3a6b649b5`; [focused evidence and limits](settings-recovery.md) |
+| 5.1 | Completed: admission protection, host-only recovery, atomic reset and explicit relaunch | `8d31bdccc`, `3a6b649b5`; real recovery/reopen passed; [current acceptance](pr-246-acceptance.md) |
 | 5.2 | Closed: intentional explicit-override contract; conflicting guide corrected | [Decided contract](../archive/plans/settings-architecture.md), `278661695` |
 | 5.3, 5.4 | Completed: apply committed save snapshots and share frontend/backend read authorization | `d3f3e1765`, `f6eceeeda` |
 | 5.5 | Completed: preserve typing through save echoes and edits after a superseding reset | `8ec60b1e5`, `f6eceeeda`; seven component cases pass |
 | 7.1, 7.3 | Completed: refuse provider mutation and diagnose undeclared service reads | `7b68cad48` |
-| 7.2 | Implemented; actual flow/application acceptance remains pending | `7b68cad48`; binding, identity, retirement and type checks pass |
-| 8.1, 8.2 | Implemented; real LMDB acceptance remains pending | `53da4c140`; filesystem transaction cases pass; native import test aborted |
+| 7.2 | Completed; actual external step calls its owning service through the running brain | `7b68cad48`; app run `39400009119`, [acceptance evidence](pr-246-acceptance.md) |
+| 8.1, 8.2 | Completed; all six real LMDB import/rollback cases pass on disposable macOS | `53da4c140`; repeated runner evidence in [acceptance record](pr-246-acceptance.md) supersedes the local native abort |
 | 8.3 | Completed: permit replacement-owned writes and expire that authority afterward | `c960deca3`, `d282c7624` |
 | 8.4 | Completed: refuse overlapping app-data replacement requests | `53da4c140` |
 | 8.5, 8.6 | Completed: correct import lifecycle documentation and reset/import refusal text | `c960deca3` |
 | Completeness: source-coverage claim | Completed: historical acceptance is explicitly bounded to its tested source | `278661695` |
-| Completeness: fresh integrated acceptance | Pending; no CI or broad application suites run during these repairs | [Acceptance limits](pr-246-repairs.md#remaining-acceptance-limits) |
+| Completeness: fresh integrated acceptance | In progress; both unit pools passed previously, full integration and subsequent app gates remain | [Current acceptance runs and exact source pins](pr-246-acceptance.md) |
 | 3a.1 | Deferred: a cache-validity decision for check steps | [Validation feedback budget](../plans/validation-feedback-budget.md#review-findings-this-plan-owns) |
 | 3a.2, 3a.3 | Completed: resolve a dangling link from its physical directory; name a broken authored link | "fix(build): resolve dangling watch links physically, name broken authored links, restart dev servers after publication" |
 | 6.1 | Completed: unloaded tabs open through the shell's wait, are dimmed, and the switch hotkeys skip them | "fix(shell): unload refused frontend replacements and route unloaded tabs through the shell" |
@@ -81,21 +69,20 @@ focused verification; remaining application/native acceptance is listed separate
 | 9.2 | Completed: each `FLOWS_CONNECTED` asks for the shown flow again, keeping its node selection and editor while the node exists; a flow that is gone gives way to the published root flow | "fix(flows): refresh the shown flow when the backend republishes, falling back to the root flow" |
 | 10.1, 10.2, 10.7 | Deferred: deadline and declared-cost decisions; no change until measured | [Validation feedback budget](../plans/validation-feedback-budget.md#review-findings-this-plan-owns) |
 | 10.3–10.6 | Completed: strict runs keep their own group; each filtered step's report is verified; the fixture build precedes repo-checks integration; uploads point at `.apack` output | "ci: keep strict runs, verify each filtered step, build fixtures first, upload .apack output" |
-| S.1, S.2 | Completed for startup-invalid settings: persisted-row preflight and host-only recovery | `3a6b649b5`; [evidence](settings-recovery.md) |
+| S.1, S.2 | Completed for startup-invalid settings: persisted-row preflight and host-only recovery | `3a6b649b5`; real recovery/reopen passed; [acceptance evidence](pr-246-acceptance.md) |
 | S.4 | Closed by 6.3: no kept frontend is left with a dropped settings binding | "fix(shell): unload refused frontend replacements and route unloaded tabs through the shell" |
 | S.3 | Completed: a frontend whose pack the ready catalog withdrew during loading is taken back out | "fix(shell): take back a frontend whose pack was withdrawn while it loaded" |
 | S.5 | Completed: a checkout's app installs each `apack pack dev` build itself (`POST /dev/install`) under the registry's per-pack claim, which every pack operation now takes; a packaged app gets builds copied only while stopped, restarting after a backend rebuild | "fix(packs): install apack pack dev builds through the app, restarting packaged hosts" |
 
 ### Remaining work
 
-1. **8.1/8.2 — native verification:** verify actual LMDB import, failed hydration and rollback on a
-   suitable environment. The local native allocator abort is recorded; mocked inspection plus real
-   filesystem tests do not close this gate.
-2. **7.2 and completeness — application verification:** exercise step-owner service injection through
-   the actual flow executor, and obtain fresh application/integrated acceptance for repaired committed
-   source. Historical runs are preserved but do not cover these changes. The user authorized fresh
-   disposable CI on 2026-10-20; see [current acceptance evidence](pr-246-acceptance.md).
-
+1. Finish and inspect strict run `39450690425` on committed source: complete normal integration,
+   runtime/smoke and external-app/packaged-authoring gates. Preserve completed results and diagnose any
+   failure with focused checks before another broad run.
+2. Exercise the packaged beta-host half of S.5 when a suitable beta release exists. Source-host
+   install, manifest rebuild, accepted frontend delivery and shutdown passed in `39414905716`.
+3. Reconcile final acceptance against the exact tested commit; do not equate composed focused
+   evidence with a fresh full application-suite pass.
 
 ## Repair-diff review (2026-10-20)
 
@@ -109,7 +96,7 @@ and guides. *Confirmed* findings were checked against the code; *plausible* ones
 | R-E1 | Medium (confirmed) | `7294d6853` | 9.3 is not closed: `ACTION_CREATED`/`PROMPT_CREATED`, broadcast to every window, select the new item while the list shows. Clicking it then skips the fetch, the form keeps the previous item's fields, and a save overwrites the new item with them | Fixed — "fix(default-setup): a created action or prompt no longer selects itself in every window" |
 | R-B1 | Medium (confirmed) | `36608fe9c` | The rename missed `tests/packs/external-pack/tests/e2e/settings-ownership.spec.ts`, which still sends `runtimeRevision`; `settings.openPack`'s strict schema refuses it, so `test:external-pack:app` fails | Fixed — "test(app): align persisted-profile and settings credential acceptance fixtures" |
 | R-B2 | Medium (confirmed) | `a47ec923b` | On a checkout host, a first build that fails to load or initialise makes `apack pack dev` exit and close its app, where the watcher used to keep running so the author could fix it | Fixed — "fix(cli): keep pack dev watching after a refused first install, and keep the dev server up until its replacement is" |
-| R-D1 | Medium (confirmed) | `7182c952d` | When the reused generation's dev server fails re-verification, it is closed before its replacement starts; if the restart fails, the `pack-dev-servers` marker is left naming a dead port. Before, the old server stayed up | Fixed — "fix(cli): keep pack dev watching after a refused first install, and keep the dev server up until its replacement is" (process specs need a disposable runner; covered by reading) |
+| R-D1 | Medium (confirmed) | `7182c952d` | When the reused generation's dev server fails re-verification, it is closed before its replacement starts; if the restart fails, the `pack-dev-servers` marker is left naming a dead port. Before, the old server stayed up | Fixed — "fix(cli): keep pack dev watching after a refused first install, and keep the dev server up until its replacement is" (all fourteen builder lifecycle cases pass on the disposable runner in `39414905716`) |
 | R-A2 | Medium (plausible) | `8d31bdccc` | A pack install or update during a backup import is admitted against the engine mid-replacement; an imported row that breaches the new declaration then makes every settings read, and App reset, fail until relaunch | Fixed — "fix(packs): hold a pack's claim through teardown, report refused operations, exclude them during data replacement" |
 | R-E2 | Low–Medium (confirmed) | `1f3e6123b` | The 9.2 refresh shares the `pendingFlow` slot with user selections, which a node double-click, re-selecting the shown flow, leaving the view or switching tabs clears; the refreshed graph is then dropped and the stale one stays | Fixed — "fix(flows): give the publish refresh its own slot, fall back when an opening flow is gone, keep nodes being added" |
 | R-C2 | Low–Medium (plausible) | `47f153de5` | A click on a dimmed tab queues an open that later navigation does not cancel, so the window switches to it when its pack loads | Fixed — "fix(shell): a later navigation supersedes an open still waiting for its pack" |
@@ -213,7 +200,7 @@ Scope: SDK `services/` and `framework/service-consumption.ts`; host `packs/servi
 | # | Severity | Finding | Status |
 |---|---|---|---|
 | 7.1 | Medium | A pack can patch a shared host service through its facade, and the patch outlives the pack | Completed |
-| 7.2 | Medium | A step from another pack receives default-setup's service access and identity | Implemented; app check pending |
+| 7.2 | Medium | A step from another pack receives default-setup's service access and identity | Completed; actual brain/service app check passes (`39400009119`) |
 | 7.3 | Low | Reading a service outside the selection returns `undefined` with no diagnostic | Completed |
 
 **7.1. The service facade writes through to the shared object.** `apack-host/src/packs/service-binding.ts:85`:
@@ -259,8 +246,8 @@ wiring, and their specs.
 
 | # | Severity | Finding | Status |
 |---|---|---|---|
-| 8.1 | High | A failure loading imported data deletes the previous database | Implemented; native check pending |
-| 8.2 | High | When import and rollback both fail, the error naming the kept copy is lost, and the copy sits in the OS temp dir | Implemented; native check pending |
+| 8.1 | High | A failure loading imported data deletes the previous database | Completed; real LMDB import/rollback checks pass |
+| 8.2 | High | When import and rollback both fail, the error naming the kept copy is lost, and the copy sits in the OS temp dir | Completed; real LMDB import/rollback checks pass |
 | 8.3 | Medium (latent) | Pack settings writes from migrations or `onInit` are refused during reset and import | Completed |
 | 8.4 | Medium (plausible) | Reset and import, or two imports, can run on the store at once | Completed |
 | 8.5 | Low | The migrations guide says import runs through `startPacks()`; it does not | Completed |
@@ -904,10 +891,9 @@ has not been run on the branch's current source.
 
 What would close it is one run of those steps on committed source, on a disposable macOS runner
 (`gh workflow run ci.yml --ref <branch> -f strict_chain=true`, or a normal-acceptance workflow extended
-with the unit pools, `build:runtime`, `test:smoke` and both `:app` halves). Running them is outside this
-review.
+with the unit pools, `build:runtime`, `test:smoke` and both `:app` halves). They are now authorized and in progress; see [current acceptance evidence](pr-246-acceptance.md).
 
-### Acceptance register, row by row
+### Historical acceptance register at the original review baseline
 
 Each row of the goal's
 [Final acceptance register](../archive/goals/goal-settings-and-pack-contracts.md#final-acceptance-register),
@@ -916,8 +902,8 @@ judged against this review's findings at `HEAD` = `8d31bdccc`.
 - **Delivered with open defects**: implemented, with open findings listed.
 - **Not delivered**: the row's own pass condition does not hold.
 
-A finding marked fixed in the status table counts as fixed here, though this review did not verify the
-fix.
+This table preserves the original baseline assessment. Its open-finding cells are historical; the
+current disposition table and acceptance record above supersede them.
 
 | Register row | Verdict | Open findings |
 |---|---|---|

@@ -55,7 +55,7 @@ jobs:
           APACK_ACCEPTANCE_SUITE: ${{ inputs.suite }}
         run: |
           if [[ "$APACK_ACCEPTANCE_SUITE" == 'build' ]]; then
-            # Diagnostic only: observe complete phase costs; the strict gate keeps its 600s limit.
+            # Diagnostic only: observe build phase costs without running the application suites.
             mkdir -p .apack/tests/results
             NODE_OPTIONS=--max-old-space-size=4096 node_modules/.bin/tsx scripts/bounded.ts scenario npm run build:default-setup | tee .apack/tests/results/default-build.log
           else
