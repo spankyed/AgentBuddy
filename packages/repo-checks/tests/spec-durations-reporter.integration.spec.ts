@@ -1,27 +1,6 @@
-// The one claim behind reading a reporter instead of vitest's console output: that the number it hands
-// back is the number the console prints. It is a claim about *vitest*, not about this repo, so it is the
-// one thing here that has to be re-established rather than reasoned about.
-//
-// `vitest/reporters` exports `Reporter` and nothing else, and the declaration it comes from says "The
-// public Vitest API is experimental and does not follow semver". Four of its fields are read:
-// `project.name`, `project.config.root`, `module.diagnostic().duration` and `module.state()`. A *removal*
-// is already a compile error — the hook names are pinned with `satisfies keyof Reporter` and the parameter
-// types derived from it — so what is left unguarded is a field that still exists and comes to mean
-// something else. `diagnostic().duration` and the `task.result.duration` the default reporter rounds are
-// two different accessors; they agree today, and nothing but this says so.
-//
-// **The integration half, because it spawns four vitests and can only fail on a vitest upgrade.** It was
-// in the fast half for a day, which is the per-change loop: ~2.2s on ~19s for a check no code change can
-// move. The half is also where `subprocess-inventory.spec.ts` counts spawning files — its population is
-// the pooled integration run — so in the fast half this was a spawning file nothing inventoried, which is
-// the second reason. `spec-plan-collect.spec.ts` stays fast and spawns one: "Alone it is a second, which
-// is a fast spec that happens to spawn." Four is not one.
-//
-// **So the repo holds two readers of the console format, not one**: `slow-tests.ts`, which needs it because
-// it reads any chain step's output, and this. Worth stating plainly because the commit that ported
-// `measure-suites.ts` claimed one remained, and this arrived two commits later. The difference is the
-// direction each fails in — production code wrong about the format goes quiet, which is why that copy
-// went; a spec wrong about it fails, and failing is the job.
+// Compare the real Vitest reporter API against its console in each pool invocation shape.
+// Owned workspaces run tiny passed/skipped fixtures, never another package's product suite.
+// Their caches and config-loader output stay private even when dependencies are linked.
 import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
@@ -30,33 +9,26 @@ import { REPO_ROOT } from '@apackdev/host/build/packages-built';
 import { boundedSpawn } from '../../../scripts/lib/bounded-spawn.ts';
 import { readReportedRun, SPEC_DURATIONS_FILE } from '../../../scripts/lib/spec-durations-reporter.ts';
 import { durationsOf } from '../../../scripts/lib/spec-durations.ts';
-import { TIMEOUT_MS } from '../../../scripts/lib/step-timeouts.ts';
-import { UNIT_SUITES, type UnitSuite } from '../../../scripts/lib/unit-suites.ts';
-import { CONFIG_BY_HALF, halfOfPath, specFiles, type Half } from '../../../scripts/lib/spec-halves.ts';
+import { SIZE_MS } from '../../../scripts/lib/unit-suites.ts';
+import { CONFIG_BY_HALF } from '../../../scripts/lib/spec-halves.ts';
 import { POOLS, type Pool } from '../../../scripts/lib/unit-pool.ts';
 
-/**
- * The cheapest suite that has the half a shape runs, so each spawn is seconds rather than minutes.
- *
- * **Derived, which the comment here claimed before the code did it.** It named `apack-ui` and said a suite
- * that shrank past it would take over without an edit, which was simply false. The count comes from
- * `specFiles`, so it is a fact about the tree and needs no measurement and no threshold.
- *
- * `repo-checks` is excluded for the integration half: this spec *is* in that half, so running it would run
- * this file inside itself.
- */
-const cheapest = (half: Half): UnitSuite => {
-  const specs = (suite: UnitSuite): number =>
-    specFiles(path.join(REPO_ROOT, 'packages', suite.dir)).filter((file) => halfOfPath(file) === half).length;
-  const candidates = UNIT_SUITES
-    .filter((suite) => suite.kind === 'host' && suite.dir !== 'repo-checks' && specs(suite) > 0);
-  const found = [...candidates].sort((a, b) => specs(a) - specs(b))[0];
-  expect(found, `no host suite has a ${half} half to run`).toBeDefined();
-  return found!;
-};
-
 const temp = fs.mkdtempSync(path.join(os.tmpdir(), 'reporter-agrees-'));
-afterAll(() => fs.rmSync(temp, { recursive: true, force: true }));
+const lifetime = new AbortController();
+const children: ReturnType<typeof boundedSpawn>[] = [];
+afterAll(async () => {
+  lifetime.abort();
+  await Promise.allSettled([...children, ...runs.values()]);
+  fs.rmSync(temp, { recursive: true, force: true });
+});
+
+// Keep node_modules itself private: Vite writes config-loader output beside its package links.
+function linkVitest(root: string): void {
+  const modules = path.join(root, 'node_modules');
+  fs.mkdirSync(modules);
+  for (const name of ['vitest', '.bin']) fs.symlinkSync(path.join(REPO_ROOT, 'node_modules', name),
+    path.join(modules, name), process.platform === 'win32' ? 'junction' : 'dir');
+}
 
 // eslint-disable-next-line no-control-regex -- the console colours its output and this reads it back
 const ANSI = /\u001B\[[0-9;]*m/g;
@@ -89,66 +61,88 @@ interface Run {
  */
 const SHAPES = {
   standalone: () => ({
-    half: 'fast' as Half,
+    half: 'fast' as const,
     command: 'npm',
     args: (workspace: string, reporter: string) =>
       ['test', '-w', workspace, '--', '--reporter=default', `--reporter=${reporter}`],
   }),
   rootConfig: () => ({
-    half: 'fast' as Half,
+    half: 'fast' as const,
     // with-source supplies the condition the host pool's projects resolve under
     command: 'node',
     args: (workspace: string, reporter: string) =>
-      ['scripts/with-source.mjs', 'npx', 'vitest', 'run', '--project', workspace,
+      [path.join(REPO_ROOT, 'scripts/with-source.mjs'), 'npx', '--no-install', 'vitest', 'run', '--project', workspace,
         '--reporter=default', `--reporter=${reporter}`],
   }),
   integrationConfig: () => ({
-    half: 'integration' as Half,
+    half: 'integration' as const,
     command: 'npx',
     args: (workspace: string, reporter: string) =>
-      ['vitest', 'run', '--config', CONFIG_BY_HALF.integration, '--project', workspace,
+      ['--no-install', 'vitest', 'run', '--config', CONFIG_BY_HALF.integration, '--project', workspace,
         '--reporter=default', `--reporter=${reporter}`],
   }),
 } as const;
 
 type Shape = keyof typeof SHAPES;
 
-/**
- * One run per shape, kept, because both cases ask about the same run.
- *
- * Not an optimisation of a cheap thing: the integration shape runs another package's expensive half and
- * costs ~9s, so spawning it per case doubled this file from 12s to 23s. The runs are read-only — two
- * questions about one answer — so there is nothing for sharing to confuse.
- */
-const runs = new Map<Shape, Promise<Run & { workspace: string }>>();
-const bothReporters = (shape: Shape): Promise<Run & { workspace: string }> => {
+// All assertions for a shape inspect the same completed child run.
+const runs = new Map<Shape, Promise<Run & { workspace: string; files: string[] }>>();
+const bothReporters = (shape: Shape) => {
   if (!runs.has(shape)) runs.set(shape, runShape(shape));
   return runs.get(shape)!;
 };
 
-/** One real run of the cheapest suite with that shape's half, with both reporters on it */
-async function runShape(shape: Shape): Promise<Run & { workspace: string }> {
-  const out = path.join(temp, `${shape}.json`);
-  const reporter = path.join(REPO_ROOT, 'scripts', 'lib', 'spec-durations-reporter.ts');
+async function runShape(shape: Shape): Promise<Run & { workspace: string; files: string[] }> {
+  const cwd = path.join(temp, shape), pack = path.join(cwd, 'packages/fixture');
+  fs.mkdirSync(path.join(pack, 'tests'), { recursive: true });
+  linkVitest(cwd);
+  const workspace = '@fixture/durations-reporter';
+  fs.writeFileSync(path.join(cwd, 'package.json'), JSON.stringify({
+    name: '@fixture/reporter-root', private: true, type: 'module', workspaces: ['packages/*'],
+  }));
+  fs.writeFileSync(path.join(pack, 'package.json'), JSON.stringify({
+    name: workspace, private: true, type: 'module', scripts: { test: 'vitest run' },
+  }));
+  for (const half of ['fast', 'integration'] as const) {
+    const suffix = half === 'fast' ? '.spec.ts' : '.integration.spec.ts';
+    for (const name of ['first', 'second']) fs.writeFileSync(path.join(pack, 'tests', name + suffix),
+      `import { expect, it } from 'vitest';
+       it('calculates a total', () => expect(Array.from({ length: 10000 }, (_, i) => i).reduce((a, b) => a + b, 0)).toBe(49995000));`);
+    fs.writeFileSync(path.join(pack, 'tests', 'skipped' + suffix),
+      `import { it } from 'vitest'; it.skip('does not run', () => {});`);
+    fs.writeFileSync(path.join(pack, CONFIG_BY_HALF[half]), `export default ${JSON.stringify({
+      root: pack, cacheDir: path.join(pack, '.cache', half),
+      test: { include: [`tests/*${suffix}`], exclude: half === 'fast' ? ['**/*.integration.spec.ts'] : [] },
+    })};`);
+    fs.writeFileSync(path.join(cwd, CONFIG_BY_HALF[half]), `export default ${JSON.stringify({
+      cacheDir: path.join(cwd, '.cache', half),
+      test: { projects: [half === 'fast' ? 'packages/fixture' : `packages/fixture/${CONFIG_BY_HALF.integration}`] },
+    })};`);
+  }
+  const out = path.join(cwd, 'durations.json');
+  const reporter = path.join(REPO_ROOT, 'scripts/lib/spec-durations-reporter.ts');
   const { half, command, args } = SHAPES[shape]();
-  const workspace = cheapest(half).workspace;
-  const { output } = await boundedSpawn(command, args(workspace, reporter), TIMEOUT_MS.suite.ms,
-    // From the repo root either way: one shape resolves the root config, another a workspace by name
-    { cwd: REPO_ROOT, env: { ...process.env, [SPEC_DURATIONS_FILE]: out } });
+  const child = boundedSpawn(command, [...args(workspace, reporter), '--maxWorkers=1', '--minWorkers=1'], SIZE_MS.small,
+    { cwd, env: { ...process.env, [SPEC_DURATIONS_FILE]: out }, signal: lifetime.signal });
+  children.push(child);
+  const result = await child;
+  expect(result.code, `${shape} fixture failed: ${result.output}`).toBe(0);
   const printed = new Map<string, number>();
-  for (const line of output.replace(ANSI, '').split('\n')) {
+  for (const line of result.output.replace(ANSI, '').split('\n')) {
     const match = CONSOLE_LINE.exec(line);
     if (match !== null) printed.set(match[1]!, Number(match[2]));
   }
-  return { printed, reported: readReportedRun(out), workspace };
+  const suffix = half === 'fast' ? '.spec.ts' : '.integration.spec.ts';
+  return { printed, reported: readReportedRun(out), workspace,
+    files: ['first', 'second'].map(name => `tests/${name}${suffix}`) };
 }
 
 describe('the durations reporter agrees with the console it replaced', () => {
   it.each(Object.keys(SHAPES) as Shape[])('in a %s run, reports the files the console printed with the same milliseconds', async (shape) => {
-    const { printed, reported } = await bothReporters(shape);
+    const { printed, reported, files } = await bothReporters(shape);
     expect(reported, `no file at ${temp} — the reporter did not run, so this case proves nothing`).toBeDefined();
-    expect(printed.size, 'the console printed no per-file line, so there is nothing to compare against')
-      .toBeGreaterThan(0);
+    expect([...printed.keys()].sort(), 'only the selected fixture half may run').toEqual(files);
+    expect(reported!.modules.filter(module => module.skipped)).toHaveLength(1);
 
     // Also what pins `module.state()`: if it stopped answering `passed`, every module would read as skipped
     // and this set would be empty — which matters because `durationsOf` drops skipped modules, so the pool
@@ -224,19 +218,22 @@ it('attributes qualified subprojects to their confirmed workspace without hiding
   const root = path.join(temp, 'workspace-projects'); fs.mkdirSync(root);
   const workspace = '@fixture/multiple-projects';
   fs.writeFileSync(path.join(root, 'package.json'), JSON.stringify({ name: workspace, type: 'module' }));
-  fs.symlinkSync(path.join(REPO_ROOT, 'node_modules'), path.join(root, 'node_modules'), 'dir');
+  linkVitest(root);
   for (const name of ['backend', 'frontend', 'foreign']) fs.writeFileSync(path.join(root, `${name}.spec.ts`),
     `import { it } from 'vitest'; it('runs', () => {});`);
-  fs.writeFileSync(path.join(root, 'vitest.config.ts'), `export default { test: { projects: [
+  fs.writeFileSync(path.join(root, 'vitest.config.ts'), `export default { cacheDir: ${JSON.stringify(path.join(root, '.cache'))}, test: { projects: [
     { test: { name: '${workspace}:backend', include: ['backend.spec.ts'] } },
     { test: { name: '${workspace}:frontend', include: ['frontend.spec.ts'] } },
     { test: { name: 'foreign:frontend', include: ['foreign.spec.ts'] } },
   ] } };`);
   const out = path.join(root, 'durations.json');
-  await boundedSpawn(process.execPath, [path.join(REPO_ROOT, 'node_modules/vitest/vitest.mjs'), 'run',
+  const child = boundedSpawn(process.execPath, [path.join(REPO_ROOT, 'node_modules/vitest/vitest.mjs'), 'run',
     '--config', path.join(root, 'vitest.config.ts'),
-    `--reporter=${path.join(REPO_ROOT, 'scripts/lib/spec-durations-reporter.ts')}`], TIMEOUT_MS.quick.ms,
-    { cwd: root, env: { ...process.env, [SPEC_DURATIONS_FILE]: out } });
+    `--reporter=${path.join(REPO_ROOT, 'scripts/lib/spec-durations-reporter.ts')}`, '--maxWorkers=1', '--minWorkers=1'], SIZE_MS.small,
+    { cwd: root, env: { ...process.env, [SPEC_DURATIONS_FILE]: out }, signal: lifetime.signal });
+  children.push(child);
+  const result = await child;
+  expect(result.code, result.output).toBe(0);
   const report = readReportedRun(out)!;
   expect([...report.projects].sort()).toEqual([workspace, 'foreign:frontend'].sort());
   expect(report.modules.filter(module => module.project === workspace).map(module => module.file).sort())

@@ -312,3 +312,31 @@ All 60 pack-system cases and all four wait-guard cases pass locally; host typech
 lint pass. A broader local tooling audit passes 953 cases, with two environmental refusals: stale local
 published-package output and sandbox-denied `ps` in a private packaged-app fixture. Those files passed
 in the disposable host pool; no product change or local rebuild is needed for those environment limits.
+
+## Strict run 39436045862: unit pools pass; reporter metatest times out
+
+[Strict gate](https://github.com/spankyed/apack/actions/runs/39436045862), source
+`98d9a562be1fea76bf6b4ec74a4e5016a4464135`: all preparation and static checks pass; both complete unit
+pools pass (487 host files and 121 pack files). Normal integration passes 553 cases across thirteen
+files before failing fast on `spec-durations-reporter.integration.spec.ts`'s integration-config case
+at its **individual 60s test deadline**. The integration aggregate itself did not time out. The normal
+integration output preserves those passes; remaining files and the app gates are not claimed complete.
+Evidence: `/private/tmp/apack-strict-39436045862/` and its `.log`.
+
+The reporter test selected the “cheapest” whole package by integration-file count. That count does not
+bound execution cost: it launched another package's entire integration half inside the reporter test.
+Its child had a 600s allowance against a 60s parent and did not assert its exit status.
+
+Replace that workload with owned tiny workspace fixtures that invoke **real Vitest and both real
+reporters** in all three existing command/config shapes. Preserve duration equality, overhead and
+workspace attribution; additionally assert exact passed files, a skipped module and child success.
+Children use one worker, a 15s bound and file-owned cancellation/draining. Their `node_modules` directory
+is private, linking only dependencies/binaries so Vite's config-loader output and caches cannot write
+through a shared directory alias. No runtime or deadline increase. The other nested Vitest tests were
+reviewed: harness/setup cases exercise their actual authoring boundary and already use owned fixtures;
+they do not select arbitrary product suites for a generic reporter assertion.
+
+All eleven reporter cases pass in 3.4s of test time locally, including actual npm/node/npx invocations.
+Repo-checks typechecking and correctness lint pass. All fifteen wait/subprocess-guard cases pass separately
+before another normal/strict acceptance run. The required remaining coverage is the rest of normal
+integration and the smoke, external-app and packaged-authoring gates; completed results remain retained.
