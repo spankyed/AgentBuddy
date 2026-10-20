@@ -4,12 +4,16 @@ A **pack** is a self-contained extension for apack. It can contribute backend sy
 
 ## Prerequisites
 
-- Node.js >= 22
-- apack installed
-- The `apack` CLI, from any of:
-  - the app: **apack → Install 'apack' command in PATH** (macOS; apack Beta installs `apack-beta`)
-  - npm: `npm i -g @apackdev/cli`
-  - Homebrew: the formula in `build/homebrew/apack.rb`
+- A compatible apack host and CLI. The standalone CLI supports Node 22.15+ on the 22.x line,
+  or Node 23.5+; the app-bundled CLI uses its included runtime.
+- When using a packaged macOS app: **apack → Install 'apack' command in PATH** installs the bundled
+  command (apack Beta installs `apack-beta`). This requires an actual available app build.
+
+npm and Homebrew installation are not yet available.
+For development of apack itself, use the [source checkout instructions](../../README.md#develop-apack).
+The pack-authoring commands below assume their CLI and package prerequisites are available.
+Beta-download examples also require a compatible published Beta; `--host <checkout>` selects an
+explicit local host for workflows that support it.
 
 Whichever `apack` you run, inside a pack it hands off to the `@apackdev/cli` version the pack pins in its `devDependencies`, so every pack builds with the CLI it was written against.
 
@@ -23,7 +27,7 @@ Whichever `apack` you run, inside a pack it hands off to the `@apackdev/cli` ver
 | `@apackdev/cli` | The `apack` command and build toolchain. A devDependency of every pack. |
 | `@apackdev/testing` | Pack tests: `@apackdev/testing/harness` runs a pack's content, systems, services and flows in unit tests without the app, `@apackdev/testing/vitest` configures Vitest for it (`isolatedDataDir`), and `@apackdev/testing` is the Playwright fixture for E2E tests in the app (`@playwright/test` is a peer). |
 
-The five are released together with the same version.
+These packages are versioned together.
 
 ## Create a pack
 
