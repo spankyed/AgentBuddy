@@ -15,7 +15,7 @@ All paths come from `resolveAppEnvironment()` (`@apackdev/sdk/env`), under `user
 | `packs/<id>/` | Every installed pack, the ones the app ships included, in the pack layout (`apack.json`, `integrity.json`, `runtime/{index.cjs,fe.js,fe.css,content/}`, `build/`, `types/snapshot.json`; see `apack-host/src/packs/layout.ts`) |
 | `installed-packs.json` | Install state and `enabled` flag, for the packs that have a row |
 
-Hidden `.<id>.installing-*` and `.<id>.previous-*` dirs are installs in progress; discovery skips them and `prepareHostDataDirs` cleans up stale ones at boot.
+Hidden `.<id>.installing-*` directories hold candidates, `.<id>.previous-*` retain uncommitted incumbents, and `.<id>.retired-*` await cleanup after acceptance. Before discovery, `prepareHostDataDirs` restores interrupted incumbents and their installation decisions, and removes stale candidate/retired directories. Unresolved recovery blocks that pack from loading.
 
 ### The packs the app ships
 

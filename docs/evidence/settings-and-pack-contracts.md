@@ -8654,6 +8654,10 @@ and prove schema/API report agreement along with every required runtime gate. Ac
 
 ## Final requirement and source audit — 2026-10-19
 
+**Source scope:** this dated audit closes the historical `1ba85b976` checkpoint. Later PR review and
+repair source commits have separate [verification and acceptance limits](pr-246-repairs.md); the
+statements below about unchanged implementation do not extend to those commits.
+
 Normal unfiltered integration **39333769307** is accepted on workflow-only **`06638811d`**, whose only
 difference from main **`1ba85b976`** is its acceptance workflow: **831 passes, zero failures, 29
 platform skips**, exit 0, 4896.31s, every normal prerequisite passing. The
@@ -8683,8 +8687,11 @@ checks and current normal freshness/consumer cases), the PE bound-only admission
 (61 editor/schema cases plus regeneration). App settings, shell navigation, frontend boundaries,
 manifest normalization, generated API contracts and replacement behavior are unchanged. From
 `5ce394268` through accepted main `1ba85b976`, only test execution/deadline helpers and owning
-documentation change. After `1ba85b976`, only documentation changes. There is no newly uncovered
-implementation acceptance gap requiring another app/native/broad run.
+documentation change. This acceptance statement is bounded to source `1ba85b976`; subsequent PR review
+and repair commits change production source and are not covered by run `39333769307`. Their focused
+verification and remaining native/application/integration acceptance gaps are recorded in
+[PR #246 repairs](pr-246-repairs.md). The historical pass and the user's aggregate-gate waiver remain
+historical evidence, not a fresh integrated pass over the repaired branch.
 
 The lasting guards remain the strict current schema, shared normalized projections and checked binding
 admission, typed generated facades, caller/runtime-generation validation, build input/output seals,
