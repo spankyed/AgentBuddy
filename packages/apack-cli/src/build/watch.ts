@@ -4,7 +4,7 @@ import { createPackBuilder, type PackBuilder } from './build-process.ts';
 import { withBuildSignals } from './build-signals.ts';
 import { readValidManifest } from '../utils.ts';
 import { isPackInputPath, packInputWatchTargets, packInputsHash } from '@apackdev/host/build/pack-inputs';
-import { reloadPack, type AppPlace, type DevReload } from './dev-reload.ts';
+import { reloadPack, type AppPlace, type DevDelivery } from './dev-reload.ts';
 import { compilerWatchPaths, createCompilerWatchTools, compilerWatchTargets, createCompilerWatchMatcher, mergeCompilerWatchPaths, additionalCompilerObservations, type CompilerWatchPaths } from './compiler-watch.ts';
 import { createFrontendWatcher, type FrontendInputSnapshot } from './frontend-watch.ts';
 import type { BuildWatchInputs } from './build-watch-inputs.ts';
@@ -23,7 +23,7 @@ export interface WatchOptions {
    * Runs after each verified publication. Returning an outcome means it delivered the build to the app
    * itself (installed and started it, or restarted the app), so the watcher asks for no reload.
    */
-  readonly onBuilt?: () => Promise<DevReload | void>;
+  readonly onBuilt?: () => Promise<DevDelivery | void>;
   /** A dev session owns its shared compiler; standalone watchers own their builder. */
   readonly builder?: Pick<PackBuilder, 'build' | 'subscribeFrontendInputs' | 'isFrontendCurrent'>;
   readonly buildArgs?: readonly string[];
@@ -170,12 +170,12 @@ export async function startPackBuildWatcher(root: string, options: WatchOptions 
       if (closed) return;
       const delivered = await options.onBuilt?.();
       if (closed) return;
-      const reload = delivered ?? await reloadPack(packId, options.place);
-      if (reload.status === 'reloaded') console.log(`[watch] ${changed} — reloaded`);
-      else if (reload.status === 'current') console.log(`[watch] ${changed} — built; the backend is unchanged`);
+      const outcome = delivered ?? await reloadPack(packId, options.place);
+      if (outcome.status === 'delivered') console.log(`[watch] ${changed} — delivered to the app`);
+      else if (outcome.status === 'current') console.log(`[watch] ${changed} — built; the backend is unchanged`);
       else {
-        if (reload.status === 'failed' || reload.status === 'unreachable') invalidateInputs();
-        console.warn(`[watch] ${changed} — built, but the app did not reload (${reload.detail})`);
+        if (outcome.status === 'failed' || outcome.status === 'unreachable') invalidateInputs();
+        console.warn(`[watch] ${changed} — built, but the app did not reload (${outcome.detail})`);
       }
     } catch (error) {
       // A failed build/install/reload must not suppress a later save with identical inputs.

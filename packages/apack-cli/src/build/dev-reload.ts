@@ -46,23 +46,23 @@ function findAppApi(place: AppPlace): { api: { url: string; token: string } } | 
 }
 
 /**
- * What a reload came to. `detail` says which of the several ways it went wrong this was, since they need
+ * What handing a build to the app came to: an install, a reload or a restart. `detail` says which of the several ways it went wrong this was, since they need
  * different things of the author: start the app, look at its logs, or check what is holding the port.
  */
-export type DevReload =
+export type DevDelivery =
   /** The app has the build running (or installed, for a disabled pack) */
-  | { status: 'reloaded' }
+  | { status: 'delivered' }
   /** The app already runs this build's backend; Vite serves the rest */
   | { status: 'current' }
   /** No port or token file to reach an app with */
   | { status: 'not-running'; detail: string }
-  /** The app answered and refused, or couldn't reload */
+  /** The app answered and refused, or couldn't install or reload */
   | { status: 'failed'; detail: string }
   /** Nothing answered on the port the app published */
   | { status: 'unreachable'; detail: string };
 
 /** Posts one development request to the running app's API, with its token. */
-async function devRequest(endpoint: string, body: object, place: AppPlace): Promise<DevReload> {
+async function devRequest(endpoint: string, body: object, place: AppPlace): Promise<DevDelivery> {
   const found = findAppApi(place);
   if ('problem' in found) return { status: 'not-running', detail: found.problem };
   try {
@@ -71,7 +71,7 @@ async function devRequest(endpoint: string, body: object, place: AppPlace): Prom
       headers: { 'Content-Type': 'application/json', [API_TOKEN_HEADER]: found.api.token },
       body: JSON.stringify(body),
     });
-    if (res.ok) return { status: 'reloaded' };
+    if (res.ok) return { status: 'delivered' };
     const text = await res.text().catch(() => '');
     return { status: 'failed', detail: `${res.status} ${res.statusText}${text.trim() ? `: ${text.trim()}` : ''}` };
   } catch (err) {
@@ -80,7 +80,7 @@ async function devRequest(endpoint: string, body: object, place: AppPlace): Prom
 }
 
 /** Asks the running app to reload a pack's runtime. */
-export function reloadPack(packId: string, place: AppPlace = { env: 'development' }): Promise<DevReload> {
+export function reloadPack(packId: string, place: AppPlace = { env: 'development' }): Promise<DevDelivery> {
   return devRequest('/dev/reload', { packId }, place);
 }
 
@@ -88,6 +88,6 @@ export function reloadPack(packId: string, place: AppPlace = { env: 'development
  * Asks the running app to install the build in a pack's source directory and start it. The app copies the
  * files and loads them itself, so nothing else it does can load a half-copied build.
  */
-export function installPackInApp(root: string, place: AppPlace = { env: 'development' }): Promise<DevReload> {
+export function installPackInApp(root: string, place: AppPlace = { env: 'development' }): Promise<DevDelivery> {
   return devRequest('/dev/install', { root: path.resolve(root) }, place);
 }

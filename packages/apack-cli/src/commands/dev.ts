@@ -10,7 +10,7 @@ import {
   debugPortArgsFor, lastAttachedAt, publishSession, readDevToolsPort, readSession, startedByFromEnv,
   type DevSession,
 } from '@apackdev/host/dev-session';
-import { installPackInApp, type AppPlace, type DevReload } from '../build/dev-reload.ts';
+import { installPackInApp, type AppPlace, type DevDelivery } from '../build/dev-reload.ts';
 import { startPackBuildWatcher } from '../build/watch.ts';
 import { cliDirs, parseHostFlags, resolvePackHost, resolveRepositoryHost, packagedHostChannel, hostLabel, setHostHandoff, type PackHost } from '../app/pack-host';
 import { endAppHolding, profileFor, parseProfileFlags, removeProfile, PROFILE_USAGE } from '../app/profiles';
@@ -493,7 +493,7 @@ async function session(args: string[], hooks: SessionHooks, target: 'app' | 'pac
     // The running app installs and starts it, so nothing it does meanwhile loads a half-copied build
     console.log(`Installing pack to the ${env} app...`);
     const installed = await installPackInApp(pack.root, place);
-    if (installed.status !== 'reloaded') throw new Error(`The app did not install the pack (${'detail' in installed ? installed.detail : installed.status})`);
+    if (installed.status !== 'delivered') throw new Error(`The app did not install the pack (${'detail' in installed ? installed.detail : installed.status})`);
     console.log('');
   }
 
@@ -501,7 +501,7 @@ async function session(args: string[], hooks: SessionHooks, target: 'app' | 'pac
    * Delivers a packaged app a backend rebuild: close the app this command started, copy the build in, start it
    * again. The relaunch runs even when the copy fails, since a refused install leaves the previous build in place.
    */
-  async function restartWithBuild(): Promise<DevReload> {
+  async function restartWithBuild(): Promise<DevDelivery> {
     const revision = backendRevision(pack!.root);
     if (revision === installedBackend) return { status: 'current' };
     const previous = held;
@@ -527,7 +527,7 @@ async function session(args: string[], hooks: SessionHooks, target: 'app' | 'pac
     }
     endWith(next);
     if (failure) throw failure;
-    return { status: 'reloaded' };
+    return { status: 'delivered' };
   }
 
   const watch = async () => {

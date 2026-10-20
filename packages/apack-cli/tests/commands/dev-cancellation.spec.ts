@@ -57,7 +57,7 @@ vi.mock('@apackdev/host/dev-session', async importOriginal => ({
   readSession: () => ({ startedBy: 'dev' }),
 }));
 vi.mock('../../src/app/drive-attach', () => ({ verifySessionHost: () => {} }));
-vi.mock('../../src/build/dev-reload.ts', () => ({ installPackInApp: async () => ({ status: 'reloaded' }) }));
+vi.mock('../../src/build/dev-reload.ts', () => ({ installPackInApp: async () => ({ status: 'delivered' }) }));
 
 import { dev } from '../../src/commands/dev';
 

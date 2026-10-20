@@ -49,50 +49,49 @@ function answer(res: http.ServerResponse, status: number, body: object): void {
   res.end(JSON.stringify(body));
 }
 
-/**
- * The development endpoints `apack pack dev` and the built-in pack's watcher call: `POST /dev/reload { packId }`
- * reloads a pack the app already has, and `POST /dev/install { root }` installs and starts the build in a pack's
- * source directory. Each takes the registry's claim on its pack, so neither overlaps an install, toggle or
- * reload of the same pack.
- */
-const DEV_ENDPOINTS: Record<string, { field: string; run: (value: string) => Promise<object> }> = {
-  '/dev/reload': {
-    field: 'packId',
-    run: async packId => {
-      if (!appPacks.claimPackOperation(packId)) throw Object.assign(new Error('another operation on this pack is in progress'), { status: 409 });
-      try { await reloadPackById(appPacks, packId, backendActor); }
-      finally { appPacks.releasePackOperation(packId); }
-      return { ok: true };
-    },
-  },
-  '/dev/install': {
-    field: 'root',
-    run: async root => {
-      if (!path.isAbsolute(root)) throw Object.assign(new Error('root must be an absolute path'), { status: 400 });
-      const installed = await installDevPack(appPacks, root, backendActor);
-      return { ok: true, ...installed };
-    },
-  },
-};
-
-function handleHttpRequest(req: http.IncomingMessage, res: http.ServerResponse) {
-  const endpoint = req.method === 'POST' && req.url ? DEV_ENDPOINTS[req.url] : undefined;
-  if (endpoint) {
-    const refusal = devRequestRefusal(req.headers);
-    if (refusal) return answer(res, 403, { error: refusal });
+/** The request's JSON body, once it has all arrived */
+function readJsonBody(req: http.IncomingMessage): Promise<Record<string, unknown>> {
+  return new Promise((resolve, reject) => {
     let body = '';
     req.on('data', (chunk) => { body += chunk; });
-    req.on('end', async () => {
-      try {
-        const value = (JSON.parse(body) as Record<string, unknown>)[endpoint.field];
-        if (!value || typeof value !== 'string') return answer(res, 400, { error: `${endpoint.field} required` });
-        answer(res, 200, await endpoint.run(value));
-      } catch (err) {
-        const status = (err as { status?: number }).status ?? 500;
-        if (status === 500) logger.error(`${req.url} failed:`, err as Error);
-        answer(res, status, { error: (err as Error).message });
-      }
+    req.on('end', () => {
+      try { resolve(JSON.parse(body)); }
+      catch (err) { reject(err); }
     });
+  });
+}
+
+/**
+ * The development endpoints `apack pack dev` and `apack pack build --watch` call. `POST /dev/reload { packId }`
+ * reloads a pack the app already has; `POST /dev/install { root }` installs and starts the build in a pack's
+ * source directory. Both hold the registry's claim on the pack, so neither overlaps an install, toggle or
+ * reload of the same pack.
+ */
+async function handleDevRequest(url: string, req: http.IncomingMessage, res: http.ServerResponse): Promise<void> {
+  const refusal = devRequestRefusal(req.headers);
+  if (refusal) return answer(res, 403, { error: refusal });
+  try {
+    const body = await readJsonBody(req);
+    if (url === '/dev/reload') {
+      const { packId } = body;
+      if (!packId || typeof packId !== 'string') return answer(res, 400, { error: 'packId required' });
+      if (!appPacks.claimPackOperation(packId)) return answer(res, 409, { error: 'another operation on this pack is in progress' });
+      try { await reloadPackById(appPacks, packId, backendActor); }
+      finally { appPacks.releasePackOperation(packId); }
+      return answer(res, 200, { ok: true });
+    }
+    const { root } = body;
+    if (!root || typeof root !== 'string' || !path.isAbsolute(root)) return answer(res, 400, { error: 'an absolute root required' });
+    return answer(res, 200, { ok: true, ...await installDevPack(appPacks, root, backendActor) });
+  } catch (err) {
+    logger.error(`${url} failed:`, err as Error);
+    answer(res, 500, { error: (err as Error).message });
+  }
+}
+
+function handleHttpRequest(req: http.IncomingMessage, res: http.ServerResponse) {
+  if (req.method === 'POST' && (req.url === '/dev/reload' || req.url === '/dev/install')) {
+    void handleDevRequest(req.url, req, res);
     return;
   }
 

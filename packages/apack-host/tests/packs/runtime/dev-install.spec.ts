@@ -66,7 +66,7 @@ it('installs the build as the user\'s own copy and starts it', async () => {
   expect(registry.getRegisteredPackSystemIds(ID)).toEqual([`${ID}/widget`]);
   expect(readInstalledPacks(recordsFile()).find(record => record.id === ID)).toMatchObject({ enabled: true, updatesWith: 'user' });
   expect(bus.send.mock.calls.map(([event]) => event.type)).toContain('PACK_CHANGED');
-  // Both claims are released, so the next build can install
+  // The claim is released, so the next build can install
   expect(registry.claimPackOperation(ID)).toBe(true);
   registry.releasePackOperation(ID);
 });
@@ -77,10 +77,8 @@ it('places nothing while another operation holds the pack', async () => {
     await expect(installDevPack(registry, source, bus as never)).rejects.toThrow(/already in progress for dev-pack/);
     expect(fs.existsSync(packDir())).toBe(false);
     expect(registry.getPackRegistration(ID)).toBeNull();
-    // The other operation's claim is untouched; only the install's own source claim was released
+    // The other operation's claim is untouched
     expect(registry.claimPackOperation(ID)).toBe(false);
-    expect(registry.claimPackOperation(source)).toBe(true);
-    registry.releasePackOperation(source);
   } finally {
     registry.releasePackOperation(ID);
   }

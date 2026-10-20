@@ -77,7 +77,7 @@ describe('apack pack dev reloads', () => {
       fs.writeFileSync(path.join(userDataDir, 'api-token'), 'the-dev-token\n');
       const { reloadPack } = await import('../../src/build/dev-reload.ts');
 
-      expect(await reloadPack('my-pack')).toEqual({ status: 'reloaded' });
+      expect(await reloadPack('my-pack')).toEqual({ status: 'delivered' });
       expect(api.requests).toEqual([{ url: '/dev/reload', token: 'the-dev-token', body: JSON.stringify({ packId: 'my-pack' }) }]);
     } finally {
       api.close();
@@ -91,7 +91,7 @@ describe('apack pack dev reloads', () => {
       fs.writeFileSync(path.join(userDataDir, 'api-token'), 'the-dev-token');
       const { installPackInApp } = await import('../../src/build/dev-reload.ts');
 
-      expect(await installPackInApp('relative/pack')).toEqual({ status: 'reloaded' });
+      expect(await installPackInApp('relative/pack')).toEqual({ status: 'delivered' });
       expect(api.requests).toEqual([{ url: '/dev/install', token: 'the-dev-token', body: JSON.stringify({ root: path.resolve('relative/pack') }) }]);
     } finally {
       api.close();

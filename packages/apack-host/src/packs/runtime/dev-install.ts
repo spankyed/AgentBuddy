@@ -11,8 +11,8 @@ const logger = createLogger('pack-dev-install');
 
 /**
  * Installs a development build from a pack's source directory and starts it, for `apack pack dev`
- * (`POST /dev/install`). The app copies the files and loads the runtime itself, under one claim on the
- * pack, so no install, toggle or reload in the Packs view can load a half-copied build.
+ * (`POST /dev/install`). The app copies the files and loads the runtime itself, under its claim on the
+ * pack id, so no install, toggle or reload in the Packs view can load a half-copied build.
  *
  * The install is the user's own copy, as a CLI install is: an app default installed this way becomes a
  * user-managed fork. A disabled pack's files and declarations are replaced without starting it.
@@ -22,7 +22,6 @@ export async function installDevPack(
   packRoot: string,
   backendActor: import('xstate').AnyActorRef,
 ): Promise<{ id: string; dir: string }> {
-  if (!registry.claimPackOperation(packRoot)) throw new Error(`Operation already in progress for ${packRoot}`);
   const { packsDir, installedPacksFile } = resolveAppEnvironment();
   let claimedId: string | undefined;
   let start: (() => boolean) | undefined;
@@ -51,6 +50,5 @@ export async function installDevPack(
     return { id: result.id, dir: result.dir };
   } finally {
     if (claimedId) registry.releasePackOperation(claimedId);
-    registry.releasePackOperation(packRoot);
   }
 }

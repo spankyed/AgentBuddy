@@ -2,7 +2,7 @@ import { beforeEach, afterEach, expect, it, vi } from 'vitest';
 import type { EventEmitter } from 'node:events';
 import type { PackBuilder } from '../../src/build/build-process.ts';
 import * as packInputs from '@apackdev/host/build/pack-inputs';
-import type { DevReload } from '../../src/build/dev-reload.ts';
+import type { DevDelivery } from '../../src/build/dev-reload.ts';
 import { startPackBuildWatcher, watchPackBuild } from '../../src/build/watch.ts';
 import * as fs from 'node:fs';
 import * as compilerWatch from '../../src/build/compiler-watch.ts';
@@ -17,7 +17,7 @@ const fixture = vi.hoisted(() => ({
   frontendInputs: undefined as undefined | Parameters<PackBuilder['subscribeFrontendInputs']>[0],
   unsubscribe: vi.fn(),
   close: vi.fn(async () => {}),
-  reload: vi.fn<() => Promise<DevReload>>(async () => ({ status: 'reloaded' })),
+  reload: vi.fn<() => Promise<DevDelivery>>(async () => ({ status: 'delivered' })),
 }));
 vi.mock('node:fs', async importOriginal => {
   const { EventEmitter } = await import('node:events');
@@ -108,7 +108,7 @@ it.each(['build', 'install', 'reload', 'failed', 'unreachable'] as const)('retri
 });
 
 it('asks for no reload when onBuilt delivered the build itself', async () => {
-  const watcher = await startPackBuildWatcher('/fixture', { onBuilt: async () => ({ status: 'reloaded' as const }) });
+  const watcher = await startPackBuildWatcher('/fixture', { onBuilt: async () => ({ status: 'delivered' as const }) });
   try {
     fixture.authored = 'second';
     fixture.changed!('change', 'apack.json');
