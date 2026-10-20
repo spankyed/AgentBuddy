@@ -67,6 +67,18 @@ it('boots host recovery before loading external modules, repairs, and starts nor
   const outgoing: Message[] = [];
   const stop = rootEvents.onOutgoing(message => { outgoing.push(message); });
   rootEvents.emitConnected();
+  // A write other than the recovery reset is refused and answered, and the system stays up to take the repair
+  const stored = settings.getOverrides();
+  for (const [call, write] of [
+    ['set', { type: 'UPDATE_SETTINGS' as const, target: { kind: 'app' as const }, path: ['projects'], value: [] }],
+    ['reset-all', { type: 'RESET_ALL_SETTINGS' as const }],
+  ] as const) {
+    bindSettingsRequest(write, () => backend.appSettingsAccess.resolve('recovery-window', backend.appSettingsAccess.issueHost('recovery-window')));
+    rootEvents.emitIncoming({ to: 'host/settings', sender: 'host/settings', from: 'host', client: 'recovery-window', call, event: write });
+    await Promise.resolve();
+    expect(outgoing).toContainEqual(expect.objectContaining({ answering: call, event: expect.objectContaining({ type: 'SETTINGS_REFUSED' }) }));
+  }
+  expect(settings.getOverrides()).toEqual(stored);
   const event = { type: 'RECOVER_SETTINGS' as const, request: { version: recovery.version, reset: [{ kind: 'app' as const }, { kind: 'feature' as const, featureRef: 'memo/notes' as const }] } };
   const credential = backend.appSettingsAccess.issueHost('recovery-window');
   bindSettingsRequest(event, () => backend.appSettingsAccess.resolve('recovery-window', credential));

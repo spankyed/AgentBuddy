@@ -195,10 +195,10 @@ export const settingsSystem = setup({
       const outcome = ((): SettingsAnswer => {
         try {
           settingsRequestAccess(event).service.set(ev.target, ev.path, ev.value, ev.condition);
+          return { type: 'SETTINGS_SAVED', snapshot: preferences().getSnapshot() };
         } catch (error) {
           return refusal(error, "The settings weren't saved");
         }
-        return { type: 'SETTINGS_SAVED', snapshot: preferences().getSnapshot() };
       })();
 
       answerSettings(reply, outcome);
@@ -209,10 +209,10 @@ export const settingsSystem = setup({
       const outcome = ((): SettingsAnswer => {
         try {
           settingsRequestAdmin(event).replaceAll(ev.data, ev.condition);
+          return { type: 'SETTINGS_SAVED', snapshot: preferences().getSnapshot() };
         } catch (error) {
           return refusal(error, "The settings weren't replaced");
         }
-        return { type: 'SETTINGS_SAVED', snapshot: preferences().getSnapshot() };
       })();
 
       answerSettings(reply, outcome);
@@ -225,10 +225,10 @@ export const settingsSystem = setup({
       const outcome = ((): SettingsAnswer => {
         try {
           settingsRequestAccess(event).service.reset(target);
+          return { type: 'SETTINGS_SAVED', snapshot: preferences().getSnapshot() };
         } catch (error) {
           return refusal(error, "The settings weren't reset");
         }
-        return { type: 'SETTINGS_SAVED', snapshot: preferences().getSnapshot() };
       })();
 
       answerSettings(reply, outcome);

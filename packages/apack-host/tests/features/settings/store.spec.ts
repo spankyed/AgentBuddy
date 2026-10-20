@@ -326,6 +326,17 @@ describe('explicit settings recovery', () => {
     expect(rowData()).toEqual({ features: { [THREADS]: { limit: 'invalid' } } });
   });
 
+  it('refuses every write but the recovery reset, leaving the stored row as it was', () => {
+    const data = { features: { [THREADS]: { limit: 'invalid' } } };
+    corrupt(data);
+    expect(() => store.set(feature, ['sort'], 'oldest')).toThrow('recovery');
+    expect(() => store.reset(feature)).toThrow('recovery');
+    expect(() => store.replaceAll({})).toThrow('recovery');
+    expect(() => store.removeOverrides(['features', THREADS])).toThrow('recovery');
+    expect(() => store.resetAll()).toThrow('recovery');
+    expect(rowData()).toEqual(data);
+  });
+
   it('validates typed reads even before boot explicitly enters recovery', () => {
     untypedTx(SETTINGS_ID, true).put('entityType', SETTINGS_ENTITY).put('data', { features: { [THREADS]: { limit: 'invalid' } } });
     expect(store.getRecovery()).toBeUndefined();
@@ -392,7 +403,8 @@ describe('explicit settings recovery', () => {
       const before = rowData();
       expect(() => store.recover({ version: recovery.version, reset: 'all' })).toThrow('being replaced');
       expect(rowData()).toEqual(before);
-      store.resetAll();
+      // The replacement's own data arrives by hydration, which bypasses the writer
+      untypedTx(SETTINGS_ID, true).put('entityType', SETTINGS_ENTITY).put('data', {});
     });
   });
 
