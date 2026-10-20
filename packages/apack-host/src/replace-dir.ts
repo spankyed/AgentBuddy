@@ -1,4 +1,4 @@
-// Putting a built directory in place of the one before it, without a moment where neither is there.
+// Publish a complete directory, retaining the prior tree until synchronous acceptance succeeds.
 //
 // The mechanism, not the policy: where a caller stages its work and what it calls the staging directory are
 // the caller's. installer publication is one (an installed pack replaced by a newly staged one), the package builds are
@@ -7,12 +7,12 @@
 // **Why anything needs this.** A tree that is cleared and refilled does not exist for the length of the
 // build, and every reader of a derived tree in this repo treats absent as *not built* — so a build publishes
 // a window in which its output is a lie. Renaming into place closes it: a reader sees the previous build whole
-// or the new one whole.
+// or the new one whole, apart from the short gap between the two portable renames.
 import * as crypto from 'node:crypto';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 
-export type StagingKind = 'installing' | 'previous';
+export type StagingKind = 'installing' | 'previous' | 'retired';
 
 /**
  * **The format of a staging directory's name, with the one thing that reads it beside it**: `.<id>.<kind>-<pid>`
@@ -24,7 +24,7 @@ export type StagingKind = 'installing' | 'previous';
  * reaches the SDK and the host's own data dirs: with the format over there, every package build imported that
  * whole closure through one three-line string function, and the five build units had to declare it.
  */
-export const OWNED_STAGING_DIR = /^\.(.+)\.(installing|previous)-(\d+)(?:-[A-Za-z0-9]+)?$/;
+export const OWNED_STAGING_DIR = /^\.(.+)\.(installing|previous|retired)-(\d+)(?:-[A-Za-z0-9]+)?$/;
 
 /** A staging directory name for `id`, unique to this process */
 export function stagingDirName(id: string, kind: StagingKind): string {
@@ -56,19 +56,20 @@ export function stagingDirName(id: string, kind: StagingKind): string {
  * Throws with `staged` removed and `dest` untouched, so a failed build leaves the previous one in place —
  * which is the half that makes this worth doing rather than merely tidier.
  */
-export function replaceDir(staged: string, dest: string, accept?: () => undefined): void {
+export function replaceDir(staged: string, dest: string, accept?: (previous?: string) => undefined): void {
   const parent = path.dirname(staged);
   try {
     // Named for what it is and whose it is: `recoverStagingDirs` reads the pid to decide whether a leftover
     // belongs to a process that is gone, and the random suffix is what stops a recycled pid colliding with it
     const previous = fs.existsSync(dest) ? path.join(parent, stagingDirName(path.basename(dest), 'previous')) : null;
+    const retired = previous ? path.join(parent, stagingDirName(path.basename(dest), 'retired')) : null;
     const candidate = fs.lstatSync(staged);
     if (previous) fs.renameSync(dest, previous);
     let placed = false;
     try {
       fs.renameSync(staged, dest);
       placed = true;
-      accept?.();
+      accept?.(previous ?? undefined);
     } catch (err) {
       // Put the old tree back rather than leaving nothing there. Guarded, because a racer that took `dest`
       // between the two renames owns it now, and overwriting it would be the failure this exists to prevent
@@ -90,7 +91,16 @@ export function replaceDir(staged: string, dest: string, accept?: () => undefine
     // tree it replaced is litter rather than a failed publish — throwing would report a build that did not
     // happen and have its caller drop a stamp that describes the tree now in place. A leftover is named for
     // its maker, so `recoverStagingDirs` collects a pack's and a build's sits in an ignored staging directory.
-    if (previous) try { fs.rmSync(previous, { recursive: true, force: true }); } catch { /* litter */ }
+    if (previous && retired) {
+      try {
+        // A previous tree is still uncommitted. Recovery must never mistake cleanup litter for one.
+        fs.renameSync(previous, retired);
+        try { fs.rmSync(retired, { recursive: true, force: true }); } catch { /* committed litter */ }
+      } catch (error) {
+        // Acceptance may have committed runtime bindings; do not undo it for a cleanup failure.
+        process.emitWarning(new Error(`Replacement accepted, but its recovery marker could not be committed: ${previous}`, { cause: error }));
+      }
+    }
   } catch (err) {
     fs.rmSync(staged, { recursive: true, force: true });
     throw err;

@@ -2,8 +2,9 @@ import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { expect, it, vi } from 'vitest';
+import { _declarationRevision, PACK_SNAPSHOT_FORMAT } from '@apackdev/sdk/build';
 import { resolveAppEnvironment } from '@apackdev/sdk/env';
-import { recordHostCompatibility, readInstalledPacks, writeInstalledPacks, uninstallPack } from '@apackdev/host/packs';
+import { recordHostCompatibility, readInstalledPacks, writeInstalledPacks, uninstallPack, installPackFromLocal, sealPackBuild } from '@apackdev/host/packs';
 import { recordCliInstall } from '../../src/app/installed-packs';
 import { packUpdates } from '../../src/app/pack-updates';
 
@@ -64,7 +65,21 @@ it('enables an explicitly reinstalled pack but preserves enablement on an ordina
     recordCliInstall(context.installedPacksFile, 'demo');
     expect(readInstalledPacks(context.installedPacksFile)).toMatchObject([{ id: 'demo', enabled: false }]);
     await uninstallPack('demo', context.packsDir, { installedPacksFile: context.installedPacksFile });
-    recordCliInstall(context.installedPacksFile, 'demo', 'owner/repo');
+    const source = path.join(root, 'source');
+    const manifest = { id: 'demo', name: 'Demo', version: '1.0.0' };
+    fs.mkdirSync(path.join(source, 'runtime'), { recursive: true });
+    fs.mkdirSync(path.join(source, 'types'));
+    fs.writeFileSync(path.join(source, 'apack.json'), JSON.stringify(manifest));
+    fs.writeFileSync(path.join(source, 'runtime/index.cjs'), 'throw new Error("Do not activate");');
+    fs.writeFileSync(path.join(source, 'types/snapshot.json'), JSON.stringify({
+      format: PACK_SNAPSHOT_FORMAT, declarationRevision: _declarationRevision(manifest), manifest,
+      types: { entities: {}, relKinds: {} }, entityDestinations: {}, facades: {},
+    }));
+    sealPackBuild(source, manifest);
+    await installPackFromLocal(source, context.packsDir, {
+      installedPacksFile: context.installedPacksFile,
+      accept: candidate => { recordCliInstall(context.installedPacksFile, candidate.id, 'owner/repo'); },
+    });
     expect(readInstalledPacks(context.installedPacksFile)).toEqual([
       expect.objectContaining({ id: 'demo', enabled: true, installedFrom: 'owner/repo', updatesWith: 'user' }),
     ]);

@@ -78,7 +78,7 @@ describe('replaceDir', () => {
     fs.mkdirSync(locked);
     fs.writeFileSync(path.join(locked, 'pinned.js'), 'pinned');
     fs.chmodSync(locked, 0o500);
-    const aside = (dir: string) => entries(dir).filter((e) => e.includes('.previous-'));
+    const aside = (dir: string) => entries(dir).filter((e) => e.includes('.retired-'));
     try {
       replaceDir(staged, dest);
       expect(entries(dest), 'the swap stands — a leftover is litter, not a failure').toEqual(['new.js']);

@@ -1,4 +1,5 @@
 import * as fs from 'fs';
+import { INSTALL_RECORD_RECOVERY } from './staging.ts';
 import { readAppPackSources } from './app-sources.ts';
 import { readInstalledPacks, writeInstalledPacks, type PackRecord } from './installed.ts';
 import * as path from 'path';
@@ -47,7 +48,7 @@ export interface InstallOptions {
    * Throw to restore the previous files. Keep initialization and other irreversible work outside
    * this synchronous decision; filesystem rollback cannot undo callback effects.
    */
-  accept?: (candidate: Readonly<InstallResult>) => undefined;
+  accept?: (candidate: Readonly<InstallResult>, previousDirectory?: string) => undefined;
   /** Refuse packs whose manifest hostVersion this host doesn't satisfy (the app passes its version). */
   hostVersion?: string;
   /** Expected sha256 of a downloaded archive. */
@@ -207,12 +208,12 @@ export async function installShippedPacks(shippedDir: string, packsDir: string, 
       await installPackFromLocal(source.dir, packsDir, {
         ...options,
         installedPacksFile: undefined,
-        accept: candidate => {
+        accept: (candidate, previousDirectory) => {
           if (candidate.id !== id || shippedPackRevision(candidate.integrity.files) !== revision) {
             throw new Error(`App source "${id}" changed before installation acceptance; retry the complete build`);
           }
           return withInstallationRecord(options.installedPacksFile, id,
-            previous => appInstallationRecord(previous, candidate, false), () => options.accept?.(candidate));
+            previous => appInstallationRecord(previous, candidate, false), () => options.accept?.(candidate, previousDirectory), previousDirectory);
         },
       });
       results.push({ id, outcome: wasInstalled ? 'updated' : 'installed' });
@@ -253,7 +254,7 @@ function installAppPackSource(
       if (manifest.id !== id) throw new Error(`${operation === 'restore' ? 'Restore' : 'Update'} expected pack "${id}", received "${manifest.id}"`);
       options.beforePlace?.(manifest);
     },
-    accept: candidate => {
+    accept: (candidate, previousDirectory) => {
       if (options.expectedSourceRevision !== undefined
         && shippedPackRevision(candidate.integrity.files) !== options.expectedSourceRevision) {
         throw new Error(`App source "${id}" changed before ${operation === 'restore' ? 'restoration' : 'update'} acceptance; retry the complete build`);
@@ -262,7 +263,7 @@ function installAppPackSource(
         previous => {
           if (operation === 'update' && previous.updatesWith !== 'app') throw new Error(`Pack "${id}" is no longer app-managed`);
           return appInstallationRecord(previous, candidate, operation === 'restore');
-        }, () => options.accept?.(candidate));
+        }, () => options.accept?.(candidate, previousDirectory), previousDirectory);
     },
   });
 }
@@ -277,19 +278,25 @@ function appInstallationRecord(previous: PackRecord, candidate: Readonly<Install
 
 /** Save installation intent before the synchronous filesystem/runtime decision, restoring it on refusal. */
 function withInstallationRecord(
-  file: string, id: string, update: (record: PackRecord) => PackRecord, accept: () => undefined,
+  file: string, id: string, update: (record: PackRecord) => PackRecord, accept: () => undefined, previousDirectory?: string,
 ): undefined {
   const existed = fs.existsSync(file);
   const previous = readInstalledPacks(file, { strict: true });
   const record = update(previous.find(record => record.id === id) ?? { id, enabled: true });
   const next = previous.some(record => record.id === id)
     ? previous.map(existing => existing.id === id ? record : existing) : [...previous, record];
-  if (!writeInstalledPacks(next, file)) throw new Error(`Cannot save installation decisions: ${file}`);
+  const recovery = previousDirectory && path.join(previousDirectory, INSTALL_RECORD_RECOVERY);
+  if (recovery) fs.writeFileSync(recovery, JSON.stringify({ packs: previous.filter(record => record.id === id) }), { flag: 'wx' });
+  if (!writeInstalledPacks(next, file)) {
+    if (recovery) fs.rmSync(recovery);
+    throw new Error(`Cannot save installation decisions: ${file}`);
+  }
   try { return accept(); }
   catch (error) {
     try {
       if (!existed) fs.rmSync(file, { force: true });
       else if (!writeInstalledPacks(previous, file)) throw new Error(`Cannot restore installation decisions: ${file}`);
+      if (recovery) fs.rmSync(recovery);
     } catch (rollback) {
       throw new AggregateError([error, rollback], 'Installation was refused and record rollback failed');
     }
@@ -352,14 +359,14 @@ async function installFromDirectory(dir: string, packsDir: string, options: Inst
       id: manifest.id, name: manifest.name, version: manifest.version, dir: destDir,
       missingDependencies: [], integrity,
     };
-    replaceDir(incoming, destDir, () => {
+    replaceDir(incoming, destDir, previousDirectory => {
       result.missingDependencies = checkDependencies(manifest, packsDir);
-      const accept = () => options.accept?.(structuredClone(result));
+      const accept = () => options.accept?.(structuredClone(result), previousDirectory);
       if (!options.installedPacksFile) return accept();
       return withInstallationRecord(options.installedPacksFile, manifest.id, previous => {
         const { shippedRevision: _revision, suppressAppInstall: _suppression, ...record } = previous;
-        return { ...record, updatesWith: 'user' };
-      }, accept);
+        return { ...record, enabled: previous.suppressAppInstall ? true : previous.enabled, updatesWith: 'user' };
+      }, accept, previousDirectory);
     });
     incoming = undefined;
     log.info(`Installed "${manifest.name}" v${manifest.version} to ${destDir}`);

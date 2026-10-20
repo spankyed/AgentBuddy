@@ -2,6 +2,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { createLogger } from '@apackdev/sdk/logger';
 import { resolveAppEnvironment } from '@apackdev/sdk/env';
+import { interruptedReplacementProblem } from './staging.ts';
 import { packRecord, packRecords, type PackRecord } from './installed.ts';
 import { errorMessage, hasOwn } from '@apackdev/sdk/utils/pure';
 import { PACK_ID_PATTERN } from '@apackdev/sdk/ids';
@@ -32,6 +33,8 @@ export type InstalledPackBuild = { id: string; dir: string } & (
 export function readInstalledPackBuild(dir: string): PackBuild {
   const id = path.basename(dir);
   if (!PACK_ID_PATTERN.test(id)) throw new Error(`Invalid installed pack directory "${id}"`);
+  const interrupted = interruptedReplacementProblem(dir);
+  if (interrupted) throw new Error(interrupted);
   const build = readPackBuild(dir);
   if (build.snapshot.manifest.id !== id) {
     throw new Error(`Installed directory "${id}" contains pack "${build.snapshot.manifest.id}"`);
