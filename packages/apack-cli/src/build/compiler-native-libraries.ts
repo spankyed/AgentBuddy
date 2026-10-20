@@ -70,32 +70,29 @@ export function assertCapturedCompilerLibraries(entry: string, packageRoot: stri
 
 /** A new runtime resolves its linked libraries before JS; it cannot reuse the parent's loaded images. */
 export function assertCompilerRuntimeLibraries(executable: string, runtimeDirectory: string, env: NodeJS.ProcessEnv, cwd: string): void {
+  const input = {
+    arch: process.arch,
+    readEntries: readPeDirectoryEntries,
+    directoryExists: (file: string) => fs.statSync(file, { throwIfNoEntry: false })?.isDirectory() ?? false,
+    realpath: (file: string) => fs.realpathSync.native(file),
+    read: (file: string) => fs.statSync(file, { throwIfNoEntry: false })?.isFile() ? fs.readFileSync(file) : undefined,
+  };
   if (process.platform === 'darwin') {
     return assertCapturedMachOLibraries(executable, runtimeDirectory, {
-      arch: process.arch, executable, cwd, environment: captureMachOLibraryEnvironment(env),
-      realpath: file => fs.realpathSync.native(file),
-      read: file => fs.statSync(file, { throwIfNoEntry: false })?.isFile() ? fs.readFileSync(file) : undefined,
+      ...input, executable, cwd, environment: captureMachOLibraryEnvironment(env),
     });
   }
   if (process.platform === 'win32') {
     const environment = capturePeLibraryEnvironment(executable);
     return assertCapturedPeLibraries(executable, runtimeDirectory, {
-      arch: process.arch, environment, executable, cwd, variables: env, loadedLibraries: [],
+      ...input, environment, executable, cwd, variables: env, loadedLibraries: [],
       moduleContext: (image, observe) => readPeActivationContext(image, { systemDirectory: environment.systemDirectory, application: executable, resource: 2, observe }),
-      readEntries: readPeDirectoryEntries,
-      directoryExists: file => fs.statSync(file, { throwIfNoEntry: false })?.isDirectory() ?? false,
-      realpath: file => fs.realpathSync.native(file),
-      read: file => fs.statSync(file, { throwIfNoEntry: false })?.isFile() ? fs.readFileSync(file) : undefined,
     });
   }
   if (process.platform !== 'linux') return;
   const elf = captureElfLibraryEnvironment(env, executable, cwd);
   assertCapturedCompilerLibraries(executable, runtimeDirectory, {
-    readEntries: readPeDirectoryEntries,
-    directoryExists: file => fs.statSync(file, { throwIfNoEntry: false })?.isDirectory() ?? false,
-    arch: process.arch, environment: { macho: captureMachOLibraryEnvironment(env), elf: { ...elf, loadedLibraries: [] } },
-    realpath: file => fs.realpathSync.native(file),
-    read: file => fs.statSync(file, { throwIfNoEntry: false })?.isFile() ? fs.readFileSync(file) : undefined,
+    ...input, environment: { macho: captureMachOLibraryEnvironment(env), elf: { ...elf, loadedLibraries: [] } },
   });
 }
 
