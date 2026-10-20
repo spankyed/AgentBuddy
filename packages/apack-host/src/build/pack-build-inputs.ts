@@ -75,7 +75,7 @@ export function assertPackBuildInputsCurrent(root: string, inputs: PackBuildInpu
     assertNativeCompilerObservations({ root: fs.realpathSync.native(root), entries: inputs.observations });
     const packages = readPackageInputs(inputs.packages.owners.map(owner => ({ ...owner,
       directory: path.resolve(root, owner.directory),
-    })), { discovered: inputs.packages.discovered.map(directory => path.resolve(root, directory)) });
+    })), { discovered: inputs.packages.discovered.map(directory => path.resolve(root, directory)), dependencyContents: 'resolution' });
     if (packages.hash !== inputs.packages.hash) throw new Error('Pack build package inputs changed; rebuild the complete pack');
   });
 }

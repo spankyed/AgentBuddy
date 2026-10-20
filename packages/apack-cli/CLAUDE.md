@@ -204,8 +204,11 @@ its private read trees. Live watch subscription delivery and broader platform ad
 in the owning goal; native input checks alone do not establish those guarantees.
 
 `@apackdev/host/build/compiler-inputs` owns metadata, bytes, physical bindings and directory/glob results
-for one compiler frame. Its `createPackCompilerInputView` captures authored and declared npm dependency bytes,
-filtered membership and missing lookups before user preloads; configuration, Vue extraction and the
+for one compiler frame. Its `createPackCompilerInputView` captures authored bytes, declared npm dependency
+membership and the files resolvers read directly (`package.json`, `tsconfig*.json`, `jsconfig.json`), and
+missing lookups, before user preloads. Other dependency bytes become inputs when a compiler first reads them, so
+a dependency file nothing reads is not an input (`readPackageInputs` with `dependencyContents: 'resolution'`;
+compiler installations still capture whole packages). Configuration, Vue extraction and the
 compiler host reuse that inventory and view. Repeated queries
 reuse captured data; a final check refuses changed bytes, missing targets, link changes or membership.
 Origin mappings and returned arrays cannot mutate its fingerprint. Root membership uses the shared

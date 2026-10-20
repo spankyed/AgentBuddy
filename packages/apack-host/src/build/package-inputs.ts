@@ -27,7 +27,11 @@ export interface PackageInputLink {
 export interface PackageInputNode {
   readonly directory: string;
   readonly metadata: string | null;
+  /** `all` read every package file; `resolution` read only the files resolvers read directly (see `PackageInputOptions`). */
+  readonly contents: 'all' | 'resolution' | 'none';
   readonly files: PackageInputFile[];
+  /** Package files present but not read, in `resolution` mode: their membership is an input, their bytes are not. */
+  readonly unread: string[];
   readonly directories: Array<{ path: string; source: string }>;
   readonly links: PackageInputLink[];
   readonly dependencies: Record<string, number | null>;
@@ -44,6 +48,13 @@ export interface PackageInputs {
 
 interface PackageInputOptions {
   readonly discovered?: readonly string[];
+  /**
+   * How much of each dependency package is read. `all` (the default) reads every file, which a compiler installation
+   * copies. `resolution` records membership and reads only the files a resolver consults without going through a
+   * compiler's own reads (`package.json`, `tsconfig*.json`, `jsconfig.json`): a pack build captures the rest when a
+   * compiler opens it.
+   */
+  readonly dependencyContents?: 'all' | 'resolution';
   readonly observe?: BuildInputObserver;
   /** Bytes used by this capture's identity; copying must not reread the live file. */
   readonly onFile?: (file: PackageInputFile, bytes: Buffer) => void;
@@ -72,11 +83,20 @@ export function findPackageDirectory(owner: string, name: string, observe?: Buil
   }
 }
 
+/** The files esbuild, Vite and TypeScript resolution read directly, outside a compiler's captured reads. */
+const resolutionFile = (name: string) => name === 'package.json' || name === 'jsconfig.json' || /^tsconfig.*\.json$/.test(name);
+
 function* readPackageFiles(node: PackageInputNode, targets: readonly string[], owners: ReadonlyMap<string, unknown>, { observe, onFile, onDirectory }: PackageInputOptions): Generator<string, void, Buffer> {
   const root = node.directory;
+  const everything = node.contents === 'all';
   const ancestors = new Set<string>();
   const files = new Map<string, { source: string; mode?: number }>();
   function walk(file: string, entry?: fs.Dirent, parent?: string): void {
+    const listedOnly = !everything && !!entry?.isFile() && !resolutionFile(entry.name);
+    if (listedOnly) {
+      node.unread.push(path.relative(root, file).split(path.sep).join('/'));
+      return;
+    }
     observe?.(file, 'file');
     const link = entry?.isSymbolicLink() ?? fs.lstatSync(file, { throwIfNoEntry: false })?.isSymbolicLink();
     const stat = entry && !link ? entry : fs.statSync(file, { throwIfNoEntry: false });
@@ -115,6 +135,7 @@ function* readPackageFiles(node: PackageInputNode, targets: readonly string[], o
     node.files.push(input);
     onFile?.(input, bytes);
   }
+  node.unread.sort();
   node.directories.sort((a, b) => a.path < b.path ? -1 : a.path > b.path ? 1 : 0);
   node.links.sort((a, b) => a.path < b.path ? -1 : a.path > b.path ? 1 : 0);
 }
@@ -147,6 +168,7 @@ function packageTargets(manifest: Record<string, unknown>): string[] {
 /** Declared and compiler-discovered package scopes, including their transitive resolution edges. */
 function* packageInputReads(owners: readonly PackageInputOwner[], options: PackageInputOptions): Generator<string, PackageInputs, Buffer> {
   const { discovered = [], observe, onFile } = options;
+  const dependencyContents = options.dependencyContents ?? 'all';
   const seen = new Map<string, number>();
   const rootInputs = new Map<string, { development: boolean; contents: boolean }>();
   for (const owner of owners) {
@@ -155,7 +177,7 @@ function* packageInputReads(owners: readonly PackageInputOwner[], options: Packa
     rootInputs.set(root, { development: previous?.development || !!owner.development, contents: previous?.contents || !!owner.contents });
   }
   const nodes: PackageInputNode[] = [];
-  function* register(directory: string, contents: boolean): Generator<string, number, Buffer> {
+  function* register(directory: string, contents: PackageInputNode['contents']): Generator<string, number, Buffer> {
     const root = fs.realpathSync.native(directory);
     const existing = seen.get(root);
     if (existing !== undefined) return existing;
@@ -166,12 +188,12 @@ function* packageInputReads(owners: readonly PackageInputOwner[], options: Packa
     const bytes = fs.existsSync(file) ? (yield file) : null;
     const metadata = bytes?.toString('utf8') ?? null;
     const manifest = metadata ? JSON.parse(metadata) : {};
-    const node: PackageInputNode = { directory: root, metadata, files: [], directories: [], links: [],
+    const node: PackageInputNode = { directory: root, metadata, contents, files: [], unread: [], directories: [], links: [],
       dependencies: Object.create(null), lookups: Object.create(null) };
     nodes.push(node);
     if (bytes && onFile) onFile({ path: 'package.json', source: fs.realpathSync.native(file), mode: fs.statSync(file).mode & 0o777,
       hash: createHash('sha256').update(bytes).digest('hex') }, bytes);
-    if (contents) yield* readPackageFiles(node, packageTargets(manifest), rootInputs, options);
+    if (contents !== 'none') yield* readPackageFiles(node, packageTargets(manifest), rootInputs, options);
     return index;
   }
   const populated = new Set<number>();
@@ -186,7 +208,7 @@ function* packageInputReads(owners: readonly PackageInputOwner[], options: Packa
     for (const name of names) {
       const dependency = findPackageDirectory(node.directory, name, observe);
       if (!dependency) { node.dependencies[name] = null; continue; }
-      const child = yield* register(dependency.directory, true);
+      const child = yield* register(dependency.directory, dependencyContents);
       node.dependencies[name] = child;
       node.lookups[name] = dependency.lookup;
       yield* populate(child, false);
@@ -196,17 +218,19 @@ function* packageInputReads(owners: readonly PackageInputOwner[], options: Packa
   // accidentally include their build output in their own input key.
   const roots: Array<{ id: string; node: number }> = [];
   for (const owner of owners) roots.push({ id: owner.id,
-    node: yield* register(owner.directory, rootInputs.get(fs.realpathSync.native(owner.directory))!.contents) });
+    node: yield* register(owner.directory, rootInputs.get(fs.realpathSync.native(owner.directory))!.contents ? 'all' : 'none') });
   for (const [index, owner] of owners.entries()) yield* populate(roots[index]!.node, owner.development ?? false);
   const imported: number[] = [];
   for (const directory of discovered) {
-    const index = yield* register(directory, true);
+    const index = yield* register(directory, dependencyContents);
     yield* populate(index, false);
     imported.push(index);
   }
   const identity = nodes.map(node => ({
     metadata: node.metadata,
+    contents: node.contents,
     files: node.files.map(file => [file.path, file.hash, file.mode & 0o111, path.relative(node.directory, file.source)]),
+    unread: node.unread,
     directories: node.directories.map(directory => [directory.path, path.relative(node.directory, directory.source)]),
     links: node.links.map(link => [link.path, path.relative(node.directory, link.target)]),
     dependencies: node.dependencies,

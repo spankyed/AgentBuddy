@@ -25,7 +25,7 @@ function fixture() {
   view.dispose();
   const owners = [{ id: 'pack', directory: root }];
   const inputs: PackBuildInputs = { compiler: 'a'.repeat(64), execution: 'b'.repeat(64), options: [],
-    packages: { hash: readPackageInputs(owners).hash, owners: [{ id: 'pack', directory: '' }], discovered: [] }, observations };
+    packages: { hash: readPackageInputs(owners, { dependencyContents: 'resolution' }).hash, owners: [{ id: 'pack', directory: '' }], discovered: [] }, observations };
   const dist = path.join(root, 'dist');
   writeInstalledPackFixture(dist, manifest);
   fs.writeFileSync(path.join(root, PACK_LAYOUT.manifest), JSON.stringify(manifest));

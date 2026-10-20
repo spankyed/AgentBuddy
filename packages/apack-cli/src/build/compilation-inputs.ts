@@ -97,6 +97,7 @@ export function captureCompilationInputs(packRoot: string, view?: PackCompilerIn
   const current = (capture = false) => {
     const inputs = readPackageInputs(owners, {
       discovered,
+      dependencyContents: 'resolution',
       onFile: capture ? (file, bytes) => modules.captureFile(file.source, bytes) : undefined,
     });
     const compilerIdentity = compiler?.hash ?? buildToolHash();

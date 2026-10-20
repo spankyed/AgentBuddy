@@ -18,7 +18,8 @@ export function createNativeInputReader(view: NativeInputView, initialPackages: 
   options: { environment?: CompilerLibraryEnvironment; admitNative?(file: string): void } = {}) {
   const environment = options.environment ?? captureCompilerLibraryEnvironment();
   const directories = new Set<string>();
-  const packages = new Set(initialPackages.nodes.map(node => node.directory));
+  // Only a package captured whole is skipped below; a native addon's package is otherwise captured whole on load.
+  const packages = new Set(initialPackages.nodes.filter(node => node.contents === 'all').map(node => node.directory));
   const configurations = new Map<string, ts.CompilerOptions>();
   const configFiles = new Set([...(view.configuration?.files.keys() ?? []), ...(view.declarationConfiguration?.files.keys() ?? [])]
     .filter(file => path.basename(file) !== 'package.json').map(sourcePath));

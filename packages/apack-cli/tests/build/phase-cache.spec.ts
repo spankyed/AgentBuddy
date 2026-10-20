@@ -224,7 +224,7 @@ it('refuses phase reuse when a previously consumed external input changes withou
   fs.writeFileSync(path.join(dist, 'types/facade.d.ts'), 'export {};');
   writeStamps(dist, stamps);
   writePackBuildInputs(dist, { compiler: 'a'.repeat(64), execution: 'b'.repeat(64), options: [],
-    packages: { hash: readPackageInputs([{ id: 'pack', directory: root }]).hash,
+    packages: { hash: readPackageInputs([{ id: 'pack', directory: root }], { dependencyContents: 'resolution' }).hash,
       owners: [{ id: 'pack', directory: '' }], discovered: [] }, observations });
   sealPackBuild(dist, { id: 'cache-inputs', name: 'Cache inputs', version: '1.0.0' });
   expect(readPhaseCache(root).stamps).toEqual(stamps);

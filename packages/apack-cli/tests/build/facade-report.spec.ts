@@ -144,7 +144,7 @@ describe('readBuiltFacadeReport', () => {
       facades: { [PACK_TYPES_FACADE]: 'export interface Memo { title: string }' },
     }));
     writePackBuildInputs(directory, { compiler: 'a'.repeat(64), execution: 'b'.repeat(64), options: [], observations,
-      packages: { hash: readPackageInputs([{ id: 'pack', directory: root }]).hash,
+      packages: { hash: readPackageInputs([{ id: 'pack', directory: root }], { dependencyContents: 'resolution' }).hash,
         owners: [{ id: 'pack', directory: '' }], discovered: [] } });
     sealPackBuild(directory, manifest);
   });

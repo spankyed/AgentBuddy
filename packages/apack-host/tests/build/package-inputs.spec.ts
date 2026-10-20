@@ -267,3 +267,25 @@ it('includes dangling link membership and detects when its target appears', () =
   pack.write('node_modules/compiler/missing.cjs', 'module.exports = 1;');
   expect(pack.hash()).not.toBe(dangling);
 });
+
+it('in resolution mode reads only what resolvers read directly, and keeps every package file\'s membership', () => {
+  const pack = tree();
+  pack.write('node_modules/helper/tsconfig.base.json', '{}');
+  const read = () => {
+    const files: string[] = [];
+    const inputs = readPackageInputs([{ id: 'pack', directory: pack.root, development: true }], {
+      dependencyContents: 'resolution', onFile: file => { files.push(path.basename(file.source)); },
+    });
+    return { files: [...new Set(files)].sort(), hash: inputs.hash, unread: inputs.nodes.flatMap(node => node.unread) };
+  };
+  const before = read();
+  expect(before.files).toEqual(['package.json', 'tsconfig.base.json']);
+  expect(before.unread.sort()).toEqual(['index.js', 'index.js']);
+  pack.write('node_modules/helper/index.js', 'export const value = 2;');
+  expect(read().hash).toBe(before.hash);
+  pack.write('node_modules/helper/tsconfig.base.json', '{"compilerOptions":{}}');
+  expect(read().hash).not.toBe(before.hash);
+  pack.write('node_modules/helper/tsconfig.base.json', '{}');
+  pack.write('node_modules/helper/added.js', '');
+  expect(read().hash).not.toBe(before.hash);
+});
