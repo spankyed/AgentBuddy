@@ -12,6 +12,14 @@ function completeLater(actor: { send(event: { type: string; result?: unknown }):
   });
 }
 
+/** Records a step's error on its TNode and fails it, after the spawn that runs it finishes */
+function failLater(actor: { send(event: { type: string; error?: unknown }): void }, report: () => unknown): void {
+  queueMicrotask(() => {
+    const error = report();
+    try { actor.send({ type: 'ERROR', error }); } catch { /* actor gone */ }
+  });
+}
+
 export function executeNode(
   tNode: TNodeEntity,
   node: NodeEntity,
@@ -24,11 +32,25 @@ export function executeNode(
     return;
   }
 
+  const step = (phase: string) => ({
+    phase,
+    flowTNodeId: executionContext.flowTNodeId,
+    tNodeId: tNode.id,
+    nodeId: node.id,
+    nodeLabel: node.label,
+    nodeType: node.nodeType,
+    eventType: executionContext.event?.type,
+  });
+
   const accepted = getStepBinding(node.nodeType);
   const stepDef = accepted?.binding;
   if (!accepted || !stepDef?.runtime?.handler) {
-    logger.warn(`No runtime handler for node type: ${node.nodeType}`);
-    completeLater(actor);
+    // A step with nothing to run fails rather than passing: the flow would otherwise carry on as if it had worked
+    failLater(actor, () => reportError({
+      error: new Error(`No running pack provides step type "${node.nodeType}"; enable or install the pack that does, or wait for it to finish reloading`),
+      source: `brain-${node.nodeType}`,
+      step: step(`${node.nodeType}.handler`),
+    }));
     return;
   }
 
@@ -43,15 +65,7 @@ export function executeNode(
       const runtimeError = reportError({
         error: err,
         source: `brain-${node.nodeType}`,
-        step: {
-          phase: `${node.nodeType}.handler`,
-          flowTNodeId: executionContext.flowTNodeId,
-          tNodeId: tNode.id,
-          nodeId: node.id,
-          nodeLabel: node.label,
-          nodeType: node.nodeType,
-          eventType: executionContext.event?.type,
-        },
+        step: step(`${node.nodeType}.handler`),
       });
       try { actor.send({ type: 'ERROR', error: runtimeError }); } catch { /* actor gone */ }
     });

@@ -28,8 +28,10 @@ export function getStepDeclaration(type: string): StepCatalogEntry | undefined {
 
 /** Eligibility for new work; active runtime lookups retain their separate retirement lifetime. */
 export function getStepBinding(type: string): StepBackendBinding | undefined {
-  const owner = getStepDeclaration(type);
-  if (!owner || (owner.origin === 'source' ? owner.enabled === false : owner.enabled !== true)) return undefined;
+  // Chosen among the owners that may run: a disabled pack declaring the same type must not hide the enabled one
+  const owner = selectCatalogDeclaration(type, boundHost().packs.stepDeclarations()
+    .filter(entry => entry.origin === 'source' ? entry.enabled !== false : entry.enabled === true));
+  if (!owner) return undefined;
   const accepted = boundHost().packs.stepBindings().get(type);
   if (!accepted || !accepted.registrationId || accepted.packId !== owner.packId || accepted.binding.type !== type
     || declarationJson(owner.declaration) !== declarationJson(accepted.declaration)
