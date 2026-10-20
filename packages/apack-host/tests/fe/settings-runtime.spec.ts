@@ -8,7 +8,7 @@ import { appSettingsDefinition } from '../../src/features/settings/be/app-defini
 const target = { kind: 'app' } as const;
 const snapshot = (runId = 'run-one', revision = 0): SettingsSnapshot => ({
   runId, revision, status: 'ready',
-  catalog: createContributionCatalog(appSettingsDefinition).settings(),
+  catalog: { ...createContributionCatalog(appSettingsDefinition).settings(), dependencies: { owner: [] } },
   values: { app: structuredClone(appSettingsDefinition.defaults) as unknown as SettingsSnapshot['values']['app'], packs: {}, features: {} },
 });
 const flush = async () => { await Promise.resolve(); await Promise.resolve(); };
@@ -45,7 +45,7 @@ it('settles concurrent changes only from their own correlated reply', async () =
   const second = runtime.port.update(target, ['personal', 'phoneNumber'], '123');
   await flush();
   expect(messages[1].call).not.toBe(messages[2].call);
-  runtime.receive({ to: 'host/settings', answering: messages[2].call, event: { type: 'SETTINGS_SAVED' } });
+  runtime.receive({ to: 'host/settings', answering: messages[2].call, event: { type: 'SETTINGS_SAVED', snapshot: runtime.getSnapshot() } });
   expect(await second).toEqual({ status: 'saved' });
   runtime.receive({ to: 'host/settings', answering: messages[1].call, event: { type: 'SETTINGS_REFUSED', problems: ['invalid name'] } });
   expect(await first).toEqual({ status: 'refused', problems: ['invalid name'] });
@@ -57,7 +57,7 @@ it('sends a value comparison and does not treat an acknowledgement as new settin
   const write = runtime.port.update(target, ['projects'], []);
   await flush();
   expect(messages[1].event).toMatchObject({ condition: { runId: 'run-one', expected: { exists: true, value: [] } } });
-  runtime.receive({ to: 'host/settings', answering: messages[1].call, event: { type: 'SETTINGS_SAVED' } });
+  runtime.receive({ to: 'host/settings', answering: messages[1].call, event: { type: 'SETTINGS_SAVED', snapshot: runtime.getSnapshot() } });
   await write;
   expect(runtime.getSnapshot()?.revision).toBe(0);
   runtime.dispose();
@@ -127,7 +127,7 @@ it('keeps two window outcomes independent while both follow broadcast values', a
   const second = await windowRuntime();
   const write = first.runtime.port.reset(target);
   await flush();
-  const reply = { to: 'host/settings', answering: first.messages[1].call, event: { type: 'SETTINGS_SAVED' } };
+  const reply = { to: 'host/settings', answering: first.messages[1].call, event: { type: 'SETTINGS_SAVED', snapshot: first.runtime.getSnapshot() } };
   second.runtime.receive(reply);
   first.runtime.receive(reply);
   expect(await write).toEqual({ status: 'saved' });
@@ -214,7 +214,7 @@ it('isolates a failed subscriber from other forms and pending request completion
   await flush();
   expect(() => runtime.receive({ to: 'host/settings', event: { type: 'SETTINGS_UPDATED', snapshot: snapshot('run-one', 1) } })).not.toThrow();
   expect(healthy).toHaveBeenCalledOnce();
-  runtime.receive({ to: 'host/settings', answering: messages[1].call, event: { type: 'SETTINGS_SAVED' } });
+  runtime.receive({ to: 'host/settings', answering: messages[1].call, event: { type: 'SETTINGS_SAVED', snapshot: runtime.getSnapshot() } });
   expect(await write).toEqual({ status: 'saved' });
   expect(() => runtime.dispose()).not.toThrow();
 });
@@ -311,8 +311,8 @@ it('keeps pack mutation transports and pending requests separate from window adm
   const { runtime, messages } = await windowRuntime();
   const firstMessages: Message[] = [];
   const secondMessages: Message[] = [];
-  const first = runtime.bindPort(async message => { firstMessages.push(message); });
-  const second = runtime.bindPort(async message => { secondMessages.push(message); });
+  const first = runtime.bindPort('owner', async message => { firstMessages.push(message); });
+  const second = runtime.bindPort('owner', async message => { secondMessages.push(message); });
   const firstWrite = first.port.reset(target);
   const secondWrite = second.port.reset(target);
   const hostWrite = runtime.port.reset(target);
@@ -322,8 +322,8 @@ it('keeps pack mutation transports and pending requests separate from window adm
   expect(messages).toHaveLength(2);
   first.dispose();
   expect(await firstWrite).toMatchObject({ status: 'refused' });
-  runtime.receive({ to: 'host/settings', answering: secondMessages[0].call, event: { type: 'SETTINGS_SAVED' } });
-  runtime.receive({ to: 'host/settings', answering: messages[1].call, event: { type: 'SETTINGS_SAVED' } });
+  runtime.receive({ to: 'host/settings', answering: secondMessages[0].call, event: { type: 'SETTINGS_SAVED', snapshot: runtime.getSnapshot() } });
+  runtime.receive({ to: 'host/settings', answering: messages[1].call, event: { type: 'SETTINGS_SAVED', snapshot: runtime.getSnapshot() } });
   expect(await secondWrite).toEqual({ status: 'saved' });
   expect(await hostWrite).toEqual({ status: 'saved' });
   expect(first.port.get(target)).toBeUndefined();
@@ -337,7 +337,7 @@ it('keeps pack mutation transports and pending requests separate from window adm
 it('revokes a pack before its queued mutation leaves the window', async () => {
   const { runtime } = await windowRuntime();
   const send = vi.fn(async () => {});
-  const binding = runtime.bindPort(send);
+  const binding = runtime.bindPort('owner', send);
   const write = binding.port.update(target, ['personal', 'name'], 'Queued');
   binding.dispose();
   expect(await write).toMatchObject({ status: 'refused' });
@@ -348,7 +348,7 @@ it('revokes a pack before its queued mutation leaves the window', async () => {
 
 it('disconnect invalidates accepted pack ports permanently and notifies their subscribers', async () => {
   const { runtime, messages } = await windowRuntime();
-  const binding = runtime.bindPort(async () => {});
+  const binding = runtime.bindPort('owner', async () => {});
   const observed: unknown[] = [];
   binding.port.subscribe(() => { observed.push(binding.port.get(target)); });
   runtime.disconnected();
@@ -361,13 +361,47 @@ it('disconnect invalidates accepted pack ports permanently and notifies their su
   expect(runtime.port.status()).toBe('ready');
   expect(binding.port.status()).toBe('disposed');
   expect((await binding.port.reset(target)).status).toBe('refused');
-  expect(runtime.bindPort(async () => {}).port.status()).toBe('ready');
+  expect(runtime.bindPort('owner', async () => {}).port.status()).toBe('ready');
   expect(observed).toEqual([undefined]);
   runtime.dispose();
 });
 
 it('requires an accepted snapshot before creating pack settings access', () => {
   const runtime = createWindowSettingsRuntime({ send: async () => {} });
-  expect(() => runtime.bindPort(async () => {})).toThrow('ready');
+  expect(() => runtime.bindPort('owner', async () => {})).toThrow('ready');
+  runtime.dispose();
+});
+
+
+it('uses the committed reply snapshot for a sequential write before its broadcast arrives', async () => {
+  const { runtime, messages } = await windowRuntime();
+  const first = runtime.port.update(target, ['personal', 'name'], 'Ada');
+  await flush();
+  const committed = snapshot('run-one', 1);
+  committed.values.app.personal.name = 'Ada';
+  runtime.receive({ to: 'host/settings', answering: messages[1].call,
+    event: { type: 'SETTINGS_SAVED', snapshot: committed } });
+  expect(await first).toEqual({ status: 'saved' });
+  const second = runtime.port.update(target, ['personal', 'name'], 'Grace');
+  await flush();
+  expect(messages[2].event).toMatchObject({ condition: { expected: { exists: true, value: 'Ada' } } });
+  runtime.dispose();
+  await second;
+});
+
+
+it('applies backend dependency read policy to an accepted frontend binding', async () => {
+  const initial = snapshot();
+  initial.catalog = { ...initial.catalog,
+    dependencies: { owner: ['dependency'], dependency: [], unrelated: [] },
+    packs: Object.fromEntries(['dependency', 'unrelated'].map(id =>
+      [id, { preferences: { schema: { type: 'object' }, defaults: { name: id } } }])),
+  };
+  for (const id of ['dependency', 'unrelated']) initial.values.packs[id] = { preferences: { name: id } };
+  const { runtime } = await windowRuntime(initial);
+  const bound = runtime.bindPort('owner', async () => {}).port;
+  expect(bound.get({ kind: 'pack', packId: 'dependency', groupId: 'preferences' })).toEqual({ name: 'dependency' });
+  expect(() => bound.get({ kind: 'pack', packId: 'unrelated', groupId: 'preferences' })).toThrow('does not depend');
+  expect(runtime.port.get({ kind: 'pack', packId: 'unrelated', groupId: 'preferences' })).toEqual({ name: 'unrelated' });
   runtime.dispose();
 });

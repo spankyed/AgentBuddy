@@ -4,11 +4,11 @@ import { createLogger } from '@apackdev/sdk/logger';
 // One host writer composes declarations beneath explicit choices for every preference owner.
 import type { EarsQuery } from '@apackdev/ears';
 import type { EARS } from '@apackdev/sdk';
-import { _settingsJsonProblems, type SettingsCatalog, type SettingsDefinition } from '@apackdev/sdk/framework';
-import { deepMerge, hasOwn, isPlainObject } from '@apackdev/sdk/utils/pure';
-import { splitRef, PACK_ID_PATTERN, FEATURE_ID_PATTERN } from '@apackdev/sdk/ids';
+import { _settingsJsonProblems, type SettingsCatalog } from '@apackdev/sdk/framework';
+import { deepMerge, isPlainObject } from '@apackdev/sdk/utils/pure';
 import { settingsTargetPath, type SettingsDocument, type SettingsOverrides, type SettingsTarget, type SettingsSnapshot, type SettingsWriteCondition } from '@apackdev/sdk/types';
 import type { SettingsChange } from '@apackdev/sdk/services';
+import { authorizeSettings, settingsDefinition } from '../authorization.ts';
 import { getIn, isEqual, removeIn, SettingsRefusedError, setIn } from '../document.ts';
 import { compileSettingsCatalog } from '../validation.ts';
 export type { SettingsChange, SettingsDocument };
@@ -58,36 +58,11 @@ export function createSettingsStore({ ears, catalog, onCatalogChanged }: Setting
       catch (error) { logger.error('Settings subscriber failed', error instanceof Error ? error : new Error(String(error))); }
     }
   };
-  function targetDefinition(target: SettingsTarget): SettingsDefinition | undefined {
-    const definitions = declarations();
-    if (!isPlainObject(target)) throw new SettingsRefusedError(['A settings target must identify its owner']);
-    const keys = Object.keys(target);
-    if (target.kind === 'app' && keys.length === 1) return definitions.app;
-    if (target.kind === 'feature' && keys.length === 2 && typeof target.featureRef === 'string' && splitRef(target.featureRef)) {
-      return hasOwn(definitions.features, target.featureRef) ? definitions.features[target.featureRef] : undefined;
-    }
-    if (target.kind === 'pack' && keys.length === 3 && typeof target.packId === 'string' && PACK_ID_PATTERN.test(target.packId)
-      && typeof target.groupId === 'string' && FEATURE_ID_PATTERN.test(target.groupId)) {
-      const groups = hasOwn(definitions.packs, target.packId) ? definitions.packs[target.packId] : undefined;
-      return groups && hasOwn(groups, target.groupId) ? groups[target.groupId] : undefined;
-    }
-    throw new SettingsRefusedError(['A settings target must identify app, pack/group or feature ownership']);
-  }
-
+  const targetDefinition = (target: SettingsTarget) => settingsDefinition(declarations(), target);
   function authorize(target: SettingsTarget, caller?: string, mutation = false): void {
-    const definition = targetDefinition(target);
-    if (!definition) throw new SettingsRefusedError(['This settings definition is unavailable']);
-    if (caller === undefined) return; // Only host administration receives an unscoped writer.
-    if (mutation && replacingData && !replacement.getStore()?.active) throw new SettingsRefusedError(['Data is being replaced. Wait before changing settings.']);
-    const { dependencies } = declarations();
-    if (!hasOwn(dependencies, caller)) throw new SettingsRefusedError([`Settings caller "${caller}" is not declared`]);
-    if (target.kind === 'app') return;
-    const owner = target.kind === 'pack' ? target.packId : splitRef(target.featureRef)!.packId;
-    if (caller !== owner && !dependencies[caller].includes(owner)) {
-      throw new SettingsRefusedError([`Pack "${caller}" does not depend on settings owner "${owner}"`]);
-    }
-    if (mutation && caller !== owner && definition.access === 'owner') {
-      throw new SettingsRefusedError([`Only pack "${owner}" may change these settings`]);
+    authorizeSettings(declarations(), target, caller, mutation);
+    if (caller !== undefined && mutation && replacingData && !replacement.getStore()?.active) {
+      throw new SettingsRefusedError(['Data is being replaced. Wait before changing settings.']);
     }
   }
 

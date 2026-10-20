@@ -36,7 +36,7 @@ export type OutgoingSettingsEvents =
   /** The installed packs changed, so what they answer with in Help has too */
   | { type: 'SETTINGS_UPDATED'; snapshot: SettingsSnapshot }
   /** A change (`UPDATE_SETTINGS`, `REPLACE_SETTINGS`, `RESET_SETTINGS`) was stored */
-  | { type: 'SETTINGS_SAVED' }
+  | { type: 'SETTINGS_SAVED'; snapshot: SettingsSnapshot }
   /** A change was refused, and stored nothing */
   | { type: 'SETTINGS_REFUSED'; problems: string[] }
   | { type: 'SETTINGS_RESET'; snapshot: SettingsSnapshot }

@@ -169,7 +169,7 @@ describe('a feature whose settings change', () => {
     await app.connect();
 
     await app.send('host/settings', { type: 'UPDATE_SETTINGS', target: { kind: 'feature', featureRef: 'memo-pack/memos' }, path: ['tags'], value: [] }, { settingsAccess: { kind: 'host', service: getTestSettings() } });
-    expect(app.emitted('host/settings')).toContainEqual({ type: 'SETTINGS_SAVED' });
+    expect(app.emitted('host/settings')).toContainEqual(expect.objectContaining({ type: 'SETTINGS_SAVED', snapshot: expect.any(Object) }));
 
     await app.send('host/settings', { type: 'UPDATE_SETTINGS', target: { kind: 'feature', featureRef: 'memos' }, path: ['tags'], value: [] }, { settingsAccess: { kind: 'host', service: getTestSettings() } });
     expect(app.emitted('host/settings')).toContainEqual({
@@ -297,7 +297,7 @@ describe('a feature whose settings change', () => {
     await app.send('host/settings', { type: 'REPLACE_SETTINGS', data: replacement }, { settingsAccess: { kind: 'host', service: getTestSettings() } });
 
     expect(getTestSettings().getOverrides()).toEqual(replacement);
-    expect(app.emitted('host/settings')).toContainEqual({ type: 'SETTINGS_SAVED' });
+    expect(app.emitted('host/settings')).toContainEqual(expect.objectContaining({ type: 'SETTINGS_SAVED', snapshot: expect.any(Object) }));
   });
 
   // Its defaults leave with the pack, so the settings of its features change; their system and plugin are gone,
@@ -370,7 +370,7 @@ describe('settings naming prototype machinery', () => {
     expect(Object.getPrototypeOf(memos)).toBe(Object.prototype);
     expect(Object.hasOwn(memos, '__proto__')).toBe(true);
     expect(memos.__proto__).toEqual({ polluted: 'yes' });
-    expect(app.emitted('host/settings')).toContainEqual({ type: 'SETTINGS_SAVED' });
+    expect(app.emitted('host/settings')).toContainEqual(expect.objectContaining({ type: 'SETTINGS_SAVED', snapshot: expect.any(Object) }));
   });
 });
 

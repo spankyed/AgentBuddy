@@ -73,7 +73,7 @@ it('enforces shared and owner-only policy at the actual settings action and pres
   const client = connection();
   const settingsCredential = await client.settings.openPack(stamp);
   await client.bus.send({ ...change(), settingsCredential });
-  expect(answer()).toEqual({ type: 'SETTINGS_SAVED' });
+  expect(answer()).toMatchObject({ type: 'SETTINGS_SAVED', snapshot: expect.objectContaining({ status: 'ready' }) });
   expect(messages.find(message => message.answering === 'change')?.client).toBe('window-one');
   expect(admin.get(target('shared'))).toEqual({ count: 2 });
   messages.length = 0;
@@ -94,7 +94,7 @@ it('keeps a pack credential away from whole-document administration while truste
   messages.length = 0;
   const host = await client.settings.openHost();
   await client.bus.send({ ...change(), event: { type: 'RESET_ALL_SETTINGS' }, settingsCredential: host });
-  expect(answer()).toEqual({ type: 'SETTINGS_SAVED' });
+  expect(answer()).toMatchObject({ type: 'SETTINGS_SAVED', snapshot: expect.objectContaining({ status: 'ready' }) });
   expect(admin.getOverrides()).toEqual({});
 });
 
@@ -144,7 +144,7 @@ it('shares window snapshots while applying the injected pack authority through t
   try {
     window.connected();
     await vi.waitFor(() => expect(window.port.status()).toBe('ready'));
-    const binding = window.bindPort(async message => {
+    const binding = window.bindPort(stamp.id, async message => {
       await client.bus.send({ ...message, settingsCredential: packCredential });
     });
     expect(await binding.port.update(target('shared'), ['count'], 3)).toEqual({ status: 'saved' });

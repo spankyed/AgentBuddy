@@ -89,7 +89,7 @@ export async function settingsForPack(pack: LoadedPackEntry): Promise<FrontendSe
   const close = () => releaseCredential(credential);
   try {
     assertConnected(accepted);
-    const binding = windowSettings.bindPort(async message => {
+    const binding = windowSettings.bindPort(pack.id, async message => {
       assertConnected(accepted);
       await trpc.bus.send.mutate({ ...message, settingsCredential: credential });
     });

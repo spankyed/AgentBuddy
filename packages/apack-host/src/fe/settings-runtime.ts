@@ -4,6 +4,7 @@ import type { SettingsPort } from '@apackdev/sdk/fe';
 import { settingsTargetPath, type SettingsSnapshot, type SettingsWriteCondition, type SettingsWriteResult } from '@apackdev/sdk/types';
 import type { IncomingSettingsEvents } from '../features/settings/be/types.ts';
 import { getIn } from '../features/settings/document.ts';
+import { authorizeSettings } from '../features/settings/authorization.ts';
 import { HOST } from '../refs.ts';
 import { createLogger } from '@apackdev/sdk/logger';
 import { createSettingsSnapshotReader } from './settings-snapshot.ts';
@@ -78,10 +79,34 @@ export function createWindowSettingsRuntime(io: WindowSettingsIO) {
     });
   }
 
-  function createPort(write: (event: IncomingSettingsEvents) => Promise<SettingsWriteResult>): SettingsPort {
+  function acceptSnapshot(value: unknown): boolean {
+    let next: SettingsSnapshot;
+    try { next = readSnapshot(value, snapshot); }
+    catch (error) {
+      report(error);
+      if (!snapshot) end('disconnected', 'The backend returned an invalid settings snapshot.');
+      return false;
+    }
+    if (!snapshot) {
+      clearTimeout(readTimer);
+      readCall = undefined;
+    } else {
+      if (next.runId !== snapshot.runId) return false;
+      if (next.revision < snapshot.revision || next.catalog.revision < snapshot.catalog.revision) return true;
+      if (next.revision === snapshot.revision && next.catalog.revision === snapshot.catalog.revision) return true;
+    }
+    snapshot = next;
+    status = snapshot.status;
+    tell();
+    return true;
+  }
+
+  function createPort(write: (event: IncomingSettingsEvents) => Promise<SettingsWriteResult>, caller?: string): SettingsPort {
     return {
-      get: <T,>(target: import('@apackdev/sdk/types').SettingsTarget) =>
-        structuredClone(getIn(snapshot?.values, settingsTargetPath(target))) as T | undefined,
+      get: <T,>(target: import('@apackdev/sdk/types').SettingsTarget) => {
+        if (snapshot && caller !== undefined) authorizeSettings(snapshot.catalog, target, caller);
+        return structuredClone(getIn(snapshot?.values, settingsTargetPath(target))) as T | undefined;
+      },
       status: () => status,
       subscribe(listener) { listeners.add(listener); return () => { listeners.delete(listener); }; },
       update(target, path, value, condition) {
@@ -101,13 +126,13 @@ export function createWindowSettingsRuntime(io: WindowSettingsIO) {
   return {
     port,
     /** Shares read state, while mutations and pending requests belong to one accepted pack. */
-    bindPort(transport: WindowSettingsIO['send']): { port: SettingsPort; dispose(): void } {
+    bindPort(caller: string, transport: WindowSettingsIO['send']): { port: SettingsPort; dispose(): void } {
       if (status !== 'ready') throw new Error('Settings must be ready before accepting a pack frontend');
       const owner = {};
       let active = true;
       const subscriptions = new Map<() => void, () => void>();
       const bound = createPort(event => active ? change(event, transport, owner)
-        : Promise.resolve(refused('This frontend settings binding was unloaded.')));
+        : Promise.resolve(refused('This frontend settings binding was unloaded.')), caller);
       const dispose = () => {
         if (!active) return;
         active = false;
@@ -167,27 +192,16 @@ export function createWindowSettingsRuntime(io: WindowSettingsIO) {
           : Array.isArray(event.problems) && event.problems.length > 0 && event.problems.every(problem => typeof problem === 'string')
             ? { status: 'refused', problems: [...event.problems] } : refused('The backend returned an invalid settings refusal.');
         if (message.answering === readCall && readCall !== undefined) end('disconnected', 'The backend refused the settings read.');
-        else if (message.answering) settle(message.answering, result);
+        else if (message.answering && pending.has(message.answering)) {
+          settle(message.answering, event.type === 'SETTINGS_SAVED' && !acceptSnapshot(event.snapshot)
+            ? refused('The backend returned an invalid settings save snapshot.') : result);
+        }
         return true;
       }
       if (!['SETTINGS_LOADED', 'SETTINGS_UPDATED', 'SETTINGS_RESET'].includes(event.type)) return false;
       if (status === 'disposed' || status === 'disconnected') return true;
       if (!snapshot && (!readCall || message.answering !== readCall)) return true;
-      let next: SettingsSnapshot;
-      try { next = readSnapshot(event.snapshot, snapshot); }
-      catch (error) {
-        report(error);
-        if (!snapshot) end('disconnected', 'The backend returned an invalid settings snapshot.');
-        return true;
-      }
-      if (!snapshot) {
-        clearTimeout(readTimer);
-        readCall = undefined;
-      } else if (next.runId !== snapshot.runId || next.revision < snapshot.revision
-        || next.catalog.revision < snapshot.catalog.revision) return true;
-      snapshot = next;
-      status = snapshot.status;
-      tell();
+      acceptSnapshot(event.snapshot);
       return true;
     },
     replaceAll: (data: unknown, condition: SettingsWriteCondition) => change({ type: 'REPLACE_SETTINGS', data, condition }),

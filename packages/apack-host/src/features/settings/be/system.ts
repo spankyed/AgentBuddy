@@ -184,7 +184,7 @@ export const settingsSystem = setup({
         } catch (error) {
           return refusal(error, "The settings weren't saved");
         }
-        return { type: 'SETTINGS_SAVED' };
+        return { type: 'SETTINGS_SAVED', snapshot: preferences().getSnapshot() };
       })();
 
       answerSettings(reply, outcome);
@@ -198,7 +198,7 @@ export const settingsSystem = setup({
         } catch (error) {
           return refusal(error, "The settings weren't replaced");
         }
-        return { type: 'SETTINGS_SAVED' };
+        return { type: 'SETTINGS_SAVED', snapshot: preferences().getSnapshot() };
       })();
 
       answerSettings(reply, outcome);
@@ -214,7 +214,7 @@ export const settingsSystem = setup({
         } catch (error) {
           return refusal(error, "The settings weren't reset");
         }
-        return { type: 'SETTINGS_SAVED' };
+        return { type: 'SETTINGS_SAVED', snapshot: preferences().getSnapshot() };
       })();
 
       answerSettings(reply, outcome);
@@ -224,7 +224,7 @@ export const settingsSystem = setup({
       let outcome: SettingsAnswer;
       try {
         settingsRequestAdmin(event).resetAll();
-        outcome = { type: 'SETTINGS_SAVED' };
+        outcome = { type: 'SETTINGS_SAVED', snapshot: preferences().getSnapshot() };
       } catch (error) { outcome = refusal(error, "The settings weren't reset"); }
       answerSettings(reply, outcome);
     },

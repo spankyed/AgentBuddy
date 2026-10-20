@@ -65,7 +65,7 @@ it('issues loader-bound pack access from accepted identities and sends its crede
   const request = send.mock.calls.at(-1)![0];
   expect(request.settingsCredential).toBe('pack-access');
   expect(request.event).not.toHaveProperty('settingsCredential');
-  windowSettings.receive({ to: 'host/settings', answering: request.call, event: { type: 'SETTINGS_SAVED' } });
+  windowSettings.receive({ to: 'host/settings', answering: request.call, event: { type: 'SETTINGS_SAVED', snapshot: windowSettings.getSnapshot() } });
   expect(await write).toEqual({ status: 'saved' });
   binding.dispose(); binding.dispose();
   expect(close).toHaveBeenCalledTimes(1);
