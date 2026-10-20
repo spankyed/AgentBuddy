@@ -173,10 +173,11 @@ it.each(['configuration', 'sources', 'declarations', 'resolution'])('publishes c
     const replacements = change === 'configuration'
       ? [[config, JSON.stringify({ compilerOptions: { useDefineForClassFields: true, jsx: 'react-jsx', strict: true } })]]
       : change === 'resolution' ? [[path.join(root, 'node_modules/bare/package.json'), JSON.stringify({ name: 'bare', main: 'alternate.js', types: 'index.d.ts', type: 'module' })]]
+      // A dependency file's bytes become inputs at its first read, which here is this bundle: an edit spanning
+      // that read is refused rather than published (compiler-input-view.spec.ts), so only captured sources change
       : change === 'declarations' ? [] : [
         [path.join(pack, 'src/input.tsx'), fs.readFileSync(path.join(pack, 'src/input.tsx'), 'utf8').replace('field = 7', 'field = 99')],
         [path.join(root, 'external/value.ts'), 'export const value = "LIVE_ALIAS";'],
-        [path.join(root, 'node_modules/bare/index.js'), 'export const label = "LIVE_PACKAGE";'],
       ];
     const originals = replacements.map(([file]) => [file!, fs.readFileSync(file!)] as const);
     try {
