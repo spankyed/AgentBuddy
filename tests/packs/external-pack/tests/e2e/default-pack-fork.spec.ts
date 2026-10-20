@@ -15,7 +15,7 @@ test.beforeAll(() => {
   if (restarting) return;
   const prepared = path.join(root, 'node_modules/.cache/apack-fixtures/default-fork');
   const file = path.join(prepared, 'fork.json');
-  expect(fs.existsSync(file), 'Run npm run test:external-pack:contract to prepare the default fork').toBe(true);
+  expect(fs.existsSync(file), 'Run npm run test:external-pack:fork to prepare the default fork').toBe(true);
   archive = path.join(prepared, JSON.parse(fs.readFileSync(file, 'utf8')).archive);
   expect(fs.existsSync(archive)).toBe(true);
   expect(fs.existsSync(`${archive}.sha256`)).toBe(true);

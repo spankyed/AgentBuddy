@@ -22,7 +22,11 @@ const child = spawn(process.execPath, [path.join(root, 'packages/apack-cli/bin/a
   cwd: pack, env: { ...process.env, APACK_USER_DATA_DIR: userDataDir }, stdio: ['ignore', 'pipe', 'pipe'],
 });
 let text = '';
-for (const stream of [child.stdout, child.stderr]) stream.on('data', data => { text += String(data); log.write(data); });
+for (const stream of [child.stdout, child.stderr]) stream.on('data', data => {
+  text += String(data);
+  log.write(data);
+  process.stdout.write(data);
+});
 // Register before signalling; even a fast successful exit must be observed.
 const closed = once(child, 'close');
 let browser: Browser | undefined;
@@ -30,7 +34,9 @@ try {
   await expect.poll(() => {
     if (child.exitCode !== null || child.signalCode !== null) throw new Error(`pack dev exited early: ${text}`);
     return text.includes('[watch] Watching build inputs');
-  }, { timeout: 60_000, message: 'initial build, app launch, install and watcher startup' }).toBe(true);
+  // The same fixture's cold build took 153s on the two-core runner. Startup also owns
+  // a retained frontend compiler and app launch; it is not a single 60s readiness event.
+  }, { timeout: 300_000, message: 'cold build, frontend compiler, app launch, install and watcher startup' }).toBe(true);
   const session = JSON.parse(fs.readFileSync(sessionFile(userDataDir), 'utf8'));
   browser = await chromium.connectOverCDP(`http://127.0.0.1:${session.debugPort}`, { timeout: 15_000 });
   const page = browser.contexts()[0]!.pages().find(page => page.url().includes('/renderer/dist/index.html'))!;

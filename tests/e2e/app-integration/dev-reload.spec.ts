@@ -52,6 +52,7 @@ test('a rebuilt built-in pack reloads with the content the rebuild changed', asy
   expect(apiPort, 'the renderer knows the API port').toBeTruthy();
   expect(apiToken, 'the renderer knows the API token').toBeTruthy();
 
+  await app.waitForPlugin('default-setup/library');
   await app.navigate('default-setup/library');
   await expect.poll(() => libraryDocuments(appPage)).toContain(WRITTEN_DOCUMENT);
 

@@ -49,3 +49,29 @@ Electron acceptance is run on the developer's Mac.
   remains unproven. No release is created, metadata changed, or source host substituted for it.
 
 No pending item above is claimed passed until its runner evidence is inspected.
+
+## Focused repair checkpoint, 2026-10-20
+
+The seven general-app failures were: two navigation event waits (Library and Logs), two settings
+update assertion waits against the removed `SETTINGS.UPDATE` event, one assertion on removed plugin
+settings metadata, one reset-button locator wait against its old title, and one offline-database
+assertion assuming declarative defaults create a stored Settings row. No cleanup failure was reported.
+Tests now await the relevant pack plugin, use real preference forms and the rendered settings catalog,
+and save an explicit override before querying offline. The reset assertion uses the current form action.
+
+External-pack cases refused before app launch; these were setup failures, not native execution hangs.
+A private filesystem regression reproduces invalidation of a recorded root listing when a test runner
+first creates `node_modules`. Authored directory listings now omit that dependency directory while
+explicit dependency reads/listings remain tracked. The regression failed before the repair; the seven
+applicable compiler-file-view checks pass after it (the Windows-only case is skipped on macOS).
+Runner confirmation remains pending; directory refusals now show recorded and observed entries.
+The supplemental workflow also prepares the default fork through its actual producer.
+
+The source pack-dev scenario hit its composed initial-readiness deadline, not an observed child exit.
+Its 60s covered cold compilation, frontend compiler startup, app launch, install and watcher readiness;
+the same fixture's cold build in the saved run took 153s. Initial setup now has a bounded 300s allowance;
+the separate 60s rebuild, 30s runtime acceptance, 15s connection and 15s cleanup limits are retained.
+Its child output is streamed as well as retained so the phase reached is visible during execution.
+
+Host and E2E typechecks and focused correctness lint pass. App validation remains pending on a
+disposable runner; this checkpoint does not mark any unrun acceptance case complete.

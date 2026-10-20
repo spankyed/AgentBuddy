@@ -11,9 +11,14 @@ function apackDb(args: string[]) {
   return { status: result.status, stdout: result.stdout.trim(), stderr: result.stderr };
 }
 
-test("reads the running app's data and refuses to change it", async ({ electronApp, app }) => {
+test("reads the running app's data and refuses to change it", async ({ electronApp, app, appPage }) => {
   // Connected: the API booted, hydrated and written the app's data
   await app.waitForState('running.connected');
+  // Defaults are declarative; a Settings row exists only after an explicit override is saved.
+  await app.navigate('host/settings');
+  await appPage.getByRole('button', { name: 'Personal', exact: true }).click();
+  await appPage.getByLabel('Full Name', { exact: true }).fill('Offline CLI acceptance');
+  await expect(appPage.getByText('Settings saved', { exact: true })).toBeVisible();
   const dataDir = await electronApp.evaluate(({ app: electron }) => electron.getPath('userData'));
 
   const read = apackDb(['query', 'return [getEntitiesOfType(EARS.Entity.Settings).length > 0, qx(EARS.Entity.Flow).count() > 0]', '--data-dir', dataDir, '-o', 'json']);

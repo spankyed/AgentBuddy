@@ -14,7 +14,8 @@ concurrency:
 jobs:
   check:
     runs-on: macos-26
-    timeout-minutes: 30
+    # Includes the cold builds, fork producer, app suites and bounded source-dev scenario.
+    timeout-minutes: 45
     env:
       APACK_CHAIN_CORES: 2
     defaults:
@@ -43,6 +44,8 @@ jobs:
       - name: Build fixture contracts
         id: preparation
         run: npm run test:external-pack:contract
+      - name: Prepare external default fork
+        run: npm run test:external-pack:fork
       - name: External pack app suite including step services and settings ownership
         working-directory: tests/packs/external-pack
         run: ../../../node_modules/.bin/apack pack test --host "$GITHUB_WORKSPACE" --prebuilt
@@ -65,3 +68,4 @@ jobs:
           path: |
             .apack/tests/results/
             tests/packs/*/.apack/tests/results/
+            tests/packs/*/dist/build-inputs.json

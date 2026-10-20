@@ -48,7 +48,7 @@ export function assertNativeCompilerObservations(observations: CompilerInputObse
     for (const [query, expected] of observations.entries) {
       const actual = current.get(query);
       if (actual !== expected) {
-        const details = JSON.parse(query)[0] === 'namespace' ? ` (expected ${expected}; observed ${actual ?? 'unrecorded'})` : '';
+        const details = ['namespace', 'entries'].includes(JSON.parse(query)[0]) ? ` (expected ${expected}; observed ${actual ?? 'unrecorded'})` : '';
         throw new Error(`Compiler startup input changed: ${query}${details}`);
       }
     }

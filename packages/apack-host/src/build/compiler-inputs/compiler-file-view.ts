@@ -162,7 +162,10 @@ export function createCompilerFileView(root: string, options: {
     return value === undefined ? undefined : Buffer.from(value);
   }
   function includesDirectoryEntry(directory: string, child: string): boolean {
-    return (excluded(directory) && included.has(path.resolve(directory))) || !excluded(child);
+    if (excluded(directory) && included.has(path.resolve(directory))) return true;
+    const authored = authoredPath(directory);
+    // Dependencies have their own observed namespaces; creating node_modules is not an authored edit.
+    return !excluded(child) && (authored === undefined || isPackInputPath(path.join(authored, path.basename(child))));
   }
   function readDirectory(file: string, options: unknown): CompilerDirectoryResult {
     const result = Reflect.apply(fs.readdirSync, fs, [file, options]) as CompilerDirectoryResult;
