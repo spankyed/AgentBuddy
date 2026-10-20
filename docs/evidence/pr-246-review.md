@@ -15,16 +15,20 @@ The original review baseline was `8d31bdccc` (2026-10-19). The descriptions and 
 locations below preserve that historical review; the disposition table records subsequent repairs.
 Do not interpret the historical acceptance register at the end as the current defect list.
 
-Implementation repairs are complete for the findings marked completed below. Remaining validation
-is tracked in [current acceptance evidence](pr-246-acceptance.md): the strict run on
-`1dc65f096716afd79ec3e4064cb4cf5ff2bb0dce` failed at an individual facade-report deadline. The preceding strict run passed
-both complete unit pools, but failed in a reporter metatest before completing integration or app gates.
-That metatest now uses owned real-Vitest fixtures and passes all eleven focused cases.
+Implementation repairs are complete for the findings marked completed below. The requested app/native
+acceptance now passes; [the acceptance record](pr-246-acceptance.md) preserves source pins and reports:
 
-Real application evidence now covers settings recovery/reopen and multi-window settings, a step
-calling its owning pack's service through the actual brain, source-host CLI rebuild/install/shutdown,
-and fork replacement/restoration. All six real LMDB import/rollback cases passed repeatedly on the
-disposable runner. These focused and composed results do not replace the remaining strict gate.
+- Complete general app suite: 32/32; external pack app suite: 28/28, including step-owner services,
+  settings recovery/ownership, multi-window reload and fork replacement/restoration.
+- Actual source CLI install/rebuild/runtime delivery/shutdown and all six real LMDB import/rollback cases.
+- Runtime smoke: 5/5; tarball-only external authoring, seven harness cases, two real app-consumer cases,
+  and offline queries/exports against the installed archive.
+- Both complete unit pools pass on the earlier strict source; all 66 applicable integration files pass
+  across retained runs, with two platform-specific skips. Reporter, facade and archive harness repairs
+  have focused passing evidence. No single all-green full strict run is claimed.
+
+The app route passes on `f5312107e`, and smoke/packaged authoring on its documentation-only descendant
+`c60b5e4ab`. Historical acceptance prose below remains scoped to its original source.
 
 The packaged beta-host half of S.5 remains untested: no suitable beta release is published. No release
 has been created. Findings 3a.1, 10.1, 10.2 and 10.7 remain explicitly deferred to the validation-feedback
@@ -47,13 +51,13 @@ focused verification; remaining application/native acceptance is listed separate
 | 5.3, 5.4 | Completed: apply committed save snapshots and share frontend/backend read authorization | `d3f3e1765`, `f6eceeeda` |
 | 5.5 | Completed: preserve typing through save echoes and edits after a superseding reset | `8ec60b1e5`, `f6eceeeda`; seven component cases pass |
 | 7.1, 7.3 | Completed: refuse provider mutation and diagnose undeclared service reads | `7b68cad48` |
-| 7.2 | Completed; actual external step calls its owning service through the running brain | `7b68cad48`; app run `39400009119`, [acceptance evidence](pr-246-acceptance.md) |
+| 7.2 | Completed; actual external step calls its owning service through the running brain | `7b68cad48`; complete app run `39477143294`, [acceptance evidence](pr-246-acceptance.md) |
 | 8.1, 8.2 | Completed; all six real LMDB import/rollback cases pass on disposable macOS | `53da4c140`; repeated runner evidence in [acceptance record](pr-246-acceptance.md) supersedes the local native abort |
 | 8.3 | Completed: permit replacement-owned writes and expire that authority afterward | `c960deca3`, `d282c7624` |
 | 8.4 | Completed: refuse overlapping app-data replacement requests | `53da4c140` |
 | 8.5, 8.6 | Completed: correct import lifecycle documentation and reset/import refusal text | `c960deca3` |
 | Completeness: source-coverage claim | Completed: historical acceptance is explicitly bounded to its tested source | `278661695` |
-| Completeness: fresh integrated acceptance | In progress; both unit pools and all applicable integration files pass across retained runs; app gates remain | [Current acceptance runs and exact source pins](pr-246-acceptance.md) |
+| Completeness: fresh integrated acceptance | Recorded with explicit limits: requested app/native/smoke/packaged checks pass; integration inventory passes across retained runs; no single full strict pass claimed | [Current acceptance runs and exact source pins](pr-246-acceptance.md) |
 | 3a.1 | Deferred: a cache-validity decision for check steps | [Validation feedback budget](../plans/validation-feedback-budget.md#review-findings-this-plan-owns) |
 | 3a.2, 3a.3 | Completed: resolve a dangling link from its physical directory; name a broken authored link | "fix(build): resolve dangling watch links physically, name broken authored links, restart dev servers after publication" |
 | 6.1 | Completed: unloaded tabs open through the shell's wait, are dimmed, and the switch hotkeys skip them | "fix(shell): unload refused frontend replacements and route unloaded tabs through the shell" |
@@ -74,15 +78,16 @@ focused verification; remaining application/native acceptance is listed separate
 | S.3 | Completed: a frontend whose pack the ready catalog withdrew during loading is taken back out | "fix(shell): take back a frontend whose pack was withdrawn while it loaded" |
 | S.5 | Completed: a checkout's app installs each `apack pack dev` build itself (`POST /dev/install`) under the registry's per-pack claim, which every pack operation now takes; a packaged app gets builds copied only while stopped, restarting after a backend rebuild | "fix(packs): install apack pack dev builds through the app, restarting packaged hosts" |
 
-### Remaining work
+### Remaining limits and follow-ups
 
-1. The complete integration file inventory now passes across retained runs (66 applicable files, two
-   platform skips), including the facade and archive repairs. Finish current general/external app
-   acceptance, then smoke and packaged authoring. This does not claim a single full strict pass.
-2. Exercise the packaged beta-host half of S.5 when a suitable beta release exists. Source-host
-   install, manifest rebuild, accepted frontend delivery and shutdown passed in `39414905716`.
-3. Reconcile final acceptance against the exact tested commit; do not equate composed focused
-   evidence with a fresh full application-suite pass.
+1. Packaged-beta S.5 requires a suitable published beta release; none exists. The actual source-host
+   lifecycle passes in `39477143294`. Publishing is outside this task.
+2. Integration evidence is composed across retained runs, not one all-green normal-suite/strict run.
+   Exact tested pins and the later documentation-only descendants remain explicit in the acceptance
+   record. The complete app and packaged routes have fresh passing runs.
+3. Deferred findings 3a.1, 10.1, 10.2 and 10.7 remain with their owning plan. R-D2 remains the accepted
+   physical-watch-path limitation; R-D1's restart path is source-reviewed without a dedicated spec.
+   The cold-build cost finding [R-F1](../plans/validation-feedback-budget.md#review-findings-this-plan-owns) remains with the validation-feedback budget plan.
 
 ## Repair-diff review (2026-10-20)
 
@@ -200,7 +205,7 @@ Scope: SDK `services/` and `framework/service-consumption.ts`; host `packs/servi
 | # | Severity | Finding | Status |
 |---|---|---|---|
 | 7.1 | Medium | A pack can patch a shared host service through its facade, and the patch outlives the pack | Completed |
-| 7.2 | Medium | A step from another pack receives default-setup's service access and identity | Completed; actual brain/service app check passes (`39400009119`) |
+| 7.2 | Medium | A step from another pack receives default-setup's service access and identity | Completed; actual brain/service app check passes (`39477143294`) |
 | 7.3 | Low | Reading a service outside the selection returns `undefined` with no diagnostic | Completed |
 
 **7.1. The service facade writes through to the shared object.** `apack-host/src/packs/service-binding.ts:85`:
@@ -846,7 +851,7 @@ nothing awaits between prepare and commit.
 - No pack receives another plugin's actor.
 - No assertion was loosened or deadline raised.
 
-## Completeness — correction completed; integrated acceptance pending
+## Completeness — historical gap and current acceptance
 
 ### Code changed after the accepted integration run — evidence corrected
 

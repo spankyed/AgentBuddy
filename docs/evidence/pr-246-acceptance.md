@@ -8,20 +8,28 @@ The temporary root-listing filter in the chronological checkpoints below was rem
 
 ## Current coverage, 2026-10-20
 
+**The requested application/native checks now pass.** The complete general/external app route passes
+on `f5312107e`; smoke and packaged authoring pass on `c60b5e4ab`, a documentation-only descendant.
+All 66 applicable integration files pass across the retained batches below, with two platform skips.
+The complete unit pools passed on the earlier strict pin. No single all-green full strict run is
+claimed: its failed reporter/facade/archive cases were repaired and verified in focused runs, retaining
+completed evidence instead of replaying the entire gate. The packaged-beta host remains unavailable
+because no suitable beta release is published. No release or production data was changed.
+
 The [latest strict run `39450690425`](https://github.com/spankyed/apack/actions/runs/39450690425)
 was pinned to `1dc65f096716afd79ec3e4064cb4cf5ff2bb0dce` and failed at the facade-report case below. Documentation
 updates after that pin do not imply a newer source tree has passed.
 
 | Boundary | Inspected evidence | Remaining limit |
 |---|---|---|
-| Static checks and both unit pools | `39450690425`: both complete pools pass again | Current app/runtime changes still need application acceptance |
+| Static checks and both unit pools | `39450690425`: both complete pools pass; 55 build-leg/chain-graph cases pass after the scoped renderer heap change | Exact earlier unit pin retained; later app/runtime checks pass in `39477143294` |
 | Integration file inventory | All 66 applicable files have passing results across `39450690425`, `39465321192`, `39468282848` and `39473740323` | Composed runs, not a single normal-suite/strict pass; two platform-specific skips |
-| 7.2 actual step-owner service | `39400009119`: external step runs through the actual brain | Full external suite still needs its fresh gate |
-| 8.1/8.2 actual LMDB import/rollback | All six cases pass repeatedly on disposable macOS | Not dependent on the developer-Mac native crash |
-| 5.1/S.1/S.2 settings recovery | Real Electron recovery, reopen and multi-window cases pass | General app evidence is composed across runs, not one fresh 32/32 run |
-| S.5 source host | `39414905716`: actual CLI install, manifest rebuild, frontend acceptance and shutdown pass; fourteen builder lifecycle cases pass | Packaged beta half lacks a suitable published release |
-| Fork replacement/restoration | `39420977378`: complete case passes in 48.9s | Fresh strict external gate still pending |
-| Runtime, smoke and packaged authoring | Not reached in the preceding strict run | Explicit packaged acceptance still required |
+| 7.2 actual step-owner service | `39477143294`: all 28 external app cases pass, including the actual brain/service path | None for this requested case |
+| 8.1/8.2 actual LMDB import/rollback | `39477143294`: all six real cases pass again | None for these requested cases |
+| 5.1/S.1/S.2 settings recovery | `39477143294`: complete general app suite passes 32/32; recovery/reopen and external multi-window cases pass | None for these requested cases |
+| S.5 source host | `39477143294`: real CLI install, manifest rebuild, frontend acceptance and shutdown pass again | Packaged beta half lacks a suitable published release |
+| Fork replacement/restoration | `39477143294`: complete external suite passes 28/28, including replacement/restoration | None for this requested case |
+| Runtime, smoke and packaged authoring | `39482475492`: runtime, 5/5 smoke cases, tarball-only producer/harness and 2/2 pack app cases pass; offline CLI reads/exports pass | None for these requested cases |
 
 ## Runs
 
@@ -437,3 +445,49 @@ validation and native admission were not loosened.
 is dispatched on the same source for the complete general and external app suites, source CLI lifecycle
 and real LMDB cases. Runtime/smoke and the two packaged-authoring halves remain required; the explicit
 `packaged` route will cover smoke/authoring separately. No application result is inferred yet.
+
+## Complete app acceptance passes on repaired source
+
+[Run `39477143294`](https://github.com/spankyed/apack/actions/runs/39477143294), source
+`f5312107eb9e9b329cd3d4d163c0c3e1c5b546d4`, passes the complete application route in 32m43s:
+
+- 28/28 external-pack app cases, including step-owner service execution through the actual brain,
+  multi-window settings ownership, cold credential reload and shipped-pack fork replacement/restoration.
+- 32/32 general app cases, including settings admission/recovery, explicit relaunch and normal reopened
+  pack acceptance. This supersedes the earlier composed 31 + focused 1 result.
+- Actual source CLI initial install, manifest edit, new accepted frontend runtime and owned shutdown.
+- All six real LMDB backup import, failed hydration/reopen and rollback cases.
+- Shipped pack, app runtime, fixture contracts and fork preparation. The renderer-only 4 GiB build
+  ceiling also works in the real runtime build; 55 focused runtime-leg/chain-graph cases passed locally.
+
+No assertion, deadline or cleanup failure is reported. Logs and app/CLI evidence are retained under
+`/private/tmp/apack-app-39477143294/` and its `.log`. A fresh read-only release listing still shows
+v0.3.14 as latest and no suitable beta host, so packaged-beta S.5 remains untested without publishing.
+
+[Run `39482475492`](https://github.com/spankyed/apack/actions/runs/39482475492) is now executing the
+remaining runtime smoke and packaged-authoring producer/consumer route. It is pinned to documentation
+checkpoint `c60b5e4ab`, with runtime/test source identical to the accepted app pin above. Results remain
+pending inspection. No full strict-gate pass is claimed from these separately scoped runs.
+
+## Final smoke and packaged authoring acceptance passes
+
+[Run `39482475492`](https://github.com/spankyed/apack/actions/runs/39482475492), pinned to
+`c60b5e4ab` (runtime/test source unchanged from `f5312107e`), passes in 14m2s:
+
+- Shipped pack and app runtime build, then all five runtime smoke cases.
+- Tarball-only external authoring: install the packed CLI/SDK/UI/testing packages outside the checkout,
+  scaffold a pack and feature, build real content and runtime output, pass seven harness cases across
+  five files, typecheck the published testing declarations, and produce a verified local archive.
+- The author half's archive installs into an isolated profile; both app-consumer cases pass. The app's
+  installed integrity matches the archive, and the packed offline CLI queries and exports its data.
+
+Both separately bounded authoring halves pass without assertion, operation/scenario timeout or cleanup
+failure. Evidence is retained under `/private/tmp/apack-packaged-39482475492/` and its `.log`, and in
+the linked run's uploaded reports. This closes the previously unrun smoke and packaged-authoring gates.
+
+The exact integration source pins remain recorded rather than being rewritten to claim one full-suite
+pass. General app (32), external app (28), source CLI and real LMDB (6) pass together on `f5312107e`;
+smoke (5) and tarball-only authoring/app consumption pass on its documentation-only descendant.
+Packaged-beta S.5 remains explicitly unverified until a suitable release exists. Deferred review
+findings and the documented physical-watch-path limitation remain as recorded in the review; this
+validation does not silently close them or claim a new all-green strict run.
