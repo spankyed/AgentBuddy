@@ -2638,6 +2638,7 @@ interface ClaudePromptHost {
     read(signal: AbortSignal, expiresAt: number): Promise<ClaudePromptHostBox | undefined>;
     fill(input: ClaudePromptHostFill, signal: AbortSignal, expiresAt: number): Promise<boolean>;
     suggest?(text: string, signal: AbortSignal, expiresAt: number): Promise<boolean>;
+    selection?(signal: AbortSignal, expiresAt: number): Promise<ClaudeUiSelection | undefined>;
     copy?(text: string, signal: AbortSignal, expiresAt: number): Promise<boolean>;
 }
 
@@ -2660,6 +2661,9 @@ type ClaudePromptHostRequest = {
 } | {
     kind: 'copy';
     text: string;
+} | {
+    kind: 'selection';
+    replyUrl: string;
 });
 
 type ClaudePromptHostResponse = {
@@ -2676,6 +2680,9 @@ type ClaudePromptHostResponse = {
 } | {
     kind: 'copy';
     copied: boolean;
+} | {
+    kind: 'selection';
+    submitted: boolean;
 });
 
 type ClaudePromptReply = {
@@ -3305,6 +3312,8 @@ interface ClaudeUiScrollState {
 }
 
 type ClaudeUiSelect = z.infer<typeof field>;
+
+type ClaudeUiSelection = z.infer<typeof selection>;
 
 type ClaudeUiTerminalPlacement = z.infer<typeof terminalPlacement>;
 
@@ -10914,6 +10923,17 @@ declare const scroll: z.ZodObject<{
         top: number;
         bottom: number;
     }[] | undefined;
+}>;
+
+declare const selection: z.ZodObject<{
+    text: z.ZodOptional<z.ZodString>;
+    instance_id: z.ZodOptional<z.ZodString>;
+}, "strict", z.ZodTypeAny, {
+    text?: string | undefined;
+    instance_id?: string | undefined;
+}, {
+    text?: string | undefined;
+    instance_id?: string | undefined;
 }>;
 
 /**
