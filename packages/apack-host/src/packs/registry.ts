@@ -275,8 +275,9 @@ export interface PackRegistry extends PackRegistryView {
 }
 
 /** Capture ownership and collection membership once; executable values retain their identity. */
-function admitContributions(registration: PackRegistration, { steps: declarations, eventContracts, migrationOwner, serviceOwner }: {
+function admitContributions(registration: PackRegistration, { steps: declarations, eventContracts, migrationOwner, serviceOwner, servicesForAction }: {
   serviceOwner?: PackServiceOwner;
+  servicesForAction: import('@apackdev/sdk/services').PackServiceAccess['servicesForAction'];
   steps?: DeclarationData<Record<string, StepEntry>>;
   eventContracts?: Readonly<PackEventContracts>;
   migrationOwner?: { version?: string; dependencies?: Readonly<Record<string, string>> };
@@ -286,7 +287,7 @@ function admitContributions(registration: PackRegistration, { steps: declaration
     Object.freeze({ target, description, up }));
   const steps = (registration.steps ?? []).map(binding => {
     if (!declarations || !Object.hasOwn(declarations, binding.type)) throw new Error(`Pack "${registration.id}" needs accepted declarations for step "${binding.type}"`);
-    return [binding.type, Object.freeze({ packId: registration.id, runtimeRevision,
+    return [binding.type, Object.freeze({ packId: registration.id, runtimeRevision, servicesForAction,
       declaration: captureStepDeclaration(declarations[binding.type]), binding,
       ...(origin && { declarationRevision: origin.declarationRevision, buildRevision: origin.buildRevision }),
     })] as const;
@@ -620,6 +621,7 @@ export function createPackRegistry({ installedPacksDir, appPackSourcesDir, setti
     const repository = firstTaken(Object.keys(registration.repositories ?? {}), (reg) => reg.repositories, replacing ? registration.id : undefined);
     if (repository) throw new Error(`Repository collision: "${repository.key}" — pack "${registration.id}" vs "${repository.holder}"`);
 
+    let binding: ReturnType<typeof createPackServiceBinding> | undefined;
     const candidate = new Map(admitted);
     const native = origin ? undefined : catalog.getSnapshot().native.find(pack => pack.id === registration.id);
     const serviceOwner: PackServiceOwner | undefined = origin?.manifest
@@ -631,9 +633,12 @@ export function createPackRegistry({ installedPacksDir, appPackSourcesDir, setti
       eventContracts: origin ? origin.eventContracts : native?.eventContracts,
       migrationOwner: origin ? origin.manifest : native,
       serviceOwner,
+      servicesForAction: label => {
+        if (!binding) throw new Error(`Pack "${registration.id}" has no accepted service binding for its steps`);
+        return binding.servicesForAction(label);
+      },
     }, origin));
     const nextTables = buildContributionTables(candidate.values());
-    let binding: ReturnType<typeof createPackServiceBinding> | undefined;
     try {
       if (registration.bindServices) {
         if (!settingsForPack) throw new Error(`Pack "${registration.id}" needs a host settings service binding`);

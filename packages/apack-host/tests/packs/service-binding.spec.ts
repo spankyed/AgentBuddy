@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { _createPackServices, type InferenceService } from '@apackdev/sdk/services';
-import { startTestRuntime, fakeInference, testRootEvents } from '@apackdev/sdk/testing';
+import { startTestRuntime, fakeInference, testRootEvents, nativePackDeclarationFixture } from '@apackdev/sdk/testing';
 import { bindHost } from '@apackdev/sdk/runtime';
 import { boundHost, unbindHost } from '@apackdev/sdk/runtime/internals';
 import type { NativePackDeclaration, PackRegistration } from '@apackdev/sdk/framework';
@@ -42,7 +42,7 @@ describe('accepted service bindings', () => {
     register(provider, { id: 'provider', services: { search: Object.freeze(new Search()) } });
     const generated = caller('consumer', ['provider/search', 'host/onboarding']);
     expect(Object.keys(generated.services).sort()).toEqual(['emitter', 'logger', 'onboarding', 'repository', 'search', 'settings']);
-    expect(generated.services.appData).toBeUndefined();
+    expect(() => generated.services.appData).toThrow(/consumer.*appData.*consumes.services/);
     expect('inference' in generated.services).toBe(false);
     const search = generated.services.search as Search;
     const { read } = search;
@@ -226,7 +226,7 @@ describe('accepted service bindings', () => {
     packs.unregisterPack('provider');
     finish('completed original call');
     await expect(result).resolves.toBe('completed original call');
-    expect(generated.services.appData).toBeUndefined();
+    expect(() => generated.services.appData).toThrow(/consumer.*appData.*consumes.services/);
   });
 
   it('allows an accepted stream and result to finish after retirement without starting new calls', async () => {
@@ -264,7 +264,7 @@ describe('accepted service bindings', () => {
     const factory = generated.servicesForAction;
     const action = factory('Example');
     expect(Object.keys(action)).toEqual(Object.keys(generated.services));
-    expect(action.appData).toBeUndefined();
+    expect(() => action.appData).toThrow(/consumer.*appData.*consumes.services/);
     const log = (action.logger as { info(message: string): void }).info;
     const send = (action.emitter as { sendToSystem(to: { role: string }, event: { type: string }): void }).sendToSystem;
     const messages: unknown[] = [];
@@ -279,7 +279,7 @@ describe('accepted service bindings', () => {
       expect(() => send({ role: 'brain' }, { type: 'LATE' })).toThrow('revoked');
       const replacement = caller('consumer', ['host/onboarding']);
       expect(() => factory('Late')).toThrow('revoked');
-      expect(replacement.servicesForAction('Fresh').appData).toBeUndefined();
+      expect(() => replacement.servicesForAction('Fresh').appData).toThrow('consumes.services');
       expect(messages).toHaveLength(1);
     } finally { stops.forEach(stop => stop()); }
   });
@@ -297,4 +297,50 @@ describe('accepted service bindings', () => {
     expect(() => retained.generate()).toThrow('revoked');
     expect(calls).toBe(0);
   });
+});
+
+
+it('refuses structural mutations of mutable shared services and nested objects', () => {
+  const original = { read: () => 'original', nested: { value: 'original' } };
+  register(provider, { id: 'provider', services: { search: original } });
+  const generated = caller();
+  const facade = generated.services.search as typeof original;
+  expect(Reflect.set(facade, 'read', () => 'patched')).toBe(false);
+  expect(Reflect.defineProperty(facade, 'read', { value: () => 'patched' })).toBe(false);
+  expect(Reflect.deleteProperty(facade, 'read')).toBe(false);
+  expect(Reflect.setPrototypeOf(facade, {})).toBe(false);
+  expect(Reflect.preventExtensions(facade)).toBe(false);
+  expect(Reflect.set(facade.nested, 'value', 'patched')).toBe(false);
+  expect(facade.read()).toBe('original');
+  packs.unregisterPack('consumer');
+  expect(original.read()).toBe('original');
+  expect(original.nested.value).toBe('original');
+});
+
+
+it('gives a contributed step its own service selection, sender identity and retirement lifetime', () => {
+  const generated = _createPackServices();
+  const step = { type: 'foreign-step', node: { label: 'Foreign step' }, runtime: { handler: vi.fn() } };
+  register({ ...nativePackDeclarationFixture({ id: 'step-owner', steps: [step] }), consumes: { services: ['host/onboarding'] } },
+    { id: 'step-owner', steps: [step], bindServices: generated.bindServices });
+  register({ id: 'receiver', features: { destination: { description: 'Receive the foreign step event.', designation: 'brain' } } },
+    { id: 'receiver', features: { destination: { designation: 'brain' } } });
+  const accepted = packs.stepBindings().get(step.type)!;
+  const factory = accepted.servicesForAction;
+  const services = factory('Foreign step');
+  expect(() => services.inference).toThrow(/step-owner.*inference.*consumes.services/);
+  expect(services.onboarding).toBeDefined();
+  const logs: unknown[] = [];
+  const messages: unknown[] = [];
+  const stopMessages = testRootEvents.onIncoming(message => messages.push(message));
+  const stop = testRootEvents.onLog(event => logs.push(event));
+  vi.spyOn(console, 'info').mockImplementation(() => {});
+  try {
+    (services.logger as { info(message: string): void }).info('Step ran');
+    expect(logs).toContainEqual(expect.objectContaining({ source: 'action:Foreign step', message: 'Step ran' }));
+    (services.emitter as { sendToSystem(to: { role: string }, event: { type: string }): void }).sendToSystem({ role: 'brain' }, { type: 'STEP' });
+    expect(messages).toContainEqual(expect.objectContaining({ from: 'step-owner', via: 'action:Foreign step', event: { type: 'STEP' } }));
+    packs.unregisterPack('step-owner');
+    expect(() => factory('Late')).toThrow('revoked');
+  } finally { stop(); stopMessages(); }
 });

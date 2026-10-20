@@ -54,7 +54,7 @@ describe('two registries in one process', () => {
     expect(stepRegistry.has('memo_step')).toBe(true);
     expect(stepRegistry.has('card_step')).toBe(false);
     expect(generated.services.memoService).toEqual({ from: 'memo-pack' });
-    expect(generated.services.cardService).toBeUndefined();
+    expect(() => generated.services.cardService).toThrow(/cardService.*consumes.services/);
     expect(getSettingsCatalog().features).toEqual(bound.settingsCatalog().features);
   });
 

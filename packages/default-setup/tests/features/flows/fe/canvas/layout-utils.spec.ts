@@ -74,7 +74,7 @@ beforeAll(() => {
     type, packId: declaration.id, origin: 'native', enabled: true, declaration: step,
   }))
   const bindings = new Map<string, StepFrontendBinding>(entries.map(entry => [entry.type, {
-    packId: declaration.id, declaration: entry.declaration, binding: steps.get(entry.type)!,
+    packId: declaration.id, declaration: entry.declaration, binding: steps.get(entry.type)!, servicesForAction: () => ({}),
   }]))
   startFeTestRuntime({
     catalog: { status: () => 'ready', problem: () => undefined, steps: () => entries, references: () => [], frontend: () => [], artifacts: () => [], blocks: () => [], events: () => [], dsl: () => [], subscribe: () => () => {} },

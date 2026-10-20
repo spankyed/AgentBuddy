@@ -13,7 +13,7 @@ function fixture() {
       node: { label: 'Memo', defaults: { tags: ['draft'] } }, runtime: { handler: 'src/handler.ts#handler' },
     } };
   const handler = vi.fn();
-  const accepted: StepBackendBinding = { packId: entry.packId, declaration: entry.declaration,
+  const accepted: StepBackendBinding = { servicesForAction: () => ({}), packId: entry.packId, declaration: entry.declaration,
     declarationRevision: entry.declarationRevision, buildRevision: entry.buildRevision, runtimeRevision: 'runtime-one',
     binding: { type: 'memo', node: { label: 'Memo', defaults: { tags: ['draft'] } }, runtime: { handler } } };
   const state = { entries: [entry] };

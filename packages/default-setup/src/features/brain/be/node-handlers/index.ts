@@ -1,6 +1,6 @@
 import type { NodeEntity } from '#generated/types.ts';
 import type { ExecutionContext, TNodeEntity } from '@apackdev/sdk/steps';
-import { stepRegistry } from '@apackdev/sdk/steps';
+import { getStepBinding, stepRegistry } from '@apackdev/sdk/steps';
 import { createLogger, reportError } from '@apackdev/sdk/logger';
 
 const logger = createLogger('node-executor');
@@ -24,17 +24,21 @@ export function executeNode(
     return;
   }
 
-  const stepDef = stepRegistry.get(node.nodeType);
-  if (!stepDef?.runtime?.handler) {
+  const accepted = getStepBinding(node.nodeType);
+  const stepDef = accepted?.binding;
+  if (!accepted || !stepDef?.runtime?.handler) {
     logger.warn(`No runtime handler for node type: ${node.nodeType}`);
     completeLater(actor);
     return;
   }
 
   const { handler, isAsync } = stepDef.runtime;
+  const context: ExecutionContext = { ...executionContext,
+    runtime: { ...executionContext.runtime, servicesForAction: accepted.servicesForAction },
+  };
 
   if (isAsync) {
-    const promise = handler(tNode, node, executionContext, actor) as Promise<void>;
+    const promise = handler(tNode, node, context, actor) as Promise<void>;
     promise.catch((err) => {
       const runtimeError = reportError({
         error: err,
@@ -52,6 +56,6 @@ export function executeNode(
       try { actor.send({ type: 'ERROR', error: runtimeError }); } catch { /* actor gone */ }
     });
   } else {
-    handler(tNode, node, executionContext, actor);
+    handler(tNode, node, context, actor);
   }
 } 

@@ -13,6 +13,8 @@ export interface StepBackendBinding {
   readonly buildRevision?: string;
   readonly runtimeRevision: string;
   readonly binding: StepDefinition;
+  /** The accepted step owner's selection and identity, independent of the flow runner. */
+  readonly servicesForAction: import('../services/index.ts').PackServiceAccess['servicesForAction'];
 }
 
 /** Selected backend declarations; reads never consult or activate executable providers. */

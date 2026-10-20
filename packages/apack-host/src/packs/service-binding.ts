@@ -80,9 +80,13 @@ export function createPackServiceBinding({ caller, selection, settings, provider
         // Array targets must retain their non-configurable length descriptor.
         if (Array.isArray(value) && key === 'length') return { ...Reflect.getOwnPropertyDescriptor(target, key)!, value: value.length };
         const descriptor = Reflect.getOwnPropertyDescriptor(value, key);
-        return descriptor && { configurable: true, enumerable: descriptor.enumerable, value: member(key), writable: 'writable' in descriptor ? descriptor.writable : false };
+        return descriptor && { configurable: true, enumerable: descriptor.enumerable, value: member(key), writable: false };
       },
-      set(_, key, next) { check(); return Reflect.set(value, key, next, value); },
+      set() { check(); return false; },
+      defineProperty() { check(); return false; },
+      deleteProperty() { check(); return false; },
+      setPrototypeOf() { check(); return false; },
+      preventExtensions() { check(); return false; },
     });
     cache.set(value, facade);
     return facade;
@@ -114,7 +118,16 @@ export function createPackServiceBinding({ caller, selection, settings, provider
         return facade;
       } });
     }
-    return Object.freeze(supplied);
+    return new Proxy(Object.freeze(supplied), {
+      get(target, key, receiver) {
+        // JS serialization and promise assimilation probe these without requesting a service.
+        if (typeof key === 'string' && !Object.hasOwn(target, key) && key !== 'then' && key !== 'toJSON') {
+          assertCaller();
+          throw new Error(`Pack "${caller}" has not selected service "${key}"; declare its reference in consumes.services`);
+        }
+        return Reflect.get(target, key, receiver);
+      },
+    });
   };
   const revoke = (): string[] => {
     status = 'revoked';
@@ -124,15 +137,17 @@ export function createPackServiceBinding({ caller, selection, settings, provider
     }
     return failures;
   };
+  const servicesForAction = (label: string) => {
+    assertCaller();
+    return createServices(host.forAction({ from: caller, via: `action:${label}` }));
+  };
   let cleanup: () => void;
   try {
-    cleanup = bind(Object.freeze({ services: createServices(), servicesForAction(label: string) {
-      assertCaller();
-      return createServices(host.forAction({ from: caller, via: `action:${label}` }));
-    } }));
+    cleanup = bind(Object.freeze({ services: createServices(), servicesForAction }));
     if (typeof cleanup !== 'function') throw new Error('Pack service binding must return cleanup');
   } catch (error) { revoke(); throw error; }
   return {
+    servicesForAction,
     activate(): void {
       if (status !== 'pending') throw new Error('Only a pending service binding can be accepted');
       status = 'active';
