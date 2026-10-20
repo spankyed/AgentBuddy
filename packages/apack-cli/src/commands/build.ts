@@ -271,6 +271,13 @@ async function buildIntoStaging(args: string[], root: string) {
       ...(flowHelpers.success && { flowHelpers: flowHelpers.flowHelpers }),
     };
     const finish = async () => {
+      console.log('  finalizing build...');
+      let started = performance.now();
+      const progress = (phase: string) => {
+        const now = performance.now();
+        console.log(`  ${phase}: ${((now - started) / 1000).toFixed(1)}s`);
+        started = now;
+      };
       // Finish asynchronous loader teardown before validating and sealing the final read-set.
       await modules.dispose();
       try { assertGeneratedCurrent(root, manifest, resolvedDependencies, compilation); }
@@ -282,6 +289,7 @@ async function buildIntoStaging(args: string[], root: string) {
       if (failures.length > 0) {
         throw new Error(`Build failed, so no snapshot was written:\n${failures.map((f) => `  - ${f}`).join('\n')}`);
       }
+      progress('source validation');
       fs.mkdirSync(path.dirname(snapshotPath), { recursive: true });
       const snapshotBytes = JSON.stringify(snapshot, null, 2);
       fs.writeFileSync(snapshotPath, snapshotBytes);
@@ -289,12 +297,15 @@ async function buildIntoStaging(args: string[], root: string) {
       writeStamps(outputDir, nextStamps, outputs.record);
       const inputBytes = writePackBuildInputs(outputDir, await compilation.finish(args));
       outputs.record(path.join(outputDir, PACK_BUILD_INPUTS_FILE), inputBytes);
+      progress('compiler input recording');
       outputs.assertCurrent();
       sealPackBuild(outputDir, manifest, snapshot.sdkVersion);
       // Optional diagnostics describe this validated candidate; only the sealed cache authorizes reuse.
       reads?.write();
+      progress('output verification');
       // Cleanup can fail too; finish it before replacing the accepted build.
       compilation.dispose();
+      progress('input cleanup');
       return { inputHash: inputsHash, revision: readPackBuild(outputDir).revision };
     };
 

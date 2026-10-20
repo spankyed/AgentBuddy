@@ -29,7 +29,7 @@ on:
       app_acceptance_suite:
         description: App acceptance suite; all also exercises the source CLI
         type: choice
-        options: [all, app, external, cli]
+        options: [all, app, external, cli, build]
         default: all
       app_acceptance_test:
         description: Optional Playwright test name pattern in the selected suite

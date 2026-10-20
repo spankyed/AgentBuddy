@@ -248,3 +248,26 @@ A regression checks the sum of the producer's actual operation bounds against it
 fails before the repair (1,320s of phases under 600s), passes afterward (900s under 900s). All 68 graph
 and scheduler cases pass, as do scripts/repo-checks typechecking and focused correctness lint. Before
 another strict run, validate this producer and the restored-fork app case together on disposable macOS.
+
+## Fork acceptance passed: 39420977378
+
+[Focused disposable run](https://github.com/spankyed/apack/actions/runs/39420977378), source
+`f34d4c60764f39b7182941d198f061c01fe75177`: fixture contracts pass; the fork build completes in 401.4s,
+archive in 30.8s, and the complete fork replacement/reload/restoration case passes in 48.9s. The
+restoration synchronization repair is now exercised in the real app. Evidence is retained under
+`/private/tmp/apack-fork-39420977378/` and its `.log`.
+
+## Strict run 39424852985: cold shipped-build operation timeout
+
+[Strict gate](https://github.com/spankyed/apack/actions/runs/39424852985), same source, stops at
+`build:default-setup`'s own 600s bound. Backend/frontend bundling has reported output, but `Output: dist/`
+was not reached. No assertion failure is reported; downstream acceptance is not reached. The retained
+per-step log cannot distinguish module teardown, final source checks, compiler-input recording, output
+sealing or read-tree disposal. This is a different boundary from the repaired fork aggregate timeout.
+Evidence: `/private/tmp/apack-strict-39424852985/` and its `.log`.
+
+Do not repeat a full gate or change its deadline without identifying this phase. Add finalization phase
+timings to the existing build progress, then select a build-only disposable diagnostic. It uses the
+strict run's 4GiB Node heap and two-core budget, with a **diagnostic-only 900s bound**, retaining its
+streamed build log. Normal strict builds keep their 600s bound. Runtime builds, fixture suites and app
+launches are skipped. CLI typechecking, correctness lint and workflow YAML/shell syntax pass.
