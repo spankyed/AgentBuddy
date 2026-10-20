@@ -52,6 +52,8 @@ test('backup import restores all settings owners and updates an open window', as
     }), companion);
     await app.waitForPlugin('bundled-ui-fixture/scribbles');
     const original = await change('Saved');
+    const companionRuntime = await appPage.evaluate(() => (window as any).applicationState.getSnapshot()
+      .context.acceptedPackRuntimes['bundled-ui-fixture']);
     const opened = electronApp.waitForEvent('window');
     await appPage.evaluate(() => (window as any).electronAPI.plugins.popout('host/settings', 'Settings'));
     second = await opened;
@@ -122,6 +124,10 @@ test('backup import restores all settings owners and updates an open window', as
     expect(restored.packs['bundled-ui-fixture'].assistant.name).toBe('Saved Scribbles assistant');
     expect(restored.features['e2e-fixture/memos'].listTitle).toBe('Saved Memos');
     await toggleCompanion();
+    await expect.poll(() => appPage.evaluate(previous => {
+      const current = (window as any).applicationState.getSnapshot().context.acceptedPackRuntimes['bundled-ui-fixture'];
+      return !!current && current !== previous;
+    }, companionRuntime), { timeout: 30_000, message: 'companion frontend accepted after reactivation' }).toBe(true);
     await appPage.locator('[data-onboarding-id="settings-packs-tab"]').click();
     await appPage.getByText('bundled-ui-fixture/assistant', { exact: true }).click();
     await expect(appPage.getByLabel('Scribbles assistant name', { exact: true })).toHaveValue('Saved Scribbles assistant');
@@ -202,6 +208,8 @@ test('two external assistant groups survive independent edits, disable, reset an
 });
 
 test('accepted dependency credentials enforce shared, owner-only and reload boundaries', async ({ appPage, app }, testInfo) => {
+  // One cold backend build (180s), typecheck (20s), then credential/lifecycle checks (40s).
+  test.setTimeout(240_000);
   const root = fileURLToPath(new URL('../../../../../', import.meta.url));
   const dependent = fs.mkdtempSync(path.join(os.tmpdir(), 'apack-settings-dependent-'));
   const id = 'settings-dependent';
@@ -248,7 +256,7 @@ test('accepted dependency credentials enforce shared, owner-only and reload boun
     fs.writeFileSync(path.join(dependent, 'apack.json'), JSON.stringify({ id, name: 'Settings dependent', version: '1.0.0',
       hostVersion: '>=0.3.0', data: { entities: {}, relations: [] }, features: {}, dependencies: { 'bundled-ui-fixture': `file:${companion}` } }));
     execFileSync(process.execPath, [path.join(root, 'packages/apack-cli/bin/apack.mjs'), 'pack', 'build'], {
-      cwd: dependent, env: { ...process.env, APACK_HOST: root }, stdio: 'pipe',
+      cwd: dependent, env: { ...process.env, APACK_HOST: root }, stdio: 'pipe', timeout: 180_000,
     });
     fs.copyFileSync(path.join(companion, 'tsconfig.json'), path.join(dependent, 'tsconfig.json'));
     fs.mkdirSync(path.join(dependent, 'tests'));
@@ -268,7 +276,7 @@ restricted.reset();
 shared.set({ path: ['name'], value: 2 });
 `);
     execFileSync(process.execPath, [path.join(root, 'node_modules/typescript/bin/tsc'), '--noEmit', '-p', dependent], {
-      cwd: dependent, stdio: 'pipe',
+      cwd: dependent, stdio: 'pipe', timeout: 20_000,
     });
     await appPage.evaluate(packSlug => (window as any).__sendToSystem('host/packs', {
       type: 'INSTALL_PACK', packSlug, sourceKind: 'local',

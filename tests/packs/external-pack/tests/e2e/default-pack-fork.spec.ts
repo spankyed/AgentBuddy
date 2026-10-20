@@ -22,6 +22,9 @@ test.beforeAll(() => {
 });
 
 if (!restarting) test('an externally built default fork refreshes both windows and survives actual dev reload', async ({ app, appPage, electronApp }) => {
+  // Replacement/reload each await a frontend publication (30s); windows, UI and restoration share 90s.
+  // Individual value assertions and the restoration assertion retain their existing 5s limits.
+  test.setTimeout(150_000);
   await app.navigate('host/settings');
   await appPage.getByRole('button', { name: 'Personal', exact: true }).click();
   const preferenceWindow = electronApp.waitForEvent('window');
@@ -43,29 +46,34 @@ if (!restarting) test('an externally built default fork refreshes both windows a
   let replaced = false;
   const label = (page: typeof appPage) => page.evaluate(() => (window as any).applicationState.getSnapshot()
     .context.plugins.find((plugin: any) => plugin.id === 'default-setup/notes')?.label);
+  const runtime = (page: typeof appPage) => page.evaluate(() => (window as any).applicationState?.getSnapshot()
+    .context.acceptedPackRuntimes['default-setup'] as string | undefined);
+  const waitForReplacement = (page: typeof appPage, previous: string | undefined) => expect.poll(async () => {
+    const current = await runtime(page);
+    return !!current && current !== previous;
+  }, { timeout: 30_000, message: 'replacement frontend accepted in this window' }).toBe(true);
   try {
     await second.waitForLoadState('domcontentloaded');
     await appPage.evaluate(() => (window as any).applicationState.system.get('host/packs')
       .send({ type: 'UI.SELECT_PACK', packId: 'default-setup' }));
     await appPage.getByTestId('pack-replacement').locator('input').fill(archive);
+    const beforeReplace = await runtime(appPage);
+    expect(beforeReplace, 'the incumbent frontend has been accepted').toBeTruthy();
     replaced = true;
     await appPage.getByTestId('pack-replace').click();
+    await Promise.all([waitForReplacement(appPage, beforeReplace), waitForReplacement(second, beforeReplace)]);
     await expect.poll(() => label(appPage)).toBe('Fork Notes');
     await expect.poll(() => label(second)).toBe('Fork Notes');
     await app.navigate('default-setup/notes');
     await expect(appPage.getByTestId('fork-component')).toBeVisible();
     await expect(second.getByText('Acceptance fork', { exact: true })).toBeVisible();
-    const previous = await appPage.evaluate(() => (window as any).applicationState.getSnapshot()
-      .context.acceptedPackRuntimes['default-setup']);
+    const previous = await runtime(appPage);
     const api = await appPage.evaluate(() => ({ port: (window as any).electronAPI.apiPort, token: (window as any).electronAPI.apiToken }));
     const response = await fetch(`http://127.0.0.1:${api.port}/dev/reload`, { method: 'POST',
       headers: { 'Content-Type': 'application/json', [API_TOKEN_HEADER]: api.token }, body: JSON.stringify({ packId: 'default-setup' }),
     });
     expect(response.status, await response.text()).toBe(200);
-    await expect.poll(() => appPage.evaluate(previous => {
-      const current = (window as any).applicationState.getSnapshot().context.acceptedPackRuntimes['default-setup'];
-      return !!current && current !== previous;
-    }, previous)).toBe(true);
+    await Promise.all([waitForReplacement(appPage, previous), waitForReplacement(second, previous)]);
     await expect.poll(() => label(appPage)).toBe('Fork Notes');
     await expect.poll(() => label(second)).toBe('Fork Notes');
     await expect.poll(() => appPage.evaluate(() => (window as any).applicationState.system.get('host/packs')

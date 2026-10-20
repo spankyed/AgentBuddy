@@ -29,14 +29,20 @@ for (const stream of [child.stdout, child.stderr]) stream.on('data', data => {
 });
 // Register before signalling; even a fast successful exit must be observed.
 const closed = once(child, 'close');
-let browser: Browser | undefined;
-try {
+// A public build includes the backend (180s) and frontend (120s); startup performs two.
+const BUILD_TIMEOUT_MS = 300_000;
+async function waitForPhase(marker: string, timeout: number, message: string): Promise<void> {
   await expect.poll(() => {
     if (child.exitCode !== null || child.signalCode !== null) throw new Error(`pack dev exited early: ${text}`);
-    return text.includes('[watch] Watching build inputs');
-  // The same fixture's cold build took 153s on the two-core runner. Startup also owns
-  // a retained frontend compiler and app launch; it is not a single 60s readiness event.
-  }, { timeout: 300_000, message: 'cold build, frontend compiler, app launch, install and watcher startup' }).toBe(true);
+    return text.includes(marker);
+  }, { timeout, message }).toBe(true);
+}
+let browser: Browser | undefined;
+try {
+  await waitForPhase('Output: dist/', BUILD_TIMEOUT_MS, 'initial complete pack build');
+  await waitForPhase('Dev server running at ', 60_000, 'app launch, initial install and frontend server');
+  // The watcher subscribes before its own initial publication to close the build/subscription race.
+  await waitForPhase('[watch] Watching build inputs', BUILD_TIMEOUT_MS, 'watcher initial publication');
   const session = JSON.parse(fs.readFileSync(sessionFile(userDataDir), 'utf8'));
   browser = await chromium.connectOverCDP(`http://127.0.0.1:${session.debugPort}`, { timeout: 15_000 });
   const page = browser.contexts()[0]!.pages().find(page => page.url().includes('/renderer/dist/index.html'))!;
@@ -48,13 +54,12 @@ try {
   manifest.features.memos.settings.defaults.listTitle = 'CLI rebuild memos';
   fs.writeFileSync(manifestFile, JSON.stringify(manifest, null, 2) + '\n');
   const installed = path.join(resolveAppEnvironment({ env: 'development', userDataDir }).packsDir, manifest.id, 'apack.json');
-  // The retained generation's preceding build took 109s on this runner. Bound compilation/install
-  // separately from frontend acknowledgment, so a missing delivery still fails within 30s.
+  // Bound complete publication separately from the frontend's 30s acknowledgment.
   await expect.poll(() => {
     if (child.exitCode !== null || child.signalCode !== null) throw new Error(`pack dev exited during rebuild: ${text}`);
     try { return JSON.parse(fs.readFileSync(installed, 'utf8')).features.memos.settings.defaults.listTitle; }
     catch (error) { if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error; }
-  }, { timeout: 180_000, message: 'watcher rebuilds and installs the changed declaration' }).toBe('CLI rebuild memos');
+  }, { timeout: BUILD_TIMEOUT_MS, message: 'watcher rebuilds and installs the changed declaration' }).toBe('CLI rebuild memos');
   await expect.poll(async () => {
     const current = await runtime();
     return !!current && current !== previous;

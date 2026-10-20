@@ -133,3 +133,35 @@ The remaining reload assertion audit found two external cases accepting a tempor
 runtime as "different". They now require a present, different accepted runtime, matching the source CLI
 case. Fixture typechecking and correctness lint pass. Their stronger assertions belong to the final
 committed-source acceptance, rather than being claimed from the already running earlier checkpoint.
+
+## Complete inventory: run 39400009119
+
+[Disposable run](https://github.com/spankyed/apack/actions/runs/39400009119), `387cc62f6`:
+**25/28 external cases and 31/32 general app cases passed**. The external step's own service was
+executed through the actual brain. All six LMDB cases passed again; the running-app backup test also
+completed real export/import and restored its saved values before its later frontend-form wait failed.
+The cache-location repair resolved prebuilt admission; no cache refusal remained.
+
+| Failure | Classification | Evidence / repair |
+| --- | --- | --- |
+| Built-in content reload | Assertion (500 vs 200) | Sealing with the parsed snapshot normalized declaration key order. Preserve the original authored manifest when resealing. A passive local comparison confirms authored and parsed serialization differ while the original sealed manifest equals source. |
+| Default-fork replacement | Individual frontend/UI wait (5s) | Backend accepted the fork, but the old label remained when the default assertion deadline expired. Await a present, changed accepted runtime in both windows before checking labels; apply the same boundary to reload; retain the restoration assertion's existing bound. Keep value assertions at their existing limits and retain traces for any remaining frontend refusal. |
+| Backup settings ownership | Individual frontend/UI wait (5s) | Import and data assertions completed. After reactivating the companion, its custom form was not present yet. Await its new accepted frontend runtime before asserting the restored form value. |
+| Dependency credentials | Whole-case deadline (60s) | The case also compiles a cold pack and checks its generated types before testing authority and two activation cycles. It expired as the re-enabled backend registered. Bound the backend-only build at 180s, typecheck at 20s, and complete case at 240s (40s for credential/lifecycle checks); retain existing individual event waits. |
+| Source pack dev | Composed startup deadline (300s) | The initial build completed at 159s, then app/server startup completed. The watcher performs a second initial publication; it was still compiling when the old combined deadline expired. Bound each complete backend/frontend build at 300s (180s + 120s), separately bound app/server startup at 60s, then retain the 30s runtime acknowledgment and 15s connection/cleanup bounds. |
+
+No cleanup failure was reported. The default-fork case composes two 30s frontend publications plus
+90s for its windows/UI/restoration (150s overall); both windows' publication waits run together.
+The final restoration assertion retains its original 5s bound. These changes do
+not alter the default suite/test deadlines or skip value, ownership, refusal, integrity or delivery checks.
+Frontend waits remain unproven until the corrected running-app cases pass; they are not diagnosed as
+mere slowness from a timeout alone.
+
+Evidence is retained in `/private/tmp/apack-app-39400009119.log`,
+`/private/tmp/apack-app-39400009119/`, and its earlier `-suites` download.
+
+Focused follow-up selects only the four failed Playwright cases plus the real source CLI scenario.
+The dispatch now explicitly selects `app_acceptance_suite=all|app|external`; an optional
+`app_acceptance_test` filters Playwright case names. `all` retains CLI/native acceptance even when its
+Playwright cases are filtered. Empty patterns retain the complete selected suite; no default gate is
+removed. Both the external fixture and the root app retain failure traces.
