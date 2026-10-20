@@ -204,6 +204,13 @@ it.each(['configuration', 'sources', 'declarations', 'resolution'])('publishes c
     try { return await bundleTypes(...args); }
     finally { fs.writeFileSync(shape, bytes); fs.writeFileSync(config, original); }
   });
+  if (change === 'resolution') {
+    // A dependency package is captured when the bundler first resolves into it, here during the edit, so the
+    // restored package.json differs from what that capture saw: refused, never published from live bytes
+    await expect(build(['--skip-fe'], pack)).rejects.toThrow(/Compiler input changed during capture: .*node_modules\/bare\/package\.json/);
+    expect(transient).toHaveBeenCalledOnce();
+    return;
+  }
   await build(['--skip-fe'], pack);
   expect(transient).toHaveBeenCalledOnce();
   expect(trees).toHaveLength(1);
