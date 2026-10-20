@@ -3,7 +3,7 @@ import { _settingsJsonProblems } from '@apackdev/sdk/framework';
 import type { SettingsPort } from '@apackdev/sdk/fe';
 import { settingsTargetPath, type SettingsSnapshot, type SettingsRecovery, type SettingsRecoveryRequest, type SettingsWriteCondition, type SettingsWriteResult } from '@apackdev/sdk/types';
 import type { IncomingSettingsEvents } from '../features/settings/be/types.ts';
-import { getIn, isEqual } from '../features/settings/document.ts';
+import { getIn } from '../features/settings/document.ts';
 import { authorizeSettings } from '../features/settings/authorization.ts';
 import { HOST } from '../refs.ts';
 import { createLogger } from '@apackdev/sdk/logger';
@@ -21,7 +21,8 @@ const refused = (message: string): SettingsWriteResult => ({ status: 'refused', 
 export function createWindowSettingsRuntime(io: WindowSettingsIO) {
   const logger = createLogger('settings-window');
   const readSnapshot = createSettingsSnapshotReader();
-  let status: ReturnType<SettingsPort['status']> = 'loading';
+  // `recovery` is this window's alone: packs never run then, and the port reports it as not yet loaded.
+  let status: ReturnType<SettingsPort['status']> | 'recovery' = 'loading';
   let snapshot: SettingsSnapshot | undefined;
   let recovery: SettingsRecovery | undefined;
   let readCall: string | undefined;
@@ -110,7 +111,7 @@ export function createWindowSettingsRuntime(io: WindowSettingsIO) {
         if (snapshot && caller !== undefined) authorizeSettings(snapshot.catalog, target, caller);
         return structuredClone(getIn(snapshot?.values, settingsTargetPath(target))) as T | undefined;
       },
-      status: () => status,
+      status: () => status === 'recovery' ? 'loading' : status,
       subscribe(listener) { listeners.add(listener); return () => { listeners.delete(listener); }; },
       update(target, path, value, condition) {
         if (!snapshot) return Promise.resolve(refused('Settings have not loaded.'));
@@ -154,7 +155,7 @@ export function createWindowSettingsRuntime(io: WindowSettingsIO) {
         port: {
           ...bound,
           get: <T,>(target: import('@apackdev/sdk/types').SettingsTarget) => active ? bound.get<T>(target) : undefined,
-          status: () => active ? status : 'disposed',
+          status: () => active ? bound.status() : 'disposed',
           subscribe(listener) {
             if (!active) throw new Error('This frontend settings binding was unloaded.');
             const stop = port.subscribe(listener);
@@ -193,37 +194,30 @@ export function createWindowSettingsRuntime(io: WindowSettingsIO) {
     receive(message: Message): boolean {
       if (message.to !== HOST.settings) return false;
       const event = message.event;
-      if (event.type === 'SETTINGS_RECOVERY' || event.type === 'SETTINGS_RECOVERED') {
+      if (event.type === 'SETTINGS_RECOVERY') {
         if (status === 'disposed' || status === 'disconnected') return true;
         if (!snapshot && !recovery && (!readCall || message.answering !== readCall)) return true;
-        try {
-          const next = readSettingsRecovery(event.recovery);
-          const previous = snapshot ? { runId: snapshot.runId, revision: snapshot.revision, catalogRevision: snapshot.catalog.revision } : recovery?.version;
-          if (previous && (next.version.runId !== previous.runId || next.version.revision < previous.revision
-            || next.version.catalogRevision < previous.catalogRevision)) return true;
-          if (snapshot && next.version.revision === snapshot.revision && next.version.catalogRevision === snapshot.catalog.revision) {
-            throw new Error('Settings became invalid without a value or catalog revision');
-          }
-          if (recovery && isEqual(next.version, recovery.version) && !isEqual(next, recovery)) {
-            throw new Error('Settings recovery changed without a value or catalog revision');
-          }
-          if (recovery && isEqual(next, recovery) && status === 'recovery' && event.type !== 'SETTINGS_RECOVERED') return true;
+        let next: SettingsRecovery;
+        try { next = readSettingsRecovery(event.recovery); }
+        catch (error) {
+          report(error);
+          if (!snapshot && !recovery) end('disconnected', 'The backend returned invalid settings recovery data.');
+          return true;
+        }
+        // Recovery lasts until relaunch, so an older revision is stale and cannot undo a repair.
+        if (!recovery || (next.version.runId === recovery.version.runId && next.version.revision >= recovery.version.revision)) {
           clearTimeout(readTimer);
           readCall = undefined;
           snapshot = undefined;
           recovery = next;
           status = 'recovery';
           for (const dispose of bindings) dispose();
-          for (const [call, request] of pending) {
-            if (event.type === 'SETTINGS_RECOVERED' && call === message.answering) {
-              settle(call, next.status === 'repaired' ? { status: 'saved' } : refused('The settings were not repaired.'));
-            } else if (!request.repair) settle(call, refused('Settings require recovery.'));
-          }
-          tell();
-        } catch (error) {
-          report(error);
-          if (!snapshot) end('disconnected', 'The backend returned invalid settings recovery data.');
         }
+        for (const [call, request] of pending) {
+          if (!request.repair) settle(call, refused('Settings require recovery.'));
+          else if (call === message.answering) settle(call, next.problems.length ? refused('Some settings are still invalid.') : { status: 'saved' });
+        }
+        tell();
         return true;
       }
       if (event.type === 'SETTINGS_SAVED' || event.type === 'SETTINGS_REFUSED') {

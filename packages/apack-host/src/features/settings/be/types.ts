@@ -34,7 +34,6 @@ export type SettingsInternalEvents =
 
 export type OutgoingSettingsEvents =
   | { type: 'SETTINGS_RECOVERY'; recovery: SettingsRecovery }
-  | { type: 'SETTINGS_RECOVERED'; recovery: SettingsRecovery }
   | { type: 'SETTINGS_LOADED'; snapshot: SettingsSnapshot }
   /** The installed packs changed, so what they answer with in Help has too */
   | { type: 'SETTINGS_UPDATED'; snapshot: SettingsSnapshot }

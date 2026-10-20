@@ -12,6 +12,8 @@ export interface SettingsService {
 export interface SettingsAdmin extends SettingsService {
   getAll(): SettingsDocument;
   getSnapshot(): SettingsSnapshot;
+  /** Boot found stored values the declarations reject: reads refuse until the app restarts. */
+  enterRecovery(): void;
   getRecovery(): SettingsRecovery | undefined;
   recover(request: SettingsRecoveryRequest): void;
   getOverrides(): SettingsOverrides;

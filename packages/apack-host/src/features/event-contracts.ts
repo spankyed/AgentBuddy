@@ -73,7 +73,6 @@ export type SettingsPluginEvents = Exclude<OutgoingSettingsEvents, { type: 'APPL
 /** The event types the `settings` plugin receives; the host's to send, and no pack's */
 export const SETTINGS_PLUGIN_EVENT_TYPES = eventTypes<SettingsPluginEvents>()(
   'SETTINGS_RECOVERY',
-  'SETTINGS_RECOVERED',
   'SETTINGS_LOADED',
   'SETTINGS_UPDATED',
   'SETTINGS_SAVED',

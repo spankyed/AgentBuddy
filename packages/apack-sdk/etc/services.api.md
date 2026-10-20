@@ -279,6 +279,7 @@ export interface SecretsStatus {
 
 // @public
 export interface SettingsAdmin extends SettingsService {
+    enterRecovery(): void;
     // (undocumented)
     forPack(packId: string): SettingsService;
     // (undocumented)

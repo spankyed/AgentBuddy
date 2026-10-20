@@ -307,66 +307,62 @@ it('does not let detached initialization work retain write access during a later
 describe('explicit settings recovery', () => {
   function corrupt(data: unknown) {
     untypedTx(SETTINGS_ID, true).put('entityType', SETTINGS_ENTITY).put('data', data);
+    store.enterRecovery();
     return store.getRecovery()!;
   }
 
-  it('attributes schema problems without exposing invalid typed values', () => {
+  it('reports nothing and reads normally until boot enters recovery', () => {
+    untypedTx(SETTINGS_ID, true).put('entityType', SETTINGS_ENTITY).put('data', { features: { [THREADS]: { limit: 5 } } });
+    expect(store.getRecovery()).toBeUndefined();
+    expect(store.get(feature)).toMatchObject({ limit: 5 });
+  });
+
+  it('attributes schema problems and refuses typed reads of the invalid values', () => {
     const recovery = corrupt({ features: { [THREADS]: { limit: 'invalid' } } });
     expect(recovery.problems).toContainEqual({ target: feature, path: ['limit'], message: 'must be integer' });
-    expect(() => store.get(feature)).toThrow('limit');
-    expect(() => store.getAll()).toThrow('limit');
-    expect(() => store.getSnapshot()).toThrow('limit');
+    expect(() => store.get(feature)).toThrow('recovery');
+    expect(() => store.getAll()).toThrow('recovery');
+    expect(() => store.getSnapshot()).toThrow('recovery');
     expect(rowData()).toEqual({ features: { [THREADS]: { limit: 'invalid' } } });
   });
 
-  it('resets multiple affected owners once, preserving unrelated and unavailable-owner choices', () => {
-    const recovery = corrupt({ app: { personal: { name: 'Keep' } },
-      features: { [THREADS]: { limit: 'invalid' }, 'absent/feature': { keep: true } },
+  it('resets only the invalid values, keeping the rest of each owner', () => {
+    const project = { name: 'Site', directories: ['/work/site'], color: 'blue' };
+    const recovery = corrupt({
+      app: { hotkeys: { switchPluginUp: { key: 42, modifiers: ['cmd'] } }, personal: { name: 'Keep' }, projects: [project] },
+      features: { [THREADS]: { limit: 'invalid', sort: 'oldest' }, 'absent/feature': { keep: true } },
       packs: { 'default-setup': { assistant: { name: 42 } } },
     });
     const heard = vi.fn();
     store.onChange(heard);
-    expect(() => store.recover({ version: recovery.version, reset: [feature] })).toThrow('assistant');
-    expect(heard).not.toHaveBeenCalled();
-    expect(rowData()).toHaveProperty('features');
-    store.recover({ version: recovery.version, reset: [feature, assistant] });
+    store.recover({ version: recovery.version, scope: 'invalid' });
     expect(heard).toHaveBeenCalledTimes(1);
-    expect(store.getRecovery()?.status).toBe('repaired');
-    expect(store.getSnapshot().revision).toBe(recovery.version.revision + 1);
-    expect(store.get(app)).toMatchObject({ personal: { name: 'Keep' } });
-    expect(store.getOverrides().features?.['absent/feature']).toEqual({ keep: true });
-    expect(store.get(feature)).toEqual({ limit: 10, sort: 'newest' });
+    expect(store.getRecovery()).toEqual({ version: { ...recovery.version, revision: recovery.version.revision + 1 }, problems: [] });
+    expect(rowData()).toEqual({
+      app: { hotkeys: { switchPluginUp: { modifiers: ['cmd'] } }, personal: { name: 'Keep' }, projects: [project] },
+      features: { [THREADS]: { sort: 'oldest' }, 'absent/feature': { keep: true } },
+      packs: { 'default-setup': { assistant: {} } },
+    });
   });
 
-  it.each([null, [], 'broken', { features: null }])('requires an explicit complete reset for malformed data %j', data => {
+  it.each([null, [], 'broken', { features: null }])('requires a complete reset for malformed data %j', data => {
     const recovery = corrupt(data);
     expect(recovery.problems.every(problem => !problem.target)).toBe(true);
-    expect(() => store.recover({ version: recovery.version, reset: [feature] })).toThrow('malformed');
+    expect(() => store.recover({ version: recovery.version, scope: 'invalid' })).toThrow('malformed');
     expect(rowData()).toEqual(data);
-    store.recover({ version: recovery.version, reset: 'all' });
-    expect(store.getOverrides()).toEqual({});
-    expect(store.getRecovery()?.status).toBe('repaired');
+    store.recover({ version: recovery.version, scope: 'all' });
+    expect(rowData()).toEqual({});
+    expect(store.getRecovery()?.problems).toEqual([]);
   });
 
-  it('refuses stale process, value and declaration tokens without writing', () => {
+  it('refuses a request for another process or revision, and a repeat once repaired, without writing', () => {
     const recovery = corrupt({ features: { [THREADS]: { limit: 'invalid' } } });
     const before = rowData();
-    for (const version of [
-      { ...recovery.version, runId: 'another-process' },
-      { ...recovery.version, revision: recovery.version.revision + 1 },
-      { ...recovery.version, catalogRevision: recovery.version.catalogRevision + 1 },
-    ]) expect(() => store.recover({ version, reset: 'all' })).toThrow('changed');
+    for (const version of [{ ...recovery.version, runId: 'another-process' }, { ...recovery.version, revision: recovery.version.revision + 1 }]) {
+      expect(() => store.recover({ version, scope: 'all' })).toThrow('changed');
+    }
     expect(rowData()).toEqual(before);
-    expect(() => store.recover({ version: recovery.version, reset: [assistant] })).toThrow('Only affected');
-    expect(() => store.recover({ version: recovery.version, reset: [] })).toThrow('Select affected');
-  });
-
-  it('refuses recovery throughout data replacement, including trusted initialization', async () => {
-    await store.whileReplacingData(async () => {
-      untypedTx(SETTINGS_ID, true).put('entityType', SETTINGS_ENTITY).put('data', { features: { [THREADS]: { limit: 'invalid' } } });
-      expect(store.getRecovery()).toBeUndefined();
-      expect(() => store.recover({ version: { runId: 'irrelevant', revision: 0, catalogRevision: 0 }, reset: 'all' })).toThrow('being replaced');
-      store.resetAll();
-    });
+    store.recover({ version: recovery.version, scope: 'invalid' });
+    expect(() => store.recover({ version: store.getRecovery()!.version, scope: 'all' })).toThrow('changed');
   });
 });

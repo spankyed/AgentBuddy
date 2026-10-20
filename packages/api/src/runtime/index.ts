@@ -15,6 +15,7 @@ import {
 } from '@apackdev/host/features';
 import { createAppBus, createParticipantClaims, HOST } from '@apackdev/host/bus';
 import { createHostRuntime } from '@apackdev/host/services';
+import { _settingsAdmin } from '@apackdev/sdk/services';
 import { compileSettingsCatalog, createSettingsAccess } from '@apackdev/host/settings';
 import { forwardSecretsChanges } from '@apackdev/host/secrets';
 import { assertSourceResolution } from '@apackdev/host/build/source-resolution';
@@ -173,6 +174,7 @@ export async function setupBackend(): Promise<void> {
   const recoveringSettings = settingsProblems.length > 0;
   if (recoveringSettings) {
     console.error('[settings] Preferences require an explicit reset before normal startup:', settingsProblems);
+    _settingsAdmin().enterRecovery();
     // This process remains host-only even after repair. Relaunch owns normal initialization.
     packs.catalog.setSettingsAdmission(() => { throw new Error('Restart the app after repairing settings before changing packs.'); });
   }

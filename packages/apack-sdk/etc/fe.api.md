@@ -755,7 +755,7 @@ export interface SettingsPort {
     // (undocumented)
     reset(target: SettingsTarget): Promise<SettingsWriteResult>;
     // (undocumented)
-    status(): 'loading' | 'recovery' | 'ready' | 'replacing' | 'disconnected' | 'disposed';
+    status(): 'loading' | 'ready' | 'replacing' | 'disconnected' | 'disposed';
     subscribe(listener: () => void): () => void;
     update(target: SettingsTarget, path: readonly string[], value: unknown, condition?: SettingsWriteCondition): Promise<SettingsWriteResult>;
 }

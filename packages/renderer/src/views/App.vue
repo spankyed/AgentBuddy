@@ -7,7 +7,7 @@ import { applicationState } from '@/main'
 import { useSelector } from '@xstate/vue';
 import { fePacks } from '@/runtime/packs';
 
-const { recovery, status } = useSettingsRecovery();
+const recovery = useSettingsRecovery();
 const WelcomeComponent = fePacks.getAppExtension('welcome');
 const isWelcome = useSelector(applicationState, (s) => s.hasTag('welcome'));
 const isConnecting = useSelector(applicationState, (s) => s.hasTag('connecting'));
@@ -15,7 +15,7 @@ const isPluginPopout = new URLSearchParams(window.location.search).get('popout')
 </script>
 
 <template>
-  <SettingsRecovery v-if="recovery" :recovery="recovery" :status="status" />
+  <SettingsRecovery v-if="recovery" :recovery="recovery" />
   <template v-else>
     <!-- Welcome modal overlay (first-time users) -->
     <component v-if="isWelcome && !isPluginPopout && WelcomeComponent" :is="WelcomeComponent" />

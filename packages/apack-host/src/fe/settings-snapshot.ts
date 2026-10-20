@@ -54,8 +54,7 @@ export function createSettingsSnapshotReader() {
 export function readSettingsRecovery(value: unknown): SettingsRecovery {
   if (_settingsJsonProblems(value).length || !isPlainObject(value) || !isPlainObject(value.version)
     || typeof value.version.runId !== 'string' || !value.version.runId || !revision(value.version.revision)
-    || !revision(value.version.catalogRevision) || !['invalid', 'repaired'].includes(value.status as string)
-    || !Array.isArray(value.problems) || (value.status === 'invalid' ? !value.problems.length : value.problems.length !== 0)) {
+    || !Array.isArray(value.problems)) {
     throw new Error('Invalid settings recovery response');
   }
   for (const problem of value.problems) {

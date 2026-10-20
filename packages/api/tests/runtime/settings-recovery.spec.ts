@@ -63,22 +63,22 @@ it('boots host recovery before loading external modules, repairs, and starts nor
   const recovery = settings.getRecovery()!;
   expect(recovery.problems).toContainEqual({ target: { kind: 'app' }, path: ['projects'], message: 'must be array' });
   expect(recovery.problems).toContainEqual({ target: { kind: 'feature', featureRef: 'memo/notes' }, path: ['limit'], message: 'must be integer' });
-  expect(() => settings.getSnapshot()).toThrow('projects');
+  expect(() => settings.getSnapshot()).toThrow('recovery');
   const outgoing: Message[] = [];
   const stop = rootEvents.onOutgoing(message => { outgoing.push(message); });
   rootEvents.emitConnected();
-  const event = { type: 'RECOVER_SETTINGS' as const, request: { version: recovery.version, reset: [{ kind: 'app' as const }, { kind: 'feature' as const, featureRef: 'memo/notes' as const }] } };
+  const event = { type: 'RECOVER_SETTINGS' as const, request: { version: recovery.version, scope: 'invalid' as const } };
   const credential = backend.appSettingsAccess.issueHost('recovery-window');
   bindSettingsRequest(event, () => backend.appSettingsAccess.resolve('recovery-window', credential));
   rootEvents.emitIncoming({ to: 'host/settings', sender: 'host/settings', from: 'host', client: 'recovery-window', call: 'repair', event });
   await Promise.resolve();
-  expect(outgoing).toContainEqual(expect.objectContaining({ answering: 'repair', event: expect.objectContaining({ type: 'SETTINGS_RECOVERED', recovery: expect.objectContaining({ status: 'repaired' }) }) }));
+  expect(outgoing).toContainEqual(expect.objectContaining({ answering: 'repair', event: expect.objectContaining({ type: 'SETTINGS_RECOVERY', recovery: expect.objectContaining({ problems: [] }) }) }));
   // A new window gets the retained restart requirement rather than an apparently ready host-only app.
   rootEvents.emitIncoming({ to: 'host/settings', sender: 'host/settings', from: 'host', client: 'recovery-window', call: 'new-window', event: { type: 'GET_SETTINGS' } });
   await Promise.resolve();
-  expect(outgoing).toContainEqual(expect.objectContaining({ answering: 'new-window', event: expect.objectContaining({ type: 'SETTINGS_RECOVERY', recovery: expect.objectContaining({ status: 'repaired', problems: [] }) }) }));
+  expect(outgoing).toContainEqual(expect.objectContaining({ answering: 'new-window', event: expect.objectContaining({ type: 'SETTINGS_RECOVERY', recovery: expect.objectContaining({ problems: [] }) }) }));
   stop();
-  expect(settings.getRecovery()).toMatchObject({ status: 'repaired', problems: [] });
+  expect(settings.getRecovery()).toMatchObject({ problems: [] });
   expect(() => backend.appPacks.catalog.assertPackSettings({ id: 'candidate', name: 'Candidate', version: '1.0.0' })).toThrow('Restart the app');
   expect(loadAppPacks).not.toHaveBeenCalled();
   expect(startPacks).not.toHaveBeenCalled();

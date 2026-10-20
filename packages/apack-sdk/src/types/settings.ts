@@ -69,23 +69,22 @@ export interface SettingsProblem {
   message: string;
 }
 
-/** A recovery action must refer to the exact settings and declarations shown by the host. */
+/** A recovery action names the settings revision it was shown. */
 export interface SettingsRecoveryVersion {
   runId: string;
   revision: number;
-  catalogRevision: number;
 }
 
-/** Recovery diagnostics and the restart requirement are separate from typed settings snapshots. */
+/** Invalid preferences are diagnostics, never a typed settings snapshot. No problems means repaired. */
 export interface SettingsRecovery {
-  status: 'invalid' | 'repaired';
   version: SettingsRecoveryVersion;
   problems: readonly SettingsProblem[];
 }
 
+/** `invalid` resets only the values that fail; `all` resets every preference. */
 export interface SettingsRecoveryRequest {
   version: SettingsRecoveryVersion;
-  reset: 'all' | readonly SettingsTarget[];
+  scope: 'invalid' | 'all';
 }
 
 /** Complete window data, with independent declaration and value revisions. */

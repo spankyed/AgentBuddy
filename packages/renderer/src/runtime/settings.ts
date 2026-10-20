@@ -42,10 +42,11 @@ function snapshotReady(accepted: SettingsConnection, allowRecovery = false): Pro
     signal.addEventListener('abort', check, { once: true });
     function check() {
       const status = settingsPort.status();
-      if (!signal.aborted && connection === accepted && (status === 'loading' || status === 'replacing')) return;
+      const recovering = allowRecovery && windowSettings.getRecovery() !== undefined;
+      if (!signal.aborted && connection === accepted && !recovering && (status === 'loading' || status === 'replacing')) return;
       stop();
       signal.removeEventListener('abort', check);
-      if (!signal.aborted && connection === accepted && (status === 'ready' || allowRecovery && status === 'recovery')) resolve();
+      if (!signal.aborted && connection === accepted && (status === 'ready' || recovering)) resolve();
       else reject(new Error('The settings connection is unavailable.'));
     }
     check();
@@ -122,11 +123,7 @@ export function useWindowSettingsSnapshot() {
 /** Recovery is host-owned and remains visible until the repaired app is relaunched. */
 export function useSettingsRecovery() {
   const recovery = shallowRef(windowSettings.getRecovery());
-  const status = shallowRef(settingsPort.status());
-  const stop = settingsPort.subscribe(() => {
-    recovery.value = windowSettings.getRecovery();
-    status.value = settingsPort.status();
-  });
+  const stop = settingsPort.subscribe(() => { recovery.value = windowSettings.getRecovery(); });
   onScopeDispose(stop);
-  return { recovery: readonly(recovery), status: readonly(status) };
+  return readonly(recovery);
 }

@@ -426,42 +426,39 @@ it('keeps invalid settings distinct from a broken connection and supports an ack
   const runtime = createWindowSettingsRuntime({ send: async message => { messages.push(message); } });
   runtime.connected();
   await flush();
-  const recovery = { status: 'invalid', version: { runId: 'run-one', revision: 0, catalogRevision: 0 }, problems: [
-    { target, path: ['projects'], message: 'must be array' },
-  ] };
+  const recovery = { version: { runId: 'run-one', revision: 0 }, problems: [{ target, path: ['projects'], message: 'must be array' }] };
   runtime.receive({ to: 'host/settings', answering: messages[0].call, event: { type: 'SETTINGS_RECOVERY', recovery } });
-  expect(runtime.port.status()).toBe('recovery');
+  expect(runtime.port.status()).toBe('loading'); // Packs never see recovery; only this window's screen does.
   expect(runtime.getSnapshot()).toBeUndefined();
   expect(runtime.port.get(target)).toBeUndefined();
   expect(runtime.getRecovery()).toEqual(recovery);
   expect(() => runtime.bindPort('owner', async () => {})).toThrow('must be ready');
   expect(await runtime.port.reset(target)).toMatchObject({ status: 'refused' });
-  const write = runtime.recover({ version: recovery.version, reset: [target] });
+  const write = runtime.recover({ version: recovery.version, scope: 'invalid' });
   await flush();
-  expect(messages[1].event).toMatchObject({ type: 'RECOVER_SETTINGS', request: { version: recovery.version, reset: [target] } });
+  expect(messages[1].event).toEqual({ type: 'RECOVER_SETTINGS', request: { version: recovery.version, scope: 'invalid' } });
   const settled = vi.fn();
   void write.then(settled);
-  runtime.receive({ to: 'host/settings', event: { type: 'SETTINGS_RECOVERY', recovery: { ...recovery, status: 'repaired', problems: [], version: { ...recovery.version, revision: 1 } } } });
+  const repaired = { version: { ...recovery.version, revision: 1 }, problems: [] };
+  runtime.receive({ to: 'host/settings', event: { type: 'SETTINGS_RECOVERY', recovery: repaired } });
   await flush();
-  expect(settled).not.toHaveBeenCalled(); // Publication can precede this request's own acknowledgment.
-  runtime.receive({ to: 'host/settings', answering: messages[1].call, event: { type: 'SETTINGS_RECOVERED', recovery: { ...recovery, status: 'repaired', problems: [], version: { ...recovery.version, revision: 1 } } } });
+  expect(settled).not.toHaveBeenCalled(); // A broadcast can precede this request's own answer.
+  runtime.receive({ to: 'host/settings', answering: messages[1].call, event: { type: 'SETTINGS_RECOVERY', recovery: repaired } });
   expect(await write).toEqual({ status: 'saved' });
-  expect(runtime.port.status()).toBe('recovery');
   expect(runtime.getSnapshot()).toBeUndefined();
-  expect(runtime.getRecovery()?.status).toBe('repaired'); // Relaunch still owns normal startup.
+  expect(runtime.getRecovery()).toEqual(repaired); // Relaunch still owns normal startup.
   runtime.dispose();
 });
 
-it('follows another window repairing settings while retaining the restart requirement', async () => {
+it('follows another window repairing settings, and ignores stale diagnostics', async () => {
   const { runtime } = await windowRuntime();
-  const recovery = { status: 'invalid', version: { runId: 'run-one', revision: 1, catalogRevision: 0 }, problems: [{ path: [], message: 'Broken document' }] };
+  const recovery = { version: { runId: 'run-one', revision: 1 }, problems: [{ path: [], message: 'Broken document' }] };
   runtime.receive({ to: 'host/settings', event: { type: 'SETTINGS_RECOVERY', recovery } });
   expect(runtime.getSnapshot()).toBeUndefined();
-  runtime.receive({ to: 'host/settings', event: { type: 'SETTINGS_RECOVERY', recovery: { ...recovery, status: 'repaired', problems: [], version: { ...recovery.version, revision: 2 } } } });
-  expect(runtime.port.status()).toBe('recovery');
-  expect(runtime.getRecovery()?.status).toBe('repaired');
+  runtime.receive({ to: 'host/settings', event: { type: 'SETTINGS_RECOVERY', recovery: { version: { runId: 'run-one', revision: 2 }, problems: [] } } });
+  expect(runtime.getRecovery()?.problems).toEqual([]);
   runtime.receive({ to: 'host/settings', event: { type: 'SETTINGS_RECOVERY', recovery } });
-  expect(runtime.getRecovery()?.status).toBe('repaired'); // Stale diagnostics cannot undo the repair.
+  expect(runtime.getRecovery()?.problems).toEqual([]);
   runtime.disconnected();
   expect(runtime.getRecovery()).toBeUndefined();
   runtime.dispose();
@@ -475,19 +472,5 @@ it('refuses malformed recovery responses as protocol failures rather than displa
   runtime.receive({ to: 'host/settings', answering: messages[0].call, event: { type: 'SETTINGS_RECOVERY', recovery: { problems: [] } } });
   expect(runtime.port.status()).toBe('disconnected');
   expect(runtime.getRecovery()).toBeUndefined();
-  runtime.dispose();
-});
-
-it('shows restart-required recovery to a new window even after the preferences were already repaired', async () => {
-  const messages: Message[] = [];
-  const runtime = createWindowSettingsRuntime({ send: async message => { messages.push(message); } });
-  runtime.connected();
-  await flush();
-  const recovery = { status: 'repaired', version: { runId: 'run-one', revision: 1, catalogRevision: 0 }, problems: [] };
-  runtime.receive({ to: 'host/settings', answering: messages[0].call, event: { type: 'SETTINGS_RECOVERY', recovery } });
-  expect(runtime.port.status()).toBe('recovery');
-  expect(runtime.getRecovery()).toEqual(recovery);
-  expect(runtime.getSnapshot()).toBeUndefined();
-  expect(runtime.port.get(target)).toBeUndefined();
   runtime.dispose();
 });

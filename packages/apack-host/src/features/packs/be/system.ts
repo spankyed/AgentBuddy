@@ -117,6 +117,12 @@ function toInstalledPackSummaries(registry: PackRegistry): InstalledPackSummary[
   return packs;
 }
 
+/** After a change has taken effect, a refused refresh is reported rather than turning the change into a failure. */
+function refreshAfterChange(registry: PackRegistry, operation: string): void {
+  try { registry.refreshCatalog(resolveAppEnvironment().packsDir); }
+  catch (error) { reportError({ source: 'packs', operation, severity: 'error', error: new Error(errorMessage(error)) }); }
+}
+
 function emitPacksList(registry: PackRegistry) {
   registry.refreshCatalog(resolveAppEnvironment().packsDir);
   const catalog = registry.catalog.getSnapshot();
@@ -435,7 +441,7 @@ export function createPacksSystem(registry: PackRegistry) {
           teardownPack(registry, packId, system.get(HOST.bus));
           clearPackRequireCache(cacheDir);
           broadcastToPlugin('packs', { type: 'PACK_DEACTIVATED' as const, packId });
-          registry.refreshCatalog(resolveAppEnvironment().packsDir);
+          refreshAfterChange(registry, 'uninstallPack');
 
           broadcastToPlugin('packs', {
             type: 'PACK_UNINSTALL_COMPLETE' as const,
@@ -627,7 +633,7 @@ export function createPacksSystem(registry: PackRegistry) {
           }
         }
 
-        registry.refreshCatalog(resolveAppEnvironment().packsDir);
+        refreshAfterChange(registry, 'setPackEnabled');
         broadcastToPlugin('packs', {
           type: 'PACK_ENABLED_CHANGED' as const,
           packId,

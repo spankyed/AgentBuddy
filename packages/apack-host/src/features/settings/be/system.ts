@@ -184,7 +184,7 @@ export const settingsSystem = setup({
       let outcome: SettingsAnswer;
       try {
         settingsRequestAdmin(event).recover(request);
-        outcome = { type: 'SETTINGS_RECOVERED', recovery: preferences().getRecovery()! };
+        outcome = { type: 'SETTINGS_RECOVERY', recovery: preferences().getRecovery()! };
       } catch (error) { outcome = refusal(error, "The settings weren't repaired"); }
       answerSettings(reply, outcome);
     },

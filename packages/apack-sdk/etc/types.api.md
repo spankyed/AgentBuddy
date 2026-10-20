@@ -347,23 +347,19 @@ export interface SettingsRecovery {
     // (undocumented)
     problems: readonly SettingsProblem[];
     // (undocumented)
-    status: 'invalid' | 'repaired';
-    // (undocumented)
     version: SettingsRecoveryVersion;
 }
 
-// @public (undocumented)
+// @public
 export interface SettingsRecoveryRequest {
     // (undocumented)
-    reset: 'all' | readonly SettingsTarget[];
+    scope: 'invalid' | 'all';
     // (undocumented)
     version: SettingsRecoveryVersion;
 }
 
 // @public
 export interface SettingsRecoveryVersion {
-    // (undocumented)
-    catalogRevision: number;
     // (undocumented)
     revision: number;
     // (undocumented)
