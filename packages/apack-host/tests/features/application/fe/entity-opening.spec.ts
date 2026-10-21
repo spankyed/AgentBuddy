@@ -25,7 +25,7 @@ async function fixture(loading = false) {
   const app = createActor(createShellMachine(shell.options), { systemId: 'host/application', input: { ownsLastActiveSurface: false } }).start();
   running.push(app);
   shell.client.connect();
-  shell.client.receive({ to: 'host/application', event: { type: 'CLIENT_CONNECTED', hasOnboarded: true, pluginVisibility: {} } });
+  shell.client.receive({ to: 'host/application', event: { type: 'CLIENT_CONNECTED', hasOnboarded: true, surfaceVisibility: {} } });
   await settle();
   return { ...shell, app, received, note, declaration, finishLoad };
 }

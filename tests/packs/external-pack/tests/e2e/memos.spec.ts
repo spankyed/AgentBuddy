@@ -161,8 +161,8 @@ test("the pack's feature settings are defaults in the app", async ({ appPage, ap
   await expect(await openMemoPreferences(appPage, app)).toHaveValue('Memos');
   // Its settings hide its sidebar tab by default; the surface is still there to open
   const visibleIds = () => appPage.evaluate(() => {
-    const { surfaces, pluginVisibility } = (window as any).applicationState.getSnapshot().context;
-    return (surfaces as Array<{ id: string }>).filter((p) => pluginVisibility[p.id] !== false).map((p) => p.id);
+    const { surfaces, surfaceVisibility } = (window as any).applicationState.getSnapshot().context;
+    return (surfaces as Array<{ id: string }>).filter((p) => surfaceVisibility[p.id] !== false).map((p) => p.id);
   });
   await expect.poll(visibleIds).toContain('default-setup/threads');
   await expect.poll(visibleIds).not.toContain('e2e-fixture/memos');

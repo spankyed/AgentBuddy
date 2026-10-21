@@ -29,7 +29,7 @@ export interface HostShellState {
   /** The surface open in this window */
   activeSurface: Surface;
   /** Which surfaces' tabs show, by ref; a surface absent from it shows */
-  pluginVisibility: Readonly<Record<string, boolean>>;
+  surfaceVisibility: Readonly<Record<string, boolean>>;
   panelSizes: ShellPanelSizes;
 }
 
@@ -89,7 +89,7 @@ export interface HostShell {
 export interface Shell {
   surfaces: Readonly<Ref<readonly Surface[]>>;
   activeSurface: Readonly<Ref<Surface>>;
-  pluginVisibility: Readonly<Ref<Readonly<Record<string, boolean>>>>;
+  surfaceVisibility: Readonly<Ref<Readonly<Record<string, boolean>>>>;
   panelSizes: Readonly<Ref<ShellPanelSizes>>;
   isOnboarding: Readonly<Ref<boolean>>;
   /** Shows the canvas again when the chat is maximized */
@@ -118,7 +118,7 @@ export function useShell(): Shell {
   const read = (snapshot: HostShellSnapshot) => ({
     surfaces: snapshot.context.surfaces,
     activeSurface: snapshot.context.activeSurface,
-    pluginVisibility: snapshot.context.pluginVisibility,
+    surfaceVisibility: snapshot.context.surfaceVisibility,
     panelSizes: snapshot.context.panelSizes,
     isOnboarding: snapshot.hasTag('onboarding'),
   })
@@ -126,7 +126,7 @@ export function useShell(): Shell {
   const refs = {
     surfaces: shallowRef(initial.surfaces),
     activeSurface: shallowRef(initial.activeSurface),
-    pluginVisibility: shallowRef(initial.pluginVisibility),
+    surfaceVisibility: shallowRef(initial.surfaceVisibility),
     panelSizes: shallowRef(initial.panelSizes),
     isOnboarding: shallowRef(initial.isOnboarding),
   }
@@ -142,7 +142,7 @@ export function useShell(): Shell {
   return {
     surfaces: shallowReadonly(refs.surfaces),
     activeSurface: shallowReadonly(refs.activeSurface),
-    pluginVisibility: shallowReadonly(refs.pluginVisibility),
+    surfaceVisibility: shallowReadonly(refs.surfaceVisibility),
     panelSizes: shallowReadonly(refs.panelSizes),
     isOnboarding: shallowReadonly(refs.isOnboarding),
     restoreChat: () => shell.send({ type: 'RESTORE_CHAT' }),

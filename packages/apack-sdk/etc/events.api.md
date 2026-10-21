@@ -113,14 +113,14 @@ export type HostSurfaceEvents = {
     'host/application': {
         type: 'CLIENT_CONNECTED';
         hasOnboarded: boolean;
-        pluginVisibility: Record<string, boolean>;
-        lastActivePlugin?: string;
+        surfaceVisibility: Record<string, boolean>;
+        lastActiveSurface?: string;
     } | {
         type: 'APPLICATION_HOTKEYS';
         hotkeys: ApplicationHotkeys;
     } | {
         type: 'SURFACE_VISIBILITY_UPDATED';
-        pluginVisibility: Record<string, boolean>;
+        surfaceVisibility: Record<string, boolean>;
     } | {
         type: 'ONBOARDING_COMPLETE';
     } | {

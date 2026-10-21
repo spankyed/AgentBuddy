@@ -19,7 +19,7 @@ describe('code persisted tabs', () => {
   })
 
   it('normalizes invalid and duplicate persisted tabs on load', () => {
-    localStorage.setItem('code-plugin-open-tabs', JSON.stringify({
+    localStorage.setItem('code-surface-open-tabs', JSON.stringify({
       tabs: [
         { path: '/tmp/a.ts', type: 'file', order: 5 },
         { path: '/tmp/a.ts', type: 'file', order: 6 },
@@ -60,7 +60,7 @@ describe('code persisted tabs', () => {
   it('persists an empty tab list when all tabs are closed', () => {
     saveOpenTabs([], null)
 
-    expect(JSON.parse(localStorage.getItem('code-plugin-open-tabs')!)).toEqual({
+    expect(JSON.parse(localStorage.getItem('code-surface-open-tabs')!)).toEqual({
       tabs: [],
       activeFilePath: null,
       panelTerminalId: null,
@@ -89,7 +89,7 @@ describe('code persisted tabs', () => {
       } as any,
     ], 'terminal:Terminal-a', 'Terminal-a', true)
 
-    expect(JSON.parse(localStorage.getItem('code-plugin-open-tabs')!)).toEqual({
+    expect(JSON.parse(localStorage.getItem('code-surface-open-tabs')!)).toEqual({
       tabs: [
         {
           path: 'terminal:Terminal-a',
@@ -106,7 +106,7 @@ describe('code persisted tabs', () => {
   })
 
   it('clears duplicate panel terminal placement when loading persisted terminal tabs', () => {
-    localStorage.setItem('code-plugin-open-tabs', JSON.stringify({
+    localStorage.setItem('code-surface-open-tabs', JSON.stringify({
       tabs: [
         {
           path: 'terminal:Terminal-a',

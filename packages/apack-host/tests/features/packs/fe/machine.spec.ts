@@ -24,7 +24,7 @@ beforeEach(() => {
     input: { ownsLastActiveSurface: false },
   }).start();
   shell.client.connect();
-  shell.client.receive({ to: 'host/application', event: { type: 'CLIENT_CONNECTED', hasOnboarded: true, pluginVisibility: {} } });
+  shell.client.receive({ to: 'host/application', event: { type: 'CLIENT_CONNECTED', hasOnboarded: true, surfaceVisibility: {} } });
 });
 
 afterEach(() => { app.stop(); stopFeRuntime(); });

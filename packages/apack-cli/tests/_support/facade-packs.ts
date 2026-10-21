@@ -185,7 +185,7 @@ services.nope;
 // A surface of the dependency, and the host's: each takes what its own owner declares it accepts
 broadcastToSurface('base-pack/calendar', { type: 'TAG_ADDED', name: 'x' });
 broadcastToSurface('memos', { type: 'MEMO_ADDED', text: 'x' });
-broadcastToSurface('host/application', { type: 'SURFACE_VISIBILITY_UPDATED', pluginVisibility: { 'demo-pack/memos': false } });
+broadcastToSurface('host/application', { type: 'SURFACE_VISIBILITY_UPDATED', surfaceVisibility: { 'demo-pack/memos': false } });
 // A surface someone else owns keeps the events its owner declares it receives; a pack widens only its own
 // @ts-expect-error the calendar surface doesn't receive this event
 broadcastToSurface('base-pack/calendar', { type: 'MEMO_ADDED', text: 'x' });

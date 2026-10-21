@@ -374,7 +374,7 @@ it('publishes new surface definitions without duplicate actors or changing tab o
   connect();
   await settle();
   app.send({ type: 'SELECT_SURFACE', surface: 'ext/own' });
-  app.send({ type: 'SURFACE_VISIBILITY_UPDATED', pluginVisibility: { 'ext/own': false } });
+  app.send({ type: 'SURFACE_VISIBILITY_UPDATED', surfaceVisibility: { 'ext/own': false } });
   const previous = app.system.get('ext/own');
   const order = app.getSnapshot().context.surfaces.map(surface => surface.id);
   const replacement = { ...surface('ext/own'), label: 'Updated' };
@@ -386,7 +386,7 @@ it('publishes new surface definitions without duplicate actors or changing tab o
   expect(app.system.get('ext/own')).not.toBe(previous);
   expect(app.getSnapshot().context.activeSurface).toBe(replacement);
   expect(app.getSnapshot().context.surfaces.map(surface => surface.id)).toEqual(order);
-  expect(app.getSnapshot().context.pluginVisibility).toEqual({ 'ext/own': false });
+  expect(app.getSnapshot().context.surfaceVisibility).toEqual({ 'ext/own': false });
   expect(unloadPackFrontend).not.toHaveBeenCalled();
 });
 

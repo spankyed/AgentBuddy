@@ -416,8 +416,8 @@ export function createShellMachine({ packs, catalog, client, packFrontends, stor
         if (surfaceIds.length === 0) return;
         const removeSet = new Set(surfaceIds);
         const remaining = context.surfaces.filter(p => !removeSet.has(p.id));
-        const pluginVisibility = { ...context.pluginVisibility };
-        for (const id of surfaceIds) delete pluginVisibility[id];
+        const surfaceVisibility = { ...context.surfaceVisibility };
+        for (const id of surfaceIds) delete surfaceVisibility[id];
 
         const needsNavigate = removeSet.has(context.activeSurface.id);
         const defaultSurface = selectedDefaultSurface(remaining) ?? null;
@@ -429,7 +429,7 @@ export function createShellMachine({ packs, catalog, client, packFrontends, stor
           if (surface) enqueue.stopChild(surface);
         }
 
-        enqueue.assign({ surfaces: remaining, pluginVisibility, activeSurface, defaultSurface });
+        enqueue.assign({ surfaces: remaining, surfaceVisibility, activeSurface, defaultSurface });
 
         if (needsNavigate) {
           enqueue(({ system }) => {
@@ -440,29 +440,29 @@ export function createShellMachine({ packs, catalog, client, packFrontends, stor
         }
       }),
 
-      updatePluginVisibility: assign(({ event }) => ({ pluginVisibility: typeOf('SURFACE_VISIBILITY_UPDATED', event).pluginVisibility })),
+      updatePluginVisibility: assign(({ event }) => ({ surfaceVisibility: typeOf('SURFACE_VISIBILITY_UPDATED', event).surfaceVisibility })),
 
       /**
        * The shell's state the backend sends on each connection (the host `application` system's, in AppState): which
        * surfaces' tabs show, and the surface the user last had open, which a main window opens on once it's registered.
        */
       applyShellState: enqueueActions(({ event, context, enqueue, self }) => {
-        const { pluginVisibility, lastActivePlugin } = typeOf('CLIENT_CONNECTED', event);
-        enqueue.assign({ pluginVisibility });
+        const { surfaceVisibility, lastActiveSurface } = typeOf('CLIENT_CONNECTED', event);
+        enqueue.assign({ surfaceVisibility });
         // The host naming a surface is a decision about what this window shows, so the default no longer is
-        if (context.ownsLastActiveSurface && lastActivePlugin) enqueue.assign({ wantsDefaultSurface: false });
-        if (!context.ownsLastActiveSurface || !lastActivePlugin || lastActivePlugin === context.activeSurface.id) return;
-        if (context.surfaces.some((p) => p.id === lastActivePlugin)) {
-          enqueue(() => self.send({ type: 'SELECT_SURFACE_BY_SHELL', surface: lastActivePlugin }));
+        if (context.ownsLastActiveSurface && lastActiveSurface) enqueue.assign({ wantsDefaultSurface: false });
+        if (!context.ownsLastActiveSurface || !lastActiveSurface || lastActiveSurface === context.activeSurface.id) return;
+        if (context.surfaces.some((p) => p.id === lastActiveSurface)) {
+          enqueue(() => self.send({ type: 'SELECT_SURFACE_BY_SHELL', surface: lastActiveSurface }));
         } else {
-          enqueue.assign({ pendingSurfaceId: lastActivePlugin });
+          enqueue.assign({ pendingSurfaceId: lastActiveSurface });
         }
       }),
 
       /** A tab shown or hidden here: shown at once, and recorded by the host so every window and the next run agree */
       setPluginVisibility: enqueueActions(({ event, context, enqueue }) => {
         const { surface, visible } = typeOf('SET_SURFACE_VISIBILITY', event);
-        enqueue.assign({ pluginVisibility: { ...context.pluginVisibility, [surface]: visible } });
+        enqueue.assign({ surfaceVisibility: { ...context.surfaceVisibility, [surface]: visible } });
         enqueue(() => client.send({ to: HOST.application, event: { type: 'SET_SURFACE_VISIBILITY', surface, visible } }));
       }),
 
@@ -551,7 +551,7 @@ export function createShellMachine({ packs, catalog, client, packFrontends, stor
       },
 
       switchSurfaceByDirection: ({ context, event, self }) => {
-        const next = neighbourOf(surfaceNavigationItems(catalog, packs.surfaceBindings(), context.pluginVisibility)
+        const next = neighbourOf(surfaceNavigationItems(catalog, packs.surfaceBindings(), context.surfaceVisibility)
           .filter(surface => surface.visible && surface.loaded), context.activeSurface.id, event.type === 'SWITCH_SURFACE_UP' ? 'up' : 'down');
         if (next) self.send({ type: 'SELECT_SURFACE', surface: next.id });
       },
@@ -659,7 +659,7 @@ export function createShellMachine({ packs, catalog, client, packFrontends, stor
       const initialActiveSurface = initialSurface ?? claimedDefault ?? surfaces[0];
       return {
         surfaces,
-        pluginVisibility: {},
+        surfaceVisibility: {},
         activeSurface: initialActiveSurface,
         defaultSurface: claimedDefault,
         // Nothing specific was asked for and no pack has claimed a default yet, so open it when one does

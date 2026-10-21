@@ -137,7 +137,7 @@ describe('generated sends compile', () => {
       "sendToSurface('memos', { type: 'MEMO_ADDED', text: 'x' });",
       "sendToSurface('base-pack/calendar', { type: 'TAG_ADDED', name: 'x' });",
       "sendToSurface('base-pack/code', { type: 'FILE_OPENED', path: 'x' });",
-      "sendToSurface('host/application', { type: 'SURFACE_VISIBILITY_UPDATED', pluginVisibility: { 'demo-pack/memos': false } });",
+      "sendToSurface('host/application', { type: 'SURFACE_VISIBILITY_UPDATED', surfaceVisibility: { 'demo-pack/memos': false } });",
       "// @ts-expect-error a dependency's surface takes only the events its own pack declares for it",
       "sendToSurface('base-pack/calendar', { type: 'MEMO_ADDED', text: 'x' });",
       "// @ts-expect-error a dependency's surface is named <pack>/<feature>, as the send resolves it",

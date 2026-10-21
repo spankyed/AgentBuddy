@@ -497,8 +497,8 @@ export interface HostShellState {
     activeSurface: Surface;
     // (undocumented)
     panelSizes: ShellPanelSizes;
-    pluginVisibility: Readonly<Record<string, boolean>>;
     surfaces: readonly Surface[];
+    surfaceVisibility: Readonly<Record<string, boolean>>;
 }
 
 // @public (undocumented)
@@ -716,14 +716,14 @@ export interface Shell {
     isOnboarding: Readonly<Ref<boolean>>;
     // (undocumented)
     panelSizes: Readonly<Ref<ShellPanelSizes>>;
-    // (undocumented)
-    pluginVisibility: Readonly<Ref<Readonly<Record<string, boolean>>>>;
     resizeCanvas(size: number): void;
     restoreChat(): void;
     setPluginVisible(ref: string, visible: boolean): void;
     startHotkeyRecording(): void;
     // (undocumented)
     surfaces: Readonly<Ref<readonly Surface[]>>;
+    // (undocumented)
+    surfaceVisibility: Readonly<Ref<Readonly<Record<string, boolean>>>>;
 }
 
 // @public

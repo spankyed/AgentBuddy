@@ -3,7 +3,7 @@
 export { hostRegistration } from './registration.ts';
 export { PACKS_SURFACE_EVENT_TYPES, SETTINGS_SURFACE_EVENT_TYPES, APPLICATION_SYSTEM_EVENTS, packsEvents, settingsEvents, type OutgoingPacksEvents } from './event-contracts.ts';
 export { hostDeclaration } from './declaration.ts';
-export { createApplicationSystem, pluginVisibility } from './application/be/system.ts';
+export { createApplicationSystem, surfaceVisibility } from './application/be/system.ts';
 export { createPacksSystem, packsSpec } from './packs/be/system.ts';
 export { createSettingsSystem, settingsSpec } from './settings/be/system.ts';
 export type { OutgoingSettingsEvents } from './settings/be/types.ts';

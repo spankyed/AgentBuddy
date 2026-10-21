@@ -43,12 +43,12 @@ describe('the host application system', () => {
 
     system.send({ type: 'SET_SURFACE_VISIBILITY', surface: 'default-setup/notes', visible: false });
 
-    expect(appState.get().pluginVisibility).toEqual({ 'default-setup/notes': false });
+    expect(appState.get().surfaceVisibility).toEqual({ 'default-setup/notes': false });
     expect(system.visibilitySent()).toEqual([{
       to: 'host/application',
       from: 'host',
       call: expect.any(String), 
-      event: { type: 'SURFACE_VISIBILITY_UPDATED', pluginVisibility: { 'default-setup/logs': false, 'default-setup/notes': false } },
+      event: { type: 'SURFACE_VISIBILITY_UPDATED', surfaceVisibility: { 'default-setup/logs': false, 'default-setup/notes': false } },
     }]);
   });
 
@@ -57,7 +57,7 @@ describe('the host application system', () => {
 
     system.send({ type: 'SET_LAST_ACTIVE_SURFACE', surface: 'default-setup/threads' });
 
-    expect(appState.get().lastActivePlugin).toBe('default-setup/threads');
+    expect(appState.get().lastActiveSurface).toBe('default-setup/threads');
   });
 
   // A bare id names no surface, so nothing could ever read the choice back
@@ -67,8 +67,8 @@ describe('the host application system', () => {
     system.send({ type: 'SET_SURFACE_VISIBILITY', surface: 'notes', visible: false });
     system.send({ type: 'SET_LAST_ACTIVE_SURFACE', surface: 'threads' });
 
-    expect(appState.get()).toMatchObject({ pluginVisibility: {} });
-    expect(appState.get().lastActivePlugin).toBeUndefined();
+    expect(appState.get()).toMatchObject({ surfaceVisibility: {} });
+    expect(appState.get().lastActiveSurface).toBeUndefined();
     expect(system.visibilitySent()).toEqual([]);
   });
 
@@ -77,7 +77,7 @@ describe('the host application system', () => {
 
     system.send({ type: 'SEND_STATE' });
 
-    expect(system.visibilitySent()).toEqual([{ to: 'host/application', from: 'host', call: expect.any(String), event: expect.objectContaining({ pluginVisibility: { 'memo-pack/memos': false } }) }]);
+    expect(system.visibilitySent()).toEqual([{ to: 'host/application', from: 'host', call: expect.any(String), event: expect.objectContaining({ surfaceVisibility: { 'memo-pack/memos': false } }) }]);
   });
 });
 

@@ -361,10 +361,10 @@ export type HostSurfaceEvents = {
   'host/application':
     // The app's own send after each client connection (`ApplicationConnectedEvent`, @apackdev/host/bus): whether
     // the user onboarded, which surfaces' tabs show, and the surface the user last had open
-    | { type: 'CLIENT_CONNECTED'; hasOnboarded: boolean; pluginVisibility: Record<string, boolean>; lastActivePlugin?: string }
+    | { type: 'CLIENT_CONNECTED'; hasOnboarded: boolean; surfaceVisibility: Record<string, boolean>; lastActiveSurface?: string }
     | { type: 'APPLICATION_HOTKEYS'; hotkeys: ApplicationHotkeys }
     // The app's own send when a surface's tab is shown or hidden, or a pack's defaults change
-    | { type: 'SURFACE_VISIBILITY_UPDATED'; pluginVisibility: Record<string, boolean> }
+    | { type: 'SURFACE_VISIBILITY_UPDATED'; surfaceVisibility: Record<string, boolean> }
     // The user finished onboarding: the shell leaves its onboarding layout
     | { type: 'ONBOARDING_COMPLETE' }
     // Opens a surface, by its ref, in the app's main windows (a popout keeps the surface it shows) and hands its actor

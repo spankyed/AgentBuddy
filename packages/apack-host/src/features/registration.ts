@@ -6,11 +6,17 @@ import { HOST_PACK_ID } from '@apackdev/sdk/ids';
 import { hostFeatureIds } from './declaration.ts';
 import { helpSystem } from './help/be/system.ts';
 import { hostEventContracts } from './event-contracts.ts';
+import { up as moveSurfaceStateOffPluginNames } from '../migrations/app/0.4.0.ts';
 
 /** The host's registration: its surfaces, and the systems in `systems` */
 export function hostRegistration(systems: { application?: PackFeatureSystem; packs?: PackFeatureSystem; settings?: PackFeatureSystem } = {}): PackRegistration {
   return {
     id: HOST_PACK_ID,
+    migrations: { app: [{
+      target: '0.4.0',
+      description: "Move AppState's surface visibility and last-active surface off their plugin names",
+      up: moveSurfaceStateOffPluginNames,
+    }] },
     features: {
       [hostFeatureIds.application]: { ...(systems.application && { system: systems.application }), surface: { receives: hostEventContracts.application.surface.receives } },
       [hostFeatureIds.help]: { system: { machine: helpSystem, receives: hostEventContracts.help.system.incoming } },

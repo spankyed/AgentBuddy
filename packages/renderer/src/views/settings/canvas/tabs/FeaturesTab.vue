@@ -61,6 +61,6 @@ const scrollToSelected = () => sidebar.value?.querySelector('[data-active="true"
 onMounted(scrollToSelected);
 watch(() => selected.value?.id, scrollToSelected, { flush: 'post' });
 const selectFeature = (featureId: FeatureRef) => actor.send({ type: 'FEATURE.SELECT', featureId });
-const isVisible = (id: FeatureRef) => shell.pluginVisibility.value[id] !== false;
+const isVisible = (id: FeatureRef) => shell.surfaceVisibility.value[id] !== false;
 const toggleVisibility = (id: FeatureRef) => shell.setPluginVisible(id, !isVisible(id));
 </script>

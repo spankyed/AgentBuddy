@@ -137,7 +137,7 @@ export async function startShell(packId: string, options: StartShellOptions, bac
       queueMicrotask(() => {
         connection = next;
         next.onConnected();
-        next.onMessage({ to: HOST.application, event: { type: 'CLIENT_CONNECTED', hasOnboarded: true, pluginVisibility: {} } });
+        next.onMessage({ to: HOST.application, event: { type: 'CLIENT_CONNECTED', hasOnboarded: true, surfaceVisibility: {} } });
         for (const message of held.splice(0)) next.onMessage(message);
       });
       return () => { if (connection === next) connection = undefined; };

@@ -32,6 +32,26 @@ describe('a window\'s migrations', () => {
     expect(items.get('apack-panel-sizes')).toBe('{"panel":30}');
   });
 
+  // The code surface's open tabs: moved rather than dropped, since they are the user's and nothing else holds them
+  it("carries the code surface's open tabs over to the key it reads now", () => {
+    const tabs = '{"tabs":[{"filePath":"a.ts","order":0}],"activeFilePath":"a.ts"}';
+    const { storage, items } = fakeStorage({ 'apack-fe-version': '0.3.14', 'code-plugin-open-tabs': tabs });
+
+    runFrontendMigrations(storage, '0.4.0');
+    runFrontendMigrations(storage, '0.4.0');
+
+    expect(items.get('code-surface-open-tabs')).toBe(tabs);
+    expect(items.get('code-plugin-open-tabs')).toBeUndefined();
+  });
+
+  it('writes no tab key for a window that had none', () => {
+    const { storage, items } = fakeStorage({ 'apack-fe-version': '0.3.14' });
+
+    runFrontendMigrations(storage, '0.4.0');
+
+    expect(items.has('code-surface-open-tabs')).toBe(false);
+  });
+
   it('records the app version it migrated the storage to', () => {
     const { storage, items } = fakeStorage();
 

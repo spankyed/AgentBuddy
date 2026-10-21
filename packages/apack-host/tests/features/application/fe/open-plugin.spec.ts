@@ -256,7 +256,7 @@ describe('a request from the app to open a surface', () => {
     app.stop();
     app = createActor(createShellMachine(shell.options), { systemId: 'host/application', input: { ownsLastActiveSurface: true } }).start();
     shell.client.connect();
-    shell.client.receive({ to: 'host/application', event: { type: 'CLIENT_CONNECTED', hasOnboarded: true, pluginVisibility: {} } });
+    shell.client.receive({ to: 'host/application', event: { type: 'CLIENT_CONNECTED', hasOnboarded: true, surfaceVisibility: {} } });
     await settle();
 
     shell.client.receive({ to: 'host/application', event: { type: 'OPEN_SURFACE', surface: 'default-setup/settings', events: [{ type: 'FEATURE.SELECT', featureId: 'default-setup/logs' }] } });
@@ -276,7 +276,7 @@ describe('a request from the app to open a surface', () => {
     app.stop();
     app = createActor(createShellMachine(shell.options), { systemId: 'host/application', input: { ownsLastActiveSurface: true } }).start();
     shell.client.connect();
-    shell.client.receive({ to: 'host/application', event: { type: 'CLIENT_CONNECTED', hasOnboarded: true, pluginVisibility: {} } });
+    shell.client.receive({ to: 'host/application', event: { type: 'CLIENT_CONNECTED', hasOnboarded: true, surfaceVisibility: {} } });
     await settle();
 
     shell.client.receive({ to: 'host/application', event: { type: 'OPEN_SURFACE', surface: 'default-setup/settings', events } });

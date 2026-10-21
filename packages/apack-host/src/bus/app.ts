@@ -6,7 +6,7 @@ import { appState } from '../app-state/index.ts';
 import type { PackRegistry } from '../packs/registry.ts';
 import { getPacksWithClientLoadedFrontends } from '../packs/layout.ts';
 import { createBusMachine } from './machine.ts';
-import { pluginVisibility } from '../features/application/be/system.ts';
+import { surfaceVisibility } from '../features/application/be/system.ts';
 import { HOST } from '../refs.ts';
 import type { ParticipantClaims } from './participants.ts';
 
@@ -32,12 +32,12 @@ export function createAppBus(registry: PackRegistry, claims?: ParticipantClaims)
     // Each client asks for these packs' startup data once it has tried loading their frontends (bus.packClientReady)
     clientLoadedPacks: () => getPacksWithClientLoadedFrontends(registry),
     connectedEvents: () => {
-      const { hasOnboarded, lastActivePlugin } = appState.get();
+      const { hasOnboarded, lastActiveSurface } = appState.get();
       const event: ApplicationConnectedEvent = {
         type: 'CLIENT_CONNECTED',
         hasOnboarded,
-        pluginVisibility: pluginVisibility(registry),
-        ...(lastActivePlugin !== undefined && { lastActivePlugin }),
+        surfaceVisibility: surfaceVisibility(registry),
+        ...(lastActiveSurface !== undefined && { lastActiveSurface }),
       };
       return [{ to: HOST.application, event }];
     },

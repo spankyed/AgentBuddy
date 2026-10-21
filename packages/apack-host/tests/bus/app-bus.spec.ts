@@ -68,14 +68,14 @@ afterEach(() => {
 describe('createAppBus', () => {
   // The window opens with the shell's state: which surfaces' tabs show and the surface the user last had open
   it("tells the application surface, on each connection, the tabs' visibility and the surface last open", async () => {
-    appState.update({ pluginVisibility: { 'local-pack/feature': false }, lastActivePlugin: 'local-pack/feature' });
+    appState.update({ surfaceVisibility: { 'local-pack/feature': false }, lastActiveSurface: 'local-pack/feature' });
 
     testRootEvents.emitConnected();
     await flush();
 
     expect(outgoing).toContainEqual({
       to: 'host/application',
-      event: { type: 'CLIENT_CONNECTED', hasOnboarded: true, pluginVisibility: { 'local-pack/feature': false }, lastActivePlugin: 'local-pack/feature' },
+      event: { type: 'CLIENT_CONNECTED', hasOnboarded: true, surfaceVisibility: { 'local-pack/feature': false }, lastActiveSurface: 'local-pack/feature' },
     });
   });
 

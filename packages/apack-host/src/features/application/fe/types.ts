@@ -114,7 +114,7 @@ export interface ShellContext {
   wantsDefaultSurface: boolean;
   surfaces: Surface[];
   /** Which tabs show, the host's (AppState) */
-  pluginVisibility: Record<string, boolean>;
+  surfaceVisibility: Record<string, boolean>;
   /** The surfaces opened, for back and forward */
   surfaceHistory: string[];
   historyIndex: number;

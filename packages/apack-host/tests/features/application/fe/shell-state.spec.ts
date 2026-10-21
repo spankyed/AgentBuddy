@@ -26,22 +26,22 @@ beforeEach(() => {
 
 afterEach(() => app.stop());
 
-const connect = (shell: { pluginVisibility?: Record<string, boolean>; lastActivePlugin?: string }) => {
+const connect = (shell: { surfaceVisibility?: Record<string, boolean>; lastActiveSurface?: string }) => {
   fake.connect();
-  fake.receive({ to: 'host/application', event: { type: 'CLIENT_CONNECTED', hasOnboarded: true, pluginVisibility: {}, ...shell } });
+  fake.receive({ to: 'host/application', event: { type: 'CLIENT_CONNECTED', hasOnboarded: true, surfaceVisibility: {}, ...shell } });
 };
 const context = () => app.getSnapshot().context;
 
 it('opens on its first surface, then on the one last open once the host says which', () => {
   expect(context().activeSurface.id).toBe('default-setup/notes');
 
-  connect({ lastActivePlugin: 'default-setup/threads' });
+  connect({ lastActiveSurface: 'default-setup/threads' });
 
   expect(context().activeSurface.id).toBe('default-setup/threads');
 });
 
 it('stays where it is when the surface last open is not one it has', () => {
-  connect({ lastActivePlugin: 'memo-pack/memos' });
+  connect({ lastActiveSurface: 'memo-pack/memos' });
 
   expect(context().activeSurface.id).toBe('default-setup/notes');
 });
@@ -54,14 +54,14 @@ const loadMemoPack = (target = app) => {
 };
 
 it("opens on the surface last open once its pack's frontend adds it", () => {
-  connect({ lastActivePlugin: 'memo-pack/memos' });
+  connect({ lastActiveSurface: 'memo-pack/memos' });
   loadMemoPack();
 
   expect(context().activeSurface.id).toBe('memo-pack/memos');
 });
 
 it('keeps the surface the user opened while that pack was loading', () => {
-  connect({ lastActivePlugin: 'memo-pack/memos' });
+  connect({ lastActiveSurface: 'memo-pack/memos' });
   app.send({ type: 'SELECT_SURFACE', surface: 'default-setup/threads' });
   loadMemoPack();
 
@@ -85,15 +85,15 @@ it("opens a popout on an external pack's surface once that pack's frontend adds 
 });
 
 it("shows the tabs the host's state says to", () => {
-  connect({ pluginVisibility: { 'default-setup/threads': false } });
+  connect({ surfaceVisibility: { 'default-setup/threads': false } });
 
-  expect(surfaceNavigationItems(shell.options.catalog, shell.options.packs.surfaceBindings(), context().pluginVisibility).filter(surface => surface.visible).map((p) => p.id)).toEqual(['default-setup/notes']);
+  expect(surfaceNavigationItems(shell.options.catalog, shell.options.packs.surfaceBindings(), context().surfaceVisibility).filter(surface => surface.visible).map((p) => p.id)).toEqual(['default-setup/notes']);
 });
 
 it('hides a tab at once, and sends the host the choice to record', () => {
   app.send({ type: 'SET_SURFACE_VISIBILITY', surface: 'default-setup/threads', visible: false });
 
-  expect(surfaceNavigationItems(shell.options.catalog, shell.options.packs.surfaceBindings(), context().pluginVisibility).filter(surface => surface.visible).map((p) => p.id)).toEqual(['default-setup/notes']);
+  expect(surfaceNavigationItems(shell.options.catalog, shell.options.packs.surfaceBindings(), context().surfaceVisibility).filter(surface => surface.visible).map((p) => p.id)).toEqual(['default-setup/notes']);
   expect(mutate).toHaveBeenCalledWith({ to: 'host/application', event: { type: 'SET_SURFACE_VISIBILITY', surface: 'default-setup/threads', visible: false } });
 });
 

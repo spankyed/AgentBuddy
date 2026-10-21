@@ -57,7 +57,7 @@ it('chooses the declared default independently of frontend delivery order, retai
 it('preserves saved selection and explicit navigation over a later default', () => {
   const f = fixture(); const preferred = f.candidate('preferred'); const defaultView = f.candidate('default', true);
   preferred.declare(); defaultView.declare();
-  f.shell.client.receive({ to: 'host/application', event: { type: 'CLIENT_CONNECTED', pluginVisibility: {}, lastActivePlugin: 'preferred/view' } });
+  f.shell.client.receive({ to: 'host/application', event: { type: 'CLIENT_CONNECTED', surfaceVisibility: {}, lastActiveSurface: 'preferred/view' } });
   defaultView.accept(); expect(app!.getSnapshot().context.activeSurface.id).toBe('host/settings');
   preferred.accept(); expect(app!.getSnapshot().context.activeSurface.id).toBe('preferred/view');
   app!.send({ type: 'SELECT_SURFACE', surface: 'host/settings' });

@@ -15,8 +15,8 @@ import type { PackRegistry } from '../../../packs/registry.ts';
 const handlers = defineHandlers<MachineContext, ApplicationEvent>();
 
 /** Which surfaces' tabs show, by ref: each feature's declared default, with the user's own choices over it */
-export function pluginVisibility(registry: Pick<PackRegistry, 'surfaceDefaults'>): Record<string, boolean> {
-  return { ...registry.surfaceDefaults(), ...appState.get().pluginVisibility };
+export function surfaceVisibility(registry: Pick<PackRegistry, 'surfaceDefaults'>): Record<string, boolean> {
+  return { ...registry.surfaceDefaults(), ...appState.get().surfaceVisibility };
 }
 
 type ApplicationEvent = ApplicationClientEvent | { type: 'SEND_STATE' };
@@ -38,7 +38,7 @@ export function createApplicationSystem(registry: Pick<PackRegistry, 'surfaceDef
         broadcastToSurface('application', { type: 'PACK_RUNTIMES_UPDATED', runtimes });
       },
       sendVisibility: () => {
-        broadcastToSurface('application', { type: 'SURFACE_VISIBILITY_UPDATED', pluginVisibility: pluginVisibility(registry) });
+        broadcastToSurface('application', { type: 'SURFACE_VISIBILITY_UPDATED', surfaceVisibility: surfaceVisibility(registry) });
       },
     }),
   }).createMachine({
@@ -48,13 +48,13 @@ export function createApplicationSystem(registry: Pick<PackRegistry, 'surfaceDef
         // A surface that isn't a ref names no surface, so nothing could ever read the choice back
         guard: ({ event }) => splitRef(event.surface) !== undefined,
         actions: [
-          ({ event }) => appState.update({ pluginVisibility: { ...appState.get().pluginVisibility, [event.surface]: event.visible } }),
+          ({ event }) => appState.update({ surfaceVisibility: { ...appState.get().surfaceVisibility, [event.surface]: event.visible } }),
           'sendVisibility',
         ],
       },
       SET_LAST_ACTIVE_SURFACE: {
         guard: ({ event }) => splitRef(event.surface) !== undefined,
-        actions: ({ event }) => appState.update({ lastActivePlugin: event.surface }),
+        actions: ({ event }) => appState.update({ lastActiveSurface: event.surface }),
       },
       // A pack coming or going brings or takes its features' defaults
       SEND_STATE: { actions: ['sendVisibility', 'sendRuntimes'] },

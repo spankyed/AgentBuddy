@@ -12,6 +12,6 @@ export function useSurfaceNavigation() {
   const context = useSelector(applicationState, state => state.context);
   return computed(() => {
     void revision.value;
-    return surfaceNavigationItems(windowCatalog, fePacks.surfaceBindings(), context.value.pluginVisibility);
+    return surfaceNavigationItems(windowCatalog, fePacks.surfaceBindings(), context.value.surfaceVisibility);
   });
 }

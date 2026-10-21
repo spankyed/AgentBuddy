@@ -31,7 +31,7 @@ afterEach(() => app.stop());
 
 /** The server's CLIENT_CONNECTED broadcast, which any window's connection sends every window */
 const broadcastConnected = (hasOnboarded = true) =>
-  fake.receive({ to: 'host/application', event: { type: 'CLIENT_CONNECTED', hasOnboarded, pluginVisibility: {} } });
+  fake.receive({ to: 'host/application', event: { type: 'CLIENT_CONNECTED', hasOnboarded, surfaceVisibility: {} } });
 /** This window's subscription is established: the server broadcasts its CLIENT_CONNECTED */
 const connect = (hasOnboarded = true) => {
   fake.connect();

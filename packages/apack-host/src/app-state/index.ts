@@ -48,14 +48,14 @@ export interface AppState {
    * The surfaces whose sidebar tab the user showed or hid, by ref. A surface not here shows as its feature declares
    * (`features[].settings`' `visible`), so a pack's default reaches everyone who never touched its tab.
    */
-  pluginVisibility: Record<string, boolean>;
+  surfaceVisibility: Record<string, boolean>;
   /** The surface the user last had open, by ref; a window opens on it once it connects */
-  lastActivePlugin?: string;
+  lastActiveSurface?: string;
 }
 
 const FIELDS = [
   'hasOnboarded', 'version', 'packVersions', 'failedAgainst',
-  'pluginVisibility', 'lastActivePlugin',
+  'surfaceVisibility', 'lastActiveSurface',
 ] as const satisfies readonly (keyof AppState)[];
 
 /**
@@ -92,8 +92,8 @@ export function createAppState(ears: Pick<EarsQuery, 'qx' | 'tx'>) {
         ...(row.version !== undefined && { version: row.version }),
         packVersions: row.packVersions ?? {},
         failedAgainst: row.failedAgainst ?? {},
-        pluginVisibility: row.pluginVisibility ?? {},
-        ...(row.lastActivePlugin != null && { lastActivePlugin: row.lastActivePlugin }),
+        surfaceVisibility: row.surfaceVisibility ?? {},
+        ...(row.lastActiveSurface != null && { lastActiveSurface: row.lastActiveSurface }),
       };
     },
 

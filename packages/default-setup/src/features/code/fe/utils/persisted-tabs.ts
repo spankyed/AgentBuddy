@@ -15,7 +15,7 @@ export interface PersistedTab {
   isPreview?: boolean // Track preview state
 }
 
-const STORAGE_KEY = 'code-plugin-open-tabs'
+const STORAGE_KEY = 'code-surface-open-tabs'
 
 export interface PersistedTabState {
   tabs: PersistedTab[]
