@@ -103,8 +103,14 @@ legitimately. Mutation: restoring the stale event name fails that case.
 **Prose is the one part no guard covers, and it took two complete reads to finish.** The guard's groups
 are identifier lists, so a comment that calls a surface a plugin in words is invisible to it by design —
 widening it to the bare word would fire on every "tiptap plugins" and "a Vite plugin" a guide writes
-legitimately. What settles that condition is reading, and reading all of it: **48** guide lines and
-**47** source prose mentions, each judged on its own text. Classifying the 241 occurrences by regex
+legitimately. What settles that condition is reading, and reading all of it. The population is every **standalone
+English** occurrence of the word — the word not inside an identifier, a path or a quoted key — which
+partitions into **43** in a comment or a guide and **78** on a code line, and both halves were read:
+the 43 are the sentences this condition is about, and all 78 are a third-party identifier or config key
+(`plugins:` arrays, `Plugin` from `vite`, `esbuild` or `@tiptap/pm/state`), a test title naming a kept
+vocabulary, the Claude Code CLI's own parameters and argv, or a migration `description` that correctly
+names the attributes it moves. A looser cut over comment syntax found 47 and the guides 48; the
+partition is the tighter one and confirms neither missed a sentence. Classifying the 241 occurrences by regex
 instead kept lines it never read, and `be-bundler.ts:342` — "Step and plugin definitions reference Vue
 components and styles" — survived four passes, the enumeration and a chain inside that blind spot,
 because the file had been reverted whole for its bundler vocabulary and the one concept sentence in it
@@ -304,14 +310,20 @@ it last in this phase's commits.
 
 **Done when:** `npm run typecheck`, `npm run api:check`, `npm run schema:check -w @apackdev/sdk`,
 `npm run test:unit`, `npm run build:default-setup` and `npm run test:external-pack` pass.
-`git grep -E '\busePlugin\b|\bPluginDeclaration\b|\bdefinePlugin\b'` finds nothing outside
-`docs/archive`, `CHANGELOG.md` and the guard's own retired list.
+`git grep 'usePlugin\|PluginDeclaration\|features\[\]\.plugin'` finds nothing outside `docs/archive`.
 
-**Anchored, because the unanchored form cannot hold beside Decision 2.** Written without `\b` it
-matches `PluginDeclaration` as a substring, and all five occurrences of that string in
-`packages/apack-sdk/src/framework/` are `TiptapPluginDeclaration` — published API this document
-forbids moving. The two exceptions are a changelog entry from 2024, which is released history, and the
-guard, which has to spell the names it retires.
+> **This condition is not met, and cannot be.** Unanchored it matches `PluginDeclaration` as a
+> substring, and all five occurrences of that string in `packages/apack-sdk/src/framework/` are
+> `TiptapPluginDeclaration` — published API Decision 2 of this document forbids moving. Satisfying the
+> grep would mean breaking the constraint printed beside it.
+>
+> What was verified instead is the anchored form, which returns nothing:
+> `git grep -E '\busePlugin\b|\bPluginDeclaration\b|\bdefinePlugin\b'`, outside `docs/archive`,
+> `CHANGELOG.md` (a 2024 entry, released history) and the guard's own retired list (which has to spell
+> the names it retires).
+>
+> **Replacing the condition with that form is the author's call, not the implementer's.** It is left
+> here as written so nobody reads an amended criterion as one that was met.
 
 ### Phase 3 — the wire: `surfaceId` and the event names
 
