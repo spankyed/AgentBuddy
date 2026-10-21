@@ -176,14 +176,26 @@ test('two external assistant groups survive independent edits, disable, reset an
 
   const toggle = (packId: string) => appPage.evaluate(packId => (window as any).applicationState.system.get('host/packs')
     .send({ type: 'UI.TOGGLE_ENABLED', packId }), packId);
+  const acceptedRuntime = (packId: string) => appPage.evaluate(packId => (window as any).applicationState.getSnapshot()
+    .context.acceptedPackRuntimes[packId], packId);
+  // Re-enabling registers, activates and reloads the pack's frontend, which renders its settings form only once
+  // the shell has accepted the new runtime
+  const reenable = async (packId: string, previous: unknown) => {
+    await toggle(packId);
+    await expect.poll(async () => {
+      const current = await acceptedRuntime(packId);
+      return !!current && current !== previous;
+    }, { timeout: 30_000, message: `${packId} frontend accepted after reactivation` }).toBe(true);
+  };
   for (const owner of ['e2e-fixture', 'bundled-ui-fixture']) {
     await select(owner);
+    const runtime = await acceptedRuntime(owner);
     await toggle(owner);
     await expect(appPage.getByRole('button', { name: 'Edit in JSON', exact: true })).toBeVisible();
     await expect(appPage.getByText(`${owner}/assistant`, { exact: true })).toBeVisible();
     await select(owner === 'e2e-fixture' ? 'bundled-ui-fixture' : 'e2e-fixture');
     await expect(owner === 'e2e-fixture' ? scribbles : memo).toHaveValue(owner === 'e2e-fixture' ? 'Sydney' : 'Morgan');
-    await toggle(owner);
+    await reenable(owner, runtime);
     await select(owner);
     await expect(owner === 'e2e-fixture' ? memo : scribbles).toHaveValue(owner === 'e2e-fixture' ? 'Morgan' : 'Sydney');
   }

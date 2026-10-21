@@ -23,6 +23,9 @@ test('an open flow palette follows external step disable and re-enable', async (
   }).toPass({ timeout: 5_000 });
   const toggle = () => appPage.evaluate(() => (window as any).applicationState.system.get('host/packs')
     .send({ type: 'UI.TOGGLE_ENABLED', packId: 'e2e-fixture' }));
+  const acceptedRuntime = () => appPage.evaluate(() => (window as any).applicationState.getSnapshot()
+    .context.acceptedPackRuntimes['e2e-fixture']);
+  const runtime = await acceptedRuntime();
   let disabled = false;
   try {
     await toggle(); disabled = true;
@@ -31,6 +34,11 @@ test('an open flow palette follows external step disable and re-enable', async (
     await expect(stamp).toHaveAttribute('draggable', 'false');
     await expect(stamp).toHaveClass(/bg-purple-900/);
     await toggle(); disabled = false;
+    // Its steps enable once the shell has accepted the pack's reloaded frontend
+    await expect.poll(async () => {
+      const current = await acceptedRuntime();
+      return !!current && current !== runtime;
+    }, { timeout: 30_000, message: 'e2e-fixture frontend accepted after reactivation' }).toBe(true);
     await expect(stamp).toBeEnabled(); await expect(pulse).toBeEnabled();
     await expect(stamp).toHaveAttribute('draggable', 'true');
   } finally {
