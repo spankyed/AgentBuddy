@@ -13,9 +13,10 @@ export default defineConfig({
   resolve: { conditions },
   ssr: { resolve: { conditions } },
   test: {
-    // Large (`SIZE_MS`). Longer multi-build scenarios declare reviewed per-test budgets.
-    testTimeout: 60_000,
-    hookTimeout: 60_000,
+    // Enormous (`SIZE_MS`): a native case composes cold compiler captures, builds and watcher cycles. A case
+    // that needs longer still declares a reviewed per-test budget.
+    testTimeout: 300_000,
+    hookTimeout: 300_000,
     setupFiles: ['./tests/_support/turn-event-loop.ts'],
     include: ['tests/**/*.native.spec.ts'],
     exclude: ['**/node_modules/**'],

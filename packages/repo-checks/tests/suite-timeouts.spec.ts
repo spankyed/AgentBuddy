@@ -15,9 +15,10 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { REPO_ROOT } from '@apackdev/host/build/packages-built';
-import { INTEGRATION_SUITES } from '../../../scripts/lib/chain-steps.ts';
+import { INTEGRATION_SUITES, NATIVE_SUITES } from '../../../scripts/lib/chain-steps.ts';
 import { SIZE_MS, UNIT_SUITES, type Size } from '../../../scripts/lib/unit-suites.ts';
-import { overrideKey, sizeOf, specFilesUnder, timeoutOverrides, type TimeoutOverride } from '../../../scripts/lib/test-timeouts.ts';
+import ts from 'typescript';
+import { constantMs, overrideKey, sizeOf, specFilesUnder, timeoutOverrides, type TimeoutOverride } from '../../../scripts/lib/test-timeouts.ts';
 import { repoFiles } from './_support/repo-files.ts';
 
 /**
@@ -34,51 +35,17 @@ const TIMEOUT_EXCEPTIONS: Record<string, string> = {
     'Real CLI initialization has its own 60s operation bound; the setup hook additionally allows 20s for cancellation and awaited shutdown.',
   'packages/apack-cli/tests/build/own-declarations.integration.spec.ts > preserves owned names through authoring, compiled snapshots, source-free discovery and runtime loading':
     'One explicitly bounded cold backend/frontend build (120s) precedes snapshot checks, source-free inspection and runtime admission (20s). Its registered builder receives test cancellation and drains before inputs are deleted; all declaration/shape/provenance/activation assertions remain.',
-  'packages/apack-cli/tests/build/build-worker.native.spec.ts > refuses publication when a compiler worker cannot return its observations':
-    'One cold captured build is bounded at 120s, followed by 20s for verification/cleanup. Normal run 39262109257 exceeds the inherited 60s observation-refusal scenario; the same-file audit found these remaining cold-build scenarios still inherited that enclosing limit. Keep refusal, incumbent, input ownership and process cleanup assertions; bootstrap, event and shutdown bounds are unchanged.',
-  'packages/apack-cli/tests/build/build-worker.native.spec.ts > refuses publication when a loader-only external input changes during compilation':
-    'One cold captured build is bounded at 120s, followed by 20s for verification/cleanup. Normal run 39262109257 exceeds the inherited 60s observation-refusal scenario; the same-file audit found these remaining cold-build scenarios still inherited that enclosing limit. Keep refusal, incumbent, input ownership and process cleanup assertions; bootstrap, event and shutdown bounds are unchanged.',
-  'packages/apack-cli/tests/build/build-worker.native.spec.ts > terminates pack-created background work before accepting its candidate':
-    'One cold captured build is bounded at 120s, followed by 20s for verification/cleanup. Normal run 39262109257 exceeds the inherited 60s observation-refusal scenario; the same-file audit found these remaining cold-build scenarios still inherited that enclosing limit. Keep refusal, incumbent, input ownership and process cleanup assertions; bootstrap, event and shutdown bounds are unchanged.',
-  'packages/apack-cli/tests/build/build-worker.native.spec.ts > reports frontend inputs that remain available after its compiler installation is removed':
-    'One cold captured build is bounded at 120s, followed by 20s for verification/cleanup. Normal run 39262109257 exceeds the inherited 60s observation-refusal scenario; the same-file audit found these remaining cold-build scenarios still inherited that enclosing limit. Keep refusal, incumbent, input ownership and process cleanup assertions; bootstrap, event and shutdown bounds are unchanged.',
-  'packages/apack-cli/tests/build/build-worker.native.spec.ts > records external inputs read by content compiler worker threads':
-    'A cold captured build runs four compiler-thread lifecycles before external-input verification. Its build is explicitly bounded at 120s, then 20s covers receipt/freshness assertions; fixture teardown drains the registered builder. Normal run 39253013877 exceeded the former 60s complete-case limit. Other operation/event/cleanup limits remain unchanged.',
-  'packages/apack-cli/tests/build/compiler-native-runtime.native.spec.ts > uses the %s Electron runtime through the shared compiler launcher':
-    'Runtime capture (60s), captured launch (unchanged 15s), verification/retirement (20s) compose the driver allowance; the 120s case includes fixture setup/cleanup. Normal gate 39248035810 exceeded the former 30s nested driver limit. The asynchronous driver preserves runner updates and records phase completion without relaxing identity or retirement assertions.',
-  'packages/apack-cli/tests/build/build-worker.native.spec.ts > refuses candidate output changed by a compiler exit handler and retains the incumbent':
-    'One cold captured build precedes sealed-output mutation/refusal and incumbent verification. The owner uses test cancellation and is drained before fixture deletion; the scenario allows 180s for the public build and 20s for verification/disposal. This is the earlier normal-run 60s timeout, not a new value failure.',
   'packages/apack-cli/tests/build/types-bundler-determinism.integration.spec.ts > is identical from the workspace and from the packed tarballs a consumer installs':
     'Two bounded cold public builds (180s each), package materialization (60s) and verification/disposal (20s) are sequential. Asynchronous commands preserve runner responsiveness; test cancellation kills the active command and teardown waits for it before removing inputs.',
   'packages/apack-cli/tests/build/compiler-native-runtime.native.spec.ts > builds and archives a real pack under the %s Electron runtime':
     'Four sequential commands: init/add/archive retain 60s each; the real Electron build includes captured backend (180s allowance) and cold frontend (120s). Control 39257458780 reaches frontend compilation before the former 180s full-build limit aborts it. The 540s case composes these commands plus 60s verification/disposal, retaining forced-close grace and every runtime/output/retirement/passive-archive assertion.',
-  'packages/apack-cli/tests/build/build-worker.native.spec.ts > removes its worker and compiler when the public build command is stopped while $name':
-    'Full watch readiness includes a completed cold build and allows 120s; reaching the compiling phase retains 60s. Control 39257458780 times out only the full-ready variant at its former 60s bound. Shutdown and final cleanup retain 20s each; the enclosing 160s case accommodates the longest variant without changing the other operation limits.',
 
-  'packages/apack-cli/tests/build/build-worker.native.spec.ts > compiles content through the captured worker and invalidates changed loader inputs':
-    'This scenario owns installation capture and two sequential real content builds. Two Windows attempts exceeded the former 60s setup hook after codegen and while compiling, before ordering assertions. The single 120s case then completed its first build and exact ordering/source assertions but expired during the second real build. A 180s case budget covers these sequential builds without a separate setup hook; retain exact require/loader/import ordering, source identities, changed payload and revision checks. Other cases and production deadlines are unchanged.',
-  'packages/apack-cli/tests/build/compiler-native-vite.native.spec.ts > tracks retained Vite ESM preload and loader inputs without freezing Vue sources':
-    'Two separate cold Windows attempts exceeded 60s during installation capture and terminated at 91.0s and 95.6s before assertions. This single startup scenario allows 120s for capture, two frontends and namespace/HMR checks; warm full acceptance measured 44.5s. Async byte reads separately address event-loop starvation. Keep five-second freshness/helper bounds and every invalidation, restoration, selection and live-source assertion.',
-  'packages/apack-cli/tests/build/compiler-pe-libraries.native.spec.ts > repairs a failed Vite assembly context through newly discovered watch inputs':
-    'The real Windows lifecycle passes in 232.4s: initial backend/frontend readiness, missing-assembly refusal, repair publication and retirement run sequentially. Frontend replacements share one verified compiler installation. This scenario uses 300s. Keep the 20-second event bounds, failed-input matcher, no-initialization, incumbent, value and retirement assertions; this does not extend helper deadlines or other cases.',
-  'packages/apack-cli/tests/build/compiler-pe-libraries.native.spec.ts > refuses Node .local overrides through the captured compiler runtime before initialization':
-    'Ordinary redirected Node loading, full public-CLI compiler capture/verification, then protected worker refusal and cleanup are sequential. VM stage evidence records 46.07s in package capture; the complete invocation reaches attributed refusal at 73.08s. This single scenario uses 120s with test-owned child cancellation. Keep the authored-path diagnostic, captured-marker/DLL and both no-initialization assertions.',
-  'packages/apack-cli/tests/build/compiler-pe-libraries.native.spec.ts > captures PE %s inputs and preserves publication after outside-library refusal':
-    'Windows run 39094144526 emits its first backend runtime near the 60-second deadline, before freshness/restoration and refusal complete. Run 39095177818 passes the preload/thread scenarios in 62.55s/61.63s. Keep the 120-second scenario bound and phase timings; the combined preload/thread case additionally verifies process-wide DLL reuse. The CommonJS compiler-reuse case passes in run 39100052114 in 106.17s, including freshness/restoration and refused publication, under that unchanged bound.',
-  'packages/apack-cli/tests/build/compiler-native-vite.native.spec.ts > watches external Vite native changes and repairs a failed generation through newly discovered inputs':
-    'Two snapshot-backed backend publications, frontend startup/refusal/repair and awaited retirement are sequential. Complete two-core disposable macOS control 39195118565 takes 238.58 seconds with all assertions intact. This scenario has a 300-second budget; separate 20-second missing-event waits and incumbent/value/publication/retirement assertions are unchanged.',
-  'packages/apack-cli/tests/build/compiler-native-launch.native.spec.ts > admits OS libraries and refuses outside launch overrides before build or frontend launch':
-    'One cold baseline build (120s), subsequent pre-capture launch-admission refusals (60s allowance), verification and cleanup (20s) are sequential. The same-file native cold build takes 73.232s in normal run 39269209929; this remaining baseline must not inherit a 60s complete-case limit. Keep all OS/outside admission, pre-initialization and incumbent assertions.',
-  'packages/apack-cli/tests/build/compiler-native-libraries.native.spec.ts > captures native %s libraries and retains the incumbent after outside-library refusal':
-    'A successful cold build (120s), two refused attempts (60s each), fixture creation, ordinary-loader controls, freshness/retention checks and cleanup (60s) compose a 300s scenario. Normal run 39269209929 completes the thread case at 126.668s beyond the former 120s outer limit; its initial build alone takes 73.232s. Each refusal must occur before its own abort signal. Preserve all initialization, copy, freshness and incumbent assertions; ordinary-loader and suite bounds remain unchanged.',
   'packages/apack-cli/tests/commands/scaffold.integration.spec.ts > adds a step (declared, shipped in build/steps.build.mjs) and a service that build':
     "Step generation (60s), service generation (60s), public backend/frontend build (180s + 120s), typecheck (60s) and cleanup (20s) are sequential. Diagnostic 39306120746 measures the build at 116.345s and the two generators at 23.120s/49.270s; Run 39309152812 proves a full public build exceeds the mistaken backend-only 120s limit after emitting its frontend. Match the existing Electron public-build composition; separate command bounds remain cancellable.",
   'packages/apack-cli/tests/build/frontend-resources-watch.native.spec.ts > watches initially empty external Tailwind content through nested directory links':
     "Initial capture precedes two directory-membership/link-retarget builds, with separate request, compiler and notification bounds from watch-builds.",
   'packages/apack-cli/tests/build/staged-dsl.integration.spec.ts > preserves a verified build on a later failure, then publishes and reuses the current definitions with its frontend':
     "Five real builds cover publication, refusal, repair, reuse and removal, followed by verification and disposal.",
-  'packages/apack-cli/tests/build/watch-worker-inputs.native.spec.ts > rebuilds for worker inputs and repairs missing external reads without authored edits':
-    "Initial compiler capture/publication precedes two unchanged 60s worker-input refusal/recovery waits and disposal.",
   'packages/apack-cli/tests/build/build-output-swap.integration.spec.ts > does not reuse facade files from an incumbent with stamps from a refused replacement':
     "Three sequential real builds, including refusal and recovery, followed by integrity verification and disposal.",
   'packages/apack-cli/tests/build/watch-external-types.native.spec.ts > rebuilds external contracts and recovers a retargeted missing input without an authored edit':
@@ -133,22 +100,10 @@ const TIMEOUT_EXCEPTIONS: Record<string, string> = {
     "Two actual pack builds and three CLI archive/inspection commands precede source-removal/provenance assertions.",
   "packages/apack-cli/tests/build/frontend-generation.native.spec.ts > refreshes backend and live frontend together, retains failed incumbents and awaits retirement":
     "Frontend startup, refused cold replacement and repaired cold replacement are sequential; existing 2s HMR/fetch limits and retirement checks remain.",
-  "packages/apack-cli/tests/build/compiler-native-launch.native.spec.ts > captures the selected native image suffix and refuses its later transitive escape":
-    "Two captured build attempts follow native fixture/ordinary-loader preparation; freshness, pre-initialization refusal and disposal remain. The complete diagnostic takes 69.377s, above the former default.",
-  "packages/apack-cli/tests/build/compiler-native-libraries.native.spec.ts > retains launch-time native search paths across preload changes and compiler workers":
-    "Two captured builds plus native fixture preparation, source/copy verification and disposal share the case.",
-  "packages/apack-cli/tests/build/compiler-native-launch.native.spec.ts > refuses external %s before native initialization after preload mutation":
-    "Ordinary-loader selection and an accepted build precede a refused captured replacement; retain native pre-initialization and incumbent assertions.",
   "packages/apack-cli/tests/build/dependency-graph.integration.spec.ts > beforeAll":
     "The dependency diamond setup builds four real packs in dependency order before the five assertions.",
   "packages/apack-cli/tests/_support/facade-packs.ts > beforeAll":
     "Shared facade setup materializes its package layout, scaffolds a step and builds dependency plus consumer before running type/completion assertions.",
-  "packages/apack-cli/tests/build/frontend-resources-watch.native.spec.ts > beforeEach":
-    "Watcher setup captures its compiler and publishes its initial frontend before test-specific rebuild waits.",
-  "packages/apack-cli/tests/build/watch-publication.native.spec.ts > beforeEach":
-    "Initial compiler capture/publication, installation, static catalog inspection and actual host reload precede the case.",
-  "packages/apack-cli/tests/build/frontend-generation.native.spec.ts > beforeEach":
-    "The setup copies a private compiler then publishes its initial captured generation before replacement assertions.",
   "packages/apack-cli/tests/build/build-output-swap.integration.spec.ts > rebuilds damaged %s data instead of renewing its checksums":
     "Two sequential captured builds precede checksum, facade restoration and staged-build verification; both variants exceeded the former 60s case limit.",
   "packages/apack-cli/tests/build/dependency-graph.integration.spec.ts > still fails when two independent packs declare the same entity":
@@ -189,6 +144,7 @@ function configs(): { file: string; size: Size }[] {
   const found: string[] = [
     ...UNIT_SUITES.map((suite) => path.join('packages', suite.dir, 'vitest.config.ts')),
     ...INTEGRATION_SUITES.map((suite) => path.join('packages', suite.dir, 'vitest.integration.config.ts')),
+    ...NATIVE_SUITES.map((suite) => path.join('packages', suite.dir, 'vitest.native.config.ts')),
     'playwright.config.ts',
   ];
   return found
@@ -266,10 +222,28 @@ describe('a test does not quietly buy itself more time than its size allows', ()
     expect(over, 'remove it, or add it to TIMEOUT_EXCEPTIONS with the reason it needs longer').toEqual([]);
   });
 
-  // A list of exceptions is honest only while each one is still an exception
-  it('lists no exception whose override has gone', () => {
-    const live = new Set(overrides().map(overrideKey));
+  // A list of exceptions is honest only while each one is still an exception: an override that has gone, or
+  // that now fits its size's budget, excuses nothing
+  it('lists no exception whose override has gone or fits its budget', () => {
+    const live = new Set(overrides()
+      .filter((override) => override.budget === undefined || override.ms === undefined || override.ms > override.budget)
+      .map(overrideKey));
     expect(Object.keys(TIMEOUT_EXCEPTIONS).filter((key) => !live.has(key)), 'drop these from TIMEOUT_EXCEPTIONS').toEqual([]);
+  });
+});
+
+describe('a timeout written as a sum of its phases', () => {
+  const expression = (text: string) => (ts.createSourceFile('x.ts', `(${text})`, ts.ScriptTarget.Latest)
+    .statements[0] as ts.ExpressionStatement).expression;
+
+  it('is evaluated exactly, so a composed budget is checked against its size like a literal', () => {
+    expect(constantMs(expression('2 * 60_000 + 60_000 + 20_000'))).toBe(200_000);
+    expect(constantMs(expression('(180_000 + 120_000) / 2 - 10_000'))).toBe(140_000);
+  });
+
+  it('is left unknown once it names a value, which the budget check then requires a reason for', () => {
+    expect(constantMs(expression('WATCH_REBUILD_BUDGET_MS + 20_000'))).toBeUndefined();
+    expect(constantMs(expression('timeoutMsFor("quick")'))).toBeUndefined();
   });
 });
 
@@ -278,8 +252,8 @@ describe('a suite times a test out at its size budget', () => {
   it('finds every test config, so none goes unchecked', () => {
     const found = configs();
     expect(found.length, 'no configs derived, so every case below passes over nothing').toBeGreaterThan(10);
-    expect(new Set(found.map(({ size }) => size)), 'both sizes have a config, or one branch is never taken')
-      .toEqual(new Set(['small', 'large']));
+    expect(new Set(found.map(({ size }) => size)), 'every size has a config, or one branch is never taken')
+      .toEqual(new Set(Object.keys(SIZE_MS)));
   });
 
   it.each(configs())('$file declares nothing above its $size budget', ({ file, size }) => {
@@ -335,6 +309,14 @@ describe('a file takes the budget of the target it runs in', () => {
       expect(sizeOf(`packages/${suite.dir}/tests/x.spec.ts`), suite.dir).toBe('small');
     }
     expect(SIZE_MS.small, 'and the two budgets really do differ, or none of this matters').not.toBe(SIZE_MS.large);
+  });
+
+  it('calls every native half enormous, the budget its cold builds and watcher cycles take', () => {
+    expect(NATIVE_SUITES.length, 'no native suites derived, so this proves nothing').toBeGreaterThan(0);
+    for (const suite of NATIVE_SUITES) {
+      expect(sizeOf(`packages/${suite.dir}/tests/x.native.spec.ts`), suite.dir).toBe('enormous');
+      expect(sizeOf(`packages/${suite.dir}/vitest.native.config.ts`), suite.dir).toBe('enormous');
+    }
   });
 
   // A package with no second config runs everything in its fast half, whatever a file is called
