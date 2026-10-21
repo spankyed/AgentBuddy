@@ -103,7 +103,7 @@ this ledger is not permission to downgrade an outcome to a survey.
 
 ### Other tracks and documents to revisit
 
-- [Lazy activation](lazy-activation.md) is deferred by request, outside the active sequence.
+- [Lazy activation](deferred/lazy-activation.md) is deferred by request, outside the active sequence.
   Revisit only when boot attribution justifies it; discovery completion does not trigger this work.
 - [Dev-loop freshness](../goals/goal-dev-loop-freshness.md) remains a scoped follow-up; descriptor freshness
   needed by discovery belongs in discovery's checkpoints, not in an unrelated package watcher redesign.
@@ -297,7 +297,7 @@ Follow the frontend workstream of [pack fault isolation](pack-fault-isolation.md
 Lazy activation is deferred, outside the active sequence: attribute boot cost before changing when
 packs run. Derive activation from existing contributions where possible instead of making authors repeat
 command/view declarations in an activation list. Preserve migration/content ordering and event delivery.
-If resumed, use the [deferred lazy activation plan](lazy-activation.md) for the measured design.
+If resumed, use the [deferred lazy activation plan](deferred/lazy-activation.md) for the measured design.
 
 Out-of-process backend packs are deferred. Synchronous EARS access makes this a data-contract redesign,
 not simply a process-spawning task.

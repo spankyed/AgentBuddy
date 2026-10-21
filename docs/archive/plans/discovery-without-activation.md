@@ -650,7 +650,7 @@ not become a second coordination layer alongside the old shell actions.
 
 Each implementation checkpoint remains usable with migrated callers. Apply the existing snapshot-format
 rule for contract changes; do not bump package release versions. This work does not require making pack
-execution lazy. Link the resulting catalog boundary into the [deferred lazy activation plan](../../plans/lazy-activation.md)
+execution lazy. Link the resulting catalog boundary into the [deferred lazy activation plan](../../plans/deferred/lazy-activation.md)
 without changing migration/content execution order here.
 
 ## Handoff to subsequent plans

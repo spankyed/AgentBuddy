@@ -1686,9 +1686,9 @@ Required closure for this goal:
 
 No permanent external pack repository, monorepo release, public npm/Homebrew publication or GitHub
 release token is required for these local checks. The
-[external-pack release readiness plan](../../plans/external-pack-release-readiness.md) owns fresh public
+[external-pack release readiness plan](../../plans/deferred/external-pack-release-readiness.md) owns fresh public
 workflow bootstrap, release-readiness semantics/recovery and the separately authorized GitHub release
-round trip. The [distribution plan](../../plans/npm-and-homebrew-distribution.md) owns npm/Homebrew.
+round trip. The [distribution plan](../../plans/deferred/npm-and-homebrew-distribution.md) owns npm/Homebrew.
 Record these public paths as unverified; do not silently claim them from local tarballs or make them
 prerequisites for finishing this goal. No existing manifest, settings, discovery or external runtime
 requirement is moved out of this goal by that distinction.
@@ -1957,14 +1957,14 @@ do not archive unfinished or deferred work as completed. Publishing or PR merge 
 
 ## Deferred
 
-- [Lazy activation](../../plans/lazy-activation.md), including boot-performance implementation.
+- [Lazy activation](../../plans/deferred/lazy-activation.md), including boot-performance implementation.
 - [Security isolation](../../goals/goal-pack-security-isolation.md) and out-of-process backend execution.
 - Storage/LMDB, advisory-lock and console-transaction redesign; plugins-to-surfaces, logs extraction
   and distribution work outside the required dependency provenance contract.
 - A new registry/package manager, speculative optional integrations, generated settings forms and new
   preference scopes. The package-dist watcher follow-up is separate; required descriptor freshness is not.
-- [External-pack public release readiness](../../plans/external-pack-release-readiness.md) and
-  [npm/Homebrew distribution](../../plans/npm-and-homebrew-distribution.md); required local
+- [External-pack public release readiness](../../plans/deferred/external-pack-release-readiness.md) and
+  [npm/Homebrew distribution](../../plans/deferred/npm-and-homebrew-distribution.md); required local
   packaged-authoring/archive/runtime acceptance remains in this goal.
 
 ## Constraints

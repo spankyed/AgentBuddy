@@ -2,7 +2,7 @@
 
 Status: deferred, 2026-10-18. Resume when the owner schedules this work; public execution requires
 separate authorization. This plan is not a prerequisite for completing the
-[settings and pack contracts goal](../archive/goals/goal-settings-and-pack-contracts.md).
+[settings and pack contracts goal](../../archive/goals/goal-settings-and-pack-contracts.md).
 
 ## Outcome and ownership
 
@@ -22,12 +22,12 @@ local build/output record; it does not require uploading a public release.
 
 ## Inspected baseline
 
-- [release.ts](../../packages/apack-cli/src/commands/release.ts) implements `apack pack release`,
+- [release.ts](../../../packages/apack-cli/src/commands/release.ts) implements `apack pack release`,
   `release publish`, dry-run preparation and partial local-release state reporting.
-- [The scaffolded workflow](../../packages/apack-cli/templates/pack/github/workflows/release.yml)
+- [The scaffolded workflow](../../../packages/apack-cli/templates/pack/github/workflows/release.yml)
   installs dependencies with `npm ci`, uses `APACK_HOST=beta` on macOS ARM64, checks/builds/archives
   the pack and uploads a GitHub release with provenance attestation.
-- [init.ts](../../packages/apack-cli/src/commands/init.ts) scaffolds dependencies on versioned public
+- [init.ts](../../../packages/apack-cli/src/commands/init.ts) scaffolds dependencies on versioned public
   `@apackdev` packages. A local-tarball consumer test substitutes these packages; it does not prove
   that a fresh public workflow can resolve them or obtain its selected host.
 - Release dry-run continues after preflight errors and reports them as problems that would stop a
@@ -37,12 +37,12 @@ local build/output record; it does not require uploading a public release.
 - Publishing currently creates a public GitHub release before uploading its files. An interrupted
   upload can therefore expose an incomplete release. Review the existing retry behavior before
   choosing the smallest repair.
-- [Release integration tests](../../packages/apack-cli/tests/commands/release.integration.spec.ts)
+- [Release integration tests](../../../packages/apack-cli/tests/commands/release.integration.spec.ts)
   include injected Git commands, a build stand-in, verified archives and mocked GitHub API calls.
   Their evidence must distinguish those seams from an actual compiler or remote release execution.
-- [Packaged authoring](../../tests/scripts/test-packaged-authoring-author.sh) installs real local npm
+- [Packaged authoring](../../../tests/scripts/test-packaged-authoring-author.sh) installs real local npm
   tarballs outside the monorepo, scaffolds a pack and exercises release dry-run/archive installation.
-  [Its app half](../../tests/scripts/test-packaged-authoring-app.sh) runs the exact archive against an
+  [Its app half](../../../tests/scripts/test-packaged-authoring-app.sh) runs the exact archive against an
   isolated built host and compares installed integrity metadata.
 
 These are source observations, not newly executed acceptance. Reinspect current code before each
