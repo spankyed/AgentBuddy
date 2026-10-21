@@ -35,9 +35,17 @@ Surveyed 2026-10-21 at `507b3b747`.
 
 ## Outcome
 
-**Done**, on `session/plugins-to-surfaces`, ten commits, `npm run chain` passing at the final commit in
-1017.6s with no failing step (`node_modules/.cache/apack-chain/runs/2026-10-21T21-50-18Z-20165`; the
-full cold run was 1468.8s, `…T20-52-54Z-10193`).
+**Done**, on `session/plugins-to-surfaces`. `npm run chain` passes at `6573aba19`, where every source
+and spec change is final: 87.3s, 24 of 32 cached, no failing step
+(`…/runs/2026-10-21T22-13-02Z-33956`). The cold run over the whole tree was 1468.8s with all 32 ok
+(`…T20-52-54Z-10193`), and `…T21-50-18Z-20165` is the 1017.6s run that re-executed the seven steps a
+mid-rename commit invalidated.
+
+**Why a commit after that run does not invalidate it.** `docs/` is in no step's declared inputs
+(`EVERY_SOURCE`, `scripts/lib/chain-steps.ts:458`), so recording this result moves no fingerprint and
+the chain stays green and cached at the commit that records it. The cost of that is real and worth
+knowing: `doc-links` reads the guides without declaring them, so the chain will not re-run it for a
+documentation change — every docs edit here was checked by running it by hand.
 
 **One load-sensitive spec, reported rather than patched.** A chain run in between failed
 `tests/packs/external-pack/tests/e2e/app-default-controls.spec.ts:37`, whose `expect.poll` for
