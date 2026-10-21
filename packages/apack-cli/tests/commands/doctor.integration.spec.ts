@@ -24,6 +24,9 @@ beforeEach(() => {
 });
 afterEach(() => { process.chdir(cwd); vi.restoreAllMocks(); vi.unstubAllEnvs(); fs.rmSync(root, { recursive: true, force: true }); });
 
+// Installed-app diagnostics support macOS only (`doctor.ts` refuses elsewhere), so these run where that app exists
+const macOnly = it.skipIf(process.platform !== 'darwin');
+
 it('defaults to production and rejects pack or development arguments', () => {
   vi.stubEnv('APACK_CLI_CHANNEL', 'beta');
   expect(doctorChannel([])).toBe('production');
@@ -32,21 +35,21 @@ it('defaults to production and rejects pack or development arguments', () => {
   expect(() => doctorChannel(['--fix'])).toThrow('Usage');
 });
 
-it('checks a closed installed app without creating data or probing an API', async () => {
+macOnly('checks a closed installed app without creating data or probing an API', async () => {
   const probe = vi.fn(async () => true);
   await inspectApp('production', { applications, dataDir, probe });
   expect(probe).not.toHaveBeenCalled();
   expect(fs.existsSync(dataDir)).toBe(false);
 });
 
-it('fails for an invalid installation and leaves the bundle intact', async () => {
+macOnly('fails for an invalid installation and leaves the bundle intact', async () => {
   const executable = path.join(applications, 'apack.app', 'Contents', 'MacOS', 'apack');
   fs.chmodSync(executable, 0o644);
   await expect(inspectApp('production', { applications, dataDir })).rejects.toThrow('health check failed');
   expect(fs.readFileSync(executable, 'utf8')).toBe('#!/bin/sh\n');
 });
 
-it('fails when a live API record has an unreachable listener', async () => {
+macOnly('fails when a live API record has an unreachable listener', async () => {
   const context = resolveAppEnvironment({ env: 'production', userDataDir: dataDir });
   fs.mkdirSync(path.dirname(context.apiPortFile), { recursive: true });
   fs.writeFileSync(context.apiPortFile, JSON.stringify({ port: 12345, pid: process.pid }));

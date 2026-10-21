@@ -27,7 +27,9 @@ const NPM_CACHE_VOLUME = 'apack-linux-npm-cache';
  * installs its own), except the typecheck legs' build infos — `node_modules/.cache/tsbuildinfo` and the renderer's
  * `node_modules/.tmp`: the Mac's legs write them, the integration specs read them, and they hold relative paths.
  * Everything else the Mac's steps produced is carried too — build outputs, `.apack` build records — because the
- * suites read them. Also out: the package builds `packages:ensure` owns, which the container makes for itself.
+ * suites read them. Also out: the builds that are platform-specific, which the container makes for itself — the
+ * published packages `packages:ensure` builds, and the built-in pack, whose build record names what its
+ * compilers read (`@esbuild/darwin-arm64` on a Mac) and so replays only on the platform that built it.
  * Excluded paths in the volume survive each copy, so the container's own installs and builds are kept.
  */
 const FILTERS = [
@@ -38,6 +40,7 @@ const FILTERS = [
   '--exclude=node_modules',
   ...['apack-ears', 'apack-sdk', 'apack-ui', 'apack-testing', 'apack-cli'].flatMap((pkg) =>
     [`--exclude=/packages/${pkg}/dist`, `--exclude=/packages/${pkg}/publish`]),
+  '--exclude=/packages/default-setup/dist', '--exclude=/packages/default-setup/.apack',
 ];
 
 const docker = (args: string[], stdio: 'inherit' | 'pipe' = 'pipe') => spawnSync('docker', args, { stdio, encoding: 'utf8' });
@@ -79,7 +82,8 @@ const forwarded = Object.keys(process.env).filter((key) => key.startsWith('APACK
 
 const quote = (arg: string): string => `'${arg.replace(/'/g, `'\\''`)}'`;
 /**
- * Copy, then install when the lockfile differs from the one the volume last installed from — under one lock on the
+ * Copy, install when the lockfile differs from the one the volume last installed from, then make the platform's own
+ * builds — under one lock on the
  * volume, because the chain runs two of these steps at once and two copies or two installs into one tree race.
  * The containers share the Linux VM's kernel, so `flock` on a file in the volume holds across them.
  */
@@ -90,6 +94,9 @@ const sync = [
   '  npm ci --no-audit --no-fund',
   '  echo "$lock" > node_modules/.apack-installed-lock',
   'fi',
+  // The platform's own builds, reused when their inputs have not moved
+  'npm run -s packages:ensure',
+  'npm run -s build:default-setup >/dev/null',
 ].join('\n');
 const script = [
   'set -e',
