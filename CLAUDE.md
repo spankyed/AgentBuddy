@@ -647,8 +647,10 @@ npm run test:integration # The expensive half of every suite that has one (@apac
                          # knob for; vitest-dev/vitest#4497, #6479, #8164). Every test passes and the run
                          # exits 1.
                          # The fix is to turn the loop: `afterEach(() => new Promise(r => setImmediate(r)))`
-                         # caps a file's *cases* at the longest of them. Six files have it, and
-                         # `npm run measure:loop` found the last two — measured 2026-10-06,
+                         # caps a file's *cases* at the longest of them. Every integration and native spec
+                         # gets it from its config's setup file (`tests/_support/turn-event-loop.ts`), since
+                         # any all-synchronous file can breach the window on a slow runner.
+                         # `npm run measure:loop` found the first such files — measured 2026-10-06,
                          # `published-sdk-any` was the half's worst block at 13.6s over eight ~200ms cases
                          # and `published-exports` 9.1s over four. Neither was slow; each was a sum being
                          # reported as a block, which is the shape to look for.

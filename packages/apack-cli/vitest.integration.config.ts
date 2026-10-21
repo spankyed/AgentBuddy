@@ -16,6 +16,7 @@ export default defineConfig({
     // Large (`SIZE_MS`). Longer multi-build scenarios declare reviewed per-test budgets.
     testTimeout: 60_000,
     hookTimeout: 60_000,
+    setupFiles: ['./tests/_support/turn-event-loop.ts'],
     include: ['tests/**/*.integration.spec.ts'],
     exclude: ['**/node_modules/**'],
   },

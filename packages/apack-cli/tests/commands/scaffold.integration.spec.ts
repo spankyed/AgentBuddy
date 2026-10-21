@@ -3,7 +3,7 @@
 import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
-import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { extractPackArchive, verifyPack, PACK_LAYOUT } from '@apackdev/host/packs';
 import { parse as parseYaml } from 'yaml';
 import { typecheckPack } from '../_support/pack-builds';
@@ -23,8 +23,6 @@ let pack: string;
 /** What `init` printed: it names scripts, so it is held to the same rule as the files it wrote */
 let initOutput: string;
 
-// Synchronous toolchain cases must let Vitest receive task-update replies between tests.
-afterEach(() => new Promise<void>(resolve => { setImmediate(resolve); }));
 
 let active: ReturnType<typeof runScaffoldCommand> | undefined;
 let testSignal: AbortSignal | undefined;
