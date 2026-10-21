@@ -1102,7 +1102,10 @@ it.runIf(process.platform === 'win32')('repairs a failed Vite assembly context t
     await builder.serveFrontend(address => { if (address) addresses.push(address); });
     checkpoint('initial frontend ready');
     const url = `http://localhost:${addresses[0]!.port}/src/View.vue`;
-    expect(await (await fetch(url, { signal: AbortSignal.timeout(2_000) })).text()).toContain('ASSEMBLY_WATCH');
+    // A bound on a hang, not a speed check: the first request is a cold Vite transform, which a loaded two-core
+    // runner can take seconds over
+    const served = { signal: AbortSignal.timeout(30_000) };
+    expect(await (await fetch(url, served)).text()).toContain('ASSEMBLY_WATCH');
     fs.rmSync(dllMarker);
     builds.mockClear(); configure('repair');
     await vi.waitFor(() => expect(builds).toHaveBeenCalled(), { timeout: 20_000 });
@@ -1110,7 +1113,7 @@ it.runIf(process.platform === 'win32')('repairs a failed Vite assembly context t
     checkpoint('missing assembly refused');
     expect(addresses).toHaveLength(1);
     expect(fs.existsSync(dllMarker)).toBe(false);
-    expect(await (await fetch(url, { signal: AbortSignal.timeout(2_000) })).text()).toContain('ASSEMBLY_WATCH');
+    expect(await (await fetch(url, { signal: AbortSignal.timeout(30_000) })).text()).toContain('ASSEMBLY_WATCH');
     const repair = path.join(path.dirname(addon), 'repair', assembly);
     const repairedManifest = path.join(repair, assembly + '.manifest');
     expect(createCompilerWatchMatcher(observed)(repairedManifest, 'rename'), 'Failed context lost its new repair subscription').toBe(true);
