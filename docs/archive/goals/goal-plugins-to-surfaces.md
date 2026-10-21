@@ -3,7 +3,7 @@
 ```text
 # Goal: rename the frontend plugin to a surface
 
-Implement docs/goals/goal-plugins-to-surfaces.md. Follow CLAUDE.md and docs/AGENTS.md.
+Implement docs/archive/goals/goal-plugins-to-surfaces.md. Follow CLAUDE.md and docs/AGENTS.md.
 Read Scope, Current handoff, What keeps the name, Phases and Constraints before continuing.
 The survey was made at 507b3b747 on master (2026-10-21); inspect current code before relying on it.
 
@@ -33,10 +33,51 @@ under "What keeps the name".
 
 Surveyed 2026-10-21 at `507b3b747`.
 
-## Current handoff
+## Outcome
 
-**Active, unstarted.** On `master`; nothing implemented. Phase 1 is the next deliverable and depends
-on nothing.
+**Done**, on `session/plugins-to-surfaces`, six commits, `npm run chain` passing in 1468.8s with all 32
+steps ok (`node_modules/.cache/apack-chain/runs/2026-10-21T20-52-54Z-10193`).
+
+| Phase | Commit | Evidence |
+|---|---|---|
+| 1 — the guard | `99540ead9` | Live in `@app/repo-checks`; mutation-checked three ways |
+| 2 — the concept | `7f495e0ff` | 557 files; typecheck 17/17, `test:unit` 5689 |
+| 3 — the wire | `260a96801` | 22 event names and their five `eventTypes<T>()` pins |
+| 4 — stored state | `824df0b92` | `tests/migrations/surface-state-0.4.0.spec.ts`, mutation-checked three ways |
+| 5 — docs, guard live | `afedfa064` | Scan unparked and green; `welcome.md` re-recorded |
+| 6 — the prose read | `dc57c0504` | 19 inversions; three agent memories |
+
+**The four things it cost, which the plan had three of.** The fourth vocabulary is a third-party CLI's
+own plugins (`claude plugin`), and it is the one no check can reach: its names go into a **subprocess
+argv**, so a pass that rewrote `run(['plugin', 'install', …])` to `run(['surface', 'install', …])`
+typechecked, passed every spec, and would have called a subcommand that does not exist. It is in the
+guard's `KEPT` list now with the argv spelled out. The compiler caught the other three collisions —
+ProseMirror's `Plugin` class, Vite's and esbuild's `Plugin` types, and Vite's `pluginContainer`.
+
+**Two miss classes worth carrying forward.** An identifier written after `\n` inside a string literal
+has a word character before it, so a `\b`-anchored rename never sees it — two sends were left behind.
+And a token mask passes a sentence that names a kept vocabulary generically: "tiptap plugins", "a
+ProseMirror plugin", "the plugin injects an import map" all inverted while every masked token held.
+Nineteen such sentences needed a read rather than a replace, which is what Phase 6 was for.
+
+**What a docs pass must not touch**, each found by touching it: `CHANGELOG.md`, which is released
+history; `etc/*.api.md`, which are generated and go stale against their generator; and the guard's own
+`KEPT` list, which a Phase 2 pass damaged — two bundler samples became `surfaces: [vue()]` and
+`surfaces.push(x)`, so the case stopped asserting the thing it exists for.
+
+**`PACK_SNAPSHOT_FORMAT` was not bumped**, though `PROVENANCE_KINDS.plugins` became `surfaces`. There is
+one CLI and every pack in this tree rebuilds with it, so the mismatch the format exists to catch cannot
+arise here. Revisit with the backward-compatibility rule, when a third-party pack can be installed from
+a registry.
+
+**Left open, both named in the code that raises them:**
+
+- `'code-surface-open-tabs'` is a pack's window-storage key moved by the host's frontend migration,
+  because a pack has no frontend-migration hook. The alternatives were a dual-read, which `CLAUDE.md`
+  forbids, or losing the user's open tabs. Give packs their own window migrations and it moves there
+  unchanged (`packages/apack-host/src/fe/migrations/0.4.0.ts`).
+- The migration spec found that `pickOne` answers `null`, not `undefined`, for an absent attribute. That
+  is a sharp edge for every future migration, not just this one, and nothing records it but that spec.
 
 **One thing to settle in Phase 2, not during it.** `PROVENANCE_KINDS.plugins` (`build/manifest.ts:162`)
 is a snapshot key a dependent pack reads, and `packages/apack-sdk/CLAUDE.md` says to bump

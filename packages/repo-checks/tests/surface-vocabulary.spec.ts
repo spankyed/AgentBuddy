@@ -157,10 +157,9 @@ describe('the patterns themselves', () => {
 
 describe('the surface vocabulary', () => {
   /**
-   * Parked until Phase 5 of `docs/goals/goal-plugins-to-surfaces.md`: the tree still spells the concept
-   * `plugin` everywhere, so this case cannot pass until the rename lands. `it.fails` makes that a
-   * tripwire rather than a silence — the moment the rename is complete this starts failing, and Phase 5
-   * is to flip it to `it`.
+   * The whole tree, every run. What it cannot see is a name that reaches another program: the four
+   * vocabularies in `KEPT` include a subprocess argv, where a rename typechecks and then calls a
+   * subcommand that does not exist.
    */
   it('no code names the frontend actor a plugin', () => {
     const files = population('tracked code files', trackedCodeFiles(), { atLeast: 500 });
@@ -181,7 +180,7 @@ describe('the surface vocabulary', () => {
         }
       });
     }
-    expect(violations, 'a surface is not a plugin; see docs/goals/goal-plugins-to-surfaces.md').toEqual([]);
+    expect(violations, 'a surface is not a plugin; see docs/archive/goals/goal-plugins-to-surfaces.md').toEqual([]);
   });
 
   it('excuses nothing that has stopped needing it', () => {
