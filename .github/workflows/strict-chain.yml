@@ -51,11 +51,13 @@ jobs:
         run: npm ci
       - name: Producers
         run: npm run chain -- --strict --all --cores 2 --no-classify --job producers | tee "$RUNNER_TEMP/strict-chain.log"
-      # A tarball keeps file modes and symlinks, which the stamps and the CLI bundle depend on
+      # A tarball keeps file modes and symlinks, which the stamps and the CLI bundle depend on. pax keeps
+      # sub-second modification times, which the default format truncates to whole seconds: a build records
+      # the mtimeMs its compilers read (Tailwind stats the files it scans), so a truncated one refuses
       - name: Package producer outputs
         run: |
           node scripts/with-source.mjs npx tsx scripts/strict-job-artifact.ts > "$RUNNER_TEMP/producers.list"
-          tar -czf "$RUNNER_TEMP/producers.tgz" -T "$RUNNER_TEMP/producers.list"
+          tar --format=pax -czf "$RUNNER_TEMP/producers.tgz" -T "$RUNNER_TEMP/producers.list"
       - name: Hand producer outputs on
         uses: actions/upload-artifact@v4
         with:
