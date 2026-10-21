@@ -73,7 +73,8 @@ installation above is not one of these: it lives inside one spec file and is dis
    `39554079038`, but `seconds` describes the 10-core machine `chain-steps.ts` was measured on, so the new figure
    has to come from a completed local chain run, which reports the measured cost beside the declared one.
 4. Checkpoint 1 and decision 3: affected-target selection, so that an ordinary edit runs only the
-   acceptance it needs, and the full strict gate runs only at the boundaries in decision 4.
+   acceptance it needs, and the full strict gate runs only at the boundaries in decision 4. Designed for the CI
+   strict route and deferred: [affected-selection.md](affected-selection.md).
 5. 10.1, 10.2 and 3a.1 as in their rows.
 
 ## Problem
