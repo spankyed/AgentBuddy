@@ -12,6 +12,7 @@ const roots: string[] = [];
 const installations: CompilerInstallation[] = [];
 afterEach(async () => {
   vi.restoreAllMocks();
+  vi.unstubAllEnvs();
   await Promise.all(installations.splice(0).map(installation => installation.dispose()));
   roots.splice(0).forEach(root => fs.rmSync(root, { recursive: true, force: true }));
 });
@@ -149,8 +150,9 @@ it('executes captured nested dependencies after their original files are removed
   compiler.write('node_modules/helper/node_modules/nested/index.cjs', 'throw new Error("live compiler escaped");');
   fs.rmSync(compiler.root, { recursive: true, force: true });
   expect(execFileSync(process.execPath, [installation.bin], { encoding: 'utf8' }).trim()).toBe('captured');
+  // The store entry is shared and outlives its holders; disposing one releases it without removing it
   await installation.dispose();
-  expect(fs.existsSync(installation.bin)).toBe(false);
+  expect(fs.existsSync(installation.bin)).toBe(true);
 });
 
 it.each(['executable', 'addon'] as const)('executes a captured platform %s after its source package is removed', async kind => {
@@ -201,15 +203,22 @@ it('preserves workspace links, file-link module resolution, cycles and executabl
   expect(fs.statSync(path.join(helper, 'entry.cjs')).mode & 0o222).toBe(0);
 });
 
-it('keeps independent captures immutable and gives changed bytes a different identity', async () => {
+/**
+ * One input, one installation: a second capture reuses the store's entry, so its executables keep one path —
+ * which is what lets macOS assess them once rather than per build. New bytes get a new entry, and the old one
+ * stays usable by whoever holds it.
+ */
+it('shares one installation per input and gives changed bytes their own', async () => {
   const compiler = fixture();
   const first = await compiler.capture();
   const second = await compiler.capture();
   expect(second.hash).toBe(first.hash);
-  expect(second.bin).not.toBe(first.bin);
+  expect(second.bin).toBe(first.bin);
+  expect(second.executable).toBe(first.executable);
   compiler.write('node_modules/helper/node_modules/nested/index.cjs', 'module.exports = "new compiler";');
   const changed = await compiler.capture();
   expect(changed.hash).not.toBe(first.hash);
+  expect(changed.bin).not.toBe(first.bin);
   expect(execFileSync(process.execPath, [first.bin], { encoding: 'utf8' }).trim()).toBe('captured');
   expect(execFileSync(process.execPath, [changed.bin], { encoding: 'utf8' }).trim()).toBe('new compiler');
 });
@@ -243,18 +252,28 @@ it('captures dependencies resolved through NODE_PATH and executes without their 
   }).trim()).toBe('captured');
 });
 
-it('removes an incomplete private installation when capture fails', async () => {
+/** An interrupted capture leaves no entry behind, and nothing a later reuse could mistake for a whole one */
+it('removes an incomplete installation when capture fails', async () => {
   const compiler = fixture();
-  const mkdtemp = fs.mkdtempSync;
-  let temporary = '';
-  vi.spyOn(fs, 'mkdtempSync').mockImplementation(prefix => {
-    temporary = mkdtemp(prefix);
-    return temporary;
-  });
+  const store = fs.mkdtempSync(path.join(os.tmpdir(), 'apack-compiler-store-'));
+  roots.push(store);
+  vi.stubEnv('APACK_COMPILER_STORE', store);
   vi.spyOn(fs, 'writeFileSync').mockImplementation(() => { throw new Error('capture write failed'); });
   await expect(compiler.capture()).rejects.toThrow('capture write failed');
-  expect(temporary).not.toBe('');
-  expect(fs.existsSync(temporary)).toBe(false);
+  expect(fs.readdirSync(store).filter(name => !name.endsWith('.lock'))).toEqual([]);
+});
+
+/** A damaged entry is never reused: the next capture finds it differs and captures it again */
+it('captures a damaged entry again rather than reusing it', async () => {
+  const compiler = fixture();
+  const first = await compiler.capture();
+  const nested = path.join(path.dirname(path.dirname(first.bin)), 'node_modules/helper/node_modules/nested/index.cjs');
+  fs.chmodSync(path.dirname(nested), 0o755);
+  fs.chmodSync(nested, 0o644);
+  fs.writeFileSync(nested, 'module.exports = "damaged";');
+  const second = await compiler.capture();
+  expect(second.bin).toBe(first.bin);
+  expect(execFileSync(process.execPath, [second.bin], { encoding: 'utf8' }).trim()).toBe('captured');
 });
 
 it('refuses captured bytes that differ from the captured package graph', async () => {

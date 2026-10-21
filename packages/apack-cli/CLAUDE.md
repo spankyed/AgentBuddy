@@ -86,7 +86,7 @@ runtime libraries and other-platform acceptance remain B1 work; the runtime vers
 close those requirements. A changed compiler/runtime or damaged copy is replaced.
 `runPackBuild` closes this scope after a single build;
 a watcher retains it until close. Closing aborts active work, drains the worker and input observers,
-then removes the private installation.
+then releases the installation.
 
 `pack dev` retains that builder across its initial build and watcher. `serveFrontend` runs the existing
 `packDevServerConfig` in `frontend-worker`, from the same captured compiler, with live authored sources
@@ -125,7 +125,13 @@ interrupted exit. Its synchronous test runners and later publishing phases keep 
 
 `build/compiler-installation.ts` copies bytes supplied by the host's normalized package-input graph,
 preserves physical module/link resolution and executable bits, verifies the copy and makes its inputs
-read-only. Its private metadata records the compiler fingerprint, captured package directories and
+read-only. **The copy lives in a machine-wide store, one entry per input** (`compilerStoreRoot`:
+`<cliDirs cache>/compilers`, `APACK_COMPILER_STORE` overrides it), keyed by the source graph, the runtime's
+contents and the esbuild selection. Every build and process with the same inputs reuses that entry, verified
+exactly as a fresh capture is, so the runtime and compiler executables keep one path and macOS assesses them
+once rather than per build. A damaged entry is captured again under a cross-process lock; releasing an
+installation leaves the entry, and `apack cache clean` reclaims the store. Specs capture into a per-run,
+per-worker store (`tests/_support/compiler-store*.ts`). Its private metadata records the compiler fingerprint, captured package directories and
 source-path mappings. Workers require this metadata to belong to their actual CLI; they keep the
 selected compiler rather than hand off to the project again. Module identity, diagnostic reads and
 frontend subscriptions use source origins. Initial execution context also includes the inherited
@@ -165,7 +171,7 @@ against its cwd, preserving main-image selection and signing permissions.
 Configured `ESBUILD_BINARY_PATH` executables belong to that installation too. Relative overrides resolve
 against the worker checkout; the worker receives the private copy. Missing overrides keep esbuild's
 package fallback. The installation's `isCurrent` checks selection, original/captured bytes and package
-graphs before reuse; its existing disposal removes the executable with the compiler.
+graphs before reuse; the copied executable lives and is reclaimed with its store entry.
 
 `bin/apack.mjs` selects `build-worker` only with its private worker handoff and parent IPC channel.
 It calls `stopReads()` before loading the worker bundle, ending preload filesystem interception while

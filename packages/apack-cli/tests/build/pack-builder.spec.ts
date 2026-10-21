@@ -126,16 +126,18 @@ it('reuses a verified compiler, refreshes changed or damaged copies, and release
   const updated = report();
   expect(updated.label).toBe('updated compiler');
   expect(updated.bin).not.toBe(first.bin);
-  expect(fs.existsSync(fileURLToPath(first.bin))).toBe(false);
+  // Installations are the store's shared copies: a released one stays for whoever captures those inputs next
+  expect(fs.existsSync(fileURLToPath(first.bin))).toBe(true);
   const label = fileURLToPath(new URL('../label.txt', updated.bin));
   fs.chmodSync(label, 0o644);
   fs.writeFileSync(label, 'damaged copy');
   await builder.build();
   const repaired = report();
   expect(repaired.label).toBe('updated compiler');
-  expect(repaired.bin).not.toBe(updated.bin);
+  // A damaged entry is captured again in place, so the same inputs keep the same path
+  expect(repaired.bin).toBe(updated.bin);
   await builder.close();
-  expect(fs.existsSync(fileURLToPath(repaired.bin))).toBe(false);
+  expect(fs.existsSync(fileURLToPath(repaired.bin))).toBe(true);
   await expect(builder.build()).rejects.toThrow('Pack builder is closed');
 });
 
@@ -156,7 +158,7 @@ it('drains an interrupted frontend startup before removing its compiler and writ
   await refused;
   expect(() => process.kill(pid, 0)).toThrow();
   expect(fs.existsSync(directory)).toBe(false);
-  expect(fs.existsSync(fileURLToPath(accepted.bin))).toBe(false);
+  expect(fs.existsSync(fileURLToPath(accepted.bin))).toBe(true);
 });
 
 it('cancels a frontend input check before retiring its compiler and workspace', async () => {
@@ -174,7 +176,7 @@ it('cancels a frontend input check before retiring its compiler and workspace', 
   await refused;
   expect(() => process.kill(pid, 0)).toThrow();
   expect(fs.existsSync(directory)).toBe(false);
-  expect(fs.existsSync(fileURLToPath(accepted.bin))).toBe(false);
+  expect(fs.existsSync(fileURLToPath(accepted.bin))).toBe(true);
 });
 
 it('refuses an unresponsive frontend freshness check and allows its later recovery', async () => {
@@ -225,7 +227,7 @@ it('replaces a server for pack configuration changes while reusing unchanged sou
   expect(capture).toHaveBeenCalledTimes(1);
   expect(fs.existsSync(fileURLToPath(first.bin))).toBe(true);
   await builder.close();
-  expect(fs.existsSync(fileURLToPath(first.bin))).toBe(false);
+  expect(fs.existsSync(fileURLToPath(first.bin))).toBe(true);
 });
 
 it('replaces frontend metadata generations while retaining their verified compiler', async () => {
@@ -264,7 +266,7 @@ it('replaces frontend metadata generations while retaining their verified compil
   expect(readPackDevServerInputs(pack)).toContain('@apackdev/ui/two');
   expect(capture).toHaveBeenCalledTimes(1);
   await builder.close();
-  expect(fs.existsSync(fileURLToPath(first.bin))).toBe(false);
+  expect(fs.existsSync(fileURLToPath(first.bin))).toBe(true);
 });
 
 it('replaces the frontend for environment changes without recopying the compiler', async () => {
@@ -335,7 +337,7 @@ it('stops its worker before removing the compiler on close', async () => {
   }
   expect(disposal).toHaveBeenCalledTimes(1);
   expect(() => process.kill(active.pid, 0)).toThrow();
-  expect(fs.existsSync(fileURLToPath(active.bin))).toBe(false);
+  expect(fs.existsSync(fileURLToPath(active.bin))).toBe(true);
 });
 
 it('captures both checkouts after refresh and refuses reuse if refresh fails', async () => {
@@ -389,7 +391,7 @@ it('force-stops a compiler that ignores cancellation before releasing its inputs
   await builder.close();
   await stopped;
   expect(() => process.kill(active.pid, 0)).toThrow();
-  expect(fs.existsSync(fileURLToPath(active.bin))).toBe(false);
+  expect(fs.existsSync(fileURLToPath(active.bin))).toBe(true);
   expect(fs.existsSync(path.join(pack, 'dist'))).toBe(false);
 });
 

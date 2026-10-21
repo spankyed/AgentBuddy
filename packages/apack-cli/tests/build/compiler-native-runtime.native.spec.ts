@@ -35,6 +35,7 @@ it.runIf(process.platform === 'darwin').each(electronRuntimes)('uses the %s Elec
     fs.writeFileSync(path.join(compiler, 'bin/apack.mjs'), 'console.log(JSON.stringify({electron:process.versions.electron,executable:process.execPath}));');
     const driver = path.join(root, 'driver.mjs');
     fs.writeFileSync(driver, `import fs from 'node:fs';
+import path from 'node:path';
 const started = Date.now();
 const phase = name => console.error('[electron runtime]', name, Date.now() - started);
 console.error('[electron runtime] ordinary bootstrap', JSON.stringify({electron:process.versions.electron,report:typeof process.report?.getReport}));
@@ -63,7 +64,7 @@ try {
   phase('verified');
 } finally { await installation.dispose(); }
 phase('retired');
-console.log(JSON.stringify({...output,retired:!fs.existsSync(installation.executable)}));`);
+console.log(JSON.stringify({...output,stored:installation.executable.startsWith(fs.realpathSync.native(process.env.APACK_COMPILER_STORE)+path.sep)}));`);
     const stdout = await new Promise<string>((resolve, reject) => {
       execFile(electron, ['--import', 'tsx', '--conditions=@apackdev/source', driver], {
         // Capture, launch and verification/retirement have distinct work; the driver bounds their sum.
@@ -74,12 +75,13 @@ console.log(JSON.stringify({...output,retired:!fs.existsSync(installation.execut
         else resolve(stdout);
       });
     });
-    const result = JSON.parse(stdout) as { value: { electron: string; executable: string }; captured: string; current: boolean; retired: boolean };
+    const result = JSON.parse(stdout) as { value: { electron: string; executable: string }; captured: string; current: boolean; stored: boolean };
     expect(result.value.electron).toBe(version);
     expect(result.value.executable).toBe(result.captured);
     expect(result.captured).not.toBe(fs.realpathSync.native(electron));
     expect(result.current).toBe(true);
-    expect(result.retired).toBe(true);
+    // The captured runtime is the store's shared copy, kept for the next capture rather than retired with this one
+    expect(result.stored).toBe(true);
   } finally { fs.rmSync(root, { recursive: true, force: true }); }
 }, 2 * 60_000);
 
@@ -152,7 +154,7 @@ it.runIf(process.platform === 'darwin' || process.platform === 'linux').each(ele
   const runtime = JSON.parse(fs.readFileSync(proof, 'utf8')) as { versions: { electron: string; node: string }; executable: string };
   expect(runtime.versions.electron).toBe(version);
   expect(runtime.executable).not.toBe(fs.realpathSync.native(electron));
-  expect(fs.existsSync(runtime.executable)).toBe(false);
+  expect(runtime.executable.startsWith(fs.realpathSync.native(process.env.APACK_COMPILER_STORE!) + path.sep)).toBe(true);
   const built = readPackBuild(path.join(pack, 'dist'));
   expect(built.snapshot.manifest.id).toBe('electron-proof');
   for (const file of ['runtime/index.cjs', 'runtime/fe.js']) expect(fs.statSync(path.join(pack, 'dist', file)).size).toBeGreaterThan(0);

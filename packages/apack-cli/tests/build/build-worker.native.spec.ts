@@ -424,14 +424,17 @@ it('reports frontend inputs that remain available after its compiler installatio
   const reports: BuildWatchInputs[] = [];
   await buildFixture(root, { signal, onInputs: inputs => { reports.push(inputs); } });
   expect(reports.some(report => report.successful && report.files.some(file => file.endsWith('Panel.vue')))).toBe(true);
+  // The compiler's own installation is never a pack input: nothing reported or recorded is inside the store
+  const store = fs.realpathSync.native(process.env.APACK_COMPILER_STORE!);
+  const inStore = (file: string) => path.resolve(fs.realpathSync(root), file).startsWith(store + path.sep);
   for (const report of reports) {
     expect([...report.files, ...report.directories, ...(report.probes?.map(([file]) => file) ?? [])]
-      .filter(file => /[\\/]apack-compiler-[^\\/]+[\\/]/.test(file))).toEqual([]);
+      .filter(inStore)).toEqual([]);
     for (const file of report.files) expect(fs.existsSync(file), file).toBe(true);
   }
   const reads = JSON.parse(fs.readFileSync(path.join(root, '.apack/reads.json'), 'utf8')) as { phases: Record<string, string[]> };
   for (const file of Object.values(reads.phases).flat()) {
-    expect(file).not.toMatch(/apack-compiler-[^/]+\//);
+    expect(inStore(file), file).toBe(false);
     expect(fs.existsSync(path.resolve(fs.realpathSync(root), file)), file).toBe(true);
   }
 }, 120_000 + 20_000);

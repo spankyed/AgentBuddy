@@ -3,6 +3,8 @@ import * as path from 'node:path';
 import { cliDirs, type CliDirs } from '../app/pack-host';
 import { dirBytes, size } from '../app/profiles';
 import { betaDownloadLeftovers, cachedBetaBuilds } from '../app/beta-app';
+import { findLockHolder } from '@apackdev/host/exclusive-lock';
+import { compilerStoreRoot, removeCompilerStoreDirectory } from '../build/compiler-installation';
 
 /**
  * The downloaded Beta builds, which nothing has ever reclaimed — each one an unpacked app of a few hundred
@@ -53,11 +55,42 @@ export function cleanApps(all: boolean, dirs: CliDirs = cliDirs()): void {
   if (!all && builds.length > 0 && removed < builds.length) console.log('  --all removes the newest too');
 }
 
+/**
+ * The captured compiler installations, one per compiler and runtime version a build has run — each a copy of the
+ * runtime, so they accumulate. All go: the next build captures what it needs again. One being captured right now
+ * (its lock held) is left alone, and one Windows still holds open is reported rather than failing the clean.
+ */
+export async function cleanCompilers(store: string = compilerStoreRoot()): Promise<void> {
+  const entries = fs.existsSync(store) ? fs.readdirSync(store).filter((name) => !name.endsWith('.lock')) : [];
+  if (entries.length === 0) {
+    console.log('  no captured compiler installations');
+    return;
+  }
+  let reclaimed = 0;
+  for (const name of entries) {
+    const entry = path.join(store, name);
+    if (findLockHolder(`${entry}.lock`) !== null) {
+      console.log(`    keeping  ${name.padEnd(24)}         being captured`);
+      continue;
+    }
+    const bytes = dirBytes(entry);
+    try {
+      await removeCompilerStoreDirectory(entry);
+      reclaimed += bytes;
+      console.log(`  removing  ${name.padEnd(24)} ${size(bytes).padStart(6)}`);
+    } catch (error) {
+      console.log(`    keeping  ${name.padEnd(24)}         in use (${(error as NodeJS.ErrnoException).code ?? 'error'})`);
+    }
+  }
+  console.log(`\n  reclaimed ${size(reclaimed)} of captured compilers`);
+}
+
 export async function cacheClean(args: string[]): Promise<void> {
   if (args.includes('--help') || args.includes('-h')) {
-    console.log('Usage: apack cache clean [--all]\n\nRemove downloaded beta builds, keeping the newest unless --all is passed. App installations and user data are kept.');
+    console.log('Usage: apack cache clean [--all]\n\nRemove downloaded beta builds, keeping the newest unless --all is passed, and captured compiler installations, which builds capture again as needed. App installations and user data are kept.');
     return;
   }
   if (args.some(arg => arg !== '--all')) throw new Error('Usage: apack cache clean [--all]');
   cleanApps(args.includes('--all'));
+  await cleanCompilers();
 }

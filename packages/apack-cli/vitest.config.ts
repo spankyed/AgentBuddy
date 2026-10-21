@@ -18,6 +18,9 @@ export default defineConfig({
     // The fast suite: every spec here runs in-process. The specs that run a real build, an install or
     // another process are `*.integration.spec.ts` and run from `vitest.integration.config.ts`.
     // `CLAUDE.md` has the rule for choosing, which is a judgement rather than a measured threshold.
+    // Captures go to a per-run, per-worker store, never the developer's shared one
+    setupFiles: ['./tests/_support/compiler-store.ts'],
+    globalSetup: ['./tests/_support/compiler-store-run.ts'],
     include: ['tests/**/*.spec.ts'],
     exclude: ['**/*.integration.spec.ts', '**/*.native.spec.ts', '**/node_modules/**'],
   },

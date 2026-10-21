@@ -8,7 +8,7 @@ import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { cleanApps } from '../../src/commands/cache-clean';
+import { cleanApps, cleanCompilers } from '../../src/commands/cache-clean';
 import { betaCacheDir, packagedExecutable } from '../../src/app/beta-app';
 import type { CliDirs } from '../../src/app/pack-host';
 
@@ -80,5 +80,40 @@ describe('apack cache clean', () => {
   it('says so when there is nothing downloaded, rather than failing on a missing cache', () => {
     expect(() => cleanApps(true, dirs)).not.toThrow();
     expect(vi.mocked(console.log).mock.calls.flat().join('\n')).toContain('no downloaded app builds');
+  });
+});
+
+/**
+ * The captured compiler installations: every entry goes, since the next build captures what it needs again, and
+ * the store holds them read-only, which a plain recursive delete would refuse. One being captured — its lock held
+ * by a live process — is left for its capture to finish.
+ */
+describe('cleanCompilers', () => {
+  const entry = (store: string, name: string): string => {
+    const dir = path.join(store, name);
+    fs.mkdirSync(path.join(dir, 'tree'), { recursive: true });
+    fs.writeFileSync(path.join(dir, 'tree', 'node'), 'x'.repeat(1024));
+    fs.chmodSync(path.join(dir, 'tree'), 0o555);
+    fs.chmodSync(dir, 0o500);
+    return dir;
+  };
+
+  it('removes read-only entries and keeps one whose capture is in progress', async () => {
+    const store = path.join(tmp, 'compilers');
+    const done = entry(store, 'aaaaaaaaaaaaaaaa');
+    const capturing = entry(store, 'bbbbbbbbbbbbbbbb');
+    fs.writeFileSync(`${capturing}.lock`, JSON.stringify({ pid: process.pid, machine: os.hostname(), what: 'capture', since: new Date().toISOString() }));
+    vi.spyOn(console, 'log').mockImplementation(() => {});
+    await cleanCompilers(store);
+    expect(fs.existsSync(done)).toBe(false);
+    expect(fs.existsSync(capturing)).toBe(true);
+    fs.chmodSync(capturing, 0o700);
+    fs.chmodSync(path.join(capturing, 'tree'), 0o700);
+  });
+
+  it('says so when there is nothing to remove', async () => {
+    const log = vi.spyOn(console, 'log').mockImplementation(() => {});
+    await cleanCompilers(path.join(tmp, 'absent'));
+    expect(log).toHaveBeenCalledWith('  no captured compiler installations');
   });
 });

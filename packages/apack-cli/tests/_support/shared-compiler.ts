@@ -4,13 +4,13 @@ import { captureCompilerInstallation, compilerPackageDirectory, type CompilerIns
 
 /**
  * One compiler installation for the cases of a spec file that opt in, where capturing one is setup rather than
- * the subject. Capture copies and verifies the CLI's whole compiler graph, so a file whose cases each capture
- * their own pays that once per case for nothing the case asserts.
+ * the subject. The store already shares an installation's copy, but each capture still hashes the CLI's whole
+ * compiler graph and its runtime to find the entry, so a file whose cases each capture pays that once per case for
+ * nothing the case asserts.
  *
- * Call it once at the top of the file. It disposes what it captured after the file's last case, and every
- * installation it lends has a `dispose` that leaves it in place, so a case's own cleanup — `builder.close()`,
- * `compiler.dispose()` — stays correct unchanged. A builder still checks `isCurrent` before each reuse, and a
- * lent installation that stops being current is replaced by a fresh capture.
+ * Call it once at the top of the file. Every installation it lends has a `dispose` that leaves it in place, so a
+ * case's own cleanup — `builder.close()`, `compiler.dispose()` — stays correct unchanged. A builder still checks
+ * `isCurrent` before each reuse, and a lent installation that stops being current is captured again.
  *
  * **Opt in only where capture is incidental.** A case whose subject is capture itself, the captured runtime,
  * an `ESBUILD_BINARY_PATH` override, a changing compiler graph or the removal of an installation keeps a fresh
