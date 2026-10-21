@@ -108,8 +108,9 @@ it.skipIf(process.platform === 'linux')('refreshes backend and live frontend tog
   expect(await response(second)).toContain('GENERATION_B');
   expect(fs.readFileSync(path.join(root, 'dist/runtime/fe.js'), 'utf8')).toContain('GENERATION_B_SECOND');
   expect(() => process.kill(first.pid, 0)).toThrow();
+  // Retiring the frontend releases its compiler installation; the store keeps the entry for the next build
   const accepted = await captures.mock.results[0]!.value;
-  expect(fs.existsSync(accepted.bin)).toBe(false);
+  expect(fs.existsSync(accepted.bin)).toBe(true);
   await watcher.close();
   expect(await response(second)).toContain('GENERATION_B');
 
