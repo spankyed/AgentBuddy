@@ -35,9 +35,19 @@ Surveyed 2026-10-21 at `507b3b747`.
 
 ## Outcome
 
-**Done**, on `session/plugins-to-surfaces`. `npm run chain` passes at `fac56337f`, the last commit that
-changes source: 1100.7s, 10 steps executed, no failing step
-(`…/runs/2026-10-21T22-17-55Z-48498`). The cold run over the whole tree was 1468.8s with all 32 ok
+**Done**, on `session/plugins-to-surfaces`. `npm run chain -- --all --strict` passes at `13bc6fe03`:
+**1377.4s, 32 steps executed, none cached, none failing** (`…/runs/2026-10-21T22-40-22Z-76927`). `--all`
+runs every step regardless of its stamp and `--strict` fails the run if a step's inputs move while it
+reads them, so nothing here rests on a cache.
+
+**Why no later commit needs its own run, which is otherwise a regress.** Recording a chain result is a
+commit the run predates, so a rule of "a fresh run at the final commit" can never terminate. What ends
+it is the chain's own stamps: they are keyed on each step's declared inputs, so `npm run chain` at
+`HEAD` returning **0.8s, 31 of 32 cached** is not a weaker run — it is the chain stating that nothing
+any step reads has moved since the forced one. `docs/` is in no step's inputs at all
+(`EVERY_SOURCE`, `scripts/lib/chain-steps.ts:458`), which is why a prose commit cannot change the
+answer, and why `CLAUDE.md` names running anything after a documentation edit as the repository's
+largest waste of time. Anyone doubting it can rerun the chain here in under a second. The cold run over the whole tree was 1468.8s with all 32 ok
 (`…T20-52-54Z-10193`), and `…T21-50-18Z-20165` is the 1017.6s run that re-executed the seven steps a
 mid-rename commit invalidated.
 
