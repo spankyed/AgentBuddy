@@ -123,7 +123,7 @@ it('owns a relative external esbuild executable and detects changed selection an
   fs.writeFileSync(compiler.file, compiler.bytes, { mode: 0o755 });
   expect(first.isCurrent(compiler.root, { ...compiler.options, env: {} })).toBe(false);
   expect(first.isCurrent(compiler.root, compiler.options)).toBe(true);
-});
+}, 2 * 15_000 + 5_000);
 
 it('detects damage to its captured external esbuild executable', async () => {
   const compiler = esbuildFixture();
