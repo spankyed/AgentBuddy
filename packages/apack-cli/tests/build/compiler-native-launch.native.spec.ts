@@ -13,6 +13,7 @@ import type { CompilerInstallation } from '../../src/build/compiler-installation
 import { startPackFrontend, type PackFrontend } from '../../src/build/frontend-process.ts';
 import { nativeFixture, nativeLoad } from '../_support/native-libraries.ts';
 import { shareCompilerInstallation } from '../_support/shared-compiler.ts';
+import { inNativeStore } from '../_support/native-store.ts';
 
 // The native-library proofs are split by subject so the native half's shards can spread them; this one is
 // outside launch overrides: OS libraries, the DYLD_* variables and the selected image suffix.
@@ -192,7 +193,7 @@ it.runIf(process.platform === 'darwin')('captures the selected native image suff
     const accepted = JSON.parse(fs.readFileSync(proof, 'utf8')) as { value: number; libraries: string[] };
     expect(accepted.value).toBe(37);
     expect(accepted.libraries).not.toContain(selected);
-    expect(accepted.libraries.some(file => file.includes('apack-inputs-') && file.endsWith('/lib/libvalue_apack.dylib'))).toBe(true);
+    expect(accepted.libraries.some(file => inNativeStore(file) && file.endsWith('/lib/libvalue_apack.dylib'))).toBe(true);
     const output = path.join(fixture.pack, 'dist');
     const revision = readPackBuild(output).revision;
     const inputs = readPackBuildInputs(output);

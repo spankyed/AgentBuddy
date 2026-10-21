@@ -9,7 +9,12 @@ import { readPeDirectoryEntries } from './compiler-pe-activation.ts';
 import { isCompilerLocationPath, isOwnedCompilerPath, type CompilerInstallationInputs } from './compiler-installation-inputs.ts';
 import { compilerNativeStore, storeCompilerNativePackage } from './compiler-native-store.ts';
 
-export interface CapturedNativeModule { readonly source: string; readonly captured: string; readonly packageRoot: string }
+/**
+ * A native module a compiler loaded: its original, the file actually loaded and that file's package. A module loaded
+ * from the shared native store also names `copy`, the read tree's file the stored bytes were taken from, which is
+ * what the build's copy observations record.
+ */
+export interface CapturedNativeModule { readonly source: string; readonly captured: string; readonly packageRoot: string; readonly copy?: string }
 
 /** Owned native bytes; Vite captures selected images so authored sources remain live. */
 export function createCompilerNativeInputs(original: ReturnType<typeof createCompilerFileView>, workspace: string,
@@ -118,12 +123,16 @@ export function createCompilerNativeInputs(original: ReturnType<typeof createCom
       },
     });
     const captured = readDataPath(file);
-    // Loaded from the shared store's copy of what the tree holds for this package, so the addon keeps one path
-    // across builds; a package the store cannot hold keeps the build's own copy
+    // A whole captured package loads from the shared store's copy of it, so the addon keeps one path across builds.
+    // A package the store cannot hold, or one captured only in part, keeps the build's own copy.
     const materialized = tree!.dataPath(owner);
-    const stored = storeCompilerNativePackage(materialized, nativeStore);
-    const loaded = stored === undefined ? captured : path.join(stored, path.relative(materialized, captured));
-    modules.set(file, { source: file, captured: loaded, packageRoot: stored ?? materialized });
+    const stored = capturePackage ? storeCompilerNativePackage(materialized, nativeStore) : undefined;
+    if (stored === undefined) {
+      modules.set(file, { source: file, captured, packageRoot: materialized });
+      return captured;
+    }
+    const loaded = path.join(stored, path.relative(materialized, captured));
+    modules.set(file, { source: file, captured: loaded, packageRoot: stored, copy: captured });
     return loaded;
   };
   const admit = (file: string) => {

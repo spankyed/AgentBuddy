@@ -12,6 +12,7 @@ import {
 } from '@apackdev/host/build/compiler-inputs';
 import { captureCompilerLibraryEnvironment, type CompilerLibraryEnvironment } from './compiler-native-libraries.ts';
 import { createCompilerNativeInputs } from './compiler-native-input-owner.ts';
+import { compilerNativeStore } from './compiler-native-store.ts';
 import { createCompilerNativeReports } from './compiler-native-reports.ts';
 
 import { parseNodeOptions } from '@apackdev/host/build/source-resolution';
@@ -72,7 +73,7 @@ export function beginCompilerStartupInputs(root: string, workspace: string, comp
     recordWatchInput(compilerSourcePath(file, paths), kind);
   }) });
   initializing = false;
-  const reports = createCompilerNativeReports(original.observations().root, workspace);
+  const reports = createCompilerNativeReports(original.observations().root, workspace, compilerNativeStore(compiler.directory));
   const save = () => withoutCompilerFileReads(() => reports.write({
     source: original.observations(file => !native.includes(file)), copies: native.copies(), modules: native.modules(),
   }));
