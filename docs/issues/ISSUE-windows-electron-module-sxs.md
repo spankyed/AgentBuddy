@@ -15,9 +15,19 @@ the first failure). It is a Windows loader refusal of the fixture addon's or the
 activation context, not a deadline. The case captures through its own path, not the shared compiler
 installation.
 
-**Next diagnostic:** reproduce on the [Windows development VM](../references/guides/windows-development-vm.md)
-and read the activation failure with `sxstrace` and the Application event log; a CI log cannot show which
-manifest or assembly the loader rejected. Its checkout `C:\src\apack` is on `session/integration-sharding`.
+**It does not reproduce on the [Windows development VM](../references/guides/windows-development-vm.md)**
+(2026-10-21, `master` at `c2c4b5aef`, Windows Server 2025 Azure Edition, Build Tools 18.11):
+- the case passes alone;
+- it passes after the publisher-policy case;
+- the whole PE file passes, 26 of 26 in 755s, with CI's flags (`--bail=1`, one thread, no file parallelism).
+
+The fixture needs the native SDK the workflow prepares (`.github/scripts/setup-node-native-sdk.ps1`, run with
+`RUNNER_TEMP` and `GITHUB_ENV` pointed at local paths).
+
+So it is specific to the hosted runner, not to the code or the fixtures. The runner is `windows-2025-vs2026`
+with Visual Studio 18 Enterprise and MSVC 14.51. **Next diagnostic, on the runner itself:** a filtered
+`compiler_windows` dispatch that runs `sxstrace` around the case and uploads its parsed log and the Application
+event log's SideBySide entries. The VM cannot show what the runner's loader rejected.
 
 The three Windows failures in front of this one are fixed: the job-ownership step running before
 `npm ci`, the PE metadata helpers' five-second limit, and `Get-FileHash` in the publisher-policy fixture.
