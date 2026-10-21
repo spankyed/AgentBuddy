@@ -51,14 +51,15 @@ poll a deadline matched to what a restore costs is the fix; raising it to obtain
 | Phase | Commit | Evidence for its "Done when" |
 |---|---|---|
 | 1 — the guard | `99540ead9` | Live in `@app/repo-checks`. Mutation: unparked it reported 2128 violations with the manifest key firing; adding `TiptapPlugin` to a group failed the kept-spellings case; a stale `ALLOWED` entry was named |
-| 2 — the concept | `7f495e0ff` | `typecheck` 17/17, `api:check`, `schema:check`, `test:unit` 5689, `build:default-setup`, and `test:external-pack` as the chain's three halves — `:contract` 84.3s, `:fork` 104.2s, `:app` 129.0s |
+| 2 — the concept | `7f495e0ff` | `typecheck` 17/17, `api:check`, `schema:check`, `test:unit` 5689, `build:default-setup`, and `npm run test:external-pack` run directly, exit 0 — `:contract` 38 tests over 11 files, `:fork`, `:app` 27 + 5 specs |
 | 3 — the wire | `260a96801` | `npm test -w @apackdev/host` 1746 passed / 135 files, including `tests/bus/outgoing-events.spec.ts` and `tests/packs/event-validation-map.spec.ts`; `test:smoke` 16.1s in the chain. Mutation: a half-applied rename in the bus's lookup (the map keyed by ref, the lookup building the old spelling) failed **23** specs across both files, so no new spec was needed |
 | 4 — stored state | `824df0b92` | `tests/migrations/surface-state-0.4.0.spec.ts`. Mutation: dropping the removal, guarding on `undefined`, and guarding the row instead of each attribute each failed a different case |
 | 5 — docs, guard live | `afedfa064` | Scan unparked and green; `welcome.md` re-recorded; `doc-links` passing |
-| 6 — the prose read | `dc57c0504`, `32f1b07cf`, `bd0a1c2` | 19 inversions. Mutation: the guard caught a local renamed to `readPluginState`, which collides with the retired SDK reader. Its "no comment or guide sentence" condition rests on a **complete enumeration** — all 241 remaining occurrences classified, not a sampled grep — which found eight concept names that four passes had missed, `setPluginVisible` among them, published. All four memory files now name only things that exist |
+| 6 — the prose read | `dc57c0504`, `32f1b07cf`, `313a2092c` | 19 inversions. Mutation: the guard caught a local renamed to `readPluginState`, which collides with the retired SDK reader. Its "no comment or guide sentence" condition rests on a **complete enumeration** — all 241 remaining occurrences classified, not a sampled grep — which found eight concept names that four passes had missed, `setPluginVisible` among them, published. All four memory files now name only things that exist |
 
-`npm run test:e2e -- smoke` runs directly at 5 passed; `test:external-pack` is evidenced through the
-chain, which runs it as its three steps.
+`npm run test:e2e -- smoke` (5 passed), `npm test -w @apackdev/host` (1746 over 135 files) and
+`npm run test:external-pack` (exit 0, all three halves) are each run directly, as their phases name
+them, rather than only as chain steps.
 
 **Phase 2's exit grep leaves two sources, both correct**: `CHANGELOG.md`, where a 2024 entry reads
 "rename usePlugin to useState composable" and is released history, and the guard's own retired list,
