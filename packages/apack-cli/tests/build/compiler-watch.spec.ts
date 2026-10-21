@@ -117,8 +117,12 @@ it('replays worker bytes and native metadata while leaving ordinary static bytes
     fs.writeFileSync(worker, 'SECOND');
     expect(() => assertNativeCompilerObservations(observed)).toThrow(/changed/);
     fs.writeFileSync(worker, 'FIRST');
+    // The metadata read was a modification time, which is recorded as the file's content: a touch is not a
+    // change, and new bytes are, even though the file's own bytes are left to the static fingerprint
     const future = new Date(Date.now() + 60_000);
     fs.utimesSync(shared, future, future);
+    expect(() => assertNativeCompilerObservations(observed)).not.toThrow();
+    fs.writeFileSync(shared, 'CHANGED');
     expect(() => assertNativeCompilerObservations(observed)).toThrow(/changed/);
   } finally { view.dispose(); }
 });

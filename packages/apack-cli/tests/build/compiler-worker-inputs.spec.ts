@@ -65,7 +65,9 @@ it.each([false, true])('refuses an uncaptured worker with parent IPC (unrelated 
   child.stderr!.on('data', chunk => { errors += chunk; });
   const closed = new Promise<number | null>((resolve, reject) => { child.once('error', reject); child.once('close', resolve); });
   try {
-    expect(await _byDeadline(closed, 'uncaptured worker refusal', 2_000)).toBe(1);
+    // A bound on a hang, not a speed check: the refusal is the first thing the worker does, but reaching it
+    // is a cold CLI start from source, which a loaded small runner can take seconds over
+    expect(await _byDeadline(closed, 'uncaptured worker refusal', 10_000)).toBe(1);
     expect(errors).toContain('Pack build worker requires captured compiler inputs');
     expect(fs.existsSync(path.join(root, 'dist'))).toBe(false);
   } finally {
