@@ -76,9 +76,8 @@ installation above is not one of these: it lives inside one spec file and is dis
 4. 10.2's remaining 46 exceptions: the 31 integration ones would need the integration half sized to its
    cold-build specs, which would loosen its fast specs too, so they stay reviewed per case. Native cases over
    300s, or whose budget names a constant, stay as well.
-5. The contract step (36s declared) and `build:runtime` (13s) ran at 97s and 37s locally beside two peers on
-   2026-10-21. Re-declare them from a run where each runs alone; contention inflates a duration and cannot
-   deflate one.
+5. Done 2026-10-21: `test:external-pack:contract` is declared at 97s (its stated basis, the chain's default
+   admission; 73s alone) and `build:runtime` at 29s (alone).
 
 ## Problem
 

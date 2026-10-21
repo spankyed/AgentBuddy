@@ -1092,10 +1092,10 @@ export const CHAIN_STEPS: readonly ChainStep[] = [
   // grow to cover the typecheck or the specs, it would have the shape the pool steps had — stale for a
   // reason its inner layer cannot see, so it runs, skips everything and stamps green.
   //
-  // 38s, not the 20s it takes alone: `seconds` is what a step costs under the chain's own default
-  // admission, because that is the schedule the drift report compares against. Raising the lane default from
-  // two to three moved this one and nothing else past the drift band, which is `driftedSteps` doing its job.
-  { name: 'test:external-pack:contract', timeout: 'suite', seconds: 36, outputs: FIXTURE_OUTPUTS,
+  // 97s, not the 73s it takes alone (2026-10-21, 73% idle): `seconds` is what a step costs under the chain's
+  // own default admission, because that is the schedule the drift report compares against, and beside its two
+  // peers there it took 97s.
+  { name: 'test:external-pack:contract', timeout: 'suite', seconds: 97, outputs: FIXTURE_OUTPUTS,
     // It declares `tests/packs` for the pack sources; the Playwright output under each pack is written
     // by `:app`, changes every run, and is read by nothing
     excludes: FIXTURE_TEST_OUTPUT,
@@ -1138,7 +1138,8 @@ export const CHAIN_STEPS: readonly ChainStep[] = [
   // `need`. It declared `PACK_SOURCES` while the renderer's plugin and the api's tsup each traced a generated
   // entry into the pack's `src`; `check:tiers` and the app build's own header are what keep that from coming
   // back quietly
-  { name: 'build:runtime', timeout: 'suite', seconds: 13, outputs: APP_OUTPUTS,
+  // 29.2s run alone (2026-10-21, 80% idle).
+  { name: 'build:runtime', timeout: 'suite', seconds: 29, outputs: APP_OUTPUTS,
     inputs: [...ROOT, ...APP_RUNNER, ...['renderer', 'api', 'main', 'preload', 'apack-host'].flatMap(workspace),
       'packages/api/tsup.config.ts', 'build/build-metadata.ts', 'package.json', ...APP_ENTRY,
       ...PACKAGE_BUILD_READS, ...PACK_OUTPUTS] },
