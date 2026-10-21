@@ -78,6 +78,17 @@ export interface ChainStep {
    */
   readonly keepsOnFailure?: readonly string[];
   /**
+   * What a step writes as an account of its run — test results, an app's log, traces — that no step reads.
+   *
+   * Two writers of one evidence path conflict, as two writers of an output do, and a failed step's evidence
+   * is kept like `keepsOnFailure` (`keptOnFailure` below). **It is no part of the step's cache key**, which is
+   * the difference from `outputs`: an output's bytes are what a later step consumes, so another writer
+   * changing them makes the step stale; a result directory another run rewrote says nothing about whether
+   * this step's inputs moved. Declared as an output, every E2E run turned `test:smoke` stale with no input
+   * changed, since both write Playwright's output directory.
+   */
+  readonly evidence?: readonly string[];
+  /**
    * A step the chain does not cache, and why. Set means uncached; the chain prints this sentence where a
    * cache verdict would go, so it is a reason and not a flag — the one line it replaced was hardcoded about
    * Electron and was wrong about the second step to opt out.
@@ -340,12 +351,16 @@ export function conflictsOf(step: ChainStep, steps: readonly ChainStep[] = CHAIN
   // --pack` packing a tarball inside each tree it checked, and that is a mutex against 29 of 30 steps for a
   // tool that takes a tarball path. `scripts/packages-check.ts` packs outside the repository instead, so the
   // distinction has no subject here; it is written down because it is what a future transient writer needs.
+  const writes = (one: ChainStep) => [...(one.outputs ?? []), ...(one.evidence ?? [])];
   return steps
-    .filter((other) => other.name !== step.name
-      && overlaps(other.outputs ?? [], step.outputs ?? []))
+    .filter((other) => other.name !== step.name && overlaps(writes(other), writes(step)))
     .map((other) => other.name)
     .sort();
 }
+
+/** What the chain copies aside when a step fails: what it declares keeping, and all of its evidence */
+export const keptOnFailure = (step: ChainStep): readonly string[] =>
+  [...new Set([...(step.keepsOnFailure ?? []), ...(step.evidence ?? [])])];
 
 /** A step with its edges worked out: what it waits for, and what it may not run beside. */
 export interface PlannedStep extends ChainStep {
@@ -1161,11 +1176,10 @@ export const CHAIN_STEPS: readonly ChainStep[] = [
   // answered. Uncached it put the warm chain back to 5.6s from 0.9s, which is most of what taking the
   // suite off the gate bought.
   { name: 'test:smoke', timeout: 'suite', seconds: 16,
-    outputs: ['.apack/tests/results'],
     // The fixture writes the app's stdout and stderr here (`app-<workerIndex>.log`), which is the only
     // account of why an app did not start or did not close. Playwright clears the directory on the way in,
     // so the retry would take it
-    keepsOnFailure: ['.apack/tests/results'],
+    evidence: ['.apack/tests/results'],
     inputs: [...ROOT, 'tests/e2e/smoke', 'playwright.config.ts',
       ...SOURCE_RUNNER, ...APP_ENTRY, ...PACKAGE_BUILD_READS, ...APP_OUTPUTS, ...PACK_OUTPUTS] },
   // The rest of the E2E suite. **Opt-in, not a gate** — `npm run chain -- --e2e`.
@@ -1177,8 +1191,7 @@ export const CHAIN_STEPS: readonly ChainStep[] = [
   { name: 'test:e2e', timeout: 'suite', seconds: 26,
     optInBecause: 'it is a harness for driving the app, not a regression gate; nothing has needed it to fail',
     neverCachedBecause: 'it drives real Electron, and a flaky pass cached green hides an intermittent failure',
-    outputs: ['.apack/tests/results'],
-    keepsOnFailure: ['.apack/tests/results'],
+    evidence: ['.apack/tests/results'],
     // The published trees, because the fixture every spec imports resolves `@apackdev/testing`'s built bundle
     // from one of them — and `packages:check` packs a tarball inside those trees and recreates them, which a
     // reader must not observe. Declaring them is what makes that a mutex instead of a scheduling accident;

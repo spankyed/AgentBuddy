@@ -39,7 +39,7 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { changedInputs, diffableStamp, firstChange, freshnessSweep, INPUTS_CHANGED, PACKAGES_PREBUILT_ENV, REPO_ROOT, stampedRun, stampRecord, unitStaleReason } from '@apackdev/host/build/packages-built';
-import { CHAIN_STEPS, type ChainStep, chainSteps, needsApp, orderedSteps, STEP_TABLES } from './lib/chain-steps.ts';
+import { CHAIN_STEPS, type ChainStep, chainSteps, keptOnFailure, needsApp, orderedSteps, STEP_TABLES } from './lib/chain-steps.ts';
 import { stampFor, STAMP_DIR, unitFor } from './lib/chain-stamps.ts';
 import { evidenceLine, openRunEvidence, pruneRunEvidence, type RunEvidence } from './lib/chain-evidence.ts';
 import { CHAIN_FLAGS } from './lib/chain-flags.ts';
@@ -604,7 +604,7 @@ async function main(): Promise<void> {
     // clears its output directory on the way in overwrites what the attempt being diagnosed wrote — the
     // same reason the sweep above is read here rather than after. Kept on any failure, not only a
     // classified one: a step that ran alone or timed out leaves the same files and nobody re-runs it.
-    const left = evidence?.keepFiles(step.name, step.keepsOnFailure ?? []) ?? [];
+    const left = evidence?.keepFiles(step.name, keptOnFailure(step)) ?? [];
     if (left.length > 0) console.log(dim(`  kept what it left behind: ${left.join(', ')}`));
     if (classifying) {
       // `run`, never `runAndStamp`: a step that passes alone has not passed the chain, and stamping it here
@@ -626,7 +626,7 @@ async function main(): Promise<void> {
       classifyMs = retry.ms;
       // The retry's own, beside the first attempt's rather than over them — a re-run that passed and one
       // that failed wrote different files, and which it was is the question being asked
-      evidence?.keepFiles(`${step.name}.retry`, step.keepsOnFailure ?? []);
+      evidence?.keepFiles(`${step.name}.retry`, keptOnFailure(step));
       console.log(classifyLine(retry, beside));
     }
   }
