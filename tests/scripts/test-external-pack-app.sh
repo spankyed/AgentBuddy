@@ -25,16 +25,24 @@ for PACK in "${FIXTURE_PACKS[@]}"; do
 done
 
 # Normal launches over repository-owned temporary storage verify fork preservation, removal and restoration.
-# The public CLI's test isolation policy is retained; this runner owns its explicit fixture environment. It
-# runs beside the fixture suites, on its own data dir and output directory, and its first launch is the fork
-# test itself, so the fixture suite leaves that test to it rather than running it twice.
+# The public CLI's test isolation policy is retained; this runner owns its explicit fixture environment. Its
+# first launch is the fork test itself, so the fixture suite leaves that test to it rather than running it twice.
+#
+# It runs beside the fixture suites, on its own data dir and output directory, only where the machine has the
+# cores for another app. On a 3-vCPU runner two apps slowed a pack disable past its 5s assertion, so a smaller
+# machine runs it after the suites.
 fork_pid=""
+fork_after=0
 exclude=()
 if [ "$#" -eq 0 ]; then
-  fork_log="$(mktemp)"
-  "$ROOT/node_modules/.bin/tsx" "$ROOT/tests/scripts/test-default-pack-fork.ts" >"$fork_log" 2>&1 &
-  fork_pid=$!
   exclude=(--grep-invert 'externally built default fork')
+  if [ "$(node -p 'require("node:os").availableParallelism()')" -ge 6 ]; then
+    fork_log="$(mktemp)"
+    "$ROOT/node_modules/.bin/tsx" "$ROOT/tests/scripts/test-default-pack-fork.ts" >"$fork_log" 2>&1 &
+    fork_pid=$!
+  else
+    fork_after=1
+  fi
 fi
 
 status=0
@@ -43,6 +51,9 @@ for PACK in "${FIXTURE_PACKS[@]}"; do
   "$APACK" pack test --host "$ROOT" --prebuilt ${exclude[@]+"${exclude[@]}"} "$@" || { status=$?; break; }
 done
 
+if [ "$fork_after" -eq 1 ] && [ "$status" -eq 0 ]; then
+  "$ROOT/node_modules/.bin/tsx" "$ROOT/tests/scripts/test-default-pack-fork.ts" || status=$?
+fi
 if [ -n "$fork_pid" ]; then
   fork_status=0
   wait "$fork_pid" || fork_status=$?
