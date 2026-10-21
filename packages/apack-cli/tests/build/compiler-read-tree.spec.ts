@@ -4,6 +4,7 @@ import path from 'node:path';
 import { afterEach, expect, it, vi } from 'vitest';
 import { assertNativeCompilerObservations, createCompilerFileView } from '@apackdev/host/build/compiler-inputs';
 import { BUILD_INPUTS_DIRECTORY_ENV, createCompilerReadTree, removeCompilerReadTree, type CompilerReadTree } from '../../src/build/compiler-read-tree.ts';
+import { compilerReadMapping } from '../../bin/compiler-source-hooks.mjs';
 
 const roots: string[] = [];
 const trees: CompilerReadTree[] = [];
@@ -162,4 +163,16 @@ it('refuses retained admissions after disposal while preserving diagnostic paths
   expect(() => tree.assertCurrent()).toThrow(/outlived/);
   expect(tree.diagnostic(owned)).toBe(file);
   expect(fs.existsSync(tree.directory)).toBe(false);
+});
+
+/**
+ * Native loading hands Windows the extended spelling of a module's path, and side-by-side activation probes for its
+ * manifests and configuration beside it. Both spellings must reach one stored location, or a captured addon loads
+ * from a directory holding none of its selectors.
+ */
+it.runIf(process.platform === 'win32')('stores the extended and drive spellings of a file in one place', () => {
+  const directory = 'C:\\inputs';
+  const drive = compilerReadMapping(directory, 'C:\\pack\\binding\\addon.node');
+  expect(compilerReadMapping(directory, '\\\\?\\C:\\pack\\binding\\addon.node')).toEqual(drive);
+  expect(compilerReadMapping(directory, 'C:\\pack\\binding\\addon.node.2.config').readRoot).toBe(drive.readRoot);
 });

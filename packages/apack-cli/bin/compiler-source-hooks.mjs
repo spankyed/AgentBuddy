@@ -8,11 +8,18 @@ export function initialize(data) {
   closed = new Int32Array(data.closed);
 }
 
-/** The canonical storage projection shared by the input owner and loader thread. */
+/**
+ * The canonical storage projection shared by the input owner and loader thread.
+ *
+ * One location per file, whichever spelling reaches it: Node passes the extended form (`\\?\C:\…`) to native
+ * loading, so keying storage on the literal root would put a loaded addon in another directory from the
+ * side-by-side manifests and configuration Windows probes for beside it, and activation would fail.
+ */
 export function compilerReadMapping(directory, file) {
-  const sourceRoot = path.parse(file).root;
+  const ordinary = /^\\\\\?\\[a-z]:\\/i.test(file) ? file.slice(4) : file;
+  const sourceRoot = path.parse(ordinary).root;
   const readRoot = path.join(directory, Buffer.from(sourceRoot).toString('hex'));
-  return { sourceRoot, readRoot, readPath: path.join(readRoot, path.relative(sourceRoot, file)) };
+  return { sourceRoot, readRoot, readPath: path.join(readRoot, path.relative(sourceRoot, ordinary)) };
 }
 
 export async function load(url, context, next) {
