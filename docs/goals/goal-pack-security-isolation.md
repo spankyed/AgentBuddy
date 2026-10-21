@@ -34,7 +34,7 @@ executable components. Generated types and manifest metadata currently constrain
 but do not contain arbitrary code sharing the host's execution environment. The existing `permissions`
 field is descriptive metadata, not an enforced grant.
 
-The [manifest maturity plan](../plans/manifest-maturity.md) separates declared consumed APIs from
+The [manifest maturity plan](../archive/plans/manifest-maturity.md) separates declared consumed APIs from
 security permissions. [Settings extraction](../archive/plans/settings-architecture.md) defines shared
 cross-pack mutation by default, with optional owner-only mutation through the supported API. The
 [discovery plan](../archive/plans/discovery-without-activation.md) makes declared surfaces inspectable without

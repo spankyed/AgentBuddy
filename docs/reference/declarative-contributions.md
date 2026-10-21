@@ -2,8 +2,8 @@
 
 Status: current-code reference, revised 2026-10-19. The
 [completed settings and pack contracts goal](../archive/goals/goal-settings-and-pack-contracts.md#outcome-2026-10-19)
-records implementation and acceptance. [Manifest maturity](../plans/manifest-maturity.md) remains the
-roadmap for future contract evolution and separate/deferred work.
+records implementation and acceptance, and the archived [manifest maturity](../archive/plans/manifest-maturity.md)
+roadmap the decisions behind it.
 
 ## Declaration, catalog and binding
 

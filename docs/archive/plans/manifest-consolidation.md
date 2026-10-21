@@ -13,7 +13,7 @@ This restores unfinished outcomes from the [manifest redesign](../goals/goal-man
 [facade naming](../goals/goal-defs-naming.md). Archiving them did not authorize dropping their
 requirements. This plan owns the remaining authored-manifest redesign; the
 [execution goal](../goals/goal-settings-and-pack-contracts.md) owns commits and completion,
-[manifest maturity](../../plans/manifest-maturity.md) owns ordering, and [discovery](discovery-without-activation.md)
+[manifest maturity](manifest-maturity.md) owns ordering, and [discovery](discovery-without-activation.md)
 owns descriptors, bindings and consumers. Existing validated settings/reference work remains intact.
 
 ## Reconciliation of all 17 decisions

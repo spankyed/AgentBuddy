@@ -1808,7 +1808,7 @@ and baseline failures or stale survey claims are investigated and accounted for 
 
 Follow the inventory and foundation checkpoints in
 [discovery without activation](../plans/discovery-without-activation.md), shared diagnostics in
-[manifest maturity](../../plans/manifest-maturity.md#2-share-precise-validation-and-diagnostics), and the
+[manifest maturity](../plans/manifest-maturity.md#2-share-precise-validation-and-diagnostics), and the
 settings contract prototype in [settings architecture](../plans/settings-architecture.md).
 
 Cover every supported registration/extension field, its owners, static metadata/assets, dynamic results
@@ -1909,7 +1909,7 @@ live ledger and recorded source rather than treating all three workstreams as un
 | Workstream | Implementation owner | Done when |
 |---|---|---|
 | Consumed APIs | [API consumption](../plans/declared-capabilities.md) | Actual APIs/granularity are audited; generated and host-bound facades agree; undeclared supported APIs and unavailable required providers fail usefully; content targets respect supported SDK/dependency contracts; settings policy remains intact |
-| Dependency provenance | [Manifest maturity, section 4](../../plans/manifest-maturity.md#4-preserve-dependency-provenance-and-reproducibility) | Exact version, origin and content identity survive cache reuse and inspection; linked development remains explicit; differing resolutions are explainable. A new frozen-resolution mode is conditional on distribution needing it, not required speculatively |
+| Dependency provenance | [Manifest maturity, section 4](../plans/manifest-maturity.md#4-preserve-dependency-provenance-and-reproducibility) | Exact version, origin and content identity survive cache reuse and inspection; linked development remains explicit; differing resolutions are explainable. A new frozen-resolution mode is conditional on distribution needing it, not required speculatively |
 | Shipped-pack replacement | [Replacement](../plans/replaceable-shipped-packs.md) | Deliberate forks survive restart/reload; app-managed updates remain supported; disable, uninstall and restoration stay distinct; overrides survive; pre-publication failure retains the old build/catalog; activation failure does not claim rollback of arbitrary user-data effects |
 
 These share catalog identities and existing caller/refresh contracts; no new inventory or sandbox is

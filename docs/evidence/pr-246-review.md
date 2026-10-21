@@ -1,6 +1,6 @@
 # PR #246 review — findings
 
-Findings of the review planned in [the review plan](../plans/pr-246-review.md), for
+Findings of the review planned in [the review plan](../archive/plans/pr-246-review.md), for
 [#246](https://github.com/spankyed/apack/pull/246) (`session/settings-pack-contracts` against `master`,
 merge base `d7e77829a`). Each finding was checked against the source by reading the cited code. A finding
 marked *plausible* is argued from the code but was not reproduced. Severity levels are the plan's.

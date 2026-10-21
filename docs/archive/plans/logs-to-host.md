@@ -1,7 +1,9 @@
 # Move `logs` into the host pack
 
-**Status:** deferred — researched, not scheduled
-**Prompted by:** 2026-10-07, [`goal-one-kind-of-pack`](../../archive/goals/goal-one-kind-of-pack.md)'s Phase 4
+**Status:** archived 2026-10-21. The `earlySystem` removal that prompted it is done another way, so what remains is a product
+question — whether Logs becomes a core app feature — and the research below predates the host's restructuring; re-audit
+it before acting on it.
+**Prompted by:** 2026-10-07, [`goal-one-kind-of-pack`](../goals/goal-one-kind-of-pack.md)'s Phase 4
 
 ## Why it is deferred, and why the research is kept
 

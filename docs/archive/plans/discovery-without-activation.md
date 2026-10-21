@@ -7,11 +7,11 @@ Dated checkpoint notes below are historical; deferred work keeps its separate ow
 
 Historical checkpoint status: implementation in progress. Written 2026-10-12 on `AS/feature-settings-rework`.
 
-This is the discovery workstream of [manifest maturity](../../plans/manifest-maturity.md). It builds on the
+This is the discovery workstream of [manifest maturity](manifest-maturity.md). It builds on the
 [settings extraction](settings-architecture.md) and replaces the older
 [declarative contributions plan](declarative-contributions.md) as the target for complete discovery.
 The older inventory remains historical evidence. This plan owns the current implementation target;
-[manifest maturity](../../plans/manifest-maturity.md) records decisions transferred from the other archived designs.
+[manifest maturity](manifest-maturity.md) records decisions transferred from the other archived designs.
 The [naming contracts goal](../goals/goal-naming-conventions.md) is complete. Re-audit code
 names on that result rather than applying the old naming survey or renaming a surface twice.
 
