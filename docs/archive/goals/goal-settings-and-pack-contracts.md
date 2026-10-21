@@ -1986,7 +1986,11 @@ Checkpoint history and validation logs live in [the evidence record](../referenc
 The live ledger and acceptance register above own current work and closure. Preserve unresolved
 requirements recorded in that history; moving evidence does not complete or exclude them.
 
-## Outcome
+## Outcome as it stood before closure
+
+Superseded by [Outcome (2026-10-19)](#outcome-2026-10-19), which is this goal's closure record and what the
+docs link to. Kept because the archive preserves a goal's text rather than rewriting it — read the section
+below as the state on 2026-10-18, not as current status.
 
 Pending completion. The [first current-source manifest audit](../references/evidence/settings-and-pack-contracts.md#current-source-manifest-audit-first-pass-2026-10-18)
 passes 68 focused schema/editor/reference/writer/selector checks and confirms schema generation agrees.
