@@ -1,8 +1,10 @@
 # Restore fast validation
 
-Status: in progress. Created 2026-10-19; current state below as of 2026-10-21.
+Status: closed and archived 2026-10-21, with [PR #249](https://github.com/spankyed/apack/pull/249). Created
+2026-10-19. The [outcome](#outcome-2026-10-21) records what was delivered, the two criteria dropped and why,
+and what carries forward.
 
-This plan owns feedback budgets and coverage. The [Nx evaluation](nx-orchestration-evaluation.md) decides
+This plan owns feedback budgets and coverage. The [Nx evaluation](../../plans/nx-orchestration-evaluation.md) decides
 whether Nx or the existing runner owns generic task execution. **The lead developer chose to extend the
 existing runner before that evaluation finished** (2026-10-20): the strict gate's cost made waiting the more
 expensive option. So the parallel gate below is built on `scripts/chain.ts`. If Nx is adopted later, it has to
@@ -64,20 +66,41 @@ and the app half with the remaining checks 23.9.
 Both conflict with "no other cache protocol" in decision 5 for little return. The per-file shared
 installation above is not one of these: it lives inside one spec file and is disposed with it.
 
-**Next actions:**
-1. Merge #249 after a strict run on its head passes; `39557857402` passed on `0a98d1767`.
-2. R-F1 is resolved on #249: `build:default-setup` is back on `suite`, at 105–166s on the runner against
-   600s. `test:external-pack:fork` stays on `scenario` by construction: it composes a `suite`-sized build
-   (600s) with archive verification (180s) and cleanup (120s) in `DEFAULT_FORK_BUDGET_MS`, so its outer
-   bound has to exceed `suite`.
-3. Checkpoint 1 and decision 3: affected-target selection, so that an ordinary edit runs only the
-   acceptance it needs, and the full strict gate runs only at the boundaries in decision 4. Designed for the CI
-   strict route and deferred: [deferred/affected-selection.md](deferred/affected-selection.md).
-4. 10.2's remaining 46 exceptions: the 31 integration ones would need the integration half sized to its
-   cold-build specs, which would loosen its fast specs too, so they stay reviewed per case. Native cases over
-   300s, or whose budget names a constant, stay as well.
-5. Done 2026-10-21: `test:external-pack:contract` is declared at 97s (its stated basis, the chain's default
-   admission; 73s alone) and `build:runtime` at 29s (alone).
+## Outcome (2026-10-21)
+
+**Delivered:**
+- **The strict gate takes about 36 minutes, from an estimated 2–2.5 hours,** green end to end. It is a
+  producers job plus five consumer jobs derived from the graph (`chain --job`, `--shard`).
+- **The cold shipped-pack build takes 105–166s on the runner, from 473–522s,** because a build captures
+  only the dependency files its compilers read (R-F1).
+- **The native half is its own target and size.** It runs one file at a time, its cases share one compiler
+  installation per file, and its `enormous` budget took the timeout exceptions from 69 to 46.
+- **Smaller fixes along the way:**
+  - the `onTaskUpdate` RPC failures;
+  - a step's `evidence`, which stops E2E runs turning `test:smoke` stale (3a.1);
+  - the external-pack app step halved by parallel pack E2E workers (10.7);
+  - the `suite` rung kept at 600s on measurement (10.1);
+  - the declared step costs refreshed.
+
+**Two criteria dropped, each because it would decide nothing:**
+- **"Ordinary edits meet the 2–4 minute budget" was not measured.**
+  - Locally the chain already costs only the edit's slice, and every run prints its per-step costs.
+  - A compiler or CLI edit cannot meet it at all without affected selection. The CLI integration and native
+    specs cannot run on the developer's Mac, so that half of its verdict waits on CI.
+  - Measuring would have confirmed a known gap.
+- **"Exhaustive duration has its own measured budget" was not set.** CI may fail a check, never a clock, so a
+  budget nothing enforces would only be a sample, which this repo declines to keep. Each job's
+  `timeout-minutes` bounds a hang, and each step declares its `seconds`.
+
+**Carried forward:**
+- [Affected-only selection](../../plans/deferred/affected-selection.md) (decision 3), deferred. It is the lever for
+  ordinary-edit speed on a fresh runner. After it comes recording which built files each spec reads, the only
+  lever for package-source edits.
+- [The credential-boundary app test's per-run pack build](../../issues/ISSUE-app-step-credentials-prebuild.md).
+- [The Windows Electron-runtime side-by-side failure](../../issues/ISSUE-windows-electron-module-sxs.md), for the
+  Windows VM.
+- The 46 remaining timeout exceptions stay reviewed per case. The 31 integration ones would need the
+  integration half sized to its cold-build specs, which would loosen its fast specs too.
 
 ## Problem
 
@@ -232,7 +255,7 @@ review rules using existing reports, not new per-test metadata.
 
 ### Review findings this plan owns
 
-The [PR 246 review](../evidence/pr-246-review.md) recorded four findings that are budget decisions, not
+The [PR 246 review](../../evidence/pr-246-review.md) recorded four findings that are budget decisions, not
 defects with one fix, and its acceptance runs surfaced a fifth (R-F1). They stay as they are until this plan resolves them:
 
 | Finding | Current state | Resolve by |
@@ -269,10 +292,12 @@ No compiler redesign, new runner, cloud purchase, release or publication is auth
 
 ## Completion criteria
 
-- Ordinary edits meet the stated warm/cold-result budgets on the existing computer, including required
-  preparation. Longer cross-cutting acceptance and pending remote obligations remain explicit.
+- ~~Ordinary edits meet the stated warm/cold-result budgets on the existing computer, including required
+  preparation.~~ Dropped; see the [outcome](#outcome-2026-10-21). Longer cross-cutting acceptance and pending
+  remote obligations remain explicit.
 - Selection and build counts show less necessary work, not merely regrouping, larger deadlines or
-  cached no-ops. Exhaustive duration has its own measured budget.
+  cached no-ops. ~~Exhaustive duration has its own measured budget.~~ Dropped; see the
+  [outcome](#outcome-2026-10-21).
 - Every distinct guarantee has retained coverage. Existing structural checks protect discovery,
   accidental duplicate execution, project references, exhaustive reachability and producer dependencies.
 - Typed declarations remain authoritative; execution and reporting consume one resolved plan.
@@ -283,7 +308,7 @@ No compiler redesign, new runner, cloud purchase, release or publication is auth
 - Expensive scenarios retain bounded operations, cancellation where supported, phase timings and
   awaited cleanup. Normal acceptance has no unhandled reporting errors.
 - Commands and documentation agree. The
-  [completed settings and pack contracts goal](../archive/goals/goal-settings-and-pack-contracts.md#outcome-2026-10-19)
+  [completed settings and pack contracts goal](../goals/goal-settings-and-pack-contracts.md#outcome-2026-10-19)
   records its final acceptance decision; this separate plan does not reopen that delivery or waive
   other goals' validation requirements.
 

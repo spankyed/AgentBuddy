@@ -1,12 +1,12 @@
 # Affected-only selection for the CI strict route
 
 Status: deferred by request, 2026-10-21. Designed and approved, not started. Resume when the owner schedules it;
-it implements decision 3 of the [validation budget plan](../validation-feedback-budget.md), whose next actions list it.
+it implements decision 3 of the [validation budget plan](../../archive/plans/validation-feedback-budget.md), whose outcome carries it forward.
 
 ## Context
 
 The strict gate (`.github/workflows/strict-chain.yml`) always runs `--all`. It takes 35–42 minutes whatever
-the change. [The budget plan](../validation-feedback-budget.md)'s decision 3 asks for selection by source impact: pin a comparison base, run what
+the change. [The budget plan](../../archive/plans/validation-feedback-budget.md)'s decision 3 asks for selection by source impact: pin a comparison base, run what
 the branch's diff can reach, expand visibly when unsure, and keep exhaustive `--all` for boundaries. The CLI
 integration and native specs cannot run on the developer's Mac, so this starts on the CI strict route, as the
 user chose. The user also chose spec-level selection inside the pools, with safe fallbacks.
@@ -152,7 +152,7 @@ inputs. The producers job is unchanged and always runs, so the typecheck legs' b
 
   Then one exhaustive strict run (no base) on the converged commit, as decision 4 requires after selector
   changes.
-- **Record** the selections and timings in the [validation budget plan](../validation-feedback-budget.md).
+- **Record** the selections and timings in the [validation budget plan](../../archive/plans/validation-feedback-budget.md).
 
 ## Out of scope
 - Affected selection as the local `npm run chain` default.

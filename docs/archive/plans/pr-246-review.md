@@ -2,7 +2,7 @@
 
 Status: archived 2026-10-21; the review is complete and #246 is merged. Its findings and their repairs are in
 [the review evidence](../../evidence/pr-246-review.md); the budget findings it handed on are owned by the
-[validation budget plan](../../plans/validation-feedback-budget.md). Date: 2026-10-19.
+[validation budget plan](validation-feedback-budget.md). Date: 2026-10-19.
 Subject: [#246](https://github.com/spankyed/apack/pull/246), `session/settings-pack-contracts` against
 `master` (merge base `d7e77829a`), the delivery of the
 [settings and pack contracts goal](../goals/goal-settings-and-pack-contracts.md).
