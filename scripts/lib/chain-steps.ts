@@ -624,7 +624,7 @@ const SOURCE_RUNNER = ['scripts/with-source.mjs', 'packages/apack-host/src/build
 const SUITE_RUNNER = ['scripts/test-unit-pool.ts', 'scripts/lib/unit-pool.ts', 'scripts/lib/unit-suites.ts',
   'scripts/lib/exit-on-epipe.ts', ...SOURCE_RUNNER, 'scripts/lib/spec-durations.ts',
   'scripts/lib/spec-durations-reporter.ts',
-  'scripts/lib/spec-halves.ts', ...BOUNDED_RUNNER];
+  'scripts/lib/spec-halves.ts', 'scripts/lib/chain-only.ts', ...BOUNDED_RUNNER];
 /**
  * What `build:default-setup` writes. `src/__generated__` is under the `src` it also reads, so it has to be declared:
  * `fingerprintUnit` excludes a unit's own output from its own fingerprint, and that is what stops the step
