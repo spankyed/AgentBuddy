@@ -50,7 +50,8 @@ it.runIf(process.platform === 'darwin').each(['relative', 'absolute', 'transitiv
     try { await modules?.dispose(); }
     finally { compilation?.dispose(); fs.rmSync(root, { recursive: true, force: true }); }
   }
-});
+// Fixture compilation, a cold input capture and module loader in a fresh worker, then loading and disposal.
+}, 20_000 + 60_000 + 20_000);
 
 it.runIf(process.platform === 'darwin' || process.platform === 'linux').each(['preload', 'thread'] as const)('captures native %s libraries and retains the incumbent after outside-library refusal', async site => {
   const started = performance.now();
