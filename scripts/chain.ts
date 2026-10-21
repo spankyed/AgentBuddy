@@ -42,7 +42,7 @@ import { changedInputs, diffableStamp, firstChange, freshnessSweep, INPUTS_CHANG
 import { CHAIN_STEPS, type ChainStep, chainSteps, keptOnFailure, needsApp, orderedSteps, STEP_TABLES } from './lib/chain-steps.ts';
 import { stampFor, STAMP_DIR, unitFor } from './lib/chain-stamps.ts';
 import { evidenceLine, openRunEvidence, pruneRunEvidence, type RunEvidence } from './lib/chain-evidence.ts';
-import { CHAIN_FLAGS } from './lib/chain-flags.ts';
+import { CHAIN_FLAGS, chainHelp } from './lib/chain-flags.ts';
 import { CHAIN_WAIT_MS, ChainLockHeld, chainInvocation, holdChainLock } from './lib/chain-lock.ts';
 import type { ExclusiveLock } from '@apackdev/host/exclusive-lock';
 import { timeoutMsFor, timedOutBecause, type TimeoutClass } from './lib/step-timeouts.ts';
@@ -334,6 +334,10 @@ async function main(): Promise<void> {
   // documented in two places. `npm run chain --dry --cores 10` is worse: npm keeps both flags and hands
   // this a bare `10`, and before this clause it ran a full chain over a stray argument in silence.
   const args = parseFlags(process.argv.slice(2), CHAIN_FLAGS);
+  if (args.flags.has('help')) {
+    console.log(chainHelp());
+    return;
+  }
   if (args.positionals.length > 0) {
     throw new Error(`The chain takes flags only, not ${args.positionals.join(' ')}`
       + ' — npm keeps a flag you did not put after `--`, so write `npm run chain -- --dry`');

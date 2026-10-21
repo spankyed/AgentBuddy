@@ -1,27 +1,47 @@
-// Every flag `npm run chain` accepts, as data.
+// Every flag `npm run chain` accepts, as data, with what each one does.
 //
-// Its own module for the reason `chain-steps.ts` and `chain-schedule.ts` are: `scripts/chain.ts` runs the
-// chain when imported, so nothing may import it to ask a question — and the question here is one nothing
-// could ask before. Flags had shipped undocumented, `--cores` among them, because the chain read them with
-// `process.argv.includes`, which accepts anything and reports nothing: `npm run chain -- --lanez 3` ran a
-// full chain while silently ignoring what it was told.
-//
-// `chain-table.spec.ts` holds this list to the root `CLAUDE.md`, which is the only other place the flags
-// are written down — in the describe named for documenting the flags it takes. That check is free in chain
-// time: `fingerprintUnit` keeps every `CLAUDE.md` out of every step's cache key by name.
+// Its own module because `scripts/chain.ts` runs the chain when imported, so nothing may import it to ask a
+// question. `parseFlags` refuses a flag that is not here, so a typo is an error rather than an ignored
+// argument, and `npm run chain -- --help` prints this table — the one place the flags are written down.
 
-/**
- * The flags, in the shape `parseFlags` takes them — without their leading `--`.
- *
- * `parseFlags` refuses a flag that is not here, which is the point of declaring them: the hand-rolled
- * reads it replaced could not tell a typo from an absence. The repo's argument for that refusal is in
- * `measure.ts`, written after the same bug printed a citation claiming a load that never happened.
- */
-export const CHAIN_FLAGS = {
-  values: ['cores', 'only', 'shard', 'job'],
-  booleans: ['all', 'dry', 'e2e', 'wait', 'strict'],
+import { wrapAt } from './chain-output.ts';
+
+/** Flags that take a value: the value's placeholder, and what the flag does */
+const VALUE_FLAGS = {
+  cores: ['N', "how much of the machine to spend; this machine's cores by default. A step declares its own "
+    + 'width (POOL_WIDTH, core-budget.ts), and the budget also caps Vitest workers'],
+  only: ['a,b', 'run just the named steps, for one job of a split gate. Each producer left out must already '
+    + 'be current here — its outputs and stamps downloaded from the job that ran it — or the run refuses'],
+  shard: ['k/N', 'with --only naming pool steps: one vitest shard of their specs. A shard records no stamp'],
+  job: ['J', 'one job of the parallel strict gate, its steps derived from the graph (chain-only.ts): '
+    + 'producers, integration, native, app or rest, or a comma list run as one'],
 } as const;
 
-/** Each flag as it is written on a command line and in the docs */
-export const chainFlagNames = (): string[] =>
-  [...CHAIN_FLAGS.values, ...CHAIN_FLAGS.booleans].map((name) => `--${name}`).sort();
+/** Flags that take none, and what each does */
+const BOOLEAN_FLAGS = {
+  dry: 'the plan, why each step is or is not cached, and the critical path over recent runs here, with the '
+    + 'most any step on it could buy. Runs nothing and writes nothing. With --all, the cold chain',
+  all: 'every step regardless of its stamp, forcing those that keep a cache of their own',
+  e2e: 'run the E2E suite with the chain, ordered after test:smoke',
+  strict: "fail the run when a step's inputs moved while it ran — it read a tree that no longer exists. "
+    + 'Always reported; this decides whether it fails the run',
+  wait: 'queue behind a run already holding the lock, up to 10 minutes, rather than refusing',
+  help: 'print this',
+} as const;
+
+/** The flags in the shape `parseFlags` takes them — without their leading `--` */
+export const CHAIN_FLAGS = {
+  values: Object.keys(VALUE_FLAGS) as (keyof typeof VALUE_FLAGS)[],
+  booleans: Object.keys(BOOLEAN_FLAGS) as (keyof typeof BOOLEAN_FLAGS)[],
+};
+
+/** What `npm run chain -- --help` prints */
+export function chainHelp(): string {
+  const rows: [string, string][] = [
+    ...Object.entries(VALUE_FLAGS).map(([name, [arg, text]]): [string, string] => [`--${name} ${arg}`, text]),
+    ...Object.entries(BOOLEAN_FLAGS).map(([name, text]): [string, string] => [`--${name}`, text]),
+  ];
+  const width = Math.max(...rows.map(([flag]) => flag.length));
+  return ['usage: npm run chain -- [flags]', '',
+    ...rows.map(([flag, text]) => `  ${flag.padEnd(width)}  ${wrapAt(width + 4, text)}`)].join('\n');
+}

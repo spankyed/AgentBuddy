@@ -18,7 +18,6 @@ import { closureOf } from './_support/module-closure.ts';
 import { TYPECHECK_LEGS } from '../../../scripts/lib/typecheck-legs.ts';
 import { POOLS, poolUnitFor, STAMP_READERS as POOL_STAMP_READERS, type Pool } from '../../../scripts/lib/unit-pool.ts';
 import { asPercent, POOL_WIDTH, shareOf, UNCAPPED } from '../../../scripts/lib/core-budget.ts';
-import { chainFlagNames } from '../../../scripts/lib/chain-flags.ts';
 import { RUNTIME_BUILD_LEGS } from '../../../scripts/lib/runtime-build-legs.ts';
 import { reachableFrom } from '../../../scripts/lib/module-graph.ts';
 import { importedCallsIn } from '../../../scripts/lib/imported-calls.ts';
@@ -616,81 +615,5 @@ describe('a build unit declares the modules its build script imports', () => {
       return closure.length > 1 ? [] : [`${workspace}'s closure is ${closure.length} files`];
     });
     expect(shallow, 'a closure of one file is the entry alone, which means the walk resolved nothing').toEqual([]);
-  });
-});
-
-/**
- * The chain's flags against the only other place they are written down.
- *
- * Flags shipped with no mention in the guide, `--cores` among them, because nothing could ask: the chain
- * read its flags with `process.argv.includes`, so there was no list to compare. Declaring them
- * (`chain-flags.ts`) makes a typo an error and makes this question askable.
- *
- * **One direction only.** Every accepted flag must be documented; a documented flag need not be accepted,
- * because the guide names `--lanes` deliberately — as the thing `--cores` replaced — and a check that
- * could not tell that from a stale entry would have to parse prose for intent.
- *
- * Free in chain time: `fingerprintUnit` keeps every `CLAUDE.md` out of every step's cache key by name, so
- * a prose edit still runs nothing.
- */
-describe("the chain documents the flags it takes", () => {
-  /** Pure, so the case below can mutate the input rather than the guide */
-  const undocumented = (flags: readonly string[], guide: string): string[] =>
-    flags.filter((flag) => !guide.includes(flag));
-
-  /**
-   * The guide's entry for `npm run chain`, not the whole guide.
-   *
-   * Searching the file lets **another command's** flag satisfy this check, and names are shared on purpose
-   * where a word means the same thing for two commands. So a chain flag can be undocumented while its
-   * spelling sits in `CLAUDE.md` under another command — the failure this check exists to prevent, admitted
-   * by the naming rule the repo wants. The same shape as
-   * `ci.yml`'s header check, which reads the comment block above `jobs:` rather than the file, because every
-   * rung appears in some `run:` line.
-   *
-   * The entry runs from the `npm run chain` line to the next command at column 0, which is how that block is
-   * written: one `npm run <x>` per entry with its flags indented under it.
-   */
-  const chainEntry = (guide: string): string => {
-    const lines = guide.split('\n');
-    const from = lines.findIndex((line) => line.startsWith('npm run chain '));
-    const rest = lines.slice(from + 1);
-    const to = rest.findIndex((line) => /^npm (run )?[\w:-]+ /.test(line));
-    return [lines[from] ?? '', ...(to === -1 ? rest : rest.slice(0, to))].join('\n');
-  };
-
-  const guide = (): string => fs.readFileSync(path.join(REPO_ROOT, 'CLAUDE.md'), 'utf-8');
-
-  it('names every flag it accepts, so a new one cannot ship unmentioned', () => {
-    const flags = population("the chain's flags", chainFlagNames());
-    expect(undocumented(flags, chainEntry(guide())), "add these to the chain's flag list in CLAUDE.md")
-      .toEqual([]);
-  });
-
-  it('reports a flag the guide never mentions, which is what the case above rests on', () => {
-    // The mutation, over the input: a scan that found nothing would satisfy the case above whatever the
-    // guide said, which is how three flags came to be undocumented under a check that did not exist
-    expect(undocumented(['--cores', '--invented'], 'takes --cores N, and nothing else')).toEqual(['--invented']);
-  });
-
-  /**
-   * And the entry it reads is the chain's and not the file, which is what makes the case above able to fail.
-   *
-   * Both halves matter, as they do for `ci.yml`'s header: it must find something, and it must not be
-   * everything. A reading that returned the whole guide would be satisfied by any command's flags.
-   */
-  it('reads the chain entry rather than the guide, so another command cannot vouch for a flag', () => {
-    const entry = chainEntry(guide());
-
-    expect(entry, 'the entry it is about').toContain('npm run chain ');
-    expect(entry.length, 'and not the whole file').toBeLessThan(guide().length / 4);
-
-    // The collision itself, with a real example rather than a banned word: `--trials` is `measure`'s and the
-    // chain has no such flag, so the guide holds it and this entry must not. Naming the other command in
-    // prose is fine and this used to forbid it, which tested the wrong thing. It was `spec-cost:update`'s
-    // `--suite` until 2026-10-05, when that command was deleted and took the control with it
-    expect(guide(), "another command's flag, in the file").toContain('--trials N');
-    expect(entry, 'and outside the chain\'s entry, so it could never vouch for a chain flag')
-      .not.toContain('--trials');
   });
 });

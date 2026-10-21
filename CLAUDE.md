@@ -566,38 +566,11 @@ npm run chain            # Before a merge: every check in dependency order, cold
                          # Afterwards it names a step that passed and is already stale again. What each
                          # passing step cost joins a machine-local window (scripts/lib/step-durations.ts),
                          # which `--dry` and a failure report read; nothing is committed.
-                         #   --dry      the plan, why each step is or is not cached, and **what bounds it**:
-                         #              the critical path over recent runs here, plus **the most any step on it could buy**. A
-                         #              step off the path runs in the shadow of the ones on it, and a step
-                         #              on it is capped by the second-longest route — measured 2026-10-06,
-                         #              a 95s step on a 118s path buys 19s, because another route sits at
-                         #              99s. Read both before sizing an optimisation. `--dry --all` gives
-                         #              the cold chain's, since `--all` plans every step
-                         #   --all      every step regardless of its stamp
-                         #   --cores N  how much of the machine to spend; this machine's cores by default,
-                         #              and a step declares its own width (POOL_WIDTH, core-budget.ts). The
-                         #              budget also caps Vitest workers; pool cache keys include that cap
-                         #   --e2e      run the E2E suite with the chain, ordered after test:smoke
-                         #   --strict   fail the run when a step's inputs moved **while it ran** — it read a
-                         #              tree that no longer exists, so its pass establishes nothing. Always
-                         #              reported either way; this decides whether the chain stops a merge
-                         #              over it. A file that moved *after* a step finished is an ordinary
-                         #              cache miss and never fails
-                         #   --wait     queue behind a run already holding the lock rather than refusing,
-                         #              up to 10 minutes — a bound, not a schedule: it starts the moment
-                         #              that run ends, and says what it is waiting for so a wait does not
-                         #              read as a hang
-                         #   --only a,b run just the named steps, for one job of a split gate. Each producer
-                         #              left out must already be current here — its outputs and stamps
-                         #              downloaded from the job that ran it — or the run refuses, naming it
-                         #   --shard k/N  with --only naming pool steps: one vitest shard of their specs. A
-                         #              shard records no stamp, since it is part of each suite
-                         #   --job J    one job of the parallel strict gate, its steps derived from the graph
-                         #              (scripts/lib/chain-only.ts): producers, integration, native, app or rest,
-                         #              or a comma list run as one (`--job app,rest`)
+                         # `npm run chain -- --help` lists its flags. Read `--dry`'s critical path and what
+                         # each step on it could buy before sizing an optimisation: a step off the path buys
+                         # nothing, and one on it is capped by the second-longest route.
                          # docs/reference/pipeline-commands.md: what each flag replaced and what was
-                         # measured to choose it, including the three guards that do not separate a
-                         # correlated drift from one step's.
+                         # measured to choose it.
 npm test                 # Build fresh builds and run every test suite, without test-result caches
 npm run test:e2e         # Playwright E2E tests. **A harness, not a gate** — see below
 npm run test:unit        # Vitest, as two pools: the host suites as one root run under the
