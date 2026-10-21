@@ -128,6 +128,21 @@ const trackedCodeFiles = (): string[] => repoFiles().filter((file) =>
   && !file.includes('node_modules/') && !file.includes('/dist/') && !file.includes('__generated__/')
   && !file.includes('/__golden__/'));
 
+/**
+ * The guides, held to the same identifier lists.
+ *
+ * **Every group above is a list of identifiers, never the bare word**, which is what makes this safe: a
+ * guide says "tiptap plugins" and "a Vite plugin" legitimately, and no pattern here matches either. It
+ * exists because the code-only population let `SELECT_PLUGIN_BY_SHELL` sit in `@apackdev/host`'s guide
+ * through five phases of a rename — the one place a reader would have gone to find the event's name.
+ *
+ * `docs/archive` records the vocabulary of its time, `CHANGELOG.md` is released history, and `etc/` is
+ * generated from source that this already reads.
+ */
+const trackedGuides = (): string[] => repoFiles().filter((file) =>
+  file.endsWith('.md') && !file.startsWith('docs/archive/') && file !== 'CHANGELOG.md'
+  && !file.includes('/etc/') && !file.includes('node_modules/'));
+
 /** Which groups a file actually holds, for the staleness case. */
 function fires(file: string): Group[] {
   const text = fs.readFileSync(path.join(REPO_ROOT, file), 'utf-8');
@@ -185,6 +200,21 @@ describe('the surface vocabulary', () => {
         }
         if (file.endsWith('apack.json') && MANIFEST_KEY.test(line)) {
           violations.push(`${file}:${i + 1} ${line.trim()}  ← the manifest key is features[].surface`);
+        }
+      });
+    }
+    expect(violations, 'a surface is not a plugin; see docs/archive/goals/goal-plugins-to-surfaces.md').toEqual([]);
+  });
+
+  /** The same identifier lists over the guides — see `trackedGuides` for why that is the safe half. */
+  it('no guide names the frontend actor a plugin', () => {
+    const violations: string[] = [];
+    for (const file of population('tracked guides', trackedGuides(), { atLeast: 30 })) {
+      const excused = ALLOWED[file]?.groups ?? [];
+      fs.readFileSync(path.join(REPO_ROOT, file), 'utf-8').split('\n').forEach((line, i) => {
+        for (const group of Object.keys(RETIRED) as Group[]) {
+          if (excused.includes(group)) continue;
+          if (patternFor(group).test(line)) violations.push(`${file}:${i + 1} ${line.trim()}  ← ${group}`);
         }
       });
     }

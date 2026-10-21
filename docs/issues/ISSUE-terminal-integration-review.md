@@ -94,7 +94,7 @@ orchestration, `L` = lifecycle and persisted data, `G` = agent sessions.
 | **M3** | Medium | `terminal.CREATED` is broadcast and every window consumes it as if it had asked | `fe/features/terminal/state.ts:268-294` |
 | **M1** | Medium | Two windows write the same persisted-output key from differently-based copies | `fe/utils/terminal-events.ts:49` |
 | **M4** | Medium | A window attaching after a pty replacement content the dead shell's scrollback with no seam | `fe/utils/terminal-pool.ts:164-178` |
-| **M5** | Medium | Every window restores and rewrites the single `code-plugin-open-tabs` key | `fe/utils/persisted-tabs.ts:18` |
+| **M5** | Medium | Every window restores and rewrites the single `code-surface-open-tabs` key | `fe/utils/persisted-tabs.ts:18` |
 | **L3** | Medium | No Terminal row is ever deleted; `terminalCommands.delete` is dead code | `be/repository/index.ts:136-145` |
 | **F6** | Medium | Up to 1 MB of synchronous `localStorage` per terminal per output burst | `fe/utils/terminal-events.ts:47` |
 | **F8** | Medium | First pty output can be lost before `onData` is registered | `be/features/terminal.ts:131` |

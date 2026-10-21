@@ -55,7 +55,7 @@ poll a deadline matched to what a restore costs is the fix; raising it to obtain
 | 3 — the wire | `260a96801` | `npm test -w @apackdev/host` 1746 passed / 135 files, including `tests/bus/outgoing-events.spec.ts` and `tests/packs/event-validation-map.spec.ts`; `test:smoke` 16.1s in the chain. Mutation: a half-applied rename in the bus's lookup (the map keyed by ref, the lookup building the old spelling) failed **23** specs across both files, so no new spec was needed |
 | 4 — stored state | `824df0b92` | `tests/migrations/surface-state-0.4.0.spec.ts`. Mutation: dropping the removal, guarding on `undefined`, and guarding the row instead of each attribute each failed a different case |
 | 5 — docs, guard live | `afedfa064` | Scan unparked and green; `welcome.md` re-recorded; `doc-links` passing |
-| 6 — the prose read | `dc57c0504`, `32f1b07cf` | 19 inversions. Mutation: the guard caught a local renamed to `readPluginState`, which collides with the retired SDK reader. Its "no comment or guide sentence" condition rests on a **complete enumeration** — all 241 remaining occurrences classified, not a sampled grep — which found eight concept names that four passes had missed, `setPluginVisible` among them, published. All four memory files now name only things that exist |
+| 6 — the prose read | `dc57c0504`, `32f1b07cf`, `bd0a1c2` | 19 inversions. Mutation: the guard caught a local renamed to `readPluginState`, which collides with the retired SDK reader. Its "no comment or guide sentence" condition rests on a **complete enumeration** — all 241 remaining occurrences classified, not a sampled grep — which found eight concept names that four passes had missed, `setPluginVisible` among them, published. All four memory files now name only things that exist |
 
 `npm run test:e2e -- smoke` runs directly at 5 passed; `test:external-pack` is evidenced through the
 chain, which runs it as its three steps.
@@ -64,6 +64,18 @@ chain, which runs it as its three steps.
 "rename usePlugin to useState composable" and is released history, and the guard's own retired list,
 which has to spell the names it retires. Read literally the grep also matches `TiptapPluginDeclaration`
 as a substring of `PluginDeclaration`, so the condition is only meaningful word-bounded.
+
+**Phase 1 took the first of the two options its condition offered**: the guard landed parked as
+`it.fails` in `99540ead9` and was flipped in `afedfa064`, rather than being ordered last in the phase's
+commits. Nothing further was owed.
+
+**The guard did not read a guide until the end, and that is where the last residue was.** Its population
+was code only, so `SELECT_PLUGIN_BY_SHELL` and `OPEN_PLUGIN_FROM_APP` sat in `@apackdev/host`'s guide —
+the one place a reader goes for an event's name — through five phases, and `code-plugin-open-tabs` sat in
+a terminal issue note. Reading all **48** guide lines that mention the word, rather than classifying by
+regex, is what found them. The guard now holds the guides to the same identifier lists, which is safe
+precisely because no group is the bare word: a guide says "tiptap plugins" and "a Vite plugin"
+legitimately. Mutation: restoring the stale event name fails that case.
 
 **The sampled grep is what let residue through.** Four passes, a live guard and a green chain all held
 while eight concept names survived — `SettingsPluginEvents`, `ApplicationPluginEvents`,
