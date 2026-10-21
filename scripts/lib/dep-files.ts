@@ -67,7 +67,7 @@ import { REPO_ROOT } from '@apackdev/host/build/packages-built';
 import { PACKAGE_DIRS } from './workspace-deps.ts';
 
 /** Where the legs are configured to write them, which is the one place this looks */
-const CACHE = path.join(REPO_ROOT, 'node_modules', '.cache', 'tsbuildinfo');
+export const DEP_FILE_DIR = path.join(REPO_ROOT, 'node_modules', '.cache', 'tsbuildinfo');
 
 /** The shape this reads. TypeScript writes more; these are the fields with a contract worth relying on. */
 interface BuildInfo {
@@ -77,7 +77,7 @@ interface BuildInfo {
 }
 
 const read = (name: string): BuildInfo | undefined => {
-  const file = path.join(CACHE, `${name}.tsbuildinfo`);
+  const file = path.join(DEP_FILE_DIR, `${name}.tsbuildinfo`);
   if (!fs.existsSync(file)) return undefined;
   try {
     return JSON.parse(fs.readFileSync(file, 'utf-8')) as BuildInfo;
@@ -184,7 +184,7 @@ export function sourceOf(depFile: string): DepFileSource | undefined {
  * have its file taken, though an orphan is safe by construction since no running leg writes a name no
  * tsconfig declares.
  *
- * Takes the directory and the question instead of reading `CACHE` and `sourceOf`, so it can be run over a
+ * Takes the directory and the question instead of reading `DEP_FILE_DIR` and `sourceOf`, so it can be run over a
  * population of its own — which is how it gets a case that watches it fail.
  */
 export function pruneOrphanDepFiles(cacheDir: string, isDeclared: (depFile: string) => boolean): string[] {
@@ -199,11 +199,11 @@ export function pruneOrphanDepFiles(cacheDir: string, isDeclared: (depFile: stri
 }
 
 /** The same over this checkout: the directory the legs write to, and the names their tsconfigs declare */
-export const pruneDepFiles = (): string[] => pruneOrphanDepFiles(CACHE, (name) => sourceOf(name) !== undefined);
+export const pruneDepFiles = (): string[] => pruneOrphanDepFiles(DEP_FILE_DIR, (name) => sourceOf(name) !== undefined);
 
 /** Every dep file present, by the name its leg writes under */
-export const depFileNames = (): string[] => (fs.existsSync(CACHE)
-  ? fs.readdirSync(CACHE).filter((file) => file.endsWith('.tsbuildinfo')).map((file) => file.replace('.tsbuildinfo', '')).sort()
+export const depFileNames = (): string[] => (fs.existsSync(DEP_FILE_DIR)
+  ? fs.readdirSync(DEP_FILE_DIR).filter((file) => file.endsWith('.tsbuildinfo')).map((file) => file.replace('.tsbuildinfo', '')).sort()
   : []);
 
 /**
@@ -233,7 +233,7 @@ export function readsOf(name: string): readonly string[] | undefined {
   const info = read(name);
   if (info?.fileNames === undefined || info.fileNames.length === 0) return undefined;
   return info.fileNames
-    .map((file) => path.relative(REPO_ROOT, path.resolve(CACHE, file)))
+    .map((file) => path.relative(REPO_ROOT, path.resolve(DEP_FILE_DIR, file)))
     .filter((file) => !file.startsWith('..') && !/(^|\/)node_modules\//.test(file))
     .sort();
 }
