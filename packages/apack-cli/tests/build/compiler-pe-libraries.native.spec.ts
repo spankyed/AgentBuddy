@@ -18,6 +18,7 @@ import { compilerPackageDirectory, type CompilerInstallation } from '../../src/b
 import { startPackFrontend, type PackFrontend } from '../../src/build/frontend-process.ts';
 import { nativeAddonSource } from '../_support/native-addon.ts';
 import { createWindowsPublisherPolicyFixture } from '../_support/windows-publisher-policy.ts';
+import { _byDeadline } from '@apackdev/sdk/testing/waiting';
 import { parsePeLibraryMetadata } from '../../src/build/compiler-pe-libraries.ts';
 import { assertCapturedPeLibraries } from '../../src/build/compiler-pe-admission.ts';
 import { BUILD_INPUTS_DIRECTORY_ENV } from '../../src/build/compiler-read-tree.ts';
@@ -1099,12 +1100,15 @@ it.runIf(process.platform === 'win32')('repairs a failed Vite assembly context t
     });
     const build = builder.build.bind(builder);
     let buildCount = 0;
+    const inFlight = new Set<Promise<unknown>>();
     // Each build's start and outcome, so a run that overlaps the repair says which request started it
     builder.build = input => {
       const run = ++buildCount;
       checkpoint(`build ${run} started`);
       const running = build(input);
-      running.then(() => checkpoint(`build ${run} published`), error => checkpoint(`build ${run} refused: ${String(error).slice(0, 120)}`));
+      const settled = running.then(() => checkpoint(`build ${run} published`), error => checkpoint(`build ${run} refused: ${String(error).slice(0, 120)}`));
+      inFlight.add(settled);
+      void settled.finally(() => inFlight.delete(settled));
       return running;
     };
     const builds = vi.spyOn(builder, 'build'), publications = vi.fn(async () => {});
@@ -1134,6 +1138,11 @@ it.runIf(process.platform === 'win32')('repairs a failed Vite assembly context t
     fs.mkdirSync(staged, { recursive: true });
     fs.copyFileSync(path.join(initial, assembly + '.manifest'), path.join(staged, assembly + '.manifest'));
     await buildLibrary(path.join(staged, 'apack_value.dll'), 22);
+    // The refusal's two edits (the marker removed, the configuration rewritten) can reach the watcher as separate
+    // events, and one landing mid-build queues another refused build. The repair is asserted to start a build of its
+    // own, so it lands on an idle watcher: a build that keeps starting another would leave this waiting and fail.
+    await _byDeadline((async () => { while (inFlight.size > 0) await Promise.allSettled([...inFlight]); })(),
+      'refused builds to settle before the repair', 60_000);
     builds.mockClear();
     fs.mkdirSync(path.dirname(repair), { recursive: true });
     fs.renameSync(staged, repair);
@@ -1148,4 +1157,4 @@ it.runIf(process.platform === 'win32')('repairs a failed Vite assembly context t
     completed = true;
   } catch (error) { console.info('PE assembly watch refusals:', errors.mock.calls); throw error; }
   finally { await close(); }
-}, 300_000);
+}, 120_000 + 4 * 60_000 + 20_000);
