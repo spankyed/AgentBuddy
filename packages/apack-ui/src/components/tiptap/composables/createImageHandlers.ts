@@ -1,5 +1,8 @@
 import type { Editor } from '@tiptap/vue-3'
+import { createLogger } from '@apackdev/sdk/logger'
 import { addUploadPlaceholder, removeUploadPlaceholder } from '../extensions/image-upload-placeholder.ts'
+
+const logger = createLogger('tiptap-image-upload')
 
 const ALLOWED_IMAGE_TYPES = new Set(['image/png', 'image/jpeg', 'image/gif', 'image/webp'])
 const MAX_IMAGE_SIZE = 10 * 1024 * 1024 // 10MB
@@ -18,7 +21,18 @@ function fileToBase64(file: File): Promise<string> {
 
 let placeholderCounter = 0
 
-async function uploadAndInsertImage(file: File, editor: Editor | undefined, entityId: string | undefined, pos?: number) {
+/**
+ * The editor is taken from `getEditor` again after every await, never held across one.
+ *
+ * An upload outlives the editor that started it, and the editor is replaced whenever a pack's editor
+ * contributions change (`internal/use-contributed-editor.ts`). Writing to the replaced one is **silently
+ * lost**: a destroyed editor's `view` is a stub that reports `isDestroyed: false`, so ProseMirror's own guard
+ * does not fire, the transaction applies to detached state, and nothing throws. The image simply never
+ * appears. Abandoning the upload is the honest outcome — the document it was meant for is gone — so the one
+ * thing this must not do is abandon it quietly.
+ */
+async function uploadAndInsertImage(file: File, getEditor: () => Editor | undefined, entityId: string | undefined, pos?: number) {
+  const editor = getEditor()
   if (!editor || !entityId) return false
   if (!ALLOWED_IMAGE_TYPES.has(file.type)) return false
   if (file.size > MAX_IMAGE_SIZE) return false
@@ -33,6 +47,10 @@ async function uploadAndInsertImage(file: File, editor: Editor | undefined, enti
     const base64 = await fileToBase64(file)
     const url = await (window as any).electronAPI?.media.upload(entityId, base64, file.type)
     URL.revokeObjectURL(previewUrl)
+    if (getEditor() !== editor) {
+      logger.warn('An image finished uploading after its editor was replaced, so it was not inserted', { file: file.name })
+      return false
+    }
     removeUploadPlaceholder(editor.view, id)
 
     if (!url) return false
@@ -45,8 +63,9 @@ async function uploadAndInsertImage(file: File, editor: Editor | undefined, enti
     return true
   } catch (err) {
     URL.revokeObjectURL(previewUrl)
-    removeUploadPlaceholder(editor.view, id)
-    console.error('Failed to upload image:', err)
+    // Same reason as above: the placeholder belongs to an editor that may no longer be the one on screen
+    if (getEditor() === editor) removeUploadPlaceholder(editor.view, id)
+    logger.error('Failed to upload image', err instanceof Error ? err : new Error(String(err)))
     return false
   }
 }
@@ -68,7 +87,7 @@ export function createImageHandlers(
           const file = item.getAsFile()
           if (!file) continue
           if (!handled) { event.preventDefault(); handled = true }
-          uploadAndInsertImage(file, getEditor(), getEntityId())
+          uploadAndInsertImage(file, getEditor, getEntityId())
         }
       }
       return handled
@@ -83,7 +102,7 @@ export function createImageHandlers(
         if (file.type.startsWith('image/')) {
           if (!handled) { event.preventDefault(); handled = true }
           const coords = view.posAtCoords({ left: event.clientX, top: event.clientY })
-          uploadAndInsertImage(file, getEditor(), getEntityId(), coords?.pos)
+          uploadAndInsertImage(file, getEditor, getEntityId(), coords?.pos)
         }
       }
       return handled
