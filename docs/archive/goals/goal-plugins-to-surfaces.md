@@ -294,7 +294,14 @@ it last in this phase's commits.
 
 **Done when:** `npm run typecheck`, `npm run api:check`, `npm run schema:check -w @apackdev/sdk`,
 `npm run test:unit`, `npm run build:default-setup` and `npm run test:external-pack` pass.
-`git grep 'usePlugin\|PluginDeclaration\|features\[\]\.plugin'` finds nothing outside `docs/archive`.
+`git grep -E '\busePlugin\b|\bPluginDeclaration\b|\bdefinePlugin\b'` finds nothing outside
+`docs/archive`, `CHANGELOG.md` and the guard's own retired list.
+
+**Anchored, because the unanchored form cannot hold beside Decision 2.** Written without `\b` it
+matches `PluginDeclaration` as a substring, and all five occurrences of that string in
+`packages/apack-sdk/src/framework/` are `TiptapPluginDeclaration` — published API this document
+forbids moving. The two exceptions are a changelog entry from 2024, which is released history, and the
+guard, which has to spell the names it retires.
 
 ### Phase 3 — the wire: `surfaceId` and the event names
 
