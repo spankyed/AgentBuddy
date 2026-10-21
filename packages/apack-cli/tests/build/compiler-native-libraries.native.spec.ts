@@ -12,7 +12,6 @@ import { formatNodeOptions, parseNodeOptions } from '@apackdev/host/build/source
 import { withCompilerFileReads } from '@apackdev/host/build/compiler-inputs';
 import { nativeFixture, ordinaryNativeLoad, nativeLoad, nativeWorkerCompiler, type NativeFixture } from '../_support/native-libraries.ts';
 import { shareCompilerInstallation } from '../_support/shared-compiler.ts';
-import { inNativeStore } from '../_support/native-store.ts';
 
 // The native-library proofs are split by subject so the native half's shards can spread them; this one is
 // native libraries checked before addon initialization, in preloads, threads and launch search paths.
@@ -100,7 +99,7 @@ it.runIf(process.platform === 'darwin' || process.platform === 'linux').each(['p
       if (site === 'thread') expect(result.thread).toBeGreaterThan(0);
       expect(result.value).toBe(11);
       expect(result.libraries).not.toContain(supported.library);
-      expect(result.libraries.some(file => inNativeStore(file) && file.endsWith('/lib/' + path.basename(supported.library)))).toBe(true);
+      expect(result.libraries.some(file => file.includes('apack-inputs-') && file.endsWith('/lib/' + path.basename(supported.library)))).toBe(true);
     }
     const inputs = readPackBuildInputs(path.join(supported.pack, 'dist'));
     assertPackBuildInputsCurrent(supported.pack, inputs);
@@ -163,7 +162,7 @@ it.runIf(process.platform === 'darwin' || process.platform === 'linux')('retains
     expect(loaded.thread).toBeGreaterThan(0);
     expect(loaded.value).toBe(11);
     expect(loaded.libraries).not.toContain(fixture.library);
-    expect(loaded.libraries.some(file => inNativeStore(file) && file.endsWith('/lib/' + path.basename(fixture.library)))).toBe(true);
+    expect(loaded.libraries.some(file => file.includes('apack-inputs-') && file.endsWith('/lib/' + path.basename(fixture.library)))).toBe(true);
     const output = path.join(fixture.pack, 'dist');
     const revision = readPackBuild(output).revision;
     const inputs = readPackBuildInputs(output);

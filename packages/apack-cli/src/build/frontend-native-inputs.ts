@@ -2,7 +2,6 @@ import { beginCompilerStartupReads, createCompilerFileView, withoutCompilerFileR
 import { captureCompilerLibraryEnvironment, type CompilerLibraryEnvironment } from './compiler-native-libraries.ts';
 import { createCompilerNativeInputs } from './compiler-native-input-owner.ts';
 import { createCompilerWatchRecorder } from './build-watch-inputs.ts';
-import { compilerNativeStore } from './compiler-native-store.ts';
 import { createCompilerNativeReports } from './compiler-native-reports.ts';
 import type { CompilerInstallationInputs } from './compiler-installation-inputs.ts';
 
@@ -26,7 +25,7 @@ export function beginFrontendNativeInputs(root: string, workspace: string, compi
   if (frontendNativeInputs()) throw new Error('Frontend native inputs already have an owner');
   const { paths } = compiler;
   const view = createCompilerFileView(root, { paths, observe: createCompilerWatchRecorder(workspace) });
-  const reports = createCompilerNativeReports(view.observations().root, workspace, compilerNativeStore(compiler.directory));
+  const reports = createCompilerNativeReports(view.observations().root, workspace);
   const save = () => withoutCompilerFileReads(() => {
     reports.write({ source: view.observations(file => !native.includes(file)),
       copies: native.copies(), modules: native.modules() });
