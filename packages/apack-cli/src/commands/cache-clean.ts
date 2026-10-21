@@ -57,7 +57,8 @@ export function cleanApps(all: boolean, dirs: CliDirs = cliDirs()): void {
 
 /**
  * The captured compiler installations, one per compiler and runtime version a build has run — each a copy of the
- * runtime, so they accumulate. All go: the next build captures what it needs again. One being captured right now
+ * runtime, so they accumulate — and the stored copies of dependencies' native addons beside them (`natives`). All go:
+ * the next build captures what it needs again. One being captured right now
  * (its lock held) is left alone, and one Windows still holds open is reported rather than failing the clean.
  */
 export async function cleanCompilers(store: string = compilerStoreRoot()): Promise<void> {

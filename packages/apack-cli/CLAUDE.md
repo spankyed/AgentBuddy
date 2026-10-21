@@ -130,7 +130,10 @@ read-only. **The copy lives in a machine-wide store, one entry per input** (`com
 contents and the esbuild selection. Every build and process with the same inputs reuses that entry, verified
 exactly as a fresh capture is, so the runtime and compiler executables keep one path and macOS assesses them
 once rather than per build. A damaged entry is captured again under a cross-process lock; releasing an
-installation leaves the entry, and `apack cache clean` reclaims the store. Specs capture into a per-run,
+installation leaves the entry, and `apack cache clean` reclaims the store. A pack dependency's own native addon is
+stored the same way, under `natives/` there (`build/compiler-native-store.ts`), one entry per set of package bytes,
+so it too keeps one path across builds; a package with a link out of itself, or any link on Windows, keeps the
+build's own copy. Specs capture into a per-run,
 per-worker store (`tests/_support/compiler-store*.ts`). Its private metadata records the compiler fingerprint, captured package directories and
 source-path mappings. Workers require this metadata to belong to their actual CLI; they keep the
 selected compiler rather than hand off to the project again. Module identity, diagnostic reads and

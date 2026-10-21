@@ -329,6 +329,7 @@ it('treats lookups along the installation\'s location as the compiler\'s, and th
   expect(located(path.join(home, 'Library', 'Caches', 'apack-cli'))).toBe(true);
   expect(located(path.join(home, 'Library', 'Caches', 'apack-cli', 'node_modules'))).toBe(true);
   expect(located(path.join(home, 'Library', 'Caches', 'package.json'))).toBe(true);
+  expect(located(path.join(home, 'Library', 'Caches', 'apack-cli', 'compilers', 'natives', 'fedcba9876543210', 'package.json'))).toBe(true);
   // The pack's own walk upward reaches the same home directory, and what it finds there is an input
   expect(located(home)).toBe(false);
   expect(located(path.join(home, 'node_modules'))).toBe(false);

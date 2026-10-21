@@ -7,6 +7,7 @@ import { assertCapturedCompilerLibraries, type CompilerLibraryEnvironment } from
 import { createCompilerReadTree, type CompilerReadTree } from './compiler-read-tree.ts';
 import { readPeDirectoryEntries } from './compiler-pe-activation.ts';
 import { isCompilerLocationPath, isOwnedCompilerPath, type CompilerInstallationInputs } from './compiler-installation-inputs.ts';
+import { compilerNativeStore, storeCompilerNativePackage } from './compiler-native-store.ts';
 
 export interface CapturedNativeModule { readonly source: string; readonly captured: string; readonly packageRoot: string }
 
@@ -24,6 +25,7 @@ export function createCompilerNativeInputs(original: ReturnType<typeof createCom
     const relative = relativeCompilerPath(parent, file);
     return relative === '' || (relative !== '..' && !relative.startsWith(`..${path.sep}`) && !path.isAbsolute(relative));
   };
+  const nativeStore = compilerNativeStore(compiler.directory);
   const includes = (file: string) => !isOwnedCompilerPath(file, workspace, compiler.directory)
     && !isCompilerLocationPath(file, compiler.directory, packRoot);
   let tree: CompilerReadTree | undefined;
@@ -116,8 +118,13 @@ export function createCompilerNativeInputs(original: ReturnType<typeof createCom
       },
     });
     const captured = readDataPath(file);
-    modules.set(file, { source: file, captured, packageRoot: tree!.dataPath(owner) });
-    return captured;
+    // Loaded from the shared store's copy of what the tree holds for this package, so the addon keeps one path
+    // across builds; a package the store cannot hold keeps the build's own copy
+    const materialized = tree!.dataPath(owner);
+    const stored = storeCompilerNativePackage(materialized, nativeStore);
+    const loaded = stored === undefined ? captured : path.join(stored, path.relative(materialized, captured));
+    modules.set(file, { source: file, captured: loaded, packageRoot: stored ?? materialized });
+    return loaded;
   };
   const admit = (file: string) => {
     try { return nativeModule(file); }
