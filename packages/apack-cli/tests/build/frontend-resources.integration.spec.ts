@@ -64,10 +64,13 @@ it.each(['unchanged', 'edited'] as const)('uses one input view across frontend c
     const result = await bundlePackFE({ packDir: pack, outputDir, entryPoint: path.join(pack, 'src/frontend-entry.ts'), compilation });
     expect(result.success, result.error).toBe(true);
     const output = ['.js', '.css', '.svg'].map(extension => readFrontendOutput(pack, extension)).join('\n');
-    for (const marker of ['SOURCE', 'DEPENDENCY', 'STYLE', 'SVG', 'LAZY', 'WORKER', 'GLOB', 'SASS']) {
+    for (const marker of ['SOURCE', 'STYLE', 'SVG', 'LAZY', 'WORKER', 'GLOB', 'SASS']) {
       expect(output, marker).toContain(`${marker}_CAPTURED`);
       expect(output, marker).not.toContain(`${marker}_LIVE`);
     }
+    // A dependency file becomes an input at its first read, which here follows the edit: the bytes on disk compile
+    const dependency = mode === 'edited' ? 'DEPENDENCY_LIVE' : 'DEPENDENCY_CAPTURED';
+    expect(output, 'DEPENDENCY').toContain(dependency);
     expect(readFrontendOutput(pack, '.css')).toContain('18 52 86');
     expect(output).not.toContain('apack-inputs-');
     if (mode === 'unchanged') expect(() => compilation.assertCurrent()).not.toThrow();
