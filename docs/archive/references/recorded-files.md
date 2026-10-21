@@ -6,8 +6,8 @@ while it lived. Read it before adding a recorded file, or when you are about to 
 sample is worth it after all.
 
 The archived goals hold the same ground from the other direction:
-[`goal-placement-without-a-clock.md`](../archive/goals/goal-placement-without-a-clock.md) is the attempt that
-ended the sample, and [`goal-measured-placement.md`](../archive/goals/goal-measured-placement.md) is the one
+[`goal-placement-without-a-clock.md`](../goals/goal-placement-without-a-clock.md) is the attempt that
+ended the sample, and [`goal-measured-placement.md`](../goals/goal-measured-placement.md) is the one
 that built it.
 
 **Current facade check (2026-10-18):** the root chain now uses explicit `--from-build`. Its producer
@@ -213,7 +213,7 @@ one number**, which no amount of hysteresis fixes: one spec read 2.8s in the fas
 integration half, 4.37x apart against a band of 2.5x. The half is a decision now, declared by a filename
 (`scripts/lib/spec-halves.ts`), and nothing re-derives it.
 
-[`docs/reference/recorded-files.md`](recorded-files.md) has what each of those cost,
+[`docs/archive/references/recorded-files.md`](recorded-files.md) has what each of those cost,
 measurement by measurement. **There are none left.** What a chain step costs is a reading: a machine-local
 window of recent passing runs (`scripts/lib/step-durations.ts`), which orders nothing that decides pass or
 fail — it draws the critical path and is the context a failure report gives — so it needs no band, floor or

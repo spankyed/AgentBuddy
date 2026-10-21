@@ -2,11 +2,11 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-**Where a new lesson goes, because this file is loaded into every session:** the rule lives here in its imperative form with one citation; its evidence lives in `docs/`.**
+**Where a new lesson goes, because this file is loaded into every session:** the rule lives here in its imperative form with one citation; its evidence lives in `docs/`.
 A paragraph of measurement, a list of what was tried first, or the history of something that no longer
-exists is the sign it belongs there — [`reference/pipeline-lessons.md`](docs/reference/pipeline-lessons.md)
-for what a rule cost to learn, [`reference/pipeline-commands.md`](docs/reference/pipeline-commands.md) for
-what a flag was measured against, [`reference/recorded-files.md`](docs/reference/recorded-files.md)
+exists is the sign it belongs there — [`archive/references/pipeline-lessons.md`](docs/archive/references/pipeline-lessons.md)
+for what a rule cost to learn, [`archive/references/pipeline-commands.md`](docs/archive/references/pipeline-commands.md) for
+what a flag was measured against, [`archive/references/recorded-files.md`](docs/archive/references/recorded-files.md)
 for the two recorded files that were built and deleted, and `docs/archive/goals/` for a goal that
 closed. This is the repo's own comment rule — *"a comment is for whoever opens the file cold, not for
 whoever reads the diff"* — applied to the guide that states it, which is the easiest place to exempt.
@@ -90,7 +90,7 @@ so out loud so the claim can be checked.
 moved, so working out which suite covers an edit is the graph's job. A step that only consumes a
 deterministic build stays cached through a rebuild from unchanged input; `npm run check:repro` keeps the
 builds reproducible. `npm run chain -- --dry` prints the plan and why each step is or is not cached. What
-each case costs, measured: [pipeline-lessons.md](docs/reference/pipeline-lessons.md#what-a-change-costs-the-chain).
+each case costs, measured: [pipeline-lessons.md](docs/archive/references/pipeline-lessons.md#what-a-change-costs-the-chain).
 
 **Use `npm run spec` while working and the chain when done.** With no arguments it runs the specs your
 uncommitted changes affect; with a source file, the specs that import it. A change to `scripts/` or a vitest
@@ -117,7 +117,7 @@ regenerated diff before committing it**: every line should be the edit you just 
 running whatever produces it, not comparing against a file an earlier command left. Add no **proxy** (a hash
 of what the inputs are believed to be, whose remedy writes) and no **sample** (a recorded measurement); price
 the derivation first — `api:check` and `packages:check` are cheap enough to be chain steps. Why, and what
-each cost: [recorded-files.md](docs/reference/recorded-files.md#the-recorded-file-checks).
+each cost: [recorded-files.md](docs/archive/references/recorded-files.md#the-recorded-file-checks).
 
 What a chain step costs is a reading: a machine-local window of recent passing runs
 (`scripts/lib/step-durations.ts`), never a committed figure.
@@ -179,7 +179,7 @@ documentation change does not mean that file is outside the pack compiler's capt
 
 Commit validated logical checkpoints before expanding implementation. Keep one current handoff in the
 owning goal: source state, proven checks, unresolved failures and the next action. Historical run logs
-are evidence, not instructions to repeat the same runs. See [the validation-loop lesson](docs/reference/pipeline-lessons.md#validation-loops).
+are evidence, not instructions to repeat the same runs. See [the validation-loop lesson](docs/archive/references/pipeline-lessons.md#validation-loops).
 
 Things that waste the most time, in order:
 
@@ -234,7 +234,7 @@ Rules that pay for themselves:
 - **Load inflates a duration and cannot deflate it.** Gate only on *measured faster than declared* (the
   `@slow:` marker gate); *measured slower* is only ever a report.
 
-[`docs/reference/pipeline-lessons.md`](docs/reference/pipeline-lessons.md) has what each of these cost to
+[`docs/archive/references/pipeline-lessons.md`](docs/archive/references/pipeline-lessons.md) has what each of these cost to
 learn.
 
 ### What a test may read
@@ -249,7 +249,7 @@ reordered; a check that genuinely needs the app declares it, and the fix is neve
 Split a check at that boundary: `test:external-pack` is `:contract` and `:fork` (no app) and `:app`;
 `test:packaged-authoring` is `:author` and `:app`, handing over a work dir through `tests/authoring-handoff`,
 which stays **outside** the checkout so the pack cannot resolve `@apackdev/*` from the workspace
-`node_modules`. History: [pipeline-lessons.md](docs/reference/pipeline-lessons.md#what-a-test-may-read).
+`node_modules`. History: [pipeline-lessons.md](docs/archive/references/pipeline-lessons.md#what-a-test-may-read).
 
 ## Commands
 
@@ -265,7 +265,7 @@ prose to code: point at the record or command that derives a figure.
 - `<action>:<scope>` — an action over part of the repo: `typecheck:renderer`, `test:unit`, `build:api`.
 - `<action>:<variant>` — a variant of one action: `build:dev`, `test:watch`, `lint:fix`.
 
-[`docs/reference/pipeline-commands.md`](docs/reference/pipeline-commands.md#command-notes) has what each
+[`docs/archive/references/pipeline-commands.md`](docs/archive/references/pipeline-commands.md#command-notes) has what each
 command below was measured against.
 
 ```bash

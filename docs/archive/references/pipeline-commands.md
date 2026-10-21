@@ -7,7 +7,7 @@ work. Read it when you are about to change one of these commands, or when a flag
 Each pool uses the aggregate deadline declared by its owning chain step. Complete compiler/runtime
 integration uses `acceptance`; ordinary unit pools retain `suite`. The strict workflow's envelope also
 includes preparation and app checks. Individual test, operation, event and cleanup limits remain
-independent. [Timeout classes](../../scripts/lib/step-timeouts.ts) own the allowances; diagnostic batch
+independent. [Timeout classes](../../../scripts/lib/step-timeouts.ts) own the allowances; diagnostic batch
 cutoffs do not change them or establish a normal acceptance result.
 
 It is here rather than there because the guide is loaded into every session and this is consulted when
@@ -265,7 +265,7 @@ Where a spec belongs: its path under tests/ mirrors the source it covers
 (docs/reference/test-inventory.md; repo-checks' spec-placement.spec.ts).
 **A pack suite and an integration half are not in a plain run's answer** — one
 resolves the published dist, the other is a second config the root projects
-exclude. docs/reference/pipeline-commands.md has the blast-radius figures.
+exclude. docs/archive/references/pipeline-commands.md has the blast-radius figures.
 ```
 
 ### `npm run chain`
@@ -295,7 +295,7 @@ which `--dry` and a failure report read; nothing is committed.
 `npm run chain -- --help` lists its flags. Read `--dry`'s critical path and what
 each step on it could buy before sizing an optimisation: a step off the path buys
 nothing, and one on it is capped by the second-longest route.
-docs/reference/pipeline-commands.md: what each flag replaced and what was
+docs/archive/references/pipeline-commands.md: what each flag replaced and what was
 measured to choose it.
 ```
 
@@ -425,7 +425,7 @@ without turning its event loop, against the 60s window birpc gives a call and
 vitest hardcodes. Per process, worst block first, with the headroom rather than
 the block alone — 38s against 60s is one busy afternoon from failing. `elu` says
 whether a quiet process was waiting or working.
-docs/reference/pipeline-commands.md has the measured habits behind both.
+docs/archive/references/pipeline-commands.md has the measured habits behind both.
 ```
 
 ### `npm run check:idle`

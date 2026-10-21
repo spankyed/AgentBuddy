@@ -499,7 +499,7 @@ The condition is the machine, which is a fact a run can check.
   downstream can tell. `holdExclusiveLock` (`@apackdev/host/exclusive-lock`) is the mechanism for all of them —
   `holdChainLock` (`scripts/lib/chain-lock.ts`) is the worked example, and the lock file must not end in
   `.json` or `pruneStamps` deletes a live run's. Two of the four are guarded;
-  [`reference/pipeline-lessons.md`](pipeline-lessons.md) names the other two and what the fix is.
+  [`archive/references/pipeline-lessons.md`](pipeline-lessons.md) names the other two and what the fix is.
 - **A cache needs a key that cannot go stale, or a scope in which it cannot — and a reset hatch is neither.**
   Content-key where the input is a file (path, mtime **and** size), scope where it is a tree. If you reach
   for a hatch anyway, give it a case that fails when it is forgotten.
@@ -527,10 +527,10 @@ The condition is the machine, which is a fact a run can check.
   marker gate is the worked example — while *measured slower* may be a fact about the machine and is only
   ever a report. Gating that direction is what cost the deleted subsystem its window, its band and its two
   idle floors. **The asymmetry holds for a thing's own time and not for a bar derived from it**, which is
-  the correction [`reference/recorded-files.md`](recorded-files.md) records: a
+  the correction [`archive/references/recorded-files.md`](recorded-files.md) records: a
   quantile moves with the load that moves the files under it.
 
-[`docs/reference/pipeline-lessons.md`](pipeline-lessons.md) has what each of these cost to
+[`docs/archive/references/pipeline-lessons.md`](pipeline-lessons.md) has what each of these cost to
 learn — the measurements, what was tried first, and the commit that closed it.
 
 ### What a test may read
@@ -570,7 +570,7 @@ no app, `:app` runs that archive against one. They hand over a work dir through 
 the author half's declared output and the app half's input, so the edge derives like any other — and that
 dir stays **outside** the checkout, or a pack built inside it resolves `@apackdev/*` by walking up to the
 workspace `node_modules`, which is the thing the check exists to disprove.
-[`goal-test-tiers.md`](../archive/goals/goal-test-tiers.md) has the rest, and what each of the four attempts at a
+[`goal-test-tiers.md`](../goals/goal-test-tiers.md) has the rest, and what each of the four attempts at a
 cheaper chain measured — written when the declaration was a tier.
 
 ### Figures in prose
